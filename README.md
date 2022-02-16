@@ -56,9 +56,11 @@ radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial dist
 τ⁻¹(::Type{ClaytonCopula},τ) = 2τ/(1-τ)                           # τ -> θ
 ```
 
-These 5 methods are enough to simulate, evaluate the cdf and fit a clayton copula in any dimension. 
+These 5 methods are enough to simulate, evaluate the cdf and fit a clayton copula in any dimension. Both `FranckCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula` and many others are waiting for you to implemnet them !
 
-# Developemment plans
+Adding a new `EllipticalCopula` is also very easy. 
+
+# Next Developemment plans
 
 The package should have two main types : 
 
