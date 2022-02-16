@@ -74,7 +74,36 @@ The Archimedean API is modular :
 
 Both `FranckCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula` and many others are waiting for you to implement these methods !
 
-# Next Developemment plans
+# Dev Roadmap
+
+## First step (current)
+
+The following should be enough for the first public release: 
+
+- [x] Restrict to only `GaussianCopula` and `StudentCopula` at first
+- [x] Make the `Copula` and `SklarDist` objets work with `pdf`,`cdf`,`rand!`, with full compatiblity with `Distribution.jl`
+- [x] Implement `fit` with a marginal-first scheme that relies on `Distribution.jl`, and fits the multivariate normal or multivariate student from the pseudo-observations pushed in gausian or student space (easy scheme). 
+- [x] Add one archimedean just to say so.
+- [ ] Add tests and documentation !!!! May take a while. 
+
+## Second step
+
+- [ ] Add `Archimedean` with a fully generic implementation (input via radil dist or via phi ?), `pdf, cdf, rand, tau, rho, itau, irho, fit, radial_dist`, Williamson d-transform and inverse d-transform, etc.. 
+- [ ] Provide `Franck`, `Gumbel` and `Clayton` as examples with nice parametric overloads.
+- [ ] Show in the docs how easy it is to implement your own archimedean, with pointers to methods to overload.  
+- [ ] For the `fit`, looks like `itau` and `irho` are easier to implement.
+
+## Next steps
+
+- [ ] `NestedArchimedean` and very easy implementation of new archimeean copulas via the radial dist or the phi/invphi + Williamson transform. 
+- [ ] Implement tau and rho more generally and itau/irho methods to fit the copulas, or MLE, with the choice given to the user via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")` or others... 
+- [ ] `EmpiricalCopula`, `BernsteinCopula`, `BetaCopula`, `PatchworkCopula` and `CheckerboardCopula`: could be nice things to have :)
+- [ ] Generic Archimedean fitting ?  Fully generic fitting of Archimedean copula with a given radial_dist : the archimedean copula with a `Gamma()` riadial dist could be fitted by looking at the parameter of the gamma that makes the distribution match, no ? Throuhg Williamson transformaiton and everything... 
+- [ ] `Vines` ? Maybe later. 
+- [ ] Others ? 
+
+
+# Detailed Developemment plans
 
 The first thing to do is to add Documentation and tests to the current draft implementation. 
 Then, a few potential things : 
@@ -111,29 +140,3 @@ Some goodness of fit tests ? Anything els that is not at parity with the `copula
 A Vine implementation that beats the C++ equivalents ? 
 
 Else ? 
-
-## First step (current)
-
-The following should be enough for the first public release: 
-
-- [x] Restrict to only `GaussianCopula` and `StudentCopula` at first
-- [x] Make the `Copula` and `SklarDist` objets work with `pdf`,`cdf`,`rand!`, with full compatiblity with `Distribution.jl`
-- [x] Implement `fit` with a marginal-first scheme that relies on `Distribution.jl`, and fits the multivariate normal or multivariate student from the pseudo-observations pushed in gausian or student space (easy scheme). 
-- [x] Add one archimedean just to say so.
-- [ ] Add tests and documentation !!!! May take a while. 
-
-## Second step
-
-- [ ] Add `Archimedean` with a fully generic implementation (input via radil dist or via phi ?), `pdf, cdf, rand, tau, rho, itau, irho, fit, radial_dist`, Williamson d-transform and inverse d-transform, etc.. 
-- [ ] Provide `Franck`, `Gumbel` and `Clayton` as examples with nice parametric overloads.
-- [ ] Show in the docs how easy it is to implement your own archimedean, with pointers to methods to overload.  
-- [ ] For the `fit`, looks like `itau` and `irho` are easier to implement.
-
-## Next steps
-
-- [ ] `NestedArchimedean` and very easy implementation of new archimeean copulas via the radial dist or the phi/invphi + Williamson transform. 
-- [ ] Implement tau and rho more generally and itau/irho methods to fit the copulas, or MLE, with the choice given to the user via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")` or others... 
-- [ ] `EmpiricalCopula`, `BernsteinCopula`, `BetaCopula`, `PatchworkCopula` and `CheckerboardCopula`: could be nice things to have :)
-- [ ] Generic Archimedean fitting ?  Fully generic fitting of Archimedean copula with a given radial_dist : the archimedean copula with a `Gamma()` riadial dist could be fitted by looking at the parameter of the gamma that makes the distribution match, no ? Throuhg Williamson transformaiton and everything... 
-- [ ] `Vines` ? Maybe later. 
-- [ ] Others ? 
