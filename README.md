@@ -37,7 +37,7 @@ D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 
 simu = rand(D,1000) # A (3,1000)-sized dataset that correspond from the simulation
 
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}, simu) # Increase the number of observtions to get a beter fit !  
+D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu) # Increase the number of observtions to get a beter fit !  
 ```
 
 Atop from the very neat `SklarDist` type, available copulas are :
