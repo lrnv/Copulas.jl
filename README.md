@@ -9,11 +9,17 @@
 
 # What is this package ? 
 
-This packages aims at bringing into native Julia most of the standard copula code that is yet unavailable in native Julia. Usually, people that use and work with copulas turn to R and not Julia to work, because of the amaising package `copula` that is available there. 
+This packages aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction mutlivariate distributions that are copula-based, etc. while complying with the `Distributions.jl` API.
 
-However, I beleive that this package, while still maintained correclty today, is quite old and rotting, full of heavily optimized and obscure C code.. This is an attempt to provide a very fast, relaliable and maintainable copula implmentation in Julia, that would embrace the Julian way (and, in particular, the possiblity to work with arbitrary type of floats like `Float32` for speed, `BigFLoats` or `DoubleFloats` or `MultiFloats`), correct SIMD'sation, etc. 
+Usually, people that use and work with copulas turn to R and not Julia to work, because of the amaising package `copula` that is available there.
+This R package, while still perfectly maintained and updated today, is full of obscured, heavily opitmized, fast `C` code, and obsure, heavily optimized slow `R` code. This is an attempt to provide a very fast, relaliable and maintainable copula implementation in native Julia (in particular, type-agnostic so it'll work with arbitrary type of floats like `Float32` for speed, `BigFloats` or `DoubleFloats` or `MultiFloats` for precision), with correct SIMD'sation, etc. 
 
-Morover, we want and try to implement the `Copula` objects and the `SklarDist` objects to comply fully with the `Distributions.jl` API. Somehting like this should work : 
+All the exported types are `Distributions` from `Distributions.jl`. Two of them are of most importance: 
+
+- `Copula` : this is an abstract mother type for all our copulas. 
+- `SklarDist` : Allows to construct a multivariate distribution by specifying the copula and the marginals, through Sklar theorem. 
+
+The API we implemented contains random number generations, cdf and pdf evaluations, and the `fit` function from `Distributions.jl`. Something like this is possible: 
 
 ```julia
 using Distributions, Random
@@ -23,10 +29,12 @@ X₃ = LogNormal(0,1)
 C = FranckCopula(0.7,3) # A 3-variate Franck Copula with θ = 0.7
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 
-simu = rand(D,1000) # A (3,1000)-sized datast that correspond from the simulation
-fit(D,simu) # Would use Distributions.fit() on the marginals and a MLE on the Franck copula. 
-fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}) # Increase the number of observtions to get a beter fit !  
+simu = rand(D,1000) # A (3,1000)-sized dataset that correspond from the simulation
 
+D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}, simu) # Increase the number of observtions to get a beter fit !  
+```
+
+<!-- 
 
 
 ϕ(t) = e^(-t) # An archimedean generator
@@ -37,10 +45,7 @@ fit(SC,rand((4,1000))) # would fit the SC copula onto random independant observa
 using StatsPlots
 plot(X₁) # plots the random variable
 plot(C) # equivalent plot of the theoretical copula
-plot(D) # plot of the multivariate distribution obtain via SklarDist. 
-
-# .... Many other things ! 
-```
+plot(D) # plot of the multivariate distribution obtain via SklarDist.  -->
 
 # Developemment plans
 
