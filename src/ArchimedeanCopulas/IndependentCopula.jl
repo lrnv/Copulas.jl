@@ -1,4 +1,5 @@
 struct IndependentCopula{d} <: ArchimedeanCopula{d} end
+IndependentCopula(d) = IndependentCopula{d}
 function Distributions._logpdf(::IndependentCopula{d},u) where d
     return all(0 .<= u .<= 1) ? 1 : 0
 end
