@@ -9,6 +9,8 @@
 
 # What is this package ? 
 
+**Warning: This is fairly untested and experimental work and the API might change without notice.**
+
 This packages aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction mutlivariate distributions that are copula-based, etc. while complying with the `Distributions.jl` API.
 
 Usually, people that use and work with copulas turn to R and not Julia to work, because of the amaising package `copula` that is available there.
@@ -18,6 +20,8 @@ All the exported types are `Distributions` from `Distributions.jl`. Two of them 
 
 - `Copula` : this is an abstract mother type for all our copulas. 
 - `SklarDist` : Allows to construct a multivariate distribution by specifying the copula and the marginals, through Sklar theorem. 
+
+# What is already implemented
 
 The API we implemented contains random number generations, cdf and pdf evaluations, and the `fit` function from `Distributions.jl`. Something like this is possible: 
 
@@ -34,18 +38,23 @@ simu = rand(D,1000) # A (3,1000)-sized dataset that correspond from the simulati
 D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}, simu) # Increase the number of observtions to get a beter fit !  
 ```
 
-<!-- 
+Available copulas are `EmpiricalCopula`, `GaussianCopula`, `TCopula`, `ClaytonCopula`. 
 
+Adding a new `ArchimedeanCopula` is very easy. The `Clayton` implementation is as short as : 
 
-ϕ(t) = e^(-t) # An archimedean generator
-C = ArchimedeanCopula(ϕ,4) # Do you know which 4-variate copula it is ? 
-SC = flipmargins(C,dims=(1,2,3,4)) # This function would reverese marginal, for any copula, making a survival copula. 
-fit(SC,rand((4,1000))) # would fit the SC copula onto random independant observations ! 
+```
+struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
+    θ::T
+end
+ClaytonCopula(d,θ) = ClaytonCopula{d,typeof(θ)}(θ)                # Constructor
+ϕ(  C::ClaytonCopula,      t) = (1+sign(C.θ)*t)^(-1/C.θ)          # Generator
+ϕ⁻¹(C::ClaytonCopula,      t) = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
+radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial distribution
+τ(C::ClaytonCopula) = C.θ/(C.θ+2)                                 # θ -> τ
+τ⁻¹(::Type{ClaytonCopula},τ) = 2τ/(1-τ)                           # τ -> θ
+```
 
-using StatsPlots
-plot(X₁) # plots the random variable
-plot(C) # equivalent plot of the theoretical copula
-plot(D) # plot of the multivariate distribution obtain via SklarDist.  -->
+These 5 methods are enough to simulate, evaluate the cdf and fit a clayton copula in any dimension. 
 
 # Developemment plans
 
