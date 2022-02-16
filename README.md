@@ -11,12 +11,14 @@
 
 **Warning: This is fairly untested and experimental work and the API might change without notice.**
 
-This packages aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction mutlivariate distributions that are copula-based, etc. while complying with the `Distributions.jl` API.
+This packages aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction of copula-based mutlivariate distributions through Sklar's theorem, etc. while complying with the `Distributions.jl` API.
 
-Usually, people that use and work with copulas turn to R and not Julia to work, because of the amaising package `copula` that is available there.
-This R package, while still perfectly maintained and updated today, is full of obscured, heavily opitmized, fast `C` code, and obsure, heavily optimized slow `R` code. This is an attempt to provide a very fast, relaliable and maintainable copula implementation in native Julia (in particular, type-agnostic so it'll work with arbitrary type of floats like `Float32` for speed, `BigFloats` or `DoubleFloats` or `MultiFloats` for precision), with correct SIMD'sation, etc. 
+Usually, people that use and work with copulas turn to R and not Julia to work, because of the amazing `R` package `copula`.
+While still perfectly maintained and updated today, the `R` package `copula` is full of obscured, heavily opitmized, fast `C` code on one hand, and obsure, heavily optimized slow `R` code on the other hand. 
 
-All the exported types are `Distributions` from `Distributions.jl`. Two of them are of most importance: 
+This is an attempt to provide a very light, fast, relaliable and maintainable copula implementation in native Julia (in particular, type-agnostic so it'll work with arbitrary type of floats like `Float32` for speed, `BigFloats` or `DoubleFloats` or `MultiFloats` for precision), with correct SIMD'sation, etc. 
+
+Two of the exported types are of most importance: 
 
 - `Copula` : this is an abstract mother type for all our copulas. 
 - `SklarDist` : Allows to construct a multivariate distribution by specifying the copula and the marginals, through Sklar theorem. 
@@ -26,11 +28,11 @@ All the exported types are `Distributions` from `Distributions.jl`. Two of them 
 The API we implemented contains random number generations, cdf and pdf evaluations, and the `fit` function from `Distributions.jl`. Something like this is possible: 
 
 ```julia
-using Distributions, Random
+using Copulas, Distributions, Random
 X₁ = Gamma(2,3)
-X₂ = Normal(1,3)
+X₂ = Pareto()
 X₃ = LogNormal(0,1)
-C = FranckCopula(0.7,3) # A 3-variate Franck Copula with θ = 0.7
+C = ClaytonCopula(3,0.7) # A 3-variate Franck Copula with θ = 0.7
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 
 simu = rand(D,1000) # A (3,1000)-sized dataset that correspond from the simulation
@@ -42,7 +44,7 @@ Available copulas are `EmpiricalCopula`, `GaussianCopula`, `TCopula`, `ClaytonCo
 
 Adding a new `ArchimedeanCopula` is very easy. The `Clayton` implementation is as short as : 
 
-```
+```julia
 struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
 end
