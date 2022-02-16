@@ -25,7 +25,7 @@ Two of the exported types are of most importance:
 
 # What is already implemented
 
-The API we implemented contains random number generations, cdf and pdf evaluations, and the `fit` function from `Distributions.jl`. Something like this is possible: 
+The API we implemented contains random number generations, cdf and pdf evaluations, and the `fit` function from `Distributions.jl`. Typical use case might look like this: 
 
 ```julia
 using Copulas, Distributions, Random
@@ -35,9 +35,12 @@ X₃ = LogNormal(0,1)
 C = ClaytonCopula(3,0.7) # A 3-variate Franck Copula with θ = 0.7
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 
-simu = rand(D,1000) # A (3,1000)-sized dataset that correspond from the simulation
+# This generates a (3,1000)-sized dataset from the multivariate distribution D
+simu = rand(D,1000)
 
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu) # Increase the number of observtions to get a beter fit !  
+# While the following estimates the parameters of the model from a dataset : 
+D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
+# Increase the number of observations to get a beter fit !  
 ```
 
 Atop from the very neat `SklarDist` type, available copulas are :
