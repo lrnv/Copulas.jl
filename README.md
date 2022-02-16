@@ -11,12 +11,12 @@
 
 **Warning: This is fairly untested and experimental work and the API might change without notice.**
 
-This packages aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction of copula-based mutlivariate distributions through Sklar's theorem, etc. while complying with the `Distributions.jl` API.
+This packages aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction of copula-based mutlivariate distributions through Sklar's theorem, etc. while fully complying with the `Distributions.jl` API (after all, copulas are distributions functions). 
 
-Usually, people that use and work with copulas turn to R and not Julia to work, because of the amazing `R` package `copula`.
+Usually, people that use and work with copulas turn to R, because of the amazing `R` package `copula`.
 While still perfectly maintained and updated today, the `R` package `copula` is full of obscured, heavily opitmized, fast `C` code on one hand, and obsure, heavily optimized slow `R` code on the other hand. 
 
-This is an attempt to provide a very light, fast, relaliable and maintainable copula implementation in native Julia (in particular, type-agnostic so it'll work with arbitrary type of floats like `Float32` for speed, `BigFloats` or `DoubleFloats` or `MultiFloats` for precision), with correct SIMD'sation, etc. 
+This is an attempt to provide a very light, fast, reliable and maintainable copula implementation in native Julia (in particular, type-agnostic so it'll work with arbitrary type of floats like `Float32` for speed, `BigFloats` or `DoubleFloats` or `MultiFloats` for precision), with correct SIMD'sation, etc. 
 
 Two of the exported types are of most importance: 
 
@@ -40,7 +40,18 @@ simu = rand(D,1000) # A (3,1000)-sized dataset that correspond from the simulati
 D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}, simu) # Increase the number of observtions to get a beter fit !  
 ```
 
-Available copulas are `EmpiricalCopula`, `GaussianCopula`, `TCopula`, `ClaytonCopula`. 
+Atop from the very neat `SklarDist` type, available copulas are :
+- `EmpiricalCopula`
+- `GaussianCopula`
+- `TCopula`
+- `ArchimedeanCopula` (general, for any generator)
+- `ClaytonCopula` (as an instantiation of `ArchimedeanCopula`, see after)
+
+Next ones to be implemented will probably be : 
+- A few more archimedeans : `FranckCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula`
+- Nested archimedeans (general, with the possibility to nest any family with any family, assuming it is possible, with parameter checks.)
+- Bernstein copula and more general Beta copula as smoothing of the Empirical copula. 
+- `CheckerboardCopula` (and more generally `PatchworkCopula`)
 
 Adding a new `ArchimedeanCopula` is very easy. The `Clayton` implementation is as short as : 
 
@@ -48,17 +59,20 @@ Adding a new `ArchimedeanCopula` is very easy. The `Clayton` implementation is a
 struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
 end
-ClaytonCopula(d,θ) = ClaytonCopula{d,typeof(θ)}(θ)                # Constructor
-ϕ(  C::ClaytonCopula,      t) = (1+sign(C.θ)*t)^(-1/C.θ)          # Generator
-ϕ⁻¹(C::ClaytonCopula,      t) = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
+ClaytonCopula(d,θ)            = ClaytonCopula{d,typeof(θ)}(θ)     # Constructor
 radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial distribution
-τ(C::ClaytonCopula) = C.θ/(C.θ+2)                                 # θ -> τ
-τ⁻¹(::Type{ClaytonCopula},τ) = 2τ/(1-τ)                           # τ -> θ
+ϕ(C::ClaytonCopula,      t)   = (1+sign(C.θ)*t)^(-1/C.θ)          # Generator
+ϕ⁻¹(C::ClaytonCopula,      t) = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
+τ(C::ClaytonCopula)           = C.θ/(C.θ+2)                       # θ -> τ
+τ⁻¹(::Type{ClaytonCopula},τ)  = 2τ/(1-τ)                          # τ -> θ
 ```
+The Archimedean API is modular : 
 
-These 5 methods are enough to simulate, evaluate the cdf and fit a clayton copula in any dimension. Both `FranckCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula` and many others are waiting for you to implemnet them !
+- To sample an archimedean, only `radial_dist` and `ϕ` are needed.
+- To evaluate the cdf, only `ϕ` and `ϕ⁻¹` are needed
+- Currently to fit the copula, `τ⁻¹` is needed as we use inversed tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
 
-Adding a new `EllipticalCopula` is also very easy. 
+Both `FranckCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula` and many others are waiting for you to implement these methods !
 
 # Next Developemment plans
 
