@@ -1,3 +1,4 @@
+
 abstract type ArchimedeanCopula{d} <: Copula{d} end
 function Distributions.cdf(C::CT,u) where {CT<:ArchimedeanCopula} 
     return ϕ(C,sum(ϕ⁻¹.(u)))

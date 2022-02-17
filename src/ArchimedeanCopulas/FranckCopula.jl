@@ -1,3 +1,19 @@
+"""
+    FranckCopula{d,T}
+
+Fields:
+  - θ::Real - parameter
+
+Constructor
+
+    FranckCopula(d, θ)
+
+The [Franck](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [0,\\infty)``. It is an Archimedean copula with generator : 
+
+```math
+\\phi(t) = -\\frac{\\log\\left(1+e^{-t}(e^{-\\theta-1})\\right)}{\theta}
+```
+"""
 struct FranckCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
 end

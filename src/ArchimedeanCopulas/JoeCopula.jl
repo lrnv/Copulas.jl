@@ -1,3 +1,19 @@
+"""
+    JoeCopula{d,T}
+
+Fields:
+  - θ::Real - parameter
+
+Constructor
+
+    JoeCopula(d, θ)
+
+The [Joe](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [1,\\infty)``. It is an Archimedean copula with generator : 
+
+```math
+\\phi(t) = 1 - \\left(1 - e^{-t}\\right)^{\\frac{1}{\\theta}}
+```
+"""
 struct JoeCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
 end

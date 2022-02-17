@@ -1,4 +1,19 @@
+"""
+    AMHCopula{d,T}
 
+Fields:
+  - θ::Real - parameter
+
+Constructor
+
+    AMHCopula(d, θ)
+
+The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [0,1)``. It is an Archimedean copula with generator : 
+
+```math
+\\phi(t) = 1 - \\frac{1-\\theta}{e^{-t}-\\theta}
+```
+"""
 struct AMHCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
 end

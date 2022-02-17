@@ -1,3 +1,19 @@
+"""
+    GumbelCopula{d,T}
+
+Fields:
+  - θ::Real - parameter
+
+Constructor
+
+    GumbelCopula(d, θ)
+
+The [Gumbel](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [1,\\infty)``. It is an Archimedean copula with generator : 
+
+```math
+\\phi(t) = \\exp{-t^{\\frac{1}{θ}}}
+```
+"""
 struct GumbelCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
 end
