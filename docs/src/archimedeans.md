@@ -8,7 +8,7 @@ Details about the generic construction of archimedean copulas (in the package),
 and details on exported methods that corresponds to this class 
 
 ```@docs
-EllipticalCopula
+ArchimedeanCopula
 ```
 
 # Implement your own 
