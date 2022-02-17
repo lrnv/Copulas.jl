@@ -15,6 +15,8 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Elliptical Copulas" => "ellipticals.md",
+        "Archimedean Copulas" => "archimedeans.md"
     ],
 )
 
