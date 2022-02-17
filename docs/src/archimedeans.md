@@ -9,7 +9,7 @@ Details about the Archimedean Copulas
 
 ```@docs
 IndependentCopula
-ClaytonCopulas
+ClaytonCopula
 FranckCopula
 AMHCopula
 GumbelCopula
