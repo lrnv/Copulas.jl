@@ -40,10 +40,10 @@ IndependentCopula
 ClaytonCopula
 ```
 
-## Franck
+## Frank
 
 ```@docs
-FranckCopula
+FrankCopula
 ```
 
 ## Gumbel

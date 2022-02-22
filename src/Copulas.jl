@@ -2,10 +2,11 @@ module Copulas
 
 import Base
 import Random
-using Distributions
-using StatsBase
 import SpecialFunctions
 import GSL
+import Roots
+using Distributions
+using StatsBase
 # Write your package code here.
 include("utils.jl")
 include("Copula.jl")
@@ -26,7 +27,7 @@ include("ArchimedeanCopulas/IndependentCopula.jl")
 include("ArchimedeanCopulas/ClaytonCopula.jl")
 include("ArchimedeanCopulas/JoeCopula.jl")
 include("ArchimedeanCopulas/GumbelCopula.jl")
-include("ArchimedeanCopulas/FranckCopula.jl")
+include("ArchimedeanCopulas/FrankCopula.jl")
 include("ArchimedeanCopulas/AMHCopula.jl")
 
 ######### Copulas 
@@ -36,7 +37,7 @@ export TCopula
 export ClaytonCopula
 export AMHCopula
 export JoeCopula
-export FranckCopula
+export FrankCopula
 export GumbelCopula
 export IndependentCopula
 

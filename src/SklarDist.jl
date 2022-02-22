@@ -24,7 +24,7 @@ function Base.rand(rng::Distributions.AbstractRNG,S::SklarDist{CT,TplMargins}) w
      return x
 end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargins}
-    Distributions._logpdf(S.C,Distributions.cdf.(S.m,u))
+    sum(Distributions._logpdf.(S.m[i],u[i]) for i in 1:length(u)) + Distributions._logpdf(S.C,Distributions.cdf.(S.m,u))
 end
 
 
