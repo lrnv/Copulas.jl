@@ -38,3 +38,6 @@ end
 function Base.rand(rng::Distributions.AbstractRNG,C::EmpiricalCopula{d,MT}) where {d,MT}
     C.u[:,Base.rand(rng,axes(C.u,2),1)[1]]
 end
+function Distributions.fit(::Type{CT},u) where {CT <: EmpiricalCopula}
+    return EmpiricalCopula(u)
+end
