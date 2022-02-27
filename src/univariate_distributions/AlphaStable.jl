@@ -1,3 +1,6 @@
+# Taken from https://github.com/org-arl/AlphaStableDistributions.jl/blob/master/src/AlphaStableDistributions.jl, which has a more complete implementation.
+# Maybe we should just depend on it ? 
+
 struct AlphaStable{T} <: Distributions.ContinuousUnivariateDistribution
     α::T
     β::T
