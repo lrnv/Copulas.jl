@@ -1,3 +1,5 @@
+# See https://rdrr.io/rforge/copula/man/Sibuya.html
+
 struct Sibuya{T<:Real} <: Distributions.DiscreteUnivariateDistribution
     p::T
     function Sibuya(p::T) where {T <: Real}
