@@ -11,7 +11,7 @@
 
 **Warning: This is fairly untested and experimental work and the API might change without notice.**
 
-This package aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction of copula-based multivariate distributions through Sklar's theorem, etc. while fully complying with the `Distributions.jl` API (after all, copulas are distributions functions). 
+This package aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction of copula-based multivariate distributions through Sklar's theorem, etc. while fully complying with the `Distributions.jl` API (after all, copulas are distributions functions), in order to provide interoperability with other packages based on this API, such as `Turing.jl`.
 
 Usually, people that use and work with copulas turn to R, because of the amazing `R` package `copula`.
 While still perfectly maintained and updated today, the `R` package `copula` is full of obscured, heavily optimized, fast `C` code on one hand, and obscure, heavily optimized slow `R` code on the other hand.
