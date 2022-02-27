@@ -1,6 +1,3 @@
-
-# Input the logarithmic distribution, by a scrit copy of https://github.com/JuliaStats/Distributions.jl/blob/71f1b1e39ad2b66b4865b5e1fd537315c8a53ae8/src/univariate/discrete/geometric.jl#L1-L23
-
 # Corresponds to https://en.wikipedia.org/wiki/Logarithmic_distribution
 struct Logarithmic{T<:Real} <: Distributions.DiscreteUnivariateDistribution
     p::T
