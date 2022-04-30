@@ -1,7 +1,12 @@
-
+#Using the convention that generator satisfies ϕ(0) = 1 (this is opposite to e.g. https://en.wikipedia.org/wiki/Copula_(probability_theory))
 abstract type ArchimedeanCopula{d} <: Copula{d} end
 function Distributions.cdf(C::CT,u) where {CT<:ArchimedeanCopula} 
-    return ϕ(C,sum(ϕ⁻¹.(u)))
+    @assert length(C) == length(u) 
+    sum_ϕ⁻¹u = 0.0
+    for us in u
+        sum_ϕ⁻¹u += Copulas.ϕ⁻¹(C,us)
+    end
+    return Copulas.ϕ(C,sum_ϕ⁻¹u)
 end
 function Distributions.pdf(C::CT,u) where {CT<:ArchimedeanCopula} 
     @error "Not implemented yet (derivatives of generator needed...)"
@@ -28,7 +33,7 @@ end
 function Base.rand(rng::Distributions.AbstractRNG,C::CT) where CT<: ArchimedeanCopula
     x = rand(rng,length(C))
     r = rand(rng,radial_dist(C))
-    for i in 1:C.d
+    for i in 1:length(C)
         x[i] = ϕ(C,-log(x[i])/r)
     end
     return x

@@ -44,9 +44,9 @@ module Copulas
            AMHCopula
 
     # Others. 
-    include("MiscelaneousCopulas/MCopula.jl")
-    include("MiscelaneousCopulas/WCopula.jl")
-    include("MiscelaneousCopulas/SurvivalCopula.jl")
+    include("MiscellaneousCopulas/MCopula.jl")
+    include("MiscellaneousCopulas/WCopula.jl")
+    include("MiscellaneousCopulas/SurvivalCopula.jl")
     export MCopula,
         Wcopula,
         SurvivalCopula
