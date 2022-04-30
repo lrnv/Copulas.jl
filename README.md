@@ -75,6 +75,7 @@ The Archimedean API is modular :
 - To sample an archimedean, only `radial_dist` and `ϕ` are needed.
 - To evaluate the cdf, only `ϕ` and `ϕ⁻¹` are needed
 - Currently to fit the copula, `τ⁻¹` is needed as we use inversed tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
+- Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
 
 # Dev Roadmap
 
