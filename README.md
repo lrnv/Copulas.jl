@@ -11,7 +11,7 @@
 
 **Warning: This is fairly untested and experimental work and the API might change without notice.**
 
-This package aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction of copula-based multivariate distributions through Sklar's theorem, etc. while fully complying with the `Distributions.jl` API (after all, copulas are distributions functions). 
+This package aims at bringing into native Julia most of the standard copula features: random number generation, fitting, construction of copula-based multivariate distributions through Sklar's theorem, etc. while fully complying with the `Distributions.jl` API (after all, copulas are distributions functions), in order to provide interoperability with other packages based on this API, such as `Turing.jl`.
 
 Usually, people that use and work with copulas turn to R, because of the amazing `R` package `copula`.
 While still perfectly maintained and updated today, the `R` package `copula` is full of obscured, heavily optimized, fast `C` code on one hand, and obscure, heavily optimized slow `R` code on the other hand.
@@ -49,9 +49,10 @@ Atop from the very neat `SklarDist` type, available copulas are :
 - `TCopula`
 - `ArchimedeanCopula` (general, for any generator)
 - `ClaytonCopula`,`FrankCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula` as exemple instantiations of the `ArchimedeanCopula` abstract type, see after
+- `WCopula` and `MCopula` are Fréchet-Hoeffding bounds.
+- `EmpiricalCopula` to follow your dataset.
 
 Next ones to be implemented will probably be : 
-- More archimedean copulas ? Some with non-completely cmonotone generators ? 
 - Nested archimedeans (general, with the possibility to nest any family with any family, assuming it is possible, with parameter checks.)
 - Bernstein copula and more general Beta copula as smoothing of the Empirical copula. 
 - `CheckerboardCopula` (and more generally `PatchworkCopula`)
@@ -74,6 +75,7 @@ The Archimedean API is modular :
 - To sample an archimedean, only `radial_dist` and `ϕ` are needed.
 - To evaluate the cdf, only `ϕ` and `ϕ⁻¹` are needed
 - Currently to fit the copula, `τ⁻¹` is needed as we use inversed tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
+- Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
 
 # Dev Roadmap
 
@@ -90,31 +92,20 @@ The following should be enough for the first public release:
 ## Second step
 
 - [ ] Extensive documentation and tests for the current implementation. 
-- [ ] Make `Archimedean` more generic : inputing only `radial_dist` or only `phi` shoudl be enough to get `pdf, cdf, rand, tau, rho, itau, irho, fit, radial_dist`, etc...  **Williamson d-transform and inverse d-transform should be implemented.**
-- [ ] Provide archimedean density. 
-- [ ] Show in the docs how easy it is to implement your own archimedean, with pointers to methods to overload.  
-- [ ] Implement tau and rho more generally and itau/irho methods to fit the copulas, or MLE, with the choice given to the user via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")` or others... 
-- [ ] Fitting a generic archimedean : should provide an empirical generator 
+- [ ] Implement archimedean density generally. 
+- [ ] Docs: show how to implement another archimedean.  
+- [ ] Give the user the choice of fitting method via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")`.
+- [ ] Fitting a generic archimedean : should provide an empirical generator
+- [ ] Make `Archimedean` more generic : inputing only `radial_dist` or only `phi` shoudl be enough to get `pdf, cdf, rand, tau, rho, itau, irho, fit, radial_dist`, etc...  **Williamson d-transform and inverse d-transform should be implemented.** The checking of nesting possibility should be done automatically with some rules (is phi_inv \circ phi complementely monotonous ? with obviously shortcut for inter-family nestings.)   
 
-## Next steps
+## Maybe later
 
-- [ ] `NestedArchimedean` and very easy implementation of new archimeean copulas via the radial dist or the phi/invphi + Williamson transform. The checking of nesting possibility should be done automatically with some rules (is phi_inv \circ phi complementely monotonous ? with obviously shortcut for inter-family nestings.)  
+- [ ] `Vines` ?
+- [ ] `NestedArchimedean` and very easy implementation of new archimeean copulas via the radial dist or the phi/invphi + Williamson transform. 
 - [ ] `BernsteinCopula` and `BetaCopula` could also be implemented. 
 - [ ] `PatchworkCopula` and `CheckerboardCopula`: could be nice things to have :)
-- [ ] `Vines` ?
 - [ ] Goodness of fits tests ?
 
-# Detailed Developemment plans
+## Contributions are welcome
 
-In term of methods, there should be for each `Copula` : 
-
-- The `cdf`, `_logpdf` and `rand`/`rand!` methods for the `Distributions.jl` API.
-- A `tau` and `rho` method, with `itau` and `irho` potentials ? 
-- A `fit` method that uses maximum likelyhood ? or itau ? or irho ? or something else ? 
-
-And for the `SklarDist`: 
-- An easy construction sheme: input the copula and the marginals; 
-- Random genreration, `cdf` and `pdf` methods that comply with the `Distributions.jl` standards, and other methods to comply with this standard. 
-- A `fit` method that would use MLE or itau/irho/other + fitting margins through Distributions.jl
-
-Complying with `Distributions.jl` standards by considering that a copula is, after all, a multivariate distribution (continuous in most of the cases), allows to use seemlessly the methods from `StatsPlots.jl` to plot things out, and everyhting else that is already implemented for the Distributions.jl stuff: maybe some other packages like MonteCarloMeasurements could use it directly ? Stan ? I do not know if it is based on Distributions.jl...
+Do not hesitate to open an issue to discuss :)
