@@ -6,7 +6,7 @@ module Copulas
     import Roots
     using Distributions
     using StatsBase
-    using ForwardDiff: derivative
+    using TaylorSeries
 
     # Standard copulas and stuff. 
     include("utils.jl")
