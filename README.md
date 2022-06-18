@@ -11,17 +11,15 @@
 
 **Warning: This is fairly untested and experimental work and the API might change without notice.**
 
-This package aims to bring most standard copula features into native Julia: random number generation, fitting, copula-based multivariate distributions through Sklar's theorem, etc., while fully complying with the `Distributions.jl` API (after all, copulas are distributions functions) in order to provide interoperability with other packages based on this API such as `Turing.jl`.
+This package aims to bring most standard [copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)) features into native Julia: random number generation, fitting, copula-based multivariate distributions through Sklar's theorem, etc., while fully complying with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API (after all, copulas are distributions functions) in order to provide interoperability with other packages based on this API such as [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
 
-Usually, people that use and work with copulas turn to R, because of the amazing `R` package `copula`.
-While it is still well maintained and regularly updated, the `R` package `copula` is full of obscure, heavily optimized `C` code on one hand, and obscure, heavily optimized slow `R` code on the other hand.
+Usually, people that use and work with copulas turn to R, because of the amazing `R` package [`copula`](https://cran.r-project.org/web/packages/copula/copula.pdf).
+While it is still well maintained and regularly updated, the `R` package `copula` is a mixture of obscure, heavily optimized `C` code and more standard `R` code, which makes it a complicated code base for readability, extensibility, reliability and maintenance.
 
-This is an attempt to provide a very light, fast, reliable and maintainable copula implementation in native Julia (in particular, type-agnostic, so it will work with arbitrary  float types like `Float32` for speed, `BigFloats` or `DoubleFloats` or `MultiFloats` for precision), with correct SIMD compatibility.
-
-The two most important exported types are: 
+This is an attempt to provide a very light, fast, reliable and maintainable copula implementation in native Julia (which means, in particular, floating point type agnostic, i.e. compatibility with `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl) and other kind of numbers). The two most important exported types are: 
 
 - `Copula`: an abstract mother type for all the copulas in the package. 
-- `SklarDist`:  allows construction of a multivariate distribution by specifying the copula and the marginals through Sklar's theorem. 
+- `SklarDist`:  allows construction of a multivariate distribution by specifying the copula and the marginals through [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem). 
 
 # What is already implemented
 
@@ -44,13 +42,13 @@ D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
 ```
 
 Building on the very neat `SklarDist` type, the available copulas are:
-- `EmpiricalCopula`
-- `GaussianCopula`
-- `TCopula`
-- `ArchimedeanCopula` (general, for any generator)
-- `ClaytonCopula`,`FrankCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula` as example instantiations of the `ArchimedeanCopula` abstract type, see below
-- `WCopula` and `MCopula` are Fréchet-Hoeffding bounds.
-- `EmpiricalCopula` to follow your dataset.
+- `EmpiricalCopula`,
+- `GaussianCopula`,
+- `TCopula`,
+- `ArchimedeanCopula` (general, for any generator),
+- `ClaytonCopula`,`FrankCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula` as example of the `ArchimedeanCopula` abstract type, see below,
+- `WCopula` and `MCopula`, which are [Fréchet-Hoeffding bounds](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Fr%C3%A9chet%E2%80%93Hoeffding_copula_bounds),
+- `EmpiricalCopula` to follow closely a given dataset.
 
 The next ones to be implemented will probably be: 
 - Nested archimedeans (general, with the possibility to nest any family with any family, assuming it is possible, with parameter checks.)
@@ -76,6 +74,7 @@ The Archimedean API is modular:
 - To evaluate the cdf, only `ϕ` and `ϕ⁻¹` are needed
 - Currently, to fit the copula `τ⁻¹` is needed as we use the inverse tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
 - Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
+- The density and thus log-likelyhood of all archimedean copulas is upcoming soon.
 
 # Dev Roadmap
 
@@ -84,10 +83,10 @@ The Archimedean API is modular:
 The following should be enough for the first public release: 
 
 - [x] Restrict to only `GaussianCopula` and `StudentCopula` at first
-- [x] Make the `Copula` and `SklarDist` objets work with `pdf`,`cdf`,`rand!`, with full compatiblity with `Distribution.jl`
+- [x] Make the `Copula` and `SklarDist` objets work with `pdf`,`cdf`,`rand!`, with full compatiblity with `Distributions.jl`
 - [x] Implement `fit` with a marginal-first scheme that relies on `Distribution.jl`, and fits the multivariate normal or multivariate student from the pseudo-observations pushed in gausian or student space (easy scheme). 
 - [x] Implement some archimedean copulas
-- [ ] Add tests and documentation !!!! May take a while. 
+- [ ] Add tests and documentation
 
 ## Second step
 
