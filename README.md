@@ -91,7 +91,7 @@ The following should be enough for the first public release:
 ## Second step
 
 - [ ] Extensive documentation and tests for the current implementation. 
-- [ ] Implement archimedean density generally. 
+- [x] Implement archimedean density generally. 
 - [ ] Docs: show how to implement another archimedean.  
 - [ ] Give the user the choice of fitting method via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")`.
 - [ ] Fitting a generic archimedean : should provide an empirical generator
