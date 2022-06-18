@@ -19,6 +19,8 @@ GSL = "1"
 Roots = "1, 2"
 SpecialFunctions = "2"
 StatsBase = "0.33"
+ForwardDiff = "0.10"
+TaylorSeries = "0.12"
 julia = "1.6.0"
 
 [extras]
