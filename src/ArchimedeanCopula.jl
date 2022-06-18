@@ -16,6 +16,7 @@ function Distributions.cdf(C::CT,u) where {CT<:ArchimedeanCopula}
     end
     return ϕ(C,sum_ϕ⁻¹u)
 end
+ϕ⁽¹⁾(C::CT, t) where {CT<:ArchimedeanCopula} = ForwardDiff.derivative(x -> ϕ(C,x), t)
 function ϕ⁽ᵈ⁾(C::ArchimedeanCopula{d},t) where d
     X = Taylor1(eltype(t),d)
     taylor_expansion = ϕ(C,t+X)
