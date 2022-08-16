@@ -51,7 +51,7 @@ end
     
 
     pdf(D, ([1.0, 1.0])) # this is fine
-    cdf(D, ([1.0, 1.0])) # this produces error
+    @test_throws cdf(D, ([1.0, 1.0])) # this produces error due to non-existance of cdf of multivariate gaussian in Distributions.jl
     @test 1==1
 end
 
