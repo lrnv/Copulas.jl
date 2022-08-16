@@ -9,4 +9,34 @@ using Random
     rand!(MyD,u)
     fit(SklarDist{ClaytonCopula,Tuple{LogNormal,Pareto,Beta}},u)
     fit(SklarDist{GaussianCopula,Tuple{LogNormal,Pareto,Beta}},u)
+    # loglikelyhood(MyD,u)
 end
+
+
+# We could test loklikelyhood for every copula on a standard uniform sample. 
+# We should also test the fit function on several sklar models. 
+# and teszt the loglikelyhood of the SlakrDist. 
+
+# We should also test other htings ? Dunno what yet. 
+# We could also test the behavior of Turing models, so that what Herb did will not fade away with releases; 
+
+
+# @testset "GaussianCopula" begin
+#     C = GaussianCopula([1 -0.1; -0.1 1])
+#     M1 = Beta(2,3)
+#     M2 = LogNormal(2,3)
+#     D = SklarDist(C,(M1,M2))
+#     X = rand(D,1000)
+#     loglikelihood(D,X)
+#     fit(SklarDist{TCopula,Tuple{Beta,LogNormal}},X) # should give a very high \nu for the student copula. 
+# end
+
+# Same thing with other models ? 
+
+
+
+
+
+
+
+
