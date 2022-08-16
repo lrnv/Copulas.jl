@@ -11,7 +11,7 @@
 
 **Warning: This is fairly untested and experimental work and the API might change without notice.**
 
-This package aims to bring most standard [copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)) features into native Julia: random number generation, fitting, copula-based multivariate distributions through Sklar's theorem, etc., while fully complying with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API (after all, copulas are distributions functions) in order to provide interoperability with other packages based on this API such as [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
+This package brings most standard [copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)) features into native Julia: random number generation, pdf and cdf, fitting, copula-based multivariate distributions through Sklar's theorem, etc., while fully complying with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API (after all, copulas are distributions functions) in order to provide interoperability with other packages based on this API such as, e.g., [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
 
 Usually, people that use and work with copulas turn to R, because of the amazing `R` package [`copula`](https://cran.r-project.org/web/packages/copula/copula.pdf).
 While it is still well maintained and regularly updated, the `R` package `copula` is a mixture of obscure, heavily optimized `C` code and more standard `R` code, which makes it a complicated code base for readability, extensibility, reliability and maintenance.
@@ -37,15 +37,13 @@ D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 simu = rand(D,1000)
 
 # While the following estimates the parameters of the model from a dataset: 
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
-# Increase the number of observations to get a beter fit!  
+D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
+# Increase the number of observations to get a beter fit (or not?)  
 ```
-
-Building on the very neat `SklarDist` type, the available copulas are:
-- `EmpiricalCopula`,
+Available copula families are:
 - `GaussianCopula`,
 - `TCopula`,
-- `ArchimedeanCopula` (general, for any generator),
+- `ArchimedeanCopula` (for any generator),
 - `ClaytonCopula`,`FrankCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula` as example of the `ArchimedeanCopula` abstract type, see below,
 - `WCopula` and `MCopula`, which are [Fréchet-Hoeffding bounds](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Fr%C3%A9chet%E2%80%93Hoeffding_copula_bounds),
 - `EmpiricalCopula` to follow closely a given dataset.
@@ -78,17 +76,11 @@ The Archimedean API is modular:
 
 # Dev Roadmap
 
-## First step (current)
+## Urgent things
 
-The following should be enough for the first public release: 
-
-- [x] Restrict to only `GaussianCopula` and `StudentCopula` at first
-- [x] Make the `Copula` and `SklarDist` objets work with `pdf`,`cdf`,`rand!`, with full compatiblity with `Distributions.jl`
-- [x] Implement `fit` with a marginal-first scheme that relies on `Distribution.jl`, and fits the multivariate normal or multivariate student from the pseudo-observations pushed in gausian or student space (easy scheme). 
-- [x] Implement some archimedean copulas
 - [ ] Add tests and documentation
 
-## Second step
+## Next
 
 - [ ] Extensive documentation and tests for the current implementation. 
 - [x] Implement archimedean density generally. 
