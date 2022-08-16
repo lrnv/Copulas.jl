@@ -9,6 +9,7 @@ using Random
     rand!(MyD,u)
     fit(SklarDist{ClaytonCopula,Tuple{LogNormal,Pareto,Beta}},u)
     fit(SklarDist{GaussianCopula,Tuple{LogNormal,Pareto,Beta}},u)
+    @test 1==1
     # loglikelyhood(MyD,u)
 end
 
@@ -34,9 +35,25 @@ end
 # Same thing with other models ? 
 
 
+@testset "cdf archimedean" begin
+    x = Normal(0,1); y = Normal(0,2);
+    C = GumbelCopula(2, 1.2)  # a type of Archimedean copula
+    D = SklarDist(C, (x,y))
+    cdf(D, ([1.0, 1.0]))
+    @test 1==1
+end
 
+@testset "cdf gaussian" begin
+    x = Normal(0, 1)
+    y = Normal(0, 2)
+    C = GaussianCopula([1 0.5; 0.5 1])
+    D = SklarDist(C, (x,y))
+    
 
-
+    pdf(D, ([1.0, 1.0])) # this is fine
+    cdf(D, ([1.0, 1.0])) # this produces error
+    @test 1==1
+end
 
 
 
