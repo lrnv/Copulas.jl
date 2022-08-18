@@ -36,18 +36,19 @@ fit(TCopula,data)
 
 Except that currently it does not work since `fit(Distributions.MvTDist,data)` does not dispatch. 
 """
-struct TCopula{d,MT} <: EllipticalCopula{d,MT}
-    df::Int
+struct TCopula{d,df,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function TCopula(df,Σ)
         make_cor!(Σ)
-        return new{size(Σ,1),typeof(Σ)}(df,Σ)
+        return new{size(Σ,1),df,typeof(Σ)}(Σ)
     end
 end
-U(::Type{T}) where T<: TCopula = Distributions.TDist
-N(::Type{T}) where T<: TCopula = Distributions.MvTDist
+U(::Type{TCopula{d,df,MT}}) where {d,df,MT} = Distributions.TDist(df)
+N(::Type{TCopula{d,df,MT}}) where {d,df,MT} = function(Σ)
+    Distributions.MvTDist(df,Σ)
+end
 function Distributions.fit(::Type{CT},u) where {CT<:TCopula}
-    N = Distributions.fit(N(CT), quantile.(U(CT)(),u))
+    N = Distributions.fit(N(CT), quantile.(U(CT),u))
     Σ = N.Σ
     df = N.df
     return TCopula(df,Σ)
