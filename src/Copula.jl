@@ -11,8 +11,9 @@ Base.length(::Copula{d}) where d = d
 # τ, τ⁻¹
 # Base.eltype 
 
-
-
-
-
+function Distributions.cdf(C::CT,u) where {CT<:Copula}
+    f(x) = pdf(C,x)
+    z = zeros(eltype(u),length(C))
+    return Cubature.pcubature(f,z,u,reltol=sqrt(eps()))[1]
+end
 

@@ -40,11 +40,21 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
         return new{size(Σ,1),typeof(Σ)}(Σ)
     end
 end
-U(::Type{T}) where T<: GaussianCopula = Distributions.Normal
+U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function Distributions.fit(::Type{CT},u) where {CT<:GaussianCopula}
-    dd = Distributions.fit(N(CT), quantile.(U(CT)(),u))
+    dd = Distributions.fit(N(CT), quantile.(U(CT),u))
     Σ = Matrix(dd.Σ)
     return GaussianCopula(Σ)
 end
 
+function Distributions.cdf(C::CT,u) where {CT<:GaussianCopula} 
+    # This does not work for other elliptical copulas
+    # it uses the fact that an uncorrelated gaussian random vector has independant margins.
+    @assert length(C) == length(u) 
+    Z = U(CT)
+    x = quantile.(Z,u)
+    z = sqrt(C.Σ) \ x
+    u = Distributions.cdf.(Z,z)
+    return prod(u)
+end

@@ -4,6 +4,7 @@ authors = ["Oskar Laverny"]
 version = "0.1.4"
 
 [deps]
+Cubature = "667455a9-e2ce-5579-9412-b964f529a492"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 GSL = "92c85e6c-cbff-5e0c-80f7-495c94daaecd"
@@ -15,11 +16,11 @@ TaylorSeries = "6aa5eb33-94cf-58f4-a9d0-e4b2c4fc25ea"
 
 [compat]
 Distributions = "0.25"
+ForwardDiff = "0.10"
 GSL = "1"
 Roots = "1, 2"
 SpecialFunctions = "2"
 StatsBase = "0.33"
-ForwardDiff = "0.10"
 TaylorSeries = "0.12"
 julia = "1.6.0"
 

@@ -8,6 +8,7 @@ module Copulas
     using StatsBase
     using TaylorSeries
     import ForwardDiff
+    import Cubature
 
     # Standard copulas and stuff. 
     include("utils.jl")
