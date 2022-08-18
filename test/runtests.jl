@@ -51,9 +51,22 @@ end
     
 
     pdf(D, ([1.0, 1.0])) # this is fine
-    @test_throws MethodError cdf(D, ([1.0, 1.0])) # this produces error due to non-existance of cdf of multivariate gaussian in Distributions.jl
+    cdf(D, ([1.0, 1.0])) # now passes.
     @test 1==1
 end
+
+@testset "cdf student" begin
+    x = Normal(0, 1)
+    y = Normal(0, 2)
+    C = TCopula(4,[1 0.5; 0.5 1])
+    D = SklarDist(C, (x,y))
+    
+
+    pdf(D, ([1.0, 1.0])) # this is fine
+    @test_throws MethodError cdf(D, ([1.0, 1.0])) # this produces error due to non-existance of cdf of multivariate student in Distributions.jl
+    @test 1==1
+end
+
 
 
 
