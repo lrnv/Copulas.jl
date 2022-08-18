@@ -12,7 +12,7 @@ Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
 Base.eltype(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = Base.eltype(S.C)
   
 function Distributions.cdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins}
-    return cdf(S.C,cdf.(S.m,x))
+    return Distributions.cdf(S.C,Distributions.cdf.(S.m,x))
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,TplMargins}, x::AbstractVector{T}) where {CT,TplMargins,T}
     Random.rand!(rng,S.C,x)
