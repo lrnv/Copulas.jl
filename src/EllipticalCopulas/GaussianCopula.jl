@@ -49,12 +49,10 @@ function Distributions.fit(::Type{CT},u) where {CT<:GaussianCopula}
 end
 
 function Distributions.cdf(C::CT,u) where {CT<:GaussianCopula} 
-    # This does not work for other elliptical copulas
-    # it uses the fact that an uncorrelated gaussian random vector has independant margins.
-    @assert length(C) == length(u) 
-    Z = U(CT)
-    x = quantile.(Z,u)
-    z = sqrt(C.Σ) \ x
-    u = Distributions.cdf.(Z,z)
-    return prod(u)
+    x = quantile.(Normal(),u)
+    d = length(C)
+    T = eltype(u)
+    μ = zeros(T,d)
+    lb = repeat([T(-Inf)],d)
+    return MvNormalCDF.mvnormcdf(μ, C.Σ, lb, x)[1]
 end

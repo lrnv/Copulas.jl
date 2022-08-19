@@ -9,6 +9,7 @@ module Copulas
     using TaylorSeries
     import ForwardDiff
     import Cubature
+    import MvNormalCDF
 
     # Standard copulas and stuff. 
     include("utils.jl")
