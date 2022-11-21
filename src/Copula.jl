@@ -26,21 +26,20 @@ function measure(C::CT, u,v) where {CT<:Copula}
     # This assumes u[i] < v[i] for all i
     # Based on Computing the {{Volume}} of {\emph{n}} -{{Dimensional Copulas}}, Cherubini & Romagnoli 2009
 
-    eval_pt = similar(u)
+    # We use a gray code according to the proposal at https://discourse.julialang.org/t/looping-through-binary-numbers/90597/6
+
+    eval_pt = copy(u)
     d = length(C)
     r = zero(eltype(u))
-
-    for i in 1:2^d
-        parity = 0
-        for k in 0:(d-1)
-            if (i - 1) & (1 << k) != 0
-                eval_pt[k+1] = u[k+1]
-            else
-                eval_pt[k+1] = v[k+1]
-                parity += 1
-            end
-        end
-        r += (-1)^parity * Distributions.cdf(C,eval_pt)
+    graycode = 0    # use a gray code to flip one element at a time
+    which = fill(false, d) # false/true to use u/v for each component (so false here)
+    r += Copulas.cdf(C,eval_pt)
+    for s = 1:(1<<d)-1
+        graycode′ = s ⊻ (s >> 1)
+        graycomp = trailing_zeros(graycode ⊻ graycode′) + 1
+        graycode = graycode′
+        eval_pt[graycomp] = (which[graycomp] = !which[graycomp]) ? v[graycomp] : u[graycomp]
+        r += (-1)^s * Copulas.cdf(C,eval_pt)
     end
     return r
 end

@@ -79,18 +79,32 @@ using Random
 
     @testset "working measure" begin 
         
-        for C in ClaytonCopula(4,7.0),TCopula(4,[1 0.5; 0.5 1]),GumbelCopula(2, 1.2)
-            d = length(c)
+        for C in (ClaytonCopula(4,7.0),GumbelCopula(2, 1.2))
+            d = length(C)
             u = zeros(d)
             v = ones(d)
 
-            @test measure(C,u,v) >= 0
+            @test Copulas.measure(C,u,v) >= 0
             
             for i in 1:d
                 u[i] = rand()
                 v[i] = u[i] + rand()*(1-u[i])
             end
-            @test measure(C,u,v) >= 0
+            @test Copulas.measure(C,u,v) >= 0
+        end
+
+        for C in (TCopula(4,[1 0.5; 0.5 1]),)
+            d = length(C)
+            u = zeros(d)
+            v = ones(d)
+
+            @test_broken Copulas.measure(C,u,v) >= 0
+            
+            for i in 1:d
+                u[i] = rand()
+                v[i] = u[i] + rand()*(1-u[i])
+            end
+            @test_broken Copulas.measure(C,u,v) >= 0
         end
     end
 
