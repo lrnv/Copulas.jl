@@ -75,6 +75,26 @@ using Random
         D1 = SklarDist(C1, (Normal(0,1),Normal(0,2)))
         @test cdf(D1, [-0.1, 0.1]) ≈ 0.3219002977336174 rtol=1e-3
     end
+
+
+    @testset "working measure" begin 
+        
+        for C in ClaytonCopula(4,7.0),TCopula(4,[1 0.5; 0.5 1]),GumbelCopula(2, 1.2)
+            d = length(c)
+            u = zeros(d)
+            v = ones(d)
+
+            @test measure(C,u,v) >= 0
+            
+            for i in 1:d
+                u[i] = rand()
+                v[i] = u[i] + rand()*(1-u[i])
+            end
+            @test measure(C,u,v) >= 0
+        end
+    end
+
+
 end
 
 
