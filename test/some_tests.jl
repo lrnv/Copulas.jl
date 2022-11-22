@@ -31,6 +31,35 @@ end
 
 # Same thing with other models ? 
 
+
+
+@testitem "testing cdf values at corners" begin
+    using Distributions
+    using Random
+
+    Copula_Zoo = (
+        GumbelCopula(2,1.2),
+        ClaytonCopula(4,7.0),
+        GaussianCopula([1 0.3; 0.3 1]),
+        FrankCopula(5,6.0),
+        AMHCopula(3,0.7)
+    )
+
+
+    for C in Copula_Zoo
+        d = length(C)
+       
+        @test cdf(C,ones(d)) ≈ 1
+        @test cdf(C,zeros(d)) ≈ 0    
+    end
+
+    for C in (TCopula(4,[1 0.5; 0.5 1]),)
+        d = length(C)
+        @test_broken cdf(C,ones(d)) ≈ 1
+        @test_broken cdf(C,zeros(d)) ≈ 0    
+    end
+end
+
 @testitem "pdf/cdf archimedean" begin
     using Distributions
     using Random
@@ -117,6 +146,7 @@ end
         @test_broken Copulas.measure(C,u,v) >= 0
     end
 end
+    
 
 
 
