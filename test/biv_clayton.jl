@@ -48,8 +48,8 @@ end
     v1 = [0.0, 0.1796053020267749, 0.37796447300922725, 0.6255432421712244, 1.0]
     v2 = [1.0, 0.0, 0.17157287525381, 0.5358983848622453, 1.0]
     for i in 1:5
-        @test cdf(ClaytonCopula(2,2),[x[i],y[i]])==v1[i]
-        @test cdf(ClaytonCopula(2,-0.5),[x[i],y[i]])==v2[i]
+        @test cdf(ClaytonCopula(2,2),[x[i],y[i]]) ≈ v1[i]
+        @test cdf(ClaytonCopula(2,-0.5),[x[i],y[i]]) ≈ v2[i]
     end
 end
 
