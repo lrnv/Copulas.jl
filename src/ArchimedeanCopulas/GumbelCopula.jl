@@ -20,8 +20,8 @@ end
 GumbelCopula(d,θ) = θ >= 1 ? GumbelCopula{d,typeof(θ)}(θ) : @error "Theta must be greater than 1."
 ϕ(  C::GumbelCopula,       t) = exp(-t^(1/C.θ))
 ϕ⁻¹(C::GumbelCopula,       t) = (-log(t))^C.θ
-τ(C::GumbelCopula) = (C.θ-1)/C.θ
-τ⁻¹(::Type{GumbelCopula},τ) =1/(1-τ) 
+τ(C::GumbelCopula) = ifelse(isfinite(C.θ), (C.θ-1)/C.θ, 1)
+τ⁻¹(::Type{GumbelCopula},τ) =ifelse(τ == 1, Inf, 1/(1-τ))
 
 function radial_dist(C::GumbelCopula)
     α = 1/C.θ

@@ -11,3 +11,4 @@ function Base.rand(rng::Distributions.AbstractRNG,::WCopula{d}) where {d}
     x = rand(rng)
     [x,1-x]
 end
+τ(::WCopula{d}) where d = -1/(d-1)

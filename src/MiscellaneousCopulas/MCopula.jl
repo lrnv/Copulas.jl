@@ -7,3 +7,4 @@ end
 function Base.rand(rng::Distributions.AbstractRNG,::MCopula{d}) where {d}
     repeat([rand(rng)],d)
 end
+τ(::MCopula) = 1
