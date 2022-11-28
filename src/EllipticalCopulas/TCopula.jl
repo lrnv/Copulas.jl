@@ -40,6 +40,7 @@ struct TCopula{d,df,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function TCopula(df,Σ)
         make_cor!(Σ)
+        N(TCopula{size(Σ,1),df,typeof(Σ)})(Σ)
         return new{size(Σ,1),df,typeof(Σ)}(Σ)
     end
 end
