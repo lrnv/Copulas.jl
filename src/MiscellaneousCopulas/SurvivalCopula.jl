@@ -34,7 +34,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{
     reverse!(x,C.indices)
 end
 function Base.rand(rng::Distributions.AbstractRNG,C::SurvivalCopula{d,CT,VI}) where {d,CT,VI}
-    x = Base.rand(rnd,C.C)
+    x = Base.rand(rng,C.C)
     reverse!(x,C.indices)
     return x
 end
