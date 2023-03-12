@@ -17,9 +17,12 @@ The [Clayton](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_imp
 struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
 end
-ClaytonCopula(d,θ) = ((θ >= -1)&(d==2) | (θ>0)) ? ClaytonCopula{d,typeof(θ)}(θ) : @error "Incorect θ value : must be positive if d > 2 and > -1 if d ==2" # this constructor must be implementeD. 
+function ClaytonCopula(d,θ)
+    @assert θ > (-1/(d-1))
+    return ClaytonCopula{d,typeof(θ)}(θ)
+end
 ϕ(  C::ClaytonCopula,      t) = (1+sign(C.θ)*t)^(-1/C.θ)
 ϕ⁻¹(C::ClaytonCopula,      t) = sign(C.θ)*(t^(-C.θ)-1)
-radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)
-τ(C::ClaytonCopula) = C.θ/(C.θ+2)
-τ⁻¹(::Type{ClaytonCopula},τ) = 2τ/(1-τ)
+radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1) # Currently fails for negative thetas ! thus negtatively correlated clayton copulas cannot be sampled...
+τ(C::ClaytonCopula) = ifelse(isfinite(C.θ), C.θ/(C.θ+2), 1)
+τ⁻¹(::Type{ClaytonCopula},τ) = ifelse(τ == 1,Inf,2τ/(1-τ))

@@ -1,0 +1,18 @@
+@testitem "Testing survival stuff" begin
+    using Distributions
+    C = ClaytonCopula(2,3.0) # bivariate clayton with theta = 3.0
+    C90 = SurvivalCopula(C,(1,)) # flips the first dimension
+    C270 = SurvivalCopula(C,(2,)) # flips only the second dimension. 
+    C180 = SurvivalCopula(C,(1,2)) # flips both dimensions.
+
+    u1,u2 = rand(2)
+    c = cdf(C,[u1,u2])
+    p = pdf(C,[u1,u2])
+    @test cdf(C90,[1-u1,u2]) == c
+    @test cdf(C270,[u1,1-u2]) == c
+    @test cdf(C180,[1-u1,1-u2]) == c
+    @test pdf(C90,[1-u1,u2]) == p
+    @test pdf(C270,[u1,1-u2]) == p
+    @test pdf(C180,[1-u1,1-u2]) == p
+
+end

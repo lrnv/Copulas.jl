@@ -37,6 +37,7 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function GaussianCopula(Σ) 
         make_cor!(Σ)
+        N(GaussianCopula)(Σ)
         return new{size(Σ,1),typeof(Σ)}(Σ)
     end
 end

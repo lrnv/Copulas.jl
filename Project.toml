@@ -1,7 +1,7 @@
 name = "Copulas"
 uuid = "ae264745-0b69-425e-9d9d-cf662c5eec93"
 authors = ["Oskar Laverny"]
-version = "0.1.6"
+version = "0.1.7"
 
 [deps]
 Cubature = "667455a9-e2ce-5579-9412-b964f529a492"
@@ -24,11 +24,14 @@ MvNormalCDF = "0.2"
 Roots = "1, 2"
 SpecialFunctions = "2"
 StatsBase = "0.33"
-TaylorSeries = "0.12"
+TaylorSeries = "0.12, 0.13, 0.14"
 julia = "1.6.0"
 
 [extras]
+InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
+LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Test"]
+test = ["Test", "TestItemRunner", "InteractiveUtils", "LinearAlgebra"]
