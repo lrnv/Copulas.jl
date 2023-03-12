@@ -27,6 +27,9 @@ end
 function Distributions._logpdf(C::CT, u) where {CT<:ArchimedeanCopula}
     d = length(C)
     # @assert d == length(u) "Dimension mismatch"
+    if !all(0 .<= u .<= 1)
+        return eltype(u)(-Inf)
+    end
     sum_ϕ⁻¹u = 0.0
     sum_logϕ⁽¹⁾ϕ⁻¹u = 0.0
     for us in u

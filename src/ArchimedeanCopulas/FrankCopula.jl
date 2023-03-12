@@ -36,7 +36,7 @@ function τ⁻¹(::Type{FrankCopula},τ)
         return τ
     end
     x₀ = (1-τ)/4
-    return Roots.fzero(x -> (1-D₁(x))/x - x₀, 10)
+    return Roots.fzero(x -> (1-D₁(x))/x - x₀, 1e-4, Inf)
 end
     
 
