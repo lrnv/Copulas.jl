@@ -17,6 +17,7 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 TaylorSeries = "6aa5eb33-94cf-58f4-a9d0-e4b2c4fc25ea"
 
 [compat]
+AlphaStableDistributions = "1"
 Cubature = "1.5"
 Distributions = "0.25"
 ForwardDiff = "0.10"
