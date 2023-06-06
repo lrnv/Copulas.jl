@@ -18,6 +18,7 @@ end Copulas
     import ForwardDiff
     import Cubature
     import MvNormalCDF
+    import AlphaStableDistributions
 
     # Standard copulas and stuff. 
     include("utils.jl")
@@ -31,7 +32,6 @@ end Copulas
     # These three distributions might be merged in Distrbutions.jl one day. 
     include("univariate_distributions/Sibuya.jl")
     include("univariate_distributions/Logarithmic.jl")
-    include("univariate_distributions/AlphaStable.jl")
 
     # Elliptical copulas
     include("EllipticalCopula.jl")

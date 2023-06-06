@@ -4,6 +4,7 @@ authors = ["Oskar Laverny"]
 version = "0.1.9"
 
 [deps]
+AlphaStableDistributions = "f20549b4-2d50-407f-863c-cdd202ba59a3"
 Cubature = "667455a9-e2ce-5579-9412-b964f529a492"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"

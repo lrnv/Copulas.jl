@@ -23,7 +23,7 @@ GumbelCopula(d,θ) = θ >= 1 ? GumbelCopula{d,typeof(θ)}(θ) : @error "Theta mu
 τ(C::GumbelCopula) = ifelse(isfinite(C.θ), (C.θ-1)/C.θ, 1)
 τ⁻¹(::Type{GumbelCopula},τ) =ifelse(τ == 1, Inf, 1/(1-τ))
 
-radial_dist(C::GumbelCopula) = RestrictedAlphaStable(1/C.θ)
+radial_dist(C::GumbelCopula) = AlphaStableDistributions.AlphaStable(α = 1/C.θ, β = 1,scale = cos(π/(2C.θ))^C.θ, location = (C.θ == 1 ? 1 : 0))
 
 
 # S(α, β, γ , δ) denotes a stable distribution in
