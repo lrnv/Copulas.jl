@@ -16,8 +16,8 @@
         cdf(C,[0.5,0.5])
         D = SklarDist(C,[Gamma(1,1),Normal(1,1)])
         u = Random.rand(D,10)
-        pdf(D,[0.5,0.5])
-        cdf(D,[0.5,0.5])
+        pdf(D,[0.5,0])
+        cdf(D,[0.5,0])
     end
     @test true
 end
