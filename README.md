@@ -57,7 +57,7 @@ The next ones to be implemented will probably be:
 Adding a new `ArchimedeanCopula` is very easy. The `Clayton` implementation is as short as: 
 
 ```julia
-struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
+struct ClaytonCopula{d,T} <: Copulas.ArchimedeanCopula{d}
     θ::T
 end
 ClaytonCopula(d,θ)            = ClaytonCopula{d,typeof(θ)}(θ)     # Constructor
