@@ -7,6 +7,7 @@
         ClaytonCopula(2,7),
         JoeCopula(2,3),
         GumbelCopula(2,8),
+        GumbelCopula(2,1), # should be equivalent to an independent copula. 
         FrankCopula(2,0.5),
         AMHCopula(2,0.7)
     ]
