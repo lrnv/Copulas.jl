@@ -10,13 +10,10 @@ Base.@kwdef struct AlphaStable{T} <: Distributions.ContinuousUnivariateDistribut
     scale::T = one(α)
     location::T = zero(α)
 end
-
-AlphaStable(α::Integer, β::Integer, scale::Integer, location::Integer) = AlphaStable(float(α), float(β), float(scale), float(location))
 function AlphaStable(α,β,scale,location)
     αT,βT,scaleT,locationT =  promote(α,β,scale,location)
     AlphaStable(αT,βT,scaleT,locationT)
 end
-Distributions.params(d::AlphaStable) = (d.α, d.β, d.scale, d.location)
 
 """
 Generate independent stable random numbers.
