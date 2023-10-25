@@ -1,5 +1,6 @@
 
 @testitem "standard functionality test" begin
+    using Random, Distributions
     biv_cops = [
         GaussianCopula([1 0.7; 0.7 1]),
         TCopula(2,[1 0.7; 0.7 1]),
@@ -18,4 +19,5 @@
         pdf(D,[0.5,0.5])
         cdf(D,[0.5,0.5])
     end
+    @test true
 end
