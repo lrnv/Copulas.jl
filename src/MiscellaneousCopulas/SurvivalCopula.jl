@@ -33,11 +33,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{
     Distributions._rand!(rng,C.C,x)
     reverse!(x,C.indices)
 end
-function Base.rand(rng::Distributions.AbstractRNG,C::SurvivalCopula{d,CT,VI}) where {d,CT,VI}
-    x = Base.rand(rng,C.C)
-    reverse!(x,C.indices)
-    return x
-end
 function Distributions.fit(T::Type{CT},u) where {CT <: SurvivalCopula}
     # d = size(u,1)
     d,subCT,indices = T.parameters
