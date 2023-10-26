@@ -14,7 +14,7 @@ end Copulas
     import Roots
     using Distributions
     using StatsBase
-    using TaylorSeries
+    import TaylorDiff
     import ForwardDiff
     import Cubature
     import MvNormalCDF

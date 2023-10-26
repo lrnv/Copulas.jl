@@ -13,7 +13,7 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 SpecialFunctions = "276daf66-3868-5448-9aa4-cd146d93841b"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-TaylorSeries = "6aa5eb33-94cf-58f4-a9d0-e4b2c4fc25ea"
+TaylorDiff = "b36ab563-344f-407b-a36a-4f200bebf99c"
 
 [compat]
 Cubature = "1.5"
@@ -24,7 +24,6 @@ MvNormalCDF = "0.2, 0.3"
 Roots = "1, 2"
 SpecialFunctions = "2"
 StatsBase = "0.33, 0.34"
-TaylorSeries = "0.12, 0.13, 0.14, 0.15"
 julia = "1.6.0"
 
 [extras]
