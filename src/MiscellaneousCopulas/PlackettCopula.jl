@@ -6,7 +6,7 @@
 struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
     θ::P  # Copula parameter
 
-    function PlackettCopula(θ) where {P}
+    function PlackettCopula(θ)
         if θ == 1
             return IndependentCopula(2)
         elseif θ == 0
@@ -54,9 +54,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::Abstract
     u = rand(rng)
     t = rand(rng)
     a = t * (1 - t)
-    b = c.θ + a * (c.θ - 1)^2
-    cc = 2a * (u * c.θ^2 + 1 - u) + c.θ * (1 - 2a)
-    d = sqrt(c.θ) * sqrt(c.θ + 4a * u * (1 - u) * (1 - c.θ)^2)
+    b = C.θ + a * (C.θ - 1)^2
+    cc = 2a * (u * C.θ^2 + 1 - u) + C.θ * (1 - 2a)
+    d = sqrt(C.θ) * sqrt(C.θ + 4a * u * (1 - u) * (1 - C.θ)^2)
     v = (cc - (1 - 2t) * d) / (2b)
     x[1] = u
     x[2] = v
@@ -67,9 +67,9 @@ function Base.rand(rng::Distributions.AbstractRNG,C::CT) where CT<: PlackettCopu
     u = rand(rng)
     t = rand(rng)
     a = t * (1 - t)
-    b = c.θ + a * (c.θ - 1)^2
-    cc = 2a * (u * c.θ^2 + 1 - u) + c.θ * (1 - 2a)
-    d = sqrt(c.θ) * sqrt(c.θ + 4a * u * (1 - u) * (1 - c.θ)^2)
+    b = C.θ + a * (C.θ - 1)^2
+    cc = 2a * (u * C.θ^2 + 1 - u) + C.θ * (1 - 2a)
+    d = sqrt(C.θ) * sqrt(C.θ + 4a * u * (1 - u) * (1 - C.θ)^2)
     v = (cc - (1 - 2t) * d) / (2b)
     x[1] = u
     x[2] = v

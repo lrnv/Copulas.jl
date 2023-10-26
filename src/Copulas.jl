@@ -62,6 +62,6 @@ end Copulas
     include("MiscellaneousCopulas/PlackettCopula.jl")
     export MCopula,
            WCopula,
-           SurvivalCopula
+           SurvivalCopula,
            PlackettCopula
 end
