@@ -60,9 +60,11 @@ end Copulas
     include("MiscellaneousCopulas/MCopula.jl")
     include("MiscellaneousCopulas/WCopula.jl")
     include("MiscellaneousCopulas/SurvivalCopula.jl")
+    include("MiscellaneousCopulas/PlackettCopula.jl")
     export MCopula,
         Wcopula,
-        SurvivalCopula
+        SurvivalCopula,
+        PlackettCopula
 
      # PrecompileTools stuff
      @setup_workload begin
