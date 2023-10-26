@@ -6,7 +6,6 @@ Base.length(::Copula{d}) where d = d
 # Distributions.cdf
 # Distributions.fit(::Type{CT},u) where CT<:Mycopula
 # Distributions._rand!
-# Base.rand
 # Base.eltype
 # τ, τ⁻¹
 # Base.eltype 

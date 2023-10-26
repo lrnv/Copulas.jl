@@ -18,11 +18,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,Tp
     Random.rand!(rng,S.C,x)
      x .= Distributions.quantile.(S.m,x)
 end
-function Base.rand(rng::Distributions.AbstractRNG,S::SklarDist{CT,TplMargins}) where {CT,TplMargins}
-     x = Random.rand(rng,S.C)
-     x .= Distributions.quantile.(S.m,x)
-     return x
-end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargins}
     sum(Distributions.logpdf(S.m[i],u[i]) for i in 1:length(u)) + Distributions.logpdf(S.C,Distributions.cdf.(S.m,u))
 end
