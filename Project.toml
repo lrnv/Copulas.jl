@@ -25,8 +25,8 @@ Roots = "1, 2"
 SpecialFunctions = "2"
 StatsBase = "0.33, 0.34"
 TaylorSeries = "0.12, 0.13, 0.14, 0.15"
-julia = "1.6.0"
-Random = "1.6.0"
+julia = "1.6"
+Random = "1.6"
 
 [extras]
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
