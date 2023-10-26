@@ -59,8 +59,9 @@ end Copulas
     include("MiscellaneousCopulas/MCopula.jl")
     include("MiscellaneousCopulas/WCopula.jl")
     include("MiscellaneousCopulas/SurvivalCopula.jl")
+    include("MiscellaneousCopulas/PlackettCopula.jl")
     export MCopula,
            WCopula,
-           SurvivalCopula
-
+           SurvivalCopula,
+           PlackettCopula
 end
