@@ -58,14 +58,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::Abstract
     end
     return x
 end
-function Base.rand(rng::Distributions.AbstractRNG,C::CT) where CT<: ArchimedeanCopula
-    x = rand(rng,length(C))
-    r = rand(rng,radial_dist(C))
-    for i in 1:length(C)
-        x[i] = ϕ(C,-log(x[i])/r)
-    end
-    return x
-end
 function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula}
     # @info "Archimedean fits are by default through inverse kendall tau."
     d = size(u,1)

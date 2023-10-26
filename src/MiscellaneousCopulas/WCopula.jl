@@ -6,9 +6,4 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::WCopula{d}, x::A
     x[1] = rand(rng)
     x[2] = 1-x[1] 
 end
-function Base.rand(rng::Distributions.AbstractRNG,::WCopula{d}) where {d}
-    @assert d==2
-    x = rand(rng)
-    [x,1-x]
-end
 τ(::WCopula{d}) where d = -1/(d-1)

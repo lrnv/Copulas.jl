@@ -35,6 +35,3 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::IndependentCopula{d}, x::AbstractVector{T}) where {T<:Real,d}
     Random.rand!(rng,x)
 end
-function Base.rand(rng::Distributions.AbstractRNG,C::IndependentCopula{d}) where {d}
-    rand(rng,length(C))
-end

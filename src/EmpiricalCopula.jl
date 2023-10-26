@@ -33,10 +33,7 @@ function Distributions.cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return mean(all(C.u .<= u,dims=1)) # might not be very efficient implementation. 
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula{d,MT}, x::AbstractVector{T}) where {d,MT,T<:Real}
-    x .= C.u[:,Base.rand(rng,axes(C.u,2),1)[1]]
-end
-function Base.rand(rng::Distributions.AbstractRNG,C::EmpiricalCopula{d,MT}) where {d,MT}
-    C.u[:,Base.rand(rng,axes(C.u,2),1)[1]]
+    x .= C.u[:,Distributions.rand(rng,axes(C.u,2),1)[1]]
 end
 function Distributions.fit(::Type{CT},u) where {CT <: EmpiricalCopula}
     return EmpiricalCopula(u)
