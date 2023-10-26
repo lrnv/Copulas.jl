@@ -62,19 +62,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::Abstract
     x[2] = v
     return x
 end
-function Base.rand(rng::Distributions.AbstractRNG,C::CT) where CT<: PlackettCopula
-    x = rand(rng,length(C))
-    u = rand(rng)
-    t = rand(rng)
-    a = t * (1 - t)
-    b = C.θ + a * (C.θ - 1)^2
-    cc = 2a * (u * C.θ^2 + 1 - u) + C.θ * (1 - 2a)
-    d = sqrt(C.θ) * sqrt(C.θ + 4a * u * (1 - u) * (1 - C.θ)^2)
-    v = (cc - (1 - 2t) * d) / (2b)
-    x[1] = u
-    x[2] = v
-    return x
-end
 
 # Calculate Spearman's rho based on the PlackettCopula parameters
 function ρ(c::PlackettCopula{P}) where P
