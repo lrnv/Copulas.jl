@@ -17,12 +17,8 @@ and for ``\\theta = 1``
     ```math
 \\C_{1}(u,v) = uv ```
 
+More details about Plackett copulation are found in Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
 """
-#= Details about Plackett copulation are found in Joe, H. (2014). 
-   Dependence modeling with copulas. CRC press, Page.164
-==#
-
-#Create an instance of the Plackett copula
 struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
     θ::P  # Copula parameter
 
