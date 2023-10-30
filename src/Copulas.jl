@@ -18,6 +18,7 @@ end Copulas
     import ForwardDiff
     import Cubature
     import MvNormalCDF
+    import WilliamsonTransforms
 
     # Standard copulas and stuff. 
     include("utils.jl")
@@ -48,12 +49,14 @@ end Copulas
     include("ArchimedeanCopulas/GumbelCopula.jl")
     include("ArchimedeanCopulas/FrankCopula.jl")
     include("ArchimedeanCopulas/AMHCopula.jl")
+    include("ArchimedeanCopulas/WilliamsonCopula.jl")
     export IndependentCopula, 
            ClaytonCopula,
            JoeCopula,
            GumbelCopula,
            FrankCopula,
-           AMHCopula
+           AMHCopula,
+           WilliamsonCopula
 
     # Others. 
     include("MiscellaneousCopulas/MCopula.jl")
