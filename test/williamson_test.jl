@@ -8,7 +8,7 @@
 
     Cops = (
         WilliamsonCopula(Dirac(1),10),
-        # WilliamsonCopula(x -> exp(-x),10),
+        WilliamsonCopula(x -> exp(-x),10),
         WilliamsonCopula(x -> ϕ_clayton(x,2),2),
         WilliamsonCopula(x -> ϕ_clayton(x,-0.3),2)
     )
