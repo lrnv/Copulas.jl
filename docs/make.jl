@@ -30,6 +30,7 @@ makedocs(;
             "archimedean/implement_your_own.md"
         ],
         "Miscellaneous Copulas" => "miscellaneous.md",
+        "Reference" => "reference.md"
     ],
 )
 
