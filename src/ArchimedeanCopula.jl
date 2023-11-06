@@ -18,9 +18,9 @@ function Distributions.cdf(C::CT,u) where {CT<:ArchimedeanCopula}
 end
 ϕ⁽¹⁾(C::CT, t) where {CT<:ArchimedeanCopula} = ForwardDiff.derivative(x -> ϕ(C,x), t)
 function ϕ⁽ᵈ⁾(C::ArchimedeanCopula{d},t) where d
-    X = Taylor1(eltype(t),d)
+    X = TaylorSeries.Taylor1(eltype(t),d)
     taylor_expansion = ϕ(C,t+X)
-    coef = getcoeff(taylor_expansion,d) # gets the dth coef. 
+    coef = TaylorSeries.getcoeff(taylor_expansion,d) # gets the dth coef. 
     der = coef * factorial(d) # gets the dth derivative of $\phi$ taken in t. 
     return der
 end

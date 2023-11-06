@@ -36,6 +36,9 @@ fit(GaussianCopula,data)
 struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function GaussianCopula(Σ) 
+        if Σ == one(Σ)
+            return IndependentCopula(size(Σ,1))
+        end
         make_cor!(Σ)
         N(GaussianCopula)(Σ)
         return new{size(Σ,1),typeof(Σ)}(Σ)
@@ -44,13 +47,13 @@ end
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function Distributions.fit(::Type{CT},u) where {CT<:GaussianCopula}
-    dd = Distributions.fit(N(CT), quantile.(U(CT),u))
+    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
     Σ = Matrix(dd.Σ)
     return GaussianCopula(Σ)
 end
 
 function Distributions.cdf(C::CT,u) where {CT<:GaussianCopula} 
-    x = quantile.(Normal(),u)
+    x = StatsBase.quantile.(Distributions.Normal(),u)
     d = length(C)
     T = eltype(u)
     μ = zeros(T,d)

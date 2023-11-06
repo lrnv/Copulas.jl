@@ -2,10 +2,10 @@ abstract type EllipticalCopula{d,MT} <: Copula{d} end
 Base.eltype(C::CT) where CT<:EllipticalCopula = Base.eltype(N(CT)(C.Σ))
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT <: EllipticalCopula}
     Random.rand!(rng,N(CT)(C.Σ),x)
-    x .= cdf.(U(CT),x)
+    x .= Distributions.cdf.(U(CT),x)
 end
 function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
-    x = quantile.(U(CT),u)
+    x = StatsBase.quantile.(U(CT),u)
     return Distributions.logpdf(N(CT)(C.Σ),x) - sum(Distributions.logpdf.(U(CT),x))
 end
 function make_cor!(Σ)

@@ -16,8 +16,18 @@ The [Frank](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_impor
 """
 struct FrankCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
+    function FrankCopula(d,θ)
+        if θ == -Inf
+            return WCopula(d)
+        elseif θ == 1
+            return IndependentCopula(d)
+        elseif θ == Inf
+            return MCopula(d)
+        else
+            return new{d,typeof(θ)}(θ)
+        end
+    end
 end
-FrankCopula(d,θ) = θ >= 0 ? FrankCopula{d,typeof(θ)}(θ) : @error "Theta must be positive"
 ϕ(  C::FrankCopula,       t) = -log(1+exp(-t)*(exp(-C.θ)-1))/C.θ
 ϕ⁻¹(C::FrankCopula,       t) = -log((exp(-t*C.θ)-1)/(exp(-C.θ)-1))
 

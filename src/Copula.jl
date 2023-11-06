@@ -11,7 +11,7 @@ Base.length(::Copula{d}) where d = d
 # Base.eltype 
 
 function Distributions.cdf(C::CT,u) where {CT<:Copula}
-    f(x) = pdf(C,x)
+    f(x) = Distributions.pdf(C,x)
     z = zeros(eltype(u),length(C))
     return Cubature.pcubature(f,z,u,reltol=sqrt(eps()))[1]
 end
@@ -32,13 +32,13 @@ function measure(C::CT, u,v) where {CT<:Copula}
     r = zero(eltype(u))
     graycode = 0    # use a gray code to flip one element at a time
     which = fill(false, d) # false/true to use u/v for each component (so false here)
-    r += Copulas.cdf(C,eval_pt) # the sign is always 0. 
+    r += Distributions.cdf(C,eval_pt) # the sign is always 0. 
     for s = 1:(1<<d)-1
         graycode′ = s ⊻ (s >> 1)
         graycomp = trailing_zeros(graycode ⊻ graycode′) + 1
         graycode = graycode′
         eval_pt[graycomp] = (which[graycomp] = !which[graycomp]) ? v[graycomp] : u[graycomp]
-        r += (-1)^(s+d) * Copulas.cdf(C,eval_pt)
+        r += (-1)^(s+d) * Distributions.cdf(C,eval_pt)
     end
     return r
 end

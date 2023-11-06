@@ -16,10 +16,19 @@ The [Clayton](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_imp
 """
 struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
-end
-function ClaytonCopula(d,θ)
-    @assert θ > (-1/(d-1))
-    return ClaytonCopula{d,typeof(θ)}(θ)
+    function ClaytonCopula(d,θ)
+        if θ < -1/(d-1)
+            throw(ArgumentError("Theta must be greater than -1/(d-1)"))
+        elseif θ == -1/(d-1)
+            return WCopula(d)
+        elseif θ == 0
+            return IndependentCopula(d)
+        elseif θ == Inf
+            return MCopula(d)
+        else
+            return new{d,typeof(θ)}(θ)
+        end
+    end
 end
 ϕ(  C::ClaytonCopula,      t) = (1+sign(C.θ)*t)^(-1/C.θ)
 ϕ⁻¹(C::ClaytonCopula,      t) = sign(C.θ)*(t^(-C.θ)-1)

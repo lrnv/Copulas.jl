@@ -16,8 +16,18 @@ The [Joe](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_importa
 """
 struct JoeCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
+    function JoeCopula(d,θ)
+        if θ < 1
+            throw(ArgumentError("Theta must be greater than 1"))
+        elseif θ == 1
+            return IndependentCopula(d)
+        elseif θ == Inf
+            return MCopula(d)
+        else
+            return new{d,typeof(θ)}(θ)
+        end
+    end
 end
-JoeCopula(d,θ) = θ >= 1 ? JoeCopula{d,typeof(θ)}(θ) : @error "Theta must be greater than one."
 ϕ(  C::JoeCopula,          t) = 1-(1-exp(-t))^(1/C.θ)
 ϕ⁻¹(C::JoeCopula,          t) = -log(1-(1-t)^C.θ)
 τ(C::JoeCopula) = 1 - 4sum(1/(k*(2+k*C.θ)*(C.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula. 

@@ -2,6 +2,9 @@ struct SurvivalCopula{d,CT,VI} <: Copula{d}
     C::CT
     indices::VI
     function SurvivalCopula(C,indices)
+        if typeof(C) == IndependentCopula
+            return C
+        end
         if length(indices) == 0
             return C
         end

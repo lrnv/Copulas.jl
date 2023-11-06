@@ -12,9 +12,9 @@ end Copulas
     import SpecialFunctions
     import GSL
     import Roots
-    using Distributions
-    using StatsBase
-    using TaylorSeries
+    import Distributions
+    import StatsBase
+    import TaylorSeries
     import ForwardDiff
     import Cubature
     import MvNormalCDF
@@ -22,16 +22,22 @@ end Copulas
     # Standard copulas and stuff. 
     include("utils.jl")
     include("Copula.jl")
-    include("EmpiricalCopula.jl")
     include("SklarDist.jl")
     export pseudos, 
            EmpiricalCopula, 
            SklarDist
 
-    # These three distributions might be merged in Distrbutions.jl one day. 
-    include("univariate_distributions/Sibuya.jl")
-    include("univariate_distributions/Logarithmic.jl")
-    include("univariate_distributions/AlphaStable.jl")
+    # Others. 
+    include("MiscellaneousCopulas/MCopula.jl")
+    include("MiscellaneousCopulas/WCopula.jl")
+    include("MiscellaneousCopulas/SurvivalCopula.jl")
+    include("MiscellaneousCopulas/PlackettCopula.jl")
+    include("MiscellaneousCopulas/EmpiricalCopula.jl")
+    export MCopula,
+           WCopula,
+           SurvivalCopula,
+           PlackettCopula,
+           EmpiricalCopula
 
     # Elliptical copulas
     include("EllipticalCopula.jl")
@@ -39,6 +45,11 @@ end Copulas
     include("EllipticalCopulas/TCopula.jl")
     export GaussianCopula, 
            TCopula
+
+    # These three distributions might be merged in Distrbutions.jl one day. 
+    include("univariate_distributions/Sibuya.jl")
+    include("univariate_distributions/Logarithmic.jl")
+    include("univariate_distributions/AlphaStable.jl")
 
     # Archimedean copulas
     include("ArchimedeanCopula.jl")
@@ -55,13 +66,5 @@ end Copulas
            FrankCopula,
            AMHCopula
 
-    # Others. 
-    include("MiscellaneousCopulas/MCopula.jl")
-    include("MiscellaneousCopulas/WCopula.jl")
-    include("MiscellaneousCopulas/SurvivalCopula.jl")
-    include("MiscellaneousCopulas/PlackettCopula.jl")
-    export MCopula,
-           WCopula,
-           SurvivalCopula,
-           PlackettCopula
+
 end

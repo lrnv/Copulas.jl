@@ -1,8 +1,9 @@
 
 @testitem "constructor" begin
-    @test_broken isa(ClaytonCopula(2,0), Independence)
-    @test_broken isa(ClaytonCopula(2,-0.7),WCopula) # should work in any dimenisons if theta is smaller than the bound.
-    @test_broken isa(ClaytonCopula(2,Inf),MCopula)
+    @test isa(ClaytonCopula(2,0), IndependentCopula)
+    @test isa(ClaytonCopula(2,-0.7), ClaytonCopula) # should work in any dimenisons if theta is smaller than the bound.
+    @test isa(ClaytonCopula(2,-1), WCopula)
+    @test isa(ClaytonCopula(2,Inf), MCopula)
 end
 
 @testitem "generators" begin

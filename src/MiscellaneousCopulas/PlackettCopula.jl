@@ -23,14 +23,15 @@ struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
     θ::P  # Copula parameter
 
     function PlackettCopula(θ)
-        if θ == 1
-            return IndependentCopula(2)
+        if θ < 0
+            throw(ArgumentError("Theta must be non-negative"))
         elseif θ == 0
             return MCopula(2)
+        elseif θ == 1
+            return IndependentCopula(2)
         elseif θ == Inf
             return WCopula(2)
         else
-            θ >= 0 || throw(ArgumentError("Theta must be non-negative"))
             return new{typeof(θ)}(θ)
         end
     end
