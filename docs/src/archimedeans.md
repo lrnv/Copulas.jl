@@ -1,3 +1,7 @@
+```@meta
+CurrentModule = Copulas
+```
+
 # Archimedean Copulas
 
 Details about what are archimedean copulas (on the math level)

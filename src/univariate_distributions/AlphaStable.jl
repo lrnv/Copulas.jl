@@ -14,21 +14,20 @@ function AlphaStable(α,β,scale,location)
     αT,βT,scaleT,locationT =  promote(α,β,scale,location)
     AlphaStable(αT,βT,scaleT,locationT)
 end
-
-"""
-Generate independent stable random numbers.
-
-:param α: characteristic exponent (0.1 to 2.0)
-:param β: skew (-1 to +1)
-:param scale: scale parameter
-:param loc: location parameter (mean for α > 1, median/mode when β=0)
-
-
-This implementation is based on the method in J.M. Chambers, C.L. Mallows
-and B.W. Stuck, "A Method for Simulating Stable Random Variables," JASA 71 (1976): 340-4.
-McCulloch's MATLAB implementation (1996) served as a reference in developing this code.
-"""
 function Distributions.rand(rng::Distributions.AbstractRNG, d::AlphaStable{T}) where {T<:AbstractFloat} 
+# """
+# Generate independent stable random numbers.
+
+# :param α: characteristic exponent (0.1 to 2.0)
+# :param β: skew (-1 to +1)
+# :param scale: scale parameter
+# :param loc: location parameter (mean for α > 1, median/mode when β=0)
+
+
+# This implementation is based on the method in J.M. Chambers, C.L. Mallows
+# and B.W. Stuck, "A Method for Simulating Stable Random Variables," JASA 71 (1976): 340-4.
+# McCulloch's MATLAB implementation (1996) served as a reference in developing this code.
+# """
     α=d.α; β=d.β; sc=d.scale; loc=d.location
     (α < 0.1 || α > 2) && throw(DomainError(α, "α must be in the range 0.1 to 2"))
     abs(β) > 1 && throw(DomainError(β, "β must be in the range -1 to 1"))

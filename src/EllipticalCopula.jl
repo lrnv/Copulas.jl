@@ -1,3 +1,11 @@
+"""
+    EllipticalCopula{d,MT}
+
+Abstract type.
+
+[The description of the API should be here...]
+
+"""
 abstract type EllipticalCopula{d,MT} <: Copula{d} end
 Base.eltype(C::CT) where CT<:EllipticalCopula = Base.eltype(N(CT)(C.Σ))
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT <: EllipticalCopula}

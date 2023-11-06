@@ -1,3 +1,7 @@
+```@meta
+CurrentModule = Copulas
+```
+
 # Miscellaneous Copulas
 
 A few copulas, while necessary in certain cases and really usefull, are hard to classify. We gether them here for simplicity. 
@@ -23,4 +27,10 @@ PlackettCopula
 
 ```@docs
 SurvivalCopula
+```
+
+# Empirical Copulas
+
+```@docs
+EmpiricalCopula
 ```
