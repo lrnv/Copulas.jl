@@ -13,6 +13,11 @@ The [Gumbel](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_impo
 ```math
 \\phi(t) = \\exp{-t^{\\frac{1}{θ}}}
 ```
+
+It has a few special cases: 
+- When θ = 1, it is the IndependentCopula
+- When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
+
 """
 struct GumbelCopula{d,T} <: ArchimedeanCopula{d}
     θ::T

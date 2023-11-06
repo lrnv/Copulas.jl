@@ -1,3 +1,36 @@
+"""
+    SklarDist{CT,TplMargins} 
+
+Fields:
+  - C::CT - The copula
+  - m::TplMargins - a Tuple representing the marginal distributions
+
+Constructor
+
+    SklarDist(C,m)
+
+This function allows to construct a random vector specified, through the Sklar Theorem, by its marginals and its copula separately. See [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem). 
+
+The obtain random vector follows `Distributions.jl`'s API and can be sampled, pdf and cdf can be evaluated, etc... We even provide a fit function. See the folowing exemple code : 
+
+```julia
+using Copulas, Distributions, Random
+X₁ = Gamma(2,3)
+X₂ = Pareto()
+X₃ = LogNormal(0,1)
+C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
+D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
+
+# This generates a (3,1000)-sized dataset from the multivariate distribution D
+simu = rand(D,1000)
+
+# While the following estimates the parameters of the model from a dataset: 
+D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
+# Increase the number of observations to get a beter fit (or not?)  
+```
+
+
+"""
 struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribution
     C::CT
     m::TplMargins

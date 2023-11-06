@@ -15,8 +15,10 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Miscellaneous Copulas" => "miscelaneous.md"
         "Elliptical Copulas" => "ellipticals.md",
         "Archimedean Copulas" => "archimedeans.md"
+        "Sklar Distributions" => "sklardist.md"
     ],
 )
 

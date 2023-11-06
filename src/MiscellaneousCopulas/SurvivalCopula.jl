@@ -1,3 +1,18 @@
+"""
+SurvivalCopula{d,CT,VI}
+
+Constructor
+
+    SurvivalCopula(C,indices)
+
+Computes the survival version of any copula on given indices. From a copula ``C`` in dimension ``d``, and some indices ``i_1,...i_k`` in ``{1,...,d}``, the survival copula associated simply reverses its arguments on chosen indices. For exemple, for ``d=4`` and indices ``(2,3)``, we have: 
+
+```math
+S(u_1,...u_4) = C(u_1,1-u_2,1-u3,u_4)
+```
+
+This constructor allows to derive new "survival" families. For exemple, in bivariate cases, this allows to do "rotations". The obtained models can be treated as the starting one, i.e. as a random vector in [0,1]^d with uniforms marginals. 
+"""
 struct SurvivalCopula{d,CT,VI} <: Copula{d}
     C::CT
     indices::VI

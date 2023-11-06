@@ -8,11 +8,17 @@ Constructor
 
     ClaytonCopula(d, θ)
 
-The [Clayton](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1,\\infty)`` when ``d=2`` and ``\\theta \\in [0,\\infty)`` if ``d>2``. It is an Archimedean copula with generator : 
+The [Clayton](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1/(d-1),\\infty)``. It is an Archimedean copula with generator : 
 
 ```math
 \\phi(t) = \\left(1+\\mathrm{sign}(\\theta)*t\\right)^{-1\\frac{1}{\\theta}}
 ```
+
+It has a few special cases: 
+- When θ = -1/(d-1), it is the WCopula (Lower Frechet-Hoeffding bound)
+- When θ = 0, it is the IndependentCopula
+- When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
+
 """
 struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
     θ::T

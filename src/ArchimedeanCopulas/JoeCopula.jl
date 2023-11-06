@@ -13,6 +13,11 @@ The [Joe](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_importa
 ```math
 \\phi(t) = 1 - \\left(1 - e^{-t}\\right)^{\\frac{1}{\\theta}}
 ```
+
+It has a few special cases: 
+- When θ = 1, it is the IndependentCopula
+- When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
+
 """
 struct JoeCopula{d,T} <: ArchimedeanCopula{d}
     θ::T

@@ -5,7 +5,7 @@ Constructor
 
     IndependentCopula(d, θ)
 
-The [Independant Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) in dimension ``d`` is
+The [Independent Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) in dimension ``d`` is
 the simplest copula, that has the form : 
 
 ```math
@@ -30,7 +30,7 @@ end
 ϕ⁻¹(::IndependentCopula,t) = -log(t)
 τ(::IndependentCopula) = 0
 
-# Exceptionally we overload the functions as we dont want to take the slow route of archemedean copulas for the independant copula. 
+# Exceptionally we overload the functions as we dont want to take the slow route of archemedean copulas for the Independent copula. 
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::IndependentCopula{d}, x::AbstractVector{T}) where {T<:Real,d}
     Random.rand!(rng,x)

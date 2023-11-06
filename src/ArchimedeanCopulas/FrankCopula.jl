@@ -8,11 +8,17 @@ Constructor
 
     FrankCopula(d, θ)
 
-The [Frank](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [0,\\infty)``. It is an Archimedean copula with generator : 
+The [Frank](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-\\infty,\\infty)``. It is an Archimedean copula with generator : 
 
 ```math
 \\phi(t) = -\\frac{\\log\\left(1+e^{-t}(e^{-\\theta-1})\\right)}{\theta}
 ```
+
+It has a few special cases: 
+- When θ = -∞, it is the WCopula (Lower Frechet-Hoeffding bound)
+- When θ = 1, it is the IndependentCopula
+- When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
+
 """
 struct FrankCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
