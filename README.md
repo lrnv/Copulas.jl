@@ -88,7 +88,7 @@ The Archimedean API is modular:
 - [ ] Docs: show how to implement another archimedean.  
 - [ ] Give the user the choice of fitting method via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")`.
 - [ ] Fitting a generic archimedean : should provide an empirical generator
-- [ ] Make `Archimedean` more generic : inputing only `frailty_dist` or only `phi` shoudl be enough to get `pdf, cdf, rand, tau, rho, itau, irho, fit, frailty_dist`, etc...  **Williamson d-transform and inverse d-transform should be implemented.** The checking of nesting possibility should be done automatically with some rules (is phi_inv \circ phi complementely monotonous ? with obviously shortcut for inter-family nestings.)   
+- [x] Make `Archimedean` more generic : inputing only `frailty_dist` or only `phi` shoudl be enough to get `pdf, cdf, rand, tau, rho, itau, irho, fit, frailty_dist`, etc...  **Williamson d-transform and inverse d-transform should be implemented.** The checking of nesting possibility should be done automatically with some rules (is phi_inv \circ phi complementely monotonous ? with obviously shortcut for inter-family nestings.)   
 
 ## Maybe later
 
