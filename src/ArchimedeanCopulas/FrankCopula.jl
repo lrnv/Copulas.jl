@@ -55,7 +55,6 @@ function τ⁻¹(::Type{FrankCopula},τ)
     return Roots.fzero(x -> (1-D₁(x))/x - x₀, 1e-4, Inf)
 end
     
-
-frailty_dist(C::FrankCopula) = Logarithmic(1-exp(-C.θ))
+williamson_dist(C::FrankCopula{d,T}) where {d,T} = WilliamsonFromFrailty(Logarithmic(1-exp(-C.θ)), d)
 
 

@@ -51,6 +51,8 @@ end Copulas
     include("univariate_distributions/Sibuya.jl")
     include("univariate_distributions/Logarithmic.jl")
     include("univariate_distributions/AlphaStable.jl")
+    include("univariate_distributions/ClaytonWilliamsonDistribution.jl")
+    include("univariate_distributions/WilliamsonFromFrailty.jl")
 
     # Archimedean copulas
     include("ArchimedeanCopula.jl")

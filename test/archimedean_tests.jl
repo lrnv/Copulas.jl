@@ -48,7 +48,6 @@ end
 @testitem "GumbelCopula - Test sampling all cases" begin
     for d in 2:10
         for θ ∈ [1.0,1-log(rand()), Inf]
-            @show d, θ
             rand(GumbelCopula(d,θ),10)
         end
     end

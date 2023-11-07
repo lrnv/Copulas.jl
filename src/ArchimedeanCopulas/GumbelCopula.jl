@@ -37,8 +37,7 @@ end
 ϕ⁻¹(C::GumbelCopula,       t) = (-log(t))^C.θ
 τ(C::GumbelCopula) = ifelse(isfinite(C.θ), (C.θ-1)/C.θ, 1)
 τ⁻¹(::Type{GumbelCopula},τ) =ifelse(τ == 1, Inf, 1/(1-τ))
-
-frailty_dist(C::GumbelCopula) = AlphaStable(α = 1/C.θ, β = 1,scale = cos(π/(2C.θ))^C.θ, location = (C.θ == 1 ? 1 : 0))
+williamson_dist(C::GumbelCopula{d,T}) where {d,T} = WilliamsonFromFrailty(AlphaStable(α = 1/C.θ, β = 1,scale = cos(π/(2C.θ))^C.θ, location = (C.θ == 1 ? 1 : 0)), d)
 
 
 # S(α, β, γ , δ) denotes a stable distribution in

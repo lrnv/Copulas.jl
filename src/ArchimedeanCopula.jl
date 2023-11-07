@@ -26,15 +26,18 @@ ClaytonCopula(d,θ)            = ClaytonCopula{d,typeof(θ)}(θ)     # Construct
 ϕ⁻¹(C::ClaytonCopula,t)       = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
 τ(C::ClaytonCopula)           = C.θ/(C.θ+2)                       # θ -> τ
 τ⁻¹(::Type{ClaytonCopula},τ)  = 2τ/(1-τ)                          # τ -> θ
-frailty_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial distribution
+williamson_dist(C::ClaytonCopula{d,T}) where {d,T} = WilliamsonFromFrailty(Distributions.Gamma(1/C.θ,1),d) # Radial distribution
 ```
 The Archimedean API is modular: 
 
-- To sample an archimedean, only `frailty_dist` and `ϕ` are needed.
+- To sample an archimedean, only `williamson_dist` and `ϕ` are needed.
 - To evaluate the cdf and (log-)density in any dimension, only `ϕ` and `ϕ⁻¹` are needed.
 - Currently, to fit the copula `τ⁻¹` is needed as we use the inverse tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
 - Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
 - We plan on implementing the Williamson transformations so that `radial-dist` can be automaticlaly deduced from `ϕ` and vice versa, if you dont know much about your archimedean family
+
+If you only know the generator of your copula, take a look at WilliamsonCopula that allows to generate automatically the associated williamson distribution. 
+If on the other hand you have a univaraite positive random variable with no atom at zero, then the williamson transform can produce an archimdean copula out of it, with the same constructor. 
 """
 abstract type ArchimedeanCopula{d} <: Copula{d} end
 function Distributions.cdf(C::CT,u) where {CT<:ArchimedeanCopula} 
@@ -64,26 +67,42 @@ function Distributions._logpdf(C::CT, u) where {CT<:ArchimedeanCopula}
     for us in u
         ϕ⁻¹u = ϕ⁻¹(C,us)
         sum_ϕ⁻¹u += ϕ⁻¹u
-        sum_logϕ⁽¹⁾ϕ⁻¹u += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) #log of negative here because ϕ⁽¹⁾ is necessarily negative
+        sum_logϕ⁽¹⁾ϕ⁻¹u += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
     end
-    
     numer = ϕ⁽ᵈ⁾(C, sum_ϕ⁻¹u)
+    @show sum_logϕ⁽¹⁾ϕ⁻¹u, sum_ϕ⁻¹u, numer
     dimension_sign = iseven(d) ? 1.0 : -1.0 #need this for log since (-1.0)ᵈ ϕ⁽ᵈ⁾ ≥ 0.0
-    return log(dimension_sign*numer) - sum_logϕ⁽¹⁾ϕ⁻¹u
+
+
+    # I am not sure this is the right reasoning :
+    if numer == 0
+        if sum_logϕ⁽¹⁾ϕ⁻¹u == -Inf
+            return Inf
+        else
+            return -Inf
+        end
+    else
+        return log(dimension_sign*numer) - sum_logϕ⁽¹⁾ϕ⁻¹u
+    end
 end
 
 ϕ(C::ArchimedeanCopula{d},x) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
 ϕ⁻¹(C::ArchimedeanCopula{d},x) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
-frailty_dist(C::ArchimedeanCopula{d}) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
 τ(C::ArchimedeanCopula{d}) where d  = @error "Archimedean interface not implemented for $(typeof(C)) yet."
 τ⁻¹(::ArchimedeanCopula{d},τ) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
-# frailty_dist(C::ArchimedeanCopula) = laplace_transform(t -> ϕ(C,t))
+williamson_dist(C::ArchimedeanCopula{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:ArchimedeanCopula}
-    r = rand(rng,frailty_dist(C))
+    # By default, we use the williamson sampling. 
+    # the copula must have a field R that correspond to its williamson transformed variable for this to work.
     Random.rand!(rng,x)
+    r = rand(rng,williamson_dist(C))
     for i in 1:length(C)
-        x[i] = ϕ(C,-log(x[i])/r)
+        x[i] = -log(x[i])
+    end
+    sx = sum(x)
+    for i in 1:length(C)
+        x[i] = ϕ(C,r * x[i]/sx)
     end
     return x
 end
