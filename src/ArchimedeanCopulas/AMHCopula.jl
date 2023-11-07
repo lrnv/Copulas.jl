@@ -21,10 +21,12 @@ It has a few special cases:
 struct AMHCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function AMHCopula(d,θ)
-        if (θ < -1) || (θ > 1)
+        if (θ < -1) || (θ >= 1)
             throw(ArgumentError("Theta must be in [-1,1)"))
         elseif θ == 0
             return IndependentCopula(d)
+        elseif θ < 0
+            return WilliamsonCopula(t -> (1-θ)/(exp(t)-θ),d)
         else
             return new{d,typeof(θ)}(θ)
         end

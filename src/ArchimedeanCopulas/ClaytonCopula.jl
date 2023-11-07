@@ -27,6 +27,9 @@ struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
             throw(ArgumentError("Theta must be greater than -1/(d-1)"))
         elseif θ == -1/(d-1)
             return WCopula(d)
+        elseif θ < 0
+            return WilliamsonCopula(
+                t -> max(1+θ*t,zero(t))^(-1/θ),d)
         elseif θ == 0
             return IndependentCopula(d)
         elseif θ == Inf
@@ -36,8 +39,8 @@ struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
         end
     end
 end
-ϕ(  C::ClaytonCopula,      t) = (1+sign(C.θ)*t)^(-1/C.θ)
-ϕ⁻¹(C::ClaytonCopula,      t) = sign(C.θ)*(t^(-C.θ)-1)
+ϕ(  C::ClaytonCopula,      t) = max(1+C.θ*t,0)^(-1/C.θ)
+ϕ⁻¹(C::ClaytonCopula,      t) = (t^(-C.θ)-1)/C.θ
 radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1) # Currently fails for negative thetas ! thus negtatively correlated clayton copulas cannot be sampled...
 τ(C::ClaytonCopula) = ifelse(isfinite(C.θ), C.θ/(C.θ+2), 1)
 τ⁻¹(::Type{ClaytonCopula},τ) = ifelse(τ == 1,Inf,2τ/(1-τ))
