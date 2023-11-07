@@ -65,7 +65,7 @@ ClaytonCopula(d,θ)            = ClaytonCopula{d,typeof(θ)}(θ)     # Construct
 ϕ⁻¹(C::ClaytonCopula,t)       = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
 τ(C::ClaytonCopula)           = C.θ/(C.θ+2)                       # θ -> τ
 τ⁻¹(::Type{ClaytonCopula},τ)  = 2τ/(1-τ)                          # τ -> θ
-frailty_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial distribution
+williamson_dist(C::ClaytonCopula{d,T}) where {d,T} = WilliamsonFromFrailty(Distributions.Gamma(1/C.θ,1),d) # Radial distribution
 ```
 The Archimedean API is modular: 
 
