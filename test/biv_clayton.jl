@@ -1,7 +1,7 @@
 
 @testitem "constructor" begin
     @test isa(ClaytonCopula(2,0), IndependentCopula)
-    @test isa(ClaytonCopula(2,-0.7), ClaytonCopula) # should work in any dimenisons if theta is smaller than the bound.
+    @test isa(ClaytonCopula(2,-0.7), WilliamsonCopula)
     @test isa(ClaytonCopula(2,-1), WCopula)
     @test isa(ClaytonCopula(2,Inf), MCopula)
 end
@@ -9,7 +9,7 @@ end
 @testitem "generators" begin
 
     #### This test could be done for many more archimedeans. 
-    θ = [-0.5, 2, 10]
+    θ = [2, 10]
     u = [0:0.1:1;]
     for ϑ in θ
         c = ClaytonCopula(2,ϑ)

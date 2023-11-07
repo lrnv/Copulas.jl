@@ -65,11 +65,11 @@ ClaytonCopula(d,θ)            = ClaytonCopula{d,typeof(θ)}(θ)     # Construct
 ϕ⁻¹(C::ClaytonCopula,t)       = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
 τ(C::ClaytonCopula)           = C.θ/(C.θ+2)                       # θ -> τ
 τ⁻¹(::Type{ClaytonCopula},τ)  = 2τ/(1-τ)                          # τ -> θ
-radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial distribution
+frailty_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial distribution
 ```
 The Archimedean API is modular: 
 
-- To sample an archimedean, only `radial_dist` and `ϕ` are needed.
+- To sample an archimedean, only `frailty_dist` and `ϕ` are needed.
 - To evaluate the cdf and (log-)density in any dimension, only `ϕ` and `ϕ⁻¹` are needed.
 - Currently, to fit the copula `τ⁻¹` is needed as we use the inverse tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
 - Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
@@ -88,7 +88,7 @@ The Archimedean API is modular:
 - [ ] Docs: show how to implement another archimedean.  
 - [ ] Give the user the choice of fitting method via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")`.
 - [ ] Fitting a generic archimedean : should provide an empirical generator
-- [ ] Make `Archimedean` more generic : inputing only `radial_dist` or only `phi` shoudl be enough to get `pdf, cdf, rand, tau, rho, itau, irho, fit, radial_dist`, etc...  **Williamson d-transform and inverse d-transform should be implemented.** The checking of nesting possibility should be done automatically with some rules (is phi_inv \circ phi complementely monotonous ? with obviously shortcut for inter-family nestings.)   
+- [ ] Make `Archimedean` more generic : inputing only `frailty_dist` or only `phi` shoudl be enough to get `pdf, cdf, rand, tau, rho, itau, irho, fit, frailty_dist`, etc...  **Williamson d-transform and inverse d-transform should be implemented.** The checking of nesting possibility should be done automatically with some rules (is phi_inv \circ phi complementely monotonous ? with obviously shortcut for inter-family nestings.)   
 
 ## Maybe later
 

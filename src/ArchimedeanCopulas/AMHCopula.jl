@@ -48,6 +48,6 @@ function τ⁻¹(::Type{AMHCopula},τ)
 end
 
 
-radial_dist(C::AMHCopula) = 1 + Distributions.Geometric(1-C.θ)
+frailty_dist(C::AMHCopula) = 1 + Distributions.Geometric(1-C.θ)
 
 

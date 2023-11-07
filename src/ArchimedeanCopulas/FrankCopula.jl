@@ -56,6 +56,6 @@ function τ⁻¹(::Type{FrankCopula},τ)
 end
     
 
-radial_dist(C::FrankCopula) = Logarithmic(1-exp(-C.θ))
+frailty_dist(C::FrankCopula) = Logarithmic(1-exp(-C.θ))
 
 

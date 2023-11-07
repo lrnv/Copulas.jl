@@ -41,6 +41,6 @@ struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
 end
 ϕ(  C::ClaytonCopula,      t) = max(1+C.θ*t,0)^(-1/C.θ)
 ϕ⁻¹(C::ClaytonCopula,      t) = (t^(-C.θ)-1)/C.θ
-radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1) # Currently fails for negative thetas ! thus negtatively correlated clayton copulas cannot be sampled...
+frailty_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1) # Currently fails for negative thetas ! thus negtatively correlated clayton copulas cannot be sampled...
 τ(C::ClaytonCopula) = ifelse(isfinite(C.θ), C.θ/(C.θ+2), 1)
 τ⁻¹(::Type{ClaytonCopula},τ) = ifelse(τ == 1,Inf,2τ/(1-τ))

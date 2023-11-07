@@ -26,11 +26,11 @@ ClaytonCopula(d,θ)            = ClaytonCopula{d,typeof(θ)}(θ)     # Construct
 ϕ⁻¹(C::ClaytonCopula,t)       = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
 τ(C::ClaytonCopula)           = C.θ/(C.θ+2)                       # θ -> τ
 τ⁻¹(::Type{ClaytonCopula},τ)  = 2τ/(1-τ)                          # τ -> θ
-radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial distribution
+frailty_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial distribution
 ```
 The Archimedean API is modular: 
 
-- To sample an archimedean, only `radial_dist` and `ϕ` are needed.
+- To sample an archimedean, only `frailty_dist` and `ϕ` are needed.
 - To evaluate the cdf and (log-)density in any dimension, only `ϕ` and `ϕ⁻¹` are needed.
 - Currently, to fit the copula `τ⁻¹` is needed as we use the inverse tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
 - Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
@@ -74,13 +74,13 @@ end
 
 ϕ(C::ArchimedeanCopula{d},x) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
 ϕ⁻¹(C::ArchimedeanCopula{d},x) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
-radial_dist(C::ArchimedeanCopula{d}) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
+frailty_dist(C::ArchimedeanCopula{d}) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
 τ(C::ArchimedeanCopula{d}) where d  = @error "Archimedean interface not implemented for $(typeof(C)) yet."
 τ⁻¹(::ArchimedeanCopula{d},τ) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
-# radial_dist(C::ArchimedeanCopula) = laplace_transform(t -> ϕ(C,t))
+# frailty_dist(C::ArchimedeanCopula) = laplace_transform(t -> ϕ(C,t))
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:ArchimedeanCopula}
-    r = rand(rng,radial_dist(C))
+    r = rand(rng,frailty_dist(C))
     Random.rand!(rng,x)
     for i in 1:length(C)
         x[i] = ϕ(C,-log(x[i])/r)
