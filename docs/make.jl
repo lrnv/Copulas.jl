@@ -12,6 +12,7 @@ makedocs(;
         prettyurls=get(ENV, "CI", "false") == "true",
         canonical="https://lrnv.github.io/Copulas.jl",
         assets=String[],
+        collapselevel=3,
     ),
     pages=[
         "Home" => "index.md",
