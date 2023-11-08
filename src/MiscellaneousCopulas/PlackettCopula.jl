@@ -17,13 +17,19 @@ and for ``\\theta = 1``
     ```math
 \\C_{1}(u,v) = uv ```
 
-More details about Plackett copulation are found in Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
-
 It has a few special cases: 
 - When θ = 0, is is the MCopula (Upper Frechet-Hoeffding bound)
 - When θ = 1, it is the IndependentCopula
 - When θ = ∞, is is the WCopula (Lower Frechet-Hoeffding bound)
 
+More details about Plackett copulation are found in Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
+
+Details about the algorithm to generate copula samples can be seen in the following references:
+    
+    Johnson, Mark E. Multivariate statistical simulation:
+    A guide to selecting and generating continuous multivariate distributions.
+    Vol. 192. John Wiley & Sons, 1987. Page 193.
+    Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.38.
 """
 struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
     θ::P  # Copula parameter
@@ -43,7 +49,6 @@ struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
     end
 end
 
-# Base.length(S::PlackettCopula{P}) where {P} = 2 # length should return the dimension of the copula, bnut i think it is already working without this definition.
 Base.eltype(S::PlackettCopula{P}) where {P} = P # this shuold be P. 
 
 # CDF calculation for bivariate Plackett Copula
@@ -64,14 +69,6 @@ function Distributions._logpdf(S::PlackettCopula{P}, uv) where {P}
     return log(term1) - 3 * log(term2)/2 # since we are supposed to return the logpdf. 
 end
 import Random
-
-#=  Details about the algorithm to generate copula samples 
-    can be seen in the following references
-    Johnson, Mark E. Multivariate statistical simulation:
-    A guide to selecting and generating continuous multivariate distributions.
-    Vol. 192. John Wiley & Sons, 1987. Page 193.
-    Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.38.
-==#
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:PlackettCopula}
     u = rand(rng)
