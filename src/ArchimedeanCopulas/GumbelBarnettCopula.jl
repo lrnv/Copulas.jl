@@ -21,14 +21,16 @@ More details about Gumbel-Barnett copula are found in:
 struct GumbelBarnettCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function GumbelBarnettCopula(d,θ)
-        if θ == 0
+        if (θ < 0) || (θ > 1)
+            throw(ArgumentError("Theta must be in (0,1]"))
+        elseif θ == 0
             return IndependentCopula(d)
         else
             return new{d,typeof(θ)}(θ)
-        end
+        end 
     end
 end
-GumbelBarnettCopula(d, θ) = 0 < θ <= 1 ? GumbelBarnettCopula{d, typeof(θ)}(θ) : @error "Theta must be in the range (0,1]."
+
 ϕ(  C::GumbelBarnettCopula,       t) = exp(-(C.θ)^(-1)*(1-exp(t)))
 ϕ⁻¹(C::GumbelBarnettCopula,       t) = log(1-C.θ*log(t))
 function τ(C::GumbelBarnettCopula)
@@ -53,3 +55,5 @@ function τ⁻¹(::Type{GumbelBarnettCopula}, τ)
     x = Roots.find_zero(x -> τ_func(x) - τ, (0.0, 1.0))    
     return x
 end
+import WilliamsonTransforms
+williamson_dist(C::GumbelBarnettCopula{d,T}) where {d,T} = WilliamsonTransforms.𝒲₋₁(t -> ϕ(C.θ,t),d)
