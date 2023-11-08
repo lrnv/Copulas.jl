@@ -91,7 +91,6 @@ end
 
 williamson_dist(C::ArchimedeanCopula{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
 τ(C::ArchimedeanCopula)  = 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
-τ⁻¹(::ArchimedeanCopula{d},τ) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:ArchimedeanCopula}
     # By default, we use the williamson sampling. 

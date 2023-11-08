@@ -42,7 +42,7 @@ function τ⁻¹(::Type{AMHCopula},τ)
         @warn "AMHCopula cannot handle kendall tau's greater than 1/3. We capped it to 1/3."
         return 1
     end
-    return Roots.fzero(θ -> 1 - 2(θ+(1-θ)^2*log(1-θ))/(3θ^2) - τ,0.5)
+    return Roots.find_zero(θ -> 1 - 2(θ+(1-θ)^2*log(1-θ))/(3θ^2) - τ, (-1.0, 1.0))
 end
 williamson_dist(C::AMHCopula{d,T}) where {d,T} = C.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-C.θ),d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
 
