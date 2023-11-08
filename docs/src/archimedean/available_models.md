@@ -41,7 +41,7 @@ JoeCopula
 ```
 
 
-## Gumbel-Barnet
+## Gumbel-Barnett
 
 ```@docs
 GumbelBarnettCopula

@@ -18,7 +18,6 @@ It has a few special cases:
 - When θ = -1/(d-1), it is the WCopula (Lower Frechet-Hoeffding bound)
 - When θ = 0, it is the IndependentCopula
 - When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
-
 """
 struct ClaytonCopula{d,T} <: ArchimedeanCopula{d}
     θ::T

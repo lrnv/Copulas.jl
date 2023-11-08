@@ -17,6 +17,8 @@ The Inverse Gaussian copula is an archimdean copula with generator:
 More details about Inverse Gaussian Archimedean copula are found in :
     Mai, Jan-Frederik, and Matthias Scherer. 
     Simulating copulas: stochastic models, sampling algorithms, and applications. Vol. 6. # N/A, 2017. Page 74.
+
+It has no known special cases.
 """
 struct InvGaussianCopula{d,T} <: ArchimedeanCopula{d}
     θ::T

@@ -43,3 +43,12 @@ Not everything is necessary however, depending on the features you need. Indeed,
 ```@docs
 ArchimedeanCopula
 ```
+
+## The WilliamsonCopula concept
+
+In this package, there is the possibility to directly implement, sample, and evaluate the pdf and cdf of an archimedean copula by only providing its generator, in an efficient way.
+
+```@docs
+WilliamsonCopula
+```
+

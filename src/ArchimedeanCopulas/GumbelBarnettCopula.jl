@@ -19,7 +19,7 @@ More details about Gumbel-Barnett copula are found in:
     Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.437
 
 It has a few special cases: 
-    - When θ = 0, it is the IndependentCopula
+- When θ = 0, it is the IndependentCopula
 """
 struct GumbelBarnettCopula{d,T} <: ArchimedeanCopula{d}
     θ::T

@@ -16,7 +16,6 @@ The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_importa
 
 It has a few special cases: 
 - When θ = 0, it is the IndependentCopula
-
 """
 struct AMHCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
