@@ -70,7 +70,6 @@ function Distributions._logpdf(C::CT, u) where {CT<:ArchimedeanCopula}
         sum_logϕ⁽¹⁾ϕ⁻¹u += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
     end
     numer = ϕ⁽ᵈ⁾(C, sum_ϕ⁻¹u)
-    @show sum_logϕ⁽¹⁾ϕ⁻¹u, sum_ϕ⁻¹u, numer
     dimension_sign = iseven(d) ? 1.0 : -1.0 #need this for log since (-1.0)ᵈ ϕ⁽ᵈ⁾ ≥ 0.0
 
 
