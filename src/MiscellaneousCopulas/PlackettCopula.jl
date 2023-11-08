@@ -22,7 +22,9 @@ It has a few special cases:
 - When θ = 1, it is the IndependentCopula
 - When θ = ∞, is is the WCopula (Lower Frechet-Hoeffding bound)
 
-More details about Plackett copulation are found in Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
+More details about Plackett Copula are found in:
+
+    Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
 
 Details about the algorithm to generate copula samples can be seen in the following references:
     

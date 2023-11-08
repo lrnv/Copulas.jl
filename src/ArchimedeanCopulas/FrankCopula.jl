@@ -25,7 +25,7 @@ struct FrankCopula{d,T} <: ArchimedeanCopula{d}
     function FrankCopula(d,θ)
         if θ == -Inf
             return WCopula(d)
-        elseif θ == 1
+        elseif θ == 0
             return IndependentCopula(d)
         elseif θ == Inf
             return MCopula(d)

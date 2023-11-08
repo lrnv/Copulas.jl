@@ -10,7 +10,9 @@
         # FrankCopula,
         GumbelCopula,
         # IndependentCopula,
-        # JoeCopula
+        # JoeCopula,
+        # GumbelBarnettCopula,
+        # InvGaussianCopula
     )
         for τ in taus
             @test Copulas.τ(T(2,Copulas.τ⁻¹(T,τ))) ≈ τ
@@ -62,3 +64,20 @@ end
     @test true
 end
 
+@testitem "Gumbel_BarnettCopula - Test sampling all cases" begin
+    for d in 2:10
+        for θ ∈ [0.0,log(rand()),1.0]
+            rand(GumbelBarnettCopula(d,θ),10)
+        end
+    end
+    @test true
+end
+
+@testitem "Inverse_GaussianCopula - Test sampling all cases" begin
+    for d in 2:10
+        for θ ∈ [0.0,log(rand()),1.0, Inf]
+            rand(InvGaussianCopula(d,θ),10)
+        end
+    end
+    @test true
+end

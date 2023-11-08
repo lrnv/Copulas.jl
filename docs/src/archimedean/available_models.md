@@ -39,3 +39,17 @@ AMHCopula
 ```@docs
 JoeCopula
 ```
+
+
+## Gumbel-Barnet
+
+```@docs
+GumbelBarnettCopula
+```
+
+
+## Inverve Gaussian
+
+```@docs
+InvGaussianCopula
+```
