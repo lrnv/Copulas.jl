@@ -55,5 +55,3 @@ function τ⁻¹(::Type{GumbelBarnettCopula}, τ)
     x = Roots.find_zero(x -> τ_func(x) - τ, (0.0, 1.0))    
     return x
 end
-import WilliamsonTransforms
-williamson_dist(C::GumbelBarnettCopula{d,T}) where {d,T} = WilliamsonTransforms.𝒲₋₁(t -> ϕ(C.θ,t),d)
