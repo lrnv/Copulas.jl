@@ -63,12 +63,16 @@ end Copulas
     include("ArchimedeanCopulas/FrankCopula.jl")
     include("ArchimedeanCopulas/AMHCopula.jl")
     include("ArchimedeanCopulas/WilliamsonCopula.jl")
+    include("ArchimedeanCopulas/GumbelBarnettCopula.jl")
+    include("ArchimedeanCopulas/InvGaussianCopula.jl")
     export IndependentCopula, 
            ClaytonCopula,
            JoeCopula,
            GumbelCopula,
            FrankCopula,
            AMHCopula,
-           WilliamsonCopula
+           WilliamsonCopula,
+           GumbelBarnettCopula,
+           InvGaussianCopula
 
 end
