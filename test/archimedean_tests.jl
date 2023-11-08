@@ -64,18 +64,18 @@ end
     @test true
 end
 
-@testitem "Gumbel_BarnettCopula - Test sampling all cases" begin
+@testitem "GumbelBarnettCopula - Test sampling all cases" begin
     for d in 2:10
-        for θ ∈ [0.0,log(rand()),1.0]
+        for θ ∈ [0.0,rand(),1.0]
             rand(GumbelBarnettCopula(d,θ),10)
         end
     end
     @test true
 end
 
-@testitem "Inverse_GaussianCopula - Test sampling all cases" begin
+@testitem "InvGaussianCopula - Test sampling all cases" begin
     for d in 2:10
-        for θ ∈ [0.0,log(rand()),1.0, Inf]
+        for θ ∈ [rand(),1.0, Inf]
             rand(InvGaussianCopula(d,θ),10)
         end
     end

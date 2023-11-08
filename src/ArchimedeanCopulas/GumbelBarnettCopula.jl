@@ -11,18 +11,21 @@ Constructor
 The Gumbel-Barnett copula is an archimdean copula with generator:
 
 ```math
-\\phi(t) = \\exp{θ^{-1}(1-e^{t})}, 0 < \\theta \\leq 1.
+\\phi(t) = \\exp{θ^{-1}(1-e^{t})}, 0 \\leq \\theta \\leq 1.
 ```
 
 More details about Gumbel-Barnett copula are found in:
 
     Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.437
+
+It has a few special cases: 
+    - When θ = 0, it is the IndependentCopula
 """
 struct GumbelBarnettCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function GumbelBarnettCopula(d,θ)
         if (θ < 0) || (θ > 1)
-            throw(ArgumentError("Theta must be in (0,1]"))
+            throw(ArgumentError("Theta must be in [0,1]"))
         elseif θ == 0
             return IndependentCopula(d)
         else
@@ -31,7 +34,7 @@ struct GumbelBarnettCopula{d,T} <: ArchimedeanCopula{d}
     end
 end
 
-ϕ(  C::GumbelBarnettCopula,       t) = exp(-(C.θ)^(-1)*(1-exp(t)))
+ϕ(  C::GumbelBarnettCopula,       t) = exp((1-exp(t))/C.θ)
 ϕ⁻¹(C::GumbelBarnettCopula,       t) = log(1-C.θ*log(t))
 function τ(C::GumbelBarnettCopula)
     # Define the function to integrate

@@ -22,7 +22,7 @@ More details about Inverse Gaussian Archimedean copula are found in :
 struct InvGaussianCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function InvGaussianCopula(d,θ)
-        if θ < 0
+        if θ <= 0
             throw(ArgumentError("Theta must be greater than 0"))
         else
             return new{d,typeof(θ)}(θ)
