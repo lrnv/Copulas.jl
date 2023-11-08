@@ -1,4 +1,4 @@
-struct ClaytonWilliamsonDistribution{T<:Real,TI} <: Distributions.DiscreteUnivariateDistribution
+struct ClaytonWilliamsonDistribution{T<:Real,TI} <: Distributions.ContinuousUnivariateDistribution
     θ::T
     d::TI
 end
