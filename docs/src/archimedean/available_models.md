@@ -4,51 +4,51 @@ CurrentModule = Copulas
 
 # Available Archimedean copulas
 
-## Independence
+## Independence Copula
 
 ```@docs
 IndependentCopula
 ```
 
-## Clayton
+## Clayton Copula
 
 ```@docs
 ClaytonCopula
 ```
 
-## Frank
+## Frank Copula
 
 ```@docs
 FrankCopula
 ```
 
-## Gumbel
+## Gumbel Copula
 
 ```@docs
 GumbelCopula
 ```
 
-## Ali-Mikhail-Haq
+## Ali-Mikhail-Haq Copula
 
 ```@docs
 AMHCopula
 ```
 
-## Joe
+## Joe Copula
 
 ```@docs
 JoeCopula
 ```
 
 
-## Gumbel-Barnett
+## Gumbel-Barnett Copula
 
 ```@docs
 GumbelBarnettCopula
 ```
 
 
-## Inverve Gaussian
+## Inverse-Gaussian Copula
 
 ```@docs
 InvGaussianCopula
