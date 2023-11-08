@@ -8,18 +8,27 @@ Constructor
 
     InvGaussianCopula(d, θ)
 
+The Inverse Gaussian copula is an archimdean copula with generator:
+
 ```math
-\\phi(t) = \\exp{(1-\\sqrt{1+20^{2}t})/0}, 0 < 0.
+\\phi(t) = \\exp{(1-\\sqrt{1+20^{2}t})/0}, \\theta > 0.
 ```
 
-More details about Inverse Gaussian Archimedean copula are found in Mai, Jan-Frederik, and Matthias Scherer. 
-Simulating copulas: stochastic models, sampling algorithms, and applications. Vol. 6. # N/A, 2017. Page 74.
-"""
+More details about Inverse Gaussian Archimedean copula are found in :
 
+    Mai, Jan-Frederik, and Matthias Scherer. 
+    Simulating copulas: stochastic models, sampling algorithms, and applications. Vol. 6. # N/A, 2017. Page 74.
+"""
 struct InvGaussianCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
+    function GumbelBarnettCopula(d,θ)
+        if θ > 0
+            new{d,typeof(θ)}(θ)
+        else
+            @error "Theta must be positive."
+        end
+    end
 end
-InvGaussianCopula(d, θ) = 0 < θ ? InvGaussianCopula{d, typeof(θ)}(θ) : @error "Theta must be positive."
 ϕ(  C::InvGaussianCopula,       t) = exp((1-sqrt(1+2*((C.θ)^(2))*t))/C.θ)
 ϕ⁻¹(C::InvGaussianCopula,       t) = ((1-C.θ*log(t))^(2)-1)/(2*(C.θ)^(2))
 function τ(C::InvGaussianCopula)
