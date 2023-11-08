@@ -17,6 +17,13 @@ More details about Gumbel-Barnett copula are found in Joe, H. (2014). Dependence
 
 struct GumbelBarnettCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
+    function GumbelBarnettCopula(d,θ)
+        if θ == 0
+            return IndependentCopula(d)
+        else
+            return new{d,typeof(θ)}(θ)
+        end
+    end
 end
 GumbelBarnettCopula(d, θ) = 0 < θ <= 1 ? GumbelBarnettCopula{d, typeof(θ)}(θ) : @error "Theta must be in the range (0,1]."
 ϕ(  C::GumbelBarnettCopula,       t) = exp(-(C.θ)^(-1)*(1-exp(t)))
