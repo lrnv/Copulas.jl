@@ -44,7 +44,7 @@ JoeCopula
 ## Gumbel-Barnet
 
 ```@docs
-GumbelBarnetCopula
+GumbelBarnettCopula
 ```
 
 
