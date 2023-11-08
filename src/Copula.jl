@@ -15,8 +15,20 @@ function Distributions.cdf(C::CT,u) where {CT<:Copula}
     z = zeros(eltype(u),length(C))
     return Cubature.pcubature(f,z,u,reltol=sqrt(eps()))[1]
 end
-
-using Copulas
+function ρ(C::Copula{d}) where d
+    F(x) = Distributions.cdf(C,x)
+    z = zeros(d)
+    i = ones(d)
+    r = Cubature.pcubature(F,z,i,reltop=sqrt(eps()))[1]
+    return 12*r-3
+end
+function τ(C::Copula)
+    F(x) = Distributions.cdf(C,x)
+    z = zeros(d)
+    i = ones(d)
+    r = Distributions.expectation(F,C)
+    return 4*r-1
+end
 
 function measure(C::CT, u,v) where {CT<:Copula}
 
