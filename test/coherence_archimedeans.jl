@@ -12,6 +12,9 @@
         (FrankCopula(4,6), false),
         (JoeCopula(3,7), false),
         (GumbelCopula(4,7), false),
+        (GumbelBarnettCopula(3,0.7),true),
+        (InvGaussianCopula(4,0.05),true),
+        (InvGaussianCopula(3,8),true)
     )
     n = 1000
     spl = rand(n)
