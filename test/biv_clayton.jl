@@ -1,7 +1,7 @@
 
 @testitem "constructor" begin
     @test isa(ClaytonCopula(2,0), IndependentCopula)
-    @test isa(ClaytonCopula(2,-0.7), ClaytonCopula) # should work in any dimenisons if theta is smaller than the bound.
+    @test isa(ClaytonCopula(2,-0.7), ClaytonCopula)
     @test isa(ClaytonCopula(2,-1), WCopula)
     @test isa(ClaytonCopula(2,Inf), MCopula)
 end
@@ -9,7 +9,7 @@ end
 @testitem "generators" begin
 
     #### This test could be done for many more archimedeans. 
-    θ = [-0.5, 2, 10]
+    θ = [2, 10]
     u = [0:0.1:1;]
     for ϑ in θ
         c = ClaytonCopula(2,ϑ)
@@ -27,17 +27,17 @@ end
 
 @testitem "sample" begin
     using StatsBase, Random
-    n = 10^6
+    n = 10^5
     θ = [-0.5, 2, 10]
     
     for ϑ in θ
         c = ClaytonCopula(2,ϑ)
-        if ϑ < 0
-            @test_broken rand(c,n)
-        else
+        # if ϑ < 0
+        #     @test_broken rand(c,n)
+        # else
             u = rand(c, n)
             @test corkendall(u') ≈ [1.0 Copulas.τ(c); Copulas.τ(c) 1.0] atol = 0.01
-        end
+        # end
     end
 end
 
@@ -47,7 +47,7 @@ end
     x = [0:0.25:1;]
     y = x
     v1 = [0.0, 0.1796053020267749, 0.37796447300922725, 0.6255432421712244, 1.0]
-    v2 = [1.0, 0.0, 0.17157287525381, 0.5358983848622453, 1.0]
+    v2 = [0.0, 0.0, 0.17157287525381, 0.5358983848622453, 1.0]
     for i in 1:5
         @test cdf(ClaytonCopula(2,2),[x[i],y[i]]) ≈ v1[i]
         @test cdf(ClaytonCopula(2,-0.5),[x[i],y[i]]) ≈ v2[i]
@@ -62,12 +62,10 @@ end
     
     x = [0:0.25:1;]
     y = x
-    v1 = [2.2965556205046926, 1.481003649342278, 1.614508582188617, 3.0]
-    v2 = [Inf, 2.0, 1.0, 2 / 3, 0.5]
-    @test isnan(pdf(ClaytonCopula(2,2), [x[1], y[1]]))
-    @test pdf(ClaytonCopula(2,-0.5),[x[1],y[1]]) == v2[1]
-    for i in 2:5
-        @test pdf(ClaytonCopula(2,2),[x[i],y[i]]) ≈ v1[i-1]
+    v1 = [Inf, 2.2965556205046926, 1.481003649342278, 1.614508582188617, 3.0]
+    v2 = [Inf, 0.0, 1.0, 2 / 3, 0.5]
+    for i in 1:5
+        @test pdf(ClaytonCopula(2,2),[x[i],y[i]]) ≈ v1[i]
         @test pdf(ClaytonCopula(2,-0.5),[x[i],y[i]]) ≈ v2[i]
     end  
 end

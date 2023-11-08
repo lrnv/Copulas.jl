@@ -21,7 +21,7 @@ It has a few special cases:
 struct AMHCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function AMHCopula(d,θ)
-        if (θ < -1) || (θ > 1)
+        if (θ < -1) || (θ >= 1)
             throw(ArgumentError("Theta must be in [-1,1)"))
         elseif θ == 0
             return IndependentCopula(d)
@@ -44,8 +44,6 @@ function τ⁻¹(::Type{AMHCopula},τ)
     end
     return Roots.fzero(θ -> 1 - 2(θ+(1-θ)^2*log(1-θ))/(3θ^2) - τ,0.5)
 end
-
-
-radial_dist(C::AMHCopula) = 1 + Distributions.Geometric(1-C.θ)
+williamson_dist(C::AMHCopula{d,T}) where {d,T} = C.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-C.θ),d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
 
 

@@ -14,5 +14,5 @@ end
 ϕ⁻¹(C::MyAC{d},x)
 τ(C::MyAC{d})
 τ⁻¹(::MyAC{d},τ)
-radial_dist(C::MyAC{d})
+williamson_dist(C::MyAC{d})
 ```

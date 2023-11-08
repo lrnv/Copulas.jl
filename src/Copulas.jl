@@ -18,6 +18,7 @@ end Copulas
     import ForwardDiff
     import Cubature
     import MvNormalCDF
+    import WilliamsonTransforms
 
     # Standard copulas and stuff. 
     include("utils.jl")
@@ -50,6 +51,8 @@ end Copulas
     include("univariate_distributions/Sibuya.jl")
     include("univariate_distributions/Logarithmic.jl")
     include("univariate_distributions/AlphaStable.jl")
+    include("univariate_distributions/ClaytonWilliamsonDistribution.jl")
+    include("univariate_distributions/WilliamsonFromFrailty.jl")
 
     # Archimedean copulas
     include("ArchimedeanCopula.jl")
@@ -59,12 +62,13 @@ end Copulas
     include("ArchimedeanCopulas/GumbelCopula.jl")
     include("ArchimedeanCopulas/FrankCopula.jl")
     include("ArchimedeanCopulas/AMHCopula.jl")
+    include("ArchimedeanCopulas/WilliamsonCopula.jl")
     export IndependentCopula, 
            ClaytonCopula,
            JoeCopula,
            GumbelCopula,
            FrankCopula,
-           AMHCopula
-
+           AMHCopula,
+           WilliamsonCopula
 
 end

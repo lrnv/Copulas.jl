@@ -41,16 +41,17 @@ simu = rand(D,1000)
 D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
 # Increase the number of observations to get a beter fit (or not?)  
 ```
+
 Available copula families are:
-- `GaussianCopula`,
-- `TCopula`,
-- `ArchimedeanCopula` (for any generator),
-- `ClaytonCopula`,`FrankCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula` as example of the `ArchimedeanCopula` abstract type, see below,
-- `WCopula` and `MCopula`, which are [Fréchet-Hoeffding bounds](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Fr%C3%A9chet%E2%80%93Hoeffding_copula_bounds),
+- `EllipticalCopulas`: `GaussianCopula` and `TCopula`
+- `ArchimedeanCopula`: `WilliamsonCopula` (for any generator), but also `ClaytonCopula`,`FrankCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula`, supporting the full ranges in every dimensions (e.g. ClaytonCopula can be sampled with negative dependence in any dimension, not just d=2). 
+- `WCopula`, `IndependentCopula` and `MCopula`, which are [Fréchet-Hoeffding bounds](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Fr%C3%A9chet%E2%80%93Hoeffding_copula_bounds),
+- `PlackettCopula`, see ref?
 - `EmpiricalCopula` to follow closely a given dataset.
 
 The next ones to be implemented will probably be: 
-- Nested archimedeans (general, with the possibility to nest any family with any family, assuming it is possible, with parameter checks.)
+- Extreme values copulas. 
+- Nested archimedeans (for any generators, with automatic nesting conditions checking). 
 - Bernstein copula and more general Beta copula as smoothing of the Empirical copula. 
 - `CheckerboardCopula` (and more generally `PatchworkCopula`)
 
@@ -65,35 +66,30 @@ ClaytonCopula(d,θ)            = ClaytonCopula{d,typeof(θ)}(θ)     # Construct
 ϕ⁻¹(C::ClaytonCopula,t)       = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
 τ(C::ClaytonCopula)           = C.θ/(C.θ+2)                       # θ -> τ
 τ⁻¹(::Type{ClaytonCopula},τ)  = 2τ/(1-τ)                          # τ -> θ
-radial_dist(C::ClaytonCopula) = Distributions.Gamma(1/C.θ,1)      # Radial distribution
+williamson_dist(C::ClaytonCopula{d,T}) where {d,T} = WilliamsonFromFrailty(Distributions.Gamma(1/C.θ,1),d) # Radial distribution
 ```
 The Archimedean API is modular: 
 
-- To sample an archimedean, only `radial_dist` and `ϕ` are needed.
+- To sample an archimedean, only `ϕ` is required. Indeed, the `williamson_dist` has a generic fallback that uses [WilliamsonTransforms.jl](https://www.github.com/lrnv/WilliamsonTransforms.jl) for any generator. Note however that providing the `williamson_dist` yourself if you know it will allow sampling to be an order of magnitude faster.
 - To evaluate the cdf and (log-)density in any dimension, only `ϕ` and `ϕ⁻¹` are needed.
 - Currently, to fit the copula `τ⁻¹` is needed as we use the inverse tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
 - Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
-- We plan on implementing the Williamson transformations so that `radial-dist` can be automaticlaly deduced from `ϕ` and vice versa, if you dont know much about your archimedean family
 
 # Dev Roadmap
 
-## Urgent things
-
-- [ ] Add tests and documentation
-
 ## Next
 
-- [ ] Extensive documentation and tests for the current implementation. 
-- [x] Implement archimedean density generally. 
-- [ ] Docs: show how to implement another archimedean.  
+- [ ] More documentation and tests for the current implementation. 
+- [ ] Docs: show how to use the WilliamsonCopula to implement generic archimedeans.
 - [ ] Give the user the choice of fitting method via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")`.
-- [ ] Fitting a generic archimedean : should provide an empirical generator
-- [ ] Make `Archimedean` more generic : inputing only `radial_dist` or only `phi` shoudl be enough to get `pdf, cdf, rand, tau, rho, itau, irho, fit, radial_dist`, etc...  **Williamson d-transform and inverse d-transform should be implemented.** The checking of nesting possibility should be done automatically with some rules (is phi_inv \circ phi complementely monotonous ? with obviously shortcut for inter-family nestings.)   
+- [ ] Fitting a generic archimedean with an empirically produced generarator
+- [ ] Automatic checking of generator d-monotonicity ? Dunno if it is even possible. 
 
 ## Maybe later
 
+- [ ] `NestedArchimedean`, with automatic checking of nesting conditions for generators. 
 - [ ] `Vines`?
-- [ ] `NestedArchimedean` and very easy implementation of new archimeean copulas via the radial dist or the phi/invphi + Williamson transform. 
+- [ ] `Archimax` ?
 - [ ] `BernsteinCopula` and `BetaCopula` could also be implemented. 
 - [ ] `PatchworkCopula` and `CheckerboardCopula`: could be nice things to have :)
 - [ ] Goodness of fits tests ?
