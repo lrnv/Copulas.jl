@@ -30,6 +30,8 @@ end
     @test true
 end
 @testitem "ClaytonCopula - Test sampling all cases" begin
+    using Random
+    Random.seed!(123) # to avoid weird bug on 1.6
     rand(ClaytonCopula(2,-1),10)
     for d in 2:10
         for θ ∈ [-1/(d-1) * rand(),0.0,-log(rand()), Inf]
