@@ -29,22 +29,20 @@ While it is still well maintained and regularly updated, the `R` poackage `copul
 
 This is an attempt to provide a very light, fast, reliable and maintainable copula implementation in native Julia. Among others, one of the notable benefits of such a native implementatioon is the floating point type agnosticity, i.e. compatibility with `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl) and other kind of numbers.
 
-**Warning: This is fairly untested and experimental work and the API might change without notice.**
-
-## Features
-
 The package revolves around two main types: 
 
 - `Copula`, an abstract mother type for all the copulas in the package
 - `SklarDist`, a distribution type that allows construction of a multivariate distribution by specifying the copula and the marginals through [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem). 
 
-### Instalation
+**Warning: This is fairly untested and experimental work and the API might change without notice.**
+
+## Instalation
 
 ```julia
 ] add Copulas
 ```
 
-### Usage 
+## Usage 
 
 The API contains random number generation, cdf and pdf evaluation, and the `fit` function from `Distributions.jl`. A typical use case might look like this: 
 
@@ -101,16 +99,14 @@ Please take a look at the [documentation](https://lrnv.github.io/Copulas.jl/dev)
 
 ## Dev Roadmap
 
-### Next
-
+**Next:**
 - [ ] More documentation and tests for the current implementation. 
 - [ ] Docs: show how to use the WilliamsonCopula to implement generic archimedeans.
 - [ ] Give the user the choice of fitting method via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")`.
 - [ ] Fitting a generic archimedean with an empirically produced generarator
 - [ ] Automatic checking of generator d-monotonicity ? Dunno if it is even possible. 
 
-### Maybe later
-
+**Maybe later:**
 - [ ] `NestedArchimedean`, with automatic checking of nesting conditions for generators. 
 - [ ] `Vines`?
 - [ ] `Archimax` ?
