@@ -22,19 +22,29 @@
   <a href="https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=563952901&machine=standardLinux32gb&devcontainer_path=.devcontainer%2Fdevcontainer.json&location=EastUshttps://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=563952901&machine=standardLinux32gb&devcontainer_path=.devcontainer%2Fdevcontainer.json&location=EastUs"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" /></a>
 </p> -->
 
-`Copulas.jl` brings most standard [copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)) features into native Julia: random number generation, pdf and cdf, fitting, copula-based multivariate distributions through Sklar's theorem, etc., while fully complying with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API (after all, copulas are distributions functions) in order to provide interoperability with other packages based on this API such as, e.g., [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
+`Copulas.jl` brings most standard [copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)) features into native Julia: random number generation, pdf and cdf, fitting, copula-based multivariate distributions through Sklar's theorem, etc. Since copulas are distribution functions, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This complience allows interoperability with other packages based on this API such as, e.g., [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
 
 Usually, people that use and work with copulas turn to R, because of the amazing `R` package [`copula`](https://cran.r-project.org/web/packages/copula/copula.pdf).
-While it is still well maintained and regularly updated, the `R` package `copula` is a mixture of obscure, heavily optimized `C` code and more standard `R` code, which makes it a complicated code base for readability, extensibility, reliability and maintenance.
+While it is still well maintained and regularly updated, the `R` poackage `copula` is a mixture of obscure, heavily optimized `C` code and more standard `R` cde, which makes it a complicated code base for readability, extensibility, reliability and maintenance.
 
-This is an attempt to provide a very light, fast, reliable and maintainable copula implementation in native Julia (which means, in particular, floating point type agnostic, i.e. compatibility with `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl) and other kind of numbers). The two most important exported types are: 
-
-- `Copula`: an abstract mother type for all the copulas in the package. 
-- `SklarDist`:  allows construction of a multivariate distribution by specifying the copula and the marginals through [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem). 
+This is an attempt to provide a very light, fast, reliable and maintainable copula implementation in native Julia. Among others, one of the notable benefits of such a native implementatioon is the floating point type agnosticity, i.e. compatibility with `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl) and other kind of numbers.
 
 **Warning: This is fairly untested and experimental work and the API might change without notice.**
 
-# What is already implemented
+## Features
+
+The package revolves around two main types: 
+
+- `Copula`, an abstract mother type for all the copulas in the package
+- `SklarDist`, a distribution type that allows construction of a multivariate distribution by specifying the copula and the marginals through [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem). 
+
+### Instalation
+
+```julia
+] add Copulas
+```
+
+### Usage 
 
 The API contains random number generation, cdf and pdf evaluation, and the `fit` function from `Distributions.jl`. A typical use case might look like this: 
 
@@ -87,9 +97,11 @@ The Archimedean API is modular:
 - Currently, to fit the copula `τ⁻¹` is needed as we use the inverse tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
 - Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
 
-# Dev Roadmap
+Please take a look at the [documentation](https://lrnv.github.io/Copulas.jl/dev) for more details. 
 
-## Next
+## Dev Roadmap
+
+### Next
 
 - [ ] More documentation and tests for the current implementation. 
 - [ ] Docs: show how to use the WilliamsonCopula to implement generic archimedeans.
@@ -97,7 +109,7 @@ The Archimedean API is modular:
 - [ ] Fitting a generic archimedean with an empirically produced generarator
 - [ ] Automatic checking of generator d-monotonicity ? Dunno if it is even possible. 
 
-## Maybe later
+### Maybe later
 
 - [ ] `NestedArchimedean`, with automatic checking of nesting conditions for generators. 
 - [ ] `Vines`?
@@ -108,4 +120,16 @@ The Archimedean API is modular:
 
 ## Contributions are welcome
 
-Do not hesitate to open an issue to discuss :)
+If you want to contribute to the package, found a bug in it or simply want to chat, do not hesitate to open an issue on this repo. 
+
+## Citation 
+
+```bibtex
+@software{oskar_laverny_2023_10084669,
+  author       = {Oskar Laverny},
+  title        = {Copulas.jl: A fully `Distributions.jl`-compliant copula package},
+  year         = 2022+,
+  doi          = {10.5281/zenodo.6652672},
+  url          = {https://doi.org/10.5281/zenodo.6652672}
+}
+```
