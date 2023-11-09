@@ -91,19 +91,30 @@ end
 williamson_dist(C::ArchimedeanCopula{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
 τ(C::ArchimedeanCopula)  = 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:ArchimedeanCopula}
-    # By default, we use the williamson sampling. 
-    # the copula must have a field R that correspond to its williamson transformed variable for this to work.
-    Random.rand!(rng,x)
-    r = rand(rng,williamson_dist(C))
-    for i in 1:length(C)
-        x[i] = -log(x[i])
-    end
+
+function _archi_rand!(rng,C::ArchimedeanCopula{d},R,x) where d
+    # x is assumed to already be random exponentials produced by Random.randexp
+    r = rand(rng,R)
     sx = sum(x)
-    for i in 1:length(C)
+    for i in 1:d
         x[i] = ϕ(C,r * x[i]/sx)
     end
+end
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:ArchimedeanCopula}
+    # By default, we use the williamson sampling. 
+    Random.randexp!(rng,x)
+    _archi_rand!(rng,C,williamson_dist(C),x)
     return x
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real, CT<:ArchimedeanCopula}
+    # More efficient version that precomputes the williamson transform on each call to sample in batches: 
+    Random.randexp!(rng,A)
+    R = williamson_dist(C)
+    for i in 1:size(A,2)
+        _archi_rand!(rng,C,R,view(A,:,i))
+    end
+    return A
 end
 function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula}
     # @info "Archimedean fits are by default through inverse kendall tau."
