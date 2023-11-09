@@ -1,4 +1,5 @@
 <h1 align=center>Copulas.jl</h1>
+<p align=center><i>A fully `Distributions.jl`-compliant copula package</i></p>
 
 <p align=center>
     <a href="https://lrnv.github.io/Copulas.jl/stable"><img src="https://img.shields.io/badge/docs-stable-blue.svg" alt="Stable" /></a>
