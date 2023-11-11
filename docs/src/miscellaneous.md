@@ -23,6 +23,12 @@ WCopula
 PlackettCopula
 ```
 
+# Farlie-Gumbel-Morgenstern (FGM) copula
+
+```@docs
+FGMCopula
+```
+
 ## Survival Copula
 
 ```@docs

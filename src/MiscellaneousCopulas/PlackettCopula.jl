@@ -11,11 +11,13 @@ Constructor
 Parameterized by ``\\theta > 0`` The [Plackett](https://www.cambridge.org/core/books/abs/copulas-and-their-applications-in-water-resources-engineering/plackett-copula/2D407DAB691623AB52CF74044B42C61F) copula is
 
 ```math
-\\C_{\\theta}(u,v) = \\frac{\\left [1+(\\theta-1)(u+v)\\right]- \\sqrt{[1+(\\theta-1)(u+v)]^2-4uv\\theta(\\theta-1)}}{2(\\theta-1)}
+C_{\\theta}(u,v) = \\frac{\\left [1+(\\theta-1)(u+v)\\right]- \\sqrt{[1+(\\theta-1)(u+v)]^2-4uv\\theta(\\theta-1)}}{2(\\theta-1)}
 ```
 and for ``\\theta = 1``
-    ```math
-\\C_{1}(u,v) = uv ```
+
+```math
+C_{1}(u,v) = uv 
+```
 
 It has a few special cases: 
 - When θ = 0, is is the MCopula (Upper Frechet-Hoeffding bound)
