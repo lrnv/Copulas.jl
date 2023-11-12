@@ -13,7 +13,6 @@ module Copulas
     import MvNormalCDF
     import WilliamsonTransforms
     import Combinatorics
-    import LinearAlgebra
 
     # Standard copulas and stuff. 
     include("utils.jl")
@@ -34,7 +33,7 @@ module Copulas
            WCopula,
            SurvivalCopula,
            PlackettCopula,
-           EmpiricalCopula
+           EmpiricalCopula,
            FGMCopula
 
     # Elliptical copulas

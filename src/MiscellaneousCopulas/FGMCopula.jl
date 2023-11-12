@@ -1,5 +1,5 @@
 """
-FGMCopula{d,T}
+    FGMCopula{d,T}
 
 Fields:
   - θ::Real - parameter
@@ -27,74 +27,54 @@ We use the stochastic representation of the copula to obtain random samples.
 It has a few special cases:
 - When d=2 and θ = 0, it is the IndependentCopula.
 """
-#import Base.Iterators: product
-import Base.Iterators: product
 struct FGMCopula{d, T} <: Copula{d}
-    θ::Vector{Float64}
-
-    function FGMCopula(d::Int, θ::Vector{Float64}) where {T}
+    θ::Vector{T}
+    function FGMCopula(d, θ)
+        if !(typeof(θ)<:Vector)
+            vθ = [θ]
+        else
+            vθ = θ
+        end
         if d < 2
             throw(ArgumentError("Dimension (d) must be greater than or equal to 2"))
         end
         if  all(θ .== 0)
             return IndependentCopula(d)
         end
-        
-        if any(abs.(θ) .> 1)
+        if any(abs.(vθ) .> 1)
             throw(ArgumentError("each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         end
-        
-        expected_params_length = 2^d - d - 1
-        if length(θ) != expected_params_length
+        if length(vθ) != 2^d - d - 1
             throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
         end
-        
         # Verificar las restricciones en los parámetros
-        verify_parameters(d, θ)
-        
-        return new{d, Vector{Float64}}(θ)
-
-    end 
-    function FGMCopula(d::Int, θ::T) where {T}
-        return FGMCopula(d, [θ])
-    end
-    function verify_parameters(d, θ)
-        combinaciones_epsilons = collect(Base.product(fill([-1, 1], d)...))
-        
-            for epsilon in combinaciones_epsilons
-                # Llamar a la función para generar el vector de coeficientes
-                coefficients_vector = generate_coefficients(epsilon, d)
-        
-                # Calcular la combinación lineal
-                resultado = 1+LinearAlgebra.dot( θ, coefficients_vector)
-          if resultado < 0
-                    throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
-                end
-    end
-      end
-    function generate_coefficients(epsilon, d)
-        coefficients = Vector{Int}()
+        for epsilon in collect(Base.product(fill([-1, 1], d)...))
+            # Llamar a la función para generar el vector de coeficientes
+            coefficients_vector = Vector{Int}() ################################################## <<<<<------ Please change this
     
-        for k in 2:d
-            for indices in combinations(1:d, k)
-                product = prod(epsilon[indices])
-                push!(coefficients, product)
+            for k in 2:d
+                for indices in Combinatorics.combinations(1:d, k)
+                    product = prod(epsilon[indices])
+                    push!(coefficients_vector, product)
+                end
+            end
+            # Calcular la combinación lineal
+            resultado = 1+sum(vθ .* coefficients_vector)
+            if resultado < 0
+                throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
             end
         end
-    
-        return coefficients
-    end   
+        return new{d, eltype(vθ)}(vθ)
+    end 
 end
-
-Base.length(fgm::FGMCopula{d,T}) where {d,T} = d
-Base.eltype(fgm::FGMCopula{d,T}) where {d,T} = Base.eltype(fgm.θ)
-# Helper function to calculate all possible combinations of uᵢ
-function func_aux(vectors,dim)
-    products = Vector{Float64}()
+Base.eltype(::FGMCopula{d,T}) where {d,T} = T
+function func_aux(vectors,d)
+    # Helper function to calculate all possible combinations of uᵢ
+    products = Vector{T}() ###################################################################### <<<<<------ Please change this
     # Iterate over all possible combinations of k elements, for k = 2, 3, ..., d
-    for k in 2:dim
+    for k in 2:d
       # Iterate over all possible combinations of k elements in u
-      for indices in combinations(1:dim, k)
+      for indices in combinations(1:d, k)
         #Calculate the product of the u values in the combination
         product = prod(vectors[indices])
         # Add the product to the product vector
@@ -103,80 +83,22 @@ function func_aux(vectors,dim)
     end
     return products
 end
-# CDF calculation for F-G-M Copula
 function Distributions.cdf(fgm::FGMCopula, u::Vector{T}) where {T}
     d = length(fgm)
-    if length(u) != d
-        throw(ArgumentError("Dimension mismatch between copula and input vector"))
-    end
-    v = 1 .-u
+    check_dim(fgm,u)
     term1 = prod(u)
-    println("theta", fgm.θ )
-    term2 = LinearAlgebra.dot(fgm.θ, func_aux(v,d))
+    term2 = sum(fgm.θ .* func_aux(1 .-u,d))
     return term1 * (1+term2)
 end
-# PDF calculation for F-G-M Copula
 function Distributions.pdf(fgm::FGMCopula, u::Vector{T}) where {T}
     d = length(fgm)
-    if length(u) != d
-        throw(ArgumentError("Dimension mismatch between copula and input vector"))
-    end
-    v = 1 .- 2*u
-    term = LinearAlgebra.dot(fgm.θ, func_aux(v,d))
-    
+    check_dim(fgm,u)
+    term = sum(fgm.θ .* func_aux(1 .- 2u,d))
     return 1+term
 end
-# stochastic representation 
-struct fgmDistribution{T<:Real} <: Distributions.DiscreteMultivariateDistribution
-    θ::Vector{T}
-    d::Int
-    function fgmDistribution(θ::Vector{T}, d::Int) where {T <: Real}
-        if length(θ) != 2^d - d - 1
-            throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
-        end
-        new{T}(θ, d)
-    end
-end
-Base.length(F::fgmDistribution{T}) where {T} = F.d
-function Distributions._rand!(rng::Distributions.AbstractRNG, distribution::fgmDistribution, x::AbstractVector{T}) where {T <: Real}
-    dim = distribution.d
-    
-    # Itera sobre cada dimensión y decide el valor usando get_pmf
-    for i in 1:dim
-        x[i] = rand(rng) < stochastic_fgm(distribution.θ, x)
-    end
-    
-    return x
-end
-
-function stochastic_fgm(theta, i)
-    dim = length(i)
-    if length(theta) != 2^dim - dim - 1
-        throw(ArgumentError("Number of parameters (θ) must match the dimension ($dim): 2ᵈ-d-1"))
-    end
-
-    # Asegurar que i sea un vector de enteros
-    signs = Vector{Float64}()
-    
-    # Iterar sobre todas las posibles combinaciones de k elementos, para k = 2, 3, ..., dim
-    for k in 2:dim
-        # Iterar sobre todas las posibles combinaciones de k elementos en índices
-        for indices in combinations(1:dim, k)
-            # Calcular la suma de los valores de los vectores en la combinación
-            suma = sum(i[indices])
-            # Agregar el signo al vector de signos
-            push!(signs, (-1)^suma)
-        end
-    end
-
-    term = LinearAlgebra.dot(signs, theta)
-    return (1 / 2^dim) * (1 + term)
-end
-#########
-
-# Sampling Copula FGM
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FC, x::AbstractVector{T}) where {FC <: FGMCopula, T <: Real}
     d = length(fgm)
+    θ = fgm.θ
     if d == 2
         u = rand(rng)
         t = rand(rng)
@@ -187,13 +109,33 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FC, x::Abstra
         x[2] = v[1]
         return x
     elseif d > 2
-        I = rand(fgmDistribution(fgm.θ,d), 1)
+        # Itera sobre cada dimensión y decide el valor usando get_pmf
+        I = zeros(d)
+        for i in 1:d
+            if length(θ) != 2^d - d - 1
+                throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
+            end
+            # Asegurar que i sea un vector de enteros
+            signs = Vector{T}() ################################################################### <<<<<------ Please change this
+            # Iterar sobre todas las posibles combinaciones de k elementos, para k = 2, 3, ..., dim
+            for k in 2:d
+                # Iterar sobre todas las posibles combinaciones de k elementos en índices
+                for indices in Combinatorics.combinations(1:d, k)
+                    # Calcular la suma de los valores de los vectores en la combinación
+                    suma = sum(I[indices])
+                    # Agregar el signo al vector de signos
+                    push!(signs, (-1)^suma)
+                end
+            end
+            term = sum(signs .* θ)
+            I[i] = rand(rng) < (1 / 2^d) * (1 + term)
+        end
         V0 = rand(d)
         V1 = rand(d)
-            for j in 1:length(fgm)
-                U_j = 1.0-sqrt(1.0-V0[j])*(1.0-V1[j])^(I[j])
-                x[j] = U_j
-            end
+        for j in 1:d
+            U_j = 1-sqrt(1-V0[j])*(1-V1[j])^(I[j])
+            x[j] = U_j
+        end
         return x
     end
 end
