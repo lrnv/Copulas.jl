@@ -54,3 +54,8 @@ function measure(C::CT, u,v) where {CT<:Copula}
     end
     return r
 end
+function check_dim(C,u)
+    if length(u) != length(C)
+        throw(ArgumentError("Dimension mismatch between copula and input vector"))
+    end
+end

@@ -1,5 +1,5 @@
 """
-InvGaussianCopula{d,T}
+    InvGaussianCopula{d,T}
 
 Fields:
   - θ::Real - parameter
@@ -16,8 +16,7 @@ The Inverse Gaussian copula in dimension ``d`` is parameterized by ``\\theta \\i
 
 More details about Inverse Gaussian Archimedean copula are found in :
 
-    Mai, Jan-Frederik, and Matthias Scherer. 
-    Simulating copulas: stochastic models, sampling algorithms, and applications. Vol. 6. # N/A, 2017. Page 74.
+    Mai, Jan-Frederik, and Matthias Scherer. Simulating copulas: stochastic models, sampling algorithms, and applications. Vol. 6. # N/A, 2017. Page 74.
 
 It has a few special cases:
 - When θ = 0, it is the IndependentCopula
@@ -26,12 +25,12 @@ struct InvGaussianCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function InvGaussianCopula(d,θ)
         if θ <= 0
-            throw(ArgumentError("Theta must be greater than or equal 0"))
+            throw(ArgumentError("Theta must be non-negative."))
         elseif θ == 0
             return IndependentCopula(d)
         else
             return new{d,typeof(θ)}(θ)
-        end 
+        end
     end
 end
 
