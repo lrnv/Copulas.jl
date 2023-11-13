@@ -95,7 +95,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d,T
 end
 τ(fgm::FGMCopula) = (2*fgm.θ[1])/9
 function τ⁻¹(::Type{FGMCopula}, τ)
-    if any(τ .< -2/9 .|| τ .> 2/9)
+    check = all(-2/9 <= τi <= 2/9 for τi in τ)
+    if !check
         throw(ArgumentError("For the FGM copula, tau must be in [-2/9, 2/9]."))
     end
     return max.(min.(9 * τ / 2, 1), -1)
