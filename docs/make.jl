@@ -16,21 +16,21 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
-        "Sklar's Theorem" => [
-            "sklar/sklars_theorem.md",
-            "sklar/our_implementation.md",
-            "sklar/fit_of_compound_distribution.md"
-        ],
+        "Sklar's Theorem" => "sklar.md",
         "Elliptical Copulas" => [
             "elliptical/generalities.md",
-            "elliptical/available_models.md"
+            "elliptical/available_models.md",
         ],
         "Archimedean Copulas" => [
             "archimedean/generalities.md",
             "archimedean/available_models.md",
-            "archimedean/implement_your_own.md"
+            "archimedean/implement_your_own.md",
         ],
         "Miscellaneous Copulas" => "miscellaneous.md",
+        "Exemples" => [
+            "exemples/fitting_sklar.md",
+            "exemples/turing.md",
+        ],
         "Reference" => "reference.md"
     ],
 )
