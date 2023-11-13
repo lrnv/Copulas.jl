@@ -10,9 +10,7 @@ Base.length(::Copula{d}) where d = d
 # τ, τ⁻¹
 # Base.eltype 
 function Distributions.cdf(C::Copula{d},u) where d
-    if length(u) != length(C)
-        throw(ArgumentError("Dimension mismatch between copula and input vector"))
-    end
+    length(u) != length(C) && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     return _cdf(C,u)
 end
 function _cdf(C::CT,u) where {CT<:Copula}
@@ -29,12 +27,9 @@ function ρ(C::Copula{d}) where d
 end
 function τ(C::Copula)
     F(x) = Distributions.cdf(C,x)
-    z = zeros(d)
-    i = ones(d)
     r = Distributions.expectation(F,C)
     return 4*r-1
 end
-
 function measure(C::CT, u,v) where {CT<:Copula}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]
@@ -58,7 +53,4 @@ function measure(C::CT, u,v) where {CT<:Copula}
         r += (-1)^(s+d) * Distributions.cdf(C,eval_pt)
     end
     return r
-end
-function check_dim(C,u)
-
 end
