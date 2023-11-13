@@ -30,45 +30,29 @@ It has a few special cases:
 struct FGMCopula{d, T} <: Copula{d}
     θ::Vector{T}
     function FGMCopula(d, θ)
-        if !(typeof(θ)<:Vector)
-            vθ = [θ]
-        else
-            vθ = θ
-        end
-        if d < 2
-            throw(ArgumentError("Dimension (d) must be greater than or equal to 2"))
-        end
+        vθ = typeof(θ)<:Vector ? θ : [θ]
         if  all(θ .== 0)
             return IndependentCopula(d)
         end
+        # Check restrictions on parameters
         if any(abs.(vθ) .> 1)
             throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         end
         if length(vθ) != 2^d - d - 1
             throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
         end
-        # CHeck restrictions on parameters
         for epsilon in collect(Base.product(fill([-1, 1], d)...))
-            # Generate all combinations : 
-            coefficients_vector = zeros(Int,2^d-d-1)
-            i = 1
-            for k in 2:d
-                for indices in Combinatorics.combinations(1:d, k)
-                    coefficients_vector[i] = prod(epsilon[indices])
-                    i = i+1
-                end
-            end
-            # Compute the linear comb: 
-            resultado = 1+sum(vθ .* coefficients_vector)
-            if resultado < 0
+            if 1 + reduce_over_combinations(epsilon,vθ,d,prod) < 0
                 throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
             end
         end
         return new{d, eltype(vθ)}(vθ)
-    end 
+    end
 end
 Base.eltype(::FGMCopula{d,T}) where {d,T} = T
 function reduce_over_combinations(vector_to_combine,coefficients,d,reducer_function)
+    # This version of the reductor is non-allocative, which is much better in terms of performance. 
+    # Moreover, if by chance `d` was a type parameter (chich it is not right now), it could complety fold out at compile time and be really efficient...
     rez = zero(eltype(vector_to_combine))
     # Iterate over all possible combinations of k elements, for k = 2, 3, ..., d
     i = 1
