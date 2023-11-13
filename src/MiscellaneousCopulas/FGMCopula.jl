@@ -27,8 +27,8 @@ We use the stochastic representation of the copula to obtain random samples.
 It has a few special cases:
 - When d=2 and θ = 0, it is the IndependentCopula.
 """
-struct FGMCopula{d, T} <: Copula{d}
-    θ::Vector{T}
+struct FGMCopula{d, Tθ} <: Copula{d}
+    θ::Tθ
     function FGMCopula(d, θ)
         vθ = typeof(θ)<:Vector ? θ : [θ]
         if  all(θ .== 0)
@@ -41,50 +41,40 @@ struct FGMCopula{d, T} <: Copula{d}
         if length(vθ) != 2^d - d - 1
             throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
         end
+        rez = new{d, typeof(vθ)}(vθ)
         for epsilon in collect(Base.product(fill([-1, 1], d)...))
-            if 1 + reduce_over_combinations(epsilon,vθ,d,prod) < 0
+            if 1 + reduce_over_combinations(rez,epsilon,prod) < 0
                 throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
             end
         end
-        return new{d, eltype(vθ)}(vθ)
+        return rez
     end
 end
-Base.eltype(::FGMCopula{d,T}) where {d,T} = T
-function reduce_over_combinations(vector_to_combine,coefficients,d,reducer_function)
+Base.eltype(C::FGMCopula) = eltype(C.θ)
+function reduce_over_combinations(C::FGMCopula{d,Tθ}, vector_to_combine, reducer_function) where {d,Tθ}
     # This version of the reductor is non-allocative, which is much better in terms of performance. 
-    # Moreover, if by chance `d` was a type parameter (chich it is not right now), it could complety fold out at compile time and be really efficient...
+    # Moreover, since $d$ is a type parameter the loop will fold out at compile time :)
     rez = zero(eltype(vector_to_combine))
     # Iterate over all possible combinations of k elements, for k = 2, 3, ..., d
     i = 1
     for k in 2:d
-      # Iterate over all possible combinations of k elements in u
       for indices in Combinatorics.combinations(1:d, k)
-        #Calculate the product of the u values in the combination
-        rez += coefficients[i] * reducer_function(vector_to_combine[indices])
+        rez += C.θ[i] * reducer_function(vector_to_combine[indices])
         i = i+1
       end
     end
     return rez
 end
 function _cdf(fgm::FGMCopula, u::Vector{T}) where {T}
-    d = length(fgm)
-    term1 = prod(u)
-    # term2 = sum(fgm.θ .* func_aux(1 .-u,d))
-    term2 = reduce_over_combinations(1 .-u,fgm.θ,d,prod)
-    return term1 * (1+term2)
+    return prod(u) * (1 + reduce_over_combinations(fgm, 1 .-u, prod))
 end
 function Distributions._logpdf(fgm::FGMCopula, u::Vector{T}) where {T}
-    d = length(fgm)
-    # term = sum(fgm.θ .* func_aux(1 .- 2u,d))
-    term= reduce_over_combinations(1 .-2u,fgm.θ,d,prod)
-    return log1p(term)
+    return log1p(reduce_over_combinations(fgm, 1 .-2u, prod))
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FC, x::AbstractVector{T}) where {FC <: FGMCopula, T <: Real}
-    d = length(fgm)
-    θ = fgm.θ
+function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d,Tθ}, x::AbstractVector{T}) where {d,Tθ, T <: Real}
     if d == 2
-        u = rand(rng)
-        t = rand(rng)
+        u = rand(rng, T)
+        t = rand(rng, T)
         a = 1.0 .+ fgm.θ .* (1.0-2.0*u)
         b = sqrt.(a.^2 .-4.0 .*(a .-1.0).*t)
         v = (2.0 .*t) ./(b .+ a)
@@ -92,13 +82,13 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FC, x::Abstra
         x[2] = v[1]
         return x
     elseif d > 2
-        I = zeros(d)
+        I = zeros(T,d)
         for i in 1:d
-            term = reduce_over_combinations(I,fgm.θ,d,x -> (-1)^sum(x))
+            term = reduce_over_combinations(fgm, I, x -> (-1)^sum(x))
             I[i] = rand(rng) < (1 / 2^d) * (1 + term)
         end
-        V0 = rand(d)
-        V1 = rand(d)
+        V0 = rand(rng, d)
+        V1 = rand(rng, d)
         for j in 1:d
             U_j = 1-sqrt(1-V0[j])*(1-V1[j])^(I[j])
             x[j] = U_j
