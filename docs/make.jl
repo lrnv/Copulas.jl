@@ -30,7 +30,6 @@ makedocs(;
         "Exemples" => [
             "exemples/fitting_sklar.md",
             "exemples/turing.md",
-            "exemples/bayesian_williamson.md"
         ],
         "Reference" => "reference.md"
     ],
