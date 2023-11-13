@@ -34,16 +34,13 @@ struct FGMCopula{d, Tθ} <: Copula{d}
         if  all(θ .== 0)
             return IndependentCopula(d)
         end
-        # Check restrictions on parameters
-        if any(abs.(vθ) .> 1)
-            throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
-        end
-        if length(vθ) != 2^d - d - 1
-            throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
-        end
+        # Check first restrictions on parameters
+        any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
+        length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
+        # Last check: 
         rez = new{d, typeof(vθ)}(vθ)
-        for epsilon in collect(Base.product(fill([-1, 1], d)...))
-            if 1 + reduce_over_combinations(rez,epsilon,prod) < 0
+        for epsilon in Base.product(fill([-1, 1], d)...)
+            if 1 + _reduce_over_combinations(rez,epsilon,prod) < 0
                 throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
             end
         end
@@ -51,7 +48,7 @@ struct FGMCopula{d, Tθ} <: Copula{d}
     end
 end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
-function reduce_over_combinations(C::FGMCopula{d,Tθ}, vector_to_combine, reducer_function) where {d,Tθ}
+function _reduce_over_combinations(C::FGMCopula{d,Tθ}, vector_to_combine, reducer_function) where {d,Tθ}
     # This version of the reductor is non-allocative, which is much better in terms of performance. 
     # Moreover, since $d$ is a type parameter the loop will fold out at compile time :)
     rez = zero(eltype(vector_to_combine))
@@ -66,10 +63,10 @@ function reduce_over_combinations(C::FGMCopula{d,Tθ}, vector_to_combine, reduce
     return rez
 end
 function _cdf(fgm::FGMCopula, u::Vector{T}) where {T}
-    return prod(u) * (1 + reduce_over_combinations(fgm, 1 .-u, prod))
+    return prod(u) * (1 + _reduce_over_combinations(fgm, 1 .-u, prod))
 end
 function Distributions._logpdf(fgm::FGMCopula, u::Vector{T}) where {T}
-    return log1p(reduce_over_combinations(fgm, 1 .-2u, prod))
+    return log1p(_reduce_over_combinations(fgm, 1 .-2u, prod))
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d,Tθ}, x::AbstractVector{T}) where {d,Tθ, T <: Real}
     if d == 2
@@ -84,7 +81,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d,T
     elseif d > 2
         I = zeros(T,d)
         for i in 1:d
-            term = reduce_over_combinations(fgm, I, x -> (-1)^sum(x))
+            term = _reduce_over_combinations(fgm, I, x -> (-1)^sum(x))
             I[i] = rand(rng) < (1 / 2^d) * (1 + term)
         end
         V0 = rand(rng, d)
@@ -99,14 +96,14 @@ end
 τ(fgm::FGMCopula) = (2*fgm.θ[1])/9
 function τ⁻¹(::Type{FGMCopula}, τ)
     if any(τ .< -2/9 .|| τ .> 2/9)
-        println("For the FGM copula, tau must be in [-2/9, 2/9].")
+        throw(ArgumentError("For the FGM copula, tau must be in [-2/9, 2/9]."))
     end
     return max.(min.(9 * τ / 2, 1), -1)
 end
-ρ(fgm::FGMCopula) = (1*fgm.θ)/3
+ρ(fgm::FGMCopula) = (1*fgm.θ)/3 # this is weird as it will return a vector ? 
 function ρ⁻¹(::Type{FGMCopula}, ρ)
     if any(ρ .< -1/3 .|| ρ .> 1/9)
-        println("For the FGM copula, rho must be in [-1/3, 1/3].")
+        throw(ArgumentError("For the FGM copula, rho must be in [-1/3, 1/3]."))
     end
     return max.(min.(3 * ρ, 1), -1)
 end
