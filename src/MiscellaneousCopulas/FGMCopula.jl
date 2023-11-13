@@ -70,11 +70,11 @@ end
 Base.eltype(::FGMCopula{d,T}) where {d,T} = T
 function func_aux(vectors,d)
     # Helper function to calculate all possible combinations of uᵢ
-    products = Vector{T}() ###################################################################### <<<<<------ Please change this
+    products = Vector{eltype(vectors)}() ###################################################################### <<<<<------ Please change this
     # Iterate over all possible combinations of k elements, for k = 2, 3, ..., d
     for k in 2:d
       # Iterate over all possible combinations of k elements in u
-      for indices in combinations(1:d, k)
+      for indices in Combinatorics.combinations(1:d, k)
         #Calculate the product of the u values in the combination
         product = prod(vectors[indices])
         # Add the product to the product vector
@@ -83,18 +83,16 @@ function func_aux(vectors,d)
     end
     return products
 end
-function Distributions.cdf(fgm::FGMCopula, u::Vector{T}) where {T}
+function _cdf(fgm::FGMCopula, u::Vector{T}) where {T}
     d = length(fgm)
-    check_dim(fgm,u)
     term1 = prod(u)
     term2 = sum(fgm.θ .* func_aux(1 .-u,d))
     return term1 * (1+term2)
 end
-function Distributions.pdf(fgm::FGMCopula, u::Vector{T}) where {T}
+function Distributions._logpdf(fgm::FGMCopula, u::Vector{T}) where {T}
     d = length(fgm)
-    check_dim(fgm,u)
     term = sum(fgm.θ .* func_aux(1 .- 2u,d))
-    return 1+term
+    return log1p(term)
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FC, x::AbstractVector{T}) where {FC <: FGMCopula, T <: Real}
     d = length(fgm)

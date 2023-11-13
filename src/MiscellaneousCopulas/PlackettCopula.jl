@@ -56,7 +56,7 @@ end
 Base.eltype(S::PlackettCopula{P}) where {P} = P # this shuold be P. 
 
 # CDF calculation for bivariate Plackett Copula
-function Distributions.cdf(S::PlackettCopula{P}, uv) where {P}
+function _cdf(S::PlackettCopula{P}, uv) where {P}
     u, v = uv
     η = S.θ - 1
     term1 = 1 + η * (u + v)

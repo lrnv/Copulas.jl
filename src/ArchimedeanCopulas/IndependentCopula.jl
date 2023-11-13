@@ -23,7 +23,7 @@ IndependentCopula(d) = IndependentCopula{d}()
 function Distributions._logpdf(C::IndependentCopula{d},u) where d
     return all(0 .<= u .<= 1) ? zero(eltype(u)) : -Inf
 end
-function Distributions.cdf(C::IndependentCopula{d},u) where d
+function _cdf(C::IndependentCopula{d},u) where d
     return prod(u)
 end
 ϕ(::IndependentCopula,t) = exp(-t)

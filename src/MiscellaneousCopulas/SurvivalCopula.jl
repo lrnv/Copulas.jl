@@ -45,7 +45,7 @@ function reverse(u,idx)
     reverse!(v,idx)
     return v
 end
-Distributions.cdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI} = Distributions.cdf(C.C,reverse(u,C.indices))
+_cdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI} = _cdf(C.C,reverse(u,C.indices))
 Distributions._logpdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI} = Distributions._logpdf(C.C,reverse(u,C.indices))
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,VI}, x::AbstractVector{T}) where {d,CT,VI,T}
     Distributions._rand!(rng,C.C,x)

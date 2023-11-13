@@ -52,7 +52,7 @@ function Distributions.fit(::Type{CT},u) where {CT<:GaussianCopula}
     return GaussianCopula(Σ)
 end
 
-function Distributions.cdf(C::CT,u) where {CT<:GaussianCopula} 
+function _cdf(C::CT,u) where {CT<:GaussianCopula} 
     x = StatsBase.quantile.(Distributions.Normal(),u)
     d = length(C)
     T = eltype(u)

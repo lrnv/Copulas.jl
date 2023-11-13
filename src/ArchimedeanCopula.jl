@@ -40,8 +40,7 @@ If you only know the generator of your copula, take a look at WilliamsonCopula t
 If on the other hand you have a univaraite positive random variable with no atom at zero, then the williamson transform can produce an archimdean copula out of it, with the same constructor. 
 """
 abstract type ArchimedeanCopula{d} <: Copula{d} end
-function Distributions.cdf(C::CT,u) where {CT<:ArchimedeanCopula} 
-    @assert length(C) == length(u) 
+function _cdf(C::CT,u) where {CT<:ArchimedeanCopula} 
     sum_ϕ⁻¹u = 0.0
     for us in u
         sum_ϕ⁻¹u += ϕ⁻¹(C,us)
