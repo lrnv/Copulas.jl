@@ -23,7 +23,7 @@ true_θ₁ = 1
 true_θ₂ = 3
 true_θ₃ = 2
 D = SklarDist(ClaytonCopula(3,true_θ), (Exponential(true_θ₁), Pareto(true_θ₂), Exponential(true_θ₃)))
-draws = rand(D, 5_000)
+draws = rand(D, 500)
 
 @model function copula(X)
     # Priors
@@ -44,7 +44,7 @@ draws = rand(D, 5_000)
 end
 
 sampler = NUTS() # MH() works too
-chain = sample(copula(draws), sampler, MCMCThreads(), 1_000, 4)
+chain = sample(copula(draws), sampler, MCMCThreads(), 100, 4)
 plot(chain)
 ```
 
