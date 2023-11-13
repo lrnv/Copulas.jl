@@ -35,10 +35,3 @@ function make_cor!(Σ)
         end
     end
 end
-
-# Deprecated in favor of the Hcubature version that is more generic
-# function Distributions.cdf(C::CT,u) where {CT<:EllipticalCopula} 
-#     @assert length(C) == length(u) 
-#     x = quantile.(U(CT),u)
-#     return Distributions.cdf(N(CT)(C.Σ),x)
-# end
