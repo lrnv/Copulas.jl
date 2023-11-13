@@ -68,30 +68,31 @@ struct FGMCopula{d, T} <: Copula{d}
     end 
 end
 Base.eltype(::FGMCopula{d,T}) where {d,T} = T
-function func_aux(vectors,d)
-    # Helper function to calculate all possible combinations of uᵢ
-    products = zeros(eltype(vectors),2^d-d-1)
+function reduce_over_combinations(vector_to_combine,coefficients,d,reducer_function)
+    rez = zero(eltype(vector_to_combine))
     # Iterate over all possible combinations of k elements, for k = 2, 3, ..., d
     i = 1
     for k in 2:d
       # Iterate over all possible combinations of k elements in u
       for indices in Combinatorics.combinations(1:d, k)
         #Calculate the product of the u values in the combination
-        products[i] = prod(vectors[indices])
+        rez += coefficients[i] * reducer_function(vector_to_combine[indices])
         i = i+1
       end
     end
-    return products
+    return rez
 end
 function _cdf(fgm::FGMCopula, u::Vector{T}) where {T}
     d = length(fgm)
     term1 = prod(u)
-    term2 = sum(fgm.θ .* func_aux(1 .-u,d))
+    # term2 = sum(fgm.θ .* func_aux(1 .-u,d))
+    term2 = reduce_over_combinations(1 .-u,fgm.θ,d,prod)
     return term1 * (1+term2)
 end
 function Distributions._logpdf(fgm::FGMCopula, u::Vector{T}) where {T}
     d = length(fgm)
-    term = sum(fgm.θ .* func_aux(1 .- 2u,d))
+    # term = sum(fgm.θ .* func_aux(1 .- 2u,d))
+    term= reduce_over_combinations(1 .-2u,fgm.θ,d,prod)
     return log1p(term)
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FC, x::AbstractVector{T}) where {FC <: FGMCopula, T <: Real}
@@ -109,20 +110,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FC, x::Abstra
     elseif d > 2
         I = zeros(d)
         for i in 1:d
-            if length(θ) != 2^d - d - 1
-                throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
-            end
-            signs = zeros(T,2^d-d-1)
-            # iterate on all possible combinations of k elements, for k = 2,3... di. 
-            j = 1
-            for k in 2:d
-                for indices in Combinatorics.combinations(1:d, k)
-                    # Compute sum of vectors in the combination, exposent of the sign: 
-                    signs[j] = (-1)^sum(I[indices])
-                    j = i+1
-                end
-            end
-            term = sum(signs .* θ)
+            term = reduce_over_combinations(I,fgm.θ,d,x -> (-1)^sum(x))
             I[i] = rand(rng) < (1 / 2^d) * (1 + term)
         end
         V0 = rand(d)
