@@ -42,23 +42,23 @@ struct FGMCopula{d, T} <: Copula{d}
             return IndependentCopula(d)
         end
         if any(abs.(vθ) .> 1)
-            throw(ArgumentError("each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
+            throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         end
         if length(vθ) != 2^d - d - 1
             throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
         end
-        # Verificar las restricciones en los parámetros
+        # CHeck restrictions on parameters
         for epsilon in collect(Base.product(fill([-1, 1], d)...))
-            # Llamar a la función para generar el vector de coeficientes
-            coefficients_vector = Vector{Int}() ################################################## <<<<<------ Please change this
-    
+            # Generate all combinations : 
+            coefficients_vector = zeros(Int,2^d-d-1)
+            i = 1
             for k in 2:d
                 for indices in Combinatorics.combinations(1:d, k)
-                    product = prod(epsilon[indices])
-                    push!(coefficients_vector, product)
+                    coefficients_vector[i] = prod(epsilon[indices])
+                    i = i+1
                 end
             end
-            # Calcular la combinación lineal
+            # Compute the linear comb: 
             resultado = 1+sum(vθ .* coefficients_vector)
             if resultado < 0
                 throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
@@ -70,15 +70,15 @@ end
 Base.eltype(::FGMCopula{d,T}) where {d,T} = T
 function func_aux(vectors,d)
     # Helper function to calculate all possible combinations of uᵢ
-    products = Vector{eltype(vectors)}() ###################################################################### <<<<<------ Please change this
+    products = zeros(eltype(vectors),2^d-d-1)
     # Iterate over all possible combinations of k elements, for k = 2, 3, ..., d
+    i = 1
     for k in 2:d
       # Iterate over all possible combinations of k elements in u
       for indices in Combinatorics.combinations(1:d, k)
         #Calculate the product of the u values in the combination
-        product = prod(vectors[indices])
-        # Add the product to the product vector
-        push!(products, product)
+        products[i] = prod(vectors[indices])
+        i = i+1
       end
     end
     return products
@@ -107,22 +107,19 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FC, x::Abstra
         x[2] = v[1]
         return x
     elseif d > 2
-        # Itera sobre cada dimensión y decide el valor usando get_pmf
         I = zeros(d)
         for i in 1:d
             if length(θ) != 2^d - d - 1
                 throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
             end
-            # Asegurar que i sea un vector de enteros
-            signs = Vector{T}() ################################################################### <<<<<------ Please change this
-            # Iterar sobre todas las posibles combinaciones de k elementos, para k = 2, 3, ..., dim
+            signs = zeros(T,2^d-d-1)
+            # iterate on all possible combinations of k elements, for k = 2,3... di. 
+            j = 1
             for k in 2:d
-                # Iterar sobre todas las posibles combinaciones de k elementos en índices
                 for indices in Combinatorics.combinations(1:d, k)
-                    # Calcular la suma de los valores de los vectores en la combinación
-                    suma = sum(I[indices])
-                    # Agregar el signo al vector de signos
-                    push!(signs, (-1)^suma)
+                    # Compute sum of vectors in the combination, exposent of the sign: 
+                    signs[j] = (-1)^sum(I[indices])
+                    j = i+1
                 end
             end
             term = sum(signs .* θ)
