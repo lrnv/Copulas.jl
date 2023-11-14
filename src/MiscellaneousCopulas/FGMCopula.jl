@@ -95,15 +95,14 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d,T
 end
 τ(fgm::FGMCopula) = (2*fgm.θ[1])/9
 function τ⁻¹(::Type{FGMCopula}, τ)
-    check = all(-2/9 <= τi <= 2/9 for τi in τ)
-    if !check
+    if !all(-2/9 <= τi <= 2/9 for τi in τ)
         throw(ArgumentError("For the FGM copula, tau must be in [-2/9, 2/9]."))
     end
     return max.(min.(9 * τ / 2, 1), -1)
 end
 ρ(fgm::FGMCopula) = (1*fgm.θ)/3 # this is weird as it will return a vector ? 
 function ρ⁻¹(::Type{FGMCopula}, ρ)
-    if any(ρ .< -1/3 .|| ρ .> 1/9)
+    if !all(-1/3 <= ρi <= 1/3 for ρi in ρ)
         throw(ArgumentError("For the FGM copula, rho must be in [-1/3, 1/3]."))
     end
     return max.(min.(3 * ρ, 1), -1)
