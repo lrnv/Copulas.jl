@@ -109,8 +109,3 @@ If you want to contribute to the package, found a bug in it or simply want to ch
   url          = {https://doi.org/10.5281/zenodo.6652672}
 }
 ```
-
-
-```@docs
-Copulas
-```
