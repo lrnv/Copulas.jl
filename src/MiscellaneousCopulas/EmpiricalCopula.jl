@@ -29,7 +29,7 @@ function EmpiricalCopula(u;pseudos=true)
     end
     return EmpiricalCopula{d,typeof(u)}(u)
 end
-function Distributions.cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
+function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return mean(all(C.u .<= u,dims=1)) # might not be very efficient implementation. 
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula{d,MT}, x::AbstractVector{T}) where {d,MT,T<:Real}

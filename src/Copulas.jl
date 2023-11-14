@@ -12,6 +12,7 @@ module Copulas
     import Cubature
     import MvNormalCDF
     import WilliamsonTransforms
+    import Combinatorics
 
     # Standard copulas and stuff. 
     include("utils.jl")
@@ -27,11 +28,13 @@ module Copulas
     include("MiscellaneousCopulas/SurvivalCopula.jl")
     include("MiscellaneousCopulas/PlackettCopula.jl")
     include("MiscellaneousCopulas/EmpiricalCopula.jl")
+    include("MiscellaneousCopulas/FGMCopula.jl")
     export MCopula,
            WCopula,
            SurvivalCopula,
            PlackettCopula,
-           EmpiricalCopula
+           EmpiricalCopula,
+           FGMCopula
 
     # Elliptical copulas
     include("EllipticalCopula.jl")
