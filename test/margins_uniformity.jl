@@ -14,6 +14,8 @@
         FrankCopula(4,150),
         JoeCopula(3,7),
         GumbelCopula(4,7),
+        GumbelCopula(4,20),
+        GumbelCopula(4,100),
         GumbelBarnettCopula(3,0.7),
         InvGaussianCopula(4,0.05),
         InvGaussianCopula(3,8),
