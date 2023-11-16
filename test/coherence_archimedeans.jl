@@ -1,8 +1,5 @@
 
 @testitem "Test of coherence for archimedeans" begin
-
-    # This test checks that 
-
     using HypothesisTests, Distributions, Random
     Random.seed!(123)
     cops = (
@@ -27,16 +24,15 @@
     n = 1000
     spl = rand(n)
     spl2 = rand(n)
-    for (C,cdf_implemented) in cops
-        @show C
+    for (C,will_dist_has_a_cdf_implemented) in cops
         spl .= dropdims(sum(Copulas.ϕ⁻¹.(Ref(C),rand(C,n)),dims=1),dims=1)
-        W = Copulas.williamson_dist(C)
-        if cdf_implemented
-            pval = pvalue(ExactOneSampleKSTest(spl, W),tail=:right)
+        will_dist = Copulas.williamson_dist(C)
+        if will_dist_has_a_cdf_implemented
+            pval = pvalue(ExactOneSampleKSTest(spl, will_dist),tail=:right)
             @test pval > 0.01
         end
         # even without a cdf we can still test approximately:
-        spl2 .= rand(W,n)
+        spl2 .= rand(will_dist,n)
         pval2 = pvalue(ApproximateTwoSampleKSTest(spl,spl2),tail=:right)
         @test pval2 > 0.01
     end
