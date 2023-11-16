@@ -27,15 +27,17 @@ end
 
 @testitem "sample" begin
     using StatsBase, Random
+    using StableRNGs
+    rng = StableRNG(123)
     n = 10^5
     θ = [-0.5, 2, 10]
     
     for ϑ in θ
         c = ClaytonCopula(2,ϑ)
         # if ϑ < 0
-        #     @test_broken rand(c,n)
+        #     @test_broken rand(rng,c,n)
         # else
-            u = rand(c, n)
+            u = rand(rng,c, n)
             @test corkendall(u') ≈ [1.0 Copulas.τ(c); Copulas.τ(c) 1.0] atol = 0.01
         # end
     end

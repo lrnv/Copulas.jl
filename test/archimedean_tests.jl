@@ -1,7 +1,8 @@
 
 @testitem "Test of τ ∘ τ_inv bijection" begin
-    using Random 
-    Random.seed!(123)
+    using Random
+    using StableRNGs
+    rng = StableRNG(123)
     taus = [0.0, 0.1, 0.5, 0.9, 1.0]
 
     for T in (
@@ -22,64 +23,76 @@ end
 
 
 @testitem "AMHCopula - Test sampling all cases" begin
+    using StableRNGs
+    rng = StableRNG(123)
     for d in 2:10
-        for θ ∈ [-1.0,-rand(),0.0,rand()]
-            rand(AMHCopula(d,θ),10)
+        for θ ∈ [-1.0,-rand(rng),0.0,rand(rng)]
+            rand(rng,AMHCopula(d,θ),10)
         end
     end
     @test true
 end
 @testitem "ClaytonCopula - Test sampling all cases" begin
-    using Random
-    Random.seed!(123) # to avoid weird bug on 1.6
-    rand(ClaytonCopula(2,-1),10)
+    using StableRNGs
+    rng = StableRNG(123)
+    rand(rng,ClaytonCopula(2,-1),10)
     for d in 2:10
-        for θ ∈ [-1/(d-1) * rand(),0.0,-log(rand()), Inf]
-            rand(ClaytonCopula(d,θ),10)
+        for θ ∈ [-1/(d-1) * rand(rng),0.0,-log(rand(rng)), Inf]
+            rand(rng,ClaytonCopula(d,θ),10)
         end
     end
     @test true
 end
 @testitem "FrankCopula - Test sampling all cases" begin
-    rand(FrankCopula(2,-Inf),10)
-    rand(FrankCopula(2,log(rand())),10)
+    using StableRNGs
+    rng = StableRNG(123)
+    rand(rng,FrankCopula(2,-Inf),10)
+    rand(rng,FrankCopula(2,log(rand(rng))),10)
     for d in 2:10
-        for θ ∈ [0.0,rand(),1.0,-log(rand()), Inf]
-            rand(FrankCopula(d,θ),10)
+        for θ ∈ [0.0,rand(rng),1.0,-log(rand(rng)), Inf]
+            rand(rng,FrankCopula(d,θ),10)
         end
     end
     @test true
 end
 @testitem "GumbelCopula - Test sampling all cases" begin
+    using StableRNGs
+    rng = StableRNG(123)
     for d in 2:10
-        for θ ∈ [1.0,1-log(rand()), Inf]
-            rand(GumbelCopula(d,θ),10)
+        for θ ∈ [1.0,1-log(rand(rng)), Inf]
+            rand(rng,GumbelCopula(d,θ),10)
         end
     end
     @test true
 end
 @testitem "JoeCopula - Test sampling all cases" begin
+    using StableRNGs
+    rng = StableRNG(123)
     for d in 2:10
-        for θ ∈ [1.0,1-log(rand()), Inf]
-            rand(JoeCopula(d,θ),10)
+        for θ ∈ [1.0,1-log(rand(rng)), Inf]
+            rand(rng,JoeCopula(d,θ),10)
         end
     end
     @test true
 end
 
 @testitem "GumbelBarnettCopula - Test sampling all cases" begin
+    using StableRNGs
+    rng = StableRNG(123)
     for d in 2:10
-        for θ ∈ [0.0,rand(),1.0]
-            rand(GumbelBarnettCopula(d,θ),10)
+        for θ ∈ [0.0,rand(rng),1.0]
+            rand(rng,GumbelBarnettCopula(d,θ),10)
         end
     end
     @test true
 end
 
 @testitem "InvGaussianCopula - Test sampling all cases" begin
+    using StableRNGs
+    rng = StableRNG(123)
     for d in 2:10
-        for θ ∈ [rand(),1.0, Inf]
-            rand(InvGaussianCopula(d,θ),10)
+        for θ ∈ [rand(rng),1.0, Inf]
+            rand(rng,InvGaussianCopula(d,θ),10)
         end
     end
     @test true
