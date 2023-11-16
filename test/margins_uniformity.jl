@@ -1,6 +1,6 @@
 @testitem "Test samples have uniform maginals in [0,1]" begin
     using HypothesisTests, Distributions, Random
-    Random.seed!(123)
+    Random.seed!(1234)
     cops = (
         # true represent the fact that cdf(williamson_dist(C),x) is defined or not. 
         AMHCopula(3,0.6),
