@@ -13,6 +13,7 @@ module Copulas
     import MvNormalCDF
     import WilliamsonTransforms
     import Combinatorics
+    import LogExpFunctions
 
     # Standard copulas and stuff. 
     include("utils.jl")
