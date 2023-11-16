@@ -60,9 +60,10 @@ end
 end
 
 @testitem "PlackettCopula Sampling" begin
-    using Random
+    using StableRNGs
+    rng = StableRNG(123)
     n_samples = 100
     C = PlackettCopula(0.8)
-    samples = rand(C, n_samples)
+    samples = rand(rng,C, n_samples)
     @test size(samples) == (2, n_samples)
 end

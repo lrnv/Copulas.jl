@@ -1,6 +1,7 @@
 @testitem "Test samples have uniform maginals in [0,1]" begin
     using HypothesisTests, Distributions, Random
-    Random.seed!(1234)
+    using StableRNGs
+    rng = StableRNG(123)
     cops = (
         # true represent the fact that cdf(williamson_dist(C),x) is defined or not. 
         AMHCopula(3,0.6),
@@ -32,7 +33,7 @@
         nfail = 0
         d = length(C)
         @show C
-        spl = rand(C,n)
+        spl = rand(rng,C,n)
         @assert all(0 <= x <= 1 for x in spl)
         for i in 1:d
             @test pvalue(ApproximateOneSampleKSTest(spl[i,:], U),tail=:right) > 0.01 # quite weak but enough at these samples sizes to detect really bad behaviors.

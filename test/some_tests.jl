@@ -2,8 +2,10 @@
     
     using Distributions
     using Random
+    using StableRNGs
+    rng = StableRNG(123)
     MyD = SklarDist(ClaytonCopula(3,7),(LogNormal(),Pareto(),Beta()))
-    u = rand(MyD,10000)
+    u = rand(rng,MyD,10000)
     rand!(MyD,u)
     fit(SklarDist{ClaytonCopula,Tuple{LogNormal,Pareto,Beta}},u)
     fit(SklarDist{GaussianCopula,Tuple{LogNormal,Pareto,Beta}},u)
@@ -24,7 +26,7 @@ end
 #     M1 = Beta(2,3)
 #     M2 = LogNormal(2,3)
 #     D = SklarDist(C,(M1,M2))
-#     X = rand(D,1000)
+#     X = rand(rng,D,1000)
 #     loglikelihood(D,X)
 #     fit(SklarDist{TCopula,Tuple{Beta,LogNormal}},X) # should give a very high \nu for the student copula. 
 # end
@@ -117,6 +119,8 @@ end
 @testitem "working measure" begin 
     using Distributions
     using Random
+    using StableRNGs
+    rng = StableRNG(123)
     
     for C in (ClaytonCopula(4,7.0),GumbelCopula(2, 1.2))
         d = length(C)
@@ -126,8 +130,8 @@ end
         @test Copulas.measure(C,u,v) >= 0
         
         for i in 1:d
-            u[i] = rand()
-            v[i] = u[i] + rand()*(1-u[i])
+            u[i] = rand(rng)
+            v[i] = u[i] + rand(rng)*(1-u[i])
         end
         @test Copulas.measure(C,u,v) >= 0
     end
@@ -140,8 +144,8 @@ end
         @test_broken Copulas.measure(C,u,v) >= 0
         
         for i in 1:d
-            u[i] = rand()
-            v[i] = u[i] + rand()*(1-u[i])
+            u[i] = rand(rng)
+            v[i] = u[i] + rand(rng)*(1-u[i])
         end
         @test_broken Copulas.measure(C,u,v) >= 0
     end

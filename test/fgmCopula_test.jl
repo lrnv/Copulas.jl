@@ -20,11 +20,13 @@ end
 end
 
 @testset "FGMCopula PDF" begin
+    using StableRNGs
+    rng = StableRNG(123)
     examples = [
         ([0.1, 0.2, 0.3], [1.308876232, 1e-4], [0.1,0.2,0.5,0.4]),
         ([0.5, 0.4, 0.3], [1.024123232, 1e-4], [0.3,0.3,0.3,0.3]),
         ([0.1, 0.1], [0.01, 1e-4], 0.0),
-        ([0.5, 0.4], [1, 1e-4], rand()),
+        ([0.5, 0.4], [1, 1e-4], rand(rng)),
     ]
     
     for (u, expected) in examples
@@ -34,8 +36,10 @@ end
 end
 
 @testitem "FGMCopula Sampling" begin
+    using StableRNGs
+    rng = StableRNG(123)
     n_samples = 100
     F = FGMCopula(3,[0.1,0.2,0.3,0.4])
-    samples = rand(F, n_samples)
+    samples = rand(rng,F, n_samples)
     @test size(samples) == (3, n_samples)
 end
