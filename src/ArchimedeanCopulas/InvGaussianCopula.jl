@@ -24,7 +24,7 @@ It has a few special cases:
 struct InvGaussianCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function InvGaussianCopula(d,θ)
-        if θ <= 0
+        if θ < 0
             throw(ArgumentError("Theta must be non-negative."))
         elseif θ == 0
             return IndependentCopula(d)
