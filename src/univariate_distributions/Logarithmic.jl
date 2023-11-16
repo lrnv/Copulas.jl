@@ -1,10 +1,9 @@
 # Corresponds to https://en.wikipedia.org/wiki/Logarithmic_distribution
 struct Logarithmic{T<:Real} <: Distributions.DiscreteUnivariateDistribution
-    α::T # in (0,1)
+    α::T # in (0,1), the weight of the logarithmic distribution.
     h::T # = ln(1-α), so in (-Inf,0)
     function Logarithmic(h::T) where {T <: Real}
         Tf = promote_type(T,Float64)
-        # bigfloats precompute to avoid underflow: 
         α = -expm1(h)
         return new{Tf}(Tf(α), Tf(h))
     end

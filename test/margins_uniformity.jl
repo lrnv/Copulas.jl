@@ -1,4 +1,3 @@
-
 @testitem "Test samples have uniform maginals in [0,1]" begin
     using HypothesisTests, Distributions, Random
     Random.seed!(123)
