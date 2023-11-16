@@ -42,8 +42,9 @@ end
 end
 @testitem "FrankCopula - Test sampling all cases" begin
     rand(FrankCopula(2,-Inf),10)
+    rand(FrankCopula(2,log(rand())),10)
     for d in 2:10
-        for θ ∈ [log(rand()),0.0,rand(),1.0,-log(rand()), Inf]
+        for θ ∈ [0.0,rand(),1.0,-log(rand()), Inf]
             rand(FrankCopula(d,θ),10)
         end
     end
