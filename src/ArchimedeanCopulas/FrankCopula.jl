@@ -40,7 +40,9 @@ end
 ϕ⁻¹(C::FrankCopula,       t) = C.θ > 0 ? LogExpFunctions.log1mexp(-C.θ) - LogExpFunctions.log1mexp(-t*C.θ) : -log(expm1(-t*C.θ)/expm1(-C.θ))
 
 # A bit of type piracy but should be OK : 
-LogExpFunctions.log1mexp(t::TaylorSeries.Taylor1) = log(-expm1(t))
+# LogExpFunctions.log1mexp(t::TaylorSeries.Taylor1) = log(-expm1(t))
+# Avoid type piracy by defiing it myself: 
+ϕ(  C::FrankCopula,       t::TaylorSeries.Taylor1) = C.θ > 0 ? -log(-expm1(LogExpFunctions.log1mexp(-C.θ)-t))/C.θ : -log1p(exp(-t) * expm1(-C.θ))/C.θ
 
 D₁ = GSL.sf_debye_1 # sadly, this is C code.
 # could be replaced by : 
