@@ -39,4 +39,4 @@ end
 ϕ⁻¹(C::ClaytonCopula,      t) = (t^(-C.θ)-1)/C.θ
 τ(C::ClaytonCopula) = ifelse(isfinite(C.θ), C.θ/(C.θ+2), 1)
 τ⁻¹(::Type{ClaytonCopula},τ) = ifelse(τ == 1,Inf,2τ/(1-τ))
-williamson_dist(C::ClaytonCopula{d,T}) where {d,T} = C.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/C.θ,1),d) : ClaytonWilliamsonDistribution(C.θ,d)
+williamson_dist(C::ClaytonCopula{d,T}) where {d,T} = C.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/C.θ,C.θ),d) : ClaytonWilliamsonDistribution(C.θ,d)
