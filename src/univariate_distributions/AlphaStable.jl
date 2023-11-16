@@ -29,7 +29,7 @@ function Distributions.rand(rng::Distributions.AbstractRNG, d::AlphaStable{T}) w
 # McCulloch's MATLAB implementation (1996) served as a reference in developing this code.
 # """
     α=d.α; β=d.β; sc=d.scale; loc=d.location
-    (α < 0.1 || α > 2) && throw(DomainError(α, "α must be in the range 0.1 to 2"))
+    (α <= 0 || α > 2) && throw(DomainError(α, "α must be in the range 0.1 to 2"))
     abs(β) > 1 && throw(DomainError(β, "β must be in the range -1 to 1"))
     # added eps(T) to prevent DomainError: x ^ y where x < 0
     ϕ = (rand(rng, T) - T(0.5)) * π * (one(T) - eps(T))

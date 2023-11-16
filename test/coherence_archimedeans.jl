@@ -17,6 +17,8 @@
         (FrankCopula(4,150), false),
         (JoeCopula(3,7), false),
         (GumbelCopula(4,7), false),
+        (GumbelCopula(4,20), false),
+        (GumbelCopula(4,100), false),
         (GumbelBarnettCopula(3,0.7),true),
         (InvGaussianCopula(4,0.05),true),
         (InvGaussianCopula(3,8),true)
