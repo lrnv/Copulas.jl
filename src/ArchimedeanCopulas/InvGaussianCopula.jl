@@ -41,7 +41,7 @@ end
 function τ(C::InvGaussianCopula)
 
     # Calculate the integral using an appropriate numerical integration method
-    result, _ = quadgk(-x * (((1 - C.θ * log(x))^2 - 1) / (2 * C.θ * (1 - C.θ * log(x)))),0,1)
+    result, _ = quadgk( x -> -x * (((1 - C.θ * log(x))^2 - 1) / (2 * C.θ * (1 - C.θ * log(x)))),0,1)
 
     return 1+4*result
 end
