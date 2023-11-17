@@ -39,22 +39,23 @@ end
 function τ(C::GumbelBarnettCopula)
     # Define the function to integrate
     f(x) = -x * (1 - C.θ * log(x)) * log(1 - C.θ * log(x)) / C.θ
-    
+    result = Distributions.expectation(f,Distributions.Uniform(0,1))
     # Calculate the integral using GSL
-    result, _ = gsl_integration_qags(f, 0.0, 1.0, [C.θ], 1e-7, 1000)
+    # result = 
+    # result, _ = GSL.integration_qags(f, 0.0, 1.0, [C.θ], 1e-7, 1000)
     
     return 1+4*result
 end
-function τ⁻¹(::Type{GumbelBarnettCopula}, τ)
-    if τ == zero(τ)
-        return τ
+function τ⁻¹(::Type{GumbelBarnettCopula}, tau)
+    if tau == zero(tau)
+        return tau
     end
     
     # Define an anonymous function that takes a value x and computes τ 
     #for a GumbelBarnettCopula with θ = x
-    τ_func(x) = τ(GumbelBarnettCopula{d, Float64}(x))
+    τ_func(x) = τ(GumbelBarnettCopula(2,x))
     
     # Use the bisection method to find the root
-    x = Roots.find_zero(x -> τ_func(x) - τ, (0.0, 1.0))    
+    x = Roots.find_zero(x -> τ_func(x) - tau, (0.0, 1.0))    
     return x
 end

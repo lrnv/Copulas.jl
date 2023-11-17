@@ -32,16 +32,25 @@ end
 ϕ(  C::AMHCopula,t) = (1-C.θ)/(exp(t)-C.θ)
 ϕ⁻¹(  C::AMHCopula,t) = log(C.θ + (1-C.θ)/t)
 
-τ(C::AMHCopula) = 1 - 2(C.θ+(1-C.θ)^2*log(1-C.θ))/(3C.θ^2) # no closed form inverse...
+τ(C::AMHCopula) = _amh_tau_f(C.θ) # no closed form inverse...
+
+_amh_tau_f(θ) = θ == 1 ? 1/3 : 1 - 2(θ+(1-θ)^2*log1p(-θ))/(3θ^2)
+
+# if θ = -1, we obtain (5 -8*log(2))/3 
+
 function τ⁻¹(::Type{AMHCopula},τ)
     if τ == zero(τ)
         return τ
     end
     if τ > 1/3
         @warn "AMHCopula cannot handle kendall tau's greater than 1/3. We capped it to 1/3."
-        return 1
+        return one(τ)
     end
-    return Roots.find_zero(θ -> 1 - 2(θ+(1-θ)^2*log(1-θ))/(3θ^2) - τ, (-1.0, 1.0))
+    if τ < (5 - 8*log(2))/3
+        @warn "AMHCopula cannot handle kendall tau's smaller than (5- 8ln(2))/3 (approx -0.1817). We capped it to this value."
+        return -one(τ)
+    end
+    return Roots.find_zero(θ -> _amh_tau_f(θ) - τ, (-one(τ), one(τ)))
 end
 williamson_dist(C::AMHCopula{d,T}) where {d,T} = C.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-C.θ),d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
 

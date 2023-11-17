@@ -16,6 +16,10 @@ The two Frechet-Hoeffding bounds are also Archimedean copulas, although this lin
 struct WCopula{d} <: Copula{d} end
 WCopula(d) = WCopula{d}()
 _cdf(::WCopula{d},u) where {d} = max(1 + sum(u)-d,0)
+function Distributions._logpdf(C::WCopula{d}, u) where {d}
+    @assert d == 2
+    return u[1] + u[2] == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
+end
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::WCopula{d}, x::AbstractVector{T}) where {d,T<:Real}
     @assert d==2
     x[1] = rand(rng)

@@ -28,6 +28,8 @@ struct InvGaussianCopula{d,T} <: ArchimedeanCopula{d}
             throw(ArgumentError("Theta must be non-negative."))
         elseif θ == 0
             return IndependentCopula(d)
+        elseif isinf(θ)
+            throw(ArgumentError("Theta cannot be infinite"))
         else
             return new{d,typeof(θ)}(θ)
         end
@@ -51,7 +53,7 @@ function τ⁻¹(::Type{InvGaussianCopula}, τ)
     end
 
     # Define an anonymous function that takes a value x and computes τ for an InvGaussianCopula copula with θ = x
-    τ_func(x) = τ(InvGaussianCopula{d, Float64}(x))
+    τ_func(x) = τ(InvGaussianCopula{2, Float64}(x))
 
     # Set an initial value for x₀ (adjustable)
     x₀ = (1-τ)/4

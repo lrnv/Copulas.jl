@@ -22,7 +22,8 @@ struct GumbelCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function GumbelCopula(d,θ)
         if θ < 1
-            throw(ArgumentError("Theta must be greater than 1"))
+            @show θ
+            throw(ArgumentError("Theta must be greater than or equal to 1"))
         elseif θ == 1
             return IndependentCopula(d)
         elseif θ == Inf
@@ -35,7 +36,18 @@ end
 ϕ(  C::GumbelCopula,       t) = exp(-t^(1/C.θ))
 ϕ⁻¹(C::GumbelCopula,       t) = (-log(t))^C.θ
 τ(C::GumbelCopula) = ifelse(isfinite(C.θ), (C.θ-1)/C.θ, 1)
-τ⁻¹(::Type{GumbelCopula},τ) =ifelse(τ == 1, Inf, 1/(1-τ))
+function τ⁻¹(::Type{GumbelCopula},τ) 
+    if τ == 1
+        return Inf
+    else
+        θ = 1/(1-τ)
+        if θ < 1
+            @warn "GumbelCopula cannot handle negative kendall tau's, returning independence.."
+            return 1
+        end
+        return θ
+    end
+end
 williamson_dist(C::GumbelCopula{d,T}) where {d,T} = WilliamsonFromFrailty(AlphaStable(α = 1/C.θ, β = 1,scale = cos(π/(2C.θ))^C.θ, location = (C.θ == 1 ? 1 : 0)), d)
 
 
