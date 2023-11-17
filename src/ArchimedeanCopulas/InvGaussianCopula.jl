@@ -50,7 +50,7 @@ function τ⁻¹(::Type{InvGaussianCopula}, tau)
         return tau
     end
     if tau < 0
-        @warn "GumbelBarnettCopula cannot handle negative dependencies, returning independence..."
+        @warn "InvGaussianCopula cannot handle negative dependencies, returning independence..."
         return zero(τ)
     end
 
