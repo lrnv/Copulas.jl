@@ -39,36 +39,36 @@ The Archimedean API is modular:
 If you only know the generator of your copula, take a look at WilliamsonCopula that allows to generate automatically the associated williamson distribution. 
 If on the other hand you have a univaraite positive random variable with no atom at zero, then the williamson transform can produce an archimdean copula out of it, with the same constructor. 
 """
-abstract type ArchimedeanCopula{d} <: Copula{d} end
+struct ArchimedeanCopula{d,TG} <: Copula{d}
+    G::TG
+    function ArchimedeanCopula(d::Int,G::Generator)
+        @assert d <= max_monotony(G) "The generator you provided is not d-monotonous according to its max_monotonicity property, and thus this copula does not exists."
+        return ArchimedeanCopula{d,typeof(G)}(G)
+    end
+    # three special cases: 
+    ArchimedeanCopula(d,::WGenerator) = WCopula(d)
+    ArchimedeanCopula(d,::IndependentGenerator) = IndependentCopula(d)
+    ArchimedeanCopula(d,::MGenerator) = MCopula(d)
+end
 function _cdf(C::CT,u) where {CT<:ArchimedeanCopula} 
     sum_ϕ⁻¹u = 0.0
     for us in u
-        sum_ϕ⁻¹u += ϕ⁻¹(C,us)
+        sum_ϕ⁻¹u += ϕ⁻¹(C.G,us)
     end
-    return ϕ(C,sum_ϕ⁻¹u)
+    return ϕ(C.G,sum_ϕ⁻¹u)
 end
-ϕ⁽¹⁾(C::CT, t) where {CT<:ArchimedeanCopula} = ForwardDiff.derivative(x -> ϕ(C,x), t)
-function ϕ⁽ᵈ⁾(C::ArchimedeanCopula{d},t) where d
-    X = TaylorSeries.Taylor1(eltype(t),d)
-    taylor_expansion = ϕ(C,t+X)
-    coef = TaylorSeries.getcoeff(taylor_expansion,d) # gets the dth coef. 
-    der = coef * factorial(d) # gets the dth derivative of $\phi$ taken in t. 
-    return der
-end
-function Distributions._logpdf(C::CT, u) where {CT<:ArchimedeanCopula}
-    d = length(C)
-    # @assert d == length(u) "Dimension mismatch"
+function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
     end
     sum_ϕ⁻¹u = 0.0
     sum_logϕ⁽¹⁾ϕ⁻¹u = 0.0
     for us in u
-        ϕ⁻¹u = ϕ⁻¹(C,us)
+        ϕ⁻¹u = ϕ⁻¹(C.G,us)
         sum_ϕ⁻¹u += ϕ⁻¹u
-        sum_logϕ⁽¹⁾ϕ⁻¹u += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
+        sum_logϕ⁽¹⁾ϕ⁻¹u += log(-ϕ⁽¹⁾(C.G,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
     end
-    numer = ϕ⁽ᵈ⁾(C, sum_ϕ⁻¹u)
+    numer = ϕ⁽ᵏ⁾(C.G, d, sum_ϕ⁻¹u)
     dimension_sign = iseven(d) ? 1.0 : -1.0 #need this for log since (-1.0)ᵈ ϕ⁽ᵈ⁾ ≥ 0.0
 
 
@@ -83,14 +83,10 @@ function Distributions._logpdf(C::CT, u) where {CT<:ArchimedeanCopula}
         return log(dimension_sign*numer) - sum_logϕ⁽¹⁾ϕ⁻¹u
     end
 end
-
-ϕ(C::ArchimedeanCopula{d},x) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
-ϕ⁻¹(C::ArchimedeanCopula{d},x) where d = Roots.find_zero(t -> ϕ(C,t) - x, (0.0, Inf))
-
-williamson_dist(C::ArchimedeanCopula{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
+_W(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G,d)
 function τ(C::ArchimedeanCopula)  
     @show C
-    return 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
+    return 4*Distributions.expectation(r -> ϕ(C,r), _W(C)) - 1
 end
 
 function _archi_rand!(rng,C::ArchimedeanCopula{d},R,x) where d
@@ -98,20 +94,20 @@ function _archi_rand!(rng,C::ArchimedeanCopula{d},R,x) where d
     r = rand(rng,R)
     sx = sum(x)
     for i in 1:d
-        x[i] = ϕ(C,r * x[i]/sx)
+        x[i] = ϕ(C.G,r * x[i]/sx)
     end
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:ArchimedeanCopula}
     # By default, we use the williamson sampling. 
     Random.randexp!(rng,x)
-    _archi_rand!(rng,C,williamson_dist(C),x)
+    _archi_rand!(rng,C.G,_W(C),x)
     return x
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real, CT<:ArchimedeanCopula}
     # More efficient version that precomputes the williamson transform on each call to sample in batches: 
     Random.randexp!(rng,A)
-    R = williamson_dist(C)
+    R = _W(C)
     for i in 1:size(A,2)
         _archi_rand!(rng,C,R,view(A,:,i))
     end

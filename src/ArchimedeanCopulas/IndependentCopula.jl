@@ -35,3 +35,10 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::IndependentCopula{d}, x::AbstractVector{T}) where {T<:Real,d}
     Random.rand!(rng,x)
 end
+
+
+######## maybe this should NOT be an archimedean copula, but rather stay with the W / Pi / M copulas in the miscelaneous stuff ? 
+######## Or on the other way around,maybe W Pi AND M should be in the archimdean class ? even if M is not really archimedean... 
+######## For M, the genreatormight have a weird head.. 
+
+

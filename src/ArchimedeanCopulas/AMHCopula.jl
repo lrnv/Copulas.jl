@@ -17,27 +17,11 @@ The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_importa
 It has a few special cases: 
 - When θ = 0, it is the IndependentCopula
 """
-struct AMHCopula{d,T} <: ArchimedeanCopula{d}
-    θ::T
-    function AMHCopula(d,θ)
-        if (θ < -1) || (θ >= 1)
-            throw(ArgumentError("Theta must be in [-1,1)"))
-        elseif θ == 0
-            return IndependentCopula(d)
-        else
-            return new{d,typeof(θ)}(θ)
-        end
-    end
-end
-ϕ(  C::AMHCopula,t) = (1-C.θ)/(exp(t)-C.θ)
-ϕ⁻¹(  C::AMHCopula,t) = log(C.θ + (1-C.θ)/t)
-
-τ(C::AMHCopula) = _amh_tau_f(C.θ) # no closed form inverse...
+const AMHCopula{d,T} = ArchimedeanCopula{d,AMHGenerator{T}}
+AMHCopula(d,θ) = ArchimedeanCopula(d,AMHGenerator(θ))
 
 _amh_tau_f(θ) = θ == 1 ? 1/3 : 1 - 2(θ+(1-θ)^2*log1p(-θ))/(3θ^2)
-
-# if θ = -1, we obtain (5 -8*log(2))/3 
-
+τ(C::AMHCopula) = _amh_tau_f(C.θ) # no closed form inverse...
 function τ⁻¹(::Type{AMHCopula},τ)
     if τ == zero(τ)
         return τ
@@ -52,6 +36,3 @@ function τ⁻¹(::Type{AMHCopula},τ)
     end
     return Roots.find_zero(θ -> _amh_tau_f(θ) - τ, (-one(τ), one(τ)))
 end
-williamson_dist(C::AMHCopula{d,T}) where {d,T} = C.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-C.θ),d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
-
-
