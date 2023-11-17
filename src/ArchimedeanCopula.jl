@@ -89,7 +89,6 @@ end
 
 williamson_dist(C::ArchimedeanCopula{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
 function τ(C::ArchimedeanCopula)  
-    @show C
     return 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
 end
 

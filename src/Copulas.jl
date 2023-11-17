@@ -3,7 +3,6 @@ module Copulas
     import Base
     import Random
     import SpecialFunctions
-    import GSL
     import Roots
     import Distributions
     import StatsBase
@@ -14,6 +13,7 @@ module Copulas
     import WilliamsonTransforms
     import Combinatorics
     import LogExpFunctions
+    import QuadGK
 
     # Standard copulas and stuff. 
     include("utils.jl")

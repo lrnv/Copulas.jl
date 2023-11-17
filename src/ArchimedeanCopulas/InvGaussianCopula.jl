@@ -38,26 +38,28 @@ end
 
 ϕ(  C::InvGaussianCopula,       t) = exp((1-sqrt(1+2*((C.θ)^(2))*t))/C.θ)
 ϕ⁻¹(C::InvGaussianCopula,       t) = ((1-C.θ*log(t))^(2)-1)/(2*(C.θ)^(2))
-
 function τ(C::InvGaussianCopula)
 
     # Calculate the integral using an appropriate numerical integration method
-    result, _ = quadgk( x -> (x*((1-C.θ*log(x))^2-1))/(-2*C.θ*(1-C.θ*log(x))),0,1)
+    result, _ = QuadGK.quadgk( x -> (x*((1-C.θ*log(x))^2-1))/(-2*C.θ*(1-C.θ*log(x))),0,1)
 
     return 1+4*result
 end
-function τ⁻¹(::Type{InvGaussianCopula}, τ)
-    if τ == zero(τ)
-        return τ
+function τ⁻¹(::Type{InvGaussianCopula}, tau)
+    if tau == zero(tau)
+        return tau
+    end
+    if tau < 0
+        @warn "GumbelBarnettCopula cannot handle negative dependencies, returning independence..."
+        return zero(τ)
     end
 
     # Define an anonymous function that takes a value x and computes τ for an InvGaussianCopula copula with θ = x
-    τ_func(x) = τ(InvGaussianCopula{2, Float64}(x))
+    τ_func(x) = τ(InvGaussianCopula(2,x))
 
     # Set an initial value for x₀ (adjustable)
-    x₀ = (1-τ)/4
-
-    return Roots.find_zero(x -> τ_func(x) - τ, x₀)
+    x = Roots.find_zero(x -> τ_func(x) - tau, (0.0, Inf))
+    return τ
 end
 
 williamson_dist(C::InvGaussianCopula{d,T}) where {d,T} = WilliamsonFromFrailty(Distributions.InverseGaussian(C.θ,1),d)

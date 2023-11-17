@@ -1,12 +1,13 @@
+
 @testitem "Test of τ ∘ τ_inv bijection" begin
     using Random
     taus = [0.0, 0.1, 0.5, 0.9, 1.0]
 
     for T in (
         # AMHCopula,
-        #ClaytonCopula,
+        ClaytonCopula,
         # FrankCopula,
-        #GumbelCopula,
+        GumbelCopula,
         # IndependentCopula,
         # JoeCopula,
          GumbelBarnettCopula,
@@ -42,11 +43,11 @@ end
     using StableRNGs
     using Distributions
     rng = StableRNG(123)
-    C = ClaytonCopula(2,-1)
-    data = rand(rng,C,100)
-    @test all(pdf(C,data) .>= 0)
-    @test all(0 .<= cdf(C,data) .<= 1)
-    fit(ClaytonCopula,data)
+    C0 = ClaytonCopula(2,-1)
+    data0 = rand(rng,C0,100)
+    @test all(pdf(C0,data0) .>= 0)
+    @test all(0 .<= cdf(C0,data0) .<= 1)
+    fit(ClaytonCopula,data0)
     for d in 2:10
         for θ ∈ [-1/(d-1) * rand(rng),0.0,-log(rand(rng)), Inf]
             C = ClaytonCopula(d,θ)
@@ -65,17 +66,17 @@ end
     rand(rng,FrankCopula(2,-Inf),10)
     rand(rng,FrankCopula(2,log(rand(rng))),10)
 
-    C = FrankCopula(2,-Inf)
-    data = rand(rng,C,100)
-    @test all(pdf(C,data) .>= 0)
-    @test all(0 .<= cdf(C,data) .<= 1)
-    @test_broken fit(FrankCopula,data)
+    C0 = FrankCopula(2,-Inf)
+    data0 = rand(rng,C0,100)
+    @test all(pdf(C0,data0) .>= 0)
+    @test all(0 .<= cdf(C0,data0) .<= 1)
+    @test_broken fit(FrankCopula,data0)
 
-    C = FrankCopula(2,log(rand(rng)))
-    data = rand(rng,C,100)
-    @test all(pdf(C,data) .>= 0)
-    @test all(0 .<= cdf(C,data) .<= 1)
-    @test_broken fit(FrankCopula,data)
+    C1 = FrankCopula(2,log(rand(rng)))
+    data1 = rand(rng,C1,100)
+    @test all(pdf(C1,data1) .>= 0)
+    @test all(0 .<= cdf(C1,data1) .<= 1)
+    @test_broken fit(FrankCopula,data1)
 
 
     for d in 2:10
@@ -95,7 +96,6 @@ end
     rng = StableRNG(123)
     for d in 2:10
         for θ ∈ [1.0,1-log(rand(rng)), Inf]
-            @show d,θ
             C = GumbelCopula(d,θ)
             data = rand(rng,C,100)
             @test all(pdf(C,data) .>= 0)
@@ -143,7 +143,6 @@ end
     rng = StableRNG(123)
     for d in 2:10
         for θ ∈ [rand(rng),1.0, -log(rand(rng))]
-            @show d,θ
             C = InvGaussianCopula(d,θ)
             data = rand(rng,C,100)
             @test all(pdf(C,data) .>= 0)
