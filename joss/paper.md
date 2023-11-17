@@ -7,46 +7,43 @@ authors:
   - name: Oskar Laverny
     orcid: 0000-0002-7508-999X
     corresponding: true
-    affiliation: "1, 2"
+    affiliation: 1
   - name: YOUR NAME
-    orcid: 0000-0000-0000-0000 YOUR ORCID
-    affiliation: "3, 4"
+    orcid: 0000-0000-0000-0000
+    affiliation: "2, 3" # must use "" if you have more than one.
 affiliations:
- - name: Aix-Marseille University
+ - name: SESSTIM, Aix Marseille University, Marseille, France
    index: 1
- - name: SESSTIM
-   index: 2
  - name: YOUR FIRST AFFILIATION
-   index: 3
+   index: 2
  - name: YOUR SECOND AFFILIATION
-   index: 4
+   index: 3
 date: 16 November 2023
 bibliography: paper.bib
 
 ---
-
+<!-- LTeX: language=en -->
 # Summary
 
-Copulas are functions that describe dependence structures of random vectors, without describing the univariate marginals. In statistics, it is sometimes useful to separate the two, the quality and/or quantity of information on these two objects might not be the same. This separation can be formally stated through Sklar's theorem: 
+Copulas are functions that describe dependence structures of random vectors, without describing their univariate marginals. In statistics, it is sometimes useful to separate the two, the quality and/or quantity of available information on these two objects might differ. This separation can be formally stated through Sklar's theorem: 
 
 **Theorem: existance and uniqueness of the copula [@sklar1959fonctions]:** For a given $d$-variate absolutely continuous random vector $\mathbf X$ with marginals $X_1,...X_d$, there exists a unique function $C$, the copula, such that $$F(\mathbf x) = C(F_1(x_1),...,F_d(x_d)),$$ where $F, F_1,...F_d$ are respectively the distributions functions of $\mathbf X, X_1,...X_d$.
 
-Copulas are broadly used in probability and statistics, with a wide range of applications from biostatistics, finance or medecine, to fuzzy logic, global sensitivity and broader analysis. A few standard theoretical references on the matter are [@joe1997], [@nelsen2006], [@joe2014] and [@durantePrinciplesCopulaTheory2015].
+Copulas are broadly used in probability and statistics, with a wide range of applications from biostatistics, finance or medecine, to fuzzy logic, global sensitivity and broader analysis. A few standard theoretical references on the matter are [@joe1997], [@nelsen2006], [@joe2014], and [@durantePrinciplesCopulaTheory2015].
 
-The Julia package `Copulas.jl` brings most standard [copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)) features into native Julia: random number generation, probability density function and distribution function evaluations, fitting, construction of multivariate models through Sklar's theorem, and many more related functionalities. Copulas being fundamentally random vectors, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API [@djl1; @djl2], the Julian standard for implementation of random variables and random vectors. This complience allows interoperability with other packages based on this API such as, e.g., [`Turing.jl`](https://github.com/TuringLang/Turing.jl) [@turing] and several others. 
+The Julia package `Copulas.jl` brings most standard [copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)) features into native Julia: random number generation, density and distribution function evaluations, fitting, construction of multivariate models through Sklar's theorem, and many more related functionalities. Copulas being fundamentally random vectors, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API [@djl1; @djl2], the Julian standard for implementation of random variables and random vectors. This complience allows interoperability with other packages based on this API such as, e.g., [`Turing.jl`](https://github.com/TuringLang/Turing.jl) [@turing] and several others. 
 
 # Statement of need
 
-The R package `copula` [@r_copula_citation1; @r_copula_citation2; @r_copula_citation3; @r_copula_citation4] is the gold standard when it comes to sampling, estimating, or simply working around dependence structures. However, in other languages the situation is not as good. 
-We bridge the gap in the Julian ecosystem with this package, that provides a Julia-native implmentation of several very-usefull computational routines. Due to the very flexible type system in Julia, our code as a never-seen-before expressiveness, which will increase its maintenability on the long-run. Since Julia as a first-class definition of numbers, the same code can sample copulas in `Float32`, `Float64`, [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl) or even directly `BigFloat`s without any more effort. Several other neat applications are discussed below in the example section of this paper, most of them are directly coming from the multiple dispatch principles of Julia.
+The R package `copula` [@r_copula_citation1; @r_copula_citation2; @r_copula_citation3; @r_copula_citation4] is the gold standard when it comes to sampling, estimating, or simply working around dependence structures. However, in other languages the situation is not as good. We bridge the gap in the Julian ecosystem with this package, that provides a Julia-native implementation of several computational routines. Due to the very flexible type system in Julia, our code as a never-seen-before expressiveness, which increase its usability and maintenability. type-stability also allows to sample in arbitrary precision without requiering more code. The several applications proposed below are mostly arising from the multiple dispatch principles of Julia.
 
-There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these packages functionality, `Copulas.jl` is clearly the must fully featured, and brings the complience with the rest of the ecosystem.
+There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality, `Copulas.jl` is clearly the must fully featured, and brings the complience with the broader ecosystem, a key feature.
 
 # Examples
 
 ## `SklarDist`, sampling and fitting
 
-We can exploit the `fit` function, which was already part of the `Distributions.jl`'s API, to simply fit a compound model to some dataset as follow: 
+We can exploit the `fit` function, which is part of the `Distributions.jl`'s API, to simply fit a compound model to some dataset as follows: 
 
 ```julia
 using Copulas, Distributions, Random
@@ -95,7 +92,7 @@ end
 
 ## The Archimedean API
 
-Archimedean copulas are a large family of copulas that has seen a lot of theoretical work. Among others, you may take a look at [@mcneilMultivariateArchimedeanCopulas2009b]. The package implements the williamson-d-transfrom sampling scheme for all archimdean copulas, including for example the `ClaytonCopula` with negative depndence parameter in any dimension, which is not implmeented anywhere else to our knowledge, not even in the R package `copula`. 
+Archimedean copulas are a huge family of copulas that has seen a lot of theoretical work. Among others, you may take a look at [@mcneilMultivariateArchimedeanCopulas2009b]. The package implements the Williamson-d-transfrom sampling scheme for all archimedean copulas, including for example the `ClaytonCopula` with negative dependence parameter in any dimension, which is a first to our knowledge. 
 
 The implementation of the clayton copula is actualy only a few lines of code: 
 
@@ -123,14 +120,14 @@ end
 williamson_dist(C::ClaytonCopula{d,T}) where {d,T} = C.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/C.θ,C.θ),d) : ClaytonWilliamsonDistribution(C.θ,d)
 ```
 
-But if you want to implmeent your own, not all the methods are necessary: 
+But if you want to sample from your own archimedean copula, not all the methods are necessary: 
 
 ```julia
 # Simply subset ArchimedeanCopula and provide the generator
 struct MyUnknownArchimedean{d,T} <: ArchimedeanCopula{d}
     θ::T
 end
-ϕ(C::MyUnknownArchimedean,t) = exp(-t*θ)
+ϕ(C::MyUnknownArchimedean,t) = exp(-t*C.θ)
 
 # You can now sample
 C = MyUnknownCopula{2,Float64}(3.0)
