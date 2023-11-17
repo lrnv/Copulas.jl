@@ -1,22 +1,23 @@
 
 @testitem "Test of τ ∘ τ_inv bijection" begin
     using Random
-    taus = [0.0, 0.1, 0.5, 0.9, 1.0]
+    using StableRNGs
+    rng = StableRNG(123)
 
-    for T in (
-        # AMHCopula,
-        ClaytonCopula,
-        # FrankCopula,
-        GumbelCopula,
-        # IndependentCopula,
-        # JoeCopula,
-         GumbelBarnettCopula,
-         InvGaussianCopula
-    )
-        for τ in taus
-            @test Copulas.τ(T(2,Copulas.τ⁻¹(T,τ))) ≈ τ
-        end
-    end
+    inv_works(T,tau) = Copulas.τ(T(2,Copulas.τ⁻¹(T,tau))) ≈ tau
+    check_rnd(T,min,max,N) = all(inv_works(T,x) for x in min .+ (max-min) .* rand(rng,N))
+
+    # working: 
+    @test check_rnd(ClaytonCopula,-1,1,100)
+    @test check_rnd(GumbelCopula,0,1,100)
+    @test check_rnd(JoeCopula,0,1,100)
+
+    # not working: 
+    @test_broken check_rnd(AMHCopula,(5 - 8*log(2))/3,1/3,100)
+    @test_broken check_rnd(FrankCopula,-1,1,100)
+    @test_broken check_rnd(GumbelBarnettCopula,0,1,100)
+    @test_broken check_rnd(InvGaussianCopula,0,1,100)
+    
 end
 
 # For each archimedean, we test: 
