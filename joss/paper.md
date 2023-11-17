@@ -145,14 +145,12 @@ loglikelyhood(C,spl)
 
 The automatic sampling uses [`WilliamsonTransformations.jl`](https://github.com/lrnv/WilliamsonTransforms.jl/) to compute the radial part automatically from an unknown generator. 
 
-## Uses from some other places. 
+## Broader ecosystem
 
 The package is starting to get used in several other places of the ecosystem. Among others, we noted: 
 
 - The package [`GlobalSensitivity.jl`](https://github.com/SciML/GlobalSensitivity.jl) exploit `Copulas.jl` to provide Shapley effects implementation, see [this documentation](https://docs.sciml.ai/GlobalSensitivity/stable/tutorials/shapley/). 
 - [`EconomicScenarioGenerators.jl`](https://github.com/JuliaActuary/EconomicScenarioGenerators.jl) uses depndence structures between financial assets. 
-
-There might be others in the future.
 
 
 # Acknowledgments
