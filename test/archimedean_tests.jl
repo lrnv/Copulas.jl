@@ -1,17 +1,16 @@
-
 @testitem "Test of τ ∘ τ_inv bijection" begin
     using Random
     taus = [0.0, 0.1, 0.5, 0.9, 1.0]
 
     for T in (
         # AMHCopula,
-        ClaytonCopula,
+        #ClaytonCopula,
         # FrankCopula,
-        GumbelCopula,
+        #GumbelCopula,
         # IndependentCopula,
         # JoeCopula,
-        # GumbelBarnettCopula,
-        # InvGaussianCopula
+         GumbelBarnettCopula,
+         InvGaussianCopula
     )
         for τ in taus
             @test Copulas.τ(T(2,Copulas.τ⁻¹(T,τ))) ≈ τ

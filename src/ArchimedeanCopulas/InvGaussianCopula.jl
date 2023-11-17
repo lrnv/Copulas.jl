@@ -38,6 +38,7 @@ end
 
 ϕ(  C::InvGaussianCopula,       t) = exp((1-sqrt(1+2*((C.θ)^(2))*t))/C.θ)
 ϕ⁻¹(C::InvGaussianCopula,       t) = ((1-C.θ*log(t))^(2)-1)/(2*(C.θ)^(2))
+
 function τ(C::InvGaussianCopula)
 
     # Calculate the integral using an appropriate numerical integration method
