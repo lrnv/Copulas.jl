@@ -44,10 +44,10 @@ end
 # Avoid type piracy by defiing it myself: 
 ϕ(  C::FrankCopula,       t::TaylorSeries.Taylor1) = C.θ > 0 ? -log(-expm1(LogExpFunctions.log1mexp(-C.θ)-t))/C.θ : -log1p(exp(-t) * expm1(-C.θ))/C.θ
 
-D₁ = GSL.sf_debye_1 # sadly, this is C code.
+# D₁ = GSL.sf_debye_1 # sadly, this is C code.
 # could be replaced by : 
 # using QuadGK
-# D₁(x) = quadgk(t -> t/(exp(t)-1), 0, x)[1]/x
+D₁(x) = QuadGK.quadgk(t -> t/(exp(t)-1), 0, x)[1]/x
 # to make it more general. but once gain, it requires changing the integrator at each evlauation, 
 # which is problematic. 
 # Better option is to try to include this function into SpecialFunctions.jl. 

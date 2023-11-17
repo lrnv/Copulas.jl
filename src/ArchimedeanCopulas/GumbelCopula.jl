@@ -22,7 +22,6 @@ struct GumbelCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function GumbelCopula(d,θ)
         if θ < 1
-            @show θ
             throw(ArgumentError("Theta must be greater than or equal to 1"))
         elseif θ == 1
             return IndependentCopula(d)
