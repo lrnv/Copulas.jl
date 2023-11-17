@@ -46,10 +46,6 @@ function τ⁻¹(::Type{GumbelBarnettCopula}, tau)
     if tau == zero(tau)
         return tau
     end
-    if tau < 0
-        @warn "GumbelBarnettCopula cannot handle negative dependencies, returning independence..."
-        return zero(τ)
-    end
     
     # Define an anonymous function that takes a value x and computes τ 
     #for a GumbelBarnettCopula with θ = x
