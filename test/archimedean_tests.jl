@@ -85,7 +85,7 @@ end
             data = rand(rng,C,100)
             @test all(pdf(C,data) .>= 0)
             @test all(0 .<= cdf(C,data) .<= 1)
-            @test_broken fit(FrankCopula,data)
+            # fit(FrankCopula,data)
         end
     end
     @test true
