@@ -38,7 +38,7 @@ end
 ϕ⁻¹(C::GumbelBarnettCopula,       t) = log(1-C.θ*log(t))
 function τ(C::GumbelBarnettCopula)
     # Use a numerical integration method to obtain tau
-    # result, _ = quadgk(x -> -((x-C.θ*x*log(x))*log(1-C.θ*ln(x))/C.θ), 0, 1)
+    result, _ = quadgk(x -> -((x-C.θ*x*log(x))*log(1-C.θ*ln(x))/C.θ), 0, 1)
     
     return 1+4*result
 end
