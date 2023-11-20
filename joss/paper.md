@@ -8,16 +8,14 @@ authors:
     orcid: 0000-0002-7508-999X
     corresponding: true
     affiliation: 1
-  - name: YOUR NAME
-    orcid: 0000-0000-0000-0000
-    affiliation: "2, 3" # must use "" if you have more than one.
+  - name: Santiago Jimenez
+    orcid: 0000-0002-8198-3656
+    affiliation: 2 # must use "" if you have more than one.
 affiliations:
  - name: SESSTIM, Aix Marseille University, Marseille, France
    index: 1
- - name: YOUR FIRST AFFILIATION
+ - name: Federal University of Pernambuco
    index: 2
- - name: YOUR SECOND AFFILIATION
-   index: 3
 date: 16 November 2023
 bibliography: paper.bib
 
