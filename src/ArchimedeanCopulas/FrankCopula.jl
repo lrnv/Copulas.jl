@@ -23,7 +23,7 @@ struct FrankCopula{d,T} <: ArchimedeanCopula{d}
     θ::T
     function FrankCopula(d,θ)
         if d > 2 && θ < 0
-            throw(ArgumentError("Negatively dependent Frank copulas cannot exists in dimensions > 2"))
+            throw(ArgumentError("Negatively dependent Frank copulas cannot exists in dimensions > 2. You passed θ = $θ"))
         end
         if θ == -Inf
             return WCopula(d)
@@ -47,22 +47,29 @@ end
 # D₁ = GSL.sf_debye_1 # sadly, this is C code.
 # could be replaced by : 
 # using QuadGK
-D₁(x) = QuadGK.quadgk(t -> t/(exp(t)-1), 0, x)[1]/x
+D₁(x) = QuadGK.quadgk(t -> t/expm1(t), 0, x)[1]/x
 # to make it more general. but once gain, it requires changing the integrator at each evlauation, 
 # which is problematic. 
 # Better option is to try to include this function into SpecialFunctions.jl. 
 
-
-τ(C::FrankCopula) = 1+4(D₁(C.θ)-1)/C.θ
+function _frank_tau_f(θ)
+    if abs(θ) < sqrt(eps(θ))
+        # return the taylor approx. 
+        return θ/9 * (1 - (θ/10)^2)
+    else
+        return 1+4(D₁(θ)-1)/θ
+    end
+end
+τ(C::FrankCopula) = _frank_tau_f(C.θ)
 function τ⁻¹(::Type{FrankCopula},τ)
-    if τ == zero(τ)
-        return τ
+    s,v = sign(τ),abs(τ)
+    if v == 0
+        return v
+    elseif v == 1
+        return s * Inf
+    else
+        return s*Roots.fzero(x -> _frank_tau_f(x)-v, 0, Inf)
     end
-    if abs(τ==1)
-        return Inf * τ
-    end
-    x₀ = (1-τ)/4
-    return Roots.fzero(x -> (1-D₁(x))/x - x₀, 1e-4, Inf)
 end
     
 williamson_dist(C::FrankCopula{d,T}) where {d,T} = C.θ > 0 ?  WilliamsonFromFrailty(Logarithmic(-C.θ), d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)

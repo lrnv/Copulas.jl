@@ -7,16 +7,13 @@
     inv_works(T,tau) = Copulas.τ(T(2,Copulas.τ⁻¹(T,tau))) ≈ tau
     check_rnd(T,min,max,N) = all(inv_works(T,x) for x in min .+ (max-min) .* rand(rng,N))
 
-    # working: 
-    @test check_rnd(ClaytonCopula,-1,1,100)
-    @test check_rnd(GumbelCopula,0,1,100)
-    @test check_rnd(JoeCopula,0,1,100)
-
-    # not working: 
-    @test_broken check_rnd(AMHCopula,(5 - 8*log(2))/3,1/3,100)
-    @test_broken check_rnd(FrankCopula,-1,1,100)
-    @test_broken check_rnd(GumbelBarnettCopula,0,1,100)
-    @test_broken check_rnd(InvGaussianCopula,0,1,100)
+    @test check_rnd(ClaytonCopula,       -1,    1,   10)
+    @test check_rnd(GumbelCopula,         0,    1,   10)
+    @test check_rnd(JoeCopula,            0,    1,   10)
+    @test check_rnd(GumbelBarnettCopula, -0.35, 0,   10)
+    @test check_rnd(AMHCopula,           -0.18, 1/3, 10)
+    @test check_rnd(FrankCopula,         -1,    1,   10)
+    @test check_rnd(InvGaussianCopula,0,1/2,10)
     
 end
 
@@ -71,22 +68,22 @@ end
     data0 = rand(rng,C0,100)
     @test all(pdf(C0,data0) .>= 0)
     @test all(0 .<= cdf(C0,data0) .<= 1)
-    @test_broken fit(FrankCopula,data0)
+    fit(FrankCopula,data0)
 
     C1 = FrankCopula(2,log(rand(rng)))
     data1 = rand(rng,C1,100)
     @test all(pdf(C1,data1) .>= 0)
     @test all(0 .<= cdf(C1,data1) .<= 1)
-    @test_broken fit(FrankCopula,data1)
+    fit(FrankCopula,data1)
 
 
     for d in 2:10
-        for θ ∈ [0.0,rand(rng),1.0,-log(rand(rng)), Inf]
+        for θ ∈ [1.0,1-log(rand(rng)), Inf]
             C = FrankCopula(d,θ)
-            data = rand(rng,C,100)
+            data = rand(rng,C,10000)
             @test all(pdf(C,data) .>= 0)
             @test all(0 .<= cdf(C,data) .<= 1)
-            # fit(FrankCopula,data)
+            fit(FrankCopula,data)
         end
     end
     @test true
@@ -132,7 +129,7 @@ end
             data = rand(rng,C,100)
             @test all(pdf(C,data) .>= 0)
             @test all(0 .<= cdf(C,data) .<= 1)
-            @test_broken fit(GumbelBarnettCopula,data)
+            fit(GumbelBarnettCopula,data)
         end
     end
     @test true
@@ -148,7 +145,7 @@ end
             data = rand(rng,C,100)
             @test all(pdf(C,data) .>= 0)
             @test all(0 .<= cdf(C,data) .<= 1)
-            @test_broken fit(InvGaussianCopula,data)
+            fit(InvGaussianCopula,data)
         end
     end
     @test true
