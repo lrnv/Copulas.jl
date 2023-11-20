@@ -9,9 +9,12 @@ Base.length(::Copula{d}) where d = d
 # Base.eltype
 # τ, τ⁻¹
 # Base.eltype 
-function Distributions.cdf(C::Copula{d},u) where d
+function Distributions.cdf(C::Copula{d},u::AbstractVector) where d
     length(u) != length(C) && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     return _cdf(C,u)
+end
+function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
+    return [Distributions.cdf(C,u) for u in eachcol(A)]
 end
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)

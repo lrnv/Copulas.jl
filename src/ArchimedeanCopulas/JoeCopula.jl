@@ -34,7 +34,20 @@ struct JoeCopula{d,T} <: ArchimedeanCopula{d}
 end
 ϕ(  C::JoeCopula,          t) = 1-(-expm1(-t))^(1/C.θ)
 ϕ⁻¹(C::JoeCopula,          t) = -log1p(-(1-t)^C.θ)
-τ(C::JoeCopula) = 1 - 4sum(1/(k*(2+k*C.θ)*(C.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula. 
+_joe_tau_f(θ) = 1 - 4sum(1/(k*(2+k*θ)*(θ*(k-1)+2)) for k in 1:1000) # 446 in R copula. 
+τ(C::JoeCopula) = _joe_tau_f(C.θ)
+function τ⁻¹(::Type{JoeCopula},τ) 
+    if τ == 1
+        return Inf
+    elseif τ == 0
+        return 1
+    elseif τ < 0
+        @warn "JoeCoula cannot handle negative kendall taus, we return the independence..."
+        return one(τ)
+    else
+        return Roots.find_zero(θ -> _joe_tau_f(θ) - τ, (one(τ),τ*Inf))
+    end
+end
 williamson_dist(C::JoeCopula{d,T}) where {d,T} = WilliamsonFromFrailty(Sibuya(1/C.θ), d)
 
 

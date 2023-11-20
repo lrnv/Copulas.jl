@@ -37,24 +37,27 @@ end
 ϕ(  C::GumbelBarnettCopula,       t) = exp((1-exp(t))/C.θ)
 ϕ⁻¹(C::GumbelBarnettCopula,       t) = log(1-C.θ*log(t))
 function τ(C::GumbelBarnettCopula)
-    # Define the function to integrate
-    f(x) = -x * (1 - C.θ * log(x)) * log(1 - C.θ * log(x)) / C.θ
-    
-    # Calculate the integral using GSL
-    result, _ = gsl_integration_qags(f, 0.0, 1.0, [C.θ], 1e-7, 1000)
+    # Use a numerical integration method to obtain tau
+    result, _ = QuadGK.quadgk(x -> -((x-C.θ*x*log(x))*log(1-C.θ*log(x))/C.θ), 0, 1)
     
     return 1+4*result
 end
-function τ⁻¹(::Type{GumbelBarnettCopula}, τ)
-    if τ == zero(τ)
-        return τ
+function τ⁻¹(::Type{GumbelBarnettCopula}, tau)
+    if tau == 0
+        return zero(tau)
+    elseif tau > 0 
+        @warn "GumbelBarnettCopula cannot handle positive kendall tau's, returning independence.."
+        return zero(tau)
+    elseif tau < τ(GumbelBarnettCopula(2,1))
+        @warn "GumbelBarnettCopula cannot handle negative kendall tau's smaller than  ≈ -0.3613, so we capped to that value."
+        return one(tau)
     end
     
     # Define an anonymous function that takes a value x and computes τ 
     #for a GumbelBarnettCopula with θ = x
-    τ_func(x) = τ(GumbelBarnettCopula{d, Float64}(x))
+    τ_func(x) = τ(GumbelBarnettCopula(2,x))
     
     # Use the bisection method to find the root
-    x = Roots.find_zero(x -> τ_func(x) - τ, (0.0, 1.0))    
+    x = Roots.find_zero(x -> τ_func(x) - tau, (0.0, 1.0))
     return x
 end

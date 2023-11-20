@@ -32,7 +32,6 @@
     for C in cops
         nfail = 0
         d = length(C)
-        @show C
         spl = rand(rng,C,n)
         @assert all(0 <= x <= 1 for x in spl)
         for i in 1:d

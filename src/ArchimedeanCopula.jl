@@ -88,8 +88,9 @@ end
 ϕ⁻¹(C::ArchimedeanCopula{d},x) where d = Roots.find_zero(t -> ϕ(C,t) - x, (0.0, Inf))
 
 williamson_dist(C::ArchimedeanCopula{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
-τ(C::ArchimedeanCopula)  = 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
-
+function τ(C::ArchimedeanCopula)  
+    return 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
+end
 
 function _archi_rand!(rng,C::ArchimedeanCopula{d},R,x) where d
     # x is assumed to already be random exponentials produced by Random.randexp
