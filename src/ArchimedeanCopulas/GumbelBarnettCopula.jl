@@ -43,8 +43,14 @@ function τ(C::GumbelBarnettCopula)
     return 1+4*result
 end
 function τ⁻¹(::Type{GumbelBarnettCopula}, tau)
-    if tau == zero(tau)
-        return tau
+    if tau == 0
+        return zero(tau)
+    elseif tau > 0 
+        @warn "GumbelBarnettCopula cannot handle positive kendall tau's, returning independence.."
+        return zero(tau)
+    elseif tau < τ(GumbelBarnettCopula(2,1))
+        @warn "GumbelBarnettCopula cannot handle negative kendall tau's smaller than  ≈ -0.3613, so we capped to that value."
+        return one(tau)
     end
     
     # Define an anonymous function that takes a value x and computes τ 
