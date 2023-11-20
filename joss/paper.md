@@ -35,13 +35,13 @@ The Julia package `Copulas.jl` brings most standard copula-related features into
 
 The R package `copula` [@r_copula_citation1; @r_copula_citation2; @r_copula_citation3; @r_copula_citation4] is the gold standard when it comes to sampling, estimating, or simply working around dependence structures. However, in other languages, the available tools are not as developped and/or not as recognised. We bridge the gap in the Julian ecosystem with this Julia-native implementation. Due to the very flexible type system in Julia, our code expressiveness and tidyness will increase its usability and maintenability in the long-run. Type-stability allows sampling in arbitrary precision without requiering more code, and Julia's multiple dispatch yields most of the below-described applications.
 
-There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality, `Copulas.jl` is clearly the must fully featured, and brings, as a key feature, the complience with the broader ecosystem.
+There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality (mostly because the three projects chose different copulas to implement), `Copulas.jl` is clearly the must fully featured, and brings, as a key feature, the complience with the broader ecosystem.
 
 # Examples
 
-## `SklarDist`, sampling and fitting
+## `SklarDist`: sampling and fitting examples
 
-We can exploit the `fit` function, which is part of the `Distributions.jl`'s API, to simply fit a compound model to some dataset as follows: 
+The `Distributions.jl`'s API provides a `fit` function. You may use it to simply fit a compound model to some dataset as follows: 
 
 ```julia
 using Copulas, Distributions, Random
@@ -61,7 +61,7 @@ D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,Normal,Binomial}}, x)
 # Although you'll probbaly get a bad fit !
 ```
 
-The default mathetical fitting precedure is not specified and might vary from model to model, as the API requests. If you want more control, you may turn to bayesian estimation using `Turing.jl` [@turing]:  
+The API does not fix the fitting procedure, and only loosely specify it, thus the implemented default might vary on the copula. If you want more control, you may turn to bayesian estimation using `Turing.jl` [@turing]:  
 
 ```julia
 using Turing
@@ -95,13 +95,16 @@ The API is consisting of the folloiwng functions:
 williamson_dist(C::MyArchimedean) # Williamson d-transform
 ```
 
-So that implementing your own archimedean copula is as easy as: 
+So that implementing your own archimedean copula only requires to subset the `ArchimedeanCopula` type and provide your generator as follows: 
 ```julia
-# Simply subset ArchimedeanCopula and provide the generator
 struct MyUnknownArchimedean{d,T} <: ArchimedeanCopula{d}
     θ::T
 end
 ϕ(C::MyUnknownArchimedean,t) = exp(-t*C.θ)
+```
+
+The obtained model can be used as follows: 
+```julia
 C = MyUnknownCopula{2,Float64}(3.0)
 spl = rand(C,1000)   # sampling
 cdf(C,spl)           # cdf
