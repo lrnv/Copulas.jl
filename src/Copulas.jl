@@ -1,7 +1,6 @@
 module Copulas
 
     import Base
-    import InteractiveUtils
     import Random
     import SpecialFunctions
     import Roots
