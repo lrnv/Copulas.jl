@@ -23,10 +23,10 @@ makedocs(;
         ],
         "Archimedean Copulas" => [
             "archimedean/generalities.md",
+            "archimedean/generators.md",
             "archimedean/available_models.md",
-            "archimedean/implement_your_own.md",
         ],
-        "Miscellaneous Copulas" => "miscellaneous.md",
+        "Other Copulas" => "miscellaneous.md",
         "Exemples" => [
             "exemples/fitting_sklar.md",
             "exemples/turing.md",

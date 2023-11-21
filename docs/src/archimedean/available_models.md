@@ -2,54 +2,66 @@
 CurrentModule = Copulas
 ```
 
-# Available Archimedean copulas
+# Available Archimedean models
 
 ## Independence Copula
 
 ```@docs
-IndependentCopula
+IndependentGenerator
+```
+
+# Frechet-Hoeffding bounds
+
+The Frechet-Hoeffding bounds are availiable through the following functions: 
+
+```@docs
+MGenerator
+```
+```@docs
+WGenerator
 ```
 
 ## Clayton Copula
 
 ```@docs
-ClaytonCopula
+ClaytonGenerator
 ```
 
 ## Frank Copula
 
 ```@docs
-FrankCopula
+FrankGenerator
 ```
 
 ## Gumbel Copula
 
 ```@docs
-GumbelCopula
+GumbelGenerator
 ```
 
 ## Ali-Mikhail-Haq Copula
 
 ```@docs
-AMHCopula
+AMHGenerator
 ```
 
 ## Joe Copula
 
 ```@docs
-JoeCopula
+JoeGenerator
 ```
 
 
 ## Gumbel-Barnett Copula
 
 ```@docs
-GumbelBarnettCopula
+GumbelBarnettGenerator
 ```
 
 
 ## Inverse-Gaussian Copula
 
 ```@docs
-InvGaussianCopula
+InvGaussianGenerator
 ```
+
