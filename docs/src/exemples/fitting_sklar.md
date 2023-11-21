@@ -2,7 +2,7 @@
 
 Through the SklarDist interface, there is the possiiblity to fit directly distributions that are constructed from a copula and some marginals:
 
-```@example
+```julia
 using Copulas
 using Distributions
 
