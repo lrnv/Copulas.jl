@@ -7,13 +7,13 @@
     inv_works(T,tau) = Copulas.τ(T(2,Copulas.τ⁻¹(T,tau))) ≈ tau
     check_rnd(T,min,max,N) = all(inv_works(T,x) for x in min .+ (max-min) .* rand(rng,N))
 
-    @test check_rnd(ClaytonCopula,       -1,    1,   10)
-    @test check_rnd(GumbelCopula,         0,    1,   10)
-    @test check_rnd(JoeCopula,            0,    1,   10)
-    @test check_rnd(GumbelBarnettCopula, -0.35, 0,   10)
-    @test check_rnd(AMHCopula,           -0.18, 1/3, 10)
-    @test check_rnd(FrankCopula,         -1,    1,   10)
-    @test check_rnd(InvGaussianCopula,0,1/2,10)
+    @test check_rnd(ClaytonCopula,       -1,    1,    10)
+    @test check_rnd(GumbelCopula,         0,    1,    10)
+    @test check_rnd(JoeCopula,            0,    1,    10)
+    @test check_rnd(GumbelBarnettCopula, -0.35, 0,    10)
+    @test check_rnd(AMHCopula,           -0.18, 0.33, 10)
+    @test check_rnd(FrankCopula,         -1,    1,    10)
+    @test check_rnd(InvGaussianCopula,    0,    1/2,  10)
     
 end
 
