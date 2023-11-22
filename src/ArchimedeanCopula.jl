@@ -155,47 +155,34 @@ end
 ################                                                                ################
 ################################################################################################
 
-################################################################################################
-# Deal with easy cases with meta-programming: 
-const AMHCopula{d,T} = ArchimedeanCopula{d,AMHGenerator{T}}
-AMHCopula(d,θ) = ArchimedeanCopula(d,AMHGenerator(θ))
-generatorof(::Type{AMHCopula}) = AMHGenerator
 
-const ClaytonCopula{d,T} = ArchimedeanCopula{d,ClaytonGenerator{T}}
-ClaytonCopula(d,θ) = ArchimedeanCopula(d,ClaytonGenerator(θ))
-generatorof(::Type{ClaytonCopula}) = ClaytonGenerator
-
-const FrankCopula{d,T} = ArchimedeanCopula{d,FrankGenerator{T}}
-FrankCopula(d,θ) = ArchimedeanCopula(d,FrankGenerator(θ))
-generatorof(::Type{FrankCopula}) = FrankGenerator
-
-const GumbelBarnettCopula{d,T} = ArchimedeanCopula{d,GumbelBarnettGenerator{T}}
-GumbelBarnettCopula(d,θ) = ArchimedeanCopula(d,GumbelBarnettGenerator(θ))
-generatorof(::Type{GumbelBarnettCopula}) = GumbelBarnettGenerator
-
-const GumbelCopula{d,T} = ArchimedeanCopula{d,GumbelGenerator{T}}
-GumbelCopula(d,θ) = ArchimedeanCopula(d,GumbelGenerator(θ))
-generatorof(::Type{GumbelCopula}) = GumbelGenerator
-
-const InvGaussianCopula{d,T} = ArchimedeanCopula{d,InvGaussianGenerator{T}}
-InvGaussianCopula(d,θ) = ArchimedeanCopula(d,InvGaussianGenerator(θ))
-generatorof(::Type{InvGaussianCopula}) = InvGaussianGenerator
-
-const JoeCopula{d,T} = ArchimedeanCopula{d,JoeGenerator{T}}
-JoeCopula(d,θ) = ArchimedeanCopula(d,JoeGenerator(θ))
-generatorof(::Type{JoeCopula}) = JoeGenerator
-
-const IndependentCopula{d} = ArchimedeanCopula{d,IndependentGenerator}
-IndependentCopula(d) = ArchimedeanCopula(d,IndependentGenerator())
-generatorof(::Type{IndependentCopula}) = IndependentGenerator
-
-const MCopula{d} = ArchimedeanCopula{d,MGenerator}
-MCopula(d) = ArchimedeanCopula(d,MGenerator())
-generatorof(::Type{MCopula}) = MGenerator
-
-const WCopula{d} = ArchimedeanCopula{d,WGenerator}
-WCopula(d) = ArchimedeanCopula(d,WGenerator())
-generatorof(::Type{WCopula}) = WGenerator
+## Automatic syntactic sugar for all ZeroVariateGenerators and UnivariateGenerators. 
+## see https://discourse.julialang.org/t/how-to-dispatch-on-a-type-alias/106476/38?u=lrnv
+function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
+    S2 = hasproperty(S,:body) ? S.body : S
+    S3 = hasproperty(S2, :body) ? S2.body : S2
+    try 
+        return S3.parameters[2].name.wrapper
+    catch e
+        @error "There is no generator type associated with the archimedean type $S"
+    end
+end
+for T in InteractiveUtils.subtypes(ZeroVariateGenerator)
+    G = Symbol(last(split(string(T),'.')))
+    C = Symbol(string(G)[begin:end-9]*"Copula")
+    @eval begin
+        const ($C){d} = ArchimedeanCopula{d,($G)}
+        ($C)(d) = ArchimedeanCopula(d,($G)())
+    end
+end
+for T in InteractiveUtils.subtypes(UnivariateGenerator)
+    G = Symbol(last(split(string(T),'.')))
+    C = Symbol(string(G)[begin:end-9]*"Copula")
+    @eval begin
+        const ($C){d,Tθ} = ArchimedeanCopula{d,($G){Tθ}}
+        ($C)(d,θ) = ArchimedeanCopula(d,($G)(θ))
+    end
+end
 
 # The zero-variate ones just need a few more methods: 
 Distributions._logpdf(::ArchimedeanCopula{d,IndependentGenerator}, u) where {d} = all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
@@ -217,8 +204,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopul
     x[1] = rand(rng)
     x[2] = 1-x[1] 
 end
-
-
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d,IndependentGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
     Random.rand!(rng,A)
     return A

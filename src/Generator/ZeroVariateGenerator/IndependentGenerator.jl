@@ -19,7 +19,7 @@ It happends to be an Archimedean Copula, with generator :
 \\phi(t) = \\exp{-t}
 ```
 """
-struct IndependentGenerator <: Generator end
+struct IndependentGenerator <: ZeroVariateGenerator end
 max_monotony(::IndependentGenerator) = Inf
 ϕ(::IndependentGenerator,t) = exp(-t)
 ϕ⁻¹(::IndependentGenerator,t) = -log(t)
