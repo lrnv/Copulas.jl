@@ -36,6 +36,17 @@
         @assert all(0 <= x <= 1 for x in spl)
         for i in 1:d
             @test pvalue(ApproximateOneSampleKSTest(spl[i,:], U),tail=:right) > 0.01 # quite weak but enough at these samples sizes to detect really bad behaviors.
+
+            # also test that cdf is behaving correctly: 
+            u = ones(d)
+            for val in [0,1,rand(10)...]
+                u[i] = val
+                if typeof(C)<:TCopula
+                    @test_broken cdf(C,u) ≈ val
+                else
+                    @test cdf(C,u) ≈ val
+                end
+            end
         end
     end
 end
