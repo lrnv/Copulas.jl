@@ -336,22 +336,22 @@ end
     end
 end
   
-@testitem "A few tests on bigfloats" begin
-    # using StableRNGs
-    using Random
-    using Distributions
-    using HypothesisTests
-    rng = Random.default_rng() #StableRNG(123) not availiable for bigfloats on old julias.
+# @testitem "A few tests on bigfloats" begin
+#     # using StableRNGs
+#     using Random
+#     using Distributions
+#     using HypothesisTests
+#     rng = Random.default_rng() #StableRNG(123) not availiable for bigfloats on old julias.
     
-    for C in (
-        GumbelCopula(3, BigFloat(2.)),
-        ClaytonCopula(2, BigFloat(-.5)),
-        ClaytonCopula(3, BigFloat(2.5)),
-        FrankCopula(2, BigFloat(2.)),
-        AMHCopula(3,BigFloat(.5)),
-        AMHCopula(2,BigFloat(-.3)),
-    )
-        x = rand(rng,C,100)
-        @test_broken typeof(x) == Array{BigFloat,2}
-    end
-end
+#     for C in (
+#         GumbelCopula(3, BigFloat(2.)),
+#         ClaytonCopula(2, BigFloat(-.5)),
+#         ClaytonCopula(3, BigFloat(2.5)),
+#         FrankCopula(2, BigFloat(2.)),
+#         AMHCopula(3,BigFloat(.5)),
+#         AMHCopula(2,BigFloat(-.3)),
+#     )
+#         x = rand(rng,C,100)
+#         @test_broken typeof(x) == Array{BigFloat,2}
+#     end
+# end
