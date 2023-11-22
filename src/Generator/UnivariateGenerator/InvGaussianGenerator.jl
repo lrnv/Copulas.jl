@@ -41,11 +41,12 @@ max_monotony(G::InvGaussianGenerator) = Inf
 # ϕ⁽ᵏ⁾(G::InvGaussianGenerator, k, t) = kth derivative of ϕ
 function τ(G::InvGaussianGenerator)
     θ = G.θ
+    T = promote_type(typeof(θ),Float64)
     if θ == 0
         return zero(θ)
     elseif θ > 1e153 # should be Inf, but integrand has issues... 
         return 1/2
-    elseif θ < sqrt(eps(θ))
+    elseif θ < sqrt(eps(T))
         return zero(θ)
     end
     function _integrand(x,θ) 

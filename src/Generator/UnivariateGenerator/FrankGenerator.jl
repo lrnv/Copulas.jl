@@ -42,15 +42,15 @@ max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
 # ϕ⁽ᵏ⁾(G::FrankGenerator, k, t) = kth derivative of ϕ
 williamson_dist(G::FrankGenerator, d) = G.θ > 0 ?  WilliamsonFromFrailty(Logarithmic(-G.θ), d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),d)
 
-
-D₁(x) = QuadGK.quadgk(t -> t/expm1(t), 0, x)[1]/x
+Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
 function τ(G::FrankGenerator)
     θ = G.θ
-    if abs(θ) < sqrt(eps(θ))
+    T = promote_type(typeof(θ),Float64)
+    if abs(θ) < sqrt(eps(T))
         # return the taylor approx. 
         return θ/9 * (1 - (θ/10)^2)
     else
-        return 1+4(D₁(θ)-1)/θ
+        return 1+4(Debye(θ,1)-1)/θ
     end
 end
 function τ⁻¹(::Type{T},tau) where T<:FrankGenerator
