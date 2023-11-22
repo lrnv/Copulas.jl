@@ -161,7 +161,11 @@ end
 function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     S2 = hasproperty(S,:body) ? S.body : S
     S3 = hasproperty(S2, :body) ? S2.body : S2
-    S3.parameters[2].name.wrapper
+    try 
+        return S3.parameters[2].name.wrapper
+    catch e
+        @error "There is no generator type associated with the archimedean type $S"
+    end
 end
 for T in InteractiveUtils.subtypes(ZeroVariateGenerator)
     G = Symbol(last(split(string(T),'.')))
@@ -200,8 +204,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopul
     x[1] = rand(rng)
     x[2] = 1-x[1] 
 end
-
-
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d,IndependentGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
     Random.rand!(rng,A)
     return A
