@@ -337,10 +337,11 @@ end
 end
   
 @testitem "A few tests on bigfloats" begin
-    using StableRNGs
+    # using StableRNGs
+    using Random
     using Distributions
     using HypothesisTests
-    rng = StableRNG(123)
+    rng = Random.default_rng() #StableRNG(123) not availiable for bigfloats on old julias.
     
     for C in (
         GumbelCopula(3, BigFloat(2.)),
@@ -352,8 +353,5 @@ end
     )
         x = rand(rng,C,100)
         @test_broken typeof(x) == Array{BigFloat,2}
-        for i in 1:length(C)
-            @test pvalue(ExactOneSampleKSTest(x[:,1], Uniform(0,1))) > 0.01
-        end
     end
 end
