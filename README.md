@@ -12,6 +12,7 @@
      <a href="https://github.com/JuliaTesting/Aqua.jl"><img src="https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg" alt="Aqua QA" /></a>
     <!-- <a href="https://benchmark.tansongchen.com/TaylorDiff.jl"><img src="https://img.shields.io/buildkite/2c801728055463e7c8baeeb3cc187b964587235a49b3ed39ab/main.svg?label=benchmark" alt="Benchmark Status" /></a> -->
 <br />
+    <a href="https://joss.theoj.org/papers/98fa5d88d0d8f27038af2da00f210d45"><img src="https://joss.theoj.org/papers/98fa5d88d0d8f27038af2da00f210d45/status.svg"></a>
     <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
     <a href="https://zenodo.org/badge/latestdoi/456485213"><img src="https://zenodo.org/badge/456485213.svg" alt="DOI" /></a>
 <br />
