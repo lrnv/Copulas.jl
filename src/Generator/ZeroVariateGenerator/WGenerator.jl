@@ -14,7 +14,7 @@ W(\\mathbf{u}) \\le C(\\mathbf{u}) \\le M(\\mathbf{u})
 
 The two Frechet-Hoeffding bounds are also Archimedean copulas.
 """
-struct WGenerator <: Generator end
+struct WGenerator <: ZeroVariateGenerator end
 max_monotony(G::WGenerator) = 2
 τ(::WGenerator) = -1
 ϕ(::WGenerator,t) = throw(MethodError("WGenerator cannot have a ϕ function")) 

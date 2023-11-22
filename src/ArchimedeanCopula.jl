@@ -163,7 +163,7 @@ function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     S3.parameters[2].name.wrapper
 end
 for T in InteractiveUtils.subtypes(ZeroVariateGenerator)
-    G = Symbol(T)
+    G = Symbol(last(split(string(T),'.')))
     C = Symbol(string(G)[begin:end-9]*"Copula")
     @eval begin
         const ($C){d} = ArchimedeanCopula{d,($G)}
@@ -171,7 +171,7 @@ for T in InteractiveUtils.subtypes(ZeroVariateGenerator)
     end
 end
 for T in InteractiveUtils.subtypes(UnivariateGenerator)
-    G = Symbol(T)
+    G = Symbol(last(split(string(T),'.')))
     C = Symbol(string(G)[begin:end-9]*"Copula")
     @eval begin
         const ($C){d,Tθ} = ArchimedeanCopula{d,($G){Tθ}}
