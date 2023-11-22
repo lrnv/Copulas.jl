@@ -157,6 +157,7 @@ end
 
 
 ## Automatic syntactic sugar for all ZeroVariateGenerators and UnivariateGenerators. 
+## see https://discourse.julialang.org/t/how-to-dispatch-on-a-type-alias/106476/38?u=lrnv
 function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     S2 = hasproperty(S,:body) ? S.body : S
     S3 = hasproperty(S2, :body) ? S2.body : S2
