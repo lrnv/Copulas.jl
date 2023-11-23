@@ -2,10 +2,10 @@
     WilliamsonGenerator{TX}
 
 Fields:
-    - X::TX -- a random variable that represents its williamson d-transform
-    - d::Int -- the dimension of the transformation. 
+* `X::TX` -- a random variable that represents its williamson d-transform
+* `d::Int` -- the dimension of the transformation. 
 
-Constructors
+Constructor
 
     WilliamsonGenerator(X::Distributions.UnivariateDistribution, d)
 
@@ -32,8 +32,8 @@ Note that you'll always have:
     max_monotony(WilliamsonGenerator(X,d)) === d
 
 References: 
-    Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
-    McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
+* [williamson1955multiply](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
+* [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
 """
 struct WilliamsonGenerator{TX} <: Generator
     X::TX

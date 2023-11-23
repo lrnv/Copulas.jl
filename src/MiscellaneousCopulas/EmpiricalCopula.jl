@@ -2,7 +2,7 @@
     EmpiricalCopula{d,MT} 
 
 Fields:
-  - u::MT - the matrix of observations. 
+* u::MT - the matrix of observations. 
 
 Constructor
 

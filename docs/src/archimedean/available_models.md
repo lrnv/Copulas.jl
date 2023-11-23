@@ -2,66 +2,65 @@
 CurrentModule = Copulas
 ```
 
-# Available Archimedean models
+# [Available Models](@id available_archimedean_models)
 
-## Independence Copula
-
+## `WilliamsonGenerator`
+```@docs; canonical=false
+WilliamsonGenerator
+```
+## `IndependentGenerator`
 ```@docs
 IndependentGenerator
 ```
 
-# Frechet-Hoeffding bounds
-
-The Frechet-Hoeffding bounds are availiable through the following functions: 
-
+## `MGenerator`
 ```@docs
 MGenerator
 ```
+
+## `WGenerator`
 ```@docs
 WGenerator
 ```
 
-## Clayton Copula
-
+## `ClaytonGenerator`
 ```@docs
 ClaytonGenerator
 ```
 
-## Frank Copula
-
+## `FrankGenerator`
 ```@docs
 FrankGenerator
 ```
 
-## Gumbel Copula
-
+## `GumbelGenerator`
 ```@docs
 GumbelGenerator
 ```
 
-## Ali-Mikhail-Haq Copula
-
+## `AMHGenerator`
 ```@docs
 AMHGenerator
 ```
 
-## Joe Copula
-
+## `JoeGenerator`
 ```@docs
 JoeGenerator
 ```
 
-
-## Gumbel-Barnett Copula
-
+## `GumbelBarnettGenerator`
 ```@docs
 GumbelBarnettGenerator
 ```
 
-
-## Inverse-Gaussian Copula
-
+## `InvGaussianGenerator`
 ```@docs
 InvGaussianGenerator
 ```
 
+
+
+```@bibliography
+Pages = ["available_models.md"]
+Canonical = false
+```

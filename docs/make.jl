@@ -24,22 +24,28 @@ makedocs(;
     pages=[
         "Copulas.jl package" => "index.md",
         "Getting Started" => "getting_started.md",
-        "Theoretical Background" => "theoretical_background.md",
-        "Sklar's Theorem" => "sklar.md",
+        "Sklar's Distributions" => "sklar.md",
         "Elliptical Copulas" => [
             "elliptical/generalities.md",
             "elliptical/available_models.md",
         ],
         "Archimedean Copulas" => [
             "archimedean/generalities.md",
-            "archimedean/generators.md",
             "archimedean/available_models.md",
         ],
+        "Liouville Copulas" => "Liouville.md",
         "Other Copulas" => "miscellaneous.md",
+        "Transformed Copulas" => "transformations.md",
+        "Empirical Copulas" => [
+            "empirical/generalities.md",
+            "empirical/available_models.md",
+        ],
+        "Dependence measures" => "dependence_measures.md",
         "Exemples" => [
             "exemples/fitting_sklar.md",
             "exemples/turing.md",
         ],
+        
         "Dev Roadmap" => "dev_roadmap.md",
         "Package Index" => "idx.md",
         "References" => "references.md",
