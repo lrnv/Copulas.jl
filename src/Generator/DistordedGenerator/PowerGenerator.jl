@@ -2,9 +2,9 @@
     PowerGenerator{T, TG}
 
 Fields:
-  - G::Generator - another generator
-  - α::Real - parameter, the inner power, positive
-  - β::Real - parameter, the outer power, positive
+* `G::Generator` - another generator
+* `α::Real` - parameter, the inner power, positive
+* `β::Real` - parameter, the outer power, positive
 
 Constructor
 

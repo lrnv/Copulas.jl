@@ -64,6 +64,7 @@ module Copulas
     include("Generator/UnivariateGenerator/GumbelGenerator.jl")
     include("Generator/UnivariateGenerator/InvGaussianGenerator.jl")
     include("Generator/UnivariateGenerator/JoeGenerator.jl")
+    include("Generator/DistordedGenerator/PowerGenerator.jl")
     
     # Archimedean copulas
     include("ArchimedeanCopula.jl")
