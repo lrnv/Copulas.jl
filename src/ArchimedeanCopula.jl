@@ -8,22 +8,17 @@ Constructor:
 
     ArchimedeanCopula(d::Int,G::Generator)
 
-For some archimedean generator `G::Generator` and some dimenson `d`, this class models the archimedean copula wich has this generator. More formally, a ``d``-monotone archimedean generator is a function ``\\phi`` on ``\\mathbb R_+`` that has these three properties:
-- ``\\phi(0) = 1`` and ``\\phi(Inf) = 0``
-- ``\\phi`` is ``d-2`` times derivable, and the signs of its derivatives alternates : ``\\forall k \\in 0,...,d-2, (-1)^k \\phi^{(k)} \\ge 0``.
-- ``\\phi^{(d-2)}`` is convex.
-
-In the code, this function is implemented as `ϕ(G::Generator,t)`, and its max monotony `d` is given by `max_monotony(G)`. The corresponding d-variate archimedean copula writes: 
+For some Archimedean [`Generator`](@ref) `G::Generator` and some dimenson `d`, this class models the archimedean copula wich has this generator. The constructor checks for validity by ensuring that `max_monotony(G) ≥ d`. The ``d``-variate archimedean copula with generator ``\\phi`` writes: 
 
 ```math
 C(\\mathbf u) = \\phi^{-1}\\left(\\sum_{i=1}^d \\phi(u_i)\\right)
 ```
 
-It can be sampled through A Radial simplex decomposition as follows: If ``\\mathbf U \\sim C``, then ``U \\equal R \\mathbf S`` for a random vector ``\\mathbf S \\sim`` `Dirichlet(ones(d))`, that is uniformity on the d-variate simplex, and a non-negative random variable ``R`` that is the Williamson d-transform of `\\phi`. The density, cdf, kendall tau, and may other properties of the Archimedean copula are then directly deduced from this relationship. 
+The default sampling method is the Radial-simplex decomposition using the williamson transformation of ``\\phi``. 
 
-There exists several known parametric generators that are implement in the package. For every `NamedGenerator <: Generator` implemented in the package, we provide a type alias ``NamedCopula{d,...} = ArchimedeanCopula{d,NamedGenerator{...}}` to be able to manipulate the archimedean copulas without too much hassle for known and usefull special cases. 
+There exists several known parametric generators that are implement in the package. For every `NamedGenerator <: Generator` implemented in the package, we provide a type alias ``NamedCopula{d,...} = ArchimedeanCopula{d,NamedGenerator{...}}` to be able to manipulate the classic archimedean copulas without too much hassle for known and usefull special cases. 
 
-A generic archimdeanc copula can be constructed as follows: 
+A generic archimdean copula can be constructed as follows: 
 
 ```julia
 struct MyGenerator <: Generator end
@@ -40,22 +35,11 @@ pdf(C,spl)           # pdf
 loglikelihood(C,spl) # llh
 ```
 
-The following functions have defaults but can be overridden for performance: 
+Bonus: If you know the williamson d-transform of your generator and not your generator itself, you may take a look at [`WilliamsonGenerator`](@ref) that implements them. If you rather know the frailty distribution, take a look at `WilliamsonFromFrailty`.
 
-```julia
-ϕ⁻¹(C::MyArchimedean, t)        # Inverse of ϕ
-ϕ⁽¹⁾(C::MyArchimedean, t)       # first defrivative of ϕ
-ϕ⁽ᵈ⁾(C::MyArchimedean,t)        # dth defrivative of ϕ
-τ(C::MyArchimedean)             # Kendall tau
-τ⁻¹(::Type{MyArchimedean},τ) =  # Inverse kendall tau
-fit(::Type{MyArchimedean},data) # fitting.
-```
-
-As a bonus, If you know the williamson d-transform of your generator and not your generator itself, you may take a look at [`WilliamsonGenerator`](@ref) that implements them. If you rather know the frailty distribution, take a look at `WilliamsonFromFrailty`.
-
-References: 
-    Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
-    McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
+References:
+* [williamson1955multiply](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
+* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
 """
 struct ArchimedeanCopula{d,TG} <: Copula{d}
     G::TG
