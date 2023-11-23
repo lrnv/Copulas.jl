@@ -22,7 +22,7 @@ It has a few special cases:
     - When α = 1 and β = 1, it returns G.
 
 References : 
-    Nelsen, R. B. (2006). An introduction to copulas. Springer, theorem 4.5.1 p141
+* [nelsen2006](@cite) Nelsen, R. B. (2006). An introduction to copulas. Springer, theorem 4.5.1 p141
 """
 struct PowerGenerator{TG,T} <: DistordedGenerator
     G::TG
