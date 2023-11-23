@@ -79,4 +79,7 @@ module Copulas
            MCopula,
            WCopula
 
+       include("LiouvilleCopula.jl")
+       export LiouvilleCopula
+
 end
