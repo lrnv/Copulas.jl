@@ -29,7 +29,7 @@ struct LiouvilleCopula{d,TG} <: Copula{d}
 end
 williamson_dist(C::LiouvilleCopula{d,TG}) where {d,TG} = williamson_dist(C.G,sum(C.α))
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C, x::AbstractVector{T})
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T,CT<:LiouvilleCopula}
     # By default, we use the williamson sampling. 
     r = Distributions.rand(williamson_dist(C))
     for i in 1:length(C)
