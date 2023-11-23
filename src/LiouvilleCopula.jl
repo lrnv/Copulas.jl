@@ -2,8 +2,8 @@
     LiouvilleCopula{d, T, TG}
 
 Fields: 
-    - \alpha::NTuple{d,T} : the weights for each dimension
-    - G::TG : the generator <: Generator. 
+* `α::NTuple{d,T}` : the weights for each dimension
+* `G::TG` : the generator <: Generator. 
 
 Constructor: 
 
@@ -16,7 +16,7 @@ Recalling that, for C an archimedean copula with generator ``\\phi``, if ``\\mat
 The Liouville copula has exactly the same expression but using another Dirichlet distribution instead than uniformity over the simplex. 
 
 References: 
-    McNeil, A. J., & Nešlehová, J. (2010). From archimedean to liouville copulas. Journal of Multivariate Analysis, 101(8), 1772-1790.
+* [mcneil2010](@cite) McNeil, A. J., & Nešlehová, J. (2010). From archimedean to liouville copulas. Journal of Multivariate Analysis, 101(8), 1772-1790.
 """
 struct LiouvilleCopula{d,TG} <: Copula{d}
     α::NTuple{d,Int}
