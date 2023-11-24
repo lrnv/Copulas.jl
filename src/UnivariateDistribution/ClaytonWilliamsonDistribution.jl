@@ -33,7 +33,12 @@ function Distributions.cdf(D::ClaytonWilliamsonDistribution, x::Real)
         return 1-rez
     end
 end
-function Distributions.rand(rng::Distributions.AbstractRNG, d::ClaytonWilliamsonDistribution)
-    u = rand(rng)
+function _quantile(d::ClaytonWilliamsonDistribution,u)
     Roots.find_zero(x -> (Distributions.cdf(d,x) - u), (0.0, Inf))
+end
+function Distributions.rand(rng::Distributions.AbstractRNG, d::ClaytonWilliamsonDistribution)
+    _quantile(d,rand(rng))
+end
+function Distributions.quantile(d::ClaytonWilliamsonDistribution,p::Real)
+    _quantile(d,p)
 end
