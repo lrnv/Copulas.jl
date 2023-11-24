@@ -25,7 +25,18 @@
         FGMCopula(2,1),
         MCopula(4),
         PlackettCopula(2.0),
+        ArchimedeanCopula(3,WilliamsonGenerator(LogNormal(),4)),
         # Others ? Yes probably others too ! 
+        (LiouvilleCopula([1,5],G) for G in (
+            Copulas.AMHGenerator(0.6),
+            Copulas.AMHGenerator(-0.3),
+            Copulas.ClaytonGenerator(-0.05),
+            Copulas.IndependentGenerator(),
+            Copulas.GumbelBarnettGenerator(0.7),
+            Copulas.InvGaussianGenerator(0.05),
+            Copulas.InvGaussianGenerator(8),
+            Copulas.WilliamsonGenerator(LogNormal(),6),
+        ))...
     )
     n = 1000
     U = Uniform(0,1)
