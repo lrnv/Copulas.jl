@@ -2,6 +2,7 @@ module Copulas
 
     import Base
     import Random
+    import InteractiveUtils
     import SpecialFunctions
     import Roots
     import Distributions
@@ -24,8 +25,6 @@ module Copulas
            SklarDist
 
     # Others. 
-    include("MiscellaneousCopulas/MCopula.jl")
-    include("MiscellaneousCopulas/WCopula.jl")
     include("MiscellaneousCopulas/SurvivalCopula.jl")
     include("MiscellaneousCopulas/PlackettCopula.jl")
     include("MiscellaneousCopulas/EmpiricalCopula.jl")
@@ -47,31 +46,41 @@ module Copulas
            TCopula
 
     # These three distributions might be merged in Distrbutions.jl one day. 
-    include("univariate_distributions/Sibuya.jl")
-    include("univariate_distributions/Logarithmic.jl")
-    include("univariate_distributions/AlphaStable.jl")
-    include("univariate_distributions/ClaytonWilliamsonDistribution.jl")
-    include("univariate_distributions/WilliamsonFromFrailty.jl")
+    include("UnivariateDistribution/Sibuya.jl")
+    include("UnivariateDistribution/Logarithmic.jl")
+    include("UnivariateDistribution/AlphaStable.jl")
+    include("UnivariateDistribution/ClaytonWilliamsonDistribution.jl")
+    include("UnivariateDistribution/WilliamsonFromFrailty.jl")
 
+    # Archimedean generators
+    include("Generator.jl")
+
+    include("Generator/WilliamsonGenerator.jl")
+    export WilliamsonGenerator, i𝒲
+
+    include("Generator/ZeroVariateGenerator/IndependentGenerator.jl")
+    include("Generator/ZeroVariateGenerator/MGenerator.jl")
+    include("Generator/ZeroVariateGenerator/WGenerator.jl")
+    include("Generator/UnivariateGenerator/AMHGenerator.jl")
+    include("Generator/UnivariateGenerator/ClaytonGenerator.jl")
+    include("Generator/UnivariateGenerator/FrankGenerator.jl")
+    include("Generator/UnivariateGenerator/GumbelBarnettGenerator.jl")
+    include("Generator/UnivariateGenerator/GumbelGenerator.jl")
+    include("Generator/UnivariateGenerator/InvGaussianGenerator.jl")
+    include("Generator/UnivariateGenerator/JoeGenerator.jl")
+    
     # Archimedean copulas
     include("ArchimedeanCopula.jl")
-    include("ArchimedeanCopulas/IndependentCopula.jl")
-    include("ArchimedeanCopulas/ClaytonCopula.jl")
-    include("ArchimedeanCopulas/JoeCopula.jl")
-    include("ArchimedeanCopulas/GumbelCopula.jl")
-    include("ArchimedeanCopulas/FrankCopula.jl")
-    include("ArchimedeanCopulas/AMHCopula.jl")
-    include("ArchimedeanCopulas/WilliamsonCopula.jl")
-    include("ArchimedeanCopulas/GumbelBarnettCopula.jl")
-    include("ArchimedeanCopulas/InvGaussianCopula.jl")
-    export IndependentCopula, 
+    export ArchimedeanCopula,
+           IndependentCopula, 
            ClaytonCopula,
            JoeCopula,
            GumbelCopula,
            FrankCopula,
            AMHCopula,
-           WilliamsonCopula,
            GumbelBarnettCopula,
-           InvGaussianCopula
+           InvGaussianCopula,
+           MCopula,
+           WCopula
 
 end

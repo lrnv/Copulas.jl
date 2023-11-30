@@ -10,7 +10,7 @@ Consider that we have a model with :
 
 Then we can use Turing's `@addlogprob!` to compute the loglikelyhood of our model and maximize it around th eparameters alongside the chain as folows: 
 
-```@example
+```julia
 using Copulas
 using Distributions
 using Random

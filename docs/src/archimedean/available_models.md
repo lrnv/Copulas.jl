@@ -2,54 +2,65 @@
 CurrentModule = Copulas
 ```
 
-# Available Archimedean copulas
+# [Available Models](@id available_archimedean_models)
 
-## Independence Copula
-
+## `WilliamsonGenerator`
+```@docs; canonical=false
+WilliamsonGenerator
+```
+## `IndependentGenerator`
 ```@docs
-IndependentCopula
+IndependentGenerator
 ```
 
-## Clayton Copula
-
+## `MGenerator`
 ```@docs
-ClaytonCopula
+MGenerator
 ```
 
-## Frank Copula
-
+## `WGenerator`
 ```@docs
-FrankCopula
+WGenerator
 ```
 
-## Gumbel Copula
-
+## `ClaytonGenerator`
 ```@docs
-GumbelCopula
+ClaytonGenerator
 ```
 
-## Ali-Mikhail-Haq Copula
-
+## `FrankGenerator`
 ```@docs
-AMHCopula
+FrankGenerator
 ```
 
-## Joe Copula
-
+## `GumbelGenerator`
 ```@docs
-JoeCopula
+GumbelGenerator
+```
+
+## `AMHGenerator`
+```@docs
+AMHGenerator
+```
+
+## `JoeGenerator`
+```@docs
+JoeGenerator
+```
+
+## `GumbelBarnettGenerator`
+```@docs
+GumbelBarnettGenerator
+```
+
+## `InvGaussianGenerator`
+```@docs
+InvGaussianGenerator
 ```
 
 
-## Gumbel-Barnett Copula
 
-```@docs
-GumbelBarnettCopula
-```
-
-
-## Inverse-Gaussian Copula
-
-```@docs
-InvGaussianCopula
+```@bibliography
+Pages = ["available_models.md"]
+Canonical = false
 ```

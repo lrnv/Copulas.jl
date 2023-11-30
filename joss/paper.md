@@ -12,7 +12,7 @@ authors:
     orcid: 0000-0002-8198-3656
     affiliation: 2 # must use "" if you have more than one.
 affiliations:
- - name: SESSTIM, Aix Marseille University, Marseille, France
+ - name: Aix Marseille Univ, Inserm, IRD, SESSTIM, Sciences Economiques & Sociales de la Santé & Traitement de l’Information Médicale, ISSPAM, Marseille, France.
    index: 1
  - name: Federal University of Pernambuco
    index: 2

@@ -9,3 +9,8 @@ All docstrings are copied here as a general reference.
 ```@autodocs; canonical = false
 Modules = [Copulas]
 ```
+
+```@bibliography
+Pages = ["idx.md"]
+Canonical = false
+```

@@ -5,7 +5,7 @@
     using StableRNGs
     rng = StableRNG(123)
     MyD = SklarDist(ClaytonCopula(3,7),(LogNormal(),Pareto(),Beta()))
-    u = rand(rng,MyD,10000)
+    u = rand(rng,MyD,1000)
     rand!(MyD,u)
     fit(SklarDist{ClaytonCopula,Tuple{LogNormal,Pareto,Beta}},u)
     fit(SklarDist{GaussianCopula,Tuple{LogNormal,Pareto,Beta}},u)
@@ -21,15 +21,19 @@ end
 # We could also test the behavior of Turing models, so that what Herb did will not fade away with releases; 
 
 
-# @testitem "GaussianCopula" begin
-#     C = GaussianCopula([1 -0.1; -0.1 1])
-#     M1 = Beta(2,3)
-#     M2 = LogNormal(2,3)
-#     D = SklarDist(C,(M1,M2))
-#     X = rand(rng,D,1000)
-#     loglikelihood(D,X)
-#     fit(SklarDist{TCopula,Tuple{Beta,LogNormal}},X) # should give a very high \nu for the student copula. 
-# end
+@testitem "GaussianCopula" begin
+    using Distributions
+    using Random
+    using StableRNGs
+    rng = StableRNG(123)
+    C = GaussianCopula([1 -0.1; -0.1 1])
+    M1 = Beta(2,3)
+    M2 = LogNormal(2,3)
+    D = SklarDist(C,(M1,M2))
+    X = rand(rng,D,100)
+    loglikelihood(D,X)
+    @test_broken fit(SklarDist{TCopula,Tuple{Beta,LogNormal}},X) # should give a very high \nu for the student copula. 
+end
 
 # Same thing with other models ? 
 

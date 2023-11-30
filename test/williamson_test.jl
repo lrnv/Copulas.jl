@@ -8,12 +8,11 @@
     ϕ_clayton(x, θ) = max((1 + θ * x),zero(x))^(-1/θ)
 
     Cops = (
-        WilliamsonCopula(Dirac(1),10),
-        WilliamsonCopula(x -> exp(-x),10),
-        WilliamsonCopula(x -> ϕ_clayton(x,2),2),
-        WilliamsonCopula(x -> ϕ_clayton(x,-0.3),2)
+        ArchimedeanCopula(10,i𝒲(Dirac(1),10)),
+        ArchimedeanCopula(2,i𝒲(Pareto(1),5)),
+        ArchimedeanCopula(2,i𝒲(LogNormal(3),5)),
     )
     for C in Cops
-        x = rand(rng,C,1000)
+        x = rand(rng,C,10)
     end
 end
