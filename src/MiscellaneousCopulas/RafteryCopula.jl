@@ -90,12 +90,12 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, R::RafteryCopula{d
     
     return x
 end
-function ρ(R::RafteryCopula{d,R}) where {d, P}
+function ρ(R::RafteryCopula{d,P}) where {d, P}
     term1 = (d+1)*(2^d-(2-R.θ)^d)-(2^d*R.θ*d)
     term2 = (2-R.θ)^d*(2^d-d-1) 
     return term1/term2
 end
-function τ(R::RafteryCopula{d, R}) where {d, P}
+function τ(R::RafteryCopula{d, P}) where {d, P}
     term1 = (2^(d-1) * factorial(d)) / ((2^(d-1)-1) * prod(i+1-R.θ for i in 2:d))
     term2 = ((1 - R.θ)^2 * (d^2 - 1)) / ((d-1+R.θ) * (d+1-R.θ) * (2^(d-1)-1))
     term3_sum = 0.0
