@@ -25,6 +25,8 @@
         FGMCopula(2,1),
         MCopula(4),
         PlackettCopula(2.0),
+        RafteryCopula(2, 0.2),
+        RafteryCopula(3, 0.5)
         # Others ? Yes probably others too ! 
     )
     n = 1000
