@@ -19,9 +19,9 @@ where ``u_{(1)}, \\ldots , u_{(d)}`` denote the order statistics of ``u_1, \\ldo
 
 More details about Multivariate Raftery Copula are found in :
 
-    Saali, T., M. Mesfioui, and A. Shabri, 2023: Multivariate Extension of Raftery Copula. Mathematics, 11, 414, https://doi.org/10.3390/math11020414.    
+    [Raftery2023](@cite) Saali, T., M. Mesfioui, and A. Shabri, 2023: Multivariate Extension of Raftery Copula. Mathematics, 11, 414, https://doi.org/10.3390/math11020414. 
     
-    Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.6.
+    [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.6. 
 
 It has a few special cases:
 - When θ = 0, it is the IndependentCopula.
@@ -41,19 +41,17 @@ struct RafteryCopula{d, P} <: Copula{d}
         end
     end
 end
-function _cdf(R::RafteryCopula, u::Vector{T}) where {T}
-    if length(u) != R.d
-        throw(ArgumentError("Dimension mismatch"))
-    end
-    
+Base.eltype(R::RafteryCopula) = eltype(R.θ)
+
+function _cdf(R::RafteryCopula{d,P}, u::Vector{T}) where {d,P,T}
     # Order the vector u
     u_ordered = sort(u)
     
     term1 = u_ordered[1]
-    term2 = (1 - R.θ) * (1 - R.d) / (1 - R.θ - R.d) * prod(u).^(1/(1 - R.θ))
+    term2 = (1 - R.θ) * (1 - d) / (1 - R.θ - d) * prod(u).^(1/(1 - R.θ))
 
     term3 = 0.0
-    for i in 2:R.d
+    for i in 2:d
         prod_prev = prod(u_ordered[1:i-1])
         term3 += R.θ * (1 - R.θ) / ((1 - R.θ - i) * (2 - R.θ - i)) * prod_prev^(1/(1 - R.θ)) * u_ordered[i]^((2 - R.θ - i) / (1 - R.θ))
     end
@@ -62,17 +60,12 @@ function _cdf(R::RafteryCopula, u::Vector{T}) where {T}
     
     return cdf_value
 end
-
-function Distributions._logpdf(R::RafteryCopula, u::Vector{T}) where {T}
-    if length(u) != R.d
-        throw(ArgumentError("Dimension mismatch"))
-    end
-    
-    # Order the vector u 
+function Distributions._logpdf(R::RafteryCopula{d,P}, u::Vector{T}) where {d,P,T}
+    # Order the vector u
     u_ordered = sort(u)
     
-    term_denominator = (1 - R.θ)^(R.d - 1) * (1 - R.θ - R.d)
-    term_numerator = 1 - R.d - R.θ * u_ordered[R.d]^((1 - R.θ - R.d) / (1 - R.θ))
+    term_denominator = (1 - R.θ)^(d - 1) * (1 - R.θ - d)
+    term_numerator = 1 - d - R.θ * u_ordered[d]^((1 - R.θ - d) / (1 - R.θ))
     term_product = prod(u)^((R.θ) / (1 - R.θ))
     
     logpdf_value = log(term_numerator) - log(term_denominator) + log(term_product)
@@ -88,18 +81,31 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, R::RafteryCopula{d
     u = rand(rng, dim+1)
     
     # Step 2: Generate j from a Bernoulli distribution with parameter θ
-    j = rand(Bernoulli(R.θ),1)
-    uj = u[1].^j
+    j = rand(Distributions.Bernoulli(R.θ), 1)
+    uj = u[1]^j[1]
     # Step 3: Calculate v_1, ..., v_d
     for i in 2:dim+1
-        x[i] = u[i]^(1 - R.θ) * uj
+        x[i-1] = u[i]^(1 - R.θ) * uj
     end
     
     return x
 end
-
 function ρ(R::RafteryCopula{d,R}) where {d, P}
     term1 = (d+1)*(2^d-(2-R.θ)^d)-(2^d*R.θ*d)
     term2 = (2-R.θ)^d*(2^d-d-1) 
     return term1/term2
 end
+function τ(R::RafteryCopula{d, R}) where {d, P}
+    term1 = (2^(d-1) * factorial(d)) / ((2^(d-1)-1) * prod(i+1-R.θ for i in 2:d))
+    term2 = ((1 - R.θ)^2 * (d^2 - 1)) / ((d-1+R.θ) * (d+1-R.θ) * (2^(d-1)-1))
+    term3_sum = 0.0
+    for k in 2:d
+        term3_sum += (R.θ * (1-R.θ) * (2-R.θ)) / (2^k * factorial(k-1) * (1-R.θ-k) * (2-R.θ-k) * prod(i+1-R.θ for i in k:d))
+    end
+    term3 = (2^d * factorial(d)) / (2^(d-1)-1) * term3_sum
+    
+    term4 = 1 / (2^(d-1)-1)
+    
+    return term1 + term2 - term3 - term4
+end
+
