@@ -84,13 +84,13 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, R::RafteryCopula{d
     
     dim = length(x)
     
-    # Paso 1: Generar valores independientes u, u_1, ..., u_d desde una distribución uniforme [0, 1]
+    # Step 1: Generate independent values u, u_1, ..., u_d from a uniform distribution [0, 1]
     u = rand(rng, dim+1)
     
-    # Paso 2: Generar j desde una distribución de Bernoulli con parámetro θ
+    # Step 2: Generate j from a Bernoulli distribution with parameter θ
     j = rand(Bernoulli(R.θ),1)
     uj = u[1].^j
-    # Paso 3: Calcular v_1, ..., v_d
+    # Step 3: Calculate v_1, ..., v_d
     for i in 2:dim+1
         x[i] = u[i]^(1 - R.θ) * uj
     end
@@ -103,4 +103,3 @@ function ρ(R::RafteryCopula{d,R}) where {d, P}
     term2 = (2-R.θ)^d*(2^d-d-1) 
     return term1/term2
 end
-

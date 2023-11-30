@@ -29,6 +29,12 @@ PlackettCopula
 FGMCopula
 ```
 
+# Raftery copula
+
+```@docs
+RafteryCopula
+```
+
 ## Survival Copula
 
 ```@docs
