@@ -29,10 +29,14 @@ module Copulas
     include("MiscellaneousCopulas/PlackettCopula.jl")
     include("MiscellaneousCopulas/EmpiricalCopula.jl")
     include("MiscellaneousCopulas/FGMCopula.jl")
-    export SurvivalCopula,
+    include("MiscellaneousCopulas/RafteryCopula.jl")
+    export MCopula,
+           WCopula,
+           SurvivalCopula,
            PlackettCopula,
            EmpiricalCopula,
-           FGMCopula
+           FGMCopula,
+           RafteryCopula
 
     # Elliptical copulas
     include("EllipticalCopula.jl")
