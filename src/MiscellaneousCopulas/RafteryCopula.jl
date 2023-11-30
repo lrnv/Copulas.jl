@@ -2,7 +2,7 @@
     RafteryCopula{d, P}
 
 Fields:
-  - θ::Real - parameter
+    - θ::Real - parameter
 
 Constructor
 
@@ -14,18 +14,15 @@ The Multivariate Raftery Copula of dimension d is arameterized by ``\\theta \\in
 C_{\\theta}(\\mathbf{u}) = u_{(1)} + \\frac{(1 - \\theta)(1 - d)}{1 - \\theta - d} \\left(\\prod_{j=1}^{d} u_j\\right)^{\\frac{1}{1-\\theta}} - \\sum_{i=2}^{d} \\frac{\\theta(1-\\theta)}{(1-\\theta-i)(2-\\theta-i)} \\left(\\prod_{j=1}^{i-1}u_{(j)}\\right)^{\\frac{1}{1-\\theta}}u_{(i)}^{\\frac{2-\\theta-i}{1-\\theta}}
 ```
 
-
-where ``u_{(1)}, \\ldots , u_{(d)}`` denote the order statistics of ``u_1, \\ldots ,u_d``.
-
-More details about Multivariate Raftery Copula are found in :
-
-    [Raftery2023](@cite) Saali, T., M. Mesfioui, and A. Shabri, 2023: Multivariate Extension of Raftery Copula. Mathematics, 11, 414, https://doi.org/10.3390/math11020414. 
-    
-    [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.6. 
+where ``u_{(1)}, \\ldots , u_{(d)}`` denote the order statistics of ``u_1, \\ldots ,u_d``. More details about Multivariate Raftery Copula are found in the references below.
 
 It has a few special cases:
 - When θ = 0, it is the IndependentCopula.
 - When θ = 1, it is the the Fréchet upper bound
+
+References: 
+* [Raftery2023](@cite) Saali, T., M. Mesfioui, and A. Shabri, 2023: Multivariate Extension of Raftery Copula. Mathematics, 11, 414, https://doi.org/10.3390/math11020414. 
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.6. 
 """
 struct RafteryCopula{d, P} <: Copula{d}
     θ::P  # Copula parameter
