@@ -16,14 +16,12 @@ PlackettCopula
 
 Farlie-Gumbel-Morgenstern (FGM) copula
 
+```@docs
+FGMCopula
+```
+
 # Raftery copula
 
 ```@docs
 RafteryCopula
-```
-
-## Survival Copula
-
-```@docs
-SurvivalCopula
 ```
