@@ -17,6 +17,17 @@ end
         cdf_value = cdf(F, u)
         @test cdf_value >= 0 && cdf_value <= 1
     end
+    examples = [
+        ([0.2, 0.5], [1.199432, 1e-5], 0.8),
+        ([0.3, 0.8], [0.2817, 1e-5], 0.5),
+        ([0.1, 0.2, 0.3], [0.08325884, 1e-5], 0.5),
+        ([0.4, 0.8, 0.2], [0.120415, 1e-5], 0.1),
+    ]
+        
+    for (u, expected, θ) in examples
+        copula = RafteryCopula(length(u), θ)
+        @test cdf(copula, u) ≈ expected[1] atol=expected[2]
+    end    
 end
 
 @testset "RafteryCopula PDF" begin
@@ -29,7 +40,19 @@ end
         pdf_value = pdf(F, u)
         @test pdf_value >= 0
     end
+    examples = [
+        ([0.2, 0.5], [0.114055555, 1e-4], 0.8),
+        ([0.3, 0.8], [0.6325, 1e-4], 0.5),
+        ([0.1, 0.2, 0.3], [1.9945086, 1e-4], 0.5),
+        ([0.4, 0.8, 0.2], [0.939229, 1e-4], 0.1),
+    ]
+        
+    for (u, expected, θ) in examples
+        copula = RafteryCopula(length(u), θ)
+        @test pdf(copula, u) ≈ expected[1] atol=expected[2]
+    end
 end
+
 
 @testitem "RafteryCopula Sampling" begin
     using StableRNGs
