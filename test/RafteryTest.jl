@@ -1,7 +1,7 @@
 @testitem "RafteryCopula Constructor" begin
     for d in [2,3,4]
-        @test isa(RarfteryCopula(d,0.0), IndependentCopula)
-        @test isa(RarfteryCopula(d,1.0), MCopula)
+        @test isa(RafteryCopula(d,0.0), IndependentCopula)
+        @test isa(RafteryCopula(d,1.0), MCopula)
     end    
     @test_throws ArgumentError RafteryCopula(1,0.5)
     @test_throws ArgumentError RafteryCopula(3,-1.5)
