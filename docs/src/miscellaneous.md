@@ -25,3 +25,8 @@ FGMCopula
 ```@docs
 RafteryCopula
 ```
+
+```@bibliography
+Pages = ["Liouville.md"]
+Canonical = false
+```
