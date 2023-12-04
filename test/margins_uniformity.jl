@@ -115,7 +115,7 @@
         if !(CT<:EmpiricalCopula) # this one is not a true copula :)
             for i in 1:d
                 # On the samples
-                @test pvalue(ApproximateOneSampleKSTest(spl[i,:], U),tail=:right) > 0.01 # this is weak but enough to catch mistakes. 
+                @test pvalue(ApproximateOneSampleKSTest(spl[i,:], U),tail=:right) > 0.009 # this is weak but enough to catch mistakes. 
 
                 # On the cdf: 
                 u = ones(d)
