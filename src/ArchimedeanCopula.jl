@@ -63,6 +63,7 @@ function _cdf(C::CT,u) where {CT<:ArchimedeanCopula}
     return ϕ(C,sum_ϕ⁻¹u)
 end
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
+    @assert Copulas.max_monotony(C.G) > d # if it is equal then there is no density
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
     end
@@ -93,27 +94,26 @@ end
 #     return 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
 # end
 
-function _archi_rand!(rng,C::ArchimedeanCopula{d},R,x) where d
-    # x is assumed to already be random exponentials produced by Random.randexp
-    r = rand(rng,R)
-    sx = sum(x)
-    for i in 1:d
-        x[i] = ϕ(C,r * x[i]/sx)
-    end
-end
-
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:ArchimedeanCopula}
     # By default, we use the williamson sampling. 
     Random.randexp!(rng,x)
-    _archi_rand!(rng,C,williamson_dist(C),x)
+    r = rand(rng,williamson_dist(C))
+    sx = sum(x)
+    for i in 1:length(C)
+        x[i] = ϕ(C,r * x[i]/sx)
+    end
     return x
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real, CT<:ArchimedeanCopula}
     # More efficient version that precomputes the williamson transform on each call to sample in batches: 
     Random.randexp!(rng,A)
-    R = williamson_dist(C)
-    for i in 1:size(A,2)
-        _archi_rand!(rng,C,R,view(A,:,i))
+    n = size(A,2)
+    r = rand(rng,williamson_dist(C),n)
+    for i in 1:n
+        sx = sum(A[:,i])
+        for j in 1:length(C)
+            A[j,i] = ϕ(C,r[i] * A[j,i]/sx)
+        end
     end
     return A
 end
@@ -123,8 +123,9 @@ function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula}
     τ = StatsBase.corkendall(u')
     # Then the off-diagonal elements of the matrix should be averaged: 
     avgτ = (sum(τ) .- d) / (d^2-d)
-    θ = τ⁻¹(CT,avgτ)
-    return CT(d,θ)
+    GT = generatorof(CT)
+    θ = τ⁻¹(GT,avgτ)
+    return ArchimedeanCopula(d,GT(θ))
 end
 
 τ(C::ArchimedeanCopula{d,TG}) where {d,TG} = τ(C.G)
