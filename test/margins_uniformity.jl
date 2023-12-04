@@ -119,7 +119,7 @@
 
                 # On the cdf: 
                 u = ones(d)
-                for val in [0,1,rand(10)...]
+                for val in [0,1,rand(rng,10)...]
                     u[i] = val
                     if typeof(C)<:TCopula
                         @test_broken cdf(C,u) ≈ val
@@ -128,7 +128,7 @@
                     end
                 end
                 # extra check for zeros: 
-                u = rand(d)
+                u = rand(rng,d)
                 u[i] = 0
                 if typeof(C)<:TCopula
                     @test_broken cdf(C,u) ≈ val
@@ -154,7 +154,7 @@
         #         # also check that pdf values are indeed derivatives of the cdf values: 
         #         begin 
         #             for _ in 1:10
-        #                 u = rand(d)
+        #                 u = rand(rng,d)
         #                 @test isapprox(get_numerical_pdf(C,u),pdf(C,u),atol=1e-5)
         #             end
         #         end
