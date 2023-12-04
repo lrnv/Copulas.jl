@@ -31,6 +31,8 @@
         PlackettCopula(2.0),
         EmpiricalCopula(randn(2,100),pseudo_values=false),
         SurvivalCopula(ClaytonCopula(2,-0.7),(1,2)),
+        RafteryCopula(2, 0.2),
+        RafteryCopula(3, 0.5),
         # Others ? Yes probably others too ! 
     )
 
