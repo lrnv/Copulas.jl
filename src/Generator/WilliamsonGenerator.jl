@@ -1,5 +1,6 @@
 """
     WilliamsonGenerator{TX}
+    i𝒲{TX}
 
 Fields:
 * `X::TX` -- a random variable that represents its williamson d-transform
@@ -8,8 +9,9 @@ Fields:
 Constructor
 
     WilliamsonGenerator(X::Distributions.UnivariateDistribution, d)
+    i𝒲(X::Distributions.UnivariateDistribution,d)
 
-The `WilliamsonGenerator` allows to construct a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation, wich is called the inverse williamson transformation, is implemented in [WilliamsonTransforms.jl](https://www.github.com/lrnv/WilliamsonTransforms.jl). 
+The `WilliamsonGenerator` (alias `i𝒲`) allows to construct a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation, wich is called the inverse williamson transformation, is implemented in [WilliamsonTransforms.jl](https://www.github.com/lrnv/WilliamsonTransforms.jl). 
 
 For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and an integer ``d\\ge 2``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
 
@@ -45,5 +47,11 @@ struct WilliamsonGenerator{TX} <: Generator
 end
 const i𝒲 = WilliamsonGenerator
 max_monotony(G::WilliamsonGenerator) = G.d
-williamson_dist(G::WilliamsonGenerator) = G.X
+function williamson_dist(G::WilliamsonGenerator, d)
+    if d == G.d 
+        return G.X
+    end
+    # what about d < G.d ? Mayeb we can do some frailty stuff ? 
+    return WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),d)
+end
 ϕ(G::WilliamsonGenerator, t) = WilliamsonTransforms.𝒲(G.X,G.d)(t)

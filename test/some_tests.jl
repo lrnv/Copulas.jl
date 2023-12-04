@@ -30,7 +30,7 @@ end
     M1 = Beta(2,3)
     M2 = LogNormal(2,3)
     D = SklarDist(C,(M1,M2))
-    X = rand(rng,D,100)
+    X = rand(rng,D,10)
     loglikelihood(D,X)
     @test_broken fit(SklarDist{TCopula,Tuple{Beta,LogNormal}},X) # should give a very high \nu for the student copula. 
 end

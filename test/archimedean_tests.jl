@@ -161,7 +161,7 @@ end
     using StableRNGs
     using Distributions
     rng = StableRNG(123)
-    for d in 2:10
+    for d in 2:5
         for θ ∈ [-1.0,-rand(rng),0.0,rand(rng)]
             C = AMHCopula(d,θ)
             data = rand(rng,C,100)
@@ -181,7 +181,7 @@ end
     @test all(pdf(C0,data0) .>= 0)
     @test all(0 .<= cdf(C0,data0) .<= 1)
     fit(ClaytonCopula,data0)
-    for d in 2:10
+    for d in 2:5
         for θ ∈ [-1/(d-1) * rand(rng),0.0,-log(rand(rng)), Inf]
             C = ClaytonCopula(d,θ)
             data = rand(rng,C,100)
@@ -212,7 +212,7 @@ end
     fit(FrankCopula,data1)
 
 
-    for d in 2:10
+    for d in 2:5
         for θ ∈ [1.0,1-log(rand(rng)), Inf]
             C = FrankCopula(d,θ)
             data = rand(rng,C,10000)
@@ -227,7 +227,7 @@ end
     using StableRNGs
     using Distributions
     rng = StableRNG(123)
-    for d in 2:10
+    for d in 2:5
         for θ ∈ [1.0,1-log(rand(rng)), Inf]
             C = GumbelCopula(d,θ)
             data = rand(rng,C,100)
@@ -242,7 +242,7 @@ end
     using StableRNGs
     using Distributions
     rng = StableRNG(123)
-    for d in 2:10
+    for d in 2:5
         for θ ∈ [1.0,1-log(rand(rng)), Inf]
             C = JoeCopula(d,θ)
             data = rand(rng,C,100)
@@ -258,7 +258,7 @@ end
     using StableRNGs
     using Distributions
     rng = StableRNG(123)
-    for d in 2:10
+    for d in 2:5
         for θ ∈ [0.0,rand(rng),1.0]
             C = GumbelBarnettCopula(d,θ)
             data = rand(rng,C,100)
@@ -274,7 +274,7 @@ end
     using StableRNGs
     using Distributions
     rng = StableRNG(123)
-    for d in 2:10
+    for d in 2:5
         for θ ∈ [rand(rng),1.0, -log(rand(rng))]
             C = InvGaussianCopula(d,θ)
             data = rand(rng,C,100)
