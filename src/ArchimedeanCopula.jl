@@ -192,18 +192,18 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopul
     x[1] = rand(rng)
     x[2] = 1-x[1] 
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d,IndependentGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,IndependentGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
     Random.rand!(rng,A)
     return A
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d,MGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,MGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
     A[1,:] .= rand(rng,size(A,2))
     for i in 2:size(A,1)
         A[i,:] .= A[1,:]
     end
     return A
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d,WGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,WGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
     @assert size(A,1) == 2
     A[1,:] .= rand(rng,size(A,2))
     A[2,:] .= 1 .- A[1,:]

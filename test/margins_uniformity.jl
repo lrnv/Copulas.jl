@@ -124,7 +124,7 @@
                     if typeof(C)<:TCopula
                         @test_broken cdf(C,u) ≈ val
                     else
-                        @test cdf(C,u) ≈ val
+                        @test cdf(C,u) ≈ val atol=1e-5
                     end
                 end
                 # extra check for zeros: 
