@@ -36,15 +36,14 @@ struct GumbelBarnettGenerator{T} <: UnivariateGenerator
 end
 max_monotony(G::GumbelBarnettGenerator) = Inf
 ϕ(  G::GumbelBarnettGenerator, t) = exp((1-exp(t))/G.θ)
-ϕ⁻¹(G::GumbelBarnettGenerator, t) = log(1-G.θ*log(t))
+ϕ⁻¹(G::GumbelBarnettGenerator, t) = log1p(-G.θ*log(t))
 # ϕ⁽¹⁾(G::GumbelBarnettGenerator, t) =  # First derivative of ϕ
 # ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, k, t) = # kth derivative of ϕ
 
 function τ(G::GumbelBarnettGenerator)
     # Use a numerical integration method to obtain tau
-    result, _ = QuadGK.quadgk(x -> -((x-G.θ*x*log(x))*log(1-G.θ*log(x))/G.θ), 0, 1)
-    
-    return 1+4*result
+    r, _ = QuadGK.quadgk(x -> (1-G.θ*log(x))  * log1p(-G.θ*log(x)) * x, 0, 1)
+    return 1-4*r/G.θ
 end
 function τ⁻¹(::Type{T}, tau) where T<:GumbelBarnettGenerator
     if tau == 0

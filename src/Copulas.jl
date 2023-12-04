@@ -30,9 +30,7 @@ module Copulas
     include("MiscellaneousCopulas/EmpiricalCopula.jl")
     include("MiscellaneousCopulas/FGMCopula.jl")
     include("MiscellaneousCopulas/RafteryCopula.jl")
-    export MCopula,
-           WCopula,
-           SurvivalCopula,
+    export SurvivalCopula,
            PlackettCopula,
            EmpiricalCopula,
            FGMCopula,
@@ -57,7 +55,6 @@ module Copulas
 
     include("Generator/WilliamsonGenerator.jl")
     export WilliamsonGenerator, i𝒲
-
     include("Generator/ZeroVariateGenerator/IndependentGenerator.jl")
     include("Generator/ZeroVariateGenerator/MGenerator.jl")
     include("Generator/ZeroVariateGenerator/WGenerator.jl")
@@ -72,15 +69,61 @@ module Copulas
     # Archimedean copulas
     include("ArchimedeanCopula.jl")
     export ArchimedeanCopula,
-           IndependentCopula, 
-           ClaytonCopula,
-           JoeCopula,
-           GumbelCopula,
-           FrankCopula,
-           AMHCopula,
-           GumbelBarnettCopula,
-           InvGaussianCopula,
+           IndependentCopula,
            MCopula,
-           WCopula
+           WCopula,
+           AMHCopula,
+           ClaytonCopula,
+           FrankCopula,
+           GumbelBarnettCopula,
+           GumbelCopula,
+           InvGaussianCopula,
+           JoeCopula
+
+
+
+       using PrecompileTools
+    @setup_workload begin
+    # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
+    # precompile file and potentially make loading faster.
+        @compile_workload begin
+            for C in (
+                IndependentCopula(3),
+                AMHCopula(3,0.6),
+                AMHCopula(4,-0.3),
+                ClaytonCopula(2,-0.7),
+                ClaytonCopula(3,-0.1),
+                ClaytonCopula(4,7),
+                FrankCopula(2,-5),
+                FrankCopula(3,12),
+                JoeCopula(3,7),
+                GumbelCopula(4,7),
+                GumbelBarnettCopula(3,0.7),
+                InvGaussianCopula(4,0.05),
+                InvGaussianCopula(3,8),
+                GaussianCopula([1 0.5; 0.5 1]),
+                TCopula(4, [1 0.5; 0.5 1]),
+                FGMCopula(2,1),
+                MCopula(4),
+                ArchimedeanCopula(2,Copulas.i𝒲(Distributions.LogNormal(),2)),
+                PlackettCopula(2.0),
+                EmpiricalCopula(randn(2,100),pseudo_values=false),
+                SurvivalCopula(ClaytonCopula(2,-0.7),(1,2)),
+                # WCopula(2),            ################ <<<<<<<<<-------------- Does not work and I cannot explain why !
+                # RafteryCopula(2, 0.2), ################ <<<<<<<<<<------------- BUGGY
+                # RafteryCopula(3, 0.5), ################ <<<<<<<<<<------------- BUGGY
+                # We should probably add others to speed up again. 
+            ) 
+                u1 = rand(C)
+                u = rand(C,2)
+                if applicable(Distributions.pdf,C,u1) && !(typeof(C)<:EmpiricalCopula)
+                     Distributions.pdf(C,u1)
+                     Distributions.pdf(C,u)
+                end
+                Distributions.cdf(C,u1)
+                Distributions.cdf(C,u)
+            end
+        end
+    end
 
 end
