@@ -20,9 +20,9 @@ struct EmpiricalCopula{d,MT} <: Copula{d}
     u::MT
 end
 Base.eltype(C::EmpiricalCopula{d,MT}) where {d,MT} = Base.eltype(C.u)
-function EmpiricalCopula(u;pseudos=true)
+function EmpiricalCopula(u;pseudo_values=true)
     d = size(u,1)
-    if !pseudos
+    if !pseudo_values
         u = pseudos(u)
     else
         @assert all(0 .<= u .<= 1)
@@ -30,7 +30,7 @@ function EmpiricalCopula(u;pseudos=true)
     return EmpiricalCopula{d,typeof(u)}(u)
 end
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
-   return mean(all(C.u .<= u,dims=1)) # might not be very efficient implementation. 
+   return StatsBase.mean(all(C.u .<= u,dims=1)) # might not be very efficient implementation. 
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula{d,MT}, x::AbstractVector{T}) where {d,MT,T<:Real}
     x .= C.u[:,Distributions.rand(rng,axes(C.u,2),1)[1]]
