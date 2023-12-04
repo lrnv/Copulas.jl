@@ -44,10 +44,10 @@ function ϕ⁽ᵏ⁾(G::Generator, k, t)
 end
 williamson_dist(G::Generator, d) = WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),d)
 
-τ(G::Generator) = @error("This generator has no kendall tau implemented.")
-ρ(G::Generator) = @error ("This generator has no Spearman rho implemented.")
-τ⁻¹(G::Generator, τ_val) = @error("This generator has no inverse kendall tau implemented.")
-ρ⁻¹(G::Generator, ρ_val) = @error ("This generator has no inverse Spearman rho implemented.")
+# τ(G::Generator) = @error("This generator has no kendall tau implemented.")
+# ρ(G::Generator) = @error ("This generator has no Spearman rho implemented.")
+# τ⁻¹(G::Generator, τ_val) = @error("This generator has no inverse kendall tau implemented.")
+# ρ⁻¹(G::Generator, ρ_val) = @error ("This generator has no inverse Spearman rho implemented.")
 
 
 abstract type UnivariateGenerator <: Generator end
