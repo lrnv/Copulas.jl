@@ -63,7 +63,6 @@ function _cdf(C::CT,u) where {CT<:ArchimedeanCopula}
     return ϕ(C,sum_ϕ⁻¹u)
 end
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
-    @assert Copulas.max_monotony(C.G) > d # if it is equal then there is no density
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
     end

@@ -92,7 +92,6 @@
     n = 1000
     U = Uniform(0,1)
     for C in cops
-        @show C
         
         d = length(C)
         CT = typeof(C)
