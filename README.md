@@ -36,7 +36,7 @@ The package revolves around two main types:
 - `Copula`, an abstract mother type for all the copulas in the package
 - `SklarDist`, a distribution type that allows construction of a multivariate distribution by specifying the copula and the marginals through [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem). 
 
-**Warning: This is fairly untested and experimental work and the API might change without notice.**
+**Warning: This is fairly experimental work and our API might change without notice.**
 
 ## Instalation
 
