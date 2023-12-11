@@ -32,6 +32,9 @@ end
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return StatsBase.mean(all(C.u .<= u,dims=1)) # might not be very efficient implementation. 
 end
+function Distributions._logpdf(C::EmpiricalCopula{d,MT}, u) where {d,MT}
+    any(C.u .== u) ? -log(size(C.u,2)) : -Inf
+end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula{d,MT}, x::AbstractVector{T}) where {d,MT,T<:Real}
     x .= C.u[:,Distributions.rand(rng,axes(C.u,2),1)[1]]
 end

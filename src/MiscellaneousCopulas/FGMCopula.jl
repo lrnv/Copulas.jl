@@ -65,7 +65,7 @@ end
 function _cdf(fgm::FGMCopula, u::Vector{T}) where {T}
     return prod(u) * (1 + _reduce_over_combinations(fgm, 1 .-u, prod))
 end
-function Distributions._logpdf(fgm::FGMCopula, u::Vector{T}) where {T}
+function Distributions._logpdf(fgm::FGMCopula, u)
     return log1p(_reduce_over_combinations(fgm, 1 .-2u, prod))
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d,Tθ}, x::AbstractVector{T}) where {d,Tθ, T <: Real}
