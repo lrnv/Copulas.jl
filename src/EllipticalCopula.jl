@@ -4,15 +4,15 @@
 This is an abstract type. It implements an interface for all Elliptical copulas. We construct internally elliptical copulas using the sklar's theorem, by considering the copula ``C`` to be defined as : 
 
 ```math
-C = F `\\circ (F_1^{-1},...,F_d^{-1}),
+C = F \\circ (F_1^{-1},...,F_d^{-1}),
 ```
 
-where ``F`` and ``F_1,...,F_d`` are respectively the multivariate distribution function of some elliptical random vector and the univaraite distribution function of its marginals.  For a type `MyCop <: EllipitcalCopula`, it is necessary to implement the following methods: 
+where ``F`` and ``F_1,...,F_d`` are respectively the multivariate distribution function of some elliptical random vector and the univariate distribution function of its marginals.  For a type `MyCop <: EllipitcalCopula`, it is necessary to implement the following methods: 
 
-- `N(::Type{MyCOp})`, returning the constructor of the elliptical random vector from its corelation matrix. For example, `N(GaussianCopula)` simply returns `MvNormal` from `Distributions.jl`.
-- `U(::Type{MyCOp})`, returning the constructor for the univariate marginal, usually in standardized form. For exemple, `U(GaussianCopula)` returns `Normal` from `Distributions.jl`.
+- `N(::Type{MyCOp})`, returning the constructor of the elliptical random vector from its correlation matrix. For example, `N(GaussianCopula)` simply returns `MvNormal` from `Distributions.jl`.
+- `U(::Type{MyCOp})`, returning the constructor for the univariate marginal, usually in standardized form. For example, `U(GaussianCopula)` returns `Normal` from `Distributions.jl`.
 
-From these two functions, the abstract type provide a fully functional copula. 
+From these two functions, the abstract type provides a fully functional copula. 
 
 # Details 
 
