@@ -9,12 +9,12 @@ Constructor
     GaussianCopula(Σ)
 
 The [Gaussian Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Gaussian_copula) is the 
-copula of a [Multivariate normal distribution](http://en.wikipedia.org/wiki/Multivariate_normal_distribution). It is constructed as : 
+copula of a [Multivariate normal distribution](http://en.wikipedia.org/wiki/Multivariate_normal_distribution). It is constructed as: 
 
 ```math
 C(\\mathbf{x}; \\boldsymbol{\\Sigma}) = F_{\\Sigma}(F_{\\Sigma,i}^{-1}(x_i),i\\in 1,...d)
 ```
-where ``F_{\\Sigma}`` is a cdf of a gaussina random vector and `F_{\\Sigma,i}` is the ith marignal cdf, while ```\\Sigma`` is the covariance matrix. 
+where ``F_{\\Sigma}`` is a cdf of a gaussian random vector and `F_{\\Sigma,i}` is the ith marginal cdf, while ``\\Sigma`` is the covariance matrix. 
 
 It can be constructed in Julia via:  
 ```julia
