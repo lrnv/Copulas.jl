@@ -4,18 +4,16 @@
 <p align=center>
     <a href="https://lrnv.github.io/Copulas.jl/stable"><img src="https://img.shields.io/badge/docs-stable-blue.svg" alt="Stable" /></a>
     <a href="https://lrnv.github.io/Copulas.jl/dev"><img src="https://img.shields.io/badge/docs-dev-blue.svg" alt="Dev" /></a>
+    <a href="https://joss.theoj.org/papers/98fa5d88d0d8f27038af2da00f210d45"><img src="https://joss.theoj.org/papers/98fa5d88d0d8f27038af2da00f210d45/status.svg"></a>
+    <a href="https://zenodo.org/badge/latestdoi/456485213"><img src="https://zenodo.org/badge/456485213.svg" alt="DOI" /></a>
 <br />
     <a href="https://www.repostatus.org/#active"><img src="https://www.repostatus.org/badges/latest/active.svg" alt="Project Status: Active – The project has reached a stable, usable state and is being actively developed." /></a>
      <a href="https://github.com/lrnv/Copulas.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/lrnv/Copulas.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" /></a>
-<br />
      <a href="https://codecov.io/gh/lrnv/Copulas.jl"><img src="https://codecov.io/gh/lrnv/Copulas.jl/branch/main/graph/badge.svg"/></a>
      <a href="https://github.com/JuliaTesting/Aqua.jl"><img src="https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg" alt="Aqua QA" /></a>
     <!-- <a href="https://benchmark.tansongchen.com/TaylorDiff.jl"><img src="https://img.shields.io/buildkite/2c801728055463e7c8baeeb3cc187b964587235a49b3ed39ab/main.svg?label=benchmark" alt="Benchmark Status" /></a> -->
 <br />
-    <a href="https://joss.theoj.org/papers/98fa5d88d0d8f27038af2da00f210d45"><img src="https://joss.theoj.org/papers/98fa5d88d0d8f27038af2da00f210d45/status.svg"></a>
     <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
-    <a href="https://zenodo.org/badge/latestdoi/456485213"><img src="https://zenodo.org/badge/456485213.svg" alt="DOI" /></a>
-<br />
     <a href="https://github.com/SciML/ColPrac"><img src="https://img.shields.io/badge/contributor's%20guide-ColPrac-blueviolet" alt="ColPrac: Contributor's Guide on Collaborative Practices for Community Packages" /></a>
     <a href="https://github.com/invenia/BlueStyle"><img src="https://img.shields.io/badge/code%20style-blue-4495d1.svg" alt="Code Style: Blue" /></a>
 </p>
@@ -38,13 +36,13 @@ The package revolves around two main types:
 
 **Warning: This is fairly experimental work and our API might change without notice.**
 
-## Instalation
+## Getting started
+
+The package is registered in Julia's General registry so you may simply install the package by running : 
 
 ```julia
 ] add Copulas
 ```
-
-## Usage 
 
 The API contains random number generation, cdf and pdf evaluation, and the `fit` function from `Distributions.jl`. A typical use case might look like this: 
 
@@ -64,61 +62,13 @@ D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
 # Increase the number of observations to get a beter fit (or not?)  
 ```
 
-Available copula families are:
-- `EllipticalCopulas`: `GaussianCopula` and `TCopula`
-- `ArchimedeanCopula`: `WilliamsonCopula` (for any generator), but also `ClaytonCopula`,`FrankCopula`, `AMHCopula`, `JoeCopula`, `GumbelCopula`, supporting the full ranges in every dimensions (e.g. ClaytonCopula can be sampled with negative dependence in any dimension, not just d=2). 
-- `WCopula`, `IndependentCopula` and `MCopula`, which are [Fréchet-Hoeffding bounds](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Fr%C3%A9chet%E2%80%93Hoeffding_copula_bounds),
-- `PlackettCopula`, see ref?
-- `EmpiricalCopula` to follow closely a given dataset.
+The list of availiable copula models is *very* large, check it out on our [documentation](https://lrnv.github.io/Copulas.jl/stable) ! 
 
-The next ones to be implemented will probably be: 
-- Extreme values copulas. 
-- Nested archimedeans (for any generators, with automatic nesting conditions checking). 
-- Bernstein copula and more general Beta copula as smoothing of the Empirical copula. 
-- `CheckerboardCopula` (and more generally `PatchworkCopula`)
-
-Adding a new `ArchimedeanCopula` is very easy. The `Clayton` implementation is as short as: 
-
-```julia
-struct ClaytonCopula{d,T} <: Copulas.ArchimedeanCopula{d}
-    θ::T
-end
-ClaytonCopula(d,θ)            = ClaytonCopula{d,typeof(θ)}(θ)     # Constructor
-ϕ(C::ClaytonCopula, t)        = (1+sign(C.θ)*t)^(-1/C.θ)          # Generator
-ϕ⁻¹(C::ClaytonCopula,t)       = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
-τ(C::ClaytonCopula)           = C.θ/(C.θ+2)                       # θ -> τ
-τ⁻¹(::Type{ClaytonCopula},τ)  = 2τ/(1-τ)                          # τ -> θ
-williamson_dist(C::ClaytonCopula{d,T}) where {d,T} = WilliamsonFromFrailty(Distributions.Gamma(1/C.θ,1),d) # Radial distribution
-```
-The Archimedean API is modular: 
-
-- To sample an archimedean, only `ϕ` is required. Indeed, the `williamson_dist` has a generic fallback that uses [WilliamsonTransforms.jl](https://www.github.com/lrnv/WilliamsonTransforms.jl) for any generator. Note however that providing the `williamson_dist` yourself if you know it will allow sampling to be an order of magnitude faster.
-- To evaluate the cdf and (log-)density in any dimension, only `ϕ` and `ϕ⁻¹` are needed.
-- Currently, to fit the copula `τ⁻¹` is needed as we use the inverse tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
-- Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
-
-Please take a look at the [documentation](https://lrnv.github.io/Copulas.jl/dev) for more details. 
-
-## Dev Roadmap
-
-**Next:**
-- [ ] More documentation and tests for the current implementation. 
-- [ ] Docs: show how to use the WilliamsonCopula to implement generic archimedeans.
-- [ ] Give the user the choice of fitting method via `fit(dist,data; method="MLE")` or `fit(dist,data; method="itau")` or `fit(dist,data; method="irho")`.
-- [ ] Fitting a generic archimedean with an empirically produced generarator
-- [ ] Automatic checking of generator d-monotonicity ? Dunno if it is even possible. 
-
-**Maybe later:**
-- [ ] `NestedArchimedean`, with automatic checking of nesting conditions for generators. 
-- [ ] `Vines`?
-- [ ] `Archimax` ?
-- [ ] `BernsteinCopula` and `BetaCopula` could also be implemented. 
-- [ ] `PatchworkCopula` and `CheckerboardCopula`: could be nice things to have :)
-- [ ] Goodness of fits tests ?
+The general implementation philosophy is for the code to follow the mathematical boundaries of the implemented concepts. In particular, this is the only implementation in any language that allows for **all** Archimedean copulas to be sampled: we simply use the Williamson transformation for non-standard generators, you may even give you generator as a black-box function ! 
 
 ## Contributions are welcome
 
-If you want to contribute to the package, found a bug in it or simply want to chat, do not hesitate to open an issue on this repo. 
+If you want to contribute to the package, found a bug in it or simply want to chat, do not hesitate to open an issue and chat!
 
 ## Citation 
 
