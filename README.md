@@ -72,6 +72,8 @@ If you want to contribute to the package, found a bug in it or simply want to ch
 
 ## Citation 
 
+Do not hesitate to star this repository to show support ! You may also cite the package by using the following bibtex code: 
+
 ```bibtex
 @software{oskar_laverny_2023_10084669,
   author       = {Oskar Laverny},
