@@ -22,12 +22,11 @@
   <a href="https://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=563952901&machine=standardLinux32gb&devcontainer_path=.devcontainer%2Fdevcontainer.json&location=EastUshttps://github.com/codespaces/new?hide_repo_select=true&ref=main&repo=563952901&machine=standardLinux32gb&devcontainer_path=.devcontainer%2Fdevcontainer.json&location=EastUs"><img src="https://github.com/codespaces/badge.svg" alt="Open in GitHub Codespaces" /></a>
 </p> -->
 
-`Copulas.jl` brings most standard [copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)) features into native Julia: random number generation, pdf and cdf, fitting, copula-based multivariate distributions through Sklar's theorem, etc. Since copulas are distribution functions, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This complience allows interoperability with other packages based on this API such as, e.g., [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
+`Copulas.jl` brings most standard [copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)) features into native Julia: random number generation, pdf and cdf, fitting, copula-based multivariate distributions through Sklar's theorem, etc. Since copulas are distribution functions, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This allows interoperability with the broader ecosystem, based on this API, such as, e.g., [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
 
-Usually, people that use and work with copulas turn to R, because of the amazing `R` package [`copula`](https://cran.r-project.org/web/packages/copula/copula.pdf).
-While it is still well maintained and regularly updated, the `R` package `copula` is a mixture of obscure, heavily optimized `C` code and more standard `R` code, which makes it a complicated code base for readability, extensibility, reliability and maintenance.
+Usually, people that use and work with copulas turn to R, because of the amazing package [`R::copula`](https://cran.r-project.org/web/packages/copula/copula.pdf). While well-maintained and regularly updated, `R::copula` is a mixture of obscure, heavily optimized `C` code and more standard `R` code, which makes it a complicated code base for readability, extensibility, reliability and maintenance.
 
-This is an attempt to provide a very light, fast, reliable and maintainable copula implementation in native Julia. Among others, one of the notable benefits of such a native implementatioon is the floating point type agnosticity, i.e. compatibility with `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl) and other kind of numbers.
+This is an attempt to provide a very light, fast, reliable and maintainable copula implementation in native Julia. One of the notable benefits of such a native implementation (among others) is the floating point type agnosticity, i.e. compatibility with `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl), etc.
 
 The package revolves around two main types: 
 
@@ -54,21 +53,20 @@ X₃ = LogNormal(0,1)
 C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 
-# This generates a (3,1000)-sized dataset from the multivariate distribution D
-simu = rand(D,1000)
+simu = rand(D,1000) # Generate a dataset
 
-# While the following estimates the parameters of the model from a dataset: 
+# You may estimate a copula using the `fit` function:
 D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
 # Increase the number of observations to get a beter fit (or not?)  
 ```
 
 The list of availiable copula models is *very* large, check it out on our [documentation](https://lrnv.github.io/Copulas.jl/stable) ! 
 
-The general implementation philosophy is for the code to follow the mathematical boundaries of the implemented concepts. In particular, this is the only implementation in any language that allows for **all** Archimedean copulas to be sampled: we simply use the Williamson transformation for non-standard generators, you may even give you generator as a black-box function ! 
+The general implementation philosophy is for the code to follow the mathematical boundaries of the implemented concepts. For example, this is the only implementation we know (in any language) that allows for **all** Archimedean copulas to be sampled: we use the Williamson transformation for non-standard generators, including user-provided black-box ones.
 
 ## Contributions are welcome
 
-If you want to contribute to the package, found a bug in it or simply want to chat, do not hesitate to open an issue and chat!
+If you want to contribute to the package, found a bug in it or simply want to chat, simply open an issue!
 
 ## Citation 
 
