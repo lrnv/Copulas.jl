@@ -39,7 +39,7 @@ end
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1/G.θ))
 ϕ(  G::ClaytonGenerator, t) = max(1+G.θ*t,zero(t))^(-1/G.θ)
 ϕ⁻¹(G::ClaytonGenerator, t) = (t^(-G.θ)-1)/G.θ
-# ϕ⁽¹⁾(G::ClaytonGenerator, t) =  First derivative of ϕ
+# ϕ⁽¹⁾(G::ClaytonGenerator, t) =  (1+G.θ*t) > 0 ? zero(t) : - (1+G.θ*t)^(-1/G.θ -1) # First derivative of ϕ
 # ϕ⁽ᵏ⁾(G::ClaytonGenerator, k, t) = kth derivative of ϕ
 τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ/(G.θ+2), 1)
 τ⁻¹(::Type{T},τ) where T<:ClaytonGenerator = ifelse(τ == 1,Inf,2τ/(1-τ))

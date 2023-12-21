@@ -17,5 +17,5 @@ The two Frechet-Hoeffding bounds are also Archimedean copulas.
 struct WGenerator <: ZeroVariateGenerator end
 max_monotony(G::WGenerator) = 2
 τ(::WGenerator) = -1
-ϕ(::WGenerator,t) = throw(MethodError("WGenerator cannot have a ϕ function")) 
-ϕ⁻¹(::WGenerator,t) = throw(MethodError("WGenerator cannot have a ϕ⁻¹ function")) 
+ϕ(::WGenerator,t) = throw(ArgumentError("WGenerator cannot have a ϕ function")) 
+ϕ⁻¹(::WGenerator,t) = throw(ArgumentError("WGenerator cannot have a ϕ⁻¹ function")) 
