@@ -1,4 +1,4 @@
-<h1 align=center>![copulas.jl](docs/src/assets/logo.svg) Copulas.jl</h1>
+<h1 align=center>Copulas.jl</h1>
 <p align=center><i>A fully `Distributions.jl`-compliant copula package</i></p>
 
 <p align=center>
