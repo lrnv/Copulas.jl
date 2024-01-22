@@ -1,4 +1,4 @@
-<h1 align=center>Copulas.jl</h1>
+<h1 align=center> ![logo](https://github.com/lrnv/Copulas.jl/blob/main/docs/src/assets/logo.svg?raw=true) Copulas.jl</h1>
 <p align=center><i>A fully `Distributions.jl`-compliant copula package</i></p>
 
 <p align=center>
