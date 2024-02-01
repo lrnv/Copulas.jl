@@ -70,7 +70,7 @@ The independence copula can be constructed using the [`IndependentCopula(d)`](@r
 ```julia
 using Copulas
 d = 4 # The dimension of the model
-Π = IndependenceCopula(d)
+Π = IndependentCopula(d)
 ```
 
 And then the Sklar's theorem can be applied to it as follows, using the previously-defined marginals : 
