@@ -66,8 +66,7 @@ The general implementation philosophy is for the code to follow the mathematical
 
 ## Contributions are welcome
 
-If you want to contribute to the package, found a bug in it or simply want to chat, simply open an issue!
-
+If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on this repo. General guidelines on collaborative practices (colprac) are available at https://github.com/SciML/ColPrac.
 ## Citation 
 
 Do not hesitate to star this repository to show support ! You may also cite the package by using the following bibtex code: 
