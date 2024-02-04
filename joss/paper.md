@@ -35,7 +35,7 @@ The Julia package `Copulas.jl` brings most standard copula-related features into
 
 The R package `copula` [@r_copula_citation1; @r_copula_citation2; @r_copula_citation3; @r_copula_citation4] is the gold standard when it comes to sampling, estimating, or simply working around dependence structures. However, in other languages, the available tools are not as developped and/or not as recognised. We bridge the gap in the Julian ecosystem with this Julia-native implementation. Due to the very flexible type system in Julia, our code expressiveness and tidyness will increase its usability and maintenability in the long-run. Type-stability allows sampling in arbitrary precision without requiering more code, and Julia's multiple dispatch yields most of the below-described applications.
 
-There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality (mostly because the three projects chose different copulas to implement), `Copulas.jl` is clearly the must fully featured, and brings, as a key feature, the complience with the broader ecosystem.
+There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality (mostly because the three projects chose different copulas to implement), `Copulas.jl` is clearly the most fully featured, and brings, as a key feature, the compliance with the broader ecosystem.
 
 # Examples
 
@@ -61,7 +61,7 @@ D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,Normal,Binomial}}, x)
 # Although you'll probbaly get a bad fit !
 ```
 
-The API does not fix the fitting procedure, and only loosely specify it, thus the implemented default might vary on the copula. If you want more control, you may turn to bayesian estimation using `Turing.jl` [@turing]:  
+The API does not fix the fitting procedure, and only loosely specifies it, thus the implemented default might vary on the copula. If you want more control, you may turn to bayesian estimation using `Turing.jl` [@turing]:  
 
 ```julia
 using Turing
@@ -88,7 +88,7 @@ end
 
 Archimedean copulas are a huge family of copulas that has seen a lot of theoretical work. Among others, you may take a look at [@mcneilMultivariateArchimedeanCopulas2009b]. We use [`WilliamsonTransformations.jl`](https://github.com/lrnv/WilliamsonTransforms.jl/)'s implementation of the Williamson $d$-transfrom to sample from any archimedean copula, including for example the `ClaytonCopula` with negative dependence parameter in any dimension, which is a first to our knowledge.
 
-The API is consisting of the folloiwng functions: 
+The API consists of the following functions: 
 
 ```julia
 ϕ(C::MyArchimedean, t) # Generator
@@ -127,7 +127,7 @@ fit(::Type{MyArchimedean},data) # fitting.
 
 The package is starting to get used in several other places of the ecosystem. Among others, we noted: 
 
-- The package [`GlobalSensitivity.jl`](https://github.com/SciML/GlobalSensitivity.jl) exploit `Copulas.jl` to provide Shapley effects implementation, see [this documentation](https://docs.sciml.ai/GlobalSensitivity/stable/tutorials/shapley/). 
+- The package [`GlobalSensitivity.jl`](https://github.com/SciML/GlobalSensitivity.jl) exploits `Copulas.jl` to provide Shapley effects implementation, see [this documentation](https://docs.sciml.ai/GlobalSensitivity/stable/tutorials/shapley/). 
 - [`EconomicScenarioGenerators.jl`](https://github.com/JuliaActuary/EconomicScenarioGenerators.jl) uses depndence structures between financial assets. 
 
 
