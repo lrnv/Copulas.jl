@@ -32,7 +32,7 @@ The package is available on Julia's general registry, and can be installed as fo
 
 ## Contributing
 
-**Contributions are welcomed !** If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on this repo. 
+**Contributions are welcomed !** If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on this repo. General guidelines on collaborative practices (colprac) are available at https://github.com/SciML/ColPrac.
 
 ## Cite this work
 
