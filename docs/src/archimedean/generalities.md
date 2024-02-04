@@ -59,7 +59,7 @@ In this package, we implemented it through the [`WilliamsonGenerator`](@ref) cla
 
 `WilliamsonGenerator(X::UnivariateRandomVariable, d)`.
 
-This function computes the Williamson d-transform of the provided random variable $X$ using the [WilliamsonTransforms.jl](https://github.com/lrnv/WilliamsonTransforms.jl) package. See [williamson1955multiply, mcneil2009](@cite) for the literature. 
+This function computes the Williamson d-transform of the provided random variable $X$ using the [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl) package. See [williamson1955multiply, mcneil2009](@cite) for the literature. 
 
 !!! warn "`max_monotony` of Williamson generators"
     The $d$-transform of a positive random variable is $d$-monotonous but not $k$-monotonous for any $k > d$. Its max monotony is therefore $d$. This has a few implications, one of the biggest one is that the $d$-variate Archimedean copula that corresponds has no density. 
@@ -76,13 +76,13 @@ WilliamsonGenerator
 ## [Inverse Williamson d-transform](@id w_trans_section)
 
 
-The Williamson d-transform is a bijective transformation[^1] from the set of positive random variables to the set of generators, and therefore has an inverse transformation (called, suprisingly, the inverse Williamson $d$-transform) that construct the a positive random variable *R* from a generator $\phi$.
+The Williamson d-transform is a bijective transformation[^1] from the set of positive random variables to the set of generators. It therefore has an inverse transformation (called, surprisingly, the inverse Williamson $d$-transform) that construct the positive random variable *R* from a generator $\phi$.
 
 [^1]:
 
-    This bijection is to be taken carefully: the bijection is between random variables *with unit scales* and generators *with common value at 1*, sicne on both rescaling does not change the underlying copula. 
+    This bijection is to be taken carefuly: the bijection is between random variables *with unit scales* and generators *with common value at 1*, sicne on both rescaling does not change the underlying copula. 
 
-This transformation is implemented through one method in the Generator interface that is worth talking a bit about : `williamson_dist(G::Generator, d)`. This function computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ, still using the [WilliamsonTransforms.jl](https://github.com/lrnv/WilliamsonTransforms.jl) package. See [williamson1955multiply, mcneil2009](@cite)
+This transformation is implemented through one method in the Generator interface that is worth talking a bit about : `williamson_dist(G::Generator, d)`. This function computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ, still using the [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl) package. See [williamson1955multiply, mcneil2009](@cite).
 
 To put it in a nutshell, for ``\phi`` a ``d``-monotone archimedean generator, the inverse Williamson-d-transform of ``\\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``R``, defined by : 
 
@@ -90,10 +90,10 @@ To put it in a nutshell, for ``\phi`` a ``d``-monotone archimedean generator, th
 F(x) = 𝒲_{d}^{-1}(\phi)(x) = 1 - \frac{(-x)^{d-1} \phi_+^{(d-1)}(x)}{k!} - \sum_{k=0}^{d-2} \frac{(-x)^k \phi^{(k)}(x)}{k!}
 ```
 
-The [WilliamsonTransforms.jl](https://github.com/lrnv/WilliamsonTransforms.jl) package implements this transformation (and its inverse, the Williamson d-transfrom) in all generality. It returns this cumulative distribution function in the form of the corresponding random variable `<:Distributions.ContinuousUnivariateDistribution` from `Distributions.jl`. You may then compute : 
+The [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl) package implements this transformation (and its inverse, the Williamson d-transfrom) in all generality. It returns this cumulative distribution function in the form of the corresponding random variable `<:Distributions.ContinuousUnivariateDistribution` from `Distributions.jl`. You may then compute : 
 * The cdf via `Distributions.cdf`
 * The pdf via `Distributions.pdf` and the logpdf via `Distributions.logpdf`
-* Samples from the distribution via `rand(X,n)`
+* Samples from the distribution via `rand(X,n)`.
 
 
 ## Archimedean copulas
@@ -104,7 +104,7 @@ Let's first define formally archimedean copulas:
 >
 >$$C(\bm u) = \phi\left(\sum\limits_{i=1}^d \phi^{-1}(u_i)\right)$$ is a copula. 
 
-There are a few archimedean generators that are worth noting since they correspond to known archimedean copulas familiies: 
+There are a few archimedean generators that are worth noting since they correspond to known archimedean copulas families: 
 * [`IndependentGenerator`](@ref): $\phi(t) =e^{-t} \text{ generates } \Pi$.
 * [`ClaytonGenerator`](@ref): $\phi_{\theta}(t) = \left(1+t\theta\right)^{-\theta^{-1}}$ generates the $\mathrm{Clayton}(\theta)$ copula.
 * [`GumbelGenerator`](@ref): $\phi_{\theta}(t) = \exp\{-t^{\theta^{-1}}\}$ generates the $\mathrm{Gumbel}(\theta)$ copula.
@@ -114,7 +114,7 @@ There are a lot of others implemented in the package, see our [large list of imp
 
 Archimedean copulas have a nice decomposition, called the Radial-simplex decomposition: 
 
-> **Property (Radial-simplex decomposition [mcneil2008,mcneil2009](@cite):** A $d$-variate random vector $\bm U$ following an Archimedean copula with generator $\phi$ can be decomposed into 
+> **Property (Radial-simplex decomposition [mcneil2008,mcneil2009](@cite)):** A $d$-variate random vector $\bm U$ following an Archimedean copula with generator $\phi$ can be decomposed into 
 >
 > $\bm U = \phi.(\bm S R),$
 > where $\bm S$ is uniform on the $d$-variate simplex and $R$ is a non-negative random variable, independent form $\bm S$, defined as the inverse Williamson $d$-transform of $\phi$.  

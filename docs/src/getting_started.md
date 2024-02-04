@@ -11,7 +11,7 @@ The interested theoretical reader can take a look at the standard books on the s
 
 Consider a real valued random vector $\bm X = \left(X_1,...,X_d\right): \Omega \to \mathbb R^d$. The random variables $X_1,...,X_d$ are called the marginals of the random vector $\bm X$. 
 
-!!! info "Constructing random variables in Julia via Distributions.jl"
+!!! info "Constructing random variables in Julia via `Distributions.jl`"
     Recall that you can construct random variables in Julia by the following code : 
 
     ```julia
@@ -85,21 +85,21 @@ MyDistribution = SklarDist(Π, (X₁,X₂,X₃,X₄))
 
 Copulas are bounded functions
 
-> **Property (Fréchet-Hoeffding bounds [lux2017](@cite):** For all $\bm x \in [0,1]^d$, every copula $C$ satisfies : 
+> **Property (Fréchet-Hoeffding bounds [lux2017](@cite)):** For all $\bm x \in [0,1]^d$, every copula $C$ satisfies : 
 >
 >$\langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+} \le C(\bm x) \le \min \bm x,$
 >where $y_{+} = \max(0,y)$.
 
-> **Example (Fréchet-Hoeffding bounds [lux2017](@cite):** The function $M : \bm x \mapsto \min\bm x$, called the upper Fréchet-Hoeffding bound, is a copula. The function $W : \bm x \mapsto \langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+}$, called the lower Fréchet-Hoeffding bound, is on the other hand a copula only when $d=2$. 
+> **Example (Fréchet-Hoeffding bounds [lux2017](@cite)):** The function $M : \bm x \mapsto \min\bm x$, called the upper Fréchet-Hoeffding bound, is a copula. The function $W : \bm x \mapsto \langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+}$, called the lower Fréchet-Hoeffding bound, is on the other hand a copula only when $d=2$. 
 
 
 These two copulas can be constructed through [`MCopula(d)`](@ref MGenerator) and [`WCopula(2)`](@ref WGenerator). The upper Fréchet-Hoeffding bound corresponds to the case of comonotone random vector: a random vector $\bm X$ is said to be comonotone, i.e., to have copula $M$, when each of its marginals can be written as a non-decreasing transformation of the same random variable (say with $\mathcal U\left([0,1]\right)$ distribution). This is a simple but important dependence structure. See e.g.,[kaas2002,hua2017](@cite) on this particular copula.
 
-Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas. This is mostly the content of this package, and we refer to the rest of the documentaiton for more details on the models and their implementations. 
+Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas. This is mostly the content of this package, and we refer to the rest of the documentation for more details on the models and their implementations. 
 
 ## Fitting copulas and compound distributions.
 
-`Distributions.jl` proposes the  `fit` function in their API for random ve tors and random variables. We used it to implement fitting of multivariate models (copulas, of course, but also comppound distributions). It can be used as follows: 
+`Distributions.jl` proposes the `fit` function in their API for random ve tors and random variables. We used it to implement fitting of multivariate models (copulas, of course, but also compound distributions). It can be used as follows: 
 
 
 ```julia

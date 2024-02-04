@@ -36,7 +36,7 @@ The package is available on Julia's general registry, and can be installed as fo
 
 ## Cite this work
 
-Please use the following bibtex if you want to cite this work: 
+Please use the following BibTeX if you want to cite this work: 
 
 ```bibtex
 @software{oskar_laverny_2023_10084669,

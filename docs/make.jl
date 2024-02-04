@@ -41,7 +41,7 @@ makedocs(;
             "empirical/available_models.md",
         ],
         "Dependence measures" => "dependence_measures.md",
-        "Exemples" => [
+        "Examples" => [
             "exemples/fitting_sklar.md",
             "exemples/turing.md",
         ],
