@@ -9,7 +9,7 @@ CurrentModule = Copulas
 
 Through the statistical process leading to the estimation of copulas, one usually observes the data and information on the marginals scale and not on the copula scale. This discrepancy between the observed information and the modeled distribution must be taken into account. A key concept is that of pseudo-observations. 
 
->**Definition (Pseudo-observations):** If $\bm x \in \mathbb R^{N\times d}$ is an $N$-sample of a $d$-variate real-valued random vector $\bm X$, then the pseudo-observations are the normalized ranks of the marginals of $\bm x$, defined as : 
+>**Definition (Pseudo-observations):** If $\bm x \in \mathbb R^{N\times d}$ is a $N$-sample of a $d$-variate real-valued random vector $\bm X$, then the pseudo-observations are the normalized ranks of the marginals of $\bm x$, defined as : 
 >
 > $$\bm u \in \mathbb [0,1]^{N\times d}:\; u_{i,j} = \frac{\mathrm{Rank}(x_{i,j},\,\bm x_{\cdot,j})}{N+1} = \frac{1}{N+1}\sum_{k=1}^N \mathbb 1_{x_{k,j} \le x_{i,j}},$$
 >
@@ -37,7 +37,7 @@ From these pseudo-observations, an empirical copula is defined as follows:
 $\hat{C}_N$ then converges (weakly) to $C$, the true copula of the random vector $\bm X$, when the number of observations $N$ goes to infinity. 
 
 !!! note "The empirical copula is not a true copula"
-    Despite its name, $\hat{C}_N$ is not a copula since it does not have uniform marginals. Be carrefull. 
+    Despite its name, $\hat{C}_N$ is not a copula since it does not have uniform marginals. Be careful. 
 
 In the package, this copula is implemented as the `EmpiricalCopula`: 
 
@@ -59,15 +59,15 @@ The empirical copula function is not a copula. An easy way to fix this problem i
 >
 > $$\sup\limits_{\bm u \in [0,1]^d} \lvert \hat{C}_N(\bm u) - \hat{C}_N^\beta(\bm u) \rvert \le d\left(\sqrt{\frac{\ln n}{n}} + \sqrt{\frac{1}{n}} + \frac{1}{n}\right)$$
 
-!!! note "Not implemeted yet!"
-    Do not hesitate to come talk on [our github](https://github.com/lrnv/Copulas.jl) !
+!!! note "Not implemented yet!"
+    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
 
 ## Bernstein Copula
 
 Bernstein copula are simply another smoothing of the empirical copula using Bernstein polynomials. 
 
-!!! note "Not implemeted yet!"
-    Do not hesitate to come talk on [our github](https://github.com/lrnv/Copulas.jl) !
+!!! note "Not implemented yet!"
+    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
 
 ## Checkerboard Copulas
 
@@ -86,7 +86,7 @@ Furthermore, for any copula $C$ (or more generally distribution function $F$), w
 >is a genuine copula as soon as $m_1,...,m_d$ all divide $N$.
 
 
->**Property (Consistency of $\hat{C}_{N,\bm m}$ [cuberos2019](@cite):** If all $m_1,..,m_d$ divide $N$,
+>**Property (Consistency of $\hat{C}_{N,\bm m}$ [cuberos2019](@cite)):** If all $m_1,..,m_d$ divide $N$,
 >
 > $$\sup\limits_{\bm u \in [0,1]^d} \lvert \hat{C}_{N,\bm m}(\bm u) - C(\bm u) \rvert \le \frac{d}{2m} + \mathcal O_{\mathbb P}\left(n^{-\frac{1}{2}}\right).$$
 
@@ -108,7 +108,7 @@ where we intend $\bm m ]\bm a, \bm b] = ] \bm m \bm a, \bm m \bm b]$ (products b
 
 This allows for an easy generalization in the framework of patchwork copulas: 
 
-> **Definition (Patchwork copulas [durante2012,durante2013,durante2015](@cite):**) Let $\bm m \in \mathbb N^d$ all divide $N$, and let $\mathcal C = \{C_{\bm i}, \bm i < \bm m\}$ be a given collection of copulas. The distribution function
+> **Definition (Patchwork copulas [durante2012,durante2013,durante2015](@cite):**) Let $\bm m \in \mathbb N^d$ all divide $N$, and let $\mathcal C = \{C_{\bm i}, \bm i < \bm m\}$ be a given collection of copulas. The distribution function:
 >
 >$$\hat{C}_{N,\bm m, \mathcal C}(\bm x) = \sum_{\bm i < \bm m} \mu_{\hat{C}_N}(B_{\bm i, \bm m}) \mu_{C_{\bm i}}(\bm m B_{\bm i, \bm m}(\bm x))$$
 >is a copula. 
@@ -117,8 +117,8 @@ In fact, replacing $\hat{C}_N$ by any copula in the patchwork construct still yi
 
 Convergence results for this kind of copulas can be found in [durante2015](@cite), with a slightly different parametrization. 
 
-!!! note "Not implemeted yet!"
-    Do not hesitate to come talk on [our github](https://github.com/lrnv/Copulas.jl) !
+!!! note "Not implemented yet!"
+    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
 
 
 ```@bibliography

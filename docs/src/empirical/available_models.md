@@ -12,15 +12,15 @@ EmpiricalCopula
 
 ## `BernsteinCopula`
 
-!!! note "Not implemeted yet!"
-    Do not hesitate to come talk on [our github](https://github.com/lrnv/Copulas.jl) !
+!!! note "Not implemented yet!"
+    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
 
 ## `CheckerboardCopula`
 
-!!! note "Not implemeted yet!"
-    Do not hesitate to come talk on [our github](https://github.com/lrnv/Copulas.jl) !
+!!! note "Not implemented yet!"
+    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
 
 ## `BetaCopula`
 
-!!! note "Not implemeted yet!"
-    Do not hesitate to come talk on [our github](https://github.com/lrnv/Copulas.jl) !
+!!! note "Not implemented yet!"
+    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !

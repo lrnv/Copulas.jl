@@ -1,14 +1,14 @@
-# Bayesian inference with Turing.jl
+# Bayesian inference with `Turing.jl`
 
 
-The compatibility with the broader `Distributions.jl`'s API allows a lot of interactions with the broader eco-system. One of the firsts examples that we discovered was the possibility to do bayesian inference of model parameters with [`Turing.jl`](https://turing.ml/). 
+The compatibility with the broader `Distributions.jl`'s API allows a lot of interactions with the broader ecosystem. One of the firsts examples that we discovered was the possibility to do Bayesian inference of model parameters with [`Turing.jl`](https://turing.ml/). 
 
 Consider that we have a model with :
 
 - A given parametric dependence structure, say a Clayton Copula. 
 - A few given parametric marginals. 
 
-Then we can use Turing's `@addlogprob!` to compute the loglikelyhood of our model and maximize it around th eparameters alongside the chain as folows: 
+Then we can use Turing's `@addlogprob!` to compute the loglikelihood of our model and maximize it around the parameters alongside the chain as follows: 
 
 ```julia
 using Copulas
@@ -48,9 +48,9 @@ chain = sample(copula(draws), sampler, MCMCThreads(), 100, 4)
 plot(chain)
 ```
 
-This kind of model could be used to do a lot of stuff. here we use it for a parametric estimation of a sampling model, but it could be used for other things such as, e.g., a bayesian regression with an error structure given by a parmaetric copula.
+This kind of model could be used to do a lot of stuff. here we use it for a parametric estimation of a sampling model, but it could be used for other things such as, e.g., a Bayesian regression with an error structure given by a parametric copula.
 
-Note that we truncated the θ parameter at -1/3 and not 0 as the ClaytonCopula can handle negative dependence structures. 
+Note that we truncated the θ parameter at -1/3 and not 0 as the `ClaytonCopula` can handle negative dependence structures. 
 
 
 

@@ -1,6 +1,6 @@
 # Fitting compound distributions
 
-Through the SklarDist interface, there is the possiiblity to fit directly distributions that are constructed from a copula and some marginals:
+Through the `SklarDist` interface, there is the possibility to fit directly distributions that are constructed from a copula and some marginals:
 
 ```julia
 using Copulas
@@ -25,6 +25,6 @@ fitted_model = fit(MyD,data)
 other_fitted_model = fit(SklarDist{EmpiricalCopula,MyMargs},data)
 ```
 
-This simple interface leverages indeed the `fit` functon from Distributions.jl. From their documentation, this function is not supposed to use a particular method but to fit "dirt and quick" some distributions. 
+This simple interface leverages indeed the `fit` function from `Distributions.jl`. From their documentation, this function is not supposed to use a particular method but to fit "dirt and quick" some distributions. 
 
-So you have to be carefull : the fit method might not be the same for different copulas or different marginals. For exemples, the archimedean copulas are fitted through an inversion of the kendall tau function, while the gaussian copula is fitted by maximum likelyhood. 
+So you have to be careful: the fit method might not be the same for different copulas or different marginals. For example, the Archimedean copulas are fitted through an inversion of the Kendall tau function, while the Gaussian copula is fitted by maximum likelihood. 

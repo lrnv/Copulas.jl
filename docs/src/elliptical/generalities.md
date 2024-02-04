@@ -26,7 +26,7 @@ which is still a function of only the norm of $\bm t$. To fix ideas, for Gaussia
 
 ## Elliptical copulas
 
-Elliptical copulas are simply copulas of elliptical distributions. This simplicity of definition is paid for in the expression of the copulas itself: the obtained function has usually no better expression than 
+Elliptical copulas are simply copulas of elliptical distributions. This simplicity of definition is paid for in the expression of the copulas itself: the obtained function has usually no better expression than: 
 ```math
 C = F \circ (F_1^{-1},...,F_d^{-1}),
 ```
