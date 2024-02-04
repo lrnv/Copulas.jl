@@ -18,7 +18,11 @@ affiliations:
    index: 2
 date: 16 November 2023
 bibliography: paper.bib
-
+header-includes:
+- |
+  ```{=latex}
+  \setmonofont[Path=./]{JuliaMono-Regular.ttf}
+  ```
 ---
 <!-- LTeX: language=en -->
 # Summary
