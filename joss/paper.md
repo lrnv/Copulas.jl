@@ -57,7 +57,7 @@ To perform an efficiency test we use the "BenchmarkTools" package with the objec
 | Copulas.Clayton                   | 2         | 1.1495578e9                                  | 408973296                     |
 | Copulas.Clayton                   | 5         | 1.3448951e9                                  | 386723344                     |
 | Copulas.Clayton                   | 10        |       1.8044065e9                            |    464100752                  |
-| BivariateCopulas.Clayton          | 2         | ...                                  | ...                     |
+| BivariateCopulas.Clayton          | 2         | 1.331608e8                                  | 56000864                     |
  | DatagenCopulaBased.Clayton        | 2         |   1.9868345e9                                |  1178800464                    |
 | DatagenCopulaBased.Clayton        | 5         |       2.4276321e9                            | 1314855488                     |
 | DatagenCopulaBased.Clayton        | 10        |   2.8009263e9                                |   1627164656                   |
