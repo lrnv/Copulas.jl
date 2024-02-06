@@ -14,7 +14,7 @@ copula of a [Multivariate normal distribution](http://en.wikipedia.org/wiki/Mult
 ```math
 C(\\mathbf{x}; \\boldsymbol{\\Sigma}) = F_{\\Sigma}(F_{\\Sigma,i}^{-1}(x_i),i\\in 1,...d)
 ```
-where ``F_{\\Sigma}`` is a cdf of a gaussian random vector and `F_{\\Sigma,i}` is the ith marginal cdf, while ``\\Sigma`` is the covariance matrix. 
+where ``F_{\\Sigma}`` is a cdf of a gaussian random vector and ``F_{\\Sigma,i}`` is the ith marginal cdf, while ``\\Sigma`` is the covariance matrix. 
 
 It can be constructed in Julia via:  
 ```julia
