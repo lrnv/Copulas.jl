@@ -40,6 +40,27 @@ The Julia package `Copulas.jl` brings most standard copula-related features into
 The R package `copula` [@r_copula_citation1; @r_copula_citation2; @r_copula_citation3; @r_copula_citation4] is the gold standard when it comes to sampling, estimating, or simply working around dependence structures. However, in other languages, the available tools are not as developed and/or not as recognized. We bridge the gap in the Julian ecosystem with this Julia-native implementation. Due to the very flexible type system in Julia, our code expressiveness and tidiness will increase its usability and maintainability in the long-run. Type-stability allows sampling in arbitrary precision without requiring more code, and Julia's multiple dispatch yields most of the below-described applications.
 
 There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) [@BivariateCopulas] which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl) [@DatagenCopulaBased_1; @DatagenCopulaBased_2; @DatagenCopulaBased_3; @DatagenCopulaBased_4], which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality (mostly because the three projects chose different copulas to implement), `Copulas.jl` is clearly the most fully featured, and brings, as a key feature, the compliance with the broader ecosystem.
+# Comparison of other packages with copulas.jl
+According to the package documentation, it is possible to summarize some of the most important functionalities of each package and those most needed by the community.
+## Functionality
+The following table shows some characteristics that differentiate each package.
+| Characteristic                                | Copulas.jl         | DatagenCopulaBased.jl         | BivariateCopulas.jl          |
+|-----------------------------------------------|--------------------|--------------------|--------------------|
+| Every Archimedean Copula sampling     | Yes                 | No                 | No                 |
+| Multivariate Copula sampling | Yes                | No                 | Yes                 |
+| Nested Copula Sampling             | No                 | No                 | Yes    |
+| Fitting Copula | Yes | only bivariate case | No |
+##  Efficiency
+To perform an efficiency test we use the "BenchmarkTools" package with the objective of comparing the execution time and the amount of memory necessary to generate copula samples with each package. We generate 10^6 samples for Clayton copula of dimensions 2, 5, 10 with parameter 0.8
+| Package                           | Dimension | Execution Time (seconds) | Memory Usage (bytes) |
+|-----------------------------------|-----------|--------------------------------------|-------------------------|
+| Copulas.Clayton                   | 2         | 1.1495578e9                                  | 408973296                     |
+| Copulas.Clayton                   | 5         | 1.3448951e9                                  | 386723344                     |
+| Copulas.Clayton                   | 10        |       1.8044065e9                            |    464100752                  |
+| BivariateCopulas.Clayton          | 2         | ...                                  | ...                     |
+ | DatagenCopulaBased.Clayton        | 2         |   1.9868345e9                                |  1178800464                    |
+| DatagenCopulaBased.Clayton        | 5         |       2.4276321e9                            | 1314855488                     |
+| DatagenCopulaBased.Clayton        | 10        |   2.8009263e9                                |   1627164656                   |
 
 # Examples
 
