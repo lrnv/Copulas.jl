@@ -66,7 +66,7 @@ Quantiles:
 
 And then `plot(chain)` produces the following plot:
 
-![Turing results](assets/turing_plot.png)
+![Turing results](./assets/turing_plot.png)
 
 Similar approaches could be used to fit many other dependence structures in a Bayesian settings. The upper example showcases a parametric estimation of a sampling model, but a Bayesian regression with an error structure given by a parametric copula is as easy to implement. 
 
