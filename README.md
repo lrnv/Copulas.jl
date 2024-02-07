@@ -1,4 +1,4 @@
-<h1 align=center><img src="https://cdn.rawgit.com/lrnv/Copulas.jl/main/docs/src/assets/logo.svg" width="32px" height="32px"/> Copulas.jl</h1>
+<h1 align=center><img src="https://cdn.rawgit.com/lrnv/Copulas.jl/main/docs/src/assets/logo.svg" width="30px" height="30px"/> Copulas.jl</h1>
 <p align=center><i>A fully `Distributions.jl`-compliant copula package</i></p>
 
 <p align=center>
