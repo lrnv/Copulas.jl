@@ -22,18 +22,12 @@ C_{1}(u,v) = uv
 It has a few special cases: 
 - When θ = 0, is is the MCopula (Upper Frechet-Hoeffding bound)
 - When θ = 1, it is the IndependentCopula
-- When θ = ∞, is is the WCopula (Lower Frechet-Hoeffding bound)
+- When θ = ∞, is is the WCopula (Lower Frechet-Hoeffding bound) 
 
-More details about Plackett Copula are found in:
-
-    Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
-
-Details about the algorithm to generate copula samples can be seen in the following references:
-    
-    Johnson, Mark E. Multivariate statistical simulation:
-    A guide to selecting and generating continuous multivariate distributions.
-    Vol. 192. John Wiley & Sons, 1987. Page 193.
-    Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.38.
+References:
+* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
+* [johnson1987multivariate](@cite) Johnson, Mark E. Multivariate statistical simulation: A guide to selecting and generating continuous multivariate distributions. Vol. 192. John Wiley & Sons, 1987. Page 193.
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.38.
 """
 struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
     θ::P  # Copula parameter

@@ -32,6 +32,9 @@ And yo can fit the distribution via :
 ```julia
 fit(GaussianCopula,data)
 ```
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
