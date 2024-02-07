@@ -26,6 +26,9 @@ We use the stochastic representation of the copula to obtain random samples.
 
 It has a few special cases:
 - When d=2 and θ = 0, it is the IndependentCopula.
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct FGMCopula{d, Tθ} <: Copula{d}
     θ::Tθ

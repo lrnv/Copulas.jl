@@ -21,6 +21,9 @@ More details about Inverse Gaussian Archimedean copula are found in :
 
 It has a few special cases:
 - When θ = 0, it is the IndependentCopula
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct InvGaussianGenerator{T} <: UnivariateGenerator
     θ::T

@@ -11,7 +11,10 @@ Computes the survival version of any copula on given indices. From a copula ``C`
 S(u_1,...u_4) = C(u_1,1-u_2,1-u3,u_4)
 ```
 
-This constructor allows to derive new "survival" families. For exemple, in bivariate cases, this allows to do "rotations". The obtained models can be treated as the starting one, i.e. as a random vector in [0,1]^d with uniforms marginals. 
+This constructor allows to derive new "survival" families. For exemple, in bivariate cases, this allows to do "rotations". The obtained models can be treated as the starting one, i.e. as a random vector in [0,1]^d with uniforms marginals.
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct SurvivalCopula{d,CT,VI} <: Copula{d}
     C::CT

@@ -35,6 +35,9 @@ fit(TCopula,data)
 ```
 
 Except that currently it does not work since `fit(Distributions.MvTDist,data)` does not dispatch. 
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct TCopula{d,df,MT} <: EllipticalCopula{d,MT}
     Σ::MT

@@ -15,6 +15,9 @@ C(\\mathbf x) = \\frac{1}{N}\\sum_{i=1}^n \\mathbf 1_{\\mathbf u_i \\le \\mathbf
 ```
 
 This function is very practical, be be aware that this is not a true copula (since ``\\mathbf u`` are only pseudo-observations). The constructor allows you to pass dirctly pseudo-observations (the default) or will compute them for you. You can then compute the `cdf` of the copula, and sample it through the standard interface.
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct EmpiricalCopula{d,MT} <: Copula{d}
     u::MT

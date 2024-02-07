@@ -13,6 +13,9 @@ W(\\mathbf{u}) \\le C(\\mathbf{u}) \\le M(\\mathbf{u})
 ```
 
 The two Frechet-Hoeffding bounds are also Archimedean copulas.
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct WGenerator <: ZeroVariateGenerator end
 max_monotony(G::WGenerator) = 2

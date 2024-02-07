@@ -19,6 +19,9 @@ It has a few special cases:
 - When θ = -1/(d-1), it is the WCopula (Lower Frechet-Hoeffding bound)
 - When θ = 0, it is the IndependentCopula
 - When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct ClaytonGenerator{T} <: UnivariateGenerator
     θ::T
