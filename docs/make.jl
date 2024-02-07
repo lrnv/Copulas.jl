@@ -44,6 +44,7 @@ makedocs(;
         "Examples" => [
             "exemples/fitting_sklar.md",
             "exemples/turing.md",
+            "exemples/other_usecases.md"
         ],
         
         "Dev Roadmap" => "dev_roadmap.md",
