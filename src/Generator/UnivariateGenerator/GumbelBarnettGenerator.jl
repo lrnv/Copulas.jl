@@ -15,12 +15,12 @@ The Gumbel-Barnett copula is an archimdean copula with generator:
 \\phi(t) = \\exp{θ^{-1}(1-e^{t})}, 0 \\leq \\theta \\leq 1.
 ```
 
-More details about Gumbel-Barnett copula are found in:
-
-    Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.437
-
 It has a few special cases: 
 - When θ = 0, it is the IndependentCopula
+
+References:
+* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.437
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct GumbelBarnettGenerator{T} <: UnivariateGenerator
     θ::T

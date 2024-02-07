@@ -17,6 +17,9 @@ The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_importa
 
 It has a few special cases: 
 - When θ = 0, it is the IndependentCopula
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct AMHGenerator{T} <: UnivariateGenerator
     θ::T

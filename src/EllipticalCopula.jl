@@ -31,6 +31,9 @@ Recall that spherical random vectors are random vectors which characteristic fun
 We can therefore express this characteristic function as ``\\phi(\\bm t) = \\psi(\\lVert \\bm t \\rVert_2^2)``, where ``\\psi`` is a function that characterizes the spherical family, called the *generator* of the family. Any characteristic function that can be expressed as a function of the norm of its argument is the characteristic function of a spherical random vector, since ``\\lVert \\bm A \\bm t \\rVert_2 = \\lVert \\bm t \\rVert_2`` for any orthogonal matrix ``\\bm A``. 
 
 However, note that this is not how the underlying code is working, we do not check for validity of the proposed generator (we dont even use it)
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 abstract type EllipticalCopula{d,MT} <: Copula{d} end
 Base.eltype(C::CT) where CT<:EllipticalCopula = Base.eltype(N(CT)(C.Σ))
