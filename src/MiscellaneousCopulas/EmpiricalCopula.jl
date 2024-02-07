@@ -30,7 +30,7 @@ function EmpiricalCopula(u;pseudo_values=true)
     return EmpiricalCopula{d,typeof(u)}(u)
 end
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
-   return StatsBase.mean(all(C.u .<= u,dims=1)) # might not be very efficient implementation. 
+   return sum(all(C.u .<= u,dims=1))/size(C.u,2) # might not be very efficient implementation. 
 end
 function Distributions._logpdf(C::EmpiricalCopula{d,MT}, u) where {d,MT}
     any(C.u .== u) ? -log(size(C.u,2)) : -Inf
