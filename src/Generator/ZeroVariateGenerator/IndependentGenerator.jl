@@ -18,6 +18,9 @@ It happends to be an Archimedean Copula, with generator :
 ```math
 \\phi(t) = \\exp{-t}
 ```
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct IndependentGenerator <: ZeroVariateGenerator end
 max_monotony(::IndependentGenerator) = Inf

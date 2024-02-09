@@ -121,20 +121,12 @@
                 u = ones(d)
                 for val in [0,1,rand(rng,10)...]
                     u[i] = val
-                    if typeof(C)<:TCopula
-                        @test_broken cdf(C,u) ≈ val
-                    else
-                        @test cdf(C,u) ≈ val atol=1e-5
-                    end
+                    @test cdf(C,u) ≈ val atol=1e-5
                 end
                 # extra check for zeros: 
                 u = rand(rng,d)
                 u[i] = 0
-                if typeof(C)<:TCopula
-                    @test_broken cdf(C,u) ≈ val
-                else
-                    @test iszero(cdf(C,u))
-                end
+                @test iszero(cdf(C,u))
             end
         end
 

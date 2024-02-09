@@ -18,15 +18,20 @@ function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
     return [_cdf(C,u) for u in eachcol(A)]
 end
 function _cdf(C::CT,u) where {CT<:Copula}
+    if any(iszero.(u))
+        return zero(u[1])
+    elseif all(isone.(u))
+        return one(u[1])
+    end
     f(x) = Distributions.pdf(C,x)
     z = zeros(eltype(u),length(C))
-    return Cubature.pcubature(f,z,u,reltol=sqrt(eps()))[1]
+    return Cubature.hcubature(f,z,u,reltol=sqrt(eps()))[1]
 end
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     z = zeros(d)
     i = ones(d)
-    r = Cubature.pcubature(F,z,i,reltop=sqrt(eps()))[1]
+    r = Cubature.hcubature(F,z,i,reltol=sqrt(eps()))[1]
     return 12*r-3
 end
 function τ(C::Copula)
