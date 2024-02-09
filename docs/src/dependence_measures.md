@@ -5,7 +5,7 @@ Although the copula is an object that summarizes completely the dependence struc
 
 
 !!! note "Unfinished work"
-    Unfortunately these dependence measures are not yet well-specified in the package and well implemented for all copula. Use with caution and consider looking at the implementation to be sure of what you get. 
+    Unfortunately these dependence measures are not yet well-specified in the package and their implementation is experimental for the moment. These functions might change in the future, in particular see https://github.com/lrnv/Copulas.jl/issues/134 for future improvements. 
 
 
 ## Kendall's Tau 

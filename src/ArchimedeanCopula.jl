@@ -132,7 +132,6 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
     return τ⁻¹(generatorof(T),τ_val)
 end
 
-
 ################################################################################################
 ################                                                                ################
 ################ Define all "named" archimedean copulas at once like that :     ################
