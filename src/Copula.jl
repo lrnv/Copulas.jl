@@ -18,6 +18,11 @@ function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
     return [_cdf(C,u) for u in eachcol(A)]
 end
 function _cdf(C::CT,u) where {CT<:Copula}
+    if any(iszero.(u))
+        return zero(u[1])
+    elseif all(isone.(u))
+        return one(u[1])
+    end
     f(x) = Distributions.pdf(C,x)
     z = zeros(eltype(u),length(C))
     return Cubature.hcubature(f,z,u,reltol=sqrt(eps()))[1]
