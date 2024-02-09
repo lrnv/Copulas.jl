@@ -41,7 +41,31 @@ The R package `copula` [@r_copula_citation1; @r_copula_citation2; @r_copula_cita
 
 There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) [@BivariateCopulas] which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl) [@DatagenCopulaBased_1; @DatagenCopulaBased_2; @DatagenCopulaBased_3; @DatagenCopulaBased_4], which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality (mostly because the three projects chose different copulas to implement), `Copulas.jl` is clearly the most fully featured, and brings, as a key feature, the compliance with the broader ecosystem.
 # Comparison of other packages with copulas.jl
-According to the package documentation, it is possible to summarize some of the most important functionalities of each package and those most needed by the community.
+According to the package documentation, it is possible to summarize some of the most important functionalities of each package and those most needed by the community. Using the following code we manage to obtain the results for each package.
+
+```julia
+# Function to generate "n" random samples from an archimedean copula of dimension `dim`
+function generate_copula_samples(dim)
+    copula = ClaytonCopula(dim, 0.8)
+    return rand(copula, 10^6)
+end
+
+# Efficiency test for generating samples from an archimedean copula
+function test_copula_sampling_efficiency(dim)
+    result = @benchmark generate_copula_samples($dim)
+
+    println("Execution time for dimension $dim: ", minimum(result).time)
+    println("Memory usage for dimension $dim: ", minimum(result).memory)
+    println("\n")
+end
+
+dimensions_to_test = [2, 5, 10]
+
+for dim in dimensions_to_test
+    println("Evaluating efficiency for dimension $dim...\n")
+    test_copula_sampling_efficiency(dim)
+end
+```
 ## Functionality
 The following table shows some characteristics that differentiate each package.
 | Characteristic                                | Copulas.jl         | DatagenCopulaBased.jl         | BivariateCopulas.jl          |
