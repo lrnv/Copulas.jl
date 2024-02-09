@@ -126,9 +126,9 @@ end
 
 @testitem "Archimedeans - Spearman correlation" begin
 
-    @test_broken Copulas.ρ(ClaytonCopula(2,3.)) ≈ 0.78645 atol=1.0e-4
-    @test_broken Copulas.ρ(ClaytonCopula(2,0.001)) ≈ 0. atol=1.0e-2
-    @test_broken Copulas.ρ(GumbelCopula(2,3.)) ≈ 0.8489 atol=1.0e-4
+    @test Copulas.ρ(ClaytonCopula(2,3.)) ≈ 0.78645 atol=1.0e-4
+    @test Copulas.ρ(ClaytonCopula(2,0.001)) ≈ 0. atol=1.0e-2
+    @test Copulas.ρ(GumbelCopula(2,3.)) ≈ 0.8489 atol=1.0e-4
 
     @test_broken Copulas.ρ⁻¹(ClaytonCopula, 1/3) ≈ 0.58754 atol=1.0e-5
     @test_broken Copulas.ρ⁻¹(ClaytonCopula, 0.01) ≈ 0. atol=1.0e-1
