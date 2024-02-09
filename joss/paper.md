@@ -160,5 +160,6 @@ The package is starting to get used in several other places of the ecosystem. Am
 
 - The package [`GlobalSensitivity.jl`](https://github.com/SciML/GlobalSensitivity.jl) exploits `Copulas.jl` to provide Shapley effects implementation, see [this documentation](https://docs.sciml.ai/GlobalSensitivity/stable/tutorials/shapley/). 
 - [`EconomicScenarioGenerators.jl`](https://github.com/JuliaActuary/EconomicScenarioGenerators.jl) uses `Copulas.jl`'s dependence structures to construct multivariate financial assets. 
-
+# Acknowledgement
+Santiago Jiménez Ramos thanks FACEPE for the full financing of his postgraduate studies.
 # References
