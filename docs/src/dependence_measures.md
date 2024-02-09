@@ -3,6 +3,11 @@
 
 Although the copula is an object that summarizes completely the dependence structure of any random vector, it is an infinite dimensional object and the interpretation of its properties can be difficult when the dimension gets high. Therefore, the literature has come up with some quantification of the dependence structure that might be used as univariate summaries, of course imperfect, of certain properties of the copula at hand. 
 
+
+!!! note "Unfinished work"
+    Unfortunately these dependence measures are not yet well-specified in the package and well implemented for all copula. Use with caution and consider looking at the implementation to be sure of what you get. 
+
+
 ## Kendall's Tau 
 
 > **Definition (Kendall' τ):** For a copula $C$ with a density $c$, Kendall's τ is defined as: 
@@ -51,9 +56,6 @@ Many people are interested in the tail behavior of their dependence structures. 
 The graph of $u \to \chi(u)$ over $[\frac{1}{2},1]$ is an interesting tool to assess the existence and strength of the tail dependency. The same kind of tools can be constructed for the lower tail. 
 
 All these coefficients quantify the behavior of the dependence structure, generally or in the extremes, and are therefore widely used in the literature either as verification tools to assess the quality of fits, or even as parameters. Many parametric copulas families have simple surjections, injections, or even bijections between these coefficients and their parametrization, allowing matching procedures of estimation (a lot like moments matching algorithm for fitting standard random variables).
-
-!!! note "Unfinished work"
-    Unfortunately these coefficients are not yet well-specified in the package and implemented for all dependence structure, there is still work to do. 
 
 
 ```@bibliography
