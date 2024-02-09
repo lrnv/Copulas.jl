@@ -48,21 +48,15 @@ end
         ClaytonCopula(4,7.0),
         GaussianCopula([1 0.3; 0.3 1]),
         FrankCopula(5,6.0),
-        AMHCopula(3,0.7)
+        AMHCopula(3,0.7),
+        TCopula(4,[1 0.5; 0.5 1])
     )
-
 
     for C in Copula_Zoo
         d = length(C)
        
         @test cdf(C,ones(d)) ≈ 1
         @test cdf(C,zeros(d)) ≈ 0    
-    end
-
-    for C in (TCopula(4,[1 0.5; 0.5 1]),)
-        d = length(C)
-        @test_broken cdf(C,ones(d)) ≈ 1
-        @test_broken cdf(C,zeros(d)) ≈ 0    
     end
 end
 
@@ -126,7 +120,7 @@ end
     using StableRNGs
     rng = StableRNG(123)
     
-    for C in (ClaytonCopula(4,7.0),GumbelCopula(2, 1.2))
+    for C in (ClaytonCopula(4,7.0),GumbelCopula(2, 1.2), TCopula(4,[1 0.5; 0.5 1]))
         d = length(C)
         u = zeros(d)
         v = ones(d)
@@ -138,20 +132,6 @@ end
             v[i] = u[i] + rand(rng)*(1-u[i])
         end
         @test Copulas.measure(C,u,v) >= 0
-    end
-
-    for C in (TCopula(4,[1 0.5; 0.5 1]),)
-        d = length(C)
-        u = zeros(d)
-        v = ones(d)
-
-        @test_broken Copulas.measure(C,u,v) >= 0
-        
-        for i in 1:d
-            u[i] = rand(rng)
-            v[i] = u[i] + rand(rng)*(1-u[i])
-        end
-        @test_broken Copulas.measure(C,u,v) >= 0
     end
 end
     

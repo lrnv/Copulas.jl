@@ -131,11 +131,6 @@ end
 function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
     return τ⁻¹(generatorof(T),τ_val)
 end
-ρ(C::ArchimedeanCopula{d,TG}) where {d,TG} = ρ(C.G)
-function ρ⁻¹(::Type{T},ρ_val) where {T<:ArchimedeanCopula}
-    return ρ⁻¹(generatorof(T),ρ_val)
-end
-
 
 ################################################################################################
 ################                                                                ################
