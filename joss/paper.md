@@ -70,21 +70,25 @@ end
 The following table shows some characteristics that differentiate each package.
 | Characteristic                                | Copulas.jl         | DatagenCopulaBased.jl         | BivariateCopulas.jl          |
 |-----------------------------------------------|--------------------|--------------------|--------------------|
-| Every Archimedean Copula sampling     | Yes                 | No                 | No                 |
-| Multivariate Copula sampling | Yes                | No                 | Yes                 |
-| Nested Copula Sampling             | No                 | No                 | Yes    |
-| Fitting Copula | Yes | only bivariate case | No |
+| Every Archimedean Copula sampling             | Yes                | No                 | No                 |
+| Obscure Bivariate Copulas                     | Yes                | No                 | No                 |
+| Classic Bivariate copulas sampling            | Yes                | Yes                | Yes                |
+| Archimedean copulas                           | All                | Classic only       | Classic only       |
+| Multivariate Copula                           | Yes                | Yes                | No                 |
+| Archimedean Chains                            | No                 | Yes                | No                 |
+| Fitting Copula                                | No                 | No                 | Yes                |
+| Plotting Copula                               | No                 | No                 | Yes                |
 ##  Efficiency
-To perform an efficiency test we use the "BenchmarkTools" package with the objective of comparing the execution time and the amount of memory necessary to generate copula samples with each package. We generate 10^6 samples for Clayton copula of dimensions 2, 5, 10 with parameter 0.8
+To perform an efficiency test we use the [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl) [@BenchmarkTools] package with the objective of comparing the execution time and the amount of memory necessary to generate copula samples with each package. We generate 10^6 samples for Clayton copula of dimensions 2, 5, 10 with parameter 0.8
 | Package                           | Dimension | Execution Time (seconds) | Memory Usage (bytes) |
 |-----------------------------------|-----------|--------------------------------------|-------------------------|
-| Copulas.Clayton                   | 2         | 1.1495578e9                                  | 408973296                     |
-| Copulas.Clayton                   | 5         | 1.3448951e9                                  | 386723344                     |
-| Copulas.Clayton                   | 10        |       1.8044065e9                            |    464100752                  |
-| BivariateCopulas.Clayton          | 2         | ...                                  | ...                     |
- | DatagenCopulaBased.Clayton        | 2         |   1.9868345e9                                |  1178800464                    |
-| DatagenCopulaBased.Clayton        | 5         |       2.4276321e9                            | 1314855488                     |
-| DatagenCopulaBased.Clayton        | 10        |   2.8009263e9                                |   1627164656                   |
+| Copulas.Clayton                   | 2         | 1.1495578e9                          | 408973296               |
+| Copulas.Clayton                   | 5         | 1.3448951e9                          | 386723344               |
+| Copulas.Clayton                   | 10        | 1.8044065e9                          | 464100752               |
+| BivariateCopulas.Clayton          | 2         | 1.331608e8                           | 56000864                |
+| DatagenCopulaBased.Clayton        | 2         | 1.9868345e9                          | 1178800464              |
+| DatagenCopulaBased.Clayton        | 5         | 2.4276321e9                          | 1314855488              |
+| DatagenCopulaBased.Clayton        | 10        | 2.8009263e9                          | 1627164656              |
 
 # Examples
 
