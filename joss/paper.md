@@ -41,8 +41,8 @@ The R package `copula` [@r_copula_citation1; @r_copula_citation2; @r_copula_cita
 
 There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) [@BivariateCopulas] which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl) [@DatagenCopulaBased_1; @DatagenCopulaBased_2; @DatagenCopulaBased_3; @DatagenCopulaBased_4], which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality (mostly because the three projects chose different implementation paths), `Copulas.jl` brings, as a key feature, the compliance with the broader ecosystem. The following table provides a feature comparison between the three: 
 
-| Characteristic                                | `Copulas.jl`       | `DatagenCopulaBased.jl`      | `BivariateCopulas.jl`     |
-|-----------------------------------------------|--------------------|------------------------------|---------------------------|
+| | `Copulas.jl` | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
+|-|--------------|-------------------------|-----------------------|
 | `Distributions.jl`'s API | Yes | No | Yes |
 | Fitting                  | Yes | Yes | No |
 | Plotting                 | No | No | Yes |
@@ -60,7 +60,8 @@ Since our primary target is maintainability and readability of the implementatio
 | Copulas.Clayton             | 1.1495578 | 1.3448951 | 1.8044065 |
 | BivariateCopulas.Clayton    | 0.1331608 | X | X |
 | DatagenCopulaBased.Clayton  | 1.9868345 | 2.4276321 | 2.8009263 |
-Code for these benchmarks in included in the repository readme.
+
+Code for these benchmarks in available in the repository.
 
 # Examples
 
