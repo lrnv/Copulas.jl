@@ -49,7 +49,7 @@ There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://g
 | Available copulas        |     |     |    |
 | - Classic Bivariate      | Yes | Yes | Yes |
 | - Classic Multivariate   | Yes | Yes | No |
-| - Archimedeans           | Yes (All of them) | Selected ones | Selected ones |
+| - Archimedeans           | All of them | Selected ones | Selected ones |
 | - Obscure Bivariate      | Yes | No | No |
 | - Archimedean Chains     | No | Yes | No |
 
