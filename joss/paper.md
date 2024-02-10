@@ -43,15 +43,15 @@ There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://g
 
 | Characteristic                                | `Copulas.jl`       | `DatagenCopulaBased.jl`      | `BivariateCopulas.jl`     |
 |-----------------------------------------------|--------------------|------------------------------|---------------------------|
-| `Distributions.jl`'s API | `✔️` | `❌` | `✔️` |
-| Fitting                  | `✔️` | `✔️` | `❌` |
-| Plotting                 | `❌` | `❌` | `✔️` |
+| `Distributions.jl`'s API | Yes | No | Yes |
+| Fitting                  | Yes | Yes | No |
+| Plotting                 | No | No | Yes |
 | Available copulas        |     |     |    |
-| - Classic Bivariate      | `✔️` | `✔️` | `✔️` |
-| - Classic Multivariate   | `✔️` | `✔️` | `❌` |
-| - Archimedeans           | `✔️` (All of them) | `⚠️` Selected ones | `⚠️` Selected ones |
-| - Obscure Bivariate      | `✔️` | `❌` | `❌` |
-| - Archimedean Chains     | `❌` | `✔️` | `❌` |
+| - Classic Bivariate      | Yes | Yes | Yes |
+| - Classic Multivariate   | Yes | Yes | No |
+| - Archimedeans           | Yes (All of them) | Selected ones | Selected ones |
+| - Obscure Bivariate      | Yes | No | No |
+| - Archimedean Chains     | No | Yes | No |
 
 Since our primary target is maintainability and readability of the implementation, we did not consider the efficiency and the performance of the code yet. However, a (limited in scope) benchmark on Clayton's pdf shows competitive behavior of our implementation. To perform this test we use the [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl) [@BenchmarkTools] package and generate 10^6 samples for Clayton copulas of dimensions 2, 5, 10 with parameter 0.8:
 
