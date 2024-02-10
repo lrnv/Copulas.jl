@@ -64,6 +64,60 @@ The list of availiable copula models is *very* large, check it out on our [docum
 
 The general implementation philosophy is for the code to follow the mathematical boundaries of the implemented concepts. For example, this is the only implementation we know (in any language) that allows for **all** Archimedean copulas to be sampled: we use the Williamson transformation for non-standard generators, including user-provided black-box ones.
 
+## Feature comparison
+
+
+There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality (mostly because the three projects chose different implementation paths), `Copulas.jl` brings, as a key feature, the compliance with the broader ecosystem. The following table provides a feature comparison between the three: 
+
+| Characteristic                                | `Copulas.jl`       | `DatagenCopulaBased.jl`      | `BivariateCopulas.jl`     |
+|-----------------------------------------------|--------------------|------------------------------|---------------------------|
+| `Distributions.jl`'s API | ✔️ | ❌ | ✔️ |
+| Fitting                  | ✔️ | ✔️ | ❌ |
+| Plotting                 | ❌ | ❌ | ✔️ |
+| Available copulas        |     |     |    |
+| - Classic Bivariate      | ✔️ | ✔️ | ✔️ |
+| - Classic Multivariate   | ✔️ | ✔️ | ❌ |
+| - Archimedeans           | ✔️ (All of them) | ⚠️ Selected ones | ⚠️Selected ones |
+| - Obscure Bivariate      | ✔️ | ❌ | ❌ |
+| - Archimedean Chains     | ❌ | ✔️ | ❌ |
+
+Since our primary target is maintainability and readability of the implementation, we did not consider the efficiency and the performance of the code yet. However, a (limited in scope) benchmark on Clayton's pdf shows competitive behavior of our implementation. To perform this test we use the [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl) [@BenchmarkTools] package and generate 10^6 samples for Clayton copulas of dimensions 2, 5, 10 with parameter 0.8:
+
+| Package                           | Dimension | Execution Time (seconds) | Memory Usage (bytes) |
+|-----------------------------------|-----------|--------------------------------------|-------------------------|
+| Copulas.Clayton                   | 2         | 1.1495578e9                          | 408973296               |
+| Copulas.Clayton                   | 5         | 1.3448951e9                          | 386723344               |
+| Copulas.Clayton                   | 10        | 1.8044065e9                          | 464100752               |
+| BivariateCopulas.Clayton          | 2         | 1.331608e8                           | 56000864                |
+| DatagenCopulaBased.Clayton        | 2         | 1.9868345e9                          | 1178800464              |
+| DatagenCopulaBased.Clayton        | 5         | 2.4276321e9                          | 1314855488              |
+| DatagenCopulaBased.Clayton        | 10        | 2.8009263e9                          | 1627164656              |
+
+
+```julia
+# Function to generate "n" random samples from an archimedean copula of dimension `dim`
+function generate_copula_samples(dim)
+    copula = ClaytonCopula(dim, 0.8)
+    return rand(copula, 10^6)
+end
+
+# Efficiency test for generating samples from an archimedean copula
+function test_copula_sampling_efficiency(dim)
+    result = @benchmark generate_copula_samples($dim)
+
+    println("Execution time for dimension $dim: ", minimum(result).time)
+    println("Memory usage for dimension $dim: ", minimum(result).memory)
+    println("\n")
+end
+
+dimensions_to_test = [2, 5, 10]
+
+for dim in dimensions_to_test
+    println("Evaluating efficiency for dimension $dim...\n")
+    test_copula_sampling_efficiency(dim)
+end
+```
+
 ## Contributions are welcome
 
 If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on this repo. General guidelines on collaborative practices (colprac) are available at https://github.com/SciML/ColPrac.
