@@ -41,8 +41,8 @@ The R package `copula` [@r_copula_citation1; @r_copula_citation2; @r_copula_cita
 
 There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) [@BivariateCopulas] which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl) [@DatagenCopulaBased_1; @DatagenCopulaBased_2; @DatagenCopulaBased_3; @DatagenCopulaBased_4], which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality (mostly because the three projects chose different implementation paths), `Copulas.jl` brings, as a key feature, the compliance with the broader ecosystem. The following table provides a feature comparison between the three: 
 
-| | `Copulas.jl` | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
-|-|--------------|-------------------------|-----------------------|
+|                          | `Copulas.jl` | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
+|--------------------------|--------------|-------------------------|-----------------------|
 | `Distributions.jl`'s API | Yes | No | Yes |
 | Fitting                  | Yes | Yes | No |
 | Plotting                 | No | No | Yes |
