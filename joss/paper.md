@@ -53,17 +53,14 @@ There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://g
 | - Obscure Bivariate      | Yes | No | No |
 | - Archimedean Chains     | No | Yes | No |
 
-Since our primary target is maintainability and readability of the implementation, we did not consider the efficiency and the performance of the code yet. However, a (limited in scope) benchmark on Clayton's pdf shows competitive behavior of our implementation. To perform this test we use the [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl) [@BenchmarkTools] package and generate 10^6 samples for Clayton copulas of dimensions 2, 5, 10 with parameter 0.8:
+Since our primary target is maintainability and readability of the implementation, we did not consider the efficiency and the performance of the code yet. However, a (limited in scope) benchmark on Clayton's pdf shows competitive behavior of our implementation w.r.t `DatagenCopulaBased.jl` (but not `BivariateCopulas.jl`). To perform this test we use the [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl) [@BenchmarkTools] package and generate 10^6 samples for Clayton copulas of dimensions 2, 5, 10 with parameter 0.8. The execution times (in seconds) are given below: 
 
-| Package                           | Dimension | Execution Time (seconds) | Memory Usage (bytes) |
-|-----------------------------------|-----------|--------------------------------------|-------------------------|
-| Copulas.Clayton                   | 2         | 1.1495578e9                          | 408973296               |
-| Copulas.Clayton                   | 5         | 1.3448951e9                          | 386723344               |
-| Copulas.Clayton                   | 10        | 1.8044065e9                          | 464100752               |
-| BivariateCopulas.Clayton          | 2         | 1.331608e8                           | 56000864                |
-| DatagenCopulaBased.Clayton        | 2         | 1.9868345e9                          | 1178800464              |
-| DatagenCopulaBased.Clayton        | 5         | 2.4276321e9                          | 1314855488              |
-| DatagenCopulaBased.Clayton        | 10        | 2.8009263e9                          | 1627164656              |
+| Package \ Dimension | 2 | 5 | 10 |
+|-----------------------------|------|-----------|
+| Copulas.Clayton             | 1.1495578 | 1.3448951 | 1.8044065 |
+| BivariateCopulas.Clayton    | 0.1331608 | X | X |
+| DatagenCopulaBased.Clayton  | 1.9868345 | 2.4276321 | 2.8009263 |
+Code for these benchmarks in included in the repository readme.
 
 # Examples
 
