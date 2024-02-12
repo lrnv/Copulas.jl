@@ -3,6 +3,7 @@
     using InteractiveUtils
     using ForwardDiff
     using StableRNGs
+    rng = StableRNG(123)
 
     cops = (
         IndependentCopula(3),
