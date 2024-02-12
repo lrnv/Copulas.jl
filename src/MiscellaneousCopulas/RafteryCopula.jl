@@ -40,8 +40,6 @@ struct RafteryCopula{d, P} <: Copula{d}
 end
 Base.eltype(R::RafteryCopula) = eltype(R.θ)
 function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
-
-    @show d
     # Order the vector u
     u_ordered = sort(u)
     term1 = u_ordered[1]
