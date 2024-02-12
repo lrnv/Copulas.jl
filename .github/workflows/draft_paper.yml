@@ -1,5 +1,7 @@
-on: [push]
-
+on:
+  push:
+     paths: 
+       - 'joss/*'
 jobs:
   paper:
     runs-on: ubuntu-latest
