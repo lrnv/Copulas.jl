@@ -8,7 +8,7 @@ Constructor
 
     RafteryCopula(d, θ)
 
-The Multivariate Raftery Copula of dimension d is arameterized by ``\\theta \\in [0,1]`` 
+The Multivariate Raftery Copula of dimension d is parameterized by ``\\theta \\in [0,1]`` 
 
 ```math
 C_{\\theta}(\\mathbf{u}) = u_{(1)} + \\frac{(1 - \\theta)(1 - d)}{1 - \\theta - d} \\left(\\prod_{j=1}^{d} u_j\\right)^{\\frac{1}{1-\\theta}} - \\sum_{i=2}^{d} \\frac{\\theta(1-\\theta)}{(1-\\theta-i)(2-\\theta-i)} \\left(\\prod_{j=1}^{i-1}u_{(j)}\\right)^{\\frac{1}{1-\\theta}}u_{(i)}^{\\frac{2-\\theta-i}{1-\\theta}}
@@ -39,58 +39,39 @@ struct RafteryCopula{d, P} <: Copula{d}
     end
 end
 Base.eltype(R::RafteryCopula) = eltype(R.θ)
-
 function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
 
-    if any(iszero,u)
-        return zero(u[1])
-    end
-    if all(isone,u)
-        return one(u[1])
-    end
-
+    @show d
     # Order the vector u
     u_ordered = sort(u)
-    
     term1 = u_ordered[1]
     term2 = (1 - R.θ) * (1 - d) / (1 - R.θ - d) * prod(u).^(1/(1 - R.θ))
-
     term3 = 0.0
     for i in 2:d
         prod_prev = prod(u_ordered[1:i-1])
-        term3 += R.θ * (1 - R.θ) / ((1 - R.θ - i) * (2 - R.θ - i)) * prod_prev^(1/(1 - R.θ)) * u_ordered[i]^((2 - R.θ - i) / (1 - R.θ))
+        term3_part = R.θ * (1 - R.θ) / ((1 - R.θ - i) * (2 - R.θ - i)) * prod_prev^(1/(1 - R.θ)) * u_ordered[i]^((2 - R.θ - i) / (1 - R.θ))
+        term3 += term3_part
     end
-    # Combine the terms to get the cumulative distribution function
-    cdf_value = term1 + term2 - term3
-    
-    return cdf_value
+    return term1 + term2 - term3
 end
 function Distributions._logpdf(R::RafteryCopula{d,P}, u::Vector{T}) where {d,P,T}
     # Order the vector u
     u_ordered = sort(u)
-    
-    term_denominator = (1 - R.θ)^(d - 1) * (1 - R.θ - d)
-    term_numerator = 1 - d - R.θ * u_ordered[d]^((1 - R.θ - d) / (1 - R.θ))
-    term_product = prod(u)^((R.θ) / (1 - R.θ))
-    
-    logpdf_value = log(term_numerator) - log(term_denominator) + log(term_product)
-    
-    return logpdf_value
+    l_den = (d-1) * log(1-R.θ) + log(d + R.θ -1)
+    l_num = log(d - 1 + R.θ * u_ordered[d]^((1 - R.θ - d) / (1 - R.θ)))
+    l_prd = (R.θ) / (1 - R.θ) * log(prod(u))
+    return l_num - l_den + l_prd
 end
-
 function Distributions._rand!(rng::Distributions.AbstractRNG, R::RafteryCopula{d,P}, x::AbstractVector{T}) where {d,P,T <: Real}
-    
-    dim = length(x)
-    
     # Step 1: Generate independent values u, u_1, ..., u_d from a uniform distribution [0, 1]
-    u = rand(rng, dim+1)
-    
+    u = rand(rng, d)
+
     # Step 2: Generate j from a Bernoulli distribution with parameter θ
-    j = rand(Distributions.Bernoulli(R.θ), 1)
-    uj = u[1]^j[1]
+    uj = (rand(rng)<R.θ) ? rand(rng) : 1
+
     # Step 3: Calculate v_1, ..., v_d
-    for i in 2:dim+1
-        x[i-1] = u[i]^(1 - R.θ) * uj
+    for i in 1:d
+        x[i] = u[i]^(1 - R.θ) * uj
     end
     
     return x

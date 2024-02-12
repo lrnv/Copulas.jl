@@ -13,43 +13,22 @@ end
     rng = StableRNG(123)
     for d in [2, 3, 4]
         F = RafteryCopula(d, 0.5)
-
-        # Test CDF with some random values
-        u = rand(d)
-        cdf_value = cdf(F, u)
+        cdf_value = cdf(F, rand(d))
+        pdf_value = pdf(F,rand(d))
         @test cdf_value >= 0 && cdf_value <= 1
+        @test pdf_value >= 0 
     end
 
     @test cdf(RafteryCopula(2, 0.8), [0.2, 0.5]) ≈ 0.199432 atol=1e-5
     @test cdf(RafteryCopula(2, 0.5), [0.3, 0.8]) ≈ 0.2817 atol=1e-5
     @test_broken cdf(RafteryCopula(3, 0.5), [0.1, 0.2, 0.3]) ≈ 0.08325884 atol=1e-5
-    @test_broken cdf(RafteryCopula(3, 0.1), [0.4, 0.8, 0.2]) ≈ 0.120415 atol=1e-5    
+    @test_broken cdf(RafteryCopula(3, 0.1), [0.4, 0.8, 0.2]) ≈ 0.120415 atol=1e-5
+
+    @test pdf(RafteryCopula(2, 0.8), [0.2, 0.5]) ≈ 0.114055555 atol=1e-4
+    @test pdf(RafteryCopula(2, 0.5), [0.3, 0.8]) ≈ 0.6325 atol=1e-4
+    @test pdf(RafteryCopula(3, 0.5), [0.1, 0.2, 0.3]) ≈ 1.9945086 atol=1e-4
+    @test pdf(RafteryCopula(3, 0.1), [0.4, 0.8, 0.2]) ≈ 0.939229 atol=1e-4
 end
-
-@testitem "RafteryCopula PDF" begin
-    using StableRNGs
-    using Distributions
-    rng = StableRNG(123)
-    for d in [2, 3, 4]
-        F = RafteryCopula(d, 0.5)
-
-        # Test PDF with some random values
-        u = rand(rng,d)
-        @test_broken 0 <= pdf(F, u) <= 1
-    end
-    examples = [
-        ([0.2, 0.5], [0.114055555, 1e-4], 0.8),
-        ([0.3, 0.8], [0.6325, 1e-4], 0.5),
-        ([0.1, 0.2, 0.3], [1.9945086, 1e-4], 0.5),
-        ([0.4, 0.8, 0.2], [0.939229, 1e-4], 0.1),
-    ]
-        
-    for (u, expected, θ) in examples
-        copula = RafteryCopula(length(u), θ)
-        @test_broken pdf(copula, u) ≈ expected[1] atol=expected[2]
-    end
-end
-
 
 @testitem "RafteryCopula Sampling" begin
     using StableRNGs
