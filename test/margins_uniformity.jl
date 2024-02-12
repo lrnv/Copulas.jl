@@ -91,7 +91,6 @@
         return false
     end
     
-
     n = 1000
     U = Uniform(0,1)
     for C in cops
