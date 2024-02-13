@@ -8,13 +8,13 @@ Constructor:
 
     ArchimedeanCopula(d::Int,G::Generator)
 
-For some Archimedean [`Generator`](@ref) `G::Generator` and some dimenson `d`, this class models the archimedean copula wich has this generator. The constructor checks for validity by ensuring that `max_monotony(G) ≥ d`. The ``d``-variate archimedean copula with generator ``\\phi`` writes: 
+For some Archimedean [`Generator`](@ref) `G::Generator` and some dimenson `d`, this class models the archimedean copula which has this generator. The constructor checks for validity by ensuring that `max_monotony(G) ≥ d`. The ``d``-variate archimedean copula with generator ``\\phi`` writes: 
 
 ```math
 C(\\mathbf u) = \\phi^{-1}\\left(\\sum_{i=1}^d \\phi(u_i)\\right)
 ```
 
-The default sampling method is the Radial-simplex decomposition using the williamson transformation of ``\\phi``. 
+The default sampling method is the Radial-simplex decomposition using the Williamson transformation of ``\\phi``. 
 
 There exists several known parametric generators that are implement in the package. For every `NamedGenerator <: Generator` implemented in the package, we provide a type alias ``NamedCopula{d,...} = ArchimedeanCopula{d,NamedGenerator{...}}` to be able to manipulate the classic archimedean copulas without too much hassle for known and usefull special cases. 
 
@@ -35,7 +35,7 @@ pdf(C,spl)           # pdf
 loglikelihood(C,spl) # llh
 ```
 
-Bonus: If you know the williamson d-transform of your generator and not your generator itself, you may take a look at [`WilliamsonGenerator`](@ref) that implements them. If you rather know the frailty distribution, take a look at `WilliamsonFromFrailty`.
+Bonus: If you know the Williamson d-transform of your generator and not your generator itself, you may take a look at [`WilliamsonGenerator`](@ref) that implements them. If you rather know the frailty distribution, take a look at `WilliamsonFromFrailty`.
 
 References:
 * [williamson1955multiply](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
@@ -94,7 +94,7 @@ end
 # end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:ArchimedeanCopula}
-    # By default, we use the williamson sampling. 
+    # By default, we use the Williamson sampling. 
     Random.randexp!(rng,x)
     r = rand(rng,williamson_dist(C))
     sx = sum(x)
@@ -104,7 +104,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::Abstract
     return x
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real, CT<:ArchimedeanCopula}
-    # More efficient version that precomputes the williamson transform on each call to sample in batches: 
+    # More efficient version that precomputes the Williamson transform on each call to sample in batches: 
     Random.randexp!(rng,A)
     n = size(A,2)
     r = rand(rng,williamson_dist(C),n)
