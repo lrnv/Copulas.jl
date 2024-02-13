@@ -71,7 +71,7 @@ There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://g
 |  | `Copulas.jl` | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
 |----------------|--------------|-------------------------|-----------------------|
 | `Distributions.jl`'s API | ✔️ | ❌ | ✔️ |
-| Fitting                  | ✔️ | ✔️ | ❌ |
+| Fitting                  | ✔️ | ❌ | ❌ |
 | Plotting                 | ❌ | ❌ | ✔️ |
 | Available copulas        |     |     |    |
 | - Classic Bivariate      | ✔️ | ✔️ | ✔️ |
