@@ -55,11 +55,11 @@ There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://g
 
 Since our primary target is maintainability and readability of the implementation, we have not considered the efficiency and the performance of the code yet. However, a (limited in scope) benchmark on Clayton's `pdf` shows competitive behavior of our implementation w.r.t `DatagenCopulaBased.jl` (but not `BivariateCopulas.jl`). To perform this test we use the [`BenchmarkTools.jl`](https://github.com/JuliaCI/BenchmarkTools.jl) [@BenchmarkTools] package and generate 10^6 samples for Clayton copulas of dimensions 2, 5, 10 with parameter 0.8. The execution times (in seconds) are given below: 
 
-|                             | 2         | 5         | 10        |
-|-----------------------------|-----------|-----------|-----------|
-| Copulas.Clayton             | 1.1495578 | 1.3448951 | 1.8044065 |
-| BivariateCopulas.Clayton    | 0.1331608 |         X |         X |
-| DatagenCopulaBased.Clayton  | 1.9868345 | 2.4276321 | 2.8009263 |
+|                              | 2         | 5         | 10        |
+|------------------------------|-----------|-----------|-----------|
+| `Copulas.Clayton`            | 1.1495578 | 1.3448951 | 1.8044065 |
+| `BivariateCopulas.Clayton`   | 0.1331608 |         X |         X |
+| `DatagenCopulaBased.Clayton` | 1.9868345 | 2.4276321 | 2.8009263 |
 
 Code for these benchmarks in available in the repository.
 
