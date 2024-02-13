@@ -75,16 +75,15 @@ using Copulas, Distributions, Random
 # Define the marginals and the copula, then use Sklar's theorem:
 X₁ = Gamma(2,3)
 X₂ = Pareto(0.5)
-X₃ = Binomial(10,0.8)
+X₃ = Normal(10,0.8)
 C = ClaytonCopula(3,0.7)
-X = SklarDist(C,(X₁,X₂,X₃))
+D = SklarDist(C,(X₁,X₂,X₃))
 
-# Sample from the model: 
+# Sample as follows: 
 x = rand(D,1000)
 
 # You may estimate the model as follows: 
-D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,Normal,Binomial}}, x)
-# Although you'll probbaly get a bad fit !
+D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Pareto, Normal}}, x)
 ```
 
 The API does not fix the fitting procedure, and only loosely specifies it, thus the implemented default might vary on the copula. If you want more control, you may turn to Bayesian estimation using `Turing.jl`:  
