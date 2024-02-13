@@ -116,12 +116,12 @@ Archimedean copulas are a huge family of copulas that has seen a lot of theoreti
 To construct an archimedean copula, you first need to reference its generator through the following API: 
 
 ```julia
-struct MyGenerator{T} <: Generator
+struct MyGenerator{T} <: Copulas.Generator
     θ::T
 end
 ϕ(G::MyGenerator,t) = exp(-G.θ * t) # can you recognise this one ?
-max_monotony(G::MyGenerator) = Inf
-C = ArchimedeanCopula(d,MyGenerator())
+Copulas.max_monotony(G::MyGenerator) = Inf
+C = ArchimedeanCopula(4,MyGenerator(1.3)) # 4-dimensional copula
 ```
 
 The obtained model automatically gets all copula functionalities (pdf, cdf, sampling, dependence measures, etc...). We nevertheless have specific implementation for a (large) list of known generators, and you may implement some other methods if you know closed form formulas for more performance. The use of the (inverse) Williamson d-transform allows the technical boundaries of our Archimedean implementation to *match* the necessary and sufficient conditions for a generator to produce a genuine Archimedean copula.
