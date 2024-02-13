@@ -42,9 +42,9 @@ makedocs(;
         ],
         "Dependence measures" => "dependence_measures.md",
         "Examples" => [
-            "exemples/fitting_sklar.md",
-            "exemples/turing.md",
-            "exemples/other_usecases.md"
+            "examples/fitting_sklar.md",
+            "examples/turing.md",
+            "examples/other_usecases.md"
         ],
         
         "Dev Roadmap" => "dev_roadmap.md",
