@@ -5,11 +5,13 @@ on:
     branches:
       - main
     paths-ignore:
+      - 'joss/**'
       - 'docs/**'
   push:
     branches:
       - main
     paths-ignore:
+      - 'joss/**'
       - 'docs/**'
 jobs:
   test:

@@ -37,6 +37,8 @@
         # Others ? Yes probably others too ! 
     )
 
+
+
     #### Try to ensure that every copula in the package is indeed in this list, to remmember contributors to add their model here: 
     function _subtypes(type::Type)
         out = Any[]
@@ -89,6 +91,7 @@
         return false
     end
     
+
     n = 1000
     U = Uniform(0,1)
     for C in cops
