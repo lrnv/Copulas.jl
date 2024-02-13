@@ -12,7 +12,7 @@ Constructor
 The Inverse Gaussian copula in dimension ``d`` is parameterized by ``\\theta \\in [0,\\infty)``. It is an Archimedean copula with generator :
 
 ```math
-\\phi(t) = \\exp{\\frac{(1-\\sqrt{1+2θ^{2}t}}{θ}}.
+\\phi(t) = \\exp{\\frac{1-\\sqrt{1+2θ^{2}t}}{θ}}.
 ```
 
 More details about Inverse Gaussian Archimedean copula are found in :
