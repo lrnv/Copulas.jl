@@ -8,7 +8,7 @@ Constructor
 
     EmpiricalCopula(u;pseudos=true)
 
-The EmpiricalCopula in dimension ``d`` is parameterized by a pseudo-data matrix wich should have shape (d,N). Its expression is given as :  
+The EmpiricalCopula in dimension ``d`` is parameterized by a pseudo-data matrix which should have shape (d,N). Its expression is given as :  
 
 ```math
 C(\\mathbf x) = \\frac{1}{N}\\sum_{i=1}^n \\mathbf 1_{\\mathbf u_i \\le \\mathbf x}
