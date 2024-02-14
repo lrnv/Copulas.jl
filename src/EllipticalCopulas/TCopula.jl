@@ -19,20 +19,18 @@ where ``F_{n,\\Sigma}`` is a cdf of a multivariate student random vector with co
 
 It can be constructed in Julia via:  
 ```julia
-C = TCopula(n,Σ)
+C = TCopula(2,Σ)
 ```
 
-The random number generation works as expected:
+You can sample it, compute pdf and cdf, or even fit the distribution via: 
 ```julia
-rand(C,1000)
-# or
-Random.rand!(C,u)
+u = rand(C,1000)
+Random.rand!(C,u) # other calling syntax for rng.
+pdf(C,u) # to get the density
+cdf(C,u) # to get the distribution function 
+Ĉ = fit(TCopula,u) # to fit on the sampled data. 
 ```
 
-And yo can fit the distribution via : 
-```julia
-fit(TCopula,data)
-```
 
 Except that currently it does not work since `fit(Distributions.MvTDist,data)` does not dispatch. 
 

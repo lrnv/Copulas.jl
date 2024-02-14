@@ -22,7 +22,7 @@ The package revolves around two main types:
 - `Copula`, the abstract mother type of all copulas
 - `SklarDist`, the type for multivariate compound distribution through [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem). 
 
-## Instalation
+## Installation
 
 The package is available on Julia's general registry, and can be installed as follows: 
 
