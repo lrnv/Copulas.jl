@@ -88,7 +88,6 @@ In this package, we implemented it through the [`WilliamsonGenerator`](@ref) cla
 
 `WilliamsonGenerator(X::UnivariateRandomVariable, d)`.
 
-
 This function computes the Williamson d-transform of the provided random variable $X$ using the [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl) package. See [williamson1955multiply, mcneil2009](@cite) for the literature. 
 
 !!! warn "`max_monotony` of Williamson generators"
@@ -101,7 +100,6 @@ WilliamsonGenerator
 ```
 
 ## [Inverse Williamson d-transform](@id w_trans_section)
-
 
 The Williamson d-transform is a bijective transformation[^1] from the set of positive random variables to the set of generators. It therefore has an inverse transformation (called, surprisingly, the inverse Williamson $d$-transform) that construct the positive random variable *R* from a generator $\phi$.
 
@@ -147,7 +145,6 @@ plot!(x -> ϕ⁻¹(G2,x), xlims=(0.1,0.9), label="G2")
 ```
 
 As obvious from the definition of the Williamson transform, using a discrete distribution produces piecewise-linear generators, where the number of pieces is dependent on the order of the transformation. 
-
 
 ## Archimedean copulas
 
