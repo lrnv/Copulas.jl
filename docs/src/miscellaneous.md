@@ -20,7 +20,7 @@ Farlie-Gumbel-Morgenstern (FGM) copula
 FGMCopula
 ```
 
-# Raftery copula
+# `RafteryCopula`
 
 ```@docs
 RafteryCopula
