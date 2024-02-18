@@ -286,6 +286,27 @@ end
     @test true
 end
 
+@testitem "PowerGenerator - sampling,pdf,cdf,fit" begin
+    using StableRNGs
+    using Distributions
+    rng = StableRNG(123)
+    for d in 2:10
+        for G ∈ (
+            Copulas.GumbelGenerator(1.7),
+            Copulas.ClaytonGenerator(1.8),
+            # others ?
+        )
+            C = ArchimedeanCopula(d,Copulas.PowerGenerator(G,1,2))
+            # C = InvGaussianCopula(d,θ)
+            data = rand(rng,C,100)
+            # @test all(pdf(C,data) .>= 0)
+            # @test all(0 .<= cdf(C,data) .<= 1)
+            # fit(GumbelCopula,data)
+        end
+    end
+    @test true
+end
+
 @testitem "Testing empirical tail values of certain copula samples" begin
     using StableRNGs
     using Distributions

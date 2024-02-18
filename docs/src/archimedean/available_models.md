@@ -8,6 +8,12 @@ CurrentModule = Copulas
 ```@docs; canonical=false
 WilliamsonGenerator
 ```
+
+## `PowerGenerator`
+```@docs
+PowerGenerator
+```
+
 ## `IndependentGenerator`
 ```@docs
 IndependentGenerator
