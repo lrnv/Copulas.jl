@@ -27,7 +27,7 @@ In this package, there is an abstract class [`Generator`](@ref) that contains th
 If you do not find the one you need, you may define it yourself by subtyping `Generator`. The API does not ask for much information, which is really convenient. Only the two following methods are required:
 
 * The `ϕ(G::MyGenerator,t)` function returns the value of the archimedean generator itself. 
-* The `max_monotony(G::MyGenerator)` returns its maximum monotony. 
+* The `max_monotony(G::MyGenerator)` returns its maximum monotony, that is the greater integer $d$ making the generator $d$-monotonous.
 
 Thus, a new generator implementation may simply look like:
 
@@ -41,9 +41,38 @@ max_monotony(G::MyGenerator) = Inf
 !!! tip "Win-Win strategy"
     These two functions are enough to sample the corresponding Archimedean copula (see how in the [Inverse Williamson $d$-transforms](@ref w_trans_section) section of the documentation). However, if you know a bit more about your generator, implementing a few more simple methods can largely fasten the algorithms. You'll find more details on these methods in the [`Generator`](@ref) docstring.
 
+
+For example, Here is a graph of a few Clayton Generators: 
+```@example
+using Copulas: ϕ,ClaytonGenerator,IndependentGenerator
+using Plots
+plot( x -> ϕ(ClaytonGenerator(-0.5),x), xlims=(0,5), label="ClaytonGenerator(-0.5)")
+plot!(x -> ϕ(IndependentGenerator(),x), label="IndependentGenerator()")
+plot!(x -> ϕ(ClaytonGenerator(0.5),x), label="ClaytonGenerator(0.5)")
+plot!(x -> ϕ(ClaytonGenerator(1),x), label="ClaytonGenerator(1)")
+plot!(x -> ϕ(ClaytonGenerator(5),x), label="ClaytonGenerator(5)")
+```
+
+And the corresponding inverse functions: 
+
+```@example
+using Copulas: ϕ⁻¹,ClaytonGenerator,IndependentGenerator
+using Plots
+plot( x -> ϕ⁻¹(ClaytonGenerator(-0.5),x), xlims=(0,1), ylims=(0,5), label="ClaytonGenerator(-0.5)")
+plot!(x -> ϕ⁻¹(IndependentGenerator(),x), label="IndependentGenerator()")
+plot!(x -> ϕ⁻¹(ClaytonGenerator(0.5),x), label="ClaytonGenerator(0.5)")
+plot!(x -> ϕ⁻¹(ClaytonGenerator(1),x), label="ClaytonGenerator(1)")
+plot!(x -> ϕ⁻¹(ClaytonGenerator(5),x), label="ClaytonGenerator(5)")
+```
+
 ```@docs
 Generator
 ```
+
+Note that the rate at which these functions are reaching 0 (and their inverse reaching infinity on the left boundary) can vary a lot from one to the other. Note also that the difference between each of them is easier to grasp on the inverse plot. 
+
+
+
 
 ## Williamson d-transform
 
@@ -66,15 +95,11 @@ This function computes the Williamson d-transform of the provided random variabl
     
     More genrally, if you want your Archimedean copula to have a density, you have to use a generator that is more-monotonous that the dimension of your model. 
 
-
-
-
 ```@docs
 WilliamsonGenerator
 ```
 
 ## [Inverse Williamson d-transform](@id w_trans_section)
-
 
 The Williamson d-transform is a bijective transformation[^1] from the set of positive random variables to the set of generators. It therefore has an inverse transformation (called, surprisingly, the inverse Williamson $d$-transform) that construct the positive random variable *R* from a generator $\phi$.
 
@@ -95,6 +120,31 @@ The [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl)
 * The pdf via `Distributions.pdf` and the logpdf via `Distributions.logpdf`
 * Samples from the distribution via `rand(X,n)`.
 
+
+As an example of a generator produced by the Williamson transformation and its inverse, we propose to construct a generator from a LogNormal distribution:
+
+```@example
+using Distributions
+using Copulas: i𝒲, ϕ⁻¹, IndependentGenerator
+using Plots
+G = i𝒲(LogNormal(), 2)
+plot(x -> ϕ⁻¹(G,x), xlims=(0.1,0.9), label="G")
+plot!(x -> ϕ⁻¹(IndependentGenerator(),x), label="Independence")
+```
+
+The `i𝒲` alias stands for `WiliamsonGenerator`. To stress the generality of the approach, remark that any positive distribution is allowed, including discrete ones: 
+
+```@example
+using Distributions
+using Copulas: i𝒲, ϕ⁻¹
+using Plots
+G1 = i𝒲(Binomial(10,0.3), 2)
+G2 = i𝒲(Binomial(10,0.3), 3)
+plot(x -> ϕ⁻¹(G1,x), xlims=(0.1,0.9), label="G1")
+plot!(x -> ϕ⁻¹(G2,x), xlims=(0.1,0.9), label="G2")
+```
+
+As obvious from the definition of the Williamson transform, using a discrete distribution produces piecewise-linear generators, where the number of pieces is dependent on the order of the transformation. 
 
 ## Archimedean copulas
 
@@ -120,7 +170,21 @@ Archimedean copulas have a nice decomposition, called the Radial-simplex decompo
 > where $\bm S$ is uniform on the $d$-variate simplex and $R$ is a non-negative random variable, independent form $\bm S$, defined as the inverse Williamson $d$-transform of $\phi$.  
 
 
-This is why `williamson_dist(G::Generator,d)` is such an important function in the API: it allows to generator the radial part and sample the Archimedean copula. 
+This is why `williamson_dist(G::Generator,d)` is such an important function in the API: it allows to generator the radial part and sample the Archimedean copula. You may call this function directly to see what distribution will be used: 
+
+```@example
+using Copulas: williamson_dist, FrankCopula
+williamson_dist(FrankCopula(3,7))
+```
+
+For the Frank Copula, as for many classic copulas, the distribution used is known. We pull some of them from `Distributions.jl` but implement a few more, as this Logarithmic one. Another useful example are negatively-dependent Clayton copulas: 
+
+```@example
+using Copulas: williamson_dist, ClaytonCopula
+williamson_dist(ClaytonCopula(3,-0.2))
+```
+
+for which the corresponding distribution is known but has no particular name, thus we implemented it under the `ClaytonWilliamsonDistribution` name.
 
 !!! note "Frailty decomposition for completely monotonous generators"
     It is well-known that completely monotone generators are Laplace transforms of non-negative random variables. This gives rise to another decomposition:
@@ -131,10 +195,20 @@ This is why `williamson_dist(G::Generator,d)` is such an important function in t
 
     The link between the distribution of $R$ and the distribution of $W$ can be explicited. We exploit this link and provide the `WilliamsonFromFrailty()` constructor that construct the distribution of $R$ from the distribution of $W$ and returns the corresponding  `WilliamsonGenerator` from the frailty distribution itself. The corresponding ϕ is simply the laplace transform of $W$. This is another potential way of constructing new archimedean copulas !  
 
+    We use this fraily approach for several generators, since sometimes it is faster, including e.g. the Clayton one with positive dependence:
+    ```@example
+    using Copulas: williamson_dist, ClaytonCopula
+    williamson_dist(ClaytonCopula(3,10))
+    ```
+
 ```@docs
 ArchimedeanCopula
 ```
 
+
+<!-- 
+TODO: Make a few graphs of bivariate archimedeans pdfs and cdfs. And provide a few more standard tools for these copulas ? 
+-->
 
 ```@bibliography
 Pages = ["generalities.md"]

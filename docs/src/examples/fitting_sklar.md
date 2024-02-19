@@ -2,7 +2,7 @@
 
 Through the `SklarDist` interface, there is the possibility to fit directly distributions that are constructed from a copula and some marginals:
 
-```julia
+```@example 5
 using Copulas
 using Distributions
 
@@ -14,14 +14,18 @@ X₄ = Normal()
 C = SurvivalCopula(FrankCopula(4,7),(2,4))
 D = SklarDist(C,(X₁,X₂,X₃,X₄))
 data = rand(D,1000)
+```
 
-# The fit function uses a type as its first argument that describes the structure of the model : 
+The fit function uses a type as its first argument that describes the structure of the model : 
+```@example 5
 MyCop = SurvivalCopula{4,ClaytonCopula,(2,4)}
 MyMargs = Tuple{LogNormal,Pareto,Gamma,Normal}
 MyD = SklarDist{MyCop, MyMargs}
 fitted_model = fit(MyD,data)
+```
 
-# Another posisbility is to use an empirical copula and only fit the marginals: 
+Another possibility is to use an empirical copula and only fit the marginals: 
+```@example 5
 other_fitted_model = fit(SklarDist{EmpiricalCopula,MyMargs},data)
 ```
 

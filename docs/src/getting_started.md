@@ -14,12 +14,13 @@ Consider a real valued random vector $\bm X = \left(X_1,...,X_d\right): \Omega \
 !!! info "Constructing random variables in Julia via `Distributions.jl`"
     Recall that you can construct random variables in Julia by the following code : 
 
-    ```julia
+    ```@example 1
     using Distributions
     X₁ = Normal()       # A standard gaussian random variable
     X₂ = Gamma(2,3)     # A Gamma random variable
     X₃ = Pareto(1)      # A Pareto random variable with no variance.
     X₄ = LogNormal(0,1) # A Lognormal random variable 
+    nothing # hide
     ```
     
     We refer to [Distributions.jl's documentation](https://github.com/JuliaStats/Distributions.jl) for more details on what you can do with these objects, but here we assume that you are familiar with their API.
@@ -51,6 +52,24 @@ There is a fundamental functional link between the function $F$ and its marginal
 !!! note "Vocabulary"
     In this documentation but more largely in the literature, the term *Copula* refers both to the random vector and its distribution function. Usually, the distinction is clear from context. 
 
+You may define a copula object in Julia by simply calling its constructor: 
+
+```@example 1
+using Copulas
+d = 4 # The dimension of the model
+θ = 7 # Parameter
+C = ClaytonCopula(4,7) # A 4-dimensional clayton copula with parameter θ = 7.
+```
+
+This object is a random vector, and behaves exactly as you would expect a random vector from `Distributions.jl` to behave: you may sample it with `rand(C,100)`, compute its pdf or cdf with `pdf(C,x)` and `cdf(C,x)`, etc:
+
+```@example 1
+u = rand(C,10)
+```
+```@example 1
+cdf(C,u)
+```
+
 At the grounds of the theory of copulas lies Sklar's Theorem [sklar1959](@cite), dating back from 1959.
 
 > **Theorem (Sklar):** For every random vector $\bm X$, there exists a copula $C$ such that 
@@ -67,17 +86,29 @@ This result allows to decompose the distribution of $\bm X$ into several compone
 
 The independence copula can be constructed using the [`IndependentCopula(d)`](@ref IndependentGenerator) syntax as follows: 
 
-```julia
-using Copulas
-d = 4 # The dimension of the model
-Π = IndependentCopula(d)
+```@example 1
+Π = IndependentCopula(d) # A 4-variate independence structure.
+nothing # hide
 ```
 
-And then the Sklar's theorem can be applied to it as follows, using the previously-defined marginals : 
+We leverage the Sklar theorem to construct multivariate random vectors from a copula-marginals specification. This can be used as follows: 
 
-```julia
+```@example 1
 MyDistribution = SklarDist(Π, (X₁,X₂,X₃,X₄))
+MyOtherDistribution = SklarDist(C, (X₁,X₂,X₃,X₄))
+nothing # hide
 ```
+
+And the API is still the same: 
+```@example 1
+rand(MyDistribution,10)
+```
+```@example 1
+rand(MyOtherDistribution,10)
+```
+
+
+On the other hand, the [`pseudo()`](@ref Pseudo-observations) function computes ranks, effectively using Sklar's theorem the other way around (from the marginal space to the unit hypercube).
 
 !!! note "Independent random vectors"
 
@@ -93,7 +124,15 @@ Copulas are bounded functions
 > **Example (Fréchet-Hoeffding bounds [lux2017](@cite)):** The function $M : \bm x \mapsto \min\bm x$, called the upper Fréchet-Hoeffding bound, is a copula. The function $W : \bm x \mapsto \langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+}$, called the lower Fréchet-Hoeffding bound, is on the other hand a copula only when $d=2$. 
 
 
-These two copulas can be constructed through [`MCopula(d)`](@ref MGenerator) and [`WCopula(2)`](@ref WGenerator). The upper Fréchet-Hoeffding bound corresponds to the case of comonotone random vector: a random vector $\bm X$ is said to be comonotone, i.e., to have copula $M$, when each of its marginals can be written as a non-decreasing transformation of the same random variable (say with $\mathcal U\left([0,1]\right)$ distribution). This is a simple but important dependence structure. See e.g.,[kaas2002,hua2017](@cite) on this particular copula.
+These two copulas can be constructed through [`MCopula(d)`](@ref MGenerator) and [`WCopula(2)`](@ref WGenerator). The upper Fréchet-Hoeffding bound corresponds to the case of comonotone random vector: a random vector $\bm X$ is said to be comonotone, i.e., to have copula $M$, when each of its marginals can be written as a non-decreasing transformation of the same random variable (say with $\mathcal U\left([0,1]\right)$ distribution). This is a simple but important dependence structure. See e.g.,[kaas2002,hua2017](@cite) on this particular copula. Note that sampling from them is quite straightforward due to their particular shape: 
+
+```@example 1
+rand(MCopula(2),10) # sampled values are all equal, this is comonotony
+```
+```@example 1
+u = rand(WCopula(2),10)
+sum(u, dims=1) # sum is always equal to one, this is anticomonotony
+```
 
 Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas. This is mostly the content of this package, and we refer to the rest of the documentation for more details on the models and their implementations. 
 
@@ -102,7 +141,7 @@ Since copulas are distribution functions, like distribution functions of real-va
 `Distributions.jl` proposes the `fit` function in their API for random ve tors and random variables. We used it to implement fitting of multivariate models (copulas, of course, but also compound distributions). It can be used as follows: 
 
 
-```julia
+```@example 2
 using Copulas, Distributions, Random
 X₁ = Gamma(2,3)
 X₂ = Pareto()
@@ -115,6 +154,8 @@ simu = rand(D,1000) # Generate a dataset
 # You may estimate a copula using the `fit` function:
 D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
 ```
+
+We see on the output that the parameters were correctly estimated from this sample. More details on the estimator, including e.g. standard errors, can be obtained from e.g., Bayesian approach, see [this example](@ref Bayesian-inference-with-Turing.jl).
 
 !!! info "About fitting methods"
     [`Distributions.jl` documentation](https://juliastats.org/Distributions.jl/stable/fit/#Distribution-Fitting) states that : 
