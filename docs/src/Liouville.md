@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-## Liouville Copulas
+# Liouville Copulas
 
 !!! note "Not merged yet !"
     Liouville copulas are coming in this PR : https://github.com/lrnv/Copulas.jl/pull/83, but this is not merged yet. 

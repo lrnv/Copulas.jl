@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Sklar's Theorem
+# Sklar's Distribution
 
 Recall the following theorem from [sklar1959](@cite): 
 
