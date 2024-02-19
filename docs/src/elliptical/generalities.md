@@ -1,8 +1,8 @@
 ```@meta
 CurrentModule = Copulas
 ```
-# [General Discussion](@id elliptical_copulas_header)
-## Elliptical random vectors
+# [Elliptical Copulas](@id elliptical_copulas_header)
+
 
 The easiest families of copulas are the one derived from known families of random vectors, and the first presented one is, generally, the Elliptical family. 
 
@@ -24,7 +24,7 @@ This class contains the (multivariate) Normal and Student distributions, and it 
 ```
 which is still a function of only the norm of $\bm t$. To fix ideas, for Gaussian random vectors, $\psi(t) = e^{-\frac{t^2}{2}}$.
 
-## Elliptical copulas
+
 
 Elliptical copulas are simply copulas of elliptical distributions. This simplicity of definition is paid for in the expression of the copulas itself: the obtained function has usually no better expression than: 
 ```math
@@ -44,7 +44,7 @@ On the other hand, there exist performant estimators of high-dimensional covaria
 !!! note "Discrepancy with the code"
     If the exposition we just did on characteristic functions of Elliptical random vectors is fundamental to the definition of elliptical copulas, the package does not use this at all to function, and rather rely on the existence of multivariate and corresponding univariate families of distributions in `Distributions.jl`. 
 
-## Implementation
+
 
 ```@docs
 EllipticalCopula

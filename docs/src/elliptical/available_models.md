@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Available models
+# Elliptical Copulas
 
 ## `GaussianCopula`
 
