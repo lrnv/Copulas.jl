@@ -71,7 +71,7 @@ end
         
         return cdf_value
     end
-    
+    @test prueba_CDF([0.5,3], [0.1,0.2,0.3]) ≈ 0.08236 atol=1e-4 # According to https://github.com/lrnv/Copulas.jl/pull/137#issuecomment-1953365273
     @test prueba_CDF([0.5,3], [0.1,0.2,0.3]) ≈ cdf(RafteryCopula(3,0.5), [0.1,0.2,0.3])
     @test prueba_CDF([0.8,2], [0.1,0.2]) ≈ cdf(RafteryCopula(2,0.8), [0.1,0.2])
     @test prueba_CDF([0.2,2], [0.8,0.2]) ≈ cdf(RafteryCopula(2,0.2), [0.8,0.2])
@@ -101,6 +101,7 @@ end
         
         return pdf_value
     end
+    @test prueba_PDF([0.5,3], [0.1,0.2,0.3]) ≈ 1.99450 atol=1e-4 # According to https://github.com/lrnv/Copulas.jl/pull/137#issuecomment-1953375141
     @test prueba_PDF([0.5,3], [0.1,0.2,0.3]) ≈ pdf(RafteryCopula(3,0.5), [0.1,0.2,0.3])
     @test prueba_PDF([0.8,2], [0.1,0.2]) ≈ pdf(RafteryCopula(2,0.8), [0.1,0.2])
     @test prueba_PDF([0.2,2], [0.8,0.2]) ≈ pdf(RafteryCopula(2,0.2), [0.8,0.2])
