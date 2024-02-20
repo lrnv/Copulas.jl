@@ -33,7 +33,7 @@ Spearman's Rho can be obtained through `ρ(C::Copula)`. Its value only depends o
     There exists several multivariate extensions of Spearman's rho. The one implemented here is the one we just defined what ever the dimension $d$, be careful as the normalization might differ from other places in the literature.
 
 !!! note "Specific values of tau and rho"
-    Kendall's $\tau$ and Spearman's $\rho$ have values between -1 and 1, and are -1 in case of complete anticonomotony and 1 in case of comonotony. Moreover, they are 0 in case of independence. This is 
+    Kendall's $\tau$ and Spearman's $\rho$ have values between -1 and 1, and are -1 in case of complete anticomonotony and 1 in case of comonotony. Moreover, they are 0 in case of independence. This is 
     why we say that they measure the 'strength' of the dependency.
 
 !!! tip "More-that-bivariate cases"

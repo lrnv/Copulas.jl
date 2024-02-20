@@ -22,31 +22,29 @@ makedocs(;
         collapselevel=3,
     ),
     pages=[
-        "Copulas.jl package" => "index.md",
-        "Getting Started" => "getting_started.md",
-        "Sklar's Distributions" => "sklar.md",
-        "Elliptical Copulas" => [
-            "elliptical/generalities.md",
-            "elliptical/available_models.md",
-        ],
-        "Archimedean Copulas" => [
-            "archimedean/generalities.md",
-            "archimedean/available_models.md",
-        ],
-        "Liouville Copulas" => "Liouville.md",
-        "Other Copulas" => "miscellaneous.md",
-        "Transformed Copulas" => "transformations.md",
-        "Empirical Copulas" => [
-            "empirical/generalities.md",
-            "empirical/available_models.md",
-        ],
-        "Dependence measures" => "dependence_measures.md",
-        "Examples" => [
-            "exemples/fitting_sklar.md",
-            "exemples/turing.md",
-            "exemples/other_usecases.md"
+        "Home" => "index.md",
+        "Manual" => [
+            "Getting Started" => "getting_started.md",
+            "Sklar's Distributions" => "sklar.md",
+            "Elliptical Copulas" => "elliptical/generalities.md",
+            "Archimedean Copulas" => "archimedean/generalities.md",
+            "Liouville Copulas" => "Liouville.md",
+            "Empirical Copulas" => "empirical/generalities.md",
+            "Dependence measures" => "dependence_measures.md",
         ],
         
+        "Bestiary" => [
+            "elliptical/available_models.md",
+            "archimedean/available_models.md",
+            "empirical/available_models.md",
+            "Other Copulas" => "miscellaneous.md",
+            "Transformed Copulas" => "transformations.md",
+        ],
+        "Examples" => [
+            "examples/fitting_sklar.md",
+            "examples/turing.md",
+            "examples/other_usecases.md"
+        ],
         "Dev Roadmap" => "dev_roadmap.md",
         "Package Index" => "idx.md",
         "References" => "references.md",

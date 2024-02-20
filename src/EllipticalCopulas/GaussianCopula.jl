@@ -21,16 +21,13 @@ It can be constructed in Julia via:
 C = GaussianCopula(Σ)
 ```
 
-The random number generation works as expected:
+You can sample it, compute pdf and cdf, or even fit the distribution via: 
 ```julia
-rand(C,1000)
-# or
-Random.rand!(C,u)
-```
-
-And yo can fit the distribution via : 
-```julia
-fit(GaussianCopula,data)
+u = rand(C,1000)
+Random.rand!(C,u) # other calling syntax for rng.
+pdf(C,u) # to get the density
+cdf(C,u) # to get the distribution function 
+Ĉ = fit(GaussianCopula,u) # to fit on the sampled data. 
 ```
 
 References:
