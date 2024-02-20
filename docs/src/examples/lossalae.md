@@ -82,6 +82,6 @@ scatter(u[1,:],u[2,:])
 
 There are potential improvements that can be made to this fit: 
 
-- The tail dependency does not look like it is on the right side. To solve that, we could use `SurvivalCopula` to fit a flipped version of the Clayton. 
+- The tail dependency does not look like it is on the right side. To solve that, we could use `SurvivalCopula` to fit a flipped version of the Clayton through `fit(SklarDist{SurvivalCopula{2,ClaytonCopula,(1,2)},Tuple{...}}, ...)`.
 - We could use other marginal proposals than `LogNormal`s and validate (e.g., through likelihood ratio tests) that the fits are OK. 
 - We could keep marginals and/or the dependence structure empirical, through e.g., `EmpiricalCopula`.
