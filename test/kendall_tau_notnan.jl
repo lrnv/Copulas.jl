@@ -32,7 +32,6 @@
     )
 
     for C in cops
-        @show C
         @test !isnan(Copulas.τ(C))
     end
     @test_broken Copulas.τ(ArchimedeanCopula(2,i𝒲(LogNormal(),2))) # not implemented. 
