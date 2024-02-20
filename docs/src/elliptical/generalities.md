@@ -3,6 +3,7 @@ CurrentModule = Copulas
 ```
 # [Elliptical Copulas](@id elliptical_copulas_header)
 
+## Definition
 
 The easiest families of copulas are the one derived from known families of random vectors, and the first presented one are, generally, the Elliptical families (in particular, the Gaussian and Student families are very standard in the litterature). 
 
@@ -84,7 +85,7 @@ N(::Type{MyElliptical{d,T}}) where {d,T} # Distribution of the mutlivariate rand
 
 However, not much other cases than the Gaussian and Elliptical one are really used in the literature.
 
-## Example
+## Examples
 
 To construct, e.g., a Student copula, you need to provide the Correlation matrix and the number of degree of freedom, as follows: 
 
