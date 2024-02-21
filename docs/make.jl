@@ -41,6 +41,7 @@ makedocs(;
             "Transformed Copulas" => "transformations.md",
         ],
         "Examples" => [
+            "examples/lambda_viz.md",
             "examples/lossalae.md",
             "examples/fitting_sklar.md",
             "examples/turing.md",
