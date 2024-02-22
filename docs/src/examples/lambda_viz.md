@@ -1,17 +1,18 @@
 # Empirical Kendall function and Archimedean's λ function.
 
-The Kendall function is an important function in dependence structure analysis. It is defined for a $d$-variate copula $C$ as 
+The Kendall function is an important function in dependence structure analysis. The Kendall function associated with a $d$-variate copula $C$ is defined by letting $\bm U = \left(U_1,...,U_n\right) \sim C$ and setting:
 
 $$K(t) = \mathbb P \left( C(U_1,...,U_d) \le t \right),$$
 
-where $\bm U = \left(U_1,...,U_n\right)$ are drawn according to $C$.
-From a computational point of view, we often do not access to true observations of the random vector $\m U \sim C$ but rather only observations on the marginal scales. 
+From a computational point of view, we often do not access to true observations of the random vector $\m U \sim C$ but rather only observations on the marginal scales.
+Fortunately, this is not an issue and we can estimate the $K$ function directly through a sample duplication trick. 
+For that, suppose for the sake of the argument that we have a multivariate sample on marignal scales $\left(X_{i,j}\right)_{i \in 1,...,d,\; j \in 1,...,n}$ with dependence structure $C$. 
+A standard way to approximate $K$ is to compute first
 
-Suppose for the sake of the argument that we have a multivariate sample on marignal scales $\left(X_{i,j}\right)_{i \in 1,...,d,\; j \in 1,...,n} with dependence structure $C$. 
-A standard way to approximate $K$ is to rather compute 
 $$Z_j = \frac{1}{n-1} \sum_{k \neq j} \bm 1_{X_{i,j} < X_{i,k} \forall i \in 1,...,d}.$$
 
-Indeed, $K$ can be approximated as the empirical distribution function of $Z_1,...,Z_n$. Here is a sketch implementation of this concept:
+Indeed, $K$ can be approximated as the empirical distribution function of $Z_1,...,Z_n$. 
+Here is a sketch implementation (not optimized) of this concept:
 ```@example lambda
 struct KendallFunction{T}
     z::Vector{T}
@@ -26,7 +27,7 @@ struct KendallFunction{T}
         end
     end
     z ./= (n-1)
-    sort!(z)
+    sort!(z) # unnecessary
     return  new{eltype(z)}(z)
     end
 end
@@ -47,10 +48,11 @@ K = KendallFunction(x)
 plot(u -> K(u), xlims = (0,1), title="Empirical Kendall function")
 ```
 
-One notable detail on the Kendall function is that is does **not** characterize the copula in all generality. On the other hand, for Archimedean copulas, we have:
+One notable detail on the Kendall function is that is does **not** characterize the copula in all generality. On the other hand, for an Archimedean copula with generator ϕ, we have:
+
 $$K(t) = t - \phi'\{\phi^{-1}(t)\} \phi^{-1}(t).$$
 
-Due to this partical relationship, the Kendall function actually characterizes the generator of the archimedean copula. In fact, this relationship is generally expressed in term of a λ function defined as $$\lambda(t) = t - K(t),$$ which, for archimedean copulas, is obviously equal to $\phi'\{\phi^{-1}(t)\} \phi^{-1}(t)$.
+Due to this partical relationship, the Kendall function actually characterizes the generator of the archimedean copula. In fact, this relationship is generally expressed in term of a λ function defined as $$\lambda(t) = t - K(t),$$ which, for archimedean copulas, writes $\lambda(t) = \phi'\{\phi^{-1}(t)\} \phi^{-1}(t)$.
 
 Common λ functions can be easily derived by hand for standard archimedean generators. For any archimedean generator in the package, however, it is even easier to let Julia do the derivation. 
 
