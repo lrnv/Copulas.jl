@@ -44,6 +44,7 @@ makedocs(;
             "examples/lambda_viz.md",
             "examples/lossalae.md",
             "examples/fitting_sklar.md",
+            "examples/ifm1.md",
             "examples/turing.md",
             "examples/other_usecases.md"
         ],
