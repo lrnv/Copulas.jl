@@ -111,9 +111,9 @@ end
 
 ## The Archimedean interface
 
-Archimedean copulas form a large class of copulas that has seen a lot of theoretical work. Among others, you may take a look at [@mcneilMultivariateArchimedeanCopulas2009b]. We use [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl/)'s implementation of the Williamson $d$-transfrom to sample from any archimedean copula, including for example the `ClaytonCopula` with negative dependence parameter in any dimension, which is a first to our knowledge.
+Archimedean copulas form a large class of copulas that has seen a lot of theoretical work. Among others, you may take a look at [@mcneilMultivariateArchimedeanCopulas2009b]. We use [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl/)'s implementation of the Williamson $d$-transfrom to sample from any Archimedean copula, including for example the `ClaytonCopula` with negative dependence parameter in any dimension, which is a first to our knowledge.
 
-To construct an archimedean copula, you first need to reference its generator through the following API: 
+To construct an Archimedean copula, you first need to reference its generator through the following API: 
 
 ```julia
 struct MyGenerator{T} <: Copulas.Generator
