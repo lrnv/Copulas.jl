@@ -108,6 +108,35 @@ using Turing
   Turing.Turing.@addlogprob! loglikelihood(D, dataset)
 end
 ```
+Outside the common context we can use the API to work on different aspects, suppose you want to generate random samples of a copula whose parameter depends on a covariate $X$ [@abegaz2012], for example, Consider the Frank copula whose parameter depends on a covariate $X$ that follows a truncated normal distribution with mean zero and variance 9. Also, consider the parameter $\theta(x), x \in [-2,2]$.
+```julia
+using Distributions, Copulas, DataFrames
+
+x= truncated(Normal(0,3),-2,2) 
+
+function model_1(x)
+   return (10-1.5x^2)
+end
+
+data = rand(x,10^5)
+
+#Frank Copula whose parameter depends on a covariate
+function rFrank(x, C_function, dimension)
+  data_list = DataFrame(u1=Float64[], u2=Float64[])
+  
+  for i in x
+    param = C_function(i)
+    copula_instance = FrankCopula(dimension, param)
+    value_copula = rand(copula_instance, 1)
+    push!(data_list, (value_copula[1], value_copula[2]))
+  end
+
+  return data_list
+end
+
+New_frank = rFrank(data, model_1, 2)
+```
+In this way we easily obtain random samples of a new bivariate Frank copula whose parameter can depend on any covariate.
 
 ## The Archimedean interface
 
