@@ -12,29 +12,29 @@ G: Copulas.ClaytonGenerator{Float64}(0.7)
 m: (Distributions.Gamma{Float64}(α=2.0, θ=3.0), Distributions.Pareto{Float64}(α=1.0, θ=1.0), Distributions.LogNormal{Float64}(μ=0.0, σ=1.0))
 )
 </code></pre><p>Although the output is not formatted, the model is constructed, and can be used in different ways: </p><pre><code class="language-julia hljs">u = rand(D,10)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">3×10 Matrix{Float64}:
- 4.09137   5.76032  6.34671  3.55722  …  11.4371    6.88316   7.35981
- 2.18548   1.85833  1.81125  2.13276      3.60086   1.34452   2.85065
- 0.206792  1.51483  4.73956  0.52511      0.906431  0.951683  2.7682</code></pre><pre><code class="language-julia hljs">pdf(D, u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element Vector{Float64}:
- 0.0062841389658101375
- 0.008501660877356909
- 0.0007997258693394472
- 0.019984138480480793
- 1.5868035742177367
- 0.007761604049754615
- 0.236092126451881
- 0.0012450377264181273
- 0.017714997514586397
- 0.0012590002213139276</code></pre><pre><code class="language-julia hljs">cdf(D, u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element Vector{Float64}:
- 0.04452297252410337
- 0.2652382789223708
- 0.32647311933156975
- 0.12490504655030212
- 0.0003340572960435763
- 0.08164787727383031
- 0.02503547671394273
- 0.3567589198718092
- 0.16097754956481408
- 0.44688356883396807</code></pre><p>From this construction, the object <code>D</code> is a genuine multivariate random vector following <code>Distributions.jl</code>&#39;s API, and can be sampled (<code>rand()</code>), can have its probability density function and its distribution function evaluated (respectively <code>pdf</code> and <code>cdf</code>), etc.</p><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Copulas.SklarDist" href="#Copulas.SklarDist"><code>Copulas.SklarDist</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">SklarDist{CT,TplMargins}</code></pre><p>Fields:</p><ul><li><code>C::CT</code> - The copula</li><li><code>m::TplMargins</code> - a Tuple representing the marginal distributions</li></ul><p>Constructor</p><pre><code class="nohighlight hljs">SklarDist(C,m)</code></pre><p>This function allows to construct a random vector specified, through the Sklar Theorem, by its marginals and its copula separately. See <a href="https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar&#39;s_theorem">Sklar&#39;s theorem</a>:</p><blockquote><p><strong>Theorem (Sklar 1959):</strong> For every random vector <span>$\bm X$</span>, there exists a copula <span>$C$</span> such that </p><p><span>$\forall \bm x\in \mathbb R^d, F(\bm x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$</span> The copula <span>$C$</span> is uniquely determined on <span>$\mathrm{Ran}(F_{1}) \times ... \times \mathrm{Ran}(F_{d})$</span>, where <span>$\mathrm{Ran}(F_i)$</span> denotes the range of the function <span>$F_i$</span>. In particular, if all marginals are absolutely continuous, <span>$C$</span> is unique.</p></blockquote><p>The obtain random vector follows <code>Distributions.jl</code>&#39;s API and can be sampled, pdf and cdf can be evaluated, etc... We even provide a fit function. See the folowing exemple code : </p><pre><code class="language-julia hljs">using Copulas, Distributions, Random
+ 4.70613  2.97789  5.57034   5.41088  2.56037  …  1.72708  12.1618    7.8882
+ 2.25502  1.79041  1.61758   8.68621  4.40143     1.46011   1.33267   1.23952
+ 1.22396  2.44102  0.836153  1.2727   0.8916      0.36812   0.991132  4.36057</code></pre><pre><code class="language-julia hljs">pdf(D, u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element Vector{Float64}:
+ 0.008902703736809061
+ 0.003790731239870415
+ 0.02165901044332381
+ 0.0005541034239608684
+ 0.0022636537539015805
+ 4.7988586621412555e-6
+ 0.06358986544611937
+ 0.06988864254262661
+ 0.004223088864897618
+ 0.000669197812391091</code></pre><pre><code class="language-julia hljs">cdf(D, u)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10-element Vector{Float64}:
+ 0.24447795823866023
+ 0.1680795129744785
+ 0.1830288269270782
+ 0.35368175480320674
+ 0.1425131650807011
+ 0.6767349626522974
+ 0.07356458957381921
+ 0.04746797088363509
+ 0.1785047572085507
+ 0.1705183099863436</code></pre><p>From this construction, the object <code>D</code> is a genuine multivariate random vector following <code>Distributions.jl</code>&#39;s API, and can be sampled (<code>rand()</code>), can have its probability density function and its distribution function evaluated (respectively <code>pdf</code> and <code>cdf</code>), etc.</p><article class="docstring"><header><a class="docstring-article-toggle-button fa-solid fa-chevron-down" href="javascript:;" title="Collapse docstring"></a><a class="docstring-binding" id="Copulas.SklarDist" href="#Copulas.SklarDist"><code>Copulas.SklarDist</code></a> — <span class="docstring-category">Type</span></header><section><div><pre><code class="language-julia hljs">SklarDist{CT,TplMargins}</code></pre><p>Fields:</p><ul><li><code>C::CT</code> - The copula</li><li><code>m::TplMargins</code> - a Tuple representing the marginal distributions</li></ul><p>Constructor</p><pre><code class="nohighlight hljs">SklarDist(C,m)</code></pre><p>This function allows to construct a random vector specified, through the Sklar Theorem, by its marginals and its copula separately. See <a href="https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar&#39;s_theorem">Sklar&#39;s theorem</a>:</p><blockquote><p><strong>Theorem (Sklar 1959):</strong> For every random vector <span>$\bm X$</span>, there exists a copula <span>$C$</span> such that </p><p><span>$\forall \bm x\in \mathbb R^d, F(\bm x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$</span> The copula <span>$C$</span> is uniquely determined on <span>$\mathrm{Ran}(F_{1}) \times ... \times \mathrm{Ran}(F_{d})$</span>, where <span>$\mathrm{Ran}(F_i)$</span> denotes the range of the function <span>$F_i$</span>. In particular, if all marginals are absolutely continuous, <span>$C$</span> is unique.</p></blockquote><p>The obtain random vector follows <code>Distributions.jl</code>&#39;s API and can be sampled, pdf and cdf can be evaluated, etc... We even provide a fit function. See the folowing exemple code : </p><pre><code class="language-julia hljs">using Copulas, Distributions, Random
 X₁ = Gamma(2,3)
 X₂ = Pareto()
 X₃ = LogNormal(0,1)
@@ -44,4 +44,4 @@ D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 simu = rand(D,1000) # Generate a dataset
 
 # You may estimate a copula using the `fit` function:
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)</code></pre><p>References: </p><ul><li>[<a href="../references/#sklar1959">9</a>] Sklar, M. (1959). Fonctions de répartition à n dimensions et leurs marges. In Annales de l&#39;ISUP (Vol. 8, No. 3, pp. 229-231).</li><li>[<a href="../references/#nelsen2006">3</a>] Nelsen, Roger B. An introduction to copulas. Springer, 2006.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/lrnv/Copulas.jl/blob/687ef438c270c57fb5fd9cf90a215d1aa0350af7/src/SklarDist.jl#L1-L39">source</a></section></article><div class="citation noncanonical"><dl><dt>[3]</dt><dd><div>R. B. Nelsen. <em>An Introduction to Copulas</em>. 2nd ed Edition, <em>Springer Series in Statistics</em> (Springer, New York, 2006).</div></dd><dt>[9]</dt><dd><div>A. Sklar. <em>Fonctions de Repartition à n Dimension et Leurs Marges</em>. Université Paris <strong>8</strong>, 1–3 (1959).</div></dd></dl></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting Started</a><a class="docs-footer-nextpage" href="../elliptical/generalities/">Elliptical Copulas »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 23 February 2024 19:54">Friday 23 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)</code></pre><p>References: </p><ul><li>[<a href="../references/#sklar1959">9</a>] Sklar, M. (1959). Fonctions de répartition à n dimensions et leurs marges. In Annales de l&#39;ISUP (Vol. 8, No. 3, pp. 229-231).</li><li>[<a href="../references/#nelsen2006">3</a>] Nelsen, Roger B. An introduction to copulas. Springer, 2006.</li></ul></div><a class="docs-sourcelink" target="_blank" href="https://github.com/lrnv/Copulas.jl/blob/c0497e8a107679053d4f17e9ce15b768ac3b0c49/src/SklarDist.jl#L1-L39">source</a></section></article><div class="citation noncanonical"><dl><dt>[3]</dt><dd><div>R. B. Nelsen. <em>An Introduction to Copulas</em>. 2nd ed Edition, <em>Springer Series in Statistics</em> (Springer, New York, 2006).</div></dd><dt>[9]</dt><dd><div>A. Sklar. <em>Fonctions de Repartition à n Dimension et Leurs Marges</em>. Université Paris <strong>8</strong>, 1–3 (1959).</div></dd></dl></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting Started</a><a class="docs-footer-nextpage" href="../elliptical/generalities/">Elliptical Copulas »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="auto">Automatic (OS)</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.2.1 on <span class="colophon-date" title="Friday 23 February 2024 20:03">Friday 23 February 2024</span>. Using Julia version 1.10.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
