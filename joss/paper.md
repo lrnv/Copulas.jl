@@ -119,7 +119,7 @@ To construct an archimedean copula, you first need to reference its generator th
 struct MyGenerator{T} <: Copulas.Generator
     θ::T
 end
-ϕ(G::MyGenerator,t) = exp(-G.θ * t) # can you recognise this one ?
+ϕ(G::MyGenerator,t) = exp(-G.θ * t)
 Copulas.max_monotony(G::MyGenerator) = Inf
 C = ArchimedeanCopula(4,MyGenerator(1.3)) # 4-dimensional copula
 ```
