@@ -1,7 +1,7 @@
 name = "Copulas"
 uuid = "ae264745-0b69-425e-9d9d-cf662c5eec93"
 authors = ["Oskar Laverny"]
-version = "0.1.20"
+version = "0.1.21"
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
