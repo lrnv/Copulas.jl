@@ -90,11 +90,15 @@ If you want to contribute to the package, ask a question, found a bug or simply 
 Do not hesitate to star this repository to show support ! You may also cite the package by using the following bibtex code: 
 
 ```bibtex
-@software{oskar_laverny_2023_10084669,
-  author       = {Oskar Laverny},
-  title        = {Copulas.jl: A fully `Distributions.jl`-compliant copula package},
-  year         = 2022+,
-  doi          = {10.5281/zenodo.6652672},
-  url          = {https://doi.org/10.5281/zenodo.6652672}
+@article{Laverny2024, 
+    doi = {10.21105/joss.06189}, 
+    url = {https://doi.org/10.21105/joss.06189}, 
+    year = {2024}, 
+    publisher = {The Open Journal}, 
+    volume = {9}, 
+    number = {94}, 
+    pages = {6189}, 
+    author = {Oskar Laverny and Santiago Jimenez}, 
+    title = {Copulas.jl: A fully Distributions.jl-compliant copula package}, journal = {Journal of Open Source Software}
 }
 ```
