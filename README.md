@@ -33,7 +33,7 @@ The package revolves around two main types:
 - `Copula`, an abstract mother type for all the copulas in the package
 - `SklarDist`, a distribution type that allows construction of a multivariate distribution by specifying the copula and the marginals through [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem). 
 
-**Warning: This is fairly experimental work and our API might change without notice.**
+**Warning: This is fairly experimental work, use with caution.**
 
 ## Getting started
 
@@ -87,18 +87,19 @@ Since our primary target is maintainability and readability of the implementatio
 If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on this repo. General guidelines on collaborative practices (colprac) are available at https://github.com/SciML/ColPrac.
 ## Citation 
 
-Do not hesitate to star this repository to show support ! You may also cite the package by using the following bibtex code: 
+Do not hesitate to star this repository to show support. If you use this package in your researches, please cite it with the following bibtex code:
 
 ```bibtex
-@article{Laverny2024, 
+@article{Laverny2024,
+    author = {Oskar Laverny and Santiago Jimenez}, 
+    title = {Copulas.jl: A fully Distributions.jl-compliant copula package},
+    journal = {Journal of Open Source Software},
     doi = {10.21105/joss.06189}, 
     url = {https://doi.org/10.21105/joss.06189}, 
     year = {2024}, 
     publisher = {The Open Journal}, 
     volume = {9}, 
     number = {94}, 
-    pages = {6189}, 
-    author = {Oskar Laverny and Santiago Jimenez}, 
-    title = {Copulas.jl: A fully Distributions.jl-compliant copula package}, journal = {Journal of Open Source Software}
+    pages = {6189}
 }
 ```
