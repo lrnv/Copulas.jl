@@ -33,6 +33,7 @@
         SurvivalCopula(ClaytonCopula(2,-0.7),(1,2)),
         RafteryCopula(2, 0.2),
         RafteryCopula(3, 0.5),
+        Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1)),
         # Others ? Yes probably others too ! 
     )
 
