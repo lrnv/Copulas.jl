@@ -44,7 +44,8 @@ struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribut
         d = length(C)
         @assert length(m) == d
         @assert all(mᵢ isa Distributions.UnivariateDistribution for mᵢ in m)
-        return new{typeof(C),typeof(m)}(C,m)
+        tm = Tuple(m)
+        return new{typeof(C),typeof(tm)}(C,tm)
     end    
 end
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)

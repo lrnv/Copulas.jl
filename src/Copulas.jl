@@ -20,8 +20,7 @@ module Copulas
     include("utils.jl")
     include("Copula.jl")
     include("SklarDist.jl")
-    export pseudos, 
-           EmpiricalCopula, 
+    export pseudos,
            SklarDist
 
     # Others. 
@@ -80,9 +79,10 @@ module Copulas
            InvGaussianCopula,
            JoeCopula
 
+    # Subsetting
+    include("SubsetCopula.jl") # not exported yet. 
 
-
-       using PrecompileTools
+    using PrecompileTools
     @setup_workload begin
     # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
     # precompile file and potentially make loading faster.
