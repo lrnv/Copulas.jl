@@ -10,3 +10,13 @@ CurrentModule = Copulas
 ```@docs
 SurvivalCopula
 ```
+
+## `SubsetCopula`
+
+```@docs
+Copulas.subsetdims
+```
+
+```@docs
+Copulas.SubsetCopula
+```
