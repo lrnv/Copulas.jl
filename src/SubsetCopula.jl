@@ -9,7 +9,7 @@ Constructor
 
     SubsetCopula(C::Copula,dims)
 
-This class allows to construct a random vector specified as X[dims] where X is the random vector correspnding to C and dims is a selection of dimensions. 
+This class allows to construct a random vector corresponding to a few dimensions of the starting copula. If ``(X_1,...,X_n)`` is the random vector corresponding to the copula `C`, this returns the copula of `(` ``X_i`` `for i in dims)`. The dependence structure is preserved. There are specialized methods for some copulas. 
 """
 struct SubsetCopula{d,CT} <: Copula{d}
     C::CT
@@ -50,7 +50,7 @@ SubsetCopula(C::ArchimedeanCopula{d,TG},dims) where {d,TG} = ArchimedeanCopula(l
     subsetdims(C::Copula,dims)
     subsetdims(D::SklarDist, dims)
 
-If X is the random vector corresponding to `C` or `D`, this returns the distributions of  C[dims]. Has specialized methods for some copulas. 
+If ``(X_1,...,X_n)`` is the random vector corresponding to the model `C` or `D`, this returns the distribution on `(` ``X_i`` `for i in dims)`, preserving the dependence structure between the dimensions in `dims`. There are specialized methods for some copulas. 
 """
 subsetdims(C::Copula{d},dims) where d = SubsetCopula(C,dims)
 subsetdims(D::SklarDist, dims) = SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
