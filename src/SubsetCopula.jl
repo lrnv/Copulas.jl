@@ -40,9 +40,9 @@ function _cdf(C::SubsetCopula{d,CT},u) where {d,CT}
 end
 
 # A few specialized constructors: 
-SubsetCopula(C::GaussianCopula,dims) = GaussianCopula(C.Σ[collect(dims),collect(dims)])
-SubsetCopula(C::TCopula{d,df,MT},dims) where {d,df,MT} = TCopula(df, C.Σ[collect(dims),collect(dims)])
-SubsetCopula(C::ArchimedeanCopula{d,TG},dims) where {d,TG} = ArchimedeanCopula(length(dims), C.G) # in particular for the independence this will work. 
+SubsetCopula(C::GaussianCopula,dims) = length(dims) == 1 ? Distributions.Uniform() : GaussianCopula(C.Σ[collect(dims),collect(dims)])
+SubsetCopula(C::TCopula{d,df,MT},dims) where {d,df,MT} = length(dims) == 1 ? Distributions.Uniform() : TCopula(df, C.Σ[collect(dims),collect(dims)])
+SubsetCopula(C::ArchimedeanCopula{d,TG},dims) where {d,TG} = length(dims) == 1 ? Distributions.Uniform() : ArchimedeanCopula(length(dims), C.G) # in particular for the independence this will work. 
 
 # We could add a few more for performance if needed: EmpiricalCopula, others... 
 
