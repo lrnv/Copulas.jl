@@ -15,6 +15,7 @@ module Copulas
     import Combinatorics
     import LogExpFunctions
     import QuadGK
+    import LinearAlgebra
 
     # Standard copulas and stuff. 
     include("utils.jl")
