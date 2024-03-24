@@ -15,9 +15,11 @@ struct SubsetCopula{d,CT} <: Copula{d}
     C::CT
     dims::NTuple{d,Int64}
     function SubsetCopula(C::Copula{d},dims) where d
-        # if Tuple(dims) == Tuple(1:d)
-        #     return C
-        # end
+        if Tuple(dims) == Tuple(1:d)
+            return C
+        elseif length(dims)==1
+            return Distributions.Uniform()
+        end
         @assert all(dims .<= d)
         return new{length(dims), typeof(C)}(C,Tuple(Int.(dims)))
     end
@@ -53,4 +55,10 @@ SubsetCopula(C::ArchimedeanCopula{d,TG},dims) where {d,TG} = ArchimedeanCopula(l
 If X is the random vector corresponding to `C` or `D`, this returns the distributions of  C[dims]. Has specialized methods for some copulas. 
 """
 subsetdims(C::Copula{d},dims) where d = SubsetCopula(C,dims)
-subsetdims(D::SklarDist, dims) = SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
+function subsetdims(D::SklarDist, dims)
+    if length(dims)==1 
+        return D.m[dims[1]]
+    else
+        return SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
+    end
+end

@@ -35,6 +35,9 @@
         D = SklarDist(C,(LogNormal() for i in 1:d))
         sC = Copulas.subsetdims(C,(1,2))
         sD = Copulas.subsetdims(D,(2,1))
+        
+        @test isa(subsetdims(C,(1,)),Distributions.Uniform)
+        @test isa(subsetdims(D,1), Distributions.LogNormal)
 
         # The following methods have to work: 
         u = rand(sC,10)
