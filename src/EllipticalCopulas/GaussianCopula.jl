@@ -30,13 +30,16 @@ cdf(C,u) # to get the distribution function
 Ĉ = fit(GaussianCopula,u) # to fit on the sampled data. 
 ```
 
+GaussianCopulas have a special case: 
+- When `isdiag(Σ)`, the constructor returns an `IndependentCopula(d)`
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function GaussianCopula(Σ) 
-        if Σ == one(Σ)
+        if LinearAlgebra.isdiag(Σ)
             return IndependentCopula(size(Σ,1))
         end
         make_cor!(Σ)
