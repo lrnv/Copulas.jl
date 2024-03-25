@@ -15,9 +15,11 @@ struct SubsetCopula{d,CT} <: Copula{d}
     C::CT
     dims::NTuple{d,Int64}
     function SubsetCopula(C::Copula{d},dims) where d
-        # if Tuple(dims) == Tuple(1:d)
-        #     return C
-        # end
+        if Tuple(dims) == Tuple(1:d)
+            return C
+        elseif length(dims)==1
+            return Distributions.Uniform()
+        end
         @assert all(dims .<= d)
         return new{length(dims), typeof(C)}(C,Tuple(Int.(dims)))
     end
@@ -38,9 +40,9 @@ function _cdf(C::SubsetCopula{d,CT},u) where {d,CT}
 end
 
 # A few specialized constructors: 
-SubsetCopula(C::GaussianCopula,dims) = GaussianCopula(C.Σ[collect(dims),collect(dims)])
-SubsetCopula(C::TCopula{d,df,MT},dims) where {d,df,MT} = TCopula(df, C.Σ[collect(dims),collect(dims)])
-SubsetCopula(C::ArchimedeanCopula{d,TG},dims) where {d,TG} = ArchimedeanCopula(length(dims), C.G) # in particular for the independence this will work. 
+SubsetCopula(C::GaussianCopula,dims) = length(dims) == 1 ? Distributions.Uniform() : GaussianCopula(C.Σ[collect(dims),collect(dims)])
+SubsetCopula(C::TCopula{d,df,MT},dims) where {d,df,MT} = length(dims) == 1 ? Distributions.Uniform() : TCopula(df, C.Σ[collect(dims),collect(dims)])
+SubsetCopula(C::ArchimedeanCopula{d,TG},dims) where {d,TG} = length(dims) == 1 ? Distributions.Uniform() : ArchimedeanCopula(length(dims), C.G) # in particular for the independence this will work. 
 
 # We could add a few more for performance if needed: EmpiricalCopula, others... 
 
@@ -53,4 +55,10 @@ SubsetCopula(C::ArchimedeanCopula{d,TG},dims) where {d,TG} = ArchimedeanCopula(l
 If ``(X_1,...,X_n)`` is the random vector corresponding to the model `C` or `D`, this returns the distribution on `(` ``X_i`` `for i in dims)`, preserving the dependence structure between the dimensions in `dims`. There are specialized methods for some copulas. 
 """
 subsetdims(C::Copula{d},dims) where d = SubsetCopula(C,dims)
-subsetdims(D::SklarDist, dims) = SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
+function subsetdims(D::SklarDist, dims)
+    if length(dims)==1 
+        return D.m[dims[1]]
+    else
+        return SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
+    end
+end
