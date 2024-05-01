@@ -27,7 +27,7 @@ jobs:
           - x86
     steps:
       - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
@@ -46,7 +46,7 @@ jobs:
         && github.event_name != 'pull_request'
     steps:
       - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v1
+      - uses: julia-actions/setup-julia@v2
         with:
           version: '1'
       - uses: julia-actions/julia-buildpkg@v1
