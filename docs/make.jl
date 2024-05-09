@@ -13,7 +13,6 @@ makedocs(;
     plugins=[bib],
     modules=[Copulas],
     authors="Oskar Laverny <oskar.laverny@univ-amu.fr> and contributors",
-    repo="https://github.com/lrnv/Copulas.jl/blob/{commit}{path}#{line}",
     sitename="Copulas.jl",
     format=Documenter.HTML(;
         prettyurls=get(ENV, "CI", "false") == "true",
