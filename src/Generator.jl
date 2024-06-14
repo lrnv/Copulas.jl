@@ -52,3 +52,4 @@ williamson_dist(G::Generator, d) = WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),
 
 abstract type UnivariateGenerator <: Generator end
 abstract type ZeroVariateGenerator <: Generator end
+abstract type DistordedGenerator <: Generator end
