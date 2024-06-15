@@ -2,15 +2,15 @@
 CurrentModule = Copulas
 ```
 
-# Available elliptical copulas
+# Elliptical Copulas
 
-## Gaussian
+## `GaussianCopula`
 
 ```@docs
 GaussianCopula
 ```
 
-## Student's T
+## `TCopula`
 
 ```@docs
 TCopula

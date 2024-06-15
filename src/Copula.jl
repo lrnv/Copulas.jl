@@ -9,20 +9,29 @@ Base.length(::Copula{d}) where d = d
 # Base.eltype
 # τ, τ⁻¹
 # Base.eltype 
-function Distributions.cdf(C::Copula{d},u) where d
-    length(u) != length(C) && throw(ArgumentError("Dimension mismatch between copula and input vector"))
+function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
+    length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
+    if any(iszero,u)
+        return zero(u[1])
+    elseif all(isone,u)
+        return one(u[1])
+    end
     return _cdf(C,u)
+end
+function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
+    size(A,1) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
+    return [Distributions.cdf(C,u) for u in eachcol(A)]
 end
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)
     z = zeros(eltype(u),length(C))
-    return Cubature.pcubature(f,z,u,reltol=sqrt(eps()))[1]
+    return Cubature.hcubature(f,z,u,reltol=sqrt(eps()))[1]
 end
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     z = zeros(d)
     i = ones(d)
-    r = Cubature.pcubature(F,z,i,reltop=sqrt(eps()))[1]
+    r = Cubature.hcubature(F,z,i,reltol=sqrt(eps()))[1]
     return 12*r-3
 end
 function τ(C::Copula)

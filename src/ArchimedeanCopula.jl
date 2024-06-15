@@ -1,45 +1,60 @@
-#Using the convention that generator satisfies ϕ(0) = 1 (this is opposite to e.g. https://en.wikipedia.org/wiki/Copula_(probability_theory))
-
-
-# We should follow closely
-# https://www.uni-ulm.de/fileadmin/website_uni_ulm/mawi.inst.zawa/forschung/preprintmariushofert.pdf
-# for the implementation of sampling methods. 
-
-
 """
-    ArchimedeanCopula{d}
+    ArchimedeanCopula{d, TG}
 
-Abstract type.
+Fields: 
+    - G::TG : the generator <: Generator. 
 
-[ The description of the APi done here could be more detailled]
+Constructor: 
 
-The archimedean copulas are all ``<:ArchimedeanCopula{d}` for some dimension d. This type serves as an internal interface to handle all archimdean copulas at once. 
+    ArchimedeanCopula(d::Int,G::Generator)
 
-Adding a new `ArchimedeanCopula` is very easy. The `Clayton` implementation is as short as: 
+For some Archimedean [`Generator`](@ref) `G::Generator` and some dimenson `d`, this class models the archimedean copula which has this generator. The constructor checks for validity by ensuring that `max_monotony(G) ≥ d`. The ``d``-variate archimedean copula with generator ``\\phi`` writes: 
+
+```math
+C(\\mathbf u) = \\phi^{-1}\\left(\\sum_{i=1}^d \\phi(u_i)\\right)
+```
+
+The default sampling method is the Radial-simplex decomposition using the Williamson transformation of ``\\phi``. 
+
+There exists several known parametric generators that are implement in the package. For every `NamedGenerator <: Generator` implemented in the package, we provide a type alias ``NamedCopula{d,...} = ArchimedeanCopula{d,NamedGenerator{...}}` to be able to manipulate the classic archimedean copulas without too much hassle for known and usefull special cases. 
+
+A generic archimdean copula can be constructed as follows: 
 
 ```julia
-struct ClaytonCopula{d,T} <: Copulas.ArchimedeanCopula{d}
-    θ::T
-end
-ClaytonCopula(d,θ)            = ClaytonCopula{d,typeof(θ)}(θ)     # Constructor
-ϕ(C::ClaytonCopula, t)        = (1+sign(C.θ)*t)^(-1/C.θ)          # Generator
-ϕ⁻¹(C::ClaytonCopula,t)       = sign(C.θ)*(t^(-C.θ)-1)            # Inverse Generator
-τ(C::ClaytonCopula)           = C.θ/(C.θ+2)                       # θ -> τ
-τ⁻¹(::Type{ClaytonCopula},τ)  = 2τ/(1-τ)                          # τ -> θ
-williamson_dist(C::ClaytonCopula{d,T}) where {d,T} = WilliamsonFromFrailty(Distributions.Gamma(1/C.θ,1),d) # Radial distribution
+struct MyGenerator <: Generator end
+ϕ(G::MyGenerator,t) = exp(-t) # your archimedean generator, can be any d-monotonous function.
+max_monotony(G::MyGenerator) = Inf # could depend on generators parameters. 
+C = ArchimedeanCopula(d,MyGenerator())
 ```
-The Archimedean API is modular: 
 
-- To sample an archimedean, only `williamson_dist` and `ϕ` are needed.
-- To evaluate the cdf and (log-)density in any dimension, only `ϕ` and `ϕ⁻¹` are needed.
-- Currently, to fit the copula `τ⁻¹` is needed as we use the inverse tau moment method. But we plan on also implementing inverse rho and MLE (density needed). 
-- Note that the generator `ϕ` follows the convention `ϕ(0)=1`, while others (e.g., https://en.wikipedia.org/wiki/Copula_(probability_theory)#Archimedean_copulas) use `ϕ⁻¹` as the generator.
-- We plan on implementing the Williamson transformations so that `radial-dist` can be automaticlaly deduced from `ϕ` and vice versa, if you dont know much about your archimedean family
+The obtained model can be used as follows: 
+```julia
+spl = rand(C,1000)   # sampling
+cdf(C,spl)           # cdf
+pdf(C,spl)           # pdf
+loglikelihood(C,spl) # llh
+```
 
-If you only know the generator of your copula, take a look at WilliamsonCopula that allows to generate automatically the associated williamson distribution. 
-If on the other hand you have a univaraite positive random variable with no atom at zero, then the williamson transform can produce an archimdean copula out of it, with the same constructor. 
+Bonus: If you know the Williamson d-transform of your generator and not your generator itself, you may take a look at [`WilliamsonGenerator`](@ref) that implements them. If you rather know the frailty distribution, take a look at `WilliamsonFromFrailty`.
+
+References:
+* [williamson1955multiply](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
+* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
 """
-abstract type ArchimedeanCopula{d} <: Copula{d} end
+struct ArchimedeanCopula{d,TG} <: Copula{d}
+    G::TG
+    function ArchimedeanCopula(d::Int,G::Generator)
+        @assert d <= max_monotony(G) "The generator you provided is not d-monotonous according to its max_monotonicity property, and thus this copula does not exists."
+        return new{d,typeof(G)}(G)
+    end
+end
+ϕ(C::ArchimedeanCopula{d,TG},t)    where {d,TG} = ϕ(C.G,t)
+ϕ⁻¹(C::ArchimedeanCopula{d,TG},t)  where {d,TG} = ϕ⁻¹(C.G,t)
+ϕ⁽¹⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁽¹⁾(C.G,t)
+ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},k,t) where {d,TG} = ϕ⁽ᵏ⁾(C.G,k,t)
+williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G,d)
+
+
 function _cdf(C::CT,u) where {CT<:ArchimedeanCopula} 
     sum_ϕ⁻¹u = 0.0
     for us in u
@@ -47,17 +62,7 @@ function _cdf(C::CT,u) where {CT<:ArchimedeanCopula}
     end
     return ϕ(C,sum_ϕ⁻¹u)
 end
-ϕ⁽¹⁾(C::CT, t) where {CT<:ArchimedeanCopula} = ForwardDiff.derivative(x -> ϕ(C,x), t)
-function ϕ⁽ᵈ⁾(C::ArchimedeanCopula{d},t) where d
-    X = TaylorSeries.Taylor1(eltype(t),d)
-    taylor_expansion = ϕ(C,t+X)
-    coef = TaylorSeries.getcoeff(taylor_expansion,d) # gets the dth coef. 
-    der = coef * factorial(d) # gets the dth derivative of $\phi$ taken in t. 
-    return der
-end
-function Distributions._logpdf(C::CT, u) where {CT<:ArchimedeanCopula}
-    d = length(C)
-    # @assert d == length(u) "Dimension mismatch"
+function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
     end
@@ -68,7 +73,7 @@ function Distributions._logpdf(C::CT, u) where {CT<:ArchimedeanCopula}
         sum_ϕ⁻¹u += ϕ⁻¹u
         sum_logϕ⁽¹⁾ϕ⁻¹u += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
     end
-    numer = ϕ⁽ᵈ⁾(C, sum_ϕ⁻¹u)
+    numer = ϕ⁽ᵏ⁾(C, d, sum_ϕ⁻¹u)
     dimension_sign = iseven(d) ? 1.0 : -1.0 #need this for log since (-1.0)ᵈ ϕ⁽ᵈ⁾ ≥ 0.0
 
 
@@ -84,34 +89,30 @@ function Distributions._logpdf(C::CT, u) where {CT<:ArchimedeanCopula}
     end
 end
 
-ϕ(C::ArchimedeanCopula{d},x) where d = @error "Archimedean interface not implemented for $(typeof(C)) yet."
-ϕ⁻¹(C::ArchimedeanCopula{d},x) where d = Roots.find_zero(t -> ϕ(C,t) - x, (0.0, Inf))
-
-williamson_dist(C::ArchimedeanCopula{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(C,t),d)
-τ(C::ArchimedeanCopula)  = 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
-
-
-function _archi_rand!(rng,C::ArchimedeanCopula{d},R,x) where d
-    # x is assumed to already be random exponentials produced by Random.randexp
-    r = rand(rng,R)
-    sx = sum(x)
-    for i in 1:d
-        x[i] = ϕ(C,r * x[i]/sx)
-    end
-end
+# function τ(C::ArchimedeanCopula)  
+#     return 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
+# end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:ArchimedeanCopula}
-    # By default, we use the williamson sampling. 
+    # By default, we use the Williamson sampling. 
     Random.randexp!(rng,x)
-    _archi_rand!(rng,C,williamson_dist(C),x)
+    r = rand(rng,williamson_dist(C))
+    sx = sum(x)
+    for i in 1:length(C)
+        x[i] = ϕ(C,r * x[i]/sx)
+    end
     return x
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real, CT<:ArchimedeanCopula}
-    # More efficient version that precomputes the williamson transform on each call to sample in batches: 
+    # More efficient version that precomputes the Williamson transform on each call to sample in batches: 
     Random.randexp!(rng,A)
-    R = williamson_dist(C)
-    for i in 1:size(A,2)
-        _archi_rand!(rng,C,R,view(A,:,i))
+    n = size(A,2)
+    r = rand(rng,williamson_dist(C),n)
+    for i in 1:n
+        sx = sum(A[:,i])
+        for j in 1:length(C)
+            A[j,i] = ϕ(C,r[i] * A[j,i]/sx)
+        end
     end
     return A
 end
@@ -121,6 +122,86 @@ function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula}
     τ = StatsBase.corkendall(u')
     # Then the off-diagonal elements of the matrix should be averaged: 
     avgτ = (sum(τ) .- d) / (d^2-d)
-    θ = τ⁻¹(CT,avgτ)
-    return CT(d,θ)
+    GT = generatorof(CT)
+    θ = τ⁻¹(GT,avgτ)
+    return ArchimedeanCopula(d,GT(θ))
 end
+
+τ(C::ArchimedeanCopula{d,TG}) where {d,TG} = τ(C.G)
+function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
+    return τ⁻¹(generatorof(T),τ_val)
+end
+
+################################################################################################
+################                                                                ################
+################ Define all "named" archimedean copulas at once like that :     ################
+################                                                                ################
+################################################################################################
+
+
+## Automatic syntactic sugar for all ZeroVariateGenerators and UnivariateGenerators. 
+## see https://discourse.julialang.org/t/how-to-dispatch-on-a-type-alias/106476/38?u=lrnv
+function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
+    S2 = hasproperty(S,:body) ? S.body : S
+    S3 = hasproperty(S2, :body) ? S2.body : S2
+    try 
+        return S3.parameters[2].name.wrapper
+    catch e
+        @error "There is no generator type associated with the archimedean type $S"
+    end
+end
+for T in InteractiveUtils.subtypes(ZeroVariateGenerator)
+    G = Symbol(last(split(string(T),'.')))
+    C = Symbol(string(G)[begin:end-9]*"Copula")
+    @eval begin
+        const ($C){d} = ArchimedeanCopula{d,($G)}
+        ($C)(d) = ArchimedeanCopula(d,($G)())
+    end
+end
+for T in InteractiveUtils.subtypes(UnivariateGenerator)
+    G = Symbol(last(split(string(T),'.')))
+    C = Symbol(string(G)[begin:end-9]*"Copula")
+    @eval begin
+        const ($C){d,Tθ} = ArchimedeanCopula{d,($G){Tθ}}
+        ($C)(d,θ) = ArchimedeanCopula(d,($G)(θ))
+    end
+end
+
+# The zero-variate ones just need a few more methods: 
+Distributions._logpdf(::ArchimedeanCopula{d,IndependentGenerator}, u) where {d} = all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
+Distributions._logpdf(::ArchimedeanCopula{d,MGenerator},           u) where {d} = all(u == u[1]) ?     zero(eltype(u)) : eltype(u)(-Inf)
+Distributions._logpdf(::ArchimedeanCopula{d,WGenerator},           u) where {d} = sum(u) == 1 ?   zero(eltype(u)) : eltype(u)(-Inf)
+
+_cdf(::ArchimedeanCopula{d,IndependentGenerator}, u) where d = prod(u)
+_cdf(::ArchimedeanCopula{d,MGenerator},           u) where {d} = minimum(u)
+_cdf(::ArchimedeanCopula{d,WGenerator},           u) where {d} = max(1 + sum(u)-d,0)
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,IndependentGenerator}, x::AbstractVector{T}) where {d,T<:Real}
+    Random.rand!(rng,x)
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,MGenerator}, x::AbstractVector{T}) where {d,T<:Real}
+    x .= rand(rng)
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,WGenerator}, x::AbstractVector{T}) where {d,T<:Real}
+    @assert d==2
+    x[1] = rand(rng)
+    x[2] = 1-x[1] 
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,IndependentGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
+    Random.rand!(rng,A)
+    return A
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,MGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
+    A[1,:] .= rand(rng,size(A,2))
+    for i in 2:size(A,1)
+        A[i,:] .= A[1,:]
+    end
+    return A
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,WGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
+    @assert size(A,1) == 2
+    A[1,:] .= rand(rng,size(A,2))
+    A[2,:] .= 1 .- A[1,:]
+    return A
+end
+

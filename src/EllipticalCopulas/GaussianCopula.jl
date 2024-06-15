@@ -9,34 +9,37 @@ Constructor
     GaussianCopula(Σ)
 
 The [Gaussian Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Gaussian_copula) is the 
-copula of a [Multivariate normal distribution](http://en.wikipedia.org/wiki/Multivariate_normal_distribution). It is constructed as : 
+copula of a [Multivariate normal distribution](http://en.wikipedia.org/wiki/Multivariate_normal_distribution). It is constructed as: 
 
 ```math
 C(\\mathbf{x}; \\boldsymbol{\\Sigma}) = F_{\\Sigma}(F_{\\Sigma,i}^{-1}(x_i),i\\in 1,...d)
 ```
-where ``F_{\\Sigma}`` is a cdf of a gaussina random vector and `F_{\\Sigma,i}` is the ith marignal cdf, while ```\\Sigma`` is the covariance matrix. 
+where ``F_{\\Sigma}`` is a cdf of a gaussian random vector and ``F_{\\Sigma,i}`` is the ith marginal cdf, while ``\\Sigma`` is the covariance matrix. 
 
 It can be constructed in Julia via:  
 ```julia
 C = GaussianCopula(Σ)
 ```
 
-The random number generation works as expected:
+You can sample it, compute pdf and cdf, or even fit the distribution via: 
 ```julia
-rand(C,1000)
-# or
-Random.rand!(C,u)
+u = rand(C,1000)
+Random.rand!(C,u) # other calling syntax for rng.
+pdf(C,u) # to get the density
+cdf(C,u) # to get the distribution function 
+Ĉ = fit(GaussianCopula,u) # to fit on the sampled data. 
 ```
 
-And yo can fit the distribution via : 
-```julia
-fit(GaussianCopula,data)
-```
+GaussianCopulas have a special case: 
+- When `isdiag(Σ)`, the constructor returns an `IndependentCopula(d)`
+
+References:
+* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function GaussianCopula(Σ) 
-        if Σ == one(Σ)
+        if LinearAlgebra.isdiag(Σ)
             return IndependentCopula(size(Σ,1))
         end
         make_cor!(Σ)

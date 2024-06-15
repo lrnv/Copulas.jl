@@ -5,7 +5,7 @@
     using StableRNGs
     rng = StableRNG(123)
     MyD = SklarDist(ClaytonCopula(3,7),(LogNormal(),Pareto(),Beta()))
-    u = rand(rng,MyD,10000)
+    u = rand(rng,MyD,1000)
     rand!(MyD,u)
     fit(SklarDist{ClaytonCopula,Tuple{LogNormal,Pareto,Beta}},u)
     fit(SklarDist{GaussianCopula,Tuple{LogNormal,Pareto,Beta}},u)
@@ -21,15 +21,19 @@ end
 # We could also test the behavior of Turing models, so that what Herb did will not fade away with releases; 
 
 
-# @testitem "GaussianCopula" begin
-#     C = GaussianCopula([1 -0.1; -0.1 1])
-#     M1 = Beta(2,3)
-#     M2 = LogNormal(2,3)
-#     D = SklarDist(C,(M1,M2))
-#     X = rand(rng,D,1000)
-#     loglikelihood(D,X)
-#     fit(SklarDist{TCopula,Tuple{Beta,LogNormal}},X) # should give a very high \nu for the student copula. 
-# end
+@testitem "GaussianCopula" begin
+    using Distributions
+    using Random
+    using StableRNGs
+    rng = StableRNG(123)
+    C = GaussianCopula([1 -0.1; -0.1 1])
+    M1 = Beta(2,3)
+    M2 = LogNormal(2,3)
+    D = SklarDist(C,(M1,M2))
+    X = rand(rng,D,10)
+    loglikelihood(D,X)
+    @test_broken fit(SklarDist{TCopula,Tuple{Beta,LogNormal}},X) # should give a very high \nu for the student copula. 
+end
 
 # Same thing with other models ? 
 
@@ -44,21 +48,15 @@ end
         ClaytonCopula(4,7.0),
         GaussianCopula([1 0.3; 0.3 1]),
         FrankCopula(5,6.0),
-        AMHCopula(3,0.7)
+        AMHCopula(3,0.7),
+        TCopula(4,[1 0.5; 0.5 1])
     )
-
 
     for C in Copula_Zoo
         d = length(C)
        
         @test cdf(C,ones(d)) ≈ 1
         @test cdf(C,zeros(d)) ≈ 0    
-    end
-
-    for C in (TCopula(4,[1 0.5; 0.5 1]),)
-        d = length(C)
-        @test_broken cdf(C,ones(d)) ≈ 1
-        @test_broken cdf(C,zeros(d)) ≈ 0    
     end
 end
 
@@ -122,7 +120,7 @@ end
     using StableRNGs
     rng = StableRNG(123)
     
-    for C in (ClaytonCopula(4,7.0),GumbelCopula(2, 1.2))
+    for C in (ClaytonCopula(4,7.0),GumbelCopula(2, 1.2), TCopula(4,[1 0.5; 0.5 1]))
         d = length(C)
         u = zeros(d)
         v = ones(d)
@@ -134,20 +132,6 @@ end
             v[i] = u[i] + rand(rng)*(1-u[i])
         end
         @test Copulas.measure(C,u,v) >= 0
-    end
-
-    for C in (TCopula(4,[1 0.5; 0.5 1]),)
-        d = length(C)
-        u = zeros(d)
-        v = ones(d)
-
-        @test_broken Copulas.measure(C,u,v) >= 0
-        
-        for i in 1:d
-            u[i] = rand(rng)
-            v[i] = u[i] + rand(rng)*(1-u[i])
-        end
-        @test_broken Copulas.measure(C,u,v) >= 0
     end
 end
     
