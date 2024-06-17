@@ -79,7 +79,12 @@ module Copulas
            GumbelCopula,
            InvGaussianCopula,
            JoeCopula
-
+    #Extreme Values Copulas
+    include("ExtremeValueCopula.jl")
+    include("ExtremeCopulas/GalambosCopula.jl")
+    include("ExtremeCopulas/tEVCopula.jl")
+    export ExtremeValueCopula,
+    GalambosCopula, TEVCopula, _cdf, _pdf
     # Subsetting
     include("SubsetCopula.jl") # not exported yet. 
 
