@@ -1,4 +1,4 @@
-using Combinatorics
+
 struct GalambosCopula{d, P} <: ExtremeValueCopula{d, P}
     θ::P  # Copula parameter
     function GalambosCopula(d, θ)

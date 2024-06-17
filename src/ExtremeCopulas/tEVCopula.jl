@@ -43,46 +43,41 @@ end
 # Función ℓ ajustada para manejar tipos duales
 function ℓ(copula::TEVCopula, u::Vector)
     ν = copula.df
-    Σ = convert_to_dual(copula.Σ)  # Asegúrate de que Σ maneje tipos duales si es necesario
+    Σ = copula.Σ
     d_len = length(u)
-    l_u = zero(eltype(Σ))
+    l_u = zero(one(eltype(u)))  # Inicializar l_u con el tipo adecuado
 
     for j in 1:d_len
-        R_j = construct_R_j(Σ, j)
-        terms = Vector{typeof(sqrt(Σ[1,1]))}(undef, d_len - 1)  # Usa el tipo calculado 
-        idx = 1
+        R_j = construct_R_j(Σ, j)  # Construir la submatriz R_j
+        println("R_j for j=$j: $R_j")  # Imprimir R_j para depuración
+
+        terms = Vector{eltype(u)}()  # Asegurar que el vector terms tenga el tipo correcto
         for i in 1:d_len
             if i != j
                 ρ_ij = Σ[i, j]
-                term = (sqrt(eltype(Σ)(ν + 1)) / sqrt(eltype(Σ)(1) - ρ_ij^2)) * ((u[i] / u[j])^(-eltype(Σ)(1)/ν) - ρ_ij)
-                println("TIPO DE TERMINO:", typeof(term))
-                println("valor TERMINO:", term)
-                term_value = ForwardDiff.value(term)  # Esto toma sólo el valor real de un Dual
-                terms[idx] = term_value  # Ahora está seguro de asignar porque term_value es Float64
-                idx += 1
+                term = (sqrt(ν + 1) * one(u[i]) / sqrt(one(u[i]) - ρ_ij^2)) * ((u[i] / u[j])^(-one(u[i])/ν) - ρ_ij * one(u[i]))
+                push!(terms, term)
             end
         end
+        println("terms for j=$j: $terms")  # Imprimir términos para depuración
+
+        # Convertir temporalmente terms a Float64 para CDF
+        terms_float64 = map(x -> ForwardDiff.value(x), terms)
+        println("terms_float64 for j=$j: $terms_float64")
 
         if d_len == 2
-            term_value = ForwardDiff.value(terms[1])  # Convertir solo si es necesario
+            # Para el caso univariado, usar TDist con el parámetro adecuado
             T_dist = Distributions.TDist(ν + 1)
-            cdf_value = Distributions.cdf(T_dist, term_value)
-            l_u += u[j] * cdf_value
+            par = terms_float64[1]
+            println("TIPO DE PARAMETRO:", typeof(par))
+            l_u += u[j] * Distributions.cdf(T_dist, par)
         else
-            term_values = map(ForwardDiff.value, terms)  # Convertir cada término a Float64
             T_dist = Distributions.MvTDist(ν + 1, R_j)
-            l_u += u[j] * Distributions.cdf(T_dist, hcat(term_values...))
+            println("TIPOS DE PARAMETROS MULTIVARIADOS:", typeof.(terms_float64))
+            l_u += u[j] * Distributions.cdf(T_dist, hcat(terms_float64...))
         end
     end
     return l_u
-end
-function convert_to_dual(Σ::Matrix{Float64})
-    # Define el tipo Dual apropiado, asociado a Float64 y una etiqueta genérica
-    T = ForwardDiff.Dual{Float64}
-
-    # Convertir cada elemento de Σ a Dual
-    Σ_dual = map(x -> T(x, 0.0), Σ)
-    return Σ_dual
 end
 
 # Ejemplo de uso

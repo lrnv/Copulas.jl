@@ -1,3 +1,4 @@
+using Combinatorics
 abstract type ExtremeValueCopula{d, TG} <: Copula{d} end
 
 # Define la función ℓ como una función placeholder si no está definida
