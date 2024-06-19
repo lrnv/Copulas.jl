@@ -1,26 +1,23 @@
-using LinearAlgebra
 struct TEVCopula{d, df, MT} <: ExtremeValueCopula{d, MT}
     Σ::MT   # Correlation matrix
-    df::Float64 # Degrees of freedom
-    function TEVCopula(df::Float64, Σ::MT) where MT
+    function TEVCopula(df::Int64, Σ::MT) where MT
         if size(Σ, 1) != size(Σ, 2)
             throw(ArgumentError("Correlation matrix Σ must be square"))
         end
-        if any(eigvals(Σ) .<= 0)
+        if !LinearAlgebra.isposdef(Σ)
             throw(ArgumentError("Correlation matrix Σ must be positive definite"))
         end
-        return new{size(Σ, 1), df, MT}(Σ, df)
+        return new{size(Σ, 1), df, MT}(Σ)
     end
 end
 
 function construct_R_j(Σ::Matrix{T}, j::Int) where T<:Real
-
     d = size(Σ, 1)
+    R_j = Matrix{T}(undef, d - 1, d - 1)
     if d == 2
-        # Devuelve una matriz 1x1 del tipo T con el valor T(1)
-        return fill(T(1), 1, 1)
+        R_j .= 1
+        return R_j
     else
-        R_j = Matrix{T}(undef, d - 1, d - 1)
         row_idx = 1
         for row in 1:d
             if row == j
@@ -41,49 +38,26 @@ function construct_R_j(Σ::Matrix{T}, j::Int) where T<:Real
 end
 
 # Función ℓ ajustada para manejar tipos duales
-function ℓ(copula::TEVCopula, u::Vector)
-    ν = copula.df
-    Σ = copula.Σ
-    d_len = length(u)
-    l_u = zero(one(eltype(u)))  # Inicializar l_u con el tipo adecuado
-
-    for j in 1:d_len
-        R_j = construct_R_j(Σ, j)  # Construir la submatriz R_j
-        println("R_j for j=$j: $R_j")  # Imprimir R_j para depuración
-
-        terms = Vector{eltype(u)}()  # Asegurar que el vector terms tenga el tipo correcto
-        for i in 1:d_len
-            if i != j
-                ρ_ij = Σ[i, j]
-                term = (sqrt(ν + 1) * one(u[i]) / sqrt(one(u[i]) - ρ_ij^2)) * ((u[i] / u[j])^(-one(u[i])/ν) - ρ_ij * one(u[i]))
-                push!(terms, term)
-            end
+function ℓ(C::TEVCopula{2, ν, MT}, u) where {ν,MT}
+    D  = Distributions.TDist(ν + 1)
+    a1 = sqrt(1 - C.Σ[1, 2]^2)
+    a2 = sqrt(1 - C.Σ[2, 1]^2)
+    r  = sqrt(ν+1)
+    s  = (u[1] / u[2])^(-1/ν)
+    v1 = (r / a1) * (s   - C.Σ[1, 2])
+    v2 = (r / a2) * (1/s - C.Σ[2, 1])
+    return u[2] * Distributions.cdf(D, v1) +  u[1] * Distributions.cdf(D, v2)
+end
+function ℓ(C::TEVCopula{d, ν, MT}, u) where {d,ν,MT}
+    l_u = zero(eltype(u))  # Inicializar l_u con el tipo adecuado
+    Ds = (Distributions.MvTDist(ν + 1, construct_R_j(C.Σ, j)) for j in 1:d)
+    for j in 1:d
+        terms = zero(u)
+        for i in 1:d
+            terms[i] = (sqrt(ν + 1) / sqrt(1 - C.Σ[i, j]^2)) * ((u[i] / u[j])^(-1/ν) - C.Σ[i, j])
         end
-        println("terms for j=$j: $terms")  # Imprimir términos para depuración
-
-        # Convertir temporalmente terms a Float64 para CDF
-        terms_float64 = map(x -> ForwardDiff.value(x), terms)
-        println("terms_float64 for j=$j: $terms_float64")
-
-        if d_len == 2
-            # Para el caso univariado, usar TDist con el parámetro adecuado
-            T_dist = Distributions.TDist(ν + 1)
-            par = terms_float64[1]
-            println("TIPO DE PARAMETRO:", typeof(par))
-            l_u += u[j] * Distributions.cdf(T_dist, par)
-        else
-            T_dist = Distributions.MvTDist(ν + 1, R_j)
-            println("TIPOS DE PARAMETROS MULTIVARIADOS:", typeof.(terms_float64))
-            l_u += u[j] * Distributions.cdf(T_dist, hcat(terms_float64...))
-        end
+        deleteat!(terms,j) # remove the zero at the jth term. 
+        l_u += u[j] * Distributions.cdf(Ds[j], terms)
     end
     return l_u
 end
-
-# Ejemplo de uso
-Σ = [1.0 0.5; 0.5 1.0]
-C = TEVCopula(4.0, Σ)
-u = [0.4, 0.5]
-println("CDF is :", _cdf(C,u))
-#_cdf(C,u)
-_pdf(C,u)

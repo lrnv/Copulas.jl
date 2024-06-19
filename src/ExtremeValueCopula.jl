@@ -1,10 +1,7 @@
-using Combinatorics
 abstract type ExtremeValueCopula{d, TG} <: Copula{d} end
 
 # Define la función ℓ como una función placeholder si no está definida
-function ℓ(C::ExtremeValueCopula, t::Vector)
-    throw(ArgumentError("Function ℓ must be defined for specific copula"))
-end
+ℓ(::ExtremeValueCopula, t) = throw(ArgumentError("Function ℓ must be defined for specific copula"))
 
 # Función para calcular derivadas mixtas de ℓ
 function D_B_ℓ(C::ExtremeValueCopula{d, TG}, t::Vector{<:Real}, B::Vector{Int}) where {d, TG}
@@ -35,7 +32,7 @@ end
 
 # Función para generar todas las particiones de un conjunto de longitud d en m bloques
 function partitions_of_length(d::Int, m::Int)
-    iter = partitions(collect(1:d))
+    iter = Combinatorics.partitions(collect(1:d))
     return [p for p in iter if length(p) == m]
 end
 
@@ -46,7 +43,7 @@ function _cdf(C::ExtremeValueCopula, u::AbstractArray)
 end
 
 ## Función genérica para la PDF que utiliza la función de cola estable ℓ y sus derivadas mixtas
-function _pdf(C::ExtremeValueCopula, u::AbstractArray)
+function Distributions._logpdf(C::ExtremeValueCopula, u::AbstractArray)
     t = -log.(u)
     CDF_value = exp(-ℓ(C, t))
     Independence_copula = prod(u)  # La cópula de independencia es simplemente el producto de u_i
@@ -65,5 +62,5 @@ function _pdf(C::ExtremeValueCopula, u::AbstractArray)
         end
     end
     
-    return (CDF_value / Independence_copula) * sum_terms
+    return log(CDF_value) - log(Independence_copula) + log(sum_terms)
 end
