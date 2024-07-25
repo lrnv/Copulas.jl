@@ -7,6 +7,7 @@ module Copulas
     import Roots
     import Distributions
     import StatsBase
+    import StatsFuns
     import TaylorSeries
     import ForwardDiff
     import Cubature
