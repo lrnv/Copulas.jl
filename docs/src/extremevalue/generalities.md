@@ -9,7 +9,7 @@ Here, $\ell(\cdot)$ is the stable tail dependence function and $A$ is the Pickan
 $$\ell(u_1,u_2)=(u_1+u_2)A\left(\frac{u_1}{u_1+u_2}\right).$$
 Therefore, in *TwinCopulas*, it is sufficient to provide the Pickands dependence function $A$ to construct the implementation structure of an extreme value copula.
 
-In this package, there is an abstract type [`ExtremeValueCopula`](@ref) that provides a foundation for defining extreme value copulas. Many extreme value copulas are already implemented for you! See [the list of implemented extreme value copulas](@ref ExtremeValue_models) to get an overview.
+In this package, there is an abstract type [`ExtremeValueCopula`](@ref) that provides a foundation for defining extreme value copulas. Many extreme value copulas are already implemented for you! See [the list of implemented extreme value copulas](@ref available_extreme_models) to get an overview.
 
 If you do not find the one you need, you may define it yourself by subtyping `ExtremeValueCopula`. The API does not require much information, which is really convenient. Only the following method is required:
 
