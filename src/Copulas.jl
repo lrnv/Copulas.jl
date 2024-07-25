@@ -49,6 +49,7 @@ module Copulas
     include("UnivariateDistribution/AlphaStable.jl")
     include("UnivariateDistribution/ClaytonWilliamsonDistribution.jl")
     include("UnivariateDistribution/WilliamsonFromFrailty.jl")
+    include("UnivariateDistribution/ExtremeDist.jl")
 
     # Archimedean generators
     include("Generator.jl")
@@ -79,6 +80,34 @@ module Copulas
            GumbelCopula,
            InvGaussianCopula,
            JoeCopula
+
+    # bivariate Extreme Value Copulas
+    include("ExtremeValue.jl")
+    include("ExtremeValueCopulas/AsymGalambosCopula.jl")
+    include("ExtremeValueCopulas/AsymLogCopula.jl")
+    include("ExtremeValueCopulas/AsymMixedCopula.jl")
+    include("ExtremeValueCopulas/BC2Copula.jl")
+    include("ExtremeValueCopulas/CuadrasAugeCopula.jl")
+    include("ExtremeValueCopulas/GalambosCopula.jl")
+    include("ExtremeValueCopulas/HuslerReissCopula.jl")
+    include("ExtremeValueCopulas/LogCopula.jl")
+    include("ExtremeValueCopulas/MixedCopula.jl")
+    include("ExtremeValueCopulas/MOCopula.jl")    
+    include("ExtremeValueCopulas/tEVCopula.jl")
+    
+    export
+        AsymGalambosCopula,
+        AsymLogCopula,
+        AsymMixedCopula,
+        BC2Copula,
+        CuadrasAugeCopula,
+        GalambosCopula,
+        HuslerReissCopula,
+        LogCopula,
+        MixedCopula,
+        MOCopula,   
+        tEVCopula
+
 
     # Subsetting
     include("SubsetCopula.jl") # not exported yet. 
