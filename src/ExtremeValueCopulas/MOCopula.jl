@@ -41,16 +41,10 @@ struct MOCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
-function ℓ(C::MOCopula, t::Vector)
-    λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
-    t₁, t₂ = t
-    return (λ1*t₂)/(λ1+λ12) + (λ1*t₁)/(λ2+λ12) + λ12*max(t₂/(λ1+λ12),t₁/(λ2+λ12))
-end
-
 function 𝜜(C::MOCopula, t::Real)
     λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
     
-    A = (λ1 * (1 - t)) / (λ1 + λ12) + (λ2 * t) / (λ2 + λ12) + λ12 * max((1 - t) / (λ1 + λ12), t / (λ2 + λ12))
+    A = max(t + (1-t) * (λ2)/(λ2 + λ12), (t-1) + t * (λ1)/(λ1 + λ12))
     
     return A
 end
