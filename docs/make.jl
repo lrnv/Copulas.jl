@@ -28,6 +28,7 @@ makedocs(;
             "Elliptical Copulas" => "elliptical/generalities.md",
             "Archimedean Copulas" => "archimedean/generalities.md",
             "Liouville Copulas" => "Liouville.md",
+            "Extreme Value Copulas" => "extremevalue/generalities.md",
             "Empirical Copulas" => "empirical/generalities.md",
             "Dependence measures" => "dependence_measures.md",
         ],
@@ -35,6 +36,7 @@ makedocs(;
         "Bestiary" => [
             "elliptical/available_models.md",
             "archimedean/available_models.md",
+            "extremevalue/available_models.md",
             "empirical/available_models.md",
             "Other Copulas" => "miscellaneous.md",
             "Transformed Copulas" => "transformations.md",
