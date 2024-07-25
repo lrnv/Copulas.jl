@@ -21,7 +21,7 @@ end
 
 # Función CDF para ExtremeValueCopula
 function _cdf(C::ExtremeValueCopula, u::AbstractArray{<:Real})
-    t = -log.(u)
+    t = abs.(log.(u)) # 0 <= u <= 1 so abs == neg, but return corectly 0 instead of -0 when u = 1. 
     return exp(-ℓ(C, t))
 end
 
