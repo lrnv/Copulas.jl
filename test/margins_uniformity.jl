@@ -139,6 +139,9 @@
                 for val in rand(rng,5)
                     u = ones(d)
                     u[i] = val
+                    if !(cdf(C,u) ≈ val)
+                        @show C, u
+                    end
                     @test cdf(C,u) ≈ val atol=1e-5
                 end
                 # extra check for zeros: 

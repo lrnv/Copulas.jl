@@ -1,3 +1,12 @@
+"""
+    ExtremeValueCopula{P}
+
+This empty docstring needs to be filled. 
+
+
+References:
+* [mypaper1990](@cite) Author 1, Author 2. A super paper ! Springer, 1990.
+"""
 abstract type ExtremeValueCopula{P} <: Copula{2} end
 
 # Función genérica para A

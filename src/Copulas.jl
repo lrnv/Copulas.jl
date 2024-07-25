@@ -83,7 +83,7 @@ module Copulas
            JoeCopula
 
     # bivariate Extreme Value Copulas
-    include("ExtremeValue.jl")
+    include("ExtremeValueCopula.jl")
     include("ExtremeValueCopulas/AsymGalambosCopula.jl")
     include("ExtremeValueCopulas/AsymLogCopula.jl")
     include("ExtremeValueCopulas/AsymMixedCopula.jl")
