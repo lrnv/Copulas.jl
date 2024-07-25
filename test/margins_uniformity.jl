@@ -46,6 +46,20 @@
         tEVCopula(4.0, 0.5),
         Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1)),
         # Others ? Yes probably others too ! 
+
+        # I added your copulas here
+        # You need to provide at least one example per type, but maybe you want to provide more ? Especially if some parameter changes yield very different behaviors. 
+        AsymGalambosCopula(0.1, [0.2,0.6]),
+        AsymLogCopula(1.2, [0.3,0.6]),
+        AsymMixedCopula([0.1,0.2]),
+        BC2Copula(0.7,0.3),
+        CuadrasAugeCopula(0.1),
+        GalambosCopula(0.3),
+        HuslerReissCopula(0.1),
+        LogCopula(1.5),
+        MixedCopula(0.2),
+        MOCopula(0.1,0.2,0.3),
+        tEVCopula(2.0,0.5)
     )
 
 
@@ -126,7 +140,7 @@
         if !(CT<:EmpiricalCopula) # this one is not a true copula :)
             for i in 1:d
                 # On the samples
-                @test pvalue(ApproximateOneSampleKSTest(spl[i,:], U),tail=:right) > 0.009 # this is weak but enough to catch mistakes. 
+                @test pvalue(ApproximateOneSampleKSTest(spl[i,:], U),tail=:right) > 0.009 # this is weak but enough to catch impementation mistakes. 
 
                 # On the cdf: 
                 u = ones(d)
