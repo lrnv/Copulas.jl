@@ -96,3 +96,8 @@ Here, is a detailed algorithm for sampling from bivariate Extreme Value Copulas 
 > *(4)* Return $X=W^{Z/A(Z)}$ and $Y=W^{(1-Z)/A(Z)}$  
 
 We can use either of the two algorithms to generate random samples, and more specifically, by default, TwinCopulas uses Algorithm 2 to obtain samples from a bivariate extreme value copula.
+
+
+```@docs
+ExtremeValueCopula
+```
