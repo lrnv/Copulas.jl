@@ -33,6 +33,17 @@
         SurvivalCopula(ClaytonCopula(2,-0.7),(1,2)),
         RafteryCopula(2, 0.2),
         RafteryCopula(3, 0.5),
+        AsymGalambosCopula(5.0, [0.8, 0.3]),
+        AsymLogCopula(1.5, [0.5, 0.2]),
+        AsymMixedCopula([0.1, 0.2]),
+        BC2Copula(0.5, 0.3),
+        CuadrasAugeCopula(0.8),
+        GalambosCopula(4.3),
+        HuslerReissCopula(3.5),
+        LogCopula(5.5),
+        MixedCopula(0.5),
+        MOCopula(0.1, 0.2, 0.3),
+        tEVCopula(4.0, 0.5),
         Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1)),
         # Others ? Yes probably others too ! 
     )

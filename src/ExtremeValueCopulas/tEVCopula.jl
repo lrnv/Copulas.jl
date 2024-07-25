@@ -37,7 +37,7 @@ struct tEVCopula{df, P} <: ExtremeValueCopula{P}
             throw(ArgumentError("The degrees of freedom ν must be positive real"))
         end
         if !(-1 < ρ <= 1)
-            throw(ArgumentError("The correlation parameter ρ must be between -1 and 1"))
+            throw(ArgumentError("The correlation parameter ρ must be in (-1, 1]"))
         elseif ρ == 0
             return IndependentCopula(2)
         elseif ρ == 1
