@@ -47,8 +47,3 @@ function 𝘈(C::LogCopula, t::Real)
     θ = C.θ
     return (t^θ + (1 - t)^θ)^(1/θ)
 end
-
-function d𝘈(C::LogCopula, t::Real)
-   θ = C.θ
-   return ((t^θ + (1 - t)^θ)^((1/θ)-1))*(t^(θ-1)- (1-t)^(θ-1))
-end

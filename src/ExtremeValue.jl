@@ -21,8 +21,17 @@ end
 
 # Función CDF para ExtremeValueCopula
 function _cdf(C::ExtremeValueCopula, u::AbstractArray{<:Real})
-    t = -log.(u)
-    return exp(-ℓ(C, t))
+    # Verificar las condiciones especiales
+    if u[1] == 1
+        return u[2]
+    elseif u[2] == 1
+        return u[1]
+    elseif u[1] == 1 && u[2] == 1
+        return 1.0
+    else
+        t = -log.(u)
+        return exp(-ℓ(C, t))
+    end
 end
 
 # Función genérica para calcular derivadas parciales de ℓ
