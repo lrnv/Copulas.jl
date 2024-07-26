@@ -43,12 +43,12 @@ function ℓ(C::BC2Copula, t::Vector)
     return max(θ1*t₁, θ2*t₂) + max((1-θ1)*t₁, (1-θ2)*t₂)
 end
 
-function 𝜜(C::BC2Copula, t::Real)
+function A(C::BC2Copula, t::Real)
     θ1, θ2 = C.θ1, C.θ2
     return max(θ1*t, θ2*(1-t)) + max((1-θ1)*t, (1-θ2)*(1-t))
 end
 
-function d𝘈(C::BC2Copula, t::Float64)
+function dA(C::BC2Copula, t::Float64)
     θ1, θ2 = C.θ1, C.θ2
     
     # Conditions for the derivative of the first part

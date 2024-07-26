@@ -38,4 +38,4 @@ struct GalambosCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
-𝘈(C::GalambosCopula, t::Real) = 1 - (t^(-C.θ) + (1 - t)^(-C.θ))^(-1/C.θ)
+A(C::GalambosCopula, t::Real) = 1 - (t^(-C.θ) + (1 - t)^(-C.θ))^(-1/C.θ)

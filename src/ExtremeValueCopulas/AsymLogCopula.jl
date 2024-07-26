@@ -35,7 +35,7 @@ struct AsymLogCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
-function 𝘈(C::AsymLogCopula, t::Real)
+function A(C::AsymLogCopula, t::Real)
     α = C.α
     θ = C.θ
     

@@ -12,7 +12,7 @@ function Distributions.cdf(d::ExtremeDist, z)
         return 1.0
     else
         copula = d.G
-        return z + z * (1 - z) * (d𝘈(copula, z) / 𝘈(copula, z))
+        return z + z * (1 - z) * (dA(copula, z) / A(copula, z))
     end
 end
 
@@ -21,10 +21,10 @@ function _pdf(d::ExtremeDist, z)
         return 0.0
     else
         copula = d.G
-        A = 𝘈(copula, z)
-        A_prime = d𝘈(copula, z)
-        A_double_prime = d²𝘈(copula, z)
-        return 1 + (1 - 2z) * A_prime / A + z * (1 - z) * (A_double_prime * A - A_prime^2) / A^2
+        _A = A(copula, z)
+        A_prime = dA(copula, z)
+        A_double_prime = d²A(copula, z)
+        return 1 + (1 - 2z) * A_prime / _A + z * (1 - z) * (A_double_prime * _A - A_prime^2) / _A^2
     end
 end
 

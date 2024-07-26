@@ -41,12 +41,12 @@ struct MOCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
-function 𝜜(C::MOCopula, t::Real)
+function A(C::MOCopula, t::Real)
     λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
     
-    A = max(t + (1-t) * (λ2)/(λ2 + λ12), (t-1) + t * (λ1)/(λ1 + λ12))
+    a = max(t + (1-t) * (λ2)/(λ2 + λ12), (t-1) + t * (λ1)/(λ1 + λ12))
     
-    return A
+    return a
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula, u::AbstractVector{T}) where {T<:Real}

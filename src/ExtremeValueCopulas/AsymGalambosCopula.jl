@@ -45,7 +45,7 @@ struct AsymGalambosCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
-function 𝘈(C::AsymGalambosCopula, t::Real)
+function A(C::AsymGalambosCopula, t::Real)
     α = C.α
     θ = C.θ
 

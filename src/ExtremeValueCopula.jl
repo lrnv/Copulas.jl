@@ -10,16 +10,16 @@ References:
 abstract type ExtremeValueCopula{P} <: Copula{2} end
 
 # Función genérica para A
-function 𝘈(C::ExtremeValueCopula, t::Real)
+function A(C::ExtremeValueCopula, t::Real)
     throw(ArgumentError("Function A must be defined for specific copula"))
 end
 
-function d𝘈(C::ExtremeValueCopula, t::Real)
-    ForwardDiff.derivative(t -> 𝘈(C, t), t)
+function dA(C::ExtremeValueCopula, t::Real)
+    ForwardDiff.derivative(t -> A(C, t), t)
 end
 
-function d²𝘈(C::ExtremeValueCopula, t::Real)
-    ForwardDiff.derivative(t -> d𝘈(C, t), t)
+function d²A(C::ExtremeValueCopula, t::Real)
+    ForwardDiff.derivative(t -> dA(C, t), t)
 end
 
 function ℓ(C::ExtremeValueCopula, t::Vector)
@@ -67,9 +67,9 @@ end
 # Definir la función para calcular τ
 function τ(C::ExtremeValueCopula)
     integrand(x) = begin
-        A = 𝜜(C, x)
-        dA = d𝘈(C, x)
-        return (x * (1 - x) / A) * dA
+        a = A(C, x)
+        da = dA(C, x)
+        return (x * (1 - x) / a) * da
     end
     
     integrate, _ = QuadGK.quadgk(integrand, 0.0, 1.0)
@@ -77,7 +77,7 @@ function τ(C::ExtremeValueCopula)
 end
 
 function ρₛ(C::ExtremeValueCopula)
-    integrand(x) = 1 / (1 + 𝜜(C, x))^2
+    integrand(x) = 1 / (1 + A(C, x))^2
     
     integral, _ = QuadGK.quadgk(integrand, 0, 1)
     
@@ -86,11 +86,11 @@ function ρₛ(C::ExtremeValueCopula)
 end
 # Función para calcular el coeficiente de dependencia en el límite superior
 function λᵤ(C::ExtremeValueCopula)
-    return 2(1 - 𝜜(C, 0.5))
+    return 2(1 - A(C, 0.5))
 end
 
 function λₗ(C::ExtremeValueCopula)
-    if 𝜜(C, 0.5) > 0.5
+    if A(C, 0.5) > 0.5
         return 0
     else
         return 1
@@ -98,8 +98,8 @@ function λₗ(C::ExtremeValueCopula)
 end
 
 function probability_z(C::ExtremeValueCopula, z)
-    num = z*(1 - z)*d²𝘈(C, z)
-    dem = 𝘈(C, z)*_pdf(ExtremeDist(C), z)
+    num = z*(1 - z)*d²A(C, z)
+    dem = A(C, z)*_pdf(ExtremeDist(C), z)
     p = num / dem
     return clamp(p, 0.0, 1.0)
 end
@@ -118,8 +118,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     else
         w = u1*u2
     end
-    A = 𝘈(C, z)
-    x[1] = w^(z/A)
-    x[2] = w^((1-z)/A)
+    a = A(C, z)
+    x[1] = w^(z/a)
+    x[2] = w^((1-z)/a)
     return x
 end

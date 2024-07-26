@@ -62,7 +62,7 @@ function z(T::tEVCopula, t)
     return ((1+ν)^(1/2))*((t/(1-t))^(1/ν) - ρ)*(1-ρ^2)^(-1/2)
 end
 # specific 𝘈 funcion of Extreme t Copula
-function 𝘈(T::tEVCopula, t::Real)
+function A(T::tEVCopula, t::Real)
     ρ = T.ρ
     ν = T.ν
     t = clamp(t, 0, 1)
@@ -73,23 +73,23 @@ function 𝘈(T::tEVCopula, t::Real)
     return term1 + term2
 end
 
-function d𝘈(C::tEVCopula, t::Real)
+function dA(C::tEVCopula, t::Real)
     h = 1e-5
     t_h_clamped = clamp(t - h, 0, 1)
     t_h_clamped_plus = clamp(t + h, 0, 1)
-    dA_minus = 𝘈(C, t_h_clamped)
-    dA_plus = 𝘈(C, t_h_clamped_plus)
-    dA = (dA_plus - dA_minus) / (2 * h)
-    return dA
+    dA_minus = A(C, t_h_clamped)
+    dA_plus = A(C, t_h_clamped_plus)
+    da = (dA_plus - dA_minus) / (2 * h)
+    return da
 end
 
 # Approximation of the second derivative of A because the t distribution is not compatible with ForwarDiff
-function d²𝘈(C::tEVCopula, t::Real)
+function d²A(C::tEVCopula, t::Real)
     h = 1e-5
     t_h_clamped = clamp(t - h, 0, 1)
     t_h_clamped_plus = clamp(t + h, 0, 1)
-    dA_minus = d𝘈(C, t_h_clamped)
-    dA_plus = d𝘈(C, t_h_clamped_plus)
+    dA_minus = dA(C, t_h_clamped)
+    dA_plus = dA(C, t_h_clamped_plus)
     d2A = (dA_plus - dA_minus) / (2 * h)
     return d2A
 end

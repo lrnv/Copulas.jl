@@ -33,9 +33,9 @@ struct CuadrasAugeCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
-𝘈(C::CuadrasAugeCopula, t::Real) = max(t, 1-t) + (1-C.θ) * min(t, 1-t)
+A(C::CuadrasAugeCopula, t::Real) = max(t, 1-t) + (1-C.θ) * min(t, 1-t)
 
-d𝘈(C::CuadrasAugeCopula, t::Real) = t <= 0.5 ? -C.θ : C.θ
+dA(C::CuadrasAugeCopula, t::Real) = t <= 0.5 ? -C.θ : C.θ
 
 τ(C::CuadrasAugeCopula) = C.θ/(2-C.θ)
 

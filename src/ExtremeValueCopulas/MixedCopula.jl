@@ -34,4 +34,4 @@ struct MixedCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
-𝘈(C::MixedCopula, t::Real) = C.θ*t^2 - C.θ*t + 1
+A(C::MixedCopula, t::Real) = C.θ*t^2 - C.θ*t + 1

@@ -51,9 +51,9 @@ struct AsymMixedCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
-function 𝘈(C::AsymMixedCopula, t::Real)
+function A(C::AsymMixedCopula, t::Real)
     θ = C.θ
     
-    A = θ[2]*t^3 + θ[1]*t^2-(θ[1]+θ[2])*t+1
-    return A
+    a = θ[2]*t^3 + θ[1]*t^2-(θ[1]+θ[2])*t+1
+    return a
 end
