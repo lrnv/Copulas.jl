@@ -59,7 +59,7 @@
         LogCopula(1.5),
         MixedCopula(0.2),
         MOCopula(0.1,0.2,0.3),
-        tEVCopula(2.0,0.5)
+        tEVCopula(2.0,0.5),
     )
 
     #### Try to ensure that every copula in the package is indeed in this list, to remmember contributors to add their model here: 
