@@ -43,7 +43,19 @@ end
 
 function A(C::MOCopula, t::Real)
     λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
-    return max(t + (1-t) * (λ2)/(λ2 + λ12), (t-1) + t * (λ1)/(λ1 + λ12))
+    return ((λ1 * (1 - t))/(λ1 + λ12)) + ((λ2 * t)/(λ2 + λ12)) + λ12 * max((1-t)/(λ1 + λ12), t/(λ2 + λ12))
+end
+
+function ℓ(C::MOCopula, t::Vector)
+    λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
+    t₁, t₂ = t
+    return ((λ1 * t₂)/(λ1 + λ12)) + ((λ2 * t₁)/(λ2 + λ12)) + λ12 * max(t₂/(λ1 + λ12), t₁/(λ2 + λ12))
+end
+
+function _cdf(C::MOCopula, u::AbstractArray{<:Real})
+    λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
+    u₁, u₂ = u
+    return min(u₂*u₁^(1 - λ12/(λ1 + λ12)), u₁ * u₂^(1 - λ12/(λ2 + λ12)))
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula, u::AbstractVector{T}) where {T<:Real}
