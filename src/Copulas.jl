@@ -96,18 +96,17 @@ module Copulas
     include("ExtremeValueCopulas/MOCopula.jl")    
     include("ExtremeValueCopulas/tEVCopula.jl")
     
-    export
-        AsymGalambosCopula,
-        AsymLogCopula,
-        AsymMixedCopula,
-        BC2Copula,
-        CuadrasAugeCopula,
-        GalambosCopula,
-        HuslerReissCopula,
-        LogCopula,
-        MixedCopula,
-        MOCopula,   
-        tEVCopula
+    export AsymGalambosCopula,
+           AsymLogCopula,
+           AsymMixedCopula,
+           BC2Copula,
+           CuadrasAugeCopula,
+           GalambosCopula,
+           HuslerReissCopula,
+           LogCopula,
+           MixedCopula,
+           MOCopula,   
+           tEVCopula
 
 
     # Subsetting
