@@ -25,7 +25,7 @@ end
 function ℓ(C::ExtremeValueCopula, t::Vector)
     sumu = sum(t)
     vectw = t[1] / sumu
-    return sumu * 𝘈(C, vectw)
+    return sumu * A(C, vectw)
 end
 
 # Función CDF para ExtremeValueCopula
