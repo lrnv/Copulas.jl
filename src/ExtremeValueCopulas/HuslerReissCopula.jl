@@ -45,7 +45,7 @@ function ℓ(H::HuslerReissCopula, t::Vector)
     return t₁*Distributions.cdf(Distributions.Normal(),θ^(-1)+0.5*θ*log(t₁/t₂))+t₂*Distributions.cdf(Distributions.Normal(),θ^(-1)+0.5*θ*log(t₂/t₁))
 end
 
-# specific 𝘈 funcion of HuslerReissCopula
+# specific A funcion of HuslerReissCopula
 function A(H::HuslerReissCopula, t::Real)
     θ = H.θ
     term1 = t * Distributions.cdf(Distributions.Normal(), θ^(-1) + 0.5 * θ * log(t / (1 - t)))

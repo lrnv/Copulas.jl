@@ -61,7 +61,7 @@ function z(T::tEVCopula, t)
     ν = T.ν
     return ((1+ν)^(1/2))*((t/(1-t))^(1/ν) - ρ)*(1-ρ^2)^(-1/2)
 end
-# specific 𝘈 funcion of Extreme t Copula
+# specific A funcion of Extreme t Copula
 function A(T::tEVCopula, t::Real)
     ρ = T.ρ
     ν = T.ν

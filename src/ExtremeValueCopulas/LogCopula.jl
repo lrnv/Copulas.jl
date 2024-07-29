@@ -42,7 +42,7 @@ function ℓ(G::LogCopula, t::Vector)
     t₁, t₂ = t
     return (t₁^θ + t₂^θ)^(1/θ)
 end
-# #  specific 𝘈 funcion of HuslerReissCopula
+# #  specific A funcion of HuslerReissCopula
 function A(C::LogCopula, t::Real)
     θ = C.θ
     return (t^θ + (1 - t)^θ)^(1/θ)

@@ -13,7 +13,7 @@ In this package, there is an abstract type [`ExtremeValueCopula`](@ref) that pro
 
 If you do not find the one you need, you may define it yourself by subtyping `ExtremeValueCopula`. The API does not require much information, which is really convenient. Only the following method is required:
 
-* 𝘈(C::ExtremeValueCopula) =
+* A(C::ExtremeValueCopula) =
 
 By providing this functions, you can easily create a new extreme value copula that fits your specific needs.
 
@@ -22,11 +22,11 @@ struct MyExtremeValueCopula{P} <: ExtremeValueCopula{P}
     θ::P
 end
 
-𝘈(C::ExtremeValueCopula, t) = (t^C.θ + (1 - t)^C.θ)^(1/C.θ) # This is the Pickands function of the Logistic (Gumbel) Copula
+A(C::ExtremeValueCopula, t) = (t^C.θ + (1 - t)^C.θ)^(1/C.θ) # This is the Pickands function of the Logistic (Gumbel) Copula
 ```
 
 !!! info "Nomenclature information"
-    We have called `𝘈()` the Pickands function, which is necessary for constructing the Extreme Value Copula. The letter we use is `\isansA`.
+    We have called `A()` the Pickands function, which is necessary for constructing the Extreme Value Copula. The letter we use is `\isansA`.
 
 # Advanced Concepts
 
