@@ -20,7 +20,7 @@ It has a few special cases:
 - When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
 
 References:
-* Bivariate extreme value theory: models and estimation. Biometrika, 1988.
+* [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
 struct LogCopula{P} <: ExtremeValueCopula{P}
     θ::P  # Copula parameter

@@ -17,7 +17,7 @@ A(t) = (\\theta_1^{\\alpha}(1-t)^{\\alpha} + \\theta_2^{\\alpha}t^{\\alpha})^{\\
 ```
 
 References:
-* Bivariate extreme value theory: models and estimation. Biometrika, 1988.
+* [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
 struct AsymLogCopula{P} <: ExtremeValueCopula{P}
     α::P  # Dependence Parameter
