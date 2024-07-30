@@ -295,10 +295,9 @@
             end
         end
     end
-end
 
-@testitem "Pickands Function test" begin
-    cops = (
+    @testset "Pickands Function test" begin
+        cops = (
         AsymGalambosCopula(5.0, [0.8, 0.3]),
         AsymLogCopula(1.5, [0.5, 0.2]),
         AsymMixedCopula([0.1, 0.2]),
@@ -313,12 +312,14 @@ end
 
         for C in cops
             for C in cops
-                @test Copulas.A(C, 0.0) == 1
-                @test Copulas.A(C, 1.0) == 1
+                @test A(C, 0.0) == 1
+                @test A(C, 1.0) == 1
                 t = rand(rng, Uniform())
-                A_value = Copulas.A(C, t)
+                A_value = A(C, t)
                 @test 0.0 <= A_value <= 1.0
                 @test max(t, 1-t) <= A_value <= 1.0
             end
         end
+
+    end
 end
