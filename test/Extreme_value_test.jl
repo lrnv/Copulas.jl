@@ -1,8 +1,9 @@
 @testitem "Extreme Value Copulas Tests" begin
     using InteractiveUtils
-    using Distributions
+    using Copulas, Distributions
     using Random
     using StableRNGs
+
     rng = StableRNG(123)
     d = 100
     @testset "AsymGalambosCopula - sampling, pdf, cdf" begin
