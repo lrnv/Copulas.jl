@@ -312,10 +312,10 @@
 
         for C in cops
             for C in cops
-                @test A(C, 0.0) == 1
-                @test A(C, 1.0) == 1
+                @test Copulas.A(C, 0.0) == 1
+                @test Copulas.A(C, 1.0) == 1
                 t = rand(rng, Uniform())
-                A_value = A(C, t)
+                A_value = Copulas.A(C, t)
                 @test 0.0 <= A_value <= 1.0
                 @test max(t, 1-t) <= A_value <= 1.0
             end
