@@ -90,7 +90,7 @@ If you want to contribute to the package, ask a question, found a bug or simply 
 Do not hesitate to star this repository to show support. If you use this package in your researches, please cite it with the following bibtex code:
 
 ```bibtex
-@article{Laverny2024,
+@article{LavernyJimenez2024,
     author = {Oskar Laverny and Santiago Jimenez}, 
     title = {Copulas.jl: A fully Distributions.jl-compliant copula package},
     journal = {Journal of Open Source Software},
