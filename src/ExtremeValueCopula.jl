@@ -23,9 +23,9 @@ It is possible to relate these functions in the following way
 ``
 
 
-In this way, in order to define a bivariate copula of extreme values, it is only necessary to introduce the function \( A\).
+In this way, in order to define a bivariate copula of extreme values, it is only necessary to introduce the function ``A``.
 
-A generic bivariate Extreme Values ​​copula can be constructed as follows:
+A generic bivariate Extreme Values copula can be constructed as follows:
 
 ```julia
 struct GalambosCopula{P} <: ExtremeValueCopula{P}
@@ -33,7 +33,9 @@ A(C::GalambosCopula, t::Real) = 1 - (t^(-C.θ) + (1 - t)^(-C.θ))^(-1/C.θ) # Yo
 param = 2.5
 C = GalambosCopula(param)
 ```
+
 The obtained model can be used as follows: 
+
 ```julia
 samples = rand(C,1000)   # sampling
 cdf(C,samples)           # cdf
