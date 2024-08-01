@@ -60,7 +60,7 @@ This result was demonstrated by Deheuvels (1991) [deheuvels1991limiting](@cite) 
 
 ## Simulation of Bivariate Extreme Value Distributions
 
-To simulate a bivariate extreme value distribution $C(x, y)$, remark that if $F_1$ and $F_2$ are univariate extreme value distributions, then the pair $( F_1^{-1}(X), F_2^{-1}(Y) )$ is distributed according to a bivariate extreme value distribution. The proposed algorithm allows simulating such a distribution.
+To simulate a bivariate extreme value distribution $C(x, y)$, remark that if $F_1$ and $F_2$ are univariate extreme value distributions, then the pair $( F_1^{-1}(X), F_2^{-1}(Y) )$ is distributed according to a bivariate extreme value distribution. The proposed algorithm in Ghoudi,1998, [ghoudi1998proprietes](@cite) allows simulating such a distribution.
 
 Assume $A$ has a second derivative, making the distribution absolutely continuous. In this case, $Z$ is also absolutely continuous and has a density $g_Z(z)$ given by:
 
@@ -80,39 +80,9 @@ $$p(z) = \frac{z(1 - z) A'(z)}{A(z) g_Z(z)}$$
 
 Since $g_Z(z)$ is the derivative of the cumulative distribution function of $Z$, it holds that $0 \leq p(z) \leq 1$.
 
-For the class of Extreme Value Copulas, we propose two different algorithms to generate samples from a copula.
-
-### Conditional Sampling for Bivariate Extreme Value Copulas
-
-When this is defined, we uses Algorithm 1, introduced in [`reference`], to sample from the copula and its derivative as follows. We adapt Algorithm 1 from  [`reference`] for the case of bivariate Extreme Value Copulas. The input for the algorithm is a bivariate Extreme Value Copula $C: [0,1]^2 \to [0,1].$
-
-Remark first that the conditional c.d.f. for the first dimension conditional on the second one can be developped as follows: 
-
-```math
-\begin{align}
-    F_{U_1|U_2}(u_1)&=\frac{\partial}{\partial u_2}C(u_1,u_2)
-    &=\frac{C(u_1,u_2)}{u_2}\left[A\left(\frac{\log(u_1)}{\log(u_1u_2)}\right) - \log(u_1)A'\left(\frac{\log(u_1)}{\log(u_1u_2)}\right)\right], \quad u_2 \in [0,1].
-\end{align}
-```
+For the class of Extreme Value Copulas, We follow the methodology proposed by Ghoudi,1998. page 191. [ghoudi1998proprietes](@cite). Here, is a detailed algorithm for sampling from bivariate Extreme Value Copulas:
 
 > **Algotithm 1: Bivariate Extreme Value Copulas**
-> 
-> *(1)* Simulate $U_2 \sim \mathcal{U}[0,1]$
->
-> *(2)* Compute (the right continuous version of) the function $F_{U_1|U_2}(u_1)$.
->
-> *(3)* Compute the generalized inverse of $F_{U_1|U_2},$ i.e 
->
->$$F^{-1}_{U_1|U_2}(v)=\inf\{u_1 > 0: F_{U_1|U_2}(u_1)\geq v\}, \quad v \in [0,1].$$ 
->
-> *(4)* Simulate $V \sim \mathcal{U}[0,1],$ independent of $U_2.$
->
-> *(5)* Set $U_1 = F^{-1}_{U_1|U_2}(V)$ and return $(U_1, U_2).$
-
-### Another algorithm
-
-Here, is a detailed algorithm for sampling from bivariate Extreme Value Copulas proposed by Ghoudi:
-> **Algotithm 2: Bivariate Extreme Value Copulas**
 > 
 > *(1)* Simulate $U_1,U_2 \sim \mathcal{U}[0,1]$
 >
@@ -122,9 +92,7 @@ Here, is a detailed algorithm for sampling from bivariate Extreme Value Copulas 
 > 
 > *(4)* Return $X=W^{Z/A(Z)}$ and $Y=W^{(1-Z)/A(Z)}$  
 
-
-We can use either of the two algorithms to generate random samples, and more specifically, by default, we use Algorithm 2 to obtain samples from a bivariate extreme value copula.
-
+Note that all functions present in the algorithm were previously defined in previous sections to ensure that the implemented methodology has a solid theoretical basis.
 
 ```@docs
 ExtremeValueCopula

@@ -1,11 +1,46 @@
 """
     ExtremeValueCopula{P}
 
-This empty docstring needs to be filled. 
+Fields:
+    - P::Parameters: Parameters that define the copula.
 
+Constructor:
+    ExtremeValueCopula(P)
+
+Represents a bivariate extreme value copula parameterized by `P`. Extreme value copulas are used to model the dependence structure between two random variables in the tails of their distribution, making them particularly useful in risk management, environmental studies, and finance.
+
+In the bivariate case, an extreme value copula can be expressed as:
+
+\[ C(u, v) = \\exp(-\\ell(\\log(u), \\log(v))) \]
+
+where \( \\ell(\\cdot) \) is a tail dependence function associated with the bivariate extreme value copula. Furthermore, \( A(t) \) is a function \( A: [0, 1] \to [0.5, 1] \) that is convex on the interval \([0,1]\) and satisfies the boundary conditions \( A(0) = A(1) = 1 \). This is denominated Pickands representation or Pickands function.
+
+It is possible to relate these functions in the following way
+
+\[ \\ell(u, v) = \\frac{u}{u+v}A\\left(\\frac{u}{u+v}\\right)\].
+
+In this way, in order to define a bivariate copula of extreme values, it is only necessary to introduce the function \( A\).
+
+A generic bivariate Extreme Values ​​copula can be constructed as follows:
+
+```julia
+struct GalambosCopula{P} <: ExtremeValueCopula{P}
+A(C::GalambosCopula, t::Real) = 1 - (t^(-C.θ) + (1 - t)^(-C.θ))^(-1/C.θ) # You can define your own Pickands representation
+param = 2.5
+C = GalambosCopula(param)
+```
+The obtained model can be used as follows: 
+```julia
+samples = rand(C,1000)   # sampling
+cdf(C,samples)           # cdf
+pdf(C,samples)           # pdf
+```
 
 References:
-* Add a few references
+* [joe2014](@cite) Joe, H. (2014). *Dependence Modeling with Copulas*. CRC Press.
+* [mai2014financial](@cite) Mai, J. F., & Scherer, M. (2014). Financial engineering with copulas explained (p. 168). London: Palgrave Macmillan.
+* [gudendorf2010extreme](@cite), G., & Segers, J. (2010). *Extreme-value copulas*. In *Copula Theory and Its Applications* (pp. 127-145). Springer.
+
 """
 abstract type ExtremeValueCopula{P} <: Copula{2} end
 
