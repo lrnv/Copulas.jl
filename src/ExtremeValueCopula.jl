@@ -49,7 +49,6 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press.
 * [mai2014financial](@cite) Mai, J. F., & Scherer, M. (2014). Financial engineering with copulas explained (p. 168). London: Palgrave Macmillan.
 """
-
 abstract type ExtremeValueCopula{P} <: Copula{2} end
 
 # Función genérica para A
