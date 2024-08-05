@@ -11,16 +11,17 @@ Represents a bivariate extreme value copula parameterized by `P`. Extreme value 
 
 In the bivariate case, an extreme value copula can be expressed as:
 
-``math
+```math
 C(u, v) = \\exp(-\\ell(\\log(u), \\log(v))).
-``
+```
+
 where ``\\ell(\\cdot)`` is a tail dependence function associated with the bivariate extreme value copula. Furthermore, ``A(t)`` is a function ``A: [0, 1] \\to [0.5, 1] `` that is convex on the interval [0,1] and satisfies the boundary conditions ``A(0) = A(1) = 1``. This is denominated Pickands representation or Pickands function.
 
 It is possible to relate these functions in the following way
 
-``math
+```math
 \\ell(u, v) = \\frac{u}{u+v}A\\left(\\frac{u}{u+v}\\right).
-``
+```
 
 
 In this way, in order to define a bivariate copula of extreme values, it is only necessary to introduce the function ``A``.
