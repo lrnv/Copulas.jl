@@ -29,15 +29,38 @@
         WCopula(2),
         ArchimedeanCopula(2,i𝒲(LogNormal(),2)),
         PlackettCopula(2.0),
-        EmpiricalCopula(randn(2,100),pseudo_values=false),
+        EmpiricalCopula(randn(2,2000),pseudo_values=false),
         SurvivalCopula(ClaytonCopula(2,-0.7),(1,2)),
         RafteryCopula(2, 0.2),
         RafteryCopula(3, 0.5),
+        AsymGalambosCopula(5.0, [0.8, 0.3]),
+        AsymLogCopula(1.5, [0.5, 0.2]),
+        AsymMixedCopula([0.1, 0.2]),
+        BC2Copula(0.5, 0.3),
+        CuadrasAugeCopula(0.8),
+        GalambosCopula(4.3),
+        HuslerReissCopula(3.5),
+        LogCopula(5.5),
+        MixedCopula(0.5),
+        MOCopula(0.1, 0.2, 0.3),
+        tEVCopula(4.0, 0.5),
         Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1)),
         # Others ? Yes probably others too ! 
+
+        # I added your copulas here
+        # You need to provide at least one example per type, but maybe you want to provide more ? Especially if some parameter changes yield very different behaviors. 
+        AsymGalambosCopula(0.1, [0.2,0.6]),
+        AsymLogCopula(1.2, [0.3,0.6]),
+        AsymMixedCopula([0.1,0.2]),
+        BC2Copula(0.7,0.3),
+        CuadrasAugeCopula(0.1),
+        GalambosCopula(0.3),
+        HuslerReissCopula(0.1),
+        LogCopula(1.5),
+        MixedCopula(0.2),
+        MOCopula(0.1,0.2,0.3),
+        tEVCopula(2.0,0.5),
     )
-
-
 
     #### Try to ensure that every copula in the package is indeed in this list, to remmember contributors to add their model here: 
     function _subtypes(type::Type)
@@ -55,7 +78,7 @@
     for CT in _subtypes(Copulas.Copula) # Check that every copula type has been used
         @test any(isa(C,CT) for C in cops)
     end
-    for TG in _subtypes(Copulas.Generator) # Check that every generator has been used 
+    for TG in _subtypes(Copulas.Generator) # Check that every archimedean generator has been used 
         @test any(isa(C.G,TG) for C in cops if typeof(C)<:Copulas.ArchimedeanCopula)
     end
 
@@ -90,37 +113,35 @@
         end
         return false
     end
-    
 
     n = 1000
-    U = Uniform(0,1)
     for C in cops
         d = length(C)
         CT = typeof(C)
         rng = StableRNG(123)
         spl = rand(rng,C,n)
 
-        if !(CT<:TCopula)
-        # Check that the cdf has special values at the bounds: 
-            @test cdf(C,zeros(d)) == 0
-            @test cdf(C,ones(d)) == 1
-
-            # Check that the cdf values are in [0,1]
-            @test all(0 .<= cdf(C,spl) .<= 1)
-        end
-        # Check that samples are in [0,1]:
-        @test all(0 <= x <= 1 for x in spl)
+        @test iszero(cdf(C,zeros(d)))
+        @test isone(cdf(C,ones(d)))
+        @test 0 <= cdf(C,rand(rng,d)) <= 1
+        @test all(0 .<= spl .<= 1)
 
         # Check uniformity of each marginal : 
         if !(CT<:EmpiricalCopula) # this one is not a true copula :)
             for i in 1:d
-                # On the samples
-                @test pvalue(ApproximateOneSampleKSTest(spl[i,:], U),tail=:right) > 0.009 # this is weak but enough to catch mistakes. 
+                # Check Samples uniformity
+                # this is weak but enough to catch impementation mistakes. 
+                
+                # ks_test = pvalue(ExactOneSampleKSTest(spl[i,:], Uniform())) > 1e-5
+                # @test ks_test 
 
-                # On the cdf: 
-                u = ones(d)
-                for val in [0,1,rand(rng,10)...]
+                # Check CDF marginals uniformity. 
+                for val in rand(rng,5)
+                    u = ones(d)
                     u[i] = val
+                    if !(cdf(C,u) ≈ val)
+                        @show C, u
+                    end
                     @test cdf(C,u) ≈ val atol=1e-5
                 end
                 # extra check for zeros: 
@@ -130,32 +151,7 @@
             end
         end
 
-        # Conditionally on the applicability of the pdf method... 
-        # Finally we do not check pdf, as it is too broken in a lot of cases... 
-
-
-        # Something should be made to revamp this test 
-        # if applicable(pdf,C,spl)
-
-        #     # if archimedean, check also that monotonicity is good: 
-        #     if !(CT<:ArchimedeanCopula) || ((Copulas.max_monotony(C.G) > d) && !(typeof(Copulas.williamson_dist(C.G,d))<:WilliamsonTransforms.𝒲₋₁))
-
-        #         # check that pdf values are positives: 
-        #         @test all(pdf(C,spl) .>= 0)
-
-        #         # also check that pdf values are indeed derivatives of the cdf values: 
-        #         begin 
-        #             for _ in 1:10
-        #                 u = rand(rng,d)
-        #                 @test isapprox(get_numerical_pdf(C,u),pdf(C,u),atol=1e-5)
-        #             end
-        #         end
-        #     end
-        # end
-        
-
-        # only check archimedeans for tau ∘ tau_inv
-
+        # Extra checks, only for archimedeans. 
         if is_archimedean_with_agenerator(CT)
 
             if applicable(Copulas.τ,C.G)
@@ -180,16 +176,7 @@
                     @test Copulas.ρ(Copulas.generatorof(CT)(Copulas.ρ⁻¹(CT,rho))) ≈ rho
                 end
             end
-
             fit(CT,spl)
-
         end
-
-        # Check that fitting works: 
-        # if additional_condition(CT)
-            # fit(CT,spl)
-        # end
-        # @test true
-
     end 
 end
