@@ -1,0 +1,36 @@
+cff-version: "1.2.0"
+authors:
+- family-names: Laverny
+  given-names: Oskar
+  orcid: "https://orcid.org/0000-0002-7508-999X"
+- family-names: Jimenez
+  given-names: Santiago
+  orcid: "https://orcid.org/0000-0002-8198-3656"
+contact:
+- family-names: Laverny
+  given-names: Oskar
+  orcid: "https://orcid.org/0000-0002-7508-999X"
+doi: 10.5281/zenodo.6652672
+message: If you use this software, please cite our article in the
+  Journal of Open Source Software.
+preferred-citation:
+  authors:
+  - family-names: Laverny
+    given-names: Oskar
+    orcid: "https://orcid.org/0000-0002-7508-999X"
+  - family-names: Jimenez
+    given-names: Santiago
+    orcid: "https://orcid.org/0000-0002-8198-3656"
+  date-published: 2024-02-29
+  doi: 10.21105/joss.06189
+  issn: 2475-9066
+  issue: 94
+  journal: Journal of Open Source Software
+  publisher:
+    name: Open Journals
+  start: 6189
+  title: "Copulas.jl: A fully Distributions.jl-compliant copula package"
+  type: article
+  url: "https://joss.theoj.org/papers/10.21105/joss.06189"
+  volume: 9
+title: "Copulas.jl: A fully Distributions.jl-compliant copula package"

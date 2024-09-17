@@ -1,4 +1,4 @@
-@testitem "Check non-nan in kendall taus and spearman rhos." begin
+@testitem "Check that subsetcopula works as intended" begin
     using Copulas, Distributions
 
     cops = (
@@ -19,7 +19,7 @@
         InvGaussianCopula(4,0.05),
         InvGaussianCopula(3,8.),
         GaussianCopula([1 0.5; 0.5 1]),
-        # TCopula(4, [1 0.5; 0.5 1]), # this one takes a while. 
+        TCopula(4, [1 0.5; 0.5 1]),
         FGMCopula(2,1),
         MCopula(4),
         WCopula(2),
@@ -28,11 +28,23 @@
         SurvivalCopula(ClaytonCopula(2,-0.7),(1,2)),
         RafteryCopula(2, 0.2),
         RafteryCopula(3, 0.5),
-        # Others ? Yes probably others too ! 
     )
 
     for C in cops
-        @test !isnan(Copulas.τ(C))
+        d = length(C)
+        D = SklarDist(C,(LogNormal() for i in 1:d))
+        sC = Copulas.subsetdims(C,(1,2))
+        sD = Copulas.subsetdims(D,(2,1))
+        
+        @test isa(Copulas.subsetdims(C,(1,)),Distributions.Uniform)
+        @test isa(Copulas.subsetdims(D,1), Distributions.LogNormal)
+
+        # The following methods have to work: 
+        u = rand(sC,10)
+        v = rand(sD,10)
+        cdf(sC,u)
+        cdf(sD,v)
+
+        @test sD.C == Copulas.subsetdims(C,(2,1)) # check for coherence. 
     end
-    @test_broken Copulas.τ(ArchimedeanCopula(2,i𝒲(LogNormal(),2))) # not implemented. 
 end

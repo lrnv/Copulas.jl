@@ -21,17 +21,17 @@ It can be constructed in Julia via:
 C = GaussianCopula(Σ)
 ```
 
-The random number generation works as expected:
+You can sample it, compute pdf and cdf, or even fit the distribution via: 
 ```julia
-rand(C,1000)
-# or
-Random.rand!(C,u)
+u = rand(C,1000)
+Random.rand!(C,u) # other calling syntax for rng.
+pdf(C,u) # to get the density
+cdf(C,u) # to get the distribution function 
+Ĉ = fit(GaussianCopula,u) # to fit on the sampled data. 
 ```
 
-And yo can fit the distribution via : 
-```julia
-fit(GaussianCopula,data)
-```
+GaussianCopulas have a special case: 
+- When `isdiag(Σ)`, the constructor returns an `IndependentCopula(d)`
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
@@ -39,7 +39,7 @@ References:
 struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function GaussianCopula(Σ) 
-        if Σ == one(Σ)
+        if LinearAlgebra.isdiag(Σ)
             return IndependentCopula(size(Σ,1))
         end
         make_cor!(Σ)

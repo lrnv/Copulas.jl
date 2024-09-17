@@ -30,7 +30,17 @@ Recall that spherical random vectors are random vectors which characteristic fun
 
 We can therefore express this characteristic function as ``\\phi(\\bm t) = \\psi(\\lVert \\bm t \\rVert_2^2)``, where ``\\psi`` is a function that characterizes the spherical family, called the *generator* of the family. Any characteristic function that can be expressed as a function of the norm of its argument is the characteristic function of a spherical random vector, since ``\\lVert \\bm A \\bm t \\rVert_2 = \\lVert \\bm t \\rVert_2`` for any orthogonal matrix ``\\bm A``. 
 
-However, note that this is not how the underlying code is working, we do not check for validity of the proposed generator (we dont even use it)
+However, note that this is not how the underlying code is working, we do not check for validity of the proposed generator (we dont even use it). You can construct such an elliptical family using simply Sklar: 
+
+```julia
+struct MyElliptical{d,T} <: EllipticalCopula{d,T}
+    θ:T
+end
+U(::Type{MyElliptical{d,T}}) where {d,T} # Distribution of the univaraite marginals, Normal() for the Gaussian case. 
+N(::Type{MyElliptical{d,T}}) where {d,T} # Distribution of the mutlivariate random vector, MvNormal(C.Σ) for the Gaussian case. 
+```
+
+These two functions are enough to implement the rest of the interface. 
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
@@ -39,7 +49,7 @@ abstract type EllipticalCopula{d,MT} <: Copula{d} end
 Base.eltype(C::CT) where CT<:EllipticalCopula = Base.eltype(N(CT)(C.Σ))
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT <: EllipticalCopula}
     Random.rand!(rng,N(CT)(C.Σ),x)
-    x .= Distributions.cdf.(U(CT),x)
+    x .= clamp.(Distributions.cdf.(U(CT),x),0,1)
     return x
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real, CT<:EllipticalCopula}
@@ -47,7 +57,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMat
     n = N(CT)(C.Σ)
     u = U(CT)
     Random.rand!(rng,n,A)
-    A .= Distributions.cdf.(u,A)
+    A .= clamp.(Distributions.cdf.(u,A),0,1)
     return A
 end
 function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}

@@ -3,7 +3,7 @@
     i𝒲{TX}
 
 Fields:
-* `X::TX` -- a random variable that represents its williamson d-transform
+* `X::TX` -- a random variable that represents its Williamson d-transform
 * `d::Int` -- the dimension of the transformation. 
 
 Constructor
@@ -11,7 +11,7 @@ Constructor
     WilliamsonGenerator(X::Distributions.UnivariateDistribution, d)
     i𝒲(X::Distributions.UnivariateDistribution,d)
 
-The `WilliamsonGenerator` (alias `i𝒲`) allows to construct a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation, wich is called the inverse williamson transformation, is implemented in [WilliamsonTransforms.jl](https://www.github.com/lrnv/WilliamsonTransforms.jl). 
+The `WilliamsonGenerator` (alias `i𝒲`) allows to construct a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation, which is called the inverse Williamson transformation, is implemented in [WilliamsonTransforms.jl](https://www.github.com/lrnv/WilliamsonTransforms.jl). 
 
 For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and an integer ``d\\ge 2``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
 

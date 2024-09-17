@@ -1,7 +1,8 @@
 on:
   push:
-     paths: 
-       - 'joss/**'
+    paths:
+      - joss/**
+
 jobs:
   paper:
     runs-on: ubuntu-latest

@@ -27,12 +27,10 @@ X₃ = LogNormal(0,1)
 C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 
-# This generates a (3,1000)-sized dataset from the multivariate distribution D
-simu = rand(D,1000)
+simu = rand(D,1000) # Generate a dataset
 
-# While the following estimates the parameters of the model from a dataset: 
-D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
-# Increase the number of observations to get a beter fit (or not?)  
+# You may estimate a copula using the `fit` function:
+D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
 ```
 
 References: 
@@ -46,7 +44,8 @@ struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribut
         d = length(C)
         @assert length(m) == d
         @assert all(mᵢ isa Distributions.UnivariateDistribution for mᵢ in m)
-        return new{typeof(C),typeof(m)}(C,m)
+        tm = Tuple(m)
+        return new{typeof(C),typeof(tm)}(C,tm)
     end    
 end
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
@@ -60,7 +59,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,Tp
      x .= Distributions.quantile.(S.m,x)
 end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargins}
-    sum(Distributions.logpdf(S.m[i],u[i]) for i in 1:length(u)) + Distributions.logpdf(S.C,Distributions.cdf.(S.m,u))
+    sum(Distributions.logpdf(S.m[i],u[i]) for i in 1:length(u)) + Distributions.logpdf(S.C,clamp.(Distributions.cdf.(S.m,u),0,1))
 end
 
 
