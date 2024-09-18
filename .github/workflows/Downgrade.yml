@@ -4,8 +4,10 @@ name: Downgrade CI
 on:
   push:
     branches:
-      - master
+      - main
   pull_request:
+    branches:
+      - main
 
 jobs:
   generate-matrix:
