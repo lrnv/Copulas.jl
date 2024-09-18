@@ -9,7 +9,7 @@ on:
 
 jobs:
   generate-matrix:
-    if: contains(github.event.pull_request.labels.*.name, 'downgrade_ci')
+    if: contains(github.event.pull_request.labels.*.name, 'add_downgrade_ci')
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.genmat.outputs.matrix }}
