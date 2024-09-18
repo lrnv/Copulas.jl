@@ -61,7 +61,12 @@ function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
 end
 williamson_dist(G::GumbelGenerator, d) = WilliamsonFromFrailty(AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0)), d)
 
-
+function Distributions._cdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
+    θ = C.G.θ
+    x₁, x₂ = -log(u[1]), -log(u[2])
+    lx₁, lx₂ = log(x₁), log(x₂)
+    return exp( - exp(1/θ * LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂)))
+end
 function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
     !all(0 .<= u .<= 1) && return eltype(u)(-Inf) # if not in range return -Inf
 
