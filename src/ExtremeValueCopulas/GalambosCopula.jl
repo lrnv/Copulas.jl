@@ -26,12 +26,15 @@ References:
 struct GalambosCopula{P} <: ExtremeValueCopula{P}
     θ::P  # Copula parameter
     function GalambosCopula(θ)
+        if θ > 19.5
+            @warn "The parameter θ = $(θ) is large, which may lead to numerical instability in any functions. Consider regularizing the input."
+        end
         if θ < 0
             throw(ArgumentError("Theta must be >= 0"))
         elseif θ == 0
-            return IndependentCopula(2)
+            return IndependentCopula()
         elseif θ == Inf
-            return MCopula(2)
+            return MCopula()
         else
             return new{typeof(θ)}(θ)
         end
@@ -39,3 +42,7 @@ struct GalambosCopula{P} <: ExtremeValueCopula{P}
 end
 
 A(C::GalambosCopula, t::Real) = 1 - (t^(-C.θ) + (1 - t)^(-C.θ))^(-1/C.θ)
+# This auxiliary function helps determine if we need binary search or not in the generation of random samples
+function needs_binary_search(C::GalambosCopula)
+    return C.θ > 19.5
+end
