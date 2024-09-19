@@ -70,6 +70,7 @@ module Copulas
     
     # Archimedean copulas
     include("ArchimedeanCopula.jl")
+    include("BivariateArchimedeanMethods.jl")
     export ArchimedeanCopula,
            IndependentCopula,
            MCopula,
