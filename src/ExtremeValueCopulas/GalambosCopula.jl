@@ -32,9 +32,9 @@ struct GalambosCopula{P} <: ExtremeValueCopula{P}
         if θ < 0
             throw(ArgumentError("Theta must be >= 0"))
         elseif θ == 0
-            return IndependentCopula()
+            return IndependentCopula(2)
         elseif θ == Inf
-            return MCopula()
+            return MCopula(2)
         else
             return new{typeof(θ)}(θ)
         end

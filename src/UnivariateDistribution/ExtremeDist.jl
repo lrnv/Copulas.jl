@@ -10,7 +10,7 @@ function Distributions.cdf(d::ExtremeDist, z)
         return 0.0
     end
     copula = d.G
-    return z + z * (1.0 - z) * (dA(copula, z)/A(copula, z))
+    return z + z * (1 - z) * (dA(copula, z)/A(copula, z))
 end
 
 function _pdf(d::ExtremeDist, z)
