@@ -205,7 +205,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopul
     return A
 end
 
-# Some archimedean copulas need specific bivariate methods: 
+# The Gumbel copula needs a specific bivariate method to handle large parameters. 
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
     θ = C.G.θ
     x₁, x₂ = -log(u[1]), -log(u[2])
