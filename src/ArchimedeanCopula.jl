@@ -210,7 +210,7 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
     θ = C.G.θ
     x₁, x₂ = -log(u[1]), -log(u[2])
     lx₁, lx₂ = log(x₁), log(x₂)
-    return 1 - LogExpFunctions.cexpexp(1/θ * LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂))
+    return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂) / θ)
 end
 function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
     !all(0 .<= u .<= 1) && return eltype(u)(-Inf) # if not in range return -Inf
@@ -218,12 +218,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGen
     θ = C.G.θ
     x₁, x₂ = -log(u[1]), -log(u[2])
     lx₁, lx₂ = log(x₁), log(x₂)
-
-    y = (x₁ + x₂) + (θ-1) * (lx₁ + lx₂)
-    y == Inf && return Inf # shortcut
-
-    a = LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂)
-    b = a/θ
-    c = a - log(θ-1)
-    return y + b + LogExpFunctions.log1pexp(c) - a - c - exp(b) 
+    A = LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂)
+    B = exp(A/θ)
+    return - B + x₁ + x₂ + (θ-1) * (lx₁ + lx₂) + A/θ - 2A + log(B + θ - 1)
 end
