@@ -7,7 +7,7 @@
     rng = StableRNG(1234)
 
     @testset "Check bounds on parametrisations" begin
-        @test_throws ArgumentError, AsymMixedCopula([0.3,0.4])
+        @test_throws ArgumentError AsymMixedCopula([0.3,0.4])
         @test_throws ArgumentError BC2Copula(-0.1, 0.2)
         @test_throws ArgumentError BC2Copula(1.1, 0.5)
         @test_throws ArgumentError BC2Copula(0.5, -0.2)
