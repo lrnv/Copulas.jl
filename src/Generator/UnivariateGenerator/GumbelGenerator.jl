@@ -39,7 +39,12 @@ end
 max_monotony(G::GumbelGenerator) = Inf
 ϕ(  G::GumbelGenerator, t) = exp(-t^(1/G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = (-log(t))^G.θ
-# ϕ⁽¹⁾(G::GumbelGenerator, t) =  First derivative of ϕ
+function ϕ⁽¹⁾(G::GumbelGenerator, t)
+    # first derivative of ϕ
+    a = 1/G.θ
+    tam1 = t^(a-1)
+    return - a * tam1 * exp(-tam1*t)
+end
 # ϕ⁽ᵏ⁾(G::GumbelGenerator, k, t) = kth derivative of ϕ
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
 function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator 
