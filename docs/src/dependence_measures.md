@@ -4,21 +4,15 @@
 Although the copula is an object that summarizes completely the dependence structure of any random vector, it is an infinite dimensional object and the interpretation of its properties can be difficult when the dimension gets high. Therefore, the literature has come up with some quantification of the dependence structure that might be used as univariate summaries, of course imperfect, of certain properties of the copula at hand. 
 
 
-!!! note "Unfinished work"
-    Unfortunately these dependence measures are not yet well-specified in the package and their implementation is experimental for the moment. These functions might change in the future, in particular see https://github.com/lrnv/Copulas.jl/issues/134 for future improvements. 
+## Multivariate Kendall's Tau 
 
-
-## Kendall's Tau 
-
-> **Definition (Kendall' τ):** For a copula $C$ with a density $c$, Kendall's τ is defined as: 
+> **Definition (Kendall' τ):** For a copula $C$ with a density $c$, **whatever its dimension $d$**, its Kendall's τ is defined as: 
 > 
 >$$\tau = 4 \int C(\bm u) \, c(\bm u) \;d\bm u -1$$
 
 Kendall's tau can be obtained through `τ(C::Copula)`. Its value only depends on the dependence structure and not the marginals. 
 
-!!! warn "Multivariate case"
-    There exists several multivariate extensions of Kendall's tau. The one implemented here is the one we just defined what ever the dimension $d$, be careful as the normalization might differ from other places in the literature.
-
+In the literature however, for multivariate copuals, the matrix of bivariate kendall taus is sometimes used. In this package it can be obtained through the `StatsBase.corkendall(C::Copula)` interface.
 
 
 ## Spearman's Rho 
