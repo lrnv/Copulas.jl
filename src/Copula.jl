@@ -49,6 +49,16 @@ function StatsBase.corkendall(C::Copula{d}) where d
     end
     return K
 end
+function StatsBase.corspearman(C::Copula{d}) where d
+    # returns the matrix of bivariate spearman rhos. 
+    K = zeros(d,d)
+    for i in 1:d
+        for j in 1:d
+            K[i,j] = i==j ? 1 : ρ(SubsetCopula(C::Copula{d},(i,j)))
+        end
+    end
+    return K
+end
 function measure(C::CT, u,v) where {CT<:Copula}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]
