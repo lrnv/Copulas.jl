@@ -55,3 +55,6 @@ function williamson_dist(G::WilliamsonGenerator, d)
     return WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),d)
 end
 ϕ(G::WilliamsonGenerator, t) = WilliamsonTransforms.𝒲(G.X,G.d)(t)
+
+# McNeil & Neshelova 2009
+τ(G::WilliamsonGenerator) = 4*Distributions.expectation(x -> Copulas.ϕ(G,x), Copulas.williamson_dist(G,2))-1
