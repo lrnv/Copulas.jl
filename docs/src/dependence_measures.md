@@ -3,7 +3,7 @@
 
 Although Copulas summarize completely the dependence structure of corresponding random vector, it is an infinite dimensional object and the interpretation of its properties can be difficult when the dimension gets high. Therefore, the literature has come up with some quantification of the dependence structure that might be used as univariate summaries, of course imperfect, of certain properties of the copula at hand. 
 
-## Multivariate and Bivariate Kendall's Tau and Spearman rhos. 
+## Kendall's τ and Spearman's ρ: bivariate and multivariate cases
 
 > **Definition (Kendall' τ):** For a copula $C$ with a density $c$, **whatever its dimension $d$**, its Kendall's τ is defined as: 
 > 
@@ -25,6 +25,15 @@ In the literature however, for multivariate copulas, the matrices of bivariate K
 
 Many copula estimators are based on these coefficients, see e.g., [genest2011,fredricks2007,derumigny2017](@cite).
 
+A few remarks on the state of the implementation:
+
+* Bivariate elliptical cases use $\tau = asin(\rho) * 2 / \pi$ where $\rho$ is the spearman correlation, as soon as the radial part does not have atoms. See [fang2002meta](@cite) for historical credits and [lindskog2003kendall](@cite) for a good review.
+* Many Archimedean copulas have specific formulas for their Kendall tau's, but generic ones use [mcneil2009](@cite). 
+* Generic copulas use directly the upper formula. 
+* Estimation is done for some copulas wia inversion of Kendall's tau or Spearman's rho.
+
+!!! note "Spearman's rho: work in progress"
+    If most of the efficient family-specific formulas for Kendall's tau are already implemented in the package, Spearman's $\rho$'s tend to leverage the generic (slow) implementation much more. If you feel like a specific method for a certain copula is missing, do not hesitate to open an issue !
 
 ## Tail dependency
 
