@@ -6,7 +6,7 @@
     @test isa(ClaytonCopula(2,Inf), MCopula)
 end
 
-@testitem "generators" begin
+@testitem "Check that generators inverse are good." begin
 
     #### This test could be done for many more archimedeans. 
     θ = [2, 10]

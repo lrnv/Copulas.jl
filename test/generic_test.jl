@@ -2,9 +2,11 @@
     using HypothesisTests, Distributions, Random, WilliamsonTransforms
     using InteractiveUtils
     using ForwardDiff
+    using StatsBase: corkendall
     using StableRNGs
+    rng = StableRNG(123)
 
-    cops = (
+    bestiary = unique([
         IndependentCopula(3),
         AMHCopula(3,0.6),
         AMHCopula(4,-0.3),
@@ -45,10 +47,6 @@
         MOCopula(0.1, 0.2, 0.3),
         tEVCopula(4.0, 0.5),
         Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1)),
-        # Others ? Yes probably others too ! 
-
-        # I added your copulas here
-        # You need to provide at least one example per type, but maybe you want to provide more ? Especially if some parameter changes yield very different behaviors. 
         AsymGalambosCopula(0.1, [0.2,0.6]),
         AsymLogCopula(1.2, [0.3,0.6]),
         AsymMixedCopula([0.1,0.2]),
@@ -60,7 +58,66 @@
         MixedCopula(0.2),
         MOCopula(0.1,0.2,0.3),
         tEVCopula(2.0,0.5),
-    )
+        IndependentCopula(2),
+        AsymGalambosCopula(0.6129496106778634, [0.820474440393214, 0.22304578643880224]),
+        AsymGalambosCopula(8.810168494949659, [0.5987759444612732, 0.5391280234619427]),
+        AsymGalambosCopula(11.647356700032505, [0.6195348270893413, 0.4197760589260566]),
+        AsymLogCopula(1.0, [0.8360692316060747, 0.68704221750134]),
+        AsymLogCopula(1.0, [0.0, 0.0]),
+        AsymLogCopula(1.0, [1.0, 1.0]),
+        AsymLogCopula(2.8130363753722403, [0.3539590866764071, 0.15146985093210463]),
+        AsymLogCopula(2.8130363753722403, [0.0, 0.0]),
+        AsymLogCopula(2.8130363753722403, [1.0, 1.0]),
+        AsymLogCopula(12.29006035397328, [0.7036713552821277, 0.7858058549340399]),
+        AsymLogCopula(12.29006035397328, [0.0, 0.0]),
+        AsymLogCopula(12.29006035397328, [1.0, 1.0]),
+        AsymMixedCopula([0.1, 0.2]),
+        AsymMixedCopula([0.2, 0.4]),
+        GalambosCopula(0.6129496106778634),
+        GalambosCopula(8.810168494949659),
+        GalambosCopula(11.647356700032505),
+        GalambosCopula(20),
+        GalambosCopula(60),
+        GalambosCopula(70),
+        GalambosCopula(80),
+        GalambosCopula(120),
+        GalambosCopula(210),
+        GalambosCopula(0.40543796744015514),
+        GalambosCopula(2.675150743283436),
+        GalambosCopula(6.730938346629261),
+        BC2Copula(0.5516353577049822, 0.33689370624999193),
+        BC2Copula(1.0, 0.0),
+        BC2Copula(0.5, 0.5),
+        CuadrasAugeCopula(0.7103550345192344),
+        CuadrasAugeCopula(0.3437537135972244),
+        MCopula(2),
+        HuslerReissCopula(0.256693308150987),
+        HuslerReissCopula(1.6287031392529938),
+        HuslerReissCopula(5.319851350643586),
+        MixedCopula(1.0),
+        MixedCopula(0.2),
+        MixedCopula(0.5),
+        MOCopula(0.1, 0.2, 0.3),
+        MOCopula(1.0, 1.0, 1.0),
+        MOCopula(0.5, 0.5, 0.5),
+        MOCopula(0.5960710257852946, 0.3313524247810329, 0.09653466861970061),
+        tEVCopula(2.0, 0.5),
+        tEVCopula(5.0, -0.5),
+        tEVCopula(5.466564460573727, -0.6566645244416698),
+        LogCopula(4.8313231991648244),
+        [
+            [AMHCopula(d,θ) for d in 2:4 for θ ∈ [-1.0,-rand(rng),0.0,rand(rng)]]...,
+            ClaytonCopula(2,-1),
+            [ClaytonCopula(d,θ) for d in 2:4 for θ ∈ [-1/(d-1) * rand(rng),0.0,-log(rand(rng)), Inf]]...,
+            FrankCopula(2,-Inf),
+            FrankCopula(2,log(rand(rng))),
+            [FrankCopula(d,θ) for d in 2:4 for θ ∈ [1.0,1-log(rand(rng)), Inf]]...,
+            [GumbelCopula(d,θ) for d in 2:4 for θ ∈ [1.0,1-log(rand(rng)), Inf]]...,
+            [JoeCopula(d,θ) for d in 2:4 for θ ∈ [1.0,1-log(rand(rng)), Inf]]...,
+            [GumbelBarnettCopula(d,θ) for d in 2:4 for θ ∈ [0.0,rand(rng),1.0]]...,
+            [InvGaussianCopula(d,θ) for d in 2:4 for θ ∈ [rand(rng),1.0, -log(rand(rng))]]...,
+        ]...
+    ])
 
     #### Try to ensure that every copula in the package is indeed in this list, to remmember contributors to add their model here: 
     function _subtypes(type::Type)
@@ -75,14 +132,12 @@
         end
         out
     end
-    for CT in _subtypes(Copulas.Copula) # Check that every copula type has been used
-        @test any(isa(C,CT) for C in cops)
-    end
-    for TG in _subtypes(Copulas.Generator) # Check that every archimedean generator has been used 
-        @test any(isa(C.G,TG) for C in cops if typeof(C)<:Copulas.ArchimedeanCopula)
-    end
 
-
+    # Check that every copula type is indeed represented: 
+    @test all(any(isa(C,CT) for C in bestiary) for CT in _subtypes(Copulas.Copula))
+     # Check that every archimedean generator has been used 
+    @test all(any(isa(C.G,TG) for C in bestiary if typeof(C)<:Copulas.ArchimedeanCopula) for TG in _subtypes(Copulas.Generator))
+    
     #### methods to numerically derivate the pdf from the cdf : 
     # Not really efficient as in some cases this return zero while the true pdf is clearly not zero. 
     function _v(u,j,uj)
@@ -114,34 +169,24 @@
         return false
     end
 
-    n = 1000
-    for C in cops
+    n = 10
+    for C in bestiary
         d = length(C)
         CT = typeof(C)
-        rng = StableRNG(123)
         spl = rand(rng,C,n)
 
+        # Test that cdf returns 0 and 1 at zero(d) and one(d), and is between 0 and 1 inside: 
         @test iszero(cdf(C,zeros(d)))
         @test isone(cdf(C,ones(d)))
         @test 0 <= cdf(C,rand(rng,d)) <= 1
         @test all(0 .<= spl .<= 1)
 
-        # Check uniformity of each marginal : 
+        # Check CDF marginal uniformity: 
         if !(CT<:EmpiricalCopula) # this one is not a true copula :)
             for i in 1:d
-                # Check Samples uniformity
-                # this is weak but enough to catch impementation mistakes. 
-                
-                # ks_test = pvalue(ExactOneSampleKSTest(spl[i,:], Uniform())) > 1e-5
-                # @test ks_test 
-
-                # Check CDF marginals uniformity. 
                 for val in rand(rng,5)
                     u = ones(d)
                     u[i] = val
-                    if !(cdf(C,u) ≈ val)
-                        @show C, u
-                    end
                     @test cdf(C,u) ≈ val atol=1e-5
                 end
                 # extra check for zeros: 
@@ -151,16 +196,33 @@
             end
         end
 
+        # Check that pdf is positive: 
+        has_pdf(C) = applicable(Distributions._logpdf,C,rand(length(C),3))
+        if has_pdf(C)
+            @test pdf(C,ones(length(C))/2) >= 0
+            @test all(pdf(C, spl) .>= 0)
+        end
+
+        # Check that τ matches empirical values: 
+        K = corkendall(rand(rng,C,10000)')
+        Kth = corkendall(C)
+        @test all(-1 .<= Kth .<= 1)
+        rrrr = all(isapprox.(Kth,K; atol=0.1))
+        if !rrrr
+            @show C
+            display(K)
+            display(Kth)
+        end
+        @test rrrr
+
         # Extra checks, only for archimedeans. 
         if is_archimedean_with_agenerator(CT)
-
             if applicable(Copulas.τ,C.G)
                 # Check that τ is in [-1,1]:
                 tau = Copulas.τ(C)
-                @test -1 <= tau <= 1
 
                 # If tau_inv exists, check that it returns the right value here : 
-                if applicable(Copulas.τ⁻¹, CT, tau) && is_archimedean_with_agenerator(CT) && applicable(Copulas.τ⁻¹,typeof(C.G),tau)
+                if applicable(Copulas.τ⁻¹, CT, tau) && applicable(Copulas.τ⁻¹,typeof(C.G),tau)
                     @test Copulas.τ(Copulas.generatorof(CT)(Copulas.τ⁻¹(CT,tau))) ≈ tau
                 end
             end
@@ -172,10 +234,11 @@
                 @test -1 <= rho <= 1
 
                 # If tau_inv exists, check that it returns the right value here : 
-                if applicable(Copulas.ρ⁻¹, CT, rho) && is_archimedean_with_agenerator(CT) && applicable(Copulas.ρ⁻¹,typeof(C.G),rho)
+                if applicable(Copulas.ρ⁻¹, CT, rho) && applicable(Copulas.ρ⁻¹,typeof(C.G),rho)
                     @test Copulas.ρ(Copulas.generatorof(CT)(Copulas.ρ⁻¹(CT,rho))) ≈ rho
                 end
             end
+            # Check that the fit procedure does run:
             fit(CT,spl)
         end
     end 
