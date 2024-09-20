@@ -1,13 +1,9 @@
 # Measures of dependency
 
 
-Although the copula is an object that summarizes completely the dependence structure of any random vector, it is an infinite dimensional object and the interpretation of its properties can be difficult when the dimension gets high. Therefore, the literature has come up with some quantification of the dependence structure that might be used as univariate summaries, of course imperfect, of certain properties of the copula at hand. 
-
-
+Although Copulas summarize completely the dependence structure of corresponding random vector, it is an infinite dimensional object and the interpretation of its properties can be difficult when the dimension gets high. Therefore, the literature has come up with some quantification of the dependence structure that might be used as univariate summaries, of course imperfect, of certain properties of the copula at hand. 
 
 ## Multivariate and Bivariate Kendall's Tau and Spearman rhos. 
-
-
 
 > **Definition (Kendall' τ):** For a copula $C$ with a density $c$, **whatever its dimension $d$**, its Kendall's τ is defined as: 
 > 
@@ -24,10 +20,8 @@ Thus, for a given copula `C`, its Kendall's tau can be obtained through `τ(C::C
 In the literature however, for multivariate copulas, the matrices of bivariate Kendall taus and bivariate Spearman rhos are sometimes used, and this is these matrices that are obtained by `StatsBase.corkendall(data)` and `StatsBase.corspearman(data)` where `data::Matrix{n,d}` is a matrix of observations. The corresponding theoretical values for copulas in this package can be obtained through the `StatsBase.corkendall(C::Copula)` and `StatsBase.corspearman(C::Copula)` interface.
 
 
-
 !!! note "Specific values of tau and rho"
     Kendall's $\tau$ and Spearman's $\rho$ have values between -1 and 1, and are -1 in case of complete anticomonotony and 1 in case of comonotony. Moreover, they are 0 in case of independence. Moreover, their values only depends on the dependence structure and not the marginals. This is why we say that they measure the 'strength' of the dependency.
-
 
 Many copula estimators are based on these coefficients, see e.g., [genest2011,fredricks2007,derumigny2017](@cite).
 
