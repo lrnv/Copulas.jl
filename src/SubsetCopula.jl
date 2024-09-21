@@ -64,7 +64,7 @@ end
 function SubsetCopula(C::FGMCopula{d,Tθ}, dims::Tuple{Int64, Int64}) where {d,Tθ}
     i = 1
     for indices in Combinatorics.combinations(1:d, 2)
-        all(indices .∈ dims) && return FGMCopula(2,C.θ[i])
+        all(indices .∈ Ref(dims)) && return FGMCopula(2,C.θ[i])
         i = i+1
     end
     @error("Somethings wrong...")
