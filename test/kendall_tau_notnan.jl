@@ -19,7 +19,7 @@
         InvGaussianCopula(4,0.05),
         InvGaussianCopula(3,8.),
         GaussianCopula([1 0.5; 0.5 1]),
-        # TCopula(4, [1 0.5; 0.5 1]), # this one takes a while. 
+        TCopula(4, [1 0.5; 0.5 1]),
         FGMCopula(2,1),
         MCopula(4),
         WCopula(2),
@@ -28,11 +28,11 @@
         SurvivalCopula(ClaytonCopula(2,-0.7),(1,2)),
         RafteryCopula(2, 0.2),
         RafteryCopula(3, 0.5),
+        ArchimedeanCopula(2,i𝒲(LogNormal(),2)),
         # Others ? Yes probably others too ! 
     )
 
     for C in cops
         @test !isnan(Copulas.τ(C))
     end
-    @test_broken Copulas.τ(ArchimedeanCopula(2,i𝒲(LogNormal(),2))) # not implemented. 
 end
