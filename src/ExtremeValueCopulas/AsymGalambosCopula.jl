@@ -46,14 +46,7 @@ struct AsymGalambosCopula{P} <: ExtremeValueCopula{P}
 end
 
 function A(C::AsymGalambosCopula, t::Real)
-    α = C.α
-    θ = C.θ
-
-    term1 = (θ[1] * t)^(-α)
-    term2 = (θ[2] * (1 - t))^(-α)
-    
-    inner_term = term1 + term2
-
-    result = 1 - inner_term^(-1 / α)
-    return result
+    x₁ = - C.α * log(C.θ[1] * t)
+    x₂ = - C.α * log(C.θ[2] * (1-t))
+    return -expm1(-LogExpFunctions.logaddexp(x₁,x₂) / C.α)
 end
