@@ -185,7 +185,8 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,WGenerator}, x::AbstractVector{T}) where {d,T<:Real}
     @assert d==2
     x[1] = rand(rng)
-    x[2] = 1-x[1] 
+    x[2] = 1-x[1]
+    return x
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,IndependentGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
     Random.rand!(rng,A)

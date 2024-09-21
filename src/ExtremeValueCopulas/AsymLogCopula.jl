@@ -21,7 +21,8 @@ References:
 """
 struct AsymLogCopula{P} <: ExtremeValueCopula{P}
     α::P  # Dependence Parameter
-    θ::Vector{P}  # Asymmetry parameters (size 2)
+    θ₁::P
+    θ₂::P
     function AsymLogCopula(α::P, θ::Vector{P}) where {P}
         if length(θ) != 2
             throw(ArgumentError("The vector θ must have 2 elements for the bivariate case"))
@@ -30,15 +31,8 @@ struct AsymLogCopula{P} <: ExtremeValueCopula{P}
         elseif  !(0 <= θ[1] <= 1)  || !(0 <= θ[2] <= 1)  
             throw(ArgumentError("All parameters θ must be in the interval [0, 1]"))
         else
-            return new{P}(α, θ)
+            return new{P}(α, θ[1],θ[2])
         end
     end
 end
-
-function A(C::AsymLogCopula, t::Real)
-    α = C.α
-    θ = C.θ
-    
-    A = ((θ[1]^α)*(1-t)^α + (θ[2]^α)*(t^α))^(1/α)+(θ[1]- θ[2])*t + 1 -θ[1]  
-    return A
-end
+A(C::AsymLogCopula, t::Real) = ((C.θ₁^C.α)*(1-t)^C.α + (C.θ₂^C.α)*(t^C.α))^(1/C.α)+(C.θ₁- C.θ₂)*t + 1 - C.θ₁
