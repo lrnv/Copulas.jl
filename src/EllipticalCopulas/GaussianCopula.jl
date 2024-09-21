@@ -67,4 +67,5 @@ end
 # Kendall tau of bivariate gaussian: 
 # Theorem 3.1 in Fang, Fang, & Kotz, The Meta-elliptical Distributions with Given Marginals Journal of Multivariate Analysis, Elsevier, 2002, 82, 1–16 
 τ(C::GaussianCopula{2,MT}) where MT = 2*asin(C.Σ[1,2])/π 
+ρ(C::GaussianCopula{2,MT}) where MT = 6*asin(C.Σ[1,2]/2)/π
 
