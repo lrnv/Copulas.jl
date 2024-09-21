@@ -23,3 +23,5 @@ function Distributions.pdf(D::WilliamsonFromFrailty{TF,d}, x::Real) where {TF,d}
         Distributions.Erlang(d)
     )
 end
+Base.minimum(D::WilliamsonFromFrailty{TF,d}) where {TF,d} = 0
+Base.maximum(D::WilliamsonFromFrailty{TF,d}) where {TF,d} = Inf
