@@ -44,3 +44,4 @@ end
 function Distributions.fit(::Type{CT},u) where {CT <: EmpiricalCopula}
     return EmpiricalCopula(u)
 end
+StatsBase.corkendall(C::EmpiricalCopula) = StatsBase.corkendall(C.u')
