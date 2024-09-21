@@ -36,8 +36,28 @@ function ρ(C::Copula{d}) where d
 end
 function τ(C::Copula)
     F(x) = Distributions.cdf(C,x)
-    r = Distributions.expectation(F,C)
+    r = Distributions.expectation(F,C; nsamples=10^4)
     return 4*r-1
+end
+function StatsBase.corkendall(C::Copula{d}) where d
+    # returns the matrix of bivariate kendall taus. 
+    K = zeros(d,d)
+    for i in 1:d
+        for j in 1:d
+            K[i,j] = i==j ? 1 : τ(SubsetCopula(C::Copula{d},(i,j)))
+        end
+    end
+    return K
+end
+function StatsBase.corspearman(C::Copula{d}) where d
+    # returns the matrix of bivariate spearman rhos. 
+    K = zeros(d,d)
+    for i in 1:d
+        for j in 1:d
+            K[i,j] = i==j ? 1 : ρ(SubsetCopula(C::Copula{d},(i,j)))
+        end
+    end
+    return K
 end
 function measure(C::CT, u,v) where {CT<:Copula}
 

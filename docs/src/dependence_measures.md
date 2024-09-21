@@ -1,43 +1,39 @@
 # Measures of dependency
 
 
-Although the copula is an object that summarizes completely the dependence structure of any random vector, it is an infinite dimensional object and the interpretation of its properties can be difficult when the dimension gets high. Therefore, the literature has come up with some quantification of the dependence structure that might be used as univariate summaries, of course imperfect, of certain properties of the copula at hand. 
+Although Copulas summarize completely the dependence structure of corresponding random vector, it is an infinite dimensional object and the interpretation of its properties can be difficult when the dimension gets high. Therefore, the literature has come up with some quantification of the dependence structure that might be used as univariate summaries, of course imperfect, of certain properties of the copula at hand. 
 
+## Kendall's τ and Spearman's ρ: bivariate and multivariate cases
 
-!!! note "Unfinished work"
-    Unfortunately these dependence measures are not yet well-specified in the package and their implementation is experimental for the moment. These functions might change in the future, in particular see https://github.com/lrnv/Copulas.jl/issues/134 for future improvements. 
-
-
-## Kendall's Tau 
-
-> **Definition (Kendall' τ):** For a copula $C$ with a density $c$, Kendall's τ is defined as: 
+> **Definition (Kendall' τ):** For a copula $C$ with a density $c$, **whatever its dimension $d$**, its Kendall's τ is defined as: 
 > 
 >$$\tau = 4 \int C(\bm u) \, c(\bm u) \;d\bm u -1$$
 
-Kendall's tau can be obtained through `τ(C::Copula)`. Its value only depends on the dependence structure and not the marginals. 
-
-!!! warn "Multivariate case"
-    There exists several multivariate extensions of Kendall's tau. The one implemented here is the one we just defined what ever the dimension $d$, be careful as the normalization might differ from other places in the literature.
-
-
-
-## Spearman's Rho 
-
-> **Definition (Spearman's ρ):** For a copula $C$ with a density $c$, the Spearman's ρ is defined as: 
+> **Definition (Spearman's ρ):** For a copula $C$ with a density $c$, **whatever its dimension $d$**, the Spearman's ρ is defined as: 
 >
 > $$\rho = 12 \int C(\bm u) d\bm u -3.$$
 
-Spearman's Rho can be obtained through `ρ(C::Copula)`. Its value only depends on the dependence structure and not the marginals. 
+These two dependence measures make more sense in the bivariate case than in other cases, and therefore we sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated to a multivariate copula. We thus provide two different interfaces, one internal through `Copulas.τ(C::Copula)` and `Copulas.ρ(C::Copula)`, providing true multivariate Kendall taus and Spearman rhos, and one implementing `StatsBase.corkendall(C::Copula)` and `StatsBase.corspearman(C::Copula)` for matrices of bivariate dependence measures. 
 
-!!! warn "Multivariate case"
-    There exists several multivariate extensions of Spearman's rho. The one implemented here is the one we just defined what ever the dimension $d$, be careful as the normalization might differ from other places in the literature.
+Thus, for a given copula `C`, its Kendall's tau can be obtained through `τ(C::Copula)` and its Spearman's Rho through `ρ(C::Copula)`. 
+
+In the literature however, for multivariate copulas, the matrices of bivariate Kendall taus and bivariate Spearman rhos are sometimes used, and this is these matrices that are obtained by `StatsBase.corkendall(data)` and `StatsBase.corspearman(data)` where `data::Matrix{n,d}` is a matrix of observations. The corresponding theoretical values for copulas in this package can be obtained through the `StatsBase.corkendall(C::Copula)` and `StatsBase.corspearman(C::Copula)` interface.
+
 
 !!! note "Specific values of tau and rho"
-    Kendall's $\tau$ and Spearman's $\rho$ have values between -1 and 1, and are -1 in case of complete anticomonotony and 1 in case of comonotony. Moreover, they are 0 in case of independence. This is 
-    why we say that they measure the 'strength' of the dependency.
+    Kendall's $\tau$ and Spearman's $\rho$ have values between -1 and 1, and are -1 in case of complete anticomonotony and 1 in case of comonotony. Moreover, they are 0 in case of independence. Moreover, their values only depends on the dependence structure and not the marginals. This is why we say that they measure the 'strength' of the dependency.
 
-!!! tip "More-that-bivariate cases"
-    These two dependence measures make more sense in the bivariate case than in other cases, and therefore we sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated to a multivariate copula. Many copula estimators are based on these coefficients, see e.g., [genest2011,fredricks2007,derumigny2017](@cite).
+Many copula estimators are based on these coefficients, see e.g., [genest2011,fredricks2007,derumigny2017](@cite).
+
+A few remarks on the state of the implementation:
+
+* Bivariate elliptical cases use $\tau = asin(\rho) * 2 / \pi$ where $\rho$ is the spearman correlation, as soon as the radial part does not have atoms. See [fang2002meta](@cite) for historical credits and [lindskog2003kendall](@cite) for a good review.
+* Many Archimedean copulas have specific formulas for their Kendall tau's, but generic ones use [mcneil2009](@cite). 
+* Generic copulas use directly the upper formula. 
+* Estimation is done for some copulas wia inversion of Kendall's tau or Spearman's rho.
+
+!!! note "Spearman's rho: work in progress"
+    If most of the efficient family-specific formulas for Kendall's tau are already implemented in the package, Spearman's $\rho$'s tend to leverage the generic (slow) implementation much more. If you feel like a specific method for a certain copula is missing, do not hesitate to open an issue !
 
 ## Tail dependency
 

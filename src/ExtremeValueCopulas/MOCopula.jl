@@ -3,9 +3,9 @@
 
 Fields:
 
-    - λ1::Real - parameter
-    - λ2::Real - parameter
-    - λ12::Real - parameter
+    - λ₁::Real - parameter
+    - λ₂::Real - parameter
+    - λ₁₂::Real - parameter
     
 Constructor
 
@@ -21,49 +21,22 @@ References:
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
 """
 struct MOCopula{P} <: ExtremeValueCopula{P}
-    λ1::P
-    λ2::P
-    λ12::P
-
-    function MOCopula(λ::Vararg{Real})
-        if length(λ) !== 3
-            throw(ArgumentError("MOCopula requires only 3 arguments."))
-        end
-
-        T = promote_type(typeof(λ[1]), typeof(λ[2]), typeof(λ[3]))
-        λ1, λ2, λ12 = T(λ[1]), T(λ[2]), T(λ[3])
-
-        if λ1 < 0 || λ2 < 0 || λ12 < 0
+    a::P
+    b::P
+    function MOCopula(λ₁,λ₂,λ₁₂)
+        if λ₁ < 0 || λ₂ < 0 || λ₁₂ < 0
             throw(ArgumentError("All λ parameters must be >= 0"))
         end
-        
-        return new{T}(λ1, λ2, λ12)
+        a, b = λ₁ / (λ₁ + λ₁₂), λ₂ / (λ₂ + λ₁₂)
+        return new{typeof(a)}(a,b)
     end
 end
-
-function A(C::MOCopula, t::Real)
-    λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
-    return ((λ1 * (1 - t))/(λ1 + λ12)) + ((λ2 * t)/(λ2 + λ12)) + λ12 * max((1-t)/(λ1 + λ12), t/(λ2 + λ12))
-end
-
-function ℓ(C::MOCopula, t::Vector)
-    λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
-    t₁, t₂ = t
-    return ((λ1 * t₂)/(λ1 + λ12)) + ((λ2 * t₁)/(λ2 + λ12)) + λ12 * max(t₂/(λ1 + λ12), t₁/(λ2 + λ12))
-end
-
-function _cdf(C::MOCopula, u::AbstractArray{<:Real})
-    λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
-    u₁, u₂ = u
-    return min(u₂*u₁^(1 - λ12/(λ1 + λ12)), u₁ * u₂^(1 - λ12/(λ2 + λ12)))
-end
-
+A(C::MOCopula, t::Real) = max(t + (1-t)*C.b, (1-t)+C.a*t)
+_cdf(C::MOCopula, u::AbstractArray{<:Real}) = min(u[1]^C.a * u[2], u[1] * u[2]^C.b)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula, u::AbstractVector{T}) where {T<:Real}
-    λ1, λ2, λ12 = C.λ1, C.λ2, C.λ12
-    r, s, t = rand(rng, Distributions.Uniform(0,1),3)
-    x = min(-log(r)/λ1, -log(t)/λ12)
-    y = min(-log(s)/λ2, -log(t)/λ12)
-    u[1] = exp(-(λ1+λ12)*x)
-    u[2] = exp(-(λ2+λ12)*y)
+    r, s, t = -log.(rand(rng,3)) # Exponentials(1)
+    u[1] = exp(-min(r/(1-C.a), t/C.a))
+    u[2] = exp(-min(s/(1-C.b), t/C.b))
     return u
 end
+τ(C::MOCopula) = C.a*C.b/(C.a+C.b-C.a*C.b)

@@ -50,11 +50,7 @@ function A(H::HuslerReissCopula, t::Real)
     θ = H.θ
     term1 = t * Distributions.cdf(Distributions.Normal(), θ^(-1) + 0.5 * θ * log(t / (1 - t)))
     term2 = (1 - t) * Distributions.cdf(Distributions.Normal(), θ^(-1) + 0.5 * θ * log((1 - t) / t))
-    
-    a = term1 + term2
-    
-    
-    return a
+    return term1 + term2
 end
 
 function dA(H::HuslerReissCopula, t::Real)
@@ -66,7 +62,5 @@ function dA(H::HuslerReissCopula, t::Real)
     dA_term2 = -Distributions.cdf(Distributions.Normal(), θ^(-1) + 0.5 * θ * log((1 - t) / t)) + 
                   (1 - t) * Distributions.pdf(Distributions.Normal(), θ^(-1) + 0.5 * θ * log((1 - t) / t)) * (0.5 * θ * (-1 / t - 1 / (1 - t)))
     
-    da = dA_term1 + dA_term2
-    
-    return da
+    return dA_term1 + dA_term2
 end
