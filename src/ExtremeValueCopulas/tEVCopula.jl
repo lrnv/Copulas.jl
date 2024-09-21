@@ -93,16 +93,6 @@ function d²A(C::tEVCopula, t::Real)
     d2A = (dA_plus - dA_minus) / (2 * h)
     return d2A
 end
-
-# PDF function for ExtremeValueCopula using ℓ
-function _pdf(C::tEVCopula, u::AbstractArray{<:Real})
-    t = -log.(u)
-    c = exp(-ℓ(C, t))
-    D1 = D_B_ℓ(C, t, [1])
-    D2 = D_B_ℓ(C, t, [2])
-    D12 = D_B_ℓ(C, t, [1, 2])
-    return c * (-D12 + D1 * D2) / (u[1] * u[2])
-end
 function Distributions._logpdf(C::tEVCopula, u::AbstractArray{<:Real})
     t = -log.(u)
     c = exp(-ℓ(C, t))
