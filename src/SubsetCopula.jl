@@ -40,13 +40,39 @@ function _cdf(C::SubsetCopula{d,CT},u) where {d,CT}
 end
 
 # A few specialized constructors: 
-SubsetCopula(C::GaussianCopula,dims) = length(dims) == 1 ? Distributions.Uniform() : GaussianCopula(C.Σ[collect(dims),collect(dims)])
-SubsetCopula(C::TCopula{d,df,MT},dims) where {d,df,MT} = length(dims) == 1 ? Distributions.Uniform() : TCopula(df, C.Σ[collect(dims),collect(dims)])
-SubsetCopula(C::ArchimedeanCopula{d,TG},dims) where {d,TG} = length(dims) == 1 ? Distributions.Uniform() : ArchimedeanCopula(length(dims), C.G) # in particular for the independence this will work. 
+function SubsetCopula(C::GaussianCopula, dims)
+    if length(dims) == 1
+        return Distributions.Uniform()
+    else 
+        return GaussianCopula(C.Σ[collect(dims),collect(dims)])
+    end
+end
+function SubsetCopula(C::TCopula{d,df,MT}, dims) where {d,df,MT}
+    if length(dims) == 1 
+        return Distributions.Uniform()
+    else 
+        return TCopula(df, C.Σ[collect(dims),collect(dims)])
+    end
+end
+function SubsetCopula(C::ArchimedeanCopula{d,TG}, dims) where {d,TG}
+    if length(dims) == 1
+        return Distributions.Uniform()
+    else 
+        return ArchimedeanCopula(length(dims), C.G)
+    end
+end
+function SubsetCopula(C::FGMCopula{d,Tθ}, dims::Tuple{Int64, Int64}) where {d,Tθ}
+    i = 1
+    for indices in Combinatorics.combinations(1:d, 2)
+        all(indices .∈ dims) && return FGMCopula(2,C.θ[i])
+        i = i+1
+    end
+    @error("Somethings wrong...")
+end
 
-# We could add a few more for performance if needed: EmpiricalCopula, others... 
-
-
+# Kendall tau and spearman rho are symetric measures in bivaraite cases: 
+τ(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = τ(C.C)
+ρ(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = ρ(C.C)
 
 """
     subsetdims(C::Copula,dims)
