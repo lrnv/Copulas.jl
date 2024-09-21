@@ -41,20 +41,22 @@ function τ(C::Copula)
 end
 function StatsBase.corkendall(C::Copula{d}) where d
     # returns the matrix of bivariate kendall taus. 
-    K = zeros(d,d)
+    K = ones(d,d)
     for i in 1:d
-        for j in 1:d
-            K[i,j] = i==j ? 1 : τ(SubsetCopula(C::Copula{d},(i,j)))
+        for j in i+1:d
+            K[i,j] = τ(SubsetCopula(C::Copula{d},(i,j)))
+            K[j,i] = K[i,j]
         end
     end
     return K
 end
 function StatsBase.corspearman(C::Copula{d}) where d
     # returns the matrix of bivariate spearman rhos. 
-    K = zeros(d,d)
+    K = ones(d,d)
     for i in 1:d
-        for j in 1:d
-            K[i,j] = i==j ? 1 : ρ(SubsetCopula(C::Copula{d},(i,j)))
+        for j in i+1:d
+            K[i,j] = ρ(SubsetCopula(C::Copula{d},(i,j)))
+            K[j,i] = K[i,j]
         end
     end
     return K
