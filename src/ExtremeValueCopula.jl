@@ -90,14 +90,6 @@ function D_B_ℓ(C::ExtremeValueCopula, t::Vector{Float64}, B::Vector{Int})
 end
 
 # Función PDF para ExtremeValueCopula usando ℓ
-function _pdf(C::ExtremeValueCopula, u::AbstractArray{<:Real})
-    t = -log.(u)
-    c = exp(-ℓ(C, t))
-    D1 = D_B_ℓ(C, t, [1])
-    D2 = D_B_ℓ(C, t, [2])
-    D12 = D_B_ℓ(C, t, [1, 2])
-    return c * (-D12 + D1 * D2) / (u[1] * u[2])
-end
 function Distributions._logpdf(C::ExtremeValueCopula, u::AbstractArray{<:Real})
     t = -log.(u)
     c = exp(-ℓ(C, t))
@@ -106,26 +98,12 @@ function Distributions._logpdf(C::ExtremeValueCopula, u::AbstractArray{<:Real})
     D12 = D_B_ℓ(C, t, [1, 2])
     return log(c) + log(-D12 + D1 * D2) - log(u[1] * u[2])
 end
-# Definir la función para calcular τ
-function τ(C::ExtremeValueCopula)
-    integrand(x) = begin
-        a = A(C, x)
-        da = dA(C, x)
-        return (x * (1 - x) / a) * da
-    end
-    
-    integrate, _ = QuadGK.quadgk(integrand, 0.0, 1.0)
-    return integrate
-end
+# Definir la función para calcular τ and ρ
+# Warning: the τ function can be veeeery unstable... it is actually very hard to compute correctly. 
+# In some case, it simply fails by a lot. 
+τ(C::ExtremeValueCopula) = QuadGK.quadgk(x -> d²A(C, x) * x * (1 - x) / A(C, x), 0.0, 1.0)[1]
+ρ(C::ExtremeValueCopula) = 12 *  QuadGK.quadgk(x -> 1 / (1 + A(C, x))^2, 0, 1)[1] - 3
 
-function ρₛ(C::ExtremeValueCopula)
-    integrand(x) = 1 / (1 + A(C, x))^2
-    
-    integral, _ = QuadGK.quadgk(integrand, 0, 1)
-    
-    ρs = 12 * integral - 3
-    return ρs
-end
 # Función para calcular el coeficiente de dependencia en el límite superior
 function λᵤ(C::ExtremeValueCopula)
     return 2(1 - A(C, 0.5))
@@ -150,9 +128,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     u1, u2 = rand(rng, Distributions.Uniform(0,1), 2)
     z = rand(rng, ExtremeDist(C))
     p = probability_z(C, z)
-    if p < -eps() || p > eps()
-        p = 0
-    end
     c = rand(rng, Distributions.Bernoulli(p))
     w = 0
     if c == 1
