@@ -2,12 +2,14 @@
 CurrentModule = Copulas
 ```
 
-## Multivariate random vectors
-
 This section gives some general definitions and tools about dependence structures, multivariate random vectors and copulas. Along this journey through the mathematical theory of copulas, we link to the rest of the documentation for more specific and detailed arguments on particular points, or simply to the technical documentation of the actual implementation. 
-The interested theoretical reader can take a look at the standard books on the subject [joe1997,cherubini2004,nelsen2006,joe2014](@cite) or more recently [mai2017, durante2015a, czado2019,grosser2021](@cite). 
+The interested reader can take a look at the standard books on the subject [joe1997,cherubini2004,nelsen2006,joe2014](@cite) or more recently [mai2017, durante2015a, czado2019,grosser2021](@cite). 
 
-We start here by defining a few concepts about dependence structures and copulas.
+We start here by defining a few concepts about multivariate random vectors, dependence structures and copulas.
+
+## Reminder on multivariate random vectors
+
+
 Consider a real valued random vector $\bm X = \left(X_1,...,X_d\right): \Omega \to \mathbb R^d$. The random variables $X_1,...,X_d$ are called the marginals of the random vector $\bm X$. 
 
 !!! info "Constructing random variables in Julia via `Distributions.jl`"
@@ -71,7 +73,7 @@ u = rand(C,10)
 cdf(C,u)
 ```
 
-One of the reasons that makes copulas so useful is discovered by Sklar [sklar1959](@cite) in 1959:
+One of the reasons that makes copulas so useful is the bijective map discovered by Sklar [sklar1959](@cite) in 1959:
 
 !!! theorem "Theorem (Sklar):"
     For every random vector $\bm X$, there exists a copula $C$ such that 
@@ -94,7 +96,7 @@ The independence copula can be constructed using the [`IndependentCopula(d)`](@r
 nothing # hide
 ```
 
-We leverage the Sklar theorem to construct multivariate random vectors from a copula-marginals specification. This can be used as follows: 
+We can then leverage the Sklar theorem to construct multivariate random vectors from a copula-marginals specification. This can be used as follows: 
 
 ```@example 1
 MyDistribution = SklarDist(Π, (X₁,X₂,X₃,X₄))
@@ -110,12 +112,11 @@ rand(MyDistribution,10)
 rand(MyOtherDistribution,10)
 ```
 
-
-On the other hand, the [`pseudo()`](@ref Pseudo-observations) function computes ranks, effectively using Sklar's theorem the other way around (from the marginal space to the unit hypercube).
+Sklar's theorem can be used the otehr way around (from the marginal space to the unit hypercube): this is e.g. what the [`pseudo()`](@ref Pseudo-observations) function does, computing ranks.
 
 !!! note "Independent random vectors"
 
-    Distributions.jl proposes the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create those independent random vectors with given marginals. But you can already see that our approach generalizes to other dependence structres, and is thus much powerfull. 
+    Distributions.jl proposes the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create those independent random vectors with given marginals. `product_distribution(args...)` is basically equivalent to `SklarDist(Π, args)`, but you can already see that our approach generalizes to other dependence structres, and is thus much powerfull. 
 
 Copulas are bounded functions with values in [0,1] since they correspond to probabilities. But their range can be bounded more precisely, and [lux2017](@cite) gives us:
 
@@ -171,13 +172,12 @@ We see on the output that the parameters were correctly estimated from this samp
 
 ## Going further
 
-There are a lot of available copula families in the package, that can be regrouped into a few classes:
-- [Elliptical Copulas](@ref elliptical_copulas_header), including the Gaussian and Student cases. 
-- [Archimedean Copulas](@ref archimedean_copulas_header), leveraging their [Archimedean Generators](@ref archimedean_copulas_header)
-- [Fréchet-Hoeffding bounds](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Fr%C3%A9chet%E2%80%93Hoeffding_copula_bounds), 
-- [Other Copulas](@ref)
+This documentation tries to join theoretical information and links to the literature with practical how-tos related to our specific implementation. It can be read as a lecture, or pin-pointed to check the specific feature you need through the search function. We hope that you'll enjoy using it!
 
-Each of these classes more-or-less correspond to an abstract type in our type hierarchy, and to a section of this documentation. 
+!!! tip "Explore the bestiary!"
+    The package contains *a lot* of copula families. Classifying them is basically impossible, since the lcass is infinite dimensional, but the package proposes a few standard classes: elliptical, archimedeans, extreme values, empirical, vines...
+    
+    Each of these classes more-or-less correspond to an abstract type in our type hierarchy, and to a section of this documentation. Do not hesitate to explore the bestiary !
 
 
 ```@bibliography

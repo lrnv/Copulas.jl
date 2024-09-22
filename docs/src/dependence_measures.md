@@ -66,7 +66,7 @@ Many people are interested in the tail behavior of their dependence structures. 
 
 The graph of $u \to \chi(u)$ over $[\frac{1}{2},1]$ is an interesting tool to assess the existence and strength of the tail dependency. The same kind of tools can be constructed for the lower tail. 
 
-!!! note "Tail dependencies: WIP"
+!!! note "Tail dependencies: work in progress"
     The formalization of an interface for obtaining the tail dependence coefficients of copulas is still a work a in progress in the package. Do not hesitate to reach us on github if you want to discuss it!
 
 

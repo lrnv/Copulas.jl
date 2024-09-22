@@ -6,6 +6,8 @@ CurrentModule = Copulas
 
 *Extreme value copulas* are fundamental in the study of rare and extreme events due to their ability to model dependency in situations of extreme risk. This package proposes a wide selection of bivariate extreme values copulas, while multivariate cases are not implemented yet. Feel free to open an issue and/or propose pull requests if you want an implementation of a multivariate case. 
 
+!!! note "Only Bivariate"
+    The implementation we propose here only deals with bivariate extreme value copulas. Multivariate cases are more tedious to implement, but not impossible: if you want to propose an implementation, we can provide guidance on how to merge it here, do not hesitate to reach us on github.
 
 A bivariate extreme value copula [gudendorf2010extreme](@cite) $C$ is a copula that has the following caracteristic property: 
 
@@ -23,9 +25,10 @@ In the context of bivariate extreme value copulas, the functions $\ell$ and $A$ 
 
 $$\ell(u_1,u_2)=(u_1+u_2)A\left(\frac{u_1}{u_1+u_2}\right).$$
 
-Therefore, in this implementation, it is sufficient to provide the Pickands dependence function $A$ to construct the implementation structure of an extreme value copula.
+!!! tip "Only `A` is needed"
+    In our implementation, it is sufficient to provide the Pickands dependence function $A$ to construct the extreme value copula and have it work correctly. Providing the other functions would, of course, improve performances.
 
-In this package, there is an abstract type [`ExtremeValueCopula`](@ref) that provides a foundation for defining extreme value copulas. Many extreme value copulas are already implemented for you! See [this list](@ref available_extreme_models) to get an overview.
+In this package, there is an abstract type [`ExtremeValueCopula`](@ref) that provides a foundation for defining bivariate extreme value copulas. Many extreme value copulas are already implemented for you! See [this list](@ref available_extreme_models) to get an overview.
 
 If you do not find the one you need, you may define it yourself by subtyping `ExtremeValueCopula`. The API does not require much information, which is really convenient. Only a method for the pickand function `A(C::ExtremeValueCopula) = ...` is required. By providing this functions, you can easily create a new extreme value copula that fits your specific needs:
 
@@ -37,16 +40,13 @@ end
 A(C::ExtremeValueCopula, t) = (t^C.θ + (1 - t)^C.θ)^(1/C.θ) # This is the Pickands function of the Logistic (Gumbel) Copula
 ```
 
-!!! info "Nomenclature information"
-    We have called `A()` the Pickands function, which is necessary for constructing the Extreme Value Copula. This binding is very generic and thus not exported from the package, you can use it through `Copulas.A()` and/or by importing it.
-
 # Advanced Concepts
 
 Here, we present some important concepts from the theory of extreme value copulas that are useful for the development of this package.
 
 Let $(X,Y) \sim C$ where $C$ is a bivariate extreme value copula. We have the following result from [ghoudi1998proprietes](@cite):
 
-!!! property "Property (Ghoudi 1998):
+!!! property "Property (Ghoudi 1998):"
     Let $(X, Y) \sim C$, where $C$ is an extreme value copula. The joint distribution of $X$ and $Z = \frac{\log(X)}{\log(XY)}$ is given by:
 
     $$P(Z \leq z, X \leq x) =G(z,x)=\left(z + z(1-z)\frac{A'(z)}{A(z)}\right)x^{A(z)/z}, \quad 0\leq x,z \leq 1$$ 

@@ -23,8 +23,12 @@ where the notion of $d$-monotone function is defined (see e.g. [mcneil2009](@cit
 
     A function that is $d$-monotone for all $d$ is called **completely monotone**.
 
+In this package, there is an abstract class [`Generator`](@ref) that contains those generators.
 
-In this package, there is an abstract class [`Generator`](@ref) that contains those generators. Many Archimedean generators are already implemented for you ! See [the list of implemented archimedean generator](@ref available_archimedean_models) to get an overview. 
+!!! tip "Available Archimedean generators"
+    The package covers every archimedean generators that exists through a generic implementation of the Williamson d-transform, see the next section. 
+
+    On the other hand, many parametric Archimedean generators are specifically implemented, see [this list of implemented archimedean generator](@ref available_archimedean_models) to get an overview of which ones are availiable. 
 
 If you do not find the one you need, you may define it yourself by subtyping `Generator`. The API does not ask for much information, which is really convenient. Only the two following methods are required:
 
@@ -74,8 +78,6 @@ Generator
 Note that the rate at which these functions are reaching 0 (and their inverse reaching infinity on the left boundary) can vary a lot from one to the other. Note also that the difference between each of them is easier to grasp on the inverse plot. 
 
 
-
-
 ## Williamson d-transform
 
 An easy way to construct new $d$-monotonous generators is the use of the Williamson $d$-transform.
@@ -93,7 +95,7 @@ In this package, we implemented it through the [`WilliamsonGenerator`](@ref) cla
 
 This function computes the Williamson d-transform of the provided random variable $X$ using the [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl) package. See [williamson1955multiply, mcneil2009](@cite) for the literature. 
 
-!!! warning "`max_monotony` of Williamson generators"
+!!! note "`max_monotony` of Williamson generators"
     The $d$-transform of a positive random variable is $d$-monotonous but not $k$-monotonous for any $k > d$. Its max monotony is therefore $d$. This has a few implications, one of the biggest one is that the $d$-variate Archimedean copula that corresponds has no density. 
     
     More genrally, if you want your Archimedean copula to have a density, you have to use a generator that is more-monotonous that the dimension of your model. 
@@ -149,7 +151,7 @@ plot!(x -> ϕ⁻¹(G2,x), xlims=(0.1,0.9), label="G2")
 
 As obvious from the definition of the Williamson transform, using a discrete distribution produces piecewise-linear generators, where the number of pieces is dependent on the order of the transformation. 
 
-## Archimedean copulas
+## Archimedean Copulas
 
 Let's first define formally archimedean copulas: 
 
