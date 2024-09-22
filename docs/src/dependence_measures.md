@@ -8,13 +8,15 @@ We implement the few most known ones in this package.
 
 ## Kendall's τ and Spearman's ρ: bivariate and multivariate cases
 
-> **Definition (Kendall' τ):** For a copula $C$ with a density $c$, **whatever its dimension $d$**, its Kendall's τ is defined as: 
-> 
->$$\tau = 4 \int C(\bm u) \, c(\bm u) \;d\bm u -1$$
+!!! definition "Definition (Kendall' τ):"
+    For a copula $C$ with a density $c$, **whatever its dimension $d$**, its Kendall's τ is defined as: 
 
-> **Definition (Spearman's ρ):** For a copula $C$ with a density $c$, **whatever its dimension $d$**, the Spearman's ρ is defined as: 
->
-> $$\rho = 12 \int C(\bm u) d\bm u -3.$$
+    $$\tau = 4 \int C(\bm u) \, c(\bm u) \;d\bm u -1$$
+
+!!! definition "Definition (Spearman's ρ):"
+    For a copula $C$ with a density $c$, **whatever its dimension $d$**, the Spearman's ρ is defined as: 
+
+    $$\rho = 12 \int C(\bm u) d\bm u -3.$$
 
 These two dependence measures make more sense in the bivariate case than in other cases, and therefore we sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated to a multivariate copula. 
 We thus provide two different interfaces:
@@ -47,15 +49,16 @@ A few remarks on the state of the implementation:
 
 Many people are interested in the tail behavior of their dependence structures. Tail coefficients summarize this tail behavior.
 
->**Definition (Tail dependency):** For a copula $C$, we define (when they exist):
-> ```math
->  \begin{align}
->    \lambda &= \lim\limits_{u \to 1} \frac{1 - 2u - C(u,..,u)}{1- u} \in [0,1]\\
->    \chi(u) &= \frac{2 \ln(1-u)}{\ln(1-2u-C(u,...,u))} -1\\
->    \chi &= \lim\limits_{u \to 1} \chi(u) \in [-1,1]
->  \end{align}
->```
-> When $\lambda > 0$, we say that there is a strong upper tail dependency, and $\chi = 1$. When $\lambda = 0$, we say that there is no strong upper tail dependency, and if furthermore $\chi \neq 0$ we say that there is weak upper tail dependency.
+!!! definition "Definition (Tail dependency):"
+    For a copula $C$, we define (when they exist):
+    ```math
+     \begin{align}
+       \lambda &= \lim\limits_{u \to 1} \frac{1 - 2u - C(u,..,u)}{1- u} \in [0,1]\\
+       \chi(u) &= \frac{2 \ln(1-u)}{\ln(1-2u-C(u,...,u))} -1\\
+       \chi &= \lim\limits_{u \to 1} \chi(u) \in [-1,1]
+     \end{align}
+    ```
+    When $\lambda > 0$, we say that there is a strong upper tail dependency, and $\chi = 1$. When $\lambda = 0$, we say that there is no strong upper tail dependency, and if furthermore $\chi \neq 0$ we say that there is weak upper tail dependency.
 
 The graph of $u \to \chi(u)$ over $[\frac{1}{2},1]$ is an interesting tool to assess the existence and strength of the tail dependency. The same kind of tools can be constructed for the lower tail. 
 

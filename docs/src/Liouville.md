@@ -4,8 +4,8 @@ CurrentModule = Copulas
 
 # Liouville Copulas
 
-!!! note "Not merged yet !"
-    Liouville copulas are coming in this PR : https://github.com/lrnv/Copulas.jl/pull/83, but this is not merged yet. 
+!!! todo "Not merged yet !"
+    Liouville copulas are coming in this PR : https://github.com/lrnv/Copulas.jl/pull/83, but the work is not finished. 
 
 Archimedean copulas have been widely used in the literature due to their nice decomposition properties and easy parametrization. The interested reader can refer to the extensive literature [hofert2010,hofert2013a,mcneil2010,cossette2017,cossette2018,genest2011a,dibernardino2013a,dibernardino2013a,dibernardino2016,cooray2018,spreeuw2014](@cite) on Archimedean copulas, their nesting extensions and most importantly their estimation. 
 

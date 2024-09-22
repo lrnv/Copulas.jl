@@ -44,9 +44,11 @@ Note that the range $\mathrm{Ran}(F)$ of a distribution function $F$, univariate
 
 There is a fundamental functional link between the function $F$ and its marginals $F_1,...,F_d$. This link is expressed by the mean of *copulas*. 
 
-> **Definition (Copula) :** A copula, usually denoted $C$, is the distribution function of a random vector with marginals that are all uniform on $[0,1]$, i.e.
->
-> $C_i(u) = u\mathbb 1_{u \in [0,1]} \text{ for all }i \in 1,...,d.$
+!!! definition "Definition (Copula):" 
+    A copula, usually denoted $C$, is the distribution function of a random vector with marginals that are all uniform on $[0,1]$, i.e.
+    
+    $C_i(u) = u\mathbb 1_{u \in [0,1]} \text{ for all }i \in 1,...,d.$
+
 
 !!! note "Vocabulary"
     In this documentation but more largely in the literature, the term *Copula* refers both to the random vector and its distribution function. Usually, the distinction is clear from context. 
@@ -71,17 +73,19 @@ cdf(C,u)
 
 One of the reasons that makes copulas so useful is discovered by Sklar [sklar1959](@cite) in 1959:
 
-> **Theorem (Sklar):** For every random vector $\bm X$, there exists a copula $C$ such that 
->
-> $\forall \bm x\in \mathbb R^d, F(\bm x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
-> The copula $C$ is uniquely determined on $\mathrm{Ran}(F_{1}) \times ... \times \mathrm{Ran}(F_{d})$, where $\mathrm{Ran}(F_i)$ denotes the range of the function $F_i$. In particular, if all marginals are absolutely continuous, $C$ is unique.
+!!! theorem "Theorem (Sklar):"
+    For every random vector $\bm X$, there exists a copula $C$ such that 
+
+    $\forall \bm x\in \mathbb R^d, F(\bm x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
+    The copula $C$ is uniquely determined on $\mathrm{Ran}(F_{1}) \times ... \times \mathrm{Ran}(F_{d})$, where $\mathrm{Ran}(F_i)$ denotes the range of the function $F_i$. In particular, if all marginals are absolutely continuous, $C$ is unique.
 
 
 This result allows to decompose the distribution of $\bm X$ into several components: the marginal distributions on one side, and the copula on the other side, which governs the dependence structure between the marginals. This object is central in our work, and therefore deserves a moment of attention. 
 
-> **Example (Independence):** The function 
->
-> $\Pi : \bm x \mapsto \prod_{i=1}^d x_i = \bm x^{\bm 1}$ is a copula, corresponding to independent random vectors.
+!!! example "Example (Independence):"
+    The function 
+
+    $\Pi : \bm x \mapsto \prod_{i=1}^d x_i = \bm x^{\bm 1}$ is a copula, corresponding to independent random vectors.
 
 The independence copula can be constructed using the [`IndependentCopula(d)`](@ref IndependentGenerator) syntax as follows: 
 
@@ -113,12 +117,14 @@ On the other hand, the [`pseudo()`](@ref Pseudo-observations) function computes 
 
     Distributions.jl proposes the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create those independent random vectors with given marginals. But you can already see that our approach generalizes to other dependence structres, and is thus much powerfull. 
 
-Copulas are bounded functions with values in [0,1] since they correspond to probabilities. But their range can be bounded more precisely:
+Copulas are bounded functions with values in [0,1] since they correspond to probabilities. But their range can be bounded more precisely, and [lux2017](@cite) gives us:
 
-> **Property (Fréchet-Hoeffding bounds [lux2017](@cite)):** For all $\bm x \in [0,1]^d$, every copula $C$ satisfies : 
->
->$\langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+} \le C(\bm x) \le \min \bm x,$
->where $y_{+} = \max(0,y)$.
+!!! property "Property (Fréchet-Hoeffding bounds):" 
+    For all $\bm x \in [0,1]^d$, every copula $C$ satisfies : 
+
+    $$\langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+} \le C(\bm x) \le \min \bm x,$$
+    
+    where $y_{+} = \max(0,y)$.
 
 The function $M : \bm x \mapsto \min\bm x$, called the upper Fréchet-Hoeffding bound, is a copula. The function $W : \bm x \mapsto \langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+}$, called the lower Fréchet-Hoeffding bound, is on the other hand a copula only when $d=2$. 
 These two copulas can be constructed through [`MCopula(d)`](@ref MGenerator) and [`WCopula(2)`](@ref WGenerator). 

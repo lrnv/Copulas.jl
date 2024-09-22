@@ -44,13 +44,14 @@ A(C::ExtremeValueCopula, t) = (t^C.θ + (1 - t)^C.θ)^(1/C.θ) # This is the Pic
 
 Here, we present some important concepts from the theory of extreme value copulas that are useful for the development of this package.
 
-Let $(X,Y) \sim C$ where $C$ is a bivariate extreme value copula. We have the following results:
+Let $(X,Y) \sim C$ where $C$ is a bivariate extreme value copula. We have the following result from [ghoudi1998proprietes](@cite):
 
-> **Proposition 1 (Ghoudi 1998 [ghoudi1998proprietes](@cite)):** Let $(X, Y) \sim C$, where $C$ is an extreme value copula. The joint distribution of $X$ and $Z = \frac{\log(X)}{\log(XY)}$ is given by:
->
-> $$P(Z \leq z, X \leq x) =G(z,x)=\left(z + z(1-z)\frac{A'(z)}{A(z)}\right)x^{A(z)/z}, \quad 0\leq x,z \leq 1$$ 
->
-> where $A'(z)$ denotes the derivate of function $A(z)$ at point $z.$
+!!! property "Property (Ghoudi 1998):
+    Let $(X, Y) \sim C$, where $C$ is an extreme value copula. The joint distribution of $X$ and $Z = \frac{\log(X)}{\log(XY)}$ is given by:
+
+    $$P(Z \leq z, X \leq x) =G(z,x)=\left(z + z(1-z)\frac{A'(z)}{A(z)}\right)x^{A(z)/z}, \quad 0\leq x,z \leq 1$$ 
+
+    where $A'(z)$ denotes the derivate of function $A(z)$ at point $z.$
 
 Since $A$ is a convex function defined on $[0, 1]$ and satisfies $-1 \leq A'(z) \leq 1$, by extension, we define $A'(1)$ as the supremum of $A'(z)$ over $(0, 1)$. By setting $x = 1$ in the previous result, we obtain the marginal distribution of $Z$:
 $$P(Z \leq z) = G_Z(z) = z + z(1 - z) \frac{A'(z)}{A(z)}, \quad 0 \leq z \leq 1.$$
@@ -82,15 +83,12 @@ Since $g_Z(z)$ is the derivative of the cumulative distribution function of $Z$,
 
 For the class of Extreme Value Copulas, We follow the methodology proposed by Ghoudi,1998. page 191. [ghoudi1998proprietes](@cite). Here, is a detailed algorithm for sampling from bivariate Extreme Value Copulas:
 
-> **Algotithm 1: Bivariate Extreme Value Copulas**
-> 
-> *(1)* Simulate $U_1,U_2 \sim \mathcal{U}[0,1]$
->
-> *(2)* Simulate $Z \sim G_Z(z)$ 
->
-> *(3)* Select $W=U_1$ with probability $p(Z)$ and $W=U_1U_2$ with probability $1-p(Z)$
-> 
-> *(4)* Return $X=W^{Z/A(Z)}$ and $Y=W^{(1-Z)/A(Z)}$  
+!!! algorithm "Algotithm (Bivariate Extreme Value Copulas sampling):"
+
+    * Simulate $U_1,U_2 \sim \mathcal{U}[0,1]$
+    * Simulate $Z \sim G_Z(z)$ 
+    * Select $W=U_1$ with probability $p(Z)$ and $W=U_1U_2$ with probability $1-p(Z)$
+    * Return $X=W^{Z/A(Z)}$ and $Y=W^{(1-Z)/A(Z)}$  
 
 Note that all functions present in the algorithm were previously defined in previous sections to ensure that the implemented methodology has a solid theoretical basis.
 

@@ -11,10 +11,11 @@ Constructor
 
 This function allows to construct a random vector specified, through the Sklar Theorem, by its marginals and its copula separately. See [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem):
 
-> **Theorem (Sklar 1959):** For every random vector ``\\bm X``, there exists a copula ``C`` such that 
->
-> ``\\forall \\bm x\\in \\mathbb R^d, F(\\bm x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).``
-> The copula ``C`` is uniquely determined on ``\\mathrm{Ran}(F_{1}) \\times ... \\times \\mathrm{Ran}(F_{d})``, where ``\\mathrm{Ran}(F_i)`` denotes the range of the function ``F_i``. In particular, if all marginals are absolutely continuous, ``C`` is unique.
+!!!theorem "Theorem (Sklar 1959):"
+    For every random vector ``\\bm X``, there exists a copula ``C`` such that 
+
+    ``\\forall \\bm x\\in \\mathbb R^d, F(\\bm x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).``
+    The copula ``C`` is uniquely determined on ``\\mathrm{Ran}(F_{1}) \\times ... \\times \\mathrm{Ran}(F_{d})``, where ``\\mathrm{Ran}(F_i)`` denotes the range of the function ``F_i``. In particular, if all marginals are absolutely continuous, ``C`` is unique.
 
 
 The obtain random vector follows `Distributions.jl`'s API and can be sampled, pdf and cdf can be evaluated, etc... We even provide a fit function. See the folowing exemple code : 
