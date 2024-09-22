@@ -30,6 +30,7 @@ makedocs(;
             "Liouville Copulas" => "Liouville.md",
             "Extreme Value Copulas" => "extremevalue/generalities.md",
             "Empirical Copulas" => "empirical/generalities.md",
+            "Vines Copulas" => "Vines.md",
             "Dependence measures" => "dependence_measures.md",
         ],
         
