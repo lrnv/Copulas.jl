@@ -2,7 +2,7 @@
     for d in [2,3,4]
         @test isa(RafteryCopula(d,0.0), IndependentCopula)
         @test isa(RafteryCopula(d,1.0), MCopula)
-    end    
+    end
     @test_throws ArgumentError RafteryCopula(3,-1.5)
     @test_throws ArgumentError RafteryCopula(2, 2.6)
 end
