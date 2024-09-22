@@ -12,15 +12,21 @@ EmpiricalCopula
 
 ## `BernsteinCopula`
 
-!!! note "Not implemented yet!"
+!!! todo "Not implemented yet!"
     Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
 
 ## `CheckerboardCopula`
 
-!!! note "Not implemented yet!"
+!!! todo "Not implemented yet!"
     Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
 
 ## `BetaCopula`
 
-!!! note "Not implemented yet!"
+!!! todo "Not implemented yet!"
     Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
+
+
+```@bibliography
+Pages = [@__FILE__]
+Canonical = false
+```

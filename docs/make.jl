@@ -26,10 +26,10 @@ makedocs(;
             "Getting Started" => "getting_started.md",
             "Sklar's Distributions" => "sklar.md",
             "Elliptical Copulas" => "elliptical/generalities.md",
-            "Archimedean Copulas" => "archimedean/generalities.md",
-            "Liouville Copulas" => "Liouville.md",
+            "Archimedean Generators" => "archimedean/generalities.md",
             "Extreme Value Copulas" => "extremevalue/generalities.md",
             "Empirical Copulas" => "empirical/generalities.md",
+            "Vines Copulas" => "Vines.md",
             "Dependence measures" => "dependence_measures.md",
         ],
         

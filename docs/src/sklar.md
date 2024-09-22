@@ -6,10 +6,11 @@ CurrentModule = Copulas
 
 Recall the following theorem from [sklar1959](@cite): 
 
-> **Theorem (Sklar):** For every random vector $\bm X$, there exists a copula $C$ such that 
->
-> $\forall \bm x\in \mathbb R^d, F(\bm x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
-> The copula $C$ is uniquely determined on $\mathrm{Ran}(F_{1}) \times ... \times \mathrm{Ran}(F_{d})$, where $\mathrm{Ran}(F_i)$ denotes the range of the function $F_i$. In particular, if all marginals are absolutely continuous, $C$ is unique.
+!!! theorem "Theorem (Sklar):"
+    For every random vector $\bm X$, there exists a copula $C$ such that 
+
+    $\forall \bm x\in \mathbb R^d, F(\bm x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
+    The copula $C$ is uniquely determined on $\mathrm{Ran}(F_{1}) \times ... \times \mathrm{Ran}(F_{d})$, where $\mathrm{Ran}(F_i)$ denotes the range of the function $F_i$. In particular, if all marginals are absolutely continuous, $C$ is unique.
 
 
 The implementation we have of this theorem allows building multivariate distributions by specifying separately their marginals and dependence structures as follows:
@@ -46,6 +47,6 @@ SklarDist
 ```
 
 ```@bibliography
-Pages = ["sklar.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```

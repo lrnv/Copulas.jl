@@ -4,11 +4,12 @@ CurrentModule = Copulas
 
 ## Introduction
 
-The [Copulas.jl](https://github.com/lrnv/Copulas.jl) package provides a large collection of models for dependence structures between random variables, so-called [copulas](https://en.wikipedia.org/wiki/Copula_(probability_theory)), with a good selection of features: 
-- random number generation
+The [Copulas.jl](https://github.com/lrnv/Copulas.jl) package provides a large collection of models for dependence structures of real random vectors, so-called [copulas](https://en.wikipedia.org/wiki/Copula_(probability_theory)), with a good selection of features: 
+- random number generation,
 - evaluation of (log)density and distribution functions
 - copula-based multivariate distributions through Sklar's theorem
 - fitting procedures, including marginal models or not
+- evaluation of dependence metrics
 
 Since copulas are distribution functions, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This compliance allows direct interoperability with other packages based on this API such as, e.g., [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
 
@@ -31,7 +32,8 @@ The package is available on Julia's general registry, and can be installed as fo
 
 ## Contributing
 
-**Contributions are welcomed !** If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on this repo. General guidelines on collaborative practices (colprac) are available at https://github.com/SciML/ColPrac.
+!!! tip "Contributions are welcomed !"
+    If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on this repo. General guidelines on collaborative practices (colprac) are available at https://github.com/SciML/ColPrac.
 
 ## Cite this work
 

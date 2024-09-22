@@ -27,6 +27,6 @@ RafteryCopula
 ```
 
 ```@bibliography
-Pages = ["Liouville.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```

@@ -58,9 +58,7 @@ GumbelBarnettGenerator
 InvGaussianGenerator
 ```
 
-
-
 ```@bibliography
-Pages = ["available_models.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```
