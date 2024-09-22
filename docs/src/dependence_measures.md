@@ -1,7 +1,10 @@
 # Measures of dependency
 
 
-Although Copulas summarize completely the dependence structure of corresponding random vector, it is an infinite dimensional object and the interpretation of its properties can be difficult when the dimension gets high. Therefore, the literature has come up with some quantification of the dependence structure that might be used as univariate summaries, of course imperfect, of certain properties of the copula at hand. 
+The copula of a random vector fully encodes its dependence structure. 
+However, copulas are infinite dimensional object and the interpretation of their properties can be difficult when the dimension gets high. 
+Therefore, the literature has come up with some quantification of the dependence structure that might be used as univariate summaries, of course imperfect, of certain properties of the copula at hand. 
+We implement the few most known ones in this package. 
 
 ## Kendall's τ and Spearman's ρ: bivariate and multivariate cases
 
@@ -13,22 +16,27 @@ Although Copulas summarize completely the dependence structure of corresponding 
 >
 > $$\rho = 12 \int C(\bm u) d\bm u -3.$$
 
-These two dependence measures make more sense in the bivariate case than in other cases, and therefore we sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated to a multivariate copula. We thus provide two different interfaces, one internal through `Copulas.τ(C::Copula)` and `Copulas.ρ(C::Copula)`, providing true multivariate Kendall taus and Spearman rhos, and one implementing `StatsBase.corkendall(C::Copula)` and `StatsBase.corspearman(C::Copula)` for matrices of bivariate dependence measures. 
+These two dependence measures make more sense in the bivariate case than in other cases, and therefore we sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated to a multivariate copula. 
+We thus provide two different interfaces:
+* `Copulas.τ(C::Copula)` and `Copulas.ρ(C::Copula)`, providing true multivariate Kendall taus and Spearman rhos
+* `StatsBase.corkendall(C::Copula)` and `StatsBase.corspearman(C::Copula)` provides on the other hand matrices of bivariate Kendall taus and Spearman rhos. 
 
-Thus, for a given copula `C`, its Kendall's tau can be obtained through `τ(C::Copula)` and its Spearman's Rho through `ρ(C::Copula)`. 
-
-In the literature however, for multivariate copulas, the matrices of bivariate Kendall taus and bivariate Spearman rhos are sometimes used, and this is these matrices that are obtained by `StatsBase.corkendall(data)` and `StatsBase.corspearman(data)` where `data::Matrix{n,d}` is a matrix of observations. The corresponding theoretical values for copulas in this package can be obtained through the `StatsBase.corkendall(C::Copula)` and `StatsBase.corspearman(C::Copula)` interface.
-
+Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C)` (for the multivariate versions) and `StatsBase.corkendall(C), StatsBase.corspearman(C)` (for the matrix versions).
+Similarly, from `StatsBase`, empirical versions of the matrices of dependence measures car be obtained from a matrix of observations `data::Matrix{n,d}` by `StatsBase.corkendall(data)` and `StatsBase.corspearman(data)`.
 
 !!! note "Specific values of tau and rho"
-    Kendall's $\tau$ and Spearman's $\rho$ have values between -1 and 1, and are -1 in case of complete anticomonotony and 1 in case of comonotony. Moreover, they are 0 in case of independence. Moreover, their values only depends on the dependence structure and not the marginals. This is why we say that they measure the 'strength' of the dependency.
+    Kendall's $\tau$ and Spearman's $\rho$ have values between -1 and 1, and are -1 in case of complete anticomonotony and 1 in case of comonotony. 
+    Moreover, they are 0 in case of independence. 
+    Moreover, their values only depends on the dependence structure and not the marginals. 
+    This is why we say that they measure the 'strength' of the dependency.
 
 Many copula estimators are based on these coefficients, see e.g., [genest2011,fredricks2007,derumigny2017](@cite).
 
 A few remarks on the state of the implementation:
 
 * Bivariate elliptical cases use $\tau = asin(\rho) * 2 / \pi$ where $\rho$ is the spearman correlation, as soon as the radial part does not have atoms. See [fang2002meta](@cite) for historical credits and [lindskog2003kendall](@cite) for a good review.
-* Many Archimedean copulas have specific formulas for their Kendall tau's, but generic ones use [mcneil2009](@cite). 
+* Many Archimedean copulas have specific formulas for their Kendall tau's, but generic ones use [mcneil2009](@cite).
+* Extreme values copulas have a specific generic method.
 * Generic copulas use directly the upper formula. 
 * Estimation is done for some copulas wia inversion of Kendall's tau or Spearman's rho.
 
@@ -51,7 +59,12 @@ Many people are interested in the tail behavior of their dependence structures. 
 
 The graph of $u \to \chi(u)$ over $[\frac{1}{2},1]$ is an interesting tool to assess the existence and strength of the tail dependency. The same kind of tools can be constructed for the lower tail. 
 
-All these coefficients quantify the behavior of the dependence structure, generally or in the extremes, and are therefore widely used in the literature either as verification tools to assess the quality of fits, or even as parameters. Many parametric copulas families have simple surjections, injections, or even bijections between these coefficients and their parametrization, allowing matching procedures of estimation (a lot like moments matching algorithm for fitting standard random variables).
+!!! note "Tail dependencies: WIP"
+    The formalization of an interface for obtaining the tail dependence coefficients of copulas is still a work a in progress in the package. Do not hesitate to reach us on github if you want to discuss it!
+
+
+All these coefficients quantify the behavior of the dependence structure, generally or in the extremes, and are therefore widely used in the literature either as verification tools to assess the quality of fits, or even as parameters.
+Many parametric copulas families have simple surjections, injections, or even bijections between these coefficients and their parametrization, allowing matching procedures of estimation (a lot like moments matching algorithm for fitting standard random variables).
 
 
 ```@bibliography
