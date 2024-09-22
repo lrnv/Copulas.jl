@@ -129,6 +129,6 @@ Convergence results for this kind of copulas can be found in [durante2015](@cite
 
 
 ```@bibliography
-Pages = ["generalities.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```

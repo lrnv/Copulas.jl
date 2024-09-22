@@ -47,6 +47,6 @@ SklarDist
 ```
 
 ```@bibliography
-Pages = ["sklar.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```

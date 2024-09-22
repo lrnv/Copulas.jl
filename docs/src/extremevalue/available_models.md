@@ -58,3 +58,8 @@ MOCopula
 ```@docs
 tEVCopula
 ```
+
+```@bibliography
+Pages = [@__FILE__]
+Canonical = false
+```

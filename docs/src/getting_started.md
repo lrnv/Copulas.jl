@@ -181,6 +181,6 @@ Each of these classes more-or-less correspond to an abstract type in our type hi
 
 
 ```@bibliography
-Pages = ["getting_started.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```

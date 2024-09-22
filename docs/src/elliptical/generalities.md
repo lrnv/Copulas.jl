@@ -123,6 +123,6 @@ EllipticalCopula
 
 
 ```@bibliography
-Pages = ["generalities.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```

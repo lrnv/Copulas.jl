@@ -15,3 +15,8 @@ GaussianCopula
 ```@docs
 TCopula
 ```
+
+```@bibliography
+Pages = [@__FILE__]
+Canonical = false
+```

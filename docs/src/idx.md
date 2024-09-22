@@ -11,6 +11,6 @@ Modules = [Copulas]
 ```
 
 ```@bibliography
-Pages = ["idx.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```

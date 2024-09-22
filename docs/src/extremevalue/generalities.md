@@ -95,3 +95,8 @@ Note that all functions present in the algorithm were previously defined in prev
 ```@docs
 ExtremeValueCopula
 ```
+
+```@bibliography
+Pages = [@__FILE__]
+Canonical = false
+```

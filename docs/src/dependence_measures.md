@@ -1,3 +1,7 @@
+```@meta
+CurrentModule = Copulas
+```
+
 # Measures of dependency
 
 
@@ -71,6 +75,6 @@ Many parametric copulas families have simple surjections, injections, or even bi
 
 
 ```@bibliography
-Pages = ["dependence_measures.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```
