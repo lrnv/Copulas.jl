@@ -9,13 +9,13 @@ Constructor
     GumbelGenerator(θ)
     GumbelCopula(d,θ)
 
-The [Gumbel](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [1,\\infty)``. It is an Archimedean copula with generator : 
+The [Gumbel](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [1,\\infty)``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = \\exp{-t^{\\frac{1}{θ}}}
 ```
 
-It has a few special cases: 
+It has a few special cases:
 - When θ = 1, it is the IndependentCopula
 - When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
 
@@ -37,21 +37,20 @@ struct GumbelGenerator{T} <: UnivariateGenerator
     end
 end
 max_monotony(G::GumbelGenerator) = Inf
-ϕ(  G::GumbelGenerator, t) = exp(-t^(1/G.θ))
+ϕ(G::GumbelGenerator, t) = exp(-t^(1 / G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = (-log(t))^G.θ
 function ϕ⁽¹⁾(G::GumbelGenerator, t)
     # first derivative of ϕ
-    a = 1/G.θ
-    tam1 = t^(a-1)
-    return - a * tam1 * exp(-tam1*t)
+    a = 1 / G.θ
+    tam1 = t^(a - 1)
+    return -a * tam1 * exp(-tam1 * t)
 end
-# ϕ⁽ᵏ⁾(G::GumbelGenerator, k, t) = kth derivative of ϕ
-τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
-function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator 
+τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ - 1) / G.θ, 1)
+function τ⁻¹(::Type{T}, τ) where {T<:GumbelGenerator}
     if τ == 1
         return Inf
     else
-        θ = 1/(1-τ)
+        θ = 1 / (1 - τ)
         if θ < 1
             @warn "GumbelCopula cannot handle negative kendall tau's, returning independence.."
             return 1
@@ -59,4 +58,35 @@ function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
         return θ
     end
 end
-williamson_dist(G::GumbelGenerator, d) = WilliamsonFromFrailty(AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0)), d)
+williamson_dist(G::GumbelGenerator, d) = WilliamsonFromFrailty(AlphaStable(α=1 / G.θ, β=1, scale=cos(π / (2G.θ))^G.θ, location=(G.θ == 1 ? 1 : 0)), d)
+
+# stirling number of the first kind
+function s1(n::Integer, k::Integer)
+    if (n == 0) ⊻ (k == 0)
+        return 0
+    elseif n == 0 && k == 0
+        return 1
+    end
+
+    return s1(n - 1, k - 1) + (n - 1) * s1(n - 1, k)
+end
+
+# stirling number of the second kind
+function s2(n::Integer, k::Integer)
+    if n == k || (k == 1 && n >= 1)
+        return 1
+    end
+    return Int(sum([((-1)^(k - i) * i^n) / (factorial(k - i) * factorial(i)) for i in 0:k]))
+end
+
+Base.broadcastable(x::GumbelGenerator) = Ref(x)
+
+function ϕ⁽ᵏ⁾(G::GumbelGenerator, k, t)
+    α = 1 / G.θ
+
+    α_d_i = (d, i) -> (-1)^(d - i) * sum([α^j * s1(d, j) * s2(j, i) for j in i:d])
+
+    P_d_α = x -> sum([α_d_i(k, i) * x^i for i in 1:k])
+
+    return ϕ(G, t) / t^k * P_d_α(t^α) / (-1)^k
+end
