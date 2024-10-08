@@ -65,14 +65,11 @@ function _cdf(C::CT,u) where {CT<:GaussianCopula}
 end
 
 function rosenblatt(C::GaussianCopula, u)
-    L = LinearAlgebra.cholesky(C.Σ).L
-
-    return permutedims(u' * inv(L)')
+    return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
 end
 
 function inverse_rosenblatt(C::GaussianCopula, s)
-    L = LinearAlgebra.cholesky(C.Σ).L
-    return permutedims(s' * L')
+    return Distributions.cdf.(Distributions.Normal(), LinearAlgebra.cholesky(C.Σ).L * Distributions.quantile.(Distributions.Normal(), s))
 end
 
 
