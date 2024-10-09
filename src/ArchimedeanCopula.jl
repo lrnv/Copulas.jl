@@ -59,10 +59,6 @@ function _cdf(C::CT, u) where {CT<:ArchimedeanCopula}
     return ϕ.(C, sum(ϕ⁻¹.(C, u)))
 end
 
-function Distributions._pdf(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
-    return ϕ⁽ᵏ⁾(C.G, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u))
-end
-
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
@@ -164,6 +160,10 @@ for T in InteractiveUtils.subtypes(UnivariateGenerator)
         const ($C){d,Tθ} = ArchimedeanCopula{d,($G){Tθ}}
         ($C)(d, θ) = ArchimedeanCopula(d, ($G)(θ))
     end
+end
+
+function Distributions._pdf(C::GumbelCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
+    return ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u))
 end
 
 # The zero-variate ones just need a few more methods:

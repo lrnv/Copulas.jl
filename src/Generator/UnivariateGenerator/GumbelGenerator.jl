@@ -66,12 +66,13 @@ williamson_dist(G::GumbelGenerator, d) = WilliamsonFromFrailty(AlphaStable(α=1 
 
 Base.broadcastable(x::GumbelGenerator) = Ref(x)
 
-function ϕ⁽ᵏ⁾(G::GumbelGenerator, k, t)
+using BigCombinatorics
+
+"""
+M. Hofert, M. Mächler, and A. J. McNeil, ‘Likelihood inference for Archimedean copulas in high dimensions under known margins’, Journal of Multivariate Analysis, vol. 110, pp. 133–150, Sep. 2012, doi: 10.1016/j.jmva.2012.02.019.
+"""
+function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Integer, t)
     α = 1 / G.θ
 
-    α_d_i = (d, i) -> (-1)^(d - i) * sum([α^j * Combinatorics.stirlings1(d, j) * Combinatorics.stirlings2(j, i) for j in i:d])
-
-    P_d_α = x -> sum([α_d_i(k, i) * x^i for i in 1:k])
-
-    return ϕ(G, t) / t^k * P_d_α(t^α) / (-1)^k
+    return ϕ(G, t) * t^(-d) * sum([α^j * Stirling1(d, j) * sum([Stirling2(j, k) * (-t^α)^k for k = 1:j]) for j = 1:d])
 end
