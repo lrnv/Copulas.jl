@@ -50,18 +50,19 @@ struct ArchimedeanCopula{d,TG} <: Copula{d}
 end
 ϕ(C::ArchimedeanCopula{d,TG}, t) where {d,TG} = ϕ(C.G, t)
 ϕ⁻¹(C::ArchimedeanCopula{d,TG}, t) where {d,TG} = ϕ⁻¹(C.G, t)
+ϕ⁻¹⁽¹⁾(C::ArchimedeanCopula{d,TG}, t) where {d,TG} = ϕ⁻¹⁽¹⁾(C.G, t)
 ϕ⁽¹⁾(C::ArchimedeanCopula{d,TG}, t) where {d,TG} = ϕ⁽¹⁾(C.G, t)
 ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG}, k, t) where {d,TG} = ϕ⁽ᵏ⁾(C.G, k, t)
 williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G, d)
 
-
 function _cdf(C::CT, u) where {CT<:ArchimedeanCopula}
-    sum_ϕ⁻¹u = 0.0
-    for us in u
-        sum_ϕ⁻¹u += ϕ⁻¹(C, us)
-    end
-    return ϕ(C, sum_ϕ⁻¹u)
+    return ϕ.(C, sum(ϕ⁻¹.(C, u)))
 end
+
+function Distributions._pdf(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
+    return ϕ⁽ᵏ⁾(C.G, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u))
+end
+
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
@@ -72,11 +73,9 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
         ϕ⁻¹u = ϕ⁻¹(C, us)
         sum_ϕ⁻¹u += ϕ⁻¹u
         sum_logϕ⁽¹⁾ϕ⁻¹u += log(-ϕ⁽¹⁾(C, ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
-    ends
+    end
     numer = ϕ⁽ᵏ⁾(C, d, sum_ϕ⁻¹u)
     dimension_sign = iseven(d) ? 1.0 : -1.0 #need this for log since (-1.0)ᵈ ϕ⁽ᵈ⁾ ≥ 0.0
-
-
     # I am not sure this is the right reasoning :
     if numer == 0
         if sum_logϕ⁽¹⁾ϕ⁻¹u == -Inf
@@ -206,7 +205,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopul
     return A
 end
 
-function rosenblatt(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
+function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     @assert d == size(u, 1)
 
     U = zeros(eltype(u), size(u))
@@ -217,5 +216,6 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
         denom = ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:j-1]))
         U[j, :] .= nom ./ denom
     end
+
     return U
 end

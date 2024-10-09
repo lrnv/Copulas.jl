@@ -36,6 +36,7 @@ struct GumbelGenerator{T} <: UnivariateGenerator
         end
     end
 end
+
 max_monotony(G::GumbelGenerator) = Inf
 ϕ(G::GumbelGenerator, t) = exp(-t^(1 / G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = (-log(t))^G.θ
@@ -44,6 +45,9 @@ function ϕ⁽¹⁾(G::GumbelGenerator, t)
     a = 1 / G.θ
     tam1 = t^(a - 1)
     return -a * tam1 * exp(-tam1 * t)
+end
+function ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t)
+    -(G.θ * (-log(t))^(G.θ - 1)) / t
 end
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ - 1) / G.θ, 1)
 function τ⁻¹(::Type{T}, τ) where {T<:GumbelGenerator}
@@ -60,31 +64,12 @@ function τ⁻¹(::Type{T}, τ) where {T<:GumbelGenerator}
 end
 williamson_dist(G::GumbelGenerator, d) = WilliamsonFromFrailty(AlphaStable(α=1 / G.θ, β=1, scale=cos(π / (2G.θ))^G.θ, location=(G.θ == 1 ? 1 : 0)), d)
 
-# stirling number of the first kind
-function s1(n::Integer, k::Integer)
-    if (n == 0) ⊻ (k == 0)
-        return 0
-    elseif n == 0 && k == 0
-        return 1
-    end
-
-    return s1(n - 1, k - 1) + (n - 1) * s1(n - 1, k)
-end
-
-# stirling number of the second kind
-function s2(n::Integer, k::Integer)
-    if n == k || (k == 1 && n >= 1)
-        return 1
-    end
-    return Int(sum([((-1)^(k - i) * i^n) / (factorial(k - i) * factorial(i)) for i in 0:k]))
-end
-
 Base.broadcastable(x::GumbelGenerator) = Ref(x)
 
 function ϕ⁽ᵏ⁾(G::GumbelGenerator, k, t)
     α = 1 / G.θ
 
-    α_d_i = (d, i) -> (-1)^(d - i) * sum([α^j * s1(d, j) * s2(j, i) for j in i:d])
+    α_d_i = (d, i) -> (-1)^(d - i) * sum([α^j * Combinatorics.stirlings1(d, j) * Combinatorics.stirlings2(j, i) for j in i:d])
 
     P_d_α = x -> sum([α_d_i(k, i) * x^i for i in 1:k])
 
