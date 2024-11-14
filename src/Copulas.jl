@@ -10,7 +10,7 @@ module Copulas
     import StatsFuns
     import TaylorSeries
     import ForwardDiff
-    import Cubature
+    import HCubature
     import MvNormalCDF
     import WilliamsonTransforms
     import Combinatorics
@@ -18,14 +18,14 @@ module Copulas
     import QuadGK
     import LinearAlgebra
 
-    # Standard copulas and stuff. 
+    # Standard copulas and stuff.
     include("utils.jl")
     include("Copula.jl")
     include("SklarDist.jl")
     export pseudos,
            SklarDist
 
-    # Others. 
+    # Others.
     include("MiscellaneousCopulas/SurvivalCopula.jl")
     include("MiscellaneousCopulas/PlackettCopula.jl")
     include("MiscellaneousCopulas/EmpiricalCopula.jl")
@@ -41,10 +41,10 @@ module Copulas
     include("EllipticalCopula.jl")
     include("EllipticalCopulas/GaussianCopula.jl")
     include("EllipticalCopulas/TCopula.jl")
-    export GaussianCopula, 
+    export GaussianCopula,
            TCopula
 
-    # These three distributions might be merged in Distrbutions.jl one day. 
+    # These three distributions might be merged in Distrbutions.jl one day.
     include("UnivariateDistribution/Sibuya.jl")
     include("UnivariateDistribution/Logarithmic.jl")
     include("UnivariateDistribution/AlphaStable.jl")
@@ -67,7 +67,7 @@ module Copulas
     include("Generator/UnivariateGenerator/GumbelGenerator.jl")
     include("Generator/UnivariateGenerator/InvGaussianGenerator.jl")
     include("Generator/UnivariateGenerator/JoeGenerator.jl")
-    
+
     # Archimedean copulas
     include("ArchimedeanCopula.jl")
     include("BivariateArchimedeanMethods.jl")
@@ -94,9 +94,9 @@ module Copulas
     include("ExtremeValueCopulas/HuslerReissCopula.jl")
     include("ExtremeValueCopulas/LogCopula.jl")
     include("ExtremeValueCopulas/MixedCopula.jl")
-    include("ExtremeValueCopulas/MOCopula.jl")    
+    include("ExtremeValueCopulas/MOCopula.jl")
     include("ExtremeValueCopulas/tEVCopula.jl")
-    
+
     export AsymGalambosCopula,
            AsymLogCopula,
            AsymMixedCopula,
@@ -106,12 +106,12 @@ module Copulas
            HuslerReissCopula,
            LogCopula,
            MixedCopula,
-           MOCopula,   
+           MOCopula,
            tEVCopula
 
 
     # Subsetting
-    include("SubsetCopula.jl") # not exported yet. 
+    include("SubsetCopula.jl") # not exported yet.
 
     using PrecompileTools
     @setup_workload begin
@@ -143,8 +143,8 @@ module Copulas
                 # WCopula(2),            ################ <<<<<<<<<-------------- Does not work and I cannot explain why !
                 # RafteryCopula(2, 0.2), ################ <<<<<<<<<<------------- BUGGY
                 # RafteryCopula(3, 0.5), ################ <<<<<<<<<<------------- BUGGY
-                # We should probably add others to speed up again. 
-            ) 
+                # We should probably add others to speed up again.
+            )
                 u1 = rand(C)
                 u = rand(C,2)
                 if applicable(Distributions.pdf,C,u1) && !(typeof(C)<:EmpiricalCopula)
