@@ -12,6 +12,7 @@ Constructor
 The Student's [T Copula](https://en.wikipedia.org/wiki/Multivariate_t-distribution#Copulas_based_on_the_multivariate_t) is the 
 copula of a [Multivariate Student distribution](https://en.wikipedia.org/wiki/Multivariate_t-distribution). It is constructed as : 
 
+
 ```math
 C(\\mathbf{x}; \\boldsymbol{n,\\Sigma}) = F_{n,\\Sigma}(F_{n,\\Sigma,i}^{-1}(x_i),i\\in 1,...d)
 ```
