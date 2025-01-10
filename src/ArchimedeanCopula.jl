@@ -66,26 +66,18 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
     end
-    sum_ϕ⁻¹u = 0.0
-    sum_logϕ⁽¹⁾ϕ⁻¹u = 0.0
+    T = promote_type(Float64, eltype(u)) # the FLoat64 here should be eltype(C) when copulas wil be type agnostic... 
+    logdenom = sum_ϕ⁻¹u = zero(T)
     for us in u
         ϕ⁻¹u = ϕ⁻¹(C,us)
         sum_ϕ⁻¹u += ϕ⁻¹u
-        sum_logϕ⁽¹⁾ϕ⁻¹u += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
+        logdenom += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
     end
-    numer = ϕ⁽ᵏ⁾(C, d, sum_ϕ⁻¹u)
-    dimension_sign = iseven(d) ? 1.0 : -1.0 #need this for log since (-1.0)ᵈ ϕ⁽ᵈ⁾ ≥ 0.0
-
-
-    # I am not sure this is the right reasoning :
-    if numer == 0
-        if sum_logϕ⁽¹⁾ϕ⁻¹u == -Inf
-            return Inf
-        else
-            return -Inf
-        end
+    numer = abs(ϕ⁽ᵏ⁾(C, d, sum_ϕ⁻¹u))
+    if numer > 0
+        return log(numer) - logdenom
     else
-        return log(dimension_sign*numer) - sum_logϕ⁽¹⁾ϕ⁻¹u
+        return -T(Inf)
     end
 end
 
