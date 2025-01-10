@@ -66,7 +66,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
     end
-    T = eltype(u)
+    T = promote_type(Float64, eltype(u)) # the FLoat64 here should be eltype(C) when copulas wil be type agnostic... 
     logdenom = sum_ϕ⁻¹u = zero(T)
     for us in u
         ϕ⁻¹u = ϕ⁻¹(C,us)
