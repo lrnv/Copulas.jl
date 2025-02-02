@@ -6,6 +6,7 @@ Fields:
 
 Constructor
 
+
     GaussianCopula(Σ)
 
 The [Gaussian Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Gaussian_copula) is the 
