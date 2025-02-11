@@ -26,3 +26,11 @@ end
     U = rosenblatt(G, u)
     @test corkendall(U[1, :], U[2, :]) ≈ 0.0 atol = 0.01
 end
+
+@testitem "Boundary test for bivariate Gumbel" begin
+    using Distributions
+    G = GumbelCopula(2, 2.5)
+    @test pdf(G, [0.1, 0.0]) == 0.0 broken = true
+    @test pdf(G, [0.0, 0.1]) == 0.0 broken = true
+    @test pdf(G, [0.0, 0.0]) == 0.0 broken = true
+end
