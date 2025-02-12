@@ -30,7 +30,7 @@ end
 @testitem "Boundary test for bivariate Gumbel" begin
     using Distributions
     G = GumbelCopula(2, 2.5)
-    @test pdf(G, [0.1, 0.0]) == 0.0 broken = true
-    @test pdf(G, [0.0, 0.1]) == 0.0 broken = true
-    @test pdf(G, [0.0, 0.0]) == 0.0 broken = true
+    @test pdf(G, [0.1, 0.0]) == 0.0
+    @test pdf(G, [0.0, 0.1]) == 0.0
+    @test pdf(G, [0.0, 0.0]) == 0.0
 end

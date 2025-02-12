@@ -156,10 +156,6 @@ for T in InteractiveUtils.subtypes(UnivariateGenerator)
     end
 end
 
-function Distributions._pdf(C::GumbelCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
-    return ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u))
-end
-
 # The zero-variate ones just need a few more methods:
 Distributions._logpdf(::ArchimedeanCopula{d,IndependentGenerator}, u) where {d} = all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
 Distributions._logpdf(::ArchimedeanCopula{d,MGenerator}, u) where {d} = all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
