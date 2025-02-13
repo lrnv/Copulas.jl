@@ -30,9 +30,17 @@ end
 @testitem "Clayton Rosenblatt" begin
     using StatsBase
 
-    C = ClaytonCopula(2, 2.5)
-    u = rand(C, 10^5)
+    dimensions = [2, 2, 3, 5]
+    parameters = [2.5, -0.5, -0.3, 2.0]
 
-    U = rosenblatt(C, u)
-    @test corkendall(U[1, :], U[2, :]) ≈ 0.0 atol = 0.01
+    for (d, θ) in zip(dimensions, parameters)
+        C = ClaytonCopula(d, θ)
+        u = rand(C, 10^5)
+        U = rosenblatt(C, u)
+        for i in 1:(d - 1)
+            for j in (i + 1):d
+                @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.01
+            end
+        end
+    end
 end
