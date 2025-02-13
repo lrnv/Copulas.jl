@@ -47,7 +47,7 @@ function ϕ⁽¹⁾(G::GumbelGenerator, t)
     return -a * tam1 * exp(-tam1 * t)
 end
 function ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t)
-    -(G.θ * (-log(t))^(G.θ - 1)) / t
+    return -(G.θ * (-log(t))^(G.θ - 1)) / t
 end
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ - 1) / G.θ, 1)
 function τ⁻¹(::Type{T}, τ) where {T<:GumbelGenerator}
@@ -62,9 +62,14 @@ function τ⁻¹(::Type{T}, τ) where {T<:GumbelGenerator}
         return θ
     end
 end
-williamson_dist(G::GumbelGenerator, d) = WilliamsonFromFrailty(AlphaStable(α=1 / G.θ, β=1, scale=cos(π / (2G.θ))^G.θ, location=(G.θ == 1 ? 1 : 0)), d)
-
-Base.broadcastable(x::GumbelGenerator) = Ref(x)
+function williamson_dist(G::GumbelGenerator, d)
+    return WilliamsonFromFrailty(
+        AlphaStable(;
+            α=1 / G.θ, β=1, scale=cos(π / (2G.θ))^G.θ, location=(G.θ == 1 ? 1 : 0)
+        ),
+        d,
+    )
+end
 
 using BigCombinatorics
 
@@ -74,5 +79,10 @@ M. Hofert, M. Mächler, and A. J. McNeil, ‘Likelihood inference for Archimedea
 function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Integer, t)
     α = 1 / G.θ
 
-    return ϕ(G, t) * t^(-d) * sum([α^j * Stirling1(d, j) * sum([Stirling2(j, k) * (-t^α)^k for k = 1:j]) for j = 1:d])
+    return ϕ(G, t) *
+           t^(-d) *
+           sum([
+               α^j * Stirling1(d, j) * sum([Stirling2(j, k) * (-t^α)^k for k in 1:j]) for
+               j in 1:d
+           ])
 end
