@@ -82,7 +82,9 @@ end
 #     return 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
 # end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real,CT<:ArchimedeanCopula}
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}
+) where {T<:Real,CT<:ArchimedeanCopula}
     # By default, we use the Williamson sampling.
     Random.randexp!(rng, x)
     r = rand(rng, williamson_dist(C))
@@ -92,7 +94,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::Abstract
     end
     return x
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real,CT<:ArchimedeanCopula}
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}
+) where {T<:Real,CT<:ArchimedeanCopula}
     # More efficient version that precomputes the Williamson transform on each call to sample in batches:
     Random.randexp!(rng, A)
     n = size(A, 2)
@@ -127,7 +131,6 @@ end
 ################                                                                ################
 ################################################################################################
 
-
 ## Automatic syntactic sugar for all ZeroVariateGenerators and UnivariateGenerators.
 ## see https://discourse.julialang.org/t/how-to-dispatch-on-a-type-alias/106476/38?u=lrnv
 function generatorof(::Type{S}) where {S<:ArchimedeanCopula}
@@ -141,7 +144,7 @@ function generatorof(::Type{S}) where {S<:ArchimedeanCopula}
 end
 for T in InteractiveUtils.subtypes(ZeroVariateGenerator)
     G = Symbol(last(split(string(T), '.')))
-    C = Symbol(string(G)[begin:end-9] * "Copula")
+    C = Symbol(string(G)[begin:(end - 9)] * "Copula")
     @eval begin
         const ($C){d} = ArchimedeanCopula{d,($G)}
         ($C)(d) = ArchimedeanCopula(d, ($G)())
@@ -149,7 +152,7 @@ for T in InteractiveUtils.subtypes(ZeroVariateGenerator)
 end
 for T in InteractiveUtils.subtypes(UnivariateGenerator)
     G = Symbol(last(split(string(T), '.')))
-    C = Symbol(string(G)[begin:end-9] * "Copula")
+    C = Symbol(string(G)[begin:(end - 9)] * "Copula")
     @eval begin
         const ($C){d,Tθ} = ArchimedeanCopula{d,($G){Tθ}}
         ($C)(d, θ) = ArchimedeanCopula(d, ($G)(θ))
@@ -157,38 +160,60 @@ for T in InteractiveUtils.subtypes(UnivariateGenerator)
 end
 
 # The zero-variate ones just need a few more methods:
-Distributions._logpdf(::ArchimedeanCopula{d,IndependentGenerator}, u) where {d} = all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
-Distributions._logpdf(::ArchimedeanCopula{d,MGenerator}, u) where {d} = all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
-Distributions._logpdf(::ArchimedeanCopula{d,WGenerator}, u) where {d} = sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
+function Distributions._logpdf(::ArchimedeanCopula{d,IndependentGenerator}, u) where {d}
+    return all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
+end
+function Distributions._logpdf(::ArchimedeanCopula{d,MGenerator}, u) where {d}
+    return all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
+end
+function Distributions._logpdf(::ArchimedeanCopula{d,WGenerator}, u) where {d}
+    return sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
+end
 
 _cdf(::ArchimedeanCopula{d,IndependentGenerator}, u) where {d} = prod(u)
 _cdf(::ArchimedeanCopula{d,MGenerator}, u) where {d} = minimum(u)
 _cdf(::ArchimedeanCopula{d,WGenerator}, u) where {d} = max(1 + sum(u) - d, 0)
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,IndependentGenerator}, x::AbstractVector{T}) where {d,T<:Real}
-    Random.rand!(rng, x)
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    ::ArchimedeanCopula{d,IndependentGenerator},
+    x::AbstractVector{T},
+) where {d,T<:Real}
+    return Random.rand!(rng, x)
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,MGenerator}, x::AbstractVector{T}) where {d,T<:Real}
-    x .= rand(rng)
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,MGenerator}, x::AbstractVector{T}
+) where {d,T<:Real}
+    return x .= rand(rng)
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,WGenerator}, x::AbstractVector{T}) where {d,T<:Real}
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,WGenerator}, x::AbstractVector{T}
+) where {d,T<:Real}
     @assert d == 2
     x[1] = rand(rng)
     x[2] = 1 - x[1]
     return x
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,IndependentGenerator}, A::DenseMatrix{T}) where {T<:Real,d}
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    ::ArchimedeanCopula{d,IndependentGenerator},
+    A::DenseMatrix{T},
+) where {T<:Real,d}
     Random.rand!(rng, A)
     return A
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,MGenerator}, A::DenseMatrix{T}) where {T<:Real,d}
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,MGenerator}, A::DenseMatrix{T}
+) where {T<:Real,d}
     A[1, :] .= rand(rng, size(A, 2))
     for i in 2:size(A, 1)
         A[i, :] .= A[1, :]
     end
     return A
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,WGenerator}, A::DenseMatrix{T}) where {T<:Real,d}
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,WGenerator}, A::DenseMatrix{T}
+) where {T<:Real,d}
     @assert size(A, 1) == 2
     A[1, :] .= rand(rng, size(A, 2))
     A[2, :] .= 1 .- A[1, :]
@@ -203,8 +228,32 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
 
     for j in 2:d
         nom = ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:j]))
-        denom = ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:j-1]))
+        denom = ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:(j - 1)]))
         U[j, :] .= nom ./ denom
+    end
+
+    return U
+end
+
+function inverse_rosenblatt(
+    C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
+) where {d,TG}
+    @assert d == size(u, 1)
+
+    U = zeros(eltype(u), size(u))
+    U[1, :] = u[1, :]
+
+    for i in axes(u, 2)
+        for j in 2:d
+            f =
+                x ->
+                    (
+                        ϕ⁽ᵏ⁾(C.G, j - 1, sum(ϕ⁻¹.(C.G, [U[1:(j - 1), i]..., x]))) /
+                        ϕ⁽ᵏ⁾(C.G, j - 1, sum(ϕ⁻¹.(C.G, U[1:(j - 1), i])))
+                    ) - u[j, i]
+
+            U[j, i] = Roots.find_zero(f, (eps(1.0), 1.0), Roots.A42())
+        end
     end
 
     return U
