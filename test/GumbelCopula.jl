@@ -20,11 +20,23 @@ end
 @testitem "Gumbel Rosenblatt" begin
     using StatsBase
 
-    G = GumbelCopula(2, 2.5)
-    u = rand(G, 10^5)
+    dimensions = [2, 3, 5]
+    parameters = [2.5, 5.0, 10.0]
 
-    U = rosenblatt(G, u)
-    @test corkendall(U[1, :], U[2, :]) ≈ 0.0 atol = 0.01
+    for (d, θ) in zip(dimensions, parameters)
+        C = GumbelCopula(d, θ)
+        u = rand(C, 10^5)
+        U = rosenblatt(C, u)
+        for i in 1:(d - 1)
+            for j in (i + 1):d
+                @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.01
+            end
+        end
+
+        u = rand(C, 10^4)
+        U = rosenblatt(C, u)
+        @test u ≈ inverse_rosenblatt(C, U)
+    end
 end
 
 @testitem "Boundary test for bivariate Gumbel" begin

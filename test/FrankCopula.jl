@@ -20,5 +20,9 @@ end
                 @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.01
             end
         end
+
+        u = rand(C, 10^4)
+        U = rosenblatt(C, u)
+        @test u ≈ inverse_rosenblatt(C, U)
     end
 end
