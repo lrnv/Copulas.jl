@@ -258,3 +258,23 @@ function inverse_rosenblatt(
 
     return U
 end
+
+"""
+M. Cambou, M. Hofert, and C. Lemieux, ‘Quasi-random numbers for copula models’, Stat Comput, vol. 27, no. 5, pp. 1307–1329, Sep. 2017, doi: 10.1007/s11222-016-9688-4.
+
+"""
+function inverse_rosenblatt(
+    C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
+) where {d,TG<:ClaytonGenerator}
+    @assert d == size(u, 1)
+
+    U = zeros(eltype(u), size(u))
+    U[1, :] = u[1, :]
+
+    for j in 2:d
+        U[j, :] =
+            ((1 .- (j - 1) .+ vec(sum(u[1:(j - 1), :] .^ -C.G.θ; dims=1))) .* (u[j, :] .^ (-C.G.θ / (C.G.θ + 1)) .- 1) .+ 1) .^(-1/C.G.θ)
+    end
+
+    return U
+end
