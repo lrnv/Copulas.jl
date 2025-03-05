@@ -235,6 +235,22 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
     return U
 end
 
+function rosenblatt(
+    C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
+) where {d,TG<:ClaytonGenerator}
+    @assert d == size(u, 1)
+
+    U = zeros(eltype(u), size(u))
+    U[1, :] = u[1, :]
+
+    for j in 2:d
+        nom = 1 .- j .+ reduce(+, [u[l, :] .^ (-C.G.θ) for l in 1:j])
+        denom = 2 .- j .+ reduce(+, [u[l, :] .^ (-C.G.θ) for l in 1:(j - 1)])
+        U[j, :] .= (nom ./ denom) .^ (-1 / C.G.θ - (j - 1))
+    end
+    return U
+end
+
 function inverse_rosenblatt(
     C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
 ) where {d,TG}
@@ -273,7 +289,10 @@ function inverse_rosenblatt(
 
     for j in 2:d
         U[j, :] =
-            ((1 .- (j - 1) .+ vec(sum(u[1:(j - 1), :] .^ -C.G.θ; dims=1))) .* (u[j, :] .^ (-C.G.θ / (C.G.θ + 1)) .- 1) .+ 1) .^(-1/C.G.θ)
+            (
+                (1 .- (j - 1) .+ vec(sum(u[1:(j - 1), :] .^ -C.G.θ; dims=1))) .*
+                (u[j, :] .^ (-C.G.θ / (C.G.θ + 1)) .- 1) .+ 1
+            ) .^ (-1 / C.G.θ)
     end
 
     return U
