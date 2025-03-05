@@ -244,8 +244,8 @@ function rosenblatt(
     U[1, :] = u[1, :]
 
     for j in 2:d
-        nom = 1 .- j .+ reduce(+, [u[l, :] .^ (-C.G.θ) for l in 1:j])
-        denom = 2 .- j .+ reduce(+, [u[l, :] .^ (-C.G.θ) for l in 1:(j - 1)])
+        nom = 1 .- j .+ sum(u[1:j, :] .^ (-C.G.θ); dims=1)[:]
+        denom = 2 .- j .+ sum(u[1:(j - 1), :] .^ (-C.G.θ); dims=1)[:]
         U[j, :] .= (nom ./ denom) .^ (-1 / C.G.θ - (j - 1))
     end
     return U
@@ -290,8 +290,9 @@ function inverse_rosenblatt(
     for j in 2:d
         U[j, :] =
             (
-                (1 .- (j - 1) .+ vec(sum(u[1:(j - 1), :] .^ -C.G.θ; dims=1))) .*
-                (u[j, :] .^ (-C.G.θ / (C.G.θ + 1)) .- 1) .+ 1
+                1 .+
+                (1 .- (j - 1) .+ sum(U[1:(j - 1), :] .^ -C.G.θ; dims=1))[:] .*
+                (u[j, :] .^ (-1 / (j - 1 + 1 / C.G.θ)) .- 1)
             ) .^ (-1 / C.G.θ)
     end
 
