@@ -78,6 +78,13 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     end
 end
 
+function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
+    if !all(0 .<= u .<= 1)
+        return eltype(u)(-Inf)
+    end
+    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+end
+
 # function τ(C::ArchimedeanCopula)
 #     return 4*Distributions.expectation(r -> ϕ(C,r), williamson_dist(C)) - 1
 # end
@@ -195,6 +202,12 @@ function Distributions._rand!(
     return x
 end
 function Distributions._rand!(
+    rng::Distributions.AbstractRNG, C::ClaytonCopula, x::AbstractVector{<:Real}
+)
+    x[:] = inverse_rosenblatt(C, rand(rng, length(x)))
+    return x
+end
+function Distributions._rand!(
     rng::Distributions.AbstractRNG,
     ::ArchimedeanCopula{d,IndependentGenerator},
     A::DenseMatrix{T},
@@ -219,6 +232,26 @@ function Distributions._rand!(
     A[2, :] .= 1 .- A[1, :]
     return A
 end
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG, C::ClaytonCopula, A::DenseMatrix{<:Real}
+)
+    A[:] = inverse_rosenblatt(C, rand(rng, size(A)...))
+    return A
+end
+
+function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
+    @assert d == length(u)
+
+    U = zeros(eltype(u), length(u))
+    U[1] = u[1]
+
+    for j in 2:d
+        U[j] =
+            ϕ⁽ᵏ⁾(C.G, j - 1, sum(ϕ⁻¹.(C.G, u[1:j]))) /
+            ϕ⁽ᵏ⁾(C.G, j - 1, sum(ϕ⁻¹.(C.G, u[1:(j - 1)])))
+    end
+    return U
+end
 
 function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     @assert d == size(u, 1)
@@ -227,11 +260,27 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
     U[1, :] = u[1, :]
 
     for j in 2:d
-        nom = ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:j]))
-        denom = ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:(j - 1)]))
-        U[j, :] .= nom ./ denom
+        U[j, :] .=
+            ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:j])) ./ ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:(j - 1)]))
     end
 
+    return U
+end
+
+function rosenblatt(
+    C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}
+) where {d,TG<:ClaytonGenerator}
+    @assert d == size(u, 1)
+
+    U = zeros(eltype(u), size(u))
+    U[1, :] = u[1, :]
+
+    for j in 2:d
+        U[j] =
+            (
+                (1 - j + sum(u[1:j] .^ (-C.G.θ))) / (2 - j + sum(u[1:(j - 1)] .^ (-C.G.θ)))
+            )^(-1 / C.G.θ - (j - 1))
+    end
     return U
 end
 
@@ -244,9 +293,11 @@ function rosenblatt(
     U[1, :] = u[1, :]
 
     for j in 2:d
-        nom = 1 .- j .+ sum(u[1:j, :] .^ (-C.G.θ); dims=1)[:]
-        denom = 2 .- j .+ sum(u[1:(j - 1), :] .^ (-C.G.θ); dims=1)[:]
-        U[j, :] .= (nom ./ denom) .^ (-1 / C.G.θ - (j - 1))
+        U[j, :] .=
+            (
+                (1 .- j .+ sum(u[1:j, :] .^ (-C.G.θ); dims=1)[:]) ./
+                (2 .- j .+ sum(u[1:(j - 1), :] .^ (-C.G.θ); dims=1)[:])
+            ) .^ (-1 / C.G.θ - (j - 1))
     end
     return U
 end
@@ -281,6 +332,26 @@ M. Cambou, M. Hofert, and C. Lemieux, ‘Quasi-random numbers for copula models�
 """
 function inverse_rosenblatt(
     C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
+) where {d,TG<:ClaytonGenerator}
+    @assert d == size(u, 1)
+
+    U = zeros(eltype(u), size(u))
+    U[1, :] = u[1, :]
+
+    for j in 2:d
+        U[j, :] =
+            (
+                1 .+
+                (1 .- (j - 1) .+ sum(U[1:(j - 1), :] .^ -C.G.θ; dims=1))[:] .*
+                (u[j, :] .^ (-1 / (j - 1 + 1 / C.G.θ)) .- 1)
+            ) .^ (-1 / C.G.θ)
+    end
+
+    return U
+end
+
+function inverse_rosenblatt(
+    C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}
 ) where {d,TG<:ClaytonGenerator}
     @assert d == size(u, 1)
 
