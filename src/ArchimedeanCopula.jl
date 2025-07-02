@@ -75,10 +75,10 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     end
     numer = abs(ϕ⁽ᵏ⁾(C, d, sum_ϕ⁻¹u))
     if numer > 0
-        return log(numer) - logdenom
-    else
-        return -T(Inf)
+        r = log(numer) - logdenom
+        !isnan(r) && return r
     end
+    return -T(Inf)
 end
 
 # function τ(C::ArchimedeanCopula)  
