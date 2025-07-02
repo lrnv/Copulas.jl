@@ -27,7 +27,7 @@ struct GalambosCopula{P} <: ExtremeValueCopula{P}
     θ::P  # Copula parameter
     function GalambosCopula(θ)
         if θ > 19.5
-            @info "GalambosCopula(θ=$(θ)): θ is large, which may lead to numerical issues."
+            @info "GalambosCopula(θ=$(θ)): Such large θ may lead to numerical issues."
         end
         if θ < 0
             throw(ArgumentError("Theta must be >= 0"))

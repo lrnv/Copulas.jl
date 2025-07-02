@@ -53,7 +53,7 @@ function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
     else
         θ = 1/(1-τ)
         if θ < 1
-            @warn "GumbelCopula cannot handle negative kendall tau's, returning independence.."
+            @info "GumbelCopula cannot handle κ <0."
             return 1
         end
         return θ
