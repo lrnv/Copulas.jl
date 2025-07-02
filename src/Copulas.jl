@@ -129,25 +129,13 @@ module Copulas
                 FrankCopula(3,12),
                 JoeCopula(3,7),
                 GumbelCopula(4,7),
-                GumbelBarnettCopula(3,0.7),
-                InvGaussianCopula(4,0.05),
-                InvGaussianCopula(3,8),
                 GaussianCopula([1 0.5; 0.5 1]),
                 TCopula(4, [1 0.5; 0.5 1]),
                 FGMCopula(2,1),
-                MCopula(4),
-                ArchimedeanCopula(2,Copulas.i𝒲(Distributions.LogNormal(),2)),
-                PlackettCopula(2.0),
-                EmpiricalCopula(randn(2,100),pseudo_values=false),
-                SurvivalCopula(ClaytonCopula(2,-0.7),(1,2)),
-                # WCopula(2),            ################ <<<<<<<<<-------------- Does not work and I cannot explain why !
-                # RafteryCopula(2, 0.2), ################ <<<<<<<<<<------------- BUGGY
-                # RafteryCopula(3, 0.5), ################ <<<<<<<<<<------------- BUGGY
-                # We should probably add others to speed up again.
             )
                 u1 = rand(C)
                 u = rand(C,2)
-                if applicable(Distributions.pdf,C,u1) && !(typeof(C)<:EmpiricalCopula)
+                if applicable(Distributions.pdf,C,u1)
                      Distributions.pdf(C,u1)
                      Distributions.pdf(C,u)
                 end
