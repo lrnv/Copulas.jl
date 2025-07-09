@@ -41,24 +41,24 @@ struct ClaytonGenerator{T} <: UnivariateGenerator
 end
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1 / G.θ))
 # generator
-ϕ(G::ClaytonGenerator, t) = (1 + t)^(-1 / G.θ)
+ϕ(G::ClaytonGenerator, t::Real) = (1 + t)^(-1 / G.θ)
 
 # first generator derivative
-function ϕ⁽¹⁾(G::ClaytonGenerator, t)
+function ϕ⁽¹⁾(G::ClaytonGenerator, t::Real)
     α = 1 / G.θ
     return -α * (1 + t)^(-1 - α)
 end
 # kth generator derivative
-function ϕ⁽ᵏ⁾(G::ClaytonGenerator, k, t)
+function ϕ⁽ᵏ⁾(G::ClaytonGenerator, k, t::Real)
     α = 1 / G.θ
     return (-1)^k * prod([0:(k - 1);] .+ α) * (1 + t)^(-(k + α))
 end
 # inverse generator
-function ϕ⁻¹(G::ClaytonGenerator, t)
+function ϕ⁻¹(G::ClaytonGenerator, t::Real)
     return t^(-G.θ) - 1
 end
 # first inverse generator derivative
-function ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t)
+function ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t::Real)
     return -G.θ * t^(-G.θ - 1)
 end
 τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ / (G.θ + 2), 1)
