@@ -60,7 +60,7 @@ function _cdf(C::CT, u) where {CT<:ArchimedeanCopula}
 end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
-    if !all(0 .<= u .<= 1)
+    if !all(0 .< u .<= 1)
         return eltype(u)(-Inf)
     end
     T = promote_type(Float64, eltype(u)) # the FLoat64 here should be eltype(C) when copulas wil be type agnostic...
@@ -87,6 +87,20 @@ end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
     if !all(0 .< u .<= 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
+        return eltype(u)(-Inf)
+    end
+    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+end
+
+function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:AMHGenerator}
+    if !all(0 .< u .<= 1)
+        return eltype(u)(-Inf)
+    end
+    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+end
+
+function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:GumbelGenerator}
+    if !all(0 .< u .<= 1)
         return eltype(u)(-Inf)
     end
     return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))

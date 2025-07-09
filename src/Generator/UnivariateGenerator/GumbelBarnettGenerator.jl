@@ -15,7 +15,7 @@ The Gumbel-Barnett copula is an archimdean copula with generator:
 \\phi(t) = \\exp{θ^{-1}(1-e^{t})}, 0 \\leq \\theta \\leq 1.
 ```
 
-It has a few special cases: 
+It has a few special cases:
 - When θ = 0, it is the IndependentCopula
 
 References:
@@ -31,12 +31,12 @@ struct GumbelBarnettGenerator{T} <: UnivariateGenerator
             return IndependentGenerator()
         else
             return new{typeof(θ)}(θ)
-        end 
+        end
     end
 end
 max_monotony(G::GumbelBarnettGenerator) = Inf
-ϕ(  G::GumbelBarnettGenerator, t) = exp((1-exp(t))/G.θ)
-ϕ⁻¹(G::GumbelBarnettGenerator, t) = log1p(-G.θ*log(t))
+ϕ(  G::GumbelBarnettGenerator, t::Number) = exp((1-exp(t))/G.θ)
+ϕ⁻¹(G::GumbelBarnettGenerator, t::Real) = log1p(-G.θ*log(t))
 # ϕ⁽¹⁾(G::GumbelBarnettGenerator, t) =  # First derivative of ϕ
 # ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, k, t) = # kth derivative of ϕ
 
@@ -48,7 +48,7 @@ end
 function τ⁻¹(::Type{T}, tau) where T<:GumbelBarnettGenerator
     if tau == 0
         return zero(tau)
-    elseif tau > 0 
+    elseif tau > 0
         @warn "GumbelBarnettCopula cannot handle positive kendall tau's, returning independence.."
         return zero(tau)
     elseif tau < τ(GumbelBarnettCopula(2,1))

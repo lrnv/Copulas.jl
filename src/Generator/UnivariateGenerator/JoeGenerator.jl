@@ -9,13 +9,13 @@ Constructor
     JoeGenerator(θ)
     JoeCopula(d,θ)
 
-The [Joe](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [1,\\infty)``. It is an Archimedean copula with generator : 
+The [Joe](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [1,\\infty)``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = 1 - \\left(1 - e^{-t}\\right)^{\\frac{1}{\\theta}}
 ```
 
-It has a few special cases: 
+It has a few special cases:
 - When θ = 1, it is the IndependentCopula
 - When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
 
@@ -37,12 +37,12 @@ struct JoeGenerator{T} <: UnivariateGenerator
     end
 end
 max_monotony(G::JoeGenerator) = Inf
-ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
-ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
+ϕ(  G::JoeGenerator, t::Number) = 1-(-expm1(-t))^(1/G.θ)
+ϕ⁻¹(G::JoeGenerator, t::Real) = -log1p(-(1-t)^G.θ)
 # ϕ⁽¹⁾(G::JoeGenerator, t) =  First derivative of ϕ
 # ϕ⁽ᵏ⁾(G::JoeGenerator, k, t) = kth derivative of ϕ
-τ(G::JoeGenerator) = 1 - 4sum(1/(k*(2+k*G.θ)*(G.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula. 
-function τ⁻¹(::Type{T},tau) where T<:JoeGenerator 
+τ(G::JoeGenerator) = 1 - 4sum(1/(k*(2+k*G.θ)*(G.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula.
+function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
     if tau == 1
         return Inf
     elseif tau == 0

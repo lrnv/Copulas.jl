@@ -38,15 +38,15 @@ struct GumbelGenerator{T} <: UnivariateGenerator
 end
 
 max_monotony(G::GumbelGenerator) = Inf
-ϕ(G::GumbelGenerator, t) = exp(-t^(1 / G.θ))
-ϕ⁻¹(G::GumbelGenerator, t) = (-log(t))^G.θ
-function ϕ⁽¹⁾(G::GumbelGenerator, t)
+ϕ(G::GumbelGenerator, t::Number) = exp(-t^(1 / G.θ))
+ϕ⁻¹(G::GumbelGenerator, t::Real) = (-log(t))^G.θ
+function ϕ⁽¹⁾(G::GumbelGenerator, t::Real)
     # first derivative of ϕ
     a = 1 / G.θ
     tam1 = t^(a - 1)
     return -a * tam1 * exp(-tam1 * t)
 end
-function ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t)
+function ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t::Real)
     return -(G.θ * (-log(t))^(G.θ - 1)) / t
 end
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ - 1) / G.θ, 1)
@@ -76,7 +76,7 @@ using BigCombinatorics
 """
 M. Hofert, M. Mächler, and A. J. McNeil, ‘Likelihood inference for Archimedean copulas in high dimensions under known margins’, Journal of Multivariate Analysis, vol. 110, pp. 133–150, Sep. 2012, doi: 10.1016/j.jmva.2012.02.019.
 """
-function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Integer, t)
+function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Integer, t::Real)
     α = 1 / G.θ
 
     return ϕ(G, t) *

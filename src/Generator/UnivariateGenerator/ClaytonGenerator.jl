@@ -49,7 +49,7 @@ function ϕ⁽¹⁾(G::ClaytonGenerator, t::Real)
     return -α * (1 + t)^(-1 - α)
 end
 # kth generator derivative
-function ϕ⁽ᵏ⁾(G::ClaytonGenerator, k, t::Real)
+function ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Integer, t::Real)
     α = 1 / G.θ
     return (-1)^k * prod([0:(k - 1);] .+ α) * (1 + t)^(-(k + α))
 end

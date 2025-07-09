@@ -41,9 +41,9 @@ function ϕ(G::Generator, t)
         "This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.",
     )
 end
-ϕ⁻¹(G::Generator, x) = Roots.find_zero(t -> ϕ(G, t) - x, (0.0, Inf))
-ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G, x), t)
-function ϕ⁽ᵏ⁾(G::Generator, k, t)
+ϕ⁻¹(G::Generator, x::Real) = Roots.find_zero(t -> ϕ(G, t) - x, (0.0, Inf))
+ϕ⁽¹⁾(G::Generator, t::Real) = ForwardDiff.derivative(x -> ϕ(G, x), t)
+function ϕ⁽ᵏ⁾(G::Generator, k::Integer, t::Real)
     X = TaylorSeries.Taylor1(eltype(t), k)
     taylor_expansion = ϕ(G, t + X)
     coef = TaylorSeries.getcoeff(taylor_expansion, k)
