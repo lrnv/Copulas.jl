@@ -1,18 +1,11 @@
-
-@testitem "Gumbel generator derivative" begin
-    G = Copulas.GumbelGenerator(1.25)
-
-    @test Copulas.ϕ⁽ᵏ⁾(G, 50, 15.0) ≈ 1057 rtol = 0.01
-end
-
-@testitem "Gumbel rand" begin
+@testitem "GumbelBarnett rand" begin
     using StatsBase
 
-    dimensions = [2, 3, 5]
-    parameters = [2.5, 5.0, 10.0]
+    dimensions = [2]
+    parameters = [0.5]
 
     for (d, θ) in zip(dimensions, parameters)
-        C = GumbelCopula(d, θ)
+        C = GumbelBarnettCopula(d, θ)
         τ = Copulas.τ(C)
         u = rand(C, 10^5)
         for i in 1:(d - 1)
@@ -23,14 +16,14 @@ end
     end
 end
 
-@testitem "Gumbel Rosenblatt" begin
+@testitem "GumbelBarnett Rosenblatt" begin
     using StatsBase
 
-    dimensions = [2, 3, 5]
-    parameters = [2.5, 5.0, 10.0]
+    dimensions = [2]
+    parameters = [0.5]
 
     for (d, θ) in zip(dimensions, parameters)
-        C = GumbelCopula(d, θ)
+        C = GumbelBarnettCopula(d, θ)
         u = rand(C, 10^5)
         U = rosenblatt(C, u)
         for i in 1:(d - 1)
@@ -43,12 +36,4 @@ end
         U = rosenblatt(C, u)
         @test u ≈ inverse_rosenblatt(C, U)
     end
-end
-
-@testitem "Boundary test for bivariate Gumbel" begin
-    using Distributions
-    G = GumbelCopula(2, 2.5)
-    @test pdf(G, [0.1, 0.0]) == 0.0
-    @test pdf(G, [0.0, 0.1]) == 0.0
-    @test pdf(G, [0.0, 0.0]) == 0.0
 end

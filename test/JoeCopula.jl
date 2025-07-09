@@ -1,3 +1,20 @@
+@testitem "Joe rand" begin
+    using StatsBase
+
+    dimensions = [2, 3, 5]
+    parameters = [1.5, 2.5, 10.0]
+
+    for (d, θ) in zip(dimensions, parameters)
+        C = JoeCopula(d, θ)
+        τ = Copulas.τ(C)
+        u = rand(C, 10^5)
+        for i in 1:(d - 1)
+            for j in (i + 1):d
+                @test corkendall(u[i, :], u[j, :]) ≈ τ rtol = 0.1
+            end
+        end
+    end
+end
 @testitem "Joe Rosenblatt" begin
     using StatsBase
 
