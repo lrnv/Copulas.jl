@@ -15,6 +15,17 @@
         end
     end
 end
+
+@testitem "Joe derivatives" begin
+    using ForwardDiff
+    C = Copulas.JoeGenerator(2.5)
+
+    @test ForwardDiff.derivative(x -> Copulas.ϕ(C, x), 10.0) ≈ Copulas.ϕ⁽¹⁾(C, 10.0)
+    @test ForwardDiff.derivative(x -> Copulas.ϕ(C, x), 10.0) ≈ Copulas.ϕ⁽ᵏ⁾(C,1, 10.0)
+
+    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C, x), 10.0) ≈ Copulas.ϕ⁽ᵏ⁾(C,2, 10.0)
+end
+
 @testitem "Joe Rosenblatt" begin
     using StatsBase
 

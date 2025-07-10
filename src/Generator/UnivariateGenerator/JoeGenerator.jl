@@ -39,8 +39,12 @@ end
 max_monotony(G::JoeGenerator) = Inf
 ϕ(  G::JoeGenerator, t::Number) = 1-(-expm1(-t))^(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t::Real) = -log1p(-(1-t)^G.θ)
-# ϕ⁽¹⁾(G::JoeGenerator, t) =  First derivative of ϕ
-# ϕ⁽ᵏ⁾(G::JoeGenerator, k, t) = kth derivative of ϕ
+ϕ⁽¹⁾(G::JoeGenerator, t::Real) = (-expm1(-t))^(1/G.θ)/(G.θ-G.θ*exp(t))
+function ϕ⁽ᵏ⁾(G::JoeGenerator, d::Integer, t::Real)
+    α = 1/G.θ
+    P_d_α = sum([Stirling2(d, k+1)*(SpecialFunctions.gamma(k+1-α)/SpecialFunctions.gamma(1-α))*(exp(-t)/(-expm1(-t)))^k   for k =0:d-1])
+    return (-1)^d*α*(exp(-t)/(-expm1(-t))^(1-α))*P_d_α
+end
 τ(G::JoeGenerator) = 1 - 4sum(1/(k*(2+k*G.θ)*(G.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula.
 function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
     if tau == 1
