@@ -18,6 +18,7 @@ import LogExpFunctions
 import QuadGK
 import LinearAlgebra
 using PolyLog
+using BigCombinatorics
 
 # Standard copulas and stuff.
 include("utils.jl")

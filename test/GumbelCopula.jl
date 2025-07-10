@@ -1,8 +1,15 @@
 
 @testitem "Gumbel generator derivative" begin
+    using ForwardDiff
     G = Copulas.GumbelGenerator(1.25)
 
+    @test ForwardDiff.derivative(x -> Copulas.ϕ(G, x), 10.0) ≈ Copulas.ϕ⁽¹⁾(G, 10.0)
+    @test ForwardDiff.derivative(x -> Copulas.ϕ(G, x), 10.0) ≈ Copulas.ϕ⁽ᵏ⁾(G, 1, 10.0)
+    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(G, x), 10.0) ≈ Copulas.ϕ⁽ᵏ⁾(G, 2, 10.0)
+    # reference value taken from the paper
     @test Copulas.ϕ⁽ᵏ⁾(G, 50, 15.0) ≈ 1057 rtol = 0.01
+
+    @test ForwardDiff.derivative(x -> Copulas.ϕ⁻¹(G, x), 0.5) ≈ Copulas.ϕ⁻¹⁽¹⁾(G, 0.5)
 end
 
 @testitem "Gumbel rand" begin

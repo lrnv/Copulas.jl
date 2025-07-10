@@ -38,14 +38,28 @@ struct GumbelGenerator{T} <: UnivariateGenerator
 end
 
 max_monotony(G::GumbelGenerator) = Inf
+# generator
 ϕ(G::GumbelGenerator, t::Number) = exp(-t^(1 / G.θ))
-ϕ⁻¹(G::GumbelGenerator, t::Real) = (-log(t))^G.θ
+# first generator derivative
 function ϕ⁽¹⁾(G::GumbelGenerator, t::Real)
-    # first derivative of ϕ
     a = 1 / G.θ
     tam1 = t^(a - 1)
     return -a * tam1 * exp(-tam1 * t)
 end
+# kth generator derivative
+function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Integer, t::Real)
+    α = 1 / G.θ
+
+    return ϕ(G, t) *
+           t^(-d) *
+           sum([
+               α^j * Stirling1(d, j) * sum([Stirling2(j, k) * (-t^α)^k for k in 1:j]) for
+               j in 1:d
+           ])
+end
+# inverse generator
+ϕ⁻¹(G::GumbelGenerator, t::Real) = (-log(t))^G.θ
+# first inverse generator derivative
 function ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t::Real)
     return -(G.θ * (-log(t))^(G.θ - 1)) / t
 end
@@ -69,20 +83,4 @@ function williamson_dist(G::GumbelGenerator, d)
         ),
         d,
     )
-end
-
-using BigCombinatorics
-
-"""
-M. Hofert, M. Mächler, and A. J. McNeil, ‘Likelihood inference for Archimedean copulas in high dimensions under known margins’, Journal of Multivariate Analysis, vol. 110, pp. 133–150, Sep. 2012, doi: 10.1016/j.jmva.2012.02.019.
-"""
-function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Integer, t::Real)
-    α = 1 / G.θ
-
-    return ϕ(G, t) *
-           t^(-d) *
-           sum([
-               α^j * Stirling1(d, j) * sum([Stirling2(j, k) * (-t^α)^k for k in 1:j]) for
-               j in 1:d
-           ])
 end
