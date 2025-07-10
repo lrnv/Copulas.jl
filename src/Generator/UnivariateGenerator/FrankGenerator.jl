@@ -38,31 +38,60 @@ struct FrankGenerator{T} <: UnivariateGenerator
     end
 end
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
-ϕ(G::FrankGenerator, t::Real) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
-ϕ(G::FrankGenerator, t::TaylorSeries.Taylor1) = G.θ > 0 ? -log(-expm1(LogExpFunctions.log1mexp(-G.θ)-t))/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
-ϕ⁻¹(G::FrankGenerator, t::Real) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
-ϕ⁽¹⁾(G::FrankGenerator, t::Real) = (one(t) - one(t) / (one(t) + exp(-t)*expm1(-G.θ))) / G.θ
-ϕ⁽ᵏ⁾(G::FrankGenerator, k::Integer, t::Real) = (-1)^k*(1/G.θ)*reli(-(k-1), (1-exp(-G.θ))*exp(-t))
-williamson_dist(G::FrankGenerator, d) = G.θ > 0 ?  WilliamsonFromFrailty(Logarithmic(-G.θ), d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),d)
-
-Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
-function τ(G::FrankGenerator)
-    θ = G.θ
-    T = promote_type(typeof(θ),Float64)
-    if abs(θ) < sqrt(eps(T))
-        # return the taylor approx.
-        return θ/9 * (1 - (θ/10)^2)
+# generator
+function ϕ(G::FrankGenerator, t::Number)
+    return if G.θ > 0
+        -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ) - t) / G.θ
     else
-        return 1+4(Debye(θ,1)-1)/θ
+        -log1p(exp(-t) * expm1(-G.θ)) / G.θ
     end
 end
-function τ⁻¹(::Type{T},tau) where T<:FrankGenerator
-    s,v = sign(tau),abs(tau)
+# first generator derivative
+function ϕ⁽¹⁾(G::FrankGenerator, t::Real)
+    return (one(t) - one(t) / (one(t) + exp(-t) * expm1(-G.θ))) / G.θ
+end
+# kth generator derivative
+function ϕ⁽ᵏ⁾(G::FrankGenerator, k::Integer, t::Real)
+    return (-1)^k * (1 / G.θ) * reli(-(k - 1), (1 - exp(-G.θ)) * exp(-t))
+end
+# inverse generator
+function ϕ⁻¹(G::FrankGenerator, t::Real)
+    return if G.θ > 0
+        LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t * G.θ)
+    else
+        -log(expm1(-t * G.θ) / expm1(-G.θ))
+    end
+end
+# first inverse generator derivative
+function ϕ⁻¹⁽¹⁾(G::FrankGenerator, t::Real)
+    return G.θ / (-expm1(G.θ * t))
+end
+function williamson_dist(G::FrankGenerator, d)
+    return if G.θ > 0
+        WilliamsonFromFrailty(Logarithmic(-G.θ), d)
+    else
+        WilliamsonTransforms.𝒲₋₁(t -> ϕ(G, t), d)
+    end
+end
+
+Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k / expm1(t), 0, x)[1]
+function τ(G::FrankGenerator)
+    θ = G.θ
+    T = promote_type(typeof(θ), Float64)
+    if abs(θ) < sqrt(eps(T))
+        # return the taylor approx.
+        return θ / 9 * (1 - (θ / 10)^2)
+    else
+        return 1 + 4(Debye(θ, 1) - 1) / θ
+    end
+end
+function τ⁻¹(::Type{T}, tau) where {T<:FrankGenerator}
+    s, v = sign(tau), abs(tau)
     if v == 0
         return v
     elseif v == 1
         return s * Inf
     else
-        return s*Roots.fzero(x -> τ(FrankGenerator(x))-v, 0, Inf)
+        return s * Roots.fzero(x -> τ(FrankGenerator(x)) - v, 0, Inf)
     end
 end
