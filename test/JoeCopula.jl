@@ -18,12 +18,13 @@ end
 
 @testitem "Joe derivatives" begin
     using ForwardDiff
-    C = Copulas.JoeGenerator(2.5)
+    G = Copulas.JoeGenerator(2.5)
 
-    @test ForwardDiff.derivative(x -> Copulas.ϕ(C, x), 10.0) ≈ Copulas.ϕ⁽¹⁾(C, 10.0)
-    @test ForwardDiff.derivative(x -> Copulas.ϕ(C, x), 10.0) ≈ Copulas.ϕ⁽ᵏ⁾(C,1, 10.0)
+    @test ForwardDiff.derivative(x -> Copulas.ϕ(G, x), 10.0) ≈ Copulas.ϕ⁽¹⁾(G, 10.0)
+    @test ForwardDiff.derivative(x -> Copulas.ϕ(G, x), 10.0) ≈ Copulas.ϕ⁽ᵏ⁾(G, 1, 10.0)
+    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(G, x), 10.0) ≈ Copulas.ϕ⁽ᵏ⁾(G, 2, 10.0)
 
-    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C, x), 10.0) ≈ Copulas.ϕ⁽ᵏ⁾(C,2, 10.0)
+    @test ForwardDiff.derivative(x -> Copulas.ϕ⁻¹(G, x), 0.5) ≈ Copulas.ϕ⁻¹⁽¹⁾(G, 0.5)
 end
 
 @testitem "Joe Rosenblatt" begin
