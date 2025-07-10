@@ -1,5 +1,3 @@
-using PolyLog
-
 """
     AMHGenerator{T}
 
@@ -41,11 +39,13 @@ max_monotony(::AMHGenerator) = Inf
 # first generator derivative
 ϕ⁽¹⁾(G::AMHGenerator, t::Real) = ((1 - G.θ) * exp(t)) / (exp(t) - G.θ)^2
 # kth generator derivative
-ϕ⁽ᵏ⁾(G::AMHGenerator, k::Integer, t::Real) = (-1)^k*(1-G.θ)/G.θ*reli(-k, G.θ*exp(-t))
+function ϕ⁽ᵏ⁾(G::AMHGenerator, k::Integer, t::Real)
+    return (-1)^k * (1 - G.θ) / G.θ * reli(-k, G.θ * exp(-t))
+end
 # inverse generator
 ϕ⁻¹(G::AMHGenerator, t::Real) = log(G.θ + (1 - G.θ) / t)
 # first inverse generator derivative
-ϕ⁻¹⁽¹⁾(G::AMHGenerator, t::Real) = (G.θ -1) / (G.θ*(t-1)*t+t)
+ϕ⁻¹⁽¹⁾(G::AMHGenerator, t::Real) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
 function williamson_dist(G::AMHGenerator, d)
     return if G.θ >= 0
         WilliamsonFromFrailty(1 + Distributions.Geometric(1 - G.θ), d)
