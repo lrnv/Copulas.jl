@@ -1,4 +1,23 @@
 
+@testitem "Gumbel pdf" begin
+    using HCubature
+    using Distributions
+
+    C = GumbelCopula(2, 2.5)
+    d = size(C)[1]
+    @test hcubature(x -> pdf(C, x), zeros(d), ones(d))[1] ≈ 1.0
+end
+
+@testitem "Gumbel cdf" begin
+    using HCubature
+    using Distributions
+
+    C = GumbelCopula(2, 2.5)
+    d = size(C)[1]
+    u = fill(0.5, d)
+    @test hcubature(x -> pdf(C, x), zeros(d), u)[1] ≈ cdf(C, u)
+end
+
 @testitem "Gumbel generator derivative" begin
     using ForwardDiff
     G = Copulas.GumbelGenerator(1.25)

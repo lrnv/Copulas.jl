@@ -1,3 +1,22 @@
+@testitem "Joe pdf" begin
+    using HCubature
+    using Distributions
+
+    C = GumbelCopula(2, 1.5)
+    d = size(C)[1]
+    @test hcubature(x -> pdf(C, x), zeros(d), ones(d))[1] ≈ 1.0
+end
+
+@testitem "Joe cdf" begin
+    using HCubature
+    using Distributions
+
+    C = JoeCopula(2, 1.5)
+    d = size(C)[1]
+    u = fill(0.5, d)
+    @test hcubature(x -> pdf(C, x), zeros(d), u)[1] ≈ cdf(C, u)
+end
+
 @testitem "Joe rand" begin
     using StatsBase
 

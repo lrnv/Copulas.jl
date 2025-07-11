@@ -11,6 +11,27 @@
     end
 end
 
+@testitem "AMH pdf" begin
+    using HCubature
+    using Distributions
+
+    for C in [AMHCopula(2, 0.5), AMHCopula(2, -0.5)]
+        d = size(C)[1]
+        @test hcubature(x -> pdf(C, x), zeros(d), ones(d))[1] ≈ 1.0
+    end
+end
+
+@testitem "AMH cdf" begin
+    using HCubature
+    using Distributions
+
+    for C in [AMHCopula(2, 0.5), AMHCopula(2, -0.5)]
+        d = size(C)[1]
+        u = fill(0.5, d)
+        @test hcubature(x -> pdf(C, x), zeros(d), u)[1] ≈ cdf(C, u)
+    end
+end
+
 @testitem "AMH rand" begin
     using StatsBase
 

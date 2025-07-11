@@ -1,3 +1,24 @@
+@testitem "Frank pdf" begin
+    using HCubature
+    using Distributions
+
+    for C in [FrankCopula(2, -1.0), FrankCopula(2, 5.0)]
+        d = size(C)[1]
+        @test hcubature(x -> pdf(C, x), zeros(d), ones(d))[1] ≈ 1.0
+    end
+end
+
+@testitem "Frank cdf" begin
+    using HCubature
+    using Distributions
+
+    for C in [FrankCopula(2, -1.0), FrankCopula(2, 5.0)]
+        d = size(C)[1]
+        u = fill(0.5, d)
+        @test hcubature(x -> pdf(C, x), zeros(d), u)[1] ≈ cdf(C, u)
+    end
+end
+
 @testitem "Frank rand" begin
     using StatsBase
 
