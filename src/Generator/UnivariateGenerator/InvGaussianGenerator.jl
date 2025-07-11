@@ -65,10 +65,10 @@ function τ⁻¹(::Type{T}, tau) where T<:InvGaussianGenerator
     if tau == zero(tau)
         return tau
     elseif tau < 0
-        @warn "InvGaussianCopula cannot handle negative dependencies, returning independence..."
+        @info "InvGaussianCopula cannot handle κ < 0."
         return zero(tau)
     elseif tau > 0.5
-        @warn "InvGaussianCopula cannot handle kendall tau greater than 0.5, using 0.5.."
+        @info "InvGaussianCopula cannot handle κ > 1/2."
         return tau * Inf
     end
     return Roots.find_zero(x -> τ(InvGaussianGenerator(x)) - tau, (sqrt(eps(tau)), Inf))

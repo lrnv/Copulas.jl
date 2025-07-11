@@ -64,7 +64,7 @@ function τ⁻¹(::Type{T}, tau) where {T<:JoeGenerator}
     elseif tau == 0
         return 1
     elseif tau < 0
-        @warn "JoeCoula cannot handle negative kendall taus, we return the independence..."
+        @info "JoeCoula cannot handle κ < 0."
         return one(tau)
     else
         return Roots.find_zero(θ -> τ(JoeGenerator(θ)) - tau, (one(tau), tau * Inf))

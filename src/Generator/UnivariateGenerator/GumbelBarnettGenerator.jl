@@ -53,10 +53,10 @@ function τ⁻¹(::Type{T}, tau) where {T<:GumbelBarnettGenerator}
     if tau == 0
         return zero(tau)
     elseif tau > 0
-        @warn "GumbelBarnettCopula cannot handle positive kendall tau's, returning independence.."
+        @info "GumbelBarnettCopula cannot handle κ > 0."
         return zero(tau)
     elseif tau < τ(GumbelBarnettCopula(2, 1))
-        @warn "GumbelBarnettCopula cannot handle negative kendall tau's smaller than  ≈ -0.3613, so we capped to that value."
+        @info "GumbelBarnettCopula cannot handle κ <≈ -0.3613."
         return one(tau)
     end
     # Use the bisection method to find the root

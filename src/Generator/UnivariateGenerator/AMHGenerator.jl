@@ -79,10 +79,10 @@ function τ⁻¹(::Type{T}, tau) where {T<:AMHGenerator}
     if tau == zero(tau)
         return tau
     elseif tau > 1 / 3
-        @warn "AMHCopula cannot handle kendall tau's greater than 1/3. We capped it to 1/3."
+        @info "AMHCopula cannot handle κ > 1/3."
         return one(tau)
     elseif tau < (5 - 8 * log(2)) / 3
-        @warn "AMHCopula cannot handle kendall tau's smaller than (5- 8ln(2))/3 (approx -0.1817). We capped it to this value."
+        @info "AMHCopula cannot handle κ < 5 - 8ln(2))/3 (approx -0.1817)."
         return -one(tau)
     end
     search_range = tau > 0 ? (0, 1) : (-1, 0)
