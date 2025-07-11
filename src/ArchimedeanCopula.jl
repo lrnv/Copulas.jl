@@ -67,63 +67,14 @@ function _cdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
 end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
-    if !all(0 .< u .<= 1)
-        return eltype(u)(-Inf)
-    end
-    T = promote_type(Float64, eltype(u)) # the FLoat64 here should be eltype(C) when copulas wil be type agnostic...
-    logdenom = sum_ϕ⁻¹u = zero(T)
-    for us in u
-        ϕ⁻¹u = ϕ⁻¹(C, us)
-        sum_ϕ⁻¹u += ϕ⁻¹u
-        logdenom += log(-ϕ⁽¹⁾(C, ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
-    end
-    numer = abs(ϕ⁽ᵏ⁾(C, d, sum_ϕ⁻¹u))
-    if numer > 0
-        return log(numer) - logdenom
-    else
-        return -T(Inf)
-    end
-end
-
-function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:AMHGenerator}
-    if !all(0 .< u .<= 1)
+    if !all(0 .< u .< 1)
         return eltype(u)(-Inf)
     end
     return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
 end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
-    if !all(0 .< u .<= 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
-        return eltype(u)(-Inf)
-    end
-    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
-end
-
-function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:FrankGenerator}
-    if !all(0 .< u .<= 1)
-        return eltype(u)(-Inf)
-    end
-    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
-end
-
-function Distributions._logpdf(
-    C::ArchimedeanCopula{d,TG}, u
-) where {d,TG<:GumbelBarnettGenerator}
-    if !all(0 .< u .<= 1)
-        return eltype(u)(-Inf)
-    end
-    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
-end
-
-function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:GumbelGenerator}
-    if !all(0 .< u .<= 1)
-        return eltype(u)(-Inf)
-    end
-    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
-end
-
-function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:JoeGenerator}
-    if !all(0 .< u .<= 1)
+    if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
         return eltype(u)(-Inf)
     end
     return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))

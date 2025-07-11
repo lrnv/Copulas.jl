@@ -50,6 +50,7 @@ function ϕ⁽ᵏ⁾(G::Generator, k::Integer, t::Real)
     der = coef * factorial(k)
     return der
 end
+ϕ⁻¹⁽¹⁾(G::Generator, t::Real) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
 williamson_dist(G::Generator, d) = WilliamsonTransforms.𝒲₋₁(t -> ϕ(G, t), d)
 
 # τ(G::Generator) = @error("This generator has no kendall tau implemented.")
