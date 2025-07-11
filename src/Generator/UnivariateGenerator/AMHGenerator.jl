@@ -37,7 +37,7 @@ max_monotony(::AMHGenerator) = Inf
 # generator
 ϕ(G::AMHGenerator, t::Number) = (1 - G.θ) / (exp(t) - G.θ)
 # first generator derivative
-ϕ⁽¹⁾(G::AMHGenerator, t::Real) = ((1 - G.θ) * exp(t)) / (exp(t) - G.θ)^2
+ϕ⁽¹⁾(G::AMHGenerator, t::Real) = -((1 - G.θ) * exp(t)) / (exp(t) - G.θ)^2
 # kth generator derivative
 function ϕ⁽ᵏ⁾(G::AMHGenerator, k::Integer, t::Real)
     return (-1)^k * (1 - G.θ) / G.θ * reli(-k, G.θ * exp(-t))
