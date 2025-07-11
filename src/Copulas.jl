@@ -1,22 +1,22 @@
 module Copulas
 
-import Base
-import Random
-import InteractiveUtils
-import SpecialFunctions
-import Roots
-import Distributions
-import StatsBase
-import StatsFuns
-import TaylorSeries
-import ForwardDiff
-import HCubature
-import MvNormalCDF
-import WilliamsonTransforms
-import Combinatorics
-import LogExpFunctions
-import QuadGK
-import LinearAlgebra
+using Base: Base
+using Random: Random
+using InteractiveUtils: InteractiveUtils
+using SpecialFunctions: SpecialFunctions
+using Roots: Roots
+using Distributions: Distributions
+using StatsBase: StatsBase
+using StatsFuns: StatsFuns
+using TaylorSeries: TaylorSeries
+using ForwardDiff: ForwardDiff
+using HCubature: HCubature
+using MvNormalCDF: MvNormalCDF
+using WilliamsonTransforms: WilliamsonTransforms
+using Combinatorics: Combinatorics
+using LogExpFunctions: LogExpFunctions
+using QuadGK: QuadGK
+using LinearAlgebra: LinearAlgebra
 using PolyLog
 using BigCombinatorics
 
@@ -24,8 +24,7 @@ using BigCombinatorics
 include("utils.jl")
 include("Copula.jl")
 include("SklarDist.jl")
-export pseudos,
-    SklarDist
+export pseudos, SklarDist
 
 # Others.
 include("MiscellaneousCopulas/SurvivalCopula.jl")
@@ -33,18 +32,13 @@ include("MiscellaneousCopulas/PlackettCopula.jl")
 include("MiscellaneousCopulas/EmpiricalCopula.jl")
 include("MiscellaneousCopulas/FGMCopula.jl")
 include("MiscellaneousCopulas/RafteryCopula.jl")
-export SurvivalCopula,
-    PlackettCopula,
-    EmpiricalCopula,
-    FGMCopula,
-    RafteryCopula
+export SurvivalCopula, PlackettCopula, EmpiricalCopula, FGMCopula, RafteryCopula
 
 # Elliptical copulas
 include("EllipticalCopula.jl")
 include("EllipticalCopulas/GaussianCopula.jl")
 include("EllipticalCopulas/TCopula.jl")
-export GaussianCopula,
-    TCopula
+export GaussianCopula, TCopula
 
 # These three distributions might be merged in Distrbutions.jl one day.
 include("UnivariateDistribution/Sibuya.jl")
@@ -111,7 +105,6 @@ export AsymGalambosCopula,
     MOCopula,
     tEVCopula
 
-
 # Subsetting
 include("SubsetCopula.jl") # not exported yet.
 
@@ -143,7 +136,7 @@ using PrecompileTools
             MCopula(4),
             ArchimedeanCopula(2, Copulas.i𝒲(Distributions.LogNormal(), 2)),
             PlackettCopula(2.0),
-            EmpiricalCopula(randn(2, 100), pseudo_values=false),
+            EmpiricalCopula(randn(2, 100); pseudo_values=false),
             SurvivalCopula(ClaytonCopula(2, -0.7), (1, 2)),
             # WCopula(2),            ################ <<<<<<<<<-------------- Does not work and I cannot explain why !
             # RafteryCopula(2, 0.2), ################ <<<<<<<<<<------------- BUGGY

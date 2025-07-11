@@ -59,6 +59,13 @@ function _cdf(C::CT, u) where {CT<:ArchimedeanCopula}
     return ϕ.(C, sum(ϕ⁻¹.(C, u)))
 end
 
+function _cdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
+    if C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1)
+        return zero(eltype(u))
+    end
+    return ϕ.(C, sum(ϕ⁻¹.(C, u)))
+end
+
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .<= 1)
         return eltype(u)(-Inf)
@@ -78,11 +85,11 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     end
 end
 
-function _cdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
-    if C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1)
-        return zero(eltype(u))
+function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:AMHGenerator}
+    if !all(0 .< u .<= 1)
+        return eltype(u)(-Inf)
     end
-    return ϕ.(C, sum(ϕ⁻¹.(C, u)))
+    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
 end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
@@ -92,7 +99,16 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:Clayt
     return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
 end
 
-function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:AMHGenerator}
+function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:FrankGenerator}
+    if !all(0 .< u .<= 1)
+        return eltype(u)(-Inf)
+    end
+    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+end
+
+function Distributions._logpdf(
+    C::ArchimedeanCopula{d,TG}, u
+) where {d,TG<:GumbelBarnettGenerator}
     if !all(0 .< u .<= 1)
         return eltype(u)(-Inf)
     end
@@ -100,6 +116,13 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:AMHGe
 end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:GumbelGenerator}
+    if !all(0 .< u .<= 1)
+        return eltype(u)(-Inf)
+    end
+    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+end
+
+function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:JoeGenerator}
     if !all(0 .< u .<= 1)
         return eltype(u)(-Inf)
     end
