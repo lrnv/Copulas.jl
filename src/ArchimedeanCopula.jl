@@ -56,14 +56,7 @@ end
 williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G, d)
 
 function _cdf(C::CT, u) where {CT<:ArchimedeanCopula}
-    return ϕ.(C, sum(ϕ⁻¹.(C, u)))
-end
-
-function _cdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
-    if C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1)
-        return zero(eltype(u))
-    end
-    return ϕ.(C, sum(ϕ⁻¹.(C, u)))
+    return ϕ(C, sum(ϕ⁻¹.(C, u)))
 end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
