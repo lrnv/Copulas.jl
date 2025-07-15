@@ -234,20 +234,6 @@ function Distributions._rand!(
     return A
 end
 
-function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
-    @assert d == length(u)
-
-    U = zeros(eltype(u), length(u))
-    U[1] = u[1]
-
-    for j in 2:d
-        U[j] =
-            ϕ⁽ᵏ⁾(C.G, j - 1, sum(ϕ⁻¹.(C.G, u[1:j]))) /
-            ϕ⁽ᵏ⁾(C.G, j - 1, sum(ϕ⁻¹.(C.G, u[1:(j - 1)])))
-    end
-    return U
-end
-
 function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     @assert d == size(u, 1)
 
@@ -259,23 +245,6 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
             ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:j])) ./ ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:(j - 1)]))
     end
 
-    return U
-end
-
-function rosenblatt(
-    C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}
-) where {d,TG<:ClaytonGenerator}
-    @assert d == size(u, 1)
-
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :]
-
-    for j in 2:d
-        U[j] =
-            (
-                (1 - j + sum(u[1:j] .^ (-C.G.θ))) / (2 - j + sum(u[1:(j - 1)] .^ (-C.G.θ)))
-            )^(-1 / C.G.θ - (j - 1))
-    end
     return U
 end
 
@@ -295,6 +264,12 @@ function rosenblatt(
             ) .^ (-1 / C.G.θ - (j - 1))
     end
     return U
+end
+
+function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
+    @assert d == size(u, 1)
+
+    return rosenblatt(C, reshape(u, (d, 1)))[:]
 end
 
 function inverse_rosenblatt(
@@ -321,10 +296,6 @@ function inverse_rosenblatt(
     return U
 end
 
-"""
-M. Cambou, M. Hofert, and C. Lemieux, ‘Quasi-random numbers for copula models’, Stat Comput, vol. 27, no. 5, pp. 1307–1329, Sep. 2017, doi: 10.1007/s11222-016-9688-4.
-
-"""
 function inverse_rosenblatt(
     C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
 ) where {d,TG<:ClaytonGenerator}
@@ -347,20 +318,8 @@ end
 
 function inverse_rosenblatt(
     C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}
-) where {d,TG<:ClaytonGenerator}
+) where {d,TG}
     @assert d == size(u, 1)
 
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :]
-
-    for j in 2:d
-        U[j, :] =
-            (
-                1 .+
-                (1 .- (j - 1) .+ sum(U[1:(j - 1), :] .^ -C.G.θ; dims=1))[:] .*
-                (u[j, :] .^ (-1 / (j - 1 + 1 / C.G.θ)) .- 1)
-            ) .^ (-1 / C.G.θ)
-    end
-
-    return U
+    return inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
 end
