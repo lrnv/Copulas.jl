@@ -38,7 +38,7 @@ max_monotony(::AMHGenerator) = Inf
 ϕ⁻¹(G::AMHGenerator, t) = log(G.θ + (1-G.θ)/t)
 # ϕ⁽¹⁾(G::AMHGenerator, t) =  First derivative of ϕ
 # ϕ⁽ᵏ⁾(G::AMHGenerator, k, t) = kth derivative of ϕ
-williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),Val(d)) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
+williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ), Val(d)) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
 
 function τ(G::AMHGenerator)
     θ = G.θ

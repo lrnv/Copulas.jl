@@ -59,4 +59,4 @@ function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
         return θ
     end
 end
-williamson_dist(G::GumbelGenerator, ::Val{d}) where d = WilliamsonFromFrailty(AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0)), d)
+williamson_dist(G::GumbelGenerator, ::Val{d}) where d = WilliamsonFromFrailty(AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0)), Val(d))
