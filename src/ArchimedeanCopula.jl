@@ -52,7 +52,7 @@ end
 ϕ⁻¹(C::ArchimedeanCopula{d,TG},t)  where {d,TG} = ϕ⁻¹(C.G,t)
 ϕ⁽¹⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁽¹⁾(C.G,t)
 ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁽ᵏ⁾(C.G, Val(d), t)
-williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G,d)
+williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G,Val(d))
 
 
 function _cdf(C::CT,u) where {CT<:ArchimedeanCopula} 

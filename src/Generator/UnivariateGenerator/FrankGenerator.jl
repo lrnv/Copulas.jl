@@ -39,11 +39,11 @@ struct FrankGenerator{T} <: UnivariateGenerator
 end
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
 ϕ(  G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
-ϕ(  G::FrankGenerator, t::TaylorSeries.Taylor1) = G.θ > 0 ? -log(-expm1(LogExpFunctions.log1mexp(-G.θ)-t))/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
+# ϕ(  G::FrankGenerator, t::TaylorSeries.Taylor1) = G.θ > 0 ? -log(-expm1(LogExpFunctions.log1mexp(-G.θ)-t))/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
 ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
 ϕ⁽¹⁾(G::FrankGenerator, t) = (one(t) - one(t) / (one(t) + exp(-t)*expm1(-G.θ))) / G.θ  # First derivative of ϕ
 # ϕ⁽ᵏ⁾(G::FrankGenerator, k, t) = kth derivative of ϕ
-williamson_dist(G::FrankGenerator, d) = G.θ > 0 ?  WilliamsonFromFrailty(Logarithmic(-G.θ), d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),d)
+williamson_dist(G::FrankGenerator, ::Val{d}) where d = G.θ > 0 ?  WilliamsonFromFrailty(Logarithmic(-G.θ), d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
 
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
 function τ(G::FrankGenerator)
