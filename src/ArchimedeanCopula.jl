@@ -51,7 +51,7 @@ end
 ϕ(C::ArchimedeanCopula{d,TG},t)    where {d,TG} = ϕ(C.G,t)
 ϕ⁻¹(C::ArchimedeanCopula{d,TG},t)  where {d,TG} = ϕ⁻¹(C.G,t)
 ϕ⁽¹⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁽¹⁾(C.G,t)
-ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},k,t) where {d,TG} = ϕ⁽ᵏ⁾(C.G,k,t)
+ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁽ᵏ⁾(C.G, Val(d), t)
 williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G,d)
 
 
@@ -73,7 +73,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
         sum_ϕ⁻¹u += ϕ⁻¹u
         logdenom += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
     end
-    numer = abs(ϕ⁽ᵏ⁾(C, d, sum_ϕ⁻¹u))
+    numer = abs(ϕ⁽ᵏ⁾(C, sum_ϕ⁻¹u))
     if numer > 0
         r = log(numer) - logdenom
         !isnan(r) && return r

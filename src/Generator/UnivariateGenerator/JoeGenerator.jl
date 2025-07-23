@@ -36,17 +36,14 @@ struct JoeGenerator{T} <: UnivariateGenerator
         end
     end
 end
-max_monotony(G::JoeGenerator) = Inf
+max_monotony(::JoeGenerator) = Inf
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
 # ϕ⁽¹⁾(G::JoeGenerator, t) =  First derivative of ϕ
-function ϕ⁽ᵏ⁾(G::JoeGenerator, k, t)
-    t==0 && return iseven(k) ? Inf : -Inf
-    X = TaylorSeries.Taylor1(eltype(t),k)
-    taylor_expansion = ϕ(G,t+X)
-    coef = TaylorSeries.getcoeff(taylor_expansion,k) 
-    der = coef * factorial(k)
-    return der
+function ϕ⁽ᵏ⁾(G::JoeGenerator, ::Val{k}, t) where k
+    t==0 && return iseven(k) ? eltype(t)(Inf) : eltype(t)(-Inf)
+    t==Inf && return zero(t)
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, Val(k), t) 
 end
 τ(G::JoeGenerator) = 1 - 4sum(1/(k*(2+k*G.θ)*(G.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula. 
 function τ⁻¹(::Type{T},tau) where T<:JoeGenerator 

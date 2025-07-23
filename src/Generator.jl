@@ -35,10 +35,8 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
-function ϕ⁽ᵏ⁾(G::Generator, k, t)
-    X = TaylorSeries.Taylor1(eltype(t),k)
-    taylor_expansion = ϕ(G,t+X)
-    coef = TaylorSeries.getcoeff(taylor_expansion,k) 
+function ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k
+    coef = WilliamsonTransforms.taylor(x -> ϕ(G, x), t, k)[end]
     der = coef * factorial(k)
     return der
 end
