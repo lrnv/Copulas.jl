@@ -52,7 +52,7 @@ end
 ϕ⁻¹(C::ArchimedeanCopula{d,TG},t)  where {d,TG} = ϕ⁻¹(C.G,t)
 ϕ⁽¹⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁽¹⁾(C.G,t)
 ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁽ᵏ⁾(C.G, Val(d), t)
-williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G,d)
+williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G,Val(d))
 
 
 function _cdf(C::CT,u) where {CT<:ArchimedeanCopula} 
@@ -66,7 +66,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
     end
-    T = promote_type(Float64, eltype(u)) # the FLoat64 here should be eltype(C) when copulas wil be type agnostic... 
+    T = promote_type(Float64, eltype(u)) # the Float64 here should be eltype(C) when copulas will be type agnostic... 
     logdenom = sum_ϕ⁻¹u = zero(T)
     for us in u
         ϕ⁻¹u = ϕ⁻¹(C,us)

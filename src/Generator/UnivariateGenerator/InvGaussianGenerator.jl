@@ -73,4 +73,4 @@ function τ⁻¹(::Type{T}, tau) where T<:InvGaussianGenerator
     end
     return Roots.find_zero(x -> τ(InvGaussianGenerator(x)) - tau, (sqrt(eps(tau)), Inf))
 end
-williamson_dist(G::InvGaussianGenerator, d) = WilliamsonFromFrailty(Distributions.InverseGaussian(G.θ,1),d)
+williamson_dist(G::InvGaussianGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Distributions.InverseGaussian(G.θ,1), Val(d))
