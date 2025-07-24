@@ -57,4 +57,4 @@ function ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t)
 end
 τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ/(G.θ+2), 1)
 τ⁻¹(::Type{T},τ) where T<:ClaytonGenerator = ifelse(τ == 1,Inf,2τ/(1-τ))
-williamson_dist(G::ClaytonGenerator, d) = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ),d) : ClaytonWilliamsonDistribution(G.θ,d)
+williamson_dist(G::ClaytonGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ), Val(d)) : ClaytonWilliamsonDistribution(G.θ,d)

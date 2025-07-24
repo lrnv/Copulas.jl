@@ -36,11 +36,11 @@ struct JoeGenerator{T} <: UnivariateGenerator
         end
     end
 end
-max_monotony(G::JoeGenerator) = Inf
+max_monotony(::JoeGenerator) = Inf
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
 ϕ⁽¹⁾(G::JoeGenerator, t) = (-expm1(-t))^(1/G.θ) / (G.θ - G.θ * exp(t))
-function ϕ⁽ᵏ⁾(G::JoeGenerator, d::Integer, t)
+function ϕ⁽ᵏ⁾(G::JoeGenerator, ::Val{d}, t) where d
     α = 1 / G.θ
     P_d_α = sum([
         Stirling2(d, k + 1) *
@@ -65,4 +65,4 @@ function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
         return Roots.find_zero(θ -> τ(JoeGenerator(θ)) - tau, (one(tau),tau*Inf))
     end
 end
-williamson_dist(G::JoeGenerator, d) = WilliamsonFromFrailty(Sibuya(1/G.θ), d)
+williamson_dist(G::JoeGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Sibuya(1/G.θ), Val(d))

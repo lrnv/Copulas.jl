@@ -53,21 +53,21 @@ end
 ϕ⁻¹⁽¹⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁻¹⁽¹⁾(C.G, t)
 ϕ⁽¹⁾(C::ArchimedeanCopula{d,TG},t)   where {d,TG} = ϕ⁽¹⁾(C.G, t)
 ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},k,t) where {d,TG} = ϕ⁽ᵏ⁾(C.G, k, t)
-williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G, d)
+williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G, Val(d))
 
 _cdf(C::ArchimedeanCopula, u) = ϕ(C, sum(ϕ⁻¹.(C, u)))
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .< 1)
         return eltype(u)(-Inf)
     end
-    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+    return log(ϕ⁽ᵏ⁾(C, Val(d), sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
 end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
     if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
         return eltype(u)(-Inf)
     end
-    return log(ϕ⁽ᵏ⁾(C, d, sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+    return log(ϕ⁽ᵏ⁾(C, Val(d), sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
 end
 
 # function τ(C::ArchimedeanCopula)

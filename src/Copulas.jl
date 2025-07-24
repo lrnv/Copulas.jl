@@ -8,7 +8,6 @@ module Copulas
     import Distributions
     import StatsBase
     import StatsFuns
-    import TaylorSeries
     import ForwardDiff
     import HCubature
     import MvNormalCDF

@@ -47,14 +47,14 @@ struct WilliamsonGenerator{TX} <: Generator
 end
 const i𝒲 = WilliamsonGenerator
 max_monotony(G::WilliamsonGenerator) = G.d
-function williamson_dist(G::WilliamsonGenerator, d)
+function williamson_dist(G::WilliamsonGenerator, ::Val{d}) where d
     if d == G.d 
         return G.X
     end
     # what about d < G.d ? Mayeb we can do some frailty stuff ? 
-    return WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),d)
+    return WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
 end
-ϕ(G::WilliamsonGenerator, t) = WilliamsonTransforms.𝒲(G.X,G.d)(t)
+ϕ(G::WilliamsonGenerator, t) = WilliamsonTransforms.𝒲(G.X, Val(G.d))(t)
 
 # McNeil & Neshelova 2009
-τ(G::WilliamsonGenerator) = 4*Distributions.expectation(x -> Copulas.ϕ(G,x), Copulas.williamson_dist(G,2))-1
+τ(G::WilliamsonGenerator) = 4*Distributions.expectation(x -> Copulas.ϕ(G,x), Copulas.williamson_dist(G, Val(2)))-1
