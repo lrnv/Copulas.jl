@@ -41,7 +41,7 @@ max_monotony(G::InvGaussianGenerator) = Inf
 ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
 ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? ln(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))
 # ϕ⁽¹⁾(G::InvGaussianGenerator, t) =  First derivative of ϕ
-# ϕ⁽ᵏ⁾(G::InvGaussianGenerator, k, t) = kth derivative of ϕ
+# ϕ⁽ᵏ⁾(G::InvGaussianGenerator, ::Val{k}, t) where k = kth derivative of ϕ
 function τ(G::InvGaussianGenerator)
     θ = G.θ
     T = promote_type(typeof(θ),Float64)

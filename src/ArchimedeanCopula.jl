@@ -204,7 +204,7 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
 
     for j in 2:d
         U[j, :] .=
-            ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:j])) ./ ϕ⁽ᵏ⁾.(C.G, j - 1, reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:(j - 1)]))
+            ϕ⁽ᵏ⁾.(C.G, Val(j - 1), reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:j])) ./ ϕ⁽ᵏ⁾.(C.G, Val(j - 1), reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:(j - 1)]))
     end
 
     return U
@@ -247,8 +247,8 @@ function inverse_rosenblatt(
             f =
                 x ->
                     (
-                        ϕ⁽ᵏ⁾(C.G, j - 1, sum(ϕ⁻¹.(C.G, [U[1:(j - 1), i]..., x]))) /
-                        ϕ⁽ᵏ⁾(C.G, j - 1, sum(ϕ⁻¹.(C.G, U[1:(j - 1), i])))
+                        ϕ⁽ᵏ⁾(C.G, Val(j - 1), sum(ϕ⁻¹.(C.G, [U[1:(j - 1), i]..., x]))) /
+                        ϕ⁽ᵏ⁾(C.G, Val(j - 1), sum(ϕ⁻¹.(C.G, U[1:(j - 1), i])))
                     ) - u[j, i]
 
             U[j, i] = Roots.find_zero(f, (eps(1.0), 1.0), Roots.A42())

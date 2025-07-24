@@ -45,7 +45,7 @@ function ϕ⁽¹⁾(G::ClaytonGenerator, t)
     α = 1 / G.θ
     return -α * (1 + t)^(-1 - α)
 end
-function ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Integer, t)
+function ϕ⁽ᵏ⁾(G::ClaytonGenerator, ::Val{k}, t) where k
     α = 1 / G.θ
     return (-1)^k * prod([0:(k - 1);] .+ α) * (1 + t)^(-(k + α))
 end

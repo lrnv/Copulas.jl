@@ -24,8 +24,8 @@ More methods can be implemented for performance, althouhg there are implement de
 
 * `ϕ⁻¹( G::Generator, x)` gives the inverse function of the generator.
 * `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative.
-* `ϕ⁽ᵏ⁾(G::Generator, k, t)` gives the kth derivative.
-* `williamson_dist(G::Generator, d)` gives the Wiliamson d-transform of the generator, see [WilliamsonTransforms.jl](https://github.com/lrnv/WilliamsonTransforms.jl).
+* `ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k` gives the kth derivative.
+* `williamson_dist(G::Generator, ::Val{d}) where d` gives the Wiliamson d-transform of the generator, see [WilliamsonTransforms.jl](https://github.com/lrnv/WilliamsonTransforms.jl).
 
 References:
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
