@@ -125,28 +125,29 @@ module Copulas
         @compile_workload begin
             for C in (
                 IndependentCopula(3),
-                AMHCopula(3, 0.6),
-                AMHCopula(4, -0.3),
-                ClaytonCopula(2, -0.7),
-                ClaytonCopula(3, -0.1),
-                ClaytonCopula(4, 7),
-                FrankCopula(2, -5),
-                FrankCopula(3, 12),
-                JoeCopula(3, 7),
-                GumbelCopula(4, 7),
+                AMHCopula(3,0.6),
+                AMHCopula(4,-0.3),
+                ClaytonCopula(2,-0.7),
+                ClaytonCopula(3,-0.1),
+                ClaytonCopula(4,7),
+                FrankCopula(2,-5),
+                FrankCopula(3,12),
+                JoeCopula(3,7),
+                GumbelCopula(4,7),
                 GaussianCopula([1 0.5; 0.5 1]),
                 TCopula(4, [1 0.5; 0.5 1]),
-                FGMCopula(2, 1),
+                FGMCopula(2,1),
             )
                 u1 = rand(C)
-                u = rand(C, 2)
-                if applicable(Distributions.pdf, C, u1)
-                    Distributions.pdf(C, u1)
-                    Distributions.pdf(C, u)
+                u = rand(C,2)
+                if applicable(Distributions.pdf,C,u1)
+                    Distributions.pdf(C,u1)
+                    Distributions.pdf(C,u)
                 end
-                Distributions.cdf(C, u1)
-                Distributions.cdf(C, u)
+                Distributions.cdf(C,u1)
+                Distributions.cdf(C,u)
             end
         end
     end
+    
 end

@@ -35,27 +35,23 @@ struct GumbelBarnettGenerator{T} <: UnivariateGenerator
     end
 end
 max_monotony(G::GumbelBarnettGenerator) = Inf
-# generator
-ϕ(G::GumbelBarnettGenerator, t::Number) = exp((1 - exp(t)) / G.θ)
-# first generator derivative
-ϕ⁽¹⁾(G::GumbelBarnettGenerator, t::Real) = -exp(1 - exp(t) / (G.θ + t)) / G.θ
-# inverse generator
-ϕ⁻¹(G::GumbelBarnettGenerator, t::Real) = log1p(-G.θ * log(t))
-# first inverse generator derivative
-ϕ⁻¹⁽¹⁾(G::GumbelBarnettGenerator, t::Real) = -G.θ / (t - G.θ * t * log(t))
+ϕ(G::GumbelBarnettGenerator, t) = exp((1 - exp(t)) / G.θ)
+ϕ⁽¹⁾(G::GumbelBarnettGenerator, t) = -exp(1 - exp(t) / (G.θ + t)) / G.θ
+ϕ⁻¹(G::GumbelBarnettGenerator, t) = log1p(-G.θ * log(t))
+ϕ⁻¹⁽¹⁾(G::GumbelBarnettGenerator, t) = -G.θ / (t - G.θ * t * log(t))
 
 function τ(G::GumbelBarnettGenerator)
     # Use a numerical integration method to obtain tau
-    r, _ = QuadGK.quadgk(x -> (1 - G.θ * log(x)) * log1p(-G.θ * log(x)) * x, 0, 1)
-    return 1 - 4 * r / G.θ
+    r, _ = QuadGK.quadgk(x -> (1-G.θ*log(x))  * log1p(-G.θ*log(x)) * x, 0, 1)
+    return 1-4*r/G.θ
 end
-function τ⁻¹(::Type{T}, tau) where {T<:GumbelBarnettGenerator}
+function τ⁻¹(::Type{T}, tau) where T<:GumbelBarnettGenerator
     if tau == 0
         return zero(tau)
     elseif tau > 0
         @info "GumbelBarnettCopula cannot handle κ > 0."
         return zero(tau)
-    elseif tau < τ(GumbelBarnettCopula(2, 1))
+    elseif tau < τ(GumbelBarnettCopula(2,1))
         @info "GumbelBarnettCopula cannot handle κ <≈ -0.3613."
         return one(tau)
     end

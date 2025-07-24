@@ -36,51 +36,33 @@ struct GumbelGenerator{T} <: UnivariateGenerator
         end
     end
 end
-
 max_monotony(G::GumbelGenerator) = Inf
-# generator
-ϕ(G::GumbelGenerator, t::Number) = exp(-t^(1 / G.θ))
-# first generator derivative
-function ϕ⁽¹⁾(G::GumbelGenerator, t::Real)
-    a = 1 / G.θ
-    tam1 = t^(a - 1)
-    return -a * tam1 * exp(-tam1 * t)
+ϕ(  G::GumbelGenerator, t) = exp(-t^(1/G.θ))
+ϕ⁻¹(G::GumbelGenerator, t) = (-log(t))^G.θ
+function ϕ⁽¹⁾(G::GumbelGenerator, t)
+    # first derivative of ϕ
+    a = 1/G.θ
+    tam1 = t^(a-1)
+    return - a * tam1 * exp(-tam1*t)
 end
-# kth generator derivative
-function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Integer, t::Real)
+function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Integer, t)
     α = 1 / G.θ
-
-    return ϕ(G, t) *
-           t^(-d) *
-           sum([
-               α^j * Stirling1(d, j) * sum([Stirling2(j, k) * (-t^α)^k for k in 1:j]) for
-               j in 1:d
-           ])
+    return ϕ(G, t) * t^(-d) * sum([
+        α^j * Stirling1(d, j) * sum([Stirling2(j, k) * (-t^α)^k for k in 1:j]) for j in 1:d
+    ])
 end
-# inverse generator
-ϕ⁻¹(G::GumbelGenerator, t::Real) = (-log(t))^G.θ
-# first inverse generator derivative
-function ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t::Real)
-    return -(G.θ * (-log(t))^(G.θ - 1)) / t
-end
-τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ - 1) / G.θ, 1)
-function τ⁻¹(::Type{T}, τ) where {T<:GumbelGenerator}
+ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * (-log(t))^(G.θ - 1)) / t
+τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
+function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
     if τ == 1
         return Inf
     else
-        θ = 1 / (1 - τ)
+        θ = 1/(1-τ)
         if θ < 1
-            @warn "GumbelCopula cannot handle negative kendall tau's, returning independence.."
+            @info "GumbelCopula cannot handle κ <0."
             return 1
         end
         return θ
     end
 end
-function williamson_dist(G::GumbelGenerator, d)
-    return WilliamsonFromFrailty(
-        AlphaStable(;
-            α=1 / G.θ, β=1, scale=cos(π / (2G.θ))^G.θ, location=(G.θ == 1 ? 1 : 0)
-        ),
-        d,
-    )
-end
+williamson_dist(G::GumbelGenerator, d) = WilliamsonFromFrailty(AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0)), d)

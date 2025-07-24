@@ -40,33 +40,21 @@ struct ClaytonGenerator{T} <: UnivariateGenerator
     end
 end
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1 / G.θ))
-# generator
-ϕ(G::ClaytonGenerator, t::Real) = (max(1 + t, zero(t)))^(-1 / G.θ)
-
-# first generator derivative
-function ϕ⁽¹⁾(G::ClaytonGenerator, t::Real)
+ϕ(G::ClaytonGenerator, t) = (max(1 + t, zero(t)))^(-1 / G.θ)
+function ϕ⁽¹⁾(G::ClaytonGenerator, t)
     α = 1 / G.θ
     return -α * (1 + t)^(-1 - α)
 end
-# kth generator derivative
-function ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Integer, t::Real)
+function ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Integer, t)
     α = 1 / G.θ
     return (-1)^k * prod([0:(k - 1);] .+ α) * (1 + t)^(-(k + α))
 end
-# inverse generator
-function ϕ⁻¹(G::ClaytonGenerator, t::Real)
+function ϕ⁻¹(G::ClaytonGenerator, t)
     return t^(-G.θ) - 1
 end
-# first inverse generator derivative
-function ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t::Real)
+function ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t)
     return -G.θ * t^(-G.θ - 1)
 end
-τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ / (G.θ + 2), 1)
-τ⁻¹(::Type{T}, τ) where {T<:ClaytonGenerator} = ifelse(τ == 1, Inf, 2τ / (1 - τ))
-function williamson_dist(G::ClaytonGenerator, d)
-    return if G.θ >= 0
-        WilliamsonFromFrailty(Distributions.Gamma(1 / G.θ, G.θ), d)
-    else
-        return ClaytonWilliamsonDistribution(G.θ, d)
-    end
-end
+τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ/(G.θ+2), 1)
+τ⁻¹(::Type{T},τ) where T<:ClaytonGenerator = ifelse(τ == 1,Inf,2τ/(1-τ))
+williamson_dist(G::ClaytonGenerator, d) = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ),d) : ClaytonWilliamsonDistribution(G.θ,d)

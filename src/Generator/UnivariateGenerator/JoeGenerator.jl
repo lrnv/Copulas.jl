@@ -37,12 +37,10 @@ struct JoeGenerator{T} <: UnivariateGenerator
     end
 end
 max_monotony(G::JoeGenerator) = Inf
-# generator
-ϕ(G::JoeGenerator, t::Number) = 1 - (-expm1(-t))^(1 / G.θ)
-# first generator derivative
-ϕ⁽¹⁾(G::JoeGenerator, t::Real) = (-expm1(-t))^(1 / G.θ) / (G.θ - G.θ * exp(t))
-# kth generator derivative
-function ϕ⁽ᵏ⁾(G::JoeGenerator, d::Integer, t::Real)
+ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
+ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
+ϕ⁽¹⁾(G::JoeGenerator, t) = (-expm1(-t))^(1/G.θ) / (G.θ - G.θ * exp(t))
+function ϕ⁽ᵏ⁾(G::JoeGenerator, d::Integer, t)
     α = 1 / G.θ
     P_d_α = sum([
         Stirling2(d, k + 1) *
@@ -51,14 +49,11 @@ function ϕ⁽ᵏ⁾(G::JoeGenerator, d::Integer, t::Real)
     ])
     return (-1)^d * α * (exp(-t) / (-expm1(-t))^(1 - α)) * P_d_α
 end
-# inverse generator
-ϕ⁻¹(G::JoeGenerator, t::Real) = -log1p(-(1 - t)^G.θ)
-# first inverse generator derivative
 function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t::Real)
     return -(G.θ * (1 - t)^(G.θ - 1)) / (1 - (1 - t)^G.θ)
 end
-τ(G::JoeGenerator) = 1 - 4sum(1 / (k * (2 + k * G.θ) * (G.θ * (k - 1) + 2)) for k in 1:1000) # 446 in R copula.
-function τ⁻¹(::Type{T}, tau) where {T<:JoeGenerator}
+τ(G::JoeGenerator) = 1 - 4sum(1/(k*(2+k*G.θ)*(G.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula.
+function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
     if tau == 1
         return Inf
     elseif tau == 0
@@ -67,7 +62,7 @@ function τ⁻¹(::Type{T}, tau) where {T<:JoeGenerator}
         @info "JoeCoula cannot handle κ < 0."
         return one(tau)
     else
-        return Roots.find_zero(θ -> τ(JoeGenerator(θ)) - tau, (one(tau), tau * Inf))
+        return Roots.find_zero(θ -> τ(JoeGenerator(θ)) - tau, (one(tau),tau*Inf))
     end
 end
-williamson_dist(G::JoeGenerator, d) = WilliamsonFromFrailty(Sibuya(1 / G.θ), d)
+williamson_dist(G::JoeGenerator, d) = WilliamsonFromFrailty(Sibuya(1/G.θ), d)
