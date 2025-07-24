@@ -49,7 +49,7 @@ function ϕ⁽ᵏ⁾(G::JoeGenerator, ::Val{d}, t) where d
     ])
     return (-1)^d * α * (exp(-t) / (-expm1(-t))^(1 - α)) * P_d_α
 end
-function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t::Real)
+function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)
     return -(G.θ * (1 - t)^(G.θ - 1)) / (1 - (1 - t)^G.θ)
 end
 τ(G::JoeGenerator) = 1 - 4sum(1/(k*(2+k*G.θ)*(G.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula.
