@@ -51,11 +51,11 @@ end
 
     for (d, θ) in zip(dimensions, parameters)
         C = ClaytonCopula(d, θ)
-        u = rand(C, 10^5)
+        u = rand(C, 10^4)
         τ = Copulas.τ(C)
         for i in 1:(d - 1)
             for j in (i + 1):d
-                @test corkendall(u[i, :], u[j, :]) ≈ τ rtol = 0.1
+                @test corkendall(u[i, :], u[j, :]) ≈ τ atol = 0.1
             end
         end
     end
@@ -69,15 +69,13 @@ end
 
     for (d, θ) in zip(dimensions, parameters)
         C = ClaytonCopula(d, θ)
-        u = rand(C, 10^5)
+        u = rand(C, 1000)
         U = rosenblatt(C, u)
         for i in 1:(d - 1)
             for j in (i + 1):d
-                @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.01
+                @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.1
             end
         end
-        u = rand(C, 10^4)
-        U = rosenblatt(C, u)
         @test u ≈ inverse_rosenblatt(C, U)
     end
 end

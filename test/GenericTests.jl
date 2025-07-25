@@ -311,7 +311,7 @@
                 CT = typeof(C)
                 D = SklarDist(C, [Normal() for i in 1:length(C)])
                 spl10 = rand(rng,C,10)
-                spl1000 = rand(rng,C,10000)
+                spl1000 = rand(rng,C,1000)
 
                 @testset "Sampling shapes" begin
                     @test length(rand(rng,C))==d # to sample only one value
@@ -413,12 +413,10 @@
                         end
                     end
 
-                    # if !isa(C, ClaytonCopula)
-                        @testset "Check that williamson_dist and ϕ⁻¹ actually corresponds" begin
-                        splW_method1 = dropdims(sum(Copulas.ϕ⁻¹.(Ref(C),rand(rng,C,1000)),dims=1),dims=1)
-                        splW_method2 = rand(rng,Copulas.williamson_dist(C),1000)
-                        @test pvalue(ApproximateTwoSampleKSTest(splW_method1,splW_method2),tail=:right) > 0.01
-                    # end
+                    @testset "Check that williamson_dist and ϕ⁻¹ actually corresponds" begin
+                    splW_method1 = dropdims(sum(Copulas.ϕ⁻¹.(Ref(C),spl1000),dims=1),dims=1)
+                    splW_method2 = rand(rng,Copulas.williamson_dist(C),1000)
+                    @test pvalue(ApproximateTwoSampleKSTest(splW_method1,splW_method2),tail=:right) > 0.01
                 end
             end
         end

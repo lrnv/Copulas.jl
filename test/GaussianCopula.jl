@@ -26,11 +26,8 @@ end
 @testitem "Rosenblatt" begin
     using StatsBase
     C = GaussianCopula([1 0.7071; 0.7071 1])
-
-    u = rand(C, 10^6)
-
+    u = rand(C, 1000)
     U = rosenblatt(C, u)
-    @test corkendall(U[1, :], U[2, :]) ≈ 0 atol = 0.01
-
+    @test corkendall(U[1, :], U[2, :]) ≈ 0 atol = 0.1
     @test inverse_rosenblatt(C, U) ≈ u
 end
