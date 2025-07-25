@@ -37,7 +37,7 @@ max_monotony(::AMHGenerator) = Inf
 ϕ(  G::AMHGenerator, t) = (1-G.θ)/(exp(t)-G.θ)
 ϕ⁻¹(G::AMHGenerator, t) = log(G.θ + (1-G.θ)/t)
 ϕ⁽¹⁾(G::AMHGenerator, t) = -((1-G.θ) * exp(t)) / (exp(t) - G.θ)^2
-ϕ⁽ᵏ⁾(G::AMHGenerator, ::Val{k}, t) where k = (-1)^k * (1 - G.θ) / G.θ * reli(-k, G.θ * exp(-t))
+ϕ⁽ᵏ⁾(G::AMHGenerator, ::Val{k}, t) where k = (-1)^k * (1 - G.θ) / G.θ * PolyLog.reli(-k, G.θ * exp(-t))
 ϕ⁻¹⁽¹⁾(G::AMHGenerator, t) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
 williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),Val(d)) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val(d))
 
@@ -46,7 +46,7 @@ function τ(G::AMHGenerator)
     # unstable around zero, we instead cut its taylor expansion:
     if abs(θ) < 0.01
         return 2/9  * θ
-            + 1/18  * θ^2 
+            + 1/18  * θ^2
             + 1/45  * θ^3
             + 1/90  * θ^4
             + 2/315 * θ^5

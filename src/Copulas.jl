@@ -16,8 +16,8 @@ module Copulas
     import LogExpFunctions
     import QuadGK
     import LinearAlgebra
-    using PolyLog
-    using BigCombinatorics
+    import PolyLog
+    import BigCombinatorics
 
     # Standard copulas and stuff.
     include("utils.jl")
@@ -148,5 +148,5 @@ module Copulas
             end
         end
     end
-    
+
 end

@@ -43,7 +43,7 @@ max_monotony(::JoeGenerator) = Inf
 function ϕ⁽ᵏ⁾(G::JoeGenerator, ::Val{d}, t) where d
     α = 1 / G.θ
     P_d_α = sum([
-        Stirling2(d, k + 1) *
+        BigCombinatorics.Stirling2(d, k + 1) *
         (SpecialFunctions.gamma(k + 1 - α) / SpecialFunctions.gamma(1 - α)) *
         (exp(-t) / (-expm1(-t)))^k for k in 0:(d - 1)
     ])

@@ -48,7 +48,7 @@ end
 function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
     α = 1 / G.θ
     return ϕ(G, t) * t^(-d) * sum([
-        α^j * Stirling1(d, j) * sum([Stirling2(j, k) * (-t^α)^k for k in 1:j]) for j in 1:d
+        α^j * BigCombinatorics.Stirling1(d, j) * sum([BigCombinatorics.Stirling2(j, k) * (-t^α)^k for k in 1:j]) for j in 1:d
     ])
 end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * (-log(t))^(G.θ - 1)) / t
