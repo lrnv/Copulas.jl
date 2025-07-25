@@ -67,7 +67,7 @@ end
     dimensions = [2, 2, 3, 5]
     parameters = [2.5, -0.5, -0.3, 2.0]
 
-    for C in zip(dimensions, parameters)
+    for (d, θ) in zip(dimensions, parameters)
         C = ClaytonCopula(d, θ)
         u = rand(C, 10^5)
         U = rosenblatt(C, u)
