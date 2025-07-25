@@ -26,7 +26,7 @@ end
     # ϕ_clayton(x, θ) = max((1 + θ * x),zero(x))^(-1/θ)
 
     Cops = (
-        # ArchimedeanCopula(10,i𝒲(Dirac(1),11)), # borken, dont knwo why. 
+        ArchimedeanCopula(10,i𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)), # borken, dont knwo why. 
         ArchimedeanCopula(2,i𝒲(Pareto(1),5)),
         ArchimedeanCopula(2,i𝒲(LogNormal(3),5)),
     )
@@ -35,7 +35,7 @@ end
         u = rand(C, 10)
         v = rosenblatt(C, u)
         w = inverse_rosenblatt(C, v)
-        @test all(isapprox.(u, w; atol = 0.0001))
+        @test u ≈ w
     end
 end
 
