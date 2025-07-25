@@ -35,7 +35,7 @@ end
         u = rand(C, 10)
         v = rosenblatt(C, u)
         u2 = inverse_rosenblatt(C, v)
-        @test u ≈ u2
+        @test all(isapprox.(u, u2; atol = 0.0001))
     end
 end
 
