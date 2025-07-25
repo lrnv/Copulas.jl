@@ -201,7 +201,8 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
 
     U = zeros(eltype(u), size(u))
     U[1, :] = u[1, :]
-    rⱼ = ϕ⁻¹.(C.G, u[1,:]) 
+    rⱼ = ϕ⁻¹.(C.G, u[1,:])
+    rⱼ₋₁ = similar(rⱼ)
     for j in 2:d
         rⱼ₋₁ .= rⱼ
         rⱼ .+= ϕ⁻¹.(C.G, u[j,:]) # so we do not compute too much of them, nor allocate too much. 
@@ -217,6 +218,7 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
     U[1, :] = u[1, :]
 
     rⱼ = u[1,:] .^ (-C.G.θ)
+    rⱼ₋₁ = similar(rⱼ)
     for j in 2:d
         rⱼ₋₁ .= rⱼ
         rⱼ += u[j,:] .^ (-C.G.θ)
