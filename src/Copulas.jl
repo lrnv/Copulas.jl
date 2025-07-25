@@ -148,5 +148,4 @@ module Copulas
             end
         end
     end
-
 end
