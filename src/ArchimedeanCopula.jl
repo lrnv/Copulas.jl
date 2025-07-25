@@ -187,10 +187,10 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopul
     return A
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, x::AbstractVector{<:Real})
-    x[:] = inverse_rosenblatt(C, rand(rng, length(x)))
-    return x
-end
+# function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, x::AbstractVector{<:Real})
+#     x[:] = inverse_rosenblatt(C, rand(rng, length(x)))
+#     return x
+# end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, A::DenseMatrix{<:Real})
     A[:] = inverse_rosenblatt(C, rand(rng, size(A)...))
     return A
@@ -211,21 +211,21 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
     return U
 end
 
-function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG<:ClaytonGenerator}
-    @assert d == size(u, 1)
+# function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG<:ClaytonGenerator}
+#     @assert d == size(u, 1)
 
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :]
+#     U = zeros(eltype(u), size(u))
+#     U[1, :] = u[1, :]
 
-    rⱼ = u[1,:] .^ (-C.G.θ)
-    rⱼ₋₁ = similar(rⱼ)
-    for j in 2:d
-        rⱼ₋₁ .= rⱼ
-        rⱼ += u[j,:] .^ (-C.G.θ)
-        U[j, :] .= ((1 .- j .+ rⱼ) ./ (2 .- j .+ rⱼ₋₁)) .^ (-1 / C.G.θ - (j - 1))
-    end
-    return U
-end
+#     rⱼ = u[1,:] .^ (-C.G.θ)
+#     rⱼ₋₁ = similar(rⱼ)
+#     for j in 2:d
+#         rⱼ₋₁ .= rⱼ
+#         rⱼ += u[j,:] .^ (-C.G.θ)
+#         U[j, :] .= ((1 .- j .+ rⱼ) ./ (2 .- j .+ rⱼ₋₁)) .^ (-1 / C.G.θ - (j - 1))
+#     end
+#     return U
+# end
 
 function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
     @assert d == size(u, 1)
@@ -249,18 +249,18 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     return U
 end
 
-function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG<:ClaytonGenerator}
-    @assert d == size(u, 1)
+# function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG<:ClaytonGenerator}
+#     @assert d == size(u, 1)
 
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :] .^ (-C.G.θ)
-    rⱼ = zero(U[1,:])
-    for j in 2:d
-        rⱼ .+= U[j-1,:]
-        U[j, :] = 1 .+ (1 .- (j - 1) .+ rⱼ) .* (u[j, :] .^ (-1 / (j - 1 + 1 / C.G.θ)) .- 1)
-    end
-    return U .^ (-1 / C.G.θ)
-end
+#     U = zeros(eltype(u), size(u))
+#     U[1, :] = u[1, :] .^ (-C.G.θ)
+#     rⱼ = zero(U[1,:])
+#     for j in 2:d
+#         rⱼ .+= U[j-1,:]
+#         U[j, :] = 1 .+ (1 .- (j - 1) .+ rⱼ) .* (u[j, :] .^ (-1 / (j - 1 + 1 / C.G.θ)) .- 1)
+#     end
+#     return U .^ (-1 / C.G.θ)
+# end
 
 function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
     @assert d == size(u, 1)
