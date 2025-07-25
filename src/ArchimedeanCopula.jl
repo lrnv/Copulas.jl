@@ -201,29 +201,26 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
 
     U = zeros(eltype(u), size(u))
     U[1, :] = u[1, :]
-
+    rⱼ = ϕ⁻¹.(C.G, u[1,:]) 
     for j in 2:d
-        U[j, :] .=
-            ϕ⁽ᵏ⁾.(C.G, Val(j - 1), reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:j])) ./ ϕ⁽ᵏ⁾.(C.G, Val(j - 1), reduce(+, [ϕ⁻¹.(C.G, u[k, :]) for k in 1:(j - 1)]))
+        rⱼ₋₁ .= rⱼ
+        rⱼ .+= ϕ⁻¹.(C.G, u[j,:]) # so we do not compute too much of them, nor allocate too much. 
+        U[j, :] .= ϕ⁽ᵏ⁾.(C.G, Val(j - 1), rⱼ) ./ ϕ⁽ᵏ⁾.(C.G, Val(j - 1), rⱼ₋₁)
     end
-
     return U
 end
 
-function rosenblatt(
-    C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
-) where {d,TG<:ClaytonGenerator}
+function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG<:ClaytonGenerator}
     @assert d == size(u, 1)
 
     U = zeros(eltype(u), size(u))
     U[1, :] = u[1, :]
 
+    rⱼ = u[1,:] .^ (-C.G.θ)
     for j in 2:d
-        U[j, :] .=
-            (
-                (1 .- j .+ sum(u[1:j, :] .^ (-C.G.θ); dims=1)[:]) ./
-                (2 .- j .+ sum(u[1:(j - 1), :] .^ (-C.G.θ); dims=1)[:])
-            ) .^ (-1 / C.G.θ - (j - 1))
+        rⱼ₋₁ .= rⱼ
+        rⱼ += u[j,:] .^ (-C.G.θ)
+        U[j, :] .= ((1 .- j .+ rⱼ) ./ (2 .- j .+ rⱼ₋₁)) .^ (-1 / C.G.θ - (j - 1))
     end
     return U
 end
