@@ -5,7 +5,7 @@
     <a href="https://lrnv.github.io/Copulas.jl/stable"><img src="https://img.shields.io/badge/docs-stable-blue.svg" alt="Stable" /></a>
     <a href="https://lrnv.github.io/Copulas.jl/dev"><img src="https://img.shields.io/badge/docs-dev-blue.svg" alt="Dev" /></a>
     <a href="https://joss.theoj.org/papers/98fa5d88d0d8f27038af2da00f210d45"><img src="https://joss.theoj.org/papers/98fa5d88d0d8f27038af2da00f210d45/status.svg"></a>
-    <a href="https://zenodo.org/badge/latestdoi/456485213"><img src="https://zenodo.org/badge/456485213.svg" alt="DOI" /></a>
+<!--     <a href="https://zenodo.org/badge/latestdoi/456485213"><img src="https://zenodo.org/badge/456485213.svg" alt="DOI" /></a> -->
 <br />
     <a href="https://www.repostatus.org/#active"><img src="https://www.repostatus.org/badges/latest/active.svg" alt="Project Status: Active – The project has reached a stable, usable state and is being actively developed." /></a>
      <a href="https://github.com/lrnv/Copulas.jl/actions/workflows/CI.yml?query=branch%3Amain"><img src="https://github.com/lrnv/Copulas.jl/actions/workflows/CI.yml/badge.svg?branch=main" alt="Build Status" /></a>
@@ -33,7 +33,7 @@ The package revolves around two main types:
 - `Copula`, an abstract mother type for all the copulas in the package
 - `SklarDist`, a distribution type that allows construction of a multivariate distribution by specifying the copula and the marginals through [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem). 
 
-**Warning: This is fairly experimental work and our API might change without notice.**
+**Warning: This is fairly experimental work, use with caution.**
 
 ## Getting started
 
@@ -71,12 +71,13 @@ There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://g
 |  | `Copulas.jl` | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
 |----------------|--------------|-------------------------|-----------------------|
 | `Distributions.jl`'s API | ✔️ | ❌ | ✔️ |
-| Fitting                  | ✔️ | ✔️ | ❌ |
+| Fitting                  | ✔️ | ❌ | ❌ |
 | Plotting                 | ❌ | ❌ | ✔️ |
 | Available copulas        |     |     |    |
 | - Classic Bivariate      | ✔️ | ✔️ | ✔️ |
 | - Classic Multivariate   | ✔️ | ✔️ | ❌ |
 | - Archimedeans           | ✔️ (All of them) | ⚠️ Selected ones | ⚠️Selected ones |
+| - Bivariate Extreme Value| ✔️ | ❌ | ❌ |
 | - Obscure Bivariate      | ✔️ | ❌ | ❌ |
 | - Archimedean Chains     | ❌ | ✔️ | ❌ |
 
@@ -87,14 +88,19 @@ Since our primary target is maintainability and readability of the implementatio
 If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on this repo. General guidelines on collaborative practices (colprac) are available at https://github.com/SciML/ColPrac.
 ## Citation 
 
-Do not hesitate to star this repository to show support ! You may also cite the package by using the following bibtex code: 
+Do not hesitate to star this repository to show support. If you use this package in your researches, please cite it with the following bibtex code:
 
 ```bibtex
-@software{oskar_laverny_2023_10084669,
-  author       = {Oskar Laverny},
-  title        = {Copulas.jl: A fully `Distributions.jl`-compliant copula package},
-  year         = 2022+,
-  doi          = {10.5281/zenodo.6652672},
-  url          = {https://doi.org/10.5281/zenodo.6652672}
+@article{LavernyJimenez2024,
+    author = {Oskar Laverny and Santiago Jimenez}, 
+    title = {Copulas.jl: A fully Distributions.jl-compliant copula package},
+    journal = {Journal of Open Source Software},
+    doi = {10.21105/joss.06189}, 
+    url = {https://doi.org/10.21105/joss.06189}, 
+    year = {2024}, 
+    publisher = {The Open Journal}, 
+    volume = {9}, 
+    number = {94}, 
+    pages = {6189}
 }
 ```

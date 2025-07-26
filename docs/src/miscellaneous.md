@@ -20,13 +20,13 @@ Farlie-Gumbel-Morgenstern (FGM) copula
 FGMCopula
 ```
 
-# Raftery copula
+# `RafteryCopula`
 
 ```@docs
 RafteryCopula
 ```
 
 ```@bibliography
-Pages = ["Liouville.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```

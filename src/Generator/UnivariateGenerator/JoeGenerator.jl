@@ -36,11 +36,15 @@ struct JoeGenerator{T} <: UnivariateGenerator
         end
     end
 end
-max_monotony(G::JoeGenerator) = Inf
+max_monotony(::JoeGenerator) = Inf
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
 # ϕ⁽¹⁾(G::JoeGenerator, t) =  First derivative of ϕ
-# ϕ⁽ᵏ⁾(G::JoeGenerator, k, t) = kth derivative of ϕ
+function ϕ⁽ᵏ⁾(G::JoeGenerator, ::Val{k}, t) where k
+    t==0 && return iseven(k) ? eltype(t)(Inf) : eltype(t)(-Inf)
+    t==Inf && return zero(t)
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, Val(k), t) 
+end
 τ(G::JoeGenerator) = 1 - 4sum(1/(k*(2+k*G.θ)*(G.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula. 
 function τ⁻¹(::Type{T},tau) where T<:JoeGenerator 
     if tau == 1
@@ -48,10 +52,10 @@ function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
     elseif tau == 0
         return 1
     elseif tau < 0
-        @warn "JoeCoula cannot handle negative kendall taus, we return the independence..."
+        @info "JoeCoula cannot handle κ < 0."
         return one(tau)
     else
         return Roots.find_zero(θ -> τ(JoeGenerator(θ)) - tau, (one(tau),tau*Inf))
     end
 end
-williamson_dist(G::JoeGenerator, d) = WilliamsonFromFrailty(Sibuya(1/G.θ), d)
+williamson_dist(G::JoeGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Sibuya(1/G.θ), Val(d))

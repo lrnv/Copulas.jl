@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# [Available Models](@id available_archimedean_models)
+# [Archimedean Generators](@id available_archimedean_models)
 
 ## `WilliamsonGenerator`
 ```@docs; canonical=false
@@ -58,9 +58,7 @@ GumbelBarnettGenerator
 InvGaussianGenerator
 ```
 
-
-
 ```@bibliography
-Pages = ["available_models.md"]
+Pages = [@__FILE__]
 Canonical = false
 ```

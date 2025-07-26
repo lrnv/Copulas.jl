@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Available models
+# Elliptical Copulas
 
 ## `GaussianCopula`
 
@@ -14,4 +14,9 @@ GaussianCopula
 
 ```@docs
 TCopula
+```
+
+```@bibliography
+Pages = [@__FILE__]
+Canonical = false
 ```

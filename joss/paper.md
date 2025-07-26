@@ -31,7 +31,7 @@ Copulas are functions that describe dependence structures of random vectors, wit
 
 **Theorem: existence and uniqueness of the copula [@sklar1959fonctions]:** For a given $d$-variate absolutely continuous random vector $\mathbf X$ with marginals $X_1,...X_d$, there exists a unique function $C$, the copula, such that $$F(\mathbf x) = C(F_1(x_1),...,F_d(x_d)),$$ where $F, F_1,...F_d$ are respectively the distributions functions of $\mathbf X, X_1,...X_d$.
 
-Copulas are standard tools in probability and statistics, with a wide range of applications from biostatistics, finance or medicine, to fuzzy logic, global sensitivity and broader analysis. A few standard theoretical references on the matter are [@joe1997], [@nelsen2006], [@joe2014], and [@durantePrinciplesCopulaTheory2015].
+Copulas are standard tools in probability and statistics, with a wide range of applications from biostatistics, finance or medicine, to fuzzy logic, global sensitivity and broader analysis. A few standard theoretical references on the matter are @joe1997, @nelsen2006, @joe2014, and @durantePrinciplesCopulaTheory2015.
 
 The Julia package `Copulas.jl` brings most standard copula-related features into native Julia: random number generation, density and distribution function evaluations, fitting, construction of multivariate models through Sklar's theorem, and many more related functionalities. Since copulas can combine arbitrary univariate distributions to form distributions of multivariate random vectors, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API [@djl1; @djl2], the Julian standard for implementation of random variables and random vectors. This compliance allows interoperability with other packages based on this API such as, e.g., [`Turing.jl`](https://github.com/TuringLang/Turing.jl) [@turing] and several others. 
 
@@ -44,7 +44,7 @@ There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://g
 |                          | `Copulas.jl` | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
 |--------------------------|--------------|-------------------------|-----------------------|
 | `Distributions.jl`'s API | Yes | No | Yes |
-| Fitting                  | Yes | Yes | No |
+| Fitting                  | Yes | No | No |
 | Plotting                 | No | No | Yes |
 | Available copulas        |     |     |    |
 | - Classic Bivariate      | Yes | Yes | Yes |
@@ -111,15 +111,15 @@ end
 
 ## The Archimedean interface
 
-Archimedean copulas form a large class of copulas that has seen a lot of theoretical work. Among others, you may take a look at [@mcneilMultivariateArchimedeanCopulas2009b]. We use [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl/)'s implementation of the Williamson $d$-transfrom to sample from any archimedean copula, including for example the `ClaytonCopula` with negative dependence parameter in any dimension, which is a first to our knowledge.
+Archimedean copulas form a large class of copulas that has seen a lot of theoretical work. Among others, you may take a look at [@mcneilMultivariateArchimedeanCopulas2009b]. We use [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl/)'s implementation of the Williamson $d$-transform to sample from any Archimedean copula, including for example the `ClaytonCopula` with negative dependence parameter in any dimension, which is a first to our knowledge.
 
-To construct an archimedean copula, you first need to reference its generator through the following API: 
+To construct an Archimedean copula, you first need to reference its generator through the following API: 
 
 ```julia
 struct MyGenerator{T} <: Copulas.Generator
     θ::T
 end
-ϕ(G::MyGenerator,t) = exp(-G.θ * t) # can you recognise this one ?
+ϕ(G::MyGenerator,t) = exp(-G.θ * t)
 Copulas.max_monotony(G::MyGenerator) = Inf
 C = ArchimedeanCopula(4,MyGenerator(1.3)) # 4-dimensional copula
 ```

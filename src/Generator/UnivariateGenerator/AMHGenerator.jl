@@ -38,7 +38,7 @@ max_monotony(::AMHGenerator) = Inf
 ϕ⁻¹(G::AMHGenerator, t) = log(G.θ + (1-G.θ)/t)
 # ϕ⁽¹⁾(G::AMHGenerator, t) =  First derivative of ϕ
 # ϕ⁽ᵏ⁾(G::AMHGenerator, k, t) = kth derivative of ϕ
-williamson_dist(G::AMHGenerator, d) = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),d) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),d)
+williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ), Val(d)) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
 
 function τ(G::AMHGenerator)
     θ = G.θ
@@ -65,10 +65,10 @@ function τ⁻¹(::Type{T},tau) where T<:AMHGenerator
     if tau == zero(tau)
         return tau
     elseif tau > 1/3
-        @warn "AMHCopula cannot handle kendall tau's greater than 1/3. We capped it to 1/3."
+        @info "AMHCopula cannot handle κ > 1/3."
         return one(tau)
     elseif tau < (5 - 8*log(2))/3
-        @warn "AMHCopula cannot handle kendall tau's smaller than (5- 8ln(2))/3 (approx -0.1817). We capped it to this value."
+        @info "AMHCopula cannot handle κ < 5 - 8ln(2))/3 (approx -0.1817)."
         return -one(tau)
     end
     search_range = tau > 0 ? (0,1) : (-1,0)

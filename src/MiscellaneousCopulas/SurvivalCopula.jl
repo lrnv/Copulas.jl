@@ -1,7 +1,4 @@
 """
-SurvivalCopula{d,CT,VI}
-
-Constructor
 
     SurvivalCopula(C,indices)
 

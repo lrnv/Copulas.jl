@@ -51,8 +51,8 @@ end
 ϕ(C::ArchimedeanCopula{d,TG},t)    where {d,TG} = ϕ(C.G,t)
 ϕ⁻¹(C::ArchimedeanCopula{d,TG},t)  where {d,TG} = ϕ⁻¹(C.G,t)
 ϕ⁽¹⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁽¹⁾(C.G,t)
-ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},k,t) where {d,TG} = ϕ⁽ᵏ⁾(C.G,k,t)
-williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G,d)
+ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁽ᵏ⁾(C.G, Val(d), t)
+williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G,Val(d))
 
 
 function _cdf(C::CT,u) where {CT<:ArchimedeanCopula} 
@@ -66,27 +66,19 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .<= u .<= 1)
         return eltype(u)(-Inf)
     end
-    sum_ϕ⁻¹u = 0.0
-    sum_logϕ⁽¹⁾ϕ⁻¹u = 0.0
+    T = promote_type(Float64, eltype(u)) # the Float64 here should be eltype(C) when copulas will be type agnostic... 
+    logdenom = sum_ϕ⁻¹u = zero(T)
     for us in u
         ϕ⁻¹u = ϕ⁻¹(C,us)
         sum_ϕ⁻¹u += ϕ⁻¹u
-        sum_logϕ⁽¹⁾ϕ⁻¹u += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
+        logdenom += log(-ϕ⁽¹⁾(C,ϕ⁻¹u)) # log of negative here because ϕ⁽¹⁾ is necessarily negative
     end
-    numer = ϕ⁽ᵏ⁾(C, d, sum_ϕ⁻¹u)
-    dimension_sign = iseven(d) ? 1.0 : -1.0 #need this for log since (-1.0)ᵈ ϕ⁽ᵈ⁾ ≥ 0.0
-
-
-    # I am not sure this is the right reasoning :
-    if numer == 0
-        if sum_logϕ⁽¹⁾ϕ⁻¹u == -Inf
-            return Inf
-        else
-            return -Inf
-        end
-    else
-        return log(dimension_sign*numer) - sum_logϕ⁽¹⁾ϕ⁻¹u
+    numer = abs(ϕ⁽ᵏ⁾(C, sum_ϕ⁻¹u))
+    if numer > 0
+        r = log(numer) - logdenom
+        !isnan(r) && return r
     end
+    return -T(Inf)
 end
 
 # function τ(C::ArchimedeanCopula)  
@@ -185,7 +177,8 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,WGenerator}, x::AbstractVector{T}) where {d,T<:Real}
     @assert d==2
     x[1] = rand(rng)
-    x[2] = 1-x[1] 
+    x[2] = 1-x[1]
+    return x
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopula{d,IndependentGenerator}, A::DenseMatrix{T}) where {T<:Real, d}
     Random.rand!(rng,A)

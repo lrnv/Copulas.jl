@@ -22,7 +22,7 @@ We do not check algorithmically that the proposed generators are d-monotonous. I
 
 More methods can be implemented for performance, althouhg there are implement defaults in the package : 
 
-* `ϕ⁻¹( G::Generator, x)` gives the inverse function of teh generator.
+* `ϕ⁻¹( G::Generator, x)` gives the inverse function of the generator.
 * `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative. 
 * `ϕ⁽ᵏ⁾(G::Generator, k, t)` gives the kth derivative. 
 * `williamson_dist(G::Generator, d)` gives the Wiliamson d-transform of the generator, see [WilliamsonTransforms.jl](https://github.com/lrnv/WilliamsonTransforms.jl).
@@ -35,14 +35,12 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
-function ϕ⁽ᵏ⁾(G::Generator, k, t)
-    X = TaylorSeries.Taylor1(eltype(t),k)
-    taylor_expansion = ϕ(G,t+X)
-    coef = TaylorSeries.getcoeff(taylor_expansion,k) 
+function ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k
+    coef = WilliamsonTransforms.taylor(x -> ϕ(G, x), t, Val(k))[end]
     der = coef * factorial(k)
     return der
 end
-williamson_dist(G::Generator, d) = WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),d)
+williamson_dist(G::Generator, ::Val{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
 
 # τ(G::Generator) = @error("This generator has no kendall tau implemented.")
 # ρ(G::Generator) = @error ("This generator has no Spearman rho implemented.")
