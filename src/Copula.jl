@@ -86,3 +86,19 @@ function measure(C::CT, u,v) where {CT<:Copula}
     end
     return r
 end
+
+function rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d}
+    @assert d == size(u, 1)
+    return rosenblatt(C, reshape(u, (d, 1)))[:]
+end
+function inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d}
+    @assert d == size(u, 1)
+    return inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
+end
+
+function rosenblatt(C::Copula, u::AbstractMatrix{<:Real})
+    error("The Rosenblatt transforms are not implemented yet at the generic `Copula` level.")
+end
+function inverse_rosenblatt(C::Copula, u::AbstractMatrix{<:Real})
+    error("The Rosenblatt transforms are not implemented yet at the generic `Copula` level.")
+end

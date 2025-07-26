@@ -206,11 +206,6 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
     end
     return U
 end
-function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
-    @assert d == size(u, 1)
-   
-    return rosenblatt(C, reshape(u, (d, 1)))[:]
-end
 function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     @assert d == size(u, 1)
     U = zeros(eltype(u), size(u))
@@ -225,11 +220,4 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
         end
     end
     return U
-end
-
-
-function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
-    @assert d == size(u, 1)
-
-    return inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
 end
