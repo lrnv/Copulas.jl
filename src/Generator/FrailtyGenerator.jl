@@ -18,17 +18,8 @@ References:
 struct FrailtyGenerator{TX} <: Generator
     X::TX
     function FrailtyGenerator(X)
-        # Check that the laplace transfrom is implemented ? 
-        # it can be through `mgf`, `cgf = log(mgf)` or `cf`. 
-        # the link is `mgf(t) = cf(- im * t)`
-
-        # What we want here is that laplac tranfrom, that is `mgf(-t)` or thus `real(cf(im * t))`.
-        
-        # the only condition is that the support of the R.V is positive according to 
-
-        # Check that X is indeed a positively supported random variable ?
-        
-        # Other conditions ? We should do a thorough check here. 
+        # Check that X is indeed a positively supported random variable
+        @assert minimum(X) ≥ 0 
         return new{typeof(X)}(X)
     end
 end
