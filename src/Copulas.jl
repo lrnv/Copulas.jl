@@ -16,6 +16,8 @@ module Copulas
     import LogExpFunctions
     import QuadGK
     import LinearAlgebra
+    import PolyLog
+    import BigCombinatorics
 
     # Standard copulas and stuff.
     include("utils.jl")
@@ -112,10 +114,13 @@ module Copulas
     # Subsetting
     include("SubsetCopula.jl") # not exported yet.
 
+    # transformations
+    export rosenblatt, inverse_rosenblatt
+
     using PrecompileTools
     @setup_workload begin
-    # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
-    # precompile file and potentially make loading faster.
+        # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
+        # precompile file and potentially make loading faster.
         @compile_workload begin
             for C in (
                 IndependentCopula(3),
@@ -135,13 +140,12 @@ module Copulas
                 u1 = rand(C)
                 u = rand(C,2)
                 if applicable(Distributions.pdf,C,u1)
-                     Distributions.pdf(C,u1)
-                     Distributions.pdf(C,u)
+                    Distributions.pdf(C,u1)
+                    Distributions.pdf(C,u)
                 end
                 Distributions.cdf(C,u1)
                 Distributions.cdf(C,u)
             end
         end
     end
-
 end

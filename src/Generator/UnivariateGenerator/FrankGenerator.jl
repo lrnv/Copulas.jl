@@ -9,13 +9,13 @@ Constructor
     FrankGenerator(θ)
     FrankCopula(d,θ)
 
-The [Frank](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-\\infty,\\infty)``. It is an Archimedean copula with generator : 
+The [Frank](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-\\infty,\\infty)``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = -\\frac{\\log\\left(1+e^{-t}(e^{-\\theta-1})\\right)}{\theta}
 ```
 
-It has a few special cases: 
+It has a few special cases:
 - When θ = -∞, it is the WCopula (Lower Frechet-Hoeffding bound)
 - When θ = 1, it is the IndependentCopula
 - When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
@@ -38,19 +38,21 @@ struct FrankGenerator{T} <: UnivariateGenerator
     end
 end
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
-ϕ(  G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
-# ϕ(  G::FrankGenerator, t::TaylorSeries.Taylor1) = G.θ > 0 ? -log(-expm1(LogExpFunctions.log1mexp(-G.θ)-t))/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
+ϕ(G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
+ϕ⁽¹⁾(G::FrankGenerator, t) = (one(t) - one(t) / (one(t) + exp(-t)*expm1(-G.θ))) / G.θ
+ϕ⁻¹⁽¹⁾(G::FrankGenerator, t) = G.θ / (-expm1(G.θ * t))
+function ϕ⁽ᵏ⁾(G::FrankGenerator, ::Val{k}, t) where k
+    return (-1)^k * (1 / G.θ) * PolyLog.reli(-(k - 1), (1 - exp(-G.θ)) * exp(-t))
+end
 ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
-ϕ⁽¹⁾(G::FrankGenerator, t) = (one(t) - one(t) / (one(t) + exp(-t)*expm1(-G.θ))) / G.θ  # First derivative of ϕ
-# ϕ⁽ᵏ⁾(G::FrankGenerator, k, t) = kth derivative of ϕ
-williamson_dist(G::FrankGenerator, ::Val{d}) where d = G.θ > 0 ?  WilliamsonFromFrailty(Logarithmic(-G.θ), Val(d)) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
+williamson_dist(G::FrankGenerator, ::Val{d}) where d = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
 
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
 function τ(G::FrankGenerator)
     θ = G.θ
     T = promote_type(typeof(θ),Float64)
     if abs(θ) < sqrt(eps(T))
-        # return the taylor approx. 
+        # return the taylor approx.
         return θ/9 * (1 - (θ/10)^2)
     else
         return 1+4(Debye(θ,1)-1)/θ
