@@ -23,8 +23,9 @@ We do not check algorithmically that the proposed generators are d-monotonous. I
 More methods can be implemented for performance, althouhg there are implement defaults in the package :
 
 * `ϕ⁻¹( G::Generator, x)` gives the inverse function of the generator.
-* `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative.
-* `ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k` gives the kth derivative.
+* `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative of the generator
+* `ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k` gives the kth derivative of the generator
+* `ϕ⁻¹⁽¹⁾(G::Generator, t)` gives the first derivative of the inverse generator.
 * `williamson_dist(G::Generator, ::Val{d}) where d` gives the Wiliamson d-transform of the generator, see [WilliamsonTransforms.jl](https://github.com/lrnv/WilliamsonTransforms.jl).
 
 References:
