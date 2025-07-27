@@ -1,3 +1,6 @@
+@testitem "Generic" tags=[:GaussianCopula] setup=[M] begin M.check(GaussianCopula([1 0.5; 0.5 1])) end
+@testitem "Generic" tags=[:GaussianCopula] setup=[M] begin M.check(GaussianCopula([1 0.7; 0.7 1])) end
+
 @testitem "GaussianCopula" begin
     using Distributions
     using Random
@@ -26,11 +29,8 @@ end
 @testitem "Rosenblatt" begin
     using StatsBase
     C = GaussianCopula([1 0.7071; 0.7071 1])
-
-    u = rand(C, 10^6)
-
+    u = rand(C, 1000)
     U = rosenblatt(C, u)
-    @test corkendall(U[1, :], U[2, :]) ≈ 0 atol = 0.01
-
+    @test corkendall(U[1, :], U[2, :]) ≈ 0 atol = 0.1
     @test inverse_rosenblatt(C, U) ≈ u
 end

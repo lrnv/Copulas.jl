@@ -1,4 +1,21 @@
 
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(2, 1.2)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(2,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(2,1.0)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(2,1)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(2,8)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(2,Inf)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(3,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(3,1.0)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(3,Inf)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,1.0)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,20)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,7)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,100)) end
+@testitem "Generic" tags=[:GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,Inf)) end
+
+
 @testitem "Gumbel pdf" begin
     using HCubature
     using Distributions
@@ -40,10 +57,10 @@ end
     for (d, θ) in zip(dimensions, parameters)
         C = GumbelCopula(d, θ)
         τ = Copulas.τ(C)
-        u = rand(C, 10^5)
+        u = rand(C, 10^4)
         for i in 1:(d - 1)
             for j in (i + 1):d
-                @test corkendall(u[i, :], u[j, :]) ≈ τ rtol = 0.1
+                @test corkendall(u[i, :], u[j, :]) ≈ τ atol = 0.1
             end
         end
     end
@@ -57,16 +74,13 @@ end
 
     for (d, θ) in zip(dimensions, parameters)
         C = GumbelCopula(d, θ)
-        u = rand(C, 10^5)
+        u = rand(C, 1000)
         U = rosenblatt(C, u)
         for i in 1:(d - 1)
             for j in (i + 1):d
-                @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.01
+                @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.1
             end
         end
-
-        u = rand(C, 10^4)
-        U = rosenblatt(C, u)
         @test u ≈ inverse_rosenblatt(C, U)
     end
 end

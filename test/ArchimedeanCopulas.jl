@@ -53,38 +53,36 @@ end
         0.
     end
 
-    @testset "tail dependencies test" begin
-        v1 = vcat(zeros(5), 0.5*ones(5), zeros(5), 0.5*ones(70), ones(5), 0.5*ones(5), ones(5));
-        v2 = vcat(zeros(10), 0.5*ones(80), ones(10))
-        @test tail(v1, v2,  "l", 0.1) ≈ 0.5
-        @test tail(v1, v2, "r", 0.1) ≈ 0.5
-    end
+    # tail dependencies test
+    v1 = vcat(zeros(5), 0.5*ones(5), zeros(5), 0.5*ones(70), ones(5), 0.5*ones(5), ones(5));
+    v2 = vcat(zeros(10), 0.5*ones(80), ones(10))
+    @test tail(v1, v2,  "l", 0.1) ≈ 0.5
+    @test tail(v1, v2, "r", 0.1) ≈ 0.5
 
-    @testset "Gumbel" begin
-        rng = StableRNG(123)
-        x = rand(rng,GumbelCopula(3,2.), 100_000)
-        @test_broken tail(x[:,1], x[:,2], "r") ≈ 2-2^(1/2) atol=1.0e-1
-        @test_broken tail(x[:,1], x[:,2], "r") ≈ 2-2^(1/2) atol=1.0e-1
-        @test tail(x[:,1], x[:,2], "l", 0.00001) ≈ 0.
-        @test tail(x[:,1], x[:,3], "l", 0.00001) ≈ 0.
-    end
-    @testset "Clayton" begin
-        rng = StableRNG(123)
-        x = rand(rng,ClaytonCopula(3,1.), 100_000)
-        @test_broken tail(x[:,1], x[:,2], "l") ≈ 2.0^(-1) atol=1.0e-1
-        @test_broken tail(x[:,1], x[:,3], "l") ≈ 2.0^(-1) atol=1.0e-1
-        @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
-    end
-    @testset "AMH" begin
-        rng = StableRNG(123)
-        x = rand(rng,AMHCopula(3,0.8), 100_000)
-        @test tail(x[:,1], x[:,2], "l", 0.0001) ≈ 0
-        @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
-    end
-    @testset "Frank" begin
-        rng = StableRNG(123)
-        x = rand(rng,FrankCopula(3,0.8), 100_000)
-        @test tail(x[:,1], x[:,2], "l", 0.0001) ≈ 0
-        @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
-    end
+    # Gumbel
+    rng = StableRNG(123)
+    x = rand(rng,GumbelCopula(3,2.), 100_000)
+    @test_broken tail(x[:,1], x[:,2], "r") ≈ 2-2^(1/2) atol=1.0e-1
+    @test_broken tail(x[:,1], x[:,2], "r") ≈ 2-2^(1/2) atol=1.0e-1
+    @test tail(x[:,1], x[:,2], "l", 0.00001) ≈ 0.
+    @test tail(x[:,1], x[:,3], "l", 0.00001) ≈ 0.
+
+    # Clayton
+    rng = StableRNG(123)
+    x = rand(rng,ClaytonCopula(3,1.), 100_000)
+    @test_broken tail(x[:,1], x[:,2], "l") ≈ 2.0^(-1) atol=1.0e-1
+    @test_broken tail(x[:,1], x[:,3], "l") ≈ 2.0^(-1) atol=1.0e-1
+    @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
+
+    # AMH
+    rng = StableRNG(123)
+    x = rand(rng,AMHCopula(3,0.8), 100_000)
+    @test tail(x[:,1], x[:,2], "l", 0.0001) ≈ 0
+    @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
+    
+    # Frank
+    rng = StableRNG(123)
+    x = rand(rng,FrankCopula(3,0.8), 100_000)
+    @test tail(x[:,1], x[:,2], "l", 0.0001) ≈ 0
+    @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
 end
