@@ -64,11 +64,11 @@ function _cdf(C::CT,u) where {CT<:GaussianCopula}
     return MvNormalCDF.mvnormcdf(μ, C.Σ, lb, x)[1]
 end
 
-function rosenblatt(C::GaussianCopula, u)
+function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
     return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
 end
 
-function inverse_rosenblatt(C::GaussianCopula, s)
+function inverse_rosenblatt(C::GaussianCopula, s::AbstractMatrix{<:Real})
     return Distributions.cdf.(Distributions.Normal(), LinearAlgebra.cholesky(C.Σ).L * Distributions.quantile.(Distributions.Normal(), s))
 end
 

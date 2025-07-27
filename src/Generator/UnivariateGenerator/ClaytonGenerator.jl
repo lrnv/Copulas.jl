@@ -39,22 +39,13 @@ struct ClaytonGenerator{T} <: UnivariateGenerator
         end
     end
 end
-max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1 / G.θ))
-ϕ(G::ClaytonGenerator, t) = (max(1 + t, zero(t)))^(-1 / G.θ)
-function ϕ⁽¹⁾(G::ClaytonGenerator, t)
-    α = 1 / G.θ
-    return -α * (1 + t)^(-1 - α)
-end
-function ϕ⁽ᵏ⁾(G::ClaytonGenerator, ::Val{k}, t) where k
-    α = 1 / G.θ
-    return (-1)^k * prod([0:(k - 1);] .+ α) * (1 + t)^(-(k + α))
-end
-function ϕ⁻¹(G::ClaytonGenerator, t)
-    return t^(-G.θ) - 1
-end
-function ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t)
-    return -G.θ * t^(-G.θ - 1)
-end
+max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1/G.θ))
+ϕ(  G::ClaytonGenerator, t) = max(1+G.θ*t,zero(t))^(-1/G.θ)
+ϕ⁻¹(G::ClaytonGenerator, t) = (t^(-G.θ)-1)/G.θ
+ϕ⁽¹⁾(G::ClaytonGenerator, t) = (1+G.θ*t) ≤ 0 ? 0 : - (1+G.θ*t)^(-1/G.θ -1)
+ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t) = -t^(-G.θ-1)
+ϕ⁽ᵏ⁾(G::ClaytonGenerator, ::Val{k}, t) where k = (1+G.θ*t) ≤ 0 ? 0 : (1 + G.θ * t)^(-1/G.θ - k) * prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1)
+
 τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ/(G.θ+2), 1)
 τ⁻¹(::Type{T},τ) where T<:ClaytonGenerator = ifelse(τ == 1,Inf,2τ/(1-τ))
-williamson_dist(G::ClaytonGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ), Val(d)) : ClaytonWilliamsonDistribution(G.θ,d)
+williamson_dist(G::ClaytonGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ), Val{d}()) : ClaytonWilliamsonDistribution(G.θ,d)

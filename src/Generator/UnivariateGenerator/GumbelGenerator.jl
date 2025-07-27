@@ -47,9 +47,9 @@ function ϕ⁽¹⁾(G::GumbelGenerator, t)
 end
 function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
     α = 1 / G.θ
-    return ϕ(G, t) * t^(-d) * sum([
-        α^j * BigCombinatorics.Stirling1(d, j) * sum([BigCombinatorics.Stirling2(j, k) * (-t^α)^k for k in 1:j]) for j in 1:d
-    ])
+    return ϕ(G, t) * t^(-d) * sum(
+        α^j * BigCombinatorics.Stirling1(d, j) * sum(BigCombinatorics.Stirling2(j, k) * (-t^α)^k for k in 1:j) for j in 1:d
+    )
 end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * (-log(t))^(G.θ - 1)) / t
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
@@ -65,4 +65,4 @@ function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
         return θ
     end
 end
-williamson_dist(G::GumbelGenerator, ::Val{d}) where d = WilliamsonFromFrailty(AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0)), Val(d))
+williamson_dist(G::GumbelGenerator, ::Val{d}) where d = WilliamsonFromFrailty(AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0)), Val{d}())

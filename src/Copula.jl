@@ -86,3 +86,39 @@ function measure(C::CT, u,v) where {CT<:Copula}
     end
     return r
 end
+
+"""
+    rosenblatt(C::Copula, u)
+
+Computes the rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ C, the result should be uniformely distributed on the unit hypercube. The importance of this transofrmation comes from its bijectivity: `inverse_rosenblatt(C, rand(d))` is equivalent to `rand(C)`. The interface proposes faster versions for matrix inputs `u`.
+
+
+References:
+* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. The annals of mathematical statistics, 23(3), 470-472.
+"""
+function rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d}
+    @assert d == size(u, 1)
+    return rosenblatt(C, reshape(u, (d, 1)))[:]
+end
+
+
+"""
+    inverse_rosenblatt(C::Copula, u)
+
+Computes the inverse rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ Π, the independence copula, the result should be distributed as C. Also look at `rosenblatt(C, u)` for the inverse transformation. The interface proposes faster versions for matrix inputs `u`. 
+
+
+References:
+* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. The annals of mathematical statistics, 23(3), 470-472.
+"""
+function inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d}
+    @assert d == size(u, 1)
+    return inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
+end
+
+function rosenblatt(C::Copula, u::AbstractMatrix{<:Real})
+    error("The Rosenblatt transforms are not implemented yet at the generic `Copula` level.")
+end
+function inverse_rosenblatt(C::Copula, u::AbstractMatrix{<:Real})
+    error("The Rosenblatt transforms are not implemented yet at the generic `Copula` level.")
+end

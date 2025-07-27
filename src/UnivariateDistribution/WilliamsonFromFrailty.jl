@@ -3,7 +3,7 @@ struct WilliamsonFromFrailty{TF,d} <: Distributions.ContinuousUnivariateDistribu
     function WilliamsonFromFrailty(frailty_dist,::Val{d}) where d
         return new{typeof(frailty_dist),d}(frailty_dist)
     end
-    WilliamsonFromFrailty(frailty_dist,d) = WilliamsonFromFrailty(frailty_dist,Val(d))
+    WilliamsonFromFrailty(frailty_dist,d) = WilliamsonFromFrailty(frailty_dist,Val{d}())
 end
 function Distributions.rand(rng::Distributions.AbstractRNG, D::WilliamsonFromFrailty{TF,d}) where {TF,d}
     f = rand(rng,D.frailty_dist)

@@ -45,7 +45,7 @@ function ϕ⁽ᵏ⁾(G::FrankGenerator, ::Val{k}, t) where k
     return (-1)^k * (1 / G.θ) * PolyLog.reli(-(k - 1), (1 - exp(-G.θ)) * exp(-t))
 end
 ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
-williamson_dist(G::FrankGenerator, ::Val{d}) where d = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), Val(d)) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val(d))
+williamson_dist(G::FrankGenerator, ::Val{d}) where d = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
 
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
 function τ(G::FrankGenerator)

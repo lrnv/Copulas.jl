@@ -53,21 +53,21 @@ end
 ϕ⁻¹⁽¹⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁻¹⁽¹⁾(C.G, t)
 ϕ⁽¹⁾(C::ArchimedeanCopula{d,TG},t)   where {d,TG} = ϕ⁽¹⁾(C.G, t)
 ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},k,t) where {d,TG} = ϕ⁽ᵏ⁾(C.G, k, t)
-williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G, Val(d))
+williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G, Val{d}())
 
 _cdf(C::ArchimedeanCopula, u) = ϕ(C, sum(ϕ⁻¹.(C, u)))
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .< 1)
         return eltype(u)(-Inf)
     end
-    return log(ϕ⁽ᵏ⁾(C, Val(d), sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+    return log(ϕ⁽ᵏ⁾(C, Val{d}(), sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
 end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
     if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
         return eltype(u)(-Inf)
     end
-    return log(ϕ⁽ᵏ⁾(C, Val(d), sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+    return log(ϕ⁽ᵏ⁾(C, Val{d}(), sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
 end
 
 # function τ(C::ArchimedeanCopula)
@@ -187,10 +187,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::ArchimedeanCopul
     return A
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, x::AbstractVector{<:Real})
-    x[:] = inverse_rosenblatt(C, rand(rng, length(x)))
-    return x
-end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, A::DenseMatrix{<:Real})
     A[:] = inverse_rosenblatt(C, rand(rng, size(A)...))
     return A
@@ -210,77 +206,18 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
     end
     return U
 end
-
-function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG<:ClaytonGenerator}
+function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     @assert d == size(u, 1)
-
     U = zeros(eltype(u), size(u))
     U[1, :] = u[1, :]
-
-    rⱼ = u[1,:] .^ (-C.G.θ)
-    rⱼ₋₁ = similar(rⱼ)
-    for j in 2:d
-        rⱼ₋₁ .= rⱼ
-        rⱼ += u[j,:] .^ (-C.G.θ)
-        U[j, :] .= ((1 .- j .+ rⱼ) ./ (2 .- j .+ rⱼ₋₁)) .^ (-1 / C.G.θ - (j - 1))
-    end
-    return U
-end
-
-function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}) where {d,TG}
-    @assert d == size(u, 1)
-
-    return rosenblatt(C, reshape(u, (d, 1)))[:]
-end
-
-function inverse_rosenblatt(
-    C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
-) where {d,TG}
-    @assert d == size(u, 1)
-
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :]
-
     for i in axes(u, 2)
+        Cᵢⱼ = zero(eltype(u))
         for j in 2:d
-            f =
-                x ->
-                    (
-                        ϕ⁽ᵏ⁾(C.G, Val(j - 1), sum(ϕ⁻¹.(C.G, [U[1:(j - 1), i]..., x]))) /
-                        ϕ⁽ᵏ⁾(C.G, Val(j - 1), sum(ϕ⁻¹.(C.G, U[1:(j - 1), i])))
-                    ) - u[j, i]
-
+            Cᵢⱼ += ϕ⁻¹(C.G, U[j - 1, i])
+            Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, Val(j - 1), Cᵢⱼ) * u[j,i]
+            f(x) = ϕ⁽ᵏ⁾(C.G, Val(j - 1), Cᵢⱼ + ϕ⁻¹(C.G, x)) - Dᵢⱼ
             U[j, i] = Roots.find_zero(f, (eps(1.0), 1.0), Roots.A42())
         end
     end
-
     return U
-end
-
-function inverse_rosenblatt(
-    C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
-) where {d,TG<:ClaytonGenerator}
-    @assert d == size(u, 1)
-
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :]
-
-    for j in 2:d
-        U[j, :] =
-            (
-                1 .+
-                (1 .- (j - 1) .+ sum(U[1:(j - 1), :] .^ -C.G.θ; dims=1))[:] .*
-                (u[j, :] .^ (-1 / (j - 1 + 1 / C.G.θ)) .- 1)
-            ) .^ (-1 / C.G.θ)
-    end
-
-    return U
-end
-
-function inverse_rosenblatt(
-    C::ArchimedeanCopula{d,TG}, u::AbstractVector{<:Real}
-) where {d,TG}
-    @assert d == size(u, 1)
-
-    return inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
 end

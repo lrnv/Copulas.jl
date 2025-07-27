@@ -42,11 +42,11 @@ max_monotony(::JoeGenerator) = Inf
 ϕ⁽¹⁾(G::JoeGenerator, t) = (-expm1(-t))^(1/G.θ) / (G.θ - G.θ * exp(t))
 function ϕ⁽ᵏ⁾(G::JoeGenerator, ::Val{d}, t) where d
     α = 1 / G.θ
-    P_d_α = sum([
+    P_d_α = sum(
         BigCombinatorics.Stirling2(d, k + 1) *
         (SpecialFunctions.gamma(k + 1 - α) / SpecialFunctions.gamma(1 - α)) *
         (exp(-t) / (-expm1(-t)))^k for k in 0:(d - 1)
-    ])
+    )
     return (-1)^d * α * (exp(-t) / (-expm1(-t))^(1 - α)) * P_d_α
 end
 function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)
@@ -65,4 +65,4 @@ function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
         return Roots.find_zero(θ -> τ(JoeGenerator(θ)) - tau, (one(tau),tau*Inf))
     end
 end
-williamson_dist(G::JoeGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Sibuya(1/G.θ), Val(d))
+williamson_dist(G::JoeGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Sibuya(1/G.θ), Val{d}())

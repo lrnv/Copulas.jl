@@ -41,12 +41,9 @@ References:
 struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribution
     C::CT
     m::TplMargins
-    function SklarDist(C,m)
-        d = length(C)
-        @assert length(m) == d
+    function SklarDist(C::Copula{d}, m::NTuple{d, Any}) where d
         @assert all(mᵢ isa Distributions.UnivariateDistribution for mᵢ in m)
-        tm = Tuple(m)
-        return new{typeof(C),typeof(tm)}(C,tm)
+        return new{typeof(C),typeof(m)}(C,m)
     end    
 end
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
@@ -71,4 +68,19 @@ function Distributions.fit(::Type{SklarDist{CT,TplMargins}},x) where {CT,TplMarg
     u = pseudos(x)
     C = Distributions.fit(CT,u)
     return SklarDist(C,m)
+end
+
+function rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
+    v = similar(u)
+    for (i,Mᵢ) in enumerate(D.m)
+        v[i,:] .= Distributions.cdf.(Mᵢ, u[i,:])
+    end
+    return rosenblatt(D.C, v)
+end
+function inverse_rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
+    v = inverse_rosenblatt(D.C,u)
+    for (i,Mᵢ) in enumerate(D.m)
+        v[i,:] .= Distributions.quantile.(Mᵢ, v[i,:])
+    end
+    return v
 end

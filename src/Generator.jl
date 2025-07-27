@@ -38,11 +38,11 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
 ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
 function ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k
-    coef = WilliamsonTransforms.taylor(x -> ϕ(G, x), t, Val(k))[end]
+    coef = WilliamsonTransforms.taylor(x -> ϕ(G, x), t, Val{k}())[end]
     der = coef * factorial(k)
     return der
 end
-williamson_dist(G::Generator, ::Val{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
+williamson_dist(G::Generator, ::Val{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val{d}())
 
 
 # τ(G::Generator) = @error("This generator has no kendall tau implemented.")
