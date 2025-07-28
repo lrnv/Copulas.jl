@@ -37,10 +37,9 @@ struct LogCopula{P} <: ExtremeValueCopula{P}
     end
 end
 # #  specific ℓ funcion of LogCopula
-function ℓ(G::LogCopula, t::Vector)
+function ℓ(G::LogCopula, t₁, t₂)
     θ = G.θ
-    t₁, t₂ = t
     return (t₁^θ + t₂^θ)^(1/θ)
 end
 # #  specific A funcion of LogCopula
-A(C::LogCopula, t::Real) = exp(LogExpFunctions.logaddexp(C.θ*log(t),C.θ*log(1-t))/C.θ)
+A(C::LogCopula, t::Real) = exp(LogExpFunctions.logaddexp(C.θ*log(t),C.θ*log(1-t))/C.θ) 

@@ -33,7 +33,7 @@ function Distributions.quantile(d::ExtremeDist, p)
     copula = d.G
 
     # Automatically decide whether to use binary search or Brent
-    if hasmethod(needs_binary_search, (typeof(copula),)) && needs_binary_search(copula)
+    if needs_binary_search(copula)
         # Use binary search for copulas with large parameters     
         lower_bound = eps()
         upper_bound = 1.0 - eps()

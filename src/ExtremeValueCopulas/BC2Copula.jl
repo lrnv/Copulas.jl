@@ -31,9 +31,8 @@ struct BC2Copula{P} <: ExtremeValueCopula{P}
     end
 end
 
-function ℓ(C::BC2Copula, t::Vector)
+function ℓ(C::BC2Copula, t₁, t₂)
     a, b = C.a, C.b
-    t₁, t₂ = t
     return max(a*t₁, b*t₂) + max((1-a)*t₁, (1-b)*t₂)
 end
 
