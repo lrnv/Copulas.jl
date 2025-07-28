@@ -9,13 +9,13 @@ Constructor
     AMHGenerator(θ)
     AMHCopula(d,θ)
 
-The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1,1)``. It is an Archimedean copula with generator : 
+The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1,1)``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = 1 - \\frac{1-\\theta}{e^{-t}-\\theta}
 ```
 
-It has a few special cases: 
+It has a few special cases:
 - When θ = 0, it is the IndependentCopula
 
 References:
@@ -36,16 +36,17 @@ end
 max_monotony(::AMHGenerator) = Inf
 ϕ(  G::AMHGenerator, t) = (1-G.θ)/(exp(t)-G.θ)
 ϕ⁻¹(G::AMHGenerator, t) = log(G.θ + (1-G.θ)/t)
-# ϕ⁽¹⁾(G::AMHGenerator, t) =  First derivative of ϕ
-# ϕ⁽ᵏ⁾(G::AMHGenerator, k, t) = kth derivative of ϕ
-williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ), Val(d)) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
+ϕ⁽¹⁾(G::AMHGenerator, t) = -((1-G.θ) * exp(t)) / (exp(t) - G.θ)^2
+ϕ⁽ᵏ⁾(G::AMHGenerator, ::Val{k}, t) where k = (-1)^k * (1 - G.θ) / G.θ * PolyLog.reli(-k, G.θ * exp(-t))
+ϕ⁻¹⁽¹⁾(G::AMHGenerator, t) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
+williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
 
 function τ(G::AMHGenerator)
     θ = G.θ
-    # unstable around zero, we instead cut its taylor expansion: 
+    # unstable around zero, we instead cut its taylor expansion:
     if abs(θ) < 0.01
         return 2/9  * θ
-            + 1/18  * θ^2 
+            + 1/18  * θ^2
             + 1/45  * θ^3
             + 1/90  * θ^4
             + 2/315 * θ^5

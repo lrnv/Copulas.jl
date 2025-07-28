@@ -41,18 +41,18 @@ max_monotony(G::InvGaussianGenerator) = Inf
 ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
 ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? ln(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))
 # ϕ⁽¹⁾(G::InvGaussianGenerator, t) =  First derivative of ϕ
-# ϕ⁽ᵏ⁾(G::InvGaussianGenerator, k, t) = kth derivative of ϕ
+# ϕ⁽ᵏ⁾(G::InvGaussianGenerator, ::Val{k}, t) where k = kth derivative of ϕ
 function τ(G::InvGaussianGenerator)
     θ = G.θ
     T = promote_type(typeof(θ),Float64)
     if θ == 0
         return zero(θ)
-    elseif θ > 1e153 # should be Inf, but integrand has issues... 
+    elseif θ > 1e153 # should be Inf, but integrand has issues...
         return 1/2
     elseif θ < sqrt(eps(T))
         return zero(θ)
     end
-    function _integrand(x,θ) 
+    function _integrand(x,θ)
         y = 1-θ*log(x)
         ret = - x*(y^2-1)/(2θ*y)
         return ret
@@ -73,4 +73,4 @@ function τ⁻¹(::Type{T}, tau) where T<:InvGaussianGenerator
     end
     return Roots.find_zero(x -> τ(InvGaussianGenerator(x)) - tau, (sqrt(eps(tau)), Inf))
 end
-williamson_dist(G::InvGaussianGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Distributions.InverseGaussian(G.θ,1), Val(d))
+williamson_dist(G::InvGaussianGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Distributions.InverseGaussian(G.θ,1), Val{d}())

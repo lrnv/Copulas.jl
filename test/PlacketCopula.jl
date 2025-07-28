@@ -1,3 +1,8 @@
+@testitem "Generic" tags=[:PlackettCopula] setup=[M] begin M.check(PlackettCopula(0.5)) end
+@testitem "Generic" tags=[:PlackettCopula] setup=[M] begin M.check(PlackettCopula(0.8)) end
+@testitem "Generic" tags=[:PlackettCopula] setup=[M] begin M.check(PlackettCopula(2.0)) end
+
+
 @testitem "PlackettCopula - Fix behavior of cdf, pdf and constructor" begin
 
     # Fix the bahavior ofc the constructor: 

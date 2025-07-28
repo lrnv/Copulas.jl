@@ -1,3 +1,6 @@
+@testitem "Generic" tags=[:SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(ClaytonCopula(2,-0.7),(1,2))) end
+
+
 @testitem "Testing survival stuff" begin
     using Distributions
     using StableRNGs

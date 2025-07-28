@@ -52,7 +52,7 @@ function williamson_dist(G::WilliamsonGenerator, ::Val{d}) where d
         return G.X
     end
     # what about d < G.d ? Mayeb we can do some frailty stuff ? 
-    return WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val(d))
+    return WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val{d}())
 end
 ϕ(G::WilliamsonGenerator, t) = WilliamsonTransforms.𝒲(G.X, Val(G.d))(t)
 

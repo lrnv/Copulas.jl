@@ -1,3 +1,9 @@
+@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(2, 0.0)) end
+@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(2, rand(M.rng))) end
+@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(2,1)) end
+@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(3, [0.3,0.3,0.3,0.3])) end
+@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(3,[0.1,0.2,0.3,0.4])) end
+
 @testset "Fixing values of FGMCopula - cdf, pdf, constructor" begin
 
     @test isa(FGMCopula(2,0.0), IndependentCopula)

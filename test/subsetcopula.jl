@@ -32,7 +32,7 @@
 
     for C in cops
         d = length(C)
-        D = SklarDist(C,(LogNormal() for i in 1:d))
+        D = SklarDist(C, Tuple(LogNormal() for i in 1:d))
         sC = Copulas.subsetdims(C,(1,2))
         sD = Copulas.subsetdims(D,(2,1))
         

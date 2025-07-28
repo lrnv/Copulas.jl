@@ -31,6 +31,7 @@ makedocs(;
             "Empirical Copulas" => "empirical/generalities.md",
             "Vines Copulas" => "Vines.md",
             "Dependence measures" => "dependence_measures.md",
+            "Rosenblatt transformatons" =>  "rosenblatt_transform.md",
         ],
         
         "Bestiary" => [
