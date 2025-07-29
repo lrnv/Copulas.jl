@@ -1,8 +1,8 @@
-# Loss-Alae fitting example. 
+# Loss-Alae fitting example
 
-Loss-Alae is a dataset that is provided in the R `copula` package, which documentation can be found [there](https://search.r-project.org/CRAN/refmans/copula/html/loss.html).
-This dataset corresponds to claims received by an insurer, where the two variables `loss` and `alae` respectively correspond to the amount of the loss and to associated expenses.
-There is a certain dependence structure between the two, and the actual distribution generating this data is of course unknown.
+Loss-Alae is a dataset provided in the R `copula` package, documented [here](https://search.r-project.org/CRAN/refmans/copula/html/loss.html).
+This dataset corresponds to claims received by an insurer, where the two variables `loss` and `alae` respectively correspond to the amount of the loss and associated expenses.
+There is a certain dependence structure between the two, and the actual distribution generating this data is unknown.
 Our task here is to provide a parametric model that approximates this distribution. 
 
 Let us first import the data : 
