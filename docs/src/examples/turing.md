@@ -1,7 +1,6 @@
 # Bayesian inference with `Turing.jl`
 
-
-The compatibility with `Distributions.jl`'s API allows a lot of interactions with the broader ecosystem. One of the firsts examples that we discovered was the possibility to do Bayesian inference of model parameters (copula included) with [`Turing.jl`](https://turing.ml/). 
+Compatibility with the `Distributions.jl` API allows extensive interaction with the broader Julia ecosystem. One of the first examples discovered was the possibility to perform Bayesian inference of model parameters (including copulas) with [`Turing.jl`](https://turing.ml/). 
 
 Consider that we have a given model with a certain copula and certain marginals, all having parameters to be fitted. Then we can use Turing's `@addlogprob!` to compute the loglikelihood of our model and maximize it around the parameters alongside the chain as follows: 
 
@@ -42,7 +41,7 @@ sampler = NUTS() # MH() works too
 chain = sample(copula(draws), sampler, MCMCThreads(), 100, 4)
 ```
 
-Note that we truncated the θ parameter at -1/3 and not 0 as the `ClaytonCopula` can handle negative dependence structures. We only ran 100 steps for efficiency reasons, you can increase this number easily if needed. The upper code outputs summary of the chain : 
+Note that we truncated the θ parameter at -1/3 and not 0, as the `ClaytonCopula` can handle negative dependence structures. Only 100 steps were run for efficiency; you can increase this number as needed. The code above outputs a summary of the chain : 
 
 Summary Statistics:
 
@@ -68,7 +67,7 @@ And then `plot(chain)` produces the following plot:
 
 ![Turing results](turing_plot.png)
 
-Similar approaches could be used to fit many other dependence structures in a Bayesian settings. The upper example showcases a parametric estimation of a sampling model, but a Bayesian regression with an error structure given by a parametric copula is as easy to implement. 
+Similar approaches can be used to fit many other dependence structures in a Bayesian setting. The example above showcases parametric estimation of a sampling model, but Bayesian regression with an error structure given by a parametric copula is just as easy to implement. 
 
 This was run on the following environment: 
 
