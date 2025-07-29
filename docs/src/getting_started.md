@@ -17,9 +17,9 @@ Consider a real valued random vector $\bm X = \left(X_1,...,X_d\right): \Omega \
 
     ```@example 1
     using Distributions
-    X₁ = Normal()       # A standard gaussian random variable
+    X₁ = Normal()       # A standard Gaussian random variable
     X₂ = Gamma(2,3)     # A Gamma random variable
-    X₃ = Pareto(1)      # A Pareto random variable with no variance.
+    X₃ = Pareto(1)      # A Pareto random variable with infinite variance.
     X₄ = LogNormal(0,1) # A Lognormal random variable 
     nothing # hide
     ```
@@ -112,11 +112,11 @@ rand(MyDistribution,10)
 rand(MyOtherDistribution,10)
 ```
 
-Sklar's theorem can be used the otehr way around (from the marginal space to the unit hypercube): this is e.g. what the [`pseudo()`](@ref Pseudo-observations) function does, computing ranks.
+Sklar's theorem can be used the other way around (from the marginal space to the unit hypercube): this is, for example, what the [`pseudo()`](@ref Pseudo-observations) function does, computing ranks.
 
 !!! note "Independent random vectors"
 
-    Distributions.jl proposes the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create those independent random vectors with given marginals. `product_distribution(args...)` is basically equivalent to `SklarDist(Π, args)`, but you can already see that our approach generalizes to other dependence structres, and is thus much powerfull. 
+    Distributions.jl provides the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create independent random vectors with given marginals. `product_distribution(args...)` is essentially equivalent to `SklarDist(Π, args)`, but our approach generalizes to other dependence structures and is thus much more powerful. 
 
 Copulas are bounded functions with values in [0,1] since they correspond to probabilities. But their range can be bounded more precisely, and [lux2017](@cite) gives us:
 
@@ -172,12 +172,12 @@ We see on the output that the parameters were correctly estimated from this samp
 
 ## Going further
 
-This documentation tries to join theoretical information and links to the literature with practical how-tos related to our specific implementation. It can be read as a lecture, or pin-pointed to check the specific feature you need through the search function. We hope that you'll enjoy using it!
+This documentation aims to combine theoretical information and references to the literature with practical guidance related to our specific implementation. It can be read as a lecture, or used to find the specific feature you need through the search function. We hope you find it useful.
 
 !!! tip "Explore the bestiary!"
-    The package contains *a lot* of copula families. Classifying them is basically impossible, since the lcass is infinite dimensional, but the package proposes a few standard classes: elliptical, archimedeans, extreme values, empirical, vines...
+    The package contains *many* copula families. Classifying them is essentially impossible, since the class is infinite-dimensional, but the package proposes a few standard classes: elliptical, archimedean, extreme value, empirical, vines...
     
-    Each of these classes more-or-less correspond to an abstract type in our type hierarchy, and to a section of this documentation. Do not hesitate to explore the bestiary !
+    Each of these classes more or less corresponds to an abstract type in our type hierarchy, and to a section of this documentation. Do not hesitate to explore the bestiary !
 
 
 ```@bibliography
