@@ -92,14 +92,14 @@ function d²A(T::tEVCopula, t::Real)
 
     Z1 =  C * ((t/(1-t))^α - ρ)
     DZ1 = C * α * (t/(1-t))^(α - 1) * (1/(1-t))^2
-    DDZ1 = C * α * ((α-1)*t^(α-2) + 2t^(α-1)) / (1-t)^(α+2) / 2 
+    DDZ1 = C * α * ((α-1)*t^(α-2) + 2t^(α-1)) / (1-t)^(α+2) 
     
     Z2 = C * ((1/t - 1)^α - ρ)
     DZ2 = C * α * (1/t - 1)^(α - 1) * (-1/t^2)
     DDZ2 = C * α * (
           (1/t - 1)^(α-2) * (α-1) * (1/t^4)
         + (1/t - 1)^(α-1) * (2/t^3)
-    ) / 2
+    )
     
     D = Distributions.TDist(T.ν + 1)    
     f1 = Distributions.pdf(D, Z1)
@@ -109,7 +109,7 @@ function d²A(T::tEVCopula, t::Real)
 
     DDB1 = f1 * DZ1 + t * f1 * DDZ1 + t * g1 * f1 * DZ1^2 + f1 * DZ1
     DDB2 = (1-t) * (g2 * f2 * DZ2^2 + f2 * DDZ2) - 2 * f2 * DZ2
-    DDA = 2DDB1 + 2DDB2
+    DDA = DDB1 + DDB2
     return DDA
 end
 function _A_dA_d²A(T::tEVCopula, t::Real)
@@ -119,14 +119,14 @@ function _A_dA_d²A(T::tEVCopula, t::Real)
 
     Z1 =  C * ((t/(1-t))^α - ρ)
     DZ1 = C * α * (t/(1-t))^(α - 1) * (1/(1-t))^2
-    DDZ1 = C * α * ((α-1)*t^(α-2) + 2t^(α-1)) / (1-t)^(α+2) / 2 
+    DDZ1 = C * α * ((α-1)*t^(α-2) + 2t^(α-1)) / (1-t)^(α+2)
     
     Z2 = C * ((1/t - 1)^α - ρ)
     DZ2 = C * α * (1/t - 1)^(α - 1) * (-1/t^2)
     DDZ2 = C * α * (
           (1/t - 1)^(α-2) * (α-1) * (1/t^4)
         + (1/t - 1)^(α-1) * (2/t^3)
-    ) / 2
+    )
     
     D = Distributions.TDist(T.ν + 1)
     
@@ -149,6 +149,6 @@ function _A_dA_d²A(T::tEVCopula, t::Real)
 
     A = B1 + B2
     DA = DB1 + DB2
-    DDA = 2DDB1 + 2DDB2
+    DDA = DDB1 + DDB2
     return A, DA, DDA
 end

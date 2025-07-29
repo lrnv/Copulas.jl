@@ -44,7 +44,7 @@ end
 function dA(C::BC2Copula, t::Float64)
     a, b = C.a, C.b
     der1 =  a*t >= b*(1-t) ? a : -b
-    der2 = (1-a)*t >= (1-b)*(1-t) ? -a : -(1-b)
+    der2 = (1-a)*t >= (1-b)*(1-t) ? (1-a) : -(1-b)
     return der1 + der2
 end
 

@@ -73,8 +73,7 @@ end
 function Distributions._logpdf(C::ExtremeValueCopula, t::AbstractArray{<:Real})
     u, v = -log.(t)
     val, du, dv, dudv = _der_ℓ(C, u, v)
-    ret = max(-dudv + du*dv,0) # otherwise it gets negative... 
-    return - val + log(abs(ret)) + u + v
+    return - val + log(-dudv + du*dv) + u + v
 end
 
 # Definir la función para calcular τ and ρ
