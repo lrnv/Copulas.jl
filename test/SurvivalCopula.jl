@@ -1,5 +1,5 @@
 @testitem "Generic" tags=[:SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(ClaytonCopula(2,-0.7),(1,2))) end
-@testitem "Generic" tags=[:SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(RafteryCopula(2, 0.2))) end
+@testitem "Generic" tags=[:SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(RafteryCopula(2, 0.2), (2,1))) end
 
 @testitem "Testing survival stuff" begin
     using Distributions
