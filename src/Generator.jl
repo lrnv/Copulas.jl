@@ -43,6 +43,7 @@ function ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k
     der = coef * factorial(k)
     return der
 end
+ϕ⁽ᵏ⁾⁻¹(G::Generator, ::Val{k}, t; start_at=t) where {k} = Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, Val{k}(), x) - t, start_at)
 williamson_dist(G::Generator, ::Val{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val{d}())
 
 
