@@ -31,23 +31,12 @@ struct BC2Copula{P} <: ExtremeValueCopula{P}
     end
 end
 
-function ℓ(C::BC2Copula, t::Vector)
-    a, b = C.a, C.b
-    t₁, t₂ = t
-    return max(a*t₁, b*t₂) + max((1-a)*t₁, (1-b)*t₂)
-end
 
 function A(C::BC2Copula, t::Real)
     a, b = C.a, C.b
     return max(a*t, b*(1-t)) + max((1-a)*t, (1-b)*(1-t))
 end
 
-function dA(C::BC2Copula, t::Float64)
-    a, b = C.a, C.b
-    der1 =  a*t >= b*(1-t) ? a : -b
-    der2 = (1-a)*t >= (1-b)*(1-t) ? -a : -(1-b)
-    return der1 + der2
-end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::BC2Copula, u::AbstractVector{T}) where {T<:Real}
     a, b = C.a, C.b
