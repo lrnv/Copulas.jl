@@ -42,9 +42,8 @@ dA(C::CuadrasAugeCopula, t::Real) = t <= 0.5 ? -C.θ : C.θ
 ρ(C::CuadrasAugeCopula) = (3*C.θ)/(4-C.θ)
 
 # specific ℓ específica of Cuadras-Augé Copula
-function ℓ(C::CuadrasAugeCopula, t::Vector)
+function ℓ(C::CuadrasAugeCopula, t₁, t₂)
     θ = C.θ
-    t₁, t₂ = t
     return max(t₁, t₂) + (1-θ) * min(t₁, t₂)
 end
 

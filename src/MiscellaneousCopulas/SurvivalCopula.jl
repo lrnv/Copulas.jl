@@ -40,25 +40,20 @@ function reverse!(u,idx)
     end
     return u
 end
-function reverse(u,idx)
-    v = deepcopy(u)
-    reverse!(v,idx)
-    return v
-end
+reverse(u,idx) = [i ∈ idx ? 1-uᵢ : uᵢ for (i,uᵢ) in enumerate(u)]
 function _cdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI}
     i = C.indices[end]
     newC = SurvivalCopula(C.C,C.indices[1:end-1])
-    v = deepcopy(u)
-    v[i] = 1 - v[i]
+    v = reverse(u, (i,))
     r2 = _cdf(newC,v)
     v[i] = 1
     r1 = _cdf(newC,v)
     return r1 - r2
 end 
-Distributions._logpdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI} = Distributions._logpdf(C.C,reverse(u,C.indices))
+Distributions._logpdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI} = Distributions._logpdf(C.C,reverse(u, C.indices))
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,VI}, x::AbstractVector{T}) where {d,CT,VI,T}
     Distributions._rand!(rng,C.C,x)
-    reverse!(x,C.indices)
+    reverse!(x, C.indices)
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,VI}, A::DenseMatrix{T}) where {d,CT,VI,T}
     Distributions._rand!(rng,C.C,A)
