@@ -33,7 +33,45 @@ struct AMHGenerator{T} <: UnivariateGenerator
         end
     end
 end
-max_monotony(::AMHGenerator) = Inf
+
+function _find_critical_value_amh(k; step=1e-7)
+    # this function was used to define things in max_monotony below. 
+    x = 0.0
+    while x > -1
+        if PolyLog.reli.(-k, x) <= 0
+            x -= step
+        else
+            break
+        end
+    end
+    return x
+end
+function max_monotony(G::AMHGenerator)
+    G.θ >= 0 && return Inf        
+    G.θ < -0.2679492000066751      && return 2  
+    G.θ < -0.10102060000187497     && return 3   
+    G.θ < -0.04309630000020932     && return 4   
+    G.θ < -0.01952429999993831     && return 5   
+    G.θ < -0.00914869999999993     && return 6   
+    G.θ < -0.004376199999998468    && return 7    
+    G.θ < -0.002121400000000042    && return 8    
+    G.θ < -0.0010375999999997928   && return 9     
+    G.θ < -0.0005105999999999994   && return 10     
+    G.θ < -0.00025240000000000527  && return 11     
+    G.θ < -0.0001252000000000022   && return 12     
+    G.θ < -6.220000000000067e-5    && return 13    
+    G.θ < -3.099999999999991e-5    && return 14    
+    G.θ < -1.5500000000000048e-5   && return 15     
+    G.θ < -7.699999999999994e-6    && return 16    
+    G.θ < -3.839999999999973e-6    && return 17
+    G.θ < -1.9199999999999918e-6   && return 18
+    G.θ < -9.600000000000008e-7    && return 19
+    for k in 21:100
+        G.θ < _find_critical_value_amh(k, step=1e-7) && return k-1
+    end
+    return 100
+end
+
 ϕ(  G::AMHGenerator, t) = (1-G.θ)/(exp(t)-G.θ)
 ϕ⁻¹(G::AMHGenerator, t) = log(G.θ + (1-G.θ)/t)
 ϕ⁽¹⁾(G::AMHGenerator, t) = -((1-G.θ) * exp(t)) / (exp(t) - G.θ)^2
@@ -74,4 +112,32 @@ function τ⁻¹(::Type{T},tau) where T<:AMHGenerator
     end
     search_range = tau > 0 ? (0,1) : (-1,0)
     return Roots.find_zero(θ -> tau - τ(AMHGenerator(θ)), search_range)
+end
+
+function ρ(G::AMHGenerator)
+    # Taken from https://cran.r-project.org/web/packages/copula/vignettes/rhoAMH-dilog.pdf
+    a = G.θ
+    if isnan(a)
+        return a
+    end
+    aa = abs(a)
+    if aa < 7e-16
+        return a / 3
+    elseif aa < 1e-4
+        return a / 3 * (1 + a / 4)
+    elseif aa < 0.002
+        return a * (1/3 + a * (1/12 + a * 3/100))
+    elseif aa < 0.007
+        return a * (1/3 + a * (1/12 + a * (3/100 + a / 75)))
+    elseif aa < 0.016
+        return a * (1/3 + a * (1/12 + a * (3/100 + a * (1/75 + a / 147))))
+    else
+        term1 = 3 / a * (4 * (1 + 1 / a) * SpecialFunctions.spence(a))
+        term2 = if a < 1
+            8 * (1 / a - 1) * log1p(-a)
+        else
+            0.0
+        end
+        return term1 - term2 - (a + 12)
+    end
 end

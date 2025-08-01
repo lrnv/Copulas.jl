@@ -125,7 +125,7 @@ module Copulas
             for C in (
                 IndependentCopula(3),
                 AMHCopula(3,0.6),
-                AMHCopula(4,-0.3),
+                AMHCopula(4,-0.01),
                 ClaytonCopula(2,-0.7),
                 ClaytonCopula(3,-0.1),
                 ClaytonCopula(4,7),

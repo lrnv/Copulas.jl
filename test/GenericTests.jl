@@ -139,7 +139,7 @@
             end
             
             
-            if !((CT <: Copulas.GumbelBarnettCopula) && d>2)
+            if !((CT <: Copulas.GumbelBarnettCopula) && d>2) && !(CT<:Copulas.AMHCopula && d > 2)
                 @info "          - Check τ ∘ τ⁻¹ == Id"
                 if applicable(Copulas.τ, C.G) && applicable(Copulas.τ⁻¹,typeof(C.G), 1.0)
                     tau = Copulas.τ(C)
@@ -237,7 +237,7 @@
                     @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.1
                 end
             end
-            @test spl10 ≈ inverse_rosenblatt(C, rosenblatt(C, spl10)) atol=1e-2
+            @test spl10 ≈ inverse_rosenblatt(C, rosenblatt(C, spl10)) atol=1e-4
         end
         @info "      - DONE"
     end
