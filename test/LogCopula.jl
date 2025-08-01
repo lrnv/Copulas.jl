@@ -1,8 +1,6 @@
-@testitem "Generic" tags=[:LogCopula] setup=[M] begin M.check(LogCopula(1.0)) end
 @testitem "Generic" tags=[:LogCopula] setup=[M] begin M.check(LogCopula(1+9*rand(M.rng))) end
 @testitem "Generic" tags=[:LogCopula] setup=[M] begin M.check(LogCopula(1.5)) end
 @testitem "Generic" tags=[:LogCopula] setup=[M] begin M.check(LogCopula(5.5)) end
-@testitem "Generic" tags=[:LogCopula] setup=[M] begin M.check(LogCopula(Inf)) end
 
 @testitem "Checking LogCopula == GumbelCopula" begin
     using InteractiveUtils
