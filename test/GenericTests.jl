@@ -233,7 +233,7 @@
             !(CT<:Union{Copulas.WCopula, Copulas.MCopula}) && 
             !((CT<:Copulas.GumbelCopula) && (C.G.θ > 50)) && 
             !((CT<:Copulas.FrankCopula{4}) && (C.G.θ > 50)) &&
-            !(typeof(C.G)<:Copulas.WilliamsonGenerator)
+            !((CT<:Copulas.ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator))
             @info "      - Testing Rosenblatt and inverse Rosenblatt transforms"
             u = spl1000
             U = rosenblatt(C, u)
