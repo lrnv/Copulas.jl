@@ -131,7 +131,6 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
         for j in 2:d
             Cᵢⱼ += ϕ⁻¹(C.G, U[j - 1, i])
             Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, Val{j - 1}(), Cᵢⱼ) * u[j,i]
-            @show Dᵢⱼ
             R = ϕ⁽ᵏ⁾⁻¹(C.G, Val{j - 1}(), Dᵢⱼ; start_at=Cᵢⱼ)
             U[j, i] = ϕ(C.G, R - Cᵢⱼ)
         end

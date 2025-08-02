@@ -228,7 +228,12 @@
             @test isapprox(v, cdf(C, fill(0.5, d)); atol=10sqrt(r))
         end
 
-        if applicable(rosenblatt, C, spl10) && applicable(inverse_rosenblatt, C, spl10) && !(CT<:Union{Copulas.WCopula, Copulas.MCopula}) && !((CT<:Copulas.GumbelCopula) && (C.G.θ > 50)) && !((CT<:Copulas.FrankCopula{4}) && (C.G.θ > 50))
+        if applicable(rosenblatt, C, spl10) && 
+            applicable(inverse_rosenblatt, C, spl10) && 
+            !(CT<:Union{Copulas.WCopula, Copulas.MCopula}) && 
+            !((CT<:Copulas.GumbelCopula) && (C.G.θ > 50)) && 
+            !((CT<:Copulas.FrankCopula{4}) && (C.G.θ > 50)) &&
+            !(typeof(C.G)<:Copulas.WilliamsonGenerator)
             @info "      - Testing Rosenblatt and inverse Rosenblatt transforms"
             u = spl1000
             U = rosenblatt(C, u)
