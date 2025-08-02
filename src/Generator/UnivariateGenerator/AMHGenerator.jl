@@ -48,10 +48,10 @@ function _find_critical_value_amh(k; step=1e-7)
 end
 function max_monotony(G::AMHGenerator)
     G.θ >= 0 && return Inf        
-    G.θ < -0.2679492000066751      && return 2  
-    G.θ < -0.10102060000187497     && return 3   
-    G.θ < -0.04309630000020932     && return 4   
-    G.θ < -0.01952429999993831     && return 5   
+    G.θ < sqrt(3)-2                && return 2  
+    G.θ < -5+2sqrt(6)              && return 3   
+    G.θ < -13/2 -sqrt(105)/2 +sqrt(2)/2 * sqrt(13sqrt(105)+135)     && return 4   
+    G.θ < -14 - 3 * sqrt(15) + sqrt(6) * sqrt(14 * sqrt(15) + 55)     && return 5   
     G.θ < -0.00914869999999993     && return 6   
     G.θ < -0.004376199999998468    && return 7    
     G.θ < -0.002121400000000042    && return 8    
