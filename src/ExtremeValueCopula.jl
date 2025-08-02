@@ -50,54 +50,32 @@ References:
 * [mai2014financial](@cite) Mai, J. F., & Scherer, M. (2014). Financial engineering with copulas explained (p. 168). London: Palgrave Macmillan.
 """
 abstract type ExtremeValueCopula{P} <: Copula{2} end
-
-# Función genérica para A
-function A(C::ExtremeValueCopula, t::Real)
-    throw(ArgumentError("Function A must be defined for specific copula"))
+needs_binary_search(::ExtremeValueCopula) = false
+A(C::ExtremeValueCopula, t::Real) = throw(ArgumentError("Function A must be defined for specific copula"))
+dA(C::ExtremeValueCopula, t::Real) = ForwardDiff.derivative(t -> A(C,t), t)
+d²A(C::ExtremeValueCopula, t::Real) = ForwardDiff.derivative(t -> dA(C,t), t)
+_A_dA_d²A(C::ExtremeValueCopula, t::Real) = (A(C,t), dA(C,t), d²A(C,t)) #WilliamsonTransforms.taylor(x -> A(C, x), t, ::Val{2}())
+ℓ(C::ExtremeValueCopula, t₁, t₂) = (t₁ +t₂) * A(C, t₁ /(t₁+t₂))
+function _der_ℓ(C::ExtremeValueCopula, u, v) 
+    x, y = u/(u+v), v/(u+v)
+    a, da, d2a = _A_dA_d²A(C, x)
+    val = (u+v)*a
+    du = a + da * y
+    dv = a - x * da
+    dudv = - x * y * d2a / (u+v)
+    return val, du, dv, dudv
 end
-
-function dA(C::ExtremeValueCopula, t::Real)
-    ForwardDiff.derivative(t -> A(C, t), t)
-end
-
-function d²A(C::ExtremeValueCopula, t::Real)
-    ForwardDiff.derivative(t -> dA(C, t), t)
-end
-
-function ℓ(C::ExtremeValueCopula, t::Vector)
-    sumu = sum(t)
-    vectw = t[1] / sumu
-    return sumu * A(C, vectw)
-end
-
 # Función CDF para ExtremeValueCopula
 function _cdf(C::ExtremeValueCopula, u::AbstractArray{<:Real})
     t = abs.(log.(u)) # 0 <= u <= 1 so abs == neg, but return corectly 0 instead of -0 when u = 1. 
-    return exp(-ℓ(C, t))
+    return exp(-ℓ(C, t...))
+end
+function Distributions._logpdf(C::ExtremeValueCopula, t::AbstractArray{<:Real})
+    u, v = -log.(t)
+    val, du, dv, dudv = _der_ℓ(C, u, v)
+    return - val + log(max(-dudv + du*dv,0)) + u + v
 end
 
-# Función genérica para calcular derivadas parciales de ℓ
-function D_B_ℓ(C::ExtremeValueCopula, t::Vector{Float64}, B::Vector{Int})
-    f = x -> ℓ(C, x)
-
-    if length(B) == 1
-        return ForwardDiff.gradient(f, t)[B[1]]
-    elseif length(B) == 2
-        return ForwardDiff.hessian(f, t)[B[1], B[2]]
-    else
-        throw(ArgumentError("Higher order partial derivatives are not required for bivariate case"))
-    end
-end
-
-# Función PDF para ExtremeValueCopula usando ℓ
-function Distributions._logpdf(C::ExtremeValueCopula, u::AbstractArray{<:Real})
-    t = -log.(u)
-    c = exp(-ℓ(C, t))
-    D1 = D_B_ℓ(C, t, [1])
-    D2 = D_B_ℓ(C, t, [2])
-    D12 = D_B_ℓ(C, t, [1, 2])
-    return log(c) + log(-D12 + D1 * D2) - log(u[1] * u[2])
-end
 # Definir la función para calcular τ and ρ
 # Warning: the τ function can be veeeery unstable... it is actually very hard to compute correctly. 
 # In some case, it simply fails by a lot. 

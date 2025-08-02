@@ -1,3 +1,5 @@
+@testitem "Generic" tags=[:ArchimedeanCopula] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(LogNormal(),2))) end
+
 @testitem "Archimedean - Fix Kendall correlation" begin
     using Random
     using StableRNGs

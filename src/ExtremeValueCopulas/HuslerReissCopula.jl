@@ -39,9 +39,8 @@ struct HuslerReissCopula{P} <: ExtremeValueCopula{P}
     end
 end
 #  specific ℓ funcion of HuslerReissCopula
-function ℓ(H::HuslerReissCopula, t::Vector)
+function ℓ(H::HuslerReissCopula, t₁, t₂)
     θ = H.θ
-    t₁, t₂ = t
     return t₁*Distributions.cdf(Distributions.Normal(),θ^(-1)+0.5*θ*log(t₁/t₂))+t₂*Distributions.cdf(Distributions.Normal(),θ^(-1)+0.5*θ*log(t₂/t₁))
 end
 

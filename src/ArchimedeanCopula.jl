@@ -44,7 +44,7 @@ References:
 struct ArchimedeanCopula{d,TG} <: Copula{d}
     G::TG
     function ArchimedeanCopula(d::Int,G::Generator)
-        @assert d <= max_monotony(G) "The generator you provided is not d-monotonous according to its max_monotonicity property, and thus this copula does not exists."
+        @assert d <= max_monotony(G) "The generator $G you provided is not $d-monotonous since it has max monotonicity $(max_monotony(G)), and thus this copula does not exists."
         return new{d,typeof(G)}(G)
     end
 end
@@ -53,6 +53,7 @@ end
 ϕ⁻¹⁽¹⁾(C::ArchimedeanCopula{d,TG},t) where {d,TG} = ϕ⁻¹⁽¹⁾(C.G, t)
 ϕ⁽¹⁾(C::ArchimedeanCopula{d,TG},t)   where {d,TG} = ϕ⁽¹⁾(C.G, t)
 ϕ⁽ᵏ⁾(C::ArchimedeanCopula{d,TG},k,t) where {d,TG} = ϕ⁽ᵏ⁾(C.G, k, t)
+ϕ⁽ᵏ⁾⁻¹(C::ArchimedeanCopula{d,TG}, k, t; start_at=t) where {d,TG} = ϕ⁽ᵏ⁾⁻¹(C.G, k, t; start_at=start_at)
 williamson_dist(C::ArchimedeanCopula{d,TG}) where {d,TG} = williamson_dist(C.G, Val{d}())
 
 _cdf(C::ArchimedeanCopula, u) = ϕ(C, sum(ϕ⁻¹.(C, u)))
@@ -60,14 +61,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .< 1)
         return eltype(u)(-Inf)
     end
-    return log(ϕ⁽ᵏ⁾(C, Val{d}(), sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
-end
-
-function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
-    if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
-        return eltype(u)(-Inf)
-    end
-    return log(ϕ⁽ᵏ⁾(C, Val{d}(), sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)))
+    return log(max(ϕ⁽ᵏ⁾(C, Val{d}(), sum(ϕ⁻¹.(C, u))) * prod(ϕ⁻¹⁽¹⁾.(C, u)), 0))
 end
 
 # function τ(C::ArchimedeanCopula)
@@ -111,6 +105,37 @@ end
 τ(C::ArchimedeanCopula{d,TG}) where {d,TG} = τ(C.G)
 function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
     return τ⁻¹(generatorof(T),τ_val)
+end
+
+function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
+    @assert d == size(u, 1)
+    U = zero(u)
+    for i in axes(u,2)
+        U[1, i] = u[1, i]
+        rⱼ₋₁ = zero(eltype(u))
+        rⱼ = ϕ⁻¹(C.G, u[1,i])
+        for j in 2:d
+            rⱼ₋₁ = rⱼ
+            rⱼ += ϕ⁻¹(C.G, u[j,i])
+            U[j, i] = ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ) / ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ₋₁)
+        end
+    end
+    return U
+end
+function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
+    @assert d == size(u, 1)
+    U = zero(u)
+    for i in axes(u, 2)
+        U[1,i] = u[1,i]
+        Cᵢⱼ = zero(eltype(u))
+        for j in 2:d
+            Cᵢⱼ += ϕ⁻¹(C.G, U[j - 1, i])
+            Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, Val{j - 1}(), Cᵢⱼ) * u[j,i]
+            R = ϕ⁽ᵏ⁾⁻¹(C.G, Val{j - 1}(), Dᵢⱼ; start_at=Cᵢⱼ)
+            U[j, i] = ϕ(C.G, R - Cᵢⱼ)
+        end
+    end
+    return U
 end
 
 ################################################################################################
@@ -192,71 +217,21 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, 
     return A
 end
 
-function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
-    @assert d == size(u, 1)
 
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :]
-    rⱼ = ϕ⁻¹.(C.G, u[1,:])
-    rⱼ₋₁ = similar(rⱼ)
-    for j in 2:d
-        rⱼ₋₁ .= rⱼ
-        rⱼ .+= ϕ⁻¹.(C.G, u[j,:]) # so we do not compute too much of them, nor allocate too much.
-        U[j, :] .= ϕ⁽ᵏ⁾.(C.G, Val(j - 1), rⱼ) ./ ϕ⁽ᵏ⁾.(C.G, Val(j - 1), rⱼ₋₁)
-    end
-    return U
-end
 
-function rosenblatt(
-    C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
-) where {d,TG<:ClaytonGenerator}
-    @assert d == size(u, 1)
 
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :]
-
-    for j in 2:d
-        U[j, :] .=
-            (
-                (1 .- j .+ sum(u[1:j, :] .^ (-C.G.θ); dims=1)[:]) ./
-                (2 .- j .+ sum(u[1:(j - 1), :] .^ (-C.G.θ); dims=1)[:])
-            ) .^ (-1 / C.G.θ - (j - 1))
-    end
-    return U
-end
-
-function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
-    @assert d == size(u, 1)
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :]
-    for i in axes(u, 2)
-        Cᵢⱼ = zero(eltype(u))
-        for j in 2:d
-            Cᵢⱼ += ϕ⁻¹(C.G, U[j - 1, i])
-            Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, Val(j - 1), Cᵢⱼ) * u[j,i]
-            f(x) = ϕ⁽ᵏ⁾(C.G, Val(j - 1), Cᵢⱼ + ϕ⁻¹(C.G, x)) - Dᵢⱼ
-            U[j, i] = Roots.find_zero(f, (eps(1.0), 1.0), Roots.A42())
-        end
-    end
-    return U
-end
-
-function inverse_rosenblatt(
-    C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}
-) where {d,TG<:ClaytonGenerator}
-    @assert d == size(u, 1)
-
-    U = zeros(eltype(u), size(u))
-    U[1, :] = u[1, :]
-
-    for j in 2:d
-        U[j, :] =
-            (
-                1 .+
-                (1 .- (j - 1) .+ sum(U[1:(j - 1), :] .^ -C.G.θ; dims=1))[:] .*
-                (u[j, :] .^ (-1 / (j - 1 + 1 / C.G.θ)) .- 1)
-            ) .^ (-1 / C.G.θ)
+function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
+    # Check if all elements are in (0,1) and if θ < 0, check the sum condition
+    if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
+        return eltype(u)(-Inf)
     end
 
-    return U
+    θ = C.G.θ
+    # Compute the sum of transformed variables
+    S1 = sum(t ^ (-θ) for t in u)
+    S2 = sum(log(t) for t in u)
+    # Compute the log of the density according to the explicit formula for Clayton copula
+    # See McNeil & Neslehova (2009), eq. (13)
+    S1==d-1 && return eltype(u)(-Inf)
+    return log(θ + 1) * (d - 1) - (θ + 1) * S2 + (-1 / θ - d) * log(S1 - d + 1)
 end

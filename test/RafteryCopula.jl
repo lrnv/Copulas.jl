@@ -2,7 +2,6 @@
 @testitem "Generic" tags=[:RafteryCopula] setup=[M] begin M.check(RafteryCopula(3, 0.5)) end
 @testitem "Generic" tags=[:RafteryCopula] setup=[M] begin M.check(Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1))) end
 
-
 @testitem "RafteryCopula Constructor" begin
     for d in [2,3,4]
         @test isa(RafteryCopula(d,0.0), IndependentCopula)

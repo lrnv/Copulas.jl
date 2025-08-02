@@ -84,7 +84,7 @@ function measure(C::CT, u,v) where {CT<:Copula}
         eval_pt[graycomp] = (which[graycomp] = !which[graycomp]) ? v[graycomp] : u[graycomp]
         r += (-1)^(s+d) * Distributions.cdf(C,eval_pt)
     end
-    return r
+    return max(r,0)
 end
 
 """
@@ -114,11 +114,4 @@ References:
 function inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d}
     @assert d == size(u, 1)
     return inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
-end
-
-function rosenblatt(C::Copula, u::AbstractMatrix{<:Real})
-    error("The Rosenblatt transforms are not implemented yet at the generic `Copula` level.")
-end
-function inverse_rosenblatt(C::Copula, u::AbstractMatrix{<:Real})
-    error("The Rosenblatt transforms are not implemented yet at the generic `Copula` level.")
 end
