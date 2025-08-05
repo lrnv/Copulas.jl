@@ -2,8 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Transformed Copulas 
-
+# Transformed Copulas
 
 ## `SurvivalCopula`
 

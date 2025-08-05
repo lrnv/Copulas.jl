@@ -4,7 +4,7 @@ CurrentModule = Copulas
 
 # Reference
 
-All docstrings are copied here as a general reference.
+All docstrings are collected here as a general reference.
 
 ```@autodocs; canonical = false
 Modules = [Copulas]

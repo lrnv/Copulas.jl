@@ -1,15 +1,16 @@
 # Empirical Kendall function and Archimedean's λ function.
 
-The Kendall function is an important function in dependence structure analysis. The Kendall function associated with a $d$-variate copula $C$ is defined by letting $\bm U = \left(U_1,...,U_n\right) \sim C$ and setting:
+The Kendall function is important in dependence structure analysis. The Kendall function associated with a $d$-variate copula $C$ is defined by letting $\bm U = (U_1, ..., U_n) \sim C$ and setting:
 
 $$K(t) = \mathbb P \left( C(U_1,...,U_d) \le t \right),$$
 
-From a computational point of view, we often do not access to true observations of the random vector $\m U \sim C$ but rather only observations on the marginal scales.
+From a computational point of view, we often do not have access to true observations of the random vector $\bm U \sim C$ but rather only observations on the marginal scales.
 Fortunately, this is not an issue and we can estimate the $K$ function directly through a sample duplication trick. 
 For that, suppose for the sake of the argument that we have a multivariate sample on marignal scales $\left(X_{i,j}\right)_{i \in 1,...,d,\; j \in 1,...,n}$ with dependence structure $C$. 
 A standard way to approximate $K$ is to compute first
 
 $$Z_j = \frac{1}{n-1} \sum_{k \neq j} \bm 1_{X_{i,j} < X_{i,k} \forall i \in 1,...,d}.$$
+
 
 Indeed, $K$ can be approximated as the empirical distribution function of $Z_1,...,Z_n$. 
 Here is a sketch implementation (not optimized) of this concept:
@@ -48,11 +49,11 @@ K = KendallFunction(x)
 plot(u -> K(u), xlims = (0,1), title="Empirical Kendall function")
 ```
 
-One notable detail on the Kendall function is that is does **not** characterize the copula in all generality. On the other hand, for an Archimedean copula with generator ϕ, we have:
+One notable detail about the Kendall function is that it does **not** characterize the copula in all generality. On the other hand, for an Archimedean copula with generator φ, we have:
 
 $$K(t) = t - \phi'\{\phi^{-1}(t)\} \phi^{-1}(t).$$
 
-Due to this partical relationship, the Kendall function actually characterizes the generator of the archimedean copula. In fact, this relationship is generally expressed in term of a λ function defined as $$\lambda(t) = t - K(t),$$ which, for archimedean copulas, writes $\lambda(t) = \phi'\{\phi^{-1}(t)\} \phi^{-1}(t)$.
+Due to this particular relationship, the Kendall function actually characterizes the generator of the Archimedean copula. This relationship is generally expressed in terms of a λ function defined as $$\lambda(t) = t - K(t),$$ which, for Archimedean copulas, writes $\lambda(t) = \phi'(\phi^{-1}(t)) \phi^{-1}(t)$.
 
 Common λ functions can be easily derived by hand for standard archimedean generators. For any archimedean generator in the package, however, it is even easier to let Julia do the derivation. 
 
@@ -72,12 +73,12 @@ plot!(u -> 0, label="Comonotony")
 plot!(u -> u*log(u), label="Independence")
 ```
 
-The variance of the empirical λ function is notable on this example. In particular, we note that the estimated parameter
+The variance of the empirical λ function is notable in this example. In particular, we note that the estimated parameter
 ```@example lambda
 θ_cl
 ```
-is not very far for the true $2.7$ we used to generate the dataset. A few more things could be tried before closing up the analysis on a real dataset: 
+is not very far for the true $2.7$ we used to generate the dataset. A few more things could be tried before closing the analysis on a real dataset:
 
-- Empirical validation of the archimedean property of the data, and then
-- Non-parametric estimation of the generator from the empirical Kendall function, or through other means.
-- Non-archimedean parametric models.
+- Empirical validation of the Archimedean property of the data
+- Non-parametric estimation of the generator from the empirical Kendall function, or through other means
+- Non-Archimedean parametric models
