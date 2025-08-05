@@ -35,8 +35,8 @@ inverse_rosenblatt
 
 !!! note "Not all copulas available!"
     Some copulas, such as Archimedeans, have known expressions for their Rosenblatt and/or inverse Rosenblatt transforms, and therefore benefit from this interface and our implementation. On the other hand, some copulas have no known closed-form expressions for conditional CDFs, and therefore their Rosenblatt transformation is hard to implement.
-    
-    If you feel that methods for certain particular copulas are missing while the theory exists and it should be possible, do not hesitate to open an issue !
+
+    In particular, we did not implement yet a suitable default for all cases. If you feel that methods for certain particular copulas are missing while the theory exists and it should be possible, do not hesitate to open an issue ! If you feel like you have a potential generic implementation that would be suitable, please reach us too. 
 
 
 ```@bibliography

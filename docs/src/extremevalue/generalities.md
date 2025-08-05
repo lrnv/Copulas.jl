@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Extreme Value Copulas
+# [Extreme Value Copulas](@id Extreme_theory)
 
 *Extreme value copulas* are fundamental in the study of rare and extreme events due to their ability to model dependency in situations of extreme risk. This package provides a wide selection of bivariate extreme value copulas; multivariate cases are not yet implemented. Feel free to open an issue or propose a pull request if you want to contribute a multivariate case. 
 

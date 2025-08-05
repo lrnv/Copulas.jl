@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# General Discussion
+# [General Discussion](@id archimedean_copulas_header)
 
 Archimedean copulas are an important parametric class of copulas. To define Archimedean copulas, we must consider their *generators*, which are unrelated to spherical generators and must be $d$-monotone functions. 
 
@@ -202,6 +202,13 @@ for which the corresponding distribution is known but has no particular name, th
         $$\bm U = \phi(\bm Y / W),$$  where $\bm Y$ is a vector of independent and identically distributed (i.i.d.) exponential distributions.
 
     The link between the distribution of $R$ and the distribution of $W$ can be made explicit. We provide the `WilliamsonFromFrailty()` constructor to build the distribution of $R$ from the distribution of $W$ and return the corresponding `WilliamsonGenerator` from the frailty distribution itself. The corresponding φ is simply the Laplace transform of $W$. This is another way to construct new Archimedean copulas !  
+
+    We use this fraily approach for several generators, since sometimes it is faster, including e.g. the Clayton one with positive dependence:
+    ```@example
+    using Copulas: williamson_dist, ClaytonCopula
+    williamson_dist(ClaytonCopula(3,10))
+    ```
+
 
 ```@docs
 ArchimedeanCopula
