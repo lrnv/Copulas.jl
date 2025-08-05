@@ -6,13 +6,28 @@ CurrentModule = Copulas
 
 Some copulas, while necessary in certain cases and very useful, are hard to classify. We gather them here for simplicity. 
 
-# `PlackettCopula`
+## `IndendentCopula`
+```@docs
+IndendentCopula
+```
+
+## `MCopula`
+```@docs
+MCopula
+```
+
+## `WCopula`
+```@docs
+WCopula
+```
+
+## `PlackettCopula`
 
 ```@docs
 PlackettCopula
 ```
 
-# `FGMCopula`
+## `FGMCopula`
 
 Farlie-Gumbel-Morgenstern (FGM) copula
 
@@ -20,7 +35,7 @@ Farlie-Gumbel-Morgenstern (FGM) copula
 FGMCopula
 ```
 
-# `RafteryCopula`
+## `RafteryCopula`
 
 ```@docs
 RafteryCopula

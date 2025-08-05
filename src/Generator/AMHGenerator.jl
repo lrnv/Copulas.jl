@@ -21,7 +21,7 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct AMHGenerator{T} <: UnivariateGenerator
+struct AMHGenerator{T} <: Generator
     θ::T
     function AMHGenerator(θ)
         if (θ < -1) || (θ > 1)
@@ -33,6 +33,9 @@ struct AMHGenerator{T} <: UnivariateGenerator
         end
     end
 end
+const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
+AMHCopula(d, θ) = ArchimedeanCopula(d, AMHGenerator(θ))
+
 
 function _find_critical_value_amh(k; step=1e-7)
     # this function was used to define things in max_monotony below. 
@@ -79,9 +82,7 @@ end
 ϕ⁻¹⁽¹⁾(G::AMHGenerator, t) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
 williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
 
-function τ(G::AMHGenerator)
-    θ = G.θ
-    # unstable around zero, we instead cut its taylor expansion:
+function _amh_tau(θ)
     if abs(θ) < 0.01
         return 2/9  * θ
             + 1/18  * θ^2
@@ -100,6 +101,7 @@ function τ(G::AMHGenerator)
     u = isone(θ) ? θ : θ + (1-θ)^2 * log1p(-θ)
     return 1 - (2/3)*u/θ^2
 end
+τ(G::AMHGenerator) = _amh_tau(G.θ)
 function τ⁻¹(::Type{T},tau) where T<:AMHGenerator
     if tau == zero(tau)
         return tau
@@ -111,7 +113,7 @@ function τ⁻¹(::Type{T},tau) where T<:AMHGenerator
         return -one(tau)
     end
     search_range = tau > 0 ? (0,1) : (-1,0)
-    return Roots.find_zero(θ -> tau - τ(AMHGenerator(θ)), search_range)
+    return Roots.find_zero(θ -> tau - _amh_tau(θ), search_range)
 end
 
 function ρ(G::AMHGenerator)
@@ -141,3 +143,6 @@ function ρ(G::AMHGenerator)
         return term1 - term2 - (a + 12)
     end
 end
+
+
+

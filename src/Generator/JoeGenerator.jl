@@ -22,7 +22,7 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct JoeGenerator{T} <: UnivariateGenerator
+struct JoeGenerator{T} <: Generator
     θ::T
     function JoeGenerator(θ)
         if θ < 1
@@ -36,6 +36,10 @@ struct JoeGenerator{T} <: UnivariateGenerator
         end
     end
 end
+const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
+JoeCopula(d, θ) = ArchimedeanCopula(d, JoeGenerator(θ))
+
+
 max_monotony(::JoeGenerator) = Inf
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
@@ -52,7 +56,8 @@ end
 function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)
     return -(G.θ * (1 - t)^(G.θ - 1)) / (1 - (1 - t)^G.θ)
 end
-τ(G::JoeGenerator) = 1 - 4sum(1/(k*(2+k*G.θ)*(G.θ*(k-1)+2)) for k in 1:1000) # 446 in R copula.
+_joe_tau(θ) =  1 - 4sum(1/(k*(2+k*θ)*(θ*(k-1)+2)) for k in 1:1000) # 446 in R copula.
+τ(G::JoeGenerator) = _joe_tau(G.θ)
 function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
     if tau == 1
         return Inf
@@ -62,7 +67,7 @@ function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
         @info "JoeCoula cannot handle κ < 0."
         return one(tau)
     else
-        return Roots.find_zero(θ -> τ(JoeGenerator(θ)) - tau, (one(tau),tau*Inf))
+        return Roots.find_zero(θ -> _joe_tau(θ) - tau, (one(tau),tau*Inf))
     end
 end
 williamson_dist(G::JoeGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Sibuya(1/G.θ), Val{d}())
