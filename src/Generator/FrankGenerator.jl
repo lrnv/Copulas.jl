@@ -23,7 +23,7 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct FrankGenerator{T} <: UnivariateGenerator
+struct FrankGenerator{T} <: Generator
     θ::T
     function FrankGenerator(θ)
         if θ == -Inf
@@ -37,6 +37,10 @@ struct FrankGenerator{T} <: UnivariateGenerator
         end
     end
 end
+const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
+FrankCopula(d, θ) = ArchimedeanCopula(d, FrankGenerator(θ))
+
+
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
 ϕ(G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
 ϕ⁽¹⁾(G::FrankGenerator, t) = (one(t) - one(t) / (one(t) + exp(-t)*expm1(-G.θ))) / G.θ
@@ -48,8 +52,7 @@ end
 williamson_dist(G::FrankGenerator, ::Val{d}) where d = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
 
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
-function τ(G::FrankGenerator)
-    θ = G.θ
+function _frank_tau(θ)
     T = promote_type(typeof(θ),Float64)
     if abs(θ) < sqrt(eps(T))
         # return the taylor approx.
@@ -58,6 +61,7 @@ function τ(G::FrankGenerator)
         return 1+4(Debye(θ,1)-1)/θ
     end
 end
+τ(G::FrankGenerator) = _frank_tau(G.θ)
 function τ⁻¹(::Type{T},tau) where T<:FrankGenerator
     s,v = sign(tau),abs(tau)
     if v == 0
@@ -65,6 +69,6 @@ function τ⁻¹(::Type{T},tau) where T<:FrankGenerator
     elseif v == 1
         return s * Inf
     else
-        return s*Roots.fzero(x -> τ(FrankGenerator(x))-v, 0, Inf)
+        return s*Roots.fzero(x -> _frank_tau(x)-v, 0, Inf)
     end
 end

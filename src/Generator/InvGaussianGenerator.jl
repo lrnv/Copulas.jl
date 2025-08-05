@@ -25,7 +25,7 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct InvGaussianGenerator{T} <: UnivariateGenerator
+struct InvGaussianGenerator{T} <: Generator
     θ::T
     function InvGaussianGenerator(θ)
         if θ < 0
@@ -37,13 +37,16 @@ struct InvGaussianGenerator{T} <: UnivariateGenerator
         end
     end
 end
+const InvGaussianCopula{d, T}   = ArchimedeanCopula{d, InvGaussianGenerator{T}}
+InvGaussianCopula(d, θ)   = ArchimedeanCopula(d, InvGaussianGenerator(θ))
+
+
 max_monotony(G::InvGaussianGenerator) = Inf
 ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
 ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? ln(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))
 # ϕ⁽¹⁾(G::InvGaussianGenerator, t) =  First derivative of ϕ
 # ϕ⁽ᵏ⁾(G::InvGaussianGenerator, ::Val{k}, t) where k = kth derivative of ϕ
-function τ(G::InvGaussianGenerator)
-    θ = G.θ
+function _invgaussian_tau(θ)
     T = promote_type(typeof(θ),Float64)
     if θ == 0
         return zero(θ)
@@ -61,6 +64,7 @@ function τ(G::InvGaussianGenerator)
     rez = 1+4*rez
     return rez
 end
+τ(G::InvGaussianGenerator) = _invgaussian_tau(G.θ)
 function τ⁻¹(::Type{T}, tau) where T<:InvGaussianGenerator
     if tau == zero(tau)
         return tau
@@ -71,6 +75,6 @@ function τ⁻¹(::Type{T}, tau) where T<:InvGaussianGenerator
         @info "InvGaussianCopula cannot handle κ > 1/2."
         return tau * Inf
     end
-    return Roots.find_zero(x -> τ(InvGaussianGenerator(x)) - tau, (sqrt(eps(tau)), Inf))
+    return Roots.find_zero(x -> _invgaussian_tau(x) - tau, (sqrt(eps(tau)), Inf))
 end
 williamson_dist(G::InvGaussianGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Distributions.InverseGaussian(G.θ,1), Val{d}())

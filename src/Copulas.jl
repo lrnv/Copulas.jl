@@ -45,6 +45,14 @@ module Copulas
     export GaussianCopula,
            TCopula
 
+
+    include("MiscellaneousCopulas/IndependentCopula.jl")
+    include("MiscellaneousCopulas/MCopula.jl")
+    include("MiscellaneousCopulas/WCopula.jl")
+    export IndependentCopula, 
+           MCopula, 
+           WCopula
+
     # These three distributions might be merged in Distrbutions.jl one day.
     include("UnivariateDistribution/Sibuya.jl")
     include("UnivariateDistribution/Logarithmic.jl")
@@ -55,27 +63,19 @@ module Copulas
 
     # Archimedean generators
     include("Generator.jl")
-
-    include("Generator/WilliamsonGenerator.jl")
-    export WilliamsonGenerator, i𝒲
-    include("Generator/ZeroVariateGenerator/IndependentGenerator.jl")
-    include("Generator/ZeroVariateGenerator/MGenerator.jl")
-    include("Generator/ZeroVariateGenerator/WGenerator.jl")
-    include("Generator/UnivariateGenerator/AMHGenerator.jl")
-    include("Generator/UnivariateGenerator/ClaytonGenerator.jl")
-    include("Generator/UnivariateGenerator/FrankGenerator.jl")
-    include("Generator/UnivariateGenerator/GumbelBarnettGenerator.jl")
-    include("Generator/UnivariateGenerator/GumbelGenerator.jl")
-    include("Generator/UnivariateGenerator/InvGaussianGenerator.jl")
-    include("Generator/UnivariateGenerator/JoeGenerator.jl")
-
-    # Archimedean copulas
     include("ArchimedeanCopula.jl")
-    include("BivariateArchimedeanMethods.jl")
-    export ArchimedeanCopula,
-           IndependentCopula,
-           MCopula,
-           WCopula,
+
+    include("Generator/AMHGenerator.jl")
+    include("Generator/ClaytonGenerator.jl")
+    include("Generator/FrankGenerator.jl")
+    include("Generator/GumbelBarnettGenerator.jl")
+    include("Generator/GumbelGenerator.jl")
+    include("Generator/InvGaussianGenerator.jl")
+    include("Generator/JoeGenerator.jl")
+    include("Generator/WilliamsonGenerator.jl")
+    export WilliamsonGenerator, 
+           i𝒲, 
+           ArchimedeanCopula,
            AMHCopula,
            ClaytonCopula,
            FrankCopula,
@@ -109,7 +109,6 @@ module Copulas
            MixedCopula,
            MOCopula,
            tEVCopula
-
 
     # Subsetting
     include("SubsetCopula.jl") # not exported yet.

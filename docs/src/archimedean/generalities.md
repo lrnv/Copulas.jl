@@ -181,14 +181,14 @@ This is why `williamson_dist(G::Generator,d)` is such an important function in t
 
 ```@example
 using Copulas: williamson_dist, FrankCopula
-williamson_dist(FrankCopula(3,7))
+williamson_dist(FrankGenerator(7), Val{3}())
 ```
 
 For the Frank Copula, as for many classic copulas, the distribution used is known. We pull some of them from `Distributions.jl` but implement a few more, as this Logarithmic one. Another useful example are negatively-dependent Clayton copulas: 
 
 ```@example
 using Copulas: williamson_dist, ClaytonCopula
-williamson_dist(ClaytonCopula(3,-0.2))
+williamson_dist(ClaytonGenerator(-0.2), Val{3}())
 ```
 
 for which the corresponding distribution is known but has no particular name, thus we implemented it under the `ClaytonWilliamsonDistribution` name.
@@ -206,7 +206,7 @@ for which the corresponding distribution is known but has no particular name, th
     We use this fraily approach for several generators, since sometimes it is faster, including e.g. the Clayton one with positive dependence:
     ```@example
     using Copulas: williamson_dist, ClaytonCopula
-    williamson_dist(ClaytonCopula(3,10))
+    williamson_dist(ClaytonGenerator(10), Val{3}())
     ```
 
 ```@docs

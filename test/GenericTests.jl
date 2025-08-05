@@ -15,10 +15,8 @@
         if CT<:ArchimedeanCopula
             GT = Copulas.generatorof(CT)
             if !isnothing(GT)
-                if !(GT<:Copulas.ZeroVariateGenerator)
-                    if !(GT<:Copulas.WilliamsonGenerator)
-                        return true
-                    end
+                if !(GT<:Copulas.WilliamsonGenerator)
+                    return true
                 end
             end
         end
@@ -108,33 +106,33 @@
             if specialized_ϕinv
                 @info "          - Check ϕ⁻¹ ∘ ϕ == Id"
                 for x in 0:0.1:1
-                    @test Copulas.ϕ⁻¹(C,Copulas.ϕ(C,x)) ≈ x
+                    @test Copulas.ϕ⁻¹(C.G,Copulas.ϕ(C.G,x)) ≈ x
                 end
             end
 
             if specialized_ϕ1
                 @info "          - Check d(ϕ) == ϕ⁽¹⁾"
-                @test ForwardDiff.derivative(x -> Copulas.ϕ(C, x), 1.2) ≈ Copulas.ϕ⁽¹⁾(C, 1.2)
+                @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 1.2) ≈ Copulas.ϕ⁽¹⁾(C.G, 1.2)
             end
 
             if specialized_ϕk
                 @info "          - Check d(ϕ) == ϕ⁽ᵏ⁾(k=1)"
-                @test ForwardDiff.derivative(x -> Copulas.ϕ(C, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C, Val(1), 1.2)
+                @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val(1), 1.2)
                 if applicable(Copulas.ϕ⁽¹⁾, C, 1.2) && applicable(Copulas.ϕ⁽ᵏ⁾, C, Val(2), 1.2)
                     @info "          - Check ϕ⁽¹⁾ == ϕ⁽ᵏ⁾(k=1)"
-                    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C, Val(2), 1.2)
+                    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C.G, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val(2), 1.2)
                 end
             end
             
             if specialized_ϕinv1
                 @info "          - Check d(ϕ⁻¹) == ϕ⁻¹⁽¹⁾"
-                @test ForwardDiff.derivative(x -> Copulas.ϕ⁻¹(C, x), 0.5) ≈ Copulas.ϕ⁻¹⁽¹⁾(C, 0.5)
+                @test ForwardDiff.derivative(x -> Copulas.ϕ⁻¹(C.G, x), 0.5) ≈ Copulas.ϕ⁻¹⁽¹⁾(C.G, 0.5)
             end
 
             if specialized_ϕkinv
                 @info "          - Check ϕ⁻¹ ∘ ϕ == Id"
                 for x in 0.1:0.1:0.5
-                    @test Copulas.ϕ⁽ᵏ⁾⁻¹(C,Val{d-1}(), Copulas.ϕ⁽ᵏ⁾(C, Val{d-1}(), x)) ≈ x
+                    @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,Val{d-1}(), Copulas.ϕ⁽ᵏ⁾(C.G, Val{d-1}(), x)) ≈ x
                 end
             end
             
@@ -158,8 +156,8 @@
             end
             
             @info "          - Check kendall distribution coherence between ϕ⁻¹+rand and williamson_dist"
-            splW_method1 = dropdims(sum(Copulas.ϕ⁻¹.(Ref(C),spl1000),dims=1),dims=1)
-            splW_method2 = rand(rng,Copulas.williamson_dist(C),1000)
+            splW_method1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
+            splW_method2 = rand(rng,Copulas.williamson_dist(C.G, Val{d}()),1000)
             @test pvalue(ApproximateTwoSampleKSTest(splW_method1,splW_method2),tail=:right) > 0.01
         end
 

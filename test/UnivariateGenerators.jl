@@ -1,5 +1,5 @@
 
-@testitem "UnivariateGenerators : Test of τ ∘ τ⁻¹ = Id" begin
+@testitem "Test of τ ∘ τ⁻¹ = Id" begin
     using Random
     using InteractiveUtils
     using StableRNGs
@@ -15,12 +15,9 @@
     @test check_rnd(AMHCopula,           -0.18, 0.33, 10)
     @test check_rnd(FrankCopula,         -1,    1,    10)
     @test check_rnd(InvGaussianCopula,    0,    1/2,  10)
-
-    # check we did not forget to add a generator: 
-    @test length(InteractiveUtils.subtypes(Copulas.UnivariateGenerator)) == 7
 end
 
-@testitem "UnivariateGenerators : Test of ρ ∘ ρ⁻¹ = Id" begin
+@testitem "Test of ρ ∘ ρ⁻¹ = Id" begin
     using Random
     using InteractiveUtils
     using StableRNGs
@@ -37,23 +34,6 @@ end
     @test_broken check_rnd(AMHCopula,           -0.18, 0.33, 10)
     @test_broken check_rnd(FrankCopula,         -1,    1,    10)
     @test_broken check_rnd(InvGaussianCopula,    0,    1/2,  10)
-
-    # check we did not forget to add a generator: 
-    @test length(InteractiveUtils.subtypes(Copulas.UnivariateGenerator)) == 7
-end
-
-@testitem "Archimedeans with UnivariateGenerators" begin
-    using StableRNGs
-    using Distributions
-    using InteractiveUtils
-    rng = StableRNG(123)
-    Gs = InteractiveUtils.subtypes(Copulas.UnivariateGenerator)
-    for d in 2:2 # fitting only in bivariate cases due to issues with negative parameters ? 
-        for G in Gs
-            fit(ArchimedeanCopula{d,G{Tθ}} where {d, Tθ}, rand(rng,d,100))
-        end
-    end
-    @test true
 end
 
 # @testitem "A few tests on bigfloats" begin
