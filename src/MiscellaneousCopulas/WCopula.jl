@@ -22,7 +22,7 @@ struct WCopula <: Copula{2}
     WCopula() = new()
 end
 Distributions._logpdf(::WCopula,           u) = sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
-_cdf(::WCopula, u) = max(1 + sum(u)-d,0)
+_cdf(::WCopula, u) = max(sum(u)-1,0)
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::WCopula, x::AbstractVector{T}) where {T<:Real}
     @assert length(x)==2
