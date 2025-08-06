@@ -93,8 +93,9 @@ end
 Computes the rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ C, the result should be uniformely distributed on the unit hypercube. The importance of this transofrmation comes from its bijectivity: `inverse_rosenblatt(C, rand(d))` is equivalent to `rand(C)`. The interface proposes faster versions for matrix inputs `u`.
 
 
-References:
-* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. The annals of mathematical statistics, 23(3), 470-472.
+* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
+* [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
+* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
 """
 function rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d}
     @assert d == size(u, 1)
@@ -109,7 +110,9 @@ Computes the inverse rosenblatt transform associated to the copula C on the vect
 
 
 References:
-* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. The annals of mathematical statistics, 23(3), 470-472.
+* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
+* [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
+* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
 """
 function inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d}
     @assert d == size(u, 1)

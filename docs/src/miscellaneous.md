@@ -6,9 +6,9 @@ CurrentModule = Copulas
 
 Some copulas, while necessary in certain cases and very useful, are hard to classify. We gather them here for simplicity. 
 
-## `IndendentCopula`
+## `IndependentCopula`
 ```@docs
-IndendentCopula
+IndependentCopula
 ```
 
 ## `MCopula`
