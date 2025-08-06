@@ -6,7 +6,6 @@ CurrentModule = Copulas
 
 ## Definition and usefulness
 
-
 !!! definition "Definition (Rosenblatt transformation):"
     The Rosenblatt transformation considers a random vector ``X`` distributed according to a certain multivariate cumulative distribution function ``F_{X}(x)``, and maps it back to a uniform distribution on the unit hypercube.
 
@@ -16,6 +15,10 @@ CurrentModule = Copulas
     R_X(x_1, ..., x_d) = (r_1 = F_{X_1}(x_1), r_2 = F_{X_2 | X_1}(x_2 | x_1), ..., r_{d} = F_{X_d | X_1, ..., X_{d-1}}(x_d | x_1, ..., x_{d-1}))
     ```
 
+References:
+* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
+* [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
+* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
 
 In certain circumstances, in particular for Archimedean copulas, this map simplifies to tractable expressions. It has a few nice properties:
 

@@ -53,7 +53,7 @@ For example, Here is a graph of a few Clayton Generators:
 using Copulas: ϕ,ClaytonGenerator,IndependentGenerator
 using Plots
 plot( x -> ϕ(ClaytonGenerator(-0.5),x), xlims=(0,5), label="ClaytonGenerator(-0.5)")
-plot!(x -> ϕ(IndependentGenerator(),x), label="IndependentGenerator()")
+plot!(x -> exp(-x), label="IndependentGenerator()")
 plot!(x -> ϕ(ClaytonGenerator(0.5),x), label="ClaytonGenerator(0.5)")
 plot!(x -> ϕ(ClaytonGenerator(1),x), label="ClaytonGenerator(1)")
 plot!(x -> ϕ(ClaytonGenerator(5),x), label="ClaytonGenerator(5)")
@@ -65,7 +65,7 @@ And the corresponding inverse functions:
 using Copulas: ϕ⁻¹,ClaytonGenerator,IndependentGenerator
 using Plots
 plot( x -> ϕ⁻¹(ClaytonGenerator(-0.5),x), xlims=(0,1), ylims=(0,5), label="ClaytonGenerator(-0.5)")
-plot!(x -> ϕ⁻¹(IndependentGenerator(),x), label="IndependentGenerator()")
+plot!(x -> -log(x), label="IndependentGenerator()")
 plot!(x -> ϕ⁻¹(ClaytonGenerator(0.5),x), label="ClaytonGenerator(0.5)")
 plot!(x -> ϕ⁻¹(ClaytonGenerator(1),x), label="ClaytonGenerator(1)")
 plot!(x -> ϕ⁻¹(ClaytonGenerator(5),x), label="ClaytonGenerator(5)")
@@ -134,7 +134,7 @@ using Copulas: i𝒲, ϕ⁻¹, IndependentGenerator
 using Plots
 G = i𝒲(LogNormal(), 2)
 plot(x -> ϕ⁻¹(G,x), xlims=(0.1,0.9), label="G")
-plot!(x -> ϕ⁻¹(IndependentGenerator(),x), label="Independence")
+plot!(x -> -log(x), label="Independence")
 ```
 
 The `i𝒲` alias stands for `WiliamsonGenerator`. To stress the generality of the approach, remark that any positive distribution is allowed, including discrete ones: 
@@ -161,7 +161,7 @@ Let's first define formally archimedean copulas:
     $$C(\bm u) = \phi\left(\sum\limits_{i=1}^d \phi^{-1}(u_i)\right)$$ is a copula. 
 
 There are a few archimedean generators that are worth noting since they correspond to known archimedean copulas families: 
-* [`IndependentGenerator`](@ref): $\phi(t) =e^{-t} \text{ generates } \Pi$.
+* [`IndependentCopula`](@ref): $\phi(t) =e^{-t} \text{ generates } \Pi$.
 * [`ClaytonGenerator`](@ref): $\phi_{\theta}(t) = \left(1+t\theta\right)^{-\theta^{-1}}$ generates the $\mathrm{Clayton}(\theta)$ copula.
 * [`GumbelGenerator`](@ref): $\phi_{\theta}(t) = \exp\{-t^{\theta^{-1}}\}$ generates the $\mathrm{Gumbel}(\theta)$ copula.
 * [`FrankGenerator`](@ref): $\phi_{\theta}(t) = -\theta^{-1}\ln\left(1+e^{-t-\theta}-e^{-t}\right)$ generates the $\mathrm{Franck}(\theta)$ copula.
@@ -180,14 +180,14 @@ Archimedean copulas have a nice decomposition, called the Radial-simplex decompo
 This is why `williamson_dist(G::Generator,d)` is such an important function in the API: it allows to generator the radial part and sample the Archimedean copula. You may call this function directly to see what distribution will be used: 
 
 ```@example
-using Copulas: williamson_dist, FrankCopula
+using Copulas: williamson_dist, FrankGenerator
 williamson_dist(FrankGenerator(7), Val{3}())
 ```
 
 For the Frank Copula, as for many classic copulas, the distribution used is known. We pull some of them from `Distributions.jl` but implement a few more, as this Logarithmic one. Another useful example are negatively-dependent Clayton copulas: 
 
 ```@example
-using Copulas: williamson_dist, ClaytonCopula
+using Copulas: williamson_dist, ClaytonGenerator
 williamson_dist(ClaytonGenerator(-0.2), Val{3}())
 ```
 
@@ -205,7 +205,7 @@ for which the corresponding distribution is known but has no particular name, th
 
     We use this fraily approach for several generators, since sometimes it is faster, including e.g. the Clayton one with positive dependence:
     ```@example
-    using Copulas: williamson_dist, ClaytonCopula
+    using Copulas: williamson_dist, ClaytonGenerator
     williamson_dist(ClaytonGenerator(10), Val{3}())
     ```
 

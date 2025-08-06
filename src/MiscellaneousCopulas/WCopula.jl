@@ -1,11 +1,6 @@
 """
     WCopula
 
-Constructor
-
-    WCopula(2)
-    WCopula()
-
 The [Lower Frechet-Hoeffding bound](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Fr%C3%A9chet%E2%80%93Hoeffding_copula_bounds) is the copula with the lowest value among all copulas. Note that ``W`` is only a proper copula when ``d=2``, in greater dimensions it is still the (pointwise) lower bound, but not a copula anymore. For any copula ``C``, if ``W`` and ``M`` are (respectively) the lower and uppder Frechet-Hoeffding bounds, we have that for all ``\\mathbf{u} \\in [0,1]^d``,
 
 ```math

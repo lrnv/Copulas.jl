@@ -1,8 +1,4 @@
 """
-    IndependentCopula{d}
-
-Constructor
-
     IndependentCopula(d)
 
 The [Independent Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) in dimension ``d`` is

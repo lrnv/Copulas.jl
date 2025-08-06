@@ -89,7 +89,7 @@ This result allows to decompose the distribution of $\bm X$ into several compone
 
     $\Pi : \bm x \mapsto \prod_{i=1}^d x_i = \bm x^{\bm 1}$ is a copula, corresponding to independent random vectors.
 
-The independence copula can be constructed using the [`IndependentCopula(d)`](@ref IndependentGenerator) syntax as follows: 
+The independence copula can be constructed using the [`IndependentCopula(d)`](@ref IndependentCopula) syntax as follows: 
 
 ```@example 1
 Π = IndependentCopula(d) # A 4-variate independence structure.
@@ -128,7 +128,7 @@ Copulas are bounded functions with values in [0,1] since they correspond to prob
     where $y_{+} = \max(0,y)$.
 
 The function $M : \bm x \mapsto \min\bm x$, called the upper Fréchet-Hoeffding bound, is a copula. The function $W : \bm x \mapsto \langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+}$, called the lower Fréchet-Hoeffding bound, is on the other hand a copula only when $d=2$. 
-These two copulas can be constructed through [`MCopula(d)`](@ref MGenerator) and [`WCopula(2)`](@ref WGenerator). 
+These two copulas can be constructed through [`MCopula(d)`](@ref MCopula) and [`WCopula(2)`](@ref WCopula). 
 
 The upper Fréchet-Hoeffding bound corresponds to the case of comonotone random vector: a random vector $\bm X$ is said to be comonotone, i.e., to have copula $M$, when each of its marginals can be written as a non-decreasing transformation of the same random variable (say with $\mathcal U\left([0,1]\right)$ distribution). This is a simple but important dependence structure. See e.g.,[kaas2002,hua2017](@cite) on this particular copula. Note that the implementation of their sampler was straightforward due to their particular shapes:
 
