@@ -47,6 +47,7 @@ struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
     end
 end
 
+Distributions.params(C::PlackettCopula) = (C.θ)
 Base.eltype(S::PlackettCopula{P}) where {P} = P # this shuold be P. 
 
 # CDF calculation for bivariate Plackett Copula

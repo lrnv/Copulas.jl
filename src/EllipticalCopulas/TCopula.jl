@@ -49,11 +49,13 @@ U(::Type{TCopula{d,df,MT}}) where {d,df,MT} = Distributions.TDist(df)
 N(::Type{TCopula{d,df,MT}}) where {d,df,MT} = function(Σ)
     Distributions.MvTDist(df,Σ)
 end
-function Distributions.fit(::Type{CT},u) where {CT<:TCopula}
-    N = Distributions.fit(N(CT), quantile.(U(CT),u))
-    Σ = N.Σ
-    df = N.df
-    return TCopula(df,Σ)
+
+function Distributions.params(C::TCopula{d,df,MT}) where {d,df,MT}
+    Σ = C.Σ
+    n = size(Σ, 1)
+    # Extraemos los elementos únicos de la triangular superior (sin diagonal)
+    rhos = Tuple(Σ[i, j] for i in 1:n for j in (i+1):n)
+    return (df, rhos...)  # Devuelve (df, ρ₁₂, ρ₁₃, ..., ρₙ₋₁ₙ)
 end
 
 # Kendall tau of bivariate student: 

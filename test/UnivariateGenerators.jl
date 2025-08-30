@@ -28,11 +28,11 @@ end
 
     # Should be adapted to spearman rho and its inverse when it is possible. 
     @test_broken check_rnd(ClaytonCopula,       -1,    1,    10)
-    @test_broken check_rnd(GumbelCopula,         0,    1,    10)
-    @test_broken check_rnd(JoeCopula,            0,    1,    10)
+    @test check_rnd(GumbelCopula,         0,    1,    10)
+    @test check_rnd(JoeCopula,            0,    1,    10)
     @test_broken check_rnd(GumbelBarnettCopula, -0.35, 0,    10)
     @test_broken check_rnd(AMHCopula,           -0.18, 0.33, 10)
-    @test_broken check_rnd(FrankCopula,         -1,    1,    10)
+    @test check_rnd(FrankCopula,         -1,    1,    10)
     @test_broken check_rnd(InvGaussianCopula,    0,    1/2,  10)
 end
 

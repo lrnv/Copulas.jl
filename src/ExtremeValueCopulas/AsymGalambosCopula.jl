@@ -45,6 +45,8 @@ struct AsymGalambosCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
+Distributions.params(C::AsymGalambosCopula) = (C.α, C.θ[1], C.θ[2])
+
 function A(C::AsymGalambosCopula, t::Real)
     x₁ = - C.α * log(C.θ[1] * t)
     x₂ = - C.α * log(C.θ[2] * (1-t))

@@ -17,6 +17,7 @@ References:
 struct MCopula{d} <: Copula{d} 
     MCopula(d) = new{d}()
 end
+Distributions.params(C::MCopula) = ()
 Distributions._logpdf(::MCopula{d}, u) where {d} = all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::MCopula{d}, u) where {d} = minimum(u)
 

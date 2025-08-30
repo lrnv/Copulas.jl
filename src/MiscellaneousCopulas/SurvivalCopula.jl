@@ -28,6 +28,9 @@ struct SurvivalCopula{d,CT,VI} <: Copula{d}
         return new{d,typeof(C),typeof(indices)}(C,indices)
     end
 end
+
+Distributions.params(S::SurvivalCopula) = Distributions.params(S.C)
+
 function reverse!(u,idx)
     if ndims(u) == 1
         for i in idx

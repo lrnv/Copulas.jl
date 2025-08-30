@@ -42,6 +42,7 @@ end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 ClaytonCopula(d, θ) = ArchimedeanCopula(d, ClaytonGenerator(θ))
 
+Distributions.params(C::ClaytonCopula) = (C.G.θ)
 
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1/G.θ))
 ϕ(  G::ClaytonGenerator, t) = max(1+G.θ*t,zero(t))^(-1/G.θ)
@@ -51,10 +52,8 @@ max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1/G.θ))
 ϕ⁽ᵏ⁾(G::ClaytonGenerator, ::Val{k}, t) where k = (1+G.θ*t) ≤ 0 ? 0 : (1 + G.θ * t)^(-1/G.θ - k) * prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1)
 ϕ⁽ᵏ⁾⁻¹(G::ClaytonGenerator, ::Val{k}, t; start_at=t) where k = ((t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))^(1/(-1/G.θ - k)) -1)/G.θ    
 
-τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ/(G.θ+2), 1)
-τ⁻¹(::Type{T},τ) where T<:ClaytonGenerator = ifelse(τ == 1,Inf,2τ/(1-τ))
 williamson_dist(G::ClaytonGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ), Val{d}()) : ClaytonWilliamsonDistribution(G.θ,d)
-
+frailty_dist(G::ClaytonGenerator) = Distributions.Gamma(1/G.θ, G.θ)  # (shape, scale)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, A::DenseMatrix{<:Real})
     A[:] = inverse_rosenblatt(C, rand(rng, size(A)...))
     return A
@@ -74,3 +73,48 @@ function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGe
     S1==d-1 && return eltype(u)(-Inf)
     return log(θ + 1) * (d - 1) - (θ + 1) * S2 + (-1 / θ - d) * log(S1 - d + 1)
 end
+
+τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ/(G.θ+2), 1)
+τ⁻¹(::Type{T},τ) where T<:ClaytonGenerator = ifelse(τ == 1,Inf,2τ/(1-τ))
+
+# -- integrando robusto para Clayton (θ puede ser negativo) --
+@inline function _C_clayton(u::Float64, v::Float64, θ::Float64)
+    s = u^(-θ) + v^(-θ) - 1
+    if θ < 0
+        return (s <= 0) ? 0.0 : s^(-1/θ)   # soporte recortado para θ<0
+    else
+        return s^(-1/θ)                    # para θ>0 siempre s≥1
+    end
+end
+
+# Spearman (vía CDF) — con integrando seguro
+function ρ(G::ClaytonGenerator; rtol=1e-8, atol=1e-10)
+    θ = float(G.θ)
+    θ ≤ -1 && throw(ArgumentError("Para Clayton: θ > -1."))
+    iszero(θ) && return 0.0
+    I = HCubature.hcubature(x -> _C_clayton(x[1], x[2], θ),
+                            [0.0,0.0], [1.0,1.0];
+                            rtol=rtol, atol=atol)[1]
+    return 12I - 3
+end
+
+# Inversa ρ → θ para Clayton (sin recortar a [0,1])
+function ρ⁻¹(::Type{ClaytonGenerator}, ρ̂::Real; atol=1e-10)
+    _ρ = float(ρ̂)
+    if isapprox(_ρ, 0.0; atol=1e-14)
+        return 0.0
+    end
+
+    # Semillas: aproximamos τ ≈ (2/3)ρ  y  θ ≈ 2τ/(1-τ)
+    τ0 = clamp((2/3)*_ρ, -0.99, 0.99)
+    θ0 = 2*τ0/(1 - τ0)
+    θ0 = clamp(θ0, -1 + sqrt(eps(Float64)), 1e6)
+    θ1 = θ0 + (_ρ > 0 ? 0.25 : -0.25)        # segunda semilla hacia el lado correcto
+
+    f(θ) = ρ(ClaytonGenerator(θ)) - _ρ
+    # Secante con dos semillas; no requiere bracketing
+    θ = Roots.find_zero(f, (θ0, θ1), Roots.Order2(); xatol=atol)
+    return θ
+end
+
+ρ⁻¹(::Type{ClaytonCopula}, ρ̂::Real; kwargs...) = ρ⁻¹(ClaytonGenerator, ρ̂; kwargs...)

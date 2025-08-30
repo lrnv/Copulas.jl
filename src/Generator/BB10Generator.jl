@@ -1,0 +1,100 @@
+"""
+    BB10Generator{T}
+
+Fields:
+  - θ::Real - parameter
+  - δ::Real - parameter
+
+Constructor
+
+    BB10Generator(θ, δ)
+    BB10Copula(θ, δ)
+
+The BB10 copula in dimension ``d = 2`` is parameterized by ``\\theta, \\in (0,\\infty)`` and ``\\delta \\in [0, 1]``. It is an Archimedean copula with generator :
+
+```math
+\\phi(t) = \\exp(-[\\delta^{-1}\\log(1 + t)]^{\\frac{1}{\\theta}}),
+```
+
+References:
+* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.202-203
+"""
+
+struct BB10Generator{T} <: Generator
+    θ::T          # θ > 0
+    δ::T          # 0 ≤ δ ≤ 1
+    function BB10Generator(θ, δ)
+        (θ > 0) || throw(ArgumentError("θ must be > 0"))
+        (0 ≤ δ ≤ 1) || throw(ArgumentError("δ must be in [0,1]"))
+        if θ == 1
+            return AMHGenerator(δ)
+        else 
+            return new{typeof(θ)}(θ, δ)
+        end
+    end
+end
+
+const BB10Copula{T} = ArchimedeanCopula{2,BB10Generator{T}}
+BB10Copula(θ, δ) = ArchimedeanCopula(2, BB10Generator(θ, δ))
+Distributions.params(C::BB10Copula) = (C.G.θ, C.G.δ)
+max_monotony(::BB10Generator) = Inf
+
+ϕ(G::BB10Generator, s) = begin
+    θ, δ = G.θ, G.δ
+    exp( (1/θ) * (log1p(-δ) - log(expm1(s) + (1 - δ))) )
+end
+
+ϕ⁻¹(G::BB10Generator, t) = begin
+    θ, δ = G.θ, G.δ
+    log(δ + (1 - δ) * exp(-θ * log(t)))
+end
+
+function ϕ⁽¹⁾(G::BB10Generator, s)
+    θ, δ = G.θ, G.δ
+    es = exp(s)
+    ψ  = ϕ(G, s)
+    return -(1/θ) * es/(es - δ) * ψ
+end
+function ϕ⁽²⁾(G::BB10Generator, s::Real)
+    θ, δ = G.θ, G.δ
+    es = exp(s)
+    ψ  = ϕ(G, s)                    # ya usa forma estable con log1p/expm1
+    den = es - δ
+    return ψ * (es / (den^2)) * (es/θ^2 + δ/θ)
+end
+ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s) = ϕ⁽²⁾(G, s)
+
+ϕ⁻¹⁽¹⁾(G::BB10Generator, t) = begin
+    θ, δ = G.θ, G.δ
+    num = -θ * (1 - δ) * exp(-(θ + 1) * log(t))
+    den =  δ + (1 - δ) * exp(-θ * log(t))
+    num/den
+end
+
+williamson_dist(G::BB10Generator, ::Val{2}) =
+    WilliamsonFromFrailty(ShiftedNegBinFrailty(inv(G.θ), 1 - G.δ), Val(2))
+frailty_dist(G::BB10Generator) = ShiftedNegBinFrailty(inv(G.θ), 1 - G.δ)
+
+function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
+    θ, δ = C.G.θ, C.G.δ
+    uθ, vθ = u[1]^θ, u[2]^θ
+    D = 1 - δ*(1 - uθ)*(1 - vθ)
+    return exp( log(u[1]) + log(u[2]) - (1/θ)*log(D) )
+end
+
+# --- log-density
+function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
+    T = promote_type(Float64, eltype(u))
+    (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return T(-Inf)
+
+    θ, δ = C.G.θ, C.G.δ
+    uθ, vθ = u[1]^θ, u[2]^θ
+
+    D = 1 - δ + δ*(uθ + vθ) - δ*uθ*vθ
+    K = (1 - δ)^2 + δ*(1 - δ)*(uθ + vθ) + δ*(θ + δ)*uθ*vθ
+
+    (D > 0 && K > 0) || return T(-Inf)
+
+    logc = (-1/θ - 2)*log(D) + log(K)
+    return T(logc)
+end

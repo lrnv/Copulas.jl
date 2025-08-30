@@ -33,6 +33,8 @@ struct CuadrasAugeCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
+Distributions.params(C::CuadrasAugeCopula) = (C.θ)
+
 A(C::CuadrasAugeCopula, t::Real) = max(t, 1-t) + (1-C.θ) * min(t, 1-t)
 
 dA(C::CuadrasAugeCopula, t::Real) = t <= 0.5 ? -C.θ : C.θ

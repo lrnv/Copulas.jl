@@ -49,11 +49,35 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
 end
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
-function Distributions.fit(::Type{CT},u) where {CT<:GaussianCopula}
-    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
-    Σ = Matrix(dd.Σ)
-    return GaussianCopula(Σ)
+
+function Distributions.params(C::GaussianCopula)
+    Σ = C.Σ
+    n = size(Σ, 1)
+    # Extraemos los elementos únicos de la triangular superior (sin diagonal)
+    rhos = Tuple(Σ[i, j] for i in 1:n for j in (i+1):n)
+    return rhos
 end
+
+# src/EllipticalCopulas/GaussianCopula.jl
+
+# REEMPLAZA tu método por este (notar nombre del argumento y calificación)
+function Distributions.fit(::Type{CT}, X::AbstractMatrix;
+                           method::Symbol = :mle, kwargs...) where {CT<:Copulas.GaussianCopula}
+    # Mapear pseudo-U(0,1) a márgenes del modelo (según tu API)
+    # OJO: ajusta estas dos llamadas si en tu código N/U significan otra cosa
+    distN = Copulas.N(CT)
+    distU = Copulas.U(CT)
+
+    Z = StatsBase.quantile.(distU, X)   # <<< antes: U(CT), U  (chocaban)
+    dd = Distributions.fit(distN, Z)
+    Σ  = Matrix(dd.Σ)
+    return CT(Σ)                         # o GaussianCopula(Σ) si prefieres
+end
+
+# (opcional) vector → matriz columna
+Distributions.fit(::Type{CT}, x::AbstractVector; method::Symbol=:mle, kwargs...) where {CT<:Copulas.GaussianCopula} =
+    Distributions.fit(CT, reshape(x, :, 1); method=method, kwargs...)
+
 
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
     x = StatsBase.quantile.(Distributions.Normal(),u)
@@ -76,4 +100,3 @@ end
 # Theorem 3.1 in Fang, Fang, & Kotz, The Meta-elliptical Distributions with Given Marginals Journal of Multivariate Analysis, Elsevier, 2002, 82, 1–16
 τ(C::GaussianCopula{2,MT}) where MT = 2*asin(C.Σ[1,2])/π
 ρ(C::GaussianCopula{2,MT}) where MT = 6*asin(C.Σ[1,2]/2)/π
-

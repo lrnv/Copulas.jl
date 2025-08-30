@@ -31,6 +31,7 @@ struct BC2Copula{P} <: ExtremeValueCopula{P}
     end
 end
 
+Distributions.params(C::BC2Copula) = (C.a, C.b)
 
 function A(C::BC2Copula, t::Real)
     a, b = C.a, C.b

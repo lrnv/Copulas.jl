@@ -40,12 +40,22 @@ end
 const InvGaussianCopula{d, T}   = ArchimedeanCopula{d, InvGaussianGenerator{T}}
 InvGaussianCopula(d, θ)   = ArchimedeanCopula(d, InvGaussianGenerator(θ))
 
+Distributions.params(C::InvGaussianCopula) = (C.G.θ)
 
 max_monotony(G::InvGaussianGenerator) = Inf
-ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
-ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? ln(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))
-# ϕ⁽¹⁾(G::InvGaussianGenerator, t) =  First derivative of ϕ
-# ϕ⁽ᵏ⁾(G::InvGaussianGenerator, ::Val{k}, t) where k = kth derivative of ϕ
+ϕ(  G::InvGaussianGenerator, x) = isinf(G.θ) ? exp(-sqrt(2*x)) : exp((1 - sqrt(1 + 2*(G.θ^2)*x))/G.θ)
+ϕ⁻¹(G::InvGaussianGenerator, u) = isinf(G.θ) ? (log(u)^2)/2 : ((1 - G.θ*log(u))^2 - 1) / (2*(G.θ^2))
+function ϕ⁽¹⁾(G::InvGaussianGenerator, x)
+    if isinf(G.θ)
+        # d/dx e^{-√(2x)} = e^{-√(2x)} * ( -1 / √(2x) )
+        return ϕ(G, x) * ( - 1 / sqrt(2*x) )
+    else
+        r = sqrt(1 + 2*(G.θ^2)*x)
+        return ϕ(G, x) * ( - G.θ / r )
+    end
+end
+ϕ⁻¹⁽¹⁾(G::InvGaussianGenerator, u::Real) = isinf(G.θ) ? log(u) / u : (G.θ*log(u) - 1) / (G.θ*u)
+
 function _invgaussian_tau(θ)
     T = promote_type(typeof(θ),Float64)
     if θ == 0
@@ -78,3 +88,4 @@ function τ⁻¹(::Type{T}, tau) where T<:InvGaussianGenerator
     return Roots.find_zero(x -> _invgaussian_tau(x) - tau, (sqrt(eps(tau)), Inf))
 end
 williamson_dist(G::InvGaussianGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Distributions.InverseGaussian(G.θ,1), Val{d}())
+frailty_dist(G::InvGaussianGenerator) = Distributions.InverseGaussian(G.θ,1)
