@@ -39,7 +39,7 @@ struct InvGaussianGenerator{T} <: Generator
 end
 const InvGaussianCopula{d, T}   = ArchimedeanCopula{d, InvGaussianGenerator{T}}
 InvGaussianCopula(d, θ)   = ArchimedeanCopula(d, InvGaussianGenerator(θ))
-
+Distributions.params(C::InvGaussianCopula) = (C.G.θ,)
 
 max_monotony(G::InvGaussianGenerator) = Inf
 ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)

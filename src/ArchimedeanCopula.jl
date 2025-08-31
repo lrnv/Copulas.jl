@@ -51,6 +51,10 @@ struct ArchimedeanCopula{d,TG} <: Copula{d}
     ArchimedeanCopula(d::Int, ::MGenerator) = MCopula(d)
     ArchimedeanCopula(d::Int, ::WGenerator) = WCopula(d)
 end
+Distributions.params(C) = C.G # by default the parameter is the generator. 
+function Base.show(io::IO, C::ArchimedeanCopula)
+    print(io, "$(typeof(C))$(Distributions.params(C))")
+end
 
 _cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}

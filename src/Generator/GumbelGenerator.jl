@@ -38,7 +38,7 @@ struct GumbelGenerator{T} <: Generator
 end
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
 GumbelCopula(d, θ) = ArchimedeanCopula(d, GumbelGenerator(θ))
-
+Distributions.params(C::GumbelCopula) = (C.G.θ,)
 
 max_monotony(G::GumbelGenerator) = Inf
 ϕ(  G::GumbelGenerator, t) = exp(-t^(1/G.θ))

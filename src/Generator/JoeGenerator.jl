@@ -38,7 +38,7 @@ struct JoeGenerator{T} <: Generator
 end
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
 JoeCopula(d, θ) = ArchimedeanCopula(d, JoeGenerator(θ))
-
+Distributions.params(C::JoeCopula) = (C.G.θ,)
 
 max_monotony(::JoeGenerator) = Inf
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)

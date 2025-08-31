@@ -36,6 +36,7 @@ struct GumbelBarnettGenerator{T} <: Generator
 end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
 GumbelBarnettCopula(d, θ) = ArchimedeanCopula(d, GumbelBarnettGenerator(θ))
+Distributions.params(C::GumbelBarnettCopula) = (C.G.θ,)
 
 function max_monotony(G::GumbelBarnettGenerator)
     G.θ == 0 && return Inf
