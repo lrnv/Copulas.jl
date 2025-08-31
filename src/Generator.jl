@@ -51,3 +51,7 @@ williamson_dist(G::Generator, ::Val{d}) where d = WilliamsonTransforms.𝒲₋�
 struct IndependentGenerator <: Generator end 
 struct MGenerator <: Generator end
 struct WGenerator <: Generator end
+
+τ(::IndependentGenerator)  = 0
+τ(::MGenerator)  = 1
+τ(::WGenerator)  = -1
