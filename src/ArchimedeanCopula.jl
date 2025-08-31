@@ -109,7 +109,13 @@ function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula}
     return ArchimedeanCopula(d,GT(θ))
 end
 
-τ(C::ArchimedeanCopula{d,TG}) where {d,TG} = τ(C.G)
+function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
+    if applicable(Copulas.ρ, C.G)
+        return τ(C.G)
+    else
+        return @invoke τ(C::Copula)
+    end
+end
 function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
     return τ⁻¹(generatorof(T),τ_val)
 end
