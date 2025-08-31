@@ -19,7 +19,6 @@ The BB10 copula in dimension ``d = 2`` is parameterized by ``\\theta, \\in (0,\\
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.206-207
 """
-
 struct BB10Generator{T} <: Generator
     θ::T          # θ > 0
     δ::T          # 0 ≤ δ ≤ 1

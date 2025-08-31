@@ -19,10 +19,6 @@ The BB2 copula in dimension ``d = 2`` is parameterized by ``\\theta, \\delta \\i
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.193-194
 """
-const LOGMAX = log(floatmax(Float64))    # ≈ 709.78
-const EPS    = 1e-12
-const MARGIN = 8.0                     
-
 struct BB2Generator{T} <: Generator
     θ::T
     δ::T
@@ -32,7 +28,9 @@ struct BB2Generator{T} <: Generator
         new{typeof(θ)}(θ, δ)
     end
 end
-
+const LOGMAX = log(floatmax(Float64))    # ≈ 709.78
+const EPS    = 1e-12
+const MARGIN = 8.0             
 const BB2Copula{T} = ArchimedeanCopula{2, BB2Generator{T}}
 BB2Copula(θ, δ) = ArchimedeanCopula(2, BB2Generator(θ, δ))
 Distributions.params(C::BB2Copula) = (C.G.θ, C.G.δ)
