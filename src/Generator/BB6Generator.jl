@@ -13,7 +13,7 @@ Constructor
 The BB6 copula in dimension ``d = 2`` is parameterized by ``\\theta, \\delta \\in [1,\\infty)``. It is an Archimedean copula with generator :
 
 ```math
-\\phi(t) = \\exp(-[\\delta^{-1}\\log(1 + t)]^{\\frac{1}{\\theta}}),
+\\phi(t) = 1 - [1 - \\exp(-t^{\\frac{1}{\\delta}})]^{\\frac{1}{\\theta}}
 ```
 
 References:

@@ -1,5 +1,5 @@
 """
-    BB6Generator{T}
+    BB7Generator{T}
 
 Fields:
   - θ::Real - parameter
@@ -7,13 +7,13 @@ Fields:
 
 Constructor
 
-    BB6Generator(θ, δ)
-    BB6Copula(θ, δ)
+    BB7Generator(θ, δ)
+    BB7Copula(θ, δ)
 
-The BB6 copula in dimension ``d = 2`` is parameterized by ``\\theta, \\delta \\in [1,\\infty)``. It is an Archimedean copula with generator :
+The BB7 copula in dimension ``d = 2`` is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator :
 
 ```math
-\\phi(t) = \\exp(-[\\delta^{-1}\\log(1 + t)]^{\\frac{1}{\\theta}}),
+\\phi(t) = 1 - [1 - (1 + t)^{-\\frac{1}{\\delta}}]^{\\frac{1}{\\theta}},
 ```
 
 References:

@@ -13,11 +13,13 @@ Constructor
 The BB8 copula in dimension ``d = 2`` is parameterized by ``\\vartheta, \\in [1,\\infty)`` and ``\\delta \\in (0, 1]``. It is an Archimedean copula with generator :
 
 ```math
-\\phi(t) = \\exp(-[\\delta^{-1}\\log(1 + t)]^{\\frac{1}{\\theta}}),
+\\phi(t) = \\delta^{-1}[1 - (1 - \\eta \\exp(-t))^{\\frac{1}{\\vartheta}}],
 ```
 
+where ``\\eta = 1 - (1 - \\delta)^{\\vartheta}.``
+
 References:
-* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.202-203
+* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.204-205
 """
 struct BB8Generator{T} <: Generator
     ϑ::T

@@ -13,11 +13,11 @@ Constructor
 The BB10 copula in dimension ``d = 2`` is parameterized by ``\\theta, \\in (0,\\infty)`` and ``\\delta \\in [0, 1]``. It is an Archimedean copula with generator :
 
 ```math
-\\phi(t) = \\exp(-[\\delta^{-1}\\log(1 + t)]^{\\frac{1}{\\theta}}),
+\\phi(t) = \\Big(\\tfrac{1-\\delta}{e^{s}-\\delta}\\Big)^{1/\\theta},
 ```
 
 References:
-* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.202-203
+* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.206-207
 """
 
 struct BB10Generator{T} <: Generator
