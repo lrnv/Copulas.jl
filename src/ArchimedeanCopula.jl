@@ -110,7 +110,7 @@ function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula}
 end
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
-    if applicable(Copulas.ρ, C.G)
+    if applicable(Copulas.τ, C.G)
         return τ(C.G)
     else
         return @invoke τ(C::Copula)
