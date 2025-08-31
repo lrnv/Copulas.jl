@@ -8,9 +8,9 @@ Fields:
 Constructor
 
     BB9Generator(ϑ, δ)
-    BB9Copula(ϑ, δ)
+    BB9Copula(d, ϑ, δ)
 
-The BB9 copula in dimension ``d = 2`` is parameterized by ``\\vartheta, \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator :
+The BB9 copula is parameterized by ``\\vartheta, \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = \\exp(-(\\delta^{-\\vartheta} + t)^{\\frac{1}{\\vartheta}} + \\delta^{-1}),
@@ -29,8 +29,8 @@ struct BB9Generator{T} <: Generator
     end
 end
 
-const BB9Copula{T} = ArchimedeanCopula{2, BB9Generator{T}}
-BB9Copula(θ, δ) = ArchimedeanCopula(2, BB9Generator(θ, δ))
+const BB9Copula{d, T} = ArchimedeanCopula{d, BB9Generator{T}}
+BB9Copula(d, θ, δ) = ArchimedeanCopula(d, BB9Generator(θ, δ))
 Distributions.params(C::BB9Copula) = (C.G.θ, C.G.δ)
 max_monotony(::BB9Generator) = Inf
 
@@ -45,19 +45,16 @@ function ϕ⁽¹⁾(G::BB9Generator, s)
     a  = inv(G.θ);  c = G.δ^(-G.θ)
     ϕ(G,s) * ( -a * (s + c)^(a-1) )
 end
-function ϕ⁽²⁾(G::BB9Generator, s)
+function ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{2}, s)
     a  = inv(G.θ);  c = G.δ^(-G.θ)
     φ  = ϕ(G,s)
     t  = s + c
     φ * ( a^2 * t^(2a-2) - a*(a-1) * t^(a-2) )
 end
 
-ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{2}, s) = ϕ⁽²⁾(G, s)
 ϕ⁻¹⁽¹⁾(G::BB9Generator, t) = -G.θ * (inv(G.δ) - log(t))^(G.θ - 1) / t
 
-williamson_dist(G::BB9Generator, ::Val{2}) =
-    WilliamsonFromFrailty(TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ)), Val(2))
-frailty_dist(G::BB9Generator) =  TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ))
+williamson_dist(G::BB9Generator, ::Val{d}) where d = WilliamsonFromFrailty(TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ)), Val{d}())
 
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB9Generator}
     θ, δ = C.G.θ, C.G.δ

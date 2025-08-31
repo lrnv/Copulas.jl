@@ -8,9 +8,9 @@ Fields:
 Constructor
 
     BB3Generator(θ, δ)
-    BB3Copula(θ, δ)
+    BB3Copula(d, θ, δ)
 
-The BB3 copula in dimension ``d = 2`` is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0,\\infty). It is an Archimedean copula with generator :
+The BB3 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0,\\infty). It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = \\exp(-[\\delta^{-1}\\log(1 + t)]^{\\frac{1}{\\theta}}),
@@ -29,10 +29,10 @@ struct BB3Generator{T} <: Generator
     end
 end
 
-const BB3Copula{T} = ArchimedeanCopula{2, BB3Generator{T}}
-BB3Copula(θ, δ) = ArchimedeanCopula(2, BB3Generator(θ, δ))
+const BB3Copula{d, T} = ArchimedeanCopula{d, BB3Generator{T}}
+BB3Copula(d, θ, δ) = ArchimedeanCopula(d, BB3Generator(θ, δ))
 Distributions.params(C::BB3Copula) = (C.G.θ, C.G.δ)
-max_monotony(::BB3Generator) = Inf         
+max_monotony(::BB3Generator) = Inf
 
 ϕ(  G::BB3Generator, s) = exp(-(inv(G.δ)*log1p(s))^(inv(G.θ)))
 
@@ -44,7 +44,7 @@ function ϕ⁽¹⁾(G::BB3Generator, s)
     return -(pw*a) * (A^(pw-1)) * inv(1+s) * ϕ(G,s)
 end
 
-function ϕ⁽²⁾(G::BB3Generator, s)
+function ϕ⁽ᵏ⁾(G::BB3Generator, ::Val{2}, s)
     a  = inv(G.δ);  pw = inv(G.θ)
     A  = a * log1p(s);  inv1p = inv(1+s)
     φ  = ϕ(G,s)
@@ -53,15 +53,10 @@ function ϕ⁽²⁾(G::BB3Generator, s)
     K′  = (pw*a) * inv1p^2 * ((pw-1)*a*A^(pw-2) - A^(pw-1))
     return φ * (K^2 - K′)
 end
-ϕ⁽ᵏ⁾(G::BB3Generator, ::Val{2}, s) = ϕ⁽²⁾(G, s)
-ϕ⁽ᵏ⁾(G::BB3Generator, ::Val{0}, s) = ϕ(G, s)
-ϕ⁻¹⁽¹⁾(G::BB3Generator, t) =
-    -(G.δ*G.θ) * inv(t) * exp(G.δ * (-log(t))^G.θ) * (-log(t))^(G.θ - 1)
+ϕ⁻¹⁽¹⁾(G::BB3Generator, t) = -(G.δ*G.θ) * inv(t) * exp(G.δ * (-log(t))^G.θ) * (-log(t))^(G.θ - 1)
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
-williamson_dist(G::BB3Generator, ::Val{2}) =
-    WilliamsonFromFrailty(PosStableStoppedGamma(G.θ, G.δ), Val(2))
-frailty_dist(G::BB3Generator) = PosStableStoppedGamma(G.θ, G.δ)
+williamson_dist(G::BB3Generator, ::Val{d}) where d = WilliamsonFromFrailty(PosStableStoppedGamma(G.θ, G.δ), Val{d}())
 
 @inline function _clip_u_bb3(u::Real, θ::Real, δ::Real)
     # δ(-log u)^θ ≤ LOGMAX - MARGIN

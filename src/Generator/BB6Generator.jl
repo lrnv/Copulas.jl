@@ -8,9 +8,9 @@ Fields:
 Constructor
 
     BB6Generator(θ, δ)
-    BB6Copula(θ, δ)
+    BB6Copula(d, θ, δ)
 
-The BB6 copula in dimension ``d = 2`` is parameterized by ``\\theta, \\delta \\in [1,\\infty)``. It is an Archimedean copula with generator :
+The BB6 copula is parameterized by ``\\theta, \\delta \\in [1,\\infty)``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = 1 - [1 - \\exp(-t^{\\frac{1}{\\delta}})]^{\\frac{1}{\\theta}}
@@ -35,8 +35,8 @@ struct BB6Generator{T} <: Generator
     end
 end
 
-const BB6Copula{T} = ArchimedeanCopula{2, BB6Generator{T}}
-BB6Copula(θ, δ) = ArchimedeanCopula(2, BB6Generator(θ, δ))
+const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
+BB6Copula(d, θ, δ) = ArchimedeanCopula(d, BB6Generator(θ, δ))
 
 Distributions.params(C::BB6Copula) = (C.G.θ, C.G.δ)
 max_monotony(::BB6Generator) = Inf
@@ -52,7 +52,7 @@ function ϕ⁽¹⁾(G::BB6Generator, s)
     return -(a*b) * s^(b-1) * E * H^(a-1)
 end
 
-function ϕ⁽²⁾(G::BB6Generator, s)
+function ϕ⁽ᵏ⁾(G::BB6Generator, ::Val{2}, s)
     a = inv(G.θ); b = inv(G.δ)
     r = s^b
     E = exp(-r)
@@ -60,8 +60,6 @@ function ϕ⁽²⁾(G::BB6Generator, s)
     term = (b - 1) * s^(b - 2) - b * s^(2b - 2) + (a - 1) * b * s^(2b - 2) * (E / H)
     return -a * b * E * H^(a - 1) * term 
 end
-ϕ⁽ᵏ⁾(G::BB6Generator, ::Val{2}, s) = ϕ⁽²⁾(G, s)
-ϕ⁽ᵏ⁾(G::BB6Generator, ::Val{0}, s) = ϕ(G, s)
 function ϕ⁻¹⁽¹⁾(G::BB6Generator, u::Real)
     θ, δ = G.θ, G.δ
     h  = 1 - (1 - u)^θ                  # ∈ (0,1]
@@ -69,9 +67,8 @@ function ϕ⁻¹⁽¹⁾(G::BB6Generator, u::Real)
     return -δ*θ * j^(δ - 1) * (1 - u)^(θ - 1) / h
 end
 
-williamson_dist(G::BB6Generator, ::Val{2}) =
-    WilliamsonFromFrailty(SibuyaStoppedPosStable(G.θ, G.δ), Val(2))
-frailty_dist(G::BB6Generator) = SibuyaStoppedPosStable(G.θ, G.δ)
+williamson_dist(G::BB6Generator, ::Val{d}) where d = WilliamsonFromFrailty(SibuyaStoppedPosStable(G.θ, G.δ), Val{d}())
+
 # ------------------ CDF (d = 2) ------------------
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB6Generator}
     θ, δ = C.G.θ, C.G.δ

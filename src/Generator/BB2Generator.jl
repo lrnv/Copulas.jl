@@ -8,9 +8,9 @@ Fields:
 Constructor
 
     BB2Generator(θ, δ)
-    BB2Copula(θ, δ)
+    BB2Copula(d, θ, δ)
 
-The BB2 copula in dimension ``d = 2`` is parameterized by ``\\theta, \\delta \\in (0,\\infty)`. It is an Archimedean copula with generator :
+The BB2 copula is parameterized by ``\\theta, \\delta \\in (0,\\infty)`. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = [1 + \\delta^{-1}log(1 + t)]^{-\\frac{1}{\\theta}},
@@ -28,25 +28,21 @@ struct BB2Generator{T} <: Generator
         new{typeof(θ)}(θ, δ)
     end
 end
-const LOGMAX = log(floatmax(Float64))    # ≈ 709.78
-const EPS    = 1e-12
-const MARGIN = 8.0             
-const BB2Copula{T} = ArchimedeanCopula{2, BB2Generator{T}}
-BB2Copula(θ, δ) = ArchimedeanCopula(2, BB2Generator(θ, δ))
+const BB2Copula{d, T} = ArchimedeanCopula{d, BB2Generator{T}}
+BB2Copula(d, θ, δ) = ArchimedeanCopula(d, BB2Generator(θ, δ))
+
 Distributions.params(C::BB2Copula) = (C.G.θ, C.G.δ)
 
 max_monotony(::BB2Generator) = Inf
 
 ϕ(  G::BB2Generator, s) = (1 + inv(G.δ)*log1p(s))^(-inv(G.θ))
 ϕ⁻¹(G::BB2Generator, t) = expm1(G.δ*(t^(-G.θ) - 1))
-
 function ϕ⁽¹⁾(G::BB2Generator, s)
     θ, δ = G.θ, G.δ
     A = 1 + (1/δ)*log1p(s)
     return -(1/(θ*δ)) * A^(-1/θ - 1) * inv(1+s)
 end
-
-function ϕ⁽²⁾(G::BB2Generator, s)
+function ϕ⁽ᵏ⁾(G::BB2Generator, ::Val{2}, s)
     θ, δ = G.θ, G.δ
     A = 1 + (1/δ)*log1p(s)
     inv1p = inv(1+s)
@@ -54,20 +50,10 @@ function ϕ⁽²⁾(G::BB2Generator, s)
     term2 = ((1/θ) + 1) * A^(-1/θ - 2) * (1/δ)
     return (1/(θ*δ)) * inv1p^2 * (term1 + term2)
 end
-ϕ⁽ᵏ⁾(G::BB2Generator, ::Val{2}, s) = ϕ⁽²⁾(G, s)
-ϕ⁽ᵏ⁾(G::BB2Generator, ::Val{0}, s) = ϕ(G, s)
 ϕ⁻¹⁽¹⁾(G::BB2Generator, t) = -G.δ*G.θ * t^(-G.θ - 1) * exp(G.δ*(t^(-G.θ) - 1))
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
-williamson_dist(G::BB2Generator, ::Val{2}) =
-    WilliamsonFromFrailty(GammaStoppedGamma(G.θ, G.δ), Val(2))
-frailty_dist(G::BB2Generator) = GammaStoppedGamma(G.θ, G.δ)
-
-@inline function clip_u_robust(u::Real, θ::Real, δ::Real)
-    u_min = exp(-(LOGMAX - MARGIN)/θ)
-    u_max = 1 - eps(Float64)
-    return clamp(float(u), u_min, u_max)
-end
+williamson_dist(G::BB2Generator, ::Val{d}) where d = WilliamsonFromFrailty(GammaStoppedGamma(G.θ, G.δ), Val{d}())
 
 # a,b must be log(1+w_i) = δ(u^{-θ}-1); also returns u1c,u2c
 @inline function _abpair_robust(u1::Real, u2::Real, θ::Real, δ::Real)
@@ -153,25 +139,3 @@ function λₗ(C::BB2Generator{T}; tlarge::Float64=1e6) where {T}
     r = ϕ⁽¹⁾(G, 2tlarge) / ϕ⁽¹⁾(G, tlarge)
     return 2*r
 end
-#
-#function λᵤ(C::ArchimedeanCopula{d,TG}, n::Int, h::Int; tsmall::Float64=1e-10) where {d,TG}
-#    @assert 1 ≤ h < n
-#    G = C.G
-#    num = 0.0
-#    den = 0.0
-#    for i in 1:n
-#        num += binomial(n, n-i) * i * (-1)^i * ϕ⁽¹⁾(G, i*tsmall)
-#    end
-#    for i in 1:(n-h)
-#        den += binomial(n-h, n-h-i) * i * (-1)^i * ϕ⁽¹⁾(G, i*tsmall)
-#    end
-#    return num / den
-#end
-
-#function λₗ(C::ArchimedeanCopula{d,TG}, n::Int, h::Int; tlarge::Float64=1e6) where {d,TG}
-#    @assert 1 ≤ h < n
-#    G = C.G
-#    num = ϕ⁽¹⁾(G, n*tlarge)
-#    den = ϕ⁽¹⁾(G, (n-h)*tlarge)
-#    return (n/(n-h)) * (num/den)
-#end

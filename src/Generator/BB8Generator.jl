@@ -8,9 +8,9 @@ Fields:
 Constructor
 
     BB8Generator(ϑ, δ)
-    BB8Copula(ϑ, δ)
+    BB8Copula(d, ϑ, δ)
 
-The BB8 copula in dimension ``d = 2`` is parameterized by ``\\vartheta, \\in [1,\\infty)`` and ``\\delta \\in (0, 1]``. It is an Archimedean copula with generator :
+The BB8 copula is parameterized by ``\\vartheta, \\in [1,\\infty)`` and ``\\delta \\in (0, 1]``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = \\delta^{-1}[1 - (1 - \\eta \\exp(-t))^{\\frac{1}{\\vartheta}}],
@@ -35,34 +35,29 @@ struct BB8Generator{T} <: Generator
     end
 end
 
-const BB8Copula{T} = ArchimedeanCopula{2, BB8Generator{T}}
-BB8Copula(ϑ, δ) = ArchimedeanCopula(2, BB8Generator(ϑ, δ))
+const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
+BB8Copula(d, ϑ, δ) = ArchimedeanCopula(d, BB8Generator(ϑ, δ))
 Distributions.params(C::BB8Copula) = (C.G.ϑ, C.G.δ)
 max_monotony(::BB8Generator) = Inf 
 
-@inline η(G::BB8Generator) = -expm1(G.ϑ * log1p(-G.δ))
+@inline _η(G::BB8Generator) = -expm1(G.ϑ * log1p(-G.δ))
 
-ϕ(G::BB8Generator, s)  = (1/G.δ) * (1 - (1 - η(G)*exp(-s))^(inv(G.ϑ)))
+ϕ(G::BB8Generator, s)  = (1/G.δ) * (1 - (1 - _η(G)*exp(-s))^(inv(G.ϑ)))
 ϕ⁻¹(G::BB8Generator, t) = -log((1 - (1 - G.δ*t)^G.ϑ)/η(G))
+ϕ⁽¹⁾(G::BB8Generator, s) = -(_η(G)/(G.δ*G.ϑ)) * exp(-s) * (1 - _η(G)*exp(-s))^(inv(G.ϑ)-1)
 
-ϕ⁽¹⁾(G::BB8Generator, s) =
-    -(η(G)/(G.δ*G.ϑ)) * exp(-s) * (1 - η(G)*exp(-s))^(inv(G.ϑ)-1)
-
-function ϕ⁽²⁾(G::BB8Generator, s::Real)
+function ϕ⁽ᵏ⁾(G::BB8Generator, ::Val{2}, s)
     δ, ϑ = G.δ, G.ϑ
     α, β = inv(δ), inv(ϑ)
-    ηv   = η(G)
+    ηv   = _η(G)
     u    = exp(-s)
     b    = 1 - ηv*u
     return (α*β*ηv) * u * b^(β - 2) * (1 - β*ηv*u)
 end
-ϕ⁽ᵏ⁾(G::BB8Generator, ::Val{2}, s) = ϕ⁽²⁾(G, s)
-ϕ⁻¹⁽¹⁾(G::BB8Generator, t) =
-    -G.ϑ*G.δ * (1 - G.δ*t)^(G.ϑ - 1) / (1 - (1 - G.δ*t)^G.ϑ)
+ϕ⁻¹⁽¹⁾(G::BB8Generator, t) = -G.ϑ*G.δ * (1 - G.δ*t)^(G.ϑ - 1) / (1 - (1 - G.δ*t)^G.ϑ)
 
-williamson_dist(G::BB8Generator, ::Val{2}) =
-    WilliamsonFromFrailty(GeneralizedSibuya(G.ϑ, G.δ), Val(2))
-frailty_dist(G::BB8Generator) = GeneralizedSibuya(G.ϑ, G.δ)
+williamson_dist(G::BB8Generator, ::Val{d}) where d = WilliamsonFromFrailty(GeneralizedSibuya(G.ϑ, G.δ), Val{d}())
+
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB8Generator}
     ϑ, δ = C.G.ϑ, C.G.δ
     η = -expm1(ϑ*log1p(-δ))

@@ -8,16 +8,16 @@ Fields:
 Constructor
 
     BB1Generator(θ, δ)
-    BB1Copula(θ, δ)
+    BB1Copula(d, θ, δ)
 
-The BB1 copula in dimension ``d = 2`` is parameterized by ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [1, \\infty)``. It is an Archimedean copula with generator :
+The BB1 copula is parameterized by ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [1, \\infty)``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = (1 + t^{\\frac{1}{δ}})^{\\frac{-1}{θ}},
 ```
 
 It has a few special cases:
-- When δ = 1, it is the ClaytonCopula
+- When δ = 1, it is the ClaytonCopula with parameter `\\theta`. 
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.190-192
@@ -35,12 +35,8 @@ struct BB1Generator{T} <: Generator
         end
     end
 end
-const BB1Copula{T} = ArchimedeanCopula{2, BB1Generator{T}}
-
-# Constructor only d = 2
-BB1Copula(θ, δ) = δ == 1 ?
-    ClaytonCopula(2, θ) :                     # if δ=1, Clayton bivariada
-    ArchimedeanCopula(2, BB1Generator(θ, δ))  # other case, BB1 bivariada
+const BB1Copula{d, T} = ArchimedeanCopula{d, BB1Generator{T}}
+BB1Copula(d, θ, δ) = ArchimedeanCopula(d, BB1Generator(θ, δ))
 
 Distributions.params(C::BB1Copula) = (C.G.θ, C.G.δ)
 
@@ -49,23 +45,19 @@ max_monotony(::BB1Generator) = Inf   # Maybe extendable for dimension d???
 # --- generator ψ and inversa ψ^{-1} ---
 ϕ(  G::BB1Generator, s) = (1 + s^(inv(G.δ)))^(-inv(G.θ))
 ϕ⁻¹(G::BB1Generator, t) = (t^(-G.θ) - 1)^(G.δ)
-
 function ϕ⁽¹⁾(G::BB1Generator, s)
     a = inv(G.δ)                                   # a = 1/δ
     return -(a/G.θ) * s^(a-1) * (1 + s^a)^(-inv(G.θ)-1)
 end
-function ϕ⁽²⁾(G::BB1Generator, s)
+function ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{2}, s) # only d=2 case, other cases are not implemented. 
     a = inv(G.δ)
     return (a/G.θ) * s^(a-2) * (1 + s^a)^(-inv(G.θ)-2) *
            ( (1 + a/G.θ)*s^a - (a - 1) )
 end
-ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{2}, s) = ϕ⁽²⁾(G, s)   # fallback for some functions...
 ϕ⁻¹⁽¹⁾(G::BB1Generator, t) = -G.δ*G.θ * t^(-G.θ-1) * (t^(-G.θ) - 1)^(G.δ-1)
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
-williamson_dist(G::BB1Generator, ::Val{2}) =
-    WilliamsonFromFrailty(GammaStoppedPositiveStable(inv(G.δ), inv(G.θ)), Val(2))
-frailty_dist(G::BB1Generator) = GammaStoppedPositiveStable(inv(G.δ), inv(G.θ))
+williamson_dist(G::BB1Generator, ::Val{d}) where d = WilliamsonFromFrailty(GammaStoppedPositiveStable(inv(G.δ), inv(G.θ)), Val{d}())
 
 # --- CDF and logpdf (d=2), numeric stable version ---
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB1Generator}
@@ -101,7 +93,7 @@ end
 
 # === Momentos teóricos (generator y copula) ================================
 
-# Kendall
+# Kendall tau
 τ(G::BB1Generator)  = 1 - 2 / (G.δ * (G.θ + 2))
 
 # Tail dependence

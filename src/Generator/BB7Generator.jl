@@ -8,9 +8,9 @@ Fields:
 Constructor
 
     BB7Generator(θ, δ)
-    BB7Copula(θ, δ)
+    BB7Copula(d, θ, δ)
 
-The BB7 copula in dimension ``d = 2`` is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator :
+The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = 1 - [1 - (1 + t)^{-\\frac{1}{\\delta}}]^{\\frac{1}{\\theta}},
@@ -32,8 +32,8 @@ struct BB7Generator{T} <: Generator
     end
 end
 
-const BB7Copula{T} = ArchimedeanCopula{2, BB7Generator{T}}
-BB7Copula(θ, δ) = ArchimedeanCopula(2, BB7Generator(θ, δ))
+const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
+BB7Copula(d, θ, δ) = ArchimedeanCopula(d, BB7Generator(θ, δ))
 Distributions.params(C::BB7Copula) = (C.G.θ, C.G.δ)
 max_monotony(::BB7Generator) = Inf 
 
@@ -51,7 +51,7 @@ function ϕ⁽¹⁾(G::BB7Generator, s)
     return -(1/(G.θ*G.δ)) * (1 - exp(-inv(G.δ)*log1p(s)))^(inv(G.θ)-1) * (1+s)^(-inv(G.δ)-1)
 end
 
-function ϕ⁽²⁾(G::BB7Generator, s::Real)
+function ϕ⁽ᵏ⁾(G::BB7Generator, ::Val{2}, s)
     θ, δ = G.θ, G.δ
     invθ, invδ = inv(θ), inv(δ)
     a   = exp(-invδ * log1p(s))                 # (1+s)^(-1/δ)
@@ -59,8 +59,7 @@ function ϕ⁽²⁾(G::BB7Generator, s::Real)
     return (invθ*invδ) * fac * (1 - a)^(invθ - 2) *
            ( (1 + invδ) - (1 + invθ*invδ)*a )
 end
-ϕ⁽ᵏ⁾(G::BB7Generator, ::Val{2}, s) = ϕ⁽²⁾(G, s)
-ϕ⁽ᵏ⁾(G::BB7Generator, ::Val{0}, s) = ϕ(G, s)
+
 ϕ⁻¹⁽¹⁾(G::BB7Generator, u) = begin
     θ, δ = G.θ, G.δ
     m = exp(θ*log1p(-u))          # (1-u)^θ
@@ -68,10 +67,8 @@ end
     -δ*θ * (1-u)^(θ-1) * w^(-δ-1) # **negativo**
 end
 
-williamson_dist(G::BB7Generator, ::Val{2}) =
-    WilliamsonFromFrailty(SibuyaStoppedGamma(G.θ, G.δ), Val(2))
+williamson_dist(G::BB7Generator, ::Val{d}) where d = WilliamsonFromFrailty(SibuyaStoppedGamma(G.θ, G.δ), Val{d}())
 
-frailty_dist(G::BB7Generator) = SibuyaStoppedGamma(G.θ, G.δ)
 # --------------- CDF y log-PDF (d = 2) ----------------
 
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB7Generator}

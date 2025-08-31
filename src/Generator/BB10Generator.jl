@@ -8,9 +8,9 @@ Fields:
 Constructor
 
     BB10Generator(θ, δ)
-    BB10Copula(θ, δ)
+    BB10Copula(d, θ, δ)
 
-The BB10 copula in dimension ``d = 2`` is parameterized by ``\\theta, \\in (0,\\infty)`` and ``\\delta \\in [0, 1]``. It is an Archimedean copula with generator :
+The BB10 copula is parameterized by ``\\theta, \\in (0,\\infty)`` and ``\\delta \\in [0, 1]``. It is an Archimedean copula with generator :
 
 ```math
 \\phi(t) = \\Big(\\tfrac{1-\\delta}{e^{s}-\\delta}\\Big)^{1/\\theta},
@@ -33,8 +33,8 @@ struct BB10Generator{T} <: Generator
     end
 end
 
-const BB10Copula{T} = ArchimedeanCopula{2,BB10Generator{T}}
-BB10Copula(θ, δ) = ArchimedeanCopula(2, BB10Generator(θ, δ))
+const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
+BB10Copula(d, θ, δ) = ArchimedeanCopula(2, BB10Generator(θ, δ))
 Distributions.params(C::BB10Copula) = (C.G.θ, C.G.δ)
 max_monotony(::BB10Generator) = Inf
 
@@ -54,14 +54,13 @@ function ϕ⁽¹⁾(G::BB10Generator, s)
     ψ  = ϕ(G, s)
     return -(1/θ) * es/(es - δ) * ψ
 end
-function ϕ⁽²⁾(G::BB10Generator, s::Real)
+function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s)
     θ, δ = G.θ, G.δ
     es = exp(s)
     ψ  = ϕ(G, s)                    # ya usa forma estable con log1p/expm1
     den = es - δ
     return ψ * (es / (den^2)) * (es/θ^2 + δ/θ)
 end
-ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s) = ϕ⁽²⁾(G, s)
 
 ϕ⁻¹⁽¹⁾(G::BB10Generator, t) = begin
     θ, δ = G.θ, G.δ
@@ -70,9 +69,7 @@ end
     num/den
 end
 
-williamson_dist(G::BB10Generator, ::Val{2}) =
-    WilliamsonFromFrailty(ShiftedNegBinFrailty(inv(G.θ), 1 - G.δ), Val(2))
-frailty_dist(G::BB10Generator) = ShiftedNegBinFrailty(inv(G.θ), 1 - G.δ)
+williamson_dist(G::BB10Generator, ::Val{d}) where d = WilliamsonFromFrailty(ShiftedNegBin(inv(G.θ), 1 - G.δ), Val{d}())
 
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
     θ, δ = C.G.θ, C.G.δ
