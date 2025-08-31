@@ -60,12 +60,21 @@ module Copulas
     include("UnivariateDistribution/ClaytonWilliamsonDistribution.jl")
     include("UnivariateDistribution/WilliamsonFromFrailty.jl")
     include("UnivariateDistribution/ExtremeDist.jl")
+    include("UnivariateDistribution/PStable.jl")
 
     # Archimedean generators
     include("Generator.jl")
     include("ArchimedeanCopula.jl")
 
     include("Generator/AMHGenerator.jl")
+    include("Generator/BB1Generator.jl")
+    include("Generator/BB2Generator.jl")
+    include("Generator/BB3Generator.jl")
+    include("Generator/BB6Generator.jl")
+    include("Generator/BB7Generator.jl")
+    include("Generator/BB8Generator.jl")
+    include("Generator/BB9Generator.jl")
+    include("Generator/BB10Generator.jl")
     include("Generator/ClaytonGenerator.jl")
     include("Generator/FrankGenerator.jl")
     include("Generator/GumbelBarnettGenerator.jl")
@@ -77,6 +86,14 @@ module Copulas
            i𝒲, 
            ArchimedeanCopula,
            AMHCopula,
+           BB1Copula, 
+           BB2Copula, 
+           BB3Copula, 
+           BB6Copula, 
+           BB7Copula, 
+           BB8Copula, 
+           BB9Copula, 
+           BB10Copula,
            ClaytonCopula,
            FrankCopula,
            GumbelBarnettCopula,
