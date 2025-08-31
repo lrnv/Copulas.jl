@@ -61,6 +61,14 @@ module Copulas
     include("UnivariateDistribution/WilliamsonFromFrailty.jl")
     include("UnivariateDistribution/ExtremeDist.jl")
     include("UnivariateDistribution/PStable.jl")
+    include("UnivariateDistribution/TiltedPositiveStable.jl")
+    include("UnivariateDistribution/PosStableStoppedGamma.jl")
+    include("UnivariateDistribution/GammaStoppedGamma.jl")
+    include("UnivariateDistribution/GammaStoppedPositiveStable.jl")
+    include("UnivariateDistribution/SibuyaStoppedGamma.jl")
+    include("UnivariateDistribution/SibuyaStoppedPosStable.jl")
+    include("UnivariateDistribution/GeneralizedSibuya.jl")
+    include("UnivariateDistribution/ShiftedNegBin.jl")
 
     # Archimedean generators
     include("Generator.jl")
