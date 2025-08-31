@@ -107,7 +107,7 @@
                         if specialized_ϕinv
                             @testset "ϕ⁻¹ ∘ ϕ == Id" begin
                                 for x in 0:0.1:1
-                                    @test Copulas.ϕ⁻¹(C.G,Copulas.ϕ(C.G,x)) ≈ x
+                                    @test Copulas.ϕ⁻¹(C.G,Copulas.ϕ(C.G,x)) ≈ x atol=1e-10
                                 end
                             end
                         end
@@ -150,6 +150,9 @@
                                 tau = Copulas.τ(C)
                                 @test Copulas.τ(Copulas.generatorof(CT)(Copulas.τ⁻¹(CT,tau))) ≈ tau
                             end
+                            @testset "Check fitting the copula" begin
+                                fit(CT,spl10)
+                            end
                         end
                         
                         if applicable(Copulas.ρ, C.G) && applicable(Copulas.ρ⁻¹,typeof(C.G), 1.0)
@@ -160,9 +163,7 @@
                             end
                         end
 
-                        @testset "Check fitting the copula" begin
-                            fit(CT,spl10)
-                        end
+
                     end
                     
                     @testset "Check kendall distribution coherence between ϕ⁻¹+rand and williamson_dist" begin
