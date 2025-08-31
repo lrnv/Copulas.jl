@@ -144,7 +144,7 @@ function τ_bb7(θ::Real, δ::Real; tol=1e-12, maxiter::Int=10^7)
         return 1 - 4/(θ^2) * S
     else
         # θ == 2 or very close cases: numerical fallback with the general integral
-        return τ(BB7Generator(θ, δ))
+        return @invoke τ(BB7Generator(θ, δ)::Copula)
     end
 end
 
