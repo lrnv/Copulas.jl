@@ -43,7 +43,7 @@ max_monotony(::BB8Generator) = Inf
 @inline _η(G::BB8Generator) = -expm1(G.ϑ * log1p(-G.δ))
 
 ϕ(G::BB8Generator, s)  = (1/G.δ) * (1 - (1 - _η(G)*exp(-s))^(inv(G.ϑ)))
-ϕ⁻¹(G::BB8Generator, t) = -log((1 - (1 - G.δ*t)^G.ϑ)/η(G))
+ϕ⁻¹(G::BB8Generator, t) = -log((1 - (1 - G.δ*t)^G.ϑ)/_η(G))
 ϕ⁽¹⁾(G::BB8Generator, s) = -(_η(G)/(G.δ*G.ϑ)) * exp(-s) * (1 - _η(G)*exp(-s))^(inv(G.ϑ)-1)
 
 function ϕ⁽ᵏ⁾(G::BB8Generator, ::Val{2}, s)

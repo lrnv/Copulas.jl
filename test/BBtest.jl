@@ -1,4 +1,4 @@
-@testitem "BB_specific" begin
+@testitem "Bivariate BB_specific" tags=[:BBCops] begin
 # ===================== test/BB_specific.jl =====================
     using Test
     using Random, StatsBase, HypothesisTests
@@ -76,10 +76,10 @@
                 @test isapprox(ad, Copulas.ϕ⁽¹⁾(G,s); atol=1e-12, rtol=1e-10)
             end
         end
-        if hasmethod(Copulas.ϕ⁽²⁾, (typeof(G), Float64))
+        if hasmethod(Copulas.ϕ⁽ᵏ⁾, (typeof(G), Float64))
             for s in (0.1, 0.5, 1.2, 3.0)
                 ad2 = ForwardDiff.derivative(x->ForwardDiff.derivative(y->Copulas.ϕ(G,y), x), s)
-                @test isapprox(ad2, Copulas.ϕ⁽²⁾(G,s); atol=1e-10, rtol=1e-8)
+                @test isapprox(ad2, Copulas.ϕ⁽ᵏ⁾(G, Val{2}(), s); atol=1e-10, rtol=1e-8)
             end
         end
         if which(Copulas.ϕ⁻¹⁽¹⁾, (typeof(G), Float64)) != which(Copulas.ϕ⁻¹⁽¹⁾, (Copulas.Generator, Float64))
@@ -115,8 +115,8 @@
         :BB1 => [(1.20, 1.50), (2.50, 3.00), (0.35, 1.00)],
         :BB2 => [(1.20, 0.50), (1.5, 1.80), (2.1, 1.5)],
         :BB3 => [(2.00, 1.60), (2.50, 0.40), (5.0, 0.1)],
-        :BB4 => [(0.50, 1.60), (2.50, 0.40), (3.0, 2.1)],
-        :BB5 => [(1.50, 1.60), (2.50, 0.40), (5.0, 0.5)], 
+        # :BB4 => [(0.50, 1.60), (2.50, 0.40), (3.0, 2.1)],
+        # :BB5 => [(1.50, 1.60), (2.50, 0.40), (5.0, 0.5)], 
         :BB6 => [(1.20, 1.60), (1.50, 1.40), (2.0, 1.5)],
         :BB7 => [(1.20, 1.60), (1.50, 0.40), (2.0, 0.5)],
         :BB8 => [(1.20, 0.40), (1.50, 0.60), (2.5, 0.8)],
@@ -126,19 +126,19 @@
 
     # map constructor
     const BB_CTOR = Dict(
-        :BB1  => (θ,δ) -> BB1Copula(θ,δ),
-        :BB2  => (θ,δ) -> BB2Copula(θ,δ),
-        :BB3  => (θ,δ) -> BB3Copula(θ,δ),
-        :BB4  => (θ,δ) -> BB4Copula(θ,δ),  
-        :BB5  => (θ,δ) -> BB5Copula(θ,δ), 
-        :BB6  => (θ,δ) -> BB6Copula(θ,δ),
-        :BB7  => (θ,δ) -> BB7Copula(θ,δ),
-        :BB8  => (θ,δ) -> BB8Copula(θ,δ),
-        :BB9  => (θ,δ) -> BB9Copula(θ,δ),
-        :BB10 => (θ,δ) -> BB10Copula(θ,δ),
+        :BB1  => (θ,δ) -> BB1Copula(2, θ,δ),
+        :BB2  => (θ,δ) -> BB2Copula(2, θ,δ),
+        :BB3  => (θ,δ) -> BB3Copula(2, θ,δ),
+        # :BB4  => (θ,δ) -> BB4Copula(2, θ,δ),  
+        # :BB5  => (θ,δ) -> BB5Copula(2, θ,δ), 
+        :BB6  => (θ,δ) -> BB6Copula(2, θ,δ),
+        :BB7  => (θ,δ) -> BB7Copula(2, θ,δ),
+        :BB8  => (θ,δ) -> BB8Copula(2, θ,δ),
+        :BB9  => (θ,δ) -> BB9Copula(2, θ,δ),
+        :BB10 => (θ,δ) -> BB10Copula(2, θ,δ),
     )
 
-    @testset "BB-specific" begin
+    @testset "Bivariate BB-specific" begin
         for fam in (:BB1, :BB2, :BB3, :BB6, :BB7, :BB8, :BB9, :BB10,)
             @testset "BB $(fam)" begin
                 for (θ,δ) in BB_PARAMS[fam]

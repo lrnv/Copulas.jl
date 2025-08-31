@@ -59,11 +59,11 @@ end
 williamson_dist(G::BB3Generator, ::Val{d}) where d = WilliamsonFromFrailty(PosStableStoppedGamma(G.θ, G.δ), Val{d}())
 
 @inline function _clip_u_bb3(u::Real, θ::Real, δ::Real)
-    # δ(-log u)^θ ≤ LOGMAX - MARGIN
-    tmax = (LOGMAX - MARGIN) / δ
+    # δ(-log u)^θ ≤ LOGMAX - MARGIN = log(floatmax(Float64)) - 8.0
+    tmax = (log(floatmax(Float64)) - 8.0) / δ
     ϵθδ  = exp(-tmax^(inv(θ)))
-    ϵ    = max(EPS, ϵθδ)
-    return clamp(float(u), ϵ, 1 - EPS)
+    ϵ    = max(1e-12, ϵθδ)
+    return clamp(float(u), ϵ, 1 - 1e-12)
 end
 
 @inline function _abpair_bb3(u1::Real, u2::Real, θ::Real, δ::Real)
@@ -97,7 +97,7 @@ function _cdf(C::ArchimedeanCopula{2,G}, u::AbstractVector{<:Real}) where {G<:BB
 
     # C = exp( - A^(1/θ) ) = exp( -exp( (1/θ)*logA ) )
     z = inv(θ) * logA
-    if z ≥ LOGMAX                          # A^(1/θ) overflows ⇒ C≈0
+    if z ≥ log(floatmax(Float64))                          # A^(1/θ) overflows ⇒ C≈0
         return 0.0
     else
         return exp( -exp(z) )
