@@ -34,26 +34,42 @@ BB3Copula(d, θ, δ) = ArchimedeanCopula(d, BB3Generator(θ, δ))
 Distributions.params(C::BB3Copula) = (C.G.θ, C.G.δ)
 max_monotony(::BB3Generator) = Inf
 
-ϕ(  G::BB3Generator, s) = exp(-(inv(G.δ)*log1p(s))^(inv(G.θ)))
+ϕ(  G::BB3Generator, s) = exp(-exp(log(log1p(s)/G.δ)/G.θ))
 
-ϕ⁻¹(G::BB3Generator, t) = exp(G.δ * (-log(t))^G.θ) - 1
+ϕ⁻¹(G::BB3Generator, t) = expm1(G.δ * exp(G.θ * log(-log(t))))
 
 function ϕ⁽¹⁾(G::BB3Generator, s)
     a  = inv(G.δ);  pw = inv(G.θ)
     A  = a * log1p(s)
-    return -(pw*a) * (A^(pw-1)) * inv(1+s) * ϕ(G,s)
+    B = exp((pw-1)*log(A))
+    return -(pw*a) * B * inv(1+s) * ϕ(G,s)
 end
 
 function ϕ⁽ᵏ⁾(G::BB3Generator, ::Val{2}, s)
     a  = inv(G.δ);  pw = inv(G.θ)
     A  = a * log1p(s);  inv1p = inv(1+s)
+    B = exp((pw-1)*log(A))
+    C = exp((pw-2)*log(A))
     φ  = ϕ(G,s)
     # K(s) = (pw*a) A^{pw-1} /(1+s);  ψ'' = ψ (K^2 - K')
-    K   = (pw*a) * (A^(pw-1)) * inv1p
-    K′  = (pw*a) * inv1p^2 * ((pw-1)*a*A^(pw-2) - A^(pw-1))
+    K   = (pw*a) * B * inv1p
+    K′  = (pw*a) * inv1p^2 * ((pw-1)*a*C - B)
     return φ * (K^2 - K′)
 end
-ϕ⁻¹⁽¹⁾(G::BB3Generator, t) = -(G.δ*G.θ) * inv(t) * exp(G.δ * (-log(t))^G.θ) * (-log(t))^(G.θ - 1)
+ϕ⁻¹⁽¹⁾(G::BB3Generator, t) = -(G.δ*G.θ) * inv(t) * exp(G.δ * exp(G.θ * log(-log(t)))) * (-log(t))^(G.θ - 1)
+function _f_for_BB3_ϕ⁽¹⁾⁻¹(lt, a, δ, lny)
+    t = exp(lt)
+    return (a-1)*lt - δ*t - exp(a*lt) - lny
+end
+function ϕ⁽ᵏ⁾⁻¹(G::BB3Generator, ::Val{1}, x; start_at=x)
+    # compute the inverse of ϕ⁽¹⁾
+    θ, δ = G.θ, G.δ
+    a = 1/θ
+    lny = log(θ)+log(δ)+log(abs(x))
+    lt0 = log(log1p(abs(start_at))/δ)
+    lt_opt = Roots.find_zero(lt -> _f_for_BB3_ϕ⁽¹⁾⁻¹(lt, a, δ, lny), lt0)
+    return expm1(exp(lt_opt)*δ)
+end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
 williamson_dist(G::BB3Generator, ::Val{d}) where d = WilliamsonFromFrailty(PosStableStoppedGamma(G.θ, G.δ), Val{d}())
@@ -61,7 +77,7 @@ williamson_dist(G::BB3Generator, ::Val{d}) where d = WilliamsonFromFrailty(PosSt
 @inline function _clip_u_bb3(u::Real, θ::Real, δ::Real)
     # δ(-log u)^θ ≤ LOGMAX - MARGIN = log(floatmax(Float64)) - 8.0
     tmax = (log(floatmax(Float64)) - 8.0) / δ
-    ϵθδ  = exp(-tmax^(inv(θ)))
+    ϵθδ  = exp(-exp(log(tmax)*inv(θ)))
     ϵ    = max(1e-12, ϵθδ)
     return clamp(float(u), ϵ, 1 - 1e-12)
 end
@@ -69,8 +85,8 @@ end
 @inline function _abpair_bb3(u1::Real, u2::Real, θ::Real, δ::Real)
     u1c = _clip_u_bb3(u1, θ, δ)
     u2c = _clip_u_bb3(u2, θ, δ)
-    a   = δ * (-log(u1c))^θ      # = log(1 + φ⁻¹(u1))  (porque 1+φ⁻¹(u)=e^a)
-    b   = δ * (-log(u2c))^θ
+    a   = δ * exp(θ*log(-log(u1c)))      # = log(1 + φ⁻¹(u1))  (porque 1+φ⁻¹(u)=e^a)
+    b   = δ * exp(θ*log(-log(u2c)))
     return a, b, u1c, u2c
 end
 
@@ -129,13 +145,8 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G},
     z = pw*logA
     logφpp = -2L + (pw-2)*logA + log_bracket - exp(z)   # = log φ''
 
-    return logφpp + logϕinv′u + logϕinv′v
-end
-
-# (optional, for controlled underflow)
-function Distributions.pdf(C::BB3Copula, u::AbstractVector{<:Real})
-    lp = Distributions.logpdf(C, u)
-    return (lp < -745) ? 0.0 : exp(lp)
+    lp = logφpp + logϕinv′u + logϕinv′v
+    return lp < -745 ? -Inf : lp # (optional, for controlled underflow)
 end
 
 function τ(G::Copulas.BB3Generator{T}; rtol=1e-8, atol=1e-12) where {T}

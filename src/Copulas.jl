@@ -18,6 +18,7 @@ module Copulas
     import LinearAlgebra
     import PolyLog
     import BigCombinatorics
+    import LambertW
 
     # Standard copulas and stuff.
     include("utils.jl")
