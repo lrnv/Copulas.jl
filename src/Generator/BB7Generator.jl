@@ -122,14 +122,11 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB7Genera
     return Tret(log_fac + log(B))
 end
 
-using SpecialFunctions: logbeta, digamma
-const γ = Base.MathConstants.eulergamma
-
-function τ_bb7(θ::Real, δ::Real; tol::Real=1e-12, maxiter::Int=10^6, θtol::Real=1e-8)
+function _τ_bb7(θ::Real, δ::Real; tol::Real=1e-12, maxiter::Int=10^6, θtol::Real=1e-8)
     θ == 1 && return δ/(δ+2)
 
     if abs(θ - 2) ≤ θtol
-        return 1 + (1 - γ - SpecialFunctions.digamma(δ + 2))/δ
+        return 1 + (1 - Base.MathConstants.eulergamma - SpecialFunctions.digamma(δ + 2))/δ
     elseif 1 < θ && θ < 2
         a = 2/θ - 1
         return 1 - 2/(δ*(2-θ)) + (4/(δ*θ^2)) * exp(SpecialFunctions.logbeta(δ+2, a))
@@ -146,11 +143,11 @@ function τ_bb7(θ::Real, δ::Real; tol::Real=1e-12, maxiter::Int=10^6, θtol::R
                 return 1 - 4/(θ^2) * S
             end
         end
-        error("τ_bb7: series did not converge in $maxiter iterations (θ=$θ, δ=$δ)")
+        error("_τ_bb7: series did not converge in $maxiter iterations (θ=$θ, δ=$δ)")
     end
 end
 
-τ(G::BB7Generator) = τ_bb7(G.θ, G.δ)
+τ(G::BB7Generator) = _τ_bb7(G.θ, G.δ)
 
 λᵤ(G::BB7Generator) = 2 - 2^(inv(G.θ))
 λₗ(G::BB7Generator) = 2^(-inv(G.δ))
