@@ -2,13 +2,13 @@
 @testitem "Generic" tags=[:BBCops,:BB1Copula] setup=[M] begin M.check(BB1Copula(2, 2.5, 1.5)) end
 @testitem "Generic" tags=[:BBCops,:BB1Copula] setup=[M] begin M.check(BB1Copula(2, 0.35, 1.0)) end
 
-#@testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.2, 0.5)) end
-#@testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.5, 1.8)) end
-#@testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 2.1, 1.5)) end
+@testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.2, 0.5)) end
+@testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.5, 1.8)) end
+@testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 2.1, 1.5)) end
 
-#@testitem "Generic" tags=[:BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.0, 1.6)) end
-#@testitem "Generic" tags=[:BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.5, 0.4)) end
-#@testitem "Generic" tags=[:BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 5.0, 0.1)) end
+@testitem "Generic" tags=[:BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.0, 1.6)) end
+@testitem "Generic" tags=[:BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.5, 0.4)) end
+@testitem "Generic" tags=[:BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 5.0, 0.1)) end
 
 # @testitem "Generic" tags=[:BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 0.5, 1.6)) end
 # @testitem "Generic" tags=[:BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 2.5, 0.4)) end
