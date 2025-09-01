@@ -122,29 +122,31 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB7Genera
     return Tret(log_fac + log(B))
 end
 
-function τ_bb7(θ::Real, δ::Real; tol=1e-12, maxiter::Int=10^7)
+using SpecialFunctions: logbeta, digamma
+const γ = Base.MathConstants.eulergamma
+
+function τ_bb7(θ::Real, δ::Real; tol::Real=1e-12, maxiter::Int=10^6, θtol::Real=1e-8)
     θ == 1 && return δ/(δ+2)
 
-    if 1 < θ && θ < 2
-        return 1 - 2/(δ*(2-θ)) + 4/(δ*θ^2) * SpecialFunctions.beta(δ+2, 2/θ - 1)
-    elseif θ > 2
-        # Series with B(2,a) = 1/(a(a+1)) and product p_i = ∏_{k=1}^i (k-δ)/(k+1)
-        a = 2/θ
-        p = 1.0
-        S = p/(a*(a+1))             # i = 0
-        for i in 0:maxiter-2        # i -> i+1
-            p *= (i+1 - δ)/(i+2)    # p_{i+1}
-            a += 1                  # a_{i+1} = 2/θ + (i+1)
+    if abs(θ - 2) ≤ θtol
+        return 1 + (1 - γ - SpecialFunctions.digamma(δ + 2))/δ
+    elseif 1 < θ && θ < 2
+        a = 2/θ - 1
+        return 1 - 2/(δ*(2-θ)) + (4/(δ*θ^2)) * exp(SpecialFunctions.logbeta(δ+2, a))
+    else
+        a  = 2/θ
+        p  = 1.0
+        S  = p/(a*(a+1))
+        for i in 0:maxiter-2
+            p *= (i+1 - δ)/(i+2)
+            a += 1
             term = p/(a*(a+1))
             S += term
-            if abs(term) < tol*max(1.0, abs(S))
-                break
+            if abs(term) ≤ tol*max(1.0, abs(S))
+                return 1 - 4/(θ^2) * S
             end
         end
-        return 1 - 4/(θ^2) * S
-    else
-        # θ == 2 or very close cases: numerical fallback with the general integral
-        return @invoke τ(BB7Generator(θ, δ)::Copula)
+        error("τ_bb7: series did not converge in $maxiter iterations (θ=$θ, δ=$δ)")
     end
 end
 

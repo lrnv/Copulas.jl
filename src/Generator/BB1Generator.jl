@@ -43,8 +43,8 @@ Distributions.params(C::BB1Copula) = (C.G.θ, C.G.δ)
 max_monotony(::BB1Generator) = Inf   # Maybe extendable for dimension d???
 
 # --- generator ψ and inversa ψ^{-1} ---
-ϕ(  G::BB1Generator, s) = (1 + s^(inv(G.δ)))^(-inv(G.θ))
-ϕ⁻¹(G::BB1Generator, t) = (t^(-G.θ) - 1)^(G.δ)
+ϕ(G::BB1Generator, s) = exp(-inv(G.θ) * log1p(s^(inv(G.δ))))
+ϕ⁻¹(G::BB1Generator, t) = (expm1(-G.θ * log(t)))^(G.δ)  # evita t^(-θ)-1
 function ϕ⁽¹⁾(G::BB1Generator, s)
     a = inv(G.δ)                                   # a = 1/δ
     return -(a/G.θ) * s^(a-1) * (1 + s^a)^(-inv(G.θ)-1)
