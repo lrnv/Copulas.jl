@@ -78,16 +78,23 @@ function measure(C::Copula{d}, u,v) where {d}
     all(iszero.(u)) && all(isone.(v)) && return T(1)
 
     eval_pt = copy(u)
-    r = T(0)
+    # Inclusion–exclusion: the sign for the corner at u is (-1)^d
+    # (for d even it's +1, for d odd it's -1). The Gray-code loop below
+    # then applies alternating signs matching (-1)^(d - |ε|) as bits flip.
+    sign0 = isodd(d) ? -one(T) : one(T)
+    r = sign0 * Distributions.cdf(C, eval_pt)
     graycode = 0    # use a gray code to flip one element at a time
     which = fill(false, d) # false/true to use u/v for each component (so false here)
-    r += Distributions.cdf(C,eval_pt) # the sign is always 0.
     for s = 1:(1<<d)-1
         graycode′ = s ⊻ (s >> 1)
         graycomp = trailing_zeros(graycode ⊻ graycode′) + 1
         graycode = graycode′
         eval_pt[graycomp] = (which[graycomp] = !which[graycomp]) ? v[graycomp] : u[graycomp]
-        r += (-1)^(s+d) * Distributions.cdf(C,eval_pt)
+        # The number of high corners selected equals the number of set bits in the Gray code.
+        # Sign = (-1)^(d - k) where k = number of v's in the corner.
+        k = count_ones(graycode)
+        sign = isodd(d - k) ? -one(T) : one(T)
+        r += sign * Distributions.cdf(C, eval_pt)
     end
     return max(r,0)
 end
