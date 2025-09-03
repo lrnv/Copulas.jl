@@ -62,7 +62,7 @@ function StatsBase.corspearman(C::Copula{d}) where d
     end
     return K
 end
-function measure(C::CT, u,v) where {CT<:Copula}
+function measure(C::Copula{d}, u,v) where {d}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]
     # To obtain the C-volume of the box.
@@ -71,9 +71,14 @@ function measure(C::CT, u,v) where {CT<:Copula}
 
     # We use a gray code according to the proposal at https://discourse.julialang.org/t/looping-through-binary-numbers/90597/6
 
+    T = promote_type(eltype(u), eltype(v), Float64)
+    u .= T.(clamp.(u, 0, 1))
+    v .= T.(clamp.(v, 0, 1))
+    any(v .≤ u) && return T(0)
+    all(iszero.(u)) && all(isone.(v)) && return T(1)
+
     eval_pt = copy(u)
-    d = length(C) # is known at compile time
-    r = zero(eltype(u))
+    r = T(0)
     graycode = 0    # use a gray code to flip one element at a time
     which = fill(false, d) # false/true to use u/v for each component (so false here)
     r += Distributions.cdf(C,eval_pt) # the sign is always 0.
