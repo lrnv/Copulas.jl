@@ -35,22 +35,36 @@ Distributions.params(C::BB2Copula) = (C.G.θ, C.G.δ)
 
 max_monotony(::BB2Generator) = Inf
 
-ϕ(  G::BB2Generator, s) = (1 + inv(G.δ)*LogExpFunctions.log1p(s))^(-inv(G.θ))
-ϕ⁻¹(G::BB2Generator, t) = expm1(G.δ*(t^(-G.θ) - 1))
+ϕ(  G::BB2Generator, s) = exp(-log1p(log1p(s)/G.δ)/G.θ)
+ϕ⁻¹(G::BB2Generator, t) = expm1(G.δ*expm1(-G.θ*log(t)))
 function ϕ⁽¹⁾(G::BB2Generator, s)
     θ, δ = G.θ, G.δ
-    A = 1 + (1/δ)*log1p(s)
-    return -(1/(θ*δ)) * A^(-1/θ - 1) * inv(1+s)
+    u = log1p(s)
+    v = (1+1/θ) * log1p(u/δ) + log(θ) + log(δ) + u
+    return -exp(-v)
 end
 function ϕ⁽ᵏ⁾(G::BB2Generator, ::Val{2}, s)
     θ, δ = G.θ, G.δ
-    A = 1 + (1/δ)*log1p(s)
+    logA = log1p(log1p(s)/δ)
     inv1p = inv(1+s)
-    term1 = A^(-1/θ - 1)
-    term2 = ((1/θ) + 1) * A^(-1/θ - 2) * (1/δ)
+    term1 = exp(-(1+1/θ) * logA)
+    term2 = ((1/θ) + 1) * exp(-(2+1/θ) * logA) / δ
     return (1/(θ*δ)) * inv1p^2 * (term1 + term2)
 end
-ϕ⁻¹⁽¹⁾(G::BB2Generator, t) = -G.δ*G.θ * t^(-G.θ - 1) * exp(G.δ*(t^(-G.θ) - 1))
+function ϕ⁻¹⁽¹⁾(G::BB2Generator, t)
+    lt = log(t)
+    A = G.δ * expm1(-G.θ*lt)
+    B = G.δ * exp(-(1+G.θ)*lt)
+    return - G.θ * B * exp(A)
+end
+function ϕ⁽ᵏ⁾⁻¹(G::BB2Generator, ::Val{1}, x; start_at=x)
+    # compute the inverse of ϕ⁽¹⁾
+    θ, δ = G.θ, G.δ
+    a = 1 + 1/θ          # a > 0
+    logv = -log(a) + (δ + (a - 1) * log(δ) - log(- θ * x)) / a
+    w = LambertW.lambertw(exp(logv))
+    return expm1(a * w - δ)
+end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
 williamson_dist(G::BB2Generator, ::Val{d}) where d = WilliamsonFromFrailty(GammaStoppedGamma(G.θ, G.δ), Val{d}())
@@ -99,9 +113,7 @@ function τ(G::Copulas.BB2Generator{T}; rtol=1e-10, atol=1e-12) where {T}
 
     invδθ = 1/(δ*θ)
     #   φ⁻¹/ (φ⁻¹)' = (t^(θ+1))/(δθ) * expm1(-δ*(t^(-θ) - 1))
-    f(t) = (t<=0 || t>=1) ? 0.0 :
-           (t^(θ+1)) * invδθ * LogExpFunctions.expm1(-δ*(t^(-θ) - 1))
-
+    f(t) = (t<=0 || t>=1) ? 0.0 : (t^(θ+1)) * invδθ * LogExpFunctions.expm1(-δ*(t^(-θ) - 1))
     I, _ = QuadGK.quadgk(f, 0.0, 1.0; rtol=rtol, atol=atol)
     return 1 + 4I
 end

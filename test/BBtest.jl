@@ -4,7 +4,7 @@
 
 @testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.2, 0.5)) end
 @testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.5, 1.8)) end
-@testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 2.0, 1.5)) end
+@testitem "Generic" tags=[:BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 2.1, 1.5)) end
 
 @testitem "Generic" tags=[:BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.0, 1.5)) end
 @testitem "Generic" tags=[:BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.5, 0.5)) end

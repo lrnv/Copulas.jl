@@ -34,26 +34,40 @@ BB3Copula(d, θ, δ) = ArchimedeanCopula(d, BB3Generator(θ, δ))
 Distributions.params(C::BB3Copula) = (C.G.θ, C.G.δ)
 max_monotony(::BB3Generator) = Inf
 
-ϕ(  G::BB3Generator, s) = exp(-(inv(G.δ)*LogExpFunctions.log1p(s))^(inv(G.θ)))
-
-ϕ⁻¹(G::BB3Generator, t) = exp(G.δ * (-log(t))^G.θ) - 1
+ϕ(  G::BB3Generator, s) = exp(-exp(log(log1p(s)/G.δ)/G.θ))
+ϕ⁻¹(G::BB3Generator, t) = expm1(G.δ * exp(G.θ * log(-log(t))))
 
 function ϕ⁽¹⁾(G::BB3Generator, s)
     a  = inv(G.δ);  pw = inv(G.θ)
-    A  = a * LogExpFunctions.log1p(s)
-    return -(pw*a) * (A^(pw-1)) * inv(1+s) * ϕ(G,s)
+    A  = a * log1p(s)
+    B = exp((pw-1)*log(A))
+    return -(pw*a) * B * inv(1+s) * ϕ(G,s)
 end
 
 function ϕ⁽ᵏ⁾(G::BB3Generator, ::Val{2}, s)
     a  = inv(G.δ);  pw = inv(G.θ)
-    A  = a * LogExpFunctions.log1p(s);  inv1p = inv(1+s)
+    A  = a * log1p(s);  inv1p = inv(1+s)
+    B = exp((pw-1)*log(A))
+    C = exp((pw-2)*log(A))
     φ  = ϕ(G,s)
-    # K(s) = (pw*a) A^{pw-1} /(1+s);  ψ'' = ψ (K^2 - K')
-    K   = (pw*a) * (A^(pw-1)) * inv1p
-    K′  = (pw*a) * inv1p^2 * ((pw-1)*a*A^(pw-2) - A^(pw-1))
+    K   = (pw*a) * B * inv1p
+    K′  = (pw*a) * inv1p^2 * ((pw-1)*a*C - B)
     return φ * (K^2 - K′)
 end
-ϕ⁻¹⁽¹⁾(G::BB3Generator, t) = -(G.δ*G.θ) * inv(t) * exp(G.δ * (-log(t))^G.θ) * (-log(t))^(G.θ - 1)
+ϕ⁻¹⁽¹⁾(G::BB3Generator, t) = -(G.δ*G.θ) * inv(t) * exp(G.δ * exp(G.θ * log(-log(t)))) * (-log(t))^(G.θ - 1)
+function _f_for_BB3_ϕ⁽¹⁾⁻¹(lt, a, δ, lny)
+    t = exp(lt)
+    return (a-1)*lt - δ*t - exp(a*lt) - lny
+end
+function ϕ⁽ᵏ⁾⁻¹(G::BB3Generator, ::Val{1}, x; start_at=x)
+    # compute the inverse of ϕ⁽¹⁾
+    θ, δ = G.θ, G.δ
+    a = 1/θ
+    lny = log(θ)+log(δ)+log(abs(x))
+    lt0 = log(log1p(abs(start_at))/δ)
+    lt_opt = Roots.find_zero(lt -> _f_for_BB3_ϕ⁽¹⁾⁻¹(lt, a, δ, lny), lt0)
+    return expm1(exp(lt_opt)*δ)
+end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
 williamson_dist(G::BB3Generator, ::Val{d}) where d = WilliamsonFromFrailty(PosStableStoppedGamma(G.θ, G.δ), Val{d}())
@@ -145,5 +159,5 @@ end
 function Distributions.pdf(C::ArchimedeanCopula{2,G},
                            u::AbstractVector{<:Real}) where {G<:BB3Generator}
     lp = Distributions._logpdf(C, u)
-    return (lp < -745) ? 0.0 : exp(lp)   # 745 ≈ -log(realmin(Float64))
+    return (lp < -745) ? 0.0 : exp(lp)
 end
