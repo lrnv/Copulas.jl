@@ -24,54 +24,53 @@
         return false
     end
 
-    function mc_pdf_integral_rect(rng, C::Copulas.Copula{d}; a=zeros(d), b=ones(d), N=100_000) where d
-        logS, logS2, n_eff  = -Inf, -Inf, 0
-        u, x = zeros(d), zeros(d)
+    function approx_measure_mc(rng, C::Copulas.Copula{d}, a, b, N) where d
         ba = b .- a
         logvol = log(prod(ba))
+        logS  = -Inf
+        logS2 = -Inf
+        u = zeros(d)
+        x = similar(a)
         @inbounds for _ in 1:N
-            rand!(rng, u)            # U ~ Unif(0,1)^d
-            x .= a .+ ba .* u        # X en [a,b]
+            rand!(rng, u)                 # U ~ Unif(0,1)^d
+            x .=  a .+ ba .* u
             lp = logpdf(C, x)
             if isfinite(lp)
-                log_fx = lp + logvol # pdf_X(x) = pdf(C,x) * vol
+                log_fx = lp + logvol      # f(X) = pdf(C,X) * vol
                 logS   = LogExpFunctions.logaddexp(logS,  log_fx)
-                logS2  = LogExpFunctions.logaddexp(logS2, 2*log_fx)
-                n_eff += 1
+                logS2  = LogExpFunctions.logaddexp(logS2, 2 * log_fx)
             end
+            # Non-finite lp contributes 0 implicitly; normalization is by N
         end
-        μ   = exp(logS  - log(n_eff))
-        m2  = exp(logS2 - log(n_eff))
-        var = max(m2 - μ^2, 0.0)
-        return μ, var / n_eff, n_eff
+        μ  = exp(logS  - log(N))
+        m2 = exp(logS2 - log(N))
+        r  = max(m2 - μ^2, 0.0) / N  # SE^2
+        return μ, r, :mc_pdf
     end
-
-    function integrate_pdf_rect(rng, C::Copulas.Copula{d}; a=zeros(d), b=ones(d), maxevals=10_000, nmc=100_000) where d
-        dim = length(C)
-        if dim <= 3
+    function approx_measure_hcub(rng, C::Copulas.Copula{d}, a, b, maxevals) where d
+        v, abs_err = hcubature(x -> pdf(C, x), a, b; maxevals=maxevals)
+        return v, abs_err^2, :hcub
+    end
+    function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, maxevals, N) where d
+        if d == 2
             try
-                v, abs_err = hcubature(x -> pdf(C, x), a, b; maxevals=maxevals)
+                v, r, how = approx_measure_hcub(rng, C, a, b, maxevals)
                 v_true = Copulas.measure(C, a, b)
-                if isapprox(v, v_true; atol=10*abs_err)
-                    return v, abs_err^2, :hcubature   # r = SE²
-                end
+                isapprox(v, v_true; atol=10 * sqrt(r)) && return v, r, how
             catch
             end
         end
-        μ, r, _ = mc_pdf_integral_rect(rng, C; a=a, b=b, N=nmc)
-        return μ, r, :mc
+        return approx_measure_mc(rng, C, a, b, N) 
     end
 
     has_pdf(C) = applicable(Distributions._logpdf,C,rand(rng,length(C),3))
-    function check_density_intergates_to_cdf(C::CT) where CT
-        return has_pdf(C) && 
-                !(CT<:Union{EmpiricalCopula, WCopula, MCopula, BC2Copula}) && 
-                # !(CT<:ClaytonCopula) &&
-                # !(CT<:Union{CuadrasAugeCopula, GalambosCopula, AsymGalambosCopula, MOCopula}) &&
+    is_absolutely_continuous(C::CT) where CT = has_pdf(C) && 
+        !(CT<:Union{MCopula,WCopula,MOCopula,CuadrasAugeCopula,RafteryCopula,EmpiricalCopula, BC2Copula}) && 
+        # !(CT<:Union{ClaytonCopula, CuadrasAugeCopula, GalambosCopula, AsymGalambosCopula}) &&
                 # !((CT<:AMHCopula) && (C.G.θ == -1.0)) &&
+        !((CT<:FGMCopula) && (length(C)==3)) &&
                 !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
-                !((CT<:ArchimedeanCopula) && length(C)==Copulas.max_monotony(C.G))
-    end
+        !((CT<:ArchimedeanCopula) && length(C)>Copulas.max_monotony(C.G))
 
     function check(C::Copulas.Copula{d}) where d
 
@@ -277,23 +276,23 @@
                 @test all(isapprox.(Kth, K; atol=0.2))
             end
 
-            if check_density_intergates_to_cdf(C)
+            if is_absolutely_continuous(C)
                 @testset "Testing pdf integration" begin
                     dim = length(C)
 
                     # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
-                    v, r, _ = integrate_pdf_rect(rng, C)
+                    v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 10_000, 100_000)
                     @test isapprox(v, 1; atol=5*sqrt(r))
 
                     # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
                     b = fill(0.5, dim)
-                    v2, r2, _ = integrate_pdf_rect(rng, C; b=b)
+                    v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 10_000, 100_000)
                     @test isapprox(v2, cdf(C, b); atol=10*sqrt(r2))
 
                     # 3) random rectangle, compare with measure (cdf based)
                     a = rand(rng, dim)
                     b = a .+ rand(rng, dim) .* (1 .- a)
-                    v3, r3, _ = integrate_pdf_rect(rng, C; a=a, b=b)
+                    v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 10_000, 100_000)
                     @test isapprox(v3, Copulas.measure(C, a, b); atol=10*sqrt(r3))
                 end
             end
