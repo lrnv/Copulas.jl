@@ -70,7 +70,7 @@
                 # !((CT<:AMHCopula) && (C.G.θ == -1.0)) &&
         !((CT<:FGMCopula) && (length(C)==3)) &&
                 !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
-        !((CT<:ArchimedeanCopula) && length(C)>Copulas.max_monotony(C.G))
+        !((CT<:ArchimedeanCopula) && length(C)>=Copulas.max_monotony(C.G))
 
     function check(C::Copulas.Copula{d}) where d
 
