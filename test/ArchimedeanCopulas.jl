@@ -24,20 +24,20 @@ end
     @test Copulas.ρ(ClaytonCopula(2,0.001)) ≈ 0. atol=1.0e-2
     @test Copulas.ρ(GumbelCopula(2,3.)) ≈ 0.8489 atol=1.0e-4
 
-    @test_broken Copulas.ρ⁻¹(ClaytonCopula, 1/3) ≈ 0.58754 atol=1.0e-5
-    @test_broken Copulas.ρ⁻¹(ClaytonCopula, 0.01) ≈ 0. atol=1.0e-1
-    @test_broken Copulas.ρ⁻¹(ClaytonCopula, -0.4668) ≈ -.5 atol=1.0e-3
+    @test Copulas.ρ⁻¹(ClaytonCopula, 1/3) ≈ 0.58754 atol=1.0e-5
+    @test Copulas.ρ⁻¹(ClaytonCopula, 0.01) ≈ 0. atol=1.0e-1
+    @test Copulas.ρ⁻¹(ClaytonCopula, -0.4668) ≈ -.5 atol=1.0e-3
 
-    @test_broken Copulas.ρ⁻¹(GumbelCopula, 0.5) ≈ 1.5410704204332681
-    @test_broken Copulas.ρ⁻¹(GumbelCopula, 0.0001) == 1.
+    @test Copulas.ρ⁻¹(GumbelCopula, 0.5) ≈ 1.5410704204332681
+    @test Copulas.ρ⁻¹(GumbelCopula, 0.0001) ≈ 1. atol=1.0e-3
 
-    @test_broken Copulas.ρ⁻¹(FrankCopula, 1/3) ≈ 2.116497 atol=1.0e-5
-    @test_broken Copulas.ρ⁻¹(FrankCopula, -0.5572) ≈ -4. atol=1.0e-3
+    @test Copulas.ρ⁻¹(FrankCopula, 1/3) ≈ 2.116497 atol=1.0e-5
+    @test Copulas.ρ⁻¹(FrankCopula, -0.5572) ≈ -4. atol=1.0e-3
 
     @test_broken Copulas.ρ⁻¹(AMHCopula, 0.2) ≈ 0.5168580913147318
-    @test_broken Copulas.ρ⁻¹(AMHCopula, 0.) ≈ 0. atol=1.0e-4
+    @test Copulas.ρ⁻¹(AMHCopula, 0.) ≈ 0. atol=1.0e-4
     @test_broken Copulas.ρ⁻¹(AMHCopula, 0.49) ≈ 1 atol=1.0e-4
-    @test_broken Copulas.ρ⁻¹(AMHCopula, -0.273) ≈ -1 atol=1.0e-4
+    @test Copulas.ρ⁻¹(AMHCopula, -0.273) ≈ -1 atol=1.0e-4
     @test_broken Copulas.ρ⁻¹(AMHCopula, -0.2246) ≈ -0.8 atol=1.0e-3
 end
 

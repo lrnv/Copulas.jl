@@ -52,6 +52,9 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     end
 end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
+
+Distributions.params(C::FGMCopula) = Tuple(C.θ)
+
 function _fgm_red(θ, v)
     # This function implements the reduction over combinations of the fgm copula. 
     # It is non-alocative thus performant :)

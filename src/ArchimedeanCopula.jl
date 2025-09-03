@@ -98,22 +98,6 @@ function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     end
 end
 
-function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula}
-    # @info "Archimedean fits are by default through inverse kendall tau."
-    d = size(u,1)
-    τ = StatsBase.corkendall(u')
-    # Then the off-diagonal elements of the matrix should be averaged:
-    avgτ = (sum(τ) .- d) / (d^2-d)
-    GT = generatorof(CT)
-    θ = τ⁻¹(GT,avgτ)
-    return ArchimedeanCopula(d,GT(θ))
-end
-
-τ(C::ArchimedeanCopula{d,TG}) where {d,TG} = τ(C.G)
-function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
-    return τ⁻¹(generatorof(T),τ_val)
-end
-
 function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     @assert d == size(u, 1)
     U = zero(u)
@@ -144,3 +128,19 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     end
     return U
 end
+
+#### De luca and Rivieccio
+# ---------- Multivariado (n, h) ----------
+λᵤ(C::ArchimedeanCopula{d,TG}) where {d,TG} = λᵤ(C.G)
+
+λₗ(C::ArchimedeanCopula{d,TG}) where {d,TG} = λₗ(C.G)
+
+τ(C::ArchimedeanCopula{d,TG}) where {d,TG} = τ(C.G)
+function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
+    return τ⁻¹(generatorof(T),τ_val)
+end
+ρ(C::ArchimedeanCopula{d,TG}) where {d,TG} = ρ(C.G)
+function ρ⁻¹(::Type{T},ρ_val) where {T<:ArchimedeanCopula}
+    return ρ⁻¹(generatorof(T),ρ_val)
+end
+

@@ -37,6 +37,8 @@ end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
 GumbelBarnettCopula(d, θ) = ArchimedeanCopula(d, GumbelBarnettGenerator(θ))
 
+Distributions.params(C::GumbelBarnettCopula) = (C.G.θ)
+
 function max_monotony(G::GumbelBarnettGenerator)
     G.θ == 0 && return Inf
     G.θ > 0.380 && return 2
@@ -80,7 +82,7 @@ function ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, ::Val{k}, t) where k
     k == 1 && return R
     return evalpoly(C, ntuple(i->Combinatorics.stirlings2(k, i), k)) * R
 end
-
+ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, ::Val{0}, t) = ϕ(G, t)
 
 # See this htread ;: https://discourse.julialang.org/t/solving-for-transcendental-equation/131229/16
 
@@ -128,12 +130,53 @@ end
 # end
 
 
-function _gumbelbarnett_tau(θ)
-    iszero(θ) && return θ
-    r, _ = QuadGK.quadgk(x -> (1-θ*log(x))  * log1p(-θ*log(x)) * x, 0, 1)
-    return 1-4*r/θ
+# ---- Kendall’s τ(θ) -----------------------------------------------------------
+# τ(θ) = [7 - 2/θ] e^{2/θ} Ei(-2/θ) - 4 e^{1/θ} Ei(-1/θ) + 4 e^{4/θ} Ei(-4/θ) - 1
+function τ_GB(θ::Real)
+    0 ≤ θ ≤ 1 || throw(ArgumentError("Gumbel–Barnett requiere θ∈[0,1]"))
+    iszero(θ) && return 0.0
+    # serie para θ→0: τ(θ) ~ -θ/2 (acelera y evita cancelaciones)
+    if θ < 1e-6
+        return -0.5*θ
+    end
+    invθ = 1/θ
+    τ = -(7 - 2*invθ)*SpecialFunctions.expintx(2*invθ) + 4*SpecialFunctions.expintx(invθ) - 4*SpecialFunctions.expintx(4*invθ) - 1
+    # resguardo numérico (muy raro que sea necesario)
+    if !( -1 ≤ τ ≤ 1 )
+        f(t) = (1 + θ*t) * log1p(θ*t) * exp(-2t)
+        r, _ = QuadGK.quadgk(f, 0.0, Inf; rtol=1e-10, atol=1e-12)
+        τ = 1 - 4*r/θ
+    end
+    return τ
 end
-τ(G::GumbelBarnettGenerator) = _gumbelbarnett_tau(G.θ)
+
+# ρ_s(θ) estable (cerrada)
+function ρs_GB(θ::Real)
+    0 ≤ θ ≤ 1 || throw(ArgumentError("Gumbel–Barnett requiere θ∈[0,1]"))
+    iszero(θ) && return 0.0
+    invθ = 1/θ
+    return 12*(SpecialFunctions.expintx(4*invθ)/θ) - 3
+end
+
+
+τ(G::Copulas.GumbelBarnettGenerator) = τ_GB(G.θ)
+
+# ---- Spearman’s ρ(θ) ----------------------------------------------------------
+# ρ(θ) = 12 * [ - e^{4/θ} / θ * Ei(-4/θ) ] - 3
+
+
+ρ(G::Copulas.GumbelBarnettGenerator) = ρs_GB(G.θ)
+
+# Edge utilities and robust bracketing
+const _GB_EPSA = 1e-12                 # separa de 0
+const _GB_EPSB = 1e-12                 # separa de 1
+const _GB_TOLV = 1e-12                 # tolerancia en valor
+
+# Internal grids to rescue bracketing if there are numerical problems
+const _GB_GRID_A = (1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-3, 5e-3, 1e-2, 5e-2)
+const _GB_GRID_B = (1 - 1e-12, 1 - 1e-10, 1 - 1e-8, 1 - 1e-6, 1 - 1e-4, 0.999, 0.99, 0.95, 0.9)
+
+# ---------- Inverse of τ with robust bracketing ----------
 function τ⁻¹(::Type{T}, tau) where T<:GumbelBarnettGenerator
     if tau == 0
         return zero(tau)
@@ -144,6 +187,37 @@ function τ⁻¹(::Type{T}, tau) where T<:GumbelBarnettGenerator
         @info "GumbelBarnettCopula cannot handle τ <≈ -0.3613."
         return one(tau)
     end
-    # Use the bisection method to find the root
-    return Roots.find_zero(θ -> _gumbelbarnett_tau(θ) - tau, (0.0, 1.0))
+    return Roots.find_zero(θ -> τ_GB(θ) - tau, (0.0, 1.0))
+end
+
+# ---------- Inverse of ρ with robust bracketing ----------
+function ρ⁻¹(::Type{Copulas.GumbelBarnettGenerator}, ρ̂::Real; xatol::Real=1e-10)
+    ρmin = _gb_rho(1 - _GB_EPSB)          # ≈ -0.266… 
+    ρmax = 0.0
+    ρc = clamp(ρ̂, ρmin + _GB_TOLV, ρmax - _GB_TOLV)
+    if abs(ρc - ρmax) ≤ 5e-12
+        return 0.0
+    elseif abs(ρc - ρmin) ≤ 5e-12
+        return 1.0 - _GB_EPSB
+    end
+
+    a = 0.0 + _GB_EPSA
+    b = 1.0 - _GB_EPSB
+    fa = _gb_rho(a) - ρc
+    fb = _gb_rho(b) - ρc
+    if isfinite(fa) && isfinite(fb) && (signbit(fa) ≠ signbit(fb))
+        return Roots.find_zero(t -> ρs_GB(t) - ρc, (a,b), Roots.Brent(); xatol=xatol, rtol=0.0)
+    end
+
+    for aa in _GB_GRID_A, bb in _GB_GRID_B
+        fa = _gb_rho(aa) - ρc
+        fb = _gb_rho(bb) - ρc
+        if isfinite(fa) && isfinite(fb) && (signbit(fa) ≠ signbit(fb))
+            return Roots.find_zero(t -> ρs_GB(t) - ρc, (aa,bb), Roots.Brent(); xatol=xatol, rtol=0.0)
+        end
+    end
+
+    θ0 = 0.5
+    θ  = Roots.find_zero(t -> ρs_GB(t) - ρc, θ0, Roots.Order1(); xatol=xatol)
+    return clamp(θ, a, b)
 end

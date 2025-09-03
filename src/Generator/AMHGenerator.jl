@@ -27,7 +27,7 @@ struct AMHGenerator{T} <: Generator
         if (θ < -1) || (θ > 1)
             throw(ArgumentError("Theta must be in [-1,1), you provided $θ."))
         elseif θ == 0
-            return IndependentGenerator()
+            return IndependentCopula
         else
             return new{typeof(θ)}(θ)
         end
@@ -36,6 +36,7 @@ end
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
 AMHCopula(d, θ) = ArchimedeanCopula(d, AMHGenerator(θ))
 
+Distributions.params(C::AMHCopula) = (C.G.θ)
 
 function _find_critical_value_amh(k; step=1e-7)
     # this function was used to define things in max_monotony below. 
@@ -69,7 +70,7 @@ function max_monotony(G::AMHGenerator)
     G.θ < -3.839999999999973e-6    && return 17
     G.θ < -1.9199999999999918e-6   && return 18
     G.θ < -9.600000000000008e-7    && return 19
-    for k in 21:100
+    for k in 20:100
         G.θ < _find_critical_value_amh(k, step=1e-7) && return k-1
     end
     return 100
@@ -81,7 +82,7 @@ end
 ϕ⁽ᵏ⁾(G::AMHGenerator, ::Val{k}, t) where k = (-1)^k * (1 - G.θ) / G.θ * PolyLog.reli(-k, G.θ * exp(-t))
 ϕ⁻¹⁽¹⁾(G::AMHGenerator, t) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
 williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
-
+frailty_dist(G::AMHGenerator) = 1 + Distributions.Geometric(1-G.θ)
 function _amh_tau(θ)
     if abs(θ) < 0.01
         return 2/9  * θ
@@ -134,7 +135,7 @@ function ρ(G::AMHGenerator)
     elseif aa < 0.016
         return a * (1/3 + a * (1/12 + a * (3/100 + a * (1/75 + a / 147))))
     else
-        term1 = 3 / a * (4 * (1 + 1 / a) * SpecialFunctions.spence(a))
+        term1 = 3 / a * (4 * (1 + 1 / a) * PolyLog.reli2(a))
         term2 = if a < 1
             8 * (1 / a - 1) * log1p(-a)
         else
@@ -144,5 +145,44 @@ function ρ(G::AMHGenerator)
     end
 end
 
+# Inversa de Spearman para AMH vía Brent + fallback a Bisection
+function ρ⁻¹(::Type{AMHGenerator}, ρ̂::Real; xtol=1e-12, atol=1e-12, maxevals=10_000)
+    # Casos triviales
+    if !isfinite(ρ̂)
+        return oftype(ρ̂, NaN)
+    end
+    if ρ̂ == 0
+        return zero(ρ̂)
+    end
 
+    # Dominio de AMH: θ ∈ (-1, 1)
+    Tρ = float(promote_type(typeof(ρ̂), Float64))
+    ϵ  = Tρ(1e-12)
+    aL = Tρ(-1 + ϵ)
+    aU = Tρ( 1 - ϵ)
 
+    # Rango numérico alcanzable por ρ(θ) en ±(1-ε)
+    ρL = ρ(AMHGenerator(aL))
+    ρU = ρ(AMHGenerator(aU))
+    if ρL > ρU
+        ρL, ρU = ρU, ρL
+        aL, aU = aU, aL
+    end
+
+    # Saturaciones (si el objetivo cae fuera del rango numérico)
+    if ρ̂ ≤ ρL
+        return aL
+    elseif ρ̂ ≥ ρU
+        return aU
+    end
+
+    # Ecuación a resolver: f(θ) = ρ(θ) - ρ̂
+    f(θ) = ρ(AMHGenerator(θ)) - ρ̂
+
+    # Brent con bracket global seguro, y fallback a bisección si hay excepción
+    try
+        return Roots.find_zero(f, (aL, aU), Roots.Brent(); xtol=xtol, atol=atol, maxevals=maxevals)
+    catch
+        return Roots.find_zero(f, (aL, aU), Roots.Bisection(); xtol=xtol, atol=atol, maxevals=maxevals)
+    end
+end

@@ -18,6 +18,8 @@ module Copulas
     import LinearAlgebra
     import PolyLog
     import BigCombinatorics
+    import Optim
+    import PolyLog
 
     # Standard copulas and stuff.
     include("utils.jl")
@@ -32,11 +34,18 @@ module Copulas
     include("MiscellaneousCopulas/EmpiricalCopula.jl")
     include("MiscellaneousCopulas/FGMCopula.jl")
     include("MiscellaneousCopulas/RafteryCopula.jl")
+    include("MiscellaneousCopulas/BB4Copula.jl")
+    include("MiscellaneousCopulas/BB5Copula.jl")
+    include("MiscellaneousCopulas/B11Copula.jl")
+
     export SurvivalCopula,
            PlackettCopula,
            EmpiricalCopula,
            FGMCopula,
-           RafteryCopula
+           RafteryCopula,
+           BB4Copula,
+           BB5Copula,
+           B11Copula
 
     # Elliptical copulas
     include("EllipticalCopula.jl")
@@ -60,12 +69,21 @@ module Copulas
     include("UnivariateDistribution/ClaytonWilliamsonDistribution.jl")
     include("UnivariateDistribution/WilliamsonFromFrailty.jl")
     include("UnivariateDistribution/ExtremeDist.jl")
+    include("UnivariateDistribution/PStable.jl")
 
     # Archimedean generators
     include("Generator.jl")
     include("ArchimedeanCopula.jl")
 
     include("Generator/AMHGenerator.jl")
+    include("Generator/BB1Generator.jl")
+    include("Generator/BB2Generator.jl")
+    include("Generator/BB3Generator.jl")
+    include("Generator/BB6Generator.jl")
+    include("Generator/BB7Generator.jl")
+    include("Generator/BB8Generator.jl")
+    include("Generator/BB9Generator.jl")
+    include("Generator/BB10Generator.jl")
     include("Generator/ClaytonGenerator.jl")
     include("Generator/FrankGenerator.jl")
     include("Generator/GumbelBarnettGenerator.jl")
@@ -77,6 +95,14 @@ module Copulas
            i𝒲, 
            ArchimedeanCopula,
            AMHCopula,
+           BB1Copula,
+           BB2Copula,
+           BB3Copula,
+           BB6Copula,
+           BB7Copula,
+           BB8Copula,
+           BB9Copula,
+           BB10Copula,
            ClaytonCopula,
            FrankCopula,
            GumbelBarnettCopula,
@@ -97,6 +123,7 @@ module Copulas
     include("ExtremeValueCopulas/MixedCopula.jl")
     include("ExtremeValueCopulas/MOCopula.jl")
     include("ExtremeValueCopulas/tEVCopula.jl")
+    include("ExtremeValueCopulas/EmpiricalEVCopula.jl")
 
     export AsymGalambosCopula,
            AsymLogCopula,
@@ -108,13 +135,30 @@ module Copulas
            LogCopula,
            MixedCopula,
            MOCopula,
-           tEVCopula
+           tEVCopula,
+           EmpiricalEVCopula
 
+    include("ArchimaxCopula.jl")
+    export ArchimaxCopula
     # Subsetting
     include("SubsetCopula.jl") # not exported yet.
 
     # transformations
     export rosenblatt, inverse_rosenblatt
+
+    # Fitting
+    include("Fitting/Traits.jl")
+    include("Fitting/stats.jl")
+    include("Fitting/EllipticalFit.jl")
+    include("Fitting/ArchimedeanFit.jl")
+    include("Fitting/FitModel.jl")
+    include("Fitting/FitCopula.jl")
+    include("Fitting/BBCopulaFit.jl")
+    include("Fitting/EVCopulaFit.jl")
+    include("Fitting/SklarFit.jl")
+
+
+    export CopulaModel
 
     using PrecompileTools
     @setup_workload begin

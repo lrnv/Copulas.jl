@@ -41,7 +41,4 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula{d,MT}, x::AbstractVector{T}) where {d,MT,T<:Real}
     x .= C.u[:,Distributions.rand(rng,axes(C.u,2),1)[1]]
 end
-function Distributions.fit(::Type{CT},u) where {CT <: EmpiricalCopula}
-    return EmpiricalCopula(u)
-end
 StatsBase.corkendall(C::EmpiricalCopula) = StatsBase.corkendall(C.u')

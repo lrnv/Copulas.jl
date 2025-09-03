@@ -35,4 +35,7 @@ struct AsymLogCopula{P} <: ExtremeValueCopula{P}
         end
     end
 end
+
+Distributions.params(C::AsymLogCopula) = (C.α, C.θ₁, C.θ₂)
+
 A(C::AsymLogCopula, t::Real) = ((C.θ₁^C.α)*(1-t)^C.α + (C.θ₂^C.α)*(t^C.α))^(1/C.α)+(C.θ₁- C.θ₂)*t + 1 - C.θ₁

@@ -38,6 +38,8 @@ struct RafteryCopula{d, P} <: Copula{d}
         end
     end
 end
+
+Distributions.params(C::RafteryCopula) = (C.θ)
 Base.eltype(R::RafteryCopula) = eltype(R.θ)
 function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
     # Order the vector u

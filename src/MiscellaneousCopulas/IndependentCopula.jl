@@ -21,6 +21,7 @@ struct IndependentCopula{d} <: Copula{d}
     IndependentCopula(d) = new{d}()
 end
 
+Distributions.params(C::IndependentCopula) = ()
 _cdf(::IndependentCopula{d}, u) where d = prod(u)
 Distributions._logpdf(::IndependentCopula{d}, u) where {d} = all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
 
@@ -33,7 +34,16 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::IndependentCopul
 end
 rosenblatt(::IndependentCopula{d}, u::AbstractMatrix{<:Real}) where {d} = u
 inverse_rosenblatt(::IndependentCopula{d}, u::AbstractMatrix{<:Real}) where {d} = u
-τ(::IndependentCopula) = 0
-ρ(::IndependentCopula) = 0
+# --- medidas sobre el TIPO (despachan cuando llaman ρ(IndependentCopula)) ---
+
+# Spearman y Kendall no dependen de la dimensión para la independiente
+τ(::Type{<:IndependentCopula}) = 0.0
+ρ(::Type{<:IndependentCopula}) = 0.0
+
+# Tail dependence y Blomqvist sólo bivariado, igual que tus métodos por instancia
+λᵤ(::Type{<:IndependentCopula{2}}) = 0.0
+λₗ(::Type{<:IndependentCopula{2}}) = 0.0
+β(::Type{<:IndependentCopula{2}})  = 0.0
+
 StatsBase.corkendall(::IndependentCopula{d}) where d = one(zeros(d,d))
 StatsBase.corspearman(::IndependentCopula{d}) where d = one(zeros(d,d))

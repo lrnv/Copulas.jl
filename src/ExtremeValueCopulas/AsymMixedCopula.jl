@@ -51,6 +51,8 @@ struct AsymMixedCopula{P} <: ExtremeValueCopula{P}
     end
 end
 
+Distributions.params(C::AsymMixedCopula) = (C.θ[1], C.θ[2])
+
 function A(C::AsymMixedCopula, t::Real)
     θ₁, θ₂ = C.θ[1], C.θ[2]
     return θ₂*t^3 + θ₁*t^2 - (θ₁+θ₂)*t + 1

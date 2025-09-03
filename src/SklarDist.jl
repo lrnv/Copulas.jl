@@ -60,16 +60,6 @@ function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargi
     sum(Distributions.logpdf(S.m[i],u[i]) for i in 1:length(u)) + Distributions.logpdf(S.C,clamp.(Distributions.cdf.(S.m,u),0,1))
 end
 
-
-function Distributions.fit(::Type{SklarDist{CT,TplMargins}},x) where {CT,TplMargins}
-    # The first thing to do is to fit the marginals : 
-    @assert length(TplMargins.parameters) == size(x,1)
-    m = Tuple(Distributions.fit(TplMargins.parameters[i],x[i,:]) for i in 1:size(x,1))
-    u = pseudos(x)
-    C = Distributions.fit(CT,u)
-    return SklarDist(C,m)
-end
-
 function rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
     v = similar(u)
     for (i,Mᵢ) in enumerate(D.m)
