@@ -51,9 +51,9 @@
         if dim <= 3
             try
                 v, abs_err = hcubature(x -> pdf(C, x), a, b; maxevals=maxevals)
-                    v_true = Copulas.measure(C, a, b)
-                    if isapprox(v, v_true; atol=10*abs_err)
-                        return v, abs_err^2, :hcubature   # r = SE²
+                v_true = Copulas.measure(C, a, b)
+                if isapprox(v, v_true; atol=10*abs_err)
+                    return v, abs_err^2, :hcubature   # r = SE²
                 end
             catch
             end
@@ -65,10 +65,10 @@
     has_pdf(C) = applicable(Distributions._logpdf,C,rand(rng,length(C),3))
     function check_density_intergates_to_cdf(C::CT) where CT
         return has_pdf(C) && 
-                !(CT<:Union{MOCopula, EmpiricalCopula, WCopula, MCopula, BC2Copula}) && 
-                !(CT<:ClaytonCopula) &&
-                !(CT<:Union{CuadrasAugeCopula, GalambosCopula, AsymGalambosCopula}) &&
-                !((CT<:AMHCopula) && (C.G.θ == -1.0)) &&
+                !(CT<:Union{EmpiricalCopula, WCopula, MCopula, BC2Copula}) && 
+                # !(CT<:ClaytonCopula) &&
+                # !(CT<:Union{CuadrasAugeCopula, GalambosCopula, AsymGalambosCopula, MOCopula}) &&
+                # !((CT<:AMHCopula) && (C.G.θ == -1.0)) &&
                 !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
                 !((CT<:ArchimedeanCopula) && length(C)==Copulas.max_monotony(C.G))
     end
@@ -76,7 +76,7 @@
     function check(C::Copulas.Copula{d}) where d
 
         @testset "Testing $C" begin
-            @info "start $C"
+            @info "Testing $C..."
             CT = typeof(C)
             Random.seed!(rng,123)
             D = SklarDist(C, Tuple(Normal() for i in 1:d))
@@ -290,7 +290,7 @@
                     v2, r2, _ = integrate_pdf_rect(rng, C; b=b)
                     @test isapprox(v2, cdf(C, b); atol=10*sqrt(r2))
 
-                    # 3) random rectangle and comparation with measure
+                    # 3) random rectangle, compare with measure (cdf based)
                     a = rand(rng, dim)
                     b = a .+ rand(rng, dim) .* (1 .- a)
                     v3, r3, _ = integrate_pdf_rect(rng, C; a=a, b=b)
