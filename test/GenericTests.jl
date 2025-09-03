@@ -24,122 +24,41 @@
         return false
     end
 
-    function mc_pdf_integral(C; N::Int=200_000, seed::Integer=123, antithetic::Bool=true, block::Int=10_000)
-        rng = StableRNG(seed)
-        dim = length(C)
-
-        logS  = -Inf
-        logS2 = -Inf
-        n_eff = 0
-
-        step = antithetic ? max(block ÷ 2, 1) : max(block, 1)
-        u  = Matrix{Float64}(undef, dim, step)
-        u2 = antithetic ? similar(u) : nothing
-
-        remaining = N
-        while remaining > 0
-            m = min(step, remaining)
-            @views rand!(rng, u[:, 1:m])
-            if antithetic
-                @views u2[:, 1:m] .= 1 .- u[:, 1:m]
-            end
-            @inbounds for i in 1:m
-                lp = logpdf(C, @view u[:, i])
-                if isfinite(lp)
-                    logS  = LogExpFunctions.logaddexp(logS,  lp)
-                    logS2 = LogExpFunctions.logaddexp(logS2, 2*lp)
-                    n_eff += 1
-                end
-                if antithetic
-                    lp2 = logpdf(C, @view u2[:, i])
-                    if isfinite(lp2)
-                        logS  = LogExpFunctions.logaddexp(logS,  lp2)
-                        logS2 = LogExpFunctions.logaddexp(logS2, 2*lp2)
-                        n_eff += 1
-                    end
-                end
-            end
-            remaining -= m
-        end
-        n_eff == 0 && error("mc_pdf_integral: no hubo evaluaciones finitas.")
-
-        μ   = exp(logS  - log(n_eff))
-        m2  = exp(logS2 - log(n_eff))
-        var = max(m2 - μ^2, 0.0)
-        return μ, var / n_eff, n_eff
-    end
-
-    function mc_pdf_integral_rect(C, a::AbstractVector, b::AbstractVector; N::Int=200_000, seed::Integer=123)
-        rng = StableRNG(seed)
-        dim = length(C)
-        @assert length(a)==dim && length(b)==dim "dimensiones incompatibles"
-        @assert all(0 .<= a .< b .<= 1) "se requiere 0 ≤ a_i < b_i ≤ 1"
-        vol    = prod(b .- a)
-        logvol = log(vol)
-
-        logS  = -Inf
-        logS2 = -Inf
-        n_eff = 0
-
-        u = Vector{Float64}(undef, dim)
-        x = similar(u)
-
+    function mc_pdf_integral_rect(rng, C::Copulas.Copula{d}; a=zeros(d), b=ones(d), N=100_000) where d
+        logS, logS2, n_eff  = -Inf, -Inf, 0
+        u, x = zeros(d), zeros(d)
+        ba = b .- a
+        logvol = log(prod(ba))
         @inbounds for _ in 1:N
-            rand!(rng, u)                          # U ~ Unif(0,1)^d
-            @views (x .= a .+ (b .- a) .* u)       # X en [a,b]
+            rand!(rng, u)            # U ~ Unif(0,1)^d
+            x .= a .+ ba .* u        # X en [a,b]
             lp = logpdf(C, x)
             if isfinite(lp)
-                log_fx = lp + logvol               # pdf_X(x) = pdf(C,x) * vol
+                log_fx = lp + logvol # pdf_X(x) = pdf(C,x) * vol
                 logS   = LogExpFunctions.logaddexp(logS,  log_fx)
                 logS2  = LogExpFunctions.logaddexp(logS2, 2*log_fx)
                 n_eff += 1
             end
         end
-
         μ   = exp(logS  - log(n_eff))
         m2  = exp(logS2 - log(n_eff))
         var = max(m2 - μ^2, 0.0)
         return μ, var / n_eff, n_eff
     end
 
-    function integrate_pdf_unit(C; maxevals=10_000, nmc=100_000)
-        dim = length(C)
-        if dim <= 3
-            try
-                v, abs_err = hcubature(x -> pdf(C, x), zeros(dim), ones(dim), maxevals=maxevals)
-                if isapprox(v, 1; atol=10*abs_err)
-                    return v, abs_err^2, :hcubature   # r = SE²
-                end
-            catch
-                # fallback 
-            end
-        end
-        μ, r, _ = mc_pdf_integral(C; N=nmc, antithetic=true)
-        return μ, r, :mc
-    end
-
-
-    function integrate_pdf_rect(C, a::AbstractVector, b::AbstractVector;
-                                maxevals=10_000, nmc=100_000, atol=1e-6)
+    function integrate_pdf_rect(rng, C::Copulas.Copula{d}; a=zeros(d), b=ones(d), maxevals=10_000, nmc=100_000) where d
         dim = length(C)
         if dim <= 3
             try
                 v, abs_err = hcubature(x -> pdf(C, x), a, b; maxevals=maxevals)
-
-                if hasmethod(Copulas.measure, Tuple{typeof(C), typeof(a), typeof(b)})
                     v_true = Copulas.measure(C, a, b)
                     if isapprox(v, v_true; atol=10*abs_err)
                         return v, abs_err^2, :hcubature   # r = SE²
-                    end
-                else
-                    if abs_err <= atol
-                        return v, abs_err^2, :hcubature   # r = SE²
-                    end
                 end
             catch
             end
         end
-        μ, r, _ = mc_pdf_integral_rect(C, a, b; N=nmc)
+        μ, r, _ = mc_pdf_integral_rect(rng, C; a=a, b=b, N=nmc)
         return μ, r, :mc
     end
 
@@ -363,20 +282,19 @@
                     dim = length(C)
 
                     # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
-                    v, r, how = integrate_pdf_unit(C; maxevals=10_000, nmc=200_000)
+                    v, r, _ = integrate_pdf_rect(rng, C)
                     @test isapprox(v, 1; atol=5*sqrt(r))
 
                     # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
-                    a = zeros(dim); b = fill(0.5, dim)
-                    v2, r2, _ = integrate_pdf_rect(C, a, b; maxevals=10_000, nmc=200_000)
+                    b = fill(0.5, dim)
+                    v2, r2, _ = integrate_pdf_rect(rng, C; b=b)
                     @test isapprox(v2, cdf(C, b); atol=10*sqrt(r2))
 
                     # 3) random rectangle and comparation with measure
-                    aR = rand(dim); bR = aR .+ rand(dim) .* (1 .- aR)
-                    v3, r3, _ = integrate_pdf_rect(C, aR, bR; maxevals=10_000, nmc=200_000)
-                    if hasmethod(Copulas.measure, Tuple{typeof(C), typeof(aR), typeof(bR)})
-                        @test isapprox(v3, Copulas.measure(C, aR, bR); atol=10*sqrt(r3))
-                    end
+                    a = rand(rng, dim)
+                    b = a .+ rand(rng, dim) .* (1 .- a)
+                    v3, r3, _ = integrate_pdf_rect(rng, C; a=a, b=b)
+                    @test isapprox(v3, Copulas.measure(C, a, b); atol=10*sqrt(r3))
                 end
             end
 
