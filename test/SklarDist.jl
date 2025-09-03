@@ -1,4 +1,4 @@
-@testitem "SklarDist fitting" begin
+@testitem "SklarDist fitting" tags=[:SklarDist] begin
     
     using Distributions
     using Random
@@ -13,7 +13,7 @@
     # loglikelyhood(MyD,u)
 end
 
-@testitem "SklarDist Rosenblatt" begin
+@testitem "SklarDist Rosenblatt" tags=[:SklarDist] begin
     using StatsBase
     using Distributions
     using Random
