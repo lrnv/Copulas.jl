@@ -134,11 +134,11 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
         for j in 2:d
             rⱼ₋₁ = rⱼ
             if !isfinite(rⱼ₋₁)
-                U[j,i] = zero(rⱼ)
+                U[j,i] = one(rⱼ)
             else
                 rⱼ += ϕ⁻¹(C.G, u[j,i])
                 if iszero(rⱼ)
-                     U[j,i] = one(rⱼ)
+                     U[j,i] = zero(rⱼ)
                 else
                     A, B = ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ), ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ₋₁)
                     U[j,i] = A / B
@@ -157,9 +157,9 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
         for j in 2:d
             Cᵢⱼ += ϕ⁻¹(C.G, U[j - 1, i])
             if iszero(Cᵢⱼ)
-                U[j, i] = zero(Cᵢⱼ)
+                U[j, i] = one(Cᵢⱼ)
             elseif !isfinite(Cᵢⱼ)
-                U[j,i] = one(Cᵢⱼ)
+                U[j,i] = zero(Cᵢⱼ)
             else
                 Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, Val{j - 1}(), Cᵢⱼ) * u[j,i]
                 R = ϕ⁽ᵏ⁾⁻¹(C.G, Val{j - 1}(), Dᵢⱼ; start_at=Cᵢⱼ)
