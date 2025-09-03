@@ -51,7 +51,7 @@ function ϕ⁽ᵏ⁾(G::JoeGenerator, ::Val{d}, t) where d
         (SpecialFunctions.gamma(k + 1 - α) / SpecialFunctions.gamma(1 - α)) *
         (exp(-t) / (-expm1(-t)))^k for k in 0:(d - 1)
     )
-    return (-1)^d * α * (exp(-t) / (-expm1(-t))^(1 - α)) * P_d_α
+    return eltype(t)((-1)^d * α * (exp(-t) / (-expm1(-t))^(1 - α)) * P_d_α)
 end
 function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)
     return -(G.θ * (1 - t)^(G.θ - 1)) / (1 - (1 - t)^G.θ)
@@ -64,7 +64,7 @@ function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
     elseif tau == 0
         return 1
     elseif tau < 0
-        @info "JoeCoula cannot handle κ < 0."
+        @info "JoeCopula cannot handle κ < 0."
         return one(tau)
     else
         return Roots.find_zero(θ -> _joe_tau(θ) - tau, (one(tau),tau*Inf))
