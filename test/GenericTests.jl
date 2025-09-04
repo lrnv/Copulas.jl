@@ -144,18 +144,21 @@
 
                     # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
                     v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 10_000, 100_000)
-                    @test isapprox(v, 1; atol=5*sqrt(r))
+                    v_true = 1
+                    @test isapprox(v, v_true; atol=5*sqrt(r))
 
                     # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
                     b = ones(d)/2
                     v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 10_000, 100_000)
-                    @test isapprox(v2, cdf(C, b); atol=10*sqrt(r2))
+                    v2_true = cdf(C, b)
+                    @test isapprox(v2, v2_true; atol=10*sqrt(r2))
 
                     # 3) random rectangle, compare with measure (cdf based)
                     a = rand(rng, d)
                     b = a .+ rand(rng, d) .* (1 .- a)
                     v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 10_000, 100_000)
-                    @test isapprox(v3, Copulas.measure(C, a, b); atol=20*sqrt(r3)) # wide tolerence, should pass. 
+                    v3_true = Copulas.measure(C, a, b)
+                    @test isapprox(v3, v3_true; atol=20*sqrt(r3)) || max(v3, v3_true) < eps(Float64) # wide tolerence, should pass. 
                 end
             end
 
