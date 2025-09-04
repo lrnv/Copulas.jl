@@ -35,6 +35,7 @@ struct AMHGenerator{T} <: Generator
 end
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
 AMHCopula(d, θ) = ArchimedeanCopula(d, AMHGenerator(θ))
+Distributions.params(C::AMHCopula) = (C.G.θ,)
 
 
 function _find_critical_value_amh(k; step=1e-7)

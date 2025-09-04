@@ -39,6 +39,7 @@ end
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
 JoeCopula(d, θ) = ArchimedeanCopula(d, JoeGenerator(θ))
 
+Distributions.params(C::JoeCopula) = (C.G.θ,)
 
 max_monotony(::JoeGenerator) = Inf
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
@@ -64,7 +65,7 @@ function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
     elseif tau == 0
         return 1
     elseif tau < 0
-        @info "JoeCoula cannot handle κ < 0."
+        @info "JoeCopula cannot handle κ < 0."
         return one(tau)
     else
         return Roots.find_zero(θ -> _joe_tau(θ) - tau, (one(tau),tau*Inf))

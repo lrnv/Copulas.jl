@@ -41,6 +41,7 @@ struct ClaytonGenerator{T} <: Generator
 end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 ClaytonCopula(d, θ) = ArchimedeanCopula(d, ClaytonGenerator(θ))
+Distributions.params(C::ClaytonCopula) = (C.G.θ,)
 
 
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1/G.θ))
