@@ -8,7 +8,6 @@
     using HCubature
     using Test
     using LogExpFunctions
-
     rng = StableRNG(123)
 
     function approx_measure_mc(rng, C::Copulas.Copula{d}, a, b, N) where d
@@ -66,6 +65,7 @@
     is_archimedean_with_agenerator(C::CT) where CT =
         (CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator)
 
+    has_pdf(C::CT) where CT = applicable(Distributions._logpdf, C, ones(length(C),2)./2)
     
     function check(C::Copulas.Copula{d}) where d
 
@@ -73,10 +73,14 @@
             @info "Testing $C..."
             CT = typeof(C)
             Random.seed!(rng,123)
-            D = SklarDist(C, Tuple(Normal() for i in 1:d))
+
             spl10 = rand(rng,C,10)
             spl1000 = rand(rng,C,1000)
-            @testset "General tests" begin 
+
+            D = SklarDist(C, Tuple(LogNormal() for i in 1:d))
+            splD10 = rand(rng, D, 10)
+            
+            @testset "Shape and support" begin 
                 # Sampling shape and support
                 @test length(rand(rng,C))==d
                 @test size(spl10) == (d,10)
@@ -97,7 +101,7 @@
             sD = Copulas.subsetdims(D,(2,1))
             @testset "Subsetdims" begin
                 @test isa(Copulas.subsetdims(C,(1,)), Distributions.Uniform)
-                @test isa(Copulas.subsetdims(D,1), Distributions.Normal)
+                @test isa(Copulas.subsetdims(D,1), Distributions.LogNormal)
                 @test all(0 .<= cdf(sC,rand(sC,10)) .<= 1)
                 @test all(0 .<= cdf(sD,rand(sD,10)) .<= 1)
                 @test sD.C == Copulas.subsetdims(C,(2,1)) # check for coherence. 
@@ -127,151 +131,15 @@
                 end
             end
 
-            # Archimedean-specific tests
-            if is_archimedean_with_agenerator(CT)
-                @testset "Archimedean specifics" begin 
-                    @testset "Specific implementation of derivatives match generics" begin
-                        # Derivative tests for Archimedean generators
-                        specialized_ϕ1 = which(Copulas.ϕ⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁽¹⁾, (Copulas.Generator, Float64))
-                        specialized_ϕk = which(Copulas.ϕ⁽ᵏ⁾, (typeof(C.G), Val{1}, Float64)) != which(Copulas.ϕ⁽ᵏ⁾, (Copulas.Generator, Val{1}, Float64))
-                        specialized_ϕinv = which(Copulas.ϕ⁻¹, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹, (Copulas.Generator, Float64))
-                        specialized_ϕinv1 = which(Copulas.ϕ⁻¹⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹⁽¹⁾, (Copulas.Generator, Float64))
-                        specialized_ϕkinv = which(Copulas.ϕ⁽ᵏ⁾⁻¹, (typeof(C.G), Val{1}, Float64)) != which(Copulas.ϕ⁽ᵏ⁾⁻¹, (Copulas.Generator, Val{1}, Float64))
-
-                        if specialized_ϕinv
-                            @testset "ϕ⁻¹ ∘ ϕ == Id" begin
-                                for x in 0:0.1:1
-                                    @test Copulas.ϕ⁻¹(C.G,Copulas.ϕ(C.G,x)) ≈ x atol=1e-10
-                                end
-                            end
-                        end
-
-                        if specialized_ϕ1
-                            @testset "Check d(ϕ) == ϕ⁽¹⁾" begin 
-                                @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 1.2) ≈ Copulas.ϕ⁽¹⁾(C.G, 1.2)
-                            end
-                        end
-
-                        if specialized_ϕk
-                            @testset "d(ϕ) == ϕ⁽ᵏ⁾(k=1)" begin
-                                @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val(1), 1.2)
-                                if applicable(Copulas.ϕ⁽¹⁾, C, 1.2) && applicable(Copulas.ϕ⁽ᵏ⁾, C, Val(2), 1.2)
-                                    @testset "Check ϕ⁽¹⁾ == ϕ⁽ᵏ⁾(k=1)" begin
-                                        @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C.G, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val(2), 1.2)
-                                    end
-                                end
-                            end
-                        end
-                        
-                        if specialized_ϕinv1
-                            @testset "Check d(ϕ⁻¹) == ϕ⁻¹⁽¹⁾" begin
-                                @test ForwardDiff.derivative(x -> Copulas.ϕ⁻¹(C.G, x), 0.5) ≈ Copulas.ϕ⁻¹⁽¹⁾(C.G, 0.5)
-                            end
-                        end
-
-                        if specialized_ϕkinv
-                            @testset "Check ϕ⁻¹ ∘ ϕ == Id" begin
-                                for x in 0.1:0.1:0.5
-                                    @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,Val{d-1}(), Copulas.ϕ⁽ᵏ⁾(C.G, Val{d-1}(), x)) ≈ x
-                                end
-                            end
-                        end
-                    end
-                    
-                    if !((CT <: Copulas.GumbelBarnettCopula) && d>2) && !(CT<:Copulas.AMHCopula && d > 2)
-                         if applicable(Copulas.τ, C.G) && applicable(Copulas.τ⁻¹,typeof(C.G), 1.0)
-                            @testset "Check τ ∘ τ⁻¹ == Id" begin
-                                tau = Copulas.τ(C)
-                                @test Copulas.τ(Copulas.generatorof(CT)(Copulas.τ⁻¹(CT,tau))) ≈ tau
-                            end
-                            @testset "Check fitting the copula" begin
-                                fit(CT,spl10)
-                            end
-                        end
-                        
-                        if applicable(Copulas.ρ, C.G) && applicable(Copulas.ρ⁻¹,typeof(C.G), 1.0)
-                            @testset  "Check ρ ∘ ρ⁻¹ == Id" begin
-                                rho = Copulas.ρ(C)
-                                @test -1 <= rho <= 1
-                                @test Copulas.ρ(Copulas.generatorof(CT)(Copulas.ρ⁻¹(CT,rho))) ≈ rho
-                            end
-                        end
-
-
-                    end
-                    
-                    @testset "Check kendall distribution coherence between ϕ⁻¹+rand and williamson_dist" begin
-                        splW_method1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
-                        splW_method2 = rand(rng,Copulas.williamson_dist(C.G, Val{d}()),1000)
-                        @test pvalue(ApproximateTwoSampleKSTest(splW_method1,splW_method2),tail=:right) > 0.01
-                    end
-                end
-            end
-
-            # Extreme value copula-specific tests
-            if CT<:Copulas.ExtremeValueCopula
-                @testset "Extreme value copulas specifics" begin
-                    @testset "A function basics" begin
-                        @test Copulas.A(C, 0.0) ≈ 1
-                        @test Copulas.A(C, 1.0) ≈ 1
-                        t = rand(rng)
-                        A_value = Copulas.A(C, t)
-                        @test 0.0 <= A_value <= 1.0
-                        @test isapprox(A_value, max(t, 1-t); atol=1e-6) || A_value >= max(t, 1-t)
-                        @test A_value <= 1.0
-                    end
-
-                    # Only run derivative and related tests if the methods are specialized for this type
-                    specialized_dA =        which(Copulas.dA, (typeof(C), Float64))        != which(Copulas.dA, (Copulas.ExtremeValueCopula, Float64))
-                    specialized_d²A =       which(Copulas.d²A, (typeof(C), Float64))       != which(Copulas.d²A, (Copulas.ExtremeValueCopula, Float64))
-                    specialized__A_dA_d²A = which(Copulas._A_dA_d²A, (typeof(C), Float64)) != which(Copulas._A_dA_d²A, (Copulas.ExtremeValueCopula, Float64))
-                    specialized_ℓ =         which(Copulas.ℓ, (typeof(C), Float64, Float64))         != which(Copulas.ℓ, (Copulas.ExtremeValueCopula, Float64, Float64))
-
-                    if specialized_dA || specialized_d²A || specialized__A_dA_d²A
-                        @testset "Testing derivatives of A" begin
-                            for t in (0.05, 0.5, 0.95)
-                                if !(CT<:tEVCopula)
-                                    @test isapprox(Copulas.dA(C, t), ForwardDiff.derivative(x -> Copulas.A(C, x), t); atol=1e-6)
-                                    @test isapprox(Copulas.d²A(C, t), ForwardDiff.derivative(x -> Copulas.dA(C, x), t); atol=1e-6)
-                                end
-                                a, da, d2a = Copulas._A_dA_d²A(C, t)
-                                @test isapprox(a, Copulas.A(C, t); atol=1e-8)
-                                @test isapprox(da, Copulas.dA(C, t); atol=1e-8)
-                                @test isapprox(d2a, Copulas.d²A(C, t); atol=1e-8)
-                            end
-                        end
-                    end
-
-                    if specialized_dA || specialized_d²A || specialized__A_dA_d²A || specialized_ℓ
-                        @testset "Testing ℓ and cdf for Extreme Value Copula" begin 
-                            u, v = rand(rng), rand(rng)
-                            x, y = -log(u), -log(v)
-                            s = y / (x + y)
-                            expected_ℓ = Copulas.A(C, s) * (x + y)
-                            @test isapprox(Copulas.ℓ(C, x, y), expected_ℓ; atol=0.1)
-                            expected_cdf = exp(-expected_ℓ)
-                            @test isapprox(cdf(C, [u, v]), expected_cdf; atol=0.1)
-
-                            if !(CT<:tEVCopula)
-                                u, v = rand(rng), rand(rng)
-                                num_pdf = ForwardDiff.derivative(u_ -> ForwardDiff.derivative(v_ -> cdf(C, [u_, v_]), v), u)
-                                ana_pdf = pdf(C, [u, v])
-                                @test isapprox(ana_pdf, num_pdf; atol=0.1)
-                            end
-                        end
-                    end
-                end
-            end
-
             # Generic tests
-            @testset "Testing corkendall coeherency" begin
+            @testset "CorKendall coeherency" begin
                 K = corkendall(spl1000')
                 Kth = corkendall(C)
                 @test all(-1 .<= Kth .<= 1)
                 @test all(isapprox.(Kth, K; atol=0.2))
             end
 
-            if is_absolutely_continuous(C) && applicable(Distributions._logpdf,C,rand(rng,length(C),3))
+            if is_absolutely_continuous(C) && has_pdf(C)
                 @testset "Testing pdf integration" begin
 
                     # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
@@ -291,8 +159,8 @@
                 end
             end
 
-            if check_rosenblatt(C) && applicable(rosenblatt, C, spl10) && applicable(inverse_rosenblatt, C, spl10) && 
-                @testset "Testing Rosenblatt and inverse Rosenblatt transforms" begin
+            if check_rosenblatt(C) && applicable(rosenblatt, C, spl10) && applicable(inverse_rosenblatt, C, spl10) 
+                @testset "rosenblatt ∘ inver_rosenblatt = Id" begin
                     U = rosenblatt(C, spl1000)
                     for i in 1:(d - 1)
                         for j in (i + 1):d
@@ -300,6 +168,151 @@
                         end
                     end
                     @test spl10 ≈ inverse_rosenblatt(C, rosenblatt(C, spl10)) atol=1e-4
+                    @test splD10 ≈ inverse_rosenblatt(D, rosenblatt(D, splD10)) atol=0.1 # also on the sklar level. 
+                end
+
+            end
+
+            if is_archimedean_with_agenerator(CT)
+                @testset "ArchimedeanCopula specific tests" begin 
+                
+                    # Only test things if there are specilized versions of the functions. 
+                    spe_ϕ1 = which(Copulas.ϕ⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁽¹⁾, (Copulas.Generator, Float64))
+                    spe_ϕk = which(Copulas.ϕ⁽ᵏ⁾, (typeof(C.G), Val{1}, Float64)) != which(Copulas.ϕ⁽ᵏ⁾, (Copulas.Generator, Val{1}, Float64))
+                    spe_ϕinv = which(Copulas.ϕ⁻¹, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹, (Copulas.Generator, Float64))
+                    spe_ϕinv1 = which(Copulas.ϕ⁻¹⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹⁽¹⁾, (Copulas.Generator, Float64))
+                    spe_ϕkinv = which(Copulas.ϕ⁽ᵏ⁾⁻¹, (typeof(C.G), Val{1}, Float64)) != which(Copulas.ϕ⁽ᵏ⁾⁻¹, (Copulas.Generator, Val{1}, Float64))
+                    
+                    can_τinv = applicable(Copulas.τ, C.G) && applicable(Copulas.τ⁻¹,typeof(C.G), 1.0)
+                    can_ρinv = applicable(Copulas.ρ, C.G) && applicable(Copulas.ρ⁻¹,typeof(C.G), 1.0)
+                    GT = Copulas.generatorof(CT)
+
+                    if spe_ϕinv
+                        @testset "Check ϕ ∘ ϕ⁻¹ == Id over [0,1]" begin
+                            for x in 0:0.1:1
+                                @test Copulas.ϕ(C.G,Copulas.ϕ⁻¹(C.G,x)) ≈ x atol=1e-10
+                            end
+                        end
+                    end
+
+                    if spe_ϕ1
+                        @testset "Check d(ϕ) == ϕ⁽¹⁾" begin 
+                            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 1.2) ≈ Copulas.ϕ⁽¹⁾(C.G, 1.2)
+                        end
+                    end
+
+                    if spe_ϕk
+                        @testset "Check ϕ == ϕ⁽ᵏ⁾(k=0)" begin
+                            @test Copulas.ϕ(C.G, 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{0}(), 1.2)
+                        end
+
+                        @testset "Check d(ϕ) == ϕ⁽ᵏ⁾(k=1)" begin
+                            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{1}(), 1.2)
+                        end
+                    end
+
+                    if spe_ϕ1 || spe_ϕk 
+                        @testset "Check ϕ⁽¹⁾ == ϕ⁽ᵏ⁾(k=1)" begin
+                            @test Copulas.ϕ⁽¹⁾(C.G, 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{1}(), 1.2)
+                        end
+                        @testset "Check d(ϕ⁽¹⁾) == ϕ⁽ᵏ⁾(k=2)" begin
+                            @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C.G, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{2}(), 1.2)
+                        end
+                    end
+                    
+                    if spe_ϕinv1 
+                        @testset "Check d(ϕ⁻¹) == ϕ⁻¹⁽¹⁾" begin
+                            @test ForwardDiff.derivative(x -> Copulas.ϕ⁻¹(C.G, x), 0.5) ≈ Copulas.ϕ⁻¹⁽¹⁾(C.G, 0.5)
+                        end
+                    end
+
+                    if spe_ϕkinv 
+                        @testset "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k in 1:d-1" begin
+                            for k in 0:d-1
+                                @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,Val{k}(), Copulas.ϕ⁽ᵏ⁾(C.G, Val{k}(), 1.2)) ≈ 1.2
+                            end
+                        end
+                    end
+
+                    if can_τinv
+                        @testset "Check τ ∘ τ⁻¹ == Id" begin
+                            tau = Copulas.τ(C)
+                            @test Copulas.τ(GT(Copulas.τ⁻¹(CT,tau))) ≈ tau
+                        end
+                        @testset "Check fitting the copula" begin
+                            fit(CT,spl10)
+                        end
+                    end
+                    
+                    if can_ρinv
+                        @testset  "Check ρ ∘ ρ⁻¹ == Id" begin
+                            rho = Copulas.ρ(C)
+                            @test -1 <= rho <= 1
+                            @test Copulas.ρ(GT(Copulas.ρ⁻¹(CT,rho))) ≈ rho
+                        end
+                    end
+
+                    
+                    @testset "Check kendall distribution coherence between ϕ⁻¹+rand and williamson_dist" begin
+                        splW_method1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
+                        splW_method2 = rand(rng,Copulas.williamson_dist(C.G, Val{d}()),1000)
+                        @test pvalue(ApproximateTwoSampleKSTest(splW_method1,splW_method2),tail=:right) > 0.01
+                    end
+                end
+            end
+
+            # Extreme value copula-specific tests
+            if CT<:Copulas.ExtremeValueCopula
+                @testset "ExtremeValueCopula specific tests" begin
+                    @testset "A function basics" begin
+                        @test Copulas.A(C, 0.0) ≈ 1
+                        @test Copulas.A(C, 1.0) ≈ 1
+                        t = rand(rng)
+                        A_value = Copulas.A(C, t)
+                        @test 0.0 <= A_value <= 1.0
+                        @test isapprox(A_value, max(t, 1-t); atol=1e-6) || A_value >= max(t, 1-t)
+                        @test A_value <= 1.0
+                    end
+
+                    # Only run derivative and related tests if the methods are spe for this type
+                    spe_dA =        which(Copulas.dA, (typeof(C), Float64))        != which(Copulas.dA, (Copulas.ExtremeValueCopula, Float64))
+                    spe_d²A =       which(Copulas.d²A, (typeof(C), Float64))       != which(Copulas.d²A, (Copulas.ExtremeValueCopula, Float64))
+                    spe__A_dA_d²A = which(Copulas._A_dA_d²A, (typeof(C), Float64)) != which(Copulas._A_dA_d²A, (Copulas.ExtremeValueCopula, Float64))
+                    spe_ℓ =         which(Copulas.ℓ, (typeof(C), Float64, Float64))         != which(Copulas.ℓ, (Copulas.ExtremeValueCopula, Float64, Float64))
+
+                    if spe_dA || spe_d²A || spe__A_dA_d²A
+                        @testset "Testing derivatives of A" begin
+                            for t in (0.05, 0.5, 0.95)
+                                if !(CT<:tEVCopula)
+                                    @test isapprox(Copulas.dA(C, t), ForwardDiff.derivative(x -> Copulas.A(C, x), t); atol=1e-6)
+                                    @test isapprox(Copulas.d²A(C, t), ForwardDiff.derivative(x -> Copulas.dA(C, x), t); atol=1e-6)
+                                end
+                                a, da, d2a = Copulas._A_dA_d²A(C, t)
+                                @test isapprox(a, Copulas.A(C, t); atol=1e-8)
+                                @test isapprox(da, Copulas.dA(C, t); atol=1e-8)
+                                @test isapprox(d2a, Copulas.d²A(C, t); atol=1e-8)
+                            end
+                        end
+                    end
+
+                    if spe_dA || spe_d²A || spe__A_dA_d²A || spe_ℓ
+                        @testset "Testing ℓ and cdf for Extreme Value Copula" begin 
+                            u, v = rand(rng), rand(rng)
+                            x, y = -log(u), -log(v)
+                            s = y / (x + y)
+                            expected_ℓ = Copulas.A(C, s) * (x + y)
+                            @test isapprox(Copulas.ℓ(C, x, y), expected_ℓ; atol=0.1)
+                            expected_cdf = exp(-expected_ℓ)
+                            @test isapprox(cdf(C, [u, v]), expected_cdf; atol=0.1)
+
+                            if !(CT<:tEVCopula)
+                                u, v = rand(rng), rand(rng)
+                                num_pdf = ForwardDiff.derivative(u_ -> ForwardDiff.derivative(v_ -> cdf(C, [u_, v_]), v), u)
+                                ana_pdf = pdf(C, [u, v])
+                                @test isapprox(ana_pdf, num_pdf; atol=0.1)
+                            end
+                        end
+                    end
                 end
             end
         end
