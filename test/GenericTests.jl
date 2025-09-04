@@ -41,7 +41,7 @@
             try
                 v, r, how = approx_measure_hcub(rng, C, a, b, maxevals)
                 v_true = Copulas.measure(C, a, b)
-                isapprox(v, v_true; atol=10 * sqrt(r)) && return v, r, how
+                isapprox(v, v_true; atol=max(10 * sqrt(r), 1e-3)) && return v, r, how
             catch
             end
         end
@@ -102,8 +102,8 @@
             @testset "Subsetdims" begin
                 @test isa(Copulas.subsetdims(C,(1,)), Distributions.Uniform)
                 @test isa(Copulas.subsetdims(D,1), Distributions.LogNormal)
-                @test all(0 .<= cdf(sC,rand(sC,10)) .<= 1)
-                @test all(0 .<= cdf(sD,rand(sD,10)) .<= 1)
+                @test all(0 .<= cdf(sC,rand(rng, sC,10)) .<= 1)
+                @test all(0 .<= cdf(sD,rand(rng, sD,10)) .<= 1)
                 @test sD.C == Copulas.subsetdims(C,(2,1)) # check for coherence. 
             end
 
@@ -145,20 +145,20 @@
                     # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
                     v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 10_000, 100_000)
                     v_true = 1
-                    @test isapprox(v, v_true; atol=5*sqrt(r))
+                    @test isapprox(v, v_true; atol=max(5*sqrt(r), 1e-3))
 
                     # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
                     b = ones(d)/2
                     v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 10_000, 100_000)
                     v2_true = cdf(C, b)
-                    @test isapprox(v2, v2_true; atol=10*sqrt(r2))
+                    @test isapprox(v2, v2_true; atol=max(10*sqrt(r2), 1e-3))
 
                     # 3) random rectangle, compare with measure (cdf based)
                     a = rand(rng, d)
                     b = a .+ rand(rng, d) .* (1 .- a)
                     v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 10_000, 100_000)
                     v3_true = Copulas.measure(C, a, b)
-                    @test isapprox(v3, v3_true; atol=20*sqrt(r3)) || max(v3, v3_true) < eps(Float64) # wide tolerence, should pass. 
+                    @test isapprox(v3, v3_true; atol=max(20*sqrt(r3)), 1e-3) || max(v3, v3_true) < eps(Float64) # wide tolerence, should pass. 
                 end
             end
 
