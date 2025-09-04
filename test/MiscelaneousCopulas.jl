@@ -6,6 +6,14 @@
 
 @testitem "Generic" tags=[:WCopula] setup=[M] begin M.check(WCopula(2)) end
 
+# @testitem "Generic" tags=[:BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 0.5, 1.6)) end
+# @testitem "Generic" tags=[:BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 2.5, 0.4)) end
+# @testitem "Generic" tags=[:BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 3.0, 2.1)) end
+
+# @testitem "Generic" tags=[:BBCops,:BB5Copula] setup=[M] begin M.check(BB5Copula(2, 1.5, 1.6)) end
+# @testitem "Generic" tags=[:BBCops,:BB5Copula] setup=[M] begin M.check(BB5Copula(2, 2.5, 0.4)) end
+# @testitem "Generic" tags=[:BBCops,:BB5Copula] setup=[M] begin M.check(BB5Copula(2, 5.0, 0.5)) end
+
 @testitem "Generic" tags=[:EmpiricalCopula] setup=[M] begin M.check(EmpiricalCopula(randn(2,10),pseudo_values=false)) end
 @testitem "Generic" tags=[:EmpiricalCopula] setup=[M] begin M.check(EmpiricalCopula(randn(2,20),pseudo_values=false)) end
 

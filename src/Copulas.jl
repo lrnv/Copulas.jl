@@ -18,6 +18,7 @@ module Copulas
     import LinearAlgebra
     import PolyLog
     import BigCombinatorics
+    import LambertW
 
     # Standard copulas and stuff.
     include("utils.jl")
@@ -60,12 +61,29 @@ module Copulas
     include("UnivariateDistribution/ClaytonWilliamsonDistribution.jl")
     include("UnivariateDistribution/WilliamsonFromFrailty.jl")
     include("UnivariateDistribution/ExtremeDist.jl")
+    include("UnivariateDistribution/PStable.jl")
+    include("UnivariateDistribution/TiltedPositiveStable.jl")
+    include("UnivariateDistribution/PosStableStoppedGamma.jl")
+    include("UnivariateDistribution/GammaStoppedGamma.jl")
+    include("UnivariateDistribution/GammaStoppedPositiveStable.jl")
+    include("UnivariateDistribution/SibuyaStoppedGamma.jl")
+    include("UnivariateDistribution/SibuyaStoppedPosStable.jl")
+    include("UnivariateDistribution/GeneralizedSibuya.jl")
+    include("UnivariateDistribution/ShiftedNegBin.jl")
 
     # Archimedean generators
     include("Generator.jl")
     include("ArchimedeanCopula.jl")
 
     include("Generator/AMHGenerator.jl")
+    include("Generator/BB1Generator.jl")
+    include("Generator/BB2Generator.jl")
+    include("Generator/BB3Generator.jl")
+    include("Generator/BB6Generator.jl")
+    include("Generator/BB7Generator.jl")
+    include("Generator/BB8Generator.jl")
+    include("Generator/BB9Generator.jl")
+    include("Generator/BB10Generator.jl")
     include("Generator/ClaytonGenerator.jl")
     include("Generator/FrankGenerator.jl")
     include("Generator/GumbelBarnettGenerator.jl")
@@ -77,6 +95,14 @@ module Copulas
            i𝒲, 
            ArchimedeanCopula,
            AMHCopula,
+           BB1Copula, 
+           BB2Copula, 
+           BB3Copula, 
+           BB6Copula, 
+           BB7Copula, 
+           BB8Copula, 
+           BB9Copula, 
+           BB10Copula,
            ClaytonCopula,
            FrankCopula,
            GumbelBarnettCopula,

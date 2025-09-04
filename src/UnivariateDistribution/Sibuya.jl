@@ -22,4 +22,3 @@ function Distributions.rand(rng::Distributions.AbstractRNG, d::Sibuya{T}) where 
     end
     return fGinv
 end
-
