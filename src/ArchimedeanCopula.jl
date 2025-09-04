@@ -109,7 +109,13 @@ function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula}
     return ArchimedeanCopula(d,GT(θ))
 end
 
-τ(C::ArchimedeanCopula{d,TG}) where {d,TG} = τ(C.G)
+function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
+    if applicable(Copulas.τ, C.G)
+        return τ(C.G)
+    else
+        return @invoke τ(C::Copula)
+    end
+end
 function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
     return τ⁻¹(generatorof(T),τ_val)
 end
@@ -123,8 +129,17 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
         rⱼ = ϕ⁻¹(C.G, u[1,i])
         for j in 2:d
             rⱼ₋₁ = rⱼ
+            if !isfinite(rⱼ₋₁)
+                U[j,i] = one(rⱼ)
+            else
             rⱼ += ϕ⁻¹(C.G, u[j,i])
-            U[j, i] = ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ) / ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ₋₁)
+                if iszero(rⱼ)
+                     U[j,i] = zero(rⱼ)
+                else
+                    A, B = ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ), ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ₋₁)
+                    U[j,i] = A / B
+                end
+            end
         end
     end
     return U
@@ -137,9 +152,15 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
         Cᵢⱼ = zero(eltype(u))
         for j in 2:d
             Cᵢⱼ += ϕ⁻¹(C.G, U[j - 1, i])
+            if iszero(Cᵢⱼ)
+                U[j, i] = one(Cᵢⱼ)
+            elseif !isfinite(Cᵢⱼ)
+                U[j,i] = zero(Cᵢⱼ)
+            else
             Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, Val{j - 1}(), Cᵢⱼ) * u[j,i]
             R = ϕ⁽ᵏ⁾⁻¹(C.G, Val{j - 1}(), Dᵢⱼ; start_at=Cᵢⱼ)
             U[j, i] = ϕ(C.G, R - Cᵢⱼ)
+            end
         end
     end
     return U
