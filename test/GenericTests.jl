@@ -158,7 +158,7 @@
                     b = a .+ rand(rng, d) .* (1 .- a)
                     v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 10_000, 100_000)
                     v3_true = Copulas.measure(C, a, b)
-                    @test isapprox(v3, v3_true; atol=max(20*sqrt(r3)), 1e-3) || max(v3, v3_true) < eps(Float64) # wide tolerence, should pass. 
+                    @test isapprox(v3, v3_true; atol=max(20*sqrt(r3), 1e-3)) || max(v3, v3_true) < eps(Float64) # wide tolerence, should pass. 
                 end
             end
 
