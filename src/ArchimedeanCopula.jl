@@ -53,7 +53,7 @@ struct ArchimedeanCopula{d,TG} <: Copula{d}
 end
 Distributions.params(C::ArchimedeanCopula) = C.G # by default the parameter is the generator. 
 function Base.show(io::IO, C::ArchimedeanCopula)
-    print(io, "$(typeof(C))$(Distributions.params(C))")
+    print(io, "$(typeof(C))$(C.G)")
 end
 
 _cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))

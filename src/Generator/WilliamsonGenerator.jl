@@ -45,6 +45,9 @@ struct WilliamsonGenerator{TX} <: Generator
         return new{typeof(X)}(X,transform_dimension)
     end
 end
+function Base.show(io::IO, G::WilliamsonGenerator)
+    print(io, "i𝒲{d}($(G.X))")
+end
 const i𝒲 = WilliamsonGenerator
 max_monotony(G::WilliamsonGenerator) = G.d
 function williamson_dist(G::WilliamsonGenerator, ::Val{d}) where d

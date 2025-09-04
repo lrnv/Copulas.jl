@@ -24,6 +24,9 @@ struct SubsetCopula{d,CT} <: Copula{d}
         return new{length(dims), typeof(C)}(C,Tuple(Int.(dims)))
     end
 end
+function Base.show(io::IO, C::SubsetCopula)
+    print(io, "SubsetCopula($(C.C), $(C.dims))")
+end
 Base.eltype(C::SubsetCopula{d,CT}) where {d,CT} = Base.eltype(C.C)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::SubsetCopula{d,CT}, x::AbstractVector{T}) where {T<:Real, d,CT}
     u = Random.rand(rng,C.C)
