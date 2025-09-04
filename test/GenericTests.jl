@@ -127,7 +127,7 @@
                 @testset "PDF positivity" begin
                     @test pdf(C,ones(length(C))/2) >= 0
                     @test all(pdf(C, spl10) .>= 0)
-                    @test pdf(D, zeros(d)) >= 0
+                    @test pdf(D, ones(d)) >= 0
                 end
             end
 
