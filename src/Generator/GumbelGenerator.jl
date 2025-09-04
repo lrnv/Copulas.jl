@@ -51,9 +51,9 @@ function ϕ⁽¹⁾(G::GumbelGenerator, t)
 end
 function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
     α = 1 / G.θ
-    return eltype(t)(ϕ(G, t) * t^(-d) * sum(
+    return ϕ(G, t) * t^(-d) * sum(
         α^j * BigCombinatorics.Stirling1(d, j) * sum(BigCombinatorics.Stirling2(j, k) * (-t^α)^k for k in 1:j) for j in 1:d
-    ))
+    )
 end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * (-log(t))^(G.θ - 1)) / t
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
