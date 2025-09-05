@@ -9,10 +9,11 @@ Base.@kwdef struct AlphaStable{T} <: Distributions.ContinuousUnivariateDistribut
     β::T = zero(α)
     scale::T = one(α)
     location::T = zero(α)
-end
-function AlphaStable(α,β,scale,location)
-    αT,βT,scaleT,locationT =  promote(α,β,scale,location)
-    AlphaStable(αT,βT,scaleT,locationT)
+    function AlphaStable(α,β,scale,location)
+        αT,βT,scaleT,locationT =  promote(α,β,scale,location)
+        new{typeof(αT)}(αT,βT,scaleT,locationT)
+    end
+    AlphaStable{T}(pars...) where T = AlphaStable(pars...)
 end
 function Distributions.rand(rng::Distributions.AbstractRNG, d::AlphaStable{T}) where {T<:AbstractFloat} 
 # """

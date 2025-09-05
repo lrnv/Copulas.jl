@@ -31,6 +31,7 @@ struct BB1Generator{T} <: Generator
         if δ == 1
             return ClaytonGenerator(θ)
         else
+            θ, δ, _ = promote(θ, δ, 1.0)
             return new{typeof(θ)}(θ, δ)
         end
     end
@@ -38,7 +39,7 @@ end
 const BB1Copula{d, T} = ArchimedeanCopula{d, BB1Generator{T}}
 BB1Copula(d, θ, δ) = ArchimedeanCopula(d, BB1Generator(θ, δ))
 
-Distributions.params(C::BB1Copula) = (C.G.θ, C.G.δ)
+Distributions.params(G::BB1Generator) = (G.θ, G.δ)
 
 max_monotony(::BB1Generator) = Inf   # Maybe extendable for dimension d???
 

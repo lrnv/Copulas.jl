@@ -35,13 +35,14 @@ struct ClaytonGenerator{T} <: Generator
         elseif θ == Inf
             return MGenerator()
         else
+            θ, _ = promote(θ, 1.0)
             return new{typeof(θ)}(θ)
         end
     end
 end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 ClaytonCopula(d, θ) = ArchimedeanCopula(d, ClaytonGenerator(θ))
-Distributions.params(C::ClaytonCopula) = (C.G.θ,)
+Distributions.params(G::ClaytonGenerator) = (G.θ,)
 
 
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1/G.θ))

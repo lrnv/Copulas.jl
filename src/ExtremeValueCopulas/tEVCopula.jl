@@ -43,7 +43,8 @@ struct tEVCopula{df, P} <: ExtremeValueCopula{P}
         elseif ρ == 1
             return MCopula(2)
         end
-        return new{df, typeof(ρ)}(ρ, ν)
+        ρ, ν, _ = promote(ρ, ν, 1.0)
+        return new{typeof(ν), typeof(ρ)}(ρ, ν)
     end
 end
 function A(T::tEVCopula, t::Real)

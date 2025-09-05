@@ -25,12 +25,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::WCopula, x::Abst
     x[2] = 1-x[1]
     return x
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, ::WCopula, A::DenseMatrix{T}) where {T<:Real}
-    @assert size(A,1) == 2
-    A[1,:] .= rand(rng,size(A,2))
-    A[2,:] .= 1 .- A[1,:]
-    return A
-end
 τ(::WCopula) = -1
 ρ(::WCopula) = -1
 StatsBase.corkendall(::WCopula) = [1 -1; -1 1]

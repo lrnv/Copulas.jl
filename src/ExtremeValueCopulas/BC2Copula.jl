@@ -27,6 +27,7 @@ struct BC2Copula{P} <: ExtremeValueCopula{P}
         if !(0 <= a <= 1) || !(0 <= b <= 1) 
             throw(ArgumentError("Both parameters a and b must be in [0,1]"))
         end
+        a,b, _ = promote(a, b, 1.0)
         return new{T}(T(a), T(b))
     end
 end

@@ -22,7 +22,7 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct JoeGenerator{T} <: Generator
+struct JoeGenerator{T} <: AbstractFrailtyGenerator
     θ::T
     function JoeGenerator(θ)
         if θ < 1
@@ -32,16 +32,16 @@ struct JoeGenerator{T} <: Generator
         elseif θ == Inf
             return MGenerator()
         else
+            θ, _ = promote(θ, 1.0)
             return new{typeof(θ)}(θ)
         end
     end
 end
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
 JoeCopula(d, θ) = ArchimedeanCopula(d, JoeGenerator(θ))
+Distributions.params(G::JoeGenerator) = (G.θ,)
+frailty(G::JoeGenerator) = Sibuya(1/G.θ)
 
-Distributions.params(C::JoeCopula) = (C.G.θ,)
-
-max_monotony(::JoeGenerator) = Inf
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
 ϕ⁽¹⁾(G::JoeGenerator, t) = (-expm1(-t))^(1/G.θ) / (G.θ - G.θ * exp(t))
@@ -71,4 +71,3 @@ function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
         return Roots.find_zero(θ -> _joe_tau(θ) - tau, (one(tau),tau*Inf))
     end
 end
-williamson_dist(G::JoeGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Sibuya(1/G.θ), Val{d}())

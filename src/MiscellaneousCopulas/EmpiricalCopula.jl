@@ -24,6 +24,8 @@ struct EmpiricalCopula{d,MT} <: Copula{d}
 end
 Base.eltype(C::EmpiricalCopula{d,MT}) where {d,MT} = Base.eltype(C.u)
 function EmpiricalCopula(u;pseudo_values=true)
+    T = promote_type(eltype(u), Float64)
+    u = T.(u)
     d = size(u,1)
     if !pseudo_values
         u = pseudos(u)
