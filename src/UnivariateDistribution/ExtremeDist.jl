@@ -3,6 +3,7 @@ struct ExtremeDist{C} <: Distributions.ContinuousUnivariateDistribution
     function ExtremeDist(G)
         return new{typeof(G)}(G)
     end
+    ExtremeDist{C}(G) where C = ExtremeDist(C(G))
 end
 
 function Distributions.cdf(d::ExtremeDist, z)

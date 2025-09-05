@@ -33,13 +33,14 @@ struct FrankGenerator{T} <: Generator
         elseif θ == Inf
             return MGenerator()
         else
+            θ, _ = promote(θ, 1.0)
             return new{typeof(θ)}(θ)
         end
     end
 end
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
 FrankCopula(d, θ) = ArchimedeanCopula(d, FrankGenerator(θ))
-Distributions.params(C::FrankCopula) = (C.G.θ,)
+Distributions.params(G::FrankGenerator) = (G.θ,)
 
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
 ϕ(G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ

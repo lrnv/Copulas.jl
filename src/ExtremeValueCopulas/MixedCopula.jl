@@ -29,6 +29,7 @@ struct MixedCopula{P} <: ExtremeValueCopula{P}
         elseif θ == 0
             return IndependentCopula(2)
         else
+            θ, _ = promote(θ, 1.0)
             return new{typeof(θ)}(θ)
         end
     end

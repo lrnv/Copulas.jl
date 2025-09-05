@@ -28,6 +28,7 @@ struct BB10Generator{T} <: Generator
         if θ == 1
             return AMHGenerator(δ)
         else 
+            θ, δ, _ = promote(θ, δ, 1.0)
             return new{typeof(θ)}(θ, δ)
         end
     end
@@ -35,7 +36,7 @@ end
 
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
 BB10Copula(d, θ, δ) = ArchimedeanCopula(2, BB10Generator(θ, δ))
-Distributions.params(C::BB10Copula) = (C.G.θ, C.G.δ)
+Distributions.params(G::BB10Generator) = (G.θ, G.δ)
 max_monotony(::BB10Generator) = Inf
 
 ϕ(G::BB10Generator, s) = begin

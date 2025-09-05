@@ -28,6 +28,7 @@ struct CuadrasAugeCopula{P} <: ExtremeValueCopula{P}
         elseif θ == 1
             return MCopula(2)
         else
+            θ, _ = promote(θ, 1.0)
             return new{typeof(θ)}(θ)
         end
     end

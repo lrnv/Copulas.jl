@@ -30,7 +30,7 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     θ::Tθ
     fᵢ::Tf
     function FGMCopula(d, θ)
-        vθ = typeof(θ)<:Vector ? θ : [θ]
+        vθ = θ isa Vector ? promote(θ...,1.0)[1:end-1] : [promote(θ,1.0)[1]]
         if  all(θ .== 0)
             return IndependentCopula(d)
         end

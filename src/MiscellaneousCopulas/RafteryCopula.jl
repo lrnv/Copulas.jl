@@ -34,6 +34,7 @@ struct RafteryCopula{d, P} <: Copula{d}
         elseif θ == 1
             return MCopula(d)
         else
+            θ, _ = promote(θ, 1.0)
             return new{d,typeof(θ)}(θ)
         end
     end

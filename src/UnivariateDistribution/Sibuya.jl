@@ -3,8 +3,10 @@
 struct Sibuya{T<:Real} <: Distributions.DiscreteUnivariateDistribution
     p::T
     function Sibuya(p::T) where {T <: Real}
+        @assert 0 < p ≤ 1
         new{T}(p)
     end
+    Sibuya{T}(p) where T = Sibuya(T(p))
 end
 function Distributions.rand(rng::Distributions.AbstractRNG, d::Sibuya{T}) where {T <: Real}
     u = rand(rng, T)

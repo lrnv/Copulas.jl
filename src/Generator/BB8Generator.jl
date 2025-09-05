@@ -30,6 +30,7 @@ struct BB8Generator{T} <: Generator
         if δ == 1
             return JoeGenerator(ϑ)
         else
+            ϑ, δ, _ = promote(ϑ, δ, 1.0)
             return new{typeof(ϑ)}(ϑ, δ)
         end
     end
@@ -37,7 +38,7 @@ end
 
 const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
 BB8Copula(d, ϑ, δ) = ArchimedeanCopula(d, BB8Generator(ϑ, δ))
-Distributions.params(C::BB8Copula) = (C.G.ϑ, C.G.δ)
+Distributions.params(G::BB8Generator) = (G.ϑ, G.δ)
 max_monotony(::BB8Generator) = Inf 
 
 @inline _η(G::BB8Generator) = -expm1(G.ϑ * log1p(-G.δ))

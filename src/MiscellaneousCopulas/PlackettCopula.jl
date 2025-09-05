@@ -42,6 +42,7 @@ struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
         elseif θ == Inf
             return WCopula(2)
         else
+            θ, _ = promote(θ, 1.0)
             return new{typeof(θ)}(θ)
         end
     end

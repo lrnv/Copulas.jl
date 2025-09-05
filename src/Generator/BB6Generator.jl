@@ -30,6 +30,7 @@ struct BB6Generator{T} <: Generator
         elseif θ == 1
             return GumbelGenerator(δ)
         else
+            θ, δ, _ = promote(θ, δ, 1.0)
             return new{typeof(θ)}(θ, δ)
         end
     end
@@ -37,8 +38,7 @@ end
 
 const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
 BB6Copula(d, θ, δ) = ArchimedeanCopula(d, BB6Generator(θ, δ))
-
-Distributions.params(C::BB6Copula) = (C.G.θ, C.G.δ)
+Distributions.params(G::BB6Generator) = (G.θ, G.δ)
 max_monotony(::BB6Generator) = Inf
 
 ϕ(  G::BB6Generator, s) = 1 - (1 - exp(-s^(inv(G.δ))))^(inv(G.θ))
