@@ -50,13 +50,16 @@ function ϕ⁽¹⁾(G::GumbelGenerator, t)
     tam1 = exp((a-1)*log(t))
     return - a * tam1 * exp(-tam1*t)
 end
-function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
-    α = 1 / G.θ
-    return ϕ(G, t) * t^(-d) * sum(
-        α^j * BigCombinatorics.Stirling1(d, j) * sum(BigCombinatorics.Stirling2(j, k) * (-t^α)^k for k in 1:j) for j in 1:d
-    )
-end
-ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * (-log(t))^(G.θ - 1)) / t
+
+# The folliwng function got commented because it does WORSE in term of runtime than the 
+# corredponsing generic :)
+
+# function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
+#     α = 1 / G.θ
+#     return eltype(t)(ϕ(G, t) * t^(-d) * sum(
+#         α^j * BigCombinatorics.Stirling1(d, j) * sum(BigCombinatorics.Stirling2(j, k) * (-t^α)^k for k in 1:j) for j in 1:d
+#     ))
+# end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * exp(log(-log(t))*(G.θ - 1))) / t
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
 function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
