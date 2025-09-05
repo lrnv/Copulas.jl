@@ -50,6 +50,8 @@ References:
 * [mai2014financial](@cite) Mai, J. F., & Scherer, M. (2014). Financial engineering with copulas explained (p. 168). London: Palgrave Macmillan.
 """
 abstract type ExtremeValueCopula{P} <: Copula{2} end
+@inline _δ(t)      = oftype(t, 1e-12)
+@inline _safett(t) = clamp(t, _δ(t), one(t) - _δ(t))
 needs_binary_search(::ExtremeValueCopula) = false
 A(C::ExtremeValueCopula, t::Real) = throw(ArgumentError("Function A must be defined for specific copula"))
 dA(C::ExtremeValueCopula, t::Real) = ForwardDiff.derivative(t -> A(C,t), t)

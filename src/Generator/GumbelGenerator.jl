@@ -74,9 +74,7 @@ function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
         return θ
     end
 end
-
-
-
+williamson_dist(G::GumbelGenerator, ::Val{d}) where d = WilliamsonFromFrailty(AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0)), Val{d}())
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
     θ = C.G.θ
     x₁, x₂ = -log(u[1]), -log(u[2])

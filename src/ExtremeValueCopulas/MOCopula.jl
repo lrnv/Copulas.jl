@@ -32,6 +32,7 @@ struct MOCopula{P} <: ExtremeValueCopula{P}
         return new{typeof(a)}(a,b)
     end
 end
+Distributions.params(C::MOCopula) = (C.λ₁, C.λ₂, C.λ₁₂)
 A(C::MOCopula, t::Real) = max(t + (1-t)*C.b, (1-t)+C.a*t)
 _cdf(C::MOCopula, u::AbstractArray{<:Real}) = min(u[1]^C.a * u[2], u[1] * u[2]^C.b)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula, u::AbstractVector{T}) where {T<:Real}

@@ -39,6 +39,7 @@ struct HuslerReissCopula{P} <: ExtremeValueCopula{P}
         end
     end
 end
+Distributions.params(C::HuslerReissCopula) = (C.θ)
 #  specific ℓ funcion of HuslerReissCopula
 function ℓ(H::HuslerReissCopula, t₁, t₂)
     θ = H.θ
