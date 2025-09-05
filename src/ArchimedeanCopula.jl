@@ -79,19 +79,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopu
     end
     return x
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, A::DenseMatrix{T}) where {T<:Real, d, TG}
-    # More efficient version that precomputes the Williamson transform on each call to sample in batches:
-    Random.randexp!(rng,A)
-    n = size(A,2)
-    r = rand(rng,williamson_dist(C.G, Val{d}()),n)
-    for i in 1:n
-        sx = sum(A[:,i])
-        for j in 1:length(C)
-            A[j,i] = ϕ(C.G,r[i] * A[j,i]/sx)
-        end
-    end
-    return A
-end
 
 function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     S2 = hasproperty(S,:body) ? S.body : S
@@ -103,7 +90,7 @@ function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     end
 end
 
-function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula}
+function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula} 
     # @info "Archimedean fits are by default through inverse kendall tau."
     d = size(u,1)
     τ = StatsBase.corkendall(u')

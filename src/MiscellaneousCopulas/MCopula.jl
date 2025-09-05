@@ -18,17 +18,10 @@ struct MCopula{d} <: Copula{d}
     MCopula(d) = new{d}()
 end
 Distributions._logpdf(::MCopula{d}, u) where {d} = all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
-_cdf(::MCopula{d}, u) where {d} = minimum(u)
+_cdf(::MCopula{d}, u) where {d} = Base.minimum(u)
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::MCopula{d}, x::AbstractVector{T}) where {d,T<:Real}
     x .= rand(rng)
-end
-function Distributions._rand!(rng::Distributions.AbstractRNG, ::MCopula{d}, A::DenseMatrix{T}) where {T<:Real, d}
-    A[1,:] .= rand(rng,size(A,2))
-    for i in axes(A,1)
-        A[i,:] .= A[1,:]
-    end
-    return A
 end
 τ(::MCopula) = 1
 ρ(::MCopula) = 1
