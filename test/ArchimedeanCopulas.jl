@@ -3,7 +3,6 @@
 @testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(LogNormal(),2))) end
 
 @testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-1.0)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-1.0)) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-rand(M.rng))) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,0.7)) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,rand(M.rng))) end
