@@ -58,7 +58,7 @@ end
 ϕ⁻¹⁽¹⁾(G::BB8Generator, t) = -G.ϑ*G.δ * (1 - G.δ*t)^(G.ϑ - 1) / (1 - (1 - G.δ*t)^G.ϑ)
 
 williamson_dist(G::BB8Generator, ::Val{d}) where d = WilliamsonFromFrailty(GeneralizedSibuya(G.ϑ, G.δ), Val{d}())
-frailty_dist(G::BB8Generator) = GeneralizedSibuya(G.ϑ, G.δ)
+frailty(G::BB8Generator) = GeneralizedSibuya(G.ϑ, G.δ)
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB8Generator}
     ϑ, δ = C.G.ϑ, C.G.δ
     η = -expm1(ϑ*log1p(-δ))

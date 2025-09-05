@@ -68,7 +68,7 @@ function ϕ⁻¹⁽¹⁾(G::BB6Generator, u::Real)
 end
 
 williamson_dist(G::BB6Generator, ::Val{d}) where d = WilliamsonFromFrailty(SibuyaStoppedPosStable(G.θ, G.δ), Val{d}())
-frailty_dist(G::BB6Generator) = SibuyaStoppedPosStable(G.θ, G.δ)
+frailty(G::BB6Generator) = SibuyaStoppedPosStable(G.θ, G.δ)
 # ------------------ CDF (d = 2) ------------------
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB6Generator}
     θ, δ = C.G.θ, C.G.δ

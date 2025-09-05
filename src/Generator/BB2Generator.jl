@@ -69,7 +69,7 @@ end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
 williamson_dist(G::BB2Generator, ::Val{d}) where d = WilliamsonFromFrailty(GammaStoppedGamma(G.θ, G.δ), Val{d}())
-frailty_dist(G::BB2Generator) = GammaStoppedGamma(G.θ, G.δ)
+frailty(G::BB2Generator) = GammaStoppedGamma(G.θ, G.δ)
 @inline function _abpair_robust(u1::Real, u2::Real, θ::Real, δ::Real)
     u1c = clamp(float(u1), 1e-15, 1-1e-15)
     u2c = clamp(float(u2), 1e-15, 1-1e-15)

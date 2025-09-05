@@ -83,7 +83,7 @@ end
 ϕ⁽ᵏ⁾(G::AMHGenerator, ::Val{k}, t) where k = (-1)^k * (1 - G.θ) / G.θ * PolyLog.reli(-k, G.θ * exp(-t))
 ϕ⁻¹⁽¹⁾(G::AMHGenerator, t) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
 williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
-frailty_dist(G::AMHGenerator) = 1 + Distributions.Geometric(1-G.θ)
+frailty(G::AMHGenerator) = 1 + Distributions.Geometric(1-G.θ)
 function _amh_tau(θ)
     if abs(θ) < 0.01
         return 2/9  * θ

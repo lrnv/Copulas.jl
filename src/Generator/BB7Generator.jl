@@ -69,7 +69,7 @@ end
 end
 
 williamson_dist(G::BB7Generator, ::Val{d}) where d = WilliamsonFromFrailty(SibuyaStoppedGamma(G.θ, G.δ), Val{d}())
-frailty_dist(G::BB7Generator) = SibuyaStoppedGamma(G.θ, G.δ)
+frailty(G::BB7Generator) = SibuyaStoppedGamma(G.θ, G.δ)
 # --------------- CDF y log-PDF (d = 2) ----------------
 
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB7Generator}

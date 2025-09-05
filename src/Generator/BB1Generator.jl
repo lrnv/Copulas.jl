@@ -59,7 +59,7 @@ end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
 williamson_dist(G::BB1Generator, ::Val{d}) where d = WilliamsonFromFrailty(GammaStoppedPositiveStable(inv(G.δ), inv(G.θ)), Val{d}())
-frailty_dist(G::BB1Generator) = GammaStoppedPositiveStable(inv(G.δ), inv(G.θ))
+frailty(G::BB1Generator) = GammaStoppedPositiveStable(inv(G.δ), inv(G.θ))
 # --- CDF and logpdf (d=2), numeric stable version ---
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB1Generator}
     θ, δ = C.G.θ, C.G.δ

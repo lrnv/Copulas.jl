@@ -56,7 +56,7 @@ end
 ϕ⁻¹⁽¹⁾(G::BB9Generator, t) = -G.θ * (inv(G.δ) - log(t))^(G.θ - 1) / t
 
 williamson_dist(G::BB9Generator, ::Val{d}) where d = WilliamsonFromFrailty(TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ)), Val{d}())
-frailty_dist(G::BB9Generator) =  TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ))
+frailty(G::BB9Generator) =  TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ))
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB9Generator}
     θ, δ = C.G.θ, C.G.δ
     x = inv(δ) - log(u[1])
