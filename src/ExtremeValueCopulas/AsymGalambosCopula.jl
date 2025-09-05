@@ -40,7 +40,8 @@ struct AsymGalambosCopula{P} <: ExtremeValueCopula{P}
         elseif θ[1] == 1 && θ[2] == 1
             return GalambosCopula(α)
         else
-            return new{P}(α, θ)
+            T = promote_type(Float64, typeof(α), eltype(θ))
+            return new{T}(T(α), T.(θ))
         end
     end
 end

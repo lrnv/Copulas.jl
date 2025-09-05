@@ -28,13 +28,14 @@ struct BB7Generator{T} <: Generator
         if θ == 1
             return ClaytonGenerator(δ)
         end
+        θ, δ, _ = promote(θ, δ, 1.0)
         return new{typeof(θ)}(θ, δ)
     end
 end
 
 const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
 BB7Copula(d, θ, δ) = ArchimedeanCopula(d, BB7Generator(θ, δ))
-Distributions.params(C::BB7Copula) = (C.G.θ, C.G.δ)
+Distributions.params(G::BB7Generator) = (G.θ, G.δ)
 max_monotony(::BB7Generator) = Inf 
 
 ϕ(  G::BB7Generator, s) = begin

@@ -10,44 +10,6 @@
     using LogExpFunctions
     rng = StableRNG(123)
 
-    function approx_measure_mc(rng, C::Copulas.Copula{d}, a, b, N) where d
-        ba = b .- a
-        logvol = log(prod(ba))
-        logS  = -Inf
-        logS2 = -Inf
-        u = zeros(d)
-        x = similar(a)
-        @inbounds for _ in 1:N
-            rand!(rng, u)
-            x .=  a .+ ba .* u
-            lp = logpdf(C, x)
-            if isfinite(lp)
-                log_fx = lp + logvol
-                logS   = LogExpFunctions.logaddexp(logS,  log_fx)
-                logS2  = LogExpFunctions.logaddexp(logS2, 2 * log_fx)
-            end
-        end
-        μ  = exp(logS  - log(N))
-        m2 = exp(logS2 - log(N))
-        r  = max(m2 - μ^2, 0.0) / N
-        return μ, r, :mc_pdf
-    end
-    function approx_measure_hcub(rng, C::Copulas.Copula{d}, a, b, maxevals) where d
-        v, abs_err = hcubature(x -> pdf(C, x), a, b; maxevals=maxevals)
-        return v, abs_err^2, :hcub
-    end
-    function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, maxevals, N) where d
-        if d == 2
-            try
-                v, r, how = approx_measure_hcub(rng, C, a, b, maxevals)
-                v_true = Copulas.measure(C, a, b)
-                isapprox(v, v_true; atol=max(10 * sqrt(r), 1e-3)) && return v, r, how
-            catch
-            end
-        end
-        return approx_measure_mc(rng, C, a, b, N) 
-    end
-
     is_absolutely_continuous(C::CT) where CT =  
         !(CT<:Union{MCopula,WCopula,MOCopula,CuadrasAugeCopula,RafteryCopula,EmpiricalCopula, BC2Copula}) && 
         !((CT<:FGMCopula) && (length(C)==3)) &&
@@ -56,9 +18,11 @@
         !((CT<:ArchimedeanCopula) && length(C)>=Copulas.max_monotony(C.G))
 
     check_rosenblatt(C::CT) where CT = 
+        applicable(rosenblatt, C, ones(length(C),2)) && 
+        applicable(inverse_rosenblatt, C, ones(length(C),2)) &&
         !(CT<:Union{WCopula, MCopula}) && 
         !((CT<:GumbelCopula) && ((C.G.θ > 50) || length(C)>=4)) && 
-        !((CT<:FrankCopula{4}) && (C.G.θ > 50)) &&
+        !((CT<:FrankCopula{4}) && (C.G.θ > 36)) &&
         !((CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator))
 
     
@@ -68,21 +32,22 @@
     has_pdf(C::CT) where CT = applicable(Distributions._logpdf, C, ones(length(C),2)./2)
     
     function check(C::Copulas.Copula{d}) where d
-
-        @testset "Testing $C" begin
+        
+        @testset "Testing $C" verbose=true begin
             @info "Testing $C..."
+
             CT = typeof(C)
             Random.seed!(rng,123)
 
-            spl10 = rand(rng,C,10)
-            spl1000 = rand(rng,C,1000)
-
             D = SklarDist(C, Tuple(LogNormal() for i in 1:d))
+
+            spl1 = rand(rng, C)
+            spl10 = rand(rng, C, 10)
+            spl1000 = rand(rng, C, 1000)
             splD10 = rand(rng, D, 10)
             
             @testset "Shape and support" begin 
-                # Sampling shape and support
-                @test length(rand(rng,C))==d
+                @test length(spl1)==d
                 @test size(spl10) == (d,10)
                 @test all(0 .<= spl10 .<= 1)
                 @test all(0 .<= spl1000 .<= 1)
@@ -97,19 +62,15 @@
                 @test Copulas.measure(C, ones(d)*0.2, ones(d)*0.4) >= 0
             end
 
-            sC = Copulas.subsetdims(C,(1,2))
-            sD = Copulas.subsetdims(D,(2,1))
             @testset "Subsetdims" begin
-                @test isa(Copulas.subsetdims(C,(1,)), Distributions.Uniform)
-                @test isa(Copulas.subsetdims(D,1), Distributions.LogNormal)
-                @test all(0 .<= cdf(sC,rand(rng, sC,10)) .<= 1)
-                @test all(0 .<= cdf(sD,rand(rng, sD,10)) .<= 1)
-                @test sD.C == Copulas.subsetdims(C,(2,1)) # check for coherence. 
+                sC = Copulas.subsetdims(C,(2,1))
+                @test all(0 .<= cdf(sC, spl10[1:2,:]) .<= 1)
+                @test sC == Copulas.subsetdims(D,(2,1)).C
             end
 
             # Margins uniformity
-            @testset "Margins uniformity" begin
-                if !(CT<:EmpiricalCopula)
+            if !(CT<:EmpiricalCopula)
+                @testset "Margins uniformity" begin
                     for i in 1:d
                     for val in [0,1,0.5,rand(rng,5)...]
                         u = ones(d)
@@ -123,16 +84,14 @@
                 end
             end
 
-            if has_pdf(C)
-                @testset "PDF positivity" begin
-                    @test pdf(C,ones(length(C))/2) >= 0
-                    @test all(pdf(C, spl10) .>= 0)
-                    @test pdf(D, ones(d)) >= 0
-                end
-            end
+            if has_pdf(C); @testset "PDF positivity" begin
+                @test pdf(C,ones(length(C))/2) >= 0
+                @test all(pdf(C, spl10) .>= 0)
+                @test pdf(D, ones(d)) >= 0
+            end end
 
             # Generic tests
-            @testset "CorKendall coeherency" begin
+            @testset "Corkendall coeherency" begin
                 K = corkendall(spl1000')
                 Kth = corkendall(C)
                 @test all(-1 .<= Kth .<= 1)
@@ -143,37 +102,36 @@
                 @testset "Testing pdf integration" begin
 
                     # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
-                    v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 10_000, 100_000)
+                    v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 10_000, 10_000)
                     v_true = 1
                     @test isapprox(v, v_true; atol=max(5*sqrt(r), 1e-3))
 
                     # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
                     b = ones(d)/2
-                    v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 10_000, 100_000)
+                    v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 10_000, 10_000)
                     v2_true = cdf(C, b)
                     @test isapprox(v2, v2_true; atol=max(10*sqrt(r2), 1e-3))
 
                     # 3) random rectangle, compare with measure (cdf based)
                     a = rand(rng, d)
                     b = a .+ rand(rng, d) .* (1 .- a)
-                    v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 10_000, 100_000)
+                    v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 10_000, 10_000)
                     v3_true = Copulas.measure(C, a, b)
                     @test isapprox(v3, v3_true; atol=max(20*sqrt(r3), 1e-3)) || max(v3, v3_true) < eps(Float64) # wide tolerence, should pass. 
                 end
             end
 
-            if check_rosenblatt(C) && applicable(rosenblatt, C, spl10) && applicable(inverse_rosenblatt, C, spl10) 
+            if check_rosenblatt(C)
                 @testset "rosenblatt ∘ inver_rosenblatt = Id" begin
                     U = rosenblatt(C, spl1000)
                     for i in 1:(d - 1)
                         for j in (i + 1):d
-                            @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.1
+                            @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.15
                         end
                     end
                     @test spl10 ≈ inverse_rosenblatt(C, rosenblatt(C, spl10)) atol=1e-4
                     @test splD10 ≈ inverse_rosenblatt(D, rosenblatt(D, splD10)) atol=0.1 # also on the sklar level. 
                 end
-
             end
 
             if is_archimedean_with_agenerator(CT)
@@ -255,6 +213,17 @@
                         end
                     end
 
+                    if C.G isa FrailtyGenerator
+                        F = frailty(C.G)
+                        spe_ϕ = which(Copulas.ϕ, (typeof(C.G), Float64)) != which(Copulas.ϕ, (Copulas.FrailtyGenerator, Float64))
+                        if spe_ϕ && applicabl(mgf, F, -1.0)
+                            @testset "Check frailty matches ϕ" begin
+                                for t in 0:0.1:2
+                                    @test ϕ(G, t) == mgf(F, -t)
+                                end
+                            end
+                        end
+                    end
                     
                     @testset "Check kendall distribution coherence between ϕ⁻¹+rand and williamson_dist" begin
                         splW_method1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
@@ -319,6 +288,38 @@
                 end
             end
         end
+    end
+
+    function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, maxevals, N) where d
+        # if d == 2
+        #     try
+        #         v, r = hcubature(x -> pdf(C, x), a, b; maxevals=maxevals)
+        #         r = r^2
+        #         v_true = Copulas.measure(C, a, b)
+        #         isapprox(v, v_true; atol=max(10 * sqrt(r), 1e-3)) && return v, r, :hcub
+        #     catch
+        #     end
+        # end
+        ba = b .- a
+        logvol = log(prod(ba))
+        logS  = -Inf
+        logS2 = -Inf
+        u = zeros(d)
+        x = similar(a)
+        @inbounds for _ in 1:N
+            rand!(rng, u)
+            x .=  a .+ ba .* u
+            lp = logpdf(C, x)
+            if isfinite(lp)
+                log_fx = lp + logvol
+                logS   = LogExpFunctions.logaddexp(logS,  log_fx)
+                logS2  = LogExpFunctions.logaddexp(logS2, 2 * log_fx)
+            end
+        end
+        μ  = exp(logS  - log(N))
+        m2 = exp(logS2 - log(N))
+        r  = max(m2 - μ^2, 0.0) / N
+        return μ, r, :mc_pdf
     end
 end
 

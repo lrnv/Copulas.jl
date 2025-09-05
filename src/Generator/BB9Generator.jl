@@ -25,13 +25,14 @@ struct BB9Generator{T} <: Generator
     function BB9Generator(θ, δ)
         (θ ≥ 1) || throw(ArgumentError("θ must be ≥ 1"))
         (δ > 0) || throw(ArgumentError("δ must be > 0"))
+        θ, δ, _ = promote(θ, δ, 1.0)
         new{typeof(θ)}(θ, δ)
     end
 end
 
 const BB9Copula{d, T} = ArchimedeanCopula{d, BB9Generator{T}}
 BB9Copula(d, θ, δ) = ArchimedeanCopula(d, BB9Generator(θ, δ))
-Distributions.params(C::BB9Copula) = (C.G.θ, C.G.δ)
+Distributions.params(G::BB9Generator) = (G.θ, G.δ)
 max_monotony(::BB9Generator) = Inf
 
 ϕ(  G::BB9Generator, s) = begin

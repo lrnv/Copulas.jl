@@ -28,6 +28,7 @@ struct MOCopula{P} <: ExtremeValueCopula{P}
             throw(ArgumentError("All λ parameters must be >= 0"))
         end
         a, b = λ₁ / (λ₁ + λ₁₂), λ₂ / (λ₂ + λ₁₂)
+        a, b, _ = promote(a, b, 1.0)
         return new{typeof(a)}(a,b)
     end
 end

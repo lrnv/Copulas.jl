@@ -58,10 +58,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{
     Distributions._rand!(rng,C.C,x)
     reverse!(x, C.indices)
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,VI}, A::DenseMatrix{T}) where {d,CT,VI,T}
-    Distributions._rand!(rng,C.C,A)
-    reverse!(A,C.indices)
-end
 function Distributions.fit(T::Type{CT},u) where {CT <: SurvivalCopula}
     # d = size(u,1)
     d,subCT,indices = T.parameters

@@ -46,7 +46,7 @@ struct AsymMixedCopula{P} <: ExtremeValueCopula{P}
         elseif θ[1] == 0 && θ[2] == 0
             return IndependentCopula(2)
         else
-            return new{P}(θ)
+            return new{P}(collect(promote(θ..., 1.0))[1:end-1])
         end
     end
 end

@@ -74,7 +74,8 @@ module Copulas
     # Archimedean generators
     include("Generator.jl")
     include("ArchimedeanCopula.jl")
-
+    include("Generator/FrailtyGenerator.jl")
+    
     include("Generator/AMHGenerator.jl")
     include("Generator/BB1Generator.jl")
     include("Generator/BB2Generator.jl")

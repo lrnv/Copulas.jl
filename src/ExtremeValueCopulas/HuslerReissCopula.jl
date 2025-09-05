@@ -34,6 +34,7 @@ struct HuslerReissCopula{P} <: ExtremeValueCopula{P}
         elseif θ == Inf
             return MCopula(2)
         else
+            θ, _ = promote(θ, 1.0)
             return new{typeof(θ)}(θ)
         end
     end

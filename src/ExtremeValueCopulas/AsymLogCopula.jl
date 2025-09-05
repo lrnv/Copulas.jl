@@ -31,6 +31,7 @@ struct AsymLogCopula{P} <: ExtremeValueCopula{P}
         elseif  !(0 <= θ[1] <= 1)  || !(0 <= θ[2] <= 1)  
             throw(ArgumentError("All parameters θ must be in the interval [0, 1]"))
         else
+            α, θ1, θ2, _ = promote(α, θ[1], θ[2], 1.0)
             return new{P}(α, θ[1],θ[2])
         end
     end
