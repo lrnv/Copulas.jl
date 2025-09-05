@@ -72,3 +72,4 @@ function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
     end
 end
 williamson_dist(G::JoeGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Sibuya(1/G.θ), Val{d}())
+frailty_dist(G::JoeGenerator) = Sibuya(1/G.θ)

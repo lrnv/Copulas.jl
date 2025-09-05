@@ -36,6 +36,7 @@ struct LogCopula{P} <: ExtremeValueCopula{P}
         end
     end
 end
+Distributions.params(C::LogCopula) = (C.θ)
 # #  specific ℓ funcion of LogCopula
 function ℓ(G::LogCopula, t₁, t₂)
     θ = G.θ

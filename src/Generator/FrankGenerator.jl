@@ -50,7 +50,7 @@ function ϕ⁽ᵏ⁾(G::FrankGenerator, ::Val{k}, t) where k
 end
 ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
 williamson_dist(G::FrankGenerator, ::Val{d}) where d = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
-
+frailty_dist(G::FrankGenerator) = G.θ > 0 ? Logarithmic(-G.θ) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val(2))
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
 function _frank_tau(θ)
     T = promote_type(typeof(θ),Float64)

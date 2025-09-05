@@ -71,7 +71,7 @@ end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
 williamson_dist(G::BB3Generator, ::Val{d}) where d = WilliamsonFromFrailty(PosStableStoppedGamma(G.θ, G.δ), Val{d}())
-
+frailty_dist(G::BB3Generator) = PosStableStoppedGamma(G.θ, G.δ)
 @inline function _clipu_bb3(u::Real, θ::Real, δ::Real)
     tmax = (log(floatmax(Float64)) - 8.0) / δ
     ϵθδ = exp(-tmax^(inv(θ)))

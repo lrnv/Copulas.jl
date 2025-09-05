@@ -136,6 +136,14 @@ module Copulas
            MOCopula,
            tEVCopula
 
+    include("ArchimaxCopula.jl")
+    include("MiscellaneousCopulas/BB4Copula.jl")
+    include("MiscellaneousCopulas/BB5Copula.jl")
+
+    export ArchimaxCopula,
+           BB4Copula,
+           BB5Copula
+
     # Subsetting
     include("SubsetCopula.jl") # not exported yet.
 

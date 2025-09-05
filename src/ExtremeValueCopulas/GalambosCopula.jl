@@ -40,7 +40,7 @@ struct GalambosCopula{P} <: ExtremeValueCopula{P}
         end
     end
 end
-
+Distributions.params(C::GalambosCopula) = (C.θ)
 A(C::GalambosCopula, t::Real) = -expm1(-LogExpFunctions.logaddexp(-C.θ*log(t),-C.θ*log(1-t))/C.θ)
 # This auxiliary function helps determine if we need binary search or not in the generation of random samples
 function needs_binary_search(C::GalambosCopula)
