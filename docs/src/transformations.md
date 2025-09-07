@@ -12,11 +12,11 @@ SurvivalCopula
 
 ## `SubsetCopula`
 
-```@docs
+```@docs; canonical = false
 Copulas.subsetdims
 ```
 
-```@docs
+```@docs; canonical = false
 Copulas.SubsetCopula
 ```
 

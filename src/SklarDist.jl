@@ -64,7 +64,7 @@ end
 function Distributions.fit(::Type{SklarDist{CT,TplMargins}},x) where {CT,TplMargins}
     # The first thing to do is to fit the marginals : 
     @assert length(TplMargins.parameters) == size(x,1)
-    m = Tuple(Distributions.fit(TplMargins.parameters[i],x[i,:]) for i in 1:size(x,1))
+    m = Tuple(Distributions.fit(TplMargins.parameters[i],x[i,:]) for i in axes(x,1))
     u = pseudos(x)
     C = Distributions.fit(CT,u)
     return SklarDist(C,m)

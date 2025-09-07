@@ -7,11 +7,25 @@ struct BivEVDistortion{TC,T} <: Distortion
     uⱼ::T
 end
 function Distributions.cdf(D::BivEVDistortion, u::Real)
-    x, y = -log(u), -log(D.uⱼ)
+    uf = clamp(float(u), 0.0, 1.0)
+    uf <= 0.0 && return 0.0
+    uf >= 1.0 && return 1.0
+    v = clamp(float(D.uⱼ), 0.0, 1.0)
+    # Handle degenerate conditioning boundaries: as v -> 0, H_{i|j}(u|v) -> u
+    if v <= 0.0
+        return uf
+    end
+    x, y = -log(uf), -log(v)
     w = x / (x + y)
-    Aw, dAw = A(D.C, w), dA(D.C, w)
-    u = D.j ==2 ? w : 1-w
-    return clamp(exp(- (x + y) * Aw + y) * (Aw - u * dAw), 0, 1)
+    Aw = A(D.C, w)
+    dAw = dA(D.C, w)
+    if D.j == 2
+        # H_{1|2}(u|v) = ∂_2 C(u,v) = exp(-(x+y)A + y) * (A - w A')
+        return clamp(exp(- (x + y) * Aw + y) * (Aw - w * dAw), 0.0, 1.0)
+    else
+        # H_{2|1}(v|u) = ∂_1 C(u,v) = exp(-(x+y)A + x) * (A + (1-w) A')
+        return clamp(exp(- (x + y) * Aw + x) * (Aw + (1 - w) * dAw), 0.0, 1.0)
+    end
 end
 
 ###########################################################################

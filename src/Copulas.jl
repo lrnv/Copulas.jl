@@ -100,6 +100,7 @@ module Copulas
     include("Generator/GumbelGenerator.jl")
     include("Generator/InvGaussianGenerator.jl")
     include("Generator/JoeGenerator.jl")
+    include("Generator/TiltedGenerator.jl")
     include("Generator/WilliamsonGenerator.jl")
     export WilliamsonGenerator, 
            i𝒲, 
@@ -118,6 +119,7 @@ module Copulas
            GumbelBarnettCopula,
            GumbelCopula,
            InvGaussianCopula,
+           TiltedGenerator,
            JoeCopula
 
     # Bivariate Extreme Value Copulas

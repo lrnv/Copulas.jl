@@ -1,11 +1,6 @@
 ###########################################################################
 #####  GaussianCopula fast-paths
 ###########################################################################
-"""
-    GaussianDistortion(μz, σz) <: Distortion
-
-Uniform-scale distortion coming from a conditional Gaussian latent variable.
-"""
 struct GaussianDistortion{T} <: Distortion
     μz::T
     σz::T

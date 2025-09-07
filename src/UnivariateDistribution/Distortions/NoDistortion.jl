@@ -1,15 +1,6 @@
 ###########################################################################
 #####  Identity distortion (used e.g. by IndependentCopula)
 ###########################################################################
-"""
-    NoDistortion() <: Distortion
-
-Identity uniform-scale distortion: cdf(u) = u, quantile(α) = α on [0,1].
-
-Notes
-- Acts as the identity map on UnivariateDistribution: D(X) == X.
-- When applied to Uniform(0,1), it returns itself which behaves as Uniform.
-"""
 struct NoDistortion <: Distortion end
 
 # Distribution interface on [0,1]

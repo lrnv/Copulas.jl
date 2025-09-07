@@ -67,7 +67,7 @@ by `ConditionalCopula(C, J, u_J)` and used internally by `condition`.
 #### Example (uniform scale, D = 2)
 
 ```@example cond1
-using Copulas
+using Copulas, Distributions
 C = ClaytonCopula(2, 1.5)
 D = condition(C, 2, 0.3)  # distortion for U₁ | U₂ = 0.3
 cdf(D, 0.7), quantile(D, 0.9)
@@ -75,8 +75,7 @@ cdf(D, 0.7), quantile(D, 0.9)
 
 #### Example (original scale via SklarDist)
 
-```@example cond2
-using Copulas, Distributions
+```@example cond1
 C = ClaytonCopula(2, 1.5)
 X = SklarDist(C, (Normal(), Normal()))
 X1_given_X2 = condition(X, 2, 0.0) # distribution of X₁ | X₂ = 0.0
@@ -85,7 +84,7 @@ cdf(X1_given_X2, 1.0), quantile(X1_given_X2, 0.95)
 
 #### Example (uniform scale, D = 3, |J| = 2)
 
-```@example cond3
+```@example cond1
 C = ClaytonCopula(3, 1.2)
 H = condition(C, (2, 3), (0.25, 0.8))
 cdf(H, [0.4, 0.6])
@@ -129,6 +128,18 @@ H = condition(C, js, u_js)  # returns a SklarDist
 H.C                    # the conditional copula
 H.m                    # a Tuple containing the distorded marginals. 
 ```
+
+### Implementation
+
+```@docs
+condition
+Distortion
+DistortionFromCop
+DistortedDist
+ConditionalCopula
+```
+
+On top of this main implementation, there are fast-paths for some copulas that are implemented.
 
 ### See also
 
@@ -204,7 +215,7 @@ remaining coordinates are kept) or a further `SubsetCopula` of it.
 
 ### Examples
 
-```@example subset3
+```@example subset1
 # Archimedean example
 C = ClaytonCopula(3, 2.0)
 S = subsetdims(C, (1,2))        # still a ClaytonCopula with the same parameter
@@ -212,7 +223,7 @@ rand(S, 3)                      # sample 3 points
 cdf(S, [0.7, 0.9])
 ```
 
-```@example subset4
+```@example subset1
 # Survival example with flips remapped
 base = GaussianCopula([1.0 0.7 0.2; 0.7 1.0 0.1; 0.2 0.1 1.0])
 S = SurvivalCopula(base, (2,))
@@ -222,9 +233,6 @@ typeof(S13), S13 isa SurvivalCopula
 
 ```@docs
 Copulas.subsetdims
-```
-
-```@docs
 Copulas.SubsetCopula
 ```
 
