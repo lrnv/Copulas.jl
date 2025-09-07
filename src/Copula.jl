@@ -1,15 +1,6 @@
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 Base.broadcastable(C::Copula) = Ref(C)
 Base.length(::Copula{d}) where d = d
-
-# The potential functions to code:
-# Distributions._logpdf
-# Distributions.cdf
-# Distributions.fit(::Type{CT},u) where CT<:Mycopula
-# Distributions._rand!
-# Base.eltype
-# τ, τ⁻¹
-# Base.eltype
 function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
     length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     if any(iszero,u)

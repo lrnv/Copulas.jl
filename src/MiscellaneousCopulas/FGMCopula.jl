@@ -90,3 +90,35 @@ function ρ⁻¹(::Type{FGMCopula}, ρ)
     end
     return max.(min.(3 * ρ, 1), -1)
 end
+
+# Subsetting colocated
+function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int64}) where {d,Tθ,Tf,p}
+    if p==2
+        i = 1
+        for indices in Combinatorics.combinations(1:d, 2)
+            all(indices .∈ Ref(dims)) && return FGMCopula(2,C.θ[i])
+            i = i+1
+        end
+        @error("Somethings wrong...")
+    end
+    # Build mapping to gather θ' in the canonical order for dimension p
+    combos_by_k = [collect(Combinatorics.combinations(1:d, k)) for k in 2:d]
+    offs = Vector{Int}(undef, d)
+    offs[1] = 0  # unused for k=1
+    acc = 0
+    for k in 2:d
+        offs[k] = acc
+        acc += length(combos_by_k[k-2+1])
+    end
+    θ′ = Vector{eltype(C.θ)}()
+    for k in 2:p
+        for pos_combo in Combinatorics.combinations(1:p, k)
+            orig_combo = Tuple(dims[i] for i in pos_combo)
+            list_k = combos_by_k[k-2+1]
+            idx_in_k = findfirst(==(orig_combo), list_k)
+            @assert idx_in_k !== nothing
+            push!(θ′, C.θ[offs[k] + idx_in_k])
+        end
+    end
+    return FGMCopula(p, θ′)
+end

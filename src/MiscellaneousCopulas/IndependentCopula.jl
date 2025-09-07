@@ -37,3 +37,14 @@ inverse_rosenblatt(::IndependentCopula{d}, u::AbstractMatrix{<:Real}) where {d} 
 ρ(::IndependentCopula) = 0
 StatsBase.corkendall(::IndependentCopula{d}) where d = one(zeros(d,d))
 StatsBase.corspearman(::IndependentCopula{d}) where d = one(zeros(d,d))
+
+# Conditioning colocated
+@inline DistortionFromCop(::IndependentCopula, ::NTuple{p,Int64}, ::NTuple{p,T}, ::Int64) where {p,T} = NoDistortion()
+@inline ConditionalCopula(::IndependentCopula{D}, js, u) where D = IndependentCopula(D - length(js))
+function condition(::IndependentCopula{D}, js::NTuple{p, Int64}, uⱼₛ::NTuple{p, T}) where {D, p, T}
+    d = D - length(js)
+    return d==1 ? Distributions.Uniform() : SklarDist(IndependentCopula(d), ntuple(_->Distributions.Uniform(), d))
+end
+
+# Subsetting colocated
+SubsetCopula(::IndependentCopula{d}, ::NTuple{p, Int64}) where {d, p} = IndependentCopula(p)

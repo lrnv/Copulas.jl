@@ -29,3 +29,6 @@ end
 ρ(::WCopula) = -1
 StatsBase.corkendall(::WCopula) = [1 -1; -1 1]
 StatsBase.corspearman(::WCopula) = [1 -1; -1 1]
+
+# Subsetting colocated
+SubsetCopula(::WCopula, ::NTuple{p, Int64}) where {p} = (p==2 ? C : error("WCopula only defined for p=2"))

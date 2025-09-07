@@ -24,8 +24,12 @@ module Copulas
     include("utils.jl")
     include("Copula.jl")
     include("SklarDist.jl")
+    include("Subsetting.jl")
     export pseudos,
-           SklarDist
+           SklarDist,
+           rosenblatt,
+           inverse_rosenblatt, 
+           subsetdims
 
     # Others.
     include("MiscellaneousCopulas/SurvivalCopula.jl")
@@ -54,28 +58,31 @@ module Copulas
            MCopula, 
            WCopula
 
-    # These three distributions might be merged in Distrbutions.jl one day.
-    include("UnivariateDistribution/Sibuya.jl")
-    include("UnivariateDistribution/Logarithmic.jl")
-    include("UnivariateDistribution/AlphaStable.jl")
-    include("UnivariateDistribution/ClaytonWilliamsonDistribution.jl")
-    include("UnivariateDistribution/WilliamsonFromFrailty.jl")
-    include("UnivariateDistribution/ExtremeDist.jl")
-    include("UnivariateDistribution/PStable.jl")
-    include("UnivariateDistribution/TiltedPositiveStable.jl")
-    include("UnivariateDistribution/PosStableStoppedGamma.jl")
-    include("UnivariateDistribution/GammaStoppedGamma.jl")
-    include("UnivariateDistribution/GammaStoppedPositiveStable.jl")
-    include("UnivariateDistribution/SibuyaStoppedGamma.jl")
-    include("UnivariateDistribution/SibuyaStoppedPosStable.jl")
-    include("UnivariateDistribution/GeneralizedSibuya.jl")
-    include("UnivariateDistribution/ShiftedNegBin.jl")
+    # Frailties
+    include("UnivariateDistribution/Frailties/Sibuya.jl")
+    include("UnivariateDistribution/Frailties/Logarithmic.jl")
+    include("UnivariateDistribution/Frailties/AlphaStable.jl")
+    include("UnivariateDistribution/Frailties/GammaStoppedGamma.jl")
+    include("UnivariateDistribution/Frailties/GammaStoppedPositiveStable.jl")
+    include("UnivariateDistribution/Frailties/PosStableStoppedGamma.jl")
+    include("UnivariateDistribution/Frailties/SibuyaStoppedGamma.jl")
+    include("UnivariateDistribution/Frailties/SibuyaStoppedPosStable.jl")
+    include("UnivariateDistribution/Frailties/GeneralizedSibuya.jl")
+    include("UnivariateDistribution/Frailties/ShiftedNegBin.jl")
 
-    # Archimedean generators
+    # Radials (Williamson transforms etc.)
+    include("UnivariateDistribution/Radials/ExtremeDist.jl")
+    include("UnivariateDistribution/Radials/PStable.jl")
+    include("UnivariateDistribution/Radials/TiltedPositiveStable.jl")
+    include("UnivariateDistribution/Radials/ClaytonWilliamsonDistribution.jl")
+    include("UnivariateDistribution/Radials/WilliamsonFromFrailty.jl")
+
+    # Archimedean mechanics
     include("Generator.jl")
     include("ArchimedeanCopula.jl")
     include("Generator/FrailtyGenerator.jl")
     
+    # Archimedean Generators
     include("Generator/AMHGenerator.jl")
     include("Generator/BB1Generator.jl")
     include("Generator/BB2Generator.jl")
@@ -111,7 +118,7 @@ module Copulas
            InvGaussianCopula,
            JoeCopula
 
-    # bivariate Extreme Value Copulas
+    # Bivariate Extreme Value Copulas
     include("ExtremeValueCopula.jl")
     include("ExtremeValueCopulas/AsymGalambosCopula.jl")
     include("ExtremeValueCopulas/AsymLogCopula.jl")
@@ -137,11 +144,20 @@ module Copulas
            MOCopula,
            tEVCopula
 
-    # Subsetting
-    include("SubsetCopula.jl") # not exported yet.
-
-    # transformations
-    export rosenblatt, inverse_rosenblatt
+    # Conditional distributions (uniform/original scales)
+    include("Conditioning.jl")
+    include("UnivariateDistribution/Distortions/NoDistortion.jl")
+    include("UnivariateDistribution/Distortions/GaussianDistortion.jl")
+    include("UnivariateDistribution/Distortions/StudentDistortion.jl")
+    include("UnivariateDistribution/Distortions/BivEVDistortion.jl")
+    include("UnivariateDistribution/Distortions/PlackettDistortion.jl")
+    include("UnivariateDistribution/Distortions/BivFGMDistortion.jl")
+    include("UnivariateDistribution/Distortions/MDistortion.jl")
+    include("UnivariateDistribution/Distortions/WDistortion.jl")
+    include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
+    include("UnivariateDistribution/Distortions/FlipDistortion.jl")
+    include("UnivariateDistribution/Distortions/SubsetBindings.jl")
+    export condition
 
     using PrecompileTools
     @setup_workload begin

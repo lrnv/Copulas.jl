@@ -54,4 +54,3 @@ function Distributions.rand(rng::Distributions.AbstractRNG, d::AlphaStable{T}) w
 end
 
 Base.eltype(::Type{<:AlphaStable{T}}) where {T<:AbstractFloat} = T
-
