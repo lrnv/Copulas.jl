@@ -204,3 +204,52 @@ function condition(X::SklarDist, js, xⱼₛ)
 end
 @inline condition(CX::T, j::Int, xⱼ::Real) where T<:Union{Copula, SklarDist} = condition(CX, (Int(j),), (float(xⱼ),))
 
+
+###########################################################################
+#####  Generic Rosenblatt and inverse Rosenblatt via conditioning
+###########################################################################
+"""
+    rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where d
+
+Generic Rosenblatt transform using conditional distortions:
+S₁ = U₁, S_k = H_{k|1:(k-1)}(U_k | U₁:U_{k-1}).
+Specialized families may provide faster overrides.
+"""
+function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
+    size(u, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    v = similar(u)
+    @inbounds for j in axes(u, 2)
+        # First coordinate is unchanged
+        v[1, j] = clamp(float(u[1, j]), 0.0, 1.0)
+        for k in 2:d
+            js = ntuple(i -> i, k - 1)
+            ujs = ntuple(i -> float(u[i, j]), k - 1)  # condition on original u's
+            Dk = DistortionFromCop(C, js, ujs, k)
+            v[k, j] = Distributions.cdf(Dk, clamp(float(u[k, j]), 0.0, 1.0))
+        end
+    end
+    return v
+end
+
+"""
+    inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where d
+
+Generic inverse Rosenblatt using conditional distortions:
+U₁ = S₁, U_k = H_{k|1:(k-1)}^{-1}(S_k | U₁:U_{k-1}).
+Specialized families may provide faster overrides.
+"""
+function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}
+    size(s, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    v = similar(s)
+    @inbounds for j in axes(s, 2)
+        v[1, j] = clamp(float(s[1, j]), 0.0, 1.0)
+        for k in 2:d
+            js = ntuple(i -> i, k - 1)
+            ujs = ntuple(i -> float(v[i, j]), k - 1)  # use already reconstructed U's
+            Dk = DistortionFromCop(C, js, ujs, k)
+            v[k, j] = Distributions.quantile(Dk, clamp(float(s[k, j]), 0.0, 1.0))
+        end
+    end
+    return v
+end
+

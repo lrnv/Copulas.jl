@@ -90,6 +90,11 @@ function measure(C::Copula{d}, u,v) where {d}
     return max(r,0)
 end
 
+######## Rosenblat transform and its inverse. 
+# The two functions below a only wrappers to move from abstractvector to matrix inputs. 
+# The function that needs to be imlemented by copulas is a matrix input ones. 
+# A generic version is given in Conditioning.jl
+
 """
     rosenblatt(C::Copula, u)
 
