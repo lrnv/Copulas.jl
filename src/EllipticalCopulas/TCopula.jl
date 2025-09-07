@@ -77,7 +77,7 @@ end
     return StudentDistortion(float(μz), float(σz), Int(ν), Int(νp))
 end
 @inline function ConditionalCopula(C::TCopula{D,df,MT}, js, uⱼₛ) where {D,df,MT}
-    p = length(js); J = collect(Int, js); I = collect(setdiff(1:D, J)); Σ = C.Σ
+    p = length(js); J = collect(Int64, js); I = collect(setdiff(1:D, J)); Σ = C.Σ
     if p == 1
         Σcond = Σ[I, I] - Σ[I, J] * (Σ[J, I] / Σ[J, J])
     else

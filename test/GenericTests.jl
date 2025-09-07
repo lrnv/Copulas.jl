@@ -180,8 +180,8 @@
                                         @test isapprox(v, r, atol=1e-3, rtol=1e-3)
                                     end
                                     # Compare fast path vs generic fallback only if a specialization exists
-                                    m_fast = which(Copulas.DistortionFromCop, (CT,                NTuple{1,Int}, NTuple{1,Float64}, Int))
-                                    m_gen  = which(Copulas.DistortionFromCop, (Copulas.Copula{2}, NTuple{1,Int}, NTuple{1,Float64}, Int))
+                                    m_fast = which(Copulas.DistortionFromCop, (CT,                NTuple{1,Int64}, NTuple{1,Float64}, Int64))
+                                    m_gen  = which(Copulas.DistortionFromCop, (Copulas.Copula{2}, NTuple{1,Int64}, NTuple{1,Float64}, Int64))
                                     if m_fast != m_gen
                                         Dgen = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (Float64(v),), i)
                                         vals2 = cdf.(Ref(Dgen), us)
@@ -239,12 +239,12 @@
                         js_t = Tuple(js); ujs_t = Tuple(ujs)
                         # Small epsilon to avoid boundary artifacts at 1.0
                         EPS = 1e-9
-                        Hi_local = function (i::Int, u::Float64)
+                        Hi_local = function (i::Int64, u::Float64)
                             num = _der(uvec -> cdf(C, uvec), _assemble(d, (i,), js_t, (u,), ujs_t), js_t)
                             den = _der(uvec -> cdf(C, uvec), _assemble(d, (i,), js_t, (1.0 - EPS,), ujs_t), js_t)
                             return num / den
                         end
-                        invHi_local = function (i::Int, α::Float64)
+                        invHi_local = function (i::Int64, α::Float64)
                             f(u) = Hi_local(i, u) - α
                             a, b = EPS, 1.0 - EPS
                             try
@@ -481,7 +481,7 @@
 
     # AD-based reference for the univariate conditional CDF H_{i|j}(u | U_j=v)
     # Theory (Sklar): H_{i|j}(u|v) = (∂_j C)(..., u_i=u, u_j=v) / (∂_j C)(..., u_i=1, u_j=v).
-    function ad_ratio_biv(C2::Copulas.Copula{2}, i::Int, j::Int, u::Float64, v::Float64)
+    function ad_ratio_biv(C2::Copulas.Copula{2}, i::Int64, j::Int64, u::Float64, v::Float64)
         # For a bivariate copula, the denominator is always one.
         @assert (i == 1 && j == 2) || (i == 2 && j == 1)
         if j == 2
@@ -504,14 +504,14 @@
         return w
     end
     # Promote vector element type when replacing index i with a dual-valued x
-    function _swap_promote(u::AbstractVector, i::Int, x)
+    function _swap_promote(u::AbstractVector, i::Int64, x)
         T = promote_type(eltype(u), typeof(x))
         v = Vector{T}(undef, length(u))
         @inbounds for k in eachindex(u); v[k] = u[k]; end
         v[i] = x
         return v
     end
-    function _der(f, u::AbstractVector, idxs::Tuple{Vararg{Int}})
+    function _der(f, u::AbstractVector, idxs::Tuple{Vararg{Int64}})
         if length(idxs) == 1
             i = idxs[1]
             return ForwardDiff.derivative(x -> f(_swap_promote(u, i, x)), u[i])

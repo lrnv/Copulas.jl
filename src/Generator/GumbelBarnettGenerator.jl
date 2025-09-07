@@ -110,7 +110,7 @@ end
 # starting_point(::Val{n}) where n = leftmost_critical_point(Val{n+1}())
 # last_summit(::Val{n}) where n = _fₙ(leftmost_critical_point(Val{n}()), Val{n}())
 
-# function _fₙ(x, ::Val{n}, s2::NTuple{n, Int}=ntuple(i->stirlings2(n, i), n)) where n
+# function _fₙ(x, ::Val{n}, s2::NTuple{n, Int64}=ntuple(i->stirlings2(n, i), n)) where n
 #     n==1 && return exp(x)
 #     return x*evalpoly(x, s2) * exp(x)
 # end

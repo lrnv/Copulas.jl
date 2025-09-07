@@ -76,7 +76,7 @@ function ConditionalCopula(S::SurvivalCopula{D,CT,VI}, js, uⱼₛ) where {D,CT,
     flips = S.indices
     uⱼₛ′ = Tuple(j in flips ? 1 - float(u) : float(u) for (j,u) in zip(js, uⱼₛ))
     CC_base = ConditionalCopula(S.C, js, uⱼₛ′)
-    I = Tuple(setdiff(1:D, Tuple(collect(Int, js))))
+    I = Tuple(setdiff(1:D, Tuple(collect(Int64, js))))
     flip_positions = Tuple(p for (p, idx) in enumerate(I) if idx in flips)
     return (length(flip_positions) == 0) ? CC_base : SurvivalCopula(CC_base, flip_positions)
 end

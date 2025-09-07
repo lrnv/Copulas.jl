@@ -6,7 +6,7 @@ Fields:
 
 Constructor:
 
-    ArchimedeanCopula(d::Int,G::Generator)
+    ArchimedeanCopula(d::Int64,G::Generator)
 
 For some Archimedean [`Generator`](@ref) `G::Generator` and some dimenson `d`, this class models the archimedean copula which has this generator. The constructor checks for validity by ensuring that `max_monotony(G) ≥ d`. The ``d``-variate archimedean copula with generator ``\\phi`` writes:
 
@@ -43,13 +43,13 @@ References:
 """
 struct ArchimedeanCopula{d,TG} <: Copula{d}
     G::TG
-    function ArchimedeanCopula(d::Int,G::Generator)
+    function ArchimedeanCopula(d::Int64,G::Generator)
         @assert d <= max_monotony(G) "The generator $G you provided is not $d-monotonous since it has max monotonicity $(max_monotony(G)), and thus this copula does not exists."
         return new{d,typeof(G)}(G)
     end
-    ArchimedeanCopula(d::Int, ::IndependentGenerator) = IndependentCopula(d)
-    ArchimedeanCopula(d::Int, ::MGenerator) = MCopula(d)
-    ArchimedeanCopula(d::Int, ::WGenerator) = WCopula(d)
+    ArchimedeanCopula(d::Int64, ::IndependentGenerator) = IndependentCopula(d)
+    ArchimedeanCopula(d::Int64, ::MGenerator) = MCopula(d)
+    ArchimedeanCopula(d::Int64, ::WGenerator) = WCopula(d)
     ArchimedeanCopula{d,TG}(θ) where {d, TG} = ArchimedeanCopula(d, TG(θ))
 end
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 

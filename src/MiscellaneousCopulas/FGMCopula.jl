@@ -103,7 +103,7 @@ function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int64}) where {d,T
     end
     # Build mapping to gather θ' in the canonical order for dimension p
     combos_by_k = [collect(Combinatorics.combinations(1:d, k)) for k in 2:d]
-    offs = Vector{Int}(undef, d)
+    offs = Vector{Int64}(undef, d)
     offs[1] = 0  # unused for k=1
     acc = 0
     for k in 2:d
