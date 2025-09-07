@@ -21,9 +21,8 @@ Distributions.minimum(::Distortion) = 0.0
 Distributions.maximum(::Distortion) = 1.0
 function Distributions.quantile(d::Distortion, α::Real) 
     T = typeof(float(α))
-    a = eps(T); b = one(T) - eps(T)
     f(u) = Distributions.cdf(d, u) - T(α)
-    return Roots.find_zero(f, (a, b), Roots.Bisection(); xtol = sqrt(eps(T)))
+    return Roots.find_zero(f, (0, 1), Roots.Bisection(); xtol = sqrt(eps(T)))
 end
 
 """
