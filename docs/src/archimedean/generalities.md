@@ -218,7 +218,7 @@ ArchimedeanCopula
 TODO: Make a few graphs of bivariate archimedeans pdfs and cdfs. And provide a few more standard tools for these copulas ? 
 -->
 
-# Liouville Copulas
+## Liouville Copulas
 
 !!! todo "Not merged yet !"
     Liouville copulas are coming in this PR : https://github.com/lrnv/Copulas.jl/pull/83, but the work is not finished. 
