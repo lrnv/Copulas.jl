@@ -48,12 +48,4 @@ end
     y = ϕ⁽ᵏ⁾⁻¹(D.G, Val{p}(), α * D.den; start_at = D.sJ)
     return ϕ(D.G, y - D.sJ)
 end
-function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {p}
-    @assert length(js) == length(uⱼₛ)
-    sJ = zero(eltype(uⱼₛ))
-    @inbounds for u in uⱼₛ
-        sJ += ϕ⁻¹(C.G, float(u))
-    end
-    return ArchimedeanDistortion(C.G, p, float(sJ))
-end
 ## ConditionalCopula moved next to ArchimedeanCopula definition
