@@ -21,9 +21,13 @@ Distributions.minimum(::Distortion) = 0.0
 Distributions.maximum(::Distortion) = 1.0
 function Distributions.quantile(d::Distortion, α::Real) 
     T = typeof(float(α))
-    f(u) = Distributions.cdf(d, u) - T(α)
+    lα = log(T(α))
+    f(u) = Distributions.logcdf(d, u) - lα
     return Roots.find_zero(f, (0, 1), Roots.Bisection(); xtol = sqrt(eps(T)))
 end
+# You have to implement one of these two: 
+Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
+Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
 
 """
     DistortionFromCop{TC,p,T} <: Distortion
