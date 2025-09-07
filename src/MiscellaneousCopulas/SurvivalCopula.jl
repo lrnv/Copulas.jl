@@ -82,15 +82,6 @@ function ConditionalCopula(S::SurvivalCopula{D,CT,VI}, js, uⱼₛ) where {D,CT,
 end
 
 # Subsetting colocated: subset and remap flipped indices to the new positions
-function SubsetCopula(C::SurvivalCopula{d,CT,VI}, dims::NTuple{p, Int64}) where {d,CT,VI,p}
-    base_sub = subsetdims(C.C, dims)
-    # Keep only flips that fall inside dims, remap original indices to 1:p
-    new_idx = Int[]
-    for k in C.indices
-        pos = findfirst(==(k), dims)
-        if pos !== nothing
-            push!(new_idx, pos)
-        end
-    end
-    return SurvivalCopula(base_sub, Tuple(new_idx))
+function SubsetCopula(C::SurvivalCopula{d, CT,VI}, dims::NTuple{p, Int64}) where {d,CT,VI,p}
+    return SurvivalCopula(subsetdims(C.C, dims), Tuple(setdiff(C.indices, setdiff(1:d,dims))))
 end
