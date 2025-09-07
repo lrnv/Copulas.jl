@@ -85,7 +85,7 @@ function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int64}) where {d,
     return SubsetCopula(CS.C, ntuple(i -> CS.dims[dims2[i]], p))
 end
 
-@inline function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,T}, i::Int64) where {p,T}
+@inline function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {p}
     ibase = S.dims[i]
     jsbase = ntuple(k -> S.dims[js[k]], p)
     return DistortionFromCop(S.C, jsbase, uⱼₛ, ibase)

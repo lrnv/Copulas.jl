@@ -43,7 +43,7 @@ StatsBase.corspearman(::IndependentCopula{d}) where d = one(zeros(d,d))
 @inline ConditionalCopula(::IndependentCopula{D}, js, u) where D = IndependentCopula(D - length(js))
 function condition(::IndependentCopula{D}, js::NTuple{p, Int64}, uⱼₛ::NTuple{p, Float64}) where {D, p}
     d = D - length(js)
-    return d==1 ? Distributions.Uniform() : SklarDist(IndependentCopula(d), ntuple(_->Distributions.Uniform(), d))
+    return d==1 ? Distributions.Uniform() : IndependentCopula(d)
 end
 
 # Subsetting colocated

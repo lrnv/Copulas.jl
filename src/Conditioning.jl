@@ -19,6 +19,12 @@ abstract type Distortion<:Distributions.ContinuousUnivariateDistribution end
 (D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X)
 Distributions.minimum(::Distortion) = 0.0
 Distributions.maximum(::Distortion) = 1.0
+function Distributions.quantile(d::Distortion, α::Real) 
+    T = typeof(float(α))
+    a = eps(T); b = one(T) - eps(T)
+    f(u) = Distributions.cdf(d, u) - T(α)
+    return Roots.find_zero(f, (a, b), Roots.Bisection(); xtol = sqrt(eps(T)))
+end
 
 """
         DistortionFromCop{TC,p,T} <: Distortion
@@ -55,10 +61,6 @@ struct DistortionFromCop{TC,p}<:Distortion
 end
 @inline DistortionFromCop(C::Copula{D}, j::Int64, uⱼ::Real, i::Int64) where {D} = DistortionFromCop(C, (Int(j),), (float(uⱼ),), i)
 Distributions.cdf(d::DistortionFromCop, u::Real) = _∂C_∂uⱼₛ(d.C, (d.i,), d.js, (u,), d.uⱼₛ) / d.den
-function Distributions.quantile(d::DistortionFromCop, α::Real) 
-    T = typeof(float(α))
-    return Roots.find_zero(u -> T(α) - cdf(d, u), (zero(T), one(T)), Roots.Bisection(); xtol=sqrt(eps(T)))
-end
 
 @inline function _assemble(D::Int, is, js, uᵢₛ, uⱼₛ)
     Tᵢ = eltype(typeof(uᵢₛ)); Tⱼ = eltype(typeof(uⱼₛ)); T = promote_type(Tᵢ, Tⱼ)
@@ -168,41 +170,22 @@ Notes
     The “conditional copula” is `ConditionalCopula(C, js, u_js)`, i.e., the copula
     of that conditional distribution.
 """
-function condition(C::Copula{D}, js, uⱼₛ) where {D}
-    is = Tuple(setdiff(1:D, js))
-    d = length(is)
-    if d==1
-        jst = isa(js, NTuple) ? js : Tuple(collect(Int, js))
-        ujt = isa(uⱼₛ, NTuple) ? uⱼₛ : Tuple(collect(float.(uⱼₛ)))
-        return DistortionFromCop(C, jst, ujt, is[1])
-    else
-        CCond = ConditionalCopula(C, js, uⱼₛ)
-        jst = isa(js, NTuple) ? js : Tuple(collect(Int, js))
-        ujt = isa(uⱼₛ, NTuple) ? uⱼₛ : Tuple(collect(float.(uⱼₛ)))
-        marg = Tuple(DistortionFromCop(C, jst, ujt, i) for i in is)
-        return SklarDist(CCond, marg)
-    end
+condition(obj::Union{Copula, SklarDist}, j, xⱼ) = condition(obj, Tuple(collect(Int, j)),  Tuple(collect(Float64, xⱼ)))
+function condition(C::Copula{D}, js::NTuple{p, Int64}, uⱼₛ::NTuple{p, Float64}) where {D, p}
+    is = setdiff(1:D, js)
+    margins = Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in is)
+    p==D-1 && return margins[1]
+    return SklarDist(ConditionalCopula(C, js, uⱼₛ), margins)
 end
-@inline function condition(C::Copula{2}, j::Int, uⱼ::Real)
-    @assert j==1 || j==2
-    i = (j==1) ? 2 : 1
-    return DistortionFromCop(C, (Int(j),), (float(uⱼ),), i)
-end
-function condition(X::SklarDist, js, xⱼₛ)
+function condition(X::SklarDist, js::NTuple{p, Int64}, xⱼₛ::NTuple{p, Float64}) where {p}
     D = length(X)
-    jst = Tuple(collect(Int, js))
-    ist = Tuple(setdiff(1:D, jst))
-    d = length(ist)
-    uⱼₛ = Tuple(Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(jst, xⱼₛ))
-    if d==1
-        return DistortionFromCop(X.C, jst, uⱼₛ, ist[1])(X.m[ist[1]])
-    else
-        Ccond = ConditionalCopula(X.C, jst, uⱼₛ)
-        marg = Tuple(DistortionFromCop(X.C, jst, uⱼₛ, i)(X.m[i]) for i in ist)
-        return SklarDist(Ccond, marg)
-    end
+    is = setdiff(1:D, js)
+    uⱼₛ = Tuple(Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ))
+    margins = Tuple(DistortionFromCop(X.C, js, uⱼₛ, i)(X.m[i]) for i in is)
+    p==D-1 && return margins[1]
+    return SklarDist(ConditionalCopula(X.C, js, uⱼₛ), margins)
 end
-@inline condition(CX::T, j::Int, xⱼ::Real) where T<:Union{Copula, SklarDist} = condition(CX, (Int(j),), (float(xⱼ),))
+
 
 
 ###########################################################################

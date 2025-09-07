@@ -156,7 +156,6 @@ module Copulas
     include("UnivariateDistribution/Distortions/WDistortion.jl")
     include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
     include("UnivariateDistribution/Distortions/FlipDistortion.jl")
-    include("UnivariateDistribution/Distortions/SubsetBindings.jl")
     export condition
 
     using PrecompileTools

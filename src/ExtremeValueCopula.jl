@@ -98,8 +98,7 @@ end
 function probability_z(C::ExtremeValueCopula, z)
     num = z*(1 - z)*d²A(C, z)
     dem = A(C, z)*_pdf(ExtremeDist(C), z)
-    p = num / dem
-    return clamp(p, 0.0, 1.0)
+    return num / dem
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula, x::AbstractVector{T}) where {T<:Real}

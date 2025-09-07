@@ -6,29 +6,18 @@ struct PlackettDistortion{T} <: Distortion
     j::Int8
     uⱼ::T
 end
-@inline _plackett_term1(θ, u, v) = (θ - 1) * (u + v) + 1
-@inline function _plackett_sqrtD(θ, u, v)
-    η = θ - 1; t1 = _plackett_term1(θ, u, v)
-    return sqrt(max(t1 * t1 - 4 * θ * η * u * v, 0.0))
-end
-@inline function _dC_dv_plackett(θ, u, v)
-    t1 = _plackett_term1(θ, u, v); sD = _plackett_sqrtD(θ, u, v)
-    return 0.5 * (1 - (t1 - 2 * θ * u) / sD)
-end
-@inline function Distributions.cdf(D::PlackettDistortion, u::Real)
-    θ = D.θ
-    u_i = clamp(float(u), eps(Float64), 1 - eps(Float64))
-    u_j = clamp(float(D.uⱼ), eps(Float64), 1 - eps(Float64))
-    if D.j == 2
-        num = _dC_dv_plackett(θ, u_i, u_j); den = _dC_dv_plackett(θ, 1.0, u_j)
-    else
-        num = _dC_dv_plackett(θ, u_j, u_i); den = _dC_dv_plackett(θ, u_j, 1.0)
-    end
-    r = num / den; return ifelse(r < 0, 0.0, ifelse(r > 1, 1.0, r))
-end
-@inline function Distributions.quantile(D::PlackettDistortion, α::Real)
-    T = Float64; a = zero(T); b = one(T)
-    f(u) = Distributions.cdf(D, u) - clamp(float(α), 0.0, 1.0)
-    return Roots.find_zero(f, (a, b), Roots.Bisection(); xtol = sqrt(eps(T)))
+@inline function Distributions.cdf(D::PlackettDistortion, u::Real) 
+    θ, v = D.θ, D.uⱼ
+
+    η = θ - 1
+    t1 = η * (u + v) + 1
+    s1 = sqrt(t1 * t1 - 4θ * η * u * v)
+    num = 1 - (t1 - 2θ * u) / s1
+
+    t2 = η * (1 + v) + 1
+    s2 = sqrt(t2 * t2 - 4θ * η * v)
+    den = 1 - (t2 - 2 * θ) / s2
+
+    return num/den
 end
 ## DistortionFromCop moved next to PlackettCopula

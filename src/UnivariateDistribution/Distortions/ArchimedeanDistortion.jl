@@ -45,7 +45,7 @@ end
     return ϕ⁽ᵏ⁾(D.G, Val{p}(), D.sJ + ϕ⁻¹(D.G, float(u))) / D.den
 end
 @inline function Distributions.quantile(D::ArchimedeanDistortion{TG, T, p}, α::Real) where {TG, T, p}
-    y = ϕ⁽ᵏ⁾⁻¹(D.G, Val{p}(), clamp(float(α), 0.0, 1.0) * D.den; start_at = D.sJ)
+    y = ϕ⁽ᵏ⁾⁻¹(D.G, Val{p}(), α * D.den; start_at = D.sJ)
     return ϕ(D.G, y - D.sJ)
 end
 function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {p}

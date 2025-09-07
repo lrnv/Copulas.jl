@@ -66,9 +66,9 @@ function Distributions.fit(T::Type{CT},u) where {CT <: SurvivalCopula}
 end
 
 # Conditioning bindings colocated
-@inline function DistortionFromCop(S::SurvivalCopula{D,CT,VI}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,T}, i::Int64) where {D,CT,VI,p,T}
+@inline function DistortionFromCop(S::SurvivalCopula{D,CT,VI}, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {D,CT,VI,p}
     flips = S.indices
-    uⱼₛ′ = ntuple(k -> (js[k] in flips ? one(T) - uⱼₛ[k] : uⱼₛ[k]), p)
+    uⱼₛ′ = ntuple(k -> (js[k] in flips ? 1 - uⱼₛ[k] : uⱼₛ[k]), p)
     base = DistortionFromCop(S.C, js, uⱼₛ′, i)
     return (i in flips) ? FlipDistortion(base) : base
 end

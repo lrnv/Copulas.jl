@@ -125,7 +125,6 @@ end
 #       )
 # end
 # function ϕ⁽ᵏ⁾⁻¹(G::GumbelBarnettGenerator, ::Val{k}, t; start_at=t) where k
-#     @show k, t
 #     return log(- G.θ * _inv_fₙ(t * exp(-1/G.θ), Val{k}()))
 # end
 
