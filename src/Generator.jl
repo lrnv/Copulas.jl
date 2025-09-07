@@ -35,12 +35,18 @@ abstract type Generator end
 Base.broadcastable(x::Generator) = Ref(x)
 max_monotony(G::Generator) = throw("This generator does not have a defined max monotony. You need to implement `max_monotony(G)`.")
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
+ϕ(G::Generator) = Base.Fix1(ϕ,G)
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
 ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
-ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k = WilliamsonTransforms.taylor(x -> ϕ(G, x), t, Val{k}())[end] * factorial(k)
+ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k = WilliamsonTransforms.taylor(ϕ(G), t, Val{k}())[end] * factorial(k)
 ϕ⁽ᵏ⁾⁻¹(G::Generator, ::Val{k}, t; start_at=t) where {k} = Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, Val{k}(), x) - t, start_at)
-williamson_dist(G::Generator, ::Val{d}) where d = WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val{d}())
+williamson_dist(G::Generator, ::Val{d}) where d = WilliamsonTransforms.𝒲₋₁(ϕ(G), Val{d}())
+
+
+# TODO: Move the \phi^(1) to defer to \phi^(k=1), and implement \phi(k=1) in generators instead of \phi^(1)
+# That would help a lot the performance of some routines. 
+# But its a bit hard to do as it modifies a lot of files.
 
 
 # τ(G::Generator) = @error("This generator has no kendall tau implemented.")

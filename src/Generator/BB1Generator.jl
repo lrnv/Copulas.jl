@@ -41,21 +41,23 @@ BB1Copula(d, θ, δ) = ArchimedeanCopula(d, BB1Generator(θ, δ))
 
 Distributions.params(G::BB1Generator) = (G.θ, G.δ)
 
-max_monotony(::BB1Generator) = Inf   # Maybe extendable for dimension d???
+max_monotony(::BB1Generator) = Inf
 
-# --- generator ψ and inversa ψ^{-1} ---
-ϕ(G::BB1Generator, s) = exp(-inv(G.θ) * log1p(s^(inv(G.δ))))
-ϕ⁻¹(G::BB1Generator, t) = (expm1(-G.θ * log(t)))^(G.δ)  # evita t^(-θ)-1
+ϕ(G::BB1Generator, s) = exp(-(1/G.θ) * log1p(exp((log(s)/G.δ))))
+ϕ⁻¹(G::BB1Generator, t) = exp(G.δ * log(expm1(-G.θ * log(t))))  # avoid a^b
 function ϕ⁽¹⁾(G::BB1Generator, s)
-    a = inv(G.δ)                                   # a = 1/δ
-    return -(a/G.θ) * s^(a-1) * (1 + s^a)^(-inv(G.θ)-1)
+    a, b, ls = inv(G.δ), inv(G.θ), log(s)
+    return -(a*b) * exp((a-1)*ls - (b+1)*log1p(exp(a*ls)))
 end
 function ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{2}, s) # only d=2 case, other cases are not implemented. 
-    a = inv(G.δ)
-    return (a/G.θ) * s^(a-2) * (1 + s^a)^(-inv(G.θ)-2) *
-           ( (1 + a/G.θ)*s^a - (a - 1) )
+    a, b, ls = inv(G.δ), inv(G.θ), log(s)
+    spa = exp(a*ls)
+    return (a*b) * exp((a-2)*ls) * exp(-(b+2)*log1p(exp(a*ls))) *  ( (1 + a*b)*spa - (a - 1) )
 end
-ϕ⁻¹⁽¹⁾(G::BB1Generator, t) = -G.δ*G.θ * t^(-G.θ-1) * (t^(-G.θ) - 1)^(G.δ-1)
+function ϕ⁻¹⁽¹⁾(G::BB1Generator, t)
+    lt = log(t)
+    return -G.δ*G.θ * exp(-lt*(G.θ+1)) * exp((G.δ-1)*log(expm1(-lt*G.θ)))
+end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
 williamson_dist(G::BB1Generator, ::Val{d}) where d = WilliamsonFromFrailty(GammaStoppedPositiveStable(inv(G.δ), inv(G.θ)), Val{d}())
