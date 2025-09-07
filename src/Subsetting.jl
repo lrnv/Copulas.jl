@@ -63,7 +63,7 @@ This function extracts the dependence structure among the specified dimensions f
 """
 function subsetdims(C::Copula{d},dims::NTuple{p, Int64}) where {d,p}
     p==1 && return Distributions.Uniform()
-    dims==tuple(1:d) && return C
+    dims==ntuple(i->i, d) && return C
     @assert p < d
     @assert length(unique(dims))==length(dims)
     @assert all(dims .<= d)

@@ -24,6 +24,8 @@ module Copulas
     include("utils.jl")
     include("Copula.jl")
     include("SklarDist.jl")
+    # Define conditioning core types early to avoid name clashes with method extensions.
+    include("Conditioning.jl")
     include("Subsetting.jl")
     export pseudos,
            SklarDist,
@@ -144,8 +146,7 @@ module Copulas
            MOCopula,
            tEVCopula
 
-    # Conditional distributions (uniform/original scales)
-    include("Conditioning.jl")
+    # Conditional distortions and fast paths
     include("UnivariateDistribution/Distortions/NoDistortion.jl")
     include("UnivariateDistribution/Distortions/GaussianDistortion.jl")
     include("UnivariateDistribution/Distortions/StudentDistortion.jl")

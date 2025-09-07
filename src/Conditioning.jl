@@ -26,7 +26,7 @@ function Distributions.quantile(d::Distortion, α::Real)
 end
 
 """
-        DistortionFromCop{TC,p,T} <: Distortion
+    DistortionFromCop{TC,p,T} <: Distortion
 
 Generic, uniform-scale conditional marginal transformation for a copula.
 
