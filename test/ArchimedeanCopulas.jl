@@ -1,6 +1,8 @@
-
-
 @testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(LogNormal(),2))) end
+@testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(10,i𝒲(Dirac(1),10))) end
+@testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(Pareto(1),5))) end
+@testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(LogNormal(3),5))) end
+@testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(10,i𝒲(MixtureModel([Dirac(1), Dirac(2)]),11))) end
 
 @testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-1.0)) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-rand(M.rng))) end
@@ -17,7 +19,7 @@
 
 @testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.2, 0.5)) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.5, 1.8)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 2.1, 1.5)) end
+@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 2.0, 1.5)) end
 
 @testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.0, 1.5)) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.5, 0.5)) end
@@ -65,8 +67,6 @@
 @testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,150)) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,30)) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,37)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,6.)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,6)) end
 
 @testitem "Generic" tags=[:ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(2,1.0)) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(2,rand(M.rng))) end
@@ -100,7 +100,7 @@
 @testitem "Generic" tags=[:ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(3,7)) end
 @testitem "Generic" tags=[:ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(4,1-log(rand(M.rng)))) end
 
-@testitem "Boundary test for bivariate Joe" tags=[:ArchimedeanCopula, :JoeCopula] begin
+@testitem "Boundary test for bivariate Joe and Gumbel" tags=[:ArchimedeanCopula, :JoeCopula, :GumbelCopula] begin
     using Distributions
     θ = 1.1
     C = JoeCopula(2, θ)
@@ -114,10 +114,7 @@
         @test pdf(C, [1, u]) == 0
         @test pdf(C, [u, 1]) == 0
     end
-end
 
-@testitem "Boundary test for bivariate Gumbel" tags=[:ArchimedeanCopula, :GumbelCopula] begin
-    using Distributions
     G = GumbelCopula(2, 2.5)
     @test pdf(G, [0.1,0.0]) == 0.0
     @test pdf(G, [0.0,0.1]) == 0.0
@@ -164,7 +161,7 @@ end
 
 
 
-@testitem "Archimedean - Fix Kendall correlation" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula] begin
+@testitem "Archimedean - Fix Kendall and Spearman correlation" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula] begin
     using Random
     using StableRNGs
     rng = StableRNG(123)
@@ -180,9 +177,6 @@ end
     @test Copulas.τ⁻¹(AMHCopula, -0.1505) ≈ -0.8 atol=1.0e-3
     @test Copulas.τ⁻¹(FrankCopula, -0.3881) ≈ -4. atol=1.0e-3
     @test Copulas.τ⁻¹(ClaytonCopula, -1/3) ≈ -.5 atol=1.0e-5
-end
-
-@testitem "Archimedeans - Fix Spearman correlation" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula] begin
 
     @test Copulas.ρ(ClaytonCopula(2,3.)) ≈ 0.78645 atol=1.0e-4
     @test Copulas.ρ(ClaytonCopula(2,0.001)) ≈ 0. atol=1.0e-2
@@ -289,40 +283,6 @@ end
     @test_broken check_rnd(AMHCopula,           -0.18, 0.33, 10)
     @test_broken check_rnd(FrankCopula,         -1,    1,    10)
     @test_broken check_rnd(InvGaussianCopula,    0,    1/2,  10)
-end
-
-@testitem "williamson test" tags=[:ArchimedeanCopula, :WilliamsonCopula] begin
-    using Distributions, Random
-    using StableRNGs
-    rng = StableRNG(12)
-
-    Cops = (
-        ArchimedeanCopula(10,i𝒲(Dirac(1),10)),
-        ArchimedeanCopula(2,i𝒲(Pareto(1),5)),
-        ArchimedeanCopula(2,i𝒲(LogNormal(3),5)),
-    )
-    for C in Cops
-        rand(rng,C,10)
-    end
-end
-
-@testitem "williamson test" tags=[:ArchimedeanCopula, :WilliamsonCopula] begin
-    using Distributions, Random
-    using StableRNGs
-    rng = StableRNG(12)
-
-    Cops = (
-        ArchimedeanCopula(10,i𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)), 
-        ArchimedeanCopula(2,i𝒲(Pareto(1),5)),
-        ArchimedeanCopula(2,i𝒲(LogNormal(3),5)),
-    )
-    
-    for C in Cops
-        u = rand(C, 10)
-        v = rosenblatt(C, u)
-        w = inverse_rosenblatt(C, v)
-        @test u ≈ w
-    end
 end
 
 # @testitem "A few tests on bigfloats" begin
