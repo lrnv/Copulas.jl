@@ -48,10 +48,10 @@ end
 const i𝒲 = WilliamsonGenerator
 Distributions.params(G::WilliamsonGenerator) = (G.X, G.d)
 function Base.show(io::IO, G::WilliamsonGenerator)
-    print(io, "i𝒲($(G.X), d)")
+    print(io, "i𝒲($(G.X), $(G.d))")
 end
 function Base.show(io::IO, C::ArchimedeanCopula{d, TG}) where {d, TG<:WilliamsonGenerator}
-    print(io, "ArchimedeanCopula(d, i𝒲($(C.G.X), d))")
+    print(io, "ArchimedeanCopula($(length(C)), i𝒲($(C.G.X), $(C.G.d)))")
 end
 max_monotony(G::WilliamsonGenerator) = G.d
 function williamson_dist(G::WilliamsonGenerator, ::Val{d}) where d
