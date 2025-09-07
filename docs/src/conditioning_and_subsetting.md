@@ -140,7 +140,7 @@ H.m                    # a Tuple containing the distorded marginals.
 ## Subsetting
 
 Subsetting extracts the dependence structure among a subset of coordinates. Given a
-copula `C` of dimension `d` and an index tuple `dims::NTuple{p,Int64}`, the function
+copula `C` of dimension `d` and an index tuple `dims::NTuple{p,Int}`, the function
 `subsetdims` returns a copula on those `p` dimensions that preserves the original
 dependence restricted to `dims`.
 

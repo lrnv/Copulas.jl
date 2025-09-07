@@ -88,6 +88,6 @@ function ρ(c::PlackettCopula{P}) where P
 end
 
 # Conditioning colocated
-@inline function DistortionFromCop(C::PlackettCopula, js::NTuple{1,Int64}, uⱼₛ::NTuple{1,Float64}, ::Int64)
+@inline function DistortionFromCop(C::PlackettCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int)
     return PlackettDistortion(float(C.θ), Int8(js[1]), float(uⱼₛ[1]))
 end

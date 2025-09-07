@@ -1,6 +1,6 @@
 struct ClaytonWilliamsonDistribution{T<:Real} <: Distributions.ContinuousUnivariateDistribution
     θ::T
-    d::Int64
+    d::Int
     ClaytonWilliamsonDistribution(θ, d) = new{typeof(θ)}(θ, d)
     ClaytonWilliamsonDistribution{T}(θ, d) where T = ClaytonWilliamsonDistribution(T(θ), d)
 end

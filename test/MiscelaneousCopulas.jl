@@ -99,7 +99,7 @@ end
         # Order the vector u
         θ = R[1]
         # println("param:", θ)
-        d = round(Int64, R[2])
+        d = round(Int, R[2])
         # println("dimension:", d)
         u_ordered = sort(u)
         # println("Sorted vector: ", u_ordered)
@@ -136,7 +136,7 @@ end
     function prueba_PDF(R::Vector{T}, u::Vector{T}) where T
         # Order the vector u
         θ = R[1]
-        d = round(Int64, R[2])
+        d = round(Int, R[2])
         u_ordered = sort(u)
         # println("Sorted vector: ", u_ordered)
         

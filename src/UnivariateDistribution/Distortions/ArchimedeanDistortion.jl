@@ -36,7 +36,7 @@ struct ArchimedeanDistortion{TG, T, p} <: Distortion
     G::TG
     sJ::T
     den::T
-    function ArchimedeanDistortion(G::Generator, p::Int64, sJ::T) where {T<:Real}
+    function ArchimedeanDistortion(G::Generator, p::Int, sJ::T) where {T<:Real}
         den = ϕ⁽ᵏ⁾(G, Val{p}(), sJ)
         return new{typeof(G), T, p}(G, sJ, den)
     end

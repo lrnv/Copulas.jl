@@ -52,6 +52,6 @@ end
 StatsBase.corkendall(C::EmpiricalCopula) = StatsBase.corkendall(C.u')
 
 # Subsetting colocated
-function SubsetCopula(C::EmpiricalCopula{d,MT}, dims::NTuple{p, Int64}) where {d,MT,p}
+function SubsetCopula(C::EmpiricalCopula{d,MT}, dims::NTuple{p, Int}) where {d,MT,p}
     return EmpiricalCopula(C.u[collect(dims), :]; pseudo_values=true)
 end

@@ -66,7 +66,7 @@ function Distributions.fit(T::Type{CT},u) where {CT <: SurvivalCopula}
 end
 
 # Conditioning bindings colocated
-@inline function DistortionFromCop(S::SurvivalCopula{D,CT,VI}, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {D,CT,VI,p}
+@inline function DistortionFromCop(S::SurvivalCopula{D,CT,VI}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,CT,VI,p}
     flips = S.indices
     uⱼₛ′ = ntuple(k -> (js[k] in flips ? 1 - uⱼₛ[k] : uⱼₛ[k]), p)
     base = DistortionFromCop(S.C, js, uⱼₛ′, i)
@@ -76,12 +76,12 @@ function ConditionalCopula(S::SurvivalCopula{D,CT,VI}, js, uⱼₛ) where {D,CT,
     flips = S.indices
     uⱼₛ′ = Tuple(j in flips ? 1 - float(u) : float(u) for (j,u) in zip(js, uⱼₛ))
     CC_base = ConditionalCopula(S.C, js, uⱼₛ′)
-    I = Tuple(setdiff(1:D, Tuple(collect(Int64, js))))
+    I = Tuple(setdiff(1:D, Tuple(collect(Int, js))))
     flip_positions = Tuple(p for (p, idx) in enumerate(I) if idx in flips)
     return (length(flip_positions) == 0) ? CC_base : SurvivalCopula(CC_base, flip_positions)
 end
 
 # Subsetting colocated: subset and remap flipped indices to the new positions
-function SubsetCopula(C::SurvivalCopula{d, CT,VI}, dims::NTuple{p, Int64}) where {d,CT,VI,p}
+function SubsetCopula(C::SurvivalCopula{d, CT,VI}, dims::NTuple{p, Int}) where {d,CT,VI,p}
     return SurvivalCopula(subsetdims(C.C, dims), Tuple(setdiff(C.indices, setdiff(1:d,dims))))
 end

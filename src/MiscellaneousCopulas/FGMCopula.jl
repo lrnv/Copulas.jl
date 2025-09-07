@@ -92,7 +92,7 @@ function ρ⁻¹(::Type{FGMCopula}, ρ)
 end
 
 # Subsetting colocated
-function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int64}) where {d,Tθ,Tf,p}
+function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int}) where {d,Tθ,Tf,p}
     if p==2
         i = 1
         for indices in Combinatorics.combinations(1:d, 2)
@@ -103,7 +103,7 @@ function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int64}) where {d,T
     end
     # Build mapping to gather θ' in the canonical order for dimension p
     combos_by_k = [collect(Combinatorics.combinations(1:d, k)) for k in 2:d]
-    offs = Vector{Int64}(undef, d)
+    offs = Vector{Int}(undef, d)
     offs[1] = 0  # unused for k=1
     acc = 0
     for k in 2:d

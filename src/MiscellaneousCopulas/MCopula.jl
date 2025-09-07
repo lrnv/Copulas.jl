@@ -29,4 +29,4 @@ StatsBase.corkendall(::MCopula{d}) where d = ones(d,d)
 StatsBase.corspearman(::MCopula{d}) where d = ones(d,d)
 
 # Subsetting colocated
-SubsetCopula(::MCopula{d}, ::NTuple{p, Int64}) where {d,p} = MCopula(p)
+SubsetCopula(::MCopula{d}, ::NTuple{p, Int}) where {d,p} = MCopula(p)

@@ -3,7 +3,7 @@
 
 Fields:
   - `C::CT` - The copula
-  - `dims::Tuple{Int64}` - a Tuple representing which dimensions are used. 
+  - `dims::Tuple{Int}` - a Tuple representing which dimensions are used. 
 
 Constructor
 
@@ -13,9 +13,9 @@ This class allows to construct a random vector corresponding to a few dimensions
 """
 struct SubsetCopula{d,CT} <: Copula{d}
     C::CT
-    dims::NTuple{d,Int64}
+    dims::NTuple{d,Int}
 
-    function SubsetCopula(C::Copula{d}, dims::NTuple{p, Int64}) where {d, p}
+    function SubsetCopula(C::Copula{d}, dims::NTuple{p, Int}) where {d, p}
         @assert 2 <= p <= d "You cannot construct a subsetcopula with dimension p=1 or p > d (d = $d, p = $p provided)"
         dims == Tuple(1:d) && return C
         @assert all(dims .<= d)
@@ -45,7 +45,7 @@ end
 ρ(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = ρ(C.C)
 
 """
-    subsetdims(C::Copula, dims::NTuple{p, Int64})
+    subsetdims(C::Copula, dims::NTuple{p, Int})
     subsetdims(D::SklarDist, dims)
 
 Return a new copula or Sklar distribution corresponding to the subset of dimensions specified by `dims`.
@@ -53,7 +53,7 @@ Return a new copula or Sklar distribution corresponding to the subset of dimensi
 # Arguments
 - `C::Copula`: The original copula object.
 - `D::SklarDist`: The original Sklar distribution.
-- `dims::NTuple{p, Int64}`: Tuple of indices representing the dimensions to keep.
+- `dims::NTuple{p, Int}`: Tuple of indices representing the dimensions to keep.
 
 # Returns
 - A `SubsetCopula` or a new `SklarDist` object corresponding to the selected dimensions. If `p == 1`, returns a `Uniform` distribution or the corresponding marginal.
@@ -61,7 +61,7 @@ Return a new copula or Sklar distribution corresponding to the subset of dimensi
 # Details
 This function extracts the dependence structure among the specified dimensions from the original copula or Sklar distribution. Specialized methods exist for some copula types to ensure efficiency and correctness.
 """
-function subsetdims(C::Copula{d},dims::NTuple{p, Int64}) where {d,p}
+function subsetdims(C::Copula{d},dims::NTuple{p, Int}) where {d,p}
     p==1 && return Distributions.Uniform()
     dims==ntuple(i->i, d) && return C
     @assert p < d
@@ -69,7 +69,7 @@ function subsetdims(C::Copula{d},dims::NTuple{p, Int64}) where {d,p}
     @assert all(dims .<= d)
     return SubsetCopula(C,dims)
 end
-function subsetdims(D::SklarDist, dims::NTuple{p, Int64}) where p
+function subsetdims(D::SklarDist, dims::NTuple{p, Int}) where p
     p==1 && return D.m[dims[1]]
     return SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
 end
@@ -80,12 +80,12 @@ end
 ###########################################################################
 #####  Conditioning and subsetting bindings for SubsetCopula colocated here
 ###########################################################################
-function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int64}) where {d,CT,p}
+function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT,p}
     @assert 2 <= p <= d
     return SubsetCopula(CS.C, ntuple(i -> CS.dims[dims2[i]], p))
 end
 
-@inline function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {p}
+@inline function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
     ibase = S.dims[i]
     jsbase = ntuple(k -> S.dims[js[k]], p)
     return DistortionFromCop(S.C, jsbase, uⱼₛ, ibase)

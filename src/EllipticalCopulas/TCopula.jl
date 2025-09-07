@@ -61,7 +61,7 @@ end
 τ(C::TCopula{2,MT}) where MT = 2*asin(C.Σ[1,2])/π 
 
 # Conditioning colocated
-@inline function DistortionFromCop(C::TCopula{D,ν,MT}, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {p,D,ν,MT}
+@inline function DistortionFromCop(C::TCopula{D,ν,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p,D,ν,MT}
     Σ = C.Σ; jst = js; ist = Tuple(setdiff(1:D, jst)); @assert i in ist
     Jv = collect(jst); zJ = Distributions.quantile.(Distributions.TDist(ν), collect(uⱼₛ))
     ΣJJ = Σ[Jv, Jv]; RiJ = Σ[i, Jv]; RJi = Σ[Jv, i]
@@ -77,7 +77,7 @@ end
     return StudentDistortion(float(μz), float(σz), Int(ν), Int(νp))
 end
 @inline function ConditionalCopula(C::TCopula{D,df,MT}, js, uⱼₛ) where {D,df,MT}
-    p = length(js); J = collect(Int64, js); I = collect(setdiff(1:D, J)); Σ = C.Σ
+    p = length(js); J = collect(Int, js); I = collect(setdiff(1:D, J)); Σ = C.Σ
     if p == 1
         Σcond = Σ[I, I] - Σ[I, J] * (Σ[J, I] / Σ[J, J])
     else
@@ -86,7 +86,7 @@ end
     end
 
     # Subsetting colocated
-    SubsetCopula(C::TCopula{d,df,MT}, dims::NTuple{p, Int64}) where {d,df,MT,p} = TCopula(df, C.Σ[collect(dims),collect(dims)])
+    SubsetCopula(C::TCopula{d,df,MT}, dims::NTuple{p, Int}) where {d,df,MT,p} = TCopula(df, C.Σ[collect(dims),collect(dims)])
     σ = sqrt.(LinearAlgebra.diag(Σcond)); R_cond = Matrix(Σcond ./ (σ * σ'))
     return TCopula(df + p, R_cond)
 end
