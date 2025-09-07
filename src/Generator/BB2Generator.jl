@@ -71,8 +71,10 @@ end
 williamson_dist(G::BB2Generator, ::Val{d}) where d = WilliamsonFromFrailty(GammaStoppedGamma(G.θ, G.δ), Val{d}())
 
 @inline function _abpair_robust(u1::Real, u2::Real, θ::Real, δ::Real)
-    A   = δ * expm1(-θ*log(u1))   # = δ(u1^{-θ}-1) = log(1+x)
-    B   = δ * expm1(-θ*log(u2))
+    u1c = clamp(float(u1), 1e-15, 1-1e-15)
+    u2c = clamp(float(u2), 1e-15, 1-1e-15)
+    A   = δ * LogExpFunctions.expm1(-θ*log(u1c))   # = δ(u1^{-θ}-1) = log(1+x)
+    B   = δ * LogExpFunctions.expm1(-θ*log(u2c))
     return A, B, u1c, u2c
 end
 

@@ -77,7 +77,7 @@ williamson_dist(G::BB3Generator, ::Val{d}) where d = WilliamsonFromFrailty(PosSt
     tmax = (log(floatmax(Float64)) - 8.0) / δ
     ϵθδ = exp(-tmax^(inv(θ)))
     ϵ = max(1e-12, ϵθδ)
-    return u
+    return clamp(float(u), ϵ, 1 - 1e-12)
 end
 
 @inline function _abpair_bb3(u1::Real, u2::Real, θ::Real, δ::Real)
