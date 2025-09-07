@@ -48,7 +48,7 @@ struct DistortionFromCop{TC,p}<:Distortion
     js::NTuple{p,Int64}
     uⱼₛ::NTuple{p,Float64}
     den::Float64
-    function DistortionFromCop(C::Copula{D}, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,T}, i::Int64) where {D,p,T}
+    function DistortionFromCop(C::Copula{D}, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {D,p}
         den = p==1 ? Distributions.pdf(subsetdims(C, js), uⱼₛ[1]) : Distributions.pdf(subsetdims(C, js), collect(uⱼₛ))
         return new{typeof(C), p}(C, i, js, float.(uⱼₛ), den)
     end

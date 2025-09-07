@@ -48,7 +48,7 @@ end
     y = ϕ⁽ᵏ⁾⁻¹(D.G, Val{p}(), clamp(float(α), 0.0, 1.0) * D.den; start_at = D.sJ)
     return ϕ(D.G, y - D.sJ)
 end
-function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,T}, i::Int64) where {p,T}
+function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {p}
     @assert length(js) == length(uⱼₛ)
     sJ = zero(eltype(uⱼₛ))
     @inbounds for u in uⱼₛ

@@ -61,7 +61,7 @@ end
 τ(C::TCopula{2,MT}) where MT = 2*asin(C.Σ[1,2])/π 
 
 # Conditioning colocated
-@inline function DistortionFromCop(C::TCopula{D,ν,MT}, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,T}, i::Int64) where {p,T,D,ν,MT}
+@inline function DistortionFromCop(C::TCopula{D,ν,MT}, js::NTuple{p,Int64}, uⱼₛ::NTuple{p,Float64}, i::Int64) where {p,D,ν,MT}
     Σ = C.Σ; jst = js; ist = Tuple(setdiff(1:D, jst)); @assert i in ist
     Jv = collect(jst); zJ = Distributions.quantile.(Distributions.TDist(ν), collect(uⱼₛ))
     ΣJJ = Σ[Jv, Jv]; RiJ = Σ[i, Jv]; RJi = Σ[Jv, i]
