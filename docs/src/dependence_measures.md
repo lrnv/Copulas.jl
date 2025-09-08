@@ -84,21 +84,9 @@ Canonical = false
 ### Kendall’s τ across families (bivariate)
 
 ```@example dep
-using Copulas, Plots
+using Copulas, Plots, Distributions
 θs = range(0.2, 5.0; length=50)
 Cs = [ClaytonCopula(2, θ) for θ in θs]
-taus = [τ(C) for C in Cs]
+taus = [Copulas.τ(C) for C in Cs]
 plot(θs, taus; xlabel="θ", ylabel="τ", title="Kendall τ for bivariate Clayton", legend=false)
-```
-
-### Tail dependence χ(u)
-
-The function χ(u) is informative near u → 1. We can visualize an estimator based on
-the definition for a given copula:
-
-```@example dep
-χu(C, u) = (2log1p(-u)) / (log1p(-2u - Distributions.cdf(C, fill(u, length(C)))) ) - 1
-us = range(0.5, 0.99; length=60)
-C = GumbelCopula(2, 2.0)
-plot(us, χu.(Ref(C), us); xlabel="u", ylabel="χ(u)", title="Weak/strong tail dependence illustration", legend=false)
 ```

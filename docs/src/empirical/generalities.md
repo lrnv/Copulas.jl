@@ -146,7 +146,7 @@ Convergence results for this kind of copulas can be found in [durante2015](@cite
 
 ## See also
 
-- Bestiary: [Empirical models list](@ref)
+- Bestiary: [Empirical models list](@ref empirical_cops)
 - Manual: [Sklar's Distribution](@ref), [Conditioning and Subsetting](@ref)
 
 

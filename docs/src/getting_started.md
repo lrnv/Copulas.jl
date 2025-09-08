@@ -2,6 +2,8 @@
 CurrentModule = Copulas
 ```
 
+# Getting Started
+
 This section gives some general definitions and tools about dependence structures, multivariate random vectors and copulas. Along this journey through the mathematical theory of copulas, we link to the rest of the documentation for more specific and detailed arguments on particular points, or simply to the technical documentation of the actual implementation. 
 The interested reader can take a look at the standard books on the subject [joe1997,cherubini2004,nelsen2006,joe2014](@cite) or more recently [mai2017, durante2015a, czado2019,grosser2021](@cite). 
 
@@ -80,6 +82,7 @@ independence, a positive dependence (Clayton), and the Fréchet bounds:
 
 ```@example 1
 using Plots
+using Plots.PlotMeasures
 N = 400
 P1 = scatter(rand(IndependentCopula(2), N)'; ms=2, title="Independent", xlabel="U₁", ylabel="U₂", legend=false)
 P2 = scatter(rand(ClaytonCopula(2, 3.0), N)'; ms=2, title="Clayton θ=3", xlabel="U₁", ylabel="U₂", legend=false)

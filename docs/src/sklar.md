@@ -47,6 +47,7 @@ and compare their scatter plots after transforming back to uniforms with pseudo-
 ```@example 2
 using Plots
 N = 1000
+C = ClaytonCopula(2,2.7)
 X = SklarDist(C, (Normal(), Normal()))
 Y = SklarDist(C, (LogNormal(), Gamma(2,2)))
 Ux = rand(X, N)

@@ -54,7 +54,7 @@ We can also visualize the ECDF of the intermediate variables Z (whose empirical 
 ```@example lambda
 using StatsBase
 EC = ecdf(K.z)
-plot(EC; label="ECDF of Z", xlabel="t", ylabel="K_N(t)")
+plot(t->EC(t); label="ECDF of Z", xlabel="t", ylabel="K_N(t)")
 plot!(t->K(t); label="K(t)", color=:red, alpha=0.6)
 ```
 

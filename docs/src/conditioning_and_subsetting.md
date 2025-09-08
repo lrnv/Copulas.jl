@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Conditioning and subsetting copulas
+# Conditioning and Subsetting
 
 ## Conditioning
 

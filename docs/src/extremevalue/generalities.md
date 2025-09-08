@@ -101,7 +101,7 @@ ExtremeValueCopula
 ### Pickands dependence functions A(t)
 
 ```@example 1
-using Copulas, Plots
+using Copulas, Plots, Distributions
 ts = range(0.0, 1.0; length=401)
 Cs = (
     GalambosCopula(0.8),    # upper tail dep.

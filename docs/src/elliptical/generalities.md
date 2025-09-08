@@ -164,7 +164,7 @@ EllipticalCopula
 
 ## See also
 
-- Bestiary: [Implemented Elliptical copulas](@ref)
+- Bestiary: [Implemented Elliptical copulas](@ref elliptical_cops)
 - Manual: [Getting Started](@ref), [Sklar's Distribution](@ref)
 
 

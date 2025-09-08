@@ -217,8 +217,9 @@ ArchimedeanCopula
 
 ### Quick visual comparison (bivariate)
 
-```@example
-using Copulas, Plots
+```@example 1
+using Copulas, Plots, Distributions
+using Plots.PlotMeasures
 Cs = (
     ClaytonCopula(2, 2.0),
     GumbelCopula(2, 1.6),
@@ -237,7 +238,7 @@ plt
 
 ### Conditional distortions (uniform scale)
 
-```@example
+```@example 1
 using StatsBase
 C = ClaytonCopula(2, 2.0)
 u2 = 0.3

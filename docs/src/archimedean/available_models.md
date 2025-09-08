@@ -94,6 +94,21 @@ BB9Generator
 BB10Generator
 ```
 
+## `IndependentGenerator`
+```@docs
+IndependentGenerator
+```
+
+## `WGenerator`
+```@docs
+WGenerator
+```
+
+## `MGenerator`
+```@docs
+MGenerator
+```
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

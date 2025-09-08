@@ -6,3 +6,6 @@ DocumenterCitations = "daee34ce-89f3-4625-b898-19384cb65244"
 LiveServer = "16fef848-5104-11e9-1b77-fb7a48bbb589"
 Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+
+[sources]
+Copulas = {path = "C:\\Users\\lrnv\\.julia\\dev\\Copulas"}

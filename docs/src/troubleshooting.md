@@ -42,8 +42,3 @@ EC = [StatsBase.ecdf(S[k, :]) for k in 1:size(U,2)]
 ```
 
 If you run into a reproducible issue, please open an issue with a small code sample and version info.
-
-```@bibliography
-Pages = [@__FILE__]
-Canonical = false
-```

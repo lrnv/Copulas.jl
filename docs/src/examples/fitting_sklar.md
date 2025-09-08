@@ -51,12 +51,3 @@ P1 = scatter(U[1,:], U[2,:]; ms=2, alpha=0.6, xlim=(0,1), ylim=(0,1), title="Emp
 P2 = scatter(Usim[1,:], Usim[2,:]; ms=2, alpha=0.6, xlim=(0,1), ylim=(0,1), title="Fitted copula uniforms", legend=false)
 plot(P1, P2; layout=(1,2), size=(850,350))
 ```
-
-### Fitted copula density heatmap
-
-```@example 5
-grid = range(0.02, 0.98; length=120)
-Z = [pdf(fitted_model.C, [u,v]) for u in grid, v in grid]
-heatmap(grid, grid, Z'; xlabel="u", ylabel="v", aspect_ratio=1, c=:viridis,
-	title="pdf of fitted copula on [0,1]^2")
-```
