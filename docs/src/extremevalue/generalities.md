@@ -150,6 +150,11 @@ plot!(ts, EC[1].(ts); seriestype=:steppost, label="s₁", color=:black)
 plot!(ts, EC[2].(ts); seriestype=:steppost, label="s₂", color=:gray)
 ```
 
+## See also
+
+- Bestiary: [Implemented Extreme Value copulas](@ref available_extreme_models)
+- Manual: [Conditioning and Subsetting](@ref)
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

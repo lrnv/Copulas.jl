@@ -144,6 +144,12 @@ Convergence results for this kind of copulas can be found in [durante2015](@cite
     Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
 
 
+## See also
+
+- Bestiary: [Empirical models list](@ref)
+- Manual: [Sklar's Distribution](@ref), [Conditioning and Subsetting](@ref)
+
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

@@ -266,6 +266,11 @@ Note that Dirichlet distributions are constructed as $\bm S = \frac{\bm G}{\lang
 
 
 
+## See also
+
+- Bestiary: [Implemented Archimedean generators](@ref available_archimedean_models)
+- Manual: [Conditioning and Subsetting](@ref)
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

@@ -162,6 +162,12 @@ EllipticalCopula
 ```
 
 
+## See also
+
+- Bestiary: [Implemented Elliptical copulas](@ref)
+- Manual: [Getting Started](@ref), [Sklar's Distribution](@ref)
+
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false
