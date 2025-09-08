@@ -73,6 +73,7 @@ function subsetdims(D::SklarDist, dims::NTuple{p, Int}) where p
     p==1 && return D.m[dims[1]]
     return SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
 end
+subsetdims(C::Union{Copula, SklarDist}, dims) = subsetdims(C, Tuple(collect(Int, dims)))
 
 ##################
 ### Specialized constructors are colocated in each copula file

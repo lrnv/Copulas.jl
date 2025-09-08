@@ -2,6 +2,24 @@
 #####  Conditioning framework: Distortion, DistortionFromCop, DistortedDist, ConditionalCopula, condition
 ###########################################################################
 
+# usefull functions: 
+function _assemble(D::Int, is, js, uᵢₛ, uⱼₛ)
+    Tᵢ = eltype(typeof(uᵢₛ)); Tⱼ = eltype(typeof(uⱼₛ)); T = promote_type(Tᵢ, Tⱼ)
+    w = fill(one(T), D)
+    @inbounds for (k,i) in pairs(is); w[i] = uᵢₛ[k]; end
+    @inbounds for (k,j) in pairs(js); w[j] = uⱼₛ[k]; end
+    return w
+end
+function _swap(u, i, uᵢ)
+    T = promote_type(eltype(u), typeof(uᵢ))
+    v = similar(u, T); @inbounds for k in eachindex(u); v[k] = u[k]; end; v[i] = uᵢ; return v
+end
+_der(f::FT, u, i::Int) where FT = ForwardDiff.derivative(uᵢ -> f(_swap(u, i, uᵢ)), u[i])
+_der(f::FT, u, is::NTuple{1,Int}) where FT = _der(f::FT, u, is[1])
+_der(f::FT, u, is::NTuple{N,Int}) where {N, FT} = _der(u′ -> _der(f, u′, (is[end],)), u, is[1:end-1])
+_partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _der(u -> Distributions.cdf(C, u), _assemble(length(C), is, js, uᵢₛ, uⱼₛ), js)
+
+
 """
     Distortion <: Distributions.ContinuousUnivariateDistribution
 
@@ -28,6 +46,21 @@ end
 # You have to implement one of these two: 
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
+
+
+_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, T}) where {D,p, T<:Real} = (js, ujs) 
+_process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,)) 
+function _process_tuples(::Val{D}, js, ujs) where D
+    p, p2 = length(js), length(uⱼₛ)
+    @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
+    @assert p == p2 && all(0 .<= uⱼₛ .<= 1) "uⱼₛ must be in [0,1] and match js length"
+    jst = Tuple(collect(Int, js))
+    @assert all(in(1:D), jst)
+    uⱼₛt = Tuple(collect(float.(uⱼₛ)))
+    return (jst, uⱼₛt)
+end
+
+
 
 """
     DistortionFromCop{TC,p,T} <: Distortion
@@ -57,29 +90,18 @@ struct DistortionFromCop{TC,p}<:Distortion
     js::NTuple{p,Int}
     uⱼₛ::NTuple{p,Float64}
     den::Float64
-    function DistortionFromCop(C::Copula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
-        den = p==1 ? Distributions.pdf(subsetdims(C, js), uⱼₛ[1]) : Distributions.pdf(subsetdims(C, js), collect(uⱼₛ))
-        return new{typeof(C), p}(C, i, js, float.(uⱼₛ), den)
+    function DistortionFromCop(C::Copula{D}, js, uⱼₛ, i) where {D}
+        jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
+        p = length(jst)
+        if p==1
+            den = Distributions.pdf(subsetdims(C, jst), uⱼₛt[1])
+        else
+            den = Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
+        end
+        return new{typeof(C), p}(C, i, jst, uⱼₛt, den)
     end
 end
-@inline DistortionFromCop(C::Copula{D}, j::Int, uⱼ::Real, i::Int) where {D} = DistortionFromCop(C, (Int(j),), (float(uⱼ),), i)
-Distributions.cdf(d::DistortionFromCop, u::Real) = _∂C_∂uⱼₛ(d.C, (d.i,), d.js, (u,), d.uⱼₛ) / d.den
-
-@inline function _assemble(D::Int, is, js, uᵢₛ, uⱼₛ)
-    Tᵢ = eltype(typeof(uᵢₛ)); Tⱼ = eltype(typeof(uⱼₛ)); T = promote_type(Tᵢ, Tⱼ)
-    w = fill(one(T), D)
-    @inbounds for (k,i) in pairs(is); w[i] = uᵢₛ[k]; end
-    @inbounds for (k,j) in pairs(js); w[j] = uⱼₛ[k]; end
-    return w
-end
-@inline function _swap(u, i, uᵢ)
-    T = promote_type(eltype(u), typeof(uᵢ))
-    v = similar(u, T); @inbounds for k in eachindex(u); v[k] = u[k]; end; v[i] = uᵢ; return v
-end
-@inline _der(f::FT, u, i::Int) where FT = ForwardDiff.derivative(uᵢ -> f(_swap(u, i, uᵢ)), u[i])
-@inline _der(f::FT, u, is::NTuple{1,Int}) where FT = _der(f::FT, u, is[1])
-@inline _der(f::FT, u, is::NTuple{N,Int}) where {N, FT} = _der(u′ -> _der(f, u′, (is[end],)), u, is[1:end-1])
-@inline _∂C_∂uⱼₛ(C, is, js, uᵢₛ, uⱼₛ) = _der(u -> Distributions.cdf(C, u), _assemble(length(C), is, js, uᵢₛ, uⱼₛ), js)
+Distributions.cdf(d::DistortionFromCop, u::Real) = _partial_cdf(d.C, (d.i,), d.js, (u,), d.uⱼₛ) / d.den
 
 """
     DistortedDist{Disto,Distrib} <: Distributions.UnivariateDistribution
@@ -101,7 +123,7 @@ Distributions.quantile(D::DistortedDist, α::Real) = Distributions.quantile(D.X,
 
 Copula of the conditioned random vector U_I | U_J = u_J.
 """
-struct ConditionalCopula{d,D,p, TDs}<:Copula{d}
+struct ConditionalCopula{d, D, p, TDs}<:Copula{d}
     C::Copula{D}
     js::NTuple{p, Int}
     is::NTuple{d, Int}
@@ -109,22 +131,21 @@ struct ConditionalCopula{d,D,p, TDs}<:Copula{d}
     den::Float64
     distortions::TDs
     function ConditionalCopula(C::Copula{D}, js, uⱼₛ) where {D}
-        p, p2 = length(js), length(uⱼₛ)
-        d = D - p
-        @assert 0 < p < D-1 "js=$(js) must be a non-empty proper subset of 1:D of length at most D-2 (D = $D)"
-        @assert p == p2 && all(0 .<= uⱼₛ .<= 1) "uⱼₛ must be in [0,1] and match js length"
-        jst = Tuple(collect(Int, js))
-        @assert all(in(1:D), jst)
+        jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
         ist = Tuple(setdiff(1:D, jst))
-        uⱼₛt = Tuple(collect(float.(uⱼₛ)))
+        p = length(jst)
+        d = D - p
         distos = Tuple(DistortionFromCop(C, jst, uⱼₛt, i) for i in ist)
-        den = p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛ[1]) : Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
+                if p==1
+            den = Distributions.pdf(subsetdims(C, jst), uⱼₛt[1])
+        else
+            den = Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
+        end
         return new{d, D, p, typeof(distos)}(C, jst, ist, uⱼₛt, den, distos)
     end
 end
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
-    u = Distributions.quantile.(CC.distortions, v)
-    return _∂C_∂uⱼₛ(CC.C, CC.is, CC.js, u, CC.uⱼₛ) / CC.den
+    return _partial_cdf(CC.C, CC.is, CC.js, Distributions.quantile.(CC.distortions, v), CC.uⱼₛ) / CC.den
 end
 
 ###########################################################################
@@ -132,9 +153,7 @@ end
 ###########################################################################
 """
         condition(C::Copula{D}, js, u_js)
-        condition(C::Copula{2}, j::Int, u_j::Real)
         condition(X::SklarDist, js, x_js)
-        condition(X::SklarDist, j::Int, x_j::Real)
 
 Construct conditional distributions with respect to a copula, either on the
 uniform scale (when passing a `Copula`) or on the original data scale (when
@@ -173,18 +192,15 @@ Notes
     The “conditional copula” is `ConditionalCopula(C, js, u_js)`, i.e., the copula
     of that conditional distribution.
 """
-condition(obj::Union{Copula, SklarDist}, j, xⱼ) = condition(obj, Tuple(collect(Int, j)),  Tuple(collect(Float64, xⱼ)))
+condition(obj::Union{Copula{D}, SklarDist{<:Copula{D}, Tpl}}, j, xⱼ) where {D, Tpl} = condition(obj, _process_tuples(Val{D}(), j, xⱼ)...)
 function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, Float64}) where {D, p}
-    is = setdiff(1:D, js)
-    margins = Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in is)
+    margins = Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in setdiff(1:D, js))
     p==D-1 && return margins[1]
     return SklarDist(ConditionalCopula(C, js, uⱼₛ), margins)
 end
-function condition(X::SklarDist, js::NTuple{p, Int}, xⱼₛ::NTuple{p, Float64}) where {p}
-    D = length(X)
-    is = setdiff(1:D, js)
+function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::NTuple{p, Float64}) where {D, Tpl, p}
     uⱼₛ = Tuple(Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ))
-    margins = Tuple(DistortionFromCop(X.C, js, uⱼₛ, i)(X.m[i]) for i in is)
+    margins = Tuple(DistortionFromCop(X.C, js, uⱼₛ, i)(X.m[i]) for i in setdiff(1:D, js))
     p==D-1 && return margins[1]
     return SklarDist(ConditionalCopula(X.C, js, uⱼₛ), margins)
 end
