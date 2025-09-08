@@ -46,6 +46,8 @@ frailty(G::JoeGenerator) = Sibuya(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
 ϕ⁽¹⁾(G::JoeGenerator, t) = (-expm1(-t))^(1/G.θ) / (G.θ - G.θ * exp(t))
 function ϕ⁽ᵏ⁾(G::JoeGenerator, ::Val{d}, t) where d
+    # TODO: test if this ϕ⁽ᵏ⁾ is really more 'efficient than the default one, 
+    # as we already saw that for the Gumbel is wasnt the case. 
     α = 1 / G.θ
     P_d_α = sum(
         BigCombinatorics.Stirling2(d, k + 1) *
