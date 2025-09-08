@@ -84,9 +84,9 @@ end
         L = LinearAlgebra.cholesky(Symmetric(Σ[J, J]))
         Σcond = Σ[I, I] - Σ[I, J] * (L' \ (L \ Σ[J, I]))
     end
-
-    # Subsetting colocated
-    SubsetCopula(C::TCopula{d,df,MT}, dims::NTuple{p, Int}) where {d,df,MT,p} = TCopula(df, C.Σ[collect(dims),collect(dims)])
-    σ = sqrt.(LinearAlgebra.diag(Σcond)); R_cond = Matrix(Σcond ./ (σ * σ'))
+    σ = sqrt.(LinearAlgebra.diag(Σcond))
+    R_cond = Matrix(Σcond ./ (σ * σ'))
     return TCopula(df + p, R_cond)
 end
+# Subsetting colocated
+SubsetCopula(C::TCopula{d,df,MT}, dims::NTuple{p, Int}) where {d,df,MT,p} = TCopula(df, C.Σ[collect(dims),collect(dims)])
