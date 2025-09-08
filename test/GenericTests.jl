@@ -171,7 +171,7 @@
             end
 
             if check_corkendall(C)
-                @testset "corkendall ∘ resenblatt = I" begin
+                @testset "corkendall ∘ rosenblatt = I" begin
                     U = rosenblatt(C, spl1000)
                     for i in 1:(d - 1)
                         for j in (i + 1):d
