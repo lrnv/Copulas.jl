@@ -92,7 +92,7 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula, x::AbstractVector{T}) where {T<:Real}
     v1, v2 = rand(rng, C.evd)
 
-    M  = rand(rng, frailty_dist(C.gen)) # frailty with LT = ϕ
+    M  = rand(rng, frailty(C.gen)) # frailty with LT = ϕ
 
     G = C.gen
     x[1] = ϕ(G, -log(v1)/M)
