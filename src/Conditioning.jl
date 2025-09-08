@@ -22,7 +22,7 @@ function _swap(u, i, uᵢ)
     return v
 end
 _der(f, u, i::Int) = ForwardDiff.derivative(uᵢ -> f(_swap(u, i, uᵢ)), u[i])
-_der(f, u, is::NTuple{1,Int}) = _der(f::FT, u, is[1])
+_der(f, u, is::NTuple{1,Int}) = _der(f, u, is[1])
 _der(f, u, is::NTuple{N,Int}) where {N} = _der(u′ -> _der(f, u′, (is[end],)), u, is[1:end-1])
 _partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _der(u -> Distributions.cdf(C, u), _assemble(length(C), is, js, uᵢₛ, uⱼₛ), js)
 
