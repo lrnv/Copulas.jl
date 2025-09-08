@@ -20,62 +20,65 @@ module Copulas
     import BigCombinatorics
     import LambertW
 
-    # Standard copulas and stuff.
+    # Main code
     include("utils.jl")
     include("Copula.jl")
     include("SklarDist.jl")
-    export pseudos,
-           SklarDist
+    include("Subsetting.jl")
+    include("Conditioning.jl")
 
-    # Others.
+    # Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
+    include("UnivariateDistribution/Frailties/Sibuya.jl")
+    include("UnivariateDistribution/Frailties/Logarithmic.jl")
+    include("UnivariateDistribution/Frailties/AlphaStable.jl")
+    include("UnivariateDistribution/Frailties/GammaStoppedGamma.jl")
+    include("UnivariateDistribution/Frailties/GammaStoppedPositiveStable.jl")
+    include("UnivariateDistribution/Frailties/PosStableStoppedGamma.jl")
+    include("UnivariateDistribution/Frailties/SibuyaStoppedGamma.jl")
+    include("UnivariateDistribution/Frailties/SibuyaStoppedPosStable.jl")
+    include("UnivariateDistribution/Frailties/GeneralizedSibuya.jl")
+    include("UnivariateDistribution/Frailties/ShiftedNegBin.jl")
+
+    # Radials (Univ r.v. on R_+ which Williamson d-transform are used as arch. generators)
+    include("UnivariateDistribution/Radials/ExtremeDist.jl")
+    include("UnivariateDistribution/Radials/PStable.jl")
+    include("UnivariateDistribution/Radials/TiltedPositiveStable.jl")
+    include("UnivariateDistribution/Radials/ClaytonWilliamsonDistribution.jl")
+    include("UnivariateDistribution/Radials/WilliamsonFromFrailty.jl")
+
+    # Distortions (Univ r.v. on [0,1] which are conditional distributions from copulas)
+    include("UnivariateDistribution/Distortions/NoDistortion.jl")
+    include("UnivariateDistribution/Distortions/GaussianDistortion.jl")
+    include("UnivariateDistribution/Distortions/StudentDistortion.jl")
+    include("UnivariateDistribution/Distortions/BivEVDistortion.jl")
+    include("UnivariateDistribution/Distortions/PlackettDistortion.jl")
+    include("UnivariateDistribution/Distortions/BivFGMDistortion.jl")
+    include("UnivariateDistribution/Distortions/MDistortion.jl")
+    include("UnivariateDistribution/Distortions/WDistortion.jl")
+    include("UnivariateDistribution/Distortions/FlipDistortion.jl")
+
+    # Miscelaneous copulas
     include("MiscellaneousCopulas/SurvivalCopula.jl")
     include("MiscellaneousCopulas/PlackettCopula.jl")
     include("MiscellaneousCopulas/EmpiricalCopula.jl")
     include("MiscellaneousCopulas/FGMCopula.jl")
     include("MiscellaneousCopulas/RafteryCopula.jl")
-    export SurvivalCopula,
-           PlackettCopula,
-           EmpiricalCopula,
-           FGMCopula,
-           RafteryCopula
+    include("MiscellaneousCopulas/IndependentCopula.jl")
+    include("MiscellaneousCopulas/MCopula.jl")
+    include("MiscellaneousCopulas/WCopula.jl")
 
     # Elliptical copulas
     include("EllipticalCopula.jl")
     include("EllipticalCopulas/GaussianCopula.jl")
     include("EllipticalCopulas/TCopula.jl")
-    export GaussianCopula,
-           TCopula
 
-
-    include("MiscellaneousCopulas/IndependentCopula.jl")
-    include("MiscellaneousCopulas/MCopula.jl")
-    include("MiscellaneousCopulas/WCopula.jl")
-    export IndependentCopula, 
-           MCopula, 
-           WCopula
-
-    # These three distributions might be merged in Distrbutions.jl one day.
-    include("UnivariateDistribution/Sibuya.jl")
-    include("UnivariateDistribution/Logarithmic.jl")
-    include("UnivariateDistribution/AlphaStable.jl")
-    include("UnivariateDistribution/ClaytonWilliamsonDistribution.jl")
-    include("UnivariateDistribution/WilliamsonFromFrailty.jl")
-    include("UnivariateDistribution/ExtremeDist.jl")
-    include("UnivariateDistribution/PStable.jl")
-    include("UnivariateDistribution/TiltedPositiveStable.jl")
-    include("UnivariateDistribution/PosStableStoppedGamma.jl")
-    include("UnivariateDistribution/GammaStoppedGamma.jl")
-    include("UnivariateDistribution/GammaStoppedPositiveStable.jl")
-    include("UnivariateDistribution/SibuyaStoppedGamma.jl")
-    include("UnivariateDistribution/SibuyaStoppedPosStable.jl")
-    include("UnivariateDistribution/GeneralizedSibuya.jl")
-    include("UnivariateDistribution/ShiftedNegBin.jl")
-
-    # Archimedean generators
+    # Archimedean copulas
     include("Generator.jl")
+    include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
+    include("Generator/TiltedGenerator.jl")
     include("ArchimedeanCopula.jl")
     include("Generator/FrailtyGenerator.jl")
-    
+    include("Generator/WilliamsonGenerator.jl")
     include("Generator/AMHGenerator.jl")
     include("Generator/BB1Generator.jl")
     include("Generator/BB2Generator.jl")
@@ -91,27 +94,8 @@ module Copulas
     include("Generator/GumbelGenerator.jl")
     include("Generator/InvGaussianGenerator.jl")
     include("Generator/JoeGenerator.jl")
-    include("Generator/WilliamsonGenerator.jl")
-    export WilliamsonGenerator, 
-           i𝒲, 
-           ArchimedeanCopula,
-           AMHCopula,
-           BB1Copula, 
-           BB2Copula, 
-           BB3Copula, 
-           BB6Copula, 
-           BB7Copula, 
-           BB8Copula, 
-           BB9Copula, 
-           BB10Copula,
-           ClaytonCopula,
-           FrankCopula,
-           GumbelBarnettCopula,
-           GumbelCopula,
-           InvGaussianCopula,
-           JoeCopula
 
-    # bivariate Extreme Value Copulas
+    # Bivariate Extreme Value Copulas
     include("ExtremeValueCopula.jl")
     include("ExtremeValueCopulas/AsymGalambosCopula.jl")
     include("ExtremeValueCopulas/AsymLogCopula.jl")
@@ -125,23 +109,52 @@ module Copulas
     include("ExtremeValueCopulas/MOCopula.jl")
     include("ExtremeValueCopulas/tEVCopula.jl")
 
-    export AsymGalambosCopula,
+    export pseudos, # utility functions and methods making the interface: 
+           rosenblatt, 
+           inverse_rosenblatt, 
+           subsetdims, 
+           condition,
+           WilliamsonGenerator, 
+           i𝒲, 
+           TiltedGenerator,
+           SklarDist, # SklarDist to make multivariate models
+           AMHCopula, # And a bunch of copulas. 
+           ArchimedeanCopula,
+           AsymGalambosCopula,
            AsymLogCopula,
            AsymMixedCopula,
+           BB10Copula,
+           BB1Copula, 
+           BB2Copula, 
+           BB3Copula, 
+           BB6Copula, 
+           BB7Copula, 
+           BB8Copula, 
+           BB9Copula, 
            BC2Copula,
+           ClaytonCopula,
            CuadrasAugeCopula,
+           EmpiricalCopula,
+           FGMCopula,
+           FrankCopula,
            GalambosCopula,
+           GaussianCopula,
+           GumbelBarnettCopula,
+           GumbelCopula,
            HuslerReissCopula,
+           IndependentCopula, 
+           InvGaussianCopula,
+           JoeCopula,
            LogCopula,
+           MCopula, 
            MixedCopula,
            MOCopula,
-           tEVCopula
-
-    # Subsetting
-    include("SubsetCopula.jl") # not exported yet.
-
-    # transformations
-    export rosenblatt, inverse_rosenblatt
+           PlackettCopula,
+           RafteryCopula,
+           SurvivalCopula,
+           TCopula,
+           tEVCopula,
+           WCopula
 
     using PrecompileTools
     @setup_workload begin

@@ -1,15 +1,6 @@
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 Base.broadcastable(C::Copula) = Ref(C)
 Base.length(::Copula{d}) where d = d
-
-# The potential functions to code:
-# Distributions._logpdf
-# Distributions.cdf
-# Distributions.fit(::Type{CT},u) where CT<:Mycopula
-# Distributions._rand!
-# Base.eltype
-# τ, τ⁻¹
-# Base.eltype
 function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
     length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     if any(iszero,u)
@@ -97,36 +88,4 @@ function measure(C::Copula{d}, u,v) where {d}
         r += sign * Distributions.cdf(C, eval_pt)
     end
     return max(r,0)
-end
-
-"""
-    rosenblatt(C::Copula, u)
-
-Computes the rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ C, the result should be uniformely distributed on the unit hypercube. The importance of this transofrmation comes from its bijectivity: `inverse_rosenblatt(C, rand(d))` is equivalent to `rand(C)`. The interface proposes faster versions for matrix inputs `u`.
-
-
-* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
-* [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
-* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
-"""
-function rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d}
-    @assert d == size(u, 1)
-    return rosenblatt(C, reshape(u, (d, 1)))[:]
-end
-
-
-"""
-    inverse_rosenblatt(C::Copula, u)
-
-Computes the inverse rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ Π, the independence copula, the result should be distributed as C. Also look at `rosenblatt(C, u)` for the inverse transformation. The interface proposes faster versions for matrix inputs `u`. 
-
-
-References:
-* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
-* [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
-* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
-"""
-function inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d}
-    @assert d == size(u, 1)
-    return inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
 end

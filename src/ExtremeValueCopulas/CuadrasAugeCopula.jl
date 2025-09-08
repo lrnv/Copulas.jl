@@ -56,3 +56,30 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CuadrasAugeCopu
     x[2] = exp(-(1/θ)*min(E₂,E₁₂))
     return x
 end
+
+function Distributions.logcdf(D::BivEVDistortion{<:CuadrasAugeCopula, T}, z::Real) where T
+    # bounds and degeneracies
+    z ≤ 0    && return T(-Inf)
+    z ≥ 1    && return T(0)
+    D.uⱼ ≤ 0 && return T(-Inf)
+    D.uⱼ ≥ 1 && return T(log(z))
+
+    z ≥ D.uⱼ && return (1-D.C.θ) * log(z)
+    return log1p(-D.C.θ) + log(z) - D.C.θ * log(D.uⱼ)
+end
+
+function Distributions.quantile(D::BivEVDistortion{<:CuadrasAugeCopula, T}, α::Real) where T
+    α ≤ 0 && return T(0)
+    α ≥ 1 && return T(1)
+    D.uⱼ ≤ 0 && return T(0)
+    D.uⱼ ≥ 1 && return α
+
+    la = log(α)
+    lu = log(D.uⱼ)
+    lt = log1p(-D.C.θ)
+    θ = D.C.θ
+
+    la < lt + (1-θ)*lu && return exp(la - lt + θ * lu)
+    la ≤      (1-θ)*lu && return D.uⱼ
+    return exp(la / (1 - θ))
+end

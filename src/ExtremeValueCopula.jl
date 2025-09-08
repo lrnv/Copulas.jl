@@ -118,3 +118,4 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     x[2] = w^((1-z)/a)
     return x
 end
+DistortionFromCop(C::ExtremeValueCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivEVDistortion(C, Int8(js[1]), float(uⱼₛ[1]))

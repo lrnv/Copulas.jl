@@ -86,3 +86,8 @@ end
 function ρ(c::PlackettCopula{P}) where P
     return (c.θ+1)/(c.θ-1)-(2*c.θ*log(c.θ)/(c.θ-1)^2)
 end
+
+# Conditioning colocated
+@inline function DistortionFromCop(C::PlackettCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int)
+    return PlackettDistortion(float(C.θ), Int8(js[1]), float(uⱼₛ[1]))
+end

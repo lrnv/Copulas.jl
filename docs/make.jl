@@ -25,13 +25,13 @@ makedocs(;
         "Manual" => [
             "Getting Started" => "getting_started.md",
             "Sklar's Distributions" => "sklar.md",
-            "Elliptical Copulas" => "elliptical/generalities.md",
-            "Archimedean Generators" => "archimedean/generalities.md",
-            "Extreme Value Copulas" => "extremevalue/generalities.md",
-            "Empirical Copulas" => "empirical/generalities.md",
-            "Vines Copulas" => "Vines.md",
+            "Conditioning and Subsetting" => "conditioning_and_subsetting.md",
+            "Elliptical family" => "elliptical/generalities.md",
+            "Archimedean family" => "archimedean/generalities.md",
+            "Extreme Value family" => "extremevalue/generalities.md",
+            "Vines family" => "Vines.md",
+            "Empirical models" => "empirical/generalities.md",
             "Dependence measures" => "dependence_measures.md",
-            "Rosenblatt transformatons" =>  "rosenblatt_transform.md",
         ],
         
         "Bestiary" => [

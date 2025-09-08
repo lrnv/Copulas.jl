@@ -157,3 +157,21 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     end
     return U
 end
+
+# Conditioning colocated
+function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+    @assert length(js) == length(uⱼₛ)
+    sJ = zero(eltype(uⱼₛ))
+    @inbounds for u in uⱼₛ
+        sJ += ϕ⁻¹(C.G, float(u))
+    end
+    return ArchimedeanDistortion(C.G, p, float(sJ))
+end
+
+# Conditional copula specialization: remains Archimedean with a tilted generator
+function ConditionalCopula(C::ArchimedeanCopula{D}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, p}
+    return ArchimedeanCopula(D - p, TiltedGenerator(C.G, Val{p}(), sum(ϕ⁻¹.(C.G, uⱼₛ))))
+end
+
+# Subsetting colocated
+SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula(length(dims), C.G)
