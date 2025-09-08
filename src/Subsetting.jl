@@ -39,6 +39,9 @@ function _cdf(C::SubsetCopula{d,CT},u) where {d,CT}
     end 
     return Distributions.cdf(C.C,v)
 end
+function Distributions.pdf(S::SubsetCopula{d,<:Copula{D}}, u) where {d,D}
+    return _partial_cdf(S.C, Tuple(setdiff(1:D, S.dims)), js, ones(D-d), u)
+end
 
 # Kendall tau and spearman rho are symetric measures in bivaraite cases: 
 τ(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = τ(C.C)

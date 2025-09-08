@@ -52,16 +52,16 @@ Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
 
 
-_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, T}) where {D,p, T<:Real} = (js, ujs) 
+_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs) 
 _process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,)) 
 function _process_tuples(::Val{D}, js, ujs) where D
-    p, p2 = length(js), length(uⱼₛ)
+    p, p2 = length(js), length(ujs)
     @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
-    @assert p == p2 && all(0 .<= uⱼₛ .<= 1) "uⱼₛ must be in [0,1] and match js length"
+    @assert p == p2 && all(0 .<= ujs .<= 1) "uⱼₛ must be in [0,1] and match js length"
     jst = Tuple(collect(Int, js))
     @assert all(in(1:D), jst)
-    uⱼₛt = Tuple(collect(float.(uⱼₛ)))
-    return (jst, uⱼₛt)
+    ujst = Tuple(collect(float.(ujs)))
+    return (jst, ujst)
 end
 
 
@@ -196,7 +196,8 @@ Notes
     The “conditional copula” is `ConditionalCopula(C, js, u_js)`, i.e., the copula
     of that conditional distribution.
 """
-condition(obj::Union{Copula{D}, SklarDist{<:Copula{D}, Tpl}}, j, xⱼ) where {D, Tpl} = condition(obj, _process_tuples(Val{D}(), j, xⱼ)...)
+condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
+condition(C::SklarDist{<:Copula{D}}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
 function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, Float64}) where {D, p}
     margins = Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in setdiff(1:D, js))
     p==D-1 && return margins[1]

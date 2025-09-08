@@ -10,6 +10,7 @@ end
 @inline function Distributions.quantile(D::BivFGMDistortion, α::Real)
     a = D.θ * (1 - 2D.uⱼ)
     # Handle near-independence stably
+    T = typeof(α)
     abs(a) < sqrt(eps(T)) && return α
 
     # Solve a u^2 - (1+a) u + α = 0 and pick the root in [0,1]
