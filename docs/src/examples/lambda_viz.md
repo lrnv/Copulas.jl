@@ -49,6 +49,15 @@ K = KendallFunction(x)
 plot(u -> K(u), xlims = (0,1), title="Empirical Kendall function")
 ```
 
+We can also visualize the ECDF of the intermediate variables Z (whose empirical CDF is K):
+
+```@example lambda
+using StatsBase
+EC = ecdf(K.z)
+plot(EC; label="ECDF of Z", xlabel="t", ylabel="K_N(t)")
+plot!(t->K(t); label="K(t)", color=:red, alpha=0.6)
+```
+
 One notable detail about the Kendall function is that it does **not** characterize the copula in all generality. On the other hand, for an Archimedean copula with generator φ, we have:
 
 $$K(t) = t - \phi'\{\phi^{-1}(t)\} \phi^{-1}(t).$$
@@ -71,6 +80,16 @@ plot!(u -> λ(ClaytonGenerator(θ_cl),u), label="Clayton")
 plot!(u -> λ(GumbelGenerator(θ_gb),u), label="Gumbel")
 plot!(u -> 0, label="Comonotony")
 plot!(u -> u*log(u), label="Independence")
+```
+
+Smaller samples increase the variability of the empirical λ function. For illustration:
+
+```@example lambda
+Xsmall = SklarDist(ClaytonCopula(2,2.7),(Normal(),Pareto()))
+x2 = rand(Xsmall, 300)
+K2 = KendallFunction(x2)
+plot(u -> u - K(u), xlims=(0,1), label="N=1000")
+plot!(u -> u - K2(u), label="N=300")
 ```
 
 The variance of the empirical λ function is notable in this example. In particular, we note that the estimated parameter

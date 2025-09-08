@@ -58,3 +58,25 @@ ifm2_cop.Σ .- quick_fit.C.Σ
 ```
 
 We see that the estimated parameter is not exactly the same, which is normal. Even in this contrived example, the difference between the two is not striking. Whether one method is better than the other is unclear, but the JMLE method is clearly superior by definition. However, due to its complexity, most software do not perform such estimation.
+
+## Visual comparison
+
+```@example ifm
+using Plots, StatsBase
+P1 = scatter(x[1,:], x[2,:]; ms=2, alpha=0.6, title="Original scale (first two dims)", legend=false)
+U1 = pseudos(x)
+P2 = scatter(U1[1,:], U1[2,:]; ms=2, alpha=0.6, xlim=(0,1), ylim=(0,1), title="Pseudo-observations (IFM1)", legend=false)
+plot(P1, P2; layout=(1,2), size=(850,350))
+```
+
+```@example ifm
+τ1 = StatsBase.corkendall(U1')
+U2 = similar(x)
+for i in 1:length(C)
+    U2[i,:] .= cdf.(Ref(quick_fit.m[i]), x[i,:])
+end
+τ2 = StatsBase.corkendall(U2')
+plot(heatmap(τ1; title="Kendall τ (IFM1)", aspect_ratio=1, c=:blues, clim=(-1,1)),
+     heatmap(τ2; title="Kendall τ (IFM2)", aspect_ratio=1, c=:blues, clim=(-1,1)),
+     layout=(1,2), size=(700,320))
+```

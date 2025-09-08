@@ -32,3 +32,31 @@ other_fitted_model = fit(SklarDist{EmpiricalCopula,MyMargs},data)
 This simple interface leverages the `fit` function from `Distributions.jl`. According to their documentation, this function is not supposed to use a particular method but to fit "quick and dirty" some distributions. 
 
 So you have to be careful: the fit method might not be the same for different copulas or different marginals. For example, Archimedean copulas are fitted through inversion of the Kendall tau function, while the Gaussian copula is fitted by maximum likelihood.
+
+## Visual checks
+
+### Scatter of original data (first two dims)
+
+```@example 5
+using Plots
+scatter(data[1,:], data[2,:]; ms=2, alpha=0.6, title="First two marginals (original scale)", legend=false)
+```
+
+### Pseudo-observations vs simulated from fitted copula
+
+```@example 5
+U = Copulas.pseudos(data)              # pseudo-observations (uniforms)
+Usim = rand(fitted_model.C, size(data,2))  # simulate same length from fitted copula
+P1 = scatter(U[1,:], U[2,:]; ms=2, alpha=0.6, xlim=(0,1), ylim=(0,1), title="Empirical uniforms", legend=false)
+P2 = scatter(Usim[1,:], Usim[2,:]; ms=2, alpha=0.6, xlim=(0,1), ylim=(0,1), title="Fitted copula uniforms", legend=false)
+plot(P1, P2; layout=(1,2), size=(850,350))
+```
+
+### Fitted copula density heatmap
+
+```@example 5
+grid = range(0.02, 0.98; length=120)
+Z = [pdf(fitted_model.C, [u,v]) for u in grid, v in grid]
+heatmap(grid, grid, Z'; xlabel="u", ylabel="v", aspect_ratio=1, c=:viridis,
+	title="pdf of fitted copula on [0,1]^2")
+```

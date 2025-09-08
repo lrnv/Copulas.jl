@@ -73,6 +73,31 @@ D = condition(C, 2, 0.3)  # distortion for U₁ | U₂ = 0.3
 cdf(D, 0.7), quantile(D, 0.9)
 ```
 
+Here is the full CDF of this distortion on [0,1]:
+
+```@example cond1
+using Plots
+ts = range(0.0, 1.0; length=401)
+plt = plot(ts, cdf.(Ref(D), ts);
+          xlabel="u", ylabel="H_{1|2}(u | 0.3)",
+          title="Conditional CDF on the uniform scale",
+          legend=false)
+plt
+```
+
+Overlay the empirical CDF from Monte Carlo sampling via the distortion’s quantile (exact conditional sampling on the uniform scale):
+
+```@example cond1
+using StatsBase
+N = 2000
+αs = rand(N)
+us = Distributions.quantile.(Ref(D), αs)
+ECDF = ecdf(us)
+plot!(ts, ECDF.(ts); seriestype=:steppost, label="empirical", alpha=0.6, color=:black)
+plot!(ts, cdf.(Ref(D), ts); label="analytic", color=:blue)
+plt
+```
+
 #### Example (original scale via SklarDist)
 
 ```@example cond1
@@ -82,12 +107,46 @@ X1_given_X2 = condition(X, 2, 0.0) # distribution of X₁ | X₂ = 0.0
 cdf(X1_given_X2, 1.0), quantile(X1_given_X2, 0.95)
 ```
 
+Overlay analytic vs empirical CDF on the original scale:
+
+```@example cond1
+xs = rand(X1_given_X2, 2000)
+Fx = ecdf(xs)
+xs_grid = range(quantile(X1_given_X2, 0.001), quantile(X1_given_X2, 0.999); length=401)
+plot(xs_grid, Distributions.cdf.(Ref(X1_given_X2), xs_grid);
+  xlabel="x", ylabel="F_{X₁|X₂}(x|0)", title="Original-scale conditional CDF", label="analytic")
+plot!(xs_grid, Fx.(xs_grid); seriestype=:steppost, label="empirical", alpha=0.6, color=:black)
+```
+
 #### Example (uniform scale, D = 3, |J| = 2)
 
 ```@example cond1
 C = ClaytonCopula(3, 1.2)
 H = condition(C, (2, 3), (0.25, 0.8))
 cdf(H, [0.4, 0.6])
+```
+
+You can also visualize a marginal conditional distortion in a higher-dimensional example.
+For instance, in 3D, conditioning on two coordinates returns a 1D distortion for the
+remaining coordinate; we can plot its CDF as well:
+
+```@example cond1
+C3 = ClaytonCopula(3, 1.2)
+D3 = condition(C3, (1, 2), (0.25, 0.8))  # distortion for U₃ | (U₁,U₂) = (0.25,0.8)
+ts = range(0.0, 1.0; length=401)
+plot(ts, cdf.(Ref(D3), ts);
+  xlabel="u", ylabel="H_{3|1,2}(u | 0.25,0.8)",
+  title="Conditional CDF in 3D (uniform scale)",
+  legend=false)
+```
+
+Overlay with an empirical CDF obtained via the distortion’s quantile:
+
+```@example cond1
+αs = rand(2000)
+u3s = Distributions.quantile.(Ref(D3), αs)
+EC3 = ecdf(u3s)
+plot!(ts, EC3.(ts); seriestype=:steppost, label="empirical", alpha=0.6, color=:black)
 ```
 
 ### Special cases
@@ -110,10 +169,9 @@ H_{i\mid J}(u\mid \mathbf u_J) = \frac{\,\,\, ϕ^{(p)}\big(ϕ^{-1}(u) + S_J\big)
 This yields a fast-path for Archimedean conditioning without numerical differentiation.
 
 !!! tip "Missing fast-paths?"
-    If you spot a conditional case that should admit a faster closed-form or semi-analytic
-    path but currently falls back to the generic construction, please open an issue with
-    references (family, formula, paper). We’ll happily review and wire in a specialized
-    method.
+    If you find a conditional that should admit a faster closed-form or semi-analytic
+    path but currently falls back to the generic construction, please open an issue, 
+    we’ll happily implement it :)
 
 ### Relation to the conditional copula
 
@@ -270,11 +328,32 @@ rosenblatt
 inverse_rosenblatt
 ```
 
-!!! note "Not all copulas available!"
-    Some copulas, such as Archimedeans, have known expressions for their Rosenblatt and/or inverse Rosenblatt transforms, and therefore benefit from this interface and our implementation. On the other hand, some copulas have no known closed-form expressions for conditional CDFs, and therefore their Rosenblatt transformation is hard to implement.
+Once again, since the rosenblatt transform leverages the conditioning mechanisme, some fast-paths might be missing in the implementation.
 
-    In particular, we did not implement yet a suitable default for all cases. If you feel that methods for certain particular copulas are missing while the theory exists and it should be possible, do not hesitate to open an issue ! If you feel like you have a potential generic implementation that would be suitable, please reach us too. 
+### Sanity check plot
 
+You can validate that the Rosenblatt transform maps samples to independent uniforms by checking the marginal ECDFs against the 45° line.
+
+```@example rosen1
+using Copulas, Plots, StatsBase
+# pick a nontrivial copula
+C = ClaytonCopula(3, 1.5)
+
+# draw samples and apply Rosenblatt transform coordinate-wise
+U = rand(C, 3000)                 # size (3, N)
+S = reduce(hcat, (rosenblatt(C, U[:, i]) for i in 1:size(U, 2)))  # size (3, N)
+
+ts = range(0.0, 1.0; length=401)
+layout = @layout [a b c]
+plt = plot(layout=layout, size=(900, 280), legend=false)
+for k in 1:3
+  Ek = ecdf(S[k, :])
+  plot!(plt[k], ts, Ek.(ts); seriestype=:steppost, color=:black,
+      title="ECDF of s$(k)", xlabel="u", ylabel="ECDF")
+  plot!(plt[k], ts, ts; color=:blue, alpha=0.7)
+end
+plt
+```
 
 ```@bibliography
 Pages = [@__FILE__]
