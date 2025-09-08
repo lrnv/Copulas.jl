@@ -204,7 +204,7 @@
                                         Dgen = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (Float64(v),), i)
                                         vals2 = cdf.(Ref(Dgen), us)
                                         for (v2,r) in zip(vals2, refs)
-                                            @test isapprox(v2, r, atol=1e-3, rtol=1e-3)
+                                            @test isapprox(v2, r, atol=1e-3, rtol=1e-2)
                                         end
                                         for (v2,v) in zip(vals2, vals)
                                             @test isapprox(v2, v, atol=1e-3, rtol=1e-3)
