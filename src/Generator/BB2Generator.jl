@@ -19,7 +19,7 @@ The BB2 copula is parameterized by ``\\theta, \\delta \\in (0,\\infty)`. It is a
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.193-194
 """
-struct BB2Generator{T} <: Generator
+struct BB2Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T
     function BB2Generator(θ, δ)
@@ -33,8 +33,6 @@ const BB2Copula{d, T} = ArchimedeanCopula{d, BB2Generator{T}}
 BB2Copula(d, θ, δ) = ArchimedeanCopula(d, BB2Generator(θ, δ))
 
 Distributions.params(G::BB2Generator) = (G.θ, G.δ)
-
-max_monotony(::BB2Generator) = Inf
 
 ϕ(  G::BB2Generator, s) = exp(-log1p(log1p(s)/G.δ)/G.θ)
 ϕ⁻¹(G::BB2Generator, t) = expm1(G.δ*expm1(-G.θ*log(t)))
@@ -68,8 +66,7 @@ function ϕ⁽ᵏ⁾⁻¹(G::BB2Generator, ::Val{1}, x; start_at=x)
 end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
-williamson_dist(G::BB2Generator, ::Val{d}) where d = WilliamsonFromFrailty(GammaStoppedGamma(G.θ, G.δ), Val{d}())
-
+frailty(G::BB2Generator) = GammaStoppedGamma(G.θ, G.δ)
 @inline function _abpair_robust(u1::Real, u2::Real, θ::Real, δ::Real)
     u1c = clamp(float(u1), 1e-15, 1-1e-15)
     u2c = clamp(float(u2), 1e-15, 1-1e-15)

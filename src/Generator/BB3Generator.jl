@@ -19,7 +19,7 @@ The BB3 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.195-196
 """
-struct BB3Generator{T} <: Generator
+struct BB3Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T
     function BB3Generator(θ, δ)
@@ -33,7 +33,6 @@ end
 const BB3Copula{d, T} = ArchimedeanCopula{d, BB3Generator{T}}
 BB3Copula(d, θ, δ) = ArchimedeanCopula(d, BB3Generator(θ, δ))
 Distributions.params(G::BB3Generator) = (G.θ, G.δ)
-max_monotony(::BB3Generator) = Inf
 
 ϕ(  G::BB3Generator, s) = exp(-exp(log(log1p(s)/G.δ)/G.θ))
 ϕ⁻¹(G::BB3Generator, t) = expm1(G.δ * exp(G.θ * log(-log(t))))
@@ -71,8 +70,7 @@ function ϕ⁽ᵏ⁾⁻¹(G::BB3Generator, ::Val{1}, x; start_at=x)
 end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
-williamson_dist(G::BB3Generator, ::Val{d}) where d = WilliamsonFromFrailty(PosStableStoppedGamma(G.θ, G.δ), Val{d}())
-
+frailty(G::BB3Generator) = PosStableStoppedGamma(G.θ, G.δ)
 @inline function _clipu_bb3(u::Real, θ::Real, δ::Real)
     tmax = (log(floatmax(Float64)) - 8.0) / δ
     ϵθδ = exp(-tmax^(inv(θ)))

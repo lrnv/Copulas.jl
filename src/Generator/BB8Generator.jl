@@ -21,7 +21,7 @@ where ``\\eta = 1 - (1 - \\delta)^{\\vartheta}.``
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.204-205
 """
-struct BB8Generator{T} <: Generator
+struct BB8Generator{T} <: AbstractFrailtyGenerator
     ϑ::T
     δ::T
     function BB8Generator(ϑ, δ)
@@ -39,7 +39,6 @@ end
 const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
 BB8Copula(d, ϑ, δ) = ArchimedeanCopula(d, BB8Generator(ϑ, δ))
 Distributions.params(G::BB8Generator) = (G.ϑ, G.δ)
-max_monotony(::BB8Generator) = Inf 
 
 @inline _η(G::BB8Generator) = -expm1(G.ϑ * log1p(-G.δ))
 
@@ -57,8 +56,7 @@ function ϕ⁽ᵏ⁾(G::BB8Generator, ::Val{2}, s)
 end
 ϕ⁻¹⁽¹⁾(G::BB8Generator, t) = -G.ϑ*G.δ * (1 - G.δ*t)^(G.ϑ - 1) / (1 - (1 - G.δ*t)^G.ϑ)
 
-williamson_dist(G::BB8Generator, ::Val{d}) where d = WilliamsonFromFrailty(GeneralizedSibuya(G.ϑ, G.δ), Val{d}())
-
+frailty(G::BB8Generator) = GeneralizedSibuya(G.ϑ, G.δ)
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB8Generator}
     ϑ, δ = C.G.ϑ, C.G.δ
     η = -expm1(ϑ*log1p(-δ))

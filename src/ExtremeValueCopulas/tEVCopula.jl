@@ -47,6 +47,7 @@ struct tEVCopula{df, P} <: ExtremeValueCopula{P}
         return new{typeof(ν), typeof(ρ)}(ρ, ν)
     end
 end
+Distributions.params(C::tEVCopula{df,P}) where {df,P} = (C.ρ, C.ν)
 function A(T::tEVCopula, t::Real)
     ρ, ν = T.ρ, T.ν
     C = sqrt((1+ν)/(1-ρ^2))

@@ -19,7 +19,7 @@ The BB6 copula is parameterized by ``\\theta, \\delta \\in [1,\\infty)``. It is 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.200-201
 """
-struct BB6Generator{T} <: Generator
+struct BB6Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T
     function BB6Generator(θ, δ)
@@ -39,7 +39,6 @@ end
 const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
 BB6Copula(d, θ, δ) = ArchimedeanCopula(d, BB6Generator(θ, δ))
 Distributions.params(G::BB6Generator) = (G.θ, G.δ)
-max_monotony(::BB6Generator) = Inf
 
 ϕ(  G::BB6Generator, s) = 1 - (1 - exp(-s^(inv(G.δ))))^(inv(G.θ))
 ϕ⁻¹(G::BB6Generator, t) = (-log1p(- (1 - t)^(G.θ)))^(G.δ)
@@ -67,8 +66,7 @@ function ϕ⁻¹⁽¹⁾(G::BB6Generator, u::Real)
     return -δ*θ * j^(δ - 1) * (1 - u)^(θ - 1) / h
 end
 
-williamson_dist(G::BB6Generator, ::Val{d}) where d = WilliamsonFromFrailty(SibuyaStoppedPosStable(G.θ, G.δ), Val{d}())
-
+frailty(G::BB6Generator) = SibuyaStoppedPosStable(G.θ, G.δ)
 # ------------------ CDF (d = 2) ------------------
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB6Generator}
     θ, δ = C.G.θ, C.G.δ

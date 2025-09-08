@@ -22,7 +22,7 @@ It has a few special cases:
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.190-192
 """
-struct BB1Generator{T} <: Generator
+struct BB1Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T
     function BB1Generator(θ, δ)
@@ -41,8 +41,6 @@ BB1Copula(d, θ, δ) = ArchimedeanCopula(d, BB1Generator(θ, δ))
 
 Distributions.params(G::BB1Generator) = (G.θ, G.δ)
 
-max_monotony(::BB1Generator) = Inf
-
 ϕ(G::BB1Generator, s) = exp(-(1/G.θ) * log1p(exp((log(s)/G.δ))))
 ϕ⁻¹(G::BB1Generator, t) = exp(G.δ * log(expm1(-G.θ * log(t))))  # avoid a^b
 function ϕ⁽¹⁾(G::BB1Generator, s)
@@ -60,8 +58,7 @@ function ϕ⁻¹⁽¹⁾(G::BB1Generator, t)
 end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
-williamson_dist(G::BB1Generator, ::Val{d}) where d = WilliamsonFromFrailty(GammaStoppedPositiveStable(inv(G.δ), inv(G.θ)), Val{d}())
-
+frailty(G::BB1Generator) = GammaStoppedPositiveStable(inv(G.δ), inv(G.θ))
 # --- CDF and logpdf (d=2), numeric stable version ---
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB1Generator}
     θ, δ = C.G.θ, C.G.δ

@@ -109,6 +109,10 @@ module Copulas
     include("ExtremeValueCopulas/MOCopula.jl")
     include("ExtremeValueCopulas/tEVCopula.jl")
 
+    include("ArchimaxCopula.jl")
+    include("MiscellaneousCopulas/BB4Copula.jl")
+    include("MiscellaneousCopulas/BB5Copula.jl")
+
     export pseudos, # utility functions and methods making the interface: 
            rosenblatt, 
            inverse_rosenblatt, 

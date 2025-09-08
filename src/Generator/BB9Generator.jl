@@ -19,7 +19,7 @@ The BB9 copula is parameterized by ``\\vartheta, \\in [1,\\infty)`` and ``\\delt
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.205-206
 """
-struct BB9Generator{T} <: Generator
+struct BB9Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T
     function BB9Generator(θ, δ)
@@ -33,7 +33,6 @@ end
 const BB9Copula{d, T} = ArchimedeanCopula{d, BB9Generator{T}}
 BB9Copula(d, θ, δ) = ArchimedeanCopula(d, BB9Generator(θ, δ))
 Distributions.params(G::BB9Generator) = (G.θ, G.δ)
-max_monotony(::BB9Generator) = Inf
 
 ϕ(  G::BB9Generator, s) = begin
     a  = inv(G.θ)
@@ -55,8 +54,7 @@ end
 
 ϕ⁻¹⁽¹⁾(G::BB9Generator, t) = -G.θ * (inv(G.δ) - log(t))^(G.θ - 1) / t
 
-williamson_dist(G::BB9Generator, ::Val{d}) where d = WilliamsonFromFrailty(TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ)), Val{d}())
-
+frailty(G::BB9Generator) =  TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ))
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB9Generator}
     θ, δ = C.G.θ, C.G.δ
     x = inv(δ) - log(u[1])
