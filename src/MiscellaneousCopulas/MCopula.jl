@@ -30,3 +30,4 @@ StatsBase.corspearman(::MCopula{d}) where d = ones(d,d)
 
 # Subsetting colocated
 SubsetCopula(::MCopula{d}, ::NTuple{p, Int}) where {d,p} = MCopula(p)
+DistortionFromCop(::MCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i::Int) = MDistortion(float(uⱼₛ[1]), Int8(js[1]))

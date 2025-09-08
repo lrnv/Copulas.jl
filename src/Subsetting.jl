@@ -1,3 +1,8 @@
+###########################################################################
+#####  Subsetting framework: SubsetCopula
+#####  User-facing function: `condition()`
+###########################################################################
+
 """
     SubsetCopula{d,CT}
 
@@ -33,14 +38,14 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::SubsetCopula{d,
 end
 function _cdf(C::SubsetCopula{d,CT},u) where {d,CT}
     # Simplyu saturate dimensions that are not choosen.
-    v = ones(length(C.C))
+    v = ones(eltype(u), length(C.C))
     for (i,j) in enumerate(C.dims)
         v[j] = u[i]
     end 
     return Distributions.cdf(C.C,v)
 end
-function Distributions.pdf(S::SubsetCopula{d,<:Copula{D}}, u) where {d,D}
-    return _partial_cdf(S.C, Tuple(setdiff(1:D, S.dims)), js, ones(D-d), u)
+function Distributions._logpdf(S::SubsetCopula{d,<:Copula{D}}, u) where {d,D}
+    return log(_partial_cdf(S.C, Tuple(setdiff(1:D, S.dims)), S.dims, ones(D-d), u))
 end
 
 # Kendall tau and spearman rho are symetric measures in bivaraite cases: 
@@ -78,29 +83,10 @@ function subsetdims(D::SklarDist, dims::NTuple{p, Int}) where p
 end
 subsetdims(C::Union{Copula, SklarDist}, dims) = subsetdims(C, Tuple(collect(Int, dims)))
 
-##################
-### Specialized constructors are colocated in each copula file
 
-###########################################################################
-#####  Conditioning and subsetting bindings for SubsetCopula colocated here
-###########################################################################
 function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT,p}
     @assert 2 <= p <= d
     return SubsetCopula(CS.C, ntuple(i -> CS.dims[dims2[i]], p))
 end
 
-@inline function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
-    ibase = S.dims[i]
-    jsbase = ntuple(k -> S.dims[js[k]], p)
-    return DistortionFromCop(S.C, jsbase, uⱼₛ, ibase)
-end
-
-function ConditionalCopula(S::SubsetCopula{d,CT}, js, uⱼₛ) where {d,CT}
-    Jbase = Tuple(S.dims[j] for j in js)
-    CC_base = ConditionalCopula(S.C, Jbase, uⱼₛ)
-    D = length(S.C); I = Tuple(setdiff(1:D, Jbase))
-    dims_remain = Tuple(i for i in S.dims if !(i in Jbase))
-    posmap = Dict(i => p for (p,i) in enumerate(I))
-    dims_positions = Tuple(posmap[i] for i in dims_remain)
-    return (length(dims_positions) == length(I)) ? CC_base : SubsetCopula(CC_base, dims_positions)
-end
+### Other specialized constructors are colocated in each copula file

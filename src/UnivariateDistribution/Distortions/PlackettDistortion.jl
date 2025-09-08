@@ -6,7 +6,7 @@ struct PlackettDistortion{T} <: Distortion
     j::Int8
     uⱼ::T
 end
-@inline function Distributions.logcdf(D::PlackettDistortion, u::Real) 
+function Distributions.logcdf(D::PlackettDistortion, u::Real) 
     θ, v = D.θ, D.uⱼ
 
     η = θ - 1

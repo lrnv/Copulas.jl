@@ -28,7 +28,7 @@ References:
 struct AsymGalambosCopula{P} <: ExtremeValueCopula{P}
     α::P  # Dependence parameter
     θ::Vector{P}  # Asymmetry parameters (size 2)
-    function AsymGalambosCopula(α::P, θ::Vector{P}) where {P}
+    function AsymGalambosCopula(α, θ)
         if length(θ) != 2
             throw(ArgumentError("The vector θ must have 2 elements for the bivariate case"))
         elseif !(0 <= α)

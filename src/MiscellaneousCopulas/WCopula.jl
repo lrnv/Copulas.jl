@@ -32,3 +32,4 @@ StatsBase.corspearman(::WCopula) = [1 -1; -1 1]
 
 # Subsetting colocated
 SubsetCopula(::WCopula, ::NTuple{p, Int}) where {p} = (p==2 ? C : error("WCopula only defined for p=2"))
+DistortionFromCop(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistortion(float(uⱼₛ[1]), Int8(js[1]))

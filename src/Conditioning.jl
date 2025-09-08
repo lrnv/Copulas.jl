@@ -1,9 +1,11 @@
 ###########################################################################
-#####  Conditioning framework: Distortion, DistortionFromCop, DistortedDist, ConditionalCopula, condition
+#####  Conditioning framework: Distortion, DistortionFromCop, 
+#####                          DistortedDist, ConditionalCopula
+#####  User-facing function: `condition(), ropsenblatt(), inverse_rosenblatt()`
 ###########################################################################
 
 # usefull functions: 
-function _assemble(D::Int, is, js, uᵢₛ, uⱼₛ)
+function _assemble(D, is, js, uᵢₛ, uⱼₛ)
     Tᵢ = eltype(typeof(uᵢₛ)); Tⱼ = eltype(typeof(uⱼₛ)); T = promote_type(Tᵢ, Tⱼ)
     w = fill(one(T), D)
     @inbounds for (k,i) in pairs(is); w[i] = uᵢₛ[k]; end
@@ -12,13 +14,29 @@ function _assemble(D::Int, is, js, uᵢₛ, uⱼₛ)
 end
 function _swap(u, i, uᵢ)
     T = promote_type(eltype(u), typeof(uᵢ))
-    v = similar(u, T); @inbounds for k in eachindex(u); v[k] = u[k]; end; v[i] = uᵢ; return v
+    v = similar(u, T)
+    @inbounds for k in eachindex(u)
+        v[k] = u[k]
+    end
+    v[i] = uᵢ
+    return v
 end
-_der(f::FT, u, i::Int) where FT = ForwardDiff.derivative(uᵢ -> f(_swap(u, i, uᵢ)), u[i])
-_der(f::FT, u, is::NTuple{1,Int}) where FT = _der(f::FT, u, is[1])
-_der(f::FT, u, is::NTuple{N,Int}) where {N, FT} = _der(u′ -> _der(f, u′, (is[end],)), u, is[1:end-1])
+_der(f, u, i::Int) = ForwardDiff.derivative(uᵢ -> f(_swap(u, i, uᵢ)), u[i])
+_der(f, u, is::NTuple{1,Int}) = _der(f::FT, u, is[1])
+_der(f, u, is::NTuple{N,Int}) where {N} = _der(u′ -> _der(f, u′, (is[end],)), u, is[1:end-1])
 _partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _der(u -> Distributions.cdf(C, u), _assemble(length(C), is, js, uᵢₛ, uⱼₛ), js)
 
+_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs) 
+_process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,)) 
+function _process_tuples(::Val{D}, js, ujs) where D
+    p, p2 = length(js), length(ujs)
+    @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
+    @assert p == p2 && all(0 .<= ujs .<= 1) "uⱼₛ must be in [0,1] and match js length"
+    jst = Tuple(collect(Int, js))
+    @assert all(in(1:D), jst)
+    ujst = Tuple(collect(float.(ujs)))
+    return (jst, ujst)
+end
 
 """
     Distortion <: Distributions.ContinuousUnivariateDistribution
@@ -41,30 +59,14 @@ function Distributions.quantile(d::Distortion, α::Real)
     T = typeof(float(α))
     ϵ = eps(T)
     α < ϵ && return zero(T)
-    α > 1 - ϵ && return one(T)
-
-    lα = log(T(α))
+    α > 1 - 2ϵ && return one(T)
+    lα = log(α)
     f(u) = Distributions.logcdf(d, u) - lα
-    return Roots.find_zero(f, (ϵ, 1 - ϵ), Roots.Bisection(); xtol = sqrt(eps(T)))
+    return Roots.find_zero(f, (ϵ, 1 - 2ϵ), Roots.Bisection(); xtol = sqrt(eps(T)))
 end
 # You have to implement one of these two: 
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
-
-
-_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs) 
-_process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,)) 
-function _process_tuples(::Val{D}, js, ujs) where D
-    p, p2 = length(js), length(ujs)
-    @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
-    @assert p == p2 && all(0 .<= ujs .<= 1) "uⱼₛ must be in [0,1] and match js length"
-    jst = Tuple(collect(Int, js))
-    @assert all(in(1:D), jst)
-    ujst = Tuple(collect(float.(ujs)))
-    return (jst, ujst)
-end
-
-
 
 """
     DistortionFromCop{TC,p,T} <: Distortion
@@ -197,12 +199,13 @@ Notes
     of that conditional distribution.
 """
 condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
-condition(C::SklarDist{<:Copula{D}}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
 function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, Float64}) where {D, p}
     margins = Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in setdiff(1:D, js))
     p==D-1 && return margins[1]
     return SklarDist(ConditionalCopula(C, js, uⱼₛ), margins)
 end
+
+condition(C::SklarDist{<:Copula{D}}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
 function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::NTuple{p, Float64}) where {D, Tpl, p}
     uⱼₛ = Tuple(Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ))
     margins = Tuple(DistortionFromCop(X.C, js, uⱼₛ, i)(X.m[i]) for i in setdiff(1:D, js))
@@ -210,18 +213,46 @@ function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::
     return SklarDist(ConditionalCopula(X.C, js, uⱼₛ), margins)
 end
 
+###########################################################################
+#####  Methods for conditioning subsetcopulas. 
+###########################################################################
+
+
+@inline function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+    ibase = S.dims[i]
+    jsbase = ntuple(k -> S.dims[js[k]], p)
+    return DistortionFromCop(S.C, jsbase, uⱼₛ, ibase)
+end
+
+function ConditionalCopula(S::SubsetCopula{d,CT}, js, uⱼₛ) where {d,CT}
+    Jbase = Tuple(S.dims[j] for j in js)
+    CC_base = ConditionalCopula(S.C, Jbase, uⱼₛ)
+    D = length(S.C); I = Tuple(setdiff(1:D, Jbase))
+    dims_remain = Tuple(i for i in S.dims if !(i in Jbase))
+    posmap = Dict(i => p for (p,i) in enumerate(I))
+    dims_positions = Tuple(posmap[i] for i in dims_remain)
+    return (length(dims_positions) == length(I)) ? CC_base : SubsetCopula(CC_base, dims_positions)
+end
 
 
 ###########################################################################
 #####  Generic Rosenblatt and inverse Rosenblatt via conditioning
 ###########################################################################
 """
-    rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where d
+    rosenblatt(C::Copula, u)
+
+Computes the rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ C, the result should be uniformely distributed on the unit hypercube. The importance of this transofrmation comes from its bijectivity: `inverse_rosenblatt(C, rand(d))` is equivalent to `rand(C)`. The interface proposes faster versions for matrix inputs `u`.
 
 Generic Rosenblatt transform using conditional distortions:
 S₁ = U₁, S_k = H_{k|1:(k-1)}(U_k | U₁:U_{k-1}).
 Specialized families may provide faster overrides.
+
+
+* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
+* [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
+* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
 """
+rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = rosenblatt(C, reshape(u, (d, 1)))[:]
 function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
     size(u, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
     v = similar(u)
@@ -237,14 +268,30 @@ function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
     end
     return v
 end
+function rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
+    v = similar(u)
+    for (i,Mᵢ) in enumerate(D.m)
+        v[i,:] .= Distributions.cdf.(Mᵢ, u[i,:])
+    end
+    return rosenblatt(D.C, v)
+end
 
 """
-    inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where d
+    inverse_rosenblatt(C::Copula, u)
+
+Computes the inverse rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ Π, the independence copula, the result should be distributed as C. Also look at `rosenblatt(C, u)` for the inverse transformation. The interface proposes faster versions for matrix inputs `u`. 
 
 Generic inverse Rosenblatt using conditional distortions:
 U₁ = S₁, U_k = H_{k|1:(k-1)}^{-1}(S_k | U₁:U_{k-1}).
 Specialized families may provide faster overrides.
+
+
+References:
+* [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
+* [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
+* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
 """
+inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
 function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}
     size(s, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
     v = similar(s)
@@ -256,6 +303,13 @@ function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}
             Dk = DistortionFromCop(C, js, ujs, k)
             v[k, j] = Distributions.quantile(Dk, clamp(float(s[k, j]), 0.0, 1.0))
         end
+    end
+    return v
+end
+function inverse_rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
+    v = inverse_rosenblatt(D.C,u)
+    for (i,Mᵢ) in enumerate(D.m)
+        v[i,:] .= Distributions.quantile.(Mᵢ, v[i,:])
     end
     return v
 end
