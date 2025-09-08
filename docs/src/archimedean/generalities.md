@@ -214,9 +214,42 @@ for which the corresponding distribution is known but has no particular name, th
 ArchimedeanCopula
 ```
 
-<!-- 
-TODO: Make a few graphs of bivariate archimedeans pdfs and cdfs. And provide a few more standard tools for these copulas ? 
--->
+
+### Quick visual comparison (bivariate)
+
+```@example 1
+using Copulas, Plots, Distributions
+using Plots.PlotMeasures
+Cs = (
+    ClaytonCopula(2, 2.0),
+    GumbelCopula(2, 1.6),
+    FrankCopula(2, 8.0),
+    IndependentCopula(2),
+)
+labels = ("Clayton(2.0)", "Gumbel(1.6)", "Frank(8.0)", "Independence")
+plt = plot(layout=(2,2), size=(700, 600), margin=5mm)
+for (i, C) in enumerate(Cs)
+    U = rand(C, 2000)
+    scatter!(plt[i], U[1, :], U[2, :]; ms=1.8, alpha=0.5,
+             xlim=(0,1), ylim=(0,1), label=false, title=labels[i])
+end
+plt
+```
+
+### Conditional distortions (uniform scale)
+
+```@example 1
+using StatsBase
+C = ClaytonCopula(2, 2.0)
+u2 = 0.3
+D = condition(C, 2, u2)
+ts = range(0.0, 1.0; length=401)
+plot(ts, cdf.(Ref(D), ts); label="H_{1|2}(u|$u2)", xlabel="u", ylabel="CDF",
+    title="Conditional distortion for Clayton(θ=2)")
+αs = rand(2000); us = Distributions.quantile.(Ref(D), αs)
+EC = ecdf(us)
+plot!(ts, EC.(ts); seriestype=:steppost, alpha=0.5, color=:black, label="empirical")
+```
 
 ## Liouville Copulas
 
@@ -233,6 +266,11 @@ Note that Dirichlet distributions are constructed as $\bm S = \frac{\bm G}{\lang
 
 
 
+
+## See also
+
+- Bestiary: [Implemented Archimedean generators](@ref available_archimedean_models)
+- Manual: [Conditioning and Subsetting](@ref)
 
 ```@bibliography
 Pages = [@__FILE__]

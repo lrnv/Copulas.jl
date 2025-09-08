@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Empirical Copulas
+# [Empirical Copulas](@id empirical_cops)
 
 ## `EmpiricalCopula`
 

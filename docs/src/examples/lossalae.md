@@ -85,3 +85,39 @@ There are potential improvements that can be made to this fit:
 - The tail dependency does not look like it is on the right side. To solve that, we could use `SurvivalCopula` to fit a flipped version of the Clayton through `fit(SklarDist{SurvivalCopula{2,ClaytonCopula,(1,2)},Tuple{...}}, ...)`.
 - We could use other marginal proposals than `LogNormal`s and validate (e.g., through likelihood ratio tests) that the fits are OK. 
 - We could keep marginals and/or the dependence structure empirical, through e.g., `EmpiricalCopula`.
+
+## Additional visuals
+
+### Copula density heatmaps
+
+```@example 6
+using Copulas: MCopula
+Cs = (
+    fit_gaussian.C,
+    fit_clayton.C,
+    fit_gumbel.C,
+    fit_frank.C,
+    MCopula(2),
+)
+labels = ("Gaussian", "Clayton", "Gumbel", "Frank", "M bound")
+grid = range(0.02, 0.98; length=120)
+plt = plot(layout=(2,3), size=(950,600))
+for (i,C) in enumerate(Cs)
+    Z = [pdf(C, [u,v]) for u in grid, v in grid]
+    heatmap!(plt[i], grid, grid, Z'; aspect_ratio=1, c=:viridis, title=labels[i])
+end
+plt
+```
+
+### Rosenblatt sanity check (fitted Clayton)
+
+```@example 6
+using StatsBase
+Uhat = Copulas.pseudos(data)
+S = reduce(hcat, (rosenblatt(fit_clayton.C, Uhat[:,i]) for i in 1:size(Uhat,1)))
+ts = range(0.0, 1.0; length=400)
+E1 = ecdf(S[1,:]); E2 = ecdf(S[2,:])
+plot(ts, ts; label="Uniform", color=:blue)
+plot!(ts, E1.(ts); seriestype=:steppost, label="s₁", color=:black)
+plot!(ts, E2.(ts); seriestype=:steppost, label="s₂", color=:gray)
+```

@@ -78,3 +78,15 @@ Many parametric copula families have simple surjections, injections, or even bij
 Pages = [@__FILE__]
 Canonical = false
 ```
+
+## Illustrations
+
+### Kendall’s τ across families (bivariate)
+
+```@example dep
+using Copulas, Plots, Distributions
+θs = range(0.2, 5.0; length=50)
+Cs = [ClaytonCopula(2, θ) for θ in θs]
+taus = [Copulas.τ(C) for C in Cs]
+plot(θs, taus; xlabel="θ", ylabel="τ", title="Kendall τ for bivariate Clayton", legend=false)
+```

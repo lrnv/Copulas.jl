@@ -115,11 +115,57 @@ plot(u,  chi.(Ref(C),u), label="True student copula")
 plot!(u, chi.(Ref(Ĉ),u), label="Estimated Gaussian copula")
 ``` 
 
+### Visual: Gaussian vs Student (same correlation)
+
+```@example 4
+using Plots
+Σ = [1 0.7; 0.7 1]
+ν = 4
+CG = GaussianCopula(Σ)
+CT = TCopula(ν, Σ)
+UG = rand(CG, 3000)
+UT = rand(CT, 3000)
+plt = plot(layout=(1,2), size=(800, 350))
+scatter!(plt[1], UG[1,:], UG[2,:]; ms=1.8, alpha=0.5, xlim=(0,1), ylim=(0,1), title="Gaussian copula", label=false)
+scatter!(plt[2], UT[1,:], UT[2,:]; ms=1.8, alpha=0.5, xlim=(0,1), ylim=(0,1), title="Student copula (ν=4)", label=false)
+plt
+```
+
+### Density heatmaps (cdf/pdf) on the unit square
+
+```@example 4
+grid = range(0.01, 0.99; length=100)
+ZG = [pdf(CG, [u,v]) for u in grid, v in grid]
+ZT = [pdf(CT, [u,v]) for u in grid, v in grid]
+plot(heatmap(grid, grid, ZG'; title="Gaussian density", aspect_ratio=1, c=:viridis),
+    heatmap(grid, grid, ZT'; title="Student density", aspect_ratio=1, c=:viridis),
+    layout=(1,2), size=(800,330))
+```
+
+### Conditional on original scale via SklarDist
+
+```@example 4
+XG = SklarDist(CG, (Normal(), Normal()))
+XT = SklarDist(CT, (Normal(), Normal()))
+X1G = condition(XG, 2, 0.0)
+X1T = condition(XT, 2, 0.0)
+xgrid = range(quantile(X1T, 0.001), quantile(X1T, 0.999); length=401)
+plot(xgrid, Distributions.cdf.(Ref(X1G), xgrid); label="Gaussian", xlabel="x", ylabel="cdf",
+    title="F_{X1|X2=0}")
+plot!(xgrid, Distributions.cdf.(Ref(X1T), xgrid); label="Student")
+```
+
 ## Implementation
 
 ```@docs
 EllipticalCopula
 ```
+
+
+## See also
+
+- Bestiary: [Implemented Elliptical copulas](@ref elliptical_cops)
+- Manual: [Getting Started](@ref), [Sklar's Distribution](@ref)
 
 
 ```@bibliography
