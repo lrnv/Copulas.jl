@@ -5,10 +5,6 @@ struct BivEVDistortion{TC,T} <: Distortion
     C::TC
     j::Int8
     uⱼ::T
-    function BivEVDistortion(C::ExtremeValueCopula, j, u)
-        uf = float(u)
-        return new{typeof(C), typeof(uf)}(C, j, uf)
-    end
 end
 function Distributions.logcdf(D::BivEVDistortion, z::Real)
     T = typeof(z)
