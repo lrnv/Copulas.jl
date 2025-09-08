@@ -1,38 +1,38 @@
-@testitem "Generic" tags=[:IndependentCopula] setup=[M] begin M.check(IndependentCopula(2)) end
-@testitem "Generic" tags=[:IndependentCopula] setup=[M] begin M.check(IndependentCopula(3)) end
+@testitem "Generic" tags=[:Generic, :IndependentCopula] setup=[M] begin M.check(IndependentCopula(2)) end
+@testitem "Generic" tags=[:Generic, :IndependentCopula] setup=[M] begin M.check(IndependentCopula(3)) end
 
-@testitem "Generic" tags=[:MCopula] setup=[M] begin M.check(MCopula(2)) end
-@testitem "Generic" tags=[:MCopula] setup=[M] begin M.check(MCopula(4)) end
+@testitem "Generic" tags=[:Generic, :MCopula] setup=[M] begin M.check(MCopula(2)) end
+@testitem "Generic" tags=[:Generic, :MCopula] setup=[M] begin M.check(MCopula(4)) end
 
-@testitem "Generic" tags=[:WCopula] setup=[M] begin M.check(WCopula(2)) end
+@testitem "Generic" tags=[:Generic, :WCopula] setup=[M] begin M.check(WCopula(2)) end
 
-# @testitem "Generic" tags=[:BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 0.5, 1.6)) end
-# @testitem "Generic" tags=[:BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 2.5, 0.4)) end
-# @testitem "Generic" tags=[:BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 3.0, 2.1)) end
+# @testitem "Generic" tags=[:Generic, :BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 0.5, 1.6)) end
+# @testitem "Generic" tags=[:Generic, :BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 2.5, 0.4)) end
+# @testitem "Generic" tags=[:Generic, :BBCops,:BB4Copula] setup=[M] begin M.check(BB4Copula(2, 3.0, 2.1)) end
 
-# @testitem "Generic" tags=[:BBCops,:BB5Copula] setup=[M] begin M.check(BB5Copula(2, 1.5, 1.6)) end
-# @testitem "Generic" tags=[:BBCops,:BB5Copula] setup=[M] begin M.check(BB5Copula(2, 2.5, 0.4)) end
-# @testitem "Generic" tags=[:BBCops,:BB5Copula] setup=[M] begin M.check(BB5Copula(2, 5.0, 0.5)) end
+# @testitem "Generic" tags=[:Generic, :BBCops,:BB5Copula] setup=[M] begin M.check(BB5Copula(2, 1.5, 1.6)) end
+# @testitem "Generic" tags=[:Generic, :BBCops,:BB5Copula] setup=[M] begin M.check(BB5Copula(2, 2.5, 0.4)) end
+# @testitem "Generic" tags=[:Generic, :BBCops,:BB5Copula] setup=[M] begin M.check(BB5Copula(2, 5.0, 0.5)) end
 
-@testitem "Generic" tags=[:EmpiricalCopula] setup=[M] begin M.check(EmpiricalCopula(randn(2,10),pseudo_values=false)) end
-@testitem "Generic" tags=[:EmpiricalCopula] setup=[M] begin M.check(EmpiricalCopula(randn(2,20),pseudo_values=false)) end
+@testitem "Generic" tags=[:Generic, :EmpiricalCopula] setup=[M] begin M.check(EmpiricalCopula(randn(2,10),pseudo_values=false)) end
+@testitem "Generic" tags=[:Generic, :EmpiricalCopula] setup=[M] begin M.check(EmpiricalCopula(randn(2,20),pseudo_values=false)) end
 
-@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(2, 0.0)) end
-@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(2, rand(M.rng))) end
-@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(2,1)) end
-@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(3, [0.3,0.3,0.3,0.3])) end
-@testitem "Generic" tags=[:FGMCopula] setup=[M] begin M.check(FGMCopula(3,[0.1,0.2,0.3,0.4])) end
+@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(2, 0.0)) end
+@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(2, rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(2,1)) end
+@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(3, [0.3,0.3,0.3,0.3])) end
+@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(3,[0.1,0.2,0.3,0.4])) end
 
-@testitem "Generic" tags=[:PlackettCopula] setup=[M] begin M.check(PlackettCopula(0.5)) end
-@testitem "Generic" tags=[:PlackettCopula] setup=[M] begin M.check(PlackettCopula(0.8)) end
-@testitem "Generic" tags=[:PlackettCopula] setup=[M] begin M.check(PlackettCopula(2.0)) end
+@testitem "Generic" tags=[:Generic, :PlackettCopula] setup=[M] begin M.check(PlackettCopula(0.5)) end
+@testitem "Generic" tags=[:Generic, :PlackettCopula] setup=[M] begin M.check(PlackettCopula(0.8)) end
+@testitem "Generic" tags=[:Generic, :PlackettCopula] setup=[M] begin M.check(PlackettCopula(2.0)) end
 
-@testitem "Generic" tags=[:RafteryCopula] setup=[M] begin M.check(RafteryCopula(2, 0.2)) end
-@testitem "Generic" tags=[:RafteryCopula] setup=[M] begin M.check(RafteryCopula(3, 0.5)) end
-@testitem "Generic" tags=[:RafteryCopula] setup=[M] begin M.check(Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1))) end
+@testitem "Generic" tags=[:Generic, :RafteryCopula] setup=[M] begin M.check(RafteryCopula(2, 0.2)) end
+@testitem "Generic" tags=[:Generic, :RafteryCopula] setup=[M] begin M.check(RafteryCopula(3, 0.5)) end
+@testitem "Generic" tags=[:Generic, :RafteryCopula] setup=[M] begin M.check(Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1))) end
 
-@testitem "Generic" tags=[:SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(ClaytonCopula(2,-0.7),(1,2))) end
-@testitem "Generic" tags=[:SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(RafteryCopula(2, 0.2), (2,1))) end
+@testitem "Generic" tags=[:Generic, :SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(ClaytonCopula(2,-0.7),(1,2))) end
+@testitem "Generic" tags=[:Generic, :SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(RafteryCopula(2, 0.2), (2,1))) end
 
 @testitem "Testing survival stuff" tags=[:SurvivalCopula] begin
     using Distributions

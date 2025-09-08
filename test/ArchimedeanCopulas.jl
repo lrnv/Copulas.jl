@@ -1,104 +1,104 @@
-@testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(LogNormal(),2))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(10,i𝒲(Dirac(1),10))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(Pareto(1),5))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(LogNormal(3),5))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(10,i𝒲(MixtureModel([Dirac(1), Dirac(2)]),11))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(LogNormal(),2))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(10,i𝒲(Dirac(1),10))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(Pareto(1),5))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(LogNormal(3),5))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(10,i𝒲(MixtureModel([Dirac(1), Dirac(2)]),11))) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-1.0)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-rand(M.rng))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,0.7)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,rand(M.rng))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(3,-rand(M.rng)*0.1)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(3,0.6)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(3,rand(M.rng))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(4,-0.01)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-1.0)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,0.7)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(3,-rand(M.rng)*0.1)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(3,0.6)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(3,rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(4,-0.01)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB1Copula] setup=[M] begin M.check(BB1Copula(2, 1.2, 1.5)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB1Copula] setup=[M] begin M.check(BB1Copula(2, 2.5, 1.5)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB1Copula] setup=[M] begin M.check(BB1Copula(2, 0.35, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB1Copula] setup=[M] begin M.check(BB1Copula(2, 1.2, 1.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB1Copula] setup=[M] begin M.check(BB1Copula(2, 2.5, 1.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB1Copula] setup=[M] begin M.check(BB1Copula(2, 0.35, 1.0)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.2, 0.5)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.5, 1.8)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 2.0, 1.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.2, 0.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 1.5, 1.8)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB2Copula] setup=[M] begin M.check(BB2Copula(2, 2.0, 1.5)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.0, 1.5)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.5, 0.5)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 3.0, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.0, 1.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 2.5, 0.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB3Copula] setup=[M] begin M.check(BB3Copula(2, 3.0, 1.0)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB6Copula] setup=[M] begin M.check(BB6Copula(2, 1.2, 1.6)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB6Copula] setup=[M] begin M.check(BB6Copula(2, 1.5, 1.4)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB6Copula] setup=[M] begin M.check(BB6Copula(2, 2.0, 1.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB6Copula] setup=[M] begin M.check(BB6Copula(2, 1.2, 1.6)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB6Copula] setup=[M] begin M.check(BB6Copula(2, 1.5, 1.4)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB6Copula] setup=[M] begin M.check(BB6Copula(2, 2.0, 1.5)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB7Copula] setup=[M] begin M.check(BB7Copula(2, 1.2, 1.6)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB7Copula] setup=[M] begin M.check(BB7Copula(2, 1.5, 0.4)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB7Copula] setup=[M] begin M.check(BB7Copula(2, 2.0, 1.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB7Copula] setup=[M] begin M.check(BB7Copula(2, 1.2, 1.6)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB7Copula] setup=[M] begin M.check(BB7Copula(2, 1.5, 0.4)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB7Copula] setup=[M] begin M.check(BB7Copula(2, 2.0, 1.5)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB8Copula] setup=[M] begin M.check(BB8Copula(2, 1.2, 0.4)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB8Copula] setup=[M] begin M.check(BB8Copula(2, 1.5, 0.6)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB8Copula] setup=[M] begin M.check(BB8Copula(2, 2.5, 0.8)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB8Copula] setup=[M] begin M.check(BB8Copula(2, 1.2, 0.4)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB8Copula] setup=[M] begin M.check(BB8Copula(2, 1.5, 0.6)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB8Copula] setup=[M] begin M.check(BB8Copula(2, 2.5, 0.8)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB9Copula] setup=[M] begin M.check(BB9Copula(2, 2.8, 2.6)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB9Copula] setup=[M] begin M.check(BB9Copula(2, 1.5, 2.4)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB9Copula] setup=[M] begin M.check(BB9Copula(2, 2.0, 1.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB9Copula] setup=[M] begin M.check(BB9Copula(2, 2.8, 2.6)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB9Copula] setup=[M] begin M.check(BB9Copula(2, 1.5, 2.4)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB9Copula] setup=[M] begin M.check(BB9Copula(2, 2.0, 1.5)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB10Copula] setup=[M] begin M.check(BB10Copula(2, 1.5, 0.7)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB10Copula] setup=[M] begin M.check(BB10Copula(2, 4.5, 0.6)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :BBCops,:BB10Copula] setup=[M] begin M.check(BB10Copula(2, 3.0, 0.8)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB10Copula] setup=[M] begin M.check(BB10Copula(2, 1.5, 0.7)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB10Copula] setup=[M] begin M.check(BB10Copula(2, 4.5, 0.6)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :BBCops,:BB10Copula] setup=[M] begin M.check(BB10Copula(2, 3.0, 0.8)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(2,-0.7)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(2,-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(2,-rand(M.rng))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(2,7)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(3,-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(3,-rand(M.rng)/2)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(4,-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(4,-rand(M.rng)/3)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(4,7.)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(2,-0.7)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(2,-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(2,-rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(2,7)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(3,-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(3,-rand(M.rng)/2)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(4,-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(4,-rand(M.rng)/3)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :ClaytonCopula] setup=[M] begin M.check(ClaytonCopula(4,7.)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(2,0.5)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(2,1-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(2,1.0)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(2,-5)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(3,1-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(3,1.0)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(3,12)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,1-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,1.0)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,150)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,30)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,37)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(2,0.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(2,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(2,1.0)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(2,-5)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(3,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(3,1.0)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(3,12)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,1.0)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,150)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,30)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :FrankCopula] setup=[M] begin M.check(FrankCopula(4,37)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(2,1.0)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(2,rand(M.rng))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(3,0.1)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(3,0.35)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(3,rand(M.rng)*0.38)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(4,0.2)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(2,1.0)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(2,rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(3,0.1)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(3,0.35)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(3,rand(M.rng)*0.38)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelBarnettCopula] setup=[M] begin M.check(GumbelBarnettCopula(4,0.2)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(2, 1.2)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(2,1-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(2,8)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(3,1-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,1-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,20)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,7)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,100)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(2, 1.2)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(2,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(2,8)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(3,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,20)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,7)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :GumbelCopula] setup=[M] begin M.check(GumbelCopula(4,100)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(2,-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(2,1.0)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(2,rand(M.rng))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(3,-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(3,rand(M.rng))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(4,-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(4,0.05)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(4,1.0)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(2,-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(2,1.0)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(2,rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(3,-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(3,rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(4,-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(4,0.05)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :InvGaussianCopula] setup=[M] begin M.check(InvGaussianCopula(4,1.0)) end
 
-@testitem "Generic" tags=[:ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(2,1-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(2,3)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(2,Inf)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(3,1-log(rand(M.rng)))) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(3,7)) end
-@testitem "Generic" tags=[:ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(4,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(2,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(2,3)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(2,Inf)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(3,1-log(rand(M.rng)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(3,7)) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(4,1-log(rand(M.rng)))) end
 
 @testitem "Boundary test for bivariate Joe and Gumbel" tags=[:ArchimedeanCopula, :JoeCopula, :GumbelCopula] begin
     using Distributions

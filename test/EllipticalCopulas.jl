@@ -1,9 +1,9 @@
-@testitem "Generic" tags=[:EllipticalCopulas, :GaussianCopula] setup=[M] begin M.check(GaussianCopula([1 0.5; 0.5 1])) end
-@testitem "Generic" tags=[:EllipticalCopulas, :GaussianCopula] setup=[M] begin M.check(GaussianCopula([1 0.7; 0.7 1])) end
+@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :GaussianCopula] setup=[M] begin M.check(GaussianCopula([1 0.5; 0.5 1])) end
+@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :GaussianCopula] setup=[M] begin M.check(GaussianCopula([1 0.7; 0.7 1])) end
 
-@testitem "Generic" tags=[:EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(2, [1 0.7; 0.7 1])) end
-@testitem "Generic" tags=[:EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(4, [1 0.5; 0.5 1])) end
-@testitem "Generic" tags=[:EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(20,[1 -0.5; -0.5 1])) end
+@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(2, [1 0.7; 0.7 1])) end
+@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(4, [1 0.5; 0.5 1])) end
+@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(20,[1 -0.5; -0.5 1])) end
 
 @testitem "GaussianCopula" tags=[:EllipticalCopulas, :GaussianCopula] begin
     using Distributions

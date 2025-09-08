@@ -16,47 +16,64 @@
         !(CT<:EmpiricalCopula) &&
         !((CT<:ArchimedeanCopula) && length(C)==Copulas.max_monotony(C.G))
 
-    can_integrate_pdf(C::CT) where CT =  
-        can_pdf(C) &&
-        !(CT<:Union{MCopula,WCopula,MOCopula,CuadrasAugeCopula,RafteryCopula,EmpiricalCopula, BC2Copula}) && 
-        !((CT<:FGMCopula) && (length(C)==3)) &&
+    check_rosenblatt(C::CT) where CT = 
+        !((CT<:ArchimedeanCopula) && length(C)==Copulas.max_monotony(C.G)) &&
+        !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
+        !((CT<:GumbelCopula) && (C.G.θ >= 20)) &&
+        !(CT<:MCopula{4}) &&
+        !(CT<:EmpiricalCopula) &&
+        !(CT<:BC2Copula)
+
+    check_corkendall(C::CT) where CT = 
         !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
         !((CT<:GumbelCopula) && (C.G.θ >= 100)) &&
-        !((CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator) && (C.G.d > length(C)))
-
-    check_rosenblatt(C::CT) where CT = 
-        !((CT<:GumbelCopula) && ((C.G.θ > 50) || length(C)>=4)) && 
-        !((CT<:FrankCopula{4}) && (C.G.θ > 36)) &&
-        !((CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator)) &&
-        !(CT<:MCopula) && 
-        !(CT<:WCopula) &&
-        !(CT<:EmpiricalCopula) && 
-        !(CT<:AsymGalambosCopula) && 
-        !(CT<:GalambosCopula) && 
+        !(CT<:Union{MCopula, WCopula}) &&
+        !(CT<:EmpiricalCopula) &&
         !(CT<:BC2Copula) &&
         !(CT<:CuadrasAugeCopula) &&
-        !(CT<:HuslerReissCopula) &&
-        !(CT<:tEVCopula) &&
-        !(CT<:TCopula) &&
-        !(CT<:RafteryCopula) &&
-        !(CT<:FGMCopula) &&
-        !(CT<:Copulas.SubsetCopula{2, <:RafteryCopula}) &&
         !(CT<:MOCopula)
 
     is_archimedean_with_generator(C::CT) where CT =
        (CT<:ArchimedeanCopula) && !(typeof(C.G)<:Copulas.WilliamsonGenerator)
 
-    can_ad(C::CT) where CT = 
+    can_integrate_pdf(C::CT) where CT =  
+        # This list might be longer than necessary, it should be trimmed.
         can_pdf(C) &&
         !((CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator) && (C.G.d > length(C))) &&
         !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
-        !((CT<:GumbelCopula) && ((C.G.θ >= 100)) || length(C) > 2) &&
+        !((CT<:GumbelCopula) && (C.G.θ >= 100)) &&
+        !((CT<:FGMCopula) && (length(C)==3)) &&
         !(CT<:MCopula) && 
-        !(CT<:WCopula) &&
-        !(CT<:tEVCopula) &&
-        !(CT<:TCopula) &&
-        !(CT<:AsymGalambosCopula)
-    
+        !(CT<:WCopula) && 
+        !(CT<:MOCopula) && 
+        !(CT<:CuadrasAugeCopula) && 
+        !(CT<:RafteryCopula) && 
+        !(CT<:EmpiricalCopula) && 
+        !(CT<:BC2Copula)
+
+
+    can_ad(C::CT) where CT = 
+        # This list might be longer than necessary, it should be trimmed.
+        can_pdf(C) &&
+        !((CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator) && (C.G.d > length(C))) && # discontinuous. 
+        !((CT<:FrankCopula) && (C.G.θ >= 100)) && # too extreme
+        !((CT<:GumbelCopula) && ((C.G.θ >= 100)) || length(C) > 2) && # too extreme
+        !(CT<:MCopula) && # not abs cont
+        !(CT<:WCopula) && # not abs cont
+        !(CT<:tEVCopula) && # requires derivatives of beta_inc_inv that forwardiff doesnt have. 
+        !(CT<:TCopula) && # same
+        !(CT<:CuadrasAugeCopula) # discontinuous
+        # !(CT<:BC2Copula) && # is discontinuous
+        # !(CT<:MOCopula) # discontinuous
+        # !(CT<:AsymGalambosCopula) && 
+        # !(CT<:GalambosCopula) && 
+        # !(CT<:AsymLogCopula) && 
+        # !(CT<:AsymMixedCopula) && 
+        # !(CT<:GalambosCopula) && 
+        # !(CT<:HuslerReissCopula) && 
+        # !(CT<:MixedCopula) && 
+        # !(CT<:LogCopula)
+
     function check(C::Copulas.Copula{d}) where d
         @testset "Testing $C" begin
             @info "Testing $C..."
@@ -130,43 +147,43 @@
 
             if can_integrate_pdf(C)
                 @testset "Testing pdf integration" begin
-
                     # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
                     v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 10_000, 10_000)
-                    v_true = 1
-                    @test isapprox(v, v_true; atol=max(5*sqrt(r), 1e-3))
+                    @test isapprox(v, 1; atol=max(5*sqrt(r), 1e-3))
 
                     # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
                     b = ones(d)/2
                     v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 10_000, 10_000)
-                    v2_true = cdf(C, b)
-                    @test isapprox(v2, v2_true; atol=max(10*sqrt(r2), 1e-3))
+                    @test isapprox(v2, cdf(C, b); atol=max(10*sqrt(r2), 1e-3))
 
                     # 3) random rectangle, compare with measure (cdf based)
                     a = rand(rng, d)
                     b = a .+ rand(rng, d) .* (1 .- a)
                     v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 10_000, 10_000)
-                    v3_true = Copulas.measure(C, a, b)
-                    @test isapprox(v3, v3_true; atol=max(20*sqrt(r3), 1e-3)) || max(v3, v3_true) < eps(Float64) # wide tolerence, should pass. 
+                    @test isapprox(v3, Copulas.measure(C, a, b); atol=max(20*sqrt(r3), 1e-3)) || max(v3, v3_true) < eps(Float64) # wide tolerence, should pass. 
                 end
             end
 
             if check_rosenblatt(C)
                 @testset "rosenblatt ∘ inver_rosenblatt = Id" begin
+                    @test spl10 ≈ inverse_rosenblatt(C, rosenblatt(C, spl10)) atol=1e-2
+                end
+            end
+
+            if check_corkendall(C)
+                @testset "corkendall ∘ resenblatt = I" begin
                     U = rosenblatt(C, spl1000)
                     for i in 1:(d - 1)
                         for j in (i + 1):d
                             @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.15
                         end
                     end
-                    @test spl10 ≈ inverse_rosenblatt(C, rosenblatt(C, spl10)) atol=1e-2
-                    # @test splZ10 ≈ inverse_rosenblatt(Z, rosenblatt(Z, splZ10)) atol=1/3 # not a very good test
                 end
             end
 
             @testset "Conditionning" begin
                 # Conditioning tests (p = 1), validate against AD ratio and compare fast-paths to fallback
-                if d == 2 && !(CT<:Copulas.tEVCopula)
+                if d == 2 && !(CT<:Copulas.tEVCopula) && !(CT<:Copulas.EmpiricalCopula)
                     @testset "Condition(2 | 1): Check Distortion vs AD" begin
                         us = (0.2, 0.5, 0.8)
                         for j in 1:2
@@ -174,6 +191,7 @@
                             for v in (0.3, 0.7) # interior points to avoid boundary issues
                                 Dd = Copulas.condition(C, j, v)
                                 vals = cdf.(Ref(Dd), us)
+                                
                                 if can_ad(C)
                                     refs = [ad_ratio_biv(C, i, j, ui, v) for ui in us]
                                     for (v,r) in zip(vals, refs)
@@ -185,8 +203,11 @@
                                     if m_fast != m_gen
                                         Dgen = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (Float64(v),), i)
                                         vals2 = cdf.(Ref(Dgen), us)
-                                        for (v2,r) in zip(vals2, vals)
+                                        for (v2,r) in zip(vals2, refs)
                                             @test isapprox(v2, r, atol=1e-3, rtol=1e-3)
+                                        end
+                                        for (v2,v) in zip(vals2, vals)
+                                            @test isapprox(v2, v, atol=1e-3, rtol=1e-3)
                                         end
                                     end
                                 else
@@ -195,30 +216,26 @@
                                         @test all(vals .≈ min.(collect(us) ./ v, 1))
                                     elseif CT <: Copulas.WCopula
                                         @test all(vals .≈ max.(collect(us) .+ v .- 1, 0) ./ v)
-                                    else
-                                        if !(CT<:Copulas.EmpiricalCopula)
-                                            # otherwise skip AD reference; at least assert it's a proper CDF
-                                            @test all(0.0 .<= vals .<= 1.0) && all(diff(collect(vals)) .> 0)  # since the us as increasing. 
-                                        end
                                     end
                                 end
+                                # Even if we cant AD, let's check the basics on the conditional cdf:
+                                @test all(0.0 .<= vals .<= 1.0)
+                                @test all(diff(collect(vals)) .>= -1e-10) # Tolerence for rounding error.
                             end
                         end
                     end
                 end
 
-                # Conditional bivariate copula (d > 2): condition on dims 3..d, compare to AD reference and generic fallback
                 if d > 2 && can_ad(C)
                     @testset "Condition(d|d-1): Check Distortion vs AD" begin
                         # Spot-check a single index pair (i,j) using the 2D projection via subsetdims
-                        j = 1; i = 2
-                        v = 0.6
-                        us = (0.2, 0.5, 0.8)
+                        j, i, v, us = 1, 2, 0.6, (0.2, 0.5, 0.8)
 
                         # Distortion for Ui | Uj=v computed from full model
-                        D_i = Copulas.DistortionFromCop(C, (j,), (v,), i)
-                        vals = cdf.(Ref(D_i), us)
+                        Dᵢ = condition(C, j, v)
+                        vals = cdf.(Ref(Dᵢ), us)
                         @test all(0.0 .<= vals .<= 1.0)
+                        @test all(diff(vals) .>= -1e-10) # increasingness with tolerence.
 
                         # Validate marginal distortion against AD on the 2D subset (i maps to 1, j maps to 2)
                         Cproj = Copulas.subsetdims(C, (i, j))
@@ -233,7 +250,7 @@
                     @testset "Condition (d|d-2): Check conditional copula vs AD" begin
                         js = collect(3:d)
                         ujs = [0.25 + 0.5*rand(rng) for _ in js]  # interior values
-                        CC = Copulas.ConditionalCopula(C, js, ujs)
+                        CC = condition(C, js, ujs)
 
                         # Local AD-based reference for this (C, js, ujs)
                         js_t = Tuple(js); ujs_t = Tuple(ujs)
