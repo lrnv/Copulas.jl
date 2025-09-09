@@ -4,59 +4,59 @@ CurrentModule = Copulas
 
 # [Extreme Values Copulas](@id available_extreme_models)
 
-## `AsymGalambosCopula`
+## `AsymGalambosTail`
 ```@docs
-AsymGalambosCopula
+AsymGalambosTail
 ```
 
-## `AsymLogCopula`
+## `AsymLogTail`
 ```@docs
-AsymLogCopula
+AsymLogTail
 ```
 
-## `AsymMixedCopula`
+## `AsymMixedTail`
 ```@docs
-AsymMixedCopula
+AsymMixedTail
 ```
 
-## `BC2Copula`
+## `BC2Tail`
 ```@docs
-BC2Copula
+BC2Tail
 ```
 
-## `CuadrasAugeCopula`
+## `CuadrasAugeTail`
 ```@docs
-CuadrasAugeCopula
+CuadrasAugeTail
 ```
 
-## `GalambosCopula`
+## `GalambosTail`
 ```@docs
-GalambosCopula
+GalambosTail
 ```
 
-## `HuslerReissCopula`
+## `HuslerReissTail`
 ```@docs
-HuslerReissCopula
+HuslerReissTail
 ```
 
-## `LogCopula`
+## `LogTail`
 ```@docs
-LogCopula
+LogTail
 ```
 
-## `MixedCopula`
+## `MixedTail`
 ```@docs
-MixedCopula
+MixedTail
 ```
 
-## `MOCopula`
+## `MOTail`
 ```@docs
-MOCopula
+MOTail
 ```
 
-## `tEVCopula`
+## `tEVTail`
 ```@docs
-tEVCopula
+tEVTail
 ```
 
 ```@bibliography

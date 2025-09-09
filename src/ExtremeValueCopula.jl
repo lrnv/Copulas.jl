@@ -49,75 +49,94 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press.
 * [mai2014financial](@cite) Mai, J. F., & Scherer, M. (2014). Financial engineering with copulas explained (p. 168). London: Palgrave Macmillan.
 """
-abstract type ExtremeValueCopula{P} <: Copula{2} end
-@inline _δ(t)      = oftype(t, 1e-12)
+struct ExtremeValueCopula{d, TT<:Tail{d}} <: Copula{d}
+    E::TT
+    function ExtremeValueCopula(E::Tail{d}) where {d}
+        return new{d, typeof(E)}(E)
+    end
+end
+
+@inline _δ(t) = oftype(t, 1e-12)
 @inline _safett(t) = clamp(t, _δ(t), one(t) - _δ(t))
-needs_binary_search(::ExtremeValueCopula) = false
-A(C::ExtremeValueCopula, t::Real) = throw(ArgumentError("Function A must be defined for specific copula"))
-dA(C::ExtremeValueCopula, t::Real) = ForwardDiff.derivative(t -> A(C,t), t)
-d²A(C::ExtremeValueCopula, t::Real) = ForwardDiff.derivative(t -> dA(C,t), t)
-_A_dA_d²A(C::ExtremeValueCopula, t::Real) = (A(C,t), dA(C,t), d²A(C,t)) #WilliamsonTransforms.taylor(x -> A(C, x), t, ::Val{2}())
-ℓ(C::ExtremeValueCopula, t₁, t₂) = (t₁ +t₂) * A(C, t₁ /(t₁+t₂))
-function _der_ℓ(C::ExtremeValueCopula, u, v) 
-    x, y = u/(u+v), v/(u+v)
+
+A(C::ExtremeValueCopula{2}, t::Real)  = A(C.E, t)
+dA(C::ExtremeValueCopula{2}, t::Real) = ForwardDiff.derivative(z -> A(C.E, z), t)
+d²A(C::ExtremeValueCopula{2}, t::Real) = ForwardDiff.derivative(z -> dA(C, z), t)
+
+_A_dA_d²A(C::ExtremeValueCopula{2}, t::Real) = begin
+    tt = _safett(t)
+    (A(C, tt), dA(C, tt), d²A(C, tt))
+end
+
+ℓ(C::ExtremeValueCopula{2}, t₁::Real, t₂::Real) = begin
+    s = t₁ + t₂
+    s == 0 ? zero(promote_type(typeof(t₁), typeof(t₂))) : s * A(C, t₁ / s)
+end
+
+function _der_ℓ(C::ExtremeValueCopula{2}, u::Real, v::Real)
+    s  = u + v
+    x  = u / s
+    y  = v / s
     a, da, d2a = _A_dA_d²A(C, x)
-    val = (u+v)*a
-    du = a + da * y
-    dv = a - x * da
-    dudv = - x * y * d2a / (u+v)
+    val  = s * a
+    du   = a + da * y
+    dv   = a - x * da
+    dudv = - x * y * d2a / s
     return val, du, dv, dudv
 end
-# Función CDF para ExtremeValueCopula
-function _cdf(C::ExtremeValueCopula, u::AbstractArray{<:Real})
-    t = abs.(log.(u)) # 0 <= u <= 1 so abs == neg, but return corectly 0 instead of -0 when u = 1. 
-    return exp(-ℓ(C, t...))
-end
-function Distributions._logpdf(C::ExtremeValueCopula, t::AbstractArray{<:Real})
-    u, v = -log.(t)
-    val, du, dv, dudv = _der_ℓ(C, u, v)
-    return - val + log(max(-dudv + du*dv,0)) + u + v
-end
 
-# Definir la función para calcular τ and ρ
-# Warning: the τ function can be veeeery unstable... it is actually very hard to compute correctly. 
-# In some case, it simply fails by a lot. 
-τ(C::ExtremeValueCopula) = QuadGK.quadgk(x -> d²A(C, x) * x * (1 - x) / A(C, x), 0.0, 1.0)[1]
-ρ(C::ExtremeValueCopula) = 12 *  QuadGK.quadgk(x -> 1 / (1 + A(C, x))^2, 0, 1)[1] - 3
-
-# Función para calcular el coeficiente de dependencia en el límite superior
-function λᵤ(C::ExtremeValueCopula)
-    return 2(1 - A(C, 0.5))
+function Distributions.cdf(C::ExtremeValueCopula{2}, u1::Real, u2::Real)
+    (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) ||
+        throw(ArgumentError("u_i must be in (0,1]"))
+    t1, t2 = -log(u1), -log(u2)
+    return exp(-ℓ(C, t1, t2))
 end
+Distributions.cdf(C::ExtremeValueCopula{2}, u::NTuple{2,Real}) = Distributions.cdf(C, u[1], u[2])
 
-function λₗ(C::ExtremeValueCopula)
-    if A(C, 0.5) > 0.5
-        return 0
-    else
-        return 1
-    end
+function Distributions._logpdf(C::ExtremeValueCopula{2}, u::NTuple{2,Real})
+    u1, u2 = u
+    (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf
+    # Borde: densidad en el límite es 0 → logpdf = -Inf
+    (u1 == 1.0 || u2 == 1.0) && return -Inf
+    x, y = -log(u1), -log(u2)
+    val, du, dv, dudv = _der_ℓ(C, x, y)
+    core = -dudv + du*dv
+    core ≤ 0 && return -Inf
+    return -val + log(core) + x + y
 end
 
-function probability_z(C::ExtremeValueCopula, z)
-    num = z*(1 - z)*d²A(C, z)
-    dem = A(C, z)*_pdf(ExtremeDist(C), z)
-    p = num / dem
-    return clamp(p, 0.0, 1.0)
+τ(C::ExtremeValueCopula{2}) = QuadGK.quadgk(t -> d²A(C, t) * t * (1 - t) / max(A(C, t), _δ(t)), 0.0, 1.0)[1]
+ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C, t))^2, 0.0, 1.0)[1] - 3
+
+λᵤ(C::ExtremeValueCopula{2}) = 2 * (1 - A(C, 0.5))
+function λₗ(C::ExtremeValueCopula{2})
+    A(C, 0.5) > 0.5 ? 0.0 : 1.0
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula, x::AbstractVector{T}) where {T<:Real}
-    u1, u2 = rand(rng, Distributions.Uniform(0,1), 2)
-    z = rand(rng, ExtremeDist(C))
-    p = probability_z(C, z)
-    c = rand(rng, Distributions.Bernoulli(p))
-    w = 0
-    if c == 1
-        w = u1
-    else
-        w = u1*u2
-    end
-    a = A(C, z)
-    x[1] = w^(z/a)
-    x[2] = w^((1-z)/a)
+needs_binary_search(::ExtremeValueCopula{2}) = false
+
+function probability_z(C::ExtremeValueCopula{2}, z::Real) 
+    # p(z) = z(1-z) A''(z) / [ A(z) g_Z(z) ] 
+    num = z * (1 - z) * d²A(C, z) 
+    dem = A(C, z) * _pdf(ExtremeDist(C), z) # usa pdf, no _pdf 
+    p = num / dem 
+    return clamp(p, 0.0, 1.0) 
+end
+
+function Distributions._rand!(rng::Distributions.AbstractRNG,
+                              C::ExtremeValueCopula{2},
+                              x::AbstractVector{T}) where {T<:Real}
+    @boundscheck length(x) ≥ 2 || throw(ArgumentError("x must have length ≥ 2"))
+    u1, u2 = rand(rng), rand(rng)
+    z  = rand(rng, ExtremeDist(C))
+    p  = probability_z(C, z)
+    w  = (rand(rng) < p) ? u1 : (u1*u2)
+    a  = A(C, z)
+    x[1] = w^( z / a )
+    x[2] = w^((1 - z) / a)
     return x
 end
-DistortionFromCop(C::ExtremeValueCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivEVDistortion(C, Int8(js[1]), float(uⱼₛ[1]))
+
+DistortionFromCop(C::ExtremeValueCopula{2}, js::NTuple{1,Int},
+                  uⱼₛ::NTuple{1,Float64}, ::Int) =
+    BivEVDistortion(C, Int8(js[1]), float(uⱼₛ[1]))

@@ -1,49 +1,63 @@
 """
-    MOCopula{P}
+    MOTail{T}
 
 Fields:
+  - λ₁::Real      — parameter ≥ 0
+  - λ₂::Real      — parameter ≥ 0
+  - λ₁₂::Real     — parameter ≥ 0
 
-    - λ₁::Real - parameter
-    - λ₂::Real - parameter
-    - λ₁₂::Real - parameter
-    
 Constructor
 
-    MOCopula(θ)
+    MOCopula(λ₁, λ₂, λ₁₂)
+    ExtremeValueCopula(MOTail(λ₁, λ₂, λ₁₂))
 
-The bivariate Marshall-Olkin copula is parameterized by ``\\lambda_i \\in [0,\\infty), i = 1, 2, \\{1,2\\}``. It is an Extreme value copula with Pickands dependence function: 
+The (bivariate) Marshall-Olkin extreme-value copula is parameterized by ``\\lambda_i \\in [0,\\infty), i = 1, 2, \\{1,2\\}``
+Its Pickands dependence function is
 
 ```math
-A(t) = \\frac{\\lambda_1 (1-t)}{\\lambda_1 + \\lambda_{1,2}} + \\frac{\\lambda_2 t}{\\lambda_2 + \\lambda_{1,2}} + \\lambda_{1,2}\\max\\left \\{\\frac{1-t}{\\lambda_1 + \\lambda_{1,2}}, \\frac{t}{\\lambda_2 + \\lambda_{1,2}}  \\right \\} 
+A(t) = \\frac{\\lambda_1 (1-t)}{\\lambda_1 + \\lambda_{1,2}} + \\frac{\\lambda_2 t}{\\lambda_2 + \\lambda_{1,2}} + \\lambda_{1,2}\\max\\left \\{\\frac{1-t}{\\lambda_1 + \\lambda_{1,2}}, \\frac{t}{\\lambda_2 + \\lambda_{1,2}} \\right \\}
 ```
 
+Special cases:
+
+* If λ₁₂ = 0, reduces to an asymmetric independence-like form.
+* If λ₁ = λ₂ = 0, degenerates to complete dependence.
+
 References:
-* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
+
+* Mai & Scherer (2012). *Simulating Copulas: Stochastic Models, Sampling Algorithms, and Applications*. World Scientific.
 """
-struct MOCopula{P} <: ExtremeValueCopula{P}
-    a::P
-    b::P
-    function MOCopula(λ₁,λ₂,λ₁₂)
-        if λ₁ < 0 || λ₂ < 0 || λ₁₂ < 0
-            throw(ArgumentError("All λ parameters must be >= 0"))
-        end
-        a, b = λ₁ / (λ₁ + λ₁₂), λ₂ / (λ₂ + λ₁₂)
-        a, b, _ = promote(a, b, 1.0)
-        return new{typeof(a)}(a,b)
+struct MOTail{T} <: Tail{2}
+    λ₁::T
+    λ₂::T
+    λ₁₂::T
+    function MOTail(λ₁, λ₂, λ₁₂)
+        (λ₁ ≥ 0 && λ₂ ≥ 0 && λ₁₂ ≥ 0) || throw(ArgumentError("All λ must be ≥ 0"))
+        T = promote_type(typeof(λ₁), typeof(λ₂), typeof(λ₁₂))
+        return new{T}(T(λ₁), T(λ₂), T(λ₁₂))
     end
 end
-Distributions.params(C::MOCopula) = (C.λ₁, C.λ₂, C.λ₁₂)
-A(C::MOCopula, t::Real) = max(t + (1-t)*C.b, (1-t)+C.a*t)
-_cdf(C::MOCopula, u::AbstractArray{<:Real}) = min(u[1]^C.a * u[2], u[1] * u[2]^C.b)
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula, u::AbstractVector{T}) where {T<:Real}
-    r, s, t = -log.(rand(rng,3)) # Exponentials(1)
-    u[1] = exp(-min(r/(1-C.a), t/C.a))
-    u[2] = exp(-min(s/(1-C.b), t/C.b))
-    return u
-end
-τ(C::MOCopula) = C.a*C.b/(C.a+C.b-C.a*C.b)
 
-function Distributions.logcdf(D::BivEVDistortion{<:MOCopula, T}, z::Real) where T
+const MOCopula{T} = ExtremeValueCopula{2, MOTail{T}}
+Distributions.params(C::ExtremeValueCopula{2,MOTail{T}}) where {T} = (C.E.λ₁, C.E.λ₂, C.E.λ₁₂)
+function A(E::MOTail, t::Real)
+    tt = _safett(t)
+    λ₁, λ₂, λ₁₂ = E.λ₁, E.λ₂, E.λ₁₂
+    term1 = λ₁ * (1-tt) / (λ₁ + λ₁₂)
+    term2 = λ₂ * tt / (λ₂ + λ₁₂)
+    term3 = λ₁₂ * max((1-tt)/(λ₁ + λ₁₂), tt/(λ₂ + λ₁₂))
+    return term1 + term2 + term3
+end
+
+MOCopula(λ₁, λ₂, λ₁₂) = ExtremeValueCopula(MOTail(λ₁, λ₂, λ₁₂))
+
+τ(C::ExtremeValueCopula{2,MOTail{T}}) where {T} = begin
+    a = C.E.λ₁/(C.E.λ₁+C.E.λ₁₂)
+    b = C.E.λ₂/(C.E.λ₂+C.E.λ₁₂)
+    a*b/(a+b-a*b)
+end
+
+function Distributions.logcdf(D::BivEVDistortion{<:ExtremeValueCopula{2,MOTail{T}}}, z::Real) where T
     C = D.C
     a, b = C.a, C.b
 
@@ -92,7 +106,7 @@ function Distributions.logcdf(D::BivEVDistortion{<:MOCopula, T}, z::Real) where 
     end
 end
 
-function Distributions.quantile(D::BivEVDistortion{<:MOCopula}, α::Real)
+function Distributions.quantile(D::BivEVDistortion{<:ExtremeValueCopula{2,MOTail{T}}}, α::Real) where {T}
     C = D.C
     a, b = C.a, C.b
     v_or_u = D.uⱼ

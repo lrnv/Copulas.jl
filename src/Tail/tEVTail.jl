@@ -1,54 +1,63 @@
 """
-    tEVCopula{P}
+    tEVTail{Tdf,Tρ}
 
 Fields:
-    - ν::Real - paremeter
-    - θ::Real - Parameter 
-    
+  - ν::Real — degrees of freedom (ν > 0)
+  - ρ::Real — correlation parameter (ρ ∈ (-1,1])
+
 Constructor
 
-    tEVCopula(ν, θ)
+    tEVCopula(ν, ρ)
+    ExtremeValueCopula(tEVTail(ν, ρ))
 
-The bivariate extreme t copula is parameterized by ``\\nu \\in [0,\\infty)`` and \\theta \\in (-1,1]. It is an Extreme value copula with Pickands dependence function: 
+The (bivariate) extreme-t copula is parameterized by ``\\nu > 0`` and \\rho \\in (-1,1]``.  
+Its Pickands dependence function is
 
 ```math
 A(x) = xt_{\\nu+1}(Z_x) +(1-x)t_{\\nu+1}(Z_{1-x})
 ```
-Where ``t_{\\nu + 1}``is the cumulative distribution function (CDF) of the standard t distribution with \\nu + 1 degrees of freedom and
+Where ``t_{\\nu + 1}`` is the cumulative distribution function (CDF) of the standard t distribution with ``\\nu + 1`` degrees of freedom and
 
 ```math
-Z_x = \\frac{(1+\\nu)^{1/2}{\\sqrt{1-\\theta^2}}\\left [ \\left (\\frac{x}{1-x}  \\right )^{1/\\nu} - \\theta \\right ]
+Z_x = \\frac{(1+\\nu)^{1/2}{\\sqrt{1-\\theta^2}}\\left [ \\left (\\frac{x}{1-x} \\right )^{1/\\nu} - \\theta \\right ]
 ```
 
-It has a few special cases:
+Special cases:
 
-- When θ = 0, it is the Independent Copula
-- When θ = ∞, it is the M Copula (Upper Frechet-Hoeffding bound)
+* ρ = 0 ⇒ IndependentCopula
+* ρ = 1 ⇒ M Copula (upper Fréchet–Hoeffding bound)
 
 References:
-* [nikoloulopoulos2009extreme](@cite) Nikoloulopoulos, A. K., Joe, H., & Li, H. (2009). Extreme value properties of multivariate t copulas. Extremes, 12, 129-148.
-"""
-struct tEVCopula{df, P} <: ExtremeValueCopula{P}
-    ρ::P   # correlation paremeter
-    ν::df  # degree of freedom
 
-    function tEVCopula(ν::df, ρ::P) where {df<:Real, P<:Real}
-        if ν <= 0
-            throw(ArgumentError("The degrees of freedom ν must be positive real"))
-        end
-        if !(-1 < ρ <= 1)
-            throw(ArgumentError("The correlation parameter ρ must be in (-1, 1]"))
-        elseif ρ == 0
-            return IndependentCopula(2)
-        elseif ρ == 1
-            return MCopula(2)
-        end
-        ρ, ν, _ = promote(ρ, ν, 1.0)
-        return new{typeof(ν), typeof(ρ)}(ρ, ν)
+* Nikoloulopoulos, Joe & Li (2009). *Extreme value properties of multivariate t copulas*. Extremes 12: 129–148.
+"""
+struct tEVTail{Tdf,Tρ} <: Tail{2}
+    ν::Tdf
+    ρ::Tρ
+    function tEVTail(ν::Tdf, ρ::Tρ) where {Tdf<:Real, Tρ<:Real}
+        (ν > 0)     || throw(ArgumentError("ν must be > 0"))
+        (-1 < ρ ≤ 1)|| throw(ArgumentError("ρ must be in (-1,1]"))
+        TdfT = promote_type(Tdf)
+        TρT  = promote_type(Tρ)
+        return new{TdfT,TρT}(TdfT(ν), TρT(ρ))
     end
 end
-Distributions.params(C::tEVCopula{df,P}) where {df,P} = (C.ρ, C.ν)
-function A(T::tEVCopula, t::Real)
+
+const tEVCopula{Tdf,Tρ} = ExtremeValueCopula{2, tEVTail{Tdf,Tρ}}
+
+function tEVCopula(ν::Real, ρ::Real)
+    if ρ == 0
+        return IndependentCopula(2)
+    elseif ρ == 1
+        return MCopula(2)
+    else
+        return ExtremeValueCopula(tEVTail(ν, ρ))
+    end
+end
+
+Distributions.params(C::ExtremeValueCopula{2,tEVTail{Tdf,Tρ}}) where {Tdf,Tρ} = (C.E.ν, C.E.ρ)
+
+function A(T::tEVTail, t::Real)
     ρ, ν = T.ρ, T.ν
     C = sqrt((1+ν)/(1-ρ^2))
     α = 1/ν
@@ -65,7 +74,7 @@ function A(T::tEVCopula, t::Real)
     A = B1 + B2
     return A
 end
-function dA(T::tEVCopula, t::Real)
+function dA(T::tEVTail, t::Real)
     ρ, ν = T.ρ, T.ν
     C = sqrt((1+ν)/(1-ρ^2))
     α = 1/ν
@@ -87,7 +96,7 @@ function dA(T::tEVCopula, t::Real)
     DA = DB1 + DB2
     return DA
 end
-function d²A(T::tEVCopula, t::Real)
+function d²A(T::tEVTail, t::Real)
     ρ, ν = T.ρ, T.ν
     C = sqrt((1+ν)/(1-ρ^2))
     α = 1/ν
@@ -114,7 +123,7 @@ function d²A(T::tEVCopula, t::Real)
     DDA = DDB1 + DDB2
     return DDA
 end
-function _A_dA_d²A(T::tEVCopula, t::Real)
+function _A_dA_d²A(T::tEVTail, t::Real)
     ρ, ν = T.ρ, T.ν
     C = sqrt((1+ν)/(1-ρ^2))
     α = 1/ν

@@ -1,0 +1,85 @@
+"""
+    HuslerReissTail{T}
+
+Fields:
+  - θ::Real — dependence parameter, θ ≥ 0
+
+Constructor
+
+    HuslerReissCopula(θ)
+    ExtremeValueCopula(HuslerReissTail(θ))
+
+The (bivariate) Hüsler-Reiss extreme-value copula is parameterized by ``\\theta \\in [0, \\infty)``.
+Its Pickands dependence function is
+
+```math
+A(t) = t\\Phi(\\theta^{-1}+\\frac{1}{2}\\theta\\log(\\frac{t}{1-t})) +(1-t)\\Phi(\\theta^{-1}+\\frac{1}{2}\\theta\\log(\\frac{1-t}{t}))
+```
+where ``\\Phi`` is the standard normal cdf.
+
+Special cases:
+
+* θ = 0   ⇒ IndependentCopula
+* θ = ∞   ⇒ MCopula (upper Fréchet-Hoeffding bound)
+
+References:
+
+* Hüsler & Reiss (1989). Maxima of normal random vectors: between independence and complete dependence. Stat. Probab. Lett. 7(4): 283-286.
+  """
+struct HuslerReissTail{T} <: Tail{2}
+    θ::T
+    function HuslerReissTail(θ)
+        θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
+    return new{typeof(θ)}(θ)
+    end
+end
+const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
+Distributions.params(C::ExtremeValueCopula{2,HuslerReissTail{T}}) where {T} = (C.E.θ,)
+
+function A(E::HuslerReissTail, t::Real)
+  tt = _safett(t)
+  θ  = E.θ
+  if θ == 0
+    return 1.0
+  elseif isinf(θ)
+    return max(tt, 1-tt)
+  else
+    Φ = Distributions.cdf
+    N = Distributions.Normal()
+    term1 = tt * Φ(N, inv(θ) + 0.5*θ*log(tt/(1-tt)))
+    term2 = (1-tt) * Φ(N, inv(θ) + 0.5*θ*log((1-tt)/tt))
+    return term1 + term2
+  end
+end
+
+function ℓ(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t₁::Real, t₂::Real) where {T}
+  θ = C.E.θ
+  Φ = Distributions.cdf
+  N = Distributions.Normal()
+  return t₁ * Φ(N, inv(θ) + 0.5*θ*log(t₁/t₂)) + t₂ * Φ(N, inv(θ) + 0.5*θ*log(t₂/t₁))
+end
+
+function dA(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
+  θ = C.E.θ
+  N = Distributions.Normal()
+  Φ = Distributions.cdf
+  ϕ = Distributions.pdf
+
+  arg1 = inv(θ) + 0.5*θ*log(t/(1-t))
+  arg2 = inv(θ) + 0.5*θ*log((1-t)/t)
+
+  dA_term1 = Φ(N, arg1) + t * ϕ(N, arg1) * (0.5*θ * (1/t + 1/(1-t)))
+  dA_term2 = -Φ(N, arg2) + (1-t) * ϕ(N, arg2) * (0.5*θ * (-1/t - 1/(1-t)))
+
+  return dA_term1 + dA_term2
+end
+
+function HuslerReissCopula(θ)
+  if θ == 0
+    return IndependentCopula(2)
+  elseif isinf(θ)
+    return MCopula(2)
+  else
+    return ExtremeValueCopula(HuslerReissTail(θ))
+  end
+end

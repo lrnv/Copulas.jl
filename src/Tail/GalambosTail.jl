@@ -1,0 +1,61 @@
+"""
+    GalambosTail{T}
+
+Fields:
+  - θ::Real — dependence parameter, θ ≥ 0
+
+Constructor
+
+    GalambosCopula(θ)
+    ExtremeValueCopula(GalambosTail(θ))
+
+The (bivariate) Galambos extreme-value copula is parameterized by ``\\theta \\in [0, \\infty)``.
+Its Pickands dependence function is
+
+```math
+A(t) = 1 - \\Big( t^{-\\theta} + (1-t)^{-\\theta} \\Big)^{-1/\\theta}, \\quad t \\in (0,1).
+```
+
+Special cases:
+
+* θ = 0   ⇒ IndependentCopula
+* θ = ∞   ⇒ MCopula (upper Fréchet-Hoeffding bound)
+
+References:
+
+* Galambos (1975). Order statistics of samples from multivariate distributions. JASA 70(351a), 674-680.
+"""
+struct GalambosTail{T} <: Tail{2}
+  θ::T
+  function GalambosTail(θ)
+    θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
+    T = promote_type(typeof(θ))
+    new{T}(T(θ))
+  end
+end
+
+const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
+Distributions.params(C::ExtremeValueCopula{2, GalambosTail{T}}) where {T} = (C.E.θ,)
+needs_binary_search(C::ExtremeValueCopula{2, GalambosTail{T}}) where {T} = (C.E.θ > 19.5)
+
+function A(E::GalambosTail, t::Real)
+  tt = _safett(t)
+  θ  = E.θ
+  if θ == 0
+    return 1.0
+  elseif isinf(θ)
+    return max(tt, 1-tt)
+  else
+    return -LogExpFunctions.expm1(-LogExpFunctions.logaddexp(-θ*log(tt), -θ*log(1-tt)) / θ)
+  end
+end
+
+function GalambosCopula(θ)
+  if θ == 0
+    return IndependentCopula(2)
+  elseif isinf(θ)
+    return MCopula(2)
+  else
+    return ExtremeValueCopula(GalambosTail(θ))
+  end
+end
