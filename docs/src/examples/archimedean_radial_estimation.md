@@ -359,12 +359,6 @@ Rex = DiscreteNonParametric([0.2, 0.5, 1.0], [0.2, 0.3, 0.5])
 plot_phiR(Rex, 3)
 ```
 
-Additionally, here is an illustrative drawing of $\varphi_{\widehat{R}}$ showing its piecewise behavior across recovered radii:
-
-![Illustrative drawing of $\varphi_{\widehat{R}}$](drawing_of_phi.pdf)
-
-If the preview does not render inline, open the asset directly: [drawing_of_phi.pdf](drawing_of_phi.pdf).
-
 ## Discussion and caveats
 
 - The fit is discrete even when the true $R$ is continuous: that’s expected. As $n$ grows, atoms densify in the bulk where Kendall jumps concentrate.
