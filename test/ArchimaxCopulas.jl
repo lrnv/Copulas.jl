@@ -19,7 +19,6 @@
     _EPS = 1e-12
     # Qualified aliases to avoid UndefVarError
     AC   = Copulas.ArchimedeanCopula
-    AG   = Copulas.AMHGenerator
     CG   = Copulas.ClaytonGenerator
     GG   = Copulas.GumbelGenerator
     FG   = Copulas.FrankGenerator
@@ -97,7 +96,6 @@
     end
     
     ARCH_SPECS = Dict{Symbol,Any}(
-        :AMH     => (θs=[0.2,0.6],  ctor = θ -> AC(2, AG(θ))),
         :Clayton => (θs=[1.5,3.0],  ctor = θ -> AC(2, CG(θ))),
         :Gumbel  => (θs=[2.0,4.0],  ctor = θ -> AC(2, GG(θ))),
         :Frank   => (θs=[0.8,6.0],  ctor = θ -> AC(2, FG(θ))),

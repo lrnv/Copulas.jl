@@ -69,7 +69,7 @@ end
     num/den
 end
 
-frailty(G::BB10Generator) = ShiftedNegBinFrailty(inv(G.θ), 1 - G.δ)
+frailty(G::BB10Generator) = ShiftedNegBin(inv(G.θ), 1 - G.δ)
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
     θ, δ = C.G.θ, C.G.δ
     uθ, vθ = u[1]^θ, u[2]^θ
