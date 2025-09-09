@@ -158,7 +158,10 @@ module Copulas
            SurvivalCopula,
            TCopula,
            tEVCopula,
-           WCopula
+           WCopula,
+           ArchimaxCopula,
+           BB4Copula,
+           BB5Copula
 
     using PrecompileTools
     @setup_workload begin

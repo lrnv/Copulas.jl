@@ -30,7 +30,7 @@ makedocs(;
             "Archimedean family" => "archimedean/generalities.md",
             "Elliptical family" => "elliptical/generalities.md",
             "Extreme Value family" => "extremevalue/generalities.md",
-            "Archimax family" => "archimax/generalities.md"
+            "Archimax family" => "archimax/generalities.md",
             "Vines family" => "Vines.md",
             "Empirical models" => "empirical/generalities.md",
             "Troubleshooting" => "troubleshooting.md",
@@ -40,7 +40,7 @@ makedocs(;
             "elliptical/available_models.md",
             "archimedean/available_models.md",
             "extremevalue/available_models.md",
-            "archimax/available_models.md"
+            "archimax/available_models.md",
             "empirical/available_models.md",
             "Other Copulas" => "miscellaneous.md",
             "Transformed Copulas" => "transformations.md",
