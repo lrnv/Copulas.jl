@@ -72,6 +72,7 @@ $$\widehat{R} \sim \sum_{j=1}^N w_j\, \delta_{r_j}.$$
 
 The associated generator $\varphi_{\widehat{R}}$ is continuous and piecewise polynomial between the recovered radii. Here is an illustrative drawing of φ_R showing its piecewise behavior across recovered radii:
 
+
 ![Illustrative drawing of φ_R](../../assets/drawing_of_phi.png)
 
 We can prove existance and unicity of the obtained estimator, but convergence is still open since the representativity of the Kendall distribution is not certain in higher dimensions (see [genest2011a](@cite)). 
