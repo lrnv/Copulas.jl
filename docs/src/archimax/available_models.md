@@ -25,8 +25,7 @@ BB5Copula
 
 Use any Archimedean generator `G<:Generator` and any EV copula `E<:ExtremeValueCopula`:
 
-```@example
-using Copulas
+```julia
 
 gen = ClaytonGenerator(θ)      # any Archimedean generator
 evd = GalambosEV(κ)            # any EV copula

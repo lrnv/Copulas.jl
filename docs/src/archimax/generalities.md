@@ -9,7 +9,7 @@ CurrentModule = Copulas
 !!! note "Bivariate only (for now)"
 This section and the current implementation address the **bivariate case**. Multivariate extensions are possible; if you’d like to contribute, we’re happy to provide guidance on how to integrate them.
 
-A bivariate Archimax copula [caperaa2000bivariate](@cite) $C$ admits the representation
+A bivariate Archimax copula [caperaa2000](@cite) $C$ admits the representation
 
 $$
 C_{\phi,A}(u_1,u_2)
