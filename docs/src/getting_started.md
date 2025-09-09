@@ -2,6 +2,8 @@
 CurrentModule = Copulas
 ```
 
+# Getting Started
+
 This section gives some general definitions and tools about dependence structures, multivariate random vectors and copulas. Along this journey through the mathematical theory of copulas, we link to the rest of the documentation for more specific and detailed arguments on particular points, or simply to the technical documentation of the actual implementation. 
 The interested reader can take a look at the standard books on the subject [joe1997,cherubini2004,nelsen2006,joe2014](@cite) or more recently [mai2017, durante2015a, czado2019,grosser2021](@cite). 
 
@@ -73,6 +75,22 @@ u = rand(C,10)
 cdf(C,u)
 ```
 
+### Visualizing sample clouds (2D)
+
+It’s often useful to get an intuition by looking at scatter plots. Below we compare
+independence, a positive dependence (Clayton), and the Fréchet bounds:
+
+```@example 1
+using Plots
+using Plots.PlotMeasures
+N = 400
+P1 = scatter(rand(IndependentCopula(2), N)'; ms=2, title="Independent", xlabel="U₁", ylabel="U₂", legend=false)
+P2 = scatter(rand(ClaytonCopula(2, 3.0), N)'; ms=2, title="Clayton θ=3", xlabel="U₁", ylabel="U₂", legend=false)
+P3 = scatter(rand(MCopula(2), N)'; ms=2, title="Comonotone (M)", xlabel="U₁", ylabel="U₂", legend=false)
+P4 = scatter(rand(WCopula(2), N)'; ms=2, title="Countermono (W)", xlabel="U₁", ylabel="U₂", legend=false)
+plot(P1, P2, P3, P4; layout=(2,2), size=(800,600))
+```
+
 One of the reasons that makes copulas so useful is the bijective map discovered by Sklar [sklar1959](@cite) in 1959:
 
 !!! theorem "Theorem (Sklar):"
@@ -140,7 +158,32 @@ u = rand(WCopula(2),10)
 sum(u, dims=1) # sum is always equal to one, this is anticomonotony
 ```
 
+You can also visualize the strong alignment for `M` and the anti-diagonal pattern for `W` in the grid above.
+
 Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas. This is mostly the content of this package, and we refer to the rest of the documentation for more details on the models and their implementations. 
+
+### Density heatmaps (bivariate)
+
+The copula density highlights concentration in different regions. Below are heatmaps of
+`pdf(C, [u,v])` on a grid for a few common bivariate copulas.
+
+```@example 1
+Cs = (
+    GaussianCopula([1.0 0.7; 0.7 1.0]),
+    TCopula(4, [1.0 0.7; 0.7 1.0]),
+    ClaytonCopula(2, 2.0),
+    GumbelCopula(2, 2.0),
+)
+labels = ("Gaussian ρ=0.7", "t ν=4, ρ=0.7", "Clayton θ=2", "Gumbel θ=2")
+grid = range(0.01, 0.99; length=80)
+plt = plot(layout=(2,2), size=(800,650), margin=3mm)
+for (i, C) in enumerate(Cs)
+    Z = [pdf(C, [u,v]) for u in grid, v in grid]
+    heatmap!(plt[i], grid, grid, Z'; aspect_ratio=1, c=:viridis,
+             xlim=(0,1), ylim=(0,1), title=labels[i], xlabel="u", ylabel="v")
+end
+plt
+```
 
 ## Fitting copulas and compound distributions.
 

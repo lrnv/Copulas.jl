@@ -48,6 +48,22 @@ In the package, this copula is implemented as the `EmpiricalCopula`:
 EmpiricalCopula
 ```
 
+### Visual: empirical copula from pseudo-observations
+
+```@example 1
+using Copulas, Distributions, Plots
+# generate data with known dependence, then compute pseudo-observations
+Ctrue = ClaytonCopula(2, 1.2)
+U = rand(Ctrue, 1000)
+X = [quantile.(Ref(Normal()), U[1, :])'; quantile.(Ref(LogNormal()), U[2, :])']
+Uhat = pseudos(permutedims(X))  # returns an N×d matrix
+
+# build the empirical copula and visualize the sample on [0,1]^2
+Ĉ = EmpiricalCopula(Uhat)
+scatter(Uhat[:,1], Uhat[:,2]; ms=1.8, alpha=0.5, xlim=(0,1), ylim=(0,1), label=false,
+    title="Pseudo-observations and empirical copula")
+```
+
 ## Beta copula
 
 
@@ -126,6 +142,12 @@ Convergence results for this kind of copulas can be found in [durante2015](@cite
 
 !!! todo "Not implemented yet!"
     Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
+
+
+## See also
+
+- Bestiary: [Empirical models list](@ref empirical_cops)
+- Manual: [Sklar's Distribution](@ref), [Conditioning and Subsetting](@ref)
 
 
 ```@bibliography

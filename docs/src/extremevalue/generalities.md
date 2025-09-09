@@ -96,6 +96,65 @@ Note that all functions present in the algorithm were previously defined to ensu
 ExtremeValueCopula
 ```
 
+## Visual illustrations
+
+### Pickands dependence functions A(t)
+
+```@example 1
+using Copulas, Plots, Distributions
+ts = range(0.0, 1.0; length=401)
+Cs = (
+    GalambosCopula(0.8),    # upper tail dep.
+    HuslerReissCopula(1.0), # intermediate
+    LogCopula(1.6),         # asymmetric
+)
+labels = ("Galambos(0.8)", "Hüsler–Reiss(1.0)", "Log(1.6)")
+plot(size=(700, 300))
+for (i, C) in enumerate(Cs)
+    plot!(ts, Copulas.A.(Ref(C), ts); label=labels[i])
+end
+plot!(ts, max.(ts, 1 .- ts); label="bounds", ls=:dash, color=:black)
+plot!(ts, ones(length(ts)); label="1", ls=:dot, color=:gray)
+```
+
+### Sample scatter (uniform scale)
+
+```@example 1
+C = GalambosCopula(1.0)
+U = rand(C, 3000)
+scatter(U[1,:], U[2,:]; ms=1.8, alpha=0.5, xlim=(0,1), ylim=(0,1), legend=false,
+        title="Galambos copula sample")
+```
+
+### Conditional distortion (EV example)
+
+```@example 1
+C = HuslerReissCopula(1.2)
+u2 = 0.4
+D = condition(C, 2, u2)
+ts = range(0.0, 1.0; length=401)
+plot(ts, cdf.(Ref(D), ts); xlabel="u", ylabel="H_{1|2}(u|$u2)",
+     title="Conditional distortion for Hüsler–Reiss")
+```
+
+### Rosenblatt sanity check (EV)
+
+```@example 1
+using StatsBase
+U = rand(C, 2000)
+S = reduce(hcat, (rosenblatt(C, U[:, i]) for i in 1:size(U,2)))
+ts = range(0.0, 1.0; length=401)
+EC = [ecdf(S[k, :]) for k in 1:2]
+plot(ts, ts; label="Uniform", color=:blue, alpha=0.6, size=(650,300))
+plot!(ts, EC[1].(ts); seriestype=:steppost, label="s₁", color=:black)
+plot!(ts, EC[2].(ts); seriestype=:steppost, label="s₂", color=:gray)
+```
+
+## See also
+
+- Bestiary: [Implemented Extreme Value copulas](@ref available_extreme_models)
+- Manual: [Conditioning and Subsetting](@ref)
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false
