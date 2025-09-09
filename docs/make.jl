@@ -29,6 +29,7 @@ makedocs(;
             "Elliptical family" => "elliptical/generalities.md",
             "Archimedean family" => "archimedean/generalities.md",
             "Extreme Value family" => "extremevalue/generalities.md",
+            "Archimax family" => "archimax/generalities.md"
             "Vines family" => "Vines.md",
             "Empirical models" => "empirical/generalities.md",
             "Dependence measures" => "dependence_measures.md",
@@ -38,6 +39,7 @@ makedocs(;
             "elliptical/available_models.md",
             "archimedean/available_models.md",
             "extremevalue/available_models.md",
+            "archimax/available_models.md"
             "empirical/available_models.md",
             "Other Copulas" => "miscellaneous.md",
             "Transformed Copulas" => "transformations.md",

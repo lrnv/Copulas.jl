@@ -1,25 +1,42 @@
 """
-    ArchimaxCopula{A, E} 
+    ArchimaxCopula{G<:Generator, E<:ExtremeValueCopula}
 
 Fields:
-
-    -Archimedean::A - Archimedean Copula
-    -Extreme::E - Extreme Value Copula
+    - gen::G  : Archimedean generator ϕ (with methods `ϕ(gen, s)` and `ϕ⁻¹(gen, u)`)
+    - evd::E  : Extreme-value copula (Pickands dependence function A)
 
 Constructor
 
-    ArchimaxCopula(Archimedean, Extreme)
+    ArchimaxCopula(A::ArchimedeanCopula{2,G}, E::ExtremeValueCopula) where {G<:Generator}
+    ArchimaxCopula(gen::G, E::ExtremeValueCopula) where {G<:Generator}
 
-The bivariate Archimax Copula is parameterized by an Archimedean Copula and Extreme Value Copula. It is constructed as follows: 
+Bivariate Archimax copula (convention used in `ArchimedeanCopula`). It is defined by
+
 ```math
-C_{\\ell, \\varphi}(u_1, u_2) = \\varphi(\\ell(\\varphi^{-1}(u_1),\\varphi^{-1}(u_2)))
+C_{\\phi,A}(u_1,u_2)= \\phi\\!\\Big( (x+y)\\, A\\!\\big(\\tfrac{y}{x+y}\\big) \\Big), \\qquad x=\\phi^{-1}(u_1),\\; y=\\phi^{-1}(u_2).
 ```
-where ``\\varphi`` is the generator of the Archimedean Copula and ``\\varphi^{-1}`` is the inverse and ``\\ell`` is the stable tail dependece function of Extreme value Copula
 
-For more details see
+Equivalent to evaluating the stable queuing function ``\\ell_A(x,y)=(x+y)A(x/(x+y))`` at ``(x,y)=(\\phi^{-1}(u_1), \\phi^{-1}(u_2))`` and apply ``\\phi``:
+
+```julia
+x = ϕ⁻¹(gen, u1);  y = ϕ⁻¹(gen, u2)
+S = x + y
+t = y / S
+C(u1,u2) = ϕ(gen, S * A(evd, t))
+```
+
+Notes:
+
+* If `A(t) ≡ 1`, it reduces to the Archimedean copula with generator `ϕ`.
+* If `ϕ(s) = exp(-s)`, it reduces to the extreme value copula with Pickands function `A`.
+
+`params(::ArchimaxCopula)` returns the concatenated tuple of parameters from `gen` and `evd`.
 
 References:
-* Charpentier et al, Multivariate Archimax Copulas, Journal of Multivariate analysis. 2014. 
+
+* [caperaa2000bivariate](@cite) Capéraà, Fougères & Genest (2000), Bivariate Distributions with Given Extreme Value Attractor.
+* [charpentier2014](@cite) Charpentier, Fougères & Genest (2014), Multivariate Archimax Copulas.
+* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications.
 """
 struct ArchimaxCopula{G<:Generator,E<:ExtremeValueCopula} <: Copula{2}
     gen::G            # archimedean ψ generator
@@ -87,7 +104,6 @@ end
     τψ = τ(C.gen)
     τA + (1 - τA) * τψ
 end
-
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula, x::AbstractVector{T}) where {T<:Real}
     v1, v2 = rand(rng, C.evd)

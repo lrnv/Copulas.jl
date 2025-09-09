@@ -2,22 +2,31 @@
     BB5Copula{T}
 
 Fields:
-  - θ::Real - parameter
-  - δ::Real - parameter
+    - θ::Real - dependence parameter (θ ≥ 1)
+    - δ::Real - shape parameter (δ > 0)
 
 Constructor
 
     BB5Copula(θ, δ)
 
-The BB4 copula in dimension ``d = 2`` is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0,\\infty). It is an Archimedean copula with generator :
+The BB5 copula is a two-parameter [Archimax](@ref ArchimaxCopula) copula, constructed from the Galambos extreme-value copula combined with the positive stable LT Archimedean family (which includes the Gumbel copula as a special case). Its distribution function is
 
 ```math
-\\phi(t) = \\exp(-[\\delta^{-1}\\log(1 + t)]^{\\frac{1}{\\theta}}),
+C(u,v; \\theta, \\delta) = \\exp\\Big\\{ -\\big[ x^{\\theta} + y^{\\theta} - (x^{-\\theta\\delta} + y^{-\\theta\\delta})^{-1/\\delta} \\big]^{1/\\theta} \\Big\\}, \\quad \\theta ≥ 1, \\; \\delta > 0,
 ```
+where ``x = -\\log(u)`` and ``y = -\\log(v)``.
+
+Special cases:
+
+* As δ → 0⁺, reduces to the Gumbel copula (extreme-value and Archimedean).
+* As θ = 1, reduces to the Galambos copula.
+* As θ → ∞ or δ → ∞, converges to the M copula.
 
 References:
-* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.199-200
+
+* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.197-198
 """
+
 struct BB5Copula{Tθ,Tδ} <: Copula{2}
     θ::Tθ   # θ ≥ 1
     δ::Tδ   # δ > 0

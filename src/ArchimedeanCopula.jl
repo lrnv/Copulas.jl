@@ -18,7 +18,7 @@ The default sampling method is the Radial-simplex decomposition using the Willia
 
 There exists several known parametric generators that are implement in the package. For every `NamedGenerator <: Generator` implemented in the package, we provide a type alias ``NamedCopula{d,...} = ArchimedeanCopula{d,NamedGenerator{...}}` to be able to manipulate the classic archimedean copulas without too much hassle for known and usefull special cases.
 
-A generic archimdean copula can be constructed as follows:
+A generic archimedean copula can be constructed as follows:
 
 ```julia
 struct MyGenerator <: Generator end

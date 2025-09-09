@@ -2,20 +2,28 @@
     BB4Copula{T}
 
 Fields:
-  - θ::Real - parameter
-  - δ::Real - parameter
+    - θ::Real - dependence parameter (θ ≥ 0)
+    - δ::Real - shape parameter (δ > 0)
 
 Constructor
 
     BB4Copula(θ, δ)
 
-The BB4 copula in dimension ``d = 2`` is parameterized by ``\\theta \\in [0,\\infty)`` and ``\\delta \\in (0,\\infty). It is an Archimedean copula with generator :
+The BB4 copula is a two-parameter [Archimax](@ref ArchimaxCopula) copula constructed from the Galambos extreme-value copula combined with a gamma LT family (which includes the Clayton copula as a special case). Its distribution function is
 
 ```math
-\\phi(t) = \\exp(-[\\delta^{-1}\\log(1 + t)]^{\\frac{1}{\\theta}}),
+C(u,v; \\theta, \\delta) = \\left( u^{-\\theta} + v^{-\\theta} - 1 - \\left[ (u^{-\\theta} - 1)^{-\\delta} + (v^{-\\theta} - 1)^{-\\delta} \\right]^{-1/\\delta} \\right)^{-1/\\theta}, \\quad \\theta ≥ 0, \\; \\delta > 0.
 ```
+for ``0 ≤ u,v ≤ 1``.
+
+Special cases:
+
+* As δ → 0+, reduces to the Clayton Copula (Archimedean).
+* As θ → 0+, reduces to the Galambos copula (extreme-value).
+* As θ → ∞ or δ → ∞, approaches the M Copula.
 
 References:
+
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.197-198
 """
 struct BB4Copula{T} <: Copula{2}
