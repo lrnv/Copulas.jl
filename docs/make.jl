@@ -43,6 +43,7 @@ makedocs(;
             "Transformed Copulas" => "transformations.md",
         ],
         "Examples" => [
+            "examples/archimedean_radial_estimation.md",
             "examples/lambda_viz.md",
             "examples/lossalae.md",
             "examples/fitting_sklar.md",
