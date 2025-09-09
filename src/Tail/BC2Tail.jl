@@ -18,7 +18,7 @@ A(t) = \\max\\{a t, b (1-t) \\} + \\max\\{(1-a)t, (1-b)(1-t)\\}, \\quad t \\in [
 
 References:
 
-* Mai & Scherer (2011). Bivariate extreme-value copulas with discrete Pickands dependence measure. Extremes 14, 311-324.
+* [mai2011bivariate](@cite) Mai, J. F., & Scherer, M. (2011). Bivariate extreme-value copulas with discrete Pickands dependence measure. Extremes, 14, 311-324. Springer, 2011.
 """
 struct BC2Tail{T} <: Tail{2}
     a::T

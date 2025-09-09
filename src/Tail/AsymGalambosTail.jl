@@ -23,9 +23,9 @@ Special cases:
 * θ₁ = θ₂ = 0 ⇒ IndependentCopula
 * θ₁ = θ₂ = 1 ⇒ GalambosCopula
 
-References:
+References: 
 
-* Joe (1990). Families of min-stable multivariate exponential and multivariate extreme value distributions. Statist. Probab. Lett.
+* [Joe1990](@cite) Families of min-stable multivariate exponential and multivariate extreme value distributions. Statist. Probab, 1990.
 """
 struct AsymGalambosTail{T} <: Tail{2}
     α::T                 # α ≥ 0

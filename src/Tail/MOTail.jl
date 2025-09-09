@@ -25,7 +25,7 @@ Special cases:
 
 References:
 
-* Mai & Scherer (2012). *Simulating Copulas: Stochastic Models, Sampling Algorithms, and Applications*. World Scientific.
+* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
 """
 struct MOTail{T} <: Tail{2}
     λ₁::T

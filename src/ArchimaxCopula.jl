@@ -38,12 +38,12 @@ References:
 * [charpentier2014](@cite) Charpentier, Fougères & Genest (2014), Multivariate Archimax Copulas.
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications.
 """
-struct ArchimaxCopula{G<:Generator,E<:ExtremeValueCopula} <: Copula{2}
-    gen::G            # archimedean ψ generator
-    evd::E            # EVC (Pickands A maybe ℓ...)
+struct ArchimaxCopula{G<:Generator, TT<:Tail{2}} <: Copula{2}
+    gen::G
+    evd::ExtremeValueCopula{2,TT}
 end
 
-ArchimaxCopula(A::ArchimedeanCopula{2,G}, E::ExtremeValueCopula) where {G<:Generator} =
+ArchimaxCopula(A::ArchimedeanCopula{2,G}, E::ExtremeValueCopula{2,TT}) where {G<:Generator,TT<:Tail{2}} =
     ArchimaxCopula(A.G, E)
 
 _as_tuple(x) = x isa Tuple ? x : (x,)

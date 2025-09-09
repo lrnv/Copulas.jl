@@ -22,7 +22,7 @@ Special cases:
 
 References:
 
-* Tawn (1988). *Bivariate extreme value theory: models and estimation*. Biometrika 75(3): 397-415.
+* [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
 struct MixedTail{T} <: Tail{2}
     θ::T

@@ -23,7 +23,7 @@ Special cases:
 
 References:
 
-* Galambos (1975). Order statistics of samples from multivariate distributions. JASA 70(351a), 674-680.
+* [galambos1975order](@cite) Galambos, J. (1975). Order statistics of samples from multivariate distributions. Journal of the American Statistical Association, 70(351a), 674-680.
 """
 struct GalambosTail{T} <: Tail{2}
   θ::T

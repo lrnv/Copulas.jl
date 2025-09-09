@@ -29,21 +29,21 @@ Special cases:
 
 References:
 
-* Tawn (1988). Bivariate extreme value theory: models and estimation. Biometrika 75(3): 397-415.
-  """
-  struct AsymMixedTail{T} <: Tail{2}
-    θ::NTuple{2,T}
-    function AsymMixedTail(θ)
-        (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
-        T = promote_type(eltype(θ))
-        θ₁, θ₂ = (T(θ[1]), T(θ[2]))
-        (θ₁ ≥ 0)             || throw(ArgumentError("θ₁ must be ≥ 0"))
-        (θ₁ + θ₂ ≤ 1)        || throw(ArgumentError("θ₁+θ₂ ≤ 1"))
-        (θ₁ + 2θ₂ ≤ 1)       || throw(ArgumentError("θ₁+2θ₂ ≤ 1"))
-        (θ₁ + 3θ₂ ≥ 0)       || throw(ArgumentError("θ₁+3θ₂ ≥ 0"))
-        new{T}((θ₁, θ₂))
-    end
+* [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
+"""
+struct AsymMixedTail{T} <: Tail{2}
+  θ::NTuple{2,T}
+  function AsymMixedTail(θ)
+      (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
+      T = promote_type(eltype(θ))
+      θ₁, θ₂ = (T(θ[1]), T(θ[2]))
+      (θ₁ ≥ 0)             || throw(ArgumentError("θ₁ must be ≥ 0"))
+      (θ₁ + θ₂ ≤ 1)        || throw(ArgumentError("θ₁+θ₂ ≤ 1"))
+      (θ₁ + 2θ₂ ≤ 1)       || throw(ArgumentError("θ₁+2θ₂ ≤ 1"))
+      (θ₁ + 3θ₂ ≥ 0)       || throw(ArgumentError("θ₁+3θ₂ ≥ 0"))
+      new{T}((θ₁, θ₂))
   end
+end
 
 const AsymMixedCopula{T} = ExtremeValueCopula{2, AsymMixedTail{T}}
 Distributions.params(C::ExtremeValueCopula{2, AsymMixedTail{T}}) where {T} = (C.E.θ[1], C.E.θ[2])

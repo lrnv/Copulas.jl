@@ -25,11 +25,11 @@ Z_x = \\frac{(1+\\nu)^{1/2}{\\sqrt{1-\\theta^2}}\\left [ \\left (\\frac{x}{1-x} 
 Special cases:
 
 * ρ = 0 ⇒ IndependentCopula
-* ρ = 1 ⇒ M Copula (upper Fréchet–Hoeffding bound)
+* ρ = 1 ⇒ M Copula (upper Fréchet-Hoeffding bound)
 
 References:
 
-* Nikoloulopoulos, Joe & Li (2009). *Extreme value properties of multivariate t copulas*. Extremes 12: 129–148.
+* [nikoloulopoulos2009extreme](@cite) Nikoloulopoulos, A. K., Joe, H., & Li, H. (2009). Extreme value properties of multivariate t copulas. Extremes, 12, 129-148.
 """
 struct tEVTail{Tdf,Tρ} <: Tail{2}
     ν::Tdf
