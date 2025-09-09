@@ -390,17 +390,12 @@
                         # On radial-level: 
                         R1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
                         R2 = rand(rng,Copulas.williamson_dist(C.G, Val{d}()),1000)
-                        if CT<:BB1Copula && C.G.θ > 2
-                            @test_broken pvalue(ApproximateTwoSampleKSTest(R1,R2)) > 0.005
-                        else
-                            @test pvalue(ApproximateTwoSampleKSTest(R1,R2)) > 0.005
-                        end
+                        @test pvalue(ApproximateTwoSampleKSTest(R1,R2)) > 0.005
 
                         # On kendall-level: 
                         U1 = Distributions.cdf(C, spl1000)
                         U2 = Copulas.ϕ.(Ref(C.G), rand(rng,Copulas.williamson_dist(C.G, Val{d}()),1000))
                         @test pvalue(ApproximateTwoSampleKSTest(U1, U2)) > 0.005
-                        
                     end
                 end
             end
