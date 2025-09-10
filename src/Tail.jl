@@ -40,7 +40,7 @@ A(::Tail{d}, ω::NTuple{d,Real}) where {d} = throw(ArgumentError("Implement A(Ta
 A(E::Tail{2}, t::Real) = (0.0 ≤ t ≤ 1.0 ? A(E, (t, 1-t)) : throw(ArgumentError("t∈[0,1]")))
 
 function ℓ(E::Tail{d}, x::NTuple{d,Real}) where {d}
-    @assert all(>= (0), x) "ℓ requires x ∈ ℝᵈ₊"
+    @assert all(>=(0), x) "ℓ requires x ∈ ℝᵈ₊"
     s = sum(x)
     return s == 0 ? zero(eltype(x)) : s * A(E, ntuple(i->x[i]/s, d))
 end
