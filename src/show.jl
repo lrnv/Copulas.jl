@@ -10,6 +10,9 @@ end
 function Base.show(io::IO, C::ArchimedeanCopula)
     print(io, "$(typeof(C))$(Distributions.params(C))")
 end
+function Base.show(io::IO, C::ExtremeValueCopula)
+    print(io, "$(typeof(C))$(Distributions.params(C))")
+end
 function Base.show(io::IO, C::ArchimedeanCopula{d, TG}) where {d, TG<:WilliamsonGenerator}
     print(io, "ArchimedeanCopula($(length(C)), i𝒲($(C.G.X), $(C.G.d)))")
 end
