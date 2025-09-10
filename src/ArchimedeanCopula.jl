@@ -173,7 +173,7 @@ function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTu
     @inbounds for u in uⱼₛ
         sJ += ϕ⁻¹(C.G, float(u))
     end
-    return ArchimedeanDistortion(C.G, p, float(sJ), ϕ⁽ᵏ⁾(G, Val{p}(), sJ))
+    return ArchimedeanDistortion(C.G, p, float(sJ), ϕ⁽ᵏ⁾(C.G, Val{p}(), sJ))
 end
 
 # Conditional copula specialization: remains Archimedean with a tilted generator
