@@ -36,7 +36,7 @@ struct GalambosTail{T} <: Tail2
 end
 
 const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
-GalambosCopula(θ) =ExtremeValueCopula(GalambosTail(θ))
+GalambosCopula(θ) =ExtremeValueCopula(2, GalambosTail(θ))
 Distributions.params(tail::GalambosTail) = (tail.θ,)
 
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)

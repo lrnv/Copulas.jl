@@ -40,16 +40,16 @@ A(::Tail, ω::NTuple{d,<:Real}) where {d} = throw(ArgumentError("Implement A(Tai
 ####### Rest of the interface you can overload if more efficient:
 needs_binary_search(::Tail) = false
 # \ell function
-function ℓ(E::Tail, x::NTuple{d,<:Real}) where {d}
+function ℓ(tail::Tail, x::NTuple{d,<:Real}) where {d}
     s = sum(x)
-    return s == 0 ? zero(eltype(x)) : s * A(E, ntuple(i->x[i]/s, d))
+    return s == 0 ? zero(eltype(x)) : s * A(tail, ntuple(i->x[i]/s, d))
 end
 
 
 # A more friendly interface for models that are only bivariate: 
 abstract type Tail2 <: Tail end
 _is_valid_in_dim(::Tail2, d::Int) = (d==2)
-A(tail::Tail2, t::Real) = 0 ≤ t ≤ 1 ? A(tail, (t, 1-t)) : throw(ArgumentError("t∈[0,1]"))
+A(tail::Tail2, t::NTuple{2, <:Real}) = A(tail, t[1])
 dA(tail::Tail2, t::Real) = ForwardDiff.derivative(z -> A(tail, z), t)
 d²A(tail::Tail2, t::Real) = ForwardDiff.derivative(z -> dA(tail, z), t)
 _A_dA_d²A(tail::Tail2, t::Real) = let tt = _safett(t); (A(tail, tt), dA(tail, tt), d²A(tail, tt)) end
@@ -58,7 +58,7 @@ function _biv_der_ℓ(tail::Tail2, uv::NTuple{2, <:Real})
     s  = u + v
     x  = u / s
     y  = v / s
-    a, da, d2a = _A_dA_d²A(C, x)
+    a, da, d2a = _A_dA_d²A(tail, x)
     val  = s * a
     du   = a + da * y
     dv   = a - x * da
@@ -68,7 +68,7 @@ end
 function _probability_z(tail::Tail2, z::Real) 
     # p(z) = z(1-z) A''(z) / [ A(z) g_Z(z) ] 
     num = z * (1 - z) * d²A(tail, z) 
-    dem = A(C.tail, z) * _pdf(ExtremeDist(tail), z) # usa pdf, no _pdf 
+    dem = A(tail, z) * _pdf(ExtremeDist(tail), z) # usa pdf, no _pdf 
     p = num / dem 
     return clamp(p, 0, 1) 
 end

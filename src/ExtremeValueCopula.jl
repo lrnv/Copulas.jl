@@ -51,20 +51,20 @@ struct ExtremeValueCopula{d, TT<:Tail} <: Copula{d}
     tail::TT
     function ExtremeValueCopula(d::Int, tail::Tail)
         @assert _is_valid_in_dim(tail, d)
-        return new{d, typeof(E)}(tail)
+        return new{d, typeof(tail)}(tail)
     end
 end
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, ntuple(i->-log(u[i]), d)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
 #### Restriction to bivariate cases of the following methods: 
-function Distributions._logpdf(C::ExtremeValueCopula{2}, u::NTuple{2,Real})
+function Distributions._logpdf(C::ExtremeValueCopula{2, TT}, u) where {TT}
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf 
     # On the broder, the limit of the pdf is 0 and thus logpdf tends to -Inf
     (u1 == 1.0 || u2 == 1.0) && return -Inf
     x, y = -log(u1), -log(u2)
-    val, du, dv, dudv = _der_ℓ(C.tail, x, y)
+    val, du, dv, dudv = _biv_der_ℓ(C.tail, (x, y))
     core = -dudv + du*dv
     core ≤ 0 && return -Inf
     return -val + log(core) + x + y
@@ -76,15 +76,15 @@ end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2}, X::DenseMatrix{T}) where {T<:Real}
     # More efficient Matrix sampler: 
-    d,n = size(A)
-    @ssert d==2
+    d,n = size(X)
+    @assert d==2
     E = ExtremeDist(C.tail)
     for i in 1:n
         z = rand(rng, E)
         w = rand(rng) < _probability_z(C.tail, z) ? rand(rng) : rand(rng) * rand(rng)
         a = A(C.tail, z)
-        X[:,1] = exp(log(w)*z/a)
-        X[:,2] = exp(log(w)*(1-z)/a)
+        X[1,i] = exp(log(w)*z/a)
+        X[2,i] = exp(log(w)*(1-z)/a)
     end
     return X 
 end

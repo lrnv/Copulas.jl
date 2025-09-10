@@ -43,7 +43,7 @@ struct AsymLogTail{T} <: Tail2
 end
 
 const AsymLogCopula{T} = ExtremeValueCopula{2, AsymLogTail{T}}
-AsymLogCopula(α, θ) =  ExtremeValueCopula(AsymLogTail(α, θ))
+AsymLogCopula(α, θ) =  ExtremeValueCopula(2, AsymLogTail(α, θ))
 Distributions.params(tail::AsymLogTail) = (tail.α, tail.θ[1], tail.θ[2])
 
 function A(E::AsymLogTail, t::Real)

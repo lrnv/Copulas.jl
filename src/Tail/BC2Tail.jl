@@ -32,7 +32,7 @@ struct BC2Tail{T} <: Tail2
 end
 
 const BC2Copula{T} = ExtremeValueCopula{2, BC2Tail{T}}
-BC2Copula(a, b) = ExtremeValueCopula(BC2Tail(a, b))
+BC2Copula(a, b) = ExtremeValueCopula(2, BC2Tail(a, b))
 Distributions.params(tail::BC2Tail) = (tail.a, tail.b)
 
 function A(E::BC2Tail, t::Real)

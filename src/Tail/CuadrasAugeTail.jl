@@ -37,7 +37,7 @@ struct CuadrasAugeTail{T} <: Tail2
 end
 
 const CuadrasAugeCopula{T} = ExtremeValueCopula{2, CuadrasAugeTail{T}}
-CuadrasAugeCopula(θ) = ExtremeValueCopula(CuadrasAugeTail(θ))
+CuadrasAugeCopula(θ) = ExtremeValueCopula(2, CuadrasAugeTail(θ))
 Distributions.params(tail::CuadrasAugeTail) = (tail.θ,)
 
 function A(E::CuadrasAugeTail, t::Real)

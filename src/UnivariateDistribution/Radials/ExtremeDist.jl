@@ -1,8 +1,5 @@
 struct ExtremeDist{C} <: Distributions.ContinuousUnivariateDistribution
     tail::C
-    function ExtremeDist(tail::Tail)
-        return new{typeof(tail)}(tail)
-    end
 end
 
 function Distributions.cdf(d::ExtremeDist, z)

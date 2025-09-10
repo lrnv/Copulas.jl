@@ -14,7 +14,7 @@ The (bivariate) asymmetric Galambos extreme–value copula is parameterized by
 ``\\alpha \\in [0, \\infty) and ``\\theta_1, \\theta_2 \\in [0,1]``. It is an EV copula with Pickands function
 
 ```math
-A(t) = 1 - \\Big((\\theta_1 t)^{-\\alpha} + (\\theta_2(1-t))^{-\\alpha}\\Big)^{-1/\\alpha},\\quad t\in[0,1].
+A(t) = 1 - \\Big((\\theta_1 t)^{-\\alpha} + (\\theta_2(1-t))^{-\\alpha}\\Big)^{-1/\\alpha},\\quad t\\in[0,1].
 ```
 
 Special cases:
@@ -42,7 +42,7 @@ struct AsymGalambosTail{T} <: Tail2
 end
 
 const AsymGalambosCopula{T} = ExtremeValueCopula{2, AsymGalambosTail{T}}
-AsymGalambosCopula(α, θ::NTuple{2,Any}) = AsymGalambosCopula(α, collect(θ))
+AsymGalambosCopula(α, θ) = ExtremeValueCopula(2, AsymGalambosTail(α, collect(θ)))
 Distributions.params(tail::AsymGalambosTail) = (tail.α, tail.θ[1], tail.θ[2])
 
 function A(tail::AsymGalambosTail, t::Real)

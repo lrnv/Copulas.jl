@@ -7,7 +7,7 @@
 #@testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(5.0, 0.5)) end
 
 
-@testitem "Archimax_specific" begin
+@testitem "Archimax_specific" tags=[:Archimax] begin
 # ===================== test/Archimax_selected.jl =====================
     using Test
     using Random, StatsBase, HypothesisTests

@@ -40,7 +40,7 @@ end
 
 const MOCopula{T} = ExtremeValueCopula{2, MOTail{T}}
 Distributions.params(tail::MOTail) = (tail.λ₁, tail.λ₂, tail.λ₁₂)
-MOCopula(λ₁, λ₂, λ₁₂) = ExtremeValueCopula(MOTail(λ₁, λ₂, λ₁₂))
+MOCopula(λ₁, λ₂, λ₁₂) = ExtremeValueCopula(2, MOTail(λ₁, λ₂, λ₁₂))
 
 function A(E::MOTail, t::Real)
     tt = _safett(t)

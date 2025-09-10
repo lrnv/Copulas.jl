@@ -116,8 +116,8 @@ module Copulas
     # Archimax copulas
     include("ArchimaxCopula.jl")
 
-    include("MiscellaneousCopulas/BB4Copula.jl")
-    include("MiscellaneousCopulas/BB5Copula.jl")
+    # overloadings of the show() function: 
+    include("show.jl")
 
     export pseudos, # utility functions and methods making the interface: 
            rosenblatt, 

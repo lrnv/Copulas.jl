@@ -26,14 +26,14 @@ References:
 struct LogTail{T} <: Tail2
     θ::T
     function LogTail(θ)
-        (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in \[0,1]"))
+        (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))
         θ == 0 && return NoTail()
         return new{typeof(θ)}(θ)
     end
 end
 
 const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
-LogCopula(θ) = ExtremeValueCopula(LogTail(θ))
+LogCopula(θ) = ExtremeValueCopula(2, LogTail(θ))
 Distributions.params(C::LogTail) = (C.E.θ,)
 
 function A(E::LogTail, t::Real)

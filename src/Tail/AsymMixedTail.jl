@@ -46,7 +46,7 @@ struct AsymMixedTail{T} <: Tail2
 end
 
 const AsymMixedCopula{T} = ExtremeValueCopula{2, AsymMixedTail{T}}
-AsymMixedCopula(θ::NTuple{2,Any}) = AsymMixedCopula(collect(θ))
+AsymMixedCopula(θ::NTuple{2,Any}) = AsymMixedCopula(2, collect(θ))
 Distributions.params(tail::AsymMixedTail) = (tail.α, tail.θ[1], tail.θ[2])
 
 function A(E::AsymMixedTail, t::Real)

@@ -98,13 +98,6 @@ frailty(::AbstractFrailtyGenerator) = throw("This generator was not defined as i
 max_monotony(::AbstractFrailtyGenerator) = Inf
 ϕ(G::AbstractFrailtyGenerator, t) = Distributions.mgf(frailty(G), -t)
 williamson_dist(G::AbstractFrailtyGenerator, ::Val{d}) where d = WilliamsonFromFrailty(frailty(G), Val{d}())
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, GT}, x::AbstractVector{T}) where {T<:Real, d, GT<:AbstractFrailtyGenerator}
-    F = frailty(C.G)
-    Random.randexp!(rng, x)
-    f = rand(rng, F)
-    x .= ϕ.(C.G, x ./ f)
-    return x
-end
 
 struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator
     F::TF
@@ -171,12 +164,8 @@ struct WilliamsonGenerator{TX} <: Generator
 end
 const i𝒲 = WilliamsonGenerator
 Distributions.params(G::WilliamsonGenerator) = (G.X, G.d)
-function Base.show(io::IO, G::WilliamsonGenerator)
-    print(io, "i𝒲($(G.X), $(G.d))")
-end
-function Base.show(io::IO, C::ArchimedeanCopula{d, TG}) where {d, TG<:WilliamsonGenerator}
-    print(io, "ArchimedeanCopula($(length(C)), i𝒲($(C.G.X), $(C.G.d)))")
-end
+
+
 max_monotony(G::WilliamsonGenerator) = G.d
 function williamson_dist(G::WilliamsonGenerator, ::Val{d}) where d
     if d == G.d 

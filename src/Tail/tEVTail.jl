@@ -46,7 +46,7 @@ struct tEVTail{Tdf,Tρ} <: Tail2
 end
 
 const tEVCopula{Tdf,Tρ} = ExtremeValueCopula{2, tEVTail{Tdf,Tρ}}
-tEVCopula(ν::Real, ρ::Real) = ExtremeValueCopula(tEVTail(ν, ρ))
+tEVCopula(ν::Real, ρ::Real) = ExtremeValueCopula(2, tEVTail(ν, ρ))
 Distributions.params(C::ExtremeValueCopula{2,tEVTail{Tdf,Tρ}}) where {Tdf,Tρ} = (C.E.ν, C.E.ρ)
 
 function A(T::tEVTail, t::Real)

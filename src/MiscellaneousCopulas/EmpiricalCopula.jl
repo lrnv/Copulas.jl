@@ -34,9 +34,6 @@ function EmpiricalCopula(u;pseudo_values=true)
     end
     return EmpiricalCopula{d,typeof(u)}(u)
 end
-function Base.show(io::IO, C::EmpiricalCopula)
-    print(io, "EmpiricalCopula{d}$(size(C.u))")
-end
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return sum(all(C.u .<= u,dims=1))/size(C.u,2) # might not be very efficient implementation. 
 end

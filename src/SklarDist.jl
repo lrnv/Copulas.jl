@@ -57,7 +57,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,Tp
      x .= Distributions.quantile.(S.m,x)
 end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargins}
-    sum(Distributions.logpdf(S.m[i],u[i]) for i in 1:length(u)) + Distributions.logpdf(S.C,clamp.(Distributions.cdf.(S.m,u),0,1))
+    sum(Distributions.logpdf(S.m[i],u[i]) for i in eachindex(u)) + Distributions.logpdf(S.C,clamp.(Distributions.cdf.(S.m,u),0,1))
 end
 function Distributions.fit(::Type{SklarDist{CT,TplMargins}},x) where {CT,TplMargins}
     # The first thing to do is to fit the marginals : 

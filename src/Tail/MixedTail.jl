@@ -27,12 +27,13 @@ References:
 struct MixedTail{T} <: Tail2
     θ::T
     function MixedTail(θ)
-        (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in \[0,1]"))
+        (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))
         θ == 0 && return NoTail()
         return new{typeof(θ)}(θ)
     end
 end
 
 const MixedCopula{T} = ExtremeValueCopula{2, MixedTail{T}}
+MixedCopula(θ) = ExtremeValueCopula(2, MixedTail(θ))
 Distributions.params(tail::MixedTail) = (tail.θ,)
 A(E::MixedTail, t::Real) = E.θ * t^2 - E.θ * t + 1

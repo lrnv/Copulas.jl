@@ -3,6 +3,6 @@
 
 Corresponds to the MCopula viewed as an etreme value copula.
 """
-struct NoTail <: Tail end
-A(::NoTail, t::NTuple{d, <:Real}) = max(t)
-ExtremeValueCopula(::MTail) = MCopula()
+struct MTail <: Tail end
+A(::MTail, t::NTuple{d, <:Real}) where d = max(t)
+ExtremeValueCopula(d, ::MTail) = MCopula(d)

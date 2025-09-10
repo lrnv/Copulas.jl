@@ -76,6 +76,3 @@ function make_cor!(Σ)
     end
 end
 
-function Base.show(io::IO, C::EllipticalCopula)
-    print(io, "$(typeof(C))(Σ = $(C.Σ)))")
-end

@@ -51,9 +51,6 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
         return new{d, typeof(vθ), typeof(fᵢ)}(vθ, fᵢ)
     end
 end
-function Base.show(io::IO, C::FGMCopula{d, Tθ, Tf}) where {d, Tθ, Tf}
-    print(io, "FGMCopula{$d}(θ = $(C.θ))")
-end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
 function _fgm_red(θ, v)
     # This function implements the reduction over combinations of the fgm copula. 

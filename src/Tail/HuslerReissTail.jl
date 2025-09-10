@@ -36,7 +36,7 @@ struct HuslerReissTail{T} <: Tail2
     end
 end
 const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
-HuslerReissCopula(θ) = ExtremeValueCopula(HuslerReissTail(θ))
+HuslerReissCopula(θ) = ExtremeValueCopula(2, HuslerReissTail(θ))
 Distributions.params(tail::HuslerReissTail) = (tail.θ,)
 
 function A(E::HuslerReissTail, t::Real)

@@ -53,9 +53,8 @@ struct ArchimedeanCopula{d,TG} <: Copula{d}
     ArchimedeanCopula{d,TG}(θ) where {d, TG} = ArchimedeanCopula(d, TG(θ))
 end
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 
-function Base.show(io::IO, C::ArchimedeanCopula)
-    print(io, "$(typeof(C))$(Distributions.params(C))")
-end
+
+
 
 _cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
@@ -69,6 +68,7 @@ end
 #     return 4*Distributions.expectation(r -> ϕ(C.G,r), williamson_dist(C.G, Val{d}())) - 1
 # end
 
+# Rand function: the default case is williamson
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, x::AbstractVector{T}) where {T<:Real, d, TG}
     # By default, we use the Williamson sampling.
     Random.randexp!(rng,x)
@@ -77,6 +77,14 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopu
     for i in 1:length(C)
         x[i] = ϕ(C.G,r * x[i]/sx)
     end
+    return x
+end
+# but if frailty is available, use it. 
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, GT}, x::AbstractVector{T}) where {T<:Real, d, GT<:AbstractFrailtyGenerator}
+    F = frailty(C.G)
+    Random.randexp!(rng, x)
+    f = rand(rng, F)
+    x .= ϕ.(C.G, x ./ f)
     return x
 end
 
