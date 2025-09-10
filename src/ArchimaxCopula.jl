@@ -106,7 +106,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{
     evcop, frail = ExtremeValueCopula(2, C.tail), frailty(C.gen)
     Distributions._rand!(rng, evcop, A)
     F = zeros(eltype(A), size(A, 2))
-    rand!(rng, frail, F)
+    Distributions.rand!(rng, frail, F)
     A .= ϕ.(C.gen, -log.(A) ./ F') 
     return A
 end
