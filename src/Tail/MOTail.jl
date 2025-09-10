@@ -9,7 +9,7 @@ Fields:
 Constructor
 
     MOCopula(λ₁, λ₂, λ₁₂)
-    ExtremeValueCopula(MOTail(λ₁, λ₂, λ₁₂))
+    ExtremeValueCopula(2, MOTail(λ₁, λ₂, λ₁₂))
 
 The (bivariate) Marshall-Olkin extreme-value copula is parameterized by ``\\lambda_i \\in [0,\\infty), i = 1, 2, \\{1,2\\}``
 Its Pickands dependence function is
@@ -42,9 +42,9 @@ const MOCopula{T} = ExtremeValueCopula{2, MOTail{T}}
 Distributions.params(tail::MOTail) = (tail.λ₁, tail.λ₂, tail.λ₁₂)
 MOCopula(λ₁, λ₂, λ₁₂) = ExtremeValueCopula(2, MOTail(λ₁, λ₂, λ₁₂))
 
-function A(E::MOTail, t::Real)
+function A(tail::MOTail, t::Real)
     tt = _safett(t)
-    λ₁, λ₂, λ₁₂ = E.λ₁, E.λ₂, E.λ₁₂
+    λ₁, λ₂, λ₁₂ = tail.λ₁, tail.λ₂, tail.λ₁₂
     term1 = λ₁ * (1-tt) / (λ₁ + λ₁₂)
     term2 = λ₂ * tt / (λ₂ + λ₁₂)
     term3 = λ₁₂ * max((1-tt)/(λ₁ + λ₁₂), tt/(λ₂ + λ₁₂))
@@ -52,14 +52,13 @@ function A(E::MOTail, t::Real)
 end
 
 τ(C::ExtremeValueCopula{2,MOTail{T}}) where {T} = begin
-    a = C.E.λ₁/(C.E.λ₁+C.E.λ₁₂)
-    b = C.E.λ₂/(C.E.λ₂+C.E.λ₁₂)
+    a = C.tail.λ₁/(C.tail.λ₁+C.tail.λ₁₂)
+    b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
     a*b/(a+b-a*b)
 end
 
 function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {T, S}
-    C = D.C
-    a, b = C.a, C.b
+    a, b = D.tail.a, D.tail.b
 
     # guard domain of z and conditioning value
     if !(0.0 < z < 1.0)
@@ -107,8 +106,7 @@ function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {
 end
 
 function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) where {T, S}
-    C = D.C
-    a, b = C.a, C.b
+    a, b = D.tail.a, D.tail.b
     v_or_u = D.uⱼ
     if !(0.0 <= α <= 1.0)
         throw(ArgumentError("α must be in [0,1]"))

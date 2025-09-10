@@ -33,10 +33,10 @@ This package provides the abstract type [`ArchimaxCopula`](@ref). Because we exp
 
 The API is minimal and generic:
 
-* Provide an Archimedean generator `G::Generator` with methods `ϕ(G, s)` and `ϕ⁻¹(G, u)`. See [`Generator`](@ref) and [available Archimedean generators](@ref available_archimedean_models).
-* Provide an extreme-value tail `E::Tail` with its Pickands function `A(E, w)` ro stable tail dependence function `ℓ(E, x)`. See [`ExtremeValueCopula`](@ref) and [available extreme-value models](@ref available_extreme_models).
+* Provide an Archimedean generator `gen::Generator` with methods `ϕ(G, s)` and `ϕ⁻¹(G, u)`. See [`Generator`](@ref) and [available Archimedean generators](@ref available_archimedean_models).
+* Provide an extreme-value tail `tail::Tail` with its Pickands function `A(tail, w)` ro stable tail dependence function `ℓ(tail, x)`. See [`ExtremeValueCopula`](@ref) and [available extreme-value models](@ref available_extreme_models).
 
-With these conventions, the constructor `ArchimaxCopula(d, G, E)` produces the correct d-variate model, accross all possiibilities through all implemented (and obviously new user-defined) models.
+With these conventions, the constructor `ArchimaxCopula(d, gen, tail)` produces the correct d-variate model, accross all possiibilities through all implemented (and obviously new user-defined) models.
 
 ---
 
@@ -85,7 +85,7 @@ has the Archimax copula $C_{\phi,A}$.
 **Notes on the objects used.**
 
 * *Frailty distribution.* By Bernstein’s theorem, a completely monotone $\phi$ is a Laplace transform. The helper `frailty(G::Generator)` returns a distribution for $M$ such that `E(exp(-s*M)) = ϕ(gen, s)` and returns an error if the generator is nt completely monotonous.
-* *EV sampling.* Step (1) uses the EV sampler already provided in this package (via `ℓ(E::Tail, x)` and `A(E::Tail, x)`), as documented in the EV section.
+* *EV sampling.* Step (1) uses the EV sampler already provided in this package (via `ℓ(tail::Tail, x)` and `A(tail::Tail, x)`), as documented in the EV section.
 * *Generality.* The recipe extends to $d>2$ by simulating $(V_1,\dots,V_d)$ (But remember that it is not so simple to obtain it) from the EV copula of variable $d$ and applying steps (2)–(3) by components.
 
 ```@docs

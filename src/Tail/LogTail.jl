@@ -7,7 +7,7 @@ Fields:
 Constructor
 
     LogCopula(θ)
-    ExtremeValueCopula(LogTail(θ))
+    ExtremeValueCopula(2, LogTail(θ))
 
 The (bivariate) Mixed extreme-value copula is parameterized by ``\\theta \\in [0,1]``.
 Its Pickands dependence function is

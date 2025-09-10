@@ -1,5 +1,5 @@
 """
-    Tail{d}
+    Tail
 
 Abstract type. Implements the API for stable tail dependence functions (STDFs) of extreme-value copulas in dimension `d`.
 
@@ -15,10 +15,10 @@ Pickands representation. By homogeneity, for ``x\\neq 0`` let ``\\left\\| x\\rig
 ``\\max(t,11t)≤A(t)≤1`` and ``A(0)=A(1)=1``.
 
 Interface.
-- `A(E::Tail{d}, ω::NTuple{d,Real})` — Pickands function on the simplex `\\Delta_{d-1}`.
-  (For `d=2`, a convenience `A(E::Tail{2}, t::Real)` may be provided.)
-- `ℓ(E::Tail{d}, x::NTuple{d,Real})` — STDF. By default the package defines
-  `ℓ(E, x) = ‖x‖₁ * A(E, x/‖x‖₁)` when `A` is available.
+- `A(tail::Tail, ω::NTuple{d,Real})` — Pickands function on the simplex `\\Delta_{d-1}`.
+  (For `d=2`, a convenience `A(tail::Tail{2}, t::Real)` may be provided.)
+- `ℓ(tail::Tail, x::NTuple{d,Real})` — STDF. By default the package defines
+  `ℓ(tail, x) = ‖x‖₁ * A(tail, x/‖x‖₁)` when `A` is available.
 
 We do not algorithmically verify convexity/bounds; implementers are responsible for validity.
 
@@ -40,9 +40,9 @@ A(::Tail, ω::NTuple{d,<:Real}) where {d} = throw(ArgumentError("Implement A(Tai
 ####### Rest of the interface you can overload if more efficient:
 needs_binary_search(::Tail) = false
 # \ell function
-function ℓ(tail::Tail, x::NTuple{d,<:Real}) where {d}
+function ℓ(tail::Tail, x)
     s = sum(x)
-    return s == 0 ? zero(eltype(x)) : s * A(tail, ntuple(i->x[i]/s, d))
+    return s == 0 ? zero(eltype(x)) : s * A(tail, ntuple(i->x[i]/s, length(x)))
 end
 
 
@@ -53,7 +53,7 @@ A(tail::Tail2, t::NTuple{2, <:Real}) = A(tail, t[1])
 dA(tail::Tail2, t::Real) = ForwardDiff.derivative(z -> A(tail, z), t)
 d²A(tail::Tail2, t::Real) = ForwardDiff.derivative(z -> dA(tail, z), t)
 _A_dA_d²A(tail::Tail2, t::Real) = let tt = _safett(t); (A(tail, tt), dA(tail, tt), d²A(tail, tt)) end
-function _biv_der_ℓ(tail::Tail2, uv::NTuple{2, <:Real})
+function _biv_der_ℓ(tail::Tail2, uv)
     u, v = uv
     s  = u + v
     x  = u / s

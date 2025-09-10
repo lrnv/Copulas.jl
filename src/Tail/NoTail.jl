@@ -5,4 +5,4 @@ Corresponds to the case where the pickads function is identically One, which mea
 """
 struct NoTail <: Tail end
 A(::NoTail, t::NTuple{d, <:Real}) where d = one(eltype(t))
-ExtremeValueCopula(d, ::NoTail) = IndependenceCopula(d)
+ExtremeValueCopula(d, ::NoTail) = IndependentCopula(d)

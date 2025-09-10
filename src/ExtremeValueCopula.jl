@@ -49,12 +49,12 @@ References:
 """
 struct ExtremeValueCopula{d, TT<:Tail} <: Copula{d}
     tail::TT
-    function ExtremeValueCopula(d::Int, tail::Tail)
+    function ExtremeValueCopula(d, tail::Tail)
         @assert _is_valid_in_dim(tail, d)
         return new{d, typeof(tail)}(tail)
     end
 end
-_cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, ntuple(i->-log(u[i]), d)))
+_cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
 #### Restriction to bivariate cases of the following methods: 

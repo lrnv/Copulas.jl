@@ -7,7 +7,7 @@ Fields:
 Constructor
 
     MixedCopula(θ)
-    ExtremeValueCopula(MixedTail(θ))
+    ExtremeValueCopula(2, MixedTail(θ))
 
 The (bivariate) Mixed extreme-value copula is parameterized by ``\\theta \\in [0,1]``.
 Its Pickands dependence function is
@@ -36,4 +36,4 @@ end
 const MixedCopula{T} = ExtremeValueCopula{2, MixedTail{T}}
 MixedCopula(θ) = ExtremeValueCopula(2, MixedTail(θ))
 Distributions.params(tail::MixedTail) = (tail.θ,)
-A(E::MixedTail, t::Real) = E.θ * t^2 - E.θ * t + 1
+A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1

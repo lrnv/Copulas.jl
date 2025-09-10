@@ -8,7 +8,7 @@ Fields:
 Constructor
 
     AsymLogCopula(α, θ::AbstractVector)
-    ExtremeValueCopula(AsymLogTail(α, θ))
+    ExtremeValueCopula(2, AsymLogTail(α, θ))
 
 The (bivariate) asymmetric logistic extreme–value copula is parameterized by
 α ∈ [1, ∞) and θ₁, θ₂ ∈ [0,1]. Its Pickands dependence function is
@@ -46,9 +46,9 @@ const AsymLogCopula{T} = ExtremeValueCopula{2, AsymLogTail{T}}
 AsymLogCopula(α, θ) =  ExtremeValueCopula(2, AsymLogTail(α, θ))
 Distributions.params(tail::AsymLogTail) = (tail.α, tail.θ[1], tail.θ[2])
 
-function A(E::AsymLogTail, t::Real)
+function A(tail::AsymLogTail, t::Real)
     tt = _safett(t)
-    α  = E.α
-    θ1, θ2 = E.θ
+    α  = tail.α
+    θ1, θ2 = tail.θ
     return ((θ1^α) * (1-tt)^α + (θ2^α) * tt^α)^(1/α) + (θ1 - θ2)*tt + 1 - θ1
 end

@@ -8,7 +8,7 @@ Fields:
 Constructor
 
     tEVCopula(ν, ρ)
-    ExtremeValueCopula(tEVTail(ν, ρ))
+    ExtremeValueCopula(2, tEVTail(ν, ρ))
 
 The (bivariate) extreme-t copula is parameterized by ``\\nu > 0`` and \\rho \\in (-1,1]``.  
 Its Pickands dependence function is
@@ -31,23 +31,22 @@ References:
 
 * [nikoloulopoulos2009extreme](@cite) Nikoloulopoulos, A. K., Joe, H., & Li, H. (2009). Extreme value properties of multivariate t copulas. Extremes, 12, 129-148.
 """
-struct tEVTail{Tdf,Tρ} <: Tail2
-    ν::Tdf
-    ρ::Tρ
-    function tEVTail(ν::Tdf, ρ::Tρ) where {Tdf<:Real, Tρ<:Real}
+struct tEVTail{T} <: Tail2
+    ν::T
+    ρ::T
+    function tEVTail(ν::Real, ρ::Real)
         (ν > 0)     || throw(ArgumentError("ν must be > 0"))
         (-1 < ρ ≤ 1)|| throw(ArgumentError("ρ must be in (-1,1]"))
-        TdfT = promote_type(Tdf)
-        TρT  = promote_type(Tρ)
         ρ == 0 && return NoTail()
         ρ == 1 && return MTail()
-        return new{TdfT,TρT}(TdfT(ν), TρT(ρ))
+        νT, ρT = promote(ν, ρ)
+        return new{typeof(ρT)}(νT, ρT)
     end
 end
 
-const tEVCopula{Tdf,Tρ} = ExtremeValueCopula{2, tEVTail{Tdf,Tρ}}
-tEVCopula(ν::Real, ρ::Real) = ExtremeValueCopula(2, tEVTail(ν, ρ))
-Distributions.params(C::ExtremeValueCopula{2,tEVTail{Tdf,Tρ}}) where {Tdf,Tρ} = (C.E.ν, C.E.ρ)
+const tEVCopula{T} = ExtremeValueCopula{2, tEVTail{T}}
+tEVCopula(ν, ρ) = ExtremeValueCopula(2, tEVTail(ν, ρ))
+Distributions.params(tail::tEVTail) = (tail.ν, tail.ρ)
 
 function A(T::tEVTail, t::Real)
     ρ, ν = T.ρ, T.ν
