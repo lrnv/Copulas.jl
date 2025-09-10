@@ -103,11 +103,11 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{
     evcop, frail = ExtremeValueCopula(2, C.tail), frailty(C.gen)
     Distributions._rand!(rng, evcop, A)
     F = rand(rng, frail, size(A, 2))
-    A ./= F'
+    A .= ϕ.(C.gen, -log.(A) ./ F') 
     return A
 end
 # function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, x::AbstractVector{T}) where {T<:Real, TG, TT}
-#     v1, v2 = rand(rng, ExtremeValueCopula(C.tail))
+#     v1, v2 = rand(rng, ExtremeValueCopula(2, C.tail))
 #     M  = rand(rng, frailty(C.gen))
 #     x[1] = ϕ(C.gen, -log(v1)/M)
 #     x[2] = ϕ(C.gen, -log(v2)/M)
