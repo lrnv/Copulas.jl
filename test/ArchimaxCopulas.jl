@@ -99,11 +99,11 @@
     end
     
     ARCH_SPECS = Dict{Symbol,Any}(
-        :Clayton => (θs=[1.5,3.0],  ctor = θ -> AC(2, CG(θ))),
-        :Gumbel  => (θs=[2.0,4.0],  ctor = θ -> AC(2, GG(θ))),
-        :Frank   => (θs=[0.8,6.0],  ctor = θ -> AC(2, FG(θ))),
-        :Joe     => (θs=[1.2,2.5],  ctor = θ -> AC(2, JG(θ))),
-        :BB1     => (pairs=[(1.3,1.4),(2.0,2.0)], ctor=(θ,δ)-> AC(2, BB1G(θ,δ))),
+        :Clayton => (θs=[1.5,3.0],  ctor = θ -> CG(θ)),
+        :Gumbel  => (θs=[2.0,4.0],  ctor = θ -> GG(θ)),
+        :Frank   => (θs=[0.8,6.0],  ctor = θ -> FG(θ)),
+        :Joe     => (θs=[1.2,2.5],  ctor = θ -> JG(θ)),
+        :BB1     => (pairs=[(1.3,1.4),(2.0,2.0)], ctor=(θ,δ)-> BB1G(θ,δ)),
     )
 
     EVC_SPECS = Dict{Symbol,Any}(
@@ -133,7 +133,7 @@
                 for apars in arch_iter, epars in evc_iter
                     A = (length(apars)==1) ? ainfo[:ctor](apars[1]) : ainfo[:ctor](apars...)
                     E = (length(epars)==1) ? einfo[:ctor](epars[1]) : einfo[:ctor](epars...)
-                    C = ArchimaxCopula(A, E)
+                    C = ArchimaxCopula(2, A, E)
 
                     @test length(C) == 2
                     @test !isempty(params(C))

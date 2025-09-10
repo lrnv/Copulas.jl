@@ -32,12 +32,14 @@ struct AsymGalambosTail{T} <: Tail2
     θ::NTuple{2,T}       # 0 ≤ θ_i ≤ 1
     function AsymGalambosTail(α, θ)
         (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
-        θt = (θ[1], θ[2])
+        T = promote_type(Float64, typeof(α), eltype(θ))
+        
+        θT, αT = (T(θ[1]), T(θ[2])), T(α)
         (αT ≥ 0) || throw(ArgumentError("α must be ≥ 0"))
-        (0 ≤ θt[1] ≤ 1 && 0 ≤ θt[2] ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
-        α == 0 || (θt[1] == 0 && θt[2] == 0) && return NoTail()
-        θt[1] == 1 && θt[2] == 1 && return GalambosTail(α)
-        return new{T}(αT, θt)
+        (0 ≤ θT[1] ≤ 1 && 0 ≤ θT[2] ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
+        αT == 0 || (θT[1] == 0 && θT[2] == 0) && return NoTail()
+        θT[1] == 1 && θT[2] == 1 && return GalambosTail(α)
+        return new{T}(αT, θT)
     end
 end
 

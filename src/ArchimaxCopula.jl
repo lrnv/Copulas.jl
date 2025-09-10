@@ -94,7 +94,7 @@ end
 
 # --- Kendall τ: τ = τ_A + (1 - τ_A) τ_ψ ---
 τ(C::ArchimaxCopula) = begin
-    τA = τ(C.tail)
+    τA = τ(ExtremeValueCopula(2, C.tail))
     τψ = τ(C.gen)
     τA + (1 - τA) * τψ
 end
