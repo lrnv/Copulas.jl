@@ -89,9 +89,3 @@ function measure(C::Copula{d}, u,v) where {d}
     end
     return max(r,0)
 end
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::Copula{d}, x::AbstractVector{T}) where {d, T<:Real}
-    # Binding to use the matrix sampler
-    Distributions._rand!(rng, C, reshape(x, length(x), 1))
-    return x
-end

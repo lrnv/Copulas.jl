@@ -109,13 +109,13 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{
     A .= ϕ.(C.gen, -log.(A) ./ F') 
     return A
 end
-# function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, x::AbstractVector{T}) where {T<:Real, TG, TT}
-#     v1, v2 = rand(rng, ExtremeValueCopula(2, C.tail))
-#     M  = rand(rng, frailty(C.gen))
-#     x[1] = ϕ(C.gen, -log(v1)/M)
-#     x[2] = ϕ(C.gen, -log(v2)/M)
-#     return x
-# end
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, x::AbstractVector{T}) where {T<:Real, TG, TT}
+    v1, v2 = rand(rng, ExtremeValueCopula(2, C.tail))
+    M  = rand(rng, frailty(C.gen))
+    x[1] = ϕ(C.gen, -log(v1)/M)
+    x[2] = ϕ(C.gen, -log(v2)/M)
+    return x
+end
 
 
 
