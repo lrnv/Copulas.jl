@@ -42,8 +42,7 @@ ArchimaxCopula(d, ::IndependentGenerator, tail::Tail) = ExtremeValueCopula(d, ta
 Distributions.params(C::ArchimaxCopula) = (_as_tuple(Distributions.params(C.gen))..., _as_tuple(Distributions.params(C.tail))...)
 
 # --- CDF ---
-function Distributions.cdf(C::ArchimaxCopula{2}, u)
-    @assert length(u) == 2
+function _cdf(C::ArchimaxCopula{2}, u)
     u1, u2 = u
     (0.0 ≤ u1 ≤ 1.0 && 0.0 ≤ u2 ≤ 1.0) || return 0.0
     (u1 == 0.0 || u2 == 0.0) && return 0.0
@@ -54,7 +53,7 @@ function Distributions.cdf(C::ArchimaxCopula{2}, u)
     S = x + y
     S == 0 && return one(eltype(u))
     t = _safett(y / S)                 # protect t≈0,1
-    return ϕ(C.gen, S * A(C.evd, t))
+    return ϕ(C.gen, S * A(C.tail, t))
 end
 
 # --- log-PDF stable ---
@@ -101,8 +100,8 @@ end
 # Use the matrix sampler for better efficiency
 # (if not working, maybe uncomment the vetor version ?)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, A::DenseMatrix{T}) where {T<:Real, TG, TT}
-    evd, frail = ExtremeValueCopula(2, C.tail), frailty(C.gen)
-    Distributions._rand!(rng, evd, A)
+    evcop, frail = ExtremeValueCopula(2, C.tail), frailty(C.gen)
+    Distributions._rand!(rng, evcop, A)
     F = rand(rng, frail, size(A, 2))
     A ./= F'
     return A
