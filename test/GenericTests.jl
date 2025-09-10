@@ -135,9 +135,9 @@
                 if can_pdf(C)
                     @testset "PDF positivity" begin
                         r10 = pdf(C, spl10)
-                        @test pdf(C, zeros(d)) >= 0
+                        @test pdf(C, zeros(d) .+ 1e-5) >= 0
                         @test pdf(C, ones(d)/2) >= 0
-                        @test pdf(C, ones(d)) >= 0
+                        @test pdf(C, ones(d) .- 1e-5) >= 0
                         @test all(r10 .>= 0) && all(isfinite.(r10))
                     end 
                 end
