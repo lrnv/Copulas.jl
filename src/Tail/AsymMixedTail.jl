@@ -37,6 +37,8 @@ struct AsymMixedTail{T} <: Tail2
       (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
       T = promote_type(eltype(θ))
       θ₁, θ₂ = (T(θ[1]), T(θ[2]))
+      θ₁ == 0 && θ₂ == 0 && return NoTail()
+      θ₂ == 0 && return MixedTail(θ₁)
       (θ₁ ≥ 0)             || throw(ArgumentError("θ₁ must be ≥ 0"))
       (θ₁ + θ₂ ≤ 1)        || throw(ArgumentError("θ₁+θ₂ ≤ 1"))
       (θ₁ + 2θ₂ ≤ 1)       || throw(ArgumentError("θ₁+2θ₂ ≤ 1"))
@@ -46,22 +48,11 @@ struct AsymMixedTail{T} <: Tail2
 end
 
 const AsymMixedCopula{T} = ExtremeValueCopula{2, AsymMixedTail{T}}
-AsymMixedCopula(θ::NTuple{2,Any}) = AsymMixedCopula(2, collect(θ))
+AsymMixedCopula(θ) = ExtremeValueCopula(2, AsymMixedTail(θ))
 Distributions.params(tail::AsymMixedTail) = (tail.α, tail.θ[1], tail.θ[2])
 
-function A(E::AsymMixedTail, t::Real)
-  θ₁, θ₂ = E.θ
+function A(tail::AsymMixedTail, t::Real)
+  θ₁, θ₂ = tail.θ
   tt = _safett(t)
   return θ₂*tt^3 + θ₁*tt^2 - (θ₁+θ₂)*tt + 1
-end
-function AsymMixedCopula(θ::AbstractVector)
-  (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
-  θt = (θ[1], θ[2])
-  if θt[1] == 0 && θt[2] == 0
-    return IndependentCopula(2)
-  elseif θt[2] == 0
-    return MixedCopula(θt[1])
-  else
-    return ExtremeValueCopula( AsymMixedTail(θt) )
-  end
 end
