@@ -49,7 +49,7 @@ end
 
 const AsymMixedCopula{T} = ExtremeValueCopula{2, AsymMixedTail{T}}
 AsymMixedCopula(θ) = ExtremeValueCopula(2, AsymMixedTail(θ))
-Distributions.params(tail::AsymMixedTail) = (tail.α, tail.θ[1], tail.θ[2])
+Distributions.params(tail::AsymMixedTail) = (tail.θ[1], tail.θ[2])
 
 function A(tail::AsymMixedTail, t::Real)
   θ₁, θ₂ = tail.θ
