@@ -27,6 +27,7 @@
 @testitem "Generic" tags=[:Generic, :SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(RafteryCopula(2, 0.2), (2,1))) end
 
 @testitem "Testing survival stuff" tags=[:SurvivalCopula] begin
+    # [GenericTests integration]: Yes. Symmetry of survival transformations on pdf/cdf is generic; we can add survival invariance checks.
     using Distributions
     using StableRNGs
     rng = StableRNG(123)
@@ -44,6 +45,7 @@
 end
 
 @testitem "RafteryCopula Constructor" tags=[:RafteryCopula] begin
+    # [GenericTests integration]: Partially. Constructor mapping to degenerate copulas (Independent/MCopula) could be generalized; keep argument errors here.
     for d in [2,3,4]
         @test isa(RafteryCopula(d,0.0), IndependentCopula)
         @test isa(RafteryCopula(d,1.0), MCopula)
@@ -53,6 +55,7 @@ end
 end
 
 @testitem "RafteryCopula CDF" tags=[:RafteryCopula] begin
+    # [GenericTests integration]: Maybe. The numeric values are specific regression checks; a lighter generic monotonicity/nonnegativity check exists.
     using StableRNGs
     using Distributions
     rng = StableRNG(123)
@@ -76,6 +79,7 @@ end
 end
 
 @testitem "RafteryCopula Sampling" tags=[:RafteryCopula] begin
+    # [GenericTests integration]: Yes. Shape check for sampling is generic; could move to GenericTests sampling smoke tests.
     using StableRNGs
     rng = StableRNG(123)
     n_samples = 100
@@ -85,6 +89,7 @@ end
 end
 
 @testitem "Check against manual version - CDF" tags=[:RafteryCopula] begin
+    # [GenericTests integration]: No. Manual formula replication is too bespoke; keep as targeted verification for this copula.
     # https://github.com/lrnv/Copulas.jl/pull/137
     using Distributions
     function prueba_CDF(R::Vector{T}, u::Vector{T}) where T
@@ -123,6 +128,7 @@ end
 end
 
 @testitem "Check against manual version - PDF" tags=[:RafteryCopula] begin
+    # [GenericTests integration]: No. Same rationale as CDF manual check; keep here.
     # https://github.com/lrnv/Copulas.jl/pull/137
     using Distributions
     function prueba_PDF(R::Vector{T}, u::Vector{T}) where T
@@ -154,6 +160,7 @@ end
 
 
 @testitem "PlackettCopula - Fix behavior of cdf, pdf and constructor" tags=[:PlackettCopula] begin
+    # [GenericTests integration]: Partially. Constructor edge cases can be made generic; the fixed value grids are regression tests, keep here.
 
     # Fix the bahavior ofc the constructor: 
     @test isa(PlackettCopula(1), IndependentCopula)
@@ -177,6 +184,7 @@ end
 end
 
 @testset "Fixing values of FGMCopula - cdf, pdf, constructor" tags=[:FGMCopula] begin
+    # [GenericTests integration]: Partially. Constructor-to-independent is generic; the numeric regression grids for cdf/pdf should stay specific.
 
     @test isa(FGMCopula(2,0.0), IndependentCopula)
 

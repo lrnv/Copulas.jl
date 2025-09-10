@@ -62,7 +62,7 @@
 @testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(0.5)) end
 @testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(1.0)) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(0.5960710257852946, 0.3313524247810329, 0.09653466861970061)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula, :OneRing] setup=[M] begin M.check(MOCopula(0.5960710257852946, 0.3313524247810329, 0.09653466861970061)) end
 @testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(0.1,0.2,0.3)) end
 @testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(0.5, 0.5, 0.5)) end
 @testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(1.0, 1.0, 1.0)) end
@@ -81,6 +81,7 @@
 @testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :LogCopula] setup=[M] begin M.check(LogCopula(5.5)) end
 
 @testitem "Checking LogCopula == GumbelCopula" tags=[:ExtremeValueCopula, :LogCopula, :ArchimedeanCopula, :GumbelCopula] begin
+    # [GenericTests integration]: Probably too specific (equivalence between two constructors/types). Could be a targeted identity test, keep here.
     using InteractiveUtils
     using Copulas, Distributions
     using Random
@@ -111,6 +112,7 @@
 end
 
 @testitem "Extreme Galambos density test" tags=[:ExtremeValueCopula, :GalambosCopula] begin
+    # [GenericTests integration]: No. This is a trivial smoke test to catch crashes at extreme params; keep as minimal targeted test.
     rand(GalambosCopula(19.7), 1000)
     rand(GalambosCopula(210.0), 1000)
     @test true
