@@ -117,23 +117,27 @@
                 if !(CT<:EmpiricalCopula)
                     @testset "Margins uniformity" begin
                         for i in 1:d
-                        for val in [0,1,0.5,rand(rng,5)...]
-                            u = ones(d)
-                            u[i] = val
-                            @test cdf(C,u) ≈ val atol=1e-5
-                        end
-                        u = rand(rng,d)
-                        u[i] = 0
-                        @test iszero(cdf(C,u))
+                            for val in [0,1,0.5,rand(rng,5)...]
+                                u = ones(d)
+                                u[i] = val
+                                @test cdf(C,u) ≈ val atol=1e-5
+                            end
+                            u = rand(rng,d)
+                            u[i] = 0
+                            @test iszero(cdf(C,u))
+                            @test pvalue(ApproximateOneSampleKSTest(spl1000[i,:], Uniform())) > 0.005
                         end
                     end
                 end
 
                 if can_pdf(C)
                     @testset "PDF positivity" begin
-                        @test pdf(C, ones(d)/2) >= 0
-                        @test all(pdf(C, spl10) .>= 0)
-                        @test pdf(Z, zeros(d)) >= 0
+                        r0, rhalf, r1 = pdf(C, zeros(d)), pdf(C, ones(d)/2), pdf(C, ones(d))
+                        r10 = pdf(C, spl10)
+                        @test r0 >= 0 && isfinite(r0)
+                        @test rhalf >= 0 && isfinite(rhalf)
+                        @test r1 >= 0 && isfinite(r1)
+                        @test all(r10 .>= 0) && all(isfinite.(r10))
                     end 
                 end
 
@@ -412,35 +416,35 @@
             end
 
             # Extreme value copula-specific tests
-            if CT<:Copulas.ExtremeValueCopula
+            if CT<:Copulas.ExtremeValueCopula{2} # only bivariates !!! 
                 @testset "ExtremeValueCopula specific tests" begin
                     @testset "A function basics" begin
-                        @test Copulas.A(C, 0.0) ≈ 1
-                        @test Copulas.A(C, 1.0) ≈ 1
+                        @test Copulas.A(C.tail, 0.0) ≈ 1
+                        @test Copulas.A(C.tail, 1.0) ≈ 1
                         t = rand(rng)
-                        A_value = Copulas.A(C, t)
+                        A_value = Copulas.A(C.tail, t)
                         @test 0.0 <= A_value <= 1.0
                         @test isapprox(A_value, max(t, 1-t); atol=1e-6) || A_value >= max(t, 1-t)
                         @test A_value <= 1.0
                     end
 
-                    # Only run derivative and related tests if the methods are spe for this type
-                    spe_dA =        which(Copulas.dA, (typeof(C), Float64))        != which(Copulas.dA, (Copulas.ExtremeValueCopula, Float64))
-                    spe_d²A =       which(Copulas.d²A, (typeof(C), Float64))       != which(Copulas.d²A, (Copulas.ExtremeValueCopula, Float64))
-                    spe__A_dA_d²A = which(Copulas._A_dA_d²A, (typeof(C), Float64)) != which(Copulas._A_dA_d²A, (Copulas.ExtremeValueCopula, Float64))
-                    spe_ℓ =         which(Copulas.ℓ, (typeof(C), Float64, Float64))         != which(Copulas.ℓ, (Copulas.ExtremeValueCopula, Float64, Float64))
+                    # Only run derivative and related tests if the methods are specialized for this type
+                    spe_dA =        which(Copulas.dA, (typeof(C.tail), Float64))        != which(Copulas.dA, (Copulas.Tail2, Float64))
+                    spe_d²A =       which(Copulas.d²A, (typeof(C.tail), Float64))       != which(Copulas.d²A, (Copulas.Tail2, Float64))
+                    spe__A_dA_d²A = which(Copulas._A_dA_d²A, (typeof(C.tail), Float64)) != which(Copulas._A_dA_d²A, (Copulas.Tail2, Float64))
+                    spe_ℓ =         which(Copulas.ℓ, (typeof(C.tail), Tuple{Float64, Float64}))         != which(Copulas.ℓ, (Copulas.Tail2, Tuple{Float64, Float64}))
 
                     if spe_dA || spe_d²A || spe__A_dA_d²A
                         @testset "Testing derivatives of A" begin
                             for t in (0.05, 0.5, 0.95)
                                 if !(CT<:tEVCopula)
-                                    @test isapprox(Copulas.dA(C, t), ForwardDiff.derivative(x -> Copulas.A(C, x), t); atol=1e-6)
-                                    @test isapprox(Copulas.d²A(C, t), ForwardDiff.derivative(x -> Copulas.dA(C, x), t); atol=1e-6)
+                                    @test isapprox(Copulas.dA(C.tail, t), ForwardDiff.derivative(x -> Copulas.A(C.tail, x), t); atol=1e-6)
+                                    @test isapprox(Copulas.d²A(C.tail, t), ForwardDiff.derivative(x -> Copulas.dA(C.tail, x), t); atol=1e-6)
                                 end
-                                a, da, d2a = Copulas._A_dA_d²A(C, t)
-                                @test isapprox(a, Copulas.A(C, t); atol=1e-8)
-                                @test isapprox(da, Copulas.dA(C, t); atol=1e-8)
-                                @test isapprox(d2a, Copulas.d²A(C, t); atol=1e-8)
+                                a, da, d2a = Copulas._A_dA_d²A(C.tail, t)
+                                @test isapprox(a, Copulas.A(C.tail, t); atol=1e-8)
+                                @test isapprox(da, Copulas.dA(C.tail, t); atol=1e-8)
+                                @test isapprox(d2a, Copulas.d²A(C.tail, t); atol=1e-8)
                             end
                         end
                     end
@@ -450,8 +454,8 @@
                             u, v = rand(rng), rand(rng)
                             x, y = -log(u), -log(v)
                             s = y / (x + y)
-                            expected_ℓ = Copulas.A(C, s) * (x + y)
-                            @test isapprox(Copulas.ℓ(C, x, y), expected_ℓ; atol=0.1)
+                            expected_ℓ = Copulas.A(C.tail, s) * (x + y)
+                            @test isapprox(Copulas.ℓ(C.tail, x, y), expected_ℓ; atol=0.1)
                             expected_cdf = exp(-expected_ℓ)
                             @test isapprox(cdf(C, [u, v]), expected_cdf; atol=0.1)
 
@@ -465,7 +469,61 @@
                     end
                 end
             end
+
+            # Archimax specific tests
+            if CT<:Copulas.ArchimaxCopula
+                @testset "ArchimaxCopula specific tests" begin
+
+                    for (u1,u2) in ((0.2,0.3), (0.7,0.6), (0.9,0.4))
+                        @test isapprox(cdf(C, [u1,u2]), _archimax_cdf_mockup(C, u1, u2); rtol=1e-12, atol=1e-12)
+                    end
+
+                    for (u1,u2) in ((0.25,0.4), (0.6,0.6))
+                        lp = logpdf(C, [u1,u2])
+                        @test isfinite(lp)
+                        c_h = _archimax_pdf_hess(C, u1, u2)
+                        @test isapprox(exp(lp), c_h; rtol=1e-6, atol=1e-8)
+                    end
+
+                    for r in _archimax_mc_rectangles_cdf(C; N=20_000, seed=321)
+                        @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
+                    end
+                end
+            end
         end
+    end
+
+    _archimax_cdf_mockup(C::Copulas.ArchimaxCopula, u1::Real, u2::Real) = begin
+        G, E = C.gen, C.tail
+        (u1≤0 || u2≤0)  && return 0.0
+        (u1≥1 && u2≥1)  && return 1.0
+        x = Copulas.ϕ⁻¹(G, u1); y = Copulas.ϕ⁻¹(G, u2)
+        S = x + y
+        S == 0 && return 1.0
+        t = y / S
+        Copulas.ϕ(G, S * Copulas.A(E, t))
+    end
+    _archimax_pdf_hess(C, u1, u2) = begin
+        f(z) = cdf(C, z)                      
+        H = ForwardDiff.hessian(f, [u1, u2])  # ∂²/∂u1∂u2
+        max(H[1,2], 0.0)                      # numerical clip 
+    end
+    function _archimax_mc_rectangles_cdf(C; N::Int=300_000, seed::Integer=123,
+                            rects::Tuple{Vararg{Tuple{<:Real,<:Real}}}=((0.5,0.5),(0.3,0.7),(0.8,0.2)))
+        rng = StableRNG(seed)
+        U = rand(rng, C, N)
+        results = Vector{NamedTuple}(undef, length(rects))
+        @inbounds for (k,(a,b)) in pairs(rects)
+            p_th = cdf(C, [a,b])
+            cnt = 0
+            for i in 1:N
+                (U[1,i] ≤ a && U[2,i] ≤ b) && (cnt += 1)
+            end
+            p_hat = cnt / N
+            se = sqrt(p_th*(1-p_th)/N)
+            results[k] = (rect=(a,b), p_hat=p_hat, p_th=p_th, se=se)
+        end
+        return results
     end
 
     function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, maxevals, N) where d
