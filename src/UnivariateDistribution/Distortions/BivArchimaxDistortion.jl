@@ -33,5 +33,6 @@ function Distributions.logcdf(D::BivArchimaxDistortion, z::Real)
     A0 = A(D.tail, t)
     A1 = dA(D.tail, t)
     r = D.j==2 ? (A0 + (1 - t) * A1)  : (A0 - t * A1) 
-    return log(-ϕ⁽¹⁾(D.gen, S * A0)) + log(-ϕ⁻¹⁽¹⁾(D.gen, D.uⱼ) * r)
+    r = max(r, T(0))
+    return min(log(-ϕ⁽¹⁾(D.gen, S * A0)) + log(-ϕ⁻¹⁽¹⁾(D.gen, D.uⱼ) * r), T(0))
 end
