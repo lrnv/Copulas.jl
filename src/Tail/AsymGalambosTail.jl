@@ -3,7 +3,7 @@
 
 Fields:
   - α::Real          — dependence parameter
-  - θ::NTuple{2,Real} — asymmetry weights (length 2)
+  - (θ₁, θ₂)::NTuple{2,Real} — asymmetry weights (length 2)
 
 Constructor
 
@@ -29,17 +29,19 @@ References:
 """
 struct AsymGalambosTail{T} <: Tail2
     α::T                 # α ≥ 0
-    θ::NTuple{2,T}       # 0 ≤ θ_i ≤ 1
+    θ₁::T
+    θ₂::T
     function AsymGalambosTail(α, θ)
         (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
+
         T = promote_type(Float64, typeof(α), eltype(θ))
-        
-        θT, αT = (T(θ[1]), T(θ[2])), T(α)
+        θ₁, θ₂, αT = T(θ[1]), T(θ[2]), T(α)
+
         (αT ≥ 0) || throw(ArgumentError("α must be ≥ 0"))
-        (0 ≤ θT[1] ≤ 1 && 0 ≤ θT[2] ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
-        αT == 0 || (θT[1] == 0 && θT[2] == 0) && return NoTail()
-        θT[1] == 1 && θT[2] == 1 && return GalambosTail(α)
-        return new{T}(αT, θT)
+        (0 ≤ θ₁ ≤ 1 && 0 ≤ θ₂ ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
+        αT == 0 || (θ₁ == 0 && θ₂ == 0) && return NoTail()
+        θ₁ == 1 && θ₂ == 1 && return GalambosTail(α)
+        return new{T}(αT, θ₁, θ₂)
     end
 end
 
@@ -49,12 +51,11 @@ Distributions.params(tail::AsymGalambosTail) = (tail.α, tail.θ[1], tail.θ[2])
 
 function A(tail::AsymGalambosTail, t::Real)
     tt = _safett(t)
-    α  = tail.α
-    θ1, θ2 = tail.θ
+    α, θ₁, θ₂  = tail.α, tail.θ₁, tail.θ₂
 
-    α == 0 || (θ1 == 0 && θ2 == 0) && return one(tt)
-    x1 = -α * log(θ1 * tt)
-    x2 = -α * log(θ2 * (1 - tt))
+    α == 0 || (θ₁ == 0 && θ₂ == 0) && return one(tt)
+    x1 = -α * log(θ₁ * tt)
+    x2 = -α * log(θ₂ * (1 - tt))
     s  = LogExpFunctions.logaddexp(x1, x2) / α
     return -LogExpFunctions.expm1(-s)
 end

@@ -42,13 +42,20 @@ const MOCopula{T} = ExtremeValueCopula{2, MOTail{T}}
 Distributions.params(tail::MOTail) = (tail.λ₁, tail.λ₂, tail.λ₁₂)
 MOCopula(λ₁, λ₂, λ₁₂) = ExtremeValueCopula(2, MOTail(λ₁, λ₂, λ₁₂))
 
-function A(tail::MOTail, t::Real)
+function A(tail::MOTail{T}, t::Real) where T
     tt = _safett(t)
+    zz = zero(promote_type(T, typeof(tt)))
     λ₁, λ₂, λ₁₂ = tail.λ₁, tail.λ₂, tail.λ₁₂
-    term1 = λ₁ * (1-tt) / (λ₁ + λ₁₂)
-    term2 = λ₂ * tt / (λ₂ + λ₁₂)
-    term3 = λ₁₂ * max((1-tt)/(λ₁ + λ₁₂), tt/(λ₂ + λ₁₂))
-    return term1 + term2 + term3
+    om = 1 - tt
+    d1 = λ₁ + λ₁₂
+    d2 = λ₂ + λ₁₂
+    # Use inv where possible; if a denominator is zero (degenerate), treat the corresponding ratio as zero
+    r1 = d1 > 0 ? om * (λ₁ / d1) : zz
+    r2 = d2 > 0 ? tt * (λ₂ / d2) : zz
+    m1 = d1 > 0 ? (om / d1) : zz
+    m2 = d2 > 0 ? (tt / d2) : zz
+    term3 = λ₁₂ * max(m1, m2)
+    return r1 + r2 + term3
 end
 
 τ(C::ExtremeValueCopula{2,MOTail{T}}) where {T} = begin
@@ -58,7 +65,8 @@ end
 end
 
 function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {T, S}
-    a, b = D.tail.a, D.tail.b
+    a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
+    b = D.tail.λ₂ / (D.tail.λ₂ + D.tail.λ₁₂)
 
     # guard domain of z and conditioning value
     if !(0.0 < z < 1.0)
@@ -106,7 +114,8 @@ function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {
 end
 
 function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) where {T, S}
-    a, b = D.tail.a, D.tail.b
+    a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
+    b = D.tail.λ₂ / (D.tail.λ₂ + D.tail.λ₁₂)
     v_or_u = D.uⱼ
     if !(0.0 <= α <= 1.0)
         throw(ArgumentError("α must be in [0,1]"))
@@ -123,33 +132,35 @@ function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) wher
     if D.j == 2
         # Quantile of U | V = v
         v = v_or_u
-        ustar = v^((1-b)/(1-a))
-        α1 = b * ustar^a                   # left-limit value at u* (before jump)
-        α2 = ustar^a                       # right-continuous CDF value at u*
+        logv = log(v)
+        ustar = exp(((1 - b) / (1 - a)) * logv)
+        α2 = exp(a * log(ustar))           # right-continuous CDF value at u*
+        α1 = b * α2                        # left-limit value at u* (before jump)
         if α < α1
             # invert left branch: F = b u v^{b-1}
-            return (α / b) * v^(1-b)
+            return (α / b) * exp((1 - b) * logv)
         elseif α <= α2
             # atom at u*
             return ustar
         else
             # invert right branch: F = u^a
-            return α^(1/a)
+            return exp((1 / a) * log(α))
         end
     else
         # Quantile of V | U = u
         u = v_or_u
-        vstar = u^((1-a)/(1-b))
-        α1 = a * vstar^b
-        α2 = vstar^b
+        logu = log(u)
+        vstar = exp(((1 - a) / (1 - b)) * logu)
+        α2 = exp(b * log(vstar))
+        α1 = a * α2
         if α < α1
             # invert left branch: F = a v u^{a-1}
-            return (α / a) * u^(1-a)
+            return (α / a) * exp((1 - a) * logu)
         elseif α <= α2
             return vstar
         else
             # invert right branch: F = v^b
-            return α^(1/b)
+            return exp((1 / b) * log(α))
         end
     end
 end

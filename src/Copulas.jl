@@ -40,7 +40,6 @@ module Copulas
     include("UnivariateDistribution/Frailties/ShiftedNegBin.jl")
 
     # Radials (Univ r.v. on R_+ which Williamson d-transform are used as arch. generators)
-    include("UnivariateDistribution/Radials/ExtremeDist.jl")
     include("UnivariateDistribution/Radials/PStable.jl")
     include("UnivariateDistribution/Radials/TiltedPositiveStable.jl")
     include("UnivariateDistribution/Radials/ClaytonWilliamsonDistribution.jl")
@@ -58,6 +57,9 @@ module Copulas
     include("UnivariateDistribution/Distortions/WDistortion.jl")
     include("UnivariateDistribution/Distortions/FlipDistortion.jl")
     include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
+
+    # Others, usefull too 
+    include("UnivariateDistribution/ExtremeDist.jl")
 
     # Miscelaneous copulas
     include("MiscellaneousCopulas/SurvivalCopula.jl")

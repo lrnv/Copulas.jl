@@ -50,87 +50,147 @@ Distributions.params(tail::tEVTail) = (tail.ν, tail.ρ)
 
 function A(T::tEVTail, t::Real)
     ρ, ν = T.ρ, T.ν
-    C = sqrt((1+ν)/(1-ρ^2))
-    α = 1/ν
+    C = sqrt((1 + ν) / (1 - ρ^2))
+    α = 1 / ν
 
-    Z1 =  C * ((t/(1-t))^α - ρ)
-    Z2 = C * ((1/t - 1)^α - ρ)
-    
-    D = Distributions.TDist(T.ν + 1)
+    tt = _safett(t)
+    om = 1 - tt
+    # log-ratios for stability
+    log_t  = log(tt)
+    log_om = log1p(-tt) # = log(1 - t)
+    log_r  = log_t - log_om           # log(t/(1-t))
+    log_s  = log_om - log_t           # log((1-t)/t)
+
+    rα = exp(α * log_r)
+    sα = exp(α * log_s)
+
+    Z1 = C * (rα - ρ)
+    Z2 = C * (sα - ρ)
+
+    D = Distributions.TDist(ν + 1)
     F1 = Distributions.cdf(D, Z1)
     F2 = Distributions.cdf(D, Z2)
-    
-    B1 = t * F1
-    B2 = (1-t) * F2
-    A = B1 + B2
-    return A
+
+    return tt * F1 + om * F2
 end
 function dA(T::tEVTail, t::Real)
     ρ, ν = T.ρ, T.ν
-    C = sqrt((1+ν)/(1-ρ^2))
-    α = 1/ν
+    C = sqrt((1 + ν) / (1 - ρ^2))
+    α = 1 / ν
 
-    Z1 =  C * ((t/(1-t))^α - ρ)
-    DZ1 = C * α * (t/(1-t))^(α - 1) * (1/(1-t))^2
-    
-    Z2 = C * ((1/t - 1)^α - ρ)
-    DZ2 = C * α * (1/t - 1)^(α - 1) * (-1/t^2)
-    
-    D = Distributions.TDist(T.ν + 1)
+    tt = _safett(t)
+    om = 1 - tt
+    log_t  = log(tt)
+    log_om = log1p(-tt)
+    log_r  = log_t - log_om
+    log_s  = log_om - log_t
+
+    rα    = exp(α * log_r)
+    rαm1  = exp((α - 1) * log_r)
+    sα    = exp(α * log_s)
+    sαm1  = exp((α - 1) * log_s)
+
+    Z1  = C * (rα - ρ)
+    DZ1 = C * α * rαm1 * inv(om)^2
+
+    Z2  = C * (sα - ρ)
+    DZ2 = C * α * sαm1 * (-inv(tt)^2)
+
+    D = Distributions.TDist(ν + 1)
     f1 = Distributions.pdf(D, Z1)
     F1 = Distributions.cdf(D, Z1)
     f2 = Distributions.pdf(D, Z2)
     F2 = Distributions.cdf(D, Z2)
-    
-    DB1 = t * f1 * DZ1 + F1
-    DB2 = (1-t) * f2 * DZ2 - F2
-    DA = DB1 + DB2
-    return DA
+
+    DB1 = tt * f1 * DZ1 + F1
+    DB2 = om * f2 * DZ2 - F2
+    return DB1 + DB2
 end
 function d²A(T::tEVTail, t::Real)
     ρ, ν = T.ρ, T.ν
-    C = sqrt((1+ν)/(1-ρ^2))
-    α = 1/ν
+    C = sqrt((1 + ν) / (1 - ρ^2))
+    α = 1 / ν
 
-    Z1 =  C * ((t/(1-t))^α - ρ)
-    DZ1 = C * α * (t/(1-t))^(α - 1) * (1/(1-t))^2
-    DDZ1 = C * α * ((α-1)*t^(α-2) + 2t^(α-1)) / (1-t)^(α+2) 
-    
-    Z2 = C * ((1/t - 1)^α - ρ)
-    DZ2 = C * α * (1/t - 1)^(α - 1) * (-1/t^2)
-    DDZ2 = C * α * (
-          (1/t - 1)^(α-2) * (α-1) * (1/t^4)
-        + (1/t - 1)^(α-1) * (2/t^3)
-    )
-    
-    D = Distributions.TDist(T.ν + 1)    
+    tt = _safett(t)
+    om = 1 - tt
+    log_t  = log(tt)
+    log_om = log1p(-tt)
+    log_r  = log_t - log_om
+    log_s  = log_om - log_t
+
+    rα    = exp(α * log_r)
+    rαm1  = exp((α - 1) * log_r)
+    rαm2  = exp((α - 2) * log_r)
+    sα    = exp(α * log_s)
+    sαm1  = exp((α - 1) * log_s)
+    sαm2  = exp((α - 2) * log_s)
+
+    inv_om  = inv(om)
+    inv_om2 = inv_om^2
+    inv_om3 = inv_om2 * inv_om
+    inv_om4 = inv_om2^2
+    inv_t   = inv(tt)
+    inv_t2  = inv_t^2
+    inv_t3  = inv_t2 * inv_t
+    inv_t4  = inv_t2^2
+
+    Z1  = C * (rα - ρ)
+    DZ1 = C * α * rαm1 * inv_om2
+    # d²Z1/dt² using product rule on r^(α-1) * (1-t)^(-2)
+    DDZ1 = C * α * ( 2 * rαm1 * inv_om3 + (α - 1) * rαm2 * inv_om4 )
+
+    Z2  = C * (sα - ρ)
+    DZ2 = C * α * sαm1 * (-inv_t2)
+    # d²Z2/dt² with s = (1-t)/t, s'=-1/t², s''=2/t³
+    DDZ2 = C * α * ( (α - 1) * sαm2 * inv_t4 + 2 * sαm1 * inv_t3 )
+
+    D = Distributions.TDist(ν + 1)
     f1 = Distributions.pdf(D, Z1)
     g1 = Distributions.gradlogpdf(D, Z1)
     f2 = Distributions.pdf(D, Z2)
     g2 = Distributions.gradlogpdf(D, Z2)
 
-    DDB1 = f1 * DZ1 + t * f1 * DDZ1 + t * g1 * f1 * DZ1^2 + f1 * DZ1
-    DDB2 = (1-t) * (g2 * f2 * DZ2^2 + f2 * DDZ2) - 2 * f2 * DZ2
-    DDA = DDB1 + DDB2
-    return DDA
+    DDB1 = 2 * f1 * DZ1 + tt * (g1 * f1 * DZ1^2 + f1 * DDZ1)
+    DDB2 = om * (g2 * f2 * DZ2^2 + f2 * DDZ2) - 2 * f2 * DZ2
+    return DDB1 + DDB2
 end
 function _A_dA_d²A(T::tEVTail, t::Real)
     ρ, ν = T.ρ, T.ν
-    C = sqrt((1+ν)/(1-ρ^2))
-    α = 1/ν
+    C = sqrt((1 + ν) / (1 - ρ^2))
+    α = 1 / ν
 
-    Z1 =  C * ((t/(1-t))^α - ρ)
-    DZ1 = C * α * (t/(1-t))^(α - 1) * (1/(1-t))^2
-    DDZ1 = C * α * ((α-1)*t^(α-2) + 2t^(α-1)) / (1-t)^(α+2)
-    
-    Z2 = C * ((1/t - 1)^α - ρ)
-    DZ2 = C * α * (1/t - 1)^(α - 1) * (-1/t^2)
-    DDZ2 = C * α * (
-          (1/t - 1)^(α-2) * (α-1) * (1/t^4)
-        + (1/t - 1)^(α-1) * (2/t^3)
-    )
-    
-    D = Distributions.TDist(T.ν + 1)
+    tt = _safett(t)
+    om = 1 - tt
+    log_t  = log(tt)
+    log_om = log1p(-tt)
+    log_r  = log_t - log_om
+    log_s  = log_om - log_t
+
+    rα    = exp(α * log_r)
+    rαm1  = exp((α - 1) * log_r)
+    rαm2  = exp((α - 2) * log_r)
+    sα    = exp(α * log_s)
+    sαm1  = exp((α - 1) * log_s)
+    sαm2  = exp((α - 2) * log_s)
+
+    inv_om  = inv(om)
+    inv_om2 = inv_om^2
+    inv_om3 = inv_om2 * inv_om
+    inv_om4 = inv_om2^2
+    inv_t   = inv(tt)
+    inv_t2  = inv_t^2
+    inv_t3  = inv_t2 * inv_t
+    inv_t4  = inv_t2^2
+
+    Z1  = C * (rα - ρ)
+    DZ1 = C * α * rαm1 * inv_om2
+    DDZ1 = C * α * ( 2 * rαm1 * inv_om3 + (α - 1) * rαm2 * inv_om4 )
+
+    Z2  = C * (sα - ρ)
+    DZ2 = C * α * sαm1 * (-inv_t2)
+    DDZ2 = C * α * ( (α - 1) * sαm2 * inv_t4 + 2 * sαm1 * inv_t3 )
+
+    D = Distributions.TDist(ν + 1)
     
     f1 = Distributions.pdf(D, Z1)
     F1 = Distributions.cdf(D, Z1)
@@ -140,16 +200,15 @@ function _A_dA_d²A(T::tEVTail, t::Real)
     F2 = Distributions.cdf(D, Z2)
     g2 = Distributions.gradlogpdf(D, Z2)
     
+    B1  = tt * F1
+    DB1 = tt * f1 * DZ1 + F1
+    DDB1 = 2 * f1 * DZ1 + tt * (g1 * f1 * DZ1^2 + f1 * DDZ1)
     
-    B1 = t * F1
-    DB1 = t * f1 * DZ1 + F1
-    DDB1 = f1 * DZ1 + t * f1 * DDZ1 + t * g1 * f1 * DZ1^2 + f1 * DZ1
-    
-    B2 = (1-t) * F2
-    DB2 = (1-t) * f2 * DZ2 - F2
-    DDB2 = (1-t) * (g2 * f2 * DZ2^2 + f2 * DDZ2) - 2 * f2 * DZ2
+    B2  = om * F2
+    DB2 = om * f2 * DZ2 - F2
+    DDB2 = om * (g2 * f2 * DZ2^2 + f2 * DDZ2) - 2 * f2 * DZ2
 
-    A = B1 + B2
+    A  = B1 + B2
     DA = DB1 + DB2
     DDA = DDB1 + DDB2
     return A, DA, DDA
