@@ -24,22 +24,15 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
-struct MixedTail{T} <: Tail{2}
+struct MixedTail{T} <: Tail2
     θ::T
     function MixedTail(θ)
         (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in \[0,1]"))
+        θ == 0 && return NoTail()
         return new{typeof(θ)}(θ)
     end
 end
 
 const MixedCopula{T} = ExtremeValueCopula{2, MixedTail{T}}
-Distributions.params(C::ExtremeValueCopula{2,MixedTail{T}}) where {T} = (C.E.θ,)
+Distributions.params(tail::MixedTail) = (tail.θ,)
 A(E::MixedTail, t::Real) = E.θ * t^2 - E.θ * t + 1
-
-function MixedCopula(θ)
-    if θ == 0
-        return IndependentCopula(2)
-    else
-        return ExtremeValueCopula(MixedTail(θ))
-    end
-end

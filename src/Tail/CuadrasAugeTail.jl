@@ -25,31 +25,25 @@ References:
 
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
 """
-struct CuadrasAugeTail{T} <: Tail{2}
+struct CuadrasAugeTail{T} <: Tail2
     θ::T
     function CuadrasAugeTail(θ)
         (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))
-        T = promote_type(typeof(θ))
-        new{T}(T(θ))
+        θ == 0 && return NoTail()
+        θ == 1 && return MTail() 
+        θf = float(θ)
+        new{typeof(θf)}(θf)
     end
 end
+
 const CuadrasAugeCopula{T} = ExtremeValueCopula{2, CuadrasAugeTail{T}}
-Distributions.params(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}) where {T} = (C.E.θ,)
+CuadrasAugeCopula(θ) = ExtremeValueCopula(CuadrasAugeTail(θ))
+Distributions.params(tail::CuadrasAugeTail) = (tail.θ,)
 
 function A(E::CuadrasAugeTail, t::Real)
     tt = _safett(t)
     θ = E.θ
     return max(tt, 1-tt) + (1-θ) * min(tt, 1-tt)
-end
-
-function CuadrasAugeCopula(θ)
-    if θ == 0
-        return IndependentCopula(2)
-    elseif θ == 1
-        return MCopula(2)
-    else
-        return ExtremeValueCopula(CuadrasAugeTail(θ))
-    end
 end
 
 dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 ? -C.E.θ : C.E.θ)
@@ -70,7 +64,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
     return x
 end
 
-function Distributions.logcdf(D::BivEVDistortion{<:ExtremeValueCopula{2,CuadrasAugeTail{T}}, S}, z::Real) where {T,S}
+function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real) where {T,S}
     θ = D.C.E.θ
     # bounds and degeneracies
     z ≤ 0    && return S(-Inf)
@@ -83,7 +77,7 @@ function Distributions.logcdf(D::BivEVDistortion{<:ExtremeValueCopula{2,CuadrasA
 
 end
 
-function Distributions.quantile(D::BivEVDistortion{<:ExtremeValueCopula{2,CuadrasAugeTail{T}}}, α::Real) where {T}
+function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::Real) where {T, S}
     θ = D.C.E.θ
     α ≤ 0 && return 0.0
     α ≥ 1 && return 1.0

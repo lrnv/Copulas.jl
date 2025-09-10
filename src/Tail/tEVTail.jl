@@ -31,7 +31,7 @@ References:
 
 * [nikoloulopoulos2009extreme](@cite) Nikoloulopoulos, A. K., Joe, H., & Li, H. (2009). Extreme value properties of multivariate t copulas. Extremes, 12, 129-148.
 """
-struct tEVTail{Tdf,Tρ} <: Tail{2}
+struct tEVTail{Tdf,Tρ} <: Tail2
     ν::Tdf
     ρ::Tρ
     function tEVTail(ν::Tdf, ρ::Tρ) where {Tdf<:Real, Tρ<:Real}
@@ -39,22 +39,14 @@ struct tEVTail{Tdf,Tρ} <: Tail{2}
         (-1 < ρ ≤ 1)|| throw(ArgumentError("ρ must be in (-1,1]"))
         TdfT = promote_type(Tdf)
         TρT  = promote_type(Tρ)
+        ρ == 0 && return NoTail()
+        ρ == 1 && return MTail()
         return new{TdfT,TρT}(TdfT(ν), TρT(ρ))
     end
 end
 
 const tEVCopula{Tdf,Tρ} = ExtremeValueCopula{2, tEVTail{Tdf,Tρ}}
-
-function tEVCopula(ν::Real, ρ::Real)
-    if ρ == 0
-        return IndependentCopula(2)
-    elseif ρ == 1
-        return MCopula(2)
-    else
-        return ExtremeValueCopula(tEVTail(ν, ρ))
-    end
-end
-
+tEVCopula(ν::Real, ρ::Real) = ExtremeValueCopula(tEVTail(ν, ρ))
 Distributions.params(C::ExtremeValueCopula{2,tEVTail{Tdf,Tρ}}) where {Tdf,Tρ} = (C.E.ν, C.E.ρ)
 
 function A(T::tEVTail, t::Real)

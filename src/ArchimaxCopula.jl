@@ -1,36 +1,26 @@
 """
-    ArchimaxCopula{G<:Generator, E<:ExtremeValueCopula}
+    ArchimaxCopula{G<:Generator, E<:Tail}
 
 Fields:
     - gen::G  : Archimedean generator ϕ (with methods `ϕ(gen, s)` and `ϕ⁻¹(gen, u)`)
-    - evd::E  : Extreme-value copula (Pickands dependence function A)
+    - tail::E  : Extreme-value copula (Pickands dependence function A)
 
 Constructor
 
-    ArchimaxCopula(A::ArchimedeanCopula{2,G}, E::ExtremeValueCopula) where {G<:Generator}
-    ArchimaxCopula(gen::G, E::ExtremeValueCopula) where {G<:Generator}
+    ArchimaxCopula(gen::Generator, tail::Tail)
 
 Bivariate Archimax copula (convention used in `ArchimedeanCopula`). It is defined by
 
 ```math
-C_{\\phi,A}(u_1,u_2)= \\phi\\!\\Big( (x+y)\\, A\\!\\big(\\tfrac{y}{x+y}\\big) \\Big), \\qquad x=\\phi^{-1}(u_1),\\; y=\\phi^{-1}(u_2).
-```
-
-Equivalent to evaluating the stable queuing function ``\\ell_A(x,y)=(x+y)A(x/(x+y))`` at ``(x,y)=(\\phi^{-1}(u_1), \\phi^{-1}(u_2))`` and apply ``\\phi``:
-
-```julia
-x = ϕ⁻¹(gen, u1);  y = ϕ⁻¹(gen, u2)
-S = x + y
-t = y / S
-C(u1,u2) = ϕ(gen, S * A(evd, t))
+C_{\\phi,\\ell}(u_1,u_2)= \\phi\\!\\Big( \\ell\\!\\Big( \\phi^{-1}(u_i), i \\in 1,...d \\Big) \\Big).
 ```
 
 Notes:
 
-* If `A(t) ≡ 1`, it reduces to the Archimedean copula with generator `ϕ`.
-* If `ϕ(s) = exp(-s)`, it reduces to the extreme value copula with Pickands function `A`.
+* If `ℓ(x) = sum(x)`, it reduces to the Archimedean copula with generator `ϕ`.
+* If `ϕ(s) = exp(-s)`, it reduces to the extreme value copula with stable tail dependence function `ℓ`
 
-`params(::ArchimaxCopula)` returns the concatenated tuple of parameters from `gen` and `evd`.
+`params(::ArchimaxCopula)` returns the concatenated tuple of parameters from `gen` and `tail`.
 
 References:
 
@@ -38,60 +28,62 @@ References:
 * [charpentier2014](@cite) Charpentier, Fougères & Genest (2014), Multivariate Archimax Copulas.
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications.
 """
-struct ArchimaxCopula{G<:Generator, TT<:Tail{2}} <: Copula{2}
-    gen::G
-    evd::ExtremeValueCopula{2,TT}
+struct ArchimaxCopula{d, TG, TT} <: Copula{d}
+    gen::TG
+    tail::TT
+    function ArchimaxCopula(d, gen::Generator, tail::Tail)
+        @assert max_monotony(gen) >= d
+        @assert _is_valid_in_dim(tail, d)
+        return new{d, typeof(gen), typeof(tail)}(gen, tail)
+    end
 end
+ArchimaxCopula(d, gen::Generator, ::NoTail) = ArchimedeanCopula(d, gen)
+ArchimaxCopula(d, ::IndependentGenerator, tail::Tail) = ExtremeValueCopula(d, tail) 
+Distributions.params(C::ArchimaxCopula) = (_as_tuple(Distributions.params(C.gen))..., _as_tuple(Distributions.params(C.tail))...)
 
-ArchimaxCopula(A::ArchimedeanCopula{2,G}, E::ExtremeValueCopula{2,TT}) where {G<:Generator,TT<:Tail{2}} =
-    ArchimaxCopula(A.G, E)
-
-_as_tuple(x) = x isa Tuple ? x : (x,)
-
-Distributions.params(C::ArchimaxCopula) = (_as_tuple(Distributions.params(C.gen))..., _as_tuple(Distributions.params(C.evd))...)
 # --- CDF ---
-function Distributions.cdf(C::ArchimaxCopula, u::AbstractVector)
+function Distributions.cdf(C::ArchimaxCopula{2}, u::AbstractVector)
     @assert length(u) == 2
     u1, u2 = u
     (0.0 ≤ u1 ≤ 1.0 && 0.0 ≤ u2 ≤ 1.0) || return 0.0
     (u1 == 0.0 || u2 == 0.0) && return 0.0
     (u1 == 1.0 && u2 == 1.0) && return 1.0
 
-    G = C.gen
-    x = ϕ⁻¹(G, u1);  y = ϕ⁻¹(G, u2)
+    x = ϕ⁻¹(C.gen, u1)
+    y = ϕ⁻¹(C.gen, u2)
     S = x + y
-    S == 0 && return 1.0
+    S == 0 && return one(eltype(u))
     t = _safett(y / S)                 # protect t≈0,1
-    return ϕ(G, S * A(C.evd, t))
+    return ϕ(C.gen, S * A(C.evd, t))
 end
 
 # --- log-PDF stable ---
-function Distributions._logpdf(C::ArchimaxCopula, u::AbstractVector)
+function Distributions._logpdf(C::ArchimaxCopula{2}, u::AbstractVector)
     T = promote_type(Float64, eltype(u))
     @assert length(u) == 2
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return T(-Inf)
 
-    G = C.gen
-    x = ϕ⁻¹(G, u1);  y = ϕ⁻¹(G, u2)
+    x = ϕ⁻¹(C.gen, u1)
+    y = ϕ⁻¹(C.gen, u2)
     S = x + y
     S > 0 || return T(-Inf)
 
     t   = _safett(y / S)
-    A0  = A(C.evd,  t)
-    A1  = dA(C.evd, t)
-    A2  = d²A(C.evd,t)
+    A0  = A(C.tail,  t)
+    A1  = dA(C.tail, t)
+    A2  = d²A(C.tail,t)
 
-    xu  = ϕ⁻¹⁽¹⁾(G, u1)          # < 0
-    yv  = ϕ⁻¹⁽¹⁾(G, u2)          # < 0
+    xu  = ϕ⁻¹⁽¹⁾(C.gen, u1)          # < 0
+    yv  = ϕ⁻¹⁽¹⁾(C.gen, u2)          # < 0
 
     su  = xu * (A0 - t*A1)
     sv  = yv * (A0 + (1 - t)*A1)
     suv = - (xu*yv) * (t*(1 - t)/S) * A2
 
     s    = S * A0
-    φp   = ϕ⁽¹⁾(G, s)            # < 0
-    φpp  = ϕ⁽ᵏ⁾(G, Val(2), s)            # > 0
+    φp   = ϕ⁽¹⁾(C.gen, s)            # < 0
+    φpp  = ϕ⁽ᵏ⁾(C.gen, Val(2), s)            # > 0
 
     base = su*sv + (φp/φpp)*suv
     base > 0 || return T(-Inf)
@@ -100,18 +92,25 @@ end
 
 # --- Kendall τ: τ = τ_A + (1 - τ_A) τ_ψ ---
 τ(C::ArchimaxCopula) = begin
-    τA = τ(C.evd)
+    τA = τ(C.tail)
     τψ = τ(C.gen)
     τA + (1 - τA) * τψ
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula, x::AbstractVector{T}) where {T<:Real}
-    v1, v2 = rand(rng, C.evd)
 
-    M  = rand(rng, frailty(C.gen)) # frailty with LT = ϕ
-
-    G = C.gen
-    x[1] = ϕ(G, -log(v1)/M)
-    x[2] = ϕ(G, -log(v2)/M)
+# Use the matrix sampler for better efficiency
+# (if not working, maybe uncomment the vetor version ?)
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, x::A::DenseMatrix{T}) where {T<:Real, TG, TT}
+    evd, frail = ExtremeValueCopula(C.tail), frailty(C.gen)
+    Distributions._rand!(rng, evd, x)
+    F = rand(rng, frail, size(A, 2))
+    x ./= F'
     return x
 end
+# function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, x::AbstractVector{T}) where {T<:Real, TG, TT}
+#     v1, v2 = rand(rng, ExtremeValueCopula(C.tail))
+#     M  = rand(rng, frailty(C.gen))
+#     x[1] = ϕ(C.gen, -log(v1)/M)
+#     x[2] = ϕ(C.gen, -log(v2)/M)
+#     return x
+# end

@@ -27,7 +27,7 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
-struct AsymLogTail{T} <: Tail{2}
+struct AsymLogTail{T} <: Tail2
     α::T
     θ::NTuple{2,T}
     function AsymLogTail(α, θ)
@@ -43,7 +43,8 @@ struct AsymLogTail{T} <: Tail{2}
 end
 
 const AsymLogCopula{T} = ExtremeValueCopula{2, AsymLogTail{T}}
-Distributions.params(C::ExtremeValueCopula{2, AsymLogTail{T}}) where {T} = (C.E.α, C.E.θ[1], C.E.θ[2])
+AsymLogCopula(α, θ) =  ExtremeValueCopula(AsymLogTail(α, θ))
+Distributions.params(tail::AsymLogTail) = (tail.α, tail.θ[1], tail.θ[2])
 
 function A(E::AsymLogTail, t::Real)
     tt = _safett(t)
@@ -51,9 +52,3 @@ function A(E::AsymLogTail, t::Real)
     θ1, θ2 = E.θ
     return ((θ1^α) * (1-tt)^α + (θ2^α) * tt^α)^(1/α) + (θ1 - θ2)*tt + 1 - θ1
 end
-
-function AsymLogCopula(α, θ::AbstractVector)
-    (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
-    return ExtremeValueCopula( AsymLogTail(α, (θ[1], θ[2])) )
-end
-AsymLogCopula(α, θ::NTuple{2,Any}) = AsymLogCopula(α, collect(θ))

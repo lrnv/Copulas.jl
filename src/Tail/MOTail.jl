@@ -27,7 +27,7 @@ References:
 
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
 """
-struct MOTail{T} <: Tail{2}
+struct MOTail{T} <: Tail2
     λ₁::T
     λ₂::T
     λ₁₂::T
@@ -39,7 +39,9 @@ struct MOTail{T} <: Tail{2}
 end
 
 const MOCopula{T} = ExtremeValueCopula{2, MOTail{T}}
-Distributions.params(C::ExtremeValueCopula{2,MOTail{T}}) where {T} = (C.E.λ₁, C.E.λ₂, C.E.λ₁₂)
+Distributions.params(tail::MOTail) = (tail.λ₁, tail.λ₂, tail.λ₁₂)
+MOCopula(λ₁, λ₂, λ₁₂) = ExtremeValueCopula(MOTail(λ₁, λ₂, λ₁₂))
+
 function A(E::MOTail, t::Real)
     tt = _safett(t)
     λ₁, λ₂, λ₁₂ = E.λ₁, E.λ₂, E.λ₁₂
@@ -49,15 +51,13 @@ function A(E::MOTail, t::Real)
     return term1 + term2 + term3
 end
 
-MOCopula(λ₁, λ₂, λ₁₂) = ExtremeValueCopula(MOTail(λ₁, λ₂, λ₁₂))
-
 τ(C::ExtremeValueCopula{2,MOTail{T}}) where {T} = begin
     a = C.E.λ₁/(C.E.λ₁+C.E.λ₁₂)
     b = C.E.λ₂/(C.E.λ₂+C.E.λ₁₂)
     a*b/(a+b-a*b)
 end
 
-function Distributions.logcdf(D::BivEVDistortion{<:ExtremeValueCopula{2,MOTail{T}}}, z::Real) where T
+function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {T, S}
     C = D.C
     a, b = C.a, C.b
 
@@ -106,7 +106,7 @@ function Distributions.logcdf(D::BivEVDistortion{<:ExtremeValueCopula{2,MOTail{T
     end
 end
 
-function Distributions.quantile(D::BivEVDistortion{<:ExtremeValueCopula{2,MOTail{T}}}, α::Real) where {T}
+function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) where {T, S}
     C = D.C
     a, b = C.a, C.b
     v_or_u = D.uⱼ

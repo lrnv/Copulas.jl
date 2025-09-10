@@ -56,6 +56,7 @@ module Copulas
     include("UnivariateDistribution/Distortions/MDistortion.jl")
     include("UnivariateDistribution/Distortions/WDistortion.jl")
     include("UnivariateDistribution/Distortions/FlipDistortion.jl")
+    include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
 
     # Miscelaneous copulas
     include("MiscellaneousCopulas/SurvivalCopula.jl")
@@ -74,11 +75,9 @@ module Copulas
 
     # Archimedean copulas
     include("Generator.jl")
-    include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
-    include("Generator/TiltedGenerator.jl")
     include("ArchimedeanCopula.jl")
-    include("Generator/FrailtyGenerator.jl")
-    include("Generator/WilliamsonGenerator.jl")
+
+    # Generators
     include("Generator/AMHGenerator.jl")
     include("Generator/BB1Generator.jl")
     include("Generator/BB2Generator.jl")
@@ -95,9 +94,13 @@ module Copulas
     include("Generator/InvGaussianGenerator.jl")
     include("Generator/JoeGenerator.jl")
 
-    # Bivariate Extreme Value Copulas
+    #Extreme value copulas
     include("Tail.jl")
     include("ExtremeValueCopula.jl")
+
+    # Stable tail dependence functions
+    include("Tail/NoTail.jl")
+    include("Tail/MTail.jl")
     include("Tail/AsymGalambosTail.jl")
     include("Tail/AsymLogTail.jl")
     include("Tail/AsymMixedTail.jl")
@@ -110,7 +113,9 @@ module Copulas
     include("Tail/MOTail.jl")
     include("Tail/tEVTail.jl")
 
+    # Archimax copulas
     include("ArchimaxCopula.jl")
+
     include("MiscellaneousCopulas/BB4Copula.jl")
     include("MiscellaneousCopulas/BB5Copula.jl")
 

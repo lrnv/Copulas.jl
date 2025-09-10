@@ -4,66 +4,68 @@ CurrentModule = Copulas
 
 # [Archimax Copulas](@id Archimax\_theory)
 
-*Archimax copulas* form a hybrid family that combines an Archimedean copula (via its generator) with an extreme-value copula (via its Pickands function). In dimension 2, they interpolate between purely Archimedean and purely EV structures and underpin families such as **BB4** and **BB5**.
+*Archimax copulas* form a hybrid family that combines an Archimedean generator $\phi$ with an extreme-value tail defined by its *stable tail dependence function* $\ell$, or its associated *Pickands function* $A_{\ell}(t) = \ell(\frac{t}{\lVert t \rVert})$. They interpolate between purely Archimedean and purely EV structures and underpin families such as **BB4** and **BB5**.
 
 !!! note "Bivariate only (for now)"
 This section and the current implementation address the **bivariate case**. Multivariate extensions are possible; if you’d like to contribute, we’re happy to provide guidance on how to integrate them.
 
-A bivariate Archimax copula [caperaa2000](@cite) $C$ admits the representation
+An Archimax copula [caperaa2000](@cite) $C$ admits the representation
 
 $$
-C_{\phi,A}(u_1,u_2)
-=\phi\!\left(\ell_A\!\big(\phi^{-1}(u_1),\,\phi^{-1}(u_2)\big)\right),
+C_{\phi,\ell}(u_1,u_2)
+=\phi\!\left(\ell\!\big(\phi^{-1}(u_1),\,\phi^{-1}(u_2)\big)\right),
 \qquad 0\le u_1,u_2\le 1,
 $$
 
-where $\phi:[0,\infty)\to(0,1]$ is an Archimedean generator (with inverse $\phi^{-1}$), $A:[0,1]\to[1/2,1]$ is a Pickands dependence function, and
+where $\phi:[0,\infty)\to(0,1]$ is a given Archimedean generator (with inverse $\phi^{-1}$), $A_{\ell}:[0,1]\to[1/2,1]$ is a Pickands dependence function, and
 
 $$
-\ell_A(x,y)=(x+y)\,A\!\left(\frac{x}{x+y}\right),\qquad x,y\ge 0.
+\ell(x_1,...x_d)= \left(\sum_{i=1}^d x_i\right)\,A_{\ell}\!\left(\frac{x_i}{\left(\sum_{i=1}^d x_i\right)}, i \in 1,...,d\right),\qquad x_1,..,x_d\ge 0.
 $$
+
+When $d = 2$, we abuse the $A$ notation by setting $A(w) = A(w, 1-w)$.
 
 ---
 
 ## Archimax in this package
 
-This package provides the abstract type [`ArchimaxCopula`](@ref) as a foundation for **bivariate** Archimax copulas. Because we expose a wide set of Archimedean generators and extreme-value copulas, **many combinations are possible**: any Archimedean copula can be paired with any extreme-value copula to produce a valid Archimax copula.
+This package provides the abstract type [`ArchimaxCopula`](@ref). Because we expose a wide set of Archimedean generators and extreme-value copulas, **many combinations are possible**: any Archimedean copula can be paired with any extreme-value copula to produce a valid Archimax copula.
 
 The API is minimal and generic:
 
-* Provide an Archimedean generator `G<:Generator` with methods `ϕ(G, s)` and `ϕ⁻¹(G, u)`. See [`Generator`](@ref) and [available Archimedean generators](@ref available_archimedean_models).
-* Provide an extreme-value copula `E<:ExtremeValueCopula` with its Pickands function `A(E, t)`. See [`ExtremeValueCopula`](@ref) and [available extreme-value models](@ref available_extreme_models).
+* Provide an Archimedean generator `G::Generator` with methods `ϕ(G, s)` and `ϕ⁻¹(G, u)`. See [`Generator`](@ref) and [available Archimedean generators](@ref available_archimedean_models).
+* Provide an extreme-value tail `E::Tail` with its Pickands function `A(E, w)` ro stable tail dependence function `ℓ(E, x)`. See [`ExtremeValueCopula`](@ref) and [available extreme-value models](@ref available_extreme_models).
 
-With these conventions, the constructor `ArchimaxCopula(gen::G, evd::ExtremeValueCopula)` uses the above representation directly and works uniformly across all implemented (and obviously new user-defined) models.
+With these conventions, the constructor `ArchimaxCopula(d, G, E)` produces the correct d-variate model, accross all possiibilities through all implemented (and obviously new user-defined) models.
 
 ---
 
 # Advanced Concepts
 
-* **Tail behaviour.**
-  The **upper tail** is governed by the Pickands function $A$ (EV structure), while the **lower tail** is driven by the curvature of the Archimedean generator $\phi$. For specific families (e.g., BB5) there are closed forms for $\lambda_U$ and for lower-tail orders.
+!!! note "Tail behaviour:"
+  The **upper tail** is governed by the extreme value structure, while the **lower tail** is driven by the curvature of the Archimedean generator $\phi$. For specific families (e.g., BB5Copula) there are closed forms for $\lambda_U$ and for lower-tail orders.
 
-* **Kendall’s tau (theorem).**
-  For bivariate Archimax copulas,
+!!! theorem "Theorem (Exhaustivity and consistency):" 
+    For bivariate Archimax copulas,
 
-  $$
-  \tau_{\phi,A} \;=\; \tau_A \;+\; (1-\tau_A)\,\tau_\phi,
-  $$
+    $$
+    \tau_{\phi,A} \;=\; \tau_A \;+\; (1-\tau_A)\,\tau_\phi,
+    $$
 
-  where $\tau_A$ is Kendall’s $\tau$ of the EV copula with Pickands $A$, and $\tau_\phi$ is Kendall’s $\tau$ of the Archimedean copula with generator $\phi$ (Capéraà, Fougères & Genest, 2000).
+    where $\tau_A$ is Kendall’s $\tau$ of the EV copula with Pickands $A$, and $\tau_\phi$ is Kendall’s $\tau$ of the Archimedean copula with generator $\phi$ (Capéraà, Fougères & Genest, 2000).
 
 ---
 
 ### Classical constructions
 
-* **BB4:** Galambos (EV) + *gamma LT* (LT family **includes** Clayton as a special case).
-* **BB5:** Galambos (EV) + *positive stable LT* (LT family **includes** Gumbel as a limiting case).
+* **BB4:** `GalambosTail` (EV) + `ClaytonGenerator` (only positive dependence suported yet) *gamma LT* (LT family **includes** Clayton as a special case).
+* **BB5:** `GalambosTail` (EV) + *positive stable LT* (LT family **includes** Gumbel as a limiting case).
 
 Each has its own docstring and dedicated section in this documentation.
 
 ## Simulation of Archimax Copulas
 
-For Archimax copulas we follow the “frailty + EV” construction (e.g. Capéraà–Fougères–Genest, 2000; Mai-Scherer, 2012). When the Archimedean generator $\phi$ is **completely monotone**, it is the Laplace transform of a non-negative random variable $M$ (frailty). If $(V_1,V_2)$ follows the EV copula with stable tail dependence function $\ell$ (equivalently Pickands $A$), then
+The implemented simulation scheme is the “frailty + EV” construction (e.g. [caperaa2000](@cite) [mai2012simulating](@cite), which is valid only when the Archimedean generator $\phi$ is **completely monotone**, which means it is the Laplace transform of a non-negative random variable $M$ called its *frailty*. If $(V_1,V_2)$ follows the EV copula with stable tail dependence function $\ell$, then
 
 $$
 U_j \;=\; \phi\!\big(-\log V_j\,/\,M\big),\qquad j=1,2,
@@ -77,10 +79,13 @@ has the Archimax copula $C_{\phi,A}$.
 * Simulate a frailty $M \ge 0$ whose Laplace transform is $\mathbb{E}[e^{-sM}] = \phi(s)$.
 * Set $U_j := \phi\!\big(-\log(V_j)/M\big)$, $j=1,2$. Return $(U_1,U_2)$.
 
+!!! todo "Allow any generator"
+    According to [charpentier2014](@cite), it should be possible to use any d-monotonous generator. If you want to implement the corresponding sampler, please reach out.
+
 **Notes on the objects used.**
 
-* *Frailty distribution.* By Bernstein’s theorem, a completely monotone $\phi$ is a Laplace transform. The helper `frailty(gen)` returns a distribution for $M$ such that `E(exp(-s*M)) = ϕ(gen, s)`.
-* *EV sampling.* Step (1) uses the EV sampler already provided in this package (via the Pickands function `A(evd, t)`), as documented in the EV section.
+* *Frailty distribution.* By Bernstein’s theorem, a completely monotone $\phi$ is a Laplace transform. The helper `frailty(G::Generator)` returns a distribution for $M$ such that `E(exp(-s*M)) = ϕ(gen, s)` and returns an error if the generator is nt completely monotonous.
+* *EV sampling.* Step (1) uses the EV sampler already provided in this package (via `ℓ(E::Tail, x)` and `A(E::Tail, x)`), as documented in the EV section.
 * *Generality.* The recipe extends to $d>2$ by simulating $(V_1,\dots,V_d)$ (But remember that it is not so simple to obtain it) from the EV copula of variable $d$ and applying steps (2)–(3) by components.
 
 ```@docs

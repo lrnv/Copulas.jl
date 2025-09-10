@@ -30,7 +30,7 @@
     ϕinv  = Copulas.ϕ⁻¹
 
     cdf_def(C::Copulas.ArchimaxCopula, u1::Real, u2::Real) = begin
-        G, E = C.gen, C.evd
+        G, E = C.gen, C.tail
         (u1≤0 || u2≤0)  && return 0.0
         (u1≥1 && u2≥1)  && return 1.0
         x = ϕinv(G, u1); y = ϕinv(G, u2)
@@ -104,10 +104,10 @@
     )
 
     EVC_SPECS = Dict{Symbol,Any}(
-        :Log        => (θs = [2.0, 1.5],       ctor = θ -> LogCopula(θ)),            # includeA≡1 (θ=1)
-        :Galambos   => (θs = [0.7, 2.5],       ctor = θ -> GalambosCopula(θ)),
-        :HS         => (θs = [0.6, 1.8],       ctor = θ -> HuslerReissCopula(θ)),             
-        :AsymGal    => (triples = [(0.35, 0.65, 0.3)], ctor = (a,b,θ) -> AsymGalambosCopula(a, [b,θ])),
+        :Log        => (θs = [2.0, 1.5],       ctor = θ -> LogTail(θ)),            # includeA≡1 (θ=1)
+        :Galambos   => (θs = [0.7, 2.5],       ctor = θ -> GalambosTail(θ)),
+        :HS         => (θs = [0.6, 1.8],       ctor = θ -> HuslerReissTail(θ)),             
+        :AsymGal    => (triples = [(0.35, 0.65, 0.3)], ctor = (a,b,θ) -> AsymGalambosTail(a, [b,θ])),
     )
 
     KS_ALPHA = 0.005

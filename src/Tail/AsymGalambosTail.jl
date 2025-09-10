@@ -27,46 +27,32 @@ References:
 
 * [Joe1990](@cite) Families of min-stable multivariate exponential and multivariate extreme value distributions. Statist. Probab, 1990.
 """
-struct AsymGalambosTail{T} <: Tail{2}
+struct AsymGalambosTail{T} <: Tail2
     α::T                 # α ≥ 0
     θ::NTuple{2,T}       # 0 ≤ θ_i ≤ 1
     function AsymGalambosTail(α, θ)
         (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
-        T = promote_type(typeof(α), eltype(θ))
-        αT = T(α)
-        θT = (T(θ[1]), T(θ[2]))
+        θt = (θ[1], θ[2])
         (αT ≥ 0) || throw(ArgumentError("α must be ≥ 0"))
-        (0 ≤ θT[1] ≤ 1 && 0 ≤ θT[2] ≤ 1) ||
-            throw(ArgumentError("each θ[i] must be in [0,1]"))
-        new{T}(αT, θT)
+        (0 ≤ θt[1] ≤ 1 && 0 ≤ θt[2] ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
+        α == 0 || (θt[1] == 0 && θt[2] == 0) && return NoTail()
+        θt[1] == 1 && θt[2] == 1 && return GalambosTail(α)
+        return new{T}(αT, θt)
     end
 end
 
 const AsymGalambosCopula{T} = ExtremeValueCopula{2, AsymGalambosTail{T}}
-Distributions.params(C::ExtremeValueCopula{2, AsymGalambosTail{T}}) where {T} = (C.E.α, C.E.θ[1], C.E.θ[2])
-function A(E::AsymGalambosTail, t::Real)
+AsymGalambosCopula(α, θ::NTuple{2,Any}) = AsymGalambosCopula(α, collect(θ))
+Distributions.params(tail::AsymGalambosTail) = (tail.α, tail.θ[1], tail.θ[2])
+
+function A(tail::AsymGalambosTail, t::Real)
     tt = _safett(t)
-    α  = E.α
-    θ1, θ2 = E.θ
-    if α == 0 || (θ1 == 0 && θ2 == 0)
-        return one(tt)
-    end
+    α  = tail.α
+    θ1, θ2 = tail.θ
+
+    α == 0 || (θ1 == 0 && θ2 == 0) && return one(tt)
     x1 = -α * log(θ1 * tt)
     x2 = -α * log(θ2 * (1 - tt))
     s  = LogExpFunctions.logaddexp(x1, x2) / α
     return -LogExpFunctions.expm1(-s)
 end
-
-function AsymGalambosCopula(α, θ::AbstractVector)
-    (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
-    θt = (θ[1], θ[2])
-    if α == 0 || (θt[1] == 0 && θt[2] == 0)
-        return IndependentCopula(2)
-    elseif θt[1] == 1 && θt[2] == 1
-        return GalambosCopula(α)
-    else
-        return ExtremeValueCopula(AsymGalambosTail(α, θt))
-    end
-end
-
-AsymGalambosCopula(α, θ::NTuple{2,Any}) = AsymGalambosCopula(α, collect(θ))

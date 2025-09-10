@@ -20,7 +20,7 @@ References:
 
 * [mai2011bivariate](@cite) Mai, J. F., & Scherer, M. (2011). Bivariate extreme-value copulas with discrete Pickands dependence measure. Extremes, 14, 311-324. Springer, 2011.
 """
-struct BC2Tail{T} <: Tail{2}
+struct BC2Tail{T} <: Tail2
     a::T
     b::T
     function BC2Tail(a, b)
@@ -32,16 +32,14 @@ struct BC2Tail{T} <: Tail{2}
 end
 
 const BC2Copula{T} = ExtremeValueCopula{2, BC2Tail{T}}
+BC2Copula(a, b) = ExtremeValueCopula(BC2Tail(a, b))
+Distributions.params(tail::BC2Tail) = (tail.a, tail.b)
 
 function A(E::BC2Tail, t::Real)
     tt = _safett(t)
     a, b = E.a, E.b
     return max(a*tt, b*(1-tt)) + max((1-a)*tt, (1-b)*(1-tt))
 end
-
-BC2Copula(a, b) = ExtremeValueCopula(BC2Tail(a, b))
-
-Distributions.params(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T} = (C.E.a, C.E.b)
 
 τ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T} = 1 - abs(C.E.a - C.E.b)
 
@@ -60,7 +58,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     return u
 end
 
-function Distributions.logcdf(D::BivEVDistortion{<:ExtremeValueCopula{2,BC2Tail{T}}, S}, z::Real) where {T,S}
+function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{T}, S}, z::Real) where {T,S}
     C = D.C
     a, b = C.a, C.b
 
@@ -125,7 +123,7 @@ function Distributions.logcdf(D::BivEVDistortion{<:ExtremeValueCopula{2,BC2Tail{
     end
 end
 
-function Distributions.quantile(D::BivEVDistortion{<:ExtremeValueCopula{2,BC2Tail{T}}}, α::Real) where {T}
+function Distributions.quantile(D::BivEVDistortion{BC2Tail{T}, S}, α::Real) where {T, S}
     C = D.C
     a, b = C.a, C.b
     t = D.uⱼ

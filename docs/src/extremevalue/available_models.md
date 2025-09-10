@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# [Extreme Values Copulas](@id available_extreme_models)
+# [Extreme Values Tails](@id available_extreme_models)
 
 ## `AsymGalambosTail`
 ```@docs

@@ -26,15 +26,18 @@ References:
 
 * [husler1989maxima](@cite) Hüsler, J., & Reiss, R. D. (1989). Maxima of normal random vectors: between independence and complete dependence. Statistics & Probability Letters, 7(4), 283-286.
 """
-struct HuslerReissTail{T} <: Tail{2}
+struct HuslerReissTail{T} <: Tail2
     θ::T
     function HuslerReissTail(θ)
-        θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
+      θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
+      θ == 0 && return NoTail()
+      isinf(θ) && return MTail()
     return new{typeof(θ)}(θ)
     end
 end
 const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
-Distributions.params(C::ExtremeValueCopula{2,HuslerReissTail{T}}) where {T} = (C.E.θ,)
+HuslerReissCopula(θ) = ExtremeValueCopula(HuslerReissTail(θ))
+Distributions.params(tail::HuslerReissTail) = (tail.θ,)
 
 function A(E::HuslerReissTail, t::Real)
   tt = _safett(t)
@@ -72,14 +75,4 @@ function dA(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
   dA_term2 = -Φ(N, arg2) + (1-t) * ϕ(N, arg2) * (0.5*θ * (-1/t - 1/(1-t)))
 
   return dA_term1 + dA_term2
-end
-
-function HuslerReissCopula(θ)
-  if θ == 0
-    return IndependentCopula(2)
-  elseif isinf(θ)
-    return MCopula(2)
-  else
-    return ExtremeValueCopula(HuslerReissTail(θ))
-  end
 end

@@ -31,7 +31,7 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
-struct AsymMixedTail{T} <: Tail{2}
+struct AsymMixedTail{T} <: Tail2
   θ::NTuple{2,T}
   function AsymMixedTail(θ)
       (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
@@ -46,14 +46,14 @@ struct AsymMixedTail{T} <: Tail{2}
 end
 
 const AsymMixedCopula{T} = ExtremeValueCopula{2, AsymMixedTail{T}}
-Distributions.params(C::ExtremeValueCopula{2, AsymMixedTail{T}}) where {T} = (C.E.θ[1], C.E.θ[2])
+AsymMixedCopula(θ::NTuple{2,Any}) = AsymMixedCopula(collect(θ))
+Distributions.params(tail::AsymMixedTail) = (tail.α, tail.θ[1], tail.θ[2])
 
 function A(E::AsymMixedTail, t::Real)
   θ₁, θ₂ = E.θ
   tt = _safett(t)
   return θ₂*tt^3 + θ₁*tt^2 - (θ₁+θ₂)*tt + 1
 end
-
 function AsymMixedCopula(θ::AbstractVector)
   (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
   θt = (θ[1], θ[2])
@@ -65,5 +65,3 @@ function AsymMixedCopula(θ::AbstractVector)
     return ExtremeValueCopula( AsymMixedTail(θt) )
   end
 end
-
-AsymMixedCopula(θ::NTuple{2,Any}) = AsymMixedCopula(collect(θ))

@@ -25,19 +25,21 @@ References:
 
 * [galambos1975order](@cite) Galambos, J. (1975). Order statistics of samples from multivariate distributions. Journal of the American Statistical Association, 70(351a), 674-680.
 """
-struct GalambosTail{T} <: Tail{2}
+struct GalambosTail{T} <: Tail2
   θ::T
   function GalambosTail(θ)
     θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
-    T = promote_type(typeof(θ))
-    new{T}(T(θ))
+    θ == 0 && return NoTail()
+    isinf(θ) && return MTail()
+    new{typeof(float(θ))}(float(θ))
   end
 end
 
 const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
-Distributions.params(C::ExtremeValueCopula{2, GalambosTail{T}}) where {T} = (C.E.θ,)
-needs_binary_search(C::ExtremeValueCopula{2, GalambosTail{T}}) where {T} = (C.E.θ > 19.5)
+GalambosCopula(θ) =ExtremeValueCopula(GalambosTail(θ))
+Distributions.params(tail::GalambosTail) = (tail.θ,)
 
+needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
 function A(E::GalambosTail, t::Real)
   tt = _safett(t)
   θ  = E.θ
@@ -47,15 +49,5 @@ function A(E::GalambosTail, t::Real)
     return max(tt, 1-tt)
   else
     return -LogExpFunctions.expm1(-LogExpFunctions.logaddexp(-θ*log(tt), -θ*log(1-tt)) / θ)
-  end
-end
-
-function GalambosCopula(θ)
-  if θ == 0
-    return IndependentCopula(2)
-  elseif isinf(θ)
-    return MCopula(2)
-  else
-    return ExtremeValueCopula(GalambosTail(θ))
   end
 end

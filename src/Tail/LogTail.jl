@@ -1,13 +1,13 @@
 """
-    MixedTail{T}
+    LogTail{T}
 
 Fields:
   - θ::Real — dependence parameter, θ ∈ [0,1]
 
 Constructor
 
-    MixedCopula(θ)
-    ExtremeValueCopula(MixedTail(θ))
+    LogCopula(θ)
+    ExtremeValueCopula(LogTail(θ))
 
 The (bivariate) Mixed extreme-value copula is parameterized by ``\\theta \\in [0,1]``.
 Its Pickands dependence function is
@@ -23,27 +23,21 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
-struct MixedTail{T} <: Tail{2}
-θ::T
-function MixedTail(θ)
-(0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in \[0,1]"))
-return new{typeof(θ)}(θ)
-end
+struct LogTail{T} <: Tail2
+    θ::T
+    function LogTail(θ)
+        (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in \[0,1]"))
+        θ == 0 && return NoTail()
+        return new{typeof(θ)}(θ)
+    end
 end
 
-const MixedCopula{T} = ExtremeValueCopula{2, MixedTail{T}}
-Distributions.params(C::ExtremeValueCopula{2,MixedTail{T}}) where {T} = (C.E.θ,)
+const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
+LogCopula(θ) = ExtremeValueCopula(LogTail(θ))
+Distributions.params(C::LogTail) = (C.E.θ,)
 
-function A(E::MixedTail, t::Real)
+function A(E::LogTail, t::Real)
     tt = _safett(t)
     θ  = E.θ
     return θ*tt^2 - θ*tt + 1
-end
-
-function MixedCopula(θ)
-    if θ == 0
-        return IndependentCopula(2)
-    else
-        return ExtremeValueCopula(MixedTail(θ))
-    end
 end
