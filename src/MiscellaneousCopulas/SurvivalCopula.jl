@@ -52,7 +52,7 @@ function _cdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI}
     return r1 - r2
 end 
 Distributions._logpdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI} = Distributions._logpdf(C.C,reverse(u, C.indices))
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,VI}, x::AbstractVector{T}) where {d,CT,VI,T}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,VI}, x::AbstractVector{T}) where {d,CT,VI,T<:Real}
     Distributions._rand!(rng,C.C,x)
     reverse!(x, C.indices)
 end
