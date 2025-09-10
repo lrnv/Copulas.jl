@@ -26,12 +26,12 @@ References:
 struct LogTail{T} <: Tail2
     θ::T
     function LogTail(θ)
-
         !(1 <= θ) && throw(ArgumentError(" The param θ must be in [1, ∞)"))
         θ == 1 && return NoTail()
         isinf(θ) && return MTail()
         θ, _ = promote(θ, 1.0)
         return new{typeof(θ)}(θ)
+    end
 end
 
 const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
