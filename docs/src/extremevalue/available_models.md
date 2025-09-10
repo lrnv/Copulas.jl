@@ -4,6 +4,17 @@ CurrentModule = Copulas
 
 # [Extreme Values Tails](@id available_extreme_models)
 
+## `MTail`
+```@docs
+MTail
+```
+
+
+## `NoTail`
+```@docs
+NoTail
+```
+
 ## `AsymGalambosTail`
 ```@docs
 AsymGalambosTail
