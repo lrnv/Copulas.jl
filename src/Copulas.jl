@@ -53,6 +53,7 @@ module Copulas
     include("UnivariateDistribution/Distortions/BivEVDistortion.jl")
     include("UnivariateDistribution/Distortions/PlackettDistortion.jl")
     include("UnivariateDistribution/Distortions/BivFGMDistortion.jl")
+    include("UnivariateDistribution/Distortions/BivArchimaxDistortion.jl")
     include("UnivariateDistribution/Distortions/MDistortion.jl")
     include("UnivariateDistribution/Distortions/WDistortion.jl")
     include("UnivariateDistribution/Distortions/FlipDistortion.jl")

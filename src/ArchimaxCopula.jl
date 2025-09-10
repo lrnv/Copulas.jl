@@ -41,6 +41,9 @@ ArchimaxCopula(d, gen::Generator, ::NoTail) = ArchimedeanCopula(d, gen)
 ArchimaxCopula(d, ::IndependentGenerator, tail::Tail) = ExtremeValueCopula(d, tail) 
 Distributions.params(C::ArchimaxCopula) = (_as_tuple(Distributions.params(C.gen))..., _as_tuple(Distributions.params(C.tail))...)
 
+# Fast conditional distortion binding (bivariate)
+DistortionFromCop(C::ArchimaxCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivArchimaxDistortion(C.gen, C.tail, Int8(js[1]), float(uⱼₛ[1]))
+
 # --- CDF ---
 function _cdf(C::ArchimaxCopula{2}, u)
     u1, u2 = u
