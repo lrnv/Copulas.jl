@@ -1,13 +1,16 @@
-#@testitem "Generic" tags=[:ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(0.50, 1.60)) end
-#@testitem "Generic" tags=[:ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(2.50, 0.40)) end
-#@testitem "Generic" tags=[:ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(3.0, 2.1)) end
+# @testitem "Generic" tags=[:ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(0.50, 1.60)) end
+# @testitem "Generic" tags=[:ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(2.50, 0.40)) end
+# @testitem "Generic" tags=[:ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(3.0, 2.1)) end
 
-#@testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(1.50, 1.60)) end
-#@testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(2.50, 0.40)) end
-#@testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(5.0, 0.5)) end
+# @testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(1.50, 1.60)) end
+# @testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(2.50, 0.40)) end
+# @testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(5.0, 0.5)) end
+
+# For each model below, we shoudl move them to generic testing
+# @testitem "Generic" tags=[:ArchimaxCopula] setup=[M] begin M.check(ArchimaxCopula(2, ClaytonGenerator(1.2), AsymLogTail(1.2, [0.2, 0.5]))) end
 
 
-@testitem "Archimax_specific" tags=[:Archimax] begin
+@testitem "Archimax_specific" tags=[:ArchimaxCopula] begin
 # ===================== test/Archimax_selected.jl =====================
     using Test
     using Random, StatsBase, HypothesisTests
@@ -104,10 +107,10 @@
     )
 
     EVC_SPECS = Dict{Symbol,Any}(
-        :Log        => (θs = [2.0, 1.5],       ctor = θ -> LogTail(θ)),            # includeA≡1 (θ=1)
-        :Galambos   => (θs = [0.7, 2.5],       ctor = θ -> GalambosTail(θ)),
-        :HS         => (θs = [0.6, 1.8],       ctor = θ -> HuslerReissTail(θ)),             
-        :AsymGal    => (triples = [(0.35, 0.65, 0.3)], ctor = (a,b,θ) -> AsymGalambosTail(a, [b,θ])),
+        :Log        => (θs = [2.0, 1.5],       ctor = θ -> Copulas.LogTail(θ)),            # includeA≡1 (θ=1)
+        :Galambos   => (θs = [0.7, 2.5],       ctor = θ -> Copulas.GalambosTail(θ)),
+        :HS         => (θs = [0.6, 1.8],       ctor = θ -> Copulas.HuslerReissTail(θ)),             
+        :AsymGal    => (triples = [(0.35, 0.65, 0.3)], ctor = (a,b,θ) -> Copulas.AsymGalambosTail(a, [b,θ])),
     )
 
     KS_ALPHA = 0.005
