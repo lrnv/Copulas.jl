@@ -170,35 +170,35 @@ module Copulas
            BB4Copula,
            BB5Copula
 
-    using PrecompileTools
-    @setup_workload begin
-        # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
-        # precompile file and potentially make loading faster.
-        @compile_workload begin
-            for C in (
-                IndependentCopula(3),
-                AMHCopula(3,0.6),
-                AMHCopula(4,-0.01),
-                ClaytonCopula(2,-0.7),
-                ClaytonCopula(3,-0.1),
-                ClaytonCopula(4,7),
-                FrankCopula(2,-5),
-                FrankCopula(3,12),
-                JoeCopula(3,7),
-                GumbelCopula(4,7),
-                GaussianCopula([1 0.5; 0.5 1]),
-                TCopula(4, [1 0.5; 0.5 1]),
-                FGMCopula(2,1),
-            )
-                u1 = rand(C)
-                u = rand(C,2)
-                if applicable(Distributions.pdf,C,u1)
-                    Distributions.pdf(C,u1)
-                    Distributions.pdf(C,u)
-                end
-                Distributions.cdf(C,u1)
-                Distributions.cdf(C,u)
-            end
-        end
-    end
+    # using PrecompileTools
+    # @setup_workload begin
+    #     # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
+    #     # precompile file and potentially make loading faster.
+    #     @compile_workload begin
+    #         for C in (
+    #             IndependentCopula(3),
+    #             AMHCopula(3,0.6),
+    #             AMHCopula(4,-0.01),
+    #             ClaytonCopula(2,-0.7),
+    #             ClaytonCopula(3,-0.1),
+    #             ClaytonCopula(4,7),
+    #             FrankCopula(2,-5),
+    #             FrankCopula(3,12),
+    #             JoeCopula(3,7),
+    #             GumbelCopula(4,7),
+    #             GaussianCopula([1 0.5; 0.5 1]),
+    #             TCopula(4, [1 0.5; 0.5 1]),
+    #             FGMCopula(2,1),
+    #         )
+    #             u1 = rand(C)
+    #             u = rand(C,2)
+    #             if applicable(Distributions.pdf,C,u1)
+    #                 Distributions.pdf(C,u1)
+    #                 Distributions.pdf(C,u)
+    #             end
+    #             Distributions.cdf(C,u1)
+    #             Distributions.cdf(C,u)
+    #         end
+    #     end
+    # end
 end

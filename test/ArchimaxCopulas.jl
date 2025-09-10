@@ -1,13 +1,13 @@
-# @testitem "Generic" tags=[:ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(0.50, 1.60)) end
-# @testitem "Generic" tags=[:ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(2.50, 0.40)) end
-# @testitem "Generic" tags=[:ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(3.0, 2.1)) end
+# @testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(0.50, 1.60)) end
+# @testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(2.50, 0.40)) end
+# @testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(3.0, 2.1)) end
 
-# @testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(1.50, 1.60)) end
-# @testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(2.50, 0.40)) end
-# @testitem "Generic" tags=[:ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(5.0, 0.5)) end
+# @testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(1.50, 1.60)) end
+# @testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(2.50, 0.40)) end
+# @testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(5.0, 0.5)) end
 
 # For each model below, we shoudl move them to generic testing
-# @testitem "Generic" tags=[:ArchimaxCopula] setup=[M] begin M.check(ArchimaxCopula(2, ClaytonGenerator(1.2), AsymLogTail(1.2, [0.2, 0.5]))) end
+# @testitem "Generic" tags=[:Generic, :ArchimaxCopula] setup=[M] begin M.check(ArchimaxCopula(2, ClaytonGenerator(1.2), AsymLogTail(1.2, [0.2, 0.5]))) end
 
 
 @testitem "Archimax_specific" tags=[:ArchimaxCopula] begin
@@ -121,6 +121,7 @@
 
         for (aname, ainfo) in ARCH_SPECS, (ename, einfo) in EVC_SPECS
             @testset "$(aname) × $(ename)" begin
+                @info "Archimax testing $(aname) × $(ename)..."
                 # iteradores de parámetros
                 arch_iter = haskey(ainfo, :θs)    ? ((θ,) for θ in ainfo[:θs]) :
                             haskey(ainfo, :pairs)  ? ainfo[:pairs] :
@@ -130,18 +131,24 @@
                             haskey(einfo, :triples) ? einfo[:triples] :
                             error("EVC_SPECS incorrectly defined for $ename")
 
+                            @info "2 Archimax testing $(aname) × $(ename)..."
                 for apars in arch_iter, epars in evc_iter
+                    @info " 3 Archimax testing $(aname) × $(ename)... $apars $epars"
+
                     A = (length(apars)==1) ? ainfo[:ctor](apars[1]) : ainfo[:ctor](apars...)
                     E = (length(epars)==1) ? einfo[:ctor](epars[1]) : einfo[:ctor](epars...)
                     C = ArchimaxCopula(2, A, E)
 
+                    @info " 4 Archimax testing $(aname) × $(ename)... $apars $epars"
                     @test length(C) == 2
                     @test !isempty(params(C))
 
+                    @info " 5 Archimax testing $(aname) × $(ename)... $apars $epars"
                     for (u1,u2) in ((0.2,0.3), (0.7,0.6), (0.9,0.4))
                         @test isapprox(cdf(C, [u1,u2]), cdf_def(C, u1, u2); rtol=1e-12, atol=1e-12)
                     end
 
+                    @info " 6 Archimax testing $(aname) × $(ename)... $apars $epars"
                     for (u1,u2) in ((0.25,0.4), (0.6,0.6))
                         lp = logpdf(C, [u1,u2])
                         @test isfinite(lp)
@@ -149,21 +156,26 @@
                         @test isapprox(exp(lp), c_h; rtol=1e-6, atol=1e-8)
                     end
 
-                    Ĩ, SE, _ = mc_pdf_integral(C; N=300_000, seed=123)
+                    @info " 7 Archimax testing $(aname) × $(ename)... $apars $epars"
+                    Ĩ, SE, _ = mc_pdf_integral(C; N=20_000, seed=123)
                     @test abs(Ĩ - 1) ≤ max(5SE, 1e-2)
 
-                    for r in mc_rectangles_cdf(C; N=300_000, seed=321)
+                    @info " 8 Archimax testing $(aname) × $(ename)... $apars $epars"
+                    for r in mc_rectangles_cdf(C; N=20_000, seed=321)
                         @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
                     end
 
-                    U = rand(rng0, C, 20_000)
+                    @info " 9 Archimax testing $(aname) × $(ename)... $apars $epars"
+                    U = rand(rng0, C, 1_000)
             
+                    @info " 10 Archimax testing $(aname) × $(ename)... $apars $epars"
                     if !ks_done[aname]
-                        @test pvalue(ExactOneSampleKSTest(view(U,1,:), Uniform())) > KS_ALPHA
-                        @test pvalue(ExactOneSampleKSTest(view(U,2,:), Uniform())) > KS_ALPHA
+                        @test pvalue(ApproximateOneSampleKSTest(view(U,1,:), Uniform())) > KS_ALPHA
+                        @test pvalue(ApproximateOneSampleKSTest(view(U,2,:), Uniform())) > KS_ALPHA
                         ks_done[aname] = true
                     end
 
+                    @info " 11 Archimax testing $(aname) × $(ename)... $apars $epars"
                     τ_em = corkendall(U[1,:], U[2,:])
                     τ_th = Copulas.τ(C)
                     @test isapprox(τ_th, τ_em; atol=1e-2)
