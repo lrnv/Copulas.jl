@@ -62,7 +62,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMat
     return A
 end
 function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
-    (u==zero(u) || u==one(u)) && return Inf 
+    d = length(C)
+    (u==zeros(d) || u==ones(d)) && return Inf 
     x = StatsBase.quantile.(U(CT),u)
     return Distributions.logpdf(N(CT)(C.Σ),x) - sum(Distributions.logpdf.(U(CT),x))
 end
