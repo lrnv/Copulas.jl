@@ -114,7 +114,7 @@ module Copulas
     include("Tail/MOTail.jl")
     include("Tail/tEVTail.jl")
 
-    # Archimax copulas
+    # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
     # overloadings of the show() function: 
