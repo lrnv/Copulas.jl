@@ -169,11 +169,12 @@ end
 # Conditioning colocated
 function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
     @assert length(js) == length(uⱼₛ)
-    sJ = zero(eltype(uⱼₛ))
+    T = eltype(uⱼₛ)
+    sJ = zero(T)
     @inbounds for u in uⱼₛ
-        sJ += ϕ⁻¹(C.G, float(u))
+        sJ += ϕ⁻¹(C.G, u)
     end
-    return ArchimedeanDistortion(C.G, p, float(sJ), ϕ⁽ᵏ⁾(C.G, Val{p}(), sJ))
+    return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, Val{p}(), sJ))))
 end
 
 # Conditional copula specialization: remains Archimedean with a tilted generator
