@@ -305,3 +305,55 @@ end
 #     end
 # end
 
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin 
+    # Test PowerGenerator with GumbelGenerator
+    using Distributions
+    G = Copulas.GumbelGenerator(1.7)
+    PG = Copulas.PowerGenerator(G, 1, 2)
+    M.check(ArchimedeanCopula(2, PG))
+end
+
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin 
+    # Test PowerGenerator with ClaytonGenerator
+    using Distributions
+    G = Copulas.ClaytonGenerator(1.8)
+    PG = Copulas.PowerGenerator(G, 2, 1.5)
+    M.check(ArchimedeanCopula(2, PG))
+end
+
+@testitem "PowerGenerator specific tests" tags=[:ArchimedeanCopula, :PowerGenerator] begin
+    using Distributions
+    using StableRNGs
+    rng = StableRNG(123)
+    
+    # Test basic PowerGenerator properties
+    G = Copulas.GumbelGenerator(1.7)
+    PG = Copulas.PowerGenerator(G, 1, 2)
+    
+    # Test that α=1, β=1 returns original generator
+    @test Copulas.PowerGenerator(G, 1, 1) === G
+    
+    # Test Kendall's tau preservation
+    @test Copulas.τ(PG) ≈ Copulas.τ(G)
+    
+    # Test basic function properties
+    @test Copulas.ϕ(PG, 0.0) ≈ 1.0
+    @test 0 < Copulas.ϕ(PG, 0.5) < 1
+    @test Copulas.ϕ⁻¹(PG, Copulas.ϕ(PG, 0.5)) ≈ 0.5
+    
+    # Test with copula
+    C = ArchimedeanCopula(2, PG)
+    data = rand(rng, C, 20)
+    @test size(data) == (2, 20)
+    @test all(0 .<= data .<= 1)
+    
+    # Test pdf and cdf
+    for i in 1:5
+        point = data[:, i]
+        p = pdf(C, point)
+        c = cdf(C, point)
+        @test p >= 0
+        @test 0 <= c <= 1
+    end
+end
+
