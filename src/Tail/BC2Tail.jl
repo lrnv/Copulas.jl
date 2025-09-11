@@ -1,62 +1,65 @@
 """
-    BC2Copula{P}
+    BC2Tail{T}
 
 Fields:
+  - a::Real — parameter (a ∈ [0,1])
+  - b::Real — parameter (b ∈ [0,1])
 
-    - a::Real - parameter
-    - a::Real - parameter
-    
 Constructor
 
     BC2Copula(a, b)
+    ExtremeValueCopula(2, BC2Tail(a, b))
 
-The bivariate BC2 copula is parameterized by two parameters ``a,b \\in [0,1]``. It is an Extreme value copula with Pickands dependence function: 
+The bivariate BC2 extreme-value copula is parameterized by two parameters ``a, b \\in [0,1]``. Its Pickands dependence function is
 
 ```math
-A(t) = \\max\\{a t, b (1-t) \\} + \\max\\{(1-a)t, (1-b)(1-t)\\}
+A(t) = \\max\\{a t, b (1-t) \\} + \\max\\{(1-a)t, (1-b)(1-t)\\}, \\quad t \\in [0,1].
 ```
 
 References:
+
 * [mai2011bivariate](@cite) Mai, J. F., & Scherer, M. (2011). Bivariate extreme-value copulas with discrete Pickands dependence measure. Extremes, 14, 311-324. Springer, 2011.
 """
-struct BC2Copula{P} <: ExtremeValueCopula{P}
-    a::P
-    b::P
-    function BC2Copula(a,b)
+struct BC2Tail{T} <: Tail2
+    a::T
+    b::T
+    function BC2Tail(a, b)
         T = promote_type(typeof(a), typeof(b))
-        if !(0 <= a <= 1) || !(0 <= b <= 1) 
-            throw(ArgumentError("Both parameters a and b must be in [0,1]"))
-        end
-        a,b, _ = promote(a, b, 1.0)
+        (0 ≤ a ≤ 1) || throw(ArgumentError("a must be in [0,1]"))
+        (0 ≤ b ≤ 1) || throw(ArgumentError("b must be in [0,1]"))
         return new{T}(T(a), T(b))
     end
 end
 
+const BC2Copula{T} = ExtremeValueCopula{2, BC2Tail{T}}
+BC2Copula(a, b) = ExtremeValueCopula(2, BC2Tail(a, b))
+Distributions.params(tail::BC2Tail) = (tail.a, tail.b)
 
-function A(C::BC2Copula, t::Real)
-    a, b = C.a, C.b
-    return max(a*t, b*(1-t)) + max((1-a)*t, (1-b)*(1-t))
+function A(tail::BC2Tail, t::Real)
+    tt = _safett(t)
+    a, b = tail.a, tail.b
+    return max(a*tt, b*(1-tt)) + max((1-a)*tt, (1-b)*(1-tt))
 end
 
+τ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T} = 1 - abs(C.tail.a - C.tail.b)
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::BC2Copula, u::AbstractVector{T}) where {T<:Real}
-    a, b = C.a, C.b
+function ρ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T}
+    a, b = C.tail.a, C.tail.b
+    num = 2 * (a + b + a*b + max(a,b) - 2a^2 - 2b^2)
+    den = (3 - a - b - min(a,b)) * (a + b + max(a,b))
+    return num / den
+end
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, BC2Tail{T}}, u::AbstractVector{S}) where {T,S<:Real}
+    a, b = C.tail.a, C.tail.b
     v1, v2 = rand(rng, Distributions.Uniform(0,1), 2)
     u[1] = max(v1^(1/a), v2^(1/(1-a)))
     u[2] = max(v1^(1/b), v2^(1/(1-b)))
     return u
 end
 
-τ(C::BC2Copula) = 1 - abs(C.a - C.b)
-
-function ρ(C::BC2Copula)
-    a,b = C.a, C.b
-    return 2 * (a + b + a*b + max(a,b) - 2a^2 - 2b^2) / (3 - a - b - min(a,b)) / (a + b + max(a,b))
-end
-
-function Distributions.logcdf(D::BivEVDistortion{<:BC2Copula, T}, z::Real) where T
-    C = D.C
-    a, b = C.a, C.b
+function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{T}, S}, z::Real) where {T,S}
+    a, b = D.tail.a, D.tail.b
 
     if !(0.0 < z < 1.0)
         return z <= 0 ? T(-Inf) : T(0.0)
@@ -119,9 +122,8 @@ function Distributions.logcdf(D::BivEVDistortion{<:BC2Copula, T}, z::Real) where
     end
 end
 
-function Distributions.quantile(D::BivEVDistortion{<:BC2Copula}, α::Real)
-    C = D.C
-    a, b = C.a, C.b
+function Distributions.quantile(D::BivEVDistortion{BC2Tail{T}, S}, α::Real) where {T, S}
+    a, b = D.tail.a, D.tail.b
     t = D.uⱼ
     if !(0.0 <= α <= 1.0)
         throw(ArgumentError("α must be in [0,1]"))

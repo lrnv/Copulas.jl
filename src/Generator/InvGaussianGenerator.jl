@@ -9,23 +9,23 @@ Constructor
     InvGaussianGenerator(θ)
     InvGaussianCopula(d,θ)
 
-The Inverse Gaussian copula in dimension ``d`` is parameterized by ``\\theta \\in [0,\\infty)``. It is an Archimedean copula with generator :
+The Inverse Gaussian copula in dimension ``d`` is parameterized by ``\\theta \\in [0,\\infty)``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = \\exp{\\frac{1-\\sqrt{1+2θ^{2}t}}{θ}}.
+\\phi(t) = \\exp\\left( \\frac{1 - \\sqrt{1 + 2\\theta^{2} t}}{\\theta} \\right).
 ```
 
 More details about Inverse Gaussian Archimedean copula are found in :
 
     Mai, Jan-Frederik, and Matthias Scherer. Simulating copulas: stochastic models, sampling algorithms, and applications. Vol. 6. # N/A, 2017. Page 74.
 
-It has a few special cases:
+Special cases:
 - When θ = 0, it is the IndependentCopula
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct InvGaussianGenerator{T} <: Generator
+struct InvGaussianGenerator{T} <: AbstractFrailtyGenerator
     θ::T
     function InvGaussianGenerator(θ)
         if θ < 0
@@ -42,7 +42,6 @@ const InvGaussianCopula{d, T}   = ArchimedeanCopula{d, InvGaussianGenerator{T}}
 InvGaussianCopula(d, θ)   = ArchimedeanCopula(d, InvGaussianGenerator(θ))
 Distributions.params(G::InvGaussianGenerator) = (G.θ,)
 
-max_monotony(G::InvGaussianGenerator) = Inf
 ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
 ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? ln(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))
 # ϕ⁽¹⁾(G::InvGaussianGenerator, t) =  First derivative of ϕ
@@ -78,4 +77,4 @@ function τ⁻¹(::Type{T}, tau) where T<:InvGaussianGenerator
     end
     return Roots.find_zero(x -> _invgaussian_tau(x) - tau, (sqrt(eps(tau)), Inf))
 end
-williamson_dist(G::InvGaussianGenerator, ::Val{d}) where d = WilliamsonFromFrailty(Distributions.InverseGaussian(G.θ,1), Val{d}())
+frailty(G::InvGaussianGenerator) = Distributions.InverseGaussian(G.θ,1)

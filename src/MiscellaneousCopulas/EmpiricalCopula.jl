@@ -1,20 +1,26 @@
 """
-    EmpiricalCopula{d,MT} 
+    EmpiricalCopula{d, MT}
 
 Fields:
-* u::MT - the matrix of observations. 
+- `u::MT` — pseudo-observation matrix of size `(d, N)`.
 
 Constructor
 
-    EmpiricalCopula(u;pseudos=true)
+    EmpiricalCopula(u; pseudo_values=true)
 
-The EmpiricalCopula in dimension ``d`` is parameterized by a pseudo-data matrix which should have shape (d,N). Its expression is given as :  
+The empirical copula in dimension ``d`` is defined from a matrix of pseudo-observations
+``\\mathbf u = (u_{i,j})_{1\\le i \\le d,\\ 1\\le j \\le N}`` with entries in ``[0,1]``.
+Its distribution function is
 
 ```math
-C(\\mathbf x) = \\frac{1}{N}\\sum_{i=1}^n \\mathbf 1_{\\mathbf u_i \\le \\mathbf x}
+C(\\mathbf{x}) = \\frac{1}{N} \\sum_{j=1}^{N} \\mathbf{1}_{\\{ \\mathbf{u}_{\\cdot,j} \\le \\mathbf{x} \\}} ,
 ```
 
-This function is very practical, be be aware that this is not a true copula (since ``\\mathbf u`` are only pseudo-observations). The constructor allows you to pass dirctly pseudo-observations (the default) or will compute them for you. You can then compute the `cdf` of the copula, and sample it through the standard interface.
+where the inequality is componentwise. If `pseudo_values=false`, the constructor first ranks the raw data into pseudo-observations; otherwise it assumes `u` already contains pseudo-observations in ``[0,1]``.
+
+Notes:
+- This is an empirical object based on pseudo-observations; it is not necessarily a true copula for finite ``N`` but is widely used for nonparametric inference.
+- Supports `cdf`, `logpdf` at observed points, random sampling, and subsetting.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
@@ -33,9 +39,6 @@ function EmpiricalCopula(u;pseudo_values=true)
         @assert all(0 .<= u .<= 1)
     end
     return EmpiricalCopula{d,typeof(u)}(u)
-end
-function Base.show(io::IO, C::EmpiricalCopula)
-    print(io, "EmpiricalCopula{d}$(size(C.u))")
 end
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return sum(all(C.u .<= u,dims=1))/size(C.u,2) # might not be very efficient implementation. 

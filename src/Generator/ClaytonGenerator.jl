@@ -7,18 +7,20 @@ Fields:
 Constructor
 
     ClaytonGenerator(θ)
-    ClaytonCopula(d,θ)
+    ClaytonCopula(d, θ)
 
-The [Clayton](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1/(d-1),\\infty)``. It is an Archimedean copula with generator :
+The [Clayton](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1/(d-1),\\infty)`` (with the independence case as the limit ``\\theta\\to 0``). It is an Archimedean copula with generator
 
 ```math
-\\phi(t) = \\left(1+\\mathrm{sign}(\\theta)*t\\right)^{-1\\frac{1}{\\theta}}
+\\phi(t) = \\left(1 + \\theta t\\right)^{-1/\\theta}
 ```
 
-It has a few special cases:
-- When θ = -1/(d-1), it is the WCopula (Lower Frechet-Hoeffding bound)
-- When θ = 0, it is the IndependentCopula
-- When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
+with the continuous extension ``\\phi(t) = e^{-t}`` at ``\\theta = 0``.
+
+Special cases (for the copula in dimension ``d``):
+- When ``\\theta = -1/(d-1)``, it is the WCopula (Lower Fréchet–Hoeffding bound)
+- When ``\\theta \\to 0``, it is the IndependentCopula
+- When ``\\theta \\to \\infty``, it is the MCopula (Upper Fréchet–Hoeffding bound)
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
@@ -57,6 +59,7 @@ max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1/G.θ))
 τ⁻¹(::Type{T},τ) where T<:ClaytonGenerator = ifelse(τ == 1,Inf,2τ/(1-τ))
 williamson_dist(G::ClaytonGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ), Val{d}()) : ClaytonWilliamsonDistribution(G.θ,d)
 
+frailty(G::ClaytonGenerator) = G.θ >= 0 ? Distributions.Gamma(1/G.θ, G.θ) : throw(ArgumentError("Clayton frailty is only defined for θ ≥ 0 (positive dependence). Got θ = $(G.θ)."))
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, A::DenseMatrix{<:Real})
     A[:] = inverse_rosenblatt(C, rand(rng, size(A)...))
     return A

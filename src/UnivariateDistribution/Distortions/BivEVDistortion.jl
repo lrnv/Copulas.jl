@@ -1,8 +1,8 @@
 ###########################################################################
 #####  Bivariate Extreme Value Copulas fast-path (d=2, p=1)
 ###########################################################################
-struct BivEVDistortion{TC,T} <: Distortion
-    C::TC
+struct BivEVDistortion{TT,T} <: Distortion
+    tail::TT
     j::Int8
     uⱼ::T
 end
@@ -19,7 +19,7 @@ function Distributions.logcdf(D::BivEVDistortion, z::Real)
         x, y = -log(z), -log(D.uⱼ)
         s = x + y
         w = x / s
-        Aw, dAw = A(D.C, w), dA(D.C, w)
+        Aw, dAw = A(D.tail, w), dA(D.tail, w)
         tolog = Aw - w * dAw
         logval = -s * Aw + y
     else
@@ -27,7 +27,7 @@ function Distributions.logcdf(D::BivEVDistortion, z::Real)
         x, y = -log(D.uⱼ), -log(z)
         s = x + y
         w = x / s
-        Aw, dAw = A(D.C, w), dA(D.C, w)
+        Aw, dAw = A(D.tail, w), dA(D.tail, w)
         tolog = Aw + (1 - w) * dAw
         logval = -s * Aw + x
     end

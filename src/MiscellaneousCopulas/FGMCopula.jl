@@ -8,15 +8,15 @@ Constructor
 
     FGMCopula(d, θ)
 
-The Multivariate Farlie-Gumbel-Morgenstern (FGM) copula of dimension d has ``2^d-d-1`` parameters ``\\theta`` and function
+The multivariate Farlie–Gumbel–Morgenstern (FGM) copula of dimension d has ``2^d-d-1`` parameters ``\\theta`` and
 
 ```math
 C(\\boldsymbol{u})=\\prod_{i=1}^{d}u_i \\left[1+ \\sum_{k=2}^{d}\\sum_{1 \\leq j_1 < \\cdots < j_k \\leq d} \\theta_{j_1 \\cdots j_k} \\bar{u}_{j_1}\\cdots \\bar{u}_{j_k} \\right],
 ```
 
-where `` \\bar{u}=1-u``.
+where ``\\bar{u} = 1 - u``.
 
-It has a few special cases:
+Special cases:
 - When d=2 and θ = 0, it is the IndependentCopula.
 
 More details about Farlie-Gumbel-Morgenstern (FGM) copula are found in [nelsen2006](@cite).
@@ -50,9 +50,6 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
         fᵢ = Distributions.DiscreteNonParametric(0:(2^d-1), (1 .+ wᵢ)/2^d)
         return new{d, typeof(vθ), typeof(fᵢ)}(vθ, fᵢ)
     end
-end
-function Base.show(io::IO, C::FGMCopula{d, Tθ, Tf}) where {d, Tθ, Tf}
-    print(io, "FGMCopula{$d}(θ = $(C.θ))")
 end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
 function _fgm_red(θ, v)

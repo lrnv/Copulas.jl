@@ -10,16 +10,16 @@ Constructor
     BB10Generator(θ, δ)
     BB10Copula(d, θ, δ)
 
-The BB10 copula is parameterized by ``\\theta, \\in (0,\\infty)`` and ``\\delta \\in [0, 1]``. It is an Archimedean copula with generator :
+The BB10 copula has parameters ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [0, 1]``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = \\Big(\\tfrac{1-\\delta}{e^{s}-\\delta}\\Big)^{1/\\theta},
+\\phi(t) = \\Big(\\tfrac{1-\\delta}{e^{t}-\\delta}\\Big)^{1/\\theta},
 ```
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.206-207
 """
-struct BB10Generator{T} <: Generator
+struct BB10Generator{T} <: AbstractFrailtyGenerator
     θ::T          # θ > 0
     δ::T          # 0 ≤ δ ≤ 1
     function BB10Generator(θ, δ)
@@ -37,7 +37,6 @@ end
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
 BB10Copula(d, θ, δ) = ArchimedeanCopula(2, BB10Generator(θ, δ))
 Distributions.params(G::BB10Generator) = (G.θ, G.δ)
-max_monotony(::BB10Generator) = Inf
 
 ϕ(G::BB10Generator, s) = begin
     θ, δ = G.θ, G.δ
@@ -70,8 +69,7 @@ end
     num/den
 end
 
-williamson_dist(G::BB10Generator, ::Val{d}) where d = WilliamsonFromFrailty(ShiftedNegBin(inv(G.θ), 1 - G.δ), Val{d}())
-
+frailty(G::BB10Generator) = ShiftedNegBin(inv(G.θ), 1 - G.δ)
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
     θ, δ = C.G.θ, C.G.δ
     uθ, vθ = u[1]^θ, u[2]^θ
