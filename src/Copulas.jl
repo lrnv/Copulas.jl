@@ -40,7 +40,6 @@ module Copulas
     include("UnivariateDistribution/Frailties/ShiftedNegBin.jl")
 
     # Radials (Univ r.v. on R_+ which Williamson d-transform are used as arch. generators)
-    include("UnivariateDistribution/Radials/ExtremeDist.jl")
     include("UnivariateDistribution/Radials/PStable.jl")
     include("UnivariateDistribution/Radials/TiltedPositiveStable.jl")
     include("UnivariateDistribution/Radials/ClaytonWilliamsonDistribution.jl")
@@ -53,9 +52,14 @@ module Copulas
     include("UnivariateDistribution/Distortions/BivEVDistortion.jl")
     include("UnivariateDistribution/Distortions/PlackettDistortion.jl")
     include("UnivariateDistribution/Distortions/BivFGMDistortion.jl")
+    include("UnivariateDistribution/Distortions/BivArchimaxDistortion.jl")
     include("UnivariateDistribution/Distortions/MDistortion.jl")
     include("UnivariateDistribution/Distortions/WDistortion.jl")
     include("UnivariateDistribution/Distortions/FlipDistortion.jl")
+    include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
+
+    # Others, usefull too 
+    include("UnivariateDistribution/ExtremeDist.jl")
 
     # Miscelaneous copulas
     include("MiscellaneousCopulas/SurvivalCopula.jl")
@@ -74,11 +78,9 @@ module Copulas
 
     # Archimedean copulas
     include("Generator.jl")
-    include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
-    include("Generator/TiltedGenerator.jl")
     include("ArchimedeanCopula.jl")
-    include("Generator/FrailtyGenerator.jl")
-    include("Generator/WilliamsonGenerator.jl")
+
+    # Generators
     include("Generator/AMHGenerator.jl")
     include("Generator/BB1Generator.jl")
     include("Generator/BB2Generator.jl")
@@ -96,19 +98,30 @@ module Copulas
     include("Generator/JoeGenerator.jl")
     include("Generator/PowerGenerator.jl")
 
-    # Bivariate Extreme Value Copulas
+    #Extreme value copulas
+    include("Tail.jl")
     include("ExtremeValueCopula.jl")
-    include("ExtremeValueCopulas/AsymGalambosCopula.jl")
-    include("ExtremeValueCopulas/AsymLogCopula.jl")
-    include("ExtremeValueCopulas/AsymMixedCopula.jl")
-    include("ExtremeValueCopulas/BC2Copula.jl")
-    include("ExtremeValueCopulas/CuadrasAugeCopula.jl")
-    include("ExtremeValueCopulas/GalambosCopula.jl")
-    include("ExtremeValueCopulas/HuslerReissCopula.jl")
-    include("ExtremeValueCopulas/LogCopula.jl")
-    include("ExtremeValueCopulas/MixedCopula.jl")
-    include("ExtremeValueCopulas/MOCopula.jl")
-    include("ExtremeValueCopulas/tEVCopula.jl")
+
+    # Stable tail dependence functions
+    include("Tail/NoTail.jl")
+    include("Tail/MTail.jl")
+    include("Tail/AsymGalambosTail.jl")
+    include("Tail/AsymLogTail.jl")
+    include("Tail/AsymMixedTail.jl")
+    include("Tail/BC2Tail.jl")
+    include("Tail/CuadrasAugeTail.jl")
+    include("Tail/GalambosTail.jl")
+    include("Tail/HuslerReissTail.jl")
+    include("Tail/LogTail.jl")
+    include("Tail/MixedTail.jl")
+    include("Tail/MOTail.jl")
+    include("Tail/tEVTail.jl")
+
+    # Archimax copulas (includes the BB4 and BB5 models)
+    include("ArchimaxCopula.jl")
+
+    # overloadings of the show() function: 
+    include("show.jl")
 
     export pseudos, # utility functions and methods making the interface: 
            rosenblatt, 
@@ -155,37 +168,9 @@ module Copulas
            SurvivalCopula,
            TCopula,
            tEVCopula,
-           WCopula
+           WCopula,
+           ArchimaxCopula,
+           BB4Copula,
+           BB5Copula
 
-    using PrecompileTools
-    @setup_workload begin
-        # Putting some things in `@setup_workload` instead of `@compile_workload` can reduce the size of the
-        # precompile file and potentially make loading faster.
-        @compile_workload begin
-            for C in (
-                IndependentCopula(3),
-                AMHCopula(3,0.6),
-                AMHCopula(4,-0.01),
-                ClaytonCopula(2,-0.7),
-                ClaytonCopula(3,-0.1),
-                ClaytonCopula(4,7),
-                FrankCopula(2,-5),
-                FrankCopula(3,12),
-                JoeCopula(3,7),
-                GumbelCopula(4,7),
-                GaussianCopula([1 0.5; 0.5 1]),
-                TCopula(4, [1 0.5; 0.5 1]),
-                FGMCopula(2,1),
-            )
-                u1 = rand(C)
-                u = rand(C,2)
-                if applicable(Distributions.pdf,C,u1)
-                    Distributions.pdf(C,u1)
-                    Distributions.pdf(C,u)
-                end
-                Distributions.cdf(C,u1)
-                Distributions.cdf(C,u)
-            end
-        end
-    end
 end

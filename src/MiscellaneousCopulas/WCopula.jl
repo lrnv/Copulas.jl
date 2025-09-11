@@ -1,13 +1,13 @@
 """
     WCopula
 
-The [Lower Frechet-Hoeffding bound](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Fr%C3%A9chet%E2%80%93Hoeffding_copula_bounds) is the copula with the lowest value among all copulas. Note that ``W`` is only a proper copula when ``d=2``, in greater dimensions it is still the (pointwise) lower bound, but not a copula anymore. For any copula ``C``, if ``W`` and ``M`` are (respectively) the lower and uppder Frechet-Hoeffding bounds, we have that for all ``\\mathbf{u} \\in [0,1]^d``,
+The lower Fréchet–Hoeffding bound is the copula with the smallest value among all copulas. Note that ``W`` is a proper copula only when ``d = 2``; for ``d > 2`` it remains the pointwise lower bound but is not itself a copula. For any copula ``C`` and all ``\\mathbf{u} \\in [0,1]^d``,
 
 ```math
-W(\\mathbf{u}) \\le C(\\mathbf{u}) \\le M(\\mathbf{u})
+W(\\mathbf{u}) \\le C(\\mathbf{u}) \\le M(\\mathbf{u}).
 ```
 
-The two Frechet-Hoeffding bounds are also Archimedean copulas.
+Both Fréchet–Hoeffding bounds are Archimedean copulas.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

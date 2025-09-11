@@ -8,7 +8,7 @@ Constructor
 
     RafteryCopula(d, θ)
 
-The Multivariate Raftery Copula of dimension d is parameterized by ``\\theta \\in [0,1]`` 
+The multivariate Raftery copula of dimension d is parameterized by ``\\theta \\in [0,1]``.
 
 ```math
 C_{\\theta}(\\mathbf{u}) = u_{(1)} + \\frac{(1 - \\theta)(1 - d)}{1 - \\theta - d} \\left(\\prod_{j=1}^{d} u_j\\right)^{\\frac{1}{1-\\theta}} - \\sum_{i=2}^{d} \\frac{\\theta(1-\\theta)}{(1-\\theta-i)(2-\\theta-i)} \\left(\\prod_{j=1}^{i-1}u_{(j)}\\right)^{\\frac{1}{1-\\theta}}u_{(i)}^{\\frac{2-\\theta-i}{1-\\theta}}
@@ -16,7 +16,7 @@ C_{\\theta}(\\mathbf{u}) = u_{(1)} + \\frac{(1 - \\theta)(1 - d)}{1 - \\theta - 
 
 where ``u_{(1)}, \\ldots , u_{(d)}`` denote the order statistics of ``u_1, \\ldots ,u_d``. More details about Multivariate Raftery Copula are found in the references below.
 
-It has a few special cases:
+Special cases:
 - When θ = 0, it is the IndependentCopula.
 - When θ = 1, it is the the Fréchet upper bound
 
@@ -54,6 +54,8 @@ function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
     return term1 + term2 - term3
 end
 function Distributions._logpdf(R::RafteryCopula{d,P}, u::Vector{T}) where {d,P,T}
+    u==zeros(d) && return eltype(u)(Inf)
+    u==ones(d) && return (1-d) * log(1-R.θ)
     # Order the vector u
     u_ordered = sort(u)
     l_den = (d-1) * log(1-R.θ) + log(d + R.θ -1)

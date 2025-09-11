@@ -1,7 +1,7 @@
 name = "Copulas"
 uuid = "ae264745-0b69-425e-9d9d-cf662c5eec93"
-authors = ["Oskar Laverny"]
 version = "0.1.30"
+authors = ["Oskar Laverny"]
 
 [deps]
 BigCombinatorics = "7b33fef7-ef1d-5d54-bb67-cf96d4c8a166"
@@ -15,7 +15,6 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
 MvNormalCDF = "37188c8d-bc69-4638-b057-733e744175ec"
 PolyLog = "85e3b03c-9856-11eb-0374-4dc1f8670e7f"
-PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
@@ -38,7 +37,6 @@ LinearAlgebra = "1"
 LogExpFunctions = "0.3"
 MvNormalCDF = "0.2, 0.3"
 PolyLog = "2.6.0"
-PrecompileTools = "1"
 QuadGK = "2"
 Random = "1"
 Roots = "1, 2"

@@ -6,6 +6,7 @@
 @testitem "Generic" tags=[:Generic, :EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(20,[1 -0.5; -0.5 1])) end
 
 @testitem "GaussianCopula" tags=[:EllipticalCopulas, :GaussianCopula] begin
+    # [GenericTests integration]: Maybe. The broken fit on mixed marginals is out-of-scope for generic copula properties; keep here.
     using Distributions
     using Random
     using StableRNGs
@@ -20,6 +21,7 @@
 end
 
 @testitem "Fix value Gaussian Copula & SklarDist" tags=[:EllipticalCopulas, :GaussianCopula, :SklarDist] begin
+    # [GenericTests integration]: Yes. This is a regression value test for cdf(SklarDist(...)); can be moved to a generic Sklar fixture tests.
     using Distributions
     using Random
 

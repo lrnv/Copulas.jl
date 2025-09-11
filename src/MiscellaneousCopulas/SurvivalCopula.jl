@@ -1,14 +1,15 @@
 """
+    SurvivalCopula(C, indices)
 
-    SurvivalCopula(C,indices)
-
-Computes the survival version of any copula on given indices. From a copula ``C`` in dimension ``d``, and some indices ``i_1,...i_k`` in ``{1,...,d}``, the survival copula associated simply reverses its arguments on chosen indices. For exemple, for ``d=4`` and indices ``(2,3)``, we have: 
+Construct the survival version of a copula on selected indices. For a copula ``C`` in dimension ``d`` and indices ``i_1, \\ldots, i_k \\in \\{1,\\ldots,d\\}``, the survival copula flips the corresponding arguments. For example, for ``d=4`` and indices ``(2,3)``,
 
 ```math
-S(u_1,...u_4) = C(u_1,1-u_2,1-u3,u_4)
+S(u_1,\\ldots,u_4) = C(u_1, 1-u_2, 1-u_3, u_4).
 ```
 
-This constructor allows to derive new "survival" families. For exemple, in bivariate cases, this allows to do "rotations". The obtained models can be treated as the starting one, i.e. as a random vector in [0,1]^d with uniforms marginals.
+Notes:
+- In the bivariate case, this includes the usual 90/180/270-degree "rotations" of a copula family.
+- The resulting object is handled like the base copula: same API (cdf, pdf/logpdf, rand, fit) and uniform marginals in ``[0,1]^d``.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
@@ -28,9 +29,7 @@ struct SurvivalCopula{d,CT,VI} <: Copula{d}
         return new{d,typeof(C),typeof(indices)}(C,indices)
     end
 end
-function Base.show(io::IO, C::SurvivalCopula)
-    print(io, "SurvivalCopula($(C.C))")
-end
+
 function reverse!(u,idx)
     if ndims(u) == 1
         for i in idx
@@ -54,7 +53,7 @@ function _cdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI}
     return r1 - r2
 end 
 Distributions._logpdf(C::SurvivalCopula{d,CT,VI},u) where {d,CT,VI} = Distributions._logpdf(C.C,reverse(u, C.indices))
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,VI}, x::AbstractVector{T}) where {d,CT,VI,T}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,VI}, x::AbstractVector{T}) where {d,CT,VI,T<:Real}
     Distributions._rand!(rng,C.C,x)
     reverse!(x, C.indices)
 end

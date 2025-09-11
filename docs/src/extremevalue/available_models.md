@@ -2,61 +2,72 @@
 CurrentModule = Copulas
 ```
 
-# [Extreme Values Copulas](@id available_extreme_models)
+# [Extreme Values Tails](@id available_extreme_models)
 
-## `AsymGalambosCopula`
+## `MTail`
 ```@docs
-AsymGalambosCopula
+MTail
 ```
 
-## `AsymLogCopula`
+
+## `NoTail`
 ```@docs
-AsymLogCopula
+NoTail
 ```
 
-## `AsymMixedCopula`
+## `AsymGalambosTail`
 ```@docs
-AsymMixedCopula
+AsymGalambosTail
 ```
 
-## `BC2Copula`
+## `AsymLogTail`
 ```@docs
-BC2Copula
+AsymLogTail
 ```
 
-## `CuadrasAugeCopula`
+## `AsymMixedTail`
 ```@docs
-CuadrasAugeCopula
+AsymMixedTail
 ```
 
-## `GalambosCopula`
+## `BC2Tail`
 ```@docs
-GalambosCopula
+BC2Tail
 ```
 
-## `HuslerReissCopula`
+## `CuadrasAugeTail`
 ```@docs
-HuslerReissCopula
+CuadrasAugeTail
 ```
 
-## `LogCopula`
+## `GalambosTail`
 ```@docs
-LogCopula
+GalambosTail
 ```
 
-## `MixedCopula`
+## `HuslerReissTail`
 ```@docs
-MixedCopula
+HuslerReissTail
 ```
 
-## `MOCopula`
+## `LogTail`
 ```@docs
-MOCopula
+LogTail
 ```
 
-## `tEVCopula`
+## `MixedTail`
 ```@docs
-tEVCopula
+MixedTail
+```
+
+## `MOTail`
+```@docs
+MOTail
+```
+
+## `tEVTail`
+```@docs
+tEVTail
 ```
 
 ```@bibliography

@@ -1,4 +1,5 @@
 @testitem "SklarDist fitting" tags=[:SklarDist] begin
+    # [GenericTests integration]: No. This exercises fitting pathways and RNG; belongs to integration tests for SklarDist rather than generic copula properties.
     
     using Distributions
     using Random

@@ -1,18 +1,13 @@
 """
     IndependentCopula(d)
 
-The [Independent Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) in dimension ``d`` is
-the simplest copula, that has the form : 
+The independent copula in dimension ``d`` has distribution function
 
 ```math
-C(\\mathbf{x}) = \\prod_{i=1}^d x_i.
+C(\\mathbf{x}) = \\prod_{i=1}^{d} x_i.
 ```
 
-It happends to be an Archimedean Copula, with generator : 
-
-```math
-\\phi(t) = \\exp{-t}
-```
+It is Archimedean with generator ``\\psi(s) = e^{-s}``.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

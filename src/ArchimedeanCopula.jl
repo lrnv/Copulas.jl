@@ -18,7 +18,7 @@ The default sampling method is the Radial-simplex decomposition using the Willia
 
 There exists several known parametric generators that are implement in the package. For every `NamedGenerator <: Generator` implemented in the package, we provide a type alias ``NamedCopula{d,...} = ArchimedeanCopula{d,NamedGenerator{...}}` to be able to manipulate the classic archimedean copulas without too much hassle for known and usefull special cases.
 
-A generic archimdean copula can be constructed as follows:
+A generic archimedean copula can be constructed as follows:
 
 ```julia
 struct MyGenerator <: Generator end
@@ -53,9 +53,8 @@ struct ArchimedeanCopula{d,TG} <: Copula{d}
     ArchimedeanCopula{d,TG}(θ) where {d, TG} = ArchimedeanCopula(d, TG(θ))
 end
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 
-function Base.show(io::IO, C::ArchimedeanCopula)
-    print(io, "$(typeof(C))$(Distributions.params(C))")
-end
+
+
 
 _cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
@@ -69,6 +68,7 @@ end
 #     return 4*Distributions.expectation(r -> ϕ(C.G,r), williamson_dist(C.G, Val{d}())) - 1
 # end
 
+# Rand function: the default case is williamson
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, x::AbstractVector{T}) where {T<:Real, d, TG}
     # By default, we use the Williamson sampling.
     Random.randexp!(rng,x)
@@ -77,6 +77,14 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopu
     for i in 1:length(C)
         x[i] = ϕ(C.G,r * x[i]/sx)
     end
+    return x
+end
+# but if frailty is available, use it. 
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, GT}, x::AbstractVector{T}) where {T<:Real, d, GT<:AbstractFrailtyGenerator}
+    F = frailty(C.G)
+    Random.randexp!(rng, x)
+    f = rand(rng, F)
+    x .= ϕ.(C.G, x ./ f)
     return x
 end
 
@@ -161,11 +169,12 @@ end
 # Conditioning colocated
 function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
     @assert length(js) == length(uⱼₛ)
-    sJ = zero(eltype(uⱼₛ))
+    T = eltype(uⱼₛ)
+    sJ = zero(T)
     @inbounds for u in uⱼₛ
-        sJ += ϕ⁻¹(C.G, float(u))
+        sJ += ϕ⁻¹(C.G, u)
     end
-    return ArchimedeanDistortion(C.G, p, float(sJ))
+    return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, Val{p}(), sJ))))
 end
 
 # Conditional copula specialization: remains Archimedean with a tilted generator

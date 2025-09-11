@@ -10,16 +10,16 @@ Constructor
     BB7Generator(θ, δ)
     BB7Copula(d, θ, δ)
 
-The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator :
+The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = 1 - [1 - (1 + t)^{-\\frac{1}{\\delta}}]^{\\frac{1}{\\theta}},
+\\phi(t) = 1 - \\Big[ 1 - (1 + t)^{-1/\\delta} \\Big]^{1/\\theta}.
 ```
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.202-203
 """
-struct BB7Generator{T} <: Generator
+struct BB7Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T
     function BB7Generator(θ, δ)
@@ -36,7 +36,6 @@ end
 const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
 BB7Copula(d, θ, δ) = ArchimedeanCopula(d, BB7Generator(θ, δ))
 Distributions.params(G::BB7Generator) = (G.θ, G.δ)
-max_monotony(::BB7Generator) = Inf 
 
 ϕ(  G::BB7Generator, s) = begin
     a = exp( -inv(G.δ)*log1p(s) )  
@@ -68,8 +67,7 @@ end
     -δ*θ * (1-u)^(θ-1) * w^(-δ-1) # **negativo**
 end
 
-williamson_dist(G::BB7Generator, ::Val{d}) where d = WilliamsonFromFrailty(SibuyaStoppedGamma(G.θ, G.δ), Val{d}())
-
+frailty(G::BB7Generator) = SibuyaStoppedGamma(G.θ, G.δ)
 # --------------- CDF y log-PDF (d = 2) ----------------
 
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB7Generator}

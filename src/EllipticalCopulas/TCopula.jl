@@ -1,38 +1,29 @@
 """
-    TCopula{d,MT}
+    TCopula{d, df, MT}
 
 Fields:
-  - df::Int - number of degree of freedom
-  - Σ::MT - covariance matrix
+- `df::Int` — degrees of freedom
+- `Σ::MT` — correlation matrix
 
 Constructor
 
-    TCopula(df,Σ)
+    TCopula(df, Σ)
 
-The Student's [T Copula](https://en.wikipedia.org/wiki/Multivariate_t-distribution#Copulas_based_on_the_multivariate_t) is the 
-copula of a [Multivariate Student distribution](https://en.wikipedia.org/wiki/Multivariate_t-distribution). It is constructed as : 
+The Student t copula is the copula of a multivariate Student t distribution. It is defined by
 
 ```math
-C(\\mathbf{x}; \\boldsymbol{n,\\Sigma}) = F_{n,\\Sigma}(F_{n,\\Sigma,i}^{-1}(x_i),i\\in 1,...d)
+C(\\mathbf{x}; \\nu, \\boldsymbol{\\Sigma}) = F_{\\nu,\\Sigma}(F_{\\nu,\\Sigma,1}^{-1}(x_1), \\ldots, F_{\\nu,\\Sigma,d}^{-1}(x_d)),
 ```
-where ``F_{n,\\Sigma}`` is a cdf of a multivariate student random vector with covariance matrix ``\\Sigma`` and ``n`` degrees of freedom. and `F_{n,\\Sigma,i}` is the ith marignal cdf. 
 
-It can be constructed in Julia via:  
+where ``F_{\\nu,\\Sigma}`` is the cdf of a centered multivariate t with correlation ``\\Sigma`` and ``\\nu`` degrees of freedom.
+
+Example usage:
 ```julia
-C = TCopula(2,Σ)
+C = TCopula(2, Σ)
+u = rand(C, 1000)
+pdf(C, u); cdf(C, u)
+Ĉ = fit(TCopula, u)
 ```
-
-You can sample it, compute pdf and cdf, or even fit the distribution via: 
-```julia
-u = rand(C,1000)
-Random.rand!(C,u) # other calling syntax for rng.
-pdf(C,u) # to get the density
-cdf(C,u) # to get the distribution function 
-Ĉ = fit(TCopula,u) # to fit on the sampled data. 
-```
-
-
-Except that currently it does not work since `fit(Distributions.MvTDist,data)` does not dispatch. 
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

@@ -108,6 +108,8 @@
 @testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(3, PowerGenerator(ClaytonGenerator(1.5), 2.5, 1.2))) end
 
 @testitem "Boundary test for bivariate Joe and Gumbel" tags=[:ArchimedeanCopula, :JoeCopula, :GumbelCopula] begin
+    # [GenericTests integration]: Yes, valuable. A general "pdf zero on boundaries when defined" property exists for families with known boundary behavior.
+    # We can add a predicate + @testif block in GenericTests that exercises boundary-zero conditions when the family declares them.
     using Distributions
     θ = 1.1
     C = JoeCopula(2, θ)
@@ -129,6 +131,8 @@
 end
 
 @testitem "Fix values of bivariate ClaytonCopula: τ, cdf, pdf and contructor" tags=[:ArchimedeanCopula, :ClaytonCopula] begin
+    # [GenericTests integration]: Partially. The numeric regression values (cdf/pdf grids) are very specific but could be folded as a generic
+    # "golden samples" check behind a feature flag for select baseline families. τ identities and constructor edge-cases (0, -1, Inf) can be generalized.
     using Distributions
     using HCubature
 
@@ -169,6 +173,8 @@ end
 
 
 @testitem "Archimedean - Fix Kendall and Spearman correlation" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula] begin
+    # [GenericTests integration]: Yes for τ ∘ τ⁻¹; we already added similar checks in GenericTests.
+    # The many ρ⁻¹ broken checks are family-specific and currently broken; better to keep here until ρ⁻¹ is implemented robustly.
     using Random
     using StableRNGs
     rng = StableRNG(123)
@@ -207,6 +213,8 @@ end
 end
 
 @testitem "Testing empirical tail values of certain copula samples" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula] begin
+    # [GenericTests integration]: Probably too stochastic and slow for generic; relies on large random samples and fragile tail estimates.
+    # Keep as targeted property tests here; if needed, add a lighter tail-coherency smoke test generically.
     using StableRNGs
     using Distributions
     rng = StableRNG(123)
@@ -256,6 +264,7 @@ end
 
 
 @testitem "Test of τ ∘ τ⁻¹ = Id" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula, :GumbelBarnettCopula, :InvGaussianCopula] begin
+    # [GenericTests integration]: Yes. This is already covered or can be unified inside GenericTests under Archimedean-specific checks.
     using Random
     using InteractiveUtils
     using StableRNGs
@@ -274,6 +283,7 @@ end
 end
 
 @testitem "Test of ρ ∘ ρ⁻¹ = Id" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula, :GumbelBarnettCopula, :InvGaussianCopula] begin
+    # [GenericTests integration]: Not yet. ρ⁻¹ is not uniformly available/accurate; keep here as broken placeholders until APIs solidify.
     using Random
     using InteractiveUtils
     using StableRNGs

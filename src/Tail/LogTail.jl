@@ -1,61 +1,60 @@
 """
-    LogCopula{P}
+    LogTail{T}
 
 Fields:
+  - θ::Real — dependence parameter, θ ∈ [0,1]
 
-    - θ::Real - parameter
-    
 Constructor
 
     LogCopula(θ)
+    ExtremeValueCopula(2, LogTail(θ))
 
-The bivariate Logistic copula (or Gumbel Copula) is parameterized by ``\\theta \\in [1,\\infty)``. It is an Extreme value copula with Pickands dependence function: 
+The (bivariate) Mixed extreme-value copula is parameterized by ``\\theta \\in [0,1]``.
+Its Pickands dependence function is
 
 ```math
-A(t) = (t^{\\theta}+(1-t)^{\\theta})^{\\frac{1}{\\theta}}
+A(t) = \\theta t^2 - \\theta t + 1, \\quad t \\in [0,1].
 ```
+Special cases:
 
-It has a few special cases: 
-- When θ = 1, it is the IndependentCopula
-- When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
+* θ = 0 ⇒ IndependentCopula
 
 References:
+
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
-struct LogCopula{P} <: ExtremeValueCopula{P}
-    θ::P  # Copula parameter
-    function LogCopula(θ)
-        if !(1 <= θ)
-            throw(ArgumentError(" The param θ must be in [1, ∞)"))
-        elseif θ == 1
-            return IndependentCopula(2)
-        elseif θ == Inf
-            return MCopula(2)
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+struct LogTail{T} <: Tail2
+    θ::T
+    function LogTail(θ)
+        !(1 <= θ) && throw(ArgumentError(" The param θ must be in [1, ∞)"))
+        θ == 1 && return NoTail()
+        isinf(θ) && return MTail()
+        θ, _ = promote(θ, 1.0)
+        return new{typeof(θ)}(θ)
     end
 end
-# #  specific ℓ funcion of LogCopula
-function ℓ(G::LogCopula, t₁, t₂)
-    θ = G.θ
+
+const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
+LogCopula(θ) = ExtremeValueCopula(2, LogTail(θ))
+Distributions.params(tail::LogTail) = (tail.θ,)
+
+function ℓ(tail::LogTail, t)
+    t₁, t₂ = t
+    θ = tail.θ
     return (t₁^θ + t₂^θ)^(1/θ)
 end
-# # #  specific A funcion of LogCopula
-# A(C::LogCopula, t::Real) = exp(LogExpFunctions.logaddexp(C.θ*log(t),C.θ*log(1-t))/C.θ) 
 
-# A(t) pour la LogCopula (avec log-exp pour la stabilité)
-function A(C::LogCopula, t::Real)
-    θ = C.θ
+# A(t) for LogCopula (avec log-exp pour la stabilité)
+function A(tail::LogTail, t::Real)
+    θ = tail.θ
     # log-sum-exp trick: log(t^θ + (1-t)^θ) = logsumexp(θ*log(t), θ*log1p(-t))
     logB = LogExpFunctions.logaddexp(θ*log(t), θ*log1p(-t))
     return exp(logB / θ)
 end
 
 # Première dérivée dA/dt (stable numériquement)
-function dA(C::LogCopula, t::Real)
-    θ = C.θ
+function dA(tail::LogTail, t::Real)
+    θ = tail.θ
 
     # B = t^θ + (1-t)^θ
     logB = LogExpFunctions.logaddexp(θ*log(t), θ*log1p(-t))
@@ -75,8 +74,8 @@ function dA(C::LogCopula, t::Real)
 end
 
 # Seconde dérivée d²A/dt² (stable numériquement)
-function d2A(C::LogCopula, t::Real)
-    θ = C.θ
+function d2A(tail::LogTail, t::Real)
+    θ = tail.θ
 
     # B = t^θ + (1-t)^θ
     logB = LogExpFunctions.logaddexp(θ*log(t), θ*log1p(-t))

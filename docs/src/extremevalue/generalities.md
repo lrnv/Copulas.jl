@@ -93,6 +93,7 @@ For the class of Extreme Value Copulas, We follow the methodology proposed by Gh
 Note that all functions present in the algorithm were previously defined to ensure that the implemented methodology has a solid theoretical basis.
 
 ```@docs
+Tail
 ExtremeValueCopula
 ```
 
@@ -111,7 +112,7 @@ Cs = (
 labels = ("Galambos(0.8)", "Hüsler–Reiss(1.0)", "Log(1.6)")
 plot(size=(700, 300))
 for (i, C) in enumerate(Cs)
-    plot!(ts, Copulas.A.(Ref(C), ts); label=labels[i])
+    plot!(ts, Copulas.A.(C.tail, ts); label=labels[i])
 end
 plot!(ts, max.(ts, 1 .- ts); label="bounds", ls=:dash, color=:black)
 plot!(ts, ones(length(ts)); label="1", ls=:dot, color=:gray)

@@ -9,13 +9,13 @@ Constructor
     AMHGenerator(θ)
     AMHCopula(d,θ)
 
-The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1,1)``. It is an Archimedean copula with generator :
+The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1,1)``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = 1 - \\frac{1-\\theta}{e^{-t}-\\theta}
+\\phi(t) = 1 - \frac{1-\\theta}{e^{-t} - \\theta}.
 ```
 
-It has a few special cases:
+Special cases:
 - When θ = 0, it is the IndependentCopula
 
 References:
@@ -83,7 +83,7 @@ end
 ϕ⁽ᵏ⁾(G::AMHGenerator, ::Val{k}, t) where k = (-1)^k * (1 - G.θ) / G.θ * PolyLog.reli(-k, G.θ * exp(-t))
 ϕ⁻¹⁽¹⁾(G::AMHGenerator, t) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
 williamson_dist(G::AMHGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
-
+frailty(G::AMHGenerator) = G.θ >= 0 ? Distributions.Geometric(1-G.θ) : throw("No frailty exists for AMH when θ < 0")
 function _amh_tau(θ)
     if abs(θ) < 0.01
         return 2/9  * θ
