@@ -101,11 +101,11 @@
 @testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(4,1-log(rand(M.rng)))) end
 
 # PowerGenerator tests with different base generators
-@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(2, PowerGenerator(ClaytonGenerator(2.0), 1.5, 2.0))) end
-@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(2, PowerGenerator(GumbelGenerator(2.0), 2.0, 1.5))) end
-@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(2, PowerGenerator(FrankGenerator(3.0), 1.2, 1.8))) end
-@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(3, PowerGenerator(JoeGenerator(2.5), 1.3, 1.7))) end
-@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(3, PowerGenerator(ClaytonGenerator(1.5), 2.5, 1.2))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(2, Copulas.PowerGenerator(Copulas.ClaytonGenerator(2.0), 1.5, 2.0))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(2, Copulas.PowerGenerator(Copulas.GumbelGenerator(2.0), 2.0, 1.5))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(2, Copulas.PowerGenerator(Copulas.FrankGenerator(3.0), 1.2, 1.8))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(3, Copulas.PowerGenerator(Copulas.JoeGenerator(2.5), 1.3, 1.7))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :PowerGenerator] setup=[M] begin M.check(ArchimedeanCopula(3, Copulas.PowerGenerator(Copulas.ClaytonGenerator(1.5), 2.5, 1.2))) end
 
 @testitem "Boundary test for bivariate Joe and Gumbel" tags=[:ArchimedeanCopula, :JoeCopula, :GumbelCopula] begin
     # [GenericTests integration]: Yes, valuable. A general "pdf zero on boundaries when defined" property exists for families with known boundary behavior.
@@ -321,4 +321,5 @@ end
 #         @test_broken typeof(x) == Array{BigFloat,2}
 #     end
 # end
+
 
