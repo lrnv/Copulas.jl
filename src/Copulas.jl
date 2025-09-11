@@ -131,6 +131,7 @@ module Copulas
            WilliamsonGenerator, 
            i𝒲, 
            TiltedGenerator,
+           PowerGenerator,
            SklarDist, # SklarDist to make multivariate models
            AMHCopula, # And a bunch of copulas. 
            ArchimedeanCopula,

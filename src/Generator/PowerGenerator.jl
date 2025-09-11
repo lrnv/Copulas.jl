@@ -46,14 +46,24 @@ Distributions.params(G::PowerGenerator) = (G.α, G.β)
 max_monotony(G::PowerGenerator) = max_monotony(G.G)
 
 # Core generator function: ϕ(t) = ϕ_G(t^α)^β
-ϕ(G::PowerGenerator, t) = ϕ(G.G, t^G.α)^G.β
+# Use exp/log trick to avoid underflow/overflow
+ϕ(G::PowerGenerator, t) = exp(G.β * log(ϕ(G.G, t^G.α)))
 
 # Inverse function: if y = ϕ_G(t^α)^β, then t = (ϕ_G⁻¹(y^(1/β)))^(1/α)
 ϕ⁻¹(G::PowerGenerator, y) = (ϕ⁻¹(G.G, y^(1/G.β)))^(1/G.α)
 
+# First derivative: ϕ'(t) = β * α * t^(α-1) * ϕ_G'(t^α) * ϕ_G(t^α)^(β-1)
+ϕ⁽¹⁾(G::PowerGenerator, t) = G.β * G.α * t^(G.α - 1) * ϕ⁽¹⁾(G.G, t^G.α) * ϕ(G.G, t^G.α)^(G.β - 1)
+
+# First derivative of inverse function
+ϕ⁻¹⁽¹⁾(G::PowerGenerator, y) = (1/G.α) * (ϕ⁻¹(G.G, y^(1/G.β)))^(1/G.α - 1) * ϕ⁻¹⁽¹⁾(G.G, y^(1/G.β)) * (1/G.β) * y^(1/G.β - 1)
+
+# Higher order derivatives - use the default implementation which uses ForwardDiff
+# The analytical form is complex due to nested chain rule applications
+
 # Kendall's tau - preserved from the underlying generator according to the theory
 τ(G::PowerGenerator) = τ(G.G)
 
-# Williamson distribution - use the underlying generator's distribution  
-williamson_dist(G::PowerGenerator, ::Val{d}) where d = williamson_dist(G.G, Val{d}())
-williamson_dist(G::PowerGenerator, d::Int) = williamson_dist(G.G, d)
+# Williamson distribution - use default numerical computation
+# The Williamson transform of ϕ(t) = ϕ_G(t^α)^β is not simply the transform of ϕ_G
+# Let the default implementation handle this numerically
