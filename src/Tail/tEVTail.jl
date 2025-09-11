@@ -48,8 +48,8 @@ const tEVCopula{T} = ExtremeValueCopula{2, tEVTail{T}}
 tEVCopula(ν, ρ) = ExtremeValueCopula(2, tEVTail(ν, ρ))
 Distributions.params(tail::tEVTail) = (tail.ν, tail.ρ)
 
-function A(T::tEVTail, t::Real)
-    ρ, ν = T.ρ, T.ν
+function A(tail::tEVTail, t::Real)
+    ρ, ν = tail.ρ, tail.ν
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
 
@@ -73,8 +73,8 @@ function A(T::tEVTail, t::Real)
 
     return tt * F1 + om * F2
 end
-function dA(T::tEVTail, t::Real)
-    ρ, ν = T.ρ, T.ν
+function dA(tail::tEVTail, t::Real)
+    ρ, ν = tail.ρ, tail.ν
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
 
@@ -106,8 +106,8 @@ function dA(T::tEVTail, t::Real)
     DB2 = om * f2 * DZ2 - F2
     return DB1 + DB2
 end
-function d²A(T::tEVTail, t::Real)
-    ρ, ν = T.ρ, T.ν
+function d²A(tail::tEVTail, t::Real)
+    ρ, ν = tail.ρ, tail.ν
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
 
@@ -154,8 +154,8 @@ function d²A(T::tEVTail, t::Real)
     DDB2 = om * (g2 * f2 * DZ2^2 + f2 * DDZ2) - 2 * f2 * DZ2
     return DDB1 + DDB2
 end
-function _A_dA_d²A(T::tEVTail, t::Real)
-    ρ, ν = T.ρ, T.ν
+function _A_dA_d²A(tail::tEVTail, t::Real)
+    ρ, ν = tail.ρ, tail.ν
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
 

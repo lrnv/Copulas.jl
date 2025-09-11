@@ -47,7 +47,7 @@ end
 
 const AsymGalambosCopula{T} = ExtremeValueCopula{2, AsymGalambosTail{T}}
 AsymGalambosCopula(α, θ) = ExtremeValueCopula(2, AsymGalambosTail(α, collect(θ)))
-Distributions.params(tail::AsymGalambosTail) = (tail.α, tail.θ[1], tail.θ[2])
+Distributions.params(tail::AsymGalambosTail) = (tail.α, tail.θ₁, tail.θ₂)
 
 function A(tail::AsymGalambosTail, t::Real)
     tt = _safett(t)

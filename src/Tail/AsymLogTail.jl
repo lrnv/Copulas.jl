@@ -2,8 +2,8 @@
     AsymLogTail{T}
 
 Fields:
-  - α::Real            — dependence parameter (α ≥ 1)
-  - θ::NTuple{2,Real}  — asymmetry weights, each in [0,1]
+    - α::Real                   — dependence parameter (α ≥ 1)
+    - (θ₁, θ₂)::NTuple{2,Real}  — asymmetry weights, each in [0,1]
 
 Constructor
 
@@ -29,26 +29,26 @@ References:
 """
 struct AsymLogTail{T} <: Tail2
     α::T
-    θ::NTuple{2,T}
+    θ₁::T
+    θ₂::T
     function AsymLogTail(α, θ)
         (length(θ) == 2) || throw(ArgumentError("θ must have length 2"))
         T = promote_type(typeof(α), eltype(θ))
         αT = T(α)
-        θT = (T(θ[1]), T(θ[2]))
+        θ₁, θ₂ = T(θ[1]), T(θ[2])
         (αT ≥ 1) || throw(ArgumentError("α must be ≥ 1"))
-        (0 ≤ θT[1] ≤ 1 && 0 ≤ θT[2] ≤ 1) ||
-        throw(ArgumentError("each θ[i] must be in [0,1]"))
-        new{T}(αT, θT)
+        (0 ≤ θ₁ ≤ 1 && 0 ≤ θ₂ ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
+        new{T}(αT, θ₁, θ₂)
     end
 end
 
 const AsymLogCopula{T} = ExtremeValueCopula{2, AsymLogTail{T}}
 AsymLogCopula(α, θ) =  ExtremeValueCopula(2, AsymLogTail(α, θ))
-Distributions.params(tail::AsymLogTail) = (tail.α, tail.θ[1], tail.θ[2])
+Distributions.params(tail::AsymLogTail) = (tail.α, tail.θ₁, tail.θ₂)
 
 function A(tail::AsymLogTail, t::Real)
     tt = _safett(t)
     α  = tail.α
-    θ1, θ2 = tail.θ
-    return ((θ1^α) * (1-tt)^α + (θ2^α) * tt^α)^(1/α) + (θ1 - θ2)*tt + 1 - θ1
+    θ₁, θ₂ = tail.θ₁, tail.θ₂
+    return ((θ₁^α) * (1-tt)^α + (θ₂^α) * tt^α)^(1/α) + (θ₁ - θ₂)*tt + 1 - θ₁
 end
