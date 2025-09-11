@@ -1,44 +1,32 @@
 """
-    ExtremeValueCopula{d, TailType}
+    ExtremeValueCopula{d, TT}
 
+Constructor
 
-Constructor:
-    ExtremeValueCopula(d, tail)
+    ExtremeValueCopula(d, tail::Tail)
 
-Represents a bivariate extreme value copula parameterized by `P`. Extreme value copulas are used to model the dependence structure between two random variables in the tails of their distribution, making them particularly useful in risk management, environmental studies, and finance.
-
-In the bivariate case, an extreme value copula can be expressed as:
-
-```math
-C(u, v) = \\exp(-\\ell(\\log(u), \\log(v))).
-```
-
-where ``\\ell(\\cdot)`` is a tail dependence function associated with the bivariate extreme value copula. Furthermore, ``A(t)`` is a function ``A: [0, 1] \\to [0.5, 1] `` that is convex on the interval [0,1] and satisfies the boundary conditions ``A(0) = A(1) = 1``. This is denominated Pickands representation or Pickands function.
-
-It is possible to relate these functions in the following way
+Extreme-value copulas model tail dependence via a stable tail dependence function (STDF) ``\\ell`` or, equivalently,
+via a Pickands dependence function ``A``. In any dimension ``d``, the copula cdf is
 
 ```math
-\\ell(u, v) = \\frac{u}{u+v}A\\left(\\frac{u}{u+v}\\right).
+\\displaystyle C(u) = \\\exp\\!\\left(-\\, \\\ell(-\\log u_1,\\ldots,-\\log u_d) \\right).
 ```
 
+For ``d=2``, write ``x=-\\log u``, ``y=-\\log v``, ``s=x+y``, and ``t = x/s``. The relation between ``\\ell`` and ``A`` is
 
-In this way, in order to define a bivariate copula of extreme values, it is only necessary to introduce the function ``A``.
-
-A generic bivariate Extreme Values copula can be constructed as follows:
-
-```julia
-struct GalambosCopula{P} <: ExtremeValueCopula{P}
-A(C::GalambosCopula, t::Real) = 1 - (t^(-C.θ) + (1 - t)^(-C.θ))^(-1/C.θ) # You can define your own Pickands representation
-param = 2.5
-C = GalambosCopula(param)
+```math
+\\ell(x,y) = s\\, A(t), \\qquad A:[0,1]\\to[1/2,1], \\quad A(0)=A(1)=1, \\ A \\text{ convex}.
 ```
 
-The obtained model can be used as follows: 
+Usage
+- Provide any valid tail `tail::Tail` (which implements `A` and/or `ℓ`) to construct the copula.
+- Sampling, cdf, and logpdf follow the standard `Distributions.jl` API.
 
+Example
 ```julia
-samples = rand(C,1000)   # sampling
-cdf(C,samples)           # cdf
-pdf(C,samples)           # pdf
+C = ExtremeValueCopula(2, GalambosTail(θ))
+U = rand(C, 1000)
+logpdf.(Ref(C), eachcol(U))
 ```
 
 References:

@@ -10,7 +10,7 @@ Constructor
     BB9Generator(ϑ, δ)
     BB9Copula(d, ϑ, δ)
 
-The BB9 copula is parameterized by ``\\vartheta, \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator :
+The BB9 copula has parameters ``\\vartheta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator:
 
 ```math
 \\phi(t) = \\exp(-(\\delta^{-\\vartheta} + t)^{\\frac{1}{\\vartheta}} + \\delta^{-1}),

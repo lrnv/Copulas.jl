@@ -9,13 +9,13 @@ Constructor
     AMHGenerator(θ)
     AMHCopula(d,θ)
 
-The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1,1)``. It is an Archimedean copula with generator :
+The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1,1)``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = 1 - \\frac{1-\\theta}{e^{-t}-\\theta}
+\\phi(t) = 1 - \frac{1-\\theta}{e^{-t} - \\theta}.
 ```
 
-It has a few special cases:
+Special cases:
 - When θ = 0, it is the IndependentCopula
 
 References:

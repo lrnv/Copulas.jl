@@ -10,10 +10,10 @@ Constructor
     BB10Generator(θ, δ)
     BB10Copula(d, θ, δ)
 
-The BB10 copula is parameterized by ``\\theta, \\in (0,\\infty)`` and ``\\delta \\in [0, 1]``. It is an Archimedean copula with generator :
+The BB10 copula has parameters ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [0, 1]``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = \\Big(\\tfrac{1-\\delta}{e^{s}-\\delta}\\Big)^{1/\\theta},
+\\phi(t) = \\Big(\\tfrac{1-\\delta}{e^{t}-\\delta}\\Big)^{1/\\theta},
 ```
 
 References:

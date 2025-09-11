@@ -10,14 +10,14 @@ Constructor
     BB1Generator(θ, δ)
     BB1Copula(d, θ, δ)
 
-The BB1 copula is parameterized by ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [1, \\infty)``. It is an Archimedean copula with generator :
+The BB1 copula is parameterized by ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [1, \\infty)``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = (1 + t^{\\frac{1}{δ}})^{\\frac{-1}{θ}},
+\\phi(t) = \big( 1 + t^{1/\\delta} \big)^{-1/\\theta},
 ```
 
-It has a few special cases:
-- When δ = 1, it is the ClaytonCopula with parameter `\\theta`. 
+Special cases:
+- When δ = 1, it is the ClaytonCopula with parameter ``\\theta``. 
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.190-192

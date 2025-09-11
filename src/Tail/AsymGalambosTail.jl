@@ -3,7 +3,8 @@
 
 Fields:
   - α::Real          — dependence parameter
-  - (θ₁, θ₂)::NTuple{2,Real} — asymmetry weights (length 2)
+    - θ₁::Real — asymmetry weight in [0,1]
+    - θ₂::Real — asymmetry weight in [0,1]
 
 Constructor
 

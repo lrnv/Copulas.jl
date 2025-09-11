@@ -12,10 +12,10 @@ Constructor
 The Gumbel-Barnett copula is an archimdean copula with generator:
 
 ```math
-\\phi(t) = \\exp{θ^{-1}(1-e^{t})}, 0 \\leq \\theta \\leq 1.
+    \\phi(t) = \\exp\\big( \\theta^{-1} (1 - e^{t}) \\big),\\quad 0 \\le \\theta \\le 1.
 ```
 
-It has a few special cases:
+Special cases:
 - When θ = 0, it is the IndependentCopula
 
 References:

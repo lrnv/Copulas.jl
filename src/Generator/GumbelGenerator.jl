@@ -12,12 +12,12 @@ Constructor
 The [Gumbel](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [1,\\infty)``. It is an Archimedean copula with generator :
 
 ```math
-\\phi(t) = \\exp{-t^{\\frac{1}{θ}}}
+\\phi(t) = \\exp\\!\\big( - t^{1/\\theta} \\big).
 ```
 
 It has a few special cases:
 - When θ = 1, it is the IndependentCopula
-- When θ = ∞, is is the MCopula (Upper Frechet-Hoeffding bound)
+- When θ → ∞, it is the MCopula (Upper Fréchet–Hoeffding bound)
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

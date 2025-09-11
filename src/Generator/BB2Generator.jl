@@ -10,7 +10,7 @@ Constructor
     BB2Generator(θ, δ)
     BB2Copula(d, θ, δ)
 
-The BB2 copula is parameterized by ``\\theta, \\delta \\in (0,\\infty)`. It is an Archimedean copula with generator :
+The BB2 copula has parameters ``\\theta, \\delta \\in (0,\\infty)``. It is an Archimedean copula with generator:
 
 ```math
 \\phi(t) = [1 + \\delta^{-1}log(1 + t)]^{-\\frac{1}{\\theta}},

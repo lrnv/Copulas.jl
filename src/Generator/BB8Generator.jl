@@ -10,13 +10,13 @@ Constructor
     BB8Generator(ϑ, δ)
     BB8Copula(d, ϑ, δ)
 
-The BB8 copula is parameterized by ``\\vartheta, \\in [1,\\infty)`` and ``\\delta \\in (0, 1]``. It is an Archimedean copula with generator :
+The BB8 copula has parameters ``\\vartheta \\in [1,\\infty)`` and ``\\delta \\in (0, 1]``. It is an Archimedean copula with generator:
 
 ```math
 \\phi(t) = \\delta^{-1}[1 - (1 - \\eta \\exp(-t))^{\\frac{1}{\\vartheta}}],
 ```
 
-where ``\\eta = 1 - (1 - \\delta)^{\\vartheta}.``
+where ``\\eta = 1 - (1 - \\delta)^{\\vartheta}``.
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.204-205

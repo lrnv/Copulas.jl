@@ -1,37 +1,31 @@
 """
-    GaussianCopula{d,MT}
+    GaussianCopula{d, MT}
 
 Fields:
-  - Σ::MT - covariance matrix
+- `Σ::MT` — correlation matrix (the constructor coerces the input to a correlation matrix).
 
 Constructor
 
     GaussianCopula(Σ)
 
-The [Gaussian Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Gaussian_copula) is the
-copula of a [Multivariate normal distribution](http://en.wikipedia.org/wiki/Multivariate_normal_distribution). It is constructed as:
+The Gaussian copula is the copula of a multivariate normal distribution. It is defined by
 
 ```math
-C(\\mathbf{x}; \\boldsymbol{\\Sigma}) = F_{\\Sigma}(F_{\\Sigma,i}^{-1}(x_i),i\\in 1,...d)
+C(\\mathbf{x}; \\boldsymbol{\\Sigma}) = F_{\\Sigma}(F_{\\Sigma,1}^{-1}(x_1), \\ldots, F_{\\Sigma,d}^{-1}(x_d)),
 ```
-where ``F_{\\Sigma}`` is a cdf of a gaussian random vector and ``F_{\\Sigma,i}`` is the ith marginal cdf, while ``\\Sigma`` is the covariance matrix.
 
-It can be constructed in Julia via:
+where ``F_{\\Sigma}`` is the cdf of a centered multivariate normal with covariance/correlation ``\\Sigma`` and ``F_{\\Sigma,i}`` its i-th marginal cdf.
+
+Example usage:
 ```julia
 C = GaussianCopula(Σ)
+u = rand(C, 1000)
+pdf(C, u); cdf(C, u)
+Ĉ = fit(GaussianCopula, u)
 ```
 
-You can sample it, compute pdf and cdf, or even fit the distribution via:
-```julia
-u = rand(C,1000)
-Random.rand!(C,u) # other calling syntax for rng.
-pdf(C,u) # to get the density
-cdf(C,u) # to get the distribution function
-Ĉ = fit(GaussianCopula,u) # to fit on the sampled data.
-```
-
-GaussianCopulas have a special case:
-- When `isdiag(Σ)`, the constructor returns an `IndependentCopula(d)`
+Special case:
+- If `isdiag(Σ)`, the constructor returns `IndependentCopula(d)`.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

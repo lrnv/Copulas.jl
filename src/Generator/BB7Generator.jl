@@ -10,10 +10,10 @@ Constructor
     BB7Generator(θ, δ)
     BB7Copula(d, θ, δ)
 
-The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator :
+The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = 1 - [1 - (1 + t)^{-\\frac{1}{\\delta}}]^{\\frac{1}{\\theta}},
+\\phi(t) = 1 - \\Big[ 1 - (1 + t)^{-1/\\delta} \\Big]^{1/\\theta}.
 ```
 
 References:

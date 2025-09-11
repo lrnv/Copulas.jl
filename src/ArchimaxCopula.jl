@@ -1,26 +1,25 @@
 """
-    ArchimaxCopula{G<:Generator, E<:Tail}
+    ArchimaxCopula{d, TG, TT}
 
-Fields:
-    - gen::G  : Archimedean generator ϕ (with methods `ϕ(gen, s)` and `ϕ⁻¹(gen, u)`)
-    - tail::E  : Extreme-value copula (Pickands dependence function A)
+Fields
+- `gen::TG`  Archimedean generator ``\\phi`` (implements `ϕ`, `ϕ⁻¹`, derivatives)
+- `tail::TT` Extreme-value tail (implements Pickands `A` / STDF `ℓ`)
 
 Constructor
 
-    ArchimaxCopula(gen::Generator, tail::Tail)
+    ArchimaxCopula(d, gen::Generator, tail::Tail)
 
-Bivariate Archimax copula (convention used in `ArchimedeanCopula`). It is defined by
+Definition (bivariate shown). Let ``x_i = ϕ^{-1}(u_i)`` and denote the STDF by ``\\ell``. The cdf is
 
 ```math
-C_{\\phi,\\ell}(u_1,u_2)= \\phi\\!\\Big( \\ell\\!\\Big( \\phi^{-1}(u_i), i \\in 1,...d \\Big) \\Big).
+C(u_1,u_2) = ϕ\big( \\ell(x_1, x_2) \big).
 ```
 
-Notes:
+Reductions
+- If ``\\ell(x) = x_1 + x_2`` (i.e., `tail = NoTail()`), this is the Archimedean copula with generator `gen`.
+- If ``ϕ(s) = e^{-s}`` (i.e., `gen = IndependentGenerator()`), this is the extreme-value copula with tail `tail`.
 
-* If `ℓ(x) = sum(x)`, it reduces to the Archimedean copula with generator `ϕ`.
-* If `ϕ(s) = exp(-s)`, it reduces to the extreme value copula with stable tail dependence function `ℓ`
-
-`params(::ArchimaxCopula)` returns the concatenated tuple of parameters from `gen` and `tail`.
+`params(::ArchimaxCopula)` concatenates the parameter tuples of `gen` and `tail`.
 
 References:
 

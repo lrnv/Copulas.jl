@@ -2,13 +2,14 @@
     AsymLogTail{T}
 
 Fields:
-    - α::Real                   — dependence parameter (α ≥ 1)
-    - (θ₁, θ₂)::NTuple{2,Real}  — asymmetry weights, each in [0,1]
+    - α::Real  — dependence parameter (α ≥ 1)
+    - θ₁::Real — asymmetry weight in [0,1]
+    - θ₂::Real — asymmetry weight in [0,1]
 
 Constructor
 
-    AsymLogCopula(α, θ::AbstractVector)
-    ExtremeValueCopula(2, AsymLogTail(α, θ))
+    AsymLogCopula(α, (θ₁, θ₂))
+    ExtremeValueCopula(2, AsymLogTail(α, (θ₁, θ₂)))
 
 The (bivariate) asymmetric logistic extreme–value copula is parameterized by
 α ∈ [1, ∞) and θ₁, θ₂ ∈ [0,1]. Its Pickands dependence function is
