@@ -47,22 +47,19 @@ max_monotony(G::PowerGenerator) = max_monotony(G.G)
 
 # Core generator function: ϕ(t) = ϕ_G(t^α)^β
 # Use exp/log trick to avoid underflow/overflow
-ϕ(G::PowerGenerator, t) = exp(G.β * log(ϕ(G.G, t^G.α)))
+ϕ(G::PowerGenerator, t) = exp(G.β * log(ϕ(G.G, exp(G.α * log(t)))))
 
 # Inverse function: if y = ϕ_G(t^α)^β, then t = (ϕ_G⁻¹(y^(1/β)))^(1/α)
-ϕ⁻¹(G::PowerGenerator, y) = (ϕ⁻¹(G.G, y^(1/G.β)))^(1/G.α)
+ϕ⁻¹(G::PowerGenerator, y) = exp((1/G.α) * log(ϕ⁻¹(G.G, exp((1/G.β) * log(y)))))
 
 # First derivative: ϕ'(t) = β * α * t^(α-1) * ϕ_G'(t^α) * ϕ_G(t^α)^(β-1)
-ϕ⁽¹⁾(G::PowerGenerator, t) = G.β * G.α * t^(G.α - 1) * ϕ⁽¹⁾(G.G, t^G.α) * ϕ(G.G, t^G.α)^(G.β - 1)
+ϕ⁽¹⁾(G::PowerGenerator, t) = G.β * G.α * exp((G.α - 1) * log(t)) * ϕ⁽¹⁾(G.G, exp(G.α * log(t))) * exp((G.β - 1) * log(ϕ(G.G, exp(G.α * log(t)))))
 
 # First derivative of inverse function
-ϕ⁻¹⁽¹⁾(G::PowerGenerator, y) = (1/G.α) * (ϕ⁻¹(G.G, y^(1/G.β)))^(1/G.α - 1) * ϕ⁻¹⁽¹⁾(G.G, y^(1/G.β)) * (1/G.β) * y^(1/G.β - 1)
+ϕ⁻¹⁽¹⁾(G::PowerGenerator, y) = (1/G.α) * exp((1/G.α - 1) * log(ϕ⁻¹(G.G, exp((1/G.β) * log(y))))) * ϕ⁻¹⁽¹⁾(G.G, exp((1/G.β) * log(y))) * (1/G.β) * exp((1/G.β - 1) * log(y))
 
 # Higher order derivatives - use the default implementation which uses ForwardDiff
 # The analytical form is complex due to nested chain rule applications
-
-# Kendall's tau - preserved from the underlying generator according to the theory
-τ(G::PowerGenerator) = τ(G.G)
 
 # Williamson distribution - use default numerical computation
 # The Williamson transform of ϕ(t) = ϕ_G(t^α)^β is not simply the transform of ϕ_G
