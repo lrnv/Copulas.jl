@@ -4,9 +4,24 @@
 Fields:
 - `Σ::MT` — correlation matrix (the constructor coerces the input to a correlation matrix).
 
-Constructor
+Constructors
 
     GaussianCopula(Σ)
+    GaussianCopula(d, ρ)
+    GaussianCopula(d::Integer, ρ::Real)
+
+Where `Σ` is a (symmetric) covariance or correlation matrix. The two-argument
+form with `(d, ρ)` builds the equicorrelation matrix with ones on the diagonal
+and constant off-diagonal correlation `ρ`:
+
+```julia
+Σ = fill(ρ, d, d); Σ[diagind(Σ)] .= 1
+C = GaussianCopula(d, ρ)            # == GaussianCopula(Σ)
+```
+
+Validity domain (equicorrelated PD matrix): `-1/(d-1) < ρ < 1`. The boundary
+`ρ = -1/(d-1)` is singular and rejected. If `ρ == 0`, this returns
+`IndependentCopula(d)` (same fast-path as when passing a diagonal matrix).
 
 The Gaussian copula is the copula of a multivariate normal distribution. It is defined by
 
@@ -40,6 +55,23 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
         N(GaussianCopula)(Σ)
         return new{size(Σ,1),typeof(Σ)}(Σ)
     end
+end
+
+# Equicorrelation convenience constructor
+function GaussianCopula(d::Integer, ρ::Real)
+    d < 2 && throw(ArgumentError("Use a bivariate or higher dimension (d ≥ 2) or pass a 1×1 matrix."))
+    # Positive definiteness condition for equicorrelation matrix
+    lower = -1/(d-1)
+    ρ ≤ lower && throw(ArgumentError("Equicorrelation value ρ=$(ρ) not in (-1/(d-1), 1). For d=$d the lower open bound is $(lower)."))
+    ρ ≥ 1 && throw(ArgumentError("Equicorrelation value ρ must be < 1."))
+    if ρ == 0
+        return IndependentCopula(d)
+    end
+    Σ = fill(float(ρ), d, d)
+    @inbounds for i in 1:d
+        Σ[i,i] = one(ρ)
+    end
+    return GaussianCopula(Σ)
 end
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
