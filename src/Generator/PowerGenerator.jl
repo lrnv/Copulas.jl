@@ -31,36 +31,13 @@ struct PowerGenerator{TG,T} <: Generator
     function PowerGenerator(G, α, β)
         @assert α > 0
         @assert β > 0
-        if α == 1 && β == 1
-            return G
-        end
+        α == 1 && β == 1 && return G
         α,β = promote(α,β)
         return new{typeof(G),typeof(β)}(G, α, β)
     end
 end
-
-# Parameter extraction for consistency with other generators
-Distributions.params(G::PowerGenerator) = (G.α, G.β)
-
-# Maximum monotony is preserved from the underlying generator
-max_monotony(G::PowerGenerator) = max_monotony(G.G)
-
-# Core generator function: ϕ(t) = ϕ_G(t^α)^β
-# Use exp/log trick to avoid underflow/overflow
 ϕ(G::PowerGenerator, t) = exp(G.β * log(ϕ(G.G, exp(G.α * log(t)))))
-
-# Inverse function: if y = ϕ_G(t^α)^β, then t = (ϕ_G⁻¹(y^(1/β)))^(1/α)
 ϕ⁻¹(G::PowerGenerator, y) = exp((1/G.α) * log(ϕ⁻¹(G.G, exp((1/G.β) * log(y)))))
+max_monotony(G::PowerGenerator) = max_monotony(G.G)
+Distributions.params(G::PowerGenerator) = (G.α, G.β, Distributions.params(G.G)...)
 
-# First derivative: ϕ'(t) = β * α * t^(α-1) * ϕ_G'(t^α) * ϕ_G(t^α)^(β-1)
-ϕ⁽¹⁾(G::PowerGenerator, t) = G.β * G.α * exp((G.α - 1) * log(t)) * ϕ⁽¹⁾(G.G, exp(G.α * log(t))) * exp((G.β - 1) * log(ϕ(G.G, exp(G.α * log(t)))))
-
-# First derivative of inverse function
-ϕ⁻¹⁽¹⁾(G::PowerGenerator, y) = (1/G.α) * exp((1/G.α - 1) * log(ϕ⁻¹(G.G, exp((1/G.β) * log(y))))) * ϕ⁻¹⁽¹⁾(G.G, exp((1/G.β) * log(y))) * (1/G.β) * exp((1/G.β - 1) * log(y))
-
-# Higher order derivatives - use the default implementation which uses ForwardDiff
-# The analytical form is complex due to nested chain rule applications
-
-# Williamson distribution - use default numerical computation
-# The Williamson transform of ϕ(t) = ϕ_G(t^α)^β is not simply the transform of ϕ_G
-# Let the default implementation handle this numerically
