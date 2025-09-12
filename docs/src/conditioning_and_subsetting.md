@@ -349,7 +349,7 @@ plt = plot(layout=layout, size=(900, 280), legend=false)
 for k in 1:3
   Ek = ecdf(S[k, :])
   plot!(plt[k], ts, Ek.(ts); seriestype=:steppost, color=:black,
-      title="ECDF of s$(k)", xlabel="u", ylabel="ECDF")
+      title="ECDF of $(k)", xlabel="u", ylabel="ECDF")
   plot!(plt[k], ts, ts; color=:blue, alpha=0.7)
 end
 plt

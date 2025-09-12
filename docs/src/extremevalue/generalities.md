@@ -134,7 +134,7 @@ C = HuslerReissCopula(1.2)
 u2 = 0.4
 D = condition(C, 2, u2)
 ts = range(0.0, 1.0; length=401)
-plot(ts, cdf.(Ref(D), ts); xlabel="u", ylabel="H_{1|2}(u|$u2)",
+plot(ts, cdf.(Ref(D), ts); xlabel="u", ylabel="H_{1|2}(u|u₂=0.4)",
      title="Conditional distortion for Hüsler–Reiss")
 ```
 
