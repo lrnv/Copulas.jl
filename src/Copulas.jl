@@ -96,6 +96,7 @@ module Copulas
     include("Generator/GumbelGenerator.jl")
     include("Generator/InvGaussianGenerator.jl")
     include("Generator/JoeGenerator.jl")
+    include("Generator/PowerGenerator.jl")
 
     #Extreme value copulas
     include("Tail.jl")

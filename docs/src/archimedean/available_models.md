@@ -94,6 +94,11 @@ BB9Generator
 BB10Generator
 ```
 
+## `PowerGenerator`
+```@docs
+PowerGenerator
+```
+
 
 ```@bibliography
 Pages = [@__FILE__]
