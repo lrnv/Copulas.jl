@@ -1,4 +1,4 @@
-# Visualizations
+# [Visualizations](@id viz_page)
 
 ## Implementation details
 

@@ -75,20 +75,22 @@ u = rand(C,10)
 cdf(C,u)
 ```
 
-### Visualizing sample clouds (2D)
-
-It’s often useful to get an intuition by looking at scatter plots. Below we compare
-independence, a positive dependence (Clayton), and the Fréchet bounds:
+You can also plot it:
 
 ```@example 1
 using Plots
-using Plots.PlotMeasures
-N = 400
-P1 = scatter(rand(IndependentCopula(2), N)'; ms=2, title="Independent", xlabel="U₁", ylabel="U₂", legend=false)
-P2 = scatter(rand(ClaytonCopula(2, 3.0), N)'; ms=2, title="Clayton θ=3", xlabel="U₁", ylabel="U₂", legend=false)
-P3 = scatter(rand(MCopula(2), N)'; ms=2, title="Comonotone (M)", xlabel="U₁", ylabel="U₂", legend=false)
-P4 = scatter(rand(WCopula(2), N)'; ms=2, title="Countermono (W)", xlabel="U₁", ylabel="U₂", legend=false)
-plot(P1, P2, P3, P4; layout=(2,2), size=(800,600))
+plot(C, :logpdf)
+```
+
+See [the visualizations page](@ref viz_page] for details on the visualisations tools. It’s often useful to get an intuition by looking at scatter plots. Below we compare
+independence, a positive dependence (Clayton), and the Fréchet bounds:
+
+```@example 1
+p1 = plot(IndependentCopula(2), title="Independent")
+p2 = plot(ClaytonCopula(2, 3.0), title="Clayton θ=3")
+p3 = plot(MCopula(2), title="Comonotony (M)")
+p4 = plot(WCopula(2), title="Countermonotony (W)")
+plot(p1,p2,p3,p4; layout=(2,2), size=(800,600))
 ```
 
 One of the reasons that makes copulas so useful is the bijective map discovered by Sklar [sklar1959](@cite) in 1959:
@@ -162,49 +164,38 @@ You can also visualize the strong alignment for `M` and the anti-diagonal patter
 
 Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas. This is mostly the content of this package, and we refer to the rest of the documentation for more details on the models and their implementations. 
 
-### Density heatmaps (bivariate)
-
-The copula density highlights concentration in different regions. Below are heatmaps of
-`pdf(C, [u,v])` on a grid for a few common bivariate copulas.
-
-```@example 1
-Cs = (
-    GaussianCopula([1.0 0.7; 0.7 1.0]),
-    TCopula(4, [1.0 0.7; 0.7 1.0]),
-    ClaytonCopula(2, 2.0),
-    GumbelCopula(2, 2.0),
-)
-labels = ("Gaussian ρ=0.7", "t ν=4, ρ=0.7", "Clayton θ=2", "Gumbel θ=2")
-grid = range(0.01, 0.99; length=80)
-plt = plot(layout=(2,2), size=(800,650), margin=3mm)
-for (i, C) in enumerate(Cs)
-    Z = [pdf(C, [u,v]) for u in grid, v in grid]
-    heatmap!(plt[i], grid, grid, Z'; aspect_ratio=1, c=:viridis,
-             xlim=(0,1), ylim=(0,1), title=labels[i], xlabel="u", ylabel="v")
-end
-plt
-```
-
 ## Fitting copulas and compound distributions.
 
 `Distributions.jl`'s API contains a `fit` function for random vectors and random variables. We propose an implementation of it for copulas and multivariate compound distributions (composed of a copula and some given marginals). It can be used as follows: 
 
 ```@example 2
-using Copulas, Distributions, Random
+using Copulas, Distributions, Random, Plots
 # Construct a given model:
 X₁ = Gamma(2,3)
 X₂ = Pareto()
 X₃ = LogNormal(0,1)
 C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
-
 simu = rand(D,1000) # Generate a dataset
+```
 
+Let us first visualize our model: 
+```@example 2
+plot(D)
+```
+
+Now try to fit it: 
+
+```@example 2
 # You may estimate a copula using the `fit` function:
 D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
 ```
 
-We see on the output that the parameters were correctly estimated from this sample. More details on the estimator, including, e.g., standard errors, may be obtained with more complicated estimation routines. For a Bayesian approach using  `Turing.jl`, see [this example](@ref Bayesian-inference-with-Turing.jl).
+We see on the output that the parameters were correctly estimated from this sample. More details on the estimator, including, e.g., standard errors, may be obtained with more complicated estimation routines. For a Bayesian approach using  `Turing.jl`, see [this example](@ref Bayesian-inference-with-Turing.jl). Let's vizualize the result: 
+
+```@example 2
+plot(D̂)
+```
 
 !!! info "Fitting procedures are not part of the API"
     [`Distributions.jl` documentation](https://juliastats.org/Distributions.jl/stable/fit/#Distribution-Fitting) states that: 

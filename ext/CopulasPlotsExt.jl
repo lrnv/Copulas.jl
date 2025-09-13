@@ -25,8 +25,8 @@ function _mk_Z(obj, xs, ys, what::Symbol)
 end
 
 function _copula_grid(C::Copulas.Copula{2}; n=_cop_default_grid, what::Symbol=:pdf)
-    xs = range(0.01, 0.99; length=n)
-    ys = range(0.01, 0.99; length=n)
+    xs = range(0.001, 0.999; length=n)
+    ys = range(0.001, 0.999; length=n)
     Z = _mk_Z(C, xs, ys, what)
     return xs, ys, Z
 end
@@ -35,7 +35,7 @@ function _sklardist_grid(S::Copulas.SklarDist{CT,M}; n=_cop_default_grid, what::
     if scale === :copula
         return _copula_grid(S.C; n=n, what=what)
     elseif scale === :sklar
-        qs = range(0.01, 0.99; length=n)
+        qs = range(0.001, 0.999; length=n)
         xs = [quantile(S.m[1], q) for q in qs]
         ys = [quantile(S.m[2], q) for q in qs]
         Z = _mk_Z(S, xs, ys, what)

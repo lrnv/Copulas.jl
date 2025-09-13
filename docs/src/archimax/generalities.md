@@ -32,6 +32,16 @@ The API is minimal and generic:
 
 With these conventions, the constructor `ArchimaxCopula(d, gen, tail)` produces the correct d-variate model, accross all possiibilities through all implemented (and obviously new user-defined) models.
 
+You can define an archimax copula as follows: 
+```@example
+using Copulas, Distributions, Plots
+C = ArchimaxCopula(2, 
+    Copulas.FrankGenerator(0.8),                   # Archimedean generator
+    Copulas.AsymGalambosTail(0.35, (0.65, 0.3))    # Stable Tail Dependence
+)
+plot(C)
+```
+
 ---
 
 # Advanced Concepts

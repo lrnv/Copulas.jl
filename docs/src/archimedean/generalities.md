@@ -226,14 +226,7 @@ Cs = (
     FrankCopula(2, 8.0),
     IndependentCopula(2),
 )
-labels = ("Clayton(2.0)", "Gumbel(1.6)", "Frank(8.0)", "Independence")
-plt = plot(layout=(2,2), size=(700, 600), margin=5mm)
-for (i, C) in enumerate(Cs)
-    U = rand(C, 2000)
-    scatter!(plt[i], U[1, :], U[2, :]; ms=1.8, alpha=0.5,
-             xlim=(0,1), ylim=(0,1), label=false, title=labels[i])
-end
-plt
+plot(plot.(Cs)..., layout=(2,2))
 ```
 
 ### Conditional distortions (uniform scale)

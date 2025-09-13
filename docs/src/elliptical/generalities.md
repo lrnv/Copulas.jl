@@ -123,23 +123,7 @@ using Plots
 ν = 4
 CG = GaussianCopula(Σ)
 CT = TCopula(ν, Σ)
-UG = rand(CG, 3000)
-UT = rand(CT, 3000)
-plt = plot(layout=(1,2), size=(800, 350))
-scatter!(plt[1], UG[1,:], UG[2,:]; ms=1.8, alpha=0.5, xlim=(0,1), ylim=(0,1), title="Gaussian copula", label=false)
-scatter!(plt[2], UT[1,:], UT[2,:]; ms=1.8, alpha=0.5, xlim=(0,1), ylim=(0,1), title="Student copula (ν=4)", label=false)
-plt
-```
-
-### Density heatmaps (cdf/pdf) on the unit square
-
-```@example 4
-grid = range(0.01, 0.99; length=100)
-ZG = [pdf(CG, [u,v]) for u in grid, v in grid]
-ZT = [pdf(CT, [u,v]) for u in grid, v in grid]
-plot(heatmap(grid, grid, ZG'; title="Gaussian density", aspect_ratio=1, c=:viridis),
-    heatmap(grid, grid, ZT'; title="Student density", aspect_ratio=1, c=:viridis),
-    layout=(1,2), size=(800,330))
+plot(plot(CG), plot(CT), layout=(1,2))
 ```
 
 ### Conditional on original scale via SklarDist
@@ -154,6 +138,8 @@ plot(xgrid, Distributions.cdf.(Ref(X1G), xgrid); label="Gaussian", xlabel="x", y
     title="F_{X1|X2=0}")
 plot!(xgrid, Distributions.cdf.(Ref(X1T), xgrid); label="Student")
 ```
+
+The difference between the two is not very strong. 
 
 ## Implementation
 

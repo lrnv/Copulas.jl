@@ -122,9 +122,7 @@ plot!(ts, ones(length(ts)); label="1", ls=:dot, color=:gray)
 
 ```@example 1
 C = GalambosCopula(1.0)
-U = rand(C, 3000)
-scatter(U[1,:], U[2,:]; ms=1.8, alpha=0.5, xlim=(0,1), ylim=(0,1), legend=false,
-        title="Galambos copula sample")
+plot(C, title="Galambos copula sample")
 ```
 
 ### Conditional distortion (EV example)
