@@ -155,7 +155,7 @@ savefig("plots_sklar_pairwise.png"); nothing # hide
 You can change the number of points and the numebr of bins of the histograms to adapt to your case: 
 
 ```@example viz
-plot(SD5; n=400, bins=12, pairs_show_corr=true, title="Smaller sample (scatter + marginals)")
+plot(SD5; n=400, bins=12, pairs_show_corr=true)
 savefig("plots_sklar_pairwise_small.png"); nothing # hide
 ```
 ![](plots_sklar_pairwise_small.png)
@@ -163,8 +163,9 @@ savefig("plots_sklar_pairwise_small.png"); nothing # hide
 And you can also have the scatterplots on the `:sklar` scale
 
 ```@example viz
-plot(SD5, :pdf; scale=:sklar, n=800, bins=28, title="SklarDist pairwise (sklar contours)")
+plot(SD5, :pdf; scale=:sklar, n=800, bins=28)
 savefig("plots_sklardist_pairwise_marginal.png"); nothing # hide
 ```
 ![](plots_sklardist_pairwise_marginal.png)
+
 
