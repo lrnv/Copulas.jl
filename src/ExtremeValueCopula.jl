@@ -45,7 +45,29 @@ end
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
-#### Restriction to bivariate cases of the following methods: 
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d, TT}, X::AbstractMatrix{T}) where {T<:Real, d, TT}
+    @assert size(X, 1) == d
+    U = rand(rng,  d, size(X, 2))
+    X .= inverse_rosenblatt(C, U)
+    return X
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d, TT}, x::AbstractVector{T}) where {T<:Real, d, TT}
+    u = rand(rng, d)
+    x .= inverse_rosenblatt(C, u)
+    return x
+end
+function Distributions._logpdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT}
+    # domain checks
+    @inbounds for ui in u
+        (0.0 < ui < 1.0) || return -Inf
+    end
+    # Compute mixed partial ∂^d/∂u₁…∂u_d of the cdf via nested ForwardDiff
+    val = _der(v -> Distributions.cdf(C, v), collect(u), 1:d)
+    return log(max(val, 0))
+end
+
+
+###### Restriction to bivariate cases of the following methods: 
 function Distributions._logpdf(C::ExtremeValueCopula{2, TT}, u) where {TT}
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf 
@@ -86,4 +108,4 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     x[2] = exp(log(w)*(1-z)/a)
     return x
 end
-DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
+DistortionFromCop(C::ExtremeValueCopula{d, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where {d, TT} = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
