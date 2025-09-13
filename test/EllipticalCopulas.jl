@@ -36,7 +36,7 @@ end
     Cρ = GaussianCopula(2, 0.5)
     @test Cρ isa GaussianCopula{2}
     # Theoretical Kendall tau for bivariate Gaussian: τ = 2/π asin(ρ)
-    @test isapprox(τ(Cρ), 2*asin(0.5)/π; rtol=1e-12)
+    @test isapprox(Copulas.τ(Cρ), 2*asin(0.5)/π; rtol=1e-12)
     # Zero correlation gives independent copula
     C0 = GaussianCopula(2, 0.0)
     @test C0 == IndependentCopula(2)
