@@ -27,6 +27,7 @@ makedocs(;
             "Sklar's Distribution" => "sklar.md",
             "Dependence measures" => "dependence_measures.md",
             "Conditioning and Subsetting" => "conditioning_and_subsetting.md",
+            "Visualizations" => "visualizations.md",
             "Archimedean family" => "archimedean/generalities.md",
             "Elliptical family" => "elliptical/generalities.md",
             "Extreme Value family" => "extremevalue/generalities.md",

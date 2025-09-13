@@ -36,9 +36,11 @@ LambertW = "1.0.0"
 LinearAlgebra = "1"
 LogExpFunctions = "0.3"
 MvNormalCDF = "0.2, 0.3"
+Plots = "1"
 PolyLog = "2.6.0"
 QuadGK = "2"
 Random = "1"
+RecipesBase = "1"
 Roots = "1, 2"
 SpecialFunctions = "2"
 StableRNGs = "1"
@@ -48,6 +50,13 @@ Test = "1"
 TestItemRunner = "1"
 WilliamsonTransforms = "0.2"
 julia = "1"
+
+[weakdeps]
+Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
+RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
+
+[extensions]
+CopulasPlotsExt = ["Plots", "RecipesBase"]
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"

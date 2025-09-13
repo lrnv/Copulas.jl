@@ -38,8 +38,6 @@ pdf(D, u)
 cdf(D, u)
 ```
 
-### Visualizing the effect of marginals
-
 Although copulas live on the unit square/cube, applying non-uniform marginals via `SklarDist`
 warps the sample space. Here we draw from two models with the same copula but different marginals,
 and compare their scatter plots after transforming back to uniforms with pseudo-observations:
@@ -48,33 +46,14 @@ and compare their scatter plots after transforming back to uniforms with pseudo-
 using Plots
 N = 1000
 C = ClaytonCopula(2,2.7)
-X = SklarDist(C, (Normal(), Normal()))
+X = SklarDist(C, (Normal(), Beta(3,6)))
 Y = SklarDist(C, (LogNormal(), Gamma(2,2)))
-Ux = rand(X, N)
-Uy = rand(Y, N)
-P1 = scatter(Ux[1,:], Ux[2,:]; ms=2, title="X on original scale", legend=false)
-P2 = scatter(Uy[1,:], Uy[2,:]; ms=2, title="Y on original scale", legend=false)
-plot(P1, P2; layout=(1,2), size=(800,350))
+p1 = plot(X, show_marginals=false)
+p2 = plot(Y, show_marginals=false)
+plot(p1, p2; layout=(1,2), size=(800,350))
 ```
 
-
-From this construction, the object `D` is a genuine multivariate random vector following the `Distributions.jl` API. It can be sampled (`rand()`), and its probability density function and distribution function can be evaluated (respectively `pdf` and `cdf`), etc.
-
-### Same copula, different marginals: back to uniforms
-
-```@example 2
-using StatsBase
-Yx = rand(SklarDist(C, (Normal(), Gamma(2,2))), 1500)
-Yy = rand(SklarDist(C, (LogNormal(), LogNormal())), 1500)
-Ux = pseudos(Yx') # N×d
-Uy = pseudos(Yy')
-P1 = scatter(Yx[1,:], Yx[2,:]; ms=2, alpha=0.6, title="Original scale X", legend=false)
-P2 = scatter(Yy[1,:], Yy[2,:]; ms=2, alpha=0.6, title="Original scale Y", legend=false)
-P3 = scatter(Ux[:,1], Ux[:,2]; ms=2, alpha=0.6, title="Back to uniforms (X)", legend=false, xlim=(0,1), ylim=(0,1))
-P4 = scatter(Uy[:,1], Uy[:,2]; ms=2, alpha=0.6, title="Back to uniforms (Y)", legend=false, xlim=(0,1), ylim=(0,1))
-plot(P1, P2, P3, P4; layout=(2,2), size=(900,650))
-```
-
+From this construction, the objects `D`, `X` and `Y` are genuine multivariate random vector following the `Distributions.jl` API. They can be sampled (`rand()`), and their probability density function and distribution function can be evaluated (respectively `pdf` and `cdf`), etc.
 
 ```@docs
 SklarDist

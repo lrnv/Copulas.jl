@@ -122,9 +122,7 @@ plot!(ts, ones(length(ts)); label="1", ls=:dot, color=:gray)
 
 ```@example 1
 C = GalambosCopula(1.0)
-U = rand(C, 3000)
-scatter(U[1,:], U[2,:]; ms=1.8, alpha=0.5, xlim=(0,1), ylim=(0,1), legend=false,
-        title="Galambos copula sample")
+plot(C, title="Galambos copula sample")
 ```
 
 ### Conditional distortion (EV example)
@@ -134,7 +132,7 @@ C = HuslerReissCopula(1.2)
 u2 = 0.4
 D = condition(C, 2, u2)
 ts = range(0.0, 1.0; length=401)
-plot(ts, cdf.(Ref(D), ts); xlabel="u", ylabel="H_{1|2}(u|$u2)",
+plot(ts, cdf.(Ref(D), ts); xlabel="u", ylabel="H_{1|2}(u|u₂=0.4)",
      title="Conditional distortion for Hüsler–Reiss")
 ```
 

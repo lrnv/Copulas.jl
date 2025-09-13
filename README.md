@@ -60,26 +60,27 @@ D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
 ```
 
 The list of availiable copula models is *very* large, check it out on our [documentation](https://lrnv.github.io/Copulas.jl/stable) ! 
-
 The general implementation philosophy is for the code to follow the mathematical boundaries of the implemented concepts. For example, this is the only implementation we know (in any language) that allows for **all** Archimedean copulas to be sampled: we use the Williamson transformation for non-standard generators, including user-provided black-box ones.
 
 ## Feature comparison
 
 
-There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. While not fully covering out both of these package's functionality (mostly because the three projects chose different implementation paths), `Copulas.jl` brings, as a key feature, the compliance with the broader ecosystem. The following table provides a feature comparison between the three: 
+There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. Since rencently, we cover both of these packages functionalities completely, while still bringing, as a key feature, the compliance with the broader ecosystem. The following table provides a feature comparison between the three: 
 
-|  | `Copulas.jl` | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
-|----------------|--------------|-------------------------|-----------------------|
-| `Distributions.jl`'s API | ✔️ | ❌ | ✔️ |
-| Fitting                  | ✔️ | ❌ | ❌ |
-| Plotting                 | ❌ | ❌ | ✔️ |
-| Available copulas        |     |     |    |
-| - Classic Bivariate      | ✔️ | ✔️ | ✔️ |
-| - Classic Multivariate   | ✔️ | ✔️ | ❌ |
-| - Archimedeans           | ✔️ (All of them) | ⚠️ Selected ones | ⚠️Selected ones |
-| - Bivariate Extreme Value| ✔️ | ❌ | ❌ |
-| - Obscure Bivariate      | ✔️ | ❌ | ❌ |
-| - Archimedean Chains     | ❌ | ✔️ | ❌ |
+|                          | `Copulas.jl`            | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
+|--------------------------|-------------------------|-------------------------|-----------------------|
+| `Distributions.jl`'s API | ✔️                      | ❌                     | ✔️                    |
+| Fitting                  | ✔️                      | ❌                     | ❌                    |
+| Plotting                 | ✔️                      | ❌                     | ✔️                    |
+| Conditioning             | ✔️                      | ❌                     | ⚠️ Bivariate Only     |
+| Available copulas        |                          |                        |                       |
+| - Classic Bivariate      | ✔️                      | ✔️                     | ✔️                    |
+| - Obscure Bivariate      | ✔️                      | ❌                     | ❌                    |
+| - Classic Multivariate   | ✔️                      | ✔️                     | ❌                    |
+| - Archimedeans           | ✔️ All of them          | ⚠️ Selected ones       | ⚠️Selected ones       |
+| - Extreme Value Copulas  | ⚠️ Bivariate only       | ❌                     | ❌                    |
+| - Archimax               | ⚠️ Bivariate only       | ❌                     | ❌                    |
+| - Archimedean Chains     | ❌                      | ✔️                     | ❌                    |
 
 Since our primary target is maintainability and readability of the implementation, we did not consider the efficiency and the performance of the code yet. Proper benchmarks will come in the near future. 
 

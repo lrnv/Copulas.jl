@@ -11,17 +11,11 @@ This section and the current implementation address the **bivariate case**. Mult
 
 An Archimax copula [caperaa2000](@cite) $C$ admits the representation
 
-$$
-C_{\phi,\ell}(u_1,u_2)
-=\phi\!\left(\ell\!\big(\phi^{-1}(u_1),\,\phi^{-1}(u_2)\big)\right),
-\qquad 0\le u_1,u_2\le 1,
-$$
+$$C_{\phi,\ell}(u_1,u_2)=\phi\!\left(\ell\!\big(\phi^{-1}(u_1),\,\phi^{-1}(u_2)\big)\right), \qquad 0\le u_1,u_2\le 1,$$
 
 where $\phi:[0,\infty)\to(0,1]$ is a given Archimedean generator (with inverse $\phi^{-1}$), $A_{\ell}:[0,1]\to[1/2,1]$ is a Pickands dependence function, and
 
-$$
-\ell(x_1,...x_d)= \left(\sum_{i=1}^d x_i\right)\,A_{\ell}\!\left(\frac{x_i}{\left(\sum_{i=1}^d x_i\right)}, i \in 1,...,d\right),\qquad x_1,..,x_d\ge 0.
-$$
+$$\ell(x_1,...x_d)= \left(\sum_{i=1}^d x_i\right)\,A_{\ell}\!\left(\frac{x_i}{\left(\sum_{i=1}^d x_i\right)}, i \in 1,...,d\right),\qquad x_1,..,x_d\ge 0.$$
 
 When $d = 2$, we abuse the $A$ notation by setting $A(w) = A(w, 1-w)$.
 
@@ -38,6 +32,16 @@ The API is minimal and generic:
 
 With these conventions, the constructor `ArchimaxCopula(d, gen, tail)` produces the correct d-variate model, accross all possiibilities through all implemented (and obviously new user-defined) models.
 
+You can define an archimax copula as follows: 
+```@example
+using Copulas, Distributions, Plots
+C = ArchimaxCopula(2, 
+    Copulas.FrankGenerator(0.8),                   # Archimedean generator
+    Copulas.AsymGalambosTail(0.35, (0.65, 0.3))    # Stable Tail Dependence
+)
+plot(C)
+```
+
 ---
 
 # Advanced Concepts
@@ -48,9 +52,7 @@ With these conventions, the constructor `ArchimaxCopula(d, gen, tail)` produces 
 !!! theorem "Theorem (Exhaustivity and consistency):" 
     For bivariate Archimax copulas,
 
-    $$
-    \tau_{\phi,A} \;=\; \tau_A \;+\; (1-\tau_A)\,\tau_\phi,
-    $$
+    $$\tau_{\phi,A} \;=\; \tau_A \;+\; (1-\tau_A)\,\tau_\phi,$$
 
     where $\tau_A$ is Kendall’s $\tau$ of the EV copula with Pickands $A$, and $\tau_\phi$ is Kendall’s $\tau$ of the Archimedean copula with generator $\phi$ (Capéraà, Fougères & Genest, 2000).
 
@@ -67,9 +69,7 @@ Each has its own docstring and dedicated section in this documentation.
 
 The implemented simulation scheme is the “frailty + EV” construction (e.g. [caperaa2000](@cite) [mai2012simulating](@cite), which is valid only when the Archimedean generator $\phi$ is **completely monotone**, which means it is the Laplace transform of a non-negative random variable $M$ called its *frailty*. If $(V_1,V_2)$ follows the EV copula with stable tail dependence function $\ell$, then
 
-$$
-U_j \;=\; \phi\!\big(-\log V_j\,/\,M\big),\qquad j=1,2,
-$$
+$$U_j \;=\; \phi\!\big(-\log V_j\,/\,M\big),\qquad j=1,2,$$
 
 has the Archimax copula $C_{\phi,A}$.
 

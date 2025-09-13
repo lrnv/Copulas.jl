@@ -149,6 +149,16 @@ EC3 = ecdf(u3s)
 plot!(ts, EC3.(ts); seriestype=:steppost, label="empirical", alpha=0.6, color=:black)
 ```
 
+#### Example (D = 3, |J| < D-1)
+
+When conditioning on less than $D-1$ dimensions, we obtain a multivariate object, usually a `SklarDist` : 
+
+```@example cond1
+C = ClaytonCopula(4, 1.2)
+H = condition(C, (2, 3), (0.25, 0.8))
+plot(H)
+```
+
 ### Special cases
 
 - Independence: distortions are the identity (`u ↦ u`) and the conditional copula is
@@ -349,7 +359,7 @@ plt = plot(layout=layout, size=(900, 280), legend=false)
 for k in 1:3
   Ek = ecdf(S[k, :])
   plot!(plt[k], ts, Ek.(ts); seriestype=:steppost, color=:black,
-      title="ECDF of s$(k)", xlabel="u", ylabel="ECDF")
+      title="ECDF of $(k)", xlabel="u", ylabel="ECDF")
   plot!(plt[k], ts, ts; color=:blue, alpha=0.7)
 end
 plt

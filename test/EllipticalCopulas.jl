@@ -31,3 +31,18 @@ end
     D1 = SklarDist(C1, (Normal(0,1),Normal(0,2)))
     @test cdf(D1, [-0.1, 0.1]) ≈ 0.3219002977336174 rtol=1e-3
 end
+
+@testitem "GaussianCopula equicorrelation constructor" tags=[:EllipticalCopulas, :GaussianCopula] begin
+    Cρ = GaussianCopula(2, 0.5)
+    @test Cρ isa GaussianCopula{2}
+    # Theoretical Kendall tau for bivariate Gaussian: τ = 2/π asin(ρ)
+    @test isapprox(Copulas.τ(Cρ), 2*asin(0.5)/π; rtol=1e-12)
+    # Zero correlation gives independent copula
+    C0 = GaussianCopula(2, 0.0)
+    @test C0 == IndependentCopula(2)
+    # PD lower bound check (just above boundary for d=3: lower = -0.5)
+    Cneg = GaussianCopula(3, -0.49)
+    @test Cneg isa GaussianCopula{3}
+    # Boundary should throw
+    @test_throws ArgumentError GaussianCopula(3, -0.5)
+end

@@ -95,6 +95,9 @@ We define helpers to:
 ```@example archi_radial
 using Distributions, StatsBase, Roots, QuadGK, Plots
 
+using Random # hide
+Random.seed!(42) # hide
+
 # Empirical Kendall sample and function from a pseudo-sample u (d×n, columns are obs)
 function kendall_sample(u::AbstractMatrix)
     d, n = size(u)
@@ -248,8 +251,25 @@ function diagnose_plots(u::AbstractMatrix, Rhat; R=nothing, logged=false)
     w = pdf.(Rhat, supp)
     Kᵣ(x) = sum(w .* (a .< x))
     xs = range(0, 1; length=1001)
-
-    p1 = plot(xs, K.(xs) .- Kᵣ.(xs), title="K̂ₙ(x) - K_R̂(x)", xlabel="", ylabel="", legend=false)
+    # Compute difference series once and stabilize axis if essentially flat to avoid
+    # PlotUtils warning: "No strict ticks found" (happens when span ~ 1e-16)
+    diff_vals = K.(xs) .- Kᵣ.(xs)
+    lo, hi = extrema(diff_vals)
+    span = hi - lo
+    # Threshold below which we consider the curve numerically flat
+    if span < 1e-9
+        # Center around mean (≈ mid of lo/hi) and impose a symmetric small band
+        mid = (lo + hi) / 2
+        pad = max(span, 1e-9) # ensure non‑zero
+        lo_plot = mid - pad
+        hi_plot = mid + pad
+        # Provide explicit ticks so PlotUtils doesn't search for strict ticks
+        tickvals = (mid - pad, mid, mid + pad)
+    p1 = plot(xs, diff_vals; title="K̂ₙ(x) - K_R̂(x)", xlabel="", ylabel="", legend=false,
+          ylims=(lo_plot, hi_plot), yticks=collect(tickvals))
+    else
+        p1 = plot(xs, diff_vals; title="K̂ₙ(x) - K_R̂(x)", xlabel="", ylabel="", legend=false)
+    end
     p2 = plot(xs, xs .- K.(xs), label="x - K̂ₙ(x)", title="x - K̂ₙ(x) vs x - K_R̂(x)", xlabel="", ylabel="")
     plot!(p2, xs, xs .- Kᵣ.(xs), label="x - K_R̂(x)")
 
