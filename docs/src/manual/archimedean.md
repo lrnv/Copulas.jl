@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# [General Discussion](@id archimedean_copulas_header)
+# [Archimedean family](@id archimedean_copulas_header)
 
 Archimedean copulas are an important parametric class of copulas. To define Archimedean copulas, we must consider their *generators*, which are unrelated to spherical generators and must be $d$-monotone functions. 
 
@@ -213,6 +213,27 @@ for which the corresponding distribution is known but has no particular name, th
 ```@docs
 ArchimedeanCopula
 ```
+
+
+## Conditionals and distortions
+
+Let $C(\boldsymbol u)=\phi\!\left(\sum_{k=1}^d \phi^{-1}(u_k)\right)$ be a $d$-variate Archimedean copula with generator $\phi$.
+
+- Conditioning on a subset $J \subset \{1,\dots,d\}$ with $m=|J|$ and defining $S_J = \sum_{j\in J} \phi^{-1}(u_j)$, the conditional copula of the remaining coordinates $I = \{1,\dots,d\}\setminus J$ given $U_J=\boldsymbol u_J$ is again Archimedean with generator
+
+    $$\phi_{\,|J}(t; \boldsymbol u_J)\;=\;\frac{\phi^{(m)}(t + S_J)}{\phi^{(m)}(S_J)},$$
+
+    provided the $m$-th derivative exists and $\phi^{(m)}(S_J) \ne 0$.
+
+- The corresponding univariate conditional distortion for coordinate $i\in I$ is
+
+    $$H_{i|J}(u\mid\boldsymbol u_J)\;=\;\frac{\phi^{(m)}\!\big(\phi^{-1}(u) + S_J\big)}{\phi^{(m)}(S_J)}\in[0,1].$$
+
+In particular, in the bivariate case ($d=2$, $J=\{2\}$) one recovers the familiar closed form
+
+$$H_{1|2}(u\mid v)\;=\;\frac{\phi'\!\big(\phi^{-1}(u)+\phi^{-1}(v)\big)}{\phi'\!\big(\phi^{-1}(v)\big)}.$$
+
+These expressions are used in the implementation to provide fast paths for `condition(::ArchimedeanCopula, ...)` and for conditional distortions on the copula scale.
 
 
 ### Quick visual comparison (bivariate)

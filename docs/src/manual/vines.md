@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Vines Copulas
+# Vines family
 
 !!! todo "Not implemented yet!"
     Do not hesitate to join the discussion on [our GitHub](https://github.com/lrnv/Copulas.jl)!

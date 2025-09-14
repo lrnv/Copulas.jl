@@ -82,16 +82,7 @@ using Plots
 plot(C, :logpdf)
 ```
 
-See [the visualizations page](@ref viz_page] for details on the visualisations tools. It’s often useful to get an intuition by looking at scatter plots. Below we compare
-independence, a positive dependence (Clayton), and the Fréchet bounds:
-
-```@example 1
-p1 = plot(IndependentCopula(2), title="Independent")
-p2 = plot(ClaytonCopula(2, 3.0), title="Clayton θ=3")
-p3 = plot(MCopula(2), title="Comonotony (M)")
-p4 = plot(WCopula(2), title="Countermonotony (W)")
-plot(p1,p2,p3,p4; layout=(2,2), size=(800,600))
-```
+See [the visualizations page](@ref viz_page) for details on the visualisations tools. It’s often useful to get an intuition by looking at scatter plots.
 
 One of the reasons that makes copulas so useful is the bijective map discovered by Sklar [sklar1959](@cite) in 1959:
 
@@ -160,35 +151,40 @@ u = rand(WCopula(2),10)
 sum(u, dims=1) # sum is always equal to one, this is anticomonotony
 ```
 
-You can also visualize the strong alignment for `M` and the anti-diagonal pattern for `W` in the grid above.
+Below we plot independence, a positive dependence (Clayton), and the Fréchet bounds. You can visualize the strong alignment for `M` and the anti-diagonal pattern for `W`.
 
-Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas. This is mostly the content of this package, and we refer to the rest of the documentation for more details on the models and their implementations. 
+```@example 1
+p1 = plot(IndependentCopula(2), title="IndependentCopula(2)")
+p2 = plot(ClaytonCopula(2, 3.0), title="ClaytonCopula(2, 3.0)")
+p3 = plot(MCopula(2), title="MCopula(2)")
+p4 = plot(WCopula(2), title="WCopula(2)")
+plot(p1,p2,p3,p4; layout=(2,2), size=(800,600))
+```
+
+Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas (we already saw the Clayton family). You can browse the available families in this package in the bestiary. Like any families of random variables or random vectors, copulas are fittable on empirical data. 
 
 ## Fitting copulas and compound distributions.
 
-`Distributions.jl`'s API contains a `fit` function for random vectors and random variables. We propose an implementation of it for copulas and multivariate compound distributions (composed of a copula and some given marginals). It can be used as follows: 
+`Distributions.jl`'s API contains a `fit` function for random vectors and random variables. We propose an implementation of it for copulas and multivariate compound distributions (composed of a copula and some given marginals). Les us first construct a given multivariate random vector: 
 
 ```@example 2
 using Copulas, Distributions, Random, Plots
 # Construct a given model:
-X₁ = Gamma(2,3)
-X₂ = Pareto()
-X₃ = LogNormal(0,1)
+X₁, X₂, X₃ = Gamma(2,3), Beta(1,5), LogNormal(0,1)
 C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
-simu = rand(D,1000) # Generate a dataset
 ```
 
-Let us first visualize our model: 
+And visualize the result: 
 ```@example 2
 plot(D)
 ```
 
-Now try to fit it: 
-
+Now generate data from it, and try to fit it as if it was an unknown dataset: 
 ```@example 2
+simu = rand(D,1000) # Generate a dataset
 # You may estimate a copula using the `fit` function:
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
+D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Beta,LogNormal}}, simu)
 ```
 
 We see on the output that the parameters were correctly estimated from this sample. More details on the estimator, including, e.g., standard errors, may be obtained with more complicated estimation routines. For a Bayesian approach using  `Turing.jl`, see [this example](@ref Bayesian-inference-with-Turing.jl). Let's vizualize the result: 
@@ -197,19 +193,19 @@ We see on the output that the parameters were correctly estimated from this samp
 plot(D̂)
 ```
 
-!!! info "Fitting procedures are not part of the API"
+!!! info "The API does not enforce a particular fitting procedures"
     [`Distributions.jl` documentation](https://juliastats.org/Distributions.jl/stable/fit/#Distribution-Fitting) states that: 
 
     > The fit function will choose a reasonable way to fit the distribution, which, in most cases, is maximum likelihood estimation.
 
-    The results of this fitting function should then only be used as "quick-and-dirty" fits, since the fitting method is "hidden" to the user and might even change without breaking releases. We embrace this philosophy: from one copula to the other, the fitting method might not be the same. 
+    We embrace this philosophy: from one copula to the other, the fitting method might not be the same. The results of this fitting function should then only be used as "quick-and-dirty" fits, since the fitting method is "hidden" to the user and might even change without breaking releases. More precise controls on this procedures are actively being implemented and will be released soon. 
 
-## Going further
+## Next steps
 
-This documentation aims to combine theoretical information and references to the literature with practical guidance related to our specific implementation. It can be read as a lecture, or used to find the specific feature you need through the search function. We hope you find it useful.
+The documentation of this package aims to combine theoretical information and references to the literature with practical guidance related to our specific implementation. It can be read as a lecture, or used to find the specific feature you need through the search function. We hope you find it useful.
 
 !!! tip "Explore the bestiary!"
-    The package contains *many* copula families. Classifying them is essentially impossible, since the class is infinite-dimensional, but the package proposes a few standard classes: elliptical, archimedean, extreme value, empirical, vines...
+    The package contains *many* copula families. Classifying them is essentially impossible, since the class is infinite-dimensional, but the package proposes a few standard classes: elliptical, archimedean, extreme value, empirical...
     
     Each of these classes more or less corresponds to an abstract type in our type hierarchy, and to a section of this documentation. Do not hesitate to explore the bestiary !
 

@@ -2,6 +2,8 @@
 CurrentModule = Copulas
 ```
 
+# Home
+
 ## Introduction
 
 The [Copulas.jl](https://github.com/lrnv/Copulas.jl) package provides a large collection of models for dependence structures of real random vectors, known as [copulas](https://en.wikipedia.org/wiki/Copula_(probability_theory)), with a wide selection of features:

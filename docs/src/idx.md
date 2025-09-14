@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Reference
+# Package index
 
 All docstrings are collected here as a general reference.
 

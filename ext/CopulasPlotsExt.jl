@@ -12,7 +12,6 @@ using Plots.PlotMeasures
 using Random
 using StatsBase
 
-const _cop_default_grid = 60
 function _mk_Z(obj, xs, ys, what::Symbol)
     f = what === :pdf ? Distributions.pdf :
         what === :logpdf ? Distributions.logpdf : 
@@ -23,17 +22,12 @@ function _mk_Z(obj, xs, ys, what::Symbol)
     end
     return Z
 end
-
-function _copula_grid(C::Copulas.Copula{2}; n=_cop_default_grid, what::Symbol=:pdf)
-    xs = range(0.001, 0.999; length=n)
-    ys = range(0.001, 0.999; length=n)
-    Z = _mk_Z(C, xs, ys, what)
-    return xs, ys, Z
-end
-
-function _sklardist_grid(S::Copulas.SklarDist{CT,M}; n=_cop_default_grid, what::Symbol=:pdf, scale::Symbol=:copula) where {CT<:Copulas.Copula{2}, M}
+function _contour_grid(S::Copulas.SklarDist{CT,M}, n; what::Symbol=:pdf, scale::Symbol=:copula) where {CT<:Copulas.Copula{2}, M}
     if scale === :copula
-        return _copula_grid(S.C; n=n, what=what)
+        xs = range(0.001, 0.999; length=n)
+        ys = range(0.001, 0.999; length=n)
+        Z = _mk_Z(S.C, xs, ys, what)
+        return xs, ys, Z
     elseif scale === :sklar
         qs = range(0.001, 0.999; length=n)
         xs = [quantile(S.m[1], q) for q in qs]
@@ -57,6 +51,8 @@ end
         plotattributes[:yscale] = :identity
         plotattributes[:zscale] = :identity
     end
+    # mark that this plot originated from a Copula, so guides can use u₁/u₂ semantics
+    plotattributes[:_source_is_copula] = true
     S = Copulas.SklarDist(C, ntuple(_ -> Distributions.Uniform(), d))
     return S, what
 end
@@ -78,7 +74,7 @@ end
     end
 
     n_scatter =      get(plotattributes, :n, 1500)
-    overlay_n =      get(plotattributes, :overlay_points, _cop_default_grid)
+    overlay_n =      get(plotattributes, :overlay_n, 60)
     pts_alpha =      get(plotattributes, :pts_alpha, 0.25)
     show_axes =      get(plotattributes, :show_axes, true)
     show_marginals = get(plotattributes, :show_marginals, true)
@@ -86,6 +82,7 @@ end
     show_corr =      get(plotattributes, :show_corr, true)
     marg_alpha =     get(plotattributes, :marg_alpha, 0.6)
     draw_contour =   (what === :pdf || what === :logpdf || what === :cdf)
+    source_is_copula = get(plotattributes, :_source_is_copula, false)
 
     # Common overlay alpha (prefer bivariate keyword, fallback to pairwise)
     if d == 2
@@ -96,7 +93,7 @@ end
             colorbar := get(plotattributes, :colorbar, false)
             xs = ys = Z = nothing
             if draw_contour
-                xs, ys, Z = _sklardist_grid(S; n=overlay_n, what=what, scale=scale)
+                xs, ys, Z = _contour_grid(S, overlay_n; what=what, scale=scale)
             end
             pts = n_scatter > 0 ? rand(S, n_scatter) : nothing
             if pts !== nothing
@@ -125,9 +122,9 @@ end
                 @series begin
                     subplot := 3
                     seriestype := :contour
-                    if scale === :copula
-                        xguide --> (show_axes ? "u" : nothing)
-                        yguide --> (show_axes ? "v" : nothing)
+                    if (scale === :copula) || source_is_copula
+                        xguide --> (show_axes ? "u₁" : nothing)
+                        yguide --> (show_axes ? "u₂" : nothing)
                     else
                         xguide --> (show_axes ? "x₁" : nothing)
                         yguide --> (show_axes ? "x₂" : nothing)
@@ -177,9 +174,9 @@ end
             end
         else
             # Center-only bivariate
-            if scale === :copula
-                xguide --> (show_axes ? "u" : nothing) 
-                yguide --> (show_axes ? "v" : nothing) 
+            if (scale === :copula) || source_is_copula
+                xguide --> (show_axes ? "u₁" : nothing) 
+                yguide --> (show_axes ? "u₂" : nothing) 
             else
                 xguide --> (show_axes ? "x₁" : nothing)
                 yguide --> (show_axes ? "x₂" : nothing)
@@ -190,8 +187,12 @@ end
                 ticks := false
             end
             colorbar := get(plotattributes, :colorbar, false)
+            # Default camera for surface plots: rotate 30° to the right, elevation at 25° (user can override)
+            if is_surface && !haskey(plotattributes, :camera)
+                camera := (60, 25)
+            end
             if draw_contour
-                xs, ys, Z = _sklardist_grid(S; n=overlay_n, what=what, scale=scale)
+                xs, ys, Z = _contour_grid(S, overlay_n; what=what, scale=scale)
             end
             if scale === :copula && length(S.m) == 2 && all(mi -> mi isa Distributions.Uniform && mi.a == 0 && mi.b == 1, S.m)
                 xlims --> (0,1); ylims --> (0,1)
@@ -284,7 +285,7 @@ end
                             colorbar := false
                             Cij = Copulas.subsetdims(S.C, (j,i))
                             Sij = Copulas.SklarDist(Cij, (S.m[j], S.m[i]))
-                            xs, ys, Z = _sklardist_grid(Sij; n=overlay_n, what=what, scale=scale)
+                            xs, ys, Z = _contour_grid(Sij, overlay_n; what=what, scale=scale)
                             xs, ys, Z
                         end
                     end
