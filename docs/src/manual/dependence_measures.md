@@ -15,12 +15,12 @@ We implement the most well-known ones in this package.
 !!! definition "Definition (Kendall' τ):"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
 
-    $$\tau = 4 \int C(\bm u) \, c(\bm u) \;d\bm u -1$$
+    $$\tau = 4 \int C(\boldsymbol u) \, c(\boldsymbol u) \;d\boldsymbol u -1$$
 
 !!! definition "Definition (Spearman's ρ):"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Spearman's ρ is defined as: 
 
-    $$\rho = 12 \int C(\bm u) d\bm u -3.$$
+    $$\rho = 12 \int C(\boldsymbol u) d\boldsymbol u -3.$$
 
 These two dependence measures are most meaningful in the bivariate case, and we sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated with a multivariate copula. 
 We thus provide two different interfaces:

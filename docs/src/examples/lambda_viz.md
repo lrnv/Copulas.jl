@@ -1,15 +1,15 @@
 # Empirical Kendall function and Archimedean's λ function.
 
-The Kendall function is important in dependence structure analysis. The Kendall function associated with a $d$-variate copula $C$ is defined by letting $\bm U = (U_1, ..., U_n) \sim C$ and setting:
+The Kendall function is important in dependence structure analysis. The Kendall function associated with a $d$-variate copula $C$ is defined by letting $\boldsymbol U = (U_1, ..., U_n) \sim C$ and setting:
 
 $$K(t) = \mathbb P \left( C(U_1,...,U_d) \le t \right),$$
 
-From a computational point of view, we often do not have access to true observations of the random vector $\bm U \sim C$ but rather only observations on the marginal scales.
+From a computational point of view, we often do not have access to true observations of the random vector $\boldsymbol U \sim C$ but rather only observations on the marginal scales.
 Fortunately, this is not an issue and we can estimate the $K$ function directly through a sample duplication trick. 
 For that, suppose for the sake of the argument that we have a multivariate sample on marignal scales $\left(X_{i,j}\right)_{i \in 1,...,d,\; j \in 1,...,n}$ with dependence structure $C$. 
 A standard way to approximate $K$ is to compute first
 
-$$Z_j = \frac{1}{n-1} \sum_{k \neq j} \bm 1_{X_{i,j} < X_{i,k} \forall i \in 1,...,d}.$$
+$$Z_j = \frac{1}{n-1} \sum_{k \neq j} \boldsymbol 1_{X_{i,j} < X_{i,k} \forall i \in 1,...,d}.$$
 
 
 Indeed, $K$ can be approximated as the empirical distribution function of $Z_1,...,Z_n$. 
