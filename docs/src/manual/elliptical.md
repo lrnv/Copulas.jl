@@ -8,23 +8,23 @@ CurrentModule = Copulas
 The easiest families of copulas are the one derived from known families of random vectors, and the first presented one are, generally, the Elliptical families (in particular, the Gaussian and Student families are very standard in the litterature). 
 
 !!! definition "Definition (Spherical and elliptical random vectors):" 
-    A random vector $\bm X$ is said to be spherical if for all orthogonal matrix $\bm A \in O_d(\mathbb R)$, $\bm A\bm X \sim \bm X$. 
+    A random vector $\boldsymbol X$ is said to be spherical if for all orthogonal matrix $\boldsymbol A \in O_d(\mathbb R)$, $\boldsymbol A\boldsymbol X \sim \boldsymbol X$. 
 
-    For every matrix $\bm B$ and vector $\bm c$, the random vector $\bm B \bm X + \bm c$ is then said to be elliptical.
+    For every matrix $\boldsymbol B$ and vector $\boldsymbol c$, the random vector $\boldsymbol B \boldsymbol X + \boldsymbol c$ is then said to be elliptical.
 
 
-Spherical random vectors have several interesting properties. First, the shape of the distribution must be the same in every direction since it is stable by rotations. Moreover, their characteristic functions (c.f.) only depend on the norm of their arguments. Indeed, for any $\bm A \in O_d(\mathbb R)$, 
+Spherical random vectors have several interesting properties. First, the shape of the distribution must be the same in every direction since it is stable by rotations. Moreover, their characteristic functions (c.f.) only depend on the norm of their arguments. Indeed, for any $\boldsymbol A \in O_d(\mathbb R)$, 
 ```math
-\phi(\bm t) = \mathbb E\left(e^{\langle \bm t, \bm X \rangle}\right)= \mathbb E\left(e^{\langle \bm t, \bm A\bm X \rangle}\right) = \mathbb E\left(e^{\langle \bm A\bm t, \bm X \rangle}\right) = \phi(\bm A\bm t).
+\phi(\boldsymbol t) = \mathbb E\left(e^{\langle \boldsymbol t, \boldsymbol X \rangle}\right)= \mathbb E\left(e^{\langle \boldsymbol t, \boldsymbol A\boldsymbol X \rangle}\right) = \mathbb E\left(e^{\langle \boldsymbol A\boldsymbol t, \boldsymbol X \rangle}\right) = \phi(\boldsymbol A\boldsymbol t).
 ```
 
-We can therefore express this characteristic function as $\phi(\bm t) = \psi(\lVert \bm t \rVert_2^2)$, where $\psi$ is a function that characterizes the spherical family, called the *generator* of the family. Any characteristic function that can be expressed as a function of the norm of its argument is the characteristic function of a spherical random vector, since $\lVert \bm A \bm t \rVert_2 = \lVert \bm t \rVert_2$ for any orthogonal matrix $\bm A$. 
+We can therefore express this characteristic function as $\phi(\boldsymbol t) = \psi(\lVert \boldsymbol t \rVert_2^2)$, where $\psi$ is a function that characterizes the spherical family, called the *generator* of the family. Any characteristic function that can be expressed as a function of the norm of its argument is the characteristic function of a spherical random vector, since $\lVert \boldsymbol A \boldsymbol t \rVert_2 = \lVert \boldsymbol t \rVert_2$ for any orthogonal matrix $\boldsymbol A$. 
 
 This class contains the (multivariate) Normal and Student distributions, and it is easy to construct others if needed. This is a generalization of the family of Gaussian random vectors, and they benefit from several nice properties of the former, among which, particularly interesting, the stability by convolution. Indeed, convolutions correspond to product of characteristic functions, and
 ```math
-\phi(\bm t) = \prod_{i=1}^n \phi_i(\bm t) = \prod_{i=1}^n \psi_i(\lVert \bm t \rVert_2^2) = \psi(\lVert \bm t \rVert_2^2),
+\phi(\boldsymbol t) = \prod_{i=1}^n \phi_i(\boldsymbol t) = \prod_{i=1}^n \psi_i(\lVert \boldsymbol t \rVert_2^2) = \psi(\lVert \boldsymbol t \rVert_2^2),
 ```
-which is still a function of only the norm of $\bm t$. 
+which is still a function of only the norm of $\boldsymbol t$. 
 
 To fix ideas, for Gaussian random vectors, $\psi(t) = e^{-\frac{t^2}{2}}$.
 

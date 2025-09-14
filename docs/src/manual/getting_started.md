@@ -12,7 +12,7 @@ We start here by defining a few concepts about multivariate random vectors, depe
 ## Reminder on multivariate random vectors
 
 
-Consider a real valued random vector $\bm X = \left(X_1,...,X_d\right): \Omega \to \mathbb R^d$. The random variables $X_1,...,X_d$ are called the marginals of the random vector $\bm X$. 
+Consider a real valued random vector $\boldsymbol X = \left(X_1,...,X_d\right): \Omega \to \mathbb R^d$. The random variables $X_1,...,X_d$ are called the marginals of the random vector $\boldsymbol X$. 
 
 !!! info "Constructing random variables in Julia via `Distributions.jl`"
     Recall that you can construct random variables in Julia by the following code : 
@@ -29,10 +29,10 @@ Consider a real valued random vector $\bm X = \left(X_1,...,X_d\right): \Omega \
     We refer to [Distributions.jl's documentation](https://github.com/JuliaStats/Distributions.jl) for more details on what you can do with these objects. We assume here that you are familiar with their API.
 
 
-The probability distribution of the random vector $\bm X$ can be characterized by its *distribution function* $F$: 
+The probability distribution of the random vector $\boldsymbol X$ can be characterized by its *distribution function* $F$: 
 ```math
 \begin{align*}
-  F(\bm x) &= \mathbb P\left(\bm X \le \bm x\right)\\
+  F(\boldsymbol x) &= \mathbb P\left(\boldsymbol X \le \boldsymbol x\right)\\
   &= \mathbb P\left(\forall i \in \{1,...,d\},\; X_i \le x_i\right).
 \end{align*}
 ```
@@ -87,18 +87,18 @@ See [the visualizations page](@ref viz_page) for details on the visualisations t
 One of the reasons that makes copulas so useful is the bijective map discovered by Sklar [sklar1959](@cite) in 1959:
 
 !!! theorem "Theorem (Sklar):"
-    For every random vector $\bm X$, there exists a copula $C$ such that 
+    For every random vector $\boldsymbol X$, there exists a copula $C$ such that 
 
-    $\forall \bm x\in \mathbb R^d, F(\bm x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
+    $\forall \boldsymbol x\in \mathbb R^d, F(\boldsymbol x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
     The copula $C$ is uniquely determined on $\mathrm{Ran}(F_{1}) \times ... \times \mathrm{Ran}(F_{d})$, where $\mathrm{Ran}(F_i)$ denotes the range of the function $F_i$. In particular, if all marginals are absolutely continuous, $C$ is unique.
 
 
-This result allows to decompose the distribution of $\bm X$ into several components: the marginal distributions on one side, and the copula on the other side, which governs the dependence structure between the marginals. This object is central in our work, and therefore deserves a moment of attention. 
+This result allows to decompose the distribution of $\boldsymbol X$ into several components: the marginal distributions on one side, and the copula on the other side, which governs the dependence structure between the marginals. This object is central in our work, and therefore deserves a moment of attention. 
 
 !!! example "Example (Independence):"
     The function 
 
-    $\Pi : \bm x \mapsto \prod_{i=1}^d x_i = \bm x^{\bm 1}$ is a copula, corresponding to independent random vectors.
+    $\Pi : \boldsymbol x \mapsto \prod_{i=1}^d x_i = \boldsymbol x^{\boldsymbol 1}$ is a copula, corresponding to independent random vectors.
 
 The independence copula can be constructed using the [`IndependentCopula(d)`](@ref IndependentCopula) syntax as follows: 
 
@@ -132,16 +132,16 @@ Sklar's theorem can be used the other way around (from the marginal space to the
 Copulas are bounded functions with values in [0,1] since they correspond to probabilities. But their range can be bounded more precisely, and [lux2017](@cite) gives us:
 
 !!! property "Property (Fréchet-Hoeffding bounds):" 
-    For all $\bm x \in [0,1]^d$, every copula $C$ satisfies : 
+    For all $\boldsymbol x \in [0,1]^d$, every copula $C$ satisfies : 
 
-    $$\langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+} \le C(\bm x) \le \min \bm x,$$
+    $$\langle \boldsymbol 1, \boldsymbol x - 1 + d^{-1}\rangle_{+} \le C(\boldsymbol x) \le \min \boldsymbol x,$$
     
     where $y_{+} = \max(0,y)$.
 
-The function $M : \bm x \mapsto \min\bm x$, called the upper Fréchet-Hoeffding bound, is a copula. The function $W : \bm x \mapsto \langle \bm 1, \bm x - 1 + d^{-1}\rangle_{+}$, called the lower Fréchet-Hoeffding bound, is on the other hand a copula only when $d=2$. 
+The function $M : \boldsymbol x \mapsto \min\boldsymbol x$, called the upper Fréchet-Hoeffding bound, is a copula. The function $W : \boldsymbol x \mapsto \langle \boldsymbol 1, \boldsymbol x - 1 + d^{-1}\rangle_{+}$, called the lower Fréchet-Hoeffding bound, is on the other hand a copula only when $d=2$. 
 These two copulas can be constructed through [`MCopula(d)`](@ref MCopula) and [`WCopula(2)`](@ref WCopula). 
 
-The upper Fréchet-Hoeffding bound corresponds to the case of comonotone random vector: a random vector $\bm X$ is said to be comonotone, i.e., to have copula $M$, when each of its marginals can be written as a non-decreasing transformation of the same random variable (say with $\mathcal U\left([0,1]\right)$ distribution). This is a simple but important dependence structure. See e.g.,[kaas2002,hua2017](@cite) on this particular copula. Note that the implementation of their sampler was straightforward due to their particular shapes:
+The upper Fréchet-Hoeffding bound corresponds to the case of comonotone random vector: a random vector $\boldsymbol X$ is said to be comonotone, i.e., to have copula $M$, when each of its marginals can be written as a non-decreasing transformation of the same random variable (say with $\mathcal U\left([0,1]\right)$ distribution). This is a simple but important dependence structure. See e.g.,[kaas2002,hua2017](@cite) on this particular copula. Note that the implementation of their sampler was straightforward due to their particular shapes:
 
 ```@example 1
 rand(MCopula(2),10) # sampled values are all equal, this is comonotony

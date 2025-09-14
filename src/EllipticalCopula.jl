@@ -19,17 +19,17 @@ From these two functions, the abstract type provides a fully functional copula.
 Recall the definition of spherical random vectors: 
 
 !!! definition "Definition (Spherical and elliptical random vectors):"
-    A random vector ``\\bm X`` is said to be spherical if for all orthogonal matrix ``\\bm A \\in O_d(\\mathbb R)``, ``\\bm A\\bm X \\sim \\bm X``. 
+    A random vector ``\\boldsymbol X`` is said to be spherical if for all orthogonal matrix ``\\boldsymbol A \\in O_d(\\mathbb R)``, ``\\boldsymbol A\\boldsymbol X \\sim \\boldsymbol X``. 
 
-    For every matrix ``\\bm B`` and vector ``\\bm c``, the random vector ``\\bm B \\bm X + \\bm c`` is then said to be elliptical.
+    For every matrix ``\\boldsymbol B`` and vector ``\\boldsymbol c``, the random vector ``\\boldsymbol B \\boldsymbol X + \\boldsymbol c`` is then said to be elliptical.
 
 
-Recall that spherical random vectors are random vectors which characteristic functions (c.f.) only depend on the norm of their arguments. Indeed, for any ``\\bm A \\in O_d(\\mathbb R)``, 
+Recall that spherical random vectors are random vectors which characteristic functions (c.f.) only depend on the norm of their arguments. Indeed, for any ``\\boldsymbol A \\in O_d(\\mathbb R)``, 
 ```math
-\\phi(\\bm t) = \\mathbb E\\left(e^{\\langle \\bm t, \\bm X \\rangle}\\right)= \\mathbb E\\left(e^{\\langle \\bm t, \\bm A\\bm X \\rangle}\\right) = \\mathbb E\\left(e^{\\langle \\bm A\\bm t, \\bm X \\rangle}\\right) = \\phi(\\bm A\\bm t).
+\\phi(\\boldsymbol t) = \\mathbb E\\left(e^{\\langle \\boldsymbol t, \\boldsymbol X \\rangle}\\right)= \\mathbb E\\left(e^{\\langle \\boldsymbol t, \\boldsymbol A\\boldsymbol X \\rangle}\\right) = \\mathbb E\\left(e^{\\langle \\boldsymbol A\\boldsymbol t, \\boldsymbol X \\rangle}\\right) = \\phi(\\boldsymbol A\\boldsymbol t).
 ```
 
-We can therefore express this characteristic function as ``\\phi(\\bm t) = \\psi(\\lVert \\bm t \\rVert_2^2)``, where ``\\psi`` is a function that characterizes the spherical family, called the *generator* of the family. Any characteristic function that can be expressed as a function of the norm of its argument is the characteristic function of a spherical random vector, since ``\\lVert \\bm A \\bm t \\rVert_2 = \\lVert \\bm t \\rVert_2`` for any orthogonal matrix ``\\bm A``. 
+We can therefore express this characteristic function as ``\\phi(\\boldsymbol t) = \\psi(\\lVert \\boldsymbol t \\rVert_2^2)``, where ``\\psi`` is a function that characterizes the spherical family, called the *generator* of the family. Any characteristic function that can be expressed as a function of the norm of its argument is the characteristic function of a spherical random vector, since ``\\lVert \\boldsymbol A \\boldsymbol t \\rVert_2 = \\lVert \\boldsymbol t \\rVert_2`` for any orthogonal matrix ``\\boldsymbol A``. 
 
 However, note that this is not how the underlying code is working, we do not check for validity of the proposed generator (we dont even use it). You can construct such an elliptical family using simply Sklar: 
 
