@@ -218,7 +218,7 @@ end
 ###########################################################################
 
 
-@inline function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
     ibase = S.dims[i]
     jsbase = ntuple(k -> S.dims[js[k]], p)
     return DistortionFromCop(S.C, jsbase, uⱼₛ, ibase)

@@ -67,7 +67,7 @@ end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
 frailty(G::BB2Generator) = GammaStoppedGamma(G.θ, G.δ)
-@inline function _abpair_robust(u1::Real, u2::Real, θ::Real, δ::Real)
+function _abpair_robust(u1::Real, u2::Real, θ::Real, δ::Real)
     u1c = clamp(float(u1), 1e-15, 1-1e-15)
     u2c = clamp(float(u2), 1e-15, 1-1e-15)
     A   = δ * LogExpFunctions.expm1(-θ*log(u1c))   # = δ(u1^{-θ}-1) = log(1+x)
