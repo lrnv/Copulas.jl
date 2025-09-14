@@ -4,3 +4,6 @@
 /docs/build/
 Manifest.toml
 .vscode/*
+docs/node_modules/**
+docs/package.json
+docs/package-lock.json
