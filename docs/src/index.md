@@ -13,7 +13,7 @@ hero:
   actions:
     - theme: brand
       text: Getting started
-      link: manual/getting_started
+      link: /manual/getting_started
     - theme: alt
       text: View on Github
       link: https://github.com/lrnv/Copulas.jl
