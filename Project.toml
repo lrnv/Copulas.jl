@@ -1,6 +1,6 @@
 name = "Copulas"
 uuid = "ae264745-0b69-425e-9d9d-cf662c5eec93"
-version = "0.1.31"
+version = "0.1.32"
 authors = ["Oskar Laverny"]
 
 [deps]
