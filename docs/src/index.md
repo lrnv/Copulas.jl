@@ -56,13 +56,13 @@ The API contains random number generation, cdf and pdf evaluation, and the `fit`
 ```@example
 using Copulas, Distributions, Random, Plots
 X₁ = Gamma(2,3)
-X₂ = beta(1,4)
+X₂ = Beta(1,4)
 X₃ = Normal()
 C = ClaytonCopula(3,5.2) # A 3-variate Clayton Copula with θ = 0.7
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 
 simu = rand(D,1000) # Generate a dataset
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu) # estimate a model
+D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,Normal}}, simu) # estimate a model
 plot(D̂) # plot the result
 ```
 
