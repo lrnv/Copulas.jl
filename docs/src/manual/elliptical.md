@@ -1,7 +1,7 @@
 ```@meta
 CurrentModule = Copulas
 ```
-# [Elliptical Copulas](@id elliptical_copulas_header)
+# [Elliptical family](@id elliptical_copulas_header)
 
 ## Definition
 
@@ -123,7 +123,7 @@ using Plots
 ν = 4
 CG = GaussianCopula(Σ)
 CT = TCopula(ν, Σ)
-plot(plot(CG), plot(CT), layout=(1,2))
+plot(plot(CG), plot(CT); layout=(1,2))
 ```
 
 ### Conditional on original scale via SklarDist
@@ -146,6 +146,36 @@ The difference between the two is not very strong.
 ```@docs
 EllipticalCopula
 ```
+
+
+## Conditionals and distortions
+
+For an elliptical copula built from an underlying elliptical vector $X=(X_1,\dots,X_d)$ with correlation matrix $\Sigma$ and univariate CDFs $(F_i)$, conditioning follows the standard elliptical identities. Partition indices as $I\cup J=\{1,\dots,d\}$ and conformably partition $\Sigma$ as
+
+$$\Sigma = \begin{pmatrix} \Sigma_{II} & \Sigma_{IJ} \\ \Sigma_{JI} & \Sigma_{JJ} \end{pmatrix}.$$
+
+- For the Gaussian copula, the conditional law $X_I\,|\,X_J=x_J$ is Gaussian with
+
+    $$\mu_{I|J} = \Sigma_{IJ}\,\Sigma_{JJ}^{-1}\,x_J, \qquad
+    \Sigma_{I|J} = \Sigma_{II} - \Sigma_{IJ}\,\Sigma_{JJ}^{-1}\,\Sigma_{JI}.$$
+
+    Mapping to the copula scale with $u_k = \Phi(x_k)$ and $x_k = \Phi^{-1}(u_k)$ yields the conditional copula via
+
+    $$C_{I|J}(\boldsymbol u_I\mid\boldsymbol u_J) = \Pr\Big[X_I \le \Phi^{-1}(\boldsymbol u_I)\,\Big|\,X_J = \Phi^{-1}(\boldsymbol u_J)\Big],$$
+
+    and the univariate conditional distortions
+
+    $$H_{i|J}(u\mid\boldsymbol u_J)=\Pr\Big[X_i \le \Phi^{-1}(u)\,\Big|\,X_J = \Phi^{-1}(\boldsymbol u_J)\Big] = \Phi\!\Big(\frac{\Phi^{-1}(u) - \mu_{i|J}}{\sqrt{\Sigma_{i|J}}}\Big).$$
+
+- For the Student-$t$ copula with degrees of freedom $\nu$, one uses the standard conditional-$t$ result: $X_I\,|\,X_J=x_J \sim t_{p}(\mu_{I|J},\,\tfrac{\nu + q_{J}}{\nu + r_J}\,\Sigma_{I|J},\,\nu+|J|)$, where $q_J=|J|$ and $r_J = (x_J)^\top\,\Sigma_{JJ}^{-1}\,x_J$.
+
+        With $u_k = F_t(x_k;\,\nu)$ and $x_k = F_t^{-1}(u_k;\,\nu)$ (standard univariate $t$ with df $\nu$), this provides closed forms for $C_{I|J}$ and for
+
+        $$H_{i|J}(u\mid\boldsymbol u_J) = F_t\!\Big(\,F_t^{-1}(u;\,\nu)\,;\,\mu_{i|J},\,\tfrac{\nu + r_J}{\nu + q_J}\,\Sigma_{i|J},\,\nu+|J|\Big),$$
+
+        where $q_J=|J|$, $r_J= x_J^\top\Sigma_{JJ}^{-1}x_J$, and $F_t(\cdot;\,\mu,\sigma^2,\nu)$ is the univariate non-standard $t$ CDF.
+
+These formulas are what the implementation relies on (via `SklarDist` for original scale and via marginal CDF transforms for the copula scale) to compute `condition` and the associated distortions efficiently.
 
 
 ## See also

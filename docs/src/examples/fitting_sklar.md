@@ -33,8 +33,6 @@ This simple interface leverages the `fit` function from `Distributions.jl`. Acco
 
 So you have to be careful: the fit method might not be the same for different copulas or different marginals. For example, Archimedean copulas are fitted through inversion of the Kendall tau function, while the Gaussian copula is fitted by maximum likelihood.
 
-## Visual checks
-
 ### Scatter of original data (first two dims)
 
 ```@example 5

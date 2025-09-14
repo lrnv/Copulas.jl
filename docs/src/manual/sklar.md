@@ -18,42 +18,34 @@ The implementation we have of this theorem allows building multivariate distribu
 
 ```@example 2
 using Copulas, Distributions, Random
-X₁ = Gamma(2,3)
-X₂ = Pareto()
-X₃ = LogNormal(0,1)
+X₁, X₂, X₃ = Gamma(2,3), Pareto(), LogNormal(0,1) # Marginals
 C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 ```
 
-Although the output is not formatted, the model is constructed and can be used in different ways: 
+The obtained multivariate random vector object are genuine multivariate random vector following the `Distributions.jl` API. They can be sampled (`rand()`), and their probability density function and distribution function can be evaluated (respectively `pdf` and `cdf`), etc:
 
 ```@example 2
-u = rand(D,10)
+x = rand(D,10)
+p = pdf(D, x)
+l = logpdf(D, x)
+c = pdf(D, x)
+[x' p l c]
 ```
 
-```@example 2
-pdf(D, u)
-```
-```@example 2
-cdf(D, u)
-```
 
-Although copulas live on the unit square/cube, applying non-uniform marginals via `SklarDist`
-warps the sample space. Here we draw from two models with the same copula but different marginals,
-and compare their scatter plots after transforming back to uniforms with pseudo-observations:
+Copulas live on the unit hypercube $[0,1]^d$, but, applying non-uniform marginals via `SklarDist` warps the sample space. However we can go back to the unit hypercube  This can be seen by plotting the models as follows: 
 
 ```@example 2
 using Plots
-N = 1000
-C = ClaytonCopula(2,2.7)
-X = SklarDist(C, (Normal(), Beta(3,6)))
-Y = SklarDist(C, (LogNormal(), Gamma(2,2)))
-p1 = plot(X, show_marginals=false)
-p2 = plot(Y, show_marginals=false)
-plot(p1, p2; layout=(1,2), size=(800,350))
+plot(D)
 ```
+By default, the main plots are on the copula hypercube scale You can get them on themarginal scale as follows: 
 
-From this construction, the objects `D`, `X` and `Y` are genuine multivariate random vector following the `Distributions.jl` API. They can be sampled (`rand()`), and their probability density function and distribution function can be evaluated (respectively `pdf` and `cdf`), etc.
+```@example 2
+using Plots
+plot(D, scale=:sklar)
+```
 
 ```@docs
 SklarDist

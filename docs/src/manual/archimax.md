@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# [Archimax Copulas](@id Archimax\_theory)
+# [Archimax family](@id Archimax\_theory)
 
 *Archimax copulas* form a hybrid family that combines an Archimedean generator $\phi$ with an extreme-value tail defined by its *stable tail dependence function* $\ell$, or its associated *Pickands function* $A_{\ell}(t) = \ell(\frac{t}{\lVert t \rVert})$. They interpolate between purely Archimedean and purely EV structures and underpin families such as **BB4** and **BB5**.
 
@@ -91,6 +91,22 @@ has the Archimax copula $C_{\phi,A}$.
 ```@docs
 ArchimaxCopula
 ```
+
+## Conditionals and distortions
+
+Let $C_{\phi,\ell}(\boldsymbol u)=\phi\!\big(\ell(\phi^{-1}(\boldsymbol u))\big)$ denote an Archimax copula (bivariate in our current implementation). For any copula, conditioning is given by partial-derivative ratios:
+
+$$C_{I\mid J}(\boldsymbol u_I\mid \boldsymbol u_J)\;=\;\frac{\partial^{|J|}}{\partial \boldsymbol u_J}\,C(\boldsymbol u_I,\boldsymbol u_J)\,\bigg/\,\frac{\partial^{|J|}}{\partial \boldsymbol u_J}\,C(\boldsymbol 1_I,\boldsymbol u_J).$$
+
+In the bivariate case ($d=2$) conditioning on $U_2=v$, the univariate conditional distortion reads
+
+$$H_{1\mid 2}(u\mid v)\;=\;\frac{\partial}{\partial v}\,C_{\phi,\ell}(u,v)\,\bigg/\,\frac{\partial}{\partial v}\,C_{\phi,\ell}(1,v).$$
+
+Using the chain rule and setting $s_1=\phi^{-1}(u)$, $s_2=\phi^{-1}(v)$, this becomes
+
+$$H_{1\mid 2}(u\mid v)\;=\;\frac{\phi'\!\big(\ell(s_1,s_2)\big)\;\partial_2 \ell(s_1,s_2)\;\big(\phi^{-1}\big)'(v)}{\phi'\!\big(\ell(0,s_2)\big)\;\partial_2 \ell(0,s_2)\;\big(\phi^{-1}\big)'(v)} \;=\;\frac{\phi'\!\big(\ell(s_1,s_2)\big)\;\partial_2 \ell(s_1,s_2)}{\phi'\!\big(\ell(0,s_2)\big)\;\partial_2 \ell(0,s_2)},$$
+
+where the factor $(\phi^{-1})'(v)$ cancels. When $\ell$ comes from a Pickands function $A$ (bivariate EV case), $\partial_2 \ell$ is available in closed form. This is the expression used by the implementation for conditional distortions on the copula scale; higher-dimensional extensions follow the same principle with higher-order partial derivatives.
 
 ```@bibliography
 Pages = [@__FILE__]

@@ -86,9 +86,7 @@ There are potential improvements that can be made to this fit:
 - We could use other marginal proposals than `LogNormal`s and validate (e.g., through likelihood ratio tests) that the fits are OK. 
 - We could keep marginals and/or the dependence structure empirical, through e.g., `EmpiricalCopula`.
 
-## Additional visuals
-
-### Copula density heatmaps
+### Copula density (filled contours)
 
 ```@example 6
 using Copulas: MCopula
@@ -100,13 +98,9 @@ Cs = (
     MCopula(2),
 )
 labels = ("Gaussian", "Clayton", "Gumbel", "Frank", "M bound")
-grid = range(0.02, 0.98; length=120)
-plt = plot(layout=(2,3), size=(950,600))
-for (i,C) in enumerate(Cs)
-    Z = [pdf(C, [u,v]) for u in grid, v in grid]
-    heatmap!(plt[i], grid, grid, Z'; aspect_ratio=1, c=:viridis, title=labels[i])
-end
-plt
+ps = [plot(C, :pdf; seriestype=:contourf, aspect_ratio=1, c=:viridis, title=labels[i])
+      for (i,C) in enumerate(Cs)]
+plot(ps...; layout=(2,3), size=(950,600))
 ```
 
 ### Rosenblatt sanity check (fitted Clayton)

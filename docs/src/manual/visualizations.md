@@ -16,14 +16,14 @@ The following keywords can be used:
 * `n=1500`: Number of points in the scatterplots.
 * `bins=40`: Number of bins in the histograms. 
 * `pts_alpha=0.3` the alpha for the scatterplot.  
-* `overlay_n=60` the grid size use for contour plots of pdf, cdf or logpdf. 
+* `overlay_n=60` the grid size used for contour/surface evaluation.
 * `show_axes=true`: set to false to hide the axes 
-* `marg_alpha=0.6`: alpha to fil the histograms. 
+* `marg_alpha=0.6`: alpha to fill the histograms. 
 * `show_corr=true`: show the Kendall/Spearman bivariate values.  
 
-All standard `Plots.jl` options (colors, `levels`, `colorbar`, `size`, themes, etc.) are available. Surfaces respect `colorbar=true` if set; contours suppress colorbar unless explicitly requested. Quick tips: 
+All standard `Plots.jl` options (colors, `levels`, `colorbar`, `size`, themes, etc.) are available. Surfaces respect `colorbar=true` if set; contours suppress colorbar unless explicitly requested. Quick tips:
 
-* Increase `overlay_n` for smoother contours (cost grows ~ O(overlay_n²)). Increase `n` for denser scatter.
+* Increase `overlay_n` for smoother contours/surfaces (cost grows ~ O(overlay_n²)). Increase `n` for denser scatter.
 * Omit `what` to hide the contour/surface and view only the scatter.
 * Set `colorbar=true` to add a colorbar (contours default to none).
 * Upper triangle correlation text is centered; adjust globally with `annotationfontsize` if desired.
@@ -135,7 +135,7 @@ You can control of course contours by `:pdf, :logpdf, :cdf`, remove the correlat
 
 ```@example viz
 c5 = FrankCopula(5, 12.0)
-plot(c5, :pdf; show_corr=false, n=1200, overlay_points=70, overlay_alpha=0.30, bins=30)
+plot(c5, :pdf; show_corr=false, n=1200, overlay_n=70, pts_alpha=0.30, bins=30)
 savefig("plots_frank_pairwise2.png"); nothing # hide
 ```
 ![](plots_frank_pairwise2.png)
@@ -147,7 +147,7 @@ By default for a SklarDist, the scatterplots are on copula scale:
 
 ```@example viz
 SD5 = SklarDist(ClaytonCopula(5, 6.0), (Gamma(1,2), Normal(0,2), Beta(2,6), Beta(6,2), Uniform()))
-plot(SD5, :pdf; n=800, overlay_points=60, overlay_alpha=0.30, bins=28)
+plot(SD5, :pdf; n=800, overlay_n=60, pts_alpha=0.30, bins=28)
 savefig("plots_sklar_pairwise.png"); nothing # hide
 ```
 ![](plots_sklar_pairwise.png)
@@ -155,7 +155,7 @@ savefig("plots_sklar_pairwise.png"); nothing # hide
 You can change the number of points and the numebr of bins of the histograms to adapt to your case: 
 
 ```@example viz
-plot(SD5; n=400, bins=12, pairs_show_corr=true)
+plot(SD5; n=400, bins=12, show_corr=true)
 savefig("plots_sklar_pairwise_small.png"); nothing # hide
 ```
 ![](plots_sklar_pairwise_small.png)
