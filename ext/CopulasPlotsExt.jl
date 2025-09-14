@@ -187,9 +187,9 @@ end
                 ticks := false
             end
             colorbar := get(plotattributes, :colorbar, false)
-            # Default camera for surface plots: rotate 30° to the left, keep elevation at 30° (user can override)
+            # Default camera for surface plots: rotate 30° to the right, elevation at 25° (user can override)
             if is_surface && !haskey(plotattributes, :camera)
-                camera := (-30, 30)
+                camera := (60, 25)
             end
             if draw_contour
                 xs, ys, Z = _contour_grid(S, overlay_n; what=what, scale=scale)

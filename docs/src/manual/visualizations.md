@@ -101,7 +101,7 @@ fr = FrankCopula(2, 0.8)
 s1 = plot(fr, :pdf; seriestype=:surface, title=":pdf")
 s2 = plot(fr, :logpdf; seriestype=:surface, title=":logpdf")
 s3 = plot(fr, :cdf; seriestype=:surface, title=":cdf")
-plot(s1,s2,s3; layout=(1,3), size=(900,280))
+plot(s1,s2,s3; layout=(1,3), size=(1800,560))
 savefig("plots_copula_surfaces.png"); nothing # hide
 ```
 ![](plots_copula_surfaces.png)
@@ -113,7 +113,7 @@ sds = SklarDist(FrankCopula(2, 0.8), (Gamma(2,2), LogNormal(0.0,0.5)))
 ss1 = plot(sds, :pdf; seriestype=:surface, title=":pdf")
 ss2 = plot(sds, :logpdf; seriestype=:surface, title=":logpdf")
 ss3 = plot(sds, :cdf; seriestype=:surface, title=":cdf")
-plot(ss1,ss2,ss3; layout=(1,3), size=(900,280))
+plot(ss1,ss2,ss3; layout=(1,3), size=(1800,560))
 savefig("plots_sklardist_surfaces.png"); nothing # hide
 ```
 ![](plots_sklardist_surfaces.png)
