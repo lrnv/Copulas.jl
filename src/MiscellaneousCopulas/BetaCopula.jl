@@ -2,7 +2,7 @@
     BetaCopula{d, MT}
 
 Fields:
-- `u::MT` - ranks-matrix (d × n)
+- `ranks::MT` - ranks matrix (d × n), each row contains integers 1..n
 
 Constructor
 
@@ -24,19 +24,24 @@ Notes:
 References:
 * [segers2017empirical](@cite) Segers, J., Sibuya, M., & Tsukahara, H. (2017). The empirical beta copula. Journal of Multivariate Analysis, 155, 35-51.
 """
-############################
-#  Empirical Beta Copula   #
-############################
-############################
-#  Empirical Beta Copula   #
-############################
-
 struct BetaCopula{d,MT} <: Copula{d}
-    ranks::MT   # d×n (enteros 1..n en cada fila)
+    ranks::MT   # d×n (each row is in 1..n)
     n::Int
+    function BetaCopula(data::AbstractMatrix)
+        U = _as_pxn(size(data,1), data)      # d×n, pseudo-observations
+        R = _rowwise_ordinalranks(U)         # d×n, integers 1..n (if no ties)
+        # Quick check: each row should be a permutation of 1..n
+        @inbounds for j in 1:size(R,1)
+            if !all(sort(@view R[j,:]) .== 1:size(R,2))
+                @warn "Row $j of ranks is not a permutation of 1..n; marginals may not be uniform."
+            end
+        end
+        return new{size(U,1), typeof(R)}(R, size(U,2))
+    end
 end
+EmpiricalBetaCopula(data::AbstractMatrix) = BetaCopula(data)
 
-# -- ranks por fila (variable) con ordinal ranks 1..n
+# Row-wise ordinal ranks 1..n per variable
 function _rowwise_ordinalranks(U::AbstractMatrix)
     d, n = size(U)
     R = Matrix{Int}(undef, d, n)
@@ -46,25 +51,12 @@ function _rowwise_ordinalranks(U::AbstractMatrix)
     return R
 end
 
-function BetaCopula(data::AbstractMatrix)
-    U = _as_pxn(size(data,1), data)      # d×n
-    R = _rowwise_ordinalranks(U)         # d×n, enteros 1..n si no hay empates
-    # Comprobación rápida: cada fila debe ser una permutación de 1..n
-    @inbounds for j in 1:size(R,1)
-        if !all(sort(@view R[j,:]) .== 1:size(R,2))
-            @warn "Fila $j de ranks no es una permutación de 1..n; marginales pueden no ser uniformes."
-        end
-    end
-    return BetaCopula{size(U,1), typeof(R)}(R, size(U,2))
-end
-
-EmpiricalBetaCopula(data::AbstractMatrix) = BetaCopula(data)
 
 # =========================================
-#  Bases por recurrencia (AD y bordes safe)
+#  Basis via stable recurrences (AD- and boundary-safe)
 # =========================================
 # p_{n,k}(u) = C(n,k) u^k (1-u)^{n-k}, k=0..n
-# (Base de Bernstein grado n) — evita 0^0 y usa recurrencias estables.
+# Bernstein basis degree n — avoids 0^0 and uses stable recurrences.
 
 function _bernvec_n(u::T, n::Int) where {T<:Real}
     v = Vector{T}(undef, n+1)
@@ -85,7 +77,7 @@ function _bernvec_n(u::T, n::Int) where {T<:Real}
     return v
 end
 
-# PDF Beta con parámetros enteros: f(u; r, n+1-r) = n * p_{n-1, r-1}(u)
+# Beta PDF with integer parameters: f(u; r, n+1-r) = n * p_{n-1, r-1}(u)
 function _beta_pdf_basis(u::T, n::Int) where {T<:Real}
     v = Vector{T}(undef, n)  # índices r=1..n
     if u == zero(T)
@@ -102,7 +94,7 @@ function _beta_pdf_basis(u::T, n::Int) where {T<:Real}
     return v
 end
 
-# CDF Beta con parámetros enteros: F_{n,r}(u) = ∑_{s=r}^{n} p_{n,s}(u)
+# Beta CDF with integer parameters: F_{n,r}(u) = ∑_{s=r}^{n} p_{n,s}(u)
 function _beta_cdf_basis(u::T, n::Int) where {T<:Real}
     p = _bernvec_n(u, n)                 # p[k+1] ↔ p_{n,k}(u), k=0..n
     tail = Vector{T}(undef, n+1)
@@ -174,10 +166,41 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG,
                               C::BetaCopula{d},
                               u::AbstractVector{T}) where {d,T<:Real}
-    i = Distributions.rand(rng, 1:C.n)  # elige componente de la mezcla
+    i = Distributions.rand(rng, 1:C.n)  # choose a mixture component
     @inbounds for j in 1:d
         r = C.ranks[j,i]
         u[j] = Distributions.rand(rng, Distributions.Beta(r, C.n + 1 - r))
     end
     return u
+end
+
+# ===============================
+#  Conditioning fast path (distortion)
+# ===============================
+
+@inline function DistortionFromCop(C::BetaCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
+    # Build conditional mixture weights over observations given U_js = u_js.
+    # w_i ∝ ∏_{t=1..p} BetaPDF(u_jt; r_{j_t,i}, n+1−r_{j_t,i})
+    @assert 1 <= i <= D
+    n = C.n
+    w = zeros(Float64, n)
+    @inbounds for idx in 1:n
+        prodw = 1.0
+        @inbounds for (t, j) in pairs(js)
+            r = C.ranks[j, idx]
+            prodw *= Distributions.pdf(Distributions.Beta(r, n + 1 - r), uⱼₛ[t])
+        end
+        w[idx] = prodw
+    end
+    s = sum(w)
+    if s <= 0
+        return NoDistortion()
+    end
+    w ./= s
+    comps = Vector{Distributions.Beta}(undef, n)
+    @inbounds for idx in 1:n
+        r = C.ranks[i, idx]
+        comps[idx] = Distributions.Beta(r, n + 1 - r)
+    end
+    return Distributions.MixtureModel(comps, w)
 end
