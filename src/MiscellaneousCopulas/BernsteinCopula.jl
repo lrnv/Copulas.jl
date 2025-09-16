@@ -32,36 +32,38 @@ References:
 struct BernsteinCopula{d,C<:Copula} <: Copula{d}
     base::C
     m::NTuple{d,Int}
-end
+    function BernsteinCopula(base::Copula; m::Union{Int,Tuple,Nothing}=10)
+        d = Copulas.length(base)
 
-function BernsteinCopula(base::Copula; m::Union{Int,Tuple,Nothing}=10)
-    d = Copulas.length(base)
-
-    if m !== nothing
-        mtuple = (m isa Int) ? ntuple(_->m, d) : m
-        @assert length(mtuple) == d "The parameter m must have length $d"
-        if base isa EmpiricalCopula
-            n = size(base.u, 2)
-            for mj in mtuple
-                if n % mj != 0
-                    @warn "Sample size n=$n is not a multiple of m=$mj; partition may be unbalanced."
+        if m !== nothing
+            mtuple = (m isa Int) ? ntuple(_->m, d) : m
+            @assert length(mtuple) == d "The parameter m must have length $d"
+            if base isa EmpiricalCopula
+                n = size(base.u, 2)
+                for mj in mtuple
+                    if n % mj != 0
+                        @warn "Sample size n=$n is not a multiple of m=$mj; partition may be unbalanced."
+                    end
                 end
             end
+            return BernsteinCopula{d,typeof(base)}(base, mtuple)
         end
-        return BernsteinCopula{d,typeof(base)}(base, mtuple)
-    end
 
-    if base isa Copulas.EmpiricalCopula
-        n = size(base.u, 2)
-        m_est = max(2, floor(Int, n^(1/d)))
-        @info "Automatic choice: m=$m_est in each dimension (≈ n^(1/d))."
-        return BernsteinCopula{d,typeof(base)}(base, ntuple(_->m_est, d))
-    end
+        if base isa EmpiricalCopula
+            n = size(base.u, 2)
+            m_est = max(2, floor(Int, n^(1/d)))
+            @info "Automatic choice: m=$m_est in each dimension (≈ n^(1/d))."
+            return BernsteinCopula{d,typeof(base)}(base, ntuple(_->m_est, d))
+        end
 
-    return BernsteinCopula{d,typeof(base)}(base, ntuple(_->10, d))
+        return new{d,typeof(base)}(base, ntuple(_->10, d))
+    end
 end
+BernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing) = BernsteinCopula(EmpiricalCopula(data; pseudo_values=false); m=m)
+EmpiricalBernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing) = BernsteinCopula(data; m=m)
 
-@inline function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
+
+function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
     # Build mixture weights over s_i given fixed u_J for J = js.
     # Return a MixtureModel(Beta...) directly (Distortion call will push-forward marginals).
     Iset = Tuple(setdiff(1:D, js))
@@ -92,13 +94,6 @@ end
     comps = [Distributions.Beta(k, mi - (k - 1)) for k in 1:mi]
     return Distributions.MixtureModel(comps, α)
 end
-
-function BernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing)
-    EC = Copulas.EmpiricalCopula(data; pseudo_values=false)
-    return BernsteinCopula(EC; m=m)
-end
-
-EmpiricalBernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing) = BernsteinCopula(data; m=m)
 
 function delta_d(C::Copula, s::NTuple{d,Int}, m::NTuple{d,Int}) where {d}
     total = zero(Float64)
