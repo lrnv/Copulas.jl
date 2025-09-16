@@ -61,6 +61,38 @@ function BernsteinCopula(base::Copula; m::Union{Int,Tuple,Nothing}=10)
     return BernsteinCopula{d,typeof(base)}(base, ntuple(_->10, d))
 end
 
+@inline function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
+    # Build mixture weights over s_i given fixed u_J for J = js.
+    # Return a MixtureModel(Beta...) directly (Distortion call will push-forward marginals).
+    Iset = Tuple(setdiff(1:D, js))
+    @assert i in Iset "i must refer to a non-conditioned coordinate"
+    m = B.m
+    mi = m[i]
+    α = zeros(Float64, mi)
+    # Iterate over s on the grid
+    for s in Iterators.product((0:(mj-1) for mj in m)...)
+        # contribution weight for conditioned coordinates
+        wJ = 1.0
+        @inbounds for (t, j) in pairs(js)
+            a = s[j] + 1
+            b = m[j] - s[j]
+            wJ *= Distributions.pdf(Distributions.Beta(a, b), uⱼₛ[t])
+        end
+        wJ == 0.0 && continue
+        Δ = delta_d(B.base, s, m)
+        if Δ > 0
+            α[s[i] + 1] += Δ * wJ
+        end
+    end
+    sα = sum(α)
+    if sα <= 0
+        return NoDistortion()
+    end
+    α ./= sα
+    comps = [Distributions.Beta(k, mi - (k - 1)) for k in 1:mi]
+    return Distributions.MixtureModel(comps, α)
+end
+
 function BernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing)
     EC = Copulas.EmpiricalCopula(data; pseudo_values=false)
     return BernsteinCopula(EC; m=m)
@@ -180,6 +212,39 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula
         u[j] = Distributions.rand(rng, Distributions.Beta(s[j]+1, m[j]-s[j]))
     end
     return u
+end
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula{d}, U::AbstractMatrix{T}) where {d,T<:Real}
+    # Fill columns of U with i.i.d. samples; precompute s-weights once
+    @assert size(U, 1) == d
+    m = B.m
+    nkeys = prod(mi for mi in m)
+    keys_ = Vector{NTuple{d,Int}}(undef, nkeys)
+    vals_ = Vector{Float64}(undef, nkeys)
+    k = 1
+    @inbounds for s in Iterators.product((0:(mi-1) for mi in m)...)
+        keys_[k] = s
+        vals_[k] = delta_d(B.base, s, m)
+        k += 1
+    end
+    # Clip small negatives from numerical noise
+    @inbounds for i in eachindex(vals_)
+        if (vals_[i] < 0.0) && (vals_[i] > -sqrt(eps(Float64)))
+            vals_[i] = 0.0
+        end
+    end
+    S = sum(vals_)
+    S <= 0 && error("No positive mass in Δ; check base copula or m.")
+    vals_ ./= S
+    ws = StatsBase.Weights(vals_)
+
+    @inbounds for jcol in axes(U, 2)
+        s = StatsBase.sample(rng, keys_, ws)
+        for j in 1:d
+            U[j, jcol] = Distributions.rand(rng, Distributions.Beta(s[j]+1, m[j]-s[j]))
+        end
+    end
+    return U
 end
 
 function _gridC_2d(base::Copula, m1::Int, m2::Int)
