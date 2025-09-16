@@ -115,7 +115,10 @@ module Copulas
     include("Tail/MixedTail.jl")
     include("Tail/MOTail.jl")
     include("Tail/tEVTail.jl")
-
+    include("MiscellaneousCopulas/EmpiricalEVCopula.jl")
+    include("MiscellaneousCopulas/BernsteinCopula.jl")
+    include("MiscellaneousCopulas/BetaCopula.jl")
+    include("MiscellaneousCopulas/CheckerboardCopula.jl")
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
@@ -170,6 +173,12 @@ module Copulas
            WCopula,
            ArchimaxCopula,
            BB4Copula,
-           BB5Copula
+           BB5Copula,
+           EmpiricalEVCopula,
+           BernsteinCopula,
+           EmpiricalBernsteinCopula,
+           BetaCopula,
+           EmpiricalBetaCopula,
+           CheckerboardCopula
 
 end

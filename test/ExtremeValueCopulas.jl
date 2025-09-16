@@ -80,6 +80,13 @@
 @testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :LogCopula] setup=[M] begin M.check(LogCopula(1.5)) end
 @testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :LogCopula] setup=[M] begin M.check(LogCopula(5.5)) end
 
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(2,10); estimator=:ols, pseudos_values=false)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(2,20); estimator=:ols, pseudos_values=false)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(2,10); estimator=:pickands, pseudos_values=false)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(2,20); estimator=:pickands, pseudos_values=false)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(2,10); estimator=:cfg, pseudos_values=false)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(2,20); estimator=:cfg, pseudos_values=false)) end
+
 @testitem "Checking LogCopula == GumbelCopula" tags=[:ExtremeValueCopula, :LogCopula, :ArchimedeanCopula, :GumbelCopula] begin
     # [GenericTests integration]: Probably too specific (equivalence between two constructors/types). Could be a targeted identity test, keep here.
     using InteractiveUtils

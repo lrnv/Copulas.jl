@@ -2,9 +2,9 @@
     AsymLogTail{T}
 
 Fields:
-    - α::Real  — dependence parameter (α ≥ 1)
-    - θ₁::Real — asymmetry weight in [0,1]
-    - θ₂::Real — asymmetry weight in [0,1]
+  - α::Real  — dependence parameter (α ≥ 1)
+  - θ₁::Real — asymmetry weight in [0,1]
+  - θ₂::Real — asymmetry weight in [0,1]
 
 Constructor
 
