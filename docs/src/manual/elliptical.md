@@ -1,30 +1,30 @@
 ```@meta
 CurrentModule = Copulas
 ```
-# [Elliptical Copulas](@id elliptical_copulas_header)
+# [Elliptical family](@id elliptical_copulas_header)
 
 ## Definition
 
 The easiest families of copulas are the one derived from known families of random vectors, and the first presented one are, generally, the Elliptical families (in particular, the Gaussian and Student families are very standard in the litterature). 
 
 !!! definition "Definition (Spherical and elliptical random vectors):" 
-    A random vector $\bm X$ is said to be spherical if for all orthogonal matrix $\bm A \in O_d(\mathbb R)$, $\bm A\bm X \sim \bm X$. 
+    A random vector $\boldsymbol X$ is said to be spherical if for all orthogonal matrix $\boldsymbol A \in O_d(\mathbb R)$, $\boldsymbol A\boldsymbol X \sim \boldsymbol X$. 
 
-    For every matrix $\bm B$ and vector $\bm c$, the random vector $\bm B \bm X + \bm c$ is then said to be elliptical.
+    For every matrix $\boldsymbol B$ and vector $\boldsymbol c$, the random vector $\boldsymbol B \boldsymbol X + \boldsymbol c$ is then said to be elliptical.
 
 
-Spherical random vectors have several interesting properties. First, the shape of the distribution must be the same in every direction since it is stable by rotations. Moreover, their characteristic functions (c.f.) only depend on the norm of their arguments. Indeed, for any $\bm A \in O_d(\mathbb R)$, 
+Spherical random vectors have several interesting properties. First, the shape of the distribution must be the same in every direction since it is stable by rotations. Moreover, their characteristic functions (c.f.) only depend on the norm of their arguments. Indeed, for any $\boldsymbol A \in O_d(\mathbb R)$, 
 ```math
-\phi(\bm t) = \mathbb E\left(e^{\langle \bm t, \bm X \rangle}\right)= \mathbb E\left(e^{\langle \bm t, \bm A\bm X \rangle}\right) = \mathbb E\left(e^{\langle \bm A\bm t, \bm X \rangle}\right) = \phi(\bm A\bm t).
+\phi(\boldsymbol t) = \mathbb E\left(e^{\langle \boldsymbol t, \boldsymbol X \rangle}\right)= \mathbb E\left(e^{\langle \boldsymbol t, \boldsymbol A\boldsymbol X \rangle}\right) = \mathbb E\left(e^{\langle \boldsymbol A\boldsymbol t, \boldsymbol X \rangle}\right) = \phi(\boldsymbol A\boldsymbol t).
 ```
 
-We can therefore express this characteristic function as $\phi(\bm t) = \psi(\lVert \bm t \rVert_2^2)$, where $\psi$ is a function that characterizes the spherical family, called the *generator* of the family. Any characteristic function that can be expressed as a function of the norm of its argument is the characteristic function of a spherical random vector, since $\lVert \bm A \bm t \rVert_2 = \lVert \bm t \rVert_2$ for any orthogonal matrix $\bm A$. 
+We can therefore express this characteristic function as $\phi(\boldsymbol t) = \psi(\lVert \boldsymbol t \rVert_2^2)$, where $\psi$ is a function that characterizes the spherical family, called the *generator* of the family. Any characteristic function that can be expressed as a function of the norm of its argument is the characteristic function of a spherical random vector, since $\lVert \boldsymbol A \boldsymbol t \rVert_2 = \lVert \boldsymbol t \rVert_2$ for any orthogonal matrix $\boldsymbol A$. 
 
 This class contains the (multivariate) Normal and Student distributions, and it is easy to construct others if needed. This is a generalization of the family of Gaussian random vectors, and they benefit from several nice properties of the former, among which, particularly interesting, the stability by convolution. Indeed, convolutions correspond to product of characteristic functions, and
 ```math
-\phi(\bm t) = \prod_{i=1}^n \phi_i(\bm t) = \prod_{i=1}^n \psi_i(\lVert \bm t \rVert_2^2) = \psi(\lVert \bm t \rVert_2^2),
+\phi(\boldsymbol t) = \prod_{i=1}^n \phi_i(\boldsymbol t) = \prod_{i=1}^n \psi_i(\lVert \boldsymbol t \rVert_2^2) = \psi(\lVert \boldsymbol t \rVert_2^2),
 ```
-which is still a function of only the norm of $\bm t$. 
+which is still a function of only the norm of $\boldsymbol t$. 
 
 To fix ideas, for Gaussian random vectors, $\psi(t) = e^{-\frac{t^2}{2}}$.
 
@@ -123,7 +123,7 @@ using Plots
 ν = 4
 CG = GaussianCopula(Σ)
 CT = TCopula(ν, Σ)
-plot(plot(CG), plot(CT), layout=(1,2))
+plot(plot(CG), plot(CT); layout=(1,2))
 ```
 
 ### Conditional on original scale via SklarDist
@@ -146,6 +146,36 @@ The difference between the two is not very strong.
 ```@docs
 EllipticalCopula
 ```
+
+
+## Conditionals and distortions
+
+For an elliptical copula built from an underlying elliptical vector $X=(X_1,\dots,X_d)$ with correlation matrix $\Sigma$ and univariate CDFs $(F_i)$, conditioning follows the standard elliptical identities. Partition indices as $I\cup J=\{1,\dots,d\}$ and conformably partition $\Sigma$ as
+
+$$\Sigma = \begin{pmatrix} \Sigma_{II} & \Sigma_{IJ} \\ \Sigma_{JI} & \Sigma_{JJ} \end{pmatrix}.$$
+
+- For the Gaussian copula, the conditional law $X_I\,|\,X_J=x_J$ is Gaussian with
+
+    $$\mu_{I|J} = \Sigma_{IJ}\,\Sigma_{JJ}^{-1}\,x_J, \qquad
+    \Sigma_{I|J} = \Sigma_{II} - \Sigma_{IJ}\,\Sigma_{JJ}^{-1}\,\Sigma_{JI}.$$
+
+    Mapping to the copula scale with $u_k = \Phi(x_k)$ and $x_k = \Phi^{-1}(u_k)$ yields the conditional copula via
+
+    $$C_{I|J}(\boldsymbol u_I\mid\boldsymbol u_J) = \Pr\Big[X_I \le \Phi^{-1}(\boldsymbol u_I)\,\Big|\,X_J = \Phi^{-1}(\boldsymbol u_J)\Big],$$
+
+    and the univariate conditional distortions
+
+    $$H_{i|J}(u\mid\boldsymbol u_J)=\Pr\Big[X_i \le \Phi^{-1}(u)\,\Big|\,X_J = \Phi^{-1}(\boldsymbol u_J)\Big] = \Phi\!\Big(\frac{\Phi^{-1}(u) - \mu_{i|J}}{\sqrt{\Sigma_{i|J}}}\Big).$$
+
+- For the Student-$t$ copula with degrees of freedom $\nu$, one uses the standard conditional-$t$ result: $X_I\,|\,X_J=x_J \sim t_{p}(\mu_{I|J},\,\tfrac{\nu + q_{J}}{\nu + r_J}\,\Sigma_{I|J},\,\nu+|J|)$, where $q_J=|J|$ and $r_J = (x_J)^\top\,\Sigma_{JJ}^{-1}\,x_J$.
+
+        With $u_k = F_t(x_k;\,\nu)$ and $x_k = F_t^{-1}(u_k;\,\nu)$ (standard univariate $t$ with df $\nu$), this provides closed forms for $C_{I|J}$ and for
+
+        $$H_{i|J}(u\mid\boldsymbol u_J) = F_t\!\Big(\,F_t^{-1}(u;\,\nu)\,;\,\mu_{i|J},\,\tfrac{\nu + r_J}{\nu + q_J}\,\Sigma_{i|J},\,\nu+|J|\Big),$$
+
+        where $q_J=|J|$, $r_J= x_J^\top\Sigma_{JJ}^{-1}x_J$, and $F_t(\cdot;\,\mu,\sigma^2,\nu)$ is the univariate non-standard $t$ CDF.
+
+These formulas are what the implementation relies on (via `SklarDist` for original scale and via marginal CDF transforms for the copula scale) to compute `condition` and the associated distortions efficiently.
 
 
 ## See also

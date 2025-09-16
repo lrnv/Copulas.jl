@@ -13,7 +13,7 @@ Constructor
 The BB1 copula is parameterized by ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [1, \\infty)``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = \big( 1 + t^{1/\\delta} \big)^{-1/\\theta},
+\\phi(t) = \\big( 1 + t^{1/\\delta} \\big)^{-1/\\theta},
 ```
 
 Special cases:

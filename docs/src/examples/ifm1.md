@@ -59,7 +59,6 @@ ifm2_cop.Σ .- quick_fit.C.Σ
 
 We see that the estimated parameter is not exactly the same, which is normal. Even in this contrived example, the difference between the two is not striking. Whether one method is better than the other is unclear, but the JMLE method is clearly superior by definition. However, due to its complexity, most software do not perform such estimation.
 
-## Visual comparison
 
 ```@example ifm
 using Plots, StatsBase

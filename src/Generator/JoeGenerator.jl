@@ -12,7 +12,7 @@ Constructor
 The [Joe](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [1,\\infty)``. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = 1 - \big(1 - e^{-t}\big)^{1/\\theta}.
+\\phi(t) = 1 - \\big(1 - e^{-t}\\big)^{1/\\theta}.
 ```
 
 It has a few special cases:

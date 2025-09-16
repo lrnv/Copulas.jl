@@ -12,7 +12,7 @@ Constructor
 Definition (bivariate shown). Let ``x_i = ϕ^{-1}(u_i)`` and denote the STDF by ``\\ell``. The cdf is
 
 ```math
-C(u_1,u_2) = ϕ\big( \\ell(x_1, x_2) \big).
+C(u_1,u_2) = ϕ\\big( \\ell(x_1, x_2) \\big).
 ```
 
 Reductions

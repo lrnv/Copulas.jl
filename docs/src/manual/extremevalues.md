@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# [Extreme Value Copulas](@id Extreme_theory)
+# [Extreme Value family](@id Extreme_theory)
 
 *Extreme value copulas* are fundamental in the study of rare and extreme events due to their ability to model dependency in situations of extreme risk. This package provides a wide selection of bivariate extreme value copulas; multivariate cases are not yet implemented. Feel free to open an issue or propose a pull request if you want to contribute a multivariate case. 
 
@@ -96,6 +96,22 @@ Note that all functions present in the algorithm were previously defined to ensu
 Tail
 ExtremeValueCopula
 ```
+
+## Conditionals and distortions
+
+For any copula $C$, the conditional copula and the univariate conditional distortions are given by partial-derivative ratios. If we condition on a set $J$ with $m=|J|$ components and write $I=\{1,\dots,d\}\setminus J$, then
+
+$$C_{I\mid J}(\boldsymbol u_I\mid \boldsymbol u_J)\;=\;\frac{\partial^{m}}{\partial \boldsymbol u_J}\,C(\boldsymbol u_I,\boldsymbol u_J)\,\bigg/\,\frac{\partial^{m}}{\partial \boldsymbol u_J}\,C(\boldsymbol 1_I,\boldsymbol u_J),$$
+
+and, for a single coordinate $i\in I$ (setting the other coordinates in $I$ to 1), the conditional distortion is
+
+$$H_{i\mid J}(u\mid \boldsymbol u_J)\;=\;\frac{\partial^{m}}{\partial \boldsymbol u_J}\,C(\ldots,u_i{=}u,\ldots,\boldsymbol u_J)\,\bigg/\,\frac{\partial^{m}}{\partial \boldsymbol u_J}\,C(\boldsymbol 1,\boldsymbol u_J).$$
+
+For a bivariate extreme value copula with Pickands function $A$, the copula is
+
+$$C(u_1,u_2)=\exp\!\left\{\log(u_1 u_2)\,A\!\left(\frac{\log u_1}{\log(u_1 u_2)}\right)\right\},$$
+
+so the above derivatives can be written explicitly in terms of $A$ (and $A'$ when it exists) by the chain rule. In the implementation, these derivatives are obtained directly from this representation, using analytic formulas when available and automatic differentiation otherwise.
 
 ## Visual illustrations
 

@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# [General Discussion](@id archimedean_copulas_header)
+# [Archimedean family](@id archimedean_copulas_header)
 
 Archimedean copulas are an important parametric class of copulas. To define Archimedean copulas, we must consider their *generators*, which are unrelated to spherical generators and must be $d$-monotone functions. 
 
@@ -158,7 +158,7 @@ Let's first define formally archimedean copulas:
 !!! definition "Definition (Archimedean copula):"
     If $\phi$ is a $d$-monotonous Archimedean generator, then the function 
 
-    $$C(\bm u) = \phi\left(\sum\limits_{i=1}^d \phi^{-1}(u_i)\right)$$ is a copula. 
+    $$C(\boldsymbol u) = \phi\left(\sum\limits_{i=1}^d \phi^{-1}(u_i)\right)$$ is a copula. 
 
 There are a few archimedean generators that are worth noting since they correspond to known archimedean copulas families: 
 * [`IndependentCopula`](@ref): $\phi(t) =e^{-t} \text{ generates } \Pi$.
@@ -171,10 +171,10 @@ There are a lot of others implemented in the package, see our [large list of imp
 Archimedean copulas have a nice decomposition, called the Radial-simplex decomposition, developed in [mcneil2008,mcneil2009](@cite): 
 
 !!! property "Property (Radial-simplex decomposition ):"
-    A $d$-variate random vector $\bm U$ following an Archimedean copula with generator $\phi$ can be decomposed into 
+    A $d$-variate random vector $\boldsymbol U$ following an Archimedean copula with generator $\phi$ can be decomposed into 
 
-    $\bm U = \phi.(\bm S R),$
-    where $\bm S$ is uniform on the $d$-variate simplex and $R$ is a non-negative random variable, independent form $\bm S$, defined as the inverse Williamson $d$-transform of $\phi$.  
+    $\boldsymbol U = \phi.(\boldsymbol S R),$
+    where $\boldsymbol S$ is uniform on the $d$-variate simplex and $R$ is a non-negative random variable, independent form $\boldsymbol S$, defined as the inverse Williamson $d$-transform of $\phi$.  
 
 
 This is why `williamson_dist(G::Generator,d)` is such an important function in the API: it allows to generator the radial part and sample the Archimedean copula. You may call this function directly to see what distribution will be used: 
@@ -199,7 +199,7 @@ for which the corresponding distribution is known but has no particular name, th
     !!! property "Property (Frailty decomposition):"
         When $\phi$ is completely monotone, it is the Laplace transform of a non-negative random variable $W$ such that
 
-        $$\bm U = \phi(\bm Y / W),$$  where $\bm Y$ is a vector of independent and identically distributed (i.i.d.) exponential distributions.
+        $$\boldsymbol U = \phi(\boldsymbol Y / W),$$  where $\boldsymbol Y$ is a vector of independent and identically distributed (i.i.d.) exponential distributions.
 
     The link between the distribution of $R$ and the distribution of $W$ can be made explicit. We provide the `WilliamsonFromFrailty()` constructor to build the distribution of $R$ from the distribution of $W$ and return the corresponding `WilliamsonGenerator` from the frailty distribution itself. The corresponding φ is simply the Laplace transform of $W$. This is another way to construct new Archimedean copulas !  
 
@@ -213,6 +213,27 @@ for which the corresponding distribution is known but has no particular name, th
 ```@docs
 ArchimedeanCopula
 ```
+
+
+## Conditionals and distortions
+
+Let $C(\boldsymbol u)=\phi\!\left(\sum_{k=1}^d \phi^{-1}(u_k)\right)$ be a $d$-variate Archimedean copula with generator $\phi$.
+
+- Conditioning on a subset $J \subset \{1,\dots,d\}$ with $m=|J|$ and defining $S_J = \sum_{j\in J} \phi^{-1}(u_j)$, the conditional copula of the remaining coordinates $I = \{1,\dots,d\}\setminus J$ given $U_J=\boldsymbol u_J$ is again Archimedean with generator
+
+    $$\phi_{\,|J}(t; \boldsymbol u_J)\;=\;\frac{\phi^{(m)}(t + S_J)}{\phi^{(m)}(S_J)},$$
+
+    provided the $m$-th derivative exists and $\phi^{(m)}(S_J) \ne 0$.
+
+- The corresponding univariate conditional distortion for coordinate $i\in I$ is
+
+    $$H_{i|J}(u\mid\boldsymbol u_J)\;=\;\frac{\phi^{(m)}\!\big(\phi^{-1}(u) + S_J\big)}{\phi^{(m)}(S_J)}\in[0,1].$$
+
+In particular, in the bivariate case ($d=2$, $J=\{2\}$) one recovers the familiar closed form
+
+$$H_{1|2}(u\mid v)\;=\;\frac{\phi'\!\big(\phi^{-1}(u)+\phi^{-1}(v)\big)}{\phi'\!\big(\phi^{-1}(v)\big)}.$$
+
+These expressions are used in the implementation to provide fast paths for `condition(::ArchimedeanCopula, ...)` and for conditional distortions on the copula scale.
 
 
 ### Quick visual comparison (bivariate)
@@ -251,11 +272,11 @@ plot!(ts, EC.(ts); seriestype=:steppost, alpha=0.5, color=:black, label="empiric
 
 Archimedean copulas have been widely used in the literature due to their nice decomposition properties and easy parametrization. The interested reader can refer to the extensive literature [hofert2010,hofert2013a,mcneil2010,cossette2017,cossette2018,genest2011a,dibernardino2013a,dibernardino2013a,dibernardino2016,cooray2018,spreeuw2014](@cite) on Archimedean copulas, their nesting extensions and most importantly their estimation. 
 
-One major drawback of the Archimedean family is that these copulas have exchangeable marginals (i.e., $C(\bm u) = C(p(\bm u))$ for any permutation $p(\bm u)$ of $u_1, ..., u_d$): the dependence structure is symmetric, which might not be desirable. However, from the Radial-simplex expression, we can extrapolate and take for $\bm S$ a non-uniform distribution on the simplex. 
+One major drawback of the Archimedean family is that these copulas have exchangeable marginals (i.e., $C(\boldsymbol u) = C(p(\boldsymbol u))$ for any permutation $p(\boldsymbol u)$ of $u_1, ..., u_d$): the dependence structure is symmetric, which might not be desirable. However, from the Radial-simplex expression, we can extrapolate and take for $\boldsymbol S$ a non-uniform distribution on the simplex. 
 
 Liouville's copulas share many properties with Archimedean copulas, but are not exchangeable anymore. This is an easy way to produce non-exchangeable dependence structures. See [cote2019](@cite) for a practical use of this property.
 
-Note that Dirichlet distributions are constructed as $\bm S = \frac{\bm G}{\langle \bm 1, \bm G \rangle}$, where $\bm G$ is a vector of independent Gamma distributions with unit scale (and potentially different shapes: taking all shapes equal yields the Archimedean case). 
+Note that Dirichlet distributions are constructed as $\boldsymbol S = \frac{\boldsymbol G}{\langle \boldsymbol 1, \boldsymbol G \rangle}$, where $\boldsymbol G$ is a vector of independent Gamma distributions with unit scale (and potentially different shapes: taking all shapes equal yields the Archimedean case). 
 
 
 
