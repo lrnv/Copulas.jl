@@ -1,234 +1,153 @@
 """
-    CheckerboardCopula{d, MT}
+    CheckerboardCopula{d, T}
 
 Fields:
-- `n::Int` — number of partitions per axis.
-- `h::MT`  — hypercubic array of cell masses (∑h = 1; each slice along an axis sums to 1/n).
-- `P::MT`  — inclusive prefix sums of `h` (for fast CDF evaluation).
+- `m::Vector{Int}` — length d; number of partitions per dimension (grid resolution).
+- `boxes::Dict{NTuple{d,Int}, T}` — dictionary-like mapping from grid box indices to empirical weights.
+    Typically `Dict{NTuple{d,Int}, Float64}` built with `StatsBase.proportionmap`.
 
 Constructor:
 
-    CheckerboardCopula(X; n=nothing, pseudo_values=true, smoothing=1e-16, maxiter=5000, atol=1e-12)
+    CheckerboardCopula(X; m=nothing, pseudo_values=true)
 
-The empirical checkerboard copula in dimension ``d`` is defined as the multilinear extension of the empirical copula:
+Builds a piecewise-constant (histogram) copula on a regular grid. The unit cube
+in each dimension i is partitioned into `m[i]` equal bins. Each observation is
+assigned to a box `k ∈ ∏_i {0, …, m[i]-1}`; the empirical box weights `w_k`
+sum to 1. The copula density is constant inside each box, with
 
-```math
-C_n^{\\mathrm{cb}}(u) = \\sum_{k} w_k(u) \\, C_n(v_k),
-```
-where ``v_k`` are the grid corners and ``w_k(u)`` the interpolation weights.
+    c(u) = w_k × ∏_i m[i]  when u ∈ box k,  and  0 otherwise.
+
+The CDF admits the multilinear overlap form
+
+    C(u) = ∑_k w_k × ∏_i clamp(m[i]·u_i − k_i, 0, 1),
+
+which this type evaluates directly without storing all grid corners.
 
 Notes:
 
-- If `n` is `nothing`, is used `n = clamp(round(Int, m^(1/p)), 2, 256)`.
-- This is always a valid copula for any finite sample size `N`.
-- Supports `cdf`, `logpdf` at observed points and random sampling.
+- If `m` is `nothing`, we use `m = fill(n, d)` where `n = size(X, 2)`.
+- When `pseudo_values=true` (default), `X` must already be pseudo-observations
+  in [0,1]. Otherwise pass raw data and set `pseudo_values=false` to convert
+  via `pseudos(X)`.
+- Each `m[i]` must divide `n` to produce a valid checkerboard on the sample grid;
+  this is enforced by the constructor.
 
 References
 * Neslehova (2007). *On rank correlation measures for non-continuous random variables*.
+* Durante, Sanchez & Sempi (2013) *Multivariate patchwork copulas: a unified approach with applications to partial comonotonicity*.
 * Segers, Sibuya & Tsukahara (2017). *The empirical beta copula*. J. Multivariate Analysis, 155, 35-51.
+* Genest, Neslehova & Rémillard (2017) *Asymptotic behavior of the empirical multilinear copula process under broad conditions*.
+* Cuberos, Masiello & Maume-Deschamps (2019) *Copulas checker-type approximations: application to quantiles estimation of aggregated variables*.
 * Fredricks & Hofert (2025). *On the checkerboard copula and maximum entropy*.
 """
-struct CheckerboardCopula{d,MT<:AbstractArray{<:Real,d}} <: Copula{d}
-    n::Int   # partitions by axis
-    h::MT    # masses per cell (∑h=1; each slice along an axis = 1/n)
-    P::MT    # inclusive prefixes of h (for fast CDF)
+struct CheckerboardCopula{d, T} <: Copula{d}
+    m::Vector{Int}
+    boxes::Dict{NTuple{d,Int}, T}
+end
+function CheckerboardCopula(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool=true) where T
+    d,n = size(X)
+    ms = isnothing(m) ? fill(n,d) : m isa Integer ? fill(Int(m), d) : m
+    @assert length(ms) == d && all(ms .% n .== 0) "You provided m=$m to the Checkerboard constructor, while you need to provide an integer dividing n=$n or a vector of d=$d integers, all dividing n=$n."
+    # Map samples to integer box indices in each dimension (clamp right edge into m_i-1)
+    data = min.(ms .- 1, floor.(Int, (pseudo_values ? X : pseudos(X)) .* ms))
+    # Build a dictionary of box proportions using tuple keys
+    keys_iter = (Tuple(@view data[:, j]) for j in 1:n)
+    boxes = StatsBase.proportionmap(keys_iter)
+    return CheckerboardCopula{d, eltype(values(boxes))}(ms, boxes)
 end
 
-function CheckerboardCopula(X::AbstractMatrix{<:Real};
-                            n::Union{Int,Nothing}=nothing,
-                            pseudo_values::Bool=true,
-                            smoothing::Real=1e-16,
-                            maxiter::Int=5_000,
-                            atol::Real=1e-12)
-    U = _as_pxn(size(X,1), X)   # p×m
-    p, m = size(U)
-    n === nothing && (n = clamp(round(Int, m^(1/p)), 2, 256))
-
-    Uu = if pseudo_values
-        minU = minimum(U); maxU = maximum(U)
-        if !(minU ≥ -sqrt(eps(Float64)) && maxU ≤ 1 + sqrt(eps(Float64)))
-            throw(ArgumentError("Con pseudo_values=true, X debe estar ya en (0,1). Use pseudo_values=false o convierta con `pseudos(X)`."))
-        end
-        clamp.(Float64.(U), eps(Float64), 1 - eps(Float64))
-    else
-        pseudos(U)
-    end
-
-    H = zeros(Float64, ntuple(_->n, p))
-    @inbounds for t in 1:m
-        idx = ntuple(j -> _cell_and_tau(Uu[j, t], n)[1], p)  # 1..n por eje
-        H[CartesianIndex(idx)] += 1.0
-    end
-    H ./= m
-
-    _sinkhorn!(H; maxiter=maxiter, atol=atol, smoothing=smoothing)
-
-    P = _prefix_sum(H)
-
-    return CheckerboardCopula{p, typeof(H)}(n, H, P)
+function Distributions.pdf(C::CheckerboardCopula{d}, u) where {d}
+    # the goal is to find the right box. 
+    b = Tuple(min.(C.m .- 1, floor.(Int, u .* C.m)))
+    return haskey(C.boxes, b) ? C.boxes[b] * prod(C.m) : 0.0
 end
-
-function Distributions.logpdf(C::CheckerboardCopula{d}, u::AbstractVector{<:Real}) where {d}
-    @assert length(u) == d
-    n = C.n
-    idx = ntuple(j -> begin
-        i, _ = _cell_and_tau(u[j], n)
-        i
-    end, d)
-    mass = @inbounds C.h[CartesianIndex(idx)]
-    dens = (mass <= 0) ? 0.0 : (mass * n^d)
-    return (dens > 0) ? log(dens) : -Inf
-end
-
-function Distributions.cdf(C::CheckerboardCopula{d}, u::AbstractVector{<:Real}) where {d}
-    @assert length(u) == d
-    n = C.n
-    idx = ntuple(j -> _cell_and_tau(u[j], n), d)  # (i_j, τ_j)
-    i   = ntuple(j -> idx[j][1], d)
-    τ   = ntuple(j -> idx[j][2], d)
-    k   = ntuple(j -> i[j]-1, d)
-
-    s0 = any(kj == 0 for kj in k) ? zero(eltype(C.h)) :
-         _sum_box(C.P, ntuple(_->1,d), k)
-
-    s = s0
-    for bt in _bit_tuples(Val(d))
-        # skip emptu
-        if all(b==0 for b in bt); continue; end
-        w = one(eltype(C.h))
-        @inbounds for j in 1:d
-            (bt[j]==1) && (w *= τ[j])
-        end
-        (w == 0) && continue
-        lows  = ntuple(j -> (bt[j]==1 ? k[j]+1 : 1), d)
-        highs = ntuple(j -> (bt[j]==1 ? k[j]+1 : k[j]), d)
-        s += w * _sum_box(C.P, lows, highs)
-    end
-    return float(s)
+function _cdf(C::CheckerboardCopula{d}, u) where {d}
+    um = u .* C.m
+    # Histogram/overlap CDF: sum over boxes of w_k × ∏_i clamp(m_i u_i − k_i, 0, 1)
+    return sum(w * prod(clamp.(um .- box, 0, 1)) for (box, w) in C.boxes)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CheckerboardCopula{d}, u::AbstractVector{T}) where {d,T<:Real}
-    @assert length(u) == d
-    n = C.n
-    p = reshape(C.h, :)
-    cat = Distributions.Categorical(p ./ sum(p))
-    lin = rand(rng, cat)
-    I = CartesianIndices(size(C.h))[lin]
-    @inbounds for j in 1:d
-        a,b = _cell_bounds(I[j], n)
-        u[j] = a + rand(rng)*(b - a)
+    # Draw a box index according to weights
+    r = rand(rng)
+    acc = 0.0
+    chosen = nothing
+    @inbounds for (box, w) in C.boxes
+        acc += w
+        if r <= acc
+            chosen = box
+            break
+        end
+    end
+    # Fallback in case of tiny numerical drift (select the last box)
+    if chosen === nothing
+        for (box, _) in C.boxes
+            chosen = box
+        end
+    end
+    # Sample uniformly inside the chosen box
+    @inbounds for i in 1:d
+        bi = chosen[i]  # works for Tuple or Vector keys
+        u[i] = T((bi + rand(rng)) / C.m[i])
     end
     return u
 end
 
-
-# =========================
-#   Internal utils
-# =========================
-
-@inline function _cell_and_tau(u::Real, n::Int)
-    (u < 0 || u > 1) && throw(ArgumentError("u ∈ [0,1] requerido"))
-    if u == 1
-        return (n, 1.0)
+@inline function DistortionFromCop(C::CheckerboardCopula{D,T}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i::Int) where {D,T}
+    # p = 1 case; compute conditional marginal for axis i given U_j = u_j
+    j = js[1]
+    # Locate J bin index
+    kⱼ = min(C.m[j]-1, floor(Int, C.m[j] * uⱼₛ[1]))
+    # Aggregate weights over i-bins where J-index matches
+    mᵢ = C.m[i]
+    α = zeros(Float64, mᵢ)
+    for (box, w) in C.boxes
+        box[j] == kⱼ || continue
+        ki = box[i]
+        α[ki+1] += w
+    end
+    s = sum(α)
+    if s <= 0
+        # Degenerate slice (no box observed at this J index): fall back to uniform
+        fill!(α, 1.0/mᵢ)
     else
-        t = n*u
-        k = Int(floor(t))  # 0..n-1
-        return (k+1, t - k)
+        α ./= s
     end
+    return HistogramBinDistortion(mᵢ, α)
 end
 
-@inline _cell_bounds(i::Int, n::Int) = ((i-1)/n, i/n)
-
-# inclusive prefix
-function _prefix_sum(h::AbstractArray{T,N}) where {T,N}
-    P = copy(h)
-    for ax in 1:N
-        P = cumsum(P; dims=ax)
-    end
-    return P
-end
-
-@generated function _bit_tuples(::Val{d}) where {d}
-    W = NTuple{d,Int}[]
-    for m in 0:(2^d-1)
-        push!(W, ntuple(j -> (m >> (j-1)) & 1, d))
-    end
-    return :(($(W...),))
-end
-
-@inline function _getP(P::AbstractArray{T,N}, idxs::NTuple{N,Int}) where {T,N}
-    @inbounds for j in 1:N
-        if idxs[j] == 0
-            return zero(T)
-        end
-    end
-    @inbounds return P[CartesianIndex(idxs)]
-end
-
-function _sum_box(P::AbstractArray{T,N}, l::NTuple{N,Int}, h::NTuple{N,Int}) where {T,N}
-    @inbounds for j in 1:N
-        if h[j] < l[j]; return zero(T); end
-    end
-    total = zero(T)
-    for bt in _bit_tuples(Val(N))
-        idxs = ntuple(j -> (bt[j] == 1 ? h[j] : l[j]-1), N)
-        sgn  = (-1)^(sum(bt[j]==0 for j in 1:N))
-        total += sgn * _getP(P, idxs)
-    end
-    total
-end
-
-@inline _sliceview(A, ax, t) = @view A[(ntuple(j -> (j==ax ? t : Colon()), ndims(A)))...]
-
-function _is_multistochastic(h::AbstractArray{T,d}; atol=1e-12) where {T,d}
-    n = size(h,1)
-    ndims(h) == d || throw(ArgumentError("ndims(h)=$(ndims(h)) ≠ d=$d"))
-    all(s -> s == n, size(h)) || throw(ArgumentError("h debe ser n×…×n"))
-
-    F = float(T); target = one(F)/n
-    @inbounds for x in h
-        (!isfinite(x) || x < -sqrt(eps(F))) && return false
-    end
-    @inbounds for ax in 1:d, t in 1:n
-        S = sum(_sliceview(h, ax, t))
-        if !isfinite(S) || abs(S - target) > atol
-            return false
-        end
-    end
-    S = sum(h)
-    isfinite(S) && abs(S - one(F)) ≤ atol
-end
-
-function _sinkhorn!(h::AbstractArray{T,d};
-                    maxiter::Int=5_000, atol::Real=1e-12, smoothing::Real=1e-16) where {T,d}
-    n = size(h,1)
-    ndims(h) == d || throw(ArgumentError("ndims(h)=$(ndims(h)) ≠ d=$d"))
-    all(s -> s == n, size(h)) || throw(ArgumentError("h debe ser n×…×n"))
-
-    F = float(T)
-    ε   = F(smoothing)
-    invN  = one(F)/n
-    invNd = one(F)/(n^d)
-
-    @. h = (one(F) - ε)*h + ε*invNd
-
-    for it in 1:maxiter
-        maxerr = zero(F)
-        @inbounds for ax in 1:d, t in 1:n
-            r = _sliceview(h, ax, t)
-            S = sum(r)
-            if S > 0
-                α = invN / S
-                @. r *= α
-                maxerr = max(maxerr, abs(S - invN))
-            else
-                fill!(r, invN/(n^(d-1)))
-                maxerr = max(maxerr, invN)
+@inline function ConditionalCopula(C::CheckerboardCopula{D,T}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D,T,p}
+    # Project boxes onto remaining axes with J-bin fixed by uⱼₛ
+    J = collect(js)
+    I = collect(setdiff(1:D, J))
+    # Compute J-bin indices for the conditioning point
+    kJ = ntuple(t -> min(C.m[J[t]]-1, floor(Int, C.m[J[t]] * uⱼₛ[t])), p)
+    # Aggregate weights for projected I-box keys
+    proj = Dict{NTuple{length(I),Int}, Float64}()
+    for (box, w) in C.boxes
+        match = true
+        @inbounds for t in 1:p
+            if box[J[t]] != kJ[t]
+                match = false; break
             end
         end
-        if maxerr ≤ atol
-            return h
-        end
+        match || continue
+        keyI = ntuple(r -> box[I[r]], length(I))
+        proj[keyI] = get(proj, keyI, 0.0) + w
     end
-    h
+    # Normalize
+    s = sum(values(proj))
+    if s > 0
+        for k in keys(proj); proj[k] /= s; end
+    else
+        # No matching boxes: return independent uniform on remaining dims
+        proj = Dict(ntuple(r -> 0, length(I)) => 1.0)
+    end
+    mI = C.m[I]
+    return CheckerboardCopula{length(I), Float64}(mI, proj)
+end
+
+# Fit API: mirror constructor for the moment until we get a better API ?
+function Distributions.fit(::Type{CT}, u; m=nothing, pseudo_values::Bool=true) where {CT<:CheckerboardCopula}
+    return CheckerboardCopula(u; m=m, pseudo_values=pseudo_values)
 end

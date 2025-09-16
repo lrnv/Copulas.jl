@@ -49,6 +49,7 @@ module Copulas
     include("UnivariateDistribution/Distortions/NoDistortion.jl")
     include("UnivariateDistribution/Distortions/GaussianDistortion.jl")
     include("UnivariateDistribution/Distortions/StudentDistortion.jl")
+    include("UnivariateDistribution/Distortions/HistogramDistortion.jl")
     include("UnivariateDistribution/Distortions/BivEVDistortion.jl")
     include("UnivariateDistribution/Distortions/PlackettDistortion.jl")
     include("UnivariateDistribution/Distortions/BivFGMDistortion.jl")
