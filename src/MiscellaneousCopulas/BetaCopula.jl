@@ -27,28 +27,14 @@ struct BetaCopula{d,MT} <: Copula{d}
     ranks::MT   # d×n (each row is in 1..n)
     n::Int
     function BetaCopula(data::AbstractMatrix)
-        R = _rowwise_ordinalranks(data)         # d×n, integers 1..n (if no ties)
-        # Quick check: each row should be a permutation of 1..n
-        d,n = size(data)
+        d, n = size(data)
+        R = Matrix{Int}(undef, d, n)
         @inbounds for j in 1:d
-            if !all(sort(@view R[j,:]) .== 1:n)
-                @warn "Row $j of ranks is not a permutation of 1..n; marginals may not be uniform."
-            end
+            R[j, :] = StatsBase.ordinalrank(@view data[j, :])
         end
-        return new{size(U,1), typeof(R)}(R, size(U,2))
+        return new{d, typeof(R)}(R, n)
     end
 end
-
-# Row-wise ordinal ranks 1..n per variable
-function _rowwise_ordinalranks(U::AbstractMatrix)
-    d, n = size(U)
-    R = Matrix{Int}(undef, d, n)
-    @inbounds for j in 1:d
-        R[j, :] = StatsBase.ordinalrank(@view U[j, :])
-    end
-    return R
-end
-
 
 # =========================================
 #  Basis via stable recurrences (AD- and boundary-safe)
@@ -57,53 +43,19 @@ end
 # Bernstein basis degree n — avoids 0^0 and uses stable recurrences.
 
 function _bernvec_n(u::T, n::Int) where {T<:Real}
-    v = Vector{T}(undef, n+1)
-    if u == zero(T)
-        v[1] = one(T); @inbounds for k in 2:n+1 v[k]=zero(T) end
+    v = zeros(T, n+1)
+    if iszero(u)
+        v[1] = 1
         return v
-    elseif u == one(T)
-        @inbounds for k in 1:n v[k]=zero(T) end; v[end]=one(T)
+    elseif isone(u)
+        v[end]=1
         return v
     end
-    one_minus_u = one(T) - u
-    p = one_minus_u^n
+    p = (1 - u)^n
     v[1] = p
     @inbounds for k in 0:n-1
-        p *= ((n - k) / (k + 1)) * (u / one_minus_u)
+        p *= ((n - k) / (k + 1)) * (u / (1 - u))
         v[k+2] = p
-    end
-    return v
-end
-
-# Beta PDF with integer parameters: f(u; r, n+1-r) = n * p_{n-1, r-1}(u)
-function _beta_pdf_basis(u::T, n::Int) where {T<:Real}
-    v = Vector{T}(undef, n)  # índices r=1..n
-    if u == zero(T)
-        v[1] = T(n); @inbounds for r in 2:n v[r]=zero(T) end
-        return v
-    elseif u == one(T)
-        @inbounds for r in 1:n-1 v[r]=zero(T) end; v[n]=T(n)
-        return v
-    end
-    p = _bernvec_n(u, n-1)               # k=0..n-1
-    @inbounds for r in 1:n
-        v[r] = T(n) * p[r]               # r ↔ k=r-1
-    end
-    return v
-end
-
-# Beta CDF with integer parameters: F_{n,r}(u) = ∑_{s=r}^{n} p_{n,s}(u)
-function _beta_cdf_basis(u::T, n::Int) where {T<:Real}
-    p = _bernvec_n(u, n)                 # p[k+1] ↔ p_{n,k}(u), k=0..n
-    tail = Vector{T}(undef, n+1)
-    acc = zero(T)
-    @inbounds for k in n:-1:0
-        acc += p[k+1]
-        tail[k+1] = acc                   # tail[k+1] = ∑_{s=k}^n p_{n,s}(u)
-    end
-    v = Vector{T}(undef, n)              # r = 1..n → tail[r+1] = ∑_{s=r}^n p_{n,s}(u)
-    @inbounds for r in 1:n
-        v[r] = tail[r+1]                 # <-- índice corregido
     end
     return v
 end
@@ -112,17 +64,15 @@ end
 #   CDF
 # ========
 
-function Distributions.cdf(C::BetaCopula{d}, u::AbstractVector) where {d}
-    @assert length(u) == d
+function _cdf(C::BetaCopula{d}, u) where {d}
     n = C.n
     # tablas por dimensión en el punto u
-    CDFtab = ntuple(j -> _beta_cdf_basis(eltype(u)(u[j]), n), d)
+    CDFtab = ntuple(j -> reverse(cumsum(reverse(_bernvec_n(u[j], n))))[2:end], d)
     total = zero(eltype(first(CDFtab)))
     @inbounds for i in 1:n
         prod_term = one(total)
         @inbounds for j in 1:d
-            r = C.ranks[j,i]     # 1..n
-            prod_term *= CDFtab[j][r]
+            prod_term *= CDFtab[j][C.ranks[j,i]]
             if prod_term == 0
                 break
             end
@@ -136,16 +86,14 @@ end
 #  LOGPDF
 # =========
 
-function Distributions.logpdf(C::BetaCopula{d}, u::AbstractVector) where {d}
-    @assert length(u) == d
+function Distributions._logpdf(C::BetaCopula{d}, u::AbstractVector) where {d}
     n = C.n
-    PDFtab = ntuple(j -> _beta_pdf_basis(eltype(u)(u[j]), n), d)
+    PDFtab = ntuple(j -> n .* _bernvec_n(u[j], n-1), d)
     dens = zero(eltype(first(PDFtab)))
     @inbounds for i in 1:n
         prod_term = one(dens)
         @inbounds for j in 1:d
-            r = C.ranks[j,i]
-            prod_term *= PDFtab[j][r]
+            prod_term *= PDFtab[j][C.ranks[j,i]]
             if prod_term == 0
                 break
             end
