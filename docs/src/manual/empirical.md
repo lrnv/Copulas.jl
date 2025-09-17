@@ -188,7 +188,7 @@ CheckerboardCopula
 
 ## Empirical Extreme-Value copula (Pickands estimator)
 
-In addition to the empirical, beta, Bernstein and checkerboard constructions, we provide a nonparametric bivariate Extreme Value copula built from data by estimating the Pickands dependence function. The tail implementation [`EmpiricalEVTail`](@ref) supports several classical estimators (Pickands, CFG, OLS intercept), and a convenience constructor [`EmpiricalEVCopula`](@ref) builds the corresponding [`ExtremeValueCopula`](@ref) directly from pseudo-observations.
+In addition to the empirical, beta, Bernstein and checkerboard constructions, we provide a nonparametric bivariate Extreme Value copula built from data by estimating the Pickands dependence function. The tail implementation [`EmpiricalEVTail`](@ref) supports several classical estimators (Pickands, CFG, OLS intercept), and a convenience constructor `EmpiricalEVCopula` builds the corresponding `ExtremeValueCopula` directly from pseudo-observations.
 
 Typical workflow:
 
@@ -218,7 +218,7 @@ Usage:
 - Use directly in an Archimedean copula: `Ĉ = ArchimedeanCopula(d, Ĝ)`
 - Access the fitted radial law: `R̂ = williamson_dist(Ĝ, Val{d}())`
 
-```@docs
+```@docs; canonical=false
 EmpiricalGenerator
 ```
 
