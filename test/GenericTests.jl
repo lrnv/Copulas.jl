@@ -47,7 +47,8 @@
         !(CT<:EmpiricalCopula) &&
         !(CT<:BC2Copula) &&
         !(CT<:CuadrasAugeCopula) &&
-        !(CT<:MOCopula)
+        !(CT<:MOCopula) &&
+        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
 
     is_archimedean_with_generator(C::CT) where CT =
        (CT<:ArchimedeanCopula) && !(typeof(C.G)<:Copulas.WilliamsonGenerator)
@@ -65,7 +66,8 @@
         !(CT<:CuadrasAugeCopula) && 
         !(CT<:RafteryCopula) && 
         !(CT<:EmpiricalCopula) && 
-        !(CT<:BC2Copula)
+        !(CT<:BC2Copula) &&
+        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
 
     can_ad(C::CT) where CT = 
         # This list might be longer than necessary, it should be trimmed.
@@ -93,7 +95,7 @@
     is_bivariate(C::CT)                      where CT = (length(C) == 2)
     has_subsetdims(C::CT)                    where CT = (length(C) >= 3)
     can_check_pdf_positivity(C::CT)          where CT = can_pdf(C) && !((CT<:GumbelCopula) && (C.G.θ >= 19))
-    kendall_coherency_enabled(C::CT)         where CT = !(CT<:MOCopula)
+    kendall_coherency_enabled(C::CT)         where CT = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}})
     can_check_biv_conditioning_ad(C::CT)     where CT = is_bivariate(C) && can_ad(C)
     can_check_highdim_conditioning_ad(C::CT) where CT = (length(C) > 2) && can_ad(C)
     has_uniform_margins(C::CT)               where CT = !(CT<:EmpiricalCopula)
