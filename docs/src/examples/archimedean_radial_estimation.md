@@ -208,7 +208,7 @@ R = Dirac(1.0)
 d, n = 3, 1000
 u = spl_cop(R, d, n)
 Ghat = EmpiricalGenerator(u)
-Rhat = williamson_dist(Ghat, Val{d}())
+Rhat = Copulas.williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R)
 ```
 
@@ -219,7 +219,7 @@ R = DiscreteNonParametric([1.0, 4.0, 8.0], fill(1/3, 3))
 d, n = 2, 1000
 u = spl_cop(R, d, n)
 Ghat = EmpiricalGenerator(u)
-Rhat = williamson_dist(Ghat, Val{d}())
+Rhat = Copulas.williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R)
 ```
 
@@ -230,7 +230,7 @@ R = DiscreteNonParametric([1.0, 4.0, 8.0], fill(1/3, 3))
 d, n = 3, 1000
 u = spl_cop(R, d, n)
 Ghat = EmpiricalGenerator(u)
-Rhat = williamson_dist(Ghat, Val{d}())
+Rhat = Copulas.williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R)
 ```
 
@@ -241,7 +241,7 @@ R = LogNormal(1, 3)
 d, n = 10, 1000
 u = spl_cop(R, d, n)
 Ghat = EmpiricalGenerator(u)
-Rhat = williamson_dist(Ghat, Val{d}())
+Rhat = Copulas.williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R, logged=true)
 ```
 
@@ -252,7 +252,7 @@ R = Pareto(1.0, 1/2)
 d, n = 10, 1000
 u = spl_cop(R, d, n)
 Ghat = EmpiricalGenerator(u)
-Rhat = williamson_dist(Ghat, Val{d}())
+Rhat = Copulas.williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R, logged=true)
 ```
 
