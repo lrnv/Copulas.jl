@@ -189,6 +189,31 @@ EmpiricalEVTail
 ```
 
 
+## Empirical Archimedean generator (Kendall inversion)
+
+Beyond copula estimators, we also provide a nonparametric estimator of a $d$-Archimedean generator from data, based on the empirical Kendall distribution following [genest2011a](@cite). For a $d$-Archimedean copula with generator $\varphi$, there exists a nonnegative random variable $R$ (the radial law) such that
+
+$$\varphi(t) \,=\, \mathbb{E}\,\big[\,(1 - t/R)_{+}^{\,d-1}\,\big].$$
+
+Approximating the (unknown) $R$ by a discrete measure $\widehat R = \sum_j w_j\,\delta_{r_j}$ yields a piecewise-polynomial generator
+
+$$\widehat\varphi(t) \,=\, \sum_j w_j\,\big(1 - t/r_j\big)_{+}^{\,d-1}.$$
+
+The radii and weights are recovered from the empirical Kendall distribution via a triangular recursion (see the example page for details), and the resulting generator is exposed as `EmpiricalGenerator`.
+
+Usage:
+
+- Build from data `u::d×n` (raw or pseudos): `Ĝ = EmpiricalGenerator(u; pseudo_values=true)`
+- Use directly in an Archimedean copula: `Ĉ = ArchimedeanCopula(d, Ĝ)`
+- Access the fitted radial law: `R̂ = williamson_dist(Ĝ, Val{d}())`
+
+```@docs
+EmpiricalGenerator
+```
+
+See [This example page](@ref nonpar_archi_gen_example) for more details and example usages. 
+
+
 ## See also
 
 - Bestiary: [Empirical models list](@ref empirical_cops)

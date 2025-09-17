@@ -1,4 +1,4 @@
-# Nonparametric estimation of the radial law in Archimedean copulas
+# [Nonparametric estimation of the radial law in Archimedean copulas](@id nonpar_archi_gen_example)
 
 ## Introduction
 
@@ -82,37 +82,21 @@ This closed form could be used directly (even if our code does not for the momen
 
 ## Implementation
 
-We define helpers to:
-- compute empirical Kendall values,
-- build φ_R from a candidate radial distribution,
-- simulate Archimedean copula samples from R,
-- fit a discrete radial law from Kendall atoms,
-- and produce quick diagnostics.
+We define a few helpers to visualize and validate the fitted model, and we now use the built-in `EmpiricalGenerator` as the estimator:
+ - simulate Archimedean copula samples from a given R,
+ - quick diagnostic plots, and
+ - optional visualization of φ_R for a discrete R.
 
 !!! todo
     The code proposed below is expected to become the default fitting method for Williamson generators, once the fitting interface is formalized accross the package. Stay tuned!
 
 ```@example archi_radial
-using Distributions, StatsBase, Roots, QuadGK, Plots
+using Distributions, StatsBase, Roots, QuadGK, Plots, Copulas
 
 using Random # hide
 Random.seed!(42) # hide
 
-# Empirical Kendall sample and function from a pseudo-sample u (d×n, columns are obs)
-function kendall_sample(u::AbstractMatrix)
-    d, n = size(u)
-    W = zeros(Float64, n)
-    for i in 1:n
-        ui = @view u[:, i]
-        count_le = 0
-        for j in 1:n
-            count_le += all(@view(u[:, j]) .≤ ui)
-        end
-        W[i] = count_le / (n+1)
-    end
-    return W
-end
-kendall_function(u::AbstractMatrix) = (W = kendall_sample(u); t -> count(w -> w <= t, W) / length(W))
+kendall_function(u::AbstractMatrix) = (W = Copulas._kendall_sample(u); t -> count(w -> w <= t, W) / length(W))
 
 # Williamson d-transform φ_R for several R types
 mk_ϕᵣ(R::DiscreteUnivariateDistribution, d) = let supp = support(R), w = pdf.(R, supp)
@@ -135,110 +119,7 @@ function spl_cop(R, d::Int, n::Int)
     return ϕᵣ.(S .* rand(R, n)')
 end
 
-# Utilities for Kendall atoms
-function kendall_atoms_and_weights(u::AbstractMatrix)
-    x = sort(kendall_sample(u), rev=true)
-    atoms = unique(x)
-    weights = [mean(x .== xi) for xi in atoms]
-    return atoms, weights, length(atoms)
-end
-function unique_atoms_and_weights(atoms::AbstractVector, weights::AbstractVector)
-    agg = Dict{eltype(atoms), Float64}()
-    for (a, w) in zip(atoms, weights)
-        agg[a] = get(agg, a, 0.0) + w
-    end
-    uniq_atoms = collect(keys(agg))
-    uniq_weights = [agg[a] for a in uniq_atoms]
-    idx = sortperm(uniq_atoms)
-    return uniq_atoms[idx], uniq_weights[idx]
-end
-
-"""
-    fit_archi_williamson(u::AbstractMatrix)
-
-Estimate the mixing (radial) distribution R of a d-dimensional Archimedean copula from a pseudo-sample u by inverting the empirical Kendall distribution via the Williamson d-transform. Returns a DiscreteNonParametric distribution R̂ whose atoms are the recovered radii and whose weights are inherited from the empirical Kendall atoms.
-
-Purpose
-- For a d-Archimedean copula with generator ψ, there exists a nonnegative random variable R such that
-  φ_R(t) = E[(1 - t/R)₊^(d-1)]
-  is the Williamson d-transform of R and ψ ≡ φ_R. The empirical Kendall distribution of a sample from the copula determines a discrete approximation of R. This routine implements that inversion.
-
-Inputs
-- u::AbstractMatrix: d×n matrix of pseudo-observations with uniform(0,1) margins (columns are observations). Assumes the sample is i.i.d. from a d-Archimedean copula.
-
-Output
-- DiscreteNonParametric: an estimate R̂ of the radial distribution. If the empirical Kendall distribution has a single atom, the result degenerates at 1.0.
-
-Assumptions
-- d ≥ 2.
-- The underlying copula is Archimedean in dimension d with a d-monotone generator, i.e., admits the Williamson representation ψ(t) = E[(1 - t/R)₊^(d-1)] for some R ≥ 0.
-- u consists of i.i.d. pseudo-observations with continuous margins (or ranks/pseudo-observations), so that the empirical copula and empirical Kendall distribution are meaningful.
-
-Method (high level)
-1) Compute the empirical Kendall sample W_i = C_n(U_i) using the empirical copula C_n. Extract its distinct atoms x_k (sorted in decreasing order) and their empirical probabilities w_k. Let N be the number of distinct atoms.
-2) Normalize scale by setting the largest recovered radius r_N = 1.0.
-3) Use the identity that links a Kendall atom x_k to the yet-unknown radius r_k:
-   x_k = ∑_{j=k+1}^N w_j * max(1 - r_k/r_j, 0)^(d-1).
-   - For k = N-1, this simplifies to x_{N-1} = w_N * (1 - r_{N-1}/r_N)^(d-1), giving the closed form
-     r_{N-1} = 1 - (x_{N-1}/w_N)^(1/(d-1)).
-4) For k = N-2, …, 1, solve the 1D root-finding problem
-   g_k(y) - x_k = 0, where g_k(y) = ∑_{j=k+1}^N w_j * max(1 - y/r_j, 0)^(d-1),
-   by bracketing y ∈ [0, r_{k+1}) and using Roots.find_zero. Monotonicity of g_k ensures a unique solution in that interval under the model.
-5) Merge duplicated radii (if any) by summing their weights and return DiscreteNonParametric(unique_r, unique_w).
-
-Numerical safeguards implemented
-- Ratio clamp for r_{N-1}: x_{N-1}/w_N is clamped to [0,1] before applying the power.
-- Bracketing: initial bracket [0, r_{k+1}) is tightened with small eps; if not bracketing x_k, the interval is widened to [0, r_{k+1}] and, as a last resort, a projection is applied.
-- Post-solve clamping: r_k is clamped to [0, r_{k+1}) to preserve monotonicity r_1 ≤ … ≤ r_N = 1.
-- Coincident atoms are merged with unique_atoms_and_weights.
-
-Complexity
-- N is the number of distinct Kendall atoms. The loop performs O(N) 1D root-finds; each g_k evaluation is O(N - k), so the overall cost is O(N^2) function evaluations in typical cases.
-
-Usage notes
-- The returned R̂ can be passed to mk_ϕᵣ to reconstruct φ_R and used with spl_cop to simulate from the fitted Archimedean copula.
-- When N == 1, the Kendall distribution is degenerate and the fitted R̂ is a Dirac at 1.
-
-References
-- Genest, C., and Nešlehová, J. (2011). See paper.tex in this repository for the exact citation and for the link between Kendall distributions of Archimedean copulas and the Williamson d-transform.
-- McNeil, A. J., and Nešlehová, J. (2009): for the stochastic representation of d-Archimedean copulas and d-monotone generators via the Williamson transform.
-
-See also
-- kendall_atoms_and_weights, mk_ϕᵣ, spl_cop.
-"""
-function fit_archi_williamson(u::AbstractMatrix)
-    d, n = size(u)
-    x, w, N = kendall_atoms_and_weights(u)
-    N == 1 && return DiscreteNonParametric([1.0], [1.0])
-
-    r = zeros(eltype(x), N)
-    r[N] = 1.0
-
-    ratio = clamp(x[N-1] / w[N], 0.0, 1.0)
-    r[N-1] = 1.0 - ratio^(1.0/(d-1))
-
-    for k in (N-2):-1:1
-        gk = function(y)
-            s = zero(y)
-            for j in (k+1):N
-                z = 1.0 - y / r[j]
-                s += w[j] * (z > 0 ? z^(d-1) : 0.0)
-            end
-            return s
-        end
-        eps = 1e-14
-        a, b = 0.0, max(r[k+1] - eps, 0.0)
-        ga, gb = gk(a), gk(b)
-        if !(ga + 1e-12 >= x[k] >= gb - 1e-12)
-            # widen bracket if needed
-            a, b = 0.0, r[k+1]
-        end
-        r[k] = Roots.find_zero(y -> gk(y) - x[k], (a, b); verbose=false)
-        r[k] = clamp(r[k], 0.0, r[k+1] - eps)
-    end
-
-    return DiscreteNonParametric(unique_atoms_and_weights(r, w)...)
-end
+fit_empirical_generator(u::AbstractMatrix) = EmpiricalGenerator(u)
 
 # Visual diagnostics: Kendall overlay + original vs simulated copula + (optional) histograms of R vs R̂
 function diagnose_plots(u::AbstractMatrix, Rhat; R=nothing, logged=false)
@@ -326,7 +207,8 @@ We now generate samples from several radial laws, fit R̂, and compare:
 R = Dirac(1.0)
 d, n = 3, 1000
 u = spl_cop(R, d, n)
-Rhat = fit_archi_williamson(u)
+Ghat = EmpiricalGenerator(u)
+Rhat = williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R)
 ```
 
@@ -336,7 +218,8 @@ diagnose_plots(u, Rhat; R=R)
 R = DiscreteNonParametric([1.0, 4.0, 8.0], fill(1/3, 3))
 d, n = 2, 1000
 u = spl_cop(R, d, n)
-Rhat = fit_archi_williamson(u)
+Ghat = EmpiricalGenerator(u)
+Rhat = williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R)
 ```
 
@@ -346,7 +229,8 @@ diagnose_plots(u, Rhat; R=R)
 R = DiscreteNonParametric([1.0, 4.0, 8.0], fill(1/3, 3))
 d, n = 3, 1000
 u = spl_cop(R, d, n)
-Rhat = fit_archi_williamson(u)
+Ghat = EmpiricalGenerator(u)
+Rhat = williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R)
 ```
 
@@ -356,7 +240,8 @@ diagnose_plots(u, Rhat; R=R)
 R = LogNormal(1, 3)
 d, n = 10, 1000
 u = spl_cop(R, d, n)
-Rhat = fit_archi_williamson(u)
+Ghat = EmpiricalGenerator(u)
+Rhat = williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R, logged=true)
 ```
 
@@ -366,7 +251,8 @@ diagnose_plots(u, Rhat; R=R, logged=true)
 R = Pareto(1.0, 1/2)
 d, n = 10, 1000
 u = spl_cop(R, d, n)
-Rhat = fit_archi_williamson(u)
+Ghat = EmpiricalGenerator(u)
+Rhat = williamson_dist(Ghat, Val{d}())
 diagnose_plots(u, Rhat; R=R, logged=true)
 ```
 

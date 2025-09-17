@@ -97,6 +97,7 @@ module Copulas
     include("Generator/GumbelGenerator.jl")
     include("Generator/InvGaussianGenerator.jl")
     include("Generator/JoeGenerator.jl")
+    include("Generator/EmpiricalGenerator.jl")
 
     #Extreme value copulas
     include("Tail.jl")
@@ -135,6 +136,7 @@ module Copulas
            WilliamsonGenerator, 
            i𝒲, 
            TiltedGenerator,
+           EmpiricalGenerator,
            SklarDist, # SklarDist to make multivariate models
            AMHCopula, # And a bunch of copulas. 
            ArchimedeanCopula,

@@ -150,6 +150,18 @@ Note that you'll always have:
 
     max_monotony(WilliamsonGenerator(X,d)) === d
 
+
+Special case (finite-support discrete X)
+
+- If `X isa Distributions.DiscreteUnivariateDistribution` and `support(X)` is finite, the constructor
+    returns an `EmpiricalGenerator{d}` built from the (strictly positive) support points and their
+    probabilities. The atoms are rescaled so that the largest equals 1, and the weights are normalized
+    to sum to 1. This yields a piecewise-polynomial generator
+    `ϕ(t) = ∑_j w_j · (1 − t/r_j)_+^(d−1)` matching the Williamson transform of a discrete radial law.
+- For infinite-support discrete distributions or when the support is not accessible as a finite
+    iterable, the standard `WilliamsonGenerator` is constructed and will defer to
+    `WilliamsonTransforms.jl`.
+
 References: 
 * [williamson1955multiply](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
 * [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
@@ -158,6 +170,23 @@ struct WilliamsonGenerator{TX} <: Generator
     X::TX
     d::Int
     function WilliamsonGenerator(X,transform_dimension)
+        if X isa Distributions.DiscreteUnivariateDistribution
+            # If X has finite, positive support, build an empirical generator
+            sp = Distributions.support(X)
+            if Base.hasmethod(length, (typeof(sp),))
+                n = length(sp)
+                if n > 0
+                    vals = collect(sp)
+                    # keep strictly positive atoms
+                    pos = filter(>(zero(eltype(vals))), vals)
+                    if !isempty(pos)
+                        ws = Distributions.pdf.(X, pos)
+                        return EmpiricalGenerator{transform_dimension, Float64}(pos, ws)
+                    end
+                end
+            end
+        end
+        # else: fall back to a regular Williamson generator
         # check that X is indeed a positively supported random variable... 
         return new{typeof(X)}(X,transform_dimension)
     end
