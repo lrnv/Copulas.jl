@@ -46,14 +46,14 @@ struct BernsteinCopula{d,C<:Copula} <: Copula{d}
                     end
                 end
             end
-            return BernsteinCopula{d,typeof(base)}(base, mtuple)
+            return new{d,typeof(base)}(base, mtuple)
         end
 
         if base isa EmpiricalCopula
             n = size(base.u, 2)
             m_est = max(2, floor(Int, n^(1/d)))
             @info "Automatic choice: m=$m_est in each dimension (≈ n^(1/d))."
-            return BernsteinCopula{d,typeof(base)}(base, ntuple(_->m_est, d))
+            return new{d,typeof(base)}(base, ntuple(_->m_est, d))
         end
 
         return new{d,typeof(base)}(base, ntuple(_->10, d))

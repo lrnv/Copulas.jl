@@ -52,7 +52,7 @@ function CheckerboardCopula(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool
     data = min.(ms .- 1, floor.(Int, (pseudo_values ? X : pseudos(X)) .* ms))
     # Build a dictionary of box proportions using tuple keys
     keys_iter = (Tuple(@view data[:, j]) for j in 1:n)
-    boxes = StatsBase.proportionmap(keys_iter)
+    boxes = StatsBase.proportionmap(collect(keys_iter))
     return CheckerboardCopula{d, eltype(values(boxes))}(ms, boxes)
 end
 

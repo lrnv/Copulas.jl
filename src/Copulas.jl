@@ -118,7 +118,6 @@ module Copulas
     include("Tail/tEVTail.jl")
     include("Tail/EmpiricalEVTail.jl")
     
-    include("MiscellaneousCopulas/EmpiricalEVCopula.jl")
     include("MiscellaneousCopulas/BernsteinCopula.jl")
     include("MiscellaneousCopulas/BetaCopula.jl")
     include("MiscellaneousCopulas/CheckerboardCopula.jl")

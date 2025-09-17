@@ -50,5 +50,5 @@ function Base.show(io::IO, C::BetaCopula)
 end
 
 function Base.show(io::IO, C::CheckerboardCopula{d}) where {d}
-    print(io, "CheckerboardCopula{", d, "} ⟨n=", C.n, "⟩")
+    print(io, "CheckerboardCopula{", d, "} ⟨m=", C.m, "⟩")
 end

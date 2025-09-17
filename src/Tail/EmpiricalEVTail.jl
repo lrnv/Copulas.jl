@@ -171,7 +171,7 @@ function empirical_pickands_cfg(tgrid::AbstractVector, U::AbstractMatrix;
 end
 
 # OLS (intercept) estimator
-function empirical_pickands_ols(tgrid:AbstractVector, U::AbstractMatrix;
+function empirical_pickands_ols(tgrid::AbstractVector, U::AbstractMatrix;
                                 pseudos_values::Bool=true, endpoint_correction::Bool=true)
     Up = _as_pxn(2, U)
     if pseudos_values
