@@ -96,7 +96,7 @@ function EmpiricalGenerator(u::AbstractMatrix)
 end
 Distributions.params(G::EmpiricalGenerator{d, T}) where {d, T} = (d = d, radii = G.r, weights = G.w)
 max_monotony(::EmpiricalGenerator{d, T}) where {d, T} = d
-
+williamson_dist(G::EmpiricalGenerator{d, T}, ::Val{d}) where {d, T} = Distributions.DiscreteNonParametric(G.r, G.w)
 function ϕ(G::EmpiricalGenerator{d, T}, t::Real) where {d, T}
     TT = promote_type(T, typeof(t))
     t <= 0 && return one(TT)
@@ -109,15 +109,6 @@ function ϕ(G::EmpiricalGenerator{d, T}, t::Real) where {d, T}
     end
     return S
 end
-
-# Return the fitted radial distribution (Williamson pre-image) when the request matches D
-williamson_dist(G::EmpiricalGenerator{d, T}, ::Val{d}) where {d, T} = Distributions.DiscreteNonParametric(G.r, G.w)
-
-# ===============================
-#  Specialized derivatives & inverse
-# ===============================
-
-# First derivative ϕ'(t)
 function ϕ⁽¹⁾(G::EmpiricalGenerator{d, T}, t::Real) where {d, T}
     TT = promote_type(T, typeof(t))
     t >= G.r[end] && return zero(TT)
@@ -130,95 +121,48 @@ function ϕ⁽¹⁾(G::EmpiricalGenerator{d, T}, t::Real) where {d, T}
     end
     return - (d-1) * S
 end
-
-# Higher derivatives ϕ^{(k)}(t) for 1 ≤ k ≤ d-1; 0 for k ≥ d
 function ϕ⁽ᵏ⁾(G::EmpiricalGenerator{d, T}, ::Val{k}, t::Real) where {d, T, k}
     TT = promote_type(T, typeof(t))
     (k >= d || t >= G.r[end]) && return zero(TT)
     k == 0 && return ϕ(G, t)
     k == 1 && return ϕ⁽¹⁾(G, t)
-    
     S = zero(TT)
-    coeff = Base.factorial(d - 1) / Base.factorial(d - 1 - k)  # falling factorial (c)_k
-    sgn = isodd(k) ? -1 : 1
     @inbounds for j in lastindex(G.r):-1:firstindex(G.r)
         rⱼ, wⱼ = G.r[j], G.w[j]
         t ≥ rⱼ && break
         zpow = (d == k+1) ? one(t) :  (1 - t / rⱼ)^(d - 1 - k)
         S += wⱼ * zpow / rⱼ^k
     end
-    r = sgn * coeff * S 
-    return r
+    return S * (isodd(k) ? -1 : 1) * Base.factorial(d - 1) / Base.factorial(d - 1 - k)
 end
-
-# Monotone inverse ϕ^{-1}(x) with segment bracketing on knots r
 function ϕ⁻¹(G::EmpiricalGenerator{d, T}, x::Real) where {d, T}
     TT = promote_type(T, typeof(x))
     x >= 1 && return zero(TT)
     x <= 0 && return TT(G.r[end])
-
-    # Precompute f at knots t = r[k]
-    # f(0) = 1 ≥ x; find smallest k s.t. f(r[k]) ≤ x
-    N = length(G.r)
-    k = 1
-    while k <= N && ϕ(G, G.r[k]) > x
-        k += 1
+    for k in eachindex(G.r)
+        if x > ϕ(G, G.r[k])
+            if x < ϕ(G, prevfloat(G.r[k]))
+                return prevfloat(G.r[k])
+            end
+            return TT(Roots.find_zero(t -> ϕ(G, t) - x, (k==1 ? 0 : G.r[k-1], G.r[k]); bisection=true))
+        end
     end
-    if k == 1
-        a = zero(TT); b = G.r[1]
-    elseif k > N
-        # Should not happen since f(r_N)=0 ≤ x, but guard anyway
-        return TT(G.r[end])
-    else
-        a = G.r[k-1]; b = G.r[k]
-    end
-    # Bracketed root find on [a,b]
-    return TT(Roots.find_zero(t -> ϕ(G, t) - x, (a, b); bisection=true))
+    return TT(G.r[end])
 end
-
-# Derivative of inverse: (ϕ^{-1})'(x) = 1 / ϕ'(t) at t = ϕ^{-1}(x)
-ϕ⁻¹⁽¹⁾(G::EmpiricalGenerator{d, T}, x::Real) where {d, T} = inv(ϕ⁽¹⁾(G, ϕ⁻¹(G, x)))
-
 function ϕ⁽ᵏ⁾⁻¹(G::EmpiricalGenerator{d, T}, ::Val{p}, y; start_at=nothing) where {d, T, p}
     TT = promote_type(T, typeof(y))
-
-    # Guard invalid/degenerate derivative orders
-    if p == 0
-        return TT(ϕ⁻¹(G, y))
-    elseif p < 1 || p >= d
-        # ϕ^{(p)} is identically zero for p ≥ d (on [0, r_max)),
-        # so the inverse is undefined except at y = 0. We return r[end]
-        # as a safe endpoint in all these ambiguous cases.
-        return TT(G.r[end])
-    end
-
-    # Precompute f at knots t = r[k]
-    # f(0) = 1 ≥ y; find smallest k s.t. f(r[k]) ≤ y
-    N = length(G.r)
-
-    vp = Val{p}()
+    p == 0 && return ϕ⁻¹(G, y)
     sign = iseven(p) ? 1 : -1
-
-    # Outside feasible range: map to endpoints
-    sign*y <= 0 && return TT(G.r[end])
-    sign*y >= sign*ϕ⁽ᵏ⁾(G, vp, 0) && return TT(0)
-
-    # Find bracketing segment [a,b] over knot intervals
-    k = 1
-    while k <= N && sign*ϕ⁽ᵏ⁾(G, vp, G.r[k]) > sign*y
-        k += 1
+    s_y = sign*y
+    s_y <= 0 && return TT(G.r[end])
+    s_y >= sign*ϕ⁽ᵏ⁾(G, Val{p}(), 0) && return TT(0)
+    for k in eachindex(G.r)
+        if s_y > sign * ϕ⁽ᵏ⁾(G, Val{p}(), G.r[k])
+            if s_y < sign * ϕ⁽ᵏ⁾(G, Val{p}(), prevfloat(G.r[k]))
+                return TT(prevfloat(G.r[k]))
+            end
+            return TT(Roots.find_zero(t -> ϕ⁽ᵏ⁾(G, Val{p}(), t) - y, (k==1 ? 0 : G.r[k-1], G.r[k]); bisection=true))
+        end
     end
-    if k == 1
-        a = zero(TT); b = G.r[1]
-    elseif k > N
-        # Should not happen since f(r_N)=0 ≤ y, but guard anyway
-        return TT(G.r[end])
-    else
-        a = G.r[k-1]; b = G.r[k]
-    end
-
-    # Bracketed root find on [a,b]
-    return TT(Roots.find_zero(t -> ϕ⁽ᵏ⁾(G, vp, t) - y, (a, b); bisection=true))
+    return TT(G.r[end])
 end
-
-

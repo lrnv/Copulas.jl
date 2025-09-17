@@ -149,9 +149,8 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     U = zero(u)
     for i in axes(u, 2)
         U[1,i] = u[1,i]
-        Cᵢⱼ = zero(eltype(u))
+        Cᵢⱼ = ϕ⁻¹(C.G, U[1,i])
         for j in 2:d
-            Cᵢⱼ += ϕ⁻¹(C.G, U[j - 1, i])
             if iszero(Cᵢⱼ)
                 U[j, i] = one(Cᵢⱼ)
             elseif !isfinite(Cᵢⱼ)
@@ -160,6 +159,7 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
                 Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, Val{j - 1}(), Cᵢⱼ) * u[j,i]
                 R = ϕ⁽ᵏ⁾⁻¹(C.G, Val{j - 1}(), Dᵢⱼ; start_at=Cᵢⱼ)
                 U[j, i] = ϕ(C.G, R - Cᵢⱼ)
+                Cᵢⱼ = R
             end
         end
     end

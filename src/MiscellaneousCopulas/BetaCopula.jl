@@ -67,7 +67,7 @@ end
 function _cdf(C::BetaCopula{d}, u) where {d}
     n = C.n
     # tablas por dimensión en el punto u
-    CDFtab = ntuple(j -> reverse(cumsum(reverse(_bernvec_n(u[j], n))))[2:end], d)
+    CDFtab = ntuple(j -> Base.reverse(cumsum(Base.reverse(_bernvec_n(u[j], n))))[2:end], d)
     total = zero(eltype(first(CDFtab)))
     @inbounds for i in 1:n
         prod_term = one(total)
