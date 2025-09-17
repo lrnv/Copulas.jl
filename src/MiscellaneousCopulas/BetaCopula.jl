@@ -35,13 +35,6 @@ struct BetaCopula{d,MT} <: Copula{d}
         return new{d, typeof(R)}(R, n)
     end
 end
-
-# =========================================
-#  Basis via stable recurrences (AD- and boundary-safe)
-# =========================================
-# p_{n,k}(u) = C(n,k) u^k (1-u)^{n-k}, k=0..n
-# Bernstein basis degree n — avoids 0^0 and uses stable recurrences.
-
 function _bernvec_n(u::T, n::Int) where {T<:Real}
     v = zeros(T, n+1)
     if iszero(u)
@@ -59,11 +52,6 @@ function _bernvec_n(u::T, n::Int) where {T<:Real}
     end
     return v
 end
-
-# ========
-#   CDF
-# ========
-
 function _cdf(C::BetaCopula{d}, u) where {d}
     n = C.n
     # tablas por dimensión en el punto u
@@ -81,11 +69,6 @@ function _cdf(C::BetaCopula{d}, u) where {d}
     end
     return total / n
 end
-
-# =========
-#  LOGPDF
-# =========
-
 function Distributions._logpdf(C::BetaCopula{d}, u::AbstractVector) where {d}
     n = C.n
     PDFtab = ntuple(j -> n .* _bernvec_n(u[j], n-1), d)
@@ -104,14 +87,7 @@ function Distributions._logpdf(C::BetaCopula{d}, u::AbstractVector) where {d}
     dens = max(dens, zero(dens))
     return log(dens + eps(eltype(dens)))
 end
-
-# =========
-#  RAND!
-# =========
-
-function Distributions._rand!(rng::Distributions.AbstractRNG,
-                              C::BetaCopula{d},
-                              u::AbstractVector{T}) where {d,T<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::BetaCopula{d}, u::AbstractVector{T}) where {d,T<:Real}
     i = Distributions.rand(rng, 1:C.n)  # choose a mixture component
     @inbounds for j in 1:d
         r = C.ranks[j,i]
@@ -119,11 +95,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
     end
     return u
 end
-
-# ===============================
-#  Conditioning fast path (distortion)
-# ===============================
-
 @inline function DistortionFromCop(C::BetaCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
     # Build conditional mixture weights over observations given U_js = u_js.
     # w_i ∝ ∏_{t=1..p} BetaPDF(u_jt; r_{j_t,i}, n+1−r_{j_t,i})
