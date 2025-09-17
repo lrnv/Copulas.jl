@@ -7,10 +7,10 @@ and defining ϕ(t) = E[(1 - t/R̂)₊^(d-1)].
 
 Constructor
 
-    EmpiricalGenerator(u; pseudo_values=true)
+    EmpiricalGenerator(u)
 
 Inputs
-- `u::AbstractMatrix`: d×n matrix, columns are observations on the copula scale (if `pseudo_values=true`)
+- `u::AbstractMatrix`: d×n matrix, columns are observations on the copula or marginal scale (does not matter).
   or raw data to be converted with `pseudos(u)` when `pseudo_values=false`.
 
 Fields

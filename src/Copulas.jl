@@ -180,7 +180,6 @@ module Copulas
            BB5Copula,
            EmpiricalEVCopula,
            BernsteinCopula,
-           EmpiricalBernsteinCopula,
            BetaCopula,
            EmpiricalBetaCopula,
            CheckerboardCopula

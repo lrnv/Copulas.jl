@@ -28,27 +28,18 @@ end
 function Base.show(io::IO, C::SubsetCopula)
     print(io, "SubsetCopula($(C.C), $(C.dims))")
 end
-
 function Base.show(io::IO, tail::EmpiricalEVTail)
     print(io, "EmpiricalEVTail(", length(tail.tgrid), " knots)")
 end
-
 function Base.show(io::IO, C::ExtremeValueCopula{2, EmpiricalEVTail})
     print(io, "ExtremeValueCopula{2} ⟨", C.tail, "⟩")
 end
-
 function Base.show(io::IO, B::BernsteinCopula{d,C}) where {d,C<:Copulas.Copula}
-    if B.base isa Copulas.EmpiricalCopula
-        print(io, "EmpiricalBernsteinCopula{", d, "} ⟨n=", size(B.base.u,2), ", m=", B.m, "⟩")
-    else
-        print(io, "BernsteinCopula{", d, "} ⟨base=", nameof(C), ", m=", B.m, "⟩")
-    end
+    print(io, "BernsteinCopula{", d, "} ⟨base=", nameof(C), ", m=", B.m, "⟩")
 end
-
 function Base.show(io::IO, C::BetaCopula)
     print(io, "EmpiricalBetaCopula{d}$(size(C.ranks))")
 end
-
 function Base.show(io::IO, C::CheckerboardCopula{d}) where {d}
     print(io, "CheckerboardCopula{", d, "} ⟨m=", C.m, "⟩")
 end

@@ -9,7 +9,6 @@ Constructor
 
     BernsteinCopula(C; m=10)
     BernsteinCopula(data; m=10)
-    EmpiricalBernsteinCopula(data; m=10)
 
 The Bernstein copula in dimension ``d`` is defined as
 
@@ -59,8 +58,7 @@ struct BernsteinCopula{d,C<:Copula} <: Copula{d}
         return new{d,typeof(base)}(base, ntuple(_->10, d))
     end
 end
-BernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing) = BernsteinCopula(EmpiricalCopula(data; pseudo_values=false); m=m)
-EmpiricalBernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing) = BernsteinCopula(data; m=m)
+BernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing, pseudo_values=true) = BernsteinCopula(EmpiricalCopula(data; pseudo_values=pseudo_values); m=m)
 
 
 function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
@@ -175,8 +173,7 @@ function Distributions.logpdf(B::BernsteinCopula{d}, u::AbstractVector) where {d
             dens += ΔC * prodβ
         end
     end
-    dens = max(dens, zero(dens))
-    return log(dens + eps(Float64))
+    return min(log(abs(dens)), zero(dens))
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula{d}, u::AbstractVector{T}) where {d,T<:Real}

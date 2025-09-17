@@ -7,8 +7,7 @@ Fields:
 Constructor
 
     BetaCopula(u)
-    EmpiricalBetaCopula(u)
-
+    
 The empirical beta copula in dimension ``d`` is defined as
 
 ```math
@@ -39,7 +38,6 @@ struct BetaCopula{d,MT} <: Copula{d}
         return new{size(U,1), typeof(R)}(R, size(U,2))
     end
 end
-EmpiricalBetaCopula(data::AbstractMatrix) = BetaCopula(data)
 
 # Row-wise ordinal ranks 1..n per variable
 function _rowwise_ordinalranks(U::AbstractMatrix)

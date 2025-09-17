@@ -33,7 +33,6 @@
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(ClaytonCopula(3, 3.3); m=5)) end
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(IndependentCopula(4); m=5)) end
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(randn(M.rng, 2,100))) end
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(EmpiricalBernsteinCopula(randn(M.rng, 2,100))) end
 
 @testitem "Generic" tags=[:Generic, :BetaCopula] setup=[M] begin M.check(BetaCopula(randn(M.rng, 2,100))) end
 @testitem "Generic" tags=[:Generic, :BetaCopula] setup=[M] begin M.check(BetaCopula(randn(M.rng, 3,100))) end
@@ -43,6 +42,22 @@
 @testitem "Generic" tags=[:Generic, :CheckerboardCopula] setup=[M] begin M.check(CheckerboardCopula(randn(M.rng, 2,100); pseudo_values=false)) end
 @testitem "Generic" tags=[:Generic, :CheckerboardCopula] setup=[M] begin M.check(CheckerboardCopula(randn(M.rng, 3,100); pseudo_values=false)) end
 @testitem "Generic" tags=[:Generic, :CheckerboardCopula] setup=[M] begin M.check(CheckerboardCopula(randn(M.rng, 4,100); pseudo_values=false)) end
+
+# EmpiricalGenerator generic checks via ArchimedeanCopula wrapper
+@testitem "Generic" tags=[:Generic, :EmpiricalGenerator] setup=[M] begin
+    using Copulas
+    u = randn(M.rng, 3, 200)
+    G = EmpiricalGenerator(u)             # inferred d from rows
+    C = ArchimedeanCopula(3, G)
+    M.check(C)
+end
+@testitem "Generic" tags=[:Generic, :EmpiricalGenerator] setup=[M] begin
+    using Copulas
+    u = randn(M.rng, 2, 150)
+    G = EmpiricalGenerator(u)
+    C = ArchimedeanCopula(2, G)
+    M.check(C)
+end
 
 @testitem "Testing survival stuff" tags=[:SurvivalCopula] begin
     # [GenericTests integration]: Yes. Symmetry of survival transformations on pdf/cdf is generic; we can add survival invariance checks.

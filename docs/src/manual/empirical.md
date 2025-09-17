@@ -88,6 +88,9 @@ BetaCopula
     - Distortions: specialized fast path returning a MixtureModel of Beta components for efficient evaluation and sampling.
     - Conditional copulas: available via the generic implementation (no dedicated fast path).
 
+### Performance notes
+- Construction is O(d·n) after pseudo-observations are computed. Evaluation at a point uses O(d·n) basis lookups; consider subsampling for very large n.
+
 ## Bernstein Copula
 
 Bernstein copula are simply another smoothing of the empirical copula using Bernstein polynomials. 
@@ -112,6 +115,10 @@ BernsteinCopula
 !!! note "Conditionals and distortions"
     - Distortions: specialized fast path returning a MixtureModel of Beta components (weights from Bernstein grid finite differences conditioned on $\boldsymbol u_J$).
     - Conditional copulas: available via the generic implementation (no dedicated fast path).
+
+### Performance notes
+- Complexity grows with the grid size ∏_j (m_j+1) for cdf and ∏_j m_j for pdf. In higher dimensions, keep m small or prefer the 2D specialized paths provided.
+- Small negative finite differences from numerical noise are clipped to zero before normalization.
 
 ## Checkerboard Copulas
 
@@ -174,6 +181,10 @@ CheckerboardCopula
     - Distortions: specialized for conditioning on a single coordinate (p=1) via a histogram-bin distortion on the corresponding slice.
     - Conditional copulas: specialized projection onto remaining axes, renormalizing the mass in the fixed bins, still returns a Checkerboard. 
 
+### Performance notes
+- Construction cost scales with sample size but stores only occupied boxes (sparse). CDF evaluation is O(#occupied boxes) at query time.
+- For large n choose coarser m to reduce occupied boxes; for small n a finer grid is possible but may leave many empty boxes.
+
 
 ## Empirical Extreme-Value copula (Pickands estimator)
 
@@ -210,6 +221,9 @@ Usage:
 ```@docs
 EmpiricalGenerator
 ```
+
+### Performance notes
+- The Kendall sample computation is currently O(n^2) in the number of observations. For large n, future versions may switch to Fenwick-tree–based sweeps to reach ~O(n log n) in bivariate cases and ~O(n log^{d-1} n) for higher d.
 
 See [This example page](@ref nonpar_archi_gen_example) for more details and example usages. 
 

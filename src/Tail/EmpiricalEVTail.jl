@@ -8,7 +8,7 @@ Fields:
 
 Constructor
 
-  EmpiricalEVTail(u; estimator=:ols, grid=401, eps=1e-3, pseudos_values=true)
+  EmpiricalEVTail(u; estimator=:ols, grid=401, eps=1e-3, pseudo_values=true)
   ExtremeValueCopula(2, EmpiricalEVTail(u; ...))
 
 The empirical extreme-value (EV) copula (bivariate) is defined from pseudo-observations
@@ -43,10 +43,10 @@ end
 
 Construct the empirical Pickands tail from data (2×N or N×2).
 """
-function EmpiricalEVTail(u::AbstractMatrix; estimator::Symbol=:ols, grid::Int=401, eps::Real=1e-3, pseudos_values::Bool=true)
+function EmpiricalEVTail(u::AbstractMatrix; estimator::Symbol=:ols, grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true)
     # Ensure 2×n orientation
     Up = _as_pxn(2, u)
-    if pseudos_values
+    if pseudo_values
         @assert all(0 .<= Up .<= 1)
     else
         Up = pseudos(Up)
@@ -54,9 +54,9 @@ function EmpiricalEVTail(u::AbstractMatrix; estimator::Symbol=:ols, grid::Int=40
 
     tgrid = collect(range(eps, 1 - eps; length=grid))
 
-    Â = estimator === :ols      ? empirical_pickands_ols(tgrid, Up; pseudos_values=true) :
-         estimator === :cfg      ? empirical_pickands_cfg(tgrid, Up; pseudos_values=true) :
-         estimator === :pickands ? empirical_pickands(tgrid, Up; pseudos_values=true) :
+    Â = estimator === :ols      ? empirical_pickands_ols(tgrid, Up; pseudo_values=true) :
+         estimator === :cfg      ? empirical_pickands_cfg(tgrid, Up; pseudo_values=true) :
+         estimator === :pickands ? empirical_pickands(tgrid, Up; pseudo_values=true) :
          throw(ArgumentError("estimator ∈ {:ols,:cfg,:pickands}"))
     Â, slope = _convexify_pickands!(Â, tgrid)
     return EmpiricalEVTail(tgrid, Â, slope)
@@ -124,9 +124,9 @@ end
 
 # Classical Pickands estimator
 function empirical_pickands(tgrid::AbstractVector, U::AbstractMatrix;
-                            pseudos_values::Bool=true, endpoint_correction::Bool=true)
+                            pseudo_values::Bool=true, endpoint_correction::Bool=true)
     Up = _as_pxn(2, U)
-    if pseudos_values
+    if pseudo_values
         @assert all(0 .<= Up .<= 1)
     else
         Up = pseudos(Up)
@@ -149,9 +149,9 @@ end
 
 # CFG estimator
 function empirical_pickands_cfg(tgrid::AbstractVector, U::AbstractMatrix;
-                                pseudos_values::Bool=true, endpoint_correction::Bool=true)
+                                pseudo_values::Bool=true, endpoint_correction::Bool=true)
     Up = _as_pxn(2, U)
-    if pseudos_values
+    if pseudo_values
         @assert all(0 .<= Up .<= 1)
     else
         Up = pseudos(Up)
@@ -172,9 +172,9 @@ end
 
 # OLS (intercept) estimator
 function empirical_pickands_ols(tgrid::AbstractVector, U::AbstractMatrix;
-                                pseudos_values::Bool=true, endpoint_correction::Bool=true)
+                                pseudo_values::Bool=true, endpoint_correction::Bool=true)
     Up = _as_pxn(2, U)
-    if pseudos_values
+    if pseudo_values
         @assert all(0 .<= Up .<= 1)
     else
         Up = pseudos(Up)
