@@ -181,7 +181,6 @@ module Copulas
            EmpiricalEVCopula,
            BernsteinCopula,
            BetaCopula,
-           EmpiricalBetaCopula,
            CheckerboardCopula
 
 end

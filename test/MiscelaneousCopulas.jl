@@ -32,12 +32,10 @@
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(ArchimaxCopula(2, Copulas.FrankGenerator(0.8), Copulas.HuslerReissTail(0.6)); m=5)) end
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(ClaytonCopula(3, 3.3); m=5)) end
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(IndependentCopula(4); m=5)) end
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(randn(M.rng, 2,100))) end
+@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(randn(M.rng, 2,100), pseudo_values=false)) end
 
 @testitem "Generic" tags=[:Generic, :BetaCopula] setup=[M] begin M.check(BetaCopula(randn(M.rng, 2,100))) end
 @testitem "Generic" tags=[:Generic, :BetaCopula] setup=[M] begin M.check(BetaCopula(randn(M.rng, 3,100))) end
-@testitem "Generic" tags=[:Generic, :BetaCopula] setup=[M] begin M.check(EmpiricalBetaCopula(randn(M.rng, 2,100))) end
-@testitem "Generic" tags=[:Generic, :BetaCopula] setup=[M] begin M.check(EmpiricalBetaCopula(randn(M.rng, 3,100))) end
 
 @testitem "Generic" tags=[:Generic, :CheckerboardCopula] setup=[M] begin M.check(CheckerboardCopula(randn(M.rng, 2,100); pseudo_values=false)) end
 @testitem "Generic" tags=[:Generic, :CheckerboardCopula] setup=[M] begin M.check(CheckerboardCopula(randn(M.rng, 3,100); pseudo_values=false)) end

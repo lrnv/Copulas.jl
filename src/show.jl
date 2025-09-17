@@ -38,7 +38,7 @@ function Base.show(io::IO, B::BernsteinCopula{d,C}) where {d,C<:Copulas.Copula}
     print(io, "BernsteinCopula{", d, "} ⟨base=", nameof(C), ", m=", B.m, "⟩")
 end
 function Base.show(io::IO, C::BetaCopula)
-    print(io, "EmpiricalBetaCopula{d}$(size(C.ranks))")
+    print(io, "BetaCopula{d}$(size(C.ranks))")
 end
 function Base.show(io::IO, C::CheckerboardCopula{d}) where {d}
     print(io, "CheckerboardCopula{", d, "} ⟨m=", C.m, "⟩")
