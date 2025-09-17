@@ -25,6 +25,9 @@ end
 function Base.show(io::IO, G::WilliamsonGenerator)
     print(io, "i𝒲($(G.X), $(G.d))")
 end
+function Base.show(io::IO, C::ArchimedeanCopula{d, EmpiricalGenerator{d2, T}}) where {d, d2, T}
+    print(io, "ArchimedeanCopula($d, EmpiricalGenerator($d2, $(length(C.G.r)) atoms)")
+end
 function Base.show(io::IO, C::SubsetCopula)
     print(io, "SubsetCopula($(C.C), $(C.dims))")
 end

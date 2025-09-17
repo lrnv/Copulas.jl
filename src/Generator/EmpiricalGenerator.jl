@@ -98,9 +98,10 @@ Distributions.params(G::EmpiricalGenerator{d, T}) where {d, T} = (d = d, radii =
 max_monotony(::EmpiricalGenerator{d, T}) where {d, T} = d
 
 function ϕ(G::EmpiricalGenerator{d, T}, t::Real) where {d, T}
-    t <= 0 && return one(float(t))
-    t >= G.r[end] && return zero(float(t))
-    S = zero(promote_type(T, typeof(float(t))))
+    TT = promote_type(T, typeof(t))
+    t <= 0 && return one(TT)
+    t >= G.r[end] && return zero(TT)
+    S = zero(TT)
     @inbounds for j in lastindex(G.r):-1:firstindex(G.r)
         rⱼ, wⱼ = G.r[j], G.w[j]
         t >= rⱼ && break
@@ -118,110 +119,106 @@ williamson_dist(G::EmpiricalGenerator{d, T}, ::Val{d}) where {d, T} = Distributi
 
 # First derivative ϕ'(t)
 function ϕ⁽¹⁾(G::EmpiricalGenerator{d, T}, t::Real) where {d, T}
-    if t >= G.r[end]
-        return zero(float(t))
-    end
-    S = zero(promote_type(T, typeof(float(t))))
-    tv = ForwardDiff.value(t)
-    c = d - 1
+    TT = promote_type(T, typeof(t))
+    t >= G.r[end] && return zero(TT)
+    S = zero(TT)
     @inbounds for j in lastindex(G.r):-1:firstindex(G.r)
-        rj = G.r[j]
-        if tv < rj
-            z = one(S) - t / rj
-            if c == 1
-                # power 0 => z^(0) = 1
-                S += -G.w[j] / rj
-            else
-                S += -(c) * (G.w[j] / rj) * z^(c - 1)
-            end
-        else
-            break
-        end
+        rⱼ, wⱼ = G.r[j], G.w[j]
+        t ≥ rⱼ && break
+        zpow = d==2 ? one(t) : (1 - t / rⱼ)^(d-2)
+        S += wⱼ * zpow / rⱼ
     end
-    return S
+    return - (d-1) * S
 end
 
 # Higher derivatives ϕ^{(k)}(t) for 1 ≤ k ≤ d-1; 0 for k ≥ d
 function ϕ⁽ᵏ⁾(G::EmpiricalGenerator{d, T}, ::Val{k}, t::Real) where {d, T, k}
-    if k >= d || t >= G.r[end]
-        return zero(float(t))
-    elseif k == 0
-        return ϕ(G, t)
-    end
-    S = zero(promote_type(T, typeof(float(t))))
-    tv = ForwardDiff.value(t)
-    c = d - 1
-    pow = c - k
-    coeff = one(S) * (Base.factorial(c) / Base.factorial(c - k))  # falling factorial (c)_k
-    sgn = (isodd(k) ? -one(S) : one(S))
+    TT = promote_type(T, typeof(t))
+    (k >= d || t >= G.r[end]) && return zero(TT)
+    k == 0 && return ϕ(G, t)
+    k == 1 && return ϕ⁽¹⁾(G, t)
+    
+    S = zero(TT)
+    coeff = Base.factorial(d - 1) / Base.factorial(d - 1 - k)  # falling factorial (c)_k
+    sgn = isodd(k) ? -1 : 1
     @inbounds for j in lastindex(G.r):-1:firstindex(G.r)
-        rj = G.r[j]
-        if tv < rj
-            z = one(S) - t / rj
-            term = G.w[j] * (rj^(-k))
-            if pow == 0
-                S += sgn * coeff * term
-            else
-                S += sgn * coeff * term * z^(pow)
-            end
-        else
-            break
-        end
+        rⱼ, wⱼ = G.r[j], G.w[j]
+        t ≥ rⱼ && break
+        zpow = (d == k+1) ? one(t) :  (1 - t / rⱼ)^(d - 1 - k)
+        S += wⱼ * zpow / rⱼ^k
     end
-    return S
+    r = sgn * coeff * S 
+    return r
 end
 
 # Monotone inverse ϕ^{-1}(x) with segment bracketing on knots r
 function ϕ⁻¹(G::EmpiricalGenerator{d, T}, x::Real) where {d, T}
-    xx = clamp(float(x), 0.0, 1.0)
-    xx >= 1 && return zero(xx)
-    xx <= 0 && return G.r[end]
+    TT = promote_type(T, typeof(x))
+    x >= 1 && return zero(TT)
+    x <= 0 && return TT(G.r[end])
+
     # Precompute f at knots t = r[k]
-    # f(0) = 1 ≥ xx; find smallest k s.t. f(r[k]) ≤ xx
+    # f(0) = 1 ≥ x; find smallest k s.t. f(r[k]) ≤ x
     N = length(G.r)
-    f_at = @inline k -> begin
-        s = 0.0
-        rk = G.r[k]
-        @inbounds for j in (k+1):N
-            s += float(G.w[j]) * (max(1 - rk / G.r[j], 0.0))^(d - 1)
-        end
-        s
-    end
     k = 1
-    while k <= N && f_at(k) > xx
+    while k <= N && ϕ(G, G.r[k]) > x
         k += 1
     end
     if k == 1
-        a = zero(xx); b = G.r[1]
+        a = zero(TT); b = G.r[1]
     elseif k > N
-        # Should not happen since f(r_N)=0 ≤ xx, but guard anyway
-        return G.r[end]
+        # Should not happen since f(r_N)=0 ≤ x, but guard anyway
+        return TT(G.r[end])
     else
         a = G.r[k-1]; b = G.r[k]
     end
     # Bracketed root find on [a,b]
-    return Roots.find_zero(t -> ϕ(G, t) - xx, (a, b); bisection=true)
+    return TT(Roots.find_zero(t -> ϕ(G, t) - x, (a, b); bisection=true))
 end
 
 # Derivative of inverse: (ϕ^{-1})'(x) = 1 / ϕ'(t) at t = ϕ^{-1}(x)
 ϕ⁻¹⁽¹⁾(G::EmpiricalGenerator{d, T}, x::Real) where {d, T} = inv(ϕ⁽¹⁾(G, ϕ⁻¹(G, x)))
 
-function ϕ⁽ᵏ⁾⁻¹(G::EmpiricalGenerator{d, T}, ::Val{k}, y; start_at=nothing) where {d, T, k}
-    # Monotone inverse for higher derivatives of the empirical generator.
-    # For 1 ≤ k ≤ d-1, ϕ^{(k)} is piecewise-polynomial and monotone on [0, r_max],
-    # with ϕ^{(k)}(0) ≠ 0 and ϕ^{(k)}(r_max) = 0. This provides a robust bracket for
-    # root-finding. For k ≥ d, ϕ^{(k)} ≡ 0 and inversion is undefined.
-    k >= d && throw(ArgumentError("ϕ^{($k)} is identically zero for k ≥ d; cannot invert."))
-    yy = float(y)
-    a = zero(yy)
-    b = G.r[end]
-    fa = ϕ⁽ᵏ⁾(G, Val{k}(), a)
-    fb = ϕ⁽ᵏ⁾(G, Val{k}(), b)  # should be 0
-    # Ensure y is within [min(fa,fb), max(fa,fb)]
-    lo, hi = min(fa, fb), max(fa, fb)
-    (yy < lo - sqrt(eps(float(yy)))) && (yy = lo)
-    (yy > hi + sqrt(eps(float(yy)))) && (yy = hi)
-    return Roots.find_zero(t -> ϕ⁽ᵏ⁾(G, Val{k}(), t) - yy, (a, b); bisection=true)
+function ϕ⁽ᵏ⁾⁻¹(G::EmpiricalGenerator{d, T}, ::Val{p}, y; start_at=nothing) where {d, T, p}
+    TT = promote_type(T, typeof(y))
+
+    # Guard invalid/degenerate derivative orders
+    if p == 0
+        return TT(ϕ⁻¹(G, y))
+    elseif p < 1 || p >= d
+        # ϕ^{(p)} is identically zero for p ≥ d (on [0, r_max)),
+        # so the inverse is undefined except at y = 0. We return r[end]
+        # as a safe endpoint in all these ambiguous cases.
+        return TT(G.r[end])
+    end
+
+    # Precompute f at knots t = r[k]
+    # f(0) = 1 ≥ y; find smallest k s.t. f(r[k]) ≤ y
+    N = length(G.r)
+
+    vp = Val{p}()
+    sign = iseven(p) ? 1 : -1
+
+    # Outside feasible range: map to endpoints
+    sign*y <= 0 && return TT(G.r[end])
+    sign*y >= sign*ϕ⁽ᵏ⁾(G, vp, 0) && return TT(0)
+
+    # Find bracketing segment [a,b] over knot intervals
+    k = 1
+    while k <= N && sign*ϕ⁽ᵏ⁾(G, vp, G.r[k]) > sign*y
+        k += 1
+    end
+    if k == 1
+        a = zero(TT); b = G.r[1]
+    elseif k > N
+        # Should not happen since f(r_N)=0 ≤ y, but guard anyway
+        return TT(G.r[end])
+    else
+        a = G.r[k-1]; b = G.r[k]
+    end
+
+    # Bracketed root find on [a,b]
+    return TT(Roots.find_zero(t -> ϕ⁽ᵏ⁾(G, vp, t) - y, (a, b); bisection=true))
 end
 
 
