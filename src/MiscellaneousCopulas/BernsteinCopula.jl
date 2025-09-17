@@ -156,7 +156,7 @@ function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NT
             wJ == 0.0 && break
         end
         wJ == 0.0 && continue
-        Δ = measure(B.base, ntuple(j -> s[j] / m[j], d), ntuple(j -> (s[j] + 1) / m[j], d))
+        Δ = measure(B.base, ntuple(j -> s[j] / m[j], D), ntuple(j -> (s[j] + 1) / m[j], D))
         (Δ <= 0) && continue
         α[s[i] + 1] += Δ * wJ
     end

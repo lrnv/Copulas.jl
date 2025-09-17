@@ -142,7 +142,7 @@ EmpiricalEVCopula(u; kwargs...) = ExtremeValueCopula(2, EmpiricalEVTail(u; kwarg
 Base.eltype(::EmpiricalEVTail) = Float64
 Distributions.params(t::EmpiricalEVTail) = (tgrid = t.tgrid, Ahat = t.Ahat, slope = t.slope)
 
-function A(tail::EmpiricalEVTail, t)
+function A(tail::EmpiricalEVTail, t::Real)
     T = typeof(t)
     tt = _safett(t)
     (tt <= 0.0 || tt >= 1.0) && return T(1) # A(0)=A(1)=1
@@ -155,7 +155,7 @@ function A(tail::EmpiricalEVTail, t)
     return T((1 - w) * Ah[i] + w * Ah[i+1])
 end
 
-function dA(tail::EmpiricalEVTail, t)
+function dA(tail::EmpiricalEVTail, t::Real)
     T = typeof(t)
     tt = _safett(t)
     (tt <= 0 || tt >= 1) && return T(0)
