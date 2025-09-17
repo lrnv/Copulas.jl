@@ -28,7 +28,6 @@ end
 @inline _δ(t) = oftype(t, 1e-12)
 @inline _safett(t) = clamp(t, _δ(t), one(t) - _δ(t))
 @inline _as_tuple(x) = x isa Tuple ? x : (x,)
-@inline _as_pxn(p::Integer, U::AbstractMatrix) = (size(U,1) == p) ? U : permutedims(U)
 
 
 """

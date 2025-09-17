@@ -41,181 +41,70 @@ end
 """
     EmpiricalEVTail(u; kwargs...)
 
-Construct the empirical Pickands tail from data (2×N or N×2).
+Construct the empirical Pickands tail from data (2×N).
 """
 function EmpiricalEVTail(u::AbstractMatrix; estimator::Symbol=:ols, grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true)
-    # Ensure 2×n orientation
-    Up = _as_pxn(2, u)
-    if pseudo_values
-        @assert all(0 .<= Up .<= 1)
-    else
-        Up = pseudos(Up)
-    end
 
+    @assert grid ≥ 2
+    @assert size(u, 1) == 2 "EmpiricalEVTail expects a (2, n) matrix"
     tgrid = collect(range(eps, 1 - eps; length=grid))
-
-    Â = estimator === :ols      ? empirical_pickands_ols(tgrid, Up; pseudo_values=true) :
-         estimator === :cfg      ? empirical_pickands_cfg(tgrid, Up; pseudo_values=true) :
-         estimator === :pickands ? empirical_pickands(tgrid, Up; pseudo_values=true) :
-         throw(ArgumentError("estimator ∈ {:ols,:cfg,:pickands}"))
-    Â, slope = _convexify_pickands!(Â, tgrid)
-    return EmpiricalEVTail(tgrid, Â, slope)
-end
-
-# Convenience: construct the EV copula with the empirical tail
-EmpiricalEVCopula(u; kwargs...) = ExtremeValueCopula(2, EmpiricalEVTail(u; kwargs...))
-
-_EULER_GAMMA = Base.MathConstants.eulergamma
-Base.eltype(::EmpiricalEVTail) = Float64
-Distributions.params(t::EmpiricalEVTail) = (tgrid = t.tgrid, Ahat = t.Ahat, slope = t.slope)
-function Base.summary(io::IO, t::EmpiricalEVTail)
-    print(io, "EmpiricalEVTail($(length(t.tgrid)) knots)")
-end
-
-@inline function _find_segment(tgrid::Vector{Float64}, t::Real)
-    # Assume 0 < t < 1; endpoints handled separately
-    i = searchsortedlast(tgrid, t)
-    if i <= 0
-        return 0
-    elseif i >= length(tgrid)
-        return length(tgrid)    # right endpoint marker
-    else
-        return i
-    end
-end
-
-@inline _aslike(t, x::Real) = convert(typeof(t + t - t), x)
-
-# A(t)
-function A(tail::EmpiricalEVTail, t::Real)
-    tt = _safett(t)
-    tg, Ah = tail.tgrid, tail.Ahat
-
-    if tt <= 0.0 || tt >= 1.0
-        return _aslike(t, 1.0)  # A(0)=A(1)=1
-    end
-
-    i = _find_segment(tg, tt)
-    if i == 0
-        return _aslike(t, Ah[1])
-    elseif i >= length(tg)
-        return _aslike(t, Ah[end])
-    else
-        tL = tg[i]; tR = tg[i+1]
-        w  = (tt - tL) / (tR - tL)
-        return _aslike(t, (1 - w) * Ah[i] + w * Ah[i+1])
-    end
-end
-
-# dA(t)
-function dA(tail::EmpiricalEVTail, t::Real)
-    tt = _safett(t)
-    tg, sl = tail.tgrid, tail.slope
-    if tt <= 0.0 || tt >= 1.0
-        return _aslike(t, 0.0)
-    end
-    i = _find_segment(tg, tt)
-    if i <= 0 || i >= length(tg)
-        return _aslike(t, 0.0)
-    else
-        return _aslike(t, sl[i])
-    end
-end
-
-# Classical Pickands estimator
-function empirical_pickands(tgrid::AbstractVector, U::AbstractMatrix;
-                            pseudo_values::Bool=true, endpoint_correction::Bool=true)
-    Up = _as_pxn(2, U)
     if pseudo_values
-        @assert all(0 .<= Up .<= 1)
+        @assert all(0 .<= u .<= 1) "When pseudo_values=true, u must be in [0,1]"
+    end
+    U = pseudo_values ? u : pseudos(u)
+    lu = @views -log.(U[1, :])
+    lv = @views -log.(U[2, :])
+    Â = similar(tgrid)
+
+    γ = Base.MathConstants.eulergamma
+
+    if estimator === :cfg
+        @inbounds for (k, t) in pairs(tgrid)
+            tt = _safett(t)
+            ξ  = min.(lu ./ (1 - tt), lv ./ tt)
+            Â[k] = exp(-γ - StatsBase.mean(log.(ξ)))
+        end
+    elseif estimator === :pickands
+        @inbounds for (k, t) in pairs(tgrid)
+            tt = _safett(t)
+            ξ  = min.(lu ./ (1 - tt), lv ./ tt)
+            Â[k] = 1.0 / StatsBase.mean(ξ)
+        end
+    elseif estimator === :ols 
+        n  = size(U, 2)
+        x1 = @views -log.(lu) .- γ
+        x2 = @views -log.(lv) .- γ
+
+        Z = Matrix{Float64}(undef, n, 3)
+        @inbounds Z[:,1] .= 1.0; Z[:,2] .= x1; Z[:,3] .= x2
+        ZtZ = LinearAlgebra.Symmetric(Z'Z)
+        F   = LinearAlgebra.cholesky(ZtZ)  # practical positive-definite factorization
+        P   = F \ (Z')                    # (Z'Z)^(-1) Z'
+
+        y  = similar(lu)
+        @inbounds for (k, t) in pairs(tgrid)
+            tt = _safett(t)
+            ξt = min.(lu ./ (1 - tt), lv ./ tt)
+            @. y = -log(ξt) - γ
+            β  = P * y
+            Â[k] = exp(β[1])             # intercept
+        end
     else
-        Up = pseudos(Up)
+        throw(ArgumentError("estimator should be :ols, :cfg or :pickands (got $estimator)"))
     end
 
-    lu = @views -log.(Up[1, :])
-    lv = @views -log.(Up[2, :])
+    # endpoint_correction
+    Â[begin] = 1.0; Â[end] = 1.0
 
-    Â = similar(tgrid, Float64)
-    @inbounds for (k, t) in pairs(tgrid)
-        tt = _safett(t)
-        ξ  = min.(lu ./ (1 - tt), lv ./ tt)
-        Â[k] = 1.0 / StatsBase.mean(ξ)
-    end
-    if endpoint_correction
-        Â[begin] = 1.0; Â[end] = 1.0
-    end
-    return Â
-end
-
-# CFG estimator
-function empirical_pickands_cfg(tgrid::AbstractVector, U::AbstractMatrix;
-                                pseudo_values::Bool=true, endpoint_correction::Bool=true)
-    Up = _as_pxn(2, U)
-    if pseudo_values
-        @assert all(0 .<= Up .<= 1)
-    else
-        Up = pseudos(Up)
-    end
-    lu = @views -log.(Up[1, :])
-    lv = @views -log.(Up[2, :])
-    Â = similar(tgrid, Float64)
-    @inbounds for (k, t) in pairs(tgrid)
-        tt = _safett(t)
-        ξ  = min.(lu ./ (1 - tt), lv ./ tt)
-        Â[k] = exp(-_EULER_GAMMA - StatsBase.mean(log.(ξ)))
-    end
-    if endpoint_correction
-        Â[begin] = 1.0; Â[end] = 1.0
-    end
-    return Â
-end
-
-# OLS (intercept) estimator
-function empirical_pickands_ols(tgrid::AbstractVector, U::AbstractMatrix;
-                                pseudo_values::Bool=true, endpoint_correction::Bool=true)
-    Up = _as_pxn(2, U)
-    if pseudo_values
-        @assert all(0 .<= Up .<= 1)
-    else
-        Up = pseudos(Up)
-    end
-    n  = size(Up, 2)
-    lu = @views -log.(Up[1, :])       # -log U
-    lv = @views -log.(Up[2, :])       # -log V
-    x1 = @views -log.(lu) .- _EULER_GAMMA
-    x2 = @views -log.(lv) .- _EULER_GAMMA
-
-    Z = Matrix{Float64}(undef, n, 3)
-    @inbounds Z[:,1] .= 1.0; Z[:,2] .= x1; Z[:,3] .= x2
-    ZtZ = LinearAlgebra.Symmetric(Z'Z)
-    F   = LinearAlgebra.cholesky(ZtZ)  # practical positive-definite factorization
-    P   = F \ (Z')                    # (Z'Z)^(-1) Z'
-
-    Â = similar(tgrid, Float64)
-    y  = similar(lu)
-    @inbounds for (k, t) in pairs(tgrid)
-        tt = _safett(t)
-        ξt = min.(lu ./ (1 - tt), lv ./ tt)
-        @. y = -log(ξt) - _EULER_GAMMA
-        β  = P * y
-        Â[k] = exp(β[1])             # intercept
-    end
-    if endpoint_correction
-        Â[begin] = 1.0; Â[end] = 1.0
-    end
-    return Â
-end
-
-function _convexify_pickands!(Â::Vector{Float64}, t::Vector{Float64})
-    n = length(Â); @assert n == length(t) && n ≥ 2
-    @inbounds for i in 1:n
-        Â[i] = clamp(Â[i], max(t[i], 1 - t[i]), 1.0)
+    @inbounds for i in 1:grid
+        Â[i] = clamp(Â[i], max(tgrid[i], 1 - tgrid[i]), 1.0)
     end
 
-    Δt = diff(t)
-    s  = [(Â[i+1]-Â[i])/Δt[i] for i in 1:n-1]
+    Δt = diff(tgrid)
+    L  = length(Δt)
+    s  = [(Â[i+1]-Â[i])/Δt[i] for i in 1:L]
     W  = copy(Δt)
-    C  = ones(Int, n-1)
+    C  = ones(Int, L)
 
     i = 1
     while i < length(s)
@@ -230,22 +119,48 @@ function _convexify_pickands!(Â::Vector{Float64}, t::Vector{Float64})
         end
     end
 
-    s_exp = similar(Δt)
+    slope = similar(Δt)
     pos = 1
     @inbounds for j in 1:length(s)
         cnt = C[j]
         for _ in 1:cnt
-            s_exp[pos] = s[j]
+            slope[pos] = s[j]
             pos += 1
         end
     end
     @assert pos-1 == length(Δt)
 
-    Â[2:end] = Â[1] .+ cumsum(s_exp .* Δt)
-    @inbounds for i in 1:n
-        Â[i] = clamp(Â[i], max(t[i], 1 - t[i]), 1.0)
+    Â[2:end] = Â[1] .+ cumsum(slope .* Δt)
+    @inbounds for i in eachindex(tgrid)
+        Â[i] = clamp(Â[i], max(tgrid[i], 1 - tgrid[i]), 1.0)
     end
-    return Â, s_exp
+    
+    return EmpiricalEVTail(tgrid, Â, slope)
+end
+EmpiricalEVCopula(u; kwargs...) = ExtremeValueCopula(2, EmpiricalEVTail(u; kwargs...))
+
+Base.eltype(::EmpiricalEVTail) = Float64
+Distributions.params(t::EmpiricalEVTail) = (tgrid = t.tgrid, Ahat = t.Ahat, slope = t.slope)
+
+function A(tail::EmpiricalEVTail, t)
+    T = typeof(t)
+    tt = _safett(t)
+    (tt <= 0.0 || tt >= 1.0) && return T(1) # A(0)=A(1)=1
+
+    tg, Ah = tail.tgrid, tail.Ahat
+    i = searchsortedlast(tg, tt)
+    i <= 0 && return T(Ah[1])
+    i >= length(tg) && return T(Ah[end])
+    w  = (tt - tg[i]) / (tg[i+1] - tg[i])
+    return T((1 - w) * Ah[i] + w * Ah[i+1])
 end
 
+function dA(tail::EmpiricalEVTail, t)
+    T = typeof(t)
+    tt = _safett(t)
+    (tt <= 0 || tt >= 1) && return T(0)
 
+    i = searchsortedlast(tail.tgrid, tt)
+    (i <= 0 || i >= length(tail.tgrid)) && return T(0)
+    return T(tail.slope[i])
+end

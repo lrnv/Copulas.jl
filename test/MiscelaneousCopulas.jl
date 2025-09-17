@@ -44,20 +44,8 @@
 @testitem "Generic" tags=[:Generic, :CheckerboardCopula] setup=[M] begin M.check(CheckerboardCopula(randn(M.rng, 4,100); pseudo_values=false)) end
 
 # EmpiricalGenerator generic checks via ArchimedeanCopula wrapper
-@testitem "Generic" tags=[:Generic, :EmpiricalGenerator] setup=[M] begin
-    using Copulas
-    u = randn(M.rng, 3, 200)
-    G = EmpiricalGenerator(u)             # inferred d from rows
-    C = ArchimedeanCopula(3, G)
-    M.check(C)
-end
-@testitem "Generic" tags=[:Generic, :EmpiricalGenerator] setup=[M] begin
-    using Copulas
-    u = randn(M.rng, 2, 150)
-    G = EmpiricalGenerator(u)
-    C = ArchimedeanCopula(2, G)
-    M.check(C)
-end
+@testitem "Generic" tags=[:Generic, :EmpiricalGenerator] setup=[M] begin M.check(ArchimedeanCopula(3, EmpiricalGenerator(randn(M.rng, 3, 200)))) end
+@testitem "Generic" tags=[:Generic, :EmpiricalGenerator] setup=[M] begin M.check(ArchimedeanCopula(2, EmpiricalGenerator(randn(M.rng, 2, 150)))) end
 
 @testitem "Testing survival stuff" tags=[:SurvivalCopula] begin
     # [GenericTests integration]: Yes. Symmetry of survival transformations on pdf/cdf is generic; we can add survival invariance checks.

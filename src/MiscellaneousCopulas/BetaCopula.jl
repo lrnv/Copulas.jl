@@ -27,11 +27,11 @@ struct BetaCopula{d,MT} <: Copula{d}
     ranks::MT   # d×n (each row is in 1..n)
     n::Int
     function BetaCopula(data::AbstractMatrix)
-        U = _as_pxn(size(data,1), data)      # d×n, pseudo-observations
-        R = _rowwise_ordinalranks(U)         # d×n, integers 1..n (if no ties)
+        R = _rowwise_ordinalranks(data)         # d×n, integers 1..n (if no ties)
         # Quick check: each row should be a permutation of 1..n
-        @inbounds for j in 1:size(R,1)
-            if !all(sort(@view R[j,:]) .== 1:size(R,2))
+        d,n = size(data)
+        @inbounds for j in 1:d
+            if !all(sort(@view R[j,:]) .== 1:n)
                 @warn "Row $j of ranks is not a permutation of 1..n; marginals may not be uniform."
             end
         end
