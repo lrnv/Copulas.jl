@@ -30,22 +30,20 @@ end
 @inline _as_tuple(x) = x isa Tuple ? x : (x,)
 
 
-"""
-        _kendall_sample(u::AbstractMatrix)
-
-Compute the empirical Kendall sample `W` with entries `W[i] = C_n(U[:,i])`,
-where `C_n` is the Deheuvels empirical copula built from the same `u`.
-
-Input and tie handling
-- `u` is expected as a `d×n` matrix (columns are observations). This routine first
-    applies per-margin ordinal ranks (same policy as `pseudos`) so that the result is
-    invariant under strictly increasing marginal transformations and robust to ties.
-    Consequently, `_kendall_sample(u) ≡ _kendall_sample(pseudos(u))` (same tie policy).
-
-Returns
-- `Vector{Float64}` of length `n` with values in `(0,1)`.
-"""
 function _kendall_sample(u::AbstractMatrix)
+
+    # Compute the empirical Kendall sample `W` with entries `W[i] = C_n(U[:,i])`,
+    # where `C_n` is the Deheuvels empirical copula built from the same `u`.
+
+    # Input and tie handling
+    # - `u` is expected as a `d×n` matrix (columns are observations). This routine first
+    #     applies per-margin ordinal ranks (same policy as `pseudos`) so that the result is
+    #     invariant under strictly increasing marginal transformations and robust to ties.
+    #     Consequently, `_kendall_sample(u) ≡ _kendall_sample(pseudos(u))` (same tie policy).
+
+    # Returns
+    # - `Vector{Float64}` of length `n` with values in `(0,1)`.
+
     d, n = size(u)
     # Apply ordinal ranks per margin to remove ties consistently with `pseudos`
     R = Matrix{Int}(undef, d, n)
