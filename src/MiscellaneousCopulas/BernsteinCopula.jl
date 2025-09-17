@@ -100,7 +100,7 @@ function _cdf(B::BernsteinCopula{d}, u::AbstractVector) where {d}
     P = ntuple(j -> _bernvec_all(u[j], m[j]), d)
     total = zero(eltype(first(P)))
     @inbounds for s in Iterators.product((0:mi for mi in m)...)
-        w = Distributions.cdf(B.base, s ./ m)
+        w = Distributions.cdf(B.base, collect(s ./ m))
         iszero(w) && continue
         total += w * prod(P[j][s[j]+1] for j in 1:d)
     end
