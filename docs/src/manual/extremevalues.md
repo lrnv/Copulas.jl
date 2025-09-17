@@ -40,6 +40,9 @@ end
 A(C::ExtremeValueCopula, t) = (t^C.θ + (1 - t)^C.θ)^(1/C.θ) # This is the Pickands function of the Logistic (Gumbel) Copula
 ```
 
+!!! info "Empirical EV estimator available"
+    When you have bivariate data and want a nonparametric Extreme Value copula, you can estimate the Pickands function from pseudo-observations using `EmpiricalEVTail` and plug it into an `ExtremeValueCopula`. For convenience, `EmpiricalEVCopula(u)` builds the EV copula in one step. See the bestiary entry for [`EmpiricalEVTail`](@ref) and [`ExtremeValueCopula`](@ref) docs for details.
+
 # Advanced Concepts
 
 Here, we present some important concepts from the theory of extreme value copulas that are useful for the development of this package.

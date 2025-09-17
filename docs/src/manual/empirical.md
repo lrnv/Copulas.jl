@@ -48,6 +48,10 @@ In the package, this copula is implemented as the `EmpiricalCopula`:
 EmpiricalCopula
 ```
 
+!!! note "Conditionals and distortions"
+    - Distortions: available via the generic implementation (partial-derivative ratios). For the empirical copula, derivatives are stepwise; interpret results carefully near sample jumps.
+    - Conditional copulas: available via the generic implementation. No specialized fast path is provided.
+
 ### Visual: empirical copula from pseudo-observations
 
 ```@example 1
@@ -74,15 +78,40 @@ The empirical copula function is not a copula. An easy way to fix this problem i
 
     $$\sup_{\boldsymbol u \in [0,1]^d} |\hat{C}_N(\boldsymbol u) - \hat{C}_N^\beta(\boldsymbol u)| \le d\left(\sqrt{\frac{\ln n}{n}} + \sqrt{\frac{1}{n}} + \frac{1}{n}\right)$$
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
+In the package, this copula is implemented as `BetaCopula`:
+
+```@docs; canonical=false
+BetaCopula
+```
+
+!!! note "Conditionals and distortions"
+    - Distortions: specialized fast path returning a MixtureModel of Beta components for efficient evaluation and sampling.
+    - Conditional copulas: available via the generic implementation (no dedicated fast path).
 
 ## Bernstein Copula
 
 Bernstein copula are simply another smoothing of the empirical copula using Bernstein polynomials. 
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
+Mathematically, given a base copula $C$ and degrees $\boldsymbol m=(m_1,\ldots,m_d)$, the (cdf) Bernstein copula is
+
+```math
+B_{\boldsymbol m}(C)(\boldsymbol u)
+= \sum_{s_1=0}^{m_1}\cdots\sum_{s_d=0}^{m_d}
+ C\!\left(\tfrac{s_1}{m_1},\ldots,\tfrac{s_d}{m_d}\right)
+ \prod_{j=1}^d \binom{m_j}{s_j} u_j^{s_j} (1-u_j)^{m_j-s_j}.
+```
+
+It is a multivariate Bernstein polynomial approximation of $C$ on the uniform grid. Larger $m_j$ increase smoothness and accuracy at higher computational cost.
+
+In the package, this copula is implemented as `BernsteinCopula`:
+
+```@docs; canonical=false
+BernsteinCopula
+```
+
+!!! note "Conditionals and distortions"
+    - Distortions: specialized fast path returning a MixtureModel of Beta components (weights from Bernstein grid finite differences conditioned on $\boldsymbol u_J$).
+    - Conditional copulas: available via the generic implementation (no dedicated fast path).
 
 ## Checkerboard Copulas
 
@@ -135,13 +164,35 @@ In fact, replacing $\hat{C}_N$ by any copula in the patchwork construct still yi
 
 Convergence results for this kind of copulas can be found in [durante2015](@cite), with a slightly different parametrization. 
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
+In the package, this copula is implemented as `CheckerboardCopula`:
+
+```@docs; canonical=false
+CheckerboardCopula
+```
+
+!!! note "Conditionals and distortions"
+    - Distortions: specialized for conditioning on a single coordinate (p=1) via a histogram-bin distortion on the corresponding slice.
+    - Conditional copulas: specialized projection onto remaining axes, renormalizing the mass in the fixed bins, still returns a Checkerboard. 
+
+
+## Empirical Extreme-Value copula (Pickands estimator)
+
+In addition to the empirical, beta, Bernstein and checkerboard constructions, we provide a nonparametric bivariate Extreme Value copula built from data by estimating the Pickands dependence function. The tail implementation [`EmpiricalEVTail`](@ref) supports several classical estimators (Pickands, CFG, OLS intercept), and a convenience constructor [`EmpiricalEVCopula`](@ref) builds the corresponding [`ExtremeValueCopula`](@ref) directly from pseudo-observations.
+
+Typical workflow:
+
+
+See the Extreme Value manual page for background and the bestiary entry for the full API of [`EmpiricalEVTail`](@ref available_extreme_models).
+
+```@docs; canonical=false
+EmpiricalEVTail
+```
 
 
 ## See also
 
 - Bestiary: [Empirical models list](@ref empirical_cops)
+- Extreme Value: [Extreme Value family](@ref Extreme_theory), [Implemented tails](@ref available_extreme_models)
 - Manual: [Sklar's Distribution](@ref), [Conditioning and Subsetting](@ref)
 
 
