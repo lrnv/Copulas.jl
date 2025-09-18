@@ -56,7 +56,7 @@
     can_integrate_pdf(C::CT) where CT =  
         # This list might be longer than necessary, it should be trimmed.
         can_pdf(C) &&
-        !((CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator) && (C.G.d > length(C))) &&
+        !(C isa ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > length(C))) &&
         !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
         !((CT<:GumbelCopula) && (C.G.θ >= 100)) &&
         !((CT<:FGMCopula) && (length(C)==3)) &&
@@ -72,7 +72,7 @@
     can_ad(C::CT) where CT = 
         # This list might be longer than necessary, it should be trimmed.
         can_pdf(C) &&
-        !((CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator) && (C.G.d > length(C))) && # discontinuous. 
+        !(C isa ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > length(C))) && # discontinuous. 
         !((CT<:FrankCopula) && (C.G.θ >= 100)) && # too extreme
         !((CT<:GumbelCopula) && ((C.G.θ >= 100)) || length(C) > 2) && # too extreme
         !(CT<:MCopula) && # not abs cont
