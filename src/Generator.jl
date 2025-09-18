@@ -201,10 +201,9 @@ max_monotony(::WilliamsonGenerator{d, TX}) where {d, TX} = d
 williamson_dist(G::WilliamsonGenerator{d, TX}, ::Val{d}) where {d, TX} = G.X # if its the right dim. 
 ϕ(G::WilliamsonGenerator{d, TX}, t) where {d, TX} = WilliamsonTransforms.𝒲(G.X, Val{d}())(t)
 
-# the following method is faulty, dunno why: 
+# TODO: The following method for Kendall's tau is currently faulty and produces incorrect results.
 # τ(G::WilliamsonGenerator) = 4*Distributions.expectation(Base.Fix1(ϕ, G), Copulas.williamson_dist(G, Val(2)))-1 # McNeil & Neshelova 2009
-
-
+# Investigate the correct formula for Kendall's tau for WilliamsonGenerator. Check if the expectation is being computed with respect to the correct measure and if the implementation matches the reference (McNeil & Nešlehová 2009). Fix this method when the correct approach is established.
 """
     EmpiricalGenerator(u::AbstractMatrix)
 
