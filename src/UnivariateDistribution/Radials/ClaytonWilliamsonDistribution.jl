@@ -8,6 +8,8 @@ struct ClaytonWilliamsonDistribution{T<:Real} <: Distributions.ContinuousUnivari
     end
     ClaytonWilliamsonDistribution{T}(θ, d) where T = ClaytonWilliamsonDistribution(T(θ), d)
 end
+Base.minimum(C::ClaytonWilliamsonDistribution) = zero(D.θ)
+Base.maximum(C::ClaytonWilliamsonDistribution) = -1/D.θ
 @inline _clayton_choose(a, b) = SpecialFunctions.gamma(a + 1) / (SpecialFunctions.gamma(b + 1) * SpecialFunctions.gamma(a - b + 1))
 function Distributions.cdf(D::ClaytonWilliamsonDistribution, x::Real)
     θ = D.θ
