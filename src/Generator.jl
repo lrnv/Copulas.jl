@@ -194,6 +194,8 @@ struct WilliamsonGenerator{d, TX} <: Generator
     end
 end
 const i𝒲 = WilliamsonGenerator
+WilliamsonGenerator(X, d::Int) = WilliamsonGenerator(X, Val(d))
+WilliamsonGenerator(r, w, d::Int) = WilliamsonGenerator(r, w, Val(d))
 Distributions.params(G::WilliamsonGenerator) = (G.X,)
 max_monotony(::WilliamsonGenerator{d, TX}) where {d, TX} = d
 williamson_dist(G::WilliamsonGenerator{d, TX}, ::Val{d}) where {d, TX} = G.X # if its the right dim. 
