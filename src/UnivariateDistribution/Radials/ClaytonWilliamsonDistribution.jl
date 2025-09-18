@@ -2,6 +2,9 @@ struct ClaytonWilliamsonDistribution{T<:Real} <: Distributions.ContinuousUnivari
     θ::T # theta is negative here. 
     d::Int # d is an integer, at least 2. 
     function ClaytonWilliamsonDistribution(θ, d)
+        if θ == -1/(d-1)
+            return Distributions.Dirac(1)
+        end
         @assert θ < 0
         @assert d > 1
         new{typeof(θ)}(θ, d)
