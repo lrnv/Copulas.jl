@@ -38,16 +38,20 @@ end
 const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
 GalambosCopula(θ) =ExtremeValueCopula(2, GalambosTail(θ))
 Distributions.params(tail::GalambosTail) = (tail.θ,)
+_is_valid_in_dim(::GalambosTail, d::Int) = (d >= 2)
 
+function A(tail::GalambosTail, ω::NTuple{d,<:Real}) where {d}
+    θ = tail.θ
+    θ == 0 && return 1.0
+    isinf(θ) && return maximum(ω)
+    return -LogExpFunctions.expm1(-LogExpFunctions.logsumexp(-θ .* log.(ω))/θ)  # 1 - (∑ ω_i^{-θ})^{-1/θ}
+end
+
+#### Special bindings for dimension d == 2
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
 function A(tail::GalambosTail, t::Real)
     tt = _safett(t)
-    θ  = tail.θ
-    if θ == 0
-        return 1.0
-    elseif isinf(θ)
-        return max(tt, 1-tt)
-    else
-        return -LogExpFunctions.expm1(-LogExpFunctions.logaddexp(-θ*log(tt), -θ*log(1-tt)) / θ)
-    end
+    tail.θ == 0 && return 1.0
+    isinf(tail.θ) && return max(tt, 1-tt)
+    return -LogExpFunctions.expm1(-LogExpFunctions.logaddexp(-tail.θ*log(tt), -tail.θ*log(1-tt)) / tail.θ)
 end
