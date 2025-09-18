@@ -171,7 +171,7 @@ struct WilliamsonGenerator{d, TX} <: Generator
         if X isa Distributions.DiscreteUnivariateDistribution
             # If X has finite, positive support, build an empirical generator
             sp = collect(Distributions.support(X))
-            ws = Distributions.pdf.(C, sp)
+            ws = Distributions.pdf.(X, sp)
             keep = ws .> 0
             return WilliamsonGenerator(sp[keep], ws[keep], D)
         end
