@@ -1,45 +1,38 @@
 """
-    ArchimedeanCopula{d, TG}
+    ArchimedeanCopula{d, TG} <: Copula{d}
 
-Fields:
-    - G::TG : the generator <: Generator.
+`d`-dimensional Archimedean copula with generator `G::TG <: Generator`.
 
-Constructor:
-
-    ArchimedeanCopula(d::Int,G::Generator)
-
-For some Archimedean [`Generator`](@ref) `G::Generator` and some dimenson `d`, this class models the archimedean copula which has this generator. The constructor checks for validity by ensuring that `max_monotony(G) ≥ d`. The ``d``-variate archimedean copula with generator ``\\phi`` writes:
+Definition
+For an Archimedean generator ``\\phi: [0,\\infty) \\to [0,1]`` that is *d*-monotone (admits a Williamson *d*-transform), the copula is
 
 ```math
-C(\\mathbf u) = \\phi^{-1}\\left(\\sum_{i=1}^d \\phi(u_i)\\right)
+C(\\mathbf u) = \\phi\\Big( \\phi^{-1}(u_1)+\\cdots+\\phi^{-1}(u_d) \\Big).
 ```
 
-The default sampling method is the Radial-simplex decomposition using the Williamson transformation of ``\\phi``.
+Fields
+    * `G::TG` – generator instance (must implement at least `ϕ(G,t)` and `ϕ⁻¹(G,u)`; optionally higher derivatives `ϕ⁽ᵏ⁾`).
 
-There exists several known parametric generators that are implement in the package. For every `NamedGenerator <: Generator` implemented in the package, we provide a type alias ``NamedCopula{d,...} = ArchimedeanCopula{d,NamedGenerator{...}}` to be able to manipulate the classic archimedean copulas without too much hassle for known and usefull special cases.
+Constructor
+    * `ArchimedeanCopula(d::Int, G::Generator)` (asserts `d ≤ max_monotony(G)`).
 
-A generic archimedean copula can be constructed as follows:
+Sampling
+        1. Radial / simplex decomposition via the Williamson transform of ``\\phi`` (default).
+    2. Frailty-based shortcut if `G <: AbstractFrailtyGenerator`.
 
-```julia
-struct MyGenerator <: Generator end
-ϕ(G::MyGenerator,t) = exp(-t) # your archimedean generator, can be any d-monotonous function.
-max_monotony(G::MyGenerator) = Inf # could depend on generators parameters.
-C = ArchimedeanCopula(d,MyGenerator())
-```
+Named families
+For each exported `NamedGenerator`, the alias
+`NamedCopula{d,...} = ArchimedeanCopula{d, NamedGenerator{...}}` is provided.
 
-The obtained model can be used as follows:
-```julia
-spl = rand(C,1000)   # sampling
-cdf(C,spl)           # cdf
-pdf(C,spl)           # pdf
-loglikelihood(C,spl) # llh
-```
+# Internal CDF implementation (called by generic `cdf`).
+C = ArchimedeanCopula(3, MyGenerator())
+# Specialized logpdf (generic interface documented at higher level).
 
-Bonus: If you know the Williamson d-transform of your generator and not your generator itself, you may take a look at [`WilliamsonGenerator`](@ref) that implements them. If you rather know the frailty distribution, take a look at `WilliamsonFromFrailty`.
+See also: [`Copula`](@ref), [`Generator`](@ref), [`WilliamsonGenerator`](@ref), [`FrailtyGenerator`](@ref), [`ConditionalCopula`](@ref).
 
-References:
-* [williamson1955multiply](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
-* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
+References
+* [williamson1955multiply](@cite) Williamson (1956), Multiply monotone functions and their Laplace transforms.
+* [mcneil2009](@cite) McNeil & Nešlehová (2009), Multivariate Archimedean copulas, d-monotone functions and ℓ₁-norm symmetric distributions.
 """
 struct ArchimedeanCopula{d,TG} <: Copula{d}
     G::TG
@@ -55,8 +48,9 @@ end
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 
 
 
-
 _cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
+
+# Log-density using the classical formula
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .< 1)
         return eltype(u)(-Inf)
@@ -88,6 +82,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopu
     return x
 end
 
+# Recover underlying generator type (internal helper).
 function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     S2 = hasproperty(S,:body) ? S.body : S
     S3 = hasproperty(S2, :body) ? S2.body : S2
@@ -167,6 +162,7 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
 end
 
 # Conditioning colocated
+# Internal helper building distortion for conditional distribution.
 function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
     @assert length(js) == length(uⱼₛ)
     T = eltype(uⱼₛ)

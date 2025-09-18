@@ -1,3 +1,19 @@
+"""
+    WilliamsonFromFrailty(F, d)
+
+Parameters
+    * `F` – positive frailty distribution
+    * `d ≥ 1` – Williamson order / maximum dimension
+
+Used to produce an Archimedean generator from a frailty faster than generic
+numerical Williamson inversion; see [`WilliamsonGenerator`](@ref).
+
+Radial distribution induced by a positive frailty `F` via the representation
+`R = S_d / F` where `S_d ~ Erlang(d)` independent of `F`. Its Williamson d‑transform
+equals the Laplace transform of `F`, furnishing an Archimedean generator.
+
+Sampling: draw `f ~ F`, `s ~ Erlang(d)`, return `s / f`.
+"""
 struct WilliamsonFromFrailty{TF,d} <: Distributions.ContinuousUnivariateDistribution
     frailty_dist::TF
     function WilliamsonFromFrailty(frailty_dist,::Val{d}) where d

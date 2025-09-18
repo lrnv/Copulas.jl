@@ -1,12 +1,8 @@
 """
-    RafteryCopula{d, P}
+    RafteryCopula(d, θ)
 
 Fields:
     - θ::Real - parameter
-
-Constructor
-
-    RafteryCopula(d, θ)
 
 The multivariate Raftery copula of dimension d is parameterized by ``\\theta \\in [0,1]``.
 
