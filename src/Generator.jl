@@ -182,7 +182,7 @@ struct WilliamsonGenerator{d, TX} <: Generator
     function WilliamsonGenerator(r::AbstractVector, w::AbstractVector, ::Val{d}) where d
         length(r) == length(w) || throw(ArgumentError("length(r) != length(w)"))
         !isempty(r) || throw(ArgumentError("no atoms given"))
-        all(isfinite, r) && all(>(0), r) || throw(ArgumentError("atoms must be positive and finite"))
+        all(isfinite, r) && all(>=(0), r) || throw(ArgumentError("atoms must be positive and finite"))
         all(isfinite, w) && all(>(0), w) || throw(ArgumentError("weights must be positive and finite"))
         if !issorted(r)
             p = sortperm(r)
