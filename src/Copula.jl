@@ -53,7 +53,7 @@ function StatsBase.corspearman(C::Copula{d}) where d
     end
     return K
 end
-function measure(C::Copula{d}, u,v) where {d}
+function measure(C::Copula{d}, us,vs) where {d}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]
     # To obtain the C-volume of the box.
@@ -62,18 +62,18 @@ function measure(C::Copula{d}, u,v) where {d}
 
     # We use a gray code according to the proposal at https://discourse.julialang.org/t/looping-through-binary-numbers/90597/6
 
-    T = promote_type(eltype(u), eltype(v), Float64)
-    u .= T.(clamp.(u, 0, 1))
-    v .= T.(clamp.(v, 0, 1))
+    T = promote_type(eltype(us), eltype(vs), Float64)
+    u = ntuple(j -> clamp(us[j], 0, 1), d)
+    v = ntuple(j -> clamp(vs[j], 0, 1), d)
     any(v .≤ u) && return T(0)
     all(iszero.(u)) && all(isone.(v)) && return T(1)
 
-    eval_pt = copy(u)
+    eval_pt = collect(u)
     # Inclusion–exclusion: the sign for the corner at u is (-1)^d
     # (for d even it's +1, for d odd it's -1). The Gray-code loop below
     # then applies alternating signs matching (-1)^(d - |ε|) as bits flip.
-    sign0 = isodd(d) ? -one(T) : one(T)
-    r = sign0 * Distributions.cdf(C, eval_pt)
+    sign = isodd(d) ? -one(T) : one(T)
+    r = sign * Distributions.cdf(C, eval_pt)
     graycode = 0    # use a gray code to flip one element at a time
     which = fill(false, d) # false/true to use u/v for each component (so false here)
     for s = 1:(1<<d)-1
@@ -81,11 +81,23 @@ function measure(C::Copula{d}, u,v) where {d}
         graycomp = trailing_zeros(graycode ⊻ graycode′) + 1
         graycode = graycode′
         eval_pt[graycomp] = (which[graycomp] = !which[graycomp]) ? v[graycomp] : u[graycomp]
-        # The number of high corners selected equals the number of set bits in the Gray code.
-        # Sign = (-1)^(d - k) where k = number of v's in the corner.
-        k = count_ones(graycode)
-        sign = isodd(d - k) ? -one(T) : one(T)
+        sign *= -1
         r += sign * Distributions.cdf(C, eval_pt)
     end
     return max(r,0)
+end
+function measure(C::Copula{2}, us, vs)
+    T = promote_type(eltype(us), eltype(vs), Float64)
+    u1 = clamp(T(us[1]), 0, 1)
+    u2 = clamp(T(us[2]), 0, 1)
+    v1 = clamp(T(vs[1]), 0, 1)
+    v2 = clamp(T(vs[2]), 0, 1)
+    (v1 <= u1 || v2 <= u2) && return zero(T)
+    u1 == 0 && u2 == 0 && v1 == 1 && v2 == 1 && return one(T)
+    c11 = Distributions.cdf(C, [v1, v2])
+    c10 = Distributions.cdf(C, [v1, u2])
+    c01 = Distributions.cdf(C, [u1, v2])
+    c00 = Distributions.cdf(C, [u1, u2])
+    r = c11 - c10 - c01 + c00
+    return max(r, T(0))
 end

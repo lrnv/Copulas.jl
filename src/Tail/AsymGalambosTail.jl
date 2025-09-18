@@ -3,16 +3,16 @@
 
 Fields:
   - α::Real          — dependence parameter
-    - θ₁::Real — asymmetry weight in [0,1]
-    - θ₂::Real — asymmetry weight in [0,1]
+  - θ₁::Real — asymmetry weight in [0,1]
+  - θ₂::Real — asymmetry weight in [0,1]
 
 Constructor
 
     AsymGalambosCopula(α, θ)         # θ as a 2-vector/tuple
     ExtremeValueCopula(2, AsymGalambosTail(α, θ))
 
-The (bivariate) asymmetric Galambos extreme–value copula is parameterized by
-``\\alpha \\in [0, \\infty) and ``\\theta_1, \\theta_2 \\in [0,1]``. It is an EV copula with Pickands function
+The (bivariate) asymmetric Galambos extreme-value copula is parameterized by
+``\\alpha \\in [0, \\infty)`` and ``\\theta_1, \\theta_2 \\in [0,1]``. It is an EV copula with Pickands function
 
 ```math
 A(t) = 1 - \\Big((\\theta_1 t)^{-\\alpha} + (\\theta_2(1-t))^{-\\alpha}\\Big)^{-1/\\alpha},\\quad t\\in[0,1].

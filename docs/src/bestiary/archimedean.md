@@ -9,6 +9,11 @@ CurrentModule = Copulas
 WilliamsonGenerator
 ```
 
+## `EmpiricalGenerator`
+```@docs
+EmpiricalGenerator
+```
+
 ## `TiltedGenerator`
 ```@docs
 TiltedGenerator

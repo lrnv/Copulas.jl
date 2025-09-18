@@ -48,6 +48,10 @@ In the package, this copula is implemented as the `EmpiricalCopula`:
 EmpiricalCopula
 ```
 
+!!! note "Conditionals and distortions"
+    - Distortions: available via the generic implementation (partial-derivative ratios). For the empirical copula, derivatives are stepwise; interpret results carefully near sample jumps.
+    - Conditional copulas: available via the generic implementation. No specialized fast path is provided.
+
 ### Visual: empirical copula from pseudo-observations
 
 ```@example 1
@@ -74,15 +78,47 @@ The empirical copula function is not a copula. An easy way to fix this problem i
 
     $$\sup_{\boldsymbol u \in [0,1]^d} |\hat{C}_N(\boldsymbol u) - \hat{C}_N^\beta(\boldsymbol u)| \le d\left(\sqrt{\frac{\ln n}{n}} + \sqrt{\frac{1}{n}} + \frac{1}{n}\right)$$
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
+In the package, this copula is implemented as `BetaCopula`:
+
+```@docs; canonical=false
+BetaCopula
+```
+
+!!! note "Conditionals and distortions"
+    - Distortions: specialized fast path returning a MixtureModel of Beta components for efficient evaluation and sampling.
+    - Conditional copulas: available via the generic implementation (no dedicated fast path).
+
+### Performance notes
+- Construction is O(d·n) after pseudo-observations are computed. Evaluation at a point uses O(d·n) basis lookups; consider subsampling for very large n.
 
 ## Bernstein Copula
 
 Bernstein copula are simply another smoothing of the empirical copula using Bernstein polynomials. 
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
+Mathematically, given a base copula $C$ and degrees $\boldsymbol m=(m_1,\ldots,m_d)$, the (cdf) Bernstein copula is
+
+```math
+B_{\boldsymbol m}(C)(\boldsymbol u)
+= \sum_{s_1=0}^{m_1}\cdots\sum_{s_d=0}^{m_d}
+ C\!\left(\tfrac{s_1}{m_1},\ldots,\tfrac{s_d}{m_d}\right)
+ \prod_{j=1}^d \binom{m_j}{s_j} u_j^{s_j} (1-u_j)^{m_j-s_j}.
+```
+
+It is a multivariate Bernstein polynomial approximation of $C$ on the uniform grid. Larger $m_j$ increase smoothness and accuracy at higher computational cost.
+
+In the package, this copula is implemented as `BernsteinCopula`:
+
+```@docs; canonical=false
+BernsteinCopula
+```
+
+!!! note "Conditionals and distortions"
+    - Distortions: specialized fast path returning a MixtureModel of Beta components (weights from Bernstein grid finite differences conditioned on $\boldsymbol u_J$).
+    - Conditional copulas: available via the generic implementation (no dedicated fast path).
+
+### Performance notes
+- Complexity grows with the grid size ∏_j (m_j+1) for cdf and ∏_j m_j for pdf. In higher dimensions, keep m small or prefer the 2D specialized paths provided.
+- Small negative finite differences from numerical noise are clipped to zero before normalization.
 
 ## Checkerboard Copulas
 
@@ -135,13 +171,67 @@ In fact, replacing $\hat{C}_N$ by any copula in the patchwork construct still yi
 
 Convergence results for this kind of copulas can be found in [durante2015](@cite), with a slightly different parametrization. 
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to come talk on [our GitHub](https://github.com/lrnv/Copulas.jl) !
+In the package, this copula is implemented as `CheckerboardCopula`:
+
+```@docs; canonical=false
+CheckerboardCopula
+```
+
+!!! note "Conditionals and distortions"
+    - Distortions: specialized for conditioning on a single coordinate (p=1) via a histogram-bin distortion on the corresponding slice.
+    - Conditional copulas: specialized projection onto remaining axes, renormalizing the mass in the fixed bins, still returns a Checkerboard. 
+
+### Performance notes
+- Construction cost scales with sample size but stores only occupied boxes (sparse). CDF evaluation is O(#occupied boxes) at query time.
+- For large n choose coarser m to reduce occupied boxes; for small n a finer grid is possible but may leave many empty boxes.
+
+
+## Empirical Extreme-Value copula (Pickands estimator)
+
+In addition to the empirical, beta, Bernstein and checkerboard constructions, we provide a nonparametric bivariate Extreme Value copula built from data by estimating the Pickands dependence function. The tail implementation [`EmpiricalEVTail`](@ref) supports several classical estimators (Pickands, CFG, OLS intercept), and a convenience constructor `EmpiricalEVCopula` builds the corresponding `ExtremeValueCopula` directly from pseudo-observations.
+
+Typical workflow:
+
+
+See the Extreme Value manual page for background and the bestiary entry for the full API of [`EmpiricalEVTail`](@ref available_extreme_models).
+
+```@docs; canonical=false
+EmpiricalEVTail
+```
+
+
+## Empirical Archimedean generator (Kendall inversion)
+
+Beyond copula estimators, we also provide a nonparametric estimator of a $d$-Archimedean generator from data, based on the empirical Kendall distribution following [genest2011a](@cite). For a $d$-Archimedean copula with generator $\varphi$, there exists a nonnegative random variable $R$ (the radial law) such that
+
+$$\varphi(t) \,=\, \mathbb{E}\,\big[\,(1 - t/R)_{+}^{\,d-1}\,\big].$$
+
+Approximating the (unknown) $R$ by a discrete measure $\widehat R = \sum_j w_j\,\delta_{r_j}$ yields a piecewise-polynomial generator
+
+$$\widehat\varphi(t) \,=\, \sum_j w_j\,\big(1 - t/r_j\big)_{+}^{\,d-1}.$$
+
+The radii and weights are recovered from the empirical Kendall distribution via a triangular recursion (see the example page for details), and the resulting generator is exposed as `EmpiricalGenerator`.
+
+Usage:
+
+- Build from data `u::d×n` (raw or pseudos): `Ĝ = EmpiricalGenerator(u; pseudo_values=true)`
+- Use directly in an Archimedean copula: `Ĉ = ArchimedeanCopula(d, Ĝ)`
+- Access the fitted radial law: `R̂ = williamson_dist(Ĝ, Val{d}())`
+
+```@docs; canonical=false
+EmpiricalGenerator
+```
+
+### Performance notes
+- The Kendall sample computation is currently O(n^2) in the number of observations. For large n, future versions may switch to Fenwick-tree–based sweeps to reach ~O(n log n) in bivariate cases and ~O(n log^{d-1} n) for higher d.
+
+See [This example page](@ref nonpar_archi_gen_example) for more details and example usages. 
 
 
 ## See also
 
 - Bestiary: [Empirical models list](@ref empirical_cops)
+- Extreme Value: [Extreme Value family](@ref Extreme_theory), [Implemented tails](@ref available_extreme_models)
 - Manual: [Sklar's Distribution](@ref), [Conditioning and Subsetting](@ref)
 
 

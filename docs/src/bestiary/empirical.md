@@ -12,18 +12,27 @@ EmpiricalCopula
 
 ## `BernsteinCopula`
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to join the discussion on [our GitHub](https://github.com/lrnv/Copulas.jl)!
+```@docs
+BernsteinCopula
+```
 
 ## `CheckerboardCopula`
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to join the discussion on [our GitHub](https://github.com/lrnv/Copulas.jl)!
+```@docs
+CheckerboardCopula
+```
 
 ## `BetaCopula`
+```@docs
+BetaCopula
+```
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to join the discussion on [our GitHub](https://github.com/lrnv/Copulas.jl)!
+
+## `EmpiricalEvTail`
+
+```@docs; canonical=false
+EmpiricalEVTail
+```
 
 
 ```@bibliography

@@ -30,6 +30,9 @@ In this package, there is an abstract class [`Generator`](@ref) that contains th
 
     On the other hand, many parametric Archimedean generators are specifically implemented, see [this list of implemented archimedean generator](@ref available_archimedean_models) to get an overview of which ones are availiable. 
 
+!!! info "Empirical generator estimator"
+    From data, you can estimate a $d$-Archimedean generator nonparametrically via the empirical Kendall distribution. The estimator is available as [`EmpiricalGenerator`](@ref), see the empirical manual page for the method and usage.
+
 If you do not find the generator you need, you may define it yourself by subtyping `Generator`. The API requires only two methods:
 
 * The `φ(G::MyGenerator, t)` function returns the value of the Archimedean generator itself.

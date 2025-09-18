@@ -4,6 +4,9 @@
 @testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(2,i𝒲(LogNormal(3),5))) end
 @testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :WilliamsonGenerator] setup=[M] begin using Distributions; M.check(ArchimedeanCopula(10,i𝒲(MixtureModel([Dirac(1), Dirac(2)]),11))) end
 
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :WilliamsonGenerator, :EmpiricalGenerator] setup=[M] begin M.check(ArchimedeanCopula(3, EmpiricalGenerator(randn(M.rng, 3, 200)))) end
+@testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :WilliamsonGenerator, :EmpiricalGenerator] setup=[M] begin M.check(ArchimedeanCopula(2, EmpiricalGenerator(randn(M.rng, 2, 150)))) end
+
 @testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-1.0)) end
 @testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,-rand(M.rng))) end
 @testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :AMHCopula] setup=[M] begin M.check(AMHCopula(2,0.7)) end

@@ -70,6 +70,11 @@ MOTail
 tEVTail
 ```
 
+## `EmpiricalEVTail`
+```@docs
+EmpiricalEVTail
+```
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

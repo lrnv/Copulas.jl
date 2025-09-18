@@ -47,7 +47,8 @@
         !(CT<:EmpiricalCopula) &&
         !(CT<:BC2Copula) &&
         !(CT<:CuadrasAugeCopula) &&
-        !(CT<:MOCopula)
+        !(CT<:MOCopula) &&
+        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
 
     is_archimedean_with_generator(C::CT) where CT =
        (CT<:ArchimedeanCopula) && !(typeof(C.G)<:Copulas.WilliamsonGenerator)
@@ -55,7 +56,7 @@
     can_integrate_pdf(C::CT) where CT =  
         # This list might be longer than necessary, it should be trimmed.
         can_pdf(C) &&
-        !((CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator) && (C.G.d > length(C))) &&
+        !(C isa ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > length(C))) &&
         !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
         !((CT<:GumbelCopula) && (C.G.θ >= 100)) &&
         !((CT<:FGMCopula) && (length(C)==3)) &&
@@ -65,12 +66,13 @@
         !(CT<:CuadrasAugeCopula) && 
         !(CT<:RafteryCopula) && 
         !(CT<:EmpiricalCopula) && 
-        !(CT<:BC2Copula)
+        !(CT<:BC2Copula) &&
+        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
 
     can_ad(C::CT) where CT = 
         # This list might be longer than necessary, it should be trimmed.
         can_pdf(C) &&
-        !((CT<:ArchimedeanCopula) && (typeof(C.G)<:Copulas.WilliamsonGenerator) && (C.G.d > length(C))) && # discontinuous. 
+        !(C isa ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > length(C))) && # discontinuous. 
         !((CT<:FrankCopula) && (C.G.θ >= 100)) && # too extreme
         !((CT<:GumbelCopula) && ((C.G.θ >= 100)) || length(C) > 2) && # too extreme
         !(CT<:MCopula) && # not abs cont
@@ -93,7 +95,7 @@
     is_bivariate(C::CT)                      where CT = (length(C) == 2)
     has_subsetdims(C::CT)                    where CT = (length(C) >= 3)
     can_check_pdf_positivity(C::CT)          where CT = can_pdf(C) && !((CT<:GumbelCopula) && (C.G.θ >= 19))
-    kendall_coherency_enabled(C::CT)         where CT = !(CT<:MOCopula)
+    kendall_coherency_enabled(C::CT)         where CT = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}})
     can_check_biv_conditioning_ad(C::CT)     where CT = is_bivariate(C) && can_ad(C)
     can_check_highdim_conditioning_ad(C::CT) where CT = (length(C) > 2) && can_ad(C)
     has_uniform_margins(C::CT)               where CT = !(CT<:EmpiricalCopula)
@@ -335,6 +337,8 @@
                 spe_ϕinv = which(Copulas.ϕ⁻¹, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹, (Copulas.Generator, Float64))
                 spe_ϕinv1 = which(Copulas.ϕ⁻¹⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹⁽¹⁾, (Copulas.Generator, Float64))
                 spe_ϕkinv = which(Copulas.ϕ⁽ᵏ⁾⁻¹, (typeof(C.G), Val{1}, Float64)) != which(Copulas.ϕ⁽ᵏ⁾⁻¹, (Copulas.Generator, Val{1}, Float64))
+
+                mm = Copulas.max_monotony(C.G)
                 
                 can_τinv = applicable(Copulas.τ, C.G) && applicable(Copulas.τ⁻¹,typeof(C.G), 1.0)
                 can_ρinv = applicable(Copulas.ρ, C.G) && applicable(Copulas.ρ⁻¹,typeof(C.G), 1.0)
@@ -347,28 +351,33 @@
                 end
 
                 @testif spe_ϕ1 "Check d(ϕ) == ϕ⁽¹⁾" begin 
-                    @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 1.2) ≈ Copulas.ϕ⁽¹⁾(C.G, 1.2)
+                    @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽¹⁾(C.G, 0.1)
                 end
 
                 @testif spe_ϕk "Check d(ϕ) == ϕ⁽ᵏ⁾(k=1)" begin
-                    @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{1}(), 1.2)
+                    @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{1}(), 0.1)
                 end
 
                 @testif (spe_ϕ1 || spe_ϕk) "Check ϕ⁽¹⁾ == ϕ⁽ᵏ⁾(k=1)" begin
-                    @test Copulas.ϕ⁽¹⁾(C.G, 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{1}(), 1.2)
+                    @test Copulas.ϕ⁽¹⁾(C.G, 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{1}(), 0.1)
                 end
                 @testif (spe_ϕ1 || spe_ϕk) "Check d(ϕ⁽¹⁾) == ϕ⁽ᵏ⁾(k=2)" begin
-                    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C.G, x), 1.2) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{2}(), 1.2)
+                    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{2}(), 0.1)
                 end
 
                 @testif spe_ϕinv1 "Check d(ϕ⁻¹) == ϕ⁻¹⁽¹⁾" begin
                     @test ForwardDiff.derivative(x -> Copulas.ϕ⁻¹(C.G, x), 0.5) ≈ Copulas.ϕ⁻¹⁽¹⁾(C.G, 0.5)
                 end
 
-                @testif spe_ϕkinv "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k in 1:d-1" begin
-                    for k in 1:d-1
-                        @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,Val{k}(), Copulas.ϕ⁽ᵏ⁾(C.G, Val{k}(), 1.2)) ≈ 1.2
+                @testif spe_ϕkinv "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k in 1:d-2" begin
+                    for k in 1:d-2
+                        @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,Val{k}(), Copulas.ϕ⁽ᵏ⁾(C.G, Val{k}(), 0.1)) ≈ 0.1
                     end
+                end
+
+                # For generators that are only d-monotonous, this does not need to be true. 
+                @testif (spe_ϕkinv && (mm > d)) "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k=d-1" begin 
+                    @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,Val{d-1}(), Copulas.ϕ⁽ᵏ⁾(C.G, Val{d-1}(), 0.1)) ≈ 0.1
                 end
 
                 @testif can_τinv "Check τ ∘ τ⁻¹ == Id" begin

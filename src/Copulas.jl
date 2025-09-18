@@ -49,6 +49,7 @@ module Copulas
     include("UnivariateDistribution/Distortions/NoDistortion.jl")
     include("UnivariateDistribution/Distortions/GaussianDistortion.jl")
     include("UnivariateDistribution/Distortions/StudentDistortion.jl")
+    include("UnivariateDistribution/Distortions/HistogramDistortion.jl")
     include("UnivariateDistribution/Distortions/BivEVDistortion.jl")
     include("UnivariateDistribution/Distortions/PlackettDistortion.jl")
     include("UnivariateDistribution/Distortions/BivFGMDistortion.jl")
@@ -115,7 +116,11 @@ module Copulas
     include("Tail/MixedTail.jl")
     include("Tail/MOTail.jl")
     include("Tail/tEVTail.jl")
-
+    include("Tail/EmpiricalEVTail.jl")
+    
+    include("MiscellaneousCopulas/BernsteinCopula.jl")
+    include("MiscellaneousCopulas/BetaCopula.jl")
+    include("MiscellaneousCopulas/CheckerboardCopula.jl")
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
@@ -130,6 +135,7 @@ module Copulas
            WilliamsonGenerator, 
            i𝒲, 
            TiltedGenerator,
+           EmpiricalGenerator,
            SklarDist, # SklarDist to make multivariate models
            AMHCopula, # And a bunch of copulas. 
            ArchimedeanCopula,
@@ -170,6 +176,10 @@ module Copulas
            WCopula,
            ArchimaxCopula,
            BB4Copula,
-           BB5Copula
+           BB5Copula,
+           EmpiricalEVCopula,
+           BernsteinCopula,
+           BetaCopula,
+           CheckerboardCopula
 
 end

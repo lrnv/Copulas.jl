@@ -116,17 +116,20 @@ frailty(G::FrailtyGenerator) = G.F
 
 
 """
-    WilliamsonGenerator{TX}
+    WilliamsonGenerator{d, TX}
     i𝒲{TX}
 
 Fields:
 * `X::TX` -- a random variable that represents its Williamson d-transform
-* `d::Int` -- the dimension of the transformation. 
+
+The type parameter `d::Int` is the dimension of the transformation. 
 
 Constructor
 
     WilliamsonGenerator(X::Distributions.UnivariateDistribution, d)
     i𝒲(X::Distributions.UnivariateDistribution,d)
+    WilliamsonGenerator(atoms::AbstractVector, weights::AbstractVector, d)
+    i𝒲(atoms::AbstractVector, weights::AbstractVector, d)
 
 The `WilliamsonGenerator` (alias `i𝒲`) allows to construct a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation, which is called the inverse Williamson transformation, is implemented in [WilliamsonTransforms.jl](https://www.github.com/lrnv/WilliamsonTransforms.jl). 
 
@@ -150,35 +153,202 @@ Note that you'll always have:
 
     max_monotony(WilliamsonGenerator(X,d)) === d
 
+
+Special case (finite-support discrete X)
+
+- If `X isa Distributions.DiscreteUnivariateDistribution` and `support(X)` is finite, or if you pass directly atoms and weights to the constructor, the produced generator is piecewise-polynomial `ϕ(t) = ∑_j w_j · (1 − t/r_j)_+^(d−1)` matching the Williamson transform of a discrete radial law. It has specialized methods. 
+- For infinite-support discrete distributions or when the support is not accessible as a finite
+    iterable, the standard `WilliamsonGenerator` is constructed and will defer to
+    `WilliamsonTransforms.jl`.
+
 References: 
 * [williamson1955multiply](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
 * [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
 """
-struct WilliamsonGenerator{TX} <: Generator
+struct WilliamsonGenerator{d, TX} <: Generator
     X::TX
-    d::Int
-    function WilliamsonGenerator(X,transform_dimension)
+    function WilliamsonGenerator(X, D::Val{d}) where d
+        if X isa Distributions.DiscreteUnivariateDistribution
+            # If X has finite, positive support, build an empirical generator
+            sp = collect(Distributions.support(X))
+            ws = Distributions.pdf.(X, sp)
+            keep = ws .> 0
+            return WilliamsonGenerator(sp[keep], ws[keep], D)
+        end
+        # else: fall back to a regular Williamson generator
         # check that X is indeed a positively supported random variable... 
-        return new{typeof(X)}(X,transform_dimension)
+        return new{d, typeof(X)}(X)
+    end
+    function WilliamsonGenerator(r::AbstractVector, w::AbstractVector, ::Val{d}) where d
+        length(r) == length(w) || throw(ArgumentError("length(r) != length(w)"))
+        !isempty(r) || throw(ArgumentError("no atoms given"))
+        all(isfinite, r) && all(>=(0), r) || throw(ArgumentError("atoms must be positive and finite"))
+        all(isfinite, w) && all(>(0), w) || throw(ArgumentError("weights must be positive and finite"))
+        if !issorted(r)
+            p = sortperm(r)
+            r = r[p]; w = w[p]
+        end
+        # normalize
+        X = Distributions.DiscreteNonParametric(r ./ r[end], w ./ sum(w); check_args=false)
+        return new{d, typeof(X)}(X)
     end
 end
 const i𝒲 = WilliamsonGenerator
-Distributions.params(G::WilliamsonGenerator) = (G.X, G.d)
+WilliamsonGenerator(X, d::Int) = WilliamsonGenerator(X, Val(d))
+WilliamsonGenerator(r, w, d::Int) = WilliamsonGenerator(r, w, Val(d))
+Distributions.params(G::WilliamsonGenerator) = (G.X,)
+max_monotony(::WilliamsonGenerator{d, TX}) where {d, TX} = d
+williamson_dist(G::WilliamsonGenerator{d, TX}, ::Val{d}) where {d, TX} = G.X # if its the right dim. 
+ϕ(G::WilliamsonGenerator{d, TX}, t) where {d, TX} = WilliamsonTransforms.𝒲(G.X, Val{d}())(t)
 
+# TODO: The following method for Kendall's tau is currently faulty and produces incorrect results.
+# τ(G::WilliamsonGenerator) = 4*Distributions.expectation(Base.Fix1(ϕ, G), Copulas.williamson_dist(G, Val(2)))-1 # McNeil & Neshelova 2009
+# Investigate the correct formula for Kendall's tau for WilliamsonGenerator. Check if the expectation is being computed with respect to the correct measure and if the implementation matches the reference (McNeil & Nešlehová 2009). Fix this method when the correct approach is established.
+"""
+    EmpiricalGenerator(u::AbstractMatrix)
 
-max_monotony(G::WilliamsonGenerator) = G.d
-function williamson_dist(G::WilliamsonGenerator, ::Val{d}) where d
-    if d == G.d 
-        return G.X
+Nonparametric Archimedean generator fit via inversion of the empirical Kendall distribution.
+
+This function returns a `WilliamsonGenerator{TX}` whose underlying distribution `TX` is a `Distributions.DiscreteNonParametric`, rather than a separate struct.
+The returned object still implements all optimized methods (ϕ, derivatives, inverses) via specialized dispatch on `WilliamsonGenerator{<:DiscreteNonParametric}`.
+
+Usage
+
+    G = EmpiricalGenerator(u)
+
+where `u::AbstractMatrix` is a `d×n` matrix of observations (already on copula or pseudo scale).
+
+Notes
+* The recovered discrete radial support is rescaled so its largest atom equals 1 (scale is not identifiable).
+* We keep the old documentation entry point for backward compatibility; existing code that
+  relied on the `EmpiricalGenerator` type should instead treat the result as a `Generator`.
+
+References
+* [mcneil2009multivariate](@cite)
+* [williamson1956](@cite)
+* [genest2011a](@cite)
+"""
+function EmpiricalGenerator(u::AbstractMatrix)
+    d = size(u, 1)
+    W = _kendall_sample(u)
+    kw = StatsBase.proportionmap(W)
+    x = collect(keys(kw))
+    N = length(x)
+    N == 1 && return ClaytonGenerator(-1/(d-1))
+    sort!(x; rev=true)
+    w = [kw[xi] for xi in x]
+    r = zero(x)
+    r[end] = 1
+    r[end-1] = 1 - clamp(x[N-1] / w[N], 0, 1)^(1/(d-1))
+    for k in (N-2):-1:1
+        gk = function(y)
+            s = 0.0
+            @inbounds for j in (k+1):N
+                z = 1.0 - y / r[j]
+                if z > 0.0
+                    s += w[j] * z^(d-1)
+                end
+            end
+            return s
+        end
+        eps = 1e-14
+        a, b = 0.0, max(r[k+1] - eps, 0.0)
+        ga, gb = gk(a), gk(b)
+        if !(ga + 1e-12 >= x[k] >= gb - 1e-12)
+            a, b = 0.0, r[k+1]
+        end
+        r[k] = Roots.find_zero(y -> gk(y) - x[k], (a, b); verbose=false)
+        r[k] = clamp(r[k], 0.0, r[k+1] - eps)
     end
-    # what about d < G.d ? Mayeb we can do some frailty stuff ? 
-    return WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t), Val{d}())
+    return WilliamsonGenerator(r, w, Val(d))
 end
-ϕ(G::WilliamsonGenerator, t) = WilliamsonTransforms.𝒲(G.X, Val(G.d))(t)
 
-# McNeil & Neshelova 2009
-τ(G::WilliamsonGenerator) = 4*Distributions.expectation(x -> Copulas.ϕ(G,x), Copulas.williamson_dist(G, Val(2)))-1
+# Optimized methods for discrete nonparametric Williamson generators (covers EmpiricalGenerator)
+function ϕ(G::WilliamsonGenerator{d, TX}, t::Real) where {d, TX<:Distributions.DiscreteNonParametric}
+    r = Distributions.support(G.X)
+    w = Distributions.probs(G.X)
+    Tt = promote_type(eltype(r), typeof(t))
+    t <= 0 && return one(Tt)
+    t >= r[end] && return zero(Tt)
+    S = zero(Tt)
+    @inbounds for j in lastindex(r):-1:firstindex(r)
+        rⱼ = r[j]; wⱼ = w[j]
+        t >= rⱼ && break
+        S += wⱼ * (1 - t / rⱼ)^(d - 1)
+    end
+    return S
+end
 
+function ϕ⁽¹⁾(G::WilliamsonGenerator{d, TX}, t::Real) where {d, TX<:Distributions.DiscreteNonParametric}
+    r = Distributions.support(G.X)
+    w = Distributions.probs(G.X)
+    Tt = promote_type(eltype(r), typeof(t))
+    t >= r[end] && return zero(Tt)
+    S = zero(Tt)
+    @inbounds for j in lastindex(r):-1:firstindex(r)
+        rⱼ = r[j]; wⱼ = w[j]
+        t ≥ rⱼ && break
+        zpow = d==2 ? one(t) : (1 - t / rⱼ)^(d-2)
+        S += wⱼ * zpow / rⱼ
+    end
+    return - (d-1) * S
+end
+
+function ϕ⁽ᵏ⁾(G::WilliamsonGenerator{d, TX}, ::Val{k}, t::Real) where {d, k, TX<:Distributions.DiscreteNonParametric}
+    r = Distributions.support(G.X)
+    w = Distributions.probs(G.X)
+    Tt = promote_type(eltype(r), typeof(t))
+    (k >= d || t >= r[end]) && return zero(Tt)
+    k == 0 && return ϕ(G, t)
+    k == 1 && return ϕ⁽¹⁾(G, t)
+    S = zero(Tt)
+    @inbounds for j in lastindex(r):-1:firstindex(r)
+        rⱼ = r[j]; wⱼ = w[j]
+        t ≥ rⱼ && break
+        zpow = (d == k+1) ? one(t) : (1 - t / rⱼ)^(d - 1 - k)
+        S += wⱼ * zpow / rⱼ^k
+    end
+    return S * (isodd(k) ? -1 : 1) * Base.factorial(d - 1) / Base.factorial(d - 1 - k)
+end
+
+function ϕ⁻¹(G::WilliamsonGenerator{d, TX}, x::Real) where {d, TX<:Distributions.DiscreteNonParametric}
+    r = Distributions.support(G.X)
+    Tx = promote_type(eltype(r), typeof(x))
+    x >= 1 && return zero(Tx)
+    x <= 0 && return Tx(r[end])
+    for k in eachindex(r)
+        ϕ_rk = ϕ(G, r[k])
+        if x > ϕ_rk
+            if x < ϕ(G, prevfloat(r[k]))
+                return Tx(prevfloat(r[k]))
+            end
+            a = (k==1 ? 0 : r[k-1]); b = r[k]
+            return Tx(Roots.find_zero(t -> ϕ(G, t) - x, (a, b); bisection=true))
+        end
+    end
+    return Tx(r[end])
+end
+
+function ϕ⁽ᵏ⁾⁻¹(G::WilliamsonGenerator{d, TX}, ::Val{p}, y; start_at=nothing) where {d, p, TX<:Distributions.DiscreteNonParametric}
+    r = Distributions.support(G.X)
+    Ty = promote_type(eltype(r), typeof(y))
+    p == 0 && return ϕ⁻¹(G, y)
+    sign = iseven(p) ? 1 : -1
+    s_y = sign*y
+    s_y <= 0 && return Ty(r[end])
+    s_y >= sign*ϕ⁽ᵏ⁾(G, Val{p}(), 0) && return Ty(0)
+    for k in eachindex(r)
+        ϕp_rk = sign * ϕ⁽ᵏ⁾(G, Val{p}(), r[k])
+        if s_y > ϕp_rk
+            if s_y < sign * ϕ⁽ᵏ⁾(G, Val{p}(), prevfloat(r[k]))
+                return Ty(prevfloat(r[k]))
+            end
+            a = (k==1 ? 0 : r[k-1]); b = r[k]
+            return Ty(Roots.find_zero(t -> ϕ⁽ᵏ⁾(G, Val{p}(), t) - y, (a, b); bisection=true))
+        end
+    end
+    return Ty(r[end])
+end
 
 
 
