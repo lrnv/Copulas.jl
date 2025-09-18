@@ -1,6 +1,13 @@
-###########################################################################
-#####  Fréchet bounds fast-paths: W (lower)
-###########################################################################
+"""
+        WDistortion(v, j)
+
+Parameters
+    * `v ∈ (0,1]` – conditioning value
+    * `j` – conditioned index
+
+Lower Fréchet (W) bound conditional distortion: U_i | U_j=v with dependence
+`max(u_i + v - 1, 0)` gives cdf(u)=max(u+v-1,0)/v.
+"""
 struct WDistortion{T} <: Distortion
     v::T
     j::Int8

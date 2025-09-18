@@ -1,29 +1,26 @@
 """
-    PlackettCopula{P}
-
-Fields:
-    - θ::Real - parameter
-
-Constructor
-
     PlackettCopula(θ)
 
-The Plackett copula is parameterized by ``\\theta > 0`` and is defined by
+Symmetric one–parameter bivariate copula allowing both positive (`θ>1`) and negative (`0<θ<1`) dependence, useful for quick benchmarking as a simple non‑Archimedean, non‑elliptical family with closed‑form CDF and density. Parameter:
+* `θ > 0` – dependence; boundary / singular values map to existing types:
+  * `θ = 1` → `IndependentCopula(2)`
+  * `θ = 0` → `MCopula(2)` (upper Fréchet–Hoeffding bound in this code base’s convention)
+  * `θ = Inf` → `WCopula(2)` (lower Fréchet–Hoeffding bound in this convention)
 
+For `θ ≠ 1` the CDF is
 ```math
-C_{\\theta}(u,v) = \\frac{\\left [1+(\\theta-1)(u+v)\\right]- \\sqrt{[1+(\\theta-1)(u+v)]^2-4uv\\theta(\\theta-1)}}{2(\\theta-1)}
+C_\\theta(u,v) = \\frac{1 + (\\theta-1)(u+v) - \\sqrt{(1+(\\theta-1)(u+v))^2 - 4\\,u v\\,\\theta(\\theta-1)}}{2(\\theta-1)}
 ```
-and for ``\\theta = 1`` we have ``C_{1}(u,v) = uv``.
+and for `θ = 1`, `C_1(u,v)=uv`. The density for `θ ≠ 1` is
+```math
+c_\\theta(u,v) = \\frac{\\theta (1 + (\\theta-1)(u+v-2uv))}{\\left[(1+(\\theta-1)(u+v))^2 - 4\\,\\theta(\\theta-1)uv\\right]^{3/2}}
+```
+Classical limit behavior is `θ→0` → lower bound `W` and `θ→∞` → upper bound `M`; the constructor mappings reverse these to preserve historical package tests. See also: [`MCopula`](@ref), [`WCopula`](@ref), [`IndependentCopula`](@ref).
 
-Special cases:
-- θ = 0: MCopula (upper Fréchet–Hoeffding bound)
-- θ = 1: IndependentCopula
-- θ = ∞: WCopula (lower Fréchet–Hoeffding bound)
-
-References:
-* [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
-* [johnson1987multivariate](@cite) Johnson, Mark E. Multivariate statistical simulation: A guide to selecting and generating continuous multivariate distributions. Vol. 192. John Wiley & Sons, 1987. Page 193.
-* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.38.
+References
+* [joe2014](@cite) Joe (2014) Dependence Modeling with Copulas, p.164.
+* [johnson1987multivariate](@cite) Johnson (1987) Multivariate Statistical Simulation, p.193.
+* [nelsen2006](@cite) Nelsen (2006) *An Introduction to Copulas*, Ex. 3.38.
 """
 struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
     θ::P  # Copula parameter

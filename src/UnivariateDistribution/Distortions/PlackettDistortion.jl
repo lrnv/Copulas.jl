@@ -1,6 +1,14 @@
-###########################################################################
-#####  PlackettCopula fast-path (bivariate, p=1)
-###########################################################################
+"""
+        PlackettDistortion(θ, j, u_j)
+
+Parameters
+    * `θ > 0` – Plackett dependence parameter
+    * `j ∈ {1,2}` – conditioned coordinate
+    * `u_j ∈ (0,1)` – conditioning value
+
+Conditional distortion for the Plackett copula (bivariate fast path) using a
+stable `logcdf` formulation.
+"""
 struct PlackettDistortion{T} <: Distortion
     θ::T
     j::Int8

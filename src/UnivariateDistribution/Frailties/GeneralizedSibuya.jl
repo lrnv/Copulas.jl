@@ -1,3 +1,18 @@
+"""
+    GeneralizedSibuya(ϑ, δ)
+
+Parameters
+    * `ϑ ≥ 1`
+    * `δ ∈ (0,1]`
+
+Used as flexible frailty (generalizing Sibuya) for Archimedean generators.
+
+Generalization of Sibuya law with parameters ϑ ≥ 1 and δ ∈ (0,1]. Admits mixed
+accept–reject constructions via either a logarithmic or Sibuya proposal depending
+on δ. Appears as frailty to generate flexible Archimedean families.
+
+Sampling algorithm switches regime at δ = 1 - exp(-1) for efficiency.
+"""
 struct GeneralizedSibuya{T<:Real} <: Distributions.DiscreteUnivariateDistribution
     ϑ::T
     δ::T

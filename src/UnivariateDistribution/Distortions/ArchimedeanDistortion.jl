@@ -1,6 +1,15 @@
-###########################################################################
-#####  ArchimedeanCopula fast-paths
-###########################################################################
+"""
+        ArchimedeanDistortion(G, p, sJ, den)
+
+Parameters
+    * `G` – Archimedean generator
+    * `p` – number of conditioned coordinates
+    * `sJ` – sum of inverse generator values `∑ ϕ⁻¹(u_j)`
+    * `den` – normalization constant `ϕ^{(p)}(sJ)`
+
+Closed-form conditional distortion for Archimedean copulas derived from tilted
+generator derivatives. Produced internally by conditioning routines.
+"""
 struct ArchimedeanDistortion{TG, T, p} <: Distortion
     G::TG
     sJ::T

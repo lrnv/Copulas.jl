@@ -1,6 +1,42 @@
+"""
+    Copula{d} <: Distributions.ContinuousMultivariateDistribution
+
+Abstract super–type for all `d`‑dimensional copula distributions in `Copulas.jl`.
+
+A copula is a multivariate distribution on the unit hypercube `[0,1]^d` with
+uniform(0,1) margins. Concrete subtypes (Archimedean, Elliptical, Extreme‑Value,
+Archimax, miscellaneous constructions, …) implement the low–level API required
+by the generic methods defined here:
+
+Core interface methods expected (some have defaults):
+* `cdf(C, u)` – cumulative distribution function on `[0,1]^d`.
+* `pdf(C, u)` – density (when it exists) on `(0,1)^d`.
+* `rand(rng, C)` – draw a single sample; vectorized `rand(rng, C, n)` should work via broadcasting.
+* `Base.length(C)` – returns the dimension `d` (provided here).
+* Dependence summaries: Kendall's τ (`τ(C)` / `StatsBase.corkendall(C)`) and
+    Spearman's ρ (`ρ(C)` / `StatsBase.corspearman(C)`). Generic numeric
+    integration / Monte‑Carlo fallbacks are provided and can be specialized.
+
+Extended helper API supplied by:
+* `measure(C, a, b)` – copula probability (rectangular volume) over the axis–aligned box
+    `[a,b] ⊂ [0,1]^d` using inclusion–exclusion (exact via 2^d evaluations) with a Gray‑code loop.
+* `subsetdims(C, dims)`  – marginal / reduced–dimension copula.
+* `condition(C, dims, values)`  – conditional copula. 
+
+Concrete subtype authors SHOULD at least implement an efficient `_cdf` and eventually implement `Distributions.pdf` or `Distributions._logpdf` and `Distributions._rand!`.
+
+See also: [`ArchimedeanCopula`](@ref), [`EllipticalCopula`](@ref), [`ExtremeValueCopula`](@ref),
+[`ArchimaxCopula`](@ref), [`measure`](@ref).
+
+References
+* [nelsen2007](@cite) Nelsen (2007), *An Introduction to Copulas*.
+* [mcneil2009](@cite) McNeil & Nešlehová (2009), Multivariate Archimedean copulas, d‑monotone functions and ℓ₁‑norm symmetric distributions.
+"""
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 Base.broadcastable(C::Copula) = Ref(C)
 Base.length(::Copula{d}) where d = d
+
+# Generic CDF (no docstring per style directive).
 function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
     length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     if any(iszero,u)
@@ -14,11 +50,27 @@ function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
     size(A,1) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     return [Distributions.cdf(C,u) for u in eachcol(A)]
 end
+
+# Internal CDF fallback (undocumented by directive).
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)
     z = zeros(eltype(u),length(C))
     return HCubature.hcubature(f,z,u,rtol=sqrt(eps()))[1]
 end
+
+"""
+    ρ(C::Copula{d}) -> Real
+
+Spearman's ρ of copula `C` computed by numeric integration of the CDF:
+
+ρ = 12 ∫_{[0,1]^d} C(u) du  - 3.
+
+For bivariate copulas this reduces to the classical definition.
+Specialize for performance when a closed form (or fast Monte‑Carlo) is available.
+
+References
+* [nelsen2007](@cite) Nelsen (2007), *An Introduction to Copulas*.
+"""
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     z = zeros(d)
@@ -26,11 +78,35 @@ function ρ(C::Copula{d}) where d
     r = HCubature.hcubature(F,z,i,rtol=sqrt(eps()))[1]
     return 12*r-3
 end
+
+"""
+    τ(C::Copula) -> Real
+
+Kendall's τ of copula `C` estimated by Monte‑Carlo using `Distributions.expectation`.
+
+Definition:
+τ = 4 E[ C(U) ] - 1,  where U ∼ C.
+
+The default uses `nsamples = 10^4`. Override / specialize for analytic formulae
+(e.g. Archimedean, Elliptical) or higher precision.
+
+References
+* [nelsen2007](@cite) Nelsen (2007), *An Introduction to Copulas*.
+"""
 function τ(C::Copula)
     F(x) = Distributions.cdf(C,x)
     r = Distributions.expectation(F,C; nsamples=10^4)
     return 4*r-1
 end
+"""
+    StatsBase.corkendall(C::Copula{d}) -> Matrix{Float64}
+
+Matrix of pairwise (bivariate) Kendall τ values between all component pairs of `C`.
+Implemented by forming 2‑dimensional sub‑copulas via `SubsetCopula` and calling `τ`.
+
+Complexity: O(d²) evaluations of `τ` (which may themselves be Monte‑Carlo if not
+specialized). Override for structured copulas if a faster block formula exists.
+"""
 function StatsBase.corkendall(C::Copula{d}) where d
     # returns the matrix of bivariate kendall taus.
     K = ones(d,d)
@@ -42,6 +118,14 @@ function StatsBase.corkendall(C::Copula{d}) where d
     end
     return K
 end
+"""
+    StatsBase.corspearman(C::Copula{d}) -> Matrix{Float64}
+
+Matrix of pairwise Spearman ρ values between all component pairs of `C`.
+Implemented by building 2D marginals and calling `ρ`.
+
+See also: [`ρ`](@ref), [`StatsBase.corkendall`](@ref).
+"""
 function StatsBase.corspearman(C::Copula{d}) where d
     # returns the matrix of bivariate spearman rhos.
     K = ones(d,d)
@@ -53,6 +137,23 @@ function StatsBase.corspearman(C::Copula{d}) where d
     end
     return K
 end
+"""
+    measure(C::Copula{d}, a, b) -> Real
+
+Probability mass of the axis‑aligned box `[a,b] ⊂ [0,1]^d` under copula `C`:
+
+Pr(a₁ ≤ U₁ ≤ b₁, …, a_d ≤ U_d ≤ b_d) = Σ_{ε∈{0,1}^d} (-1)^{d-|ε|} C(w_ε),
+where each corner `w_ε` uses `b_i` if `ε_i=1` else `a_i`.
+
+Implementation details:
+* Uses Gray‑code iteration to flip a single coordinate per corner, minimizing allocations.
+* Returns `0` if any upper bound ≤ lower bound; returns `1` if the box is the whole hypercube.
+* Clamps inputs to `[0,1]`.
+
+See also: [`cdf`](@ref), [`subsetdims`](@ref).
+References
+* [cherubini2009](@cite) Cherubini & Romagnoli (2009), Computing the volume of n‑dimensional copulas.
+"""
 function measure(C::Copula{d}, us,vs) where {d}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]
@@ -86,6 +187,13 @@ function measure(C::Copula{d}, us,vs) where {d}
     end
     return max(r,0)
 end
+"""
+    measure(C::Copula{2}, a, b)
+
+Specialized 2D version of [`measure(::Copula{d}, a, b)`](@ref) using the
+inclusion–exclusion formula directly:
+`C(v1,v2) - C(v1,u2) - C(u1,v2) + C(u1,u2)` after clamping.
+"""
 function measure(C::Copula{2}, us, vs)
     T = promote_type(eltype(us), eltype(vs), Float64)
     u1 = clamp(T(us[1]), 0, 1)

@@ -1,15 +1,15 @@
-###########################################################################
-#####  Bivariate Archimax Copulas fast-path (d=2, p=1)
-###########################################################################
+"""
+        BivArchimaxDistortion(gen, tail, j, u_j)
 
-# Conditional U_i | U_j=u_j for ArchimaxCopula with generator ϕ and EV tail A
-# C(u,v) = ϕ( (x+y) A(t) ), where x=ϕ⁻¹(u), y=ϕ⁻¹(v), t=y/(x+y)
-# For j=2 (condition on v), the 1D conditional CDF is
-#   H_{1|2}(u | v) = ∂/∂v C(u,v) (when j==2)
-#   H_{2|1}(u | v) = ∂/∂v C(v,u) (where j==1)
-# and analogously for j=1.
-# We implement a numerically stable logcdf based on Archimax factorization.
+Parameters
+    * `gen` – Archimedean generator (ϕ)
+    * `tail` – EV tail / STDF A
+    * `j ∈ {1,2}` – conditioned coordinate
+    * `u_j` – conditioning value in (0,1)
 
+Conditional distortion for bivariate Archimax copulas, combining generator and
+tail derivatives for a stable logcdf.
+"""
 struct BivArchimaxDistortion{TG,TT,T} <: Distortion
     gen::TG
     tail::TT

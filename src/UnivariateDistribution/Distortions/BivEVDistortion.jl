@@ -1,6 +1,14 @@
-###########################################################################
-#####  Bivariate Extreme Value Copulas fast-path (d=2, p=1)
-###########################################################################
+"""
+        BivEVDistortion(tail, j, u_j)
+
+Parameters
+    * `tail` – extreme value tail / STDF object
+    * `j ∈ {1,2}` – conditioned coordinate index
+    * `u_j ∈ (0,1)` – conditioning value
+
+Bivariate extreme value conditional distortion (d=2, p=1) used for fast
+Rosenblatt / inverse transforms in extreme value copulas.
+"""
 struct BivEVDistortion{TT,T} <: Distortion
     tail::TT
     j::Int8

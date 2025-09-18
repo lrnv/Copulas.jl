@@ -4,17 +4,17 @@
 ###########################################################################
 
 """
-    SubsetCopula{d,CT}
+    SubsetCopula{d,CT} <: Copula{d}
 
-Fields:
-  - `C::CT` - The copula
-  - `dims::Tuple{Int}` - a Tuple representing which dimensions are used. 
+Marginal copula over the coordinate subset `dims` of an original copula `C::CT`.
+Constructed internally by `subsetdims` – prefer calling that helper instead of
+using the constructor directly.
 
-Constructor
+Fields
+    * `C::CT` – original (higher‑dimensional) copula
+    * `dims::NTuple{d,Int}` – kept coordinate indices (strictly increasing)
 
-    SubsetCopula(C::Copula,dims)
-
-This class allows to construct a random vector corresponding to a few dimensions of the starting copula. If ``(X_1,...,X_n)`` is the random vector corresponding to the copula `C`, this returns the copula of `(` ``X_i`` `for i in dims)`. The dependence structure is preserved. There are specialized methods for some copulas. 
+See also: [`subsetdims`](@ref), [`ConditionalCopula`](@ref), [`SklarDist`](@ref).
 """
 struct SubsetCopula{d,CT} <: Copula{d}
     C::CT

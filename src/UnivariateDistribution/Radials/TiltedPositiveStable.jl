@@ -1,3 +1,16 @@
+"""
+    TiltedPositiveStable(α, λ)
+
+Parameters
+    * `α ∈ (0,1]`
+    * `λ ≥ 0`
+
+Used as a tilted radial law for Archimedean copulas (producing alternative
+Williamson transforms when λ>0).
+
+Exponential tilt of a positive α‑stable: if `X ~ PStable(α)` then the tilted law
+has density proportional to `e^{-λ x} f_{X}(x)`.
+"""
 struct TiltedPositiveStable{T} <: Distributions.ContinuousUnivariateDistribution
     α::T   # 0<α<=1
     λ::T   # λ>=0

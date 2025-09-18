@@ -1,3 +1,26 @@
+"""
+    ClaytonWilliamsonDistribution(θ, d)
+
+Parameters
+    * `θ < 0` – Clayton parameter (boundary `θ = -1/(d-1)` degenerates)
+    * `d ≥ 2` – copula dimension
+
+Used as radial distribution underlying the (negative‑θ) Clayton generator via its
+Williamson d‑transform.
+
+Radial distribution whose Williamson d‑transform yields (up to scaling) the
+Clayton generator with negative parameter θ < 0 (specifically in the boundary
+case approaching independence at θ = -1/(d-1), it degenerates at 1).
+
+Support: [0, -1/θ]. CDF for x ∈ [0, -1/θ]:
+```math
+F(x) = 1 - \\sum_{k=0}^{d-1} \\binom{-1/θ}{-1/θ-k} y^{k} (1-y)^{-1/θ-k}, \\qquad y = -θ x.
+```
+Density (0 < x < -1/θ):
+```math
+f(x) = \\binom{-1/θ - 1}{d-1} y^{d-1} (1-y)^{-1/θ - d}, \\qquad y = -θ x.
+```
+"""
 struct ClaytonWilliamsonDistribution{T<:Real} <: Distributions.ContinuousUnivariateDistribution
     θ::T # theta is negative here. 
     d::Int # d is an integer, at least 2. 

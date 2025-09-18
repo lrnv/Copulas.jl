@@ -1,5 +1,39 @@
-# See https://rdrr.io/rforge/copula/man/Sibuya.html
+"""
+    Sibuya(p)
 
+Parameters
+    * `p ∈ (0,1]` – tail parameter (smaller ⇒ heavier tail)
+
+Used as frailty to construct Archimedean copulas via the Laplace transform
+`ϕ(t)=E[e^{-t X}] = 1 - (1 - e^{-t})^{p}` (see [`FrailtyGenerator`](@ref)).
+
+Sibuya discrete distribution (heavy–tailed).
+
+Definition
+Support: k = 1,2,3, …  (code keeps `minimum(::Sibuya)=0` for legacy reasons; mass at 0 is 0.)
+
+One convenient characterization is by its cumulative distribution function
+
+```math
+F(k) = 1 - \\left|\\binom{p-1}{k}\\right|, \\quad k \\ge 0, \\qquad (F(-1)=0),
+```
+so the tail probabilities satisfy `P(X > k) = |binom(p-1,k+1)|`.
+
+Its moment generating function (finite for t ≤ 0) is implemented as
+
+```math
+M_X(t) = 1 - (1 - e^{t})^{p},  \\qquad t \\le 0.
+```
+
+(The pmf has no simple closed form involving only elementary functions; it can
+be expressed via forward differences of the generalized binomial coefficients.)
+
+Uses
+* As a frailty: `ϕ(t) = E[e^{-tX}] = 1 - (1 - e^{-t})^{p}` serves as an Archimedean generator.
+
+See also: [`FrailtyGenerator`](@ref), other frailties in `Frailties/`.
+References: R `copula::Sibuya` documentation; standard treatments of Sibuya laws : https://rdrr.io/rforge/copula/man/Sibuya.html
+"""
 struct Sibuya{T<:Real} <: Distributions.DiscreteUnivariateDistribution
     p::T
     function Sibuya(p::T) where {T <: Real}

@@ -1,6 +1,13 @@
-###########################################################################
-#####  FGMCopula fast-path (bivariate, p=1)
-###########################################################################
+"""
+        BivFGMDistortion(θ, j, u_j)
+
+Parameters
+    * `θ` – FGM dependence parameter (|θ| ≤ 1 typically)
+    * `j ∈ {1,2}` – conditioned index
+    * `u_j ∈ (0,1)` – conditioning value
+
+Conditional distortion for the bivariate FGM copula (fast Rosenblatt path).
+"""
 struct BivFGMDistortion{T} <: Distortion
     θ::T
     j::Int8

@@ -1,42 +1,38 @@
 """
-    SklarDist{CT,TplMargins} 
+    SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribution
 
-Fields:
-  - `C::CT` - The copula
-  - `m::TplMargins` - a Tuple representing the marginal distributions
+Joint distribution built from a copula `C::CT` and a tuple of marginals `m::TplMargins`
+via Sklar's theorem. Provides the full `Distributions.jl` API (rand / cdf / pdf / logpdf).
+
+Fields
+  * `C::CT` – copula (`Copula{d}`)
+  * `m::TplMargins` – NTuple of `d` univariate `Distributions.UnivariateDistribution`
 
 Constructor
 
-    SklarDist(C,m)
+    SklarDist(C, m)
 
-Construct a joint distribution via Sklar's theorem from marginals and a copula. See [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem):
+where `m` is a length‑`d` tuple of marginals compatible with `length(C)`.
 
-!!! theorem "Theorem (Sklar 1959):"
-    For every random vector ``\\boldsymbol X``, there exists a copula ``C`` such that 
-
-    ``\\forall \\boldsymbol x\\in \\mathbb R^d, F(\\boldsymbol x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).``
-    The copula ``C`` is uniquely determined on ``\\mathrm{Ran}(F_{1}) \\times ... \\times \\mathrm{Ran}(F_{d})``, where ``\\mathrm{Ran}(F_i)`` denotes the range of the function ``F_i``. In particular, if all marginals are absolutely continuous, ``C`` is unique.
-
-
-The resulting random vector follows the `Distributions.jl` API (rand/cdf/pdf/logpdf). A `fit` method is also provided. Example:
-
+Example
 ```julia
-using Copulas, Distributions, Random
-X₁ = Gamma(2,3)
-X₂ = Pareto()
-X₃ = LogNormal(0,1)
-C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
-D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
-
-simu = rand(D,1000) # Generate a dataset
-
-# You may estimate a copula using the `fit` function:
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
+using Copulas, Distributions
+X1, X2 = Gamma(2,3), LogNormal()
+C = FrankCopula(2, 3.0)
+D = SklarDist(C, (X1, X2))
+sim = rand(D, 1_000)
+D̂ = fit(SklarDist{FrankCopula,Tuple{Gamma,LogNormal}}, sim)
 ```
 
-References: 
-* [sklar1959](@cite) Sklar, M. (1959). Fonctions de répartition à n dimensions et leurs marges. In Annales de l'ISUP (Vol. 8, No. 3, pp. 229-231).
-* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
+Fitting
+`fit(SklarDist{CT,Tmarg}, data)` fits each marginal independently (by calling
+`fit` for each declared marginal type) then fits the copula on the pseudo‑observations.
+
+See also: [`Copula`](@ref), [`subsetdims`](@ref), [`condition`](@ref).
+
+References
+* [sklar1959](@cite) Sklar (1959).
+* [nelsen2006](@cite) Nelsen (2006), *An Introduction to Copulas*.
 """
 struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribution
     C::CT

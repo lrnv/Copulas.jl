@@ -4,6 +4,31 @@
 ########## Probably we can do better by integrating with them... but they use too much. 
 ##########
 
+"""
+    AlphaStable(α, β, scale, location)
+
+Parameters
+    * `α ∈ (0,2]` – stability index
+    * `β ∈ [-1,1]` – skewness
+    * `scale > 0` – scale
+    * `location ∈ ℝ` – location
+
+Used as a generic stable frailty (symmetric / skew) for constructing Archimedean
+generators via its Laplace transform (when it exists for given α,β region).
+
+Stable distribution S(α, β, scale, location) with characteristic function
+```math
+\\varphi_X(t) = \\exp\\Big( i t\\,\\text{location} - |\\text{scale}\\, t|^{α} \\big( 1 - i β\\, \\operatorname{sign}(t)\\, \\Phi(α,t) \\big) \\Big),
+```
+where for `α ≠ 1`, `Φ(α,t) = \tan(π α / 2)`, and for `α = 1`,
+`Φ(1,t) = - (2/π) \\log |t|`. Parameters: 0 < α ≤ 2, |β| ≤ 1, scale > 0.
+
+Sampling uses the Chambers–Mallows–Stuck method (1976). Only random generation
+is provided; density has no closed form except special cases.
+
+
+See also: Positive stable variants in Radials (`PStable`).
+"""
 Base.@kwdef struct AlphaStable{T} <: Distributions.ContinuousUnivariateDistribution
     α::T = 1.5
     β::T = zero(α)

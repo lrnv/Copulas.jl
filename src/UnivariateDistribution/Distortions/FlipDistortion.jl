@@ -1,6 +1,12 @@
-###########################################################################
-#####  SurvivalCopula + SubsetCopula bindings (delegation)
-###########################################################################
+"""
+        FlipDistortion(base)
+
+Parameters
+    * `base::Distortion` – underlying distortion
+
+Survival / complement distortion: applies symmetry u ↦ 1-u to re-use existing
+distortions when forming survival or flipped copulas.
+"""
 struct FlipDistortion{Disto} <: Distortion
     base::Disto
 end

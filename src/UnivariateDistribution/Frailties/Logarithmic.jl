@@ -1,3 +1,25 @@
+"""
+    Logarithmic(h)
+
+Parameters
+    * `h < 0` – log(1-α); defines `α = -expm1(h) ∈ (0,1)`
+
+Used as frailty for Archimedean copulas (Laplace transform gives generator)
+; sampling uses Kemp (1981) LS/LK algorithms.
+
+Logarithmic (log-series) distribution with parameterization `h = log(1-α)`.
+
+Definition
+Support: k = 1,2,3,… and pmf
+```math
+P(X = k) = - \\frac{1}{\\log(1-α)} \\frac{α^{k}}{k}, \\quad k \\ge 1.
+```
+MGF (t < -log(α)):  `M_X(t) = log(1 - α e^{t}) / log(1-α)`.
+
+
+See also: [`FrailtyGenerator`](@ref), other frailties.
+References: Kemp (1981), classical log-series distribution.
+"""
 # Corresponds to https://en.wikipedia.org/wiki/Logarithmic_distribution
 struct Logarithmic{T<:Real} <: Distributions.DiscreteUnivariateDistribution
     α::T # in (0,1), the weight of the logarithmic distribution.

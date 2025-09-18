@@ -41,14 +41,11 @@ end
 """
     Distortion <: Distributions.ContinuousUnivariateDistribution
 
-Abstract super-type for objects describing the (uniform-scale) conditional marginal
-transformation U_i | U_J = u_J of a copula.
+Abstract conditional marginal (uniform scale) `U_i | U_J = u_J` for a copula.
+Acts as a transformation on a base marginal distribution via `D(X)`. 
+Should generally not be constructed directly but rather via the [`condition`](@ref) helper.
 
-Subtypes implement cdf/quantile on [0,1]. They are not full arbitrary distributions;
-they model how a uniform variable is distorted by conditioning. They can be applied
-as a function to a base marginal distribution to obtain the conditional marginal on
-the original scale: if `D::Distortion` and `X::UnivariateDistribution`, then `D(X)`
-is the distribution of `X_i | U_J = u_J`.
+See also: [`DistortionFromCop`](@ref), [`DistortedDist`](@ref), [`condition`](@ref).
 """
 abstract type Distortion<:Distributions.ContinuousUnivariateDistribution end
 (D::Distortion)(::Distributions.Uniform) = D
@@ -69,26 +66,13 @@ Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
 
 """
-    DistortionFromCop{TC,p,T} <: Distortion
+    DistortionFromCop{TC,p} <: Distortion
 
-Generic, uniform-scale conditional marginal transformation for a copula.
+Fallback conditional distortion computed via automatic differentiation of the
+copula CDF mixed partials. Specialized distortions may replace this for speed.
+Should generally not be constructed directly but rather via the [`condition`](@ref) helper.
 
-This is the default fallback (based on mixed partial derivatives computed via
-automatic differentiation) used when a faster specialized `Distortion` is not
-available for a given copula family.
-
-Parameters
-- `TC`: copula type
-- `p`: length of the conditioned index set J (static)
-- `T`: element type for the conditioned values u_J
-
-Construction
-- `DistortionFromCop(C::Copula, js::NTuple{p,Int}, ujs::NTuple{p,<:Real}, i::Int)`
-    builds the distortion for the conditional marginal of index `i` given `U_js = ujs`.
-
-Notes
-- A convenience method `DistortionFromCop(C, j::Int, uj::Real, i::Int)` exists for
-    the common `p = 1` case.
+See also: [`Distortion`](@ref), [`condition`](@ref).
 """
 struct DistortionFromCop{TC,p}<:Distortion
     C::TC
@@ -112,7 +96,10 @@ Distributions.cdf(d::DistortionFromCop, u::Real) = _partial_cdf(d.C, (d.i,), d.j
 """
     DistortedDist{Disto,Distrib} <: Distributions.UnivariateDistribution
 
-Push-forward of a base marginal by a `Distortion`.
+Push‑forward of a base marginal by a `Distortion` (conditional univariate law
+on the original scale).
+
+See also: [`Distortion`](@ref), [`condition`](@ref).
 """
 struct DistortedDist{Disto, Distrib}<:Distributions.ContinuousUnivariateDistribution
     D::Disto
@@ -127,7 +114,9 @@ Distributions.quantile(D::DistortedDist, α::Real) = Distributions.quantile(D.X,
 """
     ConditionalCopula{d} <: Copula{d}
 
-Copula of the conditioned random vector U_I | U_J = u_J.
+Copula of the remaining coordinates after conditioning `U_J = u_J`.
+
+See also: [`condition`](@ref), [`SubsetCopula`](@ref).
 """
 struct ConditionalCopula{d, D, p, TDs}<:Copula{d}
     C::Copula{D}
@@ -158,7 +147,7 @@ end
 #####  condition() function
 ###########################################################################
 """
-        condition(C::Copula{D}, js, u_js)
+    condition(C::Copula{D}, js, u_js)
         condition(X::SklarDist, js, x_js)
 
 Construct conditional distributions with respect to a copula, either on the

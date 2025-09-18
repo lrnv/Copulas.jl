@@ -1,4 +1,20 @@
-# Estable positivo (Postable) con escala opcional
+"""
+    PStable(α; scale=1)
+
+Parameters
+    * `α ∈ (0,1]` – stability index
+    * `scale > 0` – scale
+
+Used as radial (Williamson) distribution for Archimedean copulas via
+[`WilliamsonGenerator`](@ref).
+
+Positive (one‑sided) α‑stable distribution with Laplace transform
+```math
+E[e^{-t X}] = \\exp(- (\\text{scale}^α) t^{α}), \\qquad t \\ge 0,
+```
+for 0 < α ≤ 1. Special case α = 1 gives the degenerate `Dirac(scale)`.
+Used as a radial / frailty component to build Williamson transforms.
+"""
 struct PStable{Tα<:Real,Ts<:Real} <: Distributions.ContinuousUnivariateDistribution
     α::Tα
     scale::Ts
