@@ -136,7 +136,7 @@ function ρ(G::AMHGenerator)
     elseif aa < 0.016
         return a * (1/3 + a * (1/12 + a * (3/100 + a * (1/75 + a / 147))))
     else
-        term1 = 3 / a * (4 * (1 + 1 / a) * SpecialFunctions.spence(a))
+        term1 = 3 / a * (4 * (1 + 1 / a) * PolyLog.reli2(a))
         term2 = if a < 1
             8 * (1 / a - 1) * log1p(-a)
         else
@@ -146,5 +146,44 @@ function ρ(G::AMHGenerator)
     end
 end
 
+# Inversa de Spearman para AMH vía Brent + fallback a Bisection
+function ρ⁻¹(::Type{AMHGenerator}, ρ̂::Real; xtol=1e-12, atol=1e-12, maxevals=10_000)
+    # Casos triviales
+    if !isfinite(ρ̂)
+        return oftype(ρ̂, NaN)
+    end
+    if ρ̂ == 0
+        return zero(ρ̂)
+    end
 
+    # Dominio de AMH: θ ∈ (-1, 1)
+    Tρ = float(promote_type(typeof(ρ̂), Float64))
+    ϵ  = Tρ(1e-12)
+    aL = Tρ(-1 + ϵ)
+    aU = Tρ( 1 - ϵ)
 
+    # Rango numérico alcanzable por ρ(θ) en ±(1-ε)
+    ρL = ρ(AMHGenerator(aL))
+    ρU = ρ(AMHGenerator(aU))
+    if ρL > ρU
+        ρL, ρU = ρU, ρL
+        aL, aU = aU, aL
+    end
+
+    # Saturaciones (si el objetivo cae fuera del rango numérico)
+    if ρ̂ ≤ ρL
+        return aL
+    elseif ρ̂ ≥ ρU
+        return aU
+    end
+
+    # Ecuación a resolver: f(θ) = ρ(θ) - ρ̂
+    f(θ) = ρ(AMHGenerator(θ)) - ρ̂
+
+    # Brent con bracket global seguro, y fallback a bisección si hay excepción
+    try
+        return Roots.find_zero(f, (aL, aU), Roots.Brent(); xtol=xtol, atol=atol, maxevals=maxevals)
+    catch
+        return Roots.find_zero(f, (aL, aU), Roots.Bisection(); xtol=xtol, atol=atol, maxevals=maxevals)
+    end
+end
