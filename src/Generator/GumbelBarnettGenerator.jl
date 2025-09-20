@@ -22,7 +22,7 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.437
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct GumbelBarnettGenerator{T} <: UnivariateWilliamsonGenerator
+struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function GumbelBarnettGenerator(θ)
         if (θ < 0) || (θ > 1)

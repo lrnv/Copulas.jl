@@ -21,7 +21,7 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct AMHGenerator{T} <: UnivariateWilliamsonGenerator
+struct AMHGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function AMHGenerator(θ)
         if (θ < -1) || (θ > 1)

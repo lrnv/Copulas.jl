@@ -25,7 +25,7 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct InvGaussianGenerator{T} <: UnivariateFrailtyGenerator
+struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function InvGaussianGenerator(θ)
         if θ < 0

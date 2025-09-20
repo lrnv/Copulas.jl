@@ -22,7 +22,7 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct JoeGenerator{T} <: UnivariateFrailtyGenerator
+struct JoeGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function JoeGenerator(θ)
         if θ < 1

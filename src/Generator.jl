@@ -112,9 +112,9 @@ Distributions.params(G::FrailtyGenerator) = Distributions.params(G.F)
 frailty(G::FrailtyGenerator) = G.F
 
 # Add univaraite generator bindins: 
-abstract type UnivariateWilliamsonGenerator<:Generator end
-abstract type UnivariateFrailtyGenerator<:AbstractFrailtyGenerator end
-const UnivaraiteGenerator = Union{UnivariateWilliamsonGenerator,UnivariateFrailtyGenerator}
+abstract type AbstractUnivariateGenerator<:Generator end
+abstract type AbstractUnivariateFrailtyGenerator<:AbstractFrailtyGenerator end
+const UnivaraiteGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
 
 
 
