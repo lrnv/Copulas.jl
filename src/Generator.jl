@@ -114,7 +114,7 @@ frailty(G::FrailtyGenerator) = G.F
 # Add univaraite generator bindins: 
 abstract type AbstractUnivariateGenerator<:Generator end
 abstract type AbstractUnivariateFrailtyGenerator<:AbstractFrailtyGenerator end
-const UnivaraiteGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
+const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
 
 
 

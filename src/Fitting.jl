@@ -13,29 +13,20 @@ struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: Sta
     method_details:: TD
     function CopulaModel(c::CT, n::Integer, ll::Real, method::Symbol;
                          vcov=nothing, converged=true, iterations=0, elapsed_sec=NaN,
-                         method_details=NamedTuple()) where {C}
+                         method_details=NamedTuple()) where {CT}
         return new{CT, typeof(vcov), typeof(method_details)}(
             c, n, float(ll), method, vcov, converged, iterations, float(elapsed_sec), method_details
         )
     end
 end
 
-@inline  Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false..., kwargs...).result
-function Distributions.fit(::Type{CopulaModel}, ::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
+@inline  Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
+function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
     d, n  = size(U)
-    C, meta = _fit(T, U, Val{method}(); kwargs...)
-    ll     = Distributions.loglikelihood(C, U)
-    ll0    = try
-        Distributions.loglikelihood(Copulas.IndependentCopula(d), U)
-    catch
-        NaN
-    end
-
-    md = merge((; d, n, method),
-               meta,
-               (; null_ll = ll0),
-               _extra_pairwise_stats(U, !summaries))  # optional...
-
+    t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
+    C, meta = rez
+    ll = Distributions.loglikelihood(C, U)
+    md = (; d, n, method, meta..., null_ll=0.0, elapsed_sec=t, _extra_pairwise_stats(U, !summaries)...)
     return CopulaModel(C, n, ll, method;
         vcov         = get(md, :vcov, nothing),
         converged    = get(md, :converged, true),
@@ -44,9 +35,7 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{<:Copula}, U; method = :d
         method_details = md)
 end
 # Fallback: if there is no _fit implemented for (T, method)
-function _fit(::Type{T}, ::AbstractMatrix, ::Any; kwargs...) where {T<:Copulas.Copula}
-    throw(ArgumentError("There is no _fit implemented for $(T) with the requested method."))
-end
+_fit(T::Type{<:Copulas.Copula}, ::Any, ::Any; kwargs...) = throw(ArgumentError("There is no _fit implemented for $(T) with the requested method."))
 function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}}, X; copula_method = :default, sklar_method = :parametric,
                            summaries = true, margins_kwargs = NamedTuple(), copula_kwargs = NamedTuple()) where
                            {CT<:Copulas.Copula, TplMargins<:Tuple}
@@ -88,13 +77,6 @@ function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}},
         method_details = (; cmeta..., null_ll, sklar_method, margins = map(typeof, m), 
               has_summaries = summaries, d=d, n=n, _extra_pairwise_stats(U, !summaries)...))
 end
-
-StatsBase.dof(::Copulas.EmpiricalCopula)    = 0
-StatsBase.dof(::Copulas.BernsteinCopula)    = 0
-StatsBase.dof(::Copulas.BetaCopula)         = 0
-StatsBase.dof(::Copulas.CheckerboardCopula) = 0
-StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
-StatsBase.dof(C::Copulas.TCopula)           = (p = length(C); p*(p-1) ÷ 2 + 1)
 
 function _extra_pairwise_stats(U::AbstractMatrix, bypass::Bool)
     bypass && return (;)

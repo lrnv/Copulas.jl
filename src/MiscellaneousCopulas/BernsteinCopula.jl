@@ -170,6 +170,7 @@ function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NT
 end
 
 # Fitting colocated. 
+StatsBase.dof(::Copulas.BernsteinCopula)    = 0
 function _fit(::Type{<:BernsteinCopula}, U, ::Val{:default}; pseudo_values = true, m = nothing, kwargs...)
     C = BernsteinCopula(EmpiricalCopula(U; pseudo_values=pseudo_values); m=m, kwargs...)
     return C, (; estimator=:segers2017, pseudo_values, m=C.m)
