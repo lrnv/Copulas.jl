@@ -19,9 +19,9 @@ struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: Sta
         )
     end
 end
-
-@inline  Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false..., kwargs...).result
-function Distributions.fit(::Type{CopulaModel}, ::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
+# forgot an `where T...``
+@inline Distributions.fit(::Type{T}, U; kwargs...) where {T<:Union{Copula, SklarDist}} = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
+function Distributions.fit(::Type{CopulaModel}, ::Type{T}, U; method = :default, summaries=true, kwargs...) where {T<:Copula}
     d, n  = size(U)
     C, meta = _fit(T, U, Val{method}(); kwargs...)
     ll     = Distributions.loglikelihood(C, U)
@@ -44,7 +44,7 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{<:Copula}, U; method = :d
         method_details = md)
 end
 # Fallback: if there is no _fit implemented for (T, method)
-function _fit(::Type{T}, ::AbstractMatrix, ::Any; kwargs...) where {T<:Copulas.Copula}
+function _fit(::Type{T}, ::AbstractMatrix, ::Any; kwargs...) where {T<:Copula}
     throw(ArgumentError("There is no _fit implemented for $(T) with the requested method."))
 end
 function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}}, X; copula_method = :default, sklar_method = :parametric,
