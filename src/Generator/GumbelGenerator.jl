@@ -22,7 +22,7 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct GumbelGenerator{T} <: AbstractFrailtyGenerator
+struct GumbelGenerator{T} <: UnivariateFrailtyGenerator
     θ::T
     function GumbelGenerator(θ)
         if θ < 1
