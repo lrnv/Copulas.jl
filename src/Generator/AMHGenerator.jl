@@ -21,7 +21,7 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct AMHGenerator{T} <: AbstractUnivariateGenerator
+struct AMHGenerator{T} <: Generator
     θ::T
     function AMHGenerator(θ)
         if (θ < -1) || (θ > 1)
@@ -40,42 +40,47 @@ Distributions.params(G::AMHGenerator) = (G.θ,)
 
 
 function _find_critical_value_amh(k; step=1e-7)
-    # this function was used to define things in max_monotony below. 
+    # Return the threshold θ_k such that “θ < θ_k ⇒ max_monotony returns k-1”.
+    # This unifies analytic and numeric thresholds and falls back to a
+    # numerical search via PolyLog for large k.
+    k == 2  && return -1.0
+    k == 3  && return sqrt(3) - 2
+    k == 4  && return -5 + 2*sqrt(6)
+    k == 5  && return -13/2 - sqrt(105)/2 + (sqrt(2)/2) * sqrt(13*sqrt(105) + 135)
+    k == 6  && return -14 - 3 * sqrt(15) + sqrt(6) * sqrt(14 * sqrt(15) + 55)
+    k == 7  && return -0.00914869999999993
+    k == 8  && return -0.004376199999998468
+    k == 9  && return -0.002121400000000042
+    k == 10 && return -0.0010375999999997928
+    k == 11 && return -0.0005105999999999994
+    k == 12 && return -0.00025240000000000527
+    k == 13 && return -0.0001252000000000022
+    k == 14 && return -6.220000000000067e-5
+    k == 15 && return -3.099999999999991e-5
+    k == 16 && return -1.5500000000000048e-5
+    k == 17 && return -7.699999999999994e-6
+    k == 18 && return -3.839999999999973e-6
+    k == 19 && return -1.9199999999999918e-6
+    k == 20 && return -9.600000000000008e-7
+
     x = 0.0
     while x > -1
-        if PolyLog.reli.(-k, x) <= 0
-            x -= step
-        else
-            break
-        end
+        PolyLog.reli.(-k, x) > 0 && break
+        x -= step
     end
     return x
 end
+
 function max_monotony(G::AMHGenerator)
-    G.θ >= 0 && return Inf        
-    G.θ < sqrt(3)-2                && return 2  
-    G.θ < -5+2sqrt(6)              && return 3   
-    G.θ < -13/2 -sqrt(105)/2 +sqrt(2)/2 * sqrt(13sqrt(105)+135)     && return 4   
-    G.θ < -14 - 3 * sqrt(15) + sqrt(6) * sqrt(14 * sqrt(15) + 55)     && return 5   
-    G.θ < -0.00914869999999993     && return 6   
-    G.θ < -0.004376199999998468    && return 7    
-    G.θ < -0.002121400000000042    && return 8    
-    G.θ < -0.0010375999999997928   && return 9     
-    G.θ < -0.0005105999999999994   && return 10     
-    G.θ < -0.00025240000000000527  && return 11     
-    G.θ < -0.0001252000000000022   && return 12     
-    G.θ < -6.220000000000067e-5    && return 13    
-    G.θ < -3.099999999999991e-5    && return 14    
-    G.θ < -1.5500000000000048e-5   && return 15     
-    G.θ < -7.699999999999994e-6    && return 16    
-    G.θ < -3.839999999999973e-6    && return 17
-    G.θ < -1.9199999999999918e-6   && return 18
-    G.θ < -9.600000000000008e-7    && return 19
-    for k in 21:100
-        G.θ < _find_critical_value_amh(k, step=1e-7) && return k-1
+    G.θ >= 0 && return Inf
+    @inbounds for k in 3:100
+        if G.θ < _find_critical_value_amh(k, step=1e-7)
+            return k - 1
+        end
     end
     return 100
 end
+_θ_bounds(::Type{<:AMHGenerator}, d::Integer) = (_find_critical_value_amh(d, step=1e-7), 1.0)
 
 ϕ(  G::AMHGenerator, t) = (1-G.θ)/(exp(t)-G.θ)
 ϕ⁻¹(G::AMHGenerator, t) = log(G.θ + (1-G.θ)/t)

@@ -41,6 +41,7 @@ const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
 JoeCopula(d, θ) = ArchimedeanCopula(d, JoeGenerator(θ))
 Distributions.params(G::JoeGenerator) = (G.θ,)
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
+_θ_bounds(::Type{<:JoeGenerator}, ::Integer) = (1.0, Inf)
 
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
