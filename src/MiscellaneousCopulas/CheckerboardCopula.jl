@@ -148,6 +148,7 @@ end
 end
 
 # Fit API: mirror constructor for the moment until we get a better API ?
+StatsBase.dof(::Copulas.CheckerboardCopula) = 0
 function Distributions.fit(::Type{CT}, u; m=nothing, pseudo_values::Bool=true) where {CT<:CheckerboardCopula}
     return CheckerboardCopula(u; m=m, pseudo_values=pseudo_values)
 end

@@ -23,7 +23,7 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct FrankGenerator{T} <: Generator
+struct FrankGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function FrankGenerator(θ)
         if θ == -Inf
@@ -43,6 +43,8 @@ FrankCopula(d, θ) = ArchimedeanCopula(d, FrankGenerator(θ))
 Distributions.params(G::FrankGenerator) = (G.θ,)
 
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
+_θ_bounds(::Type{<:FrankGenerator}, d::Integer) = d ≥ 3 ? (0,  Inf) : (-Inf, Inf) 
+
 ϕ(G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
 ϕ⁽¹⁾(G::FrankGenerator, t) = (1 - 1 / (1 + exp(-t)*expm1(-G.θ))) / G.θ
 ϕ⁻¹⁽¹⁾(G::FrankGenerator, t) = G.θ / (-expm1(G.θ * t))
@@ -72,4 +74,33 @@ function τ⁻¹(::Type{T},tau) where T<:FrankGenerator
     else
         return s*Roots.fzero(x -> _frank_tau(x)-v, 0, Inf)
     end
+end
+
+function ρ(G::FrankGenerator)
+    θ = G.θ
+    (-Inf < θ < Inf) || throw(ArgumentError("Frank definido para θ∈ℝ\\{0}"))
+    abs(θ) < 1e-8 && return θ/6
+    return 1 + 12*(Debye(θ,2) - Debye(θ,1))/θ
+end
+
+function ρ⁻¹(::Type{FrankGenerator}, ρ̂::Real; tol::Real=1e-10)
+    ρc = clamp(ρ̂, -1+1e-12, 1-1e-12)
+
+    f(θ) = ρ(FrankGenerator(θ)) - ρc
+
+    # bracketing adaptative
+    # for ρ>0 search θ>0, for ρ<0 θ<0
+    if ρc > 0
+        a, b = 1e-6, 50.0
+        while f(a)*f(b) > 0 && b < 1e6
+            b *= 2
+        end
+    else
+        a, b = -50.0, -1e-6
+        while f(a)*f(b) > 0 && a > -1e6
+            a *= 2
+        end
+    end
+
+    return Roots.find_zero(f, (a,b), Roots.Brent(); xatol=tol, rtol=0)
 end

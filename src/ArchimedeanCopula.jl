@@ -98,17 +98,6 @@ function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     end
 end
 
-function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula} 
-    # @info "Archimedean fits are by default through inverse kendall tau."
-    d = size(u,1)
-    τ = StatsBase.corkendall(u')
-    # Then the off-diagonal elements of the matrix should be averaged:
-    avgτ = (sum(τ) .- d) / (d^2-d)
-    GT = generatorof(CT)
-    θ = τ⁻¹(GT,avgτ)
-    return ArchimedeanCopula(d,GT(θ))
-end
-
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
         return τ(C.G)
@@ -184,3 +173,54 @@ end
 
 # Subsetting colocated
 SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula(length(dims), C.G)
+
+
+
+##############################################################################################################################
+####### Fitting functions for univarate generators only. 
+##############################################################################################################################
+params(CT::Type{<:ArchimedeanCopula}) = params(generatorof(CT))
+_fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:default}) = _fit(CT, U, Val{:mle}()) # we want the default for archimedeans to be MLE ? or something else ? 
+function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:itau})
+    d = size(U,1)
+    GT   = generatorof(CT)
+    θs   = map(v -> τ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corkendall(U')))
+    θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
+    return CT(d, θ), (; estimator=:itau, eps)
+end
+function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:irho})
+    d = size(U,1)
+    GT   = generatorof(CT)
+    θs   = map(v -> ρ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corspearman(U')))
+    θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
+    return CT(d, θ), (; estimator=:irho, eps)
+end
+function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:ibeta})
+    d = size(U,1)
+    βobs = clamp(blomqvist_beta(U), -1, 1)
+    GT = generatorof(CT)
+    lo,hi = _θ_bounds(GT, d)
+    θ = Roots.find_zero(θ -> β(CT(d, θ)) - βobs, (lo,hi))
+    return CT(d, θ), (;)
+end
+function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
+    d = size(U,1)
+    GT = generatorof(CT)
+    lo, hi = _θ_bounds(GT, d)
+    θ0 = start isa Real ? start : 
+         start ∈ (:itau, :irho) ? only(Distributions.params(_fit(CT, U, Val{start}())[1])) : 
+         throw("The start parameter you provided is not either a real number, :itau or :irho")
+    θ0 = clamp(θ0, lo, hi)
+    f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
+    res = Optim.optimize(f, lo, hi,  [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
+    θ̂     = Optim.minimizer(res)[1]
+    return CT(d, θ̂), (; estimator=:mle, θ̂=θ̂, optimizer=:GradientDescent,
+                        xtol=xtol, converged=Optim.converged(res), 
+                        iterations=Optim.iterations(res))
+end
+
+function _fit(::Type{ArchimedeanCopula}, U, ::Val{:default})
+    # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted. 
+    d,n = size(U)
+    return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
+end

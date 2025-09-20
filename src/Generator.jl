@@ -62,6 +62,8 @@ struct WGenerator <: Generator end
 τ(::MGenerator)  = 1
 τ(::WGenerator)  = -1
 
+ρ(::IndependentGenerator)  = 0
+
 
 
 
@@ -109,7 +111,10 @@ end
 Distributions.params(G::FrailtyGenerator) = Distributions.params(G.F)
 frailty(G::FrailtyGenerator) = G.F
 
-
+# Add univaraite generator bindins: 
+abstract type AbstractUnivariateGenerator<:Generator end
+abstract type AbstractUnivariateFrailtyGenerator<:AbstractFrailtyGenerator end
+const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
 
 
 

@@ -31,6 +31,18 @@ function τ(C::Copula)
     r = Distributions.expectation(F,C; nsamples=10^4)
     return 4*r-1
 end
+function β(C::Copula{d}) where {d}
+    d ≥ 2 || throw(ArgumentError("β(C) requiere d≥2"))
+    if d == 2
+        return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
+    else
+        u     = fill(0.5, d)
+        C0    = Distributions.cdf(C, u)
+        Cbar0 = Distributions.cdf(SurvivalCopula(C, collect(1:d)), u)
+        h     = 2.0^(d-1) / (2.0^(d-1) - 1.0)
+        return h * (C0 + Cbar0 - 2.0^(1-d))
+    end
+end
 function StatsBase.corkendall(C::Copula{d}) where d
     # returns the matrix of bivariate kendall taus.
     K = ones(d,d)
