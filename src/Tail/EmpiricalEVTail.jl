@@ -164,3 +164,11 @@ function dA(tail::EmpiricalEVTail, t::Real)
     (i <= 0 || i >= length(tail.tgrid)) && return T(0)
     return T(tail.slope[i])
 end
+
+# By default, when no tail is given in the call, we fit the empirical tail. 
+_fit(T::Type{<:ExtremeValueCopula}, U, ::Val{:default}; kwargs...) = _fit(T, U, ::Val{:ols}; kwargs...)
+function _fit(::Type{<:ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; pseudo_values = true, estimator::Symbol = :ols, grid::Int = 401, eps::Real = 1e-3, kwargs...)
+    m = typeof(method).parameters[1]
+    C = EmpiricalEVCopula(U; estimator=estimator, grid=grid, eps=eps, pseudos=pseudo_values, estimator=m, kwargs...) # pass kwargs on, you never know. 
+    return C, (; estimator=m, pseudo_values, grid, eps)
+end

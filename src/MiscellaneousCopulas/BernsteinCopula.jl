@@ -168,3 +168,9 @@ function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NT
     comps = [Distributions.Beta(k, mi - (k - 1)) for k in 1:mi]
     return Distributions.MixtureModel(comps, α)
 end
+
+# Fitting colocated. 
+function _fit(::Type{<:BernsteinCopula}, U, ::Val{:default}; pseudo_values = true, m = nothing, kwargs...)
+    C = BernsteinCopula(EmpiricalCopula(U; pseudo_values=pseudo_values); m=m, kwargs...)
+    return C, (; estimator=:segers2017, pseudo_values, m=C.m)
+end

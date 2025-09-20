@@ -87,3 +87,10 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     return x
 end
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
+
+
+
+# Fitting functions: the default one is in the EmpiricalEvTail because this is what will happen by default. 
+
+
+
