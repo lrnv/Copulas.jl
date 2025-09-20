@@ -91,32 +91,9 @@ function blomqvist_beta(U::AbstractMatrix)
     return c * (acc/n - 2.0^(1-d))
 end
 
-function _uppertriangle_stats(M::AbstractMatrix)
-    n1, n2 = size(M)
-    @assert n1 == n2 "The matrix must be square (got $(n1)×$(n2))."
-    n = n1
-    k = n*(n-1) ÷ 2
-    T = float(eltype(M))
-    vals = Vector{T}(undef, k)
-    idx = 1
-    @inbounds for i in 1:n-1, j in i+1:n
-        vals[idx] = M[i, j]
-        idx += 1
-    end
-    μ = StatsBase.mean(vals)
-    σ = (k > 1) ? StatsBase.std(vals) : zero(μ)
-    return μ, σ, minimum(vals), maximum(vals)
+_uppertriangle_flat(mat) = [mat[idx] for idx in CartesianIndices(mat) if idx[1] < idx[2]]
+function _uppertriangle_mean_var(mat)
+    # compute the mean and std of the upper triangular part of the matrix (diagonal excluded)
+    gen = _uppertriangle_flat(mat)
+    return Statistics.mean(gen), length(gen) == 1 ? zero(gen[1]) : Statistics.std(gen), minimum(gen), maximum(gen)
 end
-
-# “Nice” name of the copula family, without parameters and with d
-_copula_family_label(C::Copulas.Copula) = begin
-    fam = String(nameof(typeof(C)))              # p.ej. "ClaytonCopula"
-    fam = endswith(fam, "Copula") ? fam[1:end-6] : fam
-    return string(fam, " d=", length(C), "")
-end
-
-# Short name of a marginal (without parameters)
-_margin_name(d) = String(nameof(typeof(d)))
-
-# Readable list of marginalia
-_margins_tuple_label(m::Tuple) = "(" * join(map(_margin_name, m), ", ") * ")"

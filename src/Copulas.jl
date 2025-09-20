@@ -126,10 +126,7 @@ module Copulas
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
-    include("Fitting/CopulaModel.jl")
-    include("Fitting/ArchimedeanFit.jl")
-
-    # overloadings of the show() function: 
+    include("fitting.jl")
     include("show.jl")
 
     export pseudos, # utility functions and methods making the interface: 

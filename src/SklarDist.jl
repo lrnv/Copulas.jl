@@ -71,3 +71,5 @@ StatsBase.dof(S::SklarDist) = StatsBase.dof(S.C) + sum(_dof_marg, S.m)
 
 _dof_marg(d) = hasmethod(StatsBase.dof, Tuple{typeof(d)}) ? StatsBase.dof(d) : length(Distributions.params(d))  # fallback si el marginal no tiene dof
 
+# I am not sure this is really needed, maybe this is done by itself by Distributions.jl
+Distributions.loglikelihood(S::SklarDist, X::AbstractMatrix{<:Real}) = sum(Base.Fix1(Distributions.logpdf, S), eachcol(X))
