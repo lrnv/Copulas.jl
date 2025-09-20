@@ -59,11 +59,15 @@ end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargins}
     sum(Distributions.logpdf(S.m[i],u[i]) for i in eachindex(u)) + Distributions.logpdf(S.C,clamp.(Distributions.cdf.(S.m,u),0,1))
 end
-function Distributions.fit(::Type{SklarDist{CT,TplMargins}},x) where {CT,TplMargins}
-    # The first thing to do is to fit the marginals : 
-    @assert length(TplMargins.parameters) == size(x,1)
-    m = Tuple(Distributions.fit(TplMargins.parameters[i],x[i,:]) for i in axes(x,1))
-    u = pseudos(x)
-    C = Distributions.fit(CT,u)
-    return SklarDist(C,m)
+function Distributions.loglikelihood(S::SklarDist, X::AbstractMatrix)
+    tot = 0.0
+    @inbounds for j in axes(X,2)
+        tot += Distributions.logpdf(S, @view X[:,j])
+    end
+    return tot
 end
+# total dof of the joint model = dof(copula) + sum dof(margins)
+StatsBase.dof(S::SklarDist) = StatsBase.dof(S.C) + sum(_dof_marg, S.m)
+
+_dof_marg(d) = hasmethod(StatsBase.dof, Tuple{typeof(d)}) ? StatsBase.dof(d) : length(Distributions.params(d))  # fallback si el marginal no tiene dof
+

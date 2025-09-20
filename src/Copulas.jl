@@ -20,7 +20,7 @@ module Copulas
     import BigCombinatorics
     import LambertW
     import Optim
-    using Printf
+    import Printf
 
     # Main code
     include("utils.jl")

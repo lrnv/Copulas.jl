@@ -2,181 +2,135 @@
 params(::Type{T}) where {T<:Copula} = throw("No params() function defined for type T = $T...")
 params(CT::Type{<:ArchimedeanCopula}) = params(generatorof(CT))
 
-function _fit(CT::Type{<:ArchimedeanCopula{d,<:UnivariateGenerator} where d}, U, method::Union{Val{:itau},Val{:irho}}; kwargs...)
-    d = size(U, 1)
+########## Archimedean 1-par fitting (itau / irho / ibeta / mle) ##########
+# ========== :itau ==========
+function _fit(CT::Type{<:ArchimedeanCopula}, U::AbstractMatrix, ::Val{:itau};
+              eps::Real=1e-10)
+    d = size(U,1)
+    d ≥ 2 || throw(ArgumentError("itau requiere d≥2"))
+    τmat = StatsBase.corkendall(U')              # d×d
     GT   = generatorof(CT)
-    if method == Val{:itau}()
-        θs = Base.Fix1(τ⁻¹, GT).(_uppertriangle_gen(StatsBase.corkendall(U')))
-    elseif method == Val{:irho}()
-        θs = Base.Fix1(ρ⁻¹, GT).(_uppertriangle_gen(StatsBase.corspearman(U')))
-    else
-        throw("This should never happen.")
-    end
-
-    θ = StatsBase.mean(θs)
-    θlo, θhi = _θ_bounds(GT, d) ######### Yes this kind of things is good, we should add bounds. 
-    θ = clamp(θ, θlo, θhi)
-
-    C = CT(d, θ) # so here we assume that any archimedean with univaraite parameter can be constructed this way. 
-    return C, (;) # i found no extra things to give here ? 
+    θs   = map(v -> τ⁻¹(GT, clamp(v, -1+eps, 1-eps)), _uppertriangle_stats(τmat))
+    θ    = StatsBase.mean(θs)
+    lo, hi = _θ_bounds(GT, d)
+    if isfinite(lo) && θ ≤ lo; θ = nextfloat(float(lo)); end
+    if isfinite(hi) && θ ≥ hi; θ = prevfloat(float(hi)); end
+    return CT(d, θ), (; estimator=:itau, eps)
 end
 
-# ============================= :IBETA =======================================
-function _fit(CT::Type{<:ArchimedeanCopula{d,<:UnivariateGenerator} where d}, U, ::Val{:ibeta}; epsβ::Real=1e-10, max_expand::Int=20)
-    # data
-    d, n = size(U)
-    d ≥ 2 || throw(ArgumentError("fit_ibeta(Archimedean) requires d≥2."))
+# ========== :irho ==========
+function _fit(CT::Type{<:ArchimedeanCopula}, U::AbstractMatrix, ::Val{:irho};
+              eps::Real=1e-10)
+    d = size(U,1)
+    d ≥ 2 || throw(ArgumentError("irho requiere d≥2"))
+    ρmat = StatsBase.corspearman(U')             # d×d
+    GT   = generatorof(CT)
+    θs   = map(v -> ρ⁻¹(GT, clamp(v, -1+eps, 1-eps)), _uppertriangle_stats(ρmat))
+    θ    = StatsBase.mean(θs)
+    lo, hi = _θ_bounds(GT, d)
+    if isfinite(lo) && θ ≤ lo; θ = nextfloat(float(lo)); end
+    if isfinite(hi) && θ ≥ hi; θ = prevfloat(float(hi)); end
+    return CT(d, θ), (; estimator=:irho, eps)
+end
 
-    # β̂ multivariante (Hofert–Mächler–McNeil, ec. (7))
+# ========== :ibeta (root en 1D con Brent) ==========
+function _fit(CT::Type{<:ArchimedeanCopula}, U::AbstractMatrix, ::Val{:ibeta};
+              epsβ::Real=1e-10, max_expand::Int=20)
+    d = size(U,1)
+    d ≥ 2 || throw(ArgumentError("ibeta requiere d≥2"))
     β̂ = clamp(blomqvist_beta(U), -1 + epsβ, 1 - epsβ)
 
     GT = generatorof(CT)
     θlo, θhi = _θ_bounds(GT, d)
     a = isfinite(θlo) ? nextfloat(float(θlo)) : -5.0
     b = isfinite(θhi) ? prevfloat(float(θhi)) :  5.0
-    if !(a < b); a, b = b, a; end  # ensure order
+    if !(a < b); a, b = b, a; end
 
     f(θ) = begin
-        Cθ = ArchimedeanCopula(d, GT(θ))
+        Cθ = CT(d, θ)
         β(Cθ) - β̂
     end
 
-    fa = f(a); fb = f(b)
+    fa, fb = f(a), f(b)
 
-    #If there is at least one infinite bound and there is no change of sign, we expand
+    # we expand if there is an infinite bound and there is no sign change
     if ( !isfinite(θlo) || !isfinite(θhi) ) && sign(fa) == sign(fb)
         k = 0
         while sign(fa) == sign(fb) && k < max_expand
-            if !isfinite(θhi)
-                b *= 2
-                fb = f(b)
-                if sign(fa) != sign(fb); break; end
-            end
-            if !isfinite(θlo) && sign(fa) == sign(fb)
-                a *= 2
-                fa = f(a)
-            end
+            if !isfinite(θhi); b *= 2; fb = f(b); end
+            if sign(fa) != sign(fb); break; end
+            if !isfinite(θlo); a *= 2; fa = f(a); end
             k += 1
         end
     end
 
-    # If there is still no bracket, β̂ is outside the achievable range → nearest extreme
+    # if no bracket yet → β̂ out of range → nearest end
     if sign(fa) == sign(fb)
-        θstar = (abs(fa) <= abs(fb)) ? a : b
-        return ArchimedeanCopula(d, GT(θstar)), (; epsβ)
+        θstar = (abs(fa) ≤ abs(fb)) ? a : b
+        return CT(d, θstar), (; estimator=:ibeta, epsβ)
     end
 
-    # Root by Brent (uses Roots.jl; if you've already imported it, you can leave Roots.find_zero)
     θ = Roots.find_zero(f, (a, b), Roots.Brent(); xatol=1e-10, rtol=0.0)
-
     if isfinite(θlo) && θ ≤ θlo; θ = nextfloat(float(θlo)); end
     if isfinite(θhi) && θ ≥ θhi; θ = prevfloat(float(θhi)); end
-
-    return ArchimedeanCopula(d, GT(θ)), (; epsβ)
+    return CT(d, θ), (; estimator=:ibeta, epsβ)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d,<:UnivariateGenerator} where d}, U::AbstractMatrix;
-                      start::Union{Symbol,Real} = :itau, xtol::Real = 1e-8)
 
-    d, n = size(U)
+# ========== :mle (Brent en 1D; no vcov by default) ==========
+@inline function _finite_box1(lo::Float64, hi::Float64, θ0::Float64; width::Float64=50.0)
+    a = isfinite(lo) ? lo : (θ0 - width)
+    b = isfinite(hi) ? hi : (θ0 + width)
+    if !(a < b); a, b = min(θ0 - 1.0, θ0), max(θ0, θ0 + 1.0); end
+    return (a, b)
+end
+
+function _fit(CT::Type{<:ArchimedeanCopula}, U::AbstractMatrix, ::Val{:mle};
+              start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
+    d = size(U,1)
+    d ≥ 2 || throw(ArgumentError("mle requiere d≥2"))
     GT = generatorof(CT)
-    θlo, θhi = _θ_bounds(GT, d)
-    lo, hi = float(θlo), float(θhi)
+    lo, hi = map(float, _θ_bounds(GT, d))
 
-    θ0 = start isa Symbol ? only(Distributions.params(fit(CT,U, Val{quickstart}))) : start
+    # seed
+    θ0 = if start === :itau
+        τmat = StatsBase.corkendall(U')
+        vals = collect(_uppertriangle_stats(τmat))
+        StatsBase.mean(map(v -> τ⁻¹(GT, clamp(v, -0.9999999999, 0.9999999999)), vals))
+    elseif start === :irho
+        ρmat = StatsBase.corspearman(U')
+        vals = collect(_uppertriangle_stats(ρmat))
+        StatsBase.mean(map(v -> ρ⁻¹(GT, clamp(v, -0.9999999999, 0.9999999999)), vals))
+    elseif start isa Real
+        float(start)
+    else
+        error("start ∈ {:itau,:irho} or numeric")
+    end
     if isfinite(lo) && θ0 ≤ lo; θ0 = nextfloat(lo); end
     if isfinite(hi) && θ0 ≥ hi; θ0 = prevfloat(hi); end
 
-    f(θ) = Distributions.loglikelihood(CT(d, θ), U)
+    f(θ) = begin
+        Cθ = CT(d, θ)
+        -Distributions.loglikelihood(Cθ, U)
+    end
 
-    θ̂, fmin = if isfinite(lo) && isfinite(hi)
-        res = Optim.optimize(f, lo, hi; abs_tol=xtol)
-        (Optim.minimizer(res), Optim.minimum(res))
-    else
-        a, b = _finite_box1(lo, hi, θ0; width=50.0)
-        res  = Optim.optimize(f, a, b; abs_tol=xtol)
-        (Optim.minimizer(res), Optim.minimum(res))
+    t = @elapsed begin
+        if isfinite(lo) && isfinite(hi)
+            res = Optim.optimize(f, lo, hi; abs_tol=xtol)
+            global θ̂ = Optim.minimizer(res); global nll = Optim.minimum(res)
+            global _conv = Optim.converged(res); global _it = Optim.iterations(res)
+        else
+            a,b = _finite_box1(lo, hi, θ0; width=50.0)
+            res = Optim.optimize(f, a, b; abs_tol=xtol)
+            global θ̂ = Optim.minimizer(res); global nll = Optim.minimum(res)
+            global _conv = Optim.converged(res); global _it = Optim.iterations(res)
+        end
     end
 
     if isfinite(lo) && θ̂ ≤ lo; θ̂ = nextfloat(lo); end
     if isfinite(hi) && θ̂ ≥ hi; θ̂ = prevfloat(hi); end
 
-    C = CT(d, θ̂ ), 
-    meta = (; estimator=:mle, θ̂=θ̂, ll=-fmin, optimizer=:Brent,
-            maxiter=maxiter, xtol=xtol, #vcov=V, vcov_method = isnothing(V) ? :none : :hessian,
-            converged=true, iterations=0, elapsed_sec=t)
-    return C, meta
-
-    # I did not look at this its probably completely nonfunctioning now, sorry about that. 
-    # d  = length(Ĉ)
-    # θ̂ = Float64(only(Distributions.params(Ĉ)))
-    # I  = _obsinfo1(CT, d, U, θ̂)
-    # V = (isfinite(I) && I > 0) ? [1 / I;;] : nothing
-end
-
-@inline function _finite_box1(lo::Float64, hi::Float64, θ0::Float64; width::Float64=50.0)
-    a = isfinite(lo) ? lo : (θ0 - width)
-    b = isfinite(hi) ? hi : (θ0 + width)
-    if !(a < b)
-        a, b = min(θ0 - 1.0, θ0), max(θ0, θ0 + 1.0)
-    end
-    return (a, b)
-end
-
-# Second numerical derivative of ℓ(θ) in θ̂ ⇒ I_obs(θ̂) = -ℓ''(θ̂)
-# ℓ''(θ̂) robust (1D) with scaling and fallback; returns I_obs = -ℓ''(θ̂)
-@inline function _obsinfo1(::Type{CT}, d::Integer, U::AbstractMatrix, θ̂::Float64;
-                           scale::Float64 = 1.0) where {CT<:ArchimedeanCopula}
-    GT = generatorof(CT)
-    θlo, θhi = θ_bounds(GT, d)
-    lo, hi = float(θlo), float(θhi)
-
-    f(θ) = Distributions.loglikelihood(CT(d, θ), U)
-
-    hbase = scale * max(1.0, abs(θ̂)) * cbrt(eps(Float64))
-
-    function fit_h(h::Float64)
-        h0 = h
-        if isfinite(lo) && θ̂ - h0 ≤ lo; h0 = max((θ̂ - nextfloat(lo))/2, eps()); end
-        if isfinite(hi) && θ̂ + h0 ≥ hi; h0 = max((prevfloat(hi) - θ̂)/2, eps()); end
-        return h0
-    end
-
-    #1) attempt with simple central difference
-    for factor in (1.0, 3.0, 10.0)# fallback: increase the step if necessary
-        h = fit_h(hbase * factor)
-        h ≤ 0 && continue
-        fp, f0, fm = f(θ̂ + h), f(θ̂), f(θ̂ - h)
-        ℓpp = (fp - 2f0 + fm) / (h*h)
-        I = -ℓpp
-        if isfinite(I) && I > 0
-            return I
-        end
-    end
-
-    # 2) "smoothed" attempt: parabolic fitting with ±h and ±2h
-    h = fit_h(hbase * 2)
-    if h > 0
-        θs = (θ̂ - 2h, θ̂ - h, θ̂, θ̂ + h, θ̂ + 2h)
-        fs = map(f, θs)
-        offs = (-2h, -h, 0.0, h, 2h)
-        X = [ (x^2, x, 1.0) for x in offs ]
-        A = zeros(3,3); y = zeros(3)
-        for i in 1:5
-            a1,b1,c1 = X[i]
-            A[1,1] += a1*a1; A[1,2] += a1*b1; A[1,3] += a1*1
-            A[2,1] += b1*a1; A[2,2] += b1*b1; A[2,3] += b1*1
-            A[3,1] += 1*a1;  A[3,2] += 1*b1;  A[3,3] += 1*1
-            y[1]   += a1*fs[i]; y[2] += b1*fs[i]; y[3] += 1*fs[i]
-        end
-        abc = A \ y
-        a = abc[1]
-        I = -(2a)
-        if isfinite(I) && I > 0
-            return I
-        end
-    end
-
-    return NaN  # unsuccessful → the caller will put vcov = nothing
+    return CT(d, θ̂), (; estimator=:mle, θ̂=θ̂, optimizer=:Brent,
+                        xtol=xtol, converged=_conv, iterations=_it, elapsed_sec=t)
 end
 
 ############################################################################
