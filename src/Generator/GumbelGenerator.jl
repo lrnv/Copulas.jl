@@ -55,25 +55,18 @@ end
 # The folliwng function got commented because it does WORSE in term of runtime than the 
 # corredponsing generic :)
 
-# function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
-#     α = 1 / G.θ
-#     return eltype(t)(ϕ(G, t) * t^(-d) * sum(
-#         α^j * BigCombinatorics.Stirling1(d, j) * sum(BigCombinatorics.Stirling2(j, k) * (-t^α)^k for k in 1:j) for j in 1:d
-#     ))
-# end
+function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
+    α = 1 / G.θ
+    return eltype(t)(ϕ(G, t) * t^(-d) * sum(
+        α^j * Float64(BigCombinatorics.Stirling1(d, j)) * sum(Float64(BigCombinatorics.Stirling2(j, k)) * (-t^α)^k for k in 1:j) for j in 1:d
+    ))
+end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * exp(log(-log(t))*(G.θ - 1))) / t
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
 function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
-    if τ == 1
-        return Inf
-    else
-        θ = 1/(1-τ)
-        if θ < 1
-            @info "GumbelCopula cannot handle κ <0."
-            return 1
-        end
-        return θ
-    end
+    τ ≥ 1 && return Inf
+    τ ≤ 0 && return one(τ)
+    return 1/(1-τ)
 end
 
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
