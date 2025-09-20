@@ -33,7 +33,7 @@ end
 
 const BC2Copula{T} = ExtremeValueCopula{2, BC2Tail{T}}
 BC2Copula(a, b) = ExtremeValueCopula(2, BC2Tail(a, b))
-Distributions.params(tail::BC2Tail) = (tail.a, tail.b)
+Distributions.params(tail::BC2Tail) = (a = tail.a, b = tail.b)
 
 function A(tail::BC2Tail, t::Real)
     tt = _safett(t)

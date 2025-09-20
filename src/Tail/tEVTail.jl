@@ -46,7 +46,7 @@ end
 
 const tEVCopula{T} = ExtremeValueCopula{2, tEVTail{T}}
 tEVCopula(ν, ρ) = ExtremeValueCopula(2, tEVTail(ν, ρ))
-Distributions.params(tail::tEVTail) = (tail.ν, tail.ρ)
+Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
 
 function A(tail::tEVTail, t::Real)
     ρ, ν = tail.ρ, tail.ν

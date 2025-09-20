@@ -37,7 +37,7 @@ struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
 end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
 GumbelBarnettCopula(d, θ) = ArchimedeanCopula(d, GumbelBarnettGenerator(θ))
-Distributions.params(G::GumbelBarnettGenerator) = (G.θ,)
+Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
 
 
 function _find_critical_value_gumbelbarnett(d::Integer)

@@ -84,3 +84,7 @@ SubsetCopula(C::TCopula{d,df,MT}, dims::NTuple{p, Int}) where {d,df,MT,p} = TCop
 
 # Fitting collocated
 StatsBase.dof(C::Copulas.TCopula)           = (p = length(C); p*(p-1) ÷ 2 + 1)
+function Distributions.params(C::TCopula{d,df,MT}) where {d,df,MT}
+    Σ = C.Σ; n = size(Σ,1)
+    return (; ν = df, (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:n-1 for j in i+1:n)...)
+end

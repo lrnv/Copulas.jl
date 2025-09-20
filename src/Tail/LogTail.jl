@@ -36,7 +36,7 @@ end
 
 const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
 LogCopula(θ) = ExtremeValueCopula(2, LogTail(θ))
-Distributions.params(tail::LogTail) = (tail.θ,)
+Distributions.params(tail::LogTail) = (θ = tail.θ,)
 
 function ℓ(tail::LogTail, t)
     t₁, t₂ = t

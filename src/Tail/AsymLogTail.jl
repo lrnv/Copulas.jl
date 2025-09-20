@@ -45,7 +45,7 @@ end
 
 const AsymLogCopula{T} = ExtremeValueCopula{2, AsymLogTail{T}}
 AsymLogCopula(α, θ) =  ExtremeValueCopula(2, AsymLogTail(α, θ))
-Distributions.params(tail::AsymLogTail) = (tail.α, tail.θ₁, tail.θ₂)
+Distributions.params(tail::AsymLogTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 
 function A(tail::AsymLogTail, t::Real)
     tt = _safett(t)

@@ -35,5 +35,5 @@ end
 
 const MixedCopula{T} = ExtremeValueCopula{2, MixedTail{T}}
 MixedCopula(θ) = ExtremeValueCopula(2, MixedTail(θ))
-Distributions.params(tail::MixedTail) = (tail.θ,)
+Distributions.params(tail::MixedTail) = (θ = tail.θ,)
 A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1

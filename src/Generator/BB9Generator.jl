@@ -32,7 +32,7 @@ end
 
 const BB9Copula{d, T} = ArchimedeanCopula{d, BB9Generator{T}}
 BB9Copula(d, θ, δ) = ArchimedeanCopula(d, BB9Generator(θ, δ))
-Distributions.params(G::BB9Generator) = (G.θ, G.δ)
+Distributions.params(G::BB9Generator) = (θ = G.θ, δ = G.δ)
 
 ϕ(  G::BB9Generator, s) = begin
     a  = inv(G.θ)

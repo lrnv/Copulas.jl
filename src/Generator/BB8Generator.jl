@@ -38,7 +38,7 @@ end
 
 const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
 BB8Copula(d, ϑ, δ) = ArchimedeanCopula(d, BB8Generator(ϑ, δ))
-Distributions.params(G::BB8Generator) = (G.ϑ, G.δ)
+Distributions.params(G::BB8Generator) = (ϑ = G.ϑ, δ = G.δ)
 
 @inline _η(G::BB8Generator) = -expm1(G.ϑ * log1p(-G.δ))
 

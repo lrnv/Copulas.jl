@@ -38,7 +38,7 @@ end
 
 const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
 BB6Copula(d, θ, δ) = ArchimedeanCopula(d, BB6Generator(θ, δ))
-Distributions.params(G::BB6Generator) = (G.θ, G.δ)
+Distributions.params(G::BB6Generator) = (θ = G.θ, δ = G.δ)
 
 ϕ(  G::BB6Generator, s) = 1 - (1 - exp(-s^(inv(G.δ))))^(inv(G.θ))
 ϕ⁻¹(G::BB6Generator, t) = (-log1p(- (1 - t)^(G.θ)))^(G.δ)

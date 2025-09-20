@@ -134,3 +134,8 @@ SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula(C
 # Fitting collocated
 StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
 
+function Distributions.params(C::GaussianCopula)
+    Σ = C.Σ; n = size(Σ,1)
+    # NamedTuple: (ρ_12 = ..., ρ_13 = ..., ρ_23 = ..., ...)
+    return (; (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:n-1 for j in i+1:n)...)
+end

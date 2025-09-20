@@ -40,7 +40,7 @@ struct FrankGenerator{T} <: AbstractUnivariateGenerator
 end
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
 FrankCopula(d, θ) = ArchimedeanCopula(d, FrankGenerator(θ))
-Distributions.params(G::FrankGenerator) = (G.θ,)
+Distributions.params(G::FrankGenerator) = (θ = G.θ,)
 
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
 _θ_bounds(::Type{<:FrankGenerator}, d::Integer) = d ≥ 3 ? (0,  Inf) : (-Inf, Inf) 

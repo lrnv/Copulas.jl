@@ -32,7 +32,7 @@ end
 
 const BB3Copula{d, T} = ArchimedeanCopula{d, BB3Generator{T}}
 BB3Copula(d, θ, δ) = ArchimedeanCopula(d, BB3Generator(θ, δ))
-Distributions.params(G::BB3Generator) = (G.θ, G.δ)
+Distributions.params(G::BB3Generator) = (θ = G.θ, δ = G.δ)
 
 ϕ(  G::BB3Generator, s) = exp(-exp(log(log1p(s)/G.δ)/G.θ))
 ϕ⁻¹(G::BB3Generator, t) = expm1(G.δ * exp(G.θ * log(-log(t))))

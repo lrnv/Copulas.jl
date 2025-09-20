@@ -36,8 +36,7 @@ struct AMHGenerator{T} <: AbstractUnivariateGenerator
 end
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
 AMHCopula(d, θ) = ArchimedeanCopula(d, AMHGenerator(θ))
-Distributions.params(G::AMHGenerator) = (G.θ,)
-
+Distributions.params(G::AMHGenerator) = (θ = G.θ,)
 
 function _find_critical_value_amh(k; step=1e-7)
     # Return the threshold θ_k such that “θ < θ_k ⇒ max_monotony returns k-1”.
