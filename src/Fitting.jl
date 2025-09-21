@@ -25,41 +25,55 @@ Distributions.params(C::Copula) = throw("You need to specify the Distributions.p
 _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::Type{T}, d)` function for your copula type, returning an example of the copula type in dimension d.")
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
-_fit(T::Type{<:Copula}, ::Any, ::Any; kwargs...) = throw(ArgumentError("There is no _fit implemented for $(T) with the requested method."))
-
-function _fit(CT::Type{<:Copulas.Copula}, U, method::Union{Val{:mle},Val{:itau},Val{:irho},Val{:ibeta}})
+function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
     d   = size(U,1)
-    θ₀  = Distributions.params(_example(CT, d))
-    α₀  = _unbound_params(CT, d, θ₀)
-    loss(α) = begin
-        θ = _rebound_params(CT, d, α)
-        C = CT(d, θ...)
-        if method isa Val{:mle}
-            return -Distributions.loglikelihood(C, U)
-        elseif method isa Val{:itau}
-            τ̂ = StatsBase.corkendall(U')
-            τC = StatsBase.corkendall(C)
-            return sum(abs2, τ̂ .- τC)
-        elseif method isa Val{:irho}
-            ρ̂ = StatsBase.corspearman(U')
-            ρC = StatsBase.corspearman(C)
-            return sum(abs2, ρ̂ .- ρC)
-        else # :ibeta
-            β̂ = blomqvist_beta(U)
-            βC = blomqvist_beta(C)
-            return (β̂ - βC)^2
-        end
+    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    loss(α) = -Distributions.loglikelihood(CT(d, _rebound_params(CT, d, α)...), U)
+    try
+        Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=:forward)
+    catch err
+        @warn "LBFGS with AD failed ($err), retrying with NelderMead"
+        Optim.optimize(loss, α₀, Optim.NelderMead())
     end
-    res = if method isa Val{:mle}
-        try
-            Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=:forward)
-        catch err
-            @warn "LBFGS with AD failed ($err), retrying with NelderMead"
-            Optim.optimize(loss, α₀, Optim.NelderMead())
-        end
-    else
-        Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
-    end
+    θhat = _rebound_params(CT, d, Optim.minimizer(res))
+    return CT(d, θhat...),
+           (; θ̂=θhat,
+              optimizer = Optim.method(res),
+              converged = Optim.converged(res),
+              iterations = Optim.iterations(res))
+end
+function _fit(CT::Type{<:Copula}, U, ::Val{:itau})
+    d   = size(U,1)
+    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    tau = StatsBase.corkendall(U')
+    loss(α) = sum(abs2, tau .- StatsBase.corkendall(CT(d, _rebound_params(CT, d, α)...)))
+    Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
+    θhat = _rebound_params(CT, d, Optim.minimizer(res))
+    return CT(d, θhat...),
+           (; θ̂=θhat,
+              optimizer = Optim.method(res),
+              converged = Optim.converged(res),
+              iterations = Optim.iterations(res))
+end
+function _fit(CT::Type{<:Copula}, U, ::Val{:irho})
+    d   = size(U,1)
+    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    rho = StatsBase.corspearman(U')
+    loss(α) = sum(abs2, rho .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α)...)))
+    Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
+    θhat = _rebound_params(CT, d, Optim.minimizer(res))
+    return CT(d, θhat...),
+           (; θ̂=θhat,
+              optimizer = Optim.method(res),
+              converged = Optim.converged(res),
+              iterations = Optim.iterations(res))
+end
+function _fit(CT::Type{<:Copula}, U, ::Val{ibeta})
+    d   = size(U,1)
+    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    beta = blomqvist_beta(U)
+    loss(α) = (beta - blomqvist_beta(C))^2
+    Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
            (; θ̂=θhat,

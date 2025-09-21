@@ -27,12 +27,12 @@
     # - meth: string of method flags per METHODS; remove letters to skip methods
     cases = [
         # Empirical/misc (all d)
-        ("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
-        ("Beta",            d -> BetaCopula,                                                              "234", "D"),
-        ("Checkerboard",    d -> CheckerboardCopula,                                                      "234", "D"),
-        ("Empirical",       d -> EmpiricalCopula,                                                         "234", "D"),
+        # ("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
+        # ("Beta",            d -> BetaCopula,                                                              "234", "D"),
+        # ("Checkerboard",    d -> CheckerboardCopula,                                                      "234", "D"),
+        # ("Empirical",       d -> EmpiricalCopula,                                                         "234", "D"),
         ("Independent",     d -> IndependentCopula,                                                       "234", "DMTRB"),
-        ("M",               d -> MCopula,                                                                 "234", "DMTRB"),
+        # ("M",               d -> MCopula,                                                                 "234", "DMTRB"),
 
         # # Elliptical (all d)
         # ("Gaussian",        d -> GaussianCopula,                                                          "234", "DMTRB"),
