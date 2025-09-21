@@ -15,6 +15,12 @@ References:
 struct MCopula{d} <: Copula{d} 
     MCopula(d) = new{d}()
 end
+Distributions.params(::MCopula) = ()
+_example(::Type{<:MCopula}, d) = MCopula(d)
+_unbound_params(::Type{<:MCopula}, d, θ) = Float64[]
+_rebound_params(::Type{<:MCopula}, d, α) = (;)
+_fit(::Type{<:MCopula}, U, ::Any) = MCopula(size(U,1)), (;)
+
 Distributions._logpdf(::MCopula{d}, u) where {d} = all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::MCopula{d}, u) where {d} = Base.minimum(u)
 

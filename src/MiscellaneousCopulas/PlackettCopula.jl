@@ -46,6 +46,13 @@ end
 
 Base.eltype(S::PlackettCopula{P}) where {P} = P # this shuold be P. 
 
+# Fitting/params interface
+Distributions.params(C::PlackettCopula) = (θ = C.θ,)
+PlackettCopula(::Integer, θ::Real) = PlackettCopula(θ)   # allow CT(d, θ) in tests
+_example(::Type{PlackettCopula}, d::Integer) = PlackettCopula(0.5)
+_unbound_params(::Type{PlackettCopula}, d::Integer, θ) = [log(θ.θ)]         # θ > 0
+_rebound_params(::Type{PlackettCopula}, d::Integer, α) = (; θ = exp(α[1]))
+
 # CDF calculation for bivariate Plackett Copula
 function _cdf(S::PlackettCopula{P}, uv) where {P}
     u, v = uv

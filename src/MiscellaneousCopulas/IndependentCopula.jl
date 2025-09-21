@@ -16,6 +16,13 @@ struct IndependentCopula{d} <: Copula{d}
     IndependentCopula(d) = new{d}()
 end
 
+# Fitting/params interface (no parameters)
+Distributions.params(::IndependentCopula) = ()
+_example(::Type{<:IndependentCopula}, d) = IndependentCopula(d)
+_unbound_params(::Type{<:IndependentCopula}, d, θ) = Float64[]
+_rebound_params(::Type{<:IndependentCopula}, d, α) = (;)
+_fit(::Type{<:IndependentCopula}, U, ::Any) = IndependentCopula(size(U,1)), (;)
+
 _cdf(::IndependentCopula{d}, u) where d = prod(u)
 Distributions._logpdf(::IndependentCopula{d}, u) where {d} = all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
 
