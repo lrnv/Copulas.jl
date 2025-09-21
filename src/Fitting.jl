@@ -47,7 +47,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:itau})
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
     tau = StatsBase.corkendall(U')
     loss(α) = sum(abs2, tau .- StatsBase.corkendall(CT(d, _rebound_params(CT, d, α)...)))
-    Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
+    res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
            (; θ̂=θhat,
@@ -60,7 +60,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:irho})
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
     rho = StatsBase.corspearman(U')
     loss(α) = sum(abs2, rho .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α)...)))
-    Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
+    res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
            (; θ̂=θhat,
@@ -72,8 +72,8 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:ibeta})
     d   = size(U,1)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
     beta = blomqvist_beta(U)
-    loss(α) = (beta - blomqvist_beta(C))^2
-    Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
+    loss(α) = (beta - β(CT(d, _rebound_params(CT, d, α)...)))^2
+    res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
            (; θ̂=θhat,
