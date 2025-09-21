@@ -26,20 +26,23 @@ _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::T
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
 _fit(T::Type{<:Copula}, ::Any, ::Any; kwargs...) = throw(ArgumentError("There is no _fit implemented for $(T) with the requested method."))
+
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:mle},Val{:itau},Val{:irho},Val{:ibeta}})
     d = size(U,1)
     α₀ = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-    if method isa Val{:mle}
-        loss(α) = - Distributions.loglikelyhood(CT(d, _rebound_params(CT, d, α)...), U)
-    elseif method isa Val{:itau}
-        τ = StatsBase.corkendall(U')
-        loss(α) = sum(abs2, τ .- StatsBase.corkendall(CT(d, _rebound_params(CT, d, α))))
-    elseif method isa Val{:irho}
-        ρ = StatsBase.corspearman(U')
-        loss(α) = sum(abs2, ρ .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α))))
-    elseif method isa Val{:ibeta}
-        β = blomqvist_beta(U)
-        loss(α) = sum(abs2, β .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α))))
+    function loss(α)
+        if method isa Val{:mle}
+            return - Distributions.loglikelyhood(CT(d, _rebound_params(CT, d, α)...), U)
+        elseif method isa Val{:itau}
+            τ = StatsBase.corkendall(U')
+            return sum(abs2, τ .- StatsBase.corkendall(CT(d, _rebound_params(CT, d, α))))
+        elseif method isa Val{:irho}
+            ρ = StatsBase.corspearman(U')
+            return sum(abs2, ρ .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α))))
+        elseif method isa Val{:ibeta}
+            β = blomqvist_beta(U)
+            return sum(abs2, β .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α))))
+        end
     end
     res = Optim.optimize(f, α₀, Optim.LBFGS(), autodiff = :forward)
     θhat  = _rebound_params(CT, d, Optim.minimizer(res))
@@ -120,14 +123,6 @@ StatsBase.nobs(M::CopulaModel)     = M.n
 StatsBase.isfitted(::CopulaModel)  = true
 StatsBase.deviance(M::CopulaModel) = -2 * Distributions.loglikelihood(M)
 StatsBase.dof(M::CopulaModel) = StatsBase.dof(M.result)
-function StatsBase.dof(C::Copulas.Copula)
-    try
-        length(Distributions.params(C))
-    catch
-        error("Define `Distributions.params(::$(typeof(C)))` or specialize `StatsBase.dof`.")
-    end
-end
-
 copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 StatsBase.coef(M::CopulaModel) = collect(values(Distributions.params(copula_of(M)))) # why ? params of the marginals should also be taken into account. 
 StatsBase.coefnames(M::CopulaModel) = string.(keys(Distributions.params(copula_of(M))))
