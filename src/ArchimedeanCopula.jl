@@ -55,7 +55,6 @@ end
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 
 
 
-
 _cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .< 1)
@@ -179,7 +178,17 @@ SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = 
 ##############################################################################################################################
 ####### Fitting functions for univarate generators only. 
 ##############################################################################################################################
-params(CT::Type{<:ArchimedeanCopula}) = params(generatorof(CT))
+
+# When no generator is specified: 
+_example(CT::Type{ArchimedeanCopula}, d) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
+_unbound_params(CT::Type{ArchimedeanCopula}, d, θ) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
+_rebound_params(CT::Type{ArchimedeanCopula}, d, α) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
+function _fit(::Type{ArchimedeanCopula}, U, ::Val{:gnz2011})
+    # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted. 
+    d,n = size(U)
+    return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
+end
+
 _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:default}) = _fit(CT, U, Val{:mle}()) # we want the default for archimedeans to be MLE ? or something else ? 
 function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:itau})
     d = size(U,1)
@@ -217,10 +226,4 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U
     return CT(d, θ̂), (; estimator=:mle, θ̂=θ̂, optimizer=:GradientDescent,
                         xtol=xtol, converged=Optim.converged(res), 
                         iterations=Optim.iterations(res))
-end
-
-function _fit(::Type{ArchimedeanCopula}, U, ::Val{:default})
-    # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted. 
-    d,n = size(U)
-    return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
 end
