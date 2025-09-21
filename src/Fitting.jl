@@ -29,7 +29,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
     d   = size(U,1)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
     loss(α) = -Distributions.loglikelihood(CT(d, _rebound_params(CT, d, α)...), U)
-    try
+    res = try
         Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=:forward)
     catch err
         @warn "LBFGS with AD failed ($err), retrying with NelderMead"
