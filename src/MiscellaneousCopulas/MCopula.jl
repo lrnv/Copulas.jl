@@ -15,12 +15,6 @@ References:
 struct MCopula{d} <: Copula{d} 
     MCopula(d) = new{d}()
 end
-Distributions.params(::MCopula) = ()
-_example(::Type{<:MCopula}, d) = MCopula(d)
-_unbound_params(::Type{<:MCopula}, d, θ) = Float64[]
-_rebound_params(::Type{<:MCopula}, d, α) = (;)
-_fit(::Type{<:MCopula}, U, ::Union{Val{:mle}, Val{:itau}, Val{:irho}, Val{:ibeta}}) = MCopula(size(U,1)), (;)
-
 Distributions._logpdf(::MCopula{d}, u) where {d} = all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::MCopula{d}, u) where {d} = Base.minimum(u)
 
@@ -35,3 +29,11 @@ StatsBase.corspearman(::MCopula{d}) where d = ones(d,d)
 # Subsetting colocated
 SubsetCopula(::MCopula{d}, ::NTuple{p, Int}) where {d,p} = MCopula(p)
 DistortionFromCop(::MCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i::Int) = MDistortion(float(uⱼₛ[1]), Int8(js[1]))
+
+# Fitting/params interface (no parameters)
+Distributions.params(::MCopula) = (;)
+_fit(::Type{<:MCopula}, U, ::Val{:default}) = MCopula(size(U,1)), (;)
+_fit(::Type{<:MCopula}, U, ::Val{:mle}) = MCopula(size(U,1)), (;)
+_fit(::Type{<:MCopula}, U, ::Val{:itau}) = MCopula(size(U,1)), (;)
+_fit(::Type{<:MCopula}, U, ::Val{:irho}) = MCopula(size(U,1)), (;)
+_fit(::Type{<:MCopula}, U, ::Val{:ibeta}) = MCopula(size(U,1)), (;)
