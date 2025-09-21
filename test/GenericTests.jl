@@ -414,13 +414,28 @@
                 end
             end
 
-            @testset "Check Fitting the copula" begin
-                # This will largely change soon when the new fitting interface comes aroud. 
-                # For the moement the testing interface is mostly Ok for some copulas, and completely broken for all others. 
-                # We could do much better at it. 
+            @testset "Fitting interface" begin
+
+                # This should go through for every copula existing: 
+
+                # First on the _example copula. 
+                θ₀ = Distributions.params(_example(CT, d))
+                @assert θ₀ === _rebound_params(CT, d, _unbound_params(CT, d, θ₀))
+                @assert Distributions.params(CT(d, θ₀...)) === θ₀
+
+                # Then on the copula we have at hand:
+                θ = Distributions.params(C)
+                @assert θ=== _rebound_params(CT, d, _unbound_params(CT, d, θ))
+                @assert Distributions.params(CT(d, θ...)) === θ # this should hold everytime.
+                
+                # Now the fitting interface should go through whatever happens: 
                 try 
-                    fit(CT,spl10) # sometimes fails for non-monotonicity of the obtained generator. 
-                    # this is something we should fix :)
+                    r1 = fit(CopulaModel, CT, spl10)
+                    r2 = fit(CT,spl10)
+                    @test r2 == r1.result
+                    r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                    r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                    @test r4 == r3.result
                 catch
                 end
             end
