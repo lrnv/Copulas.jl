@@ -8,7 +8,7 @@
     using StableRNGs
     rng = StableRNG(123)
 
-    using Copulas: ClaytonGenerator, Williamsongenerator, GumbelGenerator, GalamlbosTail, MixedTail # to avoid typing "Copulas." in front. 
+    using Copulas: ClaytonGenerator, WilliamsonGenerator, GumbelGenerator, GalambosTail, MixedTail # to avoid typing "Copulas." in front. 
 
     # Methods legend (remove characters to skip a method for a model):
     # D = :default, M = :mle, T = :itau, R = :irho, B = :ibeta, G = :gnz2011

@@ -67,7 +67,6 @@ function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
     x = StatsBase.quantile.(U(CT),u)
     return Distributions.logpdf(N(CT)(C.Σ),x) - sum(Distributions.logpdf.(U(CT),x))
 end
-#this function is for test your idea 
 @inline function _Σ_from_named(d::Int, θ::NamedTuple)
     Tρ = eltype(values(θ))
     Σ  = Matrix{Tρ}(LinearAlgebra.I, d, d)
