@@ -20,6 +20,63 @@ struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: Sta
     end
 end
 
+
+# Fallback: if there is no _fit implemented for (T, method)
+# Maybe that is not the best idea to do ? 
+_fit(T::Type{<:Copulas.Copula}, ::Any, ::Any; kwargs...) = throw(ArgumentError("There is no _fit implemented for $(T) with the requested method."))
+
+
+#### We need a default method mle method here, that works for every model. 
+function _fit(CT::Type{<:Copulas.Copula}, U, ::Val{:mle})
+    d = size(U,1)
+    
+    # 1) we need a way to get at least the size of the parameters from the type itself, we do not have an instance yet.. 
+    θ₀ = _initial_params(CT) # CT is only the type ! this method is not here yet. 
+    # We need to be certain that the constructor will work with θ₀, and that the parameters will stay the same: 
+    @assert Distributions.params(CT(d, θ₀...)) === θ₀ # this should hold everytime. 
+    # I expect θ₀ here to be a named tuple
+
+    # 2) There might be constraints on these parameters. We need a way to remove them that works everytime. 
+    α₀ = _unbound_params(CT, initial_params)
+    @assert initial_params === _rebound_params(CT, θ₀)
+
+    # For example, if θ > 0, a silmple log/Exp is enough: 
+    # _unbound_params(CT, θ) = log(θ.θ₁) # recall that θ is a named tuple
+    # _rebound_params(CT, α) = (θ₁ = exp(α),)
+
+    # If the restriction is θ ∈ [a, b], a rescaled logit can work: 
+    # _unbound_params(CT, θ) = log((θ-a)/(b-θ))
+    # _rebound_params(CT, α) = (a + b * exp(α)) / (1 + exp(α))
+
+    # And similarly for other constraints. For a matrix Σ that needs to be positive definite, 
+    # there exists a matrix P unconstraints such that P'P = Σ, and we can have:
+    # unbound(Σ) = Cholesky ??
+    # rebound(P) = P'P ??
+    # something like that... 
+    
+    # 3) Setup the loss
+    # Since we want MLE, we can set the loss as follows: 
+    loss(α) = - Distributionsloglikelyhood(CT(d, _rebound_params(α)...), U)
+    # But if we do all this work, we will also be able to get other losses. 
+    # For example a kendall matrix difference with a sum of squares loss
+    # emp_tau_mat = StatsBase.corkendall
+    # loss(α) = sum((Statsbase.corkendall(CT(d, _rebound_params(α))) .- emp_tau_mat).^2)
+
+    # The saém ething can be done for irho and ibeta. 
+    # But other losses could be used as well ! just need to define them. 
+
+
+
+    res = Optim.optimize(f, α₀, Optim.LBFGS(), autodiff = :forward)
+    
+    α̂       = Optim.minimizer(res)
+    θ̂   = _rebound_params(α̂)
+    C_estimated = CT(d, θ̂...)
+
+    return C_estimated, (; θ̂=θ̂, optimizer=:LBFGS, converged=Optim.converged(res), iterations=Optim.iterations(res))
+
+end
+
 @inline  Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
     d, n  = size(U)
@@ -34,9 +91,6 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = 
         elapsed_sec  = get(md, :elapsed_sec, NaN),
         method_details = md)
 end
-# Fallback: if there is no _fit implemented for (T, method)
-# Maybe that is not the best idea to do ? 
-_fit(T::Type{<:Copulas.Copula}, ::Any, ::Any; kwargs...) = throw(ArgumentError("There is no _fit implemented for $(T) with the requested method."))
 function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}}, X; copula_method = :default, sklar_method = :parametric,
                            summaries = true, margins_kwargs = NamedTuple(), copula_kwargs = NamedTuple()) where
                            {CT<:Copulas.Copula, TplMargins<:Tuple}
