@@ -8,7 +8,7 @@
     using StableRNGs
     rng = StableRNG(123)
 
-    using Copulas: ClaytonGenerator, WilliamsonGenerator, GumbelGenerator, GalambosTail, MixedTail, ExtremeValueCopula # to avoid typing "Copulas." in front. 
+    using Copulas: ClaytonGenerator, WilliamsonGenerator, GumbelGenerator, GalambosTail, MixedTail, ExtremeValueCopula, FrailtyGenerator # to avoid typing "Copulas." in front. 
 
     # Methods legend (remove characters to skip a method for a model):
     # D = :default, M = :mle, T = :itau, R = :irho, B = :ibeta, G = :gnz2011
@@ -45,13 +45,13 @@
 
         # # Elliptical (all d)
         # ("Gaussian",        d -> GaussianCopula,                                                          "234", "DMTRB"),
-        ("t",               d -> TCopula,                                                                 "234", "TRB"),  ######## Cannot make the MLE work. 
+        # ("t",               d -> TCopula,                                                                 "234", "DMTRB"),  ######## Only :itau and :ibeta work here. 
 
         # # Archimedean generic and variants (all d)
-        # ("Archimedean(emp)", d -> ArchimedeanCopula,                                                      "234", "DG"),
-        # ("Archimedean{Clayton}", d -> ArchimedeanCopula{d, ClaytonGenerator},                             "234", "DMTRB"),
-        # ("Archimedean{Williamson(LogNormal)}", d -> ArchimedeanCopula{d, WilliamsonGenerator{LogNormal}}, "234", "D"),
-        # ("Archimedean{Frailty(LogNormal)}",   d -> ArchimedeanCopula{d, FrailtyGenerator{LogNormal}},     "234", "D"),
+        ("Archimedean(emp)", d -> ArchimedeanCopula,                                                      "234", "DG"),
+        ("Archimedean{Clayton}", d -> ArchimedeanCopula{d, ClaytonGenerator},                             "234", "DMTRB"),
+        # ("Archimedean{Williamson(LogNormal)}", d -> ArchimedeanCopula{d, WilliamsonGenerator{LogNormal}}, "234", "D"), # Not implemented
+        # ("Archimedean{Frailty(LogNormal)}",   d -> ArchimedeanCopula{d, FrailtyGenerator{LogNormal}},     "234", "D"), # Not implemented
 
         # # Specific Archimedean families (all d)
         # ("AMH",             d -> AMHCopula,                                                               "234", "DMTRB"),

@@ -226,8 +226,8 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:ibeta})  w
     d = size(U,1)
     βobs = clamp(blomqvist_beta(U), -1, 1)
     lo,hi = _θ_bounds(GT, d)
-    @show β(CT(d, lo)), βobs, β(CT(d, hi))
-    θ = Roots.find_zero(θ -> β(CT(d, θ)) - βobs, (lo,hi)) # does not bracket ?
+    # @show β(CT(d, lo)), βobs, β(CT(d, hi))
+    θ = Roots.find_zero(theta -> β(CT(d, theta)) - βobs, (lo,hi)) # does not bracket correctly even if the show function shows it should for clayton...
     return CT(d, θ), (;)
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)  where {GT<:UnivariateGenerator}
