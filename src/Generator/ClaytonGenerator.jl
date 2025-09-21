@@ -44,8 +44,11 @@ struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
 end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 ClaytonCopula(d, θ) = ArchimedeanCopula(d, ClaytonGenerator(θ))
+ClaytonCopula(d; θ::Real) = ClaytonCopula(d, θ)
 Distributions.params(G::ClaytonGenerator) = (θ = G.θ,)
-_θ_bounds(::Type{<:ClaytonGenerator},      d::Integer) = (-1/(d-1),  Inf)
+_example(CT::Type{<:ClaytonCopula}, d) = ClaytonCopula(d, 0.5)
+_unbound_params(::Type{<:ClaytonCopula}, d, θ) = [log(θ.θ + 1/(d-1))] # θ > -1/(d-1) ⇒ θ+1/(d-1)>0
+_rebound_params(::Type{<:ClaytonCopula}, d, α) = (; θ = exp(α[1]) - 1/(d-1))
 
 
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1/G.θ))

@@ -37,8 +37,21 @@ struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
 end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
 GumbelBarnettCopula(d, θ) = ArchimedeanCopula(d, GumbelBarnettGenerator(θ))
-Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
+GumbelBarnettCopula(d; θ::Real) = GumbelBarnettCopula(d, θ)
 
+Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
+_example(::Type{<:GumbelBarnettCopula}, d) = GumbelBarnettCopula(d, 0.5)
+function _unbound_params(::Type{<:GumbelBarnettCopula}, d, θ)
+    u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
+    return [log(θ.θ / (u - θ.θ))]
+end
+function _rebound_params(::Type{<:GumbelBarnettCopula}, d, α)
+    u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
+    ey = exp(α[1])
+    return (; θ = u*ey  / (1 + ey))
+end
+
+_θ_bounds(::Type{<:GumbelBarnettGenerator}, d::Integer) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
 
 function _find_critical_value_gumbelbarnett(d::Integer)
     d == 2 && return 1.0
@@ -74,7 +87,7 @@ function max_monotony(G::GumbelBarnettGenerator)
     end
     return 1_000
 end
-_θ_bounds(::Type{<:GumbelBarnettGenerator}, d::Integer) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
+
 
 ϕ(G::GumbelBarnettGenerator, t) = exp((1 - exp(t)) / G.θ)
 ϕ⁽¹⁾(G::GumbelBarnettGenerator, t) = -exp((1 - exp(t)) / G.θ) * exp(t) / G.θ

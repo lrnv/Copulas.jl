@@ -40,10 +40,14 @@ struct FrankGenerator{T} <: AbstractUnivariateGenerator
 end
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
 FrankCopula(d, θ) = ArchimedeanCopula(d, FrankGenerator(θ))
-Distributions.params(G::FrankGenerator) = (θ = G.θ,)
-
+FrankCopula(d; θ::Real) = FrankCopula(d, θ)
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
-_θ_bounds(::Type{<:FrankGenerator}, d::Integer) = d ≥ 3 ? (0,  Inf) : (-Inf, Inf) 
+
+Distributions.params(G::FrankGenerator) = (θ = G.θ,)
+_example(CT::Type{<:FrankCopula}, d) = FrankCopula(d, 1.0)
+_unbound_params(::Type{<:FrankCopula}, d, θ) = d == 2 ? [θ.θ] : [log(θ.θ)]
+_rebound_params(::Type{<:FrankCopula}, d, α) = d==2 ? (; θ = α[1]) : (; θ = exp(α[1]))
+
 
 ϕ(G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
 ϕ⁽¹⁾(G::FrankGenerator, t) = (1 - 1 / (1 + exp(-t)*expm1(-G.θ))) / G.θ
