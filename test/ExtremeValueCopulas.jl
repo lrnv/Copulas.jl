@@ -82,8 +82,8 @@
 
 @testitem "Generic OLS" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,10); estimator=:ols, pseudo_values=false)) end
 @testitem "Generic OLS" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,20); estimator=:ols, pseudo_values=false)) end
-@testitem "Generic Pickhands" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,10); estimator=:pickands, pseudo_values=false)) end
-@testitem "Generic Pickhands" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,20); estimator=:pickands, pseudo_values=false)) end
+@testitem "Generic Pickands" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,10); estimator=:pickands, pseudo_values=false)) end
+@testitem "Generic Pickands" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,20); estimator=:pickands, pseudo_values=false)) end
 @testitem "Generic CFG" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,10); estimator=:cfg, pseudo_values=false)) end
 @testitem "Generic CFG" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,20); estimator=:cfg, pseudo_values=false)) end
 

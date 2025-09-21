@@ -199,13 +199,14 @@ SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = 
 _example(CT::Type{ArchimedeanCopula}, d) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
 _unbound_params(CT::Type{ArchimedeanCopula}, d, θ) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
 _rebound_params(CT::Type{ArchimedeanCopula}, d, α) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
+_default_method(::Type{ArchimedeanCopula}) = :gnz2011
+_default_method(::Type{<:ArchimedeanCopula}) = :mle
 function _fit(::Type{ArchimedeanCopula}, U, ::Val{:gnz2011})
     # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted. 
     d,n = size(U)
     return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
 end
 
-_fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:default}) = _fit(CT, U, Val{:mle}()) # we want the default for archimedeans to be MLE ? or something else ? 
 function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:itau})
     d = size(U,1)
     GT   = generatorof(CT)
