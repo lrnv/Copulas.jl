@@ -50,7 +50,8 @@ struct ArchimedeanCopula{d,TG} <: Copula{d}
     ArchimedeanCopula(d::Int, ::IndependentGenerator) = IndependentCopula(d)
     ArchimedeanCopula(d::Int, ::MGenerator) = MCopula(d)
     ArchimedeanCopula(d::Int, ::WGenerator) = WCopula(d)
-    ArchimedeanCopula{d,TG}(θ) where {d, TG} = ArchimedeanCopula(d, TG(θ))
+    ArchimedeanCopula{d,TG}(args...; kwargs...) where {d, TG} = ArchimedeanCopula(d, TG(args...; kwargs...))
+    ArchimedeanCopula{D,TG}(d::Int, args...; kwargs...) where {D, TG} = ArchimedeanCopula(d, TG(args...; kwargs...))
 end
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 
 
@@ -207,35 +208,34 @@ function _fit(::Type{ArchimedeanCopula}, U, ::Val{:gnz2011})
     return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:itau})
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:itau}) where {GT<:UnivariateGenerator}
     d = size(U,1)
-    GT   = generatorof(CT)
+    # So here we do the mean on the theta side, maybe we should do it on the \tau side ?
     θs   = map(v -> τ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corkendall(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ), (; estimator=:itau, eps)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:irho})
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:irho})  where {GT<:UnivariateGenerator}
     d = size(U,1)
-    GT   = generatorof(CT)
+    # So here we do the mean on the theta side, maybe we should do it on the \rho side ?
     θs   = map(v -> ρ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corspearman(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ), (; estimator=:irho, eps)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:ibeta})
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:ibeta})  where {GT<:UnivariateGenerator}
     d = size(U,1)
     βobs = clamp(blomqvist_beta(U), -1, 1)
-    GT = generatorof(CT)
     lo,hi = _θ_bounds(GT, d)
-    θ = Roots.find_zero(θ -> β(CT(d, θ)) - βobs, (lo,hi))
+    @show β(CT(d, lo)), βobs, β(CT(d, hi))
+    θ = Roots.find_zero(θ -> β(CT(d, θ)) - βobs, (lo,hi)) # does not bracket ?
     return CT(d, θ), (;)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)  where {GT<:UnivariateGenerator}
     d = size(U,1)
-    GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
     θ0 = start isa Real ? start : 
          start ∈ (:itau, :irho) ? only(Distributions.params(_fit(CT, U, Val{start}())[1])) : 
-         throw("The start parameter you provided is not either a real number, :itau or :irho")
+         throw("You imputed start=$start, while i require either a real number, :itau or :irho")
     θ0 = clamp(θ0, lo, hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
     res = Optim.optimize(f, lo, hi,  [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
