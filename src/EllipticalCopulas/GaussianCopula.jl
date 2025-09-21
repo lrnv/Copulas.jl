@@ -78,40 +78,40 @@ end
 # Fitting collocated
 StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
 function Distributions.params(C::GaussianCopula)
-    Σ = C.Σ; n = size(Σ,1)
-    # NamedTuple: (ρ_12 = ..., ρ_13 = ..., ρ_23 = ..., ...)
-    return (; (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:n-1 for j in i+1:n)...)
+    Σ = C.Σ; d = size(Σ,1)
+    return (; (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:d-1 for j in i+1:d)...)
 end
+_example(::Type{GaussianCopula}, d::Int) = GaussianCopula(Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
 
-# Vararg constructor from pairwise correlations in the same order as Distributions.params
-function GaussianCopula(d::Integer, rhos::Vararg{<:Real})
-    nρ = d*(d-1) ÷ 2
-    length(rhos) == nρ || throw(ArgumentError("Expected $(nρ) off-diagonal correlations for d=$(d); got $(length(rhos))."))
-    Σ = Matrix{Float64}(I, d, d)
-    k = 1
-    @inbounds for i in 1:d-1, j in i+1:d
-        ρ = float(rhos[k]); k += 1
-        Σ[i,j] = ρ; Σ[j,i] = ρ
+function _unbound_params(::Type{GaussianCopula}, d::Int, θ::NamedTuple)
+    Σ = _Σ_from_named(d, θ)
+    L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=false).L
+    δ = log.(LinearAlgebra.diag(L))
+    ℓ = Vector{eltype(Σ)}(undef, d*(d-1)÷2); k=1
+    @inbounds for i in 2:d, j in 1:i-1
+        ℓ[k] = L[i,j]; k+=1
     end
-    return GaussianCopula(Σ)
+    return vcat(δ, ℓ)
 end
 
-# Fitting helpers for the generic interface
-_example(::Type{<:GaussianCopula}, d) = GaussianCopula(d, 0.3)
-function _unbound_params(::Type{<:GaussianCopula}, d, θ)
-    # θ is a NamedTuple (ρ_12=..., ρ_13=..., ...)
-    lo = -1/(d-1)
-    rhos = collect(values(θ))
-    return [log((ρ - lo) / (1 - ρ)) for ρ in rhos]
+function _rebound_params(::Type{GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
+    L = Matrix{T}(LinearAlgebra.I, d, d)
+    @inbounds begin
+        for i in 1:d; L[i,i] = exp(α[i]); end
+        k=1
+        for i in 2:d, j in 1:i-1
+            L[i,j] = α[d+k]; k+=1
+        end
+    end
+    S  = L*L'
+    dvec = sqrt.(LinearAlgebra.diag(S))
+    Dinv = LinearAlgebra.Diagonal(inv.(dvec))
+    Σ = Dinv * S * Dinv
+    Σ = (Σ + Σ')/2   # force simetric matrix ... 
+    return (; Σ = Σ)
 end
-function _rebound_params(::Type{<:GaussianCopula}, d, α)
-    lo = -1/(d-1)
-    rhos = map(exp, α)
-    vals = map(m -> (lo + m)/(1 + m), rhos)
-    # Recreate the same field names/ordering as Distributions.params
-    names = (Symbol("ρ_$(i)$(j)") for i in 1:d-1 for j in i+1:d)
-    return NamedTuple{Tuple(collect(names))}(Tuple(vals))
-end
+#only for flexibility in our fit... other option could be return CT(θhat.Σ), meta in generic mle fit...
+GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula(Σ) 
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:default})

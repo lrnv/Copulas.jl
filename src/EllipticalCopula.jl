@@ -67,14 +67,14 @@ function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
     x = StatsBase.quantile.(U(CT),u)
     return Distributions.logpdf(N(CT)(C.Σ),x) - sum(Distributions.logpdf.(U(CT),x))
 end
-function make_cor!(Σ)
-    # Verify that Σ is a correlation matrix, otherwise make it so : 
-    d = size(Σ,1)
-    σ = [1/sqrt(Σ[i,i]) for i in 1:d]
-    for i in 1:d
-        for j in 1:d
-            Σ[i,j] *= σ[i] .* σ[j]
-        end
+#this function is for test your idea 
+@inline function _Σ_from_named(d::Int, θ::NamedTuple)
+    Tρ = eltype(values(θ))
+    Σ  = Matrix{Tρ}(LinearAlgebra.I, d, d)
+    @inbounds for i in 1:d-1, j in i+1:d
+        ρ = θ[Symbol("ρ_$(i)$(j)")]
+        Σ[i,j] = Σ[j,i] = ρ
     end
+    return Σ
 end
 

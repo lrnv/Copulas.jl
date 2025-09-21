@@ -82,34 +82,28 @@ function Distributions.params(C::TCopula{d,df,MT}) where {d,df,MT}
     Σ = C.Σ; n = size(Σ,1)
     return (; ν = df, (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:n-1 for j in i+1:n)...)
 end
+_example(::Type{TCopula}, d::Int) = TCopula(5.0, Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
+function _unbound_params(::Type{TCopula}, d::Int, θ::NamedTuple)
+    Σ = _Σ_from_named(d, θ)
+    L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=false).L
+    δ = log.(LinearAlgebra.diag(L))
+    ℓ = [L[i,j] for i in 2:d for j in 1:i-1]
+    return vcat(log(θ.ν), δ, ℓ)
+end
 
-# Vararg constructor from ν and pairwise correlations
-function TCopula(d::Integer, ν::Integer, rhos::Vararg{<:Real})
-    nρ = d*(d-1) ÷ 2
-    length(rhos) == nρ || throw(ArgumentError("Expected $(nρ) off-diagonal correlations for d=$(d); got $(length(rhos))."))
-    Σ = Matrix{Float64}(I, d, d)
+function _rebound_params(::Type{TCopula}, d::Int, α::AbstractVector{T}) where {T}
+    ν = exp(α[1])
+    L = Matrix{T}(LinearAlgebra.I, d, d)
+    for i in 1:d; L[i,i] = exp(α[1+i]); end
     k = 1
-    @inbounds for i in 1:d-1, j in i+1:d
-        ρ = float(rhos[k]); k += 1
-        Σ[i,j] = ρ; Σ[j,i] = ρ
+    for i in 2:d, j in 1:i-1
+        L[i,j] = α[d+1+k]; k+=1
     end
-    return TCopula(ν, Σ)
+    S  = L*L'
+    dvec = sqrt.(LinearAlgebra.diag(S))
+    Σ = LinearAlgebra.Diagonal(inv.(dvec)) * S * LinearAlgebra.Diagonal(inv.(dvec))
+    Σ = (Σ + Σ')/2   # fuerza simetría
+    return (; ν = ν, Σ = Σ)
 end
 
-# Fitting helpers for the generic interface
-_example(::Type{<:TCopula}, d) = TCopula(5, fill(0.3, d, d))
-function _unbound_params(::Type{<:TCopula}, d, θ)
-    # θ is a NamedTuple (ν=..., ρ_12=..., ρ_13=..., ...)
-    lo = -1/(d-1)
-    ν = θ.ν
-    rhos = [getfield(θ, Symbol("ρ_$(i)$(j)")) for i in 1:d-1 for j in i+1:d]
-    return vcat([log(ν - 1.5)], [log((ρ - lo) / (1 - ρ)) for ρ in rhos])
-end
-function _rebound_params(::Type{<:TCopula}, d, α)
-    lo = -1/(d-1)
-    ν  = 1.5 + exp(α[1]) |> round |> Int
-    rhos = map(exp, α[2:end])
-    vals = map(m -> (lo + m)/(1 + m), rhos)
-    names = (Symbol("ρ_$(i)$(j)") for i in 1:d-1 for j in i+1:d)
-    return (; ν, NamedTuple{Tuple(collect(names))}(Tuple(vals))...)
-end
+TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula(ν, Σ)
