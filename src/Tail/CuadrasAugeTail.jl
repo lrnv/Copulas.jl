@@ -38,12 +38,22 @@ end
 
 const CuadrasAugeCopula{T} = ExtremeValueCopula{2, CuadrasAugeTail{T}}
 CuadrasAugeCopula(θ) = ExtremeValueCopula(2, CuadrasAugeTail(θ))
+CuadrasAugeCopula(d::Integer, θ) = ExtremeValueCopula(2, CuadrasAugeTail(θ))
 Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
 
 function A(tail::CuadrasAugeTail, t::Real)
     tt = _safett(t)
     θ = tail.θ
     return max(tt, 1-tt) + (1-θ) * min(tt, 1-tt)
+end
+
+# Fitting helpers for EV copulas using Cuadras–Augé tail (θ ∈ [0,1])
+_example(::Type{ExtremeValueCopula{2, CuadrasAugeTail{T}}}, d) where {T} = ExtremeValueCopula(2, CuadrasAugeTail(T(0.5)))
+_example(::Type{ExtremeValueCopula{2, CuadrasAugeTail}}, d) = ExtremeValueCopula(2, CuadrasAugeTail(0.5))
+_unbound_params(::Type{ExtremeValueCopula{2, CuadrasAugeTail}}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
+_rebound_params(::Type{ExtremeValueCopula{2, CuadrasAugeTail}}, d, α) = begin
+    p = 1 / (1 + exp(-α[1]))
+    (; θ = p)
 end
 
 dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 ? -tail.θ : C.tail.θ)

@@ -36,6 +36,7 @@ end
 
 const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
 LogCopula(θ) = ExtremeValueCopula(2, LogTail(θ))
+LogCopula(d::Integer, θ) = ExtremeValueCopula(2, LogTail(θ))
 Distributions.params(tail::LogTail) = (θ = tail.θ,)
 
 function ℓ(tail::LogTail, t)
@@ -43,6 +44,12 @@ function ℓ(tail::LogTail, t)
     θ = tail.θ
     return (t₁^θ + t₂^θ)^(1/θ)
 end
+
+# Fitting helpers for EV copulas using Log tail
+_example(::Type{ExtremeValueCopula{2, LogTail{T}}}, d) where {T} = ExtremeValueCopula(2, LogTail(one(T)+one(T)))
+_example(::Type{ExtremeValueCopula{2, LogTail}}, d) = ExtremeValueCopula(2, LogTail(2.0))
+_unbound_params(::Type{ExtremeValueCopula{2, LogTail}}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
+_rebound_params(::Type{ExtremeValueCopula{2, LogTail}}, d, α) = (; θ = exp(α[1]) + 1)
 
 # A(t) for LogCopula (avec log-exp pour la stabilité)
 function A(tail::LogTail, t::Real)

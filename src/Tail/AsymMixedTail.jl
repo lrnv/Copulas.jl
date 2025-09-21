@@ -51,10 +51,36 @@ end
 
 const AsymMixedCopula{T} = ExtremeValueCopula{2, AsymMixedTail{T}}
 AsymMixedCopula(θ) = ExtremeValueCopula(2, AsymMixedTail(θ))
+AsymMixedCopula(d::Integer, θ) = ExtremeValueCopula(2, AsymMixedTail(θ))
 Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 
 function A(tail::AsymMixedTail, t::Real)
   θ₁, θ₂ = tail.θ₁, tail.θ₂
   tt = _safett(t)
   return θ₂*tt^3 + θ₁*tt^2 - (θ₁+θ₂)*tt + 1
+end
+
+# Fitting helpers for EV copulas using Asymmetric Mixed tail
+_example(::Type{ExtremeValueCopula{2, AsymMixedTail{T}}}, d) where {T} = ExtremeValueCopula(2, AsymMixedTail((T(0.3), T(0.2))))
+_example(::Type{ExtremeValueCopula{2, AsymMixedTail}}, d) = ExtremeValueCopula(2, AsymMixedTail((0.3, 0.2)))
+
+# Constraint set: θ₁ ≥ 0, θ₁ + θ₂ ≤ 1, θ₁ + 2θ₂ ≤ 1, θ₁ + 3θ₂ ≥ 0.
+# We map α∈ℝ² → feasible (θ₁,θ₂) by using unconstrained (a,b) then projecting into a simple parameterization:
+# Let s = σ(a) ∈ (0,1), t = σ(b) ∈ (0,1). Set θ₂ = t * min( (1 - s)/2, s/3 ) and θ₁ = s - θ₂.
+_unbound_params(::Type{ExtremeValueCopula{2, AsymMixedTail}}, d, θ) = begin
+  # Inverse mapping is not unique; provide a smooth heuristic to get back to ℝ²
+  # Recover s ≈ θ₁ + θ₂, t ≈ θ₂ / min((1-s)/2, s/3)
+  s = clamp(θ.θ₁ + θ.θ₂, eps(), 1 - eps())
+  m = min((1 - s)/2, s/3)
+  t = m > 0 ? clamp(θ.θ₂ / m, eps(), 1 - eps()) : 0.5
+  [log(s) - log1p(-s), log(t) - log1p(-t)]
+end
+_rebound_params(::Type{ExtremeValueCopula{2, AsymMixedTail}}, d, α) = begin
+  σ(x) = 1 / (1 + exp(-x))
+  s = σ(α[1])
+  t = σ(α[2])
+  m = min((1 - s)/2, s/3)
+  θ₂ = t * m
+  θ₁ = s - θ₂
+  (; θ₁, θ₂)
 end

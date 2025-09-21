@@ -33,12 +33,22 @@ end
 
 const BC2Copula{T} = ExtremeValueCopula{2, BC2Tail{T}}
 BC2Copula(a, b) = ExtremeValueCopula(2, BC2Tail(a, b))
+BC2Copula(d::Integer, a, b) = ExtremeValueCopula(2, BC2Tail(a, b))
 Distributions.params(tail::BC2Tail) = (a = tail.a, b = tail.b)
 
 function A(tail::BC2Tail, t::Real)
     tt = _safett(t)
     a, b = tail.a, tail.b
     return max(a*tt, b*(1-tt)) + max((1-a)*tt, (1-b)*(1-tt))
+end
+
+# Fitting helpers for EV copulas using BC2 tail (a,b ∈ [0,1])
+_example(::Type{ExtremeValueCopula{2, BC2Tail{T}}}, d) where {T} = ExtremeValueCopula(2, BC2Tail(T(0.5), T(0.5)))
+_example(::Type{ExtremeValueCopula{2, BC2Tail}}, d) = ExtremeValueCopula(2, BC2Tail(0.5, 0.5))
+_unbound_params(::Type{ExtremeValueCopula{2, BC2Tail}}, d, θ) = [log(θ.a) - log1p(-θ.a), log(θ.b) - log1p(-θ.b)]
+_rebound_params(::Type{ExtremeValueCopula{2, BC2Tail}}, d, α) = begin
+    σ(x) = 1 / (1 + exp(-x))
+    (; a = σ(α[1]), b = σ(α[2]))
 end
 
 τ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T} = 1 - abs(C.tail.a - C.tail.b)
