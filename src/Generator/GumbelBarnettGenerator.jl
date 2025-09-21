@@ -50,8 +50,7 @@ function _rebound_params(::Type{<:GumbelBarnettCopula}, d, α)
     ey = exp(α[1])
     return (; θ = u*ey  / (1 + ey))
 end
-
-_θ_bounds(::Type{<:GumbelBarnettGenerator}, d::Integer) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
+_θ_bounds(::Type{<:GumbelBarnettGenerator}, d) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
 
 function _find_critical_value_gumbelbarnett(d::Integer)
     d == 2 && return 1.0

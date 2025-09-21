@@ -45,6 +45,7 @@ Distributions.params(G::InvGaussianGenerator) = (θ = G.θ,)
 _example(::Type{<:InvGaussianCopula}, d) = InvGaussianCopula(d, 1.0)
 _unbound_params(::Type{<:InvGaussianCopula}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:InvGaussianCopula}, d, α) = (; θ = exp(α[1]))
+_θ_bounds(::Type{<:InvGaussianGenerator}, d) = (0, Inf)
 
 ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
 ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? ln(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))

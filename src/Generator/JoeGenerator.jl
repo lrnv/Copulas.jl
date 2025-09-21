@@ -45,6 +45,7 @@ Distributions.params(G::JoeGenerator) = (θ = G.θ,)
 _example(CT::Type{<:JoeCopula}, d) = JoeCopula(d, 1.5)
 _unbound_params(::Type{<:JoeCopula}, d, θ) = [log(θ.θ - 1)]
 _rebound_params(::Type{<:JoeCopula}, d, α) = (; θ = 1 + exp(α[1]))
+_θ_bounds(::Type{<:JoeGenerator}, d) = (1, Inf)
 
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)

@@ -45,6 +45,7 @@ Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 _example(CT::Type{<:GumbelCopula}, d) = GumbelCopula(d, 1.5)
 _unbound_params(::Type{<:GumbelCopula}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
 _rebound_params(::Type{<:GumbelCopula}, d, α) = (; θ = 1 + exp(α[1]))
+_θ_bounds(::Type{<:GumbelGenerator}, d) = (1, Inf)
 
 ϕ(  G::GumbelGenerator, t) = exp(-exp(log(t)/G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = exp(log(-log(t))*G.θ)

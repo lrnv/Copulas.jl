@@ -47,6 +47,7 @@ Distributions.params(G::FrankGenerator) = (θ = G.θ,)
 _example(CT::Type{<:FrankCopula}, d) = FrankCopula(d, 1.0)
 _unbound_params(::Type{<:FrankCopula}, d, θ) = d == 2 ? [θ.θ] : [log(θ.θ)]
 _rebound_params(::Type{<:FrankCopula}, d, α) = d==2 ? (; θ = α[1]) : (; θ = exp(α[1]))
+_θ_bounds(::Type{<:FrankGenerator}, d) = d==2 ? (-Inf, Inf) : (0, Inf)
 
 
 ϕ(G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
