@@ -38,7 +38,96 @@ struct ArchimaxCopula{d, TG, TT} <: Copula{d}
 end
 ArchimaxCopula(d, gen::Generator, ::NoTail) = ArchimedeanCopula(d, gen)
 ArchimaxCopula(d, ::IndependentGenerator, tail::Tail) = ExtremeValueCopula(d, tail) 
-Distributions.params(C::ArchimaxCopula) = (_as_tuple(Distributions.params(C.gen))..., _as_tuple(Distributions.params(C.tail))...)
+
+# Constructor from prefixed parameter NamedTuple (stable across models)
+function ArchimaxCopula(d::Integer, ::Type{TG}, ::Type{TT}, θ::NamedTuple) where {TG<:Generator, TT<:Tail}
+    # Determine parameter name order for TG and TT
+    Gex = _example(ArchimedeanCopula{2, TG}, 2).G
+    Tex = _example(ExtremeValueCopula{2, TT}, 2).tail
+    g_names = collect(keys(Distributions.params(Gex)))
+    t_names = collect(keys(Distributions.params(Tex)))
+    # Require prefixed keys and extract in the correct order
+    getp(nt::NamedTuple, k::Symbol) = haskey(nt, k) ? nt[k] : throw(ArgumentError("Missing parameter $(k) in Archimax parameters."))
+    vals_g = map(n -> getp(θ, Symbol(:gen_, n)), g_names)
+    vals_t = map(n -> getp(θ, Symbol(:tail_, n)), t_names)
+    return ArchimaxCopula(d, TG(vals_g...), TT(vals_t...))
+end
+
+# Keyword-friendly wrapper
+ArchimaxCopula(d::Integer, ::Type{TG}, ::Type{TT}; kwargs...) where {TG<:Generator, TT<:Tail} = ArchimaxCopula(d, TG, TT, NamedTuple(kwargs))
+
+# Parametric-type constructors so generic fit can call CT(d; kwargs...) or CT(d, θ::NamedTuple)
+function (::Type{ArchimaxCopula{D, TG, TT}})(d::Integer, θ::NamedTuple) where {D, TG<:Generator, TT<:Tail}
+    d == D || @warn "Dimension mismatch constructing Archimax: got d=$(d), type encodes D=$(D). Proceeding with d."
+    return ArchimaxCopula(d, TG, TT, θ)
+end
+function (::Type{ArchimaxCopula{D, TG, TT}})(d::Integer; kwargs...) where {D, TG<:Generator, TT<:Tail}
+    d == D || @warn "Dimension mismatch constructing Archimax: got d=$(d), type encodes D=$(D). Proceeding with d."
+    return ArchimaxCopula(d, TG, TT, NamedTuple(kwargs))
+end
+Distributions.params(C::ArchimaxCopula) = begin
+    gp = Distributions.params(C.gen)
+    tp = Distributions.params(C.tail)
+    # Prefix all generator params with gen_ and all tail params with tail_
+    (; (Symbol(:gen_, k) => v for (k, v) in pairs(gp))..., (Symbol(:tail_, k) => v for (k, v) in pairs(tp))...)
+end
+
+
+# Fitting helpers for ArchimaxCopula (bivariate). Reuse generator and tail-specific helpers.
+_example(::Type{ArchimaxCopula{2, TG, TT}}, d) where {TG<:Generator, TT<:Tail} = begin
+    Gex = _example(ArchimedeanCopula{2, TG}, 2).G
+    Tex = _example(ExtremeValueCopula{2, TT}, 2).tail
+    ArchimaxCopula(2, Gex, Tex)
+end
+_unbound_params(::Type{ArchimaxCopula{2, TG, TT}}, d, θ) where {TG<:Generator, TT<:Tail} = begin
+    # Split combined θ into generator and tail pieces by example param lengths
+    Gex = _example(ArchimedeanCopula{2, TG}, 2).G
+    Tex = _example(ExtremeValueCopula{2, TT}, 2).tail
+    ngen = length(Distributions.params(Gex))
+    g_names = collect(keys(Distributions.params(Gex)))
+    t_names = collect(keys(Distributions.params(Tex)))
+    # Build θg and θt either from prefixed NamedTuple keys or positionally
+    if θ isa NamedTuple
+        has_pref = any(startswith(string(k), "gen_") || startswith(string(k), "tail_") for k in keys(θ))
+        if has_pref
+            vals_g = map(n -> get(θ, Symbol(:gen_, n), nothing), g_names)
+            vals_t = map(n -> get(θ, Symbol(:tail_, n), nothing), t_names)
+            (any(v -> v === nothing, vals_g) || any(v -> v === nothing, vals_t)) && throw(ArgumentError("Missing gen_/tail_ parameters in θ for Archimax."))
+            θg = NamedTuple{Tuple(g_names)}(Tuple(vals_g))
+            θt = NamedTuple{Tuple(t_names)}(Tuple(vals_t))
+        else
+            vals = collect(values(θ))
+            θg = NamedTuple{Tuple(g_names)}(Tuple(vals[1:ngen]))
+            θt = NamedTuple{Tuple(t_names)}(Tuple(vals[ngen+1:end]))
+        end
+    else
+        vals = collect(θ)
+        θg = NamedTuple{Tuple(g_names)}(Tuple(vals[1:ngen]))
+        θt = NamedTuple{Tuple(t_names)}(Tuple(vals[ngen+1:end]))
+    end
+    αg = _unbound_params(ArchimedeanCopula{2, TG}, d, θg)
+    αt = _unbound_params(ExtremeValueCopula{2, TT}, d, θt)
+    vcat(αg, αt)
+end
+_rebound_params(::Type{ArchimaxCopula{2, TG, TT}}, d, α) where {TG<:Generator, TT<:Tail} = begin
+    # Split α by lengths implied by underlying helpers
+    Gex = _example(ArchimedeanCopula{2, TG}, 2).G
+    Tex = _example(ExtremeValueCopula{2, TT}, 2).tail
+    ngen = length(Distributions.params(Gex))
+    ntail = length(Distributions.params(Tex))
+    αg, αt = α[1:ngen], α[ngen+1:ngen+ntail]
+    θg = _rebound_params(ArchimedeanCopula{2, TG}, d, αg)
+    θt = _rebound_params(ExtremeValueCopula{2, TT}, d, αt)
+    # Merge with stable names: always prefix generator with gen_ and tail with tail_
+    g_keys = collect(keys(θg)); t_keys = collect(keys(θt))
+    g_vals = collect(values(θg)); t_vals = collect(values(θt))
+    g_final = map(k -> Symbol(:gen_, k), g_keys)
+    t_final = map(k -> Symbol(:tail_, k), t_keys)
+    all_names = (Tuple(g_final)..., Tuple(t_final)...)
+    all_vals  = (Tuple(g_vals)..., Tuple(t_vals)...)
+    NamedTuple{all_names}(all_vals)
+end
+
 
 # Fast conditional distortion binding (bivariate)
 DistortionFromCop(C::ArchimaxCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivArchimaxDistortion(C.gen, C.tail, Int8(js[1]), float(uⱼₛ[1]))

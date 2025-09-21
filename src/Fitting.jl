@@ -26,17 +26,21 @@ _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::T
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
 _fit(T::Type{<:Copula}, ::Any, ::Any; kwargs...) = throw(ArgumentError("There is no _fit implemented for $(T) with the requested method."))
-# This should work: 
-# C₀ = _example(CT, d)
-# θ₀ = Distributions.params(C₀)
-# α₀ = _unbound_params(CT, d, θ₀)
-# @assert Distributions.params(CT(d, θ₀...)) === θ₀ # this should hold everytime.
-# @assert θ₀ === _rebound_params(CT, d, α₀)
-
-function _fit(CT::Type{<:Copulas.Copula}, U, ::Val{:mle})
+function _fit(CT::Type{<:Copula}, U, method::Union{Val{:mle},Val{:itau},Val{:irho},Val{:ibeta}})
     d = size(U,1)
     α₀ = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-    loss(α) = - Distributions.loglikelyhood(CT(d, _rebound_params(CT, d, α)...), U)
+    if method isa Val{:mle}
+        loss(α) = - Distributions.loglikelyhood(CT(d, _rebound_params(CT, d, α)...), U)
+    elseif method isa Val{:itau}
+        τ = StatsBase.corkendall(U')
+        loss(α) = sum(abs2, τ .- StatsBase.corkendall(CT(d, _rebound_params(CT, d, α))))
+    elseif method isa Val{:irho}
+        ρ = StatsBase.corspearman(U')
+        loss(α) = sum(abs2, ρ .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α))))
+    elseif method isa Val{:ibeta}
+        β = blomqvist_beta(U)
+        loss(α) = sum(abs2, β .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α))))
+    end
     res = Optim.optimize(f, α₀, Optim.LBFGS(), autodiff = :forward)
     θhat  = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...), (; θ̂=θhat, optimizer=:LBFGS, converged=Optim.converged(res), iterations=Optim.iterations(res))

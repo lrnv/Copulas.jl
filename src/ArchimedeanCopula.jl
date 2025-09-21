@@ -55,6 +55,22 @@ end
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 
 
 
+# Parametric-type constructors to enable generic fit reconstruction from NamedTuple params
+function (::Type{ArchimedeanCopula{D, TG}})(d::Integer, θ::NamedTuple) where {D, TG<:Generator}
+    d == D || @warn "Dimension mismatch constructing ArchimedeanCopula: got d=$(d), type encodes D=$(D). Proceeding with d."
+    # Determine parameter name order from an example of the generator-side copula
+    Gex = _example(ArchimedeanCopula{D, TG}, D).G
+    names = collect(keys(Distributions.params(Gex)))
+    # Accept both plain names and gen_-prefixed names (to interoperate with Archimax params)
+    getp(nt::NamedTuple, k::Symbol) = haskey(nt, k) ? nt[k] : (haskey(nt, Symbol(:gen_, k)) ? nt[Symbol(:gen_, k)] : throw(ArgumentError("Missing parameter $(k) for ArchimedeanCopula.")))
+    vals = map(n -> getp(θ, n), names)
+    return ArchimedeanCopula(d, TG(vals...))
+end
+function (::Type{ArchimedeanCopula{D, TG}})(d::Integer; kwargs...) where {D, TG<:Generator}
+    return (ArchimedeanCopula{D, TG})(d, NamedTuple(kwargs))
+end
+
+
 _cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .< 1)
