@@ -98,8 +98,6 @@ function _uppertriangle_stats(mat)
     return Statistics.mean(gen), length(gen) == 1 ? zero(gen[1]) : Statistics.std(gen), minimum(gen), maximum(gen)
 end
 #Gabriel Frahma, Markus Junkerb, Rafael Schmidta (2005)
-import StatsBase
-
 function tail(U::Matrix{T}; t::Symbol=:upper) where T <: Real
     size(U, 1) == 2 || throw(ArgumentError("U must be a 2×n matrix"))
     m = size(U, 2)
