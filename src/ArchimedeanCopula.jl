@@ -208,22 +208,24 @@ function _fit(::Type{ArchimedeanCopula}, U, ::Val{:gnz2011})
     return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:itau}) where {GT<:UnivariateGenerator}
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:itau})
     d = size(U,1)
+    GT = generatorof(CT)
     # So here we do the mean on the theta side, maybe we should do it on the \tau side ?
     θs   = map(v -> τ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corkendall(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ), (; eps)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:irho})  where {GT<:UnivariateGenerator}
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:irho})
     d = size(U,1)
+    GT = generatorof(CT)
     # So here we do the mean on the theta side, maybe we should do it on the \rho side ?
     θs   = map(v -> ρ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corspearman(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ), (; eps)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d,GT} where d}, U, ::Val{:ibeta}) where {GT<:UnivariateGenerator}
-    d    = size(U,1); δ = 1e-8
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
+    d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
     βobs = clamp(blomqvist_beta(U), -1+1e-10, 1-1e-10)
     lo,hi = _θ_bounds(GT,d)
     fβ(θ) = β(CT(d,θ))
@@ -243,6 +245,7 @@ end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     @show "Running the MLE routine from the Archimedean Univaraite implementation"
     d = size(U,1)
+    GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
     θ0 = start isa Real ? start : 
          start ∈ (:itau, :irho) ? only(Distributions.params(_fit(CT, U, Val{start}())[1])) : 
