@@ -138,29 +138,11 @@ _example(::Type{GaussianCopula}, d::Int) = GaussianCopula(Matrix(LinearAlgebra.I
 
 function _unbound_params(::Type{GaussianCopula}, d::Int, θ::NamedTuple)
     Σ = _Σ_from_named(d, θ)
-    L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=false).L
-    δ = log.(LinearAlgebra.diag(L))
-    ℓ = Vector{eltype(Σ)}(undef, d*(d-1)÷2); k=1
-    @inbounds for i in 2:d, j in 1:i-1
-        ℓ[k] = L[i,j]; k+=1
-    end
-    return vcat(δ, ℓ)
+    return _unbound_corr_params(d, Σ)
 end
 
 function _rebound_params(::Type{GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
-    L = Matrix{T}(LinearAlgebra.I, d, d)
-    @inbounds begin
-        for i in 1:d; L[i,i] = exp(α[i]); end
-        k=1
-        for i in 2:d, j in 1:i-1
-            L[i,j] = α[d+k]; k+=1
-        end
-    end
-    S  = L*L'
-    dvec = sqrt.(LinearAlgebra.diag(S))
-    Dinv = LinearAlgebra.Diagonal(inv.(dvec))
-    Σ = Dinv * S * Dinv
-    Σ = (Σ + Σ')/2   # force simetric matrix ... 
+    Σ = _rebound_corr_params(d, α)
     return (; Σ = Σ)
 end
 function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})

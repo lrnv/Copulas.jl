@@ -87,3 +87,45 @@ function make_cor!(Σ)
         end
     end
 end
+
+# ——————————————————————————————————————————————————————————
+# Shared correlation-parameterization helpers (LKJ/partial corr)
+# Map between correlation matrices and unconstrained vectors α ∈ ℝ^{d(d-1)/2}
+@inline function _unbound_corr_params(d::Int, Σ::AbstractMatrix)
+    Lc = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=true).L
+    T = eltype(Σ)
+    α = Vector{T}(undef, d*(d-1)÷2)
+    k = 1
+    @inbounds for i in 2:d
+        denom = one(T)
+        for j in 1:i-1
+            z = Lc[i,j] / denom
+            ϵ = sqrt(eps(T))
+            z = clamp(z, -one(T) + ϵ, one(T) - ϵ)
+            α[k] = atanh(z)
+            k += 1
+            denom *= sqrt(max(zero(T), one(T) - z*z))
+        end
+    end
+    return α
+end
+
+@inline function _rebound_corr_params(d::Int, α::AbstractVector{T}) where {T}
+    L = Matrix{T}(LinearAlgebra.I, d, d)
+    @inbounds begin
+        L[1,1] = one(T)
+        k = 1
+        for i in 2:d
+            denom = one(T)
+            for j in 1:i-1
+                z = tanh(α[k]); k += 1
+                L[i,j] = z * denom
+                denom *= sqrt(max(zero(T), one(T) - z*z))
+            end
+            L[i,i] = denom
+        end
+    end
+    Σ = L * L'
+    Σ = (Σ + Σ')/2
+    return Σ
+end
