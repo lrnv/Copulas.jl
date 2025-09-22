@@ -172,5 +172,5 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
         method=typeof(method).parameters[1], 
         grid=grid, eps=eps, 
         pseudo_values=pseudo_values, kwargs...)
-    return C, (; method=m, pseudo_values, grid, eps)
+    return C, (; pseudo_values, grid, eps)
 end
