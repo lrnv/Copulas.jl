@@ -35,7 +35,7 @@ struct BB10Generator{T} <: AbstractFrailtyGenerator
 end
 
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
-BB10Copula(d, θ, δ) = ArchimedeanCopula(2, BB10Generator(θ, δ))
+BB10Copula(d, θ, δ) = ArchimedeanCopula(d, BB10Generator(θ, δ))
 BB10Copula(d; θ::Real, δ::Real) = BB10Copula(d, θ, δ)
 Distributions.params(G::BB10Generator) = (θ = G.θ, δ = G.δ)
 _example(CT::Type{<:BB10Copula}, d) = BB10Copula(d, 2.0, 0.4)
