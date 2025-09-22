@@ -321,6 +321,7 @@ function Base.show(io::IO, M::CopulaModel)
     elseif StatsBase.dof(M) == 0 || M.method == :emp
         # Empirical summary
         md   = M.method_details
+        method=M.method
         kind = get(md, :emp_kind, :raw)
         d    = get(md, :d, missing)
         n    = get(md, :n, missing)
@@ -330,10 +331,9 @@ function Base.show(io::IO, M::CopulaModel)
         if kind === :bernstein
             m = get(md, :m, nothing); if m !== nothing; hdr *= ", m=$(m)"; end
         elseif kind === :ev_tail
-            est = get(md, :estimator, missing)
             grid= get(md, :grid, missing)
             eps = get(md, :eps,  missing)
-            hdr *= ", estimator=$(est), grid=$(grid), eps=$(eps)"
+            hdr *= ", method=$(method), grid=$(grid), eps=$(eps)"
         end
         println(io, hdr)
         has_tau  = all(haskey.(Ref(md), (:tau_mean, :tau_sd, :tau_min, :tau_max)))

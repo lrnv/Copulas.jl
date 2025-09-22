@@ -8,7 +8,7 @@ Fields:
 
 Constructor
 
-  EmpiricalEVTail(u; estimator=:ols, grid=401, eps=1e-3, pseudo_values=true)
+  EmpiricalEVTail(u; method=:ols, grid=401, eps=1e-3, pseudo_values=true)
   ExtremeValueCopula(2, EmpiricalEVTail(u; ...))
 
 The empirical extreme-value (EV) copula (bivariate) is defined from pseudo-observations
@@ -43,7 +43,7 @@ end
 
 Construct the empirical Pickands tail from data (2×N).
 """
-function EmpiricalEVTail(u::AbstractMatrix; estimator::Symbol=:ols, grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true)
+function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true)
 
     @assert grid ≥ 2
     @assert size(u, 1) == 2 "EmpiricalEVTail expects a (2, n) matrix"
@@ -58,19 +58,19 @@ function EmpiricalEVTail(u::AbstractMatrix; estimator::Symbol=:ols, grid::Int=40
 
     γ = Base.MathConstants.eulergamma
 
-    if estimator === :cfg
+    if method === :cfg
         @inbounds for (k, t) in pairs(tgrid)
             tt = _safett(t)
             ξ  = min.(lu ./ (1 - tt), lv ./ tt)
             Â[k] = exp(-γ - Statistics.mean(log.(ξ)))
         end
-    elseif estimator === :pickands
+    elseif method === :pickands
         @inbounds for (k, t) in pairs(tgrid)
             tt = _safett(t)
             ξ  = min.(lu ./ (1 - tt), lv ./ tt)
             Â[k] = 1.0 / Statistics.mean(ξ)
         end
-    elseif estimator === :ols 
+    elseif method === :ols 
         n  = size(U, 2)
         x1 = @views -log.(lu) .- γ
         x2 = @views -log.(lv) .- γ
@@ -90,7 +90,7 @@ function EmpiricalEVTail(u::AbstractMatrix; estimator::Symbol=:ols, grid::Int=40
             Â[k] = exp(β[1])             # intercept
         end
     else
-        throw(ArgumentError("estimator should be :ols, :cfg or :pickands (got $estimator)"))
+        throw(ArgumentError("method should be :ols, :cfg or :pickands (got $method)"))
     end
 
     # endpoint_correction
@@ -168,7 +168,9 @@ end
 # By default, when no tail is given in the call, we fit the empirical tail. 
 _default_method(::Type{ExtremeValueCopula}) = :ols # or cfg or pickands ? 
 function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; pseudo_values = true, grid::Int = 401, eps::Real = 1e-3, kwargs...)
-    m = typeof(method).parameters[1]
-    C = EmpiricalEVCopula(U; estimator=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...) # pass kwargs on, you never know. 
-    return C, (; estimator=m, pseudo_values, grid, eps)
+    C = EmpiricalEVCopula(U; 
+        method=typeof(method).parameters[1], 
+        grid=grid, eps=eps, 
+        pseudo_values=pseudo_values, kwargs...)
+    return C, (; method=m, pseudo_values, grid, eps)
 end
