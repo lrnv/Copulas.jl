@@ -54,7 +54,6 @@ function A(tail::GalambosTail, t::Real)
 end
 
 # Fitting helpers for EV copulas using Galambos tail
-_example(::Type{ExtremeValueCopula{2, GalambosTail{T}}}, d) where {T} = ExtremeValueCopula(2, GalambosTail(one(T)))
-_example(::Type{ExtremeValueCopula{2, GalambosTail}}, d) = ExtremeValueCopula(2, GalambosTail(1.0))
-_unbound_params(::Type{ExtremeValueCopula{2, GalambosTail}}, d, θ) = [log(θ.θ)]           # θ > 0
-_rebound_params(::Type{ExtremeValueCopula{2, GalambosTail}}, d, α) = (; θ = exp(α[1]))
+_example(::Type{<:GalambosCopula}, d) = ExtremeValueCopula(2, GalambosTail(1.0))
+_unbound_params(::Type{<:GalambosCopula}, d, θ) = [log(θ.θ)]           # θ > 0
+_rebound_params(::Type{<:GalambosCopula}, d, α) = (; θ = exp(α[1]))

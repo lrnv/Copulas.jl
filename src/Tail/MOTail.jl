@@ -66,10 +66,9 @@ end
 end
 
 # Fitting helpers for EV copulas using Marshall–Olkin tail (λ ≥ 0)
-_example(::Type{ExtremeValueCopula{2, MOTail{T}}}, d) where {T} = ExtremeValueCopula(2, MOTail(T(1), T(1), T(1)))
-_example(::Type{ExtremeValueCopula{2, MOTail}}, d) = ExtremeValueCopula(2, MOTail(1.0, 1.0, 1.0))
-_unbound_params(::Type{ExtremeValueCopula{2, MOTail}}, d, θ) = [log(θ.λ₁), log(θ.λ₂), log(θ.λ₃)]
-_rebound_params(::Type{ExtremeValueCopula{2, MOTail}}, d, α) = (; λ₁ = exp(α[1]), λ₂ = exp(α[2]), λ₃ = exp(α[3]))
+_example(::Type{<:MOCopula}, d) = ExtremeValueCopula(2, MOTail(1.0, 1.0, 1.0))
+_unbound_params(::Type{<:MOCopula}, d, θ) = [log(θ.λ₁), log(θ.λ₂), log(θ.λ₃)]
+_rebound_params(::Type{<:MOCopula}, d, α) = (; λ₁ = exp(α[1]), λ₂ = exp(α[2]), λ₃ = exp(α[3]))
 
 function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {T, S}
     a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
