@@ -110,13 +110,42 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB2Genera
 end
 
 function τ(G::Copulas.BB2Generator{T}; rtol=1e-10, atol=1e-12) where {T}
+    # Closed-form for Kendall's tau using a change of variable
+    # Let a = 2 + 2/θ. Then
+    #   τ = 1 + 4/(δ θ^2) * ( 1/(a-1) - e^δ δ^(a-1) Γ(1-a, δ) )
+    # where Γ(·,·) is the upper incomplete gamma. This comes from
+    # u = t^{-θ} substitution in the standard Archimedean integral for τ.
     θ = float(G.θ); δ = float(G.δ)
-
+    a = 2 + 2/θ
+    term_gamma = exp(δ) * (δ^(a-1)) * SpecialFunctions.uppergamma(1 - a, δ)
+    τval = 1 + 4 * ((1/(a - 1)) - term_gamma) / (δ * θ^2)
+    if isfinite(τval)
+        return τval
+    end
+    # Fallback to numerical quadrature if needed (extreme parameter regimes)
     invδθ = 1/(δ*θ)
-    #   φ⁻¹/ (φ⁻¹)' = (t^(θ+1))/(δθ) * expm1(-δ*(t^(-θ) - 1))
     f(t) = (t<=0 || t>=1) ? 0.0 : (t^(θ+1)) * invδθ * LogExpFunctions.expm1(-δ*(t^(-θ) - 1))
     I, _ = QuadGK.quadgk(f, 0.0, 1.0; rtol=rtol, atol=atol)
     return 1 + 4I
+end
+
+# Spearman's rho via a stable single-integral formulation
+function ρ(G::Copulas.BB2Generator{T}; rtol=1e-7, atol=1e-9) where {T}
+    # Use J = ∫_0^∞ ϕ(s) [∫_0^s g(x) g(s-x) dx] ds with g = -ϕ'(·)
+    # Outer: map s = t/(1-t) for t∈(0,1) to control tails
+    gfun(s) = -ϕ⁽¹⁾(G, s)
+    inner(s) = s <= 0 ? 0.0 : begin
+        innerf(z) = gfun(s*z) * gfun(s*(1 - z))
+        val, _ = QuadGK.quadgk(innerf, 0.0, 1.0; rtol=sqrt(rtol), atol=sqrt(atol))
+        s * val
+    end
+    outerf(t) = (t <= 0 || t >= 1) ? 0.0 : begin
+        s = t/(1 - t)
+        jac = 1/(1 - t)^2
+        ϕ(G, s) * inner(s) * jac
+    end
+    I, _ = QuadGK.quadgk(outerf, 0.0, 1.0; rtol=rtol, atol=atol)
+    return 12I - 3
 end
 
 
