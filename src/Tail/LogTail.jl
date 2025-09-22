@@ -23,7 +23,7 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
-struct LogTail{T} <: Tail2
+struct LogTail{T} <: AbstractUnivariateTail2
     θ::T
     function LogTail(θ)
         !(1 <= θ) && throw(ArgumentError(" The param θ must be in [1, ∞)"))
@@ -38,7 +38,7 @@ const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
 LogCopula(θ) = ExtremeValueCopula(2, LogTail(θ))
 LogCopula(d::Integer, θ) = ExtremeValueCopula(2, LogTail(θ))
 Distributions.params(tail::LogTail) = (θ = tail.θ,)
-
+_θ_bounds(::Type{<:LogTail}, d) = (1, Inf)
 function ℓ(tail::LogTail, t)
     t₁, t₂ = t
     θ = tail.θ
@@ -49,6 +49,13 @@ end
 _example(::Type{<:LogCopula}, d) = ExtremeValueCopula(2, LogTail(2.0))
 _unbound_params(::Type{<:LogCopula}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
 _rebound_params(::Type{<:LogCopula}, d, α) = (; θ = exp(α[1]) + 1)
+
+τ(C::LogCopula{T}) where {T} = 1 - inv(C.tail.θ)
+τ⁻¹(C::LogCopula{T}, tau::Real) where {T}  = 1 / (1 - tau)
+β(C::LogCopula{T}) where {T} = 4 * 2^(-2^(1 / C.tail.θ)) - 1
+β⁻¹(C::LogCopula{T}, beta::Real) where {T} = 1 / log2(-log2((beta + 1) / 4))
+λᵤ(C::LogCopula{T}) where {T} = 2 - 2^(1 / C.tail.θ)
+λᵤ⁻¹(C::LogCopula{T}, λ::Real) where {T} = 1 / log2(2 - λ)
 
 # A(t) for LogCopula (avec log-exp pour la stabilité)
 function A(tail::LogTail, t::Real)
