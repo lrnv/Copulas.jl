@@ -98,25 +98,14 @@ function _uppertriangle_stats(mat)
     return Statistics.mean(gen), length(gen) == 1 ? zero(gen[1]) : Statistics.std(gen), minimum(gen), maximum(gen)
 end
 #Gabriel Frahma, Markus Junkerb, Rafael Schmidta (2005)
-function upper_tail(U::AbstractMatrix; est::Symbol=:log, k::Union{Nothing,Int}=nothing)
-    d, n = size(U)
-    d == 2 || throw(ArgumentError("upper_tail requires U of size 2×n"))
-    n ≥ 2 || return 0.0
-    kn = isnothing(k) ? max(1, round(Int, sqrt(n))) : clamp(k, 1, n-1)
-    t  = (n - kn) / n
-    @views U1 = U[1, :]; @views U2 = U[2, :]
-    cnt = 0
-    @inbounds for i in 1:n
-        (U1[i] ≤ t && U2[i] ≤ t) && (cnt += 1)
-    end
-    Chat = cnt / n
-    if est === :sec
-        return clamp((1 - 2t + Chat) / (1 - t), 0.0, 1.0)
-    elseif est === :log
-        (Chat > 0 && t < 1) || return 0.0
-        return clamp(2 - log(Chat) / log(t), 0.0, 1.0)
-    else
-        throw(ArgumentError("method must be :sec or :log"))
-    end
+function upper_tail(U::Matrix{T}) where T <: Real
+    size(U, 1) == 2 || throw(ArgumentError("U must be a 2×n matrix"))
+    m = size(U, 2)
+    m ≥ 4 || throw(ArgumentError("At least 4 observations are required"))
+    ranks1 = StatsBase.ordinalrank(U[1, :])
+    ranks2 = StatsBase.ordinalrank(U[2, :])
+    k = max(4, floor(Int, sqrt(m)))
+    threshold = m - k
+    count_extreme = sum((ranks1 .> threshold) .& (ranks2 .> threshold))
+    return count_extreme / k
 end
-
