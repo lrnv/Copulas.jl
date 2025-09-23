@@ -87,7 +87,7 @@ function dA(tail::LogTail, t::Real)
 end
 
 # Seconde dérivée d²A/dt² (stable numériquement)
-function d2A(tail::LogTail, t::Real)
+function d²A(tail::LogTail, t::Real)
     θ = tail.θ
 
     # B = t^θ + (1-t)^θ
@@ -121,3 +121,9 @@ function d2A(tail::LogTail, t::Real)
 
     return term1 + term2
 end
+
+rho_Log(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(LogTail(θ),t))^2, 0, 1; kw...)[1] - 3
+iRho(::Type{LogCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> rho_Log(θ) - ρ; a=1.0, b=2.0)
+
+ρ(C::LogCopula) = rho_Log(C.tail.θ)
+ρ⁻¹(C::LogCopula, ρ; kw...) = iRho(LogCopula, ρ; kw...)

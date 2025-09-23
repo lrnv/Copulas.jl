@@ -145,69 +145,69 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     return C, (; pseudo_values, grid, eps)
 end
 
-# --- Métodos moment-based con un tail univariado ---
-
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:itau})
     @show "Running the ITAU routine from the Extreme value implementation"
-    d = size(U,1); TT = tailof(CT)
-    lo, hi = _θ_bounds(TT, d)
-    θs = map(v -> τ⁻¹(TT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corkendall(U')))
-    θ  = clamp(Statistics.mean(θs), lo, hi)
-    return CT(d, θ), (; eps)
+    TT = tailof(CT)
+    lo, hi = _θ_bounds(TT, 2)
+    τ̂ = StatsBase.corkendall(U')[1,2]
+    θ̂ = hasmethod(τ⁻¹, Tuple{Type{TT}, Real}) ?
+         τ⁻¹(TT, τ̂) :
+         τ⁻¹(CT(2, isfinite(lo) ? lo + 1e-8 : 1.0), τ̂)
+    isfinite(lo) && (θ̂ = max(θ̂, lo))
+    isfinite(hi) && (θ̂ = min(θ̂, hi))
+    return CT(2, θ̂), (; θ̂)
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:irho})
     @show "Running the IRHO routine from the Extreme value implementation"
-    d = size(U,1); TT = tailof(CT)
-    lo, hi = _θ_bounds(TT, d)
-    θs = map(v -> ρ⁻¹(TT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corspearman(U')))
-    θ  = clamp(Statistics.mean(θs), lo, hi)
-    return CT(d, θ), (; eps)
+    TT = tailof(CT)
+    lo, hi = _θ_bounds(TT, 2)
+    ρ̂ = StatsBase.corspearman(U')[1,2]
+    θ̂ = hasmethod(τ⁻¹, Tuple{Type{TT}, Real}) ?
+         ρ⁻¹(TT, ρ̂) :
+         ρ⁻¹(CT(2, isfinite(lo) ? lo + 1e-8 : 1.0), ρ̂)
+    isfinite(lo) && (θ̂ = max(θ̂, lo))
+    isfinite(hi) && (θ̂ = min(θ̂, hi))
+    return CT(2, θ̂), (; θ̂)
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:ibeta})
-    δ    = 1e-8; d = size(U,1); TT = tailof(CT)
-    βobs = clamp(blomqvist_beta(U), -1+1e-10, 1-1e-10)
-    lo,hi = _θ_bounds(TT,d)
-    fβ(θ) = β(CT(d,θ))
-    a0 = isfinite(lo) ? lo+δ : -5.0 
-    b0 = isfinite(hi) ? hi-δ :  5.0
-    βmin, βmax = fβ(a0), fβ(b0)
-    if βmin > βmax; βmin, βmax = βmax, βmin; end
-    θ = if βobs ≤ βmin
-        a0
-    elseif βobs ≥ βmax
-        b0
-    else
-        Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
-    end
-    return CT(d,θ), (; θ̂=θ)
+    @show "Running the IBETA routine from the Extreme value implementation"
+    TT = tailof(CT)
+    lo, hi = _θ_bounds(TT, 2)
+    β̂ = blomqvist_beta(U)
+    θ̂ = hasmethod(β⁻¹, Tuple{Type{TT}, Real}) ?
+         β⁻¹(TT, β̂) :
+         β⁻¹(CT(2, isfinite(lo) ? lo + 1e-8 : 1.0), β̂)
+    # Proyecta a los límites del parámetro
+    isfinite(lo) && (θ̂ = max(θ̂, lo))
+    isfinite(hi) && (θ̂ = min(θ̂, hi))
+    return CT(2, θ̂), (; θ̂)
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
-    δ    = 1e-8; d = size(U,1); TT = tailof(CT)
-    λobs = clamp(tail(U; t=:upper), 0.0, 1.0)  # empirical upper tail (EV)
-    lo, hi = _θ_bounds(TT, d)
-    f(θ) = λᵤ(CT(d, θ))
-    a = isfinite(lo) ? lo + δ : -5.0
-    b = isfinite(hi) ? hi - δ :  5.0
-    λa, λb = f(a), f(b)
-    θ = λobs ≤ min(λa,λb) ? (λa ≤ λb ? a : b) :
-        λobs ≥ max(λa,λb) ? (λa ≥ λb ? a : b) :
-        Roots.find_zero(θ -> f(θ) - λobs, (a,b), Roots.Brent(); xatol=1e-8, rtol=0)
-    return CT(d, θ), (; θ̂=θ)
+    @show "Running the IUPPER routine from the Extreme value implementation"
+    TT = tailof(CT)
+    lo, hi = _θ_bounds(TT, 2)
+    λ̂ = tail(U;t=:upper)
+    θ̂ = hasmethod(λᵤ⁻¹, Tuple{Type{TT}, Real}) ?
+         λᵤ⁻¹(TT, λ̂) :
+         λᵤ⁻¹(CT(2, isfinite(lo) ? lo + 1e-8 : 1.0), λ̂)
+    isfinite(lo) && (θ̂ = max(θ̂, lo))
+    isfinite(hi) && (θ̂ = min(θ̂, hi))
+    return CT(2, θ̂), (; θ̂)
 end
 
 # --- MLE ---
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:ibeta, xtol::Real=1e-8)
     @show "Running the MLE routine from the Extreme value implementation"
     d = size(U,1)
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, d)
     θ0 = start isa Real ? start : 
-         start ∈ (:itau, :irho) ? only(Distributions.params(_fit(CT, U, Val{start}())[1])) : 
-         throw("You imputed start=$start, while i require either a real number, :itau or :irho")
+         start ∈ (:itau, :irho, :ibeta, :iupper) ? only(Distributions.params(_fit(CT, U, Val{start}())[1])) : 
+         throw("You imputed start=$start, while i require either a real number, :itau, :irho, :ibeta or :iupper")
     θ0 = clamp(θ0, lo, hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
     res = Optim.optimize(f, lo, hi, [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)

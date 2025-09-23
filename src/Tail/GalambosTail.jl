@@ -62,3 +62,62 @@ _rebound_params(::Type{<:GalambosCopula}, d, α) = (; θ = exp(α[1]))
 β⁻¹(C::GalambosCopula{T}, beta::Real) where {T} = -1/log2(log2(beta+1))
 λᵤ(C::GalambosCopula{T}) where {T} = 2.0^(-1.0/C.tail.θ)
 λᵤ⁻¹(C::GalambosCopula{T}, λ::Real) where {T} = -1.0 / log2(λ)
+
+@inline function d²A(tail::GalambosTail, t::Real)
+    tt = _safett(t)
+    θ = tail.θ
+    if θ == 0
+        return 0.0
+    elseif isinf(θ)
+        return 0.0
+    end
+    a = tt
+    b = 1 - tt
+    L1 = -θ*log(a)
+    L2 = -θ*log(b)
+    M  = max(L1, L2)
+    E1 = exp(L1 - M)
+    E2 = exp(L2 - M)
+    S  = E1 + E2
+    # B = (a^-θ + b^-θ)^(-1/θ) with numerically stable rescaling
+    B  = exp(-(M/θ)) * S^(-1/θ)
+
+    inva = inv(a); invb = inv(b)
+    D    = E2*invb - E1*inva
+    term1 = (E2*invb^2 + E1*inva^2) / S
+    term2 = (D/S)^2
+    return (1 + θ) * B * (term1 - term2)
+end
+
+@inline function dA(tail::GalambosTail, t::Real)
+    tt = _safett(t)
+    θ = tail.θ
+    if θ == 0 || isinf(θ)
+        return 0.0
+    end
+    a = tt
+    b = 1 - tt
+    L1 = -θ*log(a)
+    L2 = -θ*log(b)
+    M  = max(L1, L2)
+    E1 = exp(L1 - M)
+    E2 = exp(L2 - M)
+    S  = E1 + E2
+    B  = exp(-(M/θ)) * S^(-1/θ)
+    inva = inv(a); invb = inv(b)
+    D    = E2*invb - E1*inva
+    # A'(t) = B * (D/S)
+    return B * (D / S)
+end
+
+tau_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(GalambosTail(θ),t)*t*(1-t)/max(A(GalambosTail(θ),t),_δ(t)), 0, 1; kw...)[1]
+rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(GalambosTail(θ),t))^2, 0, 1; kw...)[1] - 3
+
+iTau(::Type{GalambosCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> tau_galambos(θ) - τ; kw...)
+iRho(::Type{GalambosCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> rho_galambos(θ) - ρ; kw...)
+
+# Sugar syntax
+τ(C::GalambosCopula) = tau_galambos(C.tail.θ)
+ρ(C::GalambosCopula) = rho_galambos(C.tail.θ)
+τ⁻¹(C::GalambosCopula, τ; kw...) = iTau(GalambosCopula, τ; kw...)
+ρ⁻¹(C::GalambosCopula, ρ; kw...) = iRho(GalambosCopula, ρ; kw...)

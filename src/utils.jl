@@ -78,17 +78,13 @@ end
 end
 
 # β̂ multivariate (Hofert–Mächler–McNeil, ec. (7))
-function blomqvist_beta(U::AbstractMatrix)
+
+function blomqvist_beta(U::AbstractMatrix; pseudo::Bool=true)
     d, n = size(U)
-    c = 2.0^(d-1) / (2.0^(d-1) - 1.0)
-    acc = 0.0
-    @inbounds for i in 1:n
-        ui = view(U, :, i)
-        q1 = all(ui .<= 0.5)
-        q3 = all(ui .>  0.5)
-        acc += (q1 || q3) ? 1.0 : 0.0
-    end
-    return c * (acc/n - 2.0^(1-d))
+    Ũ = pseudo ? U : mapslices(col -> StatsBase.tiedrank(col) ./ (length(col)+1), U, dims=2)
+    count = sum(j -> all(Ũ[:, j] .<= 0.5) || all(Ũ[:, j] .> 0.5), 1:n)
+    h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
+    return h_d * (count/n - 2.0^(1-d))
 end
 
 _uppertriangle_flat(mat) = [mat[idx] for idx in CartesianIndices(mat) if idx[1] < idx[2]]
@@ -114,4 +110,14 @@ function tail(U::Matrix{T}; t::Symbol=:upper) where T <: Real
         throw(ArgumentError("t must be :upper or :lower"))
     end
     return count_extreme / k
+end
+
+_invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
+    fa,fb = f(0.0), f(1.0)
+    while fb ≤ 0 && b < θmax
+        b = min(2b, θmax); fb = f(b)
+        !isfinite(fb) && (b = θmax; break)
+    end
+    (fa < 0 && fb > 0) || error("Could not bound root at [0, $θmax].")
+    Roots.find_zero(f, (a,b), Roots.Brent(); atol=tol, rtol=tol)
 end
