@@ -65,6 +65,17 @@ function StatsBase.corspearman(C::Copula{d}) where d
     end
     return K
 end
+function corblomqvist(C::Copula{d}) where d
+    # returns the matrix of bivariate kendall taus.
+    K = ones(d,d)
+    for i in 1:d
+        for j in i+1:d
+            K[i,j] = β(SubsetCopula(C::Copula{d},(i,j)))
+            K[j,i] = K[i,j]
+        end
+    end
+    return K
+end
 function measure(C::Copula{d}, us,vs) where {d}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]

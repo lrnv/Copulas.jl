@@ -121,3 +121,135 @@ _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
     (fa < 0 && fb > 0) || error("Could not bound root at [0, $θmax].")
     Roots.find_zero(f, (a,b), Roots.Brent(); atol=tol, rtol=tol)
 end
+
+"""
+    corblomqvist(x, y=x)
+
+Compute Blomqvist's quadrant correlation coefficient, β. `x` and `y` must both be either
+matrices or vectors. Follows the same API shape as `corspearman`/`corkendall`.
+"""
+corblomqvist(x::AbstractVector{<:Real}, y::AbstractVector{<:Real}) = begin
+    n = length(x)
+    n == length(y) || throw(DimensionMismatch("vectors must have same length"))
+    (any(isnan, x) || any(isnan, y)) && return NaN
+    xr = StatsBase.tiedrank(x); yr = StatsBase.tiedrank(y)
+    h  = (n + 1) / 2
+    c  = 0
+    @inbounds for k in 1:n
+        c += ( (xr[k] <= h) == (yr[k] <= h) )
+    end
+    2c/n - 1
+end
+
+function corblomqvist(X::AbstractMatrix{<:Real}, y::AbstractVector{<:Real})
+    size(X, 1) == length(y) ||
+        throw(DimensionMismatch("X and y have inconsistent dimensions"))
+    n = size(X, 2)
+    C = Matrix{Float64}(LinearAlgebra.I, n, 1)
+    any(isnan, y) && return fill!(C, NaN)
+    m  = size(X, 1)
+    yr = StatsBase.tiedrank(y); h = (m + 1) / 2
+    for j = 1:n
+        Xj = view(X, :, j)
+        if any(isnan, Xj)
+            C[j,1] = NaN
+        else
+            xr = StatsBase.tiedrank(Xj)
+            c = 0
+            @inbounds for k in 1:m
+                c += ( (xr[k] <= h) == (yr[k] <= h) )
+            end
+            C[j,1] = 2c/m - 1
+        end
+    end
+    return C
+end
+
+function corblomqvist(x::AbstractVector{<:Real}, Y::AbstractMatrix{<:Real})
+    size(Y, 1) == length(x) ||
+        throw(DimensionMismatch("x and Y have inconsistent dimensions"))
+    n = size(Y, 2)
+    C = Matrix{Float64}(LinearAlgebra.I, 1, n)
+    any(isnan, x) && return fill!(C, NaN)
+    m  = length(x)
+    xr = StatsBase.tiedrank(x); h = (m + 1) / 2
+    for j = 1:n
+        Yj = view(Y, :, j)
+        if any(isnan, Yj)
+            C[1,j] = NaN
+        else
+            yr = StatsBase.tiedrank(Yj)
+            c = 0
+            @inbounds for k in 1:m
+                c += ( (xr[k] <= h) == (yr[k] <= h) )
+            end
+            C[1,j] = 2c/m - 1
+        end
+    end
+    return C
+end
+
+function corblomqvist(X::AbstractMatrix{<:Real})
+    n = size(X, 2)
+    C = Matrix{Float64}(LinearAlgebra.I, n, n)
+    anynan = Vector{Bool}(undef, n)
+    m = size(X, 1)
+    h = (m + 1) / 2
+    for j = 1:n
+        Xj = view(X, :, j)
+        anynan[j] = any(isnan, Xj)
+        if anynan[j]
+            C[:,j] .= NaN
+            C[j,:] .= NaN
+            C[j,j] = 1
+            continue
+        end
+        xrj = StatsBase.tiedrank(Xj)
+        for i = 1:(j-1)
+            Xi = view(X, :, i)
+            if anynan[i]
+                C[i,j] = C[j,i] = NaN
+            else
+                xri = StatsBase.tiedrank(Xi)
+                c = 0
+                @inbounds for k in 1:m
+                    c += ( (xri[k] <= h) == (xrj[k] <= h) )
+                end
+                C[i,j] = C[j,i] = 2c/m - 1
+            end
+        end
+    end
+    return C
+end
+
+function corblomqvist(X::AbstractMatrix{<:Real}, Y::AbstractMatrix{<:Real})
+    size(X, 1) == size(Y, 1) ||
+        throw(ArgumentError("number of rows in each array must match"))
+    nr = size(X, 2)
+    nc = size(Y, 2)
+    C = Matrix{Float64}(undef, nr, nc)
+    m = size(X, 1)
+    h = (m + 1) / 2
+    for j = 1:nr
+        Xj = view(X, :, j)
+        if any(isnan, Xj)
+            C[j,:] .= NaN
+            continue
+        end
+        xrj = StatsBase.tiedrank(Xj)
+        for i = 1:nc
+            Yi = view(Y, :, i)
+            if any(isnan, Yi)
+                C[j,i] = NaN
+            else
+                yri = StatsBase.tiedrank(Yi)
+                c = 0
+                @inbounds for k in 1:m
+                    c += ( (xrj[k] <= h) == (yri[k] <= h) )
+                end
+                C[j,i] = 2c/m - 1
+            end
+        end
+    end
+    return C
+end
