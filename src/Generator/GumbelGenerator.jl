@@ -92,9 +92,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGen
 end
 
 function _rho_gumbel_via_cdf(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
-    θ ≥ 1 || throw(ArgumentError("Gumbel requiere θ≥1."))
-
-    θeff = ifelse(θ == 1, 1 + 1e-12, θ)
+    θeff = clamp(θ, 1+1e-12, Inf)
     Cθ   = Copulas.ArchimedeanCopula(2, GumbelGenerator(θeff))
     f(x) = _cdf(Cθ, (x[1], x[2]))  # <- tu _cdf
     I = HCubature.hcubature(f, (0.0,0.0), (1.0,1.0);
