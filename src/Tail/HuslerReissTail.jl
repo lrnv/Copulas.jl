@@ -57,8 +57,8 @@ _example(::Type{<:HuslerReissCopula}, d) = ExtremeValueCopula(2, HuslerReissTail
 _unbound_params(::Type{<:HuslerReissCopula}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissCopula}, d, α) = (; θ = exp(α[1]))
 
-λᵤ(C::HuslerReissCopula{T}) where {T} = 2 * (1 - cdf(Normal(), 1 / C.tail.θ))
-λᵤ⁻¹(::Type{HuslerReissTail}, λ::Real) = 1 / quantile(Normal(), 1 - λ/2)
+λᵤ(C::HuslerReissCopula{T}) where {T} = 2 * (1 - Distributions.cdf(Distributions.Normal(), 1 / C.tail.θ))
+λᵤ⁻¹(::Type{HuslerReissTail}, λ::Real) = 1 / Distributions.quantile(Distributions.Normal(), 1 - λ/2)
 β(C::HuslerReissCopula{T}) where {T} = 4^(1 - Distributions.cdf(Distributions.Normal(), 1/C.tail.θ)) - 1
 β⁻¹(C::HuslerReissCopula{T}, beta::Real) where {T} = 1 / Distributions.quantile(Distributions.Normal(), 1 - log(beta + 1) / log(4))
 
