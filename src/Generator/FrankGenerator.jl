@@ -59,53 +59,32 @@ end
 ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
 williamson_dist(G::FrankGenerator, ::Val{d}) where d = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
 frailty(G::FrankGenerator) = G.θ > 0 ? Logarithmic(-G.θ) : throw("The frank copula has no frailty when θ < 0")
+
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
+
 function _frank_tau(θ)
     T = promote_type(typeof(θ),Float64)
-    if abs(θ) < sqrt(eps(T))
-        # return the taylor approx.
-        return θ/9 * (1 - (θ/10)^2)
-    else
-        return 1+4(Debye(θ,1)-1)/θ
-    end
+    abs(θ) < sqrt(eps(T)) && return θ/9 * (1 - (θ/10)^2)
+    return 1+4(Debye(θ,1)-1)/θ
 end
 τ(G::FrankGenerator) = _frank_tau(G.θ)
 function τ⁻¹(::Type{T},tau) where T<:FrankGenerator
-    s,v = sign(tau),abs(tau)
-    if v == 0
-        return v
-    elseif v == 1
-        return s * Inf
-    else
-        return s*Roots.fzero(x -> _frank_tau(x)-v, 0, Inf)
-    end
+    s, v = sign(tau), abs(tau)
+    v == 0 && return v
+    v == 1 && return s * Inf
+    emθ = Roots.fzero(x -> _frank_tau(-log(x))-v, 0, 1)
+    return - s * log(emθ)
 end
-
-function ρ(G::FrankGenerator)
-    θ = G.θ
-    (-Inf < θ < Inf) || throw(ArgumentError("Frank definido para θ∈ℝ\\{0}"))
-    abs(θ) < 1e-8 && return θ/6
+function _frank_rho(θ)
+    T = promote_type(typeof(θ),Float64)
+    abs(θ) < sqrt(eps(T)) && return θ/6
     return 1 + 12*(Debye(θ,2) - Debye(θ,1))/θ
 end
-
-function ρ⁻¹(::Type{FrankGenerator}, ρ̂::Real; tol::Real=1e-10)
-    ρc = clamp(ρ̂, -1+1e-12, 1-1e-12)
-
-    f(θ) = ρ(FrankGenerator(θ)) - ρc
-
-    # bracketing adaptative
-    # for ρ>0 search θ>0, for ρ<0 θ<0
-    if ρc > 0
-        a, b = 1e-6, 50.0
-        while f(a)*f(b) > 0 && b < 1e6
-            b *= 2
-        end
-    else
-        a, b = -50.0, -1e-6
-        while f(a)*f(b) > 0 && a > -1e6
-            a *= 2
-        end
-    end
-
-    return Roots.find_zero(f, (a,b), Roots.Brent(); xatol=tol, rtol=0)
+ρ(G::FrankGenerator) = _frank_rho(G.θ)
+function ρ⁻¹(::Type{FrankGenerator}, rho::Real)
+    s, v = sign(rho), abs(rho)
+    v == 0 && return v
+    v == 1 && return s * Inf
+    emθ = Roots.fzero(x -> _frank_rho(-log(x))-v, 0, 1)
+    return - s * log(emθ)
 end
