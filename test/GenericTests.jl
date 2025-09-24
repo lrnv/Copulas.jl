@@ -415,29 +415,33 @@
             end
 
             @testset "Fitting interface" begin
-                
-                # First on the _example copula. 
-                θ₀ = Distributions.params(_example(CT, d))
-                @assert θ₀ === _rebound_params(CT, d, _unbound_params(CT, d, θ₀))
-                @assert Distributions.params(CT(d, θ₀...)) === θ₀
 
-                # Then on the copula we have at hand:
-                θ = Distributions.params(C)
-                @assert θ=== _rebound_params(CT, d, _unbound_params(CT, d, θ))
-                @assert Distributions.params(CT(d, θ...)) === θ # this should hold everytime.
-                
-                # Now the fitting interface should go through whatever happens: 
-                # How can we test the other fitting methods?
-                # How can we know which fitting methods are available from the type ? 
-                # Because for the moment this only fits the default method. 
-                # Maybe we coudl change the _default_method() function to a _available_methods() function, which first would be considered the default ? 
-                
-                r1 = fit(CopulaModel, CT, spl10)
-                r2 = fit(CT,spl10)
-                @test r2 == r1.result
-                r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-                r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-                @test r4 == r3.result
+                @testset "Unbouding and rebounding params" begin
+                    # First on the _example copula. 
+                    θ₀ = Distributions.params(_example(CT, d))
+                    @assert θ₀ === _rebound_params(CT, d, _unbound_params(CT, d, θ₀))
+                    @assert Distributions.params(CT(d, θ₀...)) === θ₀
+
+                    # Then on the copula we have at hand:
+                    θ = Distributions.params(C)
+                    @assert θ=== _rebound_params(CT, d, _unbound_params(CT, d, θ))
+                    @assert Distributions.params(CT(d, θ...)) === θ # this should hold everytime.
+                end
+
+                @testset "Fitting $CT" begin
+                    for m in _available_fitting_methods(CT)
+                        r1 = fit(CopulaModel, CT, spl10, m)
+                        r2 = fit(CT,spl10, m)
+                        @test r2 == r1.result
+
+                        r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                        r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                        @test r4 == r3.result
+
+                        # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
+                        # can we also exercise the different sklar fits (:parametric and :ecdf) ? 
+                    end
+                end
             end
 
             # Extreme value copula-specific tests (bivariate)
