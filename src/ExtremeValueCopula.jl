@@ -134,11 +134,9 @@ _unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = throw("Cannot fit an Ex
 _rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols, :cfg or :pickands)")
 
 _available_fitting_methods(::Type{ExtremeValueCopula}) = (:ols, :cfg, :pickands)
-function _available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}})
-    dof = length(_unbound_params(CT, 2, Distributions.params(_example(CT, 2))))
-    dof == 1 && return (:mle, :itau, :irho, :ibeta, :iupper)
-    return (:mle) 
-end
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula}) = (:mle)
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}) =  (:mle, :itau, :irho, :ibeta, :iupper)
+
 # Fitting empírico (OLS, CFG, Pickands):
 function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; 
               pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
