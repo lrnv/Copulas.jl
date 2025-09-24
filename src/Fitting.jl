@@ -28,84 +28,56 @@ _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebou
 function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
     @show "Running the MLE routine from the generic implementation"
     d   = size(U,1)
+    cop(α) = CT(d, _rebound_params(CT, d, α)...)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-    loss(α) = -Distributions.loglikelihood(CT(d, _rebound_params(CT, d, α)...), U)
+
+    loss(C) = -Distributions.loglikelihood(C, U)
     res = try
-        Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=:forward)
+        Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff=:forward)
     catch err
         @warn "LBFGS with AD failed ($err), retrying with NelderMead"
-        Optim.optimize(loss, α₀, Optim.NelderMead())
+        Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     end
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
-           (; θ̂=θhat,
-              optimizer = Optim.summary(res),
-              converged = Optim.converged(res),
-              iterations = Optim.iterations(res))
+           (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
 end
 
-
-# I have simply add @assert statements for the dof < the the signal's size
-# I am not sure this is the best way to do it. 
-
-
-
-function _fit(CT::Type{<:Copula}, U, ::Val{:itau})
+function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     d   = size(U,1)
+
+    cop(α) = CT(d, _rebound_params(CT, d, α)...)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-    @assert length(α₀) <= d*(d-1)/2 "Cannot use :itau since there are too much parameters."
-    tau = StatsBase.corkendall(U')
-    loss(α) = sum(abs2, tau .- StatsBase.corkendall(CT(d, _rebound_params(CT, d, α)...)))
-    res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
+    @assert length(α₀) <= d*(d-1)/2 "Cannot use $method since there are too much parameters."
+
+    fun = method isa Val{:itau} ? StatsBase.corkendall : method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
+    est = fun(U')
+    loss(C) = sum(abs2, est .- fun(C))
+
+    res = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
-           (; θ̂=θhat,
-              optimizer = Optim.summary(res),
-              converged = Optim.converged(res),
-              iterations = Optim.iterations(res))
-end
-function _fit(CT::Type{<:Copula}, U, ::Val{:irho})
-    d   = size(U,1)
-    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-    @assert length(α₀) <= d*(d-1)/2 "Cannot use :irho since there are too much parameters."
-    rho = StatsBase.corspearman(U')
-    loss(α) = sum(abs2, rho .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α)...)))
-    res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
-    θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θhat...),
-           (; θ̂=θhat,
-              optimizer = Optim.summary(res),
-              converged = Optim.converged(res),
-              iterations = Optim.iterations(res))
-end
-function _fit(CT::Type{<:Copula}, U, ::Val{:ibeta})
-    d   = size(U,1)
-    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-    @assert length(α₀) <= d*(d-1)/2 "Cannot use :irho since there are too much parameters."
-    rho = corblomqvist(U')
-    loss(α) = sum(abs2, rho .- corblomqvist(CT(d, _rebound_params(CT, d, α)...)))
-    res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
-    θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θhat...),
-           (; θ̂=θhat,
-              optimizer = Optim.summary(res),
-              converged = Optim.converged(res),
-              iterations = Optim.iterations(res))
+           (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
 end
 
+@inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
+@inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
 
-@inline  Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
-#_default_method(::Type{<:Copula}) = :mle
-_available_fitting_methods(::Type{<:Copula}) = (:mle,)
+_available_fitting_methods(::Type{<:Copula}) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula) = _available_fitting_methods(typeof(C))
 
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
-
     d, n = size(U)
+    # Choose the fitting method: 
     avail = _available_fitting_methods(CT)
     isempty(avail) && error("No fitting methods available for $CT in dimension $d.")
-    method = method === :default ? avail[1] : method
-    method ∈ avail || error("Method '$method' not available for $CT in d=$d. Available: $(join(avail, ", ")).")
+    if method === :default 
+        method = avail[1]
+        @info "Choosing default method $(method) among $avail..."
+    elseif method ∉ avail 
+        error("Method '$method' not available for $CT in d=$d. Available: $(join(avail, ", ")).")
+    end
+
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
     C, meta = rez
     ll = Distributions.loglikelihood(C, U)
