@@ -37,6 +37,7 @@ struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
             return new{typeof(θ)}(θ)
         end
     end
+    InvGaussianGenerator{T}(θ) where T = InvGaussianGenerator(promote(θ, one(T))[1])
 end
 const InvGaussianCopula{d, T}   = ArchimedeanCopula{d, InvGaussianGenerator{T}}
 InvGaussianCopula(d, θ)   = ArchimedeanCopula(d, InvGaussianGenerator(θ))
@@ -137,7 +138,7 @@ function _invgaussian_tau(θ)
     return 1+4*rez
 end
 τ(G::InvGaussianGenerator) = _invgaussian_tau(G.θ)
-function τ⁻¹(::Type{T}, τ) where T<:InvGaussianGenerator
+function τ⁻¹(::Type{<:InvGaussianGenerator}, τ)
     τ ≤ 0 && return zero(τ)
     τ ≥ 1/2 && return τ * Inf
     return Roots.find_zero(x -> _invgaussian_tau(x) - τ, (0, Inf))
@@ -154,7 +155,7 @@ function _rho_invgaussian(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
 end
 
 ρ(G::InvGaussianGenerator) = _rho_invgaussian(G.θ)
-function ρ⁻¹(::Type{InvGaussianGenerator}, rho::Real; xatol::Real=1e-8)
+function ρ⁻¹(::Type{<:InvGaussianGenerator}, rho)
     # Numerically inverts _rho_invgaussian using Brent's method.
     # Spearman's rho for InvGaussian: [0, 1/2)
     rho ≤ 0 && return zero(rho)

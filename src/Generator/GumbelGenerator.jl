@@ -36,6 +36,7 @@ struct GumbelGenerator{T} <: AbstractUnivariateFrailtyGenerator
             return new{typeof(θ)}(θ)
         end
     end
+    GumbelGenerator{T}(θ) where T = GumbelGenerator(promote(θ, one(T))[1])
 end
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
 GumbelCopula(d, θ) = ArchimedeanCopula(d, GumbelGenerator(θ))
@@ -67,7 +68,7 @@ function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
 end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * exp(log(-log(t))*(G.θ - 1))) / t
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
-function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
+function τ⁻¹(::Type{<:GumbelGenerator}, τ)
     τ ≥ 1 && return Inf
     τ ≤ 0 && return one(τ)
     return 1/(1-τ)
@@ -103,10 +104,7 @@ end
 ρ(G::GumbelGenerator; rtol=1e-7, atol=1e-9, maxevals=10^6) =
     _rho_gumbel_via_cdf(G.θ; rtol=rtol, atol=atol, maxevals=maxevals)
 
-# ---------------------------------------------------------------------------
-# 3) ρ⁻¹(·) with Brent, also based on TU _cdf (via _rho_gumbel_via_cdf)
-# ---------------------------------------------------------------------------
-function ρ⁻¹(::Type{GumbelGenerator}, ρ̂::Real; xatol::Real=1e-8)
+function ρ⁻¹(::Type{<:GumbelGenerator}, ρ̂; xatol=1e-8)
     # Rango de Spearman para Gumbel: [0, 1)
     ρc = clamp(ρ̂, nextfloat(0.0), prevfloat(1.0))
     f(θ) = _rho_gumbel_via_cdf(θ) - ρc

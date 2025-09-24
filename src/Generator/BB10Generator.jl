@@ -32,6 +32,7 @@ struct BB10Generator{T} <: AbstractFrailtyGenerator
             return new{typeof(θ)}(θ, δ)
         end
     end
+    BB10Generator{T}(θ, δ) where T = BB10Generator(promote(θ, δ, one(T))[1:2]...)
 end
 
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}

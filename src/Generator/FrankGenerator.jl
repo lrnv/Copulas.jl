@@ -37,6 +37,7 @@ struct FrankGenerator{T} <: AbstractUnivariateGenerator
             return new{typeof(θ)}(θ)
         end
     end
+    FrankGenerator{T}(θ) where T = FrankGenerator(promote(θ, one(T))[1])
 end
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
 FrankCopula(d, θ) = ArchimedeanCopula(d, FrankGenerator(θ))
@@ -68,7 +69,7 @@ function _frank_tau(θ)
     return 1+4(Debye(θ,1)-1)/θ
 end
 τ(G::FrankGenerator) = _frank_tau(G.θ)
-function τ⁻¹(::Type{T},tau) where T<:FrankGenerator
+function τ⁻¹(::Type{<:FrankGenerator}, tau)
     s, v = sign(tau), abs(tau)
     v == 0 && return v
     v == 1 && return s * Inf
@@ -81,7 +82,7 @@ function _frank_rho(θ)
     return 1 + 12*(Debye(θ,2) - Debye(θ,1))/θ
 end
 ρ(G::FrankGenerator) = _frank_rho(G.θ)
-function ρ⁻¹(::Type{FrankGenerator}, rho::Real)
+function ρ⁻¹(::Type{<:FrankGenerator}, rho)
     s, v = sign(rho), abs(rho)
     v == 0 && return v
     v == 1 && return s * Inf
