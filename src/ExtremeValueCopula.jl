@@ -132,8 +132,9 @@ end
 _example(CT::Type{ExtremeValueCopula}, d) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols)")
 _unbound_params(CT::Type{ExtremeValueCopula}, d, θ) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols)")
 _rebound_params(CT::Type{ExtremeValueCopula}, d, α) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols)")
-_default_method(::Type{ExtremeValueCopula}) = :ols
-_default_method(::Type{<:ExtremeValueCopula}) = :mle
+
+_available_fitting_methods(::Type{<:ExtremeValueCopula}) = (:ols, :cfg, :pickands, :mle)
+_available_fitting_methods(::Type{<:ExtremeValueCopula{d,GT} where {d,GT<:UnivariateTail2}}) = (:mle, :itau, :irho, :ibeta, :iupper, :ols, :pickands, :cfg)
 
 # Fitting empírico (OLS, CFG, Pickands):
 function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; 

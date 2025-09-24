@@ -95,14 +95,17 @@ end
 
 
 @inline  Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
-_default_method(::Type{<:Copula}) = :mle
+#_default_method(::Type{<:Copula}) = :mle
+_available_fitting_methods(::Type{<:Copula}) = (:mle,)
+_available_fitting_methods(C::Copula) = _available_fitting_methods(typeof(C))
+
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
 
-    if method == :default
-        method = _default_method(CT)
-    end
-
-    d, n  = size(U)
+    d, n = size(U)
+    avail = _available_fitting_methods(CT)
+    isempty(avail) && error("No fitting methods available for $CT in dimension $d.")
+    method = method === :default ? avail[1] : method
+    method ∈ avail || error("Method '$method' not available for $CT in d=$d. Available: $(join(avail, ", ")).")
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
     C, meta = rez
     ll = Distributions.loglikelihood(C, U)
@@ -160,10 +163,10 @@ function _extra_pairwise_stats(U::AbstractMatrix, bypass::Bool)
     bypass && return (;)
     τm, τs, τmin, τmax = _uppertriangle_stats(StatsBase.corkendall(U'))
     ρm, ρs, ρmin, ρmax = _uppertriangle_stats(StatsBase.corspearman(U'))
-    βhat = blomqvist_beta(U)
+    βm, βs, βmin, βmax = _uppertriangle_stats(corblomqvist(U'))
     return (; tau_mean=τm, tau_sd=τs, tau_min=τmin, tau_max=τmax,
              rho_mean=ρm, rho_sd=ρs, rho_min=ρmin, rho_max=ρmax,
-             beta_hat=βhat)
+             beta_mean=βm, beta_sd=βs, beta_min=βmin, beta_max=βmax)
 end
 Distributions.loglikelihood(C::Copulas.Copula, U::AbstractMatrix{<:Real}) = sum(Base.Fix1(Distributions.logpdf, C), eachcol(U))
 Distributions.loglikelihood(C::Copulas.Copula, u::AbstractVector{<:Real}) = Distributions.logpdf(C, u)
@@ -249,13 +252,13 @@ function Base.show(io::IO, M::CopulaModel)
 
     n  = StatsBase.nobs(M)
     ll = Distributions.loglikelihood(M)
-    Printf.@printf(io, "Number of observations: %d\n", n)
+    Printf.@printf(io, "Number of observations: %9d\n", n)
 
     ll0 = get(M.method_details, :null_ll, NaN)
     if isfinite(ll0)
-        Printf.@printf(io, "Null Loglikelihood:  %10.4f\n", ll0)
+        Printf.@printf(io, "Null Loglikelihood:  %12.4f\n", ll0)
     end
-    Printf.@printf(io, "Loglikelihood:       %10.4f\n", ll)
+    Printf.@printf(io, "Loglikelihood:       %12.4f\n", ll)
 
     # Para el test LR usa g.l. de la CÓPULA si es SklarDist
     kcop = (R isa SklarDist) ? StatsBase.dof(copula_of(M)) : StatsBase.dof(M)
@@ -266,8 +269,7 @@ function Base.show(io::IO, M::CopulaModel)
     end
 
     aic = StatsBase.aic(M); bic = StatsBase.bic(M)
-    Printf.@printf(io, "AIC: %.3f   BIC: %.3f\n", aic, bic)
-
+    Printf.@printf(io, "AIC: %.3f       BIC: %.3f\n", aic, bic)
     if isfinite(M.elapsed_sec) || M.iterations != 0 || M.converged != true
         conv = M.converged ? "true" : "false"
         tsec = isfinite(M.elapsed_sec) ? Printf.@sprintf("%.3fs", M.elapsed_sec) : "NA"
@@ -329,47 +331,60 @@ function Base.show(io::IO, M::CopulaModel)
                 Printf.@printf(io, "%-6s %-12s %-7s %10.3g %10s %12s\n", lab, pname, names[j], θi[j], "—", "—")
             end
         end
-    elseif StatsBase.dof(M) == 0 || M.method == :emp
+        elseif StatsBase.dof(M) == 0 || M.method == :emp
         # Empirical summary
         md   = M.method_details
-        method=M.method
-        kind = get(md, :emp_kind, :raw)
+        kind = get(md, :emp_kind, :unspecified)
         d    = get(md, :d, missing)
         n    = get(md, :n, missing)
         pv   = get(md, :pseudo_values, missing)
-        println(io, "Empirical summary ($kind)")
+
         hdr = "d=$(d), n=$(n)" * (pv === missing ? "" : ", pseudo_values=$(pv)")
+        extra = ""
         if kind === :bernstein
-            m = get(md, :m, nothing); if m !== nothing; hdr *= ", m=$(m)"; end
+            m = get(md, :m, nothing)
+            extra = m === nothing ? "" : ", m=$(m)"
+        elseif kind === :exact
+            m = get(md, :m, nothing)
+            extra = m === nothing ? "" : ", m=$(m)"
         elseif kind === :ev_tail
-            grid= get(md, :grid, missing)
-            eps = get(md, :eps,  missing)
-            hdr *= ", method=$(method), grid=$(grid), eps=$(eps)"
+            method = get(md, :method, :unspecified)
+            grid   = get(md, :grid, missing)
+            eps    = get(md, :eps,  missing)
+            extra  = ", method=$(method), grid=$(grid), eps=$(eps)"
         end
-        println(io, hdr)
+
+        println(io, "Empirical summary ($kind)")
+        println(io, hdr * extra)
+
+        # Estadísticos clásicos
         has_tau  = all(haskey.(Ref(md), (:tau_mean, :tau_sd, :tau_min, :tau_max)))
         has_rho  = all(haskey.(Ref(md), (:rho_mean, :rho_sd, :rho_min, :rho_max)))
-        has_beta = haskey(md, :beta_hat)
+        has_beta = all(haskey.(Ref(md), (:beta_mean, :beta_sd, :beta_min, :beta_max)))
+
         if d === missing || d == 2
             println(io, "────────────────────────────")
-            Printf.@printf(io, "%-10s %12s\n", "Stat", "Value")
+            Printf.@printf(io, "%-10s %18s\n", "Stat", "Value")
             println(io, "────────────────────────────")
-            if has_tau;  Printf.@printf(io, "%-10s %12.3f\n", "tau",  md[:tau_mean]); end
-            if has_rho;  Printf.@printf(io, "%-10s %12.3f\n", "rho",  md[:rho_mean]); end
-            if has_beta; Printf.@printf(io, "%-10s %12.3f\n", "beta", md[:beta_hat]); end
+                if has_tau; Printf.@printf(io, "%-10s %18.3f\n", "tau", md[:tau_mean]); end
+                if has_rho; Printf.@printf(io, "%-10s %18.3f\n", "rho", md[:rho_mean]); end
+                if has_beta; Printf.@printf(io, "%-10s %18.3f\n", "beta", md[:beta_mean]); end
             println(io, "────────────────────────────")
         else
             println(io, "───────────────────────────────────────────────────────")
-            Printf.@printf(io, "%-10s %10s %10s %10s %10s\n", "Stat","Mean","SD","Min","Max")
+            Printf.@printf(io, "%-10s %10s %10s %10s %10s\n", "Stat", "Mean", "SD", "Min", "Max")
             println(io, "───────────────────────────────────────────────────────")
             if has_tau
-                Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n", "tau", md[:tau_mean], md[:tau_sd], md[:tau_min], md[:tau_max])
+                Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n",
+                    "tau", md[:tau_mean], md[:tau_sd], md[:tau_min], md[:tau_max])
             end
             if has_rho
-                Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n", "rho", md[:rho_mean], md[:rho_sd], md[:rho_min], md[:rho_max])
+                Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n",
+                    "rho", md[:rho_mean], md[:rho_sd], md[:rho_min], md[:rho_max])
             end
             if has_beta
-                Printf.@printf(io, "%-10s %10.3f %10s %10s %10s\n", "beta", md[:beta_hat], "—", "—", "—")
+                Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n",
+                    "beta", md[:beta_mean], md[:beta_sd], md[:beta_min], md[:beta_max])
             end
             println(io, "───────────────────────────────────────────────────────")
         end
