@@ -207,42 +207,19 @@ function _fit(::Type{ArchimedeanCopula}, U, ::Val{:gnz2011})
     return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:itau})
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Union{Val{:itau},Val{:irho},Val{:ibeta}})
     d = size(U,1)
     GT = generatorof(CT)
-    # So here we do the mean on the theta side, maybe we should do it on the \tau side ?
-    θs   = map(v -> τ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corkendall(U')))
+    
+    f = m isa Val{:itau} ?  StatsBase.corkendall : m isa Val{:irho} ?  StatsBase.corspearman : corblomqvist
+    invf =  m isa Val{:itau} ?  τ⁻¹ : m isa Val{:irho} ?  ρ⁻¹ : β⁻¹
+
+    θs = map(v -> invf(GT, clamp(v, -1, 1)), _uppertriangle_stats(f(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ), (; θ̂=θ, eps)
-end
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:irho})
-    d = size(U,1)
-    GT = generatorof(CT)
-    # So here we do the mean on the theta side, maybe we should do it on the \rho side ?
-    θs   = map(v -> ρ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corspearman(U')))
-    θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; θ̂=θ, eps)
-end
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
-    d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
-    βobs = clamp(β(U), -1+1e-10, 1-1e-10)
-    lo,hi = _θ_bounds(GT,d)
-    fβ(θ) = β(CT(d,θ))
-    a0 = isfinite(lo) ? lo+δ : -5.0 ; b0 = isfinite(hi) ? hi-δ :  5.0
-    βmin, βmax = fβ(a0), fβ(b0)
-    if βmin > βmax; βmin, βmax = βmax, βmin; end
-    θ = if βobs ≤ βmin
-        a0
-    elseif βobs ≥ βmax
-        b0
-    else
-        Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
-    end
-    return CT(d,θ), (; θ̂=θ)
 end
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
-    # @show "Running the MLE routine from the Archimedean Univaraite implementation"
     d = size(U,1)
     GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
