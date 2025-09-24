@@ -383,3 +383,44 @@ function Distributions._logpdf(C::BB5Copula{T}, u) where T
     logc = logC - log(u1) - log(u2) + log(tmp)
     return Tret(logc)
 end
+
+_available_fitting_methods(::Type{ArchimaxCopula}) = (:mle,)
+
+function _fit(CT::Type{<:ArchimaxCopula}, U, ::Val{:mle})
+    @show "Running ArchimaxCopula MLE routine"
+    d = size(U, 1)
+
+    # Constructor paramétrico
+    cop(α) = CT(d, _rebound_params(CT, d, α))
+
+    # Semilla robusta - parámetros por defecto seguros
+    θ₀ = if CT == ArchimaxCopula{2, ClaytonGenerator, MixedTail}
+        (gen_θ = 0.5, tail_θ = 0.5)
+    elseif CT == ArchimaxCopula{2, GumbelGenerator, GumbelTail}
+        (gen_θ = 2.0, tail_θ = 2.0)
+    elseif CT == ArchimaxCopula{2, BB1Generator, MixedTail}
+        (gen_θ1 = 0.5, gen_θ2 = 1.5, tail_θ = 0.5)
+    else
+        # Fallback genérico
+        (gen_θ = 1.0, tail_θ = 1.0)
+    end
+
+    α₀ = _unbound_params(CT, d, θ₀)
+
+    loss(C) = -Distributions.loglikelihood(C, U)
+
+    res = try
+        Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff=:forward)
+    catch err
+        @warn "LBFGS with AD failed ($err), retrying with NelderMead"
+        Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
+    end
+
+    θhat = _rebound_params(CT, d, Optim.minimizer(res))
+    return CT(d, θhat), (
+        θ̂ = θhat, 
+        optimizer = Optim.summary(res),
+        converged = Optim.converged(res),
+        iterations = Optim.iterations(res)
+    )
+end

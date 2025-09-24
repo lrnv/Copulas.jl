@@ -42,6 +42,7 @@ GumbelBarnettCopula(d; θ::Real) = GumbelBarnettCopula(d, θ)
 
 Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
 _example(::Type{<:GumbelBarnettCopula}, d::Int) = GumbelBarnettCopula(d, 0.5 * _find_critical_value_gumbelbarnett(d))
+_example(::Type{ArchimedeanCopula{2, GumbelBarnettGenerator}}, d) = GumbelBarnettCopula(d, 0.5 * _find_critical_value_gumbelbarnett(d))
 function _unbound_params(::Type{<:GumbelBarnettCopula}, d, θ)
     u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
     return [log(θ.θ / (u - θ.θ))]

@@ -35,6 +35,7 @@ BB2Copula(d, θ, δ) = ArchimedeanCopula(d, BB2Generator(θ, δ))
 BB2Copula(d; θ::Real, δ::Real) = BB2Copula(d, θ, δ)
 Distributions.params(G::BB2Generator) = (θ = G.θ, δ = G.δ)
 _example(CT::Type{<:BB2Copula}, d) = BB2Copula(d, 1.2, 0.8)
+_example(::Type{ArchimedeanCopula{2, BB2Generator}}, d) = BB2Copula(d, 1.2, 0.8)
 _unbound_params(::Type{<:BB2Copula}, d, θ) = [log(θ.θ), log(θ.δ)]
 _rebound_params(::Type{<:BB2Copula}, d, α) = (; θ = exp(α[1]), δ = exp(α[2]))
 
