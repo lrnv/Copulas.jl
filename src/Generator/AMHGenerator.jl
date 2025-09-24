@@ -42,11 +42,13 @@ Distributions.params(G::AMHGenerator) = (θ = G.θ,)
 _example(::Type{<:AMHCopula}, d) = AMHCopula(d, 0.1)
 function _unbound_params(CT::Type{<:AMHCopula}, d, θ)
     l =  _find_critical_value_amh(d, step=1e-7)
-    [log(θ.θ - l) - log(1-l)]
+    [atanh(2 * (θ.θ - l) / (1-l) - 1)]
+    # [log(θ.θ - l) - log(1-l)]
 end
 function _rebound_params(CT::Type{<:AMHCopula}, d, α)
     l =  _find_critical_value_amh(d, step=1e-7)
-    (; θ = (exp(α[1]) + l) / (exp(α[1]) + 1))
+    # (; θ = (exp(α[1]) + l) / (exp(α[1]) + 1))
+    (; θ = l + (1 - l)*(1+tanh(α[1]))/2)
 end
 _θ_bounds(::Type{<:AMHGenerator}, d) = (clamp(_find_critical_value_amh(d), -1, 1), 1)
 function _find_critical_value_amh(k; step=1e-7)

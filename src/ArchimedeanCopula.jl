@@ -201,7 +201,13 @@ _available_fitting_methods(::Type{ArchimedeanCopula}) = (:gnz2011,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}) = (:mle,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}) = (:mle, :itau, :irho, :ibeta)
 
-function _fit(::Type{ArchimedeanCopula}, U, ::Val{:gnz2011})
+
+_example(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}, d) = ArchimedeanCopula(d,i𝒲(Distributions.MixtureModel([Distributions.Dirac(1), Distributions.Dirac(2)]),d))
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}) = Tuple{}() # No fitting method. 
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}) = (:gnz2011,)
+
+
+function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}}, U, ::Val{:gnz2011})
     # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted. 
     d,n = size(U)
     return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
