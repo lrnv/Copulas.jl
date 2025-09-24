@@ -52,6 +52,7 @@ end
 const AsymMixedCopula{T} = ExtremeValueCopula{2, AsymMixedTail{T}}
 AsymMixedCopula(θ) = ExtremeValueCopula(2, AsymMixedTail(θ))
 AsymMixedCopula(d::Integer, θ) = ExtremeValueCopula(2, AsymMixedTail(θ))
+AsymMixedCopula(d::Integer, θ₁, θ₂) = AsymMixedCopula(d, (θ₁, θ₂))
 Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 
 function A(tail::AsymMixedTail, t::Real)
@@ -83,4 +84,3 @@ _rebound_params(::Type{<:AsymMixedCopula}, d, α) = begin
   θ₁ = s - θ₂
   (; θ₁, θ₂)
 end
-AsymMixedCopula(d::Integer, θ₁, θ₂) = AsymMixedCopula(d, (θ₁, θ₂))

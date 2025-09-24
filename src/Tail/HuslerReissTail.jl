@@ -57,11 +57,6 @@ _example(::Type{<:HuslerReissCopula}, d) = ExtremeValueCopula(2, HuslerReissTail
 _unbound_params(::Type{<:HuslerReissCopula}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissCopula}, d, α) = (; θ = exp(α[1]))
 
-λᵤ(C::HuslerReissCopula{T}) where {T} = 2 * (1 - Distributions.cdf(Distributions.Normal(), 1 / C.tail.θ))
-λᵤ⁻¹(::Type{HuslerReissTail}, λ::Real) = 1 / Distributions.quantile(Distributions.Normal(), 1 - λ/2)
-β(C::HuslerReissCopula{T}) where {T} = 4^(1 - Distributions.cdf(Distributions.Normal(), 1/C.tail.θ)) - 1
-β⁻¹(C::HuslerReissCopula{T}, beta::Real) where {T} = 1 / Distributions.quantile(Distributions.Normal(), 1 - log(beta + 1) / log(4))
-
 function ℓ(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t) where {T}
     t₁, t₂ = t
     θ = C.tail.θ
@@ -101,14 +96,15 @@ function d²A(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
     return 2*(ϕ1 + ϕ2)*a1p + t*ϕ1*(a1pp - a1*a1p^2) + (1 - t)*ϕ2*(-a1pp - a2*a1p^2)
 end
 
-tau_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(HuslerReissTail(θ),t)*t*(1-t)/max(A(HuslerReissTail(θ),t),_δ(t)), 0, 1; kw...)[1]
-rho_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(HuslerReissTail(θ),t))^2, 0, 1; kw...)[1] - 3
+_tau_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(HuslerReissTail(θ),t)*t*(1-t)/max(A(HuslerReissTail(θ),t),_δ(t)), 0, 1; kw...)[1]
+_rho_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(HuslerReissTail(θ),t))^2, 0, 1; kw...)[1] - 3
 
-iTau(::Type{HuslerReissCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> tau_HuslerReiss(θ) - τ; kw...)
-iRho(::Type{HuslerReissCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> rho_HuslerReiss(θ) - ρ; kw...)
+τ(C::HuslerReissCopula) = _tau_HuslerReiss(C.tail.θ)
+ρ(C::HuslerReissCopula) = _rho_HuslerReiss(C.tail.θ)
+λᵤ(C::HuslerReissCopula) = 2 * (1 - Distributions.cdf(Distributions.Normal(), 1 / C.tail.θ))
+β(C::HuslerReissCopula) = 4^(1 - Distributions.cdf(Distributions.Normal(), 1/C.tail.θ)) - 1
 
-# Sugar syntax
-τ(C::HuslerReissCopula) = tau_HuslerReiss(C.tail.θ)
-ρ(C::HuslerReissCopula) = rho_HuslerReiss(C.tail.θ)
-τ⁻¹(C::HuslerReissCopula, τ; kw...) = iTau(HuslerReissCopula, τ; kw...)
-ρ⁻¹(C::HuslerReissCopula, ρ; kw...) = iRho(HuslerReissCopula, ρ; kw...)
+τ⁻¹(::Type{<:HuslerReissCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
+ρ⁻¹(::Type{<:HuslerReissCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_HuslerReiss(θ) - ρ; kw...)
+λᵤ⁻¹(::Type{<:HuslerReissCopula}, λ) = 1 / Distributions.quantile(Distributions.Normal(), 1 - λ/2)
+β⁻¹(::Type{<:HuslerReissCopula}, beta) where {T} = 1 / Distributions.quantile(Distributions.Normal(), 1 - log(beta + 1) / log(4))

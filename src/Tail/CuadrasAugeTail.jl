@@ -57,14 +57,6 @@ end
 _θ_bounds(::Type{<:CuadrasAugeTail}, d) = (0, 1)
 dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 ? -tail.θ : C.tail.θ)
 
-τ(C::CuadrasAugeCopula{T}) where {T} = C.tail.θ / (2 - C.tail.θ)
-τ⁻¹(C::CuadrasAugeCopula{T}, tau::Real) where {T} = 2tau / (1 + tau)
-ρ(C::CuadrasAugeCopula{T}) where {T} = (3 * C.tail.θ) / (4 - C.tail.θ)
-ρ⁻¹(C::CuadrasAugeCopula{T}, rho::Real) where {T} = 4rho / (3 + rho)
-β(C::CuadrasAugeCopula{T}) where {T} = 2.0^(C.tail.θ) - 1
-β⁻¹(C::CuadrasAugeCopula{T}, beta::Real) where {T} = log2(beta + 1)
-λᵤ(C::CuadrasAugeCopula{T}) where {T} = C.tail.θ
-λᵤ⁻¹(C::CuadrasAugeCopula{T}, λ::Real) where {T} = λ
 
 ℓ(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t) where {T} = max(t[1], t[2]) + (1 - C.tail.θ) * min(t[1], t[2])
 
@@ -86,7 +78,7 @@ function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real
     z ≥ 1    && return S(0)
     D.uⱼ ≤ 0 && return S(-Inf)
     D.uⱼ ≥ 1 && return S(log(z))
-
+    
     z ≥ D.uⱼ && return (1-θ) * log(z)
     return log1p(-θ) + log(z) - θ * log(D.uⱼ)
 
@@ -98,11 +90,11 @@ function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::R
     α ≥ 1 && return 1.0
     D.uⱼ ≤ 0 && return 0.0
     D.uⱼ ≥ 1 && return α
-
+    
     la = log(α)
     lu = log(D.uⱼ)
     lt = log1p(-θ)
-
+    
     if la < lt + (1-θ)*lu
         return exp(la - lt + θ*lu)
     elseif la ≤ (1-θ)*lu
@@ -111,3 +103,14 @@ function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::R
         return exp(la / (1 - θ))
     end
 end
+
+
+τ(C::CuadrasAugeCopula) = C.tail.θ / (2 - C.tail.θ)
+ρ(C::CuadrasAugeCopula) = (3 * C.tail.θ) / (4 - C.tail.θ)
+β(C::CuadrasAugeCopula) = 2.0^(C.tail.θ) - 1
+λᵤ(C::CuadrasAugeCopula) = C.tail.θ
+
+τ⁻¹(::Type{<:CuadrasAugeCopula}, tau) = 2tau / (1 + tau)
+ρ⁻¹(::Type{<:CuadrasAugeCopula}, rho) = 4rho / (3 + rho)
+β⁻¹(::Type{<:CuadrasAugeCopula}, beta) = log2(beta + 1)
+λᵤ⁻¹(::Type{<:CuadrasAugeCopula}, λ) = λ

@@ -50,13 +50,6 @@ _example(::Type{<:LogCopula}, d) = ExtremeValueCopula(2, LogTail(2.0))
 _unbound_params(::Type{<:LogCopula}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
 _rebound_params(::Type{<:LogCopula}, d, α) = (; θ = exp(α[1]) + 1)
 
-τ(C::LogCopula{T}) where {T} = 1 - inv(C.tail.θ)
-τ⁻¹(C::LogCopula{T}, tau::Real) where {T}  = 1 / (1 - tau)
-β(C::LogCopula{T}) where {T} = 4 * 2^(-2^(1 / C.tail.θ)) - 1
-β⁻¹(C::LogCopula{T}, beta::Real) where {T} = 1 / log2(-log2((beta + 1) / 4))
-λᵤ(C::LogCopula{T}) where {T} = 2 - 2^(1 / C.tail.θ)
-λᵤ⁻¹(C::LogCopula{T}, λ::Real) where {T} = 1 / log2(2 - λ)
-
 # A(t) for LogCopula (avec log-exp pour la stabilité)
 function A(tail::LogTail, t::Real)
     θ = tail.θ
@@ -122,8 +115,15 @@ function d²A(tail::LogTail, t::Real)
     return term1 + term2
 end
 
-rho_Log(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(LogTail(θ),t))^2, 0, 1; kw...)[1] - 3
-iRho(::Type{LogCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> rho_Log(θ) - ρ; a=1.0, b=2.0)
+_rho_Log(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(LogTail(θ),t))^2, 0, 1; kw...)[1] - 3
 
-ρ(C::LogCopula) = rho_Log(C.tail.θ)
-ρ⁻¹(C::LogCopula, ρ; kw...) = iRho(LogCopula, ρ; kw...)
+τ(C::LogCopula) = 1 - inv(C.tail.θ)
+ρ(C::LogCopula) = _rho_Log(C.tail.θ)
+β(C::LogCopula) = 4 * 2^(-2^(1 / C.tail.θ)) - 1
+λᵤ(C::LogCopula) = 2 - 2^(1 / C.tail.θ)
+
+
+τ⁻¹(::Type{<:LogCopula}, tau) = 1 / (1 - tau)
+ρ⁻¹(::Type{<:LogCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_Log(θ) - ρ; a=1.0, b=2.0)
+β⁻¹(::Type{<:LogCopula}, beta) = 1 / log2(-log2((beta + 1) / 4))
+λᵤ⁻¹(::Type{<:LogCopula}, λ) = 1 / log2(2 - λ)
