@@ -140,20 +140,19 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     C = EmpiricalEVCopula(U; method=typeof(method).parameters[1], grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
     return C, (; pseudo_values, grid, eps)
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}, Val{:iupper}})
-    # @show "Running the ITAU routine from the Extreme value implementation"
-    
-    θ = m isa Val{:itau} ?       τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) : 
-             m isa Val{:irho} ?  ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) : 
-             m isa Val{:ibeta} ? β⁻¹(CT,  corblomqvist(U')[1,2]) :
-                                 λᵤ⁻¹(CT, tail(U;t=:upper)) # only :iupper left
-
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
+    θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) : 
+        m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) : 
+                           β⁻¹(CT,  corblomqvist(U')[1,2])
     θ = clamp(θ, _θ_bounds(tailof(CT), 2)...)
+    return CT(2, θ), (; θ̂=θ)
+end
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
+    θ = clamp(λᵤ⁻¹(CT, tail(U;t=:upper)), _θ_bounds(tailof(CT), 2)...)
     return CT(2, θ), (; θ̂=θ)
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:ibeta, xtol::Real=1e-8)
-    # @show "Running the MLE routine from the Extreme value implementation"
     d = size(U,1)
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, d)

@@ -55,8 +55,8 @@ _rho_Mixed(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t
 β(C::MixedCopula) = 2.0^(C.tail.θ / 2) - 1
 λᵤ(C::MixedCopula) = C.tail.θ / 2
 
-τ⁻¹(::Type{<:MixedCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> tau_Mixed(θ) - τ; kw...)
-ρ⁻¹(::Type{<:MixedCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> rho_Mixed(θ) - ρ; kw...)
+τ⁻¹(::Type{<:MixedCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_Mixed(θ) - τ; kw...)
+ρ⁻¹(::Type{<:MixedCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_Mixed(θ) - ρ; kw...)
 β⁻¹(::Type{<:MixedCopula}, beta) = 2 * log2(beta + 1)
 λᵤ⁻¹(::Type{<:MixedCopula}, λ) = 2λ
 

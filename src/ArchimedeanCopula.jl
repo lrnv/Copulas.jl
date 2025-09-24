@@ -207,17 +207,29 @@ function _fit(::Type{ArchimedeanCopula}, U, ::Val{:gnz2011})
     return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Union{Val{:itau},Val{:irho},Val{:ibeta}})
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}})
     d = size(U,1)
     GT = generatorof(CT)
     
-    f = m isa Val{:itau} ?  StatsBase.corkendall : m isa Val{:irho} ?  StatsBase.corspearman : corblomqvist
-    invf =  m isa Val{:itau} ?  τ⁻¹ : m isa Val{:irho} ?  ρ⁻¹ : β⁻¹
+    f = m isa Val{:itau} ?  StatsBase.corkendall :  StatsBase.corspearman
+    invf =  m isa Val{:itau} ?  τ⁻¹ : ρ⁻¹
 
     θs = map(v -> invf(GT, clamp(v, -1, 1)), _uppertriangle_stats(f(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ), (; θ̂=θ, eps)
 end
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
+    d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
+    βobs = clamp(β(U), -1+1e-10, 1-1e-10)
+    lo,hi = _θ_bounds(GT,d)
+    fβ(θ) = β(CT(d,θ))
+    a0 = isfinite(lo) ? lo+δ : -5.0 ; b0 = isfinite(hi) ? hi-δ :  5.0
+    βmin, βmax = fβ(a0), fβ(b0)
+    if βmin > βmax; βmin, βmax = βmax, βmin; end
+    θ = βobs ≤ βmin ? a0 : βobs ≥ βmax ? b0 : Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
+    return CT(d,θ), (; θ̂=θ)
+end
+
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     d = size(U,1)
