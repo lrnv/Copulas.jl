@@ -50,6 +50,7 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
         fᵢ = Distributions.DiscreteNonParametric(0:(2^d-1), (1 .+ wᵢ)/2^d)
         return new{d, typeof(vθ), typeof(fᵢ)}(vθ, fᵢ)
     end
+    FGMCopula{D, T1, T2}(d, θ) where {D, T1, T2} = FGMCopula(d, θ)
 end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
 

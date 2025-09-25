@@ -1,84 +1,84 @@
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(0.1, 0.2,0.6)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(0.6129496106778634, 0.820474440393214, 0.22304578643880224)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(11.647356700032505, 0.6195348270893413, 0.4197760589260566)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(5.0, 0.8, 0.3)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(8.810168494949659, 0.5987759444612732, 0.5391280234619427)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(10+5*rand(M.rng), 1.0, 1.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(10+5*rand(M.rng), rand(M.rng), rand(M.rng))) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(5+4*rand(M.rng), 1.0, 1.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(5+4*rand(M.rng), rand(M.rng), rand(M.rng))) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(rand(M.rng), 1.0, 1.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(rand(M.rng), rand(M.rng), rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, 0.1, 0.2, 0.6)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, 0.6129496106778634, 0.820474440393214, 0.22304578643880224)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, 11.647356700032505, 0.6195348270893413, 0.4197760589260566)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, 5.0, 0.8, 0.3)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, 8.810168494949659, 0.5987759444612732, 0.5391280234619427)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, 10+5*rand(M.rng), 1.0, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, 10+5*rand(M.rng), rand(M.rng), rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, 5+4*rand(M.rng), 1.0, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, 5+4*rand(M.rng), rand(M.rng), rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, rand(M.rng), 1.0, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymGalambosCopula] setup=[M] begin M.check(AsymGalambosCopula(2, rand(M.rng), rand(M.rng), rand(M.rng))) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(1.0, 0.0, 0.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(1.0, 1.0, 1.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(1.0, rand(M.rng), rand(M.rng))) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(1.2, 0.3,0.6)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(1.5, 0.5, 0.2)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(1+4*rand(M.rng), 0.0, 0.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(1+4*rand(M.rng), 1.0, 1.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(1+4*rand(M.rng), rand(M.rng), rand(M.rng))) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(10+5*rand(M.rng), 0.0, 0.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(10+5*rand(M.rng), 1.0, 1.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(10+5*rand(M.rng), rand(M.rng), rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 1.0, 0.0, 0.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 1.0, 1.0, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 1.0, rand(M.rng), rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 1.2, 0.3,0.6)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 1.5, 0.5, 0.2)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 1+4*rand(M.rng), 0.0, 0.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 1+4*rand(M.rng), 1.0, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 1+4*rand(M.rng), rand(M.rng), rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 10+5*rand(M.rng), 0.0, 0.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 10+5*rand(M.rng), 1.0, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymLogCopula] setup=[M] begin M.check(AsymLogCopula(2, 10+5*rand(M.rng), rand(M.rng), rand(M.rng))) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymMixedCopula] setup=[M] begin M.check(AsymMixedCopula(0.12, 0.13)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymMixedCopula] setup=[M] begin M.check(AsymMixedCopula(0.1, 0.2)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymMixedCopula] setup=[M] begin M.check(AsymMixedCopula(2, 0.12, 0.13)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :AsymMixedCopula] setup=[M] begin M.check(AsymMixedCopula(2, 0.1, 0.2)) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(1.0, 0.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(0.5, 0.3)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(0.5, 0.5)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(0.5516353577049822, 0.33689370624999193)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(0.7,0.3)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(1/2,1/2)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(rand(M.rng), rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(2, 1.0, 0.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(2, 0.5, 0.3)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(2, 0.5, 0.5)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(2, 0.5516353577049822, 0.33689370624999193)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(2, 0.7,0.3)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(2, 1/2,1/2)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :BC2Copula] setup=[M] begin M.check(BC2Copula(2, rand(M.rng), rand(M.rng))) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(0.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(0.1)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(0.3437537135972244)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(0.7103550345192344)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(0.8)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(1.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(2, 0.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(2, 0.1)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(2, 0.3437537135972244)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(2, 0.7103550345192344)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(2, 0.8)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(2, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :CuadrasAugeCopula] setup=[M] begin M.check(CuadrasAugeCopula(2, rand(M.rng))) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(0.3)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(120)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(20)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(210)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(4.3)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(80)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(5+5*rand(M.rng))) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(rand(M.rng))) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(1+4*rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(2, 0.3)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(2, 120)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(2, 20)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(2, 210)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(2, 4.3)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(2, 80)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(2, 5+5*rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(2, rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :GalambosCopula] setup=[M] begin M.check(GalambosCopula(2, 1+4*rand(M.rng))) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(0.1)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(0.256693308150987)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(3.5)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(1.6287031392529938)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(5.319851350643586)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(2, 0.1)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(2, 0.256693308150987)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(2, 3.5)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(2, 1.6287031392529938)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :HuslerReissCopula] setup=[M] begin M.check(HuslerReissCopula(2, 5.319851350643586)) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(0.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(0.2)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(0.5)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(2, 0.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(2, 0.2)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(2, 0.5)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MixedCopula] setup=[M] begin M.check(MixedCopula(2, 1.0)) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula, :OneRing] setup=[M] begin M.check(MOCopula(0.5960710257852946, 0.3313524247810329, 0.09653466861970061)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(0.1,0.2,0.3)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(0.5, 0.5, 0.5)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(1.0, 1.0, 1.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(rand(M.rng), rand(M.rng), rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(2, 0.5960710257852946, 0.3313524247810329, 0.09653466861970061)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(2, 0.1,0.2,0.3)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(2, 0.5, 0.5, 0.5)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(2, 1.0, 1.0, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :MOCopula] setup=[M] begin M.check(MOCopula(2, rand(M.rng), rand(M.rng), rand(M.rng))) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(10.0, 1.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(3.0, 0.0)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(4.0, 0.5)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(5.0, -0.5)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(5.466564460573727, -0.6566645244416698)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(4+6*rand(M.rng), -0.9+1.9*rand(M.rng))) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(2.0, 0.5)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(2, 10.0, 1.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(2, 3.0, 0.0)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(2, 4.0, 0.5)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(2, 5.0, -0.5)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(2, 5.466564460573727, -0.6566645244416698)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(2, 4+6*rand(M.rng), -0.9+1.9*rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :tEVCopula] setup=[M] begin M.check(tEVCopula(2, 2.0, 0.5)) end
 
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :LogCopula] setup=[M] begin M.check(LogCopula(1+9*rand(M.rng))) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :LogCopula] setup=[M] begin M.check(LogCopula(1.5)) end
-@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :LogCopula] setup=[M] begin M.check(LogCopula(5.5)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :LogCopula] setup=[M] begin M.check(LogCopula(2, 1+9*rand(M.rng))) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :LogCopula] setup=[M] begin M.check(LogCopula(2, 1.5)) end
+@testitem "Generic" tags=[:Generic, :ExtremeValueCopula, :LogCopula] setup=[M] begin M.check(LogCopula(2, 5.5)) end
 
 @testitem "Generic OLS" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,10); method=:ols, pseudo_values=false)) end
 @testitem "Generic OLS" tags=[:Generic, :ExtremeValueCopula, :EmpiricalEVCopula] setup=[M] begin M.check(EmpiricalEVCopula(randn(M.rng, 2,20); method=:ols, pseudo_values=false)) end

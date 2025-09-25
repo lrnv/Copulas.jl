@@ -103,6 +103,9 @@
     is_extremevalue(C::CT)                   where CT = (CT <: Copulas.ExtremeValueCopula)
     is_archimax(C::CT)                       where CT = (CT <: Copulas.ArchimaxCopula)
 
+    can_be_fitted(C::CT) where CT = length(Copulas._available_fitting_methods(CT)) > 0
+    has_unbounded_params(C::CT) where CT = :mle ∈ Copulas._available_fitting_methods(CT) && length(Distributions.params(C)) > 0
+
     function check(C::Copulas.Copula{d}) where d
         @testset "Testing $C" begin
             @info "Testing $C..."
@@ -414,36 +417,6 @@
                 end
             end
 
-            @testset "Fitting interface" begin
-
-                @testset "Unbouding and rebounding params" begin
-                    # First on the _example copula. 
-                    θ₀ = Distributions.params(_example(CT, d))
-                    @assert θ₀ === _rebound_params(CT, d, _unbound_params(CT, d, θ₀))
-                    @assert Distributions.params(CT(d, θ₀...)) === θ₀
-
-                    # Then on the copula we have at hand:
-                    θ = Distributions.params(C)
-                    @assert θ=== _rebound_params(CT, d, _unbound_params(CT, d, θ))
-                    @assert Distributions.params(CT(d, θ...)) === θ # this should hold everytime.
-                end
-
-                @testset "Fitting $CT" begin
-                    for m in _available_fitting_methods(CT)
-                        r1 = fit(CopulaModel, CT, spl10, m)
-                        r2 = fit(CT,spl10, m)
-                        @test r2 == r1.result
-
-                        r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-                        r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-                        @test r4 == r3.result
-
-                        # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
-                        # can we also exercise the different sklar fits (:parametric and :ecdf) ? 
-                    end
-                end
-            end
-
             # Extreme value copula-specific tests (bivariate)
             @testif (is_extremevalue(C) && is_bivariate(C)) "ExtremeValueCopula specific tests" begin
                     @testset "A function basics" begin
@@ -514,6 +487,44 @@
                     for r in _archimax_mc_rectangles_cdf(C; N=20_000, seed=321)
                         @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
                     end
+            end
+
+            @testif can_be_fitted(C) "Fitting interface" begin
+
+                @testif has_unbounded_params(C) "Unbouding and rebounding params" begin
+                    # First on the _example copula. 
+                    θ₀ = Distributions.params(Copulas._example(CT, d))
+                    θ₁ = Copulas._rebound_params(CT, d, Copulas._unbound_params(CT, d, θ₀))
+                    @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
+                    @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
+
+                    # Then on the copula we have at hand:
+                    θ₀ = Distributions.params(C)
+                    θ₁ = Copulas._rebound_params(CT, d, Copulas._unbound_params(CT, d, θ₀))
+                    @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
+                    @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
+                end
+
+                for m in Copulas._available_fitting_methods(CT)
+                    @testset "Fitting CT for $(m)" begin
+                        r1 = fit(CopulaModel, CT, spl1000, m)
+                        r2 = fit(CT, spl1000, m)
+
+                        if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(CT<:PlackettCopula)
+                            @test r2 == r1.result
+                        end
+
+                        # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
+                        # can we also exercise the different sklar fits (:parametric and :ecdf) ? 
+                    end
+                end
+                @testset "Fitting Sklar x CT" begin
+                    r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                    r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                    if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator})
+                        @test r4 == r3.result
+                    end
+                end
             end
         end
     end

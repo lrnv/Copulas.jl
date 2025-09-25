@@ -27,7 +27,7 @@ struct SubsetCopula{d,CT} <: Copula{d}
         return new{p, typeof(C)}(C,Tuple(Int.(dims)))
     end
 end
-_available_fitting_methods(CT::Type{<:SubsetCopula}) = Tuple{}() # cannot be fitted. 
+_available_fitting_methods(::Type{<:SubsetCopula}) = Tuple{}() # cannot be fitted. 
 Base.eltype(C::SubsetCopula{d,CT}) where {d,CT} = Base.eltype(C.C)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::SubsetCopula{d,CT}, x::AbstractVector{T}) where {T<:Real, d,CT}
     u = Random.rand(rng,C.C)
