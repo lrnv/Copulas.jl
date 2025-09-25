@@ -44,12 +44,11 @@ Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
 _example(::Type{<:GumbelBarnettCopula}, d::Int) = GumbelBarnettCopula(d, 0.5 * _find_critical_value_gumbelbarnett(d))
 function _unbound_params(::Type{<:GumbelBarnettCopula}, d, θ)
     u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
-    return [log(θ.θ / (u - θ.θ))]
+    return [atanh(2θ.θ/u - 1)]
 end
 function _rebound_params(::Type{<:GumbelBarnettCopula}, d, α)
     u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
-    ey = exp(α[1])
-    return (; θ = u*ey  / (1 + ey))
+    return (; θ = u*(tanh(α[1])+1)/2)
 end
 _θ_bounds(::Type{<:GumbelBarnettGenerator}, d) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
 
