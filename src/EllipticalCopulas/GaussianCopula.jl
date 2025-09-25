@@ -58,7 +58,7 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
 end
 
 # Equicorrelation convenience constructor
-function GaussianCopula(d::Integer, ρ::Real)
+function GaussianCopula(d::Int, ρ::Real)
     d < 2 && throw(ArgumentError("Use a bivariate or higher dimension (d ≥ 2) or pass a 1×1 matrix."))
     # Positive definiteness condition for equicorrelation matrix
     lower = -1/(d-1)
@@ -73,10 +73,10 @@ function GaussianCopula(d::Integer, ρ::Real)
     end
     return GaussianCopula(Σ)
 end
-
-#only for flexibility in our fit... other option could be return CT(θhat.Σ), meta in generic mle fit...
-GaussianCopula{D, MT}(d::Int, Σ::AbstractMatrix) where {D, MT} = GaussianCopula(Σ) 
 GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula(Σ) 
+GaussianCopula{D, MT}(d::Int, Σ::AbstractMatrix) where {D, MT} = GaussianCopula(Σ) 
+GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ) 
+
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
