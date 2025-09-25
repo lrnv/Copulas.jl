@@ -36,10 +36,11 @@ struct HuslerReissTail{T} <: AbstractUnivariateTail2
     end
 end
 const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
-HuslerReissCopula(θ) = ExtremeValueCopula(2, HuslerReissTail(θ))
-HuslerReissCopula(d::Integer, θ) = ExtremeValueCopula(2, HuslerReissTail(θ))
 Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
+_unbound_params(::Type{<:HuslerReissTail}, d, θ) = [log(θ.θ)]
+_rebound_params(::Type{<:HuslerReissTail}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:HuslerReissTail}, d) = (0, Inf)
+
 function A(tail::HuslerReissTail, t::Real)
     tt = _safett(t)
     θ  = tail.θ
@@ -51,13 +52,6 @@ function A(tail::HuslerReissTail, t::Real)
     term2 = (1-tt) * Φ(N, inv(θ) + 0.5*θ*log((1-tt)/tt))
     return term1 + term2
 end
-
-# Fitting helpers for EV copulas using Hüsler–Reiss tail
-_example(::Type{<:HuslerReissCopula}, d) = ExtremeValueCopula(2, HuslerReissTail(1.0))
-_example(::Type{ExtremeValueCopula{2, HuslerReissTail}}, d) = ExtremeValueCopula(2, HuslerReissTail(1.0))
-_unbound_params(::Type{<:HuslerReissCopula}, d, θ) = [log(θ.θ)]
-_rebound_params(::Type{<:HuslerReissCopula}, d, α) = (; θ = exp(α[1]))
-
 function ℓ(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t) where {T}
     t₁, t₂ = t
     θ = C.tail.θ
@@ -65,7 +59,6 @@ function ℓ(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t) where {T}
     N = Distributions.Normal()
     return t₁ * Φ(N, inv(θ) + 0.5*θ*log(t₁/t₂)) + t₂ * Φ(N, inv(θ) + 0.5*θ*log(t₂/t₁))
 end
-
 function dA(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
     θ = C.tail.θ
     N = Distributions.Normal()

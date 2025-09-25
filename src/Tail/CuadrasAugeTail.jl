@@ -37,30 +37,21 @@ struct CuadrasAugeTail{T} <: AbstractUnivariateTail2
 end
 
 const CuadrasAugeCopula{T} = ExtremeValueCopula{2, CuadrasAugeTail{T}}
-CuadrasAugeCopula(θ) = ExtremeValueCopula(2, CuadrasAugeTail(θ))
-CuadrasAugeCopula(d::Integer, θ) = ExtremeValueCopula(2, CuadrasAugeTail(θ))
 Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
+_unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
+_rebound_params(::Type{<:CuadrasAugeTail}, d, α) = begin
+    p = 1 / (1 + exp(-α[1]))
+    (; θ = p)
+end
+_θ_bounds(::Type{<:CuadrasAugeTail}, d) = (0, 1)
 
 function A(tail::CuadrasAugeTail, t::Real)
     tt = _safett(t)
     θ = tail.θ
     return max(tt, 1-tt) + (1-θ) * min(tt, 1-tt)
 end
-
-# Fitting helpers for EV copulas using Cuadras–Augé tail (θ ∈ [0,1])
-_example(::Type{<:CuadrasAugeCopula}, d) = ExtremeValueCopula(2, CuadrasAugeTail(0.5))
-_example(::Type{ExtremeValueCopula{2, CuadrasAugeTail}}, d) = ExtremeValueCopula(2, CuadrasAugeTail(0.5))
-_unbound_params(::Type{<:CuadrasAugeCopula}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
-_rebound_params(::Type{<:CuadrasAugeCopula}, d, α) = begin
-    p = 1 / (1 + exp(-α[1]))
-    (; θ = p)
-end
-_θ_bounds(::Type{<:CuadrasAugeTail}, d) = (0, 1)
 dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 ? -tail.θ : C.tail.θ)
-
-
 ℓ(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t) where {T} = max(t[1], t[2]) + (1 - C.tail.θ) * min(t[1], t[2])
-
 function Distributions._rand!(rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2, CuadrasAugeTail{T}},
     x::AbstractVector{S}) where {T,S<:Real}
@@ -71,7 +62,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
     x[2] = exp(-(1/θ) * min(E₂, E₁₂))
     return x
 end
-
 function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real) where {T,S}
     θ = D.tail.θ
     # bounds and degeneracies
@@ -84,7 +74,6 @@ function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real
     return log1p(-θ) + log(z) - θ * log(D.uⱼ)
 
 end
-
 function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::Real) where {T, S}
     θ = D.tail.θ
     α ≤ 0 && return 0.0
@@ -104,7 +93,6 @@ function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::R
         return exp(la / (1 - θ))
     end
 end
-
 
 τ(C::CuadrasAugeCopula) = C.tail.θ / (2 - C.tail.θ)
 ρ(C::CuadrasAugeCopula) = (3 * C.tail.θ) / (4 - C.tail.θ)
