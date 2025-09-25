@@ -1,6 +1,29 @@
-##############################################################################################################################
-####### sCopulaModel interface, main fitting functions and StatsBase bindings.
-##############################################################################################################################
+"""
+    CopulaModel{CT, TM, TD} <: StatsBase.StatisticalModel
+
+A fitted copula model.
+
+This type stores the result of fitting a copula (or a Sklar distribution) to
+pseudo-observations or raw data, together with auxiliary information useful
+for statistical inference and model comparison.
+
+# Fields
+- `result::CT`          — the fitted copula (or `SklarDist`).
+- `n::Int`              — number of observations used in the fit.
+- `ll::Float64`         — log-likelihood at the optimum.
+- `method::Symbol`      — fitting method used (e.g. `:mle`, `:itau`, `:deheuvels`).
+- `vcov::Union{Nothing, AbstractMatrix}` — estimated covariance of the parameters, if available.
+- `converged::Bool`     — whether the optimizer reported convergence.
+- `iterations::Int`     — number of iterations used in optimization.
+- `elapsed_sec::Float64` — time spent in fitting.
+- `method_details::NamedTuple` — additional method-specific metadata (grid size, pseudo-values, etc.).
+
+`CopulaModel` implements the standard `StatsBase.StatisticalModel` interface:
+[`nobs`](@ref), [`coef`](@ref), [`coefnames`](@ref), [`vcov`](@ref),
+[`aic`](@ref), [`bic`](@ref), [`deviance`](@ref), etc.
+
+See also [`fit`](@ref) and [`copula_of`](@ref).
+"""
 struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
     result        :: CT
     n             :: Int
@@ -26,7 +49,7 @@ _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::T
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
 function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
-    @info "Running the MLE routine from the generic implementation, with CT=$CT"
+    @info "Running the MLE routine from the generic implementation"
     d   = size(U,1)
     function cop(α)
         par = _rebound_params(CT, d, α)
@@ -46,8 +69,21 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
            (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
 end
 
+"""
+    _fit(::Type{<:Copula}, U, ::Val{method}; kwargs...)
+
+Internal entry point for fitting routines.
+
+Each copula family implements `_fit` methods specialized on `Val{method}`.
+They must return a pair `(copula, meta)` where:
+- `copula` is the fitted copula instance,
+- `meta::NamedTuple` holds method–specific metadata to be stored in `method_details`.
+
+This is not intended for direct use by end–users.  
+Use [`fit(CopulaModel, ...)`](@ref) instead.
+"""
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
-    @info "Running the $method routine from the generic implementation"
+    @info "Running the itau/irho/ibeta routine from the generic implementation"
     d   = size(U,1)
 
     cop(α) = CT(d, _rebound_params(CT, d, α)...)
@@ -57,18 +93,35 @@ function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:
     fun = method isa Val{:itau} ? StatsBase.corkendall : method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
     est = fun(U')
     loss(C) = sum(abs2, est .- fun(C))
-    
+
     res = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
            (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
 end
+"""
+    fit(CT::Type{<:Copula}, U; kwargs...) -> CT
 
+Quick fit: devuelve solo la cópula ajustada (atajo de `fit(CopulaModel, CT, U; summaries=false, kwargs...).result`).
+"""
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; copula_method=method, kwargs...)
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
+"""
+    _available_fitting_methods(::Type{<:Copula})
 
+Return the tuple of fitting methods available for a given copula family.
+
+This is used internally by [`fit`](@ref) to check validity of the `method` argument
+and to select a default method when `method=:default`.
+
+# Example
+```julia
+_available_fitting_methods(GumbelCopula)
+# → (:mle, :itau, :irho, :ibeta)
+```
+"""
 _available_fitting_methods(::Type{<:Copula}) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula) = _available_fitting_methods(typeof(C))
 
@@ -79,11 +132,40 @@ function _find_method(CT, method)
         method = avail[1]
         # @info "Choosing default method '$(method)' among $avail..."
     elseif method ∉ avail 
-        error("Method '$method' not available for $CT in d=$d. Available: $(join(avail, ", ")).")
+        error("Method '$method' not available for $CT. Available: $(join(avail, ", ")).")
     end
     return method
 end
+"""
+    fit(CopulaModel, CT::Type{<:Copula}, U; method=:default, summaries=true, kwargs...)
 
+Fit a copula of type `CT` to pseudo-observations `U`.
+
+# Arguments
+- `U::AbstractMatrix` — a `d×n` matrix of data (each column is an observation).
+  If the input is raw data, use `SklarDist` fitting instead to estimate both
+  margins and copula simultaneously.
+- `method::Symbol`    — fitting method; defaults to the first available one
+  (see [`_available_fitting_methods`](@ref)).
+- `summaries::Bool`   — whether to compute pairwise summary statistics
+  (Kendall's τ, Spearman's ρ, Blomqvist's β).
+- `kwargs...`         — additional method-specific keyword arguments
+  (e.g. `pseudo_values=true`, `grid=401` for extreme-value tails, etc.).
+
+# Returns
+A [`CopulaModel`](@ref) containing the fitted copula and metadata.
+
+# Examples
+```julia
+U = rand(GumbelCopula(2, 3.0), 500)
+
+M = fit(CopulaModel, GumbelCopula, U; method=:mle)
+println(M)
+
+# Quick fit: returns only the copula
+C = fit(GumbelCopula, U; method=:itau)
+```
+"""
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
     d, n = size(U)
     # Choose the fitting method: 
@@ -102,7 +184,13 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = 
 end
 
 _available_fitting_methods(::Type{SklarDist}) = (:ifm, :ecdf)
+"""
+    fit(CopulaModel, SklarDist{CT, TplMargins}, X; copula_method=:default, sklar_method=:default,
+                                           summaries=true, margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple())
 
+Joint margin and copula adjustment (Sklar approach).
+`sklar_method ∈ (:ifm, :ecdf)` controls whether parametric CDFs (`:ifm`) or pseudo-observations (`:ecdf`) are used.
+"""
 function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}}, X; copula_method = :default, sklar_method = :default,
                            summaries = true, margins_kwargs = NamedTuple(), copula_kwargs = NamedTuple()) where
                            {CT<:Copulas.Copula, TplMargins<:Tuple}
@@ -166,6 +254,17 @@ StatsBase.nobs(M::CopulaModel)     = M.n
 StatsBase.isfitted(::CopulaModel)  = true
 StatsBase.deviance(M::CopulaModel) = -2 * Distributions.loglikelihood(M)
 StatsBase.dof(M::CopulaModel) = StatsBase.dof(M.result)
+
+"""
+    copula_of(M::CopulaModel)
+
+Extract the copula component of a fitted model `M`.
+
+If the model was a `SklarDist`, this returns the underlying copula `M.result.C`.
+Otherwise, it simply returns `M.result`.
+
+Useful when working with Sklar distributions where both margins and copula are fitted.
+"""
 copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 StatsBase.coef(M::CopulaModel) = collect(values(Distributions.params(copula_of(M)))) # why ? params of the marginals should also be taken into account. 
 StatsBase.coefnames(M::CopulaModel) = string.(keys(Distributions.params(copula_of(M))))
