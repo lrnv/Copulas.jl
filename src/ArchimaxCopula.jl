@@ -137,8 +137,8 @@ end
 function _rebound_params(CT::Type{<:ArchimaxCopula{2, <:Generator, <:Tail}}, d, α)
     # Dummies para saber tamaños y tipos correctos
     TG, TT = genandtailof(CT)
-    Gtmp = ArchimedeanCopula(d, TG(1.5))
-    Ttmp = ExtremeValueCopula(d, TT(0.5))
+    Gtmp = _example(ArchimedeanCopula{2, TG}, 2).G
+    Ttmp = _example(ExtremeValueCopula{2, TT}, 2).tail
 
     k = length(_unbound_params(typeof(Gtmp), d, Distributions.params(Gtmp)))
     αg, αt = α[1:k], α[k+1:end]
