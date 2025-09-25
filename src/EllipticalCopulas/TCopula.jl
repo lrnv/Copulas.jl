@@ -37,7 +37,7 @@ struct TCopula{d,df,MT} <: EllipticalCopula{d,MT}
     end
 end
 TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula(ν, Σ)
-TCopula{d,df,MT}(d::Int, ν::Real, Σ::AbstractMatrix)  where {d,df,MT} = TCopula(ν, Σ)
+TCopula{D,df,MT}(d::Int, ν::Real, Σ::AbstractMatrix)  where {D,df,MT} = TCopula(ν, Σ)
 
 
 
