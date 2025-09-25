@@ -34,17 +34,12 @@ struct BB6Generator{T} <: AbstractFrailtyGenerator
             return new{typeof(θ)}(θ, δ)
         end
     end
-    BB6Generator{T}(θ, δ) where T = BB6Generator(promote(θ, δ, one(T))[1:2]...)
 end
 
 const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
-BB6Copula(d, θ, δ) = ArchimedeanCopula(d, BB6Generator(θ, δ))
-BB6Copula(d; θ::Real, δ::Real) = BB6Copula(d, θ, δ)
 Distributions.params(G::BB6Generator) = (θ = G.θ, δ = G.δ)
-_example(CT::Type{<:BB6Copula}, d) = BB6Copula(d, 1.5, 1.5)
-_example(::Type{ArchimedeanCopula{2, BB6Generator}}, d) = BB6Copula(d, 1.5, 1.5)
-_unbound_params(::Type{<:BB6Copula}, d, θ) = [log(θ.θ - 1), log(θ.δ - 1)]
-_rebound_params(::Type{<:BB6Copula}, d, α) = (; θ = 1 + exp(α[1]), δ = 1 + exp(α[2]))
+_unbound_params(::Type{<:BB6Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ - 1)]
+_rebound_params(::Type{<:BB6Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = 1 + exp(α[2]))
 
 ϕ(  G::BB6Generator, s) = 1 - (1 - exp(-s^(inv(G.δ))))^(inv(G.θ))
 ϕ⁻¹(G::BB6Generator, t) = (-log1p(- (1 - t)^(G.θ)))^(G.δ)

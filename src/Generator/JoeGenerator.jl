@@ -36,17 +36,12 @@ struct JoeGenerator{T} <: AbstractUnivariateFrailtyGenerator
             return new{typeof(θ)}(θ)
         end
     end
-    JoeGenerator{T}(θ) where T = JoeGenerator(promote(θ, one(T))[1])
 end
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
-JoeCopula(d, θ) = ArchimedeanCopula(d, JoeGenerator(θ))
-JoeCopula(d; θ::Real) = JoeCopula(d, θ)
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
 Distributions.params(G::JoeGenerator) = (θ = G.θ,)
-_example(CT::Type{<:JoeCopula}, d) = JoeCopula(d, 1.5)
-_example(::Type{ArchimedeanCopula{2, JoeGenerator}}, d) = JoeCopula(d, 1.5)
-_unbound_params(::Type{<:JoeCopula}, d, θ) = [log(θ.θ - 1)]
-_rebound_params(::Type{<:JoeCopula}, d, α) = (; θ = 1 + exp(α[1]))
+_unbound_params(::Type{<:JoeGenerator}, d, θ) = [log(θ.θ - 1)]
+_rebound_params(::Type{<:JoeGenerator}, d, α) = (; θ = 1 + exp(α[1]))
 _θ_bounds(::Type{<:JoeGenerator}, d) = (1, Inf)
 
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)

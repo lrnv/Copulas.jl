@@ -31,17 +31,12 @@ struct BB7Generator{T} <: AbstractFrailtyGenerator
         θ, δ, _ = promote(θ, δ, 1.0)
         return new{typeof(θ)}(θ, δ)
     end
-    BB7Generator{T}(θ, δ) where T = BB7Generator(promote(θ, δ, one(T))[1:2]...)
 end
 
 const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
-BB7Copula(d, θ, δ) = ArchimedeanCopula(d, BB7Generator(θ, δ))
-BB7Copula(d; θ::Real, δ::Real) = BB7Copula(d, θ, δ)
 Distributions.params(G::BB7Generator) = (θ = G.θ, δ = G.δ)
-_example(CT::Type{<:BB7Copula}, d) = BB7Copula(d, 1.5, 0.8)
-_example(::Type{ArchimedeanCopula{2, BB7Generator}}, d) = BB7Copula(d, 1.5, 0.8)
-_unbound_params(::Type{<:BB7Copula}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
-_rebound_params(::Type{<:BB7Copula}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
+_unbound_params(::Type{<:BB7Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
+_rebound_params(::Type{<:BB7Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
 
 ϕ(  G::BB7Generator, s) = begin
     a = exp( -inv(G.δ)*log1p(s) )  

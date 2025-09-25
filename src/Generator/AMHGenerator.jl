@@ -33,20 +33,15 @@ struct AMHGenerator{T} <: AbstractUnivariateGenerator
             return new{typeof(θ)}(θ)
         end
     end
-    AMHGenerator{T}(θ) where T = AMHGenerator(promote(θ, one(T))[1])
 end
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
-AMHCopula(d, θ::Real) = ArchimedeanCopula(d, AMHGenerator(θ))
-AMHCopula(d; θ::Real) = AMHCopula(d, θ)
 Distributions.params(G::AMHGenerator) = (θ = G.θ,)
-_example(::Type{<:AMHCopula}, d) = AMHCopula(d, 0.1)
-_example(::Type{ArchimedeanCopula{2, AMHGenerator}}, d) = AMHCopula(d, 0.1)
-function _unbound_params(CT::Type{<:AMHCopula}, d, θ)
+function _unbound_params(CT::Type{<:AMHGenerator}, d, θ)
     l =  _find_critical_value_amh(d, step=1e-7)
     [atanh(2 * (θ.θ - l) / (1-l) - 1)]
     # [log(θ.θ - l) - log(1-l)]
 end
-function _rebound_params(CT::Type{<:AMHCopula}, d, α)
+function _rebound_params(CT::Type{<:AMHGenerator}, d, α)
     l =  _find_critical_value_amh(d, step=1e-7)
     # (; θ = (exp(α[1]) + l) / (exp(α[1]) + 1))
     (; θ = l + (1 - l)*(1+tanh(α[1]))/2)
