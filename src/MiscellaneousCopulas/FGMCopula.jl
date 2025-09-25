@@ -86,7 +86,7 @@ function _rebound_params(::Type{<:FGMCopula}, d, α)
     end
     β = α
     λmax = _max_lambda(β, d)
-    normβ = norm(β)
+    normβ = LinearAlgebra.norm(β)
     if normβ == 0
         θ = zeros(length(β))
     else
@@ -104,7 +104,7 @@ function _unbound_params(::Type{<:FGMCopula}, d, θ)
         # Only one parameter, strictly invertible
         return atanh.(θvec)
     end
-    normθ = norm(θvec)
+    normθ = LinearAlgebra.norm(θvec)
     if normθ == 0
         return zeros(length(θvec))
     end
