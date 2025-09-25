@@ -358,11 +358,11 @@ function Distributions._logpdf(C::BB5Copula{T}, u) where T
     Tret = promote_type(T, Float64, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)
-    
+
     θ, δ = C.gen.θ, C.tail.θ
     invθ   = inv(θ);    invδ = inv(δ)
     x = -log(u1); y = -log(u2)
-    
+
     xθ  = exp( θ*log(x) );     yθ  = exp( θ*log(y) )
     logB = LogExpFunctions.logaddexp(-θ*δ*log(x), -θ*δ*log(y))
     B    = exp(logB)
@@ -370,16 +370,16 @@ function Distributions._logpdf(C::BB5Copula{T}, u) where T
     s    = xθ + yθ - H
     f    = exp(invθ*log(s))                   
     logC = -f                                   
-    
+
     Ax   = θ*exp((θ-1)*log(x));      Ay   = θ*exp((θ-1)*log(y))    
     Axx  = θ*(θ-1)*exp((θ-2)*log(x))
     Ayy  = θ*(θ-1)*exp((θ-2)*log(y))
-    
+
     Bx   = -θ*δ*exp(-(θ*δ+1)*log(x))              
     By   = -θ*δ*exp(-(θ*δ+1)*log(y))
     Bxx  = θ*δ*(θ*δ+1)*exp(-(θ*δ+2)*log(x)) 
     Byy  = θ*δ*(θ*δ+1)*exp(-(θ*δ+2)*log(y))
-    
+
     H_over_B  = H / B
     H_over_B2 = H / (B*B)
 
@@ -399,7 +399,7 @@ function Distributions._logpdf(C::BB5Copula{T}, u) where T
     fx  = fs * sx
     fy  = fs * sy
     fxy = fs * sxy + fss * sx * sy
-    
+
     tmp = fx*fy - fxy
     tmp > 0 || return Tret(-Inf)
 
