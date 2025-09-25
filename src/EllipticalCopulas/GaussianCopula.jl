@@ -136,12 +136,12 @@ function Distributions.params(C::GaussianCopula)
 end
 _example(::Type{<:GaussianCopula}, d::Int) = GaussianCopula(d, 0.2)
 
-function _unbound_params(::Type{GaussianCopula}, d::Int, θ::NamedTuple)
+function _unbound_params(::Type{<:GaussianCopula}, d::Int, θ::NamedTuple)
     Σ = _Σ_from_named(d, θ)
     return _unbound_corr_params(d, Σ)
 end
 
-function _rebound_params(::Type{GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
+function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
     Σ = _rebound_corr_params(d, α)
     return (; Σ = Σ)
 end
