@@ -43,34 +43,22 @@ References:
 """
 struct ArchimedeanCopula{d,TG} <: Copula{d}
     G::TG
-    function ArchimedeanCopula(d::Int,G::Generator)
+    function ArchimedeanCopula(d::Int, G::Generator)
         @assert d <= max_monotony(G) "The generator $G you provided is not $d-monotonous since it has max monotonicity $(max_monotony(G)), and thus this copula does not exists."
         return new{d,typeof(G)}(G)
     end
-    ArchimedeanCopula(d::Int, ::IndependentGenerator) = IndependentCopula(d)
-    ArchimedeanCopula(d::Int, ::MGenerator) = MCopula(d)
-    ArchimedeanCopula(d::Int, ::WGenerator) = WCopula(d)
-    ArchimedeanCopula{d,TG}(args...; kwargs...) where {d, TG} = ArchimedeanCopula(d, TG(args...; kwargs...))
-    ArchimedeanCopula{D,TG}(d::Int, args...; kwargs...) where {D, TG} = ArchimedeanCopula(d, TG(args...; kwargs...))
 end
+
+# Constructors: 
+ArchimedeanCopula(d::Int, ::IndependentGenerator) = IndependentCopula(d)
+ArchimedeanCopula(d::Int, ::MGenerator) = MCopula(d)
+ArchimedeanCopula(d::Int, ::WGenerator) = WCopula(d)
+
+ArchimedeanCopula{d,TG}(args...; kwargs...) where {d, TG} = ArchimedeanCopula(d, TG(args...; kwargs...))
+ArchimedeanCopula{D,TG}(d::Int, args...; kwargs...) where {D, TG} = ArchimedeanCopula{d,TG}(args...; kwargs...)
+(CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(d::Int, args...; kwargs...) = ArchimedeanCopula(d, generatorof(CT)(args...; kwargs...))
+
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 
-
-
-# Parametric-type constructors to enable generic fit reconstruction from NamedTuple params
-function (::Type{ArchimedeanCopula{D, TG}})(d::Integer, θ::NamedTuple) where {D, TG<:Generator}
-    d == D || @warn "Dimension mismatch constructing ArchimedeanCopula: got d=$(d), type encodes D=$(D). Proceeding with d."
-    # Determine parameter name order from an example of the generator-side copula
-    Gex = _example(ArchimedeanCopula{D, TG}, D).G
-    names = collect(keys(Distributions.params(Gex)))
-    # Accept both plain names and gen_-prefixed names (to interoperate with Archimax params)
-    getp(nt::NamedTuple, k::Symbol) = haskey(nt, k) ? nt[k] : (haskey(nt, Symbol(:gen_, k)) ? nt[Symbol(:gen_, k)] : throw(ArgumentError("Missing parameter $(k) for ArchimedeanCopula.")))
-    vals = map(n -> getp(θ, n), names)
-    return ArchimedeanCopula(d, TG(vals...))
-end
-function (::Type{ArchimedeanCopula{D, TG}})(d::Integer; kwargs...) where {D, TG<:Generator}
-    return (ArchimedeanCopula{D, TG})(d, NamedTuple(kwargs))
-end
-
 
 _cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
@@ -79,8 +67,6 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     end
     return log(max(ϕ⁽ᵏ⁾(C.G, Val{d}(), sum(ϕ⁻¹.(C.G, u))) * prod(ϕ⁻¹⁽¹⁾.(C.G, u)), 0))
 end
-
-# Rand function: the default case is williamson
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, x::AbstractVector{T}) where {T<:Real, d, TG}
     # By default, we use the Williamson sampling.
     Random.randexp!(rng,x)
@@ -90,8 +76,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopu
         x[i] = ϕ(C.G,r * x[i]/sx)
     end
     return x
-end
-# but if frailty is available, use it. 
+end 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, GT}, x::AbstractVector{T}) where {T<:Real, d, GT<:AbstractFrailtyGenerator}
     F = frailty(C.G)
     Random.randexp!(rng, x)
@@ -104,12 +89,15 @@ function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     S2 = hasproperty(S,:body) ? S.body : S
     S3 = hasproperty(S2, :body) ? S2.body : S2
     try
-        return S3.parameters[2].name.wrapper
+        S4 = S3.parameters[2]
+        return hasproperty(S4, :name) ? S4.name.wrapper : S4
     catch e
         @error "There is no generator type associated with the archimedean type $S"
     end
 end
 generatorof(::Type{ArchimedeanCopula{d,GT}}) where {d,GT} = GT #this solution problem...
+
+
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
         return τ(C.G)
@@ -167,7 +155,6 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     return U
 end
 
-# Conditioning colocated
 function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
     @assert length(js) == length(uⱼₛ)
     T = eltype(uⱼₛ)
@@ -177,40 +164,33 @@ function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTu
     end
     return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, Val{p}(), sJ))))
 end
-
-# Conditional copula specialization: remains Archimedean with a tilted generator
 function ConditionalCopula(C::ArchimedeanCopula{D}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, p}
     return ArchimedeanCopula(D - p, TiltedGenerator(C.G, Val{p}(), sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
-
-# Subsetting colocated
 SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula(length(dims), C.G)
 
-
-
 ##############################################################################################################################
-####### Fitting functions for univarate generators only. 
+####### Fitting interfaces. 
 ##############################################################################################################################
 
-# When no generator is specified: 
-_example(CT::Type{ArchimedeanCopula}, d) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
-_unbound_params(CT::Type{ArchimedeanCopula}, d, θ) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
-_rebound_params(CT::Type{ArchimedeanCopula}, d, α) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
+_example(::Type{ArchimedeanCopula}, d) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
+_example(CT::Type{<:ArchimedeanCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(generatorof(CT))))...)
+_example(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}, d) = ArchimedeanCopula(d,i𝒲(Distributions.MixtureModel([Distributions.Dirac(1), Distributions.Dirac(2)]),d))
+_example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw("No default example for frailty geenrators are implemented")
+
+_unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
+_rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)
 
 _available_fitting_methods(::Type{ArchimedeanCopula}) = (:gnz2011,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}) = (:mle,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}) = (:mle, :itau, :irho, :ibeta)
-
-
-_example(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}, d) = ArchimedeanCopula(d,i𝒲(Distributions.MixtureModel([Distributions.Dirac(1), Distributions.Dirac(2)]),d))
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}) = Tuple{}() # No fitting method. 
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}) = (:gnz2011,)
 
 
 function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}}, U, ::Val{:gnz2011})
     # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted. 
-    d,n = size(U)
-    return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
+    return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U)), (;)
 end
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}})
@@ -235,7 +215,6 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     θ = βobs ≤ βmin ? a0 : βobs ≥ βmax ? b0 : Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
     return CT(d,θ), (; θ̂=θ)
 end
-
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     d = size(U,1)

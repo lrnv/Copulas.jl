@@ -31,6 +31,11 @@ References:
 * Rasell
 """
 abstract type Tail end
+function (TT::Type{<:Tail})(args...;kwargs...)
+    S = hasproperty(TT, :body) ? TT.body : TT
+    T = S.name.wrapper 
+    return T(args..., values(kwargs)...)
+end
 Base.broadcastable(tail::Tail) = Ref(tail)
 
 ####### Functions you need to overload: 

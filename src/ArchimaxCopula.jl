@@ -40,7 +40,7 @@ ArchimaxCopula(d, gen::Generator, ::NoTail) = ArchimedeanCopula(d, gen)
 ArchimaxCopula(d, ::IndependentGenerator, tail::Tail) = ExtremeValueCopula(d, tail) 
 
 # Constructor from prefixed parameter NamedTuple (stable across models)
-function ArchimaxCopula(d::Integer, ::Type{TG}, ::Type{TT}, θ::NamedTuple) where {TG<:Generator, TT<:Tail}
+function ArchimaxCopula(d::Int, TG::Type{<:Generator}, TT::Type{<:Tail}, θ::NamedTuple)
     # Determine parameter name order for TG and TT
     Gex = _example(ArchimedeanCopula{2, TG}, 2).G
     Tex = _example(ExtremeValueCopula{2, TT}, 2).tail
@@ -52,19 +52,22 @@ function ArchimaxCopula(d::Integer, ::Type{TG}, ::Type{TT}, θ::NamedTuple) wher
     vals_t = map(n -> getp(θ, Symbol(:tail_, n)), t_names)
     return ArchimaxCopula(d, TG(vals_g...), TT(vals_t...))
 end
-
-# Keyword-friendly wrapper
-ArchimaxCopula(d::Integer, ::Type{TG}, ::Type{TT}; kwargs...) where {TG<:Generator, TT<:Tail} = ArchimaxCopula(d, TG, TT, NamedTuple(kwargs))
-
 # Parametric-type constructors so generic fit can call CT(d; kwargs...) or CT(d, θ::NamedTuple)
-function (::Type{ArchimaxCopula{D, TG, TT}})(d::Integer, θ::NamedTuple) where {D, TG<:Generator, TT<:Tail}
-    d == D || @warn "Dimension mismatch constructing Archimax: got d=$(d), type encodes D=$(D). Proceeding with d."
+function (CT::Type{<:ArchimaxCopula{2, <:Generator, <:Tail}})(d::Int, θ::NamedTuple)
+    TG, TT = genandtailof(CT)
     return ArchimaxCopula(d, TG, TT, θ)
 end
-function (::Type{ArchimaxCopula{D, TG, TT}})(d::Integer; kwargs...) where {D, TG<:Generator, TT<:Tail}
-    d == D || @warn "Dimension mismatch constructing Archimax: got d=$(d), type encodes D=$(D). Proceeding with d."
-    return ArchimaxCopula(d, TG, TT, NamedTuple(kwargs))
+# If names are not given, assume right order: 
+function (CT::Type{<:ArchimaxCopula{2, <:Generator, <:Tail}})(d::Int, θ...)
+    TG, TT = genandtailof(CT)
+    Gex = _example(ArchimedeanCopula{2, TG}, 2).G
+    Tex = _example(ExtremeValueCopula{2, TT}, 2).tail
+    g_keys = map(k -> Symbol(:gen_, k), keys(Distributions.params(Gex)))
+    t_keys = map(k -> Symbol(:tail_, k), keys(Distributions.params(Tex)))
+    nms = (g_keys..., t_keys...)
+    return ArchimaxCopula(d, TG, TT, NamedTuple{nms}(θ))
 end
+
 Distributions.params(C::ArchimaxCopula) = begin
     gp = Distributions.params(C.gen)
     tp = Distributions.params(C.tail)
@@ -73,14 +76,31 @@ Distributions.params(C::ArchimaxCopula) = begin
 end
 
 
+function genandtailof(S::Type{<:ArchimaxCopula})
+    S2 = hasproperty(S,:body) ? S.body : S
+    S3 = hasproperty(S2, :body) ? S2.body : S2
+    try
+        TG = S3.parameters[2]
+        TG = hasproperty(TG, :name) ? TG.name.wrapper : TG
+        TT = S3.parameters[3]
+        TT = hasproperty(TT, :name) ? TT.name.wrapper : TT
+        return TG, TT
+    catch e
+        @error "There is no gen & tail type associated with the archimax copula type $S"
+    end
+end
+genandtailof(::Type{<:ArchimaxCopula{d, TG, TT}}) where {d, TG, TT} = (TG, TT)
+
 # Fitting helpers for ArchimaxCopula (bivariate). Reuse generator and tail-specific helpers.
-_example(::Type{ArchimaxCopula{2, TG, TT}}, d) where {TG<:Generator, TT<:Tail} = begin
+function _example(CT::Type{<:ArchimaxCopula{2, <:Generator, <:Tail}}, d)
+    TG, TT = genandtailof(CT)
     Gex = _example(ArchimedeanCopula{2, TG}, 2).G
     Tex = _example(ExtremeValueCopula{2, TT}, 2).tail
     ArchimaxCopula(2, Gex, Tex)
 end
-function _unbound_params(::Type{ArchimaxCopula{2, TG, TT}}, d, θ) where {TG<:Generator, TT<:Tail}
+function _unbound_params(CT::Type{<:ArchimaxCopula}, d, θ)
     # Ejemplos para separar parámetros
+    TG, TT = genandtailof(CT)
     Gex = _example(ArchimedeanCopula{2, TG}, d).G
     Tex = _example(ExtremeValueCopula{2, TT}, d).tail
     ngen = length(Distributions.params(Gex))
@@ -108,18 +128,15 @@ function _unbound_params(::Type{ArchimaxCopula{2, TG, TT}}, d, θ) where {TG<:Ge
         θt = NamedTuple{Tuple(t_names)}(Tuple(vals[ngen+1:end]))
     end
 
-    # Construir dummies para enganchar con tus métodos alias
-    Gtmp = ArchimedeanCopula(d, TG(θg.θ))  # instanciar generador
-    Ttmp = ExtremeValueCopula(d, TT(θt.θ)) # instanciar cola
-
-    αg = _unbound_params(typeof(Gtmp), d, θg)
-    αt = _unbound_params(typeof(Ttmp), d, θt)
+    αg = _unbound_params(TG, d, θg)
+    αt = _unbound_params(TT, d, θt)
 
     vcat(αg, αt)
 end
 
-function _rebound_params(::Type{ArchimaxCopula{2, TG, TT}}, d, α) where {TG<:Generator, TT<:Tail}
+function _rebound_params(CT::Type{<:ArchimaxCopula{2, <:Generator, <:Tail}}, d, α)
     # Dummies para saber tamaños y tipos correctos
+    TG, TT = genandtailof(CT)
     Gtmp = ArchimedeanCopula(d, TG(1.5))
     Ttmp = ExtremeValueCopula(d, TT(0.5))
 
@@ -137,6 +154,8 @@ function _rebound_params(::Type{ArchimaxCopula{2, TG, TT}}, d, α) where {TG<:Ge
 
     NamedTuple{all_names}(all_vals)
 end
+
+_available_fitting_methods(::Type{<:ArchimaxCopula}) = (:mle,)
 
 # Fast conditional distortion binding (bivariate)
 DistortionFromCop(C::ArchimaxCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivArchimaxDistortion(C.gen, C.tail, Int8(js[1]), float(uⱼₛ[1]))
@@ -196,7 +215,6 @@ end
     τA + (1 - τA) * τψ
 end
 
-
 # Use the matrix sampler for better efficiency
 # (if not working, maybe uncomment the vetor version ?)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, A::DenseMatrix{T}) where {T<:Real, TG, TT}
@@ -214,7 +232,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{
     x[2] = ϕ(C.gen, -log(v2)/M)
     return x
 end
-
 
 
 """
@@ -246,19 +263,6 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.197-198
 """
 const BB4Copula{T} = ArchimaxCopula{2, ClaytonGenerator{T}, GalambosTail{T}}
-BB4Copula(θ, δ) = ArchimaxCopula(2, ClaytonGenerator(θ), GalambosTail(δ))
-_example(::Type{<:BB4Copula}, d) = BB4Copula(1.5, 0.5)
-function _unbound_params(::Type{<:BB4Copula}, d::Int, θ)
-    θ_gen, θ_tail = θ isa NamedTuple ? (θ.gen_θ, θ.tail_θ) : (θ[1], θ[2])
-    θg = θ_gen;  θt = θ_tail
-    α_gen  = log(θg); α_tail = log(θt)
-    return [α_gen, α_tail]
-end
-function _rebound_params(::Type{<:BB4Copula}, d::Int, α::AbstractVector)
-    θ_gen  = exp(α[1]); θ_tail = exp(α[2])
-    return (gen_θ = θ_gen, tail_θ = θ_tail)
-end
-
 function _cdf(C::BB4Copula{T}, u) where T
     θ, δ = C.gen.θ, C.tail.θ
     θ == 0 && return u1*u2
@@ -311,7 +315,6 @@ function Distributions._logpdf(C::BB4Copula{T}, u) where T
     return Tret(logc)
 end
 
-
 """
     BB5Copula{T}
 
@@ -341,23 +344,6 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.197-198
 """
 const BB5Copula{T} = ArchimaxCopula{2, GumbelGenerator{T}, GalambosTail{T}}
-BB5Copula(θ, δ) = ArchimaxCopula(2, GumbelGenerator(θ), GalambosTail(δ))
-_example(::Type{<:BB5Copula}, d) = BB5Copula(1.5, 0.5)
-function (::Type{BB5Copula})(d::Integer, θ, δ)
-    return ArchimaxCopula(d, GumbelGenerator(θ), GalambosTail(δ))
-end
-function _unbound_params(::Type{<:BB5Copula}, d::Int, θ)
-    θ_gen, θ_tail = θ isa NamedTuple ? (θ.gen_θ, θ.tail_θ) : (θ[1], θ[2])
-    θg = float(θ_gen);  θt = float(θ_tail)
-    α_gen  = log(θg - 1)
-    α_tail = log(θt)
-    return [α_gen, α_tail]
-end
-function _rebound_params(::Type{<:BB5Copula}, d::Int, α::AbstractVector)
-    θ_gen  = 1 + exp(α[1]); θ_tail =     exp(α[2])
-    return (gen_θ = θ_gen, tail_θ = θ_tail)
-end
-
 function _cdf(C::BB5Copula{T}, u) where T
     θ, δ = C.gen.θ, C.tail.θ
     u1, u2 = u
@@ -372,11 +358,11 @@ function Distributions._logpdf(C::BB5Copula{T}, u) where T
     Tret = promote_type(T, Float64, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)
-
+    
     θ, δ = C.gen.θ, C.tail.θ
     invθ   = inv(θ);    invδ = inv(δ)
     x = -log(u1); y = -log(u2)
-
+    
     xθ  = exp( θ*log(x) );     yθ  = exp( θ*log(y) )
     logB = LogExpFunctions.logaddexp(-θ*δ*log(x), -θ*δ*log(y))
     B    = exp(logB)
@@ -384,16 +370,16 @@ function Distributions._logpdf(C::BB5Copula{T}, u) where T
     s    = xθ + yθ - H
     f    = exp(invθ*log(s))                   
     logC = -f                                   
-
+    
     Ax   = θ*exp((θ-1)*log(x));      Ay   = θ*exp((θ-1)*log(y))    
     Axx  = θ*(θ-1)*exp((θ-2)*log(x))
     Ayy  = θ*(θ-1)*exp((θ-2)*log(y))
-
+    
     Bx   = -θ*δ*exp(-(θ*δ+1)*log(x))              
     By   = -θ*δ*exp(-(θ*δ+1)*log(y))
     Bxx  = θ*δ*(θ*δ+1)*exp(-(θ*δ+2)*log(x)) 
     Byy  = θ*δ*(θ*δ+1)*exp(-(θ*δ+2)*log(y))
-
+    
     H_over_B  = H / B
     H_over_B2 = H / (B*B)
 
@@ -413,38 +399,10 @@ function Distributions._logpdf(C::BB5Copula{T}, u) where T
     fx  = fs * sx
     fy  = fs * sy
     fxy = fs * sxy + fss * sx * sy
-
+    
     tmp = fx*fy - fxy
     tmp > 0 || return Tret(-Inf)
 
     logc = logC - log(u1) - log(u2) + log(tmp)
     return Tret(logc)
 end
-
-_available_fitting_methods(::Type{<:ArchimaxCopula}) = (:mle,)
-_available_fitting_methods(::Type{BB4Copula}) = (:mle,)
-_available_fitting_methods(::Type{BB5Copula}) = (:mle,)
-function _fit(::Type{ArchimaxCopula{D,TG,TT}}, U, ::Val{:mle}) where {D,TG<:Generator,TT<:Tail}
-    d = size(U, 1)
-    Gex = _example(ArchimedeanCopula{2,TG}, 2).G
-    Tex = _example(ExtremeValueCopula{2,TT}, 2).tail
-    θ₀ = (; (Symbol(:gen_, k) => v for (k, v) in pairs(Distributions.params(Gex)))...,
-            (Symbol(:tail_, k) => v for (k, v) in pairs(Distributions.params(Tex)))...)
-    α₀ = _unbound_params(ArchimaxCopula{D,TG,TT}, d, θ₀)
-    cop(α) = ArchimaxCopula{D,TG,TT}(d, _rebound_params(ArchimaxCopula{D,TG,TT}, d, α))
-    loss(C) = -Distributions.loglikelihood(C, U)
-    res = try
-        Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff = :forward)
-    catch err
-        @warn "LBFGS with AD failed ($err), retrying with NelderMead"
-        Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
-    end
-    θhat = _rebound_params(ArchimaxCopula{D,TG,TT}, d, Optim.minimizer(res))
-    return ArchimaxCopula{D,TG,TT}(d, θhat),
-           (; θ̂ = θhat,
-              optimizer  = Optim.summary(res),
-              converged  = Optim.converged(res),
-              iterations = Optim.iterations(res))
-end
-_fit(::Type{BB4Copula}, U, method::Val{:mle}) = _fit(ArchimaxCopula{2, ClaytonGenerator, GalambosTail}, U, method)
-_fit(::Type{BB5Copula}, U, method::Val{:mle}) = _fit(ArchimaxCopula{2, GumbelGenerator, GalambosTail}, U, method)

@@ -37,7 +37,7 @@ You can define an archimax copula as follows:
 using Copulas, Distributions, Plots
 C = ArchimaxCopula(2, 
     Copulas.FrankGenerator(0.8),                   # Archimedean generator
-    Copulas.AsymGalambosTail(0.35, (0.65, 0.3))    # Stable Tail Dependence
+    Copulas.AsymGalambosTail(0.35, 0.65, 0.3)    # Stable Tail Dependence
 )
 plot(C)
 ```
