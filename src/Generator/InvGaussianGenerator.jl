@@ -44,6 +44,7 @@ InvGaussianCopula(d, θ)   = ArchimedeanCopula(d, InvGaussianGenerator(θ))
 InvGaussianCopula(d; θ::Real) = InvGaussianCopula(d, θ)
 Distributions.params(G::InvGaussianGenerator) = (θ = G.θ,)
 _example(::Type{<:InvGaussianCopula}, d) = InvGaussianCopula(d, 1.0)
+_example(::Type{ArchimedeanCopula{2, InvGaussianGenerator}}, d) = InvGaussianCopula(d, 1.0)
 _unbound_params(::Type{<:InvGaussianCopula}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:InvGaussianCopula}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:InvGaussianGenerator}, d) = (0, Inf)

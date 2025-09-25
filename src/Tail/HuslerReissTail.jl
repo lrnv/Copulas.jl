@@ -54,6 +54,7 @@ end
 
 # Fitting helpers for EV copulas using Hüsler–Reiss tail
 _example(::Type{<:HuslerReissCopula}, d) = ExtremeValueCopula(2, HuslerReissTail(1.0))
+_example(::Type{ExtremeValueCopula{2, HuslerReissTail}}, d) = ExtremeValueCopula(2, HuslerReissTail(1.0))
 _unbound_params(::Type{<:HuslerReissCopula}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissCopula}, d, α) = (; θ = exp(α[1]))
 

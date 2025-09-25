@@ -42,6 +42,7 @@ BB6Copula(d, θ, δ) = ArchimedeanCopula(d, BB6Generator(θ, δ))
 BB6Copula(d; θ::Real, δ::Real) = BB6Copula(d, θ, δ)
 Distributions.params(G::BB6Generator) = (θ = G.θ, δ = G.δ)
 _example(CT::Type{<:BB6Copula}, d) = BB6Copula(d, 1.5, 1.5)
+_example(::Type{ArchimedeanCopula{2, BB6Generator}}, d) = BB6Copula(d, 1.5, 1.5)
 _unbound_params(::Type{<:BB6Copula}, d, θ) = [log(θ.θ - 1), log(θ.δ - 1)]
 _rebound_params(::Type{<:BB6Copula}, d, α) = (; θ = 1 + exp(α[1]), δ = 1 + exp(α[2]))
 

@@ -40,6 +40,7 @@ AMHCopula(d, θ::Real) = ArchimedeanCopula(d, AMHGenerator(θ))
 AMHCopula(d; θ::Real) = AMHCopula(d, θ)
 Distributions.params(G::AMHGenerator) = (θ = G.θ,)
 _example(::Type{<:AMHCopula}, d) = AMHCopula(d, 0.1)
+_example(::Type{ArchimedeanCopula{2, AMHGenerator}}, d) = AMHCopula(d, 0.1)
 function _unbound_params(CT::Type{<:AMHCopula}, d, θ)
     l =  _find_critical_value_amh(d, step=1e-7)
     [atanh(2 * (θ.θ - l) / (1-l) - 1)]

@@ -39,6 +39,7 @@ BB7Copula(d, θ, δ) = ArchimedeanCopula(d, BB7Generator(θ, δ))
 BB7Copula(d; θ::Real, δ::Real) = BB7Copula(d, θ, δ)
 Distributions.params(G::BB7Generator) = (θ = G.θ, δ = G.δ)
 _example(CT::Type{<:BB7Copula}, d) = BB7Copula(d, 1.5, 0.8)
+_example(::Type{ArchimedeanCopula{2, BB7Generator}}, d) = BB7Copula(d, 1.5, 0.8)
 _unbound_params(::Type{<:BB7Copula}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
 _rebound_params(::Type{<:BB7Copula}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
 
