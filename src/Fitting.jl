@@ -318,7 +318,33 @@ params(::Type{T}) where {T<:Copula} = throw("No params() function defined for ty
 ##############################################################################################################################
 ####### show function. PLease do not construct other functions for it. 
 ##############################################################################################################################
-
+function _linearize_params(params::NamedTuple)
+    vals = Float64[]
+    names = String[]
+    for (k, v) in pairs(params)
+        if isa(v, Number)
+            push!(vals, float(v))
+            push!(names, String(k))
+        elseif isa(v, AbstractMatrix)
+            for i in axes(v, 1), j in axes(v, 2)
+                push!(vals, float(v[i, j]))
+                push!(names, "$(k)_$(i)_$(j)")
+            end
+        elseif isa(v, AbstractVector)
+            for i in eachindex(v)
+                push!(vals, float(v[i]))
+                push!(names, "$(k)_$(i)")
+            end
+        else
+            try
+                push!(vals, float(v))
+                push!(names, String(k))
+            catch
+            end
+        end
+    end
+    return vals, names
+end
 function Base.show(io::IO, M::CopulaModel)
     R = M.result
     # Header: family/margins without helper functions
@@ -478,8 +504,8 @@ function Base.show(io::IO, M::CopulaModel)
         end
     else
         # Coefficient table
-        θ  = StatsBase.coef(M)
-        nm = StatsBase.coefnames(M)
+        params = Distributions.params(copula_of(M))
+        θ, nm = _linearize_params(params)
         V  = StatsBase.vcov(M)
         if V === nothing || isempty(θ)
             println(io, "────────────────────────────────────────")

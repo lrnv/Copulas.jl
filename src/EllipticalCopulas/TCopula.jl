@@ -79,16 +79,13 @@ SubsetCopula(C::TCopula{d,df,MT}, dims::NTuple{p, Int}) where {d,df,MT,p} = TCop
 # Fitting collocated
 StatsBase.dof(C::Copulas.TCopula)           = (p = length(C); p*(p-1) ÷ 2 + 1)
 function Distributions.params(C::TCopula{d,df,MT}) where {d,df,MT}
-    Σ = C.Σ; n = size(Σ,1)
-    return (; ν = df, (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:n-1 for j in i+1:n)...)
+    return (; ν = df, Σ = C.Σ)
 end
 _example(::Type{<:TCopula}, d::Int) = TCopula(5.0, Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
 function _unbound_params(::Type{<:TCopula}, d::Int, θ::NamedTuple)
-    Σ = _Σ_from_named(d, θ)
-    α = _unbound_corr_params(d, Σ)
+    α = _unbound_corr_params(d, θ.Σ)
     return vcat(log(θ.ν), α)
 end
-
 function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where {T}
     ν = exp(α[1])
     Σ = _rebound_corr_params(d, @view α[2:end])
