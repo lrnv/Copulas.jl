@@ -77,6 +77,7 @@ end
 
 # Fitting helpers for EV copulas using extreme-t tail
 _example(::Type{<:tEVCopula}, d) = ExtremeValueCopula(2, tEVTail(4.0, 0.5))
+_example(::Type{ExtremeValueCopula{2, tEVTail}}, d) = ExtremeValueCopula(2, tEVTail(4.0, 0.5))
 _unbound_params(::Type{<:tEVCopula}, d, θ) = [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
 _rebound_params(::Type{<:tEVCopula}, d, α) = (; ν = exp(α[1]), ρ = tanh(α[2]))
 function dA(tail::tEVTail, t::Real)

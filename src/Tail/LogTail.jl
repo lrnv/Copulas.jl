@@ -47,6 +47,7 @@ end
 
 # Fitting helpers for EV copulas using Log tail
 _example(::Type{<:LogCopula}, d) = ExtremeValueCopula(2, LogTail(2.0))
+_example(::Type{ExtremeValueCopula{2, LogTail}}, d) = ExtremeValueCopula(2, LogTail(2.0))
 _unbound_params(::Type{<:LogCopula}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
 _rebound_params(::Type{<:LogCopula}, d, α) = (; θ = exp(α[1]) + 1)
 
