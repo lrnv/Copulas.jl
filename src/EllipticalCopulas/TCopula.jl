@@ -36,6 +36,11 @@ struct TCopula{d,df,MT} <: EllipticalCopula{d,MT}
         return new{size(Σ,1),df,typeof(Σ)}(Σ)
     end
 end
+TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula(ν, Σ)
+TCopula{d,df,MT}(d::Int, ν::Real, Σ::AbstractMatrix)  where {d,df,MT} = TCopula(ν, Σ)
+
+
+
 U(::Type{TCopula{d,df,MT}}) where {d,df,MT} = Distributions.TDist(df)
 N(::Type{TCopula{d,df,MT}}) where {d,df,MT} = function(Σ)
     Distributions.MvTDist(df,Σ)
@@ -92,4 +97,3 @@ function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where
     return (; ν = ν, Σ = Σ)
 end
 
-TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula(ν, Σ)
