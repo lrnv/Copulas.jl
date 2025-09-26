@@ -1,3 +1,18 @@
+"""
+    SibuyaStoppedGamma(θ, δ)
+
+Parameters
+    * `θ ≥ 1`
+    * `δ > 0`
+
+Used as frailty for Archimedean copulas (Sibuya‑gamma mixture).
+
+Hierarchical frailty:
+```math
+T \\sim \\mathrm{Sibuya}(1/θ), \\qquad X \\mid T=t \\sim \\mathrm{Gamma}(t/δ, 1).
+```
+θ ≥ 1, δ > 0.
+"""
 struct SibuyaStoppedGamma{Tθ,Tδ} <: Distributions.ContinuousUnivariateDistribution
     θ::Tθ   # ≥ 1
     δ::Tδ   # > 0

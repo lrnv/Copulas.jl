@@ -1,29 +1,35 @@
 """
-    EmpiricalCopula{d, MT}
-
-Fields:
-- `u::MT` — pseudo-observation matrix of size `(d, N)`.
-
-Constructor
-
     EmpiricalCopula(u; pseudo_values=true)
 
-The empirical copula in dimension ``d`` is defined from a matrix of pseudo-observations
-``\\mathbf u = (u_{i,j})_{1\\le i \\le d,\\ 1\\le j \\le N}`` with entries in ``[0,1]``.
-Its distribution function is
+Nonparametric estimator of an underlying dependence structure; used as a building
+block for rank‑based inference, bootstrap procedures, and goodness‑of‑fit tests.
 
+
+Parameters
+* `u::AbstractMatrix` – data matrix of shape `(d, N)`.
+* `pseudo_values=true` – if `false`, raw data in `u` are converted to pseudo‑observations
+    via ranks divided by `N+1`; if `true` the entries of `u` are assumed already in `[0,1]`.
+
+Given pseudo‑observations `(u_{i,j})_{1\\le i\\le d,\\ 1\\le j\\le N}` with each
+column in `[0,1]^d`, the empirical copula distribution function is
 ```math
-C(\\mathbf{x}) = \\frac{1}{N} \\sum_{j=1}^{N} \\mathbf{1}_{\\{ \\mathbf{u}_{\\cdot,j} \\le \\mathbf{x} \\}} ,
+C(\\boldsymbol x) = \\frac{1}{N} \\sum_{j=1}^{N} \\mathbf{1}_{\\{ u_{1,j} \\le x_1,\\ldots,u_{d,j} \\le x_d \\}}.
 ```
 
-where the inequality is componentwise. If `pseudo_values=false`, the constructor first ranks the raw data into pseudo-observations; otherwise it assumes `u` already contains pseudo-observations in ``[0,1]``.
 
-Notes:
-- This is an empirical object based on pseudo-observations; it is not necessarily a true copula for finite ``N`` but is widely used for nonparametric inference.
-- Supports `cdf`, `logpdf` at observed points, random sampling, and subsetting.
+Notes
+* For finite `N` the function above is grounded and has uniform margins but may
+    fail some higher‑order smoothness properties; asymptotically it converges to the
+    true copula under standard i.i.d. assumptions.
+* `pdf`/`logpdf`: the mass function assigns probability `1/N` to each observed
+    point; off‑sample points have zero density.
+* `rand`: resamples observed pseudo‑observations with replacement.
+* Subsetting returns the empirical copula of the projected pseudo‑observations.
 
-References:
-* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
+See also: [`pseudos`](@ref), [`BetaCopula`](@ref), [`CheckerboardCopula`](@ref).
+
+References
+* [nelsen2006](@cite) Nelsen (2006), An Introduction to Copulas.
 """
 struct EmpiricalCopula{d,MT} <: Copula{d}
     u::MT

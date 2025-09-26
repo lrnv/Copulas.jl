@@ -1,30 +1,27 @@
 """
-    FGMCopula{d,T}
-
-Fields:
-  - θ::Real - parameter
-
-Constructor
-
     FGMCopula(d, θ)
 
-The multivariate Farlie–Gumbel–Morgenstern (FGM) copula of dimension d has ``2^d-d-1`` parameters ``\\theta`` and
+Parameters
+* `d::Int` – dimension.
+* `θ` – parameter vector of length `2^d - d - 1` (or scalar when `d=2`). Each component must lie in `[-1,1]` and satisfy additional positivity constraints (see below). Passing all zeros returns `IndependentCopula(d)`.
 
+The (multivariate) Farlie–Gumbel–Morgenstern copula has distribution function
 ```math
-C(\\boldsymbol{u})=\\prod_{i=1}^{d}u_i \\left[1+ \\sum_{k=2}^{d}\\sum_{1 \\leq j_1 < \\cdots < j_k \\leq d} \\theta_{j_1 \\cdots j_k} \\bar{u}_{j_1}\\cdots \\bar{u}_{j_k} \\right],
+C(\\boldsymbol u) = \\prod_{i=1}^{d} u_i \\Biggl[ 1 + \\sum_{k=2}^{d} \\sum_{1 \\le j_1 < \\cdots < j_k \\le d} \\theta_{j_1\\cdots j_k} \\, \\bar u_{j_1}\\cdots \\bar u_{j_k} \\Biggr],
 ```
+where `\\(\\bar u_j = 1 - u_j\\)`. The density (when it exists) is obtained by differentiating with respect to all coordinates and is linear in each parameter.
 
-where ``\\bar{u} = 1 - u``.
+Provides a simple, low‑dependence family with limited (weak) tail behavior; useful for illustrating rank measures and for small‑signal dependence modeling.
 
-Special cases:
-- When d=2 and θ = 0, it is the IndependentCopula.
+Notes
+* Admissibility: All partial sums `1 + Σ θ_{J} ∏ v_j` over sign vectors must remain ≥ 0; this is checked via enumeration of ±1 patterns.
+* Correlation bounds (bivariate): Spearman ρ ∈ [−1/3, 1/3], Kendall τ ∈ [−2/9, 2/9]. In higher dimensions dependence remains weak.
+* Sampling uses the multivariate Bernoulli stochastic representation of [blier2022stochastic](@cite).
+* Subsetting recomputes the canonical ordering of interaction parameters for the reduced dimension.
 
-More details about Farlie-Gumbel-Morgenstern (FGM) copula are found in [nelsen2006](@cite).
-We use the stochastic representation from [blier2022stochastic](@cite) to obtain random samples.
-
-References:
-* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
-* [blier2022stochastic](@cite) Blier-Wong, C., Cossette, H., & Marceau, E. (2022). Stochastic representation of FGM copulas using multivariate Bernoulli random variables. Computational Statistics & Data Analysis, 173, 107506.
+References
+* [nelsen2006](@cite) Nelsen (2006), An Introduction to Copulas.
+* [blier2022stochastic](@cite) Blier‑Wong et al. (2022), Stochastic representation of FGM copulas.
 """
 struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     θ::Tθ

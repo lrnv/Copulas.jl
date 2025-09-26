@@ -1,3 +1,17 @@
+"""
+    ExtremeDist(tail)
+
+Parameters
+  * `tail` – extreme value tail dependence function object (provides A, dA, d²A)
+
+Univariate distribution on (0,1) derived from an extreme value tail; its CDF and
+PDF are
+```math
+F(z) = z + z(1-z) \\frac{A'(z)}{A(z)}, \\qquad
+f(z) = 1 + (1-2z) \\frac{A'(z)}{A(z)} + z(1-z) \\frac{A''(z)A(z) - (A'(z))^2}{A(z)^2}.
+```
+Used internally for simulation / conditioning in extreme value and Archimax copulas.
+"""
 struct ExtremeDist{C} <: Distributions.ContinuousUnivariateDistribution
     tail::C
 end

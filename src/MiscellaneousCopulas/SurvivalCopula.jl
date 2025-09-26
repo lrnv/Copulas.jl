@@ -1,18 +1,20 @@
 """
     SurvivalCopula(C, indices)
 
-Construct the survival version of a copula on selected indices. For a copula ``C`` in dimension ``d`` and indices ``i_1, \\ldots, i_k \\in \\{1,\\ldots,d\\}``, the survival copula flips the corresponding arguments. For example, for ``d=4`` and indices ``(2,3)``,
+Parameters
+    * `C::Copula{d}` – base copula
+    * `indices` – collection/tuple of coordinates to flip (replace uᵢ by 1-uᵢ)
 
+Flips selected margins of a copula (survival / rotation). For example, with
+`indices=(2,3)` in dimension 4:
 ```math
-S(u_1,\\ldots,u_4) = C(u_1, 1-u_2, 1-u_3, u_4).
+S(u_1,u_2,u_3,u_4) = C(u_1, 1-u_2, 1-u_3, u_4).
 ```
+Bivariate case recovers the classic 90°, 180°, 270° rotations. Same API as the
+original copula.
 
-Notes:
-- In the bivariate case, this includes the usual 90/180/270-degree "rotations" of a copula family.
-- The resulting object is handled like the base copula: same API (cdf, pdf/logpdf, rand, fit) and uniform marginals in ``[0,1]^d``.
-
-References:
-* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
+References
+* [nelsen2006](@cite) Nelsen (2006), An introduction to copulas.
 """
 struct SurvivalCopula{d,CT,VI} <: Copula{d}
     C::CT

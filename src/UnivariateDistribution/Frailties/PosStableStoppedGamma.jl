@@ -1,5 +1,18 @@
-# --------- Frailty: positive-stable stopped gamma ----------
-# T ~ Postable(α = 1/θ, scale = 1);   M | T=t  ~ Gamma(t/δ, 1)
+"""
+    PosStableStoppedGamma(θ, δ)
+
+Parameters
+    * `θ > 0`
+    * `δ > 0`
+
+Used as frailty for Archimedean copulas (positive stable stopped by gamma).
+
+Hierarchical frailty:
+```math
+T \\sim \\mathrm{PositiveStable}(1/θ, 1), \\qquad X \\mid T=t \\sim \\mathrm{Gamma}(t/δ, 1).
+```
+θ, δ > 0. Combines heavy-tailed positive stable mixing with a gamma conditional law.
+"""
 struct PosStableStoppedGamma{Tθ,Tδ} <: Distributions.ContinuousUnivariateDistribution
     θ::Tθ; δ::Tδ
 end

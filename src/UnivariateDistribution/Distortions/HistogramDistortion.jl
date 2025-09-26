@@ -1,7 +1,13 @@
-###########################################################################
-#####  Histogram / Checkerboard conditional distortion (uniform on bins)
-###########################################################################
+"""
+        HistogramBinDistortion(m, probs)
 
+Parameters
+    * `m ≥ 1` – number of equal-width bins on [0,1]
+    * `probs` – vector of non‑negative weights (length m) normalized internally
+
+Piecewise uniform / linear conditional distortion (checkerboard style) used for
+empirical / nonparametric conditional copula constructions.
+"""
 struct HistogramBinDistortion{T} <: Distortion
     m::Int                # number of bins along the axis
     probs::Vector{T}      # length m, normalized probabilities per bin
