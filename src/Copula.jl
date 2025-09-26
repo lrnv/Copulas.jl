@@ -36,7 +36,7 @@ function β(C::Copula{d}) where {d}
     d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
     u     = fill(0.5, d)
     C0    = Distributions.cdf(C, u)
-    Cbar0 = Distributions.cdf(SurvivalCopula(C, collect(1:d)), u)
+    Cbar0 = Distributions.cdf(SurvivalCopula(C, 1:d), u)
     return (2.0^(d-1) * C0 + Cbar0 - 1) / (2^(d-1) - 1)
 end
 function γ(C::Copula{d}; nmc::Int=100_000,
