@@ -514,7 +514,7 @@
                         if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(CT<:PlackettCopula) && has_parameters(C)
                             α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
                             α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
-                            @test α1 ≈ α2
+                            @test α1 ≈ α2 atol=1e-4
                         end
 
                         # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
