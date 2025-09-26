@@ -107,7 +107,7 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
 β(C::GalambosCopula) = 2.0^( 2.0^(-1.0/C.tail.θ) ) - 1.0
 λᵤ(C::GalambosCopula) = 2.0^(-1.0/C.tail.θ)
 
-τ⁻¹(::Type{<:GalambosCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
-ρ⁻¹(::Type{<:GalambosCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
+τ⁻¹(::Type{<:GalambosCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
+ρ⁻¹(::Type{<:GalambosCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
 β⁻¹(::Type{<:GalambosCopula}, beta) = -1/log2(log2(beta+1))
 λᵤ⁻¹(::Type{<:GalambosCopula}, λ) = -1.0 / log2(λ)
