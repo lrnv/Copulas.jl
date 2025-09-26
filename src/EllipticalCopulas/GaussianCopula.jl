@@ -80,12 +80,9 @@ GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ)
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
-    x = StatsBase.quantile.(Distributions.Normal(),u)
+    x = StatsBase.quantile.(Distributions.Normal(), u)
     d = length(C)
-    T = eltype(u)
-    μ = zeros(T,d)
-    lb = repeat([T(-Inf)],d)
-    return MvNormalCDF.mvnormcdf(μ, C.Σ, lb, x)[1]
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x, m=10_0000d)[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
