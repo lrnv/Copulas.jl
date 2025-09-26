@@ -33,21 +33,18 @@ References:
 abstract type Tail end
 Base.broadcastable(tail::Tail) = Ref(tail)
 
-####### Functions you need to overload: 
+####### Main interface for any dimensions: 
 _is_valid_in_dim(tail::Tail, d::Int) = throw(ArgumentError("Validity of the tail type $(typeof(tail)) must be supplied by overwriting the function _is_valid_in_dim(tail::Tail, d::Int)"))
 A(::Tail, ω::NTuple{d,<:Real}) where {d} = throw(ArgumentError("Implement A(Tail{$d}, ω) en el simplex Δ_{d-1}"))
-
-####### Rest of the interface you can overload if more efficient:
-needs_binary_search(::Tail) = false
-# \ell function
 function ℓ(tail::Tail, x)
     s = sum(x)
     return s == 0 ? zero(eltype(x)) : s * A(tail, ntuple(i->x[i]/s, length(x)))
 end
 
 
-# A more friendly interface for models that are only bivariate: 
+####### A more friendly interface for models that are only bivariate: 
 abstract type Tail2 <: Tail end
+needs_binary_search(::Tail2) = false
 _is_valid_in_dim(::Tail2, d::Int) = (d==2)
 A(tail::Tail2, t::NTuple{2, <:Real}) = A(tail, t[1])
 dA(tail::Tail2, t::Real) = ForwardDiff.derivative(z -> A(tail, z), t)
