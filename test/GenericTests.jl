@@ -104,7 +104,8 @@
     is_archimax(C::CT)                       where CT = (CT <: Copulas.ArchimaxCopula)
 
     can_be_fitted(C::CT) where CT = length(Copulas._available_fitting_methods(CT)) > 0
-    has_unbounded_params(C::CT) where CT = :mle ∈ Copulas._available_fitting_methods(CT) && length(Distributions.params(C)) > 0
+    has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
+    has_unbounded_params(C::CT) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT) && length(Distributions.params(C)) > 0
 
     function check(C::Copulas.Copula{d}) where d
         @testset "Testing $C" begin
@@ -510,7 +511,7 @@
                         r1 = fit(CopulaModel, CT, spl1000, m)
                         r2 = fit(CT, spl1000, m)
 
-                        if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(CT<:PlackettCopula)
+                        if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(CT<:PlackettCopula) && has_parameters(C)
                             α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
                             α2 = Copulas._unbound_params(typeof(r2.result), d, Distributions.params(r2))
                             @test α1 ≈ α2
