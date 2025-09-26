@@ -84,15 +84,17 @@ function _rebound_params(::Type{<:FGMCopula}, d, α)
         # Only one parameter, strictly invertible
         return (; θ = tanh.(α))
     end
+    # For d >= 3, use a safe directional mapping (not fully surjective, but stays in the interior)
     β = α
-    λmax = _max_lambda(β, d)
     normβ = LinearAlgebra.norm(β)
     if normβ == 0
         θ = zeros(length(β))
     else
         direction = β / normβ
+        # Find the maximal λ in this direction, then stay well inside
+        λmax = _max_lambda(direction, d)
         r = exp(normβ) / (1 + exp(normβ))
-        λ = λmax * r
+        λ = 0.95 * λmax * r # 0.95 to stay strictly inside
         θ = λ * direction
     end
     return (; θ = θ)
@@ -104,13 +106,15 @@ function _unbound_params(::Type{<:FGMCopula}, d, θ)
         # Only one parameter, strictly invertible
         return atanh.(θvec)
     end
+    # For d >= 3, use the fast directional mapping, but ensure safety
     normθ = LinearAlgebra.norm(θvec)
     if normθ == 0
         return zeros(length(θvec))
     end
     direction = θvec / normθ
     λmax = _max_lambda(direction, d)
-    r = normθ / λmax
+    # Clamp r to (0, 1-eps()) to avoid Inf/NaN
+    r = clamp(normθ / λmax, 0.0, 1.0 - eps())
     normβ = log(r / (1 - r))
     return direction * normβ
 end
