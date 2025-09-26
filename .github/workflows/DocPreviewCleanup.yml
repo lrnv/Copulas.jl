@@ -20,6 +20,8 @@ jobs:
         with:
           version: '1'
       - name: Check for stale PR previews
+        id: bad
+        continue-on-error: true
         shell: julia {0}
         run: |
           using Pkg
@@ -69,6 +71,7 @@ jobs:
               run(`git rm -rf $path`)
           end
       - name: Push changes
+        if: job.steps.bad.status == success()
         run: |
           git config user.name "Documenter.jl"
           git config user.email "documenter@juliadocs.github.io"
