@@ -101,4 +101,9 @@ _rho_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.qu
 τ⁻¹(::Type{<:HuslerReissCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
 ρ⁻¹(::Type{<:HuslerReissCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_HuslerReiss(θ) - ρ; kw...)
 λᵤ⁻¹(::Type{<:HuslerReissCopula}, λ) = 1 / Distributions.quantile(Distributions.Normal(), 1 - λ/2)
-β⁻¹(::Type{<:HuslerReissCopula}, beta) = 1 / Distributions.quantile(Distributions.Normal(), 1 - log(beta + 1) / log(4))
+function β⁻¹(::Type{<:HuslerReissCopula}, beta)
+    p = 1 - log(beta + 1) / log(4)
+    # Clamp to open interval (0,1)
+    p = clamp(p, eps(), 1 - eps())
+    return 1 / quantile(Normal(), p)
+end
