@@ -10,92 +10,92 @@ WilliamsonGenerator
 ```
 
 ## `EmpiricalGenerator`
-```@docs
+```@docs; canonical=false
 EmpiricalGenerator
 ```
 
 ## `TiltedGenerator`
-```@docs
+```@docs; canonical=false
 TiltedGenerator
 ```
 
 ## `FrailtyGenerator`
-```@docs
+```@docs; canonical=false
 FrailtyGenerator
 ```
 
 ## `ClaytonGenerator`
-```@docs
+```@docs; canonical=false
 ClaytonGenerator
 ```
 
 ## `FrankGenerator`
-```@docs
+```@docs; canonical=false
 FrankGenerator
 ```
 
 ## `GumbelGenerator`
-```@docs
+```@docs; canonical=false
 GumbelGenerator
 ```
 
 ## `AMHGenerator`
-```@docs
+```@docs; canonical=false
 AMHGenerator
 ```
 
 ## `JoeGenerator`
-```@docs
+```@docs; canonical=false
 JoeGenerator
 ```
 
 ## `GumbelBarnettGenerator`
-```@docs
+```@docs; canonical=false
 GumbelBarnettGenerator
 ```
 
 ## `InvGaussianGenerator`
-```@docs
+```@docs; canonical=false
 InvGaussianGenerator
 ```
 
 ## `BB1Generator`
-```@docs
+```@docs; canonical=false
 BB1Generator
 ```
 
 ## `BB2Generator`
-```@docs
+```@docs; canonical=false
 BB2Generator
 ```
 
 ## `BB3Generator`
-```@docs
+```@docs; canonical=false
 BB3Generator
 ```
 
 ## `BB6Generator`
-```@docs
+```@docs; canonical=false
 BB6Generator
 ```
 
 ## `BB7Generator`
-```@docs
+```@docs; canonical=false
 BB7Generator
 ```
 
 ## `BB8Generator`
-```@docs
+```@docs; canonical=false
 BB8Generator
 ```
 
 ## `BB9Generator`
-```@docs
+```@docs; canonical=false
 BB9Generator
 ```
 
 ## `BB10Generator`
-```@docs
+```@docs; canonical=false
 BB10Generator
 ```
 

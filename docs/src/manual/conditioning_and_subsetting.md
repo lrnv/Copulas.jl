@@ -118,7 +118,7 @@ H.m # the marginals
 
 ### Implementation
 
-```@docs
+```@docs; canonical=false
 condition
 Distortion
 DistortionFromCop
@@ -183,7 +183,7 @@ typeof(S13), S13 isa SurvivalCopula
 
 ### Implementation
 
-```@docs
+```@docs; canonical=false
 Copulas.subsetdims
 Copulas.SubsetCopula
 ```
@@ -217,7 +217,7 @@ These two properties are leveraged in some cases to construct the inverse Rosenb
 
 As soon as the random vector ``X`` is represented by an object `X` that subtypes `SklarDist` or `Copula`, you have access to the `rosenblatt(X, x)` and `inverse_rosenblatt(X, x)` operators, which both have a straightforward interpretation from their names. 
 
-```@docs
+```@docs; canonical=false
 rosenblatt
 inverse_rosenblatt
 ```

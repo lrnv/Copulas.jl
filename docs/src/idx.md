@@ -7,7 +7,7 @@ CurrentModule = Copulas
 All docstrings are collected here as a general reference. We sorted them the public and private APIs. 
 
 ## Public API 
-```@autodocs; canonical = false
+```@autodocs
 Modules = [Copulas]
 Public = true
 ```

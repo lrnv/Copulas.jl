@@ -6,24 +6,24 @@ CurrentModule = Copulas
 
 ## `EmpiricalCopula`
 
-```@docs
+```@docs; canonical=false
 EmpiricalCopula
 ```
 
 ## `BernsteinCopula`
 
-```@docs
+```@docs; canonical=false
 BernsteinCopula
 ```
 
 ## `CheckerboardCopula`
 
-```@docs
+```@docs; canonical=false
 CheckerboardCopula
 ```
 
 ## `BetaCopula`
-```@docs
+```@docs; canonical=false
 BetaCopula
 ```
 

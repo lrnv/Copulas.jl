@@ -5,73 +5,73 @@ CurrentModule = Copulas
 # [Extreme Values Tails](@id available_extreme_models)
 
 ## `MTail`
-```@docs
+```@docs; canonical=false
 MTail
 ```
 
 
 ## `NoTail`
-```@docs
+```@docs; canonical=false
 NoTail
 ```
 
 ## `AsymGalambosTail`
-```@docs
+```@docs; canonical=false
 AsymGalambosTail
 ```
 
 ## `AsymLogTail`
-```@docs
+```@docs; canonical=false
 AsymLogTail
 ```
 
 ## `AsymMixedTail`
-```@docs
+```@docs; canonical=false
 AsymMixedTail
 ```
 
 ## `BC2Tail`
-```@docs
+```@docs; canonical=false
 BC2Tail
 ```
 
 ## `CuadrasAugeTail`
-```@docs
+```@docs; canonical=false
 CuadrasAugeTail
 ```
 
 ## `GalambosTail`
-```@docs
+```@docs; canonical=false
 GalambosTail
 ```
 
 ## `HuslerReissTail`
-```@docs
+```@docs; canonical=false
 HuslerReissTail
 ```
 
 ## `LogTail`
-```@docs
+```@docs; canonical=false
 LogTail
 ```
 
 ## `MixedTail`
-```@docs
+```@docs; canonical=false
 MixedTail
 ```
 
 ## `MOTail`
-```@docs
+```@docs; canonical=false
 MOTail
 ```
 
 ## `tEVTail`
-```@docs
+```@docs; canonical=false
 tEVTail
 ```
 
 ## `EmpiricalEVTail`
-```@docs
+```@docs; canonical=false
 EmpiricalEVTail
 ```
 
