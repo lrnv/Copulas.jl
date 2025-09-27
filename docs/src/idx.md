@@ -15,7 +15,7 @@ Public = true
 ## Other docstrings
 
 ```@autodocs
-Modules = [Foo]
+Modules = [Copulas]
 Public = false
 Order = [:type]
 ```
