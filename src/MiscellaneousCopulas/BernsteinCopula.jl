@@ -1,9 +1,9 @@
 """
-    BernsteinCopula{d, C}
+    BernsteinCopula{d}
 
 Fields:
-- `base::C` - underlying copula
 - `m::NTuple{d,Int}` - polynomial degrees (smoothing parameters)
+- `weights::Array{Float64, d}` - precomputed grid of box measures
 
 Constructor
 
@@ -12,28 +12,29 @@ Constructor
 
 The Bernstein copula in dimension ``d`` is defined as
 
-```math
+``
 B_m(C)(u) = \\sum_{s_1=0}^{m_1} \\cdots \\sum_{s_d=0}^{m_d}C\\left(\\tfrac{s_1}{m_1}, \\ldots, \\tfrac{s_d}{m_d}\\right)\\prod_{j=1}^d \\binom{m_j}{s_j} u_j^{s_j}(1-u_j)^{m_j-s_j}.
-```
+``
 
 It is a polynomial approximation of the base copula ``C`` using the multivariate Bernstein operator.
 
-Notes:
-
+**Implementation notes:**
+- The grid of box measures (weights) is fully precomputed and stored as an ``n``-dimensional array at construction. This enables fast evaluation of the copula and its density, but can be memory-intensive for large ``d`` or ``m``.
+- The choice of `m` controls the smoothness of the approximation: larger `m` yields finer approximation but exponentially increases memory and computation cost (``\\prod_j m_j`` boxes).
+- For high dimensions or large ``m``, memory usage may become prohibitive; see documentation for scaling behavior.
 - If ``C`` is an `EmpiricalCopula`, the constructor produces the *empirical Bernstein copula*, a smoothed version of the empirical copula.
-- Supports `cdf`, `logpdf` and random generation via mixtures of beta distributions.
-- The choice of `m` controls the smoothness of the approximation: larger `m` yields finer approximation but higher computational cost.
+- Supports `cdf`, `logpdf`, and random generation via mixtures of beta distributions.
 
 References:
 * [sancetta2004bernstein](@cite) Sancetta, A., & Satchell, S. (2004). The Bernstein copula and its applications to modeling and approximations of multivariate distributions. Econometric Theory, 20(3), 535-562.
 * [segers2017empirical](@cite) Segers, J., Sibuya, M., & Tsukahara, H. (2017). The empirical beta copula. Journal of Multivariate Analysis, 155, 35-51.
 """
-struct BernsteinCopula{d,C<:Copula} <: Copula{d}
-    base::C
+struct BernsteinCopula{d} <: Copula{d}
     m::NTuple{d,Int}
+    weights::Array{Float64, d}
     function BernsteinCopula(base::Copula; m::Union{Int,Tuple,Nothing}=10)
         d = Copulas.length(base)
-
+        mtuple = nothing
         if m !== nothing
             mtuple = (m isa Int) ? ntuple(_->m, d) : m
             @assert length(mtuple) == d "The parameter m must have length $d"
@@ -45,17 +46,41 @@ struct BernsteinCopula{d,C<:Copula} <: Copula{d}
                     end
                 end
             end
-            return new{d,typeof(base)}(base, mtuple)
-        end
-
-        if base isa EmpiricalCopula
+        elseif base isa EmpiricalCopula
             n = size(base.u, 2)
             m_est = max(2, floor(Int, n^(1/d)))
             @info "Automatic choice: m=$m_est in each dimension (≈ n^(1/d))."
-            return new{d,typeof(base)}(base, ntuple(_->m_est, d))
+            mtuple = ntuple(_->m_est, d)
+        else
+            mtuple = ntuple(_->10, d)
         end
-
-        return new{d,typeof(base)}(base, ntuple(_->10, d))
+        # Inline bernstein_grid_weights_array logic
+        weights = zeros(Float64, mtuple...)
+        N = d
+        # For each corner, compute its CDF once and distribute to all boxes
+        for corner in Iterators.product((0:mi for mi in mtuple)...)
+            u = ntuple(j -> corner[j] / mtuple[j], N)
+            cdfval = Distributions.cdf(base, collect(u))
+            for s in Iterators.product((0:(mi-1) for mi in mtuple)...)
+                is_vertex = true
+                upper = 0
+                for j in 1:N
+                    if corner[j] == s[j]
+                        continue
+                    elseif corner[j] == s[j]+1
+                        upper += 1
+                    else
+                        is_vertex = false
+                        break
+                    end
+                end
+                if is_vertex
+                    sign = (-1)^(N - upper)
+                    weights[(s[j]+1 for j in 1:N)...] += sign * cdfval
+                end
+            end
+        end
+        return new{d}(mtuple, weights)
     end
 end
 BernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing, pseudo_values=true) = BernsteinCopula(EmpiricalCopula(data; pseudo_values=pseudo_values); m=m)
@@ -95,6 +120,9 @@ end
     return v .* m
 end
 
+
+
+
 function _cdf(B::BernsteinCopula{d}, u::AbstractVector) where {d}
     m = B.m
     P = ntuple(j -> _bernvec_all(u[j], m[j]), d)
@@ -111,8 +139,9 @@ function Distributions._logpdf(B::BernsteinCopula{d}, u::AbstractVector) where {
     m = B.m
     BetaV = ntuple(j -> _betavec_pdf_all(u[j], m[j]), d)
     dens = zero(eltype(first(BetaV)))
+    weights = B.weights
     @inbounds for s in Iterators.product((0:(mi-1) for mi in m)...)
-        w = measure(B.base, ntuple(j -> s[j] / m[j], d), ntuple(j -> (s[j] + 1) / m[j], d))
+        w = weights[(s[j]+1 for j in 1:d)...]
         iszero(w) && continue
         dens += w * prod(BetaV[j][s[j]+1] for j in 1:d)
     end
@@ -124,8 +153,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula
     target = rand(rng)
     cum = 0.0
     picked = nothing
+    weights = B.weights
     @inbounds for s in Iterators.product((0:(mi-1) for mi in m)...)
-        w = measure(B.base, ntuple(j -> s[j] / m[j], d), ntuple(j -> (s[j] + 1) / m[j], d))
+        w = weights[(s[j]+1 for j in 1:d)...]
         w <= 0 && continue
         cum += w
         if cum >= target
