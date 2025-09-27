@@ -107,23 +107,11 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB2Genera
 end
 
 function τ(G::Copulas.BB2Generator{T}; rtol=1e-10, atol=1e-12) where {T}
-    # Closed-form for Kendall's tau using a change of variable
-    # Let a = 2 + 2/θ. Then
-    #   τ = 1 + 4/(δ θ^2) * ( 1/(a-1) - e^δ δ^(a-1) Γ(1-a, δ) )
-    # where Γ(·,·) is the upper incomplete gamma. This comes from
-    # u = t^{-θ} substitution in the standard Archimedean integral for τ.
     θ = float(G.θ); δ = float(G.δ)
     a = 2 + 2/θ
     term_gamma = exp(δ) * (δ^(a-1)) * SpecialFunctions.gamma(1 - a, δ)
-    τval = 1 + 4 * ((1/(a - 1)) - term_gamma) / (δ * θ^2)
-    if isfinite(τval)
-        return τval
-    end
-    # Fallback to numerical quadrature if needed (extreme parameter regimes)
-    invδθ = 1/(δ*θ)
-    f(t) = (t<=0 || t>=1) ? 0.0 : (t^(θ+1)) * invδθ * LogExpFunctions.expm1(-δ*(t^(-θ) - 1))
-    I, _ = QuadGK.quadgk(f, 0.0, 1.0; rtol=rtol, atol=atol)
-    return 1 + 4I
+    τval = 1 - 4 * ((1/(a - 1)) - term_gamma) / (δ * θ^2)   # note the minus
+    return clamp(τval, -1.0, 1.0)
 end
 
 # Spearman's rho via a stable single-integral formulation
