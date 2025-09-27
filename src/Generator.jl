@@ -32,6 +32,11 @@ References:
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
 """
 abstract type Generator end
+function (TG::Type{<:Generator})(args...;kwargs...)
+    S = hasproperty(TG, :body) ? TG.body : TG
+    T = S.name.wrapper 
+    return T(args..., values(kwargs)...)
+end
 Base.broadcastable(x::Generator) = Ref(x)
 max_monotony(G::Generator) = throw("This generator does not have a defined max monotony. You need to implement `max_monotony(G)`.")
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
@@ -61,6 +66,8 @@ struct WGenerator <: Generator end
 τ(::IndependentGenerator)  = 0
 τ(::MGenerator)  = 1
 τ(::WGenerator)  = -1
+
+ρ(::IndependentGenerator)  = 0
 
 
 
@@ -109,10 +116,10 @@ end
 Distributions.params(G::FrailtyGenerator) = Distributions.params(G.F)
 frailty(G::FrailtyGenerator) = G.F
 
-
-
-
-
+# Add univaraite generator bindins: 
+abstract type AbstractUnivariateGenerator <: Generator end
+abstract type AbstractUnivariateFrailtyGenerator <: AbstractFrailtyGenerator end
+const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
 
 
 """
@@ -226,7 +233,7 @@ Notes
 References
 * [mcneil2009multivariate](@cite)
 * [williamson1956](@cite)
-* [genest2011a](@cite)
+* [genest2011a](@cite) Genest, Neslehova and Ziegel (2011), Inference in Multivariate Archimedean Copula Models
 """
 function EmpiricalGenerator(u::AbstractMatrix)
     d = size(u, 1)

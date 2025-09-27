@@ -31,6 +31,11 @@ References:
 * Rasell
 """
 abstract type Tail end
+function (TT::Type{<:Tail})(args...;kwargs...)
+    S = hasproperty(TT, :body) ? TT.body : TT
+    T = S.name.wrapper 
+    return T(args..., values(kwargs)...)
+end
 Base.broadcastable(tail::Tail) = Ref(tail)
 
 ####### Functions you need to overload: 
@@ -48,6 +53,8 @@ end
 
 # A more friendly interface for models that are only bivariate: 
 abstract type Tail2 <: Tail end
+abstract type AbstractUnivariateTail2 <: Tail2 end
+const UnivariateTail2 = AbstractUnivariateTail2
 _is_valid_in_dim(::Tail2, d::Int) = (d==2)
 A(tail::Tail2, t::NTuple{2, <:Real}) = A(tail, t[1])
 dA(tail::Tail2, t::Real) = ForwardDiff.derivative(z -> A(tail, z), t)

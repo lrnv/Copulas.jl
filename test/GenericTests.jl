@@ -67,7 +67,8 @@
         !(CT<:RafteryCopula) && 
         !(CT<:EmpiricalCopula) && 
         !(CT<:BC2Copula) &&
-        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
+        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) &&
+        !(CT<:CheckerboardCopula)
 
     can_ad(C::CT) where CT = 
         # This list might be longer than necessary, it should be trimmed.
@@ -102,6 +103,11 @@
     is_archimedean(C::CT)                    where CT = (CT <: ArchimedeanCopula)
     is_extremevalue(C::CT)                   where CT = (CT <: Copulas.ExtremeValueCopula)
     is_archimax(C::CT)                       where CT = (CT <: Copulas.ArchimaxCopula)
+
+    can_be_fitted(C::CT) where CT = length(Copulas._available_fitting_methods(CT)) > 0
+    has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
+    has_unbounded_params(C::CT) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula)
+    unbounding_is_a_bijection(C::Copulas.Copula{d}) where d = !(typeof(C)<:FGMCopula && d>2)
 
     function check(C::Copulas.Copula{d}) where d
         @testset "Testing $C" begin
@@ -414,17 +420,6 @@
                 end
             end
 
-            @testset "Check Fitting the copula" begin
-                # This will largely change soon when the new fitting interface comes aroud. 
-                # For the moement the testing interface is mostly Ok for some copulas, and completely broken for all others. 
-                # We could do much better at it. 
-                try 
-                    fit(CT,spl10) # sometimes fails for non-monotonicity of the obtained generator. 
-                    # this is something we should fix :)
-                catch
-                end
-            end
-
             # Extreme value copula-specific tests (bivariate)
             @testif (is_extremevalue(C) && is_bivariate(C)) "ExtremeValueCopula specific tests" begin
                     @testset "A function basics" begin
@@ -495,6 +490,56 @@
                     for r in _archimax_mc_rectangles_cdf(C; N=20_000, seed=321)
                         @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
                     end
+            end
+
+            @testif can_be_fitted(C) "Fitting interface" begin
+
+                @testif has_unbounded_params(C) "Unbouding and rebounding params" begin
+                    # First on the _example copula. 
+                    θ₀ = Distributions.params(Copulas._example(CT, d))
+                    θ₁ = Copulas._rebound_params(CT, d, Copulas._unbound_params(CT, d, θ₀))
+                    @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
+                        @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
+                    end
+                    @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
+
+                    # Then on the copula we have at hand:
+                    θ₀ = Distributions.params(C)
+                    θ₁ = Copulas._rebound_params(CT, d, Copulas._unbound_params(CT, d, θ₀))
+                    @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
+                        @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
+                    end
+                    @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
+                end
+
+                for m in Copulas._available_fitting_methods(CT) 
+                    @testset "Fitting CT for $(m)" begin
+                        r1 = fit(CopulaModel, CT, spl1000, m)
+                        r2 = fit(CT, spl1000, m)
+
+                        newCT = typeof(r2)
+                        @test typeof(r1.result) == newCT
+                        if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2) && has_unbounded_params(r2) && !(CT<:RafteryCopula && d==3 && m==:itau)
+                            α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
+                            α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
+                            @test α1 ≈ α2 atol=1e-3
+                        end
+
+                        # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
+                        # can we also exercise the different sklar fits (:parametric and :ecdf) ? 
+                    end
+                end
+                @testset "Fitting Sklar x CT" begin
+                    r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                    r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                    newCT = typeof(r4.C)
+                    @test typeof(r3.result.C) == newCT
+                    if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C)
+                        α1 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
+                        α2 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
+                        @test α1 ≈ α2  atol=1e-3
+                    end
+                end
             end
         end
     end

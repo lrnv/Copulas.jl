@@ -30,9 +30,9 @@ struct BB2Generator{T} <: AbstractFrailtyGenerator
     end
 end
 const BB2Copula{d, T} = ArchimedeanCopula{d, BB2Generator{T}}
-BB2Copula(d, θ, δ) = ArchimedeanCopula(d, BB2Generator(θ, δ))
-
-Distributions.params(G::BB2Generator) = (G.θ, G.δ)
+Distributions.params(G::BB2Generator) = (θ = G.θ, δ = G.δ)
+_unbound_params(::Type{<:BB2Generator}, d, θ) = [log(θ.θ), log(θ.δ)]
+_rebound_params(::Type{<:BB2Generator}, d, α) = (; θ = exp(α[1]), δ = exp(α[2]))
 
 ϕ(  G::BB2Generator, s) = exp(-log1p(log1p(s)/G.δ)/G.θ)
 ϕ⁻¹(G::BB2Generator, t) = expm1(G.δ*expm1(-G.θ*log(t)))
@@ -108,12 +108,29 @@ end
 
 function τ(G::Copulas.BB2Generator{T}; rtol=1e-10, atol=1e-12) where {T}
     θ = float(G.θ); δ = float(G.δ)
+    a = 2 + 2/θ
+    term_gamma = exp(δ) * (δ^(a-1)) * SpecialFunctions.gamma(1 - a, δ)
+    τval = 1 - 4 * ((1/(a - 1)) - term_gamma) / (δ * θ^2)   # note the minus
+    return clamp(τval, -1.0, 1.0)
+end
 
-    invδθ = 1/(δ*θ)
-    #   φ⁻¹/ (φ⁻¹)' = (t^(θ+1))/(δθ) * expm1(-δ*(t^(-θ) - 1))
-    f(t) = (t<=0 || t>=1) ? 0.0 : (t^(θ+1)) * invδθ * LogExpFunctions.expm1(-δ*(t^(-θ) - 1))
-    I, _ = QuadGK.quadgk(f, 0.0, 1.0; rtol=rtol, atol=atol)
-    return 1 + 4I
+# Spearman's rho via a stable single-integral formulation
+function ρ(G::Copulas.BB2Generator{T}; rtol=1e-7, atol=1e-9) where {T}
+    # Use J = ∫_0^∞ ϕ(s) [∫_0^s g(x) g(s-x) dx] ds with g = -ϕ'(·)
+    # Outer: map s = t/(1-t) for t∈(0,1) to control tails
+    gfun(s) = -ϕ⁽¹⁾(G, s)
+    inner(s) = s <= 0 ? 0.0 : begin
+        innerf(z) = gfun(s*z) * gfun(s*(1 - z))
+        val, _ = QuadGK.quadgk(innerf, 0.0, 1.0; rtol=sqrt(rtol), atol=sqrt(atol))
+        s * val
+    end
+    outerf(t) = (t <= 0 || t >= 1) ? 0.0 : begin
+        s = t/(1 - t)
+        jac = 1/(1 - t)^2
+        ϕ(G, s) * inner(s) * jac
+    end
+    I, _ = QuadGK.quadgk(outerf, 0.0, 1.0; rtol=rtol, atol=atol)
+    return 12I - 3
 end
 
 

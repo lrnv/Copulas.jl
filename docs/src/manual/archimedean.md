@@ -74,7 +74,7 @@ plot!(x -> ϕ⁻¹(ClaytonGenerator(1),x), label="ClaytonGenerator(1)")
 plot!(x -> ϕ⁻¹(ClaytonGenerator(5),x), label="ClaytonGenerator(5)")
 ```
 
-```@docs
+```@docs; canonical=false
 Generator
 ```
 
@@ -103,7 +103,7 @@ This function computes the Williamson d-transform of the provided random variabl
     
     More generally, if you want your Archimedean copula to have a density, you must use a generator that is more-monotone than the dimension of your model. 
 
-```@docs
+```@docs; canonical=false
 WilliamsonGenerator
 ```
 
@@ -213,7 +213,7 @@ for which the corresponding distribution is known but has no particular name, th
     ```
 
 
-```@docs
+```@docs; canonical=false
 ArchimedeanCopula
 ```
 

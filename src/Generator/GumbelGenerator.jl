@@ -22,7 +22,7 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct GumbelGenerator{T} <: AbstractFrailtyGenerator
+struct GumbelGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function GumbelGenerator(θ)
         if θ < 1
@@ -38,9 +38,11 @@ struct GumbelGenerator{T} <: AbstractFrailtyGenerator
     end
 end
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
-GumbelCopula(d, θ) = ArchimedeanCopula(d, GumbelGenerator(θ))
-Distributions.params(G::GumbelGenerator) = (G.θ,)
 frailty(G::GumbelGenerator) = AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0))
+Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
+_unbound_params(::Type{<:GumbelGenerator}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
+_rebound_params(::Type{<:GumbelGenerator}, d, α) = (; θ = 1 + exp(α[1]))
+_θ_bounds(::Type{<:GumbelGenerator}, d) = (1, Inf)
 
 ϕ(  G::GumbelGenerator, t) = exp(-exp(log(t)/G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = exp(log(-log(t))*G.θ)
@@ -54,25 +56,18 @@ end
 # The folliwng function got commented because it does WORSE in term of runtime than the 
 # corredponsing generic :)
 
-# function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
-#     α = 1 / G.θ
-#     return eltype(t)(ϕ(G, t) * t^(-d) * sum(
-#         α^j * BigCombinatorics.Stirling1(d, j) * sum(BigCombinatorics.Stirling2(j, k) * (-t^α)^k for k in 1:j) for j in 1:d
-#     ))
-# end
+function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
+    α = 1 / G.θ
+    return eltype(t)(ϕ(G, t) * t^(-d) * sum(
+        α^j * Float64(BigCombinatorics.Stirling1(d, j)) * sum(Float64(BigCombinatorics.Stirling2(j, k)) * (-t^α)^k for k in 1:j) for j in 1:d
+    ))
+end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * exp(log(-log(t))*(G.θ - 1))) / t
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
-function τ⁻¹(::Type{T},τ) where T<:GumbelGenerator
-    if τ == 1
-        return Inf
-    else
-        θ = 1/(1-τ)
-        if θ < 1
-            @info "GumbelCopula cannot handle κ <0."
-            return 1
-        end
-        return θ
-    end
+function τ⁻¹(::Type{<:GumbelGenerator}, τ)
+    τ ≥ 1 && return Inf
+    τ ≤ 0 && return one(τ)
+    return 1/(1-τ)
 end
 
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
@@ -91,4 +86,42 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGen
     A = LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂)
     B = exp(A/θ)
     return - B + x₁ + x₂ + (θ-1) * (lx₁ + lx₂) + A/θ - 2A + log(B + θ - 1)
+end
+
+function _rho_gumbel_via_cdf(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
+    θeff = clamp(θ, 1+1e-12, Inf)
+    Cθ   = Copulas.ArchimedeanCopula(2, GumbelGenerator(θeff))
+    f(x) = _cdf(Cθ, (x[1], x[2]))  # <- tu _cdf
+    I = HCubature.hcubature(f, (0.0,0.0), (1.0,1.0);
+                            rtol=rtol, atol=atol, maxevals=maxevals)[1]
+    return 12I - 3
+end
+
+ρ(G::GumbelGenerator; rtol=1e-7, atol=1e-9, maxevals=10^6) =
+    _rho_gumbel_via_cdf(G.θ; rtol=rtol, atol=atol, maxevals=maxevals)
+
+function ρ⁻¹(::Type{<:GumbelGenerator}, ρ̂; xatol=1e-8)
+    # Rango de Spearman para Gumbel: [0, 1)
+    ρc = clamp(ρ̂, nextfloat(0.0), prevfloat(1.0))
+    f(θ) = _rho_gumbel_via_cdf(θ) - ρc
+
+    a = 1 + 1e-6
+    b = 5.0
+    fa, fb = f(a), f(b)
+    k = 0
+    while signbit(fa) == signbit(fb) && b < 1e6
+        b *= 2
+        fb = f(b)
+        k += 1
+        k > 20 && break
+    end
+
+    if signbit(fa) != signbit(fb)
+        return Roots.find_zero(f, (a, b), Roots.Brent(); xatol=xatol, rtol=0.0)
+    else
+        # Last resort without bracketing (difficult if _rho is fine)
+        θ0 = 1 + 4ρc/(1 - ρc + eps())
+        θ  = Roots.find_zero(f, θ0, Roots.Order1(); xatol=xatol)
+        return min(θ, 1e6)  # practical cota...  
+    end
 end

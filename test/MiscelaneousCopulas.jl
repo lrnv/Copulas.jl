@@ -26,9 +26,9 @@
 @testitem "Generic" tags=[:Generic, :SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(ClaytonCopula(2,-0.7),(1,2))) end
 @testitem "Generic" tags=[:Generic, :SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(RafteryCopula(2, 0.2), (2,1))) end
 
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(GaussianCopula([1.0 0.3; 0.3 1.0]); m=5)) end
+@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(GaussianCopula(2, 0.3); m=5)) end
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(IndependentCopula(4); m=5)) end
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(GalambosCopula(2.5); m=5)) end
+@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(GalambosCopula(2, 2.5); m=5)) end
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(ArchimaxCopula(2, Copulas.FrankGenerator(0.8), Copulas.HuslerReissTail(0.6)); m=5)) end
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(ClaytonCopula(3, 3.3); m=5)) end
 @testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(IndependentCopula(4); m=5)) end

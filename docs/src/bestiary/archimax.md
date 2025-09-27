@@ -11,13 +11,13 @@ The current implementation is only bivariate since we only have bivariate extrem
 
 ## `BB4Copula`
 
-```@docs
+```@docs; canonical=false
 BB4Copula
 ```
 
 ## `BB5Copula`
 
-```@docs
+```@docs; canonical=false
 BB5Copula
 ```
 

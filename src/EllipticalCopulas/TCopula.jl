@@ -36,15 +36,14 @@ struct TCopula{d,df,MT} <: EllipticalCopula{d,MT}
         return new{size(Σ,1),df,typeof(Σ)}(Σ)
     end
 end
+TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula(ν, Σ)
+TCopula{D,df,MT}(d::Int, ν::Real, Σ::AbstractMatrix)  where {D,df,MT} = TCopula(ν, Σ)
+
+
+
 U(::Type{TCopula{d,df,MT}}) where {d,df,MT} = Distributions.TDist(df)
 N(::Type{TCopula{d,df,MT}}) where {d,df,MT} = function(Σ)
     Distributions.MvTDist(df,Σ)
-end
-function Distributions.fit(::Type{CT},u) where {CT<:TCopula}
-    N = Distributions.fit(N(CT), quantile.(U(CT),u))
-    Σ = N.Σ
-    df = N.df
-    return TCopula(df,Σ)
 end
 
 # Kendall tau of bivariate student: 
@@ -81,3 +80,21 @@ function ConditionalCopula(C::TCopula{D,df,MT}, js, uⱼₛ) where {D,df,MT}
 end
 # Subsetting colocated
 SubsetCopula(C::TCopula{d,df,MT}, dims::NTuple{p, Int}) where {d,df,MT,p} = TCopula(df, C.Σ[collect(dims),collect(dims)])
+
+# Fitting collocated
+StatsBase.dof(C::Copulas.TCopula)           = (p = length(C); p*(p-1) ÷ 2 + 1)
+function Distributions.params(C::TCopula{d,df,MT}) where {d,df,MT}
+    return (; ν = df, Σ = C.Σ)
+end
+_example(::Type{<:TCopula}, d::Int) = TCopula(5.0, Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
+function _unbound_params(::Type{<:TCopula}, d::Int, θ::NamedTuple)
+    α = _unbound_corr_params(d, θ.Σ)
+    return vcat(log(θ.ν), α)
+end
+function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where {T}
+    ν = exp(α[1])
+    Σ = _rebound_corr_params(d, @view α[2:end])
+    return (; ν = ν, Σ = Σ)
+end
+
+_available_fitting_methods(::Type{<:TCopula}) = (:mle,)

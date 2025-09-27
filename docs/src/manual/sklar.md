@@ -47,7 +47,7 @@ using Plots
 plot(D, scale=:sklar)
 ```
 
-```@docs
+```@docs; canonical=false
 SklarDist
 ```
 

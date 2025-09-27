@@ -67,6 +67,16 @@ function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
     x = StatsBase.quantile.(U(CT),u)
     return Distributions.logpdf(N(CT)(C.Σ),x) - sum(Distributions.logpdf.(U(CT),x))
 end
+@inline function _Σ_from_named(d::Int, θ::NamedTuple)
+    Tρ = eltype(values(θ))
+    Σ  = Matrix{Tρ}(LinearAlgebra.I, d, d)
+    @inbounds for i in 1:d-1, j in i+1:d
+        ρ = θ[Symbol("ρ_$(i)$(j)")]
+        Σ[i,j] = Σ[j,i] = ρ
+    end
+    return Σ
+end
+
 function make_cor!(Σ)
     # Verify that Σ is a correlation matrix, otherwise make it so : 
     d = size(Σ,1)
@@ -78,3 +88,47 @@ function make_cor!(Σ)
     end
 end
 
+# ——————————————————————————————————————————————————————————
+# Shared correlation-parameterization helpers (LKJ/partial corr)
+# Map between correlation matrices and unconstrained vectors α ∈ ℝ^{d(d-1)/2}
+
+# Gaussian / t (pareado por pares)
+
+@inline function _unbound_corr_params(d::Int, Σ::AbstractMatrix)
+    Lc = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=true).L
+    T = eltype(Σ)
+    α = Vector{T}(undef, d*(d-1)÷2)
+    k = 1
+    @inbounds for i in 2:d
+        denom = one(T)
+        for j in 1:i-1
+            z = Lc[i,j] / denom
+            ϵ = sqrt(eps(T))
+            z = clamp(z, -one(T) + ϵ, one(T) - ϵ)
+            α[k] = atanh(z)
+            k += 1
+            denom *= sqrt(max(zero(T), one(T) - z*z))
+        end
+    end
+    return α
+end
+
+@inline function _rebound_corr_params(d::Int, α::AbstractVector{T}) where {T}
+    L = Matrix{T}(LinearAlgebra.I, d, d)
+    @inbounds begin
+        L[1,1] = one(T)
+        k = 1
+        for i in 2:d
+            denom = one(T)
+            for j in 1:i-1
+                z = tanh(α[k]); k += 1
+                L[i,j] = z * denom
+                denom *= sqrt(max(zero(T), one(T) - z*z))
+            end
+            L[i,i] = denom
+        end
+    end
+    Σ = L * L'
+    Σ = (Σ + Σ')/2
+    return Σ
+end

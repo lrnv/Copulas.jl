@@ -143,7 +143,7 @@ The difference between the two is not very strong.
 
 ## Implementation
 
-```@docs
+```@docs; canonical=false
 EllipticalCopula
 ```
 

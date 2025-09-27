@@ -6,7 +6,7 @@ CurrentModule = Copulas
 
 ## `SurvivalCopula`
 
-```@docs
+```@docs; canonical=false
 SurvivalCopula
 ```
 

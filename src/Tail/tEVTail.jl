@@ -43,10 +43,10 @@ struct tEVTail{T} <: Tail2
         return new{typeof(ρT)}(νT, ρT)
     end
 end
-
 const tEVCopula{T} = ExtremeValueCopula{2, tEVTail{T}}
-tEVCopula(ν, ρ) = ExtremeValueCopula(2, tEVTail(ν, ρ))
-Distributions.params(tail::tEVTail) = (tail.ν, tail.ρ)
+Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
+_unbound_params(::Type{<:tEVTail}, d, θ) = [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
+_rebound_params(::Type{<:tEVTail}, d, α) = (; ν = exp(α[1]), ρ = tanh(α[2]))
 
 function A(tail::tEVTail, t::Real)
     ρ, ν = tail.ρ, tail.ν

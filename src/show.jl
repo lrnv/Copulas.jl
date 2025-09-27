@@ -40,8 +40,8 @@ end
 function Base.show(io::IO, C::ExtremeValueCopula{2, EmpiricalEVTail})
     print(io, "ExtremeValueCopula{2} ⟨", C.tail, "⟩")
 end
-function Base.show(io::IO, B::BernsteinCopula{d,C}) where {d,C<:Copulas.Copula}
-    print(io, "BernsteinCopula{", d, "} ⟨base=", nameof(C), ", m=", B.m, "⟩")
+function Base.show(io::IO, B::BernsteinCopula{d}) where {d}
+    print(io, "BernsteinCopula($d, m=$(B.m))")
 end
 function Base.show(io::IO, C::BetaCopula)
     print(io, "BetaCopula{d}$(size(C.ranks))")

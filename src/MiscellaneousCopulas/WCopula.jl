@@ -33,3 +33,10 @@ StatsBase.corspearman(::WCopula) = [1 -1; -1 1]
 # Subsetting colocated
 SubsetCopula(C::WCopula, ::NTuple{p, Int}) where {p} = (p==2 ? C : error("WCopula only defined for p=2"))
 DistortionFromCop(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistortion(float(uⱼₛ[1]), Int8(js[1]))
+
+# Fitting/params interface (no parameters)
+Distributions.params(::WCopula) = (;)
+_fit(::Type{<:WCopula}, U, ::Val{:mle}) = WCopula(size(U,1)), (;)
+_fit(::Type{<:WCopula}, U, ::Val{:itau}) = WCopula(size(U,1)), (;)
+_fit(::Type{<:WCopula}, U, ::Val{:irho}) = WCopula(size(U,1)), (;)
+_fit(::Type{<:WCopula}, U, ::Val{:ibeta}) = WCopula(size(U,1)), (;)

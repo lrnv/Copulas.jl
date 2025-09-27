@@ -19,40 +19,91 @@ function _cdf(C::CT,u) where {CT<:Copula}
     z = zeros(eltype(u),length(C))
     return HCubature.hcubature(f,z,u,rtol=sqrt(eps()))[1]
 end
+
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     z = zeros(d)
     i = ones(d)
-    r = HCubature.hcubature(F,z,i,rtol=sqrt(eps()))[1]
-    return 12*r-3
+    r = HCubature.hcubature(F, z, i, rtol=sqrt(eps()))[1]
+    return (2^d * (d+1) * r - d - 1)/(2^d - d - 1) # Ok for multivariate. 
 end
-function τ(C::Copula)
+function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
-    r = Distributions.expectation(F,C; nsamples=10^4)
-    return 4*r-1
+    r = Distributions.expectation(F, C; nsamples=10^4)
+    return (2^d / (2^(d-1) - 1)) * r - 1 / (2^(d-1) - 1)
 end
-function StatsBase.corkendall(C::Copula{d}) where d
-    # returns the matrix of bivariate kendall taus.
+function β(C::Copula{d}) where {d}
+    d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
+    u     = fill(0.5, d)
+    C0    = Distributions.cdf(C, u)
+    Cbar0 = Distributions.cdf(SurvivalCopula(C, Tuple(1:d)), u)
+    return (2.0^(d-1) * C0 + Cbar0 - 1) / (2^(d-1) - 1)
+end
+function γ(C::Copula{d}; nmc::Int=100_000,
+                        rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
+    d ≥ 2 || throw(ArgumentError("γ(C) requires d≥2"))
+    if d == 2
+        f(t) = Distributions.cdf(C, [t, t]) + Distributions.cdf(C, [t, 1 - t])
+        I, _ = QuadGK.quadgk(f, 0.0, 1.0; rtol=sqrt(eps()))
+        return -2 + 4I
+    end
+    @inline _A(u)    = (minimum(u) + max(sum(u) - d + 1, 0.0)) / 2
+    @inline _Abar(u) = (1 - maximum(u) + max(1 - sum(u), 0.0)) / 2
+    @inline invfac(k::Integer) = exp(-SpecialFunctions.logfactorial(k))
+    s = 0.0
+    @inbounds for i in 0:d
+        s += (isodd(i) ? -1.0 : 1.0) * binomial(d, i) * invfac(i + 1)
+    end
+    a_d = 1/(d + 1) + 0.5*invfac(d + 1) + 0.5*s
+    b_d = 2/3 + 4.0^(1 - d) / 3
+    U = rand(rng, C, nmc)
+    m = 0.0
+    @inbounds for j in 1:nmc
+        u = @view U[:, j]
+        m += _A(u) + _Abar(u)
+    end
+    m /= nmc
+    return (m - a_d) / (b_d - a_d)
+end
+function entropy(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
+    U = rand(rng, C, nmc)
+    s = 0.0
+    @inbounds for j in 1:nmc
+        u  = @view U[:, j]
+        lp = Distributions.logpdf(C, u)
+        isfinite(lp) || throw(DomainError(lp, "logpdf(C,u) non-finite."))
+        s -= lp
+    end
+    H = s / nmc
+    t = clamp(2H, -700.0, 0.0)
+    r = sqrt(max(0.0, 1 - exp(t)))
+    return (H = H, I = -H, r = r)
+end
+λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = begin
+    f(e) = Distributions.cdf(C, fill(e, d)) / e
+    clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
+end
+λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = begin
+    Sc   = SurvivalCopula(C, Tuple(1:d))
+    f(e) = Distributions.cdf(Sc, fill(e, d)) / e
+    clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
+end
+
+function _as_biv(f::F, C::Copula{d}) where {F, d}
     K = ones(d,d)
     for i in 1:d
         for j in i+1:d
-            K[i,j] = τ(SubsetCopula(C::Copula{d},(i,j)))
+            K[i,j] = f(SubsetCopula(C, (i,j)))
             K[j,i] = K[i,j]
         end
     end
     return K
 end
-function StatsBase.corspearman(C::Copula{d}) where d
-    # returns the matrix of bivariate spearman rhos.
-    K = ones(d,d)
-    for i in 1:d
-        for j in i+1:d
-            K[i,j] = ρ(SubsetCopula(C::Copula{d},(i,j)))
-            K[j,i] = K[i,j]
-        end
-    end
-    return K
-end
+StatsBase.corkendall(C::Copula{d}) where d = _as_biv(τ, C)
+StatsBase.corspearman(C::Copula{d}) where d = _as_biv(ρ, C)
+corblomqvist(C::Copula{d}) where d = _as_biv(β, C)
+corgini(C::Copula{d}) where d = _as_biv(γ, C)
+
 function measure(C::Copula{d}, us,vs) where {d}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]
