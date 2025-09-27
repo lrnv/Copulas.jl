@@ -114,7 +114,7 @@ function τ(G::Copulas.BB2Generator{T}; rtol=1e-10, atol=1e-12) where {T}
     # u = t^{-θ} substitution in the standard Archimedean integral for τ.
     θ = float(G.θ); δ = float(G.δ)
     a = 2 + 2/θ
-    term_gamma = exp(δ) * (δ^(a-1)) * SpecialFunctions.uppergamma(1 - a, δ)
+    term_gamma = exp(δ) * (δ^(a-1)) * SpecialFunctions.gamma(1 - a, δ)
     τval = 1 + 4 * ((1/(a - 1)) - term_gamma) / (δ * θ^2)
     if isfinite(τval)
         return τval
