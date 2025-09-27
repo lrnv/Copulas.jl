@@ -124,9 +124,9 @@ so the above derivatives can be written explicitly in terms of $A$ (and $A'$ whe
 using Copulas, Plots, Distributions
 ts = range(0.0, 1.0; length=401)
 Cs = (
-    GalambosCopula(0.8),    # upper tail dep.
-    HuslerReissCopula(1.0), # intermediate
-    LogCopula(1.6),         # asymmetric
+    GalambosCopula(2, 0.8),    # upper tail dep.
+    HuslerReissCopula(2, 1.0), # intermediate
+    LogCopula(2, 1.6),         # asymmetric
 )
 labels = ("Galambos(0.8)", "Hüsler–Reiss(1.0)", "Log(1.6)")
 plot(size=(700, 300))
@@ -140,14 +140,14 @@ plot!(ts, ones(length(ts)); label="1", ls=:dot, color=:gray)
 ### Sample scatter (uniform scale)
 
 ```@example 1
-C = GalambosCopula(1.0)
+C = GalambosCopula(2, 1.0)
 plot(C, title="Galambos copula sample")
 ```
 
 ### Conditional distortion (EV example)
 
 ```@example 1
-C = HuslerReissCopula(1.2)
+C = HuslerReissCopula(2, 1.2)
 u2 = 0.4
 D = condition(C, 2, u2)
 ts = range(0.0, 1.0; length=401)
