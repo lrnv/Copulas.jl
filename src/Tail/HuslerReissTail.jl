@@ -105,5 +105,5 @@ function β⁻¹(::Type{<:HuslerReissCopula}, beta)
     p = 1 - log(beta + 1) / log(4)
     # Clamp to open interval (0,1)
     p = clamp(p, eps(), 1 - eps())
-    return 1 / quantile(Normal(), p)
+    return 1 / Distributions.quantile(Distributions.Normal(), p)
 end

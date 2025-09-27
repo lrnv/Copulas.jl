@@ -97,7 +97,7 @@
     rng = StableRNG(1234)
     for θ in [1.0, Inf, 0.5, rand(rng, Uniform(1.0, 10.0))]
         try
-            C1 = LogCopula(θ)
+            C1 = LogCopula(2, θ)
             C2 = GumbelCopula(2, θ)
             data = rand(rng, C1, 10)
 
