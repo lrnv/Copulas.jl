@@ -78,34 +78,29 @@ export default defineConfig({
       md.use(mathjax3)
       md.use(footnote)
 
-      // Add custom containers for block types
-      const customBlockNames = [
-        'todo',
-        'definition',
-        'theorem',
-          // Completely override container rendering with a custom plugin
-          // This plugin will add a test phrase to every block so you know it's working
-          function customContainerPlugin(md) {
-            const types = [
-              'tip', 'note', 'info', 'warning', 'danger', 'todo', 'definition', 'property', 'remark', 'theorem'
-            ];
-            for (const type of types) {
-              md.use(markdownItContainer, type, {
-                render(tokens, idx) {
-                  if (tokens[idx].nesting === 1) {
-                    // Block opening
-                    return `<div class="${type} custom-block">\n` +
-                      `<div class="custom-block-title">${type.toUpperCase()} (Working with the custom plugin)</div>\n` +
-                      `<div class="custom-block-content">\n`;
-                  } else {
-                    // Block closing
-                    return `</div>\n</div>\n`;
-                  }
-                }
-              });
+      // Completely override container rendering with a custom plugin
+      // This plugin will add a test phrase to every block so you know it's working
+      function customContainerPlugin(md) {
+        const types = [
+          'tip', 'note', 'info', 'warning', 'danger', 'todo', 'definition', 'property', 'remark', 'theorem'
+        ];
+        for (const type of types) {
+          md.use(markdownItContainer, type, {
+            render(tokens, idx) {
+              if (tokens[idx].nesting === 1) {
+                // Block opening
+                return `<div class="${type} custom-block">\n` +
+                  `<div class="custom-block-title">${type.toUpperCase()} (Working with the custom plugin)</div>\n` +
+                  `<div class="custom-block-content">\n`;
+              } else {
+                // Block closing
+                return `</div>\n</div>\n`;
+              }
             }
-          }
-          customContainerPlugin(md);
+          });
+        }
+      }
+      customContainerPlugin(md);
       dark: "github-dark"
     },
   },
