@@ -5,14 +5,16 @@ import footnote from "markdown-it-footnote"
 import markdownItContainer from 'markdown-it-container'
 import path from 'path'
 
+// console.log(process.env)
+
 function getBaseRepository(base: string): string {
-  if (!base || base === '/') return '/'
-  const parts = base.split('/').filter(Boolean)
-  return parts.length > 0 ? `/${parts[0]}/` : '/'
+  if (!base || base === '/') return '/';
+  const parts = base.split('/').filter(Boolean);
+  return parts.length > 0 ? `/${parts[0]}/` : '/';
 }
 
 const baseTemp = {
-  base: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
+  base: 'REPLACE_ME_DOCUMENTER_VITEPRESS',// TODO: replace this in makedocs!
 }
 
 const navTemp = {
@@ -32,12 +34,12 @@ function capitalize(name: string): string {
 
 export default defineConfig({
   ignoreDeadLinks: true,
-  base: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
+  base: 'REPLACE_ME_DOCUMENTER_VITEPRESS', // TODO: replace this in makedocs!
   title: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
   description: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
   lastUpdated: true,
   cleanUrls: true,
-  outDir: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
+  outDir: 'REPLACE_ME_DOCUMENTER_VITEPRESS', // This is required for MarkdownVitepress to work correctly...
   
   head: [
     ['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }],
@@ -54,7 +56,7 @@ export default defineConfig({
       }
     },
     build: {
-      assetsInlineLimit: 0,
+      assetsInlineLimit: 0, // so we can tell whether we have created inlined images or not, we don't let vite inline them
     },
     optimizeDeps: {
       exclude: [ 
@@ -74,7 +76,6 @@ export default defineConfig({
   markdown: {
     math: true,
     config(md) {
-      // existing plugins
       md.use(tabsMarkdownPlugin)
       md.use(mathjax3)
       md.use(footnote)
@@ -117,7 +118,7 @@ export default defineConfig({
           const typeCapitalized = capitalize(type)
           const fullTitle = title ? `${typeCapitalized}: ${title}` : typeCapitalized
 
-          return `<div class="custom-block custom-block-${type}">\n` +
+          return `<div class="custom-block ${type}">\n` +
                  `<div class="custom-block-title">${fullTitle}</div>\n` +
                  `<div class="custom-block-content">\n`
         }
@@ -130,11 +131,11 @@ export default defineConfig({
     theme: {
       light: "github-light",
       dark: "github-dark"
-    }
+    },
   },
-
   themeConfig: {
     outline: 'deep',
+    // https://vitepress.dev/reference/default-theme-config
     logo: 'REPLACE_ME_DOCUMENTER_VITEPRESS',
     search: {
       provider: 'local',
@@ -154,6 +155,6 @@ export default defineConfig({
     footer: {
       message: 'Made with <a href="https://documenter.juliadocs.org/stable/" target="_blank"><strong>Documenter.jl</strong></a>, <a href="https://vitepress.dev" target="_blank"><strong>VitePress</strong></a> and <a href="https://luxdl.github.io/DocumenterVitepress.jl/stable/" target="_blank"><strong>DocumenterVitepress.jl</strong></a> <br>',
       copyright: `© Copyright ${new Date().getUTCFullYear()}.`
-    }
+    },
   }
 })
