@@ -6,7 +6,7 @@ CurrentModule = Copulas
 
 Recall the following theorem from [sklar1959](@cite):
 
-!!! theorem "Theorem (Sklar):"
+!!! theorem "Sklar"
     For every random vector $\boldsymbol X$, there exists a copula $C$ such that
 
     $\forall \boldsymbol x \in \mathbb{R}^d, F(\boldsymbol x) = C(F_{1}(x_{1}), ..., F_{d}(x_{d})).$

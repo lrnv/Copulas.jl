@@ -18,7 +18,7 @@ From these two functions, the abstract type provides a fully functional copula.
 
 Recall the definition of spherical random vectors: 
 
-!!! definition "Definition (Spherical and elliptical random vectors):"
+!!! definition "Spherical and elliptical random vectors"
     A random vector ``\\boldsymbol X`` is said to be spherical if for all orthogonal matrix ``\\boldsymbol A \\in O_d(\\mathbb R)``, ``\\boldsymbol A\\boldsymbol X \\sim \\boldsymbol X``. 
 
     For every matrix ``\\boldsymbol B`` and vector ``\\boldsymbol c``, the random vector ``\\boldsymbol B \\boldsymbol X + \\boldsymbol c`` is then said to be elliptical.

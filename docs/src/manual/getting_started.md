@@ -48,7 +48,7 @@ Note that the range $\mathrm{Ran}(F)$ of a distribution function $F$, univariate
 
 There is a fundamental functional link between the function $F$ and its marginals $F_1,...,F_d$. This link is expressed by the mean of *copulas*. 
 
-!!! definition "Definition (Copula):" 
+!!! definition "Copula" 
     A copula, usually denoted $C$, is the distribution function of a random vector with marginals that are all uniform on $[0,1]$, i.e.
     
     $C_i(u) = u\mathbb 1_{u \in [0,1]} \text{ for all }i \in 1,...,d.$
@@ -86,7 +86,7 @@ See [the visualizations page](@ref viz_page) for details on the visualisations t
 
 One of the reasons that makes copulas so useful is the bijective map discovered by Sklar [sklar1959](@cite) in 1959:
 
-!!! theorem "Theorem (Sklar):"
+!!! theorem "Sklar"
     For every random vector $\boldsymbol X$, there exists a copula $C$ such that 
 
     $\forall \boldsymbol x\in \mathbb R^d, F(\boldsymbol x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
@@ -131,7 +131,7 @@ Sklar's theorem can be used the other way around (from the marginal space to the
 
 Copulas are bounded functions with values in [0,1] since they correspond to probabilities. But their range can be bounded more precisely, and [lux2017](@cite) gives us:
 
-!!! property "Property (Fréchet-Hoeffding bounds):" 
+!!! property "Fréchet-Hoeffding bounds" 
     For all $\boldsymbol x \in [0,1]^d$, every copula $C$ satisfies : 
 
     $$\langle \boldsymbol 1, \boldsymbol x - 1 + d^{-1}\rangle_{+} \le C(\boldsymbol x) \le \min \boldsymbol x,$$

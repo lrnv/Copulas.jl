@@ -8,7 +8,7 @@ This example recalls and implements a practical, nonparametric way to estimate t
 - validate it visually on discrete and continuous radial laws,
 - and compare original vs fitted copulas.
 
-!!! definition
+!!! definition "Radial distribution"
     For a d-Archimedean copula with generator $\varphi$, there exists a nonnegative random variable $R$ (the radial law) such that
 
     $$\varphi(t) \;=\; \mathbb{E}\!\left[\left(1 - \frac{t}{R}\right)_{+}^{\,d-1}\right].$$
@@ -87,7 +87,7 @@ We define a few helpers to visualize and validate the fitted model, and we now u
  - quick diagnostic plots, and
  - optional visualization of φ_R for a discrete R.
 
-!!! todo
+!!! todo "Integrate into the main package".
     The code proposed below is expected to become the default fitting method for Williamson generators, once the fitting interface is formalized accross the package. Stay tuned!
 
 ```@example archi_radial
@@ -198,7 +198,7 @@ We now generate samples from several radial laws, fit R̂, and compare:
 - original vs simulated copula scatter,
 - optionally histograms of R vs R̂ (or their logs for heavy tails).
 
-!!! info
+!!! info "Sample sizes"
     To keep docs fast, we use modest sample sizes (n ≈ 1000–1500). Increase locally if you want smoother curves.
 
 ### 1) Dirac at 1 (lower-bound Clayton), d = 3

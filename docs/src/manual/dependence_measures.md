@@ -12,12 +12,12 @@ We implement the most well-known ones in this package.
 
 ## Kendall's τ and Spearman's ρ
 
-!!! definition "Definition (Kendall' τ):"
+!!! definition "Kendall' τ"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
 
     $$\tau = 4 \int C(\boldsymbol u) \, c(\boldsymbol u) \;d\boldsymbol u -1$$
 
-!!! definition "Definition (Spearman's ρ):"
+!!! definition "Spearman's ρ"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Spearman's ρ is defined as: 
 
     $$\rho = 12 \int C(\boldsymbol u) d\boldsymbol u -3.$$
@@ -61,7 +61,7 @@ Remark the clear and easy to exploit bijection.
 
 Many people are interested in the tail behavior of their dependence structures. Tail coefficients summarize this tail behavior.
 
-!!! definition "Definition (Tail dependency):"
+!!! definition "Tail dependency"
     For a copula $C$, we define the upper tail statisticss (when they exist):
 
     ```math

@@ -9,7 +9,7 @@ CurrentModule = Copulas
 
 Through the statistical process leading to the estimation of copulas, one usually observes the data and information on the marginals scale and not on the copula scale. This discrepancy between the observed information and the modeled distribution must be taken into account. A key concept is that of pseudo-observations. 
 
-!!! definition "Definition (Pseudo-observations):"
+!!! definition "Pseudo-observations"
     If $\boldsymbol x \in \mathbb{R}^{N \times d}$ is an $N$-sample of a $d$-variate real-valued random vector $\boldsymbol X$, then the pseudo-observations are the normalized ranks of the marginals of $\boldsymbol x$, defined as:
 
     $$\boldsymbol u \in [0,1]^{N \times d}:\; u_{i,j} = \frac{\mathrm{Rank}(x_{i,j}, \boldsymbol x_{\cdot,j})}{N+1} = \frac{1}{N+1} \sum_{k=1}^N \mathbb{1}_{x_{k,j} \le x_{i,j}},$$
@@ -27,12 +27,12 @@ pseudos
 
 From these pseudo-observations, an empirical copula is defined and anlysed in [deheuvels1979](@cite) as follows:
 
-!!! definition "Definition (Deheuvel's empirical copula ):" 
+!!! definition "Deheuvel's empirical copula" 
     The empirical distribution function of the normalized ranks,
 
     $$\hat{C}_N(\boldsymbol u) = \frac{1}{N} \sum_{i=1}^N \mathbb 1_{\boldsymbol u_i \le \boldsymbol u},$$ is called the empirical copula function.
 
-!!! theorem "Theorem (Exhaustivity and consistency):" 
+!!! theorem "Exhaustivity and consistency" 
     $\hat{C}_N$ is an exhaustive estimator of $C$, and moreover for any normalizing constants $\{\phi_N, N\in \mathbb N\}$ such that $\lim\limits_{N \to \infty} \phi_N \sqrt{N^{-1}\ln \ln N} = 0$, 
 
     $$\lim\limits_{N\to\infty} \phi_N \sup_{\boldsymbol u \in [0,1]^d} \lvert\hat{C}_N(\boldsymbol u) - C(\boldsymbol u) \rvert = 0 \text{ a.s.}$$
@@ -74,7 +74,7 @@ The empirical copula function is not a copula. An easy way to fix this problem i
 
     $$\hat{C}_N^\beta : \boldsymbol x \mapsto \frac{1}{N} \sum_{i=1}^N \prod_{j=1}^d F_{n,(N+1)u_{i,j}}(x_j)$$ is a genuine copula, called the Beta copula. 
 
-!!! property "Property (Proximity of $\hat{C}_N$ and $\hat{C}_N^\beta$):"
+!!! property "Proximity of $\hat{C}_N$ and $\hat{C}_N^\beta$"
 
     $$\sup_{\boldsymbol u \in [0,1]^d} |\hat{C}_N(\boldsymbol u) - \hat{C}_N^\beta(\boldsymbol u)| \le d\left(\sqrt{\frac{\ln n}{n}} + \sqrt{\frac{1}{n}} + \frac{1}{n}\right)$$
 
@@ -130,7 +130,7 @@ $$B_{\boldsymbol i, \boldsymbol m} = \left]\frac{\boldsymbol i}{\boldsymbol m}, 
 
 Furthermore, for any copula $C$ (or more generally distribution function $F$), we denote $\mu_{C}$ (resp $\mu_F$) the associated measure.  For example, for the independence copula $Pi$, $\mu_{\Pi}(A) = \lambda(A \cup [\boldsymbol 0, \boldsymbol 1])$ where $\lambda$ is the Lebesgue measure.
 
-!!! definition "Definition (Empirical Checkerboard copulas):"
+!!! definition "Empirical Checkerboard copulas"
     Let $\boldsymbol m \in \mathbb{N}^d$. The $\boldsymbol m$-Checkerboard copula $\hat{C}_{N,\boldsymbol m}$, defined by
 
     $$\hat{C}_{N,\boldsymbol m}(\boldsymbol x) = \boldsymbol m^{\boldsymbol 1} \sum_{\boldsymbol i < \boldsymbol m} \mu_{\hat{C}_N}(B_{\boldsymbol i, \boldsymbol m}) \mu_{\Pi}(B_{\boldsymbol i, \boldsymbol m} \cap [0,\boldsymbol x]),$$
@@ -138,7 +138,7 @@ Furthermore, for any copula $C$ (or more generally distribution function $F$), w
     is a genuine copula as soon as $m_1, ..., m_d$ all divide $N$.
 
 
-!!! property "Property (Consistency of $\hat{C}_{N,\boldsymbol m}$):"
+!!! property "Consistency of $\hat{C}_{N,\boldsymbol m}$"
     If all $m_1, ..., m_d$ divide $N$,
 
     $$\sup_{\boldsymbol u \in [0,1]^d} |\hat{C}_{N,\boldsymbol m}(\boldsymbol u) - C(\boldsymbol u)| \le \frac{d}{2m} + \mathcal{O}_{\mathbb{P}}\left(n^{-1/2}\right).$$
@@ -161,7 +161,7 @@ where we intend $\boldsymbol m ]\boldsymbol a, \boldsymbol b] = ] \boldsymbol m 
 
 This allows for an easy generalization in the framework of patchwork copulas [durante2012,durante2013,durante2015](@cite):
 
-!!! definition "Definition (Patchwork copulas):"
+!!! definition "Patchwork copulas"
     Let $\boldsymbol m \in \mathbb{N}^d$ all divide $N$, and let $\mathcal{C} = \{C_{\boldsymbol i}, \boldsymbol i < \boldsymbol m\}$ be a given collection of copulas. The distribution function:
 
     $$\hat{C}_{N,\boldsymbol m, \mathcal{C}}(\boldsymbol x) = \sum_{\boldsymbol i < \boldsymbol m} \mu_{\hat{C}_N}(B_{\boldsymbol i, \boldsymbol m}) \mu_{C_{\boldsymbol i}}(\boldsymbol m B_{\boldsymbol i, \boldsymbol m}(\boldsymbol x))$$

@@ -9,14 +9,14 @@ Archimedean copulas are an important parametric class of copulas. To define Arch
 ## Generators and d-monotony
 
 Archimedean generators can be defined as follows:
-!!! definition "Definition (Archimedean generator):" 
+!!! definition "Archimedean generator" 
     A $d$-Archimedean generator is a $d$-monotone function
 
     $\phi : \mathbb{R}_+ \to [0,1]$ such that $\phi(0) = 1$ and $\phi(+\infty) = 0$.
 
 where the notion of $d$-monotone function is defined (see e.g. [mcneil2009](@cite)) as follows:
 
-!!! definition "Definition (d-monotony):"
+!!! definition "d-monotony"
     A function $\phi$ is $d$-monotone if it has $d-2$ derivatives which satisfy
 
     $(-1)^k \phi^{(k)} \ge 0$ for all $k \in \{1, ..., d-2\}$, and if $(-1)^{d-2}\phi^{(d-2)}$ is a non-increasing and convex function.
@@ -85,7 +85,7 @@ Note that the rate at which these functions approach 0 (and their inverse approa
 
 An easy way to construct new $d$-monotonous generators is the use of the Williamson $d$-transform.
 
-!!! definition "Definition (Williamson d-transformation):"
+!!! definition "Williamson d-transformation"
     For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and integer $d \ge 2$, the Williamson-d-transform of ``X`` is the real function supported on $[0, \infty[$ given by:
 
     $\phi(t) = \mathcal{W}_d(X)(t)$
@@ -158,7 +158,7 @@ As obvious from the definition of the Williamson transform, using a discrete dis
 
 Let's first define formally archimedean copulas: 
 
-!!! definition "Definition (Archimedean copula):"
+!!! definition "Archimedean copula"
     If $\phi$ is a $d$-monotonous Archimedean generator, then the function 
 
     $$C(\boldsymbol u) = \phi\left(\sum\limits_{i=1}^d \phi^{-1}(u_i)\right)$$ is a copula. 
@@ -173,7 +173,7 @@ There are a lot of others implemented in the package, see our [large list of imp
 
 Archimedean copulas have a nice decomposition, called the Radial-simplex decomposition, developed in [mcneil2008,mcneil2009](@cite): 
 
-!!! property "Property (Radial-simplex decomposition ):"
+!!! property "Radial-simplex decomposition"
     A $d$-variate random vector $\boldsymbol U$ following an Archimedean copula with generator $\phi$ can be decomposed into 
 
     $\boldsymbol U = \phi.(\boldsymbol S R),$
@@ -199,7 +199,7 @@ for which the corresponding distribution is known but has no particular name, th
 !!! note "Frailty decomposition for completely monotone generators"
     It is well-known that completely monotone generators are Laplace transforms of non-negative random variables. This gives rise to another decomposition in [hofert2013](@cite):
 
-    !!! property "Property (Frailty decomposition):"
+    !!! property "Frailty decomposition"
         When $\phi$ is completely monotone, it is the Laplace transform of a non-negative random variable $W$ such that
 
         $$\boldsymbol U = \phi(\boldsymbol Y / W),$$  where $\boldsymbol Y$ is a vector of independent and identically distributed (i.i.d.) exponential distributions.

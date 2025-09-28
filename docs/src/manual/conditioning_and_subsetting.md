@@ -192,7 +192,7 @@ Copulas.SubsetCopula
 
 ### Definition and usefulness
 
-!!! definition "Definition (Rosenblatt transformation):"
+!!! definition "Rosenblatt transformation"
     The Rosenblatt transformation considers a random vector ``X`` distributed according to a certain multivariate cumulative distribution function ``F_{X}(x)``, and maps it back to a uniform distribution on the unit hypercube.
 
     More formally, consider the map ``R_X(x)`` defined as follows:

@@ -49,7 +49,7 @@ Here, we present some important concepts from the theory of extreme value copula
 
 Let $(X,Y) \sim C$ where $C$ is a bivariate extreme value copula. We have the following result from [ghoudi1998proprietes](@cite):
 
-!!! property "Property (Ghoudi 1998):"
+!!! property "Ghoudi 1998"
     Let $(X, Y) \sim C$, where $C$ is an extreme value copula. The joint distribution of $X$ and $Z = \frac{\log(X)}{\log(XY)}$ is given by:
 
     $$P(Z \leq z, X \leq x) = G(z, x) = \left(z + z(1 - z)\frac{A'(z)}{A(z)}\right)x^{A(z)/z}, \quad 0 \leq x, z \leq 1$$
@@ -86,7 +86,7 @@ Since $g_Z(z)$ is the derivative of the cumulative distribution function of $Z$,
 
 For the class of Extreme Value Copulas, We follow the methodology proposed by Ghoudi,1998. page 191. [ghoudi1998proprietes](@cite). Here, is a detailed algorithm for sampling from bivariate Extreme Value Copulas:
 
-!!! algorithm "Algorithm (Bivariate Extreme Value Copulas sampling):"
+!!! algorithm "Bivariate Extreme Value Copulas sampling"
 
     * Simulate $U_1, U_2 \sim \mathcal{U}[0, 1]$
     * Simulate $Z \sim G_Z(z)$

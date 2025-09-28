@@ -49,7 +49,7 @@ plot(C)
 !!! note "Tail behaviour:"
   The **upper tail** is governed by the extreme value structure, while the **lower tail** is driven by the curvature of the Archimedean generator $\phi$. For specific families (e.g., BB5Copula) there are closed forms for $\lambda_U$ and for lower-tail orders.
 
-!!! theorem "Theorem (Exhaustivity and consistency):" 
+!!! theorem "Exhaustivity and consistency" 
     For bivariate Archimax copulas,
 
     $$\tau_{\phi,A} \;=\; \tau_A \;+\; (1-\tau_A)\,\tau_\phi,$$
@@ -73,7 +73,7 @@ $$U_j \;=\; \phi\!\big(-\log V_j\,/\,M\big),\qquad j=1,2,$$
 
 has the Archimax copula $C_{\phi,A}$.
 
-!!! algorithm "Algorithm (Bivariate Archimax sampling):"
+!!! algorithm "Bivariate Archimax sampling"
 
 * Simulate $(V_1,V_2) \sim C_{\text{EV}}$ with stable tail function $\ell$ (i.e., Pickands $A$).
 * Simulate a frailty $M \ge 0$ whose Laplace transform is $\mathbb{E}[e^{-sM}] = \phi(s)$.
