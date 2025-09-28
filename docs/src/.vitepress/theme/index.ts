@@ -30,9 +30,11 @@ export const Theme: ThemeConfig = {
       'nav-screen-content-after': () => h(NolebaseEnhancedReadabilitiesScreenMenu),
     })
   },
-  enhanceApp({ app }) {
-    enhanceAppWithTabs(app)
-    app.component('VersionPicker', VersionPicker)
+  enhanceApp({ app, router, siteData }) {
+    enhanceAppWithTabs(app);
+    app.component('VersionPicker', VersionPicker);
+    // app.component('AuthorBadge', AuthorBadge)
+    // app.component('Authors', Authors)
   }
 }
 export default Theme

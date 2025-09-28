@@ -27,11 +27,7 @@ const nav = [
     component: 'VersionPicker',
   }
 ]
-
-function capitalize(name: string): string {
-  return name.charAt(0).toUpperCase() + name.slice(1)
-}
-
+// https://vitepress.dev/reference/site-config
 export default defineConfig({
   ignoreDeadLinks: true,
   base: 'REPLACE_ME_DOCUMENTER_VITEPRESS', // TODO: replace this in makedocs!
@@ -43,8 +39,9 @@ export default defineConfig({
   
   head: [
     ['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }],
-    ['script', { src: `${getBaseRepository(baseTemp.base)}versions.js` }],
-    ['script', { src: `${baseTemp.base}siteinfo.js` }]
+    ['script', {src: `${getBaseRepository(baseTemp.base)}versions.js`}],
+    // ['script', {src: '/versions.js'], for custom domains, I guess if deploy_url is available.
+    ['script', {src: `${baseTemp.base}siteinfo.js`}]
   ],
   vite: {
     define: {
@@ -63,13 +60,14 @@ export default defineConfig({
         '@nolebase/vitepress-plugin-enhanced-readabilities/client',
         'vitepress',
         '@nolebase/ui',
-      ],
-    },
-    ssr: {
-      noExternal: [
+      ], 
+    }, 
+    ssr: { 
+      noExternal: [ 
+        // If there are other packages that need to be processed by Vite, you can add them here.
         '@nolebase/vitepress-plugin-enhanced-readabilities',
         '@nolebase/ui',
-      ],
+      ], 
     },
   },
 
@@ -85,39 +83,29 @@ export default defineConfig({
         'todo',
         'definition',
         'theorem',
-        'lemma',
-        'corollary',
-        'proposition',
-        'property',
-        'example',
-        'exercise',
-        'remark',
-        'solution',
-        'proof'
-      ];
-
-      for (const name of customBlockNames) {
-        md.use(markdownItContainer, name, {
-          render(tokens, idx) {
-            const token = tokens[idx];
-            if (token.nesting === 1) {
-              // Opening tag, parse quoted title if present
-              const info = token.info.trim().slice(name.length).trim();
-              let title = "";
-              if (info) {
-                title = info.replace(/^["']|["']$/g, "");
-              }
-              return `<div class="custom-block ${name}">${title ? `<p class="custom-block-title">${title}</p>` : ""}\n`;
-            } else {
-              // Closing tag
-              return '</div>\n';
+          // Completely override container rendering with a custom plugin
+          // This plugin will add a test phrase to every block so you know it's working
+          function customContainerPlugin(md) {
+            const types = [
+              'tip', 'note', 'info', 'warning', 'danger', 'todo', 'definition', 'property', 'remark', 'theorem'
+            ];
+            for (const type of types) {
+              md.use(markdownItContainer, type, {
+                render(tokens, idx) {
+                  if (tokens[idx].nesting === 1) {
+                    // Block opening
+                    return `<div class="${type} custom-block">\n` +
+                      `<div class="custom-block-title">${type.toUpperCase()} (Working with the custom plugin)</div>\n` +
+                      `<div class="custom-block-content">\n`;
+                  } else {
+                    // Block closing
+                    return `</div>\n</div>\n`;
+                  }
+                }
+              });
             }
           }
-        });
-      }
-    },
-    theme: {
-      light: "github-light",
+          customContainerPlugin(md);
       dark: "github-dark"
     },
   },
