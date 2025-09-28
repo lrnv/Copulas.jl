@@ -80,52 +80,40 @@ export default defineConfig({
       md.use(mathjax3)
       md.use(footnote)
 
-      // **our container setup**
-      const types = [
-        'tip',
-        'note',
-        'info',
-        'warning',
-        'danger',
+      // Add custom containers for block types
+      const customBlockNames = [
         'todo',
         'definition',
+        'theorem',
+        'lemma',
+        'corollary',
+        'proposition',
         'property',
+        'example',
+        'exercise',
         'remark',
-        'theorem'
-      ]
-      for (const t of types) {
-        md.use(markdownItContainer, t)
-      }
+        'solution',
+        'proof'
+      ];
 
-      const defaultRender = md.renderer.rules.container || ((tokens, idx, opts, env, self) =>
-        self.renderToken(tokens, idx, opts)
-      )
-
-      md.renderer.rules.container = (tokens, idx, options, env, self) => {
-        const token = tokens[idx]
-        if (token.nesting === 1) {
-          const info = token.info.trim()
-          const firstSpaceIndex = info.indexOf(' ')
-          let type = ''
-          let title = ''
-          if (firstSpaceIndex === -1) {
-            type = info
-            title = ''
-          } else {
-            type = info.slice(0, firstSpaceIndex)
-            title = info.slice(firstSpaceIndex + 1)
+      for (const name of customBlockNames) {
+        md.use(markdownItContainer, name, {
+          render(tokens, idx) {
+            const token = tokens[idx];
+            if (token.nesting === 1) {
+              // Opening tag, parse quoted title if present
+              const info = token.info.trim().slice(name.length).trim();
+              let title = "";
+              if (info) {
+                title = info.replace(/^["']|["']$/g, "");
+              }
+              return `<div class="custom-block ${name}">${title ? `<p class="custom-block-title">${title}</p>` : ""}\n`;
+            } else {
+              // Closing tag
+              return '</div>\n';
+            }
           }
-          const typeCapitalized = capitalize(type)
-          const fullTitle = title ? `${typeCapitalized}: ${title}` : typeCapitalized
-
-          return `<div class="custom-block ${type}">\n` +
-                 `<div class="custom-block-title">${fullTitle}</div>\n` +
-                 `<div class="custom-block-content">\n`
-        }
-        if (token.nesting === -1) {
-          return `</div>\n</div>\n`
-        }
-        return defaultRender(tokens, idx, options, env, self)
+        });
       }
     },
     theme: {
