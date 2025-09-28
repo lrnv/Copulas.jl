@@ -101,6 +101,18 @@ export default defineConfig({
         }
       }
       customContainerPlugin(md);
+
+      // Override ALL container rendering, including VitePress defaults
+      md.renderer.rules.container_open = (tokens, idx) => {
+        const token = tokens[idx];
+        const type = token.info.trim().split(' ')[0];
+        return `<div class="${type} custom-block">\n` +
+               `<div class="custom-block-title">${type.toUpperCase()} (Working with the custom plugin, second round)</div>\n` +
+               `<div class="custom-block-content">\n`;
+      };
+      md.renderer.rules.container_close = () => {
+        return `</div>\n</div>\n`;
+      };
       dark: "github-dark"
     },
   },
