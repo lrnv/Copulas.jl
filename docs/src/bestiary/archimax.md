@@ -6,7 +6,7 @@ CurrentModule = Copulas
 
 Archimax copulas are built by pairing an Archimedean generator with an extreme value tail bahavior. Beyond the named families below, **any Archimedean model in this package can be combined with any EV model** via the generic constructor `ArchimaxCopula(gen, tail)`.
 
-!!! note "Bivariate only"
+!!! info "Bivariate only"
 The current implementation is only bivariate since we only have bivariate extreme value tails. If you’re interested in contributing a multivariate extensions, please reach out.
 
 ## `BB4Copula`

@@ -39,7 +39,7 @@ From these pseudo-observations, an empirical copula is defined and anlysed in [d
 
 $\hat{C}_N$ then converges (weakly) to $C$, the true copula of the random vector $\boldsymbol X$, when the number of observations $N$ goes to infinity. 
 
-!!! note "The empirical copula is not a true copula"
+!!! info "The empirical copula is not a true copula"
     Despite its name, $\hat{C}_N$ is not a copula since it does not have uniform marginals. Be careful. 
 
 In the package, this copula is implemented as the `EmpiricalCopula`: 
@@ -48,7 +48,7 @@ In the package, this copula is implemented as the `EmpiricalCopula`:
 EmpiricalCopula
 ```
 
-!!! note "Conditionals and distortions"
+!!! info "Conditionals and distortions"
     - Distortions: available via the generic implementation (partial-derivative ratios). For the empirical copula, derivatives are stepwise; interpret results carefully near sample jumps.
     - Conditional copulas: available via the generic implementation. No specialized fast path is provided.
 
@@ -84,7 +84,7 @@ In the package, this copula is implemented as `BetaCopula`:
 BetaCopula
 ```
 
-!!! note "Conditionals and distortions"
+!!! info "Conditionals and distortions"
     - Distortions: specialized fast path returning a MixtureModel of Beta components for efficient evaluation and sampling.
     - Conditional copulas: available via the generic implementation (no dedicated fast path).
 
@@ -112,7 +112,7 @@ In the package, this copula is implemented as `BernsteinCopula`:
 BernsteinCopula
 ```
 
-!!! note "Conditionals and distortions"
+!!! info "Conditionals and distortions"
     - Distortions: specialized fast path returning a MixtureModel of Beta components (weights from Bernstein grid finite differences conditioned on $\boldsymbol u_J$).
     - Conditional copulas: available via the generic implementation (no dedicated fast path).
 
@@ -177,7 +177,7 @@ In the package, this copula is implemented as `CheckerboardCopula`:
 CheckerboardCopula
 ```
 
-!!! note "Conditionals and distortions"
+!!! info "Conditionals and distortions"
     - Distortions: specialized for conditioning on a single coordinate (p=1) via a histogram-bin distortion on the corresponding slice.
     - Conditional copulas: specialized projection onto remaining axes, renormalizing the mass in the fixed bins, still returns a Checkerboard. 
 

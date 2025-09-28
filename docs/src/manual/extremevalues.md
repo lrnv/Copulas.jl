@@ -6,7 +6,7 @@ CurrentModule = Copulas
 
 *Extreme value copulas* are fundamental in the study of rare and extreme events due to their ability to model dependency in situations of extreme risk. This package provides a wide selection of bivariate extreme value copulas; multivariate cases are not yet implemented. Feel free to open an issue or propose a pull request if you want to contribute a multivariate case. 
 
-!!! note "Only Bivariate"
+!!! info "Only Bivariate"
     The implementation here only deals with bivariate extreme value copulas. Multivariate cases are more tedious to implement, but not impossible: if you want to propose an implementation, we can provide guidance on how to merge it here. Do not hesitate to reach us on GitHub.
 
 A bivariate extreme value copula [gudendorf2010extreme](@cite) $C$ has the following characteristic property:

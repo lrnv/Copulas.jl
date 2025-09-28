@@ -54,7 +54,7 @@ There is a fundamental functional link between the function $F$ and its marginal
     $C_i(u) = u\mathbb 1_{u \in [0,1]} \text{ for all }i \in 1,...,d.$
 
 
-!!! note "Vocabulary"
+!!! info "Vocabulary"
     In this documentation but more largely in the literature, the term *Copula* refers both to the random vector and its distribution function. Usually, the distinction is clear from context. 
 
 You may define a copula object in Julia by simply calling its constructor: 
@@ -125,7 +125,7 @@ rand(MyOtherDistribution,10)
 
 Sklar's theorem can be used the other way around (from the marginal space to the unit hypercube): this is, for example, what the [`pseudo()`](@ref Pseudo-observations) function does, computing ranks.
 
-!!! note "Independent random vectors"
+!!! info "Independent random vectors"
 
     Distributions.jl provides the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create independent random vectors with given marginals. `product_distribution(args...)` is essentially equivalent to `SklarDist(Π, args)`, but our approach generalizes to other dependence structures and is thus much more powerful. 
 

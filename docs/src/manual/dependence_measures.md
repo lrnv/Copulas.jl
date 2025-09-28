@@ -30,7 +30,7 @@ We thus provide two different interfaces:
 Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C)` (for the multivariate versions) and `corkendall(C), corspearman(C)` (for the matrix versions).
 Similarly, empirical versions of these metrics can be obtained from a matrix of observations `data` of size `(d,n)` by  `Copulas.τ(data)`, `Copulas.ρ(data)`, `StatsBase.corkendall(data)` and `StatsBase.corspearman(data)`.
 
-!!! note "Ranges of $\tau$ and $\rho$."
+!!! info "Ranges of $\tau$ and $\rho$."
     Kendall's $\tau$ and Spearman's $\rho$ belong to $[-1, 1]$. They are equal to :
     * 0 if and only if the copula is a `IndependentCopula`.
     * -1 is and only if the copula is a `WCopula`.

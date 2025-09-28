@@ -98,7 +98,7 @@ In this package, we implemented it through the [`WilliamsonGenerator`](@ref) cla
 
 This function computes the Williamson d-transform of the provided random variable $X$ using the [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl) package. See [williamson1955multiply, mcneil2009](@cite) for the literature. 
 
-!!! note "`max_monotony` of Williamson generators"
+!!! info "`max_monotony` of Williamson generators"
     The $d$-transform of a positive random variable is $d$-monotone but not $k$-monotone for any $k > d$. Its max monotony is therefore $d$. This has a few implications, one of the biggest is that the $d$-variate Archimedean copula that corresponds has no density.
     
     More generally, if you want your Archimedean copula to have a density, you must use a generator that is more-monotone than the dimension of your model. 
@@ -196,7 +196,7 @@ williamson_dist(ClaytonGenerator(-0.2), Val{3}())
 
 for which the corresponding distribution is known but has no particular name, thus we implemented it under the `ClaytonWilliamsonDistribution` name.
 
-!!! note "Frailty decomposition for completely monotone generators"
+!!! info "Frailty decomposition for completely monotone generators"
     It is well-known that completely monotone generators are Laplace transforms of non-negative random variables. This gives rise to another decomposition in [hofert2013](@cite):
 
     !!! property "Frailty decomposition"

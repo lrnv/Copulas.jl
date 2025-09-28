@@ -6,7 +6,7 @@ CurrentModule = Copulas
 
 *Archimax copulas* form a hybrid family that combines an Archimedean generator $\phi$ with an extreme-value tail defined by its *stable tail dependence function* $\ell$, or its associated *Pickands function* $A_{\ell}(t) = \ell(\frac{t}{\lVert t \rVert})$. They interpolate between purely Archimedean and purely EV structures and underpin families such as **BB4** and **BB5**.
 
-!!! note "Bivariate only (for now)"
+!!! info "Bivariate only (for now)"
 This section and the current implementation address the **bivariate case**. Multivariate extensions are possible; if you’d like to contribute, we’re happy to provide guidance on how to integrate them.
 
 An Archimax copula [caperaa2000](@cite) $C$ admits the representation
@@ -46,7 +46,7 @@ plot(C)
 
 # Advanced Concepts
 
-!!! note "Tail behaviour:"
+!!! info "Tail behaviour:"
   The **upper tail** is governed by the extreme value structure, while the **lower tail** is driven by the curvature of the Archimedean generator $\phi$. For specific families (e.g., BB5Copula) there are closed forms for $\lambda_U$ and for lower-tail orders.
 
 !!! theorem "Exhaustivity and consistency" 
