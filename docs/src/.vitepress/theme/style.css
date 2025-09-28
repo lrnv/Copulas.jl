@@ -173,3 +173,109 @@ mjx-container > svg {
   margin: auto;
   display: inline-block;
 }
+
+/* ---------------------------------------------
+ * Custom Admonition Block Styles
+ * --------------------------------------------- */
+.custom-block {
+  border-left: 4px solid;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+  color: var(--vp-dark-text);
+}
+
+/* Shared title styling */
+.custom-block-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+/* todo: purple */
+.custom-block.todo {
+  border-color: var(--julia-purple);
+  background-color: rgba(149, 88, 178, 0.1); /* light purple */
+}
+
+/* tip: green */
+.custom-block.tip {
+  border-color: var(--julia-green);
+  background-color: rgba(56, 152, 38, 0.1); /* light green */
+}
+
+/* remark: blue */
+.custom-block.remark {
+  border-color: var(--julia-blue);
+  background-color: rgba(64, 99, 216, 0.1); /* light blue */
+}
+
+/* warning: orange */
+.custom-block.warning {
+  border-color: orange;
+  background-color: rgba(255, 165, 0, 0.1); /* light orange */
+  color: #aa5500;
+}
+
+/* danger: red */
+.custom-block.danger {
+  border-color: var(--julia-red);
+  background-color: rgba(203, 60, 51, 0.1); /* light red */
+}
+
+/* Other specific known blocks - you can add more here */
+.custom-block.definition {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05); /* very light brand blue */
+}
+
+.custom-block.property {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05);
+}
+
+.custom-block.theorem {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05);
+}
+
+.custom-block.algorithm {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05);
+}
+
+/* Catch-all fallback for any other block types */
+.custom-block:not(.todo):not(.tip):not(.remark):not(.warning):not(.danger):not(.definition):not(.property):not(.theorem):not(.algorithm) {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05);
+}
+
+/* Optional Dark Mode Adjustments */
+:root.dark .custom-block.todo {
+  background-color: rgba(149, 88, 178, 0.15);
+}
+
+:root.dark .custom-block.tip {
+  background-color: rgba(56, 152, 38, 0.15);
+}
+
+:root.dark .custom-block.remark {
+  background-color: rgba(64, 99, 216, 0.15);
+}
+
+:root.dark .custom-block.warning {
+  background-color: rgba(255, 165, 0, 0.15);
+  color: #ffcc99;
+}
+
+:root.dark .custom-block.danger {
+  background-color: rgba(203, 60, 51, 0.15);
+}
+
+:root.dark .custom-block.definition,
+:root.dark .custom-block.property,
+:root.dark .custom-block.theorem,
+:root.dark .custom-block.algorithm,
+.custom-block:not(.todo):not(.tip):not(.remark):not(.warning):not(.danger):not(.definition):not(.property):not(.theorem):not(.algorithm) {
+  background-color: rgba(0, 135, 215, 0.1);
+}
