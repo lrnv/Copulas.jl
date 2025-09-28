@@ -12,7 +12,7 @@ Modules = [Copulas]
 Private = false
 ```
 
-## Other docstrings
+## Private docstrings
 
 ```@autodocs
 Modules = [Copulas]
