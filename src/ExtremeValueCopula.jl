@@ -164,8 +164,8 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, d)
     θ0 = start isa Real ? start : 
-         start ∈ (:itau, :irho, :ibeta, :iupper) ? only(Distributions.params(_fit(CT, U, Val{start}())[1])) : 
-         throw("You imputed start=$start, while i require either a real number, :itau, :irho, :ibeta or :iupper")
+         start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : 
+         only(Distributions.params(_example(CT, d)))
     θ0 = clamp(θ0, lo, hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
     res = Optim.optimize(f, lo, hi, [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
