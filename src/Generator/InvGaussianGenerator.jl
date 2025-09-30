@@ -143,3 +143,33 @@ function τ⁻¹(::Type{T}, τ) where T<:InvGaussianGenerator
     return Roots.find_zero(x -> _invgaussian_tau(x) - τ, (0, Inf))
 end
 frailty(G::InvGaussianGenerator) = Distributions.InverseGaussian(G.θ,1)
+
+
+function _rho_invgaussian(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
+    # Uses a stable single-integral formulation as in BB2/Gumbel/Joe.
+    θ = float(θ)
+    G = InvGaussianGenerator(θ)
+    gfun(s) = -ϕ⁽¹⁾(G, s)
+    inner(s) = s <= 0 ? 0.0 : begin
+        innerf(z) = gfun(s*z) * gfun(s*(1 - z))
+        val, _ = QuadGK.quadgk(innerf, 0.0, 1.0; rtol=sqrt(rtol), atol=sqrt(atol))
+        s * val
+    end
+    outerf(t) = (t <= 0 || t >= 1) ? 0.0 : begin
+        s = t/(1 - t)
+        jac = 1/(1 - t)^2
+        ϕ(G, s) * inner(s) * jac
+    end
+    I, _ = QuadGK.quadgk(outerf, 0.0, 1.0; rtol=rtol, atol=atol, maxevals=maxevals)
+    return 12I - 3
+end
+
+ρ(G::InvGaussianGenerator) = _rho_invgaussian(G.θ)
+function ρ⁻¹(::Type{InvGaussianGenerator}, rho::Real; xatol::Real=1e-8)
+    # Numerically inverts _rho_invgaussian using Brent's method.
+    # Spearman's rho for InvGaussian: [0, 1/2)
+    rho ≤ 0 && return zero(rho)
+    rho ≥ 1/2 && return Inf * rho
+    xhat = Roots.find_zero(x -> _rho_invgaussian(-log(x)) - rho, (0, 1))
+    return -log(xhat)
+end
