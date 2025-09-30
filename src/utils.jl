@@ -98,14 +98,22 @@ function _uppertriangle_stats(mat)
     return Statistics.mean(gen), length(gen) == 1 ? zero(gen[1]) : Statistics.std(gen), minimum(gen), maximum(gen)
 end
 #Gabriel Frahma, Markus Junkerb, Rafael Schmidta (2005)
-function upper_tail(U::Matrix{T}) where T <: Real
+import StatsBase
+
+function tail(U::Matrix{T}; t::Symbol=:upper) where T <: Real
     size(U, 1) == 2 || throw(ArgumentError("U must be a 2×n matrix"))
     m = size(U, 2)
     m ≥ 4 || throw(ArgumentError("At least 4 observations are required"))
     ranks1 = StatsBase.ordinalrank(U[1, :])
     ranks2 = StatsBase.ordinalrank(U[2, :])
     k = max(4, floor(Int, sqrt(m)))
-    threshold = m - k
-    count_extreme = sum((ranks1 .> threshold) .& (ranks2 .> threshold))
+    count_extreme = if t === :upper
+        threshold = m - k
+        sum((ranks1 .> threshold) .& (ranks2 .> threshold))
+    elseif t === :lower
+        sum((ranks1 .<= k) .& (ranks2 .<= k))
+    else
+        throw(ArgumentError("t must be :upper or :lower"))
+    end
     return count_extreme / k
 end
