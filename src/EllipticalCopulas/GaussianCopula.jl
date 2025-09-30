@@ -134,7 +134,7 @@ function Distributions.params(C::GaussianCopula)
     Σ = C.Σ; d = size(Σ,1)
     return (; (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:d-1 for j in i+1:d)...)
 end
-_example(::Type{GaussianCopula}, d::Int) = GaussianCopula(Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
+_example(::Type{<:GaussianCopula}, d::Int) = GaussianCopula(d, 0.2)
 
 function _unbound_params(::Type{GaussianCopula}, d::Int, θ::NamedTuple)
     Σ = _Σ_from_named(d, θ)
