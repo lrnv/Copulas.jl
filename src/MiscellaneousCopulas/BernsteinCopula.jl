@@ -54,34 +54,19 @@ struct BernsteinCopula{d} <: Copula{d}
         else
             mtuple = ntuple(_->10, d)
         end
-        # Inline bernstein_grid_weights_array logic
-        weights = zeros(Float64, mtuple...)
-        N = d
-        # For each corner, compute its CDF once and distribute to all boxes
-        for corner in Iterators.product((0:mi for mi in mtuple)...)
-            u = ntuple(j -> corner[j] / mtuple[j], N)
-            cdfval = Distributions.cdf(base, collect(u))
-            for s in Iterators.product((0:(mi-1) for mi in mtuple)...)
-                is_vertex = true
-                upper = 0
-                for j in 1:N
-                    if corner[j] == s[j]
-                        continue
-                    elseif corner[j] == s[j]+1
-                        upper += 1
-                    else
-                        is_vertex = false
-                        break
-                    end
-                end
-                if is_vertex
-                    sign = (-1)^(N - upper)
-                    weights[(s[j]+1 for j in 1:N)...] += sign * cdfval
-                end
-            end
+        # Precompute CDF grid
+        weights = Array{Float64}(undef, (mi+1 for mi in mtuple)...)
+        for idx in CartesianIndices(weights)
+            u = ntuple(j -> (idx[j]-1) / mtuple[j], d)
+            weights[idx] = Distributions.cdf(base, collect(u))
+        end
+        # Compute measures values using multidimensional finite differences
+        for axis in 1:d
+            weights = Base.diff(weights, dims=axis)
         end
         return new{d}(mtuple, weights)
     end
+    BernsteinCopula{d}(m::NTuple{d, Int}, weights::Array{Float64, d}) where d = new{d}(m, weights) # cheating constructor. 
 end
 BernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing, pseudo_values=true) = BernsteinCopula(EmpiricalCopula(data; pseudo_values=pseudo_values); m=m)
 
@@ -119,16 +104,15 @@ end
     end
     return v .* m
 end
-
-
-
-
 function _cdf(B::BernsteinCopula{d}, u::AbstractVector) where {d}
     m = B.m
     P = ntuple(j -> _bernvec_all(u[j], m[j]), d)
     total = zero(eltype(first(P)))
     @inbounds for s in Iterators.product((0:mi for mi in m)...)
-        w = Distributions.cdf(B.base, collect(s ./ m))
+        w = 0.0
+        for t in Iterators.product((1:s[j] for j in 1:d)...)
+            w += B.weights[t...]
+        end
         iszero(w) && continue
         total += w * prod(P[j][s[j]+1] for j in 1:d)
     end
@@ -186,7 +170,7 @@ function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NT
             wJ == 0.0 && break
         end
         wJ == 0.0 && continue
-        Δ = measure(B.base, ntuple(j -> s[j] / m[j], D), ntuple(j -> (s[j] + 1) / m[j], D))
+        Δ = B.weights[(s[j]+1 for j in 1:D)...]
         (Δ <= 0) && continue
         α[s[i] + 1] += Δ * wJ
     end
@@ -226,4 +210,17 @@ function _fit(::Type{<:BernsteinCopula}, U, ::Val{:bernstein};
               pseudo_values::Bool=true, kwargs...)
     C = BernsteinCopula(U; m=m, pseudo_values=pseudo_values, kwargs...)
     return C, (; emp_kind=:bernstein, pseudo_values, m=C.m)
+end
+
+function SubsetCopula(C::BernsteinCopula{d}, dims::NTuple{p, Int}) where {d,p}
+    # dims: indices to keep, e.g. (1,3) for a 3D copula
+    # Step 1: Permute axes so that kept dims are first
+    all_axes = collect(1:d)
+    sum_axes = setdiff(all_axes, collect(dims))
+    perm = vcat(collect(dims), sum_axes)
+    permuted_weights = PermutedDimsArray(C.weights, perm)
+    # Step 2: Sum over trailing axes (those not in dims)
+    new_m = ntuple(i -> C.m[dims[i]], p)
+    to_sum_and_drop = tuple(i for i in p+1:d)
+    return BernsteinCopula{p}(new_m, dropdims(sum(permuted_weights, dims=to_sum_and_drop), dims=to_sum_and_drop))
 end
