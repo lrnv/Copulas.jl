@@ -42,9 +42,17 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
               converged = Optim.converged(res),
               iterations = Optim.iterations(res))
 end
+
+
+# I have simply add @assert statements for the dof < the the signal's size
+# I am not sure this is the best way to do it. 
+
+
+
 function _fit(CT::Type{<:Copula}, U, ::Val{:itau})
     d   = size(U,1)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    @assert length(α₀) <= d*(d-1)/2 "Cannot use :itau since there are too much parameters."
     tau = StatsBase.corkendall(U')
     loss(α) = sum(abs2, tau .- StatsBase.corkendall(CT(d, _rebound_params(CT, d, α)...)))
     res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
@@ -58,6 +66,7 @@ end
 function _fit(CT::Type{<:Copula}, U, ::Val{:irho})
     d   = size(U,1)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    @assert length(α₀) <= d*(d-1)/2 "Cannot use :irho since there are too much parameters."
     rho = StatsBase.corspearman(U')
     loss(α) = sum(abs2, rho .- StatsBase.corspearman(CT(d, _rebound_params(CT, d, α)...)))
     res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
@@ -71,6 +80,8 @@ end
 function _fit(CT::Type{<:Copula}, U, ::Val{:ibeta})
     d   = size(U,1)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    @show d, α₀
+    @assert length(α₀) <= 1 "Cannot use :ibeta since there are too much parameters."
     beta = blomqvist_beta(U)
     loss(α) = (beta - β(CT(d, _rebound_params(CT, d, α)...)))^2
     res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based

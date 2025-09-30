@@ -85,24 +85,13 @@ end
 _example(::Type{TCopula}, d::Int) = TCopula(5.0, Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
 function _unbound_params(::Type{TCopula}, d::Int, θ::NamedTuple)
     Σ = _Σ_from_named(d, θ)
-    L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=false).L
-    δ = log.(LinearAlgebra.diag(L))
-    ℓ = [L[i,j] for i in 2:d for j in 1:i-1]
-    return vcat(log(θ.ν), δ, ℓ)
+    α = _unbound_corr_params(d, Σ)
+    return vcat(log(θ.ν), α)
 end
 
 function _rebound_params(::Type{TCopula}, d::Int, α::AbstractVector{T}) where {T}
     ν = exp(α[1])
-    L = Matrix{T}(LinearAlgebra.I, d, d)
-    for i in 1:d; L[i,i] = exp(α[1+i]); end
-    k = 1
-    for i in 2:d, j in 1:i-1
-        L[i,j] = α[d+1+k]; k+=1
-    end
-    S  = L*L'
-    dvec = sqrt.(LinearAlgebra.diag(S))
-    Σ = LinearAlgebra.Diagonal(inv.(dvec)) * S * LinearAlgebra.Diagonal(inv.(dvec))
-    Σ = (Σ + Σ')/2   # fuerza simetría
+    Σ = _rebound_corr_params(d, @view α[2:end])
     return (; ν = ν, Σ = Σ)
 end
 

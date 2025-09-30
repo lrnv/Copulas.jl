@@ -34,60 +34,61 @@
         # ("M",               d -> MCopula,                                                                 "234", "DMTRB"),
         # ("W",               d -> WCopula,                                                                 "2",   "DMTRB"),
 
-        #Empirical/misc (all d)
-        #("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
-        #("Beta",            d -> BetaCopula,                                                              "234", "D"),
-        #("Checkerboard",    d -> CheckerboardCopula,                                                      "234", "D"),
-        #("Empirical",       d -> EmpiricalCopula,                                                         "234", "D"),
-        #("Archimedean(emp)",        d -> ArchimedeanCopula,                                               "234", "DG"),
-        ("ExtremeValueCopula(emp)", d -> ExtremeValueCopula,                                                "2", "DOCP"),
+        # Empirical/misc (all d)
+        # ("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
+        # ("Beta",            d -> BetaCopula,                                                              "234", "D"),
+        # ("Checkerboard",    d -> CheckerboardCopula,                                                      "234", "D"),
+        # ("Empirical",       d -> EmpiricalCopula,                                                         "234", "D"),
+        # ("Archimedean(emp)",        d -> ArchimedeanCopula,                                               "234", "DG"),
+        # ("ExtremeValueCopula(emp)", d -> ExtremeValueCopula,                                                "2", "DOCP"),
 
 
         # # Elliptical (all d)
         ("Gaussian",        d -> GaussianCopula,                                                          "234", "DMTRB"),
-        #("t",               d -> TCopula,                                                                 "234", "DMT"),  ######## Only :itau and :ibeta work here. 
+        ("t",               d -> TCopula,                                                                 "234", "DMTRB"),  ######## Only :itau and :ibeta work here. 
 
-        # # Archimedean generic and variants (all d)
-        ("Archimedean(emp)", d -> ArchimedeanCopula,                                                      "234", "DG"),
-        #("Archimedean{Clayton}", d -> ArchimedeanCopula{d, ClaytonGenerator},                             "234", "DMTRB"),
+        # Archimedean generic and variants (all d)
+        # ("Archimedean(emp)", d -> ArchimedeanCopula,                                                      "234", "DG"),
+        # ("Archimedean{Clayton}", d -> ArchimedeanCopula{d, ClaytonGenerator},                             "234", "DMTRB"),
         # ("Archimedean{Williamson(LogNormal)}", d -> ArchimedeanCopula{d, WilliamsonGenerator{LogNormal}}, "234", "D"), # Not implemented
         # ("Archimedean{Frailty(LogNormal)}",   d -> ArchimedeanCopula{d, FrailtyGenerator{LogNormal}},     "234", "D"), # Not implemented
 
-        # # Specific Archimedean families (all d)
-        ("AMH",             d -> AMHCopula,                                                               "234", "DMTRB"),
-        ("BB1",             d -> BB1Copula,                                                               "234", "DMTRB"),
-        #("BB2",             d -> BB2Copula,                                                               "234", "DMTRB"),
-        ("BB3",             d -> BB3Copula,                                                               "234", "DMTB"),
-        ("BB6",             d -> BB6Copula,                                                               "234", "DMTRB"),
-        ("BB7",             d -> BB7Copula,                                                               "234", "DMTB"),
-        ("BB8",             d -> BB8Copula,                                                               "234", "DMTB"),
-        ("BB9",             d -> BB9Copula,                                                               "234", "DMTRB"),
-        ("BB10",            d -> BB10Copula,                                                              "234", "DMTRB"),
-        ("Clayton",         d -> ClaytonCopula,                                                           "234", "DMTRB"),
-        ("Frank",           d -> FrankCopula,                                                             "234", "DMTRB"),
-        ("GumbelBarnett",   d -> GumbelBarnettCopula,                                                     "234", "DMTB"),
-        ("Gumbel",          d -> GumbelCopula,                                                            "234", "DMTRB"),
-        ("InvGaussian",     d -> InvGaussianCopula,                                                       "234", "DMTB"),
-        ("Joe",             d -> JoeCopula,                                                               "234", "DMTRB"),
+        # Archimedean families wiht one parameters
+        # ("AMH",             d -> AMHCopula,                                                               "234", "DMTRB"),
+        # ("Clayton",         d -> ClaytonCopula,                                                           "234", "DMTRB"),
+        # ("Frank",           d -> FrankCopula,                                                             "234", "DMTRB"),
+        # ("GumbelBarnett",   d -> GumbelBarnettCopula,                                                     "234", "DMTB"),
+        # ("Gumbel",          d -> GumbelCopula,                                                            "234", "DMTRB"),
+        # ("InvGaussian",     d -> InvGaussianCopula,                                                       "234", "DMTB"),
+        # ("Joe",             d -> JoeCopula,                                                               "234", "DMTRB"),
 
-        # # Bivariate-only miscellaneous
+        # # Archimedeans families with two parameters.
+        # ("BB1",             d -> BB1Copula,                                                               "234", "DM"),
+        # ("BB2",             d -> BB2Copula,                                                               "234", "DM"),
+        # ("BB3",             d -> BB3Copula,                                                               "234", "DM"),
+        # ("BB6",             d -> BB6Copula,                                                               "234", "DM"),
+        # ("BB7",             d -> BB7Copula,                                                               "234", "DM"),
+        # ("BB8",             d -> BB8Copula,                                                               "234", "DM"),
+        # ("BB9",             d -> BB9Copula,                                                               "234", "DM"),
+        # ("BB10",            d -> BB10Copula,                                                              "234", "DM"),
+        
+        # # # Bivariate-only miscellaneous
         # ("FGMC",            d -> FGMCopula,                                                               "2",   "DMTRB"),
         # ("Plackett",        d -> PlackettCopula,                                                          "2",   "DMTRB"),
         # ("Raftery",         d -> RafteryCopula,                                                           "2",   "DMTRB"),
 
         # # Bivariate EV families
-        ("EV(emp)",         d -> Copulas.ExtremeValueCopula,                                              "2",   "D"),
-        ("Galambos",        d -> GalambosCopula,                                                          "2",   "DM"),
-        ("HuslerReiss",     d -> HuslerReissCopula,                                                       "2",   "DM"),
-        ("Log",             d -> LogCopula,                                                               "2",   "DM"),
-        ("Mixed",           d -> MixedCopula,                                                             "2",   "DM"),
-        ("CuadrasAuge",     d -> CuadrasAugeCopula,                                                       "2",   "DM"),
-        ("BC2",             d -> BC2Copula,                                                               "2",   "DM"),
-        ("tEV",             d -> tEVCopula,                                                               "2",   "DM"),
-        ("MO",              d -> MOCopula,                                                                "2",   "DM"),
-        ("AsymLog",         d -> AsymLogCopula,                                                           "2",   "DM"),
-        ("AsymGalambos",    d -> AsymGalambosCopula,                                                      "2",   "DM"),
-        ("AsymMixed",       d -> AsymMixedCopula,                                                         "2",   "DM"),
+        # ("Galambos",        d -> GalambosCopula,                                                          "2",   "DM"),
+        # ("HuslerReiss",     d -> HuslerReissCopula,                                                       "2",   "DM"),
+        # ("Log",             d -> LogCopula,                                                               "2",   "DM"),
+        # ("Mixed",           d -> MixedCopula,                                                             "2",   "DM"),
+        # ("CuadrasAuge",     d -> CuadrasAugeCopula,                                                       "2",   "DM"),
+        # ("BC2",             d -> BC2Copula,                                                               "2",   "DM"),
+        # ("tEV",             d -> tEVCopula,                                                               "2",   "DM"),
+        # ("MO",              d -> MOCopula,                                                                "2",   "DM"),
+        # ("AsymLog",         d -> AsymLogCopula,                                                           "2",   "DM"),
+        # ("AsymGalambos",    d -> AsymGalambosCopula,                                                      "2",   "DM"),
+        # ("AsymMixed",       d -> AsymMixedCopula,                                                         "2",   "DM"),
 
         # # Archimax (bivariate only)
         # ("Archimax{Gumbel × Mixed}", d -> ArchimaxCopula{2, GumbelGenerator, MixedTail},                  "2",   "DMTRB"),
