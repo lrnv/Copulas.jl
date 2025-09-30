@@ -12,7 +12,7 @@ Notes:
 - The resulting object is handled like the base copula: same API (cdf, pdf/logpdf, rand, fit) and uniform marginals in ``[0,1]^d``.
 
 References:
-* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
+* [nelsen2006](@cite) Nelsen (2006), An introduction to copulas.
 """
 struct SurvivalCopula{d,CT,VI} <: Copula{d}
     C::CT
@@ -57,11 +57,34 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{
     Distributions._rand!(rng,C.C,x)
     reverse!(x, C.indices)
 end
-function Distributions.fit(T::Type{CT},u) where {CT <: SurvivalCopula}
-    # d = size(u,1)
-    d,subCT,indices = T.parameters
-    subfit = Distributions.fit(subCT,reverse(u,indices))
-    return SurvivalCopula(subfit,indices)
+
+# Fitting: delegate to the base copula after flipping the requested indices in U
+Distributions.params(S::SurvivalCopula) = Distributions.params(S.C)
+
+"""
+    _fit(::Type{SurvivalCopula}, U, ::Val{method}; base::Type{<:Copula}, indices, kwargs...)
+
+Fit a SurvivalCopula by flipping `U` on the given `indices` and delegating to `_fit(base, ...)` with the same method.
+Required keywords:
+  - base::Type{<:Copula}        underlying copula family type to fit
+  - indices::Tuple{Vararg{Int}} tuple of indices to flip
+Other keyword arguments are forwarded to the base `_fit`.
+"""
+function _fit(::Type{SurvivalCopula}, U,
+              ::Val{method}; base::Type{<:Copula}, indices::Tuple{Vararg{Int}}, kwargs...) where {method}
+    d = size(U, 1)
+    @assert all(1 .<= indices .<= d) "indices must be in 1..d"
+    Uflip = copy(U)
+    @inbounds for i in indices
+        Uflip[i, :] .= 1 .- U[i, :]
+    end
+    C, meta = _fit(base, Uflip, Val{method}(); kwargs...)
+    return SurvivalCopula(C, indices), meta
+end
+
+# Convenience: dispatch on the SurvivalCopula type with embedded base type
+function _fit(::Type{SurvivalCopula{d,subCT,VI}}, U, M::Val{method}; indices::Tuple{Vararg{Int}}, kwargs...) where {d,subCT,VI}
+    return _fit(SurvivalCopula, U, M; base=subCT, indices=indices, kwargs...)
 end
 
 # Conditioning bindings colocated

@@ -16,6 +16,12 @@ struct WCopula <: Copula{2}
     WCopula(d) = d!=2 ? error("WCopula only available in dimension 2") : new()
     WCopula() = new()
 end
+Distributions.params(::WCopula) = ()
+_example(::Type{<:WCopula}, d) = WCopula(d)
+_unbound_params(::Type{<:WCopula}, d, θ) = Float64[]
+_rebound_params(::Type{<:WCopula}, d, α) = (;)
+_fit(::Type{<:WCopula}, U, ::Any) = WCopula(size(U,1)), (;)
+
 Distributions._logpdf(::WCopula,           u) = sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::WCopula, u) = max(sum(u)-1,0)
 
