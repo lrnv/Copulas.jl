@@ -109,7 +109,7 @@ function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
         @error "There is no generator type associated with the archimedean type $S"
     end
 end
-
+generatorof(::Type{ArchimedeanCopula{d,GT}}) where {d,GT} = GT #this solution problem...
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
         return τ(C.G)
