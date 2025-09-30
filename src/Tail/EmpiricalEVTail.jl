@@ -137,6 +137,7 @@ function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, 
     
     return EmpiricalEVTail(tgrid, Â, slope)
 end
+const EmpiricalEVCopula = ExtremeValueCopula{2, EmpiricalEVTail}
 EmpiricalEVCopula(u; kwargs...) = ExtremeValueCopula(2, EmpiricalEVTail(u; kwargs...))
 
 Base.eltype(::EmpiricalEVTail) = Float64
@@ -163,4 +164,13 @@ function dA(tail::EmpiricalEVTail, t::Real)
     i = searchsortedlast(tail.tgrid, tt)
     (i <= 0 || i >= length(tail.tgrid)) && return T(0)
     return T(tail.slope[i])
+end
+
+# Fitting plug-in (empírico) para EmpiricalEVCopula
+StatsBase.dof(::EmpiricalEVCopula) = 0
+_available_fitting_methods(::Type{<:EmpiricalEVCopula}) = (:ols, :cfg, :pickands)
+function _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...)
+    m = typeof(method).parameters[1]  # :ols | :cfg | :pickands
+    C = EmpiricalEVCopula(U; method=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
+    return C, (; emp_kind=:ev_tail, pseudo_values, method=m, grid, eps)
 end

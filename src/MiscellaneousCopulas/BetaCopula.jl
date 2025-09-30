@@ -124,7 +124,8 @@ end
 
 # Fitting collocated
 StatsBase.dof(::BetaCopula)         = 0
-function _fit(::Type{<:BetaCopula}, U, ::Val{:mle}; kwargs...)
+_available_fitting_methods(::Type{<:BetaCopula}) = (:beta,)
+function _fit(::Type{<:BetaCopula}, U, ::Val{:beta}; kwargs...)
     C = BetaCopula(U; kwargs...)
-    return C, (;)
+    return C, (; emp_kind=:beta)
 end
