@@ -6,6 +6,7 @@ module Copulas
     import SpecialFunctions
     import Roots
     import Distributions
+    import Statistics
     import StatsBase
     import StatsFuns
     import ForwardDiff

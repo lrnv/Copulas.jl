@@ -60,6 +60,7 @@ function SubsetCopula(C::EmpiricalCopula{d,MT}, dims::NTuple{p, Int}) where {d,M
 end
 
 # Fitting colocated. 
+StatsBase.dof(::Copulas.EmpiricalCopula)    = 0
 function _fit(::Type{<:EmpiricalCopula}, U, ::Val{:default}; pseudo_values = true, kwargs...)
     C = EmpiricalCopula(U; pseudo_values=pseudo_values, kwargs...)
     return C, (; estimator=:deheuvels, pseudo_values)

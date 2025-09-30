@@ -130,3 +130,7 @@ end
 # Subsetting colocated
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula(C.Σ[collect(dims),collect(dims)])
 
+
+# Fitting collocated
+StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
+
