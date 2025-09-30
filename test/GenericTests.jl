@@ -513,7 +513,7 @@
 
                         if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(CT<:PlackettCopula) && has_parameters(C)
                             α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
-                            α2 = Copulas._unbound_params(typeof(r2.result), d, Distributions.params(r2))
+                            α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
                             @test α1 ≈ α2
                         end
 
