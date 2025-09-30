@@ -21,16 +21,27 @@ This section summarizes **how to fit** copulas (and Sklar distributions) in `Cop
 
 ### Copula Only (Object)
 
-```julia
-Ĉ = fit(CT, U; method=:mle, kwargs...)
+```@example fitting_interface
+using Copulas, Random, StatsBase, Distributions
+Random.seed!(123) # hide
+Ctrue = GumbelCopula(2, 3.0)
+U = rand(Ctrue, 2000)
+Ĉ = fit(GumbelCopula, U; method=:mle)
+Ĉ
 ```
 
 Returns **only** the fitted copula `Ĉ::CT`. This is a high-level shortcut.
 
+```@example fitting_interface
+using Plots
+plot(Ĉ)
+```
+
 ### Full Model (with metadata)
 
-```julia
-M = fit(CopulaModel, CT, U; method=:default, summaries=true, kwargs...)
+```@example fitting_interface
+M = fit(CopulaModel, GumbelCopula, U; method=:default, summaries=true)
+M
 ```
 
 Returns a `CopulaModel` with:
@@ -42,15 +53,23 @@ Returns a `CopulaModel` with:
 
 ### Joint margin fitting + copula (Sklar)
 
-```julia
-Ŝ = fit(CopulaModel, SklarDist{CT,TupleOfMargins}, X;
-sklar_method=:ifm, # or :ecdf
-copula_method=:default,
-margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple())
-```
-
 * `:ifm`: fits parametric margins and projects to pseudo-data with their CDFs.
 * `:ecdf`: uses pseudo-empirical observations (ranks).
+
+```@example fitting_interface
+S = SklarDist(ClaytonCopula(2, 5), (Normal(), LogNormal(0, 0.5)))
+X = rand(S, 1000)
+Ŝ = fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X;
+	sklar_method=:ifm, # or :ecdf
+	copula_method=:default, # see next section. 
+	margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple()) # options will be passed down to fitting functions. 
+Ŝ
+```
+
+```@example fitting_interface
+plot(Ŝ.result)
+```
+
 
 ---
 
@@ -58,8 +77,8 @@ margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple())
 
 The names and availiability of fitting methods depends on the model. You can check what is available with the following internal call : 
 
-```julia
-Copulas._available_fitting_methods(CT) # e.g. (:mle, :itau, :irho, :ibeta)
+```@example fitting_interface
+Copulas._available_fitting_methods(ClaytonCopula)
 ```
 
 The first method in the list is the one used by default. 
@@ -79,13 +98,7 @@ In **extreme value** copulas, the `:mle`/`:iupper` variants can rely on the Pick
 
 ## `CopulaModel` Interface (summary)
 
-The
-
-```julia
-CopulaModel{CT} <: StatsBase.StatisticalModel
-```
-
-stores the result and supports the standard `StatsBase` interface:
+The `CopulaModel{CT} <: StatsBase.StatisticalModel` type stores the result and supports the standard `StatsBase` interface:
 
 | Function           | Description                     |
 | ------------------ | ------------------------------- |
@@ -111,32 +124,52 @@ Quick access to the contained copula: `_copula_of(M)` (returns the copula even i
 
 Below are minimal examples illustrating the main fitting strategies.
 
-```julia
-using Random, Copulas, StatsBase, Distributions
-Random.seed!(1234)
-
-# True copula for simulation
-Ctrue = GumbelCopula(2, 3.0)
-U = rand(Ctrue, 2_000)
-
-# 1) itau — inverse Kendall (fast, uniparametric)
-C_itau = fit(GumbelCopula, U; method=:itau)
-
-# 2) mle — maximum likelihood (robust, multiparametric)
-M_mle = fit(CopulaModel, GumbelCopula, U; method=:mle)
-
-# 3) Sklar — joint margins + copula
-X = [rand(Normal(), 2000) rand(LogNormal(), 2000)]'  # raw data, d×n
-M_sklar = fit(CopulaModel, SklarDist{GumbelCopula,(Normal,LogNormal)}, X; sklar_method=:ecdf, copula_method=:itau)
-
-# 4) Empirical copula — nonparametric
-Uemp = pseudos(rand(Normal(), 2, 300))  # pseudo-observations
-C_emp = fit(CopulaModel, BetaCopula, U)
-```
-
 * **1) itau**: inversion of Kendall’s τ, quick and stable for one-parameter families.
 * **2) mle**: maximizes the likelihood, suitable for more complex families.
 * **3) Sklar**: estimates both marginals and copula jointly.
 * **4) Empirical**: nonparametric alternative, no parametric assumptions.
 
 For more details on empirical methods see [Empirical models](@ref empirical_copulas).
+
+
+```@example fitting_interface
+# 1) itau — inverse Kendall (fast, uniparametric)
+C_itau = fit(GumbelCopula, U; method=:itau)
+C_itau
+```
+
+```@example fitting_interface
+plot(C_itau)
+```
+
+```@example fitting_interface
+# 2) mle — maximum likelihood (robust, multiparametric)
+M_mle = fit(CopulaModel, GumbelCopula, U; method=:mle)
+M_mle
+```
+
+```@example fitting_interface
+plot(M_mle.result)
+```
+
+```@example fitting_interface
+# 3) Sklar — joint margins + copula
+M_sklar = fit(CopulaModel, SklarDist{GumbelCopula,Tuple{Normal,LogNormal}}, X; sklar_method=:ecdf, copula_method=:itau)
+M_sklar
+```
+
+```@example fitting_interface
+plot(M_sklar.result)
+```
+
+```@example fitting_interface
+# 4) Empirical copula — nonparametric
+Uemp = pseudos(rand(Normal(), 2, 300))  # pseudo-observations
+C_emp = fit(CopulaModel, BetaCopula, U)
+C_emp
+```
+
+```@example fitting_interface
+plot(C_emp.result)
+```
+
