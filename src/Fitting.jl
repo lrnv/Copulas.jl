@@ -116,7 +116,7 @@ function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}},
     U = similar(X)
     if sklar_method === :ifm
         for i in 1:d
-            U[i,:] .= Distributions.cdf(m[i], X[i,:])
+            U[i,:] .= Distributions.cdf.(m[i], X[i,:])
         end
     elseif sklar_method === :ecdf
         U .= pseudos(X)
@@ -131,7 +131,7 @@ function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}},
     null_ll = 0.0
     @inbounds for j in axes(X, 2)
         for i in 1:d
-            null_ll += Distributions.logpdf(m[i], X[i, j])
+            null_ll += Distributions.logpdf.(m[i], X[i, j])
         end
     end
 
