@@ -278,7 +278,7 @@ end
     @test check_rnd(InvGaussianCopula,    0,    1/2,  10)
 end
 
-@testitem "Test of ρ ∘ ρ⁻¹ = Id" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula, :GumbelBarnettCopula, :InvGaussianCopula] begin
+@testitem "Test of ρ ∘ ρ⁻¹ = Id" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula, :GumbelBarnettCopula, :InvGaussianCopula, :OneRing] begin
     # [GenericTests integration]: Not yet. ρ⁻¹ is not uniformly available/accurate; keep here as broken placeholders until APIs solidify.
     using Random
     using InteractiveUtils
@@ -286,7 +286,7 @@ end
     rng = StableRNG(123)
 
     inv_works(T,rho) = Copulas.ρ(T(2,Copulas.ρ⁻¹(T,rho))) ≈ rho
-    check_rnd(T,min,max,N) = all(inv_works(T,x) for x in min .+ (max-min) .* rand(rng,N))
+    check_rnd(T,m,M,N) = all(inv_works(T, m + (M-m)*u) for u in rand(rng,N))
 
     # Should be adapted to spearman rho and its inverse when it is possible. 
     @test check_rnd(GumbelCopula,         0,    1,    10)
@@ -294,9 +294,8 @@ end
     @test check_rnd(GumbelBarnettCopula, -0.35, 0,    10)
     @test check_rnd(AMHCopula,           -0.18, 0.33, 10)
     @test check_rnd(FrankCopula,         -1,    1,    10)
-    
-    @test_broken check_rnd(ClaytonCopula,       -1,    1,    10)
-    @test_broken check_rnd(InvGaussianCopula,    0,    1/2,  10)
+    @test check_rnd(ClaytonCopula,       -1,    1,    10)
+    @test check_rnd(InvGaussianCopula,    0,    log(2),  10)
 end
 
 # @testitem "A few tests on bigfloats" begin

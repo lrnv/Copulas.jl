@@ -519,7 +519,7 @@
 
                         newCT = typeof(r2)
                         @test typeof(r1.result) == newCT
-                        if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2) && has_unbounded_params(r2) && !(CT<:RafteryCopula && d==3 && m=:itau)
+                        if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2) && has_unbounded_params(r2) && !(CT<:RafteryCopula && d==3 && m==:itau)
                             α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
                             α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
                             @test α1 ≈ α2 atol=1e-4
