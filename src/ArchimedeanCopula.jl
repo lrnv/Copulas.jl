@@ -240,7 +240,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d,GT} where d}, U, ::Val{:ibeta}) whe
     return CT(d,θ), (; θ̂=θ)
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerate}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)  where {GT}
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     @show "Running the MLE routine from the Archimedean Univaraite implementation"
     d = size(U,1)
     lo, hi = _θ_bounds(GT, d)
