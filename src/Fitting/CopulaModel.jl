@@ -146,7 +146,7 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{T}, U::AbstractMatrix; me
         method_details = meta)
 end
 
-
+Distributions.fit(::Type{T}, U::AbstractMatrix; kwargs...) where {T<:Copulas.Copula} = Distributions.fit(CopulaModel, T, U; kwargs...).result
 
 # ====================== Empirical ======================
 
@@ -273,9 +273,4 @@ function _print_empirical_summary(io::IO, M::CopulaModel)
         end
         println(io, "───────────────────────────────────────────────────────")
     end
-end
-
-function Distributions.fit(::Type{T}, U::AbstractMatrix; kwargs...) where {T<:Copulas.Copula}
-    # Reutiliza el flujo completo (dispatcher, loglik, vcov, etc.) y devuelve solo la cópula
-    return Distributions.fit(CopulaModel, T, U; kwargs...).result
 end
