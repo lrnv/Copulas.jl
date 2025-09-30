@@ -70,8 +70,8 @@
 
         # # Archimax (bivariate only)
         (ArchimaxCopula{2, GumbelGenerator, MixedTail}, "2"),
-        #(BB4Copula,                                     "2"),
-        #(BB5Copula,                                     "2"),
+        (BB4Copula,                                     "2"),
+        (BB5Copula,                                     "2"),
     ]
 
     for d in (2, 3, 4)
