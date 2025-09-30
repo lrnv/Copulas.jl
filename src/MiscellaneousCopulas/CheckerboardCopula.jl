@@ -60,12 +60,6 @@ function CheckerboardCopula(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool
     boxes = StatsBase.proportionmap(collect(keys_iter))
     return CheckerboardCopula{d, eltype(values(boxes))}(ms, boxes)
 end
-
-function Distributions.pdf(C::CheckerboardCopula{d}, u) where {d}
-    # the goal is to find the right box. 
-    b = Tuple(min.(C.m .- 1, floor.(Int, u .* C.m)))
-    return haskey(C.boxes, b) ? C.boxes[b] * prod(C.m) : 0.0
-end
 function Distributions._logpdf(C::CheckerboardCopula{d}, u) where {d}
     b = Tuple(min.(C.m .- 1, floor.(Int, u .* C.m)))
     if haskey(C.boxes, b)

@@ -109,6 +109,16 @@ end
 function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
     return τ⁻¹(generatorof(T),τ_val)
 end
+function ρ(C::ArchimedeanCopula{d,TG}) where {d,TG}
+    if applicable(Copulas.ρ, C.G)
+        return ρ(C.G)
+    else
+        return @invoke ρ(C::Copula)
+    end
+end
+function ρ⁻¹(::Type{T},ρ_val) where {T<:ArchimedeanCopula}
+    return ρ⁻¹(generatorof(T),ρ_val)
+end
 function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     @assert d == size(u, 1)
     U = zero(u)
