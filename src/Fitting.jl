@@ -250,16 +250,51 @@ Distributions.loglikelihood(C::Copulas.Copula, u::AbstractVector{<:Real}) = Dist
 Distributions.loglikelihood(M::CopulaModel) = M.ll
 Distributions.loglikelihood(M::CopulaModel, U::AbstractMatrix) = Distributions.loglikelihood(M.result, U)
 
+"""
+    nobs(M::CopulaModel) -> Int
+
+Number of observations used in the model fit.
+"""
 StatsBase.nobs(M::CopulaModel)     = M.n
 StatsBase.isfitted(::CopulaModel)  = true
+
+"""
+    deviance(M::CopulaModel) -> Float64
+
+Deviation of the fitted model (-2 * loglikelihood).
+"""
 StatsBase.deviance(M::CopulaModel) = -2 * Distributions.loglikelihood(M)
 StatsBase.dof(M::CopulaModel) = StatsBase.dof(M.result)
+
+"""
+    _copula_of(M::CopulaModel)
+
+Returns the copula object contained in the model, even if the result is a `SklarDist`.
+"""
 _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
+
+"""
+    coef(M::CopulaModel) -> Vector{Float64}
+
+Vector with the estimated parameters of the copula.
+"""
 StatsBase.coef(M::CopulaModel) = collect(values(Distributions.params(_copula_of(M)))) # why ? params of the marginals should also be taken into account. 
+
+"""
+    coefnames(M::CopulaModel) -> Vector{String}
+
+Names of the estimated copula parameters.
+"""
 StatsBase.coefnames(M::CopulaModel) = string.(keys(Distributions.params(_copula_of(M))))
 StatsBase.dof(C::Copulas.Copula) = length(values(Distributions.params(C)))
 
 #(optional vcov) and vcov its very important... for inference 
+"""
+    vcov(M::CopulaModel) -> Union{Nothing, Matrix{Float64}}
+
+Variance and covariance matrix of the estimators.
+Can be `nothing` if not available.
+"""
 StatsBase.vcov(M::CopulaModel) = M.vcov
 function StatsBase.stderror(M::CopulaModel)
     V = StatsBase.vcov(M)
@@ -275,7 +310,18 @@ function StatsBase.confint(M::CopulaModel; level::Real=0.95)
     return θ .- z .* se, θ .+ z .* se
 end
 
+"""
+    aic(M::CopulaModel) -> Float64
+
+Akaike information criterion for the fitted model.
+"""
 StatsBase.aic(M::CopulaModel) = 2*StatsBase.dof(M) - 2*Distributions.loglikelihood(M)
+
+"""
+    bic(M::CopulaModel) -> Float64
+
+Bayesian information criterion for the fitted model.
+"""
 StatsBase.bic(M::CopulaModel) = StatsBase.dof(M)*log(StatsBase.nobs(M)) - 2*Distributions.loglikelihood(M)
 function aicc(M::CopulaModel)
     k, n = StatsBase.dof(M), StatsBase.nobs(M)
