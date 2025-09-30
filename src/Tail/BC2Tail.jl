@@ -51,7 +51,6 @@ _rebound_params(::Type{<:BC2Copula}, d, α) = begin
 end
 
 τ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T} = 1 - abs(C.tail.a - C.tail.b)
-
 function ρ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T}
     a, b = C.tail.a, C.tail.b
     num = 2 * (a + b + a*b + max(a,b) - 2a^2 - 2b^2)

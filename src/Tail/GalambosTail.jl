@@ -58,11 +58,6 @@ _example(::Type{<:GalambosCopula}, d) = ExtremeValueCopula(2, GalambosTail(1.0))
 _unbound_params(::Type{<:GalambosCopula}, d, θ) = [log(θ.θ)]           # θ > 0
 _rebound_params(::Type{<:GalambosCopula}, d, α) = (; θ = exp(α[1]))
 
-β(C::GalambosCopula{T}) where {T} = 2.0^( 2.0^(-1.0/C.tail.θ) ) - 1.0
-β⁻¹(C::GalambosCopula{T}, beta::Real) where {T} = -1/log2(log2(beta+1))
-λᵤ(C::GalambosCopula{T}) where {T} = 2.0^(-1.0/C.tail.θ)
-λᵤ⁻¹(C::GalambosCopula{T}, λ::Real) where {T} = -1.0 / log2(λ)
-
 @inline function d²A(tail::GalambosTail, t::Real)
     tt = _safett(t)
     θ = tail.θ
@@ -110,14 +105,16 @@ end
     return B * (D / S)
 end
 
-tau_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(GalambosTail(θ),t)*t*(1-t)/max(A(GalambosTail(θ),t),_δ(t)), 0, 1; kw...)[1]
-rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(GalambosTail(θ),t))^2, 0, 1; kw...)[1] - 3
+_tau_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(GalambosTail(θ),t)*t*(1-t)/max(A(GalambosTail(θ),t),_δ(t)), 0, 1; kw...)[1]
+_rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(GalambosTail(θ),t))^2, 0, 1; kw...)[1] - 3
 
-iTau(::Type{GalambosCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> tau_galambos(θ) - τ; kw...)
-iRho(::Type{GalambosCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> rho_galambos(θ) - ρ; kw...)
 
-# Sugar syntax
-τ(C::GalambosCopula) = tau_galambos(C.tail.θ)
-ρ(C::GalambosCopula) = rho_galambos(C.tail.θ)
-τ⁻¹(C::GalambosCopula, τ; kw...) = iTau(GalambosCopula, τ; kw...)
-ρ⁻¹(C::GalambosCopula, ρ; kw...) = iRho(GalambosCopula, ρ; kw...)
+τ(C::GalambosCopula) = _tau_galambos(C.tail.θ)
+ρ(C::GalambosCopula) = _rho_galambos(C.tail.θ)
+β(C::GalambosCopula) = 2.0^( 2.0^(-1.0/C.tail.θ) ) - 1.0
+λᵤ(C::GalambosCopula) = 2.0^(-1.0/C.tail.θ)
+
+τ⁻¹(::Type{<:GalambosCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
+ρ⁻¹(::Type{<:GalambosCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
+β⁻¹(::Type{<:GalambosCopula}, beta) = -1/log2(log2(beta+1))
+λᵤ⁻¹(::Type{<:GalambosCopula}, λ) = -1.0 / log2(λ)

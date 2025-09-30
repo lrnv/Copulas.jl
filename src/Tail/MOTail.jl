@@ -58,11 +58,10 @@ function A(tail::MOTail{T}, t::Real) where T
     term3 = λ₁₂ * max(m1, m2)
     return r1 + r2 + term3
 end
-
-τ(C::ExtremeValueCopula{2,MOTail{T}}) where {T} = begin
+function τ(C::MOCopula)
     a = C.tail.λ₁/(C.tail.λ₁+C.tail.λ₁₂)
     b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
-    a*b/(a+b-a*b)
+    return a*b/(a+b-a*b)
 end
 
 # Fitting helpers for EV copulas using Marshall–Olkin tail (λ ≥ 0)

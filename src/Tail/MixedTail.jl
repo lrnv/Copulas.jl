@@ -46,19 +46,17 @@ _rebound_params(::Type{<:MixedCopula}, d, α) = begin
     p = 1 / (1 + exp(-α[1]))
     (; θ = p)
 end
-τ(C::MixedCopula{T}) where {T} = 8 / sqrt(C.tail.θ * (4 - C.tail.θ)) * atan( sqrt(C.tail.θ / (4 - C.tail.θ)) ) - 2
-ρ(C::MixedCopula{T}) where {T} = -3 + 12/(8 - C.tail.θ) + 96 * atan(sqrt(C.tail.θ/(8 - C.tail.θ))) / (sqrt(C.tail.θ) * (8 - C.tail.θ)^(3/2))
-β(C::MixedCopula{T}) where {T} = 2.0^(C.tail.θ / 2) - 1
-β⁻¹(C::MixedCopula{T}, beta::Real) where {T} = 2 * log2(beta + 1)
-λᵤ(C::MixedCopula{T}) where {T} = C.tail.θ / 2
-λᵤ⁻¹(C::MixedCopula{T}, λ::Real) where {T} = 2λ
 
-tau_Mixed(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(MixedTail(θ),t)*t*(1-t)/max(A(MixedTail(θ),t),_δ(t)), 0, 1; kw...)[1]
-rho_Mixed(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(MixedTail(θ),t))^2, 0, 1; kw...)[1] - 3
+_tau_Mixed(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(MixedTail(θ),t)*t*(1-t)/max(A(MixedTail(θ),t),_δ(t)), 0, 1; kw...)[1]
+_rho_Mixed(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(MixedTail(θ),t))^2, 0, 1; kw...)[1] - 3
 
-iTau(::Type{MixedCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> tau_Mixed(θ) - τ; kw...)
-iRho(::Type{MixedCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> rho_Mixed(θ) - ρ; kw...)
+τ(C::MixedCopula) = 8 / sqrt(C.tail.θ * (4 - C.tail.θ)) * atan( sqrt(C.tail.θ / (4 - C.tail.θ)) ) - 2
+ρ(C::MixedCopula) = -3 + 12/(8 - C.tail.θ) + 96 * atan(sqrt(C.tail.θ/(8 - C.tail.θ))) / (sqrt(C.tail.θ) * (8 - C.tail.θ)^(3/2))
+β(C::MixedCopula) = 2.0^(C.tail.θ / 2) - 1
+λᵤ(C::MixedCopula) = C.tail.θ / 2
 
-τ⁻¹(C::MixedCopula, τ; kw...) = iTau(MixedCopula, τ; kw...)
-ρ⁻¹(C::MixedCopula, ρ; kw...) = iRho(MixedCopula, ρ; kw...)
+τ⁻¹(::Type{<:MixedCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> tau_Mixed(θ) - τ; kw...)
+ρ⁻¹(::Type{<:MixedCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> rho_Mixed(θ) - ρ; kw...)
+β⁻¹(::Type{<:MixedCopula}, beta) = 2 * log2(beta + 1)
+λᵤ⁻¹(::Type{<:MixedCopula}, λ) = 2λ
 
