@@ -49,9 +49,10 @@ Distributions.params(G::ClaytonGenerator) = (θ = G.θ,)
 _example(CT::Type{<:ClaytonCopula}, d) = ClaytonCopula(d, 0.5)
 _unbound_params(::Type{<:ClaytonCopula}, d, θ) = [log(θ.θ + 1/(d-1))] # θ > -1/(d-1) ⇒ θ+1/(d-1)>0
 _rebound_params(::Type{<:ClaytonCopula}, d, α) = (; θ = exp(α[1]) - 1/(d-1))
+_θ_bounds(::Type{<:ClaytonGenerator}, d) = (-1/(d-1), Inf)
 
 
-max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : Int(floor(1 - 1/G.θ))
+max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : (1 - 1/G.θ)
 ϕ(  G::ClaytonGenerator, t) = max(1+G.θ*t,zero(t))^(-1/G.θ)
 ϕ⁻¹(G::ClaytonGenerator, t) = (t^(-G.θ)-1)/G.θ
 ϕ⁽¹⁾(G::ClaytonGenerator, t) = (1+G.θ*t) ≤ 0 ? 0 : - (1+G.θ*t)^(-1/G.θ -1)

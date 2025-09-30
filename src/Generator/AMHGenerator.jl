@@ -47,6 +47,7 @@ function _rebound_params(CT::Type{<:AMHCopula}, d, α)
     l =  _find_critical_value_amh(d, step=1e-7)
     (; θ = (exp(α[1]) + l) / (exp(α[1]) + 1))
 end
+_θ_bounds(::Type{<:AMHGenerator}, d) = (clamp(_find_critical_value_amh(d), -1, 1), 1)
 function _find_critical_value_amh(k; step=1e-7)
     # Return the threshold θ_k such that “θ < θ_k ⇒ max_monotony returns k-1”.
     # This unifies analytic and numeric thresholds and falls back to a
