@@ -57,6 +57,8 @@ Base.eltype(C::FGMCopula) = eltype(C.θ)
 # Fitting/params interface
 Distributions.params(C::FGMCopula) = (θ = collect(C.θ),)
 _example(::Type{<:FGMCopula}, d) = FGMCopula(d, fill(0.1, 2^d - d - 1))
+_available_fitting_methods(::Type{<:FGMCopula{2}}) = (:mle, :itau, :irho, :ibeta)
+_available_fitting_methods(::Type{<:FGMCopula}) = (:mle,)
 
 # Compute the maximal λ so that all FGM constraints are strictly satisfied
 function _max_lambda(β, d)
@@ -74,7 +76,7 @@ function _max_lambda(β, d)
         end
     end
     # Stay strictly inside the polytope
-    return 0.99 * λmax
+    return 0.999 * λmax
 end
 
 function _rebound_params(::Type{<:FGMCopula}, d, α)
@@ -182,5 +184,3 @@ end
 
 DistortionFromCop(C::FGMCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivFGMDistortion(float(C.θ[1]), Int8(js[1]), float(uⱼₛ[1]))
 
-_available_fitting_methods(::Type{<:FGMCopula{2}}) = (:mle, :itau, :irho, :ibeta)
-_available_fitting_methods(::Type{<:FGMCopula}) = (:mle,)
