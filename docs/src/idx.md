@@ -9,7 +9,7 @@ All docstrings are collected here as a general reference. We sorted them the pub
 ## Public API 
 ```@autodocs
 Modules = [Copulas]
-Public = true
+Private = false
 ```
 
 ## Other docstrings
@@ -17,7 +17,6 @@ Public = true
 ```@autodocs
 Modules = [Copulas]
 Public = false
-Order = [:type]
 ```
 
 ```@bibliography
