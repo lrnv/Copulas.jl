@@ -104,8 +104,6 @@ end
 # Map between correlation matrices and unconstrained vectors α ∈ ℝ^{d(d-1)/2}
 
 # Gaussian / t (pareado por pares)
-_available_fitting_methods(::Type{<:GaussianCopula}) = (:itau, :irho, :ibeta, :mle)
-_available_fitting_methods(::Type{<:TCopula}) = (:mle)
 
 @inline function _unbound_corr_params(d::Int, Σ::AbstractMatrix)
     Lc = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=true).L

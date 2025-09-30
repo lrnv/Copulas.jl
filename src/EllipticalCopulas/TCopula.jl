@@ -97,3 +97,4 @@ function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where
     return (; ν = ν, Σ = Σ)
 end
 
+_available_fitting_methods(::Type{<:TCopula}) = (:mle)

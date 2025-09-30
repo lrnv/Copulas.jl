@@ -144,3 +144,4 @@ function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
     Σ = Matrix(dd.Σ)
     return GaussianCopula(Σ), (;)
 end
+_available_fitting_methods(::Type{<:GaussianCopula}) = (:itau, :irho, :ibeta, :mle)
