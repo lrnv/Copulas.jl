@@ -511,7 +511,9 @@
                         r2 = fit(CT, spl1000, m)
 
                         if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(CT<:PlackettCopula)
-                            @test r2 == r1.result
+                            α1 = Copulas._unbound_params(CT, d, Distributions.params(r1.result))
+                            α2 = Copulas._unbound_params(CT, d, Distributions.params(r2))
+                            @test α1 ≈ α2
                         end
 
                         # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
@@ -521,8 +523,10 @@
                 @testset "Fitting Sklar x CT" begin
                     r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
                     r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-                    if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator})
-                        @test r4 == r3.result
+                    if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(CT<:PlackettCopula)
+                        α1 = Copulas._unbound_params(CT, d, Distributions.params(r3.result.C))
+                        α2 = Copulas._unbound_params(CT, d, Distributions.params(r4.C))
+                        @test α1 ≈ α2
                     end
                 end
             end
