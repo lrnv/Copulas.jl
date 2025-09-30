@@ -186,7 +186,7 @@ end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
     δ    = 1e-8; d = size(U,1); TT = tailof(CT)
-    λobs = clamp(upper_tail(U; est=:log), 0.0, 1.0)  # empirical upper tail (EV)
+    λobs = clamp(upper_tail(U), 0.0, 1.0)  # empirical upper tail (EV)
     lo, hi = _θ_bounds(TT, d)
     f(θ) = λᵤ(CT(d, θ))
     a = isfinite(lo) ? lo + δ : -5.0
