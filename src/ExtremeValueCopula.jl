@@ -94,3 +94,20 @@ DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTup
 
 
 
+# Parametric-type constructors to allow generic fit to reconstruct from NamedTuple params
+function (::Type{ExtremeValueCopula{D, TT}})(d::Integer, θ::NamedTuple) where {D, TT<:Tail}
+    d == D || @warn "Dimension mismatch constructing ExtremeValueCopula: got d=$(d), type encodes D=$(D). Proceeding with d."
+    # Get parameter order from an example of the tail
+    Tex = _example(ExtremeValueCopula{D, TT}, D).tail
+    names = collect(keys(Distributions.params(Tex)))
+    # Support both plain names and optional tail_-prefixed names
+    getp(nt::NamedTuple, k::Symbol) = haskey(nt, k) ? nt[k] : (haskey(nt, Symbol(:tail_, k)) ? nt[Symbol(:tail_, k)] : throw(ArgumentError("Missing parameter $(k) for ExtremeValueCopula.")))
+    vals = map(n -> getp(θ, n), names)
+    return ExtremeValueCopula(d, TT(vals...))
+end
+function (::Type{ExtremeValueCopula{D, TT}})(d::Integer; kwargs...) where {D, TT<:Tail}
+    return (ExtremeValueCopula{D, TT})(d, NamedTuple(kwargs))
+end
+
+
+

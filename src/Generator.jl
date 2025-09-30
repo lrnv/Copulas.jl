@@ -117,9 +117,6 @@ abstract type AbstractUnivariateFrailtyGenerator<:AbstractFrailtyGenerator end
 const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
 
 
-
-
-
 """
     WilliamsonGenerator{d, TX}
     i𝒲{TX}
