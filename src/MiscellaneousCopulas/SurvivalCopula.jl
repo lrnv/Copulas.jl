@@ -83,7 +83,7 @@ function _fit(::Type{SurvivalCopula}, U,
 end
 
 # Convenience: dispatch on the SurvivalCopula type with embedded base type
-function _fit(::Type{SurvivalCopula{d,subCT,VI}}, U, M::Val{method}; indices::Tuple{Vararg{Int}}, kwargs...) where {d,subCT,VI}
+function _fit(::Type{SurvivalCopula{d,subCT,VI}}, U, M; indices::Tuple{Vararg{Int}}, kwargs...) where {d,subCT,VI}
     return _fit(SurvivalCopula, U, M; base=subCT, indices=indices, kwargs...)
 end
 

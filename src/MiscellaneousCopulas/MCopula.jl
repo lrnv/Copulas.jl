@@ -19,7 +19,7 @@ Distributions.params(::MCopula) = ()
 _example(::Type{<:MCopula}, d) = MCopula(d)
 _unbound_params(::Type{<:MCopula}, d, θ) = Float64[]
 _rebound_params(::Type{<:MCopula}, d, α) = (;)
-_fit(::Type{<:MCopula}, U, ::Any) = MCopula(size(U,1)), (;)
+_fit(::Type{<:MCopula}, U, ::Union{Val{:mle}, Val{:itau}, Val{:irho}, Val{:ibeta}}) = MCopula(size(U,1)), (;)
 
 Distributions._logpdf(::MCopula{d}, u) where {d} = all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::MCopula{d}, u) where {d} = Base.minimum(u)
