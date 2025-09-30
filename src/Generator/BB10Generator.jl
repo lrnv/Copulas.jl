@@ -40,6 +40,7 @@ BB10Copula(d, θ, δ) = ArchimedeanCopula(d, BB10Generator(θ, δ))
 BB10Copula(d; θ::Real, δ::Real) = BB10Copula(d, θ, δ)
 Distributions.params(G::BB10Generator) = (θ = G.θ, δ = G.δ)
 _example(CT::Type{<:BB10Copula}, d) = BB10Copula(d, 2.0, 0.4)
+_example(::Type{ArchimedeanCopula{2, BB10Generator}}, d) = BB10Copula(d, 2.0, 0.4)
 _unbound_params(::Type{<:BB10Copula}, d, θ) = [log(θ.θ), log(θ.δ) - log1p(-θ.δ)]  # logit(δ)
 _rebound_params(::Type{<:BB10Copula}, d, α) = (; θ = exp(α[1]), δ = 1 / (1 + exp(-α[2])))
 

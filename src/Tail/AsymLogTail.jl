@@ -57,6 +57,7 @@ end
 
 # Fitting helpers for EV copulas using Asymmetric Logistic tail
 _example(::Type{<:AsymLogCopula}, d) = ExtremeValueCopula(2, AsymLogTail(2.0, (0.5, 0.5)))
+_example(::Type{ExtremeValueCopula{2, AsymLogTail}}, d) = ExtremeValueCopula(2, AsymLogTail(2.0, (0.5, 0.5)))
 _unbound_params(::Type{<:AsymLogCopula}, d, θ) = [log(θ.α - 1), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)]
 _rebound_params(::Type{<:AsymLogCopula}, d, α) = begin
     σ(x) = 1 / (1 + exp(-x))

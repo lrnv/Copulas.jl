@@ -44,6 +44,7 @@ GumbelCopula(d; θ::Real) = GumbelCopula(d, θ)
 frailty(G::GumbelGenerator) = AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0))
 Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 _example(CT::Type{<:GumbelCopula}, d) = GumbelCopula(d, 1.5)
+_example(::Type{ArchimedeanCopula{2, GumbelGenerator}}, d) = GumbelCopula(d, 1.5)
 _unbound_params(::Type{<:GumbelCopula}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
 _rebound_params(::Type{<:GumbelCopula}, d, α) = (; θ = 1 + exp(α[1]))
 _θ_bounds(::Type{<:GumbelGenerator}, d) = (1, Inf)

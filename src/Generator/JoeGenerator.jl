@@ -44,6 +44,7 @@ JoeCopula(d; θ::Real) = JoeCopula(d, θ)
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
 Distributions.params(G::JoeGenerator) = (θ = G.θ,)
 _example(CT::Type{<:JoeCopula}, d) = JoeCopula(d, 1.5)
+_example(::Type{ArchimedeanCopula{2, JoeGenerator}}, d) = JoeCopula(d, 1.5)
 _unbound_params(::Type{<:JoeCopula}, d, θ) = [log(θ.θ - 1)]
 _rebound_params(::Type{<:JoeCopula}, d, α) = (; θ = 1 + exp(α[1]))
 _θ_bounds(::Type{<:JoeGenerator}, d) = (1, Inf)

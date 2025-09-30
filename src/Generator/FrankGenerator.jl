@@ -46,6 +46,7 @@ max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
 
 Distributions.params(G::FrankGenerator) = (θ = G.θ,)
 _example(CT::Type{<:FrankCopula}, d) = FrankCopula(d, 1.0)
+_example(::Type{ArchimedeanCopula{2, FrankGenerator}}, d) = FrankCopula(d, 1.0)
 _unbound_params(::Type{<:FrankCopula}, d, θ) = d == 2 ? [θ.θ] : [log(θ.θ)]
 _rebound_params(::Type{<:FrankCopula}, d, α) = d==2 ? (; θ = α[1]) : (; θ = exp(α[1]))
 _θ_bounds(::Type{<:FrankGenerator}, d) = d==2 ? (-Inf, Inf) : (0, Inf)

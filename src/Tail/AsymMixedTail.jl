@@ -63,7 +63,7 @@ end
 
 # Fitting helpers for EV copulas using Asymmetric Mixed tail
 _example(::Type{<:AsymMixedCopula}, d) = ExtremeValueCopula(2, AsymMixedTail((0.3, 0.2)))
-
+_example(::Type{ExtremeValueCopula{2, AsymMixedTail}}, d) = ExtremeValueCopula(2, AsymMixedTail((0.3, 0.2)))
 # Constraint set: θ₁ ≥ 0, θ₁ + θ₂ ≤ 1, θ₁ + 2θ₂ ≤ 1, θ₁ + 3θ₂ ≥ 0.
 # We map α∈ℝ² → feasible (θ₁,θ₂) by using unconstrained (a,b) then projecting into a simple parameterization:
 # Let s = σ(a) ∈ (0,1), t = σ(b) ∈ (0,1). Set θ₂ = t * min( (1 - s)/2, s/3 ) and θ₁ = s - θ₂.

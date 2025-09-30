@@ -64,6 +64,7 @@ end
 
 # Fitting helpers for EV copulas using Asymmetric Galambos tail
 _example(::Type{<:AsymGalambosCopula}, d) = ExtremeValueCopula(2, AsymGalambosTail(1.0, (0.5, 0.5))) 
+_example(::Type{ExtremeValueCopula{2, AsymGalambosTail}}, d) = ExtremeValueCopula(2, AsymGalambosTail(1.0, (0.5, 0.5))) 
 _unbound_params(::Type{<:AsymGalambosCopula}, d, θ) = [log(θ.α), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)] 
 _rebound_params(::Type{<:AsymGalambosCopula}, d, α) = begin 
     σ(x) = 1 / (1 + exp(-x)) 

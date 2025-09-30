@@ -42,6 +42,7 @@ BB8Copula(d, ϑ, δ) = ArchimedeanCopula(d, BB8Generator(ϑ, δ))
 BB8Copula(d; ϑ::Real, δ::Real) = BB8Copula(d, ϑ, δ)
 Distributions.params(G::BB8Generator) = (ϑ = G.ϑ, δ = G.δ)
 _example(CT::Type{<:BB8Copula}, d) = BB8Copula(d, 1.5, 0.7)
+_example(::Type{ArchimedeanCopula{2, BB8Generator}}, d) = BB8Copula(d, 1.5, 0.7)
 _unbound_params(::Type{<:BB8Copula}, d, θ) = [log(θ.ϑ - 1), log(θ.δ) - log1p(-θ.δ)]  # logit(δ)
 _rebound_params(::Type{<:BB8Copula}, d, α) = (; ϑ = 1 + exp(α[1]), δ = 1 / (1 + exp(-α[2])))
 
