@@ -129,13 +129,16 @@ end
 ####### Fitting functions for univariate tails only (Extreme Value Copulas).
 ##############################################################################################################################
 
-_example(CT::Type{ExtremeValueCopula}, d) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols)")
-_unbound_params(CT::Type{ExtremeValueCopula}, d, θ) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols)")
-_rebound_params(CT::Type{ExtremeValueCopula}, d, α) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols)")
+_example(CT::Type{<:ExtremeValueCopula}, d) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols, :cfg or :pickands)")
+_unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols, :cfg or :pickands)")
+_rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols, :cfg or :pickands)")
 
-_available_fitting_methods(::Type{<:ExtremeValueCopula}) = (:ols, :cfg, :pickands, :mle)
-_available_fitting_methods(::Type{<:ExtremeValueCopula{d,GT} where {d,GT<:UnivariateTail2}}) = (:mle, :itau, :irho, :ibeta, :iupper, :ols, :pickands, :cfg)
-
+_available_fitting_methods(::Type{ExtremeValueCopula}) = (:ols, :cfg, :pickands)
+function _available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}})
+    dof = length(_unbound_params(CT, 2, Distributions.params(_example(CT, 2))))
+    dof == 1 && return (:mle, :itau, :irho, :ibeta, :iupper)
+    return (:mle) 
+end
 # Fitting empírico (OLS, CFG, Pickands):
 function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; 
               pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
@@ -145,7 +148,6 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
                           pseudo_values=pseudo_values, kwargs...)
     return C, (; pseudo_values, grid, eps)
 end
-
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:itau})
     @show "Running the ITAU routine from the Extreme value implementation"
     TT = tailof(CT)
@@ -176,7 +178,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
     @show "Running the IBETA routine from the Extreme value implementation"
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, 2)
-    β̂ = blomqvist_beta(U)
+    β̂ = β(U)
     θ̂ = hasmethod(β⁻¹, Tuple{Type{TT}, Real}) ?
          β⁻¹(TT, β̂) :
          β⁻¹(CT(2, isfinite(lo) ? lo + 1e-8 : 1.0), β̂)
