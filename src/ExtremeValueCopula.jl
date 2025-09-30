@@ -62,11 +62,8 @@ end
 β(C::ExtremeValueCopula{2}) = 4^(1 - A(C.tail, 0.5)) - 1
 λᵤ(C::ExtremeValueCopula{2}) = 2 * (1 - A(C.tail, 0.5))
 λₗ(C::ExtremeValueCopula{2}) =  A(C.tail, 0.5) > 0.5 ? 0.0 : 1.0
-function τ⁻¹(C::ExtremeValueCopula{2}, τ_target)
-    TT = Base.typename(typeof(C.tail)).wrapper 
-    lo, hi = _θ_bounds(TT, 2)
-    f(θ) = τ(ExtremeValueCopula(2, TT(θ))) - τ_target
-    return Roots.find_zero(f, (lo, hi), Roots.Brent())
+function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
+    return τ⁻¹(tailof(T),τ_val)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT}, X::DenseMatrix{T}) where {T<:Real, TT}
@@ -121,7 +118,7 @@ function tailof(::Type{S}) where {S <: ExtremeValueCopula}
     try
         return S3.parameters[2].name.wrapper
     catch e
-        @error "There is no generator type associated with the archimedean type $S"
+        @error "There is no tail type associated with the extreme value type $S"
     end
 end
 
@@ -140,66 +137,20 @@ _available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:Univar
 # Fitting empírico (OLS, CFG, Pickands):
 function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; 
               pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
-    C = EmpiricalEVCopula(U; 
-                          method=typeof(method).parameters[1], 
-                          grid=grid, eps=eps, 
-                          pseudo_values=pseudo_values, kwargs...)
+    C = EmpiricalEVCopula(U; method=typeof(method).parameters[1], grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
     return C, (; pseudo_values, grid, eps)
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:itau})
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}, Val{:iupper}})
     # @show "Running the ITAU routine from the Extreme value implementation"
-    TT = tailof(CT)
-    lo, hi = _θ_bounds(TT, 2)
-    τ̂ = StatsBase.corkendall(U')[1,2]
-    θ̂ = hasmethod(τ⁻¹, Tuple{Type{TT}, Real}) ?
-         τ⁻¹(TT, τ̂) :
-         τ⁻¹(CT(2, isfinite(lo) ? lo + 1e-8 : 1.0), τ̂)
-    isfinite(lo) && (θ̂ = max(θ̂, lo))
-    isfinite(hi) && (θ̂ = min(θ̂, hi))
-    return CT(2, θ̂), (; θ̂)
-end
+    
+    θ = m isa Val{:itau} ?       τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) : 
+             m isa Val{:irho} ?  ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) : 
+             m isa Val{:ibeta} ? β⁻¹(CT,  corblomqvist(U')[1,2]) :
+                                 λᵤ⁻¹(CT, tail(U;t=:upper)) # only :iupper left
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:irho})
-    # @show "Running the IRHO routine from the Extreme value implementation"
-    TT = tailof(CT)
-    lo, hi = _θ_bounds(TT, 2)
-    ρ̂ = StatsBase.corspearman(U')[1,2]
-    θ̂ = hasmethod(τ⁻¹, Tuple{Type{TT}, Real}) ?
-         ρ⁻¹(TT, ρ̂) :
-         ρ⁻¹(CT(2, isfinite(lo) ? lo + 1e-8 : 1.0), ρ̂)
-    isfinite(lo) && (θ̂ = max(θ̂, lo))
-    isfinite(hi) && (θ̂ = min(θ̂, hi))
-    return CT(2, θ̂), (; θ̂)
+    θ = clamp(θ, _θ_bounds(tailof(CT), 2)...)
+    return CT(2, θ), (; θ̂=θ)
 end
-
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:ibeta})
-    # @show "Running the IBETA routine from the Extreme value implementation"
-    TT = tailof(CT)
-    lo, hi = _θ_bounds(TT, 2)
-    β̂ = β(U)
-    θ̂ = hasmethod(β⁻¹, Tuple{Type{TT}, Real}) ?
-         β⁻¹(TT, β̂) :
-         β⁻¹(CT(2, isfinite(lo) ? lo + 1e-8 : 1.0), β̂)
-    # Proyecta a los límites del parámetro
-    isfinite(lo) && (θ̂ = max(θ̂, lo))
-    isfinite(hi) && (θ̂ = min(θ̂, hi))
-    return CT(2, θ̂), (; θ̂)
-end
-
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
-    # @show "Running the IUPPER routine from the Extreme value implementation"
-    TT = tailof(CT)
-    lo, hi = _θ_bounds(TT, 2)
-    λ̂ = tail(U;t=:upper)
-    θ̂ = hasmethod(λᵤ⁻¹, Tuple{Type{TT}, Real}) ?
-         λᵤ⁻¹(TT, λ̂) :
-         λᵤ⁻¹(CT(2, isfinite(lo) ? lo + 1e-8 : 1.0), λ̂)
-    isfinite(lo) && (θ̂ = max(θ̂, lo))
-    isfinite(hi) && (θ̂ = min(θ̂, hi))
-    return CT(2, θ̂), (; θ̂)
-end
-
-# --- MLE ---
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:ibeta, xtol::Real=1e-8)
     # @show "Running the MLE routine from the Extreme value implementation"
