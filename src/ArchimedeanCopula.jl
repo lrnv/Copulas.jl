@@ -222,14 +222,24 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:irho})  wh
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ), (; estimator=:irho, eps)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:ibeta})  where {GT<:UnivariateGenerator}
-    d = size(U,1)
-    βobs = clamp(blomqvist_beta(U), -1, 1)
-    lo,hi = _θ_bounds(GT, d)
-    # @show β(CT(d, lo)), βobs, β(CT(d, hi))
-    θ = Roots.find_zero(theta -> β(CT(d, theta)) - βobs, (lo,hi)) # does not bracket correctly even if the show function shows it should for clayton...
-    return CT(d, θ), (;)
+function _fit(CT::Type{<:ArchimedeanCopula{d,GT} where d}, U, ::Val{:ibeta}) where {GT<:UnivariateGenerator}
+    d    = size(U,1); δ = 1e-8
+    βobs = clamp(blomqvist_beta(U), -1+1e-10, 1-1e-10)
+    lo,hi = _θ_bounds(GT,d)
+    fβ(θ) = β(CT(d,θ))
+    a0 = isfinite(lo) ? lo+δ : -5.0 ; b0 = isfinite(hi) ? hi-δ :  5.0
+    βmin, βmax = fβ(a0), fβ(b0)
+    if βmin > βmax; βmin, βmax = βmax, βmin; end
+    θ = if βobs ≤ βmin
+        a0
+    elseif βobs ≥ βmax
+        b0
+    else
+        Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
+    end
+    return CT(d,θ), (; estimator=:ibeta, θ̂=θ)
 end
+
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)  where {GT<:UnivariateGenerator}
     d = size(U,1)
     lo, hi = _θ_bounds(GT, d)
