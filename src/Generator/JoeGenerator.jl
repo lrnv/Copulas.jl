@@ -36,6 +36,7 @@ struct JoeGenerator{T} <: AbstractUnivariateFrailtyGenerator
             return new{typeof(θ)}(θ)
         end
     end
+    JoeGenerator{T}(θ) where T = JoeGenerator(promote(θ, one(T))[1])
 end
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
 JoeCopula(d, θ) = ArchimedeanCopula(d, JoeGenerator(θ))
@@ -66,7 +67,7 @@ function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)
 end
 _joe_tau(θ) =  1 - 4sum(1/(k*(2+k*θ)*(θ*(k-1)+2)) for k in 1:1000) # 446 in R copula.
 τ(G::JoeGenerator) = _joe_tau(G.θ)
-function τ⁻¹(::Type{T}, τ) where T<:JoeGenerator
+function τ⁻¹(::Type{<:JoeGenerator}, τ)
     l, u = one(τ), τ * Inf
     τ ≤ 0 && return l
     τ ≥ 1 && return u
@@ -85,7 +86,7 @@ function _rho_joe_via_cdf(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
 end
 
 ρ(G::JoeGenerator) = _rho_joe_via_cdf(G.θ)
-function ρ⁻¹(::Type{JoeGenerator}, ρ)
+function ρ⁻¹(::Type{<:JoeGenerator}, ρ)
     l, u = one(ρ), ρ * Inf
     ρ ≤ 0 && return l
     ρ ≥ 1 && return u

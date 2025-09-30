@@ -41,6 +41,7 @@ struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
             return new{typeof(θ)}(θ)
         end
     end
+    ClaytonGenerator{T}(θ) where T = ClaytonGenerator(promote(θ, one(T))[1])
 end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 ClaytonCopula(d, θ) = ArchimedeanCopula(d, ClaytonGenerator(θ))
@@ -61,7 +62,7 @@ max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : (1 - 1/G.θ)
 ϕ⁽ᵏ⁾⁻¹(G::ClaytonGenerator, ::Val{k}, t; start_at=t) where k = ((t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))^(1/(-1/G.θ - k)) -1)/G.θ    
 
 τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ/(G.θ+2), 1)
-τ⁻¹(::Type{T},τ) where T<:ClaytonGenerator = ifelse(τ == 1,Inf,2τ/(1-τ))
+τ⁻¹(::Type{<:ClaytonGenerator},τ) = ifelse(τ == 1,Inf,2τ/(1-τ))
 williamson_dist(G::ClaytonGenerator, ::Val{d}) where d = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ), Val{d}()) : ClaytonWilliamsonDistribution(G.θ,d)
 
 frailty(G::ClaytonGenerator) = G.θ >= 0 ? Distributions.Gamma(1/G.θ, G.θ) : throw(ArgumentError("Clayton frailty is only defined for θ ≥ 0 (positive dependence). Got θ = $(G.θ)."))
@@ -105,7 +106,7 @@ function ρ(G::ClaytonGenerator; rtol=1e-8, atol=1e-10)
 end
 
 # Inversa ρ → θ para Clayton (sin recortar a [0,1])
-function ρ⁻¹(::Type{ClaytonGenerator}, ρ̂::Real; atol=1e-10)
+function ρ⁻¹(::Type{<:ClaytonGenerator}, ρ̂; atol=1e-10)
     _ρ = float(ρ̂)
     if isapprox(_ρ, 0.0; atol=1e-14)
         return 0.0
@@ -122,5 +123,3 @@ function ρ⁻¹(::Type{ClaytonGenerator}, ρ̂::Real; atol=1e-10)
     θ = Roots.find_zero(f, (θ0, θ1), Roots.Order2(); xatol=atol)
     return θ
 end
-
-ρ⁻¹(::Type{ClaytonCopula}, ρ̂::Real; kwargs...) = ρ⁻¹(ClaytonGenerator, ρ̂; kwargs...)

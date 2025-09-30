@@ -34,6 +34,7 @@ struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
             return new{typeof(θ)}(θ)
         end
     end
+    GumbelBarnettGenerator{T}(θ) where T = GumbelBarnettGenerator(promote(θ, one(T))[1])
 end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
 GumbelBarnettCopula(d, θ) = ArchimedeanCopula(d, GumbelBarnettGenerator(θ))
@@ -153,7 +154,7 @@ function _gumbelbarnett_tau(θ)
 end
 
 τ(G::GumbelBarnettGenerator) = _gumbelbarnett_tau(G.θ)
-function τ⁻¹(::Type{T}, τ) where T<:GumbelBarnettGenerator
+function τ⁻¹(::Type{<:GumbelBarnettGenerator}, τ)
     τ ≤ -0.3612 && return one(τ)
     τ ≥ 0 && return zero(τ)
     return Roots.find_zero(θ -> _gumbelbarnett_tau(θ) - τ, (0, 1))
@@ -167,13 +168,13 @@ c_GB_TOLV = 1e-12                 # tolerancia en valor
 # Internal grids to rescue bracketing if there are numerical problems
 _GB_GRID_A = (1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-3, 5e-3, 1e-2, 5e-2)
 _GB_GRID_B = (1 - 1e-12, 1 - 1e-10, 1 - 1e-8, 1 - 1e-6, 1 - 1e-4, 0.999, 0.99, 0.95, 0.9)
-function _rho_gumbelbarnett(θ::Real)
+function _rho_gumbelbarnett(θ)
     θ ≤ 0 && return zero(θ)
     r, _ = QuadGK.quadgk(z -> exp(-z)/(1+θ*z), 0, Inf)
     return r-1
 end
 ρ(G::GumbelBarnettGenerator) = _rho_gumbelbarnett(G.θ)
-function ρ⁻¹(::Type{Copulas.GumbelBarnettGenerator}, ρ::Real; xatol::Real=1e-10)
+function ρ⁻¹(::Type{<:GumbelBarnettGenerator}, ρ)
     ρmin = _rho_gumbelbarnett(1 - _GB_EPSB)          # ≈ -0.266… 
     ρ ≤ ρmin && return one(ρ)
     ρ ≥ 0 && return zero(ρ)

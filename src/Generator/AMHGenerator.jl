@@ -33,6 +33,7 @@ struct AMHGenerator{T} <: AbstractUnivariateGenerator
             return new{typeof(θ)}(θ)
         end
     end
+    AMHGenerator{T}(θ) where T = AMHGenerator(promote(θ, one(T))[1])
 end
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
 AMHCopula(d, θ::Real) = ArchimedeanCopula(d, AMHGenerator(θ))
@@ -118,16 +119,9 @@ function _amh_tau(θ)
     return 1 - (2/3)*u/θ^2
 end
 τ(G::AMHGenerator) = _amh_tau(G.θ)
-function τ⁻¹(::Type{T},tau) where T<:AMHGenerator
-    if tau == zero(tau)
-        return tau
-    elseif tau > 1/3
-        @info "AMHCopula cannot handle κ > 1/3."
-        return one(tau)
-    elseif tau < (5 - 8*log(2))/3
-        @info "AMHCopula cannot handle κ < 5 - 8ln(2))/3 (approx -0.1817)."
-        return -one(tau)
-    end
+function τ⁻¹(::Type{<:AMHGenerator}, tau)
+    tau ≤ (5 - 8*log(2))/3 && return -one(tau)
+    tau ≥ 1/3 && return one(tau)
     search_range = tau > 0 ? (0,1) : (-1,0)
     return Roots.find_zero(θ -> tau - _amh_tau(θ), search_range)
 end
@@ -145,7 +139,7 @@ function _rho_amh(a)
     return (3 / a) * (4 * (1 + 1 / a) * Li2 - logTerm - (a + 12))
 end
 ρ(G::AMHGenerator) = _rho_amh(G.θ)
-function ρ⁻¹(::Type{AMHGenerator}, ρ::Real)
+function ρ⁻¹(::Type{<:AMHGenerator}, ρ)
     ρ ≤ 33-48*log(2) && return -one(ρ)
     ρ ≥ 4pi^2 - 39 && return one(ρ)
     return Roots.find_zero(θ -> _rho_amh(θ) - ρ, (-1, 1), Roots.Brent())
