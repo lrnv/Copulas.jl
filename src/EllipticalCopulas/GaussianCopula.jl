@@ -75,12 +75,11 @@ function GaussianCopula(d::Integer, ρ::Real)
 end
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
-function Distributions.fit(::Type{CT},u) where {CT<:GaussianCopula}
+function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:default})
     dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
     Σ = Matrix(dd.Σ)
-    return GaussianCopula(Σ)
+    return GaussianCopula(Σ), (;)
 end
-
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
     x = StatsBase.quantile.(Distributions.Normal(),u)
     d = length(C)
@@ -133,7 +132,6 @@ SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula(C
 
 # Fitting collocated
 StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
-
 function Distributions.params(C::GaussianCopula)
     Σ = C.Σ; n = size(Σ,1)
     # NamedTuple: (ρ_12 = ..., ρ_13 = ..., ρ_23 = ..., ...)

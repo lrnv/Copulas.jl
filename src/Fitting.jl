@@ -35,6 +35,7 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = 
         method_details = md)
 end
 # Fallback: if there is no _fit implemented for (T, method)
+# Maybe that is not the best idea to do ? 
 _fit(T::Type{<:Copulas.Copula}, ::Any, ::Any; kwargs...) = throw(ArgumentError("There is no _fit implemented for $(T) with the requested method."))
 function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}}, X; copula_method = :default, sklar_method = :parametric,
                            summaries = true, margins_kwargs = NamedTuple(), copula_kwargs = NamedTuple()) where
@@ -105,18 +106,9 @@ function StatsBase.dof(C::Copulas.Copula)
 end
 
 copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
-
-StatsBase.coef(M::CopulaModel) = Distributions.params(copula_of(M)) # why ? params of the marginals should also be taken into account. 
-
-function StatsBase.coefnames(M::CopulaModel)
-    C = copula_of(M)
-    if isdefined(Copulas, :paramnames) && hasmethod(Copulas.paramnames, Tuple{typeof(C)})
-        return collect(string.(Copulas.paramnames(C)))
-    else
-        k = length(StatsBase.coef(M))
-        return k == 1 ? ["θ"] : ["θ$(j)" for j in 1:k]
-    end
-end
+StatsBase.coef(M::CopulaModel) = collect(values(Distributions.params(copula_of(M)))) # why ? params of the marginals should also be taken into account. 
+StatsBase.coefnames(M::CopulaModel) = string.(keys(Distributions.params(copula_of(M))))
+StatsBase.dof(C::Copulas.Copula) = length(values(Distributions.params(C)))
 
 #(optional vcov) and vcov its very important... for inference 
 StatsBase.vcov(M::CopulaModel) = M.vcov

@@ -40,12 +40,6 @@ U(::Type{TCopula{d,df,MT}}) where {d,df,MT} = Distributions.TDist(df)
 N(::Type{TCopula{d,df,MT}}) where {d,df,MT} = function(Σ)
     Distributions.MvTDist(df,Σ)
 end
-function Distributions.fit(::Type{CT},u) where {CT<:TCopula}
-    N = Distributions.fit(N(CT), quantile.(U(CT),u))
-    Σ = N.Σ
-    df = N.df
-    return TCopula(df,Σ)
-end
 
 # Kendall tau of bivariate student: 
 # Lindskog, F., McNeil, A., & Schmock, U. (2003). Kendall’s tau for elliptical distributions. In Credit risk: Measurement, evaluation and management (pp. 149-156). Heidelberg: Physica-Verlag HD.
