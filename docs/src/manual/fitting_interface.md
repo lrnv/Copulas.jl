@@ -138,8 +138,3 @@ C_emp = fit(CopulaModel, BetaCopula, U)
 * **4) Empirical**: nonparametric alternative, no parametric assumptions.
 
 For more details on empirical methods see [Empirical models](@ref empirical_copulas).
-
-```@bibliography
-Pages = [@__FILE__]
-Canonical = false
-```
