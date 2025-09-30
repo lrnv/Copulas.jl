@@ -44,6 +44,18 @@ struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: Sta
 end
 
 # Fallbacks that throw if the interface s not implemented correctly. 
+"""
+    Distributions.params(C::Copula)
+    Distributions.params(S::SklarDist)
+
+Return the parameters of the given distribution `C`. Our extension gives these parameters in a named tuple format. 
+
+# Arguments
+- `C::Distributions.Distribution`: The distribution object whose parameters are to be retrieved. Copulas.jl implements particular bindings for SklarDist and Copula objects. 
+
+# Returns
+- A named tuple containing the parameters of the distribution in the order they are defined for that distribution type.
+"""
 Distributions.params(C::Copula) = throw("You need to specify the Distributions.params() function as returning a named tuple with parameters.")
 _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::Type{T}, d)` function for your copula type, returning an example of the copula type in dimension d.")
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
