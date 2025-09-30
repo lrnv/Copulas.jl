@@ -120,7 +120,7 @@ end
 
 @testitem "Extreme Galambos density test" tags=[:ExtremeValueCopula, :GalambosCopula] begin
     # [GenericTests integration]: No. This is a trivial smoke test to catch crashes at extreme params; keep as minimal targeted test.
-    rand(GalambosCopula(19.7), 1000)
-    rand(GalambosCopula(210.0), 1000)
+    rand(GalambosCopula(2, 19.7), 1000)
+    rand(GalambosCopula(2, 210.0), 1000)
     @test true
 end
