@@ -41,16 +41,11 @@ struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
             return new{typeof(θ)}(θ)
         end
     end
-    ClaytonGenerator{T}(θ) where T = ClaytonGenerator(promote(θ, one(T))[1])
 end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
-ClaytonCopula(d, θ) = ArchimedeanCopula(d, ClaytonGenerator(θ))
-ClaytonCopula(d; θ::Real) = ClaytonCopula(d, θ)
 Distributions.params(G::ClaytonGenerator) = (θ = G.θ,)
-_example(CT::Type{<:ClaytonCopula}, d) = ClaytonCopula(d, 0.5)
-_example(::Type{ArchimedeanCopula{2, ClaytonGenerator}}, d) = ClaytonCopula(d, 0.5)
-_unbound_params(::Type{<:ClaytonCopula}, d, θ) = [log(θ.θ + 1/(d-1))] # θ > -1/(d-1) ⇒ θ+1/(d-1)>0
-_rebound_params(::Type{<:ClaytonCopula}, d, α) = (; θ = exp(α[1]) - 1/(d-1))
+_unbound_params(::Type{<:ClaytonGenerator}, d, θ) = [log(θ.θ + 1/(d-1))] # θ > -1/(d-1) ⇒ θ+1/(d-1)>0
+_rebound_params(::Type{<:ClaytonGenerator}, d, α) = (; θ = exp(α[1]) - 1/(d-1))
 _θ_bounds(::Type{<:ClaytonGenerator}, d) = (-1/(d-1), Inf)
 
 

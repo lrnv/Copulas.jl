@@ -34,20 +34,14 @@ struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
             return new{typeof(θ)}(θ)
         end
     end
-    GumbelBarnettGenerator{T}(θ) where T = GumbelBarnettGenerator(promote(θ, one(T))[1])
 end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
-GumbelBarnettCopula(d, θ) = ArchimedeanCopula(d, GumbelBarnettGenerator(θ))
-GumbelBarnettCopula(d; θ::Real) = GumbelBarnettCopula(d, θ)
-
 Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
-_example(::Type{<:GumbelBarnettCopula}, d::Int) = GumbelBarnettCopula(d, 0.5 * _find_critical_value_gumbelbarnett(d))
-_example(::Type{ArchimedeanCopula{2, GumbelBarnettGenerator}}, d) = GumbelBarnettCopula(d, 0.5 * _find_critical_value_gumbelbarnett(d))
-function _unbound_params(::Type{<:GumbelBarnettCopula}, d, θ)
+function _unbound_params(::Type{<:GumbelBarnettGenerator}, d, θ)
     u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
     return [atanh(2θ.θ/u - 1)]
 end
-function _rebound_params(::Type{<:GumbelBarnettCopula}, d, α)
+function _rebound_params(::Type{<:GumbelBarnettGenerator}, d, α)
     u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
     return (; θ = u*(tanh(α[1])+1)/2)
 end
