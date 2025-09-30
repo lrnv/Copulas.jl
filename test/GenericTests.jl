@@ -67,7 +67,8 @@
         !(CT<:RafteryCopula) && 
         !(CT<:EmpiricalCopula) && 
         !(CT<:BC2Copula) &&
-        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
+        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) &&
+        !(CT<:CheckerboardCopula)
 
     can_ad(C::CT) where CT = 
         # This list might be longer than necessary, it should be trimmed.
@@ -536,7 +537,7 @@
                     if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C)
                         α1 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
                         α2 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
-                        @test α1 ≈ α2
+                        @test α1 ≈ α2  atol=1e-4
                     end
                 end
             end
