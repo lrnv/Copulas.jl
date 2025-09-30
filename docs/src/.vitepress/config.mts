@@ -1,7 +1,8 @@
 import { defineConfig } from 'vitepress'
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
-import mathjax3 from "markdown-it-mathjax3";
-import footnote from "markdown-it-footnote";
+import mathjax3 from "markdown-it-mathjax3"
+import footnote from "markdown-it-footnote"
+import markdownItContainer from 'markdown-it-container'
 import path from 'path'
 
 // console.log(process.env)
@@ -73,12 +74,42 @@ export default defineConfig({
   markdown: {
     math: true,
     config(md) {
-      md.use(tabsMarkdownPlugin),
-      md.use(mathjax3),
+      md.use(tabsMarkdownPlugin)
+      md.use(mathjax3)
       md.use(footnote)
-    },
-    theme: {
-      light: "github-light",
+
+      // Completely override container rendering with a custom plugin
+      // This plugin will add a test phrase to every block so you know it's working
+      function customContainerPlugin(md) {
+        const types = [
+          'tip', 'note', 'info', 'warning', 'danger', 'todo', 'definition', 'property', 'remark', 'theorem'
+        ];
+        for (const type of types) {
+          md.use(markdownItContainer, type, {
+            render(tokens, idx) {
+              if (tokens[idx].nesting === 1) {
+                // Block opening
+                // Parse title from info string
+                const info = tokens[idx].info.trim();
+                const firstSpaceIndex = info.indexOf(' ');
+                let title = '';
+                if (firstSpaceIndex !== -1) {
+                  title = info.slice(firstSpaceIndex + 1).trim();
+                }
+                const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
+                const fullTitle = title ? `${typeLabel}: ${title}` : typeLabel;
+                return `<div class="${type} custom-block">\n` +
+                  `<div class="custom-block-title">${fullTitle}</div>\n` +
+                  `<div class="custom-block-content">\n`;
+              } else {
+                // Block closing
+                return `</div>\n</div>\n`;
+              }
+            }
+          });
+        }
+      }
+      customContainerPlugin(md);
       dark: "github-dark"
     },
   },

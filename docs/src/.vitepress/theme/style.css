@@ -127,6 +127,31 @@ font-feature-settings: "calt" off;
   --vp-custom-block-tip-border: var(--vp-dark-green-dark);
   --vp-custom-block-tip-text: var(--vp-dark-subtext);
   --vp-custom-block-tip-bg: var(--vp-dark-gray-mute);
+
+  /* custom todo */
+  --vp-custom-block-todo-border: #7a3fa6;
+  --vp-custom-block-todo-text: var(--vp-dark-subtext);
+  --vp-custom-block-todo-bg: #2a1936;
+
+  /* custom remark */
+  --vp-custom-block-remark-border: #4063D8;
+  --vp-custom-block-remark-text: var(--vp-dark-subtext);
+  --vp-custom-block-remark-bg: #1a2236;
+
+  /* custom warning */
+  --vp-custom-block-warning-border: #ffae42;
+  --vp-custom-block-warning-text: #ffcc99;
+  --vp-custom-block-warning-bg: #33260a;
+
+  /* custom danger */
+  --vp-custom-block-danger-border: #CB3C33;
+  --vp-custom-block-danger-text: var(--vp-dark-subtext);
+  --vp-custom-block-danger-bg: #2a1919;
+
+  /* custom definition/property/theorem/algorithm/fallback */
+  --vp-custom-block-def-border: #0890df;
+  --vp-custom-block-def-text: var(--vp-dark-subtext);
+  --vp-custom-block-def-bg: #18222b;
 }
 
 /**
@@ -172,4 +197,116 @@ mjx-container {
 mjx-container > svg {
   margin: auto;
   display: inline-block;
+}
+
+/* ---------------------------------------------
+ * Custom Admonition Block Styles
+ * --------------------------------------------- */
+.custom-block {
+  border-left: 4px solid;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  border-radius: 6px;
+}
+
+/* Shared title styling */
+.custom-block-title {
+  font-weight: bold;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+}
+
+/* todo: purple */
+.custom-block.todo {
+  border-color: var(--julia-purple);
+  background-color: rgba(149, 88, 178, 0.1); /* light purple */
+}
+
+/* tip: green */
+.custom-block.tip {
+  border-color: var(--julia-green);
+  background-color: rgba(56, 152, 38, 0.1); /* light green */
+}
+
+/* remark: blue */
+.custom-block.remark {
+  border-color: var(--julia-blue);
+  background-color: rgba(64, 99, 216, 0.1); /* light blue */
+}
+
+/* warning: orange */
+.custom-block.warning {
+  border-color: orange;
+  background-color: rgba(255, 165, 0, 0.1); /* light orange */
+  color: #aa5500;
+}
+
+/* danger: red */
+.custom-block.danger {
+  border-color: var(--julia-red);
+  background-color: rgba(203, 60, 51, 0.1); /* light red */
+}
+
+/* Other specific known blocks - you can add more here */
+.custom-block.definition {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05); /* very light brand blue */
+}
+
+.custom-block.property {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05);
+}
+
+.custom-block.theorem {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05);
+}
+
+.custom-block.algorithm {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05);
+}
+
+/* Catch-all fallback for any other block types */
+.custom-block:not(.todo):not(.tip):not(.remark):not(.warning):not(.danger):not(.definition):not(.property):not(.theorem):not(.algorithm) {
+  border-color: var(--vp-c-brand);
+  background-color: rgba(0, 135, 215, 0.05);
+}
+
+/* Optional Dark Mode Adjustments */
+/* Dark mode custom block styles */
+:root.dark .custom-block.tip {
+  border-color: var(--vp-custom-block-tip-border);
+  color: var(--vp-custom-block-tip-text);
+  background-color: var(--vp-custom-block-tip-bg);
+}
+:root.dark .custom-block.todo {
+  border-color: var(--vp-custom-block-todo-border);
+  color: var(--vp-custom-block-todo-text);
+  background-color: var(--vp-custom-block-todo-bg);
+}
+:root.dark .custom-block.remark {
+  border-color: var(--vp-custom-block-remark-border);
+  color: var(--vp-custom-block-remark-text);
+  background-color: var(--vp-custom-block-remark-bg);
+}
+:root.dark .custom-block.warning {
+  border-color: var(--vp-custom-block-warning-border);
+  color: var(--vp-custom-block-warning-text);
+  background-color: var(--vp-custom-block-warning-bg);
+}
+:root.dark .custom-block.danger {
+  border-color: var(--vp-custom-block-danger-border);
+  color: var(--vp-custom-block-danger-text);
+  background-color: var(--vp-custom-block-danger-bg);
+}
+:root.dark .custom-block.definition,
+:root.dark .custom-block.property,
+:root.dark .custom-block.theorem,
+:root.dark .custom-block.algorithm,
+:root.dark .custom-block:not(.todo):not(.tip):not(.remark):not(.warning):not(.danger):not(.definition):not(.property):not(.theorem):not(.algorithm) {
+  border-color: var(--vp-custom-block-def-border);
+  color: var(--vp-custom-block-def-text);
+  background-color: var(--vp-custom-block-def-bg);
 }

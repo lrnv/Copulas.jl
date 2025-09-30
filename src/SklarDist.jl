@@ -11,7 +11,7 @@ Constructor
 
 Construct a joint distribution via Sklar's theorem from marginals and a copula. See [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem):
 
-!!! theorem "Theorem (Sklar 1959):"
+!!! theorem "Sklar 1959"
     For every random vector ``\\boldsymbol X``, there exists a copula ``C`` such that 
 
     ``\\forall \\boldsymbol x\\in \\mathbb R^d, F(\\boldsymbol x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).``

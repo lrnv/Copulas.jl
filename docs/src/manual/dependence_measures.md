@@ -12,12 +12,12 @@ We implement the most well-known ones in this package.
 
 ## Kendall's τ and Spearman's ρ
 
-!!! definition "Definition (Kendall' τ):"
+!!! definition "Kendall' τ"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
 
     $$\tau = 4 \int C(\boldsymbol u) \, c(\boldsymbol u) \;d\boldsymbol u -1$$
 
-!!! definition "Definition (Spearman's ρ):"
+!!! definition "Spearman's ρ"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Spearman's ρ is defined as: 
 
     $$\rho = 12 \int C(\boldsymbol u) d\boldsymbol u -3.$$
@@ -30,7 +30,7 @@ We thus provide two different interfaces:
 Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C)` (for the multivariate versions) and `corkendall(C), corspearman(C)` (for the matrix versions).
 Similarly, empirical versions of these metrics can be obtained from a matrix of observations `data` of size `(d,n)` by  `Copulas.τ(data)`, `Copulas.ρ(data)`, `StatsBase.corkendall(data)` and `StatsBase.corspearman(data)`.
 
-!!! note "Ranges of $\tau$ and $\rho$."
+!!! info "Ranges of $\tau$ and $\rho$."
     Kendall's $\tau$ and Spearman's $\rho$ belong to $[-1, 1]$. They are equal to :
     * 0 if and only if the copula is a `IndependentCopula`.
     * -1 is and only if the copula is a `WCopula`.
@@ -61,7 +61,7 @@ Remark the clear and easy to exploit bijection.
 
 Many people are interested in the tail behavior of their dependence structures. Tail coefficients summarize this tail behavior.
 
-!!! definition "Definition (Tail dependency):"
+!!! definition "Tail dependency"
     For a copula $C$, we define the upper tail statisticss (when they exist):
 
     ```math
