@@ -38,7 +38,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
            (; θ̂=θhat,
-              optimizer = Optim.method(res),
+              optimizer = Optim.summary(res),
               converged = Optim.converged(res),
               iterations = Optim.iterations(res))
 end
@@ -51,7 +51,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:itau})
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
            (; θ̂=θhat,
-              optimizer = Optim.method(res),
+              optimizer = Optim.summary(res),
               converged = Optim.converged(res),
               iterations = Optim.iterations(res))
 end
@@ -64,7 +64,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:irho})
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
            (; θ̂=θhat,
-              optimizer = Optim.method(res),
+              optimizer = Optim.summary(res),
               converged = Optim.converged(res),
               iterations = Optim.iterations(res))
 end
@@ -77,14 +77,20 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:ibeta})
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
            (; θ̂=θhat,
-              optimizer = Optim.method(res),
+              optimizer = Optim.summary(res),
               converged = Optim.converged(res),
               iterations = Optim.iterations(res))
 end
 
 
 @inline  Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
+_default_method(::Type{<:Copula}) = :mle
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
+
+    if method == :default
+        method = _default_method(CT)
+    end
+
     d, n  = size(U)
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
     C, meta = rez

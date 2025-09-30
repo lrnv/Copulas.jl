@@ -74,51 +74,10 @@ function GaussianCopula(d::Integer, ρ::Real)
     return GaussianCopula(Σ)
 end
 
-
-# Fitting collocated
-StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
-function Distributions.params(C::GaussianCopula)
-    Σ = C.Σ; d = size(Σ,1)
-    return (; (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:d-1 for j in i+1:d)...)
-end
-_example(::Type{GaussianCopula}, d::Int) = GaussianCopula(Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
-
-function _unbound_params(::Type{GaussianCopula}, d::Int, θ::NamedTuple)
-    Σ = _Σ_from_named(d, θ)
-    L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=false).L
-    δ = log.(LinearAlgebra.diag(L))
-    ℓ = Vector{eltype(Σ)}(undef, d*(d-1)÷2); k=1
-    @inbounds for i in 2:d, j in 1:i-1
-        ℓ[k] = L[i,j]; k+=1
-    end
-    return vcat(δ, ℓ)
-end
-
-function _rebound_params(::Type{GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
-    L = Matrix{T}(LinearAlgebra.I, d, d)
-    @inbounds begin
-        for i in 1:d; L[i,i] = exp(α[i]); end
-        k=1
-        for i in 2:d, j in 1:i-1
-            L[i,j] = α[d+k]; k+=1
-        end
-    end
-    S  = L*L'
-    dvec = sqrt.(LinearAlgebra.diag(S))
-    Dinv = LinearAlgebra.Diagonal(inv.(dvec))
-    Σ = Dinv * S * Dinv
-    Σ = (Σ + Σ')/2   # force simetric matrix ... 
-    return (; Σ = Σ)
-end
 #only for flexibility in our fit... other option could be return CT(θhat.Σ), meta in generic mle fit...
 GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula(Σ) 
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
-function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:default})
-    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
-    Σ = Matrix(dd.Σ)
-    return GaussianCopula(Σ), (;)
-end
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
     x = StatsBase.quantile.(Distributions.Normal(),u)
     d = length(C)
@@ -168,3 +127,44 @@ end
 # Subsetting colocated
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula(C.Σ[collect(dims),collect(dims)])
 
+
+# Fitting collocated
+StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
+function Distributions.params(C::GaussianCopula)
+    Σ = C.Σ; d = size(Σ,1)
+    return (; (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:d-1 for j in i+1:d)...)
+end
+_example(::Type{GaussianCopula}, d::Int) = GaussianCopula(Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
+
+function _unbound_params(::Type{GaussianCopula}, d::Int, θ::NamedTuple)
+    Σ = _Σ_from_named(d, θ)
+    L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=false).L
+    δ = log.(LinearAlgebra.diag(L))
+    ℓ = Vector{eltype(Σ)}(undef, d*(d-1)÷2); k=1
+    @inbounds for i in 2:d, j in 1:i-1
+        ℓ[k] = L[i,j]; k+=1
+    end
+    return vcat(δ, ℓ)
+end
+
+function _rebound_params(::Type{GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
+    L = Matrix{T}(LinearAlgebra.I, d, d)
+    @inbounds begin
+        for i in 1:d; L[i,i] = exp(α[i]); end
+        k=1
+        for i in 2:d, j in 1:i-1
+            L[i,j] = α[d+k]; k+=1
+        end
+    end
+    S  = L*L'
+    dvec = sqrt.(LinearAlgebra.diag(S))
+    Dinv = LinearAlgebra.Diagonal(inv.(dvec))
+    Σ = Dinv * S * Dinv
+    Σ = (Σ + Σ')/2   # force simetric matrix ... 
+    return (; Σ = Σ)
+end
+function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
+    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
+    Σ = Matrix(dd.Σ)
+    return GaussianCopula(Σ), (;)
+end

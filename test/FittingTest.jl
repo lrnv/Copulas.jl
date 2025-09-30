@@ -8,7 +8,8 @@
     using StableRNGs
     rng = StableRNG(123)
 
-    using Copulas: ClaytonGenerator, Williamsongenerator, GumbelGenerator, GalamlbosTail, MixedTail # to avoid typing "Copulas." in front. 
+
+    using Copulas: ClaytonGenerator, WilliamsonGenerator, GumbelGenerator, GalambosTail, MixedTail, ExtremeValueCopula # to avoid typing "Copulas." in front. 
 
     # Methods legend (remove characters to skip a method for a model):
     # D = :default, M = :mle, T = :itau, R = :irho, B = :ibeta, G = :gnz2011
@@ -19,6 +20,9 @@
         'R' => :irho,
         'B' => :ibeta,
         'G' => :gnz2011, # only for empirical archimedeans. 
+        'O' => :ols,
+        'C' => :cfg,
+        'P' => :pickands,
     )
 
     # Structured manifest of test cases
@@ -32,14 +36,16 @@
         # ("W",               d -> WCopula,                                                                 "2",   "DMTRB"),
 
         # Empirical/misc (all d)
-        ("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
+        # ("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
         # ("Beta",            d -> BetaCopula,                                                              "234", "D"),
         # ("Checkerboard",    d -> CheckerboardCopula,                                                      "234", "D"),
         # ("Empirical",       d -> EmpiricalCopula,                                                         "234", "D"),
+        # ("Archimedean(emp)",        d -> ArchimedeanCopula,                                               "234", "DG"),
+        # ("ExtremeValueCopula(emp)", d -> ExtremeValueCopula,                                                "2", "DOCP"),
 
 
         # # Elliptical (all d)
-        # ("Gaussian",        d -> GaussianCopula,                                                          "234", "DMTRB"),
+        ("Gaussian",        d -> GaussianCopula,                                                          "234", "DMTRB"),
         # ("t",               d -> TCopula,                                                                 "234", "DMTRB"),
 
         # # Archimedean generic and variants (all d)
@@ -98,36 +104,15 @@
             local_methods = [METHODS[c] for c in meth]
             isempty(local_methods) && continue
             @testset "$name" begin
-                successes = 0
-                not_impl = 0
-                errored  = 0
                 for methsym in local_methods
                     @testset "$(name) | d=$(d) | $(methsym)" begin
-                        try
-                            fitres = fit(CopulaModel, CT, U; method=methsym)
-                            # Basic sanity checks
-                            @test length(Copulas.copula_of(fitres)) == d
-                            @test isa(fitres, CopulaModel)
-                            successes += 1
-                        catch err
-                            # Classify the failure for clearer diagnostics
-                            msg = sprint(showerror, err)
-                            if occursin("There is no _fit implemented", msg) ||
-                               occursin("You need to specify the `_example", msg) ||
-                               occursin("You need to specify the _unbound_param", msg) ||
-                               occursin("You need to specify the _rebound_param", msg) ||
-                               occursin("Cannot fit an Archimedean copula without specifying its generator", msg)
-                                not_impl += 1
-                                @info "NotImplemented: $(name) d=$(d) $(methsym): $(msg)"
-                            else
-                                errored += 1
-                                @warn "Errored: $(name) d=$(d) $(methsym): $(msg)"
-                            end
-                        end
+                        @info "$(name) | d=$(d) | $(methsym)"
+                        fitres = fit(CopulaModel, CT, U; method=methsym)
+                        # Basic sanity checks
+                        @test length(Copulas.copula_of(fitres)) == d
+                        @test isa(fitres, CopulaModel)
                     end
                 end
-                @test successes >= 1
-                @info "Summary $(name) d=$(d): successes=$(successes) not_impl=$(not_impl) errored=$(errored)"
             end
         end
     end

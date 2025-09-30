@@ -32,7 +32,6 @@ DistortionFromCop(::MCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i
 
 # Fitting/params interface (no parameters)
 Distributions.params(::MCopula) = (;)
-_fit(::Type{<:MCopula}, U, ::Val{:default}) = MCopula(size(U,1)), (;)
 _fit(::Type{<:MCopula}, U, ::Val{:mle}) = MCopula(size(U,1)), (;)
 _fit(::Type{<:MCopula}, U, ::Val{:itau}) = MCopula(size(U,1)), (;)
 _fit(::Type{<:MCopula}, U, ::Val{:irho}) = MCopula(size(U,1)), (;)

@@ -61,6 +61,14 @@ function Distributions.pdf(C::CheckerboardCopula{d}, u) where {d}
     b = Tuple(min.(C.m .- 1, floor.(Int, u .* C.m)))
     return haskey(C.boxes, b) ? C.boxes[b] * prod(C.m) : 0.0
 end
+function Distributions._logpdf(C::CheckerboardCopula{d}, u) where {d}
+    b = Tuple(min.(C.m .- 1, floor.(Int, u .* C.m)))
+    if haskey(C.boxes, b)
+        return log(C.boxes[b]) + sum(log, C.m)
+    else
+        return -Inf
+    end
+end
 function _cdf(C::CheckerboardCopula{d}, u) where {d}
     um = u .* C.m
     # Histogram/overlap CDF: sum over boxes of w_k × ∏_i clamp(m_i u_i − k_i, 0, 1)
@@ -149,6 +157,7 @@ end
 
 # Fit API: mirror constructor for the moment until we get a better API ?
 StatsBase.dof(::Copulas.CheckerboardCopula) = 0
-function _fit(::Type{<:CheckerboardCopula}, u, ::Val{:default}; pseudo_values::Bool=true)
+_default_method(::Type{<:CheckerboardCopula}) = :exact
+function _fit(::Type{<:CheckerboardCopula}, u, ::Val{:exact}; m=nothing, pseudo_values::Bool=true)
     return CheckerboardCopula(u; m=m, pseudo_values=pseudo_values), (; pseudo_values)
 end
