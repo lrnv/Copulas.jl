@@ -218,3 +218,9 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U
                         xtol=xtol, converged=Optim.converged(res), 
                         iterations=Optim.iterations(res))
 end
+
+function _fit(::Type{ArchimedeanCopula}, U, ::Val{:default})
+    # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted. 
+    d,n = size(U)
+    return ArchimedeanCopula(d, EmpiricalGenerator(U)), (;)
+end
