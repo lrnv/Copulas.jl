@@ -106,6 +106,7 @@
     can_be_fitted(C::CT) where CT = length(Copulas._available_fitting_methods(CT)) > 0
     has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
     has_unbounded_params(C::CT) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT) && length(Distributions.params(C)) > 0
+    unbounding_is_a_bijection(C::Copulas.Copula{d}) where d = !(typeof(C)<:FGMCopula && d>2)
 
     function check(C::Copulas.Copula{d}) where d
         @testset "Testing $C" begin
@@ -496,13 +497,17 @@
                     # First on the _example copula. 
                     θ₀ = Distributions.params(Copulas._example(CT, d))
                     θ₁ = Copulas._rebound_params(CT, d, Copulas._unbound_params(CT, d, θ₀))
-                    @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
+                    @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
+                        @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
+                    end
                     @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
 
                     # Then on the copula we have at hand:
                     θ₀ = Distributions.params(C)
                     θ₁ = Copulas._rebound_params(CT, d, Copulas._unbound_params(CT, d, θ₀))
-                    @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
+                    @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
+                        @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
+                    end
                     @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
                 end
 
