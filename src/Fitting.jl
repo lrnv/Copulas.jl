@@ -80,7 +80,7 @@ They must return a pair `(copula, meta)` where:
 - `meta::NamedTuple` holds method–specific metadata to be stored in `method_details`.
 
 This is not intended for direct use by end–users.  
-Use [`fit(CopulaModel, ...)`](@ref) instead.
+Use [`Distributions.fit(CopulaModel, ...)`](@ref) instead.
 """
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     # @info "Running the itau/irho/ibeta routine from the generic implementation"
@@ -100,14 +100,15 @@ function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:
            (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
 end
 """
-    fit(CT::Type{<:Copula}, U; kwargs...) -> CT
+    Distributions.fit(CT::Type{<:Copula}, U; kwargs...) -> CT
 
-Quick fit: devuelve solo la cópula ajustada (atajo de `fit(CopulaModel, CT, U; summaries=false, kwargs...).result`).
+Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(CopulaModel, CT, U; summaries=false, kwargs...).result`).
 """
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; copula_method=method, kwargs...)
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
+
 """
     _available_fitting_methods(::Type{<:Copula})
 
