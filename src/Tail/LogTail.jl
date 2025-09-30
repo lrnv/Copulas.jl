@@ -35,31 +35,23 @@ struct LogTail{T} <: AbstractUnivariateTail2
 end
 
 const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
-LogCopula(θ) = ExtremeValueCopula(2, LogTail(θ))
-LogCopula(d::Integer, θ) = ExtremeValueCopula(2, LogTail(θ))
 Distributions.params(tail::LogTail) = (θ = tail.θ,)
+_unbound_params(::Type{<:LogTail}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
+_rebound_params(::Type{<:LogTail}, d, α) = (; θ = exp(α[1]) + 1)
 _θ_bounds(::Type{<:LogTail}, d) = (1, Inf)
+
+
 function ℓ(tail::LogTail, t)
     t₁, t₂ = t
     θ = tail.θ
     return (t₁^θ + t₂^θ)^(1/θ)
 end
-
-# Fitting helpers for EV copulas using Log tail
-_example(::Type{<:LogCopula}, d) = ExtremeValueCopula(2, LogTail(2.0))
-_example(::Type{ExtremeValueCopula{2, LogTail}}, d) = ExtremeValueCopula(2, LogTail(2.0))
-_unbound_params(::Type{<:LogCopula}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
-_rebound_params(::Type{<:LogCopula}, d, α) = (; θ = exp(α[1]) + 1)
-
-# A(t) for LogCopula (avec log-exp pour la stabilité)
 function A(tail::LogTail, t::Real)
     θ = tail.θ
     # log-sum-exp trick: log(t^θ + (1-t)^θ) = logsumexp(θ*log(t), θ*log1p(-t))
     logB = LogExpFunctions.logaddexp(θ*log(t), θ*log1p(-t))
     return exp(logB / θ)
 end
-
-# Première dérivée dA/dt (stable numériquement)
 function dA(tail::LogTail, t::Real)
     θ = tail.θ
 
@@ -79,8 +71,6 @@ function dA(tail::LogTail, t::Real)
 
     return Bpow * D
 end
-
-# Seconde dérivée d²A/dt² (stable numériquement)
 function d²A(tail::LogTail, t::Real)
     θ = tail.θ
 

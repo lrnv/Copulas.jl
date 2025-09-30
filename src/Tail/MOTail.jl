@@ -40,8 +40,8 @@ end
 
 const MOCopula{T} = ExtremeValueCopula{2, MOTail{T}}
 Distributions.params(tail::MOTail) = (λ₁ = tail.λ₁, λ₂ = tail.λ₂, λ₃ = tail.λ₁₂)
-MOCopula(λ₁, λ₂, λ₁₂) = ExtremeValueCopula(2, MOTail(λ₁, λ₂, λ₁₂))
-MOCopula(d::Integer, λ₁, λ₂, λ₁₂) = ExtremeValueCopula(2, MOTail(λ₁, λ₂, λ₁₂))
+_unbound_params(::Type{<:MOTail}, d, θ) = [log(θ.λ₁), log(θ.λ₂), log(θ.λ₃)]
+_rebound_params(::Type{<:MOTail}, d, α) = (; λ₁ = exp(α[1]), λ₂ = exp(α[2]), λ₃ = exp(α[3]))
 
 function A(tail::MOTail{T}, t::Real) where T
     tt = _safett(t)
@@ -63,13 +63,6 @@ function τ(C::MOCopula)
     b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
     return a*b/(a+b-a*b)
 end
-
-# Fitting helpers for EV copulas using Marshall–Olkin tail (λ ≥ 0)
-_example(::Type{<:MOCopula}, d) = ExtremeValueCopula(2, MOTail(1.0, 1.0, 1.0))
-_example(::Type{ExtremeValueCopula{2, MOTail}}, d) = ExtremeValueCopula(2, MOTail(1.0, 1.0, 1.0))
-_unbound_params(::Type{<:MOCopula}, d, θ) = [log(θ.λ₁), log(θ.λ₂), log(θ.λ₃)]
-_rebound_params(::Type{<:MOCopula}, d, α) = (; λ₁ = exp(α[1]), λ₂ = exp(α[2]), λ₃ = exp(α[3]))
-
 function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {T, S}
     a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
     b = D.tail.λ₂ / (D.tail.λ₂ + D.tail.λ₁₂)
@@ -118,7 +111,6 @@ function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {
         return factor <= 0 ? T(-Inf) : T(logC - log(u) + log(factor))
     end
 end
-
 function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) where {T, S}
     a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
     b = D.tail.λ₂ / (D.tail.λ₂ + D.tail.λ₁₂)

@@ -36,10 +36,11 @@ struct GalambosTail{T} <: AbstractUnivariateTail2
 end
 
 const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
-GalambosCopula(θ) = ExtremeValueCopula(2, GalambosTail(θ))
-GalambosCopula(d::Integer, θ) = ExtremeValueCopula(2, GalambosTail(θ))
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
+_unbound_params(::Type{<:GalambosTail}, d, θ) = [log(θ.θ)]           # θ > 0
+_rebound_params(::Type{<:GalambosTail}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:GalambosTail}, d) = (0, Inf)
+
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
 function A(tail::GalambosTail, t::Real)
     tt = _safett(t)
@@ -52,14 +53,7 @@ function A(tail::GalambosTail, t::Real)
         return -LogExpFunctions.expm1(-LogExpFunctions.logaddexp(-θ*log(tt), -θ*log(1-tt)) / θ)
     end
 end
-
-# Fitting helpers for EV copulas using Galambos tail
-_example(::Type{<:GalambosCopula}, d) = ExtremeValueCopula(2, GalambosTail(1.0))
-_example(::Type{ExtremeValueCopula{2, GalambosTail}}, d) = ExtremeValueCopula(2, GalambosTail(1.0))
-_unbound_params(::Type{<:GalambosCopula}, d, θ) = [log(θ.θ)]           # θ > 0
-_rebound_params(::Type{<:GalambosCopula}, d, α) = (; θ = exp(α[1]))
-
-@inline function d²A(tail::GalambosTail, t::Real)
+function d²A(tail::GalambosTail, t::Real)
     tt = _safett(t)
     θ = tail.θ
     if θ == 0
@@ -84,8 +78,7 @@ _rebound_params(::Type{<:GalambosCopula}, d, α) = (; θ = exp(α[1]))
     term2 = (D/S)^2
     return (1 + θ) * B * (term1 - term2)
 end
-
-@inline function dA(tail::GalambosTail, t::Real)
+function dA(tail::GalambosTail, t::Real)
     tt = _safett(t)
     θ = tail.θ
     if θ == 0 || isinf(θ)
@@ -108,7 +101,6 @@ end
 
 _tau_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(GalambosTail(θ),t)*t*(1-t)/max(A(GalambosTail(θ),t),_δ(t)), 0, 1; kw...)[1]
 _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(GalambosTail(θ),t))^2, 0, 1; kw...)[1] - 3
-
 
 τ(C::GalambosCopula) = _tau_galambos(C.tail.θ)
 ρ(C::GalambosCopula) = _rho_galambos(C.tail.θ)

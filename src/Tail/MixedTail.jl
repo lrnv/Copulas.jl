@@ -34,19 +34,15 @@ struct MixedTail{T} <: AbstractUnivariateTail2
 end
 
 const MixedCopula{T} = ExtremeValueCopula{2, MixedTail{T}}
-MixedCopula(θ) = ExtremeValueCopula(2, MixedTail(θ))
-MixedCopula(d::Integer, θ) = ExtremeValueCopula(2, MixedTail(θ))
 Distributions.params(tail::MixedTail) = (θ = tail.θ,)
-_θ_bounds(::Type{<:MixedTail}, d) = (0, 1)
-A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1
-# Fitting helpers for EV copulas using Mixed tail (θ ∈ [0,1])
-_example(::Type{<:MixedCopula}, d) = ExtremeValueCopula(2, MixedTail(0.5))
-_example(::Type{ExtremeValueCopula{2, MixedTail}}, d) = ExtremeValueCopula(2, MixedTail(0.5))
-_unbound_params(::Type{<:MixedCopula}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
-_rebound_params(::Type{<:MixedCopula}, d, α) = begin
+_unbound_params(::Type{<:MixedTail}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
+_rebound_params(::Type{<:MixedTail}, d, α) = begin
     p = 1 / (1 + exp(-α[1]))
     (; θ = p)
 end
+_θ_bounds(::Type{<:MixedTail}, d) = (0, 1)
+
+A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1
 
 _tau_Mixed(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(MixedTail(θ),t)*t*(1-t)/max(A(MixedTail(θ),t),_δ(t)), 0, 1; kw...)[1]
 _rho_Mixed(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(MixedTail(θ),t))^2, 0, 1; kw...)[1] - 3
