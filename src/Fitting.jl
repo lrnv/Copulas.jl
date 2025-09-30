@@ -80,7 +80,7 @@ They must return a pair `(copula, meta)` where:
 - `meta::NamedTuple` holds method–specific metadata to be stored in `method_details`.
 
 This is not intended for direct use by end–users.  
-Use [`Distributions.fit(CopulaModel, ...)`](@ref) instead.
+Use [`Distributions.fit(CopulaModel, ...)`] instead.
 """
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     # @info "Running the itau/irho/ibeta routine from the generic implementation"
@@ -114,7 +114,7 @@ Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(Copula
 
 Return the tuple of fitting methods available for a given copula family.
 
-This is used internally by [`fit`](@ref) to check validity of the `method` argument
+This is used internally by [`Distributions.fit`](@ref) to check validity of the `method` argument
 and to select a default method when `method=:default`.
 
 # Example
