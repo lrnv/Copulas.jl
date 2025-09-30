@@ -36,7 +36,7 @@ function β(C::Copula{d}) where {d}
     d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
     u     = fill(0.5, d)
     C0    = Distributions.cdf(C, u)
-    Cbar0 = Distributions.cdf(SurvivalCopula(C, 1:d), u)
+    Cbar0 = Distributions.cdf(SurvivalCopula(C, Tuple(1:d)), u)
     return (2.0^(d-1) * C0 + Cbar0 - 1) / (2^(d-1) - 1)
 end
 function γ(C::Copula{d}; nmc::Int=100_000,
@@ -74,7 +74,19 @@ function entropy(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.
         isfinite(lp) || throw(DomainError(lp, "logpdf(C,u) non-finite."))
         s -= lp
     end
-    return s / nmc
+    H = s / nmc
+    t = clamp(2H, -700.0, 0.0)
+    r = sqrt(max(0.0, 1 - exp(t)))
+    return (H = H, I = -H, r = r)
+end
+λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = begin
+    f(e) = Distributions.cdf(C, fill(e, d)) / e
+    clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
+end
+λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = begin
+    Sc   = SurvivalCopula(C, Tuple(1:d))
+    f(e) = Distributions.cdf(Sc, fill(e, d)) / e
+    clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
 end
 
 function _as_biv(f::F, C::Copula{d}) where {F, d}
