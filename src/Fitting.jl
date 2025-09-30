@@ -81,10 +81,9 @@ end
 function _fit(CT::Type{<:Copula}, U, ::Val{:ibeta})
     d   = size(U,1)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-    @show d, α₀
-    @assert length(α₀) <= 1 "Cannot use :ibeta since there are too much parameters."
-    beta = blomqvist_beta(U)
-    loss(α) = (beta - β(CT(d, _rebound_params(CT, d, α)...)))^2
+    @assert length(α₀) <= d*(d-1)/2 "Cannot use :irho since there are too much parameters."
+    rho = corblomqvist(U')
+    loss(α) = sum(abs2, rho .- corblomqvist(CT(d, _rebound_params(CT, d, α)...)))
     res = Optim.optimize(loss, α₀, Optim.NelderMead())  # métodos moment-based
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...),
