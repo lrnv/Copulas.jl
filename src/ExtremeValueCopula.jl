@@ -42,6 +42,11 @@ struct ExtremeValueCopula{d, TT<:Tail} <: Copula{d}
         return new{d, typeof(tail)}(tail)
     end
 end
+
+ExtremeValueCopula{d,TT}(args...; kwargs...) where {d, TT} = ExtremeValueCopula(d, TT(args...; kwargs...))
+ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D, TT} = ExtremeValueCopula{d,TT}(args...; kwargs...)
+(CT::Type{<:ExtremeValueCopula{2, <:Tail}})(d::Int, args...; kwargs...) = ExtremeValueCopula(2, tailof(CT)(args...; kwargs...))
+
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
@@ -112,23 +117,25 @@ end
 function (::Type{ExtremeValueCopula{D, TT}})(d::Integer; kwargs...) where {D, TT<:Tail}
     return (ExtremeValueCopula{D, TT})(d, NamedTuple(kwargs))
 end
-function tailof(::Type{S}) where {S <: ExtremeValueCopula}
+function tailof(S::Type{<:ExtremeValueCopula})
     S2 = hasproperty(S,:body) ? S.body : S
     S3 = hasproperty(S2, :body) ? S2.body : S2
     try
-        return S3.parameters[2].name.wrapper
+        S4 = S3.parameters[2]
+        return hasproperty(S4, :name) ? S4.name.wrapper : S4
     catch e
         @error "There is no tail type associated with the extreme value type $S"
     end
 end
+tailof(::Type{<:ExtremeValueCopula{d, TT}}) where {d, TT} = TT
 
 ##############################################################################################################################
 ####### Fitting functions for univariate tails only (Extreme Value Copulas).
 ##############################################################################################################################
 
-_example(CT::Type{<:ExtremeValueCopula}, d) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols, :cfg or :pickands)")
-_unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols, :cfg or :pickands)")
-_rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = throw("Cannot fit an Extreme Value copula without specifying its Tail (unless you set method=:ols, :cfg or :pickands)")
+_example(CT::Type{<:ExtremeValueCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...)
+_unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = _unbound_params(tailof(CT), d, θ)
+_rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(CT), d, α)
 
 _available_fitting_methods(::Type{ExtremeValueCopula}) = (:ols, :cfg, :pickands)
 _available_fitting_methods(CT::Type{<:ExtremeValueCopula}) = (:mle,)

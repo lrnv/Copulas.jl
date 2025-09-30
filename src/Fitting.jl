@@ -26,9 +26,12 @@ _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::T
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
 function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
-    @show "Running the MLE routine from the generic implementation"
+    @info "Running the MLE routine from the generic implementation"
     d   = size(U,1)
-    cop(α) = CT(d, _rebound_params(CT, d, α)...)
+    function cop(α)
+        par = _rebound_params(CT, d, α)
+        return CT(d, par...) ####### Using a "," here forces the constructor to accept raw values, while a ";" passes named values. Not sure which is best. 
+    end
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
 
     loss(C) = -Distributions.loglikelihood(C, U)
@@ -44,7 +47,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
 end
 
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
-    @show "Running the itau/irho/ibeta routine from the generic implementation"
+    @info "Running the itau/irho/ibeta routine from the generic implementation"
     d   = size(U,1)
 
     cop(α) = CT(d, _rebound_params(CT, d, α)...)
