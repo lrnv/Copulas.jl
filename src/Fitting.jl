@@ -26,7 +26,7 @@ _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::T
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
 function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
-    @show "Running the MLE routine from the generic implementation"
+    # @show "Running the MLE routine from the generic implementation"
     d   = size(U,1)
     cop(α) = CT(d, _rebound_params(CT, d, α)...)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
@@ -66,17 +66,22 @@ end
 _available_fitting_methods(::Type{<:Copula}) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula) = _available_fitting_methods(typeof(C))
 
-function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
-    d, n = size(U)
-    # Choose the fitting method: 
+function _find_method(CT, method)
     avail = _available_fitting_methods(CT)
-    isempty(avail) && error("No fitting methods available for $CT in dimension $d.")
+    isempty(avail) && error("No fitting methods available for $CT.")
     if method === :default 
         method = avail[1]
-        @info "Choosing default method $(method) among $avail..."
+        # @info "Choosing default method '$(method)' among $avail..."
     elseif method ∉ avail 
         error("Method '$method' not available for $CT in d=$d. Available: $(join(avail, ", ")).")
     end
+    return method
+end
+
+function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
+    d, n = size(U)
+    # Choose the fitting method: 
+    method = _find_method(CT, method)
 
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
     C, meta = rez
@@ -89,9 +94,15 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = 
         elapsed_sec  = get(md, :elapsed_sec, NaN),
         method_details = md)
 end
-function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}}, X; copula_method = :default, sklar_method = :parametric,
+
+_available_fitting_methods(::Type{SklarDist}) = (:ifm, :ecdf)
+
+function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}}, X; copula_method = :default, sklar_method = :default,
                            summaries = true, margins_kwargs = NamedTuple(), copula_kwargs = NamedTuple()) where
                            {CT<:Copulas.Copula, TplMargins<:Tuple}
+
+    sklar_method = _find_method(SklarDist, sklar_method)
+    copula_method = _find_method(CT, copula_method)
 
     d, n = size(X)
     marg_types = TplMargins.parameters
@@ -99,16 +110,16 @@ function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}},
     m = ntuple(i -> Distributions.fit(marg_types[i], @view X[i, :]; margins_kwargs...), d)
     # Only one margins_kwargs while people mught want to pass diferent kwargs for diferent marginals... but OK for the moment.
 
+    
     U = similar(X)
-    if sklar_method === :parametric
+    if sklar_method === :ifm
         for i in 1:d
             U[i,:] .= Distributions.cdf(m[i], X[i,:])
         end
     elseif sklar_method === :ecdf
         U .= pseudos(X)
-    else
-        throw(ArgumentError("sklar_method ∈ (:parametric, :ecdf)"))
     end
+
     # Copula fit... with method specific
     C, cmeta = _fit(CT, U, Val{copula_method}(); copula_kwargs...)
 

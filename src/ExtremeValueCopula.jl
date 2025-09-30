@@ -147,7 +147,7 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     return C, (; pseudo_values, grid, eps)
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:itau})
-    @show "Running the ITAU routine from the Extreme value implementation"
+    # @show "Running the ITAU routine from the Extreme value implementation"
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, 2)
     τ̂ = StatsBase.corkendall(U')[1,2]
@@ -160,7 +160,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:irho})
-    @show "Running the IRHO routine from the Extreme value implementation"
+    # @show "Running the IRHO routine from the Extreme value implementation"
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, 2)
     ρ̂ = StatsBase.corspearman(U')[1,2]
@@ -173,7 +173,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:ibeta})
-    @show "Running the IBETA routine from the Extreme value implementation"
+    # @show "Running the IBETA routine from the Extreme value implementation"
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, 2)
     β̂ = β(U)
@@ -187,7 +187,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
-    @show "Running the IUPPER routine from the Extreme value implementation"
+    # @show "Running the IUPPER routine from the Extreme value implementation"
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, 2)
     λ̂ = tail(U;t=:upper)
@@ -202,7 +202,7 @@ end
 # --- MLE ---
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:ibeta, xtol::Real=1e-8)
-    @show "Running the MLE routine from the Extreme value implementation"
+    # @show "Running the MLE routine from the Extreme value implementation"
     d = size(U,1)
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, d)
