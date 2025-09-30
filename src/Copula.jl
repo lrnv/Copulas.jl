@@ -30,7 +30,7 @@ end
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     r = Distributions.expectation(F, C; nsamples=10^4)
-    return (2^d *  r - 1) / (2^d - 1) # Ok for multivariate. 
+    return (2^d / (2^(d-1) - 1)) * r - 1 / (2^(d-1) - 1)
 end
 function β(C::Copula{d}) where {d}
     d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
