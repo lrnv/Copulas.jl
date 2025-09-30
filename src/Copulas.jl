@@ -28,6 +28,7 @@ module Copulas
     include("SklarDist.jl")
     include("Subsetting.jl")
     include("Conditioning.jl")
+    include("Fittings.jl")
 
     # Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
     include("UnivariateDistribution/Frailties/Sibuya.jl")
@@ -126,7 +127,7 @@ module Copulas
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
-    include("fitting.jl")
+
     include("show.jl")
 
     export pseudos, # utility functions and methods making the interface: 

@@ -175,75 +175,10 @@ StatsBase.nulldeviance(M::CopulaModel) = -2 * StatsBase.nullloglikelihood(M)
 
 
 
-##############################################################################################################################
-####### Speficic methods for certain copulas, shoul dbe moved to repective files. 
-##############################################################################################################################
-_fit(T::Type{<:ExtremeValueCopula}, U, ::Val{:default}; kwargs...) = _fit(T, U, ::Val{:ols}; kwargs...)
-function _fit(::Type{<:ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; pseudo_values = true, estimator::Symbol = :ols, grid::Int = 401, eps::Real = 1e-3, kwargs...)
-    m = typeof(method).parameters[1]
-    C = EmpiricalEVCopula(U; estimator=estimator, grid=grid, eps=eps, pseudos=pseudo_values, estimator=m, kwargs...) # pass kwargs on, you never know. 
-    return C, (; estimator=m, pseudo_values, grid, eps)
-end
-function _fit(::Type{<:BetaCopula}, U, ::Val{:default}; kwargs...)
-    C = BetaCopula(U; kwargs...)
-    return C, (; estimator=:segers2017, pseudo_values, )
-end
-function _fit(::Type{<:BernsteinCopula}, U, ::Val{:default}; pseudo_values = true, m = nothing, kwargs...)
-    C = BernsteinCopula(EmpiricalCopula(U; pseudo_values=pseudo_values); m=m, kwargs...)
-    return C, (; estimator=:segers2017, pseudo_values, m=C.m)
-end
-function _fit(::Type{<:EmpiricalCopula}, U, ::Val{:default}; pseudo_values = true, kwargs...)
-    C = EmpiricalCopula(U; pseudo_values=pseudo_values, kwargs...)
-    return C, (; estimator=:deheuvels, pseudo_values)
-end
-
 # helper
 params(::Type{T}) where {T<:Copula} = throw("No params() function defined for type T = $T...")
-params(CT::Type{<:ArchimedeanCopula}) = params(generatorof(CT))
-function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:itau})
-    d = size(U,1)
-    GT   = generatorof(CT)
-    θs   = map(v -> τ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corkendall(U')))
-    θ = clamp(StatsBase.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; estimator=:itau, eps)
-end
-function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:irho})
-    d = size(U,1)
-    GT   = generatorof(CT)
-    θs   = map(v -> ρ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corspearman(U')))
-    θ = clamp(StatsBase.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; estimator=:irho, eps)
-end
-function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:ibeta})
-    d = size(U,1)
-    β̂ = clamp(blomqvist_beta(U), -1, 1)
-    GT = generatorof(CT)
-    a, b = sort(_θ_bounds(GT, d))
-    f(θ) = β(CT(d, θ)) - β̂
-    fa, fb = f(a), f(b)
-    if sign(fa) == sign(fb) # if no bracket → β̂ out of range → nearest end
-        θstar = (abs(fa) ≤ abs(fb)) ? a : b
-        return CT(d, θstar), (; estimator=:ibeta, epsβ)
-    end
-    θ = Roots.find_zero(f, (a, b), Roots.Brent(); xatol=1e-10, rtol=0.0)
-    return CT(d, θ), (; estimator=:ibeta, epsβ)
-end
-function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:mle};
-              start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
-    d = size(U,1)
-    GT = generatorof(CT)
-    lo, hi = _θ_bounds(GT, d)
-    θ0 = start isa Real ? start : 
-         start ∈ (:itau, :irho) ? _fit(CT, U, Val{start}()) : 
-         throw("The start parameter you provided is not either a real number, :itau or :irho")
-    θ0 = clamp(θ0, lo, hi)
-    f(θ) = -Distributions.loglikelihood(CT(d, θ), U)
-    t = @elapsed (res = Optim.optimize(f, lo, hi, θ0, Optim.Fminbox(GradientDescent()); abs_tol=xtol))
-    θ̂     = Optim.minimizer(res)
-    return CT(d, θ̂), (; estimator=:mle, θ̂=θ̂, optimizer=:GradientDescent,
-                        xtol=xtol, converged=Optim.converged(res), 
-                        iterations=Optim.iterations(res), elapsed_sec=t)
-end
+
+
 
 
 ##############################################################################################################################

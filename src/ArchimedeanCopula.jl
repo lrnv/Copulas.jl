@@ -173,3 +173,54 @@ end
 
 # Subsetting colocated
 SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula(length(dims), C.G)
+
+
+
+##############################################################################################################################
+####### Fitting functions for univarate generators only. 
+##############################################################################################################################
+params(CT::Type{<:ArchimedeanCopula}) = params(generatorof(CT))
+_fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:default}) = _fit(CT, U, ::Val{:mle}) # we want the default for archimedeans to be MLE ? or something else ? 
+function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:itau})
+    d = size(U,1)
+    GT   = generatorof(CT)
+    θs   = map(v -> τ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corkendall(U')))
+    θ = clamp(StatsBase.mean(θs), _θ_bounds(GT, d)...)
+    return CT(d, θ), (; estimator=:itau, eps)
+end
+function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:irho})
+    d = size(U,1)
+    GT   = generatorof(CT)
+    θs   = map(v -> ρ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corspearman(U')))
+    θ = clamp(StatsBase.mean(θs), _θ_bounds(GT, d)...)
+    return CT(d, θ), (; estimator=:irho, eps)
+end
+function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:ibeta})
+    d = size(U,1)
+    β̂ = clamp(blomqvist_beta(U), -1, 1)
+    GT = generatorof(CT)
+    a, b = sort(_θ_bounds(GT, d))
+    f(θ) = β(CT(d, θ)) - β̂
+    fa, fb = f(a), f(b)
+    if sign(fa) == sign(fb) # if no bracket → β̂ out of range → nearest end
+        θstar = (abs(fa) ≤ abs(fb)) ? a : b
+        return CT(d, θstar), (; estimator=:ibeta, epsβ)
+    end
+    θ = Roots.find_zero(f, (a, b), Roots.Brent(); xatol=1e-10, rtol=0.0)
+    return CT(d, θ), (; estimator=:ibeta, epsβ)
+end
+function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
+    d = size(U,1)
+    GT = generatorof(CT)
+    lo, hi = _θ_bounds(GT, d)
+    θ0 = start isa Real ? start : 
+         start ∈ (:itau, :irho) ? _fit(CT, U, Val{start}()) : 
+         throw("The start parameter you provided is not either a real number, :itau or :irho")
+    θ0 = clamp(θ0, lo, hi)
+    f(θ) = -Distributions.loglikelihood(CT(d, θ), U)
+    t = @elapsed (res = Optim.optimize(f, lo, hi, θ0, Optim.Fminbox(GradientDescent()); abs_tol=xtol))
+    θ̂     = Optim.minimizer(res)
+    return CT(d, θ̂), (; estimator=:mle, θ̂=θ̂, optimizer=:GradientDescent,
+                        xtol=xtol, converged=Optim.converged(res), 
+                        iterations=Optim.iterations(res), elapsed_sec=t)
+end
