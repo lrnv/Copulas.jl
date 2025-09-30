@@ -524,7 +524,7 @@
                 @testset "Fitting Sklar x CT" begin
                     r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
                     r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-                    if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(CT<:PlackettCopula)
+                    if !(CT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(CT<:PlackettCopula) && has_parameters(C)
                         α1 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
                         α2 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
                         @test α1 ≈ α2
