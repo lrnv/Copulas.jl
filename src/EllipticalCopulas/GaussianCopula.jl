@@ -75,6 +75,7 @@ function GaussianCopula(d::Integer, ρ::Real)
 end
 
 #only for flexibility in our fit... other option could be return CT(θhat.Σ), meta in generic mle fit...
+GaussianCopula{D, MT}(d::Int, Σ::AbstractMatrix) where {D, MT} = GaussianCopula(Σ) 
 GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula(Σ) 
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
@@ -130,20 +131,13 @@ SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula(C
 
 # Fitting collocated
 StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
-function Distributions.params(C::GaussianCopula)
-    Σ = C.Σ; d = size(Σ,1)
-    return (; (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:d-1 for j in i+1:d)...)
-end
+Distributions.params(C::GaussianCopula) = (; Σ = C.Σ)
 _example(::Type{<:GaussianCopula}, d::Int) = GaussianCopula(d, 0.2)
-
 function _unbound_params(::Type{<:GaussianCopula}, d::Int, θ::NamedTuple)
-    Σ = _Σ_from_named(d, θ)
-    return _unbound_corr_params(d, Σ)
+    return _unbound_corr_params(d, θ.Σ)
 end
-
 function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
-    Σ = _rebound_corr_params(d, α)
-    return (; Σ = Σ)
+    return (; Σ = _rebound_corr_params(d, α))
 end
 function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
     dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
