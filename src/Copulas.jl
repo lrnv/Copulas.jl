@@ -28,7 +28,7 @@ module Copulas
     include("SklarDist.jl")
     include("Subsetting.jl")
     include("Conditioning.jl")
-    include("Fittings.jl")
+    include("Fitting.jl")
 
     # Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
     include("UnivariateDistribution/Frailties/Sibuya.jl")
