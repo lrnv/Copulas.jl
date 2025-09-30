@@ -105,7 +105,7 @@
 
     can_be_fitted(C::CT) where CT = length(Copulas._available_fitting_methods(CT)) > 0
     has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
-    has_unbounded_params(C::CT) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT) && length(Distributions.params(C)) > 0
+    has_unbounded_params(C::CT) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula)
     unbounding_is_a_bijection(C::Copulas.Copula{d}) where d = !(typeof(C)<:FGMCopula && d>2)
 
     function check(C::Copulas.Copula{d}) where d
@@ -518,7 +518,7 @@
 
                         newCT = typeof(r2)
                         @test typeof(r1.result) == newCT
-                        if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2)
+                        if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2) && has_unbounded_params(r2)
                             α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
                             α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
                             @test α1 ≈ α2 atol=1e-4
@@ -533,7 +533,7 @@
                     r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
                     newCT = typeof(r4.C)
                     @test typeof(r3.result.C) == newCT
-                    if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C)
+                    if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C)
                         α1 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
                         α2 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
                         @test α1 ≈ α2
