@@ -1,10 +1,10 @@
-@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(0.50, 1.60)) end
-@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(2.50, 0.40)) end
-@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(3.0, 2.1)) end
+@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(2, 0.50, 1.60)) end
+@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(2, 2.50, 0.40)) end
+@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB4Copula] setup=[M] begin M.check(BB4Copula(2, 3.0, 2.1)) end
 
-@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(1.50, 1.60)) end
-@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(2.50, 0.40)) end
-@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(5.0, 0.5)) end
+@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(2, 1.50, 1.60)) end
+@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(2, 2.50, 0.40)) end
+@testitem "Generic" tags=[:Generic, :ArchimaxCopula, :BB5Copula] setup=[M] begin M.check(BB5Copula(2, 5.0, 0.5)) end
 
 @testitem "Generic" tags=[:Generic, :ArchimaxCopula] setup=[M] begin M.check(ArchimaxCopula(2, Copulas.FrankGenerator(0.8),    Copulas.AsymGalambosTail(0.35, 0.65, 0.3))) end
 @testitem "Generic" tags=[:Generic, :ArchimaxCopula] setup=[M] begin M.check(ArchimaxCopula(2, Copulas.FrankGenerator(6.0),    Copulas.AsymGalambosTail(0.35, 0.65, 0.3))) end
