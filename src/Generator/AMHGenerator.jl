@@ -21,7 +21,7 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct AMHGenerator{T} <: Generator
+struct AMHGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function AMHGenerator(θ)
         if (θ < -1) || (θ > 1)
@@ -123,72 +123,21 @@ function τ⁻¹(::Type{T},tau) where T<:AMHGenerator
     return Roots.find_zero(θ -> tau - _amh_tau(θ), search_range)
 end
 
-function ρ(G::AMHGenerator)
-    # Taken from https://cran.r-project.org/web/packages/copula/vignettes/rhoAMH-dilog.pdf
-    a = G.θ
-    if isnan(a)
-        return a
-    end
+function _rho_amh(a)
+    isnan(a) && return a
     aa = abs(a)
-    if aa < 7e-16
-        return a / 3
-    elseif aa < 1e-4
-        return a / 3 * (1 + a / 4)
-    elseif aa < 0.002
-        return a * (1/3 + a * (1/12 + a * 3/100))
-    elseif aa < 0.007
-        return a * (1/3 + a * (1/12 + a * (3/100 + a / 75)))
-    elseif aa < 0.016
-        return a * (1/3 + a * (1/12 + a * (3/100 + a * (1/75 + a / 147))))
-    else
-        term1 = 3 / a * (4 * (1 + 1 / a) * PolyLog.reli2(a))
-        term2 = if a < 1
-            8 * (1 / a - 1) * log1p(-a)
-        else
-            0.0
-        end
-        return term1 - term2 - (a + 12)
-    end
+    aa < 7e-16 && return a / 3
+    aa < 1e-4 && return (a / 3) * (1 + a / 4)
+    aa < 0.002 && return a * (1/3 + a * (1/12 + a * (3/100)))
+    aa < 0.007 && return a * (1/3 + a * (1/12 + a * (3/100 + a * (1/75))))
+    aa < 0.016 && return a * (1/3 + a * (1/12 + a * (3/100 + a * (1/75 + a * (1/147)))))
+    Li2 = PolyLog.reli2(a)  # dilog(a) = Li2(a)
+    logTerm = (a < 1) ? 8 * (1 / a - 1) * log1p(-a) : 0.0
+    return (3 / a) * (4 * (1 + 1 / a) * Li2 - logTerm - (a + 12))
 end
-
-# Inversa de Spearman para AMH vía Brent + fallback a Bisection
-function ρ⁻¹(::Type{AMHGenerator}, ρ̂::Real; xtol=1e-12, atol=1e-12, maxevals=10_000)
-    # Casos triviales
-    if !isfinite(ρ̂)
-        return oftype(ρ̂, NaN)
-    end
-    if ρ̂ == 0
-        return zero(ρ̂)
-    end
-
-    # Dominio de AMH: θ ∈ (-1, 1)
-    Tρ = float(promote_type(typeof(ρ̂), Float64))
-    ϵ  = Tρ(1e-12)
-    aL = Tρ(-1 + ϵ)
-    aU = Tρ( 1 - ϵ)
-
-    # Rango numérico alcanzable por ρ(θ) en ±(1-ε)
-    ρL = ρ(AMHGenerator(aL))
-    ρU = ρ(AMHGenerator(aU))
-    if ρL > ρU
-        ρL, ρU = ρU, ρL
-        aL, aU = aU, aL
-    end
-
-    # Saturaciones (si el objetivo cae fuera del rango numérico)
-    if ρ̂ ≤ ρL
-        return aL
-    elseif ρ̂ ≥ ρU
-        return aU
-    end
-
-    # Ecuación a resolver: f(θ) = ρ(θ) - ρ̂
-    f(θ) = ρ(AMHGenerator(θ)) - ρ̂
-
-    # Brent con bracket global seguro, y fallback a bisección si hay excepción
-    try
-        return Roots.find_zero(f, (aL, aU), Roots.Brent(); xtol=xtol, atol=atol, maxevals=maxevals)
-    catch
-        return Roots.find_zero(f, (aL, aU), Roots.Bisection(); xtol=xtol, atol=atol, maxevals=maxevals)
-    end
+ρ(G::AMHGenerator) = _rho_amh(G.θ)
+function ρ⁻¹(::Type{AMHGenerator}, ρ::Real)
+    ρ ≤ 33-48*log(2) && return -one(ρ)
+    ρ ≥ 4pi^2 - 39 && return one(ρ)
+    return Roots.find_zero(θ -> _rho_amh(θ) - ρ, (-1, 1), Roots.Brent())
 end
