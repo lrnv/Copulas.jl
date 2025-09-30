@@ -8,7 +8,7 @@ Some copulas, while necessary in certain cases and very useful, are hard to clas
 
 ## `PlackettCopula`
 
-```@docs
+```@docs; canonical=false
 PlackettCopula
 ```
 
@@ -16,13 +16,13 @@ PlackettCopula
 
 Farlie-Gumbel-Morgenstern (FGM) copula
 
-```@docs
+```@docs; canonical=false
 FGMCopula
 ```
 
 ## `RafteryCopula`
 
-```@docs
+```@docs; canonical=false
 RafteryCopula
 ```
 

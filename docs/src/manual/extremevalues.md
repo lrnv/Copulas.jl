@@ -95,7 +95,7 @@ For the class of Extreme Value Copulas, We follow the methodology proposed by Gh
 
 Note that all functions present in the algorithm were previously defined to ensure that the implemented methodology has a solid theoretical basis.
 
-```@docs
+```@docs; canonical=false
 Tail
 ExtremeValueCopula
 ```

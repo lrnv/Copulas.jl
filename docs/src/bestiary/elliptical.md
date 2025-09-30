@@ -6,13 +6,13 @@ CurrentModule = Copulas
 
 ## `GaussianCopula`
 
-```@docs
+```@docs; canonical=false
 GaussianCopula
 ```
 
 ## `TCopula`
 
-```@docs
+```@docs; canonical=false
 TCopula
 ```
 
