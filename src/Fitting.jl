@@ -22,7 +22,7 @@ for statistical inference and model comparison.
 [`nobs`](@ref), [`coef`](@ref), [`coefnames`](@ref), [`vcov`](@ref),
 [`aic`](@ref), [`bic`](@ref), [`deviance`](@ref), etc.
 
-See also [`fit`](@ref) and [`copula_of`](@ref).
+See also [`fit`](@ref) and [`_copula_of`](@ref).
 """
 struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
     result        :: CT
@@ -254,20 +254,9 @@ StatsBase.nobs(M::CopulaModel)     = M.n
 StatsBase.isfitted(::CopulaModel)  = true
 StatsBase.deviance(M::CopulaModel) = -2 * Distributions.loglikelihood(M)
 StatsBase.dof(M::CopulaModel) = StatsBase.dof(M.result)
-
-"""
-    copula_of(M::CopulaModel)
-
-Extract the copula component of a fitted model `M`.
-
-If the model was a `SklarDist`, this returns the underlying copula `M.result.C`.
-Otherwise, it simply returns `M.result`.
-
-Useful when working with Sklar distributions where both margins and copula are fitted.
-"""
-copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
-StatsBase.coef(M::CopulaModel) = collect(values(Distributions.params(copula_of(M)))) # why ? params of the marginals should also be taken into account. 
-StatsBase.coefnames(M::CopulaModel) = string.(keys(Distributions.params(copula_of(M))))
+_copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
+StatsBase.coef(M::CopulaModel) = collect(values(Distributions.params(_copula_of(M)))) # why ? params of the marginals should also be taken into account. 
+StatsBase.coefnames(M::CopulaModel) = string.(keys(Distributions.params(_copula_of(M))))
 StatsBase.dof(C::Copulas.Copula) = length(values(Distributions.params(C)))
 
 #(optional vcov) and vcov its very important... for inference 
@@ -375,7 +364,7 @@ function Base.show(io::IO, M::CopulaModel)
     Printf.@printf(io, "Loglikelihood:       %12.4f\n", ll)
 
     # Para el test LR usa g.l. de la CÓPULA si es SklarDist
-    kcop = (R isa SklarDist) ? StatsBase.dof(copula_of(M)) : StatsBase.dof(M)
+    kcop = (R isa SklarDist) ? StatsBase.dof(_copula_of(M)) : StatsBase.dof(M)
     if isfinite(ll0) && kcop > 0
         LR = 2*(ll - ll0)
         p  = Distributions.ccdf(Distributions.Chisq(kcop), LR)
@@ -393,7 +382,7 @@ function Base.show(io::IO, M::CopulaModel)
     # Branches: SklarDist → sections; empirical → summary; else → coefficient table
     if R isa SklarDist
         # [ Copula ] section
-        C = copula_of(M)
+        C = _copula_of(M)
         θ = StatsBase.coef(M)
         nm = StatsBase.coefnames(M)
         V  = StatsBase.vcov(M)
@@ -504,7 +493,7 @@ function Base.show(io::IO, M::CopulaModel)
         end
     else
         # Coefficient table
-        params = Distributions.params(copula_of(M))
+        params = Distributions.params(_copula_of(M))
         θ, nm = _linearize_params(params)
         V  = StatsBase.vcov(M)
         if V === nothing || isempty(θ)

@@ -88,7 +88,7 @@
                     @testset "CT=$CT, d=$d, method=$m" begin
                         @info "CT=$CT, d=$d, method=$m..."
                         fitres = fit(CopulaModel, CT, U; method=m)
-                        @test length(Copulas.copula_of(fitres)) == d
+                        @test length(Copulas._copula_of(fitres)) == d
                         @test isa(fitres, CopulaModel)
                     end
                 end
