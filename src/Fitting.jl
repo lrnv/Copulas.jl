@@ -19,10 +19,10 @@ for statistical inference and model comparison.
 - `method_details::NamedTuple` — additional method-specific metadata (grid size, pseudo-values, etc.).
 
 `CopulaModel` implements the standard `StatsBase.StatisticalModel` interface:
-[`nobs`](@ref), [`coef`](@ref), [`coefnames`](@ref), [`vcov`](@ref),
-[`aic`](@ref), [`bic`](@ref), [`deviance`](@ref), etc.
+[`StatsBase.nobs`](@ref), [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
+[`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref), [`StatsBase.deviance`](@ref), etc.
 
-See also [`fit`](@ref) and [`_copula_of`](@ref).
+See also [`Distributions.fit`](@ref) and [`_copula_of`](@ref).
 """
 struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
     result        :: CT
@@ -241,9 +241,11 @@ function _extra_pairwise_stats(U::AbstractMatrix, bypass::Bool)
     τm, τs, τmin, τmax = _uppertriangle_stats(StatsBase.corkendall(U'))
     ρm, ρs, ρmin, ρmax = _uppertriangle_stats(StatsBase.corspearman(U'))
     βm, βs, βmin, βmax = _uppertriangle_stats(corblomqvist(U'))
+    γm, γs, γmin, γmax = _uppertriangle_stats(corgini(U'))
     return (; tau_mean=τm, tau_sd=τs, tau_min=τmin, tau_max=τmax,
              rho_mean=ρm, rho_sd=ρs, rho_min=ρmin, rho_max=ρmax,
-             beta_mean=βm, beta_sd=βs, beta_min=βmin, beta_max=βmax)
+             beta_mean=βm, beta_sd=βs, beta_min=βmin, beta_max=βmax,
+             gamma_mean=γm, gamma_sd=γs, gamma_min=γmin, gamma_max=γmax)
 end
 Distributions.loglikelihood(C::Copulas.Copula, U::AbstractMatrix{<:Real}) = sum(Base.Fix1(Distributions.logpdf, C), eachcol(U))
 Distributions.loglikelihood(C::Copulas.Copula, u::AbstractVector{<:Real}) = Distributions.logpdf(C, u)
@@ -510,6 +512,7 @@ function Base.show(io::IO, M::CopulaModel)
         has_tau  = all(haskey.(Ref(md), (:tau_mean, :tau_sd, :tau_min, :tau_max)))
         has_rho  = all(haskey.(Ref(md), (:rho_mean, :rho_sd, :rho_min, :rho_max)))
         has_beta = all(haskey.(Ref(md), (:beta_mean, :beta_sd, :beta_min, :beta_max)))
+        has_gamma = all(haskey.(Ref(md), (:gamma_mean, :gamma_sd, :gamma_min, :gamma_max)))
 
         if d === missing || d == 2
             println(io, "────────────────────────────")
@@ -518,6 +521,7 @@ function Base.show(io::IO, M::CopulaModel)
                 if has_tau; Printf.@printf(io, "%-10s %18.3f\n", "tau", md[:tau_mean]); end
                 if has_rho; Printf.@printf(io, "%-10s %18.3f\n", "rho", md[:rho_mean]); end
                 if has_beta; Printf.@printf(io, "%-10s %18.3f\n", "beta", md[:beta_mean]); end
+                if has_gamma; Printf.@printf(io, "%-10s %18.3f\n", "gamma", md[:gamma_mean]); end
             println(io, "────────────────────────────")
         else
             println(io, "───────────────────────────────────────────────────────")
@@ -534,6 +538,10 @@ function Base.show(io::IO, M::CopulaModel)
             if has_beta
                 Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n",
                     "beta", md[:beta_mean], md[:beta_sd], md[:beta_min], md[:beta_max])
+            end
+            if has_gamma
+                Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n",
+                    "gamma", md[:gamma_mean], md[:gamma_sd], md[:gamma_min], md[:gamma_max])
             end
             println(io, "───────────────────────────────────────────────────────")
         end
