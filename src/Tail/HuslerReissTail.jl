@@ -37,7 +37,7 @@ struct HuslerReissTail{T} <: Tail2
 end
 const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
 HuslerReissCopula(θ) = ExtremeValueCopula(2, HuslerReissTail(θ))
-Distributions.params(tail::HuslerReissTail) = (tail.θ,)
+Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
 
 function A(tail::HuslerReissTail, t::Real)
     tt = _safett(t)

@@ -44,7 +44,7 @@ struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
 end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 ClaytonCopula(d, θ) = ArchimedeanCopula(d, ClaytonGenerator(θ))
-Distributions.params(G::ClaytonGenerator) = (G.θ,)
+Distributions.params(G::ClaytonGenerator) = (θ = G.θ,)
 _θ_bounds(::Type{<:ClaytonGenerator},      d::Integer) = (-1/(d-1),  Inf)
 
 

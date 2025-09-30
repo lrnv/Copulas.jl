@@ -39,7 +39,7 @@ struct GumbelGenerator{T} <: AbstractUnivariateFrailtyGenerator
 end
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
 GumbelCopula(d, θ) = ArchimedeanCopula(d, GumbelGenerator(θ))
-Distributions.params(G::GumbelGenerator) = (G.θ,)
+Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 frailty(G::GumbelGenerator) = AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0))
 _θ_bounds(::Type{<:GumbelGenerator}, ::Integer) = (1.0, Inf)
 

@@ -36,7 +36,7 @@ end
 
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
 BB10Copula(d, θ, δ) = ArchimedeanCopula(2, BB10Generator(θ, δ))
-Distributions.params(G::BB10Generator) = (G.θ, G.δ)
+Distributions.params(G::BB10Generator) = (θ = G.θ, δ = G.δ)
 
 ϕ(G::BB10Generator, s) = begin
     θ, δ = G.θ, G.δ

@@ -35,7 +35,7 @@ end
 
 const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
 BB7Copula(d, θ, δ) = ArchimedeanCopula(d, BB7Generator(θ, δ))
-Distributions.params(G::BB7Generator) = (G.θ, G.δ)
+Distributions.params(G::BB7Generator) = (θ = G.θ, δ = G.δ)
 
 ϕ(  G::BB7Generator, s) = begin
     a = exp( -inv(G.δ)*log1p(s) )  

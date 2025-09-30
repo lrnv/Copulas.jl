@@ -40,7 +40,7 @@ struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
 end
 const InvGaussianCopula{d, T}   = ArchimedeanCopula{d, InvGaussianGenerator{T}}
 InvGaussianCopula(d, θ)   = ArchimedeanCopula(d, InvGaussianGenerator(θ))
-Distributions.params(G::InvGaussianGenerator) = (G.θ,)
+Distributions.params(G::InvGaussianGenerator) = (θ = G.θ,)
 _θ_bounds(::Type{<:InvGaussianGenerator}, ::Integer) = (0.0, Inf)
 
 ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)

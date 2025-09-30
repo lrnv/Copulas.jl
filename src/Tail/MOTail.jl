@@ -39,7 +39,7 @@ struct MOTail{T} <: Tail2
 end
 
 const MOCopula{T} = ExtremeValueCopula{2, MOTail{T}}
-Distributions.params(tail::MOTail) = (tail.λ₁, tail.λ₂, tail.λ₁₂)
+Distributions.params(tail::MOTail) = (λ₁ = tail.λ₁, λ₂ = tail.λ₂, λ₃ = tail.λ₁₂)
 MOCopula(λ₁, λ₂, λ₁₂) = ExtremeValueCopula(2, MOTail(λ₁, λ₂, λ₁₂))
 
 function A(tail::MOTail{T}, t::Real) where T

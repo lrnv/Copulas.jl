@@ -140,7 +140,7 @@ end
 EmpiricalEVCopula(u; kwargs...) = ExtremeValueCopula(2, EmpiricalEVTail(u; kwargs...))
 
 Base.eltype(::EmpiricalEVTail) = Float64
-Distributions.params(t::EmpiricalEVTail) = (tgrid = t.tgrid, Ahat = t.Ahat, slope = t.slope)
+Distributions.params(t::EmpiricalEVTail) = (tgrid = t.tgrid, Ahat = t.Ahat, slope = t.slope) #for API fit we need modify this
 
 function A(tail::EmpiricalEVTail, t::Real)
     T = typeof(t)

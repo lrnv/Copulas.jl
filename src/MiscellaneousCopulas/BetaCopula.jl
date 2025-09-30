@@ -126,5 +126,5 @@ end
 StatsBase.dof(::Copulas.BetaCopula)         = 0
 function _fit(::Type{<:BetaCopula}, U, ::Val{:default}; kwargs...)
     C = BetaCopula(U; kwargs...)
-    return C, (; estimator=:segers2017, pseudo_values, )
+    return C, (; estimator=:segers2017, )
 end

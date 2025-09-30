@@ -38,7 +38,7 @@ end
 
 const CuadrasAugeCopula{T} = ExtremeValueCopula{2, CuadrasAugeTail{T}}
 CuadrasAugeCopula(θ) = ExtremeValueCopula(2, CuadrasAugeTail(θ))
-Distributions.params(tail::CuadrasAugeTail) = (tail.θ,)
+Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
 
 function A(tail::CuadrasAugeTail, t::Real)
     tt = _safett(t)
