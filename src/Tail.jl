@@ -48,6 +48,8 @@ end
 
 # A more friendly interface for models that are only bivariate: 
 abstract type Tail2 <: Tail end
+abstract type AbstractUnivariateTail2 <: Tail2 end
+const UnivariateTail2 = AbstractUnivariateTail2
 _is_valid_in_dim(::Tail2, d::Int) = (d==2)
 A(tail::Tail2, t::NTuple{2, <:Real}) = A(tail, t[1])
 dA(tail::Tail2, t::Real) = ForwardDiff.derivative(z -> A(tail, z), t)

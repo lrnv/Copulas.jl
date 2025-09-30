@@ -26,7 +26,7 @@ References:
 
 * [husler1989maxima](@cite) Hüsler, J., & Reiss, R. D. (1989). Maxima of normal random vectors: between independence and complete dependence. Statistics & Probability Letters, 7(4), 283-286.
 """
-struct HuslerReissTail{T} <: Tail2
+struct HuslerReissTail{T} <: AbstractUnivariateTail2
     θ::T
     function HuslerReissTail(θ)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
@@ -39,7 +39,7 @@ const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
 HuslerReissCopula(θ) = ExtremeValueCopula(2, HuslerReissTail(θ))
 HuslerReissCopula(d::Integer, θ) = ExtremeValueCopula(2, HuslerReissTail(θ))
 Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
-
+_θ_bounds(::Type{<:HuslerReissTail}, d) = (0, Inf)
 function A(tail::HuslerReissTail, t::Real)
     tt = _safett(t)
     θ  = tail.θ
@@ -56,6 +56,11 @@ end
 _example(::Type{<:HuslerReissCopula}, d) = ExtremeValueCopula(2, HuslerReissTail(1.0))
 _unbound_params(::Type{<:HuslerReissCopula}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissCopula}, d, α) = (; θ = exp(α[1]))
+
+λᵤ(C::HuslerReissCopula{T}) where {T} = 2 * (1 - cdf(Normal(), 1 / C.tail.θ))
+λᵤ⁻¹(::Type{HuslerReissTail}, λ::Real) = 1 / quantile(Normal(), 1 - λ/2)
+β(C::HuslerReissCopula{T}) where {T} = 4^(1 - Distributions.cdf(Distributions.Normal(), 1/C.tail.θ)) - 1
+β⁻¹(C::HuslerReissCopula{T}, beta::Real) where {T} = 1 / Distributions.quantile(Distributions.Normal(), 1 - log(beta + 1) / log(4))
 
 function ℓ(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t) where {T}
     t₁, t₂ = t

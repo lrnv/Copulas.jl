@@ -25,7 +25,7 @@ References:
 
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
 """
-struct CuadrasAugeTail{T} <: Tail2
+struct CuadrasAugeTail{T} <: AbstractUnivariateTail2
     θ::T
     function CuadrasAugeTail(θ)
         (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))
@@ -54,11 +54,17 @@ _rebound_params(::Type{<:CuadrasAugeCopula}, d, α) = begin
     p = 1 / (1 + exp(-α[1]))
     (; θ = p)
 end
-
+_θ_bounds(::Type{<:CuadrasAugeTail}, d) = (0, 1)
 dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 ? -tail.θ : C.tail.θ)
 
-τ(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}) where {T} = C.tail.θ / (2 - C.tail.θ)
-ρ(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}) where {T} = (3 * C.tail.θ) / (4 - C.tail.θ)
+τ(C::CuadrasAugeCopula{T}) where {T} = C.tail.θ / (2 - C.tail.θ)
+τ⁻¹(C::CuadrasAugeCopula{T}, tau::Real) where {T} = 2tau / (1 + tau)
+ρ(C::CuadrasAugeCopula{T}) where {T} = (3 * C.tail.θ) / (4 - C.tail.θ)
+ρ⁻¹(C::CuadrasAugeCopula{T}, rho::Real) where {T} = 4rho / (3 + rho)
+β(C::CuadrasAugeCopula{T}) where {T} = 2.0^(C.tail.θ) - 1
+β⁻¹(C::CuadrasAugeCopula{T}, beta::Real) where {T} = log2(beta + 1)
+λᵤ(C::CuadrasAugeCopula{T}) where {T} = C.tail.θ
+λᵤ⁻¹(C::CuadrasAugeCopula{T}, λ::Real) where {T} = λ
 
 ℓ(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t) where {T} = max(t[1], t[2]) + (1 - C.tail.θ) * min(t[1], t[2])
 

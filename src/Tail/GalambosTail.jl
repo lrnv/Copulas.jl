@@ -25,7 +25,7 @@ References:
 
 * [galambos1975order](@cite) Galambos, J. (1975). Order statistics of samples from multivariate distributions. Journal of the American Statistical Association, 70(351a), 674-680.
 """
-struct GalambosTail{T} <: Tail2
+struct GalambosTail{T} <: AbstractUnivariateTail2
     θ::T
     function GalambosTail(θ)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
@@ -39,7 +39,7 @@ const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
 GalambosCopula(θ) = ExtremeValueCopula(2, GalambosTail(θ))
 GalambosCopula(d::Integer, θ) = ExtremeValueCopula(2, GalambosTail(θ))
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
-
+_θ_bounds(::Type{<:GalambosTail}, d) = (0, Inf)
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
 function A(tail::GalambosTail, t::Real)
     tt = _safett(t)
@@ -57,3 +57,8 @@ end
 _example(::Type{<:GalambosCopula}, d) = ExtremeValueCopula(2, GalambosTail(1.0))
 _unbound_params(::Type{<:GalambosCopula}, d, θ) = [log(θ.θ)]           # θ > 0
 _rebound_params(::Type{<:GalambosCopula}, d, α) = (; θ = exp(α[1]))
+
+β(C::GalambosCopula{T}) where {T} = 2.0^( 2.0^(-1.0/C.tail.θ) ) - 1.0
+β⁻¹(C::GalambosCopula{T}, beta::Real) where {T} = -1/log2(log2(beta+1))
+λᵤ(C::GalambosCopula{T}) where {T} = 2.0^(-1.0/C.tail.θ)
+λᵤ⁻¹(C::GalambosCopula{T}, λ::Real) where {T} = -1.0 / log2(λ)
