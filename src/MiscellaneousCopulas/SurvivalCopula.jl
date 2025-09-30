@@ -41,6 +41,7 @@ struct SurvivalCopula{d,CT,flips} <: Copula{d}
         return new{d,CT,flips}(C)
     end
     SurvivalCopula(C::CT, flips::Tuple) where {d, CT<:Copula{d}} = SurvivalCopula{d,CT,flips}(C)
+    SurvivalCopula(C::CT, flips) where {d, CT<:Copula{d}} = SurvivalCopula(C, tuple(flips...))
     SurvivalCopula{D,CT,flips}(d::Int, args...;kwargs...) where {D, CT, flips} = SurvivalCopula{d,CT,flips}(CT(d, args...; kwargs...))
 end
 
