@@ -83,9 +83,10 @@ function _fit(::Type{SurvivalCopula}, U,
 end
 
 # Convenience: dispatch on the SurvivalCopula type with embedded base type
-function _fit(::Type{SurvivalCopula{d,subCT,VI}}, U, M; indices::Tuple{Vararg{Int}}, kwargs...) where {d,subCT,VI}
+function _fit(::Type{<:SurvivalCopula{d,subCT,VI}}, U, M; indices::Tuple{Vararg{Int}}, kwargs...) where {d,subCT,VI}
     return _fit(SurvivalCopula, U, M; base=subCT, indices=indices, kwargs...)
 end
+_available_fitting_methods(::Type{<:SurvivalCopula{d,subCT,VI}}) where {d, subCT, VI} = _available_fitting_methods(subCT)
 
 # Conditioning bindings colocated
 function DistortionFromCop(S::SurvivalCopula{D,CT,VI}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,CT,VI,p}
