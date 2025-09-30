@@ -82,7 +82,7 @@ function Distributions.params(C::TCopula{d,df,MT}) where {d,df,MT}
     Σ = C.Σ; n = size(Σ,1)
     return (; ν = df, (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:n-1 for j in i+1:n)...)
 end
-_example(::Type{TCopula}, d::Int) = TCopula(5.0, Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
+_example(::Type{<:TCopula}, d::Int) = TCopula(5.0, Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
 function _unbound_params(::Type{TCopula}, d::Int, θ::NamedTuple)
     Σ = _Σ_from_named(d, θ)
     α = _unbound_corr_params(d, Σ)
