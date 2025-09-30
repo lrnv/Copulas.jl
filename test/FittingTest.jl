@@ -20,9 +20,9 @@
         'R' => :irho,
         'B' => :ibeta,
         'G' => :gnz2011, # only for empirical archimedeans. 
-        'O' => :ols,
-        'C' => :cfg,
-        'P' => :pickands,
+        'O' => :ols, # only for empirical EVC
+        'C' => :cfg, # only for empirical EVC
+        'P' => :pickands, # only for empirical EVC
     )
 
     # Structured manifest of test cases
@@ -45,8 +45,8 @@
 
 
         # # Elliptical (all d)
-        ("Gaussian",        d -> GaussianCopula,                                                          "234", "DMTRB"),
-        # ("t",               d -> TCopula,                                                                 "234", "DMTRB"),
+        # ("Gaussian",        d -> GaussianCopula,                                                          "234", "DMTRB"),
+        ("t",               d -> TCopula,                                                                 "234", "TRB"),  ######## Cannot make the MLE work. 
 
         # # Archimedean generic and variants (all d)
         # ("Archimedean(emp)", d -> ArchimedeanCopula,                                                      "234", "DG"),
