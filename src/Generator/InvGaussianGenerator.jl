@@ -48,7 +48,7 @@ _rebound_params(::Type{<:InvGaussianCopula}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:InvGaussianGenerator}, d) = (0, Inf)
 
 ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
-ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? ln(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))
+ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? log(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))
 function ϕ⁽¹⁾(G::InvGaussianGenerator, t)
     if isinf(G.θ)
         s = sqrt(2*t)
@@ -146,21 +146,10 @@ frailty(G::InvGaussianGenerator) = Distributions.InverseGaussian(G.θ,1)
 
 
 function _rho_invgaussian(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
-    # Uses a stable single-integral formulation as in BB2/Gumbel/Joe.
-    θ = float(θ)
-    G = InvGaussianGenerator(θ)
-    gfun(s) = -ϕ⁽¹⁾(G, s)
-    inner(s) = s <= 0 ? 0.0 : begin
-        innerf(z) = gfun(s*z) * gfun(s*(1 - z))
-        val, _ = QuadGK.quadgk(innerf, 0.0, 1.0; rtol=sqrt(rtol), atol=sqrt(atol))
-        s * val
-    end
-    outerf(t) = (t <= 0 || t >= 1) ? 0.0 : begin
-        s = t/(1 - t)
-        jac = 1/(1 - t)^2
-        ϕ(G, s) * inner(s) * jac
-    end
-    I, _ = QuadGK.quadgk(outerf, 0.0, 1.0; rtol=rtol, atol=atol, maxevals=maxevals)
+    θeff = clamp(θ, 1e-12, Inf)
+    Cθ   = Copulas.ArchimedeanCopula(2, InvGaussianGenerator(θeff))
+    f(x) = _cdf(Cθ, (x[1], x[2]))  # <- tu _cdf
+    I = HCubature.hcubature(f, (0.0,0.0), (1.0,1.0); rtol=rtol, atol=atol, maxevals=maxevals)[1]
     return 12I - 3
 end
 
