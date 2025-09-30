@@ -19,63 +19,40 @@ function _cdf(C::CT,u) where {CT<:Copula}
     z = zeros(eltype(u),length(C))
     return HCubature.hcubature(f,z,u,rtol=sqrt(eps()))[1]
 end
+
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     z = zeros(d)
     i = ones(d)
-    r = HCubature.hcubature(F,z,i,rtol=sqrt(eps()))[1]
-    return 12*r-3
+    r = HCubature.hcubature(F, z, i, rtol=sqrt(eps()))[1]
+    return (2^d * (d+1) * r - d - 1)/(2^d - d - 1) # Ok for multivariate. 
 end
-function τ(C::Copula)
+function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
-    r = Distributions.expectation(F,C; nsamples=10^4)
-    return 4*r-1
+    r = Distributions.expectation(F, C; nsamples=10^4)
+    return (2^d *  r - 1) / (2^d - 1) # Ok for multivariate. 
 end
 function β(C::Copula{d}) where {d}
-    d ≥ 2 || throw(ArgumentError("β(C) requiere d≥2"))
-    if d == 2
-        return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
-    else
-        u     = fill(0.5, d)
-        C0    = Distributions.cdf(C, u)
-        Cbar0 = Distributions.cdf(SurvivalCopula(C, collect(1:d)), u)
-        h     = 2.0^(d-1) / (2.0^(d-1) - 1.0)
-        return h * (C0 + Cbar0 - 2.0^(1-d))
-    end
+    d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
+    u     = fill(0.5, d)
+    C0    = Distributions.cdf(C, u)
+    Cbar0 = Distributions.cdf(SurvivalCopula(C, collect(1:d)), u)
+    return 2^(d-1) * (C0 + Cbar0 - 2^(1-d)) / (2^(d-1) - 1)
 end
-function StatsBase.corkendall(C::Copula{d}) where d
-    # returns the matrix of bivariate kendall taus.
+function _as_biv(f::F, C::Copula{d}) where {F, d}
     K = ones(d,d)
     for i in 1:d
         for j in i+1:d
-            K[i,j] = τ(SubsetCopula(C::Copula{d},(i,j)))
+            K[i,j] = f(SubsetCopula(C, (i,j)))
             K[j,i] = K[i,j]
         end
     end
     return K
 end
-function StatsBase.corspearman(C::Copula{d}) where d
-    # returns the matrix of bivariate spearman rhos.
-    K = ones(d,d)
-    for i in 1:d
-        for j in i+1:d
-            K[i,j] = ρ(SubsetCopula(C::Copula{d},(i,j)))
-            K[j,i] = K[i,j]
-        end
-    end
-    return K
-end
-function corblomqvist(C::Copula{d}) where d
-    # returns the matrix of bivariate kendall taus.
-    K = ones(d,d)
-    for i in 1:d
-        for j in i+1:d
-            K[i,j] = β(SubsetCopula(C::Copula{d},(i,j)))
-            K[j,i] = K[i,j]
-        end
-    end
-    return K
-end
+StatsBase.corkendall(C::Copula{d}) where d = _as_biv(τ, C)
+StatsBase.corspearman(C::Copula{d}) where d = _as_biv(ρ, C)
+corblomqvist(C::Copula{d}) where d = _as_biv(β, C)
+
 function measure(C::Copula{d}, us,vs) where {d}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]

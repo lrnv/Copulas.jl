@@ -15,23 +15,31 @@ We implement the most well-known ones in this package.
 !!! definition "Kendall' τ"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
 
-    $$\tau = 4 \int C(\boldsymbol u) \, c(\boldsymbol u) \;d\boldsymbol u -1$$
+    $$\tau = \frac{2^d}{2^{d-1} - 1} \int C(\boldsymbol u) \, c(\boldsymbol u) \;d\boldsymbol u - \frac{1}{2^{d-1}-1}$$
 
 !!! definition "Spearman's ρ"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Spearman's ρ is defined as: 
 
-    $$\rho = 12 \int C(\boldsymbol u) d\boldsymbol u -3.$$
+    $$\rho = \frac{2^d * (d+1)}{2^d -d-1} \int C(\boldsymbol u) d\boldsymbol u - \frac{d+1}{2^d - (d+1)}.$$
 
-These two dependence measures are most meaningful in the bivariate case, and we sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated with a multivariate copula. 
+!!! definition "Definition (Blomqvist's β):"
+    For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Blomqvist's β is defined as: 
+
+    $$\beta = \frac{2^{d-1}}{2^{d-1} -1} \left(C(\frac{\boldsymbol{1}}{\bolsymbol{2}}) + \bar{C}(\frac{\boldsymbol{1}}{\bolsymbol{2}})\right) - \frac{1}{2^{d-1} - 1}.$$
+
+    where $\bar{C}$ is the survival copula associated with $C$. 
+
+These dependence measures are very common when $d=2$, and a bit less when $d > 2$. We sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated with a multivariate copula. 
 We thus provide two different interfaces:
-* `Copulas.τ(C::Copula)` and `Copulas.ρ(C::Copula)`, providing true multivariate Kendall taus and Spearman rhos
-* `StatsBase.corkendall(C::Copula)` and `StatsBase.corspearman(C::Copula)` provide matrices of bivariate Kendall taus and Spearman rhos. 
+* `Copulas.τ(C::Copula)`, `Copulas.ρ(C::Copula)` and `Copulas.β(C::Copula)` provide the upper formulas.
+* `StatsBase.corkendall(C::Copula)`, `StatsBase.corspearman(C::Copula)` and `Copulas.corblomqvist(C::Copula)` provide matrices of bivariate versions. 
 
-Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C)` (for the multivariate versions) and `corkendall(C), corspearman(C)` (for the matrix versions).
-Similarly, empirical versions of these metrics can be obtained from a matrix of observations `data` of size `(d,n)` by  `Copulas.τ(data)`, `Copulas.ρ(data)`, `StatsBase.corkendall(data)` and `StatsBase.corspearman(data)`.
+Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C), β(C)` (for the multivariate versions) and `corkendall(C), corspearman(C), corblomqvist(C)` (for the matrix versions).
+Similarly, empirical versions of these metrics can be obtained from a matrix of observations `data` of size `(d,n)` by  `Copulas.τ(data)`, `Copulas.ρ(data)`, `Copulas.β(data)`, `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)` and `Copulas.corblomqvist(data)`.
 
-!!! info "Ranges of $\tau$ and $\rho$."
-    Kendall's $\tau$ and Spearman's $\rho$ belong to $[-1, 1]$. They are equal to :
+
+!!! note "Ranges of $\tau$, $\rho$ and $\beta$."
+    Kendall's $\tau$, Spearman's $\rho$ and Blomqvist's $\beta$ all belong to $[-1, 1]$. They are equal to :
     * 0 if and only if the copula is a `IndependentCopula`.
     * -1 is and only if the copula is a `WCopula`.
     * 1 if and only if the copula is a `MCopula`. 
@@ -41,7 +49,8 @@ Similarly, empirical versions of these metrics can be obtained from a matrix of 
 
 
 !!! todo "Work in progress"
-    The package implements generic version of the dependence metrics, but some families have specific formulas for the Kendall $\tau$ and Spearman $\rho$, allowing faster implementations. However, all the potential fast-paths are not implemented yet. If you feel a specific method for a certain copula is missing, do not hesitate to open an issue !
+    The package implements generic version of the dependence metrics, but some families have faster versions (closed form formulas or better integration paths). 
+    However, all the potential fast-paths are not implemented yet. If you feel a specific method for a certain copula is missing, do not hesitate to open an issue !
 
     Moreover, many copula estimators are based on the relationship between parameters and these coefficients (see e.g., [genest2011,fredricks2007,derumigny2017](@cite)), but once again our implementation is not complete yet. 
 
