@@ -36,7 +36,8 @@ struct GalambosTail{T} <: Tail2
 end
 
 const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
-GalambosCopula(θ) =ExtremeValueCopula(2, GalambosTail(θ))
+GalambosCopula(θ) = ExtremeValueCopula(2, GalambosTail(θ))
+GalambosCopula(d::Integer, θ) = ExtremeValueCopula(2, GalambosTail(θ))
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
 
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
@@ -51,3 +52,9 @@ function A(tail::GalambosTail, t::Real)
         return -LogExpFunctions.expm1(-LogExpFunctions.logaddexp(-θ*log(tt), -θ*log(1-tt)) / θ)
     end
 end
+
+# Fitting helpers for EV copulas using Galambos tail
+_example(::Type{ExtremeValueCopula{2, GalambosTail{T}}}, d) where {T} = ExtremeValueCopula(2, GalambosTail(one(T)))
+_example(::Type{ExtremeValueCopula{2, GalambosTail}}, d) = ExtremeValueCopula(2, GalambosTail(1.0))
+_unbound_params(::Type{ExtremeValueCopula{2, GalambosTail}}, d, θ) = [log(θ.θ)]           # θ > 0
+_rebound_params(::Type{ExtremeValueCopula{2, GalambosTail}}, d, α) = (; θ = exp(α[1]))

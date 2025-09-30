@@ -46,6 +46,7 @@ end
 
 const tEVCopula{T} = ExtremeValueCopula{2, tEVTail{T}}
 tEVCopula(ν, ρ) = ExtremeValueCopula(2, tEVTail(ν, ρ))
+tEVCopula(d::Integer, ν, ρ) = ExtremeValueCopula(2, tEVTail(ν, ρ))
 Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
 
 function A(tail::tEVTail, t::Real)
@@ -73,6 +74,12 @@ function A(tail::tEVTail, t::Real)
 
     return tt * F1 + om * F2
 end
+
+# Fitting helpers for EV copulas using extreme-t tail
+_example(::Type{ExtremeValueCopula{2, tEVTail{T}}}, d) where {T} = ExtremeValueCopula(2, tEVTail(T(4), T(0.5)))
+_example(::Type{ExtremeValueCopula{2, tEVTail}}, d) = ExtremeValueCopula(2, tEVTail(4.0, 0.5))
+_unbound_params(::Type{ExtremeValueCopula{2, tEVTail}}, d, θ) = [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
+_rebound_params(::Type{ExtremeValueCopula{2, tEVTail}}, d, α) = (; ν = exp(α[1]), ρ = tanh(α[2]))
 function dA(tail::tEVTail, t::Real)
     ρ, ν = tail.ρ, tail.ν
     C = sqrt((1 + ν) / (1 - ρ^2))

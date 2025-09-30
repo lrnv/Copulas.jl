@@ -48,6 +48,7 @@ end
 
 const AsymGalambosCopula{T} = ExtremeValueCopula{2, AsymGalambosTail{T}}
 AsymGalambosCopula(α, θ) = ExtremeValueCopula(2, AsymGalambosTail(α, collect(θ)))
+AsymGalambosCopula(d::Integer, α, θ) = ExtremeValueCopula(2, AsymGalambosTail(α, collect(θ)))
 Distributions.params(tail::AsymGalambosTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 
 function A(tail::AsymGalambosTail, t::Real)
@@ -59,4 +60,13 @@ function A(tail::AsymGalambosTail, t::Real)
     x2 = -α * log(θ₂ * (1 - tt))
     s  = LogExpFunctions.logaddexp(x1, x2) / α
     return -LogExpFunctions.expm1(-s)
+end
+
+# Fitting helpers for EV copulas using Asymmetric Galambos tail
+_example(::Type{ExtremeValueCopula{2, AsymGalambosTail{T}}}, d) where {T} = ExtremeValueCopula(2, AsymGalambosTail(T(1), (T(0.5), T(0.5))))
+_example(::Type{ExtremeValueCopula{2, AsymGalambosTail}}, d) = ExtremeValueCopula(2, AsymGalambosTail(1.0, (0.5, 0.5)))
+_unbound_params(::Type{ExtremeValueCopula{2, AsymGalambosTail}}, d, θ) = [log(θ.α), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)]
+_rebound_params(::Type{ExtremeValueCopula{2, AsymGalambosTail}}, d, α) = begin
+    σ(x) = 1 / (1 + exp(-x))
+    (; α = exp(α[1]), θ₁ = σ(α[2]), θ₂ = σ(α[3]))
 end
