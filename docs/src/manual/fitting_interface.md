@@ -11,7 +11,7 @@ This section summarizes **how to fit** copulas (and Sklar distributions) in `Cop
 
 ## Data Conventions
 
-* We work with **pseudo-observations** `U ∈ (0,1)^{d×n}` (rows = dimension, columns = observations).
+* We work with **pseudo-observations** `U ∈ (0,1)^{d×n}` (rows = dimension, columns = observations). You can use the `pseudo()` function to get such normalized ranks. 
 * The *rank* routines (τ/ρ/β/γ) assume pseudo-observations.
 * The `StatsBase` functions for pairwise correlations use the `n×d` convention; when called internally, they are transposed (`U`) as appropriate.
 
@@ -56,17 +56,19 @@ margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple())
 
 ## Available fitting methods
 
-Availability depends on the family; you can check it with:
+The names and availiability of fitting methods depends on the model. You can check what is available with the following internal call : 
 
 ```julia
-_available_fitting_methods(CT) # e.g. (:mle, :itau, :irho, :ibeta)
+Copulas._available_fitting_methods(CT) # e.g. (:mle, :itau, :irho, :ibeta)
 ```
+
+The first method in the list is the one used by default. 
 
 ### Short description
 
 * `:mle` — **Maximum likelihood** over `U`. Recommended when there is a stable density and good reparameterization.
-* `:itau` — **Kendall's inverse**: matches `τ_emp(U)` with `τ_theo(θ)`. Ideal for **single-parameter families** or when a reliable monotone inverse exists.
-* `:irho` — **Spearman's inverse**: analogous to ρ; can operate with scalar or matrix objectives (e.g., multivariate Gaussians).
+* `:itau` — **Kendall's inverse**: matches the theoretical `τ(C)` with the empirical `τ(U)`. Ideal for **single-parameter families** or when a reliable monotone inverse exists.
+* `:irho` — **Spearman's inverse**: analogous to `ρ`; can operate with scalar or matrix objectives (e.g., multivariate Gaussians).
 * `:ibeta` — **Blomqvist's inverse**: scalar; **only** works if the family has **≤ 1 free parameter**.
 
 > **Note:** Rank-based methods require that the number of free parameters not exceed the information of the coefficient(s) used; in the case of `:ibeta`, this is explicitly enforced.
