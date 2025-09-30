@@ -68,7 +68,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:irho})
               converged = Optim.converged(res),
               iterations = Optim.iterations(res))
 end
-function _fit(CT::Type{<:Copula}, U, ::Val{ibeta})
+function _fit(CT::Type{<:Copula}, U, ::Val{:ibeta})
     d   = size(U,1)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
     beta = blomqvist_beta(U)
