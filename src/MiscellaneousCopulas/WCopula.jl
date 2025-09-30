@@ -16,12 +16,6 @@ struct WCopula <: Copula{2}
     WCopula(d) = d!=2 ? error("WCopula only available in dimension 2") : new()
     WCopula() = new()
 end
-Distributions.params(::WCopula) = ()
-_example(::Type{<:WCopula}, d) = WCopula(d)
-_unbound_params(::Type{<:WCopula}, d, θ) = Float64[]
-_rebound_params(::Type{<:WCopula}, d, α) = (;)
-_fit(::Type{<:WCopula}, U, ::Any) = WCopula(size(U,1)), (;)
-
 Distributions._logpdf(::WCopula,           u) = sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::WCopula, u) = max(sum(u)-1,0)
 
@@ -39,3 +33,11 @@ StatsBase.corspearman(::WCopula) = [1 -1; -1 1]
 # Subsetting colocated
 SubsetCopula(C::WCopula, ::NTuple{p, Int}) where {p} = (p==2 ? C : error("WCopula only defined for p=2"))
 DistortionFromCop(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistortion(float(uⱼₛ[1]), Int8(js[1]))
+
+# Fitting/params interface (no parameters)
+Distributions.params(::WCopula) = (;)
+_fit(::Type{<:WCopula}, U, ::Val{:default}) = WCopula(size(U,1)), (;)
+_fit(::Type{<:WCopula}, U, ::Val{:mle}) = WCopula(size(U,1)), (;)
+_fit(::Type{<:WCopula}, U, ::Val{:itau}) = WCopula(size(U,1)), (;)
+_fit(::Type{<:WCopula}, U, ::Val{:irho}) = WCopula(size(U,1)), (;)
+_fit(::Type{<:WCopula}, U, ::Val{:ibeta}) = WCopula(size(U,1)), (;)

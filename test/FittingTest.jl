@@ -18,7 +18,7 @@
         'T' => :itau,
         'R' => :irho,
         'B' => :ibeta,
-        'G' => :gnz2011,
+        'G' => :gnz2011, # only for empirical archimedeans. 
     )
 
     # Structured manifest of test cases
@@ -26,13 +26,17 @@
     # - dims: string of digits among "2","3","4"; remove a digit to skip that dimension
     # - meth: string of method flags per METHODS; remove letters to skip methods
     cases = [
+        # No parameters
+        # ("Independent",     d -> IndependentCopula,                                                       "234", "DMTRB"),
+        # ("M",               d -> MCopula,                                                                 "234", "DMTRB"),
+        # ("W",               d -> WCopula,                                                                 "2",   "DMTRB"),
+
         # Empirical/misc (all d)
-        # ("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
+        ("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
         # ("Beta",            d -> BetaCopula,                                                              "234", "D"),
         # ("Checkerboard",    d -> CheckerboardCopula,                                                      "234", "D"),
         # ("Empirical",       d -> EmpiricalCopula,                                                         "234", "D"),
-        ("Independent",     d -> IndependentCopula,                                                       "234", "DMTRB"),
-        # ("M",               d -> MCopula,                                                                 "234", "DMTRB"),
+
 
         # # Elliptical (all d)
         # ("Gaussian",        d -> GaussianCopula,                                                          "234", "DMTRB"),
