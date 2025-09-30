@@ -62,6 +62,8 @@ struct WGenerator <: Generator end
 τ(::MGenerator)  = 1
 τ(::WGenerator)  = -1
 
+ρ(::IndependentGenerator)  = 0
+
 
 
 

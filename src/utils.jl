@@ -69,3 +69,24 @@ end
 # For d > 2, one can use a sweep over one margin and a (d-1)-dimensional BIT or recursively reduced structures;
 # practical variants often use coordinate compression and nested BIT/segment trees to achieve ~O(n log^{d-1} n).
 # We keep the simple O(n^2) version for clarity and modest n; contributions welcome to add a fast path.
+
+@inline function _winsorize_tau_vclib(τ::Float64)
+    s = τ < 0 ? -1.0 : 1.0
+    a = abs(τ)
+    a = a < 0.01 ? 0.01 : (a > 0.9 ? 0.9 : a)
+    return s*a
+end
+
+# β̂ multivariate (Hofert–Mächler–McNeil, ec. (7))
+function blomqvist_beta(U::AbstractMatrix)
+    d, n = size(U)
+    c = 2.0^(d-1) / (2.0^(d-1) - 1.0)
+    acc = 0.0
+    @inbounds for i in 1:n
+        ui = view(U, :, i)
+        q1 = all(ui .<= 0.5)
+        q3 = all(ui .>  0.5)
+        acc += (q1 || q3) ? 1.0 : 0.0
+    end
+    return c * (acc/n - 2.0^(1-d))
+end

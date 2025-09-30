@@ -73,3 +73,32 @@ function τ⁻¹(::Type{T},tau) where T<:FrankGenerator
         return s*Roots.fzero(x -> _frank_tau(x)-v, 0, Inf)
     end
 end
+
+function ρ(G::FrankGenerator)
+    θ = G.θ
+    (-Inf < θ < Inf) || throw(ArgumentError("Frank definido para θ∈ℝ\\{0}"))
+    abs(θ) < 1e-8 && return θ/6
+    return 1 + 12*(Debye(θ,2) - Debye(θ,1))/θ
+end
+
+function ρ⁻¹(::Type{FrankGenerator}, ρ̂::Real; tol::Real=1e-10)
+    ρc = clamp(ρ̂, -1+1e-12, 1-1e-12)
+
+    f(θ) = ρ(FrankGenerator(θ)) - ρc
+
+    # bracketing adaptative
+    # for ρ>0 search θ>0, for ρ<0 θ<0
+    if ρc > 0
+        a, b = 1e-6, 50.0
+        while f(a)*f(b) > 0 && b < 1e6
+            b *= 2
+        end
+    else
+        a, b = -50.0, -1e-6
+        while f(a)*f(b) > 0 && a > -1e6
+            a *= 2
+        end
+    end
+
+    return Roots.find_zero(f, (a,b), Roots.Brent(); xatol=tol, rtol=0)
+end

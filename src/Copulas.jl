@@ -19,6 +19,8 @@ module Copulas
     import PolyLog
     import BigCombinatorics
     import LambertW
+    import Optim
+    using Printf
 
     # Main code
     include("utils.jl")
@@ -124,6 +126,10 @@ module Copulas
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
+    include("Fitting/CopulaModel.jl")
+    include("Fitting/Stats.jl")
+    include("Fitting/ArchimedeanFit.jl")
+
     # overloadings of the show() function: 
     include("show.jl")
 
@@ -180,6 +186,7 @@ module Copulas
            EmpiricalEVCopula,
            BernsteinCopula,
            BetaCopula,
-           CheckerboardCopula
+           CheckerboardCopula,
+           CopulaModel
 
 end
