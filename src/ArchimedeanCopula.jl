@@ -201,9 +201,9 @@ _example(CT::Type{ArchimedeanCopula}, d) = throw("Cannot fit an Archimedean copu
 _unbound_params(CT::Type{ArchimedeanCopula}, d, θ) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
 _rebound_params(CT::Type{ArchimedeanCopula}, d, α) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
 
-_available_fitting_methods(::Type{<:ArchimedeanCopula}) = (:mle, :gnz2011)
+_available_fitting_methods(::Type{ArchimedeanCopula}) = (:mle, :gnz2011)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}) = (:mle, :itau, :irho, :ibeta, :gnz2011)
-_available_fitting_methods(::Type{ArchimedeanCopula}) = (:gnz2011,)
+
 function _fit(::Type{ArchimedeanCopula}, U, ::Val{:gnz2011})
     # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted. 
     d,n = size(U)
