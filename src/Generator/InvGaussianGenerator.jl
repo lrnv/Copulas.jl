@@ -155,7 +155,7 @@ function ρ⁻¹(::Type{<:InvGaussianGenerator}, rho)
     # Numerically inverts _rho_invgaussian using Brent's method.
     # Spearman's rho for InvGaussian: [0, 1/2)
     rho ≤ 0 && return zero(rho)
-    rho ≥ 1/2 && return Inf * rho
-    θhat = Roots.find_zero(θ -> _rho_invgaussian(θ) - rho, (0, Inf))
-    return θhat
+    rho ≥ log(2) && return Inf * rho
+    xhat = Roots.find_zero(x -> _rho_invgaussian(-log(x)) - rho, (0, 1))
+    return -log(xhat)
 end
