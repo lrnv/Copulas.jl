@@ -83,25 +83,6 @@ function _uppertriangle_stats(mat)
     gen = _uppertriangle_flat(mat)
     return Statistics.mean(gen), length(gen) == 1 ? zero(gen[1]) : Statistics.std(gen), minimum(gen), maximum(gen)
 end
-#SCHMIDT1 and STADTMULLER (2006)
-function tail(U::Matrix{T}; t::Symbol=:upper) where T <: Real
-    size(U, 1) == 2 || throw(ArgumentError("U must be a 2×n matrix"))
-    m = size(U, 2)
-    m ≥ 4 || throw(ArgumentError("At least 4 observations are required"))
-    ranks1 = StatsBase.ordinalrank(U[1, :])
-    ranks2 = StatsBase.ordinalrank(U[2, :])
-    k = max(4, floor(Int, sqrt(m)))
-    count_extreme = if t === :upper
-        threshold = m - k
-        sum((ranks1 .> threshold) .& (ranks2 .> threshold))
-    elseif t === :lower
-        sum((ranks1 .<= k) .& (ranks2 .<= k))
-    else
-        throw(ArgumentError("t must be :upper or :lower"))
-    end
-    return count_extreme / k
-end
-
 _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
     fa,fb = f(0.0), f(1.0)
     while fb ≤ 0 && b < θmax
@@ -111,8 +92,6 @@ _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
     (fa < 0 && fb > 0) || error("Could not bound root at [0, $θmax].")
     Roots.find_zero(f, (a,b), Roots.Brent(); atol=tol, rtol=tol)
 end
-
-
 
 function β(U::AbstractMatrix)
     # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
@@ -174,6 +153,22 @@ function γ(U::AbstractMatrix)
         return (m - a_d) / (b_d - a_d)
     end
 end
+function λ(U::AbstractMatrix; t::Symbol=:upper, p::Union{Nothing,Real}=nothing)
+    # Assumes pseudo-data given. Multivariate tail’s lambda (Schmidt, R. & Stadtmüller, U. 2006)
+    d, m = size(U)
+    m ≥ 4 || throw(ArgumentError("At least 4 observations are required"))
+    p === nothing && (p = 1/sqrt(m))
+    (0 < p < 1) || throw(ArgumentError("p must be in (0,1)"))
+    V = t === :upper ? (1 .- Float64.(U)) : Float64.(U)
+    cnt = 0
+    @inbounds @views for j in 1:m
+        cnt += all(V[:, j] .<= p)   # vista sin copiar gracias a @views
+    end
+    return clamp(cnt / (p*m), 0.0, 1.0)
+end
+λₗ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = λ(U; t=:lower, p=p)
+λᵤ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = λ(U; t=:upper, p=p)
+
 function entropy(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
     # Assumes pseudo-data given. Multivariate copula entropy (L.F. Kozachenko and N.N. Leonenko., 1987)
     d, n = size(U)
@@ -411,4 +406,72 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
     end
 
     return signed ? (; H, I, r_signed=Rsg) : (; H, I, r=R)
+end
+function cortail(X::AbstractMatrix{<:Real}; t::Symbol = :lower, method::Symbol = :SchmidtStadtmueller, p::Union{Nothing,Real} = nothing)
+    # We expect the number of dimension to be the second axes here, 
+    # contrary to the whole package but to be coherent with 
+    # StatsBase.corspearman and StatsBase.corkendall. 
+    m, n = size(X)
+    n ≥ 2 || throw(ArgumentError("≥ 2 variables (columns) are required."))
+    (t === :lower || t === :upper) || throw(ArgumentError("t ∈ {:lower,:upper}"))
+    U = t === :upper ? (1 .- Float64.(X)) : Float64.(X)
+    anynan = [any(isnan, @view U[:, j]) for j in 1:n]
+    p === nothing && (p = 1 / sqrt(m))
+    (0 < p < 1) || throw(ArgumentError("p must be in (0,1); hint: p = 1/√m"))
+
+    Lam = Matrix{Float64}(LinearAlgebra.I, n, n)
+
+    if method === :SchmidtStadtmueller
+        B = U .<= p
+        @inbounds @views for j in 2:n
+            anynan[j] && continue
+            bj = B[:, j]
+            for i in 1:j-1
+                if anynan[i]
+                    Lam[i,j] = Lam[j,i] = NaN
+                else
+                    bi = B[:, i]
+                    c  = sum(bi .& bj)
+                    Lam[i,j] = Lam[j,i] = clamp((c / m) / p, 0.0, 1.0)
+                end
+            end
+        end
+
+    elseif method === :SchmidSchmidt
+        pmu = max.(0.0, p .- U)
+        S   = Matrix{Float64}(I, n, n)
+        @inbounds @views for j in 2:n
+            anynan[j] && continue
+            y = pmu[:, j]
+            for i in 1:j-1
+                if anynan[i]
+                    S[i,j] = S[j,i] = NaN
+                else
+                    x = pmu[:, i]
+                    S[i,j] = S[j,i] = dot(x, y) / m
+                end
+            end
+        end
+        int_over_Pi = (p^2 / 2)^2
+        int_over_M  = p^3 / 3
+        scale = int_over_M - int_over_Pi
+        @inbounds for j in 2:n, i in 1:j-1
+            if isfinite(S[i,j])
+                Lam[i,j] = Lam[j,i] = clamp((S[i,j] - int_over_Pi) / scale, 0.0, 1.0)
+            else
+                Lam[i,j] = Lam[j,i] = NaN
+            end
+        end
+
+    else
+        throw(ArgumentError("method must be :SchmidtStadtmueller or :SchmidSchmidt"))
+    end
+    @inbounds for j in 1:n
+        if anynan[j]
+            Lam[:, j] .= NaN
+            Lam[j, :] .= NaN
+            Lam[j, j]  = 1.0
+        end
+    end
+    return Lam
 end

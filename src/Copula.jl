@@ -79,15 +79,21 @@ function entropy(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.
     r = sqrt(max(0.0, 1 - exp(t)))
     return (H = H, I = -H, r = r)
 end
-λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = begin
-    f(e) = Distributions.cdf(C, fill(e, d)) / e
-    clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
+function λ(C::Copula{d}; t::Symbol = :lower, ε::Float64 = 1e-10) where {d}
+    d ≥ 2 || throw(ArgumentError("lambda(C): requiere d ≥ 2"))
+    if t === :lower
+        g(e) = Distributions.cdf(C, fill(e, d)) / e
+        return clamp(2*g(ε/2) - g(ε), 0.0, 1.0)
+    elseif t === :upper
+        Sc   = SurvivalCopula(C, Tuple(1:d))
+        f(e) = Distributions.cdf(Sc, fill(e, d)) / e
+        return clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
+    else
+        throw(ArgumentError("tail ∈ {:lower, :upper}"))
+    end
 end
-λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = begin
-    Sc   = SurvivalCopula(C, Tuple(1:d))
-    f(e) = Distributions.cdf(Sc, fill(e, d)) / e
-    clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
-end
+λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = λ(C; t=:lower, ε=ε)
+λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = λ(C; t=:upper, ε=ε)
 
 function _as_biv(f::F, C::Copula{d}) where {F, d}
     K = ones(d,d)
