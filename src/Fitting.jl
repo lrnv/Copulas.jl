@@ -19,10 +19,10 @@ for statistical inference and model comparison.
 - `method_details::NamedTuple` — additional method-specific metadata (grid size, pseudo-values, etc.).
 
 `CopulaModel` implements the standard `StatsBase.StatisticalModel` interface:
-[`nobs`](@ref), [`coef`](@ref), [`coefnames`](@ref), [`vcov`](@ref),
-[`aic`](@ref), [`bic`](@ref), [`deviance`](@ref), etc.
+[`StatsBase.nobs`](@ref), [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
+[`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref), [`StatsBase.deviance`](@ref), etc.
 
-See also [`fit`](@ref) and [`_copula_of`](@ref).
+See also [`Distributions.fit`](@ref) and [`_copula_of`](@ref).
 """
 struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
     result        :: CT
@@ -80,7 +80,7 @@ They must return a pair `(copula, meta)` where:
 - `meta::NamedTuple` holds method–specific metadata to be stored in `method_details`.
 
 This is not intended for direct use by end–users.  
-Use [`fit(CopulaModel, ...)`](@ref) instead.
+Use [`Distributions.fit(CopulaModel, ...)`] instead.
 """
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     # @info "Running the itau/irho/ibeta routine from the generic implementation"
@@ -100,20 +100,21 @@ function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:
            (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
 end
 """
-    fit(CT::Type{<:Copula}, U; kwargs...) -> CT
+    Distributions.fit(CT::Type{<:Copula}, U; kwargs...) -> CT
 
-Quick fit: devuelve solo la cópula ajustada (atajo de `fit(CopulaModel, CT, U; summaries=false, kwargs...).result`).
+Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(CopulaModel, CT, U; summaries=false, kwargs...).result`).
 """
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; copula_method=method, kwargs...)
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
+
 """
     _available_fitting_methods(::Type{<:Copula})
 
 Return the tuple of fitting methods available for a given copula family.
 
-This is used internally by [`fit`](@ref) to check validity of the `method` argument
+This is used internally by [`Distributions.fit`](@ref) to check validity of the `method` argument
 and to select a default method when `method=:default`.
 
 # Example
@@ -241,25 +242,62 @@ function _extra_pairwise_stats(U::AbstractMatrix, bypass::Bool)
     τm, τs, τmin, τmax = _uppertriangle_stats(StatsBase.corkendall(U'))
     ρm, ρs, ρmin, ρmax = _uppertriangle_stats(StatsBase.corspearman(U'))
     βm, βs, βmin, βmax = _uppertriangle_stats(corblomqvist(U'))
+    γm, γs, γmin, γmax = _uppertriangle_stats(corgini(U'))
     return (; tau_mean=τm, tau_sd=τs, tau_min=τmin, tau_max=τmax,
              rho_mean=ρm, rho_sd=ρs, rho_min=ρmin, rho_max=ρmax,
-             beta_mean=βm, beta_sd=βs, beta_min=βmin, beta_max=βmax)
+             beta_mean=βm, beta_sd=βs, beta_min=βmin, beta_max=βmax,
+             gamma_mean=γm, gamma_sd=γs, gamma_min=γmin, gamma_max=γmax)
 end
 Distributions.loglikelihood(C::Copulas.Copula, U::AbstractMatrix{<:Real}) = sum(Base.Fix1(Distributions.logpdf, C), eachcol(U))
 Distributions.loglikelihood(C::Copulas.Copula, u::AbstractVector{<:Real}) = Distributions.logpdf(C, u)
 Distributions.loglikelihood(M::CopulaModel) = M.ll
 Distributions.loglikelihood(M::CopulaModel, U::AbstractMatrix) = Distributions.loglikelihood(M.result, U)
 
+"""
+    nobs(M::CopulaModel) -> Int
+
+Number of observations used in the model fit.
+"""
 StatsBase.nobs(M::CopulaModel)     = M.n
 StatsBase.isfitted(::CopulaModel)  = true
+
+"""
+    deviance(M::CopulaModel) -> Float64
+
+Deviation of the fitted model (-2 * loglikelihood).
+"""
 StatsBase.deviance(M::CopulaModel) = -2 * Distributions.loglikelihood(M)
 StatsBase.dof(M::CopulaModel) = StatsBase.dof(M.result)
+
+"""
+    _copula_of(M::CopulaModel)
+
+Returns the copula object contained in the model, even if the result is a `SklarDist`.
+"""
 _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
+
+"""
+    coef(M::CopulaModel) -> Vector{Float64}
+
+Vector with the estimated parameters of the copula.
+"""
 StatsBase.coef(M::CopulaModel) = collect(values(Distributions.params(_copula_of(M)))) # why ? params of the marginals should also be taken into account. 
+
+"""
+    coefnames(M::CopulaModel) -> Vector{String}
+
+Names of the estimated copula parameters.
+"""
 StatsBase.coefnames(M::CopulaModel) = string.(keys(Distributions.params(_copula_of(M))))
 StatsBase.dof(C::Copulas.Copula) = length(values(Distributions.params(C)))
 
 #(optional vcov) and vcov its very important... for inference 
+"""
+    vcov(M::CopulaModel) -> Union{Nothing, Matrix{Float64}}
+
+Variance and covariance matrix of the estimators.
+Can be `nothing` if not available.
+"""
 StatsBase.vcov(M::CopulaModel) = M.vcov
 function StatsBase.stderror(M::CopulaModel)
     V = StatsBase.vcov(M)
@@ -275,7 +313,18 @@ function StatsBase.confint(M::CopulaModel; level::Real=0.95)
     return θ .- z .* se, θ .+ z .* se
 end
 
+"""
+    aic(M::CopulaModel) -> Float64
+
+Akaike information criterion for the fitted model.
+"""
 StatsBase.aic(M::CopulaModel) = 2*StatsBase.dof(M) - 2*Distributions.loglikelihood(M)
+
+"""
+    bic(M::CopulaModel) -> Float64
+
+Bayesian information criterion for the fitted model.
+"""
 StatsBase.bic(M::CopulaModel) = StatsBase.dof(M)*log(StatsBase.nobs(M)) - 2*Distributions.loglikelihood(M)
 function aicc(M::CopulaModel)
     k, n = StatsBase.dof(M), StatsBase.nobs(M)
@@ -464,6 +513,7 @@ function Base.show(io::IO, M::CopulaModel)
         has_tau  = all(haskey.(Ref(md), (:tau_mean, :tau_sd, :tau_min, :tau_max)))
         has_rho  = all(haskey.(Ref(md), (:rho_mean, :rho_sd, :rho_min, :rho_max)))
         has_beta = all(haskey.(Ref(md), (:beta_mean, :beta_sd, :beta_min, :beta_max)))
+        has_gamma = all(haskey.(Ref(md), (:gamma_mean, :gamma_sd, :gamma_min, :gamma_max)))
 
         if d === missing || d == 2
             println(io, "────────────────────────────")
@@ -472,6 +522,7 @@ function Base.show(io::IO, M::CopulaModel)
                 if has_tau; Printf.@printf(io, "%-10s %18.3f\n", "tau", md[:tau_mean]); end
                 if has_rho; Printf.@printf(io, "%-10s %18.3f\n", "rho", md[:rho_mean]); end
                 if has_beta; Printf.@printf(io, "%-10s %18.3f\n", "beta", md[:beta_mean]); end
+                if has_gamma; Printf.@printf(io, "%-10s %18.3f\n", "gamma", md[:gamma_mean]); end
             println(io, "────────────────────────────")
         else
             println(io, "───────────────────────────────────────────────────────")
@@ -488,6 +539,10 @@ function Base.show(io::IO, M::CopulaModel)
             if has_beta
                 Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n",
                     "beta", md[:beta_mean], md[:beta_sd], md[:beta_min], md[:beta_max])
+            end
+            if has_gamma
+                Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n",
+                    "gamma", md[:gamma_mean], md[:gamma_sd], md[:gamma_min], md[:gamma_max])
             end
             println(io, "───────────────────────────────────────────────────────")
         end
