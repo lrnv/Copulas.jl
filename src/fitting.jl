@@ -245,24 +245,6 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, <:UnivariateGenerator} where d}, U
                         iterations=Optim.iterations(res), elapsed_sec=t)
 end
 
-############################################################################
-# These theta bounds are not really true, you should match them with the 
-# max monotony 
-# in fact they are bascially "inverses" of the max monotony functions. 
-# They should be moved to the geenrator files would be easier. 
-_θ_bounds(::Type{<:ClaytonGenerator},      d::Integer) = (-1/(d-1),  Inf)
-_θ_bounds(::Type{<:AMHGenerator},          d::Integer) = (-1,  1)
-_θ_bounds(::Type{<:GumbelGenerator},        ::Integer) = (1.0,       Inf)
-_θ_bounds(::Type{<:JoeGenerator},           ::Integer) = (1.0,       Inf)
-_θ_bounds(::Type{<:FrankGenerator},        d::Integer) = d ≥ 3 ? (nextfloat(0.0),  Inf) : (-Inf, Inf) ### This is wrong. 
-_θ_bounds(::Type{<:GumbelBarnettGenerator}, ::Integer) = (0.0, 1.0)
-
-
-
-
-
-
-
 
 ##############################################################################################################################
 ####### show function. PLease do not construct other functions for it. 

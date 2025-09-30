@@ -39,37 +39,42 @@ const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}
 GumbelBarnettCopula(d, θ) = ArchimedeanCopula(d, GumbelBarnettGenerator(θ))
 Distributions.params(G::GumbelBarnettGenerator) = (G.θ,)
 
+
+function _find_critical_value_gumbelbarnett(d::Integer)
+    d == 2 && return 1.0
+    d == 3  && return 0.380
+    d == 4  && return 0.216
+    d == 5  && return 0.145
+    d == 6  && return 0.106
+    d == 7  && return 0.082
+    d == 8  && return 0.066
+    d == 9  && return 0.055
+    d == 10 && return 0.046
+
+    C2 = binomial(d, 2)
+    C3 = binomial(d, 3)
+    C4 = binomial(d, 4)
+    term1 = C2 / d
+    discr = C2^2 - (2d / (d - 1)) * (C3 + 3*C4)
+    if !(discr >= 0)
+        return 0.046  # conservative fallback (d=10 value)
+    end
+    term2 = (d - 1)/d * sqrt(discr)
+    lower_bound = (term1 + term2)
+    return 1 / lower_bound
+end
+
 function max_monotony(G::GumbelBarnettGenerator)
     G.θ == 0 && return Inf
-    G.θ > 0.380 && return 2
-    G.θ > 0.216 && return 3
-    G.θ > 0.145 && return 4
-    G.θ > 0.106 && return 5
-    G.θ > 0.082 && return 6
-    G.θ > 0.066 && return 7
-    G.θ > 0.055 && return 8
-    G.θ > 0.046 && return 9
-
-    n = 10
-    
-    # if more is needed, this value can be increased. 
-    MAX = 1e3 # we look until 1000, with E(1000) \approx 20 000 so \theta < 0.00005
-    while n <= MAX
-        C2 = binomial(n, 2)
-        C3 = binomial(n, 3)
-        C4 = binomial(n, 4)
-        term1 = C2 / n
-        discr = C2^2 - (2n / (n - 1)) * (C3 + 3*C4)
-        term2 = (n - 1)/n * sqrt(discr)
-        lower_bound = (term1 + term2) #lowerbound of the leftmost root of touchards polynomials. 
-        if G.θ > 1/lower_bound
-            return n
-        else
-            n+=1
+    # Check low dimensions via centralized thresholds
+    for d in 3:1_000
+        if G.θ > _find_critical_value_gumbelbarnett(d)
+            return d-1
         end
     end
-    return MAX 
+    return 1_000
 end
+_θ_bounds(::Type{<:GumbelBarnettGenerator}, d::Integer) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
 
 ϕ(G::GumbelBarnettGenerator, t) = exp((1 - exp(t)) / G.θ)
 ϕ⁽¹⁾(G::GumbelBarnettGenerator, t) = -exp((1 - exp(t)) / G.θ) * exp(t) / G.θ

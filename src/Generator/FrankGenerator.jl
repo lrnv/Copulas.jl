@@ -43,6 +43,8 @@ FrankCopula(d, θ) = ArchimedeanCopula(d, FrankGenerator(θ))
 Distributions.params(G::FrankGenerator) = (G.θ,)
 
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
+_θ_bounds(::Type{<:FrankGenerator}, d::Integer) = d ≥ 3 ? (0,  Inf) : (-Inf, Inf) 
+
 ϕ(G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
 ϕ⁽¹⁾(G::FrankGenerator, t) = (1 - 1 / (1 + exp(-t)*expm1(-G.θ))) / G.θ
 ϕ⁻¹⁽¹⁾(G::FrankGenerator, t) = G.θ / (-expm1(G.θ * t))
