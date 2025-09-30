@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Empirical models
+# [Empirical models](@id empirical_copulas)
 
 ## Pseudo-observations
 
