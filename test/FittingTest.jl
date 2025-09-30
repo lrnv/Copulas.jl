@@ -36,12 +36,12 @@
         # ("W",               d -> WCopula,                                                                 "2",   "DMTRB"),
 
         # Empirical/misc (all d)
-        # ("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
-        # ("Beta",            d -> BetaCopula,                                                              "234", "D"),
-        # ("Checkerboard",    d -> CheckerboardCopula,                                                      "234", "D"),
-        # ("Empirical",       d -> EmpiricalCopula,                                                         "234", "D"),
-        # ("Archimedean(emp)",        d -> ArchimedeanCopula,                                               "234", "DG"),
-        # ("ExtremeValueCopula(emp)", d -> ExtremeValueCopula,                                                "2", "DOCP"),
+        ("Bernstein",       d -> BernsteinCopula,                                                         "234", "D"),
+        ("Beta",            d -> BetaCopula,                                                              "234", "D"),
+        ("Checkerboard",    d -> CheckerboardCopula,                                                      "234", "D"),
+        ("Empirical",       d -> EmpiricalCopula,                                                         "234", "D"),
+        ("Archimedean(emp)",        d -> ArchimedeanCopula,                                               "234", "DG"),
+        ("ExtremeValueCopula(emp)", d -> ExtremeValueCopula,                                                "2", "DOCP"),
 
 
         # # Elliptical (all d)
