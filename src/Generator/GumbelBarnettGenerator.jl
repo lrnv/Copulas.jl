@@ -134,7 +134,6 @@ end
 #     return log(- G.θ * _inv_fₙ(t * exp(-1/G.θ), Val{k}()))
 # end
 
-
 function _gumbelbarnett_tau(θ)
     iszero(θ) && return θ
     r, _ = QuadGK.quadgk(x -> (1-θ*log(x))  * log1p(-θ*log(x)) * x, 0, 1)
@@ -142,18 +141,10 @@ function _gumbelbarnett_tau(θ)
 end
 
 τ(G::GumbelBarnettGenerator) = _gumbelbarnett_tau(G.θ)
-function τ⁻¹(::Type{T}, tau) where T<:GumbelBarnettGenerator
-    if tau == 0
-        return zero(tau)
-    elseif tau > 0
-        @info "GumbelBarnettCopula cannot handle τ > 0."
-        return zero(tau)
-    elseif tau < -0.3612
-        @info "GumbelBarnettCopula cannot handle τ <≈ -0.3613."
-        return one(tau)
-    end
-    # Use the bisection method to find the root
-    return Roots.find_zero(θ -> _gumbelbarnett_tau(θ) - tau, (0.0, 1.0))
+function τ⁻¹(::Type{T}, τ) where T<:GumbelBarnettGenerator
+    τ ≤ -0.3612 && return one(τ)
+    τ ≥ 0 && return zero(τ)
+    return Roots.find_zero(θ -> _gumbelbarnett_tau(θ) - τ, (0, 1))
 end
 
 # Edge utilities and robust bracketing
@@ -164,39 +155,15 @@ c_GB_TOLV = 1e-12                 # tolerancia en valor
 # Internal grids to rescue bracketing if there are numerical problems
 _GB_GRID_A = (1e-12, 1e-10, 1e-8, 1e-6, 1e-4, 1e-3, 5e-3, 1e-2, 5e-2)
 _GB_GRID_B = (1 - 1e-12, 1 - 1e-10, 1 - 1e-8, 1 - 1e-6, 1 - 1e-4, 0.999, 0.99, 0.95, 0.9)
-function ρs_GB(θ::Real)
-    0 ≤ θ ≤ 1 || throw(ArgumentError("Gumbel–Barnett requiere θ∈[0,1]"))
-    iszero(θ) && return 0.0
-    invθ = 1/θ
-    return 12*(SpecialFunctions.expintx(4*invθ)/θ) - 3
+function _rho_gumbelbarnett(θ::Real)
+    θ ≤ 0 && return zero(θ)
+    r, _ = QuadGK.quadgk(z -> exp(-z)/(1+θ*z), 0, Inf)
+    return r-1
 end
-function ρ⁻¹(::Type{Copulas.GumbelBarnettGenerator}, ρ̂::Real; xatol::Real=1e-10)
-    ρmin = _gb_rho(1 - _GB_EPSB)          # ≈ -0.266… 
-    ρmax = 0.0
-    ρc = clamp(ρ̂, ρmin + _GB_TOLV, ρmax - _GB_TOLV)
-    if abs(ρc - ρmax) ≤ 5e-12
-        return 0.0
-    elseif abs(ρc - ρmin) ≤ 5e-12
-        return 1.0 - _GB_EPSB
-    end
-
-    a = 0.0 + _GB_EPSA
-    b = 1.0 - _GB_EPSB
-    fa = _gb_rho(a) - ρc
-    fb = _gb_rho(b) - ρc
-    if isfinite(fa) && isfinite(fb) && (signbit(fa) ≠ signbit(fb))
-        return Roots.find_zero(t -> ρs_GB(t) - ρc, (a,b), Roots.Brent(); xatol=xatol, rtol=0.0)
-    end
-
-    for aa in _GB_GRID_A, bb in _GB_GRID_B
-        fa = _gb_rho(aa) - ρc
-        fb = _gb_rho(bb) - ρc
-        if isfinite(fa) && isfinite(fb) && (signbit(fa) ≠ signbit(fb))
-            return Roots.find_zero(t -> ρs_GB(t) - ρc, (aa,bb), Roots.Brent(); xatol=xatol, rtol=0.0)
-        end
-    end
-
-    θ0 = 0.5
-    θ  = Roots.find_zero(t -> ρs_GB(t) - ρc, θ0, Roots.Order1(); xatol=xatol)
-    return clamp(θ, a, b)
+ρ(G::GumbelBarnettGenerator) = _rho_gumbelbarnett(G.θ)
+function ρ⁻¹(::Type{Copulas.GumbelBarnettGenerator}, ρ::Real; xatol::Real=1e-10)
+    ρmin = _rho_gumbelbarnett(1 - _GB_EPSB)          # ≈ -0.266… 
+    ρ ≤ ρmin && return one(ρ)
+    ρ ≥ 0 && return zero(ρ)
+    return Roots.find_zero(t -> _rho_gumbelbarnett(t) - ρ, (0, 1))
 end
