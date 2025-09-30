@@ -88,3 +88,13 @@ end
     return Σ
 end
 
+function make_cor!(Σ)
+    # Verify that Σ is a correlation matrix, otherwise make it so : 
+    d = size(Σ,1)
+    σ = [1/sqrt(Σ[i,i]) for i in 1:d]
+    for i in 1:d
+        for j in 1:d
+            Σ[i,j] *= σ[i] .* σ[j]
+        end
+    end
+end
