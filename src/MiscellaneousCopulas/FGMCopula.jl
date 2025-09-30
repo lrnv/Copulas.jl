@@ -54,7 +54,7 @@ end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
 
 # Fitting/params interface
-Distributions.params(C::FGMCopula) = (θ = C.θ,)
+Distributions.params(C::FGMCopula) = (θ = collect(C.θ),)
 _example(::Type{<:FGMCopula}, d) = FGMCopula(d, fill(0.1, 2^d - d - 1))
 _unbound_params(::Type{<:FGMCopula}, d, θ) = collect(atanh.(θ.θ))
 _rebound_params(::Type{<:FGMCopula}, d, α) = (; θ = tanh.(α))
