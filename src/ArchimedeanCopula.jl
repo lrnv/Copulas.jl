@@ -214,7 +214,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     # So here we do the mean on the theta side, maybe we should do it on the \tau side ?
     θs   = map(v -> τ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corkendall(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; eps)
+    return CT(d, θ), (; θ̂=θ, eps)
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:irho})
     d = size(U,1)
@@ -222,7 +222,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     # So here we do the mean on the theta side, maybe we should do it on the \rho side ?
     θs   = map(v -> ρ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corspearman(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; eps)
+    return CT(d, θ), (; θ̂=θ, eps)
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
     d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
@@ -247,12 +247,18 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     d = size(U,1)
     GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
-    θ0 = start isa Real ? start : 
-         start ∈ (:itau, :irho) ? only(Distributions.params(_fit(CT, U, Val{start}())[1])) : 
-         throw("You imputed start=$start, while i require either a real number, :itau or :irho")
-    θ0 = clamp(θ0, lo, hi)
+    θ₀ = [(lo+hi)/2]
+    if start isa Real 
+        θ₀[1] = start
+    elseif start ∈ (:itau, :irho)
+        try 
+            θ₀[1] = only(Distributions.params(_fit(CT, U, Val{start}())[1]))
+        catch e
+        end
+    end
+    θ₀[1] = clamp(θ₀[1], lo, hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
-    res = Optim.optimize(f, lo, hi,  [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
+    res = Optim.optimize(f, lo, hi,  θ₀, Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
     θ̂     = Optim.minimizer(res)[1]
     return CT(d, θ̂), (; θ̂=θ̂, optimizer=:GradientDescent,
                         xtol=xtol, converged=Optim.converged(res), 

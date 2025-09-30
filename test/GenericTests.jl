@@ -415,9 +415,7 @@
             end
 
             @testset "Fitting interface" begin
-
-                # This should go through for every copula existing: 
-
+                
                 # First on the _example copula. 
                 θ₀ = Distributions.params(_example(CT, d))
                 @assert θ₀ === _rebound_params(CT, d, _unbound_params(CT, d, θ₀))
@@ -429,15 +427,17 @@
                 @assert Distributions.params(CT(d, θ...)) === θ # this should hold everytime.
                 
                 # Now the fitting interface should go through whatever happens: 
-                try 
-                    r1 = fit(CopulaModel, CT, spl10)
-                    r2 = fit(CT,spl10)
-                    @test r2 == r1.result
-                    r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-                    r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-                    @test r4 == r3.result
-                catch
-                end
+                # How can we test the other fitting methods?
+                # How can we know which fitting methods are available from the type ? 
+                # Because for the moment this only fits the default method. 
+                # Maybe we coudl change the _default_method() function to a _available_methods() function, which first would be considered the default ? 
+                
+                r1 = fit(CopulaModel, CT, spl10)
+                r2 = fit(CT,spl10)
+                @test r2 == r1.result
+                r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                @test r4 == r3.result
             end
 
             # Extreme value copula-specific tests (bivariate)

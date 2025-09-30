@@ -57,7 +57,7 @@ function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
     end
     return term1 + term2 - term3
 end
-function Distributions._logpdf(R::RafteryCopula{d,P}, u::Vector{T}) where {d,P,T}
+function Distributions._logpdf(R::RafteryCopula{d,P}, u) where {d,P}
     u==zeros(d) && return eltype(u)(Inf)
     u==ones(d) && return (1-d) * log(1-R.θ)
     # Order the vector u
