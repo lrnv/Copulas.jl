@@ -38,6 +38,7 @@ struct RafteryCopula{d, P} <: Copula{d}
             return new{d,typeof(θ)}(θ)
         end
     end
+    RafteryCopula{D, P}(d,θ) where {D, P} = RafteryCopula(d,θ)
 end
 Base.eltype(R::RafteryCopula) = eltype(R.θ)
 Distributions.params(R::RafteryCopula) = (θ = R.θ,)
