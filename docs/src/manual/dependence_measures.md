@@ -176,7 +176,7 @@ Typical parameters: $k\in[5,15]$; norm $p\in\{1,2,\infty\}$.
 * **Pairwise version**: `corentropy(data; k=5, p=Inf, signed=false)`
 Matrices of $(H,I,r)$ for all pairs; `signed=true` multiplies $r$ by $\operatorname{sign}(\tau)$.
 
-$r$ y su versión “signed” **no son PSD** (son re-escalas de $H$).
+$r$ and its “signed” version **are not PSD** (they are re-scales of $H$).
 
 !!! note "Efficiency"
 
