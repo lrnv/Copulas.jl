@@ -58,8 +58,8 @@ end
 
 # Fitting colocated. 
 StatsBase.dof(::Copulas.EmpiricalCopula)    = 0
-_default_method(::Type{<:EmpiricalCopula}) = :pseudo
-function _fit(::Type{<:EmpiricalCopula}, U, ::Val{:pseudo}; pseudo_values = true, kwargs...)
+_default_method(::Type{<:EmpiricalCopula}) = :deheuvels
+function _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels}; pseudo_values = true, kwargs...)
     C = EmpiricalCopula(U; pseudo_values=pseudo_values, kwargs...)
-    return C, (; estimator=:deheuvels, pseudo_values)
+    return C, (; pseudo_values)
 end

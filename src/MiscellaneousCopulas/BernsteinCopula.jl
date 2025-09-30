@@ -174,5 +174,5 @@ StatsBase.dof(::BernsteinCopula)    = 0
 _default_method(::Type{<:BernsteinCopula}) = :exact
 function _fit(::Type{<:BernsteinCopula}, U, ::Val{:exact}; pseudo_values = true, m = nothing, kwargs...)
     C = BernsteinCopula(EmpiricalCopula(U; pseudo_values=pseudo_values); m=m, kwargs...)
-    return C, (; estimator=:segers2017, pseudo_values, m=C.m)
+    return C, (; pseudo_values, m=C.m)
 end

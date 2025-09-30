@@ -213,14 +213,14 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:itau}) whe
     # So here we do the mean on the theta side, maybe we should do it on the \tau side ?
     θs   = map(v -> τ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corkendall(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; estimator=:itau, eps)
+    return CT(d, θ), (; eps)
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:irho})  where {GT<:UnivariateGenerator}
     d = size(U,1)
     # So here we do the mean on the theta side, maybe we should do it on the \rho side ?
     θs   = map(v -> ρ⁻¹(GT, clamp(v, -1, 1)), _uppertriangle_stats(StatsBase.corspearman(U')))
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; estimator=:irho, eps)
+    return CT(d, θ), (; eps)
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d,GT} where d}, U, ::Val{:ibeta}) where {GT<:UnivariateGenerator}
     d    = size(U,1); δ = 1e-8
@@ -237,7 +237,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d,GT} where d}, U, ::Val{:ibeta}) whe
     else
         Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
     end
-    return CT(d,θ), (; estimator=:ibeta, θ̂=θ)
+    return CT(d,θ), (; θ̂=θ)
 end
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)  where {GT<:UnivariateGenerator}
@@ -250,7 +250,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where d}, U, ::Val{:mle}; star
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
     res = Optim.optimize(f, lo, hi,  [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
     θ̂     = Optim.minimizer(res)[1]
-    return CT(d, θ̂), (; estimator=:mle, θ̂=θ̂, optimizer=:GradientDescent,
+    return CT(d, θ̂), (; θ̂=θ̂, optimizer=:GradientDescent,
                         xtol=xtol, converged=Optim.converged(res), 
                         iterations=Optim.iterations(res))
 end
