@@ -82,3 +82,34 @@ function Distributions.params(C::TCopula{d,df,MT}) where {d,df,MT}
     Σ = C.Σ; n = size(Σ,1)
     return (; ν = df, (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:n-1 for j in i+1:n)...)
 end
+
+# Vararg constructor from ν and pairwise correlations
+function TCopula(d::Integer, ν::Integer, rhos::Vararg{<:Real})
+    nρ = d*(d-1) ÷ 2
+    length(rhos) == nρ || throw(ArgumentError("Expected $(nρ) off-diagonal correlations for d=$(d); got $(length(rhos))."))
+    Σ = Matrix{Float64}(I, d, d)
+    k = 1
+    @inbounds for i in 1:d-1, j in i+1:d
+        ρ = float(rhos[k]); k += 1
+        Σ[i,j] = ρ; Σ[j,i] = ρ
+    end
+    return TCopula(ν, Σ)
+end
+
+# Fitting helpers for the generic interface
+_example(::Type{<:TCopula}, d) = TCopula(5, fill(0.3, d, d))
+function _unbound_params(::Type{<:TCopula}, d, θ)
+    # θ is a NamedTuple (ν=..., ρ_12=..., ρ_13=..., ...)
+    lo = -1/(d-1)
+    ν = θ.ν
+    rhos = [getfield(θ, Symbol("ρ_$(i)$(j)")) for i in 1:d-1 for j in i+1:d]
+    return vcat([log(ν - 1.5)], [log((ρ - lo) / (1 - ρ)) for ρ in rhos])
+end
+function _rebound_params(::Type{<:TCopula}, d, α)
+    lo = -1/(d-1)
+    ν  = 1.5 + exp(α[1]) |> round |> Int
+    rhos = map(exp, α[2:end])
+    vals = map(m -> (lo + m)/(1 + m), rhos)
+    names = (Symbol("ρ_$(i)$(j)") for i in 1:d-1 for j in i+1:d)
+    return (; ν, NamedTuple{Tuple(collect(names))}(Tuple(vals))...)
+end

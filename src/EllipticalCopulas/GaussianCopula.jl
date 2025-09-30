@@ -73,6 +73,45 @@ function GaussianCopula(d::Integer, ρ::Real)
     end
     return GaussianCopula(Σ)
 end
+
+
+# Fitting collocated
+StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
+function Distributions.params(C::GaussianCopula)
+    Σ = C.Σ; n = size(Σ,1)
+    # NamedTuple: (ρ_12 = ..., ρ_13 = ..., ρ_23 = ..., ...)
+    return (; (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:n-1 for j in i+1:n)...)
+end
+
+# Vararg constructor from pairwise correlations in the same order as Distributions.params
+function GaussianCopula(d::Integer, rhos::Vararg{<:Real})
+    nρ = d*(d-1) ÷ 2
+    length(rhos) == nρ || throw(ArgumentError("Expected $(nρ) off-diagonal correlations for d=$(d); got $(length(rhos))."))
+    Σ = Matrix{Float64}(I, d, d)
+    k = 1
+    @inbounds for i in 1:d-1, j in i+1:d
+        ρ = float(rhos[k]); k += 1
+        Σ[i,j] = ρ; Σ[j,i] = ρ
+    end
+    return GaussianCopula(Σ)
+end
+
+# Fitting helpers for the generic interface
+_example(::Type{<:GaussianCopula}, d) = GaussianCopula(d, 0.3)
+function _unbound_params(::Type{<:GaussianCopula}, d, θ)
+    # θ is a NamedTuple (ρ_12=..., ρ_13=..., ...)
+    lo = -1/(d-1)
+    rhos = collect(values(θ))
+    return [log((ρ - lo) / (1 - ρ)) for ρ in rhos]
+end
+function _rebound_params(::Type{<:GaussianCopula}, d, α)
+    lo = -1/(d-1)
+    rhos = map(exp, α)
+    vals = map(m -> (lo + m)/(1 + m), rhos)
+    # Recreate the same field names/ordering as Distributions.params
+    names = (Symbol("ρ_$(i)$(j)") for i in 1:d-1 for j in i+1:d)
+    return NamedTuple{Tuple(collect(names))}(Tuple(vals))
+end
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:default})
@@ -129,11 +168,3 @@ end
 # Subsetting colocated
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula(C.Σ[collect(dims),collect(dims)])
 
-
-# Fitting collocated
-StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
-function Distributions.params(C::GaussianCopula)
-    Σ = C.Σ; n = size(Σ,1)
-    # NamedTuple: (ρ_12 = ..., ρ_13 = ..., ρ_23 = ..., ...)
-    return (; (Symbol("ρ_$(i)$(j)") => Σ[i,j] for i in 1:n-1 for j in i+1:n)...)
-end
