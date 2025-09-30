@@ -30,7 +30,7 @@ We implement the most well-known ones in this package.
     where $\bar{C}$ is the survival copula associated with $C$. 
 
 !!! definition "Definition (Gini's γ):"
-    For a copula $C$ with a density $c$, **regardless of its dimension $d$**, the multivariate Gini’s gamma is defined as (Behboodian–Dolati–Úbeda, 2007):
+    For a copula $C$ with a density $c$, **regardless of its dimension $d$**, the multivariate Gini’s gamma is defined as [behboodian2007multivariate](@cite):
 
     $$\gamma = \frac{1}{b(d)-a(d)}\left[\int_{[0,1]^d}\{A(\boldsymbold{u}) + \bar{A}(\boldsymbold{u})\}dC(\boldsymbold{u}) - a(d)\right],$$
 
@@ -43,10 +43,10 @@ We implement the most well-known ones in this package.
 
 These dependence measures are very common when $d=2$, and a bit less when $d > 2$. We sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated with a multivariate copula. 
 We thus provide two different interfaces:
-* `Copulas.τ(C::Copula)`, `Copulas.ρ(C::Copula)`, `Copulas.β(C::Copula)`, `Copulas.γ(C::Copula)` provide the upper formulas.
-* `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)`, `Copulas.corblomqvist(data)`, `Copulas.corgini(data)` provide matrices of bivariate versions. 
+* `Copulas.τ(C::Copula)`, `Copulas.ρ(C::Copula)`, `Copulas.β(C::Copula)`, `Copulas.γ(C::Copula)` provide the upper formulas, yielding a scalar whatever the dimension of the copula.
+* `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)`, `Copulas.corblomqvist(data)`, `Copulas.corgini(data)` provide matrices of pairwise dependence metrics. 
 
-Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C), β(C)` (for the multivariate versions) and `corkendall(C), corspearman(C), corblomqvist(C)` (for the matrix versions).
+Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C), β(C), γ(C)` (for the multivariate versions) and `corkendall(C), corspearman(C), corblomqvist(C)`, and  `corgini(C)` (for the matrix versions).
 Similarly, empirical versions of these metrics can be obtained from a matrix of observations `data` of size `(d,n)` by  `Copulas.τ(data)`, `Copulas.ρ(data)`, `Copulas.β(data)`, `Copulas.γ(data)`, `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)`, `Copulas.corblomqvist(data)` and `Copulas.corgini(data)`.
 
 !!! note "Ranges of $\tau$, $\rho$, $\beta$ and $\gamma$."
