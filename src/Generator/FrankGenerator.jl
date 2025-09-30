@@ -23,7 +23,7 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct FrankGenerator{T} <: Generator
+struct FrankGenerator{T} <: UnivariateWilliamsonGenerator
     θ::T
     function FrankGenerator(θ)
         if θ == -Inf

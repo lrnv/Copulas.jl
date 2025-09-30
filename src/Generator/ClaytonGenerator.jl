@@ -25,7 +25,7 @@ Special cases (for the copula in dimension ``d``):
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct ClaytonGenerator{T} <: Generator
+struct ClaytonGenerator{T} <: UnivariateWilliamsonGenerator
     θ::T
     function ClaytonGenerator(θ)
         if θ < -1
