@@ -90,3 +90,10 @@ function blomqvist_beta(U::AbstractMatrix)
     end
     return c * (acc/n - 2.0^(1-d))
 end
+
+_uppertriangle_gen(mat) = (mat[idx] for idx in CartesianIndices(mat) if idx[1] < idx[2])
+function _uppertriangle_mean_var(mat)
+    # compute the mean and std of the upper triangular part of the matrix (diagonal excluded)
+    gen = _uppertriangle_gen(mat)
+    return Statistics.mean(gen), length(gen) == 1 ? zero(gen[1]) : Statistics.std(gen), minimum(gen), maximum(gen)
+end

@@ -127,7 +127,6 @@ module Copulas
     include("ArchimaxCopula.jl")
 
     include("Fitting/CopulaModel.jl")
-    include("Fitting/Stats.jl")
     include("Fitting/ArchimedeanFit.jl")
 
     # overloadings of the show() function: 
