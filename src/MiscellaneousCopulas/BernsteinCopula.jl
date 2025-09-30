@@ -54,13 +54,12 @@ struct BernsteinCopula{d} <: Copula{d}
         else
             mtuple = ntuple(_->10, d)
         end
-        # Precompute CDF grid
+        # Compute measures values using multidimensional finite differences on the grid of cdf values. 
         weights = Array{Float64}(undef, (mi+1 for mi in mtuple)...)
         for idx in CartesianIndices(weights)
             u = ntuple(j -> (idx[j]-1) / mtuple[j], d)
             weights[idx] = Distributions.cdf(base, collect(u))
         end
-        # Compute measures values using multidimensional finite differences
         for axis in 1:d
             weights = Base.diff(weights, dims=axis)
         end
@@ -215,12 +214,9 @@ end
 function SubsetCopula(C::BernsteinCopula{d}, dims::NTuple{p, Int}) where {d,p}
     # dims: indices to keep, e.g. (1,3) for a 3D copula
     # Step 1: Permute axes so that kept dims are first
-    all_axes = collect(1:d)
-    sum_axes = setdiff(all_axes, collect(dims))
-    perm = vcat(collect(dims), sum_axes)
-    permuted_weights = PermutedDimsArray(C.weights, perm)
+    permuted_weights = PermutedDimsArray(C.weights, vcat(collect(dims), setdiff(1:d, dims)))
     # Step 2: Sum over trailing axes (those not in dims)
     new_m = ntuple(i -> C.m[dims[i]], p)
-    to_sum_and_drop = tuple(i for i in p+1:d)
-    return BernsteinCopula{p}(new_m, dropdims(sum(permuted_weights, dims=to_sum_and_drop), dims=to_sum_and_drop))
+    rmdims = tuple(((p+1):d)...)
+    return BernsteinCopula{p}(new_m, dropdims(sum(permuted_weights, dims=rmdims), dims=rmdims))
 end
