@@ -233,7 +233,7 @@ Notes
 References
 * [mcneil2009multivariate](@cite)
 * [williamson1956](@cite)
-* [genest2011a](@cite)
+* [genest2011a](@cite) Genest, Neslehova and Ziegel (2011), Inference in Multivariate Archimedean Copula Models
 """
 function EmpiricalGenerator(u::AbstractMatrix)
     d = size(u, 1)
