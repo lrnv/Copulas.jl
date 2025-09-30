@@ -6,7 +6,7 @@ using TestItemRunner
 
 @run_package_tests filter=ti->(
     :FGMCopula in ti.tags ||
-    :PlackettCopula in it.tags ||
+    :PlackettCopula in ti.tags ||
     :SurvivalCopula in ti.tags ||
     :GaussianCopula in ti.tags ||
     :TCopula in ti.tags ||
