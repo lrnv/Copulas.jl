@@ -43,10 +43,9 @@ function A(tail::BC2Tail, t::Real)
 end
 
 # Fitting helpers for EV copulas using BC2 tail (a,b ∈ [0,1])
-_example(::Type{ExtremeValueCopula{2, BC2Tail{T}}}, d) where {T} = ExtremeValueCopula(2, BC2Tail(T(0.5), T(0.5)))
-_example(::Type{ExtremeValueCopula{2, BC2Tail}}, d) = ExtremeValueCopula(2, BC2Tail(0.5, 0.5))
-_unbound_params(::Type{ExtremeValueCopula{2, BC2Tail}}, d, θ) = [log(θ.a) - log1p(-θ.a), log(θ.b) - log1p(-θ.b)]
-_rebound_params(::Type{ExtremeValueCopula{2, BC2Tail}}, d, α) = begin
+_example(::Type{<:BC2Copula}, d) = ExtremeValueCopula(2, BC2Tail(0.5, 0.5))
+_unbound_params(::Type{<:BC2Copula}, d, θ) = [log(θ.a) - log1p(-θ.a), log(θ.b) - log1p(-θ.b)]
+_rebound_params(::Type{<:BC2Copula}, d, α) = begin
     σ(x) = 1 / (1 + exp(-x))
     (; a = σ(α[1]), b = σ(α[2]))
 end

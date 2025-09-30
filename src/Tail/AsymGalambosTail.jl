@@ -63,10 +63,11 @@ function A(tail::AsymGalambosTail, t::Real)
 end
 
 # Fitting helpers for EV copulas using Asymmetric Galambos tail
-_example(::Type{ExtremeValueCopula{2, AsymGalambosTail{T}}}, d) where {T} = ExtremeValueCopula(2, AsymGalambosTail(T(1), (T(0.5), T(0.5))))
-_example(::Type{ExtremeValueCopula{2, AsymGalambosTail}}, d) = ExtremeValueCopula(2, AsymGalambosTail(1.0, (0.5, 0.5)))
-_unbound_params(::Type{ExtremeValueCopula{2, AsymGalambosTail}}, d, θ) = [log(θ.α), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)]
-_rebound_params(::Type{ExtremeValueCopula{2, AsymGalambosTail}}, d, α) = begin
-    σ(x) = 1 / (1 + exp(-x))
-    (; α = exp(α[1]), θ₁ = σ(α[2]), θ₂ = σ(α[3]))
+_example(::Type{<:AsymGalambosCopula}, d) = ExtremeValueCopula(2, AsymGalambosTail(1.0, (0.5, 0.5))) 
+_unbound_params(::Type{<:AsymGalambosCopula}, d, θ) = [log(θ.α), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)] 
+_rebound_params(::Type{<:AsymGalambosCopula}, d, α) = begin 
+    σ(x) = 1 / (1 + exp(-x)) 
+    (; α = exp(α[1]), θ₁ = σ(α[2]), θ₂ = σ(α[3])) 
 end
+# --- we need this to work with the API.  ---
+AsymGalambosCopula(d::Integer, α, θ₁, θ₂) = AsymGalambosCopula(d, α, (θ₁, θ₂))

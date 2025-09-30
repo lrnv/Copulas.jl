@@ -53,10 +53,9 @@ function A(tail::HuslerReissTail, t::Real)
 end
 
 # Fitting helpers for EV copulas using Hüsler–Reiss tail
-_example(::Type{ExtremeValueCopula{2, HuslerReissTail{T}}}, d) where {T} = ExtremeValueCopula(2, HuslerReissTail(one(T)))
-_example(::Type{ExtremeValueCopula{2, HuslerReissTail}}, d) = ExtremeValueCopula(2, HuslerReissTail(1.0))
-_unbound_params(::Type{ExtremeValueCopula{2, HuslerReissTail}}, d, θ) = [log(θ.θ)]
-_rebound_params(::Type{ExtremeValueCopula{2, HuslerReissTail}}, d, α) = (; θ = exp(α[1]))
+_example(::Type{<:HuslerReissCopula}, d) = ExtremeValueCopula(2, HuslerReissTail(1.0))
+_unbound_params(::Type{<:HuslerReissCopula}, d, θ) = [log(θ.θ)]
+_rebound_params(::Type{<:HuslerReissCopula}, d, α) = (; θ = exp(α[1]))
 
 function ℓ(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t) where {T}
     t₁, t₂ = t

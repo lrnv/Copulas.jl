@@ -91,7 +91,7 @@ DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTup
 
 
 # Fitting functions: the default one is in the EmpiricalEvTail because this is what will happen by default. 
-
+# For this moment generic mle works... maybe we could be implement others specifyc methods maybe upper and lower tail
 
 
 # Parametric-type constructors to allow generic fit to reconstruct from NamedTuple params

@@ -48,10 +48,9 @@ function A(tail::CuadrasAugeTail, t::Real)
 end
 
 # Fitting helpers for EV copulas using Cuadras–Augé tail (θ ∈ [0,1])
-_example(::Type{ExtremeValueCopula{2, CuadrasAugeTail{T}}}, d) where {T} = ExtremeValueCopula(2, CuadrasAugeTail(T(0.5)))
-_example(::Type{ExtremeValueCopula{2, CuadrasAugeTail}}, d) = ExtremeValueCopula(2, CuadrasAugeTail(0.5))
-_unbound_params(::Type{ExtremeValueCopula{2, CuadrasAugeTail}}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
-_rebound_params(::Type{ExtremeValueCopula{2, CuadrasAugeTail}}, d, α) = begin
+_example(::Type{<:CuadrasAugeCopula}, d) = ExtremeValueCopula(2, CuadrasAugeTail(0.5))
+_unbound_params(::Type{<:CuadrasAugeCopula}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
+_rebound_params(::Type{<:CuadrasAugeCopula}, d, α) = begin
     p = 1 / (1 + exp(-α[1]))
     (; θ = p)
 end

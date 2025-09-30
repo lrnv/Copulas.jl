@@ -40,10 +40,9 @@ Distributions.params(tail::MixedTail) = (θ = tail.θ,)
 A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1
 
 # Fitting helpers for EV copulas using Mixed tail (θ ∈ [0,1])
-_example(::Type{ExtremeValueCopula{2, MixedTail{T}}}, d) where {T} = ExtremeValueCopula(2, MixedTail(T(0.5)))
-_example(::Type{ExtremeValueCopula{2, MixedTail}}, d) = ExtremeValueCopula(2, MixedTail(0.5))
-_unbound_params(::Type{ExtremeValueCopula{2, MixedTail}}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
-_rebound_params(::Type{ExtremeValueCopula{2, MixedTail}}, d, α) = begin
+_example(::Type{<:MixedCopula}, d) = ExtremeValueCopula(2, MixedTail(0.5))
+_unbound_params(::Type{<:MixedCopula}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
+_rebound_params(::Type{<:MixedCopula}, d, α) = begin
     p = 1 / (1 + exp(-α[1]))
     (; θ = p)
 end
