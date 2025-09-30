@@ -6,8 +6,8 @@ CurrentModule = Copulas
 
 *Archimax copulas* form a hybrid family that combines an Archimedean generator $\phi$ with an extreme-value tail defined by its *stable tail dependence function* $\ell$, or its associated *Pickands function* $A_{\ell}(t) = \ell(\frac{t}{\lVert t \rVert})$. They interpolate between purely Archimedean and purely EV structures and underpin families such as **BB4** and **BB5**.
 
-!!! info "Bivariate only (for now)"
-This section and the current implementation address the **bivariate case**. Multivariate extensions are possible; if you’d like to contribute, we’re happy to provide guidance on how to integrate them.
+!!! note "Bivariate only (for now)"
+    This section and the current implementation address the **bivariate case**. Multivariate extensions are possible; if you’d like to contribute, we’re happy to provide guidance on how to integrate them.
 
 An Archimax copula [caperaa2000](@cite) $C$ admits the representation
 
@@ -46,8 +46,8 @@ plot(C)
 
 # Advanced Concepts
 
-!!! info "Tail behaviour:"
-  The **upper tail** is governed by the extreme value structure, while the **lower tail** is driven by the curvature of the Archimedean generator $\phi$. For specific families (e.g., BB5Copula) there are closed forms for $\lambda_U$ and for lower-tail orders.
+!!! note "Tail behaviour:"
+    The **upper tail** is governed by the extreme value structure, while the **lower tail** is driven by the curvature of the Archimedean generator $\phi$. For specific families (e.g., BB5Copula) there are closed forms for $\lambda_U$ and for lower-tail orders.
 
 !!! theorem "Exhaustivity and consistency" 
     For bivariate Archimax copulas,
@@ -75,9 +75,9 @@ has the Archimax copula $C_{\phi,A}$.
 
 !!! algorithm "Bivariate Archimax sampling"
 
-* Simulate $(V_1,V_2) \sim C_{\text{EV}}$ with stable tail function $\ell$ (i.e., Pickands $A$).
-* Simulate a frailty $M \ge 0$ whose Laplace transform is $\mathbb{E}[e^{-sM}] = \phi(s)$.
-* Set $U_j := \phi\!\big(-\log(V_j)/M\big)$, $j=1,2$. Return $(U_1,U_2)$.
+    * Simulate $(V_1,V_2) \sim C_{\text{EV}}$ with stable tail function $\ell$ (i.e., Pickands $A$).
+    * Simulate a frailty $M \ge 0$ whose Laplace transform is $\mathbb{E}[e^{-sM}] = \phi(s)$.
+    * Set $U_j := \phi\!\big(-\log(V_j)/M\big)$, $j=1,2$. Return $(U_1,U_2)$.
 
 !!! todo "Allow any generator"
     According to [charpentier2014](@cite), it should be possible to use any d-monotonous generator. If you want to implement the corresponding sampler, please reach out.
