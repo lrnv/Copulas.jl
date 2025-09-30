@@ -169,6 +169,26 @@ end
 # Fitting plug-in (empírico) para EmpiricalEVCopula
 StatsBase.dof(::EmpiricalEVCopula) = 0
 _available_fitting_methods(::Type{<:EmpiricalEVCopula}) = (:ols, :cfg, :pickands)
+"""
+    _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
+         grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...) -> (C, meta)
+
+Empirical bivariate extreme value copula fitting via the Pickands function
+(`:ols`, `:cfg`, `:pickands`).
+
+# Arguments
+- `U::AbstractMatrix`: 2×n matrix. If `pseudo_values=false`, pseudo-observations are applied.
+- `method`: estimator of the Pickands function (`:ols`/`:cfg`/`:pickands`).
+- `grid`: number of grid points in `t∈(ε,1−ε)`.
+- `eps`: extreme trimming for numerical stability.
+- `kwargs...`: forwarded to `EmpiricalEVTail/EmpiricalEVCopula`.
+
+# Returns
+- `(C, meta)` where `C::EmpiricalEVCopula` and
+`meta = (; emp_kind = :ev_tail, pseudo_values, method = :ols|:cfg|:pickands, grid, eps)`.
+
+**Note**: Method with no free parameters (`dof=0`).
+"""
 function _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...)
     m = typeof(method).parameters[1]  # :ols | :cfg | :pickands
     C = EmpiricalEVCopula(U; method=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)

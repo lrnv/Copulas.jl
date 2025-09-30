@@ -57,9 +57,24 @@ function SubsetCopula(C::EmpiricalCopula{d,MT}, dims::NTuple{p, Int}) where {d,M
 end
 
 # Fitting colocated. 
-# Fitting plug-in (empírico) para EmpiricalCopula
 StatsBase.dof(::EmpiricalCopula) = 0
 _available_fitting_methods(::Type{<:EmpiricalCopula}) = (:deheuvels,)
+"""
+    _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels};
+         pseudo_values::Bool=true, kwargs...) -> (C, meta)
+
+Constructs the empirical Deheuvels copula from `U`.
+
+# Arguments
+- `U::AbstractMatrix`: `d×n` pseudo-observations if `pseudo_values=true`; otherwise, they are computed internally with `pseudo(U)`.
+- `kwargs...`: forwarded to the `EmpiricalCopula` constructor.
+
+# Returns
+- `(C, meta)` where `C::EmpiricalCopula` and
+`meta = (; emp_kind = :deheuvels, pseudo_values)`.
+
+**Note**: Method with no free parameters (`dof=0`).
+"""
 function _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels};
               pseudo_values::Bool=true, kwargs...)
     C = EmpiricalCopula(U; pseudo_values=pseudo_values, kwargs...)

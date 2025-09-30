@@ -125,6 +125,22 @@ end
 # Fitting collocated
 StatsBase.dof(::BetaCopula)         = 0
 _available_fitting_methods(::Type{<:BetaCopula}) = (:beta,)
+"""
+    _fit(::Type{<:BetaCopula}, U, ::Val{:beta}; kwargs...) -> (C, meta)
+
+(Empirical) plug-in adjustment of `BetaCopula` to `U` pseudo-observations.
+
+Constructs `C = BetaCopula(U; kwargs...)` and also returns a `NamedTuple` with metadata for printing and auditing.
+
+# Arguments
+- `U::AbstractMatrix`: `d×n` matrix of pseudo-observations in `[0,1]`.
+- `kwargs...`: Arguments passed back to the `BetaCopula` constructor.
+
+# Returns
+- `(C, meta)` where `C::BetaCopula` and `meta = (; emp_kind = :beta)`.
+
+**Note**: Method with no free parameters (`dof=0`).
+"""
 function _fit(::Type{<:BetaCopula}, U, ::Val{:beta}; kwargs...)
     C = BetaCopula(U; kwargs...)
     return C, (; emp_kind=:beta)
