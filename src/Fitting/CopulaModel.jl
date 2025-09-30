@@ -1,6 +1,6 @@
 # ===================== src/Fitting/CopulaModel.jl =====================
 struct CopulaModel{C, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
-    copula        :: C
+    result        :: C                # ← antes: copula
     n             :: Int
     ll            :: Float64
     method        :: Symbol
@@ -60,12 +60,13 @@ function _print_coeftable(io::IO, M::CopulaModel; level::Real=0.95)
 end
 
 function Base.show(io::IO, M::CopulaModel)
-    println(io, "$(typeof(copula(M))) fitted via $(M.method)")
+    println(io, "$(typeof(M.result)) fitted via $(M.method)")
+
     n  = StatsBase.nobs(M)
     ll = Distributions.loglikelihood(M)
     @printf(io, "Number of observations: %d\n", n)
 
-    ll0 = StatsBase.nullloglikelihood(M)
+    ll0 = get(M.method_details, :null_ll, NaN)
     if isfinite(ll0); @printf(io, "Null Loglikelihood: %.4f\n", ll0); end
     @printf(io, "Loglikelihood: %.4f\n", ll)
 
@@ -87,7 +88,7 @@ function Base.show(io::IO, M::CopulaModel)
         println(io, "Converged: $(conv)   Iterations: $(it)   Elapsed: $(tsec)")
     end
 
-    _print_coeftable(io, M)
+    _print_coeftable(io, M)  # (sin cambios)
 end
 
 _default_method(::Type{<:ArchimedeanCopula})  = :mle
@@ -272,4 +273,9 @@ function _print_empirical_summary(io::IO, M::CopulaModel)
         end
         println(io, "───────────────────────────────────────────────────────")
     end
+end
+
+function Distributions.fit(::Type{T}, U::AbstractMatrix; kwargs...) where {T<:Copulas.Copula}
+    # Reutiliza el flujo completo (dispatcher, loglik, vcov, etc.) y devuelve solo la cópula
+    return Distributions.fit(CopulaModel, T, U; kwargs...).result
 end

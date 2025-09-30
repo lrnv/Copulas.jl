@@ -98,17 +98,6 @@ function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
     end
 end
 
-function Distributions.fit(::Type{CT},u) where {CT <: ArchimedeanCopula} 
-    # @info "Archimedean fits are by default through inverse kendall tau."
-    d = size(u,1)
-    τ = StatsBase.corkendall(u')
-    # Then the off-diagonal elements of the matrix should be averaged:
-    avgτ = (sum(τ) .- d) / (d^2-d)
-    GT = generatorof(CT)
-    θ = τ⁻¹(GT,avgτ)
-    return ArchimedeanCopula(d,GT(θ))
-end
-
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
         return τ(C.G)
