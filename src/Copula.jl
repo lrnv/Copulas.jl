@@ -39,6 +39,44 @@ function β(C::Copula{d}) where {d}
     Cbar0 = Distributions.cdf(SurvivalCopula(C, collect(1:d)), u)
     return (2.0^(d-1) * C0 + Cbar0 - 1) / (2^(d-1) - 1)
 end
+function γ(C::Copula{d}; nmc::Int=100_000,
+                        rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
+    d ≥ 2 || throw(ArgumentError("γ(C) requires d≥2"))
+    if d == 2
+        f(t) = Distributions.cdf(C, [t, t]) + Distributions.cdf(C, [t, 1 - t])
+        I, _ = QuadGK.quadgk(f, 0.0, 1.0; rtol=sqrt(eps()))
+        return -2 + 4I
+    end
+    @inline _A(u)    = (minimum(u) + max(sum(u) - d + 1, 0.0)) / 2
+    @inline _Abar(u) = (1 - maximum(u) + max(1 - sum(u), 0.0)) / 2
+    @inline invfac(k::Integer) = exp(-SpecialFunctions.logfactorial(k))
+    s = 0.0
+    @inbounds for i in 0:d
+        s += (isodd(i) ? -1.0 : 1.0) * binomial(d, i) * invfac(i + 1)
+    end
+    a_d = 1/(d + 1) + 0.5*invfac(d + 1) + 0.5*s
+    b_d = 2/3 + 4.0^(1 - d) / 3
+    U = rand(rng, C, nmc)
+    m = 0.0
+    @inbounds for j in 1:nmc
+        u = @view U[:, j]
+        m += _A(u) + _Abar(u)
+    end
+    m /= nmc
+    return (m - a_d) / (b_d - a_d)
+end
+function entropy(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
+    U = rand(rng, C, nmc)
+    s = 0.0
+    @inbounds for j in 1:nmc
+        u  = @view U[:, j]
+        lp = Distributions.logpdf(C, u)
+        isfinite(lp) || throw(DomainError(lp, "logpdf(C,u) non-finite."))
+        s -= lp
+    end
+    return s / nmc
+end
+
 function _as_biv(f::F, C::Copula{d}) where {F, d}
     K = ones(d,d)
     for i in 1:d
@@ -52,6 +90,7 @@ end
 StatsBase.corkendall(C::Copula{d}) where d = _as_biv(τ, C)
 StatsBase.corspearman(C::Copula{d}) where d = _as_biv(ρ, C)
 corblomqvist(C::Copula{d}) where d = _as_biv(β, C)
+corgini(C::Copula{d}) where d = _as_biv(γ, C)
 
 function measure(C::Copula{d}, us,vs) where {d}
 
