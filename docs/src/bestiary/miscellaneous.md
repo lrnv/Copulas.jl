@@ -6,13 +6,51 @@ CurrentModule = Copulas
 
 Some copulas, while necessary in certain cases and very useful, are hard to classify. We gather them here for simplicity. 
 
-## `PlackettCopula`
+## [Independence and Fréchet-Hoeffding bounds](@id bestiary_ref)
+
+### `IndependentCopula`
+```@docs; canonical=false
+IndependentCopula
+```
+
+### `MCopula`
+```@docs; canonical=false
+MCopula
+```
+
+### `WCopula`
+```@docs; canonical=false
+WCopula
+```
+
+
+## Transformed Copulas
+
+### `SurvivalCopula`
+
+```@docs; canonical=false
+SurvivalCopula
+```
+
+### `SubsetCopula`
+
+```@docs; canonical = false
+Copulas.subsetdims
+```
+
+```@docs; canonical = false
+Copulas.SubsetCopula
+```
+
+## Others
+
+### `PlackettCopula`
 
 ```@docs; canonical=false
 PlackettCopula
 ```
 
-## `FGMCopula`
+### `FGMCopula`
 
 Farlie-Gumbel-Morgenstern (FGM) copula
 
@@ -20,7 +58,7 @@ Farlie-Gumbel-Morgenstern (FGM) copula
 FGMCopula
 ```
 
-## `RafteryCopula`
+### `RafteryCopula`
 
 ```@docs; canonical=false
 RafteryCopula
