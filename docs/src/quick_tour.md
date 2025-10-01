@@ -57,7 +57,7 @@ Copulas.measure(C, (0.1,0.2,0.3), (0.9,0.8,0.7))
 x = rand(D, 100)
 u = rosenblatt(D, x)
 x2 = inverse_rosenblatt(D, u)
-x2 .- x
+maximum(abs.(x2 .- x))
 ```
 
 ## Subsetting and conditioning
@@ -69,7 +69,7 @@ S23 = subsetdims(C2, (2,3))
 StatsBase.corkendall(S23)
 Dj  = condition(C2, 2, 0.3)  # distortion of U₁ | U₂ = 0.3 (d=2)
 Distributions.cdf(Dj, 0.95)
-Dc  = condition(D, 2, Distributions.quantile(X₂, 0.3))
+Dc  = condition(D, (2,3), (0.3, 0.2))
 rand(Dc, 2)
 ```
 
@@ -78,10 +78,8 @@ rand(Dc, 2)
 Fit both marginals and copula from raw data (Sklar):
 
 ```@example 1
-Random.seed!(1)
 X = rand(D, 500)
 M = fit(CopulaModel, SklarDist{GumbelCopula, Tuple{Gamma,Beta,LogNormal}}, X; copula_method=:mle)
-StatsBase.nobs(M)
 ```
 
 Directly fit a copula from pseudo-observations U:
@@ -89,7 +87,6 @@ Directly fit a copula from pseudo-observations U:
 ```@example 1
 U = pseudos(X)
 Ĉ = fit(GumbelCopula, U; method=:itau)
-Copulas.τ(Ĉ)
 ```
 
 Notes
