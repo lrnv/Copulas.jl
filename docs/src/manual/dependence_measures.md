@@ -177,7 +177,7 @@ See [ma2011mutual](@cite).
 Kozachenko–Leonenko estimator ([kozachenko1987](@cite)) on **pseudo-observations** $U\in(0,1)^d$. 
 Typical parameters: $k\in[5,15]$; norm $p\in\{1,2,\infty\}$.
 
-* **Pairwise version**: `corentropy(data; k=5, p=Inf, signed=false)`
+* **Pairwise version**: `corentropy(data; k=5, p=Inf)`
 Matrices of $(H,I,r)$ for all pairs; `signed=true` multiplies $r$ by $\operatorname{sign}(\tau)$.
 
 $r$ and its “signed” version **are not PSD** (they are re-scales of $H$).
