@@ -153,24 +153,27 @@ These follow the approach of Schmidt & Stadtmüller (see [schmidt2006non](@cite)
 !!! definition "Definition (Copula entropy):"
     For a copula $C$ with density $c$, the copula entropy:
 
-    $$\eta(C) = - \int_{[0,1]^d} c(u) \log c(u) ,du.$$
+    $$\iota(C) = - \int_{[0,1]^d} c(u) \log c(u) ,du.$$
 
     Ma & Sun (2011) proved that the mutual information of a random vector equals the negative copula entropy:
     
-    $$I(X_1,\dots,X_d) = - \eta(C).$$
+    $$I(X_1,\dots,X_d) = - \iota(C).$$
 
 See [ma2011mutual](@cite).
 
 **Basic Properties.**
-- $H(C)\le 0$ with equality $H(C)=0$ if and only if $C$ is the `IndependentCopula` (because $c\equiv 1$).
+- $\iota(C)\le 0$ with equality $\iota(C)=0$ if and only if $C$ is the `IndependentCopula` (because $c\equiv 1$).
 - For **singular** copulas (without density), $H(C)=-\infty$.
-- Since $I=-H$, the larger the $I$ $\Rightarrow$, the greater the dependence (linear, nonlinear, tailing, etc.).
+- Since $I=-\iota$, the larger the $I$ $\Rightarrow$, the greater the dependence (linear, nonlinear, tailing, etc.).
+
+!!! note "the iota symbol"
+    Remark that the iota symbol can be obtain by typing "\iota<tab>". 
 
 ### Implementations in `Copulas.jl`
 
-* **Parametric (Monte Carlo)**: `η(C::Copula; nmc=100_000)` Returns `(; H, I=-H, r)`, with $r=\sqrt{\max(0,1-e^{2H})}$ as rescaled by $[0,1]$.
+* **Parametric (Monte Carlo)**: `ι(C::Copula; nmc=100_000)` Returns `(; H, I=-H, r)`, with $r=\sqrt{\max(0,1-e^{2H})}$ as rescaled by $[0,1]$.
 
-* **Non-parametric (kNN)**: `η(U::AbstractMatrix; k=5, p=Inf)` 
+* **Non-parametric (kNN)**: `ι(U::AbstractMatrix; k=5, p=Inf)` 
 Kozachenko–Leonenko estimator ([kozachenko1987](@cite)) on **pseudo-observations** $U\in(0,1)^d$. 
 Typical parameters: $k\in[5,15]$; norm $p\in\{1,2,\infty\}$.
 

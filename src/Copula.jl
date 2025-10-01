@@ -2,13 +2,13 @@
 #####  Main Copula interface. 
 #####  User-facing function: 
 #####       1) Distributions.jl's API: cdf, pdf, logpdf, loglikelyhood, etc..
-#####       2) ρ, τ, β, γ, η, λₗ and λᵤ: repectively the spearman rho, kendall tau,  blomqvist's beta, 
+#####       2) ρ, τ, β, γ, ι, λₗ and λᵤ: repectively the spearman rho, kendall tau,  blomqvist's beta, 
 #####          gini's gamma,entropy eta, and lower and upper tail dependencies. 
 #####       3) measure(C, us, vs) that get the measure associated with the copula.  
 #####       3) pseudo(data) construct pseudo-data from a given dataset.  
 #####
 #####  When implementing a new copula, you have to overwrite `Copulas._cdf()`
-#####  and you may overwrite ρ, τ, β, γ, η, λₗ, λᵤ, measure for performances. 
+#####  and you may overwrite ρ, τ, β, γ, ι, λₗ, λᵤ, measure for performances. 
 ###############################################################################
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 Base.broadcastable(C::Copula) = Ref(C)
@@ -77,7 +77,8 @@ function γ(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.Merse
     m /= nmc
     return (m - a_d) / (b_d - a_d)
 end
-function η(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
+ι
+function ι(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
     U = rand(rng, C, nmc)
     s = 0.0
     @inbounds for j in 1:nmc
@@ -177,7 +178,7 @@ function _λ(U::AbstractMatrix; t::Symbol=:upper, p::Union{Nothing,Real}=nothing
 end
 λₗ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = _λ(U; t=:lower, p=p)
 λᵤ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = _λ(U; t=:upper, p=p)
-function η(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
+function ι(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
     # Assumes pseudo-data given. Multivariate copula entropy (L.F. Kozachenko and N.N. Leonenko., 1987)
     d, n = size(U)
     n ≥ k+1 || throw(ArgumentError("n ≥ k+1 is required"))
