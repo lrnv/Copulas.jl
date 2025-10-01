@@ -26,7 +26,7 @@ References:
 
 * [husler1989maxima](@cite) Hüsler, J., & Reiss, R. D. (1989). Maxima of normal random vectors: between independence and complete dependence. Statistics & Probability Letters, 7(4), 283-286.
 """
-struct HuslerReissTail{T} <: Tail2
+struct HuslerReissTail{T} <: AbstractUnivariateTail2
     θ::T
     function HuslerReissTail(θ)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
@@ -36,8 +36,10 @@ struct HuslerReissTail{T} <: Tail2
     end
 end
 const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
-HuslerReissCopula(θ) = ExtremeValueCopula(2, HuslerReissTail(θ))
-Distributions.params(tail::HuslerReissTail) = (tail.θ,)
+Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
+_unbound_params(::Type{<:HuslerReissTail}, d, θ) = [log(θ.θ)]
+_rebound_params(::Type{<:HuslerReissTail}, d, α) = (; θ = exp(α[1]))
+_θ_bounds(::Type{<:HuslerReissTail}, d) = (0, Inf)
 
 function A(tail::HuslerReissTail, t::Real)
     tt = _safett(t)
@@ -50,7 +52,6 @@ function A(tail::HuslerReissTail, t::Real)
     term2 = (1-tt) * Φ(N, inv(θ) + 0.5*θ*log((1-tt)/tt))
     return term1 + term2
 end
-
 function ℓ(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t) where {T}
     t₁, t₂ = t
     θ = C.tail.θ
@@ -58,7 +59,6 @@ function ℓ(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t) where {T}
     N = Distributions.Normal()
     return t₁ * Φ(N, inv(θ) + 0.5*θ*log(t₁/t₂)) + t₂ * Φ(N, inv(θ) + 0.5*θ*log(t₂/t₁))
 end
-
 function dA(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
     θ = C.tail.θ
     N = Distributions.Normal()
@@ -72,4 +72,38 @@ function dA(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
     dA_term2 = -Φ(N, arg2) + (1-t) * ϕ(N, arg2) * (0.5*θ * (-1/t - 1/(1-t)))
 
     return dA_term1 + dA_term2
+end
+function d²A(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
+    θ = C.tail.θ
+    N  = Distributions.Normal()
+    ϕ  = Distributions.pdf
+    invθ = inv(θ)
+    L   = log(t/(1 - t))
+    a1  = invθ + 0.5*θ*L
+    a2  = invθ - 0.5*θ*L
+    s   = 1/t + 1/(1 - t)
+    s2  = -1/t^2 + 1/(1 - t)^2
+    a1p = 0.5*θ*s
+    a1pp= 0.5*θ*s2
+    ϕ1  = ϕ(N, a1)
+    ϕ2  = ϕ(N, a2)
+    return 2*(ϕ1 + ϕ2)*a1p + t*ϕ1*(a1pp - a1*a1p^2) + (1 - t)*ϕ2*(-a1pp - a2*a1p^2)
+end
+
+_tau_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(HuslerReissTail(θ),t)*t*(1-t)/max(A(HuslerReissTail(θ),t),_δ(t)), 0, 1; kw...)[1]
+_rho_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(HuslerReissTail(θ),t))^2, 0, 1; kw...)[1] - 3
+
+τ(C::HuslerReissCopula) = _tau_HuslerReiss(C.tail.θ)
+ρ(C::HuslerReissCopula) = _rho_HuslerReiss(C.tail.θ)
+λᵤ(C::HuslerReissCopula) = 2 * (1 - Distributions.cdf(Distributions.Normal(), 1 / C.tail.θ))
+β(C::HuslerReissCopula) = 4^(1 - Distributions.cdf(Distributions.Normal(), 1/C.tail.θ)) - 1
+
+τ⁻¹(::Type{<:HuslerReissCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
+ρ⁻¹(::Type{<:HuslerReissCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_HuslerReiss(θ) - ρ; kw...)
+λᵤ⁻¹(::Type{<:HuslerReissCopula}, λ) = 1 / Distributions.quantile(Distributions.Normal(), 1 - λ/2)
+function β⁻¹(::Type{<:HuslerReissCopula}, beta)
+    p = 1 - log(beta + 1) / log(4)
+    # Clamp to open interval (0,1)
+    p = clamp(p, eps(), 1 - eps())
+    return 1 / Distributions.quantile(Distributions.Normal(), p)
 end

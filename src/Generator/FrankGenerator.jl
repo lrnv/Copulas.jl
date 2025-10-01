@@ -23,7 +23,7 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct FrankGenerator{T} <: Generator
+struct FrankGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function FrankGenerator(θ)
         if θ == -Inf
@@ -39,10 +39,13 @@ struct FrankGenerator{T} <: Generator
     end
 end
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
-FrankCopula(d, θ) = ArchimedeanCopula(d, FrankGenerator(θ))
-Distributions.params(G::FrankGenerator) = (G.θ,)
-
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
+Distributions.params(G::FrankGenerator) = (θ = G.θ,)
+_unbound_params(::Type{<:FrankGenerator}, d, θ) = d == 2 ? [θ.θ] : [log(θ.θ)]
+_rebound_params(::Type{<:FrankGenerator}, d, α) = d==2 ? (; θ = α[1]) : (; θ = exp(α[1]))
+_θ_bounds(::Type{<:FrankGenerator}, d) = d==2 ? (-Inf, Inf) : (0, Inf)
+
+
 ϕ(G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
 ϕ⁽¹⁾(G::FrankGenerator, t) = (1 - 1 / (1 + exp(-t)*expm1(-G.θ))) / G.θ
 ϕ⁻¹⁽¹⁾(G::FrankGenerator, t) = G.θ / (-expm1(G.θ * t))
@@ -52,24 +55,32 @@ end
 ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
 williamson_dist(G::FrankGenerator, ::Val{d}) where d = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), Val{d}()) : WilliamsonTransforms.𝒲₋₁(t -> ϕ(G,t),Val{d}())
 frailty(G::FrankGenerator) = G.θ > 0 ? Logarithmic(-G.θ) : throw("The frank copula has no frailty when θ < 0")
+
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
+
 function _frank_tau(θ)
     T = promote_type(typeof(θ),Float64)
-    if abs(θ) < sqrt(eps(T))
-        # return the taylor approx.
-        return θ/9 * (1 - (θ/10)^2)
-    else
-        return 1+4(Debye(θ,1)-1)/θ
-    end
+    abs(θ) < sqrt(eps(T)) && return θ/9 * (1 - (θ/10)^2)
+    return 1+4(Debye(θ,1)-1)/θ
 end
 τ(G::FrankGenerator) = _frank_tau(G.θ)
-function τ⁻¹(::Type{T},tau) where T<:FrankGenerator
-    s,v = sign(tau),abs(tau)
-    if v == 0
-        return v
-    elseif v == 1
-        return s * Inf
-    else
-        return s*Roots.fzero(x -> _frank_tau(x)-v, 0, Inf)
-    end
+function τ⁻¹(::Type{<:FrankGenerator}, tau)
+    s, v = sign(tau), abs(tau)
+    v == 0 && return v
+    v == 1 && return s * Inf
+    emθ = Roots.fzero(x -> _frank_tau(-log(x))-v, 0, 1)
+    return - s * log(emθ)
+end
+function _frank_rho(θ)
+    T = promote_type(typeof(θ),Float64)
+    abs(θ) < sqrt(eps(T)) && return θ/6
+    return 1 + 12*(Debye(θ,2) - Debye(θ,1))/θ
+end
+ρ(G::FrankGenerator) = _frank_rho(G.θ)
+function ρ⁻¹(::Type{<:FrankGenerator}, rho)
+    s, v = sign(rho), abs(rho)
+    v == 0 && return v
+    v == 1 && return s * Inf
+    emθ = Roots.fzero(x -> _frank_rho(-log(x))-v, 0, 1)
+    return - s * log(emθ)
 end

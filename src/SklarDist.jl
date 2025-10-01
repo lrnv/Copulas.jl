@@ -1,3 +1,11 @@
+
+###############################################################################
+#####  SklarDist framework.
+#####  User-facing function: `SklarDist(C::Copula{d}, m::NTuple{d, <:UnivariateDistribution}) where d`
+#####
+#####  Nothing here should be overwritten when defining new copulas. 
+###############################################################################
+
 """
     SklarDist{CT,TplMargins} 
 
@@ -48,10 +56,7 @@ struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribut
 end
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
 Base.eltype(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = Base.eltype(S.C)
-  
-function Distributions.cdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins}
-    return Distributions.cdf(S.C,Distributions.cdf.(S.m,x))
-end
+Distributions.cdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = Distributions.cdf(S.C,Distributions.cdf.(S.m,x))
 function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,TplMargins}, x::AbstractVector{T}) where {CT,TplMargins,T}
     Random.rand!(rng,S.C,x)
      x .= Distributions.quantile.(S.m,x)
@@ -59,11 +64,8 @@ end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargins}
     sum(Distributions.logpdf(S.m[i],u[i]) for i in eachindex(u)) + Distributions.logpdf(S.C,clamp.(Distributions.cdf.(S.m,u),0,1))
 end
-function Distributions.fit(::Type{SklarDist{CT,TplMargins}},x) where {CT,TplMargins}
-    # The first thing to do is to fit the marginals : 
-    @assert length(TplMargins.parameters) == size(x,1)
-    m = Tuple(Distributions.fit(TplMargins.parameters[i],x[i,:]) for i in axes(x,1))
-    u = pseudos(x)
-    C = Distributions.fit(CT,u)
-    return SklarDist(C,m)
+function StatsBase.dof(S::SklarDist)
+    a = StatsBase.dof(S.C)
+    b = sum(hasmethod(StatsBase.dof, Tuple{typeof(d)}) ? StatsBase.dof(d) : length(Distributions.params(d)) for d in S.m)
+    return a+b
 end

@@ -23,7 +23,7 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
-struct LogTail{T} <: Tail2
+struct LogTail{T} <: AbstractUnivariateTail2
     θ::T
     function LogTail(θ)
         !(1 <= θ) && throw(ArgumentError(" The param θ must be in [1, ∞)"))
@@ -35,24 +35,23 @@ struct LogTail{T} <: Tail2
 end
 
 const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
-LogCopula(θ) = ExtremeValueCopula(2, LogTail(θ))
-Distributions.params(tail::LogTail) = (tail.θ,)
+Distributions.params(tail::LogTail) = (θ = tail.θ,)
+_unbound_params(::Type{<:LogTail}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
+_rebound_params(::Type{<:LogTail}, d, α) = (; θ = exp(α[1]) + 1)
+_θ_bounds(::Type{<:LogTail}, d) = (1, Inf)
+
 
 function ℓ(tail::LogTail, t)
     t₁, t₂ = t
     θ = tail.θ
     return (t₁^θ + t₂^θ)^(1/θ)
 end
-
-# A(t) for LogCopula (avec log-exp pour la stabilité)
 function A(tail::LogTail, t::Real)
     θ = tail.θ
     # log-sum-exp trick: log(t^θ + (1-t)^θ) = logsumexp(θ*log(t), θ*log1p(-t))
     logB = LogExpFunctions.logaddexp(θ*log(t), θ*log1p(-t))
     return exp(logB / θ)
 end
-
-# Première dérivée dA/dt (stable numériquement)
 function dA(tail::LogTail, t::Real)
     θ = tail.θ
 
@@ -72,9 +71,7 @@ function dA(tail::LogTail, t::Real)
 
     return Bpow * D
 end
-
-# Seconde dérivée d²A/dt² (stable numériquement)
-function d2A(tail::LogTail, t::Real)
+function d²A(tail::LogTail, t::Real)
     θ = tail.θ
 
     # B = t^θ + (1-t)^θ
@@ -108,3 +105,16 @@ function d2A(tail::LogTail, t::Real)
 
     return term1 + term2
 end
+
+_rho_Log(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(LogTail(θ),t))^2, 0, 1; kw...)[1] - 3
+
+τ(C::LogCopula) = 1 - inv(C.tail.θ)
+ρ(C::LogCopula) = _rho_Log(C.tail.θ)
+β(C::LogCopula) = 4 * 2^(-2^(1 / C.tail.θ)) - 1
+λᵤ(C::LogCopula) = 2 - 2^(1 / C.tail.θ)
+
+
+τ⁻¹(::Type{<:LogCopula}, tau) = 1 / (1 - tau)
+ρ⁻¹(::Type{<:LogCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_Log(θ) - ρ; a=1.0, b=2.0)
+β⁻¹(::Type{<:LogCopula}, beta) = 1 / log2(-log2((beta + 1) / 4))
+λᵤ⁻¹(::Type{<:LogCopula}, λ) = 1 / log2(2 - λ)

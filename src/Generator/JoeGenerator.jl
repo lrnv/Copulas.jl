@@ -22,7 +22,7 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct JoeGenerator{T} <: AbstractFrailtyGenerator
+struct JoeGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function JoeGenerator(θ)
         if θ < 1
@@ -38,9 +38,11 @@ struct JoeGenerator{T} <: AbstractFrailtyGenerator
     end
 end
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
-JoeCopula(d, θ) = ArchimedeanCopula(d, JoeGenerator(θ))
-Distributions.params(G::JoeGenerator) = (G.θ,)
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
+Distributions.params(G::JoeGenerator) = (θ = G.θ,)
+_unbound_params(::Type{<:JoeGenerator}, d, θ) = [log(θ.θ - 1)]
+_rebound_params(::Type{<:JoeGenerator}, d, α) = (; θ = 1 + exp(α[1]))
+_θ_bounds(::Type{<:JoeGenerator}, d) = (1, Inf)
 
 ϕ(  G::JoeGenerator, t) = 1-(-expm1(-t))^(1/G.θ)
 ϕ⁻¹(G::JoeGenerator, t) = -log1p(-(1-t)^G.θ)
@@ -50,7 +52,7 @@ function ϕ⁽ᵏ⁾(G::JoeGenerator, ::Val{d}, t) where d
     # as we already saw that for the Gumbel is wasn't the case. 
     α = 1 / G.θ
     P_d_α = sum(
-        BigCombinatorics.Stirling2(d, k + 1) *
+        Float64(BigCombinatorics.Stirling2(d, k + 1)) *
         (SpecialFunctions.gamma(k + 1 - α) / SpecialFunctions.gamma(1 - α)) *
         (exp(-t) / (-expm1(-t)))^k for k in 0:(d - 1)
     )
@@ -61,15 +63,28 @@ function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)
 end
 _joe_tau(θ) =  1 - 4sum(1/(k*(2+k*θ)*(θ*(k-1)+2)) for k in 1:1000) # 446 in R copula.
 τ(G::JoeGenerator) = _joe_tau(G.θ)
-function τ⁻¹(::Type{T},tau) where T<:JoeGenerator
-    if tau == 1
-        return Inf
-    elseif tau == 0
-        return 1
-    elseif tau < 0
-        @info "JoeCopula cannot handle κ < 0."
-        return one(tau)
-    else
-        return Roots.find_zero(θ -> _joe_tau(θ) - tau, (one(tau),tau*Inf))
-    end
+function τ⁻¹(::Type{<:JoeGenerator}, τ)
+    l, u = one(τ), τ * Inf
+    τ ≤ 0 && return l
+    τ ≥ 1 && return u
+    τ = clamp(τ, 0, 1)
+    return Roots.find_zero(θ -> _joe_tau(θ) - τ, (l, u))
+end
+
+function _rho_joe_via_cdf(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
+    θ = clamp(θ, 1, Inf)
+    θ <= 1 && return zero(θ)
+    isinf(θ) && return one(θ)
+    Cθ   = Copulas.ArchimedeanCopula(2, JoeGenerator(θ))
+    f(x) = Distributions.cdf(Cθ, x)
+    I = HCubature.hcubature(f, (0.0,0.0), (1.0,1.0); rtol=rtol, atol=atol, maxevals=maxevals)[1]
+    return 12I - 3
+end
+
+ρ(G::JoeGenerator) = _rho_joe_via_cdf(G.θ)
+function ρ⁻¹(::Type{<:JoeGenerator}, ρ)
+    l, u = one(ρ), ρ * Inf
+    ρ ≤ 0 && return l
+    ρ ≥ 1 && return u
+    Roots.find_zero(θ -> _rho_joe_via_cdf(θ) - ρ, (l,u))
 end

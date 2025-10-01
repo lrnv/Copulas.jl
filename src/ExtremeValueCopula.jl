@@ -42,6 +42,11 @@ struct ExtremeValueCopula{d, TT<:Tail} <: Copula{d}
         return new{d, typeof(tail)}(tail)
     end
 end
+
+ExtremeValueCopula{d,TT}(args...; kwargs...) where {d, TT} = ExtremeValueCopula(d, TT(args...; kwargs...))
+ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D, TT} = ExtremeValueCopula{d,TT}(args...; kwargs...)
+(CT::Type{<:ExtremeValueCopula{2, <:Tail}})(d::Int, args...; kwargs...) = ExtremeValueCopula(2, tailof(CT)(args...; kwargs...))
+
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
@@ -59,8 +64,12 @@ function Distributions._logpdf(C::ExtremeValueCopula{2, TT}, u) where {TT}
 end
 τ(C::ExtremeValueCopula{2}) = QuadGK.quadgk(t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)), 0.0, 1.0)[1]
 ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C.tail, t))^2, 0.0, 1.0)[1] - 3
+β(C::ExtremeValueCopula{2}) = 4^(1 - A(C.tail, 0.5)) - 1
 λᵤ(C::ExtremeValueCopula{2}) = 2 * (1 - A(C.tail, 0.5))
 λₗ(C::ExtremeValueCopula{2}) =  A(C.tail, 0.5) > 0.5 ? 0.0 : 1.0
+function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
+    return τ⁻¹(tailof(T),τ_val)
+end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT}, X::DenseMatrix{T}) where {T<:Real, TT}
     # More efficient Matrix sampler: 
@@ -87,3 +96,82 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     return x
 end
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
+
+
+
+# Fitting functions: the default one is in the EmpiricalEvTail because this is what will happen by default. 
+# For this moment generic mle works... maybe we could be implement others specifyc methods maybe upper and lower tail
+
+
+# # Parametric-type constructors to allow generic fit to reconstruct from NamedTuple params
+# function (::Type{ExtremeValueCopula{D, TT}})(d::Integer, θ::NamedTuple) where {D, TT<:Tail}
+#     d == D || @warn "Dimension mismatch constructing ExtremeValueCopula: got d=$(d), type encodes D=$(D). Proceeding with d."
+#     # Get parameter order from an example of the tail
+#     Tex = _example(ExtremeValueCopula{D, TT}, D).tail
+#     names = collect(keys(Distributions.params(Tex)))
+#     # Support both plain names and optional tail_-prefixed names
+#     getp(nt::NamedTuple, k::Symbol) = haskey(nt, k) ? nt[k] : (haskey(nt, Symbol(:tail_, k)) ? nt[Symbol(:tail_, k)] : throw(ArgumentError("Missing parameter $(k) for ExtremeValueCopula.")))
+#     vals = map(n -> getp(θ, n), names)
+#     return ExtremeValueCopula(d, TT(vals...))
+# end
+# function (::Type{ExtremeValueCopula{D, TT}})(d::Integer; kwargs...) where {D, TT<:Tail}
+#     return (ExtremeValueCopula{D, TT})(d, NamedTuple(kwargs))
+# end
+function tailof(S::Type{<:ExtremeValueCopula})
+    S2 = hasproperty(S,:body) ? S.body : S
+    S3 = hasproperty(S2, :body) ? S2.body : S2
+    try
+        S4 = S3.parameters[2]
+        return hasproperty(S4, :name) ? S4.name.wrapper : S4
+    catch e
+        @error "There is no tail type associated with the extreme value type $S"
+    end
+end
+tailof(::Type{<:ExtremeValueCopula{d, TT}}) where {d, TT} = TT
+
+##############################################################################################################################
+####### Fitting functions for univariate tails only (Extreme Value Copulas).
+##############################################################################################################################
+
+_example(CT::Type{<:ExtremeValueCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...)
+_unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = _unbound_params(tailof(CT), d, θ)
+_rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(CT), d, α)
+
+_available_fitting_methods(::Type{ExtremeValueCopula}) = (:ols, :cfg, :pickands)
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula}) = (:mle,)
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}) =  (:mle, :itau, :irho, :ibeta, :iupper)
+
+# Fitting empírico (OLS, CFG, Pickands):
+function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; 
+              pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
+    C = EmpiricalEVCopula(U; method=typeof(method).parameters[1], grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
+    return C, (; pseudo_values, grid, eps)
+end
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
+    θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) : 
+        m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) : 
+                           β⁻¹(CT,  corblomqvist(U')[1,2])
+    θ = clamp(θ, _θ_bounds(tailof(CT), 2)...)
+    return CT(2, θ), (; θ̂=θ)
+end
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
+    θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(tailof(CT), 2)...)
+    return CT(2, θ), (; θ̂=θ)
+end
+
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
+    d = size(U,1)
+    TT = tailof(CT)
+    lo, hi = _θ_bounds(TT, d)
+    θ0 = start isa Real ? start : 
+         start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : 
+         only(Distributions.params(_example(CT, d)))
+    θ0 = clamp(θ0, lo, hi)
+    f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
+    res = Optim.optimize(f, lo, hi, [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
+    θ̂ = Optim.minimizer(res)[1]
+    return CT(d, θ̂), (; θ̂=θ̂, optimizer=:GradientDescent,
+                        xtol=xtol, converged=Optim.converged(res), 
+                        iterations=Optim.iterations(res))
+end
+

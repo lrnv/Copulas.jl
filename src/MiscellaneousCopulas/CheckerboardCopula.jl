@@ -46,7 +46,12 @@ struct CheckerboardCopula{d, T} <: Copula{d}
 end
 function CheckerboardCopula(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool=true) where T
     d,n = size(X)
-    ms = isnothing(m) ? fill(n,d) : m isa Integer ? fill(Int(m), d) : m
+     ms = if isnothing(m)
+        @info "Automatic choice: m = n in each dimension." d=d n=n
+        fill(n, d)
+    else
+        m isa Integer ? fill(Int(m), d) : m
+    end
     @assert length(ms) == d && all(ms .% n .== 0) "You provided m=$m to the Checkerboard constructor, while you need to provide an integer dividing n=$n or a vector of d=$d integers, all dividing n=$n."
     # Map samples to integer box indices in each dimension (clamp right edge into m_i-1)
     data = min.(ms .- 1, floor.(Int, (pseudo_values ? X : pseudos(X)) .* ms))
@@ -55,11 +60,13 @@ function CheckerboardCopula(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool
     boxes = StatsBase.proportionmap(collect(keys_iter))
     return CheckerboardCopula{d, eltype(values(boxes))}(ms, boxes)
 end
-
-function Distributions.pdf(C::CheckerboardCopula{d}, u) where {d}
-    # the goal is to find the right box. 
+function Distributions._logpdf(C::CheckerboardCopula{d}, u) where {d}
     b = Tuple(min.(C.m .- 1, floor.(Int, u .* C.m)))
-    return haskey(C.boxes, b) ? C.boxes[b] * prod(C.m) : 0.0
+    if haskey(C.boxes, b)
+        return log(C.boxes[b]) + sum(log, C.m)
+    else
+        return -Inf
+    end
 end
 function _cdf(C::CheckerboardCopula{d}, u) where {d}
     um = u .* C.m
@@ -148,6 +155,29 @@ end
 end
 
 # Fit API: mirror constructor for the moment until we get a better API ?
-function Distributions.fit(::Type{CT}, u; m=nothing, pseudo_values::Bool=true) where {CT<:CheckerboardCopula}
-    return CheckerboardCopula(u; m=m, pseudo_values=pseudo_values)
+# Fitting plug-in (empírico) para CheckerboardCopula — mismo patrón que BetaCopula
+StatsBase.dof(::CheckerboardCopula) = 0
+_available_fitting_methods(::Type{<:CheckerboardCopula}) = (:exact,)
+"""
+    _fit(::Type{<:CheckerboardCopula}, U, ::Val{:exact};
+         m=nothing, pseudo_values::Bool=true, kwargs...) -> (C, meta)
+
+Empirical checkerboard-type plug-in fitting based on `U`.
+If `m` is `nothing`, `m = (n, …, n)` is used; otherwise, it must divide by the sample size.
+
+# Arguments
+- `U::AbstractMatrix`: `d×n` pseudo-observations (or raw data if `pseudo_values=false`).
+- `m`: integer or vector of integers (one per dimension), or `nothing` for the default case.
+- `pseudo_values`: if `false`, internal pseudo-observations are applied.
+- `kwargs...`: forwarded to the constructor.
+
+# Returns
+- `(C, meta)` where `C::CheckerboardCopula` and
+`meta = (; emp_kind = :exact, pseudo_values, m = C.m)`.
+
+**Note**: Method without free parameters (`dof=0`).
+"""
+function _fit(::Type{<:CheckerboardCopula}, U, ::Val{:exact}; m=nothing, pseudo_values::Bool=true, kwargs...)
+    C = CheckerboardCopula(U; m=m, pseudo_values=pseudo_values, kwargs...)
+    return C, (; emp_kind=:exact, pseudo_values, m=C.m)
 end

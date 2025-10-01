@@ -1,16 +1,16 @@
 # Independence and Fréchet-Hoeffding bounds
 
 ## `IndependentCopula`
-```@docs
+```@docs; canonical=false
 IndependentCopula
 ```
 
 ## `MCopula`
-```@docs
+```@docs; canonical=false
 MCopula
 ```
 
 ## `WCopula`
-```@docs
+```@docs; canonical=false
 WCopula
 ```

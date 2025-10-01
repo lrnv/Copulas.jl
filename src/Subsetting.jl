@@ -1,8 +1,11 @@
-###########################################################################
-#####  Subsetting framework: SubsetCopula
-#####  User-facing function: `condition()`
-###########################################################################
 
+###############################################################################
+#####  Subsetting framework.
+#####  User-facing function: `subsetdims()`
+#####
+#####  When implementing a new copula, you can overwrite: 
+#####   - `SubsetCopula(C::Copula{d}, dims::NTuple{p, Int}) where {d, p}`
+###############################################################################
 """
     SubsetCopula{d,CT}
 
@@ -19,7 +22,6 @@ This class allows to construct a random vector corresponding to a few dimensions
 struct SubsetCopula{d,CT} <: Copula{d}
     C::CT
     dims::NTuple{d,Int}
-
     function SubsetCopula(C::Copula{d}, dims::NTuple{p, Int}) where {d, p}
         @assert 2 <= p <= d "You cannot construct a subsetcopula with dimension p=1 or p > d (d = $d, p = $p provided)"
         dims == Tuple(1:d) && return C
@@ -27,6 +29,11 @@ struct SubsetCopula{d,CT} <: Copula{d}
         return new{p, typeof(C)}(C,Tuple(Int.(dims)))
     end
 end
+function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT,p}
+    @assert 2 <= p <= d
+    return SubsetCopula(CS.C, ntuple(i -> CS.dims[dims2[i]], p))
+end
+_available_fitting_methods(::Type{<:SubsetCopula}) = Tuple{}() # cannot be fitted. 
 Base.eltype(C::SubsetCopula{d,CT}) where {d,CT} = Base.eltype(C.C)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::SubsetCopula{d,CT}, x::AbstractVector{T}) where {T<:Real, d,CT}
     u = Random.rand(rng,C.C)
@@ -45,9 +52,14 @@ function Distributions._logpdf(S::SubsetCopula{d,<:Copula{D}}, u) where {d,D}
     return log(_partial_cdf(S.C, Tuple(setdiff(1:D, S.dims)), S.dims, ones(D-d), u))
 end
 
-# Kendall tau and spearman rho are symetric measures in bivaraite cases: 
+# Dependence metrics are symetric in bivariate cases: 
 τ(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = τ(C.C)
 ρ(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = ρ(C.C)
+β(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = β(C.C)
+γ(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = γ(C.C)
+ι(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = ι(C.C)
+λₗ(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = λₗ(C.C)
+λᵤ(C::SubsetCopula{2,CT}) where {CT<:Copula{2}} = λᵤ(C.C)
 
 """
     subsetdims(C::Copula, dims::NTuple{p, Int})
@@ -80,10 +92,21 @@ function subsetdims(D::SklarDist, dims::NTuple{p, Int}) where p
 end
 subsetdims(C::Union{Copula, SklarDist}, dims) = subsetdims(C, Tuple(collect(Int, dims)))
 
-
-function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT,p}
-    @assert 2 <= p <= d
-    return SubsetCopula(CS.C, ntuple(i -> CS.dims[dims2[i]], p))
+# Pairwise dependence metrics, leveraging subsetting: 
+function _as_biv(f::F, C::Copula{d}) where {F, d}
+    K = ones(d,d)
+    for i in 1:d
+        for j in i+1:d
+            K[i,j] = f(SubsetCopula(C, (i,j)))
+            K[j,i] = K[i,j]
+        end
+    end
+    return K
 end
-
-### Other specialized constructors are colocated in each copula file
+StatsBase.corkendall(C::Copula)  = _as_biv(τ, C)
+StatsBase.corspearman(C::Copula) = _as_biv(ρ, C)
+corblomqvist(C::Copula)          = _as_biv(β, C)
+corgini(C::Copula)               = _as_biv(γ, C)
+corentropy(C::Copula)            = _as_biv(ι, C)
+coruppertail(C::Copula)          = _as_biv(λᵤ, C)
+corlowertail(C::Copula)          = _as_biv(λₗ, C)

@@ -58,7 +58,7 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
 end
 
 # Equicorrelation convenience constructor
-function GaussianCopula(d::Integer, ρ::Real)
+function GaussianCopula(d::Int, ρ::Real)
     d < 2 && throw(ArgumentError("Use a bivariate or higher dimension (d ≥ 2) or pass a 1×1 matrix."))
     # Positive definiteness condition for equicorrelation matrix
     lower = -1/(d-1)
@@ -73,21 +73,16 @@ function GaussianCopula(d::Integer, ρ::Real)
     end
     return GaussianCopula(Σ)
 end
+GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula(Σ) 
+GaussianCopula{D, MT}(d::Int, Σ::AbstractMatrix) where {D, MT} = GaussianCopula(Σ) 
+GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ) 
+
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
-function Distributions.fit(::Type{CT},u) where {CT<:GaussianCopula}
-    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
-    Σ = Matrix(dd.Σ)
-    return GaussianCopula(Σ)
-end
-
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
-    x = StatsBase.quantile.(Distributions.Normal(),u)
+    x = StatsBase.quantile.(Distributions.Normal(), u)
     d = length(C)
-    T = eltype(u)
-    μ = zeros(T,d)
-    lb = repeat([T(-Inf)],d)
-    return MvNormalCDF.mvnormcdf(μ, C.Σ, lb, x)[1]
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x, m=10_0000d)[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
@@ -130,3 +125,20 @@ end
 # Subsetting colocated
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula(C.Σ[collect(dims),collect(dims)])
 
+
+# Fitting collocated
+StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
+Distributions.params(C::GaussianCopula) = (; Σ = C.Σ)
+_example(::Type{<:GaussianCopula}, d::Int) = GaussianCopula(d, 0.2)
+function _unbound_params(::Type{<:GaussianCopula}, d::Int, θ::NamedTuple)
+    return _unbound_corr_params(d, θ.Σ)
+end
+function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
+    return (; Σ = _rebound_corr_params(d, α))
+end
+function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
+    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
+    Σ = Matrix(dd.Σ)
+    return GaussianCopula(Σ), (;)
+end
+_available_fitting_methods(::Type{<:GaussianCopula}) = (:itau, :irho, :ibeta, :mle)

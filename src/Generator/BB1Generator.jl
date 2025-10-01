@@ -37,9 +37,9 @@ struct BB1Generator{T} <: AbstractFrailtyGenerator
     end
 end
 const BB1Copula{d, T} = ArchimedeanCopula{d, BB1Generator{T}}
-BB1Copula(d, θ, δ) = ArchimedeanCopula(d, BB1Generator(θ, δ))
-
-Distributions.params(G::BB1Generator) = (G.θ, G.δ)
+Distributions.params(G::BB1Generator) = (θ = G.θ, δ = G.δ)
+_unbound_params(::Type{<:BB1Generator}, d, θ) = [log(θ.θ), log(θ.δ - 1)]
+_rebound_params(::Type{<:BB1Generator}, d, α) = (; θ = exp(α[1]), δ = 1 + exp(α[2]))
 
 ϕ(G::BB1Generator, s) = exp(-(1/G.θ) * log1p(exp((log(s)/G.δ))))
 ϕ⁻¹(G::BB1Generator, t) = exp(G.δ * log(expm1(-G.θ * log(t))))  # avoid a^b

@@ -1,10 +1,14 @@
-###########################################################################
-#####  Conditioning framework: Distortion, DistortionFromCop, 
-#####                          DistortedDist, ConditionalCopula
-#####  User-facing function: `condition(), ropsenblatt(), inverse_rosenblatt()`
-###########################################################################
 
-# usefull functions: 
+###############################################################################
+#####  Conditioning framework.
+#####  User-facing function: `condition(), rosenblatt(), inverse_rosenblatt()`
+#####
+#####  When implementing new models, you can overwrite: 
+#####   - `DistortionFromCop(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {d, p}`
+#####   - `ConditionalCopula(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {d, p}`
+###############################################################################
+
+# A few utilities : 
 function _assemble(D, is, js, uᵢₛ, uⱼₛ)
     Tᵢ = eltype(typeof(uᵢₛ)); Tⱼ = eltype(typeof(uⱼₛ)); T = promote_type(Tᵢ, Tⱼ)
     w = fill(one(T), D)
@@ -313,4 +317,3 @@ function inverse_rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
     end
     return v
 end
-

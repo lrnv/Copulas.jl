@@ -42,9 +42,16 @@ struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
             return new{typeof(θ)}(θ)
         end
     end
+    PlackettCopula{T}(θ) where T = PlackettCopula(θ)
+    PlackettCopula{T}(::Int, θ::Real) where T = PlackettCopula(θ)
+    PlackettCopula(::Integer, θ::Real) = PlackettCopula(θ)
 end
 
 Base.eltype(S::PlackettCopula{P}) where {P} = P # this shuold be P. 
+Distributions.params(C::PlackettCopula) = (θ = C.θ,)
+_example(::Type{<:PlackettCopula}, d::Integer) = PlackettCopula(0.5)
+_unbound_params(::Type{<:PlackettCopula}, d::Integer, θ) = [log(θ.θ)]         # θ > 0
+_rebound_params(::Type{<:PlackettCopula}, d::Integer, α) = (; θ = exp(α[1]))
 
 # CDF calculation for bivariate Plackett Copula
 function _cdf(S::PlackettCopula{P}, uv) where {P}
@@ -81,6 +88,10 @@ end
 # Calculate Spearman's rho based on the PlackettCopula parameters
 function ρ(c::PlackettCopula{P}) where P
     return (c.θ+1)/(c.θ-1)-(2*c.θ*log(c.θ)/(c.θ-1)^2)
+end
+function β(c::PlackettCopula{P}) where P
+    return (sqrt(c.θ)-1)/(sqrt(c.θ)+1)
+    # and inverse beta: θ = ((1+β)/(1-β))^2
 end
 
 # Conditioning colocated

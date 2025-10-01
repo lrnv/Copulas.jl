@@ -6,6 +6,7 @@ module Copulas
     import SpecialFunctions
     import Roots
     import Distributions
+    import Statistics
     import StatsBase
     import StatsFuns
     import ForwardDiff
@@ -19,6 +20,8 @@ module Copulas
     import PolyLog
     import BigCombinatorics
     import LambertW
+    import Optim
+    import Printf
 
     # Main code
     include("utils.jl")
@@ -26,6 +29,7 @@ module Copulas
     include("SklarDist.jl")
     include("Subsetting.jl")
     include("Conditioning.jl")
+    include("Fitting.jl")
 
     # Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
     include("UnivariateDistribution/Frailties/Sibuya.jl")
@@ -124,7 +128,7 @@ module Copulas
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
-    # overloadings of the show() function: 
+
     include("show.jl")
 
     export pseudos, # utility functions and methods making the interface: 
@@ -180,6 +184,7 @@ module Copulas
            EmpiricalEVCopula,
            BernsteinCopula,
            BetaCopula,
-           CheckerboardCopula
+           CheckerboardCopula,
+           CopulaModel
 
 end

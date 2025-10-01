@@ -32,24 +32,25 @@ struct BC2Tail{T} <: Tail2
 end
 
 const BC2Copula{T} = ExtremeValueCopula{2, BC2Tail{T}}
-BC2Copula(a, b) = ExtremeValueCopula(2, BC2Tail(a, b))
-Distributions.params(tail::BC2Tail) = (tail.a, tail.b)
+Distributions.params(tail::BC2Tail) = (a = tail.a, b = tail.b)
+_unbound_params(::Type{<:BC2Tail}, d, θ) = [log(θ.a) - log1p(-θ.a), log(θ.b) - log1p(-θ.b)]
+_rebound_params(::Type{<:BC2Tail}, d, α) = begin
+    σ(x) = 1 / (1 + exp(-x))
+    (; a = σ(α[1]), b = σ(α[2]))
+end
 
 function A(tail::BC2Tail, t::Real)
     tt = _safett(t)
     a, b = tail.a, tail.b
     return max(a*tt, b*(1-tt)) + max((1-a)*tt, (1-b)*(1-tt))
 end
-
 τ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T} = 1 - abs(C.tail.a - C.tail.b)
-
 function ρ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T}
     a, b = C.tail.a, C.tail.b
     num = 2 * (a + b + a*b + max(a,b) - 2a^2 - 2b^2)
     den = (3 - a - b - min(a,b)) * (a + b + max(a,b))
     return num / den
 end
-
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, BC2Tail{T}}, u::AbstractVector{S}) where {T,S<:Real}
     a, b = C.tail.a, C.tail.b
     v1, v2 = rand(rng, Distributions.Uniform(0,1), 2)
@@ -57,7 +58,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     u[2] = max(v1^(1/b), v2^(1/(1-b)))
     return u
 end
-
 function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{T}, S}, z::Real) where {T,S}
     a, b = D.tail.a, D.tail.b
 
@@ -121,7 +121,6 @@ function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{T}, S}, z::Real) wher
         end
     end
 end
-
 function Distributions.quantile(D::BivEVDistortion{BC2Tail{T}, S}, α::Real) where {T, S}
     a, b = D.tail.a, D.tail.b
     t = D.uⱼ

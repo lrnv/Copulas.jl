@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Empirical models
+# [Empirical models](@id empirical_copulas)
 
 ## Pseudo-observations
 
@@ -19,7 +19,7 @@ Through the statistical process leading to the estimation of copulas, one usuall
 
 In `Copulas.jl`, we provide a function `pseudos` that implement this transformation directly. 
 
-```@docs
+```@docs; canonical=false
 pseudos
 ```
 

@@ -15,7 +15,6 @@ References:
 struct IndependentCopula{d} <: Copula{d} 
     IndependentCopula(d) = new{d}()
 end
-
 _cdf(::IndependentCopula{d}, u) where d = prod(u)
 Distributions._logpdf(::IndependentCopula{d}, u) where {d} = all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
 
@@ -26,10 +25,13 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::IndependentCopul
     Random.rand!(rng,A)
     return A
 end
+
 rosenblatt(::IndependentCopula{d}, u::AbstractMatrix{<:Real}) where {d} = u
 inverse_rosenblatt(::IndependentCopula{d}, u::AbstractMatrix{<:Real}) where {d} = u
+
 τ(::IndependentCopula) = 0
 ρ(::IndependentCopula) = 0
+
 StatsBase.corkendall(::IndependentCopula{d}) where d = one(zeros(d,d))
 StatsBase.corspearman(::IndependentCopula{d}) where d = one(zeros(d,d))
 
@@ -43,3 +45,10 @@ end
 
 # Subsetting colocated
 SubsetCopula(::IndependentCopula{d}, ::NTuple{p, Int}) where {d, p} = IndependentCopula(p)
+
+# Fitting/params interface (no parameters)
+Distributions.params(::IndependentCopula) = (;)
+_fit(::Type{<:IndependentCopula}, U, ::Val{:mle}) = IndependentCopula(size(U,1)), (;)
+_fit(::Type{<:IndependentCopula}, U, ::Val{:itau}) = IndependentCopula(size(U,1)), (;)
+_fit(::Type{<:IndependentCopula}, U, ::Val{:irho}) = IndependentCopula(size(U,1)), (;)
+_fit(::Type{<:IndependentCopula}, U, ::Val{:ibeta}) = IndependentCopula(size(U,1)), (;)

@@ -32,6 +32,11 @@ References:
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
 """
 abstract type Generator end
+function (TG::Type{<:Generator})(args...;kwargs...)
+    S = hasproperty(TG, :body) ? TG.body : TG
+    T = S.name.wrapper 
+    return T(args..., values(kwargs)...)
+end
 Base.broadcastable(x::Generator) = Ref(x)
 max_monotony(G::Generator) = throw("This generator does not have a defined max monotony. You need to implement `max_monotony(G)`.")
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
@@ -61,6 +66,8 @@ struct WGenerator <: Generator end
 τ(::IndependentGenerator)  = 0
 τ(::MGenerator)  = 1
 τ(::WGenerator)  = -1
+
+ρ(::IndependentGenerator)  = 0
 
 
 
@@ -109,10 +116,10 @@ end
 Distributions.params(G::FrailtyGenerator) = Distributions.params(G.F)
 frailty(G::FrailtyGenerator) = G.F
 
-
-
-
-
+# Add univaraite generator bindins: 
+abstract type AbstractUnivariateGenerator <: Generator end
+abstract type AbstractUnivariateFrailtyGenerator <: AbstractFrailtyGenerator end
+const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
 
 
 """
@@ -204,6 +211,47 @@ williamson_dist(G::WilliamsonGenerator{d, TX}, ::Val{d}) where {d, TX} = G.X # i
 # TODO: The following method for Kendall's tau is currently faulty and produces incorrect results.
 # τ(G::WilliamsonGenerator) = 4*Distributions.expectation(Base.Fix1(ϕ, G), Copulas.williamson_dist(G, Val(2)))-1 # McNeil & Neshelova 2009
 # Investigate the correct formula for Kendall's tau for WilliamsonGenerator. Check if the expectation is being computed with respect to the correct measure and if the implementation matches the reference (McNeil & Nešlehová 2009). Fix this method when the correct approach is established.
+
+
+"""
+    _kendall_sample(u::AbstractMatrix)
+
+Compute the empirical Kendall sample `W` with entries `W[i] = C_n(U[:,i])`,
+where `C_n` is the Deheuvels empirical copula built from the same `u`.
+
+Input and tie handling
+- `u` is expected as a `d×n` matrix (columns are observations). This routine first
+    applies per-margin ordinal ranks (same policy as `pseudos`) so that the result is
+    invariant under strictly increasing marginal transformations and robust to ties.
+    Consequently, `_kendall_sample(u) ≡ _kendall_sample(pseudos(u))` (same tie policy).
+
+Returns
+- `Vector{Float64}` of length `n` with values in `(0,1)`.
+"""
+function _kendall_sample(u::AbstractMatrix)
+
+
+
+    d, n = size(u)
+    # Apply ordinal ranks per margin to remove ties consistently with `pseudos`
+    R = Matrix{Int}(undef, d, n)
+    @inbounds for i in 1:d
+        R[i, :] = StatsBase.ordinalrank(@view u[i, :])
+    end
+    W = zeros(Float64, n)
+    @inbounds for i in 1:n
+        ri = @view R[:, i]
+        count_le = 0
+        for j in 1:n
+            count_le += all(@view(R[:, j]) .≤ ri)
+        end
+        W[i] = count_le / (n + 1)
+    end
+    return W
+end
+
+
+
 """
     EmpiricalGenerator(u::AbstractMatrix)
 
@@ -226,7 +274,7 @@ Notes
 References
 * [mcneil2009multivariate](@cite)
 * [williamson1956](@cite)
-* [genest2011a](@cite)
+* [genest2011a](@cite) Genest, Neslehova and Ziegel (2011), Inference in Multivariate Archimedean Copula Models
 """
 function EmpiricalGenerator(u::AbstractMatrix)
     d = size(u, 1)
@@ -386,4 +434,4 @@ max_monotony(G::TiltedGenerator{TG, T, p}) where {TG, T, p} = max(0, max_monoton
 ϕ⁽ᵏ⁾(G::TiltedGenerator{TG, T, p}, ::Val{k}, t::Real) where {TG, T, p, k} = ϕ⁽ᵏ⁾(G.G, Val{k + p}(), G.sJ + t) / G.den
 ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T, p}, ::Val{k}, y::Real; start_at = G.sJ) where {TG, T, p, k} = ϕ⁽ᵏ⁾⁻¹(G.G, Val{k + p}(), y * G.den; start_at = start_at) - G.sJ
 ϕ⁽¹⁾(G::TiltedGenerator{TG, T, p}, t) where {TG, T, p} = ϕ⁽ᵏ⁾(G, Val{1}(), t)
-Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., G.sJ)
+Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., sJ = G.sJ)
