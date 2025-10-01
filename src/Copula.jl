@@ -77,7 +77,7 @@ function γ(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.Merse
     m /= nmc
     return (m - a_d) / (b_d - a_d)
 end
-ι
+
 function ι(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
     U = rand(rng, C, nmc)
     s = 0.0
