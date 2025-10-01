@@ -23,7 +23,6 @@ makedocs(;
         "Home"=>"index.md",
         "Manual" => [
             "Getting Started"=>"manual/getting_started.md",
-            "Sklar's Distributions"=>"manual/sklar.md",
             "Dependence measures"=>"manual/dependence_measures.md",
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
             "Visualizations"=>"manual/visualizations.md",
