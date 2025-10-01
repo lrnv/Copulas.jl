@@ -248,7 +248,7 @@ Distributions.cdf(Dj, 0.95)
 On the original scale (Sklar distribution):
 
 ```@example api
-Dc = condition(D, 2, Distributions.quantile(X₂, 0.3))
+Dc = condition(D, (2,3), (0.3, 0.2))
 rand(Dc, 2)
 ```
 
@@ -268,9 +268,7 @@ These transformation leverage the conditioning mechanismes.
 You can fit copulas from pseudo-observations U, and Sklar distributions from raw data X. Available methods vary by family; see the fitting manual for details.
 
 ```@example api
-Random.seed!(1)
 X = rand(D, 500)
-# Fit both marginals and copula (Sklar)
 M = fit(CopulaModel, SklarDist{GumbelCopula, Tuple{Gamma,Beta,LogNormal}}, X; copula_method=:mle)
 ```
 
