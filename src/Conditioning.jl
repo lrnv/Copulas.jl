@@ -8,8 +8,7 @@
 #####   - `ConditionalCopula(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {d, p}`
 ###############################################################################
 
-
-# A fewx utility functions
+# A few utilities : 
 function _assemble(D, is, js, uᵢₛ, uⱼₛ)
     Tᵢ = eltype(typeof(uᵢₛ)); Tⱼ = eltype(typeof(uⱼₛ)); T = promote_type(Tᵢ, Tⱼ)
     w = fill(one(T), D)

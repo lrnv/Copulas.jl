@@ -333,29 +333,3 @@ function measure(C::Copula{2}, us, vs)
     r = c11 - c10 - c01 + c00
     return max(r, T(0))
 end
-
-
-"""
-    pseudos(sample)
-
-Compute the pseudo-observations of a multivariate sample. Note that the sample has to be given in wide format (d,n), where d is the dimension and n the number of observations.
-
-Warning: the order used is ordinal ranking like https://en.wikipedia.org/wiki/Ranking#Ordinal_ranking_.28.221234.22_ranking.29, see `StatsBase.ordinalrank` for the ordering we use. If you want more flexibility, checkout `NormalizeQuantiles.sampleranks`.
-"""
-function pseudos(sample::AbstractMatrix)
-    # Fast pseudo-observations (d×n) using per-row ordinal ranks without allocations per row
-    d, n = size(sample)
-    U = Matrix{Float64}(undef, d, n)
-    tmp_idx = Vector{Int}(undef, n)
-    @inbounds for i in 1:d
-        # compute ordinal ranks for row i
-        x = @view sample[i, :]
-        # sortperm is stable; ordinal ranks from positions in sorted order
-        sortperm!(tmp_idx, x; by=identity, alg=Base.Sort.DEFAULT_STABLE)
-        # ranks: position in sorted order; ties preserve order of appearance
-        for (rank, idx) in enumerate(tmp_idx)
-            U[i, idx] = rank / (n + 1)
-        end
-    end
-    return U
-end
