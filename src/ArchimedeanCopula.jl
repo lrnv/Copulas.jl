@@ -210,7 +210,10 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     f = m isa Val{:itau} ?  StatsBase.corkendall :  StatsBase.corspearman
     invf =  m isa Val{:itau} ?  τ⁻¹ : ρ⁻¹
 
-    θs = map(v -> invf(GT, clamp(v, -1, 1)), _uppertriangle_stats(f(U')))
+    m = f(U')
+    upper_triangle_flat = [m[idx] for idx in CartesianIndices(m) if idx[1] < idx[2]]
+    θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
+    
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ), (; θ̂=θ, eps)
 end
