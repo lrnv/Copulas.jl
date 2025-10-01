@@ -155,7 +155,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
     return CT(2, θ), (; θ̂=θ)
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
-    θ = clamp(λᵤ⁻¹(CT, λ(U;t=:upper)), _θ_bounds(tailof(CT), 2)...)
+    θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(tailof(CT), 2)...)
     return CT(2, θ), (; θ̂=θ)
 end
 
