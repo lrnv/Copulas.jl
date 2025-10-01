@@ -27,12 +27,14 @@ makedocs(;
             "Dependence measures"=>"manual/dependence_measures.md",
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
             "Visualizations"=>"manual/visualizations.md",
+            "Fitting"=>"manual/fitting_interface.md",
             "Archimedean family"=>"manual/archimedean.md",
             "Elliptical family"=>"manual/elliptical.md",
             "Extreme Value family"=>"manual/extremevalues.md",
             "Archimax family"=>"manual/archimax.md",
             "Vines family"=>"manual/vines.md",
             "Empirical models"=>"manual/empirical.md",
+            "Developers: How to add new copulas"=>"manual/developer_howto_add_copulas.md",
             "Troubleshooting"=>"manual/troubleshooting.md",
         ],
         "Bestiary" => [
@@ -53,6 +55,10 @@ makedocs(;
             "Influence of the method of estimation"=>"examples/ifm1.md",
             "Bayesian inference with `Turing.jl`"=>"examples/turing.md",
             "Other known use cases"=>"examples/other_usecases.md"
+        ],
+        "API" => [
+            "Public"=>"api/public.md",
+            "Internal (non-stable)"=>"api/internal.md",
         ],
         "Package Index" => "idx.md",
         "References" => "references.md",

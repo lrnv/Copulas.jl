@@ -84,9 +84,9 @@ plot(C, :logpdf)
 
 See [the visualizations page](@ref viz_page) for details on the visualisations tools. It’s often useful to get an intuition by looking at scatter plots.
 
-One of the reasons that makes copulas so useful is the bijective map discovered by Sklar [sklar1959](@cite) in 1959:
+One of the reasons that makes copulas so useful is the bijective map from the Sklar Theorem [sklar1959](@cite):
 
-!!! theorem "Sklar"
+!!! theorem "Sklar (1959)"
     For every random vector $\boldsymbol X$, there exists a copula $C$ such that 
 
     $\forall \boldsymbol x\in \mathbb R^d, F(\boldsymbol x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
@@ -115,10 +115,8 @@ MyOtherDistribution = SklarDist(C, (X₁,X₂,X₃,X₄))
 nothing # hide
 ```
 
+These random vector still follow the `Distributions.jl`'s API: 
 And the API is still the same: 
-```@example 1
-rand(MyDistribution,10)
-```
 ```@example 1
 rand(MyOtherDistribution,10)
 ```
@@ -127,7 +125,7 @@ Sklar's theorem can be used the other way around (from the marginal space to the
 
 !!! info "Independent random vectors"
 
-    Distributions.jl provides the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create independent random vectors with given marginals. `product_distribution(args...)` is essentially equivalent to `SklarDist(Π, args)`, but our approach generalizes to other dependence structures and is thus much more powerful. 
+    `Distributions.jl` provides the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create independent random vectors with given marginals. `product_distribution(args...)` is essentially equivalent to `SklarDist(Π, args)`, but our approach generalizes to other dependence structures.
 
 Copulas are bounded functions with values in [0,1] since they correspond to probabilities. But their range can be bounded more precisely, and [lux2017](@cite) gives us:
 
@@ -141,17 +139,9 @@ Copulas are bounded functions with values in [0,1] since they correspond to prob
 The function $M : \boldsymbol x \mapsto \min\boldsymbol x$, called the upper Fréchet-Hoeffding bound, is a copula. The function $W : \boldsymbol x \mapsto \langle \boldsymbol 1, \boldsymbol x - 1 + d^{-1}\rangle_{+}$, called the lower Fréchet-Hoeffding bound, is on the other hand a copula only when $d=2$. 
 These two copulas can be constructed through [`MCopula(d)`](@ref MCopula) and [`WCopula(2)`](@ref WCopula). 
 
-The upper Fréchet-Hoeffding bound corresponds to the case of comonotone random vector: a random vector $\boldsymbol X$ is said to be comonotone, i.e., to have copula $M$, when each of its marginals can be written as a non-decreasing transformation of the same random variable (say with $\mathcal U\left([0,1]\right)$ distribution). This is a simple but important dependence structure. See e.g.,[kaas2002,hua2017](@cite) on this particular copula. Note that the implementation of their sampler was straightforward due to their particular shapes:
+The upper Fréchet-Hoeffding bound corresponds to the case of comonotone random vector: a random vector $\boldsymbol X$ is said to be comonotone, i.e., to have copula $M$, when each of its marginals can be written as a non-decreasing transformation of the same random variable (say with $\mathcal U\left([0,1]\right)$ distribution). This is a simple but important dependence structure. See e.g.,[kaas2002,hua2017](@cite) on this particular copula. 
 
-```@example 1
-rand(MCopula(2),10) # sampled values are all equal, this is comonotony
-```
-```@example 1
-u = rand(WCopula(2),10)
-sum(u, dims=1) # sum is always equal to one, this is anticomonotony
-```
-
-Below we plot independence, a positive dependence (Clayton), and the Fréchet bounds. You can visualize the strong alignment for `M` and the anti-diagonal pattern for `W`.
+Here is a plot of the independence, a positive dependence (Clayton), and the Fréchet bounds in bivariate cases. You can visualize the strong alignment for `M` and the anti-diagonal pattern for `W`.
 
 ```@example 1
 p1 = plot(IndependentCopula(2), title="IndependentCopula(2)")
@@ -161,44 +151,144 @@ p4 = plot(WCopula(2), title="WCopula(2)")
 plot(p1,p2,p3,p4; layout=(2,2), size=(800,600))
 ```
 
-Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas (we already saw the Clayton family). You can browse the available families in this package in the bestiary. Like any families of random variables or random vectors, copulas are fittable on empirical data. 
+Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas (we already saw the Clayton family). You can browse the available families in this package in the [Bestiary](@ref). Like any families of random variables or random vectors, copulas are fittable on empirical data. 
 
-## Fitting copulas and compound distributions.
+## A tour of the main API
 
-`Distributions.jl`'s API contains a `fit` function for random vectors and random variables. We propose an implementation of it for copulas and multivariate compound distributions (composed of a copula and some given marginals). Les us first construct a given multivariate random vector: 
+The public API of `Copulas.jl` is quite small and easy to expose on a simple example, which is what we will do right now.
 
-```@example 2
-using Copulas, Distributions, Random, Plots
-# Construct a given model:
+### Copulas and SklarDist
+
+The most important objects of the package are of course copulas as sklar distributions. Both of these objects follow the `Distributions.jl`'s API, and so you can construct, sample, and evaluate copulas as standard `Distributions.jl` objects:
+
+```@example api
+using Copulas, Distributions, Random
+C = ClaytonCopula(3, 2.0)
+u = rand(C, 5)
+Distributions.loglikelihood(C, u)
+```
+
+```@example api
+using Distributions
 X₁, X₂, X₃ = Gamma(2,3), Beta(1,5), LogNormal(0,1)
-C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
-D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
+C2 = GumbelCopula(3, 1.7)
+D = SklarDist(C2, (X₁, X₂, X₃))
+rand(D, 3)
+pdf(D, rand(3))
 ```
 
-And visualize the result: 
-```@example 2
-plot(D)
+### Basic dependence metrics. 
+
+Basic dependence summaries available on copulas, whatever their dimension `d`: 
+
+```@example api
+multivariate_stats = (
+    kendall_tau = τ(C),
+    spearm_rho = ρ(C),
+    blomqvist_beta = β(C),
+    gini_gamma = γ(C), 
+    entropy_iota = ι(C), 
+    lower_tail_dep = λₗ(C), 
+    upper_tail_dep = λᵤ(C)
+)
 ```
 
-Now generate data from it, and try to fit it as if it was an unknown dataset: 
-```@example 2
-simu = rand(D,1000) # Generate a dataset
-# You may estimate a copula using the `fit` function:
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Beta,LogNormal}}, simu)
+The same functions have dispatches for `u::Abstractmatrix` of size `(d,d)` where `d` is the dimension of the copula and `n` is the number of observations, which provide sample versions of the same quantities. Moreover, since most of these statistics are more common in bivariate case, we provide the folllowing bindings for pairwise matrices of the same dependence metrics: 
+
+```@example api
+StatsBase.corkendall(C)
+StatsBase.corspearman(C)
+Copulas.corblomqvist(C)
+Copulas.corgini(C)
+Copulas.corentropy(C)
+Copulas.corlowertail(C)
+Copulas.coruppertail(C)
 ```
 
-We see on the output that the parameters were correctly estimated from this sample. More details on the estimator, including, e.g., standard errors, may be obtained with more complicated estimation routines. For a Bayesian approach using  `Turing.jl`, see [this example](@ref Bayesian-inference-with-Turing.jl). Let's vizualize the result: 
+and of course once again the same functions dispatch on `u::Abstractmatrix`, but, for historical reasons, they require dataset to be `(n,d)`-shaped and not `(d,n)`, so you have to transpose.
 
-```@example 2
-plot(D̂)
+### Measure function 
+
+A `measure` function gives the measure of hypercubes from any copula as follows: 
+```@example api
+measure(C, (0.1,0.2,0.3), (0.9,0.8,0.7))
 ```
 
-!!! info "The API does not enforce a particular fitting procedures"
-    [`Distributions.jl` documentation](https://juliastats.org/Distributions.jl/stable/fit/#Distribution-Fitting) states that: 
+### Subsetting (working with a subset of dimensions)
+
+Extract lower-dimensional dependence without materializing new data:
+
+```@example api
+S23 = subsetdims(C2, (2,3))  # a bivariate copula view
+StatsBase.corkendall(S23)
+```
+
+For Sklar distributions, subsetting returns a smaller joint distribution:
+
+```@example api
+D13 = subsetdims(D, (1,3))
+rand(D13, 2)
+```
+
+### Conditioning (conditional marginals and joint conditionals)
+
+On the uniform scale (copula): distortions and conditional copulas are provided:
+
+```@example api
+Dj = condition(C2, 2, 0.3)   # Distortion of U₁|U₂=0.3 when d=2
+Distributions.quantile(Dj, 0.95)
+```
+
+On the original scale (Sklar distribution):
+
+```@example api
+Dc = condition(D, 2, Distributions.quantile(X₂, 0.3))
+rand(Dc, 2)
+```
+
+
+And rosenblatt transfromations of the copula (or sklardist) can be obtained as follows: 
+```@example api
+u = rand(D, 10)
+s = rosenblatt(D, u)
+u2 = inverse_rosenblatt(D, s)
+maximum(abs, u2 .- u) # should be approx zero.
+```
+
+These transformation leverage the conditioning mechanismes. 
+
+### Fitting (copulas and Sklar distributions)
+
+You can fit copulas from pseudo-observations U, and Sklar distributions from raw data X. Available methods vary by family; see the fitting manual for details.
+
+```@example api
+Random.seed!(1)
+X = rand(D, 500)
+# Fit both marginals and copula (Sklar)
+M = fit(CopulaModel, SklarDist{GumbelCopula, Tuple{Gamma,Beta,LogNormal}}, X; copula_method=:mle)
+```
+
+A shortcut allows to directly get the fitting object (copula or sklardist) by simply ommiting the first `CopulaModel` argument: 
+
+```@example api
+U = pseudos(X)
+Ĉ = fit(GumbelCopula, U; method=:itau)
+τ(Ĉ)
+```
+
+Notes:
+- `fit` chooses a reasonable default per-family; pass `method`/`copula_method` to control it.
+- Common copula methods include `:mle`, `:itau`, `:irho`, `:ibeta`; for Sklar fitting, `:ifm` (parametric CDFs) and `:ecdf` (pseudo-observations) are available.
+- `CopulaModel` implements model stats: `nobs`, `coef`, `vcov`, `stderror`, `confint`, `aic/bic`, `nullloglikelihood`, and more.
+- For a Bayesian workflow over Sklar models, see the examples section.
+
+!!! info "About fitting procedures"
+    The `Distributions.jl` documentation states:
 
     > The fit function will choose a reasonable way to fit the distribution, which, in most cases, is maximum likelihood estimation.
 
-    We embrace this philosophy: from one copula to the other, the fitting method might not be the same. The results of this fitting function should then only be used as "quick-and-dirty" fits, since the fitting method is "hidden" to the user and might even change without breaking releases. More precise controls on this procedures are actively being implemented and will be released soon. 
+    We embrace this philosophy: from one copula family to another, the default fitting method may differ. Treat `fit` as a quick starting point; when you need control, specify `method`/`copula_method` explicitly.
+
 
 ## Next steps
 
@@ -209,6 +299,7 @@ The documentation of this package aims to combine theoretical information and re
     
     Each of these classes more or less corresponds to an abstract type in our type hierarchy, and to a section of this documentation. Do not hesitate to explore the bestiary !
 
+## References
 
 ```@bibliography
 Pages = [@__FILE__]
