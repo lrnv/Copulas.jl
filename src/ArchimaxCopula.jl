@@ -40,10 +40,45 @@ ArchimaxCopula(d, gen::Generator, ::NoTail) = ArchimedeanCopula(d, gen)
 ArchimaxCopula(d, ::IndependentGenerator, tail::Tail) = ExtremeValueCopula(d, tail) 
 Distributions.params(C::ArchimaxCopula) = (_as_tuple(Distributions.params(C.gen))..., _as_tuple(Distributions.params(C.tail))...)
 
-# Fast conditional distortion binding (bivariate)
-DistortionFromCop(C::ArchimaxCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivArchimaxDistortion(C.gen, C.tail, Int8(js[1]), float(uⱼₛ[1]))
+function _cdf(C::ArchimaxCopula{d}, u) where {d}
+    # Basic support checks
+    T = eltype(u)
+    any(iszero, u) && return T(0)
+    all(isone, u) && return T(1)
+    # Compute x_i = ϕ⁻¹(u_i), S = ∑ x_i, ω = x/S, then ϕ(S·A(ω))
+    x = ϕ⁻¹.(C.gen, u)
+    S = sum(x)
+    S == 0 && return T(1)
+    ω = ntuple(i -> x[i] / S, d)
+    return ϕ(C.gen, S * A(C.tail, ω))
+end
+function Distributions._logpdf(C::ArchimaxCopula{d, TG, TT}, u) where {d, TG, TT}
+    @inbounds for ui in u
+        (0.0 < ui < 1.0) || return -Inf
+    end
+    val = _der(v -> Distributions.cdf(C, v), collect(u), ntuple(identity, d))
+    return log(max(val, 0))
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{d, TG, TT}, X::AbstractMatrix{T}) where {T<:Real, d, TG, TT}
+    d == 2 && return @invoke Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, X)
+    @assert size(X, 1) == d
+    U = rand(rng, Distributions.Uniform(), d, size(X, 2))
+    X .= inverse_rosenblatt(C, U)
+    return X
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{d, TG, TT}, x::AbstractVector{T}) where {T<:Real, d, TG, TT}
+    d == 2 && return @invoke Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, x)
+    u = rand(rng, Distributions.Uniform(), d)
+    x .= inverse_rosenblatt(C, u)
+    return x
+end
 
-# --- CDF ---
+
+
+
+
+
+###### Special methods for the bivariate cases
 function _cdf(C::ArchimaxCopula{2}, u)
     u1, u2 = u
     (0.0 ≤ u1 ≤ 1.0 && 0.0 ≤ u2 ≤ 1.0) || return 0.0
@@ -57,8 +92,6 @@ function _cdf(C::ArchimaxCopula{2}, u)
     t = _safett(y / S)                 # protect t≈0,1
     return ϕ(C.gen, S * A(C.tail, t))
 end
-
-# --- log-PDF stable ---
 function Distributions._logpdf(C::ArchimaxCopula{2, TG, TT}, u) where {TG, TT}
     T = promote_type(Float64, eltype(u))
     @assert length(u) == 2
@@ -90,17 +123,6 @@ function Distributions._logpdf(C::ArchimaxCopula{2, TG, TT}, u) where {TG, TT}
     base > 0 || return T(-Inf)
     return T(log(φpp) + log(base))
 end
-
-# --- Kendall τ: τ = τ_A + (1 - τ_A) τ_ψ ---
-τ(C::ArchimaxCopula) = begin
-    τA = τ(ExtremeValueCopula(2, C.tail))
-    τψ = τ(C.gen)
-    τA + (1 - τA) * τψ
-end
-
-
-# Use the matrix sampler for better efficiency
-# (if not working, maybe uncomment the vetor version ?)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{2, TG, TT}, A::DenseMatrix{T}) where {T<:Real, TG, TT}
     evcop, frail = ExtremeValueCopula(2, C.tail), frailty(C.gen)
     Distributions._rand!(rng, evcop, A)
@@ -115,6 +137,12 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimaxCopula{
     x[1] = ϕ(C.gen, -log(v1)/M)
     x[2] = ϕ(C.gen, -log(v2)/M)
     return x
+end
+DistortionFromCop(C::ArchimaxCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivArchimaxDistortion(C.gen, C.tail, Int8(js[1]), float(uⱼₛ[1]))
+τ(C::ArchimaxCopula{2, TG, TT})  where {TG, TT} = begin
+    τA = τ(ExtremeValueCopula(2, C.tail))
+    τψ = τ(C.gen)
+    τA + (1 - τA) * τψ
 end
 
 
