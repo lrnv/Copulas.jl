@@ -24,12 +24,7 @@ module Copulas
     import Printf
 
     # Main code
-    include("utils.jl")
-    include("Copula.jl")
-    include("SklarDist.jl")
-    include("Subsetting.jl")
-    include("Conditioning.jl")
-    include("Fitting.jl")
+    include("MainInterface.jl")
 
     # Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
     include("UnivariateDistribution/Frailties/Sibuya.jl")

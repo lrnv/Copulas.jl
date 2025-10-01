@@ -211,6 +211,47 @@ williamson_dist(G::WilliamsonGenerator{d, TX}, ::Val{d}) where {d, TX} = G.X # i
 # TODO: The following method for Kendall's tau is currently faulty and produces incorrect results.
 # τ(G::WilliamsonGenerator) = 4*Distributions.expectation(Base.Fix1(ϕ, G), Copulas.williamson_dist(G, Val(2)))-1 # McNeil & Neshelova 2009
 # Investigate the correct formula for Kendall's tau for WilliamsonGenerator. Check if the expectation is being computed with respect to the correct measure and if the implementation matches the reference (McNeil & Nešlehová 2009). Fix this method when the correct approach is established.
+
+
+"""
+    _kendall_sample(u::AbstractMatrix)
+
+Compute the empirical Kendall sample `W` with entries `W[i] = C_n(U[:,i])`,
+where `C_n` is the Deheuvels empirical copula built from the same `u`.
+
+Input and tie handling
+- `u` is expected as a `d×n` matrix (columns are observations). This routine first
+    applies per-margin ordinal ranks (same policy as `pseudos`) so that the result is
+    invariant under strictly increasing marginal transformations and robust to ties.
+    Consequently, `_kendall_sample(u) ≡ _kendall_sample(pseudos(u))` (same tie policy).
+
+Returns
+- `Vector{Float64}` of length `n` with values in `(0,1)`.
+"""
+function _kendall_sample(u::AbstractMatrix)
+
+
+
+    d, n = size(u)
+    # Apply ordinal ranks per margin to remove ties consistently with `pseudos`
+    R = Matrix{Int}(undef, d, n)
+    @inbounds for i in 1:d
+        R[i, :] = StatsBase.ordinalrank(@view u[i, :])
+    end
+    W = zeros(Float64, n)
+    @inbounds for i in 1:n
+        ri = @view R[:, i]
+        count_le = 0
+        for j in 1:n
+            count_le += all(@view(R[:, j]) .≤ ri)
+        end
+        W[i] = count_le / (n + 1)
+    end
+    return W
+end
+
+
+
 """
     EmpiricalGenerator(u::AbstractMatrix)
 
