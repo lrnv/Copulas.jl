@@ -23,12 +23,9 @@ function pseudos(sample::AbstractMatrix)
     return U
 end
 
-
-
 @inline _δ(t) = oftype(t, 1e-12)
 @inline _safett(t) = clamp(t, _δ(t), one(t) - _δ(t))
 @inline _as_tuple(x) = x isa Tuple ? x : (x,)
-
 
 function _kendall_sample(u::AbstractMatrix)
 
@@ -76,7 +73,6 @@ end
     a = a < 0.01 ? 0.01 : (a > 0.9 ? 0.9 : a)
     return s*a
 end
-
 _uppertriangle_flat(mat) = [mat[idx] for idx in CartesianIndices(mat) if idx[1] < idx[2]]
 function _uppertriangle_stats(mat)
     # compute the mean and std of the upper triangular part of the matrix (diagonal excluded)
@@ -93,6 +89,7 @@ _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
     Roots.find_zero(f, (a,b), Roots.Brent(); atol=tol, rtol=tol)
 end
 
+# Multivariate dependence metrics applied to a matrix. 
 function β(U::AbstractMatrix)
     # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
     d, n = size(U)
@@ -153,7 +150,7 @@ function γ(U::AbstractMatrix)
         return (m - a_d) / (b_d - a_d)
     end
 end
-function λ(U::AbstractMatrix; t::Symbol=:upper, p::Union{Nothing,Real}=nothing)
+function _λ(U::AbstractMatrix; t::Symbol=:upper, p::Union{Nothing,Real}=nothing)
     # Assumes pseudo-data given. Multivariate tail’s lambda (Schmidt, R. & Stadtmüller, U. 2006)
     d, m = size(U)
     m ≥ 4 || throw(ArgumentError("At least 4 observations are required"))
@@ -166,10 +163,9 @@ function λ(U::AbstractMatrix; t::Symbol=:upper, p::Union{Nothing,Real}=nothing)
     end
     return clamp(cnt / (p*m), 0.0, 1.0)
 end
-λₗ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = λ(U; t=:lower, p=p)
-λᵤ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = λ(U; t=:upper, p=p)
-
-function entropy(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
+λₗ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = _λ(U; t=:lower, p=p)
+λᵤ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = _λ(U; t=:upper, p=p)
+function η(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
     # Assumes pseudo-data given. Multivariate copula entropy (L.F. Kozachenko and N.N. Leonenko., 1987)
     d, n = size(U)
     n ≥ k+1 || throw(ArgumentError("n ≥ k+1 is required"))
@@ -276,6 +272,7 @@ function entropy(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
     return (H = H, I = -H, r = r)
 end
 
+# Pairwise component metrics, here the matrix is expected in (n,d)-shape. 
 function corblomqvist(X::AbstractMatrix{<:Real})
     # We expect the number of dimension to be the second axes here, 
     # contrary to the whole package but to be coherent with 
@@ -392,7 +389,7 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
             end
             ui = Ucol[i]
             Ub[1, :] .= ui; Ub[2, :] .= uj
-            est = entropy(Ub; k=k, p=p, leafsize=leafsize)
+            est = η(Ub; k=k, p=p, leafsize=leafsize)
             H[i, j] = H[j, i] = est.H
             I[i, j] = I[j, i] = est.I
             R[i, j] = R[j, i] = est.r
@@ -407,7 +404,7 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
 
     return signed ? (; H, I, r_signed=Rsg) : (; H, I, r=R)
 end
-function cortail(X::AbstractMatrix{<:Real}; t::Symbol = :lower, method::Symbol = :SchmidtStadtmueller, p::Union{Nothing,Real} = nothing)
+function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtmueller, p = nothing)
     # We expect the number of dimension to be the second axes here, 
     # contrary to the whole package but to be coherent with 
     # StatsBase.corspearman and StatsBase.corkendall. 
@@ -475,3 +472,5 @@ function cortail(X::AbstractMatrix{<:Real}; t::Symbol = :lower, method::Symbol =
     end
     return Lam
 end
+corlowertail(X::AbstractMatrix{<:Real}, method = :SchmidtStadtmueller, p=nothing) = _cortail(X; t=:lower, method=method, p=p)
+coruppertail(X::AbstractMatrix{<:Real}, method = :SchmidtStadtmueller, p=nothing) = _cortail(X; t=:upper, method=method, p=p)

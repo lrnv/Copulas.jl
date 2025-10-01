@@ -20,6 +20,7 @@ function _cdf(C::CT,u) where {CT<:Copula}
     return HCubature.hcubature(f,z,u,rtol=sqrt(eps()))[1]
 end
 
+# Multivariate dependence metrics 
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     z = zeros(d)
@@ -39,8 +40,7 @@ function β(C::Copula{d}) where {d}
     Cbar0 = Distributions.cdf(SurvivalCopula(C, Tuple(1:d)), u)
     return (2.0^(d-1) * C0 + Cbar0 - 1) / (2^(d-1) - 1)
 end
-function γ(C::Copula{d}; nmc::Int=100_000,
-                        rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
+function γ(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
     d ≥ 2 || throw(ArgumentError("γ(C) requires d≥2"))
     if d == 2
         f(t) = Distributions.cdf(C, [t, t]) + Distributions.cdf(C, [t, 1 - t])
@@ -65,7 +65,7 @@ function γ(C::Copula{d}; nmc::Int=100_000,
     m /= nmc
     return (m - a_d) / (b_d - a_d)
 end
-function entropy(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
+function η(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
     U = rand(rng, C, nmc)
     s = 0.0
     @inbounds for j in 1:nmc
@@ -79,22 +79,17 @@ function entropy(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.
     r = sqrt(max(0.0, 1 - exp(t)))
     return (H = H, I = -H, r = r)
 end
-function λ(C::Copula{d}; t::Symbol = :lower, ε::Float64 = 1e-10) where {d}
-    d ≥ 2 || throw(ArgumentError("lambda(C): requiere d ≥ 2"))
-    if t === :lower
-        g(e) = Distributions.cdf(C, fill(e, d)) / e
-        return clamp(2*g(ε/2) - g(ε), 0.0, 1.0)
-    elseif t === :upper
-        Sc   = SurvivalCopula(C, Tuple(1:d))
-        f(e) = Distributions.cdf(Sc, fill(e, d)) / e
-        return clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
-    else
-        throw(ArgumentError("tail ∈ {:lower, :upper}"))
-    end
+function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
+    g(e) = Distributions.cdf(C, fill(e, d)) / e
+    return clamp(2*g(ε/2) - g(ε), 0.0, 1.0)
 end
-λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = λ(C; t=:lower, ε=ε)
-λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d} = λ(C; t=:upper, ε=ε)
+function λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
+    Sc   = SurvivalCopula(C, Tuple(1:d))
+    f(e) = Distributions.cdf(Sc, fill(e, d)) / e
+    return clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
+end
 
+# Bivariate dependence metrics
 function _as_biv(f::F, C::Copula{d}) where {F, d}
     K = ones(d,d)
     for i in 1:d
@@ -105,11 +100,15 @@ function _as_biv(f::F, C::Copula{d}) where {F, d}
     end
     return K
 end
-StatsBase.corkendall(C::Copula{d}) where d = _as_biv(τ, C)
-StatsBase.corspearman(C::Copula{d}) where d = _as_biv(ρ, C)
-corblomqvist(C::Copula{d}) where d = _as_biv(β, C)
-corgini(C::Copula{d}) where d = _as_biv(γ, C)
+StatsBase.corkendall(C::Copula)  = _as_biv(τ, C)
+StatsBase.corspearman(C::Copula) = _as_biv(ρ, C)
+corblomqvist(C::Copula)          = _as_biv(β, C)
+corgini(C::Copula)               = _as_biv(γ, C)
+corentropy(C::Copula)            = _as_biv(η, C)
+coruppertail(C::Copula)          = _as_biv(λᵤ, C)
+corlowertail(C::Copula)          = _as_biv(λₗ, C)
 
+# Measure function. 
 function measure(C::Copula{d}, us,vs) where {d}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]

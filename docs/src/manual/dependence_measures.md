@@ -135,13 +135,12 @@ Many parametric copula families have simple surjections, injections, or even bij
 The package provides both theoretical limits (for a given copula object) and empirical estimators (from data matrices).  
 In addition, pairwise tail-dependence matrices can be computed for multivariate samples.  
 
-* **Theoretical λ**: `λ(C::Copula; t=:lower|:upper, ε=1e-10)`  
+* **Theoretical λ**: `λₗ(C::Copula)` and  `λᵤ(C::Copula)`
   Shortcuts: `λₗ(C)`, `λᵤ(C)`  
 
-* **Empirical λ**: `λ(U::AbstractMatrix; t=:lower|:upper, p=1/√m)`  
-  Shortcuts: `λₗ(U)`, `λᵤ(U)`  
+* **Empirical λ**: `λₗ(U::AbstractMatrix; p=1/√m)` and `λᵤ(U::AbstractMatrix; p=1/√m)`
 
-* **Pairwise λ-matrix**: `cortail(data; t=:lower|:upper, method=:SchmidtStadtmueller, p=1/√m)`  
+* **Pairwise λ-matrix**: `coruppertail(data; method=:SchmidtStadtmueller, p=1/√m)` and `corlowertail(data; method=:SchmidtStadtmueller, p=1/√m)`  
 
 These follow the approach of Schmidt & Stadtmüller (see [schmidt2006non](@cite)).
  
@@ -154,11 +153,11 @@ These follow the approach of Schmidt & Stadtmüller (see [schmidt2006non](@cite)
 !!! definition "Definition (Copula entropy):"
     For a copula $C$ with density $c$, the copula entropy:
 
-    $$H(C) = - \int_{[0,1]^d} c(u) \log c(u) ,du.$$
+    $$\eta(C) = - \int_{[0,1]^d} c(u) \log c(u) ,du.$$
 
     Ma & Sun (2011) proved that the mutual information of a random vector equals the negative copula entropy:
     
-    $$I(X_1,\dots,X_d) = - H(C).$$
+    $$I(X_1,\dots,X_d) = - \eta(C).$$
 
 See [ma2011mutual](@cite).
 
@@ -169,9 +168,9 @@ See [ma2011mutual](@cite).
 
 ### Implementations in `Copulas.jl`
 
-* **Parametric (Monte Carlo)**: `entropy(C::Copula; nmc=100_000)` Returns `(; H, I=-H, r)`, with $r=\sqrt{\max(0,1-e^{2H})}$ as rescaled by $[0,1]$.
+* **Parametric (Monte Carlo)**: `η(C::Copula; nmc=100_000)` Returns `(; H, I=-H, r)`, with $r=\sqrt{\max(0,1-e^{2H})}$ as rescaled by $[0,1]$.
 
-* **Non-parametric (kNN)**: `entropy(U::AbstractMatrix; k=5, p=Inf)` 
+* **Non-parametric (kNN)**: `η(U::AbstractMatrix; k=5, p=Inf)` 
 Kozachenko–Leonenko estimator ([kozachenko1987](@cite)) on **pseudo-observations** $U\in(0,1)^d$. 
 Typical parameters: $k\in[5,15]$; norm $p\in\{1,2,\infty\}$.
 
