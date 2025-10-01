@@ -59,17 +59,4 @@ end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargins}
     sum(Distributions.logpdf(S.m[i],u[i]) for i in eachindex(u)) + Distributions.logpdf(S.C,clamp.(Distributions.cdf.(S.m,u),0,1))
 end
-function Distributions.loglikelihood(S::SklarDist, X::AbstractMatrix)
-    tot = 0.0
-    @inbounds for j in axes(X,2)
-        tot += Distributions.logpdf(S, @view X[:,j])
-    end
-    return tot
-end
-# total dof of the joint model = dof(copula) + sum dof(margins)
-StatsBase.dof(S::SklarDist) = StatsBase.dof(S.C) + sum(_dof_marg, S.m)
-
-_dof_marg(d) = hasmethod(StatsBase.dof, Tuple{typeof(d)}) ? StatsBase.dof(d) : length(Distributions.params(d))  # fallback that is not that good since params might not be univariates... 
-
-# I am not sure this is really needed, maybe this is done by itself by Distributions.jl
-Distributions.loglikelihood(S::SklarDist, X::AbstractMatrix{<:Real}) = sum(Base.Fix1(Distributions.logpdf, S), eachcol(X))
+StatsBase.dof(S::SklarDist) = StatsBase.dof(S.C) + sum(hasmethod(StatsBase.dof, Tuple{typeof(d)}) ? StatsBase.dof(d) : length(Distributions.params(d)) for d in S.m)

@@ -260,10 +260,6 @@ function _extra_pairwise_stats(U::AbstractMatrix, bypass::Bool)
              beta_mean=βm, beta_sd=βs, beta_min=βmin, beta_max=βmax,
              gamma_mean=γm, gamma_sd=γs, gamma_min=γmin, gamma_max=γmax)
 end
-Distributions.loglikelihood(C::Copulas.Copula, U::AbstractMatrix{<:Real}) = sum(Base.Fix1(Distributions.logpdf, C), eachcol(U))
-Distributions.loglikelihood(C::Copulas.Copula, u::AbstractVector{<:Real}) = Distributions.logpdf(C, u)
-Distributions.loglikelihood(M::CopulaModel) = M.ll
-Distributions.loglikelihood(M::CopulaModel, U::AbstractMatrix) = Distributions.loglikelihood(M.result, U)
 
 """
     nobs(M::CopulaModel) -> Int
@@ -278,7 +274,7 @@ StatsBase.isfitted(::CopulaModel)  = true
 
 Deviation of the fitted model (-2 * loglikelihood).
 """
-StatsBase.deviance(M::CopulaModel) = -2 * Distributions.loglikelihood(M)
+StatsBase.deviance(M::CopulaModel) = -2 * M.ll
 StatsBase.dof(M::CopulaModel) = StatsBase.dof(M.result)
 
 """
@@ -330,14 +326,14 @@ end
 
 Akaike information criterion for the fitted model.
 """
-StatsBase.aic(M::CopulaModel) = 2*StatsBase.dof(M) - 2*Distributions.loglikelihood(M)
+StatsBase.aic(M::CopulaModel) = 2*StatsBase.dof(M) - 2*M.ll
 
 """
     bic(M::CopulaModel) -> Float64
 
 Bayesian information criterion for the fitted model.
 """
-StatsBase.bic(M::CopulaModel) = StatsBase.dof(M)*log(StatsBase.nobs(M)) - 2*Distributions.loglikelihood(M)
+StatsBase.bic(M::CopulaModel) = StatsBase.dof(M)*log(StatsBase.nobs(M)) - 2*M.ll
 function aicc(M::CopulaModel)
     k, n = StatsBase.dof(M), StatsBase.nobs(M)
     corr = (n > k + 1) ? (2k*(k+1)) / (n - k - 1) : Inf
@@ -345,7 +341,7 @@ function aicc(M::CopulaModel)
 end
 function hqc(M::CopulaModel)
     k, n = StatsBase.dof(M), StatsBase.nobs(M)
-    return -2*Distributions.loglikelihood(M) + 2k*log(log(max(n, 3)))
+    return -2*M.ll + 2k*log(log(max(n, 3)))
 end
 
 function StatsBase.nullloglikelihood(M::CopulaModel)
@@ -415,7 +411,7 @@ function Base.show(io::IO, M::CopulaModel)
     end
 
     n  = StatsBase.nobs(M)
-    ll = Distributions.loglikelihood(M)
+    ll = M.ll
     Printf.@printf(io, "Number of observations: %9d\n", n)
 
     ll0 = get(M.method_details, :null_ll, NaN)
