@@ -3,11 +3,21 @@ on:
   pull_request:
     branches:
       - main
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'CITATION.*'
+      - '.github/workflows/Documenter.yml'
   push:
     tags:
       - '*'
     branches:
       - main
+    paths-ignore:
+      - 'docs/**'
+      - '**/*.md'
+      - 'CITATION.*'
+      - '.github/workflows/Documenter.yml'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
