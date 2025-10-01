@@ -157,10 +157,10 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
             end
             ui = Ucol[i]
             Ub[1, :] .= ui; Ub[2, :] .= uj
-            est = ι(Ub; k=k, p=p, leafsize=leafsize)
-            H[i, j] = H[j, i] = est.H
-            I[i, j] = I[j, i] = est.I
-            R[i, j] = R[j, i] = est.r
+            H = ι(Ub; k=k, p=p, leafsize=leafsize)
+            H[i, j] = H[j, i] = H
+            I[i, j] = I[j, i] = -H
+            R[i, j] = R[j, i] = sqrt(max(0.0, 1 - exp(clamp(2H, -700.0, 0.0))))
 
             if signed
                 τij = StatsBase.corkendall(hcat(ui, uj))

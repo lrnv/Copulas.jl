@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Getting Started
+# Copulas and Sklar Distributions
 
 This section gives some general definitions and tools about dependence structures, multivariate random vectors and copulas. Along this journey through the mathematical theory of copulas, we link to the rest of the documentation for more specific and detailed arguments on particular points, or simply to the technical documentation of the actual implementation. 
 The interested reader can take a look at the standard books on the subject [joe1997,cherubini2004,nelsen2006,joe2014](@cite) or more recently [mai2017, durante2015a, czado2019,grosser2021](@cite). 
@@ -110,8 +110,7 @@ nothing # hide
 We can then leverage the Sklar theorem to construct multivariate random vectors from a copula-marginals specification. The implementation we have of this theorem allows building multivariate distributions by specifying separately their marginals and dependence structures as follows:
 
 
-```@example 2
-using Copulas, Distributions, Random
+```@example 1
 X₁, X₂, X₃ = Gamma(2,3), Pareto(), LogNormal(0,1) # Marginals
 C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
 D = SklarDist(C, (X₁,X₂,X₃)) # The final distribution
@@ -121,7 +120,7 @@ nothing # hide
 
 The obtained multivariate random vector object are genuine multivariate random vector following the `Distributions.jl` API. They can be sampled (`rand()`), and their probability density function and distribution function can be evaluated (respectively `pdf` and `cdf`), etc:
 
-```@example 2
+```@example 1
 x = rand(D,10)
 p = pdf(D, x)
 l = logpdf(D, x)
@@ -218,7 +217,7 @@ and of course once again the same functions dispatch on `u::Abstractmatrix`, but
 
 A `measure` function gives the measure of hypercubes from any copula as follows: 
 ```@example api
-measure(C, (0.1,0.2,0.3), (0.9,0.8,0.7))
+Copulas.measure(C, (0.1,0.2,0.3), (0.9,0.8,0.7))
 ```
 
 ### Subsetting (working with a subset of dimensions)
@@ -280,7 +279,7 @@ A shortcut allows to directly get the fitting object (copula or sklardist) by si
 ```@example api
 U = pseudos(X)
 Ĉ = fit(GumbelCopula, U; method=:itau)
-τ(Ĉ)
+Copulas.τ(Ĉ)
 ```
 
 Notes:

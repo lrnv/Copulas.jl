@@ -21,8 +21,9 @@ makedocs(;
     ),
     pages=[
         "Home"=>"index.md",
+        "Quick API tour"=>"quick_tour.md",
         "Manual" => [
-            "Getting Started"=>"manual/getting_started.md",
+            "Introduction"=>"manual/intro.md",
             "Dependence measures"=>"manual/dependence_measures.md",
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
             "Visualizations"=>"manual/visualizations.md",

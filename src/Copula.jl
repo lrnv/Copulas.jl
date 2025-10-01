@@ -88,9 +88,7 @@ function ι(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.Merse
         s -= lp
     end
     H = s / nmc
-    t = clamp(2H, -700.0, 0.0)
-    r = sqrt(max(0.0, 1 - exp(t)))
-    return (H = H, I = -H, r = r)
+    return H
 end
 function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
     g(e) = Distributions.cdf(C, fill(e, d)) / e
@@ -280,9 +278,7 @@ function ι(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
         logcd = d*log(2*SpecialFunctions.gamma(1 + 1/p)) - SpecialFunctions.loggamma(1 + d/p)
         H += logcd + (d / n) * sum(log.(ρ))
     end
-    t = clamp(2H, -700.0, 0.0)
-    r = sqrt(max(0.0, 1 - exp(t)))
-    return (H = H, I = -H, r = r)
+    return H
 end
 
 # Measure function. 
