@@ -75,6 +75,8 @@ tEVTail
 EmpiricalEVTail
 ```
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

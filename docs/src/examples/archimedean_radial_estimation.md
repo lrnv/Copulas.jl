@@ -328,4 +328,6 @@ Combine with the chain rule to propagate variances via the delta method if neede
 ## References
 
 ```@bibliography
+Pages = [@__FILE__]
+Canonical = false
 ```

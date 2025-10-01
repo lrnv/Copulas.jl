@@ -189,6 +189,8 @@ $r$ and its “signed” version **are not PSD** (they are re-scales of $H$).
     They are therefore recommended mainly for **validation, model selection, or feature screening**, not routine use.
 
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

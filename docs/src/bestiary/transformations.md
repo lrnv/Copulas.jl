@@ -20,6 +20,8 @@ Copulas.subsetdims
 Copulas.SubsetCopula
 ```
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

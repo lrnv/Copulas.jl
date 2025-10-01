@@ -10,3 +10,10 @@ This page lists all public docstrings exposed by the package.
 Modules = [Copulas]
 Private = false
 ```
+
+## References
+
+```@bibliography
+Pages = [@__FILE__]
+Canonical = false
+```

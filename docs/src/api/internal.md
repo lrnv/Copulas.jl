@@ -10,3 +10,10 @@ These are non-public implementation details. They can change without notice. Use
 Modules = [Copulas]
 Public = false
 ```
+
+## References
+
+```@bibliography
+Pages = [@__FILE__]
+Canonical = false
+```

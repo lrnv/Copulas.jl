@@ -60,7 +60,6 @@ makedocs(;
             "Public"=>"api/public.md",
             "Internal (non-stable)"=>"api/internal.md",
         ],
-        "Package Index" => "idx.md",
         "References" => "references.md",
     ],
 )

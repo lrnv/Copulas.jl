@@ -45,6 +45,8 @@ Parameter validity is handled by the underlying types; no extra checks are neede
 The provided sampler for Archimax uses the **frailty** representation: `M ∼ frailty(gen)` with Laplace transform `ϕ`, and EV draws `V` from `tail`. It returns `U = ϕ.( -log.(V) ./ M )`.
 This requires the generator to be **completely monotone** (so that a frailty distribution exists). If a generator is only 2-monotone, `cdf`/`pdf` work as usual, but `rand` may not be available.
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

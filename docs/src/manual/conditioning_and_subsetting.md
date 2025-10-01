@@ -249,8 +249,9 @@ end
 plt
 ```
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false
 ```
-

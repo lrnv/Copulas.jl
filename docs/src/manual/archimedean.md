@@ -289,6 +289,8 @@ Note that Dirichlet distributions are constructed as $\boldsymbol S = \frac{\bol
 - Bestiary: [Implemented Archimedean generators](@ref available_archimedean_models)
 - Manual: [Conditioning and Subsetting](@ref)
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

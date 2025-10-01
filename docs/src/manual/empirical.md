@@ -235,6 +235,8 @@ See [This example page](@ref nonpar_archi_gen_example) for more details and exam
 - Manual: [Sklar's Distribution](@ref), [Conditioning and Subsetting](@ref)
 
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

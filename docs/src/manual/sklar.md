@@ -51,6 +51,8 @@ plot(D, scale=:sklar)
 SklarDist
 ```
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

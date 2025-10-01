@@ -26,6 +26,8 @@ FGMCopula
 RafteryCopula
 ```
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

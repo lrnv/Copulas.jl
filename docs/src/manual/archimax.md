@@ -108,6 +108,8 @@ $$H_{1\mid 2}(u\mid v)\;=\;\frac{\phi'\!\big(\ell(s_1,s_2)\big)\;\partial_2 \ell
 
 where the factor $(\phi^{-1})'(v)$ cancels. When $\ell$ comes from a Pickands function $A$ (bivariate EV case), $\partial_2 \ell$ is available in closed form. This is the expression used by the implementation for conditional distortions on the copula scale; higher-dimensional extensions follow the same principle with higher-order partial derivatives.
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

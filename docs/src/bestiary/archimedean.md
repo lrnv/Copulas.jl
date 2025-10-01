@@ -99,6 +99,7 @@ BB9Generator
 BB10Generator
 ```
 
+## References
 
 ```@bibliography
 Pages = [@__FILE__]

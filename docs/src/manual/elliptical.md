@@ -184,6 +184,8 @@ These formulas are what the implementation relies on (via `SklarDist` for origin
 - Manual: [Getting Started](@ref), [Sklar's Distribution](@ref)
 
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

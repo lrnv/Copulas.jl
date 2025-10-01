@@ -30,6 +30,8 @@ scatter(U[1,:], U[2,:]; ms=2, alpha=0.6, xlim=(0,1), ylim=(0,1), title="First pa
 ```
 
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false

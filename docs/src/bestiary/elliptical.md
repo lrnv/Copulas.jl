@@ -16,6 +16,8 @@ GaussianCopula
 TCopula
 ```
 
+## References
+
 ```@bibliography
 Pages = [@__FILE__]
 Canonical = false
