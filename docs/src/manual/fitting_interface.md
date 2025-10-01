@@ -106,20 +106,7 @@ If `summaries=false` these keys will be absent and `method_details` will be smal
 
 - The `CopulaModel` field `vcov` (exposed as `StatsBase.vcov(M)`) contains the estimated covariance matrix of the fitted copula parameters when available. Many families supply `:vcov` via the `meta` NamedTuple returned by `_fit` (for example `meta.vcov`). If `vcov === nothing` the package cannot compute `stderror` or `confint` and those helpers will throw.
 
-- If a family does not provide `vcov`, you can obtain approximate standard errors by computing a numerical Hessian of the negative loglikelihood with respect to the raw/unbound parameters and inverting it. Minimal runnable example (adapt to your family internals):
-
-```@example fitting_interface
-using ForwardDiff
-CT = GumbelCopula
-d = 2
-ex = _example(CT, d)
-U = rand(ex, 200)
-α̂ = _unbound_params(CT, d, Distributions.params(ex))
-lossα(α) = -Distributions.loglikelihood(CT(d, _rebound_params(CT, d, α)...), U)
-H = ForwardDiff.hessian(lossα, α̂)
-V_α = inv(H)
-println("approx vcov size: ", size(V_α))
-```
+TODO: add an example here. 
 
 Consider adding a small bootstrap wrapper for robust CIs when the Hessian is unreliable.
 
