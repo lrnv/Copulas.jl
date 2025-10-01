@@ -170,14 +170,13 @@ The public API of `Copulas.jl` is quite small and easy to expose on a simple exa
 The most important objects of the package are of course copulas as sklar distributions. Both of these objects follow the `Distributions.jl`'s API, and so you can construct, sample, and evaluate copulas as standard `Distributions.jl` objects:
 
 ```@example api
-using Copulas, Distributions, Random
+using Copulas, Distributions, Random, StatsBase
 C = ClaytonCopula(3, 2.0)
 u = rand(C, 5)
 Distributions.loglikelihood(C, u)
 ```
 
 ```@example api
-using Distributions
 X₁, X₂, X₃ = Gamma(2,3), Beta(1,5), LogNormal(0,1)
 C2 = GumbelCopula(3, 1.7)
 D = SklarDist(C2, (X₁, X₂, X₃))
@@ -191,13 +190,13 @@ Basic dependence summaries available on copulas, whatever their dimension `d`:
 
 ```@example api
 multivariate_stats = (
-    kendall_tau = τ(C),
-    spearm_rho = ρ(C),
-    blomqvist_beta = β(C),
-    gini_gamma = γ(C), 
-    entropy_iota = ι(C), 
-    lower_tail_dep = λₗ(C), 
-    upper_tail_dep = λᵤ(C)
+    kendall_tau = Copulas.τ(C),
+    spearm_rho = Copulas.ρ(C),
+    blomqvist_beta = Copulas.β(C),
+    gini_gamma = Copulas.γ(C), 
+    entropy_iota = Copulas.ι(C), 
+    lower_tail_dep = Copulas.λₗ(C), 
+    upper_tail_dep = Copulas.λᵤ(C)
 )
 ```
 
@@ -244,7 +243,7 @@ On the uniform scale (copula): distortions and conditional copulas are provided:
 
 ```@example api
 Dj = condition(C2, 2, 0.3)   # Distortion of U₁|U₂=0.3 when d=2
-Distributions.quantile(Dj, 0.95)
+Distributions.cdf(Dj, 0.95)
 ```
 
 On the original scale (Sklar distribution):
