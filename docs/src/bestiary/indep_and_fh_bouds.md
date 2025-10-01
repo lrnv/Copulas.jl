@@ -1,4 +1,4 @@
-# Independence and Fréchet-Hoeffding bounds
+# [Independence and Fréchet-Hoeffding bounds](@id bestiary_ref)
 
 ## `IndependentCopula`
 ```@docs; canonical=false

@@ -181,7 +181,7 @@ These formulas are what the implementation relies on (via `SklarDist` for origin
 ## See also
 
 - Bestiary: [Implemented Elliptical copulas](@ref elliptical_cops)
-- Manual: [Getting Started](@ref), [Sklar's Distribution](@ref)
+- Manual: [Getting Started](@ref intro), [Sklar's Distribution](@ref copula_and_sklar)
 
 
 ## References

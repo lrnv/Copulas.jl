@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Copulas and Sklar Distributions
+# [Copulas and Sklar Distributions](@id intro)
 
 This section gives some general definitions and tools about dependence structures, multivariate random vectors and copulas. Along this journey through the mathematical theory of copulas, we link to the rest of the documentation for more specific and detailed arguments on particular points, or simply to the technical documentation of the actual implementation. 
 The interested reader can take a look at the standard books on the subject [joe1997,cherubini2004,nelsen2006,joe2014](@cite) or more recently [mai2017, durante2015a, czado2019,grosser2021](@cite). 
@@ -44,7 +44,7 @@ F_i(x_i) = F(+\infty,...,+\infty,x_i,+\infty,...,+\infty).
 
 Note that the range $\mathrm{Ran}(F)$ of a distribution function $F$, univariate or multivariate, is always contained in $[0,1]$. When the random vector or random variable is absolutely continuous with respect to (w.r.t.) the Lebesgue measure restricted to its domain, the range is exactly $[0,1]$. When the distribution is discrete with $n$ atoms, the range is a finite set of $n+1$ values in $[0,1]$.
 
-## Copulas and Sklar's Theorem
+## [Copulas and Sklar's Theorem](@id copula_and_sklar)
 
 There is a fundamental functional link between the function $F$ and its marginals $F_1,...,F_d$. This link is expressed by the mean of *copulas*. 
 
@@ -158,7 +158,7 @@ p4 = plot(WCopula(2), title="WCopula(2)")
 plot(p1,p2,p3,p4; layout=(2,2), size=(800,600))
 ```
 
-Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas (we already saw the Clayton family). You can browse the available families in this package in the [Bestiary](@ref). Like any families of random variables or random vectors, copulas are fittable on empirical data. 
+Since copulas are distribution functions, like distribution functions of real-valued random variables and random vectors, there exists classical and useful parametric families of copulas (we already saw the Clayton family). You can browse the available families in this package in the [Bestiary](@ref bestiary_ref). Like any families of random variables or random vectors, copulas are fittable on empirical data. 
 
 ## A tour of the main API
 

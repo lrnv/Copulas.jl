@@ -232,7 +232,7 @@ See [This example page](@ref nonpar_archi_gen_example) for more details and exam
 
 - Bestiary: [Empirical models list](@ref empirical_cops)
 - Extreme Value: [Extreme Value family](@ref Extreme_theory), [Implemented tails](@ref available_extreme_models)
-- Manual: [Sklar's Distribution](@ref), [Conditioning and Subsetting](@ref)
+- Manual: [Sklar's Distribution](@ref copula_and_sklar), [Conditioning and Subsetting](@ref)
 
 
 ## References
