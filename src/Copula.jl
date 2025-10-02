@@ -172,7 +172,7 @@ function _λ(U::AbstractMatrix; t::Symbol=:upper, p::Union{Nothing,Real}=nothing
     V = t === :upper ? (1 .- Float64.(U)) : Float64.(U)
     cnt = 0
     @inbounds @views for j in 1:m
-        cnt += all(V[:, j] .<= p)   # vista sin copiar gracias a @views
+        cnt += all(V[:, j] .<= p)
     end
     return clamp(cnt / (p*m), 0.0, 1.0)
 end
