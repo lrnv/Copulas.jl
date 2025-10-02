@@ -95,7 +95,7 @@ One of the reasons that makes copulas so useful is the bijective map from the Sk
 
 This result allows to decompose the distribution of $\boldsymbol X$ into several components: the marginal distributions on one side, and the copula on the other side, which governs the dependence structure between the marginals. This object is central in our work, and therefore deserves a moment of attention. 
 
-!!! example "Example (Independence):"
+!!! example "Independence"
     The function 
 
     $\Pi : \boldsymbol x \mapsto \prod_{i=1}^d x_i = \boldsymbol x^{\boldsymbol 1}$ is a copula, corresponding to independent random vectors.
