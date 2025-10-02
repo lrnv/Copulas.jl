@@ -23,11 +23,10 @@ makedocs(;
         "Home"=>"index.md",
         "Manual" => [
             "Introduction"=>"manual/intro.md",
-            "Dependence measures"=>"manual/dependence_measures.md",
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
-            "Visualizations"=>"manual/visualizations.md",
+            "Dependence metrics"=>"manual/dependence_measures.md",
             "Fitting"=>"manual/fitting_interface.md",
-            "Developers: How to add new copulas"=>"manual/developer_howto_add_copulas.md",
+            "Visualizations"=>"manual/visualizations.md",
             "Troubleshooting"=>"manual/troubleshooting.md",
         ],
         "Bestiary" => [

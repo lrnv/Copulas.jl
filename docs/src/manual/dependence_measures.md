@@ -4,13 +4,12 @@ CurrentModule = Copulas
 
 # Dependence measures
 
-
 The copula of a random vector fully encodes its dependence structure. 
 However, copulas are infinite-dimensional objects and interpreting their properties can be difficult as the dimension increases. 
 Therefore, the literature has introduced quantifications of the dependence structure that may be used as univariate (imperfect but useful) summaries of certain copula properties. 
 We implement the most well-known ones in this package. 
 
-## Kendall's τ, Spearman's ρ, Blomqvist's β and Gini's γ
+## Main dependence metrics τ, ρ, β and γ
 
 !!! definition "Kendall' τ"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
@@ -32,7 +31,7 @@ We implement the most well-known ones in this package.
 !!! definition "Definition (Gini's γ):"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, the multivariate Gini’s gamma is defined as [behboodian2007multivariate](@cite):
 
-    $$\gamma = \frac{1}{b(d)-a(d)}\left[\int_{[0,1]^d}\{A(\boldsymbold{u}) + \bar{A}(\boldsymbold{u})\}dC(\boldsymbold{u}) - a(d)\right],$$
+    $$\gamma = \frac{1}{b(d)-a(d)}\left[\int_{[0,1]^d}\{A(\boldsymbol{u}) + \bar{A}(\boldsymbol{u})\}dC(\boldsymbol{u}) - a(d)\right],$$
 
     with
 
@@ -49,7 +48,7 @@ We thus provide two different interfaces:
 Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C), β(C), γ(C)` (for the multivariate versions) and `corkendall(C), corspearman(C), corblomqvist(C)`, and  `corgini(C)` (for the matrix versions).
 Similarly, empirical versions of these metrics can be obtained from a matrix of observations `data` of size `(d,n)` by  `Copulas.τ(data)`, `Copulas.ρ(data)`, `Copulas.β(data)`, `Copulas.γ(data)`, `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)`, `Copulas.corblomqvist(data)` and `Copulas.corgini(data)`.
 
-!!! note "Ranges of $\tau$, $\rho$, $\beta$ and $\gamma$."
+!!! note "Ranges of τ, ρ, β and γ."
     Kendall's $\tau$, Spearman's $\rho$, Blomqvist's $\beta$ and Gini's $\gamma$ all belong to $[-1, 1]$. They are equal to :
     * 0 if and only if the copula is a `IndependentCopula`.
     * -1 is and only if the copula is a `WCopula`.
@@ -130,8 +129,6 @@ plot!(0.9:0.001:0.999, Base.Fix1(χᵤ, C); label="χᵤ(u)")
 All these coefficients quantify the behavior of the dependence structure, generally or in the extremes, and are therefore widely used in the literature either as verification tools to assess the quality of fits, or even as parameters.
 Many parametric copula families have simple surjections, injections, or even bijections between these coefficients and their parametrization, allowing matching procedures of estimation (similar to moment matching algorithms for fitting standard random variables).
 
-### Implementations in `Copulas.jl`
-
 The package provides both theoretical limits (for a given copula object) and empirical estimators (from data matrices).  
 In addition, pairwise tail-dependence matrices can be computed for multivariate samples.  
 
@@ -161,7 +158,8 @@ These follow the approach of Schmidt & Stadtmüller (see [schmidt2006non](@cite)
 
 See [ma2011mutual](@cite).
 
-**Basic Properties.**
+Basic properties if the copula entropy: 
+
 - $\iota(C)\le 0$ with equality $\iota(C)=0$ if and only if $C$ is the `IndependentCopula` (because $c\equiv 1$).
 - For **singular** copulas (without density), $H(C)=-\infty$.
 - Since $I=-\iota$, the larger the $I$ $\Rightarrow$, the greater the dependence (linear, nonlinear, tailing, etc.).
@@ -169,18 +167,13 @@ See [ma2011mutual](@cite).
 !!! note "the iota symbol"
     Remark that the iota symbol can be obtain by typing "\iota<tab>". 
 
-### Implementations in `Copulas.jl`
+Our implementation proposes two options:
 
-* **Parametric (Monte Carlo)**: `ι(C::Copula; nmc=100_000)` Returns `(; H, I=-H, r)`, with $r=\sqrt{\max(0,1-e^{2H})}$ as rescaled by $[0,1]$.
+* **Parametric (Monte Carlo)**: `ι(C::Copula; nmc=100_000)` Returns `H`
 
-* **Non-parametric (kNN)**: `ι(U::AbstractMatrix; k=5, p=Inf)` 
-Kozachenko–Leonenko estimator ([kozachenko1987](@cite)) on **pseudo-observations** $U\in(0,1)^d$. 
-Typical parameters: $k\in[5,15]$; norm $p\in\{1,2,\infty\}$.
+* **Non-parametric (kNN)**: `ι(U::AbstractMatrix; k=5, p=Inf)`: uses a Kozachenko–Leonenko estimator ([kozachenko1987](@cite)) on **pseudo-observations** $U\in(0,1)^d$. Typical parameters: $k\in[5,15]$; norm $p\in\{1,2,\infty\}$.
 
-* **Pairwise version**: `corentropy(data; k=5, p=Inf)`
-Matrices of $(H,I,r)$ for all pairs; `signed=true` multiplies $r$ by $\operatorname{sign}(\tau)$.
-
-$r$ and its “signed” version **are not PSD** (they are re-scales of $H$).
+* **Pairwise version**: `corentropy(data; k=5, p=Inf)`: Matrices of $H$ for all pairs; `signed=true` multiplies $r$ by $\operatorname{sign}(\tau)$.
 
 !!! note "Efficiency"
 
