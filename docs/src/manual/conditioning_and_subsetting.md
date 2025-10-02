@@ -6,11 +6,7 @@ CurrentModule = Copulas
 
 ## Conditioning
 
-This page introduces conditional distributions under a copula model and shows how to
-construct them programmatically using `condition`.
-
-The same interface works either on the uniform scale (copula only) or on the original
-scale (via `SklarDist`).
+This page introduces conditional distributions under a copula model and shows how to construct them programmatically using `condition`. The same interface works either on the uniform scale (copula only) or on the original scale (via `SklarDist`).
 
 ### Overview
 

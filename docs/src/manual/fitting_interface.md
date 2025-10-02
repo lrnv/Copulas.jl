@@ -1,7 +1,6 @@
-````markdown
 ```@meta
 CurrentModule = Copulas
-````
+```
 
 # Fitting interface
 
