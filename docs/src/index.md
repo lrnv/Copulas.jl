@@ -19,7 +19,7 @@ hero:
       link: https://github.com/lrnv/Copulas.jl
     - theme: alt
       text: Bestiary
-      link: /bestiary/indep_and_fh_bouds
+      link: /bestiary/elliptical
 ---
 ````
 
@@ -72,7 +72,7 @@ The general implementation philosophy is for the code to follow the mathematical
 ## Feature comparison
 
 
-There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. Since rencently, we cover both of these packages functionalities completely, while still bringing, as a key feature, the compliance with the broader ecosystem. The following table provides a feature comparison between the three: 
+There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. Since recently, we cover both of these packages’ functionalities completely, while still bringing, as a key feature, compliance with the broader ecosystem. The following table provides a feature comparison between the three: 
 
 |                          | `Copulas.jl`            | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
 |--------------------------|-------------------------|-------------------------|-----------------------|
@@ -97,7 +97,7 @@ Here is a quick, practical tour of the public API. It shows how to construct cop
 
 ### Copulas and Sklar distributions
 
-You can construct a copula object with their respecive constructors. They behave like multivariate distribution from `Distributions.jl` and respect their API: 
+You can construct a copula object with their respective constructors. They behave like multivariate distributions from `Distributions.jl` and respect their API: 
 
 ```@example 1
 using Copulas, Distributions, Random, StatsBase
@@ -107,7 +107,7 @@ U = rand(C, 5)
 Distributions.loglikelihood(C, U)
 ```
 
-To build multivariate dsitributions, you can compose a copula with marginals via Sklar’s theorem:
+To build multivariate distributions, you can compose a copula with marginals via Sklar’s theorem:
 
 ```@example 1
 X₁, X₂, X₃ = Gamma(2,3), Beta(1,5), LogNormal(0,1)
@@ -133,13 +133,13 @@ You can get scalar dependence metrics at copula level:
 )
 ```
 
-Pairwise matrices of bivarite versions are available through `StatsBase.corkendall(C), StatsBase.corspearman(C),Copulas.corblomqvist(C), Copulas.corgini(C), Copulas.corentropy(C), Copulas.corlowertail(C)`, and  `Copulas.coruppertail(C)` respectively. 
+Pairwise matrices of bivariate versions are available through `StatsBase.corkendall(C)`, `StatsBase.corspearman(C)`, `Copulas.corblomqvist(C)`, `Copulas.corgini(C)`, `Copulas.corentropy(C)`, `Copulas.corlowertail(C)`, and `Copulas.coruppertail(C)`.
 
 Same functions work passing a dataset instead of the copula for their empirical counterpart. 
 
 ### Measure and transforms
 
-The `measure` function measures hypercubes under the distribution fo the copula. You can access rosenbaltt transfromation of a copula (or a sklardist) through the `rosenblatt` and `inverse_rosenblatt` functions: 
+The `measure` function measures hypercubes under the distribution of the copula. You can access the Rosenblatt transformation of a copula (or a Sklar distribution) through the `rosenblatt` and `inverse_rosenblatt` functions: 
 
 ```@example 1
 Copulas.measure(C, (0.1,0.2,0.3), (0.9,0.8,0.7))
@@ -185,7 +185,7 @@ Notes
 
 ## Contributions are welcome
 
-If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on [the Copulas.jl respository](https://github.com/lrnv/Copulas.jl)
+If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on [the Copulas.jl repository](https://github.com/lrnv/Copulas.jl)
 
 
 ## Citation 

@@ -19,7 +19,7 @@ A(x) = xt_{\\nu+1}(Z_x) +(1-x)t_{\\nu+1}(Z_{1-x})
 Where ``t_{\\nu + 1}`` is the cumulative distribution function (CDF) of the standard t distribution with ``\\nu + 1`` degrees of freedom and
 
 ```math
-Z_x = \\frac{(1+\\nu)^{1/2}{\\sqrt{1-\\theta^2}}\\left[ \\left(\\frac{x}{1-x} \\right)^{1/\\nu} - \\theta \\right]
+Z_x = \\sqrt{\\frac{1+\\nu}{1-\\rho^2}}\\left(\\left(\\frac{x}{1-x} \\right)^{1/\\nu} - \\rho\\right)
 ```
 
 Special cases:
