@@ -87,9 +87,6 @@ We define a few helpers to visualize and validate the fitted model, and we now u
  - quick diagnostic plots, and
  - optional visualization of φ_R for a discrete R.
 
-!!! todo "Integrate into the main package".
-    The code proposed below is expected to become the default fitting method for Williamson generators, once the fitting interface is formalized accross the package. Stay tuned!
-
 ```@example archi_radial
 using Distributions, StatsBase, Roots, QuadGK, Plots, Copulas
 
@@ -328,4 +325,6 @@ Combine with the chain rule to propagate variances via the delta method if neede
 ## References
 
 ```@bibliography
+Pages = [@__FILE__]
+Canonical = false
 ```

@@ -22,28 +22,20 @@ makedocs(;
     pages=[
         "Home"=>"index.md",
         "Manual" => [
-            "Getting Started"=>"manual/getting_started.md",
-            "Sklar's Distributions"=>"manual/sklar.md",
-            "Dependence measures"=>"manual/dependence_measures.md",
+            "Introduction"=>"manual/intro.md",
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
+            "Dependence metrics"=>"manual/dependence_measures.md",
+            "Fitting"=>"manual/fitting_interface.md",
             "Visualizations"=>"manual/visualizations.md",
-            "Archimedean family"=>"manual/archimedean.md",
-            "Elliptical family"=>"manual/elliptical.md",
-            "Extreme Value family"=>"manual/extremevalues.md",
-            "Archimax family"=>"manual/archimax.md",
-            "Vines family"=>"manual/vines.md",
-            "Empirical models"=>"manual/empirical.md",
-            "Troubleshooting"=>"manual/troubleshooting.md",
         ],
         "Bestiary" => [
-            "Independence and Fréchet-Hoeffding bounds"=>"bestiary/indep_and_fh_bouds.md",
             "Elliptical copulas"=>"bestiary/elliptical.md",
-            "Archimedean generators"=>"bestiary/archimedean.md",
-            "Extreme Value tails"=>"bestiary/extremevalues.md",
+            "Archimedean copulas"=>"bestiary/archimedean.md",
+            "Extreme Value copulas"=>"bestiary/extremevalues.md",
             "Archimax copulas"=>"bestiary/archimax.md",
             "Empirical copulas"=>"bestiary/empirical.md",
+            "Vines copulas"=>"bestiary/vines.md",
             "Other copulas"=>"bestiary/miscellaneous.md",
-            "Transformed copulas"=>"bestiary/transformations.md",
         ],
         "Examples" => [
             "Nonparametric estimation of the radial law in Archimedean copulas"=>"examples/archimedean_radial_estimation.md",
@@ -54,7 +46,10 @@ makedocs(;
             "Bayesian inference with `Turing.jl`"=>"examples/turing.md",
             "Other known use cases"=>"examples/other_usecases.md"
         ],
-        "Package Index" => "idx.md",
+        "API" => [
+            "Public"=>"api/public.md",
+            "Internal (non-stable)"=>"api/internal.md",
+        ],
         "References" => "references.md",
     ],
 )

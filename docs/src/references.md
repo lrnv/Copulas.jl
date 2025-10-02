@@ -1,7 +1,5 @@
 # References
 
 ```@bibliography
-```
- ```@bibliography
 *
 ```

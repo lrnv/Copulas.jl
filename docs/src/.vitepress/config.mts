@@ -82,7 +82,7 @@ export default defineConfig({
       // This plugin will add a test phrase to every block so you know it's working
       function customContainerPlugin(md) {
         const types = [
-          'tip', 'note', 'info', 'warning', 'danger', 'todo', 'definition', 'property', 'remark', 'theorem'
+          'tip', 'note', 'info', 'warning', 'danger', 'todo', 'definition', 'property', 'remark', 'theorem', 'example'
         ];
         for (const type of types) {
           md.use(markdownItContainer, type, {
