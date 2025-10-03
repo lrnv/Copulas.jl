@@ -70,7 +70,7 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB1Generator}
 end
 
 function Distributions._logpdf(C::ArchimedeanCopula{2,BB1Generator{TF}}, u) where {TF}
-    T = promote_type(TF, eltype(u)) # <<<<<<<<<<<<<<<<<<<<<<<<<<-------- Here is your issue. 
+    T = promote_type(TF, eltype(u))
     (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return T(-Inf)
 
     θ, δ = C.G.θ, C.G.δ
