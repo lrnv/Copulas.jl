@@ -247,6 +247,6 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     res = Optim.optimize(f, lo, hi,  θ₀, Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
     θ̂     = Optim.minimizer(res)[1]
     return CT(d, θ̂), (; θ̂=θ̂, optimizer=Optim.summary(res),
-                xtol=xtol, converged=Optim.converged(res), 
-                iterations=Optim.iterations(res))
+                        xtol=xtol, converged=Optim.converged(res), 
+                        iterations=Optim.iterations(res))
 end
