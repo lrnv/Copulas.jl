@@ -336,47 +336,27 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     d, n = size(U)
     α  = _unbound_params(CT, d, θ)
     cop(α) = CT(d, _rebound_params(CT,d,α)...)
+    _upper_triangle(A) = [A[idx] for idx in CartesianIndices(A) if idx[1] < idx[2]]
     
     if vcovm === :hessian 
         ℓ(α)   = Distributions.loglikelihood(cop(α), U)
         Iα     = .- ForwardDiff.hessian(ℓ, α) # Information matrix. 
         Vα = inv(Iα + 1e-8LinearAlgebra.I)
     else
-        if vcovm === :godambe
-            q = 1
-            # Theoretical scalar moment on the model
-            φ = method isa Val{:itau}  ? τ : 
+        emp_fun = method isa Val{:itau}  ? StatsBase.corkendall :
+            method isa Val{:irho}  ? StatsBase.corspearman :
+            method isa Val{:ibeta} ? corblomqvist : coruppertail
+        φ = method isa Val{:itau}  ? τ : 
                 method isa Val{:irho}  ? ρ : 
                 method isa Val{:ibeta} ? β : λᵤ
+        if vcovm === :godambe
+            q = 1
             ψ = αv -> [φ(cop(αv))]
-            # Empirical scalar: average of pairwise rank-based stats (or λᵤ on data)
-            emp_fun = method isa Val{:itau}  ? StatsBase.corkendall :
-                      method isa Val{:irho}  ? StatsBase.corspearman :
-                      method isa Val{:ibeta} ? corblomqvist : coruppertail
-            _upper_triangle(A) = [A[idx] for idx in CartesianIndices(A) if idx[1] < idx[2]]
             ψ_emp = U -> [Statistics.mean(_upper_triangle(emp_fun(U')))]
         else # then :godambe_pairwise
             q = d*(d-1) ÷ 2
-            # Empirical vector: upper vech of pairwise rank-based stats
-            emp_fun = method isa Val{:itau}  ? StatsBase.corkendall  : 
-                      method isa Val{:irho}  ? StatsBase.corspearman : 
-                      method isa Val{:ibeta} ? corblomqvist : coruppertail
-            _upper_triangle(A) = [A[idx] for idx in CartesianIndices(A) if idx[1] < idx[2]]
             ψ_emp = U -> _upper_triangle(emp_fun(U'))
-            # Theoretical vector: pairwise measure on bivariate subsets of the model
-            measure_fun = method isa Val{:itau} ? τ : method isa Val{:irho} ? ρ : method isa Val{:ibeta} ? β : λᵤ
-            ψ
-            ψ = αv -> begin
-                Cv = cop(αv)
-                T = eltype(αv)
-                v = Vector{T}(undef, q)
-                k = 1
-                @inbounds for j in 2:d, i in 1:j-1
-                    v[k] = measure_fun(SubsetCopula(Cv, (i,j)))
-                    k += 1
-                end
-                v
-            end
+            ψ = αv -> _upper_triangle(φ(op(αv)))
         end
 
         Dα = ForwardDiff.jacobian(ψ, α)
@@ -397,7 +377,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
         ϵI  = 1e-10LinearAlgebra.I
         Vα  = inv(DtD + ϵI) * (Dα' * Ω * Dα) * inv(DtD + ϵI) / n
     end
-    J  = ForwardDiff.jacobian(αv -> collect(values(_rebound_params(CT, d, αv))), α)
+    J  = ForwardDiff.jacobian(αv -> vec(collect(values(_rebound_params(CT, d, αv)))...), α)
     Vθ = J * Vα * J'
     Vθ = (Vθ + Vθ')/2
     λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
