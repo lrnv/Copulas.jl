@@ -137,8 +137,7 @@ function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}
     return (; Σ = _rebound_corr_params(d, α))
 end
 function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
-    d = size(u,1)
-    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT), u))
+    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
     Σ = Matrix(dd.Σ)
     return GaussianCopula(Σ), (; θ̂ = (; Σ = Σ))
 end
