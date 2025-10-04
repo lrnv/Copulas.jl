@@ -23,6 +23,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, ::MCopula{d}, x::A
 end
 τ(::MCopula) = 1
 ρ(::MCopula) = 1
+γ(::MCopula) = 1
+ι(::MCopula) = -Inf
 StatsBase.corkendall(::MCopula{d}) where d = ones(d,d)
 StatsBase.corspearman(::MCopula{d}) where d = ones(d,d)
 
