@@ -54,30 +54,40 @@ function _fmt_copula_family(C)
     fam = endswith(fam, "Copula") ? fam[1:end-6] : fam
     return string(fam, " d=", length(C))
 end
+"""
+Small horizontal rule for section separation.
+"""
+_hr(io) = println(io, "────────────────────────────────────────────────────────────────────────────────")
+
+"""
+Pretty p-value formatting: show very small values as inequalities.
+"""
+_pstr(p) = p < 1e-16 ? "<1e-16" : Printf.@sprintf("%.4g", p)
+
+"""
+Key-value aligned printing for header lines.
+"""
+function _kv(io, key::AbstractString, val)
+    Printf.@printf(io, "%-22s %s\n", key * ":", val)
+end
 function _print_param_table(io, nm::Vector{String}, θ::Vector{Float64}; V::Union{Nothing, AbstractMatrix}=nothing)
     if V === nothing || isempty(θ)
-        println(io, "────────────────────────────────────────")
-        Printf.@printf(io, "%-14s %12s\n", "Parameter", "Estimate")
-        println(io, "────────────────────────────────────────")
+        Printf.@printf(io, "%-10s %10s\n", "Parameter", "Estimate")
         @inbounds for (j, name) in pairs(nm)
-            Printf.@printf(io, "%-14s %12.4f\n", String(name), θ[j])
+            Printf.@printf(io, "%-10s %10.4f\n", String(name), θ[j])
         end
-        println(io, "────────────────────────────────────────")
         return
     end
     se = sqrt.(LinearAlgebra.diag(V))
     z  = θ ./ se
     p  = 2 .* Distributions.ccdf.(Distributions.Normal(), abs.(z))
     lo, hi = (θ .- 1.959963984540054 .* se, θ .+ 1.959963984540054 .* se)
-    println(io, "────────────────────────────────────────────────────────────────────────────────────────")
-    Printf.@printf(io, "%-14s %12s %12s %12s %12s %12s %12s\n",
-                   "Parameter","Estimate","Std.Err","z-value","Pr(>|z|)","95% Lo","95% Hi")
-    println(io, "────────────────────────────────────────────────────────────────────────────────────────")
+    Printf.@printf(io, "%-10s %10s %9s %9s %8s %10s %10s\n",
+                   "Parameter","Estimate","Std.Err","z-value","p-val","95% Lo","95% Hi")
     @inbounds for j in eachindex(θ)
-        Printf.@printf(io, "%-14s %12.4f %12.4f %12.4f %12.4f %12.4f %12.4f\n",
-                        String(nm[j]), θ[j], se[j], z[j], p[j], lo[j], hi[j])
+        Printf.@printf(io, "%-10s %10.4f %9.4f %9.3f %8s %10.4f %10.4f\n",
+                        String(nm[j]), θ[j], se[j], z[j], _pstr(p[j]), lo[j], hi[j])
     end
-    println(io, "────────────────────────────────────────────────────────────────────────────────────────")
 end
 
 function _margin_param_names(mi)
@@ -96,48 +106,52 @@ end
 
 function Base.show(io::IO, M::CopulaModel)
     R = M.result
-    # Header: family/margins without helper functions
+    # Split: [ CopulaModel: ... ] vs [ Fit metrics ]
     if R isa SklarDist
-        # Build copula family label
         famC = _fmt_copula_family(R.C)
-        # Margins label
+        mnames = map(mi -> String(nameof(typeof(mi))), R.m)
+        margins_lbl = "(" * join(mnames, ", ") * ")"
+        _hr(io); println(io, "[ CopulaModel: SklarDist (Copula=", famC, ", Margins=", margins_lbl, ") ]"); _hr(io)
+    else
+        _hr(io); println(io, "[ CopulaModel: ", _fmt_copula_family(R), " ]"); _hr(io)
+    end
+    if R isa SklarDist
+        famC = _fmt_copula_family(R.C)
         mnames = map(mi -> String(nameof(typeof(mi))), R.m)
         margins_lbl = "(" * join(mnames, ", ") * ")"
         skm = get(M.method_details, :sklar_method, nothing)
+        _kv(io, "Copula", famC)
+        _kv(io, "Margins", margins_lbl)
         if skm === nothing
-            println(io, "SklarDist{Copula=", famC, ", Margins=", margins_lbl, "} fitted via ", M.method)
+            _kv(io, "Methods", "copula=" * String(M.method))
         else
-            println(io, "SklarDist{Copula=", famC, ", Margins=", margins_lbl, "} fitted via ",
-                    "copula_method=", M.method, ", sklar_method=", skm)
+            _kv(io, "Methods", "copula=" * String(M.method) * ", sklar=" * String(skm))
         end
     else
-        println(io, _fmt_copula_family(R), " fitted via ", M.method)
+        _kv(io, "Method", String(M.method))
     end
+    _kv(io, "Number of observations", Printf.@sprintf("%d", StatsBase.nobs(M)))
 
-    n  = StatsBase.nobs(M)
-    ll = M.ll
-    Printf.@printf(io, "Number of observations: %9d\n", n)
-
+    _hr(io); println(io, "[ Fit metrics ]"); _hr(io)
+    ll  = M.ll
     ll0 = get(M.method_details, :null_ll, NaN)
-    if isfinite(ll0)
-        Printf.@printf(io, "Null Loglikelihood:  %12.4f\n", ll0)
-    end
-    Printf.@printf(io, "Loglikelihood:       %12.4f\n", ll)
-
-    # For the LR test use d.f. of the COPULA if it is SklarDist
+    if isfinite(ll0); _kv(io, "Null Loglikelihood", Printf.@sprintf("%12.4f", ll0)); end
+    _kv(io, "Loglikelihood", Printf.@sprintf("%12.4f", ll))
     kcop = (R isa SklarDist) ? StatsBase.dof(_copula_of(M)) : StatsBase.dof(M)
     if isfinite(ll0) && kcop > 0
         LR = 2*(ll - ll0)
         p  = Distributions.ccdf(Distributions.Chisq(kcop), LR)
-        Printf.@printf(io, "LR Test (vs indep. copula): %.2f ~ χ²(%d)  =>  p = %.4g\n", LR, kcop, p)
+        _kv(io, "LR (vs indep.)", Printf.@sprintf("%.2f ~ χ²(%d)  ⇒  p = %s", LR, kcop, _pstr(p)))
     end
-
     aic = StatsBase.aic(M); bic = StatsBase.bic(M)
-    Printf.@printf(io, "AIC: %.3f       BIC: %.3f\n", aic, bic)
+    _kv(io, "AIC", Printf.@sprintf("%.3f", aic))
+    _kv(io, "BIC", Printf.@sprintf("%.3f", bic))
     if isfinite(M.elapsed_sec) || M.iterations != 0 || M.converged != true
         conv = M.converged ? "true" : "false"
+        _kv(io, "Converged", conv)
+        _kv(io, "Iterations", string(M.iterations))
         tsec = isfinite(M.elapsed_sec) ? Printf.@sprintf("%.3fs", M.elapsed_sec) : "NA"
-        println(io, "Converged: $(conv)   Iterations: $(M.iterations)   Elapsed: $(tsec)")
+        _kv(io, "Elapsed", tsec)
     end
 
         if R isa SklarDist
@@ -148,52 +162,43 @@ function Base.show(io::IO, M::CopulaModel)
         md   = M.method_details
         Vcop = get(md, :vcov_copula, nothing)  # <- used vcov copula
         vcovm = get(md, :vcov_method, nothing)
-        println(io, "──────────────────────────────────────────────────────────")
-        println(io, "[ Copula ]")
-        println(io, "──────────────────────────────────────────────────────────")
-
-        println(io, "Family: ", _fmt_copula_family(C))
-        if vcovm !== nothing
-            println(io, "vcov method: ", vcovm)
-        end
-
-        _print_param_table(io, nm, θ; V=Vcop)
-        # meassures optinals
+        # Dependence metrics block
+        _hr(io); println(io, "[ Dependence metrics ]"); _hr(io)
         if get(M.method_details, :derived_measures, true)
-            println(io, "[ Copula Derived measures ]")
-
-            C = _copula_of(M)
-            have_any = false
-
-            _has(f) = isdefined(Copulas, f) && hasmethod(getfield(Copulas, f), Tuple{typeof(C)})
-            _print(lbl, val) = (Printf.@printf(io, "%-14s = %.4f\n", lbl, val); have_any = true)
-
+            C0 = _copula_of(M)
+            _has(f) = isdefined(Copulas, f) && hasmethod(getfield(Copulas, f), Tuple{typeof(C0)})
+            shown_any = false
             try
-                _has(:τ)  && _print("Kendall τ(θ)",  Copulas.τ(C))
-                _has(:ρ)  && _print("Spearman ρ(θ)", Copulas.ρ(C))
-                _has(:β)  && _print("Blomqvist β(θ)",Copulas.β(C))
-                _has(:γ)  && _print("Gini γ(θ)",     Copulas.γ(C))
-                _has(:λᵤ) && _print("Upper λᵤ(θ)",   Copulas.λᵤ(C))
-                _has(:λₗ)  && _print("Lower λₗ(θ)",   Copulas.λₗ(C))
-                _has(:ι)  && _print("Entropy ι(θ)",  Copulas.ι(C))
+                if _has(:τ);  _kv(io, "Kendall τ",  Printf.@sprintf("%.4f", Copulas.τ(C0)));  shown_any = true; end
+                if _has(:ρ);  _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C0)));  shown_any = true; end
+                if _has(:β);  _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C0)));  shown_any = true; end
+                if _has(:γ);  _kv(io, "Gini γ",     Printf.@sprintf("%.4f", Copulas.γ(C0)));  shown_any = true; end
+                if _has(:λᵤ); _kv(io, "Upper λᵤ",   Printf.@sprintf("%.4f", Copulas.λᵤ(C0))); shown_any = true; end
+                if _has(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C0))); shown_any = true; end
+                if _has(:ι);  _kv(io, "Entropy ι",  Printf.@sprintf("%.4f", Copulas.ι(C0)));  shown_any = true; end
             catch
-                # dont break show
+                # keep going
             end
-
-            if !have_any
+            if !shown_any
                 println(io, "(none available)")
             end
+        else
+            println(io, "(suppressed)")
         end
+
+        # Copula parameters with vcov method in header
+    _hr(io); print(io, "[ Copula parameters ]")
+        if vcovm !== nothing; print(io, " (vcov=", String(vcovm), ")"); end
+        println(io); _hr(io)
+        _print_param_table(io, nm, θ; V=Vcop)
         # [ Marginals ] section
         S  = R::SklarDist
         md = M.method_details
         Vm = get(md, :vcov_margins, nothing)   # precomputed marginal vcov from fitting
 
-        println(io, "──────────────────────────────────────────────────────────")
-        println(io, "[ Marginals ]")
-        println(io, "──────────────────────────────────────────────────────────")
-        Printf.@printf(io, "%-6s %-12s %-7s %12s %12s %12s\n",
-                    "Margin","Dist","Param","Estimate","Std.Err","95% CI")
+    _hr(io); println(io, "[ Marginals ]"); _hr(io)
+    Printf.@printf(io, "%-6s %-10s %-6s %10s %9s %s\n",
+        "Margin","Dist","Param","Estimate","Std.Err","95% CI")
 
         crit = 1.959963984540054
 
@@ -219,28 +224,27 @@ function Base.show(io::IO, M::CopulaModel)
                 end
             end
 
-            if Vi === nothing
-                @inbounds for j in 1:p
-                    lab = (j == 1) ? "#$(i)" : ""
-                    Printf.@printf(io, "%-6s %-12s %-7s %12.4f %12s %12s\n",
-                                lab, pname, names[j], vals[j], "—", "—")
+            dV = (Vi !== nothing) ? LinearAlgebra.diag(Matrix(Vi)) : fill(NaN, p)
+            se = sqrt.(max.(dV, 0.0))
+            @inbounds for j in 1:p
+                lab = (j == 1) ? "#$(i)" : ""
+                distcol = (j == 1) ? pname : ""
+                est_str = Printf.@sprintf("%.4f", vals[j])
+                se_str  = isfinite(se[j]) ? Printf.@sprintf("%.4f", se[j]) : "—"
+                if isfinite(se[j])
+                    ci_str = Printf.@sprintf("[%.4f, %.4f]", vals[j] - crit*se[j], vals[j] + crit*se[j])
+                else
+                    ci_str = "—"
                 end
-            else
-                dV = LinearAlgebra.diag(Matrix(Vi))
-                se = sqrt.(max.(dV, 0.0))
-                lo = vals .- crit .* se
-                hi = vals .+ crit .* se
-                @inbounds for j in 1:p
-                    lab = (j == 1) ? "#$(i)" : ""
-                    Printf.@printf(io, "%-6s %-12s %-7s %12.4f %12.4f [%12.4f, %12.4f]\n",
-                                lab, pname, names[j], vals[j], se[j], lo[j], hi[j])
-                end
+                Printf.@printf(io, "%-6s %-10s %-6s %10s %9s %s\n",
+                               lab, distcol, names[j], est_str, se_str, ci_str)
             end
         end
     else
         # Coefficient table (generic) for copula-only fits
         nm = StatsBase.coefnames(M)
         θ  = StatsBase.coef(M)
+        _hr(io); println(io, "[ Parameters ]"); _hr(io)
         _print_param_table(io, nm, θ; V=StatsBase.vcov(M))
 
     end
