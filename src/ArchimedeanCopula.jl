@@ -203,7 +203,7 @@ function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:Willi
     return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U)), (;)
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}}; vcov::Bool = false)
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}})
     d = size(U,1)
     GT = generatorof(CT)
 
@@ -217,15 +217,9 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     Ĉ = CT(d, θ)
 
-    meta_v = NamedTuple()
-    if vcov
-        V, vmeta = _vcov_godambe_gmm(CT, U, [θ], m)
-        meta_v   = (; vcov = V, vmeta...)
-    end
-
-    return Ĉ, (; θ̂ = θ, eps ,meta_v...)
+    return Ĉ, (; θ̂ = Distributions.params(Ĉ), optimizer=(; method = m isa Val{:itau} ? :itau : :irho), converged=true, iterations=0)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta}; vcov::Bool = false)
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
     d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
     βobs = clamp(β(U), -1+1e-10, 1-1e-10)
     lo,hi = _θ_bounds(GT,d)
@@ -236,16 +230,10 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     θ = βobs ≤ βmin ? a0 : βobs ≥ βmax ? b0 : Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
     Ĉ = CT(d, θ)
 
-    meta_v = NamedTuple()
-    if vcov
-        V, vmeta = _vcov_godambe_gmm(CT, U, [θ], Val{:ibeta}())
-        meta_v   = (; vcov = V, vmeta...)
-    end
-
-    return Ĉ, (; θ̂ = θ, meta_v...)
+    return Ĉ, (; θ̂ = Distributions.params(Ĉ), optimizer=(; method = :ibeta), converged=true, iterations=0)
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8, vcov::Bool = false)
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     d = size(U,1)
     GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
@@ -264,12 +252,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     θ̂     = Optim.minimizer(res)[1]
     Ĉ   = CT(d, θ̂)
 
-    meta_v = NamedTuple()
-    if vcov
-        V, vmeta = _vcov_hessian(CT, U, [θ̂])
-        meta_v   = (; vcov=V, vmeta...)
-    end
-    return Ĉ, (; θ̂=θ̂, optimizer=:GradientDescent,
+    return Ĉ, (; θ̂=Distributions.params(Ĉ), optimizer=Optim.summary(res),
                 xtol=xtol, converged=Optim.converged(res), 
-                iterations=Optim.iterations(res), meta_v...)
+                iterations=Optim.iterations(res))
 end
