@@ -177,7 +177,7 @@ end
 
 # --- log-PDF stable ---
 function Distributions._logpdf(C::ArchimaxCopula{2, TG, TT}, u) where {TG, TT}
-    T = promote_type(Float64, eltype(u))
+    T = typeof(A(C.tail, one(ϕ(C.gen, one(eltype(u))))/2))
     @assert length(u) == 2
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return T(-Inf)
