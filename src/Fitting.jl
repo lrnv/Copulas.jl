@@ -202,7 +202,7 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
     ll = Distributions.loglikelihood(C, U)
 
     if vcov && haskey(meta, :θ̂)
-        vcov, vmeta = _vcov(CT, U, meta.θ̂; method, override=vcov_method)
+        vcov, vmeta = _vcov(CT, U, meta.θ̂; method=method, override=vcov_method)
         meta = (; meta..., vcov, vmeta...)
     end
 
@@ -262,12 +262,9 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}
         for i in 1:d
             p  = length(Distributions.params(m[i]))
             Vm[i] = nothing
-            try
-                Vg = _vcov_margin_generic(m[i], @view X[i, :])
-                if Vg !== nothing && ndims(Vg) == 2 && size(Vg) == (p, p) && all(isfinite, Matrix(Vg))
-                    Vm[i] = Matrix{Float64}(Vg)
-                end
-            catch
+            Vg = _vcov_margin_generic(m[i], @view X[i, :])
+            if Vg !== nothing && ndims(Vg) == 2 && size(Vg) == (p, p) && all(isfinite, Matrix(Vg))
+                Vm[i] = Matrix{Float64}(Vg)
             end
         end
     else
@@ -303,19 +300,15 @@ end
 ####### vcov functions...
 
 # objetive this functions: try get the vcov from marginals...
-function _vcov_margin_generic(d::Distributions.UnivariateDistribution, x::AbstractVector)
+function _vcov_margin_generic(d::TD, x::AbstractVector) where {TD<:Distributions.UnivariateDistribution}
     # Compute observed information directly on the parameter (θ) scale at current params.
     p_nt = Distributions.params(d)
     θ0 = p_nt isa NamedTuple ? Float64.(collect(values(p_nt))) : Float64.(collect(p_nt))
-    p  = length(θ0)
 
-    # Reconstruct distribution from a parameter vector θ in the same order as params(d)
-    function dist_from_θ(θ::AbstractVector)
-        pars = p_nt isa NamedTuple ? ntuple(i -> θ[i], p) : ntuple(i -> θ[i], p)
-        return (typeof(d))(pars...)
-    end
+    # Find the distribution constructor: 
+    MyDist = TD.name.wrapper
     # Observed information = - Hessian of log-likelihood at θ0
-    H = ForwardDiff.hessian(θ -> Distributions.loglikelihood(dist_from_θ(θ), x), θ0)
+    H = ForwardDiff.hessian(θ -> Distributions.loglikelihood(MyDist(θ...), x), θ0)
     # Small ridge for numerical stability
     Vθ = inv(-H + 1e-8 .* LinearAlgebra.I)
     Vθ = (Vθ + Vθ')/2
@@ -356,7 +349,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
         else # then :godambe_pairwise
             q = d*(d-1) ÷ 2
             ψ_emp = U -> _upper_triangle(emp_fun(U'))
-            ψ = αv -> _upper_triangle(φ(op(αv)))
+            ψ = αv -> _upper_triangle(φ(cop(αv)))
         end
 
         Dα = ForwardDiff.jacobian(ψ, α)
@@ -377,7 +370,8 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
         ϵI  = 1e-10LinearAlgebra.I
         Vα  = inv(DtD + ϵI) * (Dα' * Ω * Dα) * inv(DtD + ϵI) / n
     end
-    J  = ForwardDiff.jacobian(αv -> vec(collect(values(_rebound_params(CT, d, αv)))...), α)
+    # Delta method Jacobian from α (unbounded) to θ (original params), flattened
+    J  = ForwardDiff.jacobian(αv -> _flatten_params(_rebound_params(CT, d, αv))[2], α)
     Vθ = J * Vα * J'
     Vθ = (Vθ + Vθ')/2
     λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
@@ -433,15 +427,68 @@ _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 
 Vector with the estimated parameters of the copula.
 """
-StatsBase.coef(M::CopulaModel) = collect(values(Distributions.params(_copula_of(M)))) # why ? params of the marginals should also be taken into account. 
+StatsBase.coef(M::CopulaModel) = StatsBase.coef(_copula_of(M))
 
 """
-    coefnames(M::CopulaModel) -> Vector{String}
+coefnames(M::CopulaModel) -> Vector{String}
 
 Names of the estimated copula parameters.
 """
-StatsBase.coefnames(M::CopulaModel) = string.(keys(Distributions.params(_copula_of(M))))
+StatsBase.coefnames(M::CopulaModel) = StatsBase.coefnames(_copula_of(M))
+
 StatsBase.dof(C::Copulas.Copula) = length(values(Distributions.params(C)))
+
+# Expose flattened coefficients and names consistently (upper triangle for matrices)
+StatsBase.coef(C::Copulas.Copula) = _flatten_params(Distributions.params(C))[2]
+StatsBase.coefnames(C::Copulas.Copula) = _flatten_params(Distributions.params(C))[1]
+
+
+# Flatten a NamedTuple of parameters into a Vector{Float64},
+# consistent with the generic linearization used in show().
+function _flatten_params(params_nt::NamedTuple)
+    nm = String[]
+    θ = Any[]
+    sidx = ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]
+    for (k, v) in pairs(params_nt)
+        if v isa Number
+            push!(nm, String(k))
+            push!(θ, v)
+        elseif v isa AbstractMatrix
+            if maximum(size(v)) > 9
+                @inbounds for j in 2:size(v,2), i in 1:j-1
+                    push!(nm, "$(k)_$(i)_$(j)")
+                    push!(θ, v[i,j])
+                end
+            else
+                @inbounds for j in 2:size(v,2), i in 1:j-1
+                    push!(nm, "$(k)$(sidx[i])$(sidx[j])")
+                    push!(θ, v[i,j])
+                end
+            end
+        elseif v isa AbstractVector
+            if length(v) > 9
+                for i in eachindex(v)
+                    push!(nm, "$(k)_$(i)")
+                    push!(θ, v[i])
+                end
+            else
+                for i in eachindex(v)
+                    push!(nm, "$(k)$(sidx[i])")
+                    push!(θ, v[i])
+                end
+            end
+        else
+            try
+                push!(nm, String(k))
+                push!(θ, v)
+            catch
+            end
+        end
+    end
+    return nm, [x for x in promote(θ...)]
+end
+
+
 
 #(optional vcov) and vcov its very important... for inference 
 """
