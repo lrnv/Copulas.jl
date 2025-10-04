@@ -82,7 +82,7 @@ function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGe
     return log(θ + 1) * (d - 1) - (θ + 1) * S2 + (-1 / θ - d) * log(S1 - d + 1)
 end
 ### only for test...
-@inline function _C_clayton(u::Float64, v::Float64, θ::Float64)
+@inline function _C_clayton(u::Float64, v::Float64, θ::Real)
     s = u^(-θ) + v^(-θ) - 1
     if θ < 0
         return (s <= 0) ? 0.0 : s^(-1/θ)   # soporte recortado para θ<0
@@ -90,7 +90,7 @@ end
         return s^(-1/θ)                    # para θ>0 siempre s≥1
     end
 end
-# Spearman (vía CDF) — con integrando seguro
+# Spearman (vía CDF) — with _safett Integral
 function ρ(G::ClaytonGenerator; rtol=1e-8, atol=1e-10)
     θ = float(G.θ)
     θ ≤ -1 && throw(ArgumentError("Para Clayton: θ > -1."))
@@ -101,21 +101,21 @@ function ρ(G::ClaytonGenerator; rtol=1e-8, atol=1e-10)
     return 12I - 3
 end
 
-# Inversa ρ → θ para Clayton (sin recortar a [0,1])
+# Inverse ρ → θ for Clayton (without trimming to [0,1])
 function ρ⁻¹(::Type{<:ClaytonGenerator}, ρ̂; atol=1e-10)
     _ρ = float(ρ̂)
     if isapprox(_ρ, 0.0; atol=1e-14)
         return 0.0
     end
 
-    # Semillas: aproximamos τ ≈ (2/3)ρ  y  θ ≈ 2τ/(1-τ)
+    # Seeds: we approximate τ ≈ (2/3)ρ and θ ≈ 2τ/(1-τ)
     τ0 = clamp((2/3)*_ρ, -0.99, 0.99)
     θ0 = 2*τ0/(1 - τ0)
     θ0 = clamp(θ0, -1 + sqrt(eps(Float64)), 1e6)
-    θ1 = θ0 + (_ρ > 0 ? 0.25 : -0.25)        # segunda semilla hacia el lado correcto
+    θ1 = θ0 + (_ρ > 0 ? 0.25 : -0.25)        # second seed towards the right side
 
     f(θ) = ρ(ClaytonGenerator(θ)) - _ρ
-    # Secante con dos semillas; no requiere bracketing
+    # Two-seeded blotter; no bracketing required
     θ = Roots.find_zero(f, (θ0, θ1), Roots.Order2(); xatol=atol)
     return θ
 end

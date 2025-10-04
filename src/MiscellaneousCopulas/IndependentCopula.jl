@@ -31,6 +31,8 @@ inverse_rosenblatt(::IndependentCopula{d}, u::AbstractMatrix{<:Real}) where {d} 
 
 τ(::IndependentCopula) = 0
 ρ(::IndependentCopula) = 0
+γ(::IndependentCopula) = 0
+ι(::IndependentCopula) = 0
 
 StatsBase.corkendall(::IndependentCopula{d}) where d = one(zeros(d,d))
 StatsBase.corspearman(::IndependentCopula{d}) where d = one(zeros(d,d))
