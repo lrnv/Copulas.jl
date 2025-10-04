@@ -206,18 +206,16 @@ end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}})
     d = size(U,1)
     GT = generatorof(CT)
-
+    
     f = m isa Val{:itau} ?  StatsBase.corkendall :  StatsBase.corspearman
     invf =  m isa Val{:itau} ?  τ⁻¹ : ρ⁻¹
 
-    M = f(U')
-    upper_triangle_flat = [M[idx] for idx in CartesianIndices(M) if idx[1] < idx[2]]
+    m = f(U')
+    upper_triangle_flat = [m[idx] for idx in CartesianIndices(m) if idx[1] < idx[2]]
     θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
     
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    Ĉ = CT(d, θ)
-
-    return Ĉ, (; θ̂ = Distributions.params(Ĉ), optimizer=(; method = m isa Val{:itau} ? :itau : :irho), converged=true, iterations=0)
+    return CT(d, θ), (; θ̂=θ)
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
     d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
@@ -228,9 +226,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     βmin, βmax = fβ(a0), fβ(b0)
     if βmin > βmax; βmin, βmax = βmax, βmin; end
     θ = βobs ≤ βmin ? a0 : βobs ≥ βmax ? b0 : Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
-    Ĉ = CT(d, θ)
-
-    return Ĉ, (; θ̂ = Distributions.params(Ĉ), optimizer=(; method = :ibeta), converged=true, iterations=0)
+    return CT(d,θ), (; θ̂=θ)
 end
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
@@ -250,9 +246,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
     res = Optim.optimize(f, lo, hi,  θ₀, Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
     θ̂     = Optim.minimizer(res)[1]
-    Ĉ   = CT(d, θ̂)
-
-    return Ĉ, (; θ̂=Distributions.params(Ĉ), optimizer=Optim.summary(res),
+    return CT(d, θ̂), (; θ̂=θ̂, optimizer=Optim.summary(res),
                 xtol=xtol, converged=Optim.converged(res), 
                 iterations=Optim.iterations(res))
 end
