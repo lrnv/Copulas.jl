@@ -60,7 +60,7 @@ function γ(C::Copula{d}) where {d}
     return (I - a) / (b - a)
 end
 function ι(C::Copula{d}) where {d}
-    return Distributions.expectation(u -> -logpdf(C, u), C; nsamples=10^4)
+    return Distributions.expectation(u -> -Distributions.logpdf(C, u), C; nsamples=10^4)
 end
 function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
     g(e) = Distributions.cdf(C, fill(e, d)) / e
