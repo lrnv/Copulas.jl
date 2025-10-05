@@ -373,15 +373,25 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     # Delta method Jacobian from α (unbounded) to θ (original params), flattened
     J  = ForwardDiff.jacobian(αv -> _flatten_params(_rebound_params(CT, d, αv))[2], α)
     Vθ = J * Vα * J'
+
+    # <<<<<<< CAMBIO CLAVE >>>>>>>>>
+    # Comprobar la finitud ANTES de llamar a eigen.
+    # Si la matriz ya contiene Inf/NaN, la estimación fue inestable.
+    # Activamos el fallback a jackknife inmediatamente.
+    if !all(isfinite, Vθ)
+        return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+    end
+
     Vθ = (Vθ + Vθ')/2
     λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
     λ_reg = map(x -> max(x, 1e-12), λ)
     Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
+    # Esta comprobación final es ahora una doble seguridad.
     any(!isfinite, Matrix(Vθ)) && return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
     return Vθ, (; vcov_method=vcovm)
 end
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jackknife}, ::Val{method}) where {method}
-    d, n = size(U,1)
+    d, n = size(U)
     θminus = zeros(n, length(θ))
     idx = Vector{Int}(undef, n-1)
 

@@ -97,3 +97,55 @@
     end
 end
 
+@testitem "Fitting + vcov + StatsBase interfaces (reduced)" tags=[:vcov] begin
+    using Test, Random, Distributions, Copulas, StableRNGs, LinearAlgebra, Statistics, StatsBase
+    rng = StableRNG(2025)
+
+    reps = [
+            # Elliptical
+            (GaussianCopula, 2, :mle),
+            (GaussianCopula, 3, :mle),
+            # (TCopula, 2, :mle), # maybe much time?
+
+            # Archimedean one parameter
+            (ClaytonCopula,  2, :mle),
+            (GumbelCopula,   2, :itau),   # rank-based for godambe
+            (FrankCopula,    2, :mle),
+            (JoeCopula,      2, :itau),
+
+            # Archimedean two params
+            (BB1Copula,      2, :mle),
+            (BB7Copula,      2, :mle),
+
+            # Extreme Value
+            (GalambosCopula, 2, :mle),
+            (HuslerReissCopula, 2, :mle),
+        ]
+
+    function psd_ok(V; tol=1e-7)
+        vals = eigvals(Symmetric(Matrix(V)))
+        minimum(vals) >= -tol
+    end
+
+    n = 500 # maybe are many observations?
+    for (CT, d, method) in reps
+        C0 = Copulas._example(CT, d)
+        true_θ = StatsBase.coef(C0)
+        U  = rand(rng, C0, n)
+        M  = fit(CopulaModel, CT, U; method=method, vcov=true, derived_measures=false)
+        estimated_θ = StatsBase.coef(M)
+        @test estimated_θ ≈ true_θ atol=0.5 #this tol is very big in some case for example gaussian because it's support is [-1,1]
+        @test isa(StatsBase.vcov(M), AbstractMatrix)
+        @test size(StatsBase.vcov(M)) == (StatsBase.dof(M), StatsBase.dof(M))
+        @test psd_ok(StatsBase.vcov(M))
+        # stderror/confint dimensions
+        se = StatsBase.stderror(M)
+        θ  = StatsBase.coef(M)
+        @test length(se) == length(θ) == StatsBase.dof(M)
+        lo, hi = StatsBase.confint(M; level=0.95)
+        @test length(lo) == length(hi) == length(θ)
+        # Information criteria...
+        @test isfinite(StatsBase.aic(M))
+        @test isfinite(StatsBase.bic(M))
+    end
+end
