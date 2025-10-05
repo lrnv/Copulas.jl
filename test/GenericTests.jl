@@ -104,7 +104,7 @@
     is_extremevalue(C::CT)                   where CT = (CT <: Copulas.ExtremeValueCopula)
     is_archimax(C::CT)                       where CT = (CT <: Copulas.ArchimaxCopula)
 
-    can_be_fitted(C::CT) where CT = length(Copulas._available_fitting_methods(CT, d)) > 0
+    can_be_fitted(C::CT, d) where CT = length(Copulas._available_fitting_methods(CT, d)) > 0
     has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
     has_unbounded_params(C::CT) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT, d) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula)
     unbounding_is_a_bijection(C::Copulas.Copula{d}) where d = !(typeof(C)<:FGMCopula && d>2)
@@ -492,7 +492,7 @@
                     end
             end
 
-            @testif can_be_fitted(C) "Fitting interface" begin
+            @testif can_be_fitted(C, d) "Fitting interface" begin
 
                 @testif has_unbounded_params(C) "Unbouding and rebounding params" begin
                     # First on the _example copula. 
