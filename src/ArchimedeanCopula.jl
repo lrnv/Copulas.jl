@@ -191,11 +191,11 @@ _example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw
 _unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
 _rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)
 
-_available_fitting_methods(::Type{ArchimedeanCopula}) = (:gnz2011,)
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}) = (:mle,)
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}) = (:mle, :itau, :irho, :ibeta)
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}) = Tuple{}() # No fitting method. 
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}) = (:gnz2011,)
+_available_fitting_methods(::Type{ArchimedeanCopula}, d) = (:gnz2011,)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}, d) = (:mle,)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}, d) = (:mle, :itau, :irho, :ibeta)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}, d) = Tuple{}() # No fitting method. 
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}, d) = (:gnz2011,)
 
 
 function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}}, U, ::Val{:gnz2011})

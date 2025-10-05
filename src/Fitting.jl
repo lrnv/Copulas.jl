@@ -139,24 +139,24 @@ Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(Copula
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; quick_fit=true, kwargs...).result
 
 """
-    _available_fitting_methods(::Type{<:Copula})
+    _available_fitting_methods(::Type{<:Copula}, d::Int)
 
-Return the tuple of fitting methods available for a given copula family.
+Return the tuple of fitting methods available for a given copula family in a given dimension.
 
 This is used internally by [`Distributions.fit`](@ref) to check validity of the `method` argument
 and to select a default method when `method=:default`.
 
 # Example
 ```julia
-_available_fitting_methods(GumbelCopula)
+_available_fitting_methods(GumbelCopula, 3)
 # → (:mle, :itau, :irho, :ibeta)
 ```
 """
-_available_fitting_methods(::Type{<:Copula}) = (:mle, :itau, :irho, :ibeta)
-_available_fitting_methods(C::Copula) = _available_fitting_methods(typeof(C))
+_available_fitting_methods(::Type{<:Copula}, d) = (:mle, :itau, :irho, :ibeta)
+_available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C), d)
 
-function _find_method(CT, method)
-    avail = _available_fitting_methods(CT)
+function _find_method(CT, d, method)
+    avail = _available_fitting_methods(CT, d)
     isempty(avail) && error("No fitting methods available for $CT.")
     method === :default && return avail[1]
     method ∉ avail && error("Method '$method' not available for $CT. Available: $(join(avail, ", ")).")
@@ -195,13 +195,13 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         method=:default, quick_fit=false, derived_measures=true, 
         vcov=true, vcov_method=nothing, kwargs...)
     d, n = size(U)
-    method = _find_method(CT, method)
+    method = _find_method(CT, d, method)
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
     C, meta = rez
     quick_fit && return (result=C,) # as soon as possible. 
     ll = Distributions.loglikelihood(C, U)
 
-    if C isa TCopula && vcov
+    if vcov && C isa TCopula 
         vcov = false 
         @info "Setting vcov = false for TCopula since unimplemented right now"
     end
@@ -222,7 +222,7 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         method_details = md)
 end
 
-_available_fitting_methods(::Type{SklarDist}) = (:ifm, :ecdf)
+_available_fitting_methods(::Type{SklarDist}, d) = (:ifm, :ecdf)
 """
     fit(CopulaModel, SklarDist{CT, TplMargins}, X; copula_method=:default, sklar_method=:default,
                                            margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple())
@@ -236,11 +236,11 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}
                            vcov_method=nothing) where {CT<:Copulas.Copula, TplMargins<:Tuple}
 
     # Get methods: 
-    sklar_method  = _find_method(SklarDist, sklar_method)
-    copula_method = _find_method(CT, copula_method)
+    d, n = size(X)
+    sklar_method  = _find_method(SklarDist, d, sklar_method)
+    copula_method = _find_method(CT, d, copula_method)
 
     # Fit marginals: 
-    d, n = size(X)
     m = ntuple(i -> Distributions.fit(TplMargins.parameters[i], @view X[i, :]; margins_kwargs...), d)
 
     # Make pseudo-observations

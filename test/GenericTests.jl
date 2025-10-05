@@ -104,9 +104,9 @@
     is_extremevalue(C::CT)                   where CT = (CT <: Copulas.ExtremeValueCopula)
     is_archimax(C::CT)                       where CT = (CT <: Copulas.ArchimaxCopula)
 
-    can_be_fitted(C::CT) where CT = length(Copulas._available_fitting_methods(CT)) > 0
+    can_be_fitted(C::CT) where CT = length(Copulas._available_fitting_methods(CT, d)) > 0
     has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
-    has_unbounded_params(C::CT) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula)
+    has_unbounded_params(C::CT) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT, d) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula)
     unbounding_is_a_bijection(C::Copulas.Copula{d}) where d = !(typeof(C)<:FGMCopula && d>2)
 
     function check(C::Copulas.Copula{d}) where d
@@ -512,7 +512,7 @@
                     @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
                 end
 
-                for m in Copulas._available_fitting_methods(CT) 
+                for m in Copulas._available_fitting_methods(CT, d) 
                     @testset "Fitting CT for $(m)" begin
                         r1 = fit(CopulaModel, CT, spl1000, m)
                         r2 = fit(CT, spl1000, m)

@@ -137,9 +137,9 @@ _example(CT::Type{<:ExtremeValueCopula}, d) = CT(d; _rebound_params(CT, d, fill(
 _unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = _unbound_params(tailof(CT), d, θ)
 _rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(CT), d, α)
 
-_available_fitting_methods(::Type{ExtremeValueCopula}) = (:ols, :cfg, :pickands)
-_available_fitting_methods(CT::Type{<:ExtremeValueCopula}) = (:mle,)
-_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}) =  (:mle, :itau, :irho, :ibeta, :iupper)
+_available_fitting_methods(::Type{ExtremeValueCopula}, d) = (:ols, :cfg, :pickands)
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula}, d) = (:mle,)
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}, d) =  (:mle, :itau, :irho, :ibeta, :iupper)
 
 # Fitting empírico (OLS, CFG, Pickands):
 function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; 

@@ -155,7 +155,7 @@ function _rebound_params(CT::Type{<:ArchimaxCopula{2, <:Generator, <:Tail}}, d, 
     NamedTuple{all_names}(all_vals)
 end
 
-_available_fitting_methods(::Type{<:ArchimaxCopula}) = (:mle,)
+_available_fitting_methods(::Type{<:ArchimaxCopula}, d) = (:mle,)
 
 # Fast conditional distortion binding (bivariate)
 DistortionFromCop(C::ArchimaxCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivArchimaxDistortion(C.gen, C.tail, Int8(js[1]), float(uⱼₛ[1]))
