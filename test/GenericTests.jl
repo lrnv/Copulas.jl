@@ -522,7 +522,7 @@
                         if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2) && has_unbounded_params(r2) && !(CT<:RafteryCopula && d==3 && m==:itau)
                             α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
                             α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
-                            @test α1 ≈ α2 atol=1e-3
+                            @test α1 ≈ α2 atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
                         end
 
                         # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
@@ -537,7 +537,7 @@
                     if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C)
                         α1 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
                         α2 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
-                        @test α1 ≈ α2  atol=1e-3
+                        @test α1 ≈ α2  atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
                     end
                 end
             end

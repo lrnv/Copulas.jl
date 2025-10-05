@@ -381,7 +381,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     return Vθ, (; vcov_method=vcovm)
 end
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jackknife}, ::Val{method}) where {method}
-    d, n = size(U,1)
+    d, n = size(U)
     θminus = zeros(n, length(θ))
     idx = Vector{Int}(undef, n-1)
 
