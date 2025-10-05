@@ -4,4 +4,4 @@ using TestItemRunner
 # @run_package_tests filter=ti->(:GumbelBarnettCopula in ti.tags || :ArchimedeanCopula in ti.tags || :FrankCopula in ti.tags)
 # you can add verbose=true here 
 
-@run_package_tests filter=ti->(:vcov in ti.tags)
+@run_package_tests filter=ti->(:metrics in ti.tags)
