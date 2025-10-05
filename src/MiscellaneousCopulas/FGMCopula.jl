@@ -30,24 +30,33 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     θ::Tθ
     fᵢ::Tf
     function FGMCopula(d, θ)
-        vθ = θ isa Vector ? promote(θ...,1.0)[1:end-1] : [promote(θ,1.0)[1]]
-        if  all(θ .== 0)
+        vθ = θ isa Vector ? promote(θ..., 1.0)[1:end-1] : [promote(θ, 1.0)[1]]
+        if all(θ .== 0)
             return IndependentCopula(d)
         end
-        # Check first restrictions on parameters
-        any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
-        length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
-        
-        # Last check: 
-        for epsilon in Base.product(fill([-1, 1], d)...)
-            if 1 + _fgm_red(vθ, epsilon) < 0
-                throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
+        # Convert Duals to real values ​​(for structural checks)
+        _val(x) = x isa ForwardDiff.Dual ? ForwardDiff.value(x) : x
+        vals = map(_val, vθ)
+        # Check first restrictions on parameters (only on real values)
+        any(abs.(vals) .> 1) &&
+            throw(ArgumentError("Each component of θ must satisfy |θᵢ| ≤ 1"))
+        length(vals) != 2^d - d - 1 &&
+            throw(ArgumentError("Number of parameters must match the dimension ($d): 2ᵈ-d-1"))
+
+        # Last restriction (only if θ is pure numeric, not Dual)
+        if eltype(vθ) <: Real || eltype(vals) <: Real
+            for epsilon in Base.product(fill([-1, 1], d)...)
+                test_val = 1 + _fgm_red(vals, epsilon)
+                if test_val < 0
+                    @warn "FGMCopula invalid combination detected" d=d θ=vals epsilon=collect(epsilon) test_val=test_val typeofθ=typeof.(vals)
+                    throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
+                end
             end
+
         end
-        
-        # Now construct the stochastic representation:
-        wᵢ = [_fgm_red(vθ, 1 .- 2*Base.reverse(digits(i, base=2, pad=d))) for i in 0:(2^d-1)]
-        fᵢ = Distributions.DiscreteNonParametric(0:(2^d-1), (1 .+ wᵢ)/2^d)
+        # Construction of the discrete support (does not affect derivatives)
+        wᵢ = [_fgm_red(vθ, 1 .- 2 * Base.reverse(digits(i, base=2, pad=d))) for i in 0:(2^d - 1)]
+        fᵢ = Distributions.DiscreteNonParametric(0:(2^d - 1), (1 .+ wᵢ) / 2^d)
         return new{d, typeof(vθ), typeof(fᵢ)}(vθ, fᵢ)
     end
     FGMCopula{D, T1, T2}(d, θ) where {D, T1, T2} = FGMCopula(d, θ)
