@@ -201,6 +201,11 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
     quick_fit && return (result=C,) # as soon as possible. 
     ll = Distributions.loglikelihood(C, U)
 
+    if C isa TCopula && vcov
+        vcov = false 
+        @info "Setting vcov = false for TCopula since unimplemented right now"
+    end
+    
     if vcov && haskey(meta, :θ̂)
         vcov, vmeta = _vcov(CT, U, meta.θ̂; method=method, override=vcov_method)
         meta = (; meta..., vcov, vmeta...)
@@ -326,6 +331,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     if vcovm ∉ (:hessian, :godambe, :godambe_pairwise)
         return _vcov(CT, U, θ, Val{vcovm}(), Val{method}()) # you can write new methods through this interface, as the jacknife method below. 
     end
+
     d, n = size(U)
     α  = _unbound_params(CT, d, θ)
     cop(α) = CT(d, _rebound_params(CT,d,α)...)
