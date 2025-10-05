@@ -205,7 +205,11 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         vcov = false 
         @info "Setting vcov = false for TCopula since unimplemented right now"
     end
-    
+    if vcov && C isa FGMCopula && method==:mle 
+        vcov = false 
+        @info "Setting vcov = false for FGMCopula with method=:mle since unimplemented right now"
+    end
+
     if vcov && haskey(meta, :θ̂)
         vcov, vmeta = _vcov(CT, U, meta.θ̂; method=method, override=vcov_method)
         meta = (; meta..., vcov, vmeta...)

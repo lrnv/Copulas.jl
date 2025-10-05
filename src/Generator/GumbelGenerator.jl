@@ -43,6 +43,7 @@ Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:GumbelGenerator}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
 _rebound_params(::Type{<:GumbelGenerator}, d, α) = (; θ = 1 + exp(α[1]))
 _θ_bounds(::Type{<:GumbelGenerator}, d) = (1, Inf)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:GumbelGenerator} where {d}}, d) = (:mle, :itau, :ibeta) # disable :irho because taking ages.
 
 ϕ(  G::GumbelGenerator, t) = exp(-exp(log(t)/G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = exp(log(-log(t))*G.θ)
