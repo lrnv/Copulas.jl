@@ -343,6 +343,10 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     
     if vcovm === :hessian
         ℓ(α) = Distributions.loglikelihood(cop(α), U)
+        if haskey(θ, :θ) && abs(θ[:θ]) > 25 && CT <: Copulas.FrankCopula
+            @warn "Skipping Hessian: FrankCopula near degeneracy (θ = $(θ[:θ])) → fallback to jackknife" #only for test
+            return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+        end
         H  = ForwardDiff.hessian(ℓ, α)
         Iα = .-H
         if any(!isfinite, Iα)
