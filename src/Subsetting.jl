@@ -94,11 +94,16 @@ subsetdims(C::Union{Copula, SklarDist}, dims) = subsetdims(C, Tuple(collect(Int,
 
 # Pairwise dependence metrics, leveraging subsetting: 
 function _as_biv(f::F, C::Copula{d}) where {F, d}
-    K = ones(d,d)
+    first_val = f(SubsetCopula(C, (1,2)))
+    K = ones(eltype(first_val),d,d)
+    K[1,2] = first_val
+    K[2,1] = first_val
     for i in 1:d
         for j in i+1:d
-            K[i,j] = f(SubsetCopula(C, (i,j)))
-            K[j,i] = K[i,j]
+            if (i,j) != (1,2)
+                K[i,j] = f(SubsetCopula(C, (i,j)))
+                K[j,i] = K[i,j]
+            end
         end
     end
     return K

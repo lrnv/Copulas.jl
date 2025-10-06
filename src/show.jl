@@ -188,7 +188,7 @@ function Base.show(io::IO, M::CopulaModel)
     ll0 = get(M.method_details, :null_ll, NaN)
     if isfinite(ll0); _kv(io, "Null Loglikelihood", Printf.@sprintf("%12.4f", ll0)); end
     _kv(io, "Loglikelihood", Printf.@sprintf("%12.4f", ll))
-    kcop = (R isa SklarDist) ? StatsBase.dof(_copula_of(M)) : StatsBase.dof(M)
+    kcop = StatsBase.dof(M)
     if isfinite(ll0) && kcop > 0
         LR = 2*(ll - ll0)
         p  = Distributions.ccdf(Distributions.Chisq(kcop), LR)
@@ -207,7 +207,7 @@ function Base.show(io::IO, M::CopulaModel)
 
     if R isa SklarDist
         # [ Dependence metrics ] section
-        C  = _copula_of(M)
+        C  = M.result isa SklarDist ? M.result.C : M.result
         _print_dependence_metrics(io, C; derived_measures=get(M.method_details, :derived_measures, true))
 
         # [ Copula parameters ] section
@@ -222,10 +222,10 @@ function Base.show(io::IO, M::CopulaModel)
         _print_marginals_section(io, R::SklarDist, get(M.method_details, :vcov_margins, nothing))
     else
         # Copula-only fits: dependence metrics and parameters
-        C0 = _copula_of(M)
+        C0 = M.result isa SklarDist ? M.result.C : M.result
         _print_dependence_metrics(io, C0; derived_measures=get(M.method_details, :derived_measures, true))
-        nm = StatsBase.coefnames(M)
         θ  = StatsBase.coef(M)
+        nm = StatsBase.coefnames(M)
         vcovm = get(M.method_details, :vcov_method, nothing)
         _print_param_section(io, "Copula parameters", nm, θ; V=StatsBase.vcov(M), vcov_method=vcovm)
 
