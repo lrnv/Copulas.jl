@@ -61,9 +61,9 @@ You may define a copula object in Julia by simply calling its constructor:
 
 ```@example 1
 using Copulas
-d = 4 # The dimension of the model
+d = 3 # The dimension of the model
 θ = 7 # Parameter
-C = ClaytonCopula(4,7) # A 4-dimensional clayton copula with parameter θ = 7.
+C = ClaytonCopula(d,7) # A 3-dimensional clayton copula with parameter θ = 7.
 ```
 
 This object is a random vector, and behaves exactly as you would expect a random vector from `Distributions.jl` to behave: you may sample it with `rand(C,100)`, compute its pdf or cdf with `pdf(C,x)` and `cdf(C,x)`, etc:
@@ -310,4 +310,5 @@ The documentation of this package aims to combine theoretical information and re
 Pages = [@__FILE__]
 Canonical = false
 ```
+
 
