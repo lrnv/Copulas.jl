@@ -65,8 +65,8 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB9Generator}
     return exp(inv(δ) - A)
 end
 
-function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB9Generator}
-    T = promote_type(Float64, eltype(u))
+function Distributions._logpdf(C::ArchimedeanCopula{2,BB9Generator{TF}}, u) where {TF}
+    T = promote_type(TF, eltype(u))
     (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return T(-Inf)
 
     θ, δ = C.G.θ, C.G.δ
