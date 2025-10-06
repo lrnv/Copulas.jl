@@ -341,11 +341,34 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     cop(α) = CT(d, _rebound_params(CT,d,α)...)
     _upper_triangle(A) = [A[idx] for idx in CartesianIndices(A) if idx[1] < idx[2]]
     
-    if vcovm === :hessian 
-        ℓ(α)   = Distributions.loglikelihood(cop(α), U)
-        Iα     = .- ForwardDiff.hessian(ℓ, α) # Information matrix. 
-        Vα = inv(Iα + 1e-8LinearAlgebra.I)
+    if vcovm === :hessian
+        ℓ(α) = Distributions.loglikelihood(cop(α), U)
+        H  = ForwardDiff.hessian(ℓ, α)
+        Iα = .-H
+        if any(!isfinite, Iα)
+            @warn "vcov(:hessian): non-finite Fisher information; falling back" Iα
+            return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+        end
+        Iα = (Iα + Iα')/2
+        p   = size(Iα, 1)
+        I_p = Matrix{Float64}(LinearAlgebra.I, p, p)
+        λ = 1e-8
+        Vα = nothing
+        @inbounds for _ in 1:8
+            A = Iα + λ*I_p
+            ch = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(A); check=false)
+            if ch.info == 0                     # is p.d.
+                Vα = ch \ I_p                   # It is equivalent to inv(A), but stable, we could use pinv but I don't know how optimal it is... 
+                break
+            end
+            λ *= 10
+        end
+        if Vα === nothing || any(!isfinite, Vα)
+            @warn "vcov(:hessian): failed to stabilize Fisher; falling back" λ_final=λ
+            return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+        end
     else
+
         emp_fun = method isa Val{:itau}  ? StatsBase.corkendall :
             method isa Val{:irho}  ? StatsBase.corspearman :
             method isa Val{:ibeta} ? corblomqvist : coruppertail
