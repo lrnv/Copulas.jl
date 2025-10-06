@@ -30,10 +30,16 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     θ::Tθ
     fᵢ::Tf
     function FGMCopula(d, θ)
-        vθ = θ isa Vector ? promote(θ..., 1.0)[1:end-1] : [promote(θ, 1.0)[1]]
-        if all(θ .== 0)
-            return IndependentCopula(d)
+        if (θ isa NTuple) || (θ isa Vector)
+            vθ = collect(promote(θ..., 1.0))[1:end-1]
+        else
+            vθ = [promote(θ, 1.0)[1]]
         end
+        
+        all(vθ .== 0) && return IndependentCopula(d)
+        d==2 && vθ[1]==1 && return MCopula(2)
+        d==2 && vθ[1]==-1 && return WCopula(2)
+
         # Check first restrictions on parameters
         any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
@@ -41,7 +47,7 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
         # Last check: 
         for epsilon in Base.product(fill([-1, 1], d)...)
             if 1 + _fgm_red(vθ, epsilon) < 0
-                throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
+                throw(ArgumentError("Invalid parameters θ = $vθ. The parameters do not meet the condition to be an FGM copula"))
             end
         end
         
@@ -170,7 +176,7 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
     θ₀ = Distributions.params(_example(CT, d))[:θ]  # starting point in θ-space
 
     # Log-barrier penalty: ensures all inequalities 1 + _fgm_red(θ, ε) > 0
-    function barrier_penalty(θ; μ=1e-3, soft=true)
+    function barrier_penalty(θ; μ=1e-3, soft=false)
         total = 0.0
         for ε in Base.product(fill([-1,1], d)...)
             v = 1 + _fgm_red(θ, ε)
