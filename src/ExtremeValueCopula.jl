@@ -163,15 +163,16 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
     d = size(U,1)
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, d)
-    θ0 = start isa Real ? start : 
-         start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : 
-         only(Distributions.params(_example(CT, d)))
-    θ0 = clamp(θ0, lo, hi)
+    θ0_val = if start isa Real
+        start
+    else
+        initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : only(Distributions.params(_example(CT, d)))
+        initial_params.θ
+    end
+    θ0_clamped = clamp(θ0_val, lo, hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
-    res = Optim.optimize(f, lo, hi, [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
-
+    res = Optim.optimize(f, lo, hi, [θ0_clamped], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
     θ̂ = Optim.minimizer(res)[1]
-    # Envolvemos el parámetro θ̂ en una NamedTuple con la clave :θ
     return CT(d, θ̂), (; θ̂=(;θ=θ̂), optimizer=:GradientDescent,
                         xtol=xtol, converged=Optim.converged(res), 
                         iterations=Optim.iterations(res))
