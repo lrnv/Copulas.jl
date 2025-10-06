@@ -84,6 +84,18 @@ plot(C, :logpdf)
 
 See [the visualizations page](@ref viz_page) for details on the visualisations tools. It’s often useful to get an intuition by looking at scatter plots.
 
+!!! example "Independence"
+    To give another example, the function 
+
+    $\Pi : \boldsymbol x \mapsto \prod_{i=1}^d x_i = \boldsymbol x^{\boldsymbol 1}$ is a copula, corresponding to independent random vectors.
+
+    This copula can be constructed using the [`IndependentCopula(d)`](@ref IndependentCopula) syntax as follows: 
+    
+    ```@example 1
+    Π = IndependentCopula(d) # A 4-variate independence structure.
+    nothing # hide
+    ```
+
 One of the reasons that makes copulas so useful is the bijective map from the Sklar Theorem [sklar1959](@cite):
 
 !!! theorem "Sklar (1959)"
@@ -95,25 +107,14 @@ One of the reasons that makes copulas so useful is the bijective map from the Sk
 
 This result allows to decompose the distribution of $\boldsymbol X$ into several components: the marginal distributions on one side, and the copula on the other side, which governs the dependence structure between the marginals. This object is central in our work, and therefore deserves a moment of attention. 
 
-!!! example "Independence"
-    The function 
 
-    $\Pi : \boldsymbol x \mapsto \prod_{i=1}^d x_i = \boldsymbol x^{\boldsymbol 1}$ is a copula, corresponding to independent random vectors.
-
-The independence copula can be constructed using the [`IndependentCopula(d)`](@ref IndependentCopula) syntax as follows: 
-
-```@example 1
-Π = IndependentCopula(d) # A 4-variate independence structure.
-nothing # hide
-```
 
 We can then leverage the Sklar theorem to construct multivariate random vectors from a copula-marginals specification. The implementation we have of this theorem allows building multivariate distributions by specifying separately their marginals and dependence structures as follows:
 
 
 ```@example 1
 X₁, X₂, X₃ = Gamma(2,3), Pareto(), LogNormal(0,1) # Marginals
-C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
-D = SklarDist(C, (X₁,X₂,X₃)) # The final distribution
+D = SklarDist(C, (X₁,X₂,X₃)) # The final distribution, using the previous copula C. 
 plot(D, scale=:sklar)
 nothing # hide
 ```
@@ -132,7 +133,7 @@ Sklar's theorem can be used the other way around (from the marginal space to the
 
 !!! info "Independent random vectors"
 
-    `Distributions.jl` provides the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create independent random vectors with given marginals. `product_distribution(args...)` is essentially equivalent to `SklarDist(Π, args)`, but our approach generalizes to other dependence structures.
+    `Distributions.jl` provides the [`product_distribution`](https://juliastats.org/Distributions.jl/stable/multivariate/#Product-distributions) function to create independent random vectors with given marginals. `product_distribution(args...)` is essentially equivalent to `SklarDist(IndependentCopula(d), args)`, but our approach generalizes to other dependence structures.
 
 Copulas are bounded functions with values in [0,1] since they correspond to probabilities. But their range can be bounded more precisely, and [lux2017](@cite) gives us:
 
@@ -309,3 +310,4 @@ The documentation of this package aims to combine theoretical information and re
 Pages = [@__FILE__]
 Canonical = false
 ```
+
