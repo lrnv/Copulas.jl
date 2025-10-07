@@ -215,7 +215,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
     
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; θ̂=θ)
+    return CT(d, θ), (; θ̂=(θ=θ,))
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
     d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
@@ -226,7 +226,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     βmin, βmax = fβ(a0), fβ(b0)
     if βmin > βmax; βmin, βmax = βmax, βmin; end
     θ = βobs ≤ βmin ? a0 : βobs ≥ βmax ? b0 : Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
-    return CT(d,θ), (; θ̂=θ)
+    return CT(d,θ), (; θ̂=(θ=θ,))
 end
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
@@ -245,8 +245,8 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     θ₀[1] = clamp(θ₀[1], lo, hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
     res = Optim.optimize(f, lo, hi,  θ₀, Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
-    θ̂     = Optim.minimizer(res)[1]
-    return CT(d, θ̂), (; θ̂=θ̂, optimizer=Optim.summary(res),
+    θ     = Optim.minimizer(res)[1]
+    return CT(d, θ), (; θ̂=(θ=θ,), optimizer=Optim.summary(res),
                         xtol=xtol, converged=Optim.converged(res), 
                         iterations=Optim.iterations(res))
 end
