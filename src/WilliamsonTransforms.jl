@@ -22,12 +22,11 @@ References:
 """
 struct 𝒲{TX, d}
     X::TX
-    function 𝒲(X::TX, ::Val{d}) where {TX<:Distributions.UnivariateDistribution, d}
+    function 𝒲(X::TX, d::Int) where {TX<:Distributions.UnivariateDistribution}
         @assert Base.minimum(X) ≥ 0 && Base.maximum(X) ≤ Inf 
         @assert d ≥ 2 && isinteger(d) 
         return new{typeof(X), d}(X)
     end
-    𝒲(X, d::Int) = 𝒲(X, Val(d))
 end
 function (ϕ::𝒲{TX, d})(x) where {TX,d}
     x <= 0 && return 1 - Distributions.cdf(ϕ.X,0)
@@ -63,18 +62,17 @@ References:
 struct 𝒲₋₁{Tϕ, d} <: Distributions.ContinuousUnivariateDistribution
     # Woul dprobably be much more efficient if it took the generator and not the function itself. 
     ϕ::Tϕ
-    function 𝒲₋₁(ϕ, ::Val{d}) where d
+    function 𝒲₋₁(ϕ, d::Int)
         @assert ϕ(0.0) == 1.0
         @assert ϕ(float(Inf)) == 0.0
         @assert isinteger(d)
         return new{typeof(ϕ),d}(ϕ)
     end
-    𝒲₋₁(ϕ, d::Int) = 𝒲₋₁(ϕ, Val(d))
 end
 function Distributions.cdf(dist::𝒲₋₁{Tϕ, d}, x) where {Tϕ, d}
     x ≤ 0 && return zero(x)
     rez, x_pow = zero(x), one(x)
-    c = taylor(dist.ϕ, x, Val(d-1))
+    c = taylor(dist.ϕ, x, d-1)
     for k in 1:d
         rez += iszero(c[k]) ? 0 : x_pow * c[k]
         x_pow *= -x
@@ -82,7 +80,7 @@ function Distributions.cdf(dist::𝒲₋₁{Tϕ, d}, x) where {Tϕ, d}
     return isnan(rez) ? one(x) : 1 - rez
 end
 
-Distributions.logpdf(dist::𝒲₋₁{Tϕ, d}, x) where {Tϕ, d} = log(max(0, taylor(x -> Distributions.cdf(dist,x), x, Val(1))[end]))
+Distributions.logpdf(dist::𝒲₋₁{Tϕ, d}, x) where {Tϕ, d} = log(max(0, taylor(x -> Distributions.cdf(dist,x), x, 1)[end]))
 _quantile(dist::𝒲₋₁, p) = Roots.find_zero(x -> (Distributions.cdf(dist, x) - p), (0.0, Inf))
 Distributions.rand(rng::Distributions.AbstractRNG, dist::𝒲₋₁) = _quantile(dist, rand(rng))
 Base.minimum(::𝒲₋₁) = 0.0

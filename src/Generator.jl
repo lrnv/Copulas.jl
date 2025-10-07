@@ -24,9 +24,9 @@ More methods can be implemented for performance, althouhg there are implement de
 
 * `ϕ⁻¹( G::Generator, x)` gives the inverse function of the generator.
 * `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative of the generator
-* `ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k` gives the kth derivative of the generator
+* `ϕ⁽ᵏ⁾(G::Generator, k::Int, t)` gives the kth derivative of the generator
 * `ϕ⁻¹⁽¹⁾(G::Generator, t)` gives the first derivative of the inverse generator.
-* `williamson_dist(G::Generator, ::Val{d}) where d` gives the Wiliamson d-transform of the generator.
+* `williamson_dist(G::Generator, d::Int)` gives the Wiliamson d-transform of the generator.
 
 References:
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
@@ -44,9 +44,9 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
 ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
-ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k = taylor(ϕ(G), t, Val{k}())[end] * factorial(k)
-ϕ⁽ᵏ⁾⁻¹(G::Generator, ::Val{k}, t; start_at=t) where {k} = Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, Val{k}(), x) - t, start_at)
-williamson_dist(G::Generator, ::Val{d}) where d = 𝒲₋₁(ϕ(G), Val{d}())
+ϕ⁽ᵏ⁾(G::Generator, k::Int, t) = taylor(ϕ(G), t, k)[end] * factorial(k)
+ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t) = Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, k, x) - t, start_at)
+williamson_dist(G::Generator, d::Int) = 𝒲₋₁(ϕ(G), d)
 
 
 # TODO: Move the \phi^(1) to defer to \phi^(k=1), and implement \phi(k=1) in generators instead of \phi^(1)
@@ -104,7 +104,7 @@ abstract type AbstractFrailtyGenerator<:Generator end
 frailty(::AbstractFrailtyGenerator) = throw("This generator was not defined as it should, you should provide its frailty")
 max_monotony(::AbstractFrailtyGenerator) = Inf
 ϕ(G::AbstractFrailtyGenerator, t) = Distributions.mgf(frailty(G), -t)
-williamson_dist(G::AbstractFrailtyGenerator, ::Val{d}) where d = WilliamsonFromFrailty(frailty(G), Val{d}())
+williamson_dist(G::AbstractFrailtyGenerator, d::Int) = WilliamsonFromFrailty(frailty(G), d)
 
 struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator
     F::TF
@@ -173,7 +173,7 @@ References:
 """
 struct WilliamsonGenerator{d, TX} <: Generator
     X::TX
-    function WilliamsonGenerator(X, D::Val{d}) where d
+    function WilliamsonGenerator(X, d::Int)
         if X isa Distributions.DiscreteUnivariateDistribution
             # If X has finite, positive support, build an empirical generator
             sp = collect(Distributions.support(X))
@@ -185,7 +185,7 @@ struct WilliamsonGenerator{d, TX} <: Generator
         # check that X is indeed a positively supported random variable... 
         return new{d, typeof(X)}(X)
     end
-    function WilliamsonGenerator(r::AbstractVector, w::AbstractVector, ::Val{d}) where d
+    function WilliamsonGenerator(r::AbstractVector, w::AbstractVector, d::Int)
         length(r) == length(w) || throw(ArgumentError("length(r) != length(w)"))
         !isempty(r) || throw(ArgumentError("no atoms given"))
         all(isfinite, r) && all(>=(0), r) || throw(ArgumentError("atoms must be positive and finite"))
@@ -200,15 +200,14 @@ struct WilliamsonGenerator{d, TX} <: Generator
     end
 end
 const i𝒲 = WilliamsonGenerator
-WilliamsonGenerator(X, d::Int) = WilliamsonGenerator(X, Val(d))
-WilliamsonGenerator(r, w, d::Int) = WilliamsonGenerator(r, w, Val(d))
 Distributions.params(G::WilliamsonGenerator) = (G.X,)
 max_monotony(::WilliamsonGenerator{d, TX}) where {d, TX} = d
-williamson_dist(G::WilliamsonGenerator{d, TX}, ::Val{d}) where {d, TX} = G.X # if its the right dim. 
-ϕ(G::WilliamsonGenerator{d, TX}, t) where {d, TX} = 𝒲(G.X, Val{d}())(t)
+ϕ(G::WilliamsonGenerator{d, TX}, t) where {d, TX} = 𝒲(G.X, d)(t)
+williamson_dist(G::WilliamsonGenerator{D, TX}, d::Int) where {D, TX} = d==D ? G.X : 𝒲₋₁(ϕ(G), d)  # if its the right dim. 
+
 
 # TODO: The following method for Kendall's tau is currently faulty and produces incorrect results.
-# τ(G::WilliamsonGenerator) = 4*Distributions.expectation(Base.Fix1(ϕ, G), Copulas.williamson_dist(G, Val(2)))-1 # McNeil & Neshelova 2009
+# τ(G::WilliamsonGenerator) = 4*Distributions.expectation(Base.Fix1(ϕ, G), Copulas.williamson_dist(G, 2))-1 # McNeil & Neshelova 2009
 # Investigate the correct formula for Kendall's tau for WilliamsonGenerator. Check if the expectation is being computed with respect to the correct measure and if the implementation matches the reference (McNeil & Nešlehová 2009). Fix this method when the correct approach is established.
 
 
@@ -228,9 +227,6 @@ Returns
 - `Vector{Float64}` of length `n` with values in `(0,1)`.
 """
 function _kendall_sample(u::AbstractMatrix)
-
-
-
     d, n = size(u)
     # Apply ordinal ranks per margin to remove ties consistently with `pseudos`
     R = Matrix{Int}(undef, d, n)
@@ -307,7 +303,7 @@ function EmpiricalGenerator(u::AbstractMatrix)
         r[k] = Roots.find_zero(y -> gk(y) - x[k], (a, b); verbose=false)
         r[k] = clamp(r[k], 0.0, r[k+1] - eps)
     end
-    return WilliamsonGenerator(r, w, Val(d))
+    return WilliamsonGenerator(r, w, d)
 end
 
 # Optimized methods for discrete nonparametric Williamson generators (covers EmpiricalGenerator)
@@ -341,7 +337,7 @@ function ϕ⁽¹⁾(G::WilliamsonGenerator{d, TX}, t::Real) where {d, TX<:Distri
     return - (d-1) * S
 end
 
-function ϕ⁽ᵏ⁾(G::WilliamsonGenerator{d, TX}, ::Val{k}, t::Real) where {d, k, TX<:Distributions.DiscreteNonParametric}
+function ϕ⁽ᵏ⁾(G::WilliamsonGenerator{d, TX}, k::Int, t::Real) where {d, TX<:Distributions.DiscreteNonParametric}
     r = Distributions.support(G.X)
     w = Distributions.probs(G.X)
     Tt = promote_type(eltype(r), typeof(t))
@@ -376,22 +372,22 @@ function ϕ⁻¹(G::WilliamsonGenerator{d, TX}, x::Real) where {d, TX<:Distribut
     return Tx(r[end])
 end
 
-function ϕ⁽ᵏ⁾⁻¹(G::WilliamsonGenerator{d, TX}, ::Val{p}, y; start_at=nothing) where {d, p, TX<:Distributions.DiscreteNonParametric}
+function ϕ⁽ᵏ⁾⁻¹(G::WilliamsonGenerator{d, TX}, p::Int, y; start_at=nothing) where {d, TX<:Distributions.DiscreteNonParametric}
     r = Distributions.support(G.X)
     Ty = promote_type(eltype(r), typeof(y))
     p == 0 && return ϕ⁻¹(G, y)
     sign = iseven(p) ? 1 : -1
     s_y = sign*y
     s_y <= 0 && return Ty(r[end])
-    s_y >= sign*ϕ⁽ᵏ⁾(G, Val{p}(), 0) && return Ty(0)
+    s_y >= sign*ϕ⁽ᵏ⁾(G, p, 0) && return Ty(0)
     for k in eachindex(r)
-        ϕp_rk = sign * ϕ⁽ᵏ⁾(G, Val{p}(), r[k])
+        ϕp_rk = sign * ϕ⁽ᵏ⁾(G, p, r[k])
         if s_y > ϕp_rk
-            if s_y < sign * ϕ⁽ᵏ⁾(G, Val{p}(), prevfloat(r[k]))
+            if s_y < sign * ϕ⁽ᵏ⁾(G, p, prevfloat(r[k]))
                 return Ty(prevfloat(r[k]))
             end
             a = (k==1 ? 0 : r[k-1]); b = r[k]
-            return Ty(Roots.find_zero(t -> ϕ⁽ᵏ⁾(G, Val{p}(), t) - y, (a, b); bisection=true))
+            return Ty(Roots.find_zero(t -> ϕ⁽ᵏ⁾(G, p, t) - y, (a, b); bisection=true))
         end
     end
     return Ty(r[end])
@@ -422,15 +418,15 @@ struct TiltedGenerator{TG, T, p} <: Generator
     G::TG
     sJ::T
     den::T
-    function TiltedGenerator(G::Generator, ::Val{p}, sJ::T) where {p,T<:Real}
-        den = ϕ⁽ᵏ⁾(G, Val{p}(), sJ)
+    function TiltedGenerator(G::Generator, p::Int, sJ::T) where {T<:Real}
+        den = ϕ⁽ᵏ⁾(G, p, sJ)
         return new{typeof(G), T, p}(G, sJ, den)
     end
 end
 max_monotony(G::TiltedGenerator{TG, T, p}) where {TG, T, p} = max(0, max_monotony(G.G) - p)
-ϕ(G::TiltedGenerator{TG, T, p}, t::Real) where {TG, T, p} = ϕ⁽ᵏ⁾(G.G, Val{p}(), G.sJ + t) / G.den
-ϕ⁻¹(G::TiltedGenerator{TG, T, p}, x::Real) where {TG, T, p} = ϕ⁽ᵏ⁾⁻¹(G.G, Val{p}(), x * G.den; start_at = G.sJ) - G.sJ
-ϕ⁽ᵏ⁾(G::TiltedGenerator{TG, T, p}, ::Val{k}, t::Real) where {TG, T, p, k} = ϕ⁽ᵏ⁾(G.G, Val{k + p}(), G.sJ + t) / G.den
-ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T, p}, ::Val{k}, y::Real; start_at = G.sJ) where {TG, T, p, k} = ϕ⁽ᵏ⁾⁻¹(G.G, Val{k + p}(), y * G.den; start_at = start_at) - G.sJ
-ϕ⁽¹⁾(G::TiltedGenerator{TG, T, p}, t) where {TG, T, p} = ϕ⁽ᵏ⁾(G, Val{1}(), t)
+ϕ(G::TiltedGenerator{TG, T, p}, t::Real) where {TG, T, p} = ϕ⁽ᵏ⁾(G.G, p, G.sJ + t) / G.den
+ϕ⁻¹(G::TiltedGenerator{TG, T, p}, x::Real) where {TG, T, p} = ϕ⁽ᵏ⁾⁻¹(G.G, p, x * G.den; start_at = G.sJ) - G.sJ
+ϕ⁽ᵏ⁾(G::TiltedGenerator{TG, T, p}, k::Int, t::Real) where {TG, T, p} = ϕ⁽ᵏ⁾(G.G, k + p, G.sJ + t) / G.den
+ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T, p}, k::Int, y::Real; start_at = G.sJ) where {TG, T, p} = ϕ⁽ᵏ⁾⁻¹(G.G, k + p, y * G.den; start_at = start_at) - G.sJ
+ϕ⁽¹⁾(G::TiltedGenerator{TG, T, p}, t) where {TG, T, p} = ϕ⁽ᵏ⁾(G, 1, t)
 Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., sJ = G.sJ)

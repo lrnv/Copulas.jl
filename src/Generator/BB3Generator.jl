@@ -45,7 +45,11 @@ function ϕ⁽¹⁾(G::BB3Generator, s)
     return -(pw*a) * B * inv(1+s) * ϕ(G,s)
 end
 
-function ϕ⁽ᵏ⁾(G::BB3Generator, ::Val{2}, s)
+function ϕ⁽ᵏ⁾(G::BB3Generator, d::Int, s)
+    if d > 2
+        # Only d==2 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+    end
     a  = inv(G.δ);  pw = inv(G.θ)
     A  = a * log1p(s);  inv1p = inv(1+s)
     B = exp((pw-1)*log(A))
@@ -60,7 +64,11 @@ function _f_for_BB3_ϕ⁽¹⁾⁻¹(lt, a, δ, lny)
     t = exp(lt)
     return (a-1)*lt - δ*t - exp(a*lt) - lny
 end
-function ϕ⁽ᵏ⁾⁻¹(G::BB3Generator, ::Val{1}, x; start_at=x)
+function ϕ⁽ᵏ⁾⁻¹(G::BB3Generator, d::Int, x; start_at=x)
+    if d != 1
+        # Only d==1 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, d, x; start_at=start_at)
+    end
     # compute the inverse of ϕ⁽¹⁾
     θ, δ = G.θ, G.δ
     a = 1/θ

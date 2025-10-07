@@ -56,7 +56,7 @@ end
 # The folliwng function got commented because it does WORSE in term of runtime than the 
 # corredponsing generic :)
 
-function ϕ⁽ᵏ⁾(G::GumbelGenerator, ::Val{d}, t) where d
+function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Int, t)
     α = 1 / G.θ
     return eltype(t)(ϕ(G, t) * t^(-d) * sum(
         α^j * Float64(BigCombinatorics.Stirling1(d, j)) * sum(Float64(BigCombinatorics.Stirling2(j, k)) * (-t^α)^k for k in 1:j) for j in 1:d

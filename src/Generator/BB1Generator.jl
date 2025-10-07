@@ -47,7 +47,11 @@ function ϕ⁽¹⁾(G::BB1Generator, s)
     a, b, ls = inv(G.δ), inv(G.θ), log(s)
     return -(a*b) * exp((a-1)*ls - (b+1)*log1p(exp(a*ls)))
 end
-function ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{2}, s) # only d=2 case, other cases are not implemented. 
+function ϕ⁽ᵏ⁾(G::BB1Generator, d::Int, s) # only d=2 case, other cases are not implemented.
+    if d != 2
+        # Only d==2 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+    end
     a, b, ls = inv(G.δ), inv(G.θ), log(s)
     spa = exp(a*ls)
     return (a*b) * exp((a-2)*ls) * exp(-(b+2)*log1p(exp(a*ls))) *  ( (1 + a*b)*spa - (a - 1) )

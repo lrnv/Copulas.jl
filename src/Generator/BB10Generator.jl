@@ -55,7 +55,11 @@ function ϕ⁽¹⁾(G::BB10Generator, s)
     ψ  = ϕ(G, s)
     return -(1/θ) * es/(es - δ) * ψ
 end
-function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s)
+function ϕ⁽ᵏ⁾(G::BB10Generator, d::Int, s)
+    if d != 2
+        # Only d==2 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+    end
     θ, δ = G.θ, G.δ
     es = exp(s)
     ψ  = ϕ(G, s)                    # ya usa forma estable con log1p/expm1

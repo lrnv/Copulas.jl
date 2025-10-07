@@ -47,7 +47,11 @@ _rebound_params(::Type{<:BB8Generator}, d, α) = (; ϑ = 1 + exp(α[1]), δ = 1 
 ϕ⁻¹(G::BB8Generator, t) = -log((1 - (1 - G.δ*t)^G.ϑ)/_η(G))
 ϕ⁽¹⁾(G::BB8Generator, s) = -(_η(G)/(G.δ*G.ϑ)) * exp(-s) * (1 - _η(G)*exp(-s))^(inv(G.ϑ)-1)
 
-function ϕ⁽ᵏ⁾(G::BB8Generator, ::Val{2}, s)
+function ϕ⁽ᵏ⁾(G::BB8Generator, d::Int, s)
+    if d != 2
+        # Only d==2 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+    end
     δ, ϑ = G.δ, G.ϑ
     α, β = inv(δ), inv(ϑ)
     ηv   = _η(G)

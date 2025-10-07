@@ -65,12 +65,12 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .< 1)
         return eltype(u)(-Inf)
     end
-    return log(max(ϕ⁽ᵏ⁾(C.G, Val{d}(), sum(ϕ⁻¹.(C.G, u))) * prod(ϕ⁻¹⁽¹⁾.(C.G, u)), 0))
+    return log(max(ϕ⁽ᵏ⁾(C.G, d, sum(ϕ⁻¹.(C.G, u))) * prod(ϕ⁻¹⁽¹⁾.(C.G, u)), 0))
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, x::AbstractVector{T}) where {T<:Real, d, TG}
     # By default, we use the Williamson sampling.
     Random.randexp!(rng,x)
-    r = rand(rng, williamson_dist(C.G, Val{d}()))
+    r = rand(rng, williamson_dist(C.G, d))
     sx = sum(x)
     for i in 1:length(C)
         x[i] = ϕ(C.G,r * x[i]/sx)
@@ -102,7 +102,7 @@ function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
         return τ(C.G)
     else
-        # 4*Distributions.expectation(r -> ϕ(C.G,r), williamson_dist(C.G, Val{d}())) - 1
+        # 4*Distributions.expectation(r -> ϕ(C.G,r), williamson_dist(C.G, d)) - 1
         return @invoke τ(C::Copula)
     end
 end
@@ -135,7 +135,7 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
                 if iszero(rⱼ)
                      U[j,i] = zero(rⱼ)
                 else
-                    A, B = ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ), ϕ⁽ᵏ⁾(C.G, Val(j - 1), rⱼ₋₁)
+                    A, B = ϕ⁽ᵏ⁾(C.G, j - 1, rⱼ), ϕ⁽ᵏ⁾(C.G, j - 1, rⱼ₋₁)
                     U[j,i] = A / B
                 end
             end
@@ -155,8 +155,8 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
             elseif !isfinite(Cᵢⱼ)
                 U[j,i] = zero(Cᵢⱼ)
             else
-                Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, Val{j - 1}(), Cᵢⱼ) * u[j,i]
-                R = ϕ⁽ᵏ⁾⁻¹(C.G, Val{j - 1}(), Dᵢⱼ; start_at=Cᵢⱼ)
+                Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, j - 1, Cᵢⱼ) * u[j,i]
+                R = ϕ⁽ᵏ⁾⁻¹(C.G, j - 1, Dᵢⱼ; start_at=Cᵢⱼ)
                 U[j, i] = ϕ(C.G, R - Cᵢⱼ)
                 Cᵢⱼ = R
             end
@@ -172,10 +172,10 @@ function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTu
     @inbounds for u in uⱼₛ
         sJ += ϕ⁻¹(C.G, u)
     end
-    return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, Val{p}(), sJ))))
+    return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
 function ConditionalCopula(C::ArchimedeanCopula{D}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, p}
-    return ArchimedeanCopula(D - p, TiltedGenerator(C.G, Val{p}(), sum(ϕ⁻¹.(C.G, uⱼₛ))))
+    return ArchimedeanCopula(D - p, TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
 SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula(length(dims), C.G)
 

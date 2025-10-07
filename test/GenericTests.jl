@@ -339,10 +339,10 @@
             @testif is_archimedean_with_generator(C) "ArchimedeanCopula specific tests" begin 
                 # Only test things if there are specilized versions of the functions. 
                 spe_ϕ1 = which(Copulas.ϕ⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁽¹⁾, (Copulas.Generator, Float64))
-                spe_ϕk = which(Copulas.ϕ⁽ᵏ⁾, (typeof(C.G), Val{1}, Float64)) != which(Copulas.ϕ⁽ᵏ⁾, (Copulas.Generator, Val{1}, Float64))
+                spe_ϕk = which(Copulas.ϕ⁽ᵏ⁾, (typeof(C.G), Int, Float64)) != which(Copulas.ϕ⁽ᵏ⁾, (Copulas.Generator, Int, Float64))
                 spe_ϕinv = which(Copulas.ϕ⁻¹, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹, (Copulas.Generator, Float64))
                 spe_ϕinv1 = which(Copulas.ϕ⁻¹⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹⁽¹⁾, (Copulas.Generator, Float64))
-                spe_ϕkinv = which(Copulas.ϕ⁽ᵏ⁾⁻¹, (typeof(C.G), Val{1}, Float64)) != which(Copulas.ϕ⁽ᵏ⁾⁻¹, (Copulas.Generator, Val{1}, Float64))
+                spe_ϕkinv = which(Copulas.ϕ⁽ᵏ⁾⁻¹, (typeof(C.G), Int, Float64)) != which(Copulas.ϕ⁽ᵏ⁾⁻¹, (Copulas.Generator, Int, Float64))
 
                 mm = Copulas.max_monotony(C.G)
                 
@@ -361,14 +361,14 @@
                 end
 
                 @testif spe_ϕk "Check d(ϕ) == ϕ⁽ᵏ⁾(k=1)" begin
-                    @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{1}(), 0.1)
+                    @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 1, 0.1)
                 end
 
                 @testif (spe_ϕ1 || spe_ϕk) "Check ϕ⁽¹⁾ == ϕ⁽ᵏ⁾(k=1)" begin
-                    @test Copulas.ϕ⁽¹⁾(C.G, 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{1}(), 0.1)
+                    @test Copulas.ϕ⁽¹⁾(C.G, 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 1, 0.1)
                 end
                 @testif (spe_ϕ1 || spe_ϕk) "Check d(ϕ⁽¹⁾) == ϕ⁽ᵏ⁾(k=2)" begin
-                    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, Val{2}(), 0.1)
+                    @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 2, 0.1)
                 end
 
                 @testif spe_ϕinv1 "Check d(ϕ⁻¹) == ϕ⁻¹⁽¹⁾" begin
@@ -377,13 +377,13 @@
 
                 @testif spe_ϕkinv "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k in 1:d-2" begin
                     for k in 1:d-2
-                        @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,Val{k}(), Copulas.ϕ⁽ᵏ⁾(C.G, Val{k}(), 0.1)) ≈ 0.1
+                        @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,k, Copulas.ϕ⁽ᵏ⁾(C.G, k, 0.1)) ≈ 0.1
                     end
                 end
 
                 # For generators that are only d-monotonous, this does not need to be true. 
                 @testif (spe_ϕkinv && (mm > d)) "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k=d-1" begin 
-                    @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,Val{d-1}(), Copulas.ϕ⁽ᵏ⁾(C.G, Val{d-1}(), 0.1)) ≈ 0.1
+                    @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,d-1, Copulas.ϕ⁽ᵏ⁾(C.G, d-1, 0.1)) ≈ 0.1
                 end
 
                 @testif can_τinv "Check τ ∘ τ⁻¹ == Id" begin
@@ -410,12 +410,12 @@
                 @testset "Kendall-Radial coherency test" begin
                     # On radial-level: 
                     R1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
-                    R2 = rand(rng,Copulas.williamson_dist(C.G, Val{d}()),1000)
+                    R2 = rand(rng,Copulas.williamson_dist(C.G, d),1000)
                     @test pvalue(ApproximateTwoSampleKSTest(R1,R2)) > 0.005
 
                     # On kendall-level: 
                     U1 = Distributions.cdf(C, spl1000)
-                    U2 = Copulas.ϕ.(Ref(C.G), rand(rng,Copulas.williamson_dist(C.G, Val{d}()),1000))
+                    U2 = Copulas.ϕ.(Ref(C.G), rand(rng,Copulas.williamson_dist(C.G, d),1000))
                     @test pvalue(ApproximateTwoSampleKSTest(U1, U2)) > 0.005
                 end
             end

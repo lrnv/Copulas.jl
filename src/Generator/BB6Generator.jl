@@ -52,7 +52,11 @@ function ϕ⁽¹⁾(G::BB6Generator, s)
     return -(a*b) * s^(b-1) * E * H^(a-1)
 end
 
-function ϕ⁽ᵏ⁾(G::BB6Generator, ::Val{2}, s)
+function ϕ⁽ᵏ⁾(G::BB6Generator, d::Int, s)
+    if d != 2
+        # Only d==2 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, d, x; start_at=start_at)
+    end
     a = inv(G.θ); b = inv(G.δ)
     r = s^b
     E = exp(-r)

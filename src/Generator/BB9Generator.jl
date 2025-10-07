@@ -46,7 +46,11 @@ function ϕ⁽¹⁾(G::BB9Generator, s)
     a  = inv(G.θ);  c = G.δ^(-G.θ)
     ϕ(G,s) * ( -a * (s + c)^(a-1) )
 end
-function ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{2}, s)
+function ϕ⁽ᵏ⁾(G::BB9Generator, d::Int, s)
+    if d != 2
+        # Only d==2 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+    end
     a  = inv(G.θ);  c = G.δ^(-G.θ)
     φ  = ϕ(G,s)
     t  = s + c
