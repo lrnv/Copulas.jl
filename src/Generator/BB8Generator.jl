@@ -72,8 +72,8 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB8Generator}
     return (1/δ) * (1 - t)
 end
 
-function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB8Generator}
-    Tret = promote_type(Float64, eltype(u))
+function Distributions._logpdf(C::ArchimedeanCopula{2,BB8Generator{TF}}, u) where {TF}
+    Tret = promote_type(TF, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)
 
