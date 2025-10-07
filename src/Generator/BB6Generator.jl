@@ -51,16 +51,17 @@ function ϕ⁽¹⁾(G::BB6Generator, s)
     H = 1 - E
     return -(a*b) * s^(b-1) * E * H^(a-1)
 end
-
-#function ϕ⁽ᵏ⁾(G::BB6Generator, ::Val{2}, s)
-#    a = inv(G.θ); b = inv(G.δ)
-#    r = s^b
-#    E = exp(-r)
-#    H = 1 - E
-#    term = (b - 1) * s^(b - 2) - b * s^(2b - 2) + (a - 1) * b * s^(2b - 2) * (E / H)
-#    return -a * b * E * H^(a - 1) * term 
-#end
 function ϕ⁽ᵏ⁾(G::BB6Generator, k::Int, s::Real; tol::Float64=1e-9, maxm::Int=10_000)
+
+    if k==2
+        a = inv(G.θ); b = inv(G.δ)
+        r = s^b
+        E = exp(-r)
+        H = 1 - E
+        term = (b - 1) * s^(b - 2) - b * s^(2b - 2) + (a - 1) * b * s^(2b - 2) * (E / H)
+        return -a * b * E * H^(a - 1) * term
+    end
+
     a, b = inv(G.δ), inv(G.θ)
     k == 0 && return ϕ(G, s)
     sa = s^a

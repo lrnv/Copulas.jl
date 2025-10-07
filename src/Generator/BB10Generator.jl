@@ -55,14 +55,14 @@ function ϕ⁽¹⁾(G::BB10Generator, s)
     ψ  = ϕ(G, s)
     return -(1/θ) * es/(es - δ) * ψ
 end
-#function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s)
-#    θ, δ = G.θ, G.δ
-#    es = exp(s)
-#    ψ  = ϕ(G, s)                    # ya usa forma estable con log1p/expm1
-#    den = es - δ
-#    return ψ * (es / (den^2)) * (es/θ^2 + δ/θ)
-#end
-function ϕ⁽ᵏ⁾(G::BB10Generator, k::Int, s::Real)
+function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{k}, s::Real) where {k}
+    if d==2
+        θ, δ = G.θ, G.δ
+        es = exp(s)
+        ψ  = ϕ(G, s)                    # stable with log1p/expm1
+        den = es - δ
+        return ψ * (es / (den^2)) * (es/θ^2 + δ/θ)
+    end
     b = inv(G.θ)
     k == 0 && return ϕ(G, s)
     T = typeof(b) 
