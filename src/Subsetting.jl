@@ -33,7 +33,7 @@ function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT
     @assert 2 <= p <= d
     return SubsetCopula(CS.C, ntuple(i -> CS.dims[dims2[i]], p))
 end
-_available_fitting_methods(::Type{<:SubsetCopula}) = Tuple{}() # cannot be fitted. 
+_available_fitting_methods(::Type{<:SubsetCopula}, d) = Tuple{}() # cannot be fitted. 
 Base.eltype(C::SubsetCopula{d,CT}) where {d,CT} = Base.eltype(C.C)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::SubsetCopula{d,CT}, x::AbstractVector{T}) where {T<:Real, d,CT}
     u = Random.rand(rng,C.C)

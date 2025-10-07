@@ -94,7 +94,7 @@ function _fit(::Type{<:SurvivalCopula{d,subCT,flips}}, U, m::Val{:mle}; kwargs..
     return SurvivalCopula{d,subCT,flips}(C), meta
 end
 
-_available_fitting_methods(::Type{<:SurvivalCopula{d,subCT,flips}}) where {d, subCT, flips} = _available_fitting_methods(subCT)
+_available_fitting_methods(::Type{<:SurvivalCopula{D,subCT,flips}}, d) where {D, subCT, flips} = _available_fitting_methods(subCT, d)
 _example(CT::Type{<:SurvivalCopula{D,subCT,flips}}, d) where {D, subCT, flips} = SurvivalCopula(_example(subCT, d), flips)
 
 

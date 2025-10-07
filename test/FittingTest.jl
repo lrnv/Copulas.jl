@@ -78,7 +78,7 @@
         U = rand(rng, d, 100)
         for (CT, dims) in cases
             occursin(string(d), dims) || continue
-            avail = Copulas._available_fitting_methods(CT)
+            avail = Copulas._available_fitting_methods(CT, d)
             if isempty(avail)
                 @warn "Empty method list for $CT"
                 continue

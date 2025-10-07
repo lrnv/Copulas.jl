@@ -184,7 +184,7 @@ end
 
 # Fitting colocated. 
 StatsBase.dof(::BernsteinCopula) = 0
-_available_fitting_methods(::Type{<:BernsteinCopula}) = (:bernstein,)
+_available_fitting_methods(::Type{<:BernsteinCopula}, d) = (:bernstein,)
 """
     _fit(::Type{<:BernsteinCopula}, U, ::Val{:bernstein};
          m::Union{Int,Tuple,Nothing}=nothing, pseudo_values::Bool=true, kwargs...) -> (C, meta)
