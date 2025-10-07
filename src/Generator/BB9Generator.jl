@@ -46,13 +46,23 @@ function ϕ⁽¹⁾(G::BB9Generator, s)
     a  = inv(G.θ);  c = G.δ^(-G.θ)
     ϕ(G,s) * ( -a * (s + c)^(a-1) )
 end
-function ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{2}, s)
-    a  = inv(G.θ);  c = G.δ^(-G.θ)
-    φ  = ϕ(G,s)
-    t  = s + c
-    φ * ( a^2 * t^(2a-2) - a*(a-1) * t^(a-2) )
+#function ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{2}, s)
+#    a  = inv(G.θ);  c = G.δ^(-G.θ)
+#    φ  = ϕ(G,s)
+#    t  = s + c
+#    φ * ( a^2 * t^(2a-2) - a*(a-1) * t^(a-2) )
+#end
+function ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{k}, s::Real) where {k}
+    k == 0 && return ϕ(G, s)
+    a, c = inv(G.θ), G.δ^(-G.θ)
+    T = promote_type(typeof(a), typeof(s))
+    xs = [-prod(a - i for i in 0:j-1) * (s + c)^(a - j) for j in 1:k]
+    B = ones(T, k + 1)
+    for n in 1:k
+        B[n + 1] = sum(binomial(n - 1, j - 1) * xs[j] * B[n - j + 1] for j in 1:n)
+    end    
+    return ϕ(G, s) * B[end]
 end
-
 ϕ⁻¹⁽¹⁾(G::BB9Generator, t) = -G.θ * (inv(G.δ) - log(t))^(G.θ - 1) / t
 
 frailty(G::BB9Generator) =  TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ))

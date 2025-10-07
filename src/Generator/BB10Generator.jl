@@ -55,12 +55,25 @@ function ϕ⁽¹⁾(G::BB10Generator, s)
     ψ  = ϕ(G, s)
     return -(1/θ) * es/(es - δ) * ψ
 end
-function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s)
-    θ, δ = G.θ, G.δ
+#function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s)
+#    θ, δ = G.θ, G.δ
+#    es = exp(s)
+#    ψ  = ϕ(G, s)                    # ya usa forma estable con log1p/expm1
+#    den = es - δ
+#    return ψ * (es / (den^2)) * (es/θ^2 + δ/θ)
+#end
+function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{k}, s::Real) where {k}
+    b = inv(G.θ)
+    k == 0 && return ϕ(G, s)
+    T = typeof(b) 
+    A = zeros(T, k + 1, k + 1)
+    A[1, 1] = -b
+    for i in 2:k, j in 1:i
+        A[i, j] = (j ≤ i-1 ? j * A[i-1, j] : 0.0) - (j > 1 ? (b + j - 1) * A[i-1, j-1] : 0.0)
+    end
     es = exp(s)
-    ψ  = ϕ(G, s)                    # ya usa forma estable con log1p/expm1
-    den = es - δ
-    return ψ * (es / (den^2)) * (es/θ^2 + δ/θ)
+    acc = sum(A[k, j] * es^j * (es - G.δ)^(-b - j) for j in 1:k)
+    return (1 - G.δ)^b * acc
 end
 
 ϕ⁻¹⁽¹⁾(G::BB10Generator, t) = begin
