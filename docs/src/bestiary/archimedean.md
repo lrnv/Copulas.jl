@@ -96,7 +96,7 @@ In this package, we implemented it through the [`WilliamsonGenerator`](@ref) cla
 
 `WilliamsonGenerator(X::UnivariateRandomVariable, d)`.
 
-This function computes the Williamson d-transform of the provided random variable $X$ using the [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl) package. See [williamson1955multiply, mcneil2009](@cite) for the literature. 
+This function computes the Williamson d-transform of the provided random variable $X$. See [williamson1955multiply, mcneil2009](@cite) for the literature. 
 
 !!! info "`max_monotony` of Williamson generators"
     The $d$-transform of a positive random variable is $d$-monotone but not $k$-monotone for any $k > d$. Its max monotony is therefore $d$. This has a few implications, one of the biggest is that the $d$-variate Archimedean copula that corresponds has no density.
@@ -115,7 +115,7 @@ The Williamson d-transform is a bijective transformation[^1] from the set of pos
 
     This bijection is to be taken carefuly: the bijection is between random variables *with unit scales* and generators *with common value at 1*, sicne on both rescaling does not change the underlying copula. 
 
-This transformation is implemented through one method in the Generator interface that is worth talking a bit about : `williamson_dist(G::Generator, d)`. This function computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ, still using the [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl) package. See [williamson1955multiply, mcneil2009](@cite).
+This transformation is implemented through one method in the Generator interface that is worth talking a bit about : `williamson_dist(G::Generator, d)`. This function computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ. See [williamson1955multiply, mcneil2009](@cite).
 
 To put it in a nutshell, for ``\phi`` a ``d``-monotone archimedean generator, the inverse Williamson-d-transform of ``\\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``R``, defined by : 
 
@@ -123,7 +123,7 @@ To put it in a nutshell, for ``\phi`` a ``d``-monotone archimedean generator, th
 F(x) = 𝒲_{d}^{-1}(\phi)(x) = 1 - \frac{(-x)^{d-1} \phi_+^{(d-1)}(x)}{k!} - \sum_{k=0}^{d-2} \frac{(-x)^k \phi^{(k)}(x)}{k!}
 ```
 
-The [`WilliamsonTransforms.jl`](https://github.com/lrnv/WilliamsonTransforms.jl) package implements this transformation (and its inverse, the Williamson d-transfrom) in all generality. It returns this cumulative distribution function in the form of the corresponding random variable `<:Distributions.ContinuousUnivariateDistribution` from `Distributions.jl`. You may then compute : 
+It returns this cumulative distribution function in the form of the corresponding random variable `<:Distributions.ContinuousUnivariateDistribution` from `Distributions.jl`. You may then compute : 
 * The cdf via `Distributions.cdf`
 * The pdf via `Distributions.pdf` and the logpdf via `Distributions.logpdf`
 * Samples from the distribution via `rand(X,n)`.
@@ -184,14 +184,14 @@ This is why `williamson_dist(G::Generator,d)` is such an important function in t
 
 ```@example
 using Copulas: williamson_dist, FrankGenerator
-williamson_dist(FrankGenerator(7), Val{3}())
+williamson_dist(FrankGenerator(7), 3)
 ```
 
 For the Frank Copula, as for many classic copulas, the distribution used is known. We pull some of them from `Distributions.jl` but implement a few more, as this Logarithmic one. Another useful example are negatively-dependent Clayton copulas: 
 
 ```@example
 using Copulas: williamson_dist, ClaytonGenerator
-williamson_dist(ClaytonGenerator(-0.2), Val{3}())
+williamson_dist(ClaytonGenerator(-0.2), 3)
 ```
 
 for which the corresponding distribution is known but has no particular name, thus we implemented it under the `ClaytonWilliamsonDistribution` name.
@@ -209,7 +209,7 @@ for which the corresponding distribution is known but has no particular name, th
     We use this fraily approach for several generators, since sometimes it is faster, including e.g. the Clayton one with positive dependence:
     ```@example
     using Copulas: williamson_dist, ClaytonGenerator
-    williamson_dist(ClaytonGenerator(10), Val{3}())
+    williamson_dist(ClaytonGenerator(10), 3)
     ```
 
 

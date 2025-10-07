@@ -201,7 +201,7 @@ function Distributions._logpdf(C::ArchimaxCopula{2, TG, TT}, u) where {TG, TT}
 
     s    = S * A0
     φp   = ϕ⁽¹⁾(C.gen, s)            # < 0
-    φpp  = ϕ⁽ᵏ⁾(C.gen, Val(2), s)            # > 0
+    φpp  = ϕ⁽ᵏ⁾(C.gen, 2, s)            # > 0
 
     base = su*sv + (φp/φpp)*suv
     base > 0 || return T(-Inf)

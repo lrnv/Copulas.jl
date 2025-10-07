@@ -216,7 +216,7 @@ Usage:
 
 - Build from data `u::d×n` (raw or pseudos): `Ĝ = EmpiricalGenerator(u; pseudo_values=true)`
 - Use directly in an Archimedean copula: `Ĉ = ArchimedeanCopula(d, Ĝ)`
-- Access the fitted radial law: `R̂ = williamson_dist(Ĝ, Val{d}())`
+- Access the fitted radial law: `R̂ = williamson_dist(Ĝ, d)`
 
 ```@docs; canonical=false
 EmpiricalGenerator

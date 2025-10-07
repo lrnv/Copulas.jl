@@ -12,7 +12,6 @@ module Copulas
     import ForwardDiff
     import HCubature
     import MvNormalCDF
-    import WilliamsonTransforms
     import Combinatorics
     import LogExpFunctions
     import QuadGK
@@ -22,6 +21,7 @@ module Copulas
     import LambertW
     import Optim
     import Printf
+    import TaylorSeries
 
     # Main code
     include("utils.jl")
@@ -82,6 +82,7 @@ module Copulas
     include("EllipticalCopulas/TCopula.jl")
 
     # Archimedean copulas
+    include("WilliamsonTransforms.jl")
     include("Generator.jl")
     include("ArchimedeanCopula.jl")
 

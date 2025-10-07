@@ -12,7 +12,31 @@ _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
     Roots.find_zero(f, (a,b), Roots.Brent(); atol=tol, rtol=tol)
 end
 
+"""
+    taylor(f::F, x₀, d::Int) where {F}
 
+Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back all the successive derivatives. 
+
+# Arguments
+- `f`: A function to be expanded.
+- `x₀`: The point around which to expand the Taylor series.
+- `d`: The order up to which the Taylor series is computed.
+
+# Returns
+A tuple with value ``(f(x₀), f'(x₀),...,f^{(d)}(x₀))``.
+"""
+function taylor(f::F, x₀, d::Int) where {F} 
+    rez = f(x₀ + TaylorSeries.Taylor1(eltype(x₀), d)).coeffs
+    p = length(rez)
+    # The length of rez is no longer always equal to d+1 since updates in TaylorSeries.jl, so we enforce it: 
+    p == d+1 && return rez
+    if p < d+1
+        v = zeros(d+1)
+        v[1:p] .= rez
+        return v
+    end
+    return rez[1:d+1]
+end
 
 
 """

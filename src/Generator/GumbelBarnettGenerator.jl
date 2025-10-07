@@ -87,7 +87,7 @@ end
 ϕ⁽¹⁾(G::GumbelBarnettGenerator, t) = -exp((1 - exp(t)) / G.θ) * exp(t) / G.θ
 ϕ⁻¹(G::GumbelBarnettGenerator, t) = log1p(-G.θ * log(t))
 ϕ⁻¹⁽¹⁾(G::GumbelBarnettGenerator, t) = -G.θ / (t - G.θ * t * log(t))
-function ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, ::Val{k}, t) where k
+function ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, k::Int, t)
     α = 1/G.θ    
     C = -α*exp(t)
     R = C * exp(α + C)
@@ -98,48 +98,6 @@ end
 
 # See this htread ;: https://discourse.julialang.org/t/solving-for-transcendental-equation/131229/16
 
-
-# function lower_bound_on_leftmost_root(::Val{n}) where n
-#     n==2  && return - 1.0
-#     n==3  && return - 1 / 0.380
-#     n==4  && return - 1 / 0.216
-#     n==5  && return - 1 / 0.145
-#     n==6  && return - 1 / 0.106
-#     n==7  && return - 1 / 0.082
-#     n==8  && return - 1 / 0.066
-#     n==9  && return - 1 / 0.055
-#     n==10 && return - 1 / 0.046
-#     C2 = binomial(n, 2)
-#     C3 = binomial(n, 3)
-#     C4 = binomial(n, 4)
-#     term1 = C2 / n
-#     discr = C2^2 - (2n / (n - 1)) * (C3 + 3*C4)
-#     term2 = (n - 1)/n * sqrt(discr)
-#     lower_bound = (term1 + term2)
-#     return -lower_bound
-# end
-# leftmost_critical_point(::Val{n}) where n = lower_bound_on_leftmost_root(Val{n+1}())
-# starting_point(::Val{n}) where n = leftmost_critical_point(Val{n+1}())
-# last_summit(::Val{n}) where n = _fₙ(leftmost_critical_point(Val{n}()), Val{n}())
-
-# function _fₙ(x, ::Val{n}, s2::NTuple{n, Int}=ntuple(i->stirlings2(n, i), n)) where n
-#     n==1 && return exp(x)
-#     return x*evalpoly(x, s2) * exp(x)
-# end
-# function _inv_fₙ(x, ::Val{n}) where n
-#     n==1 && return log(x)
-#     x₀ = starting_point(Val{n}())
-#     return find_zero(
-#       let s2 = ntuple(i->stirlings2(n, i), n)
-#           t -> _fₙ(t, Val{n}(), s2)-x
-#       end, 
-#       x₀
-#       )
-# end
-# function ϕ⁽ᵏ⁾⁻¹(G::GumbelBarnettGenerator, ::Val{k}, t; start_at=t) where k
-#     @show k, t
-#     return log(- G.θ * _inv_fₙ(t * exp(-1/G.θ), Val{k}()))
-# end
 
 function _gumbelbarnett_tau(θ)
     iszero(θ) && return θ

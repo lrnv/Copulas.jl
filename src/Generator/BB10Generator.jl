@@ -41,7 +41,7 @@ _rebound_params(::Type{<:BB10Generator}, d, α) = (; θ = exp(α[1]), δ = 1 / (
 
 ϕ(G::BB10Generator, s) = begin
     θ, δ = G.θ, G.δ
-    exp( (1/θ) * (log1p(-δ) - log(expm1(s) + (1 - δ))) )
+    exp( (1/θ) * (log1p(-δ) - log(exp(s) - δ)))
 end
 
 ϕ⁻¹(G::BB10Generator, t) = begin
@@ -55,7 +55,11 @@ function ϕ⁽¹⁾(G::BB10Generator, s)
     ψ  = ϕ(G, s)
     return -(1/θ) * es/(es - δ) * ψ
 end
-function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s)
+function ϕ⁽ᵏ⁾(G::BB10Generator, d::Int, s)
+    if d != 2
+        # Only d==2 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+    end
     θ, δ = G.θ, G.δ
     es = exp(s)
     ψ  = ϕ(G, s)                    # ya usa forma estable con log1p/expm1

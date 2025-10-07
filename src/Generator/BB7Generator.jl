@@ -52,7 +52,11 @@ function ϕ⁽¹⁾(G::BB7Generator, s)
     return -(1/(G.θ*G.δ)) * (1 - exp(-inv(G.δ)*log1p(s)))^(inv(G.θ)-1) * (1+s)^(-inv(G.δ)-1)
 end
 
-function ϕ⁽ᵏ⁾(G::BB7Generator, ::Val{2}, s)
+function ϕ⁽ᵏ⁾(G::BB7Generator, d::Int, s)
+    if d != 2
+        # Only d==2 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+    end
     θ, δ = G.θ, G.δ
     invθ, invδ = inv(θ), inv(δ)
     a   = exp(-invδ * log1p(s))                 # (1+s)^(-1/δ)

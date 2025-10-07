@@ -42,7 +42,11 @@ function ϕ⁽¹⁾(G::BB2Generator, s)
     v = (1+1/θ) * log1p(u/δ) + log(θ) + log(δ) + u
     return -exp(-v)
 end
-function ϕ⁽ᵏ⁾(G::BB2Generator, ::Val{2}, s)
+function ϕ⁽ᵏ⁾(G::BB2Generator, d::Int, s)
+    if d != 2
+        # Only d==2 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+    end
     θ, δ = G.θ, G.δ
     logA = log1p(log1p(s)/δ)
     inv1p = inv(1+s)
@@ -56,7 +60,11 @@ function ϕ⁻¹⁽¹⁾(G::BB2Generator, t)
     B = G.δ * exp(-(1+G.θ)*lt)
     return - G.θ * B * exp(A)
 end
-function ϕ⁽ᵏ⁾⁻¹(G::BB2Generator, ::Val{1}, x; start_at=x)
+function ϕ⁽ᵏ⁾⁻¹(G::BB2Generator, d::Int, x; start_at=x)
+    if d != 1
+        # Only d==1 is implemented here, fall back to generic otherwise. 
+        return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, d, x; start_at=start_at)
+    end
     # compute the inverse of ϕ⁽¹⁾
     θ, δ = G.θ, G.δ
     a = 1 + 1/θ          # a > 0
@@ -134,14 +142,12 @@ function ρ(G::Copulas.BB2Generator{T}; rtol=1e-7, atol=1e-9) where {T}
 end
 
 
-function λᵤ(C::BB2Generator{T}; tsmall::Float64=1e-10) where {T}
-    G = C.G
+function λᵤ(G::BB2Generator{T}; tsmall::Float64=1e-10) where {T}
     r = ϕ⁽¹⁾(G, 2tsmall) / ϕ⁽¹⁾(G, tsmall)
     return 2 - 2*r
 end
 
-function λₗ(C::BB2Generator{T}; tlarge::Float64=1e6) where {T}
-    G = C.G
+function λₗ(G::BB2Generator{T}; tlarge::Float64=1e6) where {T}
     r = ϕ⁽¹⁾(G, 2tlarge) / ϕ⁽¹⁾(G, tlarge)
     return 2*r
 end

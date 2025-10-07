@@ -57,7 +57,7 @@ function ϕ⁽¹⁾(G::InvGaussianGenerator, t)
     end
 end
 
-function ϕ⁽ᵏ⁾(G::InvGaussianGenerator, ::Val{k}, t) where {k}
+function ϕ⁽ᵏ⁾(G::InvGaussianGenerator, k::Int, t)
     k == 0 && return ϕ(G, t)
     k == 1 && return ϕ⁽¹⁾(G, t)
     # Closed-form via Faà di Bruno: ϕ^{(k)} = ϕ * Y_k(f', f'', ..., f^{(k)})

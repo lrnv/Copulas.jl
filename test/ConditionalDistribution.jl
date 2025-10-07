@@ -154,8 +154,8 @@ end
                 SJ = sum(Copulas.ϕ⁻¹(C.G, v) for v in uJ)
                 SI = sum(Copulas.ϕ⁻¹(C.G, u) for u in uI)
                 S_full = SJ + SI
-                num = Copulas.ϕ⁽ᵏ⁾(C.G, Val{p}(), S_full)
-                den = Copulas.ϕ⁽ᵏ⁾(C.G, Val{p}(), SJ)
+                num = Copulas.ϕ⁽ᵏ⁾(C.G, p, S_full)
+                den = Copulas.ϕ⁽ᵏ⁾(C.G, p, SJ)
                 expected = num / den
                 # Evaluate model
                 got = cdf(CC, collect(uI))
