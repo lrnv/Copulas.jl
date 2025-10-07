@@ -169,7 +169,7 @@ function Base.show(io::IO, M::CopulaModel)
             println(io, "vcov method: ", vcovm)
         end
 
-        _print_param_table(io, Vector{String}(nm), Vector{Float64}(θ); V=Vcop)
+        _print_param_table(io, nm, θ; V=Vcop)
         # meassures optinals
         if get(M.method_details, :derived_measures, true)
             println(io, "[ Copula Derived measures ]")
@@ -197,9 +197,9 @@ function Base.show(io::IO, M::CopulaModel)
             end
         end
         # [ Marginals ] section
-    S  = R::SklarDist
-    md = M.method_details
-    Vm = get(md, :vcov_margins, nothing)   # precomputed marginal vcov from fitting
+        S  = R::SklarDist
+        md = M.method_details
+        Vm = get(md, :vcov_margins, nothing)   # precomputed marginal vcov from fitting
 
         println(io, "──────────────────────────────────────────────────────────")
         println(io, "[ Marginals ]")
@@ -213,142 +213,47 @@ function Base.show(io::IO, M::CopulaModel)
                         ndims(V) == 2 &&
                         size(V) == (p, p) &&
                         all(isfinite, Matrix(V)) &&
-                        all(diag(Matrix(V)) .>= 0.0)
+                        all(LinearAlgebra.diag(Matrix(V)) .>= 0.0)
 
         for (i, mi) in enumerate(S.m)
             pname = String(nameof(typeof(mi)))
             θi_nt = Distributions.params(mi)
-            # names..,
-            T = typeof(mi)
-            names = if     T <: Distributions.Gamma;       ("α","θ")
-                    elseif T <: Distributions.Beta;        ("α","β")
-                    elseif T <: Distributions.LogNormal;   ("μ","σ")
-                    elseif T <: Distributions.Normal;      ("μ","σ")
-                    elseif T <: Distributions.Exponential; ("θ",)
-                    elseif T <: Distributions.Weibull;     ("k","λ")
-                    elseif T <: Distributions.Pareto;      ("α","θ")
-                    else
-                        # Coefficient table (generic) for copula-only fits
-                        params = Distributions.params(_copula_of(M))
-                        θ = Float64[]
-                        nm = String[]
-                        for (k, v) in pairs(params)
-                            if isa(v, Number)
-                                push!(θ, float(v)); push!(nm, String(k))
-                            elseif isa(v, AbstractMatrix)
-                                for i in axes(v,1), j in axes(v,2)
-                                    push!(θ, float(v[i,j])); push!(nm, "$(k)_$(i)_$(j)")
-                                end
-                            elseif isa(v, AbstractVector)
-                                for i in eachindex(v)
-                                    push!(θ, float(v[i])); push!(nm, "$(k)_$(i)")
-                                end
-                            else
-                                try
-                                    push!(θ, float(v)); push!(nm, String(k))
-                                catch
-                                end
-                            end
-                        end
-                        _print_param_table(io, nm, θ; V=StatsBase.vcov(M))
-                Printf.@printf(io, "%-10s %10.3f %10.3f %10.3f %10.3f\n",
-                    "gamma", md[:gamma_mean], md[:gamma_sd], md[:gamma_min], md[:gamma_max])
+            names = _margin_param_names(mi)
+            vals = Float64.(collect(θi_nt))
+            p = length(vals)
+
+            # Use only the precomputed covariance from fitting, if available and valid
+            Vi = nothing
+            if Vm isa Vector && 1 <= i <= length(Vm)
+                Vh = Vm[i]
+                if _valid_cov(Vh, p)
+                    Vi = Vh
+                end
             end
-            println(io, "───────────────────────────────────────────────────────")
+
+            if Vi === nothing
+                @inbounds for j in 1:p
+                    lab = (j == 1) ? "#$(i)" : ""
+                    Printf.@printf(io, "%-6s %-12s %-7s %12.4f %12s %12s\n",
+                                lab, pname, names[j], vals[j], "—", "—")
+                end
+            else
+                dV = LinearAlgebra.diag(Matrix(Vi))
+                se = sqrt.(max.(dV, 0.0))
+                lo = vals .- crit .* se
+                hi = vals .+ crit .* se
+                @inbounds for j in 1:p
+                    lab = (j == 1) ? "#$(i)" : ""
+                    Printf.@printf(io, "%-6s %-12s %-7s %12.4f %12.4f [%12.4f, %12.4f]\n",
+                                lab, pname, names[j], vals[j], se[j], lo[j], hi[j])
+                end
+            end
         end
     else
-        # Coefficient table
-        params = Distributions.params(_copula_of(M))
-        C = _copula_of(M)
-        if C isa GaussianCopula
-            Σ = params.Σ
-            d = size(Σ, 1)
-            θ = Float64[]
-            nm = String[]
-            @inbounds for j in 2:d, i in 1:j-1
-                push!(θ, float(Σ[i, j]))
-                push!(nm, "Σ_$(i)_$(j)")
-            end
-
-            V = StatsBase.vcov(M) 
-            if V === nothing || isempty(θ)
-                println(io, "────────────────────────────────────────")
-                Printf.@printf(io, "%-14s %12s\n", "Parameter", "Estimate")
-                println(io, "────────────────────────────────────────")
-                @inbounds for j in eachindex(θ)
-                    Printf.@printf(io, "%-14s %12.6g\n", nm[j], θ[j])
-                end
-                println(io, "────────────────────────────────────────")
-            else
-                se   = sqrt.(LinearAlgebra.diag(V))
-                crit = 1.959963984540054  # z_{0.975}
-                println(io, "────────────────────────────────────────────────────────────────────────────────────────")
-                Printf.@printf(io, "%-14s %12s %12s %9s %10s %12s %12s\n",
-                               "Parameter","Estimate","Std.Err","z-value","Pr(>|z|)","95% Lo","95% Hi")
-                println(io, "────────────────────────────────────────────────────────────────────────────────────────")
-                @inbounds for j in eachindex(θ)
-                    s  = se[j]
-                    z  = (isfinite(s) && s > 0) ? θ[j]/s : NaN
-                    p  = isfinite(z) ? 2*Distributions.ccdf(Distributions.Normal(), abs(z)) : NaN
-                    lo = isfinite(s) ? θ[j] - crit*s : NaN
-                    hi = isfinite(s) ? θ[j] + crit*s : NaN
-                    Printf.@printf(io, "%-14s %12.6g %12.6g %9.3f %10.3g %12.6g %12.6g\n",
-                                   nm[j], θ[j], s, z, p, lo, hi)
-                end
-                println(io, "────────────────────────────────────────────────────────────────────────────────────────")
-            end
-            return
-        end
-        # Linearize the parameters: 
-        θ = Float64[]
-        nm = String[]
-        for (k, v) in pairs(params)
-            if isa(v, Number)
-                push!(θ, float(v))
-                push!(nm, String(k))
-            elseif isa(v, AbstractMatrix)
-                for i in axes(v, 1), j in axes(v, 2)
-                    push!(θ, float(v[i, j]))
-                    push!(nm, "$(k)_$(i)_$(j)")
-                end
-            elseif isa(v, AbstractVector)
-                for i in eachindex(v)
-                    push!(θ, float(v[i]))
-                    push!(nm, "$(k)_$(i)")
-                end
-            else
-                try
-                    push!(θ, float(v))
-                    push!(nm, String(k))
-                catch
-                end
-            end
-        end
-
-        V  = StatsBase.vcov(M)
-        if V === nothing || isempty(θ)
-            println(io, "────────────────────────────────────────")
-            Printf.@printf(io, "%-14s %12s\n", "Parameter", "Estimate")
-            println(io, "────────────────────────────────────────")
-            @inbounds for (j, name) in pairs(nm)
-                Printf.@printf(io, "%-14s %12.4f\n", String(name), θ[j])
-            end
-            println(io, "────────────────────────────────────────")
-        else
-            se = sqrt.(LinearAlgebra.diag(V))
-            z  = θ ./ se
-            p  = 2 .* Distributions.ccdf(Distributions.Normal(), abs.(z))
-            lo, hi = StatsBase.confint(M; level=0.95)
-            println(io, "────────────────────────────────────────────────────────────────────────────────────────")
-            Printf.@printf(io, "%-14s %12s %12s %12s %12s %12s %12s\n",
-                        "Parameter","Estimate","Std.Err","z-value","Pr(>|z|)","95% Lo","95% Hi")
-            println(io, "────────────────────────────────────────────────────────────────────────────────────────")
-            @inbounds for j in eachindex(θ)
-                Printf.@printf(io, "%-14s %12.4f %12.4f %12.4f %12.4f %12.4f %12.4f\n",
-                            String(nm[j]), θ[j], se[j], z[j], p[j], lo[j], hi[j])
-            end
-            println(io, "────────────────────────────────────────────────────────────────────────────────────────")
-        end
+        # Coefficient table (generic) for copula-only fits
+        nm = StatsBase.coefnames(M)
+        θ  = StatsBase.coef(M)
+        _print_param_table(io, nm, θ; V=StatsBase.vcov(M))
 
     end
 end
