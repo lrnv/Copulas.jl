@@ -41,7 +41,7 @@ for statistical inference and model comparison.
 [`StatsBase.nobs`](@ref), [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
 [`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref), [`StatsBase.deviance`](@ref), etc.
 
-See also [`Distributions.fit`](@ref) and [`_copula_of`](@ref).
+See also [`Distributions.fit`](@ref).
 """
 struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
     result        :: CT
@@ -371,7 +371,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
         end
     else
 
-        emp_fun = method isa Val{:itau}  ? StatsBase.corkendall :
+        pairwise_φ = method isa Val{:itau}  ? StatsBase.corkendall :
             method isa Val{:irho}  ? StatsBase.corspearman :
             method isa Val{:ibeta} ? corblomqvist : coruppertail
         φ = method isa Val{:itau}  ? τ : 
@@ -379,12 +379,12 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
                 method isa Val{:ibeta} ? β : λᵤ
         if vcovm === :godambe
             q = 1
-            ψ = αv -> [φ(cop(αv))]
-            ψ_emp = U -> [Statistics.mean(_upper_triangle(emp_fun(U')))]
+            ψ = α -> [φ(cop(α))]
+            ψ_emp = u ->[φ(u)]
         else # then :godambe_pairwise
             q = d*(d-1) ÷ 2
-            ψ_emp = U -> _upper_triangle(emp_fun(U'))
-            ψ = αv -> _upper_triangle(φ(cop(αv)))
+            ψ = α -> _upper_triangle(pairwise_φ(cop(α)))
+            ψ_emp = U -> _upper_triangle(pairwise_φ(U'))
         end
 
         Dα = ForwardDiff.jacobian(ψ, α)
@@ -477,7 +477,7 @@ StatsBase.isfitted(::CopulaModel)  = true
 Deviation of the fitted model (-2 * loglikelihood).
 """
 StatsBase.deviance(M::CopulaModel) = -2 * M.ll
-StatsBase.dof(M::CopulaModel) = StatsBase.dof(M.result)
+StatsBase.dof(M::CopulaModel) = length(StatsBase.coef(M))
 
 """
     _copula_of(M::CopulaModel)
@@ -491,20 +491,15 @@ _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 
 Vector with the estimated parameters of the copula.
 """
-StatsBase.coef(M::CopulaModel) = StatsBase.coef(_copula_of(M))
+StatsBase.coef(M::CopulaModel) = _flatten_params(M.method_details.θ̂)[2]
+
 
 """
 coefnames(M::CopulaModel) -> Vector{String}
 
 Names of the estimated copula parameters.
 """
-StatsBase.coefnames(M::CopulaModel) = StatsBase.coefnames(_copula_of(M))
-
-StatsBase.dof(C::Copulas.Copula) = length(values(Distributions.params(C)))
-
-# Expose flattened coefficients and names consistently (upper triangle for matrices)
-StatsBase.coef(C::Copulas.Copula) = _flatten_params(Distributions.params(C))[2]
-StatsBase.coefnames(C::Copulas.Copula) = _flatten_params(Distributions.params(C))[1]
+StatsBase.coefnames(M::CopulaModel) = _flatten_params(M.method_details.θ̂)[1]
 
 
 # Flatten a NamedTuple of parameters into a Vector{Float64},
