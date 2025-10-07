@@ -31,14 +31,14 @@ References:
 """
 struct SurvivalCopula{d,CT,flips} <: Copula{d}
     C::CT
-    function SurvivalCopula{d,CT,flips}(C::CT) where {d,CT,flips}
+    function SurvivalCopula{d,CT,flips}(C::Copulas{d}) where {d,CT,flips}
         if length(flips) == 0
             return C
         end
         if typeof(C) == IndependentCopula
             return C
         end
-        return new{d,CT,flips}(C)
+        return new{d,typeof(C),flips}(C)
     end
     SurvivalCopula(C::CT, flips::Tuple) where {d, CT<:Copula{d}} = SurvivalCopula{d,CT,flips}(C)
     SurvivalCopula(C::CT, flips) where {d, CT<:Copula{d}} = SurvivalCopula(C, tuple(flips...))
