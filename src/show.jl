@@ -221,7 +221,7 @@ function Base.show(io::IO, M::CopulaModel)
                 _has(:γ)    && _print("Gini γ(θ)",     Copulas.γ(C))
                 _has(:λᵤ)   && _print("Upper λᵤ(θ)",   Copulas.λᵤ(C))
                 _has(:λₗ)    && _print("Lower λₗ(θ)",   Copulas.λₗ(C))
-                _has(:ι)    && _print("Entropy ι(θ)",  Copulas.ι(C).H)
+                _has(:ι)    && _print("Entropy ι(θ)",  Copulas.ι(C))
             catch
                 # dont break show
             end

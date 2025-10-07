@@ -407,12 +407,8 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:god
     return Vθ, (; vcov_method=:godambe_gmm, estimator=method, d=d, n=n, q=1)
 end
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jackknife}, ::Val{method}) where {method}
-    d = size(U,1)
-    n = size(U,2)
-    d ≥ 2 || throw(ArgumentError("jackknife requires d≥2."))
-    n ≥ 3 || throw(ArgumentError("jackknife requires n≥3."))
-
-    θminus = Matrix{Float64}(undef, n, 0)
+    d, n = size(U,1)
+    θminus = zeros(n, length(θ))
     idx = Vector{Int}(undef, n-1)
 
     for j in 1:n
@@ -423,11 +419,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jac
         end
         Uminus = @view U[:, idx]
         M = Distributions.fit(CopulaModel, CT, Uminus; method=method, summaries=false, vcov=false, derived_measures=false)
-        θj = StatsBase.coef(M)
-        if size(θminus,2) == 0
-            θminus = Matrix{Float64}(undef, n, length(θj))
-        end
-        θminus[j, :] .= θj
+        θminus[j, :] .= StatsBase.coef(M)
     end
 
     θbar = vec(Statistics.mean(θminus, dims=1))

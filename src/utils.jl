@@ -138,6 +138,7 @@ function corgini(X::AbstractMatrix{<:Real})
     return C
 end
 function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::Int=32)
+function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::Int=32)
     # We expect the number of dimension to be the second axes here, 
     # contrary to the whole package but to be coherent with 
     # StatsBase.corspearman and StatsBase.corkendall. 
@@ -148,25 +149,28 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
     end
     Ucol = [Cnan[j] ? Float64[] : collect(@view X[:, j]) for j in 1:n]
     H  = zeros(Float64, n, n)
+    H  = zeros(Float64, n, n)
     Ub = Array{Float64}(undef, 2, m)
     @inbounds for j in 2:n
         if Cnan[j]
-            H[:, j] .= NaN; H[j, :] .= NaN; H[j, j] = 0.0
+            H[:, j] .= NaN
+            H[j, :] .= NaN
+            H[j, j] = 0.0
             continue
         end
         uj = Ucol[j]
         for i in 1:j-1
             if Cnan[i]
-                H[i, j] = H[j, i] = NaN
+                H[i, j] = NaN
+                H[j, i] = NaN
                 continue
             end
             ui = Ucol[i]
             Ub[1, :] .= ui; Ub[2, :] .= uj
-            entropy = ι(Ub; k=k, p=p, leafsize=leafsize)
-            H[i, j] = entropy
-            H[j, i] = entropy
+            H[i, j] = ι(Ub; k=k, p=p, leafsize=leafsize)
         end
     end
+    return H
     return H
 end
 function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtmueller, p = nothing)
