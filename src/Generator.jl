@@ -26,7 +26,7 @@ More methods can be implemented for performance, althouhg there are implement de
 * `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative of the generator
 * `ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k` gives the kth derivative of the generator
 * `ϕ⁻¹⁽¹⁾(G::Generator, t)` gives the first derivative of the inverse generator.
-* `williamson_dist(G::Generator, ::Val{d}) where d` gives the Wiliamson d-transform of the generator, see [WilliamsonTransforms.jl](https://github.com/lrnv/WilliamsonTransforms.jl).
+* `williamson_dist(G::Generator, ::Val{d}) where d` gives the Wiliamson d-transform of the generator.
 
 References:
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
@@ -44,9 +44,9 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
 ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
-ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k = WilliamsonTransforms.taylor(ϕ(G), t, Val{k}())[end] * factorial(k)
+ϕ⁽ᵏ⁾(G::Generator, ::Val{k}, t) where k = taylor(ϕ(G), t, Val{k}())[end] * factorial(k)
 ϕ⁽ᵏ⁾⁻¹(G::Generator, ::Val{k}, t; start_at=t) where {k} = Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, Val{k}(), x) - t, start_at)
-williamson_dist(G::Generator, ::Val{d}) where d = WilliamsonTransforms.𝒲₋₁(ϕ(G), Val{d}())
+williamson_dist(G::Generator, ::Val{d}) where d = 𝒲₋₁(ϕ(G), Val{d}())
 
 
 # TODO: Move the \phi^(1) to defer to \phi^(k=1), and implement \phi(k=1) in generators instead of \phi^(1)
@@ -138,7 +138,7 @@ Constructor
     WilliamsonGenerator(atoms::AbstractVector, weights::AbstractVector, d)
     i𝒲(atoms::AbstractVector, weights::AbstractVector, d)
 
-The `WilliamsonGenerator` (alias `i𝒲`) allows to construct a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation, which is called the inverse Williamson transformation, is implemented in [WilliamsonTransforms.jl](https://www.github.com/lrnv/WilliamsonTransforms.jl). 
+The `WilliamsonGenerator` (alias `i𝒲`) allows to construct a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation, which is called the inverse Williamson transformation, is implemented fully generically in the package. 
 
 For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and an integer ``d\\ge 2``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
 
@@ -165,8 +165,7 @@ Special case (finite-support discrete X)
 
 - If `X isa Distributions.DiscreteUnivariateDistribution` and `support(X)` is finite, or if you pass directly atoms and weights to the constructor, the produced generator is piecewise-polynomial `ϕ(t) = ∑_j w_j · (1 − t/r_j)_+^(d−1)` matching the Williamson transform of a discrete radial law. It has specialized methods. 
 - For infinite-support discrete distributions or when the support is not accessible as a finite
-    iterable, the standard `WilliamsonGenerator` is constructed and will defer to
-    `WilliamsonTransforms.jl`.
+    iterable, the standard `WilliamsonGenerator` is constructed.
 
 References: 
 * [williamson1955multiply](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
@@ -206,7 +205,7 @@ WilliamsonGenerator(r, w, d::Int) = WilliamsonGenerator(r, w, Val(d))
 Distributions.params(G::WilliamsonGenerator) = (G.X,)
 max_monotony(::WilliamsonGenerator{d, TX}) where {d, TX} = d
 williamson_dist(G::WilliamsonGenerator{d, TX}, ::Val{d}) where {d, TX} = G.X # if its the right dim. 
-ϕ(G::WilliamsonGenerator{d, TX}, t) where {d, TX} = WilliamsonTransforms.𝒲(G.X, Val{d}())(t)
+ϕ(G::WilliamsonGenerator{d, TX}, t) where {d, TX} = 𝒲(G.X, Val{d}())(t)
 
 # TODO: The following method for Kendall's tau is currently faulty and produces incorrect results.
 # τ(G::WilliamsonGenerator) = 4*Distributions.expectation(Base.Fix1(ϕ, G), Copulas.williamson_dist(G, Val(2)))-1 # McNeil & Neshelova 2009

@@ -1,6 +1,6 @@
 @testmodule M begin
     using Copulas
-    using HypothesisTests, Distributions, Random, WilliamsonTransforms
+    using HypothesisTests, Distributions, Random
     using InteractiveUtils
     using ForwardDiff
     using StatsBase: corkendall
