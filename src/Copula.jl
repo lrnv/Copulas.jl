@@ -35,14 +35,15 @@ end
 # Multivariate dependence metrics 
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
-    r = HCubature.hcubature(F, zeros(d), ones(d), rtol=sqrt(eps()))[1]
+    z = zeros(d)
+    i = ones(d)
+    r = HCubature.hcubature(F, z, i, rtol=sqrt(eps()))[1]
     return (2^d * (d+1) * r - d - 1)/(2^d - d - 1) # Ok for multivariate. 
 end
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
-    r = Distributions.expectation(F, C; nsamples=1e4)
-    k = 2^(d-1) - 1
-    return (2^d * r) / k - 1/k
+    r = Distributions.expectation(F, C; nsamples=10^4)
+    return (2^d / (2^(d-1) - 1)) * r - 1 / (2^(d-1) - 1)
 end
 function β(C::Copula{d}) where {d}
     d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
@@ -71,21 +72,21 @@ function ι(C::Copula{d}) where {d}
 end
 function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
     g(e) = Distributions.cdf(C, fill(e, d)) / e
-    return clamp(2*g(ε/2) - g(ε), 0, 1)
+    return clamp(2*g(ε/2) - g(ε), 0.0, 1.0)
 end
 function λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
-    f(e) = Distributions.cdf(SurvivalCopula(C, Tuple(1:d)), fill(e, d)) / e
-    return clamp(2*f(ε/2) - f(ε), 0, 1)
+    Sc   = SurvivalCopula(C, Tuple(1:d))
+    f(e) = Distributions.cdf(Sc, fill(e, d)) / e
+    return clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
 end
 
 # Multivariate dependence metrics applied to a matrix. 
-function ρ(U::AbstractMatrix)
-    # Sample version of multivariate Spearman's tau for pseudo-data
+function β(U::AbstractMatrix)
+    # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
     d, n = size(U)
-    R = hcat((StatsBase.tiedrank(U[k, :]) for k in 1:d)...)   # n×d
-    μ = Statistics.mean(prod(R, dims=2)) / (n + 1)^d          # ≈ E[∏ U_i]
-    h = (d + 1) / (2.0^d - (d + 1))
-    return h * (2.0^d * μ - 1.0)
+    count = sum(j -> all(U[:, j] .<= 0.5) || all(U[:, j] .> 0.5), 1:n)
+    h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
+    return h_d * (count/n - 2.0^(1-d))
 end
 function τ(U::AbstractMatrix)
     # Sample version of multivariate Kendall's tau for pseudo-data
@@ -98,12 +99,13 @@ function τ(U::AbstractMatrix)
     pc = comp / (n*(n-1)/2)
     return (2.0^d * pc - 2.0) / (2.0^d - 2.0)
 end
-function β(U::AbstractMatrix)
-    # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
+function ρ(U::AbstractMatrix)
+    # Sample version of multivariate Spearman's tau for pseudo-data
     d, n = size(U)
-    count = sum(j -> all(U[:, j] .<= 0.5) || all(U[:, j] .> 0.5), 1:n)
-    h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
-    return h_d * (count/n - 2.0^(1-d))
+    R = hcat((StatsBase.tiedrank(U[k, :]) for k in 1:d)...)   # n×d
+    μ = Statistics.mean(prod(R, dims=2)) / (n + 1)^d          # ≈ E[∏ U_i]
+    h = (d + 1) / (2.0^d - (d + 1))
+    return h * (2.0^d * μ - 1.0)
 end
 function γ(U::AbstractMatrix)
     d, n = size(U)
@@ -239,9 +241,6 @@ function ι(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
         logcd = d*log(2*SpecialFunctions.gamma(1 + 1/p)) - SpecialFunctions.loggamma(1 + d/p)
         H += logcd + (d / n) * sum(log.(ρ))
     end
-    # t = clamp(2H, -700.0, 0.0)
-    # r = sqrt(max(0.0, 1 - exp(t)))
-    # return (H = H, I = -H, r = r)
     return H
 end
 
