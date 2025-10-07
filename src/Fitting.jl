@@ -209,7 +209,7 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
     end
 
     md = (; d, n, method, meta..., null_ll=0.0,
-        elapsed_sec=t, derived_measures)
+        elapsed_sec=t, derived_measures, U=U)
 
     return CopulaModel(C, n, ll, method;
         vcov         = get(md, :vcov, nothing),
@@ -376,10 +376,10 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     J  = ForwardDiff.jacobian(αv -> _flatten_params(_rebound_params(CT, d, αv))[2], α)
     Vθ = J * Vα * J'
 
-    # <<<<<<< CAMBIO CLAVE >>>>>>>>>
-    # Comprobar la finitud ANTES de llamar a eigen.
-    # Si la matriz ya contiene Inf/NaN, la estimación fue inestable.
-    # Activamos el fallback a jackknife inmediatamente.
+    # <<<<<<< KEY CHANGE >>>>>>>>>
+    # Check for finiteness BEFORE calling eigen.
+    # If the matrix already contains Inf/NaN, the estimate was unstable.
+    # We activate the fallback to jackknife immediately.
     if !all(isfinite, Vθ)
         return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
     end
@@ -388,7 +388,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
     λ_reg = map(x -> max(x, 1e-12), λ)
     Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
-    # Esta comprobación final es ahora una doble seguridad.
+    # This final check is now a double security.
     any(!isfinite, Matrix(Vθ)) && return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
     return Vθ, (; vcov_method=vcovm)
 end
@@ -555,3 +555,41 @@ function StatsBase.nullloglikelihood(M::CopulaModel)
     end
 end
 StatsBase.nulldeviance(M::CopulaModel) = -2 * StatsBase.nullloglikelihood(M)
+"""
+    StatsBase.residuals(M::CopulaModel; transform=:uniform)
+
+Compute Rosenblatt residuals of a fitted copula model.
+
+# Arguments
+- `transform = :uniform` → returns Rosenblatt residuals in [0,1].
+- `transform = :normal`  → applies Φ⁻¹ to obtain pseudo-normal residuals.
+
+# Notes
+The residuals should be i.i.d. Uniform(0,1) under a correctly specified model.
+"""
+StatsBase.residuals(M::CopulaModel; transform=:uniform) = begin
+    haskey(M.method_details, :U) || throw(ArgumentError("method_details must contain pseudo-observations :U"))
+    U = M.method_details[:U]
+    R = rosenblatt(_copula_of(M), U)
+    return transform === :normal ? Distributions.quantile.(Distributions.Normal(), R) : R
+end
+"""
+    StatsBase.predict(M::CopulaModel; newdata=nothing, what=:cdf, nsim=0)
+
+Predict or simulate from a fitted copula model.
+
+# Keyword arguments
+- `newdata` — matrix of points in [0,1]^d at which to evaluate (`what=:cdf` or `:pdf`).
+- `what` — one of `:cdf`, `:pdf`, or `:simulate`.
+- `nsim` — number of samples to simulate if `what=:simulate`.
+
+# Returns
+- Vector or matrix of predicted probabilities/densities, or simulated samples.
+"""
+function StatsBase.predict(M::CopulaModel; newdata=nothing, what=:cdf, nsim=0)
+    C = _copula_of(M)
+    return what === :simulate ? rand(C, nsim > 0 ? nsim : M.n) :
+           what === :cdf      ? (newdata === nothing ? throw(ArgumentError("`newdata` required for `:cdf`")) : Distributions.cdf(C, newdata)) :
+           what === :pdf      ? (newdata === nothing ? throw(ArgumentError("`newdata` required for `:pdf`")) : Distributions.pdf(C, newdata)) :
+           throw(ArgumentError("`what` must be one of :simulate, :cdf, or :pdf. Got `$what`."))
+end
