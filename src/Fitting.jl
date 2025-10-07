@@ -410,8 +410,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jac
     for j in 1:n
         k = 1; for t in 1:n; if t == j; continue; end; idx[k] = t; k += 1; end
         Uminus = @view U[:, idx]
-        M = Distributions.fit(CopulaModel, CT, Uminus; method=method, vcov=false, derived_measures=false)
-        θminus[j, :] .= StatsBase.coef(M)
+        θminus[j, :] .= _flatten_params(_fit(CT, Uminus, Val{method}())[2].θ̂)[2]
     end
 
     θbar = vec(Statistics.mean(θminus, dims=1))
