@@ -46,7 +46,7 @@ function ϕ⁽¹⁾(G::BB9Generator, s)
     a  = inv(G.θ);  c = G.δ^(-G.θ)
     ϕ(G,s) * ( -a * (s + c)^(a-1) )
 end
-function ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{k}, s::Real) where {k}
+function ϕ⁽ᵏ⁾(G::BB9Generator, k::Int, s::Real)
     if d==2
         a  = inv(G.θ);  c = G.δ^(-G.θ)
         φ  = ϕ(G,s)
