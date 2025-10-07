@@ -43,7 +43,7 @@ function ϕ⁽¹⁾(G::BB2Generator, s)
     return -exp(-v)
 end
 function ϕ⁽ᵏ⁾(G::BB2Generator, d::Int, s)
-    if d > 2
+    if d != 2
         # Only d==2 is implemented here, fall back to generic otherwise. 
         return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
     end
@@ -61,7 +61,7 @@ function ϕ⁻¹⁽¹⁾(G::BB2Generator, t)
     return - G.θ * B * exp(A)
 end
 function ϕ⁽ᵏ⁾⁻¹(G::BB2Generator, d::Int, x; start_at=x)
-    if d > 1
+    if d != 1
         # Only d==1 is implemented here, fall back to generic otherwise. 
         return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, d, x; start_at=start_at)
     end
