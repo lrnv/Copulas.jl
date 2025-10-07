@@ -60,7 +60,7 @@ end
 #    term = (b - 1) * s^(b - 2) - b * s^(2b - 2) + (a - 1) * b * s^(2b - 2) * (E / H)
 #    return -a * b * E * H^(a - 1) * term 
 #end
-function ϕ⁽ᵏ⁾(G::BB6Generator, k::Int, s::Real; tol::Float64=1e-12, maxm::Int=10_000)
+function ϕ⁽ᵏ⁾(G::BB6Generator, k::Int, s::Real; tol::Float64=1e-9, maxm::Int=10_000)
     a, b = inv(G.δ), inv(G.θ)
     k == 0 && return ϕ(G, s)
     sa = s^a

@@ -99,7 +99,21 @@ end
 @testitem "Fitting + vcov + StatsBase interfaces" tags=[:fitting, :vcov, :statsbase] begin
     using Test, Random, Distributions, Copulas, StableRNGs, LinearAlgebra, Statistics, StatsBase
     rng = StableRNG(2025)
-
+    function _flatten_params(p::NamedTuple)
+        if haskey(p, :Σ)
+            Σ = p.Σ
+            return [Σ[i, j] for i in 1:size(Σ,1)-1 for j in (i+1):size(Σ,2)]
+        end
+        vals = Any[]
+        for v in values(p)
+            if isa(v, Number)
+                push!(vals, Float64(v))
+            else
+                append!(vals, vec(Float64.(v)))
+            end
+        end
+        return vals
+    end
     reps = [
             # Elliptical
             (GaussianCopula, 2, :mle),
@@ -112,7 +126,7 @@ end
             (JoeCopula,      2, :itau),
 
             # Archimedean two params
-            (BB1Copula,      2, :mle),
+            (BB6Copula,      2, :mle),
             (BB7Copula,      2, :mle),
 
             # Bivariate Extreme Value

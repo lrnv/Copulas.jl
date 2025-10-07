@@ -54,7 +54,7 @@ end
 #    return (a*b) * exp((a-2)*ls) * exp(-(b+2)*log1p(exp(a*ls))) *  ( (1 + a*b)*spa - (a - 1) )
 #end
 
-function ϕ⁽ᵏ⁾(G::BB1Generator, k::Int, s::Real; tol::Float64=1e-12, maxiter::Int=10_000, miniter::Int=5)
+function ϕ⁽ᵏ⁾(G::BB1Generator, k::Int, s::Real; tol::Float64=1e-9, maxiter::Int=10_000, miniter::Int=5)
     a, b = inv(G.δ), inv(G.θ)
     k == 0 && return ϕ(G, s)
     ls = log(s); r = exp(a * ls); sk = exp(-k * ls)
