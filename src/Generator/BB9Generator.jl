@@ -46,12 +46,12 @@ function ϕ⁽¹⁾(G::BB9Generator, s)
     a  = inv(G.θ);  c = G.δ^(-G.θ)
     ϕ(G,s) * ( -a * (s + c)^(a-1) )
 end
-#function ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{2}, s)
-#    a  = inv(G.θ);  c = G.δ^(-G.θ)
-#    φ  = ϕ(G,s)
-#    t  = s + c
-#    φ * ( a^2 * t^(2a-2) - a*(a-1) * t^(a-2) )
-#end
+function ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{2}, s::Real)
+    a  = inv(G.θ);  c = G.δ^(-G.θ)
+    φ  = ϕ(G,s)
+    t  = s + c
+    φ * ( a^2 * t^(2a-2) - a*(a-1) * t^(a-2) )
+end
 function ϕ⁽ᵏ⁾(G::BB9Generator, ::Val{k}, s::Real) where {k}
     k == 0 && return ϕ(G, s)
     a, c = inv(G.θ), G.δ^(-G.θ)

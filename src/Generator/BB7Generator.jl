@@ -52,14 +52,14 @@ function ϕ⁽¹⁾(G::BB7Generator, s)
     return -(1/(G.θ*G.δ)) * (1 - exp(-inv(G.δ)*log1p(s)))^(inv(G.θ)-1) * (1+s)^(-inv(G.δ)-1)
 end
 
-#function ϕ⁽ᵏ⁾(G::BB7Generator, ::Val{2}, s)
-#    θ, δ = G.θ, G.δ
-#    invθ, invδ = inv(θ), inv(δ)
-#    a   = exp(-invδ * log1p(s))                 # (1+s)^(-1/δ)
-#    fac = exp(-(invδ + 2) * log1p(s))           # a/(1+s)^2  = (1+s)^(-1/δ - 2)
-#    return (invθ*invδ) * fac * (1 - a)^(invθ - 2) *
-#           ( (1 + invδ) - (1 + invθ*invδ)*a )
-#end
+function ϕ⁽ᵏ⁾(G::BB7Generator, ::Val{2}, s::Real)
+    θ, δ = G.θ, G.δ
+    invθ, invδ = inv(θ), inv(δ)
+    a   = exp(-invδ * log1p(s))                 # (1+s)^(-1/δ)
+    fac = exp(-(invδ + 2) * log1p(s))           # a/(1+s)^2  = (1+s)^(-1/δ - 2)
+    return (invθ*invδ) * fac * (1 - a)^(invθ - 2) *
+           ( (1 + invδ) - (1 + invθ*invδ)*a )
+end
 function ϕ⁽ᵏ⁾(G::BB7Generator, ::Val{k}, s::Real; tol::Float64=1e-9, maxiter::Int=10_000, miniter::Int=5) where {k}
     b, p = inv(G.θ), -inv(G.δ)
     k == 0 && return ϕ(G, s)

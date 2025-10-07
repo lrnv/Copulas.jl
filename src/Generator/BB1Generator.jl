@@ -47,11 +47,11 @@ function ϕ⁽¹⁾(G::BB1Generator, s)
     a, b, ls = inv(G.δ), inv(G.θ), log(s)
     return -(a*b) * exp((a-1)*ls - (b+1)*log1p(exp(a*ls)))
 end
-#function ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{2}, s) # only d=2 case, other cases are not implemented. 
-#    a, b, ls = inv(G.δ), inv(G.θ), log(s)
-#    spa = exp(a*ls)
-#    return (a*b) * exp((a-2)*ls) * exp(-(b+2)*log1p(exp(a*ls))) *  ( (1 + a*b)*spa - (a - 1) )
-#end
+function ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{2}, s::Real) # only d=2 case, other cases are not implemented. 
+    a, b, ls = inv(G.δ), inv(G.θ), log(s)
+    spa = exp(a*ls)
+    return (a*b) * exp((a-2)*ls) * exp(-(b+2)*log1p(exp(a*ls))) *  ( (1 + a*b)*spa - (a - 1) )
+end
 
 function ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{k}, s::Real; tol::Float64=1e-9, maxiter::Int=10_000, miniter::Int=5) where {k}
     a, b = inv(G.δ), inv(G.θ)

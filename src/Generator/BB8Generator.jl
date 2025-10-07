@@ -47,14 +47,14 @@ _rebound_params(::Type{<:BB8Generator}, d, α) = (; ϑ = 1 + exp(α[1]), δ = 1 
 ϕ⁻¹(G::BB8Generator, t) = -log((1 - (1 - G.δ*t)^G.ϑ)/_η(G))
 ϕ⁽¹⁾(G::BB8Generator, s) = -(_η(G)/(G.δ*G.ϑ)) * exp(-s) * (1 - _η(G)*exp(-s))^(inv(G.ϑ)-1)
 
-#function ϕ⁽ᵏ⁾(G::BB8Generator, ::Val{2}, s)
-#    δ, ϑ = G.δ, G.ϑ
-#    α, β = inv(δ), inv(ϑ)
-#    ηv   = _η(G)
-#    u    = exp(-s)
-#    b    = 1 - ηv*u
-#    return (α*β*ηv) * u * b^(β - 2) * (1 - β*ηv*u)
-#end
+function ϕ⁽ᵏ⁾(G::BB8Generator, ::Val{2}, s::Real)
+    δ, ϑ = G.δ, G.ϑ
+    α, β = inv(δ), inv(ϑ)
+    ηv   = _η(G)
+    u    = exp(-s)
+    b    = 1 - ηv*u
+    return (α*β*ηv) * u * b^(β - 2) * (1 - β*ηv*u)
+end
 function ϕ⁽ᵏ⁾(G::BB8Generator, ::Val{k}, s::Real; tol::Float64=1e-9, maxiter::Int=10_000, miniter::Int=5) where {k}
     δ, b, η = G.δ, inv(G.ϑ), 1 - G.δ
     k == 0 && return ϕ(G, s)
