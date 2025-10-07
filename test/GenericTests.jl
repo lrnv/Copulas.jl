@@ -106,7 +106,7 @@
 
     can_be_fitted(C::CT, d) where CT = length(Copulas._available_fitting_methods(CT, d)) > 0
     has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
-    has_unbounded_params(C::CT, d) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT, d) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula)
+    has_unbounded_params(C::CT, d) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT, d) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula) && !(d>2 && CT<:FGMCopula)
     unbounding_is_a_bijection(C::Copulas.Copula{d}) where d = !(typeof(C)<:FGMCopula && d>2)
 
     function check(C::Copulas.Copula{d}) where d
