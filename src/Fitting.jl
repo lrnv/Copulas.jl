@@ -406,6 +406,92 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:god
     Vθ = (J*Va*J' + (J*Va*J')')/2
     return Vθ, (; vcov_method=:godambe_gmm, estimator=method, d=d, n=n, q=1)
 end
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe_pairwise}, ::Val{method}) where {method}
+    # Only meaningful for rank-based methods with well-defined pairwise measures
+    if !(method isa Val{:itau} || method isa Val{:irho} || method isa Val{:ibeta})
+        return _vcov(CT, U, θ, Val{:godambe}(), Val{method}())
+    end
+
+    d, n = size(U)
+    q = d*(d-1) ÷ 2
+
+    # Unbound parameters α from θ
+    α = _unbound_params(CT, d, θ)
+
+    # Empirical pairwise vector (upper vech of pairwise statistic)
+    fun_emp = method isa Val{:itau}  ? StatsBase.corkendall :
+              method isa Val{:irho}  ? StatsBase.corspearman :
+                                       corblomqvist
+    _vech_upper_local(A) = begin
+        d1 = size(A,1)
+        v = Vector{eltype(A)}(undef, d1*(d1-1) ÷ 2)
+        k = 1
+        @inbounds for j in 2:d1
+            for i in 1:j-1
+                v[k] = A[i, j]
+                k += 1
+            end
+        end
+        v
+    end
+    m_emp = U -> _vech_upper_local(fun_emp(U'))
+
+    # Theoretical pairwise vector via bivariate subsets of the model C(α)
+    measure_fun = method isa Val{:itau} ? τ : method isa Val{:irho} ? ρ : β
+    φ_of_α = αv -> begin
+        C = CT(d, _rebound_params(CT, d, αv)...)
+        T = eltype(αv)
+        v = Vector{T}(undef, q)
+        k = 1
+        @inbounds for j in 2:d, i in 1:j-1
+            v[k] = measure_fun(SubsetCopula(C, (i,j)))
+            k += 1
+        end
+        v
+    end
+
+    # Jacobian D = ∂φ/∂α (q×p)
+    Dα = ForwardDiff.jacobian(φ_of_α, α)
+    Dα = reshape(Dα, q, length(α))
+
+    # Ω = Var(√n m̂) via leave-one-out jackknife over observations (q×q)
+    M   = Matrix{Float64}(undef, n, q)
+    idx = Vector{Int}(undef, n-1)
+    for j in 1:n
+        k=1; @inbounds for t in 1:n; if t==j; continue; end; idx[k]=t; k+=1; end
+        M[j,:] = m_emp(@view U[:, idx])
+    end
+    mbar = vec(Statistics.mean(M, dims=1))
+    Vhat = (n-1)/n * ((M .- mbar')' * (M .- mbar')) / (n-1)
+    Ω    = n * Vhat
+
+    # Var(α) (GMM with identity weighting; regularize for conditioning)
+    DtD = Dα' * Dα
+    ϵI  = 1e-10LinearAlgebra.I
+    Va  = inv(DtD + ϵI) * (Dα' * Ω * Dα) * inv(DtD + ϵI) / n
+
+    # Delta method α → θ (flatten NamedTuple values into a vector)
+    θvec_of_α = αv -> begin
+        nt = _rebound_params(CT, d, αv)
+        T  = eltype(αv)
+        out = Vector{T}()
+        for val in values(nt)
+            if val isa Number
+                push!(out, T(val))
+            elseif val isa AbstractVector
+                append!(out, T.(val))
+            elseif val isa AbstractMatrix
+                append!(out, vec(T.(val)))
+            end
+        end
+        out
+    end
+    J  = Array(ForwardDiff.jacobian(θvec_of_α, α))
+    Vθ = J * Va * J'
+    Vθ = (Vθ + Vθ')/2
+
+    return Vθ, (; vcov_method=:godambe_pairwise, estimator=method, d=d, n=n, q=q)
+end
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jackknife}, ::Val{method}) where {method}
     d, n = size(U,1)
     θminus = zeros(n, length(θ))
