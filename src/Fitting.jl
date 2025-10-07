@@ -114,14 +114,12 @@ function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:
     # generic rank-based routine (agnostic to vcov/inference)
     d   = size(U,1)
     cop(α) = CT(d, _rebound_params(CT, d, α)...)
-    α₀     = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    α₀ = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
     @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
-
     fun  = method isa Val{:itau} ? StatsBase.corkendall :
            method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
     est  = fun(U')
     loss(C) = sum(abs2, est .- fun(C))
-
     res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return CT(d, θhat...), (; θ̂=θhat,
@@ -134,7 +132,7 @@ end
 """
     Distributions.fit(CT::Type{<:Copula}, U; kwargs...) -> CT
 
-Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(CopulaModel, CT, U; summaries=false, kwargs...)`).
+Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(CopulaModel, CT, U; kwargs...)`).
 """
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; method=method, kwargs...)
@@ -194,7 +192,9 @@ println(M)
 C = fit(GumbelCopula, U; method=:itau)
 ```
 """
-function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method=:default, quick_fit=false, summaries::Bool=true, derived_measures::Bool=true, vcov::Bool=true, vcov_method::Union{Symbol,Nothing}=nothing, kwargs...)
+function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; 
+        method=:default, quick_fit=false, derived_measures=true, 
+        vcov=true, vcov_method=nothing, kwargs...)
     d, n = size(U)
     method = _find_method(CT, method)
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
@@ -209,8 +209,7 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method=:d
     end
 
     md = (; d, n, method, meta..., null_ll=0.0,
-        elapsed_sec=t, derived_measures,
-        _extra_pairwise_stats(U, !summaries)...)
+        elapsed_sec=t, derived_measures)
 
     return CopulaModel(C, n, ll, method;
         vcov         = get(md, :vcov, nothing),
@@ -229,12 +228,9 @@ Joint margin and copula adjustment (Sklar approach).
 `sklar_method ∈ (:ifm, :ecdf)` controls whether parametric CDFs (`:ifm`) or pseudo-observations (`:ecdf`) are used.
 """
 function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}, X; quick_fit = false,
-                           copula_method = :default, sklar_method = :default,
-                           summaries::Bool = true, margins_kwargs = NamedTuple(),
-                           copula_kwargs = NamedTuple(), 
-                           derived_measures::Bool = true, vcov::Bool = true,
-                           vcov_method::Union{Symbol,Nothing}=nothing) where
-                           {CT<:Copulas.Copula, TplMargins<:Tuple}
+                           copula_method = :default, sklar_method = :default, margins_kwargs = NamedTuple(),
+                           copula_kwargs = NamedTuple(), derived_measures = true, vcov = true,
+                           vcov_method=nothing) where {CT<:Copulas.Copula, TplMargins<:Tuple}
 
     # Get methods: 
     sklar_method  = _find_method(SklarDist, sklar_method)
@@ -255,15 +251,30 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}
     end
 
     # Fit the copula
-    copM = Distributions.fit(CopulaModel, CT, U; method=copula_method,
-                summaries=false, derived_measures=derived_measures,
+    copM = Distributions.fit(CopulaModel, CT, U; quick_fit=quick_fit, 
+                method=copula_method, derived_measures=derived_measures,
                 vcov=vcov, vcov_method=vcov_method, copula_kwargs...)
     
     S = SklarDist(copM.result, m)
     quick_fit && return (result=S,)
 
-    # Marginal vcov (placeholder: not computed here by default)
-    Vm = fill(nothing, d)
+    # Marginal vcov: compute via θ-Hessian fallback only if vcov=true
+    Vm = Vector{Union{Nothing, Matrix{Float64}}}(undef, d)
+    if vcov
+        for i in 1:d
+            p  = length(Distributions.params(m[i]))
+            Vm[i] = nothing
+            try
+                Vg = _vcov_margin_generic(m[i], @view X[i, :])
+                if Vg !== nothing && ndims(Vg) == 2 && size(Vg) == (p, p) && all(isfinite, Matrix(Vg))
+                    Vm[i] = Matrix{Float64}(Vg)
+                end
+            catch
+            end
+        end
+    else
+        fill!(Vm, nothing)
+    end
 
     # Copula Vcov:
     Vfull = StatsBase.vcov(copM)
@@ -284,35 +295,35 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}
             null_ll,
             sklar_method,
             margins       = map(typeof, m),
-            has_summaries = summaries,
             d = d, n = n,
             elapsed_sec = copM.elapsed_sec,
             derived_measures,
-            X_margins = [copy(@view X[i,:]) for i in 1:d],
-            _extra_pairwise_stats(U, !summaries)...
+            # no raw X_margins stored to keep model lightweight
         )
     )
 end
-
-function _uppertriangle_stats(mat)
-    # compute the mean and std of the upper triangular part of the matrix (diagonal excluded)
-    gen = [mat[idx] for idx in CartesianIndices(mat) if idx[1] < idx[2]]
-    return Statistics.mean(gen), length(gen) == 1 ? zero(gen[1]) : Statistics.std(gen), minimum(gen), maximum(gen)
-end
-function _extra_pairwise_stats(U::AbstractMatrix, bypass::Bool)
-    bypass && return (;)
-    τm, τs, τmin, τmax = _uppertriangle_stats(StatsBase.corkendall(U'))
-    ρm, ρs, ρmin, ρmax = _uppertriangle_stats(StatsBase.corspearman(U'))
-    βm, βs, βmin, βmax = _uppertriangle_stats(corblomqvist(U'))
-    γm, γs, γmin, γmax = _uppertriangle_stats(corgini(U'))
-    return (; tau_mean=τm, tau_sd=τs, tau_min=τmin, tau_max=τmax,
-             rho_mean=ρm, rho_sd=ρs, rho_min=ρmin, rho_max=ρmax,
-             beta_mean=βm, beta_sd=βs, beta_min=βmin, beta_max=βmax,
-             gamma_mean=γm, gamma_sd=γs, gamma_min=γmin, gamma_max=γmax)
-end
 ####### vcov functions...
 
-# Unified vcov dispatcher with Val-based specialization
+# objetive this functions: try get the vcov from marginals...
+function _vcov_margin_generic(d::Distributions.UnivariateDistribution, x::AbstractVector)
+    # Compute observed information directly on the parameter (θ) scale at current params.
+    p_nt = Distributions.params(d)
+    θ0 = p_nt isa NamedTuple ? Float64.(collect(values(p_nt))) : Float64.(collect(p_nt))
+    p  = length(θ0)
+
+    # Reconstruct distribution from a parameter vector θ in the same order as params(d)
+    function dist_from_θ(θ::AbstractVector)
+        pars = p_nt isa NamedTuple ? ntuple(i -> θ[i], p) : ntuple(i -> θ[i], p)
+        return (typeof(d))(pars...)
+    end
+    # Observed information = - Hessian of log-likelihood at θ0
+    H = ForwardDiff.hessian(θ -> Distributions.loglikelihood(dist_from_θ(θ), x), θ0)
+    # Small ridge for numerical stability
+    Vθ = inv(-H + 1e-8 .* LinearAlgebra.I)
+    Vθ = (Vθ + Vθ')/2
+    return LinearAlgebra.Symmetric(Matrix{Float64}(Vθ))
+end
+
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Symbol, override::Union{Symbol,Nothing}=nothing)
     vcovm = !isnothing(override) ? override : 
             method === :mle      ? :hessian :
@@ -320,177 +331,82 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
             method === :irho     ? :godambe :
             method === :ibeta    ? :godambe :
             method === :iupper   ? :godambe :  :jackknife
-    return _vcov(CT, U, θ, Val{vcovm}(), Val{method}())
-end
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:hessian}, ::Val{method}) where {method}
-    d  = size(U,1)
-    α  = _unbound_params(CT, d, θ)
-    cop(αv) = CT(d, _rebound_params(CT,d,αv)...)
-    ℓ(αv)   = Distributions.loglikelihood(cop(αv), U)
-    Hα     = ForwardDiff.hessian(ℓ, α)
-    infoα  = -Array(Hα)
 
-    if any(!isfinite, infoα)
-        return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+    if vcovm ∉ (:hessian, :godambe, :godambe_pairwise)
+        return _vcov(CT, U, θ, Val{vcovm}(), Val{method}()) # you can write new methods through this interface, as the jacknife method below. 
     end
-    infoα += 1e-8LinearAlgebra.I
-    Vα = inv(infoα)
-
-    θvec_of_α = αv -> begin
-        T  = eltype(αv)
-        nt = _rebound_params(CT, d, αv)
-        out = Vector{T}()
-        for val in values(nt)
-            if val isa Number
-                push!(out, T(val))
-            elseif val isa AbstractVector
-                append!(out, T.(val))
-            elseif val isa AbstractMatrix
-                append!(out, vec(T.(val)))
-            else
-                try
-                    push!(out, T(val))
-                catch
-                    # ignored non numerical values
+    d, n = size(U)
+    α  = _unbound_params(CT, d, θ)
+    cop(α) = CT(d, _rebound_params(CT,d,α)...)
+    
+    if vcovm === :hessian 
+        ℓ(α)   = Distributions.loglikelihood(cop(α), U)
+        Iα     = .- ForwardDiff.hessian(ℓ, α) # Information matrix. 
+        Vα = inv(Iα + 1e-8LinearAlgebra.I)
+    else
+        if vcovm === :godambe
+            q = 1
+            # Theoretical scalar moment on the model
+            φ = method isa Val{:itau}  ? τ : 
+                method isa Val{:irho}  ? ρ : 
+                method isa Val{:ibeta} ? β : λᵤ
+            ψ = αv -> [φ(cop(αv))]
+            # Empirical scalar: average of pairwise rank-based stats (or λᵤ on data)
+            emp_fun = method isa Val{:itau}  ? StatsBase.corkendall :
+                      method isa Val{:irho}  ? StatsBase.corspearman :
+                      method isa Val{:ibeta} ? corblomqvist : coruppertail
+            _upper_triangle(A) = [A[idx] for idx in CartesianIndices(A) if idx[1] < idx[2]]
+            ψ_emp = U -> [Statistics.mean(_upper_triangle(emp_fun(U')))]
+        else # then :godambe_pairwise
+            q = d*(d-1) ÷ 2
+            # Empirical vector: upper vech of pairwise rank-based stats
+            emp_fun = method isa Val{:itau}  ? StatsBase.corkendall  : 
+                      method isa Val{:irho}  ? StatsBase.corspearman : 
+                      method isa Val{:ibeta} ? corblomqvist : coruppertail
+            _upper_triangle(A) = [A[idx] for idx in CartesianIndices(A) if idx[1] < idx[2]]
+            ψ_emp = U -> _upper_triangle(emp_fun(U'))
+            # Theoretical vector: pairwise measure on bivariate subsets of the model
+            measure_fun = method isa Val{:itau} ? τ : method isa Val{:irho} ? ρ : method isa Val{:ibeta} ? β : λᵤ
+            ψ
+            ψ = αv -> begin
+                Cv = cop(αv)
+                T = eltype(αv)
+                v = Vector{T}(undef, q)
+                k = 1
+                @inbounds for j in 2:d, i in 1:j-1
+                    v[k] = measure_fun(SubsetCopula(Cv, (i,j)))
+                    k += 1
                 end
+                v
             end
         end
-        out
+
+        Dα = ForwardDiff.jacobian(ψ, α)
+        Dα = reshape(Dα, q, length(α))
+
+        # Ω = Var(√n m̂) jackknife
+        M   = Matrix{Float64}(undef, n, q)
+        idx = Vector{Int}(undef, n-1)
+        for j in 1:n
+            k=1; @inbounds for t in 1:n; if t==j; continue; end; idx[k]=t; k+=1; end
+            M[j,:] = ψ_emp(@view U[:, idx])
+        end
+        mbar = vec(Statistics.mean(M, dims=1))
+        Vhat = (n-1)/n * ((M .- mbar')' * (M .- mbar')) / (n-1)
+        Ω    = n * Vhat
+
+        DtD = Dα' * Dα
+        ϵI  = 1e-10LinearAlgebra.I
+        Vα  = inv(DtD + ϵI) * (Dα' * Ω * Dα) * inv(DtD + ϵI) / n
     end
-
-    J  = Array(ForwardDiff.jacobian(θvec_of_α, α))
-
-    # Var(θ̂) via delta method
+    J  = ForwardDiff.jacobian(αv -> collect(values(_rebound_params(CT, d, αv))), α)
     Vθ = J * Vα * J'
-    Vθ = (Vθ + Vθ')/2  # symmetrize
-
-    # Regularize negative eigenvalues
+    Vθ = (Vθ + Vθ')/2
     λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
     λ_reg = map(x -> max(x, 1e-12), λ)
     Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
-
-    if any(!isfinite, Matrix(Vθ))
-        return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
-    end
-    return Vθ, (; vcov_method=:hessian, d=d)
-end
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe}, ::Val{method}) where {method}
-    d, n = size(U)
-    α  = _unbound_params(CT, d, θ)
-    φ = method isa Val{:itau}  ? (αv -> τ(CT(d, _rebound_params(CT,d,αv)...))) :
-        method isa Val{:irho}  ? (αv -> ρ(CT(d, _rebound_params(CT,d,αv)...))) :
-        method isa Val{:ibeta} ? (αv -> β(CT(d, _rebound_params(CT,d,αv)...))) :
-                                 (αv -> λᵤ(CT(d, _rebound_params(CT,d,αv)...)))
-
-    m = method isa Val{:itau} ? τ : method isa Val{:irho} ? ρ : method isa Val{:ibeta} ? β : λᵤ
-
-    g  = ForwardDiff.gradient(φ, α)
-    Dα = reshape(g, 1, :)
-
-    # Ω = Var(√n m̂) jackknife
-    s   = Vector{Float64}(undef, n)
-    idx = Vector{Int}(undef, n-1)
-    for j in 1:n
-        k=1; @inbounds for t in 1:n; if t==j; continue; end; idx[k]=t; k+=1; end
-        s[j] = m(@view U[:,idx])
-    end
-    μ    = Statistics.mean(s)
-    Vhat = (n-1)/n * sum((s .- μ).^2) / (n-1)
-    Ω    = n * Vhat
-
-    DtD = Dα' * Dα
-    Va  = inv(DtD) * (Dα' * Ω * Dα) * inv(DtD) / n
-
-    # Delta method α→θ
-    J  = ForwardDiff.jacobian(αv -> collect(values(_rebound_params(CT,d,αv))), α)
-    Vθ = (J*Va*J' + (J*Va*J')')/2
-    return Vθ, (; vcov_method=:godambe_gmm, estimator=method, d=d, n=n, q=1)
-end
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe_pairwise}, ::Val{method}) where {method}
-    # Only meaningful for rank-based methods with well-defined pairwise measures
-    if !(method isa Val{:itau} || method isa Val{:irho} || method isa Val{:ibeta})
-        return _vcov(CT, U, θ, Val{:godambe}(), Val{method}())
-    end
-
-    d, n = size(U)
-    q = d*(d-1) ÷ 2
-
-    # Unbound parameters α from θ
-    α = _unbound_params(CT, d, θ)
-
-    # Empirical pairwise vector (upper vech of pairwise statistic)
-    fun_emp = method isa Val{:itau}  ? StatsBase.corkendall :
-              method isa Val{:irho}  ? StatsBase.corspearman :
-                                       corblomqvist
-    _vech_upper_local(A) = begin
-        d1 = size(A,1)
-        v = Vector{eltype(A)}(undef, d1*(d1-1) ÷ 2)
-        k = 1
-        @inbounds for j in 2:d1
-            for i in 1:j-1
-                v[k] = A[i, j]
-                k += 1
-            end
-        end
-        v
-    end
-    m_emp = U -> _vech_upper_local(fun_emp(U'))
-
-    # Theoretical pairwise vector via bivariate subsets of the model C(α)
-    measure_fun = method isa Val{:itau} ? τ : method isa Val{:irho} ? ρ : β
-    φ_of_α = αv -> begin
-        C = CT(d, _rebound_params(CT, d, αv)...)
-        T = eltype(αv)
-        v = Vector{T}(undef, q)
-        k = 1
-        @inbounds for j in 2:d, i in 1:j-1
-            v[k] = measure_fun(SubsetCopula(C, (i,j)))
-            k += 1
-        end
-        v
-    end
-
-    # Jacobian D = ∂φ/∂α (q×p)
-    Dα = ForwardDiff.jacobian(φ_of_α, α)
-    Dα = reshape(Dα, q, length(α))
-
-    # Ω = Var(√n m̂) via leave-one-out jackknife over observations (q×q)
-    M   = Matrix{Float64}(undef, n, q)
-    idx = Vector{Int}(undef, n-1)
-    for j in 1:n
-        k=1; @inbounds for t in 1:n; if t==j; continue; end; idx[k]=t; k+=1; end
-        M[j,:] = m_emp(@view U[:, idx])
-    end
-    mbar = vec(Statistics.mean(M, dims=1))
-    Vhat = (n-1)/n * ((M .- mbar')' * (M .- mbar')) / (n-1)
-    Ω    = n * Vhat
-
-    # Var(α) (GMM with identity weighting; regularize for conditioning)
-    DtD = Dα' * Dα
-    ϵI  = 1e-10LinearAlgebra.I
-    Va  = inv(DtD + ϵI) * (Dα' * Ω * Dα) * inv(DtD + ϵI) / n
-
-    # Delta method α → θ (flatten NamedTuple values into a vector)
-    θvec_of_α = αv -> begin
-        nt = _rebound_params(CT, d, αv)
-        T  = eltype(αv)
-        out = Vector{T}()
-        for val in values(nt)
-            if val isa Number
-                push!(out, T(val))
-            elseif val isa AbstractVector
-                append!(out, T.(val))
-            elseif val isa AbstractMatrix
-                append!(out, vec(T.(val)))
-            end
-        end
-        out
-    end
-    J  = Array(ForwardDiff.jacobian(θvec_of_α, α))
-    Vθ = J * Va * J'
-    Vθ = (Vθ + Vθ')/2
-
-    return Vθ, (; vcov_method=:godambe_pairwise, estimator=method, d=d, n=n, q=q)
+    any(!isfinite, Matrix(Vθ)) && return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+    return Vθ, (; vcov_method=vcovm)
 end
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jackknife}, ::Val{method}) where {method}
     d, n = size(U,1)
@@ -498,19 +414,15 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jac
     idx = Vector{Int}(undef, n-1)
 
     for j in 1:n
-        k = 1
-        for t in 1:n
-            if t == j; continue; end
-            idx[k] = t; k += 1
-        end
+        k = 1; for t in 1:n; if t == j; continue; end; idx[k] = t; k += 1; end
         Uminus = @view U[:, idx]
-        M = Distributions.fit(CopulaModel, CT, Uminus; method=method, summaries=false, vcov=false, derived_measures=false)
+        M = Distributions.fit(CopulaModel, CT, Uminus; method=method, vcov=false, derived_measures=false)
         θminus[j, :] .= StatsBase.coef(M)
     end
 
     θbar = vec(Statistics.mean(θminus, dims=1))
     V = (n-1)/n * (LinearAlgebra.transpose(θminus .- θbar') * (θminus .- θbar')) ./ (n-1)
-    return V, (; vcov_method=:jackknife_obs, n=n)
+    return V, (; vcov_method=:jackknife_obs)
 end
 
 
