@@ -58,17 +58,9 @@ function γ(C::Copula{d}) where {d}
     a = 1/(d+1) + 1/factorial(d+1)   # independence
     b = (2 + 4.0^(1-d)) / 3          # comonotonicity
     return (I - a) / (b - a)
-function γ(C::Copula{d}) where {d}
-    _integrand(u) = (1 + minimum(u) - maximum(u) + max(abs(sum(u) - d/2) - (d - 2)/2, 0.0)) / 2
-    I = Distributions.expectation(_integrand, C; nsamples=1e5)
-    a = 1/(d+1) + 1/factorial(d+1)   # independence
-    b = (2 + 4.0^(1-d)) / 3          # comonotonicity
-    return (I - a) / (b - a)
 end
 function ι(C::Copula{d}) where {d}
-    return Distributions.expectation(u -> -logpdf(C, u), C; nsamples=10^4)
-function ι(C::Copula{d}) where {d}
-    return Distributions.expectation(u -> -logpdf(C, u), C; nsamples=10^4)
+    return Distributions.expectation(u -> -Distributions.logpdf(C, u), C; nsamples=10^4)
 end
 function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
     g(e) = Distributions.cdf(C, fill(e, d)) / e
