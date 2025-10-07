@@ -47,17 +47,30 @@ _rebound_params(::Type{<:BB8Generator}, d, α) = (; ϑ = 1 + exp(α[1]), δ = 1 
 ϕ⁻¹(G::BB8Generator, t) = -log((1 - (1 - G.δ*t)^G.ϑ)/_η(G))
 ϕ⁽¹⁾(G::BB8Generator, s) = -(_η(G)/(G.δ*G.ϑ)) * exp(-s) * (1 - _η(G)*exp(-s))^(inv(G.ϑ)-1)
 
-function ϕ⁽ᵏ⁾(G::BB8Generator, d::Int, s)
-    if d != 2
-        # Only d==2 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+#function ϕ⁽ᵏ⁾(G::BB8Generator, ::Val{2}, s)
+#    δ, ϑ = G.δ, G.ϑ
+#    α, β = inv(δ), inv(ϑ)
+#    ηv   = _η(G)
+#    u    = exp(-s)
+#    b    = 1 - ηv*u
+#    return (α*β*ηv) * u * b^(β - 2) * (1 - β*ηv*u)
+#end
+function ϕ⁽ᵏ⁾(G::BB8Generator, k::Int, s::Real; tol::Float64=1e-12, maxiter::Int=10_000, miniter::Int=5)
+    δ, b, η = G.δ, inv(G.ϑ), 1 - G.δ
+    k == 0 && return ϕ(G, s)
+    acc, cm, η_pow, exp_term = 0.0, 1.0, 1.0, 1.0
+    exp_s_neg = exp(-s)
+    @inbounds for m in 1:maxiter
+        cm = (m == 1) ? b : cm * (b - m + 1) / m
+        η_pow *= η
+        exp_term *= exp_s_neg
+        abs(cm) < eps() && break
+        term = (-1)^(m + 1) * cm * η_pow * (-m)^k * exp_term
+        acc += term
+        m ≥ miniter && abs(term) ≤ tol * (abs(acc) + eps()) && break
+        m == maxiter && @warn "ϕ⁽ᵏ⁾(BB8): reached maxiter" k s G.ϑ G.δ
     end
-    δ, ϑ = G.δ, G.ϑ
-    α, β = inv(δ), inv(ϑ)
-    ηv   = _η(G)
-    u    = exp(-s)
-    b    = 1 - ηv*u
-    return (α*β*ηv) * u * b^(β - 2) * (1 - β*ηv*u)
+    return acc / δ
 end
 ϕ⁻¹⁽¹⁾(G::BB8Generator, t) = -G.ϑ*G.δ * (1 - G.δ*t)^(G.ϑ - 1) / (1 - (1 - G.δ*t)^G.ϑ)
 
