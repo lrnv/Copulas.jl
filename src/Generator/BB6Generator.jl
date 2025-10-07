@@ -55,7 +55,7 @@ end
 function ϕ⁽ᵏ⁾(G::BB6Generator, d::Int, s)
     if d != 2
         # Only d==2 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, d, x; start_at=start_at)
+        return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, d, s)
     end
     a = inv(G.θ); b = inv(G.δ)
     r = s^b
