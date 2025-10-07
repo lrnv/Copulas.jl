@@ -32,6 +32,18 @@ function (ϕ::𝒲{TX, d})(x) where {TX,d}
     x <= 0 && return 1 - Distributions.cdf(ϕ.X,0)
     return Distributions.expectation(y -> (1 - x/y)^(d-1) * (y > x), ϕ.X)
 end
+function (ϕ::𝒲{TX, d})(x::TaylorSeries.Taylor1{TF}) where {TX,d, TF}
+    x <= 0 && return 1 - Distributions.cdf(ϕ.X,0) + zero(x)
+    x₀ = x.coeffs[1]
+    p = length(x.coeffs)
+    function f(i, y)
+        y < x₀ && return zero(y)
+        xᵢ = TaylorSeries.Taylor1(x.coeffs[1:i])
+        r = (1 - x/y)^(d-1)
+        return r.coeffs[i]
+    end    
+    return TaylorSeries.Taylor1([Distributions.expectation(y -> f(i, y), ϕ.X) for i in 1:p])
+end
 
 """
     𝒲₋₁(ϕ,d)

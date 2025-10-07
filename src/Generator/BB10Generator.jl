@@ -41,7 +41,7 @@ _rebound_params(::Type{<:BB10Generator}, d, α) = (; θ = exp(α[1]), δ = 1 / (
 
 ϕ(G::BB10Generator, s) = begin
     θ, δ = G.θ, G.δ
-    exp( (1/θ) * (log1p(-δ) - log(expm1(s) + (1 - δ))) )
+    exp( (1/θ) * (log1p(-δ) - log(exp(s) - δ)))
 end
 
 ϕ⁻¹(G::BB10Generator, t) = begin
