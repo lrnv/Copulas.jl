@@ -136,18 +136,17 @@ end
 function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
     return (; Σ = _rebound_corr_params(d, α))
 end
-function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle}; vcov::Bool = false)
+function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
     d = size(u,1)
-    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
+    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT), u))
     Σ = Matrix(dd.Σ)
     Ĉ = GaussianCopula(Σ)
-    meta_v = NamedTuple()
-    if vcov
-        α̂ = _unbound_params(CT, d, (; Σ=Σ))   # parámetros libres
-        V, vmeta = _vcov_hessian(CT, u, α̂) # usa el genérico
-        meta_v   = (; vcov=V, vmeta...)
-    end
-
-    return Ĉ, (; meta_v...)
+    θhat = (; Σ = Σ)
+    return Ĉ, (
+        ; θ̂ = θhat,
+          optimizer  = (; method = :closed_form),
+          converged  = true,
+          iterations = 0,
+    )
 end
 _available_fitting_methods(::Type{<:GaussianCopula}) = (:itau, :irho, :ibeta, :mle)
