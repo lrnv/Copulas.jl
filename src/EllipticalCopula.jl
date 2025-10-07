@@ -122,3 +122,86 @@ end
     Σ = (Σ + Σ')/2
     return Σ
 end
+
+function _vech_upper(A::AbstractMatrix)
+    d1, d2 = size(A); @assert d1 == d2 "vech_upper: matrix not square"
+    q = _vech_upper_len(d1)
+    v = Vector{eltype(A)}(undef, q)
+    k = 1
+    @inbounds for j in 2:d1
+        for i in 1:j-1
+            v[k] = A[i, j]
+            k += 1
+        end
+    end
+    return v
+end
+@inline _vech_upper_len(d::Integer) = d*(d-1) ÷ 2
+function _vcov_godambe_gaussian(U::AbstractMatrix,
+                                α̂::AbstractVector,
+                                method::Union{Val{:itau},Val{:irho},Val{:ibeta}})
+    d, n = size(U)
+    q = _vech_upper_len(d)
+
+    # Empírico por pares (vech superior)
+    fun_emp = method isa Val{:itau}  ? StatsBase.corkendall :
+              method isa Val{:irho}  ? StatsBase.corspearman :
+                                       corblomqvist
+    m_emp = U -> _vech_upper(fun_emp(U'))
+
+    # Teórico por pares (vech superior) con fórmulas cerradas en ρ
+    φ_of_α = if method isa Val{:itau}
+        α -> begin
+            Σ = _rebound_corr_params(d, α)
+            v = Vector{eltype(α)}(undef, q); k=1
+            @inbounds for j in 2:d, i in 1:j-1
+                v[k] = (2/π)*asin(Σ[i,j]); k+=1
+            end
+            v
+        end
+    elseif method isa Val{:irho}
+        α -> begin
+            Σ = _rebound_corr_params(d, α)
+            v = Vector{eltype(α)}(undef, q); k=1
+            @inbounds for j in 2:d, i in 1:j-1
+                v[k] = (6/π)*asin(Σ[i,j]/2); k+=1
+            end
+            v
+        end
+    else # :ibeta
+        α -> begin
+            Σ = _rebound_corr_params(d, α)
+            v = Vector{eltype(α)}(undef, q); k=1
+            @inbounds for j in 2:d, i in 1:j-1
+                v[k] = (2/π)*asin(Σ[i,j]); k+=1
+            end
+            v
+        end
+    end
+
+    # D = ∂φ/∂α (q×p)
+    Dα = ForwardDiff.jacobian(φ_of_α, α̂)
+    Dα = reshape(Dα, q, length(α̂))
+
+    # Ω = Var(√n m̂) via jackknife por pares (q×q)
+    M   = Matrix{Float64}(undef, n, q)
+    idx = Vector{Int}(undef, n-1)
+    for j in 1:n
+        k=1; @inbounds for t in 1:n; if t==j; continue; end; idx[k]=t; k+=1; end
+        M[j,:] = m_emp(@view U[:, idx])
+    end
+    mbar = vec(Statistics.mean(M, dims=1))
+    Vhat = (n-1)/n * ((M .- mbar')' * (M .- mbar')) / (n-1)
+    Ω    = n * Vhat
+
+    # Var(α̂) (GMM identidad; regulariza por si está mal condicionado)
+    DtD = Dα' * Dα
+    Va  = inv(DtD + 1e-10LinearAlgebra.I) * (Dα' * Ω * Dα) * inv(DtD + 1e-10LinearAlgebra.I) / n
+
+    # Delta: α → θ = vech(Σ) (lo que imprimes como parámetros únicos)
+    θvec = α -> _vech_upper(_rebound_corr_params(d, α))
+    J    = ForwardDiff.jacobian(θvec, α̂)    # q×p
+    Vθ   = J * Va * J'
+    Vθ   = (Vθ + Vθ')/2
+    return Vθ, (; vcov_method=:godambe_gaussian_pairs, d=d, n=n, q=q)
+end

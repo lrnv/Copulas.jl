@@ -115,9 +115,12 @@ function _λ(U::AbstractMatrix; t::Symbol=:upper, p::Union{Nothing,Real}=nothing
     # Assumes pseudo-data given. Multivariate tail’s lambda (Schmidt, R. & Stadtmüller, U. 2006)
     p === nothing && (p = 1/sqrt(size(U, 2)))
     (0 < p < 1) || throw(ArgumentError("p must be in (0,1)"))
-    in_tail = t=== :upper ? Base.Fix2(>=, 1-p) : Base.Fix2(<=, p)
-    prob = Statistics.mean(all(in_tail, U, dims=1))
-    return clamp(prob/p, 0.0, 1.0)
+    V = t === :upper ? (1 .- Float64.(U)) : Float64.(U)
+    cnt = 0
+    @inbounds @views for j in 1:m
+        cnt += all(V[:, j] .<= p)
+    end
+    return clamp(cnt / (p*m), 0.0, 1.0)
 end
 λₗ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = _λ(U; t=:lower, p=p)
 λᵤ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = _λ(U; t=:upper, p=p)
