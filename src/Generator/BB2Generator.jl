@@ -142,14 +142,12 @@ function ρ(G::Copulas.BB2Generator{T}; rtol=1e-7, atol=1e-9) where {T}
 end
 
 
-function λᵤ(C::BB2Generator{T}; tsmall::Float64=1e-10) where {T}
-    G = C.G
+function λᵤ(G::BB2Generator{T}; tsmall::Float64=1e-10) where {T}
     r = ϕ⁽¹⁾(G, 2tsmall) / ϕ⁽¹⁾(G, tsmall)
     return 2 - 2*r
 end
 
-function λₗ(C::BB2Generator{T}; tlarge::Float64=1e6) where {T}
-    G = C.G
+function λₗ(G::BB2Generator{T}; tlarge::Float64=1e6) where {T}
     r = ϕ⁽¹⁾(G, 2tlarge) / ϕ⁽¹⁾(G, tlarge)
     return 2*r
 end
