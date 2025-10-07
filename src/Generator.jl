@@ -179,7 +179,7 @@ struct WilliamsonGenerator{d, TX} <: Generator
             sp = collect(Distributions.support(X))
             ws = Distributions.pdf.(X, sp)
             keep = ws .> 0
-            return WilliamsonGenerator(sp[keep], ws[keep], D)
+            return WilliamsonGenerator(sp[keep], ws[keep], d)
         end
         # else: fall back to a regular Williamson generator
         # check that X is indeed a positively supported random variable... 
