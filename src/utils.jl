@@ -138,7 +138,6 @@ function corgini(X::AbstractMatrix{<:Real})
     return C
 end
 function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::Int=32)
-function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::Int=32)
     # We expect the number of dimension to be the second axes here, 
     # contrary to the whole package but to be coherent with 
     # StatsBase.corspearman and StatsBase.corkendall. 
