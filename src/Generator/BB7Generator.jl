@@ -52,7 +52,7 @@ function ϕ⁽¹⁾(G::BB7Generator, s)
     return -(1/(G.θ*G.δ)) * (1 - exp(-inv(G.δ)*log1p(s)))^(inv(G.θ)-1) * (1+s)^(-inv(G.δ)-1)
 end
 
-function ϕ⁽ᵏ⁾(G::BB7Generator, k::Int, s::Real; tol::Float64=1e-9, maxiter::Int=10_000, miniter::Int=5)
+function ϕ⁽ᵏ⁾(G::BB7Generator, k::Int, s::Real; tol::Float64=1e-10, maxiter::Int=20_000, miniter::Int=5)
     if k==2
         θ, δ = G.θ, G.δ
         invθ, invδ = inv(θ), inv(δ)
