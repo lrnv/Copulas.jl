@@ -53,7 +53,7 @@ function ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{2}, s::Real) # only d=2 case, other 
     return (a*b) * exp((a-2)*ls) * exp(-(b+2)*log1p(exp(a*ls))) *  ( (1 + a*b)*spa - (a - 1) )
 end
 
-function ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{k}, s::Real; tol::Float64=1e-9, maxiter::Int=10_000, miniter::Int=5) where {k}
+function ϕ⁽ᵏ⁾(G::BB1Generator, ::Val{k}, s::Real; tol::Float64=1e-10, maxiter::Int=20_000, miniter::Int=5) where {k}
     a, b = inv(G.δ), inv(G.θ)
     k == 0 && return ϕ(G, s)
     ls = log(s); r = exp(a * ls); sk = exp(-k * ls)

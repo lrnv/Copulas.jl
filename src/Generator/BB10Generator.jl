@@ -55,7 +55,7 @@ function ϕ⁽¹⁾(G::BB10Generator, s)
     ψ  = ϕ(G, s)
     return -(1/θ) * es/(es - δ) * ψ
 end
-function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s)
+function ϕ⁽ᵏ⁾(G::BB10Generator, ::Val{2}, s::Real)
     θ, δ = G.θ, G.δ
     es = exp(s)
     ψ  = ϕ(G, s)                    # stable with log1p/expm1
