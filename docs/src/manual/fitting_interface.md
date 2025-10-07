@@ -39,7 +39,7 @@ plot(Ĉ)
 ### Full Model (with metadata)
 
 ```@example fitting_interface
-M = fit(CopulaModel, GumbelCopula, U; method=:default, summaries=true)
+M = fit(CopulaModel, GumbelCopula, U; method=:default)
 M
 ```
 
@@ -48,7 +48,7 @@ Returns a `CopulaModel` with:
 * `result` (the fitted copula), `n`, `ll` (log-likelihood),
 * `method`, `converged`, `iterations`, `elapsed_sec`,
 * `vcov` (if available),
-* `method_details` (a named tuple with method metadata and, if `summaries=true`, **pairwise summaries**: means, deviations, minima, and maxima of empirical τ/ρ/β/γ).
+* `method_details` (a named tuple with method metadata).
 
 ---
 
@@ -82,24 +82,7 @@ The `CopulaModel{CT} <: StatsBase.StatisticalModel` type stores the result and s
 
 Quick access to the contained copula: `_copula_of(M)` (returns the copula even if `result` is a `SklarDist`).
 
-
-### Pairwise summaries and `method_details`
-
-When you request `summaries=true` (default) the returned `CopulaModel` contains extra pre-computed pairwise statistics inside `M.method_details`. Typical keys are:
-
-- `:tau_mean`, `:tau_sd`, `:tau_min`, `:tau_max`
-- `:rho_mean`, `:rho_sd`, `:rho_min`, `:rho_max`
-- `:beta_mean`, `:beta_sd`, `:beta_min`, `:beta_max`
-- `:gamma_mean`, `:gamma_sd`, `:gamma_min`, `:gamma_max`
-
-Access example:
-
-```@example fitting_interface
-M = fit(CopulaModel, GumbelCopula, U; summaries=true)
-M.method_details.tau_mean  # average pairwise Kendall's tau
-```
-
-If `summaries=false` these keys will be absent and `method_details` will be smaller.
+By default, the returned `CopulaModel` contains a lot of extra statistics, that you can see by printing the model in the REPL. 
 
 ### `vcov` and inference notes
 
