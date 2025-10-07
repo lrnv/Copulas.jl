@@ -59,7 +59,7 @@ function ϕ⁻¹⁽¹⁾(G::BB2Generator, t)
     B = G.δ * exp(-(1+G.θ)*lt)
     return - G.θ * B * exp(A)
 end
-function ϕ⁽ᵏ⁾⁻¹(G::BB2Generator, d::Int, x; start_at=x)
+function ϕ⁽ᵏ⁾⁻¹(G::BB2Generator, k::Int, x; start_at=x)
     if k == 1
         # compute the inverse of ϕ⁽¹⁾
         θ, δ = G.θ, G.δ
@@ -68,7 +68,7 @@ function ϕ⁽ᵏ⁾⁻¹(G::BB2Generator, d::Int, x; start_at=x)
         w = LambertW.lambertw(exp(logv))
         return expm1(a * w - δ)
     end
-    return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, x)
+    return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, x; start_at=x)
 end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
