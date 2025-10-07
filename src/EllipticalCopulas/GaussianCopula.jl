@@ -140,13 +140,6 @@ function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
     d = size(u,1)
     dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT), u))
     Σ = Matrix(dd.Σ)
-    Ĉ = GaussianCopula(Σ)
-    θhat = (; Σ = Σ)
-    return Ĉ, (
-        ; θ̂ = θhat,
-          optimizer  = (; method = :closed_form),
-          converged  = true,
-          iterations = 0,
-    )
+    return GaussianCopula(Σ), (; θ̂ = (; Σ = Σ))
 end
 _available_fitting_methods(::Type{<:GaussianCopula}) = (:mle, :itau, :irho, :ibeta)
