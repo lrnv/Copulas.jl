@@ -35,15 +35,14 @@ end
 # Multivariate dependence metrics 
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
-    z = zeros(d)
-    i = ones(d)
-    r = HCubature.hcubature(F, z, i, rtol=sqrt(eps()))[1]
+    r = HCubature.hcubature(F, zeros(d), ones(d), rtol=sqrt(eps()))[1]
     return (2^d * (d+1) * r - d - 1)/(2^d - d - 1) # Ok for multivariate. 
 end
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
-    r = Distributions.expectation(F, C; nsamples=10^4)
-    return (2^d / (2^(d-1) - 1)) * r - 1 / (2^(d-1) - 1)
+    r = Distributions.expectation(F, C; nsamples=1e4)
+    k = 2^(d-1) - 1
+    return (2^d * r) / k - 1/k
 end
 function β(C::Copula{d}) where {d}
     d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
@@ -52,61 +51,33 @@ function β(C::Copula{d}) where {d}
     Cbar0 = Distributions.cdf(SurvivalCopula(C, Tuple(1:d)), u)
     return (2.0^(d-1) * C0 + Cbar0 - 1) / (2^(d-1) - 1)
 end
-function γ(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
-    d ≥ 2 || throw(ArgumentError("γ(C) requires d≥2"))
-    if d == 2
-        f(t) = Distributions.cdf(C, [t, t]) + Distributions.cdf(C, [t, 1 - t])
-        I, _ = QuadGK.quadgk(f, 0.0, 1.0; rtol=sqrt(eps()))
-        return -2 + 4I
-    end
-    @inline _A(u)    = (minimum(u) + max(sum(u) - d + 1, 0.0)) / 2
-    @inline _Abar(u) = (1 - maximum(u) + max(1 - sum(u), 0.0)) / 2
-    @inline invfac(k::Integer) = exp(-SpecialFunctions.logfactorial(k))
-    s = 0.0
-    @inbounds for i in 0:d
-        s += (isodd(i) ? -1.0 : 1.0) * binomial(d, i) * invfac(i + 1)
-    end
-    a_d = 1/(d + 1) + 0.5*invfac(d + 1) + 0.5*s
-    b_d = 2/3 + 4.0^(1 - d) / 3
-    U = rand(rng, C, nmc)
-    m = 0.0
-    @inbounds for j in 1:nmc
-        u = @view U[:, j]
-        m += _A(u) + _Abar(u)
-    end
-    m /= nmc
-    return (m - a_d) / (b_d - a_d)
+function γ(C::Copula{d}) where {d}
+    _integrand(u) = (1 + minimum(u) - maximum(u) + max(abs(sum(u) - d/2) - (d - 2)/2, 0.0)) / 2
+    I = Distributions.expectation(_integrand, C; nsamples=1e5)
+    a = 1/(d+1) + 1/factorial(d+1)   # independence
+    b = (2 + 4.0^(1-d)) / 3          # comonotonicity
+    return (I - a) / (b - a)
 end
-
-function ι(C::Copula{d}; nmc::Int=100_000, rng::Random.AbstractRNG=Random.MersenneTwister(123)) where {d}
-    U = rand(rng, C, nmc)
-    s = 0.0
-    @inbounds for j in 1:nmc
-        u  = @view U[:, j]
-        lp = Distributions.logpdf(C, u)
-        isfinite(lp) || throw(DomainError(lp, "logpdf(C,u) non-finite."))
-        s -= lp
-    end
-    H = s / nmc
-    return H
+function ι(C::Copula{d}) where {d}
+    return Distributions.expectation(u -> -logpdf(C, u), C; nsamples=10^4)
 end
 function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
     g(e) = Distributions.cdf(C, fill(e, d)) / e
-    return clamp(2*g(ε/2) - g(ε), 0.0, 1.0)
+    return clamp(2*g(ε/2) - g(ε), 0, 1)
 end
 function λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
-    Sc   = SurvivalCopula(C, Tuple(1:d))
-    f(e) = Distributions.cdf(Sc, fill(e, d)) / e
-    return clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
+    f(e) = Distributions.cdf(SurvivalCopula(C, Tuple(1:d)), fill(e, d)) / e
+    return clamp(2*f(ε/2) - f(ε), 0, 1)
 end
 
 # Multivariate dependence metrics applied to a matrix. 
-function β(U::AbstractMatrix)
-    # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
+function ρ(U::AbstractMatrix)
+    # Sample version of multivariate Spearman's tau for pseudo-data
     d, n = size(U)
-    count = sum(j -> all(U[:, j] .<= 0.5) || all(U[:, j] .> 0.5), 1:n)
-    h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
-    return h_d * (count/n - 2.0^(1-d))
+    R = hcat((StatsBase.tiedrank(U[k, :]) for k in 1:d)...)   # n×d
+    μ = Statistics.mean(prod(R, dims=2)) / (n + 1)^d          # ≈ E[∏ U_i]
+    h = (d + 1) / (2.0^d - (d + 1))
+    return h * (2.0^d * μ - 1.0)
 end
 function τ(U::AbstractMatrix)
     # Sample version of multivariate Kendall's tau for pseudo-data
@@ -119,60 +90,32 @@ function τ(U::AbstractMatrix)
     pc = comp / (n*(n-1)/2)
     return (2.0^d * pc - 2.0) / (2.0^d - 2.0)
 end
-function ρ(U::AbstractMatrix)
-    # Sample version of multivariate Spearman's tau for pseudo-data
+function β(U::AbstractMatrix)
+    # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
     d, n = size(U)
-    R = hcat((StatsBase.tiedrank(U[k, :]) for k in 1:d)...)   # n×d
-    μ = Statistics.mean(prod(R, dims=2)) / (n + 1)^d          # ≈ E[∏ U_i]
-    h = (d + 1) / (2.0^d - (d + 1))
-    return h * (2.0^d * μ - 1.0)
+    count = sum(j -> all(U[:, j] .<= 0.5) || all(U[:, j] .> 0.5), 1:n)
+    h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
+    return h_d * (count/n - 2.0^(1-d))
 end
 function γ(U::AbstractMatrix)
-    # Assumes pseudo-data given. Multivariate Gini’s gamma (Behboodian–Dolati–Úbeda, 2007)
     d, n = size(U)
-    if d == 2
-    # Schechtman–Yitzhaki symmetric Gini over ranks (copular invariant)
-        r1 = StatsBase.tiedrank(@view U[1, :])
-        r2 = StatsBase.tiedrank(@view U[2, :])
-        m  = n
-        h  = m + 1
-        acc = 0.0
-        @inbounds @simd for k in 1:m
-            acc += abs(r1[k] + r2[k] - h) - abs(r1[k] - r2[k])
-        end
-        return 2*acc / (m*h)
-    else
-        @inline _A(u)    = (minimum(u) + max(sum(u) - d + 1, 0.0)) / 2
-        @inline _Abar(u) = (1 - maximum(u) + max(1 - sum(u), 0.0)) / 2
-        invfac(k::Integer) = exp(-SpecialFunctions.logfactorial(k))
-        s = 0.0
-        binomf(d,i) = exp(SpecialFunctions.loggamma(d+1) - SpecialFunctions.loggamma(i+1) - SpecialFunctions.loggamma(d-i+1))
-        @inbounds for i in 0:d
-            s += (isodd(i) ? -1.0 : 1.0) * binomf(d,i) * invfac(i + 1)
-        end
-        a_d = 1/(d + 1) + 0.5*invfac(d + 1) + 0.5*s
-        b_d = 2/3 + 4.0^(1 - d) / 3
-        m = 0.0
-        @inbounds for j in 1:n
-            u = @view U[:, j]
-            m += _A(u) + _Abar(u)
-        end
-        m /= n
-        return (m - a_d) / (b_d - a_d)
+    I = zero(eltype(U))
+    for j in 1:n
+        u = U[:,j]
+        I += (1 + minimum(u) - maximum(u) + max(abs(sum(u) - d/2) - (d - 2)/2, 0.0)) / 2
     end
+    I /= n
+    a = 1/(d+1) + 1/factorial(d+1)
+    b = (2 + 4.0^(1-d)) / 3
+    return (I - a) / (b - a)
 end
 function _λ(U::AbstractMatrix; t::Symbol=:upper, p::Union{Nothing,Real}=nothing)
     # Assumes pseudo-data given. Multivariate tail’s lambda (Schmidt, R. & Stadtmüller, U. 2006)
-    d, m = size(U)
-    m ≥ 4 || throw(ArgumentError("At least 4 observations are required"))
-    p === nothing && (p = 1/sqrt(m))
+    p === nothing && (p = 1/sqrt(size(U, 2)))
     (0 < p < 1) || throw(ArgumentError("p must be in (0,1)"))
-    V = t === :upper ? (1 .- Float64.(U)) : Float64.(U)
-    cnt = 0
-    @inbounds @views for j in 1:m
-        cnt += all(V[:, j] .<= p)
-    end
-    return clamp(cnt / (p*m), 0.0, 1.0)
+    in_tail = t=== :upper ? Base.Fix2(>=, 1-p) : Base.Fix2(<=, p)
+    prob = Statistics.mean(all(in_tail, U, dims=1))
+    return clamp(prob/p, 0.0, 1.0)
 end
 λₗ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = _λ(U; t=:lower, p=p)
 λᵤ(U::AbstractMatrix; p::Union{Nothing,Real}=nothing) = _λ(U; t=:upper, p=p)

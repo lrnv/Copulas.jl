@@ -82,7 +82,7 @@ N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
     x = StatsBase.quantile.(Distributions.Normal(), u)
     d = length(C)
-    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x, m=10_0000d)[1]
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
@@ -149,4 +149,4 @@ function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
           iterations = 0,
     )
 end
-_available_fitting_methods(::Type{<:GaussianCopula}) = (:itau, :irho, :ibeta, :mle)
+_available_fitting_methods(::Type{<:GaussianCopula}) = (:mle, :itau, :irho, :ibeta)
