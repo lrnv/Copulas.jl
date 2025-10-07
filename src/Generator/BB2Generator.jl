@@ -42,17 +42,16 @@ function ϕ⁽¹⁾(G::BB2Generator, s)
     v = (1+1/θ) * log1p(u/δ) + log(θ) + log(δ) + u
     return -exp(-v)
 end
-function ϕ⁽ᵏ⁾(G::BB2Generator, d::Int, s)
-    if d != 2
-        # Only d==2 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+function ϕ⁽ᵏ⁾(G::BB2Generator, k::Int, s)
+    if k == 2
+        θ, δ = G.θ, G.δ
+        logA = log1p(log1p(s)/δ)
+        inv1p = inv(1+s)
+        term1 = exp(-(1+1/θ) * logA)
+        term2 = ((1/θ) + 1) * exp(-(2+1/θ) * logA) / δ
+        return (1/(θ*δ)) * inv1p^2 * (term1 + term2)
     end
-    θ, δ = G.θ, G.δ
-    logA = log1p(log1p(s)/δ)
-    inv1p = inv(1+s)
-    term1 = exp(-(1+1/θ) * logA)
-    term2 = ((1/θ) + 1) * exp(-(2+1/θ) * logA) / δ
-    return (1/(θ*δ)) * inv1p^2 * (term1 + term2)
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
 end
 function ϕ⁻¹⁽¹⁾(G::BB2Generator, t)
     lt = log(t)
@@ -61,16 +60,15 @@ function ϕ⁻¹⁽¹⁾(G::BB2Generator, t)
     return - G.θ * B * exp(A)
 end
 function ϕ⁽ᵏ⁾⁻¹(G::BB2Generator, d::Int, x; start_at=x)
-    if d != 1
-        # Only d==1 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, d, x; start_at=start_at)
+    if k == 1
+        # compute the inverse of ϕ⁽¹⁾
+        θ, δ = G.θ, G.δ
+        a = 1 + 1/θ          # a > 0
+        logv = -log(a) + (δ + (a - 1) * log(δ) - log(- θ * x)) / a
+        w = LambertW.lambertw(exp(logv))
+        return expm1(a * w - δ)
     end
-    # compute the inverse of ϕ⁽¹⁾
-    θ, δ = G.θ, G.δ
-    a = 1 + 1/θ          # a > 0
-    logv = -log(a) + (δ + (a - 1) * log(δ) - log(- θ * x)) / a
-    w = LambertW.lambertw(exp(logv))
-    return expm1(a * w - δ)
+    return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, x)
 end
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}

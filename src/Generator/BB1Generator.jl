@@ -53,22 +53,24 @@ function ϕ⁽ᵏ⁾(G::BB1Generator, k::Int, s::Real; tol::Float64=1e-9, maxite
         spa = exp(a*ls)
         return (a*b) * exp((a-2)*ls) * exp(-(b+2)*log1p(exp(a*ls))) *  ( (1 + a*b)*spa - (a - 1) )
     end
-    a, b = inv(G.δ), inv(G.θ)
-    k == 0 && return ϕ(G, s)
-    ls = log(s); r = exp(a * ls); sk = exp(-k * ls)
-    acc, rpow, coef = 0.0, 1.0, 1.0
-    @inbounds for m in 0:maxiter
-        am = a * m
-        ff = prod(am - j for j in 0:k-1)
-        term = ((m & 1 == 1) ? -coef : coef) * ff * rpow
-        acc_new = acc + term
-        m ≥ miniter && abs(term) ≤ tol * (abs(acc_new) + eps()) && return sk * acc_new
-        acc = acc_new
-        m == maxiter && @warn "ϕ⁽ᵏ⁾(BB1): reached maxiter" k s G.θ G.δ
-        rpow *= r
-        coef *= (b + m) / (m + 1)
-    end
-    return sk * acc
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+
+    # a, b = inv(G.δ), inv(G.θ)
+    # k == 0 && return ϕ(G, s)
+    # ls = log(s); r = exp(a * ls); sk = exp(-k * ls)
+    # acc, rpow, coef = 0.0, 1.0, 1.0
+    # @inbounds for m in 0:maxiter
+    #     am = a * m
+    #     ff = prod(am - j for j in 0:k-1)
+    #     term = ((m & 1 == 1) ? -coef : coef) * ff * rpow
+    #     acc_new = acc + term
+    #     m ≥ miniter && abs(term) ≤ tol * (abs(acc_new) + eps()) && return sk * acc_new
+    #     acc = acc_new
+    #     m == maxiter && @warn "ϕ⁽ᵏ⁾(BB1): reached maxiter" k s G.θ G.δ
+    #     rpow *= r
+    #     coef *= (b + m) / (m + 1)
+    # end
+    # return sk * acc
 end
 
 

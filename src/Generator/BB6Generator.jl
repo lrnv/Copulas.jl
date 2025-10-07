@@ -51,7 +51,7 @@ function ϕ⁽¹⁾(G::BB6Generator, s)
     H = 1 - E
     return -(a*b) * s^(b-1) * E * H^(a-1)
 end
-function ϕ⁽ᵏ⁾(G::BB6Generator, k::Int, s::Real; tol::Float64=1e-9, maxm::Int=10_000)
+function ϕ⁽ᵏ⁾(G::BB6Generator, k::Int, s; tol::Float64=1e-9, maxm::Int=10_000)
 
     if k==2
         a = inv(G.θ); b = inv(G.δ)
@@ -61,24 +61,25 @@ function ϕ⁽ᵏ⁾(G::BB6Generator, k::Int, s::Real; tol::Float64=1e-9, maxm::
         term = (b - 1) * s^(b - 2) - b * s^(2b - 2) + (a - 1) * b * s^(2b - 2) * (E / H)
         return -a * b * E * H^(a - 1) * term
     end
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
 
-    a, b = inv(G.δ), inv(G.θ)
-    k == 0 && return ϕ(G, s)
-    sa = s^a
-    acc, cm = 0.0, 1.0
-    @inbounds for m in 1:maxm
-        cm = (m == 1) ? b : cm * (b - (m - 1)) / m
-        abs(cm) < eps() && break
-        xs = [(-m) * prod(a - j for j in 0:r-1) * s^(a - r) for r in 1:k]
-        B = ones(Float64, k + 1)
-        for n in 1:k
-            B[n + 1] = sum(binomial(n - 1, j - 1) * xs[j] * B[n - j + 1] for j in 1:n)
-        end        
-        term = (-1)^(m + 1) * cm * exp(-m * sa) * B[end]
-        acc += term
-        abs(term) ≤ tol * (abs(acc) + eps()) && break
-    end
-    return acc
+    # a, b = inv(G.δ), inv(G.θ)
+    # k == 0 && return ϕ(G, s)
+    # sa = s^a
+    # acc, cm = 0.0, 1.0
+    # @inbounds for m in 1:maxm
+    #     cm = (m == 1) ? b : cm * (b - (m - 1)) / m
+    #     abs(cm) < eps() && break
+    #     xs = [(-m) * prod(a - j for j in 0:r-1) * s^(a - r) for r in 1:k]
+    #     B = ones(Float64, k + 1)
+    #     for n in 1:k
+    #         B[n + 1] = sum(binomial(n - 1, j - 1) * xs[j] * B[n - j + 1] for j in 1:n)
+    #     end        
+    #     term = (-1)^(m + 1) * cm * exp(-m * sa) * B[end]
+    #     acc += term
+    #     abs(term) ≤ tol * (abs(acc) + eps()) && break
+    # end
+    # return acc
 end
 
 function ϕ⁻¹⁽¹⁾(G::BB6Generator, u::Real)

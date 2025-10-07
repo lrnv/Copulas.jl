@@ -47,21 +47,22 @@ function ϕ⁽¹⁾(G::BB9Generator, s)
     ϕ(G,s) * ( -a * (s + c)^(a-1) )
 end
 function ϕ⁽ᵏ⁾(G::BB9Generator, k::Int, s::Real)
-    if d==2
+    if k==2
         a  = inv(G.θ);  c = G.δ^(-G.θ)
         φ  = ϕ(G,s)
         t  = s + c
         φ * ( a^2 * t^(2a-2) - a*(a-1) * t^(a-2) )
     end
-    k == 0 && return ϕ(G, s)
-    a, c = inv(G.θ), G.δ^(-G.θ)
-    T = promote_type(typeof(a), typeof(s))
-    xs = [-prod(a - i for i in 0:j-1) * (s + c)^(a - j) for j in 1:k]
-    B = ones(T, k + 1)
-    for n in 1:k
-        B[n + 1] = sum(binomial(n - 1, j - 1) * xs[j] * B[n - j + 1] for j in 1:n)
-    end    
-    return ϕ(G, s) * B[end]
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+    # k == 0 && return ϕ(G, s)
+    # a, c = inv(G.θ), G.δ^(-G.θ)
+    # T = promote_type(typeof(a), typeof(s))
+    # xs = [-prod(a - i for i in 0:j-1) * (s + c)^(a - j) for j in 1:k]
+    # B = ones(T, k + 1)
+    # for n in 1:k
+    #     B[n + 1] = sum(binomial(n - 1, j - 1) * xs[j] * B[n - j + 1] for j in 1:n)
+    # end    
+    # return ϕ(G, s) * B[end]
 end
 ϕ⁻¹⁽¹⁾(G::BB9Generator, t) = -G.θ * (inv(G.δ) - log(t))^(G.θ - 1) / t
 

@@ -55,21 +55,22 @@ function ϕ⁽ᵏ⁾(G::BB8Generator, k::Int, s::Real; tol::Float64=1e-10, maxit
         b    = 1 - ηv*u
         return (α*β*ηv) * u * b^(β - 2) * (1 - β*ηv*u)
     end
-    δ, b, η = G.δ, inv(G.ϑ), 1 - G.δ
-    k == 0 && return ϕ(G, s)
-    acc, cm, η_pow, exp_term = 0.0, 1.0, 1.0, 1.0
-    exp_s_neg = exp(-s)
-    @inbounds for m in 1:maxiter
-        cm = (m == 1) ? b : cm * (b - m + 1) / m
-        η_pow *= η
-        exp_term *= exp_s_neg
-        abs(cm) < eps() && break
-        term = (-1)^(m + 1) * cm * η_pow * (-m)^k * exp_term
-        acc += term
-        m ≥ miniter && abs(term) ≤ tol * (abs(acc) + eps()) && break
-        m == maxiter && @warn "ϕ⁽ᵏ⁾(BB8): reached maxiter" k s G.ϑ G.δ
-    end
-    return acc / δ
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+    # δ, b, η = G.δ, inv(G.ϑ), 1 - G.δ
+    # k == 0 && return ϕ(G, s)
+    # acc, cm, η_pow, exp_term = 0.0, 1.0, 1.0, 1.0
+    # exp_s_neg = exp(-s)
+    # @inbounds for m in 1:maxiter
+    #     cm = (m == 1) ? b : cm * (b - m + 1) / m
+    #     η_pow *= η
+    #     exp_term *= exp_s_neg
+    #     abs(cm) < eps() && break
+    #     term = (-1)^(m + 1) * cm * η_pow * (-m)^k * exp_term
+    #     acc += term
+    #     m ≥ miniter && abs(term) ≤ tol * (abs(acc) + eps()) && break
+    #     m == maxiter && @warn "ϕ⁽ᵏ⁾(BB8): reached maxiter" k s G.ϑ G.δ
+    # end
+    # return acc / δ
 end
 ϕ⁻¹⁽¹⁾(G::BB8Generator, t) = -G.ϑ*G.δ * (1 - G.δ*t)^(G.ϑ - 1) / (1 - (1 - G.δ*t)^G.ϑ)
 

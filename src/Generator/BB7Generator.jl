@@ -61,21 +61,23 @@ function ϕ⁽ᵏ⁾(G::BB7Generator, k::Int, s::Real; tol::Float64=1e-10, maxit
         return (invθ*invδ) * fac * (1 - a)^(invθ - 2) *
             ( (1 + invδ) - (1 + invθ*invδ)*a )
     end
-    b, p = inv(G.θ), -inv(G.δ)
-    k == 0 && return ϕ(G, s)
-    log1ps = log1p(s)
-    acc, cm = 0.0, 1.0
-    @inbounds for m in 1:maxiter
-        cm = (m == 1) ? b : cm * (b - m + 1) / m
-        abs(cm) < eps() && break
-        pm = m * p
-        ff = prod(pm - j for j in 0:k-1)
-        term = (-1)^(m + 1) * cm * ff * exp((pm - k) * log1ps)
-        acc += term
-        m ≥ miniter && abs(term) ≤ tol * (abs(acc) + eps()) && break
-        m == maxiter && @warn "ϕ⁽ᵏ⁾(BB7): reached maxiter" k s G.θ G.δ
-    end
-    return acc
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+
+    # b, p = inv(G.θ), -inv(G.δ)
+    # k == 0 && return ϕ(G, s)
+    # log1ps = log1p(s)
+    # acc, cm = 0.0, 1.0
+    # @inbounds for m in 1:maxiter
+    #     cm = (m == 1) ? b : cm * (b - m + 1) / m
+    #     abs(cm) < eps() && break
+    #     pm = m * p
+    #     ff = prod(pm - j for j in 0:k-1)
+    #     term = (-1)^(m + 1) * cm * ff * exp((pm - k) * log1ps)
+    #     acc += term
+    #     m ≥ miniter && abs(term) ≤ tol * (abs(acc) + eps()) && break
+    #     m == maxiter && @warn "ϕ⁽ᵏ⁾(BB7): reached maxiter" k s G.θ G.δ
+    # end
+    # return acc
 end
 
 ϕ⁻¹⁽¹⁾(G::BB7Generator, u) = begin
