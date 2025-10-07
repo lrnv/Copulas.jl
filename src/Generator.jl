@@ -297,10 +297,20 @@ function EmpiricalGenerator(u::AbstractMatrix)
         eps = 1e-14
         a, b = 0.0, max(r[k+1] - eps, 0.0)
         ga, gb = gk(a), gk(b)
+        # Ensure a valid bracket: gk is nonincreasing in y, target is x[k]
+        # Expand upper bound slightly if needed to include the target
         if !(ga + 1e-12 >= x[k] >= gb - 1e-12)
+            # Try with full [0, r[k+1]] first
             a, b = 0.0, r[k+1]
+            ga, gb = gk(a), gk(b)
         end
-        r[k] = Roots.find_zero(y -> gk(y) - x[k], (a, b); verbose=false)
+        if !(ga >= x[k] >= gb)
+            # As a last resort, project x[k] into [gb, ga]
+            xk = clamp(x[k], gb, ga)
+            r[k] = Roots.find_zero(y -> gk(y) - xk, (a, b); bisection=true)
+        else
+            r[k] = Roots.find_zero(y -> gk(y) - x[k], (a, b); bisection=true)
+        end
         r[k] = clamp(r[k], 0.0, r[k+1] - eps)
     end
     return WilliamsonGenerator(r, w, d)
