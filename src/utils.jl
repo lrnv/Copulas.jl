@@ -15,7 +15,7 @@ end
 """
     taylor(f::F, x₀, d::Int) where {F}
 
-Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back all the successive derivatives. 
+Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back the derivatives as a vector of length d+1. (first value is f(x₀)). 
 
 # Arguments
 - `f`: A function to be expanded.

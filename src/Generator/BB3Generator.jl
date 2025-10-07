@@ -45,6 +45,18 @@ function ϕ⁽¹⁾(G::BB3Generator, s)
     return -(pw*a) * B * inv(1+s) * ϕ(G,s)
 end
 function ϕ⁽ᵏ⁾(G::BB3Generator, k::Int, s::Real)
+
+    # if k==2 # old version. 
+    #     a  = inv(G.δ);  pw = inv(G.θ)
+    #     A  = a * log1p(s);  inv1p = inv(1+s)
+    #     B = exp((pw-1)*log(A))
+    #     C = exp((pw-2)*log(A))
+    #     φ  = ϕ(G,s)
+    #     K   = (pw*a) * B * inv1p
+    #     K′  = (pw*a) * inv1p^2 * ((pw-1)*a*C - B)
+    #     return φ * (K^2 - K′)
+    # end
+
     T = promote_type(typeof(s), typeof(G.θ), typeof(G.δ))
     θ, δ, r = T(G.θ), T(G.δ), one(T) / T(G.θ)
     t, a = log1p(T(s)), δ^(-r)
