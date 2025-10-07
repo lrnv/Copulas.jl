@@ -147,32 +147,19 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     C = EmpiricalEVCopula(U; method=typeof(method).parameters[1], grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
     return C, (; pseudo_values, grid, eps)
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}}; vcov::Bool=false)
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) : 
         m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) : 
                            β⁻¹(CT,  corblomqvist(U')[1,2])
     θ = clamp(θ, _θ_bounds(tailof(CT), 2)...)
-    Ĉ = CT(2, θ)
-    meta_v = NamedTuple()
-    if vcov
-        V, vmeta = _vcov_godambe_gmm(CT, U, [θ], m)
-        meta_v   = (; vcov = V, vmeta...)
-    end
-
-    return Ĉ, (; θ̂ = θ, meta_v...)
+    return CT(2, θ), (; θ̂=θ)
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper}; vcov::Bool = false)
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
     θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(tailof(CT), 2)...)
-    Ĉ = CT(2, θ)
-    meta_v = NamedTuple()
-    if vcov
-        V, vmeta = _vcov_godambe_gmm(CT, U, [θ], Val{:iupper}())
-        meta_v   = (; vcov = V, vmeta...)
-    end
-    return Ĉ, (; θ̂ = θ, meta_v...)
+    return CT(2, θ), (; θ̂=θ)
 end
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8, vcov::Bool = false)
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     d = size(U,1)
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, d)
@@ -183,14 +170,8 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
     res = Optim.optimize(f, lo, hi, [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
     θ̂ = Optim.minimizer(res)[1]
-    αhat = collect(values(θ̂))
-    Ĉ   = CT(d, θ̂)
-    meta_v = NamedTuple()
-    if vcov
-        V, vmeta = _vcov_safe(CT, U, [αhat])
-        meta_v   = (; vcov=V, vmeta...)
-    end
-    return Ĉ, (; θ̂=θ̂, optimizer=:GradientDescent,
-                xtol=xtol, converged=Optim.converged(res), 
-                iterations=Optim.iterations(res), meta_v...)
+    return CT(d, θ̂), (; θ̂=θ̂, optimizer=:GradientDescent,
+                        xtol=xtol, converged=Optim.converged(res), 
+                        iterations=Optim.iterations(res))
 end
+
