@@ -60,7 +60,7 @@ end
 #    return (invθ*invδ) * fac * (1 - a)^(invθ - 2) *
 #           ( (1 + invδ) - (1 + invθ*invδ)*a )
 #end
-function ϕ⁽ᵏ⁾(G::BB7Generator, ::Val{k}, s::Real; tol::Float64=1e-12, maxiter::Int=10_000, miniter::Int=5) where {k}
+function ϕ⁽ᵏ⁾(G::BB7Generator, ::Val{k}, s::Real; tol::Float64=1e-9, maxiter::Int=10_000, miniter::Int=5) where {k}
     b, p = inv(G.θ), -inv(G.δ)
     k == 0 && return ϕ(G, s)
     log1ps = log1p(s)
