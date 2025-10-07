@@ -110,19 +110,9 @@ function γ(U::AbstractMatrix)
     a = 1/(d+1) + 1/factorial(d+1)
     b = (2 + 4.0^(1-d)) / 3
     return (I - a) / (b - a)
-    I = zero(eltype(U))
-    for j in 1:n
-        u = U[:,j]
-        I += (1 + minimum(u) - maximum(u) + max(abs(sum(u) - d/2) - (d - 2)/2, 0.0)) / 2
-    end
-    I /= n
-    a = 1/(d+1) + 1/factorial(d+1)
-    b = (2 + 4.0^(1-d)) / 3
-    return (I - a) / (b - a)
 end
 function _λ(U::AbstractMatrix; t::Symbol=:upper, p::Union{Nothing,Real}=nothing)
     # Assumes pseudo-data given. Multivariate tail’s lambda (Schmidt, R. & Stadtmüller, U. 2006)
-    p === nothing && (p = 1/sqrt(size(U, 2)))
     p === nothing && (p = 1/sqrt(size(U, 2)))
     (0 < p < 1) || throw(ArgumentError("p must be in (0,1)"))
     in_tail = t=== :upper ? Base.Fix2(>=, 1-p) : Base.Fix2(<=, p)

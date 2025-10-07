@@ -200,7 +200,6 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
     C, meta = rez
     quick_fit && return (result=C,) # as soon as possible. 
-    quick_fit && return (result=C,) # as soon as possible. 
     ll = Distributions.loglikelihood(C, U)
 
     if vcov && C isa TCopula 
