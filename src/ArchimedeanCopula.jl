@@ -233,16 +233,15 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     d = size(U,1)
     GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
-    θ₀ = [(lo+hi)/2]
+    θ₀ = [1.0]
     if start isa Real 
         θ₀[1] = start
     elseif start ∈ (:itau, :irho)
-        try 
-            θ₀[1] = only(Distributions.params(_fit(CT, U, Val{start}())[1]))
-        catch e
-        end
+        θ₀[1] = _fit(CT, U, Val{start}())[2].θ̂[1]
     end
-    θ₀[1] = clamp(θ₀[1], lo, hi)
+    if θ₀[1] <= lo || θ₀[1] >= hi
+        θ₀[1] = Distributions.params(_example(CT, d))[1]
+    end
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
     res = Optim.optimize(f, lo, hi,  θ₀, Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
     θ     = Optim.minimizer(res)[1]

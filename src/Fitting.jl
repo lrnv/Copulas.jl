@@ -41,7 +41,7 @@ for statistical inference and model comparison.
 [`StatsBase.nobs`](@ref), [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
 [`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref), [`StatsBase.deviance`](@ref), etc.
 
-See also [`Distributions.fit`](@ref) and [`_copula_of`](@ref).
+See also [`Distributions.fit`](@ref).
 """
 struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
     result        :: CT
@@ -332,7 +332,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
             method === :itau     ? :godambe :
             method === :irho     ? :godambe :
             method === :ibeta    ? :godambe :
-            method === :iupper   ? :godambe :  :jackknife
+            method === :iupper   ? :godambe :  :bootstrap
 
     if vcovm ∉ (:hessian, :godambe, :godambe_pairwise)
         return _vcov(CT, U, θ, Val{vcovm}(), Val{method}()) # you can write new methods through this interface, as the jacknife method below. 
@@ -346,14 +346,14 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     if vcovm === :hessian
         ℓ(α) = Distributions.loglikelihood(cop(α), U)
         if haskey(θ, :θ) && abs(θ[:θ]) > 25 && CT <: Copulas.FrankCopula
-            @warn "Skipping Hessian: FrankCopula near degeneracy (θ = $(θ[:θ])) → fallback to jackknife" #only for test
-            return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+            @warn "Skipping Hessian: FrankCopula near degeneracy (θ = $(θ[:θ])) → fallback to bootstrap" #only for test
+            return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
         end
         H  = ForwardDiff.hessian(ℓ, α)
         Iα = .-H
         if any(!isfinite, Iα)
             @warn "vcov(:hessian): non-finite Fisher information; falling back" Iα
-            return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+            return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
         end
         Iα = (Iα + Iα')/2
         p   = size(Iα, 1)
@@ -371,7 +371,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
         end
         if Vα === nothing || any(!isfinite, Vα)
             @warn "vcov(:hessian): failed to stabilize Fisher; falling back" λ_final=λ
-            return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+            return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
         end
     else
 
@@ -383,12 +383,12 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
                 method isa Val{:ibeta} ? β : λᵤ
         if vcovm === :godambe
             q = 1
-            ψ = αv -> [φ(cop(αv))]
-            ψ_emp = U -> [Statistics.mean(_upper_triangle(emp_fun(U')))]
+            ψ = α -> [φ(cop(α))]
+            ψ_emp = u -> [φ(u)]
         else # then :godambe_pairwise
             q = d*(d-1) ÷ 2
+            ψ = α -> _upper_triangle(emp_fun(cop(α)))
             ψ_emp = U -> _upper_triangle(emp_fun(U'))
-            ψ = αv -> _upper_triangle(φ(cop(αv)))
         end
 
         Dα = ForwardDiff.jacobian(ψ, α)
@@ -418,7 +418,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     # If the matrix already contains Inf/NaN, the estimate was unstable.
     # We activate the fallback to jackknife immediately.
     if !all(isfinite, Vθ)
-        return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+        return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
     end
 
     Vθ = (Vθ + Vθ')/2
@@ -426,7 +426,7 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
     λ_reg = map(x -> max(x, 1e-12), λ)
     Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
     # This final check is now a double security.
-    any(!isfinite, Matrix(Vθ)) && return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+    any(!isfinite, Matrix(Vθ)) && return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
     return Vθ, (; vcov_method=vcovm)
 end
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jackknife}, ::Val{method}) where {method}
@@ -442,7 +442,18 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jac
 
     θbar = vec(Statistics.mean(θminus, dims=1))
     V = (n-1)/n * (LinearAlgebra.transpose(θminus .- θbar') * (θminus .- θbar')) ./ (n-1)
-    return V, (; vcov_method=:jackknife_obs)
+    return V, (; vcov_method=:jackknife)
+end
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:bootstrap}, ::Val{method}; n_boot=nothing) where {method}
+    d, n = size(U)
+    n_boot = n_boot === nothing ? 20 : n_boot isa Integer ? maximum(sqrt(n_boot),20) : 20
+    θminus = zeros(n_boot, length(θ))
+    for j in 1:n_boot
+        θminus[j, :] .= _flatten_params(_fit(CT, U[:, rand(1:n, n)], Val{method}())[2].θ̂)[2]
+    end
+    θbar = vec(Statistics.mean(θminus, dims=1))
+    V = (n-1)/n * (LinearAlgebra.transpose(θminus .- θbar') * (θminus .- θbar')) ./ (n_boot-1)
+    return V, (; vcov_method=:bootstrap)
 end
 
 
@@ -461,35 +472,21 @@ StatsBase.isfitted(::CopulaModel)  = true
 Deviation of the fitted model (-2 * loglikelihood).
 """
 StatsBase.deviance(M::CopulaModel) = -2 * M.ll
-StatsBase.dof(M::CopulaModel) = StatsBase.dof(M.result)
-
-"""
-    _copula_of(M::CopulaModel)
-
-Returns the copula object contained in the model, even if the result is a `SklarDist`.
-"""
-_copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
+StatsBase.dof(M::CopulaModel) = length(StatsBase.coef(M))
 
 """
     coef(M::CopulaModel) -> Vector{Float64}
 
 Vector with the estimated parameters of the copula.
 """
-StatsBase.coef(M::CopulaModel) = StatsBase.coef(_copula_of(M))
+StatsBase.coef(M::CopulaModel) = _flatten_params(M.method_details.θ̂)[2]
 
 """
 coefnames(M::CopulaModel) -> Vector{String}
 
 Names of the estimated copula parameters.
 """
-StatsBase.coefnames(M::CopulaModel) = StatsBase.coefnames(_copula_of(M))
-
-StatsBase.dof(C::Copulas.Copula) = length(values(Distributions.params(C)))
-
-# Expose flattened coefficients and names consistently (upper triangle for matrices)
-StatsBase.coef(C::Copulas.Copula) = _flatten_params(Distributions.params(C))[2]
-StatsBase.coefnames(C::Copulas.Copula) = _flatten_params(Distributions.params(C))[1]
-
+StatsBase.coefnames(M::CopulaModel) = _flatten_params(M.method_details.θ̂)[1]
 
 # Flatten a NamedTuple of parameters into a Vector{Float64},
 # consistent with the generic linearization used in show().
@@ -606,7 +603,7 @@ The residuals should be i.i.d. Uniform(0,1) under a correctly specified model.
 StatsBase.residuals(M::CopulaModel; transform=:uniform) = begin
     haskey(M.method_details, :U) || throw(ArgumentError("method_details must contain pseudo-observations :U"))
     U = M.method_details[:U]
-    R = rosenblatt(_copula_of(M), U)
+    R = rosenblatt(M.result isa SklarDist ? M.result.C : M.result, U)
     return transform === :normal ? Distributions.quantile.(Distributions.Normal(), R) : R
 end
 """
@@ -623,7 +620,7 @@ Predict or simulate from a fitted copula model.
 - Vector or matrix of predicted probabilities/densities, or simulated samples.
 """
 function StatsBase.predict(M::CopulaModel; newdata=nothing, what=:cdf, nsim=0)
-    C = _copula_of(M)
+    C = M.result isa SklarDist ? M.result.C : M.result
     return what === :simulate ? rand(C, nsim > 0 ? nsim : M.n) :
            what === :cdf      ? (newdata === nothing ? throw(ArgumentError("`newdata` required for `:cdf`")) : Distributions.cdf(C, newdata)) :
            what === :pdf      ? (newdata === nothing ? throw(ArgumentError("`newdata` required for `:pdf`")) : Distributions.pdf(C, newdata)) :

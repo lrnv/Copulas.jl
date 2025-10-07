@@ -80,8 +80,6 @@ The `CopulaModel{CT} <: StatsBase.StatisticalModel` type stores the result and s
 | `hqc(M)`           | Hannan–Quinn criterion          |
 
 
-Quick access to the contained copula: `_copula_of(M)` (returns the copula even if `result` is a `SklarDist`).
-
 By default, the returned `CopulaModel` contains a lot of extra statistics, that you can see by printing the model in the REPL. 
 
 ### `vcov` and inference notes

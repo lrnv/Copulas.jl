@@ -88,7 +88,6 @@
                     @testset "CT=$CT, d=$d, method=$m" begin
                         @info "CT=$CT, d=$d, method=$m..."
                         fitres = fit(CopulaModel, CT, U; method=m)
-                        @test length(Copulas._copula_of(fitres)) == d
                         @test isa(fitres, CopulaModel)
                     end
                 end
@@ -132,7 +131,7 @@ end
     for (CT, d, method) in reps
         @info "Testing: $CT, d=$d, method=$method..."
         C0 = Copulas._example(CT, d)
-        true_θ = StatsBase.coef(C0)
+        true_θ = _flatten_params(Distributions.params(C0))
         U  = rand(rng, C0, n)
         M  = fit(CopulaModel, CT, U; method=method, vcov=true, derived_measures=false)
 
