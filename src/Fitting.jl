@@ -82,8 +82,8 @@ Distributions.params(C::Copula) = throw("You need to specify the Distributions.p
 _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::Type{T}, d)` function for your copula type, returning an example of the copula type in dimension d.")
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
-function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
-    # @info "Running the MLE routine from the generic implementation"
+function _fit(CT::Type{<:Copula}, U, ::Val{:mle}; vcov = false)
+    #@info "Running the MLE routine from the generic implementation"
     d   = size(U,1)
     function cop(α)
         par = _rebound_params(CT, d, α)
@@ -99,8 +99,15 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
         Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     end
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θhat...),
-           (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
+    αhat = collect(values(θhat))
+    Ĉ   = CT(d, θhat...)
+    meta_v = NamedTuple()
+    if vcov
+        V, vmeta = _vcov_safe(CT, U, αhat)
+        meta_v   = (; vcov=V, vmeta...)
+    end
+    return Ĉ,
+           (; θ̂ = θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations= Optim.iterations(res), meta_v...)
 end
 
 """
@@ -116,23 +123,44 @@ They must return a pair `(copula, meta)` where:
 This is not intended for direct use by end–users.  
 Use [`Distributions.fit(CopulaModel, ...)`] instead.
 """
-function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
-    # @info "Running the itau/irho/ibeta routine from the generic implementation"
+function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}}; vcov::Bool=false)
+    @info "Running the itau/irho/ibeta routine from the generic implementation"
     d   = size(U,1)
 
     cop(α) = CT(d, _rebound_params(CT, d, α)...)
-    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-    @assert length(α₀) <= d*(d-1)/2 "Cannot use $method since there are too much parameters."
+    α₀     = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
 
-    fun = method isa Val{:itau} ? StatsBase.corkendall : method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
-    est = fun(U')
+    fun  = method isa Val{:itau} ? StatsBase.corkendall :
+           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
+    est  = fun(U')
     loss(C) = sum(abs2, est .- fun(C))
 
-    res = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
+    res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θhat...),
-           (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
+    Ĉ   = CT(d, θhat...)
+
+    meta_v = NamedTuple()
+    if vcov
+        αhat = _unbound_params(CT, d, θhat)  # vector libre
+        if CT <: GaussianCopula
+            V, vmeta = _vcov_godambe_gaussian(U, αhat, method)  # específico gaussiana (pares)
+            # Opcional: si tu tabla de coeficientes imprime Σ completa (incluye diagonal y duplicados),
+            # considera expandir V (vech) a "full" para que coincida con el orden de impresión.
+            # V = _expand_gaussian_vcov_to_full(V, d)  # ver helper abajo
+        else
+            V, vmeta = _vcov_godambe_gmm(CT, U, αhat, method)   # genérico
+        end
+        meta_v = (; vcov=V, vmeta...)
+    end
+
+    return Ĉ, (; θ̂=θhat,
+                optimizer  = Optim.summary(res),
+                converged  = Optim.converged(res),
+                iterations = Optim.iterations(res),
+                meta_v...)
 end
+
 """
     Distributions.fit(CT::Type{<:Copula}, U; kwargs...) -> CT
 
@@ -201,15 +229,18 @@ println(M)
 C = fit(GumbelCopula, U; method=:itau)
 ```
 """
-function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
+function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method=:default, summaries=true, derived_measures::Bool=false, kwargs...)
     d, n = size(U)
-    # Choose the fitting method: 
     method = _find_method(CT, method)
 
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
     C, meta = rez
     ll = Distributions.loglikelihood(C, U)
-    md = (; d, n, method, meta..., null_ll=0.0, elapsed_sec=t, _extra_pairwise_stats(U, !summaries)...)
+
+    md = (; d, n, method, meta..., null_ll=0.0,
+           elapsed_sec=t, derived_measures,
+           _extra_pairwise_stats(U, !summaries)...)
+
     return CopulaModel(C, n, ll, method;
         vcov         = get(md, :vcov, nothing),
         converged    = get(md, :converged, true),
@@ -226,49 +257,88 @@ _available_fitting_methods(::Type{SklarDist}) = (:ifm, :ecdf)
 Joint margin and copula adjustment (Sklar approach).
 `sklar_method ∈ (:ifm, :ecdf)` controls whether parametric CDFs (`:ifm`) or pseudo-observations (`:ecdf`) are used.
 """
-function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}}, X; copula_method = :default, sklar_method = :default,
-                           summaries = true, margins_kwargs = NamedTuple(), copula_kwargs = NamedTuple()) where
+function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}, X;
+                           copula_method = :default, sklar_method = :default,
+                           summaries = true, margins_kwargs = NamedTuple(),
+                           copula_kwargs = NamedTuple(), 
+                           derived_measures::Bool = false) where
                            {CT<:Copulas.Copula, TplMargins<:Tuple}
 
-    sklar_method = _find_method(SklarDist, sklar_method)
+    sklar_method  = _find_method(SklarDist, sklar_method)
     copula_method = _find_method(CT, copula_method)
-
     d, n = size(X)
     marg_types = TplMargins.parameters
     (length(marg_types) == d) || throw(ArgumentError("SklarDist: #marginals $(length(marg_types)) ≠ d=$d"))
+
     m = ntuple(i -> Distributions.fit(marg_types[i], @view X[i, :]; margins_kwargs...), d)
-    # Only one margins_kwargs while people mught want to pass diferent kwargs for diferent marginals... but OK for the moment.
 
-    
-    U = similar(X)
+    # marginal vcov from generic data
+    Vm_hint = Vector{Union{Nothing,Matrix{Float64}}}(undef, d)
+    @inbounds for i in 1:d
+        Vm_hint[i] = try
+            _vcov_margin_generic(m[i], @view X[i,:])
+        catch
+            nothing
+        end
+    end
+
+    # --- construct U from fit
+    ε = eps(Float64)
+    U_fit = similar(X); U_ll = similar(X)
+
     if sklar_method === :ifm
-        for i in 1:d
-            U[i,:] .= Distributions.cdf.(m[i], X[i,:])
+        @inbounds for i in 1:d
+            Ui = Distributions.cdf.(m[i], @view X[i,:])
+            @views U_fit[i,:] .= clamp.(Ui, ε, 1-ε)
         end
-    elseif sklar_method === :ecdf
-        U .= pseudos(X)
-    end
-
-    # Copula fit... with method specific
-    C, cmeta = _fit(CT, U, Val{copula_method}(); copula_kwargs...)
-
-    S  = SklarDist(C, m)
-    ll = Distributions.loglikelihood(S, X)
-
-    null_ll = 0.0
-    @inbounds for j in axes(X, 2)
-        for i in 1:d
-            null_ll += Distributions.logpdf.(m[i], X[i, j])
+        U_ll .= U_fit
+    else
+        U_fit .= pseudos(X)
+        @inbounds for i in 1:d
+            Ui = Distributions.cdf.(m[i], @view X[i,:])
+            @views U_ll[i,:] .= clamp.(Ui, ε, 1-ε)
         end
     end
 
-    return CopulaModel(S, n, ll, copula_method;
-        vcov           = get(cmeta, :vcov, nothing),   # vcov of the copula (if you compute it)
-        converged      = get(cmeta, :converged, true),
-        iterations     = get(cmeta, :iterations, 0),
-        elapsed_sec    = get(cmeta, :elapsed_sec, NaN),
-        method_details = (; cmeta..., null_ll, sklar_method, margins = map(typeof, m), 
-              has_summaries = summaries, d=d, n=n, _extra_pairwise_stats(U, !summaries)...))
+    # fit copula
+    t = @elapsed (rez = _fit(CT, U_fit, Val{copula_method}(); copula_kwargs...))
+    C, cmeta = rez
+
+    # --- ensemmbled...
+    Vcop, Vm, Vfull = _assemble_vcov_sklar(cmeta, m, sklar_method; Vm_hint)
+
+    # total likelihood
+    ll_marg = 0.0
+    @inbounds for j in axes(X, 2), i in 1:d
+        ll_marg += Distributions.logpdf(m[i], X[i, j])
+    end
+    ll_cop = Distributions.loglikelihood(C, U_ll)
+    ll = ll_marg + ll_cop
+
+    null_ll = ll_marg
+
+    md = (; cmeta...,
+           vcov_copula   = get(cmeta, :vcov, nothing),
+           vcov_margins  = Vm,
+           null_ll,
+           sklar_method,
+           margins       = map(typeof, m),
+           has_summaries = summaries,
+           d = d, n = n,
+           elapsed_sec = t,
+           derived_measures,
+           X_margins = [copy(@view X[i,:]) for i in 1:d],
+           _extra_pairwise_stats(U_fit, !summaries)...)
+
+    S = SklarDist(C, m)
+    return CopulaModel(
+        S, n, ll, copula_method;
+        vcov         = Vfull,
+        converged    = get(cmeta, :converged, true),
+        iterations   = get(cmeta, :iterations, 0),
+        elapsed_sec  = t,
+        method_details = md
+    )
 end
 
 function _uppertriangle_stats(mat)
@@ -287,7 +357,146 @@ function _extra_pairwise_stats(U::AbstractMatrix, bypass::Bool)
              beta_mean=βm, beta_sd=βs, beta_min=βmin, beta_max=βmax,
              gamma_mean=γm, gamma_sd=γs, gamma_min=γmin, gamma_max=γmax)
 end
+####### vcov functions...
+function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, α̂::AbstractVector)
+    d  = size(U,1)
+    cop(α) = CT(d, _rebound_params(CT,d,α)...)
+    ℓ(α)   = Distributions.loglikelihood(cop(α), U)
+    Hα     = ForwardDiff.hessian(ℓ, α̂)
+    infoα  = -Array(Hα)
 
+    if any(!isfinite, infoα)
+        return fill(NaN, length(α̂), length(α̂)), (; vcov_method=:hessian_fail, d=d)
+    end
+    infoα += 1e-8LinearAlgebra.I
+    Vα = inv(infoα)
+
+    θvec_of_α = if CT <: GaussianCopula
+        α -> begin
+            T = eltype(α)
+            Σ = _rebound_corr_params(d, α)
+            q = d*(d-1) ÷ 2
+            v = Vector{T}(undef, q)
+            k = 1
+            @inbounds for i in 1:d-1, j in i+1:d
+                v[k] = T(Σ[i,j])
+                k += 1
+            end
+            v
+        end
+    else
+        α -> begin
+            T  = eltype(α)
+            nt = _rebound_params(CT, d, α)
+            out = Vector{T}()
+            for val in values(nt)
+                if val isa Number
+                    push!(out, T(val))
+                elseif val isa AbstractVector
+                    append!(out, T.(val))
+                elseif val isa AbstractMatrix
+                    append!(out, vec(T.(val)))
+                else
+                    try
+                        push!(out, T(val))
+                    catch
+                        # ignored non numerical values
+                    end
+                end
+            end
+            out
+        end
+    end
+
+    J  = Array(ForwardDiff.jacobian(θvec_of_α, α̂))
+
+    # Var(θ̂) via delta method
+    Vθ = J * Vα * J'
+    Vθ = (Vθ + Vθ')/2  # simetrización
+
+    # 🔒 Regularización de autovalores negativos
+    λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
+    λ_reg = map(x -> max(x, 1e-12), λ)  # fuerza semidefinitud
+    Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
+
+    return Vθ, (; vcov_method=:hessian, d=d)
+end
+
+function _vcov_godambe_gmm(CT::Type{<:Copula}, U::AbstractMatrix, α̂::AbstractVector, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}, Val{:iupper}})
+    d, n = size(U)
+    φ = method isa Val{:itau}  ? (α -> τ(CT(d, _rebound_params(CT,d,α)...))) :
+        method isa Val{:irho}  ? (α -> ρ(CT(d, _rebound_params(CT,d,α)...))) :
+        method isa Val{:ibeta} ? (α -> β(CT(d, _rebound_params(CT,d,α)...))) :
+                                 (α -> λᵤ(CT(d, _rebound_params(CT,d,α)...)))
+
+    m = method isa Val{:itau} ? τ : method isa Val{:irho} ? ρ : method isa Val{:ibeta} ? β : λᵤ
+
+    g  = ForwardDiff.gradient(φ, α̂)
+    Dα = reshape(g, 1, :)
+
+    # Ω = Var(√n m̂) jackknife
+    s   = Vector{Float64}(undef, n)
+    idx = Vector{Int}(undef, n-1)
+    for j in 1:n
+        k=1; @inbounds for t in 1:n; if t==j; continue; end; idx[k]=t; k+=1; end
+        s[j] = m(@view U[:,idx])
+    end
+    μ    = Statistics.mean(s)
+    Vhat = (n-1)/n * sum((s .- μ).^2) / (n-1)
+    Ω    = n * Vhat
+
+    DtD = Dα' * Dα
+    Va  = inv(DtD) * (Dα' * Ω * Dα) * inv(DtD) / n
+
+    # Delta method α→θ
+    J  = ForwardDiff.jacobian(α -> collect(values(_rebound_params(CT,d,α))), α̂)
+    Vθ = (J*Va*J' + (J*Va*J')')/2
+    return Vθ, (; vcov_method=:godambe_gmm, estimator=method, d=d, n=n, q=1)
+end
+
+function _vcov_jackknife_obs(CT::Type{<:Copula}, U::AbstractMatrix; estimator::Symbol, kw...)
+    d = size(U,1)
+    n = size(U,2)
+    d ≥ 2 || throw(ArgumentError("jackknife requires d≥2."))
+    n ≥ 3 || throw(ArgumentError("jackknife requires n≥3."))
+
+    θminus = Matrix{Float64}(undef, n, 0)
+    idx    = Vector{Int}(undef, n-1)
+
+    for j in 1:n
+        k = 1
+        for t in 1:n
+            if t == j; continue; end
+            idx[k] = t; k += 1
+        end
+        Uminus = @view U[:, idx]
+        M = Distributions.fit(CopulaModel, CT, Uminus; method=estimator, summaries=false, kw...)
+        θj = StatsBase.coef(M)
+        if size(θminus,2) == 0
+            θminus = Matrix{Float64}(undef, n, length(θj))
+        end
+        θminus[j, :] .= θj
+    end
+
+    θbar = vec(Statistics.mean(θminus, dims=1))
+    V = (n-1)/n * (LinearAlgebra.transpose(θminus .- θbar') * (θminus .- θbar')) ./ (n-1)
+    return V, (; vcov_method=:jackknife_obs, n=n)
+end
+
+function _vcov_safe(CT::Type{<:Copula}, U::AbstractMatrix, α̂::AbstractVector; estimator::Symbol=:mle)
+    try
+        Vθ, meta = _vcov_hessian(CT, U, α̂)
+        if any(!isfinite, Vθ)
+            @warn "vcov(hessian) failed (NaN/Inf). Falling back to jackknife."
+            Vθ, meta = _vcov_jackknife_obs(CT, U; estimator)
+        end
+        return Vθ, meta
+    catch err
+        @warn "vcov(hessian) threw $err. Falling back to jackknife."
+        return _vcov_jackknife_obs(CT, U; estimator)
+    end
+end
+#####3
 """
     nobs(M::CopulaModel) -> Int
 
