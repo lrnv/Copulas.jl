@@ -204,7 +204,11 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
 
     if vcov && C isa TCopula 
         vcov = false 
-        @info "Setting vcov = false for TCopula since unimplemented right now"
+        @info "Setting vcov = false for TCopula since _beta_inc_inv derivative are not implemented"
+    end
+    if vcov && C isa tEVCopula 
+        vcov = false 
+        @info "Setting vcov = false for tEVCopula since _beta_inc_inv derivative are not implemented"
     end
     if vcov && C isa FGMCopula && method==:mle 
         vcov = false 
