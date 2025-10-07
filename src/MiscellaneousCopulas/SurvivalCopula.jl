@@ -31,7 +31,7 @@ References:
 """
 struct SurvivalCopula{d,CT,flips} <: Copula{d}
     C::CT
-    function SurvivalCopula{d,CT,flips}(C::Copulas{d}) where {d,CT,flips}
+    function SurvivalCopula{d,CT,flips}(C::Copula{d}) where {d,CT,flips}
         if length(flips) == 0
             return C
         end
