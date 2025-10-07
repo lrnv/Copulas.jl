@@ -102,15 +102,8 @@ function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
         return τ(C.G)
     else
-        # Archimedean-specific Kendall's tau (McNeil & Nešlehová 2009):
-        # τ = 1 + 4 ∫₀¹ [ ϕ⁻¹(t) / (ϕ⁻¹)'(t) ] dt.
-        # Use identity (ϕ⁻¹)'(t) = 1 / ϕ'(ϕ⁻¹(t)) to avoid differentiating the inverse.
-        f(t) = begin
-            x = ϕ⁻¹(C.G, t)
-            x * ϕ⁽¹⁾(C.G, x)
-        end
-        val, _ = QuadGK.quadgk(f, 0.0, 1.0)
-        return 1 + 4 * val
+        # 4*Distributions.expectation(r -> ϕ(C.G,r), williamson_dist(C.G, Val{d}())) - 1
+        return @invoke τ(C::Copula)
     end
 end
 function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
