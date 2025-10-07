@@ -317,7 +317,7 @@ function EmpiricalGenerator(u::AbstractMatrix)
 end
 
 # Optimized methods for discrete nonparametric Williamson generators (covers EmpiricalGenerator)
-function ϕ(G::WilliamsonGenerator{d, TX}, t::Real) where {d, TX<:Distributions.DiscreteNonParametric}
+function ϕ(G::WilliamsonGenerator{d, TX}, t) where {d, TX<:Distributions.DiscreteNonParametric}
     r = Distributions.support(G.X)
     w = Distributions.probs(G.X)
     Tt = promote_type(eltype(r), typeof(t))
@@ -332,7 +332,7 @@ function ϕ(G::WilliamsonGenerator{d, TX}, t::Real) where {d, TX<:Distributions.
     return S
 end
 
-function ϕ⁽¹⁾(G::WilliamsonGenerator{d, TX}, t::Real) where {d, TX<:Distributions.DiscreteNonParametric}
+function ϕ⁽¹⁾(G::WilliamsonGenerator{d, TX}, t) where {d, TX<:Distributions.DiscreteNonParametric}
     r = Distributions.support(G.X)
     w = Distributions.probs(G.X)
     Tt = promote_type(eltype(r), typeof(t))
@@ -347,7 +347,7 @@ function ϕ⁽¹⁾(G::WilliamsonGenerator{d, TX}, t::Real) where {d, TX<:Distri
     return - (d-1) * S
 end
 
-function ϕ⁽ᵏ⁾(G::WilliamsonGenerator{d, TX}, k::Int, t::Real) where {d, TX<:Distributions.DiscreteNonParametric}
+function ϕ⁽ᵏ⁾(G::WilliamsonGenerator{d, TX}, k::Int, t) where {d, TX<:Distributions.DiscreteNonParametric}
     r = Distributions.support(G.X)
     w = Distributions.probs(G.X)
     Tt = promote_type(eltype(r), typeof(t))
@@ -364,7 +364,7 @@ function ϕ⁽ᵏ⁾(G::WilliamsonGenerator{d, TX}, k::Int, t::Real) where {d, T
     return S * (isodd(k) ? -1 : 1) * Base.factorial(d - 1) / Base.factorial(d - 1 - k)
 end
 
-function ϕ⁻¹(G::WilliamsonGenerator{d, TX}, x::Real) where {d, TX<:Distributions.DiscreteNonParametric}
+function ϕ⁻¹(G::WilliamsonGenerator{d, TX}, x) where {d, TX<:Distributions.DiscreteNonParametric}
     r = Distributions.support(G.X)
     Tx = promote_type(eltype(r), typeof(x))
     x >= 1 && return zero(Tx)

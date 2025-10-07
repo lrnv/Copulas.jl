@@ -26,7 +26,16 @@ Compute the Taylor series expansion of the function `f` around the point `x₀` 
 A tuple with value ``(f(x₀), f'(x₀),...,f^{(d)}(x₀))``.
 """
 function taylor(f::F, x₀, d::Int) where {F} 
-    return f(TaylorSeries.Taylor1([x₀, one(x₀)], d)).coeffs
+    rez = f(x₀ + TaylorSeries.Taylor1(eltype(x₀), d)).coeffs
+    p = length(rez)
+    # The length of rez is no longer always equal to d+1 since updates in TaylorSeries.jl, so we enforce it: 
+    p == d+1 && return rez
+    if p < d+1
+        v = zeros(d+1)
+        v[1:p] .= rez
+        return v
+    end
+    return rez[1:d+1]
 end
 
 
