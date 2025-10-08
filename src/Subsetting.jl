@@ -112,6 +112,6 @@ StatsBase.corkendall(C::Copula)  = _as_biv(τ, C)
 StatsBase.corspearman(C::Copula) = _as_biv(ρ, C)
 corblomqvist(C::Copula)          = _as_biv(β, C)
 corgini(C::Copula)               = _as_biv(γ, C)
-corentropy(C::Copula)            = _as_biv(ι, C)
+corentropy(C::Copula)            = _as_biv(ι, C) - LinearAlgebra.I
 coruppertail(C::Copula)          = _as_biv(λᵤ, C)
 corlowertail(C::Copula)          = _as_biv(λₗ, C)

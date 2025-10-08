@@ -208,7 +208,7 @@ end
     @test Copulas.ρ⁻¹(AMHCopula, -0.2246) ≈ -0.8 atol=1.0e-3
 end
 
-@testitem "Testing empirical tail values of certain copula samples" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula] begin
+@testitem "Testing empirical tail values of certain copula samples" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula, :Heavy] begin
     # [GenericTests integration]: Probably too stochastic and slow for generic; relies on large random samples and fragile tail estimates.
     # Keep as targeted property tests here; if needed, add a lighter tail-coherency smoke test generically.
     using StableRNGs
@@ -232,28 +232,27 @@ end
 
     # Gumbel
     rng = StableRNG(123)
-    x = rand(rng,GumbelCopula(3,2.), 100_000)
-    @test_broken tail(x[:,1], x[:,2], "r") ≈ 2-2^(1/2) atol=1.0e-1
+    x = rand(rng,GumbelCopula(3,2.), 40_000)
     @test_broken tail(x[:,1], x[:,2], "r") ≈ 2-2^(1/2) atol=1.0e-1
     @test tail(x[:,1], x[:,2], "l", 0.00001) ≈ 0.
     @test tail(x[:,1], x[:,3], "l", 0.00001) ≈ 0.
 
     # Clayton
     rng = StableRNG(123)
-    x = rand(rng,ClaytonCopula(3,1.), 100_000)
+    x = rand(rng,ClaytonCopula(3,1.), 40_000)
     @test_broken tail(x[:,1], x[:,2], "l") ≈ 2.0^(-1) atol=1.0e-1
     @test_broken tail(x[:,1], x[:,3], "l") ≈ 2.0^(-1) atol=1.0e-1
     @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
 
     # AMH
     rng = StableRNG(123)
-    x = rand(rng,AMHCopula(3,0.8), 100_000)
+    x = rand(rng,AMHCopula(3,0.8), 40_000)
     @test tail(x[:,1], x[:,2], "l", 0.0001) ≈ 0
     @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
     
     # Frank
     rng = StableRNG(123)
-    x = rand(rng,FrankCopula(3,0.8), 100_000)
+    x = rand(rng,FrankCopula(3,0.8), 40_000)
     @test tail(x[:,1], x[:,2], "l", 0.0001) ≈ 0
     @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
 end

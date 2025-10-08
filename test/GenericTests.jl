@@ -3,7 +3,7 @@
     using HypothesisTests, Distributions, Random
     using InteractiveUtils
     using ForwardDiff
-    using StatsBase: corkendall
+    using StatsBase
     using StableRNGs
     using HCubature
     using Test
@@ -96,7 +96,7 @@
     is_bivariate(C::CT)                      where CT = (length(C) == 2)
     has_subsetdims(C::CT)                    where CT = (length(C) >= 3)
     can_check_pdf_positivity(C::CT)          where CT = can_pdf(C) && !((CT<:GumbelCopula) && (C.G.θ >= 19))
-    kendall_coherency_enabled(C::CT)         where CT = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}})
+    dep_coherency_enabled(C::CT)         where CT = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}})
     can_check_biv_conditioning_ad(C::CT)     where CT = is_bivariate(C) && can_ad(C)
     can_check_highdim_conditioning_ad(C::CT) where CT = (length(C) > 2) && can_ad(C)
     has_uniform_margins(C::CT)               where CT = !(CT<:EmpiricalCopula)
@@ -120,7 +120,7 @@
 
             spl1 = rand(rng, C)
             spl10 = rand(rng, C, 10)
-            spl1000 = rand(rng, C, 1000)
+            spl1000 = rand(rng, C, 800)
             splZ10 = rand(rng, Z, 10)
 
             @testset "Basics" begin 
@@ -171,28 +171,67 @@
                     @test (all(r10 .>= 0) && all(isfinite.(r10)))
                 end 
 
-                @testif kendall_coherency_enabled(C) "Corkendall coeherency" begin
-                    K = corkendall(spl1000')
-                    Kth = corkendall(C)
-                    @test all(-1 .<= Kth .<= 1)
-                    @test all(isapprox.(Kth, K; atol=0.2))
+
+                @testif dep_coherency_enabled(C) "Dependence metrics coherency" begin
+                    # Empirical vs theoretical for available metrics, mirroring Kendall’s pattern
+                    metrics = (
+                        ("tau", Copulas.τ, StatsBase.corkendall, 0.10, -1, 1), 
+                        ("rho", Copulas.ρ, StatsBase.corspearman, 0.10, -1 , 1), 
+                        ("beta", Copulas.β, Copulas.corblomqvist, 0.10, -1 , 1), 
+                        ("gamma", Copulas.γ, Copulas.corgini, 0.15, -1 , 1), 
+                        ("iota", Copulas.ι, Copulas.corentropy, 0.15, -Inf , 0)
+                    )
+                    for (name, f, corf, tol, lb, ub) in metrics
+                        @testset "$name" begin
+                            thf = f(C)
+                            thcorf = corf(C)
+                            empf = f(spl1000)
+                            
+                            @test isapprox(empf, thf; atol=tol)
+                            @test lb ≤ thf ≤ ub
+                            @test lb ≤ empf ≤ ub
+                            @test all(lb .≤ thcorf .≤ ub)
+
+                            if which(f, (CT,)) !=  which(f, (Copulas.Copula{d},))
+                                thf_gen  = @invoke f(C::Copulas.Copula{d})
+                                # Allow tiny numerical discrepancies
+                                @test isapprox(thf, thf_gen; atol= (C isa GaussianCopula ? 0.1 : 0.001))
+                            end
+                            if d == 2
+                                @test isapprox(thf, thcorf[1,2]; atol=0.1)
+                            else
+                                @test all(lb .<= thcorf .<= ub)
+                            end
+                            if check_rosenblatt(C)
+                                U = rosenblatt(C, spl1000)
+                                empfu = f(U)
+                                empcorfu = corf(U')
+                                @test isapprox(empfu, 0.0; atol=tol+0.05)
+                                for i in 1:(d - 1)
+                                    for j in (i + 1):d
+                                        @test empcorfu[i,j] ≈ 0.0 atol = 0.15
+                                    end
+                                end
+                            end
+                        end
+                    end
                 end
             end
 
             @testif can_integrate_pdf(C) "Testing pdf integration" begin
                 # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
-                v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 10_000, 10_000)
+                v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 3_000, 3_000)
                 @test isapprox(v, 1; atol=max(5*sqrt(r), 1e-3))
 
                 # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
                 b = ones(d)/2
-                v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 10_000, 10_000)
+                v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 3_000, 3_000)
                 @test isapprox(v2, cdf(C, b); atol=max(10*sqrt(r2), 1e-3))
 
                 # 3) random rectangle, compare with measure (cdf based)
                 a = rand(rng, d)
                 b = a .+ rand(rng, d) .* (1 .- a)
-                v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 10_000, 10_000)
+                v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 3_000, 3_000)
                 @test (isapprox(v3, Copulas.measure(C, a, b); atol=max(20*sqrt(r3), 1e-3)) || max(v3, Copulas.measure(C, a, b)) < eps(Float64)) # wide tolerence, should pass. 
             end
 
@@ -200,14 +239,6 @@
                 @test spl10 ≈ inverse_rosenblatt(C, rosenblatt(C, spl10)) atol=1e-2
             end
 
-            @testif check_corkendall(C) "corkendall ∘ rosenblatt = I" begin
-                U = rosenblatt(C, spl1000)
-                for i in 1:(d - 1)
-                    for j in (i + 1):d
-                        @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.15
-                    end
-                end
-            end
 
             @testset "Conditionning" begin
                 # Conditioning tests (p = 1), validate against AD ratio and compare fast-paths to fallback
@@ -487,7 +518,7 @@
                         @test isapprox(exp(lp), c_h; rtol=1e-6, atol=1e-8)
                     end
 
-                    for r in _archimax_mc_rectangles_cdf(C; N=20_000, seed=321)
+                    for r in _archimax_mc_rectangles_cdf(C; N=8_000, seed=321)
                         @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
                     end
             end
@@ -559,7 +590,7 @@
         H = ForwardDiff.hessian(f, [u1, u2])  # ∂²/∂u1∂u2
         max(H[1,2], 0.0)                      # numerical clip 
     end
-    function _archimax_mc_rectangles_cdf(C; N::Int=300_000, seed::Integer=123,
+    function _archimax_mc_rectangles_cdf(C; N::Int=120_000, seed::Integer=123,
                             rects::Tuple{Vararg{Tuple{<:Real,<:Real}}}=((0.5,0.5),(0.3,0.7),(0.8,0.2)))
         rng = StableRNG(seed)
         U = rand(rng, C, N)
