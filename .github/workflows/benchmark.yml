@@ -10,7 +10,7 @@ permissions:
 jobs:
   bench:
     runs-on: ubuntu-latest
-    if: ${{ contains(github.event.label.name, 'benchmarkable') || github.event_name == 'workflow_dispatch' }}
+    if: ${{ contains(github.event.label.name, 'run benchmark') || github.event_name == 'workflow_dispatch' }}
     steps:
       - uses: MilesCranmer/AirspeedVelocity.jl@action-v1
         with:
