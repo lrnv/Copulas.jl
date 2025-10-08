@@ -44,20 +44,37 @@ function ϕ⁽¹⁾(G::BB3Generator, s)
     B = exp((pw-1)*log(A))
     return -(pw*a) * B * inv(1+s) * ϕ(G,s)
 end
+function ϕ⁽ᵏ⁾(G::BB3Generator, k::Int, s)
 
-function ϕ⁽ᵏ⁾(G::BB3Generator, d::Int, s)
-    if d != 2
-        # Only d==2 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+    if k==2 # old version. 
+        a  = inv(G.δ);  pw = inv(G.θ)
+        A  = a * log1p(s);  inv1p = inv(1+s)
+        B = exp((pw-1)*log(A))
+        C = exp((pw-2)*log(A))
+        φ  = ϕ(G,s)
+        K   = (pw*a) * B * inv1p
+        K′  = (pw*a) * inv1p^2 * ((pw-1)*a*C - B)
+        return φ * (K^2 - K′)
     end
-    a  = inv(G.δ);  pw = inv(G.θ)
-    A  = a * log1p(s);  inv1p = inv(1+s)
-    B = exp((pw-1)*log(A))
-    C = exp((pw-2)*log(A))
-    φ  = ϕ(G,s)
-    K   = (pw*a) * B * inv1p
-    K′  = (pw*a) * inv1p^2 * ((pw-1)*a*C - B)
-    return φ * (K^2 - K′)
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+
+    # T = promote_type(typeof(s), typeof(G.θ), typeof(G.δ))
+    # θ, δ, r = T(G.θ), T(G.δ), one(T) / T(G.θ)
+    # t, a = log1p(T(s)), δ^(-r)
+    # ϕ0 = exp(-a * t^r)
+    # k == 0 && return ϕ0
+    # fall = one(T)
+    # x = [begin fall *= (r - (j-1)); -a * fall * t^(r - j) end for j in 1:k] # Derivates of h(t) = -a·t^r: h⁽ʲ⁾(t) = -a·(r)ⱼ·t^(r-j)
+    # B = zeros(T, k + 1); B[1] = one(T)
+    # for n in 1:k
+    #     B[n + 1] = sum(binomial(n-1, j-1) * x[j] * B[n - j + 1] for j in 1:n) # Bell Bₘ via recurrency: Bₙ = Σⱼ C(n-1,j-1)·xⱼ·Bₙ₋ⱼ
+    # end
+    # row = [one(T)]
+    # for n in 1:k
+    #     row = [sum((m-1 ≥ 0 ? row[m] : zero(T)) + (m ≤ n-1 ? -T(n-1) * row[m+1] : zero(T)) for _ in 1:1) for m in 0:n] # Stirling numberss(k,m) via recurrency: s(n,m) = s(n-1,m-1) - (n-1)·s(n-1,m)
+    # end
+    # acc = sum(row[m+1] * B[m+1] for m in 1:k) # Sum final: Σₘ s(k,m)·Bₘ
+    # return ϕ0 * (one(T) + T(s))^(-k) * acc
 end
 ϕ⁻¹⁽¹⁾(G::BB3Generator, t) = -(G.δ*G.θ) * inv(t) * exp(G.δ * exp(G.θ * log(-log(t)))) * (-log(t))^(G.θ - 1)
 function _f_for_BB3_ϕ⁽¹⁾⁻¹(lt, a, δ, lny)

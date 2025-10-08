@@ -1,4 +1,3 @@
-
 ###############################################################################
 #####  Fitting interface
 #####  User-facing function:
@@ -17,8 +16,6 @@
 #####   - _example() giving example copula of your type. 
 #####  
 ###############################################################################
-
-
 
 """
     CopulaModel{CT, TM, TD} <: StatsBase.StatisticalModel
@@ -44,7 +41,7 @@ for statistical inference and model comparison.
 [`StatsBase.nobs`](@ref), [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
 [`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref), [`StatsBase.deviance`](@ref), etc.
 
-See also [`Distributions.fit`](@ref) and [`_copula_of`](@ref).
+See also [`Distributions.fit`](@ref).
 """
 struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
     result        :: CT
@@ -65,7 +62,7 @@ struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: Sta
     end
 end
 
-# Fallbacks that throw if the interface s not implemented correctly. 
+# Fallbacks that throw if the interface is not implemented correctly. 
 """
     Distributions.params(C::Copula)
     Distributions.params(S::SklarDist)
@@ -83,24 +80,21 @@ _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::T
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
 function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
-    # @info "Running the MLE routine from the generic implementation"
+    # generic MLE routine (agnostic to vcov/inference)
     d   = size(U,1)
-    function cop(α)
-        par = _rebound_params(CT, d, α)
-        return CT(d, par...) ####### Using a "," here forces the constructor to accept raw values, while a ";" passes named values. Not sure which is best. 
-    end
+        cop(α) = CT(d, _rebound_params(CT, d, α)...)
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-
     loss(C) = -Distributions.loglikelihood(C, U)
     res = try
         Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff=:forward)
     catch err
-        # @warn "LBFGS with AD failed ($err), retrying with NelderMead"
         Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     end
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θhat...),
-           (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
+    return CT(d, θhat...), (; θ̂=θhat, 
+                optimizer  = Optim.summary(res), 
+                converged  = Optim.converged(res), 
+                iterations = Optim.iterations(res))
 end
 
 """
@@ -117,62 +111,61 @@ This is not intended for direct use by end–users.
 Use [`Distributions.fit(CopulaModel, ...)`] instead.
 """
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
-    # @info "Running the itau/irho/ibeta routine from the generic implementation"
+    # generic rank-based routine (agnostic to vcov/inference)
     d   = size(U,1)
-
     cop(α) = CT(d, _rebound_params(CT, d, α)...)
-    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
-    @assert length(α₀) <= d*(d-1)/2 "Cannot use $method since there are too much parameters."
-
-    fun = method isa Val{:itau} ? StatsBase.corkendall : method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
-    est = fun(U')
+    α₀ = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
+    fun  = method isa Val{:itau} ? StatsBase.corkendall :
+           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
+    est  = fun(U')
     loss(C) = sum(abs2, est .- fun(C))
-
-    res = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
+    res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θhat...),
-           (; θ̂=θhat, optimizer = Optim.summary(res), converged = Optim.converged(res), iterations = Optim.iterations(res))
+    return CT(d, θhat...), (; θ̂=θhat,
+                optimizer  = Optim.summary(res),
+                converged  = Optim.converged(res),
+                iterations = Optim.iterations(res))
 end
+
+
 """
     Distributions.fit(CT::Type{<:Copula}, U; kwargs...) -> CT
 
-Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(CopulaModel, CT, U; summaries=false, kwargs...).result`).
+Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(CopulaModel, CT, U; kwargs...)`).
 """
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; copula_method=method, kwargs...)
-@inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; summaries=false, kwargs...).result
+@inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; quick_fit=true, kwargs...).result
 
 """
-    _available_fitting_methods(::Type{<:Copula})
+    _available_fitting_methods(::Type{<:Copula}, d::Int)
 
-Return the tuple of fitting methods available for a given copula family.
+Return the tuple of fitting methods available for a given copula family in a given dimension.
 
 This is used internally by [`Distributions.fit`](@ref) to check validity of the `method` argument
 and to select a default method when `method=:default`.
 
 # Example
 ```julia
-_available_fitting_methods(GumbelCopula)
+_available_fitting_methods(GumbelCopula, 3)
 # → (:mle, :itau, :irho, :ibeta)
 ```
 """
-_available_fitting_methods(::Type{<:Copula}) = (:mle, :itau, :irho, :ibeta)
-_available_fitting_methods(C::Copula) = _available_fitting_methods(typeof(C))
+_available_fitting_methods(::Type{<:Copula}, d) = (:mle, :itau, :irho, :ibeta)
+_available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C), d)
 
-function _find_method(CT, method)
-    avail = _available_fitting_methods(CT)
+function _find_method(CT, d, method)
+    avail = _available_fitting_methods(CT, d)
     isempty(avail) && error("No fitting methods available for $CT.")
-    if method === :default 
-        method = avail[1]
-        # @info "Choosing default method '$(method)' among $avail..."
-    elseif method ∉ avail 
-        error("Method '$method' not available for $CT. Available: $(join(avail, ", ")).")
-    end
+    method === :default && return avail[1]
+    method ∉ avail && error("Method '$method' not available for $CT. Available: $(join(avail, ", ")).")
     return method
 end
+
 """
-    fit(CopulaModel, CT::Type{<:Copula}, U; method=:default, summaries=true, kwargs...)
+    fit(CopulaModel, CT::Type{<:Copula}, U; method=:default, kwargs...)
 
 Fit a copula of type `CT` to pseudo-observations `U`.
 
@@ -182,8 +175,6 @@ Fit a copula of type `CT` to pseudo-observations `U`.
   margins and copula simultaneously.
 - `method::Symbol`    — fitting method; defaults to the first available one
   (see [`_available_fitting_methods`](@ref)).
-- `summaries::Bool`   — whether to compute pairwise summary statistics
-  (Kendall's τ, Spearman's ρ, Blomqvist's β).
 - `kwargs...`         — additional method-specific keyword arguments
   (e.g. `pseudo_values=true`, `grid=401` for extreme-value tails, etc.).
 
@@ -201,15 +192,37 @@ println(M)
 C = fit(GumbelCopula, U; method=:itau)
 ```
 """
-function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = :default, summaries=true, kwargs...)
+function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; 
+        method=:default, quick_fit=false, derived_measures=true, 
+        vcov=true, vcov_method=nothing, kwargs...)
     d, n = size(U)
-    # Choose the fitting method: 
-    method = _find_method(CT, method)
-
+    method = _find_method(CT, d, method)
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
     C, meta = rez
+    quick_fit && return (result=C,) # as soon as possible. 
     ll = Distributions.loglikelihood(C, U)
-    md = (; d, n, method, meta..., null_ll=0.0, elapsed_sec=t, _extra_pairwise_stats(U, !summaries)...)
+
+    if vcov && C isa TCopula 
+        vcov = false 
+        @info "Setting vcov = false for TCopula since _beta_inc_inv derivative are not implemented"
+    end
+    if vcov && C isa tEVCopula 
+        vcov = false 
+        @info "Setting vcov = false for tEVCopula since _beta_inc_inv derivative are not implemented"
+    end
+    if vcov && C isa FGMCopula && method==:mle 
+        vcov = false 
+        @info "Setting vcov = false for FGMCopula with method=:mle since unimplemented right now"
+    end
+
+    if vcov && haskey(meta, :θ̂)
+        vcov, vmeta = _vcov(CT, U, meta.θ̂; method=method, override=vcov_method)
+        meta = (; meta..., vcov, vmeta...)
+    end
+
+    md = (; d, n, method, meta..., null_ll=0.0,
+        elapsed_sec=t, derived_measures, U=U)
+
     return CopulaModel(C, n, ll, method;
         vcov         = get(md, :vcov, nothing),
         converged    = get(md, :converged, true),
@@ -218,76 +231,241 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U; method = 
         method_details = md)
 end
 
-_available_fitting_methods(::Type{SklarDist}) = (:ifm, :ecdf)
+_available_fitting_methods(::Type{SklarDist}, d) = (:ifm, :ecdf)
 """
     fit(CopulaModel, SklarDist{CT, TplMargins}, X; copula_method=:default, sklar_method=:default,
-                                           summaries=true, margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple())
+                                           margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple())
 
 Joint margin and copula adjustment (Sklar approach).
 `sklar_method ∈ (:ifm, :ecdf)` controls whether parametric CDFs (`:ifm`) or pseudo-observations (`:ecdf`) are used.
 """
-function Distributions.fit(::Type{CopulaModel},::Type{SklarDist{CT,TplMargins}}, X; copula_method = :default, sklar_method = :default,
-                           summaries = true, margins_kwargs = NamedTuple(), copula_kwargs = NamedTuple()) where
-                           {CT<:Copulas.Copula, TplMargins<:Tuple}
+function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}, X; quick_fit = false,
+                           copula_method = :default, sklar_method = :default, margins_kwargs = NamedTuple(),
+                           copula_kwargs = NamedTuple(), derived_measures = true, vcov = true,
+                           vcov_method=nothing) where {CT<:Copulas.Copula, TplMargins<:Tuple}
 
-    sklar_method = _find_method(SklarDist, sklar_method)
-    copula_method = _find_method(CT, copula_method)
-
+    # Get methods: 
     d, n = size(X)
-    marg_types = TplMargins.parameters
-    (length(marg_types) == d) || throw(ArgumentError("SklarDist: #marginals $(length(marg_types)) ≠ d=$d"))
-    m = ntuple(i -> Distributions.fit(marg_types[i], @view X[i, :]; margins_kwargs...), d)
-    # Only one margins_kwargs while people mught want to pass diferent kwargs for diferent marginals... but OK for the moment.
+    sklar_method  = _find_method(SklarDist, d, sklar_method)
+    copula_method = _find_method(CT, d, copula_method)
 
-    
+    # Fit marginals: 
+    m = ntuple(i -> Distributions.fit(TplMargins.parameters[i], @view X[i, :]; margins_kwargs...), d)
+
+    # Make pseudo-observations
     U = similar(X)
     if sklar_method === :ifm
         for i in 1:d
             U[i,:] .= Distributions.cdf.(m[i], X[i,:])
         end
-    elseif sklar_method === :ecdf
+    else # :ecdf then
         U .= pseudos(X)
     end
 
-    # Copula fit... with method specific
-    C, cmeta = _fit(CT, U, Val{copula_method}(); copula_kwargs...)
+    # Fit the copula
+    copM = Distributions.fit(CopulaModel, CT, U; quick_fit=quick_fit, 
+                method=copula_method, derived_measures=derived_measures,
+                vcov=vcov, vcov_method=vcov_method, copula_kwargs...)
+    
+    S = SklarDist(copM.result, m)
+    quick_fit && return (result=S,)
 
-    S  = SklarDist(C, m)
-    ll = Distributions.loglikelihood(S, X)
-
-    null_ll = 0.0
-    @inbounds for j in axes(X, 2)
+    # Marginal vcov: compute via θ-Hessian fallback only if vcov=true
+    Vm = Vector{Union{Nothing, Matrix{Float64}}}(undef, d)
+    if vcov
         for i in 1:d
-            null_ll += Distributions.logpdf.(m[i], X[i, j])
+            p  = length(Distributions.params(m[i]))
+            Vm[i] = nothing
+            Vg = _vcov_margin_generic(m[i], @view X[i, :])
+            if Vg !== nothing && ndims(Vg) == 2 && size(Vg) == (p, p) && all(isfinite, Matrix(Vg))
+                Vm[i] = Matrix{Float64}(Vg)
+            end
         end
+    else
+        fill!(Vm, nothing)
     end
 
-    return CopulaModel(S, n, ll, copula_method;
-        vcov           = get(cmeta, :vcov, nothing),   # vcov of the copula (if you compute it)
-        converged      = get(cmeta, :converged, true),
-        iterations     = get(cmeta, :iterations, 0),
-        elapsed_sec    = get(cmeta, :elapsed_sec, NaN),
-        method_details = (; cmeta..., null_ll, sklar_method, margins = map(typeof, m), 
-              has_summaries = summaries, d=d, n=n, _extra_pairwise_stats(U, !summaries)...))
+    # Copula Vcov:
+    Vfull = StatsBase.vcov(copM)
+
+    # total and null loglikelihood 
+    ll = Distributions.loglikelihood(S, X)
+    null_ll = Distributions.loglikelihood(SklarDist(IndependentCopula(d), m), X)
+    return CopulaModel(
+        S, n, ll, copula_method;
+        vcov         = Vfull,
+        converged    = copM.converged,
+        iterations   = copM.iterations,
+        elapsed_sec  = copM.elapsed_sec,
+        method_details = (; 
+            copM.method_details...,
+            vcov_copula   = Vfull,
+            vcov_margins  = Vm,
+            null_ll,
+            sklar_method,
+            margins       = map(typeof, m),
+            d = d, n = n,
+            elapsed_sec = copM.elapsed_sec,
+            derived_measures,
+            # no raw X_margins stored to keep model lightweight
+        )
+    )
+end
+####### vcov functions...
+
+# objetive this functions: try get the vcov from marginals...
+function _vcov_margin_generic(d::TD, x::AbstractVector) where {TD<:Distributions.UnivariateDistribution}
+    # Compute observed information directly on the parameter (θ) scale at current params.
+    p_nt = Distributions.params(d)
+    θ0 = p_nt isa NamedTuple ? Float64.(collect(values(p_nt))) : Float64.(collect(p_nt))
+
+    # Find the distribution constructor: 
+    MyDist = TD.name.wrapper
+    # Observed information = - Hessian of log-likelihood at θ0
+    H = ForwardDiff.hessian(θ -> Distributions.loglikelihood(MyDist(θ...), x), θ0)
+    # Small ridge for numerical stability
+    Vθ = inv(-H + 1e-8 .* LinearAlgebra.I)
+    Vθ = (Vθ + Vθ')/2
+    return LinearAlgebra.Symmetric(Matrix{Float64}(Vθ))
 end
 
-function _uppertriangle_stats(mat)
-    # compute the mean and std of the upper triangular part of the matrix (diagonal excluded)
-    gen = [mat[idx] for idx in CartesianIndices(mat) if idx[1] < idx[2]]
-    return Statistics.mean(gen), length(gen) == 1 ? zero(gen[1]) : Statistics.std(gen), minimum(gen), maximum(gen)
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Symbol, override::Union{Symbol,Nothing}=nothing)
+    vcovm = !isnothing(override) ? override : 
+            method === :mle      ? :hessian :
+            method === :itau     ? :godambe :
+            method === :irho     ? :godambe :
+            method === :ibeta    ? :godambe :
+            method === :iupper   ? :godambe :  :jackknife
+
+    if vcovm ∉ (:hessian, :godambe, :godambe_pairwise)
+        return _vcov(CT, U, θ, Val{vcovm}(), Val{method}()) # you can write new methods through this interface, as the jacknife method below. 
+    end
+
+    d, n = size(U)
+    α  = _unbound_params(CT, d, θ)
+    cop(α) = CT(d, _rebound_params(CT,d,α)...)
+    _upper_triangle(A) = [A[idx] for idx in CartesianIndices(A) if idx[1] < idx[2]]
+    
+    if vcovm === :hessian
+        ℓ(α) = Distributions.loglikelihood(cop(α), U)
+        H  = ForwardDiff.hessian(ℓ, α)
+        Iα = .-H
+        if any(!isfinite, Iα)
+            @warn "vcov(:hessian): non-finite Fisher information; falling back" Iα
+            return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
+        end
+        Iα = (Iα + Iα')/2
+        p   = size(Iα, 1)
+        I_p = Matrix{Float64}(LinearAlgebra.I, p, p)
+        λ = 1e-8
+        Vα = nothing
+        @inbounds for _ in 1:8
+            A = Iα + λ*I_p
+            ch = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(A); check=false)
+            if ch.info == 0                     # is p.d.
+                Vα = ch \ I_p                   # It is equivalent to inv(A), but stable, we could use pinv but I don't know how optimal it is... 
+                break
+            end
+            λ *= 10
+        end
+        if Vα === nothing || any(!isfinite, Vα)
+            @warn "vcov(:hessian): failed to stabilize Fisher; falling back" λ_final=λ
+            return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
+        end
+    else
+
+        pairwise_φ = method isa Val{:itau}  ? StatsBase.corkendall :
+            method isa Val{:irho}  ? StatsBase.corspearman :
+            method isa Val{:ibeta} ? corblomqvist : coruppertail
+        φ = method isa Val{:itau}  ? τ : 
+                method isa Val{:irho}  ? ρ : 
+                method isa Val{:ibeta} ? β : λᵤ
+        if vcovm === :godambe
+            q = 1
+            ψ = α -> [φ(cop(α))]
+            ψ_emp = u ->[φ(u)]
+        else # then :godambe_pairwise
+            q = d*(d-1) ÷ 2
+            ψ = α -> _upper_triangle(pairwise_φ(cop(α)))
+            ψ_emp = U -> _upper_triangle(pairwise_φ(U'))
+        end
+
+        Dα = ForwardDiff.jacobian(ψ, α)
+        Dα = reshape(Dα, q, length(α))
+
+        # Ω bootstrap
+        B   = clamp(Int(floor(sqrt(n))), 10, 200)
+        M   = Matrix{Float64}(undef, B, q)
+        idx = Vector{Int}(undef, n)
+        rng = Random.default_rng()
+
+        @inbounds for b in 1:B
+            for i in 1:n
+                idx[i] = rand(rng, 1:n)
+            end
+            Mb = @view U[:, idx]
+            M[b, :] = ψ_emp(Mb)
+        end
+        Ω = n * Statistics.cov(M; corrected=true)
+        DtD = Dα' * Dα
+        ϵI  = 1e-10LinearAlgebra.I
+        Vα  = inv(DtD + ϵI) * (Dα' * Ω * Dα) * inv(DtD + ϵI) / n
+    end
+    # Delta method Jacobian from α (unbounded) to θ (original params), flattened
+    J  = ForwardDiff.jacobian(αv -> _flatten_params(_rebound_params(CT, d, αv))[2], α)
+    Vθ = J * Vα * J'
+    # <<<<<<< KEY CHANGE >>>>>>>>>
+    # Check for finiteness BEFORE calling eigen.
+    # If the matrix already contains Inf/NaN, the estimate was unstable.
+    # We activate the fallback to jackknife immediately.
+    if !all(isfinite, Vθ)
+        return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
+    end
+    Vθ = (Vθ + Vθ')/2
+    λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
+    λ_reg = map(x -> max(x, 1e-12), λ)
+    Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
+    # This final check is now a double security.
+    any(!isfinite, Matrix(Vθ)) && return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+    return Vθ, (; vcov_method=vcovm)
 end
-function _extra_pairwise_stats(U::AbstractMatrix, bypass::Bool)
-    bypass && return (;)
-    τm, τs, τmin, τmax = _uppertriangle_stats(StatsBase.corkendall(U'))
-    ρm, ρs, ρmin, ρmax = _uppertriangle_stats(StatsBase.corspearman(U'))
-    βm, βs, βmin, βmax = _uppertriangle_stats(corblomqvist(U'))
-    γm, γs, γmin, γmax = _uppertriangle_stats(corgini(U'))
-    return (; tau_mean=τm, tau_sd=τs, tau_min=τmin, tau_max=τmax,
-             rho_mean=ρm, rho_sd=ρs, rho_min=ρmin, rho_max=ρmax,
-             beta_mean=βm, beta_sd=βs, beta_min=βmin, beta_max=βmax,
-             gamma_mean=γm, gamma_sd=γs, gamma_min=γmin, gamma_max=γmax)
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jackknife}, ::Val{method}) where {method}
+    d, n = size(U)
+    θminus = zeros(n, length(θ))
+    idx = Vector{Int}(undef, n-1)
+
+    for j in 1:n
+        k = 1; for t in 1:n; if t == j; continue; end; idx[k] = t; k += 1; end
+        Uminus = @view U[:, idx]
+        θminus[j, :] .= _flatten_params(_fit(CT, Uminus, Val{method}())[2].θ̂)[2]
+    end
+
+    θbar = vec(Statistics.mean(θminus, dims=1))
+    V = (n-1)/n * (LinearAlgebra.transpose(θminus .- θbar') * (θminus .- θbar')) ./ (n-1)
+    return V, (; vcov_method=:jackknife_obs)
+end
+# Fallback fast: bootstrap refit (B < n)
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:bootstrap}, ::Val{method}) where {method}
+    d, n = size(U)
+    p = length(_flatten_params(θ)[2])
+    B = clamp(Int(floor(sqrt(n))), 10, 200)
+    Θ   = Matrix{Float64}(undef, B, p)
+    idx = Vector{Int}(undef, n)
+    rng = Random.default_rng()
+    @inbounds for b in 1:B
+        for i in 1:n
+            idx[i] = rand(rng, 1:n)
+        end
+        θminus = @view U[:, idx]
+        Θ[b, :] .= _flatten_params(_fit(CT, θminus, Val{method}())[2].θ̂)[2]
+    end
+    V = Statistics.cov(Θ; corrected=true)
+    return V, (; vcov_method=:bootstrap, B=B)
 end
 
+
+
+##### StatsBase interfaces. 
 """
     nobs(M::CopulaModel) -> Int
 
@@ -302,7 +480,7 @@ StatsBase.isfitted(::CopulaModel)  = true
 Deviation of the fitted model (-2 * loglikelihood).
 """
 StatsBase.deviance(M::CopulaModel) = -2 * M.ll
-StatsBase.dof(M::CopulaModel) = StatsBase.dof(M.result)
+StatsBase.dof(M::CopulaModel) = length(StatsBase.coef(M))
 
 """
     _copula_of(M::CopulaModel)
@@ -316,15 +494,63 @@ _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 
 Vector with the estimated parameters of the copula.
 """
-StatsBase.coef(M::CopulaModel) = collect(values(Distributions.params(_copula_of(M)))) # why ? params of the marginals should also be taken into account. 
+StatsBase.coef(M::CopulaModel) = _flatten_params(M.method_details.θ̂)[2]
+
 
 """
-    coefnames(M::CopulaModel) -> Vector{String}
+coefnames(M::CopulaModel) -> Vector{String}
 
 Names of the estimated copula parameters.
 """
-StatsBase.coefnames(M::CopulaModel) = string.(keys(Distributions.params(_copula_of(M))))
-StatsBase.dof(C::Copulas.Copula) = length(values(Distributions.params(C)))
+StatsBase.coefnames(M::CopulaModel) = _flatten_params(M.method_details.θ̂)[1]
+
+
+# Flatten a NamedTuple of parameters into a Vector{Float64},
+# consistent with the generic linearization used in show().
+function _flatten_params(params_nt::NamedTuple)
+    nm = String[]
+    θ = Any[]
+    sidx = ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]
+    for (k, v) in pairs(params_nt)
+        if v isa Number
+            push!(nm, String(k))
+            push!(θ, v)
+        elseif v isa AbstractMatrix
+            if maximum(size(v)) > 9
+                @inbounds for j in 2:size(v,2), i in 1:j-1
+                    push!(nm, "$(k)_$(i)_$(j)")
+                    push!(θ, v[i,j])
+                end
+            else
+                @inbounds for j in 2:size(v,2), i in 1:j-1
+                    push!(nm, "$(k)$(sidx[i])$(sidx[j])")
+                    push!(θ, v[i,j])
+                end
+            end
+        elseif v isa AbstractVector
+            if length(v) > 9
+                for i in eachindex(v)
+                    push!(nm, "$(k)_$(i)")
+                    push!(θ, v[i])
+                end
+            else
+                for i in eachindex(v)
+                    push!(nm, "$(k)$(sidx[i])")
+                    push!(θ, v[i])
+                end
+            end
+        else
+            try
+                push!(nm, String(k))
+                push!(θ, v)
+            catch
+            end
+        end
+    end
+    return nm, [x for x in promote(θ...)]
+end
+
+
 
 #(optional vcov) and vcov its very important... for inference 
 """
@@ -379,3 +605,41 @@ function StatsBase.nullloglikelihood(M::CopulaModel)
     end
 end
 StatsBase.nulldeviance(M::CopulaModel) = -2 * StatsBase.nullloglikelihood(M)
+"""
+    StatsBase.residuals(M::CopulaModel; transform=:uniform)
+
+Compute Rosenblatt residuals of a fitted copula model.
+
+# Arguments
+- `transform = :uniform` → returns Rosenblatt residuals in [0,1].
+- `transform = :normal`  → applies Φ⁻¹ to obtain pseudo-normal residuals.
+
+# Notes
+The residuals should be i.i.d. Uniform(0,1) under a correctly specified model.
+"""
+StatsBase.residuals(M::CopulaModel; transform=:uniform) = begin
+    haskey(M.method_details, :U) || throw(ArgumentError("method_details must contain pseudo-observations :U"))
+    U = M.method_details[:U]
+    R = rosenblatt(_copula_of(M), U)
+    return transform === :normal ? Distributions.quantile.(Distributions.Normal(), R) : R
+end
+"""
+    StatsBase.predict(M::CopulaModel; newdata=nothing, what=:cdf, nsim=0)
+
+Predict or simulate from a fitted copula model.
+
+# Keyword arguments
+- `newdata` — matrix of points in [0,1]^d at which to evaluate (`what=:cdf` or `:pdf`).
+- `what` — one of `:cdf`, `:pdf`, or `:simulate`.
+- `nsim` — number of samples to simulate if `what=:simulate`.
+
+# Returns
+- Vector or matrix of predicted probabilities/densities, or simulated samples.
+"""
+function StatsBase.predict(M::CopulaModel; newdata=nothing, what=:cdf, nsim=0)
+    C = _copula_of(M)
+    return what === :simulate ? rand(C, nsim > 0 ? nsim : M.n) :
+           what === :cdf      ? (newdata === nothing ? throw(ArgumentError("`newdata` required for `:cdf`")) : Distributions.cdf(C, newdata)) :
+           what === :pdf      ? (newdata === nothing ? throw(ArgumentError("`newdata` required for `:pdf`")) : Distributions.pdf(C, newdata)) :
+           throw(ArgumentError("`what` must be one of :simulate, :cdf, or :pdf. Got `$what`."))
+end

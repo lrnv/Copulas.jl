@@ -47,19 +47,33 @@ function ϕ⁽¹⁾(G::BB1Generator, s)
     a, b, ls = inv(G.δ), inv(G.θ), log(s)
     return -(a*b) * exp((a-1)*ls - (b+1)*log1p(exp(a*ls)))
 end
-function ϕ⁽ᵏ⁾(G::BB1Generator, d::Int, s) # only d=2 case, other cases are not implemented.
-    if d != 2
-        # Only d==2 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+function ϕ⁽ᵏ⁾(G::BB1Generator, k::Int, s::Real; tol::Float64=1e-9, maxiter::Int=10_000, miniter::Int=5)
+    if k==2 
+        a, b, ls = inv(G.δ), inv(G.θ), log(s)
+        spa = exp(a*ls)
+        return (a*b) * exp((a-2)*ls) * exp(-(b+2)*log1p(exp(a*ls))) *  ( (1 + a*b)*spa - (a - 1) )
     end
-    a, b, ls = inv(G.δ), inv(G.θ), log(s)
-    spa = exp(a*ls)
-    return (a*b) * exp((a-2)*ls) * exp(-(b+2)*log1p(exp(a*ls))) *  ( (1 + a*b)*spa - (a - 1) )
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+
+    # a, b = inv(G.δ), inv(G.θ)
+    # k == 0 && return ϕ(G, s)
+    # ls = log(s); r = exp(a * ls); sk = exp(-k * ls)
+    # acc, rpow, coef = 0.0, 1.0, 1.0
+    # @inbounds for m in 0:maxiter
+    #     am = a * m
+    #     ff = prod(am - j for j in 0:k-1)
+    #     term = ((m & 1 == 1) ? -coef : coef) * ff * rpow
+    #     acc_new = acc + term
+    #     m ≥ miniter && abs(term) ≤ tol * (abs(acc_new) + eps()) && return sk * acc_new
+    #     acc = acc_new
+    #     m == maxiter && @warn "ϕ⁽ᵏ⁾(BB1): reached maxiter" k s G.θ G.δ
+    #     rpow *= r
+    #     coef *= (b + m) / (m + 1)
+    # end
+    # return sk * acc
 end
-function ϕ⁻¹⁽¹⁾(G::BB1Generator, t)
-    lt = log(t)
-    return -G.δ*G.θ * exp(-lt*(G.θ+1)) * exp((G.δ-1)*log(expm1(-lt*G.θ)))
-end
+
+
 
 # Frailty: M = S_{1/δ} * Gamma_{1/θ}^{δ}
 frailty(G::BB1Generator) = GammaStoppedPositiveStable(inv(G.δ), inv(G.θ))
@@ -73,8 +87,8 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB1Generator}
     return exp( - (1/θ) * log1p(sa) )
 end
 
-function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB1Generator}
-    T = promote_type(Float64, eltype(u))
+function Distributions._logpdf(C::ArchimedeanCopula{2,BB1Generator{TF}}, u) where {TF}
+    T = promote_type(TF, eltype(u))
     (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return T(-Inf)
 
     θ, δ = C.G.θ, C.G.δ

@@ -9,7 +9,7 @@ struct Logarithmic{T<:Real} <: Distributions.DiscreteUnivariateDistribution
     end
     Logarithmic{T}(h) where T = Logarithmic(T(h))
 end
-Base.eltype(::Logarithmic{T}) where T = promote_type(T,Float64)
+Base.eltype(::Logarithmic{T}) where T = T
 function Distributions.logpdf(d::Logarithmic{T}, x::Real) where T
     insupport(d, x) ? x*log1p(-d.α) - log(x) - log(-log(d.α)) : log(zero(T))
 end

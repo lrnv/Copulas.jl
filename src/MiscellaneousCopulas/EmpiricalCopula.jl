@@ -58,7 +58,7 @@ end
 
 # Fitting colocated. 
 StatsBase.dof(::EmpiricalCopula) = 0
-_available_fitting_methods(::Type{<:EmpiricalCopula}) = (:deheuvels,)
+_available_fitting_methods(::Type{<:EmpiricalCopula}, d) = (:deheuvels,)
 """
     _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels};
          pseudo_values::Bool=true, kwargs...) -> (C, meta)

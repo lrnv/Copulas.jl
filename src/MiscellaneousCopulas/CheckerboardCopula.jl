@@ -157,7 +157,7 @@ end
 # Fit API: mirror constructor for the moment until we get a better API ?
 # Fitting plug-in (empírico) para CheckerboardCopula — mismo patrón que BetaCopula
 StatsBase.dof(::CheckerboardCopula) = 0
-_available_fitting_methods(::Type{<:CheckerboardCopula}) = (:exact,)
+_available_fitting_methods(::Type{<:CheckerboardCopula}, d) = (:exact,)
 """
     _fit(::Type{<:CheckerboardCopula}, U, ::Val{:exact};
          m=nothing, pseudo_values::Bool=true, kwargs...) -> (C, meta)

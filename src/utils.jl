@@ -15,7 +15,7 @@ end
 """
     taylor(f::F, x₀, d::Int) where {F}
 
-Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back all the successive derivatives. 
+Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back the derivatives as a vector of length d+1. (first value is f(x₀)). 
 
 # Arguments
 - `f`: A function to be expanded.
@@ -148,25 +148,28 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
     end
     Ucol = [Cnan[j] ? Float64[] : collect(@view X[:, j]) for j in 1:n]
     H  = zeros(Float64, n, n)
+    H  = zeros(Float64, n, n)
     Ub = Array{Float64}(undef, 2, m)
     @inbounds for j in 2:n
         if Cnan[j]
-            H[:, j] .= NaN; H[j, :] .= NaN; H[j, j] = 0.0
+            H[:, j] .= NaN
+            H[j, :] .= NaN
+            H[j, j] = 0.0
             continue
         end
         uj = Ucol[j]
         for i in 1:j-1
             if Cnan[i]
-                H[i, j] = H[j, i] = NaN
+                H[i, j] = NaN
+                H[j, i] = NaN
                 continue
             end
             ui = Ucol[i]
             Ub[1, :] .= ui; Ub[2, :] .= uj
-            entropy = ι(Ub; k=k, p=p, leafsize=leafsize)
-            H[i, j] = entropy
-            H[j, i] = entropy
+            H[i, j] = ι(Ub; k=k, p=p, leafsize=leafsize)
         end
     end
+    return H
     return H
 end
 function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtmueller, p = nothing)

@@ -46,17 +46,24 @@ function ϕ⁽¹⁾(G::BB9Generator, s)
     a  = inv(G.θ);  c = G.δ^(-G.θ)
     ϕ(G,s) * ( -a * (s + c)^(a-1) )
 end
-function ϕ⁽ᵏ⁾(G::BB9Generator, d::Int, s)
-    if d != 2
-        # Only d==2 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+function ϕ⁽ᵏ⁾(G::BB9Generator, k::Int, s::Real)
+    if k==2
+        a  = inv(G.θ);  c = G.δ^(-G.θ)
+        φ  = ϕ(G,s)
+        t  = s + c
+        φ * ( a^2 * t^(2a-2) - a*(a-1) * t^(a-2) )
     end
-    a  = inv(G.θ);  c = G.δ^(-G.θ)
-    φ  = ϕ(G,s)
-    t  = s + c
-    φ * ( a^2 * t^(2a-2) - a*(a-1) * t^(a-2) )
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+    # k == 0 && return ϕ(G, s)
+    # a, c = inv(G.θ), G.δ^(-G.θ)
+    # T = promote_type(typeof(a), typeof(s))
+    # xs = [-prod(a - i for i in 0:j-1) * (s + c)^(a - j) for j in 1:k]
+    # B = ones(T, k + 1)
+    # for n in 1:k
+    #     B[n + 1] = sum(binomial(n - 1, j - 1) * xs[j] * B[n - j + 1] for j in 1:n)
+    # end    
+    # return ϕ(G, s) * B[end]
 end
-
 ϕ⁻¹⁽¹⁾(G::BB9Generator, t) = -G.θ * (inv(G.δ) - log(t))^(G.θ - 1) / t
 
 frailty(G::BB9Generator) =  TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ))
@@ -69,8 +76,8 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB9Generator}
     return exp(inv(δ) - A)
 end
 
-function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB9Generator}
-    T = promote_type(Float64, eltype(u))
+function Distributions._logpdf(C::ArchimedeanCopula{2,BB9Generator{TF}}, u) where {TF}
+    T = promote_type(TF, eltype(u))
     (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return T(-Inf)
 
     θ, δ = C.G.θ, C.G.δ

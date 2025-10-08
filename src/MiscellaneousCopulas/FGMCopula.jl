@@ -30,10 +30,16 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     θ::Tθ
     fᵢ::Tf
     function FGMCopula(d, θ)
-        vθ = θ isa Vector ? promote(θ...,1.0)[1:end-1] : [promote(θ,1.0)[1]]
-        if  all(θ .== 0)
-            return IndependentCopula(d)
+        if (θ isa NTuple) || (θ isa Vector)
+            vθ = collect(promote(θ..., 1.0))[1:end-1]
+        else
+            vθ = [promote(θ, 1.0)[1]]
         end
+        
+        all(vθ .== 0) && return IndependentCopula(d)
+        d==2 && vθ[1]==1 && return MCopula(2)
+        d==2 && vθ[1]==-1 && return WCopula(2)
+
         # Check first restrictions on parameters
         any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
@@ -41,7 +47,7 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
         # Last check: 
         for epsilon in Base.product(fill([-1, 1], d)...)
             if 1 + _fgm_red(vθ, epsilon) < 0
-                throw(ArgumentError("Invalid parameters. The parameters do not meet the condition to be an FGM copula"))
+                throw(ArgumentError("Invalid parameters θ = $vθ. The parameters do not meet the condition to be an FGM copula"))
             end
         end
         
@@ -51,72 +57,6 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
         return new{d, typeof(vθ), typeof(fᵢ)}(vθ, fᵢ)
     end
     FGMCopula{D, T1, T2}(d, θ) where {D, T1, T2} = FGMCopula(d, θ)
-end
-Base.eltype(C::FGMCopula) = eltype(C.θ)
-
-# Fitting/params interface
-Distributions.params(C::FGMCopula) = (θ = collect(C.θ),)
-_example(::Type{<:FGMCopula}, d) = FGMCopula(d, fill(0.1, 2^d - d - 1))
-_available_fitting_methods(::Type{<:FGMCopula{2}}) = (:mle, :itau, :irho, :ibeta)
-_available_fitting_methods(::Type{<:FGMCopula}) = (:mle,)
-
-# Compute the maximal λ so that all FGM constraints are strictly satisfied
-function _max_lambda(β, d)
-    λmax = 1.0
-    for epsilon in Base.product(fill([-1, 1], d)...) 
-        red = _fgm_red(β, epsilon)
-        if red != 0
-            λmax = min(λmax, 1 / abs(red))
-        end
-    end
-    # Also ensure |θᵢ| < 1 for all i
-    for b in β
-        if b != 0
-            λmax = min(λmax, 1 / abs(b))
-        end
-    end
-    # Stay strictly inside the polytope
-    return 0.999 * λmax
-end
-
-function _rebound_params(::Type{<:FGMCopula}, d, α)
-    if d == 2
-        # Only one parameter, strictly invertible
-        return (; θ = tanh.(α))
-    end
-    # For d >= 3, use a safe directional mapping (not fully surjective, but stays in the interior)
-    β = α
-    normβ = LinearAlgebra.norm(β)
-    if normβ == 0
-        θ = zeros(length(β))
-    else
-        direction = β / normβ
-        # Find the maximal λ in this direction, then stay well inside
-        λmax = _max_lambda(direction, d)
-        r = exp(normβ) / (1 + exp(normβ))
-        λ = 0.95 * λmax * r # 0.95 to stay strictly inside
-        θ = λ * direction
-    end
-    return (; θ = θ)
-end
-
-function _unbound_params(::Type{<:FGMCopula}, d, θ)
-    θvec = collect(θ.θ)
-    if d == 2
-        # Only one parameter, strictly invertible
-        return atanh.(θvec)
-    end
-    # For d >= 3, use the fast directional mapping, but ensure safety
-    normθ = LinearAlgebra.norm(θvec)
-    if normθ == 0
-        return zeros(length(θvec))
-    end
-    direction = θvec / normθ
-    λmax = _max_lambda(direction, d)
-    # Clamp r to (0, 1-eps()) to avoid Inf/NaN
-    r = clamp(normθ / λmax, 0.0, 1.0 - eps())
-    normβ = log(r / (1 - r))
-    return direction * normβ
 end
 function _fgm_red(θ, v)
     # This function implements the reduction over combinations of the fgm copula. 
@@ -130,6 +70,27 @@ function _fgm_red(θ, v)
     end
     return rez
 end
+Base.eltype(C::FGMCopula) = eltype(C.θ)
+
+# Fitting/params interface
+Distributions.params(C::FGMCopula) = (θ = collect(C.θ),)
+_example(::Type{<:FGMCopula}, d) = FGMCopula(d, fill(0.5 / (2^d - d - 1), 2^d - d - 1))
+_available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho, :ibeta) : (:mle,)
+function _rebound_params(::Type{<:FGMCopula}, d, α)
+    d==2 && return  (; θ = tanh.(α))
+    throw("Cannot do that when d > 2")
+end
+function _unbound_params(::Type{<:FGMCopula}, d, θ)
+    d == 2 && return atanh.(collect(θ.θ))
+    throw("Cannot do that when d > 2")
+end
+
+
+
+
+
+
+
 _cdf(fgm::FGMCopula, u::Vector{T}) where {T} = prod(u) * (1 + _fgm_red(fgm.θ, 1 .-u))
 Distributions._logpdf(fgm::FGMCopula, u) = log1p(_fgm_red(fgm.θ, 1 .-2u))
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d, Tθ, Tf}, x::AbstractVector{T}) where {d,Tθ, Tf, T <: Real}
@@ -188,3 +149,67 @@ end
 
 DistortionFromCop(C::FGMCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivFGMDistortion(float(C.θ[1]), Int8(js[1]), float(uⱼₛ[1]))
 
+
+
+function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
+    d = size(U,1)
+
+    # → 1. Easy case: d == 2, parameter mapping is bijective.
+    if d == 2
+        # generic rank-based routine (agnostic to vcov/inference)
+        res = Optim.optimize(
+            α -> -Distributions.loglikelihood(FGMCopula(2, tanh(α[1])), U),
+            [0.1], 
+            Optim.LBFGS(); 
+            autodiff=:forward
+        )
+        θ = tanh(Optim.minimizer(res)[1])
+        return CT(d, θ), (; θ̂=(θ=θ,), 
+                    optimizer  = Optim.summary(res), 
+                    converged  = Optim.converged(res), 
+                    iterations = Optim.iterations(res))
+    end
+
+    # → 2. General FGM (d > 2) with log-barrier or soft barrier
+    # Construct helper functions
+    cop(θ) = FGMCopula(d, θ)
+    θ₀ = Distributions.params(_example(CT, d))[:θ]  # starting point in θ-space
+
+    # Log-barrier penalty: ensures all inequalities 1 + _fgm_red(θ, ε) > 0
+    function barrier_penalty(θ; μ=1e-3, soft=false)
+        total = 0.0
+        for ε in Base.product(fill([-1,1], d)...)
+            v = 1 + _fgm_red(θ, ε)
+            if soft
+                # Softplus barrier: smooth penalty, finite outside feasible region
+                total += log1p(exp(-10*v)) / 10  # mild smoothness
+            else
+                if v <= 0
+                    return Inf  # hard barrier: outside feasible set
+                end
+                total -= μ * log(v)
+            end
+        end
+        return μ * total
+    end
+
+    # Negative log-likelihood + barrier
+    function loss(θ)
+        try
+            C = cop(θ)
+            return -Distributions.loglikelihood(C, U) + barrier_penalty(θ)
+        catch
+            # If FGMCopula constructor fails (invalid params), return large penalty
+            return 1e10
+        end
+    end
+
+    # Optimise in θ-space directly (no need for unbound/rebound)
+    res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff=:forward)
+    θhat = Optim.minimizer(res)
+    return FGMCopula(d, θhat),
+        (; θ̂ = (θ = θhat,),
+           optimizer  = Optim.summary(res),
+           converged  = Optim.converged(res),
+           iterations = Optim.iterations(res))
+end

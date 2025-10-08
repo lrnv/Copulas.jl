@@ -39,7 +39,7 @@ plot(Ĉ)
 ### Full Model (with metadata)
 
 ```@example fitting_interface
-M = fit(CopulaModel, GumbelCopula, U; method=:default, summaries=true)
+M = fit(CopulaModel, GumbelCopula, U; method=:default)
 M
 ```
 
@@ -48,7 +48,7 @@ Returns a `CopulaModel` with:
 * `result` (the fitted copula), `n`, `ll` (log-likelihood),
 * `method`, `converged`, `iterations`, `elapsed_sec`,
 * `vcov` (if available),
-* `method_details` (a named tuple with method metadata and, if `summaries=true`, **pairwise summaries**: means, deviations, minima, and maxima of empirical τ/ρ/β/γ).
+* `method_details` (a named tuple with method metadata).
 
 ---
 
@@ -56,7 +56,7 @@ Returns a `CopulaModel` with:
 
 - fit operates on types, not on pre-constructed parameterized instances. Always pass a Copula or SklarDist *type* to `fit`, e.g. `fit(GumbelCopula, U)` or `fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X)`. If you already have a constructed instance `C0`, re-estimate its parameters by calling `fit(typeof(C0), U)`.
 
-- Default method selection: each family exposes the list of available fitting strategies via `_available_fitting_methods(CT)`. When `method = :default` the first element of that tuple is used. Example: `Copulas._available_fitting_methods(MyCopula)`.
+- Default method selection: each family exposes the list of available fitting strategies via `_available_fitting_methods(CT, d)`. When `method = :default` the first element of that tuple is used. Example: `Copulas._available_fitting_methods(MyCopula, d)`.
 
 - `CopulaModel` is the full result object returned by the fits performed via `Distributions.fit(::Type{CopulaModel}, ...)`. The light-weight shortcut `fit(MyCopula, U)` returns only a copula instance; use `fit(CopulaModel, ...)` to get diagnostics and metadata.
 
@@ -80,26 +80,7 @@ The `CopulaModel{CT} <: StatsBase.StatisticalModel` type stores the result and s
 | `hqc(M)`           | Hannan–Quinn criterion          |
 
 
-Quick access to the contained copula: `_copula_of(M)` (returns the copula even if `result` is a `SklarDist`).
-
-
-### Pairwise summaries and `method_details`
-
-When you request `summaries=true` (default) the returned `CopulaModel` contains extra pre-computed pairwise statistics inside `M.method_details`. Typical keys are:
-
-- `:tau_mean`, `:tau_sd`, `:tau_min`, `:tau_max`
-- `:rho_mean`, `:rho_sd`, `:rho_min`, `:rho_max`
-- `:beta_mean`, `:beta_sd`, `:beta_min`, `:beta_max`
-- `:gamma_mean`, `:gamma_sd`, `:gamma_min`, `:gamma_max`
-
-Access example:
-
-```@example fitting_interface
-M = fit(CopulaModel, GumbelCopula, U; summaries=true)
-M.method_details.tau_mean  # average pairwise Kendall's tau
-```
-
-If `summaries=false` these keys will be absent and `method_details` will be smaller.
+By default, the returned `CopulaModel` contains a lot of extra statistics, that you can see by printing the model in the REPL. 
 
 ### `vcov` and inference notes
 
@@ -143,7 +124,7 @@ plot(Ŝ.result)
 The names and availiability of fitting methods depends on the model. You can check what is available with the following internal call : 
 
 ```@example fitting_interface
-Copulas._available_fitting_methods(ClaytonCopula)
+Copulas._available_fitting_methods(ClaytonCopula, 3)
 ```
 
 The first method in the list is the one used by default. 
@@ -168,7 +149,7 @@ When you add a new copula family, implement the following so the generic `fit` f
 1. `_example(CT, d)` — return a representative instance (used to obtain default params and initial values).
 2. `_unbound_params(CT, d, params)` — transform the family `NamedTuple` parameters to an unconstrained `Vector{Float64}` used by optimizers.
 3. `_rebound_params(CT, d, α)` — invert `_unbound_params`, returning a `NamedTuple` suitable for `CT(d, ...)` construction.
-4. `_available_fitting_methods(::Type{<:YourCopula})` — declare supported methods (examples:  `:mle, :itau, :irho, :ibeta, ...`).
+4. `_available_fitting_methods(::Type{<:YourCopula}, d::Int)` — declare supported methods (examples:  `:mle, :itau, :irho, :ibeta, ...`).
 5. `_fit(::Type{<:YourCopula}, U, ::Val{:mle})` (and other `Val{}` methods) — implement the method and return `(fitted_copula, meta::NamedTuple)`; include keys such as `:θ̂`, `:optimizer`, `:converged`, `:iterations` and optionally `:vcov`.
 
 Place this checklist and a minimal `_fit` skeleton in `docs/src/manual/developer_fitting.md` where contributors can copy/paste and adapt.

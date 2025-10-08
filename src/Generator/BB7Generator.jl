@@ -52,17 +52,32 @@ function ϕ⁽¹⁾(G::BB7Generator, s)
     return -(1/(G.θ*G.δ)) * (1 - exp(-inv(G.δ)*log1p(s)))^(inv(G.θ)-1) * (1+s)^(-inv(G.δ)-1)
 end
 
-function ϕ⁽ᵏ⁾(G::BB7Generator, d::Int, s)
-    if d != 2
-        # Only d==2 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+function ϕ⁽ᵏ⁾(G::BB7Generator, k::Int, s::Real; tol::Float64=1e-10, maxiter::Int=20_000, miniter::Int=5)
+    if k==2
+        θ, δ = G.θ, G.δ
+        invθ, invδ = inv(θ), inv(δ)
+        a   = exp(-invδ * log1p(s))                 # (1+s)^(-1/δ)
+        fac = exp(-(invδ + 2) * log1p(s))           # a/(1+s)^2  = (1+s)^(-1/δ - 2)
+        return (invθ*invδ) * fac * (1 - a)^(invθ - 2) *
+            ( (1 + invδ) - (1 + invθ*invδ)*a )
     end
-    θ, δ = G.θ, G.δ
-    invθ, invδ = inv(θ), inv(δ)
-    a   = exp(-invδ * log1p(s))                 # (1+s)^(-1/δ)
-    fac = exp(-(invδ + 2) * log1p(s))           # a/(1+s)^2  = (1+s)^(-1/δ - 2)
-    return (invθ*invδ) * fac * (1 - a)^(invθ - 2) *
-           ( (1 + invδ) - (1 + invθ*invδ)*a )
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+
+    # b, p = inv(G.θ), -inv(G.δ)
+    # k == 0 && return ϕ(G, s)
+    # log1ps = log1p(s)
+    # acc, cm = 0.0, 1.0
+    # @inbounds for m in 1:maxiter
+    #     cm = (m == 1) ? b : cm * (b - m + 1) / m
+    #     abs(cm) < eps() && break
+    #     pm = m * p
+    #     ff = prod(pm - j for j in 0:k-1)
+    #     term = (-1)^(m + 1) * cm * ff * exp((pm - k) * log1ps)
+    #     acc += term
+    #     m ≥ miniter && abs(term) ≤ tol * (abs(acc) + eps()) && break
+    #     m == maxiter && @warn "ϕ⁽ᵏ⁾(BB7): reached maxiter" k s G.θ G.δ
+    # end
+    # return acc
 end
 
 ϕ⁻¹⁽¹⁾(G::BB7Generator, u) = begin
@@ -93,8 +108,8 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB7Generator}
     return 1 - exp( (1/θ)*log1p(-t) )
 end
 
-function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB7Generator}
-    Tret = promote_type(Float64, eltype(u))
+function Distributions._logpdf(C::ArchimedeanCopula{2,BB7Generator{TF}}, u) where {TF}
+    Tret = promote_type(TF, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)
 

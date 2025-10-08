@@ -55,16 +55,26 @@ function ϕ⁽¹⁾(G::BB10Generator, s)
     ψ  = ϕ(G, s)
     return -(1/θ) * es/(es - δ) * ψ
 end
-function ϕ⁽ᵏ⁾(G::BB10Generator, d::Int, s)
-    if d != 2
-        # Only d==2 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+function ϕ⁽ᵏ⁾(G::BB10Generator, k::Int, s::Real)
+    if k==2
+        θ, δ = G.θ, G.δ
+        es = exp(s)
+        ψ  = ϕ(G, s)                    # stable with log1p/expm1
+        den = es - δ
+        return ψ * (es / (den^2)) * (es/θ^2 + δ/θ)
     end
-    θ, δ = G.θ, G.δ
-    es = exp(s)
-    ψ  = ϕ(G, s)                    # ya usa forma estable con log1p/expm1
-    den = es - δ
-    return ψ * (es / (den^2)) * (es/θ^2 + δ/θ)
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+    # b = inv(G.θ)
+    # k == 0 && return ϕ(G, s)
+    # T = typeof(b) 
+    # A = zeros(T, k + 1, k + 1)
+    # A[1, 1] = -b
+    # for i in 2:k, j in 1:i
+    #     A[i, j] = (j ≤ i-1 ? j * A[i-1, j] : 0.0) - (j > 1 ? (b + j - 1) * A[i-1, j-1] : 0.0)
+    # end
+    # es = exp(s)
+    # acc = sum(A[k, j] * es^j * (es - G.δ)^(-b - j) for j in 1:k)
+    # return (1 - G.δ)^b * acc
 end
 
 ϕ⁻¹⁽¹⁾(G::BB10Generator, t) = begin
@@ -83,8 +93,8 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
 end
 
 # --- log-density
-function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
-    T = promote_type(Float64, eltype(u))
+function Distributions._logpdf(C::ArchimedeanCopula{2,BB10Generator{TF}}, u) where {TF}
+    T = promote_type(TF, eltype(u))
     (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return T(-Inf)
 
     θ, δ = C.G.θ, C.G.δ

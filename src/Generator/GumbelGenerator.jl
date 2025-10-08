@@ -43,6 +43,7 @@ Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:GumbelGenerator}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
 _rebound_params(::Type{<:GumbelGenerator}, d, α) = (; θ = 1 + exp(α[1]))
 _θ_bounds(::Type{<:GumbelGenerator}, d) = (1, Inf)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:GumbelGenerator} where {d}}, d) = (:mle, :itau, :ibeta) # disable :irho because taking ages.
 
 ϕ(  G::GumbelGenerator, t) = exp(-exp(log(t)/G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = exp(log(-log(t))*G.θ)
@@ -76,8 +77,8 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
     lx₁, lx₂ = log(x₁), log(x₂)
     return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂) / θ)
 end
-function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
-    T = promote_type(Float64, eltype(u))
+function Distributions._logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) where {TF}
+    T = promote_type(TF, eltype(u))
     !all(0 .< u .<= 1) && return T(-Inf) # if not in range return -Inf
 
     θ = C.G.θ

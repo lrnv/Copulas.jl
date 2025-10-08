@@ -137,9 +137,9 @@ _example(CT::Type{<:ExtremeValueCopula}, d) = CT(d; _rebound_params(CT, d, fill(
 _unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = _unbound_params(tailof(CT), d, θ)
 _rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(CT), d, α)
 
-_available_fitting_methods(::Type{ExtremeValueCopula}) = (:ols, :cfg, :pickands)
-_available_fitting_methods(CT::Type{<:ExtremeValueCopula}) = (:mle,)
-_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}) =  (:mle, :itau, :irho, :ibeta, :iupper)
+_available_fitting_methods(::Type{ExtremeValueCopula}, d) = (:ols, :cfg, :pickands)
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula}, d) = (:mle,)
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}, d) =  (:mle, :itau, :irho, :ibeta, :iupper)
 
 # Fitting empírico (OLS, CFG, Pickands):
 function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; 
@@ -152,25 +152,28 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
         m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) : 
                            β⁻¹(CT,  corblomqvist(U')[1,2])
     θ = clamp(θ, _θ_bounds(tailof(CT), 2)...)
-    return CT(2, θ), (; θ̂=θ)
+    return CT(2, θ), (; θ̂=(θ=θ,))
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
     θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(tailof(CT), 2)...)
-    return CT(2, θ), (; θ̂=θ)
+    return CT(2, θ), (; θ̂=(θ=θ,))
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     d = size(U,1)
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, d)
-    θ0 = start isa Real ? start : 
-         start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : 
-         only(Distributions.params(_example(CT, d)))
-    θ0 = clamp(θ0, lo, hi)
+    θ0_val = if start isa Real
+        start
+    else
+        initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : only(Distributions.params(_example(CT, d)))
+        initial_params.θ
+    end
+    θ0_clamped = clamp(θ0_val, lo, hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
-    res = Optim.optimize(f, lo, hi, [θ0], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
+    res = Optim.optimize(f, lo, hi, [θ0_clamped], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
     θ̂ = Optim.minimizer(res)[1]
-    return CT(d, θ̂), (; θ̂=θ̂, optimizer=:GradientDescent,
+    return CT(d, θ̂), (; θ̂=(;θ=θ̂), optimizer=:GradientDescent,
                         xtol=xtol, converged=Optim.converged(res), 
                         iterations=Optim.iterations(res))
 end

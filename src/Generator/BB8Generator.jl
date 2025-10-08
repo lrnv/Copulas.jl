@@ -46,18 +46,31 @@ _rebound_params(::Type{<:BB8Generator}, d, α) = (; ϑ = 1 + exp(α[1]), δ = 1 
 ϕ(G::BB8Generator, s)  = (1/G.δ) * (1 - (1 - _η(G)*exp(-s))^(inv(G.ϑ)))
 ϕ⁻¹(G::BB8Generator, t) = -log((1 - (1 - G.δ*t)^G.ϑ)/_η(G))
 ϕ⁽¹⁾(G::BB8Generator, s) = -(_η(G)/(G.δ*G.ϑ)) * exp(-s) * (1 - _η(G)*exp(-s))^(inv(G.ϑ)-1)
-
-function ϕ⁽ᵏ⁾(G::BB8Generator, d::Int, s)
-    if d != 2
-        # Only d==2 is implemented here, fall back to generic otherwise. 
-        return @invoke ϕ⁽ᵏ⁾(G::Generator, d, s)
+function ϕ⁽ᵏ⁾(G::BB8Generator, k::Int, s::Real; tol::Float64=1e-10, maxiter::Int=20_000, miniter::Int=5)
+    if k==2
+        δ, ϑ = G.δ, G.ϑ
+        α, β = inv(δ), inv(ϑ)
+        ηv   = _η(G)
+        u    = exp(-s)
+        b    = 1 - ηv*u
+        return (α*β*ηv) * u * b^(β - 2) * (1 - β*ηv*u)
     end
-    δ, ϑ = G.δ, G.ϑ
-    α, β = inv(δ), inv(ϑ)
-    ηv   = _η(G)
-    u    = exp(-s)
-    b    = 1 - ηv*u
-    return (α*β*ηv) * u * b^(β - 2) * (1 - β*ηv*u)
+    return @invoke ϕ⁽ᵏ⁾(G::Generator, k, s)
+    # δ, b, η = G.δ, inv(G.ϑ), 1 - G.δ
+    # k == 0 && return ϕ(G, s)
+    # acc, cm, η_pow, exp_term = 0.0, 1.0, 1.0, 1.0
+    # exp_s_neg = exp(-s)
+    # @inbounds for m in 1:maxiter
+    #     cm = (m == 1) ? b : cm * (b - m + 1) / m
+    #     η_pow *= η
+    #     exp_term *= exp_s_neg
+    #     abs(cm) < eps() && break
+    #     term = (-1)^(m + 1) * cm * η_pow * (-m)^k * exp_term
+    #     acc += term
+    #     m ≥ miniter && abs(term) ≤ tol * (abs(acc) + eps()) && break
+    #     m == maxiter && @warn "ϕ⁽ᵏ⁾(BB8): reached maxiter" k s G.ϑ G.δ
+    # end
+    # return acc / δ
 end
 ϕ⁻¹⁽¹⁾(G::BB8Generator, t) = -G.ϑ*G.δ * (1 - G.δ*t)^(G.ϑ - 1) / (1 - (1 - G.δ*t)^G.ϑ)
 
@@ -72,8 +85,8 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB8Generator}
     return (1/δ) * (1 - t)
 end
 
-function Distributions._logpdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB8Generator}
-    Tret = promote_type(Float64, eltype(u))
+function Distributions._logpdf(C::ArchimedeanCopula{2,BB8Generator{TF}}, u) where {TF}
+    Tret = promote_type(TF, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)
 

@@ -33,7 +33,7 @@ function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT
     @assert 2 <= p <= d
     return SubsetCopula(CS.C, ntuple(i -> CS.dims[dims2[i]], p))
 end
-_available_fitting_methods(::Type{<:SubsetCopula}) = Tuple{}() # cannot be fitted. 
+_available_fitting_methods(::Type{<:SubsetCopula}, d) = Tuple{}() # cannot be fitted. 
 Base.eltype(C::SubsetCopula{d,CT}) where {d,CT} = Base.eltype(C.C)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::SubsetCopula{d,CT}, x::AbstractVector{T}) where {T<:Real, d,CT}
     u = Random.rand(rng,C.C)
@@ -94,11 +94,16 @@ subsetdims(C::Union{Copula, SklarDist}, dims) = subsetdims(C, Tuple(collect(Int,
 
 # Pairwise dependence metrics, leveraging subsetting: 
 function _as_biv(f::F, C::Copula{d}) where {F, d}
-    K = ones(d,d)
+    first_val = f(SubsetCopula(C, (1,2)))
+    K = ones(eltype(first_val),d,d)
+    K[1,2] = first_val
+    K[2,1] = first_val
     for i in 1:d
         for j in i+1:d
-            K[i,j] = f(SubsetCopula(C, (i,j)))
-            K[j,i] = K[i,j]
+            if (i,j) != (1,2)
+                K[i,j] = f(SubsetCopula(C, (i,j)))
+                K[j,i] = K[i,j]
+            end
         end
     end
     return K
@@ -107,6 +112,6 @@ StatsBase.corkendall(C::Copula)  = _as_biv(τ, C)
 StatsBase.corspearman(C::Copula) = _as_biv(ρ, C)
 corblomqvist(C::Copula)          = _as_biv(β, C)
 corgini(C::Copula)               = _as_biv(γ, C)
-corentropy(C::Copula)            = _as_biv(ι, C)
+corentropy(C::Copula)            = _as_biv(ι, C) - LinearAlgebra.I
 coruppertail(C::Copula)          = _as_biv(λᵤ, C)
 corlowertail(C::Copula)          = _as_biv(λₗ, C)

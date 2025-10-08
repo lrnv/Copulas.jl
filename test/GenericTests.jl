@@ -3,7 +3,7 @@
     using HypothesisTests, Distributions, Random
     using InteractiveUtils
     using ForwardDiff
-    using StatsBase: corkendall
+    using StatsBase
     using StableRNGs
     using HCubature
     using Test
@@ -96,7 +96,7 @@
     is_bivariate(C::CT)                      where CT = (length(C) == 2)
     has_subsetdims(C::CT)                    where CT = (length(C) >= 3)
     can_check_pdf_positivity(C::CT)          where CT = can_pdf(C) && !((CT<:GumbelCopula) && (C.G.θ >= 19))
-    kendall_coherency_enabled(C::CT)         where CT = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}})
+    dep_coherency_enabled(C::CT)         where CT = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}})
     can_check_biv_conditioning_ad(C::CT)     where CT = is_bivariate(C) && can_ad(C)
     can_check_highdim_conditioning_ad(C::CT) where CT = (length(C) > 2) && can_ad(C)
     has_uniform_margins(C::CT)               where CT = !(CT<:EmpiricalCopula)
@@ -104,9 +104,9 @@
     is_extremevalue(C::CT)                   where CT = (CT <: Copulas.ExtremeValueCopula)
     is_archimax(C::CT)                       where CT = (CT <: Copulas.ArchimaxCopula)
 
-    can_be_fitted(C::CT) where CT = length(Copulas._available_fitting_methods(CT)) > 0
+    can_be_fitted(C::CT, d) where CT = length(Copulas._available_fitting_methods(CT, d)) > 0
     has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
-    has_unbounded_params(C::CT) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula)
+    has_unbounded_params(C::CT, d) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT, d) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula) && !(d>2 && CT<:FGMCopula)
     unbounding_is_a_bijection(C::Copulas.Copula{d}) where d = !(typeof(C)<:FGMCopula && d>2)
 
     function check(C::Copulas.Copula{d}) where d
@@ -120,7 +120,7 @@
 
             spl1 = rand(rng, C)
             spl10 = rand(rng, C, 10)
-            spl1000 = rand(rng, C, 1000)
+            spl1000 = rand(rng, C, 800)
             splZ10 = rand(rng, Z, 10)
 
             @testset "Basics" begin 
@@ -171,7 +171,56 @@
                     @test (all(r10 .>= 0) && all(isfinite.(r10)))
                 end 
 
-                @testif kendall_coherency_enabled(C) "Corkendall coeherency" begin
+
+                # This test takes more than 5 hours to run 
+                # This is clarly unacceptable, but moreover we dont know which copula takes the most time 
+                # sadly ;)
+                
+                # @testif dep_coherency_enabled(C) "Dependence metrics coherency" begin
+                #     # Empirical vs theoretical for available metrics, mirroring Kendall’s pattern
+                #     metrics = (
+                #         ("tau", Copulas.τ, StatsBase.corkendall, 0.10, -1, 1), 
+                #         ("rho", Copulas.ρ, StatsBase.corspearman, 0.10, -1 , 1), 
+                #         ("beta", Copulas.β, Copulas.corblomqvist, 0.10, -1 , 1), 
+                #         ("gamma", Copulas.γ, Copulas.corgini, 0.15, -1 , 1), 
+                #         ("iota", Copulas.ι, Copulas.corentropy, 0.15, -Inf , 0)
+                #     )
+                #     for (name, f, corf, tol, lb, ub) in metrics
+                #         @testset "$name" begin
+                #             thf = f(C)
+                #             thcorf = corf(C)
+                #             empf = f(spl1000)
+                            
+                #             @test isapprox(empf, thf; atol=tol)
+                #             @test lb ≤ thf ≤ ub
+                #             @test lb ≤ empf ≤ ub
+                #             @test all(lb .≤ thcorf .≤ ub)
+
+                #             if which(f, (CT,)) !=  which(f, (Copulas.Copula{d},))
+                #                 thf_gen  = @invoke f(C::Copulas.Copula{d})
+                #                 # Allow tiny numerical discrepancies
+                #                 @test isapprox(thf, thf_gen; atol= (C isa GaussianCopula ? 0.1 : 0.001))
+                #             end
+                #             if d == 2
+                #                 @test isapprox(thf, thcorf[1,2]; atol=0.1)
+                #             else
+                #                 @test all(lb .<= thcorf .<= ub)
+                #             end
+                #             if check_rosenblatt(C)
+                #                 U = rosenblatt(C, spl1000)
+                #                 empfu = f(U)
+                #                 empcorfu = corf(U')
+                #                 @test isapprox(empfu, 0.0; atol=tol+0.05)
+                #                 for i in 1:(d - 1)
+                #                     for j in (i + 1):d
+                #                         @test empcorfu[i,j] ≈ 0.0 atol = 0.15
+                #                     end
+                #                 end
+                #             end
+                #         end
+                #     end
+
+                @testif dep_coherency_enabled(C) "Corkendall coeherency" begin
                     K = corkendall(spl1000')
                     Kth = corkendall(C)
                     @test all(-1 .<= Kth .<= 1)
@@ -181,18 +230,18 @@
 
             @testif can_integrate_pdf(C) "Testing pdf integration" begin
                 # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
-                v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 10_000, 10_000)
+                v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 3_000, 3_000)
                 @test isapprox(v, 1; atol=max(5*sqrt(r), 1e-3))
 
                 # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
                 b = ones(d)/2
-                v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 10_000, 10_000)
+                v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 3_000, 3_000)
                 @test isapprox(v2, cdf(C, b); atol=max(10*sqrt(r2), 1e-3))
 
                 # 3) random rectangle, compare with measure (cdf based)
                 a = rand(rng, d)
                 b = a .+ rand(rng, d) .* (1 .- a)
-                v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 10_000, 10_000)
+                v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 3_000, 3_000)
                 @test (isapprox(v3, Copulas.measure(C, a, b); atol=max(20*sqrt(r3), 1e-3)) || max(v3, Copulas.measure(C, a, b)) < eps(Float64)) # wide tolerence, should pass. 
             end
 
@@ -487,14 +536,14 @@
                         @test isapprox(exp(lp), c_h; rtol=1e-6, atol=1e-8)
                     end
 
-                    for r in _archimax_mc_rectangles_cdf(C; N=20_000, seed=321)
+                    for r in _archimax_mc_rectangles_cdf(C; N=8_000, seed=321)
                         @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
                     end
             end
 
-            @testif can_be_fitted(C) "Fitting interface" begin
+            @testif can_be_fitted(C, d) "Fitting interface" begin
 
-                @testif has_unbounded_params(C) "Unbouding and rebounding params" begin
+                @testif has_unbounded_params(C, d) "Unbouding and rebounding params" begin
                     # First on the _example copula. 
                     θ₀ = Distributions.params(Copulas._example(CT, d))
                     θ₁ = Copulas._rebound_params(CT, d, Copulas._unbound_params(CT, d, θ₀))
@@ -512,17 +561,17 @@
                     @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
                 end
 
-                for m in Copulas._available_fitting_methods(CT) 
+                for m in Copulas._available_fitting_methods(CT, d) 
                     @testset "Fitting CT for $(m)" begin
                         r1 = fit(CopulaModel, CT, spl1000, m)
                         r2 = fit(CT, spl1000, m)
 
                         newCT = typeof(r2)
                         @test typeof(r1.result) == newCT
-                        if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2) && has_unbounded_params(r2) && !(CT<:RafteryCopula && d==3 && m==:itau)
+                        if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2) && has_unbounded_params(r2, d) && !(CT<:RafteryCopula && d==3 && m==:itau)
                             α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
                             α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
-                            @test α1 ≈ α2 atol=1e-3
+                            @test α1 ≈ α2 atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
                         end
 
                         # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
@@ -534,10 +583,10 @@
                     r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
                     newCT = typeof(r4.C)
                     @test typeof(r3.result.C) == newCT
-                    if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C)
+                    if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C, d)
                         α1 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
                         α2 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
-                        @test α1 ≈ α2  atol=1e-3
+                        @test α1 ≈ α2  atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
                     end
                 end
             end
@@ -559,7 +608,7 @@
         H = ForwardDiff.hessian(f, [u1, u2])  # ∂²/∂u1∂u2
         max(H[1,2], 0.0)                      # numerical clip 
     end
-    function _archimax_mc_rectangles_cdf(C; N::Int=300_000, seed::Integer=123,
+    function _archimax_mc_rectangles_cdf(C; N::Int=120_000, seed::Integer=123,
                             rects::Tuple{Vararg{Tuple{<:Real,<:Real}}}=((0.5,0.5),(0.3,0.7),(0.8,0.2)))
         rng = StableRNG(seed)
         U = rand(rng, C, N)

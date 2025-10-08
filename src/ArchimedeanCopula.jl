@@ -191,11 +191,11 @@ _example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw
 _unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
 _rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)
 
-_available_fitting_methods(::Type{ArchimedeanCopula}) = (:gnz2011,)
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}) = (:mle,)
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}) = (:mle, :itau, :irho, :ibeta)
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}) = Tuple{}() # No fitting method. 
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}) = (:gnz2011,)
+_available_fitting_methods(::Type{ArchimedeanCopula}, d) = (:gnz2011,)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}, d) = (:mle,)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}, d) = (:mle, :itau, :irho, :ibeta)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}, d) = Tuple{}() # No fitting method. 
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}, d) = (:gnz2011,)
 
 
 function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}}, U, ::Val{:gnz2011})
@@ -215,7 +215,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
     
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; θ̂=θ, eps)
+    return CT(d, θ), (; θ̂=(θ=θ,))
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
     d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
@@ -226,27 +226,26 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     βmin, βmax = fβ(a0), fβ(b0)
     if βmin > βmax; βmin, βmax = βmax, βmin; end
     θ = βobs ≤ βmin ? a0 : βobs ≥ βmax ? b0 : Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
-    return CT(d,θ), (; θ̂=θ)
+    return CT(d,θ), (; θ̂=(θ=θ,))
 end
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     d = size(U,1)
     GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
-    θ₀ = [(lo+hi)/2]
+    θ₀ = [1.0]
     if start isa Real 
         θ₀[1] = start
     elseif start ∈ (:itau, :irho)
-        try 
-            θ₀[1] = only(Distributions.params(_fit(CT, U, Val{start}())[1]))
-        catch e
-        end
+        θ₀[1] = _fit(CT, U, Val{start}())[2].θ̂[1]
     end
-    θ₀[1] = clamp(θ₀[1], lo, hi)
+    if θ₀[1] <= lo || θ₀[1] >= hi
+        θ₀[1] = Distributions.params(_example(CT, d))[1]
+    end
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
     res = Optim.optimize(f, lo, hi,  θ₀, Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
-    θ̂     = Optim.minimizer(res)[1]
-    return CT(d, θ̂), (; θ̂=θ̂, optimizer=:GradientDescent,
+    θ     = Optim.minimizer(res)[1]
+    return CT(d, θ), (; θ̂=(θ=θ,), optimizer=Optim.summary(res),
                         xtol=xtol, converged=Optim.converged(res), 
                         iterations=Optim.iterations(res))
 end

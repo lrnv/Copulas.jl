@@ -168,7 +168,7 @@ end
 
 # Fitting plug-in (empírico) para EmpiricalEVCopula
 StatsBase.dof(::EmpiricalEVCopula) = 0
-_available_fitting_methods(::Type{<:EmpiricalEVCopula}) = (:ols, :cfg, :pickands)
+_available_fitting_methods(::Type{<:EmpiricalEVCopula}, d) = (:ols, :cfg, :pickands)
 """
     _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
          grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...) -> (C, meta)

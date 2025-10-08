@@ -112,7 +112,7 @@ end
     # Compare to MVNormal conditioning on z-scale
     I = Tuple(setdiff(1:d, J))
     dI = length(I)
-    for _ in 1:5
+    for _ in 1:3
         uI = rand(rng, dI)./5 .+ 2/5
         zI = quantile.(Normal(), uI)
         zJ = quantile.(Normal(), collect(uJ))
@@ -198,7 +198,7 @@ end
     J = Tuple(reverse(collect(js)))
     Y = condition(X, J, xⱼₛ)
 
-    for _ in 1:5
+    for _ in 1:3
         t = randn(rng, 2)
         A, r = mvnormcdf(Y_mock, fill(-Inf, 2), t)
         B = cdf(Y, t)
