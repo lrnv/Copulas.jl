@@ -149,8 +149,8 @@ let rng = StableRNG(123)
         name_full = _show_name(C)
 
         # Pre-generate inputs for cdf/pdf/rosenblatt and inverse
-        u = rand(rng, C, 64)
-        v = rand(rng, d, 64) # uniform
+        u = rand(rng, C, 5)
+        v = rand(rng, d, 5) # uniform
 
         # Core ops grouped first by op, then by copula name
         ensure_group!(top, "rng")[name_full]  = @benchmarkable rand($rng, $C, 64)
@@ -159,13 +159,13 @@ let rng = StableRNG(123)
         ensure_group!(top, "rbt")[name_full]  = @benchmarkable rosenblatt($C, $u)
         ensure_group!(top, "irbt")[name_full] = @benchmarkable inverse_rosenblatt($C, $v)
 
-        # Metrics: scalar and matrix-style
-        mgrp = ensure_group!(top, "metrics")
-        ensure_group!(mgrp, "τ")[name_full]     = @benchmarkable Copulas.τ($C)
-        ensure_group!(mgrp, "ρ")[name_full]     = @benchmarkable Copulas.ρ($C)
-        ensure_group!(mgrp, "β")[name_full]     = @benchmarkable Copulas.β($C)
-        ensure_group!(mgrp, "γ")[name_full]     = @benchmarkable Copulas.γ($C)
-        ensure_group!(mgrp, "ι")[name_full]     = @benchmarkable Copulas.ι($C)
+        # # Metrics: scalar and matrix-style
+        # mgrp = ensure_group!(top, "metrics")
+        # ensure_group!(mgrp, "τ")[name_full]     = @benchmarkable Copulas.τ($C)
+        # ensure_group!(mgrp, "ρ")[name_full]     = @benchmarkable Copulas.ρ($C)
+        # ensure_group!(mgrp, "β")[name_full]     = @benchmarkable Copulas.β($C)
+        # ensure_group!(mgrp, "γ")[name_full]     = @benchmarkable Copulas.γ($C)
+        # ensure_group!(mgrp, "ι")[name_full]     = @benchmarkable Copulas.ι($C)
         # ensure_group!(mgrp, "corτ")[name_full]  = @benchmarkable StatsBase.corkendall($C)
         # ensure_group!(mgrp, "corρ")[name_full]  = @benchmarkable StatsBase.corspearman($C)
         # ensure_group!(mgrp, "corβ")[name_full]  = @benchmarkable Copulas.corblomqvist($C)
