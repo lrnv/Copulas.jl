@@ -1,5 +1,6 @@
 [deps]
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
+Chairmarks = "0ca39b1e-fe0b-4e98-acfc-b1656634c4de"
 Copulas = "ae264745-0b69-425e-9d9d-cf662c5eec93"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 PkgBenchmark = "32113eaa-f34f-5b0d-bd6c-c81e245fc73d"
