@@ -2,41 +2,20 @@ using BenchmarkTools
 using Copulas
 using Distributions
 using StableRNGs
+const rng = StableRNG(123)
 
 # PkgBenchmark entrypoint; must define SUITE
 const SUITE = BenchmarkGroup()
-module M
-using StableRNGs
-const rng = StableRNG(123)
-end
 
-# Separate SklarDist benchmarks on a single representative model (Clayton d=5)
-let rng = StableRNG(321)
-    top = SUITE["sklar"] = BenchmarkGroup()
-    C = ClaytonCopula(5, 2.0)
-    m = (Distributions.Normal(), Distributions.LogNormal(), Distributions.Gamma(2,2), Distributions.Beta(2,5), Distributions.Uniform())
-    S = SklarDist(C, m)
-    X = rand(rng, S, 128)
-    U = pseudos(X)
-    top["rand/128"] = @benchmarkable rand($rng, $S, 128)
-    top["cdf/128"]  = @benchmarkable cdf($S, $X)
-    top["pdf/128"]  = @benchmarkable pdf($S, $X)
-    top["rosenblatt/128"] = @benchmarkable rosenblatt($S, $X)
-    V = rand(rng, 5, 128)
-    top["inverse_rosenblatt/128"] = @benchmarkable inverse_rosenblatt($S, $V)
-    # Fitting pathways (keep light)
-    top["fit/ifm"]  = @benchmarkable Distributions.fit(CopulaModel, SklarDist{ClaytonCopula, typeof(m)}, $X; sklar_method=:ifm, copula_method=:itau, summaries=false)
-    top["fit/ecdf"] = @benchmarkable Distributions.fit(CopulaModel, SklarDist{ClaytonCopula, typeof(m)}, $X; sklar_method=:ecdf, copula_method=:itau, summaries=false)
-end
 
 const EXAMPLES = unique([
     AMHCopula(2,-1.0),
-    AMHCopula(2,-rand(M.rng)),
+    AMHCopula(2,-rand(rng)),
     AMHCopula(2,0.7),
-    AMHCopula(2,rand(M.rng)),
-    AMHCopula(3,-rand(M.rng)*0.1),
+    AMHCopula(2,rand(rng)),
+    AMHCopula(3,-rand(rng)*0.1),
     AMHCopula(3,0.6),
-    AMHCopula(3,rand(M.rng)),
+    AMHCopula(3,rand(rng)),
     AMHCopula(4,-0.01),
     ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
     ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.GalambosTail(0.7)),
@@ -110,33 +89,33 @@ const EXAMPLES = unique([
     ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.LogTail(2.0)),
     ArchimedeanCopula(10,i𝒲(Dirac(1),10)),
     ArchimedeanCopula(10,i𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)),
-    ArchimedeanCopula(2, EmpiricalGenerator(randn(M.rng, 4, 150))),
+    ArchimedeanCopula(2, EmpiricalGenerator(randn(rng, 4, 150))),
     ArchimedeanCopula(2,i𝒲(LogNormal(),2)),
     ArchimedeanCopula(2,i𝒲(LogNormal(3),5)),
     ArchimedeanCopula(2,i𝒲(Pareto(1),5)),
-    ArchimedeanCopula(3, EmpiricalGenerator(randn(M.rng, 3, 200))),
+    ArchimedeanCopula(3, EmpiricalGenerator(randn(rng, 3, 200))),
     AsymGalambosCopula(2, 0.1, 0.2, 0.6),
     AsymGalambosCopula(2, 0.6129496106778634, 0.820474440393214, 0.22304578643880224),
-    AsymGalambosCopula(2, 10+5*rand(M.rng), 1.0, 1.0),
-    AsymGalambosCopula(2, 10+5*rand(M.rng), rand(M.rng), rand(M.rng)),
+    AsymGalambosCopula(2, 10+5*rand(rng), 1.0, 1.0),
+    AsymGalambosCopula(2, 10+5*rand(rng), rand(rng), rand(rng)),
     AsymGalambosCopula(2, 11.647356700032505, 0.6195348270893413, 0.4197760589260566),
     AsymGalambosCopula(2, 5.0, 0.8, 0.3),
-    AsymGalambosCopula(2, 5+4*rand(M.rng), 1.0, 1.0),
-    AsymGalambosCopula(2, 5+4*rand(M.rng), rand(M.rng), rand(M.rng)),
+    AsymGalambosCopula(2, 5+4*rand(rng), 1.0, 1.0),
+    AsymGalambosCopula(2, 5+4*rand(rng), rand(rng), rand(rng)),
     AsymGalambosCopula(2, 8.810168494949659, 0.5987759444612732, 0.5391280234619427),
-    AsymGalambosCopula(2, rand(M.rng), 1.0, 1.0),
-    AsymGalambosCopula(2, rand(M.rng), rand(M.rng), rand(M.rng)),
+    AsymGalambosCopula(2, rand(rng), 1.0, 1.0),
+    AsymGalambosCopula(2, rand(rng), rand(rng), rand(rng)),
     AsymLogCopula(2, 1.0, 0.0, 0.0),
     AsymLogCopula(2, 1.0, 1.0, 1.0),
-    AsymLogCopula(2, 1.0, rand(M.rng), rand(M.rng)),
+    AsymLogCopula(2, 1.0, rand(rng), rand(rng)),
     AsymLogCopula(2, 1.2, 0.3,0.6),
     AsymLogCopula(2, 1.5, 0.5, 0.2),
-    AsymLogCopula(2, 1+4*rand(M.rng), 0.0, 0.0),
-    AsymLogCopula(2, 1+4*rand(M.rng), 1.0, 1.0),
-    AsymLogCopula(2, 1+4*rand(M.rng), rand(M.rng), rand(M.rng)),
-    AsymLogCopula(2, 10+5*rand(M.rng), 0.0, 0.0),
-    AsymLogCopula(2, 10+5*rand(M.rng), 1.0, 1.0),
-    AsymLogCopula(2, 10+5*rand(M.rng), rand(M.rng), rand(M.rng)),
+    AsymLogCopula(2, 1+4*rand(rng), 0.0, 0.0),
+    AsymLogCopula(2, 1+4*rand(rng), 1.0, 1.0),
+    AsymLogCopula(2, 1+4*rand(rng), rand(rng), rand(rng)),
+    AsymLogCopula(2, 10+5*rand(rng), 0.0, 0.0),
+    AsymLogCopula(2, 10+5*rand(rng), 1.0, 1.0),
+    AsymLogCopula(2, 10+5*rand(rng), rand(rng), rand(rng)),
     AsymMixedCopula(2, 0.1, 0.2),
     AsymMixedCopula(2, 0.12, 0.13),
     BB10Copula(2, 1.5, 0.7),
@@ -169,27 +148,27 @@ const EXAMPLES = unique([
     BC2Copula(2, 0.7,0.3),
     BC2Copula(2, 1.0, 0.0),
     BC2Copula(2, 1/2,1/2),
-    BC2Copula(2, rand(M.rng), rand(M.rng)),
+    BC2Copula(2, rand(rng), rand(rng)),
     BernsteinCopula(ArchimaxCopula(2, Copulas.FrankGenerator(0.8), Copulas.HuslerReissTail(0.6)); m=5),
     BernsteinCopula(ClaytonCopula(3, 3.3); m=5),
     BernsteinCopula(GalambosCopula(2, 2.5); m=5),
     BernsteinCopula(GaussianCopula(2, 0.3); m=5),
     BernsteinCopula(IndependentCopula(4); m=5),
     BernsteinCopula(IndependentCopula(4); m=5),
-    BernsteinCopula(randn(M.rng, 2,100), pseudo_values=false),
-    BetaCopula(randn(M.rng, 2,100)),
-    BetaCopula(randn(M.rng, 3,100)),
-    CheckerboardCopula(randn(M.rng, 2,100); pseudo_values=false),
-    CheckerboardCopula(randn(M.rng, 3,100); pseudo_values=false),
-    CheckerboardCopula(randn(M.rng, 4,100); pseudo_values=false),
+    BernsteinCopula(randn(rng, 2,100), pseudo_values=false),
+    BetaCopula(randn(rng, 2,100)),
+    BetaCopula(randn(rng, 3,100)),
+    CheckerboardCopula(randn(rng, 2,100); pseudo_values=false),
+    CheckerboardCopula(randn(rng, 3,100); pseudo_values=false),
+    CheckerboardCopula(randn(rng, 4,100); pseudo_values=false),
     ClaytonCopula(2,-0.7),
-    ClaytonCopula(2,-log(rand(M.rng))),
-    ClaytonCopula(2,-rand(M.rng)),
+    ClaytonCopula(2,-log(rand(rng))),
+    ClaytonCopula(2,-rand(rng)),
     ClaytonCopula(2,7),
-    ClaytonCopula(3,-log(rand(M.rng))),
-    ClaytonCopula(3,-rand(M.rng)/2),
-    ClaytonCopula(4,-log(rand(M.rng))),
-    ClaytonCopula(4,-rand(M.rng)/3),
+    ClaytonCopula(3,-log(rand(rng))),
+    ClaytonCopula(3,-rand(rng)/2),
+    ClaytonCopula(4,-log(rand(rng))),
+    ClaytonCopula(4,-rand(rng)/3),
     ClaytonCopula(4,7.),
     Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1)),
     CuadrasAugeCopula(2, 0.0),
@@ -198,54 +177,54 @@ const EXAMPLES = unique([
     CuadrasAugeCopula(2, 0.7103550345192344),
     CuadrasAugeCopula(2, 0.8),
     CuadrasAugeCopula(2, 1.0),
-    CuadrasAugeCopula(2, rand(M.rng)),
+    CuadrasAugeCopula(2, rand(rng)),
     EmpiricalCopula(randn(2,10),pseudo_values=false),
     EmpiricalCopula(randn(2,20),pseudo_values=false),
-    EmpiricalEVCopula(randn(M.rng, 2,10); method=:cfg, pseudo_values=false),
-    EmpiricalEVCopula(randn(M.rng, 2,10); method=:ols, pseudo_values=false),
-    EmpiricalEVCopula(randn(M.rng, 2,10); method=:pickands, pseudo_values=false),
-    EmpiricalEVCopula(randn(M.rng, 2,20); method=:cfg, pseudo_values=false),
-    EmpiricalEVCopula(randn(M.rng, 2,20); method=:ols, pseudo_values=false),
-    EmpiricalEVCopula(randn(M.rng, 2,20); method=:pickands, pseudo_values=false),
+    EmpiricalEVCopula(randn(rng, 2,10); method=:cfg, pseudo_values=false),
+    EmpiricalEVCopula(randn(rng, 2,10); method=:ols, pseudo_values=false),
+    EmpiricalEVCopula(randn(rng, 2,10); method=:pickands, pseudo_values=false),
+    EmpiricalEVCopula(randn(rng, 2,20); method=:cfg, pseudo_values=false),
+    EmpiricalEVCopula(randn(rng, 2,20); method=:ols, pseudo_values=false),
+    EmpiricalEVCopula(randn(rng, 2,20); method=:pickands, pseudo_values=false),
     FGMCopula(2, 0.0),
-    FGMCopula(2, rand(M.rng)),
+    FGMCopula(2, rand(rng)),
     FGMCopula(2,1),
     FGMCopula(3, [0.3,0.3,0.3,0.3]),
     FGMCopula(3,[0.1,0.2,0.3,0.4]),
     FrankCopula(2,-5),
     FrankCopula(2,0.5),
-    FrankCopula(2,1-log(rand(M.rng))),
+    FrankCopula(2,1-log(rand(rng))),
     FrankCopula(2,1.0),
-    FrankCopula(3,1-log(rand(M.rng))),
+    FrankCopula(3,1-log(rand(rng))),
     FrankCopula(3,1.0),
     FrankCopula(3,12),
-    FrankCopula(4,1-log(rand(M.rng))),
+    FrankCopula(4,1-log(rand(rng))),
     FrankCopula(4,1.0),
     FrankCopula(4,150),
     FrankCopula(4,30),
     FrankCopula(4,37),
     GalambosCopula(2, 0.3),
-    GalambosCopula(2, 1+4*rand(M.rng)),
+    GalambosCopula(2, 1+4*rand(rng)),
     GalambosCopula(2, 120),
     GalambosCopula(2, 20),
     GalambosCopula(2, 210),
     GalambosCopula(2, 4.3),
-    GalambosCopula(2, 5+5*rand(M.rng)),
+    GalambosCopula(2, 5+5*rand(rng)),
     GalambosCopula(2, 80),
-    GalambosCopula(2, rand(M.rng)),
+    GalambosCopula(2, rand(rng)),
     GaussianCopula([1 0.5; 0.5 1]),
     GaussianCopula([1 0.7; 0.7 1]),
     GumbelBarnettCopula(2,1.0),
-    GumbelBarnettCopula(2,rand(M.rng)),
+    GumbelBarnettCopula(2,rand(rng)),
     GumbelBarnettCopula(3,0.1),
     GumbelBarnettCopula(3,0.35),
-    GumbelBarnettCopula(3,rand(M.rng)*0.38),
+    GumbelBarnettCopula(3,rand(rng)*0.38),
     GumbelBarnettCopula(4,0.2),
     GumbelCopula(2, 1.2),
-    GumbelCopula(2,1-log(rand(M.rng))),
+    GumbelCopula(2,1-log(rand(rng))),
     GumbelCopula(2,8),
-    GumbelCopula(3,1-log(rand(M.rng))),
-    GumbelCopula(4,1-log(rand(M.rng))),
+    GumbelCopula(3,1-log(rand(rng))),
+    GumbelCopula(4,1-log(rand(rng))),
     GumbelCopula(4,100),
     GumbelCopula(4,20),
     GumbelCopula(4,7),
@@ -256,22 +235,22 @@ const EXAMPLES = unique([
     HuslerReissCopula(2, 5.319851350643586),
     IndependentCopula(2),
     IndependentCopula(3),
-    InvGaussianCopula(2,-log(rand(M.rng))),
+    InvGaussianCopula(2,-log(rand(rng))),
     InvGaussianCopula(2,1.0),
-    InvGaussianCopula(2,rand(M.rng)),
-    InvGaussianCopula(3,-log(rand(M.rng))),
-    InvGaussianCopula(3,rand(M.rng)),
-    InvGaussianCopula(4,-log(rand(M.rng))),
+    InvGaussianCopula(2,rand(rng)),
+    InvGaussianCopula(3,-log(rand(rng))),
+    InvGaussianCopula(3,rand(rng)),
+    InvGaussianCopula(4,-log(rand(rng))),
     InvGaussianCopula(4,0.05),
     InvGaussianCopula(4,1.0),
-    JoeCopula(2,1-log(rand(M.rng))),
+    JoeCopula(2,1-log(rand(rng))),
     JoeCopula(2,3),
     JoeCopula(2,Inf),
-    JoeCopula(3,1-log(rand(M.rng))),
+    JoeCopula(3,1-log(rand(rng))),
     JoeCopula(3,7),
-    JoeCopula(4,1-log(rand(M.rng))),
+    JoeCopula(4,1-log(rand(rng))),
     LogCopula(2, 1.5),
-    LogCopula(2, 1+9*rand(M.rng)),
+    LogCopula(2, 1+9*rand(rng)),
     LogCopula(2, 5.5),
     MCopula(2),
     MCopula(4),
@@ -283,7 +262,7 @@ const EXAMPLES = unique([
     MOCopula(2, 0.5, 0.5, 0.5),
     MOCopula(2, 0.5960710257852946, 0.3313524247810329, 0.09653466861970061),
     MOCopula(2, 1.0, 1.0, 1.0),
-    MOCopula(2, rand(M.rng), rand(M.rng), rand(M.rng)),
+    MOCopula(2, rand(rng), rand(rng), rand(rng)),
     PlackettCopula(0.5),
     PlackettCopula(0.8),
     PlackettCopula(2.0),
@@ -298,18 +277,18 @@ const EXAMPLES = unique([
     tEVCopula(2, 2.0, 0.5),
     tEVCopula(2, 3.0, 0.0),
     tEVCopula(2, 4.0, 0.5),
-    tEVCopula(2, 4+6*rand(M.rng), -0.9+1.9*rand(M.rng)),
+    tEVCopula(2, 4+6*rand(rng), -0.9+1.9*rand(rng)),
     tEVCopula(2, 5.0, -0.5),
     tEVCopula(2, 5.466564460573727, -0.6566645244416698),
     WCopula(2),
-])
+]);
 
 let rng = StableRNG(123)
     top = SUITE["copulas"] = BenchmarkGroup()
     # helper to get stable display names
     _show_name(C) = sprint(show, C)
     _base_from_show(s::AbstractString) = (m = match(r"^[^\s(]+", s); m === nothing ? s : m.match)
-    for C in EXAMPLES
+    for C in EXAMPLES[1:2] # only the first two for the moment to see. 
         CT, d = typeof(C), length(C)
         name_full = _show_name(C)
         name_base = _base_from_show(name_full)
@@ -363,3 +342,23 @@ let rng = StableRNG(123)
         end
     end
 end
+
+
+# Separate SklarDist benchmarks on a single representative model (Clayton d=5)
+# let rng = StableRNG(321)
+#     top = SUITE["sklar"] = BenchmarkGroup()
+#     C = ClaytonCopula(5, 2.0)
+#     m = (Distributions.Normal(), Distributions.LogNormal(), Distributions.Gamma(2,2), Distributions.Beta(2,5), Distributions.Uniform())
+#     S = SklarDist(C, m)
+#     X = rand(rng, S, 128)
+#     U = pseudos(X)
+#     top["rand/128"] = @benchmarkable rand($rng, $S, 128)
+#     top["cdf/128"]  = @benchmarkable cdf($S, $X)
+#     top["pdf/128"]  = @benchmarkable pdf($S, $X)
+#     top["rosenblatt/128"] = @benchmarkable rosenblatt($S, $X)
+#     V = rand(rng, 5, 128)
+#     top["inverse_rosenblatt/128"] = @benchmarkable inverse_rosenblatt($S, $V)
+#     # Fitting pathways (keep light)
+#     top["fit/ifm"]  = @benchmarkable Distributions.fit(CopulaModel, SklarDist{ClaytonCopula, typeof(m)}, $X; sklar_method=:ifm, copula_method=:itau, summaries=false)
+#     top["fit/ecdf"] = @benchmarkable Distributions.fit(CopulaModel, SklarDist{ClaytonCopula, typeof(m)}, $X; sklar_method=:ecdf, copula_method=:itau, summaries=false)
+# end
