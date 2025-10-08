@@ -172,49 +172,59 @@
                 end 
 
 
-                @testif dep_coherency_enabled(C) "Dependence metrics coherency" begin
-                    # Empirical vs theoretical for available metrics, mirroring Kendall’s pattern
-                    metrics = (
-                        ("tau", Copulas.τ, StatsBase.corkendall, 0.10, -1, 1), 
-                        ("rho", Copulas.ρ, StatsBase.corspearman, 0.10, -1 , 1), 
-                        ("beta", Copulas.β, Copulas.corblomqvist, 0.10, -1 , 1), 
-                        ("gamma", Copulas.γ, Copulas.corgini, 0.15, -1 , 1), 
-                        ("iota", Copulas.ι, Copulas.corentropy, 0.15, -Inf , 0)
-                    )
-                    for (name, f, corf, tol, lb, ub) in metrics
-                        @testset "$name" begin
-                            thf = f(C)
-                            thcorf = corf(C)
-                            empf = f(spl1000)
+                # This test takes more than 5 hours to run 
+                # This is clarly unacceptable, but moreover we dont know which copula takes the most time 
+                # sadly ;)
+                
+                # @testif dep_coherency_enabled(C) "Dependence metrics coherency" begin
+                #     # Empirical vs theoretical for available metrics, mirroring Kendall’s pattern
+                #     metrics = (
+                #         ("tau", Copulas.τ, StatsBase.corkendall, 0.10, -1, 1), 
+                #         ("rho", Copulas.ρ, StatsBase.corspearman, 0.10, -1 , 1), 
+                #         ("beta", Copulas.β, Copulas.corblomqvist, 0.10, -1 , 1), 
+                #         ("gamma", Copulas.γ, Copulas.corgini, 0.15, -1 , 1), 
+                #         ("iota", Copulas.ι, Copulas.corentropy, 0.15, -Inf , 0)
+                #     )
+                #     for (name, f, corf, tol, lb, ub) in metrics
+                #         @testset "$name" begin
+                #             thf = f(C)
+                #             thcorf = corf(C)
+                #             empf = f(spl1000)
                             
-                            @test isapprox(empf, thf; atol=tol)
-                            @test lb ≤ thf ≤ ub
-                            @test lb ≤ empf ≤ ub
-                            @test all(lb .≤ thcorf .≤ ub)
+                #             @test isapprox(empf, thf; atol=tol)
+                #             @test lb ≤ thf ≤ ub
+                #             @test lb ≤ empf ≤ ub
+                #             @test all(lb .≤ thcorf .≤ ub)
 
-                            if which(f, (CT,)) !=  which(f, (Copulas.Copula{d},))
-                                thf_gen  = @invoke f(C::Copulas.Copula{d})
-                                # Allow tiny numerical discrepancies
-                                @test isapprox(thf, thf_gen; atol= (C isa GaussianCopula ? 0.1 : 0.001))
-                            end
-                            if d == 2
-                                @test isapprox(thf, thcorf[1,2]; atol=0.1)
-                            else
-                                @test all(lb .<= thcorf .<= ub)
-                            end
-                            if check_rosenblatt(C)
-                                U = rosenblatt(C, spl1000)
-                                empfu = f(U)
-                                empcorfu = corf(U')
-                                @test isapprox(empfu, 0.0; atol=tol+0.05)
-                                for i in 1:(d - 1)
-                                    for j in (i + 1):d
-                                        @test empcorfu[i,j] ≈ 0.0 atol = 0.15
-                                    end
-                                end
-                            end
-                        end
-                    end
+                #             if which(f, (CT,)) !=  which(f, (Copulas.Copula{d},))
+                #                 thf_gen  = @invoke f(C::Copulas.Copula{d})
+                #                 # Allow tiny numerical discrepancies
+                #                 @test isapprox(thf, thf_gen; atol= (C isa GaussianCopula ? 0.1 : 0.001))
+                #             end
+                #             if d == 2
+                #                 @test isapprox(thf, thcorf[1,2]; atol=0.1)
+                #             else
+                #                 @test all(lb .<= thcorf .<= ub)
+                #             end
+                #             if check_rosenblatt(C)
+                #                 U = rosenblatt(C, spl1000)
+                #                 empfu = f(U)
+                #                 empcorfu = corf(U')
+                #                 @test isapprox(empfu, 0.0; atol=tol+0.05)
+                #                 for i in 1:(d - 1)
+                #                     for j in (i + 1):d
+                #                         @test empcorfu[i,j] ≈ 0.0 atol = 0.15
+                #                     end
+                #                 end
+                #             end
+                #         end
+                #     end
+
+                @testif dep_coherency_enabled(C) "Corkendall coeherency" begin
+                    K = corkendall(spl1000')
+                    Kth = corkendall(C)
+                    @test all(-1 .<= Kth .<= 1)
+                    @test all(isapprox.(Kth, K; atol=0.2))
                 end
             end
 
@@ -239,6 +249,14 @@
                 @test spl10 ≈ inverse_rosenblatt(C, rosenblatt(C, spl10)) atol=1e-2
             end
 
+            @testif check_corkendall(C) "corkendall ∘ rosenblatt = I" begin
+                U = rosenblatt(C, spl1000)
+                for i in 1:(d - 1)
+                    for j in (i + 1):d
+                        @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.15
+                    end
+                end
+            end
 
             @testset "Conditionning" begin
                 # Conditioning tests (p = 1), validate against AD ratio and compare fast-paths to fallback

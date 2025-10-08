@@ -1,4 +1,3 @@
-
 @testitem "Fitting + vcov + StatsBase interfaces" tags=[:fitting, :vcov, :statsbase] begin
     using Test, Random, Distributions, Copulas, StableRNGs, LinearAlgebra, Statistics, StatsBase
     rng = StableRNG(2025)
@@ -106,5 +105,84 @@
         M_dummy = Copulas.CopulaModel(dummy_copula, 10, 0.0, :dummy)
         @test_throws ArgumentError StatsBase.residuals(M_dummy)
         @test_throws ArgumentError StatsBase.predict(M_dummy, what=:foo)
+    end
+end
+
+@testitem "Dependence Metrics" tags=[:metrics] begin
+    using Test, Random, Distributions, Copulas, StableRNGs, LinearAlgebra, Statistics, StatsBase, SpecialFunctions, HCubature, QuadGK
+
+    rng = StableRNG(123)
+    n_samples = 2000
+    test_copulas = [
+        (d=3, copula=GumbelCopula(2, 3.5),      description="3D Gumbel with upper tail dependence"),
+        (d=3, copula=ClaytonCopula(2, 4.0),     description="Clayton 3D with lower tail dependence"),
+        (d=4, copula=GumbelCopula(2, 3.5),      description="Gumbel 4D with lower tail dependence"),
+        (d=4, copula=ClaytonCopula(2, 4.0),     description="Clayton 4D with lower tail dependence"),
+        (d=2, copula=GalambosCopula(2, 4.0),    description="2D Galambos with lower tail dependence"),
+        (d=2, copula=HuslerReissCopula(2, 4.0), description="Husler Reiss 2D with lower tail dependence"),
+        (d=2, copula=LogCopula(2, 4.0),         description="2D Logistic with lower tail dependency")
+    ]
+
+    @testset "Multivariate Metrics (Copula vs. Data)" begin
+        for tc in test_copulas
+            C = tc.copula
+            d = tc.d
+            U = rand(rng, C, n_samples)
+
+            @testset "$(tc.description)" begin
+                # Spearman's ρ
+                true_rho = Copulas.ρ(C)
+                emp_rho = Copulas.ρ(U)
+                @test emp_rho ≈ true_rho atol=0.1
+
+                # Kendall's τ
+                true_tau = Copulas.τ(C)
+                emp_tau = Copulas.τ(U)
+                @test emp_tau ≈ true_tau atol=0.1
+
+                # Blomqvist's β
+                true_beta = Copulas.β(C)
+                emp_beta = Copulas.β(U)
+                @test emp_beta ≈ true_beta atol=0.1
+
+                # Gini's γ
+                true_gamma = Copulas.γ(C)
+                emp_gamma = Copulas.γ(U)
+                @test emp_gamma ≈ true_gamma atol=0.15
+
+                # Copula Entropy ι
+                true_entropy = Copulas.ι(C)
+                emp_entropy = Copulas.ι(U)
+
+                @test true_entropy ≈ emp_entropy atol=0.15
+            end
+        end
+    end
+
+    @testset "Pairwise Metrics (on Data Matrix)" begin
+        for tc in test_copulas
+            d = tc.d
+            d == 2 || continue
+
+            C = tc.copula
+            U = rand(rng, C, n_samples)
+            X = U'
+
+            @testset "$(tc.description)" begin
+                # corblomqvist
+                B = Copulas.corblomqvist(X)
+                @test B[1,2] ≈ Copulas.β(C) atol=0.1
+
+                # corgini
+                G = Copulas.corgini(X)
+                @test B[1,2] ≈ Copulas.γ(C) atol=0.1
+
+                # corentropy
+                H = Copulas.corentropy(X)
+                @test size(H) == (d,d)
+                @test H[1,1] == 0.0
+                @test isfinite(H[1,2])
+            end
+        end
     end
 end
