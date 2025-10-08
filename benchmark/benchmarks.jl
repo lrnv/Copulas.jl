@@ -1,5 +1,5 @@
-using Chairmarks
 using BenchmarkTools
+using ChairmarksForAirspeedVelocity 
 using Copulas
 using StatsBase
 using Distributions
@@ -41,7 +41,7 @@ function conditioning(rng, C)
     return nothing
 end
 
-function run_benches()
+function make_bench()
     rng = StableRNG(123)
     
     EXAMPLES = unique([
@@ -110,13 +110,13 @@ function run_benches()
         tp = typeof(C).name.wrapper
         nm = sprint(show, C)
         @show nm
-        G["exercise"][tp][nm] = @be exercise(rng, C)
-        # G["metrics"][nm] = @be metrics(C)
-        # G["fitting"][nm] = @be fitting(rng, C)
-        # G["conditioning"][tp][nm] = @be conditioning(rng, C)
+        G["exercise"][tp][nm] = @benchmarkable exercise(rng, C)
+        # G["metrics"][nm] = @benchmarkable metrics(C)
+        # G["fitting"][nm] = @benchmarkable fitting(rng, C)
+        # G["conditioning"][tp][nm] = @benchmarkable conditioning(rng, C)
     end
     return(G)
 end
 
 # PkgBenchmark entrypoint; must define SUITE
-const SUITE = run_benches();
+const SUITE = make_bench();

@@ -14,6 +14,7 @@ jobs:
         with:
           julia-version: '1'
           bench-on: ${{ github.event.pull_request.head.sha }}
+          extra-pkgs: "https://github.com/LilithHafner/ChairmarksForAirspeedVelocity.jl"
       - name: Remove run benchmark label
         if: ${{ success() }}
         uses: actions/github-script@v7
