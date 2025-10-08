@@ -59,7 +59,7 @@ Base.eltype(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = Base.eltype(S.C
 Distributions.cdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = Distributions.cdf(S.C, collect(Distributions.cdf.(S.m,x)))
 function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,TplMargins}, x::AbstractVector{T}) where {CT,TplMargins,T}
     Random.rand!(rng,S.C,x)
-    clamp!(x, 0, 1)
+    clamp!(x, nextfloat(T(0)), prevfloat(T(1)))
     x .= Distributions.quantile.(S.m,x)
 end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargins}

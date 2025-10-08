@@ -277,7 +277,7 @@ end
     @test check_rnd(InvGaussianCopula,    0,    1/2,  10)
 end
 
-@testitem "Test of ρ ∘ ρ⁻¹ = Id" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula, :GumbelBarnettCopula, :InvGaussianCopula, :OneRing] begin
+@testitem "Test of ρ ∘ ρ⁻¹ = Id" tags=[:ArchimedeanCopula, :ClaytonCopula, :GumbelCopula, :AMHCopula, :FrankCopula, :GumbelBarnettCopula, :InvGaussianCopula] begin
     # [GenericTests integration]: Not yet. ρ⁻¹ is not uniformly available/accurate; keep here as broken placeholders until APIs solidify.
     using Random
     using InteractiveUtils
