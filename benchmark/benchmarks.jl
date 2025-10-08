@@ -288,16 +288,10 @@ let rng = StableRNG(123)
     top = SUITE["copulas"] = BenchmarkGroup()
     # helper to get stable display names
     _show_name(C) = sprint(show, C)
-    _base_from_show(s::AbstractString) = (m = match(r"^[^\s(]+", s); m === nothing ? s : m.match)
     for C in EXAMPLES[1:2] # only the first two for the moment to see. 
         CT, d = typeof(C), length(C)
         name_full = _show_name(C)
-        name_base = _base_from_show(name_full)
-        if !haskey(top, name_base)
-            top[name_base] = BenchmarkGroup()
-        end
-        grp = top[name_base]
-        cgrp = grp[name_full] = BenchmarkGroup()
+        cgrp = top[name_full] = BenchmarkGroup()
 
         # Pre-generate 10 points for cdf/pdf/rosenblatt
         u = rand(rng, C, 64)
