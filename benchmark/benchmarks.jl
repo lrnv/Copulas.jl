@@ -44,7 +44,7 @@ const EXAMPLES = unique([
 
     # Bernstein copulas: a couple of bases
     BernsteinCopula(ClaytonCopula(3, 3.3); m=5),
-    BernsteinCopula(GaussianCopula(2, 0.3); m=5),
+    BernsteinCopula(randn(rng, 3,100); m=5),
 
     # Beta & Checkerboard: prefer non-2D where available
     BetaCopula(randn(rng, 3,100)),
@@ -116,9 +116,6 @@ const EXAMPLES = unique([
     # Raftery: prefer non-2D
     RafteryCopula(3, 0.5),
 
-    # Survival
-    SurvivalCopula(ClaytonCopula(2, -0.7), (1,2)),
-
     # t-Copula: prefer non-2D
     TCopula(4, [1 0.5; 0.5 1]),
 
@@ -155,9 +152,9 @@ let rng = StableRNG(123)
         # Core ops grouped first by op, then by copula name
         ensure_group!(top, "rng")[name_full]  = @benchmarkable rand($rng, $C, 64)
         ensure_group!(top, "cdf")[name_full]  = @benchmarkable cdf($C, $u)
-        ensure_group!(top, "pdf")[name_full]  = @benchmarkable pdf($C, $u)
-        ensure_group!(top, "rbt")[name_full]  = @benchmarkable rosenblatt($C, $u)
-        ensure_group!(top, "irbt")[name_full] = @benchmarkable inverse_rosenblatt($C, $v)
+        # ensure_group!(top, "pdf")[name_full]  = @benchmarkable pdf($C, $u)
+        # ensure_group!(top, "rbt")[name_full]  = @benchmarkable rosenblatt($C, $u)
+        # ensure_group!(top, "irbt")[name_full] = @benchmarkable inverse_rosenblatt($C, $v)
 
         # # Metrics: scalar and matrix-style
         # mgrp = ensure_group!(top, "metrics")
