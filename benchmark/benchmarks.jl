@@ -1,5 +1,6 @@
 using BenchmarkTools
 using Copulas
+using StatsBase
 using Distributions
 using StableRNGs
 const rng = StableRNG(123)
@@ -292,7 +293,10 @@ let rng = StableRNG(123)
         CT, d = typeof(C), length(C)
         name_full = _show_name(C)
         name_base = _base_from_show(name_full)
-        grp = top[name_base] = get(top, name_base, BenchmarkGroup())
+        if !haskey(top, name_base)
+            top[name_base] = BenchmarkGroup()
+        end
+        grp = top[name_base]
         cgrp = grp[name_full] = BenchmarkGroup()
 
         # Pre-generate 10 points for cdf/pdf/rosenblatt
@@ -311,11 +315,11 @@ let rng = StableRNG(123)
         mgrp["β(C)"] = @benchmarkable Copulas.β($C)
         mgrp["γ(C)"] = @benchmarkable Copulas.γ($C)
         mgrp["ι(C)"] = @benchmarkable Copulas.ι($C)
-        mgrp["corkendall(C)"] = @benchmarkable StatsBase.corkendall($C)
-        mgrp["corspearman(C)"] = @benchmarkable StatsBase.corspearman($C)
+        mgrp["corkendall(C)"] =   @benchmarkable StatsBase.corkendall($C)
+        mgrp["corspearman(C)"] =  @benchmarkable StatsBase.corspearman($C)
         mgrp["corblomqvist(C)"] = @benchmarkable Copulas.corblomqvist($C)
-        mgrp["corgini(C)"] = @benchmarkable Copulas.corgini($C)
-        mgrp["corentropy(C)"] = @benchmarkable Copulas.corentropy($C)
+        mgrp["corgini(C)"] =      @benchmarkable Copulas.corgini($C)
+        mgrp["corentropy(C)"] =   @benchmarkable Copulas.corentropy($C)
         
         # Fitting: iterate available methods for this copula type
         fitgrp = cgrp["fit"] = BenchmarkGroup()
@@ -325,15 +329,15 @@ let rng = StableRNG(123)
 
         # Benchmarks on conditioning: distortions (any d>=2) and bivariate conditional copulas (if d>3)
         condgrp = cgrp["conditioning"] = BenchmarkGroup()
-        D1 = condition(C, 2:d, u[1,2:d]) # condition the conpula on the first sampled point. 
-        t = rand($rng, 32)
+        D1 = condition(C, 2:d, u[2:d,1]) # condition the conpula on the first sampled point. 
+        t = rand(rng, 32)
         condgrp["distortion/cdf/32"] = @benchmarkable Distributions.cdf($D1, $t)
         condgrp["distortion/quantile/32"] = @benchmarkable Distributions.quantile($D1, $t)
         
         if d > 3
-            CC = condition(C, 3:d, u[1,:3:d])
-            Ucc = rand($rng, CC, 64)
-            Vcc = rand($rng, 2, 64)
+            CC = condition(C, 3:d, u[3:d,1])
+            Ucc = rand(rng, CC, 64)
+            Vcc = rand(rng, 2, 64)
             condgrp["cc/sample"] = @benchmarkable rand($rng, $CC, 64)
             condgrp["cc/cdf"]    = @benchmarkable cdf($CC, $Ucc)
             condgrp["cc/pdf"]    = @benchmarkable pdf($CC, $Ucc)
