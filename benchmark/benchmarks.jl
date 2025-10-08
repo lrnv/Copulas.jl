@@ -44,7 +44,7 @@ const EXAMPLES = unique([
 
     # Bernstein copulas: a couple of bases
     BernsteinCopula(ClaytonCopula(3, 3.3); m=5),
-    BernsteinCopula(randn(rng, 3,100); m=5),
+    BernsteinCopula(randn(rng, 3,100); m=5, pseudo_values=false),
 
     # Beta & Checkerboard: prefer non-2D where available
     BetaCopula(randn(rng, 3,100)),
