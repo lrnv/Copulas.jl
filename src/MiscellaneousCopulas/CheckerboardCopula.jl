@@ -47,7 +47,7 @@ end
 function CheckerboardCopula(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool=true) where T
     d,n = size(X)
      ms = if isnothing(m)
-        @info "Automatic choice: m = n in each dimension, d=$d, n=$n."
+        @info "Automatic choice: m = n in each dimension." d=d n=n
         fill(n, d)
     else
         m isa Integer ? fill(Int(m), d) : m
