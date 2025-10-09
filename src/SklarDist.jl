@@ -54,6 +54,7 @@ struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribut
         return new{typeof(C),typeof(m)}(C,m)
     end    
 end
+SklarDist(C, m) = SklarDist(C, Tuple(m))
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
 Base.eltype(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = Base.eltype(S.C)
 Distributions.cdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = Distributions.cdf(S.C, collect(Distributions.cdf.(S.m,x)))
