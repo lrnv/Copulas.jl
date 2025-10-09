@@ -5,7 +5,7 @@
     using Random
     using StableRNGs
     rng = StableRNG(123)
-    MyD = SklarDist(ClaytonCopula(3,7),(LogNormal(),Pareto(),Beta()))
+    MyD = SklarDist(ClaytonCopula(3,7),[LogNormal(),Pareto(),Beta()]) # with vector and not tuple as input
     u = rand(rng,MyD,1000)
     rand!(rng, MyD,u)
     fit(SklarDist{ClaytonCopula,Tuple{LogNormal,Pareto,Beta}},u)
