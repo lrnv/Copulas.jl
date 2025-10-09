@@ -27,97 +27,72 @@
         end)
     end
 
-    can_pdf(C::CT) where CT = 
-        applicable(Distributions._logpdf, C, ones(length(C),2)./2) &&
-        !(CT<:EmpiricalCopula) &&
-        !((CT<:ArchimedeanCopula) && length(C)==Copulas.max_monotony(C.G))
+    function get_flags(C::Copula{d}) where d
+        CT = typeof(C)
+        cannot_pdf = 
+            !applicable(Distributions._logpdf, C, ones(d,2)./2) ||
+            (CT<:EmpiricalCopula) ||
+            ((CT<:ArchimedeanCopula) && d == Copulas.max_monotony(C.G))
+            dont_rosenblatt = 
+            ((CT<:ArchimedeanCopula) && d == Copulas.max_monotony(C.G)) || ((CT<:GumbelCopula) && (C.G.θ >= 20)) ||
+            ((CT<:FrankCopula) && (C.G.θ >= 100)) || (CT<:MCopula{4}) || (CT<:EmpiricalCopula) || (CT<:BC2Copula)
 
-    check_rosenblatt(C::CT) where CT = 
-        !((CT<:ArchimedeanCopula) && length(C)==Copulas.max_monotony(C.G)) &&
-        !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
-        !((CT<:GumbelCopula) && (C.G.θ >= 20)) &&
-        !(CT<:MCopula{4}) &&
-        !(CT<:EmpiricalCopula) &&
-        !(CT<:BC2Copula)
+        cannot_integrate_pdf = 
+            cannot_pdf || ((CT<:FrankCopula) && (C.G.θ >= 100)) ||
+            (CT<:ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > d)) ||
+            ((CT<:GumbelCopula) && (C.G.θ >= 100)) || ((CT<:FGMCopula) && (d==3)) || (CT<:CheckerboardCopula) ||
+            (CT<:MCopula) || (CT<:WCopula) || (CT<:MOCopula) || (CT<:CuadrasAugeCopula) || (CT<:RafteryCopula) || 
+            (CT<:EmpiricalCopula) || (CT<:BC2Copula) || (CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
 
-    check_corkendall(C::CT) where CT = 
-        !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
-        !((CT<:GumbelCopula) && (C.G.θ >= 100)) &&
-        !(CT<:Union{MCopula, WCopula}) &&
-        !(CT<:EmpiricalCopula) &&
-        !(CT<:BC2Copula) &&
-        !(CT<:CuadrasAugeCopula) &&
-        !(CT<:MOCopula) &&
-        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
-
-    is_archimedean_with_generator(C::CT) where CT =
-       (CT<:ArchimedeanCopula) && !(typeof(C.G)<:Copulas.WilliamsonGenerator)
-
-    can_integrate_pdf(C::CT) where CT =  
-        # This list might be longer than necessary, it should be trimmed.
-        can_pdf(C) &&
-        !(C isa ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > length(C))) &&
-        !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
-        !((CT<:GumbelCopula) && (C.G.θ >= 100)) &&
-        !((CT<:FGMCopula) && (length(C)==3)) &&
-        !(CT<:MCopula) && 
-        !(CT<:WCopula) && 
-        !(CT<:MOCopula) && 
-        !(CT<:CuadrasAugeCopula) && 
-        !(CT<:RafteryCopula) && 
-        !(CT<:EmpiricalCopula) && 
-        !(CT<:BC2Copula) &&
-        !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) &&
-        !(CT<:CheckerboardCopula)
-
-    can_ad(C::CT) where CT = 
-        # This list might be longer than necessary, it should be trimmed.
-        can_pdf(C) &&
-        !(C isa ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > length(C))) && # discontinuous. 
-        !((CT<:FrankCopula) && (C.G.θ >= 100)) && # too extreme
-        !((CT<:GumbelCopula) && ((C.G.θ >= 100)) || length(C) > 2) && # too extreme
-        !(CT<:MCopula) && # not abs cont
-        !(CT<:WCopula) && # not abs cont
-        !(CT<:tEVCopula) && # requires derivatives of beta_inc_inv that forwardiff doesnt have. 
-        !(CT<:TCopula) && # same
-        !(CT<:CuadrasAugeCopula) && # discontinuous
-        !(CT<:MOCopula) # discontinuous
-        # !(CT<:BC2Copula) && # is discontinuous
-        # !(CT<:AsymGalambosCopula) && 
-        # !(CT<:GalambosCopula) && 
-        # !(CT<:AsymLogCopula) && 
-        # !(CT<:AsymMixedCopula) && 
-        # !(CT<:GalambosCopula) && 
-        # !(CT<:HuslerReissCopula) && 
-        # !(CT<:MixedCopula) && 
-        # !(CT<:LogCopula)
-
-    # --- Named predicate helpers for readability in @testif conditions ---
-    is_bivariate(C::CT)                      where CT = (length(C) == 2)
-    has_subsetdims(C::CT)                    where CT = (length(C) >= 3)
-    can_check_pdf_positivity(C::CT)          where CT = can_pdf(C) && !((CT<:GumbelCopula) && (C.G.θ >= 19))
-    dep_coherency_enabled(C::CT)         where CT = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}})
-    can_check_biv_conditioning_ad(C::CT)     where CT = is_bivariate(C) && can_ad(C)
-    can_check_highdim_conditioning_ad(C::CT) where CT = (length(C) > 2) && can_ad(C)
-    has_uniform_margins(C::CT)               where CT = !(CT<:EmpiricalCopula)
-    is_archimedean(C::CT)                    where CT = (CT <: ArchimedeanCopula)
-    is_extremevalue(C::CT)                   where CT = (CT <: Copulas.ExtremeValueCopula)
-    is_archimax(C::CT)                       where CT = (CT <: Copulas.ArchimaxCopula)
-
-    can_be_fitted(C::CT, d) where CT = length(Copulas._available_fitting_methods(CT, d)) > 0
-    has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
-    has_unbounded_params(C::CT, d) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT, d) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula) && !(d>2 && CT<:FGMCopula)
-    unbounding_is_a_bijection(C::Copulas.Copula{d}) where d = !(typeof(C)<:FGMCopula && d>2)
+        cannot_ad = 
+            cannot_pdf || ((CT<:FrankCopula) && (C.G.θ >= 100)) || (((CT<:GumbelCopula) && (C.G.θ >= 100)) || d > 2) ||
+            (CT<:ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > d)) ||
+            (CT<:MCopula) || (CT<:WCopula) || (CT<:tEVCopula) || (CT<:TCopula) || (CT<:CuadrasAugeCopula) || (CT<:MOCopula)
+            
+        dont_corkendall = 
+            ((CT<:FrankCopula) && (C.G.θ >= 100)) || ((CT<:GumbelCopula) && (C.G.θ >= 100)) ||
+            (CT<:Union{MCopula, WCopula}) || (CT<:EmpiricalCopula) || (CT<:BC2Copula) || (CT<:CuadrasAugeCopula) || (CT<:MOCopula) ||
+            (CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
+            
+        cannot_unbound = 
+            (CT <: Union{IndependentCopula, MCopula, WCopula}) || 
+            !(:mle ∈ Copulas._available_fitting_methods(CT, d)) ||
+            !(length(Distributions.params(C)) > 0) ||
+            (CT<:EmpiricalEVCopula) ||
+            (d>2 && CT<:FGMCopula)
+        
+        return (;
+            can_pdf             = !cannot_pdf,
+            check_rosenblatt    = !dont_rosenblatt,
+            check_corkendall    = !dont_corkendall,
+            can_integrate_pdf   = !cannot_integrate_pdf,
+            can_ad              = !cannot_ad,
+            has_uniform_margins = !(CT<:EmpiricalCopula),
+            is_archi_with_gen   = (CT<:ArchimedeanCopula) && !(typeof(C.G)<:Copulas.WilliamsonGenerator),
+            is_bivariate        = (d == 2),
+            has_subsetdims      = (d >= 3),
+            check_pdf_pos       = !cannot_pdf || !((CT<:GumbelCopula) && (C.G.θ >= 19)),
+            check_dep_cor       = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}}),
+            check_biv_cond      = !cannot_ad && (d==2),
+            check_high_cond     = !cannot_ad && (d > 2),
+            is_archimedean      = (CT<:ArchimedeanCopula),
+            is_extremevalue     = (CT<:Copulas.ExtremeValueCopula),
+            is_archimax         = (CT<:Copulas.ArchimaxCopula),
+            check_fit           = length(Copulas._available_fitting_methods(CT, d)) > 0,
+            has_params          = !(CT <: Union{IndependentCopula, MCopula, WCopula}),
+            can_unbound         = !cannot_unbound,
+            unbound_is_bij      = !(CT<:FGMCopula && d>2),
+        )
+    end
 
     function check(C::Copulas.Copula{d}) where d
         @testset "Testing $C" begin
             @info "Testing $C..."
 
-            CT = typeof(C)
+            CT, flags = typeof(C), get_flags(C)
+            # Sample: 
             Random.seed!(rng,123)
-
             Z = SklarDist(C, Tuple(Normal() for i in 1:d))
-
             spl1 = rand(rng, C)
             spl10 = rand(rng, C, 10)
             spl1000 = rand(rng, C, 800)
@@ -140,14 +115,14 @@
                     @test Copulas.measure(C, ones(d)*0.2, ones(d)*0.4) >= 0
                 end
 
-                @testif has_subsetdims(C) "Subsetdims" begin
+                @testif flags.has_subsetdims "Subsetdims" begin
                     sC = Copulas.subsetdims(C,(2,1))
                     @test all(0 .<= cdf(sC, spl10[1:2,:]) .<= 1)
                     @test sC == Copulas.subsetdims(Z,(2,1)).C
                 end
 
                 # Margins uniformity
-                @testif has_uniform_margins(C) "Margins uniformity" begin
+                @testif flags.has_uniform_margins "Margins uniformity" begin
                     for i in 1:d
                         for val in [0,1,0.5,rand(rng,5)...]
                             u = ones(d)
@@ -163,7 +138,7 @@
                     end
                 end
 
-                @testif can_check_pdf_positivity(C) "PDF positivity" begin
+                @testif flags.check_pdf_pos "PDF positivity" begin
                     r10 = pdf(C, spl10)
                     @test pdf(C, zeros(d) .+ 1e-5) >= 0
                     @test pdf(C, ones(d)/2)      >= 0
@@ -176,7 +151,7 @@
                 # This is clarly unacceptable, but moreover we dont know which copula takes the most time 
                 # sadly ;)
                 
-                # @testif dep_coherency_enabled(C) "Dependence metrics coherency" begin
+                # @testif flags.check_dep_cor "Dependence metrics coherency" begin
                 #     # Empirical vs theoretical for available metrics, mirroring Kendall’s pattern
                 #     metrics = (
                 #         ("tau", Copulas.τ, StatsBase.corkendall, 0.10, -1, 1), 
@@ -220,7 +195,7 @@
                 #         end
                 #     end
 
-                @testif dep_coherency_enabled(C) "Corkendall coeherency" begin
+                @testif flags.check_dep_cor "Corkendall coeherency" begin
                     K = corkendall(spl1000')
                     Kth = corkendall(C)
                     @test all(-1 .<= Kth .<= 1)
@@ -228,28 +203,28 @@
                 end
             end
 
-            @testif can_integrate_pdf(C) "Testing pdf integration" begin
+            @testif flags.can_integrate_pdf "Testing pdf integration" begin
                 # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
-                v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 3_000, 3_000)
+                v, r, _ = integrate_pdf_rect(rng, x -> logpdf(C, x), zeros(d), ones(d), 3_000, 3_000)
                 @test isapprox(v, 1; atol=max(5*sqrt(r), 1e-3))
 
                 # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
                 b = ones(d)/2
-                v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 3_000, 3_000)
+                v2, r2, _ = integrate_pdf_rect(rng, x -> logpdf(C, x), zeros(d), b, 3_000, 3_000)
                 @test isapprox(v2, cdf(C, b); atol=max(10*sqrt(r2), 1e-3))
 
                 # 3) random rectangle, compare with measure (cdf based)
                 a = rand(rng, d)
                 b = a .+ rand(rng, d) .* (1 .- a)
-                v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 3_000, 3_000)
+                v3, r3, _ = integrate_pdf_rect(rng, x -> logpdf(C, x), a, b, 3_000, 3_000)
                 @test (isapprox(v3, Copulas.measure(C, a, b); atol=max(20*sqrt(r3), 1e-3)) || max(v3, Copulas.measure(C, a, b)) < eps(Float64)) # wide tolerence, should pass. 
             end
 
-            @testif check_rosenblatt(C) "rosenblatt ∘ inverse_rosenblatt = Id" begin
+            @testif flags.check_rosenblatt "rosenblatt ∘ inverse_rosenblatt = Id" begin
                 @test spl10 ≈ inverse_rosenblatt(C, rosenblatt(C, spl10)) atol=1e-2
             end
 
-            @testif check_corkendall(C) "corkendall ∘ rosenblatt = I" begin
+            @testif flags.check_corkendall "corkendall ∘ rosenblatt = I" begin
                 U = rosenblatt(C, spl1000)
                 for i in 1:(d - 1)
                     for j in (i + 1):d
@@ -261,7 +236,7 @@
             @testset "Conditionning" begin
                 # Conditioning tests (p = 1), validate against AD ratio and compare fast-paths to fallback
                 # Always run basic sanity checks for bivariate conditionals; AD checks are gated below
-                @testif is_bivariate(C) "Condition(2 | 1): Basics" begin
+                @testif flags.is_bivariate "Condition(2 | 1): Basics" begin
                     us = (0.2, 0.5, 0.8)
                     for j in 1:2
                         i = 3 - j
@@ -270,7 +245,7 @@
                             vals = cdf.(Ref(Dd), us)
                             @test all(0.0 .<= vals .<= 1.0)
                             @test all(diff(collect(vals)) .>= -1e-10)
-                            if !can_ad(C)
+                            if !flags.can_ad
                                 if CT <: Copulas.MCopula
                                     @test all(vals .≈ min.(collect(us) ./ v, 1))
                                 elseif CT <: Copulas.WCopula
@@ -282,14 +257,14 @@
                 end
 
                 # AD-based equivalence and fast-path comparisons (bivariate)
-                @testif can_check_biv_conditioning_ad(C) "Condition(2 | 1): Check Distortion vs AD" begin
+                @testif flags.check_biv_cond "Condition(2 | 1): Check Distortion vs AD" begin
                     us = (0.2, 0.5, 0.8)
                     for j in 1:2
                         i = 3 - j
                         for v in (0.3, 0.7)
                             Dd = Copulas.condition(C, j, v)
                             vals = cdf.(Ref(Dd), us)
-                            refs = [ad_ratio_biv(C, i, j, ui, v) for ui in us]
+                            refs = [ad_ratio_biv(uvec -> cdf(C, uvec), i, j, ui, v) for ui in us]
                             for (v_, r) in zip(vals, refs)
                                 @test isapprox(v_, r, atol=1e-3, rtol=1e-3)
                             end
@@ -311,7 +286,7 @@
                 end
 
                 # High-dimensional AD-based checks
-                @testif can_check_highdim_conditioning_ad(C) "Condition(d|d-1): Check Distortion vs AD" begin
+                @testif flags.check_high_cond "Condition(d|d-1): Check Distortion vs AD" begin
                     # Spot-check a single index pair (i,j) using the 2D projection via subsetdims
                     j, i, v, us = 1, 2, 0.6, (0.2, 0.5, 0.8)
 
@@ -323,15 +298,15 @@
 
                     # Validate marginal distortion against AD on the 2D subset (i maps to 1, j maps to 2)
                     Cproj = Copulas.subsetdims(C, (i, j))
-                    if can_ad(Cproj)
-                        refs = [ad_ratio_biv(Cproj, 1, 2, u, v) for u in us]
+                    if get_flags(Cproj).can_ad
+                        refs = [ad_ratio_biv(uvec -> cdf(Cproj, uvec), 1, 2, u, v) for u in us]
                         for (v_,r) in zip(vals, refs)
                             @test isapprox(v_, r, atol=1e-5, rtol=1e-5)
                         end
                     end
                 end
 
-                @testif can_check_highdim_conditioning_ad(C) "Condition (d|d-2): Check conditional copula vs AD" begin
+                @testif flags.check_high_cond "Condition (d|d-2): Check conditional copula vs AD" begin
                     js = collect(3:d)
                     ujs = [0.25 + 0.5*rand(rng) for _ in js]  # interior values
                     CC = condition(C, js, ujs)
@@ -385,7 +360,7 @@
                 end
             end
             
-            @testif is_archimedean_with_generator(C) "ArchimedeanCopula specific tests" begin 
+            @testif flags.is_archi_with_gen "ArchimedeanCopula specific tests" begin 
                 # Only test things if there are specilized versions of the functions. 
                 spe_ϕ1 = which(Copulas.ϕ⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁽¹⁾, (Copulas.Generator, Float64))
                 spe_ϕk = which(Copulas.ϕ⁽ᵏ⁾, (typeof(C.G), Int, Float64)) != which(Copulas.ϕ⁽ᵏ⁾, (Copulas.Generator, Int, Float64))
@@ -470,7 +445,7 @@
             end
 
             # Extreme value copula-specific tests (bivariate)
-            @testif (is_extremevalue(C) && is_bivariate(C)) "ExtremeValueCopula specific tests" begin
+            @testif (flags.is_extremevalue && flags.is_bivariate) "ExtremeValueCopula specific tests" begin
                     @testset "A function basics" begin
                         @test Copulas.A(C.tail, 0.0) ≈ 1
                         @test Copulas.A(C.tail, 1.0) ≈ 1
@@ -523,31 +498,34 @@
             end
 
             # Archimax specific tests
-            @testif is_archimax(C) "ArchimaxCopula specific tests" begin
+            @testif flags.is_archimax "ArchimaxCopula specific tests" begin
 
                     for (u1,u2) in ((0.2,0.3), (0.7,0.6), (0.9,0.4))
-                        @test isapprox(cdf(C, [u1,u2]), _archimax_cdf_mockup(C, u1, u2); rtol=1e-12, atol=1e-12)
+                        ϕinv = u -> Copulas.ϕ⁻¹(C.G, u)
+                        ϕf   = t -> Copulas.ϕ(C.G, t)
+                        Af   = t -> Copulas.A(C.tail, t)
+                        @test isapprox(cdf(C, [u1,u2]), _archimax_cdf_mockup(ϕinv, Af, ϕf, u1, u2); rtol=1e-12, atol=1e-12)
                     end
 
                     for (u1,u2) in ((0.25,0.4), (0.6,0.6))
                         lp = logpdf(C, [u1,u2])
                         @test isfinite(lp)
-                        c_h = _archimax_pdf_hess(C, u1, u2)
+                        c_h = _archimax_pdf_hess(uvec -> cdf(C, uvec), u1, u2)
                         @test isapprox(exp(lp), c_h; rtol=1e-6, atol=1e-8)
                     end
 
-                    for r in _archimax_mc_rectangles_cdf(C; N=8_000, seed=321)
+                    for r in _archimax_mc_rectangles_cdf(uvec -> cdf(C, uvec); drawU=(rng_, N_)->rand(rng_, C, N_), N=8_000, seed=321)
                         @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
                     end
             end
 
-            @testif can_be_fitted(C, d) "Fitting interface" begin
+            @testif flags.check_fit "Fitting interface" begin
 
-                @testif has_unbounded_params(C, d) "Unbouding and rebounding params" begin
+                @testif flags.can_unbound "Unbouding and rebounding params" begin
                     # First on the _example copula. 
                     θ₀ = Distributions.params(Copulas._example(CT, d))
                     θ₁ = Copulas._rebound_params(CT, d, Copulas._unbound_params(CT, d, θ₀))
-                    @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
+                    @testif flags.unbound_is_bij "bijective unbounding" begin 
                         @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
                     end
                     @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
@@ -555,7 +533,7 @@
                     # Then on the copula we have at hand:
                     θ₀ = Distributions.params(C)
                     θ₁ = Copulas._rebound_params(CT, d, Copulas._unbound_params(CT, d, θ₀))
-                    @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
+                    @testif flags.unbound_is_bij "bijective unbounding" begin 
                         @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
                     end
                     @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
@@ -568,10 +546,12 @@
 
                         newCT = typeof(r2)
                         @test typeof(r1.result) == newCT
-                        if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2) && has_unbounded_params(r2, d) && !(CT<:RafteryCopula && d==3 && m==:itau)
+                        let f2 = get_flags(r2)
+                        if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && f2.has_params && f2.can_unbound && !(CT<:RafteryCopula && d==3 && m==:itau)
                             α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
                             α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
                             @test α1 ≈ α2 atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
+                        end
                         end
 
                         # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
@@ -583,38 +563,39 @@
                     r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
                     newCT = typeof(r4.C)
                     @test typeof(r3.result.C) == newCT
-                    if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C, d)
+                    let f4 = get_flags(r4.C)
+                    if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && f4.has_params && f4.can_unbound
                         α1 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
                         α2 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
                         @test α1 ≈ α2  atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
+                    end
                     end
                 end
             end
         end
     end
 
-    _archimax_cdf_mockup(C::Copulas.ArchimaxCopula, u1::Real, u2::Real) = begin
-        G, E = C.gen, C.tail
+    _archimax_cdf_mockup(ϕinv, A, ϕ, u1::Real, u2::Real) = begin
         (u1≤0 || u2≤0)  && return 0.0
         (u1≥1 && u2≥1)  && return 1.0
-        x = Copulas.ϕ⁻¹(G, u1); y = Copulas.ϕ⁻¹(G, u2)
+        x = ϕinv(u1); y = ϕinv(u2)
         S = x + y
         S == 0 && return 1.0
         t = y / S
-        Copulas.ϕ(G, S * Copulas.A(E, t))
+        ϕ(S * A(t))
     end
-    _archimax_pdf_hess(C, u1, u2) = begin
-        f(z) = cdf(C, z)                      
+    _archimax_pdf_hess(cdf_fun, u1, u2) = begin
+        f(z) = cdf_fun(z)                      
         H = ForwardDiff.hessian(f, [u1, u2])  # ∂²/∂u1∂u2
         max(H[1,2], 0.0)                      # numerical clip 
     end
-    function _archimax_mc_rectangles_cdf(C; N::Int=120_000, seed::Integer=123,
+    function _archimax_mc_rectangles_cdf(cdf_fun; drawU, N::Int=120_000, seed::Integer=123,
                             rects::Tuple{Vararg{Tuple{<:Real,<:Real}}}=((0.5,0.5),(0.3,0.7),(0.8,0.2)))
         rng = StableRNG(seed)
-        U = rand(rng, C, N)
+        U = drawU(rng, N)
         results = Vector{NamedTuple}(undef, length(rects))
         @inbounds for (k,(a,b)) in pairs(rects)
-            p_th = cdf(C, [a,b])
+            p_th = cdf_fun([a,b])
             cnt = 0
             for i in 1:N
                 (U[1,i] ≤ a && U[2,i] ≤ b) && (cnt += 1)
@@ -626,17 +607,18 @@
         return results
     end
 
-    function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, maxevals, N) where d
+    function integrate_pdf_rect(rng, logpdf_fun, a, b, maxevals, N)
         ba = b .- a
         logvol = log(prod(ba))
         logS  = -Inf
         logS2 = -Inf
+        d = length(a)
         u = zeros(d)
         x = similar(a)
         @inbounds for _ in 1:N
             rand!(rng, u)
             x .=  a .+ ba .* u
-            lp = logpdf(C, x)
+            lp = logpdf_fun(x)
             if isfinite(lp)
                 log_fx = lp + logvol
                 logS   = LogExpFunctions.logaddexp(logS,  log_fx)
@@ -651,15 +633,15 @@
 
     # AD-based reference for the univariate conditional CDF H_{i|j}(u | U_j=v)
     # Theory (Sklar): H_{i|j}(u|v) = (∂_j C)(..., u_i=u, u_j=v) / (∂_j C)(..., u_i=1, u_j=v).
-    function ad_ratio_biv(C2::Copulas.Copula{2}, i::Int, j::Int, u::Float64, v::Float64)
+    function ad_ratio_biv(cdf2, i::Int, j::Int, u::Float64, v::Float64)
         # For a bivariate copula, the denominator is always one.
         @assert (i == 1 && j == 2) || (i == 2 && j == 1)
         if j == 2
             # Condition on dim 2 at v: differentiate w.r.t arg2
-            return ForwardDiff.derivative(t -> cdf(C2, [u, t]), v)
+            return ForwardDiff.derivative(t -> cdf2([u, t]), v)
         else # j == 1
             # Condition on dim 1 at v: differentiate w.r.t arg1
-            return ForwardDiff.derivative(t -> cdf(C2, [t, u]), v)
+            return ForwardDiff.derivative(t -> cdf2([t, u]), v)
         end
     end
     # helpers to compute AD-based reference for H_{I|J}
