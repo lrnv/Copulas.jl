@@ -59,7 +59,7 @@ using Copulas, StatsBase, Random, Distributions, Optim
 
 Archimedean copula with generator φ(t) = 1 - t^(1/θ), θ ∈ [1, ∞).
 """
-struct Nelsen2Generator{T} <: AbstractUnivariateGenerator
+struct Nelsen2Generator{T} <: Copulas.AbstractUnivariateGenerator
     θ::T
     function Nelsen2Generator(θ)
         if θ < 1
