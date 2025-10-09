@@ -4,104 +4,157 @@ CurrentModule = Copulas
 
 # Fitting interface
 
-This section summarizes **how to fit** copulas (and Sklar distributions) in `Copulas.jl`, without going into the details of each family.
+This section summarizes how to **fit** copulas (and Sklar distributions) in `Copulas.jl`, without going into family-specific details.
 
 ---
 
-## Data Conventions
+## Data conventions
 
-* We work with **pseudo-observations** `U ∈ (0,1)^{d×n}` (rows = dimension, columns = observations). You can use the `pseudo()` function to get such normalized ranks. 
-* The *rank* routines (τ/ρ/β/γ) assume pseudo-observations.
-* The `StatsBase` functions for pairwise correlations use the `n×d` convention; when called internally, they are transposed (`U`) as appropriate.
+- We work with **pseudo-observations** `U ∈ (0,1)^{d×n}` (rows = dimensions, columns = observations).  
+  Use `pseudos(X)` to obtain normalized ranks from raw data `X`.
+- Rank-based routines (tau / rho / beta / gamma) assume pseudo-observations.
+- `StatsBase` pairwise correlation helpers use the `n×d` convention; internally we transpose as needed (e.g., `U'`).
 
 ---
 
-## Main Calls
+## Main calls
 
-### Copula Only (Object)
+### Copula only (object)
 
 ```@example fitting_interface
 using Copulas, Random, StatsBase, Distributions
 Random.seed!(123) # hide
 Ctrue = GumbelCopula(2, 3.0)
-U = rand(Ctrue, 2000)
+U = rand(Ctrue, 2_000)
 Ĉ = fit(GumbelCopula, U; method=:mle)
 Ĉ
 ```
 
-Returns **only** the fitted copula `Ĉ::CT`. This is a high-level shortcut.
+Returns **only** the fitted copula `Ĉ::CT` (high-level shortcut).
 
-```@example fitting_interface
-using Plots
-plot(Ĉ)
-```
-
-### Full Model (with metadata)
+### Full model (with metadata)
 
 ```@example fitting_interface
 M = fit(CopulaModel, GumbelCopula, U; method=:default)
 M
 ```
 
-Returns a `CopulaModel` with:
-
-* `result` (the fitted copula), `n`, `ll` (log-likelihood),
-* `method`, `converged`, `iterations`, `elapsed_sec`,
-* `vcov` (if available),
-* `method_details` (a named tuple with method metadata).
+Returns a [`CopulaModel`](@ref) with:
+- `result` (the fitted copula), `n`, `ll` (log-likelihood),
+- `method`, `converged`, `iterations`, `elapsed_sec`,
+- `vcov` (if available),
+- `method_details` (a `NamedTuple` with method-specific metadata).
 
 ---
 
 ## Behavior & conventions (important)
 
-- fit operates on types, not on pre-constructed parameterized instances. Always pass a Copula or SklarDist *type* to `fit`, e.g. `fit(GumbelCopula, U)` or `fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X)`. If you already have a constructed instance `C0`, re-estimate its parameters by calling `fit(typeof(C0), U)`.
+- ``fit`` operates on **types**, not on pre-constructed instances.  
+  Pass a copula or Sklar type, e.g. `fit(GumbelCopula, U)` or  
+  `fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X)`.  
+  If you already have an instance `C0`, re-estimate its parameters with `fit(typeof(C0), U)`.
 
-- Default method selection: each family exposes the list of available fitting strategies via `_available_fitting_methods(CT, d)`. When `method = :default` the first element of that tuple is used. Example: `Copulas._available_fitting_methods(MyCopula, d)`.
+- **Default method selection.** Each family exposes allowed fitting strategies via `_available_fitting_methods(CT, d)`.  
+  With `method = :default`, the **first** element of that tuple is used.  
+  Example: `Copulas._available_fitting_methods(MyCopula, d)`.
 
-- `CopulaModel` is the full result object returned by the fits performed via `Distributions.fit(::Type{CopulaModel}, ...)`. The light-weight shortcut `fit(MyCopula, U)` returns only a copula instance; use `fit(CopulaModel, ...)` to get diagnostics and metadata.
+- `CopulaModel` is the full result returned by `Distributions.fit(::Type{CopulaModel}, ...)`.  
+  The lightweight shortcut `fit(MyCopula, U)` returns only a copula; use `fit(CopulaModel, ...)` to get diagnostics and metadata.
 
-## `CopulaModel` Interface (summary)
+---
 
-The `CopulaModel{CT} <: StatsBase.StatisticalModel` type stores the result and supports the standard `StatsBase` interface:
+## `CopulaModel` interface (summary)
 
-| Function           | Description                     |
-| ------------------ | ------------------------------- |
-| `nobs(M)`          | Number of observations          |
-| `loglikelihood(M)` | Log-likelihood at the optimum   |
-| `deviance(M)`      | Deviance (= −2 loglikelihood)   |
-| `coef(M)`          | Estimated parameters            |
-| `coefnames(M)`     | Parameter names                 |
-| `vcov(M)`          | Var–cov matrix                  |
-| `stderror(M)`      | Standard errors                 |
-| `confint(M)`       | Confidence intervals            |
-| `aic(M)`           | Akaike Information Criterion    |
-| `bic(M)`           | Bayesian Information Criterion  |
-| `aicc(M)`          | Corrected AIC (small-sample)    |
-| `hqc(M)`           | Hannan–Quinn criterion          |
+The `CopulaModel{CT} <: StatsBase.StatisticalModel` supports the standard `StatsBase` API and a few additional fields:
 
+| Function / Field                               | Description                                                                                       |
+|-----------------------------------------------|---------------------------------------------------------------------------------------------------|
+| **Field** `M.ll`                               | Log-likelihood at the optimum (numeric field stored in the model).                                |
+| `nobs(M)`                                      | Number of observations used in the fit.                                                           |
+| `deviance(M)`                                  | Deviance (= −2 · `M.ll`).                                                                         |
+| `nullloglikelihood(M)`                         | Log-likelihood under independence with same margins (available for Sklar fits).                   |
+| `nulldeviance(M)`                              | Deviance of the null model (−2 · `nullloglikelihood(M)`).                                         |
+| `aic(M)` / `bic(M)`						     | Information criteria from ``StatsBase.jl``                                                        |
+| `aicc(M)` / `hqc(M)`     						 | Information criteria from ``Copulas.jl``                                                          |
+| `coef(M)` / `coefnames(M)`                     | Estimated parameters and their names.                                                             |
+| `vcov(M)`                                      | Parameter variance–covariance matrix (may be `nothing`).                                          |
+| `stderror(M)` / `confint(M; level=0.95)`       | Standard errors and Wald confidence intervals (require `vcov(M) ≠ nothing`).                      |
+| `residuals(M; transform=:uniform \| :normal)`  | Rosenblatt residuals on `[0,1]` or Normal scale (requires `method_details[:U]`).                  |
+| `predict(M; what=:cdf\|:pdf\|:simulate, ...)`  | CDF/PDF at `newdata`, or simulation (`nsim`; default `nsim = M.n` if `nsim == 0`).                |
 
-By default, the returned `CopulaModel` contains a lot of extra statistics, that you can see by printing the model in the REPL. 
+**Examples**
 
-### `vcov` and inference notes
+```@example fitting_interface
+Information criteria
+StatsBase.aic(M)
+StatsBase.bic(M)
+Copulas.aicc(M)
+Copulas.hqc(M)
+```
 
-- The `CopulaModel` field `vcov` (exposed as `StatsBase.vcov(M)`) contains the estimated covariance matrix of the fitted copula parameters when available. Many families supply `:vcov` via the `meta` NamedTuple returned by `_fit` (for example `meta.vcov`). If `vcov === nothing` the package cannot compute `stderror` or `confint` and those helpers will throw.
+```@example fitting_interface
+# Standard errors and Wald CIs
+StatsBase.stderror(M)
+StatsBase.confint(M; level=0.95)
+```
 
-TODO: add an example here. 
+```@example fitting_interface
+# Rosenblatt residuals
+R  = StatsBase.residuals(M; transform=:uniform)
+RN = StatsBase.residuals(M; transform=:normal)
+(size(R), size(RN))
+```
 
-Consider adding a small bootstrap wrapper for robust CIs when the Hessian is unreliable.
+```@example fitting_interface
+# Predictions and simulation
+P  = StatsBase.predict(M; what=:cdf, newdata=rand(2, 5))   # CDF at 5 points
+F  = StatsBase.predict(M; what=:pdf, newdata=rand(2, 5))   # PDF at 5 points
+X̂  = StatsBase.predict(M; what=:simulate, nsim=1_000)     # simulate 1,000 obs
+(size(P), size(F), size(X̂))
+```
 
-## Joint margin fitting + copula (Sklar)
+---
 
-* `:ifm`: fits parametric margins and projects to pseudo-data with their CDFs.
-* `:ecdf`: uses pseudo-empirical observations (ranks).
+## Covariance estimation (`vcov`) and inference
 
-**Notes:**
+When fitting with `fit(CopulaModel, ...)`, the keyword `vcov=true` triggers estimation of the **parameter covariance matrix**.
 
-- `sklar_method=:ifm` fits parametric margins first and converts observations to pseudo-scale via the fitted marginal CDFs. `sklar_method=:ecdf` uses empirical pseudo-observations (ranks). Choose `:ifm` when margins are believed parametric and you want a model-based projection; choose `:ecdf` to avoid margin misspecification.
+> **Default.** `vcov = true`. Covariance is computed automatically unless the user disables it (`vcov=false`) or a family turns it off internally (e.g., `TCopula`, `FGMCopula`, `tEVCopula`) when required derivatives are not implemented.
 
-- `margins_kwargs` is currently a single `NamedTuple` applied to every marginal fit. If you need different options per margin, fit margins manually (call `Distributions.fit` for each marginal type) and then call the copula fit on the pseudo-data yourself.
+The internal dispatcher `_vcov(CT, U, θ̂; method, override)` selects the estimator:
 
-- The model's `null_ll` field (used in LR tests) is computed as the sum of the marginal logpdfs under the fitted margins; LR tests compare the fitted copula vs independence while keeping the same margins.
+| Symbol               | Description                                                                                      |
+|----------------------|--------------------------------------------------------------------------------------------------|
+| `:hessian`           | Inverse observed information (−Hessian of the log-likelihood). Default for `method = :mle`.     |
+| `:godambe`           | Godambe (sandwich) estimator based on score-type functions. Used for rank-based fits.            |
+| `:godambe_pairwise`  | Pairwise Godambe using all variable pairs.                                                       |
+| `:jackknife`         | Leave-one-out jackknife approximation (robust fallback).                                        |
+| `:bootstrap`         | Bootstrap approximation (√n resamples, up to 200).                                              |
+
+You can override the choice via `vcov_method`:
+
+```@example fitting_interface
+M2 = fit(CopulaModel, GumbelCopula, U; method=:mle, vcov=true, vcov_method=:bootstrap, derived_measures=false)
+StatsBase.vcov(M2) isa AbstractMatrix
+```
+
+Each method returns a symmetric (positive semi-definite) matrix `Vθ`, stored as `M.vcov` and exposed by `StatsBase.vcov(M)`.
+
+**Fallbacks.** If non-finite values appear in Hessian/Godambe computations, the algorithm automatically falls back (first to `:bootstrap`; if instability persists, to `:jackknife`).
+
+**Note.** In the example above we set `derived_measures=false`, which disables the automatic calculation and storage of dependence measures (e.g., Kendall’s τ, Spearman’s ρ, Blomqvist’s β, , Gini's γ, upper/lower tail coefficients, entropy). By default this is enabled. Disabling it reduces computation and memory footprint and omits the *Dependence metrics* section in the REPL summary.
+---
+
+## Joint margins + copula (Sklar)
+
+- `:ifm`: fits parametric margins and maps data to pseudo-scale via their CDFs.  
+- `:ecdf`: uses empirical pseudo-observations (ranks).
+
+**Notes**
+
+- Use `sklar_method = :ifm` when margins are plausibly parametric and you want a model-based projection; use `:ecdf` to avoid margin misspecification.
+- `margins_kwargs` is a single `NamedTuple` applied to every marginal fit. For heterogeneous options, fit margins manually and then fit the copula on the resulting pseudo-data.
+- The model’s `null_ll` (for LR tests) is the log-likelihood under independence with the **same margins**.
 
 ```@example fitting_interface
 S = SklarDist(ClaytonCopula(2, 5), (Normal(), LogNormal(0, 0.5)))
@@ -121,37 +174,42 @@ plot(Ŝ.result)
 
 ## Available fitting methods
 
-The names and availiability of fitting methods depends on the model. You can check what is available with the following internal call : 
+The names and **availability** of fitting methods depend on the family. Inspect them via:
 
 ```@example fitting_interface
 Copulas._available_fitting_methods(ClaytonCopula, 3)
 ```
 
-The first method in the list is the one used by default. 
+The first method in the list is used by default.
 
-### Short description
+### Short descriptions
 
-* `:mle` — **Maximum likelihood** over `U`. Recommended when there is a stable density and good reparameterization.
-* `:itau` — **Kendall's inverse**: matches the theoretical `τ(C)` with the empirical `τ(U)`. Ideal for **single-parameter families** or when a reliable monotone inverse exists.
-* `:irho` — **Spearman's inverse**: analogous to `ρ`; can operate with scalar or matrix objectives (e.g., multivariate Gaussians).
-* `:ibeta` — **Blomqvist's inverse**: scalar; **only** works if the family has **≤ 1 free parameter**.
+- `:mle` — **Maximum likelihood** over `U`. Recommended when a stable density and a good reparameterization exist.
+- `:itau` — **Kendall inverse**: matches theoretical `tau(C)` to empirical `tau(U)`. Ideal for single-parameter families with a monotone inverse.
+- `:irho` — **Spearman inverse**: analogous to `rho`; can use scalar or matrix objectives (e.g., multivariate Gaussians).
+- `:ibeta` — **Blomqvist inverse**: scalar; only valid for families with **≤ 1** free parameter.
 
-> **Note:** Rank-based methods require that the number of free parameters not exceed the information of the coefficient(s) used; in the case of `:ibeta`, this is explicitly enforced.
+> **Remark.** Rank-based methods require that the number of free parameters does not exceed the information contained in the chosen coefficient(s); `:ibeta` enforces this explicitly.
 
-In **extreme value** copulas, the `:mle`/`:iupper` variants can rely on the Pickands function (A(t)) and its derivatives (`A`, `dA`, `d²A`) with Brent-type numerical inversion.
+For **extreme-value** copulas, `:mle` / `:iupper` may rely on the Pickands function `A(t)` and its derivatives (`A`, `dA`, `d²A`) with Brent-type inversion.
 
----
+## Nonparametric fits (Empirical Copulas)
 
-## Implementing fitting for a new family (contributor checklist)
+In addition to parametric families (MLE / rank-based), `Copulas.jl` exposes several **nonparametric** or **empirical** constructions that can be fit through the same high-level API:
 
-When you add a new copula family, implement the following so the generic `fit` flow works seamlessly:
+- `EmpiricalCopula` (Deheuvels)
+- `BetaCopula`
+- `BernsteinCopula`
+- `CheckerboardCopula`
+- `EmpiricalEVCopula` (built from `EmpiricalEVTail`, bivariate extreme-value case)
 
-1. `_example(CT, d)` — return a representative instance (used to obtain default params and initial values).
-2. `_unbound_params(CT, d, params)` — transform the family `NamedTuple` parameters to an unconstrained `Vector{Float64}` used by optimizers.
-3. `_rebound_params(CT, d, α)` — invert `_unbound_params`, returning a `NamedTuple` suitable for `CT(d, ...)` construction.
-4. `_available_fitting_methods(::Type{<:YourCopula}, d::Int)` — declare supported methods (examples:  `:mle, :itau, :irho, :ibeta, ...`).
-5. `_fit(::Type{<:YourCopula}, U, ::Val{:mle})` (and other `Val{}` methods) — implement the method and return `(fitted_copula, meta::NamedTuple)`; include keys such as `:θ̂`, `:optimizer`, `:converged`, `:iterations` and optionally `:vcov`.
+See the dedicated page for theory, properties, and references: [Empirical models](@ref empirical_copulas).
 
-Place this checklist and a minimal `_fit` skeleton in `docs/src/manual/developer_fitting.md` where contributors can copy/paste and adapt.
-````
+All **StatsBase / StatsModels** functionality works identically for these copulas:  
+you can call `coef`, `aic`, `bic`, `deviance`, `predict`, `residuals`, etc.,  
+and obtain a full `CopulaModel` object with the same structure and printing behavior.  
 
+The only difference is that empirical models are **parameter-free** (`dof(M) = 0`),  
+so `vcov(M)`, `stderror(M)`, and `confint(M)` return `nothing`,  
+and information criteria reduce to AIC = BIC = −2 · loglikelihood.  
+Otherwise, all features—including the computation of dependence measures and the REPL summary—behave exactly the same.
