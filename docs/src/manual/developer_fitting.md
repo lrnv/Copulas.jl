@@ -53,6 +53,7 @@ Below we show a complete example with a small, self-contained family `Nelsen2Cop
 
 ```@example developer_fitting
 using Copulas, StatsBase, Random, Distributions, Optim
+using Copulas: AbstractUnivariateGenerator, ArchimedeanCopula, ϕ, ϕ⁻¹, max_monotony
 
 """
     Nelsen2Copula{T}
