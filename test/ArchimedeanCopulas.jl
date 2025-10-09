@@ -103,7 +103,7 @@
 @testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(3,7)) end
 @testitem "Generic" tags=[:Generic, :ArchimedeanCopula, :JoeCopula] setup=[M] begin M.check(JoeCopula(4,1-log(rand(M.rng)))) end
 
-@testitem "Boundary test for bivariate Joe and Gumbel" tags=[:ArchimedeanCopula, :JoeCopula, :GumbelCopula] begin
+@testitem "Boundary test for bivariate Joe, Gumbel and Frank" tags=[:ArchimedeanCopula, :JoeCopula, :GumbelCopula] begin
     # [GenericTests integration]: Yes, valuable. A general "pdf zero on boundaries when defined" property exists for families with known boundary behavior.
     # We can add a predicate + @testif block in GenericTests that exercises boundary-zero conditions when the family declares them.
     using Distributions
@@ -124,6 +124,14 @@
     @test pdf(G, [0.1,0.0]) == 0.0
     @test pdf(G, [0.0,0.1]) == 0.0
     @test pdf(G, [0.0,0.0]) == 0.0
+    
+    # Issue 247
+    @test pdf(FrankCopula(2, 2.5), [1,1]*eps()) ≈ 2.723563724584597
+    @test pdf(FrankCopula(2, -2.5), [1,1]*eps()) ≈ 0.22356372458463078
+    @test pdf(FrankCopula(2, -2.5), [1,1]*0.0) == 0.0
+    @test pdf(FrankCopula(2, 2.5), [1,1]*0.0) == 0.0
+    @test isapprox(pdf(SklarDist(FrankCopula(2,-2.5),(Normal(-2.,1),Normal(-0.3,0.1))), [2.,-2.]), 0.0, atol=eps())
+
 end
 
 @testitem "Fix values of bivariate ClaytonCopula: τ, cdf, pdf and contructor" tags=[:ArchimedeanCopula, :ClaytonCopula] begin
