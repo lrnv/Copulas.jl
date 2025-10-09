@@ -9,7 +9,7 @@ However, copulas are infinite-dimensional objects and interpreting their propert
 Therefore, the literature has introduced quantifications of the dependence structure that may be used as univariate (imperfect but useful) summaries of certain copula properties. 
 We implement the most well-known ones in this package. 
 
-## Main dependence metrics τ, ρ, β and γ
+## Main dependence metrics τ, ρ, β, γ and ι
 
 !!! definition "Kendall' τ"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
@@ -39,14 +39,23 @@ We implement the most well-known ones in this package.
 
     while $a_d, b_d$ are normalizing constants depending only on the dimension $d$.
 
+!!! definition "Definition (Copula entropy ι):"
+    For a copula $C$ with density $c$, the copula entropy is
+
+    $$\iota(C) = - \int_{[0,1]^d} c(u) \log c(u)\,du.$$
+
+    It satisfies $I(X_1,\dots,X_d) = -\iota(C)$ (see [ma2011mutual](@cite)).
+
 
 These dependence measures are very common when $d=2$, and a bit less when $d > 2$. We sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated with a multivariate copula. 
 We thus provide two different interfaces:
 * `Copulas.τ(C::Copula)`, `Copulas.ρ(C::Copula)`, `Copulas.β(C::Copula)`, `Copulas.γ(C::Copula)` provide the upper formulas, yielding a scalar whatever the dimension of the copula.
 * `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)`, `Copulas.corblomqvist(data)`, `Copulas.corgini(data)` provide matrices of pairwise dependence metrics. 
 
-Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C), β(C), γ(C)` (for the multivariate versions) and `corkendall(C), corspearman(C), corblomqvist(C)`, and  `corgini(C)` (for the matrix versions).
-Similarly, empirical versions of these metrics can be obtained from a matrix of observations `data` of size `(d,n)` by  `Copulas.τ(data)`, `Copulas.ρ(data)`, `Copulas.β(data)`, `Copulas.γ(data)`, `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)`, `Copulas.corblomqvist(data)` and `Copulas.corgini(data)`.
+Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C), β(C), γ(C), ι(C)` (for the multivariate versions) and `corkendall(C), corspearman(C), corblomqvist(C)`, `corgini(C)`, and `corentropy(C)` (for the matrix versions).
+Similarly, empirical versions of these metrics can be obtained from a matrix (observations or pseudo-observations) of size `(d,n)` by  `Copulas.τ(data)`, `Copulas.ρ(data)`, `Copulas.β(data)`, `Copulas.γ(data)`, `Copulas.ι(data)`, `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)`, `Copulas.corblomqvist(data)`, `Copulas.corgini(data)`, and `Copulas.corentropy(data)`.
+
+For entropy-based measures on data, the functions accept the following keywords: `k`, `p`, and `leafsize`. For example, `ι(U; k=5, p=Inf, leafsize=32)` and `corentropy(U; k=5, p=Inf, leafsize=32)` operate on pseudo-observations `U ∈ (0,1)^{d×n}`.
 
 !!! note "Ranges of τ, ρ, β and γ."
     Kendall's $\tau$, Spearman's $\rho$, Blomqvist's $\beta$ and Gini's $\gamma$ all belong to $[-1, 1]$. They are equal to :
@@ -77,6 +86,7 @@ Remark the clear and easy to exploit bijection.
     In practice, **Gini’s γ** is the most efficient dependence measure in our implementation (microseconds, no allocations).  
     **Kendall’s τ** is the most computationally expensive (\(O(n^2)\)), while **Spearman’s ρ** and **Blomqvist’s β** are intermediate.  
     For pairwise matrices, `corgini` is faster than both `corblomqvist` and the classical `corspearman`/`corkendall`.
+    Finally, the corentropy algorithm might not perform very good gnerically. 
 
 ## Tail dependency
 
@@ -145,41 +155,6 @@ These follow the approach of Schmidt & Stadtmüller (see [schmidt2006non](@cite)
 !!! todo "Work in progress"
     The formalization of an interface for obtaining the tail dependence coefficients of copulas is still a work in progress in the package. Do not hesitate to reach us on GitHub if you want to discuss it!
 
-## Copula entropy
-
-!!! definition "Definition (Copula entropy):"
-    For a copula $C$ with density $c$, the copula entropy:
-
-    $$\iota(C) = - \int_{[0,1]^d} c(u) \log c(u) ,du.$$
-
-    Ma & Sun (2011) proved that the mutual information of a random vector equals the negative copula entropy:
-    
-    $$I(X_1,\dots,X_d) = - \iota(C).$$
-
-See [ma2011mutual](@cite).
-
-Basic properties if the copula entropy: 
-
-- $\iota(C)\le 0$ with equality $\iota(C)=0$ if and only if $C$ is the `IndependentCopula` (because $c\equiv 1$).
-- For **singular** copulas (without density), $H(C)=-\infty$.
-- Since $I=-\iota$, the larger the $I$ $\Rightarrow$, the greater the dependence (linear, nonlinear, tailing, etc.).
-
-!!! note "the iota symbol"
-    Remark that the iota symbol can be obtain by typing "\iota<tab>". 
-
-Our implementation proposes two options:
-
-* **Parametric (Monte Carlo)**: `ι(C::Copula; nmc=100_000)` Returns `H`
-
-* **Non-parametric (kNN)**: `ι(U::AbstractMatrix; k=5, p=Inf)`: uses a Kozachenko–Leonenko estimator ([kozachenko1987](@cite)) on **pseudo-observations** $U\in(0,1)^d$. Typical parameters: $k\in[5,15]$; norm $p\in\{1,2,\infty\}$.
-
-* **Pairwise version**: `corentropy(data; k=5, p=Inf)`: Matrices of $H$ for all pairs; `signed=true` multiplies $r$ by $\operatorname{sign}(\tau)$.
-
-!!! note "Efficiency"
-
-    While $\tau$, $\rho$, $\beta$ or $\gamma$ can be computed in microseconds, entropy-based measures are much slower due to simulation or kNN search.
-    Benchmarks confirm this: `γ` is fastest, whereas `entropy` and `corentropy` are orders of magnitude slower.
-    They are therefore recommended mainly for **validation, model selection, or feature screening**, not routine use.
 
 
 ## References
