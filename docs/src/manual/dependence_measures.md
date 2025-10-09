@@ -37,7 +37,9 @@ We implement the most well-known ones in this package.
 
     $$A(u)=\frac{1}{2}\left(\min(u)+\max\Big(\textstyle\sum_{i=1}^d u_i-d+1,0\Big)\right), \quad \bar{A}(u)=\frac{1}{2}\left(1-\max(u)+\max\Big(1-\sum_{i=1}^d u_i,0\Big)\right),$$
 
-    while $a_d, b_d$ are normalizing constants depending only on the dimension $d$.
+    where the normalizing constants depend only on the dimension $d$ and match our implementation:
+
+    $$a(d) = \frac{1}{d+1} + \frac{1}{(d+1)!} \quad \text{(independence)}, \qquad b(d) = \frac{2 + 4^{\,1-d}}{3} \quad \text{(comonotonicity)}.$$
 
 !!! definition "Definition (Copula entropy ι):"
     For a copula $C$ with density $c$, the copula entropy is
