@@ -60,15 +60,15 @@ using Copulas: AbstractUnivariateGenerator, ArchimedeanCopula, ϕ, ϕ⁻¹, max_
 
 Archimedean copula with generator φ(t) = 1 - t^(1/θ), θ ∈ [1, ∞).
 """
-struct Nelsen2Generator{T} <: Copulas.AbstractUnivariateGenerator
+struct Nelsen2Generator{T} <: AbstractUnivariateGenerator
     θ::T
     function Nelsen2Generator(θ)
         if θ < 1
             throw(ArgumentError("θ must be ≥ 1"))
         elseif θ == 1
-            return WGenerator()
+            return Copulas.WGenerator()
         elseif θ == Inf
-            return MGenerator()
+            return Copulas.MGenerator()
         else
             θ, _ = promote(θ, 1.0)
             return new{typeof(θ)}(θ)
