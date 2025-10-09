@@ -27,7 +27,7 @@
         end)
     end
 
-    function get_flags(C::Copula{d}) where d
+    function get_flags(C::Copulas.Copula{d}) where d
         CT = typeof(C)
         cannot_pdf = 
             !applicable(Distributions._logpdf, C, ones(d,2)./2) ||
