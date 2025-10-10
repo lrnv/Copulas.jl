@@ -43,7 +43,7 @@ Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:GumbelGenerator}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
 _rebound_params(::Type{<:GumbelGenerator}, d, α) = (; θ = 1 + exp(α[1]))
 _θ_bounds(::Type{<:GumbelGenerator}, d) = (1, Inf)
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:GumbelGenerator} where {d}}, d) = (:mle, :itau, :ibeta) # disable :irho because taking ages.
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:GumbelGenerator} where {d}}, d) = (:mle, :itau, :ibeta, :irho)
 
 ϕ(  G::GumbelGenerator, t) = exp(-exp(log(t)/G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = exp(log(-log(t))*G.θ)
@@ -59,9 +59,12 @@ end
 
 function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Int, t)
     α = 1 / G.θ
-    return eltype(t)(ϕ(G, t) * t^(-d) * sum(
-        α^j * Combinatorics.stirlings1(d, j, true) * sum(Combinatorics.stirlings2(j, k) * (-t^α)^k for k in 1:j) for j in 1:d
-    ))
+    ntα = -t^α
+    return ϕ(G, t) * t^(-d) * sum(
+        α^j * Combinatorics.stirlings1(d, j, true) * sum(
+            Combinatorics.stirlings2(j, k) * ntα^k for k in 1:j
+        ) for j in 1:d
+    )
 end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * exp(log(-log(t))*(G.θ - 1))) / t
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
@@ -89,40 +92,10 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) w
     return - B + x₁ + x₂ + (θ-1) * (lx₁ + lx₂) + A/θ - 2A + log(B + θ - 1)
 end
 
-function _rho_gumbel_via_cdf(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
-    θeff = clamp(θ, 1+1e-12, Inf)
-    Cθ   = Copulas.ArchimedeanCopula(2, GumbelGenerator(θeff))
-    f(x) = _cdf(Cθ, (x[1], x[2]))  # <- tu _cdf
-    I = HCubature.hcubature(f, (0.0,0.0), (1.0,1.0);
-                            rtol=rtol, atol=atol, maxevals=maxevals)[1]
-    return 12I - 3
-end
-
-ρ(G::GumbelGenerator; rtol=1e-7, atol=1e-9, maxevals=10^6) =
-    _rho_gumbel_via_cdf(G.θ; rtol=rtol, atol=atol, maxevals=maxevals)
-
-function ρ⁻¹(::Type{<:GumbelGenerator}, ρ̂; xatol=1e-8)
-    # Rango de Spearman para Gumbel: [0, 1)
-    ρc = clamp(ρ̂, nextfloat(0.0), prevfloat(1.0))
-    f(θ) = _rho_gumbel_via_cdf(θ) - ρc
-
-    a = 1 + 1e-6
-    b = 5.0
-    fa, fb = f(a), f(b)
-    k = 0
-    while signbit(fa) == signbit(fb) && b < 1e6
-        b *= 2
-        fb = f(b)
-        k += 1
-        k > 20 && break
-    end
-
-    if signbit(fa) != signbit(fb)
-        return Roots.find_zero(f, (a, b), Roots.Brent(); xatol=xatol, rtol=0.0)
-    else
-        # Last resort without bracketing (difficult if _rho is fine)
-        θ0 = 1 + 4ρc/(1 - ρc + eps())
-        θ  = Roots.find_zero(f, θ0, Roots.Order1(); xatol=xatol)
-        return min(θ, 1e6)  # practical cota...  
-    end
+_rho_gumbel_(θ) = @invoke ρ(GumbelCopula(2, θ)::Copula)
+ρ(G::GumbelGenerator) = _rho_gumbel_(G.θ)
+function ρ⁻¹(::Type{<:GumbelGenerator}, ρ)
+    ρ ≤ 0 && return 1
+    ρ ≥ 1 && return Inf
+    return Roots.find_zero(θ -> _rho_gumbel_(θ) - ρ, (1, Inf))
 end
