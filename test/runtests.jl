@@ -17,9 +17,9 @@ testfiles = [
     "SklarDist",
 ]
 
-for f in testfiles
-    @testset "$(f)" verbose=true begin
+@testset "Copulas.jl testings" verbose=true begin
+    @testset for f in testfiles 
         @info "Launching test file $f.jl"
-      include(joinpath(dirname(@__FILE__), "$f.jl"))
+        include(joinpath(dirname(@__FILE__), "$f.jl"))
     end
 end
