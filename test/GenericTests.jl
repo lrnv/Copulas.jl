@@ -269,7 +269,7 @@ Random.seed!(rng, 123)
 append!(Bestiary, [
     ArchimedeanCopula(2, EmpiricalGenerator(randn(rng, 4, 150))),
     ArchimedeanCopula(3, EmpiricalGenerator(randn(rng, 3, 200))),
-    BernsteinCopula(randn(rng, 2,50), pseudo_values=false),
+    BernsteinCopula(randn(rng, 2,100), pseudo_values=false),
     BetaCopula(randn(rng, 2,50)),
     BetaCopula(randn(rng, 3,50)),
     CheckerboardCopula(randn(rng, 2,50); pseudo_values=false),
