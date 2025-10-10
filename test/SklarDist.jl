@@ -1,10 +1,8 @@
-@testitem "SklarDist fitting" tags=[:SklarDist] begin
+
+@testset "SklarDist fitting" begin
     # [GenericTests integration]: No. This exercises fitting pathways and RNG; belongs to integration tests for SklarDist rather than generic copula properties.
     
-    using Distributions
-    using Random
-    using StableRNGs
-    rng = StableRNG(123)
+    Random.seed!(rng,123)
     MyD = SklarDist(ClaytonCopula(3,7),[LogNormal(),Pareto(),Beta()]) # with vector and not tuple as input
     u = rand(rng,MyD,1000)
     rand!(rng, MyD,u)

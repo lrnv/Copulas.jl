@@ -1,51 +1,7 @@
-@testitem "Generic" tags=[:Generic, :IndependentCopula] setup=[M] begin M.check(IndependentCopula(2)) end
-@testitem "Generic" tags=[:Generic, :IndependentCopula] setup=[M] begin M.check(IndependentCopula(3)) end
 
-@testitem "Generic" tags=[:Generic, :MCopula] setup=[M] begin M.check(MCopula(2)) end
-@testitem "Generic" tags=[:Generic, :MCopula] setup=[M] begin M.check(MCopula(4)) end
-
-@testitem "Generic" tags=[:Generic, :WCopula] setup=[M] begin M.check(WCopula(2)) end
-
-@testitem "Generic" tags=[:Generic, :EmpiricalCopula] setup=[M] begin M.check(EmpiricalCopula(randn(2,10),pseudo_values=false)) end
-@testitem "Generic" tags=[:Generic, :EmpiricalCopula] setup=[M] begin M.check(EmpiricalCopula(randn(2,20),pseudo_values=false)) end
-
-@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(2, 0.0)) end
-@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(2, rand(M.rng))) end
-@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(2,1)) end
-@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(3, [0.3,0.3,0.3,0.3])) end
-@testitem "Generic" tags=[:Generic, :FGMCopula] setup=[M] begin M.check(FGMCopula(3,[0.1,0.2,0.3,0.4])) end
-
-@testitem "Generic" tags=[:Generic, :PlackettCopula] setup=[M] begin M.check(PlackettCopula(0.5)) end
-@testitem "Generic" tags=[:Generic, :PlackettCopula] setup=[M] begin M.check(PlackettCopula(0.8)) end
-@testitem "Generic" tags=[:Generic, :PlackettCopula] setup=[M] begin M.check(PlackettCopula(2.0)) end
-
-@testitem "Generic" tags=[:Generic, :RafteryCopula] setup=[M] begin M.check(RafteryCopula(2, 0.2)) end
-@testitem "Generic" tags=[:Generic, :RafteryCopula] setup=[M] begin M.check(RafteryCopula(3, 0.5)) end
-@testitem "Generic" tags=[:Generic, :RafteryCopula] setup=[M] begin M.check(Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1))) end
-
-@testitem "Generic" tags=[:Generic, :SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(ClaytonCopula(2,-0.7),(1,2))) end
-@testitem "Generic" tags=[:Generic, :SurvivalCopula] setup=[M] begin M.check(SurvivalCopula(RafteryCopula(2, 0.2), (2,1))) end
-
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(GaussianCopula(2, 0.3); m=5)) end
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(IndependentCopula(4); m=5)) end
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(GalambosCopula(2, 2.5); m=5)) end
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(ArchimaxCopula(2, Copulas.FrankGenerator(0.8), Copulas.HuslerReissTail(0.6)); m=5)) end
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(ClaytonCopula(3, 3.3); m=5)) end
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(IndependentCopula(4); m=5)) end
-@testitem "Generic" tags=[:Generic, :BernsteinCopula] setup=[M] begin M.check(BernsteinCopula(randn(M.rng, 2,100), pseudo_values=false)) end
-
-@testitem "Generic" tags=[:Generic, :BetaCopula] setup=[M] begin M.check(BetaCopula(randn(M.rng, 2,100))) end
-@testitem "Generic" tags=[:Generic, :BetaCopula] setup=[M] begin M.check(BetaCopula(randn(M.rng, 3,100))) end
-
-@testitem "Generic" tags=[:Generic, :CheckerboardCopula] setup=[M] begin M.check(CheckerboardCopula(randn(M.rng, 2,100); pseudo_values=false)) end
-@testitem "Generic" tags=[:Generic, :CheckerboardCopula] setup=[M] begin M.check(CheckerboardCopula(randn(M.rng, 3,100); pseudo_values=false)) end
-@testitem "Generic" tags=[:Generic, :CheckerboardCopula] setup=[M] begin M.check(CheckerboardCopula(randn(M.rng, 4,100); pseudo_values=false)) end
-
-@testitem "Testing survival stuff" tags=[:SurvivalCopula] begin
+@testset "Testing survival stuff" begin
     # [GenericTests integration]: Yes. Symmetry of survival transformations on pdf/cdf is generic; we can add survival invariance checks.
-    using Distributions
-    using StableRNGs
-    rng = StableRNG(123)
+    Random.seed!(rng,123)
     C = ClaytonCopula(2,3.0) # bivariate clayton with theta = 3.0
     C90 = SurvivalCopula(C,(1,)) # flips the first dimension
     C270 = SurvivalCopula(C,(2,)) # flips only the second dimension. 
@@ -59,7 +15,7 @@
 
 end
 
-@testitem "RafteryCopula Constructor" tags=[:RafteryCopula] begin
+@testset "RafteryCopula Constructor" begin
     # [GenericTests integration]: Partially. Constructor mapping to degenerate copulas (Independent/MCopula) could be generalized; keep argument errors here.
     for d in [2,3,4]
         @test isa(RafteryCopula(d,0.0), IndependentCopula)
@@ -69,11 +25,9 @@ end
     @test_throws ArgumentError RafteryCopula(2, 2.6)
 end
 
-@testitem "RafteryCopula CDF" tags=[:RafteryCopula] begin
+@testset "RafteryCopula CDF" begin
     # [GenericTests integration]: Maybe. The numeric values are specific regression checks; a lighter generic monotonicity/nonnegativity check exists.
-    using StableRNGs
-    using Distributions
-    rng = StableRNG(123)
+    Random.seed!(rng,123)
     for d in [2, 3, 4]
         F = RafteryCopula(d, 0.5)
         cdf_value = cdf(F, rand(d))
@@ -93,20 +47,18 @@ end
     @test pdf(RafteryCopula(3, 0.1), [0.4, 0.8, 0.2]) ≈ 0.939229 atol=1e-4
 end
 
-@testitem "RafteryCopula Sampling" tags=[:RafteryCopula] begin
+@testset "RafteryCopula Sampling" begin
     # [GenericTests integration]: Yes. Shape check for sampling is generic; could move to GenericTests sampling smoke tests.
-    using StableRNGs
-    rng = StableRNG(123)
+    Random.seed!(rng,123)
     n_samples = 100
     F = RafteryCopula(3,0.5)
     samples = rand(rng,F, n_samples)
     @test size(samples) == (3, n_samples)
 end
 
-@testitem "Check against manual version - CDF" tags=[:RafteryCopula] begin
+@testset "Check against manual version - CDF" begin
     # [GenericTests integration]: No. Manual formula replication is too bespoke; keep as targeted verification for this copula.
     # https://github.com/lrnv/Copulas.jl/pull/137
-    using Distributions
     function prueba_CDF(R::Vector{T}, u::Vector{T}) where T
         # Order the vector u
         θ = R[1]
@@ -142,10 +94,9 @@ end
     @test prueba_CDF([0.2,2], [0.8,0.2]) ≈ cdf(RafteryCopula(2,0.2), [0.8,0.2])
 end
 
-@testitem "Check against manual version - PDF" tags=[:RafteryCopula] begin
+@testset "Check against manual version - PDF" begin
     # [GenericTests integration]: No. Same rationale as CDF manual check; keep here.
     # https://github.com/lrnv/Copulas.jl/pull/137
-    using Distributions
     function prueba_PDF(R::Vector{T}, u::Vector{T}) where T
         # Order the vector u
         θ = R[1]
@@ -174,7 +125,7 @@ end
 end
 
 
-@testitem "PlackettCopula - Fix behavior of cdf, pdf and constructor" tags=[:PlackettCopula] begin
+@testset "PlackettCopula - Fix behavior of cdf, pdf and constructor" begin
     # [GenericTests integration]: Partially. Constructor edge cases can be made generic; the fixed value grids are regression tests, keep here.
 
     # Fix the bahavior ofc the constructor: 
@@ -183,7 +134,6 @@ end
     @test isa(PlackettCopula(0),MCopula)
 
     # Fix a few values for cdf and pdf:
-    using Distributions
     u = 0.1:0.18:1
     v = 0.4:0.1:0.9 
     l1 = [0.055377800527509735, 0.1743883734874062, 0.3166277269195278, 0.48232275012183223, 0.6743113969874872, 0.8999999999999999]
@@ -198,13 +148,11 @@ end
     end
 end
 
-@testset "Fixing values of FGMCopula - cdf, pdf, constructor" tags=[:FGMCopula] begin
+@testset "Fixing values of FGMCopula - cdf, pdf, constructor" begin
     # [GenericTests integration]: Partially. Constructor-to-independent is generic; the numeric regression grids for cdf/pdf should stay specific.
 
     @test isa(FGMCopula(2,0.0), IndependentCopula)
-
-    using StableRNGs
-    rng = StableRNG(123)
+    Random.seed!(rng,123)
 
     cdf_exs = [
         ([0.1, 0.2, 0.3], [0.0100776123, 1e-4], [0.1,0.2,0.5,0.4]),

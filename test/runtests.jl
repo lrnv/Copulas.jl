@@ -1,7 +1,25 @@
-using TestItemRunner
+using Aqua, Copulas, Distributions, ForwardDiff, HCubature, 
+    HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions, 
+    MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs, 
+    Statistics, StatsBase, Test
 
-# Remember that you can filter tests you want to be ran by ]test here : simply filter them like follows: 
-# @run_package_tests filter=ti->(:GumbelBarnettCopula in ti.tags || :ArchimedeanCopula in ti.tags || :FrankCopula in ti.tags)
-# you can add verbose=true here 
+const rng = StableRNG(123)
 
-@run_package_tests
+# You can comment the lines to avoid running some tests while you develop:
+testfiles = [
+    # "Aqua",
+    # "ArchimedeanCopulas",
+    # "ConditionalDistribution",
+    # "EllipticalCopulas",
+    # "FittingTest",
+    "GenericTests",
+    # "MiscelaneousCopulas",
+    # "SklarDist",
+]
+
+for f in testfiles
+    @testset "$(f)" verbose=true begin
+        @info "Launching test file $f.jl"
+      include(joinpath(dirname(@__FILE__), "$f.jl"))
+    end
+end

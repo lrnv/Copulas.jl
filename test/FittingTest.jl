@@ -1,5 +1,5 @@
-@testitem "Fitting + vcov + StatsBase interfaces" tags=[:fitting, :vcov, :statsbase] begin
-    using Test, Random, Distributions, Copulas, StableRNGs, LinearAlgebra, Statistics, StatsBase
+
+@testset "Fitting + vcov + StatsBase interfaces" begin
     rng = StableRNG(2025)
     function _flatten_params(p::NamedTuple)
         if haskey(p, :Σ)
@@ -108,10 +108,8 @@
     end
 end
 
-@testitem "Dependence Metrics" tags=[:metrics] begin
-    using Test, Random, Distributions, Copulas, StableRNGs, LinearAlgebra, Statistics, StatsBase, SpecialFunctions, HCubature, QuadGK
-
-    rng = StableRNG(123)
+@testset "Dependence Metrics" begin
+    Random.seed!(rng,123)
     n_samples = 2000
     test_copulas = [
         (d=3, copula=GumbelCopula(2, 3.5),      description="3D Gumbel with upper tail dependence"),
