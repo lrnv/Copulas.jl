@@ -1,16 +1,6 @@
-@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :GaussianCopula] setup=[M] begin M.check(GaussianCopula([1 0.5; 0.5 1])) end
-@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :GaussianCopula] setup=[M] begin M.check(GaussianCopula([1 0.7; 0.7 1])) end
-
-@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(2, [1 0.7; 0.7 1])) end
-@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(4, [1 0.5; 0.5 1])) end
-@testitem "Generic" tags=[:Generic, :EllipticalCopulas, :TCopula] setup=[M] begin M.check(TCopula(20,[1 -0.5; -0.5 1])) end
-
-@testitem "GaussianCopula" tags=[:EllipticalCopulas, :GaussianCopula] begin
+@testset "GaussianCopula" begin
     # [GenericTests integration]: Maybe. The broken fit on mixed marginals is out-of-scope for generic copula properties; keep here.
-    using Distributions
-    using Random
-    using StableRNGs
-    rng = StableRNG(123)
+    Random.seed!(rng,123)
     C = GaussianCopula([1 -0.1; -0.1 1])
     M1 = Beta(2,3)
     M2 = LogNormal(2,3)
@@ -21,10 +11,8 @@
     # unbroken !
 end
 
-@testitem "Fix value Gaussian Copula & SklarDist" tags=[:EllipticalCopulas, :GaussianCopula, :SklarDist] begin
+@testset "Fix value Gaussian Copula & SklarDist" begin
     # [GenericTests integration]: Yes. This is a regression value test for cdf(SklarDist(...)); can be moved to a generic Sklar fixture tests.
-    using Distributions
-    using Random
 
     # source: https://discourse.julialang.org/t/cdf-of-a-copula-from-copulas-jl/85786/20
     Random.seed!(123)
@@ -33,7 +21,7 @@ end
     @test cdf(D1, [-0.1, 0.1]) ≈ 0.3219002977336174 rtol=1e-3
 end
 
-@testitem "GaussianCopula equicorrelation constructor" tags=[:EllipticalCopulas, :GaussianCopula] begin
+@testset "GaussianCopula equicorrelation constructor" begin
     Cρ = GaussianCopula(2, 0.5)
     @test Cρ isa GaussianCopula{2}
     # Theoretical Kendall tau for bivariate Gaussian: τ = 2/π asin(ρ)

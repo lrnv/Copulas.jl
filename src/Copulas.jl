@@ -16,7 +16,6 @@ module Copulas
     import QuadGK
     import LinearAlgebra
     import PolyLog
-    import BigCombinatorics
     import LambertW
     import Optim
     import Printf
