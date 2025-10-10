@@ -470,7 +470,7 @@ function _der(f, u::AbstractVector, idxs::Tuple{Vararg{Int}})
 end
 
 # Launch the main computation: 
-@testset for C in unique(Bestiary)[127:127]
+@testset for C in unique(Bestiary)
     @info "Testing $C..."
        
 
