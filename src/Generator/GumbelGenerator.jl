@@ -92,10 +92,11 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) w
     return - B + x₁ + x₂ + (θ-1) * (lx₁ + lx₂) + A/θ - 2A + log(B + θ - 1)
 end
 
-_rho_gumbel_(θ) = @invoke ρ(GumbelCopula(2, θ)::Copula)
-ρ(G::GumbelGenerator) = _rho_gumbel_(G.θ)
+_rho_gumbel(θ) = @invoke ρ(GumbelCopula(2, θ)::Copula)
+ρ(G::GumbelGenerator) = _rho_gumbel(G.θ)
 function ρ⁻¹(::Type{<:GumbelGenerator}, ρ)
-    ρ ≤ 0 && return 1
-    ρ ≥ 1 && return Inf
-    return Roots.find_zero(θ -> _rho_gumbel_(θ) - ρ, (1, Inf))
+    l, u = one(ρ), ρ * Inf
+    ρ ≤ 0 && return l
+    ρ ≥ 1 && return u
+    return Roots.find_zero(θ -> _rho_gumbel(θ) - ρ, (1, Inf))
 end

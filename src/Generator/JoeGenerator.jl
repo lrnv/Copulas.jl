@@ -60,6 +60,7 @@ end
 function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)
     return -(G.θ * (1 - t)^(G.θ - 1)) / (1 - (1 - t)^G.θ)
 end
+
 _joe_tau(θ) =  1 - 4sum(1/(k*(2+k*θ)*(θ*(k-1)+2)) for k in 1:1000)
 τ(G::JoeGenerator) = _joe_tau(G.θ)
 function τ⁻¹(::Type{<:JoeGenerator}, τ)
@@ -70,20 +71,11 @@ function τ⁻¹(::Type{<:JoeGenerator}, τ)
     return Roots.find_zero(θ -> _joe_tau(θ) - τ, (l, u))
 end
 
-function _rho_joe_via_cdf(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
-    θ = clamp(θ, 1, Inf)
-    θ <= 1 && return zero(θ)
-    isinf(θ) && return one(θ)
-    Cθ   = Copulas.ArchimedeanCopula(2, JoeGenerator(θ))
-    f(x) = Distributions.cdf(Cθ, x)
-    I = HCubature.hcubature(f, (0.0,0.0), (1.0,1.0); rtol=rtol, atol=atol, maxevals=maxevals)[1]
-    return 12I - 3
-end
-
-ρ(G::JoeGenerator) = _rho_joe_via_cdf(G.θ)
+_rho_joe(θ) = @invoke ρ(JoeCopula(2, θ)::Copula)
+ρ(G::JoeGenerator) = _rho_joe(G.θ)
 function ρ⁻¹(::Type{<:JoeGenerator}, ρ)
     l, u = one(ρ), ρ * Inf
     ρ ≤ 0 && return l
     ρ ≥ 1 && return u
-    Roots.find_zero(θ -> _rho_joe_via_cdf(θ) - ρ, (l,u))
+    return Roots.find_zero(θ -> _rho_joe(θ) - ρ, (1, Inf))
 end
