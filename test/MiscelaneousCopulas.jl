@@ -155,26 +155,15 @@ end
     Random.seed!(rng,123)
 
     cdf_exs = [
-        ([0.1, 0.2, 0.3], [0.0100776123, 1e-4], [0.1,0.2,0.5,0.4]),
-        ([0.5, 0.4, 0.3], [0.0830421321, 1e-4], [0.3,0.3,0.3,0.3]),
-        ([0.1, 0.1], [0.010023, 1e-4], 0.0),
-        ([0.5, 0.4], [0.224013, 1e-4], 0.5),
+        ([0.1,0.2,0.5,0.4], [0.1, 0.2, 0.3], (0.0100776123, 1e-4), (1.308876232, 1e-4)),
+        ([0.3,0.3,0.3,0.3], [0.5, 0.4, 0.3], (0.0830421321, 1e-4), (1.024, 1e-4)),
+        (0.0,               [0.1, 0.1],      (0.010023, 1e-4),     (1, 1e-4)),
+        (0.5,               [0.5, 0.4],      (0.2299999999, 1e-4),     (1, 1e-4)),
     ]
     
-    for (u, expected) in cdf_exs
-        copula = FGMCopula(length(u), expected[3])
-        @test cdf(copula, u) ≈ expected[1] atol=expected[2]
-    end
-
-    pdf_exs = [
-        ([0.1, 0.2, 0.3], [1.308876232, 1e-4], [0.1,0.2,0.5,0.4]),
-        ([0.5, 0.4, 0.3], [1.024123232, 1e-4], [0.3,0.3,0.3,0.3]),
-        ([0.1, 0.1], [0.01, 1e-4], 0.0),
-        ([0.5, 0.4], [1, 1e-4], rand(rng)),
-    ]
-    
-    for (u, expected) in pdf_exs
-        copula = FGMCopula(length(u), expected[3])
-        @test cdf(copula, u) ≈ expected[1] atol=expected[2]
+    for (par, u, (ctruth, ctol), (ptruth, ptol)) in cdf_exs
+        copula = FGMCopula(length(u), par)
+        @test cdf(copula, u) ≈ ctruth atol=ctol
+        @test pdf(copula, u) ≈ ptruth atol=ptol
     end
 end

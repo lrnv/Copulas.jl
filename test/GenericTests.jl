@@ -114,7 +114,7 @@ Bestiary = [
     BB9Copula(2, 2.0, 1.5),
     BB9Copula(2, 2.8, 2.6),
     ClaytonCopula(2,-0.7),
-    ClaytonCopula(2,-log(rand(rng))),
+    ClaytonCopula(2,-5log(rand(rng))),
     ClaytonCopula(2,-rand(rng)),
     ClaytonCopula(2,7),
     ClaytonCopula(3,-log(rand(rng))),
