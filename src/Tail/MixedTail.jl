@@ -27,7 +27,8 @@ References:
 struct MixedTail{T} <: AbstractUnivariateTail2
     θ::T
     function MixedTail(θ)
-        (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1], provided θ=$θ"))
+        (0 ≤ θ ≤ 1+eps(θ)) || throw(ArgumentError("θ must be in [0,1], provided θ=$θ"))
+        θ = clamp(θ, 0, 1)
         θ == 0 && return NoTail()
         return new{typeof(θ)}(θ)
     end

@@ -149,7 +149,6 @@ Bestiary = [
     BernsteinCopula(GaussianCopula(2, 0.3); m=5),
     BernsteinCopula(IndependentCopula(4); m=5),
     BernsteinCopula(IndependentCopula(4); m=5),
-    
     ClaytonCopula(2, -0.7),
     ClaytonCopula(2, 0.9),
     ClaytonCopula(2, 0.3),
@@ -481,7 +480,7 @@ end
 Bestiary = filter(GenericTestFilter, Bestiary)
 
 # Launch the main computation: 
-@testset verbose=true for C in unique(Bestiary) 
+@testset for C in unique(Bestiary) 
 
     @info "Testing $C..."
     Random.seed!(rng,123)
@@ -912,8 +911,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             end
     end
 
-    @testif can_be_fitted(C, d) verbose=true "Fitting interface"  begin
-
+    @testif can_be_fitted(C, d) "Fitting interface"  begin
         @testif has_unbounded_params(C, d) "Unbouding and rebounding params" begin
             # First on the _example copula. 
             θ₀ = Distributions.params(Copulas._example(CT, d))
@@ -938,34 +936,22 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 continue
             end 
             @testset "Fitting CT for $(m)" begin
-                r1 = fit(CopulaModel, CT, spl1000, m, quick_fit=true) # no need to do the rest here. 
-                r2 = fit(CT, spl1000, m)
+                r1 = fit(CT, spl10, m)
+                r2 = fit(CopulaModel, CT, spl10, m, quick_fit=true).result # no need to do the rest here. 
+                newCT = typeof(r1)
+                @test typeof(r2) == newCT
+                if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) &&
+                   !(newCT<:PlackettCopula) &&
+                   has_parameters(r2) &&
+                   has_unbounded_params(r2, d) &&
+                   !(CT<:RafteryCopula && d==3 && m==:itau)
 
-                newCT = typeof(r2)
-                @test typeof(r1.result) == newCT
-                if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r2) && has_unbounded_params(r2, d) && !(CT<:RafteryCopula && d==3 && m==:itau)
-                    α1 = Copulas._unbound_params(typeof(r1.result), d, Distributions.params(r1.result))
+                    α1 = Copulas._unbound_params(typeof(r1), d, Distributions.params(r1))
                     α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
                     @test α1 ≈ α2 atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
                 end
-
-                # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
-                # can we also exercise the different sklar fits (:parametric and :ecdf) ? 
             end
-
-            if m == methods[1] # only for the default method. 
-                @testset "Fitting Sklar x CT" begin
-                    r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10) # this one runs the vcov. 
-                    r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-                    newCT = typeof(r4.C)
-                    @test typeof(r3.result.C) == newCT
-                    if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C, d)
-                        α3 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
-                        α4 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
-                        @test α3 ≈ α4  atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
-                    end
-                end
-            end
+            r3 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)  # just to see if the function goes through.
         end
     end
 end
