@@ -282,17 +282,22 @@ append!(Bestiary, [
     EmpiricalEVCopula(randn(rng, 2,50); method=:pickands, pseudo_values=false),
 ])
 
-macro testif(cond, name, block)
+macro testif(cond, args...)
     # --- Minimal, readable helper to conditionally run/skip whole testsets ---
     # Usage:
-    #   @testif condition "Name" begin ... end   # run if condition true; otherwise mark skipped
-    # tests skipped this way will be marked as skipped in the global result. 
+    #   @testif condition "Name" begin ... end
+    #   @testif condition verbose=true "Name" begin ... end
+    nargs = length(args)
+    nargs >= 2 || error("Usage: @testif condition [options...] \"Name\" begin ... end")
+    name  = args[end-1]
+    block = args[end]
+    opts  = nargs > 2 ? args[1:end-2] : ()
     return :(if $(esc(cond))
-        Test.@testset $(name) begin
+        Test.@testset $(opts...) $(name) begin
             $(esc(block))
         end
     else
-        Test.@testset $(name) begin
+        Test.@testset $(opts...) $(name) begin
             Test.@test_skip "skipped by @testif"
         end
     end)
@@ -907,7 +912,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             end
     end
 
-    @testif can_be_fitted(C, d) "Fitting interface" begin
+    @testif can_be_fitted(C, d) verbose=true "Fitting interface"  begin
 
         @testif has_unbounded_params(C, d) "Unbouding and rebounding params" begin
             # First on the _example copula. 
