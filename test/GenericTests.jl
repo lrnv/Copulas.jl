@@ -1,11 +1,11 @@
 Bestiary = [
     AMHCopula(2,-1.0),
-    AMHCopula(2,-rand(rng)),
+    AMHCopula(2,-0.6),
     AMHCopula(2,0.7),
-    AMHCopula(2,rand(rng)),
-    AMHCopula(3,-rand(rng)*0.1),
+    AMHCopula(2,0.9),
+    AMHCopula(3,-0.003),
     AMHCopula(3,0.6),
-    AMHCopula(3,rand(rng)),
+    AMHCopula(3,0.2),
     AMHCopula(4,-0.01),
     ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
     ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.GalambosTail(0.7)),
@@ -79,33 +79,31 @@ Bestiary = [
     ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.LogTail(2.0)),
     ArchimedeanCopula(10,i𝒲(Dirac(1),10)),
     ArchimedeanCopula(10,i𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)),
-    ArchimedeanCopula(2, EmpiricalGenerator(randn(rng, 4, 150))),
     ArchimedeanCopula(2,i𝒲(LogNormal(),2)),
     ArchimedeanCopula(2,i𝒲(LogNormal(3),5)),
     ArchimedeanCopula(2,i𝒲(Pareto(1),5)),
-    ArchimedeanCopula(3, EmpiricalGenerator(randn(rng, 3, 200))),
     AsymGalambosCopula(2, 0.1, 0.2, 0.6),
     AsymGalambosCopula(2, 0.6129496106778634, 0.820474440393214, 0.22304578643880224),
-    AsymGalambosCopula(2, 10+5*rand(rng), 1.0, 1.0),
-    AsymGalambosCopula(2, 10+5*rand(rng), rand(rng), rand(rng)),
+    AsymGalambosCopula(2, 10+5*0.3, 1.0, 1.0),
+    AsymGalambosCopula(2, 10+5*0.7, 0.2, 0.9),
     AsymGalambosCopula(2, 11.647356700032505, 0.6195348270893413, 0.4197760589260566),
     AsymGalambosCopula(2, 5.0, 0.8, 0.3),
-    AsymGalambosCopula(2, 5+4*rand(rng), 1.0, 1.0),
-    AsymGalambosCopula(2, 5+4*rand(rng), rand(rng), rand(rng)),
+    AsymGalambosCopula(2, 5+4*0.4, 1.0, 1.0),
+    AsymGalambosCopula(2, 5+4*0.1, 0.2, 0.6),
     AsymGalambosCopula(2, 8.810168494949659, 0.5987759444612732, 0.5391280234619427),
-    AsymGalambosCopula(2, rand(rng), 1.0, 1.0),
-    AsymGalambosCopula(2, rand(rng), rand(rng), rand(rng)),
+    AsymGalambosCopula(2, 0.9, 1.0, 1.0),
+    AsymGalambosCopula(2, 0.3, 0.8, 0.1),
     AsymLogCopula(2, 1.0, 0.0, 0.0),
     AsymLogCopula(2, 1.0, 1.0, 1.0),
-    AsymLogCopula(2, 1.0, rand(rng), rand(rng)),
+    AsymLogCopula(2, 1.0, 0.1, 0.6),
     AsymLogCopula(2, 1.2, 0.3,0.6),
     AsymLogCopula(2, 1.5, 0.5, 0.2),
-    AsymLogCopula(2, 1+4*rand(rng), 0.0, 0.0),
-    AsymLogCopula(2, 1+4*rand(rng), 1.0, 1.0),
-    AsymLogCopula(2, 1+4*rand(rng), rand(rng), rand(rng)),
-    AsymLogCopula(2, 10+5*rand(rng), 0.0, 0.0),
-    AsymLogCopula(2, 10+5*rand(rng), 1.0, 1.0),
-    AsymLogCopula(2, 10+5*rand(rng), rand(rng), rand(rng)),
+    AsymLogCopula(2, 1+4*0.9, 0.0, 0.0),
+    AsymLogCopula(2, 1+4*0.01, 1.0, 1.0),
+    AsymLogCopula(2, 1+4*0.2, 0.3, 0.4),
+    AsymLogCopula(2, 10+5*0.5, 0.0, 0.0),
+    AsymLogCopula(2, 10+5*0.6, 1.0, 1.0),
+    AsymLogCopula(2, 10+5*0.7, 0.8, 0.2),
     AsymMixedCopula(2, 0.1, 0.2),
     AsymMixedCopula(2, 0.12, 0.13),
     BB1Copula(2, 0.35, 1.0),
@@ -144,7 +142,7 @@ Bestiary = [
     BC2Copula(2, 0.7,0.3),
     BC2Copula(2, 1.0, 0.0),
     BC2Copula(2, 1/2,1/2),
-    BC2Copula(2, rand(rng), rand(rng)),
+    BC2Copula(2, 0.6, 0.8),
     BernsteinCopula(ArchimaxCopula(2, Copulas.FrankGenerator(0.8), Copulas.HuslerReissTail(0.6)); m=5),
     BernsteinCopula(ClaytonCopula(3, 3.3); m=5),
     BernsteinCopula(GalambosCopula(2, 2.5); m=5),
@@ -157,14 +155,14 @@ Bestiary = [
     CheckerboardCopula(randn(rng, 2,100); pseudo_values=false),
     CheckerboardCopula(randn(rng, 3,100); pseudo_values=false),
     CheckerboardCopula(randn(rng, 4,100); pseudo_values=false),
-    ClaytonCopula(2,-0.7),
-    ClaytonCopula(2,-5log(rand(rng))),
-    ClaytonCopula(2,-rand(rng)),
-    ClaytonCopula(2,7),
-    ClaytonCopula(3,-log(rand(rng))),
-    ClaytonCopula(3,-rand(rng)/2),
-    ClaytonCopula(4,-log(rand(rng))),
-    ClaytonCopula(4,-rand(rng)/3),
+    ClaytonCopula(2, -0.7),
+    ClaytonCopula(2, 0.9),
+    ClaytonCopula(2, 0.3),
+    ClaytonCopula(2, 7),
+    ClaytonCopula(3, 39.3),
+    ClaytonCopula(3, -0.36),
+    ClaytonCopula(4, 3.7),
+    ClaytonCopula(4, -0.22),
     ClaytonCopula(4,7.),
     Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1)),
     CuadrasAugeCopula(2, 0.0),
@@ -173,7 +171,7 @@ Bestiary = [
     CuadrasAugeCopula(2, 0.7103550345192344),
     CuadrasAugeCopula(2, 0.8),
     CuadrasAugeCopula(2, 1.0),
-    CuadrasAugeCopula(2, rand(rng)),
+    CuadrasAugeCopula(2, 0.2),
     EmpiricalCopula(randn(2,10),pseudo_values=false),
     EmpiricalCopula(randn(2,20),pseudo_values=false),
     EmpiricalEVCopula(randn(rng, 2,10); method=:cfg, pseudo_values=false),
@@ -183,44 +181,44 @@ Bestiary = [
     EmpiricalEVCopula(randn(rng, 2,20); method=:ols, pseudo_values=false),
     EmpiricalEVCopula(randn(rng, 2,20); method=:pickands, pseudo_values=false),
     FGMCopula(2, 0.0),
-    FGMCopula(2, rand(rng)),
+    FGMCopula(2, 0.4),
     FGMCopula(2,1),
     FGMCopula(3, [0.3,0.3,0.3,0.3]),
     FGMCopula(3,[0.1,0.2,0.3,0.4]),
     FrankCopula(2,-5),
     FrankCopula(2,0.5),
-    FrankCopula(2,1-log(rand(rng))),
+    FrankCopula(2,1-log(0.9)),
     FrankCopula(2,1.0),
-    FrankCopula(3,1-log(rand(rng))),
+    FrankCopula(3,1-log(0.1)),
     FrankCopula(3,1.0),
     FrankCopula(3,12),
-    FrankCopula(4,1-log(rand(rng))),
+    FrankCopula(4,1-log(0.3)),
     FrankCopula(4,1.0),
     FrankCopula(4,150),
     FrankCopula(4,30),
     FrankCopula(4,37),
     GalambosCopula(2, 0.3),
-    GalambosCopula(2, 1+4*rand(rng)),
+    GalambosCopula(2, 1+4*0.5),
     GalambosCopula(2, 120),
     GalambosCopula(2, 20),
     GalambosCopula(2, 210),
     GalambosCopula(2, 4.3),
-    GalambosCopula(2, 5+5*rand(rng)),
+    GalambosCopula(2, 8),
     GalambosCopula(2, 80),
-    GalambosCopula(2, rand(rng)),
+    GalambosCopula(2, 0.7),
     GaussianCopula([1 0.5; 0.5 1]),
     GaussianCopula([1 0.7; 0.7 1]),
     GumbelBarnettCopula(2,1.0),
-    GumbelBarnettCopula(2,rand(rng)),
+    GumbelBarnettCopula(2,0.7),
     GumbelBarnettCopula(3,0.1),
     GumbelBarnettCopula(3,0.35),
-    GumbelBarnettCopula(3,rand(rng)*0.38),
+    GumbelBarnettCopula(3,0.2*0.38),
     GumbelBarnettCopula(4,0.2),
     GumbelCopula(2, 1.2),
-    GumbelCopula(2,1-log(rand(rng))),
+    GumbelCopula(2,1-log(0.9)),
     GumbelCopula(2,8),
-    GumbelCopula(3,1-log(rand(rng))),
-    GumbelCopula(4,1-log(rand(rng))),
+    GumbelCopula(3,1-log(0.2)),
+    GumbelCopula(4,1-log(0.3)),
     GumbelCopula(4,100),
     GumbelCopula(4,20),
     GumbelCopula(4,7),
@@ -231,22 +229,22 @@ Bestiary = [
     HuslerReissCopula(2, 5.319851350643586),
     IndependentCopula(2),
     IndependentCopula(3),
-    InvGaussianCopula(2,-log(rand(rng))),
+    InvGaussianCopula(2,-log(0.9)),
     InvGaussianCopula(2,1.0),
-    InvGaussianCopula(2,rand(rng)),
-    InvGaussianCopula(3,-log(rand(rng))),
-    InvGaussianCopula(3,rand(rng)),
-    InvGaussianCopula(4,-log(rand(rng))),
+    InvGaussianCopula(2,0.2),
+    InvGaussianCopula(3,-log(0.6)),
+    InvGaussianCopula(3,0.4),
+    InvGaussianCopula(4,-log(0.1)),
     InvGaussianCopula(4,0.05),
     InvGaussianCopula(4,1.0),
-    JoeCopula(2,1-log(rand(rng))),
+    JoeCopula(2,1-log(0.5)),
     JoeCopula(2,3),
     JoeCopula(2,Inf),
-    JoeCopula(3,1-log(rand(rng))),
+    JoeCopula(3,1-log(0.3)),
     JoeCopula(3,7),
-    JoeCopula(4,1-log(rand(rng))),
+    JoeCopula(4,1-log(0.1)),
     LogCopula(2, 1.5),
-    LogCopula(2, 1+9*rand(rng)),
+    LogCopula(2, 1+9*0.4),
     LogCopula(2, 5.5),
     MCopula(2),
     MCopula(4),
@@ -258,7 +256,7 @@ Bestiary = [
     MOCopula(2, 0.5, 0.5, 0.5),
     MOCopula(2, 0.5960710257852946, 0.3313524247810329, 0.09653466861970061),
     MOCopula(2, 1.0, 1.0, 1.0),
-    MOCopula(2, rand(rng), rand(rng), rand(rng)),
+    MOCopula(2, 0.1, 0.5, 0.9),
     PlackettCopula(0.5),
     PlackettCopula(0.8),
     PlackettCopula(2.0),
@@ -273,17 +271,24 @@ Bestiary = [
     tEVCopula(2, 2.0, 0.5),
     tEVCopula(2, 3.0, 0.0),
     tEVCopula(2, 4.0, 0.5),
-    tEVCopula(2, 4+6*rand(rng), -0.9+1.9*rand(rng)),
+    tEVCopula(2, 4+6*0.5, -0.9+1.9*0.3),
     tEVCopula(2, 5.0, -0.5),
     tEVCopula(2, 5.466564460573727, -0.6566645244416698),
     WCopula(2),
-]
+    ]
 
-# --- Minimal, readable helper to conditionally run/skip whole testsets ---
-# Usage:
-#   @testif condition "Name" begin ... end   # run if condition true; otherwise mark skipped
-# tests skipped this way will be marked as skipped in the global result. 
+# These two are forced to be random, but we control their rng like that to have reproducibility: 
+Random.seed!(rng, 123)
+append!(Bestiary, [
+    ArchimedeanCopula(2, EmpiricalGenerator(randn(rng, 4, 150))),
+    ArchimedeanCopula(3, EmpiricalGenerator(randn(rng, 3, 200)))
+])
+
 macro testif(cond, name, block)
+    # --- Minimal, readable helper to conditionally run/skip whole testsets ---
+    # Usage:
+    #   @testif condition "Name" begin ... end   # run if condition true; otherwise mark skipped
+    # tests skipped this way will be marked as skipped in the global result. 
     return :(if $(esc(cond))
         Test.@testset $(name) begin
             $(esc(block))
@@ -294,7 +299,6 @@ macro testif(cond, name, block)
         end
     end)
 end
-
 can_pdf(C::CT) where CT = 
     applicable(Distributions._logpdf, C, ones(length(C),2)./2) &&
     !(CT<:EmpiricalCopula) &&
@@ -469,17 +473,19 @@ function _der(f, u::AbstractVector, idxs::Tuple{Vararg{Int}})
     end
 end
 
+
+# You can filter the bestiary here if you want: 
+Bestiary = [x for x in Bestiary if x isa ClaytonCopula]
+
 # Launch the main computation: 
 @testset for C in unique(Bestiary)
-    @info "Testing $C..."
-       
 
+    @info "Testing $C..."
+    Random.seed!(rng,123)
     CT = typeof(C)
     d = length(C)
-    Random.seed!(rng,123)
-
+    
     Z = SklarDist(C, Tuple(Normal() for i in 1:d))
-
     spl1 = rand(rng, C)
     spl10 = rand(rng, C, 10)
     spl1000 = rand(rng, C, 800)
