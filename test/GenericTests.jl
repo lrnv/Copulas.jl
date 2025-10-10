@@ -476,7 +476,7 @@ end
 Bestiary = filter(GenericTestFilter, Bestiary)
 
 # Launch the main computation: 
-@testset for C in unique(Bestiary)
+@testset verbose=true for C in unique(Bestiary) 
 
     @info "Testing $C..."
     Random.seed!(rng,123)
