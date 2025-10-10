@@ -12,10 +12,16 @@ testfiles = [
     "ConditionalDistribution",
     "EllipticalCopulas",
     "FittingTest",
-    "GenericTests",
     "MiscelaneousCopulas",
     "SklarDist",
+    "GenericTests",
 ]
+
+# You can override the definition of this GenericTestFilter if you want. 
+GenericTestFilter(C) = true # the default value lets every copula go through. 
+
+# An example: 
+# GenericTestFilter(C) = C isa JoeCopula || C isa GumbelCopula # You can filter on your model. 
 
 @testset "Copulas.jl testings" verbose=true begin
     @testset for f in testfiles 

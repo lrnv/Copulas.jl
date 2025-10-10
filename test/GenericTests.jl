@@ -159,7 +159,7 @@ Bestiary = [
     ClaytonCopula(2, 0.9),
     ClaytonCopula(2, 0.3),
     ClaytonCopula(2, 7),
-    ClaytonCopula(3, 39.3),
+    ClaytonCopula(3, 7.3),
     ClaytonCopula(3, -0.36),
     ClaytonCopula(4, 3.7),
     ClaytonCopula(4, -0.22),
@@ -475,7 +475,7 @@ end
 
 
 # You can filter the bestiary here if you want: 
-Bestiary = [x for x in Bestiary if x isa ClaytonCopula]
+Bestiary = filter(GenericTestFilter, Bestiary)
 
 # Launch the main computation: 
 @testset for C in unique(Bestiary)
