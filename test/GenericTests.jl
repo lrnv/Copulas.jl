@@ -932,12 +932,13 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
         end
 
-        for m in Copulas._available_fitting_methods(CT, d)
+        methods = Copulas._available_fitting_methods(CT, d)
+        for m in methods
             if (CT<:GumbelCopula && C.G.θ > 19 && m==:irho) || (CT<:FrankCopula && C.G.θ > 99 && m==:mle) || (CT<:RafteryCopula && d==3 && m==:itau)
                 continue
             end 
             @testset "Fitting CT for $(m)" begin
-                r1 = fit(CopulaModel, CT, spl1000, m)
+                r1 = fit(CopulaModel, CT, spl1000, m, quick_fit=true) # no need to do the rest here. 
                 r2 = fit(CT, spl1000, m)
 
                 newCT = typeof(r2)
@@ -951,16 +952,19 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 # Can we check that the copula returned by the sklar fit is the same as the copula returned by the copula fit alone ? 
                 # can we also exercise the different sklar fits (:parametric and :ecdf) ? 
             end
-        end
-        @testset "Fitting Sklar x CT" begin
-            r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-            r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
-            newCT = typeof(r4.C)
-            @test typeof(r3.result.C) == newCT
-            if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C, d)
-                α1 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
-                α2 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
-                @test α1 ≈ α2  atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
+
+            if m == methods[1] # only for the default method. 
+                @testset "Fitting Sklar x CT" begin
+                    r3 = fit(CopulaModel, SklarDist{CT,  NTuple{d, Normal}}, splZ10) # this one runs the vcov. 
+                    r4 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)
+                    newCT = typeof(r4.C)
+                    @test typeof(r3.result.C) == newCT
+                    if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) && !(newCT<:PlackettCopula) && has_parameters(r4.C) && has_unbounded_params(r4.C, d)
+                        α3 = Copulas._unbound_params(typeof(r3.result.C), d, Distributions.params(r3.result.C))
+                        α4 = Copulas._unbound_params(typeof(r4.C), d, Distributions.params(r4.C))
+                        @test α3 ≈ α4  atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
+                    end
+                end
             end
         end
     end
