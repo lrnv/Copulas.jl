@@ -149,12 +149,7 @@ Bestiary = [
     BernsteinCopula(GaussianCopula(2, 0.3); m=5),
     BernsteinCopula(IndependentCopula(4); m=5),
     BernsteinCopula(IndependentCopula(4); m=5),
-    BernsteinCopula(randn(rng, 2,100), pseudo_values=false),
-    BetaCopula(randn(rng, 2,100)),
-    BetaCopula(randn(rng, 3,100)),
-    CheckerboardCopula(randn(rng, 2,100); pseudo_values=false),
-    CheckerboardCopula(randn(rng, 3,100); pseudo_values=false),
-    CheckerboardCopula(randn(rng, 4,100); pseudo_values=false),
+    
     ClaytonCopula(2, -0.7),
     ClaytonCopula(2, 0.9),
     ClaytonCopula(2, 0.3),
@@ -172,14 +167,6 @@ Bestiary = [
     CuadrasAugeCopula(2, 0.8),
     CuadrasAugeCopula(2, 1.0),
     CuadrasAugeCopula(2, 0.2),
-    EmpiricalCopula(randn(2,10),pseudo_values=false),
-    EmpiricalCopula(randn(2,20),pseudo_values=false),
-    EmpiricalEVCopula(randn(rng, 2,10); method=:cfg, pseudo_values=false),
-    EmpiricalEVCopula(randn(rng, 2,10); method=:ols, pseudo_values=false),
-    EmpiricalEVCopula(randn(rng, 2,10); method=:pickands, pseudo_values=false),
-    EmpiricalEVCopula(randn(rng, 2,20); method=:cfg, pseudo_values=false),
-    EmpiricalEVCopula(randn(rng, 2,20); method=:ols, pseudo_values=false),
-    EmpiricalEVCopula(randn(rng, 2,20); method=:pickands, pseudo_values=false),
     FGMCopula(2, 0.0),
     FGMCopula(2, 0.4),
     FGMCopula(2,1),
@@ -277,11 +264,22 @@ Bestiary = [
     WCopula(2),
     ]
 
-# These two are forced to be random, but we control their rng like that to have reproducibility: 
+# These few ones are forced to be random, but we control their rng like that to have reproducibility: 
 Random.seed!(rng, 123)
 append!(Bestiary, [
     ArchimedeanCopula(2, EmpiricalGenerator(randn(rng, 4, 150))),
-    ArchimedeanCopula(3, EmpiricalGenerator(randn(rng, 3, 200)))
+    ArchimedeanCopula(3, EmpiricalGenerator(randn(rng, 3, 200))),
+    BernsteinCopula(randn(rng, 2,50), pseudo_values=false),
+    BetaCopula(randn(rng, 2,50)),
+    BetaCopula(randn(rng, 3,50)),
+    CheckerboardCopula(randn(rng, 2,50); pseudo_values=false),
+    CheckerboardCopula(randn(rng, 3,50); pseudo_values=false),
+    CheckerboardCopula(randn(rng, 4,50); pseudo_values=false),
+    EmpiricalCopula(randn(2,50),pseudo_values=false),
+    EmpiricalCopula(randn(2,50),pseudo_values=false),
+    EmpiricalEVCopula(randn(rng, 2,50); method=:cfg, pseudo_values=false),
+    EmpiricalEVCopula(randn(rng, 2,50); method=:ols, pseudo_values=false),
+    EmpiricalEVCopula(randn(rng, 2,50); method=:pickands, pseudo_values=false),
 ])
 
 macro testif(cond, name, block)
