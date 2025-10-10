@@ -933,7 +933,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         end
 
         for m in Copulas._available_fitting_methods(CT, d)
-            if (CT<:GumbelCopula && C.θ > 19 && m==:irho) || (CT<:FrankCopula && C.θ > 99 && m==:mle) || (CT<:RafteryCopula && d==3 && m==:itau)
+            if (CT<:GumbelCopula && C.G.θ > 19 && m==:irho) || (CT<:FrankCopula && C.G.θ > 99 && m==:mle) || (CT<:RafteryCopula && d==3 && m==:itau)
                 continue
             end 
             @testset "Fitting CT for $(m)" begin
