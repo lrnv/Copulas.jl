@@ -51,17 +51,16 @@ function ϕ⁽ᵏ⁾(G::JoeGenerator, d::Int, t)
     # TODO: test if this ϕ⁽ᵏ⁾ is really more 'efficient' than the default one, 
     # as we already saw that for the Gumbel is wasn't the case. 
     α = 1 / G.θ
-    P_d_α = sum(
-        Combinatorics.stirlings2(d, k + 1) *
-        (SpecialFunctions.gamma(k + 1 - α) / SpecialFunctions.gamma(1 - α)) *
-        (exp(-t) / (-expm1(-t)))^k for k in 0:(d - 1)
-    )
-    return (-1)^d * α * (exp(-t) / (-expm1(-t))^(1 - α)) * P_d_α
+    x = exp(-t)
+    y = -expm1(-t)
+    r = x/y
+    P_d_α = sum(Combinatorics.stirlings2(d, k) * (SpecialFunctions.gamma(k - α) / SpecialFunctions.gamma(1 - α)) * r^(k-1) for k in 1:d)
+    return (-1)^d * α * (x / y^(1 - α)) * P_d_α
 end
 function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)
     return -(G.θ * (1 - t)^(G.θ - 1)) / (1 - (1 - t)^G.θ)
 end
-_joe_tau(θ) =  1 - 4sum(1/(k*(2+k*θ)*(θ*(k-1)+2)) for k in 1:1000) # 446 in R copula.
+_joe_tau(θ) =  1 - 4sum(1/(k*(2+k*θ)*(θ*(k-1)+2)) for k in 1:1000)
 τ(G::JoeGenerator) = _joe_tau(G.θ)
 function τ⁻¹(::Type{<:JoeGenerator}, τ)
     l, u = one(τ), τ * Inf
