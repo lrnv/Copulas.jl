@@ -60,7 +60,7 @@ end
 function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Int, t)
     α = 1 / G.θ
     return eltype(t)(ϕ(G, t) * t^(-d) * sum(
-        α^j * Combinatorics.stirlings1(d, j) * sum(Combinatorics.Stirlings2(j, k) * (-t^α)^k for k in 1:j) for j in 1:d
+        α^j * Combinatorics.stirlings1(d, j) * sum(Combinatorics.stirlings2(j, k) * (-t^α)^k for k in 1:j) for j in 1:d
     ))
 end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * exp(log(-log(t))*(G.θ - 1))) / t
