@@ -7,14 +7,14 @@ const rng = StableRNG(123)
 
 # You can comment the lines to avoid running some tests while you develop:
 testfiles = [
-    # "Aqua",
-    # "ArchimedeanCopulas",
-    # "ConditionalDistribution",
-    # "EllipticalCopulas",
-    # "FittingTest",
+    "Aqua",
+    "ArchimedeanCopulas",
+    "ConditionalDistribution",
+    "EllipticalCopulas",
+    "FittingTest",
     "GenericTests",
-    # "MiscelaneousCopulas",
-    # "SklarDist",
+    "MiscelaneousCopulas",
+    "SklarDist",
 ]
 
 for f in testfiles
