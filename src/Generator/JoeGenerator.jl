@@ -52,7 +52,7 @@ function ϕ⁽ᵏ⁾(G::JoeGenerator, d::Int, t)
     # as we already saw that for the Gumbel is wasn't the case. 
     α = 1 / G.θ
     P_d_α = sum(
-        Float64(BigCombinatorics.Stirling2(d, k + 1)) *
+        Combinatorics.stirlings2(d, k + 1) *
         (SpecialFunctions.gamma(k + 1 - α) / SpecialFunctions.gamma(1 - α)) *
         (exp(-t) / (-expm1(-t)))^k for k in 0:(d - 1)
     )
