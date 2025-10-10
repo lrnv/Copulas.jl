@@ -23,8 +23,8 @@ GenericTestFilter(C) = true # the default value lets every copula go through.
 # An example: 
 # GenericTestFilter(C) = C isa JoeCopula || C isa GumbelCopula # You can filter on your model. 
 
-@testset "Copulas.jl testings" verbose=true begin
-    @testset for f in testfiles 
+@testset verbose=true "Copulas.jl testings"  begin
+    @testset verbose=true "f = $f.jl" for f in testfiles  
         @info "Launching test file $f.jl"
         include(joinpath(dirname(@__FILE__), "$f.jl"))
     end
