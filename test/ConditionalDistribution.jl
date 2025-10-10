@@ -1,7 +1,7 @@
-@testitem "IndependentCopula conditional" tags=[:Conditional, :IndependentCopula] begin
+
+@testset "IndependentCopula conditional"  begin
     # [GenericTests integration]: Yes. This checks condition(X,J,·) reduces to subsetdims for independence; can be generalized and added to GenericTests.
-    using Copulas, Distributions, Random, LinearAlgebra, Test, StableRNGs
-    rng = StableRNG(42)
+    Random.seed!(rng,42)
     C = IndependentCopula(3)
     m = (Normal(), Exponential(), LogNormal())
     X = SklarDist(C, m)
@@ -19,10 +19,9 @@
     end
 end
 
-@testitem "Independent univariate conditional cases" tags=[:Conditional, :IndependentCopula] begin
+@testset "Independent univariate conditional cases"  begin
     # [GenericTests integration]: Yes. Univariate conditional on independent copula should be Uniform; Sklar with independent copula preserves marginal.
     # Suitable for a generic conditional smoke test.
-    using Copulas, Distributions, Test
     # Uniform-scale: Independent copula -> Uniform when one dim remains
     C = IndependentCopula(2)
     J = (1,)
@@ -40,9 +39,8 @@ end
     end
 end
 
-@testitem "GaussianCopula univariate conditional (uniform scale)" tags=[:Conditional, :GaussianCopula] begin
+@testset "GaussianCopula univariate conditional (uniform scale)"  begin
     # [GenericTests integration]: Yes. This is a model-specific formula but fits an "analytic conditional for Gaussian" block in GenericTests.
-    using Copulas, Distributions, Test
     ρ = 0.6
     Σ = [1.0 ρ; ρ 1.0]
     C = GaussianCopula(Σ)
@@ -65,9 +63,8 @@ end
     end
 end
 
-@testitem "Bivariate Archimedean conditional (generator formula across families)" tags=[:Conditional, :ArchimedeanCopula] begin
+@testset "Bivariate Archimedean conditional (generator formula across families)" begin
     # [GenericTests integration]: Yes. We already added a similar Archimedean conditional check using generator identities in GenericTests.
-    using Copulas, Distributions, Test
     # Known bivariate Archimedean identity:
     # H(u | v) = ϕ'(ϕ^{-1}(u) + ϕ^{-1}(v)) / ϕ'(ϕ^{-1}(v))
     # Test it across multiple families by looping instead of duplicating code.
@@ -93,10 +90,9 @@ end
     end
 end
 
-@testitem "GaussianCopula conditional copula vs MVN" tags=[:Conditional, :GaussianCopula] begin
+@testset "GaussianCopula conditional copula vs MVN" begin
     # [GenericTests integration]: Maybe. It depends on MvNormalCDF and is moderately heavy; could be a behind-flag exhaustive check.
-    using Copulas, Distributions, Random, LinearAlgebra, Test, StableRNGs, MvNormalCDF
-    rng = StableRNG(42)
+    Random.seed!(rng,42)
     d = 4
     # build correlation matrix
     A = randn(rng, d, d)
@@ -129,9 +125,8 @@ end
     end
 end
 
-@testitem "Higher-dim Archimedean conditional (3|2 via generator derivatives)" tags=[:Conditional, :ArchimedeanCopula] begin
+@testset "Higher-dim Archimedean conditional (3|2 via generator derivatives)" begin
     # [GenericTests integration]: Yes. This extends the Archimedean conditional identity to higher p; can be parameterized and integrated.
-    using Copulas, Distributions, Test
     # For Archimedean C(u) = ϕ(Σ ϕ⁻¹(u_i)), conditioning on J with |J|=p gives
     # H_{I|J}(u_I|u_J) = ϕ^{(p)}(Σ_{i∈I} ϕ⁻¹(u_i) + Σ_{j∈J} ϕ⁻¹(u_j)) / ϕ^{(p)}(Σ_{j∈J} ϕ⁻¹(u_j))
     # We'll test in d=5 with |J|=2, so |I|=3.
@@ -166,10 +161,9 @@ end
     end
 end
 
-@testitem "Gaussian Sklar conditional vs MVN with normal marginals" tags=[:Conditional, :GaussianCopula] begin
-    # [GenericTests integration]: Yes. This validates SklarDist conditioning against MVN algebra; belongs in GenericTests under conditioning.
-    using Copulas, Distributions, Random, LinearAlgebra, Test, StableRNGs, MvNormalCDF
-    rng = StableRNG(43)
+@testset "Gaussian Sklar conditional vs MVN with normal marginals" begin
+# [GenericTests integration]: Yes. This validates SklarDist conditioning against MVN algebra; belongs in GenericTests under conditioning.
+    Random.seed!(rng,43)
     d = 3
     Σ = [1 0.7 0.3;0.7 1 0.7; 0.3 0.7 1]
     C = GaussianCopula(Σ)
@@ -206,10 +200,9 @@ end
     end
 end
 
-@testitem "Generic fallback sanity (Clayton small d)" tags=[:Conditional, :ClaytonCopula] begin
+@testset "Generic fallback sanity (Clayton small d)" begin
     # [GenericTests integration]: Partially. Monotonicity and quantile-roundtrip are generic; keep Clayton-specific here or parameterize family list.
-    using Copulas, Distributions, Random, LinearAlgebra, Test, StableRNGs
-    rng = StableRNG(44)
+    Random.seed!(rng,44)
     d = 2
     C = ClaytonCopula(d, 0.7)
     m = (Normal(), LogNormal())

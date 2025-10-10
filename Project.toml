@@ -60,7 +60,6 @@ StatsBase = "0.33, 0.34"
 StatsFuns = "0.9, 1.3"
 TaylorSeries = "0.20"
 Test = "1"
-TestItemRunner = "1"
 julia = "1"
 
 [extras]
@@ -71,7 +70,6 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 StableRNGs = "860ef19b-820b-49d6-a774-d7a799459cd3"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-TestItemRunner = "f8b46487-2199-4994-9208-9a1283c18c0a"
 
 [targets]
-test = ["Test", "TestItemRunner", "InteractiveUtils", "LinearAlgebra", "HypothesisTests", "Aqua", "StableRNGs", "StatsBase"]
+test = ["Test", "InteractiveUtils", "LinearAlgebra", "HypothesisTests", "Aqua", "StableRNGs", "StatsBase"]
