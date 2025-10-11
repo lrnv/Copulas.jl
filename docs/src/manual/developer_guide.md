@@ -15,53 +15,78 @@ mathematical details.
     `Copulas.jl` with new copula families, internal optimizations, or additional features.
 
 
-
-
 # 1. The main API
 
 ## 1.1 Overview
 
-Every copula type in `Copulas.jl` must implement a minimal set of methods
-to integrate correctly with the ecosystem.
-Most features will automatically work once these methods are in place.
+Every copula type in `Copulas.jl` provides an extensive set of methods, to integrate correctly with the ecosystem: (non-exhaustive table)
 
 | Method                           | Purpose                             | Required    |
 | -------------------------------- | ----------------------------------- | ----------- |
+| `length(C)`                      | Dimension d of the copula           | ✅          |
 | `cdf(C, u)`                      | Cumulative distribution function    | ✅          |
+| `pdf(C, u)`                      | Density                             | ✅          |
 | `logpdf(C, u)`                   | Joint log density                   | ✅          |
 | `rand(C, n)`                     | Random generation                   | ✅          |
 | `params(C)`                      | Return parameters as a `NamedTuple` | ✅          |
-| `fit(::Type{CopulaModel}, C, U)` | Model fitting interface             | ⚙️ Optional |
-| `τ(C)`, `ρ(C)`, others           | Dependence metrics                  | ⚙️ Optional |
-| `λ_L(C)`, `λ_U(C)`               | Tail dependence coefficients        | ⚙️ Optional |
+| `fit(::Type{<:MyCopula}, C, u)`  | Model fitting interface             | ⚙️ Optional |
+| `τ(C)`, `ρ(C)`, etc...           | Dependence metrics                  | ⚙️ Optional |
+| `λₗ(C)`, `λᵤ(C)`                  | Tail dependence coefficients        | ⚙️ Optional |
 | `condition(C, dims, us)`         | Conditional copula                  | ⚙️ Optional |
 | `subsetdims(C, dims)`            | Conditional copula                  | ⚙️ Optional |
+| `rosenblatt(C, u)`               | Rosenblatt transformation           | ⚙️ Optional |
+| `inverse_rosenblatt(C, u)`       | Inverse Rosenblatt transformation   | ⚙️ Optional |
 
 
+However, direct implementation of these methods is not always the best way to fullfill the contract. 
+If you want to implement a new copula, this document will quide you into the right methods that you need to implement.
+The easiest way is probably to look at another copula's code, choosing a copula *from the same family as yours* if possible, and then 
+reading this code in parralell to this doucment. 
 
 
 ## 1.2 Probability interface (`cdf`, `pdf`, `rand`)
 
-All copulas must define their joint `cdf()` over the hypercube. Defining a `pdf()` is optional but highly recomended.
+All copulas have a joint `cdf()` over the hypercube, and they might have a `pdf()` too (optional but highly recomended).
 The `rand(C, n)` method should generate an `d × n` matrix of samples from the copula. 
 
+Public API : `rand(C, n)`, `cdf(C, u)`, `pdf(C, u )`, `logpdf(C, u )`, `loglikelihood(C, u )`. 
 For these methodes to work corectly, you need to overwrite a few internal methods, as in the following minimal example: 
 
 ```julia
-struct MyCopula{d, P} <: Copula{d}
+struct MyCopula{d, P} <: Copula{d} # Note that the size of the copula must be part of the type. 
     θ::P  # Copula parameter
     MyCopula{d}(θ) where {d} = new{d, typeof(θ)}(θ)
 end
-Copulas._cdf(C::MyCopula{P}, u) where {P} = ... # assume u to be an abstract vector of the right length and inside the hypercube. 
-Distributions._logpdf(C::MyCopula{P}, u) where {P} = ...
-Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, u::AbstractVector{T}) where {T<:Real, CT<:MyCopula} = ... # fill u with one sample, length d. 
-Distributions.params(C::MyCopula) = (θ = C.θ,) # give a named tuple with the parametrisation. 
+function Distributions.params(C::MyCopula) 
+    # It will be assumed that `MyCopula(d, params(C::MyCopula)...)` reproduces `C`
+    # So you should ensure that this binding works. 
+    # The return value should be a NamedTuple. 
+    return (θ = C.θ,) # Return a named tuple with the parametrisation. 
+end
+function Copulas._cdf(C::MyCopula, u)
+     # You can safely assume u to be an abstract vector of the right length and inside the hypercube.
+     # Return the cdf value on u
+end
+function Distributions._logpdf(C::MyCopula, u)
+    # You can safely assume u to be an abstract vector of the right length and inside the hypercube.
+    # Return the logpdf value on u
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::MyCopula, u::AbstractVector{<:Real})
+    # You need to fill the vector u (of lenght d) with a random sample, and then return it. 
+    return u
+end 
 ```
+
 Once defined, these automatically integrate with the `Copulas.jl` and `Distributions.jl` interface.
 
-For `params()`, it is assumed in several places that `MyCopula(d, params(C::MyCopula)...)` reproduces `C`, so you should ensure that this binding works. 
-
-
+!!! info "Matrix sampler"
+    For performance reasons, you can also implement a matrix sampler if you feel its necessary: 
+    ```julia
+    function Distributions._rand!(rng::Distributions.AbstractRNG,C::MyCopula, U::DenseMatrix{<:Real})
+        # You need to fill the matrix u (of shape (d,n)) with n random samples, and then return it.
+        return U
+    end
+    ```
 
 
 ## 1.3 Dependence metrics
@@ -90,14 +115,12 @@ Copulas.ρ(C::MyCopula) = ...
 ...
 ```
 
-
-
-
 ## 1.4 Conditioning and subsetting
 
 The conditining framework works by default, and you can already use `condition(C::MyCopula, dims, us)`.
-You don’t need to override anything else unless your copula has a closed form for conditional dependence. 
-If it does, then it is highly recomended that you overwrite these two bindings: 
+You don’t need to override anything else unless your copula has a closed form for conditional distributions 
+(univariate or multivariate), or a semi-closed-form that is better than our generics.  
+If it does, then it is **highly recomended** that you overwrite these two bindings: 
 
 ```julia
 ConditionalCopula(C::MyCopula, dims, us) = ...
@@ -107,18 +130,24 @@ DistortionFromCop(C::MyCopula, dims, us, i) = ...
 These allow `Copulas.jl` to build conditional distributions internally.
 If not defined, conditioning will fall back to a generic (and thus slower) path.
 
-- The first binding returns a `SklarDist`, containing the conditional copula as a copula, and conditional marginals as the marginals. This literally represent the conditional distribution of the random vector, but already splitted by the Sklar's theorem. 
-
-- The second binding corresponds to the ith marginal of the first. It must return an object `<:Distortion`, which itself subtypes `Distributions.ContinuousUnivariateDistribution` supported on [0,1], corresponding to the distortion. You need to implement its `cdf`, `pdf` or `logpdf` (as you want), and eventually (recomended) the `quantile` function. The returned object will be used as a functor to distord marginals as follows (already implemented):  
+* The first binding returns a `SklarDist`, containing the conditional copula as a copula, 
+  and conditional marginals as the marginals. This literally represent the conditional 
+  distribution of the random vector, but already splitted by the Sklar's theorem. 
+* The second binding corresponds to the ith marginal of the first. It must return an object
+  `<:Distortion`, which itself subtypes `Distributions.ContinuousUnivariateDistribution` supported on [0,1],
+  corresponding to the distortion. You need to implement its `cdf`, `pdf` or `logpdf` (as you want), 
+  and eventually (recomended) the `quantile` function. The returned object will be used as a 
+  functor to distord marginals as follows (already implemented):  
 
 ```julia
 (D::Distortion)(::Distributions.Uniform) = D # Always, no need to implement its already there. 
 (D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X) # the default. 
 ```
 
-This is how we enable conditioning on the SklarDist level. There are a lot of examples of distortions in the source of the package, if you have doubt please ask for help. 
+This is how we enable conditioning on the SklarDist level.
 
-
+!!! tip "Look at existing distortions"
+    Take a look in the `src/UnivariateDistributions/Distortions` folder for examples, there are plenty. 
 
 
 
@@ -187,17 +216,17 @@ Distributions.params(G::MyGenerator) = (θ = G.θ,)
 
 ### Required methods for a generator `G`
 
-| Method                    | Purpose                                                            | Required |
-| ------------------------- | ------------------------------------------------------------------ | -------- |
-| `max_monotony(G)`         | Maximum degree of monotonicity (controls validity in d dimensions) | ✅        |
-| `Distributions.params(G)` | Return parameters as a `NamedTuple`                                | ✅        |
-| `ϕ(G, t)`                 | Generator function                                                 | ✅        |
-| `ϕ⁻¹(G, t)`                         | Generator function inverse                               | ⚙️ Optional |
-| `ϕ⁽¹⁾(G, t)`                        | Generator function derivative                            | ⚙️ Optional |
-| `ϕ⁻¹⁽¹⁾(G, t)`                      | Generator function derivative of the inverse             | ⚙️ Optional |
-| `ϕ⁽ᵏ⁾(G, k::Int, t)`                | Generator function kth derivative                        | ⚙️ Optional |
-| `ϕ⁽ᵏ⁾⁻¹(G, k::Int, t; start_at=t)`  | Generator function kth derivative's inverse              | ⚙️ Optional |
-| `𝒲₋₁(G, d::Int)`                   | Williamson transform                                     | ⚙️ Optional |
+| Method                              | Purpose                                                            | Required    |
+| ------------------------------------| ------------------------------------------------------------------ | ----------- |
+| `max_monotony(G)`                   | Maximum degree of monotonicity (controls validity in d dimensions) | ✅          |
+| `Distributions.params(G)`           | Return parameters as a `NamedTuple`                                | ✅          |
+| `ϕ(G, t)`                           | Generator function                                                 | ✅          |
+| `ϕ⁻¹(G, t)`                         | Generator function inverse                                         | ⚙️ Optional |
+| `ϕ⁽¹⁾(G, t)`                        | Generator function derivative                                      | ⚙️ Optional |
+| `ϕ⁻¹⁽¹⁾(G, t)`                      | Generator function derivative of the inverse                       | ⚙️ Optional |
+| `ϕ⁽ᵏ⁾(G, k::Int, t)`                | Generator function kth derivative                                  | ⚙️ Optional |
+| `ϕ⁽ᵏ⁾⁻¹(G, k::Int, t; start_at=t)`  | Generator function kth derivative's inverse                        | ⚙️ Optional |
+| `𝒲₋₁(G, d::Int)`                   | Williamson transform                                               | ⚙️ Optional |
 
 
 Once the generator defines `ϕ`, and `max_monotony`, all functions such as
@@ -206,12 +235,18 @@ Once the generator defines `ϕ`, and `max_monotony`, all functions such as
 
 Only fitting routines or dependence metrics need to be added if the defaults are insufficient.
 
+!!! info "Other generator interfaces"
+    1) If you generator has only a one-dimensional parametrisation, then you might look at the `UnivariateGenerator<:Generator` interface that is a bit easier. 
+    2) If your generator is a Frailty, then there is `FrailtyGenerator`
+    3) If you know the radial part, use `𝒲 === WilliamsonGenerator` directly. 
+    4) If you are lost, just open an issue ;)
+
 
 
 
 ## 2.2 Extreme-Value copulas
 
-Bivariate Extreme-Value (EV) copulas are defined by a stable tail dependence function $\ell$ and the associated **Pickands dependence function** $A$.
+Bivariate Extreme-Value (EV) copulas are defined by a stable tail dependence function `ℓ` and the associated **Pickands dependence function** `A`.
 To implement a new bivariate Extreme-Value family, define a subtype of [`Tail`](@ref) with the following methods:
 
 ```julia
@@ -219,26 +254,25 @@ struct MyTail{T} <: Tail
     θ::T
 end
 const MyEVCopula{d,T} = ExtremeValueCopula{d, MyTail{T}}
-
+ℓ(T::MyTail, x, y) = ...
 A(T::MyTail, t) = ...
 Distributions.params(T::MyTail) = (θ = T.θ,)
 ```
 
 ### Required methods
 
-| Method                    | Purpose                                    | Required    |
-| ------------------------- | ------------------------------------------ | ----------- |
-| `A(T, t)`                 | Pickands dependence function               | ✅           |
-| `Distributions.params(T)` | Return parameters as a `NamedTuple`        | ✅           |
-| `ℓ(T, x, y)`              | Stable tail dependence function            | ⚙️ Optional |
-| `dA(T, t)`                | Derivative of the Pickands function        | ⚙️ Optional |
-| `d²A(T, t)`               | Second derivative of the Pickands function | ⚙️ Optional |
+| Method                    | Purpose                                                            | Required    |
+| ------------------------- | ------------------------------------------------------------------ | ----------- |
+| `A(T, t)` or `ℓ(T, x, y)` | Pickands dependence function   OR stable tail dependence function  | ✅          |
+| `Distributions.params(T)` | Return parameters as a `NamedTuple`                                | ✅          |
+| `dA(T, t)`                | Derivative of the Pickands function                                | ⚙️ Optional |
+| `d²A(T, t)`               | Second derivative of the Pickands function                         | ⚙️ Optional |
 
 !!! note "ℓ function"
-For Extreme-Value copulas, the `ℓ` function is mandatory only for multivariate extensions.
-For bivariate EV copulas, it is sufficient to implement the Pickands function `A`.
+    For Extreme-Value copulas, the `ℓ` function is mandatory only for multivariate extensions.
+    For Bivariate EV copulas, it is sufficient to implement the Pickands function `A`.
 
-Once `A` is provided, `Copulas.jl` automatically handles the rest of the API.
+Once `A` or `ℓ` is provided, `Copulas.jl` automatically handles the rest of the API.
 
 !!! note "Inherited interfaces in structured families"
     For structured copula families such as **Archimedean** and **Extreme-Value**,
@@ -268,8 +302,6 @@ EllipticalCopula{d, D}
 where `D` is the associated multivariate distribution type (for instance, `MvNormal` or `MvTDist`).
 
 Elliptical copulas are characterized by a correlation matrix `Σ` and, optionally, additional shape parameters (e.g. degrees of freedom `ν` for the t-copula).
-
-
 
 
 ### Required methods
@@ -304,7 +336,9 @@ Once these bindings are defined, all core functionality —
 `cdf`, `logpdf`, and `rand` —
 is automatically available through the generic `EllipticalCopula` implementation in `Copulas.jl`.
 
-Most elliptical families (Gaussian, t, Laplace, power-exponential, GED) can be implemented simply by changing their `U` and `N` definitions, reusing the same generic machinery. We only have gaussian and student, but you could propose other ones. 
+Most elliptical families (Gaussian, t, Laplace, power-exponential, GED) can be implemented 
+simply by changing their `U` and `N` definitions, reusing the same generic machinery. 
+We only have gaussian and student, but you could propose other ones. 
 
 
 !!! note "Analytical and numerical stability"
@@ -318,13 +352,9 @@ Most elliptical families (Gaussian, t, Laplace, power-exponential, GED) can be i
     Such implementations significantly improve numerical stability and performance of the overall package.
 
 
-
-
 # 3. Complete Examples
 This section provides practical examples of complete copula implementations.  
 Each example illustrates how to make a new family compatible with the main API of `Copulas.jl`.
-
-
 
 
 ## 3.1 Generic copula example — *MardiaCopula*
