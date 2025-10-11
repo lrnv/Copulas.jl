@@ -27,6 +27,7 @@ makedocs(;
             "Dependence metrics"=>"manual/dependence_measures.md",
             "Fitting"=>"manual/fitting_interface.md",
             "Visualizations"=>"manual/visualizations.md",
+            "Developper guide"=>"manual/developer_guide.md",
         ],
         "Bestiary" => [
             "Elliptical copulas"=>"bestiary/elliptical.md",

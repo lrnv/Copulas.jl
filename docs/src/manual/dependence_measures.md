@@ -2,14 +2,14 @@
 CurrentModule = Copulas
 ```
 
-# Dependence measures
+# [Dependence measures](@id dep_metrics)
 
 The copula of a random vector fully encodes its dependence structure. 
 However, copulas are infinite-dimensional objects and interpreting their properties can be difficult as the dimension increases. 
 Therefore, the literature has introduced quantifications of the dependence structure that may be used as univariate (imperfect but useful) summaries of certain copula properties. 
 We implement the most well-known ones in this package. 
 
-## Main dependence metrics τ, ρ, β, γ and ι
+## Core dependence metrics τ, ρ, β, γ and ι
 
 !!! definition "Kendall' τ"
     For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
@@ -51,13 +51,11 @@ We implement the most well-known ones in this package.
 
 These dependence measures are very common when $d=2$, and a bit less when $d > 2$. We sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated with a multivariate copula. 
 We thus provide two different interfaces:
-* `Copulas.τ(C::Copula)`, `Copulas.ρ(C::Copula)`, `Copulas.β(C::Copula)`, `Copulas.γ(C::Copula)` provide the upper formulas, yielding a scalar whatever the dimension of the copula.
-* `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)`, `Copulas.corblomqvist(data)`, `Copulas.corgini(data)` provide matrices of pairwise dependence metrics. 
+* `Copulas.τ()`, `Copulas.ρ()`, `Copulas.β()`, `Copulas.γ()` and `Copulas.ι()` provide the upper formulas, yielding a scalar whatever the dimension of the copula.
+* `StatsBase.corkendall()`, `StatsBase.corspearman()`, `Copulas.corblomqvist()`, `Copulas.corgini()` and `Copulas.corentropy()` provide matrices of pairwise dependence metrics. 
+* All these functions have methods for a single argument `C::Copula`, yielding theoretical quantities, and for a dataset `data::AbstractMatrix` yielding empirical estimates.
 
-Thus, for a given copula `C`, the theoretical dependence measures can be obtained by `τ(C), ρ(C), β(C), γ(C), ι(C)` (for the multivariate versions) and `corkendall(C), corspearman(C), corblomqvist(C)`, `corgini(C)`, and `corentropy(C)` (for the matrix versions).
-Similarly, empirical versions of these metrics can be obtained from a matrix (observations or pseudo-observations) of size `(d,n)` by  `Copulas.τ(data)`, `Copulas.ρ(data)`, `Copulas.β(data)`, `Copulas.γ(data)`, `Copulas.ι(data)`, `StatsBase.corkendall(data)`, `StatsBase.corspearman(data)`, `Copulas.corblomqvist(data)`, `Copulas.corgini(data)`, and `Copulas.corentropy(data)`.
-
-For entropy-based measures on data, the functions accept the following keywords: `k`, `p`, and `leafsize`. For example, `ι(U; k=5, p=Inf, leafsize=32)` and `corentropy(U; k=5, p=Inf, leafsize=32)` operate on pseudo-observations `U ∈ (0,1)^{d×n}`.
+For historical reasons, `τ(data)`, `ρ(data)`, `β(data)`, `γ(data)`, `ι(data)` require `(d,n)`-shaped datasets (observations or pseudo-observations), while  `corkendall(data)`, `corspearman(data)`, `corblomqvist(data)`, `corgini(data)`, and `corentropy(data)` do require transposed `(n,d)`-shaped datasets. 
 
 !!! note "Ranges of τ, ρ, β and γ."
     Kendall's $\tau$, Spearman's $\rho$, Blomqvist's $\beta$ and Gini's $\gamma$ all belong to $[-1, 1]$. They are equal to :
@@ -71,8 +69,7 @@ For entropy-based measures on data, the functions accept the following keywords:
     The package implements generic version of the dependence metrics, but some families have faster versions (closed form formulas or better integration paths). 
     However, all the potential fast-paths are not implemented yet. If you feel a specific method for a certain copula is missing, do not hesitate to open an issue !
 
-    Moreover, many copula estimators are based on the relationship between parameters and these coefficients (see e.g., [genest2011,fredricks2007,derumigny2017](@cite)), but once again our implementation is not complete yet. 
-
+Many copula estimators are based on the relationship between parameters and these coefficients (see e.g., [genest2011,fredricks2007,derumigny2017](@cite)).
 Here is for example the relationship between the Kendall $\tau$ and the parameter of a Clayton copula:  
 
 ```@example dep
@@ -81,14 +78,7 @@ using Copulas, Plots, Distributions
 τs = [Copulas.τ(ClaytonCopula(2, θ)) for θ in θs]
 plot(θs, τs; xlabel="θ", ylabel="τ", title="θ -> τ for bivariate Clayton", legend=false)
 ```
-
 Remark the clear and easy to exploit bijection. 
-
-!!! info "Efficiency note"
-    In practice, **Gini’s γ** is the most efficient dependence measure in our implementation (microseconds, no allocations).  
-    **Kendall’s τ** is the most computationally expensive (\(O(n^2)\)), while **Spearman’s ρ** and **Blomqvist’s β** are intermediate.  
-    For pairwise matrices, `corgini` is faster than both `corblomqvist` and the classical `corspearman`/`corkendall`.
-    Finally, the corentropy algorithm might not perform very good gnerically. 
 
 ## Tail dependency
 
@@ -144,18 +134,14 @@ Many parametric copula families have simple surjections, injections, or even bij
 The package provides both theoretical limits (for a given copula object) and empirical estimators (from data matrices).  
 In addition, pairwise tail-dependence matrices can be computed for multivariate samples.  
 
-* **Theoretical λ**: `λₗ(C::Copula)` and  `λᵤ(C::Copula)`
-  Shortcuts: `λₗ(C)`, `λᵤ(C)`  
+* **Theoretical λ**: `Copulas.λₗ(C::Copula)` and  `Copulas.λᵤ(C::Copula)`
+  Shortcuts: `Copulas.λₗ(C)`, `Copulas.λᵤ(C)`  
 
-* **Empirical λ**: `λₗ(U::AbstractMatrix; p=1/√m)` and `λᵤ(U::AbstractMatrix; p=1/√m)`
+* **Empirical λ**: `Copulas.λₗ(U::AbstractMatrix; p=1/√m)` and `Copulas.λᵤ(U::AbstractMatrix; p=1/√m)`
 
-* **Pairwise λ-matrix**: `coruppertail(data; method=:SchmidtStadtmueller, p=1/√m)` and `corlowertail(data; method=:SchmidtStadtmueller, p=1/√m)`  
+* **Pairwise λ-matrix**: `Copulas.coruppertail(data; method=:SchmidtStadtmueller, p=1/√m)` and `Copulas.corlowertail(data; method=:SchmidtStadtmueller, p=1/√m)`  
 
 These follow the approach of Schmidt & Stadtmüller (see [schmidt2006non](@cite)).
- 
-
-!!! todo "Work in progress"
-    The formalization of an interface for obtaining the tail dependence coefficients of copulas is still a work in progress in the package. Do not hesitate to reach us on GitHub if you want to discuss it!
 
 
 

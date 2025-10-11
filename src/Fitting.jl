@@ -494,15 +494,14 @@ _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 
 Vector with the estimated parameters of the copula.
 """
-StatsBase.coef(M::CopulaModel) = _flatten_params(M.method_details.θ̂)[2]
-
+StatsBase.coef(M::CopulaModel) = haskey(M.method_details, :θ̂) ? _flatten_params(M.method_details.θ̂)[2] : Float64[]
 
 """
 coefnames(M::CopulaModel) -> Vector{String}
 
 Names of the estimated copula parameters.
 """
-StatsBase.coefnames(M::CopulaModel) = _flatten_params(M.method_details.θ̂)[1]
+StatsBase.coefnames(M::CopulaModel) = haskey(M.method_details, :θ̂) ? _flatten_params(M.method_details.θ̂)[1] : String[]
 
 
 # Flatten a NamedTuple of parameters into a Vector{Float64},
