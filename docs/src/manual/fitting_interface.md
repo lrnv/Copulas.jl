@@ -85,7 +85,7 @@ The `CopulaModel{CT} <: StatsBase.StatisticalModel` supports the standard `Stats
 **Examples**
 
 ```@example fitting_interface
-Information criteria
+# Information criteria
 StatsBase.aic(M)
 StatsBase.bic(M)
 Copulas.aicc(M)
@@ -146,6 +146,8 @@ Each method returns a symmetric (positive semi-definite) matrix `Vθ`, stored as
 ---
 
 ## Joint margins + copula (Sklar)
+
+You can pass the `sklar_method` parameter as: 
 
 - `:ifm`: fits parametric margins and maps data to pseudo-scale via their CDFs.  
 - `:ecdf`: uses empirical pseudo-observations (ranks).

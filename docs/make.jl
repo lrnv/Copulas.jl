@@ -26,9 +26,8 @@ makedocs(;
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
             "Dependence metrics"=>"manual/dependence_measures.md",
             "Fitting"=>"manual/fitting_interface.md",
-            "Fitting"=>"manual/developer_guide.md",
             "Visualizations"=>"manual/visualizations.md",
-
+            "Developper guide"=>"manual/developer_guide.md",
         ],
         "Bestiary" => [
             "Elliptical copulas"=>"bestiary/elliptical.md",
