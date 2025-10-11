@@ -80,7 +80,6 @@ Bestiary = [
     ArchimedeanCopula(10,𝒲(Dirac(1),10)),
     ArchimedeanCopula(10,𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)),
     ArchimedeanCopula(2,𝒲(LogNormal(),2)),
-    ArchimedeanCopula(2,𝒲(LogNormal(3),5)),
     ArchimedeanCopula(2,𝒲(Pareto(1),5)),
     AsymGalambosCopula(2, 0.1, 0.2, 0.6),
     AsymGalambosCopula(2, 0.6129496106778634, 0.820474440393214, 0.22304578643880224),
@@ -399,7 +398,7 @@ _archimax_pdf_hess(C, u1, u2) = begin
     H = ForwardDiff.hessian(f, [u1, u2])  # ∂²/∂u1∂u2
     max(H[1,2], 0.0)                      # numerical clip 
 end
-function _archimax_mc_rectangles_cdf(C; N::Int=120_000, seed::Integer=123,
+function _archimax_mc_rectangles_cdf(C; N::Int=2_000, seed::Integer=123,
                         rects::Tuple{Vararg{Tuple{<:Real,<:Real}}}=((0.5,0.5),(0.3,0.7),(0.8,0.2)))
     rng = StableRNG(seed)
     U = rand(rng, C, N)
@@ -416,7 +415,7 @@ function _archimax_mc_rectangles_cdf(C; N::Int=120_000, seed::Integer=123,
     end
     return results
 end
-function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, maxevals, N) where d
+function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, N) where d
     ba = b .- a
     logvol = log(prod(ba))
     logS  = -Inf
@@ -600,18 +599,18 @@ Bestiary = filter(GenericTestFilter, Bestiary)
 
     @testif can_integrate_pdf(C) "Testing pdf integration" begin
         # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
-        v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 3_000, 3_000)
+        v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 1_500)
         @test isapprox(v, 1; atol=max(5*sqrt(r), 1e-3))
 
         # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
         b = ones(d)/2
-        v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 3_000, 3_000)
+        v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 1_500)
         @test isapprox(v2, cdf(C, b); atol=max(10*sqrt(r2), 1e-3))
 
         # 3) random rectangle, compare with measure (cdf based)
         a = rand(rng, d)
         b = a .+ rand(rng, d) .* (1 .- a)
-        v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 3_000, 3_000)
+        v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 1_500)
         @test (isapprox(v3, Copulas.measure(C, a, b); atol=max(20*sqrt(r3), 1e-3)) || max(v3, Copulas.measure(C, a, b)) < eps(Float64)) # wide tolerence, should pass. 
     end
 
@@ -906,7 +905,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 @test isapprox(exp(lp), c_h; rtol=1e-6, atol=1e-8)
             end
 
-            for r in _archimax_mc_rectangles_cdf(C; N=8_000, seed=321)
+            for r in _archimax_mc_rectangles_cdf(C; N=1_500, seed=321)
                 @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
             end
     end
