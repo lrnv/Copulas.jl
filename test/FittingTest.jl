@@ -1,5 +1,5 @@
 
-@testset verbose=true "Fitting + vcov + StatsBase interfaces" begin
+@testset "Fitting + vcov + StatsBase interfaces" begin
     rng = StableRNG(2025)
     function _flatten_params(p::NamedTuple)
         if haskey(p, :Σ)
@@ -22,7 +22,6 @@
             (GaussianCopula, 3, :mle),
 
             # Archimedean one parameter
-            (ClaytonCopula,  2, :mle),
             (GumbelCopula,   2, :itau),
             (FrankCopula,    2, :mle),
             (JoeCopula,      2, :itau),

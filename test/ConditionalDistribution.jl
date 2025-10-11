@@ -1,22 +1,21 @@
 
 @testset "IndependentCopula conditional"  begin
     # [GenericTests integration]: Yes. This checks condition(X,J,·) reduces to subsetdims for independence; can be generalized and added to GenericTests.
-    Random.seed!(rng,42)
-    C = IndependentCopula(3)
-    m = (Normal(), Exponential(), LogNormal())
-    X = SklarDist(C, m)
-    # condition on dims (2,) at some x2
-    J = (2,)
-    x2 = 0.7
-    Y = condition(X, J, (x2,))
+    X = SklarDist(IndependentCopula(3), (Normal(), Exponential(), LogNormal()))
+    Y = condition(X, 2, 0.7)
+    Z = Copulas.subsetdims(X, (1,3))
+
     @test length(Y) == 2
-    # Y should be the subset distribution over dims (1,3)
-    X13 = Copulas.subsetdims(X, (1,3))
-    # Compare CDF at random points
-    for _ in 1:10
-        t = (randn(rng), randn(rng))
-        @test isapprox(cdf(Y, [t...]), cdf(X13, [t...]); atol=1e-8)
-    end
+    @test Y isa SklarDist
+    @test Y.C isa IndependentCopula{2}
+    @test Y.m[1] == Normal()
+    @test Y.m[2] == LogNormal()
+
+    @test length(Z) == 2
+    @test Z isa SklarDist
+    @test Z.C isa IndependentCopula{2}
+    @test Z.m[1] == Normal()
+    @test Z.m[2] == LogNormal()
 end
 
 @testset "Independent univariate conditional cases"  begin
