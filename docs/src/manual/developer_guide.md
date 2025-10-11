@@ -423,14 +423,14 @@ while maintaining compatibility with all higher-level fitting utilities.
 
 Remark that we could also opt-in the default moment matching methods, but for that we need to specify parameter relaxations through the following: 
 
-```julia
+```@example generic_copula_example
 Copulas._unbound_params(::Type{MardiaCopula}, d, params) = [atanh(clamp(params.θ, -1 + eps(), 1 - eps()))]
 Copulas._rebound_params(::Type{MardiaCopula}, d, α) = (; θ = tanh(α[1]) )
 Copulas._example(::Type{<:MardiaCopula}, d::Int) = MardiaCopula(0.5)
 ```
 
 And we need to change our availiable methods: 
-```julia
+```@example generic_copula_example
 Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d::Int) = (:igamma, :itau, :irho, :ibeta)
 ```
 
