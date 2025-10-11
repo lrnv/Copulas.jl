@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Dependence measures
+# Dependence measures(@id dep_metrics)
 
 The copula of a random vector fully encodes its dependence structure. 
 However, copulas are infinite-dimensional objects and interpreting their properties can be difficult as the dimension increases. 

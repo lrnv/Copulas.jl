@@ -26,7 +26,7 @@ makedocs(;
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
             "Dependence metrics"=>"manual/dependence_measures.md",
             "Fitting"=>"manual/fitting_interface.md",
-            "Fitting"=>"manual/developer_fitting.md",
+            "Fitting"=>"manual/developer_guide.md",
             "Visualizations"=>"manual/visualizations.md",
 
         ],
