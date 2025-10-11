@@ -445,7 +445,7 @@ function _cond_cdf(C::Copulas.Copula{d}, x, ujs) where d
     if d==3
         return ForwardDiff.derivative(w -> cdf(C, [u,v,w]), ujs[1])
     elseif d==4
-        return ForwardDiff.derivative(t -> ForwardDiff.derivative(w -> cdf(C, [u,v,w,t]), ujs[1]), ujs[2]) / ForwardDiff.derivative(t -> ForwardDiff.derivative(w -> cdf(C, [1,1,w,t]), ujs[1]), ujs[2])
+        return ForwardDiff.derivative(t -> ForwardDiff.derivative(w -> cdf(C, [u,v,w,t]), ujs[1]), ujs[2]) / ForwardDiff.derivative(t -> ForwardDiff.derivative(w -> cdf(C, [0.99999999,0.99999999,w,t]), ujs[1]), ujs[2])
     end
 end
 
