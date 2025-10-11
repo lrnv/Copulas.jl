@@ -52,7 +52,7 @@ function CheckerboardCopula(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool
     else
         m isa Integer ? fill(Int(m), d) : m
     end
-    @assert length(ms) == d && all(ms .% n .== 0) "You provided m=$m to the Checkerboard constructor, while you need to provide an integer dividing n=$n or a vector of d=$d integers, all dividing n=$n."
+    @assert length(ms) == d && all(n .% ms .== 0) "You provided m=$m to the Checkerboard constructor, while you need to provide an integer dividing n=$n or a vector of d=$d integers, all dividing n=$n."
     # Map samples to integer box indices in each dimension (clamp right edge into m_i-1)
     data = min.(ms .- 1, floor.(Int, (pseudo_values ? X : pseudos(X)) .* ms))
     # Build a dictionary of box proportions using tuple keys

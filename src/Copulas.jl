@@ -80,7 +80,6 @@ module Copulas
     include("EllipticalCopulas/TCopula.jl")
 
     # Archimedean copulas
-    include("WilliamsonTransforms.jl")
     include("Generator.jl")
     include("ArchimedeanCopula.jl")
 
@@ -136,7 +135,7 @@ module Copulas
            subsetdims, 
            condition,
            WilliamsonGenerator, 
-           i𝒲, 
+           𝒲, 
            TiltedGenerator,
            EmpiricalGenerator,
            SklarDist, # SklarDist to make multivariate models

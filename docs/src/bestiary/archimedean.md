@@ -107,6 +107,30 @@ This function computes the Williamson d-transform of the provided random variabl
 WilliamsonGenerator
 ```
 
+!!! note "Bijection and identities (matching d)"
+    The Williamson $d$-transform and its inverse form a bijection between positive radials and $d$-monotone Archimedean generators. In particular, when the same $d$ is used on both sides:
+
+    - $\mathcal W^{-1}_d\big(\mathcal W(X, d)\big) = X$
+    - $\mathcal W\big(\mathcal W^{-1}_d(G, d), d\big) = G$
+
+    The second identity returns the canonical Williamson generator associated to the radial law recovered from $G$.
+
+    As a quick sanity check:
+
+    ```@example
+    using Distributions
+    using Copulas: 𝒲, 𝒲₋₁, ϕ
+
+    X = LogNormal()
+    d = 3
+    G = 𝒲(X, d)           # generator from a radial law
+    X2 = 𝒲₋₁(G, d)         # back to the radial law
+    G2 = 𝒲(X2, d)          # back to a generator
+
+    # Compare generators numerically at two points
+    ϕ(G, 0.3), ϕ(G2, 0.3), ϕ(G, 1.1), ϕ(G2, 1.1)
+    ```
+
 ## [Inverse Williamson d-transform](@id w_trans_section)
 
 The Williamson d-transform is a bijective transformation[^1] from the set of positive random variables to the set of generators. It therefore has an inverse transformation (called, surprisingly, the inverse Williamson $d$-transform) that construct the positive random variable *R* from a generator $\phi$.
@@ -115,7 +139,7 @@ The Williamson d-transform is a bijective transformation[^1] from the set of pos
 
     This bijection is to be taken carefuly: the bijection is between random variables *with unit scales* and generators *with common value at 1*, sicne on both rescaling does not change the underlying copula. 
 
-This transformation is implemented through one method in the Generator interface that is worth talking a bit about : `williamson_dist(G::Generator, d)`. This function computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ. See [williamson1955multiply, mcneil2009](@cite).
+This transformation is implemented through one method in the Generator interface that is worth talking a bit about : `𝒲₋₁(G::Generator, d)`. This function computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ. See [williamson1955multiply, mcneil2009](@cite).
 
 To put it in a nutshell, for ``\phi`` a ``d``-monotone archimedean generator, the inverse Williamson-d-transform of ``\\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``R``, defined by : 
 
@@ -133,21 +157,21 @@ As an example of a generator produced by the Williamson transformation and its i
 
 ```@example
 using Distributions
-using Copulas: i𝒲, ϕ⁻¹, IndependentGenerator
+using Copulas: 𝒲, ϕ⁻¹, IndependentGenerator
 using Plots
-G = i𝒲(LogNormal(), 2)
+G = 𝒲(LogNormal(), 2)
 plot(x -> ϕ⁻¹(G,x), xlims=(0.1,0.9), label="G")
 plot!(x -> -log(x), label="Independence")
 ```
 
-The `i𝒲` alias stands for `WiliamsonGenerator`. To stress the generality of the approach, remark that any positive distribution is allowed, including discrete ones: 
+The `𝒲` alias stands for `WiliamsonGenerator`. To stress the generality of the approach, remark that any positive distribution is allowed, including discrete ones: 
 
 ```@example
 using Distributions
-using Copulas: i𝒲, ϕ⁻¹
+using Copulas: 𝒲, ϕ⁻¹
 using Plots
-G1 = i𝒲(Binomial(10,0.3), 2)
-G2 = i𝒲(Binomial(10,0.3), 3)
+G1 = 𝒲(Binomial(10,0.3), 2)
+G2 = 𝒲(Binomial(10,0.3), 3)
 plot(x -> ϕ⁻¹(G1,x), xlims=(0.1,0.9), label="G1")
 plot!(x -> ϕ⁻¹(G2,x), xlims=(0.1,0.9), label="G2")
 ```
@@ -180,18 +204,18 @@ Archimedean copulas have a nice decomposition, called the Radial-simplex decompo
     where $\boldsymbol S$ is uniform on the $d$-variate simplex and $R$ is a non-negative random variable, independent form $\boldsymbol S$, defined as the inverse Williamson $d$-transform of $\phi$.  
 
 
-This is why `williamson_dist(G::Generator,d)` is such an important function in the API: it allows to generator the radial part and sample the Archimedean copula. You may call this function directly to see what distribution will be used: 
+This is why `𝒲₋₁(G::Generator,d)` is such an important function in the API: it allows to generator the radial part and sample the Archimedean copula. You may call this function directly to see what distribution will be used: 
 
 ```@example
-using Copulas: williamson_dist, FrankGenerator
-williamson_dist(FrankGenerator(7), 3)
+using Copulas: 𝒲₋₁, FrankGenerator
+𝒲₋₁(FrankGenerator(7), 3)
 ```
 
 For the Frank Copula, as for many classic copulas, the distribution used is known. We pull some of them from `Distributions.jl` but implement a few more, as this Logarithmic one. Another useful example are negatively-dependent Clayton copulas: 
 
 ```@example
-using Copulas: williamson_dist, ClaytonGenerator
-williamson_dist(ClaytonGenerator(-0.2), 3)
+using Copulas: 𝒲₋₁, ClaytonGenerator
+𝒲₋₁(ClaytonGenerator(-0.2), 3)
 ```
 
 for which the corresponding distribution is known but has no particular name, thus we implemented it under the `ClaytonWilliamsonDistribution` name.
@@ -208,8 +232,8 @@ for which the corresponding distribution is known but has no particular name, th
 
     We use this fraily approach for several generators, since sometimes it is faster, including e.g. the Clayton one with positive dependence:
     ```@example
-    using Copulas: williamson_dist, ClaytonGenerator
-    williamson_dist(ClaytonGenerator(10), 3)
+    using Copulas: 𝒲₋₁, ClaytonGenerator
+    𝒲₋₁(ClaytonGenerator(10), 3)
     ```
 
 
