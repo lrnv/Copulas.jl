@@ -66,7 +66,7 @@ For `params()`, it is assumed in several places that `MyCopula(d, params(C::MyCo
 
 ## 1.3 Dependence metrics
 
-Dependence measures — such as Kendall’s τ, Spearman’s ρ, and others listed in [this section](@ref dep_metrics) — are not mandatory.
+Dependence measures — such as Kendall’s τ, Spearman’s ρ, and others listed in [this section](@refdep_metrics) — are not mandatory.
 The package provides default implementations that will work with your copula out-of-the-box. 
 However, if some of them can be derived theoretically or numerically with a specific algorithm, 
 providing specific methods (with analytical forms when possible) is highly recommended.
@@ -211,7 +211,8 @@ Only fitting routines or dependence metrics need to be added if the defaults are
 
 ## 2.2 Extreme-Value copulas
 
-Bivariate Extreme-Value (EV) copulas are defined by a stable tail dependence function $\ell$ and associated pikhands dependence function A. To implement a new bivariate Extreme-Value family, define a subtype of [`Tail`](@ref) with the following methods: 
+Bivariate Extreme-Value (EV) copulas are defined by a stable tail dependence function $\ell$ and the associated **Pickands dependence function** $A$.
+To implement a new bivariate Extreme-Value family, define a subtype of [`Tail`](@ref) with the following methods:
 
 ```julia
 struct MyTail{T} <: Tail
@@ -225,25 +226,32 @@ Distributions.params(T::MyTail) = (θ = T.θ,)
 
 ### Required methods
 
-| Method      | Purpose                                                      | Required    |
-| ----------- | ------------------------------------------------------------ | ----------- |
-| `A(T, t)`   | Pickands dependence function                                 | ✅           |
-| `Distributions.params(T)` | Return parameters as a `NamedTuple`            | ✅           |
+| Method                    | Purpose                                    | Required    |
+| ------------------------- | ------------------------------------------ | ----------- |
+| `A(T, t)`                 | Pickands dependence function               | ✅           |
+| `Distributions.params(T)` | Return parameters as a `NamedTuple`        | ✅           |
+| `ℓ(T, x, y)`              | Stable tail dependence function            | ⚙️ Optional |
+| `dA(T, t)`                | Derivative of the Pickands function        | ⚙️ Optional |
+| `d²A(T, t)`               | Second derivative of the Pickands function | ⚙️ Optional |
 
-Once `A` is provided, `Copulas.jl` automatically handles the rest of the API. 
+!!! note "ℓ function"
+For Extreme-Value copulas, the `ℓ` function is mandatory only for multivariate extensions.
+For bivariate EV copulas, it is sufficient to implement the Pickands function `A`.
+
+Once `A` is provided, `Copulas.jl` automatically handles the rest of the API.
 
 !!! note "Inherited interfaces in structured families"
-    For structured copula families such as **Archimedean** and **Extreme-Value**,  
-    most of the general interface (`cdf`, `logpdf`, `rand`, `fit`, etc.) is already implemented internally in `Copulas.jl`.  
+    For structured copula families such as **Archimedean** and **Extreme-Value**,
+    most of the general interface (`cdf`, `logpdf`, `rand`, `fit`, etc.) is already implemented internally in `Copulas.jl`.
 
-    Therefore, these methods are **not mandatory** for each new subtype.  
-    Defining the corresponding *core component* — the `Generator` (for Archimedean) or the `Tail` (for Extreme-Value) —  
-    is sufficient to automatically enable the entire probability interface, fitting routines, and dependence measures.
 
-    In other words:
-    - The only **mandatory** definitions are those listed in each sub-API table (`ϕ`, `max_monotony` for Archimedean; `A` for Extreme-Value).  
-    - All other methods become **optional overrides**, recommended only when analytical or more stable forms are available.
+Therefore, these methods are **not mandatory** for each new subtype.  
+Defining the corresponding *core component* — the `Generator` (for Archimedean) or the `Tail` (for Extreme-Value) —  
+is sufficient to automatically enable the entire probability interface, fitting routines, and dependence measures.
 
+In other words:
+- The only **mandatory** definitions are those listed in each sub-API table (`ϕ`, `max_monotony` for Archimedean; `A` for Extreme-Value).  
+- All other methods become **optional overrides**, recommended only when analytical or more stable forms are available.
 
 
 
@@ -268,7 +276,7 @@ Elliptical copulas are characterized by a correlation matrix `Σ` and, optionall
 
 | Method                    | Purpose                                                | Required       |
 | ------------------------- | ------------------------------------------------------ | -------------- |
-| `U(::Type{CT})`           | Return the univariate elliptical distribution            | ✅              |
+| `U(::Type{CT})`           | Return the univariate elliptical distribution          | ✅              |
 | `N(::Type{CT})`           | Return the multivariate elliptical distribution        | ✅              |
 | `Distributions.params(C)` | Return parameters as a `NamedTuple`                    | ✅              |
 
