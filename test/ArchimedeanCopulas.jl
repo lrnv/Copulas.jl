@@ -187,3 +187,22 @@ end
     @test check_rnd(ClaytonCopula,       -1,    1,    10)
     @test check_rnd(InvGaussianCopula,    0,    log(2),  10)
 end
+
+
+@testset "Fix clayton conditionals" begin 
+
+dist = condition(ClaytonCopula(2, 7.3), 2, 0.6)
+a,b,c = cdf(dist, [0.2, 0.5, 0.8])
+
+@test a ≈ 0.00010958096560576897
+@test b ≈ 0.16963161864932144
+@test c ≈ 0.8987566352893012
+
+dist = condition(ClaytonCopula(3, 7.3), 3, 0.6951919277176142)
+d = cdf(dist, [0.2, 0.3]) 
+@test d ≈ 3.0484941754695964e-5
+
+e = cdf(dist.C, [0.2, 0.3])
+@test e ≈ 0.13034531809769517
+
+end

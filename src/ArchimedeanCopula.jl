@@ -168,13 +168,10 @@ end
 function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
     @assert length(js) == length(uⱼₛ)
     T = eltype(uⱼₛ)
-    sJ = zero(T)
-    @inbounds for u in uⱼₛ
-        sJ += ϕ⁻¹(C.G, u)
-    end
+    sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
     return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
-function ConditionalCopula(C::ArchimedeanCopula{D}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, p}
+function ConditionalCopula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, TG, p}
     return ArchimedeanCopula(D - p, TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
 SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula(length(dims), C.G)

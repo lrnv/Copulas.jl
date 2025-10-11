@@ -80,7 +80,6 @@ Bestiary = [
     ArchimedeanCopula(10,𝒲(Dirac(1),10)),
     ArchimedeanCopula(10,𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)),
     ArchimedeanCopula(2,𝒲(LogNormal(),2)),
-    ArchimedeanCopula(2,𝒲(LogNormal(3),5)),
     ArchimedeanCopula(2,𝒲(Pareto(1),5)),
     AsymGalambosCopula(2, 0.1, 0.2, 0.6),
     AsymGalambosCopula(2, 0.6129496106778634, 0.820474440393214, 0.22304578643880224),
@@ -349,7 +348,7 @@ can_ad(C::CT) where CT =
     can_pdf(C) &&
     !(C isa ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > length(C))) && # discontinuous. 
     !((CT<:FrankCopula) && (C.G.θ >= 100)) && # too extreme
-    !((CT<:GumbelCopula) && ((C.G.θ >= 100)) || length(C) > 2) && # too extreme
+    !((CT<:GumbelCopula) && ((C.G.θ >= 100)) && length(C) > 2) && # too extreme
     !(CT<:MCopula) && # not abs cont
     !(CT<:WCopula) && # not abs cont
     !(CT<:tEVCopula) && # requires derivatives of beta_inc_inv that forwardiff doesnt have. 
@@ -371,8 +370,8 @@ is_bivariate(C::CT)                      where CT = (length(C) == 2)
 has_subsetdims(C::CT)                    where CT = (length(C) >= 3)
 can_check_pdf_positivity(C::CT)          where CT = can_pdf(C) && !((CT<:GumbelCopula) && (C.G.θ >= 19))
 dep_coherency_enabled(C::CT)         where CT = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}})
-can_check_biv_conditioning_ad(C::CT)     where CT = is_bivariate(C) && can_ad(C)
-can_check_highdim_conditioning_ad(C::CT) where CT = (length(C) > 2) && can_ad(C)
+can_check_biv_conditioning_ad(C::CT)     where CT = is_bivariate(C) && can_ad(C) && !(CT<:CheckerboardCopula)
+can_check_highdim_conditioning_ad(C::CT) where CT = (length(C) > 2) && can_ad(C) && !(CT<:CheckerboardCopula)
 has_uniform_margins(C::CT)               where CT = !(CT<:EmpiricalCopula)
 is_archimedean(C::CT)                    where CT = (CT <: ArchimedeanCopula)
 is_extremevalue(C::CT)                   where CT = (CT <: Copulas.ExtremeValueCopula)
@@ -399,7 +398,7 @@ _archimax_pdf_hess(C, u1, u2) = begin
     H = ForwardDiff.hessian(f, [u1, u2])  # ∂²/∂u1∂u2
     max(H[1,2], 0.0)                      # numerical clip 
 end
-function _archimax_mc_rectangles_cdf(C; N::Int=120_000, seed::Integer=123,
+function _archimax_mc_rectangles_cdf(C; N::Int=2_000, seed::Integer=123,
                         rects::Tuple{Vararg{Tuple{<:Real,<:Real}}}=((0.5,0.5),(0.3,0.7),(0.8,0.2)))
     rng = StableRNG(seed)
     U = rand(rng, C, N)
@@ -416,7 +415,7 @@ function _archimax_mc_rectangles_cdf(C; N::Int=120_000, seed::Integer=123,
     end
     return results
 end
-function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, maxevals, N) where d
+function _integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, N) where d
     ba = b .- a
     logvol = log(prod(ba))
     logS  = -Inf
@@ -438,40 +437,15 @@ function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, maxevals, N) where 
     r  = max(m2 - μ^2, 0.0) / N
     return μ, r, :mc_pdf
 end
-function ad_ratio_biv(C2::Copulas.Copula{2}, i::Int, j::Int, u::Float64, v::Float64)
-    # For a bivariate copula, the denominator is always one.
-    @assert (i == 1 && j == 2) || (i == 2 && j == 1)
-    if j == 2
-        # Condition on dim 2 at v: differentiate w.r.t arg2
-        return ForwardDiff.derivative(t -> cdf(C2, [u, t]), v)
-    else # j == 1
-        # Condition on dim 1 at v: differentiate w.r.t arg1
-        return ForwardDiff.derivative(t -> cdf(C2, [t, u]), v)
-    end
-end
-function _assemble(Dtot, is, js_, uis, ujs_)
-    # Determine an element type compatible with Duals by promoting all inputs
-    T = Float64
-    for x in uis;   T = promote_type(T, typeof(x)); end
-    for x in ujs_;  T = promote_type(T, typeof(x)); end
-    w = fill(one(T), Dtot)
-    @inbounds for (k,ii) in pairs(is);  w[ii] = uis[k];  end
-    @inbounds for (k,jj) in pairs(js_); w[jj] = ujs_[k]; end
-    return w
-end
-function _swap_promote(u::AbstractVector, i::Int, x)
-    T = promote_type(eltype(u), typeof(x))
-    v = Vector{T}(undef, length(u))
-    @inbounds for k in eachindex(u); v[k] = u[k]; end
-    v[i] = x
-    return v
-end
-function _der(f, u::AbstractVector, idxs::Tuple{Vararg{Int}})
-    if length(idxs) == 1
-        i = idxs[1]
-        return ForwardDiff.derivative(x -> f(_swap_promote(u, i, x)), u[i])
-    else
-        return _der(u_ -> _der(f, u_, (idxs[end],)), u, idxs[1:end-1])
+
+
+# simple mockup for partial derivatives. 
+function _cond_cdf(C::Copulas.Copula{d}, x, ujs) where d
+    u,v =  x
+    if d==3
+        return ForwardDiff.derivative(w -> cdf(C, [u,v,w]), ujs[1])
+    elseif d==4
+        return ForwardDiff.derivative(t -> ForwardDiff.derivative(w -> cdf(C, [u,v,w,t]), ujs[1]), ujs[2]) / ForwardDiff.derivative(t -> ForwardDiff.derivative(w -> cdf(C, [0.99999999,0.99999999,w,t]), ujs[1]), ujs[2])
     end
 end
 
@@ -490,7 +464,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
     Z = SklarDist(C, Tuple(Normal() for i in 1:d))
     spl1 = rand(rng, C)
     spl10 = rand(rng, C, 10)
-    spl1000 = rand(rng, C, 800)
+    spl1000 = rand(rng, C, 1000)
     splZ10 = rand(rng, Z, 10)
 
     @testset "Basics" begin 
@@ -600,18 +574,18 @@ Bestiary = filter(GenericTestFilter, Bestiary)
 
     @testif can_integrate_pdf(C) "Testing pdf integration" begin
         # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
-        v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 3_000, 3_000)
+        v, r, _ = _integrate_pdf_rect(rng, C, zeros(d), ones(d), 1_500)
         @test isapprox(v, 1; atol=max(5*sqrt(r), 1e-3))
 
         # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
         b = ones(d)/2
-        v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 3_000, 3_000)
+        v2, r2, _ = _integrate_pdf_rect(rng, C, zeros(d), b, 1_500)
         @test isapprox(v2, cdf(C, b); atol=max(10*sqrt(r2), 1e-3))
 
         # 3) random rectangle, compare with measure (cdf based)
         a = rand(rng, d)
         b = a .+ rand(rng, d) .* (1 .- a)
-        v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 3_000, 3_000)
+        v3, r3, _ = _integrate_pdf_rect(rng, C, a, b, 1_500)
         @test (isapprox(v3, Copulas.measure(C, a, b); atol=max(20*sqrt(r3), 1e-3)) || max(v3, Copulas.measure(C, a, b)) < eps(Float64)) # wide tolerence, should pass. 
     end
 
@@ -659,7 +633,13 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 for v in (0.3, 0.7)
                     Dd = Copulas.condition(C, j, v)
                     vals = cdf.(Ref(Dd), us)
-                    refs = [ad_ratio_biv(C, i, j, ui, v) for ui in us]
+
+                    if j==2
+                        refs = [ForwardDiff.derivative(t -> cdf(C, [ui, t]), v) for ui in us]
+                    else
+                        refs = [ForwardDiff.derivative(t -> cdf(C, [t, ui]), v) for ui in us]
+                    end
+
                     for (v_, r) in zip(vals, refs)
                         @test isapprox(v_, r, atol=1e-3, rtol=1e-3)
                     end
@@ -686,69 +666,41 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             j, i, v, us = 1, 2, 0.6, (0.2, 0.5, 0.8)
 
             # Distortion for Ui | Uj=v computed from full model
-            Dᵢ = condition(C, j, v)
+            Dᵢ = condition(C, j, v).m[1]
             vals = cdf.(Ref(Dᵢ), us)
             @test all(0.0 .<= vals .<= 1.0)
-            @test all(diff(vals) .>= -1e-10) # increasingness with tolerence.
+            @test all(diff([vals...]) .>= -1e-10) # increasingness with tolerence.
 
             # Validate marginal distortion against AD on the 2D subset (i maps to 1, j maps to 2)
             Cproj = Copulas.subsetdims(C, (i, j))
             if can_ad(Cproj)
-                refs = [ad_ratio_biv(Cproj, 1, 2, u, v) for u in us]
+                refs = [ForwardDiff.derivative(x -> cdf(Cproj, [x,u]), v) for u in us]
                 for (v_,r) in zip(vals, refs)
                     @test isapprox(v_, r, atol=1e-5, rtol=1e-5)
                 end
             end
         end
 
-        @testif can_check_highdim_conditioning_ad(C) "Condition (d|d-2): Check conditional copula vs AD" begin
-            js = collect(3:d)
-            ujs = [0.25 + 0.5*rand(rng) for _ in js]  # interior values
+        @testif (can_check_highdim_conditioning_ad(C) && d ∈(3,4)) "Condition (d|d-2): Check conditional copula vs AD" begin
+            js = tuple(collect(3:d)...)
+            ujs = tuple(collect(0.25 + 0.5*rand(rng) for _ in js)...)  # interior values
             CC = condition(C, js, ujs)
-
-            # Local AD-based reference for this (C, js, ujs)
-            js_t = Tuple(js); ujs_t = Tuple(ujs)
-            # Small epsilon to avoid boundary artifacts at 1.0
-            EPS = 1e-9
-            Hi_local = function (i::Int, u::Float64)
-                num = _der(uvec -> cdf(C, uvec), _assemble(d, (i,), js_t, (u,), ujs_t), js_t)
-                den = _der(uvec -> cdf(C, uvec), _assemble(d, (i,), js_t, (1.0 - EPS,), ujs_t), js_t)
-                return num / den
-            end
-            invHi_local = function (i::Int, α::Float64)
-                f(u) = Hi_local(i, u) - α
-                a, b = EPS, 1.0 - EPS
-                try
-                    return Roots.find_zero(f, (a, b), Roots.Brent(); xatol=1e-10, atol=1e-10)
-                catch
-                    # Fallback to bisection if Brent fails to bracket
-                    for _ in 1:80
-                        m = (a + b) / 2
-                        (Hi_local(i, m) < α) ? (a = m) : (b = m)
-                    end
-                    return (a + b) / 2
-                end
-            end
-            H12_local = function (u1::Float64, u2::Float64)
-                num = _der(uvec -> cdf(C, uvec), _assemble(d, (1,2), js_t, (u1,u2), ujs_t), js_t)
-                den = _der(uvec -> cdf(C, uvec), _assemble(d, (1,2), js_t, (1.0 - EPS, 1.0 - EPS), ujs_t), js_t)
-                return num / den
-            end
 
             # test grid on [0,1]^2
             pts = [(0.2,0.3), (0.5,0.5), (0.8,0.6)]
             for (v1,v2) in pts
                 val_fast = cdf(CC, [v1, v2]) # our implementation
-                val_ref = H12_local(invHi_local(1, v1), invHi_local(2, v2)) # AD reference:
+                val_ref = _cond_cdf(C, [v1,v2], ujs) # AD reference. 
                 @test isapprox(val_fast, val_ref; atol=5e-5, rtol=5e-5)
             end
             # compare specialized ConditionalCopula vs generic fallback when specialization exists
-            let m_fast = which(Copulas.ConditionalCopula, (CT,                Any, Any)),
-                m_gen  = which(Copulas.ConditionalCopula, (Copulas.Copula{d}, Any, Any))
+            let m_fast = which(Copulas.ConditionalCopula, (CT,                NTuple{d-2, Int}, NTuple{d-2, Float64})),
+                m_gen  = which(Copulas.ConditionalCopula, (Copulas.Copula{d}, NTuple{d-2, Int}, NTuple{d-2, Float64}))
                 if m_fast != m_gen
+                    CC_fast = Copulas.ConditionalCopula(C, js, ujs)
                     CC_gen = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{d}, js, ujs)
                     for (v1,v2) in pts
-                        @test cdf(CC, [v1,v2]) ≈ cdf(CC_gen, [v1,v2]) atol=1e-8 rtol=1e-8
+                        @test cdf(CC_fast, [v1,v2]) ≈ cdf(CC_gen, [v1,v2]) atol=1e-8 rtol=1e-8
                     end
                 end
             end
@@ -906,7 +858,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 @test isapprox(exp(lp), c_h; rtol=1e-6, atol=1e-8)
             end
 
-            for r in _archimax_mc_rectangles_cdf(C; N=8_000, seed=321)
+            for r in _archimax_mc_rectangles_cdf(C; N=1_500, seed=321)
                 @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
             end
     end

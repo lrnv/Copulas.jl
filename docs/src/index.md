@@ -156,8 +156,8 @@ You can subset the dimensions of a model through `subsetdims()`, and you can con
 ```@example 1
 S23 = subsetdims(C2, (2,3))
 StatsBase.corkendall(S23)
-Dj  = condition(C2, 2, 0.3)  # distortion of U₁ | U₂ = 0.3 (d=2)
-Distributions.cdf(Dj, 0.95)
+Dj  = condition(C2, 2, 0.3)  # Distributions of (U₁, U₃) | U₂ = 0.3 (d=2)
+Distributions.cdf(Dj, [0.95, 0.80])
 Dc  = condition(D, (2,3), (0.3, 0.2))
 rand(Dc, 2)
 ```
