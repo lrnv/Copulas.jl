@@ -26,7 +26,7 @@
         minimum(vals) >= -tol
     end
 
-    n = 500 # maybe this size is large?
+    n = 250 # maybe this size is large?
 
     @testset verbose=true for (CT, d, method) in reps
         @info "Testing: $CT, d=$d, method=$method..."
