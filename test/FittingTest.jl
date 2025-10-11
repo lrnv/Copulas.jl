@@ -1,5 +1,5 @@
 
-@testset "Fitting + vcov + StatsBase interfaces" begin
+@testset verbose=true "Fitting + vcov + StatsBase interfaces" begin
     rng = StableRNG(2025)
     function _flatten_params(p::NamedTuple)
         if haskey(p, :Σ)
@@ -44,7 +44,7 @@
 
     n = 500 # maybe this size is large?
 
-    for (CT, d, method) in reps
+    @testset verbose=true for (CT, d, method) in reps
         @info "Testing: $CT, d=$d, method=$method..."
         C0 = Copulas._example(CT, d)
         true_θ = _flatten_params(Distributions.params(C0))
