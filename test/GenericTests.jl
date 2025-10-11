@@ -415,7 +415,7 @@ function _archimax_mc_rectangles_cdf(C; N::Int=2_000, seed::Integer=123,
     end
     return results
 end
-function integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, N) where d
+function _integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, N) where d
     ba = b .- a
     logvol = log(prod(ba))
     logS  = -Inf
@@ -440,13 +440,8 @@ end
 function ad_ratio_biv(C2::Copulas.Copula{2}, i::Int, j::Int, u::Float64, v::Float64)
     # For a bivariate copula, the denominator is always one.
     @assert (i == 1 && j == 2) || (i == 2 && j == 1)
-    if j == 2
-        # Condition on dim 2 at v: differentiate w.r.t arg2
-        return ForwardDiff.derivative(t -> cdf(C2, [u, t]), v)
-    else # j == 1
-        # Condition on dim 1 at v: differentiate w.r.t arg1
-        return ForwardDiff.derivative(t -> cdf(C2, [t, u]), v)
-    end
+    j == 2 && return ForwardDiff.derivative(t -> cdf(C2, [u, t]), v)
+    return ForwardDiff.derivative(t -> cdf(C2, [t, u]), v)
 end
 function _assemble(Dtot, is, js_, uis, ujs_)
     # Determine an element type compatible with Duals by promoting all inputs
@@ -489,7 +484,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
     Z = SklarDist(C, Tuple(Normal() for i in 1:d))
     spl1 = rand(rng, C)
     spl10 = rand(rng, C, 10)
-    spl1000 = rand(rng, C, 800)
+    spl1000 = rand(rng, C, 1000)
     splZ10 = rand(rng, Z, 10)
 
     @testset "Basics" begin 
@@ -599,18 +594,18 @@ Bestiary = filter(GenericTestFilter, Bestiary)
 
     @testif can_integrate_pdf(C) "Testing pdf integration" begin
         # 1) ∫_{[0,1]^d} pdf = 1  (hcubature if d≤3; si no, MC)
-        v, r, _ = integrate_pdf_rect(rng, C, zeros(d), ones(d), 1_500)
+        v, r, _ = _integrate_pdf_rect(rng, C, zeros(d), ones(d), 1_500)
         @test isapprox(v, 1; atol=max(5*sqrt(r), 1e-3))
 
         # 2) ∫_{[0,0.5]^d} pdf = C(0.5,…,0.5)
         b = ones(d)/2
-        v2, r2, _ = integrate_pdf_rect(rng, C, zeros(d), b, 1_500)
+        v2, r2, _ = _integrate_pdf_rect(rng, C, zeros(d), b, 1_500)
         @test isapprox(v2, cdf(C, b); atol=max(10*sqrt(r2), 1e-3))
 
         # 3) random rectangle, compare with measure (cdf based)
         a = rand(rng, d)
         b = a .+ rand(rng, d) .* (1 .- a)
-        v3, r3, _ = integrate_pdf_rect(rng, C, a, b, 1_500)
+        v3, r3, _ = _integrate_pdf_rect(rng, C, a, b, 1_500)
         @test (isapprox(v3, Copulas.measure(C, a, b); atol=max(20*sqrt(r3), 1e-3)) || max(v3, Copulas.measure(C, a, b)) < eps(Float64)) # wide tolerence, should pass. 
     end
 
