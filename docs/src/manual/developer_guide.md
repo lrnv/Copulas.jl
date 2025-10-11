@@ -329,22 +329,23 @@ using Copulas, Distributions, Random
 
 struct MardiaCopula{P} <: Copulas.Copula{2}
     θ::P
-    function MardiaCopula(θ)
+    function MardiaCopula(d, θ)
+        @assert d ==2
         if !(-1 <= θ <= 1)
             throw(ArgumentError("θ must be in [-1,1]"))
         elseif θ == 0
-            return IndependentCopula()
+            return IndependentCopula(2)
         elseif θ == 1
-            return MCopula()
+            return MCopula(2)
         elseif θ == -1
-            return WCopula()
+            return WCopula(2)
         else
             return new{typeof(θ)}(θ)
         end
     end
 end
 Distributions.params(C::MardiaCopula) = (; θ = C.θ,)
-function Distributions.cdf(C::MardiaCopula, u)
+function Copulas._cdf(C::MardiaCopula, u)
     # The joint CDF follows Mardia’s formulation:
     θ = C.θ
     u1, u2 = u
@@ -386,8 +387,8 @@ end
 
 ```@example generic_copula_example
 Random.seed!(123)
-C = MardiaCopula(0.8)
-U = rand(C, 10)
+C = MardiaCopula(2, 0.8)
+U = rand(C, 2000)
 ```
 
 The copula now works seamlessly with all standard methods:
@@ -405,9 +406,10 @@ To make the copula compatible with `Distributions.fit` and the unified `CopulaMo
 we provide a minimal `_fit` definition using a dependence-based measure — in this case, **Gini’s γ**.
 
 ```@example generic_copula_example
-_available_fitting_methods(::Type{<:MardiaCopula}, d::Int) = (:igamma,)
 
-function _fit(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:igamma})
+Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d::Int) = (:igamma,)
+
+function Copulas._fit(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:igamma})
     γ̂ = Copulas.corgini(U')[1, 2]
     θ  = sign(γ̂) * abs(γ̂)^(1/3)
     θ  = clamp(θ, -1.0, 1.0)
@@ -422,14 +424,14 @@ while maintaining compatibility with all higher-level fitting utilities.
 Remark that we could also opt-in the default moment matching methods, but for that we need to specify parameter relaxations through the following: 
 
 ```julia
-_unbound_params(::Type{MardiaCopula}, d, params) = [atanh(clamp(params.θ, -1 + eps(), 1 - eps()))]
-_rebound_params(::Type{MardiaCopula}, d, α) = (; θ = tanh(α[1]) )
-_example(::Type{<:MardiaCopula}, d::Int) = MardiaCopula(0.5)
+Copulas._unbound_params(::Type{MardiaCopula}, d, params) = [atanh(clamp(params.θ, -1 + eps(), 1 - eps()))]
+Copulas._rebound_params(::Type{MardiaCopula}, d, α) = (; θ = tanh(α[1]) )
+Copulas._example(::Type{<:MardiaCopula}, d::Int) = MardiaCopula(0.5)
 ```
 
 And we need to change our availiable methods: 
 ```julia
-_available_fitting_methods(::Type{<:MardiaCopula}, d::Int) = (:igamma, :itau, :irho, :ibeta)
+Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d::Int) = (:igamma, :itau, :irho, :ibeta)
 ```
 
 
@@ -440,7 +442,7 @@ _available_fitting_methods(::Type{<:MardiaCopula}, d::Int) = (:igamma, :itau, :i
 using StatsBase
 
 # Short syntax, leveraging the generics: 
-println(fit(MardiaCopula, U, :itau))
+println(fit(MardiaCopula, U, :ibeta))
 
 # Long syntax, using our new method: 
 M = fit(CopulaModel, MardiaCopula, U; method = :igamma, vcov = false)
@@ -459,7 +461,7 @@ println(M)
 
 The `Nelsen2Copula` is a simple **Archimedean** copula defined by the generator
 
-$$\varphi(t) = (t^{-θ} - 1) / θ, \quad θ > 0.$$
+$$\varphi(t) = (1 + θ * t)^{\frac{-1}{θ}}, \quad θ > 0.$$
 
 This example demonstrates how to define a new Archimedean copula family using the `Generator` sub-API.
 Once the generator is defined, all the usual functions (`cdf`, `pdf`, `rand`, `fit`, etc.)
@@ -470,9 +472,7 @@ are automatically inherited from the generic `ArchimedeanCopula` implementation.
 Every Archimedean copula in `Copulas.jl` is built from a subtype of `Generator` that defines
 the core functional behavior of the family.
 
-```@example archimedean_copula_example
-using Copulas, Distributions, Random
-
+```@example generic_copula_example
 struct Nelsen2Generator{T} <: Copulas.AbstractUnivariateGenerator # subtype of Generator
     θ::T
     function Nelsen2Generator(θ)
@@ -490,12 +490,12 @@ struct Nelsen2Generator{T} <: Copulas.AbstractUnivariateGenerator # subtype of G
 end
 
 # Validity and parameters
-max_monotony(G::Nelsen2Generator) = Inf
+Copulas.max_monotony(G::Nelsen2Generator) = Inf
 Distributions.params(G::Nelsen2Generator) = (; θ = G.θ,)
 
 # Generator and its inverse
-ϕ(G::Nelsen2Generator, t) = (t^(-G.θ) - 1) / G.θ
-ϕ⁻¹(G::Nelsen2Generator, s) = (1 + G.θ * s)^(-1 / G.θ) # This is not mandatory
+Copulas.ϕ(G::Nelsen2Generator, s) = (1 + G.θ * s)^(-1 / G.θ)
+Copulas.ϕ⁻¹(G::Nelsen2Generator, t) = (t^(-G.θ) - 1) / G.θ # This is not mandatory
 
 # Nice alias: 
 const Nelsen2Copula{d, T} = ArchimedeanCopula{d, Nelsen2Generator{T}}
@@ -505,13 +505,13 @@ const Nelsen2Copula{d, T} = ArchimedeanCopula{d, Nelsen2Generator{T}}
 
 With our alias, we can directly construct the copula through: 
 
-```@example archimedean_copula_example
+```@example generic_copula_example
 C = Nelsen2Copula(2, 3.5)
 ```
 
 The resulting object already supports all standard functionality from the general API:
 
-```@example archimedean_copula_example
+```@example generic_copula_example
 u = [0.3, 0.8]
 cdf(C, u)
 pdf(C, u)
@@ -524,30 +524,27 @@ no explicit `_fit` definition is needed unless you wish to override the defaults
 
 To verify:
 
-```@example archimedean_copula_example
-_unbound_params(::Type{<:Nelsen2Generator}, d, θ) = [log(θ.θ - 1)]
-_rebound_params(::Type{<:Nelsen2Generator}, d, α) = (; θ = exp(α[1]) + 1)
-_available_fitting_methods(::Type{Nelsen2Copula}, d) = (:igamma, :mle)
-_example(::Type{Nelsen2Copula}, d) = Nelsen2Copula(d, 2.5)
-_θ_bounds(::Type{<:Nelsen2Generator}, d) = (1, Inf) # specific to the fitting methods of one-parameter archimedean copulas. 
-
+```@example generic_copula_example
+Copulas._unbound_params(::Type{<:Nelsen2Generator}, d, θ) = [log(θ.θ - 1)]
+Copulas._rebound_params(::Type{<:Nelsen2Generator}, d, α) = (; θ = exp(α[1]) + 1)
+Copulas._available_fitting_methods(::Type{Nelsen2Copula}, d) = (:ibeta, :mle)
+Copulas._example(::Type{Nelsen2Copula}, d) = Nelsen2Copula(d, 2.5)
+Copulas._θ_bounds(::Type{<:Nelsen2Generator}, d) = (1, Inf) # specific to the fitting methods of one-parameter archimedean copulas. 
 ```
 
 ### Example: quick γ-based fit
 
-```@example archimedean_copula_example
-using Optim
+```@example generic_copula_example
 Random.seed!(123)
 U = rand(C, 250)
-Fit = fit(Nelsen2Copula, U; method=:igamma) # igamma is the default method
+Fit = fit(Nelsen2Copula, U; method=:ibeta) # igamma is the default method
 Fit
 ```
 
 For completeness, you can also use the model-based interface using the `:mle` default fit
 for one-parameter Archimedean copulas:
 
-```@example archimedean_copula_example
-using Optim
+```@example generic_copula_example
 FitModel = fit(CopulaModel, Nelsen2Copula, U; method=:mle, start = 1.5)
 FitModel
 ```
@@ -572,8 +569,8 @@ $$A(t) = \bigl(t^{θ} + (1-t)^{θ}\bigr)^{1/θ}, \quad θ \ge 1.$$
 All bivariate EV copulas in `Copulas.jl` are defined via a subtype of `Tail`,
 which specifies the Pickands function `A(t)` and its parameterization.
 
-```@example extremevalue_copula_example
-using Copulas, Distributions, Random, LogExpFunctions
+```@example generic_copula_example
+using LogExpFunctions
 
 struct GumbelTail{T} <: Copulas.AbstractUnivariateTail2 # subtype of Tail
     θ::T
@@ -587,7 +584,7 @@ struct GumbelTail{T} <: Copulas.AbstractUnivariateTail2 # subtype of Tail
 end
 
 # Pickands dependence function
-function A(tail::GumbelTail, t::Real)
+function Copulas.A(tail::GumbelTail, t::Real)
     θ = tail.θ
     logB = LogExpFunctions.logaddexp(θ * log(t), θ * log1p(-t))
     return exp(logB / θ)
@@ -595,24 +592,24 @@ end
 
 # Parameters and bounds
 Distributions.params(tail::GumbelTail) = (; θ = tail.θ,)
-_unbound_params(::Type{<:GumbelTail}, d, θ) = [log(θ.θ - 1)]      # θ ≥ 1
-_rebound_params(::Type{<:GumbelTail}, d, α) = (; θ = exp(α[1]) + 1)
-_θ_bounds(::Type{<:GumbelTail}, d) = (1, Inf)
+Copulas._unbound_params(::Type{<:GumbelTail}, d, θ) = [log(θ.θ - 1)]      # θ ≥ 1
+Copulas._rebound_params(::Type{<:GumbelTail}, d, α) = (; θ = exp(α[1]) + 1)
+Copulas._θ_bounds(::Type{<:GumbelTail}, d) = (1, Inf)
 ```
 
 ### Building the EV copula
 
 Once the tail is defined, constructing the copula is immediate:
 
-```@example extremevalue_copula_example
-const GumbelEVCopula{T} = ExtremeValueCopula{2, GumbelTail{T}}
+```@example generic_copula_example
+const GumbelEVCopula{T} = Copulas.ExtremeValueCopula{2, GumbelTail{T}}
 C = GumbelEVCopula(2, 2.5)
 ```
 
 All standard API methods (`cdf`, `pdf`, `rand`, `fit`, etc.) are automatically inherited
 from `ExtremeValueCopula`, with internal numerical integration based on the Pickands function.
 
-```@example extremevalue_copula_example
+```@example generic_copula_example
 u = [0.4, 0.7]
 cdf(C, u)
 pdf(C, u)
@@ -625,9 +622,9 @@ since likelihood evaluation involves non-smooth densities.
 
 For the `GumbelEVCopula`, we define the available methods and optional parameter reparameterizations:
 
-```@example extremevalue_copula_example
-_available_fitting_methods(::Type{GumbelEVCopula}, d) = (:iupper, :mle)
-_example(::Type{GumbelEVCopula}, d) = GumbelEVCopula(2, 2.5)
+```@example generic_copula_example
+Copulas._available_fitting_methods(::Type{GumbelEVCopula}, d) = (:iupper, :mle)
+Copulas._example(::Type{GumbelEVCopula}, d) = GumbelEVCopula(2, 2.5)
 ```
 
 #### Closed-form estimator from upper-tail dependence
@@ -642,8 +639,8 @@ $$\hat{θ} = 1 / \log_2(2 - \hat{\lambda}_U).$$
 
 Hence, the `:iupper` method can be implemented as:
 
-```@example extremevalue_copula_example
-function _fit(::Type{CT}, U, ::Val{:iupper}) where {CT<:GumbelEVCopula}
+```@example generic_copula_example
+function Copulas._fit(::Type{CT}, U, ::Val{:iupper}) where {CT<:GumbelEVCopula}
     d = size(U, 1)
     λ̂ = Copulas.λᵤ(U)                # empirical upper-tail dependence
     θ  = 1 / log2(2 - λ̂)
@@ -655,14 +652,12 @@ end
 
 ### Example: sampling and fitting
 
-```@example extremevalue_copula_example
+```@example generic_copula_example
 Random.seed!(123)
 U = rand(GumbelEVCopula(2, 4.5), 300)
 M = fit(CopulaModel, GumbelEVCopula, U)
 M
 ```
-
-
 
 
 !!! note "Automatic inheritance"
