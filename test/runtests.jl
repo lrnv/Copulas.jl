@@ -14,7 +14,7 @@ testfiles = [
     "FittingTest",
     "MiscelaneousCopulas",
     "SklarDist",
-    # "GenericTests",
+    "GenericTests",
 ]
 
 # You can override the definition of this GenericTestFilter if you want. 
