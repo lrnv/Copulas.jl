@@ -22,7 +22,7 @@ This section summarizes how to **fit** copulas (and Sklar distributions) in `Cop
 ### Copula only (object)
 
 ```@example fitting_interface
-using Copulas, Random, StatsBase, Distributions
+using Copulas, Random, StatsBase, Distributions, Plots
 Random.seed!(123) # hide
 Ctrue = GumbelCopula(2, 3.0)
 U = rand(Ctrue, 2_000)
