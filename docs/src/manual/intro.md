@@ -242,8 +242,8 @@ rand(D13, 2)
 On the uniform scale (copula): distortions and conditional copulas are provided:
 
 ```@example api
-Dj = condition(C2, 2, [0.3,0.4])   # Distributions of (U₁, U₃) | U₂ = 0.3 (d=2)
-Distributions.cdf(Dj, 0.95)
+Dj = condition(C2, 2, 0.3)   # Distributions of (U₁, U₃) | U₂ = 0.3 (d=2)
+Distributions.cdf(Dj, [0.95,0.80])
 ```
 
 On the original scale (Sklar distribution):
