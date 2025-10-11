@@ -328,7 +328,7 @@ It serves as a minimal example of how to implement a copula *from scratch* witho
 ```@example generic_copula_example
 using Copulas, Distributions, Random
 
-struct MardiaCopula{P} <: Copula{2}
+struct MardiaCopula{P} <: Copulas.Copula{2}
     θ::P
     function MardiaCopula(θ)
         if !(-1 <= θ <= 1)
@@ -461,7 +461,7 @@ the core functional behavior of the family.
 ```@example archimedean_copula_example
 using Copulas, Distributions, Random
 
-struct Nelsen2Generator{T} <: AbstractUnivariateGenerator # subtype of Generator
+struct Nelsen2Generator{T} <: Copulas.AbstractUnivariateGenerator # subtype of Generator
     θ::T
     function Nelsen2Generator(θ)
         if θ < 1
@@ -585,7 +585,7 @@ which specifies the Pickands function `A(t)` and its parameterization.
 ```@example extremevalue_copula_example
 using Copulas, Distributions, Random, LogExpFunctions
 
-struct GumbelTail{T} <: AbstractUnivariateTail2 # subtype of Tail2
+struct GumbelTail{T} <: Copulas.AbstractUnivariateTail2 # subtype of Tail2
     θ::T
     function GumbelTail(θ)
         !(1 <= θ) && throw(ArgumentError("θ must be in [1, ∞)"))
@@ -718,6 +718,7 @@ Once your copula implements the required methods, it becomes automatically compa
 Example:
 
 ```@example extremevalue_copula_example
+using StatsBase
 aic(M)
 bic(M)
 Copulas.aicc(M)
