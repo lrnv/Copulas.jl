@@ -6,3 +6,6 @@ Manifest.toml
 .vscode/*
 docs/node_modules/**
 docs/package-lock.json
+/.benchmarkci
+/benchmark/*.json
+!benchmark/Manifest.toml
