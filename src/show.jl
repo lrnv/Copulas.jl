@@ -16,19 +16,19 @@ end
 function Base.show(io::IO, C::ArchimaxCopula)
     print(io, "$(typeof(C))$(Distributions.params(C))")
 end
-function Base.show(io::IO, C::ArchimedeanCopula{d, WilliamsonGenerator{d2, TX}}) where {d, d2, TX}
-    print(io, "ArchimedeanCopula($d, i𝒲($(C.G.X), $d2))")
+function Base.show(io::IO, C::ArchimedeanCopula{d, WilliamsonGenerator{TX, d2}}) where {d, d2, TX}
+    print(io, "ArchimedeanCopula($d, 𝒲($(C.G.X), $d2))")
 end
 function Base.show(io::IO, C::EllipticalCopula)
     print(io, "$(typeof(C))(Σ = $(C.Σ)))")
 end
-function Base.show(io::IO, G::WilliamsonGenerator{d, TX}) where {d, TX}
-    print(io, "i𝒲($(G.X), $(d))")
+function Base.show(io::IO, G::WilliamsonGenerator{TX, d}) where {d, TX}
+    print(io, "𝒲($(G.X), $(d))")
 end
-function Base.show(io::IO, C::ArchimedeanCopula{d, <:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}}) where {d, d2}
+function Base.show(io::IO, C::ArchimedeanCopula{d, <:WilliamsonGenerator{<:Distributions.DiscreteNonParametric, d2}}) where {d, d2}
     print(io, "ArchimedeanCopula($d, EmpiricalGenerator$((d2, length(Distributions.support(C.G.X)))))")
 end
-function Base.show(io::IO, G::WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}) where {d2}
+function Base.show(io::IO, G::WilliamsonGenerator{<:Distributions.DiscreteNonParametric, d2}) where {d2}
     print(io, "EmpiricalGenerator$((d2, length(Distributions.support(G.X))))")
 end
 function Base.show(io::IO, C::SubsetCopula)

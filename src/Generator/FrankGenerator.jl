@@ -53,7 +53,7 @@ function ϕ⁽ᵏ⁾(G::FrankGenerator, k::Int, t)
     return (-1)^k * (1 / G.θ) * PolyLog.reli(-(k - 1), -expm1(-G.θ) * exp(-t))
 end
 ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
-williamson_dist(G::FrankGenerator, d::Int) = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), d) : 𝒲₋₁(ϕ(G), d)
+𝒲₋₁(G::FrankGenerator, d::Int) = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), d) : @invoke 𝒲₋₁(G::Generator, d)
 frailty(G::FrankGenerator) = G.θ > 0 ? Logarithmic(-G.θ) : throw("The frank copula has no frailty when θ < 0")
 
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]

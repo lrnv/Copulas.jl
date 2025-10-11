@@ -77,11 +77,11 @@ Bestiary = [
     ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.HuslerReissTail(1.8)),
     ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.LogTail(1.5)),
     ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.LogTail(2.0)),
-    ArchimedeanCopula(10,i𝒲(Dirac(1),10)),
-    ArchimedeanCopula(10,i𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)),
-    ArchimedeanCopula(2,i𝒲(LogNormal(),2)),
-    ArchimedeanCopula(2,i𝒲(LogNormal(3),5)),
-    ArchimedeanCopula(2,i𝒲(Pareto(1),5)),
+    ArchimedeanCopula(10,𝒲(Dirac(1),10)),
+    ArchimedeanCopula(10,𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)),
+    ArchimedeanCopula(2,𝒲(LogNormal(),2)),
+    ArchimedeanCopula(2,𝒲(LogNormal(3),5)),
+    ArchimedeanCopula(2,𝒲(Pareto(1),5)),
     AsymGalambosCopula(2, 0.1, 0.2, 0.6),
     AsymGalambosCopula(2, 0.6129496106778634, 0.820474440393214, 0.22304578643880224),
     AsymGalambosCopula(2, 10+5*0.3, 1.0, 1.0),
@@ -829,12 +829,12 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         @testset "Kendall-Radial coherency test" begin
             # On radial-level: 
             R1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
-            R2 = rand(rng,Copulas.williamson_dist(C.G, d),1000)
+            R2 = rand(rng,Copulas.𝒲₋₁(C.G, d),1000)
             @test pvalue(ApproximateTwoSampleKSTest(R1,R2)) > 0.005
 
             # On kendall-level: 
             U1 = Distributions.cdf(C, spl1000)
-            U2 = Copulas.ϕ.(Ref(C.G), rand(rng,Copulas.williamson_dist(C.G, d),1000))
+            U2 = Copulas.ϕ.(Ref(C.G), rand(rng,Copulas.𝒲₋₁(C.G, d),1000))
             @test pvalue(ApproximateTwoSampleKSTest(U1, U2)) > 0.005
         end
     end
