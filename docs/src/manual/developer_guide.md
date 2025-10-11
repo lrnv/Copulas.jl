@@ -413,7 +413,7 @@ function Copulas._fit(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:igamma})
     γ̂ = Copulas.corgini(U')[1, 2]
     θ  = sign(γ̂) * abs(γ̂)^(1/3)
     θ  = clamp(θ, -1.0, 1.0)
-    Ĉ = MardiaCopula(θ)
+    Ĉ = MardiaCopula(2, θ)
     return Ĉ, (; θ̂ = (; θ = θ), γ̂ = γ̂, method = :igamma)
 end
 ```
@@ -426,7 +426,7 @@ Remark that we could also opt-in the default moment matching methods, but for th
 ```@example generic_copula_example
 Copulas._unbound_params(::Type{MardiaCopula}, d, params) = [atanh(clamp(params.θ, -1 + eps(), 1 - eps()))]
 Copulas._rebound_params(::Type{MardiaCopula}, d, α) = (; θ = tanh(α[1]) )
-Copulas._example(::Type{<:MardiaCopula}, d::Int) = MardiaCopula(0.5)
+Copulas._example(::Type{<:MardiaCopula}, d::Int) = MardiaCopula(2, 0.5)
 ```
 
 And we need to change our availiable methods: 
