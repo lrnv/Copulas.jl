@@ -242,7 +242,7 @@ rand(D13, 2)
 On the uniform scale (copula): distortions and conditional copulas are provided:
 
 ```@example api
-Dj = condition(C2, 2, 0.3)   # Distortion of U₁|U₂=0.3 when d=2
+Dj = condition(C2, 2, [0.3,0.4])   # Distributions of (U₁, U₃) | U₂ = 0.3 (d=2)
 Distributions.cdf(Dj, 0.95)
 ```
 
