@@ -66,7 +66,7 @@ For `params()`, it is assumed in several places that `MyCopula(d, params(C::MyCo
 
 ## 1.3 Dependence metrics
 
-Dependence measures — such as Kendall’s τ, Spearman’s ρ, and others listed in [this section](@refdep_metrics) — are not mandatory.
+Dependence measures — such as Kendall’s τ, Spearman’s ρ, and others listed in [this section](@ref dep_metrics) — are not mandatory.
 The package provides default implementations that will work with your copula out-of-the-box. 
 However, if some of them can be derived theoretically or numerically with a specific algorithm, 
 providing specific methods (with analytical forms when possible) is highly recommended.
@@ -678,9 +678,8 @@ M
     can provide fast and numerically stable estimators (e.g., the `:iupper` method shown above),
     which can complement or replace likelihood-based methods.
 
-```
-
 !!! tip "Recommended practice"
     EV copulas usually lack smooth closed-form densities.
     Analytical forms are optional but highly recommended to improve numerical stability.
     Otherwise, `Copulas.jl` will fall back to numerical integration based on the Pickands function.
+
