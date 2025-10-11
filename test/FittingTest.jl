@@ -31,7 +31,7 @@
     @testset verbose=true for (CT, d, method) in reps
         @info "Testing: $CT, d=$d, method=$method..."
         C0 = Copulas._example(CT, d)
-        true_θ = Copulas._flatten_params(Distributions.params(C0))
+        true_θ = Copulas._flatten_params(Distributions.params(C0))[2]
         U  = rand(rng, C0, n)
         M  = fit(CopulaModel, CT, U; method=method, vcov=true, derived_measures=false)
 
