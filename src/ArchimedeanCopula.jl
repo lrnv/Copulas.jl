@@ -70,7 +70,7 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, x::AbstractVector{T}) where {T<:Real, d, TG}
     # By default, we use the Williamson sampling.
     Random.randexp!(rng,x)
-    r = rand(rng, williamson_dist(C.G, d))
+    r = rand(rng, 𝒲₋₁(C.G, d))
     sx = sum(x)
     for i in 1:length(C)
         x[i] = ϕ(C.G,r * x[i]/sx)
@@ -102,7 +102,7 @@ function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
         return τ(C.G)
     else
-        # 4*Distributions.expectation(r -> ϕ(C.G,r), williamson_dist(C.G, Val{d}())) - 1
+        # 4*Distributions.expectation(r -> ϕ(C.G,r), 𝒲₋₁(C.G, Val{d}())) - 1
         return @invoke τ(C::Copula)
     end
 end
@@ -185,7 +185,7 @@ SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = 
 
 _example(::Type{ArchimedeanCopula}, d) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
 _example(CT::Type{<:ArchimedeanCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(generatorof(CT))))...)
-_example(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}, d) = ArchimedeanCopula(d,i𝒲(Distributions.MixtureModel([Distributions.Dirac(1), Distributions.Dirac(2)]),d))
+_example(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{TX,d2}} where {d,d2, TX}}, d) = ArchimedeanCopula(d,𝒲(Distributions.MixtureModel([Distributions.Dirac(1), Distributions.Dirac(2)]),d))
 _example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw("No default example for frailty geenrators are implemented")
 
 _unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
@@ -194,11 +194,11 @@ _rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generato
 _available_fitting_methods(::Type{ArchimedeanCopula}, d) = (:gnz2011,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}, d) = (:mle,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}, d) = (:mle, :itau, :irho, :ibeta)
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, TX}} where {d,d2, TX}}, d) = Tuple{}() # No fitting method. 
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}, d) = (:gnz2011,)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{TX, d2}} where {d,d2, TX}}, d) = Tuple{}() # No fitting method. 
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{<:Distributions.DiscreteNonParametric, d2}} where {d,d2}}, d) = (:gnz2011,)
 
 
-function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{d2, <:Distributions.DiscreteNonParametric}} where {d,d2}}}, U, ::Val{:gnz2011})
+function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:WilliamsonGenerator{<:Distributions.DiscreteNonParametric, d2}} where {d,d2}}}, U, ::Val{:gnz2011})
     # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted. 
     return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U)), (;)
 end
