@@ -1,21 +1,6 @@
 
 @testset "Fitting + vcov + StatsBase interfaces" begin
     rng = StableRNG(2025)
-    function _flatten_params(p::NamedTuple)
-        if haskey(p, :Σ)
-            Σ = p.Σ
-            return [Σ[i, j] for i in 1:size(Σ,1)-1 for j in (i+1):size(Σ,2)]
-        end
-        vals = Any[]
-        for v in values(p)
-            if isa(v, Number)
-                push!(vals, Float64(v))
-            else
-                append!(vals, vec(Float64.(v)))
-            end
-        end
-        return vals
-    end
     reps = [
             # Elliptical
             (GaussianCopula, 2, :mle),
@@ -46,7 +31,7 @@
     @testset verbose=true for (CT, d, method) in reps
         @info "Testing: $CT, d=$d, method=$method..."
         C0 = Copulas._example(CT, d)
-        true_θ = _flatten_params(Distributions.params(C0))
+        true_θ = Copulas._flatten_params(Distributions.params(C0))
         U  = rand(rng, C0, n)
         M  = fit(CopulaModel, CT, U; method=method, vcov=true, derived_measures=false)
 
