@@ -20,7 +20,7 @@ module Copulas
     import Optim
     import Printf
     import TaylorSeries
-    import ADTypes
+    import Sobol
 
     # Main code
     include("utils.jl")
