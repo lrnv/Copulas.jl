@@ -300,87 +300,102 @@ macro testif(cond, args...)
         end
     end)
 end
-can_pdf(C::CT) where CT = 
-    applicable(Distributions._logpdf, C, ones(length(C),2)./2) &&
-    !(CT<:EmpiricalCopula) &&
-    !((CT<:ArchimedeanCopula) && length(C)==Copulas.max_monotony(C.G))
 
-check_rosenblatt(C::CT) where CT = 
-    !((CT<:ArchimedeanCopula) && length(C)==Copulas.max_monotony(C.G)) &&
-    !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
-    !((CT<:GumbelCopula) && (C.G.θ >= 20)) &&
-    !(CT<:MCopula{4}) &&
-    !(CT<:EmpiricalCopula) &&
-    !(CT<:BC2Copula)
+can_pdf(C::Copulas.Copula) = applicable(Distributions._logpdf, C, ones(length(C),2)./2) 
+can_pdf(C::EmpiricalCopula) = false
+can_pdf(C::ArchimedeanCopula) = length(C) > Copulas.max_monotony(C.G)
 
-check_corkendall(C::CT) where CT = 
-    !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
-    !((CT<:GumbelCopula) && (C.G.θ >= 100)) &&
-    !(CT<:Union{MCopula, WCopula}) &&
-    !(CT<:EmpiricalCopula) &&
-    !(CT<:BC2Copula) &&
-    !(CT<:CuadrasAugeCopula) &&
-    !(CT<:MOCopula) &&
-    !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail})
+check_rosenblatt(C::Copulas.Copula) = true
+check_rosenblatt(C::ArchimedeanCopula) = length(C) > Copulas.max_monotony(C.G)
+check_rosenblatt(C::FrankCopula) = C.G.θ < 100
+check_rosenblatt(C::GumbelCopula) = C.G.θ < 20
+check_rosenblatt(C::MCopula{4}) = false
+check_rosenblatt(C::EmpiricalCopula) = false
+check_rosenblatt(C::BC2Copula) = false
 
-is_archimedean_with_generator(C::CT) where CT =
-    (CT<:ArchimedeanCopula) && !(typeof(C.G)<:Copulas.WilliamsonGenerator)
+check_corkendall(C::Copulas.Copula) = true
+check_corkendall(C::FrankCopula) = C.G.θ < 100
+check_corkendall(C::GumbelCopula) = C.G.θ < 100
+check_corkendall(C::MCopula) = false
+check_corkendall(C::WCopula) = false
+check_corkendall(C::EmpiricalCopula) = false
+check_corkendall(C::BC2Copula) = false
+check_corkendall(C::CuadrasAugeCopula) = false
+check_corkendall(C::MOCopula) = false
+check_corkendall(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 
-can_integrate_pdf(C::CT) where CT =  
-    # This list might be longer than necessary, it should be trimmed.
-    can_pdf(C) &&
-    !(C isa ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > length(C))) &&
-    !((CT<:FrankCopula) && (C.G.θ >= 100)) &&
-    !((CT<:GumbelCopula) && (C.G.θ >= 100)) &&
-    !((CT<:FGMCopula) && (length(C)==3)) &&
-    !(CT<:MCopula) && 
-    !(CT<:WCopula) && 
-    !(CT<:MOCopula) && 
-    !(CT<:CuadrasAugeCopula) && 
-    !(CT<:RafteryCopula) && 
-    !(CT<:EmpiricalCopula) && 
-    !(CT<:BC2Copula) &&
-    !(CT<:Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) &&
-    !(CT<:CheckerboardCopula)
+is_archimedean_with_generator(C::Copulas.Copula) = false
+is_archimedean_with_generator(C::ArchimedeanCopula) = true 
+is_archimedean_with_generation(C::ArchimedeanCopula{d, <:Copulas.WilliamsonGenerator}) where d = false
 
-can_ad(C::CT) where CT = 
-    # This list might be longer than necessary, it should be trimmed.
-    can_pdf(C) &&
-    !(C isa ArchimedeanCopula && (C.G isa Copulas.WilliamsonGenerator) && (Copulas.max_monotony(C.G) > length(C))) && # discontinuous. 
-    !((CT<:FrankCopula) && (C.G.θ >= 100)) && # too extreme
-    !((CT<:GumbelCopula) && ((C.G.θ >= 100)) && length(C) > 2) && # too extreme
-    !(CT<:MCopula) && # not abs cont
-    !(CT<:WCopula) && # not abs cont
-    !(CT<:tEVCopula) && # requires derivatives of beta_inc_inv that forwardiff doesnt have. 
-    !(CT<:TCopula) && # same
-    !(CT<:CuadrasAugeCopula) && # discontinuous
-    !(CT<:MOCopula) # discontinuous
-    # !(CT<:BC2Copula) && # is discontinuous
-    # !(CT<:AsymGalambosCopula) && 
-    # !(CT<:GalambosCopula) && 
-    # !(CT<:AsymLogCopula) && 
-    # !(CT<:AsymMixedCopula) && 
-    # !(CT<:GalambosCopula) && 
-    # !(CT<:HuslerReissCopula) && 
-    # !(CT<:MixedCopula) && 
-    # !(CT<:LogCopula)
+can_integrate_pdf(C::Copulas.Copula) = can_pdf(C)
+can_integrate_pdf(C::FrankCopula) = C.G.θ < 100
+can_integrate_pdf(C::GumbelCopula) = C.G.θ < 100
+can_integrate_pdf(C::FGMCopula) = length(C) != 3
+can_integrate_pdf(C::MCopula) = false
+can_integrate_pdf(C::WCopula) = false
+can_integrate_pdf(C::MOCopula) = false
+can_integrate_pdf(C::CuadrasAugeCopula) = false
+can_integrate_pdf(C::RafteryCopula) = false
+can_integrate_pdf(C::EmpiricalCopula) = false
+can_integrate_pdf(C::BC2Copula) = false
+can_integrate_pdf(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
+can_integrate_pdf(C::CheckerboardCopula) = false
 
-# --- Named predicate helpers for readability in @testif conditions ---
-is_bivariate(C::CT)                      where CT = (length(C) == 2)
-has_subsetdims(C::CT)                    where CT = (length(C) >= 3)
-can_check_pdf_positivity(C::CT)          where CT = can_pdf(C) && !((CT<:GumbelCopula) && (C.G.θ >= 19))
-dep_coherency_enabled(C::CT)         where CT = !(CT<:Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}})
-can_check_biv_conditioning_ad(C::CT)     where CT = is_bivariate(C) && can_ad(C) && !(CT<:CheckerboardCopula)
-can_check_highdim_conditioning_ad(C::CT) where CT = (length(C) > 2) && can_ad(C) && !(CT<:CheckerboardCopula)
-has_uniform_margins(C::CT)               where CT = !(CT<:EmpiricalCopula)
-is_archimedean(C::CT)                    where CT = (CT <: ArchimedeanCopula)
-is_extremevalue(C::CT)                   where CT = (CT <: Copulas.ExtremeValueCopula)
-is_archimax(C::CT)                       where CT = (CT <: Copulas.ArchimaxCopula)
+can_ad(C::Copulas.Copula) = can_pdf(C)
+can_ad(C::FrankCopula) = C.G.θ < 100
+can_ad(C::GumbelCopula) = C.G.θ < 100 || length(C) == 2
+can_ad(C::MCopula) = false
+can_ad(C::WCopula) = false
+can_ad(C::tEVCopula) = false
+can_ad(C::TCopula) = false
+can_ad(C::CuadrasAugeCopula) = false
+can_ad(C::MOCopula) = false
+
+is_bivariate(C::Copulas.Copulas) = (length(C) == 2)
+has_subsetdims(C::Copulas.Copulas) = !is_bivariate(C)
+
+can_check_pdf_positivity(C::Copulas.Copula) = can_pdf(C) 
+can_check_pdf_positivity(C::GumbelCopula) = C.G.θ < 19
+
+dep_coherency_enabled(C::Copulas.Copula) = true
+dep_coherency_enabled(C::Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}}) = false
+
+can_check_biv_conditioning_ad(C::Copulas.Copula) = is_bivariate(C) && can_ad(C)
+can_check_biv_conditioning_ad(C::CheckerboardCopula) = false
+
+can_check_highdim_conditioning_ad(C::Copulas.Copula) = !is_bivariate(C) && can_ad(C)
+can_check_highdim_conditioning_ad(C::CheckerboardCopula) = false
+
+has_uniform_margins(C::Copulas.Copula) = true
+has_uniform_margins(C::EmpiricalCopula) = false
+
+is_archimedean(C::Copulas.Copula) = false
+is_archimedean(C::ArchimedeanCopula) = true
+
+is_extremevalue(C::Copulas.Copula) = false
+is_extremevalue(C::Copulas.ExtremeValueCopula) = true
+
+is_archimax(C::Copulas.Copula) = false
+is_archimax(C::Copulas.ArchimaxCopula) = true
+
 
 can_be_fitted(C::CT, d) where CT = length(Copulas._available_fitting_methods(CT, d)) > 0
-has_parameters(C::CT) where CT = !(CT <: Union{IndependentCopula, MCopula, WCopula})
-has_unbounded_params(C::CT, d) where CT = has_parameters(C) &&  :mle ∈ Copulas._available_fitting_methods(CT, d) && (length(Distributions.params(C)) > 0) && !(CT<:EmpiricalEVCopula) && !(d>2 && CT<:FGMCopula)
-unbounding_is_a_bijection(C::Copulas.Copula{d}) where d = !(typeof(C)<:FGMCopula && d>2)
+
+has_parameters(C::Copulas.Copulas) = true
+has_parameters(C::Union{IndependentCopula, MCopula, WCopula}) = false
+
+has_unbounded_params(C::CT, d) where CT = 
+    has_parameters(C) && 
+    (:mle ∈ Copulas._available_fitting_methods(CT, d)) && 
+    (length(Distributions.params(C)) > 0) && 
+
+has_unbounded_params(C::EmpiricalEVCopula) = false
+has_unbounded_params(C::FGMCopula) = length(C) == 2
+
+unbounding_is_a_bijection(C::Copulas.Copula) = true
+unbounding_is_a_bijection(C::FGMCopula) = length(C)==2
+
 
 # A few technical helpers. 
 _archimax_cdf_mockup(C::Copulas.ArchimaxCopula, u1::Real, u2::Real) = begin
