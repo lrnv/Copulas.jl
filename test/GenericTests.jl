@@ -352,8 +352,8 @@ can_ad(C::TCopula) = false
 can_ad(C::CuadrasAugeCopula) = false
 can_ad(C::MOCopula) = false
 
-is_bivariate(C::Copulas.Copulas) = (length(C) == 2)
-has_subsetdims(C::Copulas.Copulas) = !is_bivariate(C)
+is_bivariate(C::Copulas.Copula) = (length(C) == 2)
+has_subsetdims(C::Copulas.Copula) = !is_bivariate(C)
 
 can_check_pdf_positivity(C::Copulas.Copula) = can_pdf(C) 
 can_check_pdf_positivity(C::GumbelCopula) = C.G.θ < 19
@@ -382,7 +382,7 @@ is_archimax(C::Copulas.ArchimaxCopula) = true
 
 can_be_fitted(C::CT, d) where CT = length(Copulas._available_fitting_methods(CT, d)) > 0
 
-has_parameters(C::Copulas.Copulas) = true
+has_parameters(C::Copulas.Copula) = true
 has_parameters(C::Union{IndependentCopula, MCopula, WCopula}) = false
 
 has_unbounded_params(C::CT, d) where CT = 
