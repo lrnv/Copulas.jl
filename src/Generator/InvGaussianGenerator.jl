@@ -147,6 +147,6 @@ function ρ⁻¹(::Type{<:InvGaussianGenerator}, rho)
     # Spearman's rho for InvGaussian: [0, 1/2)
     rho ≤ 0 && return zero(rho)
     rho ≥ log(2) && return Inf * rho
-    xhat = Roots.find_zero(x -> _rho_invgaussian(-log(x)) - rho, (0, 1))
+    xhat = Roots.find_zero(x -> ρ(InvGaussianGenerator(-log(x))) - rho, (0, 1))
     return -log(xhat)
 end
