@@ -79,11 +79,11 @@ GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ)
 
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
-function _cdf(C::CT,u) where {CT<:GaussianCopula}
-    x = StatsBase.quantile.(Distributions.Normal(), u)
-    d = length(C)
-    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
-end
+#function _cdf(C::CT,u) where {CT<:GaussianCopula}
+#    x = StatsBase.quantile.(Distributions.Normal(), u)
+#    d = length(C)
+#    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
+#end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
     return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
@@ -142,3 +142,129 @@ function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
     return GaussianCopula(Σ), (; θ̂ = (; Σ = Σ))
 end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)
+
+
+function _cdf_base(C::CT, u; abseps=1e-4, releps=1e-4, maxpts=50_000, m0=1028, r=2, rng=Random.default_rng()) where {CT<:GaussianCopula}
+    T = eltype(u) 
+    d = length(u)
+    x = StatsFuns.norminvcdf.(u)
+    Σ = C.Σ
+
+    # Standardize to correlation and prepare b* limits
+    σ = sqrt.(LinearAlgebra.diag(Σ))
+    R = Σ ./ (σ * σ')
+    bstar0 = x ./ σ
+    widths = StatsFuns.normcdf.(bstar0)         # Φ(b*_j) because a=-Inf
+
+    # "Short interval" rearrangement
+    P = sortperm(widths)                         # ascendent
+    R1 = R[P, P]
+    bstar1 = bstar0[P]
+
+    # Cholesky with pivoting + permutation composition
+    F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R1), LinearAlgebra.RowMaximum(); check=false)
+    L = Matrix(F.L)
+    pinv = invperm(F.p)
+    bstar = bstar1[pinv]
+
+    # Adaptive stopping + replications
+    total_used = 0
+    m = m0
+    best_mean = NaN
+    best_se = Inf
+
+    y1 = Vector{T}(undef, d)
+    y2 = Vector{T}(undef, d)
+
+    while true
+        reps = min(r, max(2, fld(maxpts - total_used, max(m,1))))
+        reps == 0 && break
+        means = Vector{T}(undef, reps)
+
+        for rep in 1:reps
+            sob = Sobol.SobolSeq(d)
+            shift = rand(rng, d)                 # Cranley–Patterson shift in sobol... for quase montecarlo
+            acc = 0.0
+
+            @inbounds for _ in 1:m
+                uvec = (Sobol.next!(sob) .+ shift) .% 1.0
+
+                logp1 = 0.0; logp2 = 0.0
+                alive1 = true; alive2 = true
+
+                for j in 1:d
+                    if alive1
+                        μ1 = 0.0
+                        @simd for k in 1:(j-1)
+                            μ1 += L[j,k] * y1[k]
+                        end
+                        tj1 = (bstar[j] - μ1) / L[j,j]
+                        β1  = StatsFuns.normcdf(tj1)
+                        if β1 <= eps()
+                            alive1 = false; logp1 = -Inf
+                        else
+                            t1 = clamp(uvec[j]*β1, floatmin(Float64), 1 - eps(Float64))
+                            y1[j] = StatsFuns.norminvcdf(t1)
+                            logp1 += log(β1)
+                        end
+                    end
+
+                    if alive2
+                        μ2 = 0.0
+                        @simd for k in 1:(j-1)
+                            μ2 += L[j,k] * y2[k]
+                        end
+                        tj2 = (bstar[j] - μ2) / L[j,j]
+                        β2  = StatsFuns.normcdf(tj2)
+                        if β2 <= eps()
+                            alive2 = false; logp2 = -Inf
+                        else
+                            t2 = clamp((1.0 - uvec[j])*β2, floatmin(Float64), 1 - eps())
+                            y2[j] = StatsFuns.norminvcdf(t2)
+                            logp2 += log(β2)
+                        end
+                    end
+
+                    if !alive1 && !alive2
+                        break
+                    end
+                end
+
+                if isfinite(logp1) || isfinite(logp2)
+                    M = max(logp1, logp2)
+                    acc += 0.5 * exp(M) * ((isfinite(logp1) ? exp(logp1 - M) : 0.0) +
+                                            (isfinite(logp2) ? exp(logp2 - M) : 0.0))
+                end
+            end
+
+            means[rep] = acc / m
+        end
+
+        μ = sum(means) / length(means)
+        v = 0.0
+        @inbounds for z in means
+            v += (z - μ)^2
+        end
+        se = sqrt((v / max(length(means)-1,1)) / length(means))
+
+        total_used += reps*m
+        best_mean = μ; best_se = se
+
+        if se ≤ max(abseps, releps*abs(μ)) || total_used ≥ maxpts
+            break
+        end
+        m = min(2m, maxpts - total_used)
+        m ≤ 0 && break
+    end
+
+    return best_mean
+end
+function _cdf(C::GaussianCopula, u; fast::Bool=true, kwargs...)
+    if fast
+        return _cdf_base(C, u;
+            abseps=1e-4, releps=1e-4, maxpts=50_000, m0=1028, r=2, kwargs...)
+    else
+        return _cdf_base(C, u;
+            abseps=1e-6, releps=1e-6, maxpts=1_000_000, m0=2048, r=8, kwargs...)
+    end
+end
