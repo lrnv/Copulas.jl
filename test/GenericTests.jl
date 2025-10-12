@@ -385,10 +385,9 @@ can_be_fitted(C::CT, d) where CT = length(Copulas._available_fitting_methods(CT,
 has_parameters(C::Copulas.Copula) = true
 has_parameters(C::Union{IndependentCopula, MCopula, WCopula}) = false
 
-has_unbounded_params(C::CT, d) where CT = 
-    has_parameters(C) && 
+has_unbounded_params(C::CT, d) where CT = has_parameters(C) && 
     (:mle ∈ Copulas._available_fitting_methods(CT, d)) && 
-    (length(Distributions.params(C)) > 0) && 
+    (length(Distributions.params(C)) > 0)
 
 has_unbounded_params(C::EmpiricalEVCopula) = false
 has_unbounded_params(C::FGMCopula) = length(C) == 2
