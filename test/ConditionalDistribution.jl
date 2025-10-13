@@ -22,8 +22,8 @@ end
     # Compare the GENERIC DistortionFromCop (forced via @invoke) against AD-based reference
     # on a tiny, fast subset to validate the generic path independent of family specifics.
     examples = (
-        GaussianCopula([1.0 0.6; 0.6 1.0]),
-        ClaytonCopula(2, 1.2),
+        FGMCopula(2, 0.4),
+        ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.AsymGalambosTail(0.35, 0.65, 0.3))
     )
     us = (0.2, 0.5, 0.8)
     for C in examples
@@ -62,7 +62,7 @@ end
     # Validate the GENERIC ConditionalCopula cdf against an AD-based reference
     # on a tiny 3D subset for two representative families.
     examples = (
-        GaussianCopula([1.0 0.5 0.2; 0.5 1.0 0.4; 0.2 0.4 1.0]),
+        FrankCopula(3, 2.7),
         ClaytonCopula(3, 1.2),
     )
     pts = ((0.2, 0.3), (0.5, 0.5), (0.8, 0.6))
