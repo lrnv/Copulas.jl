@@ -21,13 +21,11 @@ end
 @testset "Generic Distortion vs AD (bivariate small subset)" begin
     # Compare the GENERIC DistortionFromCop (forced via @invoke) against AD-based reference
     # on a tiny, fast subset to validate the generic path independent of family specifics.
-    rng = StableRNG(2026)
     examples = (
         GaussianCopula([1.0 0.6; 0.6 1.0]),
         ClaytonCopula(2, 1.2),
     )
     us = (0.2, 0.5, 0.8)
-    safe_one = 1 - 1e-8
     for C in examples
         # j = conditioned index, i = remaining index
         for j in 1:2
@@ -63,13 +61,11 @@ end
 @testset "Generic ConditionalCopula vs AD (3D, p=1)" begin
     # Validate the GENERIC ConditionalCopula cdf against an AD-based reference
     # on a tiny 3D subset for two representative families.
-    rng = StableRNG(2027)
     examples = (
         GaussianCopula([1.0 0.5 0.2; 0.5 1.0 0.4; 0.2 0.4 1.0]),
         ClaytonCopula(3, 1.2),
     )
     pts = ((0.2, 0.3), (0.5, 0.5), (0.8, 0.6))
-    safe_one = 1 - 1e-8
     for C in examples
         js = (3,)
         for w in (0.25, 0.7)
@@ -148,10 +144,11 @@ end
     for C in examples
         for v in (0.2, 0.5, 0.8)
             D = condition(C, J, (v,))
+            inv_v = Copulas.ϕ⁻¹(C.G, v)
             for u in (1e-6, 0.1, 0.4, 0.8, 1 - 1e-6)
-                t = Copulas.ϕ⁻¹(C.G, u) + Copulas.ϕ⁻¹(C.G, v)
+                t = Copulas.ϕ⁻¹(C.G, u) + inv_v
                 num = Copulas.ϕ⁽¹⁾(C.G, t)
-                den = Copulas.ϕ⁽¹⁾(C.G, Copulas.ϕ⁻¹(C.G, v))
+                den = Copulas.ϕ⁽¹⁾(C.G, inv_v)
                 expected = num / den
                 @test isfinite(expected) && 0.0 <= expected <= 1.0
                 @test isapprox(cdf(D, u), expected; atol=tol, rtol=tol)
@@ -178,17 +175,17 @@ end
     # Compare to MVNormal conditioning on z-scale
     I = Tuple(setdiff(1:d, J))
     dI = length(I)
+    Iv = collect(I); Jv = collect(J)
+    ΣII = Σ[Iv, Iv]; ΣJJ = Σ[Jv, Jv]; ΣIJ = Σ[Iv, Jv]; ΣJI = Σ[Jv, Iv]
+    L = cholesky(ΣJJ)
+    zJ = quantile.(Normal(), collect(uJ))
+    y = L \ zJ
+    μ = ΣIJ * (L' \ y)
+    K = L \ ΣJI
+    Σcond = ΣII - ΣIJ * (L'\K)
     for _ in 1:3
         uI = rand(rng, dI)./5 .+ 2/5
         zI = quantile.(Normal(), uI)
-        zJ = quantile.(Normal(), collect(uJ))
-        Iv = collect(I); Jv = collect(J)
-        ΣII = Σ[Iv, Iv]; ΣJJ = Σ[Jv, Jv]; ΣIJ = Σ[Iv, Jv]; ΣJI = Σ[Jv, Iv]
-        L = cholesky(ΣJJ)
-        y = L \ zJ
-        μ = ΣIJ * (L' \ y)
-        K = L \ ΣJI
-        Σcond = ΣII - ΣIJ * (L'\K)
         p_mvn = MvNormalCDF.mvnormcdf(vec(μ), Matrix(Σcond), fill(-Inf, dI), zI)[1]
         p_cc = cdf(CC, uI)
         @test isapprox(p_cc, p_mvn; atol=5e-3)
