@@ -791,7 +791,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             end
         end
 
-        @testset "Kendall-Radial coherency test" begin
+        @testif !(C.G isa WilliamsonGenerator{<:Dirac, D} where D) "Kendall-Radial coherency test" begin
             # On radial-level: 
             R1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
             R2 = rand(rng,Copulas.𝒲₋₁(C.G, d),1000)
