@@ -461,11 +461,10 @@ Bestiary = filter(GenericTestFilter, Bestiary)
     CT = typeof(C)
     d = length(C)
     
-    Z = SklarDist(C, Tuple(Normal() for i in 1:d))
+    Z = SklarDist(C, ntuple(_ -> Normal(), d))
     spl1 = rand(rng, C)
     spl10 = rand(rng, C, 10)
     spl1000 = rand(rng, C, 1000)
-    splZ10 = rand(rng, Z, 10)
 
     @testset "Basics" begin 
         @testset "Shape and support" begin 
@@ -607,7 +606,6 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         @testif is_bivariate(C) "Condition(2 | 1): Basics" begin
             us = (0.2, 0.5, 0.8)
             for j in 1:2
-                i = 3 - j
                 for v in (0.3, 0.7)
                     Dd = Copulas.condition(C, j, v)
                     vals = cdf.(Ref(Dd), us)
@@ -627,18 +625,15 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         # Fast-path vs generic comparisons (bivariate)
         @testif can_check_biv_conditioning(C) "Condition(2 | 1): Specialized vs Generic Distortion" begin
             us = (0.2, 0.5, 0.8)
+            # Determine once whether a specialization exists for this type
+            m_fast = which(Copulas.DistortionFromCop, (CT,                NTuple{1,Int}, NTuple{1,Float64}, Int))
+            m_gen  = which(Copulas.DistortionFromCop, (Copulas.Copula{2}, NTuple{1,Int}, NTuple{1,Float64}, Int))
+            has_spec = m_fast != m_gen
             for j in 1:2
                 i = 3 - j
                 for v in (0.3, 0.7)
-                    # Compare fast path vs generic fallback only if a specialization exists
-                    m_fast = which(Copulas.DistortionFromCop, (CT,                NTuple{1,Int}, NTuple{1,Float64}, Int))
-                    m_gen  = which(Copulas.DistortionFromCop, (Copulas.Copula{2}, NTuple{1,Int}, NTuple{1,Float64}, Int))
-                    if m_fast != m_gen
-                        if d==2
-                            Dfast = Copulas.condition(C, j, v)
-                        else
-                            Dfast = Copulas.condition(C, j, v).m[1]  # first marginal if sklar. 
-                        end
+                    if has_spec
+                        Dfast = Copulas.condition(C, j, v)
                         Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
                         vals_fast = cdf.(Ref(Dfast), us)
                         vals_gen  = cdf.(Ref(Dgen),  us)
@@ -664,7 +659,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             let m_fast = which(Copulas.ConditionalCopula, (CT,                NTuple{d-2, Int}, NTuple{d-2, Float64})),
                 m_gen  = which(Copulas.ConditionalCopula, (Copulas.Copula{d}, NTuple{d-2, Int}, NTuple{d-2, Float64}))
                 if m_fast != m_gen
-                    CC_fast = condition(C, js, ujs).C # its s sklardist, get out the copula. 
+                    CC_fast = CC.C # reuse computed conditional, unwrap copula
                     CC_gen = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{d}, js, ujs)
                     for (v1,v2) in pts
                         @test cdf(CC_fast, [v1,v2]) ≈ cdf(CC_gen, [v1,v2]) atol=1e-8 rtol=1e-8
@@ -746,14 +741,14 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         end
 
         @testif !(C.G isa WilliamsonGenerator{<:Dirac, D} where D) "Kendall-Radial coherency test" begin
-            # On radial-level: 
+            # On radial-level: reuse the same radial sample for both checks
             R1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
             R2 = rand(rng,Copulas.𝒲₋₁(C.G, d),1000)
             @test pvalue(ApproximateTwoSampleKSTest(R1,R2)) > 0.005
 
-            # On kendall-level: 
+            # On kendall-level: map ϕ over the same radial sample
             U1 = Distributions.cdf(C, spl1000)
-            U2 = Copulas.ϕ.(Ref(C.G), rand(rng,Copulas.𝒲₋₁(C.G, d),1000))
+            U2 = Copulas.ϕ.(Ref(C.G), R2)
             @test pvalue(ApproximateTwoSampleKSTest(U1, U2)) > 0.005
         end
     end
@@ -857,14 +852,6 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             @testset "Fitting CT for $(m)" begin
                 r1 = fit(CT, spl10, m)
                 newCT = typeof(r1)
-                if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) &&
-                   !(newCT<:PlackettCopula) &&
-                   has_parameters(r1) &&
-                   has_unbounded_params(r1, d) &&
-                   !(CT<:RafteryCopula && d==3 && m==:itau)
-
-                    α1 = Copulas._unbound_params(typeof(r1), d, Distributions.params(r1))
-                end
             end
         end
     end
