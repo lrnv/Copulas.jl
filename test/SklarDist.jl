@@ -10,7 +10,7 @@
 
     for C in GenericModels
         d = length(C)
-        Z = Copulas.SklarDist(C, (LogNormal(),Pareto(),Beta()))
+        Z = Copulas.SklarDist(C, ntuple(_->Normal(), d))
         spl10 = rand(rng, C, 10)
         splZ10 = rand(rng, Z, 10)
 
