@@ -74,11 +74,10 @@ function τ⁻¹(::Type{<:GumbelGenerator}, τ)
     return 1/(1-τ)
 end
 
-function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:GumbelGenerator}
+function _cdf(C::ArchimedeanCopula{d,G}, u) where {d, G<:GumbelGenerator}
     θ = C.G.θ
-    x₁, x₂ = -log(u[1]), -log(u[2])
-    lx₁, lx₂ = log(x₁), log(x₂)
-    return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂) / θ)
+    lx = log.(.-log.(u))
+    return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logsumexp(θ .* lx) ./ θ)
 end
 function Distributions._logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) where {TF}
     T = promote_type(TF, eltype(u))
@@ -99,4 +98,49 @@ function ρ⁻¹(::Type{<:GumbelGenerator}, ρ)
     ρ ≤ 0 && return l
     ρ ≥ 1 && return u
     return Roots.find_zero(θ -> _rho_gumbel(θ) - ρ, (1, Inf))
+end
+
+
+function Distributions._logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) where {d,TF}
+    T = promote_type(TF, eltype(u))
+    !all(0 .< u .<= 1) && return T(-Inf)
+
+    θ = C.G.θ
+    α = 1 / θ
+
+    # Step 1. Compute x_i = -log(u_i)
+    x = -log.(u)
+    lx = log.(x)
+
+    # Step 2. Stable log-sum-exp for log(S) = log(sum(x_i^θ))
+    logS = LogExpFunctions.logsumexp(θ .* lx)
+
+    # Step 3. Compute log(φ⁽ᵈ⁾(S)) directly in log-domain
+    logt = logS
+    tα = exp(α * logt)
+    ntα = -tα
+    logφ = -tα  # since log(φ(t)) = -exp(α * logt)
+
+    # Compute the combinatorial sum in double precision
+    s = 0.0
+    for j in 1:d
+        term1 = α^j * Combinatorics.stirlings1(d, j, true)
+        inner_sum = 0.0
+        for k in 1:j
+            inner_sum += Combinatorics.stirlings2(j, k) * ntα^k
+        end
+        s += term1 * inner_sum
+    end
+
+    # log(φ⁽ᵈ⁾(S)) = logφ - d*logt + log|s|
+    if s == 0 || !isfinite(s)
+        return T(-Inf)
+    end
+    logφd = logφ - d * logt + log(abs(s))
+
+    # Step 4. log|(φ⁻¹)'(u_i)| = log(θ) + (θ - 1)*log(-log(u_i)) - log(u_i)
+    sum_log_invderiv = d * log(θ) + (θ - 1)*sum(lx) - sum(log.(u))
+
+    # Step 5. Combine
+    return T(logφd + sum_log_invderiv)
 end
