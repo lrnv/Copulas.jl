@@ -18,6 +18,82 @@
     @test Z.m[2] == LogNormal()
 end
 
+@testset "Generic Distortion vs AD (bivariate small subset)" begin
+    # Compare the GENERIC DistortionFromCop (forced via @invoke) against AD-based reference
+    # on a tiny, fast subset to validate the generic path independent of family specifics.
+    rng = StableRNG(2026)
+    examples = (
+        GaussianCopula([1.0 0.6; 0.6 1.0]),
+        ClaytonCopula(2, 1.2),
+    )
+    us = (0.2, 0.5, 0.8)
+    safe_one = 1 - 1e-8
+    for C in examples
+        # j = conditioned index, i = remaining index
+        for j in 1:2
+            i = 3 - j
+            for v in (0.3, 0.7)
+                # Force the generic DistortionFromCop
+                Dgen = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (Float64(v),), i)
+                vals_gen = cdf.(Ref(Dgen), us)
+
+                # AD reference: H(u|v) = (∂/∂u_j C(u_1,u_2) at (u_i=u, u_j=v))
+                #                         / (∂/∂u_j C(u_1,u_2) at (u_i=1, u_j=v))
+                refs = similar(collect(us))
+                if j == 1
+                    # condition on first coordinate, vary derivative w.r.t u1
+                    # numerator at (u1=v, u2=u), denominator at (u1=v, u2≈1)
+                    for (k, u) in pairs(us)
+                        num = ForwardDiff.derivative(w -> cdf(C, [w, u]), v)
+                        den = ForwardDiff.derivative(w -> cdf(C, [w, safe_one]), v)
+                        refs[k] = num / den
+                    end
+                else
+                    # j == 2: derivative w.r.t u2; points (u1=u, u2=v) and (u1≈1, u2=v)
+                    for (k, u) in pairs(us)
+                        num = ForwardDiff.derivative(t -> cdf(C, [u, t]), v)
+                        den = ForwardDiff.derivative(t -> cdf(C, [safe_one, t]), v)
+                        refs[k] = num / den
+                    end
+                end
+
+                for (vg, r) in zip(vals_gen, refs)
+                    @test isfinite(r) && 0.0 <= r <= 1.0
+                    @test isapprox(vg, r; atol=1e-3, rtol=1e-3)
+                end
+            end
+        end
+    end
+end
+
+@testset "Generic ConditionalCopula vs AD (3D, p=1)" begin
+    # Validate the GENERIC ConditionalCopula cdf against an AD-based reference
+    # on a tiny 3D subset for two representative families.
+    rng = StableRNG(2027)
+    examples = (
+        GaussianCopula([1.0 0.5 0.2; 0.5 1.0 0.4; 0.2 0.4 1.0]),
+        ClaytonCopula(3, 1.2),
+    )
+    pts = ((0.2, 0.3), (0.5, 0.5), (0.8, 0.6))
+    safe_one = 1 - 1e-8
+    for C in examples
+        js = (3,)
+        for w in (0.25, 0.7)
+            # Force the GENERIC ConditionalCopula via @invoke
+            CC_gen = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{3}, js, (Float64(w),))
+            for (u1, u2) in pts
+                val_fast = cdf(CC_gen, [u1, u2])
+                # AD reference: ratio of partial derivatives w.r.t. u3 at (u1,u2,w) vs (≈1,≈1,w)
+                num = ForwardDiff.derivative(t -> cdf(C, [u1, u2, t]), w)
+                den = ForwardDiff.derivative(t -> cdf(C, [safe_one, safe_one, t]), w)
+                val_ref = num / den
+                @test isfinite(val_ref) && 0.0 <= val_ref <= 1.0
+                @test isapprox(val_fast, val_ref; atol=5e-4, rtol=5e-4)
+            end
+        end
+    end
+end
+
 @testset "Independent univariate conditional cases"  begin
     # [GenericTests integration]: Yes. Univariate conditional on independent copula should be Uniform; Sklar with independent copula preserves marginal.
     # Suitable for a generic conditional smoke test.

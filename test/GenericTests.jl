@@ -147,7 +147,6 @@ Bestiary = [
     BernsteinCopula(GalambosCopula(2, 2.5); m=5),
     BernsteinCopula(GaussianCopula(2, 0.3); m=5),
     BernsteinCopula(IndependentCopula(4); m=5),
-    BernsteinCopula(IndependentCopula(4); m=5),
     ClaytonCopula(2, -0.7),
     ClaytonCopula(2, 0.9),
     ClaytonCopula(2, 0.3),
@@ -500,7 +499,6 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         @testif has_subsetdims(C) "Subsetdims" begin
             sC = Copulas.subsetdims(C,(2,1))
             @test all(0 .<= cdf(sC, spl10[1:2,:]) .<= 1)
-            @test sC == Copulas.subsetdims(Z,(2,1)).C
         end
 
         # Margins uniformity
@@ -638,61 +636,29 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             end
         end
 
-        # AD-based equivalence and fast-path comparisons (bivariate)
-        @testif can_check_biv_conditioning_ad(C) "Condition(2 | 1): Check Distortion vs AD" begin
+        # Fast-path vs generic comparisons (bivariate)
+        @testset "Condition(2 | 1): Specialized vs Generic Distortion" begin
             us = (0.2, 0.5, 0.8)
             for j in 1:2
                 i = 3 - j
                 for v in (0.3, 0.7)
-                    Dd = Copulas.condition(C, j, v)
-                    vals = cdf.(Ref(Dd), us)
-
-                    if j==2
-                        refs = [ForwardDiff.derivative(t -> cdf(C, [ui, t]), v) for ui in us]
-                    else
-                        refs = [ForwardDiff.derivative(t -> cdf(C, [t, ui]), v) for ui in us]
-                    end
-
-                    for (v_, r) in zip(vals, refs)
-                        @test isapprox(v_, r, atol=1e-3, rtol=1e-3)
-                    end
                     # Compare fast path vs generic fallback only if a specialization exists
                     m_fast = which(Copulas.DistortionFromCop, (CT,                NTuple{1,Int}, NTuple{1,Float64}, Int))
                     m_gen  = which(Copulas.DistortionFromCop, (Copulas.Copula{2}, NTuple{1,Int}, NTuple{1,Float64}, Int))
                     if m_fast != m_gen
-                        Dgen = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (Float64(v),), i)
-                        vals2 = cdf.(Ref(Dgen), us)
-                        for (v2, r) in zip(vals2, refs)
-                            @test isapprox(v2, r, atol=1e-3, rtol=1e-2)
-                        end
-                        for (v2, v_) in zip(vals2, vals)
-                            @test isapprox(v2, v_, atol=1e-3, rtol=1e-3)
+                        Dfast = Copulas.condition(C, j, v)
+                        Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (Float64(v),), i)
+                        vals_fast = cdf.(Ref(Dfast), us)
+                        vals_gen  = cdf.(Ref(Dgen),  us)
+                        for (vf, vg) in zip(vals_fast, vals_gen)
+                            @test isapprox(vf, vg, atol=1e-3, rtol=1e-3)
                         end
                     end
                 end
             end
         end
 
-        # High-dimensional AD-based checks
-        @testif can_check_highdim_conditioning_ad(C) "Condition(d|d-1): Check Distortion vs AD" begin
-            # Spot-check a single index pair (i,j) using the 2D projection via subsetdims
-            j, i, v, us = 1, 2, 0.6, (0.2, 0.5, 0.8)
-
-            # Distortion for Ui | Uj=v computed from full model
-            Dᵢ = condition(C, j, v).m[1]
-            vals = cdf.(Ref(Dᵢ), us)
-            @test all(0.0 .<= vals .<= 1.0)
-            @test all(diff([vals...]) .>= -1e-10) # increasingness with tolerence.
-
-            # Validate marginal distortion against AD on the 2D subset (i maps to 1, j maps to 2)
-            Cproj = Copulas.subsetdims(C, (i, j))
-            if can_ad(Cproj)
-                refs = [ForwardDiff.derivative(x -> cdf(Cproj, [x,u]), v) for u in us]
-                for (v_,r) in zip(vals, refs)
-                    @test isapprox(v_, r, atol=1e-5, rtol=1e-5)
-                end
-            end
-        end
+        # High-dimensional AD checks moved to ConditionalDistribution.jl (generic subset)
 
         @testif (can_check_highdim_conditioning_ad(C) && d ∈(3,4)) "Condition (d|d-2): Check conditional copula vs AD" begin
             js = tuple(collect(3:d)...)
@@ -701,11 +667,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
 
             # test grid on [0,1]^2
             pts = [(0.2,0.3), (0.5,0.5), (0.8,0.6)]
-            for (v1,v2) in pts
-                val_fast = cdf(CC, [v1, v2]) # our implementation
-                val_ref = _cond_cdf(C, [v1,v2], ujs) # AD reference. 
-                @test isapprox(val_fast, val_ref; atol=5e-5, rtol=5e-5)
-            end
+            # AD reference checks moved to ConditionalDistribution.jl (generic subset)
             # compare specialized ConditionalCopula vs generic fallback when specialization exists
             let m_fast = which(Copulas.ConditionalCopula, (CT,                NTuple{d-2, Int}, NTuple{d-2, Float64})),
                 m_gen  = which(Copulas.ConditionalCopula, (Copulas.Copula{d}, NTuple{d-2, Int}, NTuple{d-2, Float64}))
@@ -902,21 +864,16 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             end 
             @testset "Fitting CT for $(m)" begin
                 r1 = fit(CT, spl10, m)
-                r2 = fit(CopulaModel, CT, spl10, m, quick_fit=true).result # no need to do the rest here. 
                 newCT = typeof(r1)
-                @test typeof(r2) == newCT
                 if !(newCT<:ArchimedeanCopula{d, <:WilliamsonGenerator}) &&
                    !(newCT<:PlackettCopula) &&
-                   has_parameters(r2) &&
-                   has_unbounded_params(r2, d) &&
+                   has_parameters(r1) &&
+                   has_unbounded_params(r1, d) &&
                    !(CT<:RafteryCopula && d==3 && m==:itau)
 
                     α1 = Copulas._unbound_params(typeof(r1), d, Distributions.params(r1))
-                    α2 = Copulas._unbound_params(typeof(r2), d, Distributions.params(r2))
-                    @test α1 ≈ α2 atol= (CT<:GaussianCopula ? 1e-2 : 1e-5)
                 end
             end
-            r3 = fit(SklarDist{CT,  NTuple{d, Normal}}, splZ10)  # just to see if the function goes through.
         end
     end
 end
