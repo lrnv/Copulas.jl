@@ -10,7 +10,7 @@
     # loglikelyhood(MyD,u)
 end
 @testset "Generic API plumbing" begin
-    const GenericModels = (
+    GenericModels = (
         # 3D Gaussian copula with modest correlations
         Copulas.GaussianCopula([1.0 0.3 0.2; 0.3 1.0 0.25; 0.2 0.25 1.0]),
         # 3D Clayton (Archimedean) copula

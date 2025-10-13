@@ -34,26 +34,20 @@ end
             i = 3 - j
             for v in (0.3, 0.7)
                 # Force the generic DistortionFromCop
-                Dgen = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (Float64(v),), i)
+                Dgen = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (v,), i)
                 vals_gen = cdf.(Ref(Dgen), us)
 
-                # AD reference: H(u|v) = (∂/∂u_j C(u_1,u_2) at (u_i=u, u_j=v))
-                #                         / (∂/∂u_j C(u_1,u_2) at (u_i=1, u_j=v))
                 refs = similar(collect(us))
                 if j == 1
                     # condition on first coordinate, vary derivative w.r.t u1
                     # numerator at (u1=v, u2=u), denominator at (u1=v, u2≈1)
                     for (k, u) in pairs(us)
-                        num = ForwardDiff.derivative(w -> cdf(C, [w, u]), v)
-                        den = ForwardDiff.derivative(w -> cdf(C, [w, safe_one]), v)
-                        refs[k] = num / den
+                        refs[k] = ForwardDiff.derivative(w -> cdf(C, [w, u]), v)
                     end
                 else
                     # j == 2: derivative w.r.t u2; points (u1=u, u2=v) and (u1≈1, u2=v)
                     for (k, u) in pairs(us)
-                        num = ForwardDiff.derivative(t -> cdf(C, [u, t]), v)
-                        den = ForwardDiff.derivative(t -> cdf(C, [safe_one, t]), v)
-                        refs[k] = num / den
+                        refs[k] = ForwardDiff.derivative(t -> cdf(C, [u, t]), v)
                     end
                 end
 
@@ -79,14 +73,15 @@ end
     for C in examples
         js = (3,)
         for w in (0.25, 0.7)
-            # Force the GENERIC ConditionalCopula via @invoke
-            CC_gen = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{3}, js, (Float64(w),))
+            # Force the GENERIC equivalent to conditioning: 
+            CC      = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{3}, js, (w,))
+            margin1 = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{3}, js, (w,), 1)
+            margin2 = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{3}, js, (w,), 2)
+            CondObj = SklarDist(CC, (margin1, margin2))
             for (u1, u2) in pts
-                val_fast = cdf(CC_gen, [u1, u2])
+                val_fast = cdf(CondObj, [u1, u2])
                 # AD reference: ratio of partial derivatives w.r.t. u3 at (u1,u2,w) vs (≈1,≈1,w)
-                num = ForwardDiff.derivative(t -> cdf(C, [u1, u2, t]), w)
-                den = ForwardDiff.derivative(t -> cdf(C, [safe_one, safe_one, t]), w)
-                val_ref = num / den
+                val_ref = ForwardDiff.derivative(t -> cdf(C, [u1, u2, t]), w)
                 @test isfinite(val_ref) && 0.0 <= val_ref <= 1.0
                 @test isapprox(val_fast, val_ref; atol=5e-4, rtol=5e-4)
             end

@@ -450,18 +450,6 @@ function _integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, N) where d
     return μ, r, :mc_pdf
 end
 
-
-# simple mockup for partial derivatives. 
-function _cond_cdf(C::Copulas.Copula{d}, x, ujs) where d
-    u,v =  x
-    if d==3
-        return ForwardDiff.derivative(w -> cdf(C, [u,v,w]), ujs[1])
-    elseif d==4
-        return ForwardDiff.derivative(t -> ForwardDiff.derivative(w -> cdf(C, [u,v,w,t]), ujs[1]), ujs[2]) / ForwardDiff.derivative(t -> ForwardDiff.derivative(w -> cdf(C, [0.99999999,0.99999999,w,t]), ujs[1]), ujs[2])
-    end
-end
-
-
 # You can filter the bestiary here if you want: 
 Bestiary = filter(GenericTestFilter, Bestiary)
 
@@ -646,8 +634,12 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     m_fast = which(Copulas.DistortionFromCop, (CT,                NTuple{1,Int}, NTuple{1,Float64}, Int))
                     m_gen  = which(Copulas.DistortionFromCop, (Copulas.Copula{2}, NTuple{1,Int}, NTuple{1,Float64}, Int))
                     if m_fast != m_gen
-                        Dfast = Copulas.condition(C, j, v)
-                        Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (Float64(v),), i)
+                        if d==2
+                            Dfast = Copulas.condition(C, j, v)
+                        else
+                            Dfast = Copulas.condition(C, j, v).m[1]  # first marginal if sklar. 
+                        end
+                        Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
                         vals_fast = cdf.(Ref(Dfast), us)
                         vals_gen  = cdf.(Ref(Dgen),  us)
                         for (vf, vg) in zip(vals_fast, vals_gen)
@@ -672,7 +664,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             let m_fast = which(Copulas.ConditionalCopula, (CT,                NTuple{d-2, Int}, NTuple{d-2, Float64})),
                 m_gen  = which(Copulas.ConditionalCopula, (Copulas.Copula{d}, NTuple{d-2, Int}, NTuple{d-2, Float64}))
                 if m_fast != m_gen
-                    CC_fast = Copulas.ConditionalCopula(C, js, ujs)
+                    CC_fast = condition(C, js, ujs).C # its s sklardist, get out the copula. 
                     CC_gen = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{d}, js, ujs)
                     for (v1,v2) in pts
                         @test cdf(CC_fast, [v1,v2]) ≈ cdf(CC_gen, [v1,v2]) atol=1e-8 rtol=1e-8
