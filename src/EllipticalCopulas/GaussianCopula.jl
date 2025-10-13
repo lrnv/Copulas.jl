@@ -144,127 +144,60 @@ end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)
 
 
-function _cdf_base(C::CT, u; abseps=1e-4, releps=1e-4, maxpts=50_000, m0=1028, r=2, rng=Random.default_rng()) where {CT<:GaussianCopula}
-    T = eltype(u) 
-    d = length(u)
-    x = StatsFuns.norminvcdf.(u)
-    Σ = C.Σ
+function _cdf_base(Σ::AbstractMatrix{T}, x; abseps=1e-4, releps=1e-4, 
+                    maxpts=50_000, m0=1028, r=2, rng=Random.default_rng()) where {T<:Real}
+    d = length(x)
 
-    # Standardize to correlation and prepare b* limits
+    # Standardize to correlation
     σ = sqrt.(LinearAlgebra.diag(Σ))
     R = Σ ./ (σ * σ')
     bstar0 = x ./ σ
-    widths = StatsFuns.normcdf.(bstar0)         # Φ(b*_j) because a=-Inf
+    widths = StatsFuns.normcdf.(bstar0)
 
-    # "Short interval" rearrangement
-    P = sortperm(widths)                         # ascendent
+    # “Short interval” rearrangement
+    P = sortperm(widths)
     R1 = R[P, P]
     bstar1 = bstar0[P]
 
-    # Cholesky with pivoting + permutation composition
+    # Cholesky with pivoting
     F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R1), LinearAlgebra.RowMaximum(); check=false)
     L = Matrix(F.L)
-    pinv = invperm(F.p)
-    bstar = bstar1[pinv]
+    bstar = bstar1[F.p]
 
-    # Adaptive stopping + replications
-    total_used = 0
-    m = m0
-    best_mean = NaN
-    best_se = Inf
+    # Quasi-random Monte Carlo
+    y = Vector{T}(undef, d)
+    acc = 0.0
+    sob = Sobol.SobolSeq(d)
+    shift = rand(rng, d)
 
-    y1 = Vector{T}(undef, d)
-    y2 = Vector{T}(undef, d)
-
-    while true
-        reps = min(r, max(2, fld(maxpts - total_used, max(m,1))))
-        reps == 0 && break
-        means = Vector{T}(undef, reps)
-
-        for rep in 1:reps
-            sob = Sobol.SobolSeq(d)
-            shift = rand(rng, d)                 # Cranley–Patterson shift in sobol... for quase montecarlo
-            acc = 0.0
-
-            @inbounds for _ in 1:m
-                uvec = (Sobol.next!(sob) .+ shift) .% 1.0
-
-                logp1 = 0.0; logp2 = 0.0
-                alive1 = true; alive2 = true
-
-                for j in 1:d
-                    if alive1
-                        μ1 = 0.0
-                        @simd for k in 1:(j-1)
-                            μ1 += L[j,k] * y1[k]
-                        end
-                        tj1 = (bstar[j] - μ1) / L[j,j]
-                        β1  = StatsFuns.normcdf(tj1)
-                        if β1 <= eps()
-                            alive1 = false; logp1 = -Inf
-                        else
-                            t1 = clamp(uvec[j]*β1, floatmin(Float64), 1 - eps(Float64))
-                            y1[j] = StatsFuns.norminvcdf(t1)
-                            logp1 += log(β1)
-                        end
-                    end
-
-                    if alive2
-                        μ2 = 0.0
-                        @simd for k in 1:(j-1)
-                            μ2 += L[j,k] * y2[k]
-                        end
-                        tj2 = (bstar[j] - μ2) / L[j,j]
-                        β2  = StatsFuns.normcdf(tj2)
-                        if β2 <= eps()
-                            alive2 = false; logp2 = -Inf
-                        else
-                            t2 = clamp((1.0 - uvec[j])*β2, floatmin(Float64), 1 - eps())
-                            y2[j] = StatsFuns.norminvcdf(t2)
-                            logp2 += log(β2)
-                        end
-                    end
-
-                    if !alive1 && !alive2
-                        break
-                    end
-                end
-
-                if isfinite(logp1) || isfinite(logp2)
-                    M = max(logp1, logp2)
-                    acc += 0.5 * exp(M) * ((isfinite(logp1) ? exp(logp1 - M) : 0.0) +
-                                            (isfinite(logp2) ? exp(logp2 - M) : 0.0))
-                end
+    for _ in 1:m0
+        uvec = (Sobol.next!(sob) .+ shift) .% 1.0
+        logp = 0.0
+        alive = true
+        for j in 1:d
+            μ = 0.0
+            @simd for k in 1:(j-1)
+                μ += L[j,k] * y[k]
             end
-
-            means[rep] = acc / m
+            tj = (bstar[j] - μ) / L[j,j]
+            β  = StatsFuns.normcdf(tj)
+            if β <= eps(Float64)
+                alive = false; break
+            end
+            y[j] = StatsFuns.norminvcdf(clamp(uvec[j]*β, floatmin(Float64), 1 - eps(Float64)))
+            logp += log(β)
         end
-
-        μ = sum(means) / length(means)
-        v = 0.0
-        @inbounds for z in means
-            v += (z - μ)^2
-        end
-        se = sqrt((v / max(length(means)-1,1)) / length(means))
-
-        total_used += reps*m
-        best_mean = μ; best_se = se
-
-        if se ≤ max(abseps, releps*abs(μ)) || total_used ≥ maxpts
-            break
-        end
-        m = min(2m, maxpts - total_used)
-        m ≤ 0 && break
+        alive && (acc += exp(logp))
     end
-
-    return best_mean
+    return acc / m0
 end
+
 function _cdf(C::GaussianCopula, u; fast::Bool=true, kwargs...)
+    x = StatsFuns.norminvcdf.(u)
+    Σ = C.Σ
     if fast
-        return _cdf_base(C, u;
-            abseps=1e-4, releps=1e-4, maxpts=50_000, m0=1028, r=2, kwargs...)
+        return _cdf_base(Σ, x; abseps=1e-4, releps=1e-4, maxpts=50_000, m0=1028, r=2, kwargs...)
     else
-        return _cdf_base(C, u;
-            abseps=1e-6, releps=1e-6, maxpts=1_000_000, m0=2048, r=8, kwargs...)
+        return _cdf_base(Σ, x; abseps=1e-6, releps=1e-6, maxpts=1_000_000, m0=2048, r=8, kwargs...)
     end
 end

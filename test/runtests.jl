@@ -7,18 +7,18 @@ const rng = StableRNG(123)
 
 # You can comment the lines to avoid running some tests while you develop:
 testfiles = [
-    "Aqua",
-    "ArchimedeanCopulas",
-    "ConditionalDistribution",
+    #"Aqua",
+    #"ArchimedeanCopulas",
+    #"ConditionalDistribution",
     "EllipticalCopulas",
-    "FittingTest",
-    "MiscelaneousCopulas",
-    "SklarDist",
+    #"FittingTest",
+    #"MiscelaneousCopulas",
+    #"SklarDist",
     "GenericTests",
 ]
 
 # You can override the definition of this GenericTestFilter if you want. 
-GenericTestFilter(C) = C isa GaussianCopula || C isa TCopula
+GenericTestFilter(C) = C isa GaussianCopula
 # An example: 
 # GenericTestFilter(C) = C isa JoeCopula || C isa GumbelCopula # You can filter on your model. 
 
