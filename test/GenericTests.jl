@@ -326,7 +326,7 @@ check_corkendall(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = 
 
 is_archimedean_with_generator(C::Copulas.Copula) = false
 is_archimedean_with_generator(C::ArchimedeanCopula) = true 
-is_archimedean_with_generation(C::ArchimedeanCopula{d, <:Copulas.WilliamsonGenerator}) where d = false
+is_archimedean_with_generator(C::ArchimedeanCopula{d, Copulas.WilliamsonGenerator{<:Distributions.DiscreteNonParametric, D}}) where {d,D} = false
 
 can_integrate_pdf(C::Copulas.Copula) = can_pdf(C)
 can_integrate_pdf(C::FrankCopula) = C.G.θ < 100
@@ -388,9 +388,8 @@ has_parameters(C::Union{IndependentCopula, MCopula, WCopula}) = false
 has_unbounded_params(C::CT, d) where CT = has_parameters(C) && 
     (:mle ∈ Copulas._available_fitting_methods(CT, d)) && 
     (length(Distributions.params(C)) > 0)
-
-has_unbounded_params(C::EmpiricalEVCopula) = false
-has_unbounded_params(C::FGMCopula) = length(C) == 2
+has_unbounded_params(C::EmpiricalEVCopula, d) = false
+has_unbounded_params(C::FGMCopula, d) = d == 2
 
 unbounding_is_a_bijection(C::Copulas.Copula) = true
 unbounding_is_a_bijection(C::FGMCopula) = length(C)==2
