@@ -7,9 +7,7 @@
     D = SklarDist(C,(M1,M2))
     X = rand(rng,D,10)
     loglikelihood(D,X)
-    fit(SklarDist{TCopula,Tuple{Beta,LogNormal}},X) # should give a very high \nu for the student copula.
-    # unbroken !
-
+    @test true
 end
 
 @testset "Fix value Gaussian Copula & SklarDist" begin

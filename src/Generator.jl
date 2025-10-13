@@ -508,6 +508,6 @@ max_monotony(G::TiltedGenerator{TG, T, p}) where {TG, T, p} = max(0, max_monoton
 ϕ(G::TiltedGenerator{TG, T, p}, t) where {TG, T, p} = ϕ⁽ᵏ⁾(G.G, p, G.sJ + t) / G.den
 ϕ⁻¹(G::TiltedGenerator{TG, T, p}, x) where {TG, T, p} = ϕ⁽ᵏ⁾⁻¹(G.G, p, x * G.den; start_at = G.sJ) - G.sJ
 ϕ⁽ᵏ⁾(G::TiltedGenerator{TG, T, p}, k::Int, t) where {TG, T, p} = ϕ⁽ᵏ⁾(G.G, k + p, G.sJ + t) / G.den
-ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T, p}, k::Int, y; start_at = G.sJ) where {TG, T, p} = ϕ⁽ᵏ⁾⁻¹(G.G, k + p, y * G.den; start_at = start_at) - G.sJ
+ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T, p}, k::Int, y; start_at = G.sJ) where {TG, T, p} = ϕ⁽ᵏ⁾⁻¹(G.G, k + p, y * G.den; start_at = start_at+G.sJ) - G.sJ
 ϕ⁽¹⁾(G::TiltedGenerator{TG, T, p}, t) where {TG, T, p} = ϕ⁽ᵏ⁾(G, 1, t)
 Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., sJ = G.sJ)
