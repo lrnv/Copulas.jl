@@ -360,11 +360,11 @@ can_check_pdf_positivity(C::GumbelCopula) = C.G.θ < 19
 dep_coherency_enabled(C::Copulas.Copula) = true
 dep_coherency_enabled(C::Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}}) = false
 
-can_check_biv_conditioning_ad(C::Copulas.Copula) = is_bivariate(C) && can_ad(C)
-can_check_biv_conditioning_ad(C::CheckerboardCopula) = false
+can_check_biv_conditioning(C::Copulas.Copula) = is_bivariate(C) && can_ad(C)
+can_check_biv_conditioning(C::CheckerboardCopula) = false
 
-can_check_highdim_conditioning_ad(C::Copulas.Copula) = !is_bivariate(C) && can_ad(C)
-can_check_highdim_conditioning_ad(C::CheckerboardCopula) = false
+can_check_highdim_conditioning(C::Copulas.Copula) = !is_bivariate(C) && can_ad(C)
+can_check_highdim_conditioning(C::CheckerboardCopula) = false
 
 has_uniform_margins(C::Copulas.Copula) = true
 has_uniform_margins(C::EmpiricalCopula) = false
@@ -625,7 +625,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         end
 
         # Fast-path vs generic comparisons (bivariate)
-        @testset "Condition(2 | 1): Specialized vs Generic Distortion" begin
+        @testif can_check_biv_conditioning(C) "Condition(2 | 1): Specialized vs Generic Distortion" begin
             us = (0.2, 0.5, 0.8)
             for j in 1:2
                 i = 3 - j
@@ -652,7 +652,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
 
         # High-dimensional AD checks moved to ConditionalDistribution.jl (generic subset)
 
-        @testif (can_check_highdim_conditioning_ad(C) && d ∈(3,4)) "Condition (d|d-2): Check conditional copula vs AD" begin
+        @testif (can_check_highdim_conditioning(C) && d ∈(3,4)) "Condition (d|d-2): Check conditional copula vs AD" begin
             js = tuple(collect(3:d)...)
             ujs = tuple(collect(0.25 + 0.5*rand(rng) for _ in js)...)  # interior values
             CC = condition(C, js, ujs)
