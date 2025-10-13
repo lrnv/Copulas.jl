@@ -326,7 +326,7 @@ check_corkendall(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = 
 
 is_archimedean_with_generator(C::Copulas.Copula) = false
 is_archimedean_with_generator(C::ArchimedeanCopula) = true 
-is_archimedean_with_generator(C::ArchimedeanCopula{d, Copulas.WilliamsonGenerator{<:Distributions.DiscreteNonParametric, D}}) where {d,D} = false
+is_archimedean_with_generator(C::ArchimedeanCopula{d, Copulas.WilliamsonGenerator{<:Distributions.DiscreteUnivariateDistribution, D}}) where {d,D} = false
 
 can_integrate_pdf(C::Copulas.Copula) = can_pdf(C)
 can_integrate_pdf(C::FrankCopula) = C.G.θ < 100
@@ -379,7 +379,6 @@ is_extremevalue(C::Copulas.ExtremeValueCopula) = true
 is_archimax(C::Copulas.Copula) = false
 is_archimax(C::Copulas.ArchimaxCopula) = true
 
-
 can_be_fitted(C::CT, d) where CT = length(Copulas._available_fitting_methods(CT, d)) > 0
 
 has_parameters(C::Copulas.Copula) = true
@@ -400,7 +399,8 @@ _archimax_cdf_mockup(C::Copulas.ArchimaxCopula, u1::Real, u2::Real) = begin
     G, E = C.gen, C.tail
     (u1≤0 || u2≤0)  && return 0.0
     (u1≥1 && u2≥1)  && return 1.0
-    x = Copulas.ϕ⁻¹(G, u1); y = Copulas.ϕ⁻¹(G, u2)
+    x = Copulas.ϕ⁻¹(G, u1)
+    y = Copulas.ϕ⁻¹(G, u2)
     S = x + y
     S == 0 && return 1.0
     t = y / S
