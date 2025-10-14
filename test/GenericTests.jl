@@ -329,7 +329,6 @@ is_archimedean_with_generator(C::ArchimedeanCopula{d, Copulas.WilliamsonGenerato
 
 can_integrate_pdf(C::Copulas.Copula) = can_pdf(C)
 can_integrate_pdf(C::FrankCopula) = C.G.θ < 100
-can_integrate_pdf(C::GumbelCopula) = C.G.θ < 100
 can_integrate_pdf(C::FGMCopula) = length(C) != 3
 can_integrate_pdf(C::MCopula) = false
 can_integrate_pdf(C::WCopula) = false
@@ -343,7 +342,6 @@ can_integrate_pdf(C::CheckerboardCopula) = false
 
 can_ad(C::Copulas.Copula) = can_pdf(C)
 can_ad(C::FrankCopula) = C.G.θ < 100
-can_ad(C::GumbelCopula) = C.G.θ < 100 || length(C) == 2
 can_ad(C::MCopula) = false
 can_ad(C::WCopula) = false
 can_ad(C::tEVCopula) = false
@@ -355,7 +353,6 @@ is_bivariate(C::Copulas.Copula) = (length(C) == 2)
 has_subsetdims(C::Copulas.Copula) = !is_bivariate(C)
 
 can_check_pdf_positivity(C::Copulas.Copula) = can_pdf(C) 
-can_check_pdf_positivity(C::GumbelCopula) = C.G.θ < 19
 
 dep_coherency_enabled(C::Copulas.Copula) = true
 dep_coherency_enabled(C::Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}}) = false
