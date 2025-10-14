@@ -104,12 +104,14 @@ end
         (d=2, copula=HuslerReissCopula(2, 4.0), description="Husler Reiss 2D with lower tail dependence"),
         (d=2, copula=LogCopula(2, 4.0),         description="2D Logistic with lower tail dependency")
     ]
+    # Precompute one sample per copula to reuse across metric testsets
+    samples = [rand(rng, tc.copula, n_samples) for tc in test_copulas]
 
     @testset "Multivariate Metrics (Copula vs. Data)" begin
-        for tc in test_copulas
+        for (i, tc) in enumerate(test_copulas)
             C = tc.copula
             d = tc.d
-            U = rand(rng, C, n_samples)
+            U = samples[i]
 
             @testset "$(tc.description)" begin
                 # Spearman's ρ
@@ -142,12 +144,12 @@ end
     end
 
     @testset "Pairwise Metrics (on Data Matrix)" begin
-        for tc in test_copulas
+        for (i, tc) in enumerate(test_copulas)
             d = tc.d
             d == 2 || continue
 
             C = tc.copula
-            U = rand(rng, C, n_samples)
+            U = samples[i]
             X = U'
 
             @testset "$(tc.description)" begin
@@ -157,7 +159,7 @@ end
 
                 # corgini
                 G = Copulas.corgini(X)
-                @test B[1,2] ≈ Copulas.γ(C) atol=0.1
+                @test G[1,2] ≈ Copulas.γ(C) atol=0.1
 
                 # corentropy
                 H = Copulas.corentropy(X)
