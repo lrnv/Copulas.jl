@@ -76,20 +76,7 @@ Distributions.params(C::ArchimaxCopula) = begin
 end
 
 
-function genandtailof(S::Type{<:ArchimaxCopula})
-    S2 = hasproperty(S,:body) ? S.body : S
-    S3 = hasproperty(S2, :body) ? S2.body : S2
-    try
-        TG = S3.parameters[2]
-        TG = hasproperty(TG, :name) ? TG.name.wrapper : TG
-        TT = S3.parameters[3]
-        TT = hasproperty(TT, :name) ? TT.name.wrapper : TT
-        return TG, TT
-    catch e
-        @error "There is no gen & tail type associated with the archimax copula type $S"
-    end
-end
-genandtailof(::Type{<:ArchimaxCopula{d, TG, TT}}) where {d, TG, TT} = (TG, TT)
+genandtailof(S::Type{<:ArchimaxCopula}) = (fieldtype(S, :gen), fieldtype(S, :tail))
 
 # Fitting helpers for ArchimaxCopula (bivariate). Reuse generator and tail-specific helpers.
 function _example(CT::Type{<:ArchimaxCopula{2, <:Generator, <:Tail}}, d)

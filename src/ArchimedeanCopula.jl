@@ -58,6 +58,16 @@ ArchimedeanCopula{d,TG}(args...; kwargs...) where {d, TG} = ArchimedeanCopula(d,
 ArchimedeanCopula{D,TG}(d::Int, args...; kwargs...) where {D, TG} = ArchimedeanCopula{d,TG}(args...; kwargs...)
 (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(d::Int, args...; kwargs...) = ArchimedeanCopula(d, generatorof(CT)(args...; kwargs...))
 
+# # Allow calling aliases like ClaytonCopula{d}(args...; kwargs...) or ClaytonCopula{d,T}(args...; kwargs...)
+# # by extracting d and the generator type TG from the alias and constructing ArchimedeanCopula{d}(TG(...)).
+# function (::Type{C})(args...; kwargs...) where {d, C<:ArchimedeanCopula{d}}
+#     GT = generatorof(C)
+#     ArchimedeanCopula{d}(GT(args...; kwargs...))
+# end
+# function (b::Type{<:ArchimedeanCopula})(d::Int, args...; kwargs...) 
+#     return ArchimedeanCopula{d}(fieldtype(b,:G)(args...; kwargs...))
+# end 
+
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 
 
 _cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
@@ -85,18 +95,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopu
     return x
 end
 
-function generatorof(::Type{S}) where {S <: ArchimedeanCopula}
-    S2 = hasproperty(S,:body) ? S.body : S
-    S3 = hasproperty(S2, :body) ? S2.body : S2
-    try
-        S4 = S3.parameters[2]
-        return hasproperty(S4, :name) ? S4.name.wrapper : S4
-    catch e
-        @error "There is no generator type associated with the archimedean type $S"
-    end
-end
-generatorof(::Type{ArchimedeanCopula{d,GT}}) where {d,GT} = GT #this solution problem...
-
+generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
