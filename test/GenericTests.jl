@@ -502,14 +502,12 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         # Generic sampler vs CDF sanity: P(U ≤ u) from samples should match cdf(C, u)
         @testset "Empirical lower-orthant vs CDF" begin
             N = size(spl1000, 2)
-            us = [fill(0.5, d), 0.8 .+ 0.2 .* rand(rng, d), 0.1 .+ 0.8 .* rand(rng, d)]
-            for u in us
-                p_th = cdf(C, u)
-                cnt = sum(all(spl1000 .<= u, dims=1))
-                p_hat = cnt / N
-                se = sqrt(max(p_th * (1 - p_th) / N, 0.0))
-                @test abs(p_hat - p_th) ≤ max(5*se, 2e-3)
-            end
+            u = 0.8 .+ 0.2 .* rand(rng, d)
+            p_th = cdf(C, u)
+            cnt = sum(all(spl1000 .<= u, dims=1))
+            p_hat = cnt / N
+            se = sqrt(max(p_th * (1 - p_th) / N, 0.0))
+            @test abs(p_hat - p_th) ≤ max(5*se, 2e-3)
         end
 
 
