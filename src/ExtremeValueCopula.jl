@@ -117,17 +117,7 @@ DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTup
 # function (::Type{ExtremeValueCopula{D, TT}})(d::Integer; kwargs...) where {D, TT<:Tail}
 #     return (ExtremeValueCopula{D, TT})(d, NamedTuple(kwargs))
 # end
-function tailof(S::Type{<:ExtremeValueCopula})
-    S2 = hasproperty(S,:body) ? S.body : S
-    S3 = hasproperty(S2, :body) ? S2.body : S2
-    try
-        S4 = S3.parameters[2]
-        return hasproperty(S4, :name) ? S4.name.wrapper : S4
-    catch e
-        @error "There is no tail type associated with the extreme value type $S"
-    end
-end
-tailof(::Type{<:ExtremeValueCopula{d, TT}}) where {d, TT} = TT
+tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 
 ##############################################################################################################################
 ####### Fitting functions for univariate tails only (Extreme Value Copulas).
