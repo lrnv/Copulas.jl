@@ -788,7 +788,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     S = x + y
                     S == 0 && return 1.0
                     t = y / S
-                    Copulas.ϕ(C.genG, S * Copulas.A(C.tail, t))
+                    Copulas.ϕ(C.gen, S * Copulas.A(C.tail, t))
                 end
                 p_mock = max(ForwardDiff.hessian(Base.Fix1(cdf, C), [u1, u2])[1,2], 0.0)
 
