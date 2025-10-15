@@ -647,12 +647,9 @@ Bestiary = filter(GenericTestFilter, Bestiary)
     @testif is_archimedean_with_generator(C) "ArchimedeanCopula specific tests" begin 
 
         GT = typeof(C.G)
-        spe = generator_specialization(typeof(C.G))
+        spe = generator_specialization(C.G)
         mm = Copulas.max_monotony(C.G)
         
-        
-        GT = Copulas.generatorof(CT)
-
         @testif spe.ϕinv "Check ϕ ∘ ϕ⁻¹ == Id over [0,1]" begin
             for x in 0:0.1:1
                 @test Copulas.ϕ(C.G,Copulas.ϕ⁻¹(C.G,x)) ≈ x atol=1e-10
