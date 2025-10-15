@@ -390,7 +390,7 @@ unbounding_is_a_bijection(C::Copulas.Copula) = true
 unbounding_is_a_bijection(C::FGMCopula) = length(C)==2
 
 
-function generator_specialization(gen::TG) where TG<:Generator
+function generator_specialization(gen::TG) where TG<:Copulas.Generator
     ϕ     = which(Copulas.ϕ,      (TG, Float64))      != which(Copulas.ϕ,      (Copulas.FrailtyGenerator, Float64))
     ϕ1    = which(Copulas.ϕ⁽¹⁾,   (TG, Float64))      != which(Copulas.ϕ⁽¹⁾,   (Copulas.Generator, Float64))
     ϕk    = which(Copulas.ϕ⁽ᵏ⁾,   (TG, Int, Float64)) != which(Copulas.ϕ⁽ᵏ⁾,   (Copulas.Generator, Int, Float64))
@@ -402,7 +402,7 @@ function generator_specialization(gen::TG) where TG<:Generator
     return (; ϕ, ϕ1, ϕk, ϕinv, ϕinv1, ϕkinv, τinv, ρinv)
 end
 
-function tail_specialization(tail::TT) where TT<:Tail
+function tail_specialization(tail::TT) where TT<:Copulas.Tail
     dA =        which(Copulas.dA,        (TT, Float64))                 != which(Copulas.dA,        (Copulas.Tail2, Float64))
     d²A =       which(Copulas.d²A,       (TT, Float64))                 != which(Copulas.d²A,       (Copulas.Tail2, Float64))
     _A_dA_d²A = which(Copulas._A_dA_d²A, (TT, Float64))                 != which(Copulas._A_dA_d²A, (Copulas.Tail2, Float64))
