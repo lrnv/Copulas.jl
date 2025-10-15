@@ -608,6 +608,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             m_gen  = which(Copulas.DistortionFromCop, (Copulas.Copula{2}, NTuple{1,Int}, NTuple{1,Float64}, Int))
             has_spec = m_fast != m_gen
             for j in 1:2
+                i = 3-j
                 for v in (0.3, 0.7)
                     Dd = Copulas.condition(C, j, v)
                     vals = cdf.(Ref(Dd), us)
