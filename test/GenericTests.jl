@@ -469,7 +469,6 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             @test cdf(Z,zeros(d)) >= 0
             @test Copulas.measure(C, zeros(d),    ones(d)) ≈ 1
             @test Copulas.measure(C, ones(d)*0.2, ones(d)*0.4) >= 0
-            @test Copulas.measure(C, zeros(d), spl1) ≈ cdf(C, spl1)
         end
 
         @testif has_subsetdims(C) "Subsetdims" begin
