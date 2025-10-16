@@ -1,5 +1,5 @@
 """
-    LogTail{T}
+    LogTail{T}, LogCopula{T}
 
 Fields:
   - θ::Real — dependence parameter, θ ∈ [0,1]
@@ -23,6 +23,8 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
+LogTail, LogCopula
+
 struct LogTail{T} <: AbstractUnivariateTail2
     θ::T
     function LogTail(θ)

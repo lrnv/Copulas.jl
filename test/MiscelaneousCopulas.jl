@@ -47,15 +47,6 @@ end
     @test pdf(RafteryCopula(3, 0.1), [0.4, 0.8, 0.2]) ≈ 0.939229 atol=1e-4
 end
 
-@testset "RafteryCopula Sampling" begin
-    # [GenericTests integration]: Yes. Shape check for sampling is generic; could move to GenericTests sampling smoke tests.
-    Random.seed!(rng,123)
-    n_samples = 100
-    F = RafteryCopula(3,0.5)
-    samples = rand(rng,F, n_samples)
-    @test size(samples) == (3, n_samples)
-end
-
 @testset "Check against manual version - CDF" begin
     # [GenericTests integration]: No. Manual formula replication is too bespoke; keep as targeted verification for this copula.
     # https://github.com/lrnv/Copulas.jl/pull/137

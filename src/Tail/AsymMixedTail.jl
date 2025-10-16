@@ -1,5 +1,5 @@
 """
-    AsymMixedTail{T}
+    AsymMixedTail{T}, AsymMixedCopula{T}
 
 Fields:
   - θ₁::Real — parameter
@@ -32,6 +32,8 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
+AsymMixedTail, AsymMixedCopula
+
 struct AsymMixedTail{T} <: Tail2
   θ₁::T
   θ₂::T

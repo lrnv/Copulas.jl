@@ -1,5 +1,5 @@
 """
-    MOTail{T}
+    MOTail{T}, MOCopula{T}
 
 Fields:
   - λ₁::Real      — parameter ≥ 0
@@ -27,6 +27,8 @@ References:
 
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
 """
+MOTail, MOCopula
+
 struct MOTail{T} <: Tail2
     λ₁::T
     λ₂::T

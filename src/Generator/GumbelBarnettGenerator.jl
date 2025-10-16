@@ -1,5 +1,5 @@
 """
-    GumbelBarnettGenerator{T}
+    GumbelBarnettGenerator{T}, GumbelBarnettCopula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -22,6 +22,8 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.437
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
+GumbelBarnettGenerator, GumbelBarnettCopula
+
 struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function GumbelBarnettGenerator(θ)

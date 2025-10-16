@@ -1,5 +1,5 @@
 """
-    BB9Generator{T}
+    BB9Generator{T}, BB9Copula{d, T}
 
 Fields:
   - ϑ::Real - parameter
@@ -19,6 +19,8 @@ The BB9 copula has parameters ``\\vartheta \\in [1,\\infty)`` and ``\\delta \\in
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.205-206
 """
+BB9Generator, BB9Copula
+
 struct BB9Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T

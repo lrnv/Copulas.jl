@@ -1,5 +1,5 @@
 """
-    BB3Generator{T}
+    BB3Generator{T}, BB3Copula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -19,6 +19,8 @@ The BB3 copula has parameters ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.195-196
 """
+BB3Generator, BB3Copula
+
 struct BB3Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T
