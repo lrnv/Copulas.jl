@@ -1,5 +1,5 @@
 """
-    GumbelGenerator{T}
+    GumbelGenerator{T}, GumbelCopula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -22,6 +22,8 @@ It has a few special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
+GumbelGenerator, GumbelCopula
+
 struct GumbelGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function GumbelGenerator(θ)

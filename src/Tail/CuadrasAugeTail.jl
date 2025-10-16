@@ -1,5 +1,5 @@
 """
-    CuadrasAugeTail{T}
+    CuadrasAugeTail{T}, CuadrasAugeCopula{T}
 
 Fields:
   - θ::Real — dependence parameter, θ ∈ [0,1]
@@ -25,6 +25,8 @@ References:
 
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
 """
+CuadrasAugeTail, CuadrasAugeCopula
+
 struct CuadrasAugeTail{T} <: AbstractUnivariateTail2
     θ::T
     function CuadrasAugeTail(θ)

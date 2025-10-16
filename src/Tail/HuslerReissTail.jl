@@ -1,5 +1,5 @@
 """
-    HuslerReissTail{T}
+    HuslerReissTail{T}, HuslerReissCopula{T}
 
 Fields:
   - θ::Real — dependence parameter, θ ≥ 0
@@ -26,6 +26,8 @@ References:
 
 * [husler1989maxima](@cite) Hüsler, J., & Reiss, R. D. (1989). Maxima of normal random vectors: between independence and complete dependence. Statistics & Probability Letters, 7(4), 283-286.
 """
+HuslerReissTail, HuslerReissCopula
+
 struct HuslerReissTail{T} <: AbstractUnivariateTail2
     θ::T
     function HuslerReissTail(θ)

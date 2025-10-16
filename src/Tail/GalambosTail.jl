@@ -1,5 +1,5 @@
 """
-    GalambosTail{T}
+    GalambosTail{T}, GalambosCopula{T}
 
 Fields:
   - θ::Real — dependence parameter, θ ≥ 0
@@ -25,6 +25,8 @@ References:
 
 * [galambos1975order](@cite) Galambos, J. (1975). Order statistics of samples from multivariate distributions. Journal of the American Statistical Association, 70(351a), 674-680.
 """
+GalambosTail, GalambosCopula
+
 struct GalambosTail{T} <: AbstractUnivariateTail2
     θ::T
     function GalambosTail(θ)

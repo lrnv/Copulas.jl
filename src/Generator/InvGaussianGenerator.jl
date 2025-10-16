@@ -1,5 +1,5 @@
 """
-    InvGaussianGenerator{T}
+    InvGaussianGenerator{T}, InvGaussianCopula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -25,6 +25,8 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
+InvGaussianGenerator, InvGaussianCopula
+
 struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function InvGaussianGenerator(θ)

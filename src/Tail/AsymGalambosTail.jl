@@ -1,5 +1,5 @@
 """
-    AsymGalambosTail{T}
+    AsymGalambosTail{T}, AsymGalambosCopula{T}
 
 Fields:
   - α::Real          — dependence parameter
@@ -28,6 +28,8 @@ References:
 
 * [Joe1990](@cite) Families of min-stable multivariate exponential and multivariate extreme value distributions. Statist. Probab, 1990.
 """
+AsymGalambosTail, AsymGalambosCopula
+
 struct AsymGalambosTail{T} <: Tail2
     α::T                 # α ≥ 0
     θ₁::T

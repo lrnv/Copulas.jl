@@ -1,5 +1,5 @@
 """
-    BB10Generator{T}
+    BB10Generator{T}, BB10Copula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -19,6 +19,8 @@ The BB10 copula has parameters ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.206-207
 """
+BB10Generator, BB10Copula
+
 struct BB10Generator{T} <: AbstractFrailtyGenerator
     θ::T          # θ > 0
     δ::T          # 0 ≤ δ ≤ 1

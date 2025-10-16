@@ -1,5 +1,5 @@
 """
-    BB8Generator{T}
+    BB8Generator{T}, BB8Copula{d, T}
 
 Fields:
   - ϑ::Real - parameter
@@ -21,6 +21,8 @@ where ``\\eta = 1 - (1 - \\delta)^{\\vartheta}``.
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.204-205
 """
+BB8Generator, BB8Copula
+
 struct BB8Generator{T} <: AbstractFrailtyGenerator
     ϑ::T
     δ::T

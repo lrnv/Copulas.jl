@@ -1,5 +1,5 @@
 """
-    ClaytonGenerator{T}
+    ClaytonGenerator{T}, ClaytonCopula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -25,6 +25,8 @@ Special cases (for the copula in dimension ``d``):
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
+ClaytonGenerator, ClaytonCopula
+
 struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function ClaytonGenerator(θ)
