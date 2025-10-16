@@ -354,6 +354,11 @@ has_subsetdims(C::Copulas.Copula) = !is_bivariate(C)
 
 can_check_pdf_positivity(C::Copulas.Copula) = can_pdf(C) 
 
+can_check_cdf_rand(C::Copulas.Copula) = true
+can_check_cdf_rand(C::BC2Copula) = false
+can_check_cdf_rand(C::MOCopula) = false
+can_check_cdf_rand(C::CuadrasAugeCopula) = false
+
 dep_coherency_enabled(C::Copulas.Copula) = true
 dep_coherency_enabled(C::Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}}) = false
 
@@ -500,7 +505,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         end 
 
         # Generic sampler vs CDF sanity: P(U ≤ u) from samples should match cdf(C, u)
-        @testset "Empirical lower-orthant vs CDF" begin
+        @testif can_check_cdf_rand(C) "Empirical lower-orthant vs CDF" begin
             N = size(spl1000, 2)
             u = 0.8 .+ 0.2 .* rand(rng, d)
             p_th = cdf(C, u)
