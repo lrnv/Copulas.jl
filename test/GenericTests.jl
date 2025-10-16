@@ -352,21 +352,20 @@ can_ad(C::MOCopula) = false
 is_bivariate(C::Copulas.Copula) = (length(C) == 2)
 has_subsetdims(C::Copulas.Copula) = !is_bivariate(C)
 
-can_check_pdf_positivity(C::Copulas.Copula) = can_pdf(C) 
-
-can_check_cdf_rand(C::Copulas.Copula) = true
-can_check_cdf_rand(C::BC2Copula) = false
-can_check_cdf_rand(C::MOCopula) = false
-can_check_cdf_rand(C::CuadrasAugeCopula) = false
+check_cdf_rand(C::Copulas.Copula) = true
+check_cdf_rand(C::BC2Copula) = false
+check_cdf_rand(C::MOCopula) = false
+check_cdf_rand(C::CuadrasAugeCopula) = false
 
 dep_coherency_enabled(C::Copulas.Copula) = true
-dep_coherency_enabled(C::Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}}) = false
+dep_coherency_enabled(C::MOCopula) = false
+dep_coherency_enabled(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 
-can_check_biv_conditioning(C::Copulas.Copula) = is_bivariate(C) && can_ad(C)
-can_check_biv_conditioning(C::CheckerboardCopula) = false
+check_biv_conditioning(C::Copulas.Copula) = is_bivariate(C) && can_ad(C)
+check_biv_conditioning(C::CheckerboardCopula) = false
 
-can_check_highdim_conditioning(C::Copulas.Copula) = (length(C) ∈ (3,4)) && can_ad(C)
-can_check_highdim_conditioning(C::CheckerboardCopula) = false
+check_highdim_conditioning(C::Copulas.Copula) = (length(C) ∈ (3,4)) && can_ad(C)
+check_highdim_conditioning(C::CheckerboardCopula) = false
 
 has_uniform_margins(C::Copulas.Copula) = true
 has_uniform_margins(C::EmpiricalCopula) = false
@@ -394,7 +393,6 @@ has_unbounded_params(C::FGMCopula, d) = d == 2
 unbounding_is_a_bijection(C::Copulas.Copula) = true
 unbounding_is_a_bijection(C::FGMCopula) = length(C)==2
 
-
 function generator_specialization(gen::TG) where TG<:Copulas.Generator
     ϕ     = which(Copulas.ϕ,      (TG, Float64))      != which(Copulas.ϕ,      (Copulas.FrailtyGenerator, Float64))
     ϕ1    = which(Copulas.ϕ⁽¹⁾,   (TG, Float64))      != which(Copulas.ϕ⁽¹⁾,   (Copulas.Generator, Float64))
@@ -414,7 +412,6 @@ function tail_specialization(tail::TT) where TT<:Copulas.Tail
     ℓ =         which(Copulas.ℓ,         (TT, Tuple{Float64, Float64})) != which(Copulas.ℓ,         (Copulas.Tail2, Tuple{Float64, Float64}))
     return (; dA, d²A, _A_dA_d²A, ℓ)
 end
-
 
 # A few technical helpers. 
 
@@ -472,6 +469,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             @test cdf(Z,zeros(d)) >= 0
             @test Copulas.measure(C, zeros(d),    ones(d)) ≈ 1
             @test Copulas.measure(C, ones(d)*0.2, ones(d)*0.4) >= 0
+            @test Copulas.measure(C, zeros(d), spl1) ≈ cdf(C, spl1)
         end
 
         @testif has_subsetdims(C) "Subsetdims" begin
@@ -491,12 +489,12 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 u[i] = 0
                 @test iszero(cdf(C,u))
 
-                # This pvalue test fails sometimes.. which is normal since its random, but its anoying ^^
+                # This pvalue test fails sometimes.. which is normal since its random, but its anoying.
                 # @test pvalue(ApproximateOneSampleKSTest(spl1000[i,:], Uniform())) > 0.005
             end
         end
 
-        @testif can_check_pdf_positivity(C) "PDF positivity" begin
+        @testif can_pdf(C) "PDF positivity" begin
             r10 = pdf(C, spl10)
             @test pdf(C, zeros(d) .+ 1e-5) >= 0
             @test pdf(C, ones(d)/2)      >= 0
@@ -505,12 +503,11 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         end 
 
         # Generic sampler vs CDF sanity: P(U ≤ u) from samples should match cdf(C, u)
-        @testif can_check_cdf_rand(C) "Empirical lower-orthant vs CDF" begin
+        @testif check_cdf_rand(C) "Empirical lower-orthant vs CDF" begin
             N = size(spl1000, 2)
             u = 0.8 .+ 0.2 .* rand(rng, d)
             p_th = cdf(C, u)
-            cnt = sum(all(spl1000 .<= u, dims=1))
-            p_hat = cnt / N
+            p_hat = mean(all(spl1000 .<= u, dims=1))
             se = sqrt(max(p_th * (1 - p_th) / N, 0.0))
             @test abs(p_hat - p_th) ≤ max(5*se, 2e-3)
         end
@@ -617,7 +614,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     vals = cdf.(Ref(Dd), us)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
-                    if can_check_biv_conditioning(C) && has_spec
+                    if check_biv_conditioning(C) && has_spec
                         Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
                         vals_gen  = cdf.(Ref(Dgen),  us)
                         for (vf, vg) in zip(vals, vals_gen)
@@ -631,7 +628,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 end
             end
         end
-        @testif can_check_highdim_conditioning(C) "(d|d-2): Check conditional copula vs AD" begin
+        @testif check_highdim_conditioning(C) "(d|d-2): Check conditional copula vs AD" begin
             js = tuple(collect(3:d)...)
             ujs = tuple(collect(0.25 + 0.5*rand(rng) for _ in js)...)  # interior values
             CC = condition(C, js, ujs)
