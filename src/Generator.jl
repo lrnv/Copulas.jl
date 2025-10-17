@@ -480,7 +480,7 @@ end
 
 
 """
-    TiltedGenerator(G, p, sJ) <: Generator
+    TiltedGenerator(G, p, sJ)
 
 Archimedean generator tilted by conditioning on `p` components fixed at values
 with cumulative generator sum `sJ = ∑ ϕ⁻¹(u_j)`. It defines
@@ -495,19 +495,20 @@ which yields the conditional copula within the Archimedean family for the
 remaining d-p variables.
 You will get a TiltedGenerator if you condition() an archimedean copula.
 """
-struct TiltedGenerator{TG, T, p} <: Generator
+struct TiltedGenerator{TG, T} <: Generator
     G::TG
+    p::Int
     sJ::T
     den::T
     function TiltedGenerator(G::Generator, p::Int, sJ::T) where {T<:Real}
         den = ϕ⁽ᵏ⁾(G, p, sJ)
-        return new{typeof(G), T, p}(G, sJ, den)
+        return new{typeof(G), T}(G, p, sJ, den)
     end
 end
-max_monotony(G::TiltedGenerator{TG, T, p}) where {TG, T, p} = max(0, max_monotony(G.G) - p)
-ϕ(G::TiltedGenerator{TG, T, p}, t) where {TG, T, p} = ϕ⁽ᵏ⁾(G.G, p, G.sJ + t) / G.den
-ϕ⁻¹(G::TiltedGenerator{TG, T, p}, x) where {TG, T, p} = ϕ⁽ᵏ⁾⁻¹(G.G, p, x * G.den; start_at = G.sJ) - G.sJ
-ϕ⁽ᵏ⁾(G::TiltedGenerator{TG, T, p}, k::Int, t) where {TG, T, p} = ϕ⁽ᵏ⁾(G.G, k + p, G.sJ + t) / G.den
-ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T, p}, k::Int, y; start_at = G.sJ) where {TG, T, p} = ϕ⁽ᵏ⁾⁻¹(G.G, k + p, y * G.den; start_at = start_at+G.sJ) - G.sJ
-ϕ⁽¹⁾(G::TiltedGenerator{TG, T, p}, t) where {TG, T, p} = ϕ⁽ᵏ⁾(G, 1, t)
+max_monotony(G::TiltedGenerator{TG, T}) where {TG, T} = max(0, max_monotony(G.G) - G.p)
+ϕ(G::TiltedGenerator{TG, T}, t) where {TG, T} = ϕ⁽ᵏ⁾(G.G, G.p, G.sJ + t) / G.den
+ϕ⁻¹(G::TiltedGenerator{TG, T}, x) where {TG, T} = ϕ⁽ᵏ⁾⁻¹(G.G, G.p, x * G.den; start_at = G.sJ) - G.sJ
+ϕ⁽ᵏ⁾(G::TiltedGenerator{TG, T}, k::Int, t) where {TG, T} = ϕ⁽ᵏ⁾(G.G, k + G.p, G.sJ + t) / G.den
+ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T}, k::Int, y; start_at = G.sJ) where {TG, T} = ϕ⁽ᵏ⁾⁻¹(G.G, k + G.p, y * G.den; start_at = start_at+G.sJ) - G.sJ
+ϕ⁽¹⁾(G::TiltedGenerator{TG, T}, t) where {TG, T} = ϕ⁽ᵏ⁾(G, 1, t)
 Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., sJ = G.sJ)
