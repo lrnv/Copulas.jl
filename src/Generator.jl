@@ -45,7 +45,7 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
 ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
 ϕ⁽ᵏ⁾(G::Generator, k::Int, t) = taylor(ϕ(G), t, k)[end] * factorial(k)
-ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t) = Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, k, x) - t, start_at)
+ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t) = Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, k, x) - t, (0,Inf))
 
 
 
