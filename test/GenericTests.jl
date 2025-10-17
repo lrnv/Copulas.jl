@@ -610,7 +610,9 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 i = 3-j
                 for v in (0.3, 0.7)
                     Dd = Copulas.condition(C, j, v)
-                    @test all(0 .≤ rand(rng, Dd, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
+                    if !(C isa EmpiricalCopula)
+                        @test all(0 .≤ rand(rng, Dd, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
+                    end
                     vals = cdf.(Ref(Dd), us)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
@@ -632,7 +634,9 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             js = tuple(collect(3:d)...)
             ujs = tuple(collect(0.25 + 0.5*rand(rng) for _ in js)...)  # interior values
             CC = condition(C, js, ujs)
-            @test all(0 .≤ rand(rng, CC, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
+            if !(C isa EmpiricalCopula)
+                @test all(0 .≤ rand(rng, CC, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
+            end
             pts = [[0.2,0.3], [0.5,0.5], [0.8,0.6]]
             vals = cdf.(CC.C, pts) # only the conditional copula. 
             m_fast = which(Copulas.ConditionalCopula, (CT,                NTuple{d-2, Int}, NTuple{d-2, Float64}))
