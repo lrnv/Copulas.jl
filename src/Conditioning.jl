@@ -157,6 +157,24 @@ end
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
     return _partial_cdf(CC.C, CC.is, CC.js, Distributions.quantile.(CC.distortions, v), CC.uⱼₛ) / CC.den
 end
+# Sampling: sequential inverse-CDF using conditional distortions
+function Distributions._rand!(rng::Distributions.AbstractRNG, CC::ConditionalCopula{d, D, p}, x::AbstractVector{T}) where {T<:Real, d, D, p}
+    # We want a sample from the COPULA of the conditional model. Let U be a
+    # draw from the conditional joint H_{I|J}(· | u_J). The corresponding
+    # copula coordinates are V_k = F_{i_k|J}(U_k | u_J) = cdf(distortions[k], U_k).
+    # Sample U sequentially by conditioning on J ∪ previously sampled I.
+    J = [j for j in CC.js]
+    ujs =  [u for u in CC.uⱼₛ]
+    for k in 1:d
+        iₖ = CC.is[k]
+        uₖ = rand(rng, DistortionFromCop(CC.C, Tuple(J), Tuple(ujs), iₖ))
+        xₖ = Distributions.cdf(CC.distortions[k], uₖ)
+        x[k] = xₖ
+        push!(J, iₖ)
+        push!(ujs, uₖ)
+    end
+    return x
+end
 
 ###########################################################################
 #####  condition() function
