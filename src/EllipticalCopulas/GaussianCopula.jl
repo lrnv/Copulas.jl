@@ -80,17 +80,54 @@ GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ)
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
-    x = StatsBase.quantile.(Distributions.Normal(), u)
     d = length(C)
+    TΣ = eltype(C.Σ)
+    N = Distributions.Normal(zero(TΣ), one(TΣ))
+    # Compute quantiles without allocating intermediate temporaries from broadcasting
+    x = Vector{TΣ}(undef, d)
+    @inbounds for i in 1:d
+        x[i] = Distributions.quantile(N, u[i])
+    end
     return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
-    return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
+    # Compute z = L \ q where q = quantile.(Normal, u), then Φ.(z)
+    L = LinearAlgebra.cholesky(C.Σ).L
+    TΣ = eltype(C.Σ)
+    N = Distributions.Normal(zero(TΣ), one(TΣ))
+    # Quantiles into A (no temp matrix from broadcast)
+    A = Array{TΣ}(undef, size(u))
+    @inbounds for j in axes(u, 2), i in axes(u, 1)
+        A[i, j] = Distributions.quantile(N, u[i, j])
+    end
+    # Solve L \ A in-place
+    LinearAlgebra.ldiv!(LinearAlgebra.LowerTriangular(L), A)
+    # Apply Φ elementwise (fused, no temp)
+    @inbounds for j in axes(A, 2), i in axes(A, 1)
+        A[i, j] = Distributions.cdf(N, A[i, j])
+    end
+    return A
 end
 
 function inverse_rosenblatt(C::GaussianCopula, s::AbstractMatrix{<:Real})
-    return Distributions.cdf.(Distributions.Normal(), LinearAlgebra.cholesky(C.Σ).L * Distributions.quantile.(Distributions.Normal(), s))
+    # Compute z = L * q where q = quantile.(Normal, s), then Φ.(z)
+    L = LinearAlgebra.cholesky(C.Σ).L
+    TΣ = eltype(C.Σ)
+    N = Distributions.Normal(zero(TΣ), one(TΣ))
+    # Quantiles into A
+    A = Array{TΣ}(undef, size(s))
+    @inbounds for j in axes(s, 2), i in axes(s, 1)
+        A[i, j] = Distributions.quantile(N, s[i, j])
+    end
+    # Matrix multiply B = L * A without forming temporaries
+    B = similar(A)
+    LinearAlgebra.mul!(B, L, A)
+    # Apply Φ elementwise
+    @inbounds for j in axes(B, 2), i in axes(B, 1)
+        B[i, j] = Distributions.cdf(N, B[i, j])
+    end
+    return B
 end
 
 # Kendall tau of bivariate gaussian:
@@ -108,9 +145,11 @@ function DistortionFromCop(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
         μz = C.Σ[i, J[1]] * zⱼ[1]
         σz = sqrt(1 - C.Σ[i, J[1]]^2)
     else
-        Reg = C.Σ[i:i, J] * inv(C.Σ[J, J])
-        μz = (Reg * zⱼ)[1]
-        σz = sqrt(1 - (Reg * C.Σ[J, i:i])[1])
+        # μz = Σ[i,J] * (Σ[J,J] \ zⱼ)
+        μz = (C.Σ[i, J] * (C.Σ[J, J] \ zⱼ))
+        # var = 1 - Σ[i,J] * (Σ[J,J] \ Σ[J,i])
+        var = 1 - (C.Σ[i, J] * (C.Σ[J, J] \ C.Σ[J, i]))
+        σz = sqrt(var)
     end
     return GaussianDistortion(float(μz), float(σz))
 end
@@ -118,7 +157,9 @@ function ConditionalCopula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
     @assert 0 < p < D-1
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))
-    Σcond = C.Σ[I, I] - C.Σ[I, J] * inv(C.Σ[J, J]) * C.Σ[J, I]
+    # Σcond = ΣII - ΣIJ * (ΣJJ \ ΣJI)
+    X = (C.Σ[J, J] \ C.Σ[J, I])
+    Σcond = C.Σ[I, I] - C.Σ[I, J] * X
     return GaussianCopula(Σcond)
 end
 
