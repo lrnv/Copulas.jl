@@ -78,8 +78,7 @@ end
 
 function _cdf(C::ArchimedeanCopula{d,G}, u) where {d, G<:GumbelGenerator}
     θ = C.G.θ
-    lx = log.(.-log.(u))
-    return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logsumexp(θ .* lx) ./ θ)
+    return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logsumexp(θ .* log.(.-log.(u)))/θ)
 end
 function Distributions._logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) where {TF}
     T = promote_type(TF, eltype(u))
