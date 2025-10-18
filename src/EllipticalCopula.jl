@@ -64,8 +64,19 @@ end
 function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
     d = length(C)
     (u==zeros(d) || u==ones(d)) && return Inf 
-    x = StatsBase.quantile.(U(CT),u)
-    return Distributions.logpdf(N(CT)(C.Σ),x) - sum(Distributions.logpdf.(U(CT),x))
+    TΣ = eltype(C.Σ)
+    U₁ = U(CT)
+    # quantiles
+    x = Vector{TΣ}(undef, d)
+    @inbounds for i in 1:d
+        x[i] = StatsBase.quantile(U₁, u[i])
+    end
+    # sum of univariate logpdfs
+    s = zero(TΣ)
+    @inbounds for i in 1:d
+        s += Distributions.logpdf(U₁, x[i])
+    end
+    return Distributions.logpdf(N(CT)(C.Σ),x) - s
 end
 function make_cor!(Σ)
     # Verify that Σ is a correlation matrix, otherwise make it so : 
