@@ -50,7 +50,12 @@ abstract type EllipticalCopula{d,MT} <: Copula{d} end
 Base.eltype(C::CT) where CT<:EllipticalCopula = Base.eltype(N(CT)(C.Σ))
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT <: EllipticalCopula}
     Random.rand!(rng,N(CT)(C.Σ),x)
-    x .= clamp.(Distributions.cdf.(U(CT),x),0,1)
+    U₁ = U(CT)
+    @inbounds for i in eachindex(x)
+        xi = Distributions.cdf(U₁, x[i])
+        xi = xi < 0 ? 0.0 : (xi > 1 ? 1.0 : xi)
+        x[i] = T(xi)
+    end
     return x
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real, CT<:EllipticalCopula}
@@ -58,7 +63,10 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMat
     n = N(CT)(C.Σ)
     u = U(CT)
     Random.rand!(rng,n,A)
-    A .= clamp.(Distributions.cdf.(u,A),0,1)
+    @inbounds for j in axes(A, 2), i in axes(A, 1)
+        v = Distributions.cdf(u, A[i, j])
+        A[i, j] = T(v < 0 ? 0.0 : (v > 1 ? 1.0 : v))
+    end
     return A
 end
 function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}

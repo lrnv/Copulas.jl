@@ -24,7 +24,12 @@ function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
 end
 function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
     size(A,1) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
-    return [Distributions.cdf(C,u) for u in eachcol(A)]
+    n = size(A, 2)
+    r = Vector{Float64}(undef, n)
+    @inbounds for j in 1:n
+        r[j] = Distributions.cdf(C, view(A, :, j))
+    end
+    return r
 end
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)
