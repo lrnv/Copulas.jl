@@ -64,7 +64,11 @@ function _fgm_red(θ, v)
     rez, d, i = zero(eltype(v)), length(v), 1
     for k in 2:d
         for indices in Combinatorics.combinations(1:d, k)
-            rez += θ[i] * prod(v[indices])
+            r = one(eltype(v))
+            for i in indices
+                r *= v[i]
+            end
+            rez += θ[i] * r
             i = i+1
         end
     end
