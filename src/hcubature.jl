@@ -12,13 +12,13 @@ export hcubature
 # Build direction vectors for the Genz–Malik rule (as ordinary vectors)
 function _combos(n::Integer, k::Integer, λ::T) where {T<:Real}
     idxs = Combinatorics.combinations(1:n, k)
-    pts = Vector{Vector{T}}(undef, length(idxs))
-    for (i, c) in enumerate(idxs)
-        v = zeros(T, n)
+    pts = Vector{NTuple{n,T}}(undef, length(idxs))
+    @inbounds for (i, c) in enumerate(idxs)
+        v = fill(zero(T), n)
         for j in c
             v[j] = λ
         end
-        pts[i] = v
+        pts[i] = Tuple(v)
     end
     return pts
 end
@@ -26,36 +26,35 @@ end
 function _signcombos(n::Integer, k::Integer, λ::T) where {T<:Real}
     idxs = Combinatorics.combinations(1:n, k)
     twoᵏ = 1 << k
-    pts = Vector{Vector{T}}(undef, length(idxs) * twoᵏ)
-    # Gray-code over signs for each choice of k coordinates
+    pts = Vector{NTuple{n,T}}(undef, length(idxs) * twoᵏ)
     out = 1
-    for c in idxs
-        v = zeros(T, n)
+    @inbounds for c in idxs
+        v = fill(zero(T), n)
         for j in c
             v[j] = λ
         end
-        pts[out] = copy(v)
+        pts[out] = Tuple(v)
+        # use gray code to flip one sign at a time
         gray = 0
         for s = 1:twoᵏ-1
             gray′ = s ⊻ (s >> 1)
             flip_idx = c[trailing_zeros(gray ⊻ gray′) + 1]
             gray = gray′
             v[flip_idx] = -v[flip_idx]
-            pts[out + s] = copy(v)
+            pts[out + s] = Tuple(v)
         end
         out += twoᵏ
     end
     return pts
 end
 
-struct GenzMalik{T<:Real}
-    n::Int
-    p::NTuple{4,Vector{Vector{T}}} # direction points
+struct GenzMalik{n,T<:Real}
+    p::NTuple{4,Vector{NTuple{n,T}}} # direction points as tuples
     w::NTuple{5,T}
     w′::NTuple{4,T}
 end
 
-const _gm_cache = Dict{Tuple{Int,DataType}, GenzMalik}()
+const _gm_cache = Dict{Tuple{Int,DataType}, Any}()
 const _gm_lock = ReentrantLock()
 
 function _GenzMalik(n::Int, ::Type{T}=Float64) where {T<:Real}
@@ -82,14 +81,14 @@ function _GenzMalik(n::Int, ::Type{T}=Float64) where {T<:Real}
     p₄ = _signcombos(n, 2, λ₄)
     p₅ = _signcombos(n, n, λ₅)
 
-    return GenzMalik{T}(n, (p₂, p₃, p₄, p₅), (w₁, w₂, w₃, w₄, w₅), (w₁′, w₂′, w₃′, w₄′))
+    return GenzMalik{n,T}((p₂, p₃, p₄, p₅), (w₁, w₂, w₃, w₄, w₅), (w₁′, w₂′, w₃′, w₄′))
 end
 
-function GenzMalik(n::Int, ::Type{T}=Float64) where {T<:Real}
+function get_rule(n::Int, ::Type{T}=Float64) where {T<:Real}
     lock(_gm_lock)
     try
         key = (n, T)
-        haskey(_gm_cache, key) && return _gm_cache[key]::GenzMalik{T}
+        haskey(_gm_cache, key) && return _gm_cache[key]::GenzMalik{n,T}
         g = _GenzMalik(n, T)
         _gm_cache[key] = g
         return g
@@ -98,12 +97,12 @@ function GenzMalik(n::Int, ::Type{T}=Float64) where {T<:Real}
     end
 end
 
-countevals(g::GenzMalik) = 1 + 4*g.n + 2*g.n*(g.n-1) + (1 << g.n)
+countevals(::GenzMalik{n}) where {n} = 1 + 4n + 2n*(n-1) + (1 << n)
 
-function _eval_rule(g::GenzMalik{T}, f, a::Vector{T}, b::Vector{T}, normfun) where {T}
-    n = g.n
-    c = (a .+ b) .* (T(0.5))
-    Δ = (b .- a) .* (T(0.5))
+function _eval_rule(g::GenzMalik{n,Tg}, f, a::AbstractVector{Ta}, b::AbstractVector{Ta}, normfun) where {n,Tg<:Real,Ta<:Real}
+    T = promote_type(Tg, Ta)
+    c = (T.(a) .+ T.(b)) .* (T(0.5))
+    Δ = (T.(b) .- T.(a)) .* (T(0.5))
     V = prod(Δ)
 
     f₁ = f(c)
@@ -111,12 +110,27 @@ function _eval_rule(g::GenzMalik{T}, f, a::Vector{T}, b::Vector{T}, normfun) whe
     f₃ = zero(f₁)
     twelvef₁ = f₁ * T(12)
     maxdivdiff = zero(normfun(f₁))
-    divdiff = zeros(eltype(maxdivdiff), n)
-    for i in 1:n
-        p₂ = [Δ[j] * g.p[1][i][j] for j in 1:n]
-        f₂ᵢ = f(c .+ p₂) + f(c .- p₂)
-        p₃ = [Δ[j] * g.p[2][i][j] for j in 1:n]
-        f₃ᵢ = f(c .+ p₃) + f(c .- p₃)
+    divdiff = Vector{typeof(maxdivdiff)}(undef, n)
+    # scratch vectors to avoid allocations when evaluating f at shifted points
+    cplus = similar(c)
+    cminus = similar(c)
+    @inbounds for i in 1:n
+        # compute c ± Δ .* p₂
+        p2i = g.p[1][i]
+        for j in 1:n
+            t = Δ[j] * p2i[j]
+            cplus[j] = c[j] + t
+            cminus[j] = c[j] - t
+        end
+        f₂ᵢ = f(cplus) + f(cminus)
+        # compute c ± Δ .* p₃
+        p3i = g.p[2][i]
+        for j in 1:n
+            t = Δ[j] * p3i[j]
+            cplus[j] = c[j] + t
+            cminus[j] = c[j] - t
+        end
+        f₃ᵢ = f(cplus) + f(cminus)
         f₂ += f₂ᵢ
         f₃ += f₃ᵢ
         dd = normfun(f₃ᵢ + twelvef₁ - (f₂ᵢ * T(7)))
@@ -127,15 +141,19 @@ function _eval_rule(g::GenzMalik{T}, f, a::Vector{T}, b::Vector{T}, normfun) whe
     end
 
     f₄ = zero(f₁)
-    for p in g.p[3]
-        s = [Δ[j] * p[j] for j in 1:n]
-        f₄ += f(c .+ s)
+    @inbounds for p in g.p[3]
+        for j in 1:n
+            cplus[j] = c[j] + Δ[j] * p[j]
+        end
+        f₄ += f(cplus)
     end
 
     f₅ = zero(f₁)
-    for p in g.p[4]
-        s = [Δ[j] * p[j] for j in 1:n]
-        f₅ += f(c .+ s)
+    @inbounds for p in g.p[4]
+        for j in 1:n
+            cplus[j] = c[j] + Δ[j] * p[j]
+        end
+        f₅ += f(cplus)
     end
 
     I = V * (g.w[1]*f₁ + g.w[2]*f₂ + g.w[3]*f₃ + g.w[4]*f₄ + g.w[5]*f₅)
@@ -174,7 +192,7 @@ function _hcubature(f, a::Vector{T}, b::Vector{T};
     n = length(a)
     n >= 2 || throw(ArgumentError("hcubature requires n ≥ 2; got n=$n"))
     F = float(T)
-    g = GenzMalik(n, F)
+    g = get_rule(n, F)
 
     # Determine scalar integral type once by probing integrand at the midpoint
     mid = (F.(a) .+ F.(b)) .* F(0.5)
