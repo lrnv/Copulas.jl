@@ -5,9 +5,9 @@ authors = ["Oskar Laverny"]
 
 [deps]
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
+DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-HCubature = "19dc6840-f33b-545b-b366-655c7e3ffd49"
 LambertW = "984bce1d-4616-540c-a9ee-88d1112d94c9"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LogExpFunctions = "2ab3a3ac-af41-5b50-aa03-7779005ae688"
@@ -34,9 +34,9 @@ CopulasPlotsExt = ["Plots", "RecipesBase"]
 [compat]
 Aqua = "v0.8"
 Combinatorics = "1"
+DataStructures = "0.18.22"
 Distributions = "0.25"
 ForwardDiff = "0.10, 1"
-HCubature = "1"
 HypothesisTests = "v0.11"
 InteractiveUtils = "1"
 LambertW = "1.0.0"
