@@ -37,6 +37,7 @@ Combinatorics = "1"
 DataStructures = "0.18.22"
 Distributions = "0.25"
 ForwardDiff = "0.10, 1"
+HCubature = "1.7.0"
 HypothesisTests = "v0.11"
 InteractiveUtils = "1"
 LambertW = "1.0.0"
@@ -62,6 +63,7 @@ julia = "1"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+HCubature = "19dc6840-f33b-545b-b366-655c7e3ffd49"
 HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -70,4 +72,4 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "InteractiveUtils", "LinearAlgebra", "HypothesisTests", "Aqua", "StableRNGs", "StatsBase"]
+test = ["Test", "InteractiveUtils", "LinearAlgebra", "HypothesisTests", "Aqua", "StableRNGs", "StatsBase", "HCubature"]
