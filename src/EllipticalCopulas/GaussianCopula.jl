@@ -86,11 +86,42 @@ function _cdf(C::CT,u) where {CT<:GaussianCopula}
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
-    return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
+    # Compute z = L \ q where q = quantile.(Normal, u), then Φ.(z)
+    L = LinearAlgebra.cholesky(C.Σ).L
+    TΣ = eltype(C.Σ)
+    N = Distributions.Normal(zero(TΣ), one(TΣ))
+    # Quantiles into A (no temp matrix from broadcast)
+    A = Array{TΣ}(undef, size(u))
+    @inbounds for j in axes(u, 2), i in axes(u, 1)
+        A[i, j] = Distributions.quantile(N, u[i, j])
+    end
+    # Solve L \ A in-place
+    LinearAlgebra.ldiv!(LinearAlgebra.LowerTriangular(L), A)
+    # Apply Φ elementwise (fused, no temp)
+    @inbounds for j in axes(A, 2), i in axes(A, 1)
+        A[i, j] = Distributions.cdf(N, A[i, j])
+    end
+    return A
 end
 
 function inverse_rosenblatt(C::GaussianCopula, s::AbstractMatrix{<:Real})
-    return Distributions.cdf.(Distributions.Normal(), LinearAlgebra.cholesky(C.Σ).L * Distributions.quantile.(Distributions.Normal(), s))
+    # Compute z = L * q where q = quantile.(Normal, s), then Φ.(z)
+    L = LinearAlgebra.cholesky(C.Σ).L
+    TΣ = eltype(C.Σ)
+    N = Distributions.Normal(zero(TΣ), one(TΣ))
+    # Quantiles into A
+    A = Array{TΣ}(undef, size(s))
+    @inbounds for j in axes(s, 2), i in axes(s, 1)
+        A[i, j] = Distributions.quantile(N, s[i, j])
+    end
+    # Matrix multiply B = L * A without forming temporaries
+    B = similar(A)
+    LinearAlgebra.mul!(B, L, A)
+    # Apply Φ elementwise
+    @inbounds for j in axes(B, 2), i in axes(B, 1)
+        B[i, j] = Distributions.cdf(N, B[i, j])
+    end
+    return B
 end
 
 # Kendall tau of bivariate gaussian:
