@@ -358,13 +358,14 @@ function ϕ⁽ᵏ⁾(G::WilliamsonGenerator{TX, d}, k::Int, t) where {d, TX<:Dis
     k == 0 && return ϕ(G, t)
     k == 1 && return ϕ⁽¹⁾(G, t)
     S = zero(Tt)
+    coeff = (isodd(k) ? -one(Tt) : one(Tt)) * Base.factorial(d - 1) / Base.factorial(d - 1 - k)
     @inbounds for j in lastindex(r):-1:firstindex(r)
         rⱼ = r[j]; wⱼ = w[j]
         t ≥ rⱼ && break
-        zpow = (d == k+1) ? one(t) : (1 - t / rⱼ)^(d - 1 - k)
-        S += wⱼ * zpow / rⱼ^k
+        zpow = (d == k+1) ? one(Tt) : (1 - t / rⱼ)^(d - 1 - k)
+        S += wⱼ * (zpow / rⱼ^k)
     end
-    return S * (isodd(k) ? -1 : 1) * Base.factorial(d - 1) / Base.factorial(d - 1 - k)
+    return S * coeff
 end
 
 function ϕ⁻¹(G::WilliamsonGenerator{TX, d}, x) where {d, TX<:Distributions.DiscreteNonParametric}

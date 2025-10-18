@@ -47,7 +47,14 @@ ExtremeValueCopula{d,TT}(args...; kwargs...) where {d, TT} = ExtremeValueCopula(
 ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D, TT} = ExtremeValueCopula{d,TT}(args...; kwargs...)
 (CT::Type{<:ExtremeValueCopula{2, <:Tail}})(d::Int, args...; kwargs...) = ExtremeValueCopula(2, tailof(CT)(args...; kwargs...))
 
-_cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
+function _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT}
+    d == length(u) || throw(ArgumentError("Dimension mismatch"))
+    z = Vector{Float64}(undef, d)
+    @inbounds for i in 1:d
+        z[i] = -log(u[i])
+    end
+    return exp(-ℓ(C.tail, z))
+end
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
 #### Restriction to bivariate cases of the following methods: 
