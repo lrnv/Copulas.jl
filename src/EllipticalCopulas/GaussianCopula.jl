@@ -145,9 +145,11 @@ function DistortionFromCop(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
         μz = C.Σ[i, J[1]] * zⱼ[1]
         σz = sqrt(1 - C.Σ[i, J[1]]^2)
     else
-        Reg = C.Σ[i:i, J] * inv(C.Σ[J, J])
-        μz = (Reg * zⱼ)[1]
-        σz = sqrt(1 - (Reg * C.Σ[J, i:i])[1])
+        # μz = Σ[i,J] * (Σ[J,J] \ zⱼ)
+        μz = (C.Σ[i, J] * (C.Σ[J, J] \ zⱼ))
+        # var = 1 - Σ[i,J] * (Σ[J,J] \ Σ[J,i])
+        var = 1 - (C.Σ[i, J] * (C.Σ[J, J] \ C.Σ[J, i]))
+        σz = sqrt(var)
     end
     return GaussianDistortion(float(μz), float(σz))
 end
@@ -155,7 +157,9 @@ function ConditionalCopula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
     @assert 0 < p < D-1
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))
-    Σcond = C.Σ[I, I] - C.Σ[I, J] * inv(C.Σ[J, J]) * C.Σ[J, I]
+    # Σcond = ΣII - ΣIJ * (ΣJJ \ ΣJI)
+    X = (C.Σ[J, J] \ C.Σ[J, I])
+    Σcond = C.Σ[I, I] - C.Σ[I, J] * X
     return GaussianCopula(Σcond)
 end
 
