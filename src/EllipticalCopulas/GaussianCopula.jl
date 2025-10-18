@@ -80,8 +80,14 @@ GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ)
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
-    x = StatsBase.quantile.(Distributions.Normal(), u)
     d = length(C)
+    TΣ = eltype(C.Σ)
+    N = Distributions.Normal(zero(TΣ), one(TΣ))
+    # Compute quantiles without allocating intermediate temporaries from broadcasting
+    x = Vector{TΣ}(undef, d)
+    @inbounds for i in 1:d
+        x[i] = Distributions.quantile(N, u[i])
+    end
     return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
 end
 
