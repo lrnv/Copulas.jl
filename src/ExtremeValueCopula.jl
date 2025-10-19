@@ -49,7 +49,7 @@ ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D, TT} = ExtremeValu
 
 function _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT}
     d == length(u) || throw(ArgumentError("Dimension mismatch"))
-    z = Vector{Float64}(undef, d)
+    z = similar(u)
     @inbounds for i in 1:d
         z[i] = -log(u[i])
     end
