@@ -52,7 +52,7 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
             return IndependentCopula(size(Σ,1))
         end
         make_cor!(Σ)
-        N(GaussianCopula)(Σ)
+        Distributions.MvNormal(Σ) # only here for the checks... but is that really necessary ? 
         return new{size(Σ,1),typeof(Σ)}(Σ)
     end
 end
@@ -81,53 +81,15 @@ U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
     d = length(C)
-    TΣ = eltype(C.Σ)
-    N = Distributions.Normal(zero(TΣ), one(TΣ))
-    # Compute quantiles without allocating intermediate temporaries from broadcasting
-    x = Vector{TΣ}(undef, d)
-    @inbounds for i in 1:d
-        x[i] = Distributions.quantile(N, u[i])
-    end
-    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), StatsFuns.norminvcdf.(u))[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
-    # Compute z = L \ q where q = quantile.(Normal, u), then Φ.(z)
-    L = LinearAlgebra.cholesky(C.Σ).L
-    TΣ = eltype(C.Σ)
-    N = Distributions.Normal(zero(TΣ), one(TΣ))
-    # Quantiles into A (no temp matrix from broadcast)
-    A = Array{TΣ}(undef, size(u))
-    @inbounds for j in axes(u, 2), i in axes(u, 1)
-        A[i, j] = Distributions.quantile(N, u[i, j])
-    end
-    # Solve L \ A in-place
-    LinearAlgebra.ldiv!(LinearAlgebra.LowerTriangular(L), A)
-    # Apply Φ elementwise (fused, no temp)
-    @inbounds for j in axes(A, 2), i in axes(A, 1)
-        A[i, j] = Distributions.cdf(N, A[i, j])
-    end
-    return A
+    return StatsFuns.normcdf.(inv(LinearAlgebra.cholesky(C.Σ).L) * StatsFuns.norminvcdf.(u))
 end
 
 function inverse_rosenblatt(C::GaussianCopula, s::AbstractMatrix{<:Real})
-    # Compute z = L * q where q = quantile.(Normal, s), then Φ.(z)
-    L = LinearAlgebra.cholesky(C.Σ).L
-    TΣ = eltype(C.Σ)
-    N = Distributions.Normal(zero(TΣ), one(TΣ))
-    # Quantiles into A
-    A = Array{TΣ}(undef, size(s))
-    @inbounds for j in axes(s, 2), i in axes(s, 1)
-        A[i, j] = Distributions.quantile(N, s[i, j])
-    end
-    # Matrix multiply B = L * A without forming temporaries
-    B = similar(A)
-    LinearAlgebra.mul!(B, L, A)
-    # Apply Φ elementwise
-    @inbounds for j in axes(B, 2), i in axes(B, 1)
-        B[i, j] = Distributions.cdf(N, B[i, j])
-    end
-    return B
+    return StatsFuns.normcdf.(LinearAlgebra.cholesky(C.Σ).L * StatsFuns.norminvcdf.(s))
 end
 
 # Kendall tau of bivariate gaussian:
@@ -140,16 +102,14 @@ function DistortionFromCop(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
     ist = Tuple(setdiff(1:D, js))
     @assert i in ist
     J = collect(js)
-    zⱼ = Distributions.quantile.(Distributions.Normal(), collect(uⱼₛ))
+    zⱼ = StatsFuns.norminvcdf.(collect(uⱼₛ))
     if length(J) == 1 # if we condition on only one variable
         μz = C.Σ[i, J[1]] * zⱼ[1]
         σz = sqrt(1 - C.Σ[i, J[1]]^2)
     else
-        # μz = Σ[i,J] * (Σ[J,J] \ zⱼ)
-        μz = (C.Σ[i, J] * (C.Σ[J, J] \ zⱼ))
-        # var = 1 - Σ[i,J] * (Σ[J,J] \ Σ[J,i])
-        var = 1 - (C.Σ[i, J] * (C.Σ[J, J] \ C.Σ[J, i]))
-        σz = sqrt(var)
+        Reg = C.Σ[i:i, J] * inv(C.Σ[J, J])
+        μz = (Reg * zⱼ)[1]
+        σz = sqrt(1 - (Reg * C.Σ[J, i:i])[1])
     end
     return GaussianDistortion(float(μz), float(σz))
 end
@@ -157,9 +117,7 @@ function ConditionalCopula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
     @assert 0 < p < D-1
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))
-    # Σcond = ΣII - ΣIJ * (ΣJJ \ ΣJI)
-    X = (C.Σ[J, J] \ C.Σ[J, I])
-    Σcond = C.Σ[I, I] - C.Σ[I, J] * X
+    Σcond = C.Σ[I, I] - C.Σ[I, J] * inv(C.Σ[J, J]) * C.Σ[J, I]
     return GaussianCopula(Σcond)
 end
 
@@ -178,7 +136,7 @@ function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}
     return (; Σ = _rebound_corr_params(d, α))
 end
 function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
-    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
+    dd = Distributions.fit(Distributions.MvNormal, StatsFuns.norminvcdf.(u))
     Σ = Matrix(dd.Σ)
     return GaussianCopula(Σ), (; θ̂ = (; Σ = Σ))
 end
