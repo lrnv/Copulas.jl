@@ -78,8 +78,9 @@ function _cdf(C::ArchimedeanCopula, u)
     return ϕ(C.G, v)
 end
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
-    if !all(0 .< u .< 1)
-        return eltype(u)(-Inf)
+    T = eltype(u)
+    for uᵢ in u
+        0 < uᵢ < 1 || return T(-Inf)
     end
     v = zero(eltype(u))
     p = one(eltype(u))

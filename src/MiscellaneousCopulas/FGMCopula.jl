@@ -64,7 +64,11 @@ function _fgm_red(θ, v)
     rez, d, i = zero(eltype(v)), length(v), 1
     for k in 2:d
         for indices in Combinatorics.combinations(1:d, k)
-            rez += θ[i] * prod(v[indices])
+            p = one(eltype(v))
+            for i in indices
+                p *= v[i]
+            end
+            rez += θ[i] * p
             i = i+1
         end
     end
@@ -91,8 +95,18 @@ end
 
 
 
-_cdf(fgm::FGMCopula, u::Vector{T}) where {T} = prod(u) * (1 + _fgm_red(fgm.θ, 1 .-u))
-Distributions._logpdf(fgm::FGMCopula, u) = log1p(_fgm_red(fgm.θ, 1 .-2u))
+function _cdf(fgm::FGMCopula, u::Vector{T}) where {T}
+    p = one(u)
+    for uᵢ in u
+        p *= uᵢ
+    end
+    return p * (1 + _fgm_red(fgm.θ, 1 .-u))
+end
+
+function Distributions._logpdf(fgm::FGMCopula, u)
+    return log1p(_fgm_red(fgm.θ, 1 .- 2u))
+end
+
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d, Tθ, Tf}, x::AbstractVector{T}) where {d,Tθ, Tf, T <: Real}
     I = Base.reverse(digits(rand(rng,fgm.fᵢ), base=2, pad=d))
     V₀ = rand(rng, d)
