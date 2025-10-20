@@ -18,7 +18,7 @@ testfiles = [
 ]
 
 # You can override the definition of this GenericTestFilter if you want. 
-GenericTestFilter(C) = C isa GaussianCopula
+GenericTestFilter(C) = C isa TCopula || C isa GaussianCopula
 # An example: 
 # GenericTestFilter(C) = C isa JoeCopula || C isa GumbelCopula # You can filter on your model. 
 

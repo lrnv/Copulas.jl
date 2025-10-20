@@ -124,9 +124,9 @@ end
 end
 
 # Richtmyer Generators (shared)
-@inline _δ(::Type{T}) where {T<:AbstractFloat} = sqrt(eps(T))
+@inline _δ(::Type{T}) where {T<:Real} = T(sqrt(eps(T)))
 @inline richtmyer_roots(T, n) = sqrt.(T.(Float64.(Primes.primes(1, max(n-1, Int(floor(5n*log(n+1)/4)))))))[1:n-1]
-function _chlrdr_orthant!(R::AbstractMatrix{T}, b::AbstractVector{T}) where {T<:AbstractFloat}
+function _chlrdr_orthant!(R::AbstractMatrix{T}, b::AbstractVector{T}) where {T}
     @boundscheck (size(R,1) == size(R,2) == length(b)) || throw(DimensionMismatch())
     n = length(b)
     c = R           # trabajamos in-place
@@ -230,7 +230,7 @@ function _chlrdr_orthant!(R::AbstractMatrix{T}, b::AbstractVector{T}) where {T<:
 end
 # Generic kernel: assumes that rfill!(rvec) writes per-sample scales
 function qmc_orthant_core!(ch::AbstractMatrix{T}, bs::AbstractVector{T}; m::Integer=10_000, r::Integer=12,
-    rng::Random.AbstractRNG=Random.default_rng(), fill_w!::Function = (w::AbstractVector{T}, _j, _nv, _δ::T, _rng)->fill!(w, one(T))) where {T<:AbstractFloat}
+    rng::Random.AbstractRNG=Random.default_rng(), fill_w!::Function = (w::AbstractVector{T}, _j, _nv, _δ::T, _rng)->fill!(w, one(T))) where {T}
 
     n = length(bs)
     (size(ch,1) == size(ch,2) == n) || throw(DimensionMismatch())

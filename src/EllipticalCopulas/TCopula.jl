@@ -259,8 +259,7 @@ function _Gauss2F1_hybrid(ν::Real, z::Real;
 end
 # t-ortant (copulates t with ν g.l.)
 function qmc_orthant_t!(R::AbstractMatrix{T}, b::AbstractVector{T}, ν::Integer; m::Integer = 10_000, r::Integer = 12,
-    rng::Random.AbstractRNG = Random.default_rng()) where {T<:AbstractFloat}
-
+    rng::Random.AbstractRNG = Random.default_rng()) where T
     # ¡muta R y b!
     (ch, bs) = _chlrdr_orthant!(R, b)
 
@@ -274,7 +273,7 @@ function qmc_orthant_t!(R::AbstractMatrix{T}, b::AbstractVector{T}, ν::Integer;
         @inbounds @simd for k in 1:nv
             t = k*qχ + xrχ; t -= floor(t)
             u = clamp(t, δ, one(T)-δ)                    # u ∈ (δ, 1-δ)
-            s = T(Distributions.quantile(chi, Float64(u)))            # quantile χ²_ν
+            s = T(Distributions.quantile(chi, Real(u)))            # quantile χ²_ν
             w[k] = sqrt(T(ν) / s)                       # radial scale
         end
         nothing
@@ -283,9 +282,11 @@ function qmc_orthant_t!(R::AbstractMatrix{T}, b::AbstractVector{T}, ν::Integer;
     return qmc_orthant_core!(ch, bs; m=m, r=r, rng=rng, fill_w! = fill_w!)
 end
 
-function Distributions.cdf(C::CT, u::AbstractVector; m::Int = 25_000, r::Int = 12, rng = Random.default_rng()) where {CT<:TCopula}
+function Distributions.cdf(C::CT, u::AbstractVector; m::Integer = 1000*length(C), r::Int = 12, rng = Random.default_rng()) where {CT<:TCopula}
     df = Distributions.params(C)[1]
     b = Distributions.quantile.(Distributions.TDist(df), u)
-    p, _ = qmc_orthant_t!(copy(C.Σ), b, df; m=m, r=r, rng=rng)
+    Tb = eltype(b)
+    Σ_promoted = Tb.(copy(C.Σ))
+    p, _ = qmc_orthant_t!(Σ_promoted, b, df; m=m, r=r, rng=rng)
     return p
 end

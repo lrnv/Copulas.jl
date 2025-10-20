@@ -139,19 +139,21 @@ end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)
 
 # ===================== Φ y Φ^{-1} (erfc/erfcinv) =====================
-@inline Φinv(p::T) where {T<:AbstractFloat} = @fastmath sqrt(T(2)) * SpecialFunctions.erfcinv(T(2) * (T(1) - p))
-@inline Φ(x::T) where {T<:AbstractFloat} = @fastmath T(0.5) * SpecialFunctions.erfc(-x / sqrt(T(2)))
-@inline φ(x::T) where {T<:AbstractFloat} = @fastmath inv(sqrt(T(2π))) * exp(-x*x / T(2))
+@inline Φinv(p::T) where T = @fastmath sqrt(T(2)) * SpecialFunctions.erfcinv(T(2) * (T(1) - p))
+@inline Φ(x::T) where T = @fastmath T(0.5) * SpecialFunctions.erfc(-x / sqrt(T(2)))
+@inline φ(x::T) where T = @fastmath inv(sqrt(T(2π))) * exp(-x*x / T(2))
 function qmc_orthant_normal!(Σ::AbstractMatrix{T}, b::AbstractVector{T}; m::Integer=10_000, r::Integer=12,
-    rng::Random.AbstractRNG=Random.default_rng()) where {T<:AbstractFloat}
+    rng::Random.AbstractRNG=Random.default_rng()) where {T}
     (ch, bs) = _chlrdr_orthant!(Σ, b)    # ¡muta Σ y b!
     qmc_orthant_core!(ch, bs; m=m, r=r, rng=rng)
 end
-function Distributions.cdf(C::CT, u::AbstractVector; method::Symbol = :qmc, m::Int = 25_000, r::Int = 12, rng = Random.default_rng()) where {CT<:GaussianCopula}
+function Distributions.cdf(C::CT, u::AbstractVector; method::Symbol = :qmc, m::Integer = 1000*length(C), r::Int = 12, rng = Random.default_rng()) where {CT<:GaussianCopula}
     x = StatsBase.quantile.(Distributions.Normal(), u)
     d = length(C)
     if method == :qmc
-        p, _ = qmc_orthant_normal!(copy(C.Σ), x; m=m, r=r, rng=rng)
+        Tx = eltype(x)
+        Σ_promoted = Tx.(copy(C.Σ))
+        p, _ = qmc_orthant_normal!(Σ_promoted, x; m=m, r=r, rng=rng)
     elseif method == :normal
         p = MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
     end
