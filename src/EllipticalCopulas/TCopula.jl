@@ -257,3 +257,29 @@ function _Gauss2F1_hybrid(ν::Real, z::Real;
         return (ν^2 * x >= thresh) ? Copulas._Gauss_Euler(ν, z; rtol=rtol_euler, k=k) : Copulas._Gauss_hypergeometric(ν, z; rtol=rtol_series, zsplit=zsplit)
     end
 end
+# t-ortant (copulates t with ν g.l.)
+function qmc_orthant_t!(R::AbstractMatrix{T}, b::AbstractVector{T}, ν::Integer; m::Integer = 10_000, r::Integer = 12,
+    rng::Random.AbstractRNG = Random.default_rng()) where {T<:AbstractFloat}
+
+    # ¡muta R y b!
+    (ch, bs) = _chlrdr_orthant!(R, b)
+
+    # extra Richtmyer root for the radial dimension (χ²)
+    qχ  = richtmyer_roots(T, length(b) + 1)[end]
+    chi = Distributions.Chisq(ν)
+
+    # scale generator w[k] = √(ν / S_k), S_k ~ χ²_ν (quasi-random)
+    fill_w! = function (w::AbstractVector{T}, _j::Int, nv::Int, δ::T, rng_local)
+        xrχ = rand(rng_local, T)
+        @inbounds @simd for k in 1:nv
+            t = k*qχ + xrχ; t -= floor(t)
+            u = clamp(t, δ, one(T)-δ)                    # u ∈ (δ, 1-δ)
+            s = T(Distributions.quantile(chi, Float64(u)))            # quantile χ²_ν
+            w[k] = sqrt(T(ν) / s)                       # radial scale
+        end
+        nothing
+    end
+
+    return qmc_orthant_core!(ch, bs; m=m, r=r, rng=rng, fill_w! = fill_w!)
+end
+

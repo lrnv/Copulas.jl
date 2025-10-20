@@ -79,11 +79,11 @@ GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ)
 
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
-#function _cdf(C::CT,u) where {CT<:GaussianCopula}
-#    x = StatsBase.quantile.(Distributions.Normal(), u)
-#    d = length(C)
-#    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
-#end
+function _cdf(C::CT,u) where {CT<:GaussianCopula}
+    x = StatsBase.quantile.(Distributions.Normal(), u)
+    d = length(C)
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
+end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
     return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
@@ -143,61 +143,12 @@ function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
 end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)
 
-
-function _cdf_base(Σ::AbstractMatrix{T}, x; abseps=1e-4, releps=1e-4, 
-                    maxpts=50_000, m0=1028, r=2, rng=Random.default_rng()) where {T<:Real}
-    d = length(x)
-
-    # Standardize to correlation
-    σ = sqrt.(LinearAlgebra.diag(Σ))
-    R = Σ ./ (σ * σ')
-    bstar0 = x ./ σ
-    widths = StatsFuns.normcdf.(bstar0)
-
-    # “Short interval” rearrangement
-    P = sortperm(widths)
-    R1 = R[P, P]
-    bstar1 = bstar0[P]
-
-    # Cholesky with pivoting
-    F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R1), LinearAlgebra.RowMaximum(); check=false)
-    L = Matrix(F.L)
-    bstar = bstar1[F.p]
-
-    # Quasi-random Monte Carlo
-    y = Vector{T}(undef, d)
-    acc = 0.0
-    sob = Sobol.SobolSeq(d)
-    shift = rand(rng, d)
-
-    for _ in 1:m0
-        uvec = (Sobol.next!(sob) .+ shift) .% 1.0
-        logp = 0.0
-        alive = true
-        for j in 1:d
-            μ = 0.0
-            @simd for k in 1:(j-1)
-                μ += L[j,k] * y[k]
-            end
-            tj = (bstar[j] - μ) / L[j,j]
-            β  = StatsFuns.normcdf(tj)
-            if β <= eps(Float64)
-                alive = false; break
-            end
-            y[j] = StatsFuns.norminvcdf(clamp(uvec[j]*β, floatmin(Float64), 1 - eps(Float64)))
-            logp += log(β)
-        end
-        alive && (acc += exp(logp))
-    end
-    return acc / m0
-end
-
-function _cdf(C::GaussianCopula, u; fast::Bool=true, kwargs...)
-    x = StatsFuns.norminvcdf.(u)
-    Σ = C.Σ
-    if fast
-        return _cdf_base(Σ, x; abseps=1e-4, releps=1e-4, maxpts=50_000, m0=1028, r=2, kwargs...)
-    else
-        return _cdf_base(Σ, x; abseps=1e-6, releps=1e-6, maxpts=1_000_000, m0=2048, r=8, kwargs...)
-    end
+# ===================== Φ y Φ^{-1} (erfc/erfcinv) =====================
+@inline Φinv(p::T) where {T<:AbstractFloat} = @fastmath sqrt(T(2)) * SpecialFunctions.erfcinv(T(2) * (T(1) - p))
+@inline Φ(x::T) where {T<:AbstractFloat} = @fastmath T(0.5) * SpecialFunctions.erfc(-x / sqrt(T(2)))
+@inline φ(x::T) where {T<:AbstractFloat} = @fastmath inv(sqrt(T(2π))) * exp(-x*x / T(2))
+function qmc_orthant_normal!(Σ::AbstractMatrix{T}, b::AbstractVector{T}; m::Integer=10_000, r::Integer=12,
+    rng::Random.AbstractRNG=Random.default_rng()) where {T<:AbstractFloat}
+    (ch, bs) = _chlrdr_orthant!(Σ, b)    # ¡muta Σ y b!
+    qmc_orthant_core!(ch, bs; m=m, r=r, rng=rng)
 end
