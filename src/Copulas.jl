@@ -20,7 +20,7 @@ module Copulas
     import Optim
     import Printf
     import TaylorSeries
-    import Sobol
+    import Primes
 
     # Main code
     include("utils.jl")
