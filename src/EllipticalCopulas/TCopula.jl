@@ -283,3 +283,9 @@ function qmc_orthant_t!(R::AbstractMatrix{T}, b::AbstractVector{T}, ν::Integer;
     return qmc_orthant_core!(ch, bs; m=m, r=r, rng=rng, fill_w! = fill_w!)
 end
 
+function Distributions.cdf(C::CT, u::AbstractVector; m::Int = 25_000, r::Int = 12, rng = Random.default_rng()) where {CT<:TCopula}
+    df = Distributions.params(C)[1]
+    b = Distributions.quantile.(Distributions.TDist(df), u)
+    p, _ = qmc_orthant_t!(copy(C.Σ), b, df; m=m, r=r, rng=rng)
+    return p
+end
