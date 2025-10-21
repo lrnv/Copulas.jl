@@ -34,4 +34,3 @@ end
     # Boundary should throw
     @test_throws ArgumentError GaussianCopula(3, -0.5)
 end
-

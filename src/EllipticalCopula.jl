@@ -123,6 +123,11 @@ end
     return Σ
 end
 
+# ===================== Φ y Φ^{-1} (erfc/erfcinv) =====================
+@inline Φinv(p::T) where T = @fastmath sqrt(T(2)) * SpecialFunctions.erfcinv(T(2) * (T(1) - p))
+@inline Φ(x::T) where T = @fastmath T(0.5) * SpecialFunctions.erfc(-x / sqrt(T(2)))
+@inline φ(x::T) where T = @fastmath inv(sqrt(T(2π))) * exp(-x*x / T(2))
+
 # Richtmyer Generators (shared)
 @inline _δ(::Type{T}) where {T<:Real} = T(sqrt(eps(T)))
 @inline richtmyer_roots(T, n) = sqrt.(T.(Float64.(Primes.primes(1, max(n-1, Int(floor(5n*log(n+1)/4)))))))[1:n-1]
