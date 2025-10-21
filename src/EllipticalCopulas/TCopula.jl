@@ -56,18 +56,10 @@ function τ(C::TCopula{d,MT}) where {d, MT}
     end
     return LinearAlgebra.Symmetric(T, :U)
 end
-ρ(C::TCopula{2,df,MT}) where {df,MT} = rhoS_t(df, C.Σ[1,2])
-function ρ(C::TCopula{d,df,MT}) where {d,df,MT}
-    T = Matrix{Float64}(I, d, d)
-    @inbounds for j in 1:d-1, i in j+1:d
-        T[i,j] = T[j,i] = rhoS_t(df, C.Σ[i,j])
-    end
-    LinearAlgebra.Symmetric(T, :U)
-end
 ##############################
-function rhoS_t(ν::Real, ρ::Real; rtol::Real=1e-10)
-    ν ≤ 0 && throw(ArgumentError("ν>0 requerido"))
-    ρ_ = clamp(float(ρ), -prevfloat(1.0), prevfloat(1.0))
+function ρ(C::TCopula{2,ν,MT}) where {ν,MT}
+    ρ_ = C.Σ[1,2]
+    rtol = 1e-10
     #  Normalization constant off_{Ṽ}
     Cν = 2 * SpecialFunctions.gamma(ν)^2 * SpecialFunctions.gamma(3ν/2) / (SpecialFunctions.gamma(ν/2)^3 * SpecialFunctions.gamma(2ν))
     f(v) = begin
@@ -75,7 +67,7 @@ function rhoS_t(ν::Real, ρ::Real; rtol::Real=1e-10)
         # F = HypergeometricFunctions.pFq((ν, ν), (2ν,), 1 - v^2)
         # and if not... The implemented functions work well and in particular are quite fast.
         F = Copulas._Gauss2F1_hybrid(ν, 1 - v^2)
-        asin(ρ_ * v) * Cν * v^(ν - 1) * (1 - v^2)^(ν/2 - 1) * F
+        return asin(ρ_ * v) * Cν * v^(ν - 1) * (1 - v^2)^(ν/2 - 1) * F
     end
     try
         val, _ = QuadGK.quadgk(f, 0.0, 1.0; rtol=rtol)
