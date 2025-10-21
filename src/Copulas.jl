@@ -10,7 +10,6 @@ module Copulas
     import StatsFuns
     import ForwardDiff
     import HCubature
-    import MvNormalCDF
     import Combinatorics
     import LogExpFunctions
     import QuadGK
