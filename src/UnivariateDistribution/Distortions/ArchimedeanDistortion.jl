@@ -15,4 +15,14 @@ function Distributions.quantile(D::ArchimedeanDistortion{TG, T}, α::Real) where
     y = ϕ⁽ᵏ⁾⁻¹(D.G, D.p, α * D.den; start_at = D.sJ)
     return ϕ(D.G, y - D.sJ)
 end
-## ConditionalCopula moved next to ArchimedeanCopula definition
+function Distributions.pdf(D::ArchimedeanDistortion{TG, T}, u::Real) where {TG, T}
+    # Support on (0,1); treat boundaries with zero density
+    (0 < u < 1) || return zero(promote_type(eltype(u), T))
+    return ϕ⁽ᵏ⁾(D.G, D.p + 1, D.sJ + ϕ⁻¹(D.G, u)) * ϕ⁻¹⁽¹⁾(D.G, u) / D.den
+end
+function Distributions.logpdf(D::ArchimedeanDistortion{TG, T}, u::Real) where {TG, T}
+    # Support on (0,1); treat boundaries with zero density
+    (0 < u < 1) || return promote_type(eltype(u), T)(-Inf)
+    return log(abs(ϕ⁽ᵏ⁾(D.G, D.p + 1, D.sJ + ϕ⁻¹(D.G, u)))) + log(abs(ϕ⁻¹⁽¹⁾(D.G, u))) - log(abs(D.den))
+end
+

@@ -35,3 +35,21 @@ function Distributions.logcdf(D::BivEVDistortion, z::Real)
     # upper clip but no lower clip
     return min(logval + log(max(tolog, T(0))), T(0))
 end
+
+function Distributions.logpdf(D::BivEVDistortion, z::Real)
+    T = typeof(z)
+    # Support and degeneracies
+    z ≤ 0    && return T(-Inf)
+    z ≥ 1    && return T(-Inf)
+    D.uⱼ ≤ 0 && return T(-Inf)
+    # Conditioning at 1 ⇒ Uniform(0,1): pdf ≡ 1 ⇒ logpdf = 0
+    D.uⱼ ≥ 1 && return T(0)
+
+    # EV copula density at (z, uⱼ): c(u,v) = exp(-ℓ) * (ℓ_x ℓ_y - ℓ_{xy}) / (u v)
+    x = -log(z)
+    y = -log(D.uⱼ)
+    val, du, dv, dudv = _biv_der_ℓ(D.tail, (x, y))
+    core = -dudv + du*dv
+    (core <= 0 || !isfinite(core)) && return T(-Inf)
+    return -val + log(core) + x + y
+end
