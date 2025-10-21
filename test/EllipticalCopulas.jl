@@ -272,7 +272,7 @@ td[14,9] = 0.6653426686040154
             @test e ≈ old_e
 
             # Try to compare with the measure() function but we lost the rng bindings so its approximate: 
-            old_mes, old_mes_err = MvNormalCDF.mvnormcdf(Σ, a, b; m=m, rng = StableRNG(1234))
+            old_mes, old_mes_err = MvNormalCDF.mvnormcdf(Σ, a, b)
             qa = Distributions.cdf.(Normal(), a)
             qb = Distributions.cdf.(Normal(), b)
             mes = Copulas.measure(GaussianCopula(float.(Σ)), qa, qb)
