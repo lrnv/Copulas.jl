@@ -250,7 +250,9 @@ td[14,9] = 0.6653426686040154
 	    ptol = td[i,6]
 	    etol = td[i,8]
 
-        if all(a .== -Inf) # Only take the cases that start at -Inf
+        if all(a .== -Inf) 
+            # Only take the cases that start at -Inf
+            # For these cases, there is a strick correspondance from our code to MvNormalCDF
             old_p, old_e = MvNormalCDF.mvnormcdf(Σ, a, b; m=m, rng = StableRNG(1234))
             p,e = Copulas.qmc_orthant_normal!(float.(Σ), float(b); m=m, rng=StableRNG(1234))
 
@@ -261,11 +263,20 @@ td[14,9] = 0.6653426686040154
             @test round(p, digits=6) ≈ pexpected atol=ptol
             @test e ≈ eexpected atol=etol
         else
-            # for cases where a != fill(-Inf, d)... dont know what to do ? just compre to MvNormalCDF ?
+            # for cases where a != fill(-Inf, d)... dont know what to do ?
+
+            # Try to compare with -Inf instead of b : 
             old_p, old_e = MvNormalCDF.mvnormcdf(Σ, fill(-Inf, length(b)), b; m=m, rng = StableRNG(1234))
             p,e = Copulas.qmc_orthant_normal!(float.(Σ), float(b); m=m, rng=StableRNG(1234))
             @test p ≈ old_p
             @test e ≈ old_e
+
+            # Try to compare with the measure() function but we lost the rng bindings so its approximate: 
+            old_mes, old_mes_err = MvNormalCDF.mvnormcdf(Σ, a, b; m=m, rng = StableRNG(1234))
+            qa = Distributions.cdf.(Normal(), a)
+            qb = Distributions.cdf.(Normal(), b)
+            mes = Copulas.measure(GaussianCopula(float.(Σ)), qa, qb)
+            @test mes ≈ old_mes atol=old_mes_err # those dont always match, its weird. 
         end
 	end
 end
