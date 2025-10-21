@@ -239,7 +239,7 @@ td[12,9] = 0.19640599118630003
 td[13,9] = 1.0
 td[14,9] = 0.6653426686040154
 
-@testset "MvNormalCDF test" begin
+@testset "Comparison to MvNormalCDF" begin
 	for i in 1:14
 	    Σ = td[i,1]
 	    a = td[i,2]
