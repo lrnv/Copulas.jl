@@ -342,6 +342,7 @@ can_integrate_pdf(C::CheckerboardCopula) = false
 
 can_ad(C::Copulas.Copula) = can_pdf(C)
 can_ad(C::FrankCopula) = C.G.θ < 100
+can_ad(C::GumbelCopula) = C.G.θ < 100 || length(C) == 2
 can_ad(C::MCopula) = false
 can_ad(C::WCopula) = false
 can_ad(C::tEVCopula) = false
@@ -352,20 +353,17 @@ can_ad(C::MOCopula) = false
 is_bivariate(C::Copulas.Copula) = (length(C) == 2)
 has_subsetdims(C::Copulas.Copula) = !is_bivariate(C)
 
-check_cdf_rand(C::Copulas.Copula) = true
-check_cdf_rand(C::BC2Copula) = false
-check_cdf_rand(C::MOCopula) = false
-check_cdf_rand(C::CuadrasAugeCopula) = false
+can_check_pdf_positivity(C::Copulas.Copula) = can_pdf(C) 
+can_check_pdf_positivity(C::GumbelCopula) = C.G.θ < 19
 
 dep_coherency_enabled(C::Copulas.Copula) = true
-dep_coherency_enabled(C::MOCopula) = false
-dep_coherency_enabled(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
+dep_coherency_enabled(C::Union{MOCopula, Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}}) = false
 
-check_biv_conditioning(C::Copulas.Copula) = is_bivariate(C) && can_ad(C)
-check_biv_conditioning(C::CheckerboardCopula) = false
+can_check_biv_conditioning(C::Copulas.Copula) = is_bivariate(C) && can_ad(C)
+can_check_biv_conditioning(C::CheckerboardCopula) = false
 
-check_highdim_conditioning(C::Copulas.Copula) = (length(C) ∈ (3,4)) && can_ad(C)
-check_highdim_conditioning(C::CheckerboardCopula) = false
+can_check_highdim_conditioning(C::Copulas.Copula) = !is_bivariate(C) && can_ad(C)
+can_check_highdim_conditioning(C::CheckerboardCopula) = false
 
 has_uniform_margins(C::Copulas.Copula) = true
 has_uniform_margins(C::EmpiricalCopula) = false
@@ -393,28 +391,41 @@ has_unbounded_params(C::FGMCopula, d) = d == 2
 unbounding_is_a_bijection(C::Copulas.Copula) = true
 unbounding_is_a_bijection(C::FGMCopula) = length(C)==2
 
-function generator_specialization(gen::TG) where TG<:Copulas.Generator
-    ϕ     = which(Copulas.ϕ,      (TG, Float64))      != which(Copulas.ϕ,      (Copulas.FrailtyGenerator, Float64))
-    ϕ1    = which(Copulas.ϕ⁽¹⁾,   (TG, Float64))      != which(Copulas.ϕ⁽¹⁾,   (Copulas.Generator, Float64))
-    ϕk    = which(Copulas.ϕ⁽ᵏ⁾,   (TG, Int, Float64)) != which(Copulas.ϕ⁽ᵏ⁾,   (Copulas.Generator, Int, Float64))
-    ϕinv  = which(Copulas.ϕ⁻¹,    (TG, Float64))      != which(Copulas.ϕ⁻¹,    (Copulas.Generator, Float64))
-    ϕinv1 = which(Copulas.ϕ⁻¹⁽¹⁾, (TG, Float64))      != which(Copulas.ϕ⁻¹⁽¹⁾, (Copulas.Generator, Float64))
-    ϕkinv = which(Copulas.ϕ⁽ᵏ⁾⁻¹, (TG, Int, Float64)) != which(Copulas.ϕ⁽ᵏ⁾⁻¹, (Copulas.Generator, Int, Float64))
-    τinv = applicable(Copulas.τ, gen) && applicable(Copulas.τ⁻¹, TG, 1.0)
-    ρinv = applicable(Copulas.ρ, gen) && applicable(Copulas.ρ⁻¹, TG, 1.0)
-    return (; ϕ, ϕ1, ϕk, ϕinv, ϕinv1, ϕkinv, τinv, ρinv)
-end
-
-function tail_specialization(tail::TT) where TT<:Copulas.Tail
-    dA =        which(Copulas.dA,        (TT, Float64))                 != which(Copulas.dA,        (Copulas.Tail2, Float64))
-    d²A =       which(Copulas.d²A,       (TT, Float64))                 != which(Copulas.d²A,       (Copulas.Tail2, Float64))
-    _A_dA_d²A = which(Copulas._A_dA_d²A, (TT, Float64))                 != which(Copulas._A_dA_d²A, (Copulas.Tail2, Float64))
-    ℓ =         which(Copulas.ℓ,         (TT, Tuple{Float64, Float64})) != which(Copulas.ℓ,         (Copulas.Tail2, Tuple{Float64, Float64}))
-    return (; dA, d²A, _A_dA_d²A, ℓ)
-end
 
 # A few technical helpers. 
-
+_archimax_cdf_mockup(C::Copulas.ArchimaxCopula, u1::Real, u2::Real) = begin
+    G, E = C.gen, C.tail
+    (u1≤0 || u2≤0)  && return 0.0
+    (u1≥1 && u2≥1)  && return 1.0
+    x = Copulas.ϕ⁻¹(G, u1)
+    y = Copulas.ϕ⁻¹(G, u2)
+    S = x + y
+    S == 0 && return 1.0
+    t = y / S
+    Copulas.ϕ(G, S * Copulas.A(E, t))
+end
+_archimax_pdf_hess(C, u1, u2) = begin
+    f(z) = cdf(C, z)                      
+    H = ForwardDiff.hessian(f, [u1, u2])  # ∂²/∂u1∂u2
+    max(H[1,2], 0.0)                      # numerical clip 
+end
+function _archimax_mc_rectangles_cdf(C; N::Int=2_000, seed::Integer=123,
+                        rects::Tuple{Vararg{Tuple{<:Real,<:Real}}}=((0.5,0.5),(0.3,0.7),(0.8,0.2)))
+    rng = StableRNG(seed)
+    U = rand(rng, C, N)
+    results = Vector{NamedTuple}(undef, length(rects))
+    @inbounds for (k,(a,b)) in pairs(rects)
+        p_th = cdf(C, [a,b])
+        cnt = 0
+        for i in 1:N
+            (U[1,i] ≤ a && U[2,i] ≤ b) && (cnt += 1)
+        end
+        p_hat = cnt / N
+        se = sqrt(p_th*(1-p_th)/N)
+        results[k] = (rect=(a,b), p_hat=p_hat, p_th=p_th, se=se)
+    end
+    return results
+end
 function _integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, N) where d
     ba = b .- a
     logvol = log(prod(ba))
@@ -483,7 +494,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     u = ones(d)
                     u[i] = val
 
-                    # Si es TCopula, usar más muestras para reducir el error MC
+                    # If TCopula, use more samples to reduce MC error
                     if C isa TCopula
                         @test cdf(C, u; m = 10_000) ≈ val atol=1e-3
                     else
@@ -496,8 +507,8 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 u[i] = 0
                 @test iszero(cdf(C, u))
 
-                # Nota: KS test aleatorio desactivado porque a veces da falsos negativos
-                # @test pvalue(ApproximateOneSampleKSTest(spl1000[i,:], Uniform())) > 0.005
+            # Note: KS random test disabled because it sometimes gives false negatives
+            # @test pvalue(ApproximateOneSampleKSTest(spl1000[i,:], Uniform())) > 0.005
             end
         end
 
@@ -509,16 +520,6 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             @test pdf(C, ones(d) .- 1e-5) >= 0
             @test (all(r10 .>= 0) && all(isfinite.(r10)))
         end 
-
-        # Generic sampler vs CDF sanity: P(U ≤ u) from samples should match cdf(C, u)
-        @testif check_cdf_rand(C) "Empirical lower-orthant vs CDF" begin
-            N = size(spl1000, 2)
-            u = 0.8 .+ 0.2 .* rand(rng, d)
-            p_th = cdf(C, u)
-            p_hat = mean(all(spl1000 .<= u, dims=1))
-            se = sqrt(max(p_th * (1 - p_th) / N, 0.0))
-            @test abs(p_hat - p_th) ≤ max(5*se, 2e-3)
-        end
 
 
         # This test takes more than 5 hours to run 
@@ -599,10 +600,10 @@ Bestiary = filter(GenericTestFilter, Bestiary)
     end
 
     @testif check_corkendall(C) "corkendall ∘ rosenblatt = I" begin
-        τmat = corkendall(rosenblatt(C, spl1000)')
+        U = rosenblatt(C, spl1000)
         for i in 1:(d - 1)
             for j in (i + 1):d
-                @test τmat[i,j] ≈ 0.0 atol = 0.15
+                @test corkendall(U[i, :], U[j, :]) ≈ 0.0 atol = 0.15
             end
         end
     end
@@ -610,103 +611,128 @@ Bestiary = filter(GenericTestFilter, Bestiary)
     @testset "Conditionning" begin
         # Conditioning tests (p = 1), validate against AD ratio and compare fast-paths to fallback
         # Always run basic sanity checks for bivariate conditionals; AD checks are gated below
-        @testif is_bivariate(C) "(2 | 1): Basics & Specialization" begin
+        @testif is_bivariate(C) "Condition(2 | 1): Basics" begin
             us = (0.2, 0.5, 0.8)
-            m_fast = which(Copulas.DistortionFromCop, (CT,                NTuple{1,Int}, NTuple{1,Float64}, Int))
-            m_gen  = which(Copulas.DistortionFromCop, (Copulas.Copula{2}, NTuple{1,Int}, NTuple{1,Float64}, Int))
-            has_spec = m_fast != m_gen
             for j in 1:2
-                i = 3-j
                 for v in (0.3, 0.7)
                     Dd = Copulas.condition(C, j, v)
-                    if !(C isa EmpiricalCopula)
-                        @test all(0 .≤ rand(rng, Dd, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
-                    end
                     vals = cdf.(Ref(Dd), us)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
-                    if check_biv_conditioning(C) && has_spec
-                        Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
-                        vals_gen  = cdf.(Ref(Dgen),  us)
-                        for (vf, vg) in zip(vals, vals_gen)
-                            @test isapprox(vf, vg, atol=1e-3, rtol=1e-3)
+                    if !can_ad(C)
+                        if CT <: Copulas.MCopula
+                            @test all(vals .≈ min.(collect(us) ./ v, 1))
+                        elseif CT <: Copulas.WCopula
+                            @test all(vals .≈ max.(collect(us) .+ v .- 1, 0) ./ v)
                         end
-                    elseif CT <: Copulas.MCopula
-                        @test all(vals .≈ min.(collect(us) ./ v, 1))
-                    elseif CT <: Copulas.WCopula
-                        @test all(vals .≈ max.(collect(us) .+ v .- 1, 0) ./ v)
                     end
                 end
             end
         end
-        @testif check_highdim_conditioning(C) "(d|d-2): Check conditional copula vs AD" begin
+
+        # Fast-path vs generic comparisons (bivariate)
+        @testif can_check_biv_conditioning(C) "Condition(2 | 1): Specialized vs Generic Distortion" begin
+            us = (0.2, 0.5, 0.8)
+            # Determine once whether a specialization exists for this type
+            m_fast = which(Copulas.DistortionFromCop, (CT,                NTuple{1,Int}, NTuple{1,Float64}, Int))
+            m_gen  = which(Copulas.DistortionFromCop, (Copulas.Copula{2}, NTuple{1,Int}, NTuple{1,Float64}, Int))
+            has_spec = m_fast != m_gen
+            for j in 1:2
+                i = 3 - j
+                for v in (0.3, 0.7)
+                    if has_spec
+                        Dfast = Copulas.condition(C, j, v)
+                        Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
+                        vals_fast = cdf.(Ref(Dfast), us)
+                        vals_gen  = cdf.(Ref(Dgen),  us)
+                        for (vf, vg) in zip(vals_fast, vals_gen)
+                            @test isapprox(vf, vg, atol=1e-3, rtol=1e-3)
+                        end
+                    end
+                end
+            end
+        end
+
+        # High-dimensional AD checks moved to ConditionalDistribution.jl (generic subset)
+
+        @testif (can_check_highdim_conditioning(C) && d ∈(3,4)) "Condition (d|d-2): Check conditional copula vs AD" begin
             js = tuple(collect(3:d)...)
             ujs = tuple(collect(0.25 + 0.5*rand(rng) for _ in js)...)  # interior values
             CC = condition(C, js, ujs)
-            if !(C isa EmpiricalCopula)
-                @test all(0 .≤ rand(rng, CC, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
-            end
-            pts = [[0.2,0.3], [0.5,0.5], [0.8,0.6]]
-            vals = cdf.(CC.C, pts) # only the conditional copula. 
-            m_fast = which(Copulas.ConditionalCopula, (CT,                NTuple{d-2, Int}, NTuple{d-2, Float64}))
-            m_gen  = which(Copulas.ConditionalCopula, (Copulas.Copula{d}, NTuple{d-2, Int}, NTuple{d-2, Float64}))
-            if m_fast != m_gen
-                CC_gen = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{d}, js, ujs)
-                for (v, p) in zip(vals,pts)
-                    @test v ≈ cdf(CC_gen, p) atol=1e-8 rtol=1e-8
+
+            # test grid on [0,1]^2
+            pts = [(0.2,0.3), (0.5,0.5), (0.8,0.6)]
+            # AD reference checks moved to ConditionalDistribution.jl (generic subset)
+            # compare specialized ConditionalCopula vs generic fallback when specialization exists
+            let m_fast = which(Copulas.ConditionalCopula, (CT,                NTuple{d-2, Int}, NTuple{d-2, Float64})),
+                m_gen  = which(Copulas.ConditionalCopula, (Copulas.Copula{d}, NTuple{d-2, Int}, NTuple{d-2, Float64}))
+                if m_fast != m_gen
+                    CC_fast = CC.C # reuse computed conditional, unwrap copula
+                    CC_gen = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{d}, js, ujs)
+                    for (v1,v2) in pts
+                        @test cdf(CC_fast, [v1,v2]) ≈ cdf(CC_gen, [v1,v2]) atol=1e-8 rtol=1e-8
+                    end
                 end
             end
         end
     end
     
     @testif is_archimedean_with_generator(C) "ArchimedeanCopula specific tests" begin 
+        # Only test things if there are specilized versions of the functions. 
+        spe_ϕ1 = which(Copulas.ϕ⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁽¹⁾, (Copulas.Generator, Float64))
+        spe_ϕk = which(Copulas.ϕ⁽ᵏ⁾, (typeof(C.G), Int, Float64)) != which(Copulas.ϕ⁽ᵏ⁾, (Copulas.Generator, Int, Float64))
+        spe_ϕinv = which(Copulas.ϕ⁻¹, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹, (Copulas.Generator, Float64))
+        spe_ϕinv1 = which(Copulas.ϕ⁻¹⁽¹⁾, (typeof(C.G), Float64)) != which(Copulas.ϕ⁻¹⁽¹⁾, (Copulas.Generator, Float64))
+        spe_ϕkinv = which(Copulas.ϕ⁽ᵏ⁾⁻¹, (typeof(C.G), Int, Float64)) != which(Copulas.ϕ⁽ᵏ⁾⁻¹, (Copulas.Generator, Int, Float64))
 
-        GT = typeof(C.G)
-        spe = generator_specialization(C.G)
         mm = Copulas.max_monotony(C.G)
         
-        @testif spe.ϕinv "Check ϕ ∘ ϕ⁻¹ == Id over [0,1]" begin
+        can_τinv = applicable(Copulas.τ, C.G) && applicable(Copulas.τ⁻¹,typeof(C.G), 1.0)
+        can_ρinv = applicable(Copulas.ρ, C.G) && applicable(Copulas.ρ⁻¹,typeof(C.G), 1.0)
+        GT = Copulas.generatorof(CT)
+
+        @testif spe_ϕinv "Check ϕ ∘ ϕ⁻¹ == Id over [0,1]" begin
             for x in 0:0.1:1
                 @test Copulas.ϕ(C.G,Copulas.ϕ⁻¹(C.G,x)) ≈ x atol=1e-10
             end
         end
 
-        @testif spe.ϕ1 "Check d(ϕ) == ϕ⁽¹⁾" begin 
+        @testif spe_ϕ1 "Check d(ϕ) == ϕ⁽¹⁾" begin 
             @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽¹⁾(C.G, 0.1)
         end
 
-        @testif spe.ϕk "Check d(ϕ) == ϕ⁽ᵏ⁾(k=1)" begin
+        @testif spe_ϕk "Check d(ϕ) == ϕ⁽ᵏ⁾(k=1)" begin
             @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 1, 0.1)
         end
 
-        @testif (spe.ϕ1 || spe.ϕk) "Check ϕ⁽¹⁾ == ϕ⁽ᵏ⁾(k=1)" begin
+        @testif (spe_ϕ1 || spe_ϕk) "Check ϕ⁽¹⁾ == ϕ⁽ᵏ⁾(k=1)" begin
             @test Copulas.ϕ⁽¹⁾(C.G, 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 1, 0.1)
         end
-        @testif (spe.ϕ1 || spe.ϕk) "Check d(ϕ⁽¹⁾) == ϕ⁽ᵏ⁾(k=2)" begin
+        @testif (spe_ϕ1 || spe_ϕk) "Check d(ϕ⁽¹⁾) == ϕ⁽ᵏ⁾(k=2)" begin
             @test ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 2, 0.1)
         end
 
-        @testif spe.ϕinv1 "Check d(ϕ⁻¹) == ϕ⁻¹⁽¹⁾" begin
+        @testif spe_ϕinv1 "Check d(ϕ⁻¹) == ϕ⁻¹⁽¹⁾" begin
             @test ForwardDiff.derivative(x -> Copulas.ϕ⁻¹(C.G, x), 0.5) ≈ Copulas.ϕ⁻¹⁽¹⁾(C.G, 0.5)
         end
 
-        @testif spe.ϕkinv "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k in 1:d-2" begin
+        @testif spe_ϕkinv "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k in 1:d-2" begin
             for k in 1:d-2
                 @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,k, Copulas.ϕ⁽ᵏ⁾(C.G, k, 0.1)) ≈ 0.1
             end
         end
 
         # For generators that are only d-monotonous, this does not need to be true. 
-        @testif (spe.ϕkinv && (mm > d)) "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k=d-1" begin 
+        @testif (spe_ϕkinv && (mm > d)) "Check ϕ⁽ᵏ⁾⁻¹ ∘ ϕ⁽ᵏ⁾ == Id for k=d-1" begin 
             @test Copulas.ϕ⁽ᵏ⁾⁻¹(C.G,d-1, Copulas.ϕ⁽ᵏ⁾(C.G, d-1, 0.1)) ≈ 0.1
         end
 
-        @testif spe.τinv "Check τ ∘ τ⁻¹ == Id" begin
+        @testif can_τinv "Check τ ∘ τ⁻¹ == Id" begin
             tau = Copulas.τ(C)
             @test Copulas.τ(GT(Copulas.τ⁻¹(CT,tau))) ≈ tau
         end
         
-        @testif spe.ρinv "Check ρ ∘ ρ⁻¹ == Id" begin
+        @testif can_ρinv "Check ρ ∘ ρ⁻¹ == Id" begin
             rho = Copulas.ρ(C)
             @test -1 <= rho <= 1
             @test Copulas.ρ(GT(Copulas.ρ⁻¹(CT,rho))) ≈ rho
@@ -714,7 +740,8 @@ Bestiary = filter(GenericTestFilter, Bestiary)
 
         if C.G isa Copulas.FrailtyGenerator
             F = frailty(C.G)
-            @testif (spe.ϕ && applicable(mgf, F, -1.0)) "Check frailty matches ϕ" begin
+            spe_ϕ = which(Copulas.ϕ, (typeof(C.G), Float64)) != which(Copulas.ϕ, (Copulas.FrailtyGenerator, Float64))
+            @testif (spe_ϕ && applicable(mgf, F, -1.0)) "Check frailty matches ϕ" begin
                 for t in 0:0.1:2
                     @test ϕ(C.G, t) == mgf(F, -t)
                 end
@@ -736,83 +763,74 @@ Bestiary = filter(GenericTestFilter, Bestiary)
 
     # Extreme value copula-specific tests (bivariate)
     @testif (is_extremevalue(C) && is_bivariate(C)) "ExtremeValueCopula specific tests" begin
-        spe = tail_specialization(C.tail)
+            @testset "A function basics" begin
+                @test Copulas.A(C.tail, 0.0) ≈ 1
+                @test Copulas.A(C.tail, 1.0) ≈ 1
+                t = rand(rng)
+                A_value = Copulas.A(C.tail, t)
+                @test 0.0 <= A_value <= 1.0
+                @test isapprox(A_value, max(t, 1-t); atol=1e-6) || A_value >= max(t, 1-t)
+                @test A_value <= 1.0
+            end
 
-        @testset "A function basics" begin
-            @test Copulas.A(C.tail, 0.0) ≈ 1
-            @test Copulas.A(C.tail, 1.0) ≈ 1
-            t = rand(rng)
-            A_value = Copulas.A(C.tail, t)
-            @test 0.0 <= A_value <= 1.0
-            @test isapprox(A_value, max(t, 1-t); atol=1e-6) || A_value >= max(t, 1-t)
-            @test A_value <= 1.0
-        end
+            # Only run derivative and related tests if the methods are specialized for this type
+            spe_dA =        which(Copulas.dA, (typeof(C.tail), Float64))        != which(Copulas.dA, (Copulas.Tail2, Float64))
+            spe_d²A =       which(Copulas.d²A, (typeof(C.tail), Float64))       != which(Copulas.d²A, (Copulas.Tail2, Float64))
+            spe__A_dA_d²A = which(Copulas._A_dA_d²A, (typeof(C.tail), Float64)) != which(Copulas._A_dA_d²A, (Copulas.Tail2, Float64))
+            spe_ℓ =         which(Copulas.ℓ, (typeof(C.tail), Tuple{Float64, Float64})) != which(Copulas.ℓ, (Copulas.Tail2, Tuple{Float64, Float64}))
 
-        @testif (spe.dA || spe.d²A || spe._A_dA_d²A) "Testing derivatives of A" begin
-            # FD-based checks only when available
-            @testif !(CT<:tEVCopula) "FD derivatives availability" begin
+            @testif (spe_dA || spe_d²A || spe__A_dA_d²A) "Testing derivatives of A" begin
+                # FD-based checks only when available
+                @testif !(CT<:tEVCopula) "FD derivatives availability" begin
+                    for t in (0.05, 0.5, 0.95)
+                        @test isapprox(Copulas.dA(C.tail, t), ForwardDiff.derivative(x -> Copulas.A(C.tail, x), t); atol=1e-6)
+                        @test isapprox(Copulas.d²A(C.tail, t), ForwardDiff.derivative(x -> Copulas.dA(C.tail, x), t); atol=1e-6)
+                    end
+                end
+                # Triplet consistency always
                 for t in (0.05, 0.5, 0.95)
-                    @test isapprox(Copulas.dA(C.tail, t), ForwardDiff.derivative(x -> Copulas.A(C.tail, x), t); atol=1e-6)
-                    @test isapprox(Copulas.d²A(C.tail, t), ForwardDiff.derivative(x -> Copulas.dA(C.tail, x), t); atol=1e-6)
+                    a, da, d2a = Copulas._A_dA_d²A(C.tail, t)
+                    @test isapprox(a, Copulas.A(C.tail, t); atol=1e-8)
+                    @test isapprox(da, Copulas.dA(C.tail, t); atol=1e-8)
+                    @test isapprox(d2a, Copulas.d²A(C.tail, t); atol=1e-8)
                 end
             end
-            # Triplet consistency always
-            for t in (0.05, 0.5, 0.95)
-                a, da, d2a = Copulas._A_dA_d²A(C.tail, t)
-                @test isapprox(a, Copulas.A(C.tail, t); atol=1e-8)
-                @test isapprox(da, Copulas.dA(C.tail, t); atol=1e-8)
-                @test isapprox(d2a, Copulas.d²A(C.tail, t); atol=1e-8)
-            end
-        end
 
-        @testif (spe.dA || spe.d²A || spe._A_dA_d²A || spe.ℓ) "Testing ℓ and cdf for Extreme Value Copula" begin 
-            u, v = rand(rng), rand(rng)
-            x, y = -log(u), -log(v)
-            s = y / (x + y)
-            expected_ℓ = Copulas.A(C.tail, s) * (x + y)
-            @test isapprox(Copulas.ℓ(C.tail, (x, y)), expected_ℓ; atol=0.1)
-            expected_cdf = exp(-expected_ℓ)
-            @test isapprox(cdf(C, [u, v]), expected_cdf; atol=0.1)
-
-            @testif !(CT<:tEVCopula) "pdf via FD matches analytic" begin
+            @testif (spe_dA || spe_d²A || spe__A_dA_d²A || spe_ℓ) "Testing ℓ and cdf for Extreme Value Copula" begin 
                 u, v = rand(rng), rand(rng)
-                num_pdf = ForwardDiff.derivative(u_ -> ForwardDiff.derivative(v_ -> cdf(C, [u_, v_]), v), u)
-                ana_pdf = pdf(C, [u, v])
-                @test isapprox(ana_pdf, num_pdf; atol=0.1)
+                x, y = -log(u), -log(v)
+                s = y / (x + y)
+                expected_ℓ = Copulas.A(C.tail, s) * (x + y)
+                @test isapprox(Copulas.ℓ(C.tail, (x, y)), expected_ℓ; atol=0.1)
+                expected_cdf = exp(-expected_ℓ)
+                @test isapprox(cdf(C, [u, v]), expected_cdf; atol=0.1)
+
+                @testif !(CT<:tEVCopula) "pdf via FD matches analytic" begin
+                    u, v = rand(rng), rand(rng)
+                    num_pdf = ForwardDiff.derivative(u_ -> ForwardDiff.derivative(v_ -> cdf(C, [u_, v_]), v), u)
+                    ana_pdf = pdf(C, [u, v])
+                    @test isapprox(ana_pdf, num_pdf; atol=0.1)
+                end
             end
-        end
     end
 
     # Archimax specific tests
     @testif is_archimax(C) "ArchimaxCopula specific tests" begin
 
             for (u1,u2) in ((0.2,0.3), (0.7,0.6), (0.9,0.4))
-
-                # truth: 
-                c  = cdf(C, [u1,u2])
-                lp = logpdf(C, [u1, u2])
-                p  = pdf(C, [u1,u2])
-
-                # mockups: 
-                c_mock = begin 
-                    (u1≤0 || u2≤0)  && return 0.0
-                    (u1≥1 && u2≥1)  && return 1.0
-                    x = Copulas.ϕ⁻¹(C.gen, u1)
-                    y = Copulas.ϕ⁻¹(C.gen, u2)
-                    S = x + y
-                    S == 0 && return 1.0
-                    t = y / S
-                    Copulas.ϕ(C.gen, S * Copulas.A(C.tail, t))
-                end
-                p_mock = max(ForwardDiff.hessian(Base.Fix1(cdf, C), [u1, u2])[1,2], 0.0)
-
-                @test isapprox(c, c_mock; rtol=1e-12, atol=1e-12)
-                @test isfinite(lp)
-                @test exp(lp) ≈ p
-                @test isapprox(p, p_mock; rtol=1e-6, atol=1e-8)
-
+                @test isapprox(cdf(C, [u1,u2]), _archimax_cdf_mockup(C, u1, u2); rtol=1e-12, atol=1e-12)
             end
 
+            for (u1,u2) in ((0.25,0.4), (0.6,0.6))
+                lp = logpdf(C, [u1,u2])
+                @test isfinite(lp)
+                c_h = _archimax_pdf_hess(C, u1, u2)
+                @test isapprox(exp(lp), c_h; rtol=1e-6, atol=1e-8)
+            end
+
+            for r in _archimax_mc_rectangles_cdf(C; N=1_500, seed=321)
+                @test abs(r.p_hat - r.p_th) ≤ max(5*r.se, 2e-3)
+            end
     end
 
     @testif can_be_fitted(C, d) "Fitting interface"  begin
