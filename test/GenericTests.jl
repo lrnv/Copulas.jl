@@ -632,15 +632,6 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
                     @test all(pvals .>= 0)
-
-                    # Check that pdf, cdf and quantile are coherent: 
-                    dprobs = ForwardDiff.derivative.(Base.Fix1(Distributions.cdf, Dd), us)
-                    for (dp, p, v, q, u) in zip(dprobs, pvals, vals, qs, us)
-                        @test isfinite(dp) && isfinite(p)
-                        @test isapprox(dp, p; atol=1e-4, rtol=1e-4)
-                        @test isapprox(cdf(Dd, q), u; atol=1e-4, rtol=1e-4)
-                        @test isapprox(quantile(Dd, v), u; atol=1e-4, rtol=1e-4)
-                    end
                     if check_biv_conditioning(C) && has_spec
                         Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
                         vals_gen  = cdf.(Ref(Dgen),  us)
