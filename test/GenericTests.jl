@@ -613,9 +613,23 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     if !(C isa EmpiricalCopula)
                         @test all(0 .≤ rand(rng, Dd, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
                     end
-                    vals = cdf.(Ref(Dd), us)
+                    vals = cdf.(Dd, us)
+                    probs = pdf.(Dd, us)
+                    qs = quantile.(Dd, us)
+                    
+                    @test all(0 .<= qs .<= 1)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
+                    
+                    # Check that pdf, cdf and quantile are coherent: 
+                    dprobs = ForwardDiff.derivative.(Base.Fix1(Distributions.cdf, Dd), us)
+                    for (dp, p, v, q, u) in zip(dprobs, probs, vals, qs, us)
+                        @test isfinite(dp) && isfinite(p)
+                        @test isapprox(dp, p; atol=1e-5, rtol=1e-5)
+                        @test isapprox(cdf(Dd, q), u; atol=1e-5, rtol=1e-5)
+                        @test isapprox(quantile(Dd, v), u; atol=1e-5, rtol=1e-5)
+                    end
+
                     if check_biv_conditioning(C) && has_spec
                         Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
                         vals_gen  = cdf.(Ref(Dgen),  us)
