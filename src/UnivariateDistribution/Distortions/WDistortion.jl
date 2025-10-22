@@ -6,4 +6,5 @@ struct WDistortion{T} <: Distortion
     j::Int8
 end
 Distributions.cdf(D::WDistortion, u::Real) = max(u + D.v - 1, 0) / D.v
+Distributions.pdf(D::WDistortion, u::Real) = u > 1 - D.v ? one(u)/D.v : zero(u)
 Distributions.quantile(D::WDistortion, α::Real) = α * D.v + (1 - D.v)

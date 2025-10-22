@@ -613,9 +613,20 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     if !(C isa EmpiricalCopula)
                         @test all(0 .≤ rand(rng, Dd, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
                     end
-                    vals = cdf.(Ref(Dd), us)
+                    vals = cdf.(Dd, us)
+                    probs = pdf.(Dd, us)
+                    qs = quantile.(Dd, us)
+                    dprobs = Base.Fix1(ForwardDiff.derivative, Base.Fix1(cdf, Dd)).(us) # mock
+                    
+                    @test all(probs .>= 0)
+                    @test all(0 .<= qs .<= 1)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
+
+                    # We should check here htat values of the pdf, cdf and quantile functions are coherent with each other. 
+                    # but this is not easy to do since sometimes the distributions are continuous, sometimes they are discrete. 
+                    # Maybe we need another module that checks up univariate distributions ? 
+
                     if check_biv_conditioning(C) && has_spec
                         Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
                         vals_gen  = cdf.(Ref(Dgen),  us)
