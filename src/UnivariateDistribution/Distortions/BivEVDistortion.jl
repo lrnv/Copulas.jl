@@ -6,8 +6,8 @@ struct BivEVDistortion{TT,T} <: Distortion
     j::Int8
     uⱼ::T
 end
-function Distributions.logcdf(D::BivEVDistortion, z::Real)
-    T = typeof(z)
+function Distributions.logcdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1}
+    T = promote_type(typeof(z), TF1)
     # bounds and degeneracies
     z ≤ 0    && return T(-Inf)   # P(X ≤ 0) = 0
     z ≥ 1    && return T(0)      # P(X ≤ 1) = 1
@@ -36,8 +36,8 @@ function Distributions.logcdf(D::BivEVDistortion, z::Real)
     return min(logval + log(max(tolog, T(0))), T(0))
 end
 
-function Distributions.logpdf(D::BivEVDistortion, z::Real)
-    T = typeof(z)
+function Distributions.logpdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1}
+    T = promote_type(typeof(z), TF1)
     # Support and degeneracies
     z ≤ 0    && return T(-Inf)
     z ≥ 1    && return T(-Inf)
