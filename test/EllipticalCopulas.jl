@@ -39,7 +39,7 @@ end
 
 # Tests taken from MvNormalCDF.jl
 using MvNormalCDF
-using Test, Distributions, StableRNGs, ForwardDiff
+using Test, Distributions, StableRNGs, ForwardDiff, Statistics
 
 td = Array{Any}(undef,(14,9))
 #  1-cov mtx 2-a 3-b 4-m 5-p 6-ptol 7-e 8-etol
@@ -272,11 +272,15 @@ td[14,9] = 0.6653426686040154
             @test e ≈ old_e
 
             # Try to compare with the measure() function but we lost the rng bindings so its approximate: 
-            old_mes, old_mes_err = MvNormalCDF.mvnormcdf(Σ, a, b)
-            qa = Distributions.cdf.(Normal(), a)
-            qb = Distributions.cdf.(Normal(), b)
-            mes = Copulas.measure(GaussianCopula(float.(Σ)), qa, qb)
-            @test mes ≈ old_mes atol=old_mes_err # those dont always match, its weird. 
+            σ  = sqrt.(diag(Σ))
+            R  = cov2cor(Σ)                # D^{-1} Σ D^{-1}
+            a′ = a ./ σ
+            b′ = b ./ σ
+            mes = Copulas.measure(GaussianCopula(R), cdf.(Normal(), a′), cdf.(Normal(), b′))
+            old_mes, old_err = MvNormalCDF.mvnormcdf(Σ, a, b)
+            # This is flexible but unstable... measure uses 2^d cdf so it
+            # also propagates error... we don't know the error of measure
+            @test mes ≈ old_mes atol= 1e-3  
         end
 	end
 end
