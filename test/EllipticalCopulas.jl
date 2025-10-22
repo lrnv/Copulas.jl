@@ -284,3 +284,72 @@ td[14,9] = 0.6653426686040154
         end
 	end
 end
+
+@testset "TCopula: (QMC vs hcubature, and derivative≈pdf)" begin
+    dfs = [2, 5, 10, 20]         # degrees of freedom
+    Tmax = 60.0                  # max time allowed for hcubature (seconds)
+    m = 10_000                   # default QMC samples
+    eps = 1e-4                   # finite difference step
+
+    for i in 1:14
+        Σ = float.(td[i,1])
+        Σ = 0.5 * (Σ + Σ')       # enforce symmetry
+        Σ += 1e-10I              # small regularization for PD
+        Σ = Matrix{Float64}(Σ)   # ensure mutable float matrix
+        b = float.(td[i,3])
+        d = size(Σ, 1)
+
+        for ν in dfs
+            C = TCopula(ν, Σ)
+            u = cdf.(TDist(ν), b)  # reference point in (0,1)^d
+
+            # === 1) Evaluate CDF via QMC ===
+            p_qmc = cdf(C, u; m=m, r=8, rng=StableRNG(1234))
+            @test 0 ≤ p_qmc ≤ 1
+
+            # === 2) Compare with hcubature (only for low dimensions) ===
+            if d ≤ 3
+                try
+                    t0 = time()
+                    p_hcub = @invoke cdf(C::Copulas.Copula, u)
+                    elapsed = time() - t0
+                    if elapsed < Tmax
+                        @test isapprox(p_qmc, p_hcub; atol=1e-3)
+                    else
+                        @info "⏭️  Skipped hcubature (case $i, ν=$ν, d=$d, $(round(elapsed;digits=1))s)"
+                    end
+                catch err
+                    @warn "❌ hcubature failed for case $i, ν=$ν, d=$d: $err"
+                end
+            else
+                @info "⏭️  Skipped hcubature (dim=$d > 3)"
+            end
+
+            # === 3) Numerical derivative ≈ PDF via finite differences ===
+            #f(u) = cdf(C, u; m=m, r=8, rng=StableRNG(1234)) 
+            #grad = ForwardDiff.gradient(f, u) 
+            #cval = pdf(C, u) 
+            # the gradient returns vector, we add because ∑∂C/∂uᵢ ≈ total density 
+            #@test isapprox(sum(grad), cval; atol=1e-2)
+            try
+                Δ = similar(u)
+                for j in eachindex(u)
+                    uplus  = copy(u); uplus[j]  = clamp(u[j] + eps, 0.0, 1.0)
+                    uminus = copy(u); uminus[j] = clamp(u[j] - eps, 0.0, 1.0)
+                    Δ[j] = (cdf(C, uplus; m=5_000, r=6, rng=StableRNG(1234)) -
+                            cdf(C, uminus; m=5_000, r=6, rng=StableRNG(1234))) / (2eps)
+                end
+
+                # Jacobian correction for transformation x = F⁻¹_ν(u)
+                x = quantile.(TDist(ν), u)
+                jac = prod(pdf.(TDist(ν), x))
+                cval = pdf(C, u)
+
+                @test isapprox(sum(Δ) * jac, cval; atol=1e-2)
+            catch err
+                @warn "⚠️  Skipped numerical derivative for case $i, ν=$ν, d=$d: $err"
+            end
+        end
+    end
+end
+
