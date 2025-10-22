@@ -156,7 +156,7 @@ function qmc_orthant_t!(R::AbstractMatrix{T}, b::AbstractVector{T}, ν::Integer;
     return qmc_orthant_core!(ch, bs; m=m, r=r, rng=rng, fill_w! = fill_w!)
 end
 
-function Distributions.cdf(C::TCopula{d,df,MT}, u::AbstractVector; m::Integer = 1000*d, r::Int = 12, rng = Random.default_rng()) where {d,df,MT}
+function Distributions.cdf(C::TCopula{d,df,MT}, u::AbstractVector; m::Integer = 2000*(d+1), r::Int = 12, rng = Random.default_rng()) where {d,df,MT}
     b = Distributions.quantile.(Distributions.TDist(df), u)
     Tb = eltype(b)
     Σ_promoted = Tb.(copy(C.Σ))

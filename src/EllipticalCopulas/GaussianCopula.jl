@@ -143,7 +143,7 @@ function qmc_orthant_normal!(Σ::AbstractMatrix{T}, b::AbstractVector{T}; m::Int
     (ch, bs) = _chlrdr_orthant!(Σ, b)    # ¡muta Σ y b!
     qmc_orthant_core!(ch, bs; m=m, r=r, rng=rng)
 end
-function Distributions.cdf(C::GaussianCopula{d, MT}, u::AbstractVector; m::Integer = 1000*d, r::Int = 12, rng = Random.default_rng()) where {d, MT}
+function Distributions.cdf(C::GaussianCopula{d, MT}, u::AbstractVector; m::Integer = 2000*(d+1), r::Int = 8, rng = Random.default_rng()) where {d, MT}
     x = StatsBase.quantile.(Distributions.Normal(), u)
     Tx = eltype(x)
     Σ_promoted = Tx.(copy(C.Σ))

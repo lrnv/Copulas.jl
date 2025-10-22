@@ -280,7 +280,7 @@ td[14,9] = 0.6653426686040154
             old_mes, old_err = MvNormalCDF.mvnormcdf(Σ, a, b)
             # This is flexible but unstable... measure uses 2^d cdf so it
             # also propagates error... we don't know the error of measure
-            @test mes ≈ old_mes atol= 1e-3  
+            @test mes ≈ old_mes atol= 5e-4  
         end
 	end
 end
