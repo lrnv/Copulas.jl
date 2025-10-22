@@ -485,7 +485,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     
                     # If TCopula, use more samples to reduce MC error
                     if C isa TCopula
-                        @test cdf(C, u; m = 10_000) ≈ val atol=1e-3
+                        @test cdf(C, u; m = 20_000) ≈ val atol=1e-4
                     else
                         @test cdf(C, u) ≈ val atol=1e-5
                     end
