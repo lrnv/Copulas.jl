@@ -1,5 +1,5 @@
 """
-    FrankGenerator{T}
+    FrankGenerator{T}, FrankCopula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -23,6 +23,8 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
+FrankGenerator, FrankCopula
+
 struct FrankGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function FrankGenerator(θ)

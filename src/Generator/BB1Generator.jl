@@ -1,5 +1,5 @@
 """
-    BB1Generator{T}
+    BB1Generator{T}, BB1Copula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -22,6 +22,8 @@ Special cases:
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.190-192
 """
+BB1Generator, BB1Copula
+
 struct BB1Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T

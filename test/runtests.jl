@@ -20,7 +20,7 @@ testfiles = [
 # You can override the definition of this GenericTestFilter if you want. 
 GenericTestFilter(C) = C isa TCopula
 # An example: 
-# GenericTestFilter(C) = C isa JoeCopula || C isa GumbelCopula # You can filter on your model. 
+# GenericTestFilter(C) = C isa BC2Copula || C isa MOCopula || C isa CuadrasAugeCopula # || C isa GumbelCopula # You can filter on your model. 
 
 @testset verbose=true "Copulas.jl testings"  begin
     @testset verbose=true "f = $f.jl" for f in testfiles  

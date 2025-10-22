@@ -1,5 +1,5 @@
 """
-    InvGaussianGenerator{T}
+    InvGaussianGenerator{T}, InvGaussianCopula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -25,6 +25,8 @@ Special cases:
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
+InvGaussianGenerator, InvGaussianCopula
+
 struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function InvGaussianGenerator(θ)
@@ -141,21 +143,12 @@ function τ⁻¹(::Type{<:InvGaussianGenerator}, τ)
 end
 frailty(G::InvGaussianGenerator) = Distributions.InverseGaussian(G.θ,1)
 
-
-function _rho_invgaussian(θ; rtol=1e-7, atol=1e-9, maxevals=10^6)
-    θeff = clamp(θ, 1e-12, Inf)
-    Cθ   = Copulas.ArchimedeanCopula(2, InvGaussianGenerator(θeff))
-    f(x) = _cdf(Cθ, (x[1], x[2]))  # <- tu _cdf
-    I = HCubature.hcubature(f, (0.0,0.0), (1.0,1.0); rtol=rtol, atol=atol, maxevals=maxevals)[1]
-    return 12I - 3
-end
-
-ρ(G::InvGaussianGenerator) = _rho_invgaussian(G.θ)
+ρ(G::InvGaussianGenerator) = @invoke ρ(ArchimedeanCopula(2, G)::Copula)
 function ρ⁻¹(::Type{<:InvGaussianGenerator}, rho)
     # Numerically inverts _rho_invgaussian using Brent's method.
     # Spearman's rho for InvGaussian: [0, 1/2)
     rho ≤ 0 && return zero(rho)
     rho ≥ log(2) && return Inf * rho
-    xhat = Roots.find_zero(x -> _rho_invgaussian(-log(x)) - rho, (0, 1))
+    xhat = Roots.find_zero(x -> ρ(InvGaussianGenerator(-log(x))) - rho, (0, 1))
     return -log(xhat)
 end

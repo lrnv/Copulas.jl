@@ -1,26 +1,28 @@
 """
-    AMHGenerator{T}
+    AMHGenerator{T}, AMHCopula{d, T}
 
 Fields:
-  - θ::Real - parameter
+- θ::Real - parameter
 
-Constructor
+Constructors: 
 
-    AMHGenerator(θ)
-    AMHCopula(d,θ)
+    AMHGenerator(θ)  # Constructs the generator. 
+    AMHCopula(d,θ)   # Construct the copula
 
-The [AMH](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1,1)``. It is an Archimedean copula with generator:
+The [AMH Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) in dimension `d` is parameterized by `θ ∈ [-1,1)`. It is an Archimedean copula with generator:
 
 ```math
 \\phi(t) = 1 - \\frac{1-\\theta}{e^{-t} - \\theta}.
 ```
 
 Special cases:
-- When θ = 0, it is the IndependentCopula
+- When θ = 0, it collapses to independence. 
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
+AMHGenerator, AMHCopula
+
 struct AMHGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function AMHGenerator(θ)

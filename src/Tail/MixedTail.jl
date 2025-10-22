@@ -1,5 +1,5 @@
 """
-    MixedTail{T}
+    MixedTail{T}, MixedCopula{T}
 
 Fields:
   - θ::Real — dependence parameter, θ ∈ [0,1]
@@ -24,6 +24,8 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
+MixedTail, MixedCopula
+
 struct MixedTail{T} <: AbstractUnivariateTail2
     θ::T
     function MixedTail(θ)

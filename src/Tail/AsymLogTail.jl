@@ -1,5 +1,5 @@
 """
-    AsymLogTail{T}
+    AsymLogTail{T}, AsymLogCopula{T}
 
 Fields:
   - α::Real  — dependence parameter (α ≥ 1)
@@ -28,6 +28,8 @@ References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
 """
+AsymLogTail, AsymLogCopula
+
 struct AsymLogTail{T} <: Tail2
     α::T
     θ₁::T

@@ -1,5 +1,5 @@
 """
-    BB6Generator{T}
+    BB6Generator{T}, BB6Copula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -19,6 +19,8 @@ The BB6 copula has parameters ``\\theta, \\delta \\in [1,\\infty)``. It is an Ar
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.200-201
 """
+BB6Generator, BB6Copula
+
 struct BB6Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T

@@ -1,5 +1,5 @@
 """
-    ClaytonGenerator{T}
+    ClaytonGenerator{T}, ClaytonCopula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -25,6 +25,8 @@ Special cases (for the copula in dimension ``d``):
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
+ClaytonGenerator, ClaytonCopula
+
 struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function ClaytonGenerator(θ)
@@ -81,25 +83,8 @@ function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGe
     S1==d-1 && return eltype(u)(-Inf)
     return log(θ + 1) * (d - 1) - (θ + 1) * S2 + (-1 / θ - d) * log(S1 - d + 1)
 end
-### only for test...
-@inline function _C_clayton(u::Float64, v::Float64, θ::Real)
-    s = u^(-θ) + v^(-θ) - 1
-    if θ < 0
-        return (s <= 0) ? 0.0 : s^(-1/θ)   # soporte recortado para θ<0
-    else
-        return s^(-1/θ)                    # para θ>0 siempre s≥1
-    end
-end
-# Spearman (vía CDF) — with _safett Integral
-function ρ(G::ClaytonGenerator; rtol=1e-8, atol=1e-10)
-    θ = float(G.θ)
-    θ ≤ -1 && throw(ArgumentError("Para Clayton: θ > -1."))
-    iszero(θ) && return 0.0
-    I = HCubature.hcubature(x -> _C_clayton(x[1], x[2], θ),
-                            [0.0,0.0], [1.0,1.0];
-                            rtol=rtol, atol=atol)[1]
-    return 12I - 3
-end
+
+ρ(G::ClaytonGenerator) = @invoke ρ(ArchimedeanCopula(2, G)::Copula)
 
 # Inverse ρ → θ for Clayton (without trimming to [0,1])
 function ρ⁻¹(::Type{<:ClaytonGenerator}, ρ̂; atol=1e-10)

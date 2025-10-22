@@ -1,5 +1,5 @@
 """
-    BC2Tail{T}
+    BC2Tail{T}, BC2Copula{T}
 
 Fields:
   - a::Real — parameter (a ∈ [0,1])
@@ -20,6 +20,8 @@ References:
 
 * [mai2011bivariate](@cite) Mai, J. F., & Scherer, M. (2011). Bivariate extreme-value copulas with discrete Pickands dependence measure. Extremes, 14, 311-324. Springer, 2011.
 """
+BC2Tail, BC2Copula
+
 struct BC2Tail{T} <: Tail2
     a::T
     b::T

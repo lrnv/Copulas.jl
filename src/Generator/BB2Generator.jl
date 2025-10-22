@@ -1,5 +1,5 @@
 """
-    BB2Generator{T}
+    BB2Generator{T}, BB2Copula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -19,6 +19,8 @@ The BB2 copula has parameters ``\\theta, \\delta \\in (0,\\infty)``. It is an Ar
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.193-194
 """
+BB2Generator, BB2Copula
+
 struct BB2Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T

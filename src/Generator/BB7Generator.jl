@@ -1,5 +1,5 @@
 """
-    BB7Generator{T}
+    BB7Generator{T}, BB7Copula{d, T}
 
 Fields:
   - θ::Real - parameter
@@ -19,6 +19,8 @@ The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.202-203
 """
+BB7Generator, BB7Copula
+
 struct BB7Generator{T} <: AbstractFrailtyGenerator
     θ::T
     δ::T

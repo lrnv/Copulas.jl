@@ -1,5 +1,5 @@
 """
-    tEVTail{Tdf,Tρ}
+    tEVTail{Tdf,Tρ}, tEVCopula{T}
 
 Fields:
   - ν::Real — degrees of freedom (ν > 0)
@@ -31,6 +31,8 @@ References:
 
 * [nikoloulopoulos2009extreme](@cite) Nikoloulopoulos, A. K., Joe, H., & Li, H. (2009). Extreme value properties of multivariate t copulas. Extremes, 12, 129-148.
 """
+tEVTail, tEVCopula
+
 struct tEVTail{T} <: Tail2
     ν::T
     ρ::T
