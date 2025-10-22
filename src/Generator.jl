@@ -358,14 +358,13 @@ function ϕ⁽ᵏ⁾(G::WilliamsonGenerator{TX, d}, k::Int, t) where {d, TX<:Dis
     k == 0 && return ϕ(G, t)
     k == 1 && return ϕ⁽¹⁾(G, t)
     S = zero(Tt)
-    coeff = (isodd(k) ? -one(Tt) : one(Tt)) * Base.factorial(d - 1) / Base.factorial(d - 1 - k)
     @inbounds for j in lastindex(r):-1:firstindex(r)
         rⱼ = r[j]; wⱼ = w[j]
         t ≥ rⱼ && break
         zpow = (d == k+1) ? one(Tt) : (1 - t / rⱼ)^(d - 1 - k)
-        S += wⱼ * (zpow / rⱼ^k)
+        S += wⱼ * zpow / rⱼ^k
     end
-    return S * coeff
+    return S * (isodd(k) ? -1 : 1) * Base.factorial(d - 1) / Base.factorial(d - 1 - k)
 end
 
 function ϕ⁻¹(G::WilliamsonGenerator{TX, d}, x) where {d, TX<:Distributions.DiscreteNonParametric}
@@ -515,6 +514,6 @@ max_monotony(G::TiltedGenerator{TG, T}) where {TG, T} = max(0, max_monotony(G.G)
 ϕ(G::TiltedGenerator{TG, T}, t) where {TG, T} = ϕ⁽ᵏ⁾(G.G, G.p, G.sJ + t) / G.den
 ϕ⁻¹(G::TiltedGenerator{TG, T}, x) where {TG, T} = ϕ⁽ᵏ⁾⁻¹(G.G, G.p, x * G.den; start_at = G.sJ) - G.sJ
 ϕ⁽ᵏ⁾(G::TiltedGenerator{TG, T}, k::Int, t) where {TG, T} = ϕ⁽ᵏ⁾(G.G, k + G.p, G.sJ + t) / G.den
-ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T}, k::Int, y; start_at = G.sJ) where {TG, T} = ϕ⁽ᵏ⁾⁻¹(G.G, k + G.p, y * G.den; start_at = start_at) - G.sJ
+ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T}, k::Int, y; start_at = G.sJ) where {TG, T} = ϕ⁽ᵏ⁾⁻¹(G.G, k + G.p, y * G.den; start_at = start_at+G.sJ) - G.sJ
 ϕ⁽¹⁾(G::TiltedGenerator{TG, T}, t) where {TG, T} = ϕ⁽ᵏ⁾(G, 1, t)
 Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., sJ = G.sJ)
