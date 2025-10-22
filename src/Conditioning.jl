@@ -70,8 +70,8 @@ function Distributions.quantile(d::Distortion, α::Real)
 end
 # You have to implement a cdf, and you can implement a pdf, either in log scaleor not: 
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
-Distributions.logpdf(d::Distortion, t::Real) = log(Distributions.pdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
+Distributions.logpdf(d::Distortion, t::Real) = log(Distributions.pdf(d, t))
 Distributions.pdf(d::Distortion, t::Real) = exp(Distributions.logpdf(d, t))
 
 """

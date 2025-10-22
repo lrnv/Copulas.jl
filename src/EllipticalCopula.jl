@@ -52,9 +52,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::Abstract
     Random.rand!(rng,N(CT)(C.Σ),x)
     U₁ = U(CT)
     @inbounds for i in eachindex(x)
-        xi = Distributions.cdf(U₁, x[i])
-        xi = xi < 0 ? 0.0 : (xi > 1 ? 1.0 : xi)
-        x[i] = T(xi)
+        x[i] = clamp(T(Distributions.cdf(U₁, x[i])), 0, 1)
     end
     return x
 end
@@ -64,8 +62,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMat
     u = U(CT)
     Random.rand!(rng,n,A)
     @inbounds for j in axes(A, 2), i in axes(A, 1)
-        v = Distributions.cdf(u, A[i, j])
-        A[i, j] = T(v < 0 ? 0.0 : (v > 1 ? 1.0 : v))
+        A[i, j] = clamp(T(Distributions.cdf(u, A[i, j])), 0, 1)
     end
     return A
 end
