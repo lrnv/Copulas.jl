@@ -616,7 +616,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     vals = cdf.(Dd, us)
                     probs = pdf.(Dd, us)
                     qs = quantile.(Dd, us)
-                    dprobs = Base.Fix1(derivative, Base.Fix1(cdf, Dd)).(us) # mock
+                    dprobs = Base.Fix1(ForwardDiff.derivative, Base.Fix1(cdf, Dd)).(us) # mock
                     
                     @test all(probs .>= 0)
                     @test all(0 .<= qs .<= 1)
