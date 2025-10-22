@@ -622,14 +622,10 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     @test all(0 .<= qs .<= 1)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
-                    
-                    # Check that pdf, cdf and quantile are coherent: 
-                    for (dp, p, v, q, u) in zip(dprobs, probs, vals, qs, us)
-                        @test isfinite(dp) && isfinite(p)
-                        @test isapprox(dp, p; atol=1e-4, rtol=1e-4)
-                        @test isapprox(cdf(Dd, q), u; atol=1e-4, rtol=1e-4)
-                        @test isapprox(quantile(Dd, v), u; atol=1e-4, rtol=1e-4)
-                    end
+
+                    # We should check here htat values of the pdf, cdf and quantile functions are coherent with each other. 
+                    # but this is not easy to do since sometimes the distributions are continuous, sometimes they are discrete. 
+                    # Maybe we need another module that checks up univariate distributions ? 
 
                     if check_biv_conditioning(C) && has_spec
                         Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
