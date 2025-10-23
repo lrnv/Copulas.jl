@@ -285,26 +285,34 @@ td[14,9] = 0.6653426686040154
 	end
 end
 
-@testset "TCopula: (QMC vs hcubature, and derivative≈pdf)" begin
-    dfs = [2, 5, 10, 20]         # degrees of freedom
-    Tmax = 60.0                  # max time allowed for hcubature (seconds)
-    m = 10_000                   # default QMC samples
-    eps = 1e-4                   # finite difference step
+@testset "TCopula: (QMC vs hcubature, and mixed-derivative≈pdf)" begin
+    dfs  = [2, 5, 10, 20]       # degrees of freedom
+    Tmax = 60.0                 # max wall time for hcubature (seconds)
+    m    = 10_000               # QMC samples for CDF sanity checks
+    mfd  = 15_000               # QMC samples for finite-difference estimates (higher for stability)
+    r_q  = 8                    # QMC replications for CDF
+    r_fd = 10                   # QMC replications for finite-diff
+    eps  = 2e-2                 # step for central finite differences in u-space (larger for stability)
 
     for i in 1:14
         Σ = float.(td[i,1])
-        Σ = 0.5 * (Σ + Σ')       # enforce symmetry
-        Σ += 1e-10I              # small regularization for PD
-        Σ = Matrix{Float64}(Σ)   # ensure mutable float matrix
+        Σ = 0.5 * (Σ + Σ')      # enforce symmetry
+        Σ += 1e-10I             # tiny regularization for PD
+        Σ = Matrix{Float64}(Σ)  # ensure mutable Float64 matrix
+
         b = float.(td[i,3])
         d = size(Σ, 1)
 
         for ν in dfs
             C = TCopula(ν, Σ)
-            u = cdf.(TDist(ν), b)  # reference point in (0,1)^d
 
-            # === 1) Evaluate CDF via QMC ===
-            p_qmc = cdf(C, u; m=m, r=8, rng=StableRNG(1234))
+            # Reference u from td, pushed safely to the interior so the mixed stencil never clips
+            u_raw = cdf.(TDist(ν), b)
+            u = 0.1 .+ 0.8 .* u_raw              # map to (0.1, 0.9)^d
+            u = clamp.(u, 1e-6, 1 - 1e-6)        # hard guard
+
+            # === 1) CDF via QMC (sanity) ===
+            p_qmc = cdf(C, u; m=m, r=r_q, rng=StableRNG(1234))
             @test 0 ≤ p_qmc ≤ 1
 
             # === 2) Compare with hcubature (only for low dimensions) ===
@@ -325,31 +333,29 @@ end
                 @info "⏭️  Skipped hcubature (dim=$d > 3)"
             end
 
-            # === 3) Numerical derivative ≈ PDF via finite differences ===
-            #f(u) = cdf(C, u; m=m, r=8, rng=StableRNG(1234)) 
-            #grad = ForwardDiff.gradient(f, u) 
-            #cval = pdf(C, u) 
-            # the gradient returns vector, we add because ∑∂C/∂uᵢ ≈ total density 
-            #@test isapprox(sum(grad), cval; atol=1e-2)
-            try
-                Δ = similar(u)
-                for j in eachindex(u)
-                    uplus  = copy(u); uplus[j]  = clamp(u[j] + eps, 0.0, 1.0)
-                    uminus = copy(u); uminus[j] = clamp(u[j] - eps, 0.0, 1.0)
-                    Δ[j] = (cdf(C, uplus; m=5_000, r=6, rng=StableRNG(1234)) -
-                            cdf(C, uminus; m=5_000, r=6, rng=StableRNG(1234))) / (2eps)
+            # === 3) Mixed central finite-difference ≈ copula pdf (run only if d ≤ 2) ===
+            if d ≤ 2
+                # Use a local step adapted to distance-to-boundary (extra safety)
+                interior_gap = minimum(min.(u, 1 .- u))
+                eps_local = min(eps, 0.45 * interior_gap)
+
+                # c(u) ≈ (1 / (2^d * eps^d)) * Σ_{s ∈ {-1,1}^d} [ (∏ s_k) * C(u + eps*s) ]
+                signs = collect(Iterators.product(ntuple(_ -> (-1, 1), d)...))
+                acc = 0.0
+                for s in signs
+                    coef = prod(s)
+                    us = clamp.(u .+ eps_local .* collect(s), 0.0, 1.0)
+                    # Common Random Numbers across all corner evaluations
+                    acc += coef * cdf(C, us; m=mfd, r=r_fd, rng=StableRNG(42))
                 end
+                chat = acc / ((2.0^d) * eps_local^d)
 
-                # Jacobian correction for transformation x = F⁻¹_ν(u)
-                x = quantile.(TDist(ν), u)
-                jac = prod(pdf.(TDist(ν), x))
                 cval = pdf(C, u)
-
-                @test isapprox(sum(Δ) * jac, cval; atol=1e-2)
-            catch err
-                @warn "⚠️  Skipped numerical derivative for case $i, ν=$ν, d=$d: $err"
+                # Allow some relative wiggle room; absolute is small when cval is small
+                @test isapprox(chat, cval; rtol=0.1, atol=5e-3)
+            else
+                @info "⏭️  Skipped mixed-derivative test (dim=$d > 2): high-order FD amplifies QMC noise by 1/eps^d"
             end
         end
     end
 end
-
