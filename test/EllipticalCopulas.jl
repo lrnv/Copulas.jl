@@ -290,7 +290,7 @@ end
     Tmax = 60.0                 # max wall time for hcubature (seconds)
     m    = 10_000               # QMC samples for CDF sanity checks
     mfd  = 15_000               # QMC samples for finite-difference estimates (higher for stability)
-    r_q  = 8                    # QMC replications for CDF
+    r_q  = 10                   # QMC replications for CDF
     r_fd = 10                   # QMC replications for finite-diff
     eps  = 2e-2                 # step for central finite differences in u-space (larger for stability)
 
