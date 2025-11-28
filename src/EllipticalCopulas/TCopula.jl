@@ -59,9 +59,9 @@ function DistortionFromCop(C::TCopula{D,ν,MT}, js::NTuple{p,Int}, uⱼₛ::NTup
         r = RiJ[1]; μz = r * zJ[1]; σ0² = 1 - r^2; δ = zJ[1]^2
     else
         L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(ΣJJ))
-        μz = dot(RiJ, (L' \ (L \ zJ)))
-        σ0² = 1 - dot(RiJ, (L' \ (L \ RJi)))
-        y = L \ zJ; δ = dot(y, y)
+        μz = LinearAlgebra.dot(RiJ, (L' \ (L \ zJ)))
+        σ0² = 1 - LinearAlgebra.dot(RiJ, (L' \ (L \ RJi)))
+        y = L \ zJ; δ = LinearAlgebra.dot(y, y)
     end
     νp = ν + length(Jv); σz = sqrt(max(σ0², zero(σ0²))) * sqrt((ν + δ) / νp)
     return StudentDistortion(float(μz), float(σz), Int(ν), Int(νp))
@@ -99,3 +99,4 @@ end
 
 
 _available_fitting_methods(::Type{<:TCopula}, d) = (:mle,)
+
