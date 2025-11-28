@@ -69,7 +69,7 @@ end
 function ConditionalCopula(C::TCopula{D,df,MT}, js, uⱼₛ) where {D,df,MT}
     p = length(js); J = collect(Int, js); I = collect(setdiff(1:D, J)); Σ = C.Σ
     if p == 1
-        Σcond = Σ[I, I] - Σ[I, J] * (Σ[J, I] / Σ[J, J])
+        Σcond = Σ[I, I] - Σ[I, J] * (Σ[J, J] \ Σ[J, I])
     else
         L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ[J, J]))
         Σcond = Σ[I, I] - Σ[I, J] * (L' \ (L \ Σ[J, I]))
@@ -99,4 +99,5 @@ end
 
 
 _available_fitting_methods(::Type{<:TCopula}, d) = (:mle,)
+
 
