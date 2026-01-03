@@ -70,7 +70,13 @@ ArchimedeanCopula{D,TG}(d::Int, args...; kwargs...) where {D, TG} = ArchimedeanC
 
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters. 
 
-_cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
+function _cdf(C::ArchimedeanCopula, u)
+    r = zero(eltype(u))
+    for uᵢ in u
+        r += ϕ⁻¹(C.G, uᵢ)
+    end
+    return ϕ(C.G, r)
+end
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .< 1)
         return eltype(u)(-Inf)
