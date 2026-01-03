@@ -19,7 +19,7 @@ struct HistogramBinDistortion{T} <: Distortion
     end
 end
 
-@inline function Distributions.cdf(d::HistogramBinDistortion, u::Real)
+function Distributions.cdf(d::HistogramBinDistortion, u::Real)
     # piecewise linear within each bin
     m = d.m
     t = clamp(float(u), 0.0, 1.0)
@@ -31,7 +31,7 @@ end
     return base + d.probs[idx] * frac
 end
 
-@inline function Distributions.quantile(d::HistogramBinDistortion, α::Real)
+function Distributions.quantile(d::HistogramBinDistortion, α::Real)
     αf = clamp(float(α), 0.0, 1.0)
     if αf == 0.0; return 0.0; end
     if αf == 1.0; return 1.0; end
@@ -43,4 +43,18 @@ end
     # map back to [0,1] with m bins
     k = idx - 1
     return (k + frac) / d.m
+end
+
+function Distributions.logpdf(d::HistogramBinDistortion, u::Real)
+    # Density is piecewise constant: on bin k, f(u) = m * probs[k]
+    # Support is (0,1); return -Inf at boundaries for numerical safety.
+    uf = float(u)
+    (0 < uf < 1) || return -Inf
+    m = d.m
+    s = m * uf
+    k = min(max(floor(Int, s), 0), m - 1)
+    idx = k + 1
+    p = d.probs[idx]
+    (p <= 0) && return -Inf
+    return log(float(m)) + log(float(p))
 end

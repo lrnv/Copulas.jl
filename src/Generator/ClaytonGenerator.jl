@@ -76,8 +76,11 @@ function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGe
 
     θ = C.G.θ
     # Compute the sum of transformed variables
-    S1 = sum(t ^ (-θ) for t in u)
-    S2 = sum(log(t) for t in u)
+    S1 = S2 = zero(eltype(u))
+    for t in u
+        S1 += t^(-θ)
+        S2 += log(t)
+    end
     # Compute the log of the density according to the explicit formula for Clayton copula
     # See McNeil & Neslehova (2009), eq. (13)
     S1==d-1 && return eltype(u)(-Inf)

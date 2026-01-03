@@ -50,7 +50,10 @@ abstract type EllipticalCopula{d,MT} <: Copula{d} end
 Base.eltype(C::CT) where CT<:EllipticalCopula = Base.eltype(N(CT)(C.Σ))
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT <: EllipticalCopula}
     Random.rand!(rng,N(CT)(C.Σ),x)
-    x .= clamp.(Distributions.cdf.(U(CT),x),0,1)
+    U₁ = U(CT)
+    @inbounds for i in eachindex(x)
+        x[i] = clamp(T(Distributions.cdf(U₁, x[i])), 0, 1)
+    end
     return x
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real, CT<:EllipticalCopula}
@@ -58,14 +61,27 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMat
     n = N(CT)(C.Σ)
     u = U(CT)
     Random.rand!(rng,n,A)
-    A .= clamp.(Distributions.cdf.(u,A),0,1)
+    @inbounds for j in axes(A, 2), i in axes(A, 1)
+        A[i, j] = clamp(T(Distributions.cdf(u, A[i, j])), 0, 1)
+    end
     return A
 end
 function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
     d = length(C)
     (u==zeros(d) || u==ones(d)) && return Inf 
-    x = StatsBase.quantile.(U(CT),u)
-    return Distributions.logpdf(N(CT)(C.Σ),x) - sum(Distributions.logpdf.(U(CT),x))
+    TΣ = eltype(C.Σ)
+    U₁ = U(CT)
+    # quantiles
+    x = Vector{TΣ}(undef, d)
+    @inbounds for i in 1:d
+        x[i] = StatsBase.quantile(U₁, u[i])
+    end
+    # sum of univariate logpdfs
+    s = zero(TΣ)
+    @inbounds for i in 1:d
+        s += Distributions.logpdf(U₁, x[i])
+    end
+    return Distributions.logpdf(N(CT)(C.Σ),x) - s
 end
 function make_cor!(Σ)
     # Verify that Σ is a correlation matrix, otherwise make it so : 
