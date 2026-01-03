@@ -79,11 +79,6 @@ GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ)
 
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
-function _cdf(C::CT,u) where {CT<:GaussianCopula}
-    x = StatsBase.quantile.(Distributions.Normal(), u)
-    d = length(C)
-    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
-end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
     return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
@@ -142,3 +137,16 @@ function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
     return GaussianCopula(Σ), (; θ̂ = (; Σ = Σ))
 end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)
+
+function qmc_orthant_normal!(Σ::AbstractMatrix{T}, b::AbstractVector{T}; m::Integer=10_000, r::Integer=12,
+    rng::Random.AbstractRNG=Random.default_rng()) where {T}
+    (ch, bs) = _chlrdr_orthant!(Σ, b)    # ¡muta Σ y b!
+    qmc_orthant_core!(ch, bs; m=m, r=r, rng=rng)
+end
+function Distributions.cdf(C::GaussianCopula{d, MT}, u::AbstractVector; m::Integer = 2000*(d+1), r::Int = 8, rng = Random.default_rng()) where {d, MT}
+    x = StatsBase.quantile.(Distributions.Normal(), u)
+    Tx = eltype(x)
+    Σ_promoted = Tx.(copy(C.Σ))
+    p, _ = qmc_orthant_normal!(Σ_promoted, x; m=m, r=r, rng=rng)
+    return p
+end

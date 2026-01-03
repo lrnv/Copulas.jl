@@ -482,7 +482,14 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                 for val in [0,1,0.5,rand(rng,5)...]
                     u = ones(d)
                     u[i] = val
-                    @test cdf(C,u) ≈ val atol=1e-5
+                    
+                    # If TCopula, use more samples to reduce MC error
+                    if C isa TCopula
+                        # We don't need to estimate the error here, this is very fast.
+                        @test cdf(C, u; m = 100_000, r = 1) ≈ val atol=1e-5
+                    else
+                        @test cdf(C, u) ≈ val atol=1e-5
+                    end
                 end
                 u = rand(rng,d)
                 u[i] = 0
