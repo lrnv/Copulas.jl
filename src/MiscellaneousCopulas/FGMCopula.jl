@@ -161,7 +161,7 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
             α -> -Distributions.loglikelihood(FGMCopula(2, tanh(α[1])), U),
             [0.1], 
             Optim.LBFGS(); 
-            autodiff=:forward
+            autodiff=ADTypes.AutoForwardDiff()
         )
         θ = tanh(Optim.minimizer(res)[1])
         return CT(d, θ), (; θ̂=(θ=θ,), 
@@ -205,7 +205,7 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
     end
 
     # Optimise in θ-space directly (no need for unbound/rebound)
-    res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff=:forward)
+    res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     θhat = Optim.minimizer(res)
     return FGMCopula(d, θhat),
         (; θ̂ = (θ = θhat,),
