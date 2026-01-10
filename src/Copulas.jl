@@ -20,6 +20,7 @@ module Copulas
     import Optim
     import Printf
     import TaylorSeries
+    import ADTypes
 
     # Main code
     include("utils.jl")

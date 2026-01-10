@@ -161,7 +161,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
     end
     θ0_clamped = clamp(θ0_val, lo, hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
-    res = Optim.optimize(f, lo, hi, [θ0_clamped], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
+    res = Optim.optimize(f, lo, hi, [θ0_clamped], Optim.Fminbox(Optim.LBFGS()), autodiff = ADTypes.AutoForwardDiff())
     θ̂ = Optim.minimizer(res)[1]
     return CT(d, θ̂), (; θ̂=(;θ=θ̂), optimizer=:GradientDescent,
                         xtol=xtol, converged=Optim.converged(res), 

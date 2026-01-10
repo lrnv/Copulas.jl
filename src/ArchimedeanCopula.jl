@@ -239,7 +239,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
         θ₀[1] = Distributions.params(_example(CT, d))[1]
     end
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
-    res = Optim.optimize(f, lo, hi,  θ₀, Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
+    res = Optim.optimize(f, lo, hi,  θ₀, Optim.Fminbox(Optim.LBFGS()), autodiff = ADTypes.AutoForwardDiff())
     θ     = Optim.minimizer(res)[1]
     return CT(d, θ), (; θ̂=(θ=θ,), optimizer=Optim.summary(res),
                         xtol=xtol, converged=Optim.converged(res), 

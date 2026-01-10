@@ -86,7 +86,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
     α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
     loss(C) = -Distributions.loglikelihood(C, U)
     res = try
-        Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff=:forward)
+        Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     catch err
         Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     end
