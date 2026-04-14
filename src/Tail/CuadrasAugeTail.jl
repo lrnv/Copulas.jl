@@ -32,7 +32,7 @@ struct CuadrasAugeTail{T} <: AbstractUnivariateTail2
     function CuadrasAugeTail(θ)
         (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))
         θ == 0 && return NoTail()
-        θ == 1 && return MTail() 
+        θ == 1 && return MTail()
         θf = float(θ)
         new{typeof(θf)}(θf)
     end
@@ -45,7 +45,7 @@ _rebound_params(::Type{<:CuadrasAugeTail}, d, α) = begin
     p = 1 / (1 + exp(-α[1]))
     (; θ = p)
 end
-_θ_bounds(::Type{<:CuadrasAugeTail}, d) = (0, 1)
+_θ_bounds(::Type{<:CuadrasAugeTail}, d) = (0.0, 1.0)
 
 function A(tail::CuadrasAugeTail, t::Real)
     tt = _safett(t)
@@ -71,7 +71,7 @@ function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real
     z ≥ 1    && return S(0)
     D.uⱼ ≤ 0 && return S(-Inf)
     D.uⱼ ≥ 1 && return S(log(z))
-    
+
     z ≥ D.uⱼ && return (1-θ) * log(z)
     return log1p(-θ) + log(z) - θ * log(D.uⱼ)
 
@@ -82,11 +82,11 @@ function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::R
     α ≥ 1 && return 1.0
     D.uⱼ ≤ 0 && return 0.0
     D.uⱼ ≥ 1 && return α
-    
+
     la = log(α)
     lu = log(D.uⱼ)
     lt = log1p(-θ)
-    
+
     if la < lt + (1-θ)*lu
         return exp(la - lt + θ*lu)
     elseif la ≤ (1-θ)*lu

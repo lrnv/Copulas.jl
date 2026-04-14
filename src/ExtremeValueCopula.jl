@@ -50,10 +50,10 @@ ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D, TT} = ExtremeValu
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
-#### Restriction to bivariate cases of the following methods: 
+#### Restriction to bivariate cases of the following methods:
 function Distributions._logpdf(C::ExtremeValueCopula{2, TT}, u) where {TT}
     u1, u2 = u
-    (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf 
+    (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf
     # On the broder, the limit of the pdf is 0 and thus logpdf tends to -Inf
     (u1 == 1.0 || u2 == 1.0) && return -Inf
     x, y = -log(u1), -log(u2)
@@ -72,7 +72,7 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT}, X::DenseMatrix{T}) where {T<:Real, TT}
-    # More efficient Matrix sampler: 
+    # More efficient Matrix sampler:
     d,n = size(X)
     @assert d==2
     E = ExtremeDist(C.tail)
@@ -83,7 +83,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
         X[1,i] = exp(log(w)*z/a)
         X[2,i] = exp(log(w)*(1-z)/a)
     end
-    return X 
+    return X
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT},
                               x::AbstractVector{T}) where {T<:Real, TT}
@@ -99,7 +99,7 @@ DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTup
 
 
 
-# Fitting functions: the default one is in the EmpiricalEvTail because this is what will happen by default. 
+# Fitting functions: the default one is in the EmpiricalEvTail because this is what will happen by default.
 # For this moment generic mle works... maybe we could be implement others specifyc methods maybe upper and lower tail
 
 
@@ -132,14 +132,14 @@ _available_fitting_methods(CT::Type{<:ExtremeValueCopula}, d) = (:mle,)
 _available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}, d) =  (:mle, :itau, :irho, :ibeta, :iupper)
 
 # Fitting empírico (OLS, CFG, Pickands):
-function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; 
+function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
               pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
     C = EmpiricalEVCopula(U; method=typeof(method).parameters[1], grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
     return C, (; pseudo_values, grid, eps)
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
-    θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) : 
-        m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) : 
+    θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) :
+        m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) :
                            β⁻¹(CT,  corblomqvist(U')[1,2])
     θ = clamp(θ, _θ_bounds(tailof(CT), 2)...)
     return CT(2, θ), (; θ̂=(θ=θ,))
@@ -159,12 +159,11 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
         initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : only(Distributions.params(_example(CT, d)))
         initial_params.θ
     end
-    θ0_clamped = clamp(θ0_val, lo, hi)
+    θ0_clamped = clamp(θ0_val, lo, isinf(hi) ? floatmax() : hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
-    res = Optim.optimize(f, lo, hi, [θ0_clamped], Optim.Fminbox(Optim.LBFGS()), autodiff = :forward)
+    res = Optim.optimize(f, [lo], [hi], [θ0_clamped], Optim.Fminbox(Optim.LBFGS()), autodiff = ADTypes.AutoForwardDiff())
     θ̂ = Optim.minimizer(res)[1]
     return CT(d, θ̂), (; θ̂=(;θ=θ̂), optimizer=:GradientDescent,
-                        xtol=xtol, converged=Optim.converged(res), 
+                        xtol=xtol, converged=Optim.converged(res),
                         iterations=Optim.iterations(res))
 end
-

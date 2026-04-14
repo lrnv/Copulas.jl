@@ -41,7 +41,7 @@ const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
 Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:HuslerReissTail}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissTail}, d, α) = (; θ = exp(α[1]))
-_θ_bounds(::Type{<:HuslerReissTail}, d) = (0, Inf)
+_θ_bounds(::Type{<:HuslerReissTail}, d) = (0.0, Inf)
 
 function A(tail::HuslerReissTail, t::Real)
     tt = _safett(t)

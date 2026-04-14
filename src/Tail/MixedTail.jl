@@ -43,7 +43,7 @@ _rebound_params(::Type{<:MixedTail}, d, α) = begin
     θ = 1 / (1 + exp(-α[1]))
     return (; θ)
 end
-_θ_bounds(::Type{<:MixedTail}, d) = (0, 1)
+_θ_bounds(::Type{<:MixedTail}, d) = (0.0, 1.0)
 
 A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1
 
@@ -59,4 +59,3 @@ _rho_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 : 12 * QuadGK.quadgk(t -
 ρ⁻¹(::Type{<:MixedCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? 1 : _invmono(θ -> _rho_Mixed(θ) - ρ; kw...)
 β⁻¹(::Type{<:MixedCopula}, beta) = 2 * log2(beta + 1)
 λᵤ⁻¹(::Type{<:MixedCopula}, λ) = 2λ
-

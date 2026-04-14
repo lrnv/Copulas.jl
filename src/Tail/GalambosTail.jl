@@ -41,7 +41,7 @@ const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:GalambosTail}, d, θ) = [log(θ.θ)]           # θ > 0
 _rebound_params(::Type{<:GalambosTail}, d, α) = (; θ = exp(α[1]))
-_θ_bounds(::Type{<:GalambosTail}, d) = (0, Inf)
+_θ_bounds(::Type{<:GalambosTail}, d) = (0.0, Inf)
 
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
 function A(tail::GalambosTail, t::Real)

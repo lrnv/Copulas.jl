@@ -20,6 +20,7 @@ module Copulas
     import Optim
     import Printf
     import TaylorSeries
+    import ADTypes
 
     # Main code
     include("utils.jl")
@@ -61,7 +62,7 @@ module Copulas
     include("UnivariateDistribution/Distortions/FlipDistortion.jl")
     include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
 
-    # Others, usefull too 
+    # Others, usefull too
     include("UnivariateDistribution/ExtremeDist.jl")
 
     # Miscelaneous copulas
@@ -119,7 +120,7 @@ module Copulas
     include("Tail/MOTail.jl")
     include("Tail/tEVTail.jl")
     include("Tail/EmpiricalEVTail.jl")
-    
+
     include("MiscellaneousCopulas/BernsteinCopula.jl")
     include("MiscellaneousCopulas/BetaCopula.jl")
     include("MiscellaneousCopulas/CheckerboardCopula.jl")
@@ -129,29 +130,29 @@ module Copulas
 
     include("show.jl")
 
-    export pseudos, # utility functions and methods making the interface: 
-           rosenblatt, 
-           inverse_rosenblatt, 
-           subsetdims, 
+    export pseudos, # utility functions and methods making the interface:
+           rosenblatt,
+           inverse_rosenblatt,
+           subsetdims,
            condition,
-           WilliamsonGenerator, 
-           𝒲, 
+           WilliamsonGenerator,
+           𝒲,
            TiltedGenerator,
            EmpiricalGenerator,
            SklarDist, # SklarDist to make multivariate models
-           AMHCopula, # And a bunch of copulas. 
+           AMHCopula, # And a bunch of copulas.
            ArchimedeanCopula,
            AsymGalambosCopula,
            AsymLogCopula,
            AsymMixedCopula,
            BB10Copula,
-           BB1Copula, 
-           BB2Copula, 
-           BB3Copula, 
-           BB6Copula, 
-           BB7Copula, 
-           BB8Copula, 
-           BB9Copula, 
+           BB1Copula,
+           BB2Copula,
+           BB3Copula,
+           BB6Copula,
+           BB7Copula,
+           BB8Copula,
+           BB9Copula,
            BC2Copula,
            ClaytonCopula,
            CuadrasAugeCopula,
@@ -163,11 +164,11 @@ module Copulas
            GumbelBarnettCopula,
            GumbelCopula,
            HuslerReissCopula,
-           IndependentCopula, 
+           IndependentCopula,
            InvGaussianCopula,
            JoeCopula,
            LogCopula,
-           MCopula, 
+           MCopula,
            MixedCopula,
            MOCopula,
            PlackettCopula,
