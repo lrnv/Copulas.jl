@@ -141,7 +141,9 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
     θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) :
         m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) :
                            β⁻¹(CT,  corblomqvist(U')[1,2])
-    θ = clamp(θ, _θ_bounds(tailof(CT), 2)...)
+    lo, hi = _θ_bounds(tailof(CT), 2)
+    # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
+    θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
     return CT(2, θ), (; θ̂=(θ=θ,))
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
@@ -159,11 +161,14 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
         initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : only(Distributions.params(_example(CT, d)))
         initial_params.θ
     end
-    θ0_clamped = clamp(θ0_val, lo, isinf(hi) ? floatmax() : hi)
+    # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
+    # the original bounds are still used for the optimization
+    θ0_clamped = clamp(θ0_val, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
     f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
-    res = Optim.optimize(f, [lo], [hi], [θ0_clamped], Optim.Fminbox(Optim.LBFGS()), autodiff = ADTypes.AutoForwardDiff())
+    res = Optim.optimize(f, Optim.TwiceDifferentiableConstraints([lo], [hi]), [θ0_clamped], Optim.IPNewton(), autodiff = ADTypes.AutoForwardDiff())
     θ̂ = Optim.minimizer(res)[1]
-    return CT(d, θ̂), (; θ̂=(;θ=θ̂), optimizer=:GradientDescent,
+    θ̂ = Optim.minimizer(res)[1]
+    return CT(d, θ̂), (; θ̂=(;θ=θ̂), optimizer=:IPNewton,
                         xtol=xtol, converged=Optim.converged(res),
                         iterations=Optim.iterations(res))
 end
