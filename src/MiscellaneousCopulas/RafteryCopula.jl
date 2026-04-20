@@ -52,7 +52,10 @@ function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
     term2 = (1 - R.θ) * (1 - d) / (1 - R.θ - d) * prod(u).^(1/(1 - R.θ))
     term3 = 0.0
     for i in 2:d
-        prod_prev = prod(u_ordered[1:i-1])
+        prod_prev = one(eltype(u))
+        for j in 1:i-1
+            prod_prev *= u_ordered[j]
+        end
         term3_part = R.θ * (1 - R.θ) / ((1 - R.θ - i) * (2 - R.θ - i)) * prod_prev^(1/(1 - R.θ)) * u_ordered[i]^((2 - R.θ - i) / (1 - R.θ))
         term3 += term3_part
     end

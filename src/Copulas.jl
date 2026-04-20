@@ -9,7 +9,7 @@ module Copulas
     import StatsBase
     import StatsFuns
     import ForwardDiff
-    import HCubature
+    # import HCubature
     import MvNormalCDF
     import Combinatorics
     import LogExpFunctions
@@ -22,6 +22,7 @@ module Copulas
     import TaylorSeries
 
     # Main code
+    include("hcubature.jl") # internal replacement for HCubature.jl
     include("utils.jl")
     include("Copula.jl")
     include("SklarDist.jl")
