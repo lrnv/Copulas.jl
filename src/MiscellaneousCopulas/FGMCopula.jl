@@ -35,7 +35,7 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
         else
             vθ = [promote(θ, 1.0)[1]]
         end
-        
+
         all(vθ .== 0) && return IndependentCopula(d)
         d==2 && vθ[1]==1 && return MCopula(2)
         d==2 && vθ[1]==-1 && return WCopula(2)
@@ -43,14 +43,14 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
         # Check first restrictions on parameters
         any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
-        
-        # Last check: 
+
+        # Last check:
         for epsilon in Base.product(fill([-1, 1], d)...)
             if 1 + _fgm_red(vθ, epsilon) < 0
                 throw(ArgumentError("Invalid parameters θ = $vθ. The parameters do not meet the condition to be an FGM copula"))
             end
         end
-        
+
         # Now construct the stochastic representation:
         wᵢ = [_fgm_red(vθ, 1 .- 2*Base.reverse(digits(i, base=2, pad=d))) for i in 0:(2^d-1)]
         fᵢ = Distributions.DiscreteNonParametric(0:(2^d-1), (1 .+ wᵢ)/2^d)
@@ -59,7 +59,7 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     FGMCopula{D, T1, T2}(d, θ) where {D, T1, T2} = FGMCopula(d, θ)
 end
 function _fgm_red(θ, v)
-    # This function implements the reduction over combinations of the fgm copula. 
+    # This function implements the reduction over combinations of the fgm copula.
     # It is non-alocative thus performant :)
     rez, d, i = zero(eltype(v)), length(v), 1
     for k in 2:d
@@ -107,7 +107,7 @@ function τ⁻¹(::Type{<:FGMCopula}, τ)
     end
     return max.(min.(9 * τ / 2, 1), -1)
 end
-ρ(fgm::FGMCopula{2, Tθ, Tf}) where {Tθ,Tf} = fgm.θ[1]/3 
+ρ(fgm::FGMCopula{2, Tθ, Tf}) where {Tθ,Tf} = fgm.θ[1]/3
 function ρ⁻¹(::Type{<:FGMCopula}, ρ)
     if !all(-1/3 <= ρi <= 1/3 for ρi in ρ)
         throw(ArgumentError("For the FGM copula, rho must be in [-1/3, 1/3]."))
@@ -159,14 +159,14 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
         # generic rank-based routine (agnostic to vcov/inference)
         res = Optim.optimize(
             α -> -Distributions.loglikelihood(FGMCopula(2, tanh(α[1])), U),
-            [0.1], 
-            Optim.LBFGS(); 
-            autodiff=:forward
+            [0.1],
+            Optim.LBFGS();
+            autodiff= ADTypes.AutoForwardDiff()
         )
         θ = tanh(Optim.minimizer(res)[1])
-        return CT(d, θ), (; θ̂=(θ=θ,), 
-                    optimizer  = Optim.summary(res), 
-                    converged  = Optim.converged(res), 
+        return CT(d, θ), (; θ̂=(θ=θ,),
+                    optimizer  = Optim.summary(res),
+                    converged  = Optim.converged(res),
                     iterations = Optim.iterations(res))
     end
 
@@ -205,7 +205,7 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
     end
 
     # Optimise in θ-space directly (no need for unbound/rebound)
-    res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff=:forward)
+    res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
     θhat = Optim.minimizer(res)
     return FGMCopula(d, θhat),
         (; θ̂ = (θ = θhat,),
