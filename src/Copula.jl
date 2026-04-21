@@ -76,7 +76,19 @@ end
 function β(U::AbstractMatrix)
     # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
     d, n = size(U)
-    count = sum(j -> all(U[:, j] .<= 0.5) || all(U[:, j] .> 0.5), 1:n)
+    count = 0
+    @inbounds for j in 1:n
+        all_le = true; all_gt = true
+        for i in 1:d
+            v = U[i, j]
+            all_le &= (v <= 0.5)
+            all_gt &= (v > 0.5)
+            if !(all_le || all_gt)
+                break
+            end
+        end
+        count += (all_le || all_gt)
+    end
     h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
     return h_d * (count/n - 2.0^(1-d))
 end
@@ -84,9 +96,19 @@ function τ(U::AbstractMatrix)
     # Sample version of multivariate Kendall's tau for pseudo-data
     d, n = size(U)
     comp = 0
-    @inbounds for j in 2:n, i in 1:j-1
-        uᵢ = @view U[:, i]; uⱼ = @view U[:, j]
-        comp += (all(uᵢ .<= uⱼ) || all(uᵢ .>= uⱼ))
+    @inbounds for j in 2:n
+        for i in 1:j-1
+            le = true; ge = true
+            for k in 1:d
+                vij = U[k, i]; vjj = U[k, j]
+                le &= (vij <= vjj)
+                ge &= (vij >= vjj)
+                if !(le || ge)
+                    break
+                end
+            end
+            comp += (le || ge)
+        end
     end
     pc = comp / (n*(n-1)/2)
     return (2.0^d * pc - 2.0) / (2.0^d - 2.0)

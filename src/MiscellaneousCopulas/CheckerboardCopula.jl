@@ -100,18 +100,18 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CheckerboardCop
     return u
 end
 
-@inline function DistortionFromCop(C::CheckerboardCopula{D,T}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i::Int) where {D,T}
-    # p = 1 case; compute conditional marginal for axis i given U_j = u_j
-    j = js[1]
-    # Locate J bin index
-    kⱼ = min(C.m[j]-1, floor(Int, C.m[j] * uⱼₛ[1]))
+@inline function DistortionFromCop(C::CheckerboardCopula{D,T}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D, p, T}
+
+    # Locate the bin index for uⱼₛ : 
+    kⱼₛ = Tuple(min(C.m[j]-1, floor(Int, C.m[j] * uⱼ)) for (j,uⱼ) in zip(js, uⱼₛ))
+
     # Aggregate weights over i-bins where J-index matches
     mᵢ = C.m[i]
     α = zeros(Float64, mᵢ)
     for (box, w) in C.boxes
-        box[j] == kⱼ || continue
-        ki = box[i]
-        α[ki+1] += w
+        if all(box[j] == k for (j,k) in zip(js, kⱼₛ))
+            α[box[i]+1] += w
+        end
     end
     s = sum(α)
     if s <= 0

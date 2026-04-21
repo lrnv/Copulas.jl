@@ -60,7 +60,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     u[2] = max(v1^(1/b), v2^(1/(1-b)))
     return u
 end
-function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{T}, S}, z::Real) where {T,S}
+function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{TF1}, TF2}, z::Real) where {TF1,TF2}
+    T = promote_type(TF1, TF2, typeof(z))
+
     a, b = D.tail.a, D.tail.b
 
     if !(0.0 < z < 1.0)

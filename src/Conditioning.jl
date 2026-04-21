@@ -68,9 +68,11 @@ function Distributions.quantile(d::Distortion, α::Real)
     f(u) = Distributions.logcdf(d, u) - lα
     return Roots.find_zero(f, (ϵ, 1 - 2ϵ), Roots.Bisection(); xtol = sqrt(eps(T)))
 end
-# You have to implement one of these two: 
+# You have to implement a cdf, and you can implement a pdf, either in log scaleor not: 
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
+Distributions.logpdf(d::Distortion, t::Real) = log(Distributions.pdf(d, t))
+Distributions.pdf(d::Distortion, t::Real) = exp(Distributions.logpdf(d, t))
 
 """
     DistortionFromCop{TC,p,T} <: Distortion
@@ -112,6 +114,21 @@ struct DistortionFromCop{TC,p}<:Distortion
     end
 end
 Distributions.cdf(d::DistortionFromCop, u::Real) = _partial_cdf(d.C, (d.i,), d.js, (u,), d.uⱼₛ) / d.den
+
+# Density on the uniform scale: f_{i|J}(u | u_J) = (∂^{p+1} C / ∂(J..., i))(u, u_J) / (∂^{p} C / ∂J)(1, u_J)
+function Distributions.logpdf(d::DistortionFromCop, u::Real)
+    # Support checks
+    (0 < u < 1) || return -Inf
+    d.den <= 0 && return -Inf
+
+    # Assemble the evaluation point with u at coordinate i, u_J fixed, others at 1
+    D = length(d.C)
+    z = _assemble(D, (d.i,), d.js, (float(u),), d.uⱼₛ)
+    # Mixed partial derivative of order p+1 w.r.t. (J..., i)
+    num = _der(u -> Distributions.cdf(d.C, u), z, (d.js..., d.i))
+    (num <= 0 || !isfinite(num)) && return -Inf
+    return log(num) - log(d.den)
+end
 
 """
     DistortedDist{Disto,Distrib} <: Distributions.UnivariateDistribution
@@ -157,6 +174,45 @@ end
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
     return _partial_cdf(CC.C, CC.is, CC.js, Distributions.quantile.(CC.distortions, v), CC.uⱼₛ) / CC.den
 end
+
+# Density of the conditional copula on [0,1]^d.
+# For v ∈ (0,1)^d, let u_I = quantile(D_k, v_k) with D_k = H_{i_k|J}(·|u_J).
+# Then c_{I|J}(v) = f_{U_I|U_J}(u_I|u_J) / ∏_k f_{U_{i_k}|U_J}(u_{i_k}|u_J).
+# Using copula calculus: f_{U_I|U_J}(u_I|u_J) = c(u)/den, and
+# f_{U_{i}|U_J}(u_i|u_J) = ∂^{p+1}C/∂(J,i) / den.
+function Distributions._logpdf(CC::ConditionalCopula{d,D,p,TDs}, v::AbstractVector{<:Real}) where {d,D,p,TDs}
+    T = promote_type(eltype(v), Float64)
+
+    # Support: 
+    CC.den <= 0 && return -Inf
+    for vₖ in v
+        0 < vₖ < 1 || return T(-Inf)
+    end
+
+    # 1) Map v → u_I via the stored distortions (non-sequential conditioning on J only)
+    uI = Distributions.quantile.(CC.distortions, v)
+    # 2) Full u vector at which to evaluate the base copula density
+    u = _assemble(D, CC.is, CC.js, uI, CC.uⱼₛ)
+    # 3) Joint conditional density: log c(u) - log den
+    logc_full = Distributions.logpdf(CC.C, u)
+    logden    = log(CC.den)
+    # 4) Sum of log conditional marginal numerators: ∑ log ∂^{p+1} C / ∂(J,i)
+    #    Evaluate each at vector with only (J fixed, i at u_i; others at 1)
+    sum_log_num = 0.0
+    for idx in 1:d
+        i = CC.is[idx]
+        ui = uI[idx]
+        z = _assemble(D, (i,), CC.js, (ui,), CC.uⱼₛ)
+        # Mixed partial of order p+1 with respect to (J..., i)
+        num = _der(u -> Distributions.cdf(CC.C, u), z, (CC.js..., i))
+        (num <= 0 || !isfinite(num)) && return T(-Inf)
+        sum_log_num += log(num)
+    end
+
+    # log c_{I|J}(v) = log c(u) + (d-1) log den − ∑ log num_i
+    return logc_full + (d - 1) * logden - sum_log_num
+end
+
 # Sampling: sequential inverse-CDF using conditional distortions
 function Distributions._rand!(rng::Distributions.AbstractRNG, CC::ConditionalCopula{d, D, p}, x::AbstractVector{T}) where {T<:Real, d, D, p}
     # We want a sample from the COPULA of the conditional model. Let U be a
