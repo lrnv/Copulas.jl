@@ -49,7 +49,39 @@ end
 # Kendall tau of bivariate student: 
 # Lindskog, F., McNeil, A., & Schmock, U. (2003). Kendall’s tau for elliptical distributions. In Credit risk: Measurement, evaluation and management (pp. 149-156). Heidelberg: Physica-Verlag HD.
 τ(C::TCopula{2,MT}) where MT = 2*asin(C.Σ[1,2])/π 
-
+function τ(C::TCopula{d,MT}) where {d, MT}
+    T = (2/π) .* asin.(C.Σ)
+    @inbounds for i in 1:d
+        T[i,i] = 1.0
+    end
+    return LinearAlgebra.Symmetric(T, :U)
+end
+##############################
+function ρ(C::TCopula{2,ν,MT}) where {ν,MT}
+    ρ_ = C.Σ[1,2]
+    rtol = 1e-10
+    #  Normalization constant off_{Ṽ}
+    Cν = 2 * SpecialFunctions.gamma(ν)^2 * SpecialFunctions.gamma(3ν/2) / (SpecialFunctions.gamma(ν/2)^3 * SpecialFunctions.gamma(2ν))
+    f(v) = begin
+        # if we use HypergeometricFunctions.jl we can make:
+        F = HypergeometricFunctions.pFq((ν, ν), (2ν,), 1 - v^2)
+        # and if not... The implemented functions work well and in particular are quite fast.
+        # F = Copulas._Gauss2F1_hybrid(ν, 1 - v^2)
+        return asin(ρ_ * v) * Cν * v^(ν - 1) * (1 - v^2)^(ν/2 - 1) * F
+    end
+    try
+        val, _ = QuadGK.quadgk(f, 0.0, 1.0; rtol=rtol)
+        return (6/π) * val
+    catch err
+        if ν > 20
+            # asymptotic fallback (equivalent to normal copula)
+            ρ_norm = (6/π) * asin(ρ_/2)
+            return ρ_norm
+        else
+            rethrow(err)
+        end
+    end
+end
 # Conditioning colocated
 function DistortionFromCop(C::TCopula{D,ν,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p,D,ν,MT}
     Σ = C.Σ; jst = js; ist = Tuple(setdiff(1:D, jst)); @assert i in ist
@@ -98,3 +130,36 @@ function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where
 end
 
 _available_fitting_methods(::Type{<:TCopula}, d) = (:mle,)
+
+# t-ortant (copulates t with ν g.l.)
+function qmc_orthant_t!(R::AbstractMatrix{T}, b::AbstractVector{T}, ν::Integer; m::Integer = 10_000, r::Integer = 12,
+    rng::Random.AbstractRNG = Random.default_rng()) where T
+    # ¡muta R y b!
+    (ch, bs) = _chlrdr_orthant!(R, b)
+
+    # extra Richtmyer root for the radial dimension (χ²)
+    qχ  = richtmyer_roots(T, length(b) + 1)[end]
+    chi = Distributions.Chisq(ν)
+
+    # scale generator w[k] = √(ν / S_k), S_k ~ χ²_ν (quasi-random)
+    fill_w! = function (w::AbstractVector{T}, _j::Int, nv::Int, δ::T, rng_local)
+        xrχ = rand(rng_local, T)
+        @inbounds @simd for k in 1:nv
+            t = k*qχ + xrχ; t -= floor(t)
+            u = clamp(t, δ, one(T)-δ)                    # u ∈ (δ, 1-δ)
+            s = T(Distributions.quantile(chi, Real(u)))            # quantile χ²_ν
+            w[k] = sqrt(T(ν) / s)                       # radial scale
+        end
+        nothing
+    end
+
+    return qmc_orthant_core!(ch, bs; m=m, r=r, rng=rng, fill_w! = fill_w!)
+end
+
+function Distributions.cdf(C::TCopula{d,df,MT}, u::AbstractVector; m::Integer = 2000*(d+1), r::Int = 12, rng = Random.default_rng()) where {d,df,MT}
+    b = Distributions.quantile.(Distributions.TDist(df), u)
+    Tb = eltype(b)
+    Σ_promoted = Tb.(copy(C.Σ))
+    p, _ = qmc_orthant_t!(Σ_promoted, b, df; m=m, r=r, rng=rng)
+    return p
+end
