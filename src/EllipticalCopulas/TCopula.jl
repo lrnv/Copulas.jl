@@ -58,10 +58,10 @@ function DistortionFromCop(C::TCopula{D,ν,MT}, js::NTuple{p,Int}, uⱼₛ::NTup
     if length(Jv) == 1
         r = RiJ[1]; μz = r * zJ[1]; σ0² = 1 - r^2; δ = zJ[1]^2
     else
-        L = LinearAlgebra.cholesky(Symmetric(ΣJJ))
-        μz = dot(RiJ, (L' \ (L \ zJ)))
-        σ0² = 1 - dot(RiJ, (L' \ (L \ RJi)))
-        y = L \ zJ; δ = dot(y, y)
+        L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(ΣJJ))
+        μz = LinearAlgebra.dot(RiJ, (L' \ (L \ zJ)))
+        σ0² = 1 - LinearAlgebra.dot(RiJ, (L' \ (L \ RJi)))
+        y = L \ zJ; δ = LinearAlgebra.dot(y, y)
     end
     νp = ν + length(Jv); σz = sqrt(max(σ0², zero(σ0²))) * sqrt((ν + δ) / νp)
     return StudentDistortion(float(μz), float(σz), Int(ν), Int(νp))
@@ -69,9 +69,9 @@ end
 function ConditionalCopula(C::TCopula{D,df,MT}, js, uⱼₛ) where {D,df,MT}
     p = length(js); J = collect(Int, js); I = collect(setdiff(1:D, J)); Σ = C.Σ
     if p == 1
-        Σcond = Σ[I, I] - Σ[I, J] * (Σ[J, I] / Σ[J, J])
+        Σcond = Σ[I, I] - Σ[I, J] * (Σ[J, J] \ Σ[J, I])
     else
-        L = LinearAlgebra.cholesky(Symmetric(Σ[J, J]))
+        L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ[J, J]))
         Σcond = Σ[I, I] - Σ[I, J] * (L' \ (L \ Σ[J, I]))
     end
     σ = sqrt.(LinearAlgebra.diag(Σcond))
@@ -97,4 +97,7 @@ function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where
     return (; ν = ν, Σ = Σ)
 end
 
+
 _available_fitting_methods(::Type{<:TCopula}, d) = (:mle,)
+
+
