@@ -49,7 +49,7 @@ function Distributions.logpdf(D::BivEVDistortion, z::Real)
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)
-        ddAw = ddA(D.tail, w)
+        ddAw = d²A(D.tail, w)
         Tval = Aw - w * dAw
         Tval ≤ 0 && return T(-Inf)
 
@@ -69,7 +69,7 @@ function Distributions.logpdf(D::BivEVDistortion, z::Real)
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)
-        ddAw = ddA(D.tail, w)
+        ddAw = d²A(D.tail, w)
         Tval = Aw + (1 - w) * dAw
         Tval ≤ 0 && return T(-Inf)
 
