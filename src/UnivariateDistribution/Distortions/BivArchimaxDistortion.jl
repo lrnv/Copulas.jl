@@ -51,13 +51,13 @@ function Distributions.logpdf(D::BivArchimaxDistortion, z::Real)
 
     A0 = A(D.tail, t)
     A1 = dA(D.tail, t)
-    A2 = d2A(D.tail, t)
+    A2 = d²A(D.tail, t)
     r = D.j==2 ? (A0 + (1 - t) * A1)  : (A0 - t * A1)
     r = max(r, T(0))
 
     G = S * A0
     phi1G = ϕ⁽¹⁾(D.gen, G)
-    phi2G = ϕ⁽²⁾(D.gen, G)
+    phi2G = ϕ⁽ᵏ⁾(D.gen, 2, G)
 
     inv_cond = ϕ⁻¹⁽¹⁾(D.gen, D.uⱼ)   # derivative of inverse at conditioning value
     dx_dz   = ϕ⁻¹⁽¹⁾(D.gen, z)      # derivative of inverse at z
