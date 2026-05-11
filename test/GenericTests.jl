@@ -614,12 +614,18 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                         @test all(0 .≤ rand(rng, Dd, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
                     end
                     vals = cdf.(Ref(Dd), us)
+                    pvals = pdf.(Ref(Dd), us)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
+                    @test all(pvals .>= 0)
                     if check_biv_conditioning(C) && has_spec
                         Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
                         vals_gen  = cdf.(Ref(Dgen),  us)
+                        pvals_gen = pdf.(Ref(Dgen), us)
                         for (vf, vg) in zip(vals, vals_gen)
+                            @test isapprox(vf, vg, atol=1e-3, rtol=1e-3)
+                        end
+                        for (vf, vg) in zip(pvals, pvals_gen)
                             @test isapprox(vf, vg, atol=1e-3, rtol=1e-3)
                         end
                     elseif CT <: Copulas.MCopula
