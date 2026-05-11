@@ -44,3 +44,18 @@ end
     k = idx - 1
     return (k + frac) / d.m
 end
+@inline function Distributions.logpdf(d::HistogramBinDistortion, u::Real)
+    u_f = float(u)
+    if !isfinite(u_f) || u_f < 0.0 || u_f > 1.0
+        return -Inf
+    end
+    m = d.m
+    s = m * u_f
+    k = min(max(floor(Int, s), 0), m - 1)
+    idx = k + 1
+    p = d.probs[idx]
+    if p <= 0.0
+        return -Inf
+    end
+    return log(m) + log(float(p))
+end

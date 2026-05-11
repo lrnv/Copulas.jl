@@ -20,3 +20,8 @@ function (D::GaussianDistortion)(X::Distributions.Normal)
     return Distributions.Normal(μ + σ*D.μz, σ*D.σz)
 end
 ## Methods moved to EllipticalCopulas/GaussianCopula.jl
+function Distributions.logpdf(d::GaussianDistortion, u::Real)
+    N = Distributions.Normal()
+    q = Distributions.quantile(N, u)
+    return Distributions.logpdf(N, (q - d.μz)/d.σz) - log(abs(d.σz)) - Distributions.logpdf(N, q)
+end

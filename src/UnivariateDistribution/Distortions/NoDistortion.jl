@@ -6,3 +6,4 @@ Distributions.cdf(::NoDistortion, u::Real) = u
 Distributions.quantile(::NoDistortion, α::Real) = α
 (::NoDistortion)(X::Distributions.UnivariateDistribution) = X
 (::NoDistortion)(::Distributions.Uniform) = Distributions.Uniform()
+Distributions.logpdf(::NoDistortion, u::Real) = zero(u)

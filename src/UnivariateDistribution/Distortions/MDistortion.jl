@@ -7,3 +7,4 @@ struct MDistortion{T} <: Distortion
 end
 Distributions.cdf(D::MDistortion, u::Real) = min(u / D.v, 1)
 Distributions.quantile(D::MDistortion, α::Real) = α * D.v
+Distributions.logpdf(D::MDistortion, u::Real) = (0 <= u <= D.v) ? -log(D.v) : -Inf
