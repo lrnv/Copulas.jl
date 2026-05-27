@@ -155,18 +155,28 @@ end
     end
 
     # -----------------------------------------------------------------------
-    # 4. Censored likelihood (logpdf with a mask) vs the ForwardDiff reference.
+    # 4. Copula-scale censored partial (censored_logpdf) vs references.
     # -----------------------------------------------------------------------
-    @testset "censored likelihood vs independent ForwardDiff reference" begin
+    @testset "censored_logpdf (copula scale) vs references" begin
         # Bivariate Clayton(3), dim 2 right-censored: closed form ∂C/∂u₁.
         θ = big(3.0)
         u1 = BigFloat(cdf(Exponential(1.0), 0.5))
         u2 = BigFloat(cdf(Exponential(1.0), 1.0))
         Cbiv = NestedArchimedeanCopula(ClaytonGenerator(2.0);   # outer irrelevant: single panel
                    children = [ClaytonCopula(2, 3.0)])
-        v = logpdf(Cbiv, [u1, u2]; censored = [false, true])
+        v = censored_logpdf(Cbiv, [u1, u2], [false, true]; T = BigFloat)
         dC_du1 = u1^(-θ - 1) * (u1^(-θ) + u2^(-θ) - 1)^(-(1 / θ + 1))
         @test Float64(v) ≈ Float64(log(dC_du1)) atol = 1e-9
+
+        # Flat ArchimedeanCopula: censored_logpdf via ϕ⁽ᵏ⁾ matches the
+        # mixed-partial closed form. Exercises the general (non-nested) path.
+        import Copulas: ϕ⁻¹, ϕ⁻¹⁽¹⁾, ϕ⁽ᵏ⁾
+        Cf = ClaytonCopula(4, 2.0)
+        uf = [0.5, 0.8, 0.3, 0.6]; δf = [false, true, false, true]
+        G = Cf.G; ssum = sum(ϕ⁻¹(G, uf[i]) for i in 1:4); k = count(!, δf)
+        ref_cop = log(abs(ϕ⁽ᵏ⁾(G, k, ssum))) +
+                  sum(log(abs(ϕ⁻¹⁽¹⁾(G, uf[i]))) for i in 1:4 if !δf[i])
+        @test censored_logpdf(Cf, uf, δf) ≈ ref_cop atol = 1e-10
 
         # Nested, censoring across sectors: root Clayton(2) over Clayton(5) +
         # Gumbel(3), one censored leaf in each sector + a censored root leaf.
@@ -179,14 +189,53 @@ end
                    [(u[1], false)],
                    [RefSpec(ClaytonGenerator(big(5.0)), [(u[2], false), (u[3], true)]),
                     RefSpec(GumbelGenerator(big(3.0)),  [(u[4], true),  (u[5], false)])])
-        @test logpdf(C, u; censored = δ) ≈ ref_logpdf(spec) atol = 1e-9
+        @test censored_logpdf(C, u, δ; T = BigFloat) ≈ ref_logpdf(spec) atol = 1e-9
 
-        # Omitted mask == plain density; full mask present changes the value.
+        # All observed == plain density; all censored == log cdf.
         C2 = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                  children = [ClaytonCopula(3, 5.0), ClaytonCopula(3, 6.0)])
         u2v = big.([0.30, 0.55, 0.70, 0.40, 0.62, 0.80])
-        @test logpdf(C2, u2v; censored = falses(6)) == logpdf(C2, u2v)
-        @test logpdf(C2, u2v; censored = [false, true, false, false, false, true]) != logpdf(C2, u2v)
+        @test censored_logpdf(C2, u2v, falses(6); T = BigFloat) ≈ logpdf(C2, u2v) atol = 1e-30
+        @test censored_logpdf(C2, u2v, trues(6); T = BigFloat) ≈ log(cdf(C2, u2v)) atol = 1e-9
+    end
+
+    # -----------------------------------------------------------------------
+    # 4b. SklarDist survival likelihood (the user-facing censored API).
+    # -----------------------------------------------------------------------
+    @testset "SklarDist survival likelihood" begin
+        # Bivariate Clayton(3), dim 2 right-censored — closed form on data scale.
+        θ = 3.0
+        m = (Exponential(1.0), Exponential(1.0))
+        S = SklarDist(ClaytonCopula(2, θ), m)
+        x1 = 0.7; c2 = 1.3
+        u1 = cdf(m[1], x1); u2 = cdf(m[2], c2)
+        dCdu1 = u1^(-θ - 1) * (u1^(-θ) + u2^(-θ) - 1)^(-1 / θ - 1)
+        expected = log(dCdu1) + logpdf(m[1], x1)
+        @test logpdf(S, [x1, c2]; censored = [false, true]) ≈ expected atol = 1e-10
+
+        # Omitted mask == the plain joint density.
+        @test logpdf(S, [x1, c2]; censored = [false, false]) == logpdf(S, [x1, c2])
+
+        # Finite where the Distributions.censored route is -Inf.
+        Sc = SklarDist(ClaytonCopula(2, θ), (m[1], censored(m[2], upper = c2)))
+        @test logpdf(Sc, [x1, c2]) == -Inf
+        @test isfinite(logpdf(S, [x1, c2]; censored = [false, true]))
+
+        # All censored == log cdf of the joint model.
+        @test logpdf(S, [x1, c2]; censored = [true, true]) ≈ log(cdf(S, [x1, c2])) atol = 1e-10
+
+        # Nested copula on the data scale: SklarDist factor == observed-margin
+        # densities + the copula-scale censored_logpdf at the PIT point.
+        C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+                children = [ClaytonCopula(3, 5.0), GumbelCopula(3, 3.0)])
+        margins = ntuple(_ -> Exponential(1.0), 6)
+        Sn = SklarDist(C, margins)
+        x = [0.7, 0.3, 0.9, 0.5, 0.4, 1.1]
+        δ = [false, true, false, false, true, false]
+        u = [cdf(margins[i], x[i]) for i in 1:6]
+        margin_ll = sum(logpdf(margins[i], x[i]) for i in 1:6 if !δ[i])
+        @test logpdf(Sn, x; censored = δ) ≈ margin_ll + censored_logpdf(C, u, δ) atol = 1e-10
+        @test isfinite(logpdf(Sn, x; censored = δ))
     end
 
     # -----------------------------------------------------------------------

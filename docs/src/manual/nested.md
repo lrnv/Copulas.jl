@@ -93,21 +93,45 @@ logpdf(C, big.([0.3, 0.5, 0.4, 0.6]))
 
 ## Censored / survival likelihood
 
-For partially observed multivariate event times, pass a Boolean mask via the
-`censored` keyword of `logpdf`. A right-censored coordinate (`true`) enters the
-copula CDF as a plain argument but is not differentiated, so the result is the
-mixed partial of the nested CDF over the *observed* coordinates only — the
-per-variable censored copula likelihood:
+For partially observed multivariate event times, the survival likelihood lives
+at the [`SklarDist`](@ref) level — it is a statement about the data and the
+margins, not the pure dependence on ``[0,1]^d``. Wrap the copula in a
+`SklarDist` with its marginal distributions and pass a Boolean censoring mask
+via the `censored` keyword of `logpdf`. A right-censored coordinate (`true`)
+contributes its survival information only: it enters the copula CDF as a plain
+argument and its marginal density is dropped, so the result is
 
-```@example nested
-u = [0.30, 0.55, 0.70, 0.40, 0.62, 0.80]
-Csurv = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            children = [ClaytonCopula(3, 5.0), ClaytonCopula(3, 6.0)])
-logpdf(Csurv, u; censored = [false, true, false, false, false, true])
+```math
+\sum_{i\,:\,\text{observed}} \log f_i(x_i)
+\;+\; \log \frac{\partial^{|O|} C(\mathbf u)}{\prod_{i\in O}\partial u_i},
+\qquad \mathbf u = (F_1(x_1),\dots,F_d(x_d)),
 ```
 
-With `censored` omitted (all observed) this reduces to the ordinary nested
-density; with all coordinates censored it reduces to ``\log C(u)``. This is
-distinct from `logpdf(SklarDist(C, margins), x)` with `Distributions.censored`
-margins, which plugs a censored marginal *density* into a fully-differentiated
-joint density rather than computing the mixed partial over observed dimensions.
+the observed marginal densities times the copula's mixed partial over the
+observed coordinates ``O``:
+
+```@example nested
+using Distributions
+Csurv = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            children = [ClaytonCopula(3, 5.0), ClaytonCopula(3, 6.0)])
+S = SklarDist(Csurv, ntuple(_ -> Exponential(1.0), 6))
+x = [0.7, 0.3, 0.9, 0.5, 0.4, 1.1]
+logpdf(S, x; censored = [false, true, false, false, false, true])
+```
+
+With `censored` omitted (all observed) this reduces to the ordinary joint
+density; with all coordinates censored it reduces to ``\log F(\mathbf x)``. This
+path works for any copula that supplies the mixed partial over observed
+coordinates — flat [`ArchimedeanCopula`](@ref) as well as nested trees — so it
+is a general per-variable censoring facility, not nested-specific.
+
+!!! warning "Do not use `Distributions.censored` margins"
+    `logpdf(SklarDist(C, (…, censored(m), …)), x)` returns `-Inf`: a censored
+    margin places an atom at the censoring time, which Sklar's theorem maps to
+    the copula boundary ``u = 1`` — off the open domain ``(0,1)^d`` where the
+    copula density is defined. The `censored` keyword above is the correct
+    replacement.
+
+The copula factor alone is available as `censored_logpdf(C, u, δ)` on
+copula-scale pseudo-observations ``u`` — the lower-level building block used by
+the `SklarDist` method.
