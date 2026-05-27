@@ -24,6 +24,7 @@ makedocs(;
         "Manual" => [
             "Introduction"=>"manual/intro.md",
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
+            "Nested Archimedean copulas"=>"manual/nested.md",
             "Dependence metrics"=>"manual/dependence_measures.md",
             "Fitting"=>"manual/fitting_interface.md",
             "Visualizations"=>"manual/visualizations.md",
