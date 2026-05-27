@@ -1,6 +1,6 @@
-using Aqua, Copulas, Distributions, ForwardDiff, HCubature, 
-    HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions, 
-    MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs, 
+using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
+    HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
+    MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
     Statistics, StatsBase, Test
 
 const rng = StableRNG(123)
@@ -9,6 +9,7 @@ const rng = StableRNG(123)
 testfiles = [
     "Aqua",
     "ArchimedeanCopulas",
+    "NestedArchimedeanCopula",
     "ConditionalDistribution",
     "EllipticalCopulas",
     "FittingTest",

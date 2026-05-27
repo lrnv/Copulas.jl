@@ -36,6 +36,7 @@ CopulasPlotsExt = ["Plots", "RecipesBase"]
 ADTypes = "1.21.0"
 Aqua = "v0.8"
 Combinatorics = "1"
+DelimitedFiles = "1"
 Distributions = "0.25"
 ForwardDiff = "0.10,1"
 HCubature = "1"
@@ -64,6 +65,7 @@ julia = "1"
 
 [extras]
 Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
+DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
 InteractiveUtils = "b77e0a4c-d291-57a0-90e8-8db25a27a240"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
@@ -72,4 +74,4 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "InteractiveUtils", "LinearAlgebra", "HypothesisTests", "Aqua", "StableRNGs", "StatsBase"]
+test = ["Test", "InteractiveUtils", "LinearAlgebra", "HypothesisTests", "Aqua", "StableRNGs", "StatsBase", "DelimitedFiles"]
