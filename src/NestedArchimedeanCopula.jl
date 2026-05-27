@@ -57,13 +57,12 @@ alternating-sign Faà di Bruno sum can lose `Float64` precision.
 
 # Censored / survival likelihood
 
-`logpdf(C, u; censored = δ)` computes the per-variable right-censored
-log-likelihood: the mixed partial of the nested CDF over the *observed*
-coordinates only, with right-censored coordinates (`δ[i] == true`) entering the
-CDF as plain arguments rather than being differentiated. With `censored`
-omitted (all observed) this is the ordinary nested density; with all coordinates
-censored it reduces to `log C(u)`. This is the survival-analysis copula
-likelihood for partially observed multivariate event times.
+The per-variable right-censored *survival* likelihood lives at the
+[`SklarDist`](@ref) level, where the margins and data are available: wrap the
+copula in `SklarDist(C, margins)` and call
+`logpdf(S, x; censored = δ)` (see [`censored_logpdf`](@ref) for the copula-scale
+building block). This nested copula supplies the required mixed partial of its
+CDF over the observed coordinates via the Faà di Bruno recursion.
 
 # Example
 
@@ -72,7 +71,10 @@ likelihood for partially observed multivariate event times.
 C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
         children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])
 logpdf(C, [0.3, 0.5, 0.4, 0.6])
-logpdf(C, [0.3, 0.5, 0.4, 0.6]; censored = [false, true, false, true])
+
+# survival likelihood with dims 2 and 4 right-censored:
+S = SklarDist(C, ntuple(_ -> Exponential(1.0), 4))
+logpdf(S, [0.7, 0.3, 0.5, 0.9]; censored = [false, true, false, true])
 ```
 
 The density and the per-variable censored (survival) likelihood follow the
@@ -197,41 +199,20 @@ function Distributions._logpdf(C::NestedArchimedeanCopula{d}, u) where {d}
     return _nested_logpdf(tree)
 end
 
-"""
-    logpdf(C::NestedArchimedeanCopula, u; censored = falses(length(C)))
+# Nested CDF in closed form (ϕ_root ∘ Σ ϕ⁻¹), avoiding the generic numerical
+# integration fallback. This is also the all-censored limit of the survival
+# likelihood (`logpdf(S; censored = trues(d))` == `log cdf`).
+function _cdf(C::NestedArchimedeanCopula{d}, u) where {d}
+    T = eltype(u) <: AbstractFloat ? float(eltype(u)) : Float64
+    tree = _build_tree(C, u, falses(d), T)
+    return _nested_cdf(tree)
+end
 
-Log-density of the nested Archimedean copula `C` at `u`, with optional
-per-variable right-censoring.
-
-* With `censored` omitted (or all `false`) this is the ordinary nested-copula
-  log-density.
-* With `censored[i] == true`, coordinate `i` is treated as right-censored: it
-  enters the copula CDF as a plain argument but is **not** differentiated. The
-  returned value is then the mixed partial of the nested CDF over the observed
-  coordinates only — the per-variable censored (survival) copula likelihood for
-  partially observed multivariate event times. With all coordinates censored it
-  reduces to `log C(u)`.
-
-The keyword `T` (default `BigFloat`) sets the working precision of the censored
-recursion; censored survival likelihoods are typically evaluated on
-high-dimensional panels where the extra precision is cheap insurance. The
-uncensored `logpdf(C, u)` path uses the element type of `u` (defaulting to
-`Float64`).
-
-This censored likelihood differs from `logpdf(SklarDist(C, margins), x)` with
-`Distributions.censored` margins: the latter plugs a censored marginal *density*
-into a fully-differentiated joint density, and so does not compute the
-mixed-partial-over-observed-dimensions quantity needed for survival data.
-"""
-function Distributions.logpdf(C::NestedArchimedeanCopula{d}, u::AbstractVector;
-                              censored::AbstractVector{Bool} = falses(d),
-                              T::Type = BigFloat) where {d}
-    length(u) == d || throw(ArgumentError("length(u) = $(length(u)) ≠ copula dimension $d"))
-    length(censored) == d || throw(ArgumentError("length(censored) = $(length(censored)) ≠ copula dimension $d"))
-    if !any(censored)
-        # No censoring: defer to the standard (element-typed) density path.
-        return Distributions._logpdf(C, u)
-    end
+# Copula-scale mixed partial of the nested CDF over the observed coordinates.
+# This is the lower-level building block behind the SklarDist survival
+# likelihood (see `censored_logpdf` and `logpdf(::SklarDist; censored=)`); it
+# works on copula-scale arguments `u ∈ (0,1)^d`.
+function _censored_copula_logpdf(C::NestedArchimedeanCopula{d}, u, censored, ::Type{T}) where {d, T}
     tree = _build_tree(C, u, collect(Bool, censored), T)
     return _nested_logpdf(tree)
 end

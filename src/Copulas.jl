@@ -106,6 +106,9 @@ module Copulas
     include("nested/FrankTaylorGenerator.jl")
     include("NestedArchimedeanCopula.jl")
 
+    # Per-variable censored survival likelihood (SklarDist-level + copula-scale)
+    include("CensoredLikelihood.jl")
+
     #Extreme value copulas
     include("Tail.jl")
     include("ExtremeValueCopula.jl")
@@ -148,6 +151,7 @@ module Copulas
            AMHCopula, # And a bunch of copulas.
            ArchimedeanCopula,
            NestedArchimedeanCopula,
+           censored_logpdf,
            AsymGalambosCopula,
            AsymLogCopula,
            AsymMixedCopula,

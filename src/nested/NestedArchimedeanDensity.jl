@@ -193,3 +193,17 @@ function _nested_logpdf(node::_NestedNode{TG, T}) where {TG, T}
     (t, C, d, β) = _process_node(node)
     return log(abs(_assemble_density(β, node.G, t, d))) + _leaf_log_jacobian(node)
 end
+
+# Nested CDF of a node: C(u) = ϕ_G(Σ_leaves ϕ⁻¹(u) + Σ_children ϕ⁻¹(C_child)).
+# Closed form, no Faà di Bruno / numerical integration needed.
+function _nested_cdf(node::_NestedNode{TG, T}) where {TG, T}
+    G = node.G
+    s = zero(T)
+    for leaf in node.leaves
+        s += ϕ⁻¹(G, leaf.u)
+    end
+    for child in node.children
+        s += ϕ⁻¹(G, _nested_cdf(child))
+    end
+    return ϕ(G, s)
+end
