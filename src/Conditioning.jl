@@ -35,7 +35,7 @@ _process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,))
 function _process_tuples(::Val{D}, js, ujs) where D
     p, p2 = length(js), length(ujs)
     @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
-    @assert p == p2 && all(0 .<= ujs .<= 1) "uⱼₛ must be in [0,1] and match js length"
+    @assert p == p2 "uⱼₛ length must match js length"
     jst = Tuple(collect(Int, js))
     @assert all(in(1:D), jst)
     ujst = Tuple(collect(float.(ujs)))
