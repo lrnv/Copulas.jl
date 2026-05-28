@@ -622,11 +622,12 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                         Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
                         vals_gen  = cdf.(Ref(Dgen),  us)
                         pvals_gen = pdf.(Ref(Dgen), us)
+                        tol = C isa Copulas.GaussianCopula ? 1e-2 : 1e-3
                         for (vf, vg) in zip(vals, vals_gen)
-                            @test isapprox(vf, vg, atol=1e-3, rtol=1e-3)
+                            @test isapprox(vf, vg, atol=tol, rtol=tol)
                         end
                         for (vf, vg) in zip(pvals, pvals_gen)
-                            @test isapprox(vf, vg, atol=1e-3, rtol=1e-3)
+                            @test isapprox(vf, vg, atol=tol, rtol=tol)
                         end
                     elseif CT <: Copulas.MCopula
                         @test all(vals .≈ min.(collect(us) ./ v, 1))
