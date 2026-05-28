@@ -35,7 +35,7 @@ _process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,))
 function _process_tuples(::Val{D}, js, ujs) where D
     p, p2 = length(js), length(ujs)
     @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
-    @assert p == p2 && all(0 .<= ujs .<= 1) "uⱼₛ must be in [0,1] and match js length"
+    @assert p == p2 "uⱼₛ length must match js length"
     jst = Tuple(collect(Int, js))
     @assert all(in(1:D), jst)
     ujst = Tuple(collect(float.(ujs)))
@@ -71,6 +71,14 @@ end
 # You have to implement one of these two: 
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
+
+# These slow versions are given, but you should probably overrid them: 
+function Distributions.logpdf(d::Distortion, u::Real)
+    (0.0 <= u <= 1.0) || return -Inf
+    v = ForwardDiff.derivative(t -> Distributions.cdf(d, t), float(u))
+    v <= 0 && return -Inf
+    return log(v)
+end
 
 """
     DistortionFromCop{TC,p,T} <: Distortion
@@ -127,6 +135,10 @@ struct DistortedDist{Disto, Distrib}<:Distributions.ContinuousUnivariateDistribu
 end
 Distributions.cdf(D::DistortedDist, t::Real) = Distributions.cdf(D.D, Distributions.cdf(D.X, t))
 Distributions.quantile(D::DistortedDist, α::Real) = Distributions.quantile(D.X, Distributions.quantile(D.D, α))
+function Distributions.logpdf(D::DistortedDist, t::Real)
+    u = Distributions.cdf(D.X, t)
+    return Distributions.logpdf(D.X, t) + Distributions.logpdf(D.D, u)
+end
 
 """
     ConditionalCopula{d} <: Copula{d}

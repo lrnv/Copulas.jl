@@ -16,3 +16,8 @@ function Distributions.quantile(D::ArchimedeanDistortion{TG, T}, α::Real) where
     return ϕ(D.G, y - D.sJ)
 end
 ## ConditionalCopula moved next to ArchimedeanCopula definition
+function Distributions.logpdf(D::ArchimedeanDistortion{TG, T}, u::Real) where {TG, T}
+    ξ = ϕ⁻¹(D.G, float(u))
+    num = ϕ⁽ᵏ⁾(D.G, D.p + 1, D.sJ + ξ)
+    return log(abs(num)) - log(abs(D.den)) - log(abs(ϕ⁽ᵏ⁾(D.G, 1, ξ)))
+end

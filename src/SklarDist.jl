@@ -58,6 +58,7 @@ SklarDist(C, m) = SklarDist(C, Tuple(m))
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
 Base.eltype(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = Base.eltype(S.C)
 Distributions.cdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = Distributions.cdf(S.C, [Distributions.cdf(mi, xi) for (mi, xi) in zip(S.m, x)])
+Distributions.logcdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = log(Distributions.cdf(S, x))
 function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,TplMargins}, x::AbstractVector{T}) where {CT,TplMargins,T}
     Random.rand!(rng,S.C,x)
     clamp!(x, nextfloat(T(0)), prevfloat(T(1)))

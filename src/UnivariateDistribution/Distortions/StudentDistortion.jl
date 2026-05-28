@@ -18,3 +18,9 @@ function Distributions.quantile(d::StudentDistortion, α::Real)
     return Distributions.cdf(Tu, d.μz + d.σz * zα)
 end
 ## Methods moved next to TCopula type
+function Distributions.logpdf(d::StudentDistortion, u::Real)
+    Tu = Distributions.TDist(d.ν)
+    Tcond = Distributions.TDist(d.νp)
+    z = Distributions.quantile(Tu, float(u))
+    return Distributions.logpdf(Tcond, (z - d.μz) / d.σz) - log(abs(d.σz)) - Distributions.logpdf(Tu, z)
+end
