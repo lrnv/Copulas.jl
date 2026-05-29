@@ -24,7 +24,6 @@ makedocs(;
         "Manual" => [
             "Introduction"=>"manual/intro.md",
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
-            "Nested Archimedean copulas"=>"manual/nested.md",
             "Dependence metrics"=>"manual/dependence_measures.md",
             "Fitting"=>"manual/fitting_interface.md",
             "Visualizations"=>"manual/visualizations.md",
@@ -33,6 +32,7 @@ makedocs(;
         "Bestiary" => [
             "Elliptical copulas"=>"bestiary/elliptical.md",
             "Archimedean copulas"=>"bestiary/archimedean.md",
+            "Nested Archimedean copulas"=>"manual/nested.md",
             "Extreme Value copulas"=>"bestiary/extremevalues.md",
             "Archimax copulas"=>"bestiary/archimax.md",
             "Empirical copulas"=>"bestiary/empirical.md",
