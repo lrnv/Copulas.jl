@@ -48,23 +48,12 @@ struct _NestedNode{TG<:Generator, T}
     children::Vector{_NestedNode}
 end
 
-# Family-agnostic k-th derivative of the generator, ϕ⁽ᵏ⁾(G, t), obtained from the
-# Taylor expansion of ϕ rather than a family-specialised closed form: the k-th
-# Taylor coefficient of ϕ(G, t + s) in s, times k!. This avoids the integer
-# Stirling-number overflow that caps some closed-form ϕ⁽ᵏ⁾ at moderate orders and
-# keeps the whole recursion in the working type `T`.
-function _phi_deriv(G::Generator, k::Int, t::T) where {T}
-    k == 0 && return ϕ(G, t)
-    return TaylorSeries.getcoeff(ϕ(G, t + TaylorSeries.Taylor1(T, k)), k) * T(factorial(big(k)))
-end
-
 # Taylor coefficients [h'(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!] of the change of variables
 # h = ϕ⁻¹_outer ∘ ϕ_inner at t₀, to order d. This is the inner-to-outer link in
 # the Faà di Bruno recursion for a child sub-tree.
 function _composition_taylor(outer::Generator, inner::Generator, t₀::T, d::Int) where {T}
-    h(x) = ϕ⁻¹(outer, ϕ(inner, x))
-    ht = h(t₀ + TaylorSeries.Taylor1(T, d))
-    return T[TaylorSeries.getcoeff(ht, k) for k in 1:d]
+    coefs = taylor(x -> ϕ⁻¹(outer, ϕ(inner, x)), t₀, d)
+    return T[coefs[k+1] for k in 1:d]
 end
 
 # Partial-Bell-polynomial step: given the Taylor coefficients `p` of the link
@@ -180,7 +169,8 @@ function _assemble_density(β::Vector{T}, G::Generator, t::T, d::Int) where {T}
     d == 0 && return ϕ(G, t)
     s = zero(T)
     for k in 0:d
-        s += β[k + 1] * _phi_deriv(G, k, t)
+        ϕᵏ = k == 0 ? ϕ(G, t) : ϕ⁽ᵏ⁾(G, k, t)
+        s += β[k + 1] * ϕᵏ
     end
     return s
 end

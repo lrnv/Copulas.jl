@@ -43,7 +43,7 @@
 function _censored_copula_logpdf(C::ArchimedeanCopula{d, TG}, u, censored, ::Type{T}) where {d, TG, T}
     s = sum(ϕ⁻¹(C.G, T(u[i])) for i in 1:d)
     k = count(!, censored)
-    val = _phi_deriv(C.G, k, s)                 # ϕ⁽⁰⁾ = ϕ when fully censored
+    val = k == 0 ? ϕ(C.G, s) : ϕ⁽ᵏ⁾(C.G, k, s)  # ϕ⁽⁰⁾ = ϕ when fully censored
     logjac = zero(T)
     for i in 1:d
         censored[i] || (logjac += log(abs(ϕ⁻¹⁽¹⁾(C.G, T(u[i])))))

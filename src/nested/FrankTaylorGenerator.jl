@@ -1,11 +1,14 @@
 # =============================================================================
 # Taylor-series-compatible ϕ / ϕ⁻¹ methods for the Frank generator.
 #
-# The nested-Archimedean density recursion evaluates the generator on a
-# `TaylorSeries.Taylor1` argument (to obtain ϕ⁽ᵏ⁾ and the composition Taylor
-# coefficients). For θ > 0, Frank's default ϕ / ϕ⁻¹ are written with
-# `LogExpFunctions.log1mexp`, which has no `Taylor1` method, so the nested path
-# would otherwise fail for Frank.
+# `_composition_taylor` in `NestedArchimedeanDensity.jl` evaluates the inner-to-
+# outer change of variables ϕ⁻¹_outer ∘ ϕ_inner on a `TaylorSeries.Taylor1`
+# argument via Copulas' generic `taylor(f, x₀, d)` primitive. For θ > 0, Frank's
+# default ϕ / ϕ⁻¹ are written with `LogExpFunctions.log1mexp`, which has no
+# `Taylor1` method, so the nested path would otherwise fail when Frank appears
+# anywhere in the tree. (The k-th derivative ϕ⁽ᵏ⁾ of Frank itself is upstream's
+# closed-form PolyLog implementation in `src/Generator/FrankGenerator.jl` and
+# does not touch a Taylor expansion.)
 #
 # These methods add the *equivalent* closed forms built only from
 # `exp` / `expm1` / `log` / `log1p` (all Taylor1-compatible). They are exactly
