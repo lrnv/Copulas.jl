@@ -32,7 +32,7 @@ makedocs(;
         "Bestiary" => [
             "Elliptical copulas"=>"bestiary/elliptical.md",
             "Archimedean copulas"=>"bestiary/archimedean.md",
-            "Nested Archimedean copulas"=>"manual/nested.md",
+            "Nested Archimedean copulas"=>"bestiary/nested.md",
             "Extreme Value copulas"=>"bestiary/extremevalues.md",
             "Archimax copulas"=>"bestiary/archimax.md",
             "Empirical copulas"=>"bestiary/empirical.md",
