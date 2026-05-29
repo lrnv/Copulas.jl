@@ -42,6 +42,7 @@ generator interface (`ϕ`, `ϕ⁻¹`, `ϕ⁽ᵏ⁾`).
 
 ```@example nested
 using Copulas, Distributions
+using Copulas: ClaytonGenerator, JoeGenerator
 
 # Outer Clayton(2) over two inner Clayton panels on dims 1:2 and 3:4.
 C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
