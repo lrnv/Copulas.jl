@@ -119,8 +119,8 @@ the observed coordinates,
 because the denominator ``c_O`` in `condition` cancels against the
 `subsetdims` marginal density. Both factors route through the Faà di Bruno tree
 walk via the `subsetdims` / `condition` specialisations for this type — no
-ForwardDiff for the observed-marginal density nor (when a single coordinate is
-censored) the conditional CDF.
+ForwardDiff for the observed-marginal density nor for the conditional CDF (for
+any number of censored coordinates).
 
 ```@example nested
 using Distributions
@@ -144,14 +144,19 @@ empty (all observed) the recipe reduces to the ordinary joint density
 `subsetdims` support — flat [`ArchimedeanCopula`](@ref) as well as nested trees.
 
 !!! note "Multi-censored conditional CDF"
-    When two or more coordinates are censored, the conditional CDF currently
-    falls back to upstream's generic (ForwardDiff over the closed-form nested
-    CDF) path — correct, but slower than the single-censored fast tree walk. A
-    fast multi-censored tree-walk path is a planned follow-up. The generic
-    `Float64` ForwardDiff path can also lose precision (and may return `NaN`) at
-    high differentiation order for fast-tail generators; pass `BigFloat`
-    coordinates if the multi-censored fallback is numerically fragile, mirroring
-    the density-precision guidance above.
+    With two or more censored coordinates the conditional CDF is the mixed
+    partial of the nested CDF over the *observed* coordinates. The generic path
+    takes this by nesting one `ForwardDiff.derivative` per observed coordinate —
+    cost exponential in the number of observed dims, infeasible in high
+    dimension. A `_partial_cdf` specialisation routes it instead through the same
+    polynomial Faà di Bruno tree walk as the single-censored case (selected on the
+    conditional copula's concrete nested inner type), for any number of censored
+    coordinates.
+
+    At high differentiation order for fast-tail generators the `Float64` sum can
+    lose precision; pass `BigFloat` coordinates to recover the exact value (as for
+    the density). End-to-end `BigFloat` through `condition()` is not yet enabled —
+    upstream stores the conditioning values as `Float64`.
 
 !!! warning "Do not use `Distributions.censored` margins"
     `logpdf(SklarDist(C, (…, censored(m), …)), x)` returns `-Inf`: a censored

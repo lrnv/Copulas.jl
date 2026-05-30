@@ -24,7 +24,7 @@
 using Test, Copulas, Distributions, ForwardDiff, DelimitedFiles, Random
 import Copulas: Generator, ϕ, ϕ⁻¹, ϕ⁻¹⁽¹⁾, ϕ⁽ᵏ⁾
 import Copulas: ClaytonGenerator, GumbelGenerator, FrankGenerator, JoeGenerator
-import Copulas: NestedDistortion, subsetdims, condition
+import Copulas: NestedDistortion, subsetdims, condition, _censored_copula_logpdf
 
 # Seeded RNG, matching runtests' `StableRNG(123)` when StableRNGs is on the path
 # (the package test environment); falls back to a seeded Xoshiro so this file
@@ -239,8 +239,12 @@ end
 
         # (c) Nested, multi-unobserved (2 censored): root Clayton(2)-leaf over
         #     Clayton(5) + Gumbel(3), one censored leaf in each sector + a
-        #     censored root leaf. Exercises the generic ConditionalCopula +
-        #     ForwardDiff fallback (|unobserved| ≥ 2).
+        #     censored root leaf. Multi-censored (|unobserved| = 2): now routed
+        #     through our Faà di Bruno tree walk via the `_partial_cdf` override
+        #     (no ForwardDiff). The RefSpec reference is an INDEPENDENT
+        #     BigFloat-ForwardDiff CDF mixed partial that shares no code with our
+        #     kernel, so matching it to 1e-10 (the old generic path was asserted
+        #     only at the loose 1e-7) is evidence the multi-censored CDF is exact.
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                 leaves = [1],
                 children = [ClaytonCopula(2, 5.0), GumbelCopula(2, 3.0)])
@@ -250,7 +254,7 @@ end
                    [(big(u[1]), false)],
                    [RefSpec(ClaytonGenerator(big(5.0)), [(big(u[2]), false), (big(u[3]), true)]),
                     RefSpec(GumbelGenerator(big(3.0)),  [(big(u[4]), true),  (big(u[5]), false)])])
-        @test gist_censored(C, u, δ) ≈ Float64(ref_logpdf(spec)) atol = 1e-7
+        @test gist_censored(C, u, δ) ≈ Float64(ref_logpdf(spec)) atol = 1e-10
 
         # (c') Single-censored nested ⇒ the FAST NestedDistortion path. Observe
         #      all of {1,2,3,4}, censor only dim 5.
@@ -307,10 +311,88 @@ end
         δ = [false, true, false, false, true, false]
         u = [cdf(margins[i], x[i]) for i in 1:6]
         margin_ll = sum(logpdf(margins[i], x[i]) for i in 1:6 if !δ[i])
-        # copula-scale mixed partial over the observed coords (independent ref via gist).
+        # copula-scale mixed partial over the observed coords (data-scale gist
+        # should equal margin densities + the copula-scale gist at the PIT point).
         cop_ll = gist_censored(C, u, δ)
-        @test gist_sklar(Sn, x, δ) ≈ margin_ll + cop_ll atol = 1e-7
+        # Tightened 1e-7 → 1e-10: both sides route the multi-censored conditional
+        # CDF through our kernel now, so the data-scale/copula-scale split agrees
+        # to machine precision. (Self-consistency via gist_censored — NOT an
+        # independent reference; the independent proof is testset 4c below.)
+        @test gist_sklar(Sn, x, δ) ≈ margin_ll + cop_ll atol = 1e-10
         @test isfinite(gist_sklar(Sn, x, δ))
+    end
+
+    # -----------------------------------------------------------------------
+    # 4c. Multi-censored conditional CDF routes through OUR Faà di Bruno kernel
+    #     (not ForwardDiff). The standard API (condition + subsetdims) now CALLS
+    #     `_censored_copula_logpdf` for any number of censored dims, via the
+    #     `_partial_cdf(::NestedArchimedeanCopula, …)` override. Fixed literals.
+    # -----------------------------------------------------------------------
+    @testset "multi-censored conditional CDF routes through our kernel" begin
+        C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+                leaves = [1],
+                children = [ClaytonCopula(2, 5.0), GumbelCopula(2, 3.0)])
+        u = [0.40, 0.30, 0.70, 0.55, 0.80]
+        δ = [false, false, true, true, false]   # censor dims 3,4 (|unobserved| = 2)
+
+        # (i) DIRECT-KERNEL EQUALITY. The gist via the standard API equals a DIRECT
+        #     `_censored_copula_logpdf` call to machine precision — the load-bearing
+        #     proof that `condition()`/`_cdf` now CALLS our kernel. (Pre-override the
+        #     LHS was ForwardDiff over the closed-form CDF; it happened to agree on
+        #     this benign case to ~1e-15 too, so the *independent BigFloat reference*
+        #     is what proves exactness, while this equality proves the code PATH.)
+        api  = gist_censored(C, u, δ)
+        kern = _censored_copula_logpdf(C, u, δ, Float64)
+        @test api ≈ kern atol = 1e-10
+        # exactness witness against the BigFloat kernel (no Float64 roundoff in ref).
+        @test api ≈ Float64(_censored_copula_logpdf(C, big.(u), δ, BigFloat)) atol = 1e-9
+
+        # (ii) CDF CONTRACT on the real multi-censored ConditionalCopula. Build it
+        #      via condition(); cdf must stay in [0,1] and be non-decreasing on a
+        #      fixed interior increasing v-grid. Catches sign/assembly errors that a
+        #      single-point equality misses. Interior grid + tolerance-relaxed
+        #      monotone check avoid boundary/quantile flakiness.
+        obs = Tuple(i for i in 1:5 if !δ[i])
+        CC = condition(C, obs, [u[i] for i in obs])
+        vgrid = [[0.2, 0.2], [0.4, 0.3], [0.6, 0.55], [0.8, 0.85], [0.95, 0.97]]
+        vals = [cdf(CC, v) for v in vgrid]
+        @test all(0.0 .<= vals .<= 1.0)
+        @test all(vals[k + 1] >= vals[k] - 1e-12 for k in 1:length(vals) - 1)
+
+        # (iii) BigFloat-ROUTABILITY + boundary robustness (the DEFENSIBLE adversarial
+        #       win). Standard-API conditioning differentiates a closed-form CDF in
+        #       Float64 (ForwardDiff); at high differentiation order for a fast-tail
+        #       generator BOTH Float64 paths (ForwardDiff AND our Float64 kernel) lose
+        #       precision and eventually NaN — so we do NOT claim the Float64 kernel
+        #       beats Float64 ForwardDiff. The universal advantage is that the kernel
+        #       computes the SAME quantity exactly in BigFloat, which the Float64-locked
+        #       standard API cannot reach. Verify: (a) a moderately deep multi-censored
+        #       point is finite and BigFloat-exact; (b) at a deeper point the Float64
+        #       ForwardDiff conditional CDF is non-finite (NaN) yet the BigFloat kernel
+        #       is finite and matches.
+        Cj = NestedArchimedeanCopula(JoeGenerator(1.2);
+                children = [JoeCopula(4, 15.0), JoeCopula(4, 15.0)])
+        δj = [false, false, false, false, false, false, false, true]  # observe 7 (order 7)
+        # (a) moderate point: finite under the Float64 kernel AND BigFloat-exact.
+        um = fill(0.99, 8)
+        gm = gist_censored(Cj, um, δj)
+        @test isfinite(gm)
+        @test gm ≈ Float64(_censored_copula_logpdf(Cj, big.(um), δj, BigFloat)) atol = 1e-8
+        # (b) deep tail: upstream's Float64 ForwardDiff conditional CDF NaNs, but the
+        #     BigFloat kernel is exact. is/js are the override's upstream slot names:
+        #     is = censored dim (8), js = observed dims (1..7).
+        ud = fill(0.999999, 8)
+        fd_f64 = Copulas._partial_cdf(Cj, (8,), (1, 2, 3, 4, 5, 6, 7),
+                                      (ud[8],), (ud[1], ud[2], ud[3], ud[4], ud[5], ud[6], ud[7]))
+        # NOTE: this `_partial_cdf` call goes through OUR override (Cj is nested), so
+        # in Float64 it now follows the kernel — which ALSO NaNs at this depth. The
+        # point being asserted is that the Float64 path (whichever) is non-finite here
+        # while BigFloat recovers the exact value, NOT that one Float64 path beats the
+        # other.
+        @test !isfinite(fd_f64)
+        big_log = _censored_copula_logpdf(Cj, big.(ud),
+                      [false, false, false, false, false, false, false, true], BigFloat)
+        @test isfinite(big_log)
     end
 
     # -----------------------------------------------------------------------

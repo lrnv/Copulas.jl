@@ -31,17 +31,25 @@
 #       per-coordinate distortion that the generic ConditionalCopula constructor
 #       builds for the multi-unobserved case.
 #
-# DEFERRED FOLLOW-UP (NOT in this PR): the MULTI-conditioned-dim conditional CDF
-# (|unobserved| ≥ 2) is NOT routed to the fast tree walk. `ConditionalCopula`
-# stores the inner copula as a FIELD `C::Copula{D}` (Conditioning.jl), not a type
-# parameter, so `_cdf(::ConditionalCopula)` cannot dispatch on
-# "inner == NestedArchimedeanCopula". The multi-unobserved conditional CDF
-# therefore falls back to upstream's GENERIC `_partial_cdf` (= ForwardDiff over
-# our closed-form `_cdf(::NestedArchimedeanCopula)`), which is CORRECT but slower
-# (O(2^k) ForwardDiff in Float64 duals rather than the O(d²) tree walk). A future
-# PR can add a fast multi-dim path, likely requiring an upstream change to make
-# `ConditionalCopula` carry the inner copula's concrete type. Do NOT hack
-# ConditionalCopula dispatch here.
+# MULTI-conditioned-dim conditional CDF (|unobserved| ≥ 2): now ALSO routed to the
+# fast tree walk by the `_partial_cdf(C::NestedArchimedeanCopula, is, js, uᵢₛ, uⱼₛ)`
+# specialisation at the bottom of this file (section (3)). `ConditionalCopula`
+# stores its inner copula in the abstract FIELD `C::Copula{D}` (Conditioning.jl),
+# but `_cdf(::ConditionalCopula)` calls `_partial_cdf(CC.C, …)`, which dispatches
+# on the RUNTIME type of `CC.C` — concretely a `NestedArchimedeanCopula` — so our
+# method is selected without `ConditionalCopula` needing to carry the inner type.
+# The override assembles `u` (js→uⱼₛ, is→uᵢₛ, others→1) and returns
+# `exp(_censored_copula_logpdf(C, u, cens, T))` with `cens[k] = !(k ∈ js)`. Thus
+# BOTH `DistortionFromCop.cdf` (single-conditioned) and `ConditionalCopula._cdf`
+# (multi-conditioned) compute the conditional CDF with our O(d²) Faà di Bruno
+# walk — ZERO ForwardDiff for ANY number of censored dims.
+#
+# CAVEAT (forward-compat only): end-to-end BigFloat MULTI-censored *conditioning*
+# via `condition()` is not yet enabled — upstream's `ConditionalCopula`/
+# `DistortionFromCop` `uⱼₛ`/`den` fields are Float64-typed, so the standard API
+# delivers Float64 to the override. Threading `T` future-proofs it (and matches
+# `_assemble`'s own promotion), but BigFloat currently flows only via direct
+# kernel calls or the single-censored `NestedDistortion.logcdf` path.
 # =============================================================================
 
 # ---- (1) SubsetCopula: prune the tree to the observed marginal --------------
@@ -201,3 +209,30 @@ function Distributions.logcdf(D::NestedDistortion, ui::Real)
 end
 
 Distributions.cdf(D::NestedDistortion, ui::Real) = exp(Distributions.logcdf(D, ui))
+
+# ---- (3) Multi-conditioned-dim conditional CDF: route Site B through our kernel
+#
+# Override the generic `_partial_cdf(C, is, js, uᵢₛ, uⱼₛ)` (Conditioning.jl:31),
+# the order-|js| mixed partial of `cdf(C, ·)` over the observed dims `js`. The
+# generic body takes it by NESTING |js| `ForwardDiff.derivative` calls — Dual-of-
+# Dual type explosion at compile time, O(2^|js|) at run time — so it is infeasible
+# in high dimension (many observed coordinates). Our Faà di Bruno walk is
+# polynomial and handles any order. `_cdf(::ConditionalCopula)` (Conditioning.jl:170)
+# calls `_partial_cdf(CC.C, …)`; `CC.C` sits in an abstract field but dispatches on
+# its RUNTIME type (concretely nested), so this method is selected without
+# `ConditionalCopula` carrying the inner type — routing the multi-conditioned-dim
+# (|unobserved| ≥ 2) conditional CDF through our walk, no ForwardDiff.
+#
+# Body: assemble `u` (js→uⱼₛ, is→uᵢₛ, others→1), differentiate exactly `js`
+# (cens[k] = !(k∈js)), return exp(kernel). A CDF's mixed partial over a coordinate
+# subset is a non-negative sub-density, so exp(log|·|) == the value. `T` is
+# threaded for a future BigFloat upper layer; the standard API stores Float64.
+function _partial_cdf(C::NestedArchimedeanCopula{D}, is, js, uᵢₛ, uⱼₛ) where {D}
+    T = float(promote_type(eltype(typeof(uᵢₛ)), eltype(typeof(uⱼₛ))))
+    u = _assemble(D, is, js, uᵢₛ, uⱼₛ)        # js→uⱼₛ, is→uᵢₛ, others→1
+    cens = trues(D)
+    for j in js
+        cens[j] = false                       # differentiate ONLY the conditioned dims
+    end
+    return exp(_censored_copula_logpdf(C, u, cens, T))
+end

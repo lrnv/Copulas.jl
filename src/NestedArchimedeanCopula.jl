@@ -212,15 +212,18 @@ function Distributions._logpdf(C::NestedArchimedeanCopula{d}, u) where {d}
 end
 
 # Nested CDF in closed form (ϕ_root ∘ Σ ϕ⁻¹), avoiding the generic numerical
-# integration fallback. This is also the all-censored limit of the survival
-# likelihood (the empty-observed gist recipe `log cdf(C, u)`), and the
-# closed-form CDF that upstream's generic `_partial_cdf`/ForwardDiff path
-# differentiates for the multi-censored-dim `ConditionalCopula` case.
+# integration fallback. This is the joint CDF used by `rosenblatt` and is also
+# the all-censored limit of the survival likelihood (the empty-observed gist
+# recipe `log cdf(C, u)`). NOTE: the MULTI-censored-dim `ConditionalCopula`
+# conditional CDF is NO LONGER obtained by ForwardDiff-differentiating this
+# closed form — it is computed directly by our Faà di Bruno kernel via the
+# `_partial_cdf(::NestedArchimedeanCopula, …)` override in
+# nested/NestedConditioning.jl. The `eltype`-preserving `T` below still lets
+# ForwardDiff `Dual`s flow through for any residual generic differentiation of
+# the CDF (e.g. non-nested callers), but it is not the multi-censored path.
 function _cdf(C::NestedArchimedeanCopula{d}, u) where {d}
-    # Use the input element type when it is a (non-integer) real so that
-    # ForwardDiff `Dual`s flow through unchanged — this closed-form CDF is what
-    # upstream's generic `_partial_cdf`/ForwardDiff path differentiates for the
-    # multi-censored-dim `ConditionalCopula` case.
+    # Preserve the input element type when it is a (non-integer) real so that
+    # ForwardDiff `Dual`s flow through unchanged for any generic caller.
     Tu = eltype(u)
     T = Tu <: Integer ? Float64 : (Tu <: Real ? float(Tu) : Float64)
     tree = _build_tree(C, u, falses(d), T)
