@@ -11,10 +11,10 @@ across blocks. This is the natural model for grouped or hierarchical
 dependence — for example several organ systems within a patient, or several
 assets within a sector.
 
-[`NestedArchimedeanCopula`](@ref) provides the density (and an optional
-per-variable censored / survival likelihood) of such trees, following the
-algorithm of Yang & Li
-([arXiv:2605.23134](https://arxiv.org/abs/2605.23134)).
+[`NestedArchimedeanCopula`](@ref) provides the density of such trees (and, via
+the standard [`condition`](@ref) / [`subsetdims`](@ref) framework, a
+per-variable censored / survival likelihood), following the algorithm of Yang &
+Li ([arXiv:2605.23134](https://arxiv.org/abs/2605.23134)).
 
 ## Definition
 
@@ -94,22 +94,33 @@ logpdf(C, big.([0.3, 0.5, 0.4, 0.6]))
 
 ## Censored / survival likelihood
 
-For partially observed multivariate event times, the survival likelihood lives
-at the [`SklarDist`](@ref) level — it is a statement about the data and the
-margins, not the pure dependence on ``[0,1]^d``. Wrap the copula in a
-`SklarDist` with its marginal distributions and pass a Boolean censoring mask
-via the `censored` keyword of `logpdf`. A right-censored coordinate (`true`)
-contributes its survival information only: it enters the copula CDF as a plain
-argument and its marginal density is dropped, so the result is
+Per-variable (right-)censoring is an **emergent capability** of the standard
+[`condition`](@ref) + [`subsetdims`](@ref) framework — there is no bespoke
+censored-likelihood function. Split the coordinates into an observed set ``O``
+(events) and a censored set ``C`` (the survival times we only know exceed their
+observation). The per-variable censored likelihood factorises as the *gist
+recipe*
 
 ```math
-\sum_{i\,:\,\text{observed}} \log f_i(x_i)
+\underbrace{\log f_{O}(x_O)}_{\texttt{logpdf(subsetdims(X,O),\,x_O)}}
+\;+\;
+\underbrace{\log P(X_C \le x_C \mid X_O = x_O)}_{\texttt{logcdf(condition(X,O,x_O),\,x_C)}},
+```
+
+which equals the observed-marginal density times the copula's mixed partial over
+the observed coordinates,
+
+```math
+\sum_{i\in O} \log f_i(x_i)
 \;+\; \log \frac{\partial^{|O|} C(\mathbf u)}{\prod_{i\in O}\partial u_i},
 \qquad \mathbf u = (F_1(x_1),\dots,F_d(x_d)),
 ```
 
-the observed marginal densities times the copula's mixed partial over the
-observed coordinates ``O``:
+because the denominator ``c_O`` in `condition` cancels against the
+`subsetdims` marginal density. Both factors route through the Faà di Bruno tree
+walk via the `subsetdims` / `condition` specialisations for this type — no
+ForwardDiff for the observed-marginal density nor (when a single coordinate is
+censored) the conditional CDF.
 
 ```@example nested
 using Distributions
@@ -117,22 +128,34 @@ Csurv = NestedArchimedeanCopula(ClaytonGenerator(2.0);
             children = [ClaytonCopula(3, 5.0), ClaytonCopula(3, 6.0)])
 S = SklarDist(Csurv, ntuple(_ -> Exponential(1.0), 6))
 x = [0.7, 0.3, 0.9, 0.5, 0.4, 1.1]
-logpdf(S, x; censored = [false, true, false, false, false, true])
+O = (1, 3, 4, 5)        # observed (events)
+C = (2, 6)              # right-censored
+logpdf(subsetdims(S, O), x[collect(O)]) +
+    log(cdf(condition(S, O, x[collect(O)]), x[collect(C)]))
 ```
 
-With `censored` omitted (all observed) this reduces to the ordinary joint
-density; with all coordinates censored it reduces to ``\log F(\mathbf x)``. This
-path works for any copula that supplies the mixed partial over observed
-coordinates — flat [`ArchimedeanCopula`](@ref) as well as nested trees — so it
-is a general per-variable censoring facility, not nested-specific.
+When a *single* coordinate is censored, `condition(S, O, x_O)` returns a
+univariate conditional distribution and you use `logcdf(condition(...), x_C)`
+(a scalar `x_C`); when several are censored it returns a conditional joint
+distribution and you use `log(cdf(condition(...), x_C))` as above. With ``C``
+empty (all observed) the recipe reduces to the ordinary joint density
+`logpdf(S, x)`; with ``O`` empty (all censored) it reduces to
+``\log F(\mathbf x)``. The recipe works for any copula with `condition` /
+`subsetdims` support — flat [`ArchimedeanCopula`](@ref) as well as nested trees.
+
+!!! note "Multi-censored conditional CDF"
+    When two or more coordinates are censored, the conditional CDF currently
+    falls back to upstream's generic (ForwardDiff over the closed-form nested
+    CDF) path — correct, but slower than the single-censored fast tree walk. A
+    fast multi-censored tree-walk path is a planned follow-up. The generic
+    `Float64` ForwardDiff path can also lose precision (and may return `NaN`) at
+    high differentiation order for fast-tail generators; pass `BigFloat`
+    coordinates if the multi-censored fallback is numerically fragile, mirroring
+    the density-precision guidance above.
 
 !!! warning "Do not use `Distributions.censored` margins"
     `logpdf(SklarDist(C, (…, censored(m), …)), x)` returns `-Inf`: a censored
     margin places an atom at the censoring time, which Sklar's theorem maps to
     the copula boundary ``u = 1`` — off the open domain ``(0,1)^d`` where the
-    copula density is defined. The `censored` keyword above is the correct
-    replacement.
-
-The copula factor alone is available as `censored_logpdf(C, u, δ)` on
-copula-scale pseudo-observations ``u`` — the lower-level building block used by
-the `SklarDist` method.
+    copula density is defined. The `condition` + `subsetdims` recipe above is the
+    correct replacement.

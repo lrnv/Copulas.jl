@@ -57,24 +57,36 @@ alternating-sign Faà di Bruno sum can lose `Float64` precision.
 
 # Censored / survival likelihood
 
-The per-variable right-censored *survival* likelihood lives at the
-[`SklarDist`](@ref) level, where the margins and data are available: wrap the
-copula in `SklarDist(C, margins)` and call
-`logpdf(S, x; censored = δ)` (see [`censored_logpdf`](@ref) for the copula-scale
-building block). This nested copula supplies the required mixed partial of its
-CDF over the observed coordinates via the Faà di Bruno recursion.
+Per-variable (right-)censoring is an *emergent* capability of the standard
+[`condition`](@ref) + [`subsetdims`](@ref) framework — there is no bespoke
+censored-likelihood function. For an observed set ``O`` and a censored set ``C``,
+the per-variable censored likelihood factorises as the "gist recipe"
+
+```julia
+logpdf(subsetdims(X, O), x_O) + logcdf(condition(X, O, x_O), x_C)
+```
+
+(on the [`SklarDist`](@ref) `X = SklarDist(C, margins)`), which equals the
+observed-marginal densities times the mixed partial of the nested CDF over the
+observed coordinates. The `subsetdims`/`condition` specialisations for this type
+route both factors through the Faà di Bruno tree walk; the denominator
+``c_O`` cancels, reproducing the raw mixed partial.
 
 # Example
 
 ```julia
+using Copulas: ClaytonGenerator   # generator types are not exported
+
 # outer Clayton(2) over two inner Clayton panels on dims 1:2 and 3:4
 C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
         children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])
 logpdf(C, [0.3, 0.5, 0.4, 0.6])
 
-# survival likelihood with dims 2 and 4 right-censored:
+# survival likelihood with dim 2 right-censored (observed O = {1,3,4}, C = {2}):
 S = SklarDist(C, ntuple(_ -> Exponential(1.0), 4))
-logpdf(S, [0.7, 0.3, 0.5, 0.9]; censored = [false, true, false, true])
+x = [0.7, 0.3, 0.5, 0.9]
+logpdf(subsetdims(S, (1, 3, 4)), x[[1, 3, 4]]) +
+    logcdf(condition(S, (1, 3, 4), x[[1, 3, 4]]), x[2])
 ```
 
 The density and the per-variable censored (survival) likelihood follow the
@@ -201,17 +213,25 @@ end
 
 # Nested CDF in closed form (ϕ_root ∘ Σ ϕ⁻¹), avoiding the generic numerical
 # integration fallback. This is also the all-censored limit of the survival
-# likelihood (`logpdf(S; censored = trues(d))` == `log cdf`).
+# likelihood (the empty-observed gist recipe `log cdf(C, u)`), and the
+# closed-form CDF that upstream's generic `_partial_cdf`/ForwardDiff path
+# differentiates for the multi-censored-dim `ConditionalCopula` case.
 function _cdf(C::NestedArchimedeanCopula{d}, u) where {d}
-    T = eltype(u) <: AbstractFloat ? float(eltype(u)) : Float64
+    # Use the input element type when it is a (non-integer) real so that
+    # ForwardDiff `Dual`s flow through unchanged — this closed-form CDF is what
+    # upstream's generic `_partial_cdf`/ForwardDiff path differentiates for the
+    # multi-censored-dim `ConditionalCopula` case.
+    Tu = eltype(u)
+    T = Tu <: Integer ? Float64 : (Tu <: Real ? float(Tu) : Float64)
     tree = _build_tree(C, u, falses(d), T)
     return _nested_cdf(tree)
 end
 
 # Copula-scale mixed partial of the nested CDF over the observed coordinates.
-# This is the lower-level building block behind the SklarDist survival
-# likelihood (see `censored_logpdf` and `logpdf(::SklarDist; censored=)`); it
-# works on copula-scale arguments `u ∈ (0,1)^d`.
+# Internal numerator kernel for the nested condition/subsetdims fast path
+# (`DistortionFromCop(::NestedArchimedeanCopula, …)` in nested/NestedConditioning.jl);
+# it works on copula-scale arguments `u ∈ (0,1)^d`. `censored[i] == true` means
+# coordinate `i` enters only the argument-sum (not differentiated).
 function _censored_copula_logpdf(C::NestedArchimedeanCopula{d}, u, censored, ::Type{T}) where {d, T}
     tree = _build_tree(C, u, collect(Bool, censored), T)
     return _nested_logpdf(tree)

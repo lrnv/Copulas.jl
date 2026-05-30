@@ -178,7 +178,8 @@ end
 # Full nested log-density of a node, including the marginal log-Jacobian. With
 # no censored leaves this is the ordinary nested-Archimedean log-density; with
 # censored leaves it is the mixed partial of the nested CDF over the observed
-# coordinates only (the survival likelihood). See `censored_logpdf`.
+# coordinates only — the numerator kernel behind the condition/subsetdims
+# fast path (see nested/NestedConditioning.jl).
 function _nested_logpdf(node::_NestedNode{TG, T}) where {TG, T}
     (t, C, d, β) = _process_node(node)
     return log(abs(_assemble_density(β, node.G, t, d))) + _leaf_log_jacobian(node)
