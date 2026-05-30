@@ -291,3 +291,45 @@ end
         @test isapprox(cdf(Y, q), α; atol=2e-3, rtol=2e-3)
     end
 end
+
+@testset "condition accepts non-Float64 reals (BigFloat StackOverflow regression)" begin
+    # Regression: condition(C, js, uⱼₛ) hardcoded NTuple{p,Float64}. Because
+    # _process_tuples calls float. (which keeps BigFloat/Float32 unchanged), such
+    # inputs missed the typed method, fell back to the untyped entry point, and
+    # recursed forever (StackOverflow). The typed methods now accept
+    # NTuple{p,<:Real}; non-Float64 values are converted to Float64 downstream, so
+    # the conditioning result matches the Float64-input result (tolerance allows
+    # for the fast-vs-generic distortion method difference on the converted path).
+    C3 = ClaytonCopula(3, 2.0)
+    C4 = ClaytonCopula(4, 2.0)
+
+    # Copula entry, single conditioned dim (p == D-1) → univariate Distortion.
+    r1 = condition(C3, (1, 2), (0.3, 0.4))
+    b1 = condition(C3, (1, 2), (big"0.3", big"0.4"))   # must not StackOverflow
+    @test b1 isa Copulas.Distortion
+    for u in (0.1, 0.5, 0.9)
+        @test isapprox(cdf(b1, u), cdf(r1, u); atol=1e-6)
+    end
+
+    # Copula entry, scalar BigFloat, multi remaining (p == 1 < D-1) → SklarDist.
+    r2 = condition(C3, 1, 0.3)
+    b2 = condition(C3, 1, big"0.3")
+    @test b2 isa SklarDist
+    @test isapprox(cdf(b2.C, [0.5, 0.6]), cdf(r2.C, [0.5, 0.6]); atol=1e-6)
+
+    # Copula entry, tuple BigFloat, multi conditioned (p == 2 < D-1).
+    r3 = condition(C4, (1, 2), (0.3, 0.4))
+    b3 = condition(C4, (1, 2), (big"0.3", big"0.4"))
+    @test b3 isa SklarDist
+    @test isapprox(cdf(b3.C, [0.5, 0.6]), cdf(r3.C, [0.5, 0.6]); atol=1e-6)
+
+    # SklarDist entry, BigFloat data-scale conditioning value (3-dim → 2-dim cond).
+    X = SklarDist(C3, (Normal(), LogNormal(), Exponential()))
+    rS = condition(X, (1,), (0.2,))
+    bS = condition(X, (1,), (big"0.2",))
+    @test bS isa SklarDist
+    @test isapprox(cdf(bS, [0.3, 0.5]), cdf(rS, [0.3, 0.5]); atol=1e-6)
+
+    # Float32 also previously recursed; confirm it is accepted too.
+    @test condition(C3, (1, 2), (0.3f0, 0.4f0)) isa Copulas.Distortion
+end
