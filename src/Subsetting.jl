@@ -81,7 +81,9 @@ This function extracts the dependence structure among the specified dimensions f
 function subsetdims(C::Copula{d},dims::NTuple{p, Int}) where {d,p}
     p==1 && return Distributions.Uniform()
     dims==ntuple(i->i, d) && return C
-    @assert p < d
+    # p == d is allowed: a `dims` that is a (non-identity) permutation reorders the
+    # coordinates. The identity `dims == 1:d` is already returned above.
+    @assert p <= d
     @assert length(unique(dims))==length(dims)
     @assert all(dims .<= d)
     return SubsetCopula(C,dims)
