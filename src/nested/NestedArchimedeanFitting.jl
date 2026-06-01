@@ -16,11 +16,11 @@
 # own valid family domain at all times, (b) sidesteps the missing `_θ_bounds` for
 # the BB families, and (c) needs no box-constraint machinery.
 #
-# NESTING VALIDITY is NOT enforced. The constructor itself does not check the
-# cross-node "inner at least as dependent as outer" condition
-# (NestedArchimedeanCopula.jl docstring); fit() mirrors that contract — it is the
-# caller's responsibility. Unconstrained α only guarantees each generator is valid
-# in its own family; a same-family fitted optimum CAN have inner θ < outer θ.
+# NESTING VALIDITY: the DEFAULT parametrisation does not enforce the cross-node
+# "inner at least as dependent as outer" condition (the constructor leaves it to
+# the caller) — an unconstrained α only keeps each generator valid in its own
+# family, so a fitted optimum CAN have inner θ < outer θ. Pass `enforce_nesting=true`
+# (same-family θ-ordered trees) or a custom `reparam`/`init` to constrain it; see fit().
 #
 # The tree is walked in a fixed PRE-ORDER (root generator, then each child block
 # in `children` declaration order; a flat child `(ArchimedeanCopula, dims)` inline,
@@ -111,6 +111,85 @@ _example(::Type{NestedArchimedeanCopula}, d) =
         "the tree shape and generator families are not inferable from data. " *
         "Pass a template instance, e.g. `fit(CopulaModel, C0, U)` or `fit(C0, U)`."))
 
+# ---- Parametrization layer (decoupled α -> tree map) ------------------------
+# fit() optimises an unconstrained vector α through a reconstruction map
+# `recon : α -> NestedArchimedeanCopula`. The DEFAULT map (`_nested_rebound`)
+# reparametrises each generator independently inside its own family domain. A
+# CUSTOM `recon` (keywords `reparam`/`init`) decouples α from the generator
+# objects entirely — so it can share parameters across nodes, change the
+# per-generator parametrisation, or ENFORCE the nesting condition. `recon` only
+# has to build generators from α (`fam(θ)` stays generic in α's element type), so
+# ForwardDiff differentiates straight through it. `enforce_nesting=true` provides
+# the nesting case for same-family single-parameter θ-ordered trees.
+
+_single_θ(G::Generator) = float(first(values(Distributions.params(G))))  # the lone dependence param
+_softplus(x)    = max(x, zero(x)) + log1p(exp(-abs(x)))   # ≥ 0, smooth, overflow-safe
+_invsoftplus(y) = log(expm1(y))                            # inverse of softplus on y > 0
+
+# Lower end of the θ range over which a family nests by `θ_child ≥ θ_parent`.
+# `nothing` ⇒ enforce_nesting unsupported (bounded domain or multi-parameter family).
+_nesting_base(::Type{<:Generator})        = nothing
+_nesting_base(::Type{<:ClaytonGenerator}) = 0.0
+_nesting_base(::Type{<:GumbelGenerator})  = 1.0
+_nesting_base(::Type{<:FrankGenerator})   = 0.0
+_nesting_base(::Type{<:JoeGenerator})     = 1.0
+
+function _assert_same_single_param_family(C::NestedArchimedeanCopula, fam)
+    (_gentype(C.G) === fam && length(Distributions.params(C.G)) == 1) ||
+        throw(ArgumentError("enforce_nesting needs every node to be the same single-parameter family ($fam); got $(typeof(C.G))."))
+    for ch in C.children
+        if ch isa Tuple
+            (_gentype(ch[1].G) === fam && length(Distributions.params(ch[1].G)) == 1) ||
+                throw(ArgumentError("enforce_nesting needs every node to be $fam; got $(typeof(ch[1].G))."))
+        else
+            _assert_same_single_param_family(ch, fam)
+        end
+    end
+end
+
+# Flatten the template into α₀ (pre-order: this node, then each child) encoding each
+# node's θ as a NON-NEGATIVE increment over its parent's θ (root over `base`).
+function _nesting_flatten!(α, C::NestedArchimedeanCopula, lo)
+    θ = _single_θ(C.G)
+    push!(α, _invsoftplus(max(θ - lo, 1e-6)))
+    for ch in C.children
+        ch isa Tuple ? push!(α, _invsoftplus(max(_single_θ(ch[1].G) - θ, 1e-6))) :
+                       _nesting_flatten!(α, ch, θ)
+    end
+    return α
+end
+
+# Rebuild from α in the IDENTICAL pre-order: θ_node = lo + softplus(δ); each child
+# θ_child = θ_node + softplus(δ_child). softplus ≥ 0 ⇒ θ non-decreasing down the
+# tree ⇒ the nesting condition holds for every α ∈ ℝ^p.
+function _nesting_build(C::NestedArchimedeanCopula, α, i::Ref{Int}, lo, fam)
+    θ = lo + _softplus(α[i[]]); i[] += 1
+    newG = fam(θ)
+    newkids = Any[]
+    for ch in C.children
+        if ch isa Tuple
+            cc, ds = ch
+            θc = θ + _softplus(α[i[]]); i[] += 1
+            push!(newkids, (ArchimedeanCopula(length(ds), fam(θc)), ds))
+        else
+            push!(newkids, _nesting_build(ch, α, i, θ, fam))
+        end
+    end
+    return NestedArchimedeanCopula{length(C.dims), typeof(newG)}(newG, copy(C.leafdims), newkids, copy(C.dims))
+end
+
+# (α₀, recon) for the built-in nesting-enforcing parametrization.
+function _nesting_parametrization(C0::NestedArchimedeanCopula)
+    fam  = _gentype(C0.G)
+    base = _nesting_base(fam)
+    base === nothing && throw(ArgumentError(
+        "enforce_nesting supports same-family single-parameter Clayton/Gumbel/Frank/Joe trees " *
+        "(θ-ordered nesting). For other families or custom constraints, pass `reparam`/`init`."))
+    _assert_same_single_param_family(C0, fam)
+    α₀ = _nesting_flatten!(Float64[], C0, base)
+    return (α₀, α -> _nesting_build(C0, α, Ref(1), base, fam))
+end
+
 # ---- The MLE on a TEMPLATE INSTANCE (fixed structure) -----------------------
 """
     fit(CopulaModel, C0::NestedArchimedeanCopula, U; method=:mle, quick_fit=false, kwargs...)
@@ -124,24 +203,40 @@ per-node generator families are kept fixed; only the scalar θ of each generator
 (root and every inner node) is re-optimised. `U` is a `d×n` matrix of
 pseudo-observations (columns = observations).
 
-The optimisation runs in unconstrained reparameterised space (per-family
-`_unbound_params`/`_rebound_params`), so each generator stays inside its own
-valid family domain. The cross-node nesting-validity condition (for same-family
-nestings, inner at least as dependent as outer) is NOT enforced — exactly as the
-constructor leaves it to the caller. If you need a valid copula off the data,
-check the fitted parameters yourself.
+The optimisation runs in unconstrained space through a *parametrisation* — a map
+`α -> NestedArchimedeanCopula` that is decoupled from the generator objects:
+
+  * **default**: each generator is reparametrised independently inside its own
+    family domain (per-family `_unbound_params`/`_rebound_params`). The cross-node
+    nesting condition is NOT enforced — the constructor leaves it to the caller.
+  * **`enforce_nesting=true`**: for same-family single-parameter θ-ordered trees
+    (Clayton/Gumbel/Frank/Joe), each child's θ is parametrised as a non-negative
+    increment over its parent's θ, so *every* optimiser step is a valid nesting.
+  * **`reparam = (α -> C), init = α₀`**: supply your own parametrisation — to share
+    parameters across nodes, change the per-generator parametrisation (e.g. fit on
+    a Kendall-τ scale), or encode an arbitrary constraint. `reparam` must build the
+    tree from `α` generically so ForwardDiff can differentiate it.
 
 The two-argument form is a quick shim returning only the fitted copula.
 """
 function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, U;
-        method=:mle, quick_fit=false, vcov=false, derived_measures=true, kwargs...) where {d}
+        method=:mle, enforce_nesting::Bool=false, reparam=nothing, init=nothing,
+        quick_fit=false, vcov=false, derived_measures=true, kwargs...) where {d}
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     size(U, 1) == d || throw(ArgumentError("Data dimension $(size(U,1)) ≠ copula dimension $d."))
     n = size(U, 2)
 
-    α₀ = _nested_unbound(C0)
-    cop(α) = _nested_rebound(C0, α)
-    loss(α) = -Distributions.loglikelihood(cop(α), U)
+    # Resolve the parametrisation: an unconstrained α₀ and a map `recon: α -> copula`.
+    α₀, recon = if reparam !== nothing
+        init === nothing && throw(ArgumentError("`init` (the α₀ vector) is required alongside a custom `reparam`."))
+        (collect(float.(init)), reparam)
+    elseif enforce_nesting
+        _nesting_parametrization(C0)
+    else
+        (_nested_unbound(C0), Base.Fix1(_nested_rebound, C0))
+    end
+
+    loss(α) = -Distributions.loglikelihood(recon(α), U)
 
     t = @elapsed res = try
         Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff = ADTypes.AutoForwardDiff())
@@ -149,14 +244,14 @@ function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, 
         Optim.optimize(loss, α₀, Optim.NelderMead())
     end
 
-    Chat = cop(Optim.minimizer(res))
+    Chat = recon(Optim.minimizer(res))
     quick_fit && return (result = Chat,)
 
     ll = Distributions.loglikelihood(Chat, U)
     # NOTE: we deliberately do NOT put :θ̂ in the metadata, so the generic vcov
     # path (which reconstructs via the type-positional _unbound/_rebound and
     # `CT(d, θ...)` we do not have) is never reached.
-    md = (; d, n, method = :mle,
+    md = (; d, n, method = :mle, nparams = length(α₀),
           optimizer  = Optim.summary(res),
           converged  = Optim.converged(res),
           iterations = Optim.iterations(res),
@@ -173,8 +268,10 @@ end
 # We do not store :θ̂ in method_details (it would trigger the generic vcov path,
 # which reconstructs a tree copula via the type-positional `CT(d, θ...)` we lack).
 # Supply the parameters directly from the fitted tree instead: the natural θ of
-# every generator (root, then each child block, pre-order). `dof = length(coef)`
-# then reports the correct free-parameter count, so AIC/BIC are correct.
+# every generator (root, then each child block, pre-order) for display. The number
+# of FREE parameters (which can be < #generators when a custom `reparam` shares
+# parameters) is `length(α₀)`, recorded as `nparams`; `dof` uses it so AIC/BIC stay
+# correct under any parametrisation.
 function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
     names = String[]; vals = Float64[]
     for (k, v) in pairs(Distributions.params(C.G))
@@ -195,6 +292,8 @@ function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
 end
 StatsBase.coef(M::CopulaModel{<:NestedArchimedeanCopula}) = _nested_coef(M.result)[2]
 StatsBase.coefnames(M::CopulaModel{<:NestedArchimedeanCopula}) = _nested_coef(M.result)[1]
+StatsBase.dof(M::CopulaModel{<:NestedArchimedeanCopula}) =
+    hasproperty(M.method_details, :nparams) ? M.method_details.nparams : length(StatsBase.coef(M))
 
 # Quick instance shortcut: returns only the fitted copula.
 Distributions.fit(C0::NestedArchimedeanCopula, U; kwargs...) =

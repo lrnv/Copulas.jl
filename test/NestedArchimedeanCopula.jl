@@ -597,4 +597,38 @@ end
         # Only :mle is supported.
         @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, U; method = :itau)
     end
+
+    @testset "fit: parametrisation layer (nesting + custom reparam)" begin
+        C = NestedArchimedeanCopula(ClaytonGenerator(1.5); leaves = [1],
+                                    children = [ClaytonCopula(2, 4.0)])
+        U = rand(Random.MersenneTwister(7), C, 1000)
+        rootθ(M)  = M.result.G.θ
+        childθ(M) = M.result.children[1][1].G.θ
+
+        # default parametrisation: 2 free parameters (root + child)
+        Md = Distributions.fit(Copulas.CopulaModel, C, U)
+        @test StatsBase.dof(Md) == 2
+
+        # enforce_nesting: θ_child ≥ θ_root holds at the optimum, by construction
+        Mn = Distributions.fit(Copulas.CopulaModel, C, U; enforce_nesting = true)
+        @test rootθ(Mn) ≤ childθ(Mn)
+        @test StatsBase.dof(Mn) == 2
+        @test rootθ(Mn)  ≈ rootθ(Md)  atol = 1e-2     # same interior optimum here
+        @test childθ(Mn) ≈ childθ(Md) atol = 1e-2
+
+        # custom (acopula-style) reparam: SHARE one θ across root and child → 1 free param
+        recon = α -> (θ = exp(α[1]);
+            NestedArchimedeanCopula(ClaytonGenerator(θ); leaves = [1],
+                                    children = [ClaytonCopula(2, θ)]))
+        Ms = Distributions.fit(Copulas.CopulaModel, C, U; reparam = recon, init = [log(2.0)])
+        @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
+        @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
+
+        # enforce_nesting rejects heterogeneous (different-family) trees
+        Chet = NestedArchimedeanCopula(ClaytonGenerator(1.5); leaves = [1],
+                                       children = [GumbelCopula(2, 2.0)])
+        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Chet, U; enforce_nesting = true)
+        # a custom reparam requires an explicit init
+        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, C, U; reparam = recon)
+    end
 end
