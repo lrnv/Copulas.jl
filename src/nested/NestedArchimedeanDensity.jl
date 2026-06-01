@@ -76,8 +76,8 @@ function _composition_taylor_direct(outer::Generator, inner::Generator, t₀::T,
     return T[coefs[k+1] for k in 1:d]
 end
 
-# Implicit-equation method (paper App. A.4 / acopula compose.py
-# `_solve_composition_taylor`). Instead of differentiating ϕ⁻¹ (ill-conditioned
+# Implicit-equation method (paper App. A.4).
+# Instead of differentiating ϕ⁻¹ (ill-conditioned
 # high-order inverse derivatives; composed-chain underflow for fast-tail
 # generators), use that h satisfies ϕ_outer(h(t)) = ϕ_inner(t). With
 # h₀ = ϕ⁻¹_outer(ϕ_inner(t₀)) (a single SCALAR inverse) and
@@ -99,7 +99,7 @@ function _composition_taylor_implicit(outer::Generator, inner::Generator, t₀::
     q[1] = b[1] / a[1]
     d == 1 && return q
 
-    # Amortized O(d³) column-update ladder (port of acopula's exact recurrence).
+    # Amortized O(d³) column-update ladder (exact triangular recurrence).
     # Q[j+1] = q_j is the coefficient of εʲ in Q (Q has no constant term, Q[1]=0).
     # C[m+1, j+1] = [εʲ] Q^{m+2}, maintained as Q's coefficients fill in.
     npw = d - 1                                        # number of powers Q²..Q^d

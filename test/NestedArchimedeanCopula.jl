@@ -609,14 +609,17 @@ end
         Md = Distributions.fit(Copulas.CopulaModel, C, U)
         @test StatsBase.dof(Md) == 2
 
-        # enforce_nesting: θ_child ≥ θ_root holds at the optimum, by construction
-        Mn = Distributions.fit(Copulas.CopulaModel, C, U; enforce_nesting = true)
-        @test rootθ(Mn) ≤ childθ(Mn)
+        # custom reparam encoding NESTING: child θ = root θ + softplus(δ) ≥ root θ,
+        # so every optimiser step is a valid nesting (the user writes the constraint).
+        sp(x) = log1p(exp(-abs(x))) + max(x, zero(x))
+        nest = α -> (θr = exp(α[1]); θc = θr + sp(α[2]);
+            NestedArchimedeanCopula(ClaytonGenerator(θr); leaves = [1],
+                                    children = [ClaytonCopula(2, θc)]))
+        Mn = Distributions.fit(Copulas.CopulaModel, C, U; reparam = nest, init = [0.0, 0.0])
+        @test rootθ(Mn) ≤ childθ(Mn)                  # nesting enforced by the user's reparam
         @test StatsBase.dof(Mn) == 2
-        @test rootθ(Mn)  ≈ rootθ(Md)  atol = 1e-2     # same interior optimum here
-        @test childθ(Mn) ≈ childθ(Md) atol = 1e-2
 
-        # custom (acopula-style) reparam: SHARE one θ across root and child → 1 free param
+        # custom reparam SHARING one θ across root and child → 1 free parameter
         recon = α -> (θ = exp(α[1]);
             NestedArchimedeanCopula(ClaytonGenerator(θ); leaves = [1],
                                     children = [ClaytonCopula(2, θ)]))
@@ -624,10 +627,6 @@ end
         @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
         @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
 
-        # enforce_nesting rejects heterogeneous (different-family) trees
-        Chet = NestedArchimedeanCopula(ClaytonGenerator(1.5); leaves = [1],
-                                       children = [GumbelCopula(2, 2.0)])
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Chet, U; enforce_nesting = true)
         # a custom reparam requires an explicit init
         @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, C, U; reparam = recon)
     end

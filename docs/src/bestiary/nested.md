@@ -101,25 +101,25 @@ M.result
 ```
 
 The optimiser runs in an unconstrained space through a *parametrisation* — a map
-`α -> NestedArchimedeanCopula` decoupled from the generator objects — with three
-modes:
+`α -> NestedArchimedeanCopula` decoupled from the generator objects. The
+**default** reparametrises each generator independently inside its own family
+domain (the cross-node nesting condition is not enforced). Pass a **custom**
+`reparam = (α -> C), init = α₀` to control the parametrisation yourself: share
+parameters across nodes, fit on a different scale, or encode a constraint.
 
-- **default**: each generator is reparametrised independently inside its own
-  family domain; the cross-node nesting condition is not enforced.
-- **`enforce_nesting=true`**: for same-family single-parameter trees
-  (Clayton/Gumbel/Frank/Joe), each child's ``\theta`` is parametrised as a
-  non-negative increment over its parent's, so every fitted optimum is a valid
-  nesting:
+For instance, enforce the nesting condition by building each child's ``\theta`` as
+a non-negative increment over its parent's, so every step is a valid nesting:
 
 ```@example nested
-Mn = fit(CopulaModel, Cstart, U; enforce_nesting = true)
-(Mn.result.G.θ, Mn.result.children[1][1].G.θ)   # inner θ ≥ outer θ
+softplus(x) = log1p(exp(-abs(x))) + max(x, zero(x))
+nest = α -> NestedArchimedeanCopula(ClaytonGenerator(exp(α[1]));
+    children = [ClaytonCopula(2, exp(α[1]) + softplus(α[2])),
+                ClaytonCopula(2, exp(α[1]) + softplus(α[3]))])
+Mn = fit(CopulaModel, Cstart, U; reparam = nest, init = [0.0, 0.0, 0.0])
+(Mn.result.G.θ, Mn.result.children[1][1].G.θ)   # inner θ ≥ outer θ, by construction
 ```
 
-- **custom** (`reparam = (α -> C), init = α₀`): supply your own map — to share
-  parameters across nodes, fit on a different scale, or encode any constraint.
-  Here one ``\theta`` is shared by the root and both panels, a single free
-  parameter:
+Or share one ``\theta`` across the root and both panels — a single free parameter:
 
 ```@example nested
 recon = α -> (θ = exp(α[1]);
