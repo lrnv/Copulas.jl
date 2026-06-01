@@ -14,6 +14,7 @@ testfiles = [
     "FittingTest",
     "MiscelaneousCopulas",
     "SklarDist",
+    "Subsetting",
     "GenericTests",
 ]
 
