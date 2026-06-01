@@ -55,6 +55,17 @@ function ϕ⁽ᵏ⁾(G::FrankGenerator, k::Int, t)
     return (-1)^k * (1 / G.θ) * PolyLog.reli(-(k - 1), -expm1(-G.θ) * exp(-t))
 end
 ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
+
+# Taylor1-compatible ϕ / ϕ⁻¹: the θ>0 scalar forms above use `log1mexp`, which has
+# no `TaylorSeries.Taylor1` method, so the nested direct edge composition (a jet
+# over ϕ⁻¹_outer ∘ ϕ_inner) would fail when Frank appears in the tree. These add
+# the equivalent θ≠0 closed forms built only from `expm1`/`log1p` (all Taylor1-
+# compatible) — exactly the θ<0 branch forms, on a Taylor1 argument; the scalar
+# path is untouched. (A future TaylorSeries⊕LogExpFunctions extension giving
+# `log1mexp(::Taylor1)` would make these unnecessary; the implicit edge-composition
+# method already avoids them, using only the closed-form ϕ⁽ᵏ⁾.)
+ϕ(G::FrankGenerator, t::TaylorSeries.Taylor1{T}) where {T} = -log1p(exp(-t) * expm1(-T(G.θ))) / T(G.θ)
+ϕ⁻¹(G::FrankGenerator, t::TaylorSeries.Taylor1{T}) where {T} = -log(expm1(-T(G.θ) * t) / expm1(-T(G.θ)))
 𝒲₋₁(G::FrankGenerator, d::Int) = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), d) : @invoke 𝒲₋₁(G::Generator, d)
 frailty(G::FrankGenerator) = G.θ > 0 ? Logarithmic(-G.θ) : throw("The frank copula has no frailty when θ < 0")
 

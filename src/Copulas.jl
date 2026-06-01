@@ -103,7 +103,6 @@ module Copulas
 
     # Nested (hierarchical) Archimedean copulas
     include("nested/NestedArchimedeanDensity.jl")
-    include("nested/FrankTaylorGenerator.jl")
     include("NestedArchimedeanCopula.jl")
     # Conditioning/subsetting fast paths (per-variable censoring is emergent here)
     include("nested/NestedConditioning.jl")
