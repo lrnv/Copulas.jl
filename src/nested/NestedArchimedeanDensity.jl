@@ -48,12 +48,116 @@ struct _NestedNode{TG<:Generator, T}
     children::Vector{_NestedNode}
 end
 
+# Overloadable hook for the edge composition. Each parent→child edge needs the
 # Taylor coefficients [h'(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!] of the change of variables
-# h = ϕ⁻¹_outer ∘ ϕ_inner at t₀, to order d. This is the inner-to-outer link in
-# the Faà di Bruno recursion for a child sub-tree.
-function _composition_taylor(outer::Generator, inner::Generator, t₀::T, d::Int) where {T}
+# h = ϕ⁻¹_outer ∘ ϕ_inner at t₀, the inner-to-outer link in the Faà di Bruno
+# recursion. `_process_node` calls THIS hook, so overrides take effect.
+#
+# The DEFAULT forwards to `_composition_taylor_direct` (jet over the explicit
+# composition) — this is the ONLY generic method shipped, so the default
+# behaviour is byte-unchanged. Switch the global default to the implicit
+# App. A.4 solver by redefining this generic method, e.g.
+#   Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
+#       Copulas._composition_taylor_implicit(o, i, t₀, d)
+# or register a closed form for a specific generator pair by adding a more-
+# specific method (see the shipped Clayton/Clayton example below). This mirrors
+# the existing per-generator ϕ⁽ᵏ⁾ override idiom: no keyword/flag, pure
+# dispatch, most-specific method wins. The working type T flows from t₀ into the
+# backend, so BigFloat/Double64 precision is carried through.
+composition_taylor(outer::Generator, inner::Generator, t₀, d::Int) =
+    _composition_taylor_direct(outer, inner, t₀, d)
+
+# DEFAULT direct method: Taylor-expand the explicit composition ϕ⁻¹_outer ∘ ϕ_inner
+# at t₀ to order d via Copulas' generic `taylor` jet primitive. Returns the
+# coefficients [h'(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!] (constant h₀ dropped) as a Vector{T}.
+function _composition_taylor_direct(outer::Generator, inner::Generator, t₀::T, d::Int) where {T}
     coefs = taylor(x -> ϕ⁻¹(outer, ϕ(inner, x)), t₀, d)
     return T[coefs[k+1] for k in 1:d]
+end
+
+# Implicit-equation method (paper App. A.4 / acopula compose.py
+# `_solve_composition_taylor`). Instead of differentiating ϕ⁻¹ (ill-conditioned
+# high-order inverse derivatives; composed-chain underflow for fast-tail
+# generators), use that h satisfies ϕ_outer(h(t)) = ϕ_inner(t). With
+# h₀ = ϕ⁻¹_outer(ϕ_inner(t₀)) (a single SCALAR inverse) and
+# h(t₀+ε) = h₀ + Q(ε), Q(ε) = Σ qₘ εᵐ, write aₘ = ϕ⁽ᵐ⁾(outer,h₀)/m! and
+# bₘ = ϕ⁽ᵐ⁾(inner,t₀)/m!. Matching εᵏ in Σ aₘ Qᵐ = Σ bₘ εᵐ gives the triangular
+# solve q₁ = b₁/a₁; qₖ = (bₖ − Σ_{m≥2} aₘ [εᵏ]Qᵐ)/a₁. Uses ONLY the scalar
+# k-th derivatives ϕ⁽ᵏ⁾(outer)/ϕ⁽ᵏ⁾(inner) and one scalar ϕ⁻¹(outer); never ϕ
+# or ϕ⁻¹ on a Taylor1, never the inverse high-order derivatives. Returns the
+# IDENTICAL convention to `_composition_taylor_direct`: Vector{T} of length d,
+# element k = h⁽ᵏ⁾(t₀)/k!, keyed off T = typeof(t₀) so BigFloat exactness flows.
+function _composition_taylor_implicit(outer::Generator, inner::Generator, t₀::T, d::Int) where {T}
+    # Derivative-side coefficients: a[m] = ϕ⁽ᵐ⁾(outer,h₀)/m!, b[m] = ϕ⁽ᵐ⁾(inner,t₀)/m!
+    # for m = 1..d (scalar k-th derivatives — NO Taylor1 on ϕ/ϕ⁻¹).
+    b  = T[ϕ⁽ᵏ⁾(inner, m, t₀) / T(factorial(big(m))) for m in 1:d]
+    h₀ = ϕ⁻¹(outer, ϕ(inner, t₀))                      # single scalar inverse
+    a  = T[ϕ⁽ᵏ⁾(outer, m, h₀) / T(factorial(big(m))) for m in 1:d]
+
+    q = zeros(T, d)
+    q[1] = b[1] / a[1]
+    d == 1 && return q
+
+    # Amortized O(d³) column-update ladder (port of acopula's exact recurrence).
+    # Q[j+1] = q_j is the coefficient of εʲ in Q (Q has no constant term, Q[1]=0).
+    # C[m+1, j+1] = [εʲ] Q^{m+2}, maintained as Q's coefficients fill in.
+    npw = d - 1                                        # number of powers Q²..Q^d
+    Q = zeros(T, d + 1); Q[2] = q[1]                   # Q = q₁ε initially
+    C = zeros(T, npw, d + 1)
+    for m in 0:npw-1
+        (m + 2) <= d && (C[m+1, (m+2)+1] = q[1]^(m+2)) # [ε^{m+2}] (q₁ε)^{m+2}
+    end
+    for k in 2:d
+        # correction = Σ_{m=0}^{npw-1} a[m+2] · [εᵏ] Q^{m+2}  (column k of C, final).
+        corr = zero(T)
+        for m in 0:npw-1
+            (m + 2) <= d && (corr += a[m+2] * C[m+1, k+1])
+        end
+        q[k] = (b[k] - corr) / a[1]
+        Q[k+1] = q[k]
+        # Fill column j = k+1 of every power: C[m+1, j+1] = Σ_{i=1}^{k} q_i · prevₘ[j-i+1],
+        # with prevₘ = Q^{m+1} (Q for m=0, else the lower power row). All reads touch
+        # columns ≤ k, already finalised in prior outer steps, so rows update in parallel.
+        j = k + 1
+        if j <= d
+            for m in 0:npw-1
+                prev = m == 0 ? Q : view(C, m, :)      # prevₘ = Q^{m+1}
+                s = zero(T)
+                for i in 1:k
+                    ji = j - i
+                    (1 <= ji) && (ji + 1 <= d + 1) && (s += Q[i+1] * prev[ji+1])
+                end
+                C[m+1, j+1] = s
+            end
+        end
+    end
+    return q
+end
+
+# Worked closed-form override: same-family Clayton/Clayton edge. For the package
+# parametrization ϕ_θ(t) = (1+θt)^(-1/θ), ϕ⁻¹_θ(u) = (u^(-θ)-1)/θ, the inner-to-
+# outer link h(t) = ϕ⁻¹_outer(ϕ_inner(t)) = ((1+θ_in·t)^r − 1)/θ_out, with
+# r = θ_out/θ_in, is a reparametrised power map. Its Taylor coefficients are
+# available in closed form, avoiding the inverse high-order derivatives entirely.
+# This overrides the default purely by dispatch (same idiom as per-generator
+# ϕ⁽ᵏ⁾); `_process_node` already calls the `composition_taylor` hook. NOTE: do
+# NOT use the (1+t)^r−1 form — that is the θ=1 special case and is WRONG for this
+# generator (θ lives inside ϕ). θ is promoted into T so Float64/BigFloat/Double64
+# all stay correct.
+function composition_taylor(outer::ClaytonGenerator, inner::ClaytonGenerator, t₀::T, d::Int) where {T}
+    θ_out = T(outer.θ)
+    θ_in  = T(inner.θ)
+    r     = θ_out / θ_in
+    base  = 1 + θ_in * t₀                              # expansion base 1 + θ_in·t₀
+    h = Vector{T}(undef, d)
+    binom = one(T)                                     # generalized binomial C(r,k), incremental
+    θ_in_pow = one(T)                                  # θ_in^k
+    for k in 1:d
+        binom    *= (r - (k - 1)) / k                  # C(r,k) = C(r,k-1)·(r-k+1)/k
+        θ_in_pow *= θ_in
+        h[k] = (θ_in_pow / θ_out) * binom * base^(r - k)
+    end
+    return h                                            # [h₁,…,h_d], length d, no constant
 end
 
 # Partial-Bell-polynomial step: given the Taylor coefficients `p` of the link
@@ -135,7 +239,7 @@ function _process_node(node::_NestedNode{TG, T}) where {TG, T}
         if dc == 0
             push!(coeffs, T[one(T)])
         else
-            p = _composition_taylor(G, child.G, tc, dc)
+            p = composition_taylor(G, child.G, tc, dc)
             β_pad = zeros(T, dc + 1)
             β_pad[1:min(dc + 1, length(βc))] .= βc[1:min(dc + 1, length(βc))]
             push!(coeffs, _faa_di_bruno_coeffs(p, β_pad, dc))

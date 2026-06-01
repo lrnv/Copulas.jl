@@ -92,6 +92,48 @@ can lose `Float64` precision:
 logpdf(C, big.([0.3, 0.5, 0.4, 0.6]))
 ```
 
+## Edge-composition method
+
+Each parent→child edge in the Faà di Bruno recursion needs the truncated Taylor
+expansion of the inner-to-outer link ``h = \phi^{-1}_{\text{outer}} \circ
+\phi_{\text{inner}}`` at the child's argument. The expansion goes through the
+overloadable hook `composition_taylor(outer, inner, t₀, d)`. The DEFAULT forwards
+to `_composition_taylor_direct`, a jet over the explicit composition. You select
+a method exactly as you override `ϕ⁽ᵏ⁾` — by dispatch, with no keyword or flag;
+the most-specific method wins, and `BigFloat`/`Double64` coordinates flow
+through either path.
+
+Switch the global default to the **implicit** App. A.4 solver
+(`_composition_taylor_implicit`) by redefining the generic method:
+
+```julia
+Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
+    Copulas._composition_taylor_implicit(o, i, t₀, d)
+```
+
+(This redefines the shipped generic default, so Julia prints a benign "method
+overwritten" warning.) The implicit method solves ``\phi_{\text{outer}}(h(t)) =
+\phi_{\text{inner}}(t)`` order-by-order, using only the scalar derivatives
+``\phi^{(k)}`` of both generators and a single scalar ``\phi^{-1}_{\text{outer}}``
+— it never differentiates ``\phi^{-1}`` and never composes the two generators on
+a single jet. That is the high-``d`` stability win: it avoids the composed-chain
+underflow that defeats the direct jet for fast-tail generators (Frank at
+``d \ge 90``). The win requires the generator to ship a closed-form
+``\phi^{(k)}``; a family whose only ``\phi^{(k)}`` is the generic Taylor fallback
+still works but routes each derivative through an interior scalar jet.
+
+Register a closed form for a specific generator pair by adding a more-specific
+method. The package ships the Clayton/Clayton example, ``h(t) =
+((1+\theta_{\text{in}} t)^{\theta_{\text{out}}/\theta_{\text{in}}} - 1)/
+\theta_{\text{out}}``:
+
+```julia
+function Copulas.composition_taylor(outer::Copulas.ClaytonGenerator,
+                                    inner::Copulas.ClaytonGenerator, t₀, d::Int)
+    # closed-form Taylor coefficients of ((1+θ_in·t)^(θ_out/θ_in) − 1)/θ_out
+end
+```
+
 ## Censored / survival likelihood
 
 Per-variable (right-)censoring is an **emergent capability** of the standard

@@ -206,6 +206,40 @@ end
     end
 
     # -----------------------------------------------------------------------
+    # 3b. Edge-composition method (the overloadable `composition_taylor` hook).
+    #     The DEFAULT (testsets above) is the direct jet; here we check the two
+    #     OTHER shipped paths agree with it per-edge: the implicit App. A.4
+    #     solver and the Clayton/Clayton closed-form override. Placed next to the
+    #     bit-identity guard of testset 3.
+    # -----------------------------------------------------------------------
+    @testset "edge-composition method (hook)" begin
+        direct   = Copulas._composition_taylor_direct
+        implicit = Copulas._composition_taylor_implicit
+
+        # (b) implicit == direct across same-family AND a cross-family edge, at
+        #     several depths, with nestable params (inner ≥ outer dependence).
+        edges = [
+            ("Clayton/Clayton", ClaytonGenerator(2.0), ClaytonGenerator(5.0), 0.3),
+            ("Gumbel/Gumbel",   GumbelGenerator(2.0),  GumbelGenerator(4.0),  0.5),
+            ("Frank/Frank",     FrankGenerator(2.0),   FrankGenerator(5.0),   0.5),
+            ("Joe/Joe",         JoeGenerator(1.5),     JoeGenerator(3.0),     0.4),
+            ("Gumbel/Clayton",  GumbelGenerator(2.0),  ClaytonGenerator(5.0), 0.4),  # cross-family
+        ]
+        for (_, Go, Gi, t0) in edges, d in (2, 4, 6, 8)
+            @test maximum(abs.(implicit(Go, Gi, t0, d) .- direct(Go, Gi, t0, d))) < 1e-10
+        end
+
+        # (c) Clayton/Clayton closed-form override == BOTH general methods.
+        Go, Gi = ClaytonGenerator(2.0), ClaytonGenerator(5.0)
+        ov = Copulas.composition_taylor(Go, Gi, 0.3, 6)
+        @test maximum(abs.(ov .- direct(Go, Gi, 0.3, 6)))   < 1e-10
+        @test maximum(abs.(ov .- implicit(Go, Gi, 0.3, 6))) < 1e-10
+        # BigFloat precision flows through the override (and the implicit path).
+        @test eltype(Copulas.composition_taylor(ClaytonGenerator(2.0), ClaytonGenerator(5.0), big"0.3", 6)) === BigFloat
+        @test eltype(implicit(ClaytonGenerator(2.0), ClaytonGenerator(5.0), big"0.3", 6)) === BigFloat
+    end
+
+    # -----------------------------------------------------------------------
     # 4. Per-variable censoring via condition + subsetdims (gist recipe).
     #    Reproduces the SAME independent references the old bespoke API checked,
     #    now through the STANDARD API — proving the specialised condition /
@@ -436,5 +470,66 @@ end
         pts = [big.([0.3, 0.32, 0.6, 0.62]), big.([0.5, 0.52, 0.2, 0.22])]
         ll = sum(logpdf(C, p) for p in pts)
         @test isfinite(ll)
+    end
+
+    # -----------------------------------------------------------------------
+    # 7. Global implicit override gives correct nested densities (end-to-end).
+    #    Redefining the GENERIC `composition_taylor(::Generator,::Generator,…)`
+    #    method switches every edge to the implicit App. A.4 solver. We re-run
+    #    the 4 external-acopula CSV cases of testset 3 through the implicit path
+    #    and assert the SAME `maxerr < 1e-9` — proving the implicit solver
+    #    reproduces correct nested logpdfs at the full density level, not just
+    #    per-edge.
+    #
+    #    A same-signature redefinition is a SESSION-GLOBAL override (it emits a
+    #    benign "Method overwritten" warning) — so this testset runs LAST, after
+    #    the default-direct byte-identity guard (testset 3) has already asserted.
+    # -----------------------------------------------------------------------
+    @testset "global implicit override gives correct nested densities" begin
+        # Repoint the global default to the implicit solver (benign overwrite warning).
+        Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
+            Copulas._composition_taylor_implicit(o, i, t₀, d)
+
+        datadir = joinpath(@__DIR__, "data", "nested")
+        cases = [
+            ("clayton_d10_2level", ClaytonGenerator, [5, 5],        1.5, 3.0),
+            ("clayton_d20_2level", ClaytonGenerator, [5, 5, 5, 5],  2.0, 4.0),
+            ("gumbel_d10",         GumbelGenerator,  [5, 5],        2.0, 5.0),
+            ("frank_d10",          FrankGenerator,   [5, 5],        2.0, 5.0),
+        ]
+        for (name, GT, sectors, θroot, θsector) in cases
+            U  = readdlm(joinpath(datadir, name * "_U.csv"), ',')
+            ll = vec(readdlm(joinpath(datadir, name * "_acopula_ll.csv"), ','))
+            C = NestedArchimedeanCopula(GT(θroot);
+                    children = [ArchimedeanCopula(s, GT(θsector)) for s in sectors])
+            maxerr = 0.0
+            for i in axes(U, 1)
+                ours = Float64(logpdf(C, big.(U[i, :])))
+                maxerr = max(maxerr, abs(ours - ll[i]))
+            end
+            @test maxerr < 1e-9
+        end
+
+        # Restore the shipped default-direct generic method so the override does
+        # not leak into any later test in the same session.
+        Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
+            Copulas._composition_taylor_direct(o, i, t₀, d)
+    end
+
+    @testset "subsetdims respects requested coordinate order (reordering)" begin
+        # Regression: SubsetCopula relabelled by sorted dims, ignoring the
+        # requested order, so subsetdims(C, perm) returned the wrong marginal for
+        # a non-exchangeable nested structure. The marginal CDF of a REORDERED
+        # subset must equal the joint CDF saturated at the requested coordinates.
+        C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+                children = [ClaytonCopula(3, 5.0), ClaytonCopula(2, 6.0)])   # d=5
+        for dims in [(4, 1, 2), (2, 4, 1), (1, 3), (3, 1), (5, 2, 3, 1)]
+            u = [0.2 + 0.1k for k in 1:length(dims)]
+            v = ones(5); for (k, j) in enumerate(dims); v[j] = u[k]; end
+            @test cdf(subsetdims(C, Tuple(dims)), u) ≈ cdf(C, v) atol = 1e-10
+        end
+        # Order genuinely matters: a within-panel-spanning reorder differs.
+        @test !isapprox(cdf(subsetdims(C, (4, 1, 2)), [0.3, 0.5, 0.6]),
+                        cdf(subsetdims(C, (2, 4, 1)), [0.3, 0.5, 0.6]); atol = 1e-6)
     end
 end
