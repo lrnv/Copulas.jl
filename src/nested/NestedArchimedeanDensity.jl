@@ -134,6 +134,49 @@ function _composition_taylor_implicit(outer::Generator, inner::Generator, t₀::
     return q
 end
 
+# Faà di Bruno method (Oskar Laverny's PR #367 suggestion). The edge link
+# h = ϕ⁻¹_outer ∘ ϕ_inner is an ordinary univariate composition f∘g with
+# f = ϕ⁻¹_outer, g = ϕ_inner, so its Taylor coefficients follow from Faà di
+# Bruno: h_n = Σ_{k=1}^{n} (ϕ⁻¹⁽ᵏ⁾(outer,s₀)/k!) · [εⁿ] ĝ(ε)^k, where
+# s₀ = ϕ_inner(t₀) and ĝ(ε)=Σ_{m≥1} (ϕ⁽ᵐ⁾(inner,t₀)/m!) εᵐ is the inner
+# increment series. Unlike the direct `taylor()` jet, this routes through the
+# generators' OWN derivative methods `ϕ⁽ᵏ⁾(inner)` and `ϕ⁻¹⁽ᵏ⁾(outer)`, so any
+# closed-form override (e.g. the exact Clayton ϕ⁻¹⁽ᵏ⁾) is used directly instead
+# of a generic jet — the point of the override mechanism. The partial-Bell
+# powering (`gpow ← gpow ⊛ ĝ`) is the same primitive the density assembly uses.
+# Same return convention as the other two methods: Vector{T}, element k = h⁽ᵏ⁾/k!.
+function _composition_taylor_fdb(outer::Generator, inner::Generator, t₀::T, d::Int) where {T}
+    # Inner increment series ĝ: g[m] = ϕ⁽ᵐ⁾(inner,t₀)/m!, order m = index m.
+    g = T[T(ϕ⁽ᵏ⁾(inner, m, t₀)) / T(factorial(big(m))) for m in 1:d]
+    s₀ = ϕ(inner, t₀)                                  # point for the outer inverse derivatives
+    # Outer inverse derivatives f[k] = ϕ⁻¹⁽ᵏ⁾(outer,s₀) (honours per-generator overrides).
+    f = T[T(ϕ⁻¹⁽ᵏ⁾(outer, k, s₀)) for k in 1:d]
+    h = zeros(T, d)
+    gpow = copy(g)                                     # ĝ¹ (lowest order 1)
+    for k in 1:d
+        c = f[k] / T(factorial(big(k)))                # ϕ⁻¹⁽ᵏ⁾(outer,s₀)/k!
+        @inbounds for n in k:d                         # ĝᵏ has lowest order k
+            h[n] += c * gpow[n]
+        end
+        k < d && (gpow = _poly_mul_inc(gpow, g, d))    # ĝᵏ⁺¹, truncated to order d
+    end
+    return h
+end
+
+# Cauchy product of two constant-term-free polynomials (index m = order m), truncated
+# to order d. Used to raise the inner increment series ĝ to successive powers above.
+function _poly_mul_inc(a::AbstractVector{T}, b::AbstractVector{T}, d::Int) where {T}
+    out = zeros(T, d)
+    @inbounds for i in 1:d
+        ai = a[i]
+        iszero(ai) && continue
+        for j in 1:(d - i)                             # keep i+j ≤ d
+            out[i + j] += ai * b[j]
+        end
+    end
+    return out
+end
+
 # Worked closed-form override: same-family Clayton/Clayton edge. For the package
 # parametrization ϕ_θ(t) = (1+θt)^(-1/θ), ϕ⁻¹_θ(u) = (u^(-θ)-1)/θ, the inner-to-
 # outer link h(t) = ϕ⁻¹_outer(ϕ_inner(t)) = ((1+θ_in·t)^r − 1)/θ_out, with

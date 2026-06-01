@@ -56,6 +56,9 @@ max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : (1 - 1/G.θ)
 ϕ⁻¹(G::ClaytonGenerator, t) = (t^(-G.θ)-1)/G.θ
 ϕ⁽¹⁾(G::ClaytonGenerator, t) = (1+G.θ*t) ≤ 0 ? 0 : - (1+G.θ*t)^(-1/G.θ -1)
 ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t) = -t^(-G.θ-1)
+# Closed-form kth derivative of ϕ⁻¹(u)=(u^{-θ}-1)/θ: dᵏ/duᵏ = (1/θ)·∏_{ℓ=0}^{k-1}(-θ-ℓ)·u^{-θ-k}.
+# (k=1 ⇒ -u^{-θ-1}, matching ϕ⁻¹⁽¹⁾.) Exact in u^{-θ-k}, no inverse-jet conditioning loss.
+ϕ⁻¹⁽ᵏ⁾(G::ClaytonGenerator, k::Int, t) = t^(-G.θ-k) * prod(-G.θ-ℓ for ℓ in 0:k-1; init=1) / G.θ
 ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Int, t) = (1+G.θ*t) ≤ 0 ? 0 : (1 + G.θ * t)^(-1/G.θ - k) * prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1)
 ϕ⁽ᵏ⁾⁻¹(G::ClaytonGenerator, k::Int, t; start_at=t) = ((t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))^(1/(-1/G.θ - k)) -1)/G.θ    
 

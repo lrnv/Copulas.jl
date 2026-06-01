@@ -26,6 +26,7 @@ More methods can be implemented for performance, althouhg there are implement de
 * `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative of the generator
 * `ϕ⁽ᵏ⁾(G::Generator, k::Int, t)` gives the kth derivative of the generator
 * `ϕ⁻¹⁽¹⁾(G::Generator, t)` gives the first derivative of the inverse generator.
+* `ϕ⁻¹⁽ᵏ⁾(G::Generator, k::Int, t)` gives the kth derivative of the inverse generator.
 * `𝒲₋₁(G::Generator, d::Int)` gives the Wiliamson d-transform of the generator as a univaraite positive dsitribution.
 
 References:
@@ -42,9 +43,20 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
 ϕ(G::Generator) = Base.Fix1(ϕ,G)
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
+ϕ⁻¹(G::Generator) = Base.Fix1(ϕ⁻¹, G)
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
 ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
 ϕ⁽ᵏ⁾(G::Generator, k::Int, t) = taylor(ϕ(G), t, k)[end] * factorial(k)
+# kth derivative of the inverse generator. Generic default: a Taylor jet of the
+# scalar inverse (mirrors ϕ⁽ᵏ⁾). Overridable per-generator with a closed form
+# when one is known — used by the Faà di Bruno edge-composition in nested copulas
+# (nested/NestedArchimedeanDensity.jl), where the inverse high-order derivatives
+# are precision-sensitive. `factorial(big(k))` avoids Int64 overflow at high k;
+# `oftype` keeps the working type (Float64/BigFloat) of the evaluation point.
+function ϕ⁻¹⁽ᵏ⁾(G::Generator, k::Int, t)
+    c = taylor(ϕ⁻¹(G), t, k)[end]
+    return c * oftype(c, factorial(big(k)))
+end
 ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t) = try 
     Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, k, x) - t, start_at)
 catch
