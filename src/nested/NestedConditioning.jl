@@ -137,18 +137,19 @@ _kid_dims(ch::Tuple) = ch[2]
 _kid_dims(ch::NestedArchimedeanCopula) = ch.dims
 
 function SubsetCopula(C::NestedArchimedeanCopula{d, TG}, dims::NTuple{p, Int}) where {d, TG, p}
-    # `subsetdims` already short-circuits p==1 (Uniform) and p==d (C unchanged),
-    # so here 2 <= p <= d-1.
+    # `subsetdims` short-circuits p==1 (Uniform) and the identity `dims==1:d`, and
+    # asserts `p < d` otherwise, so here 2 <= p <= d-1 and `dims` may be a
+    # reordering (permutation) of the kept coordinates.
     O = Set{Int}(dims)
     pruned = _prune_node(C, O)        # NestedArchimedeanCopula on GLOBAL dims
     # Genuinely-nested → flat collapse: every survivor lands directly under the
     # root (no surviving children), so the observed marginal is a flat copula
-    # under the root generator.
+    # under the root generator (exchangeable, so the request order is immaterial).
     isempty(pruned.children) && return ArchimedeanCopula(p, C.G)
-    # Relabel surviving GLOBAL dims to 1:p in increasing global-dim order. The
-    # remap Dict covers exactly the surviving dims (required by `_remap_dims`).
-    surv = pruned.dims
-    remap = Dict(surv[i] => i for i in eachindex(surv))
+    # Relabel each REQUESTED global dim to its position in `dims`, preserving the
+    # requested order (`dims` may be a permutation of the surviving dims). All
+    # requested dims survive, so this Dict covers exactly the surviving dims.
+    remap = Dict(dims[i] => i for i in eachindex(dims))
     return _remap_dims(pruned, remap)
 end
 
