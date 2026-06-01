@@ -56,11 +56,32 @@ max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : (1 - 1/G.θ)
 ϕ⁻¹(G::ClaytonGenerator, t) = (t^(-G.θ)-1)/G.θ
 ϕ⁽¹⁾(G::ClaytonGenerator, t) = (1+G.θ*t) ≤ 0 ? 0 : - (1+G.θ*t)^(-1/G.θ -1)
 ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t) = -t^(-G.θ-1)
-# Closed-form kth derivative of ϕ⁻¹(u)=(u^{-θ}-1)/θ: dᵏ/duᵏ = (1/θ)·∏_{ℓ=0}^{k-1}(-θ-ℓ)·u^{-θ-k}.
-# (k=1 ⇒ -u^{-θ-1}, matching ϕ⁻¹⁽¹⁾.) Exact in u^{-θ-k}, no inverse-jet conditioning loss.
-ϕ⁻¹⁽ᵏ⁾(G::ClaytonGenerator, k::Int, t) = t^(-G.θ-k) * prod(-G.θ-ℓ for ℓ in 0:k-1; init=1) / G.θ
 ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Int, t) = (1+G.θ*t) ≤ 0 ? 0 : (1 + G.θ * t)^(-1/G.θ - k) * prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1)
-ϕ⁽ᵏ⁾⁻¹(G::ClaytonGenerator, k::Int, t; start_at=t) = ((t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))^(1/(-1/G.θ - k)) -1)/G.θ    
+ϕ⁽ᵏ⁾⁻¹(G::ClaytonGenerator, k::Int, t; start_at=t) = ((t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))^(1/(-1/G.θ - k)) -1)/G.θ
+
+# Closed-form edge-composition override for a Clayton-over-Clayton nesting. Overrides the
+# default `composition_taylor` hook (nested/NestedArchimedeanDensity.jl) by dispatch, and
+# returns the Taylor coefficients [h'(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!] of the inner→outer change of
+# variables h(t) = ϕ⁻¹_outer(ϕ_inner(t)). With ϕ_θ(t)=(1+θt)^(-1/θ) and ϕ⁻¹_θ(u)=(u^(-θ)-1)/θ,
+# the link is h(t) = ((1+θ_in·t)^r − 1)/θ_out, r = θ_out/θ_in — a reparametrised power map
+# whose coefficients are a generalized binomial series, so it never touches the (ill-
+# conditioned) high-order derivatives of the inverse. NOTE: the θ live INSIDE ϕ here, so the
+# expansion base is 1+θ_in·t₀ (NOT 1+t₀); θ promotes into T so Float64/BigFloat stay exact.
+function composition_taylor(outer::ClaytonGenerator, inner::ClaytonGenerator, t₀::T, d::Int) where {T}
+    θ_out = T(outer.θ)
+    θ_in  = T(inner.θ)
+    r     = θ_out / θ_in
+    base  = 1 + θ_in * t₀
+    h = Vector{T}(undef, d)
+    binom = one(T)                                     # generalized binomial C(r,k), incremental
+    θ_in_pow = one(T)                                  # θ_in^k
+    for k in 1:d
+        binom    *= (r - (k - 1)) / k                  # C(r,k) = C(r,k-1)·(r-k+1)/k
+        θ_in_pow *= θ_in
+        h[k] = (θ_in_pow / θ_out) * binom * base^(r - k)
+    end
+    return h
+end
 
 τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ/(G.θ+2), 1)
 τ⁻¹(::Type{<:ClaytonGenerator},τ) = ifelse(τ == 1,Inf,2τ/(1-τ))
