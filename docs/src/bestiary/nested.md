@@ -80,6 +80,57 @@ native [`ArchimedeanCopula`](@ref) so its fast specialised density is used.
     parameter ``\ge`` the outer parameter). Mixed-family nestings are accepted
     but must be validated by the user.
 
+## Fitting
+
+`fit` performs maximum-likelihood estimation of the generator parameters on a
+**fixed tree**: the leaf layout and the generator family at each node come from a
+template instance, and only the scalar ``\theta`` of each node is optimised. Pass
+the template and a `d×n` matrix of pseudo-observations (columns are observations).
+
+```@example nested
+using Random
+Ctrue = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            children = [ClaytonCopula(2, 6.0), ClaytonCopula(2, 8.0)])
+U = rand(Random.MersenneTwister(1), Ctrue, 2000)
+
+# Fit from a deliberately wrong same-shape template:
+Cstart = NestedArchimedeanCopula(ClaytonGenerator(1.0);
+             children = [ClaytonCopula(2, 3.0), ClaytonCopula(2, 3.0)])
+M = fit(CopulaModel, Cstart, U)
+M.result
+```
+
+The optimiser runs in an unconstrained space through a *parametrisation* — a map
+`α -> NestedArchimedeanCopula` decoupled from the generator objects — with three
+modes:
+
+- **default**: each generator is reparametrised independently inside its own
+  family domain; the cross-node nesting condition is not enforced.
+- **`enforce_nesting=true`**: for same-family single-parameter trees
+  (Clayton/Gumbel/Frank/Joe), each child's ``\theta`` is parametrised as a
+  non-negative increment over its parent's, so every fitted optimum is a valid
+  nesting:
+
+```@example nested
+Mn = fit(CopulaModel, Cstart, U; enforce_nesting = true)
+(Mn.result.G.θ, Mn.result.children[1][1].G.θ)   # inner θ ≥ outer θ
+```
+
+- **custom** (`reparam = (α -> C), init = α₀`): supply your own map — to share
+  parameters across nodes, fit on a different scale, or encode any constraint.
+  Here one ``\theta`` is shared by the root and both panels, a single free
+  parameter:
+
+```@example nested
+recon = α -> (θ = exp(α[1]);
+    NestedArchimedeanCopula(ClaytonGenerator(θ);
+        children = [ClaytonCopula(2, θ), ClaytonCopula(2, θ)]))
+Ms = fit(CopulaModel, Cstart, U; reparam = recon, init = [0.0])
+(Ms.result.G.θ, Ms.result.children[1][1].G.θ)   # equal — the shared parameter
+```
+
+The two-argument form `fit(C0, U)` is a shorthand returning just the fitted copula.
+
 ## Precision
 
 The recursion is generic in the value type. `logpdf` works on `Float64`
@@ -96,43 +147,47 @@ logpdf(C, big.([0.3, 0.5, 0.4, 0.6]))
 
 Each parent→child edge in the Faà di Bruno recursion needs the truncated Taylor
 expansion of the inner-to-outer link ``h = \phi^{-1}_{\text{outer}} \circ
-\phi_{\text{inner}}`` at the child's argument. The expansion goes through the
-overloadable hook `composition_taylor(outer, inner, t₀, d)`. The DEFAULT forwards
-to `_composition_taylor_direct`, a jet over the explicit composition. You select
-a method exactly as you override `ϕ⁽ᵏ⁾` — by dispatch, with no keyword or flag;
-the most-specific method wins, and `BigFloat`/`Double64` coordinates flow
-through either path.
+\phi_{\text{inner}}`` at the child's argument. It goes through the overloadable
+hook `composition_taylor(outer, inner, t₀, d)`, selected by dispatch exactly as
+you override `ϕ⁽ᵏ⁾` — most-specific method wins, no keyword or flag. Three methods
+are available:
 
-Switch the global default to the **implicit** App. A.4 solver
-(`_composition_taylor_implicit`) by redefining the generic method:
+**1. Direct (default).** `_composition_taylor_direct` puts a single jet through
+the explicit composition. Fast and accurate for ordinary inputs. It requires both
+``\phi`` and ``\phi^{-1}`` to accept a `Taylor1` argument.
+
+**2. Implicit.** `_composition_taylor_implicit` solves
+``\phi_{\text{outer}}(h(t)) = \phi_{\text{inner}}(t)`` order-by-order, using only
+the scalar derivatives ``\phi^{(k)}`` of both generators and a single scalar
+``\phi^{-1}_{\text{outer}}`` — it never puts a `Taylor1` through ``\phi^{-1}``.
+Use it when a generator's ``\phi^{-1}`` has no `Taylor1` method (for instance, an
+inverse defined only through root-finding), where the direct jet cannot run.
+Select it globally by redefining the generic method:
 
 ```julia
 Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
     Copulas._composition_taylor_implicit(o, i, t₀, d)
 ```
 
-(This redefines the shipped generic default, so Julia prints a benign "method
-overwritten" warning.) The implicit method solves ``\phi_{\text{outer}}(h(t)) =
-\phi_{\text{inner}}(t)`` order-by-order, using only the scalar derivatives
-``\phi^{(k)}`` of both generators and a single scalar ``\phi^{-1}_{\text{outer}}``
-— it never differentiates ``\phi^{-1}`` and never composes the two generators on
-a single jet. That is the high-``d`` stability win: it avoids the composed-chain
-underflow that defeats the direct jet for fast-tail generators (Frank at
-``d \ge 90``). The win requires the generator to ship a closed-form
-``\phi^{(k)}``; a family whose only ``\phi^{(k)}`` is the generic Taylor fallback
-still works but routes each derivative through an interior scalar jet.
+(Redefining the shipped default prints a benign "method overwritten" warning.)
 
-Register a closed form for a specific generator pair by adding a more-specific
-method. The package ships the Clayton/Clayton example, ``h(t) =
-((1+\theta_{\text{in}} t)^{\theta_{\text{out}}/\theta_{\text{in}}} - 1)/
-\theta_{\text{out}}``:
+**3. Closed form (per generator pair).** Register a more-specific method when you
+know ``h`` analytically — the fastest and most robust option. The package ships
+Clayton/Clayton (in `Generator/ClaytonGenerator.jl`),
+``h(t) = ((1+\theta_{\text{in}} t)^{\theta_{\text{out}}/\theta_{\text{in}}} - 1)/
+\theta_{\text{out}}``; add your own the same way:
 
 ```julia
-function Copulas.composition_taylor(outer::Copulas.ClaytonGenerator,
-                                    inner::Copulas.ClaytonGenerator, t₀, d::Int)
-    # closed-form Taylor coefficients of ((1+θ_in·t)^(θ_out/θ_in) − 1)/θ_out
+function Copulas.composition_taylor(outer::MyGenerator, inner::MyGenerator, t₀, d::Int)
+    # return [h'(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!]
 end
 ```
+
+The method choice is about *availability and speed*, not accuracy: all three are
+exact in exact arithmetic. For deep-tail or very high-``d`` inputs where a
+`Float64` jet can overflow or lose precision, pass `BigFloat` coordinates (see
+[Precision](#Precision)) — that is the precision fix, independent of which
+composition method is in use.
 
 ## Censored / survival likelihood
 
