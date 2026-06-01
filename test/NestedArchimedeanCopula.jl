@@ -22,6 +22,7 @@
 #   6. Constructor errors (bad tiling) and a fit/smoke usage of logpdf.
 
 using Test, Copulas, Distributions, ForwardDiff, DelimitedFiles, Random
+import StatsBase
 import Copulas: Generator, ϕ, ϕ⁻¹, ϕ⁻¹⁽¹⁾, ϕ⁽ᵏ⁾
 import Copulas: ClaytonGenerator, GumbelGenerator, FrankGenerator, JoeGenerator
 import Copulas: NestedDistortion, subsetdims, condition, _censored_copula_logpdf
@@ -531,5 +532,69 @@ end
         # Order genuinely matters: a within-panel-spanning reorder differs.
         @test !isapprox(cdf(subsetdims(C, (4, 1, 2)), [0.3, 0.5, 0.6]),
                         cdf(subsetdims(C, (2, 4, 1)), [0.3, 0.5, 0.6]); atol = 1e-6)
+    end
+
+    @testset "rand works (inverse-Rosenblatt sampler)" begin
+        # rand(C) StackOverflowed before the dedicated _rand!; here it must return
+        # a valid point and a valid sample matrix, all in [0,1] and finite.
+        C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+                children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])   # d=4
+        rng = Random.MersenneTwister(7)
+        s1 = rand(rng, C)
+        @test length(s1) == 4
+        @test all(0 .<= s1 .<= 1) && all(isfinite, s1)
+        S = rand(rng, C, 100)
+        @test size(S) == (4, 100)
+        @test all(0 .<= S .<= 1) && all(isfinite, S)
+        # Marginals are (approximately) uniform: mean of each coordinate ≈ 0.5.
+        @test all(abs.(vec(sum(S, dims = 2)) ./ 100 .- 0.5) .< 0.1)
+    end
+
+    @testset "fit: generator-parameter recovery (fixed tree MLE)" begin
+        # Sample from a known nested Clayton tree, fit from a deliberately wrong
+        # same-shape template, and check the recovered θ are close to the truth.
+        # Validated numbers (this seed): root 2.03, panels 6.09 / 8.01,
+        # converged in ~11 LBFGS iters on 3000 samples (no NelderMead fallback).
+        Ctrue = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+                    children = [ClaytonCopula(2, 6.0), ClaytonCopula(2, 8.0)])
+        U = rand(Random.MersenneTwister(20240601), Ctrue, 3000)
+
+        Cstart = NestedArchimedeanCopula(ClaytonGenerator(1.0);
+                     children = [ClaytonCopula(2, 3.0), ClaytonCopula(2, 3.0)])
+
+        M = Distributions.fit(Copulas.CopulaModel, Cstart, U)
+        Chat = M.result
+        @test Chat isa NestedArchimedeanCopula
+        @test M.converged
+        # Same tree shape preserved.
+        @test length(Chat) == 4
+        @test length(Chat.children) == 2
+        # Generators stayed in the Clayton family (no collapse / type change).
+        @test Chat.G isa ClaytonGenerator
+        @test Chat.children[1][1].G isa ClaytonGenerator
+        @test Chat.children[2][1].G isa ClaytonGenerator
+        # Parameter recovery (loose MLE tolerances on 3000 samples).
+        @test Chat.G.θ ≈ 2.0 atol = 0.4
+        @test Chat.children[1][1].G.θ ≈ 6.0 atol = 0.8
+        @test Chat.children[2][1].G.θ ≈ 8.0 atol = 0.8
+        # Fitted log-likelihood beats the (wrong) starting point.
+        @test Distributions.loglikelihood(Chat, U) > Distributions.loglikelihood(Cstart, U)
+
+        # coef / dof report the real free-parameter count (3: root + 2 panels),
+        # so AIC/BIC are correct (the generic path would give dof=0 → wrong AIC).
+        @test length(StatsBase.coef(M)) == 3
+        @test StatsBase.dof(M) == 3
+        @test StatsBase.coef(M) ≈ [Chat.G.θ, Chat.children[1][1].G.θ, Chat.children[2][1].G.θ]
+        @test StatsBase.aic(M) ≈ -2 * Distributions.loglikelihood(Chat, U) + 2 * 3
+
+        # Quick instance shim returns just the fitted copula with the same fit.
+        Cq = Distributions.fit(Cstart, U)
+        @test Cq isa NestedArchimedeanCopula
+        @test Cq.G.θ ≈ Chat.G.θ atol = 1e-8
+
+        # Bare-type fit is intentionally unsupported (tree not inferable).
+        @test_throws Exception Copulas._example(NestedArchimedeanCopula, 4)
+        # Only :mle is supported.
+        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, U; method = :itau)
     end
 end

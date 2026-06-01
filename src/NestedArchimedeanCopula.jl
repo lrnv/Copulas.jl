@@ -106,6 +106,29 @@ end
 
 Base.length(::NestedArchimedeanCopula{d}) where {d} = d
 
+# Element type of a single generator's parameters (promote across its params).
+# `init = Bool` is the identity for `promote_type`, so a 0-param generator
+# yields `Bool` and never widens the data type.
+_gen_param_eltype(G::Generator) =
+    mapreduce(typeof, promote_type, values(Distributions.params(G)); init = Bool)
+
+# Promote the parameter element type over the WHOLE tree (root + every child /
+# nested node). Used to widen the Faà di Bruno working type `T` so that
+# generator params of type `ForwardDiff.Dual` (e.g. pushed by an optimizer
+# through Float64 data) flow through the recursion alongside the leaves. For
+# plain `Float64` data + params this returns `Float64` (a no-op).
+function _tree_param_eltype(C::NestedArchimedeanCopula)
+    T = _gen_param_eltype(C.G)
+    for ch in C.children
+        if ch isa Tuple                       # (flat ArchimedeanCopula, dims)
+            T = promote_type(T, _gen_param_eltype(ch[1].G))
+        else                                  # nested child
+            T = promote_type(T, _tree_param_eltype(ch))
+        end
+    end
+    return T
+end
+
 # Dimension count of a sub-copula entry.
 _subdim(c::ArchimedeanCopula) = length(c)
 _subdim(c::NestedArchimedeanCopula{d}) where {d} = d
@@ -206,7 +229,12 @@ function Distributions._logpdf(C::NestedArchimedeanCopula{d}, u) where {d}
     if !all(0 .< u .< 1)
         return eltype(u)(-Inf)
     end
-    T = eltype(u) <: AbstractFloat ? float(eltype(u)) : Float64
+    Tu = eltype(u) <: AbstractFloat ? float(eltype(u)) : Float64
+    # Promote with the generator-param eltype of the whole tree so that
+    # `Dual`-typed generator params (e.g. from an optimizer differentiating wrt
+    # θ through Float64 data) flow through the Faà di Bruno recursion together
+    # with the leaves. No-op (`Float64`) for plain Float64 data + params.
+    T = promote_type(Tu, _tree_param_eltype(C))
     tree = _build_tree(C, u, falses(d), T)
     return _nested_logpdf(tree)
 end
@@ -228,6 +256,21 @@ function _cdf(C::NestedArchimedeanCopula{d}, u) where {d}
     T = Tu <: Integer ? Float64 : (Tu <: Real ? float(Tu) : Float64)
     tree = _build_tree(C, u, falses(d), T)
     return _nested_cdf(tree)
+end
+
+# Sampling. NestedArchimedeanCopula has no bespoke Marshall–Olkin frailty
+# sampler; instead we draw via the inverse Rosenblatt transform, which is driven
+# by our closed-form `_cdf`/`DistortionFromCop`/`subsetdims` specialisations
+# (nested/NestedConditioning.jl). A single VECTOR `_rand!` is enough — the
+# Distributions.jl `rand(C, n)` matrix path loops over this vector form (mirrors
+# ArchimedeanCopula/SubsetCopula). Dispatches only on NestedArchimedeanCopula, so
+# the flat-collapse ArchimedeanCopula sampler is untouched. The per-coordinate
+# inverse-CDF is an O(d) sequential bisection (≈ms/sample); keep sampled N modest.
+function Distributions._rand!(rng::Distributions.AbstractRNG,
+                              C::NestedArchimedeanCopula{d},
+                              x::AbstractVector{T}) where {T<:Real, d}
+    x .= inverse_rosenblatt(C, rand(rng, T, d))
+    return x
 end
 
 # Copula-scale mixed partial of the nested CDF over the observed coordinates.

@@ -277,6 +277,14 @@ append!(Bestiary, [
     EmpiricalEVCopula(randn(rng, 2,50); method=:cfg, pseudo_values=false),
     EmpiricalEVCopula(randn(rng, 2,50); method=:ols, pseudo_values=false),
     EmpiricalEVCopula(randn(rng, 2,50); method=:pickands, pseudo_values=false),
+    # Nested (hierarchical) Archimedean copulas. Inner θ > outer θ for nesting
+    # validity. The generic Fitting block is skipped (the nested type advertises
+    # no type-based fitting methods, since fit() is an instance API); sampling,
+    # cdf, pdf, subsetdims, conditioning, rosenblatt and τ-coherency are swept.
+    NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
+        children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)]),                 # d=4, two panels
+    NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
+        children = [ClaytonCopula(2, 5.0)], leaves = [3]),                          # d=3, panel + bare leaf
 ])
 
 macro testif(cond, args...)
