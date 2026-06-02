@@ -101,11 +101,11 @@ M.result
 ```
 
 The optimiser runs in an unconstrained space through a *parametrisation* — a map
-`α -> NestedArchimedeanCopula` decoupled from the generator objects. The
-**default** reparametrises each generator independently inside its own family
-domain (the cross-node nesting condition is not enforced). Pass a **custom**
-`reparam = (α -> C), init = α₀` to control the parametrisation yourself: share
-parameters across nodes, fit on a different scale, or encode a constraint.
+`α -> NestedArchimedeanCopula` decoupled from the generator objects. Above we fit
+a **template** tree. For full control, pass your own map and its initial point,
+`fit(CopulaModel, reparam, init, U)` — no template needed, since `reparam` builds
+the whole tree. This lets you share parameters across nodes, fit on a different
+scale, or encode a constraint.
 
 For instance, enforce the nesting condition by building each child's ``\theta`` as
 a non-negative increment over its parent's, so every step is a valid nesting:
@@ -115,7 +115,7 @@ softplus(x) = log1p(exp(-abs(x))) + max(x, zero(x))
 nest = α -> NestedArchimedeanCopula(ClaytonGenerator(exp(α[1]));
     children = [ClaytonCopula(2, exp(α[1]) + softplus(α[2])),
                 ClaytonCopula(2, exp(α[1]) + softplus(α[3]))])
-Mn = fit(CopulaModel, Cstart, U; reparam = nest, init = [0.0, 0.0, 0.0])
+Mn = fit(CopulaModel, nest, [0.0, 0.0, 0.0], U)
 (Mn.result.G.θ, Mn.result.children[1][1].G.θ)   # inner θ ≥ outer θ, by construction
 ```
 
@@ -125,11 +125,12 @@ Or share one ``\theta`` across the root and both panels — a single free parame
 recon = α -> (θ = exp(α[1]);
     NestedArchimedeanCopula(ClaytonGenerator(θ);
         children = [ClaytonCopula(2, θ), ClaytonCopula(2, θ)]))
-Ms = fit(CopulaModel, Cstart, U; reparam = recon, init = [0.0])
+Ms = fit(CopulaModel, recon, [0.0], U)
 (Ms.result.G.θ, Ms.result.children[1][1].G.θ)   # equal — the shared parameter
 ```
 
-The two-argument form `fit(C0, U)` is a shorthand returning just the fitted copula.
+`fit(C0, U)` is a shorthand returning just the fitted copula; for the custom form
+use `fit(CopulaModel, reparam, init, U).result`.
 
 ## Precision
 
@@ -199,10 +200,13 @@ observation). The per-variable censored likelihood factorises as the *gist
 recipe*
 
 ```math
-\underbrace{\log f_{O}(x_O)}_{\texttt{logpdf(subsetdims(X,O),\,x_O)}}
+\underbrace{\log f_{O}(x_O)}_{\text{observed-marginal density}}
 \;+\;
-\underbrace{\log P(X_C \le x_C \mid X_O = x_O)}_{\texttt{logcdf(condition(X,O,x_O),\,x_C)}},
+\underbrace{\log P(X_C \le x_C \mid X_O = x_O)}_{\text{conditional survival}},
 ```
+
+In code these two terms are `logpdf(subsetdims(X, O), x_O)` and
+`logcdf(condition(X, O, x_O), x_C)`.
 
 which equals the observed-marginal density times the copula's mixed partial over
 the observed coordinates,
@@ -254,10 +258,3 @@ empty (all observed) the recipe reduces to the ordinary joint density
     lose precision; pass `BigFloat` coordinates to recover the exact value (as for
     the density). End-to-end `BigFloat` through `condition()` is not yet enabled —
     upstream stores the conditioning values as `Float64`.
-
-!!! warning "Do not use `Distributions.censored` margins"
-    `logpdf(SklarDist(C, (…, censored(m), …)), x)` returns `-Inf`: a censored
-    margin places an atom at the censoring time, which Sklar's theorem maps to
-    the copula boundary ``u = 1`` — off the open domain ``(0,1)^d`` where the
-    copula density is defined. The `condition` + `subsetdims` recipe above is the
-    correct replacement.
