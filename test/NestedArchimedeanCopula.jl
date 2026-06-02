@@ -609,13 +609,13 @@ end
         Md = Distributions.fit(Copulas.CopulaModel, C, U)
         @test StatsBase.dof(Md) == 2
 
-        # custom reparam encoding NESTING: child θ = root θ + softplus(δ) ≥ root θ,
-        # so every optimiser step is a valid nesting (the user writes the constraint).
+        # custom reparam encoding NESTING (no template): child θ = root θ + softplus(δ)
+        # ≥ root θ, so every optimiser step is a valid nesting.
         sp(x) = log1p(exp(-abs(x))) + max(x, zero(x))
         nest = α -> (θr = exp(α[1]); θc = θr + sp(α[2]);
             NestedArchimedeanCopula(ClaytonGenerator(θr); leaves = [1],
                                     children = [ClaytonCopula(2, θc)]))
-        Mn = Distributions.fit(Copulas.CopulaModel, C, U; reparam = nest, init = [0.0, 0.0])
+        Mn = Distributions.fit(Copulas.CopulaModel, nest, [0.0, 0.0], U)
         @test rootθ(Mn) ≤ childθ(Mn)                  # nesting enforced by the user's reparam
         @test StatsBase.dof(Mn) == 2
 
@@ -623,11 +623,11 @@ end
         recon = α -> (θ = exp(α[1]);
             NestedArchimedeanCopula(ClaytonGenerator(θ); leaves = [1],
                                     children = [ClaytonCopula(2, θ)]))
-        Ms = Distributions.fit(Copulas.CopulaModel, C, U; reparam = recon, init = [log(2.0)])
+        Ms = Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U)
         @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
         @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
 
-        # a custom reparam requires an explicit init
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, C, U; reparam = recon)
+        # quick_fit returns just the copula; the dimension comes from the reparam
+        @test Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U; quick_fit = true).result isa NestedArchimedeanCopula
     end
 end
