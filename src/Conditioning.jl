@@ -4,8 +4,8 @@
 #####  User-facing function: `condition(), rosenblatt(), inverse_rosenblatt()`
 #####
 #####  When implementing new models, you can overwrite: 
-#####   - `DistortionFromCop(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {d, p}`
-#####   - `ConditionalCopula(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {d, p}`
+#####   - `DistortionFromCop(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {d, p}`
+#####   - `ConditionalCopula(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}) where {d, p}`
 ###############################################################################
 
 # A few utilities : 
@@ -102,21 +102,19 @@ Notes
 - A convenience method `DistortionFromCop(C, j::Int, uj::Real, i::Int)` exists for
     the common `p = 1` case.
 """
-struct DistortionFromCop{TC,p}<:Distortion
+struct DistortionFromCop{TC,p,T}<:Distortion
     C::TC
     i::Int
     js::NTuple{p,Int}
-    uⱼₛ::NTuple{p,Float64}
-    den::Float64
+    uⱼₛ::NTuple{p,T}
+    den::T
     function DistortionFromCop(C::Copula{D}, js, uⱼₛ, i) where {D}
         jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
         p = length(jst)
-        if p==1
-            den = Distributions.pdf(subsetdims(C, jst), uⱼₛt[1])
-        else
-            den = Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
-        end
-        return new{typeof(C), p}(C, i, jst, uⱼₛt, den)
+        den = p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
+                     Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
+        T = promote_type(eltype(uⱼₛt), typeof(den))
+        return new{typeof(C), p, T}(C, i, jst, NTuple{p,T}(uⱼₛt), T(den))
     end
 end
 Distributions.cdf(d::DistortionFromCop, u::Real) = _partial_cdf(d.C, (d.i,), d.js, (u,), d.uⱼₛ) / d.den
@@ -145,12 +143,12 @@ end
 
 Copula of the conditioned random vector U_I | U_J = u_J.
 """
-struct ConditionalCopula{d, D, p, TDs}<:Copula{d}
+struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     C::Copula{D}
     js::NTuple{p, Int}
     is::NTuple{d, Int}
-    uⱼₛ::NTuple{p, Float64}
-    den::Float64
+    uⱼₛ::NTuple{p, T}
+    den::T
     distortions::TDs
     function ConditionalCopula(C::Copula{D}, js, uⱼₛ) where {D}
         jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
@@ -158,12 +156,10 @@ struct ConditionalCopula{d, D, p, TDs}<:Copula{d}
         p = length(jst)
         d = D - p
         distos = Tuple(DistortionFromCop(C, jst, uⱼₛt, i) for i in ist)
-                if p==1
-            den = Distributions.pdf(subsetdims(C, jst), uⱼₛt[1])
-        else
-            den = Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
-        end
-        return new{d, D, p, typeof(distos)}(C, jst, ist, uⱼₛt, den, distos)
+        den = p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
+                     Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
+        T = promote_type(eltype(uⱼₛt), typeof(den))
+        return new{d, D, p, T, typeof(distos)}(C, jst, ist, NTuple{p,T}(uⱼₛt), T(den), distos)
     end
 end
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
@@ -258,7 +254,7 @@ end
 ###########################################################################
 
 
-function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p}
     ibase = S.dims[i]
     jsbase = ntuple(k -> S.dims[js[k]], p)
     return DistortionFromCop(S.C, jsbase, uⱼₛ, ibase)
