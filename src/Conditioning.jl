@@ -233,14 +233,20 @@ Notes
     of that conditional distribution.
 """
 condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
-function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, Float64}) where {D, p}
+# Accept any real `uⱼₛ` (not only `Float64`): `_process_tuples` calls `float.`,
+# which keeps `BigFloat`/`Float32` as-is, so a `Float64`-only signature here let
+# such inputs fall back to the untyped entry point above and recurse forever
+# (StackOverflow). The downstream `DistortionFromCop`/`ConditionalCopula` still
+# store `Float64`, so non-`Float64` values are converted there — the conditioning
+# result is computed in `Float64` regardless of input precision.
+function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, <:Real}) where {D, p}
     margins = Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in setdiff(1:D, js))
     p==D-1 && return margins[1]
     return SklarDist(ConditionalCopula(C, js, uⱼₛ), margins)
 end
 
 condition(C::SklarDist{<:Copula{D}}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
-function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::NTuple{p, Float64}) where {D, Tpl, p}
+function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::NTuple{p, <:Real}) where {D, Tpl, p}
     uⱼₛ = Tuple(Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ))
     margins = Tuple(DistortionFromCop(X.C, js, uⱼₛ, i)(X.m[i]) for i in setdiff(1:D, js))
     p==D-1 && return margins[1]
