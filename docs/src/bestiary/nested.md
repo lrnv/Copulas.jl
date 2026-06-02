@@ -153,11 +153,11 @@ hook `composition_taylor(outer, inner, t₀, d)`, selected by dispatch exactly a
 you override `ϕ⁽ᵏ⁾` — most-specific method wins, no keyword or flag. Three methods
 are available:
 
-**1. Direct (default).** `_composition_taylor_direct` puts a single jet through
+**1. Direct (default).** `composition_taylor_direct` puts a single jet through
 the explicit composition. Fast and accurate for ordinary inputs. It requires both
 ``\phi`` and ``\phi^{-1}`` to accept a `Taylor1` argument.
 
-**2. Implicit.** `_composition_taylor_implicit` solves
+**2. Implicit.** `composition_taylor_implicit` solves
 ``\phi_{\text{outer}}(h(t)) = \phi_{\text{inner}}(t)`` order-by-order, using only
 the scalar derivatives ``\phi^{(k)}`` of both generators and a single scalar
 ``\phi^{-1}_{\text{outer}}`` — it never puts a `Taylor1` through ``\phi^{-1}``.
@@ -167,7 +167,7 @@ Select it globally by redefining the generic method:
 
 ```julia
 Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
-    Copulas._composition_taylor_implicit(o, i, t₀, d)
+    Copulas.composition_taylor_implicit(o, i, t₀, d)
 ```
 
 (Redefining the shipped default prints a benign "method overwritten" warning.)

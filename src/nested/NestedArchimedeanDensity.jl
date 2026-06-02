@@ -48,47 +48,74 @@ struct _NestedNode{TG<:Generator, T}
     children::Vector{_NestedNode}
 end
 
-# Overloadable hook for the edge composition. Each parent→child edge needs the
-# Taylor coefficients [h'(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!] of the change of variables
-# h = ϕ⁻¹_outer ∘ ϕ_inner at t₀, the inner-to-outer link in the Faà di Bruno
-# recursion. `_process_node` calls THIS hook, so overrides take effect.
-#
-# The DEFAULT forwards to `_composition_taylor_direct` (jet over the explicit
-# composition) — this is the ONLY generic method shipped, so the default
-# behaviour is byte-unchanged. Switch the global default to the implicit
-# App. A.4 solver by redefining this generic method, e.g.
-#   Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
-#       Copulas._composition_taylor_implicit(o, i, t₀, d)
-# or register a closed form for a specific generator pair by adding a more-
-# specific method (see the Clayton/Clayton override in Generator/ClaytonGenerator.jl).
-# This mirrors
-# the existing per-generator ϕ⁽ᵏ⁾ override idiom: no keyword/flag, pure
-# dispatch, most-specific method wins. The working type T flows from t₀ into the
-# backend, so BigFloat/Double64 precision is carried through.
-composition_taylor(outer::Generator, inner::Generator, t₀, d::Int) =
-    _composition_taylor_direct(outer, inner, t₀, d)
+"""
+    composition_taylor(outer::Generator, inner::Generator, t₀, d) -> Vector
 
-# DEFAULT direct method: Taylor-expand the explicit composition ϕ⁻¹_outer ∘ ϕ_inner
-# at t₀ to order d via Copulas' generic `taylor` jet primitive. Returns the
-# coefficients [h'(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!] (constant h₀ dropped) as a Vector{T}.
-function _composition_taylor_direct(outer::Generator, inner::Generator, t₀::T, d::Int) where {T}
+Overridable hook for the parent→child edge composition in a nested Archimedean
+density. Returns the Taylor coefficients `[h⁽¹⁾(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!]` (the
+constant term `h₀` dropped) of the inner-to-outer change of variables
+`h = ϕ⁻¹_outer ∘ ϕ_inner`.
+
+The default delegates to [`composition_taylor_direct`](@ref). Select a different
+method, or supply your own, by adding a method to this function — most-specific
+wins, no keyword or flag, mirroring the per-generator `ϕ⁽ᵏ⁾` override idiom:
+
+  * **switch globally to the implicit solver** [`composition_taylor_implicit`](@ref)
+    (paper App. A.4 — uses only scalar `ϕ⁽ᵏ⁾` and one scalar `ϕ⁻¹`, never a
+    `Taylor1` through `ϕ⁻¹`; the method to use when a generator's `ϕ⁻¹` has no
+    `Taylor1` method):
+
+    ```julia
+    Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
+        Copulas.composition_taylor_implicit(o, i, t₀, d)
+    ```
+
+  * **register a closed form for a generator pair** (fastest, most robust — see the
+    Clayton/Clayton method in `Generator/ClaytonGenerator.jl`).
+
+  * **roll your own** with the [`taylor`](@ref Copulas.taylor) primitive: jet your
+    (possibly hand-simplified) link and drop the constant term — `taylor` returns
+    `[f(t₀), f'(t₀)/1!, …]`, so take `[2:d+1]`:
+
+    ```julia
+    Copulas.composition_taylor(o::MyGen, i::MyGen, t₀, d) =
+        Copulas.taylor(t -> Copulas.ϕ⁻¹(o, Copulas.ϕ(i, t)), t₀, d)[2:d+1]
+    ```
+
+The working type flows from `t₀`, so `BigFloat`/`Double64` precision is carried
+through whichever method is selected.
+"""
+composition_taylor(outer::Generator, inner::Generator, t₀, d::Int) =
+    composition_taylor_direct(outer, inner, t₀, d)
+
+"""
+    composition_taylor_direct(outer, inner, t₀, d)
+
+Default edge composition (see [`composition_taylor`](@ref)): a single Taylor jet
+over the explicit composition `ϕ⁻¹_outer ∘ ϕ_inner` at `t₀`, returning the
+coefficients `[h⁽ᵏ⁾(t₀)/k! for k in 1:d]`. Requires both `ϕ` and `ϕ⁻¹` to accept a
+`Taylor1` argument.
+"""
+function composition_taylor_direct(outer::Generator, inner::Generator, t₀::T, d::Int) where {T}
     coefs = taylor(x -> ϕ⁻¹(outer, ϕ(inner, x)), t₀, d)
     return T[coefs[k+1] for k in 1:d]
 end
 
-# Implicit-equation method (paper App. A.4).
-# Instead of differentiating ϕ⁻¹ (ill-conditioned
-# high-order inverse derivatives; composed-chain underflow for fast-tail
-# generators), use that h satisfies ϕ_outer(h(t)) = ϕ_inner(t). With
-# h₀ = ϕ⁻¹_outer(ϕ_inner(t₀)) (a single SCALAR inverse) and
-# h(t₀+ε) = h₀ + Q(ε), Q(ε) = Σ qₘ εᵐ, write aₘ = ϕ⁽ᵐ⁾(outer,h₀)/m! and
-# bₘ = ϕ⁽ᵐ⁾(inner,t₀)/m!. Matching εᵏ in Σ aₘ Qᵐ = Σ bₘ εᵐ gives the triangular
-# solve q₁ = b₁/a₁; qₖ = (bₖ − Σ_{m≥2} aₘ [εᵏ]Qᵐ)/a₁. Uses ONLY the scalar
-# k-th derivatives ϕ⁽ᵏ⁾(outer)/ϕ⁽ᵏ⁾(inner) and one scalar ϕ⁻¹(outer); never ϕ
-# or ϕ⁻¹ on a Taylor1, never the inverse high-order derivatives. Returns the
-# IDENTICAL convention to `_composition_taylor_direct`: Vector{T} of length d,
-# element k = h⁽ᵏ⁾(t₀)/k!, keyed off T = typeof(t₀) so BigFloat exactness flows.
-function _composition_taylor_implicit(outer::Generator, inner::Generator, t₀::T, d::Int) where {T}
+"""
+    composition_taylor_implicit(outer, inner, t₀, d)
+
+Edge composition by implicit differentiation (paper App. A.4; see
+[`composition_taylor`](@ref)): `h` satisfies `ϕ_outer(h(t)) = ϕ_inner(t)`, solved
+order by order by a triangular system using only the scalar derivatives `ϕ⁽ᵏ⁾` of
+both generators and one scalar `ϕ⁻¹_outer` — it never puts a `Taylor1` through
+`ϕ⁻¹`, so it is the method to use when a generator's `ϕ⁻¹` has no `Taylor1` method.
+Returns the same `[h⁽ᵏ⁾(t₀)/k! for k in 1:d]` convention as
+[`composition_taylor_direct`](@ref).
+"""
+function composition_taylor_implicit(outer::Generator, inner::Generator, t₀::T, d::Int) where {T}
+    # h₀ = ϕ⁻¹_outer(ϕ_inner(t₀)); with h(t₀+ε)=h₀+Q(ε), Q=Σ qₘεᵐ, aₘ=ϕ⁽ᵐ⁾(outer,h₀)/m!,
+    # bₘ=ϕ⁽ᵐ⁾(inner,t₀)/m!, matching εᵏ in Σ aₘ Qᵐ = Σ bₘ εᵐ gives q₁=b₁/a₁ and the
+    # triangular qₖ=(bₖ − Σ_{m≥2} aₘ[εᵏ]Qᵐ)/a₁ below — no Taylor1 on ϕ/ϕ⁻¹.
     # Derivative-side coefficients: a[m] = ϕ⁽ᵐ⁾(outer,h₀)/m!, b[m] = ϕ⁽ᵐ⁾(inner,t₀)/m!
     # for m = 1..d (scalar k-th derivatives — NO Taylor1 on ϕ/ϕ⁻¹).
     b  = T[ϕ⁽ᵏ⁾(inner, m, t₀) / T(factorial(big(m))) for m in 1:d]

@@ -214,8 +214,8 @@ end
     #     bit-identity guard of testset 3.
     # -----------------------------------------------------------------------
     @testset "edge-composition method (hook)" begin
-        direct   = Copulas._composition_taylor_direct
-        implicit = Copulas._composition_taylor_implicit
+        direct   = Copulas.composition_taylor_direct
+        implicit = Copulas.composition_taylor_implicit
 
         # (b) implicit == direct across same-family AND a cross-family edge, at
         #     several depths, with nestable params (inner ≥ outer dependence).
@@ -489,7 +489,7 @@ end
     @testset "global implicit override gives correct nested densities" begin
         # Repoint the global default to the implicit solver (benign overwrite warning).
         Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
-            Copulas._composition_taylor_implicit(o, i, t₀, d)
+            Copulas.composition_taylor_implicit(o, i, t₀, d)
 
         datadir = joinpath(@__DIR__, "data", "nested")
         cases = [
@@ -514,7 +514,7 @@ end
         # Restore the shipped default-direct generic method so the override does
         # not leak into any later test in the same session.
         Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
-            Copulas._composition_taylor_direct(o, i, t₀, d)
+            Copulas.composition_taylor_direct(o, i, t₀, d)
     end
 
     @testset "subsetdims respects requested coordinate order (reordering)" begin
