@@ -333,3 +333,28 @@ end
     # Float32 also previously recursed; confirm it is accepted too.
     @test condition(C3, (1, 2), (0.3f0, 0.4f0)) isa Copulas.Distortion
 end
+
+@testset "conditioning carries the conditioning eltype (BigFloat flows end-to-end)" begin
+    # condition() accepts non-Float64 values, AND the conditioning point now
+    # survives into the ConditionalCopula/DistortionFromCop (no Float64 downcast),
+    # so BigFloat precision flows through to the conditional CDF.
+    C = ClaytonCopula(4, 2.0)
+    xf = [0.3, 0.5, 0.4, 0.6]; xb = big.(xf)
+
+    # single-conditioned distortion (p = d-1): the conditional marginal of coord 2
+    df = condition(C, (1, 3, 4), Tuple(xf[[1, 3, 4]]))
+    db = condition(C, (1, 3, 4), Tuple(xb[[1, 3, 4]]))
+    @test db isa Copulas.DistortionFromCop
+    @test db.den isa BigFloat                 # value type flows INTO the struct
+    @test eltype(db.uⱼₛ) === BigFloat
+    @test cdf(db, xb[2]) isa BigFloat          # ... and OUT through the conditional CDF
+    @test Float64(cdf(db, xb[2])) ≈ cdf(df, xf[2]) atol = 1e-9
+
+    # multi-conditioned ConditionalCopula (p < d-1)
+    mb = condition(C, (1, 3), Tuple(xb[[1, 3]]))
+    @test mb.C isa Copulas.ConditionalCopula
+    @test mb.C.den isa BigFloat
+    @test cdf(mb, xb[[2, 4]]) isa BigFloat
+    @test Float64(cdf(mb, xb[[2, 4]])) ≈
+          cdf(condition(C, (1, 3), Tuple(xf[[1, 3]])), xf[[2, 4]]) atol = 1e-9
+end
