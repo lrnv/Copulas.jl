@@ -138,8 +138,8 @@ _kid_dims(ch::NestedArchimedeanCopula) = ch.dims
 
 function SubsetCopula(C::NestedArchimedeanCopula{d, TG}, dims::NTuple{p, Int}) where {d, TG, p}
     # `subsetdims` short-circuits p==1 (Uniform) and the identity `dims==1:d`, and
-    # asserts `p < d` otherwise, so here 2 <= p <= d-1 and `dims` may be a
-    # reordering (permutation) of the kept coordinates.
+    # asserts `p <= d` otherwise, so here 2 <= p <= d and `dims` may be a (possibly
+    # full, p==d) reordering/permutation of the kept coordinates.
     O = Set{Int}(dims)
     pruned = _prune_node(C, O)        # NestedArchimedeanCopula on GLOBAL dims
     # Genuinely-nested → flat collapse: every survivor lands directly under the
