@@ -47,6 +47,19 @@ _θ_bounds(::Type{<:MixedTail}, d) = (0.0, 1.0)
 
 A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1
 
+function dA(tail::MixedTail, t::Real)
+    tt = _safett(t)
+    θ = tail.θ
+
+    return θ * (2tt - 1)
+end
+
+function d²A(tail::MixedTail, t::Real)
+    θ = tail.θ
+
+    return 2θ
+end
+
 _tau_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 : 1 + 4 * QuadGK.quadgk(t -> ((2θ*t - θ) / (θ*t^2 - θ*t + 1)) * t * (1-t), 0, 1; kw...)[1]
 _rho_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 : 12 * QuadGK.quadgk(t -> inv((θ*t^2 - θ*t + 1 + 1)^2), 0, 1; kw...)[1] - 3
 
