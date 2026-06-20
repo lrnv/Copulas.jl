@@ -9,7 +9,7 @@ Extreme-value copulas model tail dependence via a stable tail dependence functio
 via a Pickands dependence function ``A``. In any dimension ``d``, the copula cdf is
 
 ```math
-\\displaystyle C(u) = \\\exp\\!\\left(-\\, \\\ell(-\\log u_1,\\ldots,-\\log u_d) \\right).
+\\displaystyle C(u) = \\exp\\!\\left(-\\, \\ell(-\\log u_1,\\ldots,-\\log u_d) \\right).
 ```
 
 For ``d=2``, write ``x=-\\log u``, ``y=-\\log v``, ``s=x+y``, and ``t = x/s``. The relation between ``\\ell`` and ``A`` is
