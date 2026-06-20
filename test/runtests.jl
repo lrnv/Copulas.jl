@@ -19,7 +19,7 @@ testfiles = [
 ]
 
 # You can override the definition of this GenericTestFilter if you want. 
-GenericTestFilter(C) = true
+GenericTestFilter(C) = true # the default value lets every copula go through. 
 
 # An example: 
 # GenericTestFilter(C) = C isa BC2Copula || C isa MOCopula || C isa CuadrasAugeCopula # || C isa GumbelCopula # You can filter on your model. 
