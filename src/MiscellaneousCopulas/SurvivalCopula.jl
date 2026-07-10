@@ -125,7 +125,7 @@ end
 
 # Subsetting colocated: subset and remap flipped indices to the new positions
 function SubsetCopula(C::SurvivalCopula{d,CT,flips}, dims::NTuple{p, Int}) where {d,CT,flips,p}
-    newflips = Tuple(i for i in flips if i in dims)
+    newflips = Tuple(k for (k, i) in enumerate(dims) if i in flips)
     return SurvivalCopula(subsetdims(C.C, dims), newflips)
 end
 

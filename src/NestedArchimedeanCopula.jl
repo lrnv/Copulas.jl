@@ -16,9 +16,10 @@
 # Taylor coefficient vectors), and finally contract the resulting coefficient
 # vector against the derivatives `ϕ⁽ᵏ⁾` of the outer generator. The same
 # recursion, restricted to differentiating the observed coordinates only, yields
-# the per-variable censored (survival) likelihood.
+# lower-tail partial-observation likelihoods; right-tail censoring is represented
+# by applying the same recipe to a `SurvivalCopula`.
 #
-# Follows the nested-density and per-variable censored-likelihood algorithm of
+# Follows the nested-density and partial-observation likelihood algorithm of
 # Yang & Li, "Archimedean Copula Inference via Taylor-Mode AD," arXiv:2605.23134
 # (2026); see the `NestedArchimedeanCopula` docstring.
 #
@@ -364,12 +365,12 @@ polynomials over the generator tree. The recursion is generic in the value type:
 recommended for adversarial high-dimensional or deep-tail inputs where the
 alternating-sign Faà di Bruno sum can lose `Float64` precision.
 
-# Censored / survival likelihood
+# Partial-observation likelihood
 
-Per-variable (right-)censoring is an *emergent* capability of the standard
+Lower-tail partial observation is an *emergent* capability of the standard
 [`condition`](@ref) + [`subsetdims`](@ref) framework — there is no bespoke
-censored-likelihood function. For an observed set ``O`` and a censored set ``C``,
-the per-variable censored likelihood factorises as the "gist recipe"
+likelihood function. For an observed set ``O`` and a lower-tail set ``C``,
+the likelihood factorises as the "gist recipe"
 
 ```julia
 logpdf(subsetdims(X, O), x_O) + logcdf(condition(X, O, x_O), x_C)
@@ -381,6 +382,10 @@ observed coordinates. The `subsetdims`/`condition` specialisations for this type
 route both factors through the Faà di Bruno tree walk; the denominator
 ``c_O`` cancels, reproducing the raw mixed partial.
 
+Right-censored coordinates use the same recipe after flipping the censored
+coordinates with [`SurvivalCopula`](@ref): on the copula scale, evaluate the
+conditional lower tail of `SurvivalCopula(C, censored_dims)` at `1 .- u_C`.
+
 # Example
 
 ```julia
@@ -391,14 +396,20 @@ C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
         children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])
 logpdf(C, [0.3, 0.5, 0.4, 0.6])
 
-# survival likelihood with dim 2 right-censored (observed O = {1,3,4}, C = {2}):
+# lower-tail likelihood with dim 2 partially observed (observed O = {1,3,4}, C = {2}):
 S = SklarDist(C, ntuple(_ -> Exponential(1.0), 4))
 x = [0.7, 0.3, 0.5, 0.9]
 logpdf(subsetdims(S, (1, 3, 4)), x[[1, 3, 4]]) +
     logcdf(condition(S, (1, 3, 4), x[[1, 3, 4]]), x[2])
+
+# right-censored dim 2 on the copula scale:
+u = [cdf(S.m[i], x[i]) for i in 1:4]
+Cs = SurvivalCopula(C, (2,))
+logpdf(subsetdims(C, (1, 3, 4)), u[[1, 3, 4]]) +
+    logcdf(condition(Cs, (1, 3, 4), u[[1, 3, 4]]), 1 - u[2])
 ```
 
-The density and the per-variable censored (survival) likelihood follow the
+The density and the partial-observation likelihood follow the
 algorithm of Yang & Li (arXiv:2605.23134), computed via Faà di Bruno's formula /
 partial Bell polynomials over the generator tree.
 

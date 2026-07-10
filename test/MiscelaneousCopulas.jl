@@ -13,6 +13,13 @@
     @test pdf(C270,[u1,1-u2]) == p
     @test pdf(C180,[1-u1,1-u2]) == p
 
+    C3 = SurvivalCopula(ClaytonCopula(3, 2.0), (3,))
+    S13 = subsetdims(C3, (1, 3))
+    Sref = SurvivalCopula(ClaytonCopula(2, 2.0), (2,))
+    u = [0.25, 0.7]
+    @test cdf(S13, u) ≈ cdf(Sref, u)
+    @test pdf(S13, u) ≈ pdf(Sref, u)
+
 end
 
 @testset "RafteryCopula Constructor" begin

@@ -235,6 +235,22 @@ logpdf(subsetdims(S, O), x[collect(O)]) +
     log(cdf(condition(S, O, x[collect(O)]), x[collect(C)]))
 ```
 
+For right-censored coordinates, flip those coordinates with
+[`SurvivalCopula`](@ref) and apply the same recipe to the survival-scale
+coordinates. On the copula scale this computes
+``P(U_C > u_C \mid U_O = u_O)`` as a lower-tail probability of the flipped
+coordinates:
+
+```@example nested
+u = [cdf(S.m[i], x[i]) for i in 1:6]
+Cs = SurvivalCopula(Cpart, C)
+logpdf(subsetdims(Cpart, O), u[collect(O)]) +
+    log(cdf(condition(Cs, O, u[collect(O)]), 1 .- u[collect(C)]))
+```
+
+On the data scale, add the observed marginal log densities
+``\sum_{i\in O}\log f_i(x_i)`` to this copula-scale contribution.
+
 When a *single* coordinate is in ``C``, `condition(S, O, x_O)` returns a
 univariate conditional distribution and you use `logcdf(condition(...), x_C)`
 (a scalar `x_C`); when several are in ``C`` it returns a conditional joint
