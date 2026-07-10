@@ -1,5 +1,5 @@
 # Tests for NestedArchimedeanCopula: the nested-Archimedean density and its
-# per-variable censoring as an EMERGENT capability of the standard
+# lower-tail partial-observation likelihood as an EMERGENT capability of the standard
 # condition + subsetdims framework (Yang & Li, arXiv:2605.23134).
 #
 # Coverage:
@@ -10,14 +10,14 @@
 #      ForwardDiff. This shares no code path with the Faà di Bruno recursion.
 #   3. Uncensored density vs an EXTERNAL reference (acopula log-likelihoods,
 #      committed in test/data/nested/).
-#   4. Per-variable censoring via the gist recipe
+#   4. Lower-tail partial observation via the gist recipe
 #      `logpdf(subsetdims(X,O),x_O) + logcdf_or_cdf(condition(X,O,x_O),x_C)`,
 #      checked against the SAME independent ForwardDiff references (mixed partial
 #      over the observed dims), incl. the bivariate Clayton closed form, plus a
 #      fast-path type probe (condition returns NestedDistortion) and the
 #      multi-unobserved generic ForwardDiff fallback.
-#   4b. SklarDist survival likelihood via condition + subsetdims on the data scale,
-#       incl. the Distributions.censored == -Inf contrast.
+#   4b. SklarDist lower-tail likelihood via condition + subsetdims on the data scale,
+#       incl. the contrast with Distributions.censored.
 #   5. Heterogeneous (mixed-family) and arbitrary-depth nesting build & are finite.
 #   6. Constructor errors (bad tiling) and a fit/smoke usage of logpdf.
 
@@ -95,11 +95,11 @@ function ref_logpdf(s::RefSpec)
     return log(abs(mixed_partial(f, u, obs)))
 end
 
-# Express per-variable censoring through the STANDARD condition + subsetdims API
-# (the "gist recipe"). `δ[i] == true` ⇒ coordinate `i` is censored/unobserved.
+# Express lower-tail partial observation through the STANDARD condition + subsetdims API
+# (the "gist recipe"). `δ[i] == true` ⇒ coordinate `i` is unobserved/lower-tail.
 #   logL_O = logpdf(subsetdims(C,O), u_O) + logcdf_or_cdf(condition(C,O,u_O), u_C)
 # with the degenerate masks handled explicitly (no observed ⇒ log cdf; no
-# censored ⇒ plain logpdf).
+# no lower-tail coordinates ⇒ plain logpdf).
 logcdf_or_cdf(D, u::Real) = logcdf(D, u)
 logcdf_or_cdf(S, u::AbstractVector) = log(cdf(S, u))
 function gist_censored(C, u, δ)
@@ -241,13 +241,13 @@ end
     end
 
     # -----------------------------------------------------------------------
-    # 4. Per-variable censoring via condition + subsetdims (gist recipe).
+    # 4. Lower-tail partial observation via condition + subsetdims (gist recipe).
     #    Reproduces the SAME independent references the old bespoke API checked,
     #    now through the STANDARD API — proving the specialised condition /
     #    subsetdims path is equivalent (the denominator c_O cancels exactly).
     # -----------------------------------------------------------------------
-    @testset "per-variable censoring via condition + subsetdims (gist recipe)" begin
-        # (a) Bivariate Clayton(3), dim 2 censored: gist == closed form ∂C/∂u₁.
+    @testset "lower-tail partial observation via condition + subsetdims (gist recipe)" begin
+        # (a) Bivariate Clayton(3), dim 2 lower-tail: gist == closed form ∂C/∂u₁.
         θ = 3.0
         u1 = cdf(Exponential(1.0), 0.5)
         u2 = cdf(Exponential(1.0), 1.0)
@@ -272,14 +272,14 @@ end
                   sum(log(abs(ϕ⁻¹⁽¹⁾(G, uf[i]))) for i in 1:4 if !δf[i])
         @test gist_censored(Cf, uf, δf) ≈ ref_cop atol = 1e-10
 
-        # (c) Nested, multi-unobserved (2 censored): root Clayton(2)-leaf over
-        #     Clayton(5) + Gumbel(3), one censored leaf in each sector + a
-        #     censored root leaf. Multi-censored (|unobserved| = 2): now routed
+        # (c) Nested, multi-unobserved (2 lower-tail): root Clayton(2)-leaf over
+        #     Clayton(5) + Gumbel(3), one lower-tail leaf in each sector.
+        #     Multi-coordinate (|unobserved| = 2): now routed
         #     through our Faà di Bruno tree walk via the `_partial_cdf` override
         #     (no ForwardDiff). The RefSpec reference is an INDEPENDENT
         #     BigFloat-ForwardDiff CDF mixed partial that shares no code with our
         #     kernel, so matching it to 1e-10 (the old generic path was asserted
-        #     only at the loose 1e-7) is evidence the multi-censored CDF is exact.
+        #     only at the loose 1e-7) is evidence the multi-coordinate CDF is exact.
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                 leaves = [1],
                 children = [ClaytonCopula(2, 5.0), GumbelCopula(2, 3.0)])
@@ -291,8 +291,8 @@ end
                     RefSpec(GumbelGenerator(big(3.0)),  [(big(u[4]), true),  (big(u[5]), false)])])
         @test gist_censored(C, u, δ) ≈ Float64(ref_logpdf(spec)) atol = 1e-10
 
-        # (c') Single-censored nested ⇒ the FAST NestedDistortion path. Observe
-        #      all of {1,2,3,4}, censor only dim 5.
+        # (c') Single lower-tail nested ⇒ the FAST NestedDistortion path. Observe
+        #      all of {1,2,3,4}, leave dim 5 lower-tail.
         δ1 = [false, false, false, false, true]
         spec1 = RefSpec(ClaytonGenerator(big(2.0)),
                     [(big(u[1]), false)],
@@ -301,7 +301,7 @@ end
         @test condition(C, (1, 2, 3, 4), [u[1], u[2], u[3], u[4]]) isa NestedDistortion
         @test gist_censored(C, u, δ1) ≈ Float64(ref_logpdf(spec1)) atol = 1e-9
 
-        # (d) Degenerate masks: all observed == plain logpdf; all censored == log cdf.
+        # (d) Degenerate masks: all observed == plain logpdf; all lower-tail == log cdf.
         C2 = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                  children = [ClaytonCopula(3, 5.0), ClaytonCopula(3, 6.0)])
         u2v = big.([0.30, 0.55, 0.70, 0.40, 0.62, 0.80])
@@ -310,10 +310,10 @@ end
     end
 
     # -----------------------------------------------------------------------
-    # 4b. SklarDist survival likelihood via condition + subsetdims (data scale).
+    # 4b. SklarDist lower-tail likelihood via condition + subsetdims (data scale).
     # -----------------------------------------------------------------------
-    @testset "SklarDist survival via condition + subsetdims" begin
-        # (a) Bivariate Clayton(3), dim 2 right-censored — closed form, data scale.
+    @testset "SklarDist lower-tail via condition + subsetdims" begin
+        # (a) Bivariate Clayton(3), dim 2 lower-tail — closed form, data scale.
         θ = 3.0
         m = (Exponential(1.0), Exponential(1.0))
         S = SklarDist(ClaytonCopula(2, θ), m)
@@ -327,15 +327,15 @@ end
         @test gist_sklar(S, [x1, c2], [false, false]) ≈ logpdf(S, [x1, c2]) atol = 1e-12
 
         # (c) Finite where the Distributions.censored route is -Inf — the
-        #     motivating contrast for the per-variable censoring facility.
+        #     motivating contrast for the lower-tail recipe.
         Sc = SklarDist(ClaytonCopula(2, θ), (m[1], censored(m[2], upper = c2)))
         @test logpdf(Sc, [x1, c2]) == -Inf
         @test isfinite(gist_sklar(S, [x1, c2], [false, true]))
 
-        # (d) All censored == log cdf of the joint model.
+        # (d) All lower-tail == log cdf of the joint model.
         @test gist_sklar(S, [x1, c2], [true, true]) ≈ log(cdf(S, [x1, c2])) atol = 1e-10
 
-        # (e) Nested copula on the data scale, multi-censored: the gist recipe is
+        # (e) Nested copula on the data scale, multi-coordinate: the gist recipe is
         #     finite and matches the observed-marginal densities + the nested
         #     mixed partial at the PIT point (independent reference).
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
@@ -349,7 +349,7 @@ end
         # copula-scale mixed partial over the observed coords (data-scale gist
         # should equal margin densities + the copula-scale gist at the PIT point).
         cop_ll = gist_censored(C, u, δ)
-        # Tightened 1e-7 → 1e-10: both sides route the multi-censored conditional
+        # Tightened 1e-7 → 1e-10: both sides route the multi-coordinate conditional
         # CDF through our kernel now, so the data-scale/copula-scale split agrees
         # to machine precision. (Self-consistency via gist_censored — NOT an
         # independent reference; the independent proof is testset 4c below.)
@@ -358,17 +358,17 @@ end
     end
 
     # -----------------------------------------------------------------------
-    # 4c. Multi-censored conditional CDF routes through OUR Faà di Bruno kernel
+    # 4c. Multi-coordinate conditional CDF routes through OUR Faà di Bruno kernel
     #     (not ForwardDiff). The standard API (condition + subsetdims) now CALLS
-    #     `_censored_copula_logpdf` for any number of censored dims, via the
+    #     `_censored_copula_logpdf` for any number of lower-tail dims, via the
     #     `_partial_cdf(::NestedArchimedeanCopula, …)` override. Fixed literals.
     # -----------------------------------------------------------------------
-    @testset "multi-censored conditional CDF routes through our kernel" begin
+    @testset "multi-coordinate conditional CDF routes through our kernel" begin
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                 leaves = [1],
                 children = [ClaytonCopula(2, 5.0), GumbelCopula(2, 3.0)])
         u = [0.40, 0.30, 0.70, 0.55, 0.80]
-        δ = [false, false, true, true, false]   # censor dims 3,4 (|unobserved| = 2)
+        δ = [false, false, true, true, false]   # lower-tail dims 3,4 (|unobserved| = 2)
 
         # (i) DIRECT-KERNEL EQUALITY. The gist via the standard API equals a DIRECT
         #     `_censored_copula_logpdf` call to machine precision — the load-bearing
@@ -382,7 +382,7 @@ end
         # exactness witness against the BigFloat kernel (no Float64 roundoff in ref).
         @test api ≈ Float64(_censored_copula_logpdf(C, big.(u), δ, BigFloat)) atol = 1e-9
 
-        # (ii) CDF CONTRACT on the real multi-censored ConditionalCopula. Build it
+        # (ii) CDF CONTRACT on the real multi-coordinate ConditionalCopula. Build it
         #      via condition(); cdf must stay in [0,1] and be non-decreasing on a
         #      fixed interior increasing v-grid. Catches sign/assembly errors that a
         #      single-point equality misses. Interior grid + tolerance-relaxed
@@ -401,7 +401,7 @@ end
         #       precision and eventually NaN — so we do NOT claim the Float64 kernel
         #       beats Float64 ForwardDiff. The universal advantage is that the kernel
         #       computes the SAME quantity exactly in BigFloat, which the Float64-locked
-        #       standard API cannot reach. Verify: (a) a moderately deep multi-censored
+        #       standard API cannot reach. Verify: (a) a moderately deep multi-coordinate
         #       point is finite and BigFloat-exact; (b) at a deeper point the Float64
         #       ForwardDiff conditional CDF is non-finite (NaN) yet the BigFloat kernel
         #       is finite and matches.
@@ -415,7 +415,7 @@ end
         @test gm ≈ Float64(_censored_copula_logpdf(Cj, big.(um), δj, BigFloat)) atol = 1e-8
         # (b) deep tail: upstream's Float64 ForwardDiff conditional CDF NaNs, but the
         #     BigFloat kernel is exact. is/js are the override's upstream slot names:
-        #     is = censored dim (8), js = observed dims (1..7).
+        #     is = lower-tail dim (8), js = observed dims (1..7).
         ud = fill(0.999999, 8)
         fd_f64 = Copulas._partial_cdf(Cj, (8,), (1, 2, 3, 4, 5, 6, 7),
                                       (ud[8],), (ud[1], ud[2], ud[3], ud[4], ud[5], ud[6], ud[7]))
