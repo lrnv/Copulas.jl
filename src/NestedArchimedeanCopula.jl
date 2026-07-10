@@ -469,9 +469,15 @@ function NestedArchimedeanCopula(G::Generator;
     end
     # Auto-assign pending children to the lowest free dims, as consecutive blocks
     # in declaration order (this reproduces the legacy positional behaviour).
-    nextfree() = (i = 1; while i in used; i += 1; end; i)
+    function nextblock(k)
+        s = 1
+        while any((s + j) in used for j in 0:k-1)
+            s += 1
+        end
+        return s
+    end
     for c in pending
-        k = _subdim(c); ds = Int[]; s = nextfree()
+        k = _subdim(c); ds = Int[]; s = nextblock(k)
         for j in 0:k-1
             push!(ds, s + j); push!(used, s + j)
         end

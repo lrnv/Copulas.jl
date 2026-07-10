@@ -458,6 +458,13 @@ end
         # Overlapping dims must error.
         @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
             leaves = [1], children = [ClaytonCopula(2, 5.0) => [1, 2]])
+        # Auto-placement must not silently overlap with a root leaf.
+        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            leaves = [2], children = [ClaytonCopula(2, 5.0)])
+        # But it may fill a free contiguous block before a later root leaf.
+        placed = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            leaves = [3], children = [ClaytonCopula(2, 5.0)])
+        @test placed.children[1][2] == [1, 2]
         # Legacy positional form still works and tiles 1:4.
         old = NestedArchimedeanCopula(ClaytonGenerator(2.0),
                   [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])
