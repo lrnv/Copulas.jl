@@ -74,12 +74,33 @@ logpdf(C3, [0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
 A purely flat declaration (only `leaves`, no `children`) returns the package's
 native [`ArchimedeanCopula`](@ref) so its fast specialised density is used.
 
+Be carefull about validity of the wanted nesting tree. Let us recall from
+[hofert2012nesting](@cite) and [mcneil2008](@cite) the following central results.
+
+
+!!! theorem "Two-generator nesting condition"
+    Consider one parent generator ``\phi_0`` and one child generator ``\phi_1``,
+    with a child block of dimension ``d_1 \ge 2``. Write
+    ``h = \phi_0^{-1} \circ \phi_1``. Assuming the parent and child generators
+    are themselves valid Archimedean generators for their respective dimensions,
+    the two-generator nested construction is valid if and only if ``h'`` is
+    ``d_1``-monotone on ``(0,\infty)`` [hofert2012nesting](@cite).
+
+    The often-used *sufficient nesting condition* asks instead that ``h'`` be
+    completely monotone [mcneil2008](@cite). This stronger condition is convenient
+    because it is dimension-free, but it is not necessary in finite dimensions.
+    For a full tree, the finite-dimensional condition must hold on every
+    parent-child edge, using the dimension of the child subtree.
+
 !!! note "Validity is the caller's responsibility"
-    The constructor does not check the nesting condition. For same-family
-    nestings the standard sufficient condition is that the inner generator be at
+    The constructor does not check the nesting condition, you have to check them yourself.
+
+!!! tip "Same-families rule of thumb"
+    For same-family nestings the standard sufficient condition is that the inner generator be at
     least as dependent as the outer one (e.g. for Clayton/Gumbel/Joe, the inner
     parameter ``\ge`` the outer parameter). Mixed-family nestings are accepted
     but must be validated by the user.
+
 
 ## Fitting
 
