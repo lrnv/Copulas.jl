@@ -102,12 +102,7 @@ module Copulas
     include("Generator/JoeGenerator.jl")
 
     # Nested (hierarchical) Archimedean copulas
-    include("nested/NestedArchimedeanDensity.jl")
     include("NestedArchimedeanCopula.jl")
-    # Conditioning/subsetting fast paths (per-variable censoring is emergent here)
-    include("nested/NestedConditioning.jl")
-    # Maximum-likelihood fitting of a nested copula's generator params (fixed tree)
-    include("nested/NestedArchimedeanFitting.jl")
 
     #Extreme value copulas
     include("Tail.jl")
