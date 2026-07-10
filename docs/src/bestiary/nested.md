@@ -12,9 +12,10 @@ dependence — for example several organ systems within a patient, or several
 assets within a sector.
 
 [`NestedArchimedeanCopula`](@ref) provides the density of such trees (and, via
-the standard [`condition`](@ref) / [`subsetdims`](@ref) framework, a
-per-variable censored / survival likelihood), following the algorithm of Yang &
-Li ([arXiv:2605.23134](https://arxiv.org/abs/2605.23134)).
+the standard [`condition`](@ref) / [`subsetdims`](@ref) framework, lower-tail
+conditional likelihood contributions for partially observed coordinates),
+following the algorithm of Yang & Li
+([arXiv:2605.23134](https://arxiv.org/abs/2605.23134)).
 
 ## Definition
 
@@ -190,19 +191,18 @@ exact in exact arithmetic. For deep-tail or very high-``d`` inputs where a
 [Precision](#Precision)) — that is the precision fix, independent of which
 composition method is in use.
 
-## Censored / survival likelihood
+## Partial-observation likelihood
 
-Per-variable (right-)censoring is an **emergent capability** of the standard
-[`condition`](@ref) + [`subsetdims`](@ref) framework — there is no bespoke
-censored-likelihood function. Split the coordinates into an observed set ``O``
-(events) and a censored set ``C`` (the survival times we only know exceed their
-observation). The per-variable censored likelihood factorises as the *gist
+Lower-tail partial-observation likelihoods are an **emergent capability** of the
+standard [`condition`](@ref) + [`subsetdims`](@ref) framework — there is no
+bespoke likelihood function. Split the coordinates into an observed set ``O``
+and an unobserved/lower-tail set ``C``. The contribution factorises as the *gist
 recipe*
 
 ```math
 \underbrace{\log f_{O}(x_O)}_{\text{observed-marginal density}}
 \;+\;
-\underbrace{\log P(X_C \le x_C \mid X_O = x_O)}_{\text{conditional survival}},
+\underbrace{\log P(X_C \le x_C \mid X_O = x_O)}_{\text{conditional lower-tail probability}},
 ```
 
 In code these two terms are `logpdf(subsetdims(X, O), x_O)` and
@@ -221,38 +221,38 @@ because the denominator ``c_O`` in `condition` cancels against the
 `subsetdims` marginal density. Both factors route through the Faà di Bruno tree
 walk via the `subsetdims` / `condition` specialisations for this type — no
 ForwardDiff for the observed-marginal density nor for the conditional CDF (for
-any number of censored coordinates).
+any number of lower-tail coordinates).
 
 ```@example nested
 using Distributions
-Csurv = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+Cpart = NestedArchimedeanCopula(ClaytonGenerator(2.0);
             children = [ClaytonCopula(3, 5.0), ClaytonCopula(3, 6.0)])
-S = SklarDist(Csurv, ntuple(_ -> Exponential(1.0), 6))
+S = SklarDist(Cpart, ntuple(_ -> Exponential(1.0), 6))
 x = [0.7, 0.3, 0.9, 0.5, 0.4, 1.1]
-O = (1, 3, 4, 5)        # observed (events)
-C = (2, 6)              # right-censored
+O = (1, 3, 4, 5)        # observed
+C = (2, 6)              # lower-tail coordinates
 logpdf(subsetdims(S, O), x[collect(O)]) +
     log(cdf(condition(S, O, x[collect(O)]), x[collect(C)]))
 ```
 
-When a *single* coordinate is censored, `condition(S, O, x_O)` returns a
+When a *single* coordinate is in ``C``, `condition(S, O, x_O)` returns a
 univariate conditional distribution and you use `logcdf(condition(...), x_C)`
-(a scalar `x_C`); when several are censored it returns a conditional joint
+(a scalar `x_C`); when several are in ``C`` it returns a conditional joint
 distribution and you use `log(cdf(condition(...), x_C))` as above. With ``C``
 empty (all observed) the recipe reduces to the ordinary joint density
-`logpdf(S, x)`; with ``O`` empty (all censored) it reduces to
+`logpdf(S, x)`; with ``O`` empty it reduces to
 ``\log F(\mathbf x)``. The recipe works for any copula with `condition` /
 `subsetdims` support — flat [`ArchimedeanCopula`](@ref) as well as nested trees.
 
-!!! note "Multi-censored conditional CDF"
-    With two or more censored coordinates the conditional CDF is the mixed
+!!! note "Multi-coordinate conditional CDF"
+    With two or more lower-tail coordinates the conditional CDF is the mixed
     partial of the nested CDF over the *observed* coordinates. The generic path
     takes this by nesting one `ForwardDiff.derivative` per observed coordinate —
     cost exponential in the number of observed dims, infeasible in high
     dimension. A `_partial_cdf` specialisation routes it instead through the same
-    polynomial Faà di Bruno tree walk as the single-censored case (selected on the
-    conditional copula's concrete nested inner type), for any number of censored
-    coordinates.
+    polynomial Faà di Bruno tree walk as the single-coordinate case (selected on
+    the conditional copula's concrete nested inner type), for any number of
+    lower-tail coordinates.
 
     At high differentiation order for fast-tail generators the `Float64` sum can
     lose precision; pass `BigFloat` coordinates to recover the exact value (as for
