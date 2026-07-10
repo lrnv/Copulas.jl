@@ -726,7 +726,8 @@ function _prune_node(c::NestedArchimedeanCopula, O)
                 push!(newleaf, _the_one_observed_dim(ch, O))   # collapse to bare leaf
                 continue
             end
-            push!(newkids, (cc, Int[j for j in ds if j in O]))  # keep, drop unobserved
+            kept = Int[j for j in ds if j in O]
+            push!(newkids, (ArchimedeanCopula(length(kept), cc.G), kept))  # keep, drop unobserved
         else                                             # nested child
             k = _obscount(ch, O)
             k == 0 && continue

@@ -532,6 +532,9 @@ end
         # Order genuinely matters: a within-panel-spanning reorder differs.
         @test !isapprox(cdf(subsetdims(C, (4, 1, 2)), [0.3, 0.5, 0.6]),
                         cdf(subsetdims(C, (2, 4, 1)), [0.3, 0.5, 0.6]); atol = 1e-6)
+
+        S = subsetdims(C, (1, 2, 4, 5))
+        @test all(length(child[1]) == length(child[2]) for child in S.children)
     end
 
     @testset "rand works (inverse-Rosenblatt sampler)" begin
