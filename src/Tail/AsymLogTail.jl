@@ -57,3 +57,41 @@ function A(tail::AsymLogTail, t::Real)
     θ₁, θ₂ = tail.θ₁, tail.θ₂
     return ((θ₁^α) * (1-tt)^α + (θ₂^α) * tt^α)^(1/α) + (θ₁ - θ₂)*tt + 1 - θ₁
 end
+
+function dA(tail::AsymLogTail, t::Real)
+    tt = _safett(t)
+    α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
+
+    (θ₁ == 0 && θ₂ == 0) && return zero(tt)
+
+    a = tt
+    b = 1 - tt
+
+    c1 = θ₁^α
+    c2 = θ₂^α
+
+    R = c1 * b^α + c2 * a^α
+    D = c2 * a^(α - 1) - c1 * b^(α - 1)
+
+    return R^(inv(α) - 1) * D + θ₁ - θ₂
+end
+
+function d²A(tail::AsymLogTail, t::Real)
+    tt = _safett(t)
+    α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
+
+    (θ₁ == 0 && θ₂ == 0) && return zero(tt)
+    α == 1 && return zero(tt)
+
+    a = tt
+    b = 1 - tt
+
+    c1 = θ₁^α
+    c2 = θ₂^α
+
+    R = c1 * b^α + c2 * a^α
+    D = c2 * a^(α - 1) - c1 * b^(α - 1)
+    E = c2 * a^(α - 2) + c1 * b^(α - 2)
+
+    return (α - 1) * R^(inv(α) - 2) * (R * E - D^2)
+end

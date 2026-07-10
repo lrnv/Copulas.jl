@@ -65,3 +65,55 @@ function A(tail::AsymGalambosTail, t::Real)
     s  = LogExpFunctions.logaddexp(x1, x2) / α
     return -LogExpFunctions.expm1(-s)
 end
+
+function dA(tail::AsymGalambosTail, t::Real)
+    tt = _safett(t)
+    α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
+
+    α == 0 || (θ₁ == 0 && θ₂ == 0) && return one(tt)
+
+    a = tt
+    b = 1 - tt
+
+    x1 = -α * log(θ₁ * a)
+    x2 = -α * log(θ₂ * b)
+
+    ℓ = LogExpFunctions.logaddexp(x1, x2)
+
+    w1 = exp(x1 - ℓ)
+    w2 = exp(x2 - ℓ)
+
+    B = exp(-ℓ / α)
+
+    return B * (w2 / b - w1 / a)
+end
+
+function d²A(tail::AsymGalambosTail, t::Real)
+    tt = _safett(t)
+    α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
+
+    α == 0 || (θ₁ == 0 && θ₂ == 0) && return one(tt)
+
+    a = tt
+    b = 1 - tt
+
+    x1 = -α * log(θ₁ * a)
+    x2 = -α * log(θ₂ * b)
+
+    ℓ = LogExpFunctions.logaddexp(x1, x2)
+
+    w1 = exp(x1 - ℓ)
+    w2 = exp(x2 - ℓ)
+
+    B = exp(-ℓ / α)
+
+    inva = inv(a)
+    invb = inv(b)
+
+    g = w2 * invb - w1 * inva
+
+    term1 = w2 * invb^2 + w1 * inva^2
+    term2 = g^2
+
+    return (1 + α) * B * (term1 - term2)
+end
