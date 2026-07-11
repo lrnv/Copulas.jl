@@ -11,6 +11,8 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 QuadGK = "1fd47b50-473d-5c70-9696-f719f8f3bcdc"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
+VineCopulas = "58f8e485-d1fe-48aa-8792-3d6ba0b7fb45"
 
 [sources]
 DocumenterVitepress = {rev = "allow_custom_admonitions", url = "https://github.com/lrnv/DocumenterVitepress.jl"}
+VineCopulas = {url = "https://github.com/Santymax98/VineCopulas.jl"}
