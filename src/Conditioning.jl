@@ -163,6 +163,7 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     is::NTuple{d, Int}
     uⱼₛ::NTuple{p, T}
     den::T
+    logden::T
     distortions::TDs
     function ConditionalCopula(C::Copula{D}, js, uⱼₛ) where {D}
         jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
@@ -170,10 +171,15 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
         p = length(jst)
         d = D - p
         distos = Tuple(DistortionFromCop(C, jst, uⱼₛt, i) for i in ist)
-        den = p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
-                     Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
+        den = all(disto -> disto isa DistortionFromCop, distos) ? distos[1].den :
+              (p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
+                      Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt)))
         T = promote_type(eltype(uⱼₛt), typeof(den))
-        return new{d, D, p, T, typeof(distos)}(C, jst, ist, NTuple{p,T}(uⱼₛt), T(den), distos)
+        denT = T(den)
+        return new{d, D, p, T, typeof(distos)}(
+            C, jst, ist, NTuple{p,T}(uⱼₛt), denT,
+            denT > zero(T) ? log(denT) : T(-Inf), distos
+        )
     end
 end
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
@@ -187,7 +193,7 @@ end
 function Distributions._logpdf(CC::ConditionalCopula{d,D,p,T,TDs}, v::AbstractVector{<:Real}) where {d,D,p,T,TDs}
     TR = promote_type(eltype(v), T)
 
-    # Support: 
+    # Support:
     CC.den <= 0 && return TR(-Inf)
     for vₖ in v
         0 < vₖ < 1 || return TR(-Inf)
@@ -198,7 +204,7 @@ function Distributions._logpdf(CC::ConditionalCopula{d,D,p,T,TDs}, v::AbstractVe
     # 2) Full u vector at which to evaluate the base copula density
     u = _assemble(D, CC.is, CC.js, uI, CC.uⱼₛ)
     # 3) Joint conditional density on the original uniform scale
-    logdensity = TR(Distributions.logpdf(CC.C, u) - log(CC.den))
+    logdensity = TR(Distributions.logpdf(CC.C, u) - CC.logden)
     # 4) Change variables from u_I to the conditional marginal scales v
     for idx in 1:d
         logdensity -= Distributions.logpdf(CC.distortions[idx], uI[idx])
@@ -277,17 +283,26 @@ condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}()
 # store `Float64`, so non-`Float64` values are converted there — the conditioning
 # result is computed in `Float64` regardless of input precision.
 function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, <:Real}) where {D, p}
-    margins = Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in setdiff(1:D, js))
-    p==D-1 && return margins[1]
-    return SklarDist(ConditionalCopula(C, js, uⱼₛ), margins)
+    is = Tuple(setdiff(1:D, js))
+    p==D-1 && return DistortionFromCop(C, js, uⱼₛ, is[1])
+    CC = ConditionalCopula(C, js, uⱼₛ)
+    margins = CC isa ConditionalCopula ? CC.distortions :
+              Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in is)
+    return SklarDist(CC, margins)
 end
 
 condition(C::SklarDist{<:Copula{D}}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
 function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::NTuple{p, <:Real}) where {D, Tpl, p}
     uⱼₛ = Tuple(Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ))
-    margins = Tuple(DistortionFromCop(X.C, js, uⱼₛ, i)(X.m[i]) for i in setdiff(1:D, js))
-    p==D-1 && return margins[1]
-    return SklarDist(ConditionalCopula(X.C, js, uⱼₛ), margins)
+    is = Tuple(setdiff(1:D, js))
+    if p == D - 1
+        return DistortionFromCop(X.C, js, uⱼₛ, is[1])(X.m[is[1]])
+    end
+    CC = ConditionalCopula(X.C, js, uⱼₛ)
+    distortions = CC isa ConditionalCopula ? CC.distortions :
+                  Tuple(DistortionFromCop(X.C, js, uⱼₛ, i) for i in is)
+    margins = Tuple(distortions[k](X.m[is[k]]) for k in eachindex(is))
+    return SklarDist(CC, margins)
 end
 
 ###########################################################################

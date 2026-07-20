@@ -201,6 +201,11 @@ end
     js = (3,)
     ujs = (0.4,)
     generic = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{3}, js, ujs)
+    Cgeneric = FGMCopula(3, [0.1, 0.2, 0.3, 0.4])
+    conditioned = condition(Cgeneric, js, ujs)
+    @test conditioned.C isa Copulas.ConditionalCopula
+    @test conditioned.m === conditioned.C.distortions
+    @test generic.logden == log(generic.den)
     specialized = Copulas.ConditionalCopula(C, js, ujs)
 
     for u in ([0.25, 0.35], [0.5, 0.5], [0.75, 0.65])
