@@ -70,25 +70,12 @@ ArchimedeanCopula{D,TG}(d::Int, args...; kwargs...) where {D, TG} = ArchimedeanC
 
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters.
 
-function _cdf(C::ArchimedeanCopula, u) 
-    v = zero(eltype(u))
-    for uᵢ in u
-        v += ϕ⁻¹(C.G, uᵢ)
-    end
-    return ϕ(C.G, v)
-end
+_cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
 function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
-    T = eltype(u)
-    for uᵢ in u
-        0 < uᵢ < 1 || return T(-Inf)
+    if !all(0 .< u .< 1)
+        return eltype(u)(-Inf)
     end
-    v = zero(eltype(u))
-    p = one(eltype(u))
-    for uᵢ in u
-        v += ϕ⁻¹(C.G, uᵢ)
-        p *= ϕ⁻¹⁽¹⁾(C.G, uᵢ)
-    end
-    return log(max(ϕ⁽ᵏ⁾(C.G, d, v) * p, 0))
+    return log(max(ϕ⁽ᵏ⁾(C.G, d, sum(ϕ⁻¹.(C.G, u))) * prod(ϕ⁻¹⁽¹⁾.(C.G, u)), 0))
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, x::AbstractVector{T}) where {T<:Real, d, TG}
     # By default, we use the Williamson sampling.
@@ -180,19 +167,11 @@ end
 function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
     @assert length(js) == length(uⱼₛ)
     T = eltype(uⱼₛ)
-    sJ = zero(T)
-    for uⱼ in uⱼₛ
-        sJ += ϕ⁻¹(C.G, uⱼ)
-    end
-    rJ = ϕ⁽ᵏ⁾(C.G, p, sJ)
-    return ArchimedeanDistortion(C.G, p, float(sJ), float(rJ))
+    sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
+    return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
 function ConditionalCopula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, TG, p}
-    sJ = zero(eltype(uⱼₛ))
-    for uⱼ in uⱼₛ
-        sJ += ϕ⁻¹(C.G, uⱼ)
-    end
-    return ArchimedeanCopula(D - p, TiltedGenerator(C.G, p, sJ))
+    return ArchimedeanCopula(D - p, TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
 SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula(length(dims), C.G)
 

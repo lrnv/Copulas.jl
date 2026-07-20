@@ -52,7 +52,7 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
             return IndependentCopula(size(Σ,1))
         end
         make_cor!(Σ)
-        Distributions.MvNormal(Σ) # only here for the checks... but is that really necessary ? 
+        N(GaussianCopula)(Σ)
         return new{size(Σ,1),typeof(Σ)}(Σ)
     end
 end
@@ -80,16 +80,17 @@ GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ)
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
+    x = StatsBase.quantile.(Distributions.Normal(), u)
     d = length(C)
-    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), StatsFuns.norminvcdf.(u))[1]
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
-    return StatsFuns.normcdf.(inv(LinearAlgebra.cholesky(C.Σ).L) * StatsFuns.norminvcdf.(u))
+    return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
 end
 
 function inverse_rosenblatt(C::GaussianCopula, s::AbstractMatrix{<:Real})
-    return StatsFuns.normcdf.(LinearAlgebra.cholesky(C.Σ).L * StatsFuns.norminvcdf.(s))
+    return Distributions.cdf.(Distributions.Normal(), LinearAlgebra.cholesky(C.Σ).L * Distributions.quantile.(Distributions.Normal(), s))
 end
 
 # Kendall tau of bivariate gaussian:
@@ -102,7 +103,7 @@ function DistortionFromCop(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
     ist = Tuple(setdiff(1:D, js))
     @assert i in ist
     J = collect(js)
-    zⱼ = StatsFuns.norminvcdf.(collect(uⱼₛ))
+    zⱼ = Distributions.quantile.(Distributions.Normal(), collect(uⱼₛ))
     if length(J) == 1 # if we condition on only one variable
         μz = C.Σ[i, J[1]] * zⱼ[1]
         σz = sqrt(1 - C.Σ[i, J[1]]^2)
@@ -136,7 +137,7 @@ function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}
     return (; Σ = _rebound_corr_params(d, α))
 end
 function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
-    dd = Distributions.fit(Distributions.MvNormal, StatsFuns.norminvcdf.(u))
+    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
     Σ = Matrix(dd.Σ)
     return GaussianCopula(Σ), (; θ̂ = (; Σ = Σ))
 end
