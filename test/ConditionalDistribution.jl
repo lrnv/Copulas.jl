@@ -122,6 +122,21 @@ end
     end
 end
 
+@testset "Gaussian distortion log-scale formulas" begin
+    D = condition(GaussianCopula([1.0 0.6; 0.6 1.0]), (1,), (0.3,))
+    N = Normal()
+    for u in (1e-12, 0.2, 0.5, 0.8)
+        q = quantile(N, u)
+        z = (q - D.μz) / D.σz
+        reference = logpdf(N, z) - log(abs(D.σz)) - logpdf(N, q)
+        @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 1e-13
+        @test logpdf(D, u) ≈ reference atol = 1e-13
+    end
+    @test logcdf(D, 0.0) == -Inf
+    @test logcdf(D, 1.0) == 0.0
+    @test logpdf(D, -0.1) == -Inf
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20
