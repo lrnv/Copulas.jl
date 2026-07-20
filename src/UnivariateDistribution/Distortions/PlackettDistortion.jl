@@ -20,6 +20,26 @@ function Distributions.logcdf(D::PlackettDistortion, u::Real)
 
     return num - den
 end
+function Distributions.quantile(D::PlackettDistortion, α::Real)
+    T = float(promote_type(typeof(α), typeof(D.θ), typeof(D.uⱼ)))
+    q = T(α)
+    ϵ = eps(T)
+    q < ϵ && return zero(T)
+    q > one(T) - 2ϵ && return one(T)
+
+    # Closed-form inversion of the conditional Plackett CDF. This is the same
+    # inversion used by PlackettCopula sampling, with q as the conditional rank
+    # and u the fixed coordinate.
+    θ = T(D.θ)
+    u = T(D.uⱼ)
+    a = q * (one(T) - q)
+    b = θ + a * (θ - one(T))^2
+    c = 2a * (u * θ^2 + one(T) - u) + θ * (one(T) - 2a)
+    radicand = θ + 4a * u * (one(T) - u) * (one(T) - θ)^2
+    d = sqrt(θ) * sqrt(max(zero(T), radicand))
+    value = (c - (one(T) - 2q) * d) / (2b)
+    return clamp(value, zero(T), one(T))
+end
 ## DistortionFromCop moved next to PlackettCopula
 function Distributions.logpdf(D::PlackettDistortion, u::Real)
     θ, v = D.θ, D.uⱼ

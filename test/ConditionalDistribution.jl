@@ -33,6 +33,26 @@ end
     end
 end
 
+@testset "Plackett distortion closed-form quantile" begin
+    for θ in (0.5, 2.0), j in 1:2
+        C = PlackettCopula(θ)
+        uⱼ = j == 1 ? 0.3 : 0.7
+        D = condition(C, (j,), (uⱼ,))
+        @test D isa Copulas.PlackettDistortion
+
+        for α in (0.1, 0.5, 0.9)
+            q = quantile(D, α)
+            @test isapprox(cdf(D, q), α; atol=5e-12, rtol=5e-12)
+        end
+        @test quantile(D, 0.0) == 0.0
+        @test quantile(D, 1.0) == 1.0
+        @test quantile(D, big"0.37") isa BigFloat
+    end
+
+    Dind = Copulas.PlackettDistortion(1.0, Int8(1), 0.4)
+    @test quantile(Dind, 0.37) ≈ 0.37
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20
