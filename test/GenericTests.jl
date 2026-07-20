@@ -285,6 +285,8 @@ append!(Bestiary, [
         children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)]),                 # d=4, two panels
     NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
         children = [ClaytonCopula(2, 5.0)], leaves = [3]),                          # d=3, panel + bare leaf
+    NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
+        children = [FrankCopula(2, 5.0)], leaves = [3]),                            # d=3, panel + bare leaf
 ])
 
 macro testif(cond, args...)

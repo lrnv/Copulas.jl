@@ -32,6 +32,7 @@ C(\mathbf u) = \phi_0\!\left(
 
 and each child ``C_k`` is itself Archimedean or, recursively, nested
 Archimedean — so trees nest to arbitrary depth.
+To facilitate notation of leaves, we assume ``C_k(u_{I_k}) = u_{I_k}`` whenever ``\left|I_k\right|=1``.
 
 The density is the mixed partial of this CDF over the differentiated
 coordinates. Differentiating the composition of generators is exactly Faà di
@@ -205,6 +206,8 @@ function Copulas.composition_taylor(outer::MyGenerator, inner::MyGenerator, t₀
     # return [h'(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!]
 end
 ```
+
+If you implement your own closed-form for rather-standard cases, do not hesitate to share them with others through a PR on the package. 
 
 The method choice is about *availability and speed*, not accuracy: all three are
 exact in exact arithmetic. For deep-tail or very high-``d`` inputs where a
