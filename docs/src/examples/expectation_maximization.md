@@ -91,11 +91,11 @@ weights computed by EM.
 ```@example em
 component1 = SklarDist(
     ClaytonCopula(2, 0.7),
-    (Normal(-1.0, 0.8), LogNormal(0.0, 0.4)),
+    (Normal(-1.0, 0.8), Normal(0.0, 0.4)),
 )
 component2 = SklarDist(
     ClaytonCopula(2, 2.2),
-    (Normal(1.2, 0.6), LogNormal(0.8, 0.3)),
+    (Normal(1.2, 0.6), Normal(0.8, 0.3)),
 )
 
 initial_sklar_mixture = MixtureModel(
