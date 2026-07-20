@@ -338,6 +338,22 @@ end
         @test condition(C, (1, 2, 3, 4), [u[1], u[2], u[3], u[4]]) isa NestedDistortion
         @test gist_censored(C, u, δ1) ≈ Float64(ref_logpdf(spec1)) atol = 1e-9
 
+        # The conditional marginal density is the full mixed partial over the
+        # observed coordinates plus the free coordinate, divided by c_O. Its
+        # specialised tree walk must agree with both that identity and the
+        # generic ForwardDiff fallback.
+        D5 = condition(C, (1, 2, 3, 4), [u[1], u[2], u[3], u[4]])
+        logden = logpdf(subsetdims(C, (1, 2, 3, 4)), u[1:4])
+        for ui in (0.35, 0.75)
+            ufull = [u[1], u[2], u[3], u[4], ui]
+            expected = logpdf(C, ufull) - logden
+            generic = @invoke logpdf(D5::Copulas.Distortion, ui::Real)
+            @test logpdf(D5, ui) ≈ expected atol = 1e-10
+            @test logpdf(D5, ui) ≈ generic atol = 1e-9
+        end
+        @test logpdf(D5, -0.1) == -Inf
+        @test logpdf(D5, 1.1) == -Inf
+
     end
 
     # -----------------------------------------------------------------------

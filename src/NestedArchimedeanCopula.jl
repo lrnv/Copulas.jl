@@ -851,6 +851,28 @@ end
 
 Distributions.cdf(D::NestedDistortion, ui::Real) = exp(Distributions.logcdf(D, ui))
 
+function Distributions.logpdf(D::NestedDistortion, ui::Real)
+    T = float(promote_type(typeof(ui), Float64))
+    zero(T) < ui < one(T) || return T(-Inf)
+
+    d = length(D.C)
+    u = ones(T, d)
+    for k in eachindex(D.js)
+        u[D.js[k]] = T(D.ujs[k])
+    end
+    u[D.i] = T(ui)
+
+    # Differentiate the nested CDF with respect to both the conditioning
+    # coordinates and the free coordinate. All other coordinates stay
+    # marginalised at one.
+    cens = trues(d)
+    for j in D.js
+        cens[j] = false
+    end
+    cens[D.i] = false
+    return _censored_copula_logpdf(D.C, u, cens, T) - T(D.logden)
+end
+
 # ---- (3) Multi-conditioned-dim conditional CDF: route Site B through our kernel
 #
 # Override the generic `_partial_cdf(C, is, js, uᵢₛ, uⱼₛ)` (Conditioning.jl:31),
