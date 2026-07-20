@@ -98,7 +98,7 @@ end
 
     for CT in (CuadrasAugeCopula, LogCopula)
         fitted = fit(CT, U, :mle; start=1.0)
-        @test fitted isa Copula
+        @test fitted isa Copulas.Copula
         @test all(isfinite, Distributions.params(fitted))
     end
 end
