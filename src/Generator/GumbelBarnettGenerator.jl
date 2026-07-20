@@ -97,6 +97,16 @@ function ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, k::Int, t)
     return evalpoly(C, ntuple(i->Combinatorics.stirlings2(k, i), k)) * R
 end
 
+function ϕ⁽ᵏ⁾⁻¹(G::GumbelBarnettGenerator, k::Int, t; start_at=t)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
+    T = float(promote_type(typeof(t), typeof(G.θ)))
+    target = T(t)
+    iszero(target) && return T(Inf)
+    θ = T(G.θ)
+    w = LambertW.lambertw(target * exp(-inv(θ)), -1)
+    return log(-θ * w)
+end
+
 
 # See this htread ;: https://discourse.julialang.org/t/solving-for-transcendental-equation/131229/16
 

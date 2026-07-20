@@ -107,6 +107,19 @@ end
     end
 end
 
+@testset "Gumbel-Barnett distortion closed-form quantile" begin
+    for θ in (0.2, 0.8), uⱼ in (0.3, 0.7)
+        D = condition(GumbelBarnettCopula(2, θ), (1,), (uⱼ,))
+        for α in (0.1, 0.5, 0.9)
+            q = quantile(D, α)
+            generic = @invoke quantile(D::Copulas.Distortion, α::Real)
+            @test isapprox(cdf(D, q), α; atol=3e-11, rtol=3e-11)
+            @test isapprox(q, generic; atol=2e-8, rtol=2e-8)
+        end
+        @test quantile(D, big"0.37") isa BigFloat
+    end
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20
