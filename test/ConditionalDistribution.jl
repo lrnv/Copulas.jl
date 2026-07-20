@@ -243,6 +243,7 @@ end
     conditioned = condition(Cgeneric, js, ujs)
     @test conditioned.C isa Copulas.ConditionalCopula
     @test conditioned.m === conditioned.C.distortions
+    @test conditioned.C.is == (1, 2)
     @test generic.logden == log(generic.den)
     specialized = Copulas.ConditionalCopula(C, js, ujs)
 

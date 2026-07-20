@@ -168,7 +168,7 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     distortions::TDs
     function ConditionalCopula(C::Copula{D}, js, uⱼₛ) where {D}
         jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
-        ist = Tuple(setdiff(1:D, jst))
+        ist = Tuple(i for i in 1:D if i ∉ jst)
         p = length(jst)
         d = D - p
         distos = Tuple(DistortionFromCop(C, jst, uⱼₛt, i) for i in ist)
@@ -184,7 +184,8 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     end
 end
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
-    return _partial_cdf(CC.C, CC.is, CC.js, Distributions.quantile.(CC.distortions, v), CC.uⱼₛ) / CC.den
+    uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)
+    return _partial_cdf(CC.C, CC.is, CC.js, uI, CC.uⱼₛ) / CC.den
 end
 
 # Density of the conditional copula on [0,1]^d.
@@ -201,7 +202,7 @@ function Distributions._logpdf(CC::ConditionalCopula{d,D,p,T,TDs}, v::AbstractVe
     end
 
     # 1) Map v → u_I via the stored distortions (non-sequential conditioning on J only)
-    uI = Distributions.quantile.(CC.distortions, v)
+    uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)
     # 2) Full u vector at which to evaluate the base copula density
     u = _assemble(D, CC.is, CC.js, uI, CC.uⱼₛ)
     # 3) Joint conditional density on the original uniform scale
