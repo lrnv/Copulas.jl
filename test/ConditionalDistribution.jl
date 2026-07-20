@@ -180,7 +180,8 @@ end
 end
 
 @testset "Distorted distribution logcdf" begin
-    D = condition(GaussianCopula([1.0 0.6; 0.6 1.0]), (1,), (0.3,))(Normal())
+    D = condition(GaussianCopula([1.0 0.6; 0.6 1.0]), (1,), (0.3,))(Logistic())
+    @test D isa Copulas.DistortedDist
     for x in (-8.0, -0.5, 1.0)
         @test logcdf(D, x) ≈ logcdf(D.D, cdf(D.X, x)) atol = 2e-13
     end
@@ -213,9 +214,12 @@ end
     S = SurvivalCopula(ClaytonCopula(2, 2.0), (2,))
     D = condition(S, (1,), (0.3,))
     @test D isa Copulas.FlipDistortion
-    for u in (1e-12, 0.2, 0.5, 0.8)
+    for u in (0.2, 0.5, 0.8)
         @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 2e-12
     end
+    u = 1e-12
+    @test logcdf(D, u) ≈ LogExpFunctions.log1mexp(logcdf(D.base, 1 - u)) atol = 2e-12
+    @test isfinite(logcdf(D, u))
     @test logcdf(D, 0.0) == -Inf
     @test logcdf(D, 1.0) == 0.0
 end
