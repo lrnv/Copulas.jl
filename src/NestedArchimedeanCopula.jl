@@ -553,7 +553,8 @@ end
 # Uncensored nested log-density (the standard Distributions._logpdf entry point).
 function Distributions._logpdf(C::NestedArchimedeanCopula{d}, u) where {d}
     if !all(0 .< u .< 1)
-        return eltype(u)(-Inf)
+        T = eltype(u) <: AbstractFloat ? eltype(u) : Float64
+        return T(-Inf)
     end
     Tu = eltype(u) <: AbstractFloat ? float(eltype(u)) : Float64
     # Promote with the generator-param eltype of the whole tree so that

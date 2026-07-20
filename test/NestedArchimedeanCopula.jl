@@ -463,9 +463,19 @@ end
     # 6. Constructor validation and a fit/smoke usage.
     # -----------------------------------------------------------------------
     @testset "constructor validation & smoke" begin
+        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            leaves = [1, 1])
         # Overlapping dims must error.
         @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
             leaves = [1], children = [ClaytonCopula(2, 5.0) => [1, 2]])
+        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            children = [ClaytonCopula(2, 5.0) => [1]])
+        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            children = [ClaytonCopula(2, 5.0) => [2, 3]])
+        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            leaves = [0], children = [ClaytonCopula(2, 5.0)])
+        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            leaves = [-1], children = [ClaytonCopula(2, 5.0)])
         # Auto-placement must not silently overlap with a root leaf.
         @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
             leaves = [2], children = [ClaytonCopula(2, 5.0)])
@@ -486,6 +496,17 @@ end
         pts = [big.([0.3, 0.32, 0.6, 0.62]), big.([0.5, 0.52, 0.2, 0.22])]
         ll = sum(logpdf(C, p) for p in pts)
         @test isfinite(ll)
+
+        # Mixed CDF boundaries marginalise coordinates at one and vanish when
+        # any coordinate is zero. Density support checks accept numeric input
+        # types without attempting to convert -Inf to an integer.
+        u = [0.3, 0.4, 0.6, 0.7]
+        @test cdf(C, [u[1], u[2], 1.0, 1.0]) ≈ cdf(ClaytonCopula(2, 5.0), u[1:2])
+        @test iszero(cdf(C, [u[1], 0.0, u[3], u[4]]))
+        @test logpdf(C, [0, 1, 1, 1]) == -Inf
+        @test logpdf(C, [u[1], 1.0, u[3], u[4]]) == -Inf
+        @test logpdf(C, [u[1], -0.1, u[3], u[4]]) == -Inf
+        @test logpdf(C, [u[1], NaN, u[3], u[4]]) == -Inf
     end
 
     # -----------------------------------------------------------------------
