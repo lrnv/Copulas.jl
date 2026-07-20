@@ -155,6 +155,18 @@ end
     @test logcdf(D, 1.0) == 0.0
 end
 
+@testset "Elliptical conditioning shares matrix factorizations" begin
+    Σ = [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]
+    for C in (GaussianCopula(Σ), TCopula(4, Σ))
+        conditioned = condition(C, (1,), (0.35,))
+        @test length(conditioned.m) == 2
+        for (k, i) in enumerate((2, 3)), u in (0.2, 0.7)
+            reference = Copulas.DistortionFromCop(C, (1,), (0.35,), i)
+            @test cdf(conditioned.m[k], u) ≈ cdf(reference, u) atol = 2e-12
+        end
+    end
+end
+
 @testset "Archimedean distortion logcdf" begin
     distortions = (
         condition(ClaytonCopula(3, 2.0), (1, 2), (0.3, 0.6)),

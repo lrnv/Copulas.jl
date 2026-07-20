@@ -122,6 +122,23 @@ function ConditionalCopula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
     return GaussianCopula(Σcond)
 end
 
+function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
+                                 uⱼₛ::NTuple{p,Float64}, is) where {D,MT,p}
+    J = collect(Int, js)
+    I = collect(Int, is)
+    Σ = C.Σ
+    F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ[J, J]))
+    zJ = Distributions.quantile.(Distributions.Normal(), collect(uⱼₛ))
+    ΣIJ = Σ[I, J]
+    μ = ΣIJ * (F \ zJ)
+    Σcond = Σ[I, I] - ΣIJ * (F \ Σ[J, I])
+    distortions = ntuple(k -> begin
+        σ² = max(Σcond[k, k], zero(eltype(Σcond)))
+        GaussianDistortion(float(μ[k]), float(sqrt(σ²)))
+    end, length(is))
+    return GaussianCopula(Σcond), distortions
+end
+
 # Subsetting colocated
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula(C.Σ[collect(dims),collect(dims)])
 

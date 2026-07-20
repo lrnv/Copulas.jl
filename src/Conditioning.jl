@@ -282,13 +282,18 @@ condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}()
 # (StackOverflow). The downstream `DistortionFromCop`/`ConditionalCopula` still
 # store `Float64`, so non-`Float64` values are converted there — the conditioning
 # result is computed in `Float64` regardless of input precision.
+function _conditional_components(C::Copula, js, uⱼₛ, is)
+    CC = ConditionalCopula(C, js, uⱼₛ)
+    distortions = CC isa ConditionalCopula ? CC.distortions :
+                  Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in is)
+    return CC, distortions
+end
+
 function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, <:Real}) where {D, p}
     is = Tuple(setdiff(1:D, js))
     p==D-1 && return DistortionFromCop(C, js, uⱼₛ, is[1])
-    CC = ConditionalCopula(C, js, uⱼₛ)
-    margins = CC isa ConditionalCopula ? CC.distortions :
-              Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in is)
-    return SklarDist(CC, margins)
+    CC, distortions = _conditional_components(C, js, uⱼₛ, is)
+    return SklarDist(CC, distortions)
 end
 
 condition(C::SklarDist{<:Copula{D}}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
@@ -298,9 +303,7 @@ function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::
     if p == D - 1
         return DistortionFromCop(X.C, js, uⱼₛ, is[1])(X.m[is[1]])
     end
-    CC = ConditionalCopula(X.C, js, uⱼₛ)
-    distortions = CC isa ConditionalCopula ? CC.distortions :
-                  Tuple(DistortionFromCop(X.C, js, uⱼₛ, i) for i in is)
+    CC, distortions = _conditional_components(X.C, js, uⱼₛ, is)
     margins = Tuple(distortions[k](X.m[is[k]]) for k in eachindex(is))
     return SklarDist(CC, margins)
 end

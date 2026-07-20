@@ -78,6 +78,29 @@ function ConditionalCopula(C::TCopula{D,df,MT}, js, uⱼₛ) where {D,df,MT}
     R_cond = Matrix(Σcond ./ (σ * σ'))
     return TCopula(df + p, R_cond)
 end
+
+function _conditional_components(C::TCopula{D,ν,MT}, js::NTuple{p,Int},
+                                 uⱼₛ::NTuple{p,Float64}, is) where {D,ν,MT,p}
+    J = collect(Int, js)
+    I = collect(Int, is)
+    Σ = C.Σ
+    F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ[J, J]))
+    zJ = Distributions.quantile.(Distributions.TDist(ν), collect(uⱼₛ))
+    solved_zJ = F \ zJ
+    ΣIJ = Σ[I, J]
+    μ = ΣIJ * solved_zJ
+    Σcond = Σ[I, I] - ΣIJ * (F \ Σ[J, I])
+    δ = LinearAlgebra.dot(zJ, solved_zJ)
+    νp = ν + p
+    scale = sqrt((ν + δ) / νp)
+    distortions = ntuple(k -> begin
+        σ² = max(Σcond[k, k], zero(eltype(Σcond)))
+        StudentDistortion(float(μ[k]), float(sqrt(σ²) * scale), Int(ν), Int(νp))
+    end, length(is))
+    σ = sqrt.(LinearAlgebra.diag(Σcond))
+    Rcond = Matrix(Σcond ./ (σ * σ'))
+    return TCopula(νp, Rcond), distortions
+end
 # Subsetting colocated
 SubsetCopula(C::TCopula{d,df,MT}, dims::NTuple{p, Int}) where {d,df,MT,p} = TCopula(df, C.Σ[collect(dims),collect(dims)])
 
