@@ -184,13 +184,13 @@ end
 # For v ∈ (0,1)^d, let u_I = quantile(D_k, v_k) with D_k = H_{i_k|J}(·|u_J).
 # Then c_{I|J}(v) = f_{U_I|U_J}(u_I|u_J) / ∏_k f_{U_{i_k}|U_J}(u_{i_k}|u_J).
 # The Jacobian of v_k = D_k(u_k) contributes 1 / pdf(D_k, u_k).
-function Distributions._logpdf(CC::ConditionalCopula{d,D,p,TDs}, v::AbstractVector{<:Real}) where {d,D,p,TDs}
-    T = promote_type(eltype(v), Float64)
+function Distributions._logpdf(CC::ConditionalCopula{d,D,p,T,TDs}, v::AbstractVector{<:Real}) where {d,D,p,T,TDs}
+    TR = promote_type(eltype(v), T)
 
     # Support: 
-    CC.den <= 0 && return -Inf
+    CC.den <= 0 && return TR(-Inf)
     for vₖ in v
-        0 < vₖ < 1 || return T(-Inf)
+        0 < vₖ < 1 || return TR(-Inf)
     end
 
     # 1) Map v → u_I via the stored distortions (non-sequential conditioning on J only)
@@ -198,7 +198,7 @@ function Distributions._logpdf(CC::ConditionalCopula{d,D,p,TDs}, v::AbstractVect
     # 2) Full u vector at which to evaluate the base copula density
     u = _assemble(D, CC.is, CC.js, uI, CC.uⱼₛ)
     # 3) Joint conditional density on the original uniform scale
-    logdensity = Distributions.logpdf(CC.C, u) - log(CC.den)
+    logdensity = TR(Distributions.logpdf(CC.C, u) - log(CC.den))
     # 4) Change variables from u_I to the conditional marginal scales v
     for idx in 1:d
         logdensity -= Distributions.logpdf(CC.distortions[idx], uI[idx])
