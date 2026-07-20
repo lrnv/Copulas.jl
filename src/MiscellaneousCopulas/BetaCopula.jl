@@ -21,7 +21,7 @@ Notes:
 - Supports `cdf`, `logpdf` at observed points and random sampling.
 
 References:
-* [segers2017empirical](@cite) Segers, J., Sibuya, M., & Tsukahara, H. (2017). The empirical beta copula. Journal of Multivariate Analysis, 155, 35-51.
+* [segers2017](@cite) Segers, J., Sibuya, M., & Tsukahara, H. (2017). The empirical beta copula. Journal of Multivariate Analysis, 155, 35-51.
 """
 struct BetaCopula{d,MT} <: Copula{d}
     ranks::MT   # d×n (each row is in 1..n)

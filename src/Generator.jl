@@ -259,7 +259,7 @@ Special case (finite-support discrete X)
     iterable, the standard `WilliamsonGenerator` is constructed.
 
 References: 
-* [williamson1955multiply](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
+* [williamson1956](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
 * [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
 """
 struct WilliamsonGenerator{TX, d} <: Generator
@@ -431,7 +431,7 @@ Notes
   relied on the `EmpiricalGenerator` type should instead treat the result as a `Generator`.
 
 References
-* [mcneil2009multivariate](@cite)
+* [mcneil2009](@cite)
 * [williamson1956](@cite)
 * [genest2011a](@cite) Genest, Neslehova and Ziegel (2011), Inference in Multivariate Archimedean Copula Models
 """
