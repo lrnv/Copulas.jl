@@ -146,6 +146,8 @@ end
 
 @testset "Student distortion logcdf" begin
     D = condition(TCopula(4, [1.0 0.5; 0.5 1.0]), (1,), (0.3,))
+    @test D.Tu isa TDist
+    @test D.Tcond isa TDist
     for u in (1e-10, 0.2, 0.5, 0.8)
         @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 2e-13
     end
