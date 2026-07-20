@@ -93,12 +93,16 @@ end
 
 _cdf(fgm::FGMCopula, u::Vector{T}) where {T} = prod(u) * (1 + _fgm_red(fgm.θ, 1 .-u))
 Distributions._logpdf(fgm::FGMCopula, u) = log1p(_fgm_red(fgm.θ, 1 .-2u))
-function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d, Tθ, Tf}, x::AbstractVector{T}) where {d,Tθ, Tf, T <: Real}
-    I = Base.reverse(digits(rand(rng,fgm.fᵢ), base=2, pad=d))
-    V₀ = rand(rng, d)
-    V₁ = rand(rng, d)
-    x .= 1 .- sqrt.(V₀) .* (V₁ .^ I)
-    return x
+function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d, Tθ, Tf}, A::AbstractMatrix{T}) where {d,Tθ, Tf, T <: Real}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    Random.rand!(rng, A)
+    V₁ = rand(rng, T, size(A))
+    states = rand(rng, fgm.fᵢ, size(A, 2))
+    @inbounds for (j, col) in enumerate(axes(A, 2)), (i, row) in enumerate(axes(A, 1))
+        bit = (states[j] >> (d - i)) & 1
+        A[row, col] = one(T) - sqrt(A[row, col]) * (iszero(bit) ? one(T) : V₁[i, j])
+    end
+    return A
 end
 τ(fgm::FGMCopula{2, Tθ, Tf}) where {Tθ,Tf} = (2*fgm.θ[1])/9
 function τ⁻¹(::Type{<:FGMCopula}, τ)

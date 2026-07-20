@@ -72,17 +72,19 @@ function Distributions._logpdf(S::PlackettCopula{P}, uv) where {P}
 end
 import Random
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT<:PlackettCopula}
-    u = rand(rng)
-    t = rand(rng)
-    a = t * (1 - t)
-    b = C.θ + a * (C.θ - 1)^2
-    cc = 2a * (u * C.θ^2 + 1 - u) + C.θ * (1 - 2a)
-    d = sqrt(C.θ) * sqrt(C.θ + 4a * u * (1 - u) * (1 - C.θ)^2)
-    v = (cc - (1 - 2t) * d) / (2b)
-    x[1] = u
-    x[2] = v
-    return x
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::AbstractMatrix{T}) where {T<:Real, CT<:PlackettCopula}
+    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    Random.rand!(rng, view(A, 1, :))
+    ts = rand(rng, T, size(A, 2))
+    @inbounds for (j, col) in enumerate(axes(A, 2))
+        u, t = A[1, col], ts[j]
+        a = t * (one(T) - t)
+        b = C.θ + a * (C.θ - 1)^2
+        cc = 2a * (u * C.θ^2 + 1 - u) + C.θ * (1 - 2a)
+        root = sqrt(C.θ) * sqrt(C.θ + 4a * u * (1 - u) * (1 - C.θ)^2)
+        A[2, col] = (cc - (1 - 2t) * root) / (2b)
+    end
+    return A
 end
 
 # Calculate Spearman's rho based on the PlackettCopula parameters
