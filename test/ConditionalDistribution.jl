@@ -88,6 +88,25 @@ end
     end
 end
 
+@testset "Lambert-W Archimedean distortion quantiles" begin
+    copulas = (
+        InvGaussianCopula(2, 0.5),
+        InvGaussianCopula(2, 2.0),
+        BB9Copula(2, 1.0, 0.8),
+        BB9Copula(2, 2.5, 0.8),
+    )
+    for C in copulas
+        D = condition(C, (1,), (0.4,))
+        for α in (0.1, 0.5, 0.9)
+            q = quantile(D, α)
+            generic = @invoke quantile(D::Copulas.Distortion, α::Real)
+            @test isapprox(cdf(D, q), α; atol=3e-11, rtol=3e-11)
+            @test isapprox(q, generic; atol=2e-8, rtol=2e-8)
+        end
+        @test quantile(D, big"0.37") isa BigFloat
+    end
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20

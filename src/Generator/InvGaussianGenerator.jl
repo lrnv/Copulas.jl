@@ -110,6 +110,22 @@ function ϕ⁽ᵏ⁾(G::InvGaussianGenerator, k::Int, t)
     end
 end
 
+function ϕ⁽ᵏ⁾⁻¹(G::InvGaussianGenerator, k::Int, t; start_at=t)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
+    T = float(promote_type(typeof(t), typeof(G.θ)))
+    target = T(t)
+    iszero(target) && return T(Inf)
+
+    if isinf(G.θ)
+        s = LambertW.lambertw(inv(-target))
+        return s^2 / 2
+    end
+
+    θ = T(G.θ)
+    s = θ * LambertW.lambertw(exp(inv(θ)) / (-target))
+    return max(zero(T), (s^2 - one(T)) / (2θ^2))
+end
+
 function ϕ⁻¹⁽¹⁾(G::InvGaussianGenerator, t)
     if isinf(G.θ)
         return log(t) / t

@@ -66,6 +66,21 @@ function ϕ⁽ᵏ⁾(G::BB9Generator, k::Int, s::Real)
     # end    
     # return ϕ(G, s) * B[end]
 end
+function ϕ⁽ᵏ⁾⁻¹(G::BB9Generator, k::Int, t; start_at=t)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
+    T = float(promote_type(typeof(t), typeof(G.θ), typeof(G.δ)))
+    target = T(t)
+    iszero(target) && return T(Inf)
+    θ = T(G.θ)
+    θ == one(T) && return -log(-target)
+
+    δ = T(G.δ)
+    θm1 = θ - one(T)
+    logscaled = log(-θ * target) - inv(δ)
+    logarg = -logscaled / θm1 - log(θm1)
+    z = θm1 * LambertW.lambertw(exp(logarg))
+    return max(zero(T), exp(θ * log(z)) - δ^(-θ))
+end
 ϕ⁻¹⁽¹⁾(G::BB9Generator, t) = -G.θ * (inv(G.δ) - log(t))^(G.θ - 1) / t
 
 frailty(G::BB9Generator) =  TiltedPositiveStable(inv(G.θ), G.δ^(-G.θ))
