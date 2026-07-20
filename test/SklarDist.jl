@@ -12,7 +12,9 @@
         d = length(C)
         Z = Copulas.SklarDist(C, ntuple(_->Normal(), d))
         spl10 = rand(rng, C, 10)
+        splZ1 = rand(rng, Z)
         splZ10 = rand(rng, Z, 10)
+        @test length(splZ1) == d
 
         # subsetdims should work and agree through SklarDist wrapping
         @testset "subsetdims wiring (d=$(d), $(typeof(C)))" begin

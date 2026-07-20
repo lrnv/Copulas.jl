@@ -83,6 +83,10 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,Tp
     end
     return A
 end
+function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist, x::AbstractVector{T}) where {T<:Real}
+    Distributions._rand!(rng, S, reshape(x, length(S), 1))
+    return x
+end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins}, u) where {CT,TplMargins}
     d = length(S)
     T = _sklar_work_eltype(S, u)
