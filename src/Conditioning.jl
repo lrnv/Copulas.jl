@@ -183,8 +183,7 @@ end
 # Density of the conditional copula on [0,1]^d.
 # For v ∈ (0,1)^d, let u_I = quantile(D_k, v_k) with D_k = H_{i_k|J}(·|u_J).
 # Then c_{I|J}(v) = f_{U_I|U_J}(u_I|u_J) / ∏_k f_{U_{i_k}|U_J}(u_{i_k}|u_J).
-# Using copula calculus: f_{U_I|U_J}(u_I|u_J) = c(u)/den, and
-# f_{U_{i}|U_J}(u_i|u_J) = ∂^{p+1}C/∂(J,i) / den.
+# The Jacobian of v_k = D_k(u_k) contributes 1 / pdf(D_k, u_k).
 function Distributions._logpdf(CC::ConditionalCopula{d,D,p,TDs}, v::AbstractVector{<:Real}) where {d,D,p,TDs}
     T = promote_type(eltype(v), Float64)
 
@@ -198,24 +197,13 @@ function Distributions._logpdf(CC::ConditionalCopula{d,D,p,TDs}, v::AbstractVect
     uI = Distributions.quantile.(CC.distortions, v)
     # 2) Full u vector at which to evaluate the base copula density
     u = _assemble(D, CC.is, CC.js, uI, CC.uⱼₛ)
-    # 3) Joint conditional density: log c(u) - log den
-    logc_full = Distributions.logpdf(CC.C, u)
-    logden    = log(CC.den)
-    # 4) Sum of log conditional marginal numerators: ∑ log ∂^{p+1} C / ∂(J,i)
-    #    Evaluate each at vector with only (J fixed, i at u_i; others at 1)
-    sum_log_num = 0.0
+    # 3) Joint conditional density on the original uniform scale
+    logdensity = Distributions.logpdf(CC.C, u) - log(CC.den)
+    # 4) Change variables from u_I to the conditional marginal scales v
     for idx in 1:d
-        i = CC.is[idx]
-        ui = uI[idx]
-        z = _assemble(D, (i,), CC.js, (ui,), CC.uⱼₛ)
-        # Mixed partial of order p+1 with respect to (J..., i)
-        num = _der(u -> Distributions.cdf(CC.C, u), z, (CC.js..., i))
-        (num <= 0 || !isfinite(num)) && return T(-Inf)
-        sum_log_num += log(num)
+        logdensity -= Distributions.logpdf(CC.distortions[idx], uI[idx])
     end
-
-    # log c_{I|J}(v) = log c(u) + (d-1) log den − ∑ log num_i
-    return logc_full + (d - 1) * logden - sum_log_num
+    return logdensity
 end
 
 # Sampling: sequential inverse-CDF using conditional distortions
