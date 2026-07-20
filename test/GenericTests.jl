@@ -533,8 +533,36 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             @test abs(p_hat - p_th) ≤ max(5*se, 2e-3)
         end
 
+        @testif (C isa BC2Copula || C isa MOCopula || C isa CuadrasAugeCopula) "Singular sampler structure" begin
+            # The empirical-CDF check is fragile for these singular laws.
+            # Check their margins and analytically known singular mass instead.
+            @test all(isapprox.(vec(mean(spl1000; dims=2)), 0.5; atol=0.04, rtol=0))
 
-        # This test takes more than 5 hours to run 
+            x = .-log.(spl1000[1, :])
+            y = .-log.(spl1000[2, :])
+            if C isa BC2Copula
+                a, b = C.tail.a, C.tail.b
+                ray1 = isapprox.(a .* x, b .* y; atol=1e-10, rtol=1e-7)
+                ray2 = isapprox.((1-a) .* x, (1-b) .* y; atol=1e-10, rtol=1e-7)
+                observed = mean(ray1 .| ray2)
+                expected = 1 - abs(a-b)
+            elseif C isa MOCopula
+                λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
+                atom = isapprox.((λ₂+λ₁₂) .* x, (λ₁+λ₁₂) .* y;
+                                atol=1e-10, rtol=1e-7)
+                observed = mean(atom)
+                expected = λ₁₂ / (λ₁ + λ₂ + λ₁₂)
+            else
+                θ = C.tail.θ
+                observed = mean(spl1000[1, :] .== spl1000[2, :])
+                expected = θ / (2-θ)
+            end
+            se = sqrt(expected * (1-expected) / size(spl1000, 2))
+            @test abs(observed-expected) <= max(5*se, 0.01)
+        end
+
+
+        # This test takes more than 5 hours to run
         # This is clarly unacceptable, but moreover we dont know which copula takes the most time 
         # sadly ;)
         
