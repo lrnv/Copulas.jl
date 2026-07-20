@@ -71,16 +71,13 @@ end
 # You have to implement a cdf, and you can implement a pdf, either in log scaleor not: 
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
-Distributions.logpdf(d::Distortion, t::Real) = log(Distributions.pdf(d, t))
-Distributions.pdf(d::Distortion, t::Real) = exp(Distributions.logpdf(d, t))
-
-# These slow versions are given, but you should probably overrid them: 
 function Distributions.logpdf(d::Distortion, u::Real)
     (0.0 <= u <= 1.0) || return -Inf
     v = ForwardDiff.derivative(t -> Distributions.cdf(d, t), float(u))
     v <= 0 && return -Inf
     return log(v)
 end
+Distributions.pdf(d::Distortion, t::Real) = exp(Distributions.logpdf(d, t))
 
 """
     DistortionFromCop{TC,p,T} <: Distortion
