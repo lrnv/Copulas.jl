@@ -39,14 +39,21 @@ end
         uⱼ = j == 1 ? 0.3 : 0.7
         D = condition(C, (j,), (uⱼ,))
         @test D isa Copulas.PlackettDistortion
+        @test isfinite(D.logden)
 
         for α in (0.1, 0.5, 0.9)
             q = quantile(D, α)
             @test isapprox(cdf(D, q), α; atol=5e-12, rtol=5e-12)
         end
+        for u in (0.2, 0.6)
+            reference = ForwardDiff.derivative(t -> cdf(D, t), u)
+            @test logpdf(D, u) ≈ log(reference) atol = 2e-11
+        end
         @test quantile(D, 0.0) == 0.0
         @test quantile(D, 1.0) == 1.0
         @test quantile(D, big"0.37") isa BigFloat
+        @test logpdf(D, -0.1) == -Inf
+        @test logpdf(D, 1.1) == -Inf
     end
 
     Dind = Copulas.PlackettDistortion(1.0, Int8(1), 0.4)
