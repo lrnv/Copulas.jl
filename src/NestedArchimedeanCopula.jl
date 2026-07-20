@@ -592,16 +592,18 @@ end
 # Sampling. NestedArchimedeanCopula has no bespoke Marshall–Olkin frailty
 # sampler; instead we draw via the inverse Rosenblatt transform, which is driven
 # by our closed-form `_cdf`/`DistortionFromCop`/`subsetdims` specialisations
-# (nested/NestedConditioning.jl). A single VECTOR `_rand!` is enough — the
-# Distributions.jl `rand(C, n)` matrix path loops over this vector form (mirrors
-# ArchimedeanCopula/SubsetCopula). Dispatches only on NestedArchimedeanCopula, so
-# the flat-collapse ArchimedeanCopula sampler is untouched. The per-coordinate
-# inverse-CDF is an O(d) sequential bisection (≈ms/sample); keep sampled N modest.
+# (nested/NestedConditioning.jl). The matrix sampler applies the inverse
+# Rosenblatt transform to a complete batch; the generic copula vector sampler
+# delegates to this method with a single-column matrix. Dispatches only on
+# NestedArchimedeanCopula, so the flat-collapse ArchimedeanCopula sampler is
+# untouched. The per-coordinate inverse-CDF is an O(d) sequential bisection
+# (≈ms/sample); keep sampled N modest.
 function Distributions._rand!(rng::Distributions.AbstractRNG,
                               C::NestedArchimedeanCopula{d},
-                              x::AbstractVector{T}) where {T<:Real, d}
-    x .= inverse_rosenblatt(C, rand(rng, T, d))
-    return x
+                              A::AbstractMatrix{T}) where {T<:Real, d}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    A .= inverse_rosenblatt(C, rand(rng, T, size(A)))
+    return A
 end
 
 # Copula-scale mixed partial of the nested CDF over the observed coordinates.
