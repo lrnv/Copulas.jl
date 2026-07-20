@@ -27,6 +27,20 @@ import Copulas: Generator, ϕ, ϕ⁻¹, ϕ⁻¹⁽¹⁾, ϕ⁽ᵏ⁾
 import Copulas: ClaytonGenerator, GumbelGenerator, FrankGenerator, JoeGenerator
 import Copulas: NestedDistortion, subsetdims, condition, _censored_copula_logpdf
 
+# Test-only generator adaptor selecting the implicit edge-composition method by
+# ordinary dispatch. It avoids mutating the session-global generic method.
+struct ImplicitTestGenerator{G<:Generator} <: Generator
+    inner::G
+end
+Distributions.params(G::ImplicitTestGenerator) = Distributions.params(G.inner)
+Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
+ϕ(G::ImplicitTestGenerator, t) = ϕ(G.inner, t)
+ϕ⁻¹(G::ImplicitTestGenerator, t) = ϕ⁻¹(G.inner, t)
+ϕ⁻¹⁽¹⁾(G::ImplicitTestGenerator, t) = ϕ⁻¹⁽¹⁾(G.inner, t)
+ϕ⁽ᵏ⁾(G::ImplicitTestGenerator, k::Int, t) = ϕ⁽ᵏ⁾(G.inner, k, t)
+Copulas.composition_taylor(o::ImplicitTestGenerator, i::ImplicitTestGenerator, t₀, d) =
+    Copulas.composition_taylor_implicit(o.inner, i.inner, t₀, d)
+
 # Seeded RNG, matching runtests' `StableRNG(123)` when StableRNGs is on the path
 # (the package test environment); falls back to a seeded Xoshiro so this file
 # also runs standalone via `--project=.`. The value is invariant either way:
@@ -147,6 +161,16 @@ function acopula_maxerr(datadir, name, GT, sectors, θroot, θsector; nrows = 12
         maxerr = max(maxerr, abs(ours - ll[i]))
     end
     return maxerr
+end
+
+function implicit_acopula_maxerr(datadir, name, GT, sectors, θroot, θsector; nrows = 3)
+    U  = readdlm(joinpath(datadir, name * "_U.csv"), ',')
+    ll = vec(readdlm(joinpath(datadir, name * "_acopula_ll.csv"), ','))
+    wrap(θ) = ImplicitTestGenerator(GT(θ))
+    C = NestedArchimedeanCopula(wrap(θroot);
+            children = [ArchimedeanCopula(s, wrap(θsector)) for s in sectors])
+    return maximum(abs(Float64(logpdf(C, big.(U[i, :]))) - ll[i])
+                   for i in representative_rows(size(U, 1), nrows))
 end
 
 @testset "NestedArchimedeanCopula" begin
@@ -509,21 +533,14 @@ end
     #    reproduces correct nested logpdfs at the full density level, not just
     #    per-edge.
     #
-    #    A same-signature redefinition is a SESSION-GLOBAL override, so restoration
-    #    is protected by `finally`. Per-edge coverage already spans every family;
-    #    two compact end-to-end cases are sufficient here.
+    #    A test-only generator adaptor selects the implicit path by dispatch, so
+    #    this check neither overwrites global methods nor invalidates compilation.
+    #    Per-edge coverage already spans every family; two cases suffice here.
     # -----------------------------------------------------------------------
-    @testset "global implicit override gives correct nested densities" begin
-        try
-            Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
-                Copulas.composition_taylor_implicit(o, i, t₀, d)
-            datadir = joinpath(@__DIR__, "data", "nested")
-            for case in (_ACOPULA_CASES[1], _ACOPULA_CASES[4])
-                @test acopula_maxerr(datadir, case...; nrows = 3) < 1e-9
-            end
-        finally
-            Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
-                Copulas.composition_taylor_direct(o, i, t₀, d)
+    @testset "implicit dispatch gives correct nested densities" begin
+        datadir = joinpath(@__DIR__, "data", "nested")
+        for case in (_ACOPULA_CASES[1], _ACOPULA_CASES[4])
+            @test implicit_acopula_maxerr(datadir, case...) < 1e-9
         end
     end
 
