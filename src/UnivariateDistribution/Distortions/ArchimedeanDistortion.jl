@@ -11,6 +11,14 @@ end
 function Distributions.cdf(D::ArchimedeanDistortion{TG, T}, u::Real) where {TG, T}
     return ϕ⁽ᵏ⁾(D.G, D.p, D.sJ + ϕ⁻¹(D.G, float(u))) / D.den
 end
+function Distributions.logcdf(D::ArchimedeanDistortion, u::Real)
+    T = float(promote_type(typeof(u), typeof(D.sJ), typeof(D.den)))
+    u <= 0 && return T(-Inf)
+    u >= 1 && return zero(T)
+    ξ = ϕ⁻¹(D.G, T(u))
+    num = ϕ⁽ᵏ⁾(D.G, D.p, T(D.sJ) + ξ)
+    return log(abs(num)) - log(abs(T(D.den)))
+end
 function Distributions.quantile(D::ArchimedeanDistortion{TG, T}, α::Real) where {TG, T}
     y = ϕ⁽ᵏ⁾⁻¹(D.G, D.p, α * D.den; start_at = D.sJ)
     return ϕ(D.G, y - D.sJ)

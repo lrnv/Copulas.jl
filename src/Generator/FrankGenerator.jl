@@ -54,6 +54,15 @@ _θ_bounds(::Type{<:FrankGenerator}, d) = d==2 ? (-Inf, Inf) : (0, Inf)
 function ϕ⁽ᵏ⁾(G::FrankGenerator, k::Int, t)
     return (-1)^k * (1 / G.θ) * PolyLog.reli(-(k - 1), -expm1(-G.θ) * exp(-t))
 end
+function ϕ⁽ᵏ⁾⁻¹(G::FrankGenerator, k::Int, t; start_at=t)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
+    T = float(promote_type(typeof(t), typeof(G.θ)))
+    target = T(t)
+    iszero(target) && return T(Inf)
+    θ = T(G.θ)
+    z = θ * target
+    return log(abs(expm1(-θ))) + log1p(-z) - log(abs(z))
+end
 ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
 
 # Taylor1-compatible ϕ / ϕ⁻¹: the θ>0 scalar forms above use `log1mexp`, which has

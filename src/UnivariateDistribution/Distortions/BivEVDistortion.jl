@@ -5,9 +5,15 @@ struct BivEVDistortion{TT,T} <: Distortion
     tail::TT
     j::Int8
     uⱼ::T
+    negloguⱼ::T
 end
-function Distributions.logcdf(D::BivEVDistortion, z::Real)
-    T = typeof(z)
+function BivEVDistortion(tail, j::Int8, uⱼ::Real)
+    uⱼ = float(uⱼ)
+    negloguⱼ = uⱼ > zero(uⱼ) ? -log(uⱼ) : typeof(uⱼ)(Inf)
+    return BivEVDistortion{typeof(tail),typeof(uⱼ)}(tail, j, uⱼ, negloguⱼ)
+end
+function Distributions.logcdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1}
+    T = promote_type(typeof(z), TF1)
     # bounds and degeneracies
     z ≤ 0    && return T(-Inf)   # P(X ≤ 0) = 0
     z ≥ 1    && return T(0)      # P(X ≤ 1) = 1
@@ -16,7 +22,7 @@ function Distributions.logcdf(D::BivEVDistortion, z::Real)
 
     if D.j == 2
         # Condition on the second variable : V = D.uⱼ, free = u=z
-        x, y = -log(z), -log(D.uⱼ)
+        x, y = -log(z), D.negloguⱼ
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)
@@ -24,7 +30,7 @@ function Distributions.logcdf(D::BivEVDistortion, z::Real)
         logval = -s * Aw + y
     else
         # Condition on the first variable : U = D.uⱼ, free = v=z
-        x, y = -log(D.uⱼ), -log(z)
+        x, y = D.negloguⱼ, -log(z)
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)
@@ -35,9 +41,9 @@ function Distributions.logcdf(D::BivEVDistortion, z::Real)
     # upper clip but no lower clip
     return min(logval + log(max(tolog, T(0))), T(0))
 end
-function Distributions.logpdf(D::BivEVDistortion, z::Real)
-    T = typeof(z)
-    # bounds and degeneracies
+function Distributions.logpdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1}
+    T = promote_type(typeof(z), TF1)
+    # Support and degeneracies
     z ≤ 0    && return T(-Inf)
     z ≥ 1    && return T(-Inf)
     D.uⱼ ≤ 0 && return T(-Inf)
@@ -45,7 +51,7 @@ function Distributions.logpdf(D::BivEVDistortion, z::Real)
 
     if D.j == 2
         # Condition on the second variable : V = D.uⱼ, free = u=z
-        x, y = -log(z), -log(D.uⱼ)
+        x, y = -log(z), D.negloguⱼ
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)
@@ -65,7 +71,7 @@ function Distributions.logpdf(D::BivEVDistortion, z::Real)
         return logval + log(B)
     else
         # Condition on the first variable : U = D.uⱼ, free = v=z
-        x, y = -log(D.uⱼ), -log(z)
+        x, y = D.negloguⱼ, -log(z)
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)

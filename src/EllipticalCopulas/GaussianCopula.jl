@@ -86,7 +86,9 @@ function _cdf(C::CT,u) where {CT<:GaussianCopula}
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
-    return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
+    L = LinearAlgebra.cholesky(C.Σ).L
+    z = Distributions.quantile.(Distributions.Normal(), u)
+    return Distributions.cdf.(Distributions.Normal(), L \ z)
 end
 
 function inverse_rosenblatt(C::GaussianCopula, s::AbstractMatrix{<:Real})
@@ -120,6 +122,23 @@ function ConditionalCopula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
     I = collect(setdiff(1:D, J))
     Σcond = C.Σ[I, I] - C.Σ[I, J] * inv(C.Σ[J, J]) * C.Σ[J, I]
     return GaussianCopula(Σcond)
+end
+
+function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
+                                 uⱼₛ::NTuple{p,Float64}, is) where {D,MT,p}
+    J = collect(Int, js)
+    I = collect(Int, is)
+    Σ = C.Σ
+    F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ[J, J]))
+    zJ = Distributions.quantile.(Distributions.Normal(), collect(uⱼₛ))
+    ΣIJ = Σ[I, J]
+    μ = ΣIJ * (F \ zJ)
+    Σcond = Σ[I, I] - ΣIJ * (F \ Σ[J, I])
+    distortions = ntuple(k -> begin
+        σ² = max(Σcond[k, k], zero(eltype(Σcond)))
+        GaussianDistortion(float(μ[k]), float(sqrt(σ²)))
+    end, length(is))
+    return GaussianCopula(Σcond), distortions
 end
 
 # Subsetting colocated

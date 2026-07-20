@@ -5,6 +5,12 @@ struct WDistortion{T} <: Distortion
     v::T
     j::Int8
 end
-Distributions.cdf(D::WDistortion, u::Real) = max(u + D.v - 1, 0) / D.v
+function Distributions.cdf(D::WDistortion, u::Real)
+    z = (u + D.v - 1) / D.v
+    return clamp(z, zero(z), one(z))
+end
 Distributions.quantile(D::WDistortion, α::Real) = α * D.v + (1 - D.v)
-Distributions.logpdf(D::WDistortion, u::Real) = (u + D.v > 1 ? -log(D.v) : -Inf)
+function Distributions.logpdf(D::WDistortion, u::Real)
+    T = promote_type(typeof(float(u)), typeof(D.v))
+    return 0 <= u <= 1 && u + D.v > 1 ? T(-log(D.v)) : T(-Inf)
+end

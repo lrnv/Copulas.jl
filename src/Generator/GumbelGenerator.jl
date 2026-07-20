@@ -68,6 +68,17 @@ function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Int, t)
         ) for j in 1:d
     )
 end
+function ϕ⁽ᵏ⁾⁻¹(G::GumbelGenerator, k::Int, t; start_at=t)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
+    T = float(promote_type(typeof(t), typeof(G.θ)))
+    θ = T(G.θ)
+    c = -θ * T(t)
+    iszero(c) && return T(Inf)
+    θm1 = θ - one(T)
+    logarg = -log(c) / θm1 - log(θm1)
+    z = θm1 * _lambertw_exp(logarg)
+    return exp(θ * log(z))
+end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * exp(log(-log(t))*(G.θ - 1))) / t
 τ(G::GumbelGenerator) = ifelse(isfinite(G.θ), (G.θ-1)/G.θ, 1)
 function τ⁻¹(::Type{<:GumbelGenerator}, τ)

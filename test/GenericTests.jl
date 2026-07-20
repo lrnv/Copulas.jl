@@ -626,6 +626,9 @@ Bestiary = filter(GenericTestFilter, Bestiary)
                     end
                     vals = cdf.(Ref(Dd), us)
                     pvals = pdf.(Ref(Dd), us)
+                    qs = quantile.(Ref(Dd), us)
+
+                    @test all(0 .<= qs .<= 1)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
                     @test all(pvals .>= 0)

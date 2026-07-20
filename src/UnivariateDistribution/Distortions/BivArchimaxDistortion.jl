@@ -15,6 +15,21 @@ struct BivArchimaxDistortion{TG,TT,T} <: Distortion
     tail::TT
     j::Int8
     uⱼ::T
+    yⱼ::T
+    invderivⱼ::T
+end
+function BivArchimaxDistortion(gen, tail, j::Int8, uⱼ::Real)
+    uⱼ = float(uⱼ)
+    if zero(uⱼ) < uⱼ < one(uⱼ)
+        yⱼ = typeof(uⱼ)(ϕ⁻¹(gen, uⱼ))
+        invderivⱼ = typeof(uⱼ)(ϕ⁻¹⁽¹⁾(gen, uⱼ))
+    else
+        yⱼ = zero(uⱼ)
+        invderivⱼ = zero(uⱼ)
+    end
+    return BivArchimaxDistortion{typeof(gen),typeof(tail),typeof(uⱼ)}(
+        gen, tail, j, uⱼ, yⱼ, invderivⱼ
+    )
 end
 
 function Distributions.logcdf(D::BivArchimaxDistortion, z::Real)
@@ -26,7 +41,7 @@ function Distributions.logcdf(D::BivArchimaxDistortion, z::Real)
     D.uⱼ ≥ 1 && return T(log(z))
 
     x = ϕ⁻¹(D.gen, z)
-    y = ϕ⁻¹(D.gen, D.uⱼ)
+    y = D.yⱼ
     S = x + y
     S <= 0 && return T(-Inf)
     t  = D.j==2 ? _safett(y / S) : _safett(x/S)
@@ -34,7 +49,7 @@ function Distributions.logcdf(D::BivArchimaxDistortion, z::Real)
     A1 = dA(D.tail, t)
     r = D.j==2 ? (A0 + (1 - t) * A1)  : (A0 - t * A1) 
     r = max(r, T(0))
-    return min(log(-ϕ⁽¹⁾(D.gen, S * A0)) + log(-ϕ⁻¹⁽¹⁾(D.gen, D.uⱼ) * r), T(0))
+    return min(log(-ϕ⁽¹⁾(D.gen, S * A0)) + log(-D.invderivⱼ * r), T(0))
 end
 function Distributions.logpdf(D::BivArchimaxDistortion, z::Real)
     T = typeof(z)
@@ -44,7 +59,7 @@ function Distributions.logpdf(D::BivArchimaxDistortion, z::Real)
     D.uⱼ ≥ 1 && return T(0)
 
     x = ϕ⁻¹(D.gen, z)
-    y = ϕ⁻¹(D.gen, D.uⱼ)
+    y = D.yⱼ
     S = x + y
     S <= 0 && return T(-Inf)
     t  = D.j==2 ? _safett(y / S) : _safett(x / S)
@@ -59,7 +74,7 @@ function Distributions.logpdf(D::BivArchimaxDistortion, z::Real)
     phi1G = ϕ⁽¹⁾(D.gen, G)
     phi2G = ϕ⁽ᵏ⁾(D.gen, 2, G)
 
-    inv_cond = ϕ⁻¹⁽¹⁾(D.gen, D.uⱼ)   # derivative of inverse at conditioning value
+    inv_cond = D.invderivⱼ
     dx_dz   = ϕ⁻¹⁽¹⁾(D.gen, z)      # derivative of inverse at z
 
     dGdx = D.j==2 ? (A0 - t * A1) : (A0 + (1 - t) * A1)

@@ -96,6 +96,16 @@ end
 ϕ⁻¹(G::AMHGenerator, t) = log(G.θ + (1-G.θ)/t)
 ϕ⁽¹⁾(G::AMHGenerator, t) = -((1-G.θ) * exp(t)) / (exp(t) - G.θ)^2
 ϕ⁽ᵏ⁾(G::AMHGenerator, k::Int, t) = (-1)^k * (1 - G.θ) / G.θ * PolyLog.reli(-k, G.θ * exp(-t))
+function ϕ⁽ᵏ⁾⁻¹(G::AMHGenerator, k::Int, t; start_at=t)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
+    T = float(promote_type(typeof(t), typeof(G.θ)))
+    θ = T(G.θ)
+    a = -T(t) / (one(T) - θ)
+    iszero(a) && return T(Inf)
+    discriminant = max(zero(T), one(T) + 4a * θ)
+    y = (one(T) + 2a * θ + sqrt(discriminant)) / (2a)
+    return log(y)
+end
 ϕ⁻¹⁽¹⁾(G::AMHGenerator, t) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
 𝒲₋₁(G::AMHGenerator, d::Int) = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),d) : @invoke 𝒲₋₁(G::Generator, d)
 frailty(G::AMHGenerator) = G.θ >= 0 ? Distributions.Geometric(1-G.θ) : throw("No frailty exists for AMH when θ < 0")

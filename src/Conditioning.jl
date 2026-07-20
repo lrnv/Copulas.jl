@@ -66,19 +66,22 @@ function Distributions.quantile(d::Distortion, α::Real)
     α > 1 - 2ϵ && return one(T)
     lα = log(α)
     f(u) = Distributions.logcdf(d, u) - lα
-    return Roots.find_zero(f, (ϵ, 1 - 2ϵ), Roots.Bisection(); xtol = sqrt(eps(T)))
+    lo, hi = ϵ, one(T) - 2ϵ
+    flo, fhi = f(lo), f(hi)
+    flo >= zero(flo) && return lo
+    fhi <= zero(fhi) && return hi
+    return Roots.find_zero(f, (lo, hi), Roots.Bisection(); xtol = sqrt(eps(T)))
 end
-# You have to implement one of these two: 
+# You have to implement a cdf, and you can implement a pdf, either in log scaleor not: 
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
-
-# These slow versions are given, but you should probably overrid them: 
 function Distributions.logpdf(d::Distortion, u::Real)
     (0.0 <= u <= 1.0) || return -Inf
     v = ForwardDiff.derivative(t -> Distributions.cdf(d, t), float(u))
     v <= 0 && return -Inf
     return log(v)
 end
+Distributions.pdf(d::Distortion, t::Real) = exp(Distributions.logpdf(d, t))
 
 """
     DistortionFromCop{TC,p,T} <: Distortion
@@ -119,6 +122,21 @@ struct DistortionFromCop{TC,p,T}<:Distortion
 end
 Distributions.cdf(d::DistortionFromCop, u::Real) = _partial_cdf(d.C, (d.i,), d.js, (u,), d.uⱼₛ) / d.den
 
+# Density on the uniform scale: f_{i|J}(u | u_J) = (∂^{p+1} C / ∂(J..., i))(u, u_J) / (∂^{p} C / ∂J)(1, u_J)
+function Distributions.logpdf(d::DistortionFromCop, u::Real)
+    # Support checks
+    (0 < u < 1) || return -Inf
+    d.den <= 0 && return -Inf
+
+    # Assemble the evaluation point with u at coordinate i, u_J fixed, others at 1
+    D = length(d.C)
+    z = _assemble(D, (d.i,), d.js, (float(u),), d.uⱼₛ)
+    # Mixed partial derivative of order p+1 w.r.t. (J..., i)
+    num = _der(u -> Distributions.cdf(d.C, u), z, (d.js..., d.i))
+    (num <= 0 || !isfinite(num)) && return -Inf
+    return log(num) - log(d.den)
+end
+
 """
     DistortedDist{Disto,Distrib} <: Distributions.UnivariateDistribution
 
@@ -132,6 +150,7 @@ struct DistortedDist{Disto, Distrib}<:Distributions.ContinuousUnivariateDistribu
     end
 end
 Distributions.cdf(D::DistortedDist, t::Real) = Distributions.cdf(D.D, Distributions.cdf(D.X, t))
+Distributions.logcdf(D::DistortedDist, t::Real) = Distributions.logcdf(D.D, Distributions.cdf(D.X, t))
 Distributions.quantile(D::DistortedDist, α::Real) = Distributions.quantile(D.X, Distributions.quantile(D.D, α))
 function Distributions.logpdf(D::DistortedDist, t::Real)
     u = Distributions.cdf(D.X, t)
@@ -149,22 +168,56 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     is::NTuple{d, Int}
     uⱼₛ::NTuple{p, T}
     den::T
+    logden::T
     distortions::TDs
     function ConditionalCopula(C::Copula{D}, js, uⱼₛ) where {D}
         jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
-        ist = Tuple(setdiff(1:D, jst))
+        ist = Tuple(i for i in 1:D if i ∉ jst)
         p = length(jst)
         d = D - p
         distos = Tuple(DistortionFromCop(C, jst, uⱼₛt, i) for i in ist)
-        den = p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
-                     Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
+        den = all(disto -> disto isa DistortionFromCop, distos) ? distos[1].den :
+              (p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
+                      Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt)))
         T = promote_type(eltype(uⱼₛt), typeof(den))
-        return new{d, D, p, T, typeof(distos)}(C, jst, ist, NTuple{p,T}(uⱼₛt), T(den), distos)
+        denT = T(den)
+        return new{d, D, p, T, typeof(distos)}(
+            C, jst, ist, NTuple{p,T}(uⱼₛt), denT,
+            denT > zero(T) ? log(denT) : T(-Inf), distos
+        )
     end
 end
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
-    return _partial_cdf(CC.C, CC.is, CC.js, Distributions.quantile.(CC.distortions, v), CC.uⱼₛ) / CC.den
+    uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)
+    return _partial_cdf(CC.C, CC.is, CC.js, uI, CC.uⱼₛ) / CC.den
 end
+
+# Density of the conditional copula on [0,1]^d.
+# For v ∈ (0,1)^d, let u_I = quantile(D_k, v_k) with D_k = H_{i_k|J}(·|u_J).
+# Then c_{I|J}(v) = f_{U_I|U_J}(u_I|u_J) / ∏_k f_{U_{i_k}|U_J}(u_{i_k}|u_J).
+# The Jacobian of v_k = D_k(u_k) contributes 1 / pdf(D_k, u_k).
+function Distributions._logpdf(CC::ConditionalCopula{d,D,p,T,TDs}, v::AbstractVector{<:Real}) where {d,D,p,T,TDs}
+    TR = promote_type(eltype(v), T)
+
+    # Support:
+    CC.den <= 0 && return TR(-Inf)
+    for vₖ in v
+        0 < vₖ < 1 || return TR(-Inf)
+    end
+
+    # 1) Map v → u_I via the stored distortions (non-sequential conditioning on J only)
+    uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)
+    # 2) Full u vector at which to evaluate the base copula density
+    u = _assemble(D, CC.is, CC.js, uI, CC.uⱼₛ)
+    # 3) Joint conditional density on the original uniform scale
+    logdensity = TR(Distributions.logpdf(CC.C, u) - CC.logden)
+    # 4) Change variables from u_I to the conditional marginal scales v
+    for idx in 1:d
+        logdensity -= Distributions.logpdf(CC.distortions[idx], uI[idx])
+    end
+    return logdensity
+end
+
 # Sampling: sequential inverse-CDF using conditional distortions
 function Distributions._rand!(rng::Distributions.AbstractRNG, CC::ConditionalCopula{d, D, p}, x::AbstractVector{T}) where {T<:Real, d, D, p}
     # We want a sample from the COPULA of the conditional model. Let U be a
@@ -235,18 +288,30 @@ condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}()
 # (StackOverflow). The downstream `DistortionFromCop`/`ConditionalCopula` still
 # store `Float64`, so non-`Float64` values are converted there — the conditioning
 # result is computed in `Float64` regardless of input precision.
+function _conditional_components(C::Copula, js, uⱼₛ, is)
+    CC = ConditionalCopula(C, js, uⱼₛ)
+    distortions = CC isa ConditionalCopula ? CC.distortions :
+                  Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in is)
+    return CC, distortions
+end
+
 function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, <:Real}) where {D, p}
-    margins = Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in setdiff(1:D, js))
-    p==D-1 && return margins[1]
-    return SklarDist(ConditionalCopula(C, js, uⱼₛ), margins)
+    is = Tuple(setdiff(1:D, js))
+    p==D-1 && return DistortionFromCop(C, js, uⱼₛ, is[1])
+    CC, distortions = _conditional_components(C, js, uⱼₛ, is)
+    return SklarDist(CC, distortions)
 end
 
 condition(C::SklarDist{<:Copula{D}}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
 function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::NTuple{p, <:Real}) where {D, Tpl, p}
     uⱼₛ = Tuple(Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ))
-    margins = Tuple(DistortionFromCop(X.C, js, uⱼₛ, i)(X.m[i]) for i in setdiff(1:D, js))
-    p==D-1 && return margins[1]
-    return SklarDist(ConditionalCopula(X.C, js, uⱼₛ), margins)
+    is = Tuple(setdiff(1:D, js))
+    if p == D - 1
+        return DistortionFromCop(X.C, js, uⱼₛ, is[1])(X.m[is[1]])
+    end
+    CC, distortions = _conditional_components(X.C, js, uⱼₛ, is)
+    margins = Tuple(distortions[k](X.m[is[k]]) for k in eachindex(is))
+    return SklarDist(CC, margins)
 end
 
 ###########################################################################

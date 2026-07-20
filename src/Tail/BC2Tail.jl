@@ -60,7 +60,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     u[2] = max(v1^(1/b), v2^(1/(1-b)))
     return u
 end
-function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{T}, S}, z::Real) where {T,S}
+function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{TF1}, TF2}, z::Real) where {TF1,TF2}
+    T = promote_type(TF1, TF2, typeof(z))
+
     a, b = D.tail.a, D.tail.b
 
     if !(0.0 < z < 1.0)
@@ -74,7 +76,7 @@ function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{T}, S}, z::Real) wher
     if D.j == 2
         # Condition on V = v, free = u = z
         u = z; v = ucond
-        lu, lv = log(u), log(v)
+        lu, lv = log(u), -D.negloguⱼ
         c1 = a*lu <= b*lv             # decide for min(u^a, v^b)
         c2 = (1-a)*lu <= (1-b)*lv     # decide for min(u^{1-a}, v^{1-b})
         if c1 && c2
@@ -99,7 +101,7 @@ function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{T}, S}, z::Real) wher
     else
         # Condition on U = u, free = v = z
         v = z; u = ucond
-        lu, lv = log(u), log(v)
+        lu, lv = -D.negloguⱼ, log(v)
         c1 = a*lu <= b*lv
         c2 = (1-a)*lu <= (1-b)*lv
         if c1 && c2
