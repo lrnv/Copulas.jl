@@ -22,7 +22,7 @@ using ExpectationMaximization
 using Random
 
 rng = MersenneTwister(27)
-n = 150
+n = 80
 nothing # hide
 ```
 
@@ -30,8 +30,10 @@ nothing # hide
 
 The initial `MixtureModel` contains information that its type alone cannot
 represent: its components, initial parameters, and weights. Consequently,
-`fit_mle` accepts an initialized `SklarDist` and lets
-ExpectationMaximization.jl fit the mixture margin before fitting the copula.
+`fit_mle` accepts an initialized `SklarDist` and jointly optimizes the copula,
+the marginal parameters, and the mixture probabilities against the complete
+`SklarDist` likelihood. The instance supplies both the model structure and the
+starting point of this numerical optimization.
 
 ```@example em
 mixture_margin = MixtureModel(
@@ -45,11 +47,7 @@ initial_sklar = SklarDist(
 )
 
 data = rand(rng, initial_sklar, n)
-fitted_sklar = fit_mle(
-    initial_sklar,
-    data;
-    copula_kwargs=(; vcov=false, derived_measures=false),
-)
+fitted_sklar = fit_mle(initial_sklar, data)
 
 typeof(fitted_sklar.m[1])
 ```
@@ -73,7 +71,7 @@ uniform_data = rand(rng, initial_copula_mixture, n)
 fitted_copula_mixture = fit_mle(
     initial_copula_mixture,
     uniform_data;
-    maxiter=5,
+    maxiter=3,
 )
 
 components(fitted_copula_mixture)
@@ -85,8 +83,10 @@ family supports the generic Copulas.jl MLE parameterization.
 ## A mixture of complete multivariate models
 
 The same mechanism applies when every EM component is a complete
-`SklarDist`. Both its margins and its copula are updated using the posterior
-weights computed by EM.
+`SklarDist`. Its margins and copula are jointly updated using the posterior
+weights computed by EM. Thus the component update maximizes the same weighted
+joint likelihood that appears in the M-step; it is not a separate marginal fit
+followed by an IFM copula fit.
 
 ```@example em
 component1 = SklarDist(
@@ -107,17 +107,43 @@ sklar_data = rand(rng, initial_sklar_mixture, n)
 fitted_sklar_mixture = fit_mle(
     initial_sklar_mixture,
     sklar_data;
-    maxiter=5,
+    maxiter=2,
 )
 
 components(fitted_sklar_mixture)
 ```
 
 Mixture margins can themselves appear inside these `SklarDist` components;
-the nested EM fits are dispatched recursively.
+their components and probabilities are parameterized recursively and included
+in the same joint optimization.
 
 !!! note "Weighted fitting"
     ExpectationMaximization.jl supplies posterior observation weights during
     its M-step. The extension implements this component update using maximum
     likelihood. Other Copulas.jl fitting methods such as `:itau` or `:irho`
     are intentionally not given an implicit weighted interpretation.
+
+## Supported margins and discrete data
+
+Joint likelihood optimization requires an unconstrained parameterization from
+which every candidate distribution can be reconstructed. The extension
+currently provides one for `Normal`, `LogNormal`, `LogitNormal`, `Cauchy`,
+`Gumbel`, `Laplace`, `Logistic`, `Beta`, `BetaPrime`, `FDist`, `Gamma`,
+`InverseGaussian`, `Pareto`, `Weibull`, `Chisq`, `Exponential`, `Rayleigh`,
+`TDist`, and `Uniform` margins. Continuous `MixtureModel` margins composed of
+these distributions are supported recursively. Their initial probabilities
+must be strictly positive. An informative `ArgumentError` is thrown for a
+continuous margin whose parameterization is not yet implemented.
+
+Discrete margins are intentionally rejected. For continuous margins, the
+joint density factors into the copula density evaluated at marginal CDFs and
+the product of the marginal densities. That formula is not valid when a margin
+has atoms: the corresponding probability mass requires copula-CDF differences
+over rectangles. `SklarDist` and its current `logpdf` implementation model the
+continuous case, so silently applying the continuous formula to a Poisson,
+categorical, or discrete-mixture margin would not be a valid likelihood.
+
+The optimizer starts from the supplied instance and may reach a local rather
+than global maximum, as is usual for mixture likelihoods. Marginal CDF values
+that round numerically to zero or one are moved just inside the unit interval
+before evaluating the copula density.
