@@ -277,16 +277,17 @@ append!(Bestiary, [
     EmpiricalEVCopula(randn(rng, 2,50); method=:cfg, pseudo_values=false),
     EmpiricalEVCopula(randn(rng, 2,50); method=:ols, pseudo_values=false),
     EmpiricalEVCopula(randn(rng, 2,50); method=:pickands, pseudo_values=false),
-    # Nested (hierarchical) Archimedean copulas. Inner θ > outer θ for nesting
-    # validity. The generic Fitting block is skipped (the nested type advertises
-    # no type-based fitting methods, since fit() is an instance API); sampling,
-    # cdf, pdf, subsetdims, conditioning, rosenblatt and τ-coherency are swept.
+    # Nested (hierarchical) Archimedean copulas. Same-family paths use increasing
+    # inner parameters. The generic Fitting block is skipped (the nested type
+    # advertises no type-based fitting methods, since fit() is an instance API);
+    # sampling, cdf, pdf, subsetdims, conditioning, rosenblatt and τ-coherency run.
     NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
         children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)]),                 # d=4, two panels
-    NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
-        children = [ClaytonCopula(2, 5.0)], leaves = [3]),                          # d=3, panel + bare leaf
+    NestedArchimedeanCopula(Copulas.GumbelGenerator(1.5);
+        leaves = [1], children = [NestedArchimedeanCopula(Copulas.GumbelGenerator(2.0);
+            leaves = [1], children = [GumbelCopula(2, 3.0)])]),                    # d=4, depth three
     NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
-        children = [FrankCopula(2, 5.0)], leaves = [3]),                            # d=3, panel + bare leaf
+        leaves = [1], children = [FrankCopula(2, 5.0) => [2, 3]]),                 # d=3, mixed panel + leaf
 ])
 
 macro testif(cond, args...)
