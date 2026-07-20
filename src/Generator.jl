@@ -361,7 +361,7 @@ function ϕ⁽ᵏ⁾(G::WilliamsonGenerator{TX, d}, k::Int, t) where {d, TX<:Dis
     @inbounds for j in lastindex(r):-1:firstindex(r)
         rⱼ = r[j]; wⱼ = w[j]
         t ≥ rⱼ && break
-        zpow = (d == k+1) ? one(t) : (1 - t / rⱼ)^(d - 1 - k)
+        zpow = (d == k+1) ? one(Tt) : (1 - t / rⱼ)^(d - 1 - k)
         S += wⱼ * zpow / rⱼ^k
     end
     return S * (isodd(k) ? -1 : 1) * Base.factorial(d - 1) / Base.factorial(d - 1 - k)

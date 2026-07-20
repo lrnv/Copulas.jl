@@ -78,15 +78,16 @@ end
 
 function _cdf(C::ArchimedeanCopula{d,G}, u) where {d, G<:GumbelGenerator}
     θ = C.G.θ
-    lx = log.(.-log.(u))
-    return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logsumexp(θ .* lx) ./ θ)
+    return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logsumexp(θ .* log.( .- log.(u))) / θ)
 end
 function Distributions._logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) where {TF}
     T = promote_type(TF, eltype(u))
-    !all(0 .< u .<= 1) && return T(-Inf) # if not in range return -Inf
+    u₁, u₂ = u 
+    (0 < u₁ <= 1) || return T(-Inf)
+    (0 < u₂ <= 1) || return T(-Inf)
 
     θ = C.G.θ
-    x₁, x₂ = -log(u[1]), -log(u[2])
+    x₁, x₂ = -log(u₁), -log(u₂)
     lx₁, lx₂ = log(x₁), log(x₂)
     A = LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂)
     B = exp(A/θ)
@@ -105,29 +106,43 @@ end
 
 function Distributions._logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) where {d,TF}
     T = promote_type(TF, eltype(u))
-    !all(0 .< u .<= 1) && return T(-Inf)
-
+    for uᵢ in u
+        (0 < uᵢ <= 1) || return T(-Inf)
+    end
+    
     θ = C.G.θ
     α = 1 / θ
 
     # Step 1. Compute x_i = -log(u_i)
-    x = -log.(u)
-    lx = log.(x)
+    x = zeros(T, d)
+    θlx = zeros(T, d)
+    slx = zero(T)
+    sx = zero(T)
+    for (i, uᵢ) in enumerate(u)
+        xᵢ = -log(uᵢ)
+        lxᵢ = log(xᵢ)
 
+        x[i] = xᵢ
+        θlx[i] = lxᵢ * θ
+
+        sx += xᵢ
+        slx += lxᵢ
+    end
+    
     # Step 2. Stable log-sum-exp for log(S) = log(sum(x_i^θ))
-    logS = LogExpFunctions.logsumexp(θ .* lx)
+    logt = LogExpFunctions.logsumexp(θlx)
 
     # Step 3. Compute log(φ⁽ᵈ⁾(S)) directly in log-domain
-    logt = logS
     tα = exp(α * logt)
     ntα = -tα
     logφ = -tα  # since log(φ(t)) = -exp(α * logt)
 
     # Compute the combinatorial sum in double precision
-    s = 0.0
+    s = zero(T)
     for j in 1:d
+        
         term1 = α^j * Combinatorics.stirlings1(d, j, true)
-        inner_sum = 0.0
+        inner_sum = zero(T)
         for k in 1:j
             inner_sum += Combinatorics.stirlings2(j, k) * ntα^k
         end
@@ -141,7 +156,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) w
     logφd = logφ - d * logt + log(abs(s))
 
     # Step 4. log|(φ⁻¹)'(u_i)| = log(θ) + (θ - 1)*log(-log(u_i)) - log(u_i)
-    sum_log_invderiv = d * log(θ) + (θ - 1)*sum(lx) - sum(log.(u))
+    sum_log_invderiv = d * log(θ) + (θ - 1) * slx + sx
 
     # Step 5. Combine
     return T(logφd + sum_log_invderiv)
