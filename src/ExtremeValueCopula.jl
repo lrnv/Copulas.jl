@@ -151,11 +151,18 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
         initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : only(Distributions.params(_example(CT, d)))
         initial_params.θ
     end
-    # Keep the starting value away from open or infinite boundaries before
-    # mapping it to the tail's unconstrained parameterization.
-    θ0_clamped = clamp(θ0_val, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
+    # Keep the starting value strictly inside every finite boundary before
+    # mapping it to the tail's unconstrained parameterization. In particular,
+    # log and logit maps send otherwise valid boundary values to ±Inf.
+    Tθ = promote_type(typeof(float(θ0_val)), typeof(float(lo)), typeof(float(hi)))
+    loT, hiT = Tθ(lo), Tθ(hi)
+    inward(x) = sqrt(eps(Tθ)) * max(one(Tθ), abs(x))
+    lo_start = isfinite(loT) ? loT + inward(loT) : -Tθ(1e16)
+    hi_start = isfinite(hiT) ? hiT - inward(hiT) : Tθ(1e16)
+    θ0_clamped = clamp(Tθ(θ0_val), lo_start, hi_start)
     θ0 = (; θ=θ0_clamped)
     α0 = _unbound_params(CT, d, θ0)
+    all(isfinite, α0) || throw(ArgumentError("MLE start must map to finite unbounded parameters"))
     cop(α) = CT(d, _rebound_params(CT, d, α)...)
     f(α) = -Distributions.loglikelihood(cop(α), U)
     res = try
