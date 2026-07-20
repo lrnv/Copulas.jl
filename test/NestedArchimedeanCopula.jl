@@ -38,7 +38,7 @@ Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ⁻¹(G::ImplicitTestGenerator, t) = ϕ⁻¹(G.inner, t)
 ϕ⁻¹⁽¹⁾(G::ImplicitTestGenerator, t) = ϕ⁻¹⁽¹⁾(G.inner, t)
 ϕ⁽ᵏ⁾(G::ImplicitTestGenerator, k::Int, t) = ϕ⁽ᵏ⁾(G.inner, k, t)
-Copulas.composition_taylor(o::ImplicitTestGenerator, i::ImplicitTestGenerator, t₀, d) =
+Copulas.composition_taylor(o::ImplicitTestGenerator, i::ImplicitTestGenerator, t₀, d::Int) =
     Copulas.composition_taylor_implicit(o.inner, i.inner, t₀, d)
 
 # Seeded RNG, matching runtests' `StableRNG(123)` when StableRNGs is on the path
