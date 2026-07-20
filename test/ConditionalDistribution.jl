@@ -170,6 +170,19 @@ end
     @test logcdf(D, 1.0) == 0.0
 end
 
+@testset "FGM distortion log-scale formulas" begin
+    for θ in (-0.8, 0.8), uⱼ in (0.2, 0.7)
+        D = condition(FGMCopula(2, θ), (1,), (uⱼ,))
+        for u in (1e-12, 0.2, 0.5, 0.8)
+            @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 2e-14
+        end
+        @test logcdf(D, 0.0) == -Inf
+        @test logcdf(D, 1.0) == 0.0
+        @test logpdf(D, -0.1) == -Inf
+        @test logpdf(D, 1.1) == -Inf
+    end
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20
