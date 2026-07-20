@@ -68,9 +68,10 @@ function _cdf(C::SurvivalCopula{d,CT,flips}, u) where {d,CT,flips}
     return r1 - r2
 end
 Distributions._logpdf(C::SurvivalCopula{d,CT,flips}, u) where {d,CT,flips} = Distributions._logpdf(C.C, reverse(u, flips))
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,flips}, x::AbstractVector{T}) where {d,CT,flips,T<:Real}
-    Distributions._rand!(rng, C.C, x)
-    reverse!(x, flips)
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,flips}, A::AbstractMatrix{T}) where {d,CT,flips,T<:Real}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    Distributions._rand!(rng, C.C, A)
+    return reverse!(A, flips)
 end
 
 # Fitting: delegate to the base copula after flipping the requested indices in U

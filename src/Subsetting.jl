@@ -35,10 +35,13 @@ function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT
 end
 _available_fitting_methods(::Type{<:SubsetCopula}, d) = Tuple{}() # cannot be fitted. 
 Base.eltype(C::SubsetCopula{d,CT}) where {d,CT} = Base.eltype(C.C)
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::SubsetCopula{d,CT}, x::AbstractVector{T}) where {T<:Real, d,CT}
-    u = Random.rand(rng,C.C)
-    x .= (u[i] for i in C.dims)
-    return x
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::SubsetCopula{d,CT}, A::AbstractMatrix{T}) where {T<:Real, d,CT}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    U = rand(rng, C.C, size(A, 2))
+    @inbounds for (row, source) in enumerate(C.dims), col in axes(A, 2)
+        A[row, col] = U[source, col]
+    end
+    return A
 end
 function _cdf(C::SubsetCopula{d,CT},u) where {d,CT}
     # Simplyu saturate dimensions that are not choosen.
