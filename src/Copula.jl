@@ -8,11 +8,17 @@
 #####       3) pseudo(data) construct pseudo-data from a given dataset.  
 #####
 #####  When implementing a new copula, you have to overwrite `Copulas._cdf()`
+#####  and `Distributions._rand!()` for matrix inputs.
 #####  and you may overwrite ρ, τ, β, γ, ι, λₗ, λᵤ, measure for performances. 
 ###############################################################################
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 Base.broadcastable(C::Copula) = Ref(C)
 Base.length(::Copula{d}) where d = d
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::Copula{d}, x::AbstractVector{T}) where {d,T<:Real}
+    length(x) == d || throw(ArgumentError("Dimension mismatch between copula and output vector"))
+    Distributions._rand!(rng, C, reshape(x, d, 1))
+    return x
+end
 function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
     length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     if any(iszero,u)
