@@ -19,6 +19,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::Copula{d}, x::A
     Distributions._rand!(rng, C, reshape(x, d, 1))
     return x
 end
+function Distributions._rand!(::Distributions.AbstractRNG, C::Copula{d}, ::AbstractMatrix{T}) where {d,T<:Real}
+    throw(ArgumentError("$(typeof(C)) must implement a matrix Distributions._rand! method"))
+end
 function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
     length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     if any(iszero,u)

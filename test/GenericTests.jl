@@ -466,14 +466,25 @@ Bestiary = filter(GenericTestFilter, Bestiary)
     spl1000 = rand(rng, C, 1000)
 
     @testset "Basics" begin 
-        @testset "Shape and support" begin 
+        @testset "Shape and support" begin
             @test length(spl1)==d
             @test size(spl10) == (d,10)
             @test all(0 .<= spl10 .<= 1)
             @test all(0 .<= spl1000 .<= 1)
         end
 
-        @testset "CDF boundary and measure" begin 
+        @testset "Matrix-first sampler dispatch" begin
+            vector_fallback = which(Distributions._rand!,
+                                    (typeof(rng), Copulas.Copula{d}, Vector{Float64}))
+            matrix_fallback = which(Distributions._rand!,
+                                    (typeof(rng), Copulas.Copula{d}, Matrix{Float64}))
+            @test which(Distributions._rand!,
+                        (typeof(rng), CT, Vector{Float64})) == vector_fallback
+            @test which(Distributions._rand!,
+                        (typeof(rng), CT, Matrix{Float64})) != matrix_fallback
+        end
+
+        @testset "CDF boundary and measure" begin
             @test iszero(cdf(C,zeros(d)))
             @test isone(cdf(C,ones(d)))
             @test 0 <= cdf(C,rand(rng,d)) <= 1
