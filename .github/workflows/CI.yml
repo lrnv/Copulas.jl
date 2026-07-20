@@ -53,3 +53,27 @@ jobs:
         with:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
+
+  expectation-maximization-extension:
+    name: ExpectationMaximization extension - Julia ${{ matrix.version }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - 'lts'
+          - '1'
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.version }}
+          arch: x64
+      - uses: julia-actions/cache@v3
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: Install ExpectationMaximization and test the extension
+        shell: julia --project=. --color=yes {0}
+        run: |
+          using Pkg
+          Pkg.add("ExpectationMaximization")
+          include("test/ExpectationMaximizationExt.jl")
