@@ -4,31 +4,57 @@ CurrentModule = Copulas
 
 # Vines family
 
-!!! todo "Not implemented yet!"
-    Do not hesitate to join the discussion on [our GitHub](https://github.com/lrnv/Copulas.jl)!
-
-One notable class of copulas is the Vines copulas. These distributions use a graph of conditional distributions to encode the distribution of the random vector. To define such a model, working with conditional densities, and given any ordered partition $\boldsymbol i_1, ..., \boldsymbol i_p$ of $1, ..., d$, we write:
+One notable class of copulas is the vine copulas. These distributions use a
+graph of conditional distributions to encode the distribution of the random
+vector. To define such a model, working with conditional densities, and given
+any ordered partition $\boldsymbol i_1, ..., \boldsymbol i_p$ of $1, ..., d$, we
+write:
 
 $$f(\boldsymbol x) = f(x_{\boldsymbol i_1}) \prod\limits_{j=1}^{p-1} f(x_{\boldsymbol i_{j+1}} | x_{\boldsymbol i_j}).$$
 
-Of course, the choice of partition, its order, and the conditional models is left to the practitioner. The goal when dealing with such dependency graphs is to tailor the graph to reduce the approximation error, which can be a challenging task. There exist simplifying assumptions that help with this, and we refer to [durante2017, nagler2016, nagler2018, czado2013, czado2019, graler2014](@cite) for a deep dive into vine theory, along with results and extensions.
+Of course, the choice of partition, its order, and the conditional models is
+left to the practitioner. The goal when dealing with such dependency graphs is
+to tailor the graph to reduce the approximation error, which can be a
+challenging task. There exist simplifying assumptions that help with this, and
+we refer to [durante2017a, nagler2016, nagler2018, czado2013, czado2019,
+graler2014](@cite) for a deep dive into vine theory, along with results and
+extensions.
 
-## Visual hints (work in progress)
+Vine copulas are available through the add-on package
+[`VineCopulas.jl`](https://github.com/Santymax98/VineCopulas.jl), which is built
+on top of `Copulas.jl`. It provides explicit C-vine, D-vine, and regular-vine
+models, with density evaluation, simulation, Rosenblatt transforms, pair-copula
+conditional primitives, and R-vine matrix helpers. See the
+[`VineCopulas.jl` documentation](https://santymax98.github.io/VineCopulas.jl/dev/)
+for the full API and current scope.
 
-```@example 1
-using Copulas, Plots, StatsBase
-# As a simple proxy, look at pairwise τ to guide first tree choices
-C = GaussianCopula([1.0 0.7 0.2; 0.7 1.0 0.5; 0.2 0.5 1.0])
-U = rand(C, 1500)
-τ = StatsBase.corkendall(U')
-heatmap(τ; title="Empirical Kendall τ (pairwise)", aspect_ratio=1, c=:blues, clim=(-1,1))
+## A small D-vine example
+
+```@example vines
+using Copulas
+using VineCopulas
+using Distributions: logpdf, pdf
+using Random
+
+C12 = GaussianCopula([1.0 0.5; 0.5 1.0])
+C23 = ClaytonCopula(2, 2.0)
+C13_2 = FrankCopula(2, 3.0)
+
+vine = DVineCopula([1, 2, 3], [[C12, C23], [C13_2]])
+
+u = [0.2, 0.5, 0.7]
+(logpdf(vine, u), pdf(vine, u))
 ```
 
-```@example 1
-# Show a simple pair-copula composition idea via partial residuals (illustrative)
-scatter(U[1,:], U[2,:]; ms=2, alpha=0.6, xlim=(0,1), ylim=(0,1), title="First pair (1,2)", legend=false)
+```@example vines
+U = rand(MersenneTwister(123), vine, 5)
+size(U)
 ```
 
+Matrices follow the same convention as in `Copulas.jl`: rows are dimensions and
+columns are observations. See the
+[`VineCopulas.jl` documentation](https://santymax98.github.io/VineCopulas.jl/dev/)
+for the full API and current scope.
 
 ## References
 

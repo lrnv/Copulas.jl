@@ -777,7 +777,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
         @testif (spe.dA || spe.d²A || spe._A_dA_d²A || spe.ℓ) "Testing ℓ and cdf for Extreme Value Copula" begin 
             u, v = rand(rng), rand(rng)
             x, y = -log(u), -log(v)
-            s = y / (x + y)
+            s = x / (x + y)
             expected_ℓ = Copulas.A(C.tail, s) * (x + y)
             @test isapprox(Copulas.ℓ(C.tail, (x, y)), expected_ℓ; atol=0.1)
             expected_cdf = exp(-expected_ℓ)

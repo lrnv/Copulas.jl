@@ -128,3 +128,16 @@ function A(tail::AsymMixedTail, t::Real)
     return θ₂*tt^3 + θ₁*tt^2 - (θ₁+θ₂)*tt + 1
 end
 
+function dA(tail::AsymMixedTail, t::Real)
+    tt = _safett(t)
+    θ₁, θ₂ = tail.θ₁, tail.θ₂
+
+    return 3θ₂ * tt^2 + 2θ₁ * tt - (θ₁ + θ₂)
+end
+
+function d²A(tail::AsymMixedTail, t::Real)
+    tt = _safett(t)
+    θ₁, θ₂ = tail.θ₁, tail.θ₂
+
+    return 6θ₂ * tt + 2θ₁
+end
