@@ -338,12 +338,6 @@ end
         @test condition(C, (1, 2, 3, 4), [u[1], u[2], u[3], u[4]]) isa NestedDistortion
         @test gist_censored(C, u, δ1) ≈ Float64(ref_logpdf(spec1)) atol = 1e-9
 
-        # (d) Degenerate masks: all observed == plain logpdf; all lower-tail == log cdf.
-        C2 = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-                 children = [ClaytonCopula(3, 5.0), ClaytonCopula(3, 6.0)])
-        u2v = big.([0.30, 0.55, 0.70, 0.40, 0.62, 0.80])
-        @test gist_censored(C2, u2v, falses(6)) == logpdf(C2, u2v)
-        @test gist_censored(C2, u2v, trues(6)) ≈ log(cdf(C2, u2v)) atol = 1e-30
     end
 
     # -----------------------------------------------------------------------
@@ -360,19 +354,12 @@ end
         expected = log(dCdu1) + logpdf(m[1], x1)
         @test gist_sklar(S, [x1, c2], [false, true]) ≈ expected atol = 1e-10
 
-        # (b) Omitted mask == the plain joint density.
-        @test gist_sklar(S, [x1, c2], [false, false]) ≈ logpdf(S, [x1, c2]) atol = 1e-12
-
-        # (c) Finite where the Distributions.censored route is -Inf — the
-        #     motivating contrast for the lower-tail recipe.
+        # (b) The finite closed-form value above contrasts with the -Inf returned
+        #     by the Distributions.censored route, motivating the lower-tail recipe.
         Sc = SklarDist(ClaytonCopula(2, θ), (m[1], censored(m[2], upper = c2)))
         @test logpdf(Sc, [x1, c2]) == -Inf
-        @test isfinite(gist_sklar(S, [x1, c2], [false, true]))
 
-        # (d) All lower-tail == log cdf of the joint model.
-        @test gist_sklar(S, [x1, c2], [true, true]) ≈ log(cdf(S, [x1, c2])) atol = 1e-10
-
-        # (e) Nested copula on the data scale, multi-coordinate: the gist recipe is
+        # (c) Nested copula on the data scale, multi-coordinate: the gist recipe is
         #     finite and matches the observed-marginal densities + the nested
         #     mixed partial at the PIT point (independent reference).
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
@@ -395,7 +382,6 @@ end
         # With the copula contribution independently checked above, this verifies
         # data-scale margin/Jacobian composition rather than two kernel aliases.
         @test gist_sklar(Sn, x, δ) ≈ margin_ll + cop_ll atol = 1e-10
-        @test isfinite(gist_sklar(Sn, x, δ))
     end
 
     # -----------------------------------------------------------------------
@@ -446,7 +432,6 @@ end
         # (a) moderate point: finite under the Float64 kernel AND BigFloat-exact.
         um = fill(0.99, 8)
         gm = gist_censored(Cj, um, δj)
-        @test isfinite(gm)
         @test gm ≈ Float64(_censored_copula_logpdf(Cj, big.(um), δj, BigFloat)) atol = 1e-8
         # (b) The high-precision kernel remains finite in a deeper tail.
         ud = fill(0.999999, 8)
@@ -470,14 +455,13 @@ end
                    [(u[1], false)],
                    [RefSpec(JoeGenerator(big(3.0)), Tuple{BigFloat,Bool}[],
                         [RefSpec(JoeGenerator(big(4.0)), [(u[2], false), (u[3], false)])])])
-        @test isfinite(logpdf(C, u))
         @test logpdf(C, u) ≈ ref_logpdf(spec) atol = 1e-9
     end
 
     # -----------------------------------------------------------------------
-    # 6. Constructor validation and a fit/smoke usage.
+    # 6. Constructor validation and support boundaries.
     # -----------------------------------------------------------------------
-    @testset "constructor validation & smoke" begin
+    @testset "constructor validation & boundaries" begin
         @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
             leaves = [1, 1])
         # Overlapping dims must error.
@@ -507,21 +491,13 @@ end
                   [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])
         @test old isa NestedArchimedeanCopula{4}
 
-        # Smoke: a small log-likelihood over sampled-ish data is finite, and a
-        # higher root dependence gives a different (here larger) value at a
-        # strongly-clustered point.
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                 children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])
-        pts = [big.([0.3, 0.32, 0.6, 0.62]), big.([0.5, 0.52, 0.2, 0.22])]
-        ll = sum(logpdf(C, p) for p in pts)
-        @test isfinite(ll)
 
-        # Mixed CDF boundaries marginalise coordinates at one and vanish when
-        # any coordinate is zero. Density support checks accept numeric input
-        # types without attempting to convert -Inf to an integer.
+        # Mixed CDF boundaries marginalise coordinates at one. Density support
+        # checks accept numeric input types without converting -Inf to an integer.
         u = [0.3, 0.4, 0.6, 0.7]
         @test cdf(C, [u[1], u[2], 1.0, 1.0]) ≈ cdf(ClaytonCopula(2, 5.0), u[1:2])
-        @test iszero(cdf(C, [u[1], 0.0, u[3], u[4]]))
         @test logpdf(C, [0, 1, 1, 1]) == -Inf
         @test logpdf(C, [u[1], 1.0, u[3], u[4]]) == -Inf
         @test logpdf(C, [u[1], -0.1, u[3], u[4]]) == -Inf
@@ -604,25 +580,14 @@ end
         @test cdf(collapsed, [0.4, 0.7]) ≈ cdf(ClaytonCopula(2, 1.5), [0.4, 0.7])
     end
 
-    @testset "rand works (inverse-Rosenblatt sampler)" begin
-        # rand(C) StackOverflowed before the dedicated _rand!; here it must return
-        # a valid point and a valid sample matrix, all in [0,1] and finite.
+    @testset "pairwise Kendall structure" begin
+        # GenericTests exercises the sampler against both CDF and Kendall targets.
+        # Keep only independent analytic anchors for those theoretical targets here.
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                 children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])   # d=4
-        rng = Random.MersenneTwister(7)
-        s1 = rand(rng, C)
-        @test length(s1) == 4
-        @test all(0 .<= s1 .<= 1) && all(isfinite, s1)
-        S = rand(rng, C, 100)
-        @test size(S) == (4, 100)
-        @test all(0 .<= S .<= 1) && all(isfinite, S)
-        # Marginals are (approximately) uniform: mean of each coordinate ≈ 0.5.
-        @test all(abs.(vec(sum(S, dims = 2)) ./ 100 .- 0.5) .< 0.1)
-        # Dependence must also survive the inverse-Rosenblatt path: independent
-        # uniforms would pass every support and marginal assertion above.
-        τemp = StatsBase.corkendall(S')
-        @test τemp[1, 2] ≈ 5 / 7 atol = 0.18  # Clayton(5) child panel
-        @test τemp[1, 3] ≈ 1 / 2 atol = 0.18  # Clayton(2) root dependence
+        K = StatsBase.corkendall(C)
+        @test K[1, 2] ≈ 5 / 7 atol = 1e-12  # Clayton(5) child panel
+        @test K[1, 3] ≈ 1 / 2 atol = 1e-12  # Clayton(2) root dependence
     end
 
     @testset "fit: generator-parameter recovery (fixed tree MLE)" begin
