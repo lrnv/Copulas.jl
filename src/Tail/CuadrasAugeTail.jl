@@ -73,7 +73,7 @@ function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real
     D.uⱼ ≥ 1 && return S(log(z))
 
     z ≥ D.uⱼ && return (1-θ) * log(z)
-    return log1p(-θ) + log(z) - θ * log(D.uⱼ)
+    return log1p(-θ) + log(z) + θ * D.negloguⱼ
 
 end
 function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::Real) where {T, S}
@@ -84,7 +84,7 @@ function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::R
     D.uⱼ ≥ 1 && return α
 
     la = log(α)
-    lu = log(D.uⱼ)
+    lu = -D.negloguⱼ
     lt = log1p(-θ)
 
     if la < lt + (1-θ)*lu

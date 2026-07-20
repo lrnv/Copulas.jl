@@ -81,7 +81,7 @@ function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {
     if D.j == 2
         # Condition on V = v, free variable is u = z
         u = z; v = ucond
-        lu, lv = log(u), log(v)
+        lu, lv = log(u), -D.negloguⱼ
         # Determine active branch of min(u^a v, u v^b)
         s1 = a*lu + lv
         s2 = lu + b*lv
@@ -98,7 +98,7 @@ function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {
     else
         # Condition on U = u, free variable is v = z
         v = z; u = ucond
-        lu, lv = log(u), log(v)
+        lu, lv = -D.negloguⱼ, log(v)
         s1 = a*lu + lv
         s2 = lu + b*lv
         if s1 <= s2

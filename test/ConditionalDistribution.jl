@@ -167,6 +167,16 @@ end
     end
 end
 
+@testset "Extreme-value conditioning caches fixed transforms" begin
+    DEV = condition(GalambosCopula(2, 2.5), (1,), (0.3,))
+    @test DEV.negloguⱼ == -log(DEV.uⱼ)
+
+    DAM = condition(ArchimaxCopula(2, Copulas.FrankGenerator(0.8),
+                                  Copulas.HuslerReissTail(0.6)), (1,), (0.3,))
+    @test DAM.yⱼ == Copulas.ϕ⁻¹(DAM.gen, DAM.uⱼ)
+    @test DAM.invderivⱼ == Copulas.ϕ⁻¹⁽¹⁾(DAM.gen, DAM.uⱼ)
+end
+
 @testset "Archimedean distortion logcdf" begin
     distortions = (
         condition(ClaytonCopula(3, 2.0), (1, 2), (0.3, 0.6)),

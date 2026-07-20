@@ -76,7 +76,7 @@ function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{TF1}, TF2}, z::Real) 
     if D.j == 2
         # Condition on V = v, free = u = z
         u = z; v = ucond
-        lu, lv = log(u), log(v)
+        lu, lv = log(u), -D.negloguⱼ
         c1 = a*lu <= b*lv             # decide for min(u^a, v^b)
         c2 = (1-a)*lu <= (1-b)*lv     # decide for min(u^{1-a}, v^{1-b})
         if c1 && c2
@@ -101,7 +101,7 @@ function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{TF1}, TF2}, z::Real) 
     else
         # Condition on U = u, free = v = z
         v = z; u = ucond
-        lu, lv = log(u), log(v)
+        lu, lv = -D.negloguⱼ, log(v)
         c1 = a*lu <= b*lv
         c2 = (1-a)*lu <= (1-b)*lv
         if c1 && c2

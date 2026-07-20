@@ -5,6 +5,12 @@ struct BivEVDistortion{TT,T} <: Distortion
     tail::TT
     j::Int8
     uⱼ::T
+    negloguⱼ::T
+end
+function BivEVDistortion(tail, j::Int8, uⱼ::Real)
+    uⱼ = float(uⱼ)
+    negloguⱼ = uⱼ > zero(uⱼ) ? -log(uⱼ) : typeof(uⱼ)(Inf)
+    return BivEVDistortion{typeof(tail),typeof(uⱼ)}(tail, j, uⱼ, negloguⱼ)
 end
 function Distributions.logcdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1}
     T = promote_type(typeof(z), TF1)
@@ -16,7 +22,7 @@ function Distributions.logcdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1
 
     if D.j == 2
         # Condition on the second variable : V = D.uⱼ, free = u=z
-        x, y = -log(z), -log(D.uⱼ)
+        x, y = -log(z), D.negloguⱼ
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)
@@ -24,7 +30,7 @@ function Distributions.logcdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1
         logval = -s * Aw + y
     else
         # Condition on the first variable : U = D.uⱼ, free = v=z
-        x, y = -log(D.uⱼ), -log(z)
+        x, y = D.negloguⱼ, -log(z)
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)
@@ -45,7 +51,7 @@ function Distributions.logpdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1
 
     if D.j == 2
         # Condition on the second variable : V = D.uⱼ, free = u=z
-        x, y = -log(z), -log(D.uⱼ)
+        x, y = -log(z), D.negloguⱼ
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)
@@ -65,7 +71,7 @@ function Distributions.logpdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1
         return logval + log(B)
     else
         # Condition on the first variable : U = D.uⱼ, free = v=z
-        x, y = -log(D.uⱼ), -log(z)
+        x, y = D.negloguⱼ, -log(z)
         s = x + y
         w = x / s
         Aw, dAw = A(D.tail, w), dA(D.tail, w)
