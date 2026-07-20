@@ -131,26 +131,19 @@ function Distributions._logpdf(B::BernsteinCopula{d}, u::AbstractVector) where {
     return min(log(dens), zero(dens))
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula{d}, u::AbstractVector{T}) where {d,T<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     m = B.m
-    target = rand(rng)
-    cum = 0.0
-    picked = nothing
-    weights = B.weights
-    @inbounds for s in Iterators.product((0:(mi-1) for mi in m)...)
-        w = weights[(s[j]+1 for j in 1:d)...]
-        w <= 0 && continue
-        cum += w
-        if cum >= target
-            picked = s
-            break
+    weights = max.(vec(B.weights), 0.0)
+    components = rand(rng, Distributions.Categorical(weights ./ sum(weights)), size(A, 2))
+    indices = CartesianIndices(B.weights)
+    @inbounds for (j, col) in enumerate(axes(A, 2))
+        s = Tuple(indices[components[j]])
+        for row in axes(A, 1)
+            A[row, col] = rand(rng, Distributions.Beta(s[row], m[row] + 1 - s[row]))
         end
     end
-    s = picked === nothing ? ntuple(j -> m[j]-1, d) : picked
-    @inbounds for j in 1:d
-        u[j] = Distributions.rand(rng, Distributions.Beta(s[j] + 1, m[j] - s[j]))
-    end
-    return u
+    return A
 end
 
 function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}

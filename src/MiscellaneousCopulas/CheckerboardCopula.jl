@@ -74,30 +74,16 @@ function _cdf(C::CheckerboardCopula{d}, u) where {d}
     return sum(w * prod(clamp.(um .- box, 0, 1)) for (box, w) in C.boxes)
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::CheckerboardCopula{d}, u::AbstractVector{T}) where {d,T<:Real}
-    # Draw a box index according to weights
-    r = rand(rng)
-    acc = 0.0
-    chosen = nothing
-    @inbounds for (box, w) in C.boxes
-        acc += w
-        if r <= acc
-            chosen = box
-            break
-        end
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::CheckerboardCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    boxes = collect(keys(C.boxes))
+    weights = collect(values(C.boxes))
+    components = rand(rng, Distributions.Categorical(weights ./ sum(weights)), size(A, 2))
+    Random.rand!(rng, A)
+    @inbounds for (j, col) in enumerate(axes(A, 2)), row in axes(A, 1)
+        A[row, col] = T((boxes[components[j]][row] + A[row, col]) / C.m[row])
     end
-    # Fallback in case of tiny numerical drift (select the last box)
-    if chosen === nothing
-        for (box, _) in C.boxes
-            chosen = box
-        end
-    end
-    # Sample uniformly inside the chosen box
-    @inbounds for i in 1:d
-        bi = chosen[i]  # works for Tuple or Vector keys
-        u[i] = T((bi + rand(rng)) / C.m[i])
-    end
-    return u
+    return A
 end
 
 @inline function DistortionFromCop(C::CheckerboardCopula{D,T}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D, p, T}
