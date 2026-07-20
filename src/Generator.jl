@@ -51,6 +51,33 @@ catch
     Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, k, x) - t, (0,Inf))
 end
 
+# Stable evaluations of W(exp(logx)) and W₋₁(-exp(logx)). They avoid forming
+# arguments that overflow or underflow close to independence in generators
+# whose first-derivative inverses have a Lambert-W closed form.
+function _lambertw_exp(logx::T) where {T<:AbstractFloat}
+    isinf(logx) && return logx > 0 ? T(Inf) : zero(T)
+    logx <= log(floatmax(T)) && return LambertW.lambertw(exp(logx))
+
+    w = logx - log(logx)
+    for _ in 1:4
+        w -= (w + log(w) - logx) / (one(T) + inv(w))
+    end
+    return w
+end
+
+function _lambertwm1_negexp(logabsx::T) where {T<:AbstractFloat}
+    logabsx == T(-Inf) && return T(-Inf)
+    logabsx = min(logabsx, -one(T))
+    logabsx >= log(floatmin(T)) && return LambertW.lambertw(-exp(logabsx), -1)
+
+    target = -logabsx
+    y = target + log(target)
+    for _ in 1:4
+        y -= (y - log(y) - target) / (one(T) - inv(y))
+    end
+    return -y
+end
+
 
 
 

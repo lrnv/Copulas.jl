@@ -103,7 +103,7 @@ function ϕ⁽ᵏ⁾⁻¹(G::GumbelBarnettGenerator, k::Int, t; start_at=t)
     target = T(t)
     iszero(target) && return T(Inf)
     θ = T(G.θ)
-    w = LambertW.lambertw(target * exp(-inv(θ)), -1)
+    w = _lambertwm1_negexp(log(-target) - inv(θ))
     return log(-θ * w)
 end
 

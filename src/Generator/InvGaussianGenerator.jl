@@ -117,12 +117,12 @@ function ϕ⁽ᵏ⁾⁻¹(G::InvGaussianGenerator, k::Int, t; start_at=t)
     iszero(target) && return T(Inf)
 
     if isinf(G.θ)
-        s = LambertW.lambertw(inv(-target))
+        s = _lambertw_exp(-log(-target))
         return s^2 / 2
     end
 
     θ = T(G.θ)
-    s = θ * LambertW.lambertw(exp(inv(θ)) / (-target))
+    s = θ * _lambertw_exp(inv(θ) - log(-target))
     return max(zero(T), (s^2 - one(T)) / (2θ^2))
 end
 

@@ -78,7 +78,7 @@ function ϕ⁽ᵏ⁾⁻¹(G::BB9Generator, k::Int, t; start_at=t)
     θm1 = θ - one(T)
     logscaled = log(-θ * target) - inv(δ)
     logarg = -logscaled / θm1 - log(θm1)
-    z = θm1 * LambertW.lambertw(exp(logarg))
+    z = θm1 * _lambertw_exp(logarg)
     return max(zero(T), exp(θ * log(z)) - δ^(-θ))
 end
 ϕ⁻¹⁽¹⁾(G::BB9Generator, t) = -G.θ * (inv(G.δ) - log(t))^(G.θ - 1) / t

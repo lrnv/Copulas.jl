@@ -76,7 +76,7 @@ function ϕ⁽ᵏ⁾⁻¹(G::GumbelGenerator, k::Int, t; start_at=t)
     iszero(c) && return T(Inf)
     θm1 = θ - one(T)
     logarg = -log(c) / θm1 - log(θm1)
-    z = θm1 * LambertW.lambertw(exp(logarg))
+    z = θm1 * _lambertw_exp(logarg)
     return exp(θ * log(z))
 end
 ϕ⁻¹⁽¹⁾(G::GumbelGenerator, t) = -(G.θ * exp(log(-log(t))*(G.θ - 1))) / t

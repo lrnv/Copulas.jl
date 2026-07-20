@@ -73,7 +73,7 @@ end
 end
 
 @testset "Gumbel and Log distortion closed-form quantiles" begin
-    for θ in (1.2, 2.5, 8.0), uⱼ in (0.25, 0.7)
+    for θ in (1.001, 1.2, 2.5, 8.0), uⱼ in (0.25, 0.7)
         Dg = condition(GumbelCopula(2, θ), (1,), (uⱼ,))
         Dl = condition(LogCopula(2, θ), (1,), (uⱼ,))
         for α in (0.1, 0.5, 0.9)
@@ -90,9 +90,11 @@ end
 
 @testset "Lambert-W Archimedean distortion quantiles" begin
     copulas = (
+        InvGaussianCopula(2, 0.01),
         InvGaussianCopula(2, 0.5),
         InvGaussianCopula(2, 2.0),
         BB9Copula(2, 1.0, 0.8),
+        BB9Copula(2, 1.001, 0.8),
         BB9Copula(2, 2.5, 0.8),
     )
     for C in copulas
@@ -108,7 +110,7 @@ end
 end
 
 @testset "Gumbel-Barnett distortion closed-form quantile" begin
-    for θ in (0.2, 0.8), uⱼ in (0.3, 0.7)
+    for θ in (0.01, 0.2, 0.8), uⱼ in (0.3, 0.7)
         D = condition(GumbelBarnettCopula(2, θ), (1,), (uⱼ,))
         for α in (0.1, 0.5, 0.9)
             q = quantile(D, α)
