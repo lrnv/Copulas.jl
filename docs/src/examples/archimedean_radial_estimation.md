@@ -2,7 +2,7 @@
 
 ## Introduction
 
-This example recalls and implements a practical, nonparametric way to estimate the radial (mixing) distribution R that underlies a d-Archimedean copula by inverting a link between the kendall distribution and the radial part [mcneil2009multivariate](@cite) [williamson1956](@cite), and applying this inversion to the empirical Kendall distribution. Suprisingly, a triangular recursion appears that maps empirical kendall atoms to radial atoms: see, in particular, [genest2011a](@cite). We’ll:
+This example recalls and implements a practical, nonparametric way to estimate the radial (mixing) distribution R that underlies a d-Archimedean copula by inverting a link between the kendall distribution and the radial part [mcneil2009](@cite) [williamson1956](@cite), and applying this inversion to the empirical Kendall distribution. Suprisingly, a triangular recursion appears that maps empirical kendall atoms to radial atoms: see, in particular, [genest2011a](@cite). We’ll:
 - explain the idea,
 - implement a small estimator,
 - validate it visually on discrete and continuous radial laws,
@@ -25,7 +25,7 @@ Note that there exists other approaches at archimedean estimation:
 
 ## Theoretical setup
 
-Let $C$ be a $d$-dimensional Archimedean copula $\,(d\ge 2)\,$ with $d$-monotone generator $\varphi$. By the Williamson representation [williamson1956](@cite); [mcneil2009multivariate](@cite), the random variable $R$ defined above exists and is unique up to scale. 
+Let $C$ be a $d$-dimensional Archimedean copula $\,(d\ge 2)\,$ with $d$-monotone generator $\varphi$. By the Williamson representation [williamson1956](@cite); [mcneil2009](@cite), the random variable $R$ defined above exists and is unique up to scale.
 
 If $\boldsymbol{U}\sim C$, define the Kendall distribution
 
@@ -39,7 +39,7 @@ When $R$ is discrete, $R = \sum_{j=1}^N w_j\, \delta_{r_j}$ with $0<r_1<\cdots<r
 
 $$\varphi_R(t) \;=\; \sum_{j=1}^N w_j\, \Big(1-\tfrac{t}{r_j}\Big)_{+}^{\,d-1}.$$
 
-Finally, it is known from [mcneil2009multivariate](@cite) that when C is archimedean, the true kendall function writes 
+Finally, it is known from [mcneil2009](@cite) that when C is archimedean, the true kendall function writes
 
 $$K_R(x) = \mathbb P\left(\varphi_R(R) \le u\right),$$
 

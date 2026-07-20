@@ -13,6 +13,27 @@
     @test pdf(C270,[u1,1-u2]) == p
     @test pdf(C180,[1-u1,1-u2]) == p
 
+    C3 = SurvivalCopula(ClaytonCopula(3, 2.0), (3,))
+    S13 = subsetdims(C3, (1, 3))
+    Sref = SurvivalCopula(ClaytonCopula(2, 2.0), (2,))
+    u = [0.25, 0.7]
+    @test cdf(S13, u) ≈ cdf(Sref, u)
+    @test pdf(S13, u) ≈ pdf(Sref, u)
+
+    # Reordering changes flip positions, not their original dimension labels.
+    C13 = SurvivalCopula(ClaytonCopula(3, 2.0), (1, 3))
+    S31 = subsetdims(C13, (3, 1))
+    S31ref = SurvivalCopula(ClaytonCopula(2, 2.0), (1, 2))
+    @test cdf(S31, u) ≈ cdf(S31ref, u)
+    @test pdf(S31, u) ≈ pdf(S31ref, u)
+
+    # Conditioning must remap surviving flipped dimensions as tuple values,
+    # rather than passing the tuple type to the SurvivalCopula constructor.
+    C24 = SurvivalCopula(ClaytonCopula(4, 2.0), (2, 4))
+    C24cond = condition(C24, (1, 3), (0.25, 0.75))
+    @test C24cond.C isa SurvivalCopula{2}
+    @test 0.0 <= cdf(C24cond, [0.4, 0.6]) <= 1.0
+
 end
 
 @testset "RafteryCopula Constructor" begin

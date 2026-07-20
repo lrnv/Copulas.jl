@@ -96,7 +96,7 @@ In this package, we implemented it through the [`WilliamsonGenerator`](@ref) cla
 
 `WilliamsonGenerator(X::UnivariateRandomVariable, d)`.
 
-This function computes the Williamson d-transform of the provided random variable $X$. See [williamson1955multiply, mcneil2009](@cite) for the literature. 
+This function computes the Williamson d-transform of the provided random variable $X$. See [williamson1956, mcneil2009](@cite) for the literature.
 
 !!! info "`max_monotony` of Williamson generators"
     The $d$-transform of a positive random variable is $d$-monotone but not $k$-monotone for any $k > d$. Its max monotony is therefore $d$. This has a few implications, one of the biggest is that the $d$-variate Archimedean copula that corresponds has no density.
@@ -139,7 +139,7 @@ The Williamson d-transform is a bijective transformation[^1] from the set of pos
 
     This bijection is to be taken carefuly: the bijection is between random variables *with unit scales* and generators *with common value at 1*, sicne on both rescaling does not change the underlying copula. 
 
-This transformation is implemented through one method in the Generator interface that is worth talking a bit about : `𝒲₋₁(G::Generator, d)`. This function computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ. See [williamson1955multiply, mcneil2009](@cite).
+This transformation is implemented through one method in the Generator interface that is worth talking a bit about : `𝒲₋₁(G::Generator, d)`. This function computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ. See [williamson1956, mcneil2009](@cite).
 
 To put it in a nutshell, for ``\phi`` a ``d``-monotone archimedean generator, the inverse Williamson-d-transform of ``\\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``R``, defined by : 
 
@@ -297,7 +297,7 @@ plot!(ts, EC.(ts); seriestype=:steppost, alpha=0.5, color=:black, label="empiric
 !!! todo "Not merged yet !"
     Liouville copulas are coming in this PR : https://github.com/lrnv/Copulas.jl/pull/83, but the work is not finished. 
 
-Archimedean copulas have been widely used in the literature due to their nice decomposition properties and easy parametrization. The interested reader can refer to the extensive literature [hofert2010,hofert2013a,mcneil2010,cossette2017,cossette2018,genest2011a,dibernardino2013a,dibernardino2013a,dibernardino2016,cooray2018,spreeuw2014](@cite) on Archimedean copulas, their nesting extensions and most importantly their estimation. 
+Archimedean copulas have been widely used in the literature due to their nice decomposition properties and easy parametrization. The interested reader can refer to the extensive literature [hofert2010,hofert2013a,mcneil2010,cossette2017,cossette2018,genest2011a,dibernardino2013a,dibernardino2016,cooray2018,spreeuw2014](@cite) on Archimedean copulas, their nesting extensions and most importantly their estimation.
 
 One major drawback of the Archimedean family is that these copulas have exchangeable marginals (i.e., $C(\boldsymbol u) = C(p(\boldsymbol u))$ for any permutation $p(\boldsymbol u)$ of $u_1, ..., u_d$): the dependence structure is symmetric, which might not be desirable. However, from the Radial-simplex expression, we can extrapolate and take for $\boldsymbol S$ a non-uniform distribution on the simplex. 
 

@@ -101,6 +101,9 @@ module Copulas
     include("Generator/InvGaussianGenerator.jl")
     include("Generator/JoeGenerator.jl")
 
+    # Nested (hierarchical) Archimedean copulas
+    include("NestedArchimedeanCopula.jl")
+
     #Extreme value copulas
     include("Tail.jl")
     include("ExtremeValueCopula.jl")
@@ -142,6 +145,7 @@ module Copulas
            SklarDist, # SklarDist to make multivariate models
            AMHCopula, # And a bunch of copulas.
            ArchimedeanCopula,
+           NestedArchimedeanCopula,
            AsymGalambosCopula,
            AsymLogCopula,
            AsymMixedCopula,

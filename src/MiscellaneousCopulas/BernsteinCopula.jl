@@ -27,7 +27,7 @@ It is a polynomial approximation of the base copula ``C`` using the multivariate
 
 References:
 * [sancetta2004bernstein](@cite) Sancetta, A., & Satchell, S. (2004). The Bernstein copula and its applications to modeling and approximations of multivariate distributions. Econometric Theory, 20(3), 535-562.
-* [segers2017empirical](@cite) Segers, J., Sibuya, M., & Tsukahara, H. (2017). The empirical beta copula. Journal of Multivariate Analysis, 155, 35-51.
+* [segers2017](@cite) Segers, J., Sibuya, M., & Tsukahara, H. (2017). The empirical beta copula. Journal of Multivariate Analysis, 155, 35-51.
 """
 struct BernsteinCopula{d} <: Copula{d}
     m::NTuple{d,Int}
