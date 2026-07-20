@@ -57,15 +57,42 @@ end
 SklarDist(C, m) = SklarDist(C, Tuple(m))
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
 Base.eltype(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = Base.eltype(S.C)
-Distributions.cdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = Distributions.cdf(S.C, [Distributions.cdf(mi, xi) for (mi, xi) in zip(S.m, x)])
+@inline function _sklar_work_eltype(S::SklarDist, x)
+    T = promote_type(eltype(S.C), eltype(x))
+    for margin in S.m
+        T = promote_type(T, eltype(margin))
+    end
+    return T
+end
+function Distributions.cdf(S::SklarDist{CT,TplMargins}, x) where {CT,TplMargins}
+    d = length(S)
+    T = _sklar_work_eltype(S, x)
+    u = Vector{T}(undef, d)
+    @inbounds for i in 1:d
+        u[i] = Distributions.cdf(S.m[i], x[i])
+    end
+    return Distributions.cdf(S.C, u)
+end
 Distributions.logcdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = log(Distributions.cdf(S, x))
 function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,TplMargins}, x::AbstractVector{T}) where {CT,TplMargins,T}
     Random.rand!(rng,S.C,x)
     clamp!(x, nextfloat(T(0)), prevfloat(T(1)))
     x .= Distributions.quantile.(S.m,x)
 end
-function Distributions._logpdf(S::SklarDist{CT,TplMargins},u) where {CT,TplMargins}
-    sum(Distributions.logpdf(S.m[i],u[i]) for i in eachindex(u)) + Distributions.logpdf(S.C,clamp.(Distributions.cdf.(S.m,u),0,1))
+function Distributions._logpdf(S::SklarDist{CT,TplMargins}, u) where {CT,TplMargins}
+    d = length(S)
+    T = _sklar_work_eltype(S, u)
+    # sum marginal logpdfs without generator comprehensions
+    s = zero(T)
+    @inbounds for i in 1:d
+        s += Distributions.logpdf(S.m[i], u[i])
+    end
+    # compute cdf of marginals, clamped, without broadcasting temporaries
+    U = Vector{T}(undef, d)
+    @inbounds for i in 1:d
+        U[i] = clamp(Distributions.cdf(S.m[i], u[i]), zero(T), one(T))
+    end
+    return s + Distributions.logpdf(S.C, U)
 end
 function StatsBase.dof(S::SklarDist)
     a = StatsBase.dof(S.C)

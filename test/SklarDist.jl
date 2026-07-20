@@ -31,3 +31,23 @@
         end
     end
 end
+
+@testset "SklarDist work buffers promote all numeric inputs" begin
+    S = SklarDist(IndependentCopula(2), (Normal(), Normal()))
+    @test cdf(S, [0, 0]) ≈ 0.25
+
+    Smixed = SklarDist(
+        IndependentCopula(2),
+        (Normal(0f0, 1f0), Normal(0.0, 1.0)),
+    )
+    @test cdf(Smixed, Float32[0, 0]) isa Float64
+    @test logpdf(Smixed, Float32[0, 0]) isa Float64
+
+    Sbig = SklarDist(
+        IndependentCopula(2),
+        (Normal(big"0", big"1"), Normal(big"0", big"1")),
+    )
+    xbig = BigFloat[0, 0]
+    @test cdf(Sbig, xbig) isa BigFloat
+    @test logpdf(Sbig, xbig) isa BigFloat
+end
