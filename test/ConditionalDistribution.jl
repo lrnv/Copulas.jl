@@ -159,6 +159,17 @@ end
     @test all(logcdf(D, 1.0) == 0.0 for D in distortions)
 end
 
+@testset "Flip distortion logcdf" begin
+    S = SurvivalCopula(ClaytonCopula(2, 2.0), (2,))
+    D = condition(S, (1,), (0.3,))
+    @test D isa Copulas.FlipDistortion
+    for u in (1e-12, 0.2, 0.5, 0.8)
+        @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 2e-12
+    end
+    @test logcdf(D, 0.0) == -Inf
+    @test logcdf(D, 1.0) == 0.0
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20
