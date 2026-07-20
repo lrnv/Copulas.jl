@@ -449,11 +449,22 @@ function _integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, N) where d
     return μ, r, :mc_pdf
 end
 
-# You can filter the bestiary here if you want: 
+# You can filter the bestiary here if you want:
 Bestiary = filter(GenericTestFilter, Bestiary)
 
-# Launch the main computation: 
-@testset for C in unique(Bestiary) 
+@testset "Matrix sampler accepts generic buffers" begin
+    C = ClaytonCopula(3, 1.0)
+    storage = fill(Float32(NaN), 5, 2)
+    A = @view storage[2:4, :]
+
+    @test rand!(StableRNG(260), C, A) === A
+    @test all(0f0 .<= A .<= 1f0)
+    @test all(isnan, storage[[1, 5], :])
+    @test_throws DimensionMismatch rand!(StableRNG(260), C, zeros(Float32, 2, 1))
+end
+
+# Launch the main computation:
+@testset for C in unique(Bestiary)
 
     @info "Testing $C..."
     Random.seed!(rng,123)
