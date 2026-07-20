@@ -137,6 +137,15 @@ end
     @test logpdf(D, -0.1) == -Inf
 end
 
+@testset "Student distortion logcdf" begin
+    D = condition(TCopula(4, [1.0 0.5; 0.5 1.0]), (1,), (0.3,))
+    for u in (1e-10, 0.2, 0.5, 0.8)
+        @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 2e-13
+    end
+    @test logcdf(D, 0.0) == -Inf
+    @test logcdf(D, 1.0) == 0.0
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20
