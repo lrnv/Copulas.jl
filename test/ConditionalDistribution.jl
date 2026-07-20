@@ -146,6 +146,19 @@ end
     @test logcdf(D, 1.0) == 0.0
 end
 
+@testset "Archimedean distortion logcdf" begin
+    distortions = (
+        condition(ClaytonCopula(3, 2.0), (1, 2), (0.3, 0.6)),
+        condition(FrankCopula(3, 2.0), (1, 2), (0.3, 0.6)),
+        condition(GumbelCopula(3, 2.0), (1, 2), (0.3, 0.6)),
+    )
+    for D in distortions, u in (1e-10, 0.2, 0.5, 0.8)
+        @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 3e-12
+    end
+    @test all(logcdf(D, 0.0) == -Inf for D in distortions)
+    @test all(logcdf(D, 1.0) == 0.0 for D in distortions)
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20
