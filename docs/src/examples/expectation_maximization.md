@@ -30,10 +30,10 @@ nothing # hide
 
 The initial `MixtureModel` contains information that its type alone cannot
 represent: its components, initial parameters, and weights. Consequently,
-`fit_mle` accepts an initialized `SklarDist`. It first fits each margin, uses
-the fitted marginal CDFs to construct pseudo-observations, and then fits the
-copula. This is the inference-functions-for-margins (IFM) procedure; it is not
-a joint maximum-likelihood fit of every parameter in the `SklarDist`.
+`fit_mle` accepts an initialized `SklarDist` and jointly optimizes the copula,
+the marginal parameters, and the mixture probabilities against the complete
+`SklarDist` likelihood. The instance supplies both the model structure and the
+starting point of this numerical optimization.
 
 ```@example em
 mixture_margin = MixtureModel(
@@ -47,11 +47,7 @@ initial_sklar = SklarDist(
 )
 
 data = rand(rng, initial_sklar, n)
-fitted_sklar = fit_mle(
-    initial_sklar,
-    data;
-    copula_kwargs=(; vcov=false, derived_measures=false),
-)
+fitted_sklar = fit_mle(initial_sklar, data)
 
 typeof(fitted_sklar.m[1])
 ```
@@ -87,10 +83,10 @@ family supports the generic Copulas.jl MLE parameterization.
 ## A mixture of complete multivariate models
 
 The same mechanism applies when every EM component is a complete
-`SklarDist`. The posterior weights computed by EM are passed first to the
-marginal fits and then to the copula fit on the resulting pseudo-observations.
-Each component update is therefore weighted IFM, rather than an exact joint
-M-step for the complete `SklarDist` likelihood.
+`SklarDist`. Its margins and copula are jointly updated using the posterior
+weights computed by EM. Thus the component update maximizes the same weighted
+joint likelihood that appears in the M-step; it is not a separate marginal fit
+followed by an IFM copula fit.
 
 ```@example em
 component1 = SklarDist(
@@ -118,31 +114,36 @@ components(fitted_sklar_mixture)
 ```
 
 Mixture margins can themselves appear inside these `SklarDist` components;
-the nested EM fits are dispatched recursively.
+their components and probabilities are parameterized recursively and included
+in the same joint optimization.
 
 !!! note "Weighted fitting"
     ExpectationMaximization.jl supplies posterior observation weights during
-    its M-step. A bare copula component is fitted by weighted maximum
-    likelihood. A `SklarDist` component is fitted by weighted IFM: its margins
-    and its copula each receive the weights, but they are fitted sequentially.
-    The method is named `fit_mle` because that is the component-fitting hook
-    expected by ExpectationMaximization.jl; the name does not make the
-    `SklarDist` update a joint MLE. Consequently, EM mixtures of `SklarDist`
-    components do not have the usual monotonic-likelihood guarantee of an
-    exact M-step. Other Copulas.jl fitting methods such as `:itau` or `:irho`
+    its M-step. The extension implements this component update using maximum
+    likelihood. Other Copulas.jl fitting methods such as `:itau` or `:irho`
     are intentionally not given an implicit weighted interpretation.
 
-## Supported and discrete margins
+## Supported margins and discrete data
 
-The extension contains no list of supported marginal families and no
-family-specific parameter transformations. It delegates each fit to
-`fit_mle(initial_margin, observations[, weights])`. A continuous margin is
-therefore supported when the loaded packages provide that method; in
-particular, ExpectationMaximization.jl provides it recursively for initialized
-`MixtureModel` margins.
+Joint likelihood optimization requires an unconstrained parameterization from
+which every candidate distribution can be reconstructed. The extension
+currently provides one for `Normal`, `LogNormal`, `LogitNormal`, `Cauchy`,
+`Gumbel`, `Laplace`, `Logistic`, `Beta`, `BetaPrime`, `FDist`, `Gamma`,
+`InverseGaussian`, `Pareto`, `Weibull`, `Chisq`, `Exponential`, `Rayleigh`,
+`TDist`, and `Uniform` margins. Continuous `MixtureModel` margins composed of
+these distributions are supported recursively. Their initial probabilities
+must be strictly positive. An informative `ArgumentError` is thrown for a
+continuous margin whose parameterization is not yet implemented.
 
-Discrete margins are rejected by this IFM entry point. Evaluating their exact
-copula likelihood requires copula-CDF differences over rectangles, rather
-than the continuous density formula evaluated at marginal CDFs. Treating the
-ties as ordinary continuous pseudo-observations would silently solve a
-different statistical problem.
+Discrete margins are intentionally rejected. For continuous margins, the
+joint density factors into the copula density evaluated at marginal CDFs and
+the product of the marginal densities. That formula is not valid when a margin
+has atoms: the corresponding probability mass requires copula-CDF differences
+over rectangles. `SklarDist` and its current `logpdf` implementation model the
+continuous case, so silently applying the continuous formula to a Poisson,
+categorical, or discrete-mixture margin would not be a valid likelihood.
+
+The optimizer starts from the supplied instance and may reach a local rather
+than global maximum, as is usual for mixture likelihoods. Marginal CDF values
+that round numerically to zero or one are moved just inside the unit interval
+while evaluating the joint optimization objective.
