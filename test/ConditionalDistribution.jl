@@ -167,6 +167,13 @@ end
     end
 end
 
+@testset "Distorted distribution logcdf" begin
+    D = condition(GaussianCopula([1.0 0.6; 0.6 1.0]), (1,), (0.3,))(Normal())
+    for x in (-8.0, -0.5, 1.0)
+        @test logcdf(D, x) ≈ logcdf(D.D, cdf(D.X, x)) atol = 2e-13
+    end
+end
+
 @testset "Extreme-value conditioning caches fixed transforms" begin
     DEV = condition(GalambosCopula(2, 2.5), (1,), (0.3,))
     @test DEV.negloguⱼ == -log(DEV.uⱼ)

@@ -146,6 +146,7 @@ struct DistortedDist{Disto, Distrib}<:Distributions.ContinuousUnivariateDistribu
     end
 end
 Distributions.cdf(D::DistortedDist, t::Real) = Distributions.cdf(D.D, Distributions.cdf(D.X, t))
+Distributions.logcdf(D::DistortedDist, t::Real) = Distributions.logcdf(D.D, Distributions.cdf(D.X, t))
 Distributions.quantile(D::DistortedDist, α::Real) = Distributions.quantile(D.X, Distributions.quantile(D.D, α))
 function Distributions.logpdf(D::DistortedDist, t::Real)
     u = Distributions.cdf(D.X, t)
