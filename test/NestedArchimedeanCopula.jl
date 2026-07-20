@@ -607,6 +607,11 @@ end
         @test all(0 .<= S .<= 1) && all(isfinite, S)
         # Marginals are (approximately) uniform: mean of each coordinate ≈ 0.5.
         @test all(abs.(vec(sum(S, dims = 2)) ./ 100 .- 0.5) .< 0.1)
+        # Dependence must also survive the inverse-Rosenblatt path: independent
+        # uniforms would pass every support and marginal assertion above.
+        τemp = StatsBase.corkendall(S')
+        @test τemp[1, 2] ≈ 5 / 7 atol = 0.18  # Clayton(5) child panel
+        @test τemp[1, 3] ≈ 1 / 2 atol = 0.18  # Clayton(2) root dependence
     end
 
     @testset "fit: generator-parameter recovery (fixed tree MLE)" begin
