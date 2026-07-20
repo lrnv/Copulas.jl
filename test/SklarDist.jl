@@ -45,6 +45,17 @@ end
     @test cdf(Smixed, Float32[0, 0]) isa Float64
     @test logpdf(Smixed, Float32[0, 0]) isa Float64
 
+    integer_data = [
+        -2 -1 0 1 2
+        2 1 0 -1 -2
+    ]
+    Sinteger = fit(
+        SklarDist{typeof(S.C),Tuple{Normal,Normal}},
+        integer_data,
+    )
+    @test Sinteger isa SklarDist
+    @test all(margin -> margin isa Normal, Sinteger.m)
+
     Sbig = SklarDist(
         IndependentCopula(2),
         (Normal(big"0", big"1"), Normal(big"0", big"1")),

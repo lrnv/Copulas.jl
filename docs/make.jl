@@ -44,6 +44,7 @@ makedocs(;
             "Empirical Kendall function and Archimedean's λ function."=>"examples/lambda_viz.md",
             "Loss-Alae fitting example"=>"examples/lossalae.md",
             "Fitting compound distributions"=>"examples/fitting_sklar.md",
+            "Mixture models with ExpectationMaximization.jl"=>"examples/expectation_maximization.md",
             "Influence of the method of estimation"=>"examples/ifm1.md",
             "Bayesian inference with `Turing.jl`"=>"examples/turing.md",
             "Other known use cases"=>"examples/other_usecases.md"

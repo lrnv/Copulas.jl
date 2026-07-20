@@ -253,10 +253,17 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}
     m = ntuple(i -> Distributions.fit(TplMargins.parameters[i], @view X[i, :]; margins_kwargs...), d)
 
     # Make pseudo-observations
-    U = similar(X)
+    uniform_type = foldl(
+        (T, margin) -> promote_type(T, eltype(margin)),
+        m;
+        init=float(eltype(X)),
+    )
+    U = similar(X, uniform_type)
     if sklar_method === :ifm
-        for i in 1:d
-            U[i,:] .= Distributions.cdf.(m[i], X[i,:])
+        lower = nextfloat(zero(uniform_type))
+        upper = prevfloat(one(uniform_type))
+        @inbounds for j in axes(X, 2), i in axes(X, 1)
+            U[i, j] = clamp(Distributions.cdf(m[i], X[i, j]), lower, upper)
         end
     else # :ecdf then
         U .= pseudos(X)
