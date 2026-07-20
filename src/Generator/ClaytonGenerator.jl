@@ -88,10 +88,6 @@ end
 𝒲₋₁(G::ClaytonGenerator, d::Int) = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ), d) : ClaytonWilliamsonDistribution(G.θ,d)
 
 frailty(G::ClaytonGenerator) = G.θ >= 0 ? Distributions.Gamma(1/G.θ, G.θ) : throw(ArgumentError("Clayton frailty is only defined for θ ≥ 0 (positive dependence). Got θ = $(G.θ)."))
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, A::DenseMatrix{<:Real})
-    A[:] = inverse_rosenblatt(C, rand(rng, size(A)...))
-    return A
-end
 function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
     # Check if all elements are in (0,1) and if θ < 0, check the sum condition
     if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
