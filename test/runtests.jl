@@ -12,6 +12,7 @@ testfiles = [
     "NestedArchimedeanCopula",
     "ConditionalDistribution",
     "EllipticalCopulas",
+    "ExpectationMaximizationExt",
     "FittingTest",
     "MiscelaneousCopulas",
     "SklarDist",
