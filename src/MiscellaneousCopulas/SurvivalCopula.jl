@@ -120,7 +120,7 @@ function ConditionalCopula(S::SurvivalCopula{D,CT,flips}, js, uⱼₛ) where {D,
     CC_base = ConditionalCopula(S.C, js, uⱼₛ′)
     I = Tuple(setdiff(1:D, Tuple(collect(Int, js))))
     flip_positions = Tuple(p for (p, idx) in enumerate(I) if idx in flips)
-    return (length(flip_positions) == 0) ? CC_base : SurvivalCopula{length(I), typeof(CC_base), typeof(flip_positions)}(CC_base)
+    return isempty(flip_positions) ? CC_base : SurvivalCopula(CC_base, flip_positions)
 end
 
 # Subsetting colocated: subset and remap flipped indices to the new positions

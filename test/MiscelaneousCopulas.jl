@@ -27,6 +27,13 @@
     @test cdf(S31, u) ≈ cdf(S31ref, u)
     @test pdf(S31, u) ≈ pdf(S31ref, u)
 
+    # Conditioning must remap surviving flipped dimensions as tuple values,
+    # rather than passing the tuple type to the SurvivalCopula constructor.
+    C24 = SurvivalCopula(ClaytonCopula(4, 2.0), (2, 4))
+    C24cond = condition(C24, (1, 3), (0.25, 0.75))
+    @test C24cond.C isa SurvivalCopula{2}
+    @test 0.0 <= cdf(C24cond, [0.4, 0.6]) <= 1.0
+
 end
 
 @testset "RafteryCopula Constructor" begin
