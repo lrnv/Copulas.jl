@@ -34,3 +34,16 @@ end
     # Boundary should throw
     @test_throws ArgumentError GaussianCopula(3, -0.5)
 end
+
+@testset "Elliptical logpdf promotes input and parameter types" begin
+    C32 = GaussianCopula(Float32[1 0.25; 0.25 1])
+    C64 = GaussianCopula([1.0 0.25; 0.25 1.0])
+
+    sample32 = rand(rng, C32, 2)
+    @test eltype(sample32) === Float32
+    @test all(0f0 .<= sample32 .<= 1f0)
+
+    @test logpdf(C32, [0.4, 0.6]) isa Float64
+    @test logpdf(C64, Float32[0.4, 0.6]) isa Float64
+    @test logpdf(C64, Float32[0.4, 0.6]) ≈ logpdf(C64, [0.4, 0.6]) rtol=1e-6
+end
