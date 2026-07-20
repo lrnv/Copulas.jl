@@ -559,7 +559,7 @@ end
                 expected = 1 - abs(a-b)
             elseif C isa MOCopula
                 λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
-                atom = isapprox.((λ₂+λ₁₂) .* x, (λ₁+λ₁₂) .* y;
+                atom = isapprox.((λ₁+λ₁₂) .* x, (λ₂+λ₁₂) .* y;
                                 atol=1e-10, rtol=1e-7)
                 observed = mean(atom)
                 expected = λ₁₂ / (λ₁ + λ₂ + λ₁₂)
