@@ -71,20 +71,23 @@ function Distributions._logpdf(C::MyCopula, u)
     # You can safely assume u to be an abstract vector of the right length and inside the hypercube.
     # Return the logpdf value on u
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::MyCopula, u::AbstractVector{<:Real})
-    # You need to fill the vector u (of lenght d) with a random sample, and then return it. 
-    return u
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::MyCopula, U::AbstractMatrix{<:Real})
+    # Fill the d × n matrix U with n samples, stored column-wise, and return it.
+    return U
 end 
 ```
 
 Once defined, these automatically integrate with the `Copulas.jl` and `Distributions.jl` interface.
 
-!!! info "Matrix sampler"
-    For performance reasons, you can also implement a matrix sampler if you feel its necessary: 
+!!! info "Sampling contract"
+    The matrix sampler is the required primitive. The generic vector sampler presents its
+    output as a `d × 1` matrix and delegates to it, so implementing a vector method is never
+    required for correctness. A family may still provide a vector specialization when
+    benchmarks show that its scalar setup cost matters:
     ```julia
-    function Distributions._rand!(rng::Distributions.AbstractRNG,C::MyCopula, U::DenseMatrix{<:Real})
-        # You need to fill the matrix u (of shape (d,n)) with n random samples, and then return it.
-        return U
+    function Distributions._rand!(rng::Distributions.AbstractRNG, C::MyCopula, u::AbstractVector{<:Real})
+        # Optional performance specialization for one sample.
+        return u
     end
     ```
 
@@ -403,21 +406,23 @@ Instead, we define a sampling rule that randomly selects between three dependenc
 ```@example generic_copula_example
 Distributions._logpdf(C::MardiaCopula, u) = NaN
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::MardiaCopula, x::AbstractVector{T}) where {T<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::MardiaCopula, X::AbstractMatrix{T}) where {T<:Real}
     θ = C.θ
-    u1, u2 = rand(rng, Distributions.Uniform(0,1), 2)
     p = [θ^2 * (1 + θ) / 2, 1 - θ^2, θ^2 * (1 - θ) / 2]
-    z = rand(rng, Distributions.Categorical(p))
-    if z == 1
-        u = min(u1, u2)
-        x[1] = u; x[2] = u
-    elseif z == 2
-        x[1] = u1; x[2] = u2
-    else
-        u = max(u1 + u2 - 1, 0)
-        x[1] = u; x[2] = 1 - u
+    for j in axes(X, 2)
+        u1, u2 = rand(rng, Distributions.Uniform(0,1), 2)
+        z = rand(rng, Distributions.Categorical(p))
+        if z == 1
+            u = min(u1, u2)
+            X[1, j] = u; X[2, j] = u
+        elseif z == 2
+            X[1, j] = u1; X[2, j] = u2
+        else
+            u = max(u1 + u2 - 1, 0)
+            X[1, j] = u; X[2, j] = 1 - u
+        end
     end
-    return x
+    return X
 end
 ```
 
@@ -712,4 +717,3 @@ M
     EV copulas usually lack smooth closed-form densities.
     Analytical forms are optional but highly recommended to improve numerical stability.
     Otherwise, `Copulas.jl` will fall back to numerical integration based on the Pickands function.
-

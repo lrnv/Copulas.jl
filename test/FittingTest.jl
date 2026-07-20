@@ -92,6 +92,17 @@
     end
 end
 
+@testset "Extreme-value MLE accepts boundary starts" begin
+    U = [0.10 0.25 0.40 0.55 0.70 0.85;
+         0.15 0.20 0.45 0.60 0.75 0.90]
+
+    for CT in (CuadrasAugeCopula, LogCopula)
+        fitted = fit(CT, U, :mle; start=1.0)
+        @test fitted isa Copulas.Copula
+        @test all(isfinite, Distributions.params(fitted))
+    end
+end
+
 @testset "Dependence Metrics" begin
     Random.seed!(rng,123)
     n_samples = 2000

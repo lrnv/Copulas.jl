@@ -74,10 +74,18 @@ function Distributions.cdf(S::SklarDist{CT,TplMargins}, x) where {CT,TplMargins}
     return Distributions.cdf(S.C, u)
 end
 Distributions.logcdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = log(Distributions.cdf(S, x))
-function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,TplMargins}, x::AbstractVector{T}) where {CT,TplMargins,T}
-    Random.rand!(rng,S.C,x)
-    clamp!(x, nextfloat(T(0)), prevfloat(T(1)))
-    x .= Distributions.quantile.(S.m,x)
+function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,TplMargins}, A::AbstractMatrix{T}) where {CT,TplMargins,T}
+    size(A, 1) == length(S) || throw(ArgumentError("Dimension mismatch between distribution and output matrix"))
+    Random.rand!(rng, S.C, A)
+    lo, hi = nextfloat(T(0)), prevfloat(T(1))
+    @inbounds for col in axes(A, 2), row in axes(A, 1)
+        A[row, col] = Distributions.quantile(S.m[row], clamp(A[row, col], lo, hi))
+    end
+    return A
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist, x::AbstractVector{T}) where {T<:Real}
+    Distributions._rand!(rng, S, reshape(x, length(S), 1))
+    return x
 end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins}, u) where {CT,TplMargins}
     d = length(S)

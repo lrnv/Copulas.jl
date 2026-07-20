@@ -71,7 +71,7 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT}, X::DenseMatrix{T}) where {T<:Real, TT}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT}, X::AbstractMatrix{T}) where {T<:Real, TT}
     # More efficient Matrix sampler:
     d,n = size(X)
     @assert d==2
@@ -84,16 +84,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
         X[2,i] = exp(log(w)*(1-z)/a)
     end
     return X
-end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT},
-                              x::AbstractVector{T}) where {T<:Real, TT}
-    u1, u2 = rand(rng), rand(rng)
-    z  = rand(rng, ExtremeDist(C.tail))
-    w  = (rand(rng) < _probability_z(C.tail, z)) ? u1 : (u1*u2)
-    a  = A(C.tail, z)
-    x[1] = exp(log(w)*z/a)
-    x[2] = exp(log(w)*(1-z)/a)
-    return x
 end
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
 
@@ -161,14 +151,27 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
         initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : only(Distributions.params(_example(CT, d)))
         initial_params.θ
     end
-    # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
-    # the original bounds are still used for the optimization
-    θ0_clamped = clamp(θ0_val, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
-    f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
-    res = Optim.optimize(f, Optim.TwiceDifferentiableConstraints([lo], [hi]), [θ0_clamped], Optim.IPNewton(), autodiff = ADTypes.AutoForwardDiff())
-    θ̂ = Optim.minimizer(res)[1]
-    θ̂ = Optim.minimizer(res)[1]
-    return CT(d, θ̂), (; θ̂=(;θ=θ̂), optimizer=:IPNewton,
+    # Keep the starting value strictly inside every finite boundary before
+    # mapping it to the tail's unconstrained parameterization. In particular,
+    # log and logit maps send otherwise valid boundary values to ±Inf.
+    Tθ = promote_type(typeof(float(θ0_val)), typeof(float(lo)), typeof(float(hi)))
+    loT, hiT = Tθ(lo), Tθ(hi)
+    inward(x) = sqrt(eps(Tθ)) * max(one(Tθ), abs(x))
+    lo_start = isfinite(loT) ? loT + inward(loT) : -Tθ(1e16)
+    hi_start = isfinite(hiT) ? hiT - inward(hiT) : Tθ(1e16)
+    θ0_clamped = clamp(Tθ(θ0_val), lo_start, hi_start)
+    θ0 = (; θ=θ0_clamped)
+    α0 = _unbound_params(CT, d, θ0)
+    all(isfinite, α0) || throw(ArgumentError("MLE start must map to finite unbounded parameters"))
+    cop(α) = CT(d, _rebound_params(CT, d, α)...)
+    f(α) = -Distributions.loglikelihood(cop(α), U)
+    res = try
+        Optim.optimize(f, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
+    catch
+        Optim.optimize(f, α0, Optim.NelderMead())
+    end
+    θ̂ = _rebound_params(CT, d, Optim.minimizer(res))
+    return CT(d, θ̂...), (; θ̂=θ̂, optimizer=Optim.summary(res),
                         xtol=xtol, converged=Optim.converged(res),
                         iterations=Optim.iterations(res))
 end

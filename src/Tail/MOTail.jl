@@ -65,6 +65,30 @@ function τ(C::MOCopula)
     b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
     return a*b/(a+b-a*b)
 end
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula,
+                              A::AbstractMatrix{S}) where {S<:Real}
+    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
+    T = promote_type(typeof(float(λ₁)), typeof(float(λ₂)), typeof(float(λ₁₂)))
+    λ₁T, λ₂T, λ₁₂T = T(λ₁), T(λ₂), T(λ₁₂)
+    rate_u, rate_v = λ₂T + λ₁₂T, λ₁T + λ₁₂T
+    (rate_u > 0 && rate_v > 0) ||
+        throw(ArgumentError("Each Marshall-Olkin margin must have a positive total rate"))
+    waiting_time(rate) = iszero(rate) ? T(Inf) : T(Random.randexp(rng)) / rate
+
+    # The first Pickands coordinate used by A is -log(u), so its private
+    # shock has rate λ₂; the second coordinate analogously uses rate λ₁.
+    @inbounds for col in axes(A, 2)
+        private_u = waiting_time(λ₂T)
+        private_v = waiting_time(λ₁T)
+        common = waiting_time(λ₁₂T)
+        A[1, col] = exp(-rate_u * min(private_u, common))
+        A[2, col] = exp(-rate_v * min(private_v, common))
+    end
+    return A
+end
+
 function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {T, S}
     a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
     b = D.tail.λ₂ / (D.tail.λ₂ + D.tail.λ₁₂)

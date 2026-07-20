@@ -241,22 +241,24 @@ function Distributions._logpdf(CC::ConditionalCopula{d,D,p,T,TDs}, v::AbstractVe
 end
 
 # Sampling: sequential inverse-CDF using conditional distortions
-function Distributions._rand!(rng::Distributions.AbstractRNG, CC::ConditionalCopula{d, D, p}, x::AbstractVector{T}) where {T<:Real, d, D, p}
+function Distributions._rand!(rng::Distributions.AbstractRNG, CC::ConditionalCopula{d, D, p}, A::AbstractMatrix{T}) where {T<:Real, d, D, p}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     # We want a sample from the COPULA of the conditional model. Let U be a
     # draw from the conditional joint H_{I|J}(· | u_J). The corresponding
     # copula coordinates are V_k = F_{i_k|J}(U_k | u_J) = cdf(distortions[k], U_k).
     # Sample U sequentially by conditioning on J ∪ previously sampled I.
-    J = [j for j in CC.js]
-    ujs =  [u for u in CC.uⱼₛ]
-    for k in 1:d
-        iₖ = CC.is[k]
-        uₖ = rand(rng, DistortionFromCop(CC.C, Tuple(J), Tuple(ujs), iₖ))
-        xₖ = Distributions.cdf(CC.distortions[k], uₖ)
-        x[k] = xₖ
-        push!(J, iₖ)
-        push!(ujs, uₖ)
+    for col in axes(A, 2)
+        J = [j for j in CC.js]
+        ujs = [u for u in CC.uⱼₛ]
+        for k in 1:d
+            iₖ = CC.is[k]
+            uₖ = rand(rng, DistortionFromCop(CC.C, Tuple(J), Tuple(ujs), iₖ))
+            A[k, col] = Distributions.cdf(CC.distortions[k], uₖ)
+            push!(J, iₖ)
+            push!(ujs, uₖ)
+        end
     end
-    return x
+    return A
 end
 
 ###########################################################################

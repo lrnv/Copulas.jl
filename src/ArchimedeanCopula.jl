@@ -77,22 +77,32 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     end
     return log(max(ϕ⁽ᵏ⁾(C.G, d, sum(ϕ⁻¹.(C.G, u))) * prod(ϕ⁻¹⁽¹⁾.(C.G, u)), 0))
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, x::AbstractVector{T}) where {T<:Real, d, TG}
-    # By default, we use the Williamson sampling.
-    Random.randexp!(rng,x)
-    r = rand(rng, 𝒲₋₁(C.G, d))
-    sx = sum(x)
-    for i in 1:length(C)
-        x[i] = ϕ(C.G,r * x[i]/sx)
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, A::AbstractMatrix{T}) where {T<:Real, d, TG}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    R = 𝒲₋₁(C.G, d)
+    @inbounds for col in axes(A, 2)
+        sample = view(A, :, col)
+        Random.randexp!(rng, sample)
+        r = rand(rng, R)
+        sx = sum(sample)
+        for row in axes(A, 1)
+            A[row, col] = ϕ(C.G, r * A[row, col] / sx)
+        end
     end
-    return x
+    return A
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, GT}, x::AbstractVector{T}) where {T<:Real, d, GT<:AbstractFrailtyGenerator}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, GT}, A::AbstractMatrix{T}) where {T<:Real, d, GT<:AbstractFrailtyGenerator}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     F = frailty(C.G)
-    Random.randexp!(rng, x)
-    f = rand(rng, F)
-    x .= ϕ.(C.G, x ./ f)
-    return x
+    @inbounds for col in axes(A, 2)
+        sample = view(A, :, col)
+        Random.randexp!(rng, sample)
+        frailty = rand(rng, F)
+        for row in axes(A, 1)
+            A[row, col] = ϕ(C.G, A[row, col] / frailty)
+        end
+    end
+    return A
 end
 
 generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)

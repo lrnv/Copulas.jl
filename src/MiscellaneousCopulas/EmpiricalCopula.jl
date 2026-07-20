@@ -46,8 +46,13 @@ end
 function Distributions._logpdf(C::EmpiricalCopula{d,MT}, u) where {d,MT}
     any(C.u .== u) ? -log(size(C.u,2)) : -Inf
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula{d,MT}, x::AbstractVector{T}) where {d,MT,T<:Real}
-    x .= C.u[:,Distributions.rand(rng,axes(C.u,2),1)[1]]
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula{d,MT}, A::AbstractMatrix{T}) where {d,MT,T<:Real}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    indices = rand(rng, axes(C.u, 2), size(A, 2))
+    @inbounds for (j, col) in enumerate(axes(A, 2)), row in axes(A, 1)
+        A[row, col] = C.u[row, indices[j]]
+    end
+    return A
 end
 StatsBase.corkendall(C::EmpiricalCopula) = StatsBase.corkendall(C.u')
 

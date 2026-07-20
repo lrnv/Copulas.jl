@@ -88,10 +88,6 @@ end
 𝒲₋₁(G::ClaytonGenerator, d::Int) = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ), d) : ClaytonWilliamsonDistribution(G.θ,d)
 
 frailty(G::ClaytonGenerator) = G.θ >= 0 ? Distributions.Gamma(1/G.θ, G.θ) : throw(ArgumentError("Clayton frailty is only defined for θ ≥ 0 (positive dependence). Got θ = $(G.θ)."))
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ClaytonCopula, A::DenseMatrix{<:Real})
-    A[:] = inverse_rosenblatt(C, rand(rng, size(A)...))
-    return A
-end
 function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
     # Check if all elements are in (0,1) and if θ < 0, check the sum condition
     if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
@@ -116,15 +112,21 @@ function ρ⁻¹(::Type{<:ClaytonGenerator}, ρ̂; atol=1e-10)
     if isapprox(_ρ, 0.0; atol=1e-14)
         return 0.0
     end
-
-    # Seeds: we approximate τ ≈ (2/3)ρ and θ ≈ 2τ/(1-τ)
-    τ0 = clamp((2/3)*_ρ, -0.99, 0.99)
-    θ0 = 2*τ0/(1 - τ0)
-    θ0 = clamp(θ0, -1 + sqrt(eps(Float64)), 1e6)
-    θ1 = θ0 + (_ρ > 0 ? 0.25 : -0.25)        # second seed towards the right side
+    _ρ >= 1 && return Inf
+    _ρ <= -1 && return -1.0
 
     f(θ) = ρ(ClaytonGenerator(θ)) - _ρ
-    # Two-seeded blotter; no bracketing required
-    θ = Roots.find_zero(f, (θ0, θ1), Roots.Order2(); xatol=atol)
-    return θ
+    if _ρ < 0
+        bracket = (-1 + sqrt(eps(Float64)), 0.0)
+    else
+        # Spearman's rho increases to one with θ. Grow the upper endpoint
+        # until it brackets the requested value instead of relying on a
+        # secant step, which is fragile for strongly dependent samples.
+        upper = 1.0
+        while f(upper) < 0
+            upper *= 2
+        end
+        bracket = (0.0, upper)
+    end
+    return Roots.find_zero(f, bracket, Roots.Brent(); xatol=atol, rtol=0)
 end

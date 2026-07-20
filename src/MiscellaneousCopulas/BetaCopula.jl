@@ -87,13 +87,14 @@ function Distributions._logpdf(C::BetaCopula{d}, u::AbstractVector) where {d}
     dens = max(dens, zero(dens))
     return log(dens + eps(eltype(dens)))
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::BetaCopula{d}, u::AbstractVector{T}) where {d,T<:Real}
-    i = Distributions.rand(rng, 1:C.n)  # choose a mixture component
-    @inbounds for j in 1:d
-        r = C.ranks[j,i]
-        u[j] = Distributions.rand(rng, Distributions.Beta(r, C.n + 1 - r))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::BetaCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    components = rand(rng, 1:C.n, size(A, 2))
+    @inbounds for (j, col) in enumerate(axes(A, 2)), row in axes(A, 1)
+        r = C.ranks[row, components[j]]
+        A[row, col] = rand(rng, Distributions.Beta(r, C.n + 1 - r))
     end
-    return u
+    return A
 end
 @inline function DistortionFromCop(C::BetaCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
     # Build conditional mixture weights over observations given U_js = u_js.

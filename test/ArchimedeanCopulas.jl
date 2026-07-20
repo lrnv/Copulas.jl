@@ -91,6 +91,9 @@ end
     @test Copulas.ρ⁻¹(ClaytonCopula, 1/3) ≈ 0.58754 atol=1.0e-5
     @test Copulas.ρ⁻¹(ClaytonCopula, 0.01) ≈ 0. atol=1.0e-1
     @test Copulas.ρ⁻¹(ClaytonCopula, -0.4668) ≈ -.5 atol=1.0e-3
+    ρstrong = Copulas.ρ(ClaytonCopula(2, 7.3))
+    @test Copulas.ρ⁻¹(ClaytonCopula, ρstrong) ≈ 7.3 atol=1.0e-5
+    @test Copulas.ρ⁻¹(ClaytonCopula, 1.0) == Inf
 
     @test Copulas.ρ⁻¹(GumbelCopula, 0.5) ≈ 1.5410704204332681
     @test_broken Copulas.ρ⁻¹(GumbelCopula, 0.0001) == 1.

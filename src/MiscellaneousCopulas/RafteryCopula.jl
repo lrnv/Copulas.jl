@@ -68,19 +68,18 @@ function Distributions._logpdf(R::RafteryCopula{d,P}, u) where {d,P}
     l_prd = (R.θ) / (1 - R.θ) * log(prod(u))
     return l_num - l_den + l_prd
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, R::RafteryCopula{d,P}, x::AbstractVector{T}) where {d,P,T <: Real}
-    # Step 1: Generate independent values u, u_1, ..., u_d from a uniform distribution [0, 1]
-    u = rand(rng, d)
-
-    # Step 2: Generate j from a Bernoulli distribution with parameter θ
-    uj = (rand(rng)<R.θ) ? rand(rng) : 1
-
-    # Step 3: Calculate v_1, ..., v_d
-    for i in 1:d
-        x[i] = u[i]^(1 - R.θ) * uj
+function Distributions._rand!(rng::Distributions.AbstractRNG, R::RafteryCopula{d,P}, A::AbstractMatrix{T}) where {d,P,T <: Real}
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    Random.rand!(rng, A)
+    common = rand(rng, T, size(A, 2))
+    selectors = rand(rng, T, size(A, 2))
+    @inbounds for (j, col) in enumerate(axes(A, 2))
+        uj = selectors[j] < R.θ ? common[j] : one(T)
+        for row in axes(A, 1)
+            A[row, col] = A[row, col]^(one(T) - R.θ) * uj
+        end
     end
-    
-    return x
+    return A
 end
 function ρ(R::RafteryCopula{d,P}) where {d, P}
     term1 = (d+1)*(2^d-(2-R.θ)^d)-(2^d*R.θ*d)
@@ -100,4 +99,3 @@ function τ(R::RafteryCopula{d, P}) where {d, P}
     
     return term1 + term2 - term3 - term4
 end
-

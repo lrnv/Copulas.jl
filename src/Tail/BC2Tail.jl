@@ -53,12 +53,16 @@ function ρ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T}
     den = (3 - a - b - min(a,b)) * (a + b + max(a,b))
     return num / den
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, BC2Tail{T}}, u::AbstractVector{S}) where {T,S<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, BC2Tail{T}}, A::AbstractMatrix{S}) where {T,S<:Real}
+    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     a, b = C.tail.a, C.tail.b
-    v1, v2 = rand(rng, Distributions.Uniform(0,1), 2)
-    u[1] = max(v1^(1/a), v2^(1/(1-a)))
-    u[2] = max(v1^(1/b), v2^(1/(1-b)))
-    return u
+    V = rand(rng, S, 2, size(A, 2))
+    @inbounds for (j, col) in enumerate(axes(A, 2))
+        v1, v2 = V[1, j], V[2, j]
+        A[1, col] = max(v1^(1/a), v2^(1/(1-a)))
+        A[2, col] = max(v1^(1/b), v2^(1/(1-b)))
+    end
+    return A
 end
 function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{TF1}, TF2}, z::Real) where {TF1,TF2}
     T = promote_type(TF1, TF2, typeof(z))

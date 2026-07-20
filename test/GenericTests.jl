@@ -449,11 +449,22 @@ function _integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, N) where d
     return μ, r, :mc_pdf
 end
 
-# You can filter the bestiary here if you want: 
+# You can filter the bestiary here if you want:
 Bestiary = filter(GenericTestFilter, Bestiary)
 
-# Launch the main computation: 
-@testset for C in unique(Bestiary) 
+@testset "Matrix sampler accepts generic buffers" begin
+    C = ClaytonCopula(3, 1.0)
+    storage = fill(Float32(NaN), 5, 2)
+    A = @view storage[2:4, :]
+
+    @test rand!(StableRNG(260), C, A) === A
+    @test all(0f0 .<= A .<= 1f0)
+    @test all(isnan, storage[[1, 5], :])
+    @test_throws DimensionMismatch rand!(StableRNG(260), C, zeros(Float32, 2, 1))
+end
+
+# Launch the main computation:
+@testset for C in unique(Bestiary)
 
     @info "Testing $C..."
     Random.seed!(rng,123)
@@ -466,14 +477,25 @@ Bestiary = filter(GenericTestFilter, Bestiary)
     spl1000 = rand(rng, C, 1000)
 
     @testset "Basics" begin 
-        @testset "Shape and support" begin 
+        @testset "Shape and support" begin
             @test length(spl1)==d
             @test size(spl10) == (d,10)
             @test all(0 .<= spl10 .<= 1)
             @test all(0 .<= spl1000 .<= 1)
         end
 
-        @testset "CDF boundary and measure" begin 
+        @testset "Matrix-first sampler dispatch" begin
+            vector_fallback = which(Distributions._rand!,
+                                    (typeof(rng), Copulas.Copula{d}, Vector{Float64}))
+            matrix_fallback = which(Distributions._rand!,
+                                    (typeof(rng), Copulas.Copula{d}, Matrix{Float64}))
+            @test which(Distributions._rand!,
+                        (typeof(rng), CT, Vector{Float64})) == vector_fallback
+            @test which(Distributions._rand!,
+                        (typeof(rng), CT, Matrix{Float64})) != matrix_fallback
+        end
+
+        @testset "CDF boundary and measure" begin
             @test iszero(cdf(C,zeros(d)))
             @test isone(cdf(C,ones(d)))
             @test 0 <= cdf(C,rand(rng,d)) <= 1
@@ -522,8 +544,36 @@ Bestiary = filter(GenericTestFilter, Bestiary)
             @test abs(p_hat - p_th) ≤ max(5*se, 2e-3)
         end
 
+        @testif (C isa BC2Copula || C isa MOCopula || C isa CuadrasAugeCopula) "Singular sampler structure" begin
+            # The empirical-CDF check is fragile for these singular laws.
+            # Check their margins and analytically known singular mass instead.
+            @test all(isapprox.(vec(mean(spl1000; dims=2)), 0.5; atol=0.04, rtol=0))
 
-        # This test takes more than 5 hours to run 
+            x = .-log.(spl1000[1, :])
+            y = .-log.(spl1000[2, :])
+            if C isa BC2Copula
+                a, b = C.tail.a, C.tail.b
+                ray1 = isapprox.(a .* x, b .* y; atol=1e-10, rtol=1e-7)
+                ray2 = isapprox.((1-a) .* x, (1-b) .* y; atol=1e-10, rtol=1e-7)
+                observed = mean(ray1 .| ray2)
+                expected = 1 - abs(a-b)
+            elseif C isa MOCopula
+                λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
+                atom = isapprox.((λ₁+λ₁₂) .* x, (λ₂+λ₁₂) .* y;
+                                atol=1e-10, rtol=1e-7)
+                observed = mean(atom)
+                expected = λ₁₂ / (λ₁ + λ₂ + λ₁₂)
+            else
+                θ = C.tail.θ
+                observed = mean(spl1000[1, :] .== spl1000[2, :])
+                expected = θ / (2-θ)
+            end
+            se = sqrt(expected * (1-expected) / size(spl1000, 2))
+            @test abs(observed-expected) <= max(5*se, 0.01)
+        end
+
+
+        # This test takes more than 5 hours to run
         # This is clarly unacceptable, but moreover we dont know which copula takes the most time 
         # sadly ;)
         

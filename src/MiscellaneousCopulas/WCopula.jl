@@ -19,11 +19,13 @@ end
 Distributions._logpdf(::WCopula,           u) = sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::WCopula, u) = max(sum(u)-1,0)
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, ::WCopula, x::AbstractVector{T}) where {T<:Real}
-    @assert length(x)==2
-    x[1] = rand(rng)
-    x[2] = 1-x[1]
-    return x
+function Distributions._rand!(rng::Distributions.AbstractRNG, ::WCopula, A::AbstractMatrix{T}) where {T<:Real}
+    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    Random.rand!(rng, view(A, 1, :))
+    @inbounds for col in axes(A, 2)
+        A[2, col] = one(T) - A[1, col]
+    end
+    return A
 end
 τ(::WCopula) = -1
 ρ(::WCopula) = -1

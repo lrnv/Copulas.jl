@@ -48,15 +48,7 @@ References:
 """
 abstract type EllipticalCopula{d,MT} <: Copula{d} end
 Base.eltype(C::CT) where CT<:EllipticalCopula = Base.eltype(N(CT)(C.Σ))
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, x::AbstractVector{T}) where {T<:Real, CT <: EllipticalCopula}
-    Random.rand!(rng,N(CT)(C.Σ),x)
-    U₁ = U(CT)
-    @inbounds for i in eachindex(x)
-        x[i] = clamp(T(Distributions.cdf(U₁, x[i])), zero(T), one(T))
-    end
-    return x
-end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::DenseMatrix{T}) where {T<:Real, CT<:EllipticalCopula}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::AbstractMatrix{T}) where {T<:Real, CT<:EllipticalCopula}
     # More efficient version that precomputes stuff:
     n = N(CT)(C.Σ)
     u = U(CT)
