@@ -72,6 +72,22 @@ end
     end
 end
 
+@testset "Gumbel and Log distortion closed-form quantiles" begin
+    for θ in (1.2, 2.5, 8.0), uⱼ in (0.25, 0.7)
+        Dg = condition(GumbelCopula(2, θ), (1,), (uⱼ,))
+        Dl = condition(LogCopula(2, θ), (1,), (uⱼ,))
+        for α in (0.1, 0.5, 0.9)
+            qg = quantile(Dg, α)
+            ql = quantile(Dl, α)
+            generic = @invoke quantile(Dg::Copulas.Distortion, α::Real)
+            @test isapprox(cdf(Dg, qg), α; atol=2e-11, rtol=2e-11)
+            @test isapprox(cdf(Dl, ql), α; atol=2e-11, rtol=2e-11)
+            @test isapprox(qg, ql; atol=2e-11, rtol=2e-11)
+            @test isapprox(qg, generic; atol=2e-8, rtol=2e-8)
+        end
+    end
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20

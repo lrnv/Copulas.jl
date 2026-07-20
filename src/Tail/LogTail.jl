@@ -108,6 +108,16 @@ function d²A(tail::LogTail, t::Real)
     return term1 + term2
 end
 
+# LogCopula is the bivariate Gumbel copula, so its conditional quantile can use
+# the same closed-form inverse of the first generator derivative.
+function Distributions.quantile(D::BivEVDistortion{<:LogTail}, α::Real)
+    T = float(promote_type(typeof(α), typeof(D.tail.θ), typeof(D.uⱼ)))
+    G = GumbelGenerator(T(D.tail.θ))
+    sJ = ϕ⁻¹(G, T(D.uⱼ))
+    den = ϕ⁽¹⁾(G, sJ)
+    return Distributions.quantile(ArchimedeanDistortion(G, 1, sJ, den), T(α))
+end
+
 _rho_Log(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(LogTail(θ),t))^2, 0, 1; kw...)[1] - 3
 
 τ(C::LogCopula) = 1 - inv(C.tail.θ)
