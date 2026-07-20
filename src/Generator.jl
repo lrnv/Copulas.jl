@@ -45,10 +45,22 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
 ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
 ϕ⁽ᵏ⁾(G::Generator, k::Int, t) = taylor(ϕ(G), t, k)[end] * factorial(k)
-ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t) = try 
-    Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, k, x) - t, start_at)
-catch
-    Roots.find_zero(x -> ϕ⁽ᵏ⁾(G, k, x) - t, (0,Inf))
+function ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t)
+    f(x) = ϕ⁽ᵏ⁾(G, k, x) - t
+    T = typeof(float(t))
+    lo, hi = eps(T), one(T)
+    flo, fhi = f(lo), f(hi)
+    iszero(flo) && return lo
+    iszero(fhi) && return hi
+
+    for _ in 1:64
+        signbit(flo) != signbit(fhi) &&
+            return Roots.find_zero(f, (lo, hi), Roots.Bisection())
+        hi *= 2
+        fhi = f(hi)
+        iszero(fhi) && return hi
+    end
+    throw(ArgumentError("Could not bracket the inverse generator derivative"))
 end
 
 # Stable evaluations of W(exp(logx)) and W₋₁(-exp(logx)). They avoid forming

@@ -66,7 +66,11 @@ function Distributions.quantile(d::Distortion, α::Real)
     α > 1 - 2ϵ && return one(T)
     lα = log(α)
     f(u) = Distributions.logcdf(d, u) - lα
-    return Roots.find_zero(f, (ϵ, 1 - 2ϵ), Roots.Bisection(); xtol = sqrt(eps(T)))
+    lo, hi = ϵ, one(T) - 2ϵ
+    flo, fhi = f(lo), f(hi)
+    flo >= zero(flo) && return lo
+    fhi <= zero(fhi) && return hi
+    return Roots.find_zero(f, (lo, hi), Roots.Bisection(); xtol = sqrt(eps(T)))
 end
 # You have to implement a cdf, and you can implement a pdf, either in log scaleor not: 
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
