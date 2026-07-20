@@ -174,6 +174,9 @@ end
     reference = @invoke Copulas.rosenblatt(C::Copulas.Copula{3}, u)
     @test fast ≈ reference atol = 3e-12
     @test inverse_rosenblatt(C, fast) ≈ u atol = 3e-12
+
+    direct = Copulas.DistortionFromCop(C, (1, 2), (u[1, 1], u[2, 1]), 3)
+    @test cdf(direct, u[3, 1]) ≈ fast[3, 1] atol = 3e-12
 end
 
 @testset "Distorted distribution logcdf" begin
