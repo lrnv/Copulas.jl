@@ -97,14 +97,8 @@ function Distributions._logpdf(S::SklarDist{CT,TplMargins}, u) where {CT,TplMarg
     end
     # compute cdf of marginals, clamped, without broadcasting temporaries
     U = Vector{T}(undef, d)
-    boundary = zero(T) + eps(Float64)
-    upper_boundary = one(T) - boundary
     @inbounds for i in 1:d
-        U[i] = clamp(
-            Distributions.cdf(S.m[i], u[i]),
-            boundary,
-            upper_boundary,
-        )
+        U[i] = clamp(Distributions.cdf(S.m[i], u[i]), zero(T), one(T))
     end
     return s + Distributions.logpdf(S.C, U)
 end
