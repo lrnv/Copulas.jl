@@ -18,6 +18,75 @@
     @test Z.m[2] == LogNormal()
 end
 
+@testset "Distortion densities agree with their cdf derivatives" begin
+    C = FGMCopula(2, 0.4)
+    for j in 1:2
+        i = 3 - j
+        D = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (0.4,), i)
+        for u in (0.25, 0.65)
+            reference = ForwardDiff.derivative(t -> cdf(D, t), u)
+            @test isapprox(pdf(D, u), reference; atol=1e-8, rtol=1e-8)
+            @test isapprox(cdf(D, quantile(D, u)), u; atol=1e-6, rtol=1e-6)
+        end
+        @test pdf(D, -0.1) == 0
+        @test logpdf(D, 1.1) == -Inf
+    end
+end
+
+@testset "Generic ConditionalCopula density" begin
+    C = GaussianCopula([
+        1.0 0.35 0.20
+        0.35 1.0 0.25
+        0.20 0.25 1.0
+    ])
+    js = (3,)
+    ujs = (0.4,)
+    generic = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{3}, js, ujs)
+    specialized = Copulas.ConditionalCopula(C, js, ujs)
+
+    for u in ([0.25, 0.35], [0.5, 0.5], [0.75, 0.65])
+        @test isapprox(logpdf(generic, u), logpdf(specialized, u); atol=1e-8, rtol=1e-8)
+        @test isapprox(pdf(generic, u), pdf(specialized, u); atol=1e-8, rtol=1e-8)
+    end
+    @test pdf(generic, [-0.1, 0.5]) == 0
+
+    Cclayton = ClaytonCopula(3, 2.0)
+    generic_big = @invoke Copulas.ConditionalCopula(
+        Cclayton::Copulas.Copula{3},
+        (3,),
+        (big"0.4",),
+    )
+    value_big = logpdf(generic_big, BigFloat[0.35, 0.65])
+    @test value_big isa BigFloat
+    @test isfinite(value_big)
+end
+
+@testset "Elementary distortions respect their support" begin
+    distortions = (
+        Copulas.NoDistortion(),
+        Copulas.MDistortion(0.4, Int8(2)),
+        Copulas.WDistortion(0.4, Int8(2)),
+    )
+    for D in distortions
+        @test cdf(D, -0.2) == 0
+        @test cdf(D, 1.2) == 1
+        @test pdf(D, -0.2) == 0
+        @test pdf(D, 1.2) == 0
+        @test logpdf(D, -0.2) == -Inf
+        @test logpdf(D, 1.2) == -Inf
+    end
+end
+
+@testset "Checkerboard distortion supports multiple conditioning dimensions" begin
+    C = CheckerboardCopula(randn(rng, 3, 30); pseudo_values=false)
+    D = Copulas.DistortionFromCop(C, (1, 2), (0.3, 0.7), 3)
+
+    @test D isa Copulas.HistogramBinDistortion
+    @test all(0 .<= cdf.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
+    @test all(pdf.(Ref(D), (0.2, 0.5, 0.8)) .>= 0)
+    @test all(0 .<= quantile.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
+end
+
 @testset "Generic Distortion vs AD (bivariate small subset)" begin
     # Compare the GENERIC DistortionFromCop (forced via @invoke) against AD-based reference
     # on a tiny, fast subset to validate the generic path independent of family specifics.
