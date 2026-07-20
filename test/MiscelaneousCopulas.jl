@@ -20,6 +20,13 @@
     @test cdf(S13, u) ≈ cdf(Sref, u)
     @test pdf(S13, u) ≈ pdf(Sref, u)
 
+    # Reordering changes flip positions, not their original dimension labels.
+    C13 = SurvivalCopula(ClaytonCopula(3, 2.0), (1, 3))
+    S31 = subsetdims(C13, (3, 1))
+    S31ref = SurvivalCopula(ClaytonCopula(2, 2.0), (1, 2))
+    @test cdf(S31, u) ≈ cdf(S31ref, u)
+    @test pdf(S31, u) ≈ pdf(S31ref, u)
+
 end
 
 @testset "RafteryCopula Constructor" begin

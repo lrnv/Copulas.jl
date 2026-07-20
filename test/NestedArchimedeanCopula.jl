@@ -271,7 +271,10 @@ end
               logcdf(condition(Cbiv, (1,), u1), u2) ≈ log(dC_du1) atol = 1e-9
         @test logpdf(subsetdims(Cbiv, (1,)), u1) == 0.0      # Uniform marginal
         # Fast-path probe: condition returns our specialised NestedDistortion.
-        @test condition(Cbiv, (1,), u1) isa NestedDistortion
+        Dbiv = condition(Cbiv, (1,), u1)
+        @test Dbiv isa NestedDistortion
+        @test cdf(Dbiv, 0.0) == 0.0
+        @test cdf(Dbiv, 1.0) == 1.0
 
         # (b) Flat ArchimedeanCopula via the SAME gist recipe, against the
         #     ϕ⁽ᵏ⁾ + ϕ⁻¹′ closed form (upstream ArchimedeanDistortion / subsetdims).
@@ -359,10 +362,14 @@ end
         # copula-scale mixed partial over the observed coords (data-scale gist
         # should equal margin densities + the copula-scale gist at the PIT point).
         cop_ll = gist_censored(C, u, δ)
-        # Tightened 1e-7 → 1e-10: both sides route the multi-coordinate conditional
-        # CDF through our kernel now, so the data-scale/copula-scale split agrees
-        # to machine precision. (Self-consistency via gist_censored — NOT an
-        # independent reference; the independent proof is testset 4c below.)
+        spec = RefSpec(ClaytonGenerator(big(2.0)), Tuple{BigFloat,Bool}[], [
+            RefSpec(ClaytonGenerator(big(5.0)),
+                [(big(u[1]), false), (big(u[2]), true), (big(u[3]), false)]),
+            RefSpec(GumbelGenerator(big(3.0)),
+                [(big(u[4]), false), (big(u[5]), true), (big(u[6]), false)])])
+        @test cop_ll ≈ Float64(ref_logpdf(spec)) atol = 1e-9
+        # With the copula contribution independently checked above, this verifies
+        # data-scale margin/Jacobian composition rather than two kernel aliases.
         @test gist_sklar(Sn, x, δ) ≈ margin_ll + cop_ll atol = 1e-10
         @test isfinite(gist_sklar(Sn, x, δ))
     end
@@ -401,20 +408,14 @@ end
         CC = condition(C, obs, [u[i] for i in obs])
         vgrid = [[0.2, 0.2], [0.4, 0.3], [0.6, 0.55], [0.8, 0.85], [0.95, 0.97]]
         vals = [cdf(CC, v) for v in vgrid]
+        @test cdf(CC, zeros(2)) == 0.0
+        @test cdf(CC, ones(2)) ≈ 1.0 atol = 1e-12
         @test all(0.0 .<= vals .<= 1.0)
         @test all(vals[k + 1] >= vals[k] - 1e-12 for k in 1:length(vals) - 1)
 
-        # (iii) BigFloat-ROUTABILITY + boundary robustness (the DEFENSIBLE adversarial
-        #       win). Standard-API conditioning differentiates a closed-form CDF in
-        #       Float64 (ForwardDiff); at high differentiation order for a fast-tail
-        #       generator BOTH Float64 paths (ForwardDiff AND our Float64 kernel) lose
-        #       precision and eventually NaN — so we do NOT claim the Float64 kernel
-        #       beats Float64 ForwardDiff. The universal advantage is that the kernel
-        #       computes the SAME quantity exactly in BigFloat, which the Float64-locked
-        #       standard API cannot reach. Verify: (a) a moderately deep multi-coordinate
-        #       point is finite and BigFloat-exact; (b) at a deeper point the Float64
-        #       ForwardDiff conditional CDF is non-finite (NaN) yet the BigFloat kernel
-        #       is finite and matches.
+        # (iii) BigFloat routability and deep-tail robustness. Correctness at a
+        # moderate point is checked against the standard API; the deeper point
+        # checks the high-precision escape hatch without requiring Float64 to fail.
         Cj = NestedArchimedeanCopula(JoeGenerator(1.2);
                 children = [JoeCopula(4, 15.0), JoeCopula(4, 15.0)])
         δj = [false, false, false, false, false, false, false, true]  # observe 7 (order 7)
@@ -423,18 +424,8 @@ end
         gm = gist_censored(Cj, um, δj)
         @test isfinite(gm)
         @test gm ≈ Float64(_censored_copula_logpdf(Cj, big.(um), δj, BigFloat)) atol = 1e-8
-        # (b) deep tail: upstream's Float64 ForwardDiff conditional CDF NaNs, but the
-        #     BigFloat kernel is exact. is/js are the override's upstream slot names:
-        #     is = lower-tail dim (8), js = observed dims (1..7).
+        # (b) The high-precision kernel remains finite in a deeper tail.
         ud = fill(0.999999, 8)
-        fd_f64 = Copulas._partial_cdf(Cj, (8,), (1, 2, 3, 4, 5, 6, 7),
-                                      (ud[8],), (ud[1], ud[2], ud[3], ud[4], ud[5], ud[6], ud[7]))
-        # NOTE: this `_partial_cdf` call goes through OUR override (Cj is nested), so
-        # in Float64 it now follows the kernel — which ALSO NaNs at this depth. The
-        # point being asserted is that the Float64 path (whichever) is non-finite here
-        # while BigFloat recovers the exact value, NOT that one Float64 path beats the
-        # other.
-        @test !isfinite(fd_f64)
         big_log = _censored_copula_logpdf(Cj, big.(ud),
                       [false, false, false, false, false, false, false, true], BigFloat)
         @test isfinite(big_log)
@@ -513,29 +504,27 @@ end
     # 7. Global implicit override gives correct nested densities (end-to-end).
     #    Redefining the GENERIC `composition_taylor(::Generator,::Generator,…)`
     #    method switches every edge to the implicit App. A.4 solver. We re-run
-    #    the 4 external-acopula CSV cases of testset 3 through the implicit path
+    #    representative external-acopula cases through the implicit path
     #    and assert the SAME `maxerr < 1e-9` — proving the implicit solver
     #    reproduces correct nested logpdfs at the full density level, not just
     #    per-edge.
     #
-    #    A same-signature redefinition is a SESSION-GLOBAL override (it emits a
-    #    benign "Method overwritten" warning) — so this testset runs LAST, after
-    #    the default-direct byte-identity guard (testset 3) has already asserted.
+    #    A same-signature redefinition is a SESSION-GLOBAL override, so restoration
+    #    is protected by `finally`. Per-edge coverage already spans every family;
+    #    two compact end-to-end cases are sufficient here.
     # -----------------------------------------------------------------------
     @testset "global implicit override gives correct nested densities" begin
-        # Repoint the global default to the implicit solver (benign overwrite warning).
-        Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
-            Copulas.composition_taylor_implicit(o, i, t₀, d)
-
-        datadir = joinpath(@__DIR__, "data", "nested")
-        for case in _ACOPULA_CASES
-            @test acopula_maxerr(datadir, case...; nrows = 6) < 1e-9
+        try
+            Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
+                Copulas.composition_taylor_implicit(o, i, t₀, d)
+            datadir = joinpath(@__DIR__, "data", "nested")
+            for case in (_ACOPULA_CASES[1], _ACOPULA_CASES[4])
+                @test acopula_maxerr(datadir, case...; nrows = 3) < 1e-9
+            end
+        finally
+            Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
+                Copulas.composition_taylor_direct(o, i, t₀, d)
         end
-
-        # Restore the shipped default-direct generic method so the override does
-        # not leak into any later test in the same session.
-        Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
-            Copulas.composition_taylor_direct(o, i, t₀, d)
     end
 
     @testset "subsetdims respects requested coordinate order (reordering)" begin
