@@ -38,7 +38,7 @@ const EM_N = 120
         fitted_copula = fit_mle(copula, uniforms, weights)
         @test fitted_copula isa ClaytonCopula
 
-        sklar = SklarDist(copula, (normal_mix, LogNormal(0.2, 0.5)))
+        sklar = SklarDist(copula, (normal_mix, Normal(0.2, 0.5)))
         data = rand(EM_RNG, sklar, EM_N)
         fitted_sklar = fit_mle(sklar, data, weights)
         @test fitted_sklar isa SklarDist
@@ -73,11 +73,11 @@ const EM_N = 120
     @testset "Mixtures of SklarDist" begin
         component1 = SklarDist(
             ClaytonCopula(2, 0.7),
-            (Normal(-1.0, 0.8), LogNormal(0.0, 0.4)),
+            (Normal(-1.0, 0.8), Normal(0.0, 0.4)),
         )
         component2 = SklarDist(
             ClaytonCopula(2, 2.2),
-            (Normal(1.2, 0.6), LogNormal(0.8, 0.3)),
+            (Normal(1.2, 0.6), Normal(0.8, 0.3)),
         )
         initial = MixtureModel([component1, component2], [0.45, 0.55])
         data = rand(EM_RNG, initial, EM_N)
