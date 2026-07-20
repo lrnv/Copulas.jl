@@ -491,6 +491,10 @@ end
             leaves = [0], children = [ClaytonCopula(2, 5.0)])
         @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
             leaves = [-1], children = [ClaytonCopula(2, 5.0)])
+        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            children = Any[42])
+        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            children = Any[42 => [1]])
         # Auto-placement must not silently overlap with a root leaf.
         @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
             leaves = [2], children = [ClaytonCopula(2, 5.0)])
@@ -521,6 +525,7 @@ end
         @test logpdf(C, [0, 1, 1, 1]) == -Inf
         @test logpdf(C, [u[1], 1.0, u[3], u[4]]) == -Inf
         @test logpdf(C, [u[1], -0.1, u[3], u[4]]) == -Inf
+        @test logpdf(C, [u[1], Inf, u[3], u[4]]) == -Inf
         @test logpdf(C, [u[1], NaN, u[3], u[4]]) == -Inf
     end
 

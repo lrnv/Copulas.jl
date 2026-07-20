@@ -468,6 +468,8 @@ function NestedArchimedeanCopula(G::Generator;
     for ch in children
         if ch isa Pair
             c, ds = ch.first, collect(Int, ch.second)
+            (c isa ArchimedeanCopula || c isa NestedArchimedeanCopula) ||
+                throw(ArgumentError("child must be an ArchimedeanCopula or NestedArchimedeanCopula, got $(typeof(c))"))
             length(ds) == _subdim(c) || throw(ArgumentError("child block $(ds) has size ≠ child dimension $(_subdim(c))"))
             for x in ds
                 (x in used) && throw(ArgumentError("dimension $x assigned to more than one child/leaf"))
@@ -475,6 +477,8 @@ function NestedArchimedeanCopula(G::Generator;
             end
             push!(kids, c); push!(kiddims, ds)
         else
+            (ch isa ArchimedeanCopula || ch isa NestedArchimedeanCopula) ||
+                throw(ArgumentError("child must be an ArchimedeanCopula or NestedArchimedeanCopula, got $(typeof(ch))"))
             push!(pending, ch)
         end
     end
