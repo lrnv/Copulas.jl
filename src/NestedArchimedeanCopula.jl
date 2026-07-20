@@ -610,7 +610,7 @@ end
 # it works on copula-scale arguments `u ∈ (0,1)^d`. `censored[i] == true` means
 # coordinate `i` enters only the argument-sum (not differentiated).
 function _censored_copula_logpdf(C::NestedArchimedeanCopula{d}, u, censored, ::Type{T}) where {d, T}
-    tree = _build_tree(C, u, collect(Bool, censored), T)
+    tree = _build_tree(C, u, censored, T)
     return _nested_logpdf(tree)
 end
 
@@ -796,7 +796,7 @@ end
 # ---- (2) DistortionFromCop: closed-form conditional marginal U_i | U_js ------
 
 """
-    NestedDistortion{TC,p} <: Distortion
+    NestedDistortion{TC,p,D} <: Distortion
 
 Closed-form conditional marginal `U_i | U_js = u_js` of a
 [`NestedArchimedeanCopula`](@ref). Its `cdf(D, u_i)` is the mixed partial of the
@@ -807,12 +807,15 @@ O(d²) Faà di Bruno tree walk rather than ForwardDiff. Handles general `p`, so 
 is reused for each per-coordinate distortion the generic `ConditionalCopula`
 constructor builds in the multi-unobserved case.
 """
-struct NestedDistortion{TC, p} <: Distortion
+struct NestedDistortion{TC, p, D} <: Distortion
     C::TC
     i::Int
     js::NTuple{p, Int}
     ujs::NTuple{p, Float64}
     logden::Float64
+    utemplate::NTuple{D, Float64}
+    cdfcensored::NTuple{D, Bool}
+    pdfcensored::NTuple{D, Bool}
 end
 
 function DistortionFromCop(C::NestedArchimedeanCopula{D}, js::NTuple{p, Int},
@@ -824,53 +827,42 @@ function DistortionFromCop(C::NestedArchimedeanCopula{D}, js::NTuple{p, Int},
     # i∉js, so in the multi-unobserved case p < D-1.
     den = p == 1 ? Distributions.pdf(subsetdims(C, js), ujs[1]) :
                    Distributions.pdf(subsetdims(C, js), collect(ujs))
-    return NestedDistortion{typeof(C), p}(C, i, js, ujs, log(float(den)))
+    utemplate = ntuple(D) do k
+        pos = findfirst(==(k), js)
+        isnothing(pos) ? 1.0 : ujs[pos]
+    end
+    cdfcensored = ntuple(k -> k ∉ js, D)
+    pdfcensored = ntuple(k -> k ∉ js && k != i, D)
+    return NestedDistortion{typeof(C), p, D}(
+        C, i, js, ujs, log(float(den)), utemplate, cdfcensored, pdfcensored
+    )
 end
 
-function Distributions.logcdf(D::NestedDistortion, ui::Real)
+function Distributions.logcdf(D::NestedDistortion{TC,p,d}, ui::Real) where {TC,p,d}
     # Boundary guards keep the generic Distortion.quantile bisection well-posed
     # and logcdf monotone: P(U_i ≤ 0 | ·) = 0 ⇒ logcdf = -Inf; P(U_i ≤ 1 | ·) = 1
     # ⇒ logcdf = 0.
     ui <= 0 && return -Inf
     ui >= 1 && return 0.0
-    d = length(D.C)
     T = float(promote_type(typeof(ui), Float64))
-    u = ones(T, d)
-    for k in 1:length(D.js)
-        u[D.js[k]] = T(D.ujs[k])
-    end
-    u[D.i] = T(ui)
+    u = ntuple(k -> k == D.i ? T(ui) : T(D.utemplate[k]), d)
     # Observed/differentiated = js only; dim i AND every other unobserved coord
     # are censored (enter the argument-sum only, no differentiation).
-    cens = trues(d)
-    for j in D.js
-        cens[j] = false
-    end
-    return _censored_copula_logpdf(D.C, u, cens, T) - D.logden
+    return _censored_copula_logpdf(D.C, u, D.cdfcensored, T) - D.logden
 end
 
 Distributions.cdf(D::NestedDistortion, ui::Real) = exp(Distributions.logcdf(D, ui))
 
-function Distributions.logpdf(D::NestedDistortion, ui::Real)
+function Distributions.logpdf(D::NestedDistortion{TC,p,d}, ui::Real) where {TC,p,d}
     T = float(promote_type(typeof(ui), Float64))
     zero(T) < ui < one(T) || return T(-Inf)
 
-    d = length(D.C)
-    u = ones(T, d)
-    for k in eachindex(D.js)
-        u[D.js[k]] = T(D.ujs[k])
-    end
-    u[D.i] = T(ui)
+    u = ntuple(k -> k == D.i ? T(ui) : T(D.utemplate[k]), d)
 
     # Differentiate the nested CDF with respect to both the conditioning
     # coordinates and the free coordinate. All other coordinates stay
     # marginalised at one.
-    cens = trues(d)
-    for j in D.js
-        cens[j] = false
-    end
-    cens[D.i] = false
-    return _censored_copula_logpdf(D.C, u, cens, T) - T(D.logden)
+    return _censored_copula_logpdf(D.C, u, D.pdfcensored, T) - T(D.logden)
 end
 
 # ---- (3) Multi-conditioned-dim conditional CDF: route Site B through our kernel

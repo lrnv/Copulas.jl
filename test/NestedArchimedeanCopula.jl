@@ -297,6 +297,9 @@ end
         # Fast-path probe: condition returns our specialised NestedDistortion.
         Dbiv = condition(Cbiv, (1,), u1)
         @test Dbiv isa NestedDistortion
+        @test Dbiv.utemplate == (u1, 1.0)
+        @test Dbiv.cdfcensored == (false, true)
+        @test Dbiv.pdfcensored == (false, false)
         @test cdf(Dbiv, 0.0) == 0.0
         @test cdf(Dbiv, 1.0) == 1.0
 
