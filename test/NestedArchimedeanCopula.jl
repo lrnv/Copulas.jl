@@ -649,22 +649,38 @@ end
         @test length(StatsBase.coef(M)) == 3
         @test StatsBase.dof(M) == 3
         @test StatsBase.coef(M) ≈ [Chat.G.θ, Chat.children[1][1].G.θ, Chat.children[2][1].G.θ]
+        @test StatsBase.coefnames(M) == ["G.θ", "G[1].θ", "G[2].θ"]
         @test StatsBase.aic(M) ≈ -2 * Distributions.loglikelihood(Chat, U) + 2 * 3
+        @test StatsBase.bic(M) ≈ -2 * Distributions.loglikelihood(Chat, U) + log(1000) * 3
 
         # Quick instance shim returns just the fitted copula with the same fit.
-        Cq = Distributions.fit(Cstart, U[:, 1:150])
+        Cq = Distributions.fit(Cstart, U[:, 1:40])
         @test Cq isa NestedArchimedeanCopula
 
         # Bare-type fit is intentionally unsupported (tree not inferable).
         @test_throws Exception Copulas._example(NestedArchimedeanCopula, 4)
         # Only :mle is supported.
         @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, U; method = :itau)
+        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, U[1:3, :])
+        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, zeros(4, 0))
+        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, hcat(zeros(4), ones(4)))
+        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, fill(NaN, 4, 2))
+
+        # A small mixed-family fit exercises family-specific parameter
+        # unbinding/rebuilding without another statistical recovery workload.
+        Cmix = NestedArchimedeanCopula(ClaytonGenerator(1.0);
+                   leaves = [3], children = [FrankCopula(2, 5.0)])
+        Umix = rand(Random.MersenneTwister(91), Cmix, 40)
+        Mmix = Distributions.fit(Copulas.CopulaModel, Cmix, Umix)
+        @test Mmix.result.G isa ClaytonGenerator
+        @test Mmix.result.children[1][1].G isa FrankGenerator
+        @test isfinite(Distributions.loglikelihood(Mmix.result, Umix))
     end
 
     @testset "fit: parametrisation layer (nesting + custom reparam)" begin
         C = NestedArchimedeanCopula(ClaytonGenerator(1.5); leaves = [1],
                                     children = [ClaytonCopula(2, 4.0)])
-        U = rand(Random.MersenneTwister(7), C, 300)
+        U = rand(Random.MersenneTwister(7), C, 120)
         rootθ(M)  = M.result.G.θ
         childθ(M) = M.result.children[1][1].G.θ
 
@@ -689,6 +705,21 @@ end
         Ms = Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U)
         @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
         @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
+
+        @test_throws ArgumentError Distributions.fit(
+            Copulas.CopulaModel, recon, [log(2.0)], U[1:2, :])
+        @test_throws ArgumentError Distributions.fit(
+            Copulas.CopulaModel, recon, [log(2.0)], zeros(3, 0))
+
+        # Arbitrary-depth, non-Clayton templates preserve every family and
+        # parameter through the same flatten/rebuild machinery used by fit().
+        sub = NestedArchimedeanCopula(GumbelGenerator(2.0);
+                  leaves = [1], children = [GumbelCopula(2, 3.0)])
+        deep = NestedArchimedeanCopula(GumbelGenerator(1.5);
+                   leaves = [1], children = [sub])
+        rebuilt = Copulas._nested_rebound(deep, Copulas._nested_unbound(deep))
+        @test Copulas._nested_coef(rebuilt)[2] ≈ [1.5, 2.0, 3.0]
+        @test rebuilt.children[1].children[1][1].G isa GumbelGenerator
 
         # quick_fit returns just the copula; the dimension comes from the reparam
         @test Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U; quick_fit = true).result isa NestedArchimedeanCopula

@@ -1027,12 +1027,21 @@ function _fit_nested(recon, α₀::AbstractVector, U, d::Int, n::Int; quick_fit,
         elapsed_sec = t, method_details = md)
 end
 
+function _validate_nested_fit_data(U, d::Int)
+    ndims(U) == 2 || throw(ArgumentError("U must be a d×n matrix of pseudo-observations."))
+    size(U, 1) == d || throw(ArgumentError("Data dimension $(size(U,1)) ≠ copula dimension $d."))
+    size(U, 2) > 0 || throw(ArgumentError("U must contain at least one observation."))
+    all(isfinite, U) || throw(ArgumentError("Pseudo-observations must be finite."))
+    all(0 .< U .< 1) || throw(ArgumentError("Pseudo-observations must lie strictly inside (0,1)."))
+    return nothing
+end
+
 # Default: reparametrise a fixed TEMPLATE tree (its shape + families are kept fixed,
 # only the scalar θ of every node is optimised).
 function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, U;
         method=:mle, quick_fit=false, vcov=false, derived_measures=true, kwargs...) where {d}
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
-    size(U, 1) == d || throw(ArgumentError("Data dimension $(size(U,1)) ≠ copula dimension $d."))
+    _validate_nested_fit_data(U, d)
     return _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U, d, size(U, 2);
                        quick_fit, derived_measures)
 end
@@ -1045,7 +1054,7 @@ function Distributions.fit(::Type{CopulaModel}, reparam, init::AbstractVector, U
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     α₀ = collect(float.(init))
     d  = length(reparam(α₀))::Int                 # dimension from the parametrisation itself
-    size(U, 1) == d || throw(ArgumentError("Data dimension $(size(U,1)) ≠ copula dimension $d."))
+    _validate_nested_fit_data(U, d)
     return _fit_nested(reparam, α₀, U, d, size(U, 2); quick_fit, derived_measures)
 end
 
