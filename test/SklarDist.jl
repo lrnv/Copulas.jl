@@ -45,6 +45,12 @@ end
     @test cdf(Smixed, Float32[0, 0]) isa Float64
     @test logpdf(Smixed, Float32[0, 0]) isa Float64
 
+    Sdependent = SklarDist(
+        ClaytonCopula(2, 1.0),
+        (Normal(0.0, 1.0), Normal(0.0, 1.0)),
+    )
+    @test isfinite(logpdf(Sdependent, [-1000, 1000]))
+
     integer_data = [
         -2 -1 0 1 2
         2 1 0 -1 -2
