@@ -79,15 +79,12 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, A::AbstractMatrix{T}) where {T<:Real, d, TG}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
-    Random.randexp!(rng, A)
     R = 𝒲₋₁(C.G, d)
-    radii = Vector{T}(undef, size(A, 2))
-    @inbounds for j in eachindex(radii)
-        radii[j] = rand(rng, R)
-    end
-    @inbounds for (j, col) in enumerate(axes(A, 2))
-        sx = sum(view(A, :, col))
-        r = radii[j]
+    @inbounds for col in axes(A, 2)
+        sample = view(A, :, col)
+        Random.randexp!(rng, sample)
+        r = rand(rng, R)
+        sx = sum(sample)
         for row in axes(A, 1)
             A[row, col] = ϕ(C.G, r * A[row, col] / sx)
         end
@@ -97,13 +94,13 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, GT}, A::AbstractMatrix{T}) where {T<:Real, d, GT<:AbstractFrailtyGenerator}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     F = frailty(C.G)
-    Random.randexp!(rng, A)
-    frailties = Vector{T}(undef, size(A, 2))
-    @inbounds for j in eachindex(frailties)
-        frailties[j] = rand(rng, F)
-    end
-    @inbounds for (j, col) in enumerate(axes(A, 2)), row in axes(A, 1)
-        A[row, col] = ϕ(C.G, A[row, col] / frailties[j])
+    @inbounds for col in axes(A, 2)
+        sample = view(A, :, col)
+        Random.randexp!(rng, sample)
+        frailty = rand(rng, F)
+        for row in axes(A, 1)
+            A[row, col] = ϕ(C.G, A[row, col] / frailty)
+        end
     end
     return A
 end
