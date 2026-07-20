@@ -297,6 +297,17 @@ end
     @test all(0 .<= quantile.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
 end
 
+@testset "Bernstein distortion quantiles use bounded bisection" begin
+    C = BernsteinCopula(GaussianCopula(2, 0.3); m=5)
+    D = condition(C, (1,), (0.4,))
+    @test D isa Copulas.BernsteinDistortion
+    for p in (0.1, 0.5, 0.9)
+        q = quantile(D, p)
+        @test 0 <= q <= 1
+        @test cdf(D, q) ≈ p atol = 2e-12
+    end
+end
+
 @testset "Generic Distortion vs AD (bivariate small subset)" begin
     # Compare the GENERIC DistortionFromCop (forced via @invoke) against AD-based reference
     # on a tiny, fast subset to validate the generic path independent of family specifics.

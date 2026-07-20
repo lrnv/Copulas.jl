@@ -153,9 +153,17 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula
     return u
 end
 
+struct BernsteinDistortion{M} <: Distortion
+    mixture::M
+end
+Distributions.cdf(d::BernsteinDistortion, u::Real) = Distributions.cdf(d.mixture, u)
+Distributions.logcdf(d::BernsteinDistortion, u::Real) = Distributions.logcdf(d.mixture, u)
+Distributions.pdf(d::BernsteinDistortion, u::Real) = Distributions.pdf(d.mixture, u)
+Distributions.logpdf(d::BernsteinDistortion, u::Real) = Distributions.logpdf(d.mixture, u)
+Distributions.quantile(d::BernsteinDistortion, p::Real) = _unit_quantile(d, p)
+
 function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
     # Build mixture weights over s_i given fixed u_J for J = js.
-    # Return a MixtureModel(Beta...) directly (Distortion call will push-forward marginals).
     Iset = Tuple(setdiff(1:D, js))
     @assert i in Iset "i must refer to a non-conditioned coordinate"
     m = B.m
@@ -179,7 +187,7 @@ function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NT
     end
     α ./= sα
     comps = [Distributions.Beta(k, mi - (k - 1)) for k in 1:mi]
-    return Distributions.MixtureModel(comps, α)
+    return BernsteinDistortion(Distributions.MixtureModel(comps, α))
 end
 
 # Fitting colocated. 
