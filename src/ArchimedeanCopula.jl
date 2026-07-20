@@ -81,7 +81,10 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopu
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     Random.randexp!(rng, A)
     R = 𝒲₋₁(C.G, d)
-    radii = rand(rng, R, size(A, 2))
+    radii = Vector{T}(undef, size(A, 2))
+    @inbounds for j in eachindex(radii)
+        radii[j] = rand(rng, R)
+    end
     @inbounds for (j, col) in enumerate(axes(A, 2))
         sx = sum(view(A, :, col))
         r = radii[j]
@@ -95,7 +98,10 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopu
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     F = frailty(C.G)
     Random.randexp!(rng, A)
-    frailties = rand(rng, F, size(A, 2))
+    frailties = Vector{T}(undef, size(A, 2))
+    @inbounds for j in eachindex(frailties)
+        frailties[j] = rand(rng, F)
+    end
     @inbounds for (j, col) in enumerate(axes(A, 2)), row in axes(A, 1)
         A[row, col] = ϕ(C.G, A[row, col] / frailties[j])
     end
