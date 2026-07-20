@@ -46,7 +46,65 @@ N(::Type{TCopula{d,df,MT}}) where {d,df,MT} = function(Σ)
     Distributions.MvTDist(df,Σ)
 end
 
-# Kendall tau of bivariate student: 
+function _student_rosenblatt_cache(C::TCopula{d}) where d
+    Σ = C.Σ
+    return ntuple(d) do k
+        k == 1 && return nothing
+        J = 1:(k - 1)
+        F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ[J, J]))
+        β = F \ Σ[J, k]
+        σ0² = max(Σ[k, k] - LinearAlgebra.dot(Σ[k, J], β), zero(eltype(Σ)))
+        return (; F, β, σ0 = sqrt(σ0²))
+    end
+end
+
+function rosenblatt(C::TCopula{d,ν}, u::AbstractMatrix{<:Real}) where {d,ν}
+    size(u, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    Tu = Distributions.TDist(ν)
+    z = Distributions.quantile.(Tu, u)
+    v = similar(z)
+    v[1, :] .= u[1, :]
+    cache = _student_rosenblatt_cache(C)
+    @inbounds for k in 2:d
+        entry = cache[k]
+        Tcond = Distributions.TDist(ν + k - 1)
+        for col in axes(u, 2)
+            zJ = view(z, 1:(k - 1), col)
+            solved_zJ = entry.F \ zJ
+            μ = LinearAlgebra.dot(entry.β, zJ)
+            δ = LinearAlgebra.dot(zJ, solved_zJ)
+            σ = entry.σ0 * sqrt((ν + δ) / (ν + k - 1))
+            v[k, col] = Distributions.cdf(Tcond, (z[k, col] - μ) / σ)
+        end
+    end
+    return v
+end
+
+function inverse_rosenblatt(C::TCopula{d,ν}, s::AbstractMatrix{<:Real}) where {d,ν}
+    size(s, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    Tu = Distributions.TDist(ν)
+    z = similar(s, float(promote_type(eltype(s), eltype(C.Σ))))
+    v = similar(z)
+    z[1, :] .= Distributions.quantile.(Tu, s[1, :])
+    v[1, :] .= s[1, :]
+    cache = _student_rosenblatt_cache(C)
+    @inbounds for k in 2:d
+        entry = cache[k]
+        Tcond = Distributions.TDist(ν + k - 1)
+        for col in axes(s, 2)
+            zJ = view(z, 1:(k - 1), col)
+            solved_zJ = entry.F \ zJ
+            μ = LinearAlgebra.dot(entry.β, zJ)
+            δ = LinearAlgebra.dot(zJ, solved_zJ)
+            σ = entry.σ0 * sqrt((ν + δ) / (ν + k - 1))
+            z[k, col] = μ + σ * Distributions.quantile(Tcond, s[k, col])
+            v[k, col] = Distributions.cdf(Tu, z[k, col])
+        end
+    end
+    return v
+end
+
+# Kendall tau of bivariate student:
 # Lindskog, F., McNeil, A., & Schmock, U. (2003). Kendall’s tau for elliptical distributions. In Credit risk: Measurement, evaluation and management (pp. 149-156). Heidelberg: Physica-Verlag HD.
 τ(C::TCopula{2,MT}) where MT = 2*asin(C.Σ[1,2])/π 
 

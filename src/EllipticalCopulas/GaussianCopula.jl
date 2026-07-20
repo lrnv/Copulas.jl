@@ -86,7 +86,9 @@ function _cdf(C::CT,u) where {CT<:GaussianCopula}
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
-    return Distributions.cdf.(Distributions.Normal(), inv(LinearAlgebra.cholesky(C.Σ).L) * Distributions.quantile.(Distributions.Normal(), u))
+    L = LinearAlgebra.cholesky(C.Σ).L
+    z = Distributions.quantile.(Distributions.Normal(), u)
+    return Distributions.cdf.(Distributions.Normal(), L \ z)
 end
 
 function inverse_rosenblatt(C::GaussianCopula, s::AbstractMatrix{<:Real})

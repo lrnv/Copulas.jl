@@ -167,6 +167,15 @@ end
     end
 end
 
+@testset "Student matrix Rosenblatt fast path" begin
+    C = TCopula(5, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])
+    u = [0.2 0.7; 0.4 0.6; 0.8 0.3]
+    fast = rosenblatt(C, u)
+    reference = @invoke Copulas.rosenblatt(C::Copulas.Copula{3}, u)
+    @test fast ≈ reference atol = 3e-12
+    @test inverse_rosenblatt(C, fast) ≈ u atol = 3e-12
+end
+
 @testset "Distorted distribution logcdf" begin
     D = condition(GaussianCopula([1.0 0.6; 0.6 1.0]), (1,), (0.3,))(Normal())
     for x in (-8.0, -0.5, 1.0)
