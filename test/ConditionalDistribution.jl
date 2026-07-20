@@ -53,6 +53,25 @@ end
     @test quantile(Dind, 0.37) ≈ 0.37
 end
 
+@testset "Algebraic Archimedean distortion quantiles" begin
+    copulas = (
+        FrankCopula(2, -2.0),
+        FrankCopula(2, 3.0),
+        AMHCopula(2, -0.5),
+        AMHCopula(2, 0.5),
+    )
+    for C in copulas
+        D = condition(C, (1,), (0.4,))
+        for α in (0.1, 0.5, 0.9)
+            q = quantile(D, α)
+            generic = @invoke quantile(D::Copulas.Distortion, α::Real)
+            @test isapprox(cdf(D, q), α; atol=2e-11, rtol=2e-11)
+            @test isapprox(q, generic; atol=2e-8, rtol=2e-8)
+        end
+        @test quantile(D, big"0.37") isa BigFloat
+    end
+end
+
 @testset "Generic ConditionalCopula density" begin
     C = GaussianCopula([
         1.0 0.35 0.20
