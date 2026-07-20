@@ -55,6 +55,28 @@ the original scale: if `D::Distortion` and `X::UnivariateDistribution`, then `D(
 is the distribution of `X_i | U_J = u_J`.
 """
 abstract type Distortion<:Distributions.ContinuousUnivariateDistribution end
+
+function _unit_quantile(d, p::Real)
+    T = typeof(float(p))
+    zero(T) <= p <= one(T) || throw(ArgumentError("p must be between 0 and 1"))
+    p == zero(T) && return zero(T)
+    p == one(T) && return one(T)
+
+    lo, hi = zero(T), one(T)
+    Distributions.cdf(d, lo) >= p && return lo
+    Distributions.cdf(d, hi) < p && return hi
+    for _ in 1:precision(T)
+        mid = (lo + hi) / 2
+        (mid == lo || mid == hi) && break
+        if Distributions.cdf(d, mid) >= p
+            hi = mid
+        else
+            lo = mid
+        end
+    end
+    return hi
+end
+
 (D::Distortion)(::Distributions.Uniform) = D
 (D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X)
 Distributions.minimum(::Distortion) = 0.0
