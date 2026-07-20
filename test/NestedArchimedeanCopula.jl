@@ -550,12 +550,47 @@ end
             v = ones(5); for (k, j) in enumerate(dims); v[j] = u[k]; end
             @test cdf(subsetdims(C, Tuple(dims)), u) ≈ cdf(C, v) atol = 1e-10
         end
+
+        # Density uses the same requested-coordinate order. Compare it with an
+        # independent mixed derivative of the saturated full CDF.
+        dims = (4, 1, 2)
+        u = big.([0.35, 0.55, 0.65])
+        function reordered_marginal_cdf(x)
+            v = ones(eltype(x), 5)
+            for (k, j) in enumerate(dims)
+                v[j] = x[k]
+            end
+            return cdf(C, v)
+        end
+        ref_density = mixed_partial(reordered_marginal_cdf, u, collect(1:3))
+        @test logpdf(subsetdims(C, dims), u) ≈ log(abs(ref_density)) atol = 1e-9
+
+        # Conditioning the reordered subset must differentiate the original
+        # global coordinate selected by the first requested position (dim 4).
+        δ = [false, true, true]
+        ref_partial = mixed_partial(reordered_marginal_cdf, u, [1])
+        @test gist_censored(subsetdims(C, dims), u, δ) ≈ log(abs(ref_partial)) atol = 1e-9
+
+        # The reordered marginal remains sampleable through inverse Rosenblatt.
+        sr = rand(Random.MersenneTwister(41), subsetdims(C, dims), 3)
+        @test size(sr) == (3, 3)
+        @test all(0 .<= sr .<= 1) && all(isfinite, sr)
         # Order genuinely matters: a within-panel-spanning reorder differs.
         @test !isapprox(cdf(subsetdims(C, (4, 1, 2)), [0.3, 0.5, 0.6]),
                         cdf(subsetdims(C, (2, 4, 1)), [0.3, 0.5, 0.6]); atol = 1e-6)
 
         S = subsetdims(C, (1, 2, 4, 5))
         @test all(length(child[1]) == length(child[2]) for child in S.children)
+
+        # Deep child subtrees with one surviving coordinate collapse to a leaf
+        # under the nearest retained ancestor.
+        inner = NestedArchimedeanCopula(GumbelGenerator(2.0);
+                    leaves = [1], children = [GumbelCopula(2, 4.0)])
+        deep = NestedArchimedeanCopula(ClaytonGenerator(1.5);
+                    leaves = [1], children = [inner])
+        collapsed = subsetdims(deep, (1, 3))
+        @test collapsed isa ArchimedeanCopula{2}
+        @test cdf(collapsed, [0.4, 0.7]) ≈ cdf(ClaytonCopula(2, 1.5), [0.4, 0.7])
     end
 
     @testset "rand works (inverse-Rosenblatt sampler)" begin
