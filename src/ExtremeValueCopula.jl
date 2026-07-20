@@ -71,7 +71,7 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT}, X::DenseMatrix{T}) where {T<:Real, TT}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT}, X::AbstractMatrix{T}) where {T<:Real, TT}
     # More efficient Matrix sampler:
     d,n = size(X)
     @assert d==2
@@ -84,16 +84,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
         X[2,i] = exp(log(w)*(1-z)/a)
     end
     return X
-end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT},
-                              x::AbstractVector{T}) where {T<:Real, TT}
-    u1, u2 = rand(rng), rand(rng)
-    z  = rand(rng, ExtremeDist(C.tail))
-    w  = (rand(rng) < _probability_z(C.tail, z)) ? u1 : (u1*u2)
-    a  = A(C.tail, z)
-    x[1] = exp(log(w)*z/a)
-    x[2] = exp(log(w)*(1-z)/a)
-    return x
 end
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
 

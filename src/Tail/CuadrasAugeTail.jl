@@ -56,13 +56,16 @@ dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 
 ℓ(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t) where {T} = max(t[1], t[2]) + (1 - C.tail.θ) * min(t[1], t[2])
 function Distributions._rand!(rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2, CuadrasAugeTail{T}},
-    x::AbstractVector{S}) where {T,S<:Real}
+    A::AbstractMatrix{S}) where {T,S<:Real}
+    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     θ = C.tail.θ
-    E₁, E₂ = rand(rng, Distributions.Exponential(θ/(1-θ)), 2)
-    E₁₂ = rand(rng, Distributions.Exponential())
-    x[1] = exp(-(1/θ) * min(E₁, E₁₂))
-    x[2] = exp(-(1/θ) * min(E₂, E₁₂))
-    return x
+    E = rand(rng, Distributions.Exponential(θ/(1-θ)), 2, size(A, 2))
+    E₁₂ = rand(rng, Distributions.Exponential(), size(A, 2))
+    @inbounds for (j, col) in enumerate(axes(A, 2))
+        A[1, col] = exp(-(1/θ) * min(E[1, j], E₁₂[j]))
+        A[2, col] = exp(-(1/θ) * min(E[2, j], E₁₂[j]))
+    end
+    return A
 end
 function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real) where {T,S}
     θ = D.tail.θ
