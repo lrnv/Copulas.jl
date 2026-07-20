@@ -585,6 +585,7 @@ end
         # Keep only independent analytic anchors for those theoretical targets here.
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                 children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])   # d=4
+        @test subsetdims(C, (1, 2)) isa ArchimedeanCopula{2}
         K = StatsBase.corkendall(C)
         @test K[1, 2] ≈ 5 / 7 atol = 1e-12  # Clayton(5) child panel
         @test K[1, 3] ≈ 1 / 2 atol = 1e-12  # Clayton(2) root dependence

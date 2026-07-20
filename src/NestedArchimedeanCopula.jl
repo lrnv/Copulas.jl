@@ -759,16 +759,33 @@ end
 _kid_dims(ch::Tuple) = ch[2]
 _kid_dims(ch::NestedArchimedeanCopula) = ch.dims
 
+# A node with no direct leaves and exactly one child is algebraically redundant:
+# ϕ_parent(ϕ_parent⁻¹(C_child)) == C_child. Strip consecutive unary roots after
+# pruning so marginal operations dispatch on the surviving child itself.
+function _strip_unary_roots(c::NestedArchimedeanCopula)
+    current = c
+    while isempty(current.leafdims) && length(current.children) == 1
+        child = only(current.children)
+        child isa Tuple && return child
+        current = child
+    end
+    return current
+end
+
 function SubsetCopula(C::NestedArchimedeanCopula{d, TG}, dims::NTuple{p, Int}) where {d, TG, p}
     # `subsetdims` short-circuits p==1 (Uniform) and the identity `dims==1:d`, and
     # asserts `p <= d` otherwise, so here 2 <= p <= d and `dims` may be a (possibly
     # full, p==d) reordering/permutation of the kept coordinates.
     O = Set{Int}(dims)
-    pruned = _prune_node(C, O)        # NestedArchimedeanCopula on GLOBAL dims
+    pruned = _strip_unary_roots(_prune_node(C, O))
+    if pruned isa Tuple
+        cc, _ = pruned
+        return ArchimedeanCopula(p, cc.G)
+    end
     # Genuinely-nested → flat collapse: every survivor lands directly under the
     # root (no surviving children), so the observed marginal is a flat copula
     # under the root generator (exchangeable, so the request order is immaterial).
-    isempty(pruned.children) && return ArchimedeanCopula(p, C.G)
+    isempty(pruned.children) && return ArchimedeanCopula(p, pruned.G)
     # Relabel each REQUESTED global dim to its position in `dims`, preserving the
     # requested order (`dims` may be a permutation of the surviving dims). All
     # requested dims survive, so this Dict covers exactly the surviving dims.
