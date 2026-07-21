@@ -515,11 +515,8 @@ end
                 for val in [0,1,0.5,rand(rng,5)...]
                     u = ones(d)
                     u[i] = val
-                    
-                    # If TCopula, use more samples to reduce MC error
                     if C isa TCopula
-                        # We don't need to estimate the error here, this is very fast.
-                        @test cdf(C, u; m = 100_000, r = 1) ≈ val atol=1e-5
+                        @test cdf(C, u; m=100_000, r=1) ≈ val atol=1e-5
                     else
                         @test cdf(C, u) ≈ val atol=1e-5
                     end
@@ -551,8 +548,36 @@ end
             @test abs(p_hat - p_th) ≤ max(5*se, 2e-3)
         end
 
+        @testif (C isa BC2Copula || C isa MOCopula || C isa CuadrasAugeCopula) "Singular sampler structure" begin
+            # The empirical-CDF check is fragile for these singular laws.
+            # Check their margins and analytically known singular mass instead.
+            @test all(isapprox.(vec(mean(spl1000; dims=2)), 0.5; atol=0.04, rtol=0))
 
-        # This test takes more than 5 hours to run 
+            x = .-log.(spl1000[1, :])
+            y = .-log.(spl1000[2, :])
+            if C isa BC2Copula
+                a, b = C.tail.a, C.tail.b
+                ray1 = isapprox.(a .* x, b .* y; atol=1e-10, rtol=1e-7)
+                ray2 = isapprox.((1-a) .* x, (1-b) .* y; atol=1e-10, rtol=1e-7)
+                observed = mean(ray1 .| ray2)
+                expected = 1 - abs(a-b)
+            elseif C isa MOCopula
+                λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
+                atom = isapprox.((λ₁+λ₁₂) .* x, (λ₂+λ₁₂) .* y;
+                                atol=1e-10, rtol=1e-7)
+                observed = mean(atom)
+                expected = λ₁₂ / (λ₁ + λ₂ + λ₁₂)
+            else
+                θ = C.tail.θ
+                observed = mean(spl1000[1, :] .== spl1000[2, :])
+                expected = θ / (2-θ)
+            end
+            se = sqrt(expected * (1-expected) / size(spl1000, 2))
+            @test abs(observed-expected) <= max(5*se, 0.01)
+        end
+
+
+        # This test takes more than 5 hours to run
         # This is clarly unacceptable, but moreover we dont know which copula takes the most time 
         # sadly ;)
         
@@ -654,13 +679,23 @@ end
                         @test all(0 .≤ rand(rng, Dd, 2) .≤ 1) # to ensure the conditional distribution can be sampled. 
                     end
                     vals = cdf.(Ref(Dd), us)
+                    pvals = pdf.(Ref(Dd), us)
+                    qs = quantile.(Ref(Dd), us)
+
+                    @test all(0 .<= qs .<= 1)
                     @test all(0.0 .<= vals .<= 1.0)
                     @test all(diff(collect(vals)) .>= -1e-10)
+                    @test all(pvals .>= 0)
                     if check_biv_conditioning(C) && has_spec
                         Dgen  = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{d}, (j,), (v,), i)
                         vals_gen  = cdf.(Ref(Dgen),  us)
+                        pvals_gen = pdf.(Ref(Dgen), us)
+                        tol = C isa Copulas.GaussianCopula ? 1e-2 : 1e-3
                         for (vf, vg) in zip(vals, vals_gen)
-                            @test isapprox(vf, vg, atol=1e-3, rtol=1e-3)
+                            @test isapprox(vf, vg, atol=tol, rtol=tol)
+                        end
+                        for (vf, vg) in zip(pvals, pvals_gen)
+                            @test isapprox(vf, vg, atol=tol, rtol=tol)
                         end
                     elseif CT <: Copulas.MCopula
                         @test all(vals .≈ min.(collect(us) ./ v, 1))
@@ -799,7 +834,7 @@ end
         @testif (spe.dA || spe.d²A || spe._A_dA_d²A || spe.ℓ) "Testing ℓ and cdf for Extreme Value Copula" begin 
             u, v = rand(rng), rand(rng)
             x, y = -log(u), -log(v)
-            s = y / (x + y)
+            s = x / (x + y)
             expected_ℓ = Copulas.A(C.tail, s) * (x + y)
             @test isapprox(Copulas.ℓ(C.tail, (x, y)), expected_ℓ; atol=0.1)
             expected_cdf = exp(-expected_ℓ)

@@ -1,9 +1,10 @@
 name = "Copulas"
 uuid = "ae264745-0b69-425e-9d9d-cf662c5eec93"
-version = "0.1.33"
+version = "0.1.38"
 authors = ["Oskar Laverny"]
 
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 Combinatorics = "861a8166-3701-5b0c-9a16-15d98fcdc6aa"
 Distributions = "31c24e10-a181-5473-b8eb-7969acd0382f"
 ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
@@ -58,7 +59,7 @@ Printf = "1"
 QuadGK = "2"
 Random = "1"
 RecipesBase = "1"
-Roots = "1, 2"
+Roots = "1, 2, 3"
 SpecialFunctions = "2"
 StableRNGs = "1"
 Statistics = "1"
@@ -81,4 +82,4 @@ StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["Test", "InteractiveUtils", "LinearAlgebra", "HypothesisTests", "Aqua", "StableRNGs", "StatsBase", "MvNormalCDF"]
+test = ["Test", "InteractiveUtils", "LinearAlgebra", "HypothesisTests", "Aqua", "StableRNGs", "StatsBase", "DelimitedFiles", "ExpectationMaximization", "MvNormalCDF"]

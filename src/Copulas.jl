@@ -1,26 +1,27 @@
 module Copulas
 
     import Base
-    import Combinatorics
-    import Distributions
-    import ForwardDiff
-    import HCubature
-    import HypergeometricFunctions
-    import LambertW
-    import LinearAlgebra
-    import LogExpFunctions
-    import Optim
-    import PolyLog
-    import Primes
-    import Printf
-    import QuadGK
     import Random
-    import Roots
     import SpecialFunctions
+    import Roots
+    import Distributions
     import Statistics
     import StatsBase
     import StatsFuns
+    import ForwardDiff
+    import HCubature
+    import HypergeometricFunctions
+    import Combinatorics
+    import LogExpFunctions
+    import QuadGK
+    import LinearAlgebra
+    import PolyLog
+    import Primes
+    import LambertW
+    import Optim
+    import Printf
     import TaylorSeries
+    import ADTypes
 
     # Main code
     include("utils.jl")
