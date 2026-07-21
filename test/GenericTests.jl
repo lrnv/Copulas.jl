@@ -515,7 +515,11 @@ end
                 for val in [0,1,0.5,rand(rng,5)...]
                     u = ones(d)
                     u[i] = val
-                    @test cdf(C,u) ≈ val atol=1e-5
+                    if C isa TCopula
+                        @test cdf(C, u; m=100_000, r=1) ≈ val atol=1e-5
+                    else
+                        @test cdf(C, u) ≈ val atol=1e-5
+                    end
                 end
                 u = rand(rng,d)
                 u[i] = 0
