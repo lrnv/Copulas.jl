@@ -1,15 +1,6 @@
 name: Julia vs R benchmarks
 
 on:
-  pull_request:
-    branches: [main]
-    paths:
-      - 'benchmark/cross_language/**'
-      - '.github/workflows/CrossLanguageBenchmarks.yml'
-      - 'docs/src/manual/benchmarks.md'
-      - 'docs/make.jl'
-  release:
-    types: [published]
   workflow_dispatch:
     inputs:
       mode:
@@ -30,12 +21,12 @@ concurrency:
 
 jobs:
   compare:
-    name: Julia vs R (${{ github.event_name == 'pull_request' && 'smoke' || inputs.mode || 'full' }})
+    name: Julia vs R (${{ inputs.mode || 'full' }})
     runs-on: ubuntu-24.04
     timeout-minutes: 45
     env:
-      CROSS_BENCH_MODE: ${{ github.event_name == 'pull_request' && 'smoke' || inputs.mode || 'full' }}
-      CROSS_BENCH_ROUNDS: ${{ github.event_name == 'pull_request' && '1' || '3' }}
+      CROSS_BENCH_MODE: ${{ inputs.mode || 'full' }}
+      CROSS_BENCH_ROUNDS: ${{ inputs.mode == 'smoke' && '1' || '3' }}
       JULIA_NUM_THREADS: '1'
       OPENBLAS_NUM_THREADS: '1'
       OMP_NUM_THREADS: '1'

@@ -38,16 +38,25 @@ entire timing report.
 The complete specification, locked environments, raw-result schema, and local
 reproduction instructions live in
 [`benchmark/cross_language`](https://github.com/lrnv/Copulas.jl/tree/main/benchmark/cross_language).
-Full reports are produced on releases and through the manually dispatched
-**Julia vs R benchmarks** workflow. The workflow attaches the raw JSON and
-rendered table as artifacts and includes the table in its job summary.
+Every documentation build runs the comparison first and embeds that run's table
+below. Pull-request previews use the reduced smoke workload; default-branch and
+release-tag documentation use the full workload with three alternating process
+rounds. The raw JSON and rendered table are retained as artifacts of the same
+workflow. The manually dispatched **Julia vs R benchmarks** workflow remains
+available for diagnostic runs that do not publish documentation.
+
+<!-- BEGIN JULIA_VS_R_RESULTS -->
+
+### Results from this documentation build
+
+The documentation workflow replaces this text with the validated results that
+it measured immediately before building the site. A local documentation build
+keeps this placeholder unless the result-injection script is run first.
+
+<!-- END JULIA_VS_R_RESULTS -->
 
 !!! note "Interpreting results"
     GitHub-hosted runners are useful for reproducibility but are shared
     infrastructure. Their ratios are indicative, not universal claims about all
     hardware. Allocation figures are retained separately but are not compared
     because Julia and R memory instrumentation measures different things.
-
-No full reference snapshot has been published yet. A snapshot should be added
-to `benchmark/cross_language/results/` only after its correctness report and
-runner metadata have been reviewed.

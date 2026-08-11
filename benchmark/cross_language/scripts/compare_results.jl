@@ -133,6 +133,16 @@ open(OUTPUT_MARKDOWN, "w") do io
     println(io)
     println(io, "Mode: `$(report["mode"])`; rounds: Julia $(julia["rounds"]), R $(r["rounds"]); correctness: **$(valid[] ? "passed" : "failed")**.")
     println(io)
+    commit = String(julia["environment"]["git_commit"])
+    commit_label = if commit == "local"
+        "local working tree"
+    else
+        server = get(ENV, "GITHUB_SERVER_URL", "https://github.com")
+        repository = get(ENV, "GITHUB_REPOSITORY", "lrnv/Copulas.jl")
+        "[`$(first(commit, min(8, length(commit))))`]($server/$repository/commit/$commit)"
+    end
+    println(io, "Generated at `$(report["generated_at"])` from $commit_label.")
+    println(io)
     println(io, "| Target | Julia median | R median | R / Julia | Validation |")
     println(io, "|---|---:|---:|---:|:---:|")
     for item in comparisons
