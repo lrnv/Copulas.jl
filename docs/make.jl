@@ -3,6 +3,10 @@ using Documenter
 using DocumenterCitations
 using DocumenterVitepress
 
+if get(ENV, "COPULAS_DOCS_BENCHMARKS", "false") == "true"
+    include("benchmark_comparison.jl")
+end
+
 DocMeta.setdocmeta!(Copulas, :DocTestSetup, :(using Copulas); recursive=true)
 
 bib = CitationBibliography(

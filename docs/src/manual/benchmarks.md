@@ -15,48 +15,33 @@ at [the Copulas.jl benchmark dashboard](https://lrnv.github.io/Copulas.jl/benchm
 
 ## Comparison with R
 
-The cross-language suite compares Copulas.jl with R's
+The documentation build compares Copulas.jl with R's
 [`copula`](https://cran.r-project.org/package=copula) package. The initial set
-covers representative common operations rather than every family and dimension:
+covers a few representative operations rather than every family and dimension:
 
-- Clayton, Gumbel, and Gaussian sampling;
-- Gumbel and Gaussian log-density evaluation;
+- Clayton and Gaussian sampling;
+- Gumbel log-density evaluation;
 - pseudo-observations;
-- Gumbel inverse-Kendall fitting;
-- Gaussian maximum-likelihood fitting.
+- Gumbel inverse-Kendall fitting.
 
-Julia and R run as independent native processes on the same machine. The suite
-excludes process startup, package loading, fixture parsing, model construction,
-and Julia compilation. Full runs alternate three Julia and R process rounds and
-report the median steady-state time for each language.
-
-Before reporting timings, deterministic outputs are compared numerically on
-shared committed fixtures. Sampling uses independent seeded streams and receives
-local range and finiteness checks. A failed correctness check invalidates the
-entire timing report.
-
-The complete specification, locked environments, raw-result schema, and local
-reproduction instructions live in
-[`benchmark/cross_language`](https://github.com/lrnv/Copulas.jl/tree/main/benchmark/cross_language).
-Every documentation build runs the comparison first and embeds that run's table
-below. Pull-request previews use the reduced smoke workload; default-branch and
-release-tag documentation use the full workload with three alternating process
-rounds. The raw JSON and rendered table are retained as artifacts of the same
-workflow. The manually dispatched **Julia vs R benchmarks** workflow remains
-available for diagnostic runs that do not publish documentation.
+The Julia documentation process measures the Julia operations directly and
+invokes one `Rscript` process for their R equivalents. Both languages are warmed
+up before five batched timing samples are collected. Package loading, Julia
+compilation, and R process startup are excluded. The resulting table is inserted
+immediately before Documenter builds the site, so every preview and release page
+shows numbers measured by its own workflow run.
 
 <!-- BEGIN JULIA_VS_R_RESULTS -->
 
 ### Results from this documentation build
 
-The documentation workflow replaces this text with the validated results that
-it measured immediately before building the site. A local documentation build
-keeps this placeholder unless the result-injection script is run first.
+The documentation workflow replaces this text with the timing results that
+it measured immediately before building the site. Local documentation builds
+keep this placeholder unless `COPULAS_DOCS_BENCHMARKS=true` is set.
 
 <!-- END JULIA_VS_R_RESULTS -->
 
 !!! note "Interpreting results"
-    GitHub-hosted runners are useful for reproducibility but are shared
-    infrastructure. Their ratios are indicative, not universal claims about all
-    hardware. Allocation figures are retained separately but are not compared
-    because Julia and R memory instrumentation measures different things.
+    These are lightweight, indicative measurements from shared GitHub-hosted
+    runners, not a controlled benchmarking study. Small differences should not
+    be interpreted as universal performance claims.
