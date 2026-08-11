@@ -18,11 +18,23 @@ at [the Copulas.jl benchmark dashboard](https://lrnv.github.io/Copulas.jl/benchm
 The documentation build compares Copulas.jl with R's
 [`copula`](https://cran.r-project.org/package=copula) package. The table uses
 three representative models from their shared API: Clayton (lower-tail
-Archimedean), Gumbel (upper-tail Archimedean), and Gaussian (elliptical). For
-each bivariate model it measures sampling, PDF and CDF evaluation, and fitting
+Archimedean), Gumbel (upper-tail Archimedean), and Gaussian (elliptical). The
+configurations are:
+
+- Clayton: ``d=2`` and ``\theta=2``;
+- Gumbel: ``d=2`` and ``\theta=2``;
+- Gaussian: ``d=2`` and ``\rho=0.5``.
+
+For each model, the table measures sampling, PDF and CDF evaluation, and fitting
 by inversion of Kendall's tau. This is a useful common subset, not an exhaustive
-survey of either package. Clayton and Gumbel use ``\theta=2``; Gaussian uses
-``\rho=0.5``.
+survey of either package. Two additional multivariate configurations probe how
+sampling and PDF evaluation scale with dimension:
+
+- Gumbel: ``d=5`` and ``\theta=2``;
+- Gaussian: ``d=10`` and ``\rho=0.35``.
+
+CDF and fitting remain bivariate so that the workloads and fitted parameter
+structures stay reasonably comparable.
 
 The Julia documentation process measures the Julia operations directly and
 invokes one `Rscript` process for their R equivalents. Both languages are warmed
@@ -40,19 +52,30 @@ using Markdown # hide
 using Random # hide
 
 const BENCHMARK_SAMPLES = 5 # hide
-const BENCHMARK_MODELS = [("clayton", "Clayton"), ("gumbel", "Gumbel"), ("gaussian", "Gaussian")] # hide
+const BENCHMARK_MODELS = [ # hide
+    ("clayton", "Clayton", "θ=2"), # hide
+    ("gumbel", "Gumbel", "θ=2"), # hide
+    ("gaussian", "Gaussian", "ρ=0.5"), # hide
+] # hide
 const BENCHMARK_OPERATIONS = [ # hide
     ("sampling", "Sampling", "10,000 draws"), # hide
     ("pdf", "PDF", "10,000 points"), # hide
     ("cdf", "CDF", "1,000 points"), # hide
     ("fitting", "Fit (inverse Kendall's τ)", "2,000 observations"), # hide
 ] # hide
-const BENCHMARK_ROWS = [ # hide
-    (key="$model/$operation", model=label, operation=operation_label, workload=workload, # hide
-     batch=operation == "cdf" ? (model == "gaussian" ? 1 : 100) : 10) # hide
-    for (model, label) in BENCHMARK_MODELS # hide
-    for (operation, operation_label, workload) in BENCHMARK_OPERATIONS # hide
-] # hide
+const BENCHMARK_ROWS = vcat( # hide
+    [(key="$model/$operation", model=label, dimension=2, parameter=parameter, # hide
+      operation=operation_label, workload=workload, # hide
+      batch=operation == "cdf" ? (model == "gaussian" ? 1 : 100) : 10) # hide
+     for (model, label, parameter) in BENCHMARK_MODELS # hide
+     for (operation, operation_label, workload) in BENCHMARK_OPERATIONS], # hide
+    [ # hide
+        (key="gumbel_d5/sampling", model="Gumbel", dimension=5, parameter="θ=2", operation="Sampling", workload="10,000 draws", batch=10), # hide
+        (key="gumbel_d5/pdf", model="Gumbel", dimension=5, parameter="θ=2", operation="PDF", workload="10,000 points", batch=10), # hide
+        (key="gaussian_d10/sampling", model="Gaussian", dimension=10, parameter="ρ=0.35", operation="Sampling", workload="10,000 draws", batch=10), # hide
+        (key="gaussian_d10/pdf", model="Gaussian", dimension=10, parameter="ρ=0.35", operation="PDF", workload="10,000 points", batch=10), # hide
+    ], # hide
+) # hide
 
 function median_seconds(f, batch) # hide
     f() # warm-up: exclude compilation and one-time initialization # hide
@@ -85,6 +108,12 @@ function julia_benchmarks() # hide
         functions["$(spec.id)/pdf"] = let model=spec.model; () -> pdf(model, points); end # hide
         functions["$(spec.id)/cdf"] = let model=spec.model; () -> cdf(model, cdf_points); end # hide
         functions["$(spec.id)/fitting"] = let type=spec.type, data=fit_data; () -> fit(type, data; method=:itau); end # hide
+    end # hide
+    for spec in [(id="gumbel_d5", model=GumbelCopula(5, 2.0)), # hide
+                 (id="gaussian_d10", model=GaussianCopula(10, 0.35))] # hide
+        multivariate_points = clamp.(rand(rng, length(spec.model), 10_000), 1e-6, 1 - 1e-6) # hide
+        functions["$(spec.id)/sampling"] = let model=spec.model; () -> rand(rng, model, 10_000); end # hide
+        functions["$(spec.id)/pdf"] = let model=spec.model, data=multivariate_points; () -> pdf(model, data); end # hide
     end # hide
     return Dict(row.key => median_seconds(functions[row.key], row.batch) for row in BENCHMARK_ROWS) # hide
 end # hide
@@ -122,6 +151,19 @@ for (name in names(models)) { # hide
     results[[paste0(name, "/fitting")]] <- measure(function() suppressWarnings( # hide
         fitCopula(spec$fit_model, fit_data, method = "itau", estimate.variance = FALSE) # hide
     ), 10L) # hide
+} # hide
+multivariate_models <- list( # hide
+    gumbel_d5 = list(model = gumbelCopula(2, dim = 5), dimension = 5L), # hide
+    gaussian_d10 = list(model = normalCopula(0.35, dim = 10, dispstr = "ex"), dimension = 10L) # hide
+) # hide
+for (name in names(multivariate_models)) { # hide
+    spec <- multivariate_models[[name]] # hide
+    multivariate_points <- matrix( # hide
+        runif(spec$dimension * 10000, min = 1e-6, max = 1 - 1e-6), # hide
+        ncol = spec$dimension # hide
+    ) # hide
+    results[[paste0(name, "/sampling")]] <- measure(function() rCopula(10000, spec$model), 10L) # hide
+    results[[paste0(name, "/pdf")]] <- measure(function() dCopula(multivariate_points, spec$model), 10L) # hide
 } # hide
 
 for (name in names(results)) cat(name, sprintf("%.17g", results[[name]]), sep = "\t", fill = TRUE) # hide
@@ -169,11 +211,11 @@ function benchmark_comparison() # hide
     generated = Dates.format(now(UTC), "yyyy-mm-ddTHH:MM:SS") * "Z" # hide
     println(report, "Generated at `$generated` from $commit_label.") # hide
     println(report) # hide
-    println(report, "| Model | Operation | Workload | Julia median | R median | R / Julia |") # hide
-    println(report, "|---|---|---:|---:|---:|---:|") # hide
+    println(report, "| Model | Dimension | Parameter | Operation | Workload | Julia median | R median | R / Julia |") # hide
+    println(report, "|---|---:|---:|---|---:|---:|---:|---:|") # hide
     for row in BENCHMARK_ROWS # hide
         ratio = r_times[row.key] / julia_times[row.key] # hide
-        println(report, "| $(row.model) | $(row.operation) | $(row.workload) | $(format_time(julia_times[row.key])) | $(format_time(r_times[row.key])) | $(round(ratio; digits=2))× |") # hide
+        println(report, "| $(row.model) | $(row.dimension) | $(row.parameter) | $(row.operation) | $(row.workload) | $(format_time(julia_times[row.key])) | $(format_time(r_times[row.key])) | $(round(ratio; digits=2))× |") # hide
     end # hide
     println(report) # hide
     println(report, "Five timing samples; median steady-state time per evaluation. Cheap operations are batched to improve timer resolution. Runner: `$(Sys.KERNEL)` / `$(Sys.ARCH)`. Julia $(VERSION) with Copulas.jl $(pkgversion(Copulas)); $r_version with copula $copula_version.") # hide
