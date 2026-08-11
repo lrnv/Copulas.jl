@@ -6,3 +6,12 @@ Manifest.toml
 .vscode/*
 docs/node_modules/**
 docs/package-lock.json
+.tools/
+benchmark/cross_language/results/julia-smoke.json
+benchmark/cross_language/results/raw/
+benchmark/cross_language/results/r-smoke.json
+benchmark/cross_language/results/comparison-smoke.json
+benchmark/cross_language/results/comparison-smoke.md
+benchmark/cross_language/results/comparison.json
+benchmark/cross_language/results/comparison.md
+!benchmark/cross_language/julia/Manifest.toml
