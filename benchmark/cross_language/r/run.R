@@ -1,3 +1,15 @@
+args <- commandArgs(trailingOnly = FALSE)
+file_arg <- grep("^--file=", args, value = TRUE)
+script_path <- normalizePath(sub("^--file=", "", file_arg[[1]]))
+root <- normalizePath(file.path(dirname(script_path), ".."))
+
+# setup-renv restores into an isolated project library. Explicit loading keeps
+# this runner independent of its working directory and of R profile processing.
+if (nzchar(Sys.getenv("RENV_PATHS_ROOT"))) {
+    if (!requireNamespace("renv", quietly = TRUE)) stop("renv is required in CI")
+    renv::load(project = file.path(root, "r"), quiet = TRUE)
+}
+
 suppressPackageStartupMessages({
     library(bench)
     library(copula)
@@ -5,10 +17,6 @@ suppressPackageStartupMessages({
     library(RcppTOML)
 })
 
-args <- commandArgs(trailingOnly = FALSE)
-file_arg <- grep("^--file=", args, value = TRUE)
-script_path <- normalizePath(sub("^--file=", "", file_arg[[1]]))
-root <- normalizePath(file.path(dirname(script_path), ".."))
 spec <- RcppTOML::parseTOML(file.path(root, "cases.toml"))
 
 mode <- Sys.getenv("CROSS_BENCH_MODE", "full")
