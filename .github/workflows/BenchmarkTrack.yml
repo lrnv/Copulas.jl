@@ -1,0 +1,137 @@
+# Track default-branch performance and publish the static Tachometer dashboard
+# below benchmarks/ on the gh-pages branch shared with the documentation.
+name: Benchmark tracking
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  record:
+    name: Record
+    if: github.ref_type != 'tag'
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    concurrency:
+      group: tachometer-record-${{ github.sha }}
+      cancel-in-progress: false
+    outputs:
+      benchmarked: ${{ steps.scope.outputs.code-changed }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for code changes
+        id: scope
+        env:
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ -z "${BEFORE:-}" ] || [ "$BEFORE" = "0000000000000000000000000000000000000000" ] \
+             || ! git cat-file -e "${BEFORE}^{commit}" 2>/dev/null; then
+            echo "no usable base commit (new branch, manual run, or force-push); benchmarking"
+            echo "code-changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only "$BEFORE" "$GITHUB_SHA" -- . \
+            ':(exclude,glob)**/*.md' ':(exclude,glob)docs/**' ':(exclude)LICENSE')"
+          if [ -n "$changed" ]; then
+            echo "code-changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "docs-only push; skipping benchmark"
+            echo "code-changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: julia-actions/setup-julia@v2
+        if: steps.scope.outputs.code-changed == 'true'
+        with:
+          version: "1"
+      - uses: julia-actions/cache@v2
+        if: steps.scope.outputs.code-changed == 'true'
+
+      - name: Install Tachometer
+        if: steps.scope.outputs.code-changed == 'true'
+        run: |
+          julia --project=.tacho -e '
+            using Pkg
+            Pkg.add(
+              url = "https://github.com/KristofferC/Tachometer.jl",
+              rev = "334a994520a7e1c80167a5db1289d4f8f5d9c8d3",
+            )
+            Pkg.instantiate()'
+
+      - name: Record
+        if: steps.scope.outputs.code-changed == 'true'
+        env:
+          TACHOMETER_MODE: record
+          TACHOMETER_SCRIPT: benchmark/benchmarks.jl
+          TACHOMETER_RECORD_OUT: ${{ github.workspace }}/tachometer-record.json
+        run: julia --project=.tacho --startup-file=no -e 'using Tachometer; Tachometer.main()'
+
+      - uses: actions/upload-artifact@v4
+        if: steps.scope.outputs.code-changed == 'true'
+        with:
+          name: tachometer-record
+          path: ${{ github.workspace }}/tachometer-record.json
+          retention-days: 7
+
+  publish:
+    name: Publish to Pages
+    needs: [record]
+    if: >-
+      always() && (
+        github.ref_type == 'tag' ||
+        (needs.record.result == 'success' && needs.record.outputs.benchmarked == 'true')
+      )
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: write
+    concurrency:
+      group: gh-pages-publish
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1"
+      - uses: julia-actions/cache@v2
+
+      - name: Install Tachometer
+        run: |
+          julia --project=.tacho -e '
+            using Pkg
+            Pkg.add(
+              url = "https://github.com/KristofferC/Tachometer.jl",
+              rev = "334a994520a7e1c80167a5db1289d4f8f5d9c8d3",
+            )
+            Pkg.instantiate()'
+
+      - name: Download record
+        if: github.ref_type != 'tag'
+        uses: actions/download-artifact@v4
+        with:
+          name: tachometer-record
+          path: ${{ runner.temp }}/record
+
+      - name: Publish to Pages
+        env:
+          REPO: ${{ github.workspace }}
+          PAGES_BRANCH: gh-pages
+          SUBDIR: benchmarks
+          RECORD: ${{ github.ref_type != 'tag' && format('{0}/record/tachometer-record.json', runner.temp) || '' }}
+          JULIA_PROJECT: ${{ github.workspace }}/.tacho
+          REPO_URL: ${{ github.server_url }}/${{ github.repository }}
+          PACKAGE_NAME: ${{ github.event.repository.name }}
+        run: |
+          script="$(julia --project=.tacho -e 'using Tachometer; print(joinpath(pkgdir(Tachometer), "scripts", "publish-timeseries.sh"))')"
+          bash "$script"
