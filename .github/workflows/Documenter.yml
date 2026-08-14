@@ -31,6 +31,11 @@ jobs:
   # Build job
   build:
     runs-on: ubuntu-latest
+    env:
+      JULIA_NUM_THREADS: '1'
+      OPENBLAS_NUM_THREADS: '1'
+      OMP_NUM_THREADS: '1'
+      MKL_NUM_THREADS: '1'
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -39,6 +44,16 @@ jobs:
       - name: Load Julia packages from cache
         id: julia-cache
         uses: julia-actions/cache@v3
+      - name: Setup R
+        uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: '4.6.1'
+          use-public-rspm: true
+      - name: Install R copula package
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes libgsl-dev
+          Rscript -e 'install.packages("copula")'
       - name: Build and deploy docs
         uses: julia-actions/julia-docdeploy@v1
         env:
@@ -47,6 +62,7 @@ jobs:
           GKSwstype: "100" # for Plots.jl plots (if you have them)
           JULIA_DEBUG: "Documenter"
           DATADEPS_ALWAYS_ACCEPT: true
+          COPULAS_DOCS_BENCHMARKS: 'true'
       - name: Save Julia depot cache on cancel or failure
         id: julia-cache-save
         if: cancelled() || failure()

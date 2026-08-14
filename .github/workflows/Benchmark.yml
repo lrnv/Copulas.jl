@@ -1,0 +1,37 @@
+# Untrusted half of Tachometer's fork-safe two-workflow setup. This workflow
+# executes pull-request code with a read-only token and only uploads results.
+name: Benchmarks
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - '**/*.md'
+      - 'docs/**'
+      - 'LICENSE'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tachometer-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-24.04-arm
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: KristofferC/Tachometer.jl@334a994520a7e1c80167a5db1289d4f8f5d9c8d3
+        with:
+          julia-version: "1"
+          nruns: "3"
+          time-tolerance: "5%"
+          memory-tolerance: "5%"
+          time-floor: "1us"
+          fail-on-regression: "true"

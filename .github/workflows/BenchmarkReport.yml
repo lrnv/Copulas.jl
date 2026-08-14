@@ -1,0 +1,23 @@
+# Trusted half of Tachometer's fork-safe two-workflow setup. It never executes
+# pull-request code; it validates uploaded results and maintains the PR comment.
+name: Benchmark report
+
+on:
+  workflow_run:
+    workflows: [Benchmarks]
+    types: [requested, completed]
+
+permissions:
+  pull-requests: write
+  actions: read
+  contents: read
+
+jobs:
+  report:
+    if: github.event.workflow_run.event == 'pull_request'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: tachometer-report-${{ github.event.action }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
+      cancel-in-progress: ${{ github.event.action == 'requested' }}
+    steps:
+      - uses: KristofferC/Tachometer.jl/reporter@334a994520a7e1c80167a5db1289d4f8f5d9c8d3
