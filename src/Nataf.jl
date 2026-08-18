@@ -2,46 +2,34 @@
 #####  Nataf correction.
 #####  User-facing function: `Nataf(margins, R)`
 #####
-#####  Calibrates the correlation matrix of a Gaussian copula so that the
-#####  SklarDist built from it and the given margins attains a target Pearson
-#####  correlation matrix.
-#####
-#####  The pairwise work is done by `_nataf_pair(Fᵢ, Fⱼ, ρ, i, j, nodes)`,
-#####  dispatching on the margin types: the generic method inverts the induced
-#####  correlation map numerically, and pairs with an analytic map (Normal and
-#####  LogNormal combinations) have specialized closed-form methods.
+#####  Pairwise work: `_nataf_pair(Fᵢ, Fⱼ, ρ, i, j, nodes)`
 ###############################################################################
 
-# n-point probabilists' Gauss-Hermite rule from the Golub-Welsch eigenvalue
-# problem. Weights sum to one, so sum(w .* f.(z)) approximates E[f(Z)], Z ~ N(0,1).
-# The eigensolver works in Float64; callers convert the nodes to their working
-# type, which is fine since the quadrature truncation error dominates anyway.
+# n-point probabilists' Gauss-Hermite rule (Golub-Welsch); weights sum to one.
+# Float64 nodes: the quadrature truncation error dominates their precision anyway.
 function _gauss_hermite(n::Integer)
     n >= 2 || throw(ArgumentError("The Nataf correction needs at least 2 quadrature nodes, got nodes=$(n)."))
     E = LinearAlgebra.eigen(LinearAlgebra.SymTridiagonal(zeros(n), sqrt.(1.0:(n-1))))
     return E.values, abs2.(E.vectors[1, :])
 end
 
-# The margin pulled back to standard normal space, z ↦ F⁻¹(Φ(z)), standardized
-# by its moments *under the quadrature rule* so that comonotone margins map to
-# a correlation of exactly one on the rule itself.
+# The margin in standard normal space, z ↦ F⁻¹(Φ(z)), standardized by its
+# quadrature moments so comonotone margins correlate to exactly one on the rule.
 function _nataf_standardized(F::Distributions.UnivariateDistribution, k::Integer, z, w)
     T = eltype(z)
     μ, σ = Distributions.mean(F), Distributions.std(F)
     (isfinite(μ) && isfinite(σ) && σ > 0) || throw(ArgumentError(
         "The Nataf correction is only defined for margins with a finite mean and a finite positive " *
         "standard deviation, but margin $(k) ($(F)) has mean $(μ) and standard deviation $(σ)."))
-    # The clamp keeps extreme quadrature nodes away from the exact 0 and 1 that
-    # would send a quantile to ±∞.
+    # clamped away from the exact 0 and 1 that would send a quantile to ±∞
     q(t) = Distributions.quantile(F, clamp(StatsFuns.normcdf(t), nextfloat(zero(T)), prevfloat(one(T))))
     μ̂ = sum(w[a] * q(z[a]) for a in eachindex(z))
     σ̂ = sqrt(sum(w[a] * abs2(q(z[a]) - μ̂) for a in eachindex(z)))
     return t -> (q(t) - μ̂) / σ̂
 end
 
-# Pearson correlation induced between margins i and j by germ correlation ρ₀:
-# the conditional form zⱼ = ρ₀zₐ + √(1-ρ₀²)z_b turns the correlated bivariate
-# expectation into a product rule over two independent standard normals.
+# Induced Pearson correlation at germ correlation ρ₀, as a product rule over
+# independent normals via the conditional form zⱼ = ρ₀zₐ + √(1-ρ₀²)z_b.
 function _nataf_induced(gᵢ_at_z, gⱼ, z, w, ρ₀::T) where {T<:Real}
     s = sqrt(max(zero(T), one(T) - ρ₀^2))
     r = zero(T)
@@ -55,10 +43,8 @@ function _nataf_induced(gᵢ_at_z, gⱼ, z, w, ρ₀::T) where {T<:Real}
     return r
 end
 
-# The attainable Pearson range is [ρ(-1), ρ(1)] (Fréchet-Hoeffding bounds of the
-# margins). The tolerance adapts to the working precision (≈ 4e-11 in Float64)
-# and absorbs floating-point noise in the bounds, so boundary targets snap to
-# ρ₀ = ±1 instead of bisecting or throwing.
+# The attainable range is [ρ(-1), ρ(1)] (Fréchet-Hoeffding bounds); the
+# precision-adapted tolerance (≈ 4e-11 in Float64) snaps boundary targets to ±1.
 _nataf_tol(::Type{T}) where {T<:Real} = eps(T)^(2//3)
 function _nataf_checkrange(ρ::T, lo::T, hi::T, i::Integer, j::Integer) where {T<:Real}
     lo - _nataf_tol(T) <= ρ <= hi + _nataf_tol(T) || throw(ArgumentError(
@@ -72,7 +58,7 @@ _nataf_promote(Fᵢ, Fⱼ, ρ) = float(promote_type(typeof(ρ), Distributions.pa
 
 # Generic fallback: quadrature + bisection.
 function _nataf_pair(Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distributions.UnivariateDistribution,
-                     ρ::Real, i::Integer, j::Integer, nodes::Integer)
+    ρ::Real, i::Integer, j::Integer, nodes::Integer)
     T = _nataf_promote(Fᵢ, Fⱼ, ρ)
     ρ, tol = T(ρ), _nataf_tol(T)
     iszero(ρ) && return zero(T)
@@ -90,17 +76,16 @@ function _nataf_pair(Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distribut
     return Roots.find_zero(ρ₀ -> _nataf_induced(gᵢ_at_z, gⱼ, z, w, ρ₀) - ρ, bracket, Roots.Bisection())
 end
 
-# Closed forms. Each is exact in the working type, so BigFloat inputs give
-# full-precision results on these paths.
+# Closed forms.
 function _nataf_pair(Fᵢ::Distributions.Normal, Fⱼ::Distributions.Normal,
-                     ρ::Real, i::Integer, j::Integer, nodes::Integer)
-    # Pearson correlation is invariant under affine margins, so the target is the parameter.
+    ρ::Real, i::Integer, j::Integer, nodes::Integer)
+    # Pearson correlation is affine-invariant, so the target is the parameter.
     T = _nataf_promote(Fᵢ, Fⱼ, ρ)
     _nataf_checkrange(T(ρ), -one(T), one(T), i, j)
     return clamp(T(ρ), -one(T), one(T))
 end
 function _nataf_pair(Fᵢ::Distributions.LogNormal, Fⱼ::Distributions.LogNormal,
-                     ρ::Real, i::Integer, j::Integer, nodes::Integer)
+    ρ::Real, i::Integer, j::Integer, nodes::Integer)
     # r(ρ₀) = (exp(ρ₀sᵢsⱼ) - 1) / √((exp(sᵢ²) - 1)(exp(sⱼ²) - 1)), independent of the μ's.
     T = _nataf_promote(Fᵢ, Fⱼ, ρ)
     sᵢ, sⱼ = T(Distributions.params(Fᵢ)[2]), T(Distributions.params(Fⱼ)[2])
@@ -109,7 +94,7 @@ function _nataf_pair(Fᵢ::Distributions.LogNormal, Fⱼ::Distributions.LogNorma
     return clamp(log1p(T(ρ) * D) / (sᵢ * sⱼ), -one(T), one(T))
 end
 function _nataf_pair(Fᵢ::Distributions.Normal, Fⱼ::Distributions.LogNormal,
-                     ρ::Real, i::Integer, j::Integer, nodes::Integer)
+    ρ::Real, i::Integer, j::Integer, nodes::Integer)
     # The Normal margin is affine in its germ, so r(ρ₀) = ρ₀ s/√(exp(s²) - 1) is linear.
     T = _nataf_promote(Fᵢ, Fⱼ, ρ)
     s = T(Distributions.params(Fⱼ)[2])
@@ -117,11 +102,9 @@ function _nataf_pair(Fᵢ::Distributions.Normal, Fⱼ::Distributions.LogNormal,
     _nataf_checkrange(T(ρ), -b, b, i, j)
     return clamp(T(ρ) / b, -one(T), one(T))
 end
-# The induced correlation map is symmetric in the pair, so the reversed order
-# forwards to the method above (the i, j indices keep the caller's order for
-# error messages).
+# Symmetric in the pair; i, j keep the caller's order for error messages.
 function _nataf_pair(Fᵢ::Distributions.LogNormal, Fⱼ::Distributions.Normal,
-                     ρ::Real, i::Integer, j::Integer, nodes::Integer)
+    ρ::Real, i::Integer, j::Integer, nodes::Integer)
     return _nataf_pair(Fⱼ, Fᵢ, ρ, i, j, nodes)
 end
 

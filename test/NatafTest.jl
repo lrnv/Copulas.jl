@@ -16,10 +16,7 @@
     end
 
     @testset "bivariate lognormal against the closed form" begin
-        # For LogNormal margins, the Pearson correlation induced by a Gaussian
-        # copula with parameter ρ₀ is known in closed form:
-        #   r(ρ₀) = (exp(ρ₀s₁s₂) - 1) / √((exp(s₁²) - 1)(exp(s₂²) - 1)),
-        # so the exact correction is ρ₀ = log(1 + r√(⋯)) / (s₁s₂).
+        # exact correction: ρ₀ = log(1 + r√((exp(s₁²)-1)(exp(s₂²)-1))) / (s₁s₂)
         for (s₁, s₂, r) in ((0.8, 0.8, 0.7), (0.5, 1.2, 0.4), (1.0, 1.0, -0.2))
             ρ₀_exact = log(1 + r * sqrt(expm1(s₁^2) * expm1(s₂^2))) / (s₁ * s₂)
             ρ₀ = Nataf((LogNormal(0, s₁), LogNormal(0, s₂)), r)
@@ -28,8 +25,7 @@
     end
 
     @testset "closed-form fast paths agree with the quadrature fallback" begin
-        # The exact-path pairs (Normal/LogNormal) never reach the quadrature, so
-        # invoke the generic method directly for comparison.
+        # @invoke bypasses the closed-form methods to reach the generic one
         quad_pair(Fᵢ, Fⱼ, r; nodes = 48) = Base.@invoke Copulas._nataf_pair(
             Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distributions.UnivariateDistribution,
             r::Real, 1::Integer, 2::Integer, nodes::Integer)
@@ -85,7 +81,6 @@
     end
 
     @testset "attainable extremes map to ±1" begin
-        # A target exactly on the attainable boundary (comonotone Gaussian margins) maps to ρ₀ = ±1.
         @test Nataf((Normal(), Normal()), 1.0) == 1.0
         @test Nataf((Normal(), Normal()), -1.0) == -1.0
     end
