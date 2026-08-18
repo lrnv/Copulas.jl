@@ -52,7 +52,8 @@ function _nataf_problem(Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distri
     inverse(target) = Roots.find_zero(
         ρ₀ -> induced(ρ₀) - target,
         (nextfloat(-one(T)), prevfloat(one(T))), Roots.A42())
-    return (; lo, hi, inverse)
+    # the bounds are only as accurate as the quadrature itself
+    return (; lo, hi, inverse, atol=sqrt(eps(T)))
 end
 
 # Closed-form problems. Their inverse maps are exact in the working type, so
@@ -207,10 +208,19 @@ function Nataf(margins, R::AbstractMatrix{<:Real}; nodes::Integer=32)
     for i in 1:d, j in (i+1):d
         ρ = T(R[i, j])
         iszero(ρ) && continue
-        lo, hi, inverse = _nataf_problem(margins[i], margins[j], ρ, nodes)
-        lo - tol <= ρ <= hi + tol || throw(ArgumentError("The target Pearson correlation $(ρ) for margins ($(i), $(j)) is outside their " *
-            "Fréchet-Hoeffding bounds [$(round(lo, digits=4)), $(round(hi, digits=4))]"))
-        ρ₀ = ρ >= hi - tol ? up : ρ <= lo + tol ? dn : clamp(inverse(ρ), dn, up)
+        (; lo, hi, inverse) = prob = _nataf_problem(margins[i], margins[j], ρ, nodes)
+        # widen the tolerance to `atol` reported by the quadrature path
+        tolᵢⱼ = max(tol, get(prob, :atol, zero(T)))
+        if !(lo - tolᵢⱼ <= ρ <= hi + tolᵢⱼ)
+            throw(ArgumentError("The target Pearson correlation $(ρ) for margins ($(i), $(j)) is outside their " *
+                "Fréchet-Hoeffding bounds [$(round(lo, digits=4)), $(round(hi, digits=4))]"))
+        elseif ρ >= hi - tolᵢⱼ  # within noise of the upper bound: snap
+            ρ₀ = up
+        elseif ρ <= lo + tolᵢⱼ  # within noise of the lower bound: snap
+            ρ₀ = dn
+        else                    # interior target: invert the induced map
+            ρ₀ = clamp(inverse(ρ), dn, up)
+        end
         R₀[i, j] = R₀[j, i] = ρ₀
     end
     return R₀

@@ -100,4 +100,15 @@
         @test GaussianCopula(2, ρ₊) isa GaussianCopula
         @test GaussianCopula([1.0 ρ₋; ρ₋ 1.0]) isa GaussianCopula
     end
+
+    @testset "generic-path attainability tolerance matches quadrature accuracy" begin
+        # The quadrature bounds are only ~1e-8 accurate, so a target within
+        # quadrature noise of the computed bound is attainable and snaps to the
+        # boundary instead of being rejected; clearly outside still throws.
+        m = (Gamma(2.0, 3.0), Beta(2.0, 5.0))
+        hi = Copulas._nataf_problem(m..., 0.5, 32).hi
+        @test Nataf(m, hi + 1e-9) == prevfloat(1.0)
+        @test Nataf(m, hi - 1e-9) == prevfloat(1.0)
+        @test_throws ArgumentError Nataf(m, hi + 1e-6)
+    end
 end
