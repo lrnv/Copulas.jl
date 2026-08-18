@@ -18,6 +18,20 @@
     @test Z.m[2] == LogNormal()
 end
 
+@testset "Bivariate scalar condition fast path" begin
+    C = GaussianCopula([1.0 0.4; 0.4 1.0])
+    for j in 1:2, uⱼ in (0.0f0, 0.4, big"1.0")
+        direct = condition(C, j, uⱼ)
+        reference = condition(C, (j,), (float(uⱼ),))
+        @test typeof(direct) == typeof(reference)
+        @test cdf(direct, 0.3) ≈ cdf(reference, 0.3)
+    end
+    @test_throws ArgumentError condition(C, 0, 0.4)
+    @test_throws ArgumentError condition(C, 3, 0.4)
+    @test_throws ArgumentError condition(C, 1, -0.1)
+    @test_throws ArgumentError condition(C, 1, 1.1)
+end
+
 @testset "Distortion densities agree with their cdf derivatives" begin
     C = FGMCopula(2, 0.4)
     for j in 1:2
