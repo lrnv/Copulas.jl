@@ -176,6 +176,36 @@ EllipticalCopula
 GaussianCopula
 ```
 
+#### Targeting a Pearson correlation: the Nataf correction
+
+The parameter matrix of a `GaussianCopula` is the correlation matrix of the underlying Gaussian random vector. When the copula is coupled to non-Gaussian marginals through [`SklarDist`](@ref), that parameter is **not** the Pearson correlation of the resulting random vector, because Pearson correlation depends on the marginals (only rank-based measures such as Kendall's τ or Spearman's ρ are marginal-free, see [the dependence measures page](@ref dep_metrics)):
+
+```@example nataf
+using Copulas, Distributions, Statistics, Random
+rng = Xoshiro(1)
+C = GaussianCopula([1.0 0.7; 0.7 1.0])
+D = SklarDist(C, (LogNormal(0, 0.8), LogNormal(0, 0.8)))
+cor(rand(rng, D, 10^5)') # although the copula parameter is 0.7...
+```
+
+The [`Nataf`](@ref) correction [nataf1962,liu1986](@cite) inverts this distortion: it computes the copula parameter matrix that makes the `SklarDist` attain a *target* Pearson correlation matrix for the given marginals:
+
+```@example nataf
+m  = (LogNormal(0, 0.8), LogNormal(0, 0.8))
+R₀ = Nataf(m, [1.0 0.7; 0.7 1.0])
+```
+
+```@example nataf
+D = SklarDist(GaussianCopula(R₀), m)
+cor(rand(rng, D, 10^5)') # ≈ 0.7 as requested.
+```
+
+Since non-Gaussian marginals cannot attain every Pearson correlation (the Fréchet-Hoeffding bounds of the pair), an unattainable target throws an error reporting the attainable range. `Normal` and `LogNormal` pairs use closed-form corrections; other marginals go through a Gauss-Hermite quadrature.
+
+```@docs; canonical=false
+Nataf
+```
+
 ### `TCopula`
 
 ```@docs; canonical=false
