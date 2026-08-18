@@ -47,22 +47,52 @@ function _nataf_induced(gᵢ_at_z, gⱼ, z, w, ρ₀::Float64)
     return r
 end
 
-function _nataf_pair(ρ::Float64, gᵢ_at_z, gⱼ, z, w, i::Integer, j::Integer)
-    iszero(ρ) && return 0.0
-    lo = _nataf_induced(gᵢ_at_z, gⱼ, z, w, -1.0)
-    hi = _nataf_induced(gᵢ_at_z, gⱼ, z, w, 1.0)
-    # The bounds carry quadrature noise of a few ulps, so targets sitting on an
-    # attainable boundary (only reached at ρ₀ = ±1) snap to it instead of bisecting.
-    tol = 1e-10
-    lo - tol <= ρ <= hi + tol || throw(ArgumentError(
+# The attainable Pearson range is [ρ(-1), ρ(1)] (Fréchet-Hoeffding bounds of the
+# margins). The `tol` absorbs quadrature noise of a few ulps in bounds computed
+# numerically, so boundary targets snap to ρ₀ = ±1 instead of bisecting or throwing.
+const _NATAF_TOL = 1e-10
+function _nataf_checkrange(ρ::Float64, lo::Float64, hi::Float64, i::Integer, j::Integer)
+    lo - _NATAF_TOL <= ρ <= hi + _NATAF_TOL || throw(ArgumentError(
         "The target Pearson correlation $(ρ) for margins ($(i), $(j)) is outside the range " *
         "[$(round(lo, digits=4)), $(round(hi, digits=4))] that these margins can attain. " *
         "Pearson correlations of non-Gaussian margins cannot reach all of [-1, 1] " *
         "(Fréchet-Hoeffding bounds), so the target itself has to change."))
-    ρ >= hi - tol && return 1.0
-    ρ <= lo + tol && return -1.0
+end
+
+function _nataf_pair(ρ::Float64, gᵢ_at_z, gⱼ, z, w, i::Integer, j::Integer)
+    iszero(ρ) && return 0.0
+    lo = _nataf_induced(gᵢ_at_z, gⱼ, z, w, -1.0)
+    hi = _nataf_induced(gᵢ_at_z, gⱼ, z, w, 1.0)
+    _nataf_checkrange(ρ, lo, hi, i, j)
+    ρ >= hi - _NATAF_TOL && return 1.0
+    ρ <= lo + _NATAF_TOL && return -1.0
     # The induced correlation is increasing in ρ₀, so bisection cannot lose the root.
     return Roots.find_zero(ρ₀ -> _nataf_induced(gᵢ_at_z, gⱼ, z, w, ρ₀) - ρ, (-1.0, 1.0), Roots.Bisection())
+end
+
+# Closed-form corrections for pairs where the induced correlation is known
+# analytically; they return `nothing` when no closed form applies, and the
+# quadrature fallback takes over. The matrix method tries both argument orders,
+# so each specialization only needs to be written once.
+_nataf_exact(::Distributions.UnivariateDistribution, ::Distributions.UnivariateDistribution, ρ::Float64, i, j) = nothing
+function _nataf_exact(::Distributions.Normal, ::Distributions.Normal, ρ::Float64, i, j)
+    # Pearson correlation is invariant under affine margins, so the target is the parameter.
+    _nataf_checkrange(ρ, -1.0, 1.0, i, j)
+    return clamp(ρ, -1.0, 1.0)
+end
+function _nataf_exact(Fᵢ::Distributions.LogNormal, Fⱼ::Distributions.LogNormal, ρ::Float64, i, j)
+    # r(ρ₀) = (exp(ρ₀sᵢsⱼ) - 1) / √((exp(sᵢ²) - 1)(exp(sⱼ²) - 1)), independent of the μ's.
+    sᵢ, sⱼ = Distributions.params(Fᵢ)[2], Distributions.params(Fⱼ)[2]
+    D = sqrt(expm1(sᵢ^2) * expm1(sⱼ^2))
+    _nataf_checkrange(ρ, expm1(-sᵢ * sⱼ) / D, expm1(sᵢ * sⱼ) / D, i, j)
+    return clamp(log1p(ρ * D) / (sᵢ * sⱼ), -1.0, 1.0)
+end
+function _nataf_exact(::Distributions.Normal, Fⱼ::Distributions.LogNormal, ρ::Float64, i, j)
+    # The Normal margin is affine in its germ, so r(ρ₀) = ρ₀ s/√(exp(s²) - 1) is linear.
+    s = Distributions.params(Fⱼ)[2]
+    b = s / sqrt(expm1(s^2))
+    _nataf_checkrange(ρ, -b, b, i, j)
+    return clamp(ρ / b, -1.0, 1.0)
 end
 
 """
@@ -96,11 +126,15 @@ rule and, since it is increasing in ``\\rho_0``, inverted by bisection.
   `1e-8` for well-behaved margins; heavy-tailed or strongly skewed margins converge more
   slowly and want more nodes.
 
-Zero targets map to exactly zero, and Gaussian margins reproduce `R` exactly. Because
-non-Gaussian margins cannot attain every Pearson correlation (the Fréchet-Hoeffding
-bounds), a target outside the attainable range throws an error naming the pair and the
-range. The corrected matrix is not guaranteed to stay positive definite for extreme
-targets; the `GaussianCopula` constructor validates it.
+Zero targets map to exactly zero. Pairs whose induced correlation is known analytically
+skip the quadrature and use the closed form instead: `Normal`-`Normal` pairs (the
+identity, so Gaussian margins reproduce `R` exactly), `LogNormal`-`LogNormal` pairs
+(``\\rho_0 = \\log(1 + \\rho\\sqrt{(e^{s_i^2}-1)(e^{s_j^2}-1)})/(s_is_j)``), and mixed
+`Normal`-`LogNormal` pairs (``\\rho_0 = \\rho\\sqrt{e^{s^2}-1}/s``). Because non-Gaussian
+margins cannot attain every Pearson correlation (the Fréchet-Hoeffding bounds), a target
+outside the attainable range throws an error naming the pair and the range. The corrected
+matrix is not guaranteed to stay positive definite for extreme targets; the
+`GaussianCopula` constructor validates it.
 
 # Example
 
@@ -126,12 +160,28 @@ function Nataf(margins, R::AbstractMatrix{<:Real}; nodes::Integer=32)
         "Got $(d) margins for a correlation matrix of size $(size(R))."))
     LinearAlgebra.issymmetric(R) || throw(ArgumentError("The target correlation matrix must be symmetric."))
     all(isapprox.(LinearAlgebra.diag(R), 1)) || throw(ArgumentError("The target correlation matrix must have a unit diagonal."))
-    z, w = _gauss_hermite(nodes)
-    g = [_nataf_standardized(margins[k], k, z, w) for k in 1:d]
-    g_at_z = [gₖ.(z) for gₖ in g]
+    nodes >= 2 || throw(ArgumentError("The Nataf correction needs at least 2 quadrature nodes, got nodes=$(nodes)."))
+    # The quadrature is only built for margins involved in a pair without a
+    # closed form, so e.g. all-Gaussian inputs never touch it.
+    z, w = nothing, nothing
+    g, g_at_z = Vector{Any}(nothing, d), Vector{Any}(nothing, d)
+    function _quad!(k)
+        z === nothing && ((z, w) = _gauss_hermite(nodes))
+        if g[k] === nothing
+            g[k] = _nataf_standardized(margins[k], k, z, w)
+            g_at_z[k] = g[k].(z)
+        end
+    end
     R₀ = Matrix{Float64}(LinearAlgebra.I, d, d)
     for i in 1:d, j in (i+1):d
-        R₀[i, j] = R₀[j, i] = _nataf_pair(Float64(R[i, j]), g_at_z[i], g[j], z, w, i, j)
+        ρ = Float64(R[i, j])
+        r₀ = _nataf_exact(margins[i], margins[j], ρ, i, j)
+        r₀ === nothing && (r₀ = _nataf_exact(margins[j], margins[i], ρ, i, j))
+        if r₀ === nothing
+            _quad!(i); _quad!(j)
+            r₀ = _nataf_pair(ρ, g_at_z[i], g[j], z, w, i, j)
+        end
+        R₀[i, j] = R₀[j, i] = r₀
     end
     return R₀
 end
