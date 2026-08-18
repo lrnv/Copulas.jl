@@ -980,6 +980,45 @@ end
         end
     end
 
+    @testset "Multivariate logistic EV" begin
+        for d in (3, 5), θ in (1.5, 3.5, 13.5)
+            C = Copulas.ExtremeValueCopula(d, Copulas.LogTail(θ))
+            G = Copulas.GumbelCopula(d, θ)
+            u = collect(range(0.21, 0.87; length=d))
+            @test cdf(C, u) ≈ cdf(G, u) atol=2e-13 rtol=2e-13
+            @test logpdf(C, u) ≈ logpdf(G, u) atol=2e-10 rtol=2e-10
+
+            rng1, rng2 = StableRNG(1700 + d), StableRNG(1700 + d)
+            @test rand(rng1, C, 16) == rand(rng2, G, 16)
+        end
+
+        θ = 2.3
+        L = Copulas.LogTail(θ)
+        x = (0.4, 0.7, 1.1, 1.6)
+        S = sum(xi^θ for xi in x)
+        for I in ((1,), (1, 3), (1, 2, 4), (1, 2, 3, 4))
+            k = length(I)
+            coeff = k == 1 ? one(θ) : prod(1 - j * θ for j in 1:k-1)
+            expected = coeff * S^(inv(θ) - k) * prod(x[i]^(θ - 1) for i in I)
+            @test Copulas.ellpartial(L, x, I) ≈ expected atol=2e-13 rtol=2e-12
+        end
+
+        Gtail = Copulas.GalambosTail(0.7)
+        x2 = (0.4, 0.7)
+        _, d1, d2, d12 = Copulas._biv_der_ℓ(Gtail, x2)
+        @test Copulas.ellpartial(Gtail, x2, (1,)) ≈ d1
+        @test Copulas.ellpartial(Gtail, x2, (2,)) ≈ d2
+        @test Copulas.ellpartial(Gtail, x2, (1, 2)) ≈ d12
+
+        C4 = Copulas.ExtremeValueCopula(4, L)
+        C2 = Copulas.ExtremeValueCopula(2, L)
+        u, v = 0.37, 0.81
+        @test cdf(C4, [u, v, 1.0, 1.0]) ≈ cdf(C2, [u, v]) atol=2e-14 rtol=2e-14
+        @test cdf(C4, [0.0, v, 0.7, 0.9]) == 0.0
+        @test isinf(Copulas.ℓ(L, (Inf, 0.7, 0.0, 0.0)))
+        @test Copulas.ℓ(L, (0.4, 0.7, 0.0, 0.0)) ≈ Copulas.ℓ(L, (0.4, 0.7))
+    end
+
     @testset "BC2 and Cuadras-Auge singular conditionals" begin
         Cbc2 = Copulas.ExtremeValueCopula(2, Copulas.BC2Tail(0.65, 0.25))
         for j in 1:2, t in (0.2, 0.8), α in (0.25, 0.6)
