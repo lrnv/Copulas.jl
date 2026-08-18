@@ -52,6 +52,10 @@ function A(tail::CuadrasAugeTail, t::Real)
     θ = tail.θ
     return max(tt, 1-tt) + (1-θ) * min(tt, 1-tt)
 end
+_pickands_left_slope(tail::CuadrasAugeTail, prototype::Real) =
+    -convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
+_pickands_right_slope(tail::CuadrasAugeTail, prototype::Real) =
+    convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
 dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 ? -tail.θ : C.tail.θ)
 ℓ(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t) where {T} = max(t[1], t[2]) + (1 - C.tail.θ) * min(t[1], t[2])
 function Distributions._rand!(rng::Distributions.AbstractRNG,
@@ -72,8 +76,8 @@ function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real
     # bounds and degeneracies
     z ≤ 0    && return S(-Inf)
     z ≥ 1    && return S(0)
-    D.uⱼ ≤ 0 && return S(-Inf)
-    D.uⱼ ≥ 1 && return S(log(z))
+    D.uⱼ ≤ 0 && return _biv_ev_endpoint_logcdf(D, z, true, S)
+    D.uⱼ ≥ 1 && return _biv_ev_endpoint_logcdf(D, z, false, S)
 
     z ≥ D.uⱼ && return (1-θ) * log(z)
     return log1p(-θ) + log(z) + θ * D.negloguⱼ
@@ -83,8 +87,8 @@ function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::R
     θ = D.tail.θ
     α ≤ 0 && return 0.0
     α ≥ 1 && return 1.0
-    D.uⱼ ≤ 0 && return 0.0
-    D.uⱼ ≥ 1 && return α
+    D.uⱼ ≤ 0 && return _biv_ev_endpoint_quantile(D, α, true, T)
+    D.uⱼ ≥ 1 && return _biv_ev_endpoint_quantile(D, α, false, T)
 
     la = log(α)
     lu = -D.negloguⱼ
