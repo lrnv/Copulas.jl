@@ -51,7 +51,7 @@ function _nataf_problem(Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distri
     lo, hi = induced(-one(T)), induced(one(T))
     inverse(target) = Roots.find_zero(
         ρ₀ -> induced(ρ₀) - target,
-        (nextfloat(-one(T)), prevfloat(one(T))), Roots.Bisection())
+        (nextfloat(-one(T)), prevfloat(one(T))), Roots.A42())
     return (; lo, hi, inverse)
 end
 
@@ -134,7 +134,7 @@ means inverting, for each pair of margins,
 
 where ``g_k(z) = (F_k^{-1}(\\Phi(z)) - \\mu_k)/\\sigma_k`` is the standardized margin pulled
 back to standard normal space. The expectation is evaluated with a product Gauss-Hermite
-rule and, since it is increasing in ``\\rho_0``, inverted by bisection.
+rule and, since it is increasing in ``\\rho_0``, inverted by a bracketed root search.
 
 # Arguments
 - `margins`: a `Tuple` or vector of univariate distributions, each with finite mean and

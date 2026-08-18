@@ -83,7 +83,7 @@
         @test ρ₀ isa BigFloat
         @test ρ₀ ≈ log1p(big"0.7" * expm1(s^2)) / s^2 atol = big"1e-60"
         @test Nataf((Normal(big"0.0", big"1.0"), Normal(big"2.0", big"3.0")), big"0.6") == big"0.6"
-        # generic quadrature path (few nodes to keep the BigFloat bisection cheap):
+        # generic quadrature path (few nodes to keep the BigFloat root search cheap):
         m = (LogNormal(big"0.0", big"0.8"), Exponential(big"1.0"))
         ρ₀ = Nataf(m, big"0.5"; nodes = 8)
         @test ρ₀ isa BigFloat
