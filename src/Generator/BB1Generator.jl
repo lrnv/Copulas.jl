@@ -49,6 +49,20 @@ function ϕ⁽¹⁾(G::BB1Generator, s)
     a, b, ls = inv(G.δ), inv(G.θ), log(s)
     return -(a*b) * exp((a-1)*ls - (b+1)*log1p(exp(a*ls)))
 end
+function ϕ⁽ᵏ⁾⁻¹(G::BB1Generator, k::Int, y; start_at=y)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, y; start_at=start_at)
+    θ, δ, yy = promote(float(G.θ), float(G.δ), float(y))
+    yy ≤ zero(yy) || throw(DomainError(y, "The first generator derivative is non-positive."))
+    m = -yy
+    iszero(m) && return typeof(m)(Inf)
+    isinf(m) && return zero(m)
+    a, b, lm = inv(δ), inv(θ), log(m)
+    f(z) = log(a) + log(b) + (a - one(z))*z - (b + one(z))*LogExpFunctions.log1pexp(a*z) - lm
+    lo, hi = -one(lm), one(lm)
+    while f(lo) < 0; lo = 2lo - 1; end
+    while f(hi) > 0; hi = 2hi + 1; end
+    return exp(Roots.find_zero(f, (lo, hi), Roots.Bisection()))
+end
 function ϕ⁽ᵏ⁾(G::BB1Generator, k::Int, s::Real; tol::Float64=1e-9, maxiter::Int=10_000, miniter::Int=5)
     if k==2 
         a, b, ls = inv(G.δ), inv(G.θ), log(s)
@@ -127,4 +141,3 @@ end
     βstar = (1 + 2.0^(1/δ) * (2.0^θ - 1.0))^(-1/θ)
     4βstar - 1
 end
-
