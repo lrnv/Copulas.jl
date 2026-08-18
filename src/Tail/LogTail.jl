@@ -73,6 +73,9 @@ function dA(tail::LogTail, t::Real)
 
     return Bpow * D
 end
+_pickands_left_slope(::LogTail, prototype::Real) = -one(prototype)
+_pickands_right_slope(::LogTail, prototype::Real) = one(prototype)
+
 function d²A(tail::LogTail, t::Real)
     θ = tail.θ
 
@@ -112,6 +115,8 @@ end
 # the same closed-form inverse of the first generator derivative.
 function Distributions.quantile(D::BivEVDistortion{<:LogTail}, α::Real)
     T = float(promote_type(typeof(α), typeof(D.tail.θ), typeof(D.uⱼ)))
+    D.uⱼ ≤ 0 && return _biv_ev_endpoint_quantile(D, α, true, T)
+    D.uⱼ ≥ 1 && return _biv_ev_endpoint_quantile(D, α, false, T)
     G = GumbelGenerator(T(D.tail.θ))
     sJ = ϕ⁻¹(G, T(D.uⱼ))
     den = ϕ⁽¹⁾(G, sJ)

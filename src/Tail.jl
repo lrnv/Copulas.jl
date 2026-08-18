@@ -59,6 +59,11 @@ _is_valid_in_dim(::Tail2, d::Int) = (d==2)
 A(tail::Tail2, t::NTuple{2, <:Real}) = A(tail, t[1])
 dA(tail::Tail2, t::Real) = ForwardDiff.derivative(z -> A(tail, z), t)
 d²A(tail::Tail2, t::Real) = ForwardDiff.derivative(z -> dA(tail, z), t)
+
+# One-sided Pickands slopes for conditional endpoint extensions.
+_pickands_left_slope(tail::Tail2, x::Real) = dA(tail, _safett(zero(x)))
+_pickands_right_slope(tail::Tail2, x::Real) = dA(tail, _safett(one(x)))
+
 _A_dA_d²A(tail::Tail2, t::Real) = let tt = _safett(t); (A(tail, tt), dA(tail, tt), d²A(tail, tt)) end
 function _biv_der_ℓ(tail::Tail2, uv)
     u, v = uv
