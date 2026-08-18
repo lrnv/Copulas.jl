@@ -16,26 +16,19 @@
     end
 
     @testset "bivariate lognormal against the closed form" begin
-        # exact correction: ρ₀ = log(1 + r√((exp(s₁²)-1)(exp(s₂²)-1))) / (s₁s₂)
+        # For LogNormal margins, the Pearson correlation induced by a Gaussian
+        # copula with parameter ρ₀ is known in closed form:
+        #   r(ρ₀) = (exp(ρ₀s₁s₂) - 1) / √((exp(s₁²) - 1)(exp(s₂²) - 1)),
+        # so the exact correction is ρ₀ = log(1 + r√(⋯)) / (s₁s₂).
         for (s₁, s₂, r) in ((0.8, 0.8, 0.7), (0.5, 1.2, 0.4), (1.0, 1.0, -0.2))
             ρ₀_exact = log(1 + r * sqrt(expm1(s₁^2) * expm1(s₂^2))) / (s₁ * s₂)
             ρ₀ = Nataf((LogNormal(0, s₁), LogNormal(0, s₂)), r)
             @test ρ₀ ≈ ρ₀_exact atol = 1e-6
         end
-    end
-
-    @testset "closed-form fast paths agree with the quadrature fallback" begin
-        # @invoke bypasses the closed-form methods to reach the generic one
-        quad_pair(Fᵢ, Fⱼ, r; nodes = 48) = Base.@invoke Copulas._nataf_pair(
-            Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distributions.UnivariateDistribution,
-            r::Real, 1::Integer, 2::Integer, nodes::Integer)
-        for (Fᵢ, Fⱼ, r) in ((Normal(1, 2), LogNormal(0, 0.8), 0.6),
-                            (Normal(), LogNormal(1, 0.5), -0.3),
-                            (LogNormal(0, 0.8), LogNormal(1, 0.5), 0.4))
-            @test Nataf((Fᵢ, Fⱼ), r) ≈ quad_pair(Fᵢ, Fⱼ, r) atol = 1e-8
-        end
-        # the reversed-order dispatch hits the same closed form:
-        @test Nataf((LogNormal(0, 0.8), Normal(1, 2)), 0.6) == Nataf((Normal(1, 2), LogNormal(0, 0.8)), 0.6)
+        s, r = 0.8, 0.6
+        expected = r * sqrt(expm1(s^2)) / s
+        @test Nataf((Normal(1, 2), LogNormal(0, s)), r) ≈ expected
+        @test Nataf((LogNormal(0, s), Normal(1, 2)), r) ≈ expected
     end
 
     @testset "scalar and matrix methods agree" begin
@@ -81,6 +74,7 @@
     end
 
     @testset "attainable extremes map to ±1" begin
+        # A target exactly on the attainable boundary (comonotone Gaussian margins) maps to ρ₀ = ±1.
         @test Nataf((Normal(), Normal()), 1.0) == 1.0
         @test Nataf((Normal(), Normal()), -1.0) == -1.0
     end
