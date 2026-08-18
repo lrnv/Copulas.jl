@@ -67,6 +67,13 @@
         @test_throws ArgumentError Nataf((LogNormal(),), 0.5)                   # scalar target needs 2 margins
         @test_throws ArgumentError Nataf(m, 1.5)                                # target outside [-1, 1]
         @test_throws ArgumentError Nataf(m, 0.5; nodes=1)                       # not enough nodes
+        # margins are validated even when their targets are all zero:
+        @test_throws ArgumentError Nataf((Pareto(1.0), Normal()), [1.0 0.0; 0.0 1.0])
+        # degenerate (Dirac) margins are rejected on the closed-form paths too:
+        @test_throws ArgumentError Nataf((Normal(0, 0), Normal()), 0.5)
+        @test_throws ArgumentError Nataf((LogNormal(0, 0), LogNormal(0, 1)), 0.3)
+        # a bare distribution instead of a collection gets a clean error:
+        @test_throws ArgumentError Nataf(Normal(), [1.0 0.5; 0.5 1.0])
     end
 
     @testset "type-generic: BigFloat inputs give BigFloat results" begin
@@ -83,9 +90,14 @@
         @test Float64(ρ₀) ≈ Nataf((LogNormal(0.0, 0.8), Exponential(1.0)), 0.5; nodes = 8) atol = 1e-12
     end
 
-    @testset "attainable extremes map to ±1" begin
-        # A target exactly on the attainable boundary (comonotone Gaussian margins) maps to ρ₀ = ±1.
-        @test Nataf((Normal(), Normal()), 1.0) == 1.0
-        @test Nataf((Normal(), Normal()), -1.0) == -1.0
+    @testset "attainable extremes snap just inside ±1" begin
+        # A target exactly on the attainable boundary (comonotone Gaussian margins)
+        # maps just inside ±1, so the GaussianCopula pipeline stays usable.
+        ρ₊ = Nataf((Normal(), Normal()), 1.0)
+        ρ₋ = Nataf((Normal(), Normal()), -1.0)
+        @test ρ₊ == prevfloat(1.0)
+        @test ρ₋ == nextfloat(-1.0)
+        @test GaussianCopula(2, ρ₊) isa GaussianCopula
+        @test GaussianCopula([1.0 ρ₋; ρ₋ 1.0]) isa GaussianCopula
     end
 end

@@ -23,11 +23,8 @@ function _nataf_problem(Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distri
 
     # Pull a margin back to normal space and standardize it using moments from
     # this same rule, so comonotone margins correlate to exactly one on the rule.
+    # (Margins are validated upfront in `Nataf`.)
     function standardized(F)
-        μ, σ = Distributions.mean(F), Distributions.std(F)
-        (isfinite(μ) && isfinite(σ) && σ > 0) || throw(ArgumentError(
-            "The Nataf correction is only defined for margins with a finite mean and a finite positive " *
-            "standard deviation, but $(F) has mean $(μ) and standard deviation $(σ)."))
         q(t) = Distributions.quantile(F,
             clamp(StatsFuns.normcdf(t), nextfloat(zero(T)), prevfloat(one(T))))
         μ̂ = sum(w[a] * q(z[a]) for a in eachindex(z))
@@ -154,13 +151,18 @@ identity, so Gaussian margins reproduce `R` exactly), `LogNormal`-`LogNormal` pa
 (``\\rho_0 = \\log(1 + \\rho\\sqrt{(e^{s_i^2}-1)(e^{s_j^2}-1)})/(s_is_j)``), and all
 pairs among `Normal`, `LogNormal`, and `Uniform` margins. Because non-Gaussian
 margins cannot attain every Pearson correlation (the Fréchet-Hoeffding bounds), a target
-outside the attainable range throws an error naming the pair and the range. The corrected
-matrix is not guaranteed to stay positive definite for extreme targets; the
+outside the attainable range throws an error naming the pair and the range. Targets on
+the attainable boundary snap just inside ``\\pm 1``, so the result stays usable by the
+`GaussianCopula` constructor; the corrected matrix is nevertheless not guaranteed to
+stay positive definite for extreme targets in dimension ``d > 2``, and the
 `GaussianCopula` constructor validates it.
 
 The computation is type-generic and follows the precision of the inputs: `BigFloat`
 targets or margin parameters yield `BigFloat` results, at full precision on the
-closed-form paths (the quadrature nodes of the generic path are computed in `Float64`).
+closed-form paths. Two caveats on the generic quadrature path: its nodes are computed
+in `Float64`, and it requires margins whose `quantile` accepts the working type — some
+quantiles in Distributions.jl (e.g. `Gamma`, `Beta`) are implemented for machine floats
+only and throw a `MethodError` for `BigFloat` arguments.
 
 # Example
 
@@ -179,16 +181,28 @@ References:
 * [liu1986](@cite) Liu, P.-L., & Der Kiureghian, A. (1986). Multivariate distribution models with prescribed marginals and covariances.
 """
 function Nataf(margins, R::AbstractMatrix{<:Real}; nodes::Integer=32)
+    margins isa Distributions.UnivariateDistribution && throw(ArgumentError(
+        "margins must be a collection (Tuple or vector) of univariate distributions; " *
+        "wrap a single margin in a tuple."))
     d = length(margins)
     all(m -> m isa Distributions.UnivariateDistribution, margins) || throw(ArgumentError("margins must be univariate distributions, got $(typeof(margins))."))
+    for F in margins
+        μ, σ = Distributions.mean(F), Distributions.std(F)
+        (isfinite(μ) && isfinite(σ) && σ > 0) || throw(ArgumentError(
+            "The Nataf correction is only defined for margins with a finite mean and a finite positive " *
+            "standard deviation, but $(F) has mean $(μ) and standard deviation $(σ)."))
+    end
     size(R) == (d, d) || throw(ArgumentError("Got $(d) margins for a correlation matrix of size $(size(R))."))
     LinearAlgebra.issymmetric(R) || throw(ArgumentError("The target correlation matrix must be symmetric."))
     all(isapprox.(LinearAlgebra.diag(R), 1)) || throw(ArgumentError("The target correlation matrix must have a unit diagonal."))
     nodes >= 2 || throw(ArgumentError("The Nataf correction needs at least 2 quadrature nodes, got nodes=$(nodes)."))
     # Absorb floating-point noise in attainable bounds and snap boundary targets
-    # to ±1 instead of evaluating an inverse at a rounded endpoint.
+    # just inside ±1 instead of evaluating an inverse at a rounded endpoint: the
+    # result stays strictly inside (-1, 1) so that downstream consumers (the
+    # GaussianCopula constructor validates positive definiteness) still accept it.
     T = float(mapreduce(Distributions.partype, promote_type, margins; init=eltype(R)))
-    tol, T1 = eps(T)^(2//3), one(T)
+    tol = eps(T)^(2//3)
+    up, dn = prevfloat(one(T)), nextfloat(-one(T))
     R₀ = Matrix{T}(LinearAlgebra.I, d, d)
     for i in 1:d, j in (i+1):d
         ρ = T(R[i, j])
@@ -196,7 +210,7 @@ function Nataf(margins, R::AbstractMatrix{<:Real}; nodes::Integer=32)
         lo, hi, inverse = _nataf_problem(margins[i], margins[j], ρ, nodes)
         lo - tol <= ρ <= hi + tol || throw(ArgumentError("The target Pearson correlation $(ρ) for margins ($(i), $(j)) is outside their " *
             "Fréchet-Hoeffding bounds [$(round(lo, digits=4)), $(round(hi, digits=4))]"))
-        ρ₀ = ρ >= hi - tol ? T1 : ρ <= lo + tol ? -T1 : clamp(inverse(ρ), -T1, T1)
+        ρ₀ = ρ >= hi - tol ? up : ρ <= lo + tol ? dn : clamp(inverse(ρ), dn, up)
         R₀[i, j] = R₀[j, i] = ρ₀
     end
     return R₀
