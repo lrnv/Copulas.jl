@@ -197,6 +197,19 @@ end
     @test DAM.invderivⱼ == Copulas.ϕ⁻¹⁽¹⁾(DAM.gen, DAM.uⱼ)
 end
 
+@testset "Smooth extreme-value distortion quantiles" begin
+    copulas = (
+        GalambosCopula(2, 2.5),
+        HuslerReissCopula(2, 0.6),
+        MixedCopula(2, 0.4),
+    )
+    for C in copulas, j in 1:2, base in (0.01, 0.3, 0.9), α in (1e-8, 0.2, 0.8, 1 - 1e-8)
+        D = condition(C, (j,), (base,))
+        u = quantile(D, α)
+        @test cdf(D, u) ≈ α atol=5e-10 rtol=5e-7
+    end
+end
+
 @testset "Archimedean distortion logcdf" begin
     distortions = (
         condition(ClaytonCopula(3, 2.0), (1, 2), (0.3, 0.6)),

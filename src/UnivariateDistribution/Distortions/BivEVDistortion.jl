@@ -91,3 +91,44 @@ function Distributions.logpdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1
         return logval + log(B)
     end
 end
+
+function Distributions.quantile(D::BivEVDistortion, α::Real)
+    T = promote_type(typeof(float(α)), typeof(D.uⱼ))
+    q = T(α)
+    zero(T) ≤ q ≤ one(T) || throw(ArgumentError("p must be between 0 and 1"))
+    iszero(q) && return zero(T)
+    isone(q) && return one(T)
+
+    logq = log(q)
+    lo, hi = -T(36), T(36)
+    z = zero(T)
+    bestz, bestres = z, T(Inf)
+
+    for _ in 1:(precision(T) + 16)
+        u = LogExpFunctions.logistic(z)
+        logF = Distributions.logcdf(D, u)
+        residual = logF - logq
+        absres = abs(residual)
+        if absres < bestres
+            bestz, bestres = z, absres
+        end
+        iszero(residual) && return u
+
+        if residual < zero(T)
+            lo = z
+        else
+            hi = z
+        end
+
+        logderivative = Distributions.logpdf(D, u) + log(u) + log1p(-u) - logF
+        derivative = exp(logderivative)
+        candidate = isfinite(derivative) && !iszero(derivative) ? z - residual / derivative : T(NaN)
+        if !isfinite(candidate) || !(lo < candidate < hi)
+            candidate = lo + (hi - lo) / T(2)
+        end
+        abs(hi - lo) ≤ T(16) * eps(T) * max(one(T), abs(candidate)) && break
+        z = candidate
+    end
+
+    return LogExpFunctions.logistic(bestz)
+end
