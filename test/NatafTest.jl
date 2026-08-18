@@ -29,13 +29,10 @@
 
     @testset "closed-form fast paths agree with the quadrature fallback" begin
         # The exact-path pairs (Normal/LogNormal) never reach the quadrature, so
-        # drive the internal quadrature machinery directly for comparison.
-        quad_pair(Fᵢ, Fⱼ, r; nodes = 48) = begin
-            z, w = Copulas._gauss_hermite(nodes)
-            gᵢ = Copulas._nataf_standardized(Fᵢ, 1, z, w)
-            gⱼ = Copulas._nataf_standardized(Fⱼ, 2, z, w)
-            Copulas._nataf_pair(Float64(r), gᵢ.(z), gⱼ, z, w, 1, 2)
-        end
+        # invoke the generic method directly for comparison.
+        quad_pair(Fᵢ, Fⱼ, r; nodes = 48) = Base.@invoke Copulas._nataf_pair(
+            Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distributions.UnivariateDistribution,
+            r::Real, 1::Integer, 2::Integer, nodes::Integer)
         for (Fᵢ, Fⱼ, r) in ((Normal(1, 2), LogNormal(0, 0.8), 0.6),
                             (Normal(), LogNormal(1, 0.5), -0.3),
                             (LogNormal(0, 0.8), LogNormal(1, 0.5), 0.4))
@@ -71,6 +68,20 @@
         @test_throws ArgumentError Nataf((LogNormal(),), 0.5)                   # scalar target needs 2 margins
         @test_throws ArgumentError Nataf(m, 1.5)                                # target outside [-1, 1]
         @test_throws ArgumentError Nataf(m, 0.5; nodes=1)                       # not enough nodes
+    end
+
+    @testset "type-generic: BigFloat inputs give BigFloat results" begin
+        # closed-form path, at full precision:
+        s = big"0.8"
+        ρ₀ = Nataf((LogNormal(big"0.0", s), LogNormal(big"0.0", s)), big"0.7")
+        @test ρ₀ isa BigFloat
+        @test ρ₀ ≈ log1p(big"0.7" * expm1(s^2)) / s^2 atol = big"1e-60"
+        @test Nataf((Normal(big"0.0", big"1.0"), Normal(big"2.0", big"3.0")), big"0.6") == big"0.6"
+        # generic quadrature path (few nodes to keep the BigFloat bisection cheap):
+        m = (LogNormal(big"0.0", big"0.8"), Exponential(big"1.0"))
+        ρ₀ = Nataf(m, big"0.5"; nodes = 8)
+        @test ρ₀ isa BigFloat
+        @test Float64(ρ₀) ≈ Nataf((LogNormal(0.0, 0.8), Exponential(1.0)), 0.5; nodes = 8) atol = 1e-12
     end
 
     @testset "attainable extremes map to ±1" begin
