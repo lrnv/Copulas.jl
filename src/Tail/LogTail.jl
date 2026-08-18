@@ -46,7 +46,9 @@ _θ_bounds(::Type{<:LogTail}, d) = (1, Inf)
 function ℓ(tail::LogTail, t)
     t₁, t₂ = t
     θ = tail.θ
-    return (t₁^θ + t₂^θ)^(1/θ)
+    iszero(t₁) && iszero(t₂) && return zero(t₁ + t₂)
+    logB = LogExpFunctions.logaddexp(θ * log(t₁), θ * log(t₂))
+    return exp(logB / θ)
 end
 function A(tail::LogTail, t::Real)
     θ = tail.θ
@@ -77,38 +79,58 @@ _pickands_left_slope(::LogTail, prototype::Real) = -one(prototype)
 _pickands_right_slope(::LogTail, prototype::Real) = one(prototype)
 
 function d²A(tail::LogTail, t::Real)
+    tt = _safett(t)
     θ = tail.θ
+    logB = LogExpFunctions.logaddexp(θ * log(tt), θ * log1p(-tt))
+    # (θ-1) * [t(1-t)]^(θ-2) * (t^θ + (1-t)^θ)^(1/θ-2)
+    logA2 = log(θ - 1) + (θ - 2) * (log(tt) + log1p(-tt)) +
+            (inv(θ) - 2) * logB
+    return exp(logA2)
+end
 
-    # B = t^θ + (1-t)^θ
-    logB = LogExpFunctions.logaddexp(θ*log(t), θ*log1p(-t))
-    B = exp(logB)
+# Closed forms for the logistic model avoid cancellation in the generic
+# Ghoudi auxiliary distribution when θ is large.
+function Distributions.cdf(d::ExtremeDist{<:LogTail}, z::Real)
+    z <= zero(z) && return zero(float(z))
+    z >= one(z) && return one(float(z))
+    θ = d.tail.θ
+    x = θ * (log(z) - log1p(-z))
+    return inv(one(x) + exp(-x))
+end
 
-    # D = t^(θ-1) - (1-t)^(θ-1)
-    logt = (θ - 1) * log(t)
-    log1mt = (θ - 1) * log1p(-t)
-    if logt > log1mt
-        D = exp(logt) - exp(log1mt)
-    else
-        D = exp(log1mt) * (expm1(logt - log1mt))
-    end
+function Distributions.logpdf(d::ExtremeDist{<:LogTail}, z::Real)
+    (z <= zero(z) || z >= one(z)) && return oftype(float(z), -Inf)
+    θ = d.tail.θ
+    logS = LogExpFunctions.logaddexp(θ * log(z), θ * log1p(-z))
+    return log(θ) + (θ - 1) * (log(z) + log1p(-z)) - 2 * logS
+end
+_pdf(d::ExtremeDist{<:LogTail}, z::Real) = exp(Distributions.logpdf(d, z))
 
-    # B' = θ*D
-    Bp = θ * D
+function Distributions.quantile(d::ExtremeDist{<:LogTail}, p::Real)
+    T = float(promote_type(typeof(p), typeof(d.tail.θ)))
+    zero(T) <= p <= one(T) || throw(ArgumentError("p must be between 0 and 1"))
+    p == zero(T) && return zero(T)
+    p == one(T) && return one(T)
+    x = (log(T(p)) - log1p(-T(p))) / T(d.tail.θ)
+    return inv(one(T) + exp(-x))
+end
 
-    # E = (θ-1)*(t^(θ-2) + (1-t)^(θ-2))
-    logt2 = (θ - 2) * log(t)
-    log1mt2 = (θ - 2) * log1p(-t)
-    # lets avoid unstable additions
-    if logt2 > log1mt2
-        E = (θ - 1) * (exp(logt2) + exp(log1mt2))
-    else
-        E = (θ - 1) * (exp(log1mt2) * (1 + exp(logt2 - log1mt2)))
-    end
+_probability_z(tail::LogTail, ::Real) = (tail.θ - one(tail.θ)) / tail.θ
 
-    term1 = ((1 - θ) / θ) * exp((1 - 2θ) / θ * logB) * Bp * D
-    term2 = exp((1 - θ) / θ * logB) * E
+# The bivariate logistic EV copula is exactly Gumbel. Reuse its stable
+# log-density instead of forming the cancellation-prone generic EV core.
+function Distributions._logpdf(C::LogCopula, u)
+    return Distributions._logpdf(GumbelCopula(2, C.tail.θ), u)
+end
 
-    return term1 + term2
+function Distributions.logpdf(D::BivEVDistortion{<:LogTail}, z::Real)
+    T = float(promote_type(typeof(z), typeof(D.uⱼ), typeof(D.tail.θ)))
+    z <= zero(z) && return T(-Inf)
+    z >= one(z) && return T(-Inf)
+    D.uⱼ <= zero(D.uⱼ) && return _biv_ev_endpoint_logpdf(D, z, true, T)
+    D.uⱼ >= one(D.uⱼ) && return _biv_ev_endpoint_logpdf(D, z, false, T)
+    u = D.j == 2 ? (T(z), T(D.uⱼ)) : (T(D.uⱼ), T(z))
+    return Distributions._logpdf(GumbelCopula(2, T(D.tail.θ)), u)
 end
 
 # LogCopula is the bivariate Gumbel copula, so its conditional quantile can use
