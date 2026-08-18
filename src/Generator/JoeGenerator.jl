@@ -63,6 +63,35 @@ function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)
     return -(G.θ * (1 - t)^(G.θ - 1)) / (1 - (1 - t)^G.θ)
 end
 
+function ϕ⁽ᵏ⁾⁻¹(G::JoeGenerator, k::Int, y; start_at=y)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, y; start_at=start_at)
+    θ, yy = promote(float(G.θ), float(y))
+    yy ≤ zero(yy) || throw(DomainError(y, "The first generator derivative is non-positive."))
+    m = -yy
+    iszero(m) && return typeof(m)(Inf)
+    isinf(m) && return zero(m)
+
+    α, logm = inv(θ), log(m)
+    logα = log(α)
+    f(z) = logα - LogExpFunctions.log1pexp(z) - (α - one(z)) * LogExpFunctions.log1pexp(-z) - logm
+    df(z) = α - one(z) - α * LogExpFunctions.logistic(z)
+    z = logm ≥ logα ? (logm - logα) / (α - one(α)) : logα - logm
+    lo, hi = min(z, -one(z)), max(z, one(z))
+    while f(lo) < zero(z); lo = 2lo - one(z); end
+    while f(hi) > zero(z); hi = 2hi + one(z); end
+
+    z = clamp(z, lo, hi)
+    for _ in 1:(precision(typeof(z)) + 16)
+        fz = f(z)
+        abs(fz) ≤ 16eps(typeof(z)) * (one(z) + abs(logm)) && break
+        candidate = z - fz / df(z)
+        (!isfinite(candidate) || !(lo < candidate < hi)) && (candidate = lo + (hi - lo) / 2)
+        if f(candidate) > zero(z); lo = candidate else hi = candidate end
+        z = candidate
+    end
+    return LogExpFunctions.log1pexp(z)
+end
+
 _joe_tau(θ) =  1 - 4sum(1/(k*(2+k*θ)*(θ*(k-1)+2)) for k in 1:1000)
 τ(G::JoeGenerator) = _joe_tau(G.θ)
 function τ⁻¹(::Type{<:JoeGenerator}, τ)

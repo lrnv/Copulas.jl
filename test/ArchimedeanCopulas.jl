@@ -209,3 +209,10 @@ e = cdf(dist.C, [0.2, 0.3])
 @test e ≈ 0.13034531809769517
 
 end
+
+@testset "Joe first-derivative inverse" begin
+    for θ in (1.01, 1.5, 5.0), s in (1e-8, 1e-3, 0.2, 2.0, 30.0)
+        G = Copulas.JoeGenerator(θ)
+        @test Copulas.ϕ⁽ᵏ⁾⁻¹(G, 1, Copulas.ϕ⁽¹⁾(G, s)) ≈ s atol=2e-12 rtol=2e-11
+    end
+end
