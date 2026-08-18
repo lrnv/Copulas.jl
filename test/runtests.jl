@@ -15,6 +15,7 @@ testfiles = [
     "ExpectationMaximizationExt",
     "FittingTest",
     "MiscelaneousCopulas",
+    "NatafTest",
     "SklarDist",
     "Subsetting",
     "GenericTests",
