@@ -81,9 +81,39 @@ function _nataf_problem(::Distributions.Normal, Fⱼ::Distributions.LogNormal,
     b = s / sqrt(expm1(s^2))
     return (; lo=-b, hi=b, inverse=ρ -> ρ / b)
 end
+function _nataf_problem(::Distributions.Uniform, ::Distributions.Uniform,
+                        ρ::Real, nodes::Integer)
+    # Pearson correlation of Gaussian-copula uniforms is Spearman's rho:
+    # r(ρ₀) = 6 asin(ρ₀/2) / π.
+    return (; lo=-one(ρ), hi=one(ρ), inverse=r -> 2sinpi(r / 6))
+end
+function _nataf_problem(::Distributions.Uniform, ::Distributions.Normal,
+                        ρ::Real, nodes::Integer)
+    # r(ρ₀) = ρ₀ √(3/π).
+    b = sqrt(oftype(ρ, 3) / oftype(ρ, π))
+    return (; lo=-b, hi=b, inverse=r -> r / b)
+end
+function _nataf_problem(::Distributions.Uniform, Fⱼ::Distributions.LogNormal,
+                        ρ::Real, nodes::Integer)
+    # r(ρ₀) = 2√3 (Φ(sρ₀/√2) - 1/2) / √(exp(s²) - 1).
+    s = oftype(ρ, Distributions.params(Fⱼ)[2])
+    half, root2 = one(ρ) / 2, sqrt(oftype(ρ, 2))
+    scale = 2sqrt(oftype(ρ, 3)) / sqrt(expm1(s^2))
+    induced(ρ₀) = scale * (StatsFuns.normcdf(s * ρ₀ / root2) - half)
+    inverse(r) = root2 / s * StatsFuns.norminvcdf(half + r / scale)
+    return (; lo=induced(-one(ρ)), hi=induced(one(ρ)), inverse)
+end
 # The induced correlation map is symmetric in the pair, so reversed-order
 # methods forward to the corresponding implementation above.
 function _nataf_problem(Fᵢ::Distributions.LogNormal, Fⱼ::Distributions.Normal,
+                        ρ::Real, nodes::Integer)
+    return _nataf_problem(Fⱼ, Fᵢ, ρ, nodes)
+end
+function _nataf_problem(Fᵢ::Distributions.Normal, Fⱼ::Distributions.Uniform,
+                        ρ::Real, nodes::Integer)
+    return _nataf_problem(Fⱼ, Fᵢ, ρ, nodes)
+end
+function _nataf_problem(Fᵢ::Distributions.LogNormal, Fⱼ::Distributions.Uniform,
                         ρ::Real, nodes::Integer)
     return _nataf_problem(Fⱼ, Fᵢ, ρ, nodes)
 end
@@ -121,8 +151,8 @@ rule and, since it is increasing in ``\\rho_0``, inverted by bisection.
 Zero targets map to exactly zero. Pairs whose induced correlation is known analytically
 skip the quadrature and use the closed form instead: `Normal`-`Normal` pairs (the
 identity, so Gaussian margins reproduce `R` exactly), `LogNormal`-`LogNormal` pairs
-(``\\rho_0 = \\log(1 + \\rho\\sqrt{(e^{s_i^2}-1)(e^{s_j^2}-1)})/(s_is_j)``), and mixed
-`Normal`-`LogNormal` pairs (``\\rho_0 = \\rho\\sqrt{e^{s^2}-1}/s``). Because non-Gaussian
+(``\\rho_0 = \\log(1 + \\rho\\sqrt{(e^{s_i^2}-1)(e^{s_j^2}-1)})/(s_is_j)``), and all
+pairs among `Normal`, `LogNormal`, and `Uniform` margins. Because non-Gaussian
 margins cannot attain every Pearson correlation (the Fréchet-Hoeffding bounds), a target
 outside the attainable range throws an error naming the pair and the range. The corrected
 matrix is not guaranteed to stay positive definite for extreme targets; the

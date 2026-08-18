@@ -200,7 +200,7 @@ D = SklarDist(GaussianCopula(R₀), m)
 cor(rand(rng, D, 10^5)') # ≈ 0.7 as requested.
 ```
 
-Since non-Gaussian marginals cannot attain every Pearson correlation (the Fréchet-Hoeffding bounds of the pair), an unattainable target throws an error reporting the attainable range. `Normal` and `LogNormal` pairs use closed-form corrections; other marginals go through a Gauss-Hermite quadrature.
+Since non-Gaussian marginals cannot attain every Pearson correlation (the Fréchet-Hoeffding bounds of the pair), an unattainable target throws an error reporting the attainable range. Pairs among `Normal`, `LogNormal`, and `Uniform` margins use closed-form corrections; other marginals go through a Gauss-Hermite quadrature.
 
 ```@docs; canonical=false
 Nataf

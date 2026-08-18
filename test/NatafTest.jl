@@ -31,6 +31,16 @@
         @test Nataf((LogNormal(0, s), Normal(1, 2)), r) ≈ expected
     end
 
+    @testset "uniform closed forms" begin
+        r, s = 0.6, 0.8
+        @test Nataf((Uniform(-2, 3), Uniform(4, 8)), r) ≈ 2sinpi(r / 6)
+        @test Nataf((Uniform(-2, 3), Normal(1, 2)), r) ≈ r * sqrt(π / 3)
+        D = sqrt(expm1(s^2))
+        expected = sqrt(2) / s * StatsFuns.norminvcdf(1 / 2 + r * D / (2sqrt(3)))
+        @test Nataf((Uniform(-2, 3), LogNormal(1, s)), r) ≈ expected
+        @test_throws ArgumentError Nataf((Uniform(), Normal()), 0.99)
+    end
+
     @testset "scalar and matrix methods agree" begin
         m = (LogNormal(0, 0.8), Gamma(2, 3))
         @test Nataf(m, 0.6) == Nataf(m, [1.0 0.6; 0.6 1.0])[1, 2]
