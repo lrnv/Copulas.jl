@@ -50,6 +50,14 @@ function ℓ(tail::Tail, x)
     return s == 0 ? zero(eltype(x)) : s * A(tail, ntuple(i->x[i]/s, length(x)))
 end
 
+# Mixed partial of the STDF with respect to the distinct coordinates in I.
+function ellpartial(tail::Tail, x, I::Tuple{Vararg{Int}})
+    isempty(I) && return ℓ(tail, x)
+    i = first(I)
+    return ForwardDiff.derivative(z ->
+        ellpartial(tail, ntuple(j -> j == i ? z : x[j], length(x)), Base.tail(I)), x[i])
+end
+ellpartial(tail::Tail, x, I::AbstractVector{<:Integer}) = ellpartial(tail, x, Tuple(I))
 
 # A more friendly interface for models that are only bivariate: 
 abstract type Tail2 <: Tail end

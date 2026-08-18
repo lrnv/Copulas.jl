@@ -88,6 +88,52 @@ function Distributions._logpdf(C::ExtremeValueCopula{2, TT}, u) where {TT}
     core ≤ 0 && return -Inf
     return -val + log(core) + x + y
 end
+
+@inline function _ellpartial_signlog(tail::Tail, x, I)
+    v = ellpartial(tail, x, Tuple(I))
+    iszero(v) && return 0, oftype(v, -Inf)
+    return v < zero(v) ? -1 : 1, log(abs(v))
+end
+
+function _ev_logpdf_from_partials(C::ExtremeValueCopula{d}, u) where {d}
+    all(ui -> zero(ui) < ui <= one(ui), u) || return oftype(float(first(u)), -Inf)
+    x = -log.(u)
+    val = ℓ(C.tail, x)
+    any(isone, u) && return oftype(val, -Inf)
+    logpos = logneg = oftype(val, -Inf)
+
+    for π in Combinatorics.partitions(collect(1:d))
+        sgn = isodd(d + length(π)) ? -1 : 1
+        logabs = zero(val)
+        nonzero = true
+        for block in π
+            blocksgn, blocklog = _ellpartial_signlog(C.tail, x, block)
+            if iszero(blocksgn)
+                nonzero = false
+                break
+            end
+            sgn *= blocksgn
+            logabs += blocklog
+        end
+        nonzero || continue
+        if sgn > 0
+            logpos = LogExpFunctions.logaddexp(logpos, logabs)
+        else
+            logneg = LogExpFunctions.logaddexp(logneg, logabs)
+        end
+    end
+
+    isfinite(logpos) || return oftype(val, -Inf)
+    if isfinite(logneg)
+        logneg < logpos || return oftype(val, -Inf)
+        logpos += log1p(-exp(logneg - logpos))
+    end
+    return -val + sum(x) + logpos
+end
+
+# Generic d-dimensional density path; the bivariate specialization above remains
+# the default for Tail2 families unless they opt into the partial-derivative path.
+Distributions._logpdf(C::ExtremeValueCopula, u) = _ev_logpdf_from_partials(C, u)
 τ(C::ExtremeValueCopula{2}) = QuadGK.quadgk(t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)), 0.0, 1.0)[1]
 ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C.tail, t))^2, 0.0, 1.0)[1] - 3
 β(C::ExtremeValueCopula{2}) = 4^(1 - A(C.tail, 0.5)) - 1
@@ -110,6 +156,11 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
         X[2,i] = exp(log(w)*(1-z)/a)
     end
     return X
+end
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d, TT}, X::AbstractMatrix{T}) where {T<:Real, d, TT}
+    size(X, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    return _rand_ev_multivariate!(rng, C, X)
 end
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
 

@@ -37,25 +37,21 @@ struct LogTail{T} <: AbstractUnivariateTail2
 end
 
 const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
+_is_valid_in_dim(::LogTail, d::Int) = d >= 2
 Distributions.params(tail::LogTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:LogTail}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
 _rebound_params(::Type{<:LogTail}, d, α) = (; θ = exp(α[1]) + 1)
 _θ_bounds(::Type{<:LogTail}, d) = (1, Inf)
 
 
-function ℓ(tail::LogTail, t)
-    t₁, t₂ = t
-    θ = tail.θ
-    iszero(t₁) && iszero(t₂) && return zero(t₁ + t₂)
-    logB = LogExpFunctions.logaddexp(θ * log(t₁), θ * log(t₂))
-    return exp(logB / θ)
+function ℓ(tail::LogTail, x)
+    m = maximum(x)
+    isinf(m) && return m
+    iszero(m) && return zero(m * one(tail.θ))
+    s = sum((xi / m)^tail.θ for xi in x)
+    return m * s^inv(tail.θ)
 end
-function A(tail::LogTail, t::Real)
-    θ = tail.θ
-    # log-sum-exp trick: log(t^θ + (1-t)^θ) = logsumexp(θ*log(t), θ*log1p(-t))
-    logB = LogExpFunctions.logaddexp(θ*log(t), θ*log1p(-t))
-    return exp(logB / θ)
-end
+A(tail::LogTail, t::Real) = ℓ(tail, (t, one(t) - t))
 function dA(tail::LogTail, t::Real)
     θ = tail.θ
 
@@ -117,10 +113,23 @@ end
 
 _probability_z(tail::LogTail, ::Real) = (tail.θ - one(tail.θ)) / tail.θ
 
-# The bivariate logistic EV copula is exactly Gumbel. Reuse its stable
-# log-density instead of forming the cancellation-prone generic EV core.
-function Distributions._logpdf(C::LogCopula, u)
-    return Distributions._logpdf(GumbelCopula(2, C.tail.θ), u)
+# Use the mixed-partial EV density path also in d=2; the generic bivariate
+# formula is less stable for strong logistic dependence.
+Distributions._logpdf(C::ExtremeValueCopula{2,<:LogTail}, u) = _ev_logpdf_from_partials(C, u)
+
+function _ellpartial_signlog(tail::LogTail, x, I)
+    k = length(I)
+    θ = tail.θ
+    logabs = (one(θ) - k * θ) * log(ℓ(tail, x))
+    logabs += (θ - one(θ)) * sum(log(x[i]) for i in I)
+    k > 1 && (logabs += sum(log(j * θ - one(θ)) for j in 1:k-1))
+    return isodd(k - 1) ? -1 : 1, logabs
+end
+
+function ellpartial(tail::LogTail, x, I::Tuple{Vararg{Int}})
+    isempty(I) && return ℓ(tail, x)
+    sgn, logabs = _ellpartial_signlog(tail, x, I)
+    return sgn * exp(logabs)
 end
 
 function Distributions.logpdf(D::BivEVDistortion{<:LogTail}, z::Real)
@@ -132,6 +141,9 @@ function Distributions.logpdf(D::BivEVDistortion{<:LogTail}, z::Real)
     u = D.j == 2 ? (T(z), T(D.uⱼ)) : (T(D.uⱼ), T(z))
     return Distributions._logpdf(GumbelCopula(2, T(D.tail.θ)), u)
 end
+
+_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:LogTail}, X::AbstractMatrix{T}) where {T<:Real,d} =
+    Distributions._rand!(rng, GumbelCopula(d, C.tail.θ), X)
 
 # LogCopula is the bivariate Gumbel copula, so its conditional quantile can use
 # the same closed-form inverse of the first generator derivative.
