@@ -53,6 +53,25 @@ function ϕ⁽¹⁾(G::BB6Generator, s)
     H = 1 - E
     return -(a*b) * s^(b-1) * E * H^(a-1)
 end
+function ϕ⁽ᵏ⁾⁻¹(G::BB6Generator, k::Int, y; start_at=y)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, y; start_at=start_at)
+    θ, δ, yy = promote(float(G.θ), float(G.δ), float(y))
+    yy ≤ zero(yy) || throw(DomainError(y, "The first generator derivative is non-positive."))
+    m = -yy
+    iszero(m) && return typeof(m)(Inf)
+    isinf(m) && return zero(m)
+    a, lm = inv(θ), log(m)
+    function f(x)
+        r = exp(x)
+        logH = log(-expm1(-r))
+        return -log(θ) - log(δ) + (one(x)-δ)*x - r + (a-one(x))*logH - lm
+    end
+    lo, hi = -one(lm), one(lm)
+    while f(lo) < 0; lo = 2lo - 1; end
+    while f(hi) > 0; hi = 2hi + 1; end
+    x = Roots.find_zero(f, (lo, hi), Roots.Bisection())
+    return exp(δ*x)
+end
 function ϕ⁽ᵏ⁾(G::BB6Generator, k::Int, s; tol::Float64=1e-9, maxm::Int=10_000)
 
     if k==2
