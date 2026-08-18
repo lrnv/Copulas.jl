@@ -48,6 +48,22 @@ _rebound_params(::Type{<:BB8Generator}, d, α) = (; ϑ = 1 + exp(α[1]), δ = 1 
 ϕ(G::BB8Generator, s)  = (1/G.δ) * (1 - (1 - _η(G)*exp(-s))^(inv(G.ϑ)))
 ϕ⁻¹(G::BB8Generator, t) = -log((1 - (1 - G.δ*t)^G.ϑ)/_η(G))
 ϕ⁽¹⁾(G::BB8Generator, s) = -(_η(G)/(G.δ*G.ϑ)) * exp(-s) * (1 - _η(G)*exp(-s))^(inv(G.ϑ)-1)
+function ϕ⁽ᵏ⁾⁻¹(G::BB8Generator, k::Int, y; start_at=y)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, y; start_at=start_at)
+    ϑ, δ, yy = promote(float(G.ϑ), float(G.δ), float(y))
+    yy ≤ zero(yy) || throw(DomainError(y, "The first generator derivative is non-positive."))
+    m = -yy
+    iszero(m) && return typeof(m)(Inf)
+    η, a, lm = -expm1(ϑ*log1p(-δ)), inv(ϑ), log(m)
+    logderivative(s) = log(η) - log(δ) - log(ϑ) - s + (a-one(s))*log1p(-η*exp(-s))
+    maxlm = logderivative(zero(lm))
+    lm > maxlm + 64eps(typeof(lm))*max(one(lm), abs(maxlm)) && throw(DomainError(y, "Target outside the derivative range."))
+    lm ≥ maxlm && return zero(lm)
+    f(s) = logderivative(s) - lm
+    hi = one(lm)
+    while f(hi) > 0; hi *= 2; end
+    return Roots.find_zero(f, (zero(lm), hi), Roots.Bisection())
+end
 function ϕ⁽ᵏ⁾(G::BB8Generator, k::Int, s::Real; tol::Float64=1e-10, maxiter::Int=20_000, miniter::Int=5)
     if k==2
         δ, ϑ = G.δ, G.ϑ
