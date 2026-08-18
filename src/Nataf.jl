@@ -180,33 +180,23 @@ References:
 """
 function Nataf(margins, R::AbstractMatrix{<:Real}; nodes::Integer=32)
     d = length(margins)
-    all(m -> m isa Distributions.UnivariateDistribution, margins) || throw(ArgumentError(
-        "margins must be univariate distributions, got $(typeof(margins))."))
-    size(R) == (d, d) || throw(ArgumentError(
-        "Got $(d) margins for a correlation matrix of size $(size(R))."))
+    all(m -> m isa Distributions.UnivariateDistribution, margins) || throw(ArgumentError("margins must be univariate distributions, got $(typeof(margins))."))
+    size(R) == (d, d) || throw(ArgumentError("Got $(d) margins for a correlation matrix of size $(size(R))."))
     LinearAlgebra.issymmetric(R) || throw(ArgumentError("The target correlation matrix must be symmetric."))
     all(isapprox.(LinearAlgebra.diag(R), 1)) || throw(ArgumentError("The target correlation matrix must have a unit diagonal."))
     nodes >= 2 || throw(ArgumentError("The Nataf correction needs at least 2 quadrature nodes, got nodes=$(nodes)."))
     # Absorb floating-point noise in attainable bounds and snap boundary targets
     # to ±1 instead of evaluating an inverse at a rounded endpoint.
     T = float(mapreduce(Distributions.partype, promote_type, margins; init=eltype(R)))
-    tol = eps(T)^(2//3)
+    tol, T1 = eps(T)^(2//3), one(T)
     R₀ = Matrix{T}(LinearAlgebra.I, d, d)
     for i in 1:d, j in (i+1):d
         ρ = T(R[i, j])
-        if iszero(ρ)
-            ρ₀ = zero(T)
-        else
-            problem = _nataf_problem(margins[i], margins[j], ρ, nodes)
-            problem.lo - tol <= ρ <= problem.hi + tol || throw(ArgumentError(
-                "The target Pearson correlation $(ρ) for margins ($(i), $(j)) is outside the range " *
-                "[$(round(problem.lo, digits=4)), $(round(problem.hi, digits=4))] that these margins can attain. " *
-                "Pearson correlations of non-Gaussian margins cannot reach all of [-1, 1] " *
-                "(Fréchet-Hoeffding bounds), so the target itself has to change."))
-            ρ₀ = ρ >= problem.hi - tol ? one(T) :
-                 ρ <= problem.lo + tol ? -one(T) :
-                 clamp(problem.inverse(ρ), -one(T), one(T))
-        end
+        iszero(ρ) && continue
+        lo, hi, inverse = _nataf_problem(margins[i], margins[j], ρ, nodes)
+        lo - tol <= ρ <= hi + tol || throw(ArgumentError("The target Pearson correlation $(ρ) for margins ($(i), $(j)) is outside their " *
+            "Fréchet-Hoeffding bounds [$(round(lo, digits=4)), $(round(hi, digits=4))]"))
+        ρ₀ = ρ >= hi - tol ? T1 : ρ <= lo + tol ? -T1 : clamp(inverse(ρ), -T1, T1)
         R₀[i, j] = R₀[j, i] = ρ₀
     end
     return R₀
