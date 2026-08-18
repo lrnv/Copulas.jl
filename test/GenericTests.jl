@@ -971,6 +971,34 @@ end
         @test quantile(Copulas.condition(C, 1, 1.0), 0.8) == 1.0
     end
 
+    @testset "Strong logistic EV stability" begin
+        for θ in (13.5, 210.0)
+            L = Copulas.LogTail(θ)
+            C = Copulas.ExtremeValueCopula(2, L)
+            G = Copulas.GumbelCopula(2, θ)
+            E = Copulas.ExtremeDist(L)
+
+            @test Copulas._probability_z(L, 0.01) ≈ (θ - 1) / θ
+            for z in (1e-4, 0.01, 0.5, 0.99, 1 - 1e-4)
+                @test pdf(E, z) >= 0
+                @test isfinite(logpdf(E, z))
+                @test cdf(E, quantile(E, z)) ≈ z atol=2e-12 rtol=2e-12
+            end
+
+            for uv in ([1e-3, 0.99], [0.01, 0.9], [0.99, 0.5], [0.99, 0.99])
+                @test cdf(C, uv) ≈ cdf(G, uv) atol=2e-13 rtol=2e-13
+                @test logpdf(C, uv) ≈ logpdf(G, uv) atol=2e-12 rtol=2e-12
+            end
+        end
+
+        C = Copulas.ExtremeValueCopula(2, Copulas.LogTail(13.5))
+        for j in 1:2, ucond in (1e-3, 0.9, 0.99), z in (1e-3, 0.01, 0.9)
+            D = Copulas.condition(C, j, ucond)
+            uv = j == 2 ? [z, ucond] : [ucond, z]
+            @test logpdf(D, z) ≈ logpdf(C, uv) atol=2e-12 rtol=2e-12
+        end
+    end
+
     @testset "BC2 and Cuadras-Auge singular conditionals" begin
         Cbc2 = Copulas.ExtremeValueCopula(2, Copulas.BC2Tail(0.65, 0.25))
         for j in 1:2, t in (0.2, 0.8), α in (0.25, 0.6)
