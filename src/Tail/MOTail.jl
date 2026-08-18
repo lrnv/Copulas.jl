@@ -60,6 +60,23 @@ function A(tail::MOTail{T}, t::Real) where T
     term3 = λ₁₂ * max(m1, m2)
     return r1 + r2 + term3
 end
+function _mo_exponents(tail::MOTail, ::Type{R}) where R
+    λ₁, λ₂, λ₁₂ = R(tail.λ₁), R(tail.λ₂), R(tail.λ₁₂)
+    d1, d2 = λ₁ + λ₁₂, λ₂ + λ₁₂
+    a = iszero(d2) ? zero(R) : λ₂ / d2  # exponent of u
+    b = iszero(d1) ? zero(R) : λ₁ / d1  # exponent of v
+    return a, b
+end
+function _pickands_left_slope(tail::MOTail, x::Real)
+    R = promote_type(typeof(x), typeof(tail.λ₂), typeof(tail.λ₁₂))
+    a, _ = _mo_exponents(tail, R)
+    return a - one(R)
+end
+function _pickands_right_slope(tail::MOTail, x::Real)
+    R = promote_type(typeof(x), typeof(tail.λ₁), typeof(tail.λ₁₂))
+    _, b = _mo_exponents(tail, R)
+    return one(R) - b
+end
 function τ(C::MOCopula)
     a = C.tail.λ₁/(C.tail.λ₁+C.tail.λ₁₂)
     b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
@@ -90,101 +107,59 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula,
 end
 
 function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {T, S}
-    a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
-    b = D.tail.λ₂ / (D.tail.λ₂ + D.tail.λ₁₂)
+    R = promote_type(T, S, typeof(float(z)))
+    a, b = _mo_exponents(D.tail, R)
 
-    # guard domain of z and conditioning value
-    if !(0.0 < z < 1.0)
-        return z <= 0 ? T(-Inf) : T(0.0)
-    end
-    ucond = D.uⱼ
-    if !(0.0 < ucond < 1.0)
-        return ucond <= 0 ? T(-Inf) : T(log(z)) # conditioning on 1 -> uniform
-    end
+    z ≤ 0 && return R(-Inf)
+    z ≥ 1 && return zero(R)
+    D.uⱼ ≤ 0 && return _biv_ev_endpoint_logcdf(D, z, true, R)
+    D.uⱼ ≥ 1 && return _biv_ev_endpoint_logcdf(D, z, false, R)
+
+    u, v = D.j == 2 ? (R(z), R(D.uⱼ)) : (R(D.uⱼ), R(z))
+    lu, lv = log(u), log(v)
+    s1, s2 = a*lu + lv, lu + b*lv
 
     if D.j == 2
-        # Condition on V = v, free variable is u = z
-        u = z; v = ucond
-        lu, lv = log(u), -D.negloguⱼ
-        # Determine active branch of min(u^a v, u v^b)
-        s1 = a*lu + lv
-        s2 = lu + b*lv
-        if s1 <= s2
-            # C = u^a v, dC/dv = u^a = (C/v) * 1
-            logC = s1
-            factor = 1.0
-        else
-            # C = u v^b, dC/dv = b u v^{b-1} = (C/v) * b
-            logC = s2
-            factor = b
-        end
-        return factor <= 0 ? T(-Inf) : T(logC - log(v) + log(factor))
+        # Equality is the post-jump side as the free variable u increases.
+        logC, factor = _ev_le(s1, s2) ? (s1, one(R)) : (s2, b)
+        return iszero(factor) ? R(-Inf) : logC - lv + log(factor)
     else
-        # Condition on U = u, free variable is v = z
-        v = z; u = ucond
-        lu, lv = -D.negloguⱼ, log(v)
-        s1 = a*lu + lv
-        s2 = lu + b*lv
-        if s1 <= s2
-            # C = u^a v, dC/du = a u^{a-1} v = (C/u) * a
-            logC = s1
-            factor = a
-        else
-            # C = u v^b, dC/du = v^b = (C/u) * 1
-            logC = s2
-            factor = 1.0
-        end
-        return factor <= 0 ? T(-Inf) : T(logC - log(u) + log(factor))
+        # Equality is the post-jump side as the free variable v increases.
+        logC, factor = _ev_lt(s1, s2) ? (s1, a) : (s2, one(R))
+        return iszero(factor) ? R(-Inf) : logC - lu + log(factor)
     end
 end
 function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) where {T, S}
-    a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
-    b = D.tail.λ₂ / (D.tail.λ₂ + D.tail.λ₁₂)
-    v_or_u = D.uⱼ
-    if !(0.0 <= α <= 1.0)
-        throw(ArgumentError("α must be in [0,1]"))
-    end
-    if !(0.0 < v_or_u < 1.0)
-        if v_or_u <= 0.0
-            return 0.0
-        else
-            # conditioning on 1 ⇒ uniform
-            return α
-        end
+    R = promote_type(T, S, typeof(float(α)))
+    p = R(α)
+    zero(R) ≤ p ≤ one(R) || throw(ArgumentError("α must be in [0,1]"))
+    p == zero(R) && return zero(R)
+
+    a, b = _mo_exponents(D.tail, R)
+    t = R(D.uⱼ)
+    t ≤ zero(R) && return _biv_ev_endpoint_quantile(D, p, true, R)
+    t ≥ one(R) && return _biv_ev_endpoint_quantile(D, p, false, R)
+
+    # Degenerate parameter cases are safest through the generalized inverse.
+    if !(zero(R) < a < one(R) && zero(R) < b < one(R))
+        return _unit_quantile(D, p)
     end
 
     if D.j == 2
-        # Quantile of U | V = v
-        v = v_or_u
-        logv = log(v)
-        ustar = exp(((1 - b) / (1 - a)) * logv)
-        α2 = exp(a * log(ustar))           # right-continuous CDF value at u*
-        α1 = b * α2                        # left-limit value at u* (before jump)
-        if α < α1
-            # invert left branch: F = b u v^{b-1}
-            return (α / b) * exp((1 - b) * logv)
-        elseif α <= α2
-            # atom at u*
-            return ustar
-        else
-            # invert right branch: F = u^a
-            return exp((1 / a) * log(α))
-        end
+        logt = log(t)
+        star = exp(((one(R) - b) / (one(R) - a)) * logt)
+        α2 = exp(a * log(star))
+        α1 = b * α2
+        p < α1 && return (p / b) * exp((one(R) - b) * logt)
+        p <= α2 && return star
+        return exp(log(p) / a)
     else
-        # Quantile of V | U = u
-        u = v_or_u
-        logu = log(u)
-        vstar = exp(((1 - a) / (1 - b)) * logu)
-        α2 = exp(b * log(vstar))
+        logt = log(t)
+        star = exp(((one(R) - a) / (one(R) - b)) * logt)
+        α2 = exp(b * log(star))
         α1 = a * α2
-        if α < α1
-            # invert left branch: F = a v u^{a-1}
-            return (α / a) * exp((1 - a) * logu)
-        elseif α <= α2
-            return vstar
-        else
-            # invert right branch: F = v^b
-            return exp((1 / b) * log(α))
-        end
+        p < α1 && return (p / a) * exp((one(R) - a) * logt)
+        p <= α2 && return star
+        return exp(log(p) / b)
     end
 end

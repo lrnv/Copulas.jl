@@ -908,3 +908,69 @@ end
         end
     end
 end
+
+@testset "Extreme-value numerical regressions" begin
+    @testset "ExtremeDist support and typed safeguards" begin
+        E = Copulas.ExtremeDist(Copulas.LogTail(2.0))
+        @test cdf(E, -0.1) == 0.0
+        @test cdf(E, 1.1) == 1.0
+        @test pdf(E, -0.1) == 0.0
+        @test pdf(E, 1.1) == 0.0
+        @test isfinite(logpdf(E, 0.5))
+        @test 0f0 < Copulas._safett(1f0) < 1f0
+        x = BigFloat("1e-30")
+        @test Copulas._safett(x) == x
+        @test Copulas._safett(one(x) - x) == one(x) - x
+    end
+
+    @testset "Smooth EV conditional endpoints" begin
+        C = Copulas.ExtremeValueCopula(2, Copulas.LogTail(2.0))
+        for j in 1:2
+            D0 = Copulas.condition(C, j, 0.0)
+            D1 = Copulas.condition(C, j, 1.0)
+            @test cdf(D0, 0.4) ≈ 1.0 atol=1e-12
+            @test cdf(D1, 0.4) ≈ 0.0 atol=1e-12
+            @test quantile(D0, 0.5) == 0.0
+            @test quantile(D1, 0.5) == 1.0
+        end
+    end
+
+    @testset "Marshall-Olkin conditional regression" begin
+        λ1, λ2, λ12 = 0.4, 0.7, 0.8
+        C = Copulas.ExtremeValueCopula(2, Copulas.MOTail(λ1, λ2, λ12))
+        a, b = λ2 / (λ2 + λ12), λ1 / (λ1 + λ12)
+        u, v = 0.37, 0.61
+        @test cdf(Copulas.condition(C, 2, v), u) ≈
+              ForwardDiff.derivative(vv -> cdf(C, [u, vv]), v) atol=2e-8 rtol=2e-7
+        @test cdf(Copulas.condition(C, 1, u), v) ≈
+              ForwardDiff.derivative(uu -> cdf(C, [uu, v]), u) atol=2e-8 rtol=2e-7
+        @test cdf(Copulas.condition(C, 2, 0.0), u) ≈ u^a
+        @test cdf(Copulas.condition(C, 1, 0.0), v) ≈ v^b
+        @test cdf(Copulas.condition(C, 2, 1.0), u) ≈ b*u
+        @test cdf(Copulas.condition(C, 1, 1.0), v) ≈ a*v
+        @test quantile(Copulas.condition(C, 2, 1.0), 0.8) == 1.0
+        @test quantile(Copulas.condition(C, 1, 1.0), 0.8) == 1.0
+    end
+
+    @testset "BC2 and Cuadras-Auge singular conditionals" begin
+        Cbc2 = Copulas.ExtremeValueCopula(2, Copulas.BC2Tail(0.65, 0.25))
+        for j in 1:2, t in (0.2, 0.8), α in (0.25, 0.6)
+            D = Copulas.condition(Cbc2, j, t)
+            q = quantile(D, α)
+            @test 0.0 <= q <= 1.0
+            @test cdf(D, q) >= α - 5e-10
+        end
+        for j in 1:2
+            @test cdf(Copulas.condition(Cbc2, j, 0.0), 0.3) ≈ 1.0 atol=1e-12
+            @test cdf(Copulas.condition(Cbc2, j, 1.0), 0.7) ≈ 0.0 atol=1e-12
+        end
+
+        θ = 0.6
+        Cca = Copulas.ExtremeValueCopula(2, Copulas.CuadrasAugeTail(θ))
+        for j in 1:2
+            @test cdf(Copulas.condition(Cca, j, 0.0), 0.37) ≈ 0.37^(1-θ)
+            @test cdf(Copulas.condition(Cca, j, 1.0), 0.37) ≈ (1-θ)*0.37
+            @test quantile(Copulas.condition(Cca, j, 1.0), 0.8) == 1.0
+        end
+    end
+end
