@@ -57,6 +57,24 @@ function ϕ⁽¹⁾(G::BB10Generator, s)
     ψ  = ϕ(G, s)
     return -(1/θ) * es/(es - δ) * ψ
 end
+function ϕ⁽ᵏ⁾⁻¹(G::BB10Generator, k::Int, y; start_at=y)
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, y; start_at=start_at)
+    θ, δ, yy = promote(float(G.θ), float(G.δ), float(y))
+    δ < one(δ) || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, y; start_at=start_at)
+    yy ≤ zero(yy) || throw(DomainError(y, "The first generator derivative is non-positive."))
+    m = -yy
+    iszero(m) && return typeof(m)(Inf)
+    a, lm = inv(θ), log(m)
+    maxlm = -log(θ) - log1p(-δ)
+    lm > maxlm + 64eps(typeof(lm))*max(one(lm), abs(maxlm)) && throw(DomainError(y, "Target outside the derivative range."))
+    lm ≥ maxlm && return zero(lm)
+    iszero(δ) && return max(-θ*(lm + log(θ)), zero(lm))
+    logderivative(s) = -log(θ) + a*log1p(-δ) - a*s - (one(s)+a)*log1p(-δ*exp(-s))
+    f(s) = logderivative(s) - lm
+    hi = one(lm)
+    while f(hi) > 0; hi *= 2; end
+    return Roots.find_zero(f, (zero(lm), hi), Roots.Bisection())
+end
 function ϕ⁽ᵏ⁾(G::BB10Generator, k::Int, s::Real)
     if k==2
         θ, δ = G.θ, G.δ
