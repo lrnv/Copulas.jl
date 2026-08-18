@@ -36,7 +36,7 @@
         @test Nataf((Uniform(-2, 3), Uniform(4, 8)), r) ≈ 2sinpi(r / 6)
         @test Nataf((Uniform(-2, 3), Normal(1, 2)), r) ≈ r * sqrt(π / 3)
         D = sqrt(expm1(s^2))
-        expected = sqrt(2) / s * StatsFuns.norminvcdf(1 / 2 + r * D / (2sqrt(3)))
+        expected = sqrt(2) / s * quantile(Normal(), 1 / 2 + r * D / (2sqrt(3)))
         @test Nataf((Uniform(-2, 3), LogNormal(1, s)), r) ≈ expected
         @test_throws ArgumentError Nataf((Uniform(), Normal()), 0.99)
     end
