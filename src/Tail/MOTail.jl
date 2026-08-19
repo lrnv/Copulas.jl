@@ -60,13 +60,13 @@ function A(tail::MOTail{T}, t::Real) where T
     term3 = λ₁₂ * max(m1, m2)
     return r1 + r2 + term3
 end
-function τ(C::MOCopula)
+function τ(C::ExtremeValueCopula{2,<:MOTail})
     a = C.tail.λ₁/(C.tail.λ₁+C.tail.λ₁₂)
     b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
     return a*b/(a+b-a*b)
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula,
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MOTail},
                               A::AbstractMatrix{S}) where {S<:Real}
     size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂

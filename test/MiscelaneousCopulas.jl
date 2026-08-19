@@ -14,6 +14,12 @@
     end
 end
 
+@testset "Marshall-Olkin specialized sampler" begin
+    C = MOCopula{2}(0.1, 0.2, 0.3)
+    U = rand(rng, C, 5_000)
+    @test all(isapprox.(vec(mean(U; dims=2)), 0.5; atol=0.03, rtol=0))
+end
+
 @testset "Testing survival stuff" begin
     # [GenericTests integration]: Yes. Symmetry of survival transformations on pdf/cdf is generic; we can add survival invariance checks.
     Random.seed!(rng,123)

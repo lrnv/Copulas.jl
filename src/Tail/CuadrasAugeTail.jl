@@ -99,13 +99,13 @@ function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::R
     end
 end
 
-τ(C::CuadrasAugeCopula) = C.tail.θ / (2 - C.tail.θ)
-ρ(C::CuadrasAugeCopula) = (3 * C.tail.θ) / (4 - C.tail.θ)
-β(C::CuadrasAugeCopula) = 2.0^(C.tail.θ) - 1
-λᵤ(C::CuadrasAugeCopula) = C.tail.θ
+τ(C::ExtremeValueCopula{2,<:CuadrasAugeTail}) = C.tail.θ / (2 - C.tail.θ)
+ρ(C::ExtremeValueCopula{2,<:CuadrasAugeTail}) = (3 * C.tail.θ) / (4 - C.tail.θ)
+β(C::ExtremeValueCopula{2,<:CuadrasAugeTail}) = 2.0^(C.tail.θ) - 1
+λᵤ(C::ExtremeValueCopula{2,<:CuadrasAugeTail}) = C.tail.θ
 
-τ⁻¹(::Type{<:CuadrasAugeCopula}, tau) = 2tau / (1 + tau)
+τ⁻¹(::Type{<:ExtremeValueCopula{2,<:CuadrasAugeTail}}, tau) = 2tau / (1 + tau)
 τ⁻¹(::Type{<:CuadrasAugeTail}, tau) = 2tau / (1 + tau)
-ρ⁻¹(::Type{<:CuadrasAugeCopula}, rho) = 4rho / (3 + rho)
-β⁻¹(::Type{<:CuadrasAugeCopula}, beta) = log2(beta + 1)
-λᵤ⁻¹(::Type{<:CuadrasAugeCopula}, λ) = λ
+ρ⁻¹(::Type{<:ExtremeValueCopula{2,<:CuadrasAugeTail}}, rho) = 4rho / (3 + rho)
+β⁻¹(::Type{<:ExtremeValueCopula{2,<:CuadrasAugeTail}}, beta) = log2(beta + 1)
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{2,<:CuadrasAugeTail}}, λ) = λ

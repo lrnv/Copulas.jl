@@ -321,7 +321,7 @@ check_rosenblatt(C::FrankCopula) = C.G.θ < 100
 check_rosenblatt(C::GumbelCopula) = C.G.θ < 20
 check_rosenblatt(C::MCopula{4}) = false
 check_rosenblatt(C::EmpiricalCopula) = false
-check_rosenblatt(C::BC2Copula) = false
+check_rosenblatt(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
 
 check_corkendall(C::Copulas.Copula) = true
 check_corkendall(C::FrankCopula) = C.G.θ < 100
@@ -329,9 +329,9 @@ check_corkendall(C::GumbelCopula) = C.G.θ < 100
 check_corkendall(C::MCopula) = false
 check_corkendall(C::WCopula) = false
 check_corkendall(C::EmpiricalCopula) = false
-check_corkendall(C::BC2Copula) = false
-check_corkendall(C::CuadrasAugeCopula) = false
-check_corkendall(C::MOCopula) = false
+check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
+check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
+check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 
 is_archimedean_with_generator(C::Copulas.Copula) = false
@@ -343,11 +343,11 @@ can_integrate_pdf(C::FrankCopula) = C.G.θ < 100
 can_integrate_pdf(C::FGMCopula) = length(C) != 3
 can_integrate_pdf(C::MCopula) = false
 can_integrate_pdf(C::WCopula) = false
-can_integrate_pdf(C::MOCopula) = false
-can_integrate_pdf(C::CuadrasAugeCopula) = false
+can_integrate_pdf(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
+can_integrate_pdf(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
 can_integrate_pdf(C::RafteryCopula) = false
 can_integrate_pdf(C::EmpiricalCopula) = false
-can_integrate_pdf(C::BC2Copula) = false
+can_integrate_pdf(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
 can_integrate_pdf(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 can_integrate_pdf(C::CheckerboardCopula) = false
 
@@ -355,21 +355,21 @@ can_ad(C::Copulas.Copula) = can_pdf(C)
 can_ad(C::FrankCopula) = C.G.θ < 100
 can_ad(C::MCopula) = false
 can_ad(C::WCopula) = false
-can_ad(C::tEVCopula) = false
+can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.tEVTail}) = false
 can_ad(C::TCopula) = false
-can_ad(C::CuadrasAugeCopula) = false
-can_ad(C::MOCopula) = false
+can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
+can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
 
 is_bivariate(C::Copulas.Copula) = (length(C) == 2)
 has_subsetdims(C::Copulas.Copula) = !is_bivariate(C)
 
 check_cdf_rand(C::Copulas.Copula) = true
-check_cdf_rand(C::BC2Copula) = false
-check_cdf_rand(C::MOCopula) = false
-check_cdf_rand(C::CuadrasAugeCopula) = false
+check_cdf_rand(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
+check_cdf_rand(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
+check_cdf_rand(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
 
 dep_coherency_enabled(C::Copulas.Copula) = true
-dep_coherency_enabled(C::MOCopula) = false
+dep_coherency_enabled(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
 dep_coherency_enabled(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 
 check_biv_conditioning(C::Copulas.Copula) = is_bivariate(C) && can_ad(C)
@@ -544,20 +544,22 @@ end
             @test abs(p_hat - p_th) ≤ max(5*se, 2e-3)
         end
 
-        @testif (C isa BC2Copula || C isa MOCopula || C isa CuadrasAugeCopula) "Singular sampler structure" begin
+        @testif (C isa Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail} ||
+                 C isa Copulas.ExtremeValueCopula{2,<:Copulas.MOTail} ||
+                 C isa Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) "Singular sampler structure" begin
             # The empirical-CDF check is fragile for these singular laws.
             # Check their margins and analytically known singular mass instead.
             @test all(isapprox.(vec(mean(spl1000; dims=2)), 0.5; atol=0.04, rtol=0))
 
             x = .-log.(spl1000[1, :])
             y = .-log.(spl1000[2, :])
-            if C isa BC2Copula
+            if C isa Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}
                 a, b = C.tail.a, C.tail.b
                 ray1 = isapprox.(a .* x, b .* y; atol=1e-10, rtol=1e-7)
                 ray2 = isapprox.((1-a) .* x, (1-b) .* y; atol=1e-10, rtol=1e-7)
                 observed = mean(ray1 .| ray2)
                 expected = 1 - abs(a-b)
-            elseif C isa MOCopula
+            elseif C isa Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}
                 λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
                 atom = isapprox.((λ₁+λ₁₂) .* x, (λ₂+λ₁₂) .* y;
                                 atol=1e-10, rtol=1e-7)
@@ -621,7 +623,7 @@ end
         #         end
         #     end
 
-        @testif dep_coherency_enabled(C) "Corkendall coeherency" begin
+        @testif check_corkendall(C) "Corkendall coeherency" begin
             K = corkendall(spl1000')
             Kth = corkendall(C)
             @test all(-1 .<= Kth .<= 1)

@@ -103,4 +103,10 @@ end
     @test typeof(PlackettCopula{2}(2.0))(2, 3.0) isa PlackettCopula{2}
     @test typeof(RafteryCopula{2}(0.5))(2, 0.6) isa RafteryCopula{2}
     @test typeof(FGMCopula{2}(0.5))(2, 0.4) isa FGMCopula{2}
+
+    for C in (GalambosCopula{2}(1.0), CuadrasAugeCopula{2}(0.5),
+              HuslerReissCopula{2}(1.0), LogCopula{2}(2.0), MixedCopula{2}(0.5))
+        @test which(Copulas.τ, (typeof(C),)) !=
+              which(Copulas.τ, (Copulas.ExtremeValueCopula{2},))
+    end
 end
