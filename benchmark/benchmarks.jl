@@ -9,7 +9,10 @@ const SEED = 23
 const SUITE = BenchmarkGroup()
 
 bench_name(C) = lowercase(replace(string(nameof(typeof(C))), "Copula" => "")) * "_d$(length(C))"
-bench_group!(suite, operation) = get!(suite, operation, BenchmarkGroup())
+function bench_group!(suite, operation)
+    haskey(suite, operation) || (suite[operation] = BenchmarkGroup())
+    return suite[operation]
+end
 
 function bench_sampling!(suite, C, n)
     bench_group!(suite, "sampling")[bench_name(C)] = @benchmarkable(
