@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ github.event_name }}
+    name: Julia ${{ matrix.version }} - ${{ matrix.group }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -39,6 +39,14 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
+        group:
+          - core
+          - generic-1
+          - generic-2
+          - generic-3
+    env:
+      COPULAS_TEST_GROUP: ${{ matrix.group }}
+      COPULAS_GENERIC_SHARDS: 3
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3

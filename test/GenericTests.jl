@@ -450,7 +450,18 @@ function _integrate_pdf_rect(rng, C::Copulas.Copula{d}, a, b, N) where d
 end
 
 # You can filter the bestiary here if you want:
-Bestiary = filter(GenericTestFilter, Bestiary)
+Bestiary = unique(filter(GenericTestFilter, Bestiary))
+
+if startswith(TEST_GROUP, "generic-")
+    shard = parse(Int, split(TEST_GROUP, '-')[2])
+    shards = parse(Int, ENV["COPULAS_GENERIC_SHARDS"])
+    1 <= shard <= shards || error("Invalid generic test shard $shard/$shards")
+    # Keep every instance of a concrete type in one process so compilation is
+    # shared across its parameter variants.
+    types = unique(typeof.(Bestiary))
+    shard_types = Set(types[shard:shards:end])
+    Bestiary = filter(C -> typeof(C) in shard_types, Bestiary)
+end
 
 @testset "Matrix sampler accepts generic buffers" begin
     C = ClaytonCopula(3, 1.0)
@@ -464,7 +475,7 @@ Bestiary = filter(GenericTestFilter, Bestiary)
 end
 
 # Launch the main computation:
-@testset for C in unique(Bestiary)
+@testset for C in Bestiary
 
     @info "Testing $C..."
     Random.seed!(rng,123)

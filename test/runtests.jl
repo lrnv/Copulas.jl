@@ -5,8 +5,9 @@ using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
 
 const rng = StableRNG(123)
 
-# You can comment the lines to avoid running some tests while you develop:
-testfiles = [
+const TEST_GROUP = get(ENV, "COPULAS_TEST_GROUP", "all")
+
+core_testfiles = [
     "Aqua",
     "ArchimedeanCopulas",
     "NestedArchimedeanCopula",
@@ -18,8 +19,12 @@ testfiles = [
     "NatafTest",
     "SklarDist",
     "Subsetting",
-    "GenericTests",
 ]
+
+testfiles = TEST_GROUP == "all" ? [core_testfiles; "GenericTests"] :
+            TEST_GROUP == "core" ? core_testfiles :
+            startswith(TEST_GROUP, "generic-") ? ["GenericTests"] :
+            error("Unknown COPULAS_TEST_GROUP: $TEST_GROUP")
 
 # You can override the definition of this GenericTestFilter if you want. 
 GenericTestFilter(C) = true # the default value lets every copula go through. 
