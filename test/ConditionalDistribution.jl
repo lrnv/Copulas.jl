@@ -24,6 +24,11 @@ end
         direct = condition(C, j, uⱼ)
         reference = condition(C, (j,), (float(uⱼ),))
         @test typeof(direct) == typeof(reference)
+        @test params(direct) == params(reference)
+    end
+    for j in 1:2
+        direct = condition(C, j, 0.4)
+        reference = condition(C, (j,), (0.4,))
         @test cdf(direct, 0.3) ≈ cdf(reference, 0.3)
     end
     for j in 1:2, uⱼ in (0.0f0, big"1.0")
