@@ -1088,6 +1088,44 @@ end
         @test logabs ≈ -1515.8850568704655 atol=2e-8 rtol=2e-10
     end
 
+    @testset "Multivariate Galambos EV sampling" begin
+        cases = (
+            (3, 0.7, 2713),
+            (3, 3.0, 2714),
+            (3, 20.0, 2715),
+            (4, 1.5, 2716),
+        )
+        n = 5_000
+
+        for (d, θ, seed) in cases
+            C = Copulas.ExtremeValueCopula(d, Copulas.GalambosTail(θ))
+            U = rand(StableRNG(seed), C, n)
+            @test size(U) == (d, n)
+            @test all(isfinite, U)
+            @test all(u -> 0 < u < 1, U)
+
+            # Every copula margin is Uniform(0,1).
+            for i in 1:d
+                @test abs(sum(@view(U[i, :])) / n - 0.5) < 0.02
+            end
+
+            # Full-dimensional empirical CDF against the exact CDF.
+            u = collect(range(0.34, 0.82; length=d))
+            empirical = count(j -> all(i -> U[i, j] <= u[i], 1:d), 1:n) / n
+            reference = cdf(C, u)
+            mc_tol = max(0.025, 6sqrt(reference * (1 - reference) / n))
+            @test abs(empirical - reference) < mc_tol
+
+            # Every pairwise margin recovers the historical bivariate Galambos.
+            B = Copulas.ExtremeValueCopula(2, Copulas.GalambosTail(θ))
+            uv = (0.42, 0.76)
+            empirical2 = count(j -> U[1, j] <= uv[1] && U[d, j] <= uv[2], 1:n) / n
+            reference2 = cdf(B, collect(uv))
+            mc_tol2 = max(0.025, 6sqrt(reference2 * (1 - reference2) / n))
+            @test abs(empirical2 - reference2) < mc_tol2
+        end
+    end
+
     @testset "BC2 and Cuadras-Auge singular conditionals" begin
         Cbc2 = Copulas.ExtremeValueCopula(2, Copulas.BC2Tail(0.65, 0.25))
         for j in 1:2, t in (0.2, 0.8), α in (0.25, 0.6)
