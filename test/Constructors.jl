@@ -87,6 +87,8 @@ end
     end
     @test GalambosCopula{2}(2) isa GalambosCopula{2}
     @test tEVCopula{2}(4, 0.5) isa tEVCopula{2}
+    @test CuadrasAugeCopula{2}(0.0) isa IndependentCopula{2}
+    @test CuadrasAugeCopula{2}(1.0) isa MCopula{2}
 
     @test GalambosCopula(2; θ=1.0) isa GalambosCopula{2}
 
