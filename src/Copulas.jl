@@ -10,12 +10,13 @@ module Copulas
     import StatsFuns
     import ForwardDiff
     import HCubature
-    import MvNormalCDF
+    import HypergeometricFunctions
     import Combinatorics
     import LogExpFunctions
     import QuadGK
     import LinearAlgebra
     import PolyLog
+    import Primes
     import LambertW
     import Optim
     import Printf
