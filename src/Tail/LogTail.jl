@@ -1,5 +1,5 @@
 """
-    LogTail{T}, LogCopula{T}
+    LogTail{T}, LogCopula{d,T}
 
 Fields:
   - θ::Real — dependence parameter, θ ∈ [0,1]
@@ -36,7 +36,7 @@ struct LogTail{T} <: AbstractUnivariateTail2
     end
 end
 
-const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
+const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
 Distributions.params(tail::LogTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:LogTail}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
 _rebound_params(::Type{<:LogTail}, d, α) = (; θ = exp(α[1]) + 1)

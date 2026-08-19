@@ -1,5 +1,5 @@
 """
-    PlackettCopula{P}
+    PlackettCopula{d, P}
 
 Fields:
     - θ::Real - parameter
@@ -25,36 +25,36 @@ References:
 * [johnson1987multivariate](@cite) Johnson, Mark E. Multivariate statistical simulation: A guide to selecting and generating continuous multivariate distributions. Vol. 192. John Wiley & Sons, 1987. Page 193.
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.38.
 """
-struct PlackettCopula{P} <: Copula{2} # since it is only bivariate.
+struct PlackettCopula{d,P} <: Copula{d} # only d = 2 is valid
     θ::P  # Copula parameter
 
-    function PlackettCopula(θ)
+    function PlackettCopula{d}(θ) where {d}
+        d == 2 || throw(DimensionMismatch("PlackettCopula is only defined in dimension 2"))
         if θ < 0
             throw(ArgumentError("Theta must be non-negative"))
         elseif θ == 0
-            return MCopula(2)
+            return MCopula{2}()
         elseif θ == 1
-            return IndependentCopula(2)
+            return IndependentCopula{2}()
         elseif θ == Inf
-            return WCopula(2)
+            return WCopula{2}()
         else
             θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
+            return new{2,typeof(θ)}(θ)
         end
     end
-    PlackettCopula{T}(θ) where T = PlackettCopula(θ)
-    PlackettCopula{T}(::Int, θ::Real) where T = PlackettCopula(θ)
-    PlackettCopula(::Integer, θ::Real) = PlackettCopula(θ)
 end
+PlackettCopula(θ) = PlackettCopula{2}(θ)
+PlackettCopula(d::Integer, θ::Real) = PlackettCopula{d}(θ)
 
-Base.eltype(S::PlackettCopula{P}) where {P} = P # this shuold be P. 
+Base.eltype(::PlackettCopula{2,P}) where {P} = P
 Distributions.params(C::PlackettCopula) = (θ = C.θ,)
 _example(::Type{<:PlackettCopula}, d::Integer) = PlackettCopula(0.5)
 _unbound_params(::Type{<:PlackettCopula}, d::Integer, θ) = [log(θ.θ)]         # θ > 0
 _rebound_params(::Type{<:PlackettCopula}, d::Integer, α) = (; θ = exp(α[1]))
 
 # CDF calculation for bivariate Plackett Copula
-function _cdf(S::PlackettCopula{P}, uv) where {P}
+function _cdf(S::PlackettCopula, uv)
     u, v = uv
     η = S.θ - 1
     term1 = 1 + η * (u + v)
@@ -63,7 +63,7 @@ function _cdf(S::PlackettCopula{P}, uv) where {P}
 end
 
 # PDF calculation for bivariate Plackett Copula
-function Distributions._logpdf(S::PlackettCopula{P}, uv) where {P}
+function Distributions._logpdf(S::PlackettCopula, uv)
     u, v = uv
     η = S.θ - 1
     term1 = S.θ * (1 + η * (u + v - 2 * u * v))
@@ -88,10 +88,10 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::Abstract
 end
 
 # Calculate Spearman's rho based on the PlackettCopula parameters
-function ρ(c::PlackettCopula{P}) where P
+function ρ(c::PlackettCopula)
     return (c.θ+1)/(c.θ-1)-(2*c.θ*log(c.θ)/(c.θ-1)^2)
 end
-function β(c::PlackettCopula{P}) where P
+function β(c::PlackettCopula)
     return (sqrt(c.θ)-1)/(sqrt(c.θ)+1)
     # and inverse beta: θ = ((1+β)/(1-β))^2
 end

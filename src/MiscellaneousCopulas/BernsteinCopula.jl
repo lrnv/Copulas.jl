@@ -32,8 +32,7 @@ References:
 struct BernsteinCopula{d} <: Copula{d}
     m::NTuple{d,Int}
     weights::Array{Float64, d}
-    function BernsteinCopula(base::Copula; m::Union{Int,Tuple,Nothing}=10)
-        d = Copulas.length(base)
+    function BernsteinCopula{d}(base::Copula{d}; m::Union{Int,Tuple,Nothing}=10) where {d}
         mtuple = nothing
         if m !== nothing
             mtuple = (m isa Int) ? ntuple(_->m, d) : m
@@ -67,7 +66,13 @@ struct BernsteinCopula{d} <: Copula{d}
     end
     BernsteinCopula{d}(m::NTuple{d, Int}, weights::Array{Float64, d}) where d = new{d}(m, weights) # cheating constructor. 
 end
-BernsteinCopula(data::AbstractMatrix; m::Union{Int,Tuple,Nothing}=nothing, pseudo_values=true) = BernsteinCopula(EmpiricalCopula(data; pseudo_values=pseudo_values); m=m)
+BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base; kwargs...)
+function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}
+    size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
+    return BernsteinCopula{d}(EmpiricalCopula{d}(data; pseudo_values=get(kwargs, :pseudo_values, true));
+                              m=get(kwargs, :m, nothing))
+end
+BernsteinCopula(data::AbstractMatrix; kwargs...) = BernsteinCopula{size(data, 1)}(data; kwargs...)
 
 @inline function _bernvec_all(u::T, m::Int) where {T<:Real}
     v = zeros(T, m+1)

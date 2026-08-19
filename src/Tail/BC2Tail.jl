@@ -1,5 +1,5 @@
 """
-    BC2Tail{T}, BC2Copula{T}
+    BC2Tail{T}, BC2Copula{d,T}
 
 Fields:
   - a::Real — parameter (a ∈ [0,1])
@@ -33,7 +33,7 @@ struct BC2Tail{T} <: Tail2
     end
 end
 
-const BC2Copula{T} = ExtremeValueCopula{2, BC2Tail{T}}
+const BC2Copula{d,T} = ExtremeValueCopula{d, BC2Tail{T}}
 Distributions.params(tail::BC2Tail) = (a = tail.a, b = tail.b)
 _unbound_params(::Type{<:BC2Tail}, d, θ) = [log(θ.a) - log1p(-θ.a), log(θ.b) - log1p(-θ.b)]
 _rebound_params(::Type{<:BC2Tail}, d, α) = begin

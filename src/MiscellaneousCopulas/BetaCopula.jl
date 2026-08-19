@@ -26,8 +26,9 @@ References:
 struct BetaCopula{d,MT} <: Copula{d}
     ranks::MT   # d×n (each row is in 1..n)
     n::Int
-    function BetaCopula(data::AbstractMatrix)
-        d, n = size(data)
+    function BetaCopula{d}(data::AbstractMatrix) where {d}
+        size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
+        n = size(data, 2)
         R = Matrix{Int}(undef, d, n)
         @inbounds for j in 1:d
             R[j, :] = StatsBase.ordinalrank(@view data[j, :])
@@ -35,6 +36,7 @@ struct BetaCopula{d,MT} <: Copula{d}
         return new{d, typeof(R)}(R, n)
     end
 end
+BetaCopula(data::AbstractMatrix) = BetaCopula{size(data, 1)}(data)
 function _bernvec_n(u::T, n::Int) where {T<:Real}
     v = zeros(T, n+1)
     if iszero(u)

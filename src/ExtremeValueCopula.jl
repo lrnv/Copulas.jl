@@ -4,6 +4,7 @@
 Constructor
 
     ExtremeValueCopula(d, tail::Tail)
+    ExtremeValueCopula{d}(tail::Tail)
 
 Extreme-value copulas model tail dependence via a stable tail dependence function (STDF) ``\\ell`` or, equivalently,
 via a Pickands dependence function ``A``. In any dimension ``d``, the copula cdf is
@@ -37,14 +38,16 @@ References:
 """
 struct ExtremeValueCopula{d, TT<:Tail} <: Copula{d}
     tail::TT
-    function ExtremeValueCopula(d, tail::Tail)
+    function ExtremeValueCopula{d}(tail::Tail) where {d}
         @assert _is_valid_in_dim(tail, d)
         return new{d, typeof(tail)}(tail)
     end
 end
 
-ExtremeValueCopula{d,TT}(args...; kwargs...) where {d, TT} = ExtremeValueCopula(d, TT(args...; kwargs...))
-ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D, TT} = ExtremeValueCopula{d,TT}(args...; kwargs...)
+ExtremeValueCopula(d, tail::Tail) = ExtremeValueCopula{d}(tail)
+function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
+    return ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+end
 (CT::Type{<:ExtremeValueCopula{2, <:Tail}})(d::Int, args...; kwargs...) = ExtremeValueCopula(2, tailof(CT)(args...; kwargs...))
 
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))

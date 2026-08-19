@@ -8,7 +8,8 @@ Constructors
 
     GaussianCopula(Σ)
     GaussianCopula(d, ρ)
-    GaussianCopula(d::Integer, ρ::Real)
+    GaussianCopula{d}(Σ)
+    GaussianCopula{d}(ρ)
 
 Where `Σ` is a (symmetric) covariance or correlation matrix. The two-argument
 form with `(d, ρ)` builds the equicorrelation matrix with ones on the diagonal
@@ -47,18 +48,20 @@ References:
 """
 struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
-    function GaussianCopula(Σ)
+    function GaussianCopula{d}(Σ::AbstractMatrix) where {d}
+        size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
         if LinearAlgebra.isdiag(Σ)
-            return IndependentCopula(size(Σ,1))
+            return IndependentCopula{d}()
         end
         make_cor!(Σ)
         N(GaussianCopula)(Σ)
-        return new{size(Σ,1),typeof(Σ)}(Σ)
+        return new{d,typeof(Σ)}(Σ)
     end
 end
+GaussianCopula(Σ::AbstractMatrix) = GaussianCopula{size(Σ, 1)}(Σ)
 
 # Equicorrelation convenience constructor
-function GaussianCopula(d::Int, ρ::Real)
+function GaussianCopula{d}(ρ::Real) where {d}
     d < 2 && throw(ArgumentError("Use a bivariate or higher dimension (d ≥ 2) or pass a 1×1 matrix."))
     # Positive definiteness condition for equicorrelation matrix
     lower = -1/(d-1)
@@ -71,11 +74,10 @@ function GaussianCopula(d::Int, ρ::Real)
     @inbounds for i in 1:d
         Σ[i,i] = one(ρ)
     end
-    return GaussianCopula(Σ)
+    return GaussianCopula{d}(Σ)
 end
-GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula(Σ) 
-GaussianCopula{D, MT}(d::Int, Σ::AbstractMatrix) where {D, MT} = GaussianCopula(Σ) 
-GaussianCopula{D, MT}(d::Int, ρ::Real) where {D, MT} = GaussianCopula(d, ρ) 
+GaussianCopula(d::Int, ρ::Real) = GaussianCopula{d}(ρ)
+GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula{d}(Σ)
 
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
@@ -121,7 +123,7 @@ function ConditionalCopula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))
     Σcond = C.Σ[I, I] - C.Σ[I, J] * inv(C.Σ[J, J]) * C.Σ[J, I]
-    return GaussianCopula(Σcond)
+    return GaussianCopula{D - p}(Σcond)
 end
 
 function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
@@ -138,11 +140,11 @@ function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
         σ² = max(Σcond[k, k], zero(eltype(Σcond)))
         GaussianDistortion(float(μ[k]), float(sqrt(σ²)))
     end, length(is))
-    return GaussianCopula(Σcond), distortions
+    return GaussianCopula{length(is)}(Σcond), distortions
 end
 
 # Subsetting colocated
-SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula(C.Σ[collect(dims),collect(dims)])
+SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula{p}(C.Σ[collect(dims),collect(dims)])
 
 
 # Fitting collocated

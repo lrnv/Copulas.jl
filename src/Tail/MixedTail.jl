@@ -1,5 +1,5 @@
 """
-    MixedTail{T}, MixedCopula{T}
+    MixedTail{T}, MixedCopula{d,T}
 
 Fields:
   - θ::Real — dependence parameter, θ ∈ [0,1]
@@ -36,7 +36,7 @@ struct MixedTail{T} <: AbstractUnivariateTail2
     end
 end
 
-const MixedCopula{T} = ExtremeValueCopula{2, MixedTail{T}}
+const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
 Distributions.params(tail::MixedTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:MixedTail}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
 _rebound_params(::Type{<:MixedTail}, d, α) = begin

@@ -1,5 +1,5 @@
 """
-    HuslerReissTail{T}, HuslerReissCopula{T}
+    HuslerReissTail{T}, HuslerReissCopula{d,T}
 
 Fields:
   - θ::Real — dependence parameter, θ ≥ 0
@@ -37,7 +37,7 @@ struct HuslerReissTail{T} <: AbstractUnivariateTail2
     return new{typeof(θ)}(θ)
     end
 end
-const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
+const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
 Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:HuslerReissTail}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissTail}, d, α) = (; θ = exp(α[1]))

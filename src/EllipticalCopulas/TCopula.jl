@@ -8,6 +8,7 @@ Fields:
 Constructor
 
     TCopula(df, Σ)
+    TCopula{d}(df, Σ)
 
 The Student t copula is the copula of a multivariate Student t distribution. It is defined by
 
@@ -31,14 +32,15 @@ References:
 struct TCopula{d,Tν,MT} <: EllipticalCopula{d,MT}
     df::Tν
     Σ::MT
-    function TCopula(df::Real, Σ::AbstractMatrix)
+    function TCopula{d}(df::Real, Σ::AbstractMatrix) where {d}
+        size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
         make_cor!(Σ)
         Distributions.MvTDist(df, Σ)
-        return new{size(Σ,1),typeof(df),typeof(Σ)}(df, Σ)
+        return new{d,typeof(df),typeof(Σ)}(df, Σ)
     end
 end
-TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula(ν, Σ)
-TCopula{D,Tν,MT}(d::Int, ν::Real, Σ::AbstractMatrix) where {D,Tν,MT} = TCopula(ν, Σ)
+TCopula(ν::Real, Σ::AbstractMatrix) = TCopula{size(Σ, 1)}(ν, Σ)
+TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula{d}(ν, Σ)
 
 
 
@@ -140,7 +142,7 @@ function ConditionalCopula(C::TCopula{D}, js, uⱼₛ) where {D}
     end
     σ = sqrt.(LinearAlgebra.diag(Σcond))
     R_cond = Matrix(Σcond ./ (σ * σ'))
-    return TCopula(df + p, R_cond)
+    return TCopula{D - p}(df + p, R_cond)
 end
 
 function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
@@ -164,10 +166,10 @@ function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
     end, length(is))
     σ = sqrt.(LinearAlgebra.diag(Σcond))
     Rcond = Matrix(Σcond ./ (σ * σ'))
-    return TCopula(νp, Rcond), distortions
+    return TCopula{length(is)}(νp, Rcond), distortions
 end
 # Subsetting colocated
-SubsetCopula(C::TCopula, dims::NTuple{p, Int}) where {p} = TCopula(C.df, C.Σ[collect(dims),collect(dims)])
+SubsetCopula(C::TCopula, dims::NTuple{p, Int}) where {p} = TCopula{p}(C.df, C.Σ[collect(dims),collect(dims)])
 
 # Fitting collocated
 StatsBase.dof(C::Copulas.TCopula)           = (p = length(C); p*(p-1) ÷ 2 + 1)

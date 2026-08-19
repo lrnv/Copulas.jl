@@ -12,9 +12,10 @@ Both Fréchet–Hoeffding bounds are Archimedean copulas.
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct MCopula{d} <: Copula{d} 
-    MCopula(d) = new{d}()
+struct MCopula{d} <: Copula{d}
+    MCopula{d}() where {d} = new{d}()
 end
+MCopula(d) = MCopula{d}()
 Distributions._logpdf(::MCopula{d}, u) where {d} = all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::MCopula{d}, u) where {d} = Base.minimum(u)
 
@@ -34,7 +35,7 @@ StatsBase.corkendall(::MCopula{d}) where d = ones(d,d)
 StatsBase.corspearman(::MCopula{d}) where d = ones(d,d)
 
 # Subsetting colocated
-SubsetCopula(::MCopula{d}, ::NTuple{p, Int}) where {d,p} = MCopula(p)
+SubsetCopula(::MCopula{d}, ::NTuple{p, Int}) where {d,p} = MCopula{p}()
 DistortionFromCop(::MCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i::Int) = MDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
 # Fitting/params interface (no parameters)

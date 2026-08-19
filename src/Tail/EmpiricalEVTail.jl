@@ -138,7 +138,7 @@ function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, 
     
     return EmpiricalEVTail(tgrid, Â, slope)
 end
-const EmpiricalEVCopula = ExtremeValueCopula{2, EmpiricalEVTail}
+const EmpiricalEVCopula{d} = ExtremeValueCopula{d, EmpiricalEVTail}
 EmpiricalEVCopula(u; kwargs...) = ExtremeValueCopula(2, EmpiricalEVTail(u; kwargs...))
 
 Base.eltype(::EmpiricalEVTail) = Float64

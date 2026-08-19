@@ -29,10 +29,10 @@ struct EmpiricalCopula{d,MT} <: Copula{d}
     u::MT
 end
 Base.eltype(C::EmpiricalCopula{d,MT}) where {d,MT} = Base.eltype(C.u)
-function EmpiricalCopula(u;pseudo_values=true)
+function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
+    size(u, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     T = promote_type(eltype(u), Float64)
     u = T.(u)
-    d = size(u,1)
     if !pseudo_values
         u = pseudos(u)
     else
@@ -40,6 +40,7 @@ function EmpiricalCopula(u;pseudo_values=true)
     end
     return EmpiricalCopula{d,typeof(u)}(u)
 end
+EmpiricalCopula(u; kwargs...) = EmpiricalCopula{size(u, 1)}(u; kwargs...)
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return sum(all(C.u .<= u,dims=1))/size(C.u,2) # might not be very efficient implementation. 
 end

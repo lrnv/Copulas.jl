@@ -6,7 +6,8 @@ Fields:
 
 Constructor:
 
-    ArchimedeanCopula(d::Int,G::Generator)
+    ArchimedeanCopula(d::Int, G::Generator)
+    ArchimedeanCopula{d}(G::Generator)
 
 For some Archimedean [`Generator`](@ref) `G::Generator` and some dimenson `d`, this class models the archimedean copula which has this generator. The constructor checks for validity by ensuring that `max_monotony(G) ≥ d`. The ``d``-variate archimedean copula with generator ``\\phi`` writes:
 
@@ -43,30 +44,21 @@ References:
 """
 struct ArchimedeanCopula{d,TG} <: Copula{d}
     G::TG
-    function ArchimedeanCopula(d::Int, G::Generator)
+    function ArchimedeanCopula{d}(G::Generator) where {d}
         @assert d <= max_monotony(G) "The generator $G you provided is not $d-monotonous since it has max monotonicity $(max_monotony(G)), and thus this copula does not exists."
         return new{d,typeof(G)}(G)
     end
 end
 
 # Constructors:
-ArchimedeanCopula(d::Int, ::IndependentGenerator) = IndependentCopula(d)
-ArchimedeanCopula(d::Int, ::MGenerator) = MCopula(d)
-ArchimedeanCopula(d::Int, ::WGenerator) = WCopula(d)
-
-ArchimedeanCopula{d,TG}(args...; kwargs...) where {d, TG} = ArchimedeanCopula(d, TG(args...; kwargs...))
-ArchimedeanCopula{D,TG}(d::Int, args...; kwargs...) where {D, TG} = ArchimedeanCopula{d,TG}(args...; kwargs...)
+ArchimedeanCopula(d::Int, G::Generator) = ArchimedeanCopula{d}(G)
+ArchimedeanCopula{d}(::IndependentGenerator) where {d} = IndependentCopula{d}()
+ArchimedeanCopula{d}(::MGenerator) where {d} = MCopula{d}()
+ArchimedeanCopula{d}(::WGenerator) where {d} = WCopula{d}()
+function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
+    return ArchimedeanCopula{d}(generatorof(CT)(args...; kwargs...))
+end
 (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(d::Int, args...; kwargs...) = ArchimedeanCopula(d, generatorof(CT)(args...; kwargs...))
-
-# # Allow calling aliases like ClaytonCopula{d}(args...; kwargs...) or ClaytonCopula{d,T}(args...; kwargs...)
-# # by extracting d and the generator type TG from the alias and constructing ArchimedeanCopula{d}(TG(...)).
-# function (::Type{C})(args...; kwargs...) where {d, C<:ArchimedeanCopula{d}}
-#     GT = generatorof(C)
-#     ArchimedeanCopula{d}(GT(args...; kwargs...))
-# end
-# function (b::Type{<:ArchimedeanCopula})(d::Int, args...; kwargs...)
-#     return ArchimedeanCopula{d}(fieldtype(b,:G)(args...; kwargs...))
-# end
 
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters.
 
@@ -181,9 +173,9 @@ function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTu
     return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
 function ConditionalCopula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, TG, p}
-    return ArchimedeanCopula(D - p, TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
+    return ArchimedeanCopula{D - p}(TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
-SubsetCopula(C::ArchimedeanCopula{d,TG}, dims::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula(length(dims), C.G)
+SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula{p}(C.G)
 
 ##############################################################################################################################
 ####### Fitting interfaces.

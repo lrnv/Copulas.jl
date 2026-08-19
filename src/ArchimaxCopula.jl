@@ -8,6 +8,7 @@ Fields
 Constructor
 
     ArchimaxCopula(d, gen::Generator, tail::Tail)
+    ArchimaxCopula{d}(gen::Generator, tail::Tail)
 
 Definition (bivariate shown). Let ``x_i = ϕ^{-1}(u_i)`` and denote the STDF by ``\\ell``. The cdf is
 
@@ -30,14 +31,15 @@ References:
 struct ArchimaxCopula{d, TG, TT} <: Copula{d}
     gen::TG
     tail::TT
-    function ArchimaxCopula(d, gen::Generator, tail::Tail)
+    function ArchimaxCopula{d}(gen::Generator, tail::Tail) where {d}
         @assert max_monotony(gen) >= d
         @assert _is_valid_in_dim(tail, d)
         return new{d, typeof(gen), typeof(tail)}(gen, tail)
     end
 end
-ArchimaxCopula(d, gen::Generator, ::NoTail) = ArchimedeanCopula(d, gen)
-ArchimaxCopula(d, ::IndependentGenerator, tail::Tail) = ExtremeValueCopula(d, tail) 
+ArchimaxCopula(d, gen::Generator, tail::Tail) = ArchimaxCopula{d}(gen, tail)
+ArchimaxCopula{d}(gen::Generator, ::NoTail) where {d} = ArchimedeanCopula{d}(gen)
+ArchimaxCopula{d}(::IndependentGenerator, tail::Tail) where {d} = ExtremeValueCopula{d}(tail)
 
 # Constructor from prefixed parameter NamedTuple (stable across models)
 function ArchimaxCopula(d::Int, TG::Type{<:Generator}, TT::Type{<:Tail}, θ::NamedTuple)
@@ -66,6 +68,15 @@ function (CT::Type{<:ArchimaxCopula{2, <:Generator, <:Tail}})(d::Int, θ...)
     t_keys = map(k -> Symbol(:tail_, k), keys(Distributions.params(Tex)))
     nms = (g_keys..., t_keys...)
     return ArchimaxCopula(d, TG, TT, NamedTuple{nms}(θ))
+end
+
+function (CT::Type{<:ArchimaxCopula{d, <:Generator, <:Tail}})(θ...) where {d}
+    TG, TT = genandtailof(CT)
+    Gex = _example(ArchimedeanCopula{d, TG}, d).G
+    Tex = _example(ExtremeValueCopula{d, TT}, d).tail
+    g_keys = map(k -> Symbol(:gen_, k), keys(Distributions.params(Gex)))
+    t_keys = map(k -> Symbol(:tail_, k), keys(Distributions.params(Tex)))
+    return ArchimaxCopula(d, TG, TT, NamedTuple{(g_keys..., t_keys...)}(θ))
 end
 
 Distributions.params(C::ArchimaxCopula) = begin
@@ -215,7 +226,7 @@ end
 
 
 """
-    BB4Copula{T}
+    BB4Copula{d,T}
 
 Fields:
     - θ::Real - dependence parameter (θ ≥ 0)
@@ -242,8 +253,8 @@ References:
 
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.197-198
 """
-const BB4Copula{T} = ArchimaxCopula{2, ClaytonGenerator{T}, GalambosTail{T}}
-function _cdf(C::BB4Copula{T}, u) where T
+const BB4Copula{d,T} = ArchimaxCopula{d, ClaytonGenerator{T}, GalambosTail{T}}
+function _cdf(C::BB4Copula{2,T}, u) where T
     θ, δ = C.gen.θ, C.tail.θ
     θ == 0 && return u1*u2
     
@@ -258,7 +269,7 @@ function _cdf(C::BB4Copula{T}, u) where T
     r  = uθ + vθ - 1 - s                # [1 + a + b - (x+y)^{-1/δ}]
     return r^(-1/θ)
 end
-function Distributions._logpdf(C::BB4Copula{T}, u) where T
+function Distributions._logpdf(C::BB4Copula{2,T}, u) where T
     Tret = promote_type(T, Float64, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)
@@ -296,7 +307,7 @@ function Distributions._logpdf(C::BB4Copula{T}, u) where T
 end
 
 """
-    BB5Copula{T}
+    BB5Copula{d,T}
 
 Fields:
     - θ::Real - dependence parameter (θ ≥ 1)
@@ -323,8 +334,8 @@ References:
 
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.197-198
 """
-const BB5Copula{T} = ArchimaxCopula{2, GumbelGenerator{T}, GalambosTail{T}}
-function _cdf(C::BB5Copula{T}, u) where T
+const BB5Copula{d,T} = ArchimaxCopula{d, GumbelGenerator{T}, GalambosTail{T}}
+function _cdf(C::BB5Copula{2,T}, u) where T
     θ, δ = C.gen.θ, C.tail.θ
     u1, u2 = u
     x = -log(u1);  y = -log(u2) 
@@ -334,7 +345,7 @@ function _cdf(C::BB5Copula{T}, u) where T
     f    = exp((1/θ)*log(s))
     return exp(-f)
 end
-function Distributions._logpdf(C::BB5Copula{T}, u) where T
+function Distributions._logpdf(C::BB5Copula{2,T}, u) where T
     Tret = promote_type(T, Float64, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)

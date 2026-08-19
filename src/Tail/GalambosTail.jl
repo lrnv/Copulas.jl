@@ -1,5 +1,5 @@
 """
-    GalambosTail{T}, GalambosCopula{T}
+    GalambosTail{T}, GalambosCopula{d,T}
 
 Fields:
   - θ::Real — dependence parameter, θ ≥ 0
@@ -37,7 +37,7 @@ struct GalambosTail{T} <: AbstractUnivariateTail2
     end
 end
 
-const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
+const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:GalambosTail}, d, θ) = [log(θ.θ)]           # θ > 0
 _rebound_params(::Type{<:GalambosTail}, d, α) = (; θ = exp(α[1]))

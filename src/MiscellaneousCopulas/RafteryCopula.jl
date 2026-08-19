@@ -26,20 +26,20 @@ References:
 """
 struct RafteryCopula{d, P} <: Copula{d}
     θ::P  # Copula parameter
-    function RafteryCopula(d,θ)
+    function RafteryCopula{d}(θ) where {d}
         if (θ < 0) || (θ > 1)
             throw(ArgumentError("Theta must be in [0,1]"))
         elseif θ == 0
-            return IndependentCopula(d)
+            return IndependentCopula{d}()
         elseif θ == 1
-            return MCopula(d)
+            return MCopula{d}()
         else
             θ, _ = promote(θ, 1.0)
             return new{d,typeof(θ)}(θ)
         end
     end
-    RafteryCopula{D, P}(d,θ) where {D, P} = RafteryCopula(d,θ)
 end
+RafteryCopula(d, θ) = RafteryCopula{d}(θ)
 Base.eltype(R::RafteryCopula) = eltype(R.θ)
 Distributions.params(R::RafteryCopula) = (θ = R.θ,)
 _example(::Type{<:RafteryCopula}, d) = RafteryCopula(d, 0.5)

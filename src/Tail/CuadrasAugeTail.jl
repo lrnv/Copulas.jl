@@ -1,5 +1,5 @@
 """
-    CuadrasAugeTail{T}, CuadrasAugeCopula{T}
+    CuadrasAugeTail{T}, CuadrasAugeCopula{d,T}
 
 Fields:
   - θ::Real — dependence parameter, θ ∈ [0,1]
@@ -38,7 +38,7 @@ struct CuadrasAugeTail{T} <: AbstractUnivariateTail2
     end
 end
 
-const CuadrasAugeCopula{T} = ExtremeValueCopula{2, CuadrasAugeTail{T}}
+const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
 Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
 _rebound_params(::Type{<:CuadrasAugeTail}, d, α) = begin

@@ -12,10 +12,14 @@ Both Fréchet–Hoeffding bounds are Archimedean copulas.
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct WCopula <: Copula{2}
-    WCopula(d) = d!=2 ? error("WCopula only available in dimension 2") : new()
-    WCopula() = new()
+struct WCopula{d} <: Copula{d}
+    function WCopula{d}() where {d}
+        d == 2 || error("WCopula only available in dimension 2")
+        return new{2}()
+    end
 end
+WCopula() = WCopula{2}()
+WCopula(d) = WCopula{d}()
 Distributions._logpdf(::WCopula,           u) = sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::WCopula, u) = max(sum(u)-1,0)
 
