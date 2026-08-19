@@ -19,6 +19,7 @@ function _nataf_problem(Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distri
     # The Float64 nodes are converted to the working type; quadrature error
     # dominates their initial rounding error.
     E = LinearAlgebra.eigen(LinearAlgebra.SymTridiagonal(zeros(nodes), sqrt.(1.0:(nodes-1))))
+    quadrature_atol = T(sqrt(eps(eltype(E.values))))
     z, w = T.(E.values), T.(abs2.(E.vectors[1, :]))
 
     # Pull a margin back to normal space and standardize it using moments from
@@ -53,7 +54,7 @@ function _nataf_problem(Fᵢ::Distributions.UnivariateDistribution, Fⱼ::Distri
         ρ₀ -> induced(ρ₀) - target,
         (nextfloat(-one(T)), prevfloat(one(T))), Roots.A42())
     # the bounds are only as accurate as the quadrature itself
-    return (; lo, hi, inverse, atol=sqrt(eps(T)))
+    return (; lo, hi, inverse, atol=quadrature_atol)
 end
 
 # Closed-form problems. Their inverse maps are exact in the working type, so

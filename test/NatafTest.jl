@@ -88,6 +88,11 @@
         ρ₀ = Nataf(m, big"0.5"; nodes = 8)
         @test ρ₀ isa BigFloat
         @test Float64(ρ₀) ≈ Nataf((LogNormal(0.0, 0.8), Exponential(1.0)), 0.5; nodes = 8) atol = 1e-12
+
+        # The quadrature nodes originate in Float64, so their attainable-bound
+        # tolerance must not incorrectly shrink to eps(BigFloat).
+        hi = Copulas._nataf_problem(m..., big"0.5", 8).hi
+        @test Nataf(m, hi + big"1e-9"; nodes = 8) == prevfloat(one(BigFloat))
     end
 
     @testset "attainable extremes snap just inside ±1" begin
