@@ -10,6 +10,18 @@
     @test true
 end
 
+@testset "TCopula degrees of freedom are data, not a type value" begin
+    Σ = [1.0 0.25; 0.25 1.0]
+    C2 = TCopula(2, copy(Σ))
+    C20 = TCopula(20, copy(Σ))
+
+    @test typeof(C2) === typeof(C20)
+    @test params(C2).ν == 2
+    @test params(C20).ν == 20
+    @test Copulas.U(C2) == TDist(2)
+    @test Copulas.U(C20) == TDist(20)
+end
+
 @testset "Fix value Gaussian Copula & SklarDist" begin
     # [GenericTests integration]: Yes. This is a regression value test for cdf(SklarDist(...)); can be moved to a generic Sklar fixture tests.
 

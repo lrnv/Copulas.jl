@@ -47,11 +47,14 @@ References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 abstract type EllipticalCopula{d,MT} <: Copula{d} end
-Base.eltype(C::CT) where CT<:EllipticalCopula = Base.eltype(N(CT)(C.Σ))
+U(C::CT) where {CT<:EllipticalCopula} = U(CT)
+N(C::CT) where {CT<:EllipticalCopula} = N(CT)
+
+Base.eltype(C::EllipticalCopula) = Base.eltype(N(C)(C.Σ))
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::AbstractMatrix{T}) where {T<:Real, CT<:EllipticalCopula}
     # More efficient version that precomputes stuff:
-    n = N(CT)(C.Σ)
-    u = U(CT)
+    n = N(C)(C.Σ)
+    u = U(C)
     Random.rand!(rng,n,A)
     @inbounds for j in axes(A, 2), i in axes(A, 1)
         A[i, j] = clamp(T(Distributions.cdf(u, A[i, j])), zero(T), one(T))
@@ -64,7 +67,7 @@ function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
     TΣ = eltype(C.Σ)
     Tu = eltype(u)
     T = promote_type(TΣ, Tu)
-    U₁ = U(CT)
+    U₁ = U(C)
     # quantiles
     x = Vector{T}(undef, d)
     @inbounds for i in 1:d
@@ -75,7 +78,7 @@ function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
     @inbounds for i in 1:d
         s += Distributions.logpdf(U₁, x[i])
     end
-    return Distributions.logpdf(N(CT)(C.Σ),x) - s
+    return Distributions.logpdf(N(C)(C.Σ),x) - s
 end
 function make_cor!(Σ)
     # Verify that Σ is a correlation matrix, otherwise make it so : 
