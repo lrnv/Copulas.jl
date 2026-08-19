@@ -41,6 +41,7 @@ struct TCopula{d,Tν,MT} <: EllipticalCopula{d,MT}
 end
 TCopula(ν::Real, Σ::AbstractMatrix) = TCopula{size(Σ, 1)}(ν, Σ)
 TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula{d}(ν, Σ)
+(::Type{TCopula{D,Tν,MT}})(d::Int, ν::Real, Σ::AbstractMatrix) where {D,Tν,MT} = TCopula{d}(ν, Σ)
 
 
 

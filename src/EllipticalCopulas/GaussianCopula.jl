@@ -78,6 +78,8 @@ function GaussianCopula{d}(ρ::Real) where {d}
 end
 GaussianCopula(d::Int, ρ::Real) = GaussianCopula{d}(ρ)
 GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula{d}(Σ)
+(::Type{GaussianCopula{D,MT}})(d::Int, Σ::AbstractMatrix) where {D,MT} = GaussianCopula{d}(Σ)
+(::Type{GaussianCopula{D,MT}})(d::Int, ρ::Real) where {D,MT} = GaussianCopula{d}(ρ)
 
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal

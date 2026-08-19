@@ -11,6 +11,8 @@
     @test Copulas.ExtremeValueCopula{2}(Copulas.GalambosTail(1.0)) isa Copulas.Copula{2}
     @test ArchimaxCopula{2}(Copulas.ClaytonGenerator(2.0), Copulas.GalambosTail(1.0)) isa Copulas.Copula{2}
     @test TCopula{2}(4, copy(Σ)) isa TCopula{2}
+    @test GaussianCopula{2,Matrix{Float64}}(2, copy(Σ)) isa GaussianCopula{2}
+    @test TCopula{2,Int,Matrix{Float64}}(2, 4, copy(Σ)) isa TCopula{2}
 
     # These constructors can intentionally return a small union for exact
     # boundary cases, but every member has the statically selected dimension.
@@ -79,7 +81,10 @@ end
     )
     for (family, args) in extreme_value
         @test Core.apply_type(family, 2)(args...) isa Copulas.Copula{2}
+        @test family(2, args...) isa Copulas.Copula{2}
     end
+
+    @test GalambosCopula(2; θ=1.0) isa GalambosCopula{2}
 
     @test BB4Copula{2}(1.5, 1.0) isa Copulas.Copula{2}
     @test BB5Copula{2}(1.5, 1.0) isa Copulas.Copula{2}

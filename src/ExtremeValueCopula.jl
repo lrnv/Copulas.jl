@@ -48,7 +48,10 @@ ExtremeValueCopula(d, tail::Tail) = ExtremeValueCopula{d}(tail)
 function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
     return ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
 end
-(CT::Type{<:ExtremeValueCopula{2, <:Tail}})(d::Int, args...; kwargs...) = ExtremeValueCopula(2, tailof(CT)(args...; kwargs...))
+(CT::Type{<:ExtremeValueCopula{D}})(d::Int, args...; kwargs...) where {D} =
+    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+(CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) =
+    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
 
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
