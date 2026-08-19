@@ -50,6 +50,10 @@ _typed_extreme_value(CT, d, args...; kwargs...) =
 function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
     return _typed_extreme_value(CT, d, args...; kwargs...)
 end
+function (CT::Type{<:ExtremeValueCopula{D,TT}})(d::Int, args...; kwargs...) where {D,TT}
+    TailType = Base.typename(TT).wrapper
+    return ExtremeValueCopula{d}(TailType(args...; kwargs...))
+end
 function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) where {D}
     d = Base.unwrap_unionall(CT).parameters[1]
     nparams = fieldcount(Base.unwrap_unionall(tailof(CT)))

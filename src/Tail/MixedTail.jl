@@ -69,6 +69,7 @@ _rho_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 : 12 * QuadGK.quadgk(t -
 λᵤ(C::MixedCopula) = 0
 
 τ⁻¹(::Type{<:MixedCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? 1 : _invmono(θ -> _tau_Mixed(θ) - τ; kw...)
+τ⁻¹(::Type{<:MixedTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? 1 : _invmono(θ -> _tau_Mixed(θ) - τ; kw...)
 ρ⁻¹(::Type{<:MixedCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? 1 : _invmono(θ -> _rho_Mixed(θ) - ρ; kw...)
 β⁻¹(::Type{<:MixedCopula}, beta) = 2 * log2(beta + 1)
 λᵤ⁻¹(::Type{<:MixedCopula}, λ) = 2λ

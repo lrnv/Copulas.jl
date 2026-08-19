@@ -105,6 +105,7 @@ end
 λᵤ(C::CuadrasAugeCopula) = C.tail.θ
 
 τ⁻¹(::Type{<:CuadrasAugeCopula}, tau) = 2tau / (1 + tau)
+τ⁻¹(::Type{<:CuadrasAugeTail}, tau) = 2tau / (1 + tau)
 ρ⁻¹(::Type{<:CuadrasAugeCopula}, rho) = 4rho / (3 + rho)
 β⁻¹(::Type{<:CuadrasAugeCopula}, beta) = log2(beta + 1)
 λᵤ⁻¹(::Type{<:CuadrasAugeCopula}, λ) = λ

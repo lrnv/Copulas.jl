@@ -101,6 +101,7 @@ _rho_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.qu
 β(C::HuslerReissCopula) = 4^(1 - Distributions.cdf(Distributions.Normal(), 1/C.tail.θ)) - 1
 
 τ⁻¹(::Type{<:HuslerReissCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
+τ⁻¹(::Type{<:HuslerReissTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
 ρ⁻¹(::Type{<:HuslerReissCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_HuslerReiss(θ) - ρ; kw...)
 λᵤ⁻¹(::Type{<:HuslerReissCopula}, λ) = 1 / Distributions.quantile(Distributions.Normal(), 1 - λ/2)
 function β⁻¹(::Type{<:HuslerReissCopula}, beta)

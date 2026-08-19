@@ -127,6 +127,7 @@ _rho_Log(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -
 
 
 τ⁻¹(::Type{<:LogCopula}, tau) = 1 / (1 - tau)
+τ⁻¹(::Type{<:LogTail}, tau) = 1 / (1 - tau)
 ρ⁻¹(::Type{<:LogCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_Log(θ) - ρ; a=1.0, b=2.0)
 β⁻¹(::Type{<:LogCopula}, beta) = 1 / log2(-log2((beta + 1) / 4))
 λᵤ⁻¹(::Type{<:LogCopula}, λ) = 1 / log2(2 - λ)

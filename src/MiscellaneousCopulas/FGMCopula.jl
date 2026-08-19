@@ -58,6 +58,7 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     end
 end
 FGMCopula(d, θ) = FGMCopula{d}(θ)
+(::Type{<:FGMCopula{D,Tθ,Tf}})(d::Int, θ) where {D,Tθ,Tf} = FGMCopula{d}(θ)
 function _fgm_red(θ, v)
     # This function implements the reduction over combinations of the fgm copula.
     # It is non-alocative thus performant :)

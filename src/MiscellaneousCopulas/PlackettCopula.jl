@@ -46,6 +46,7 @@ struct PlackettCopula{d,P} <: Copula{d} # only d = 2 is valid
 end
 PlackettCopula(θ) = PlackettCopula{2}(θ)
 PlackettCopula(d::Integer, θ::Real) = PlackettCopula{d}(θ)
+(::Type{<:PlackettCopula{D,P}})(d::Int, θ) where {D,P} = PlackettCopula{d}(θ)
 
 Base.eltype(::PlackettCopula{2,P}) where {P} = P
 Distributions.params(C::PlackettCopula) = (θ = C.θ,)

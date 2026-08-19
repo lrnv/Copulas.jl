@@ -88,6 +88,9 @@ end
     end
     @test GalambosCopula{2}(2) isa GalambosCopula{2}
     @test tEVCopula{2}(4, 0.5) isa tEVCopula{2}
+    @test typeof(GalambosCopula{2}(1.0))(2, 0.5) isa GalambosCopula{2}
+    @test isfinite(Copulas.τ⁻¹(typeof(GalambosCopula{2}(1.0)), 0.2))
+    @test isfinite(Copulas.τ⁻¹(typeof(CuadrasAugeCopula{2}(0.5)), 0.2))
     @test CuadrasAugeCopula{2}(0.0) isa IndependentCopula{2}
     @test CuadrasAugeCopula{2}(1.0) isa MCopula{2}
 
@@ -95,4 +98,9 @@ end
 
     @test BB4Copula{2}(1.5, 1.0) isa Copulas.Copula{2}
     @test BB5Copula{2}(1.5, 1.0) isa Copulas.Copula{2}
+
+    @test typeof(ClaytonCopula{2}(0.5))(2, 0.7) isa ClaytonCopula{2}
+    @test typeof(PlackettCopula{2}(2.0))(2, 3.0) isa PlackettCopula{2}
+    @test typeof(RafteryCopula{2}(0.5))(2, 0.6) isa RafteryCopula{2}
+    @test typeof(FGMCopula{2}(0.5))(2, 0.4) isa FGMCopula{2}
 end

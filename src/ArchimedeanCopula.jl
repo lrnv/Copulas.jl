@@ -65,6 +65,10 @@ end
 function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
     return _typed_archimedean(CT, d, args...; kwargs...)
 end
+function (CT::Type{<:ArchimedeanCopula{D,TG}})(d::Int, args...; kwargs...) where {D,TG}
+    GT = Base.typename(TG).wrapper
+    return ArchimedeanCopula{d}(GT(args...; kwargs...))
+end
 function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...)
     d = Base.unwrap_unionall(CT).parameters[1]
     nparams = fieldcount(Base.unwrap_unionall(generatorof(CT)))
