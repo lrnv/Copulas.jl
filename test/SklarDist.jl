@@ -1,11 +1,11 @@
 @testset "Generic API plumbing" begin
     GenericModels = (
         # 3D Gaussian copula with modest correlations
-        Copulas.GaussianCopula([1.0 0.3 0.2; 0.3 1.0 0.25; 0.2 0.25 1.0]),
+        Copulas.GaussianCopula{3}([1.0 0.3 0.2; 0.3 1.0 0.25; 0.2 0.25 1.0]),
         # 3D Clayton (Archimedean) copula
-        Copulas.ClaytonCopula(3, 0.8),
+        Copulas.ClaytonCopula{3}(0.8),
         # 4D Independence copula
-        Copulas.IndependentCopula(4),
+        Copulas.IndependentCopula{4}(),
     )
 
     for C in GenericModels
@@ -35,11 +35,11 @@
 end
 
 @testset "SklarDist work buffers promote all numeric inputs" begin
-    S = SklarDist(IndependentCopula(2), (Normal(), Normal()))
+    S = SklarDist(IndependentCopula{2}(), (Normal(), Normal()))
     @test cdf(S, [0, 0]) ≈ 0.25
 
     Smixed = SklarDist(
-        IndependentCopula(2),
+        IndependentCopula{2}(),
         (Normal(0f0, 1f0), Normal(0.0, 1.0)),
     )
     @test cdf(Smixed, Float32[0, 0]) isa Float64
@@ -57,7 +57,7 @@ end
     @test all(margin -> margin isa Normal, Sinteger.m)
 
     Sbig = SklarDist(
-        IndependentCopula(2),
+        IndependentCopula{2}(),
         (Normal(big"0", big"1"), Normal(big"0", big"1")),
     )
     xbig = BigFloat[0, 0]

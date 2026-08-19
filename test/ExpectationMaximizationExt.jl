@@ -15,7 +15,7 @@ const EM_N = 80
 
     @testset "SklarDist with mixture margins" begin
         initial = SklarDist(
-            ClaytonCopula(2, 1.4),
+            ClaytonCopula{2}(1.4),
             (normal_mix, LogNormal(0.2, 0.5)),
         )
         data = rand(EM_RNG, initial, EM_N)
@@ -32,14 +32,14 @@ const EM_N = 80
     end
 
     @testset "Weighted component fits" begin
-        copula = ClaytonCopula(2, 1.4)
+        copula = ClaytonCopula{2}(1.4)
         uniforms = rand(EM_RNG, copula, EM_N)
         weights = collect(range(0.2, 1.0; length=EM_N))
         fitted_copula = fit_mle(copula, uniforms, weights)
         @test fitted_copula isa ClaytonCopula
         @test isfinite(Distributions.params(fitted_copula).θ)
 
-        @test fit_mle(IndependentCopula(2), uniforms, weights) isa IndependentCopula
+        @test fit_mle(IndependentCopula{2}(), uniforms, weights) isa IndependentCopula
 
         @test_throws DimensionMismatch fit_mle(copula, uniforms[1:1, :], weights)
         @test_throws DimensionMismatch fit_mle(copula, uniforms, weights[1:end-1])
@@ -57,7 +57,7 @@ const EM_N = 80
 
     @testset "IFM input validation" begin
         sklar = SklarDist(
-            ClaytonCopula(2, 1.0),
+            ClaytonCopula{2}(1.0),
             (Normal(), Normal()),
         )
         data = rand(EM_RNG, sklar, 12)
@@ -70,7 +70,7 @@ const EM_N = 80
         @test_throws ArgumentError fit_mle(sklar, nonfinite_data)
 
         discrete_sklar = SklarDist(
-            IndependentCopula(2),
+            IndependentCopula{2}(),
             (Poisson(2.0), Normal()),
         )
         @test_throws ArgumentError fit_mle(discrete_sklar, data)
@@ -78,7 +78,7 @@ const EM_N = 80
 
     @testset "Mixtures of copulas" begin
         initial = MixtureModel(
-            [ClaytonCopula(2, 0.6), ClaytonCopula(2, 2.5)],
+            [ClaytonCopula{2}(0.6), ClaytonCopula{2}(2.5)],
             [0.5, 0.5],
         )
         data = rand(EM_RNG, initial, EM_N)
@@ -89,8 +89,8 @@ const EM_N = 80
 
         heterogeneous = MixtureModel(
             Copulas.Copula[
-                ClaytonCopula(2, 1.0),
-                GaussianCopula(2, -0.35),
+                ClaytonCopula{2}(1.0),
+                GaussianCopula{2}(-0.35),
             ],
             [0.5, 0.5],
         )
@@ -103,11 +103,11 @@ const EM_N = 80
 
     @testset "Mixtures of SklarDist" begin
         component1 = SklarDist(
-            ClaytonCopula(2, 0.7),
+            ClaytonCopula{2}(0.7),
             (Normal(-1.0, 0.8), Normal(0.0, 0.4)),
         )
         component2 = SklarDist(
-            ClaytonCopula(2, 2.2),
+            ClaytonCopula{2}(2.2),
             (Normal(1.2, 0.6), Normal(0.8, 0.3)),
         )
         initial = MixtureModel([component1, component2], [0.45, 0.55])
@@ -120,11 +120,11 @@ const EM_N = 80
 
     @testset "Nested mixture margins" begin
         component1 = SklarDist(
-            ClaytonCopula(2, 0.8),
+            ClaytonCopula{2}(0.8),
             (normal_mix, Normal(-0.5, 0.8)),
         )
         component2 = SklarDist(
-            ClaytonCopula(2, 2.0),
+            ClaytonCopula{2}(2.0),
             (normal_mix, Normal(1.0, 0.6)),
         )
         initial = MixtureModel([component1, component2], [0.5, 0.5])
@@ -135,7 +135,7 @@ const EM_N = 80
         @test all(component -> component.m[1] isa MixtureModel, components(fitted))
 
         all_mixture_margins = SklarDist(
-            GaussianCopula(2, 0.45),
+            GaussianCopula{2}(0.45),
             (
                 normal_mix,
                 MixtureModel(

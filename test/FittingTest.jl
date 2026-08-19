@@ -85,7 +85,7 @@
     end
 
     @testset "API Error Handling" begin
-        dummy_copula = IndependentCopula(2)
+        dummy_copula = IndependentCopula{2}()
         M_dummy = Copulas.CopulaModel(dummy_copula, 10, 0.0, :dummy)
         @test_throws ArgumentError StatsBase.residuals(M_dummy)
         @test_throws ArgumentError StatsBase.predict(M_dummy, what=:foo)
@@ -107,13 +107,13 @@ end
     Random.seed!(rng,123)
     n_samples = 2000
     test_copulas = [
-        (d=3, copula=GumbelCopula(2, 3.5),      description="3D Gumbel with upper tail dependence"),
-        (d=3, copula=ClaytonCopula(2, 4.0),     description="Clayton 3D with lower tail dependence"),
-        (d=4, copula=GumbelCopula(2, 3.5),      description="Gumbel 4D with lower tail dependence"),
-        (d=4, copula=ClaytonCopula(2, 4.0),     description="Clayton 4D with lower tail dependence"),
-        (d=2, copula=GalambosCopula(2, 4.0),    description="2D Galambos with lower tail dependence"),
-        (d=2, copula=HuslerReissCopula(2, 4.0), description="Husler Reiss 2D with lower tail dependence"),
-        (d=2, copula=LogCopula(2, 4.0),         description="2D Logistic with lower tail dependency")
+        (d=3, copula=GumbelCopula{2}(3.5),      description="3D Gumbel with upper tail dependence"),
+        (d=3, copula=ClaytonCopula{2}(4.0),     description="Clayton 3D with lower tail dependence"),
+        (d=4, copula=GumbelCopula{2}(3.5),      description="Gumbel 4D with lower tail dependence"),
+        (d=4, copula=ClaytonCopula{2}(4.0),     description="Clayton 4D with lower tail dependence"),
+        (d=2, copula=GalambosCopula{2}(4.0),    description="2D Galambos with lower tail dependence"),
+        (d=2, copula=HuslerReissCopula{2}(4.0), description="Husler Reiss 2D with lower tail dependence"),
+        (d=2, copula=LogCopula{2}(4.0),         description="2D Logistic with lower tail dependency")
     ]
     # Precompute one sample per copula to reuse across metric testsets
     samples = [rand(rng, tc.copula, n_samples) for tc in test_copulas]
