@@ -1,5 +1,5 @@
 """
-    MOTail{T}, MOCopula{T}
+    MOTail{T}, MOCopula{d,T}
 
 Fields:
   - λ₁::Real      — parameter ≥ 0
@@ -40,7 +40,7 @@ struct MOTail{T} <: Tail2
     end
 end
 
-const MOCopula{T} = ExtremeValueCopula{2, MOTail{T}}
+const MOCopula{d,T} = ExtremeValueCopula{d, MOTail{T}}
 Distributions.params(tail::MOTail) = (λ₁ = tail.λ₁, λ₂ = tail.λ₂, λ₃ = tail.λ₁₂)
 _unbound_params(::Type{<:MOTail}, d, θ) = [log(θ.λ₁), log(θ.λ₂), log(θ.λ₃)]
 _rebound_params(::Type{<:MOTail}, d, α) = (; λ₁ = exp(α[1]), λ₂ = exp(α[2]), λ₃ = exp(α[3]))
@@ -60,13 +60,13 @@ function A(tail::MOTail{T}, t::Real) where T
     term3 = λ₁₂ * max(m1, m2)
     return r1 + r2 + term3
 end
-function τ(C::MOCopula)
+function τ(C::ExtremeValueCopula{2,<:MOTail})
     a = C.tail.λ₁/(C.tail.λ₁+C.tail.λ₁₂)
     b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
     return a*b/(a+b-a*b)
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula,
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MOTail},
                               A::AbstractMatrix{S}) where {S<:Real}
     size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂

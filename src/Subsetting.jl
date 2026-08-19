@@ -22,13 +22,14 @@ This class allows to construct a random vector corresponding to a few dimensions
 struct SubsetCopula{d,CT} <: Copula{d}
     C::CT
     dims::NTuple{d,Int}
-    function SubsetCopula(C::Copula{d}, dims::NTuple{p, Int}) where {d, p}
+    function SubsetCopula{p}(C::Copula{d}, dims::NTuple{p, Int}) where {d, p}
         @assert 2 <= p <= d "You cannot construct a subsetcopula with dimension p=1 or p > d (d = $d, p = $p provided)"
         dims == Tuple(1:d) && return C
         @assert all(dims .<= d)
         return new{p, typeof(C)}(C,Tuple(Int.(dims)))
     end
 end
+SubsetCopula(C::Copula, dims::NTuple{p,Int}) where {p} = SubsetCopula{p}(C, dims)
 function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT,p}
     @assert 2 <= p <= d
     return SubsetCopula(CS.C, ntuple(i -> CS.dims[dims2[i]], p))

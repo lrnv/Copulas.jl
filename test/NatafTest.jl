@@ -49,11 +49,11 @@
     @testset "end-to-end: sampled Pearson correlation matches the target" begin
         m  = (LogNormal(0, 0.8), Gamma(1, 2), Beta(1, 2))
         R  = [1.0 0.7 0.3; 0.7 1.0 0.5; 0.3 0.5 1.0]
-        D  = SklarDist(GaussianCopula(Nataf(m, R)), m)
+        D  = SklarDist(GaussianCopula{length(m)}(Nataf(m, R)), m)
         R̂  = Statistics.cor(rand(rng, D, 10^5)')
         @test R̂ ≈ R atol = 0.02
         # while the uncorrected copula misses the lognormal pair by far more:
-        R̃ = Statistics.cor(rand(rng, SklarDist(GaussianCopula(R), m), 10^5)')
+        R̃ = Statistics.cor(rand(rng, SklarDist(GaussianCopula{length(m)}(R), m), 10^5)')
         @test abs(R̃[1, 2] - R[1, 2]) > 0.03
     end
 
@@ -102,8 +102,8 @@
         ρ₋ = Nataf((Normal(), Normal()), -1.0)
         @test ρ₊ == prevfloat(1.0)
         @test ρ₋ == nextfloat(-1.0)
-        @test GaussianCopula(2, ρ₊) isa GaussianCopula
-        @test GaussianCopula([1.0 ρ₋; ρ₋ 1.0]) isa GaussianCopula
+        @test GaussianCopula{2}(ρ₊) isa GaussianCopula
+        @test GaussianCopula{2}([1.0 ρ₋; ρ₋ 1.0]) isa GaussianCopula
     end
 
     @testset "generic-path attainability tolerance matches quadrature accuracy" begin

@@ -1,5 +1,5 @@
 """
-    tEVTail{Tdf,Tρ}, tEVCopula{T}
+    tEVTail{Tdf,Tρ}, tEVCopula{d,T}
 
 Fields:
   - ν::Real — degrees of freedom (ν > 0)
@@ -45,7 +45,7 @@ struct tEVTail{T} <: Tail2
         return new{typeof(ρT)}(νT, ρT)
     end
 end
-const tEVCopula{T} = ExtremeValueCopula{2, tEVTail{T}}
+const tEVCopula{d,T} = ExtremeValueCopula{d, tEVTail{T}}
 Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
 _unbound_params(::Type{<:tEVTail}, d, θ) = [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
 _rebound_params(::Type{<:tEVTail}, d, α) = (; ν = exp(α[1]), ρ = tanh(α[2]))

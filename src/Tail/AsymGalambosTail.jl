@@ -1,5 +1,5 @@
 """
-    AsymGalambosTail{T}, AsymGalambosCopula{T}
+    AsymGalambosTail{T}, AsymGalambosCopula{d,T}
 
 Fields:
   - α::Real          — dependence parameter
@@ -47,7 +47,7 @@ struct AsymGalambosTail{T} <: Tail2
     end
 end
 
-const AsymGalambosCopula{T} = ExtremeValueCopula{2, AsymGalambosTail{T}}
+const AsymGalambosCopula{d,T} = ExtremeValueCopula{d, AsymGalambosTail{T}}
 Distributions.params(tail::AsymGalambosTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 _unbound_params(::Type{<:AsymGalambosTail}, d, θ) = [log(θ.α), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)] 
 _rebound_params(::Type{<:AsymGalambosTail}, d, α) = begin 

@@ -10,8 +10,8 @@ using StableRNGs
     rng = StableRNG(1234)
     for θ in [1.0, Inf, 0.5, rand(rng, Uniform(1.0, 10.0))]
         try
-            C1 = LogCopula(2, θ)
-            C2 = GumbelCopula(2, θ)
+            C1 = LogCopula{2}(θ)
+            C2 = GumbelCopula{2}(θ)
             data = rand(rng, C1, 10)
 
             for i in 1:10
@@ -33,7 +33,7 @@ end
 
 @testitem "Extreme Galambos density test" begin
     # [GenericTests integration]: No. This is a trivial smoke test to catch crashes at extreme params; keep as minimal targeted test.
-    rand(GalambosCopula(2, 19.7), 400)
-    rand(GalambosCopula(2, 210.0), 400)
+    rand(GalambosCopula{2}(19.7), 400)
+    rand(GalambosCopula{2}(210.0), 400)
     @test true
 end

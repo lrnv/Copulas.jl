@@ -1,9 +1,9 @@
 
 @testset "Extreme-value quantiles use bounded bisection" begin
     for C in (
-        BC2Copula(2, 0.5, 0.3),
-        BC2Copula(2, 0.5516353577049822, 0.33689370624999193),
-        BC2Copula(2, 0.6, 0.8),
+        BC2Copula{2}(0.5, 0.3),
+        BC2Copula{2}(0.5516353577049822, 0.33689370624999193),
+        BC2Copula{2}(0.6, 0.8),
     )
         D = Copulas.ExtremeDist(C.tail)
         for p in (0.1, 0.5, 0.9)
@@ -14,13 +14,19 @@
     end
 end
 
+@testset "Marshall-Olkin specialized sampler" begin
+    C = MOCopula{2}(0.1, 0.2, 0.3)
+    U = rand(rng, C, 5_000)
+    @test all(isapprox.(vec(mean(U; dims=2)), 0.5; atol=0.03, rtol=0))
+end
+
 @testset "Testing survival stuff" begin
     # [GenericTests integration]: Yes. Symmetry of survival transformations on pdf/cdf is generic; we can add survival invariance checks.
     Random.seed!(rng,123)
-    C = ClaytonCopula(2,3.0) # bivariate clayton with theta = 3.0
-    C90 = SurvivalCopula(C,(1,)) # flips the first dimension
-    C270 = SurvivalCopula(C,(2,)) # flips only the second dimension. 
-    C180 = SurvivalCopula(C,(1,2)) # flips both dimensions.
+    C = ClaytonCopula{2}(3.0) # bivariate clayton with theta = 3.0
+    C90 = SurvivalCopula{2}(C,(1,)) # flips the first dimension
+    C270 = SurvivalCopula{2}(C,(2,)) # flips only the second dimension.
+    C180 = SurvivalCopula{2}(C,(1,2)) # flips both dimensions.
 
     u1,u2 = rand(rng,2)
     p = pdf(C,[u1,u2])
@@ -28,23 +34,23 @@ end
     @test pdf(C270,[u1,1-u2]) == p
     @test pdf(C180,[1-u1,1-u2]) == p
 
-    C3 = SurvivalCopula(ClaytonCopula(3, 2.0), (3,))
+    C3 = SurvivalCopula{3}(ClaytonCopula{3}(2.0), (3,))
     S13 = subsetdims(C3, (1, 3))
-    Sref = SurvivalCopula(ClaytonCopula(2, 2.0), (2,))
+    Sref = SurvivalCopula{2}(ClaytonCopula{2}(2.0), (2,))
     u = [0.25, 0.7]
     @test cdf(S13, u) ≈ cdf(Sref, u)
     @test pdf(S13, u) ≈ pdf(Sref, u)
 
     # Reordering changes flip positions, not their original dimension labels.
-    C13 = SurvivalCopula(ClaytonCopula(3, 2.0), (1, 3))
+    C13 = SurvivalCopula{3}(ClaytonCopula{3}(2.0), (1, 3))
     S31 = subsetdims(C13, (3, 1))
-    S31ref = SurvivalCopula(ClaytonCopula(2, 2.0), (1, 2))
+    S31ref = SurvivalCopula{2}(ClaytonCopula{2}(2.0), (1, 2))
     @test cdf(S31, u) ≈ cdf(S31ref, u)
     @test pdf(S31, u) ≈ pdf(S31ref, u)
 
     # Conditioning must remap surviving flipped dimensions as tuple values,
     # rather than passing the tuple type to the SurvivalCopula constructor.
-    C24 = SurvivalCopula(ClaytonCopula(4, 2.0), (2, 4))
+    C24 = SurvivalCopula{4}(ClaytonCopula{4}(2.0), (2, 4))
     C24cond = condition(C24, (1, 3), (0.25, 0.75))
     @test C24cond.C isa SurvivalCopula{2}
     @test 0.0 <= cdf(C24cond, [0.4, 0.6]) <= 1.0
@@ -54,33 +60,33 @@ end
 @testset "RafteryCopula Constructor" begin
     # [GenericTests integration]: Partially. Constructor mapping to degenerate copulas (Independent/MCopula) could be generalized; keep argument errors here.
     for d in [2,3,4]
-        @test isa(RafteryCopula(d,0.0), IndependentCopula)
-        @test isa(RafteryCopula(d,1.0), MCopula)
+        @test isa(RafteryCopula{d}(0.0), IndependentCopula)
+        @test isa(RafteryCopula{d}(1.0), MCopula)
     end
-    @test_throws ArgumentError RafteryCopula(3,-1.5)
-    @test_throws ArgumentError RafteryCopula(2, 2.6)
+    @test_throws ArgumentError RafteryCopula{3}(-1.5)
+    @test_throws ArgumentError RafteryCopula{2}(2.6)
 end
 
 @testset "RafteryCopula CDF" begin
     # [GenericTests integration]: Maybe. The numeric values are specific regression checks; a lighter generic monotonicity/nonnegativity check exists.
     Random.seed!(rng,123)
     for d in [2, 3, 4]
-        F = RafteryCopula(d, 0.5)
+        F = RafteryCopula{d}(0.5)
         cdf_value = cdf(F, rand(d))
         pdf_value = pdf(F,rand(d))
         @test cdf_value >= 0 && cdf_value <= 1
         @test pdf_value >= 0 
     end
 
-    @test cdf(RafteryCopula(2, 0.8), [0.2, 0.5]) ≈ 0.199432 atol=1e-5
-    @test cdf(RafteryCopula(2, 0.5), [0.3, 0.8]) ≈ 0.2817 atol=1e-5
-    @test cdf(RafteryCopula(3, 0.5), [0.1, 0.2, 0.3]) ≈ 0.08236007 atol=1e-5
-    @test cdf(RafteryCopula(3, 0.1), [0.4, 0.8, 0.2]) ≈ 0.08581997 atol=1e-5    
+    @test cdf(RafteryCopula{2}(0.8), [0.2, 0.5]) ≈ 0.199432 atol=1e-5
+    @test cdf(RafteryCopula{2}(0.5), [0.3, 0.8]) ≈ 0.2817 atol=1e-5
+    @test cdf(RafteryCopula{3}(0.5), [0.1, 0.2, 0.3]) ≈ 0.08236007 atol=1e-5
+    @test cdf(RafteryCopula{3}(0.1), [0.4, 0.8, 0.2]) ≈ 0.08581997 atol=1e-5
 
-    @test pdf(RafteryCopula(2, 0.8), [0.2, 0.5]) ≈ 0.114055555 atol=1e-4
-    @test pdf(RafteryCopula(2, 0.5), [0.3, 0.8]) ≈ 0.6325 atol=1e-4
-    @test pdf(RafteryCopula(3, 0.5), [0.1, 0.2, 0.3]) ≈ 1.9945086 atol=1e-4
-    @test pdf(RafteryCopula(3, 0.1), [0.4, 0.8, 0.2]) ≈ 0.939229 atol=1e-4
+    @test pdf(RafteryCopula{2}(0.8), [0.2, 0.5]) ≈ 0.114055555 atol=1e-4
+    @test pdf(RafteryCopula{2}(0.5), [0.3, 0.8]) ≈ 0.6325 atol=1e-4
+    @test pdf(RafteryCopula{3}(0.5), [0.1, 0.2, 0.3]) ≈ 1.9945086 atol=1e-4
+    @test pdf(RafteryCopula{3}(0.1), [0.4, 0.8, 0.2]) ≈ 0.939229 atol=1e-4
 end
 
 @testset "Check against manual version - CDF" begin
@@ -116,9 +122,9 @@ end
         return cdf_value
     end
     @test prueba_CDF([0.5,3], [0.1,0.2,0.3]) ≈ 0.08236 atol=1e-4 # According to https://github.com/lrnv/Copulas.jl/pull/137#issuecomment-1953365273
-    @test prueba_CDF([0.5,3], [0.1,0.2,0.3]) ≈ cdf(RafteryCopula(3,0.5), [0.1,0.2,0.3])
-    @test prueba_CDF([0.8,2], [0.1,0.2]) ≈ cdf(RafteryCopula(2,0.8), [0.1,0.2])
-    @test prueba_CDF([0.2,2], [0.8,0.2]) ≈ cdf(RafteryCopula(2,0.2), [0.8,0.2])
+    @test prueba_CDF([0.5,3], [0.1,0.2,0.3]) ≈ cdf(RafteryCopula{3}(0.5), [0.1,0.2,0.3])
+    @test prueba_CDF([0.8,2], [0.1,0.2]) ≈ cdf(RafteryCopula{2}(0.8), [0.1,0.2])
+    @test prueba_CDF([0.2,2], [0.8,0.2]) ≈ cdf(RafteryCopula{2}(0.2), [0.8,0.2])
 end
 
 @testset "Check against manual version - PDF" begin
@@ -146,9 +152,9 @@ end
         return pdf_value
     end
     @test prueba_PDF([0.5,3], [0.1,0.2,0.3]) ≈ 1.99450 atol=1e-4 # According to https://github.com/lrnv/Copulas.jl/pull/137#issuecomment-1953375141
-    @test prueba_PDF([0.5,3], [0.1,0.2,0.3]) ≈ pdf(RafteryCopula(3,0.5), [0.1,0.2,0.3])
-    @test prueba_PDF([0.8,2], [0.1,0.2]) ≈ pdf(RafteryCopula(2,0.8), [0.1,0.2])
-    @test prueba_PDF([0.2,2], [0.8,0.2]) ≈ pdf(RafteryCopula(2,0.2), [0.8,0.2])
+    @test prueba_PDF([0.5,3], [0.1,0.2,0.3]) ≈ pdf(RafteryCopula{3}(0.5), [0.1,0.2,0.3])
+    @test prueba_PDF([0.8,2], [0.1,0.2]) ≈ pdf(RafteryCopula{2}(0.8), [0.1,0.2])
+    @test prueba_PDF([0.2,2], [0.8,0.2]) ≈ pdf(RafteryCopula{2}(0.2), [0.8,0.2])
 end
 
 
@@ -156,9 +162,9 @@ end
     # [GenericTests integration]: Partially. Constructor edge cases can be made generic; the fixed value grids are regression tests, keep here.
 
     # Fix the bahavior ofc the constructor: 
-    @test isa(PlackettCopula(1), IndependentCopula)
-    @test isa(PlackettCopula(Inf),WCopula) # should work in any dimenisons if theta is smaller than the bound.
-    @test isa(PlackettCopula(0),MCopula)
+    @test isa(PlackettCopula{2}(1), IndependentCopula)
+    @test isa(PlackettCopula{2}(Inf),WCopula) # should work in any dimenisons if theta is smaller than the bound.
+    @test isa(PlackettCopula{2}(0),MCopula)
 
     # Fix a few values for cdf and pdf:
     u = 0.1:0.18:1
@@ -168,17 +174,17 @@ end
     l3 = [1.0592107420343486, 1.023290881054283, 1.038466936984394, 1.1100773231007635, 1.2729591789643138, 1.652892561983471]
     l4 = [0.8446203068160272, 1.023290881054283, 1.0648914416282562, 0.9360170818943749, 0.7346611825055718, 0.5540166204986149]
     for i in 1:6
-        @test cdf(PlackettCopula(2.0), [u[i], v[i]]) ≈ l1[i]
-        @test cdf(PlackettCopula(0.5), [u[i], v[i]]) ≈ l2[i]
-        @test pdf(PlackettCopula(2.0), [u[i], v[i]]) ≈ l3[i]
-        @test pdf(PlackettCopula(0.5), [u[i], v[i]]) ≈ l4[i]
+        @test cdf(PlackettCopula{2}(2.0), [u[i], v[i]]) ≈ l1[i]
+        @test cdf(PlackettCopula{2}(0.5), [u[i], v[i]]) ≈ l2[i]
+        @test pdf(PlackettCopula{2}(2.0), [u[i], v[i]]) ≈ l3[i]
+        @test pdf(PlackettCopula{2}(0.5), [u[i], v[i]]) ≈ l4[i]
     end
 end
 
 @testset "Fixing values of FGMCopula - cdf, pdf, constructor" begin
     # [GenericTests integration]: Partially. Constructor-to-independent is generic; the numeric regression grids for cdf/pdf should stay specific.
 
-    @test isa(FGMCopula(2,0.0), IndependentCopula)
+    @test isa(FGMCopula{2}(0.0), IndependentCopula)
     Random.seed!(rng,123)
 
     cdf_exs = [
@@ -189,7 +195,7 @@ end
     ]
     
     for (par, u, (ctruth, ctol), (ptruth, ptol)) in cdf_exs
-        copula = FGMCopula(length(u), par)
+        copula = FGMCopula{length(u)}(par)
         @test cdf(copula, u) ≈ ctruth atol=ctol
         @test pdf(copula, u) ≈ ptruth atol=ptol
     end

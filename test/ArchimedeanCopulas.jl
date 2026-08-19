@@ -5,7 +5,7 @@
     # We can add a predicate + @testif block in GenericTests that exercises boundary-zero conditions when the family declares them.
 
     θ = 1.1
-    C = JoeCopula(2, θ)
+    C = JoeCopula{2}(θ)
 
     # Joe copula is zero on all borders and corners of the hypercube.
     # so as soon as there is a zero or a one it should be zero.
@@ -17,17 +17,17 @@
         @test pdf(C, [u, 1]) == 0
     end
 
-    G = GumbelCopula(2, 2.5)
+    G = GumbelCopula{2}(2.5)
     @test pdf(G, [0.1,0.0]) == 0.0
     @test pdf(G, [0.0,0.1]) == 0.0
     @test pdf(G, [0.0,0.0]) == 0.0
     
     # Issue 247
-    @test pdf(FrankCopula(2, 2.5), [1,1]*eps()) ≈ 2.723563724584597
-    @test pdf(FrankCopula(2, -2.5), [1,1]*eps()) ≈ 0.22356372458463078
-    @test pdf(FrankCopula(2, -2.5), [1,1]*0.0) == 0.0
-    @test pdf(FrankCopula(2, 2.5), [1,1]*0.0) == 0.0
-    @test isapprox(pdf(SklarDist(FrankCopula(2,-2.5),(Normal(-2.,1),Normal(-0.3,0.1))), [2.,-2.]), 0.0, atol=eps())
+    @test pdf(FrankCopula{2}(2.5), [1,1]*eps()) ≈ 2.723563724584597
+    @test pdf(FrankCopula{2}(-2.5), [1,1]*eps()) ≈ 0.22356372458463078
+    @test pdf(FrankCopula{2}(-2.5), [1,1]*0.0) == 0.0
+    @test pdf(FrankCopula{2}(2.5), [1,1]*0.0) == 0.0
+    @test isapprox(pdf(SklarDist(FrankCopula{2}(-2.5),(Normal(-2.,1),Normal(-0.3,0.1))), [2.,-2.]), 0.0, atol=eps())
 
 end
 
@@ -36,7 +36,7 @@ end
     # "golden samples" check behind a feature flag for select baseline families. τ identities and constructor edge-cases (0, -1, Inf) can be generalized.
 
 
-    C = ClaytonCopula(2, 2.5)
+    C = ClaytonCopula{2}(2.5)
     @test hcubature(x -> pdf(C, x), zeros(2), ones(2))[1] ≈ 1.0
 
     # Fix a few cdf and pdf values:
@@ -47,22 +47,22 @@ end
     pdf1 = [0.0, 2.2965556205046926, 1.481003649342278, 1.614508582188617, 0.0]
     pdf2 = [0.0, 0.0, 1.0, 2 / 3, 0.0]
     for i in 1:5
-        @test cdf(ClaytonCopula(2,2),[x[i],y[i]]) ≈ cdf1[i]
-        @test cdf(ClaytonCopula(2,-0.5),[x[i],y[i]]) ≈ cdf2[i]
-        @test pdf(ClaytonCopula(2,2),[x[i],y[i]]) ≈ pdf1[i]
-        @test pdf(ClaytonCopula(2,-0.5),[x[i],y[i]]) ≈ pdf2[i]
+        @test cdf(ClaytonCopula{2}(2),[x[i],y[i]]) ≈ cdf1[i]
+        @test cdf(ClaytonCopula{2}(-0.5),[x[i],y[i]]) ≈ cdf2[i]
+        @test pdf(ClaytonCopula{2}(2),[x[i],y[i]]) ≈ pdf1[i]
+        @test pdf(ClaytonCopula{2}(-0.5),[x[i],y[i]]) ≈ pdf2[i]
     end
 
     # Fix a few tau values:
-    @test Copulas.τ(ClaytonCopula(2,-0.5)) == -1 / 3
-    @test Copulas.τ(ClaytonCopula(2,2)) == 0.5
-    @test Copulas.τ(ClaytonCopula(2,10)) == 10 / 12
+    @test Copulas.τ(ClaytonCopula{2}(-0.5)) == -1 / 3
+    @test Copulas.τ(ClaytonCopula{2}(2)) == 0.5
+    @test Copulas.τ(ClaytonCopula{2}(10)) == 10 / 12
 
     # Fix constructor behavior:
-    @test isa(ClaytonCopula(2,0), IndependentCopula)
-    @test isa(ClaytonCopula(2,-0.7), ClaytonCopula)
-    @test isa(ClaytonCopula(2,-1), WCopula)
-    @test isa(ClaytonCopula(2,Inf), MCopula)
+    @test isa(ClaytonCopula{2}(0), IndependentCopula)
+    @test isa(ClaytonCopula{2}(-0.7), ClaytonCopula)
+    @test isa(ClaytonCopula{2}(-1), WCopula)
+    @test isa(ClaytonCopula{2}(Inf), MCopula)
 end
 
 
@@ -84,14 +84,14 @@ end
     @test Copulas.τ⁻¹(FrankCopula, -0.3881) ≈ -4. atol=1.0e-3
     @test Copulas.τ⁻¹(ClaytonCopula, -1/3) ≈ -.5 atol=1.0e-5
 
-    @test Copulas.ρ(ClaytonCopula(2,3.)) ≈ 0.78645 atol=1.0e-4
-    @test Copulas.ρ(ClaytonCopula(2,0.001)) ≈ 0. atol=1.0e-2
-    @test Copulas.ρ(GumbelCopula(2,3.)) ≈ 0.8489 atol=1.0e-4
+    @test Copulas.ρ(ClaytonCopula{2}(3.)) ≈ 0.78645 atol=1.0e-4
+    @test Copulas.ρ(ClaytonCopula{2}(0.001)) ≈ 0. atol=1.0e-2
+    @test Copulas.ρ(GumbelCopula{2}(3.)) ≈ 0.8489 atol=1.0e-4
 
     @test Copulas.ρ⁻¹(ClaytonCopula, 1/3) ≈ 0.58754 atol=1.0e-5
     @test Copulas.ρ⁻¹(ClaytonCopula, 0.01) ≈ 0. atol=1.0e-1
     @test Copulas.ρ⁻¹(ClaytonCopula, -0.4668) ≈ -.5 atol=1.0e-3
-    ρstrong = Copulas.ρ(ClaytonCopula(2, 7.3))
+    ρstrong = Copulas.ρ(ClaytonCopula{2}(7.3))
     @test Copulas.ρ⁻¹(ClaytonCopula, ρstrong) ≈ 7.3 atol=1.0e-5
     @test Copulas.ρ⁻¹(ClaytonCopula, 1.0) == Inf
 
@@ -131,27 +131,27 @@ end
 
     # Gumbel
     Random.seed!(rng,123)
-    x = rand(rng,GumbelCopula(3,2.), 40_000)
+    x = rand(rng,GumbelCopula{3}(2.), 40_000)
     @test_broken tail(x[:,1], x[:,2], "r") ≈ 2-2^(1/2) atol=1.0e-1
     @test tail(x[:,1], x[:,2], "l", 0.00001) ≈ 0.
     @test tail(x[:,1], x[:,3], "l", 0.00001) ≈ 0.
 
     # Clayton
     Random.seed!(rng,123)
-    x = rand(rng,ClaytonCopula(3,1.), 40_000)
+    x = rand(rng,ClaytonCopula{3}(1.), 40_000)
     @test_broken tail(x[:,1], x[:,2], "l") ≈ 2.0^(-1) atol=1.0e-1
     @test_broken tail(x[:,1], x[:,3], "l") ≈ 2.0^(-1) atol=1.0e-1
     @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
 
     # AMH
     Random.seed!(rng,123)
-    x = rand(rng,AMHCopula(3,0.8), 40_000)
+    x = rand(rng,AMHCopula{3}(0.8), 40_000)
     @test tail(x[:,1], x[:,2], "l", 0.0001) ≈ 0
     @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
     
     # Frank
     Random.seed!(rng,123)
-    x = rand(rng,FrankCopula(3,0.8), 40_000)
+    x = rand(rng,FrankCopula{3}(0.8), 40_000)
     @test tail(x[:,1], x[:,2], "l", 0.0001) ≈ 0
     @test tail(x[:,1], x[:,2], "r", 0.0001) ≈ 0
 end
@@ -194,14 +194,14 @@ end
 
 @testset "Fix clayton conditionals" begin 
 
-dist = condition(ClaytonCopula(2, 7.3), 2, 0.6)
+dist = condition(ClaytonCopula{2}(7.3), 2, 0.6)
 a,b,c = cdf(dist, [0.2, 0.5, 0.8])
 
 @test a ≈ 0.00010958096560576897
 @test b ≈ 0.16963161864932144
 @test c ≈ 0.8987566352893012
 
-dist = condition(ClaytonCopula(3, 7.3), 3, 0.6951919277176142)
+dist = condition(ClaytonCopula{3}(7.3), 3, 0.6951919277176142)
 d = cdf(dist, [0.2, 0.3]) 
 @test d ≈ 3.0484941754695964e-5
 

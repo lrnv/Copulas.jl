@@ -1,293 +1,293 @@
 Bestiary = [
-    AMHCopula(2,-1.0),
-    AMHCopula(2,-0.6),
-    AMHCopula(2,0.7),
-    AMHCopula(2,0.9),
-    AMHCopula(3,-0.003),
-    AMHCopula(3,0.6),
-    AMHCopula(3,0.2),
-    AMHCopula(4,-0.01),
-    ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.BB1Generator(1.3, 1.4), Copulas.LogTail(2.0)),
-    ArchimaxCopula(2, Copulas.BB1Generator(2.0, 2.0), Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.BB1Generator(2.0, 2.0), Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.BB1Generator(2.0, 2.0), Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.BB1Generator(2.0, 2.0), Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.BB1Generator(2.0, 2.0), Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.BB1Generator(2.0, 2.0), Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.BB1Generator(2.0, 2.0), Copulas.LogTail(2.0)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5),  Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5),  Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5),  Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5),  Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5),  Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5),  Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5),  Copulas.LogTail(2.0)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(3.0),  Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(3.0),  Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(3.0),  Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(3.0),  Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(3.0),  Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(3.0),  Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.ClaytonGenerator(3.0),  Copulas.LogTail(2.0)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(0.8),    Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(0.8),    Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(0.8),    Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(0.8),    Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(0.8),    Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(0.8),    Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(0.8),    Copulas.LogTail(2.0)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(6.0),    Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(6.0),    Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(6.0),    Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(6.0),    Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(6.0),    Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(6.0),    Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.FrankGenerator(6.0),    Copulas.LogTail(2.0)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(2.0),   Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(2.0),   Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(2.0),   Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(2.0),   Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(2.0),   Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(2.0),   Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(2.0),   Copulas.LogTail(2.0)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(4.0),   Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(4.0),   Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(4.0),   Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(4.0),   Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(4.0),   Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(4.0),   Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.GumbelGenerator(4.0),   Copulas.LogTail(2.0)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(1.2),      Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(1.2),      Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(1.2),      Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(1.2),      Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(1.2),      Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(1.2),      Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(1.2),      Copulas.LogTail(2.0)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.GalambosTail(0.7)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.GalambosTail(2.5)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.HuslerReissTail(0.6)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.HuslerReissTail(1.8)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.LogTail(1.5)),
-    ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.LogTail(2.0)),
-    ArchimedeanCopula(10,𝒲(Dirac(1),10)),
-    ArchimedeanCopula(10,𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)),
-    ArchimedeanCopula(2,𝒲(LogNormal(),2)),
-    ArchimedeanCopula(2,𝒲(Pareto(1),5)),
-    AsymGalambosCopula(2, 0.1, 0.2, 0.6),
-    AsymGalambosCopula(2, 0.6129496106778634, 0.820474440393214, 0.22304578643880224),
-    AsymGalambosCopula(2, 10+5*0.3, 1.0, 1.0),
-    AsymGalambosCopula(2, 10+5*0.7, 0.2, 0.9),
-    AsymGalambosCopula(2, 11.647356700032505, 0.6195348270893413, 0.4197760589260566),
-    AsymGalambosCopula(2, 5.0, 0.8, 0.3),
-    AsymGalambosCopula(2, 5+4*0.4, 1.0, 1.0),
-    AsymGalambosCopula(2, 5+4*0.1, 0.2, 0.6),
-    AsymGalambosCopula(2, 8.810168494949659, 0.5987759444612732, 0.5391280234619427),
-    AsymGalambosCopula(2, 0.9, 1.0, 1.0),
-    AsymGalambosCopula(2, 0.3, 0.8, 0.1),
-    AsymLogCopula(2, 1.0, 0.0, 0.0),
-    AsymLogCopula(2, 1.0, 1.0, 1.0),
-    AsymLogCopula(2, 1.0, 0.1, 0.6),
-    AsymLogCopula(2, 1.2, 0.3,0.6),
-    AsymLogCopula(2, 1.5, 0.5, 0.2),
-    AsymLogCopula(2, 1+4*0.9, 0.0, 0.0),
-    AsymLogCopula(2, 1+4*0.01, 1.0, 1.0),
-    AsymLogCopula(2, 1+4*0.2, 0.3, 0.4),
-    AsymLogCopula(2, 10+5*0.5, 0.0, 0.0),
-    AsymLogCopula(2, 10+5*0.6, 1.0, 1.0),
-    AsymLogCopula(2, 10+5*0.7, 0.8, 0.2),
-    AsymMixedCopula(2, 0.1, 0.2),
-    AsymMixedCopula(2, 0.12, 0.13),
-    BB1Copula(2, 0.35, 1.0),
-    BB1Copula(2, 1.2, 1.5),
-    BB1Copula(2, 2.5, 1.5),
-    BB2Copula(2, 1.2, 0.5),
-    BB2Copula(2, 1.5, 1.8),
-    BB2Copula(2, 2.0, 1.5),
-    BB3Copula(2, 2.0, 1.5),
-    BB3Copula(2, 2.5, 0.5),
-    BB3Copula(2, 3.0, 1.0),
-    BB4Copula(2, 0.50, 1.60),
-    BB4Copula(2, 2.50, 0.40),
-    BB4Copula(2, 3.0, 2.1),
-    BB5Copula(2, 1.50, 1.60),
-    BB5Copula(2, 2.50, 0.40),
-    BB5Copula(2, 5.0, 0.5),
-    BB6Copula(2, 1.2, 1.6),
-    BB6Copula(2, 1.5, 1.4),
-    BB6Copula(2, 2.0, 1.5),
-    BB7Copula(2, 1.2, 1.6),
-    BB7Copula(2, 1.5, 0.4),
-    BB7Copula(2, 2.0, 1.5),
-    BB8Copula(2, 1.2, 0.4),
-    BB8Copula(2, 1.5, 0.6),
-    BB8Copula(2, 2.5, 0.8),
-    BB9Copula(2, 1.5, 2.4),
-    BB9Copula(2, 2.0, 1.5),
-    BB9Copula(2, 2.8, 2.6),
-    BB10Copula(2, 1.5, 0.7),
-    BB10Copula(2, 3.0, 0.8),
-    BB10Copula(2, 4.5, 0.6),
-    BC2Copula(2, 0.5, 0.3),
-    BC2Copula(2, 0.5, 0.5),
-    BC2Copula(2, 0.5516353577049822, 0.33689370624999193),
-    BC2Copula(2, 0.7,0.3),
-    BC2Copula(2, 1.0, 0.0),
-    BC2Copula(2, 1/2,1/2),
-    BC2Copula(2, 0.6, 0.8),
-    BernsteinCopula(ArchimaxCopula(2, Copulas.FrankGenerator(0.8), Copulas.HuslerReissTail(0.6)); m=5),
-    BernsteinCopula(ClaytonCopula(3, 3.3); m=5),
-    BernsteinCopula(GalambosCopula(2, 2.5); m=5),
-    BernsteinCopula(GaussianCopula(2, 0.3); m=5),
-    BernsteinCopula(IndependentCopula(4); m=5),
-    ClaytonCopula(2, -0.7),
-    ClaytonCopula(2, 0.9),
-    ClaytonCopula(2, 0.3),
-    ClaytonCopula(2, 7),
-    ClaytonCopula(3, 7.3),
-    ClaytonCopula(3, -0.36),
-    ClaytonCopula(4, 3.7),
-    ClaytonCopula(4, -0.22),
-    ClaytonCopula(4,7.),
-    Copulas.SubsetCopula(RafteryCopula(3, 0.5), (2,1)),
-    CuadrasAugeCopula(2, 0.0),
-    CuadrasAugeCopula(2, 0.1),
-    CuadrasAugeCopula(2, 0.3437537135972244),
-    CuadrasAugeCopula(2, 0.7103550345192344),
-    CuadrasAugeCopula(2, 0.8),
-    CuadrasAugeCopula(2, 1.0),
-    CuadrasAugeCopula(2, 0.2),
-    FGMCopula(2, 0.0),
-    FGMCopula(2, 0.4),
-    FGMCopula(2,1),
-    FGMCopula(3, [0.3,0.3,0.3,0.3]),
-    FGMCopula(3,[0.1,0.2,0.3,0.4]),
-    FrankCopula(2,-5),
-    FrankCopula(2,0.5),
-    FrankCopula(2,1-log(0.9)),
-    FrankCopula(2,1.0),
-    FrankCopula(3,1-log(0.1)),
-    FrankCopula(3,1.0),
-    FrankCopula(3,12),
-    FrankCopula(4,1-log(0.3)),
-    FrankCopula(4,1.0),
-    FrankCopula(4,150),
-    FrankCopula(4,30),
-    FrankCopula(4,37),
-    GalambosCopula(2, 0.3),
-    GalambosCopula(2, 1+4*0.5),
-    GalambosCopula(2, 120),
-    GalambosCopula(2, 20),
-    GalambosCopula(2, 210),
-    GalambosCopula(2, 4.3),
-    GalambosCopula(2, 8),
-    GalambosCopula(2, 80),
-    GalambosCopula(2, 0.7),
-    GaussianCopula([1 0.5; 0.5 1]),
-    GaussianCopula([1 0.7; 0.7 1]),
-    GumbelBarnettCopula(2,1.0),
-    GumbelBarnettCopula(2,0.7),
-    GumbelBarnettCopula(3,0.1),
-    GumbelBarnettCopula(3,0.35),
-    GumbelBarnettCopula(3,0.2*0.38),
-    GumbelBarnettCopula(4,0.2),
-    GumbelCopula(2, 1.2),
-    GumbelCopula(2,1-log(0.9)),
-    GumbelCopula(2,8),
-    GumbelCopula(3,1-log(0.2)),
-    GumbelCopula(4,1-log(0.3)),
-    GumbelCopula(4,100),
-    GumbelCopula(4,20),
-    GumbelCopula(4,7),
-    HuslerReissCopula(2, 0.1),
-    HuslerReissCopula(2, 0.256693308150987),
-    HuslerReissCopula(2, 1.6287031392529938),
-    HuslerReissCopula(2, 3.5),
-    HuslerReissCopula(2, 5.319851350643586),
-    IndependentCopula(2),
-    IndependentCopula(3),
-    InvGaussianCopula(2,-log(0.9)),
-    InvGaussianCopula(2,1.0),
-    InvGaussianCopula(2,0.2),
-    InvGaussianCopula(3,-log(0.6)),
-    InvGaussianCopula(3,0.4),
-    InvGaussianCopula(4,-log(0.1)),
-    InvGaussianCopula(4,0.05),
-    InvGaussianCopula(4,1.0),
-    JoeCopula(2,1-log(0.5)),
-    JoeCopula(2,3),
-    JoeCopula(2,Inf),
-    JoeCopula(3,1-log(0.3)),
-    JoeCopula(3,7),
-    JoeCopula(4,1-log(0.1)),
-    LogCopula(2, 1.5),
-    LogCopula(2, 1+9*0.4),
-    LogCopula(2, 5.5),
-    MCopula(2),
-    MCopula(4),
-    MixedCopula(2, 0.0),
-    MixedCopula(2, 0.2),
-    MixedCopula(2, 0.5),
-    MixedCopula(2, 1.0),
-    MOCopula(2, 0.1,0.2,0.3),
-    MOCopula(2, 0.5, 0.5, 0.5),
-    MOCopula(2, 0.5960710257852946, 0.3313524247810329, 0.09653466861970061),
-    MOCopula(2, 1.0, 1.0, 1.0),
-    MOCopula(2, 0.1, 0.5, 0.9),
-    PlackettCopula(0.5),
-    PlackettCopula(0.8),
-    PlackettCopula(2.0),
-    RafteryCopula(2, 0.2),
-    RafteryCopula(3, 0.5),
-    SurvivalCopula(ClaytonCopula(2,-0.7),(1,2)),
-    SurvivalCopula(RafteryCopula(2, 0.2), (2,1)),
-    TCopula(2, [1 0.7; 0.7 1]),
-    TCopula(20,[1 -0.5; -0.5 1]),
-    TCopula(4, [1 0.5; 0.5 1]),
-    tEVCopula(2, 10.0, 1.0),
-    tEVCopula(2, 2.0, 0.5),
-    tEVCopula(2, 3.0, 0.0),
-    tEVCopula(2, 4.0, 0.5),
-    tEVCopula(2, 4+6*0.5, -0.9+1.9*0.3),
-    tEVCopula(2, 5.0, -0.5),
-    tEVCopula(2, 5.466564460573727, -0.6566645244416698),
-    WCopula(2),
+    AMHCopula{2}(-1.0),
+    AMHCopula{2}(-0.6),
+    AMHCopula{2}(0.7),
+    AMHCopula{2}(0.9),
+    AMHCopula{3}(-0.003),
+    AMHCopula{3}(0.6),
+    AMHCopula{3}(0.2),
+    AMHCopula{4}(-0.01),
+    ArchimaxCopula{2}(Copulas.BB1Generator(1.3, 1.4), Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(1.3, 1.4), Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(1.3, 1.4), Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(1.3, 1.4), Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(1.3, 1.4), Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(1.3, 1.4), Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(1.3, 1.4), Copulas.LogTail(2.0)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(2.0, 2.0), Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(2.0, 2.0), Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(2.0, 2.0), Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(2.0, 2.0), Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(2.0, 2.0), Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(2.0, 2.0), Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.BB1Generator(2.0, 2.0), Copulas.LogTail(2.0)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5),  Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5),  Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5),  Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5),  Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5),  Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5),  Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5),  Copulas.LogTail(2.0)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(3.0),  Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(3.0),  Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(3.0),  Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(3.0),  Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(3.0),  Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(3.0),  Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(3.0),  Copulas.LogTail(2.0)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),    Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),    Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),    Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),    Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),    Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),    Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),    Copulas.LogTail(2.0)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(6.0),    Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(6.0),    Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(6.0),    Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(6.0),    Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(6.0),    Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(6.0),    Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.FrankGenerator(6.0),    Copulas.LogTail(2.0)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(2.0),   Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(2.0),   Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(2.0),   Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(2.0),   Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(2.0),   Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(2.0),   Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(2.0),   Copulas.LogTail(2.0)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(4.0),   Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(4.0),   Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(4.0),   Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(4.0),   Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(4.0),   Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(4.0),   Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.GumbelGenerator(4.0),   Copulas.LogTail(2.0)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(1.2),      Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(1.2),      Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(1.2),      Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(1.2),      Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(1.2),      Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(1.2),      Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(1.2),      Copulas.LogTail(2.0)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(2.5),      Copulas.AsymGalambosTail(0.35, 0.65, 0.3)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(2.5),      Copulas.GalambosTail(0.7)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(2.5),      Copulas.GalambosTail(2.5)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(2.5),      Copulas.HuslerReissTail(0.6)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(2.5),      Copulas.HuslerReissTail(1.8)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(2.5),      Copulas.LogTail(1.5)),
+    ArchimaxCopula{2}(Copulas.JoeGenerator(2.5),      Copulas.LogTail(2.0)),
+    ArchimedeanCopula{10}(𝒲(Dirac(1),10)),
+    ArchimedeanCopula{10}(𝒲(MixtureModel([Dirac(1), Dirac(2)]),11)),
+    ArchimedeanCopula{2}(𝒲(LogNormal(),2)),
+    ArchimedeanCopula{2}(𝒲(Pareto(1),5)),
+    AsymGalambosCopula{2}(0.1, 0.2, 0.6),
+    AsymGalambosCopula{2}(0.6129496106778634, 0.820474440393214, 0.22304578643880224),
+    AsymGalambosCopula{2}(10+5*0.3, 1.0, 1.0),
+    AsymGalambosCopula{2}(10+5*0.7, 0.2, 0.9),
+    AsymGalambosCopula{2}(11.647356700032505, 0.6195348270893413, 0.4197760589260566),
+    AsymGalambosCopula{2}(5.0, 0.8, 0.3),
+    AsymGalambosCopula{2}(5+4*0.4, 1.0, 1.0),
+    AsymGalambosCopula{2}(5+4*0.1, 0.2, 0.6),
+    AsymGalambosCopula{2}(8.810168494949659, 0.5987759444612732, 0.5391280234619427),
+    AsymGalambosCopula{2}(0.9, 1.0, 1.0),
+    AsymGalambosCopula{2}(0.3, 0.8, 0.1),
+    AsymLogCopula{2}(1.0, 0.0, 0.0),
+    AsymLogCopula{2}(1.0, 1.0, 1.0),
+    AsymLogCopula{2}(1.0, 0.1, 0.6),
+    AsymLogCopula{2}(1.2, 0.3,0.6),
+    AsymLogCopula{2}(1.5, 0.5, 0.2),
+    AsymLogCopula{2}(1+4*0.9, 0.0, 0.0),
+    AsymLogCopula{2}(1+4*0.01, 1.0, 1.0),
+    AsymLogCopula{2}(1+4*0.2, 0.3, 0.4),
+    AsymLogCopula{2}(10+5*0.5, 0.0, 0.0),
+    AsymLogCopula{2}(10+5*0.6, 1.0, 1.0),
+    AsymLogCopula{2}(10+5*0.7, 0.8, 0.2),
+    AsymMixedCopula{2}(0.1, 0.2),
+    AsymMixedCopula{2}(0.12, 0.13),
+    BB1Copula{2}(0.35, 1.0),
+    BB1Copula{2}(1.2, 1.5),
+    BB1Copula{2}(2.5, 1.5),
+    BB2Copula{2}(1.2, 0.5),
+    BB2Copula{2}(1.5, 1.8),
+    BB2Copula{2}(2.0, 1.5),
+    BB3Copula{2}(2.0, 1.5),
+    BB3Copula{2}(2.5, 0.5),
+    BB3Copula{2}(3.0, 1.0),
+    BB4Copula{2}(0.50, 1.60),
+    BB4Copula{2}(2.50, 0.40),
+    BB4Copula{2}(3.0, 2.1),
+    BB5Copula{2}(1.50, 1.60),
+    BB5Copula{2}(2.50, 0.40),
+    BB5Copula{2}(5.0, 0.5),
+    BB6Copula{2}(1.2, 1.6),
+    BB6Copula{2}(1.5, 1.4),
+    BB6Copula{2}(2.0, 1.5),
+    BB7Copula{2}(1.2, 1.6),
+    BB7Copula{2}(1.5, 0.4),
+    BB7Copula{2}(2.0, 1.5),
+    BB8Copula{2}(1.2, 0.4),
+    BB8Copula{2}(1.5, 0.6),
+    BB8Copula{2}(2.5, 0.8),
+    BB9Copula{2}(1.5, 2.4),
+    BB9Copula{2}(2.0, 1.5),
+    BB9Copula{2}(2.8, 2.6),
+    BB10Copula{2}(1.5, 0.7),
+    BB10Copula{2}(3.0, 0.8),
+    BB10Copula{2}(4.5, 0.6),
+    BC2Copula{2}(0.5, 0.3),
+    BC2Copula{2}(0.5, 0.5),
+    BC2Copula{2}(0.5516353577049822, 0.33689370624999193),
+    BC2Copula{2}(0.7,0.3),
+    BC2Copula{2}(1.0, 0.0),
+    BC2Copula{2}(1/2,1/2),
+    BC2Copula{2}(0.6, 0.8),
+    BernsteinCopula{2}(ArchimaxCopula{2}(Copulas.FrankGenerator(0.8), Copulas.HuslerReissTail(0.6)); m=5),
+    BernsteinCopula{3}(ClaytonCopula{3}(3.3); m=5),
+    BernsteinCopula{2}(GalambosCopula{2}(2.5); m=5),
+    BernsteinCopula{2}(GaussianCopula{2}(0.3); m=5),
+    BernsteinCopula{4}(IndependentCopula{4}(); m=5),
+    ClaytonCopula{2}(-0.7),
+    ClaytonCopula{2}(0.9),
+    ClaytonCopula{2}(0.3),
+    ClaytonCopula{2}(7),
+    ClaytonCopula{3}(7.3),
+    ClaytonCopula{3}(-0.36),
+    ClaytonCopula{4}(3.7),
+    ClaytonCopula{4}(-0.22),
+    ClaytonCopula{4}(7.),
+    Copulas.SubsetCopula{2}(RafteryCopula{3}(0.5), (2,1)),
+    CuadrasAugeCopula{2}(0.0),
+    CuadrasAugeCopula{2}(0.1),
+    CuadrasAugeCopula{2}(0.3437537135972244),
+    CuadrasAugeCopula{2}(0.7103550345192344),
+    CuadrasAugeCopula{2}(0.8),
+    CuadrasAugeCopula{2}(1.0),
+    CuadrasAugeCopula{2}(0.2),
+    FGMCopula{2}(0.0),
+    FGMCopula{2}(0.4),
+    FGMCopula{2}(1),
+    FGMCopula{3}([0.3,0.3,0.3,0.3]),
+    FGMCopula{3}([0.1,0.2,0.3,0.4]),
+    FrankCopula{2}(-5),
+    FrankCopula{2}(0.5),
+    FrankCopula{2}(1-log(0.9)),
+    FrankCopula{2}(1.0),
+    FrankCopula{3}(1-log(0.1)),
+    FrankCopula{3}(1.0),
+    FrankCopula{3}(12),
+    FrankCopula{4}(1-log(0.3)),
+    FrankCopula{4}(1.0),
+    FrankCopula{4}(150),
+    FrankCopula{4}(30),
+    FrankCopula{4}(37),
+    GalambosCopula{2}(0.3),
+    GalambosCopula{2}(1+4*0.5),
+    GalambosCopula{2}(120),
+    GalambosCopula{2}(20),
+    GalambosCopula{2}(210),
+    GalambosCopula{2}(4.3),
+    GalambosCopula{2}(8),
+    GalambosCopula{2}(80),
+    GalambosCopula{2}(0.7),
+    GaussianCopula{2}([1 0.5; 0.5 1]),
+    GaussianCopula{2}([1 0.7; 0.7 1]),
+    GumbelBarnettCopula{2}(1.0),
+    GumbelBarnettCopula{2}(0.7),
+    GumbelBarnettCopula{3}(0.1),
+    GumbelBarnettCopula{3}(0.35),
+    GumbelBarnettCopula{3}(0.2*0.38),
+    GumbelBarnettCopula{4}(0.2),
+    GumbelCopula{2}(1.2),
+    GumbelCopula{2}(1-log(0.9)),
+    GumbelCopula{2}(8),
+    GumbelCopula{3}(1-log(0.2)),
+    GumbelCopula{4}(1-log(0.3)),
+    GumbelCopula{4}(100),
+    GumbelCopula{4}(20),
+    GumbelCopula{4}(7),
+    HuslerReissCopula{2}(0.1),
+    HuslerReissCopula{2}(0.256693308150987),
+    HuslerReissCopula{2}(1.6287031392529938),
+    HuslerReissCopula{2}(3.5),
+    HuslerReissCopula{2}(5.319851350643586),
+    IndependentCopula{2}(),
+    IndependentCopula{3}(),
+    InvGaussianCopula{2}(-log(0.9)),
+    InvGaussianCopula{2}(1.0),
+    InvGaussianCopula{2}(0.2),
+    InvGaussianCopula{3}(-log(0.6)),
+    InvGaussianCopula{3}(0.4),
+    InvGaussianCopula{4}(-log(0.1)),
+    InvGaussianCopula{4}(0.05),
+    InvGaussianCopula{4}(1.0),
+    JoeCopula{2}(1-log(0.5)),
+    JoeCopula{2}(3),
+    JoeCopula{2}(Inf),
+    JoeCopula{3}(1-log(0.3)),
+    JoeCopula{3}(7),
+    JoeCopula{4}(1-log(0.1)),
+    LogCopula{2}(1.5),
+    LogCopula{2}(1+9*0.4),
+    LogCopula{2}(5.5),
+    MCopula{2}(),
+    MCopula{4}(),
+    MixedCopula{2}(0.0),
+    MixedCopula{2}(0.2),
+    MixedCopula{2}(0.5),
+    MixedCopula{2}(1.0),
+    MOCopula{2}(0.1,0.2,0.3),
+    MOCopula{2}(0.5, 0.5, 0.5),
+    MOCopula{2}(0.5960710257852946, 0.3313524247810329, 0.09653466861970061),
+    MOCopula{2}(1.0, 1.0, 1.0),
+    MOCopula{2}(0.1, 0.5, 0.9),
+    PlackettCopula{2}(0.5),
+    PlackettCopula{2}(0.8),
+    PlackettCopula{2}(2.0),
+    RafteryCopula{2}(0.2),
+    RafteryCopula{3}(0.5),
+    SurvivalCopula{2}(ClaytonCopula{2}(-0.7),(1,2)),
+    SurvivalCopula{2}(RafteryCopula{2}(0.2), (2,1)),
+    TCopula{2}(2, [1 0.7; 0.7 1]),
+    TCopula{2}(20,[1 -0.5; -0.5 1]),
+    TCopula{2}(4, [1 0.5; 0.5 1]),
+    tEVCopula{2}(10.0, 1.0),
+    tEVCopula{2}(2.0, 0.5),
+    tEVCopula{2}(3.0, 0.0),
+    tEVCopula{2}(4.0, 0.5),
+    tEVCopula{2}(4+6*0.5, -0.9+1.9*0.3),
+    tEVCopula{2}(5.0, -0.5),
+    tEVCopula{2}(5.466564460573727, -0.6566645244416698),
+    WCopula{2}(),
     ]
 
 # These few ones are forced to be random, but we control their rng like that to have reproducibility: 
 Random.seed!(rng, 123)
 append!(Bestiary, [
-    ArchimedeanCopula(2, EmpiricalGenerator(randn(rng, 4, 150))),
-    ArchimedeanCopula(3, EmpiricalGenerator(randn(rng, 3, 200))),
-    BernsteinCopula(randn(rng, 2,100), pseudo_values=false),
-    BetaCopula(randn(rng, 2,50)),
-    BetaCopula(randn(rng, 3,50)),
-    CheckerboardCopula(randn(rng, 2,50); pseudo_values=false),
-    CheckerboardCopula(randn(rng, 3,50); pseudo_values=false),
-    CheckerboardCopula(randn(rng, 4,50); pseudo_values=false),
-    EmpiricalCopula(randn(2,50),pseudo_values=false),
-    EmpiricalCopula(randn(2,50),pseudo_values=false),
-    EmpiricalEVCopula(randn(rng, 2,50); method=:cfg, pseudo_values=false),
-    EmpiricalEVCopula(randn(rng, 2,50); method=:ols, pseudo_values=false),
-    EmpiricalEVCopula(randn(rng, 2,50); method=:pickands, pseudo_values=false),
+    ArchimedeanCopula{2}(EmpiricalGenerator(randn(rng, 4, 150))),
+    ArchimedeanCopula{3}(EmpiricalGenerator(randn(rng, 3, 200))),
+    BernsteinCopula{2}(randn(rng, 2,100), pseudo_values=false),
+    BetaCopula{2}(randn(rng, 2,50)),
+    BetaCopula{3}(randn(rng, 3,50)),
+    CheckerboardCopula{2}(randn(rng, 2,50); pseudo_values=false),
+    CheckerboardCopula{3}(randn(rng, 3,50); pseudo_values=false),
+    CheckerboardCopula{4}(randn(rng, 4,50); pseudo_values=false),
+    EmpiricalCopula{2}(randn(2,50),pseudo_values=false),
+    EmpiricalCopula{2}(randn(2,50),pseudo_values=false),
+    EmpiricalEVCopula{2}(randn(rng, 2,50); method=:cfg, pseudo_values=false),
+    EmpiricalEVCopula{2}(randn(rng, 2,50); method=:ols, pseudo_values=false),
+    EmpiricalEVCopula{2}(randn(rng, 2,50); method=:pickands, pseudo_values=false),
     # Nested (hierarchical) Archimedean copulas. Same-family paths use increasing
     # inner parameters. The generic Fitting block is skipped (the nested type
     # advertises no type-based fitting methods, since fit() is an instance API);
     # sampling, cdf, pdf, subsetdims, conditioning, rosenblatt and τ-coherency run.
-    NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
-        children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)]),                 # d=4, two panels
-    NestedArchimedeanCopula(Copulas.GumbelGenerator(1.5);
-        leaves = [1], children = [NestedArchimedeanCopula(Copulas.GumbelGenerator(2.0);
-            leaves = [1], children = [GumbelCopula(2, 3.0)])]),                    # d=4, depth three
-    NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
-        leaves = [1], children = [FrankCopula(2, 5.0) => [2, 3]]),                 # d=3, mixed panel + leaf
+    NestedArchimedeanCopula{4}(Copulas.ClaytonGenerator(2.0);
+        children = [ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)]),                 # d=4, two panels
+    NestedArchimedeanCopula{4}(Copulas.GumbelGenerator(1.5);
+        leaves = [1], children = [NestedArchimedeanCopula{3}(Copulas.GumbelGenerator(2.0);
+            leaves = [1], children = [GumbelCopula{2}(3.0)])]),                    # d=4, depth three
+    NestedArchimedeanCopula{3}(Copulas.ClaytonGenerator(1.0);
+        leaves = [1], children = [FrankCopula{2}(5.0) => [2, 3]]),                 # d=3, mixed panel + leaf
 ])
 
 macro testif(cond, args...)
@@ -321,7 +321,7 @@ check_rosenblatt(C::FrankCopula) = C.G.θ < 100
 check_rosenblatt(C::GumbelCopula) = C.G.θ < 20
 check_rosenblatt(C::MCopula{4}) = false
 check_rosenblatt(C::EmpiricalCopula) = false
-check_rosenblatt(C::BC2Copula) = false
+check_rosenblatt(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
 
 check_corkendall(C::Copulas.Copula) = true
 check_corkendall(C::FrankCopula) = C.G.θ < 100
@@ -329,9 +329,9 @@ check_corkendall(C::GumbelCopula) = C.G.θ < 100
 check_corkendall(C::MCopula) = false
 check_corkendall(C::WCopula) = false
 check_corkendall(C::EmpiricalCopula) = false
-check_corkendall(C::BC2Copula) = false
-check_corkendall(C::CuadrasAugeCopula) = false
-check_corkendall(C::MOCopula) = false
+check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
+check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
+check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 
 is_archimedean_with_generator(C::Copulas.Copula) = false
@@ -343,11 +343,11 @@ can_integrate_pdf(C::FrankCopula) = C.G.θ < 100
 can_integrate_pdf(C::FGMCopula) = length(C) != 3
 can_integrate_pdf(C::MCopula) = false
 can_integrate_pdf(C::WCopula) = false
-can_integrate_pdf(C::MOCopula) = false
-can_integrate_pdf(C::CuadrasAugeCopula) = false
+can_integrate_pdf(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
+can_integrate_pdf(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
 can_integrate_pdf(C::RafteryCopula) = false
 can_integrate_pdf(C::EmpiricalCopula) = false
-can_integrate_pdf(C::BC2Copula) = false
+can_integrate_pdf(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
 can_integrate_pdf(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 can_integrate_pdf(C::CheckerboardCopula) = false
 
@@ -355,21 +355,21 @@ can_ad(C::Copulas.Copula) = can_pdf(C)
 can_ad(C::FrankCopula) = C.G.θ < 100
 can_ad(C::MCopula) = false
 can_ad(C::WCopula) = false
-can_ad(C::tEVCopula) = false
+can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.tEVTail}) = false
 can_ad(C::TCopula) = false
-can_ad(C::CuadrasAugeCopula) = false
-can_ad(C::MOCopula) = false
+can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
+can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
 
 is_bivariate(C::Copulas.Copula) = (length(C) == 2)
 has_subsetdims(C::Copulas.Copula) = !is_bivariate(C)
 
 check_cdf_rand(C::Copulas.Copula) = true
-check_cdf_rand(C::BC2Copula) = false
-check_cdf_rand(C::MOCopula) = false
-check_cdf_rand(C::CuadrasAugeCopula) = false
+check_cdf_rand(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
+check_cdf_rand(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
+check_cdf_rand(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
 
 dep_coherency_enabled(C::Copulas.Copula) = true
-dep_coherency_enabled(C::MOCopula) = false
+dep_coherency_enabled(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
 dep_coherency_enabled(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 
 check_biv_conditioning(C::Copulas.Copula) = is_bivariate(C) && can_ad(C)
@@ -453,7 +453,7 @@ end
 Bestiary = filter(GenericTestFilter, Bestiary)
 
 @testset "Matrix sampler accepts generic buffers" begin
-    C = ClaytonCopula(3, 1.0)
+    C = ClaytonCopula{3}(1.0)
     storage = fill(Float32(NaN), 5, 2)
     A = @view storage[2:4, :]
 
@@ -544,20 +544,22 @@ end
             @test abs(p_hat - p_th) ≤ max(5*se, 2e-3)
         end
 
-        @testif (C isa BC2Copula || C isa MOCopula || C isa CuadrasAugeCopula) "Singular sampler structure" begin
+        @testif (C isa Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail} ||
+                 C isa Copulas.ExtremeValueCopula{2,<:Copulas.MOTail} ||
+                 C isa Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) "Singular sampler structure" begin
             # The empirical-CDF check is fragile for these singular laws.
             # Check their margins and analytically known singular mass instead.
             @test all(isapprox.(vec(mean(spl1000; dims=2)), 0.5; atol=0.04, rtol=0))
 
             x = .-log.(spl1000[1, :])
             y = .-log.(spl1000[2, :])
-            if C isa BC2Copula
+            if C isa Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}
                 a, b = C.tail.a, C.tail.b
                 ray1 = isapprox.(a .* x, b .* y; atol=1e-10, rtol=1e-7)
                 ray2 = isapprox.((1-a) .* x, (1-b) .* y; atol=1e-10, rtol=1e-7)
                 observed = mean(ray1 .| ray2)
                 expected = 1 - abs(a-b)
-            elseif C isa MOCopula
+            elseif C isa Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}
                 λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
                 atom = isapprox.((λ₁+λ₁₂) .* x, (λ₂+λ₁₂) .* y;
                                 atol=1e-10, rtol=1e-7)
@@ -621,7 +623,7 @@ end
         #         end
         #     end
 
-        @testif dep_coherency_enabled(C) "Corkendall coeherency" begin
+        @testif check_corkendall(C) "Corkendall coeherency" begin
             K = corkendall(spl1000')
             Kth = corkendall(C)
             @test all(-1 .<= Kth .<= 1)

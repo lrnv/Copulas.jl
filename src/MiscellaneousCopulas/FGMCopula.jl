@@ -29,16 +29,16 @@ References:
 struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     θ::Tθ
     fᵢ::Tf
-    function FGMCopula(d, θ)
+    function FGMCopula{d}(θ) where {d}
         if (θ isa NTuple) || (θ isa Vector)
             vθ = collect(promote(θ..., 1.0))[1:end-1]
         else
             vθ = [promote(θ, 1.0)[1]]
         end
 
-        all(vθ .== 0) && return IndependentCopula(d)
-        d==2 && vθ[1]==1 && return MCopula(2)
-        d==2 && vθ[1]==-1 && return WCopula(2)
+        all(vθ .== 0) && return IndependentCopula{d}()
+        d==2 && vθ[1]==1 && return MCopula{2}()
+        d==2 && vθ[1]==-1 && return WCopula{2}()
 
         # Check first restrictions on parameters
         any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
@@ -56,8 +56,9 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
         fᵢ = Distributions.DiscreteNonParametric(0:(2^d-1), (1 .+ wᵢ)/2^d)
         return new{d, typeof(vθ), typeof(fᵢ)}(vθ, fᵢ)
     end
-    FGMCopula{D, T1, T2}(d, θ) where {D, T1, T2} = FGMCopula(d, θ)
 end
+FGMCopula(d, θ) = FGMCopula{d}(θ)
+(::Type{<:FGMCopula{D,Tθ,Tf}})(d::Int, θ) where {D,Tθ,Tf} = FGMCopula{d}(θ)
 function _fgm_red(θ, v)
     # This function implements the reduction over combinations of the fgm copula.
     # It is non-alocative thus performant :)

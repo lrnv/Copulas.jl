@@ -66,24 +66,24 @@ SUITE["conditioning"] = BenchmarkGroup()
 SUITE["fitting"] = BenchmarkGroup()
 
 # Representative models: each one exercises a distinct implementation path.
-clayton = ClaytonCopula(5, 2.0)
-gumbel = GumbelCopula(5, 2.0)
+clayton = ClaytonCopula{5}(2.0)
+gumbel = GumbelCopula{5}(2.0)
 
 rho = 0.35
 sigma = fill(rho, 10, 10)
 for i in axes(sigma, 1)
     sigma[i, i] = 1.0
 end
-gaussian = GaussianCopula(sigma)
+gaussian = GaussianCopula{10}(sigma)
 
-nested = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.5);
+nested = NestedArchimedeanCopula{6}(Copulas.ClaytonGenerator(1.5);
     leaves=[1, 2],
-    children=[ClaytonCopula(2, 3.0), ClaytonCopula(2, 2.5)],
+    children=[ClaytonCopula{2}(3.0), ClaytonCopula{2}(2.5)],
 )
-archimax = ArchimaxCopula(2, Copulas.ClaytonGenerator(2.0), Copulas.GalambosTail(1.5))
-student = TCopula(4, [1.0 0.5; 0.5 1.0])
-bb1 = BB1Copula(2, 1.2, 1.5)
-galambos = GalambosCopula(2, 1.5)
+archimax = ArchimaxCopula{2}(Copulas.ClaytonGenerator(2.0), Copulas.GalambosTail(1.5))
+student = TCopula{2}(4, [1.0 0.5; 0.5 1.0])
+bb1 = BB1Copula{2}(1.2, 1.5)
+galambos = GalambosCopula{2}(1.5)
 
 SUITE["sampling"]["clayton_d5"] = bench_sampling(clayton, 10_000)
 SUITE["sampling"]["gaussian_d10"] = bench_sampling(gaussian, 10_000)
@@ -108,11 +108,11 @@ SUITE["cdf"]["galambos_d2"] = bench_cdf(galambos, pair_points)
 
 raw_data = randn(Xoshiro(SEED + 4), 5, 10_000)
 checkerboard_data = randn(Xoshiro(SEED + 5), 3, 2_000)
-checkerboard = CheckerboardCopula(checkerboard_data; m=20, pseudo_values=false)
+checkerboard = CheckerboardCopula{3}(checkerboard_data; m=20, pseudo_values=false)
 checkerboard_points = rand(Xoshiro(SEED + 6), 3, 1_000)
 empirical_data = randn(Xoshiro(SEED + 12), 2, 2_000)
-empirical = EmpiricalCopula(empirical_data; pseudo_values=false)
-beta = BetaCopula(empirical_data)
+empirical = EmpiricalCopula{2}(empirical_data; pseudo_values=false)
+beta = BetaCopula{2}(empirical_data)
 empirical_points = rand(Xoshiro(SEED + 13), 2, 1_000)
 
 SUITE["data"]["pseudos_5x10000"] = bench_pseudos(raw_data)
@@ -120,7 +120,7 @@ SUITE["data"]["checkerboard_cdf"] = bench_cdf(checkerboard, checkerboard_points)
 SUITE["data"]["empirical_cdf"] = bench_cdf(empirical, empirical_points)
 SUITE["data"]["beta_logpdf"] = bench_logpdf(beta, empirical_points)
 
-rosenblatt_copula = GaussianCopula(5, 0.35)
+rosenblatt_copula = GaussianCopula{5}(0.35)
 rosenblatt_points = rand(Xoshiro(SEED + 7), 5, 2_000)
 SUITE["conditioning"]["rosenblatt_gaussian_d5"] =
     bench_rosenblatt(rosenblatt_copula, rosenblatt_points)
@@ -135,10 +135,10 @@ SUITE["conditioning"]["cdf_bb1_d2"] =
 SUITE["conditioning"]["quantile_galambos_d2"] =
     bench_conditional_quantile(galambos, 2, 0.4, conditional_probabilities)
 
-gumbel_fit_data = rand(Xoshiro(SEED + 8), GumbelCopula(2, 2.0), 2_000)
-gaussian_fit_data = rand(Xoshiro(SEED + 9), GaussianCopula(3, 0.35), 1_000)
+gumbel_fit_data = rand(Xoshiro(SEED + 8), GumbelCopula{2}(2.0), 2_000)
+gaussian_fit_data = rand(Xoshiro(SEED + 9), GaussianCopula{3}(0.35), 1_000)
 sklar_model = SklarDist(
-    ClaytonCopula(3, 2.0),
+    ClaytonCopula{3}(2.0),
     (Normal(), LogNormal(0.0, 0.5), Gamma(2.0, 1.0)),
 )
 sklar_fit_data = rand(Xoshiro(SEED + 10), sklar_model, 1_000)

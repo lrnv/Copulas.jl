@@ -95,9 +95,9 @@ end # hide
 function julia_benchmarks() # hide
     rng = Xoshiro(23) # hide
     specs = [ # hide
-        (id="clayton", model=ClaytonCopula(2, 2.0), type=ClaytonCopula), # hide
-        (id="gumbel", model=GumbelCopula(2, 2.0), type=GumbelCopula), # hide
-        (id="gaussian", model=GaussianCopula(2, 0.5), type=GaussianCopula), # hide
+        (id="clayton", model=ClaytonCopula{2}(2.0), type=ClaytonCopula), # hide
+        (id="gumbel", model=GumbelCopula{2}(2.0), type=GumbelCopula), # hide
+        (id="gaussian", model=GaussianCopula{2}(0.5), type=GaussianCopula), # hide
     ] # hide
     points = clamp.(rand(rng, 2, 10_000), 1e-6, 1 - 1e-6) # hide
     cdf_points = @view points[:, 1:1_000] # hide
@@ -109,8 +109,8 @@ function julia_benchmarks() # hide
         functions["$(spec.id)/cdf"] = let model=spec.model; () -> cdf(model, cdf_points); end # hide
         functions["$(spec.id)/fitting"] = let type=spec.type, data=fit_data; () -> fit(type, data; method=:itau); end # hide
     end # hide
-    for spec in [(id="gumbel_d5", model=GumbelCopula(5, 2.0)), # hide
-                 (id="gaussian_d10", model=GaussianCopula(10, 0.35))] # hide
+    for spec in [(id="gumbel_d5", model=GumbelCopula{5}(2.0)), # hide
+                 (id="gaussian_d10", model=GaussianCopula{10}(0.35))] # hide
         multivariate_points = clamp.(rand(rng, length(spec.model), 10_000), 1e-6, 1 - 1e-6) # hide
         functions["$(spec.id)/sampling"] = let model=spec.model; () -> rand(rng, model, 10_000); end # hide
         functions["$(spec.id)/pdf"] = let model=spec.model, data=multivariate_points; () -> pdf(model, data); end # hide

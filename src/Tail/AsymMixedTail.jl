@@ -1,5 +1,5 @@
 """
-    AsymMixedTail{T}, AsymMixedCopula{T}
+    AsymMixedTail{T}, AsymMixedCopula{d,T}
 
 Fields:
   - θ₁::Real — parameter
@@ -50,7 +50,7 @@ struct AsymMixedTail{T} <: Tail2
   end
 end
 
-const AsymMixedCopula{T} = ExtremeValueCopula{2, AsymMixedTail{T}}
+const AsymMixedCopula{d,T} = ExtremeValueCopula{d, AsymMixedTail{T}}
 Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 
 

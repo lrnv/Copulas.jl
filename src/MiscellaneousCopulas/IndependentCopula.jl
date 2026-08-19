@@ -12,9 +12,10 @@ It is Archimedean with generator ``\\psi(s) = e^{-s}``.
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct IndependentCopula{d} <: Copula{d} 
-    IndependentCopula(d) = new{d}()
+struct IndependentCopula{d} <: Copula{d}
+    IndependentCopula{d}() where {d} = new{d}()
 end
+IndependentCopula(d) = IndependentCopula{d}()
 _cdf(::IndependentCopula{d}, u) where d = prod(u)
 Distributions._logpdf(::IndependentCopula{d}, u) where {d} = all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
 
@@ -37,14 +38,14 @@ StatsBase.corspearman(::IndependentCopula{d}) where d = one(zeros(d,d))
 
 # Conditioning colocated
 DistortionFromCop(::IndependentCopula, ::NTuple{p,Int}, ::NTuple{p,Float64}, ::Int) where {p} = NoDistortion()
-ConditionalCopula(::IndependentCopula{D}, js, u) where D = IndependentCopula(D - length(js))
+ConditionalCopula(::IndependentCopula{D}, js, u) where D = IndependentCopula{D - length(js)}()
 function condition(::IndependentCopula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, Float64}) where {D, p}
     d = D - length(js)
-    return d==1 ? Distributions.Uniform() : IndependentCopula(d)
+    return d==1 ? Distributions.Uniform() : IndependentCopula{D - p}()
 end
 
 # Subsetting colocated
-SubsetCopula(::IndependentCopula{d}, ::NTuple{p, Int}) where {d, p} = IndependentCopula(p)
+SubsetCopula(::IndependentCopula{d}, ::NTuple{p, Int}) where {d, p} = IndependentCopula{p}()
 
 # Fitting/params interface (no parameters)
 Distributions.params(::IndependentCopula) = (;)

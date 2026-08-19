@@ -1,5 +1,5 @@
 """
-    LogTail{T}, LogCopula{T}
+    LogTail{T}, LogCopula{d,T}
 
 Fields:
   - θ::Real — dependence parameter, θ ∈ [0,1]
@@ -36,7 +36,7 @@ struct LogTail{T} <: AbstractUnivariateTail2
     end
 end
 
-const LogCopula{T} = ExtremeValueCopula{2, LogTail{T}}
+const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
 Distributions.params(tail::LogTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:LogTail}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
 _rebound_params(::Type{<:LogTail}, d, α) = (; θ = exp(α[1]) + 1)
@@ -120,13 +120,14 @@ end
 
 _rho_Log(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(LogTail(θ),t))^2, 0, 1; kw...)[1] - 3
 
-τ(C::LogCopula) = 1 - inv(C.tail.θ)
-ρ(C::LogCopula) = _rho_Log(C.tail.θ)
-β(C::LogCopula) = 4 * 2^(-2^(1 / C.tail.θ)) - 1
-λᵤ(C::LogCopula) = 2 - 2^(1 / C.tail.θ)
+τ(C::ExtremeValueCopula{2,<:LogTail}) = 1 - inv(C.tail.θ)
+ρ(C::ExtremeValueCopula{2,<:LogTail}) = _rho_Log(C.tail.θ)
+β(C::ExtremeValueCopula{2,<:LogTail}) = 4 * 2^(-2^(1 / C.tail.θ)) - 1
+λᵤ(C::ExtremeValueCopula{2,<:LogTail}) = 2 - 2^(1 / C.tail.θ)
 
 
-τ⁻¹(::Type{<:LogCopula}, tau) = 1 / (1 - tau)
-ρ⁻¹(::Type{<:LogCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_Log(θ) - ρ; a=1.0, b=2.0)
-β⁻¹(::Type{<:LogCopula}, beta) = 1 / log2(-log2((beta + 1) / 4))
-λᵤ⁻¹(::Type{<:LogCopula}, λ) = 1 / log2(2 - λ)
+τ⁻¹(::Type{<:ExtremeValueCopula{D,<:LogTail} where D}, tau) = 1 / (1 - tau)
+τ⁻¹(::Type{<:LogTail}, tau) = 1 / (1 - tau)
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:LogTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_Log(θ) - ρ; a=1.0, b=2.0)
+β⁻¹(::Type{<:ExtremeValueCopula{D,<:LogTail} where D}, beta) = 1 / log2(-log2((beta + 1) / 4))
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:LogTail} where D}, λ) = 1 / log2(2 - λ)
