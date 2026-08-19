@@ -137,6 +137,53 @@ function ellpartial(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
     return sgn * exp(logabs)
 end
 
+# Exact spectral sampler for the multivariate negative-logistic/Galambos model.
+# The common scale of the Weibull/Gamma construction cancels after
+# normalization to the simplex.
+function _rand_ev_multivariate!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:GalambosTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    S = promote_type(T, typeof(C.tail.θ))
+    θ = S(C.tail.θ)
+    invθ = inv(θ)
+    shape = one(S) + invθ
+    weibull = Distributions.Weibull(θ, one(S))
+    gamma = Distributions.Gamma(shape, one(S))
+    q = Vector{S}(undef, d)
+    z = Vector{S}(undef, d)
+    invd = inv(S(d))
+
+    for col in axes(X, 2)
+        fill!(z, zero(S))
+        arrival = S(Random.randexp(rng)) * invd
+        radius = inv(arrival)
+
+        while radius > minimum(z)
+            j = rand(rng, 1:d)
+            @inbounds for i in 1:d
+                q[i] = rand(rng, weibull)
+            end
+            q[j] = rand(rng, gamma)^invθ
+
+            qsum = sum(q)
+            @inbounds for i in 1:d
+                qi = q[i] / qsum
+                z[i] = max(z[i], radius * qi)
+            end
+
+            arrival += S(Random.randexp(rng)) * invd
+            radius = inv(arrival)
+        end
+
+        @inbounds for i in 1:d
+            X[i, col] = exp(-inv(z[i]))
+        end
+    end
+    return X
+end
+
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
 function A(tail::GalambosTail, t::Real)
     tt = _safett(t)
