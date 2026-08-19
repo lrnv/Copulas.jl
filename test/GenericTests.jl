@@ -1019,6 +1019,75 @@ end
         @test Copulas.ℓ(L, (0.4, 0.7, 0.0, 0.0)) ≈ Copulas.ℓ(L, (0.4, 0.7))
     end
 
+    @testset "Multivariate Galambos EV" begin
+        function galambos_stdf_reference(x, θ)
+            out = sum(x)
+            d = length(x)
+            for k in 2:d, I in Copulas.Combinatorics.combinations(1:d, k)
+                any(i -> iszero(x[i]), I) && continue
+                term = sum(x[i]^(-θ) for i in I)^(-inv(θ))
+                out += (isodd(k) ? 1 : -1) * term
+            end
+            return out
+        end
+
+        for d in (3, 4), θ in (0.4, 1.5, 5.0)
+            tail = Copulas.GalambosTail(θ)
+            C = Copulas.ExtremeValueCopula(d, tail)
+            x = collect(range(0.31, 1.27; length=d))
+            u = exp.(-x)
+            ref = galambos_stdf_reference(x, θ)
+
+            @test Copulas.ℓ(tail, x) ≈ ref atol=2e-13 rtol=2e-13
+            @test cdf(C, u) ≈ exp(-ref) atol=2e-13 rtol=2e-13
+            @test isfinite(logpdf(C, u))
+        end
+
+        # The multivariate STDF must reproduce the historical bivariate model.
+        for θ in (0.3, 1.2, 7.0)
+            tail = Copulas.GalambosTail(θ)
+            for x in ((0.23, 0.91), (0.7, 0.4), (1.6, 0.2))
+                s = sum(x)
+                @test Copulas.ℓ(tail, x) ≈ s * Copulas.A(tail, x[1] / s) atol=2e-13 rtol=2e-13
+                _, d1, d2, d12 = Copulas._biv_der_ℓ(tail, x)
+                @test Copulas.ellpartial(tail, x, (1,)) ≈ d1 atol=2e-12 rtol=2e-11
+                @test Copulas.ellpartial(tail, x, (2,)) ≈ d2 atol=2e-12 rtol=2e-11
+                @test Copulas.ellpartial(tail, x, (1, 2)) ≈ d12 atol=2e-11 rtol=2e-10
+            end
+        end
+
+        tail = Copulas.GalambosTail(1.7)
+        C3 = Copulas.ExtremeValueCopula(3, tail)
+        C4 = Copulas.ExtremeValueCopula(4, tail)
+        x3 = (0.35, 0.72, 1.18)
+        @test Copulas.ℓ(tail, (x3..., 0.0)) ≈ Copulas.ℓ(tail, x3) atol=2e-14 rtol=2e-14
+        @test cdf(C4, [0.37, 0.61, 0.83, 1.0]) ≈ cdf(C3, [0.37, 0.61, 0.83]) atol=2e-14 rtol=2e-14
+        @test cdf(C4, [0.0, 0.61, 0.83, 0.92]) == 0.0
+        @test isinf(Copulas.ℓ(tail, (Inf, 0.7, 0.2, 0.0)))
+
+        # Strong dependence: the generic AD fallback loses tiny mixed partials
+        # through cancellation, so keep high-precision reference regressions.
+        strong_cases = (
+            (3, 20.0, collect(range(0.31, 1.37; length=3)), -41.822573144200335),
+            (4, 50.0, collect(range(0.31, 1.37; length=4)), -156.06017188457903),
+            (5, 210.0, collect(range(0.2, 2.0; length=5)), -1491.783077378844),
+        )
+        for (d, θ, x, reference) in strong_cases
+            C = Copulas.ExtremeValueCopula(d, Copulas.GalambosTail(θ))
+            lp = logpdf(C, exp.(-x))
+            @test isfinite(lp)
+            @test lp ≈ reference atol=2e-8 rtol=2e-10
+        end
+
+        # This first partial is about 4.6e-659 and therefore underflows as a
+        # Float64 value; its sign/log representation must nevertheless survive.
+        x = collect(range(0.2, 2.0; length=5))
+        sgn, logabs = Copulas._ellpartial_signlog(Copulas.GalambosTail(210.0), x, (1,))
+        @test sgn == 1
+        @test isfinite(logabs)
+        @test logabs ≈ -1515.8850568704655 atol=2e-8 rtol=2e-10
+    end
+
     @testset "BC2 and Cuadras-Auge singular conditionals" begin
         Cbc2 = Copulas.ExtremeValueCopula(2, Copulas.BC2Tail(0.65, 0.25))
         for j in 1:2, t in (0.2, 0.8), α in (0.25, 0.6)
