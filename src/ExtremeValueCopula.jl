@@ -101,13 +101,17 @@ function _ev_logpdf_from_partials(C::ExtremeValueCopula{d}, u) where {d}
     val = ℓ(C.tail, x)
     any(isone, u) && return oftype(val, -Inf)
     logpos = logneg = oftype(val, -Inf)
+    partials = Dict{Tuple{Vararg{Int}},Tuple{Int,typeof(val)}}()
 
     for π in Combinatorics.partitions(collect(1:d))
         sgn = isodd(d + length(π)) ? -1 : 1
         logabs = zero(val)
         nonzero = true
         for block in π
-            blocksgn, blocklog = _ellpartial_signlog(C.tail, x, block)
+            I = Tuple(block)
+            blocksgn, blocklog = get!(partials, I) do
+                _ellpartial_signlog(C.tail, x, I)
+            end
             if iszero(blocksgn)
                 nonzero = false
                 break
