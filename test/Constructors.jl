@@ -65,6 +65,8 @@ end
     for (family, args) in archimedean
         @test Core.apply_type(family, 2)(args...) isa Copulas.Copula{2}
     end
+    @test ClaytonCopula{2}(2) isa ClaytonCopula{2}
+    @test BB1Copula{2}(1, 2) isa BB1Copula{2}
 
     extreme_value = (
         (AsymGalambosCopula, (1.0, 0.4, 0.6)),

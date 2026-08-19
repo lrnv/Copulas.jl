@@ -55,10 +55,24 @@ ArchimedeanCopula(d::Int, G::Generator) = ArchimedeanCopula{d}(G)
 ArchimedeanCopula{d}(::IndependentGenerator) where {d} = IndependentCopula{d}()
 ArchimedeanCopula{d}(::MGenerator) where {d} = MCopula{d}()
 ArchimedeanCopula{d}(::WGenerator) where {d} = WCopula{d}()
-function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
-    return ArchimedeanCopula{d}(generatorof(CT)(args...; kwargs...))
+function _typed_archimedean(CT, d, args...; kwargs...)
+    G = generatorof(CT)(args...; kwargs...)
+    G isa IndependentGenerator && return IndependentCopula{d}()
+    G isa MGenerator && return MCopula{d}()
+    G isa WGenerator && return WCopula{d}()
+    return invoke(ArchimedeanCopula{d}, Tuple{Generator}, G)
 end
-(CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(d::Int, args...; kwargs...) = ArchimedeanCopula(d, generatorof(CT)(args...; kwargs...))
+function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
+    return _typed_archimedean(CT, d, args...; kwargs...)
+end
+function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...)
+    d = Base.unwrap_unionall(CT).parameters[1]
+    nparams = fieldcount(Base.unwrap_unionall(generatorof(CT)))
+    if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
+        return _typed_archimedean(CT, first, args...; kwargs...)
+    end
+    return _typed_archimedean(CT, d, first, args...; kwargs...)
+end
 
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters.
 
