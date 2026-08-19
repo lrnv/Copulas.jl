@@ -66,6 +66,13 @@ d = 3 # The dimension of the model
 C = ClaytonCopula(d,7) # A 3-dimensional clayton copula with parameter θ = 7.
 ```
 
+When the dimension is known at compile time, the equivalent
+`ClaytonCopula{3}(7)` form makes it explicit as the first type parameter. This
+dimension-fixed form is useful in performance-sensitive or generic code because
+its return type can be inferred without relying on the runtime value of `d`.
+The convenient `ClaytonCopula(d, 7)` form remains appropriate for interactive
+use and for dimensions that are only known at runtime.
+
 This object is a random vector, and behaves exactly as you would expect a random vector from `Distributions.jl` to behave: you may sample it with `rand(C,100)`, compute its pdf or cdf with `pdf(C,x)` and `cdf(C,x)`, etc:
 
 ```@example 1
