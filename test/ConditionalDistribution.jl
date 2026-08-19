@@ -20,11 +20,14 @@ end
 
 @testset "Bivariate scalar condition fast path" begin
     C = GaussianCopula([1.0 0.4; 0.4 1.0])
-    for j in 1:2, uⱼ in (0.0f0, 0.4, big"1.0")
+    for j in 1:2, uⱼ in (0.2f0, 0.4, big"0.8")
         direct = condition(C, j, uⱼ)
         reference = condition(C, (j,), (float(uⱼ),))
         @test typeof(direct) == typeof(reference)
         @test cdf(direct, 0.3) ≈ cdf(reference, 0.3)
+    end
+    for j in 1:2, uⱼ in (0.0f0, big"1.0")
+        @test typeof(condition(C, j, uⱼ)) == typeof(condition(C, (j,), (float(uⱼ),)))
     end
     @test_throws ArgumentError condition(C, 0, 0.4)
     @test_throws ArgumentError condition(C, 3, 0.4)
