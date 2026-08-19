@@ -85,6 +85,8 @@ end
         @test Core.apply_type(family, 2)(args...) isa Copulas.Copula{2}
         @test family(2, args...) isa Copulas.Copula{2}
     end
+    @test GalambosCopula{2}(2) isa GalambosCopula{2}
+    @test tEVCopula{2}(4, 0.5) isa tEVCopula{2}
 
     @test GalambosCopula(2; θ=1.0) isa GalambosCopula{2}
 

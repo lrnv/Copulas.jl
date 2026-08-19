@@ -45,13 +45,21 @@ struct ExtremeValueCopula{d, TT<:Tail} <: Copula{d}
 end
 
 ExtremeValueCopula(d, tail::Tail) = ExtremeValueCopula{d}(tail)
+_typed_extreme_value(CT, d, args...; kwargs...) =
+    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
 function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
-    return ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+    return _typed_extreme_value(CT, d, args...; kwargs...)
 end
-(CT::Type{<:ExtremeValueCopula{D}})(d::Int, args...; kwargs...) where {D} =
-    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) where {D}
+    d = Base.unwrap_unionall(CT).parameters[1]
+    nparams = fieldcount(Base.unwrap_unionall(tailof(CT)))
+    if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
+        return _typed_extreme_value(CT, first, args...; kwargs...)
+    end
+    return _typed_extreme_value(CT, d, first, args...; kwargs...)
+end
 (CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) =
-    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+    _typed_extreme_value(CT, d, args...; kwargs...)
 
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
