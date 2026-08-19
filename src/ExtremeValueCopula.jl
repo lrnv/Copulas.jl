@@ -44,7 +44,7 @@ struct ExtremeValueCopula{d, TT<:Tail} <: Copula{d}
     end
 end
 
-ExtremeValueCopula(d, tail::Tail) = ExtremeValueCopula{d}(tail)
+ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
 _typed_extreme_value(CT, d, args...; kwargs...) =
     ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
 function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}

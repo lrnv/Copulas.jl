@@ -9,6 +9,7 @@
     Σ = [1.0 0.2; 0.2 1.0]
     @test ArchimedeanCopula{2}(Copulas.ClaytonGenerator(2.0)) isa Copulas.Copula{2}
     @test Copulas.ExtremeValueCopula{2}(Copulas.GalambosTail(1.0)) isa Copulas.Copula{2}
+    @test Copulas.ExtremeValueCopula(2, Copulas.GalambosTail(1.0)) isa Copulas.Copula{2}
     @test ArchimaxCopula{2}(Copulas.ClaytonGenerator(2.0), Copulas.GalambosTail(1.0)) isa Copulas.Copula{2}
     @test TCopula{2}(4, copy(Σ)) isa TCopula{2}
     @test GaussianCopula{2,Matrix{Float64}}(2, copy(Σ)) isa GaussianCopula{2}
