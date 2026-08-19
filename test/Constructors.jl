@@ -109,4 +109,8 @@ end
         @test which(Copulas.τ, (typeof(C),)) !=
               which(Copulas.τ, (Copulas.ExtremeValueCopula{2},))
     end
+    for CT in (GalambosCopula, CuadrasAugeCopula, HuslerReissCopula,
+               LogCopula, MixedCopula)
+        @test isfinite(Copulas.τ⁻¹(CT, 0.2))
+    end
 end

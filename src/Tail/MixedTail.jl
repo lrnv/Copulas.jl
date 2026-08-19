@@ -68,8 +68,8 @@ _rho_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 : 12 * QuadGK.quadgk(t -
 β(C::ExtremeValueCopula{2,<:MixedTail}) = 2.0^(C.tail.θ / 2) - 1
 λᵤ(C::ExtremeValueCopula{2,<:MixedTail}) = 0
 
-τ⁻¹(::Type{<:ExtremeValueCopula{2,<:MixedTail}}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? 1 : _invmono(θ -> _tau_Mixed(θ) - τ; kw...)
+τ⁻¹(::Type{<:ExtremeValueCopula{D,<:MixedTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? 1 : _invmono(θ -> _tau_Mixed(θ) - τ; kw...)
 τ⁻¹(::Type{<:MixedTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? 1 : _invmono(θ -> _tau_Mixed(θ) - τ; kw...)
-ρ⁻¹(::Type{<:ExtremeValueCopula{2,<:MixedTail}}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? 1 : _invmono(θ -> _rho_Mixed(θ) - ρ; kw...)
-β⁻¹(::Type{<:ExtremeValueCopula{2,<:MixedTail}}, beta) = 2 * log2(beta + 1)
-λᵤ⁻¹(::Type{<:ExtremeValueCopula{2,<:MixedTail}}, λ) = 2λ
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:MixedTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? 1 : _invmono(θ -> _rho_Mixed(θ) - ρ; kw...)
+β⁻¹(::Type{<:ExtremeValueCopula{D,<:MixedTail} where D}, beta) = 2 * log2(beta + 1)
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:MixedTail} where D}, λ) = 2λ

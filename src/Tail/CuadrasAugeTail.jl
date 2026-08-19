@@ -104,8 +104,8 @@ end
 β(C::ExtremeValueCopula{2,<:CuadrasAugeTail}) = 2.0^(C.tail.θ) - 1
 λᵤ(C::ExtremeValueCopula{2,<:CuadrasAugeTail}) = C.tail.θ
 
-τ⁻¹(::Type{<:ExtremeValueCopula{2,<:CuadrasAugeTail}}, tau) = 2tau / (1 + tau)
+τ⁻¹(::Type{<:ExtremeValueCopula{D,<:CuadrasAugeTail} where D}, tau) = 2tau / (1 + tau)
 τ⁻¹(::Type{<:CuadrasAugeTail}, tau) = 2tau / (1 + tau)
-ρ⁻¹(::Type{<:ExtremeValueCopula{2,<:CuadrasAugeTail}}, rho) = 4rho / (3 + rho)
-β⁻¹(::Type{<:ExtremeValueCopula{2,<:CuadrasAugeTail}}, beta) = log2(beta + 1)
-λᵤ⁻¹(::Type{<:ExtremeValueCopula{2,<:CuadrasAugeTail}}, λ) = λ
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:CuadrasAugeTail} where D}, rho) = 4rho / (3 + rho)
+β⁻¹(::Type{<:ExtremeValueCopula{D,<:CuadrasAugeTail} where D}, beta) = log2(beta + 1)
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:CuadrasAugeTail} where D}, λ) = λ

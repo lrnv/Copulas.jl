@@ -126,8 +126,8 @@ _rho_Log(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -
 λᵤ(C::ExtremeValueCopula{2,<:LogTail}) = 2 - 2^(1 / C.tail.θ)
 
 
-τ⁻¹(::Type{<:ExtremeValueCopula{2,<:LogTail}}, tau) = 1 / (1 - tau)
+τ⁻¹(::Type{<:ExtremeValueCopula{D,<:LogTail} where D}, tau) = 1 / (1 - tau)
 τ⁻¹(::Type{<:LogTail}, tau) = 1 / (1 - tau)
-ρ⁻¹(::Type{<:ExtremeValueCopula{2,<:LogTail}}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_Log(θ) - ρ; a=1.0, b=2.0)
-β⁻¹(::Type{<:ExtremeValueCopula{2,<:LogTail}}, beta) = 1 / log2(-log2((beta + 1) / 4))
-λᵤ⁻¹(::Type{<:ExtremeValueCopula{2,<:LogTail}}, λ) = 1 / log2(2 - λ)
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:LogTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_Log(θ) - ρ; a=1.0, b=2.0)
+β⁻¹(::Type{<:ExtremeValueCopula{D,<:LogTail} where D}, beta) = 1 / log2(-log2((beta + 1) / 4))
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:LogTail} where D}, λ) = 1 / log2(2 - λ)

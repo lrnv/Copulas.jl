@@ -109,8 +109,8 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
 β(C::ExtremeValueCopula{2,<:GalambosTail}) = 2.0^( 2.0^(-1.0/C.tail.θ) ) - 1.0
 λᵤ(C::ExtremeValueCopula{2,<:GalambosTail}) = 2.0^(-1.0/C.tail.θ)
 
-τ⁻¹(::Type{<:ExtremeValueCopula{2,<:GalambosTail}}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
+τ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
 τ⁻¹(::Type{<:GalambosTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
-ρ⁻¹(::Type{<:ExtremeValueCopula{2,<:GalambosTail}}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
-β⁻¹(::Type{<:ExtremeValueCopula{2,<:GalambosTail}}, beta) = -1/log2(log2(beta+1))
-λᵤ⁻¹(::Type{<:ExtremeValueCopula{2,<:GalambosTail}}, λ) = -1.0 / log2(λ)
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
+β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta) = -1/log2(log2(beta+1))
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) = -1.0 / log2(λ)

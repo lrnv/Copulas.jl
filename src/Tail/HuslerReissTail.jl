@@ -100,11 +100,11 @@ _rho_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.qu
 λᵤ(C::ExtremeValueCopula{2,<:HuslerReissTail}) = 2 * (1 - Distributions.cdf(Distributions.Normal(), 1 / C.tail.θ))
 β(C::ExtremeValueCopula{2,<:HuslerReissTail}) = 4^(1 - Distributions.cdf(Distributions.Normal(), 1/C.tail.θ)) - 1
 
-τ⁻¹(::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
+τ⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
 τ⁻¹(::Type{<:HuslerReissTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
-ρ⁻¹(::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_HuslerReiss(θ) - ρ; kw...)
-λᵤ⁻¹(::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}}, λ) = 1 / Distributions.quantile(Distributions.Normal(), 1 - λ/2)
-function β⁻¹(::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}}, beta)
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_HuslerReiss(θ) - ρ; kw...)
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, λ) = 1 / Distributions.quantile(Distributions.Normal(), 1 - λ/2)
+function β⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, beta)
     p = 1 - log(beta + 1) / log(4)
     # Clamp to open interval (0,1)
     p = clamp(p, eps(), 1 - eps())
