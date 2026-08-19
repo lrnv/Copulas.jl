@@ -51,11 +51,19 @@ function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
     return _typed_extreme_value(CT, d, args...; kwargs...)
 end
 function (CT::Type{<:ExtremeValueCopula{D,TT}})(d::Int, args...; kwargs...) where {D,TT}
+    # Dropping TT's parameters is intentional for the current parametric
+    # tails: they only encode the numeric parameter type, which fitting may
+    # need to replace (e.g. with a Dual). Revisit this if a tail with structural
+    # type parameters is routed through this constructor.
     TailType = Base.typename(TT).wrapper
     return ExtremeValueCopula{d}(TailType(args...; kwargs...))
 end
 function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) where {D}
     d = Base.unwrap_unionall(CT).parameters[1]
+    # An integer can be either the runtime dimension in CT(d, parameters...)
+    # or the first parameter in CT{d}(parameters...). For the families
+    # currently provided, constructor arity matches the tail field count.
+    # This heuristic must be revisited if optional/non-field parameters appear.
     nparams = fieldcount(Base.unwrap_unionall(tailof(CT)))
     if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
         return _typed_extreme_value(CT, first, args...; kwargs...)

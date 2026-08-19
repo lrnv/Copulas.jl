@@ -66,11 +66,19 @@ function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
     return _typed_archimedean(CT, d, args...; kwargs...)
 end
 function (CT::Type{<:ArchimedeanCopula{D,TG}})(d::Int, args...; kwargs...) where {D,TG}
+    # Dropping TG's parameters is intentional for the current parametric
+    # generators: they only encode the numeric parameter type, which fitting
+    # may need to replace (e.g. with a Dual). Revisit this if a generator with
+    # structural type parameters is routed through this constructor.
     GT = Base.typename(TG).wrapper
     return ArchimedeanCopula{d}(GT(args...; kwargs...))
 end
 function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...)
     d = Base.unwrap_unionall(CT).parameters[1]
+    # An integer can be either the runtime dimension in CT(d, parameters...)
+    # or the first parameter in CT{d}(parameters...). For the families
+    # currently provided, constructor arity matches the generator field count.
+    # This heuristic must be revisited if optional/non-field parameters appear.
     nparams = fieldcount(Base.unwrap_unionall(generatorof(CT)))
     if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
         return _typed_archimedean(CT, first, args...; kwargs...)
