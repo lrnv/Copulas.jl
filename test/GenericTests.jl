@@ -1635,3 +1635,76 @@ end
         )
     end
 end
+
+
+@testset "Multivariate Mixed EV" begin
+    @testset "historical bivariate reduction and tail dependence" begin
+        for θ in (0.15, 0.55, 1.0)
+            tail = Copulas.MixedTail(θ)
+            C = Copulas.ExtremeValueCopula(2, tail)
+            x = [0.37, 1.29]
+
+            ref = sum(x) * Copulas.A(tail, x[1] / sum(x))
+            @test Copulas.ℓ(tail, x) ≈ ref atol=4e-14 rtol=4e-14
+            @test Copulas.λᵤ(C) ≈ θ / 2 atol=2e-15 rtol=2e-15
+        end
+    end
+
+    @testset "multivariate Galambos-mixture identity" begin
+        θ = 0.63
+        tail = Copulas.MixedTail(θ)
+
+        for d in (3, 4)
+            x = collect(range(0.31, 1.28; length=d))
+            ref = (1 - θ) * sum(x) +
+                  θ * Copulas.ℓ(Copulas.GalambosTail(1.0), x)
+
+            @test Copulas._is_valid_in_dim(tail, d)
+            @test Copulas.ℓ(tail, x) ≈ ref atol=3e-13 rtol=3e-12
+
+            for I in (
+                (1,),
+                (1, 2),
+                ntuple(identity, d),
+            )
+                got = Copulas.ellpartial(tail, x, I)
+
+                if length(I) == 1
+                    refp = (1 - θ) +
+                           θ * Copulas.ellpartial(
+                               Copulas.GalambosTail(1.0),
+                               x,
+                               I,
+                           )
+                else
+                    refp = θ * Copulas.ellpartial(
+                        Copulas.GalambosTail(1.0),
+                        x,
+                        I,
+                    )
+                end
+
+                @test got ≈ refp atol=3e-11 rtol=3e-10
+            end
+        end
+    end
+
+    @testset "logpdf and exact sampling" begin
+        θ = 0.63
+        C = Copulas.ExtremeValueCopula(3, Copulas.MixedTail(θ))
+        u = [0.34, 0.57, 0.81]
+
+        @test logpdf(C, u) ≈ -0.118043090304781 atol=3e-12 rtol=3e-12
+
+        U = rand(StableRNG(5001), C, 6_000)
+        @test size(U) == (3, 6_000)
+        @test all(isfinite, U)
+        @test all(v -> 0.0 < v < 1.0, U)
+        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:3)
+
+        target = cdf(C, u)
+        empirical = mean(vec(all(U .<= u, dims=1)))
+        se = sqrt(max(target * (1 - target), 1e-12) / size(U, 2))
+        @test abs(empirical - target) < max(0.04, 6 * se)
+    end
+end
