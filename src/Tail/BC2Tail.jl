@@ -1,24 +1,29 @@
 """
     BC2Tail{T}, BC2Copula{T}
 
-Fields:
-  - a::Real — parameter (a ∈ [0,1])
-  - b::Real — parameter (b ∈ [0,1])
+    BC2Copula(2, a, b)
+    BC2Copula(a::AbstractVector)
 
-Constructor
+BC2 extreme-value family with a finite two-atom spectral representation.
 
-    BC2Copula(a, b)
-    ExtremeValueCopula(2, BC2Tail(a, b))
-
-The bivariate BC2 extreme-value copula is parameterized by two parameters ``a, b \\in [0,1]``. Its Pickands dependence function is
+The specialized bivariate model uses `a,b ∈ [0,1]` and Pickands function
 
 ```math
-A(t) = \\max\\{a t, b (1-t) \\} + \\max\\{(1-a)t, (1-b)(1-t)\\}, \\quad t \\in [0,1].
+A(t)=\\max\\{at,b(1-t)\\}+\\max\\{(1-a)t,(1-b)(1-t)\\}.
 ```
+
+For `a = (a_1,\\ldots,a_d)`, the vector determines the dimension and
+
+```math
+\\ell(x)=\\max_i(a_ix_i)+\\max_i((1-a_i)x_i).
+```
+
+A vector of length two is reduced to the specialized `BC2Tail`; longer vectors
+use the multivariate discrete-spectral representation.
 
 References:
 
-* [mai2011bivariate](@cite) Mai, J. F., & Scherer, M. (2011). Bivariate extreme-value copulas with discrete Pickands dependence measure. Extremes, 14, 311-324. Springer, 2011.
+* [mai2011bivariate](@cite) Mai, J. F., & Scherer, M. (2011). Bivariate extreme-value copulas with discrete Pickands dependence measure. Extremes, 14, 311-324.
 """
 BC2Tail, BC2Copula
 
@@ -197,6 +202,11 @@ BC2MultivariateTail(tail::BC2Tail) =
 
 BC2MultivariateCopula(a::AbstractVector) =
     ExtremeValueCopula(length(a), BC2MultivariateTail(a))
+
+function (::Type{<:ExtremeValueCopula{2,<:BC2Tail}})(a::AbstractVector)
+    length(a) == 2 && return ExtremeValueCopula(2, BC2Tail(a[1], a[2]))
+    return BC2MultivariateCopula(a)
+end
 
 BC2MultivariateCopula(tail::BC2Tail) =
     ExtremeValueCopula(2, BC2MultivariateTail(tail))

@@ -1,29 +1,35 @@
 """
     CuadrasAugeTail{T}, CuadrasAugeCopula{T}
 
-Fields:
-  - θ::Real — dependence parameter, θ ∈ [0,1]
+    CuadrasAugeCopula(d, θ)
 
-Constructor
-
-    CuadrasAugeCopula(θ)
-    ExtremeValueCopula(2, CuadrasAugeTail(θ))
-
-The (bivariate) Cuadras-Augé extreme-value copula is parameterized by ``\\theta \\in [0,1]``.
-Its Pickands dependence function is
+Cuadras-Augé extreme-value copula in dimension `d ≥ 2`, with `θ ∈ [0,1]`.
+Copulas.jl uses the stable tail dependence function
 
 ```math
-A(t) = \\max\\{t, 1-t\\} + (1-\\theta)\\min\\{t,1-t\\}, \\quad t \\in [0,1].
+\\ell(x)
+=
+(1-\\theta)\\sum_{i=1}^d x_i
++
+\\theta\\max_{1\\le i\\le d}x_i.
 ```
+
+For `d = 2` this yields the usual Pickands dependence function
+
+```math
+A(t)=\\max\\{t,1-t\\}+(1-\\theta)\\min\\{t,1-t\\}.
+```
+
+The model has a finite discrete-spectral representation.
 
 Special cases:
 
-* θ = 0 ⇒ IndependentCopula
-* θ = 1 ⇒ MCopula (comonotone copula)
+* `θ = 0` returns `IndependentCopula(d)`.
+* `θ = 1` returns `MCopula(d)`.
 
 References:
 
-* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
+* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications. World Scientific.
 """
 CuadrasAugeTail, CuadrasAugeCopula
 

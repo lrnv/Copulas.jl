@@ -7,7 +7,7 @@ Fields:
 
 Constructor
 
-  AsymMixedCopula(θ₁, θ₂)
+  AsymMixedCopula(2, θ₁, θ₂)
   ExtremeValueCopula(2, AsymMixedTail(θ₁, θ₂))
 
 The (bivariate) asymmetric Mixed extreme-value copula is parameterized by two parameters ``\\theta_1``, ``\\theta_2`` subject to the following constraints:

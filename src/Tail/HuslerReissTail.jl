@@ -1,26 +1,41 @@
 """
     HuslerReissTail{T}, HuslerReissCopula{T}
 
-Fields:
-  - θ::Real — dependence parameter, θ ≥ 0
+    HuslerReissCopula(d, θ)
+    HuslerReissCopula(Γ)
 
-Constructor
+Hüsler-Reiss extreme-value copula.
 
-    HuslerReissCopula(θ)
-    ExtremeValueCopula(2, HuslerReissTail(θ))
-
-The (bivariate) Hüsler-Reiss extreme-value copula is parameterized by ``\\theta \\in [0, \\infty)``.
-Its Pickands dependence function is
+`HuslerReissCopula(d, θ)` is the exchangeable representation with
+`θ ∈ [0,∞]`. For `d > 2`, it corresponds to a variogram with constant
+off-diagonal entry
 
 ```math
-A(t) = t\\Phi(\\theta^{-1}+\\frac{1}{2}\\theta\\log(\\frac{t}{1-t})) +(1-t)\\Phi(\\theta^{-1}+\\frac{1}{2}\\theta\\log(\\frac{1-t}{t}))
+\\gamma=\\left(\\frac{2}{\\theta}\\right)^2.
 ```
-where ``\\Phi`` is the standard normal cdf.
+
+`HuslerReissCopula(Γ)` is the general variogram representation. The square
+matrix `Γ` determines the dimension. It must be finite and symmetric, with
+zero diagonal, and must satisfy the Hüsler-Reiss variogram validity conditions.
+For a non-degenerate `d ≥ 3` representation, off-diagonal entries are strictly
+positive and the variogram is strictly conditionally negative definite.
+
+A `2×2` variogram supplied through the public constructor is validated and
+automatically reduced to the scalar `HuslerReissTail` representation, thereby
+preserving the specialized bivariate kernel. In dimension two,
+
+```math
+A(t)
+=
+t\\Phi\\!\\left(\\theta^{-1}+\\frac{\\theta}{2}\\log\\frac{t}{1-t}\\right)
++
+(1-t)\\Phi\\!\\left(\\theta^{-1}+\\frac{\\theta}{2}\\log\\frac{1-t}{t}\\right).
+```
 
 Special cases:
 
-* θ = 0   ⇒ IndependentCopula
-* θ = ∞   ⇒ MCopula (upper Fréchet-Hoeffding bound)
+* `θ = 0` returns `IndependentCopula(d)`.
+* `θ = ∞`, or an all-zero variogram, returns `MCopula(d)`.
 
 References:
 
@@ -44,11 +59,12 @@ Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
 """
     HuslerReissVariogramTail(Γ)
 
-General non-degenerate multivariate Hüsler-Reiss tail parameterized by a
-variogram matrix `Γ`. The matrix must be finite, symmetric, have zero diagonal,
-and be strictly conditionally negative definite. This representation is used
-for dimensions `d ≥ 3`; the historical scalar `HuslerReissTail(θ)` remains the
-bivariate/exchangeable interface.
+Internal general Hüsler-Reiss variogram representation for `d ≥ 3`. `Γ` must
+be finite and symmetric, have zero diagonal and strictly positive
+off-diagonal entries, and be strictly conditionally negative definite.
+
+Prefer `HuslerReissCopula(Γ)` in user code. The public constructor infers the
+dimension and maps valid `2×2` variograms to the specialized scalar tail.
 """
 struct HuslerReissVariogramTail{MT<:AbstractMatrix} <: Tail
     Γ::MT
@@ -103,6 +119,48 @@ end
 Distributions.params(tail::HuslerReissVariogramTail) = (Γ = tail.Γ,)
 _is_valid_in_dim(tail::HuslerReissVariogramTail, d::Int) =
     d == size(tail.Γ, 1)
+
+function _husler_reiss_copula(Γ::AbstractMatrix)
+    d1, d2 = size(Γ)
+    d1 == d2 || throw(DimensionMismatch("Γ must be square"))
+    d1 >= 2 || throw(ArgumentError("Γ must have dimension at least 2"))
+    all(iszero, Γ) && return MCopula(d1)
+
+    if d1 == 2
+        G = Matrix{Float64}(Γ)
+        all(isfinite, G) || throw(ArgumentError(
+            "Γ must contain only finite entries",
+        ))
+        scale = max(1.0, maximum(abs, G))
+        tol = sqrt(eps(Float64)) * scale
+        isapprox(G, transpose(G); atol=tol, rtol=tol) ||
+            throw(ArgumentError("Γ must be symmetric"))
+        maximum(abs, LinearAlgebra.diag(G)) <= tol ||
+            throw(ArgumentError("Γ must have zero diagonal"))
+        γ = 0.5 * (G[1, 2] + G[2, 1])
+        γ > 0.0 || throw(ArgumentError(
+            "Γ must have a strictly positive off-diagonal entry",
+        ))
+        return ExtremeValueCopula(2, HuslerReissTail(2 / sqrt(γ)))
+    end
+
+    tail = HuslerReissVariogramTail(Γ)
+    return ExtremeValueCopula(d1, tail)
+end
+
+(::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}})(Γ::AbstractMatrix) =
+    _husler_reiss_copula(Γ)
+
+function (::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}})(
+    d::Int,
+    Γ::AbstractMatrix,
+)
+    d == size(Γ, 1) || throw(DimensionMismatch(
+        "d=$d does not match variogram dimension $(size(Γ, 1))",
+    ))
+    return _husler_reiss_copula(Γ)
+end
+
 _unbound_params(::Type{<:HuslerReissTail}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissTail}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:HuslerReissTail}, d) = (0.0, Inf)

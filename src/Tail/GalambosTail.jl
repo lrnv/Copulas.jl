@@ -1,32 +1,31 @@
 """
     GalambosTail{T}, GalambosCopula{T}
 
-Fields:
-  - θ::Real — dependence parameter, θ ≥ 0
+    GalambosCopula(d, θ)
 
-Constructor
-
-    GalambosCopula(θ)
-    ExtremeValueCopula(2, GalambosTail(θ))
-    ExtremeValueCopula(d, GalambosTail(θ))
-
-The Galambos (negative-logistic) extreme-value copula is parameterized by
-``\\theta \\in [0, \\infty)``. In dimension ``d ≥ 2`` its stable tail dependence
-function is
+Galambos (negative-logistic) extreme-value copula in dimension `d ≥ 2`, with
+`θ ∈ [0, ∞]`. Its stable tail dependence function is
 
 ```math
-\\ell(x) = \\sum_{\\emptyset \\ne I \\subseteq \\{1,\\ldots,d\\}}
+\\ell(x)
+=
+\\sum_{\\varnothing \\ne I \\subseteq \\{1,\\ldots,d\\}}
 (-1)^{|I|+1}
 \\left(\\sum_{i\\in I}x_i^{-\\theta}\\right)^{-1/\\theta}.
 ```
 
-For ``d=2`` this is equivalent to the usual Pickands function
-``A(t)=1-(t^{-\\theta}+(1-t)^{-\\theta})^{-1/\\theta}``.
+For `d = 2`, the equivalent Pickands dependence function is
+
+```math
+A(t)=1-\\left(t^{-\\theta}+(1-t)^{-\\theta}\\right)^{-1/\\theta},
+```
+
+and the implementation uses the native bivariate derivatives when beneficial.
 
 Special cases:
 
-* θ = 0   ⇒ IndependentCopula
-* θ = ∞   ⇒ MCopula (upper Fréchet-Hoeffding bound)
+* `θ = 0` returns `IndependentCopula(d)`.
+* `θ = ∞` returns `MCopula(d)`.
 
 References:
 
