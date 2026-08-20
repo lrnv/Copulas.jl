@@ -259,55 +259,6 @@ function Distributions.quantile(dist::WilliamsonBetaProduct, p::Real)
 end
 
 
-"""
-    FrailtyGenerator<:AbstractFrailtyGenerator<:Generator
-
-methods: 
-    - frailty(::FrailtyGenerator) gives the frailty 
-    - ϕ and the rest of generators are automatically defined from the frailty. 
-
-Constructor
-
-    FrailtyGenerator(D)
-
-A Frailty generator can be defined by a positive random variable that happens to have a `mgf()` 
-function to compute its moment generating function. The generator is simply: 
-
-```math
-\\phi(t) = mgf(frailty(G), -t)
-```
-
-https://www.uni-ulm.de/fileadmin/website_uni_ulm/mawi.inst.zawa/forschung/2009-08-16_hofert.pdf
-
-References:
-* [hofert2009](@cite) M. Hoffert (2009). Efficiently sampling Archimedean copulas
-"""
-FrailtyGenerator
-
-abstract type AbstractFrailtyGenerator<:Generator end
-frailty(::AbstractFrailtyGenerator) = throw("This generator was not defined as it should, you should provide its frailty")
-max_monotony(::AbstractFrailtyGenerator) = Inf
-ϕ(G::AbstractFrailtyGenerator, t) = Distributions.mgf(frailty(G), -t)
-𝒲₋₁(G::AbstractFrailtyGenerator, d::Int) = WilliamsonFromFrailty(frailty(G), d)
-
-struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator
-    F::TF
-    function FrailtyGenerator(F::Distributions.ContinuousUnivariateDistribution)
-        @assert Base.minimum(F) > 0
-        return new{typeof(F)}(F)
-    end
-end
-Distributions.params(G::FrailtyGenerator) = Distributions.params(G.F)
-frailty(G::FrailtyGenerator) = G.F
-
-# Add univaraite generator bindins: 
-abstract type AbstractUnivariateGenerator <: Generator end
-abstract type AbstractUnivariateFrailtyGenerator <: AbstractFrailtyGenerator end
-const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
-
-
-
-
 
 
 """
@@ -631,3 +582,53 @@ max_monotony(G::TiltedGenerator{TG, T}) where {TG, T} = max(0, max_monotony(G.G)
 ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T}, k::Int, y; start_at = G.sJ) where {TG, T} = ϕ⁽ᵏ⁾⁻¹(G.G, k + G.p, y * G.den; start_at = start_at+G.sJ) - G.sJ
 ϕ⁽¹⁾(G::TiltedGenerator{TG, T}, t) where {TG, T} = ϕ⁽ᵏ⁾(G, 1, t)
 Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., sJ = G.sJ)
+
+
+
+"""
+    FrailtyGenerator<:AbstractFrailtyGenerator<:Generator
+
+methods: 
+    - frailty(::FrailtyGenerator) gives the frailty 
+    - ϕ and the rest of generators are automatically defined from the frailty. 
+
+Constructor
+
+    FrailtyGenerator(D)
+
+A Frailty generator can be defined by a positive random variable that happens to have a `mgf()` 
+function to compute its moment generating function. The generator is simply: 
+
+```math
+\\phi(t) = mgf(frailty(G), -t)
+```
+
+https://www.uni-ulm.de/fileadmin/website_uni_ulm/mawi.inst.zawa/forschung/2009-08-16_hofert.pdf
+
+References:
+* [hofert2009](@cite) M. Hoffert (2009). Efficiently sampling Archimedean copulas
+"""
+FrailtyGenerator
+
+abstract type AbstractFrailtyGenerator<:Generator end
+frailty(::AbstractFrailtyGenerator) = throw("This generator was not defined as it should, you should provide its frailty")
+max_monotony(::AbstractFrailtyGenerator) = Inf
+ϕ(G::AbstractFrailtyGenerator, t) = Distributions.mgf(frailty(G), -t)
+𝒲₋₁(G::AbstractFrailtyGenerator, d::Int) = WilliamsonFromFrailty(frailty(G), d)
+
+struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator
+    F::TF
+    function FrailtyGenerator(F::Distributions.ContinuousUnivariateDistribution)
+        @assert Base.minimum(F) > 0
+        return new{typeof(F)}(F)
+    end
+end
+Distributions.params(G::FrailtyGenerator) = Distributions.params(G.F)
+frailty(G::FrailtyGenerator) = G.F
+
+# Add univaraite generator bindins: 
+abstract type AbstractUnivariateGenerator <: Generator end
+abstract type AbstractUnivariateFrailtyGenerator <: AbstractFrailtyGenerator end
+const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
+
+
