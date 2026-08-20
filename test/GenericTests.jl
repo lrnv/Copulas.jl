@@ -1232,3 +1232,131 @@ end
         @test_throws ArgumentError Copulas.HuslerReissVariogramTail(Γbad)
     end
 end
+
+
+@testset "Multivariate extremal-t EV" begin
+    @testset "rho=0 regression and exchangeable scalar API" begin
+        tail0 = Copulas.tEVTail(1.0, 0.0)
+        @test tail0 isa Copulas.tEVTail
+        @test 2 * Copulas.A(tail0, 0.5) ≈ 1 + inv(sqrt(2)) atol=2e-12 rtol=2e-12
+
+        cases = (
+            (3, 1.7, 0.0, 4701),
+            (3, 2.3, -0.2, 4702),
+            (4, 2.0, 0.4, 4703),
+        )
+
+        for (d, ν, ρ, seed) in cases
+            tail = Copulas.tEVTail(ν, ρ)
+            @test Copulas._is_valid_in_dim(tail, d)
+
+            C = Copulas.ExtremeValueCopula(d, tail)
+            u = collect(range(0.31, 0.82; length=d))
+
+            @test 0.0 < cdf(C, u) < 1.0
+            @test isfinite(logpdf(C, u))
+
+            U = rand(StableRNG(seed), C, 4_000)
+            @test size(U) == (d, 4_000)
+            @test all(isfinite, U)
+            @test all(v -> 0.0 < v < 1.0, U)
+            @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:d)
+
+            target = cdf(C, u)
+            empirical = mean(vec(all(U .<= u, dims=1)))
+            se = sqrt(max(target * (1 - target), 1e-12) / size(U, 2))
+            @test abs(empirical - target) < max(0.04, 6 * se)
+        end
+
+        @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.7), 3)
+        @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.4), 4)
+    end
+
+    @testset "general correlation parameterization" begin
+        R = [1.0  0.35 -0.20;
+             0.35 1.0   0.15;
+            -0.20 0.15  1.0]
+        ν = 1.7
+
+        tail = Copulas.tEVCorrelationTail(ν, R)
+        C = Copulas.ExtremeValueCopula(3, tail)
+
+        @test Copulas._is_valid_in_dim(tail, 3)
+        @test !Copulas._is_valid_in_dim(tail, 4)
+        @test Distributions.params(tail).ν == ν
+        @test Distributions.params(tail).R ≈ R
+
+        u = [0.34, 0.58, 0.79]
+        @test 0.0 < cdf(C, u) < 1.0
+        @test isfinite(logpdf(C, u))
+
+        U = rand(StableRNG(4710), C, 6_000)
+        @test size(U) == (3, 6_000)
+        @test all(isfinite, U)
+        @test all(v -> 0.0 < v < 1.0, U)
+
+        q = [0.41, 0.75]
+        for i in 1:2, j in (i + 1):3
+            Cij = Copulas.ExtremeValueCopula(
+                2,
+                Copulas.tEVTail(ν, R[i, j]),
+            )
+            target = cdf(Cij, q)
+            empirical = mean(
+                ((@view U[i, :]) .<= q[1]) .&
+                ((@view U[j, :]) .<= q[2])
+            )
+            se = sqrt(max(target * (1 - target), 1e-12) / size(U, 2))
+            @test abs(empirical - target) < max(0.04, 6 * se)
+        end
+    end
+
+    @testset "general R agrees with exchangeable scalar model" begin
+        for (d, ν, ρ) in (
+            (3, 1.3, 0.25),
+            (4, 2.2, 0.4),
+        )
+            R = Copulas._tev_exchangeable_correlation(d, ρ)
+
+            Cscalar = Copulas.ExtremeValueCopula(
+                d,
+                Copulas.tEVTail(ν, ρ),
+            )
+            Cmatrix = Copulas.ExtremeValueCopula(
+                d,
+                Copulas.tEVCorrelationTail(ν, R),
+            )
+
+            u = collect(range(0.29, 0.83; length=d))
+            @test cdf(Cscalar, u) ≈ cdf(Cmatrix, u) atol=3e-7 rtol=3e-7
+            @test logpdf(Cscalar, u) ≈ logpdf(Cmatrix, u) atol=3e-6 rtol=3e-6
+        end
+    end
+
+    @testset "invalid correlation matrices" begin
+        @test_throws DimensionMismatch Copulas.tEVCorrelationTail(
+            1.5,
+            zeros(3, 4),
+        )
+        @test_throws ArgumentError Copulas.tEVCorrelationTail(
+            1.5,
+            [1.0 0.2; 0.2 1.0],
+        )
+        @test_throws ArgumentError Copulas.tEVCorrelationTail(
+            0.0,
+            Matrix{Float64}(I, 3, 3),
+        )
+        @test_throws ArgumentError Copulas.tEVCorrelationTail(
+            1.5,
+            [1.0 0.3 0.0;
+             0.1 1.0 0.2;
+             0.0 0.2 1.0],
+        )
+        @test_throws ArgumentError Copulas.tEVCorrelationTail(
+            1.5,
+            [1.0 0.95 0.95;
+             0.95 1.0 -0.95;
+             0.95 -0.95 1.0],
+        )
+    end
+end
