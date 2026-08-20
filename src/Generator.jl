@@ -261,11 +261,10 @@ function _positive_distribution_quantile(dist, p::Real)
             isfinite(hi) || return hi
         end
     end
-    return Roots.find_zero(
-        x -> Distributions.cdf(dist, x) - p,
-        (lo, hi),
-        Roots.Bisection(),
-    )
+    objective(x) = x == lo ? -p :
+                   x == hi ? one(p) - p :
+                   Distributions.cdf(dist, x) - p
+    return Roots.find_zero(objective, (lo, hi), Roots.Bisection())
 end
 
 function Distributions.quantile(dist::WilliamsonBetaProduct, p::Real)

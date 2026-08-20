@@ -140,10 +140,14 @@ function Distributions._logpdf(C::LiouvilleCopula{d}, u) where {d}
     margins, x = _liouville_coordinates(C, u)
     r = sum(x)
     α₀ = _liouville_order(C)
+    radial_density = Distributions.pdf(radial, r)
+    isfinite(radial_density) && radial_density > 0 || return eltype(u)(-Inf)
+    margin_densities = ntuple(i -> Distributions.pdf(margins[i], x[i]), d)
+    all(f -> isfinite(f) && f > 0, margin_densities) || return eltype(u)(-Inf)
 
     value = SpecialFunctions.loggamma(α₀) - sum(SpecialFunctions.loggamma, C.α)
-    value += log(Distributions.pdf(radial, r)) + (1 - α₀) * log(r)
-    value += sum(i -> (C.α[i] - 1) * log(x[i]) - log(Distributions.pdf(margins[i], x[i])), 1:d)
+    value += log(radial_density) + (1 - α₀) * log(r)
+    value += sum(i -> (C.α[i] - 1) * log(x[i]) - log(margin_densities[i]), 1:d)
     return value
 end
 
@@ -157,6 +161,8 @@ struct LiouvilleConditionalRadial{TR,TS,TA0,TAI,TN} <:
     source_order::TA0
     target_order::TAI
     normalizer::TN
+    integration_knots::Vector{TN}
+    cumulative_masses::Vector{TN}
 
     function LiouvilleConditionalRadial(
         radial::TR, shift::TS, source_order::TA0, target_order::TAI,
@@ -166,15 +172,65 @@ struct LiouvilleConditionalRadial{TR,TS,TA0,TAI,TN} <:
             "the conditioning point is outside the radial support",
         ))
         T = typeof(float(shift + source_order + target_order))
-        kernel(s) = _liouville_conditional_kernel(
-            radial, shift, source_order, target_order, s,
+        transformed_kernel(t) = _liouville_conditional_transformed_kernel(
+            radial, shift, source_order, target_order, upper, t,
         )
-        normalizer = QuadGK.quadgk(kernel, zero(T), upper; rtol=sqrt(eps(T)))[1]
+        normalizer, _, segments = QuadGK.quadgk_segbuf(
+            transformed_kernel, zero(T), one(T); rtol=sqrt(eps(T)),
+        )
         normalizer > 0 || throw(ArgumentError("the conditioning event has zero density"))
+        sort!(segments; by=segment -> segment.a)
+        integration_knots = [first(segments).a; map(segment -> segment.b, segments)]
+        cumulative_masses = [zero(normalizer); cumsum(map(segment -> segment.I, segments))]
+        cumulative_masses[end] = normalizer
         return new{TR,TS,TA0,TAI,typeof(normalizer)}(
             radial, shift, source_order, target_order, normalizer,
+            integration_knots, cumulative_masses,
         )
     end
+end
+
+function _liouville_conditional_transformed_kernel(
+    radial, shift, source_order, target_order, upper, t,
+)
+    if isfinite(upper)
+        s = upper * t
+        jacobian = upper
+    else
+        denominator = 1 - t
+        s = t / denominator
+        jacobian = inv(denominator^2)
+    end
+    return _liouville_conditional_kernel(
+        radial, shift, source_order, target_order, s,
+    ) * jacobian
+end
+
+function _liouville_conditional_unit_coordinate(D::LiouvilleConditionalRadial, s)
+    upper = maximum(D)
+    return isfinite(upper) ? s / upper : s / (1 + s)
+end
+
+function _liouville_conditional_radial_coordinate(D::LiouvilleConditionalRadial, t)
+    upper = maximum(D)
+    return isfinite(upper) ? upper * t : t / (1 - t)
+end
+
+function _liouville_conditional_cached_integral(D::LiouvilleConditionalRadial, t)
+    knots = D.integration_knots
+    masses = D.cumulative_masses
+    segment = min(searchsortedlast(knots, t), length(knots) - 1)
+    base = masses[segment]
+    t == knots[segment] && return base
+    upper = maximum(D)
+    partial = QuadGK.quadgk(
+        x -> _liouville_conditional_transformed_kernel(
+            D.radial, D.shift, D.source_order, D.target_order, upper, x,
+        ),
+        knots[segment], t;
+        rtol=sqrt(eps(typeof(float(t)))),
+    )[1]
+    return base + partial
 end
 
 function _liouville_conditional_kernel(radial, shift, source_order, target_order, s)
@@ -195,15 +251,26 @@ Distributions.logpdf(D::LiouvilleConditionalRadial, s::Real) = log(Distributions
 function Distributions.cdf(D::LiouvilleConditionalRadial, s::Real)
     s <= minimum(D) && return zero(float(s))
     s >= maximum(D) && return one(float(s))
-    value = QuadGK.quadgk(x -> Distributions.pdf(D, x), minimum(D), s;
-                          rtol=sqrt(eps(typeof(float(s)))))[1]
+    t = _liouville_conditional_unit_coordinate(D, s)
+    value = _liouville_conditional_cached_integral(D, t) / D.normalizer
     return clamp(value, zero(value), one(value))
 end
 function Distributions.quantile(D::LiouvilleConditionalRadial, p::Real)
     0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
     iszero(p) && return minimum(D)
     isone(p) && return maximum(D)
-    return _positive_distribution_quantile(D, p)
+    target = p * D.normalizer
+    segment = min(
+        searchsortedlast(D.cumulative_masses, target),
+        length(D.integration_knots) - 1,
+    )
+    a, b = D.integration_knots[segment], D.integration_knots[segment + 1]
+    base, total = D.cumulative_masses[segment], D.cumulative_masses[segment + 1]
+    objective(t) = t == a ? base - target :
+                   t == b ? total - target :
+                   _liouville_conditional_cached_integral(D, t) - target
+    t = Roots.find_zero(objective, (a, b), Roots.Brent())
+    return _liouville_conditional_radial_coordinate(D, t)
 end
 Distributions.rand(rng::Distributions.AbstractRNG, D::LiouvilleConditionalRadial) =
     Distributions.quantile(D, rand(rng))

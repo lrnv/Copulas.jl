@@ -102,7 +102,6 @@ function _clayton_williamson_inverse(G::ClaytonGenerator, d::Real)
 end
 function 𝒲₋₁(G::ClaytonGenerator, d::Integer)
     G.θ >= 0 && return _clayton_williamson_inverse(G, d)
-    d == 1 && return invoke(𝒲₋₁, Tuple{Generator,Integer}, G, d)
     return ClaytonWilliamsonDistribution(G.θ, d)
 end
 function 𝒲₋₁(G::ClaytonGenerator, d::Real)
