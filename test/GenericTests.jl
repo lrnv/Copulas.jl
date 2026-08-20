@@ -1907,3 +1907,119 @@ end
         @test Copulas.ℓ(tail, xx) ≈ oldref atol=3e-14 rtol=3e-14
     end
 end
+
+@testset "Multivariate empirical EV" begin
+    Ctrue = Copulas.ExtremeValueCopula(3, Copulas.LogTail(2.2))
+    U = rand(StableRNG(5201), Ctrue, 2_500)
+
+    @testset "shape-valid spectral projection" begin
+        for method in (:pickands, :cfg, :ols)
+            tail = Copulas.EmpiricalEVMultivariateTail(
+                U;
+                method=method,
+                degree=4,
+                pseudo_values=true,
+            )
+
+            @test tail.d == 3
+            @test tail.method == method
+            @test tail.degree == 4
+            @test isfinite(tail.projection_rmse)
+            @test tail.projection_rmse >= 0
+            @test Copulas._is_valid_in_dim(tail, 3)
+            @test !Copulas._is_valid_in_dim(tail, 2)
+
+            B = tail.spectral.B
+            @test size(B, 1) == 3
+            @test all(B .>= 0)
+            @test all(abs.(vec(sum(B, dims=2)) .- 1) .< 3e-12)
+
+            for x in (
+                [0.31, 0.73, 1.19],
+                [1.11, 0.44, 0.69],
+            )
+                ell = Copulas.ℓ(tail, x)
+                @test maximum(x) - 3e-12 <= ell <= sum(x) + 3e-12
+                @test Copulas.ℓ(tail, 2.7 .* x) ≈
+                      2.7ell atol=3e-11 rtol=3e-11
+            end
+        end
+    end
+
+    @testset "OLS default and oracle accuracy" begin
+        tail = Copulas.EmpiricalEVMultivariateTail(
+            U;
+            degree=5,
+            pseudo_values=true,
+        )
+        @test tail.method == :ols
+
+        maxerr = 0.0
+        for w in (
+            [1/3, 1/3, 1/3],
+            [0.60, 0.25, 0.15],
+            [0.10, 0.55, 0.35],
+            [0.25, 0.15, 0.60],
+        )
+            truth = Copulas.ℓ(Ctrue.tail, w)
+            estimate = Copulas.ℓ(tail, w)
+            maxerr = max(maxerr, abs(estimate - truth))
+        end
+        @test maxerr < 0.10
+    end
+
+    @testset "constructor and exact sampling from projected model" begin
+        Cemp = Copulas.EmpiricalEVMultivariateCopula(
+            U;
+            method=:ols,
+            degree=4,
+            pseudo_values=true,
+        )
+
+        @test Cemp.tail isa Copulas.EmpiricalEVMultivariateTail
+
+        Usim = rand(StableRNG(5202), Cemp, 6_000)
+        @test size(Usim) == (3, 6_000)
+        @test all(isfinite, Usim)
+        @test all(v -> 0 < v < 1, Usim)
+        @test all(abs(mean(@view Usim[i, :]) - 0.5) < 0.035 for i in 1:3)
+
+        u0 = [0.36, 0.58, 0.79]
+        target = cdf(Cemp, u0)
+        empirical = mean(vec(all(Usim .<= u0, dims=1)))
+        se = sqrt(max(target * (1 - target), 1e-12) / size(Usim, 2))
+        @test abs(empirical - target) < max(0.04, 6se)
+
+        @test_throws ArgumentError logpdf(Cemp, u0)
+    end
+
+    @testset "generic fitting route" begin
+        fitted = fit(
+            Copulas.ExtremeValueCopula,
+            U,
+            :ols;
+            degree=4,
+            pseudo_values=true,
+        )
+
+        @test fitted.tail isa Copulas.EmpiricalEVMultivariateTail
+        @test fitted.tail.method == :ols
+        @test fitted.tail.degree == 4
+        @test Copulas._is_valid_in_dim(fitted.tail, 3)
+    end
+
+    @testset "historical bivariate empirical EV remains unchanged" begin
+        C2 = Copulas.ExtremeValueCopula(2, Copulas.LogTail(2.0))
+        U2 = rand(StableRNG(5203), C2, 1_000)
+
+        Cold = Copulas.EmpiricalEVCopula(
+            U2;
+            method=:ols,
+            grid=101,
+            pseudo_values=true,
+        )
+
+        @test Cold.tail isa Copulas.EmpiricalEVTail
+        @test isfinite(cdf(Cold, [0.43, 0.71]))
+    end
+end
