@@ -1360,3 +1360,123 @@ end
         )
     end
 end
+
+
+@testset "Multivariate Tawn EV" begin
+    @testset "historical asymmetric-logistic reduction" begin
+        α = 2.1
+        θ1 = 0.67
+        θ2 = 0.38
+
+        Cold = Copulas.ExtremeValueCopula(
+            2,
+            Copulas.AsymLogTail(α, θ1, θ2),
+        )
+        Ctawn = Copulas.ExtremeValueCopula(
+            2,
+            Copulas.TawnTail(α, [θ2, θ1]),
+        )
+
+        for u in (
+            [0.34, 0.76],
+            [0.71, 0.49],
+            [0.57, 0.62],
+        )
+            @test cdf(Ctawn, u) ≈ cdf(Cold, u) atol=3e-13 rtol=3e-13
+            @test logpdf(Ctawn, u) ≈ logpdf(Cold, u) atol=3e-11 rtol=3e-11
+        end
+
+        U = rand(StableRNG(4801), Ctawn, 4_000)
+        @test size(U) == (2, 4_000)
+        @test all(isfinite, U)
+        @test all(v -> 0.0 < v < 1.0, U)
+        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:2)
+    end
+
+    @testset "symmetric logistic reduction" begin
+        for d in (3, 4), α in (1.2, 2.5)
+            Ctawn = Copulas.ExtremeValueCopula(
+                d,
+                Copulas.TawnTail(α, ones(d)),
+            )
+            Clog = Copulas.ExtremeValueCopula(d, Copulas.LogTail(α))
+            u = collect(range(0.29, 0.82; length=d))
+
+            @test cdf(Ctawn, u) ≈ cdf(Clog, u) atol=5e-13 rtol=5e-13
+            @test logpdf(Ctawn, u) ≈ logpdf(Clog, u) atol=3e-10 rtol=3e-10
+        end
+    end
+
+    @testset "full trivariate Tawn regression" begin
+        dep = [1.4, 2.0, 1.7, 2.3]
+        asy = [
+            [0.15],
+            [0.20],
+            [0.10],
+            [0.25, 0.15],
+            [0.20, 0.20],
+            [0.25, 0.30],
+            [0.40, 0.40, 0.40],
+        ]
+
+        tail = Copulas.TawnTail(3, dep, asy)
+        C = Copulas.ExtremeValueCopula(3, tail)
+        x = (0.37, 0.79, 1.28)
+
+        @test Copulas.ℓ(tail, x) ≈ 1.824598177317017 atol=2e-14 rtol=2e-14
+
+        refs = (
+            ((1,), 0.4661019902512721),
+            ((2,), 0.6461594736259313),
+            ((3,), 0.8919331693434068),
+            ((1, 2), -0.08353819466501686),
+            ((1, 3), -0.08853049949907850),
+            ((2, 3), -0.18780484302735106),
+            ((1, 2, 3), 0.05249667842788736),
+        )
+
+        for (I, ref) in refs
+            @test Copulas.ellpartial(tail, x, I) ≈ ref atol=3e-13 rtol=3e-12
+            sign, logabs = Copulas._ellpartial_signlog(tail, x, I)
+            @test sign == (isodd(length(I)) ? 1 : -1)
+            @test exp(logabs) ≈ abs(ref) atol=3e-13 rtol=3e-12
+        end
+
+        u = [0.34, 0.57, 0.81]
+        @test logpdf(C, u) ≈ -0.2449881198991001 atol=3e-12 rtol=3e-12
+
+        U = rand(StableRNG(4802), C, 6_000)
+        @test size(U) == (3, 6_000)
+        @test all(isfinite, U)
+        @test all(v -> 0.0 < v < 1.0, U)
+        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:3)
+
+        target = cdf(C, u)
+        empirical = mean(vec(all(U .<= u, dims=1)))
+        se = sqrt(max(target * (1 - target), 1e-12) / size(U, 2))
+        @test abs(empirical - target) < max(0.04, 6 * se)
+    end
+
+    @testset "constructor validation" begin
+        dep = [1.4, 2.0, 1.7, 2.3]
+        good = [
+            [0.15],
+            [0.20],
+            [0.10],
+            [0.25, 0.15],
+            [0.20, 0.20],
+            [0.25, 0.30],
+            [0.40, 0.40, 0.40],
+        ]
+
+        @test_throws DimensionMismatch Copulas.TawnTail(3, dep[1:3], good)
+
+        badsum = deepcopy(good)
+        badsum[end][1] = 0.30
+        @test_throws ArgumentError Copulas.TawnTail(3, dep, badsum)
+
+        baddep = copy(dep)
+        baddep[2] = 0.8
+        @test_throws ArgumentError Copulas.TawnTail(3, baddep, good)
+    end
+end
