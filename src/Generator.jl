@@ -26,7 +26,7 @@ More methods can be implemented for performance, althouhg there are implement de
 * `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative of the generator
 * `ϕ⁽ᵏ⁾(G::Generator, k::Int, t)` gives the kth derivative of the generator
 * `ϕ⁻¹⁽¹⁾(G::Generator, t)` gives the first derivative of the inverse generator.
-* `𝒲₋₁(G::Generator, d::Int)` gives the Wiliamson d-transform of the generator as a univaraite positive dsitribution.
+* `𝒲₋₁(G::Generator, d::Real)` gives the inverse Williamson transform of the generator as a positive univariate distribution. Positive non-integer orders use an exact beta reduction from `ceil(Int, d)`.
 
 References:
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
@@ -90,9 +90,20 @@ struct WGenerator <: Generator end
 
 
 """
-    𝒲₋₁(G::Generator, d::Int)
+    𝒲₋₁(G::Generator, d::Real)
 
-Computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ, represented by G::Generator. 
+Computes the inverse Williamson transform of the monotone Archimedean generator
+`G` at a positive real order `d`.
+
+For an integer order, the generic implementation uses the classical inversion
+formula below, while more specific generator families may provide an exact or
+faster radial distribution. For non-integer `d`, it first inverts at
+`n = ceil(Int, d)` and returns the law of `Rₙ * B`, where
+`B ~ Beta(d, n-d)` is independent of `Rₙ = 𝒲₋₁(G, n)`. Consequently,
+`ceil(d) <= max_monotony(G)` is required. Integer-valued orders retain the
+specialized integer dispatch path. If `G = 𝒲(X, source_order)` retains its
+source radial, every `d <= source_order` is instead reduced directly from `X`;
+the ceiling condition is then unnecessary.
 
 A ``d``-monotone archimedean generator is a function ``\\phi`` on ``\\mathbb R_+`` that has these three properties:
 - ``\\phi(0) = 1`` and ``\\phi(Inf) = 0``
@@ -120,9 +131,19 @@ struct 𝒲₋₁{TG, TO<:Integer} <: Distributions.ContinuousUnivariateDistribu
     order::TO
     function 𝒲₋₁(G::Generator, d::Integer)
         @assert max_monotony(G) ≥ d
-        d ≥ 2 || throw(ArgumentError("the Williamson inverse order must be at least 2"))
+        d ≥ 1 || throw(ArgumentError("the Williamson inverse order must be at least 1"))
         return new{typeof(G), typeof(d)}(G, d)
     end
+end
+
+function 𝒲₋₁(G::Generator, d::Real)
+    isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
+    n = ceil(Int, d)
+    n <= max_monotony(G) || throw(ArgumentError(
+        "cannot invert a generator of maximal monotonicity $(max_monotony(G)) at order $d",
+    ))
+    isinteger(d) && return 𝒲₋₁(G, n)
+    return WilliamsonBetaProduct(𝒲₋₁(G, n), Distributions.Beta(d, n - d))
 end
 function Distributions.cdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
@@ -252,7 +273,7 @@ Constructor
 
 The `𝒲` type (also available as `WilliamsonGenerator`) constructs a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation is implemented fully generically in the package.
 
-For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a real order ``d\\ge 2``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
+For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a positive real order ``d``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
 
 ```math
 \\phi(t) = 𝒲_{d}(X)(t) = \\int_{t}^{\\infty} \\left(1 - \\frac{t}{x}\\right)^{d-1} dF(x) = \\mathbb E\\left( (1 - \\frac{t}{X})^{d-1}_+\\right) \\mathbb 1_{t > 0} + \\left(1 - F(0)\\right)\\mathbb 1_{t <0}
@@ -287,7 +308,7 @@ struct 𝒲{TX, TO<:Real} <: Generator
     X::TX
     order::TO
     function 𝒲(X, d::Real)
-        isfinite(d) && d ≥ 2 || throw(ArgumentError("the Williamson order must be finite and at least 2"))
+        isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
         if X isa Distributions.DiscreteNonParametric
             # If X has finite, positive support, build an empirical generator
             sp = collect(Distributions.support(X))
@@ -300,7 +321,7 @@ struct 𝒲{TX, TO<:Real} <: Generator
         return new{typeof(X), typeof(d)}(X, d)
     end
     function 𝒲(r::AbstractVector, w::AbstractVector, d::Real)
-        isfinite(d) && d ≥ 2 || throw(ArgumentError("the Williamson order must be finite and at least 2"))
+        isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
         length(r) == length(w) || throw(ArgumentError("length(r) != length(w)"))
         !isempty(r) || throw(ArgumentError("no atoms given"))
         all(isfinite, r) && all(>=(0), r) || throw(ArgumentError("atoms must be positive and finite"))

@@ -17,11 +17,18 @@ function Distributions.cdf(D::WilliamsonFromFrailty{TF,d}, x::Real) where {TF,d}
     )
 end
 function Distributions.pdf(D::WilliamsonFromFrailty{TF,d}, x::Real) where {TF,d}
-    # how to compute this cdf ? 
     return 1/x^2 * Distributions.expectation(
-        e -> Distributions.pdf(D.frailty_dist,e/x),
+        e -> e * Distributions.pdf(D.frailty_dist, e/x),
         Distributions.Erlang(d)
     )
+end
+function Distributions.quantile(D::WilliamsonFromFrailty, p::Real)
+    0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
+    lo = zero(float(p))
+    hi = oftype(lo, Inf)
+    iszero(p) && return lo
+    isone(p) && return hi
+    return Roots.find_zero(x -> Distributions.cdf(D, x) - p, (lo, hi))
 end
 Base.minimum(::WilliamsonFromFrailty{TF,d}) where {TF,d} = 0
 Base.maximum(::WilliamsonFromFrailty{TF,d}) where {TF,d} = Inf

@@ -86,7 +86,7 @@ Note that the rate at which these functions approach 0 (and their inverse approa
 An easy way to construct new $d$-monotonous generators is the use of the Williamson $d$-transform.
 
 !!! definition "Williamson d-transformation"
-    For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and real order $d \ge 2$, the Williamson-d-transform of ``X`` is the real function supported on $[0, \infty[$ given by:
+    For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and positive real order $d$, the Williamson-d-transform of ``X`` is the real function supported on $[0, \infty[$ given by:
 
     $\phi(t) = \mathcal{W}_d(X)(t)$
     $= \int_{t}^{\infty} \left(1 - \frac{t}{x}\right)^{d-1} dF(x)$
@@ -101,7 +101,9 @@ This function computes the Williamson d-transform of the provided random variabl
 !!! info "`max_monotony` of Williamson generators"
     The $d$-transform of a positive random variable is $k$-monotone for integer dimensions $k \le d$. Its max monotony is stored as the real order $d$. This has a few implications, one of the biggest being that at an integer order $d$, the corresponding $d$-variate Archimedean copula has no density.
     
-    More generally, if you want your Archimedean copula to have a density, you must use a generator that is more-monotone than the dimension of your model. 
+    More generally, if you want your Archimedean copula to have a density, you must use a generator that is more-monotone than the dimension of your model.
+
+    Orders below two remain useful for Williamson reductions and Liouville marginals or conditionals, even though they cannot by themselves generate a multivariate Archimedean copula.
 
 ```@docs; canonical=false
 WilliamsonGenerator
@@ -119,7 +121,7 @@ WilliamsonGenerator
 
     $$\mathcal W_k^{-1}\big(\mathcal W_d(X)\big) \overset{\mathrm d}=XB.$$
 
-    `𝒲₋₁(𝒲(X, d), k)` uses this representation directly, including for non-integer orders. The generic inverse of an arbitrary generator remains restricted to integer orders.
+    `𝒲₋₁(𝒲(X, d), k)` uses this representation directly, including for non-integer orders. For an arbitrary generator and a positive real order `k`, Copulas.jl first computes the inverse at `n = ceil(Int, k)` and then applies the same beta reduction. This path is available whenever `n <= max_monotony(G)`; integer-valued orders still dispatch to the specialized integer inverses.
 
     Successive reductions are collapsed using the corresponding beta-product identity. The reverse composition is also recognized: applying `𝒲(..., k)` to the radial returned by `𝒲₋₁(𝒲(X, d), k)` recovers the original order `d` directly.
 
@@ -147,7 +149,17 @@ The Williamson d-transform is a bijective transformation[^1] from the set of pos
 
     This bijection is to be taken carefuly: the bijection is between random variables *with unit scales* and generators *with common value at 1*, sicne on both rescaling does not change the underlying copula. 
 
-This transformation is implemented through one method in the Generator interface that is worth talking a bit about : `𝒲₋₁(G::Generator, d)`. This function computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ. See [williamson1956, mcneil2009](@cite).
+This transformation is implemented through `𝒲₋₁(G::Generator, d)`. For integer `d`, it computes the classical inverse Williamson transform from the derivatives of the d-monotone generator `G`, unless a more specific radial representation is available. See [williamson1956, mcneil2009](@cite).
+
+For a positive non-integer order `s`, let `n = ceil(Int, s)`. If `G` is `n`-monotone, Copulas.jl uses
+
+```math
+R_s = R_n B, \qquad
+R_n \sim \mathcal W_n^{-1}(G), \qquad
+B \sim \operatorname{Beta}(s,n-s),
+```
+
+with independent factors. Then `𝒲_s(R_s) = G`. Consequently, `𝒲₋₁(G, s)` works for every finite `s > 0` satisfying `ceil(s) <= max_monotony(G)`. When `s` is integer-valued, the beta product is skipped and the usual integer method is used directly.
 
 To put it in a nutshell, for ``\phi`` a ``d``-monotone archimedean generator, the inverse Williamson-d-transform of ``\\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``R``, defined by : 
 
@@ -302,16 +314,35 @@ plot!(ts, EC.(ts); seriestype=:steppost, alpha=0.5, color=:black, label="empiric
 
 ## Liouville Copulas
 
-!!! todo "Not merged yet !"
-    Liouville copulas are coming in this PR : https://github.com/lrnv/Copulas.jl/pull/83, but the work is not finished. 
-
 Archimedean copulas have been widely used in the literature due to their nice decomposition properties and easy parametrization. The interested reader can refer to the extensive literature [hofert2010,hofert2013a,mcneil2010,cossette2017,cossette2018,genest2011a,dibernardino2013a,dibernardino2016,cooray2018,spreeuw2014](@cite) on Archimedean copulas, their nesting extensions and most importantly their estimation.
 
 One major drawback of the Archimedean family is that these copulas have exchangeable marginals (i.e., $C(\boldsymbol u) = C(p(\boldsymbol u))$ for any permutation $p(\boldsymbol u)$ of $u_1, ..., u_d$): the dependence structure is symmetric, which might not be desirable. However, from the Radial-simplex expression, we can extrapolate and take for $\boldsymbol S$ a non-uniform distribution on the simplex. 
 
-Liouville's copulas share many properties with Archimedean copulas, but are not exchangeable anymore. This is an easy way to produce non-exchangeable dependence structures. See [cote2019](@cite) for a practical use of this property.
+Liouville copulas share many properties with Archimedean copulas, but are not exchangeable when their Dirichlet parameters differ. This is an easy way to produce non-exchangeable dependence structures. See [mcneil2010,cote2019](@cite).
 
-Note that Dirichlet distributions are constructed as $\boldsymbol S = \frac{\boldsymbol G}{\langle \boldsymbol 1, \boldsymbol G \rangle}$, where $\boldsymbol G$ is a vector of independent Gamma distributions with unit scale (and potentially different shapes: taking all shapes equal yields the Archimedean case). 
+For positive parameters $\boldsymbol\alpha=(\alpha_1,\ldots,\alpha_d)$, set $\alpha_0=\sum_i\alpha_i$. A Liouville vector has the radial-simplex representation
+
+```math
+\boldsymbol X=R\boldsymbol D,\qquad
+R\sim\mathcal W_{\alpha_0}^{-1}(G),\qquad
+\boldsymbol D\sim\operatorname{Dirichlet}(\boldsymbol\alpha),
+```
+
+where `R` and `D` are independent. `LiouvilleCopula` is the survival copula of `X`. Its `i`th radial margin is `𝒲₋₁(G, α[i])`. For a general generator, the constructor accepts arbitrary positive real Dirichlet parameters provided that
+
+```math
+\left\lceil\alpha_0\right\rceil\leq\operatorname{max\_monotony}(G).
+```
+
+When `G = 𝒲(R, source_order)` retains its source radial, the sharper condition `α₀ <= source_order` applies: no ceiling is necessary. Integer components automatically use the specialized integer inverse paths, even when other components are non-integer. When `α == ones(d)`, the construction reduces to `ArchimedeanCopula{d}(G)`.
+
+Any implemented `Generator` can be used when it has sufficient monotonicity. Conversely, any supported non-negative univariate radial distribution can define the generator through `𝒲(R, order)`. This covers the full radial-simplex construction for positive real Dirichlet parameters; a singular radial may naturally produce a copula without a density.
+
+```@docs; canonical=false
+LiouvilleCopula
+```
+
+See the [Liouville copulas with real Dirichlet parameters](@ref liouville_example) example for construction from both a radial distribution and a conventional generator, order reductions, sampling, evaluation, and subsetting.
 
 
 ## [Available models](@id available_archimedean_models)

@@ -227,6 +227,9 @@ Bestiary = [
     JoeCopula{3}(1-log(0.3)),
     JoeCopula{3}(7),
     JoeCopula{4}(1-log(0.1)),
+    LiouvilleCopula{2}(Copulas.𝒲(Dirac(1.0), 3.0), (1.0, 1.0)),
+    LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
+    LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (0.75, 1.25)),
     LogCopula{2}(1.5),
     LogCopula{2}(1+9*0.4),
     LogCopula{2}(5.5),
@@ -322,6 +325,7 @@ check_rosenblatt(C::GumbelCopula) = C.G.θ < 20
 check_rosenblatt(C::MCopula{4}) = false
 check_rosenblatt(C::EmpiricalCopula) = false
 check_rosenblatt(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
+check_rosenblatt(C::LiouvilleCopula) = false
 
 check_corkendall(C::Copulas.Copula) = true
 check_corkendall(C::FrankCopula) = C.G.θ < 100
@@ -332,6 +336,7 @@ check_corkendall(C::EmpiricalCopula) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
+check_corkendall(C::LiouvilleCopula) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 
 is_archimedean_with_generator(C::Copulas.Copula) = false
@@ -350,6 +355,7 @@ can_integrate_pdf(C::EmpiricalCopula) = false
 can_integrate_pdf(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
 can_integrate_pdf(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 can_integrate_pdf(C::CheckerboardCopula) = false
+can_integrate_pdf(C::LiouvilleCopula) = false
 
 can_ad(C::Copulas.Copula) = can_pdf(C)
 can_ad(C::FrankCopula) = C.G.θ < 100
@@ -359,6 +365,7 @@ can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.tEVTail}) = false
 can_ad(C::TCopula) = false
 can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
 can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
+can_ad(C::LiouvilleCopula) = false
 
 is_bivariate(C::Copulas.Copula) = (length(C) == 2)
 has_subsetdims(C::Copulas.Copula) = !is_bivariate(C)
