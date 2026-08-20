@@ -17,7 +17,8 @@ For a general generator, every positive real parameter vector is supported when
 supports every `sum(α) <= source_order`, without rounding. Integer-valued orders
 retain their specialized Williamson inverse methods; other orders use exact
 beta reductions. The radial `R` may be any supported non-negative univariate
-distribution.
+distribution. When `α == ones(d)`, the constructor returns
+`ArchimedeanCopula{d}(G)` directly so its specialized algorithms are preserved.
 
 Sampling uses the radial-Dirichlet representation. Density and distribution
 evaluation follow `Distributions.jl`; the bivariate CDF uses a one-dimensional
@@ -51,6 +52,7 @@ struct LiouvilleCopula{d,TG,Tα} <: Copula{d}
         _supports_liouville_order(G, α₀) || throw(ArgumentError(
             "the generator $G cannot provide the required Williamson order sum(α) = $α₀",
         ))
+        all(isone, αtuple) && return ArchimedeanCopula{d}(G)
         return new{d,typeof(G),eltype(αtuple)}(G, αtuple)
     end
 end
@@ -109,6 +111,8 @@ function _cdf(C::LiouvilleCopula{2}, u)
 end
 
 function _cdf(C::LiouvilleCopula{d}, u) where {d}
+    # TODO: When all Dirichlet parameters are integers, replace this cubature
+    # with the corresponding exact finite-sum expression.
     _, x = _liouville_coordinates(C, u)
     radial = _liouville_evaluation_distribution(C.G, _liouville_order(C))
     betas = ntuple(i -> Distributions.Beta(C.α[i], sum(C.α[(i + 1):d])), d - 1)
@@ -178,7 +182,9 @@ struct LiouvilleConditionalRadial{TR,TS,TA0,TAI,TN} <:
         normalizer, _, segments = QuadGK.quadgk_segbuf(
             transformed_kernel, zero(T), one(T); rtol=sqrt(eps(T)),
         )
-        normalizer > 0 || throw(ArgumentError("the conditioning event has zero density"))
+        isfinite(normalizer) && normalizer > 0 || throw(ArgumentError(
+            "the conditioning event has zero or non-finite density",
+        ))
         sort!(segments; by=segment -> segment.a)
         integration_knots = [first(segments).a; map(segment -> segment.b, segments)]
         cumulative_masses = [zero(normalizer); cumsum(map(segment -> segment.I, segments))]

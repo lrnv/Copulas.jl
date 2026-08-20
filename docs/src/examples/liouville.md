@@ -76,7 +76,7 @@ C13 = subsetdims(C, (1, 3))
 (typeof(C13), C13.α, rand(rng, C13))
 ```
 
-For `α = ones(d)`, every marginal survival function is the generator itself and the construction is exactly Archimedean:
+For `α = ones(d)`, every marginal survival function is the generator itself and the construction is exactly Archimedean. The constructor therefore returns the corresponding `ArchimedeanCopula` directly, preserving all its specialized algorithms:
 
 ```@example liouville
 G2 = ClaytonGenerator(1.5)
@@ -87,7 +87,7 @@ u = [0.3, 0.5, 0.8]
 (cdf(LA, u), cdf(A, u), logpdf(LA, u), logpdf(A, u))
 ```
 
-The bivariate CDF uses a one-dimensional radial/Beta expectation. In higher dimensions, the general implementation integrates over a stick-breaking representation of the Dirichlet direction. Closed finite sums available for entirely integer `α` may be added as specialized optimizations without changing this interface.
+The bivariate CDF uses a one-dimensional radial/Beta expectation. In higher dimensions, the general implementation uses numerical cubature of dimension `d - 1` over a stick-breaking representation of the Dirichlet direction; its cost can therefore grow quickly with `d`. Closed finite sums available for entirely integer `α` may be added as specialized optimizations without changing this interface.
 
 ## Conditioning and Rosenblatt transforms
 

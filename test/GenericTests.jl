@@ -227,13 +227,14 @@ Bestiary = [
     JoeCopula{3}(1-log(0.3)),
     JoeCopula{3}(7),
     JoeCopula{4}(1-log(0.1)),
-    LiouvilleCopula{2}(Copulas.𝒲(Dirac(1.0), 3.0), (1.0, 1.0)),
+    LiouvilleCopula{2}(Copulas.𝒲(Dirac(1.0), 3.0), (1.0, 1.5)),
     LiouvilleCopula{2}(Copulas.𝒲(Pareto(1.0), 3.0), (0.75, 1.25)),
     LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
     LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (0.75, 1.25)),
     LiouvilleCopula{2}(Copulas.ClaytonGenerator(-0.25), (0.75, 1.25)),
     LiouvilleCopula{2}(Copulas.InvGaussianGenerator(1.0), (0.75, 1.25)),
     LiouvilleCopula{2}(Copulas.AMHGenerator(0.5), (0.75, 1.25)),
+    LiouvilleCopula{3}(Copulas.ClaytonGenerator(1.0), (0.75, 1.0, 1.25)),
     LogCopula{2}(1.5),
     LogCopula{2}(1+9*0.4),
     LogCopula{2}(5.5),
@@ -329,7 +330,6 @@ check_rosenblatt(C::GumbelCopula) = C.G.θ < 20
 check_rosenblatt(C::MCopula{4}) = false
 check_rosenblatt(C::EmpiricalCopula) = false
 check_rosenblatt(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
-check_rosenblatt(C::LiouvilleCopula) = false
 
 check_corkendall(C::Copulas.Copula) = true
 check_corkendall(C::FrankCopula) = C.G.θ < 100
@@ -360,6 +360,7 @@ can_integrate_pdf(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
 can_integrate_pdf(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 can_integrate_pdf(C::CheckerboardCopula) = false
 can_integrate_pdf(C::LiouvilleCopula) = false
+can_integrate_pdf(C::LiouvilleCopula{d,<:Copulas.ClaytonGenerator}) where {d} = C.G.θ > 0
 
 can_ad(C::Copulas.Copula) = can_pdf(C)
 can_ad(C::FrankCopula) = C.G.θ < 100

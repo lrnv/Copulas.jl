@@ -143,7 +143,7 @@ function 𝒲₋₁(G::Generator, d::Real)
         "cannot invert a generator of maximal monotonicity $(max_monotony(G)) at order $d",
     ))
     isinteger(d) && return 𝒲₋₁(G, n)
-    return WilliamsonBetaProduct(𝒲₋₁(G, n), Distributions.Beta(d, n - d))
+    return WilliamsonBetaProduct(𝒲₋₁(G, n), Distributions.Beta(d, n - d), n)
 end
 function Distributions.cdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
@@ -187,27 +187,41 @@ end
 
 # Radial law of a lower-order margin. If ψ = W_D(F_R), Dirichlet
 # aggregation gives W_d⁻¹(ψ) = Law(RB), B ~ Beta(d, D-d), independently.
-struct WilliamsonBetaProduct{TX, TB} <: Distributions.ContinuousUnivariateDistribution
+struct WilliamsonBetaProduct{TX,TB,TO} <: Distributions.ContinuousUnivariateDistribution
     X::TX
     B::TB
+    # Keep the exact originating order: reconstructing it as a + b from the
+    # Beta parameters can lose structural identities through floating rounding.
+    source_order::TO
 end
 
-function WilliamsonBetaProduct(X::WilliamsonFromFrailty, B::Distributions.Beta)
-    target_order, order_gap = Distributions.params(B)
-    target_order + order_gap == X.order ||
-        return WilliamsonBetaProduct{typeof(X),typeof(B)}(X, B)
+_williamson_beta_source_order(B::Distributions.Beta) = sum(Distributions.params(B))
+WilliamsonBetaProduct(X, B::Distributions.Beta) =
+    WilliamsonBetaProduct(X, B, _williamson_beta_source_order(B))
+
+function WilliamsonBetaProduct(
+    X::WilliamsonFromFrailty, B::Distributions.Beta, source_order::Real,
+)
+    target_order = first(Distributions.params(B))
+    source_order == X.order ||
+        return WilliamsonBetaProduct{typeof(X),typeof(B),typeof(source_order)}(
+            X, B, source_order,
+        )
     return WilliamsonFromFrailty(X.frailty_dist, target_order)
 end
 
-function WilliamsonBetaProduct(X::WilliamsonBetaProduct, B::Distributions.Beta)
-    inner_target, inner_gap = Distributions.params(X.B)
-    outer_target, outer_gap = Distributions.params(B)
-    if outer_target + outer_gap == inner_target
-        source_order = inner_target + inner_gap
-        merged_beta = Distributions.Beta(outer_target, source_order - outer_target)
-        return WilliamsonBetaProduct(X.X, merged_beta)
+function WilliamsonBetaProduct(
+    X::WilliamsonBetaProduct, B::Distributions.Beta, source_order::Real,
+)
+    inner_target = first(Distributions.params(X.B))
+    outer_target = first(Distributions.params(B))
+    if source_order == inner_target
+        merged_beta = Distributions.Beta(outer_target, X.source_order - outer_target)
+        return WilliamsonBetaProduct(X.X, merged_beta, X.source_order)
     end
-    return WilliamsonBetaProduct{typeof(X), typeof(B)}(X, B)
+    return WilliamsonBetaProduct{typeof(X),typeof(B),typeof(source_order)}(
+        X, B, source_order,
+    )
 end
 
 function Distributions.cdf(dist::WilliamsonBetaProduct, x::Real)
@@ -400,7 +414,9 @@ end
 function _williamson_inverse_preserved(G::𝒲, d::Real)
     isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
     d == G.order && return G.X
-    d < G.order && return WilliamsonBetaProduct(G.X, Distributions.Beta(d, G.order - d))
+    d < G.order && return WilliamsonBetaProduct(
+        G.X, Distributions.Beta(d, G.order - d), G.order,
+    )
     throw(ArgumentError("cannot invert a Williamson transform above its source order $(G.order)"))
 end
 𝒲₋₁(G::𝒲, d::Integer) = _williamson_inverse_preserved(G, d)
@@ -410,8 +426,8 @@ function 𝒲(X::𝒲₋₁, d::Real)
     return invoke(𝒲, Tuple{Any, Real}, X, d)
 end
 function 𝒲(X::WilliamsonBetaProduct, d::Real)
-    target_order, order_gap = Distributions.params(X.B)
-    d == target_order && return 𝒲(X.X, target_order + order_gap)
+    target_order = first(Distributions.params(X.B))
+    d == target_order && return 𝒲(X.X, X.source_order)
     return invoke(𝒲, Tuple{Any, Real}, X, d)
 end
 

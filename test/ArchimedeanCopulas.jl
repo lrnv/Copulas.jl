@@ -34,6 +34,7 @@
     nested = Copulas.WilliamsonBetaProduct(radial, Beta(1.0, 1.0))
     @test nested.X === X
     @test Distributions.params(nested.B) == (1.0, 3.5)
+    @test nested.source_order == Greal.order
     recovered = 𝒲(radial, 2.0)
     @test recovered.X === X
     @test recovered.order == 4.5

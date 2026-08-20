@@ -12,6 +12,18 @@ struct WilliamsonFromFrailty{TF,TN,TO} <: Distributions.ContinuousUnivariateDist
         )
     end
 end
+
+# If V ~ Gamma(a, b), then Gamma(order, 1) / V is exactly
+# BetaPrime(order, a) / b. Keep this ratio in closed form instead of evaluating
+# expectations over the frailty for every cdf/pdf/quantile call.
+function WilliamsonFromFrailty(frailty_dist::Distributions.Gamma, order::Real)
+    isfinite(order) && order > 0 || throw(ArgumentError(
+        "the Williamson order must be finite and positive",
+    ))
+    shape, scale = Distributions.params(frailty_dist)
+    return inv(scale) * Distributions.BetaPrime(order, shape)
+end
+
 function Distributions.rand(rng::Distributions.AbstractRNG, D::WilliamsonFromFrailty)
     f = rand(rng,D.frailty_dist)
     sy = rand(rng, D.numerator)
@@ -69,6 +81,23 @@ struct PowerTiltedFrailty{S<:Distributions.ValueSupport,TF,TP,TS,TN} <:
             base, power, shift, normalizer,
         )
     end
+end
+
+
+# Multiplying a Gamma(a, b) density by v^power * exp(-shift*v) gives another
+# Gamma law, with shape a + power and rate inv(b) + shift. In particular this
+# preserves Clayton's exact Beta-prime radial after Liouville conditioning.
+function PowerTiltedFrailty(
+    base::Distributions.Gamma, power::Real, shift::Real,
+)
+    isfinite(power) && power >= 0 || throw(ArgumentError(
+        "the frailty tilt power must be finite and non-negative",
+    ))
+    isfinite(shift) && shift >= 0 || throw(ArgumentError(
+        "the frailty tilt shift must be finite and non-negative",
+    ))
+    shape, scale = Distributions.params(base)
+    return Distributions.Gamma(shape + power, inv(inv(scale) + shift))
 end
 
 function _power_tilt_weight(v, power, shift)
