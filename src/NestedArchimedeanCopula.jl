@@ -119,9 +119,9 @@ function composition_taylor_implicit(outer::Generator, inner::Generator, t₀::T
     # triangular qₖ=(bₖ − Σ_{m≥2} aₘ[εᵏ]Qᵐ)/a₁ below — no Taylor1 on ϕ/ϕ⁻¹.
     # Derivative-side coefficients: a[m] = ϕ⁽ᵐ⁾(outer,h₀)/m!, b[m] = ϕ⁽ᵐ⁾(inner,t₀)/m!
     # for m = 1..d (scalar k-th derivatives — NO Taylor1 on ϕ/ϕ⁻¹).
-    b  = T[ϕ⁽ᵏ⁾(inner, m, t₀) / T(factorial(big(m))) for m in 1:d]
+    b  = T[_div_factorial(ϕ⁽ᵏ⁾(inner, m, t₀), m) for m in 1:d]
     h₀ = ϕ⁻¹(outer, ϕ(inner, t₀))                      # single scalar inverse
-    a  = T[ϕ⁽ᵏ⁾(outer, m, h₀) / T(factorial(big(m))) for m in 1:d]
+    a  = T[_div_factorial(ϕ⁽ᵏ⁾(outer, m, h₀), m) for m in 1:d]
 
     q = zeros(T, d)
     q[1] = b[1] / a[1]
@@ -173,8 +173,12 @@ function _faa_di_bruno_coeffs(p::AbstractVector{T}, β::AbstractVector{T}, d::In
     n = d + 1
     p_pad = zeros(T, n)
     p_pad[2:min(n, length(p) + 1)] .= p[1:min(d, length(p))]
-    facts = T[factorial(big(j)) for j in 0:d]
-    invf  = T[1 / factorial(big(j)) for j in 0:d]
+    facts = ones(T, d + 1)
+    invf = ones(T, d + 1)
+    @inbounds for j in 1:d
+        facts[j + 1] = facts[j] * j
+        invf[j + 1] = invf[j] / j
+    end
     β_scaled = T[β[j] * facts[j] for j in 1:n]
     α = zeros(T, n)
     q1 = copy(p_pad)

@@ -83,20 +83,32 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, R::RafteryCopula{d
     return A
 end
 function ρ(R::RafteryCopula{d,P}) where {d, P}
-    term1 = (d+1)*(2^d-(2-R.θ)^d)-(2^d*R.θ*d)
-    term2 = (2-R.θ)^d*(2^d-d-1) 
-    return term1/term2
+    T = typeof(float(R.θ))
+    θ = T(R.θ)
+    inv2d = exp2(-T(d))
+    scaled_power = (one(T) - θ / 2)^d
+    numerator = T(d + 1) * (one(T) - scaled_power) - θ * d
+    denominator = scaled_power * (one(T) - T(d + 1) * inv2d)
+    return numerator * inv2d / denominator
 end
 function τ(R::RafteryCopula{d, P}) where {d, P}
-    term1 = (2^(d-1) * factorial(d)) / ((2^(d-1)-1) * prod(i+1-R.θ for i in 2:d))
-    term2 = ((1 - R.θ)^2 * (d^2 - 1)) / ((d-1+R.θ) * (d+1-R.θ) * (2^(d-1)-1))
-    term3_sum = 0.0
-    for k in 2:d
-        term3_sum += (R.θ * (1-R.θ) * (2-R.θ)) / (2^k * factorial(k-1) * (1-R.θ-k) * (2-R.θ-k) * prod(i+1-R.θ for i in k:d))
+    T = typeof(float(R.θ))
+    θ = T(R.θ)
+    pow2 = exp2(T(1 - d))
+    normalization = inv(one(T) - pow2)
+    common = θ * (one(T) - θ) * (T(2) - θ)
+
+    ratio = one(T)
+    term3 = zero(T)
+    for k in d:-1:2
+        ratio *= T(k) / (T(k + 1) - θ)
+        term3 += common * exp2(T(1 - k)) * normalization * ratio /
+                 ((one(T) - θ - k) * (T(2) - θ - k))
     end
-    term3 = (2^d * factorial(d)) / (2^(d-1)-1) * term3_sum
-    
-    term4 = 1 / (2^(d-1)-1)
-    
+
+    term1 = normalization * ratio
+    term2 = (one(T) - θ)^2 * (T(d)^2 - one(T)) * pow2 * normalization /
+            ((T(d - 1) + θ) * (T(d + 1) - θ))
+    term4 = pow2 * normalization
     return term1 + term2 - term3 - term4
 end
