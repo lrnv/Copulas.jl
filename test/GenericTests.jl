@@ -1708,3 +1708,77 @@ end
         @test abs(empirical - target) < max(0.04, 6 * se)
     end
 end
+
+@testset "AsymMixed feasible-set parameterization" begin
+    @testset "positive and negative asymmetry are reachable" begin
+        positive = Copulas._rebound_params(
+            Copulas.AsymMixedTail,
+            2,
+            [-3.0, 3.0],
+        )
+        negative = Copulas._rebound_params(
+            Copulas.AsymMixedTail,
+            2,
+            [3.0, -3.0],
+        )
+
+        @test positive.θ₂ > 0
+        @test negative.θ₂ < 0
+
+        for p in (positive, negative)
+            @test p.θ₁ >= 0
+            @test p.θ₁ + p.θ₂ <= 1
+            @test p.θ₁ + 2p.θ₂ <= 1
+            @test p.θ₁ + 3p.θ₂ >= 0
+            @test Copulas.AsymMixedTail(p.θ₁, p.θ₂) isa Copulas.AsymMixedTail
+        end
+    end
+
+    @testset "unconstrained round trip" begin
+        for z in (
+            [-3.0, 2.0],
+            [-1.0, -0.7],
+            [0.0, 0.5],
+            [1.0, -2.0],
+            [3.0, -3.0],
+        )
+            p = Copulas._rebound_params(Copulas.AsymMixedTail, 2, z)
+            zback = Copulas._unbound_params(Copulas.AsymMixedTail, 2, p)
+
+            @test zback ≈ z atol=3e-11 rtol=3e-11
+        end
+    end
+
+    @testset "parameter round trip across feasible interior" begin
+        for (θ1, θ2) in (
+            (0.25, 0.10),
+            (0.65, 0.08),
+            (0.85, -0.08),
+            (1.20, -0.30),
+        )
+            p = (; θ₁=θ1, θ₂=θ2)
+            z = Copulas._unbound_params(Copulas.AsymMixedTail, 2, p)
+            back = Copulas._rebound_params(Copulas.AsymMixedTail, 2, z)
+
+            @test back.θ₁ ≈ θ1 atol=3e-11 rtol=3e-11
+            @test back.θ₂ ≈ θ2 atol=3e-11 rtol=3e-11
+        end
+    end
+end
+
+
+@testset "AsymMixed fitting example remains asymmetric" begin
+    CT = Copulas.AsymMixedCopula{Float64}
+    Cex = Copulas._example(CT, 2)
+    p = Distributions.params(Cex)
+
+    @test Cex isa CT
+    @test keys(p) == (:θ₁, :θ₂)
+    @test p.θ₂ != 0
+
+    z = Copulas._unbound_params(CT, 2, p)
+    back = Copulas._rebound_params(CT, 2, z)
+
+    @test back.θ₁ ≈ p.θ₁ atol=3e-12 rtol=3e-12
+    @test back.θ₂ ≈ p.θ₂ atol=3e-12 rtol=3e-12
+end
