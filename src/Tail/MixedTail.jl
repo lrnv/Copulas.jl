@@ -123,11 +123,11 @@ Distributions._logpdf(
     u,
 ) where {d} = _ev_logpdf_from_partials(C, u)
 
-# Resolve the intersection with the historical generic bivariate EV density.
+# Resolve the intersection with the generic bivariate EV density.
 Distributions._logpdf(
     C::ExtremeValueCopula{2,<:MixedTail},
     u,
-) = _ev_logpdf_from_partials(C, u)
+) = _ev_logpdf_bivariate(C, u)
 
 function _mixed_rand_multivariate!(
     rng::Distributions.AbstractRNG,

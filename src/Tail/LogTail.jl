@@ -113,9 +113,9 @@ end
 
 _probability_z(tail::LogTail, ::Real) = (tail.θ - one(tail.θ)) / tail.θ
 
-# Use the mixed-partial EV density path also in d=2; the generic bivariate
-# formula is less stable for strong logistic dependence.
-Distributions._logpdf(C::ExtremeValueCopula{2,<:LogTail}, u) = _ev_logpdf_from_partials(C, u)
+# The bivariate logistic EV copula is exactly Gumbel.
+Distributions._logpdf(C::ExtremeValueCopula{2,<:LogTail}, u) =
+    Distributions._logpdf(GumbelCopula(2, C.tail.θ), u)
 
 function _ellpartial_signlog(tail::LogTail, x, I)
     k = length(I)
