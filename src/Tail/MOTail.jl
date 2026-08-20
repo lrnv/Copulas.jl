@@ -163,3 +163,104 @@ function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) wher
         return exp(log(p) / b)
     end
 end
+
+
+"""
+    MOMultivariateTail(d, λ)
+
+General `d`-variate Marshall-Olkin extreme-value tail. `λ` contains one
+nonnegative shock intensity for every nonempty subset of `1:d`, ordered first
+by subset cardinality and then lexicographically.
+
+For margin `i`, let `rᵢ = sum(λ[S] for S containing i)`. The STDF is
+
+    ℓ(x) = sum_S max_{i in S} (λ[S] / rᵢ) xᵢ.
+
+The historical bivariate `MOTail(λ₁, λ₂, λ₁₂)` uses crossed names for the two
+private shocks. `MOMultivariateTail(tail::MOTail)` preserves that convention
+exactly.
+"""
+struct MOMultivariateTail{T} <: Tail
+    d::Int
+    λ::Vector{T}
+    spectral::DiscreteSpectralTail{T}
+end
+
+function MOMultivariateTail(d::Int, λ::AbstractVector)
+    d >= 2 || throw(ArgumentError(
+        "Marshall-Olkin dimension must be at least two",
+    ))
+
+    subsets = _spectral_subsets(d)
+    length(λ) == length(subsets) || throw(DimensionMismatch(
+        "expected $(length(subsets)) shock intensities for dimension $d",
+    ))
+
+    vals = collect(λ)
+    T = promote_type(Float64, map(typeof, vals)...)
+    rates = T.(λ)
+
+    all(isfinite, rates) || throw(ArgumentError(
+        "all Marshall-Olkin shock intensities must be finite",
+    ))
+    all(v -> v >= zero(T), rates) || throw(ArgumentError(
+        "all Marshall-Olkin shock intensities must be nonnegative",
+    ))
+
+    r = zeros(T, d)
+    @inbounds for (k, S) in enumerate(subsets)
+        rate = rates[k]
+        for i in S
+            r[i] += rate
+        end
+    end
+
+    all(v -> v > zero(T), r) || throw(ArgumentError(
+        "every Marshall-Olkin margin must have positive total shock rate",
+    ))
+
+    B = zeros(T, d, length(subsets))
+    @inbounds for (k, S) in enumerate(subsets)
+        rate = rates[k]
+        for i in S
+            B[i, k] = rate / r[i]
+        end
+    end
+
+    spectral = DiscreteSpectralTail(B)
+    return MOMultivariateTail{T}(d, rates, spectral)
+end
+
+MOMultivariateTail(tail::MOTail) =
+    MOMultivariateTail(
+        2,
+        [tail.λ₂, tail.λ₁, tail.λ₁₂],
+    )
+
+MOMultivariateCopula(d::Int, λ::AbstractVector) =
+    ExtremeValueCopula(d, MOMultivariateTail(d, λ))
+
+MOMultivariateCopula(tail::MOTail) =
+    ExtremeValueCopula(2, MOMultivariateTail(tail))
+
+Distributions.params(tail::MOMultivariateTail) = (λ = tail.λ,)
+_is_valid_in_dim(tail::MOMultivariateTail, d::Int) = tail.d == d
+ℓ(tail::MOMultivariateTail, x) = ℓ(tail.spectral, x)
+
+_rand_ev_multivariate!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:MOMultivariateTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real} =
+    _discrete_spectral_rand!(rng, C.tail.spectral, X)
+
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:MOMultivariateTail},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch(
+        "output must have two rows for a bivariate Marshall-Olkin copula",
+    ))
+    return _discrete_spectral_rand!(rng, C.tail.spectral, X)
+end

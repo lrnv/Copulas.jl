@@ -1782,3 +1782,147 @@ end
     @test back.θ₁ ≈ p.θ₁ atol=3e-12 rtol=3e-12
     @test back.θ₂ ≈ p.θ₂ atol=3e-12 rtol=3e-12
 end
+
+@testset "Discrete spectral multivariate EV" begin
+    B = [
+        0.40 0.20 0.10 0.30
+        0.10 0.50 0.20 0.20
+        0.30 0.10 0.40 0.20
+    ]
+
+    tail = Copulas.DiscreteSpectralTail(B)
+    C = Copulas.DiscreteSpectralCopula(B)
+    x = [0.37, 0.79, 1.28]
+
+    ref = sum(maximum(B[i, k] * x[i] for i in axes(B, 1))
+              for k in axes(B, 2))
+
+    @test Copulas._is_valid_in_dim(tail, 3)
+    @test !Copulas._is_valid_in_dim(tail, 2)
+    @test Copulas.ℓ(tail, x) ≈ ref atol=3e-14 rtol=3e-14
+    @test maximum(x) <= ref <= sum(x)
+
+    for i in 1:3
+        e = zeros(3)
+        e[i] = 1
+        @test Copulas.ℓ(tail, e) ≈ 1 atol=3e-14 rtol=3e-14
+    end
+
+    u = [0.34, 0.57, 0.81]
+    @test cdf(C, u) ≈ exp(-sum(
+        maximum(B[i, k] * (-log(u[i])) for i in axes(B, 1))
+        for k in axes(B, 2)
+    )) atol=3e-14 rtol=3e-14
+
+    U = rand(StableRNG(5101), C, 5_000)
+    @test size(U) == (3, 5_000)
+    @test all(isfinite, U)
+    @test all(v -> 0 < v < 1, U)
+    @test all(abs(mean(@view U[i, :]) - 0.5) < 0.035 for i in 1:3)
+
+    @test_throws ArgumentError Copulas.DiscreteSpectralTail([
+        0.4 0.4
+        0.5 0.5
+    ])
+    @test_throws ArgumentError Copulas.DiscreteSpectralTail([
+        1.2 -0.2
+        0.5  0.5
+    ])
+    @test_throws ArgumentError logpdf(C, u)
+end
+
+@testset "Multivariate Marshall-Olkin EV" begin
+    d = 3
+    λ = [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]
+    tail = Copulas.MOMultivariateTail(d, λ)
+    C = Copulas.ExtremeValueCopula(d, tail)
+
+    B = tail.spectral.B
+    @test all(abs.(vec(sum(B, dims=2)) .- 1) .< 3e-14)
+
+    x = [0.31, 0.82, 1.41]
+    ref = sum(maximum(B[i, k] * x[i] for i in axes(B, 1))
+              for k in axes(B, 2))
+    @test Copulas.ℓ(tail, x) ≈ ref atol=3e-14 rtol=3e-14
+
+    oldtail = Copulas.MOTail(0.30, 0.50, 0.70)
+    newtail = Copulas.MOMultivariateTail(oldtail)
+    Cold = Copulas.ExtremeValueCopula(2, oldtail)
+    Cnew = Copulas.ExtremeValueCopula(2, newtail)
+
+    for xx in ([0.37, 1.29], [1.11, 0.46])
+        oldref = sum(xx) * Copulas.A(oldtail, xx[1] / sum(xx))
+        @test Copulas.ℓ(newtail, xx) ≈ oldref atol=4e-14 rtol=4e-14
+    end
+
+    for u in ([0.34, 0.76], [0.71, 0.49], [0.57, 0.62])
+        @test cdf(Cnew, u) ≈ cdf(Cold, u) atol=4e-14 rtol=4e-14
+    end
+
+    U = rand(StableRNG(5102), C, 5_000)
+    @test all(abs(mean(@view U[i, :]) - 0.5) < 0.035 for i in 1:d)
+
+    @test_throws DimensionMismatch Copulas.MOMultivariateTail(3, λ[1:6])
+    @test_throws ArgumentError Copulas.MOMultivariateTail(
+        3,
+        [0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0],
+    )
+end
+
+@testset "Multivariate BC2 EV" begin
+    a = [0.20, 0.65, 0.40, 0.75]
+    tail = Copulas.BC2MultivariateTail(a)
+    C = Copulas.ExtremeValueCopula(4, tail)
+
+    x = [0.27, 0.64, 1.03, 1.31]
+    ref = maximum(a .* x) + maximum((1 .- a) .* x)
+
+    @test Copulas.ℓ(tail, x) ≈ ref atol=3e-14 rtol=3e-14
+    @test tail.spectral.B ≈ hcat(a, 1 .- a) atol=3e-15 rtol=3e-15
+
+    oldtail = Copulas.BC2Tail(0.30, 0.70)
+    newtail = Copulas.BC2MultivariateTail(oldtail)
+    Cold = Copulas.ExtremeValueCopula(2, oldtail)
+    Cnew = Copulas.ExtremeValueCopula(2, newtail)
+
+    for xx in ([0.37, 1.29], [1.11, 0.46])
+        oldref = sum(xx) * Copulas.A(oldtail, xx[1] / sum(xx))
+        @test Copulas.ℓ(newtail, xx) ≈ oldref atol=3e-14 rtol=3e-14
+    end
+
+    for u in ([0.34, 0.76], [0.71, 0.49], [0.57, 0.62])
+        @test cdf(Cnew, u) ≈ cdf(Cold, u) atol=3e-14 rtol=3e-14
+    end
+
+    U = rand(StableRNG(5103), C, 5_000)
+    @test all(abs(mean(@view U[i, :]) - 0.5) < 0.035 for i in 1:4)
+
+    @test_throws ArgumentError Copulas.BC2MultivariateTail([0.2])
+    @test_throws ArgumentError Copulas.BC2MultivariateTail([0.2, 1.1])
+end
+
+@testset "Multivariate Cuadras-Auge EV" begin
+    θ = 0.62
+    tail = Copulas.CuadrasAugeTail(θ)
+
+    for (d, seed) in ((3, 5104), (4, 5105))
+        C = Copulas.ExtremeValueCopula(d, tail)
+        x = collect(range(0.29, 1.34; length=d))
+
+        @test Copulas._is_valid_in_dim(tail, d)
+        @test Copulas.ℓ(tail, x) ≈
+              (1 - θ) * sum(x) + θ * maximum(x) atol=3e-14 rtol=3e-14
+
+        u = collect(range(0.34, 0.82; length=d))
+        @test cdf(C, u) ≈
+              minimum(u)^θ * prod(u)^(1 - θ) atol=3e-14 rtol=3e-14
+
+        U = rand(StableRNG(seed), C, 5_000)
+        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.035 for i in 1:d)
+    end
+
+    for xx in ([0.37, 1.29], [1.11, 0.46])
+        oldref = sum(xx) * Copulas.A(tail, xx[1] / sum(xx))
+        @test Copulas.ℓ(tail, xx) ≈ oldref atol=3e-14 rtol=3e-14
+    end
+end
