@@ -44,7 +44,7 @@ typeof(model_radial), typeof.(marginal_radials)
 
 The resulting object implements the usual `Distributions.jl` interface:
 
-```julia
+```@example liouville
 rng = Xoshiro(42)
 U = rand(rng, C, 5)
 
@@ -56,7 +56,7 @@ u = [0.4, 0.6, 0.7]
 
 The source does not have to be a `WilliamsonGenerator`. For a general generator and a real target order `s`, Copulas.jl computes the inverse at `ceil(Int, s)` and multiplies it by an independent `Beta(s, ceil(s) - s)` variable. Existing specialized integer inverses remain in use.
 
-```julia
+```@example liouville
 G2 = ClaytonGenerator(1.5)
 α2 = (1, 0.6, 1.25)
 C2 = LiouvilleCopula{3}(G2, α2)
@@ -93,9 +93,9 @@ The bivariate CDF uses a one-dimensional radial/Beta expectation. In higher dime
 
 Conditioning preserves the Liouville structure. If the generator has a frailty, Copulas.jl conditions that frailty directly: its posterior is tilted by `v^sum(α[J]) * exp(-sJ*v)`, which works uniformly for integer and non-integer parameters. For generators without a frailty, integer orders reuse `TiltedGenerator` and fractional orders use the exact conditional-radial representation. The public interface is unchanged:
 
-```julia
-D2_given_1 = condition(C, 1, 0.4)
-D23_given_1 = condition(C, (1,), (0.4,))
+```@example liouville
+conditional_23_given_1 = condition(C, 1, 0.4)
+conditional_3_given_12 = condition(C, (1, 2), (0.4, 0.6))
 
 u = [0.3, 0.5, 0.8]
 v = rosenblatt(C, u)
