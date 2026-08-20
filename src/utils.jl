@@ -13,6 +13,21 @@ _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
 end
 
 """
+    _falling_factorial(x, k)
+
+Compute `x * (x - 1) * ⋯ * (x - k + 1)` without forming factorials or
+using `loggamma`. The implementation also applies to non-integer `x`.
+"""
+function _falling_factorial(x, k::Integer)
+    k ≥ 0 || throw(ArgumentError("k must be non-negative"))
+    result = one(x)
+    @inbounds for j in 0:(k - 1)
+        result *= x - j
+    end
+    return result
+end
+
+"""
     taylor(f::F, x₀, d::Int) where {F}
 
 Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back the derivatives as a vector of length d+1. (first value is f(x₀)). 
@@ -37,6 +52,34 @@ function taylor(f::F, x₀, d::Int) where {F}
     end
     return rez[1:d+1]
 end
+
+# Stable evaluations of W(exp(logx)) and W₋₁(-exp(logx)). They avoid forming
+# arguments that overflow or underflow close to independence in generators
+# whose first-derivative inverses have a Lambert-W closed form.
+function _lambertw_exp(logx::T) where {T<:AbstractFloat}
+    isinf(logx) && return logx > 0 ? T(Inf) : zero(T)
+    logx <= log(floatmax(T)) && return LambertW.lambertw(exp(logx))
+
+    w = logx - log(logx)
+    for _ in 1:4
+        w -= (w + log(w) - logx) / (one(T) + inv(w))
+    end
+    return w
+end
+
+function _lambertwm1_negexp(logabsx::T) where {T<:AbstractFloat}
+    logabsx == T(-Inf) && return T(-Inf)
+    logabsx = min(logabsx, -one(T))
+    logabsx >= log(floatmin(T)) && return LambertW.lambertw(-exp(logabsx), -1)
+
+    target = -logabsx
+    y = target + log(target)
+    for _ in 1:4
+        y -= (y - log(y) - target) / (one(T) - inv(y))
+    end
+    return -y
+end
+
 
 
 """

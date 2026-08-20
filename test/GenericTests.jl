@@ -336,7 +336,7 @@ check_corkendall(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = 
 
 is_archimedean_with_generator(C::Copulas.Copula) = false
 is_archimedean_with_generator(C::ArchimedeanCopula) = true 
-is_archimedean_with_generator(C::ArchimedeanCopula{d, Copulas.WilliamsonGenerator{<:Distributions.DiscreteUnivariateDistribution, D}}) where {d,D} = false
+is_archimedean_with_generator(C::ArchimedeanCopula{d, <:Copulas.WilliamsonGenerator{<:Distributions.DiscreteUnivariateDistribution}}) where d = false
 
 can_integrate_pdf(C::Copulas.Copula) = can_pdf(C)
 can_integrate_pdf(C::FrankCopula) = C.G.θ < 100
@@ -728,6 +728,10 @@ end
         GT = typeof(C.G)
         spe = generator_specialization(C.G)
         mm = Copulas.max_monotony(C.G)
+        # ForwardDiff differentiates the adaptive expectation used by continuous
+        # Williamson generators.  When a kernel derivative jumps at X == t, that
+        # numerical reference is less accurate than the direct expectation.
+        derivative_rtol = C.G isa WilliamsonGenerator ? 1e-4 : sqrt(eps())
         
         @testif spe.ϕinv "Check ϕ ∘ ϕ⁻¹ == Id over [0,1]" begin
             for x in 0:0.1:1
@@ -736,11 +740,11 @@ end
         end
 
         @testif spe.ϕ1 "Check d(ϕ) == ϕ⁽¹⁾" begin 
-            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽¹⁾(C.G, 0.1)
+            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽¹⁾(C.G, 0.1) rtol=derivative_rtol
         end
 
         @testif spe.ϕk "Check d(ϕ) == ϕ⁽ᵏ⁾(k=1)" begin
-            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 1, 0.1)
+            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 1, 0.1) rtol=derivative_rtol
         end
 
         @testif (spe.ϕ1 || spe.ϕk) "Check ϕ⁽¹⁾ == ϕ⁽ᵏ⁾(k=1)" begin
@@ -785,7 +789,7 @@ end
             end
         end
 
-        @testif !(C.G isa WilliamsonGenerator{<:Dirac, D} where D) "Kendall-Radial coherency test" begin
+        @testif !(C.G isa WilliamsonGenerator{<:Dirac}) "Kendall-Radial coherency test" begin
             # On radial-level: reuse the same radial sample for both checks
             R1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
             R2 = rand(rng,Copulas.𝒲₋₁(C.G, d),1000)
