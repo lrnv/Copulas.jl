@@ -121,7 +121,7 @@ struct 𝒲₋₁{TG, TO<:Integer} <: Distributions.ContinuousUnivariateDistribu
         return new{typeof(G), typeof(d)}(G, d)
     end
 end
-function Distributions.cdf(dist::𝒲₋₁, x)
+function Distributions.cdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
     rez, x_pow = zero(x), one(x)
     @inbounds for k in 1:dist.order
@@ -139,30 +139,17 @@ function Distributions.cdf(dist::𝒲₋₁, x)
     # Guard against tiny numerical excursions
     return isnan(F) ? one(x) : clamp(F, zero(x), one(x))
 end
-function Distributions.pdf(dist::𝒲₋₁, x)
+function Distributions.pdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
-    # f(x) = - d/dx Σ_{k=1}^d (-x)^{k-1}/(k-1)! * ϕ^{(k-1)}(x)
-    #      = - Σ_{k=1}^d (-1)^{k-1} [ x^{k-1}/(k-1)! ϕ^{(k)}(x) + 1_{k≥2} x^{k-2}/(k-2)! ϕ^{(k-1)}(x) ]
-    x_pow_km1 = one(x)      # x^(k-1)
-    x_pow_km2 = zero(x)     # x^(k-2), initialized so that when k=2 we set it to one(x)
-    s = zero(x)
-    @inbounds for k in 1:dist.order
-        sign = isodd(k) ? 1 : -1  # (-1)^{k-1}
-        # First term: x^(k-1)/(k-1)! * ϕ^{(k)}(x)
-        term1 = x_pow_km1 / Base.factorial(k-1) * ϕ⁽ᵏ⁾(dist.G, k, x)
-        # Second term only for k ≥ 2: x^(k-2)/(k-2)! * ϕ^{(k-1)}(x)
-        term2 = if k ≥ 2
-            (k == 2 && x_pow_km2 == zero(x)) && (x_pow_km2 = one(x))
-            x_pow_km2 / Base.factorial(k-2) * ϕ⁽ᵏ⁾(dist.G, k-1, x)
-        else
-            zero(x)
-        end
-        s -= sign * (term1 + term2)
-        # Update powers for next k
-        x_pow_km2 = (k == 1) ? one(x) : x_pow_km1
-        x_pow_km1 *= x
+    isinf(x) && return zero(float(x))
+    # Differentiating the inverse-Williamson CDF makes all intermediate
+    # terms telescope: f_R(x) = (-1)^d x^(d-1) ϕ^(d)(x) / (d-1)!.
+    scale = one(float(x))
+    @inbounds for k in 1:(dist.order - 1)
+        scale *= x / k
     end
-    return max(zero(s), s)
+    density = (isodd(dist.order) ? -scale : scale) * ϕ⁽ᵏ⁾(dist.G, dist.order, x)
+    return max(zero(density), density)
 end
 Distributions.logpdf(dist::𝒲₋₁, x) = log(Distributions.pdf(dist, x))
 _quantile(dist::𝒲₋₁, p) = Roots.find_zero(x -> (Distributions.cdf(dist, x) - p), (0.0, Inf))
@@ -179,6 +166,17 @@ end
 struct WilliamsonBetaProduct{TX, TB} <: Distributions.ContinuousUnivariateDistribution
     X::TX
     B::TB
+end
+
+function WilliamsonBetaProduct(X::WilliamsonBetaProduct, B::Distributions.Beta)
+    inner_target, inner_gap = Distributions.params(X.B)
+    outer_target, outer_gap = Distributions.params(B)
+    if outer_target + outer_gap == inner_target
+        source_order = inner_target + inner_gap
+        merged_beta = Distributions.Beta(outer_target, source_order - outer_target)
+        return WilliamsonBetaProduct(X.X, merged_beta)
+    end
+    return WilliamsonBetaProduct{typeof(X), typeof(B)}(X, B)
 end
 
 function Distributions.cdf(dist::WilliamsonBetaProduct, x::Real)
@@ -325,6 +323,20 @@ function ϕ(G::𝒲, t)
     t <= 0 && return one(t)
     return Distributions.expectation(y -> (y > t) ? (1 - t / y)^(G.order - 1) : zero(t), G.X)
 end
+
+function ϕ⁽ᵏ⁾(G::𝒲, k::Int, t)
+    k ≥ 0 || throw(ArgumentError("k must be non-negative"))
+    k == 0 && return ϕ(G, t)
+    t < 0 && return zero(float(t))
+    k < G.order || return invoke(ϕ⁽ᵏ⁾, Tuple{Generator, Int, Any}, G, k, t)
+
+    coefficient = _falling_factorial(G.order - 1, k)
+    value = Distributions.expectation(G.X) do y
+        y > t ? (1 - t / y)^(G.order - 1 - k) / y^k : zero(t + y + G.order)
+    end
+    return (isodd(k) ? -coefficient : coefficient) * value
+end
+ϕ⁽¹⁾(G::𝒲, t) = ϕ⁽ᵏ⁾(G, 1, t)
 function ϕ(G::𝒲, x::TaylorSeries.Taylor1{TF}) where {TF}
     x <= 0 && return one(x) - Distributions.cdf(G.X,0)
     x₀ = x.coeffs[1]
@@ -348,6 +360,11 @@ end
 𝒲₋₁(G::𝒲, d::Integer) = _williamson_inverse_preserved(G, d)
 𝒲₋₁(G::𝒲, d::Real) = _williamson_inverse_preserved(G, d)
 𝒲(X::𝒲₋₁, d::Real) = d == X.order ? X.G : 𝒲(X, d)
+function 𝒲(X::WilliamsonBetaProduct, d::Real)
+    target_order, order_gap = Distributions.params(X.B)
+    d == target_order && return 𝒲(X.X, target_order + order_gap)
+    return invoke(𝒲, Tuple{Any, Real}, X, d)
+end
 
 
 # Optimized methods for discrete nonparametric Williamson generators (covers EmpiricalGenerator)
@@ -355,7 +372,7 @@ function ϕ(G::𝒲{<:Distributions.DiscreteNonParametric}, t)
     d = G.order
     r = Distributions.support(G.X)
     w = Distributions.probs(G.X)
-    Tt = promote_type(eltype(r), typeof(t))
+    Tt = promote_type(eltype(r), typeof(t), typeof(d))
     t <= 0 && return one(Tt)
     t >= r[end] && return zero(Tt)
     S = zero(Tt)
@@ -371,7 +388,7 @@ function ϕ⁽¹⁾(G::𝒲{<:Distributions.DiscreteNonParametric}, t)
     d = G.order
     r = Distributions.support(G.X)
     w = Distributions.probs(G.X)
-    Tt = promote_type(eltype(r), typeof(t))
+    Tt = promote_type(eltype(r), typeof(t), typeof(d))
     t >= r[end] && return zero(Tt)
     S = zero(Tt)
     @inbounds for j in lastindex(r):-1:firstindex(r)
@@ -387,7 +404,7 @@ function ϕ⁽ᵏ⁾(G::𝒲{<:Distributions.DiscreteNonParametric}, k::Int, t)
     d = G.order
     r = Distributions.support(G.X)
     w = Distributions.probs(G.X)
-    Tt = promote_type(eltype(r), typeof(t))
+    Tt = promote_type(eltype(r), typeof(t), typeof(d))
     (k >= d || t >= r[end]) && return zero(Tt)
     k == 0 && return ϕ(G, t)
     k == 1 && return ϕ⁽¹⁾(G, t)
@@ -398,9 +415,7 @@ function ϕ⁽ᵏ⁾(G::𝒲{<:Distributions.DiscreteNonParametric}, k::Int, t)
         zpow = (d == k+1) ? one(t) : (1 - t / rⱼ)^(d - 1 - k)
         S += wⱼ * zpow / rⱼ^k
     end
-    coefficient = d isa Integer ?
-        Base.factorial(d - 1) / Base.factorial(d - 1 - k) :
-        exp(SpecialFunctions.loggamma(d) - SpecialFunctions.loggamma(d - k))
+    coefficient = _falling_factorial(Tt(d - 1), k)
     return S * (isodd(k) ? -1 : 1) * coefficient
 end
 
@@ -602,5 +617,3 @@ frailty(G::FrailtyGenerator) = G.F
 abstract type AbstractUnivariateGenerator <: Generator end
 abstract type AbstractUnivariateFrailtyGenerator <: AbstractFrailtyGenerator end
 const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
-
-

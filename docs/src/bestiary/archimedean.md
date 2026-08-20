@@ -121,6 +121,8 @@ WilliamsonGenerator
 
     `𝒲₋₁(𝒲(X, d), k)` uses this representation directly, including for non-integer orders. The generic inverse of an arbitrary generator remains restricted to integer orders.
 
+    Successive reductions are collapsed using the corresponding beta-product identity. The reverse composition is also recognized: applying `𝒲(..., k)` to the radial returned by `𝒲₋₁(𝒲(X, d), k)` recovers the original order `d` directly.
+
     As a quick sanity check:
 
     ```@example

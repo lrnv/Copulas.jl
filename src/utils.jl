@@ -13,6 +13,21 @@ _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
 end
 
 """
+    _falling_factorial(x, k)
+
+Compute `x * (x - 1) * ⋯ * (x - k + 1)` without forming factorials or
+using `loggamma`. The implementation also applies to non-integer `x`.
+"""
+function _falling_factorial(x, k::Integer)
+    k ≥ 0 || throw(ArgumentError("k must be non-negative"))
+    result = one(x)
+    @inbounds for j in 0:(k - 1)
+        result *= x - j
+    end
+    return result
+end
+
+"""
     taylor(f::F, x₀, d::Int) where {F}
 
 Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back the derivatives as a vector of length d+1. (first value is f(x₀)). 

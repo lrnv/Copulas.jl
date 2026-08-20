@@ -9,6 +9,9 @@
     @test Greal.order == 4.5
     @test Copulas.max_monotony(Greal) == 4.5
     @test Copulas.ϕ(Greal, 0.5) ≈ (1 - 0.5 / 2)^3.5
+    @test Copulas._falling_factorial(19.0, 2) == 342.0
+    @test Copulas._falling_factorial(3.5, 2) == 8.75
+    @test Copulas.ϕ⁽ᵏ⁾(Greal, 2, 0.5) ≈ 3.5 * 2.5 / 2^2 * (1 - 0.5 / 2)^1.5
     @test_throws ArgumentError 𝒲(X, 1.5)
 
     @test Copulas.𝒲₋₁(Greal, 4.5) === X
@@ -21,6 +24,18 @@
     pareto_radial = Copulas.𝒲₋₁(𝒲(Pareto(1), 5), 2)
     @test cdf(pareto_radial, 2.0) ≈ 0.8
     @test pdf(pareto_radial, 2.0) ≈ 0.1
+
+    nested = Copulas.WilliamsonBetaProduct(radial, Beta(1.0, 1.0))
+    @test nested.X === X
+    @test Distributions.params(nested.B) == (1.0, 3.5)
+    recovered = 𝒲(radial, 2.0)
+    @test recovered.X === X
+    @test recovered.order == 4.5
+
+    generic_radial = Copulas.𝒲₋₁(Copulas.FrankGenerator(-2.0), 2)
+    x₀, h = 1.0, 1e-5
+    cdf_derivative = (cdf(generic_radial, x₀ + h) - cdf(generic_radial, x₀ - h)) / (2h)
+    @test pdf(generic_radial, x₀) ≈ cdf_derivative rtol=1e-7
 
     # The exact path also covers the expensive D > d case used for sampling.
     C = ArchimedeanCopula{2}(𝒲(Pareto(1), 5))
