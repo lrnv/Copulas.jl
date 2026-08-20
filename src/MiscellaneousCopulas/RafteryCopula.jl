@@ -83,9 +83,13 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, R::RafteryCopula{d
     return A
 end
 function ρ(R::RafteryCopula{d,P}) where {d, P}
-    term1 = (d+1)*(2^d-(2-R.θ)^d)-(2^d*R.θ*d)
-    term2 = (2-R.θ)^d*(2^d-d-1) 
-    return term1/term2
+    T = typeof(float(R.θ))
+    θ = T(R.θ)
+    inv2d = exp2(-T(d))
+    scaled_power = (one(T) - θ / 2)^d
+    numerator = T(d + 1) * (one(T) - scaled_power) - θ * d
+    denominator = scaled_power * (one(T) - T(d + 1) * inv2d)
+    return numerator * inv2d / denominator
 end
 function τ(R::RafteryCopula{d, P}) where {d, P}
     T = typeof(float(R.θ))

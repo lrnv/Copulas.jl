@@ -92,6 +92,9 @@ end
     @test Copulas.τ(RafteryCopula{3}(0.5)) ≈ 0.4
     @test Copulas.τ(RafteryCopula{10}(0.8)) ≈ 0.6307638245383256
     @test Copulas.τ(RafteryCopula{25}(0.5)) ≈ 0.18523466942807426
+    @test Copulas.ρ(RafteryCopula{2}(0.2)) ≈ 0.2098765432098763
+    @test Copulas.ρ(RafteryCopula{3}(0.5)) ≈ 0.48148148148148145
+    @test isfinite(Copulas.ρ(RafteryCopula{100}(0.5)))
 end
 
 @testset "Check against manual version - CDF" begin
