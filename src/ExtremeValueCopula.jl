@@ -35,33 +35,40 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press.
 * [mai2014financial](@cite) Mai, J. F., & Scherer, M. (2014). Financial engineering with copulas explained (p. 168). London: Palgrave Macmillan.
 """
-struct ExtremeValueCopula{d, TT<:Tail} <: Copula{d}
+struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
     tail::TT
-    function ExtremeValueCopula(d, tail::Tail)
-        @assert _is_valid_in_dim(tail, d)
-        return new{d, typeof(tail)}(tail)
+    function ExtremeValueCopula(d::Int, tail::Tail)
+        d >= 2 || throw(ArgumentError("an extreme-value copula requires d ≥ 2"))
+        _is_valid_in_dim(tail, d) || throw(ArgumentError(
+            "$(typeof(tail)) is not valid in dimension $d",
+        ))
+        return new{d,typeof(tail)}(tail)
     end
 end
 
-ExtremeValueCopula{d,TT}(args...; kwargs...) where {d, TT} = ExtremeValueCopula(d, TT(args...; kwargs...))
-ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D, TT} = ExtremeValueCopula{d,TT}(args...; kwargs...)
-(CT::Type{<:ExtremeValueCopula{2, <:Tail}})(d::Int, args...; kwargs...) = ExtremeValueCopula(2, tailof(CT)(args...; kwargs...))
+ExtremeValueCopula{d,TT}(args...; kwargs...) where {d,TT} =
+    ExtremeValueCopula(d, TT(args...; kwargs...))
+ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D,TT} =
+    ExtremeValueCopula{d,TT}(args...; kwargs...)
+(CT::Type{<:ExtremeValueCopula{D,<:Tail} where D})(d::Int, args...; kwargs...) =
+    ExtremeValueCopula(d, tailof(CT)(args...; kwargs...))
 
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
-#### Restriction to bivariate cases of the following methods:
-function Distributions._logpdf(C::ExtremeValueCopula{2, TT}, u) where {TT}
+@inline function _ev_logpdf_bivariate(C::ExtremeValueCopula{2,<:Tail2}, u)
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf
-    # On the broder, the limit of the pdf is 0 and thus logpdf tends to -Inf
-    (u1 == 1.0 || u2 == 1.0) && return -Inf
+    (isone(u1) || isone(u2)) && return -Inf
     x, y = -log(u1), -log(u2)
     val, du, dv, dudv = _biv_der_ℓ(C.tail, (x, y))
-    core = -dudv + du*dv
+    core = -dudv + du * dv
     core ≤ 0 && return -Inf
     return -val + log(core) + x + y
 end
+
+Distributions._logpdf(C::ExtremeValueCopula{2,<:Tail2}, u) =
+    _ev_logpdf_bivariate(C, u)
 
 @inline function _ellpartial_signlog(tail::Tail, x, I)
     v = ellpartial(tail, x, Tuple(I))

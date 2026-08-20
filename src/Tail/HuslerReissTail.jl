@@ -313,6 +313,10 @@ Distributions._logpdf(
     u,
 ) where {d} = _ev_logpdf_from_partials(C, u)
 
+Distributions._logpdf(
+    C::ExtremeValueCopula{2,<:HuslerReissTail},
+    u,
+) = _ev_logpdf_bivariate(C, u)
 
 @inline function _hr_logsumexp(v)
     m = maximum(v)

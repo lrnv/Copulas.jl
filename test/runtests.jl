@@ -17,6 +17,7 @@ testfiles = [
     "MiscelaneousCopulas",
     "SklarDist",
     "Subsetting",
+    "ExtremeValueArchitecture",
     "GenericTests",
 ]
 
