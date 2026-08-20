@@ -359,7 +359,10 @@ function _williamson_inverse_preserved(G::𝒲, d::Real)
 end
 𝒲₋₁(G::𝒲, d::Integer) = _williamson_inverse_preserved(G, d)
 𝒲₋₁(G::𝒲, d::Real) = _williamson_inverse_preserved(G, d)
-𝒲(X::𝒲₋₁, d::Real) = d == X.order ? X.G : 𝒲(X, d)
+function 𝒲(X::𝒲₋₁, d::Real)
+    d == X.order && return X.G
+    return invoke(𝒲, Tuple{Any, Real}, X, d)
+end
 function 𝒲(X::WilliamsonBetaProduct, d::Real)
     target_order, order_gap = Distributions.params(X.B)
     d == target_order && return 𝒲(X.X, target_order + order_gap)
