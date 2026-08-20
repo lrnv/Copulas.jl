@@ -192,6 +192,13 @@ struct WilliamsonBetaProduct{TX, TB} <: Distributions.ContinuousUnivariateDistri
     B::TB
 end
 
+function WilliamsonBetaProduct(X::WilliamsonFromFrailty, B::Distributions.Beta)
+    target_order, order_gap = Distributions.params(B)
+    target_order + order_gap == X.order ||
+        return WilliamsonBetaProduct{typeof(X),typeof(B)}(X, B)
+    return WilliamsonFromFrailty(X.frailty_dist, target_order)
+end
+
 function WilliamsonBetaProduct(X::WilliamsonBetaProduct, B::Distributions.Beta)
     inner_target, inner_gap = Distributions.params(X.B)
     outer_target, outer_gap = Distributions.params(B)
@@ -244,12 +251,28 @@ Distributions.rand(rng::Distributions.AbstractRNG, dist::WilliamsonBetaProduct) 
 Base.minimum(dist::WilliamsonBetaProduct) = zero(float(Base.minimum(dist.X)))
 Base.maximum(dist::WilliamsonBetaProduct) = Base.maximum(dist.X)
 
+function _positive_distribution_quantile(dist, p::Real)
+    lo = float(Base.minimum(dist))
+    hi = float(Base.maximum(dist))
+    if !isfinite(hi)
+        hi = max(one(lo), lo + one(lo))
+        while Distributions.cdf(dist, hi) < p
+            hi *= 2
+            isfinite(hi) || return hi
+        end
+    end
+    return Roots.find_zero(
+        x -> Distributions.cdf(dist, x) - p,
+        (lo, hi),
+        Roots.Bisection(),
+    )
+end
+
 function Distributions.quantile(dist::WilliamsonBetaProduct, p::Real)
     0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
     iszero(p) && return Base.minimum(dist)
     isone(p) && return Base.maximum(dist)
-    return Roots.find_zero(x -> Distributions.cdf(dist, x) - p,
-                           (Base.minimum(dist), Base.maximum(dist)))
+    return _positive_distribution_quantile(dist, p)
 end
 
 
@@ -626,7 +649,7 @@ References:
 FrailtyGenerator
 
 abstract type AbstractFrailtyGenerator<:Generator end
-frailty(::AbstractFrailtyGenerator) = throw("This generator was not defined as it should, you should provide its frailty")
+frailty(::Generator) = nothing
 max_monotony(::AbstractFrailtyGenerator) = Inf
 ϕ(G::AbstractFrailtyGenerator, t) = Distributions.mgf(frailty(G), -t)
 𝒲₋₁(G::AbstractFrailtyGenerator, d::Int) = WilliamsonFromFrailty(frailty(G), d)

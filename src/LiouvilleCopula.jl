@@ -26,11 +26,13 @@ representation of the Dirichlet direction. Selecting dimensions keeps `G` and
 the corresponding entries of `α`, so the required lower order is recovered
 without changing the model representation.
 
-Conditioning also preserves the Liouville family. Integer-valued sums of the
-conditioned Dirichlet parameters reuse `TiltedGenerator`; non-integer sums use
-an exact conditional-radial representation. These paths provide conditional
-distributions and the Rosenblatt and inverse Rosenblatt transforms without
-differentiating the Liouville CDF numerically.
+Conditioning also preserves the Liouville family. When `G` has a frailty, both
+integer and non-integer conditioned orders use its exact power-exponentially
+tilted posterior distribution. Otherwise, integer-valued sums reuse
+`TiltedGenerator` and non-integer sums use an exact conditional-radial
+representation. These paths provide conditional distributions and the
+Rosenblatt and inverse Rosenblatt transforms without differentiating the
+Liouville CDF numerically.
 
 See also the documentation example “Liouville copulas with real Dirichlet
 parameters”.
@@ -60,12 +62,7 @@ Distributions.params(C::LiouvilleCopula) = (; G = C.G, α = C.α)
 _liouville_order(C::LiouvilleCopula) = sum(C.α)
 _liouville_radial(C::LiouvilleCopula) = 𝒲₋₁(C.G, _liouville_order(C))
 _liouville_margin(C::LiouvilleCopula, i::Integer) = 𝒲₋₁(C.G, C.α[i])
-function _liouville_evaluation_distribution(G::Generator, order::Real)
-    n = ceil(Int, order)
-    radial = invoke(𝒲₋₁, Tuple{Generator,Integer}, G, n)
-    isinteger(order) && return radial
-    return WilliamsonBetaProduct(radial, Distributions.Beta(order, n - order))
-end
+_liouville_evaluation_distribution(G::Generator, order::Real) = 𝒲₋₁(G, order)
 _liouville_evaluation_distribution(G::𝒲, order::Real) = 𝒲₋₁(G, order)
 function _liouville_coordinates(C::LiouvilleCopula{d}, u) where {d}
     margins = ntuple(i -> _liouville_evaluation_distribution(C.G, C.α[i]), d)
@@ -95,6 +92,8 @@ function Distributions._rand!(
 end
 
 function _cdf(C::LiouvilleCopula{2}, u)
+    isone(u[1]) && return u[2]
+    isone(u[2]) && return u[1]
     _, x = _liouville_coordinates(C, u)
     radial = _liouville_evaluation_distribution(C.G, _liouville_order(C))
     beta = Distributions.Beta(C.α...)
@@ -204,8 +203,7 @@ function Distributions.quantile(D::LiouvilleConditionalRadial, p::Real)
     0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
     iszero(p) && return minimum(D)
     isone(p) && return maximum(D)
-    return Roots.find_zero(x -> Distributions.cdf(D, x) - p,
-                           (minimum(D), maximum(D)))
+    return _positive_distribution_quantile(D, p)
 end
 Distributions.rand(rng::Distributions.AbstractRNG, D::LiouvilleConditionalRadial) =
     Distributions.quantile(D, rand(rng))
@@ -246,7 +244,12 @@ function _liouville_conditional_components(
     xⱼₛ = ntuple(k -> Distributions.quantile(original_margins[js[k]], 1 - uⱼₛ[k]), p)
     shift = sum(xⱼₛ)
 
-    conditional_generator = if isinteger(tilted_order)
+    source_frailty = frailty(C.G)
+    conditional_generator = if source_frailty !== nothing
+        conditional_frailty = PowerTiltedFrailty(source_frailty, tilted_order, shift)
+        conditional_radial = WilliamsonFromFrailty(conditional_frailty, target_order)
+        𝒲(conditional_radial, target_order)
+    elseif isinteger(tilted_order)
         TiltedGenerator(C.G, Int(tilted_order), shift)
     else
         source_radial = _liouville_evaluation_distribution(C.G, source_order)
@@ -293,8 +296,8 @@ end
 # `condition` needs both the conditional copula and all marginal distortions,
 # whereas Rosenblatt and one-dimensional conditioning request individual
 # distortions through `DistortionFromCop`. Specializing this shared hook avoids
-# rebuilding (and, for fractional tilts, renormalizing) the same conditional
-# radial once for the copula and once per remaining margin. We still define
+# rebuilding (and renormalizing) the same conditional frailty or radial once
+# for the copula and once per remaining margin. We still define
 # `ConditionalCopula` and `DistortionFromCop` above because they are independent
 # extension points used directly by the generic conditioning interface.
 function _conditional_components(C::LiouvilleCopula, js, uⱼₛ, is)

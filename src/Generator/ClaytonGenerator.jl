@@ -85,9 +85,34 @@ end
 
 τ(G::ClaytonGenerator) = ifelse(isfinite(G.θ), G.θ/(G.θ+2), 1)
 τ⁻¹(::Type{<:ClaytonGenerator},τ) = ifelse(τ == 1,Inf,2τ/(1-τ))
-𝒲₋₁(G::ClaytonGenerator, d::Int) = G.θ >= 0 ? WilliamsonFromFrailty(Distributions.Gamma(1/G.θ,G.θ), d) : ClaytonWilliamsonDistribution(G.θ,d)
+# For θ > 0, the Clayton frailty is θY with Y ~ Gamma(1/θ, 1), so
+# Wₑ⁻¹(ϕ) = Gamma(d, 1)/(θY) = BetaPrime(d, 1/θ)/θ. This exact
+# representation works for real orders and avoids numerical quadrature for
+# repeatedly evaluated Liouville radials and margins.
 
-frailty(G::ClaytonGenerator) = G.θ >= 0 ? Distributions.Gamma(1/G.θ, G.θ) : throw(ArgumentError("Clayton frailty is only defined for θ ≥ 0 (positive dependence). Got θ = $(G.θ)."))
+# Negative Clayton generators, on the other hand,
+# have no frailty representation: integer orders retain their
+# dedicated finite-support ClaytonWilliamsonDistribution, while non-integer
+# orders fall back to the generic exact beta reduction from the next integer
+# Williamson order.
+function _clayton_williamson_inverse(G::ClaytonGenerator, d::Real)
+    scale = inv(G.θ)
+    radial = Distributions.BetaPrime(d, scale)
+    return scale * radial
+end
+function 𝒲₋₁(G::ClaytonGenerator, d::Integer)
+    G.θ >= 0 && return _clayton_williamson_inverse(G, d)
+    d == 1 && return invoke(𝒲₋₁, Tuple{Generator,Integer}, G, d)
+    return ClaytonWilliamsonDistribution(G.θ, d)
+end
+function 𝒲₋₁(G::ClaytonGenerator, d::Real)
+    return G.θ >= 0 ?
+           _clayton_williamson_inverse(G, d) :
+           invoke(𝒲₋₁, Tuple{Generator,Real}, G, d)
+end
+
+
+frailty(G::ClaytonGenerator) =
 function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
     # Check if all elements are in (0,1) and if θ < 0, check the sum condition
     if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))

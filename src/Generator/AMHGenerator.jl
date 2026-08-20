@@ -108,7 +108,7 @@ function ϕ⁽ᵏ⁾⁻¹(G::AMHGenerator, k::Int, t; start_at=t)
 end
 ϕ⁻¹⁽¹⁾(G::AMHGenerator, t) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
 𝒲₋₁(G::AMHGenerator, d::Int) = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),d) : @invoke 𝒲₋₁(G::Generator, d)
-frailty(G::AMHGenerator) = G.θ >= 0 ? Distributions.Geometric(1-G.θ) : throw("No frailty exists for AMH when θ < 0")
+frailty(G::AMHGenerator) = G.θ >= 0 ? 1 + Distributions.Geometric(1-G.θ) : nothing
 function _amh_tau(θ)
     if abs(θ) < 0.01
         return 2/9  * θ

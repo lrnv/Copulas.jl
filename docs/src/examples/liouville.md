@@ -91,7 +91,7 @@ The bivariate CDF uses a one-dimensional radial/Beta expectation. In higher dime
 
 ## Conditioning and Rosenblatt transforms
 
-Conditioning preserves the Liouville structure. If `J` is the set of conditioned dimensions and `sum(α[J])` is integer-valued, Copulas.jl reuses the existing `TiltedGenerator` implementation. Otherwise it constructs the exact fractional tilt from the conditional radial distribution. The public interface is unchanged:
+Conditioning preserves the Liouville structure. If the generator has a frailty, Copulas.jl conditions that frailty directly: its posterior is tilted by `v^sum(α[J]) * exp(-sJ*v)`, which works uniformly for integer and non-integer parameters. For generators without a frailty, integer orders reuse `TiltedGenerator` and fractional orders use the exact conditional-radial representation. The public interface is unchanged:
 
 ```julia
 D2_given_1 = condition(C, 1, 0.4)
