@@ -728,6 +728,10 @@ end
         GT = typeof(C.G)
         spe = generator_specialization(C.G)
         mm = Copulas.max_monotony(C.G)
+        # ForwardDiff differentiates the adaptive expectation used by continuous
+        # Williamson generators.  When a kernel derivative jumps at X == t, that
+        # numerical reference is less accurate than the direct expectation.
+        derivative_rtol = C.G isa WilliamsonGenerator ? 1e-4 : sqrt(eps())
         
         @testif spe.ϕinv "Check ϕ ∘ ϕ⁻¹ == Id over [0,1]" begin
             for x in 0:0.1:1
@@ -736,11 +740,11 @@ end
         end
 
         @testif spe.ϕ1 "Check d(ϕ) == ϕ⁽¹⁾" begin 
-            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽¹⁾(C.G, 0.1)
+            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽¹⁾(C.G, 0.1) rtol=derivative_rtol
         end
 
         @testif spe.ϕk "Check d(ϕ) == ϕ⁽ᵏ⁾(k=1)" begin
-            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 1, 0.1)
+            @test ForwardDiff.derivative(x -> Copulas.ϕ(C.G, x), 0.1) ≈ Copulas.ϕ⁽ᵏ⁾(C.G, 1, 0.1) rtol=derivative_rtol
         end
 
         @testif (spe.ϕ1 || spe.ϕk) "Check ϕ⁽¹⁾ == ϕ⁽ᵏ⁾(k=1)" begin
