@@ -113,6 +113,7 @@ end
 
 
 frailty(G::ClaytonGenerator) =
+    G.θ >= 0 ? Distributions.Gamma(inv(G.θ), G.θ) : nothing
 function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
     # Check if all elements are in (0,1) and if θ < 0, check the sum condition
     if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
