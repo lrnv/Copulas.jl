@@ -1,4 +1,28 @@
 
+@testset "Williamson real orders and exact lower-order radial" begin
+    X = Dirac(2.0)
+    G4 = @inferred 𝒲(X, 4)
+    G5 = 𝒲(X, 5)
+    Greal = 𝒲(X, 4.5)
+
+    @test typeof(G4) == typeof(G5)
+    @test Greal.order == 4.5
+    @test Copulas.max_monotony(Greal) == 4.5
+    @test Copulas.ϕ(Greal, 0.5) ≈ (1 - 0.5 / 2)^3.5
+    @test_throws ArgumentError 𝒲(X, 1.5)
+
+    @test Copulas.𝒲₋₁(Greal, 4.5) === X
+    radial = Copulas.𝒲₋₁(Greal, 2.0)
+    beta = Beta(2.0, 2.5)
+    @test cdf(radial, 0.8) ≈ cdf(beta, 0.4)
+    @test pdf(radial, 0.8) ≈ pdf(beta, 0.4) / 2
+    @test all(x -> 0 <= x <= 2, rand(rng, radial, 10))
+
+    # The exact path also covers the expensive D > d case used for sampling.
+    C = ArchimedeanCopula{2}(𝒲(Pareto(1), 5))
+    @test size(rand(rng, C, 3)) == (2, 3)
+end
+
 
 @testset "Boundary test for bivariate Joe, Gumbel and Frank" begin
     # [GenericTests integration]: Yes, valuable. A general "pdf zero on boundaries when defined" property exists for families with known boundary behavior.

@@ -336,7 +336,7 @@ check_corkendall(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = 
 
 is_archimedean_with_generator(C::Copulas.Copula) = false
 is_archimedean_with_generator(C::ArchimedeanCopula) = true 
-is_archimedean_with_generator(C::ArchimedeanCopula{d, Copulas.WilliamsonGenerator{<:Distributions.DiscreteUnivariateDistribution, D}}) where {d,D} = false
+is_archimedean_with_generator(C::ArchimedeanCopula{d, <:Copulas.WilliamsonGenerator{<:Distributions.DiscreteUnivariateDistribution}}) where d = false
 
 can_integrate_pdf(C::Copulas.Copula) = can_pdf(C)
 can_integrate_pdf(C::FrankCopula) = C.G.θ < 100
@@ -785,7 +785,7 @@ end
             end
         end
 
-        @testif !(C.G isa WilliamsonGenerator{<:Dirac, D} where D) "Kendall-Radial coherency test" begin
+        @testif !(C.G isa WilliamsonGenerator{<:Dirac}) "Kendall-Radial coherency test" begin
             # On radial-level: reuse the same radial sample for both checks
             R1 = dropdims(sum(Copulas.ϕ⁻¹.(C.G,spl1000),dims=1),dims=1)
             R2 = rand(rng,Copulas.𝒲₋₁(C.G, d),1000)
