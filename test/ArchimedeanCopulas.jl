@@ -18,6 +18,10 @@
     @test pdf(radial, 0.8) ≈ pdf(beta, 0.4) / 2
     @test all(x -> 0 <= x <= 2, rand(rng, radial, 10))
 
+    pareto_radial = Copulas.𝒲₋₁(𝒲(Pareto(1), 5), 2)
+    @test cdf(pareto_radial, 2.0) ≈ 0.8
+    @test pdf(pareto_radial, 2.0) ≈ 0.1
+
     # The exact path also covers the expensive D > d case used for sampling.
     C = ArchimedeanCopula{2}(𝒲(Pareto(1), 5))
     @test size(rand(rng, C, 3)) == (2, 3)

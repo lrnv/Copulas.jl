@@ -223,6 +223,27 @@ function Distributions.pdf(dist::WilliamsonBetaProduct, x::Real)
     end
 end
 
+# For continuous radials, conditioning on B integrates over its bounded support
+# and reuses the radial distribution's specialized cdf/pdf implementations.
+function Distributions.cdf(
+    dist::WilliamsonBetaProduct{<:Distributions.ContinuousUnivariateDistribution},
+    x::Real,
+)
+    x <= 0 && return zero(float(x))
+    return Distributions.expectation(b -> Distributions.cdf(dist.X, x / b), dist.B)
+end
+
+function Distributions.pdf(
+    dist::WilliamsonBetaProduct{<:Distributions.ContinuousUnivariateDistribution},
+    x::Real,
+)
+    x <= 0 && return zero(float(x))
+    return Distributions.expectation(
+        b -> iszero(b) ? zero(float(x)) : Distributions.pdf(dist.X, x / b) / b,
+        dist.B,
+    )
+end
+
 Distributions.logpdf(dist::WilliamsonBetaProduct, x::Real) = log(Distributions.pdf(dist, x))
 Distributions.rand(rng::Distributions.AbstractRNG, dist::WilliamsonBetaProduct) =
     rand(rng, dist.X) * rand(rng, dist.B)
