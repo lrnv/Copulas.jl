@@ -40,6 +40,7 @@ end
 
 const CuadrasAugeCopula{T} = ExtremeValueCopula{2, CuadrasAugeTail{T}}
 Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
+_is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2
 _unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
 _rebound_params(::Type{<:CuadrasAugeTail}, d, α) = begin
     p = 1 / (1 + exp(-α[1]))
@@ -52,6 +53,49 @@ function A(tail::CuadrasAugeTail, t::Real)
     θ = tail.θ
     return max(tt, 1-tt) + (1-θ) * min(tt, 1-tt)
 end
+
+
+# Dimension-free Cuadras-Auge STDF:
+#
+#   ℓ(x) = (1-θ) Σᵢ xᵢ + θ maxᵢ xᵢ.
+#
+# This is a discrete spectral model with one private atom per coordinate and
+# one common atom.
+function ℓ(tail::CuadrasAugeTail, x)
+    θ = tail.θ
+    return (one(θ) - θ) * sum(x) + θ * maximum(x)
+end
+
+function _cuadras_auge_spectral_tail(
+    tail::CuadrasAugeTail,
+    d::Int,
+)
+    d >= 2 || throw(ArgumentError(
+        "Cuadras-Auge dimension must be at least two",
+    ))
+
+    T = typeof(tail.θ)
+    θ = tail.θ
+    B = zeros(T, d, d + 1)
+
+    @inbounds for i in 1:d
+        B[i, i] = one(T) - θ
+        B[i, end] = θ
+    end
+
+    return DiscreteSpectralTail(B)
+end
+
+_rand_ev_multivariate!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:CuadrasAugeTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real} =
+    _discrete_spectral_rand!(
+        rng,
+        _cuadras_auge_spectral_tail(C.tail, d),
+        X,
+    )
 _pickands_left_slope(tail::CuadrasAugeTail, prototype::Real) =
     -convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
 _pickands_right_slope(tail::CuadrasAugeTail, prototype::Real) =
