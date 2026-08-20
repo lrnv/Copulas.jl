@@ -404,11 +404,12 @@ function ϕ⁽¹⁾(G::𝒲{<:Distributions.DiscreteNonParametric}, t)
 end
 
 function ϕ⁽ᵏ⁾(G::𝒲{<:Distributions.DiscreteNonParametric}, k::Int, t)
+    k ≥ 0 || throw(ArgumentError("k must be non-negative"))
     d = G.order
     r = Distributions.support(G.X)
     w = Distributions.probs(G.X)
     Tt = promote_type(eltype(r), typeof(t), typeof(d))
-    (k >= d || t >= r[end]) && return zero(Tt)
+    t >= r[end] && return zero(Tt)
     k == 0 && return ϕ(G, t)
     k == 1 && return ϕ⁽¹⁾(G, t)
     S = zero(Tt)

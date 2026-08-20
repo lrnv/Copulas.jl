@@ -12,6 +12,9 @@
     @test Copulas._falling_factorial(19.0, 2) == 342.0
     @test Copulas._falling_factorial(3.5, 2) == 8.75
     @test Copulas.ϕ⁽ᵏ⁾(Greal, 2, 0.5) ≈ 3.5 * 2.5 / 2^2 * (1 - 0.5 / 2)^1.5
+    Gdiscrete = 𝒲([1.0], [1.0], 4.5)
+    @test Copulas.ϕ⁽ᵏ⁾(Gdiscrete, 5, 0.5) ≈
+          (-1)^5 * Copulas._falling_factorial(3.5, 5) * 0.5^(-1.5)
     # Exact truncated negative moment of LogNormal(0, 1).
     Glognormal = 𝒲(LogNormal(), 2)
     @test Copulas.ϕ⁽¹⁾(Glognormal, 0.1) ≈ -exp(0.5) * ccdf(Normal(), log(0.1) + 1)
