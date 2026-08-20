@@ -1,17 +1,43 @@
+"""
+    TawnTail(d, dep, asy)
+    TawnTail(α, weights)
 
-# General multivariate asymmetric logistic extreme-value tail of Tawn (1990).
-#
-# In the package convention α[C] ≥ 1,
-#
-#   ℓ(x) = Σ_C [Σ_{i∈C} (β[i,C] x[i])^α[C]]^(1/α[C]),
-#
-# with β[i,C] ≥ 0, β[i,C] = 0 for i ∉ C, and
-# Σ_{C∋i} β[i,C] = 1 for every margin i.
+Multivariate asymmetric logistic stable tail dependence function of Tawn. For
+each nonempty subset ``C`` of ``\\{1,\\ldots,d\\}``, the general representation
+combines weighted logistic components,
+
+```math
+\\ell(x)
+=
+\\sum_C
+\\left[\\sum_{i\\in C}(\\beta_{i,C}x_i)^{\\alpha_C}\\right]^{1/\\alpha_C},
+```
+
+with ``\\alpha_C\\ge1``, ``\\beta_{i,C}\\ge0``, and
+``\\sum_{C\\ni i}\\beta_{i,C}=1`` for every margin.
+"""
 struct TawnTail{T} <: Tail
     d::Int
     α::Vector{T}
     β::Matrix{T}
 end
+
+"""
+    TawnCopula(α, weights)
+    TawnCopula(d, dep, asy)
+
+Construct a Tawn asymmetric-logistic extreme-value copula.
+
+`TawnCopula(α, weights)` is a convenience submodel with one full-set logistic
+component plus singleton remainders; `length(weights)` determines `d`.
+
+`TawnCopula(d, dep, asy)` exposes the full subset model. It requires one
+dependence parameter for each non-singleton subset,
+`length(dep) = 2^d-d-1`, and one asymmetry-weight vector for each nonempty
+subset, `length(asy) = 2^d-1`. The weights involving each margin must sum to
+one.
+"""
+const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
 
 function _tawn_subsets(d::Int)
     d >= 2 || throw(ArgumentError("dimension must be at least 2"))
@@ -111,6 +137,20 @@ function TawnTail(α::Real, weights::AbstractVector)
 
     return TawnTail(d, dep, asy)
 end
+
+function (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(
+    α::Real,
+    weights::AbstractVector,
+)
+    tail = TawnTail(α, weights)
+    return ExtremeValueCopula(tail.d, tail)
+end
+
+(::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(
+    d::Int,
+    dep::AbstractVector,
+    asy::AbstractVector,
+) = ExtremeValueCopula(d, TawnTail(d, dep, asy))
 
 Distributions.params(tail::TawnTail) = (α = tail.α, β = tail.β)
 _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d

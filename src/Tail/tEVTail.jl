@@ -1,31 +1,42 @@
 """
     tEVTail{Tdf,Tρ}, tEVCopula{d,T}
 
-Fields:
-  - ν::Real — degrees of freedom (ν > 0)
-  - ρ::Real — correlation parameter (ρ ∈ (-1,1])
+    tEVCopula(d, ν, ρ)
+    tEVCopula(ν, R)
 
-Constructor
+Extremal-`t` extreme-value copula with degrees of freedom `ν > 0`.
 
-    tEVCopula(ν, ρ)
-    ExtremeValueCopula(2, tEVTail(ν, ρ))
-
-The (bivariate) extreme-t copula is parameterized by ``\\nu > 0`` and \\rho \\in (-1,1]``.  
-Its Pickands dependence function is
+`tEVCopula(d, ν, ρ)` uses an exchangeable correlation matrix with common
+off-diagonal correlation `ρ`. For a non-degenerate `d`-dimensional model,
 
 ```math
-A(x) = xt_{\\nu+1}(Z_x) +(1-x)t_{\\nu+1}(Z_{1-x})
+-\\frac{1}{d-1}<\\rho<1.
 ```
-Where ``t_{\\nu + 1}`` is the cumulative distribution function (CDF) of the standard t distribution with ``\\nu + 1`` degrees of freedom and
+
+`tEVCopula(ν, R)` uses a general correlation matrix `R`; its size determines
+the dimension. `R` must be finite, symmetric, have unit diagonal, and be
+strictly positive definite in the non-degenerate general representation.
+A valid `2×2` matrix is automatically reduced to `tEVTail(ν, ρ)` so the
+specialized bivariate analytic kernel is retained.
+
+For `d = 2`, the Pickands dependence function is
 
 ```math
-Z_x = \\sqrt{\\frac{1+\\nu}{1-\\rho^2}}\\left(\\left(\\frac{x}{1-x} \\right)^{1/\\nu} - \\rho\\right)
+A(x)=x\\,t_{\\nu+1}(Z_x)+(1-x)t_{\\nu+1}(Z_{1-x}),
 ```
 
-Special cases:
+where
 
-* ρ → -1 ⇒ independence in the bivariate limit
-* ρ = 1 ⇒ M Copula (upper Fréchet-Hoeffding bound)
+```math
+Z_x
+=
+\\sqrt{\\frac{1+\\nu}{1-\\rho^2}}
+\\left[\\left(\\frac{x}{1-x}\\right)^{1/\\nu}-\\rho\\right].
+```
+
+Special case:
+
+* `ρ = 1` returns `MCopula(d)`.
 
 References:
 
@@ -371,7 +382,16 @@ function _tev_rand_multivariate!(
     return X
 end
 
-# General correlation-matrix representation for multivariate extremal-t.
+"""
+    tEVCorrelationTail(ν, R)
+
+Internal general correlation-matrix representation of the extremal-`t` family
+for `d ≥ 3`. `R` must be finite, symmetric, have unit diagonal, and be
+strictly positive definite.
+
+Prefer `tEVCopula(ν, R)` in user code. The public constructor infers the
+dimension and reduces valid `2×2` matrices to `tEVTail(ν, ρ)`.
+"""
 struct tEVCorrelationTail{T,MT<:AbstractMatrix} <: Tail
     ν::T
     R::MT
@@ -415,6 +435,52 @@ end
 
 Distributions.params(tail::tEVCorrelationTail) = (ν = tail.ν, R = tail.R)
 _is_valid_in_dim(tail::tEVCorrelationTail, d::Int) = d == size(tail.R, 1)
+
+function _tev_copula_from_correlation(ν::Real, R::AbstractMatrix)
+    ν > 0 || throw(ArgumentError("ν must be > 0"))
+    d1, d2 = size(R)
+    d1 == d2 || throw(DimensionMismatch("R must be square"))
+    d1 >= 2 || throw(ArgumentError("R must have dimension at least 2"))
+    all(isone, R) && return MCopula(d1)
+
+    if d1 == 2
+        RF = Matrix{Float64}(R)
+        all(isfinite, RF) || throw(ArgumentError(
+            "R must contain only finite entries",
+        ))
+        scale = max(1.0, maximum(abs, RF))
+        tol = sqrt(eps(Float64)) * scale
+        maximum(abs, RF - transpose(RF)) <= tol ||
+            throw(ArgumentError("R must be symmetric"))
+        abs(RF[1, 1] - 1.0) <= tol &&
+            abs(RF[2, 2] - 1.0) <= tol ||
+            throw(ArgumentError("R must have unit diagonal"))
+        ρ = 0.5 * (RF[1, 2] + RF[2, 1])
+        -1.0 < ρ < 1.0 || throw(ArgumentError(
+            "a non-degenerate 2×2 correlation matrix requires -1 < ρ < 1",
+        ))
+        return ExtremeValueCopula(2, tEVTail(float(ν), ρ))
+    end
+
+    tail = tEVCorrelationTail(ν, R)
+    return ExtremeValueCopula(d1, tail)
+end
+
+(::Type{<:ExtremeValueCopula{2,<:tEVTail}})(
+    ν::Real,
+    R::AbstractMatrix,
+) = _tev_copula_from_correlation(ν, R)
+
+function (::Type{<:ExtremeValueCopula{2,<:tEVTail}})(
+    d::Int,
+    ν::Real,
+    R::AbstractMatrix,
+)
+    d == size(R, 1) || throw(DimensionMismatch(
+        "d=$d does not match correlation dimension $(size(R, 1))",
+    ))
+    return _tev_copula_from_correlation(ν, R)
+end
 
 ℓ(tail::tEVCorrelationTail, x) = _tev_stdf(tail.ν, tail.R, x)
 

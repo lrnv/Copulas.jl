@@ -1,31 +1,39 @@
 """
     MOTail{T}, MOCopula{d,T}
 
-Fields:
-  - λ₁::Real      — parameter ≥ 0
-  - λ₂::Real      — parameter ≥ 0
-  - λ₁₂::Real     — parameter ≥ 0
+    MOCopula(2, λ₁, λ₂, λ₁₂)
+    MOCopula(λ::AbstractVector)
+    MOCopula(d, λ::AbstractVector)
 
-Constructor
+Marshall-Olkin extreme-value family.
 
-    MOCopula(λ₁, λ₂, λ₁₂)
-    ExtremeValueCopula(2, MOTail(λ₁, λ₂, λ₁₂))
+The specialized bivariate representation uses private-shock intensities
+`λ₁, λ₂ ≥ 0` and common-shock intensity `λ₁₂ ≥ 0`.
 
-The (bivariate) Marshall-Olkin extreme-value copula is parameterized by ``\\lambda_i \\in [0,\\infty), i = 1, 2, \\{1,2\\}``
-Its Pickands dependence function is
+The multivariate representation assigns one nonnegative shock intensity `λ_S`
+to every nonempty subset `S ⊆ {1,…,d}`. Therefore `λ` has length `2^d-1`,
+ordered by subset cardinality and then lexicographically. If only `λ` is
+supplied, the dimension is inferred from its length.
+
+With
 
 ```math
-A(t) = \\frac{\\lambda_1 (1-t)}{\\lambda_1 + \\lambda_{1,2}} + \\frac{\\lambda_2 t}{\\lambda_2 + \\lambda_{1,2}} + \\lambda_{1,2}\\max\\left \\{\\frac{1-t}{\\lambda_1 + \\lambda_{1,2}}, \\frac{t}{\\lambda_2 + \\lambda_{1,2}} \\right \\}
+r_i=\\sum_{S\\ni i}\\lambda_S,
 ```
 
-Special cases:
+the stable tail dependence function is
 
-* If λ₁₂ = 0, reduces to an asymmetric independence-like form.
-* If λ₁ = λ₂ = 0, degenerates to complete dependence.
+```math
+\\ell(x)=\\sum_{\\varnothing\\ne S}\\max_{i\\in S}
+\\left(\\frac{\\lambda_S}{r_i}x_i\\right).
+```
+
+Every margin must have positive total shock rate. Multiplying all shock
+intensities by the same positive constant leaves the copula unchanged.
 
 References:
 
-* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
+* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications. World Scientific.
 """
 MOTail, MOCopula
 
@@ -239,6 +247,24 @@ MOMultivariateTail(tail::MOTail) =
 
 MOMultivariateCopula(d::Int, λ::AbstractVector) =
     ExtremeValueCopula(d, MOMultivariateTail(d, λ))
+
+function _mo_dimension(λ::AbstractVector)
+    m = length(λ) + 1
+    ispow2(m) || throw(DimensionMismatch(
+        "Marshall-Olkin λ must have length 2^d-1",
+    ))
+    d = trailing_zeros(m)
+    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least 2"))
+    return d
+end
+
+(::Type{<:ExtremeValueCopula{2,<:MOTail}})(λ::AbstractVector) =
+    MOMultivariateCopula(_mo_dimension(λ), λ)
+
+(::Type{<:ExtremeValueCopula{2,<:MOTail}})(
+    d::Int,
+    λ::AbstractVector,
+) = MOMultivariateCopula(d, λ)
 
 MOMultivariateCopula(tail::MOTail) =
     ExtremeValueCopula(2, MOMultivariateTail(tail))

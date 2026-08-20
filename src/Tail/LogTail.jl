@@ -1,27 +1,29 @@
 """
     LogTail{T}, LogCopula{d,T}
 
-Fields:
-  - θ::Real — dependence parameter, θ ∈ [0,1]
+    LogCopula(d, θ)
 
-Constructor
-
-    LogCopula(θ)
-    ExtremeValueCopula(2, LogTail(θ))
-
-The (bivariate) Mixed extreme-value copula is parameterized by ``\\theta \\in [0,1]``.
-Its Pickands dependence function is
+Logistic (Gumbel-Hougaard) extreme-value copula in dimension `d ≥ 2`, with
+`θ ∈ [1, ∞]`. Its stable tail dependence function is
 
 ```math
-A(t) = \\theta t^2 - \\theta t + 1, \\quad t \\in [0,1].
+\\ell(x_1,\\ldots,x_d)
+=
+\\left(\\sum_{i=1}^d x_i^\\theta\\right)^{1/\\theta}.
 ```
+
+For `d = 2` this is the usual logistic extreme-value model and is equivalent
+to `GumbelCopula(2, θ)`. The same mathematical tail is used in every supported
+dimension, while dimension two retains specialized analytic kernels.
+
 Special cases:
 
-* θ = 0 ⇒ IndependentCopula
+* `θ = 1` returns `IndependentCopula(d)`.
+* `θ = ∞` returns `MCopula(d)`.
 
 References:
 
-* [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.
+* [tawn1988bivariate](@cite) Tawn, J. A. (1988). Bivariate extreme value theory: models and estimation. Biometrika, 75(3), 397-415.
 """
 LogTail, LogCopula
 

@@ -113,9 +113,7 @@ module Copulas
     # Stable tail dependence functions
     include("Tail/NoTail.jl")
     include("Tail/MTail.jl")
-    include("Tail/DegenerateTailDispatch.jl")
     include("Tail/AsymGalambosTail.jl")
-    include("Tail/AsymGalambosMultiTail.jl")
     include("Tail/AsymLogTail.jl")
     include("Tail/TawnTail.jl")
     include("Tail/AsymMixedTail.jl")
@@ -188,6 +186,7 @@ module Copulas
            PlackettCopula,
            RafteryCopula,
            SurvivalCopula,
+           TawnCopula,
            TCopula,
            tEVCopula,
            WCopula,
