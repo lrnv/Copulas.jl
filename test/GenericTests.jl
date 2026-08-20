@@ -1148,3 +1148,87 @@ end
         end
     end
 end
+
+
+@testset "Multivariate Hüsler-Reiss EV" begin
+    @testset "Exchangeable scalar parameterization" begin
+        cases = (
+            (3, 0.7, 3701),
+            (3, 3.0, 3702),
+            (4, 1.5, 3703),
+        )
+        n = 5_000
+
+        for (d, θ, seed) in cases
+            tail = Copulas.HuslerReissTail(θ)
+            C = Copulas.ExtremeValueCopula(d, tail)
+            U = rand(StableRNG(seed), C, n)
+
+            @test size(U) == (d, n)
+            @test all(isfinite, U)
+            @test all(u -> 0.0 < u < 1.0, U)
+            @test all(abs(mean(@view U[i, :]) - 0.5) < 0.025 for i in 1:d)
+
+            u = collect(range(0.34, 0.78; length=d))
+            prob = cdf(C, u)
+            phat = mean(vec(all(U .<= u, dims=1)))
+            se = sqrt(max(prob * (1 - prob), 1e-12) / n)
+            @test abs(phat - prob) < max(0.03, 6 * se)
+
+            @test isfinite(logpdf(C, collect(range(0.29, 0.83; length=d))))
+        end
+    end
+
+    @testset "General variogram parameterization" begin
+        Σ = [1.20 0.35 0.18;
+             0.35 0.90 0.22;
+             0.18 0.22 1.05]
+
+        Γ = zeros(4, 4)
+        for i in 1:3
+            Γ[i, 4] = Γ[4, i] = Σ[i, i]
+            for j in 1:3
+                Γ[i, j] = Σ[i, i] + Σ[j, j] - 2Σ[i, j]
+            end
+        end
+
+        tail = Copulas.HuslerReissVariogramTail(Γ)
+        C = Copulas.ExtremeValueCopula(4, tail)
+
+        @test Copulas._is_valid_in_dim(tail, 4)
+        @test !Copulas._is_valid_in_dim(tail, 3)
+
+        u = [0.31, 0.49, 0.67, 0.82]
+        @test 0.0 < cdf(C, u) < 1.0
+        @test isfinite(logpdf(C, u))
+
+        pidx = [3, 1, 4, 2]
+        Cp = Copulas.ExtremeValueCopula(
+            4,
+            Copulas.HuslerReissVariogramTail(Γ[pidx, pidx]),
+        )
+        @test cdf(Cp, u[pidx]) ≈ cdf(C, u) atol=5e-4 rtol=5e-4
+        @test logpdf(Cp, u[pidx]) ≈ logpdf(C, u) atol=5e-3 rtol=5e-3
+
+        n = 6_000
+        U = rand(StableRNG(3710), C, n)
+        q = (0.42, 0.74)
+
+        for i in 1:3, j in i+1:4
+            θij = 2 / sqrt(Γ[i, j])
+            Cij = Copulas.ExtremeValueCopula(2, Copulas.HuslerReissTail(θij))
+            target = cdf(Cij, collect(q))
+            empirical = mean(((@view U[i, :]) .<= q[1]) .& ((@view U[j, :]) .<= q[2]))
+            se = sqrt(max(target * (1 - target), 1e-12) / n)
+            @test abs(empirical - target) < max(0.03, 6 * se)
+        end
+
+        @test_throws DimensionMismatch Copulas.HuslerReissVariogramTail(zeros(3, 4))
+        @test_throws ArgumentError Copulas.HuslerReissVariogramTail([0.0 1.0; 1.0 0.0])
+
+        Γbad = [0.0 1.0 10.0;
+                1.0 0.0 1.0;
+                10.0 1.0 0.0]
+        @test_throws ArgumentError Copulas.HuslerReissVariogramTail(Γbad)
+    end
+end
