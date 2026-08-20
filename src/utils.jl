@@ -27,6 +27,34 @@ function _falling_factorial(x, k::Integer)
     return result
 end
 
+"""Multiply `x` by `k!` without first forming an integer factorial."""
+function _mul_factorial(x, k::Integer)
+    k ≥ 0 || throw(ArgumentError("k must be non-negative"))
+    @inbounds for j in 2:k
+        x *= j
+    end
+    return x
+end
+
+"""Divide `x` by `k!` without first forming an integer factorial."""
+function _div_factorial(x, k::Integer)
+    k ≥ 0 || throw(ArgumentError("k must be non-negative"))
+    @inbounds for j in 2:k
+        x /= j
+    end
+    return x
+end
+
+"""Compute `x * (x + 1) * ⋯ * (x + k - 1)` directly."""
+function _rising_factorial(x, k::Integer)
+    k ≥ 0 || throw(ArgumentError("k must be non-negative"))
+    result = one(x)
+    @inbounds for j in 0:(k - 1)
+        result *= x + j
+    end
+    return result
+end
+
 """
     taylor(f::F, x₀, d::Int) where {F}
 

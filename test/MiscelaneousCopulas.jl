@@ -87,6 +87,11 @@ end
     @test pdf(RafteryCopula{2}(0.5), [0.3, 0.8]) ≈ 0.6325 atol=1e-4
     @test pdf(RafteryCopula{3}(0.5), [0.1, 0.2, 0.3]) ≈ 1.9945086 atol=1e-4
     @test pdf(RafteryCopula{3}(0.1), [0.4, 0.8, 0.2]) ≈ 0.939229 atol=1e-4
+
+    @test Copulas.τ(RafteryCopula{2}(0.2)) ≈ 1/7
+    @test Copulas.τ(RafteryCopula{3}(0.5)) ≈ 0.4
+    @test Copulas.τ(RafteryCopula{10}(0.8)) ≈ 0.6307638245383256
+    @test Copulas.τ(RafteryCopula{25}(0.5)) ≈ 0.18523466942807426
 end
 
 @testset "Check against manual version - CDF" begin

@@ -44,7 +44,10 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
 ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
-ϕ⁽ᵏ⁾(G::Generator, k::Int, t) = taylor(ϕ(G), t, k)[end] * factorial(k)
+function ϕ⁽ᵏ⁾(G::Generator, k::Int, t)
+    k ≥ 0 || throw(ArgumentError("k must be non-negative"))
+    return _mul_factorial(taylor(ϕ(G), t, k)[end], k)
+end
 function ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t)
     f(x) = ϕ⁽ᵏ⁾(G, k, x) - t
     T = typeof(float(t))
@@ -123,17 +126,17 @@ struct 𝒲₋₁{TG, TO<:Integer} <: Distributions.ContinuousUnivariateDistribu
 end
 function Distributions.cdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
-    rez, x_pow = zero(x), one(x)
+    rez, scaled_power = zero(x), one(x)
     @inbounds for k in 1:dist.order
         cₖ = if k == 1
             ϕ(dist.G, x)
         elseif k == 2
             ϕ⁽¹⁾(dist.G, x)
         else
-            ϕ⁽ᵏ⁾(dist.G, k-1, x) / Base.factorial(k-1)
+            ϕ⁽ᵏ⁾(dist.G, k-1, x)
         end
-        rez += x_pow * cₖ
-        x_pow *= -x
+        rez += scaled_power * cₖ
+        scaled_power *= -x / k
     end
     F = 1 - rez
     # Guard against tiny numerical excursions
