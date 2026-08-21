@@ -71,6 +71,19 @@ end
 
 (CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) = _typed_extreme_value(CT, d, args...; kwargs...)
 
+function _cdf(C::ExtremeValueCopula{2,<:Tail2}, u)
+    u1, u2 = u
+    z = zero(u1 + u2)
+    o = one(u1 + u2)
+    (u1 <= z || u2 <= z) && return z
+    u1 >= o && return min(o, u2)
+    u2 >= o && return min(o, u1)
+
+    x, y = -log(u1), -log(u2)
+    s = x + y
+    return exp(-s * A(C.tail, x / s))
+end
+
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
