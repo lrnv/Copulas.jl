@@ -59,6 +59,7 @@ const tEVCopula{T} = ExtremeValueCopula{2, tEVTail{T}}
 Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
 _is_valid_in_dim(tail::tEVTail, d::Int) =
     d >= 2 && tail.ρ > -inv(d - 1)
+_ev_sampling_backend(::ExtremeValueCopula{2,<:tEVTail}) = Val(:multivariate)
 _unbound_params(::Type{<:tEVTail}, d, θ) = [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
 _rebound_params(::Type{<:tEVTail}, d, α) = (; ν = exp(α[1]), ρ = tanh(α[2]))
 

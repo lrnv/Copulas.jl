@@ -54,6 +54,7 @@ struct HuslerReissTail{T} <: AbstractUnivariateTail2
 end
 const HuslerReissCopula{T} = ExtremeValueCopula{2, HuslerReissTail{T}}
 _is_valid_in_dim(::HuslerReissTail, d::Int) = d >= 2
+_ev_sampling_backend(::ExtremeValueCopula{2,<:HuslerReissTail}) = Val(:multivariate)
 Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
 
 """
@@ -71,9 +72,7 @@ struct HuslerReissVariogramTail{MT<:AbstractMatrix} <: Tail
     function HuslerReissVariogramTail(Γ::AbstractMatrix)
         d1, d2 = size(Γ)
         d1 == d2 || throw(DimensionMismatch("Γ must be square"))
-        d1 >= 3 || throw(ArgumentError(
-            "HuslerReissVariogramTail requires d ≥ 3; use HuslerReissTail(θ) in d=2",
-        ))
+        d1 >= 3 || throw(ArgumentError("HuslerReissVariogramTail requires d ≥ 3; use HuslerReissTail(θ) in d=2",))
 
         G = Matrix{Float64}(Γ)
         all(isfinite, G) || throw(ArgumentError("Γ must contain only finite entries"))
@@ -81,10 +80,8 @@ struct HuslerReissVariogramTail{MT<:AbstractMatrix} <: Tail
         scale = max(1.0, maximum(abs, G))
         tol = sqrt(eps(Float64)) * scale
 
-        isapprox(G, transpose(G); atol=tol, rtol=tol) ||
-            throw(ArgumentError("Γ must be symmetric"))
-        maximum(abs, LinearAlgebra.diag(G)) <= tol ||
-            throw(ArgumentError("Γ must have zero diagonal"))
+        isapprox(G, transpose(G); atol=tol, rtol=tol) || throw(ArgumentError("Γ must be symmetric"))
+        maximum(abs, LinearAlgebra.diag(G)) <= tol || throw(ArgumentError("Γ must have zero diagonal"))
 
         G = 0.5 .* (G .+ transpose(G))
         @inbounds for i in 1:d1
@@ -92,10 +89,7 @@ struct HuslerReissVariogramTail{MT<:AbstractMatrix} <: Tail
         end
 
         @inbounds for i in 1:d1, j in i+1:d1
-            G[i, j] > 0.0 ||
-                throw(ArgumentError(
-                    "Γ must be non-degenerate with strictly positive off-diagonal entries",
-                ))
+            G[i, j] > 0.0 || throw(ArgumentError("Γ must be non-degenerate with strictly positive off-diagonal entries",))
         end
 
         k = d1
@@ -107,9 +101,7 @@ struct HuslerReissVariogramTail{MT<:AbstractMatrix} <: Tail
         try
             LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ); check=true)
         catch
-            throw(ArgumentError(
-                "Γ must be strictly conditionally negative definite",
-            ))
+            throw(ArgumentError("Γ must be strictly conditionally negative definite",))
         end
 
         return new{typeof(G)}(G)
@@ -128,19 +120,13 @@ function _husler_reiss_copula(Γ::AbstractMatrix)
 
     if d1 == 2
         G = Matrix{Float64}(Γ)
-        all(isfinite, G) || throw(ArgumentError(
-            "Γ must contain only finite entries",
-        ))
+        all(isfinite, G) || throw(ArgumentError("Γ must contain only finite entries",))
         scale = max(1.0, maximum(abs, G))
         tol = sqrt(eps(Float64)) * scale
-        isapprox(G, transpose(G); atol=tol, rtol=tol) ||
-            throw(ArgumentError("Γ must be symmetric"))
-        maximum(abs, LinearAlgebra.diag(G)) <= tol ||
-            throw(ArgumentError("Γ must have zero diagonal"))
+        isapprox(G, transpose(G); atol=tol, rtol=tol) || throw(ArgumentError("Γ must be symmetric"))
+        maximum(abs, LinearAlgebra.diag(G)) <= tol || throw(ArgumentError("Γ must have zero diagonal"))
         γ = 0.5 * (G[1, 2] + G[2, 1])
-        γ > 0.0 || throw(ArgumentError(
-            "Γ must have a strictly positive off-diagonal entry",
-        ))
+        γ > 0.0 || throw(ArgumentError("Γ must have a strictly positive off-diagonal entry",))
         return ExtremeValueCopula(2, HuslerReissTail(2 / sqrt(γ)))
     end
 
@@ -148,16 +134,10 @@ function _husler_reiss_copula(Γ::AbstractMatrix)
     return ExtremeValueCopula(d1, tail)
 end
 
-(::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}})(Γ::AbstractMatrix) =
-    _husler_reiss_copula(Γ)
+(::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}})(Γ::AbstractMatrix) = _husler_reiss_copula(Γ)
 
-function (::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}})(
-    d::Int,
-    Γ::AbstractMatrix,
-)
-    d == size(Γ, 1) || throw(DimensionMismatch(
-        "d=$d does not match variogram dimension $(size(Γ, 1))",
-    ))
+function (::Type{<:ExtremeValueCopula{2,<:HuslerReissTail}})(d::Int, Γ::AbstractMatrix,)
+    d == size(Γ, 1) || throw(DimensionMismatch("d=$d does not match variogram dimension $(size(Γ, 1))",))
     return _husler_reiss_copula(Γ)
 end
 
@@ -288,18 +268,9 @@ function _hr_logcdf_normal(μ, Σ::AbstractMatrix, upper)
     q = length(upper)
     q == 0 && return 0.0
     if q == 1
-        return Distributions.logcdf(
-            Distributions.Normal(μ[1], sqrt(Σ[1, 1])),
-            upper[1],
-        )
+        return Distributions.logcdf(Distributions.Normal(μ[1], sqrt(Σ[1, 1])), upper[1],)
     end
-    p = MvNormalCDF.mvnormcdf(
-        μ,
-        Matrix(Σ),
-        fill(-Inf, q),
-        upper;
-        rng=Random.Xoshiro(0),
-    )[1]
+    p = MvNormalCDF.mvnormcdf(μ, Matrix(Σ), fill(-Inf, q), upper; rng=Random.Xoshiro(0),)[1]
     return iszero(p) ? -Inf : log(p)
 end
 
@@ -366,26 +337,16 @@ function ellpartial(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
     return sgn * exp(logabs)
 end
 
-Distributions._logpdf(
-    C::ExtremeValueCopula{d,<:HuslerReissTail},
-    u,
-) where {d} = _ev_logpdf_from_partials(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{d,<:HuslerReissTail}, u,) where {d} = _ev_logpdf_from_partials(C, u)
 
-Distributions._logpdf(
-    C::ExtremeValueCopula{2,<:HuslerReissTail},
-    u,
-) = _ev_logpdf_bivariate(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{2,<:HuslerReissTail}, u,) = _ev_logpdf_bivariate(C, u)
 
 @inline function _hr_logsumexp(v)
     m = maximum(v)
     return m + log(sum(exp(x - m) for x in v))
 end
 
-function _hr_rand_multivariate!(
-    rng::Distributions.AbstractRNG,
-    Γ::AbstractMatrix,
-    X::AbstractMatrix{T},
-) where {T<:Real}
+function _hr_rand_multivariate!(rng::Distributions.AbstractRNG, Γ::AbstractMatrix, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     size(Γ) == (d, d) || throw(DimensionMismatch("Γ must be a $d×$d variogram matrix"))
 
@@ -445,11 +406,7 @@ function _hr_rand_multivariate!(
     return X
 end
 
-function _rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:HuslerReissTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
+function _rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
     γ = abs2(2 / C.tail.θ)
     Γ = fill(float(γ), d, d)
     @inbounds for i in 1:d
@@ -461,29 +418,17 @@ end
 
 ℓ(tail::HuslerReissVariogramTail, x) = _hr_stdf(tail.Γ, x)
 
-_ellpartial_signlog(tail::HuslerReissVariogramTail, x, I) =
-    _hr_ellpartial_signlog(tail.Γ, x, Tuple(I))
+_ellpartial_signlog(tail::HuslerReissVariogramTail, x, I) = _hr_ellpartial_signlog(tail.Γ, x, Tuple(I))
 
-function ellpartial(
-    tail::HuslerReissVariogramTail,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function ellpartial(tail::HuslerReissVariogramTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return ℓ(tail, x)
     sgn, logabs = _ellpartial_signlog(tail, x, I)
     return sgn * exp(logabs)
 end
 
-Distributions._logpdf(
-    C::ExtremeValueCopula{d,<:HuslerReissVariogramTail},
-    u,
-) where {d} = _ev_logpdf_from_partials(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{d,<:HuslerReissVariogramTail}, u,) where {d} = _ev_logpdf_from_partials(C, u)
 
-function _rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:HuslerReissVariogramTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
+function _rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissVariogramTail}, X::AbstractMatrix{T},) where {d,T<:Real}
     return _hr_rand_multivariate!(rng, C.tail.Γ, X)
 end
 

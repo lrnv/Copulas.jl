@@ -286,8 +286,7 @@ function _empirical_ev_simplex_grid(d::Int, degree::Int)
     # Include the barycenter explicitly.  It represents complete dependence
     # exactly even when `degree` is not divisible by d.
     bary = fill(inv(float(d)), d)
-    has_bary = any(k -> maximum(abs.(@view(V[:, k]) .- bary)) <= 8eps(Float64),
-                   axes(V, 2))
+    has_bary = any(k -> maximum(abs.(@view(V[:, k]) .- bary)) <= 8eps(Float64), axes(V, 2))
     return has_bary ? V : hcat(V, bary)
 end
 
@@ -298,9 +297,7 @@ function _empirical_ev_uniforms(u::AbstractMatrix, pseudo_values::Bool)
 
     if pseudo_values
         all(isfinite, u) || throw(ArgumentError("pseudo-observations must be finite"))
-        all(0 .<= u .<= 1) || throw(ArgumentError(
-            "when pseudo_values=true, observations must lie in [0,1]",
-        ))
+        all(0 .<= u .<= 1) || throw(ArgumentError("when pseudo_values=true, observations must lie in [0,1]",))
         U = Matrix{Float64}(u)
     else
         U = Matrix{Float64}(pseudos(u))
@@ -342,11 +339,7 @@ function _empirical_ev_raw_logcfg!(ξ, L, w)
     return -γ - Statistics.mean(log, ξ)
 end
 
-function _empirical_ev_pilot(
-    U::Matrix{Float64},
-    W::Matrix{Float64},
-    method::Symbol,
-)
+function _empirical_ev_pilot(U::Matrix{Float64}, W::Matrix{Float64}, method::Symbol,)
     d, n = size(U)
     m = size(W, 2)
     L = -log.(U)
@@ -414,9 +407,7 @@ function _empirical_ev_pilot(
             pilot[k] = clamp(Ahat, maximum(w), 1.0)
         end
     else
-        throw(ArgumentError(
-            "method should be :ols, :cfg or :pickands (got $method)",
-        ))
+        throw(ArgumentError("method should be :ols, :cfg or :pickands (got $method)",))
     end
 
     return pilot
@@ -439,15 +430,9 @@ function _empirical_ev_projection_matrix(W::Matrix{Float64}, V::Matrix{Float64})
     return M
 end
 
-function _empirical_ev_project_spectral(
-    pilot::Vector{Float64},
-    V::Matrix{Float64};
-    maxiter::Int=1500,
-)
+function _empirical_ev_project_spectral(pilot::Vector{Float64}, V::Matrix{Float64}; maxiter::Int=1500,)
     d, m = size(V)
-    length(pilot) == m || throw(DimensionMismatch(
-        "pilot values and spectral grid must have the same number of points",
-    ))
+    length(pilot) == m || throw(DimensionMismatch("pilot values and spectral grid must have the same number of points",))
 
     W = V
     M = _empirical_ev_projection_matrix(W, V)
@@ -473,11 +458,7 @@ function _empirical_ev_project_spectral(
 
     lower_h = zeros(Float64, m)
     upper_h = fill(Inf, m)
-    constraints = Optim.TwiceDifferentiableConstraints(
-        con!, jac!, con_hess!,
-        lower_h, upper_h,
-        target, target,
-    )
+    constraints = Optim.TwiceDifferentiableConstraints(con!, jac!, con_hess!,lower_h, upper_h, target, target,)
 
     objective(h) = 0.5 * sum(abs2, M * h - pilot)
 
@@ -495,16 +476,12 @@ function _empirical_ev_project_spectral(
     )
 
     h = Float64.(Optim.minimizer(result))
-    all(isfinite, h) || throw(ArgumentError(
-        "spectral projection returned non-finite masses",
-    ))
+    all(isfinite, h) || throw(ArgumentError("spectral projection returned non-finite masses",))
     h .= max.(h, 0.0)
 
     B = V .* reshape(h, 1, :)
     rowsums = vec(sum(B, dims=2))
-    all(rowsums .> 0) || throw(ArgumentError(
-        "spectral projection produced a degenerate margin",
-    ))
+    all(rowsums .> 0) || throw(ArgumentError("spectral projection produced a degenerate margin",))
 
     # IPNewton satisfies the equalities to numerical precision.  Renormalizing
     # each row removes only solver roundoff and guarantees exact valid margins
@@ -521,20 +498,10 @@ function _empirical_ev_project_spectral(
     return spectral, rmse
 end
 
-function EmpiricalEVMultivariateTail(
-    u::AbstractMatrix;
-    method::Symbol=:ols,
-    degree::Union{Nothing,Int}=nothing,
-    pseudo_values::Bool=true,
-    projection_maxiter::Int=1500,
-)
+function EmpiricalEVMultivariateTail(u::AbstractMatrix; method::Symbol=:ols, degree::Union{Nothing,Int}=nothing, pseudo_values::Bool=true, projection_maxiter::Int=1500,)
     d = size(u, 1)
-    d >= 2 || throw(ArgumentError(
-        "EmpiricalEVMultivariateTail requires at least two dimensions",
-    ))
-    method in (:ols, :cfg, :pickands) || throw(ArgumentError(
-        "method should be :ols, :cfg or :pickands (got $method)",
-    ))
+    d >= 2 || throw(ArgumentError("EmpiricalEVMultivariateTail requires at least two dimensions",))
+    method in (:ols, :cfg, :pickands) || throw(ArgumentError("method should be :ols, :cfg or :pickands (got $method)",))
 
     deg = isnothing(degree) ? _empirical_ev_default_degree(d) : degree
     deg >= 1 || throw(ArgumentError("degree must be positive"))
@@ -542,11 +509,7 @@ function EmpiricalEVMultivariateTail(
     U = _empirical_ev_uniforms(u, pseudo_values)
     V = _empirical_ev_simplex_grid(d, deg)
     pilot = _empirical_ev_pilot(U, V, method)
-    spectral, rmse = _empirical_ev_project_spectral(
-        pilot,
-        V;
-        maxiter=projection_maxiter,
-    )
+    spectral, rmse = _empirical_ev_project_spectral(pilot, V; maxiter=projection_maxiter,)
 
     return EmpiricalEVMultivariateTail(d, method, deg, spectral, rmse)
 end
@@ -559,40 +522,19 @@ Construct a shape-valid multivariate empirical extreme-value copula from a
 constructor.  The historical `EmpiricalEVCopula` remains the backward-compatible
 bivariate implementation.
 """
-EmpiricalEVMultivariateCopula(u::AbstractMatrix; kwargs...) =
-    ExtremeValueCopula(
-        size(u, 1),
-        EmpiricalEVMultivariateTail(u; kwargs...),
-    )
+EmpiricalEVMultivariateCopula(u::AbstractMatrix; kwargs...) =ExtremeValueCopula(size(u, 1), EmpiricalEVMultivariateTail(u; kwargs...),)
 
 StatsBase.dof(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}) where {d} = 0
-_available_fitting_methods(
-    ::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}},
-    dim,
-) where {d} = (:ols, :cfg, :pickands)
+_available_fitting_methods(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, dim,) where {d} = (:ols, :cfg, :pickands)
 
-_rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _discrete_spectral_rand!(rng, C.tail.spectral, X)
+_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _discrete_spectral_rand!(rng, C.tail.spectral, X)
 
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:EmpiricalEVMultivariateTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate empirical spectral EV copula",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:EmpiricalEVMultivariateTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate empirical spectral EV copula",))
     return _discrete_spectral_rand!(rng, C.tail.spectral, X)
 end
 
-function Distributions._logpdf(
-    ::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail},
-    u,
-) where {d}
+function Distributions._logpdf(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}, u,) where {d}
     throw(ArgumentError(
         "the shape-constrained multivariate empirical EV copula uses a " *
         "discrete spectral measure and can contain singular components; " *

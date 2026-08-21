@@ -177,58 +177,37 @@ struct BC2MultivariateTail{T} <: Tail
 end
 
 function BC2MultivariateTail(a::AbstractVector)
-    length(a) >= 2 || throw(ArgumentError(
-        "BC2MultivariateTail requires at least two coordinates",
-    ))
+    length(a) >= 2 || throw(ArgumentError("BC2MultivariateTail requires at least two coordinates",))
 
     vals = collect(a)
     T = promote_type(Float64, map(typeof, vals)...)
     aa = T.(a)
 
-    all(isfinite, aa) || throw(ArgumentError(
-        "all BC2 weights must be finite",
-    ))
-    all(v -> zero(T) <= v <= one(T), aa) || throw(ArgumentError(
-        "all BC2 weights must lie in [0,1]",
-    ))
+    all(isfinite, aa) || throw(ArgumentError("all BC2 weights must be finite",))
+    all(v -> zero(T) <= v <= one(T), aa) || throw(ArgumentError("all BC2 weights must lie in [0,1]",))
 
     B = hcat(aa, one(T) .- aa)
     spectral = DiscreteSpectralTail(B)
     return BC2MultivariateTail{T}(aa, spectral)
 end
 
-BC2MultivariateTail(tail::BC2Tail) =
-    BC2MultivariateTail([tail.a, tail.b])
-
-BC2MultivariateCopula(a::AbstractVector) =
-    ExtremeValueCopula(length(a), BC2MultivariateTail(a))
+BC2MultivariateTail(tail::BC2Tail) = BC2MultivariateTail([tail.a, tail.b])
+BC2MultivariateCopula(a::AbstractVector) = ExtremeValueCopula(length(a), BC2MultivariateTail(a))
 
 function (::Type{<:ExtremeValueCopula{2,<:BC2Tail}})(a::AbstractVector)
     length(a) == 2 && return ExtremeValueCopula(2, BC2Tail(a[1], a[2]))
     return BC2MultivariateCopula(a)
 end
 
-BC2MultivariateCopula(tail::BC2Tail) =
-    ExtremeValueCopula(2, BC2MultivariateTail(tail))
+BC2MultivariateCopula(tail::BC2Tail) = ExtremeValueCopula(2, BC2MultivariateTail(tail))
 
 Distributions.params(tail::BC2MultivariateTail) = (a = tail.a,)
 _is_valid_in_dim(tail::BC2MultivariateTail, d::Int) = length(tail.a) == d
 ℓ(tail::BC2MultivariateTail, x) = ℓ(tail.spectral, x)
 
-_rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:BC2MultivariateTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _discrete_spectral_rand!(rng, C.tail.spectral, X)
+_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:BC2MultivariateTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _discrete_spectral_rand!(rng, C.tail.spectral, X)
 
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:BC2MultivariateTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate BC2 copula",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BC2MultivariateTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate BC2 copula",))
     return _discrete_spectral_rand!(rng, C.tail.spectral, X)
 end

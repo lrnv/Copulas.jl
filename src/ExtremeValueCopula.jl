@@ -46,12 +46,9 @@ struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
     end
 end
 
-ExtremeValueCopula{d,TT}(args...; kwargs...) where {d,TT} =
-    ExtremeValueCopula(d, TT(args...; kwargs...))
-ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D,TT} =
-    ExtremeValueCopula{d,TT}(args...; kwargs...)
-(CT::Type{<:ExtremeValueCopula{D,<:Tail} where D})(d::Int, args...; kwargs...) =
-    ExtremeValueCopula(d, tailof(CT)(args...; kwargs...))
+ExtremeValueCopula{d,TT}(args...; kwargs...) where {d,TT} = ExtremeValueCopula(d, TT(args...; kwargs...))
+ExtremeValueCopula{D,TT}(d::Int, args...; kwargs...) where {D,TT} = ExtremeValueCopula{d,TT}(args...; kwargs...)
+(CT::Type{<:ExtremeValueCopula{D,<:Tail} where D})(d::Int, args...; kwargs...) = ExtremeValueCopula(d, tailof(CT)(args...; kwargs...))
 
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
@@ -67,8 +64,7 @@ Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
     return -val + log(core) + x + y
 end
 
-Distributions._logpdf(C::ExtremeValueCopula{2,<:Tail2}, u) =
-    _ev_logpdf_bivariate(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{2,<:Tail2}, u) = _ev_logpdf_bivariate(C, u)
 
 @inline function _ellpartial_signlog(tail::Tail, x, I)
     v = ellpartial(tail, x, Tuple(I))
@@ -128,32 +124,40 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT}, X::AbstractMatrix{T}) where {T<:Real, TT}
-    # More efficient Matrix sampler:
-    d,n = size(X)
-    @assert d==2
+# Sampling is selected by capability/algorithm rather than by public
+# constructor shape. General tails use their multivariate sampler; Tail2
+# families use the Ghoudi bivariate kernel in d=2 unless a family explicitly
+# opts into its multivariate sampler.
+_ev_sampling_backend(::ExtremeValueCopula) = Val(:multivariate)
+_ev_sampling_backend(::ExtremeValueCopula{2,<:Tail2}) = Val(:bivariate)
+
+function _rand_ev_bivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:Tail2}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extreme-value copula",))
+
     E = ExtremeDist(C.tail)
-    for i in 1:n
+    for i in axes(X, 2)
         z = rand(rng, E)
-        w = rand(rng) < _probability_z(C.tail, z) ? rand(rng) : rand(rng) * rand(rng)
+        w = rand(rng) < _probability_z(C.tail, z) ?
+            rand(rng) : rand(rng) * rand(rng)
         a = A(C.tail, z)
-        X[1,i] = exp(log(w)*z/a)
-        X[2,i] = exp(log(w)*(1-z)/a)
+        X[1, i] = exp(log(w) * z / a)
+        X[2, i] = exp(log(w) * (1 - z) / a)
     end
     return X
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d, TT}, X::AbstractMatrix{T}) where {T<:Real, d, TT}
-    size(X, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
-    return _rand_ev_multivariate!(rng, C, X)
+_rand_ev_with_backend!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula, X::AbstractMatrix, ::Val{:bivariate},) = _rand_ev_bivariate!(rng, C, X)
+
+_rand_ev_with_backend!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula, X::AbstractMatrix, ::Val{:multivariate},) = _rand_ev_multivariate!(rng, C, X)
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
+    return _rand_ev_with_backend!(rng, C, X, _ev_sampling_backend(C),)
 end
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
 
-
-
 # Fitting functions: the default one is in the EmpiricalEvTail because this is what will happen by default.
 # For this moment generic mle works... maybe we could be implement others specifyc methods maybe upper and lower tail
-
 
 # # Parametric-type constructors to allow generic fit to reconstruct from NamedTuple params
 # function (::Type{ExtremeValueCopula{D, TT}})(d::Integer, θ::NamedTuple) where {D, TT<:Tail}
@@ -184,8 +188,7 @@ _available_fitting_methods(CT::Type{<:ExtremeValueCopula}, d) = (:mle,)
 _available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}, d) =  (:mle, :itau, :irho, :ibeta, :iupper)
 
 # Fitting empírico (OLS, CFG, Pickands):
-function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
-              pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
+function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
     m = typeof(method).parameters[1]
     if size(U, 1) == 2
         C = EmpiricalEVCopula(U; method=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)

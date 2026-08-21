@@ -56,19 +56,12 @@ end
 
 const AsymGalambosCopula{T} = ExtremeValueCopula{2,AsymGalambosTail{T}}
 
-function (::Type{<:ExtremeValueCopula{2,<:AsymGalambosTail}})(
-    α::Real,
-    weights::AbstractVector,
-)
+function (::Type{<:ExtremeValueCopula{2,<:AsymGalambosTail}})(α::Real, weights::AbstractVector,)
     tail = AsymGalambosMultiTail(α, weights)
     return ExtremeValueCopula(tail.d, tail)
 end
 
-(::Type{<:ExtremeValueCopula{2,<:AsymGalambosTail}})(
-    d::Int,
-    dep::AbstractVector,
-    asy::AbstractVector,
-) = ExtremeValueCopula(d, AsymGalambosMultiTail(d, dep, asy))
+(::Type{<:ExtremeValueCopula{2,<:AsymGalambosTail}})(d::Int, dep::AbstractVector, asy::AbstractVector,) = ExtremeValueCopula(d, AsymGalambosMultiTail(d, dep, asy))
 
 Distributions.params(tail::AsymGalambosTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 _unbound_params(::Type{<:AsymGalambosTail}, d, θ) = [log(θ.α), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)] 
@@ -180,11 +173,7 @@ function _asymgal_subsets(d::Int)
     return subsets
 end
 
-function AsymGalambosMultiTail(
-    d::Int,
-    dep::AbstractVector,
-    asy::AbstractVector,
-)
+function AsymGalambosMultiTail(d::Int, dep::AbstractVector, asy::AbstractVector,)
     subsets = _asymgal_subsets(d)
     m = length(subsets)
 
@@ -245,10 +234,8 @@ end
 # remainders.  In d=2 this matches the historical AsymGalambosTail using
 # weights in the same coordinate order: [θ₁, θ₂].
 function AsymGalambosMultiTail(α::Real, weights::AbstractVector)
-    d = length(weights)
-    d >= 2 || throw(ArgumentError(
-        "weights must contain at least two entries",
-    ))
+d = length(weights)
+    d >= 2 || throw(ArgumentError("weights must contain at least two entries",))
 
     subsets = _asymgal_subsets(d)
     m = length(subsets)
@@ -257,8 +244,7 @@ function AsymGalambosMultiTail(α::Real, weights::AbstractVector)
     a >= zero(T) || throw(ArgumentError("α must be ≥ 0"))
 
     w = T.(weights)
-    all(v -> zero(T) <= v <= one(T), w) ||
-        throw(ArgumentError("all full-set weights must lie in [0,1]"))
+    all(v -> zero(T) <= v <= one(T), w) || throw(ArgumentError("all full-set weights must lie in [0,1]"))
 
     dep = zeros(T, m - d)
     dep[end] = a
@@ -276,8 +262,7 @@ function AsymGalambosMultiTail(α::Real, weights::AbstractVector)
     return AsymGalambosMultiTail(d, dep, asy)
 end
 
-Distributions.params(tail::AsymGalambosMultiTail) =
-    (α = tail.α, β = tail.β)
+Distributions.params(tail::AsymGalambosMultiTail) = (α = tail.α, β = tail.β)
 
 _is_valid_in_dim(tail::AsymGalambosMultiTail, d::Int) = d == tail.d
 
@@ -289,9 +274,7 @@ function _asymgal_component_data(tail::AsymGalambosMultiTail, j, x)
 end
 
 function ℓ(tail::AsymGalambosMultiTail, x)
-    length(x) == tail.d || throw(DimensionMismatch(
-        "input dimension does not match asymmetric Galambos tail dimension",
-    ))
+    length(x) == tail.d || throw(DimensionMismatch("input dimension does not match asymmetric Galambos tail dimension",))
 
     subsets = _asymgal_subsets(tail.d)
     T = promote_type(eltype(x), eltype(tail.α), eltype(tail.β))
@@ -324,12 +307,7 @@ end
     return m + log(sum(exp(v - m) for v in logs))
 end
 
-function _asymgal_component_partial_signlog(
-    tail::AsymGalambosMultiTail,
-    j::Int,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function _asymgal_component_partial_signlog(tail::AsymGalambosMultiTail, j::Int, x, I::Tuple{Vararg{Int}},)
     k = length(I)
     k > 0 || throw(ArgumentError("partial block must be nonempty"))
 
@@ -350,38 +328,23 @@ function _asymgal_component_partial_signlog(
     positions = Dict(i => q for (q, i) in enumerate(active))
     localI = ntuple(q -> positions[I[q]], k)
 
-    sign, logabs = _ellpartial_signlog(
-        GalambosTail(a),
-        y,
-        localI,
-    )
+    sign, logabs = _ellpartial_signlog(GalambosTail(a), y, localI,)
     sign == 0 && return 0, -Inf
 
     logchain = sum(log(float(tail.β[i, j])) for i in I)
     return sign, logabs + logchain
 end
 
-function _ellpartial_signlog(
-    tail::AsymGalambosMultiTail,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function _ellpartial_signlog(tail::AsymGalambosMultiTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return 1, log(float(ℓ(tail, x)))
 
     logs = Float64[]
     expected_sign = isodd(length(I)) ? 1 : -1
 
     for j in axes(tail.β, 2)
-        sign, logabs = _asymgal_component_partial_signlog(
-            tail,
-            j,
-            x,
-            I,
-        )
+        sign, logabs = _asymgal_component_partial_signlog(tail, j, x, I,)
         sign == 0 && continue
-        sign == expected_sign || throw(ArgumentError(
-            "unexpected asymmetric Galambos component partial sign",
-        ))
+        sign == expected_sign || throw(ArgumentError("unexpected asymmetric Galambos component partial sign",))
         push!(logs, logabs)
     end
 
@@ -389,50 +352,26 @@ function _ellpartial_signlog(
     return expected_sign, _asymgal_logsumexp(logs)
 end
 
-_ellpartial_signlog(
-    tail::AsymGalambosMultiTail,
-    x,
-    I::AbstractVector{<:Integer},
-) = _ellpartial_signlog(tail, x, Tuple(I))
+_ellpartial_signlog(tail::AsymGalambosMultiTail, x, I::AbstractVector{<:Integer},) = _ellpartial_signlog(tail, x, Tuple(I))
 
-function ellpartial(
-    tail::AsymGalambosMultiTail,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function ellpartial(tail::AsymGalambosMultiTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return ℓ(tail, x)
     sign, logabs = _ellpartial_signlog(tail, x, I)
     sign == 0 && return zero(float(first(x)))
     return sign * exp(logabs)
 end
 
-ellpartial(
-    tail::AsymGalambosMultiTail,
-    x,
-    I::AbstractVector{<:Integer},
-) = ellpartial(tail, x, Tuple(I))
+ellpartial(tail::AsymGalambosMultiTail, x, I::AbstractVector{<:Integer},) = ellpartial(tail, x, Tuple(I))
 
-Distributions._logpdf(
-    C::ExtremeValueCopula{d,<:AsymGalambosMultiTail},
-    u,
-) where {d} = _ev_logpdf_from_partials(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{d,<:AsymGalambosMultiTail}, u,) where {d} = _ev_logpdf_from_partials(C, u)
 
 # Resolve intersection with the generic bivariate EV density.
-Distributions._logpdf(
-    C::ExtremeValueCopula{2,<:AsymGalambosMultiTail},
-    u,
-) = _ev_logpdf_from_partials(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{2,<:AsymGalambosMultiTail}, u,) = _ev_logpdf_from_partials(C, u)
 
 
-function _asymgal_rand_multivariate!(
-    rng::Distributions.AbstractRNG,
-    tail::AsymGalambosMultiTail,
-    X::AbstractMatrix{T},
-) where {T<:Real}
+function _asymgal_rand_multivariate!(rng::Distributions.AbstractRNG, tail::AsymGalambosMultiTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
-    d == tail.d || throw(DimensionMismatch(
-        "output dimension does not match asymmetric Galambos tail dimension",
-    ))
+    d == tail.d || throw(DimensionMismatch("output dimension does not match asymmetric Galambos tail dimension",))
 
     subsets = _asymgal_subsets(d)
 
@@ -480,32 +419,20 @@ function _asymgal_rand_multivariate!(
 
     @inbounds for i in 1:d, col in 1:n
         zi = Z[i, col]
-        zi > 0 || throw(ArgumentError(
-            "asymmetric Galambos weights leave margin $i without a positive component",
-        ))
+        zi > 0 || throw(ArgumentError("asymmetric Galambos weights leave margin $i without a positive component",))
         X[i, col] = T(exp(-inv(zi)))
     end
 
     return X
 end
 
-_rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:AsymGalambosMultiTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real} =
+_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:AsymGalambosMultiTail}, X::AbstractMatrix{T},) where {d,T<:Real} =
     _asymgal_rand_multivariate!(rng, C.tail, X)
 
 # The generic d=2 EV sampler uses Pickands A/dA. This tail is represented
 # directly through its multivariate STDF, so force the exact max-mixture
 # sampler in dimension two as well.
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:AsymGalambosMultiTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate asymmetric Galambos copula",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:AsymGalambosMultiTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate asymmetric Galambos copula",))
     return _asymgal_rand_multivariate!(rng, C.tail, X)
 end

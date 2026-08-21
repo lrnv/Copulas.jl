@@ -45,6 +45,7 @@ end
 
 const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
+_ev_sampling_backend(::ExtremeValueCopula{2,<:GalambosTail}) = Val(:multivariate)
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:GalambosTail}, d, θ) = [log(θ.θ)]           # θ > 0
 _rebound_params(::Type{<:GalambosTail}, d, α) = (; θ = exp(α[1]))
@@ -251,5 +252,9 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
 
 τ⁻¹(::Type{<:GalambosCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
 ρ⁻¹(::Type{<:GalambosCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
-β⁻¹(::Type{<:GalambosCopula}, beta) = -1/log2(log2(beta+1))
+function β⁻¹(::Type{<:GalambosCopula}, beta)
+    beta <= 0 && return 0.0
+    beta >= 1 && return Inf
+    return -inv(log2(log2(beta + 1)))
+end
 λᵤ⁻¹(::Type{<:GalambosCopula}, λ) = -1.0 / log2(λ)
