@@ -183,19 +183,13 @@ function AsymGalambosMultiTail(d::Int, dep::AbstractVector, asy::AbstractVector,
     subsets = _asymgal_subsets(d)
     m = length(subsets)
 
-    length(dep) == m - d || throw(DimensionMismatch(
-        "dep must contain one parameter for each non-singleton subset: expected $(m-d)",
-    ))
-    length(asy) == m || throw(DimensionMismatch(
-        "asy must contain one weight vector for each nonempty subset: expected $m",
-    ))
+    length(dep) == m - d || throw(DimensionMismatch("dep must contain one parameter for each non-singleton subset: expected $(m-d)",))
+    length(asy) == m || throw(DimensionMismatch("asy must contain one weight vector for each nonempty subset: expected $m",))
 
     vals = Any[1.0]
     append!(vals, dep)
     for w in asy
-        w isa AbstractVector || throw(ArgumentError(
-            "each asymmetry component must be an AbstractVector",
-        ))
+        w isa AbstractVector || throw(ArgumentError("each asymmetry component must be an AbstractVector",))
         append!(vals, w)
     end
     T = promote_type(Float64, map(typeof, vals)...)
@@ -203,23 +197,17 @@ function AsymGalambosMultiTail(d::Int, dep::AbstractVector, asy::AbstractVector,
     α = zeros(T, m)
     @inbounds for j in (d + 1):m
         a = T(dep[j - d])
-        a >= zero(T) || throw(ArgumentError(
-            "each non-singleton Galambos parameter must be ≥ 0",
-        ))
+        a >= zero(T) || throw(ArgumentError("each non-singleton Galambos parameter must be ≥ 0",))
         α[j] = a
     end
 
     β = zeros(T, d, m)
     @inbounds for (j, C) in enumerate(subsets)
         w = asy[j]
-        length(w) == length(C) || throw(DimensionMismatch(
-            "asy[$j] must have length $(length(C)) for subset $(Tuple(C))",
-        ))
+        length(w) == length(C) || throw(DimensionMismatch("asy[$j] must have length $(length(C)) for subset $(Tuple(C))",))
         for (a, i) in enumerate(C)
             wij = T(w[a])
-            zero(T) <= wij <= one(T) || throw(ArgumentError(
-                "all asymmetry weights must lie in [0,1]",
-            ))
+            zero(T) <= wij <= one(T) || throw(ArgumentError("all asymmetry weights must lie in [0,1]",))
             β[i, j] = wij
         end
     end
@@ -228,9 +216,7 @@ function AsymGalambosMultiTail(d::Int, dep::AbstractVector, asy::AbstractVector,
     @inbounds for i in 1:d
         rowsum = sum(@view β[i, :])
         abs(rowsum - one(T)) <= tol * max(one(T), abs(rowsum)) ||
-            throw(ArgumentError(
-                "asymmetry weights for margin $i must sum to one; got $rowsum",
-            ))
+            throw(ArgumentError("asymmetry weights for margin $i must sum to one; got $rowsum",))
     end
 
     return AsymGalambosMultiTail{T}(d, α, β)
@@ -369,12 +355,6 @@ end
 
 ellpartial(tail::AsymGalambosMultiTail, x, I::AbstractVector{<:Integer},) = ellpartial(tail, x, Tuple(I))
 
-Distributions._logpdf(C::ExtremeValueCopula{d,<:AsymGalambosMultiTail}, u,) where {d} = _ev_logpdf_from_partials(C, u)
-
-# Resolve intersection with the generic bivariate EV density.
-Distributions._logpdf(C::ExtremeValueCopula{2,<:AsymGalambosMultiTail}, u,) = _ev_logpdf_from_partials(C, u)
-
-
 function _asymgal_rand_multivariate!(rng::Distributions.AbstractRNG, tail::AsymGalambosMultiTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     d == tail.d || throw(DimensionMismatch("output dimension does not match asymmetric Galambos tail dimension",))
@@ -432,13 +412,7 @@ function _asymgal_rand_multivariate!(rng::Distributions.AbstractRNG, tail::AsymG
     return X
 end
 
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:AsymGalambosMultiTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:AsymGalambosMultiTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _asymgal_rand_multivariate!(rng, C.tail, X)
 end

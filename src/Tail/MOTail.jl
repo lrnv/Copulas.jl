@@ -97,8 +97,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     T = promote_type(typeof(float(λ₁)), typeof(float(λ₂)), typeof(float(λ₁₂)))
     λ₁T, λ₂T, λ₁₂T = T(λ₁), T(λ₂), T(λ₁₂)
     rate_u, rate_v = λ₂T + λ₁₂T, λ₁T + λ₁₂T
-    (rate_u > 0 && rate_v > 0) ||
-        throw(ArgumentError("Each Marshall-Olkin margin must have a positive total rate"))
+    (rate_u > 0 && rate_v > 0) || throw(ArgumentError("Each Marshall-Olkin margin must have a positive total rate"))
     waiting_time(rate) = iszero(rate) ? T(Inf) : T(Random.randexp(rng)) / rate
 
     # The first Pickands coordinate used by A is -log(u), so its private
@@ -170,7 +169,6 @@ function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) wher
         return exp(log(p) / b)
     end
 end
-
 
 """
     MOMultivariateTail(d, λ)
@@ -250,13 +248,7 @@ Distributions.params(tail::MOMultivariateTail) = (λ = tail.λ,)
 _is_valid_in_dim(tail::MOMultivariateTail, d::Int) = tail.d == d
 ℓ(tail::MOMultivariateTail, x) = ℓ(tail.spectral, x)
 
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:MOMultivariateTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MOMultivariateTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _discrete_spectral_rand!(rng, C.tail.spectral, X)
 end

@@ -74,8 +74,9 @@ using Random
         @test_throws DimensionMismatch MOCopula(ones(5))
     end
 
-    @testset "bivariate density routing" begin
+    @testset "bivariate density specialization" begin
         u = [0.31, 0.67]
+        x, y = -log.(u)
 
         for C in (
             GalambosCopula(2, 0.7),
@@ -83,10 +84,10 @@ using Random
             MixedCopula(2, 0.5),
             tEVCopula(2, 4.0, 0.5),
         )
-            lb = Copulas._ev_logpdf_bivariate(C, u)
-            lm = Copulas._ev_logpdf_from_partials(C, u)
-            @test logpdf(C, u) == lb
-            @test lb ≈ lm atol=5e-13 rtol=5e-13
+            val, du, dv, dudv = Copulas._biv_der_ℓ(C.tail, (x, y))
+            core = -dudv + du * dv
+            expected = -val + log(core) + x + y
+            @test logpdf(C, u) == expected
         end
     end
 

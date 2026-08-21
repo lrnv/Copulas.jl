@@ -49,27 +49,18 @@ end
 
 ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
 
-_typed_extreme_value(CT, d, args...; kwargs...) =
-    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+_typed_extreme_value(CT, d, args...; kwargs...) = ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
 
 function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
     return _typed_extreme_value(CT, d, args...; kwargs...)
 end
 
-function (CT::Type{<:ExtremeValueCopula{D,TT}})(
-    d::Int,
-    args...;
-    kwargs...,
-) where {D,TT}
+function (CT::Type{<:ExtremeValueCopula{D,TT}})(d::Int, args...; kwargs...,) where {D,TT}
     TailType = Base.typename(TT).wrapper
     return ExtremeValueCopula{d}(TailType(args...; kwargs...))
 end
 
-function (CT::Type{<:ExtremeValueCopula{D}})(
-    first::Int,
-    args...;
-    kwargs...,
-) where {D}
+function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...,) where {D}
     d = Base.unwrap_unionall(CT).parameters[1]
     nparams = fieldcount(Base.unwrap_unionall(tailof(CT)))
     if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
@@ -78,13 +69,14 @@ function (CT::Type{<:ExtremeValueCopula{D}})(
     return _typed_extreme_value(CT, d, first, args...; kwargs...)
 end
 
-(CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) =
-    _typed_extreme_value(CT, d, args...; kwargs...)
+(CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) = _typed_extreme_value(CT, d, args...; kwargs...)
 
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
-@inline function _ev_logpdf_bivariate(C::ExtremeValueCopula{2,<:Tail2}, u)
+# Density selection follows Julia dispatch directly. Tail2 families retain the
+# native bivariate Pickands derivative kernel in d=2.
+function Distributions._logpdf(C::ExtremeValueCopula{2,<:Tail2}, u)
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf
     (isone(u1) || isone(u2)) && return -Inf
@@ -95,15 +87,15 @@ Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
     return -val + log(core) + x + y
 end
 
-Distributions._logpdf(C::ExtremeValueCopula{2,<:Tail2}, u) = _ev_logpdf_bivariate(C, u)
-
 @inline function _ellpartial_signlog(tail::Tail, x, I)
     v = ellpartial(tail, x, Tuple(I))
     iszero(v) && return 0, oftype(v, -Inf)
     return v < zero(v) ? -1 : 1, log(abs(v))
 end
 
-function _ev_logpdf_from_partials(C::ExtremeValueCopula{d}, u) where {d}
+# Generic d-dimensional density from the mixed STDF partials and the
+# partition formula for absolutely continuous extreme-value copulas.
+function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
     all(ui -> zero(ui) < ui <= one(ui), u) || return oftype(float(first(u)), -Inf)
     x = -log.(u)
     val = ℓ(C.tail, x)
@@ -142,10 +134,6 @@ function _ev_logpdf_from_partials(C::ExtremeValueCopula{d}, u) where {d}
     end
     return -val + sum(x) + logpos
 end
-
-# Generic d-dimensional density path; the bivariate specialization above remains
-# the default for Tail2 families unless they opt into the partial-derivative path.
-Distributions._logpdf(C::ExtremeValueCopula, u) = _ev_logpdf_from_partials(C, u)
 τ(C::ExtremeValueCopula{2}) = QuadGK.quadgk(t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)), 0.0, 1.0)[1]
 ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C.tail, t))^2, 0.0, 1.0)[1] - 3
 β(C::ExtremeValueCopula{2}) = 4^(1 - A(C.tail, 0.5)) - 1
@@ -173,14 +161,8 @@ function _rand_ghoudi!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<
     return X
 end
 
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:Tail2},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate extreme-value copula",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:Tail2}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extreme-value copula",))
     return _rand_ghoudi!(rng, C, X)
 end
 

@@ -57,22 +57,10 @@ struct tEVTail{T} <: Tail2
 end
 const tEVCopula{d,T} = ExtremeValueCopula{d, tEVTail{T}}
 Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
-_is_valid_in_dim(tail::tEVTail, d::Int) =
-    d >= 2 && tail.ρ > -inv(d - 1)
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:tEVTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate extremal-t copula",
-    ))
-    return _tev_rand_multivariate!(
-        rng,
-        C.tail.ν,
-        _tev_exchangeable_correlation(2, C.tail.ρ),
-        X,
-    )
+_is_valid_in_dim(tail::tEVTail, d::Int) = d >= 2 && tail.ρ > -inv(d - 1)
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:tEVTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extremal-t copula",))
+    return _tev_rand_multivariate!(rng, C.tail.ν, _tev_exchangeable_correlation(2, C.tail.ρ), X,)
 end
 _unbound_params(::Type{<:tEVTail}, d, θ) = [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
 _rebound_params(::Type{<:tEVTail}, d, α) = (; ν = exp(α[1]), ρ = tanh(α[2]))
@@ -80,12 +68,8 @@ _rebound_params(::Type{<:tEVTail}, d, α) = (; ν = exp(α[1]), ρ = tanh(α[2])
 function _tev_exchangeable_correlation(d::Int, ρ::Real)
     d >= 2 || throw(ArgumentError("dimension must be at least 2"))
     lower = -inv(d - 1)
-    ρ > lower || throw(ArgumentError(
-        "equicorrelation ρ must satisfy ρ > -1/(d-1) in dimension d=$d",
-    ))
-    ρ < 1 || throw(ArgumentError(
-        "the non-degenerate equicorrelation representation requires ρ < 1",
-    ))
+    ρ > lower || throw(ArgumentError("equicorrelation ρ must satisfy ρ > -1/(d-1) in dimension d=$d",))
+    ρ < 1 || throw(ArgumentError("the non-degenerate equicorrelation representation requires ρ < 1",))
 
     R = fill(Float64(ρ), d, d)
     @inbounds for i in 1:d
@@ -97,28 +81,14 @@ end
 function _tev_mvnormcdf(Σ::AbstractMatrix, upper)
     q = length(upper)
     q == 0 && return 1.0
-    q == 1 && return Distributions.cdf(
-        Distributions.Normal(0.0, sqrt(Float64(Σ[1, 1]))),
-        Float64(upper[1]),
-    )
+    q == 1 && return Distributions.cdf(Distributions.Normal(0.0, sqrt(Float64(Σ[1, 1]))), Float64(upper[1]),)
 
     Σf = Matrix{Float64}(LinearAlgebra.Symmetric(Matrix{Float64}(Σ)))
     b = Float64.(upper)
-    return MvNormalCDF.mvnormcdf(
-        Σf,
-        fill(-Inf, q),
-        b;
-        rng=Random.Xoshiro(0),
-    )[1]
+    return MvNormalCDF.mvnormcdf(Σf, fill(-Inf, q), b; rng=Random.Xoshiro(0),)[1]
 end
 
-function _tev_mvtcdf(
-    df::Real,
-    μ,
-    Σ::AbstractMatrix,
-    upper;
-    rtol::Real=2e-6,
-)
+function _tev_mvtcdf(df::Real, μ, Σ::AbstractMatrix, upper; rtol::Real=2e-6,)
     q = length(upper)
     q == 0 && return 1.0
 
@@ -129,10 +99,7 @@ function _tev_mvtcdf(
 
     if q == 1
         σ = sqrt(Σf[1, 1])
-        return Distributions.cdf(
-            Distributions.TDist(dff),
-            (upperf[1] - μf[1]) / σ,
-        )
+        return Distributions.cdf(Distributions.TDist(dff), (upperf[1] - μf[1]) / σ,)
     end
 
     δ = upperf .- μf
@@ -153,9 +120,7 @@ end
 
 function _tev_stdf(ν::Real, R::AbstractMatrix, x)
     d = length(x)
-    size(R) == (d, d) || throw(DimensionMismatch(
-        "correlation matrix must be $d×$d",
-    ))
+    size(R) == (d, d) || throw(DimensionMismatch("correlation matrix must be $d×$d",))
 
     active = findall(xi -> xi > 0, x)
     isempty(active) && return 0.0
@@ -205,7 +170,6 @@ function ℓ(tail::tEVTail, x)
     R = _tev_exchangeable_correlation(d, tail.ρ)
     return _tev_stdf(tail.ν, R, x)
 end
-
 
 function _tev_block_logintensity(
     ν::Real,
@@ -260,12 +224,7 @@ function _tev_block_logintensity(
     return iszero(p) ? -Inf : logλB + log(p)
 end
 
-function _tev_ellpartial_signlog(
-    ν::Real,
-    R::AbstractMatrix,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function _tev_ellpartial_signlog(ν::Real, R::AbstractMatrix, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return 1, log(_tev_stdf(ν, R, x))
 
     all(xi -> xi >= 0, x) || return 0, -Inf
@@ -296,7 +255,6 @@ function ellpartial(tail::tEVTail, x, I::Tuple{Vararg{Int}})
     return sgn * exp(logabs)
 end
 
-
 function _tev_spectral_cache(R::AbstractMatrix)
     d = size(R, 1)
     size(R, 2) == d || throw(DimensionMismatch("R must be square"))
@@ -310,13 +268,7 @@ function _tev_spectral_cache(R::AbstractMatrix)
     end
 end
 
-function _tev_log_normalized_spectral!(
-    rng::Distributions.AbstractRNG,
-    logq::AbstractVector{Float64},
-    ν::Real,
-    R::AbstractMatrix,
-    cache,
-)
+function _tev_log_normalized_spectral!(rng::Distributions.AbstractRNG, logq::AbstractVector{Float64}, ν::Real, R::AbstractMatrix, cache,)
     d = length(logq)
     m = Random.rand(rng, 1:d)
     entry = cache[m]
@@ -349,16 +301,9 @@ function _tev_log_normalized_spectral!(
     return logq
 end
 
-function _tev_rand_multivariate!(
-    rng::Distributions.AbstractRNG,
-    ν::Real,
-    R::AbstractMatrix,
-    X::AbstractMatrix{T},
-) where {T<:Real}
+function _tev_rand_multivariate!(rng::Distributions.AbstractRNG, ν::Real, R::AbstractMatrix, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
-    size(R) == (d, d) || throw(DimensionMismatch(
-        "correlation matrix must be $d×$d",
-    ))
+    size(R) == (d, d) || throw(DimensionMismatch("correlation matrix must be $d×$d",))
 
     cache = _tev_spectral_cache(R)
     logq = Vector{Float64}(undef, d)
@@ -415,9 +360,7 @@ struct tEVCorrelationTail{T,MT<:AbstractMatrix} <: Tail
 
         d1, d2 = size(R)
         d1 == d2 || throw(DimensionMismatch("R must be square"))
-        d1 >= 3 || throw(ArgumentError(
-            "the general correlation representation requires dimension at least 3",
-        ))
+        d1 >= 3 || throw(ArgumentError("the general correlation representation requires dimension at least 3",))
 
         RF = Matrix{Float64}(R)
         all(isfinite, RF) ||
@@ -426,12 +369,10 @@ struct tEVCorrelationTail{T,MT<:AbstractMatrix} <: Tail
         scale = max(1.0, maximum(abs, RF))
         tol = sqrt(eps(Float64)) * scale
 
-        maximum(abs, RF - transpose(RF)) <= tol ||
-            throw(ArgumentError("R must be symmetric"))
+        maximum(abs, RF - transpose(RF)) <= tol || throw(ArgumentError("R must be symmetric"))
 
         @inbounds for i in 1:d1
-            abs(RF[i, i] - 1.0) <= tol ||
-                throw(ArgumentError("R must have unit diagonal"))
+            abs(RF[i, i] - 1.0) <= tol || throw(ArgumentError("R must have unit diagonal"))
             RF[i, i] = 1.0
         end
 
@@ -460,20 +401,15 @@ function _tev_copula_from_correlation(ν::Real, R::AbstractMatrix)
 
     if d1 == 2
         RF = Matrix{Float64}(R)
-        all(isfinite, RF) || throw(ArgumentError(
-            "R must contain only finite entries",
-        ))
+        all(isfinite, RF) || throw(ArgumentError("R must contain only finite entries",))
         scale = max(1.0, maximum(abs, RF))
         tol = sqrt(eps(Float64)) * scale
-        maximum(abs, RF - transpose(RF)) <= tol ||
-            throw(ArgumentError("R must be symmetric"))
+        maximum(abs, RF - transpose(RF)) <= tol || throw(ArgumentError("R must be symmetric"))
         abs(RF[1, 1] - 1.0) <= tol &&
             abs(RF[2, 2] - 1.0) <= tol ||
             throw(ArgumentError("R must have unit diagonal"))
         ρ = 0.5 * (RF[1, 2] + RF[2, 1])
-        -1.0 < ρ < 1.0 || throw(ArgumentError(
-            "a non-degenerate 2×2 correlation matrix requires -1 < ρ < 1",
-        ))
+        -1.0 < ρ < 1.0 || throw(ArgumentError("a non-degenerate 2×2 correlation matrix requires -1 < ρ < 1",))
         return ExtremeValueCopula(2, tEVTail(float(ν), ρ))
     end
 
@@ -481,85 +417,30 @@ function _tev_copula_from_correlation(ν::Real, R::AbstractMatrix)
     return ExtremeValueCopula(d1, tail)
 end
 
-(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(
-    ν::Real,
-    R::AbstractMatrix,
-) = _tev_copula_from_correlation(ν, R)
+(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(ν::Real, R::AbstractMatrix,) = _tev_copula_from_correlation(ν, R)
 
-function (::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(
-    d::Int,
-    ν::Real,
-    R::AbstractMatrix,
-)
-    d == size(R, 1) || throw(DimensionMismatch(
-        "d=$d does not match correlation dimension $(size(R, 1))",
-    ))
+function (::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(d::Int, ν::Real, R::AbstractMatrix,)
+    d == size(R, 1) || throw(DimensionMismatch("d=$d does not match correlation dimension $(size(R, 1))",))
     return _tev_copula_from_correlation(ν, R)
 end
 
 ℓ(tail::tEVCorrelationTail, x) = _tev_stdf(tail.ν, tail.R, x)
 
-_ellpartial_signlog(tail::tEVCorrelationTail, x, I) =
-    _tev_ellpartial_signlog(tail.ν, tail.R, x, Tuple(I))
+_ellpartial_signlog(tail::tEVCorrelationTail, x, I) = _tev_ellpartial_signlog(tail.ν, tail.R, x, Tuple(I))
 
-function ellpartial(
-    tail::tEVCorrelationTail,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function ellpartial(tail::tEVCorrelationTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return ℓ(tail, x)
     sgn, logabs = _ellpartial_signlog(tail, x, I)
     return sgn * exp(logabs)
 end
 
-function Distributions._logpdf(
-    C::ExtremeValueCopula{d,<:tEVTail},
-    u,
-) where {d}
-    if d == 2
-        u1, u2 = u
-        (0.0 < u1 <= 1.0 && 0.0 < u2 <= 1.0) || return -Inf
-        (u1 == 1.0 || u2 == 1.0) && return -Inf
-
-        x, y = -log(u1), -log(u2)
-        val, du, dv, dudv = _biv_der_ℓ(C.tail, (x, y))
-        core = -dudv + du * dv
-        core <= 0 && return -Inf
-        return -val + log(core) + x + y
-    end
-
-    return _ev_logpdf_from_partials(C, u)
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
+    return _tev_rand_multivariate!(rng, C.tail.ν, _tev_exchangeable_correlation(d, C.tail.ρ), X,)
 end
 
-Distributions._logpdf(
-    C::ExtremeValueCopula{d,<:tEVCorrelationTail},
-    u,
-) where {d} = _ev_logpdf_from_partials(C, u)
-
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:tEVTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
-    return _tev_rand_multivariate!(
-        rng,
-        C.tail.ν,
-        _tev_exchangeable_correlation(d, C.tail.ρ),
-        X,
-    )
-end
-
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:tEVCorrelationTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVCorrelationTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _tev_rand_multivariate!(rng, C.tail.ν, C.tail.R, X)
 end
 
