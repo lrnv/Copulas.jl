@@ -24,30 +24,20 @@ end
 
 function DiscreteSpectralTail(B::AbstractMatrix)
     d, m = size(B)
-    d >= 2 || throw(ArgumentError(
-        "a discrete spectral tail requires dimension d ≥ 2",
-    ))
-    m >= 1 || throw(ArgumentError(
-        "a discrete spectral tail requires at least one spectral atom",
-    ))
+    d >= 2 || throw(ArgumentError("a discrete spectral tail requires dimension d ≥ 2",))
+    m >= 1 || throw(ArgumentError("a discrete spectral tail requires at least one spectral atom",))
 
     vals = collect(B)
     T = promote_type(Float64, map(typeof, vals)...)
     BB = Matrix{T}(B)
 
-    all(isfinite, BB) || throw(ArgumentError(
-        "all discrete spectral coefficients must be finite",
-    ))
-    all(v -> v >= zero(T), BB) || throw(ArgumentError(
-        "all discrete spectral coefficients must be nonnegative",
-    ))
-
+    all(isfinite, BB) || throw(ArgumentError("all discrete spectral coefficients must be finite",))
+    all(v -> v >= zero(T), BB) || throw(ArgumentError("all discrete spectral coefficients must be nonnegative",))
+  
     tol = sqrt(eps(T))
     @inbounds for i in 1:d
         s = sum(@view BB[i, :])
-        isapprox(s, one(T); atol=tol, rtol=tol) || throw(ArgumentError(
-            "row $i of B must sum to one; got $s",
-        ))
+        isapprox(s, one(T); atol=tol, rtol=tol) || throw(ArgumentError("row $i of B must sum to one; got $s",))
     end
 
     return DiscreteSpectralTail{T}(BB)
@@ -55,8 +45,7 @@ end
 
 Base.eltype(::DiscreteSpectralTail{T}) where {T} = T
 Distributions.params(tail::DiscreteSpectralTail) = (B = tail.B,)
-_is_valid_in_dim(tail::DiscreteSpectralTail, d::Int) =
-    size(tail.B, 1) == d
+_is_valid_in_dim(tail::DiscreteSpectralTail, d::Int) = size(tail.B, 1) == d
 
 """
     DiscreteSpectralCopula(B)
@@ -74,9 +63,7 @@ DiscreteSpectralCopula(tail::DiscreteSpectralTail) =
 
 function ℓ(tail::DiscreteSpectralTail, x)
     d, m = size(tail.B)
-    length(x) == d || throw(DimensionMismatch(
-        "input dimension does not match discrete spectral tail dimension",
-    ))
+    length(x) == d || throw(DimensionMismatch("input dimension does not match discrete spectral tail dimension",))
 
     T = promote_type(eltype(tail.B), typeof(first(x)))
     out = zero(T)
@@ -106,15 +93,9 @@ function _spectral_subsets(d::Int)
     return out
 end
 
-function _discrete_spectral_rand!(
-    rng::Distributions.AbstractRNG,
-    tail::DiscreteSpectralTail,
-    X::AbstractMatrix{T},
-) where {T<:Real}
+function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
-    d == size(tail.B, 1) || throw(DimensionMismatch(
-        "output dimension does not match discrete spectral tail dimension",
-    ))
+    d == size(tail.B, 1) || throw(DimensionMismatch("output dimension does not match discrete spectral tail dimension",))
 
     fill!(X, zero(T))
     m = size(tail.B, 2)
@@ -135,39 +116,21 @@ function _discrete_spectral_rand!(
 
     @inbounds for i in 1:d, col in 1:n
         zi = X[i, col]
-        zi > zero(T) || throw(ArgumentError(
-            "invalid zero max-linear factor for margin $i",
-        ))
+        zi > zero(T) || throw(ArgumentError("invalid zero max-linear factor for margin $i",))
         X[i, col] = exp(-inv(zi))
     end
 
     return X
 end
 
-_rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:DiscreteSpectralTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _discrete_spectral_rand!(rng, C.tail, X)
+_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:DiscreteSpectralTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _discrete_spectral_rand!(rng, C.tail, X)
 
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:DiscreteSpectralTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate discrete spectral copula",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:DiscreteSpectralTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate discrete spectral copula",))
     return _discrete_spectral_rand!(rng, C.tail, X)
 end
 
-function Distributions._logpdf(
-    ::ExtremeValueCopula{d,<:DiscreteSpectralTail},
-    u,
-) where {d}
-    throw(ArgumentError(
-        "DiscreteSpectralCopula can contain singular components; " *
-        "a global Lebesgue log-density is not defined in general",
-    ))
+function Distributions._logpdf(::ExtremeValueCopula{d,<:DiscreteSpectralTail}, u,) where {d}
+    throw(ArgumentError("DiscreteSpectralCopula can contain singular components; " *
+        "a global Lebesgue log-density is not defined in general",))
 end

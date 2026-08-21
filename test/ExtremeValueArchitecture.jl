@@ -1,3 +1,5 @@
+using Random
+
 @testset "Extreme-value architecture" begin
     @testset "dimension-aware constructors" begin
         for (C, d) in (
@@ -97,4 +99,59 @@
             end
         end
     end
+
+    @testset "sampling backend routing" begin
+        @test Copulas._ev_sampling_backend(LogCopula(2, 2.0)) isa Val{:bivariate}
+        @test Copulas._ev_sampling_backend(MixedCopula(2, 0.5)) isa Val{:multivariate}
+        @test Copulas._ev_sampling_backend(GalambosCopula(2, 0.7)) isa Val{:multivariate}
+        @test Copulas._ev_sampling_backend(HuslerReissCopula(2, 1.0)) isa Val{:multivariate}
+        @test Copulas._ev_sampling_backend(tEVCopula(2, 4.0, 0.5)) isa Val{:multivariate}
+
+        for C in (
+            LogCopula(2, 2.0),
+            MixedCopula(2, 0.5),
+            GalambosCopula(2, 0.7),
+            HuslerReissCopula(2, 1.0),
+            tEVCopula(2, 4.0, 0.5),
+        )
+            Xroute = zeros(2, 32)
+            Xdirect = similar(Xroute)
+            rng_route = Random.Xoshiro(20260820)
+            rng_direct = Random.Xoshiro(20260820)
+            backend = Copulas._ev_sampling_backend(C)
+
+            Distributions._rand!(rng_route, C, Xroute)
+            if backend isa Val{:bivariate}
+                Copulas._rand_ev_bivariate!(rng_direct, C, Xdirect)
+            else
+                Copulas._rand_ev_multivariate!(rng_direct, C, Xdirect)
+            end
+            @test Xroute == Xdirect
+        end
+
+        for C in (
+            LogCopula(10, 2.0),
+            MixedCopula(10, 0.5),
+            GalambosCopula(10, 0.7),
+            HuslerReissCopula(10, 1.0),
+            tEVCopula(10, 4.0, 0.2),
+        )
+            U = rand(Random.Xoshiro(20260820), C, 16)
+            @test size(U) == (10, 16)
+            @test all((0 .< U) .& (U .< 1))
+        end
+    end
+
+
+    @testset "Galambos inverse dependence-measure boundaries" begin
+        @test Copulas.β⁻¹(GalambosCopula, -0.1) == 0.0
+        @test Copulas.β⁻¹(GalambosCopula, 0.0) == 0.0
+        @test Copulas.β⁻¹(GalambosCopula, 1.0) == Inf
+
+        for θ in (0.1, 0.3, 1.0, 3.0)
+            C = GalambosCopula(2, θ)
+            @test Copulas.β⁻¹(GalambosCopula, Copulas.β(C)) ≈ θ
+        end
+    end
+
 end

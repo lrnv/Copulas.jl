@@ -45,6 +45,7 @@ end
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
+_ev_sampling_backend(::ExtremeValueCopula{2,<:GalambosTail}) = Val(:multivariate)
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:GalambosTail}, d, θ) = [log(θ.θ)]           # θ > 0
 _rebound_params(::Type{<:GalambosTail}, d, α) = (; θ = exp(α[1]))

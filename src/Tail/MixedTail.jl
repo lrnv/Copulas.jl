@@ -46,6 +46,7 @@ end
 const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
 Distributions.params(tail::MixedTail) = (θ = tail.θ,)
 _is_valid_in_dim(::MixedTail, d::Int) = d >= 2
+_ev_sampling_backend(::ExtremeValueCopula{2,<:MixedTail}) = Val(:multivariate)
 _unbound_params(::Type{<:MixedTail}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
 _rebound_params(::Type{<:MixedTail}, d, α) = begin
     θ = 1 / (1 + exp(-α[1]))
@@ -63,28 +64,18 @@ A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1
 # This convex combination of stable tail dependence functions gives a
 # dimension-free extension while reproducing the historical Pickands model
 # exactly for d = 2.
-@inline _mixed_galambos_tail(tail::MixedTail) =
-    GalambosTail(one(tail.θ))
+@inline _mixed_galambos_tail(tail::MixedTail) = GalambosTail(one(tail.θ))
 
 function ℓ(tail::MixedTail, x)
     θ = tail.θ
-    return (one(θ) - θ) * sum(x) +
-           θ * ℓ(_mixed_galambos_tail(tail), x)
+    return (one(θ) - θ) * sum(x) + θ * ℓ(_mixed_galambos_tail(tail), x)
 end
 
-function _ellpartial_signlog(
-    tail::MixedTail,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function _ellpartial_signlog(tail::MixedTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return 1, log(float(ℓ(tail, x)))
 
     θ = float(tail.θ)
-    signg, logg = _ellpartial_signlog(
-        _mixed_galambos_tail(tail),
-        x,
-        I,
-    )
+    signg, logg = _ellpartial_signlog(_mixed_galambos_tail(tail), x, I,)
 
     signg == 0 && begin
         if length(I) == 1 && θ < 1
@@ -102,49 +93,25 @@ function _ellpartial_signlog(
     return signg, log(θ) + logg
 end
 
-_ellpartial_signlog(
-    tail::MixedTail,
-    x,
-    I::AbstractVector{<:Integer},
-) = _ellpartial_signlog(tail, x, Tuple(I))
+_ellpartial_signlog(tail::MixedTail, x, I::AbstractVector{<:Integer},) = _ellpartial_signlog(tail, x, Tuple(I))
 
-function ellpartial(
-    tail::MixedTail,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function ellpartial(tail::MixedTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return ℓ(tail, x)
     sign, logabs = _ellpartial_signlog(tail, x, I)
     sign == 0 && return zero(float(first(x)))
     return sign * exp(logabs)
 end
 
-ellpartial(
-    tail::MixedTail,
-    x,
-    I::AbstractVector{<:Integer},
-) = ellpartial(tail, x, Tuple(I))
+ellpartial(tail::MixedTail, x, I::AbstractVector{<:Integer},) = ellpartial(tail, x, Tuple(I))
 
-Distributions._logpdf(
-    C::ExtremeValueCopula{d,<:MixedTail},
-    u,
-) where {d} = _ev_logpdf_from_partials(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{d,<:MixedTail}, u,) where {d} = _ev_logpdf_from_partials(C, u)
 
 # Resolve the intersection with the generic bivariate EV density.
-Distributions._logpdf(
-    C::ExtremeValueCopula{2,<:MixedTail},
-    u,
-) = _ev_logpdf_bivariate(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{2,<:MixedTail}, u,) = _ev_logpdf_bivariate(C, u)
 
-function _mixed_rand_multivariate!(
-    rng::Distributions.AbstractRNG,
-    tail::MixedTail,
-    X::AbstractMatrix{T},
-) where {T<:Real}
+function _mixed_rand_multivariate!(rng::Distributions.AbstractRNG, tail::MixedTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
-    d >= 2 || throw(DimensionMismatch(
-        "MixedTail requires at least two output rows",
-    ))
+    d >= 2 || throw(DimensionMismatch("MixedTail requires at least two output rows",))
 
     θ = Float64(tail.θ)
     Z = zeros(Float64, d, n)
@@ -174,21 +141,14 @@ function _mixed_rand_multivariate!(
 
     @inbounds for i in 1:d, col in 1:n
         zi = Z[i, col]
-        zi > 0 || throw(ArgumentError(
-            "invalid zero Fréchet value in MixedTail sampler",
-        ))
+        zi > 0 || throw(ArgumentError("invalid zero Fréchet value in MixedTail sampler",))
         X[i, col] = T(exp(-inv(zi)))
     end
 
     return X
 end
 
-_rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:MixedTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _mixed_rand_multivariate!(rng, C.tail, X)
+_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MixedTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _mixed_rand_multivariate!(rng, C.tail, X)
 
 function dA(tail::MixedTail, t::Real)
     tt = _safett(t)

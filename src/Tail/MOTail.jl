@@ -195,25 +195,17 @@ struct MOMultivariateTail{T} <: Tail
 end
 
 function MOMultivariateTail(d::Int, λ::AbstractVector)
-    d >= 2 || throw(ArgumentError(
-        "Marshall-Olkin dimension must be at least two",
-    ))
+    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two",))
 
     subsets = _spectral_subsets(d)
-    length(λ) == length(subsets) || throw(DimensionMismatch(
-        "expected $(length(subsets)) shock intensities for dimension $d",
-    ))
+    length(λ) == length(subsets) || throw(DimensionMismatch("expected $(length(subsets)) shock intensities for dimension $d",))
 
     vals = collect(λ)
     T = promote_type(Float64, map(typeof, vals)...)
     rates = T.(λ)
 
-    all(isfinite, rates) || throw(ArgumentError(
-        "all Marshall-Olkin shock intensities must be finite",
-    ))
-    all(v -> v >= zero(T), rates) || throw(ArgumentError(
-        "all Marshall-Olkin shock intensities must be nonnegative",
-    ))
+    all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite",))
+    all(v -> v >= zero(T), rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be nonnegative",))
 
     r = zeros(T, d)
     @inbounds for (k, S) in enumerate(subsets)
@@ -223,9 +215,7 @@ function MOMultivariateTail(d::Int, λ::AbstractVector)
         end
     end
 
-    all(v -> v > zero(T), r) || throw(ArgumentError(
-        "every Marshall-Olkin margin must have positive total shock rate",
-    ))
+    all(v -> v > zero(T), r) || throw(ArgumentError("every Marshall-Olkin margin must have positive total shock rate",))
 
     B = zeros(T, d, length(subsets))
     @inbounds for (k, S) in enumerate(subsets)
@@ -239,54 +229,31 @@ function MOMultivariateTail(d::Int, λ::AbstractVector)
     return MOMultivariateTail{T}(d, rates, spectral)
 end
 
-MOMultivariateTail(tail::MOTail) =
-    MOMultivariateTail(
-        2,
-        [tail.λ₂, tail.λ₁, tail.λ₁₂],
-    )
+MOMultivariateTail(tail::MOTail) = MOMultivariateTail(2, [tail.λ₂, tail.λ₁, tail.λ₁₂],)
 
-MOMultivariateCopula(d::Int, λ::AbstractVector) =
-    ExtremeValueCopula(d, MOMultivariateTail(d, λ))
+MOMultivariateCopula(d::Int, λ::AbstractVector) = ExtremeValueCopula(d, MOMultivariateTail(d, λ))
 
 function _mo_dimension(λ::AbstractVector)
     m = length(λ) + 1
-    ispow2(m) || throw(DimensionMismatch(
-        "Marshall-Olkin λ must have length 2^d-1",
-    ))
+    ispow2(m) || throw(DimensionMismatch("Marshall-Olkin λ must have length 2^d-1",))
     d = trailing_zeros(m)
     d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least 2"))
     return d
 end
 
-(::Type{<:ExtremeValueCopula{2,<:MOTail}})(λ::AbstractVector) =
-    MOMultivariateCopula(_mo_dimension(λ), λ)
+(::Type{<:ExtremeValueCopula{2,<:MOTail}})(λ::AbstractVector) = MOMultivariateCopula(_mo_dimension(λ), λ)
 
-(::Type{<:ExtremeValueCopula{2,<:MOTail}})(
-    d::Int,
-    λ::AbstractVector,
-) = MOMultivariateCopula(d, λ)
+(::Type{<:ExtremeValueCopula{2,<:MOTail}})(d::Int, λ::AbstractVector,) = MOMultivariateCopula(d, λ)
 
-MOMultivariateCopula(tail::MOTail) =
-    ExtremeValueCopula(2, MOMultivariateTail(tail))
+MOMultivariateCopula(tail::MOTail) = ExtremeValueCopula(2, MOMultivariateTail(tail))
 
 Distributions.params(tail::MOMultivariateTail) = (λ = tail.λ,)
 _is_valid_in_dim(tail::MOMultivariateTail, d::Int) = tail.d == d
 ℓ(tail::MOMultivariateTail, x) = ℓ(tail.spectral, x)
 
-_rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:MOMultivariateTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _discrete_spectral_rand!(rng, C.tail.spectral, X)
+_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MOMultivariateTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _discrete_spectral_rand!(rng, C.tail.spectral, X)
 
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:MOMultivariateTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate Marshall-Olkin copula",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MOMultivariateTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate Marshall-Olkin copula",))
     return _discrete_spectral_rand!(rng, C.tail.spectral, X)
 end

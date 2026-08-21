@@ -72,13 +72,8 @@ function ℓ(tail::CuadrasAugeTail, x)
     return (one(θ) - θ) * sum(x) + θ * maximum(x)
 end
 
-function _cuadras_auge_spectral_tail(
-    tail::CuadrasAugeTail,
-    d::Int,
-)
-    d >= 2 || throw(ArgumentError(
-        "Cuadras-Auge dimension must be at least two",
-    ))
+function _cuadras_auge_spectral_tail(tail::CuadrasAugeTail, d::Int,)
+    d >= 2 || throw(ArgumentError("Cuadras-Auge dimension must be at least two",))
 
     T = typeof(tail.θ)
     θ = tail.θ
@@ -92,22 +87,12 @@ function _cuadras_auge_spectral_tail(
     return DiscreteSpectralTail(B)
 end
 
-_rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:CuadrasAugeTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _discrete_spectral_rand!(
-        rng,
-        _cuadras_auge_spectral_tail(C.tail, d),
-        X,
-    )
-_pickands_left_slope(tail::CuadrasAugeTail, prototype::Real) =
-    -convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
-_pickands_right_slope(tail::CuadrasAugeTail, prototype::Real) =
-    convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
+_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:CuadrasAugeTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _discrete_spectral_rand!(rng, _cuadras_auge_spectral_tail(C.tail, d), X,)
+_pickands_left_slope(tail::CuadrasAugeTail, prototype::Real) = -convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
+_pickands_right_slope(tail::CuadrasAugeTail, prototype::Real) = convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
 dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 ? -tail.θ : C.tail.θ)
 ℓ(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t) where {T} = max(t[1], t[2]) + (1 - C.tail.θ) * min(t[1], t[2])
+
 function Distributions._rand!(rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2, CuadrasAugeTail{T}},
     A::AbstractMatrix{S}) where {T,S<:Real}

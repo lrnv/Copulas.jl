@@ -54,19 +54,13 @@ function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
     subsets = _tawn_subsets(d)
     m = length(subsets)
 
-    length(dep) == m - d || throw(DimensionMismatch(
-        "dep must contain one parameter for each non-singleton subset: expected $(m-d)",
-    ))
-    length(asy) == m || throw(DimensionMismatch(
-        "asy must contain one weight vector for each nonempty subset: expected $m",
-    ))
+    length(dep) == m - d || throw(DimensionMismatch("dep must contain one parameter for each non-singleton subset: expected $(m-d)",))
+    length(asy) == m || throw(DimensionMismatch("asy must contain one weight vector for each nonempty subset: expected $m",))
 
     vals = Any[1.0]
     append!(vals, dep)
     for w in asy
-        w isa AbstractVector || throw(ArgumentError(
-            "each asymmetry component must be an AbstractVector",
-        ))
+        w isa AbstractVector || throw(ArgumentError("each asymmetry component must be an AbstractVector",))
         append!(vals, w)
     end
     T = promote_type(Float64, map(typeof, vals)...)
@@ -74,23 +68,17 @@ function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
     α = ones(T, m)
     @inbounds for j in (d + 1):m
         a = T(dep[j - d])
-        a >= one(T) || throw(ArgumentError(
-            "each non-singleton dependence parameter must be ≥ 1",
-        ))
+        a >= one(T) || throw(ArgumentError("each non-singleton dependence parameter must be ≥ 1",))
         α[j] = a
     end
 
     β = zeros(T, d, m)
     @inbounds for (j, C) in enumerate(subsets)
         w = asy[j]
-        length(w) == length(C) || throw(DimensionMismatch(
-            "asy[$j] must have length $(length(C)) for subset $(Tuple(C))",
-        ))
+        length(w) == length(C) || throw(DimensionMismatch("asy[$j] must have length $(length(C)) for subset $(Tuple(C))",))
         for (a, i) in enumerate(C)
             wij = T(w[a])
-            zero(T) <= wij <= one(T) || throw(ArgumentError(
-                "all asymmetry weights must lie in [0,1]",
-            ))
+            zero(T) <= wij <= one(T) || throw(ArgumentError("all asymmetry weights must lie in [0,1]",))
             β[i, j] = wij
         end
     end
@@ -119,8 +107,7 @@ function TawnTail(α::Real, weights::AbstractVector)
     a >= one(T) || throw(ArgumentError("α must be ≥ 1"))
 
     w = T.(weights)
-    all(v -> zero(T) <= v <= one(T), w) ||
-        throw(ArgumentError("all full-set weights must lie in [0,1]"))
+    all(v -> zero(T) <= v <= one(T), w) || throw(ArgumentError("all full-set weights must lie in [0,1]"))
 
     dep = ones(T, m - d)
     dep[end] = a
@@ -138,19 +125,12 @@ function TawnTail(α::Real, weights::AbstractVector)
     return TawnTail(d, dep, asy)
 end
 
-function (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(
-    α::Real,
-    weights::AbstractVector,
-)
+function (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(α::Real, weights::AbstractVector,)
     tail = TawnTail(α, weights)
     return ExtremeValueCopula(tail.d, tail)
 end
 
-(::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(
-    d::Int,
-    dep::AbstractVector,
-    asy::AbstractVector,
-) = ExtremeValueCopula(d, TawnTail(d, dep, asy))
+(::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(d::Int, dep::AbstractVector, asy::AbstractVector,) = ExtremeValueCopula(d, TawnTail(d, dep, asy))
 
 Distributions.params(tail::TawnTail) = (α = tail.α, β = tail.β)
 _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d
@@ -173,9 +153,7 @@ function _tawn_component_stdf(α, βcol, C, x)
 end
 
 function ℓ(tail::TawnTail, x)
-    length(x) == tail.d || throw(DimensionMismatch(
-        "input dimension does not match Tawn tail dimension",
-    ))
+    length(x) == tail.d || throw(DimensionMismatch("input dimension does not match Tawn tail dimension",))
 
     subsets = _tawn_subsets(tail.d)
     T = promote_type(eltype(x), eltype(tail.α), eltype(tail.β))
@@ -199,13 +177,7 @@ end
     return m + log(sum(exp(v - m) for v in logs))
 end
 
-function _tawn_component_partial_signlog(
-    α::Real,
-    βcol,
-    C,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function _tawn_component_partial_signlog(α::Real, βcol, C, x, I::Tuple{Vararg{Int}},)
     k = length(I)
     k > 0 || throw(ArgumentError("partial block must be nonempty"))
 
@@ -243,11 +215,7 @@ function _tawn_component_partial_signlog(
     return sign, logabs
 end
 
-function _ellpartial_signlog(
-    tail::TawnTail,
-    x,
-    I::Tuple{Vararg{Int}},
-)
+function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return 1, log(float(ℓ(tail, x)))
 
     subsets = _tawn_subsets(tail.d)
@@ -255,17 +223,9 @@ function _ellpartial_signlog(
     expected_sign = isodd(length(I)) ? 1 : -1
 
     @inbounds for j in eachindex(subsets)
-        sign, logabs = _tawn_component_partial_signlog(
-            tail.α[j],
-            @view(tail.β[:, j]),
-            subsets[j],
-            x,
-            I,
-        )
+        sign, logabs = _tawn_component_partial_signlog(tail.α[j], @view(tail.β[:, j]), subsets[j], x, I,)
         sign == 0 && continue
-        sign == expected_sign || throw(ArgumentError(
-            "unexpected Tawn component partial sign",
-        ))
+        sign == expected_sign || throw(ArgumentError("unexpected Tawn component partial sign",))
         push!(logs, logabs)
     end
 
@@ -273,8 +233,7 @@ function _ellpartial_signlog(
     return expected_sign, _tawn_logsumexp(logs)
 end
 
-_ellpartial_signlog(tail::TawnTail, x, I::AbstractVector{<:Integer}) =
-    _ellpartial_signlog(tail, x, Tuple(I))
+_ellpartial_signlog(tail::TawnTail, x, I::AbstractVector{<:Integer}) = _ellpartial_signlog(tail, x, Tuple(I))
 
 function ellpartial(tail::TawnTail, x, I::Tuple{Vararg{Int}})
     isempty(I) && return ℓ(tail, x)
@@ -283,31 +242,18 @@ function ellpartial(tail::TawnTail, x, I::Tuple{Vararg{Int}})
     return sign * exp(logabs)
 end
 
-ellpartial(tail::TawnTail, x, I::AbstractVector{<:Integer}) =
-    ellpartial(tail, x, Tuple(I))
+ellpartial(tail::TawnTail, x, I::AbstractVector{<:Integer}) = ellpartial(tail, x, Tuple(I))
 
-Distributions._logpdf(
-    C::ExtremeValueCopula{d,<:TawnTail},
-    u,
-) where {d} = _ev_logpdf_from_partials(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{d,<:TawnTail}, u,) where {d} = _ev_logpdf_from_partials(C, u)
 
 # Resolve the intersection with the historical generic bivariate EV
 # density method explicitly. TawnTail uses its analytic STDF partials.
-Distributions._logpdf(
-    C::ExtremeValueCopula{2,<:TawnTail},
-    u,
-) = _ev_logpdf_from_partials(C, u)
+Distributions._logpdf(C::ExtremeValueCopula{2,<:TawnTail}, u,) = _ev_logpdf_from_partials(C, u)
 
 
-function _tawn_rand_multivariate!(
-    rng::Distributions.AbstractRNG,
-    tail::TawnTail,
-    X::AbstractMatrix{T},
-) where {T<:Real}
+function _tawn_rand_multivariate!(rng::Distributions.AbstractRNG, tail::TawnTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
-    d == tail.d || throw(DimensionMismatch(
-        "output dimension does not match Tawn tail dimension",
-    ))
+    d == tail.d || throw(DimensionMismatch("output dimension does not match Tawn tail dimension",))
 
     subsets = _tawn_subsets(d)
 
@@ -355,33 +301,20 @@ function _tawn_rand_multivariate!(
 
     @inbounds for i in 1:d, col in 1:n
         zi = Z[i, col]
-        zi > 0 || throw(ArgumentError(
-            "Tawn weights leave margin $i without a positive spectral component",
-        ))
+        zi > 0 || throw(ArgumentError("Tawn weights leave margin $i without a positive spectral component",))
         X[i, col] = T(exp(-inv(zi)))
     end
 
     return X
 end
 
-_rand_ev_multivariate!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:TawnTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _tawn_rand_multivariate!(rng, C.tail, X)
+_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _tawn_rand_multivariate!(rng, C.tail, X)
 
 # The generic bivariate ExtremeValueCopula sampler is more specific than
 # the generic multivariate dispatch and requires a Pickands A/dA route.
 # TawnTail is represented directly through its multivariate STDF, so force
 # d=2 through the exact Tawn component-superposition sampler as well.
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:TawnTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate Tawn copula",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:TawnTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate Tawn copula",))
     return _tawn_rand_multivariate!(rng, C.tail, X)
 end
