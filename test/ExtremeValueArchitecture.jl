@@ -47,6 +47,9 @@ using Random
         Ctawn = TawnCopula(2.0, [0.6, 0.7, 0.8])
         @test length(Ctawn) == 3
         @test Ctawn.tail isa Copulas.TawnTail
+        @test length(TawnCopula(2, [0.6, 0.7, 0.8])) == 3
+        @test length(tEVCopula(4, R)) == 3
+        @test length(AsymGalambosCopula(1, [0.6, 0.7, 0.8])) == 3
 
         asy = [[0.4], [0.3], [0.6, 0.7]]
         @test length(TawnCopula(2, [2.0], asy)) == 2

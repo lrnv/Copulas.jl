@@ -139,7 +139,7 @@ function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, 
     return EmpiricalEVTail(tgrid, Â, slope)
 end
 const EmpiricalEVCopula{d} = ExtremeValueCopula{d, EmpiricalEVTail}
-EmpiricalEVCopula(u; kwargs...) = ExtremeValueCopula(2, EmpiricalEVTail(u; kwargs...))
+EmpiricalEVCopula(u::AbstractMatrix; kwargs...) = ExtremeValueCopula(2, EmpiricalEVTail(u; kwargs...))
 
 Base.eltype(::EmpiricalEVTail) = Float64
 Distributions.params(t::EmpiricalEVTail) = (tgrid = t.tgrid, Ahat = t.Ahat, slope = t.slope) #for API fit we need modify this
