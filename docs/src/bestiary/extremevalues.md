@@ -4,44 +4,299 @@ CurrentModule = Copulas
 
 # [Extreme Value family](@id Extreme_theory)
 
-*Extreme value copulas* are fundamental in the study of rare and extreme events due to their ability to model dependency in situations of extreme risk. This package provides a wide selection of bivariate extreme value copulas; multivariate cases are not yet implemented. Feel free to open an issue or propose a pull request if you want to contribute a multivariate case. 
+*Extreme-value copulas* are max-stable dependence models used throughout
+multivariate extreme-value theory. In dimension ``d``, an extreme-value copula
+``C`` satisfies
 
-!!! info "Only Bivariate"
-    The implementation here only deals with bivariate extreme value copulas. Multivariate cases are more tedious to implement, but not impossible: if you want to propose an implementation, we can provide guidance on how to merge it here. Do not hesitate to reach us on GitHub.
-
-A bivariate extreme value copula [gudendorf2010extreme](@cite) $C$ has the following characteristic property:
-
-$$C(u_1^t, u_2^t) = C(u_1, u_2)^t, \; t > 0.$$
-
-It can be represented through its stable tail dependence function $\ell(\cdot)$:
-
-$$C(u_1, u_2) = \exp\{-\ell(\log(u_1), \log(u_2))\},$$
-
-or through a convex function $A: [0,1] \to [1/2, 1]$ satisfying $\max(t, t-1)\leq A(t) \leq 1,$ called its Pickands dependence function:
-
-$$C(u_1,u_2)=\exp\left\{\log(u_1u_2)A\left(\frac{\log(u_1)}{\log(u_1u_2)}\right)\right\},$$
-
-In the context of bivariate extreme value copulas, the functions $\ell$ and $A$ are related as follows:
-
-$$\ell(u_1, u_2) = (u_1 + u_2)A\left(\frac{u_1}{u_1 + u_2}\right).$$
-
-!!! tip "Only `A` is needed"
-    In our implementation, it is sufficient to provide the Pickands dependence function $A$ to construct the extreme value copula and have it work correctly. Providing the other functions would, of course, improve performance.
-
-In this package, there is an abstract type [`ExtremeValueCopula`](@ref) that provides a foundation for defining bivariate extreme value copulas. Many extreme value copulas are already implemented for you! See [this list](@ref available_extreme_models) to get an overview.
-
-If you do not find the one you need, you may define it yourself by subtyping `ExtremeValueCopula`. The API requires only a method for the Pickands function `A(C::ExtremeValueCopula) = ...`. By providing this function, you can easily create a new extreme value copula that fits your specific needs:
-
-```julia
-struct MyExtremeValueCopula{P} <: ExtremeValueCopula{P}
-    θ::P
-end
-
-A(C::ExtremeValueCopula, t) = (t^C.θ + (1 - t)^C.θ)^(1/C.θ) # This is the Pickands function of the Logistic (Gumbel) Copula
+```math
+C(u_1^t,\ldots,u_d^t)=C(u_1,\ldots,u_d)^t,\qquad t>0.
 ```
 
-!!! info "Empirical EV estimator available"
-    When you have bivariate data and want a nonparametric Extreme Value copula, you can estimate the Pickands function from pseudo-observations using `EmpiricalEVTail` and plug it into an `ExtremeValueCopula`. For convenience, `EmpiricalEVCopula(u)` builds the EV copula in one step. See the bestiary entry for [`EmpiricalEVTail`](@ref) and [`ExtremeValueCopula`](@ref) docs for details.
+The natural dimension-free representation is the **stable tail dependence
+function** (STDF) ``\ell``:
+
+```math
+C(\boldsymbol u)
+=
+\exp\!\left\{-\ell(-\log u_1,\ldots,-\log u_d)\right\}.
+```
+
+A valid STDF is convex and one-homogeneous and satisfies
+
+```math
+\max_i x_i\le \ell(\boldsymbol x)\le\sum_{i=1}^d x_i.
+```
+
+By homogeneity, ``\ell`` can be restricted to the simplex to obtain the
+multivariate Pickands dependence function. In dimension two this reduces to the
+familiar scalar function ``A:[0,1]\to[1/2,1]``:
+
+```math
+\ell(x_1,x_2)
+=
+(x_1+x_2)
+A\!\left(\frac{x_1}{x_1+x_2}\right),
+```
+
+where
+
+```math
+\max\{t,1-t\}\le A(t)\le1,\qquad A(0)=A(1)=1.
+```
+
+The bivariate copula therefore has the classical representation
+
+```math
+C(u_1,u_2)
+=
+\exp\!\left\{
+\log(u_1u_2)
+A\!\left(
+\frac{\log u_1}{\log(u_1u_2)}
+\right)
+\right\}.
+```
+
+!!! info "Bivariate and multivariate EV copulas"
+    Copulas.jl now uses ``\ell`` as the mathematical EV interface in arbitrary
+    dimension while preserving the mature bivariate Pickands machinery.
+    Bivariate formulas based on `A`, `dA`, `d²A`, Ghoudi sampling, conditional
+    distortions, and family-specific kernels remain available whenever the tail
+    provides them.
+
+!!! tip "Think family first, backend second"
+    A public constructor identifies the **mathematical family**. It does not ask
+    the user to choose a bivariate or multivariate algorithm. Copulas.jl selects
+    the appropriate density and sampling representation internally.
+
+## What is new in the EV subsystem?
+
+The current EV implementation goes beyond the historical bivariate-only design:
+
+- the core representation is a dimension-aware STDF `ℓ`;
+- `Tail2` identifies a tail with a native bivariate Pickands kernel and is a
+  **computational capability**, not necessarily a mathematical restriction to
+  dimension two;
+- several classical EV families now use the same public constructor in
+  ``d=2`` and ``d>2``;
+- matrix and vector parameterizations infer the dimension when the parameter
+  shape determines it;
+- general Hüsler-Reiss variograms and extremal-``t`` correlation matrices are
+  supported in addition to exchangeable submodels;
+- Tawn and asymmetric Galambos expose structured multivariate subset
+  parameterizations;
+- BC2 and Marshall-Olkin have multivariate spectral/shock representations;
+- multivariate empirical EV estimation is available through a shape-constrained
+  discrete spectral projection;
+- multivariate densities can be built from mixed partial derivatives of
+  ``\ell``;
+- `rand(C, n)` uses internal backend routing, so optimized bivariate and
+  multivariate samplers coexist behind one public API.
+
+## Constructors and dimensional conventions
+
+The public constructor follows one simple rule.
+
+!!! tip "When should I pass `d`?"
+    If the parameters do **not** contain dimensional information, pass `d`
+    explicitly. If a vector or matrix parameterization already determines the
+    dimension, the constructor infers it.
+
+Scalar or exchangeable families therefore look like
+
+```julia
+LogCopula(d, θ)
+GalambosCopula(d, θ)
+MixedCopula(d, θ)
+CuadrasAugeCopula(d, θ)
+HuslerReissCopula(d, θ)
+tEVCopula(d, ν, ρ)
+```
+
+while structured parameterizations can infer ``d``:
+
+```julia
+HuslerReissCopula(Γ)
+tEVCopula(ν, R)
+TawnCopula(α, weights)
+AsymGalambosCopula(α, weights)
+BC2Copula(a)
+MOCopula(λ)
+EmpiricalEVMultivariateCopula(U)
+```
+
+The full asymmetric/subset parameterizations keep an explicit dimension:
+
+```julia
+TawnCopula(d, dep, asy)
+AsymGalambosCopula(d, dep, asy)
+MOCopula(d, λ)
+```
+
+| Family | Constructor | Supported dimension | Interpretation |
+|---|---|---:|---|
+| Logistic | `LogCopula(d, θ)` | ``d\ge2`` | exchangeable |
+| Galambos | `GalambosCopula(d, θ)` | ``d\ge2`` | exchangeable negative logistic |
+| Mixed | `MixedCopula(d, θ)` | ``d\ge2`` | scalar Copulas.jl extension of the bivariate mixed model |
+| Cuadras-Augé | `CuadrasAugeCopula(d, θ)` | ``d\ge2`` | scalar |
+| Hüsler-Reiss | `HuslerReissCopula(d, θ)` | ``d\ge2`` | exchangeable variogram |
+| Hüsler-Reiss | `HuslerReissCopula(Γ)` | inferred | general variogram |
+| extremal-``t`` | `tEVCopula(d, ν, ρ)` | ``d\ge2`` | equicorrelation |
+| extremal-``t`` | `tEVCopula(ν, R)` | inferred | general correlation matrix |
+| Tawn | `TawnCopula(α, weights)` | inferred | full-set logistic component + singleton remainders |
+| Tawn | `TawnCopula(d, dep, asy)` | explicit | full subset representation |
+| Asymmetric Galambos | `AsymGalambosCopula(2, α, θ₁, θ₂)` | 2 | specialized bivariate kernel |
+| Asymmetric Galambos | `AsymGalambosCopula(α, weights)` | inferred | full-set negative-logistic component + singleton remainders |
+| Asymmetric Galambos | `AsymGalambosCopula(d, dep, asy)` | explicit | full subset representation |
+| BC2 | `BC2Copula(a, b)` | 2 | classical bivariate representation |
+| BC2 | `BC2Copula(a::AbstractVector)` | inferred | two-atom spectral representation |
+| Marshall-Olkin | `MOCopula(λ₁, λ₂, λ₁₂)` | 2 | classical three-shock representation |
+| Marshall-Olkin | `MOCopula(λ)` | inferred when `length(λ)=2^d-1` | full subset-shock representation |
+| Marshall-Olkin | `MOCopula(d, λ)` | explicit | full subset-shock representation |
+| Empirical EV | `EmpiricalEVCopula(U)` | 2 | bivariate Pickands/CFG/OLS estimator |
+| Empirical EV | `EmpiricalEVMultivariateCopula(U)` | inferred | shape-constrained multivariate spectral estimator |
+| Asymmetric logistic | `AsymLogCopula(2, ...)` | 2 | bivariate |
+| Asymmetric mixed | `AsymMixedCopula(2, ...)` | 2 | bivariate |
+
+### Exchangeable versus general Hüsler-Reiss and extremal-t
+
+Hüsler-Reiss has two public parameterizations. In the package convention,
+
+```math
+\gamma=\left(\frac{2}{\theta}\right)^2
+```
+
+maps the exchangeable scalar parameter to the common off-diagonal variogram
+entry. Thus
+
+```julia
+HuslerReissCopula(d, θ)
+```
+
+is an exchangeable submodel, while
+
+```julia
+HuslerReissCopula(Γ)
+```
+
+accepts a general valid variogram matrix. In dimension two a matrix
+parameterization is validated and then reduced internally to the scalar
+bivariate representation. The family seen by the user does not change.
+
+The extremal-``t`` family follows the same pattern:
+
+```julia
+tEVCopula(d, ν, ρ) # equicorrelation
+tEVCopula(ν, R)    # general correlation matrix
+```
+
+A valid ``2\times2`` correlation matrix is likewise reduced to the specialized
+bivariate tail.
+
+!!! info "Public family ≠ internal representation"
+    Two constructors of the same mathematical family may store different tail
+    types internally. This is deliberate: it lets Copulas.jl retain fast
+    bivariate kernels without duplicating the public family.
+
+### Tawn and asymmetric Galambos subset models
+
+The multivariate Tawn model follows the asymmetric logistic construction of
+Tawn [tawn1990multivariate](@cite). The full representation associates
+components with every nonempty subset of ``\{1,\ldots,d\}``. There are
+
+```math
+2^d-1
+```
+
+nonempty subsets and
+
+```math
+2^d-d-1
+```
+
+non-singleton subsets.
+
+Accordingly,
+
+```julia
+TawnCopula(d, dep, asy)
+```
+
+contains one dependence parameter per non-singleton subset and one asymmetry
+weight vector per nonempty subset. The weights involving each margin must sum
+to one.
+
+`TawnCopula(α, weights)` is a convenient lower-dimensional parameterization
+implemented in Copulas.jl: one logistic component acts on the full set and
+singleton components carry the remaining marginal mass.
+
+Asymmetric Galambos uses the analogous negative-logistic subset construction;
+the multivariate min-stable framework is described by Joe [Joe1990](@cite).
+The convenience constructor
+
+```julia
+AsymGalambosCopula(α, weights)
+```
+
+is a Copulas.jl parameterization of that valid subset model, not a separate
+literature family.
+
+### Implementation-derived Mixed extension
+
+The historical Mixed model is bivariate [tawn1988bivariate](@cite). The
+``d``-dimensional extension used by Copulas.jl is obtained from the identity
+
+```math
+\ell_{\mathrm{Mixed},\theta}(\boldsymbol x)
+=
+(1-\theta)\sum_{i=1}^d x_i
++
+\theta\,\ell_{\mathrm{Galambos},1}(\boldsymbol x).
+```
+
+Both terms are valid STDFs, so their convex combination is a valid STDF. For
+``d=2`` the identity reduces exactly to
+
+```math
+A(t)=1-\theta t(1-t),
+```
+
+which is the historical Mixed Pickands model.
+
+!!! note "What is literature and what is derived here?"
+    Tawn [tawn1988bivariate](@cite) is the reference for the original bivariate
+    Mixed model, and Galambos [galambos1975order](@cite) for the
+    negative-logistic component. The dimension-free convex-combination identity
+    above is the extension used and derived in the Copulas.jl implementation;
+    we do not attribute that exact ``d``-dimensional parameterization to either
+    paper.
+
+### Multivariate empirical EV estimation
+
+`EmpiricalEVCopula` preserves the historical bivariate estimator based on
+Pickands/CFG/OLS estimation of ``A``.
+
+For ``d\ge3``,
+
+```julia
+EmpiricalEVMultivariateCopula(U; method=:ols)
+```
+
+first constructs a multivariate Pickands pilot estimator and then projects it
+onto the class induced by a finite discrete spectral measure. This matters
+because convexity and the elementary Pickands bounds are no longer sufficient
+to characterize validity when ``d\ge3``. The multivariate estimators follow
+Gudendorf and Segers [gudendorf2011nonparametric](@cite), and the
+shape-constrained discrete spectral projection follows
+Gudendorf and Segers [gudendorf2012multivariate](@cite).
+
+The resulting object stores a `DiscreteSpectralTail`; consequently the fitted
+STDF is valid by construction and exact spectral sampling is available.
+
+!!! info "The bivariate estimator is still there"
+    `EmpiricalEVCopula` remains the lightweight backward-compatible bivariate
+    implementation. `EmpiricalEVMultivariateCopula` is the shape-constrained
+    arbitrary-dimensional route.
 
 ## Advanced Concepts
 
@@ -68,7 +323,9 @@ To simulate a bivariate extreme value distribution $C(x, y)$, note that if $F_1$
 
 Assume $A$ has a second derivative, making the distribution absolutely continuous. In this case, $Z$ is also absolutely continuous and has a density $g_Z(z)$ given by:
 
-$$g_Z(z) = \frac{d}{dz} G_Z(z) = 1 + (1 - z)^{-1} \left(A(z) - z A'(z)\right)$$
+$$g_Z(z)=1+(1-2z)\frac{A'(z)}{A(z)}
++z(1-z)\left[\frac{A''(z)}{A(z)}
+-\left(\frac{A'(z)}{A(z)}\right)^2\right].$$
 
 The conditional distribution of $W$ given $Z$ is:
 
@@ -80,7 +337,7 @@ $$F(w|z) = w \frac{z(1 - z) A'(z)}{A(z) g_Z(z)} + (w - w \log w) \left(1 - \frac
 
 Given $Z$, the distribution of $W$ is uniform on $(0, 1)$ with probability $p(Z)$ and equals the product of two independent uniforms on $(0, 1)$ with probability $1 - p(Z)$, where:
 
-$$p(z) = \frac{z(1 - z) A'(z)}{A(z) g_Z(z)}$$
+$$p(z) = \frac{z(1-z)A''(z)}{A(z)g_Z(z)}.$$
 
 Since $g_Z(z)$ is the derivative of the cumulative distribution function of $Z$, it holds that $0 \leq p(z) \leq 1$.
 
@@ -94,6 +351,32 @@ For the class of Extreme Value Copulas, We follow the methodology proposed by Gh
     * Return $X = W^{Z/A(Z)}$ and $Y = W^{(1 - Z)/A(Z)}$  
 
 Note that all functions present in the algorithm were previously defined to ensure that the implemented methodology has a solid theoretical basis.
+
+
+### Multivariate sampling and backend routing
+
+The bivariate Ghoudi construction above remains an important part of the EV
+implementation. It is **not** replaced by multivariate sampling.
+
+The public interface is always
+
+```julia
+rand(C, n)
+```
+
+and Copulas.jl chooses the backend internally. A tail with a native bivariate
+Pickands kernel can use the Ghoudi route in ``d=2``; a family with a faster or
+more natural exact multivariate representation can transparently use that
+representation even in dimension two.
+
+!!! tip "You never select the sampler yourself"
+    `rand(LogCopula(2, θ), n)` and `rand(LogCopula(10, θ), n)` have the same
+    public API. The same is true for Galambos, Hüsler-Reiss, Mixed, and
+    extremal-``t``. Backend routing is an implementation detail.
+
+This separation is useful because the best algorithm is family-specific:
+specialized bivariate Pickands sampling is excellent for some tails, whereas
+spectral or max-stable constructions can be dramatically faster for others.
 
 ```@docs; canonical=false
 Tail
@@ -181,6 +464,11 @@ MTail
 NoTail
 ```
 
+### `TawnTail`
+```@docs; canonical=false
+TawnTail
+```
+
 ### `AsymGalambosTail`
 ```@docs; canonical=false
 AsymGalambosTail
@@ -239,6 +527,11 @@ tEVTail
 ### `EmpiricalEVTail`
 ```@docs; canonical=false
 EmpiricalEVTail
+```
+
+### `EmpiricalEVMultivariateTail`
+```@docs; canonical=false
+EmpiricalEVMultivariateTail
 ```
 
 ## References

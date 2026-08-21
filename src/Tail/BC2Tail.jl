@@ -1,29 +1,40 @@
 """
     BC2Tail{T}, BC2Copula{d,T}
 
-    BC2Copula(2, a, b)
+    BC2Copula(a, b)
     BC2Copula(a::AbstractVector)
 
 BC2 extreme-value family with a finite two-atom spectral representation.
 
-The specialized bivariate model uses `a,b ∈ [0,1]` and Pickands function
+For the classical bivariate model [mai2011bivariate](@cite),
 
 ```math
-A(t)=\\max\\{at,b(1-t)\\}+\\max\\{(1-a)t,(1-b)(1-t)\\}.
+A(t)
+=
+\\max\\{at,b(1-t)\\}
++
+\\max\\{(1-a)t,(1-b)(1-t)\\}.
 ```
 
-For `a = (a_1,\\ldots,a_d)`, the vector determines the dimension and
+Copulas.jl also accepts a vector `a=(a₁,…,a_d)` and uses the direct
+`d`-dimensional two-atom spectral extension
 
 ```math
-\\ell(x)=\\max_i(a_ix_i)+\\max_i((1-a_i)x_i).
+\\ell(x)
+=
+\\max_i(a_i x_i)
++
+\\max_i((1-a_i)x_i).
 ```
 
-A vector of length two is reduced to the specialized `BC2Tail`; longer vectors
-use the multivariate discrete-spectral representation.
+The vector length determines `d`; a vector of length two is reduced to the
+specialized bivariate representation.
 
-References:
-
-* [mai2011bivariate](@cite) Mai, J. F., & Scherer, M. (2011). Bivariate extreme-value copulas with discrete Pickands dependence measure. Extremes, 14, 311-324.
+!!! note "Copulas.jl multivariate parameterization"
+    The bivariate BC2 model is documented in [mai2011bivariate](@cite). The
+    vector constructor is the direct higher-dimensional two-atom spectral
+    construction used by Copulas.jl; general finite spectral constructions are
+    discussed in [mai2012simulating](@cite).
 """
 BC2Tail, BC2Copula
 
