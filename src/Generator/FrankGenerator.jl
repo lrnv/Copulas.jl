@@ -76,7 +76,7 @@ end
 ϕ(G::FrankGenerator, t::TaylorSeries.Taylor1{T}) where {T} = -log1p(exp(-t) * expm1(-T(G.θ))) / T(G.θ)
 ϕ⁻¹(G::FrankGenerator, t::TaylorSeries.Taylor1{T}) where {T} = -log(expm1(-T(G.θ) * t) / expm1(-T(G.θ)))
 𝒲₋₁(G::FrankGenerator, d::Int) = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), d) : @invoke 𝒲₋₁(G::Generator, d)
-frailty(G::FrankGenerator) = G.θ > 0 ? Logarithmic(-G.θ) : throw("The frank copula has no frailty when θ < 0")
+frailty(G::FrankGenerator) = G.θ > 0 ? Logarithmic(-G.θ) : nothing
 
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
 

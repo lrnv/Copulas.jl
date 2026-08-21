@@ -1,12 +1,12 @@
 struct ClaytonWilliamsonDistribution{T<:Real} <: Distributions.ContinuousUnivariateDistribution
     θ::T # theta is negative here. 
-    d::Int # d is an integer, at least 2. 
+    d::Int # d is a positive integer.
     function ClaytonWilliamsonDistribution(θ, d)
-        if θ == -1/(d-1)
+        if d > 1 && θ == -1/(d-1)
             return Distributions.Dirac(1)
         end
         @assert θ < 0
-        @assert d > 1
+        @assert d >= 1
         new{typeof(θ)}(θ, d)
     end
     ClaytonWilliamsonDistribution{T}(θ, d) where T = ClaytonWilliamsonDistribution(T(θ), d)
@@ -35,10 +35,18 @@ function Distributions.cdf(D::ClaytonWilliamsonDistribution, x::Real)
     end
     return 1-rez
 end
-function Distributions.rand(rng::Distributions.AbstractRNG, d::ClaytonWilliamsonDistribution)
-    u = rand(rng)
-    Roots.find_zero(x -> (Distributions.cdf(d,x) - u), (0.0, Inf))
+function Distributions.quantile(D::ClaytonWilliamsonDistribution, p::Real)
+    0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
+    iszero(p) && return minimum(D)
+    isone(p) && return maximum(D)
+    return Roots.find_zero(
+        x -> Distributions.cdf(D, x) - p,
+        (minimum(D), maximum(D)),
+        Roots.Bisection(),
+    )
 end
+Distributions.rand(rng::Distributions.AbstractRNG, D::ClaytonWilliamsonDistribution) =
+    Distributions.quantile(D, rand(rng))
 function Distributions.pdf(D::ClaytonWilliamsonDistribution, x::Real)
     return exp(Distributions.logpdf(D, x))
 end

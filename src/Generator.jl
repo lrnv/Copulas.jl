@@ -26,7 +26,7 @@ More methods can be implemented for performance, althouhg there are implement de
 * `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative of the generator
 * `ϕ⁽ᵏ⁾(G::Generator, k::Int, t)` gives the kth derivative of the generator
 * `ϕ⁻¹⁽¹⁾(G::Generator, t)` gives the first derivative of the inverse generator.
-* `𝒲₋₁(G::Generator, d::Int)` gives the Wiliamson d-transform of the generator as a univaraite positive dsitribution.
+* `𝒲₋₁(G::Generator, d::Real)` gives the inverse Williamson transform of the generator as a positive univariate distribution. Positive non-integer orders use an exact beta reduction from `ceil(Int, d)`.
 
 References:
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
@@ -90,9 +90,20 @@ struct WGenerator <: Generator end
 
 
 """
-    𝒲₋₁(G::Generator, d::Int)
+    𝒲₋₁(G::Generator, d::Real)
 
-Computes the inverse Williamson d-transform of the d-monotone archimedean generator ϕ, represented by G::Generator. 
+Computes the inverse Williamson transform of the monotone Archimedean generator
+`G` at a positive real order `d`.
+
+For an integer order, the generic implementation uses the classical inversion
+formula below, while more specific generator families may provide an exact or
+faster radial distribution. For non-integer `d`, it first inverts at
+`n = ceil(Int, d)` and returns the law of `Rₙ * B`, where
+`B ~ Beta(d, n-d)` is independent of `Rₙ = 𝒲₋₁(G, n)`. Consequently,
+`ceil(d) <= max_monotony(G)` is required. Integer-valued orders retain the
+specialized integer dispatch path. If `G = 𝒲(X, source_order)` retains its
+source radial, every `d <= source_order` is instead reduced directly from `X`;
+the ceiling condition is then unnecessary.
 
 A ``d``-monotone archimedean generator is a function ``\\phi`` on ``\\mathbb R_+`` that has these three properties:
 - ``\\phi(0) = 1`` and ``\\phi(Inf) = 0``
@@ -120,9 +131,19 @@ struct 𝒲₋₁{TG, TO<:Integer} <: Distributions.ContinuousUnivariateDistribu
     order::TO
     function 𝒲₋₁(G::Generator, d::Integer)
         @assert max_monotony(G) ≥ d
-        d ≥ 2 || throw(ArgumentError("the Williamson inverse order must be at least 2"))
+        d ≥ 1 || throw(ArgumentError("the Williamson inverse order must be at least 1"))
         return new{typeof(G), typeof(d)}(G, d)
     end
+end
+
+function 𝒲₋₁(G::Generator, d::Real)
+    isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
+    n = ceil(Int, d)
+    n <= max_monotony(G) || throw(ArgumentError(
+        "cannot invert a generator of maximal monotonicity $(max_monotony(G)) at order $d",
+    ))
+    isinteger(d) && return 𝒲₋₁(G, n)
+    return WilliamsonBetaProduct(𝒲₋₁(G, n), Distributions.Beta(d, n - d), n)
 end
 function Distributions.cdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
@@ -166,20 +187,41 @@ end
 
 # Radial law of a lower-order margin. If ψ = W_D(F_R), Dirichlet
 # aggregation gives W_d⁻¹(ψ) = Law(RB), B ~ Beta(d, D-d), independently.
-struct WilliamsonBetaProduct{TX, TB} <: Distributions.ContinuousUnivariateDistribution
+struct WilliamsonBetaProduct{TX,TB,TO} <: Distributions.ContinuousUnivariateDistribution
     X::TX
     B::TB
+    # Keep the exact originating order: reconstructing it as a + b from the
+    # Beta parameters can lose structural identities through floating rounding.
+    source_order::TO
 end
 
-function WilliamsonBetaProduct(X::WilliamsonBetaProduct, B::Distributions.Beta)
-    inner_target, inner_gap = Distributions.params(X.B)
-    outer_target, outer_gap = Distributions.params(B)
-    if outer_target + outer_gap == inner_target
-        source_order = inner_target + inner_gap
-        merged_beta = Distributions.Beta(outer_target, source_order - outer_target)
-        return WilliamsonBetaProduct(X.X, merged_beta)
+_williamson_beta_source_order(B::Distributions.Beta) = sum(Distributions.params(B))
+WilliamsonBetaProduct(X, B::Distributions.Beta) =
+    WilliamsonBetaProduct(X, B, _williamson_beta_source_order(B))
+
+function WilliamsonBetaProduct(
+    X::WilliamsonFromFrailty, B::Distributions.Beta, source_order::Real,
+)
+    target_order = first(Distributions.params(B))
+    source_order == X.order ||
+        return WilliamsonBetaProduct{typeof(X),typeof(B),typeof(source_order)}(
+            X, B, source_order,
+        )
+    return WilliamsonFromFrailty(X.frailty_dist, target_order)
+end
+
+function WilliamsonBetaProduct(
+    X::WilliamsonBetaProduct, B::Distributions.Beta, source_order::Real,
+)
+    inner_target = first(Distributions.params(X.B))
+    outer_target = first(Distributions.params(B))
+    if source_order == inner_target
+        merged_beta = Distributions.Beta(outer_target, X.source_order - outer_target)
+        return WilliamsonBetaProduct(X.X, merged_beta, X.source_order)
     end
-    return WilliamsonBetaProduct{typeof(X), typeof(B)}(X, B)
+    return WilliamsonBetaProduct{typeof(X),typeof(B),typeof(source_order)}(
+        X, B, source_order,
+    )
 end
 
 function Distributions.cdf(dist::WilliamsonBetaProduct, x::Real)
@@ -223,12 +265,34 @@ Distributions.rand(rng::Distributions.AbstractRNG, dist::WilliamsonBetaProduct) 
 Base.minimum(dist::WilliamsonBetaProduct) = zero(float(Base.minimum(dist.X)))
 Base.maximum(dist::WilliamsonBetaProduct) = Base.maximum(dist.X)
 
+function _positive_distribution_quantile(dist, p::Real)
+    lo = float(Base.minimum(dist))
+    hi = float(Base.maximum(dist))
+    if !isfinite(hi)
+        hi = max(one(lo), lo + one(lo))
+        while Distributions.cdf(dist, hi) < p
+            hi *= 2
+            isfinite(hi) || return hi  # fallback for unbounded case
+        end
+    end
+    # Ensure we have a valid bracket
+    cdf_lo = Distributions.cdf(dist, lo)
+    cdf_hi = Distributions.cdf(dist, hi)
+    if !(cdf_lo <= p <= cdf_hi)
+        # If bracketing fails, use a more robust method
+        return Roots.find_zero(x -> Distributions.cdf(dist, x) - p, (lo, hi))
+    end
+    objective(x) = x == lo ? -p :
+                   x == hi ? one(p) - p :
+                   Distributions.cdf(dist, x) - p
+    return Roots.find_zero(objective, (lo, hi), Roots.Bisection())
+end
+
 function Distributions.quantile(dist::WilliamsonBetaProduct, p::Real)
     0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
     iszero(p) && return Base.minimum(dist)
     isone(p) && return Base.maximum(dist)
-    return Roots.find_zero(x -> Distributions.cdf(dist, x) - p,
-                           (Base.minimum(dist), Base.maximum(dist)))
+    return _positive_distribution_quantile(dist, p)
 end
 
 
@@ -252,7 +316,7 @@ Constructor
 
 The `𝒲` type (also available as `WilliamsonGenerator`) constructs a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation is implemented fully generically in the package.
 
-For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a real order ``d\\ge 2``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
+For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a positive real order ``d``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
 
 ```math
 \\phi(t) = 𝒲_{d}(X)(t) = \\int_{t}^{\\infty} \\left(1 - \\frac{t}{x}\\right)^{d-1} dF(x) = \\mathbb E\\left( (1 - \\frac{t}{X})^{d-1}_+\\right) \\mathbb 1_{t > 0} + \\left(1 - F(0)\\right)\\mathbb 1_{t <0}
@@ -287,7 +351,7 @@ struct 𝒲{TX, TO<:Real} <: Generator
     X::TX
     order::TO
     function 𝒲(X, d::Real)
-        isfinite(d) && d ≥ 2 || throw(ArgumentError("the Williamson order must be finite and at least 2"))
+        isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
         if X isa Distributions.DiscreteNonParametric
             # If X has finite, positive support, build an empirical generator
             sp = collect(Distributions.support(X))
@@ -300,7 +364,7 @@ struct 𝒲{TX, TO<:Real} <: Generator
         return new{typeof(X), typeof(d)}(X, d)
     end
     function 𝒲(r::AbstractVector, w::AbstractVector, d::Real)
-        isfinite(d) && d ≥ 2 || throw(ArgumentError("the Williamson order must be finite and at least 2"))
+        isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
         length(r) == length(w) || throw(ArgumentError("length(r) != length(w)"))
         !isempty(r) || throw(ArgumentError("no atoms given"))
         all(isfinite, r) && all(>=(0), r) || throw(ArgumentError("atoms must be positive and finite"))
@@ -357,7 +421,9 @@ end
 function _williamson_inverse_preserved(G::𝒲, d::Real)
     isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
     d == G.order && return G.X
-    d < G.order && return WilliamsonBetaProduct(G.X, Distributions.Beta(d, G.order - d))
+    d < G.order && return WilliamsonBetaProduct(
+        G.X, Distributions.Beta(d, G.order - d), G.order,
+    )
     throw(ArgumentError("cannot invert a Williamson transform above its source order $(G.order)"))
 end
 𝒲₋₁(G::𝒲, d::Integer) = _williamson_inverse_preserved(G, d)
@@ -367,8 +433,8 @@ function 𝒲(X::𝒲₋₁, d::Real)
     return invoke(𝒲, Tuple{Any, Real}, X, d)
 end
 function 𝒲(X::WilliamsonBetaProduct, d::Real)
-    target_order, order_gap = Distributions.params(X.B)
-    d == target_order && return 𝒲(X.X, target_order + order_gap)
+    target_order = first(Distributions.params(X.B))
+    d == target_order && return 𝒲(X.X, X.source_order)
     return invoke(𝒲, Tuple{Any, Real}, X, d)
 end
 
@@ -605,7 +671,7 @@ References:
 FrailtyGenerator
 
 abstract type AbstractFrailtyGenerator<:Generator end
-frailty(::AbstractFrailtyGenerator) = throw("This generator was not defined as it should, you should provide its frailty")
+frailty(::Generator) = nothing
 max_monotony(::AbstractFrailtyGenerator) = Inf
 ϕ(G::AbstractFrailtyGenerator, t) = Distributions.mgf(frailty(G), -t)
 𝒲₋₁(G::AbstractFrailtyGenerator, d::Int) = WilliamsonFromFrailty(frailty(G), d)

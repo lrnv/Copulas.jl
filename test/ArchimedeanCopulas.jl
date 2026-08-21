@@ -18,7 +18,6 @@
     # Exact truncated negative moment of LogNormal(0, 1).
     Glognormal = 𝒲(LogNormal(), 2)
     @test Copulas.ϕ⁽¹⁾(Glognormal, 0.1) ≈ -exp(0.5) * ccdf(Normal(), log(0.1) + 1)
-    @test_throws ArgumentError 𝒲(X, 1.5)
 
     @test Copulas.𝒲₋₁(Greal, 4.5) === X
     radial = Copulas.𝒲₋₁(Greal, 2.0)
@@ -34,6 +33,7 @@
     nested = Copulas.WilliamsonBetaProduct(radial, Beta(1.0, 1.0))
     @test nested.X === X
     @test Distributions.params(nested.B) == (1.0, 3.5)
+    @test nested.source_order == Greal.order
     recovered = 𝒲(radial, 2.0)
     @test recovered.X === X
     @test recovered.order == 4.5

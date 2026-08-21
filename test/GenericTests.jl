@@ -288,6 +288,15 @@ append!(Bestiary, [
             leaves = [1], children = [GumbelCopula{2}(3.0)])]),                    # d=4, depth three
     NestedArchimedeanCopula{3}(Copulas.ClaytonGenerator(1.0);
         leaves = [1], children = [FrankCopula{2}(5.0) => [2, 3]]),                 # d=3, mixed panel + leaf
+    # Keep new families at the end so extending the bestiary does not perturb
+    # the deterministic samples used by pre-existing stochastic regressions.
+    LiouvilleCopula{2}(Copulas.𝒲(Dirac(1.0), 3.0), (1.0, 1.5)),
+    LiouvilleCopula{2}(Copulas.𝒲(Pareto(1.0), 3.0), (0.75, 1.25)),
+    LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
+    LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (0.75, 1.25)),
+    LiouvilleCopula{2}(Copulas.ClaytonGenerator(-0.25), (0.75, 1.25)),
+    LiouvilleCopula{2}(Copulas.AMHGenerator(0.5), (0.75, 1.25)),
+    LiouvilleCopula{3}(Copulas.ClaytonGenerator(1.0), (0.75, 1.0, 1.25)),
 ])
 
 macro testif(cond, args...)
@@ -332,6 +341,7 @@ check_corkendall(C::EmpiricalCopula) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
+check_corkendall(C::LiouvilleCopula) = false
 check_corkendall(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 
 is_archimedean_with_generator(C::Copulas.Copula) = false
@@ -350,6 +360,8 @@ can_integrate_pdf(C::EmpiricalCopula) = false
 can_integrate_pdf(C::Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}) = false
 can_integrate_pdf(C::Copulas.ExtremeValueCopula{2, <:Copulas.EmpiricalEVTail}) = false
 can_integrate_pdf(C::CheckerboardCopula) = false
+can_integrate_pdf(C::LiouvilleCopula) = false
+can_integrate_pdf(C::LiouvilleCopula{d,<:Copulas.ClaytonGenerator}) where {d} = C.G.θ > 0
 
 can_ad(C::Copulas.Copula) = can_pdf(C)
 can_ad(C::FrankCopula) = C.G.θ < 100
@@ -359,6 +371,7 @@ can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.tEVTail}) = false
 can_ad(C::TCopula) = false
 can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail}) = false
 can_ad(C::Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}) = false
+can_ad(C::LiouvilleCopula) = false
 
 is_bivariate(C::Copulas.Copula) = (length(C) == 2)
 has_subsetdims(C::Copulas.Copula) = !is_bivariate(C)
