@@ -54,7 +54,16 @@ struct HuslerReissTail{T} <: AbstractUnivariateTail2
 end
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
 _is_valid_in_dim(::HuslerReissTail, d::Int) = d >= 2
-_ev_sampling_backend(::ExtremeValueCopula{2,<:HuslerReissTail}) = Val(:multivariate)
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:HuslerReissTail},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch(
+        "output must have two rows for a bivariate Hüsler-Reiss copula",
+    ))
+    return _rand_hr_exchangeable!(rng, C, X)
+end
 Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
 
 """
@@ -406,13 +415,28 @@ function _hr_rand_multivariate!(rng::Distributions.AbstractRNG, Γ::AbstractMatr
     return X
 end
 
-function _rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+function _rand_hr_exchangeable!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:HuslerReissTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
     γ = abs2(2 / C.tail.θ)
     Γ = fill(float(γ), d, d)
     @inbounds for i in 1:d
         Γ[i, i] = 0.0
     end
     return _hr_rand_multivariate!(rng, Γ, X)
+end
+
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:HuslerReissTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
+    return _rand_hr_exchangeable!(rng, C, X)
 end
 
 
@@ -428,7 +452,14 @@ end
 
 Distributions._logpdf(C::ExtremeValueCopula{d,<:HuslerReissVariogramTail}, u,) where {d} = _ev_logpdf_from_partials(C, u)
 
-function _rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissVariogramTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:HuslerReissVariogramTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
     return _hr_rand_multivariate!(rng, C.tail.Γ, X)
 end
 

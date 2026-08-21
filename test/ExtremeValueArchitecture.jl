@@ -100,35 +100,60 @@ using Random
         end
     end
 
-    @testset "sampling backend routing" begin
-        @test Copulas._ev_sampling_backend(LogCopula(2, 2.0)) isa Val{:bivariate}
-        @test Copulas._ev_sampling_backend(MixedCopula(2, 0.5)) isa Val{:multivariate}
-        @test Copulas._ev_sampling_backend(GalambosCopula(2, 0.7)) isa Val{:multivariate}
-        @test Copulas._ev_sampling_backend(HuslerReissCopula(2, 1.0)) isa Val{:multivariate}
-        @test Copulas._ev_sampling_backend(tEVCopula(2, 4.0, 0.5)) isa Val{:multivariate}
+    @testset "sampling direct dispatch" begin
+        function check_direct_sampler(C, sampler!)
+            Xdispatch = zeros(length(C), 32)
+            Xdirect = similar(Xdispatch)
 
-        for C in (
-            LogCopula(2, 2.0),
-            MixedCopula(2, 0.5),
-            GalambosCopula(2, 0.7),
-            HuslerReissCopula(2, 1.0),
-            tEVCopula(2, 4.0, 0.5),
-        )
-            Xroute = zeros(2, 32)
-            Xdirect = similar(Xroute)
-            rng_route = Random.Xoshiro(20260820)
+            rng_dispatch = Random.Xoshiro(20260820)
             rng_direct = Random.Xoshiro(20260820)
-            backend = Copulas._ev_sampling_backend(C)
 
-            Distributions._rand!(rng_route, C, Xroute)
-            if backend isa Val{:bivariate}
-                Copulas._rand_ev_bivariate!(rng_direct, C, Xdirect)
-            else
-                Copulas._rand_ev_multivariate!(rng_direct, C, Xdirect)
-            end
-            @test Xroute == Xdirect
+            Distributions._rand!(rng_dispatch, C, Xdispatch)
+            sampler!(rng_direct, C, Xdirect)
+
+            @test Xdispatch == Xdirect
         end
 
+        # Tail2 default: the bivariate Logistic model uses the native
+        # Ghoudi/Pickands sampler.
+        check_direct_sampler(
+            LogCopula(2, 2.0),
+            Copulas._rand_ghoudi!,
+        )
+
+        # These families have preferable exact/spectral samplers in d=2.
+        check_direct_sampler(
+            MixedCopula(2, 0.5),
+            (rng, C, X) ->
+                Copulas._mixed_rand_multivariate!(rng, C.tail, X),
+        )
+
+        check_direct_sampler(
+            GalambosCopula(2, 0.7),
+            Copulas._rand_galambos_spectral!,
+        )
+
+        check_direct_sampler(
+            HuslerReissCopula(2, 1.0),
+            Copulas._rand_hr_exchangeable!,
+        )
+
+        check_direct_sampler(
+            tEVCopula(2, 4.0, 0.5),
+            (rng, C, X) ->
+                Copulas._tev_rand_multivariate!(
+                    rng,
+                    C.tail.ν,
+                    Copulas._tev_exchangeable_correlation(
+                        2,
+                        C.tail.ρ,
+                    ),
+                    X,
+                ),
+        )
+
+        # The same public families remain sampleable in higher dimensions;
+        # dispatch selects their concrete multivariate implementation.
         for C in (
             LogCopula(10, 2.0),
             MixedCopula(10, 0.5),

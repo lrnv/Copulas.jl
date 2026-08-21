@@ -572,20 +572,13 @@ _available_fitting_methods(
     dim,
 ) where {d} = (:ols, :cfg, :pickands)
 
-_rand_ev_multivariate!(
+function Distributions._rand!(
     rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail},
     X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _discrete_spectral_rand!(rng, C.tail.spectral, X)
-
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:EmpiricalEVMultivariateTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate empirical spectral EV copula",
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
     ))
     return _discrete_spectral_rand!(rng, C.tail.spectral, X)
 end

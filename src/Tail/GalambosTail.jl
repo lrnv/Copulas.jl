@@ -45,7 +45,6 @@ end
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
-_ev_sampling_backend(::ExtremeValueCopula{2,<:GalambosTail}) = Val(:multivariate)
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:GalambosTail}, d, θ) = [log(θ.θ)]           # θ > 0
 _rebound_params(::Type{<:GalambosTail}, d, α) = (; θ = exp(α[1]))
@@ -140,7 +139,7 @@ end
 # Exact spectral sampler for the multivariate negative-logistic/Galambos model.
 # The common scale of the Weibull/Gamma construction cancels after
 # normalization to the simplex.
-function _rand_ev_multivariate!(
+function _rand_galambos_spectral!(
     rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{d,<:GalambosTail},
     X::AbstractMatrix{T},
@@ -182,6 +181,33 @@ function _rand_ev_multivariate!(
         end
     end
     return X
+end
+
+
+# Galambos uses its exact spectral sampler directly through Julia dispatch.
+# This also applies in d=2, where it is substantially faster than the generic
+# bivariate Ghoudi/Pickands sampler.
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:GalambosTail},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch(
+        "output must have two rows for a bivariate Galambos copula",
+    ))
+    return _rand_galambos_spectral!(rng, C, X)
+end
+
+
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:GalambosTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
+    return _rand_galambos_spectral!(rng, C, X)
 end
 
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)

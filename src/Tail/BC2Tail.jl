@@ -216,9 +216,13 @@ Distributions.params(tail::BC2MultivariateTail) = (a = tail.a,)
 _is_valid_in_dim(tail::BC2MultivariateTail, d::Int) = length(tail.a) == d
 ℓ(tail::BC2MultivariateTail, x) = ℓ(tail.spectral, x)
 
-_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:BC2MultivariateTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _discrete_spectral_rand!(rng, C.tail.spectral, X)
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BC2MultivariateTail}, X::AbstractMatrix{T},) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate BC2 copula",))
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:BC2MultivariateTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
     return _discrete_spectral_rand!(rng, C.tail.spectral, X)
 end

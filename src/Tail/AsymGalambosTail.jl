@@ -435,13 +435,13 @@ function _asymgal_rand_multivariate!(rng::Distributions.AbstractRNG, tail::AsymG
     return X
 end
 
-_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:AsymGalambosMultiTail}, X::AbstractMatrix{T},) where {d,T<:Real} =
-    _asymgal_rand_multivariate!(rng, C.tail, X)
-
-# The generic d=2 EV sampler uses Pickands A/dA. This tail is represented
-# directly through its multivariate STDF, so force the exact max-mixture
-# sampler in dimension two as well.
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:AsymGalambosMultiTail}, X::AbstractMatrix{T},) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate asymmetric Galambos copula",))
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:AsymGalambosMultiTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
     return _asymgal_rand_multivariate!(rng, C.tail, X)
 end
