@@ -85,7 +85,7 @@ There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://g
 | - Obscure Bivariate      | ✔️                      | ❌                     | ❌                    |
 | - Classic Multivariate   | ✔️                      | ✔️                     | ❌                    |
 | - Archimedeans           | ✔️ All of them          | ⚠️ Selected ones       | ⚠️Selected ones       |
-| - Extreme Value Copulas  | ⚠️ Bivariate only       | ❌                     | ❌                    |
+| - Extreme Value Copulas  | ✔️ Bivariate + multivariate | ❌                  | ❌                    |
 | - Archimax               | ⚠️ Bivariate only       | ❌                     | ❌                    |
 | - Archimedean Chains     | ❌                      | ✔️                     | ❌                    |
 

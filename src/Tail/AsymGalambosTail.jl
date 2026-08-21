@@ -7,33 +7,39 @@
 
 Asymmetric Galambos (negative-logistic) extreme-value family.
 
-The first form is the specialized bivariate representation with `α ≥ 0` and
-`θ₁, θ₂ ∈ [0,1]`. Its Pickands dependence function is
+The first constructor is the specialized bivariate kernel. The full
+multivariate implementation uses a subset-based negative-logistic/min-stable
+construction of the type developed by Joe [Joe1990](@cite). For nonempty
+subsets `C`,
 
 ```math
-A(t)
+\\ell(x)
 =
-1-\\left[(\\theta_1t)^{-\\alpha}+(\\theta_2(1-t))^{-\\alpha}\\right]^{-1/\\alpha}.
+\\sum_C
+\\ell_{\\mathrm{Galambos},\\alpha_C}
+\\bigl((\\beta_{i,C}x_i)_{i\\in C}\\bigr),
 ```
 
-`AsymGalambosCopula(α, weights)` is a multivariate convenience submodel. The
-length of `weights` determines `d`; one Galambos component acts on the full
-coordinate set and singleton components provide the remaining marginal mass.
+with nonnegative asymmetry weights satisfying the marginal normalization
+constraints.
 
-`AsymGalambosCopula(d, dep, asy)` exposes the full subset construction, with
-`length(dep) = 2^d-d-1` and `length(asy) = 2^d-1`. The asymmetry weights
-involving each margin must sum to one.
+`AsymGalambosCopula(d, dep, asy)` exposes the full subset representation.
 
-For `d = 2`, `AsymGalambosCopula(α, [θ₁, θ₂])` reproduces the specialized
-bivariate model.
+`AsymGalambosCopula(α, weights)` is a Copulas.jl convenience
+parameterization: one full-set negative-logistic component is combined with
+singleton remainders. In `d=2` it reproduces the specialized asymmetric
+Galambos model.
 
-Special cases of the specialized/convenience parameterization include
-independence at `α = 0` (or zero full-set weights) and the symmetric Galambos
-model when all full-set weights equal one.
+!!! note "Literature model versus package parameterization"
+    [Joe1990](@cite) supports the multivariate min-stable/negative-logistic
+    construction. The one-full-set-plus-singletons `weights` constructor is a
+    convenience parameterization introduced at the implementation level in
+    Copulas.jl.
 
 References:
 
-* [Joe1990](@cite) Joe, H. (1990). Families of min-stable multivariate exponential and multivariate extreme value distributions.
+* [galambos1975order](@cite)
+* [Joe1990](@cite)
 """
 AsymGalambosTail, AsymGalambosCopula
 

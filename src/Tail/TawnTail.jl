@@ -2,19 +2,36 @@
     TawnTail(d, dep, asy)
     TawnTail(α, weights)
 
-Multivariate asymmetric logistic stable tail dependence function of Tawn. For
-each nonempty subset ``C`` of ``\\{1,\\ldots,d\\}``, the general representation
-combines weighted logistic components,
+Multivariate asymmetric-logistic stable tail dependence function. The full
+subset representation follows Tawn's multivariate extreme-value construction
+[tawn1990multivariate](@cite):
 
 ```math
 \\ell(x)
 =
-\\sum_C
-\\left[\\sum_{i\\in C}(\\beta_{i,C}x_i)^{\\alpha_C}\\right]^{1/\\alpha_C},
+\\sum_{\\varnothing\\ne C\\subseteq\\{1,\\ldots,d\\}}
+\\left[
+\\sum_{i\\in C}(\\beta_{i,C}x_i)^{\\alpha_C}
+\\right]^{1/\\alpha_C},
 ```
 
-with ``\\alpha_C\\ge1``, ``\\beta_{i,C}\\ge0``, and
-``\\sum_{C\\ni i}\\beta_{i,C}=1`` for every margin.
+with `α_C ≥ 1`, `β_{i,C} ≥ 0`, `β_{i,C}=0` for `i ∉ C`, and
+
+```math
+\\sum_{C\\ni i}\\beta_{i,C}=1
+```
+
+for every margin.
+
+`TawnTail(d, dep, asy)` exposes the full subset model. `TawnTail(α, weights)`
+is a Copulas.jl convenience parameterization with one full-set logistic
+component plus singleton remainders; it is a structured submodel of the same
+valid Tawn representation, not a separate literature family.
+
+References:
+
+* [tawn1988bivariate](@cite) for the bivariate precursor.
+* [tawn1990multivariate](@cite) for the multivariate model.
 """
 struct TawnTail{T} <: Tail
     d::Int

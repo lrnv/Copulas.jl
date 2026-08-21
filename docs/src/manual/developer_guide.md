@@ -249,49 +249,149 @@ Only fitting routines or dependence metrics need to be added if the defaults are
 
 ## 2.2 Extreme-Value copulas
 
-Bivariate Extreme-Value (EV) copulas are defined by a stable tail dependence function `ℓ` and the associated **Pickands dependence function** `A`.
-To implement a new bivariate Extreme-Value family, define a subtype of [`Tail`](@ref) with the following methods:
+Extreme-value copulas are represented by an [`ExtremeValueCopula`](@ref)
+containing a stable tail dependence function object, [`Tail`](@ref). The
+dimension-free mathematical identity is
 
-```julia
-struct MyTail{T} <: Tail
-    θ::T
-end
-const MyEVCopula{d,T} = ExtremeValueCopula{d, MyTail{T}}
-ℓ(T::MyTail, x, y) = ...
-A(T::MyTail, t) = ...
-Distributions.params(T::MyTail) = (θ = T.θ,)
+```math
+C(\boldsymbol u)=\exp\{-\ell(-\log\boldsymbol u)\}.
 ```
 
-### Required methods
+The EV API deliberately separates the mathematical family from computational
+capabilities.
 
-| Method                    | Purpose                                                            | Required    |
-| ------------------------- | ------------------------------------------------------------------ | ----------- |
-| `A(T, t)` or `ℓ(T, x, y)` | Pickands dependence function   OR stable tail dependence function  | ✅          |
-| `Distributions.params(T)` | Return parameters as a `NamedTuple`                                | ✅          |
-| `dA(T, t)`                | Derivative of the Pickands function                                | ⚙️ Optional |
-| `d²A(T, t)`               | Second derivative of the Pickands function                         | ⚙️ Optional |
+### `Tail`: the mathematical STDF interface
 
-!!! note "ℓ function"
-    For Extreme-Value copulas, the `ℓ` function is mandatory only for multivariate extensions.
-    For Bivariate EV copulas, it is sufficient to implement the Pickands function `A`.
+A multivariate EV tail should subtype `Tail`, declare its dimensional validity,
+and implement its STDF:
 
-Once `A` or `ℓ` is provided, `Copulas.jl` automatically handles the rest of the API.
+```julia
+struct MyTail{T} <: Copulas.Tail
+    θ::T
+end
 
-!!! note "Inherited interfaces in structured families"
-    For structured copula families such as **Archimedean** and **Extreme-Value**,
-    most of the general interface (`cdf`, `logpdf`, `rand`, `fit`, etc.) is already implemented internally in `Copulas.jl`.
+Copulas._is_valid_in_dim(::MyTail, d::Int) = d >= 2
+Copulas.ℓ(tail::MyTail, x) = ...
+Distributions.params(tail::MyTail) = (; θ = tail.θ)
+```
 
+`ExtremeValueCopula(d, tail)` checks `_is_valid_in_dim(tail, d)` at
+construction time.
 
-Therefore, these methods are **not mandatory** for each new subtype.  
-Defining the corresponding *core component* — the `Generator` (for Archimedean) or the `Tail` (for Extreme-Value) —  
-is sufficient to automatically enable the entire probability interface, fitting routines, and dependence measures.
+### `Tail2`: a bivariate capability, not necessarily a dimension restriction
 
-In other words:
-- The only **mandatory** definitions are those listed in each sub-API table (`ϕ`, `max_monotony` for Archimedean; `A` for Extreme-Value).  
-- All other methods become **optional overrides**, recommended only when analytical or more stable forms are available.
+`Tail2 <: Tail` means that the tail has a native scalar Pickands kernel:
 
+```julia
+struct MyTail{T} <: Copulas.Tail2
+    θ::T
+end
 
+Copulas.A(tail::MyTail, t::Real) = ...
+```
 
+The default validity of `Tail2` is `d == 2`. If the same mathematical tail has a
+valid STDF in higher dimension, opt in explicitly:
+
+```julia
+Copulas._is_valid_in_dim(::MyTail, d::Int) = d >= 2
+Copulas.ℓ(tail::MyTail, x) = ...
+```
+
+This is the pattern used by families such as Logistic, Galambos,
+Hüsler-Reiss, Mixed, extremal-``t``, and Cuadras-Augé.
+
+!!! info "Why keep `Tail2`?"
+    A multivariate family can still have exceptionally good analytic formulas
+    in dimension two. `Tail2` lets the package retain `A`, `dA`, `d²A`,
+    conditional distortions, and the Ghoudi sampler without pretending that the
+    mathematical family stops at ``d=2``.
+
+### Constructor convention
+
+Public constructors should reflect the mathematical parameterization:
+
+- scalar/exchangeable parameters: `FamilyCopula(d, θ...)`;
+- a matrix or vector that determines dimension: `FamilyCopula(structured_parameter...)`;
+- a full subset parameterization: explicit `d` when needed for validation.
+
+A public constructor may map a ``2\times2`` matrix to a specialized scalar tail
+and a larger matrix to a general tail. Do not use the concrete stored tail type
+as the public family identity.
+
+### Density interface
+
+For ``x_i=-\log u_i``, an absolutely continuous EV density can be written
+
+```math
+c(\boldsymbol u)
+=
+\frac{\exp\{-\ell(\boldsymbol x)\}}{\prod_i u_i}
+\sum_{\pi\in\Pi_d}
+(-1)^{d+|\pi|}
+\prod_{B\in\pi}\partial_B\ell(\boldsymbol x),
+```
+
+where ``\Pi_d`` is the set of partitions of ``\{1,\ldots,d\}``.
+
+The generic multivariate path therefore needs mixed STDF partials. The relevant
+extension hooks are:
+
+| Method | Meaning |
+|---|---|
+| `ellpartial(tail, x, I)` | mixed partial ``\partial_I\ell`` |
+| `_ellpartial_signlog(tail, x, I)` | numerically stable sign/log-absolute form |
+| `A`, `dA`, `d²A` | native bivariate Pickands kernel |
+
+The generic `ellpartial` fallback uses automatic differentiation recursively.
+Analytic sign/log implementations are preferred for numerically difficult
+families and for higher-dimensional density evaluation.
+
+### Sampling interface and routing
+
+The required public behavior is simply
+
+```julia
+rand(C, n)
+```
+
+The generic EV implementation routes this operation internally:
+
+```julia
+Copulas._ev_sampling_backend(C)
+# Val(:bivariate) or Val(:multivariate)
+```
+
+A `Tail2` in ``d=2`` defaults to the bivariate Ghoudi route. A family with a
+better exact multivariate sampler can opt into it:
+
+```julia
+Copulas._ev_sampling_backend(
+    ::ExtremeValueCopula{2,<:MyTail},
+) = Val(:multivariate)
+```
+
+The current benchmark-driven routing keeps Logistic on its specialized
+bivariate route and uses the multivariate route in dimension two for Galambos,
+Hüsler-Reiss, Mixed, and extremal-``t``.
+
+More specific family `_rand!` methods are still allowed for singular,
+discrete-spectral, or shock models.
+
+!!! warning "Internal, non-stable API"
+    `_ev_sampling_backend`, `_rand_ev_bivariate!`,
+    `_rand_ev_multivariate!`, and `_ellpartial_signlog` are contributor-facing
+    internals. Public user code should call `rand`, `cdf`, `pdf`, etc.
+
+### Source organization
+
+One source file corresponds to one mathematical family. A family can contain
+multiple internal representations in that file; for example an optimized
+bivariate tail and a general matrix/subset tail. This keeps family semantics
+together while allowing dispatch to specialize the computational backend.
+
+See [Extreme Value family](@ref Extreme_theory) for the user-facing theory,
+constructor table, bivariate Ghoudi development, and model documentation.
 
 ## 2.3 Elliptical copulas
 

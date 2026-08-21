@@ -3,33 +3,41 @@
 
     MixedCopula(d, θ)
 
-Mixed extreme-value model with `θ ∈ [0,1]`. In dimension two its Pickands
-dependence function is
+Mixed extreme-value model with `θ ∈ [0,1]`.
+
+In dimension two its Pickands dependence function is
 
 ```math
-A(t)=\\theta t^2-\\theta t+1.
+A(t)=1-\\theta t(1-t).
 ```
 
-For `d ≥ 2`, Copulas.jl uses the stable-tail extension
+The original bivariate model is described by Tawn
+[tawn1988bivariate](@cite).
+
+For `d ≥ 2`, Copulas.jl uses the dimension-free extension
 
 ```math
-\\ell(x)
+\\ell_{\\mathrm{Mixed},\\theta}(x)
 =
 (1-\\theta)\\sum_{i=1}^d x_i
 +
-\\theta\\,\\ell_{\\mathrm{Galambos},1}(x),
+\\theta,\\ell_{\\mathrm{Galambos},1}(x).
 ```
 
-which reproduces the historical bivariate model exactly. This extension is a
-convex combination of valid stable tail dependence functions.
+This is a convex combination of the independence STDF and the multivariate
+Galambos STDF with parameter one, hence it is a valid STDF in every supported
+dimension. In `d=2` it reduces exactly to the historical Mixed Pickands model.
+
+!!! note "Copulas.jl implementation derivation"
+    The cited Tawn paper supports the original bivariate Mixed family and
+    [galambos1975order](@cite) supports the negative-logistic component. The
+    dimension-free convex-combination identity above is the extension derived
+    and used in Copulas.jl; it is not attributed here as a formula from either
+    source.
 
 Special case:
 
 * `θ = 0` returns `IndependentCopula(d)`.
-
-References:
-
-* [tawn1988bivariate](@cite) Tawn, J. A. (1988). Bivariate extreme value theory: models and estimation. Biometrika, 75(3), 397-415.
 """
 MixedTail, MixedCopula
 
