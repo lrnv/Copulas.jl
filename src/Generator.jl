@@ -272,8 +272,15 @@ function _positive_distribution_quantile(dist, p::Real)
         hi = max(one(lo), lo + one(lo))
         while Distributions.cdf(dist, hi) < p
             hi *= 2
-            isfinite(hi) || return hi
+            isfinite(hi) || return hi  # fallback for unbounded case
         end
+    end
+    # Ensure we have a valid bracket
+    cdf_lo = Distributions.cdf(dist, lo)
+    cdf_hi = Distributions.cdf(dist, hi)
+    if !(cdf_lo <= p <= cdf_hi)
+        # If bracketing fails, use a more robust method
+        return Roots.find_zero(x -> Distributions.cdf(dist, x) - p, (lo, hi))
     end
     objective(x) = x == lo ? -p :
                    x == hi ? one(p) - p :

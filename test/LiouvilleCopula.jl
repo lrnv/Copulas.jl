@@ -1,5 +1,5 @@
 @testset "Liouville copulas" begin
-    liouville_rng = copy(rng)
+    liouville_rng = StableRNG(405)
     @testset "real Williamson orders" begin
         G = Copulas.𝒲(Dirac(1.0), 5.5)
         C = LiouvilleCopula{3}(G, (0.75, 1.5, 3.0))

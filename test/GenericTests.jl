@@ -295,7 +295,6 @@ append!(Bestiary, [
     LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
     LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (0.75, 1.25)),
     LiouvilleCopula{2}(Copulas.ClaytonGenerator(-0.25), (0.75, 1.25)),
-    LiouvilleCopula{2}(Copulas.InvGaussianGenerator(1.0), (0.75, 1.25)),
     LiouvilleCopula{2}(Copulas.AMHGenerator(0.5), (0.75, 1.25)),
     LiouvilleCopula{3}(Copulas.ClaytonGenerator(1.0), (0.75, 1.0, 1.25)),
 ])

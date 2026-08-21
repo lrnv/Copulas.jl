@@ -45,11 +45,9 @@ function Distributions.pdf(D::WilliamsonFromFrailty, x::Real)
 end
 function Distributions.quantile(D::WilliamsonFromFrailty, p::Real)
     0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
-    lo = zero(float(p))
-    hi = oftype(lo, Inf)
-    iszero(p) && return lo
-    isone(p) && return hi
-    return Roots.find_zero(x -> Distributions.cdf(D, x) - p, (lo, hi))
+    iszero(p) && return minimum(D)
+    isone(p) && return maximum(D)
+    return _positive_distribution_quantile(D, p)  # delegate to improved version
 end
 Base.minimum(::WilliamsonFromFrailty) = 0
 Base.maximum(::WilliamsonFromFrailty) = Inf
