@@ -572,14 +572,8 @@ _available_fitting_methods(
     dim,
 ) where {d} = (:ols, :cfg, :pickands)
 
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _discrete_spectral_rand!(rng, C.tail.spectral, X)
 end
 

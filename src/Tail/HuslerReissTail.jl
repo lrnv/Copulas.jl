@@ -54,14 +54,8 @@ struct HuslerReissTail{T} <: AbstractUnivariateTail2
 end
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
 _is_valid_in_dim(::HuslerReissTail, d::Int) = d >= 2
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:HuslerReissTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch(
-        "output must have two rows for a bivariate Hüsler-Reiss copula",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:HuslerReissTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate Hüsler-Reiss copula",))
     return _rand_hr_exchangeable!(rng, C, X)
 end
 Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
@@ -118,8 +112,7 @@ struct HuslerReissVariogramTail{MT<:AbstractMatrix} <: Tail
 end
 
 Distributions.params(tail::HuslerReissVariogramTail) = (Γ = tail.Γ,)
-_is_valid_in_dim(tail::HuslerReissVariogramTail, d::Int) =
-    d == size(tail.Γ, 1)
+_is_valid_in_dim(tail::HuslerReissVariogramTail, d::Int) = d == size(tail.Γ, 1)
 
 function _husler_reiss_copula(Γ::AbstractMatrix)
     d1, d2 = size(Γ)
@@ -346,10 +339,6 @@ function ellpartial(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
     return sgn * exp(logabs)
 end
 
-Distributions._logpdf(C::ExtremeValueCopula{d,<:HuslerReissTail}, u,) where {d} = _ev_logpdf_from_partials(C, u)
-
-Distributions._logpdf(C::ExtremeValueCopula{2,<:HuslerReissTail}, u,) = _ev_logpdf_bivariate(C, u)
-
 @inline function _hr_logsumexp(v)
     m = maximum(v)
     return m + log(sum(exp(x - m) for x in v))
@@ -415,11 +404,7 @@ function _hr_rand_multivariate!(rng::Distributions.AbstractRNG, Γ::AbstractMatr
     return X
 end
 
-function _rand_hr_exchangeable!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:HuslerReissTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
+function _rand_hr_exchangeable!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
     γ = abs2(2 / C.tail.θ)
     Γ = fill(float(γ), d, d)
     @inbounds for i in 1:d
@@ -428,17 +413,10 @@ function _rand_hr_exchangeable!(
     return _hr_rand_multivariate!(rng, Γ, X)
 end
 
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:HuslerReissTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _rand_hr_exchangeable!(rng, C, X)
 end
-
 
 ℓ(tail::HuslerReissVariogramTail, x) = _hr_stdf(tail.Γ, x)
 
@@ -450,16 +428,8 @@ function ellpartial(tail::HuslerReissVariogramTail, x, I::Tuple{Vararg{Int}},)
     return sgn * exp(logabs)
 end
 
-Distributions._logpdf(C::ExtremeValueCopula{d,<:HuslerReissVariogramTail}, u,) where {d} = _ev_logpdf_from_partials(C, u)
-
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:HuslerReissVariogramTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissVariogramTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _hr_rand_multivariate!(rng, C.tail.Γ, X)
 end
 

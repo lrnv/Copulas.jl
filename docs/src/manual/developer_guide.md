@@ -348,6 +348,12 @@ The generic `ellpartial` fallback uses automatic differentiation recursively.
 Analytic sign/log implementations are preferred for numerically difficult
 families and for higher-dimensional density evaluation.
 
+Density selection itself uses ordinary Julia dispatch. In ``d=2``, a `Tail2`
+uses the native Pickands derivative kernel. The generic `ExtremeValueCopula{d}`
+method uses the partition formula above, so a family-specific `_logpdf` method
+is only needed when the family provides a genuinely different numerical
+algorithm.
+
 ### Sampling interface and dispatch
 
 The required public behavior is simply

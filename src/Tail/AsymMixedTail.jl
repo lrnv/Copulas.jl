@@ -59,7 +59,7 @@ Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ
 # which intentionally simplifies to MixedTail.  Fitting must instead start
 # from a genuinely asymmetric interior point so that params(_example(...))
 # keeps the (θ₁, θ₂) interface.
-function _example(CT::Type{<:ExtremeValueCopula{2,<:AsymMixedTail}}, d::Int,)
+function _example(CT::Type{<:ExtremeValueCopula{D,<:AsymMixedTail} where D}, d::Int,)
     d == 2 || throw(DimensionMismatch("AsymMixedCopula is only defined in dimension two",))
     return CT(d, 0.50, 0.10)
 end
