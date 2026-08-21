@@ -59,7 +59,21 @@ const tEVCopula{d,T} = ExtremeValueCopula{d, tEVTail{T}}
 Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
 _is_valid_in_dim(tail::tEVTail, d::Int) =
     d >= 2 && tail.ρ > -inv(d - 1)
-_ev_sampling_backend(::ExtremeValueCopula{2,<:tEVTail}) = Val(:multivariate)
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:tEVTail},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch(
+        "output must have two rows for a bivariate extremal-t copula",
+    ))
+    return _tev_rand_multivariate!(
+        rng,
+        C.tail.ν,
+        _tev_exchangeable_correlation(2, C.tail.ρ),
+        X,
+    )
+end
 _unbound_params(::Type{<:tEVTail}, d, θ) = [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
 _rebound_params(::Type{<:tEVTail}, d, α) = (; ν = exp(α[1]), ρ = tanh(α[2]))
 
@@ -522,24 +536,32 @@ Distributions._logpdf(
     u,
 ) where {d} = _ev_logpdf_from_partials(C, u)
 
-_rand_ev_multivariate!(
+function Distributions._rand!(
     rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{d,<:tEVTail},
     X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _tev_rand_multivariate!(
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
+    return _tev_rand_multivariate!(
         rng,
         C.tail.ν,
         _tev_exchangeable_correlation(d, C.tail.ρ),
         X,
     )
+end
 
-_rand_ev_multivariate!(
+function Distributions._rand!(
     rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{d,<:tEVCorrelationTail},
     X::AbstractMatrix{T},
-) where {d,T<:Real} =
-    _tev_rand_multivariate!(rng, C.tail.ν, C.tail.R, X)
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
+    return _tev_rand_multivariate!(rng, C.tail.ν, C.tail.R, X)
+end
 
 function A(tail::tEVTail, t::Real)
     ρ, ν = tail.ρ, tail.ν

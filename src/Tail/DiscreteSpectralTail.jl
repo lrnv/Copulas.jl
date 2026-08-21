@@ -123,10 +123,14 @@ function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::Discrete
     return X
 end
 
-_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:DiscreteSpectralTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _discrete_spectral_rand!(rng, C.tail, X)
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:DiscreteSpectralTail}, X::AbstractMatrix{T},) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate discrete spectral copula",))
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:DiscreteSpectralTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
     return _discrete_spectral_rand!(rng, C.tail, X)
 end
 

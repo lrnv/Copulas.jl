@@ -143,8 +143,24 @@ function Distributions.logpdf(D::BivEVDistortion{<:LogTail}, z::Real)
     return Distributions._logpdf(GumbelCopula(2, T(D.tail.θ)), u)
 end
 
-_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:LogTail}, X::AbstractMatrix{T}) where {T<:Real,d} =
-    Distributions._rand!(rng, GumbelCopula(d, C.tail.θ), X)
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:LogTail},
+    X::AbstractMatrix{T},
+) where {T<:Real,d}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
+    return Distributions._rand!(rng, GumbelCopula(d, C.tail.θ), X)
+end
+
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:LogTail},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    return _rand_ghoudi!(rng, C, X)
+end
 
 # LogCopula is the bivariate Gumbel copula, so its conditional quantile can use
 # the same closed-form inverse of the first generator derivative.

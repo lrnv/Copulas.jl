@@ -348,7 +348,7 @@ The generic `ellpartial` fallback uses automatic differentiation recursively.
 Analytic sign/log implementations are preferred for numerically difficult
 families and for higher-dimensional density evaluation.
 
-### Sampling interface and routing
+### Sampling interface and dispatch
 
 The required public behavior is simply
 
@@ -356,33 +356,68 @@ The required public behavior is simply
 rand(C, n)
 ```
 
-The generic EV implementation routes this operation internally:
+Extreme-value sampling is selected directly through Julia dispatch on the
+copula dimension and the concrete tail type. There is no separate sampling
+backend trait or routing layer.
+
+For a `Tail2` in ``d=2``, the generic extreme-value method uses the native
+Ghoudi/Pickands sampler:
 
 ```julia
-Copulas._ev_sampling_backend(C)
-# Val(:bivariate) or Val(:multivariate)
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:Tail2},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    return _rand_ghoudi!(rng, C, X)
+end
 ```
 
-A `Tail2` in ``d=2`` defaults to the bivariate Ghoudi route. A family with a
-better exact multivariate sampler can opt into it:
+A family with its own exact multivariate sampler implements `_rand!` directly
+for its concrete tail type:
 
 ```julia
-Copulas._ev_sampling_backend(
-    ::ExtremeValueCopula{2,<:MyTail},
-) = Val(:multivariate)
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:MyTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
+    return _my_exact_rand!(rng, C.tail, X)
+end
 ```
 
-The current benchmark-driven routing keeps Logistic on its specialized
-bivariate route and uses the multivariate route in dimension two for Galambos,
-Hüsler-Reiss, Mixed, and extremal-``t``.
+If `MyTail <: Tail2` and the family should use its exact sampler also in
+dimension two, the family-wide method intersects with the generic
+`ExtremeValueCopula{2,<:Tail2}` method. Resolve that intersection explicitly
+with a ``d=2`` specialization:
 
-More specific family `_rand!` methods are still allowed for singular,
-discrete-spectral, or shock models.
+```julia
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:MyTail},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    return _my_exact_rand!(rng, C.tail, X)
+end
+```
+
+This keeps algorithm selection in Julia's dispatch system rather than encoding
+the same information in a parallel trait hierarchy. Logistic retains its
+native bivariate Ghoudi/Pickands route, while Galambos, Hüsler-Reiss, Mixed,
+and extremal-``t`` use their exact family samplers in dimension two.
+
+Algorithm-specific helpers such as `_rand_ghoudi!`,
+`_discrete_spectral_rand!`, or family spectral samplers may be used internally
+when they represent a reusable numerical algorithm rather than a routing
+layer.
 
 !!! warning "Internal, non-stable API"
-    `_ev_sampling_backend`, `_rand_ev_bivariate!`,
-    `_rand_ev_multivariate!`, and `_ellpartial_signlog` are contributor-facing
-    internals. Public user code should call `rand`, `cdf`, `pdf`, etc.
+    `_rand_ghoudi!`, algorithm-specific sampling helpers, and
+    `_ellpartial_signlog` are contributor-facing internals. Public user code
+    should call `rand`, `cdf`, `pdf`, etc.
 
 ### Source organization
 

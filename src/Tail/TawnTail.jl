@@ -325,13 +325,13 @@ function _tawn_rand_multivariate!(rng::Distributions.AbstractRNG, tail::TawnTail
     return X
 end
 
-_rand_ev_multivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real} = _tawn_rand_multivariate!(rng, C.tail, X)
-
-# The generic bivariate ExtremeValueCopula sampler is more specific than
-# the generic multivariate dispatch and requires a Pickands A/dA route.
-# TawnTail is represented directly through its multivariate STDF, so force
-# d=2 through the exact Tawn component-superposition sampler as well.
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:TawnTail}, X::AbstractMatrix{T},) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate Tawn copula",))
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:TawnTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
     return _tawn_rand_multivariate!(rng, C.tail, X)
 end

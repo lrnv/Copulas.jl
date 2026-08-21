@@ -155,14 +155,10 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
 
-# Sampling is selected by capability/algorithm rather than by public
-# constructor shape. General tails use their multivariate sampler; Tail2
-# families use the Ghoudi bivariate kernel in d=2 unless a family explicitly
-# opts into its multivariate sampler.
-_ev_sampling_backend(::ExtremeValueCopula) = Val(:multivariate)
-_ev_sampling_backend(::ExtremeValueCopula{2,<:Tail2}) = Val(:bivariate)
-
-function _rand_ev_bivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:Tail2}, X::AbstractMatrix{T},) where {T<:Real}
+# Sampling is selected directly through Julia dispatch. Tail2 families use the
+# native bivariate Ghoudi/Pickands sampler in d=2 by default, while families
+# with a preferable exact sampler specialize _rand! for their concrete tail.
+function _rand_ghoudi!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:Tail2}, X::AbstractMatrix{T},) where {T<:Real}
     size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extreme-value copula",))
 
     E = ExtremeDist(C.tail)
@@ -177,14 +173,17 @@ function _rand_ev_bivariate!(rng::Distributions.AbstractRNG, C::ExtremeValueCopu
     return X
 end
 
-_rand_ev_with_backend!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula, X::AbstractMatrix, ::Val{:bivariate},) = _rand_ev_bivariate!(rng, C, X)
-
-_rand_ev_with_backend!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula, X::AbstractMatrix, ::Val{:multivariate},) = _rand_ev_multivariate!(rng, C, X)
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d}, X::AbstractMatrix{T},) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
-    return _rand_ev_with_backend!(rng, C, X, _ev_sampling_backend(C),)
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:Tail2},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch(
+        "output must have two rows for a bivariate extreme-value copula",
+    ))
+    return _rand_ghoudi!(rng, C, X)
 end
+
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
 
 # Fitting functions: the default one is in the EmpiricalEvTail because this is what will happen by default.
