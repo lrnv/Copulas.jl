@@ -146,6 +146,10 @@ function (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(α::Real, weights:
     tail = TawnTail(α, weights)
     return ExtremeValueCopula(tail.d, tail)
 end
+function (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(α::Int, weights::AbstractVector,)
+    tail = TawnTail(α, weights)
+    return ExtremeValueCopula(tail.d, tail)
+end
 
 (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(d::Int, dep::AbstractVector, asy::AbstractVector,) = ExtremeValueCopula(d, TawnTail(d, dep, asy))
 

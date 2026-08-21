@@ -418,6 +418,7 @@ function _tev_copula_from_correlation(ν::Real, R::AbstractMatrix)
 end
 
 (::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(ν::Real, R::AbstractMatrix,) = _tev_copula_from_correlation(ν, R)
+(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(ν::Int, R::AbstractMatrix,) = _tev_copula_from_correlation(ν, R)
 
 function (::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(d::Int, ν::Real, R::AbstractMatrix,)
     d == size(R, 1) || throw(DimensionMismatch("d=$d does not match correlation dimension $(size(R, 1))",))

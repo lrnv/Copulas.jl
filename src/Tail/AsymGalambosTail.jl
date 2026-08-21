@@ -66,6 +66,10 @@ function (::Type{<:ExtremeValueCopula{2,<:AsymGalambosTail}})(α::Real, weights:
     tail = AsymGalambosMultiTail(α, weights)
     return ExtremeValueCopula(tail.d, tail)
 end
+function (::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D})(α::Int, weights::AbstractVector,)
+    tail = AsymGalambosMultiTail(α, weights)
+    return ExtremeValueCopula(tail.d, tail)
+end
 
 (::Type{<:ExtremeValueCopula{2,<:AsymGalambosTail}})(
     d::Int,
