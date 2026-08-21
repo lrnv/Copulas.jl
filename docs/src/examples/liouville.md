@@ -6,7 +6,7 @@ Liouville copulas replace the uniform simplex direction of an Archimedean copula
 LiouvilleCopula{d}(G, α)
 ```
 
-Here `G` is a [`Generator`](@ref), `α` contains `d` positive real parameters, and `sum(α)` is the Williamson order needed by the full radial vector. The implementation accepts integer, non-integer, and mixed Dirichlet parameters.
+Here `G` is a [`Generator`](@ref Copulas.Generator), `α` contains `d` positive real parameters, and `sum(α)` is the Williamson order needed by the full radial vector. The implementation accepts integer, non-integer, and mixed Dirichlet parameters.
 
 For a general generator, `ceil(sum(α)) <= max_monotony(G)` is required because inversion starts at the next integer order. A generator constructed as `𝒲(R, source_order)` retains `R` and instead accepts every `sum(α) <= source_order`, including values whose ceiling is larger than `source_order`.
 
@@ -48,8 +48,9 @@ The resulting object implements the usual `Distributions.jl` interface:
 rng = Xoshiro(42)
 U = rand(rng, C, 5)
 
-u = [0.4, 0.6, 0.7]
-(cdf = cdf(C, u), logpdf = logpdf(C, u), sample = U[:, 1])
+C13 = subsetdims(C, (1, 3))
+u13 = [0.4, 0.7]
+(cdf = cdf(C13, u13), logpdf = logpdf(C13, u13), sample = U[:, 1])
 ```
 
 ## Starting from an arbitrary generator
@@ -57,7 +58,7 @@ u = [0.4, 0.6, 0.7]
 The source does not have to be a `WilliamsonGenerator`. For a general generator and a real target order `s`, Copulas.jl computes the inverse at `ceil(Int, s)` and multiplies it by an independent `Beta(s, ceil(s) - s)` variable. Existing specialized integer inverses remain in use.
 
 ```@example liouville
-G2 = ClaytonGenerator(1.5)
+G2 = Copulas.ClaytonGenerator(1.5)
 α2 = (1, 0.6, 1.25)
 C2 = LiouvilleCopula{3}(G2, α2)
 rng = Xoshiro(42)
@@ -72,14 +73,13 @@ This is also why subsetting is exact and inexpensive at the model level. A subse
 
 ```@example liouville
 rng = Xoshiro(42)
-C13 = subsetdims(C, (1, 3))
 (typeof(C13), C13.α, rand(rng, C13))
 ```
 
 For `α = ones(d)`, every marginal survival function is the generator itself and the construction is exactly Archimedean. The constructor therefore returns the corresponding `ArchimedeanCopula` directly, preserving all its specialized algorithms:
 
 ```@example liouville
-G2 = ClaytonGenerator(1.5)
+G2 = Copulas.ClaytonGenerator(1.5)
 LA = LiouvilleCopula{3}(G2, ones(3))
 A = ArchimedeanCopula{3}(G2)
 u = [0.3, 0.5, 0.8]

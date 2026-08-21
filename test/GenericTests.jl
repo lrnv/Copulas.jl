@@ -227,14 +227,6 @@ Bestiary = [
     JoeCopula{3}(1-log(0.3)),
     JoeCopula{3}(7),
     JoeCopula{4}(1-log(0.1)),
-    LiouvilleCopula{2}(Copulas.𝒲(Dirac(1.0), 3.0), (1.0, 1.5)),
-    LiouvilleCopula{2}(Copulas.𝒲(Pareto(1.0), 3.0), (0.75, 1.25)),
-    LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
-    LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (0.75, 1.25)),
-    LiouvilleCopula{2}(Copulas.ClaytonGenerator(-0.25), (0.75, 1.25)),
-    LiouvilleCopula{2}(Copulas.InvGaussianGenerator(1.0), (0.75, 1.25)),
-    LiouvilleCopula{2}(Copulas.AMHGenerator(0.5), (0.75, 1.25)),
-    LiouvilleCopula{3}(Copulas.ClaytonGenerator(1.0), (0.75, 1.0, 1.25)),
     LogCopula{2}(1.5),
     LogCopula{2}(1+9*0.4),
     LogCopula{2}(5.5),
@@ -296,6 +288,16 @@ append!(Bestiary, [
             leaves = [1], children = [GumbelCopula{2}(3.0)])]),                    # d=4, depth three
     NestedArchimedeanCopula{3}(Copulas.ClaytonGenerator(1.0);
         leaves = [1], children = [FrankCopula{2}(5.0) => [2, 3]]),                 # d=3, mixed panel + leaf
+    # Keep new families at the end so extending the bestiary does not perturb
+    # the deterministic samples used by pre-existing stochastic regressions.
+    LiouvilleCopula{2}(Copulas.𝒲(Dirac(1.0), 3.0), (1.0, 1.5)),
+    LiouvilleCopula{2}(Copulas.𝒲(Pareto(1.0), 3.0), (0.75, 1.25)),
+    LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
+    LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (0.75, 1.25)),
+    LiouvilleCopula{2}(Copulas.ClaytonGenerator(-0.25), (0.75, 1.25)),
+    LiouvilleCopula{2}(Copulas.InvGaussianGenerator(1.0), (0.75, 1.25)),
+    LiouvilleCopula{2}(Copulas.AMHGenerator(0.5), (0.75, 1.25)),
+    LiouvilleCopula{3}(Copulas.ClaytonGenerator(1.0), (0.75, 1.0, 1.25)),
 ])
 
 macro testif(cond, args...)
