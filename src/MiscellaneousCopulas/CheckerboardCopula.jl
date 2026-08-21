@@ -44,8 +44,9 @@ struct CheckerboardCopula{d, T} <: Copula{d}
     m::Vector{Int}
     boxes::Dict{NTuple{d,Int}, T}
 end
-function CheckerboardCopula(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool=true) where T
-    d,n = size(X)
+function CheckerboardCopula{d}(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool=true) where {d,T}
+    size(X, 1) == d || throw(DimensionMismatch("data must have $d rows"))
+    n = size(X, 2)
      ms = if isnothing(m)
         @info "Automatic choice: m = n in each dimension." d=d n=n
         fill(n, d)
@@ -60,6 +61,7 @@ function CheckerboardCopula(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool
     boxes = StatsBase.proportionmap(collect(keys_iter))
     return CheckerboardCopula{d, eltype(values(boxes))}(ms, boxes)
 end
+CheckerboardCopula(X::AbstractMatrix; kwargs...) = CheckerboardCopula{size(X, 1)}(X; kwargs...)
 function Distributions._logpdf(C::CheckerboardCopula{d}, u) where {d}
     b = Tuple(min.(C.m .- 1, floor.(Int, u .* C.m)))
     if haskey(C.boxes, b)

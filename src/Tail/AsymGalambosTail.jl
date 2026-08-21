@@ -1,5 +1,5 @@
 """
-    AsymGalambosTail{T}, AsymGalambosCopula{T}
+    AsymGalambosTail{T}, AsymGalambosCopula{d,T}
 
     AsymGalambosCopula(2, α, θ₁, θ₂)
     AsymGalambosCopula(α, weights)
@@ -60,14 +60,14 @@ struct AsymGalambosTail{T} <: Tail2
     end
 end
 
-const AsymGalambosCopula{T} = ExtremeValueCopula{2,AsymGalambosTail{T}}
+const AsymGalambosCopula{d,T} = ExtremeValueCopula{d,AsymGalambosTail{T}}
 
-function (::Type{<:ExtremeValueCopula{2,<:AsymGalambosTail}})(α::Real, weights::AbstractVector,)
+function (::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D})(α::Real, weights::AbstractVector,)
     tail = AsymGalambosMultiTail(α, weights)
     return ExtremeValueCopula(tail.d, tail)
 end
 
-(::Type{<:ExtremeValueCopula{2,<:AsymGalambosTail}})(d::Int, dep::AbstractVector, asy::AbstractVector,) = ExtremeValueCopula(d, AsymGalambosMultiTail(d, dep, asy))
+(::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D})(d::Int, dep::AbstractVector, asy::AbstractVector,) = ExtremeValueCopula(d, AsymGalambosMultiTail(d, dep, asy))
 
 Distributions.params(tail::AsymGalambosTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 _unbound_params(::Type{<:AsymGalambosTail}, d, θ) = [log(θ.α), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)] 

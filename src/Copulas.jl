@@ -29,6 +29,7 @@ module Copulas
     include("Subsetting.jl")
     include("Conditioning.jl")
     include("Fitting.jl")
+    include("Nataf.jl")
 
     # Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
     include("UnivariateDistribution/Frailties/Sibuya.jl")
@@ -140,6 +141,7 @@ module Copulas
            inverse_rosenblatt,
            subsetdims,
            condition,
+           Nataf,
            WilliamsonGenerator,
            𝒲,
            TiltedGenerator,

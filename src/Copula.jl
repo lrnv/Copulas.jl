@@ -64,7 +64,7 @@ end
 function γ(C::Copula{d}) where {d}
     _integrand(u) = (1 + minimum(u) - maximum(u) + max(abs(sum(u) - d/2) - (d - 2)/2, 0.0)) / 2
     I = Distributions.expectation(_integrand, C; nsamples=10^4)
-    a = 1/(d+1) + 1/factorial(d+1)   # independence
+    a = 1/(d+1) + _div_factorial(one(float(I)), d+1)   # independence
     b = (2 + 4.0^(1-d)) / 3          # comonotonicity
     return (I - a) / (b - a)
 end
@@ -116,7 +116,7 @@ function γ(U::AbstractMatrix)
         I += (1 + minimum(u) - maximum(u) + max(abs(sum(u) - d/2) - (d - 2)/2, 0.0)) / 2
     end
     I /= n
-    a = 1/(d+1) + 1/factorial(d+1)
+    a = 1/(d+1) + _div_factorial(one(float(I)), d+1)
     b = (2 + 4.0^(1-d)) / 3
     return (I - a) / (b - a)
 end

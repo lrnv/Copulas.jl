@@ -57,9 +57,10 @@ struct MyCopula{d, P} <: Copula{d} # Note that the size of the copula must be pa
     θ::P  # Copula parameter
     MyCopula{d}(θ) where {d} = new{d, typeof(θ)}(θ)
 end
+MyCopula(d, θ) = MyCopula{d}(θ) # Runtime-dimension convenience constructor
 function Distributions.params(C::MyCopula) 
-    # It will be assumed that `MyCopula(d, params(C::MyCopula)...)` reproduces `C`
-    # So you should ensure that this binding works. 
+    # It will be assumed that `MyCopula{d}(params(C)...)` reproduces `C`.
+    # Keep `MyCopula(d, ...)` as a thin forwarder to this canonical constructor.
     # The return value should be a NamedTuple. 
     return (θ = C.θ,) # Return a named tuple with the parametrisation. 
 end

@@ -1,5 +1,5 @@
 """
-    MOTail{T}, MOCopula{T}
+    MOTail{T}, MOCopula{d,T}
 
     MOCopula(2, λ₁, λ₂, λ₁₂)
     MOCopula(λ::AbstractVector)
@@ -48,7 +48,7 @@ struct MOTail{T} <: Tail2
     end
 end
 
-const MOCopula{T} = ExtremeValueCopula{2, MOTail{T}}
+const MOCopula{d,T} = ExtremeValueCopula{d, MOTail{T}}
 Distributions.params(tail::MOTail) = (λ₁ = tail.λ₁, λ₂ = tail.λ₂, λ₃ = tail.λ₁₂)
 _unbound_params(::Type{<:MOTail}, d, θ) = [log(θ.λ₁), log(θ.λ₂), log(θ.λ₃)]
 _rebound_params(::Type{<:MOTail}, d, α) = (; λ₁ = exp(α[1]), λ₂ = exp(α[2]), λ₃ = exp(α[3]))
@@ -85,13 +85,13 @@ function _pickands_right_slope(tail::MOTail, x::Real)
     _, b = _mo_exponents(tail, R)
     return one(R) - b
 end
-function τ(C::MOCopula)
+function τ(C::ExtremeValueCopula{2,<:MOTail})
     a = C.tail.λ₁/(C.tail.λ₁+C.tail.λ₁₂)
     b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
     return a*b/(a+b-a*b)
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::MOCopula, A::AbstractMatrix{S}) where {S<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MOTail}, A::AbstractMatrix{S}) where {S<:Real}
     size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
     T = promote_type(typeof(float(λ₁)), typeof(float(λ₂)), typeof(float(λ₁₂)))
@@ -240,9 +240,9 @@ function _mo_dimension(λ::AbstractVector)
     return d
 end
 
-(::Type{<:ExtremeValueCopula{2,<:MOTail}})(λ::AbstractVector) = MOMultivariateCopula(_mo_dimension(λ), λ)
+(::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(λ::AbstractVector) = MOMultivariateCopula(_mo_dimension(λ), λ)
 
-(::Type{<:ExtremeValueCopula{2,<:MOTail}})(d::Int, λ::AbstractVector,) = MOMultivariateCopula(d, λ)
+(::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(d::Int, λ::AbstractVector,) = MOMultivariateCopula(d, λ)
 
 MOMultivariateCopula(tail::MOTail) = ExtremeValueCopula(2, MOMultivariateTail(tail))
 

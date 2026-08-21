@@ -1,5 +1,5 @@
 """
-    AsymMixedTail{T}, AsymMixedCopula{T}
+    AsymMixedTail{T}, AsymMixedCopula{d,T}
 
 Fields:
   - θ₁::Real — parameter
@@ -50,7 +50,7 @@ struct AsymMixedTail{T} <: Tail2
   end
 end
 
-const AsymMixedCopula{T} = ExtremeValueCopula{2, AsymMixedTail{T}}
+const AsymMixedCopula{d,T} = ExtremeValueCopula{d, AsymMixedTail{T}}
 Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 
 
@@ -59,8 +59,13 @@ Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ
 # which intentionally simplifies to MixedTail.  Fitting must instead start
 # from a genuinely asymmetric interior point so that params(_example(...))
 # keeps the (θ₁, θ₂) interface.
-function _example(CT::Type{<:ExtremeValueCopula{2,<:AsymMixedTail}}, d::Int,)
-    d == 2 || throw(DimensionMismatch("AsymMixedCopula is only defined in dimension two",))
+function _example(
+    CT::Type{<:ExtremeValueCopula{D,<:AsymMixedTail} where D},
+    d::Int,
+)
+    d == 2 || throw(DimensionMismatch(
+        "AsymMixedCopula is only defined in dimension two",
+    ))
     return CT(d, 0.50, 0.10)
 end
 

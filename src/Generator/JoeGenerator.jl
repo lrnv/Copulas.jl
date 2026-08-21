@@ -56,7 +56,7 @@ function ϕ⁽ᵏ⁾(G::JoeGenerator, d::Int, t)
     x = exp(-t)
     y = -expm1(-t)
     r = x/y
-    P_d_α = sum(Combinatorics.stirlings2(d, k) * (SpecialFunctions.gamma(k - α) / SpecialFunctions.gamma(1 - α)) * r^(k-1) for k in 1:d)
+    P_d_α = sum(Combinatorics.stirlings2(d, k) * _rising_factorial(1 - α, k - 1) * r^(k-1) for k in 1:d)
     return (-1)^d * α * (x / y^(1 - α)) * P_d_α
 end
 function ϕ⁻¹⁽¹⁾(G::JoeGenerator, t)

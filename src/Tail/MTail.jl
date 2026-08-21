@@ -6,3 +6,4 @@ Corresponds to the MCopula viewed as an etreme value copula.
 struct MTail <: Tail end
 A(::MTail, t::NTuple{d, <:Real}) where d = max(t)
 ExtremeValueCopula(d::Int, ::MTail) = MCopula(d)
+ExtremeValueCopula{d}(::MTail) where {d} = MCopula{d}()

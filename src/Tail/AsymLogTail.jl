@@ -1,5 +1,5 @@
 """
-    AsymLogTail{T}, AsymLogCopula{T}
+    AsymLogTail{T}, AsymLogCopula{d,T}
 
 Fields:
   - α::Real  — dependence parameter (α ≥ 1)
@@ -43,7 +43,7 @@ struct AsymLogTail{T} <: Tail2
     end
 end
 
-const AsymLogCopula{T} = ExtremeValueCopula{2, AsymLogTail{T}}
+const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
 Distributions.params(tail::AsymLogTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 _unbound_params(::Type{<:AsymLogTail}, d, θ) = [log(θ.α - 1), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)]
 _rebound_params(::Type{<:AsymLogTail}, d, α) = begin

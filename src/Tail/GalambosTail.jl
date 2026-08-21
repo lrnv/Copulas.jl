@@ -1,5 +1,5 @@
 """
-    GalambosTail{T}, GalambosCopula{T}
+    GalambosTail{T}, GalambosCopula{d,T}
 
     GalambosCopula(d, θ)
 
@@ -43,7 +43,7 @@ struct GalambosTail{T} <: AbstractUnivariateTail2
     end
 end
 
-const GalambosCopula{T} = ExtremeValueCopula{2, GalambosTail{T}}
+const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
 _ev_sampling_backend(::ExtremeValueCopula{2,<:GalambosTail}) = Val(:multivariate)
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
@@ -245,16 +245,17 @@ end
 _tau_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(GalambosTail(θ),t)*t*(1-t)/max(A(GalambosTail(θ),t),_δ(t)), 0, 1; kw...)[1]
 _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -> inv(1+A(GalambosTail(θ),t))^2, 0, 1; kw...)[1] - 3
 
-τ(C::GalambosCopula) = _tau_galambos(C.tail.θ)
-ρ(C::GalambosCopula) = _rho_galambos(C.tail.θ)
-β(C::GalambosCopula) = 2.0^( 2.0^(-1.0/C.tail.θ) ) - 1.0
-λᵤ(C::GalambosCopula) = 2.0^(-1.0/C.tail.θ)
+τ(C::ExtremeValueCopula{2,<:GalambosTail}) = _tau_galambos(C.tail.θ)
+ρ(C::ExtremeValueCopula{2,<:GalambosTail}) = _rho_galambos(C.tail.θ)
+β(C::ExtremeValueCopula{2,<:GalambosTail}) = 2.0^( 2.0^(-1.0/C.tail.θ) ) - 1.0
+λᵤ(C::ExtremeValueCopula{2,<:GalambosTail}) = 2.0^(-1.0/C.tail.θ)
 
-τ⁻¹(::Type{<:GalambosCopula}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
-ρ⁻¹(::Type{<:GalambosCopula}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
-function β⁻¹(::Type{<:GalambosCopula}, beta)
+τ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
+τ⁻¹(::Type{<:GalambosTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
+function β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta)
     beta <= 0 && return 0.0
     beta >= 1 && return Inf
     return -inv(log2(log2(beta + 1)))
 end
-λᵤ⁻¹(::Type{<:GalambosCopula}, λ) = -1.0 / log2(λ)
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) = -1.0 / log2(λ)

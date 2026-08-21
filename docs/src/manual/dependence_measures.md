@@ -80,6 +80,32 @@ plot(θs, τs; xlabel="θ", ylabel="τ", title="θ -> τ for bivariate Clayton",
 ```
 Remark the clear and easy to exploit bijection. 
 
+## Pearson correlation and the Nataf correction
+
+Pearson's linear correlation is deliberately absent from the list above: it is **not** a dependence measure in the copula sense, because it depends on the marginals and not only on the copula. The same copula produces different Pearson correlations under different marginals, while the rank-based measures are unchanged:
+
+```@example pearson_nataf
+using Copulas, Distributions, Statistics, Random
+rng = Xoshiro(1)
+C  = GaussianCopula([1.0 0.7; 0.7 1.0])
+x₁ = rand(rng, SklarDist(C, (Normal(), Normal())), 10^5)
+x₂ = rand(rng, SklarDist(C, (LogNormal(0, 0.8), LogNormal(0, 0.8))), 10^5)
+(pearson_normal    = cor(x₁[1, :], x₁[2, :]),
+ pearson_lognormal = cor(x₂[1, :], x₂[2, :]),
+ spearman_normal    = Copulas.ρ(x₁),
+ spearman_lognormal = Copulas.ρ(x₂))
+```
+
+This is usually a reason to prefer the marginal-free measures. But some applications specify a *target* Pearson correlation for a random vector with given non-Gaussian marginals. For a Gaussian copula, the [`Nataf`](@ref) correction [nataf1962,liu1986](@cite) computes the copula parameter matrix inducing that target:
+
+```@example pearson_nataf
+m = (LogNormal(0, 0.8), LogNormal(0, 0.8))
+D = SklarDist(GaussianCopula(2, Nataf(m, 0.7)), m)
+cor(rand(rng, D, 10^5)') # ≈ 0.7 as requested.
+```
+
+Note that the correction cannot work miracles: the attainable Pearson range of a pair of marginals is dictated by their Fréchet-Hoeffding bounds, so targets outside of it throw an error reporting the attainable range. See [the elliptical copulas page](@ref elliptical_cops) for more details on the corresponding interface.
+
 ## Tail dependency
 
 Many people are interested in the tail behavior of their dependence structures. Tail coefficients summarize this tail behavior.

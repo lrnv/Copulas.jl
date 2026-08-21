@@ -1,5 +1,5 @@
 """
-    BC2Tail{T}, BC2Copula{T}
+    BC2Tail{T}, BC2Copula{d,T}
 
     BC2Copula(a, b)
     BC2Copula(a::AbstractVector)
@@ -49,7 +49,7 @@ struct BC2Tail{T} <: Tail2
     end
 end
 
-const BC2Copula{T} = ExtremeValueCopula{2, BC2Tail{T}}
+const BC2Copula{d,T} = ExtremeValueCopula{d, BC2Tail{T}}
 Distributions.params(tail::BC2Tail) = (a = tail.a, b = tail.b)
 _unbound_params(::Type{<:BC2Tail}, d, θ) = [log(θ.a) - log1p(-θ.a), log(θ.b) - log1p(-θ.b)]
 _rebound_params(::Type{<:BC2Tail}, d, α) = begin
@@ -205,7 +205,7 @@ end
 BC2MultivariateTail(tail::BC2Tail) = BC2MultivariateTail([tail.a, tail.b])
 BC2MultivariateCopula(a::AbstractVector) = ExtremeValueCopula(length(a), BC2MultivariateTail(a))
 
-function (::Type{<:ExtremeValueCopula{2,<:BC2Tail}})(a::AbstractVector)
+function (::Type{<:ExtremeValueCopula{D,<:BC2Tail} where D})(a::AbstractVector)
     length(a) == 2 && return ExtremeValueCopula(2, BC2Tail(a[1], a[2]))
     return BC2MultivariateCopula(a)
 end

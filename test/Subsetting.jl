@@ -8,12 +8,12 @@
     permuted_point(perm, u) = (v = similar(u); for (i, j) in enumerate(perm); v[j] = u[i]; end; v)
 
     @testset "regression: p == d no longer throws" begin
-        @test Copulas.subsetdims(ClaytonCopula(3, 2.0), (2, 3, 1)) isa Copulas.Copula
-        @test Copulas.subsetdims(GaussianCopula([1.0 0.5 0.2; 0.5 1.0 0.3; 0.2 0.3 1.0]), (3, 1, 2)) isa Copulas.Copula
+        @test Copulas.subsetdims(ClaytonCopula{3}(2.0), (2, 3, 1)) isa Copulas.Copula
+        @test Copulas.subsetdims(GaussianCopula{3}([1.0 0.5 0.2; 0.5 1.0 0.3; 0.2 0.3 1.0]), (3, 1, 2)) isa Copulas.Copula
     end
 
     @testset "Archimedean (exchangeable) agrees with the parent" begin
-        for C in (ClaytonCopula(3, 2.0), FrankCopula(4, 3.0))
+        for C in (ClaytonCopula{3}(2.0), FrankCopula{4}(3.0))
             d = length(C); perm = ntuple(i -> mod1(i + 1, d), d)        # cyclic shift (non-identity)
             S = Copulas.subsetdims(C, perm)
             for _ in 1:5
@@ -26,7 +26,7 @@
 
     @testset "Gaussian (asymmetric Σ — permutation is non-trivial)" begin
         Σ = [1.0 0.6 0.2; 0.6 1.0 0.5; 0.2 0.5 1.0]
-        C = GaussianCopula(Σ); perm = (2, 3, 1)
+        C = GaussianCopula{3}(Σ); perm = (2, 3, 1)
         S = Copulas.subsetdims(C, perm)
         @test S.Σ ≈ Σ[collect(perm), collect(perm)]                     # the reordered correlation matrix
         for _ in 1:5

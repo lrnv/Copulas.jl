@@ -119,9 +119,9 @@ function composition_taylor_implicit(outer::Generator, inner::Generator, t₀::T
     # triangular qₖ=(bₖ − Σ_{m≥2} aₘ[εᵏ]Qᵐ)/a₁ below — no Taylor1 on ϕ/ϕ⁻¹.
     # Derivative-side coefficients: a[m] = ϕ⁽ᵐ⁾(outer,h₀)/m!, b[m] = ϕ⁽ᵐ⁾(inner,t₀)/m!
     # for m = 1..d (scalar k-th derivatives — NO Taylor1 on ϕ/ϕ⁻¹).
-    b  = T[ϕ⁽ᵏ⁾(inner, m, t₀) / T(factorial(big(m))) for m in 1:d]
+    b  = T[_div_factorial(ϕ⁽ᵏ⁾(inner, m, t₀), m) for m in 1:d]
     h₀ = ϕ⁻¹(outer, ϕ(inner, t₀))                      # single scalar inverse
-    a  = T[ϕ⁽ᵏ⁾(outer, m, h₀) / T(factorial(big(m))) for m in 1:d]
+    a  = T[_div_factorial(ϕ⁽ᵏ⁾(outer, m, h₀), m) for m in 1:d]
 
     q = zeros(T, d)
     q[1] = b[1] / a[1]
@@ -173,8 +173,12 @@ function _faa_di_bruno_coeffs(p::AbstractVector{T}, β::AbstractVector{T}, d::In
     n = d + 1
     p_pad = zeros(T, n)
     p_pad[2:min(n, length(p) + 1)] .= p[1:min(d, length(p))]
-    facts = T[factorial(big(j)) for j in 0:d]
-    invf  = T[1 / factorial(big(j)) for j in 0:d]
+    facts = ones(T, d + 1)
+    invf = ones(T, d + 1)
+    @inbounds for j in 1:d
+        facts[j + 1] = facts[j] * j
+        invf[j + 1] = invf[j] / j
+    end
     β_scaled = T[β[j] * facts[j] for j in 1:n]
     α = zeros(T, n)
     q1 = copy(p_pad)
@@ -455,9 +459,9 @@ _subdim(c::NestedArchimedeanCopula{d}) where {d} = d
 _subdim(c::Tuple) = _subdim(c[1])
 
 # ---- Unified keyword constructor --------------------------------------------
-function NestedArchimedeanCopula(G::Generator;
-                                 leaves::AbstractVector{<:Integer} = Int[],
-                                 children::AbstractVector = Any[])
+function _nested_archimedean(expected_dimension, G::Generator;
+                             leaves::AbstractVector{<:Integer} = Int[],
+                             children::AbstractVector = Any[])
     leafdims = collect(Int, leaves)
     kids = Any[]
     kiddims = Vector{Int}[]
@@ -502,17 +506,30 @@ function NestedArchimedeanCopula(G::Generator;
     alldims = sort(collect(used))
     d = length(alldims)
     alldims == collect(1:d) || throw(ArgumentError("declared dimensions $(alldims) must tile 1:$d with no gaps or overlaps"))
+    if expected_dimension isa Val
+        expected = only(typeof(expected_dimension).parameters)
+        d == expected || throw(DimensionMismatch("constructed copula has dimension $d, expected $expected"))
+    end
 
     # Flat declaration (no children) → native ArchimedeanCopula (fast path).
-    isempty(kids) && return ArchimedeanCopula(length(leafdims), G)
+    if isempty(kids)
+        return expected_dimension isa Val ? ArchimedeanCopula{only(typeof(expected_dimension).parameters)}(G) : ArchimedeanCopula(d, G)
+    end
 
     kids2 = Any[_place_dims(kids[i], kiddims[i]) for i in eachindex(kids)]
-    return NestedArchimedeanCopula{d, typeof(G)}(G, leafdims, kids2, alldims)
+    return expected_dimension isa Val ?
+        NestedArchimedeanCopula{only(typeof(expected_dimension).parameters),typeof(G)}(G, leafdims, kids2, alldims) :
+        NestedArchimedeanCopula{d,typeof(G)}(G, leafdims, kids2, alldims)
 end
+
+NestedArchimedeanCopula(G::Generator; kwargs...) = _nested_archimedean(nothing, G; kwargs...)
+NestedArchimedeanCopula{d}(G::Generator; kwargs...) where {d} = _nested_archimedean(Val(d), G; kwargs...)
 
 # Legacy positional form: children in consecutive blocks, no root leaves.
 NestedArchimedeanCopula(G::Generator, children::AbstractVector) =
     NestedArchimedeanCopula(G; leaves = Int[], children = collect(Any, children))
+NestedArchimedeanCopula{d}(G::Generator, children::AbstractVector) where {d} =
+    NestedArchimedeanCopula{d}(G; leaves = Int[], children = collect(Any, children))
 
 # ---- Dimension placement ----------------------------------------------------
 # A flat child keeps its generator and is tagged with its (global) dims.

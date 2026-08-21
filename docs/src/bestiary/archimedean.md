@@ -86,7 +86,7 @@ Note that the rate at which these functions approach 0 (and their inverse approa
 An easy way to construct new $d$-monotonous generators is the use of the Williamson $d$-transform.
 
 !!! definition "Williamson d-transformation"
-    For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and integer $d \ge 2$, the Williamson-d-transform of ``X`` is the real function supported on $[0, \infty[$ given by:
+    For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and real order $d \ge 2$, the Williamson-d-transform of ``X`` is the real function supported on $[0, \infty[$ given by:
 
     $\phi(t) = \mathcal{W}_d(X)(t)$
     $= \int_{t}^{\infty} \left(1 - \frac{t}{x}\right)^{d-1} dF(x)$
@@ -99,7 +99,7 @@ In this package, we implemented it through the [`WilliamsonGenerator`](@ref) cla
 This function computes the Williamson d-transform of the provided random variable $X$. See [williamson1956, mcneil2009](@cite) for the literature.
 
 !!! info "`max_monotony` of Williamson generators"
-    The $d$-transform of a positive random variable is $d$-monotone but not $k$-monotone for any $k > d$. Its max monotony is therefore $d$. This has a few implications, one of the biggest is that the $d$-variate Archimedean copula that corresponds has no density.
+    The $d$-transform of a positive random variable is $k$-monotone for integer dimensions $k \le d$. Its max monotony is stored as the real order $d$. This has a few implications, one of the biggest being that at an integer order $d$, the corresponding $d$-variate Archimedean copula has no density.
     
     More generally, if you want your Archimedean copula to have a density, you must use a generator that is more-monotone than the dimension of your model. 
 
@@ -114,6 +114,14 @@ WilliamsonGenerator
     - $\mathcal W\big(\mathcal W^{-1}_d(G, d), d\big) = G$
 
     The second identity returns the canonical Williamson generator associated to the radial law recovered from $G$.
+
+    There is also an exact identity between different orders. If $0 < k < d$ and $B \sim \operatorname{Beta}(k,d-k)$ is independent of $X$, then
+
+    $$\mathcal W_k^{-1}\big(\mathcal W_d(X)\big) \overset{\mathrm d}=XB.$$
+
+    `𝒲₋₁(𝒲(X, d), k)` uses this representation directly, including for non-integer orders. The generic inverse of an arbitrary generator remains restricted to integer orders.
+
+    Successive reductions are collapsed using the corresponding beta-product identity. The reverse composition is also recognized: applying `𝒲(..., k)` to the radial returned by `𝒲₋₁(𝒲(X, d), k)` recovers the original order `d` directly.
 
     As a quick sanity check:
 

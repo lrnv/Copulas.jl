@@ -48,8 +48,13 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        with:
+          force_latest_compatible_version: ${{ matrix.version == 'lts' && 'false' || 'auto' }}
+          coverage: ${{ matrix.version == 'lts' }}
       - uses: julia-actions/julia-processcoverage@v1
+        if: matrix.version == 'lts'
       - uses: codecov/codecov-action@v7
+        if: matrix.version == 'lts'
         with:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}

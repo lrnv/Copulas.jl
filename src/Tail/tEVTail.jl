@@ -1,5 +1,5 @@
 """
-    tEVTail{T}, tEVCopula{T}
+    tEVTail{T}, tEVCopula{d,T}
 
     tEVCopula(d, ν, ρ)
     tEVCopula(ν, R)
@@ -55,7 +55,7 @@ struct tEVTail{T} <: Tail2
         return new{typeof(ρT)}(νT, ρT)
     end
 end
-const tEVCopula{T} = ExtremeValueCopula{2, tEVTail{T}}
+const tEVCopula{d,T} = ExtremeValueCopula{d, tEVTail{T}}
 Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
 _is_valid_in_dim(tail::tEVTail, d::Int) =
     d >= 2 && tail.ρ > -inv(d - 1)
@@ -467,12 +467,12 @@ function _tev_copula_from_correlation(ν::Real, R::AbstractMatrix)
     return ExtremeValueCopula(d1, tail)
 end
 
-(::Type{<:ExtremeValueCopula{2,<:tEVTail}})(
+(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(
     ν::Real,
     R::AbstractMatrix,
 ) = _tev_copula_from_correlation(ν, R)
 
-function (::Type{<:ExtremeValueCopula{2,<:tEVTail}})(
+function (::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(
     d::Int,
     ν::Real,
     R::AbstractMatrix,

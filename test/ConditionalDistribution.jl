@@ -1,7 +1,7 @@
 
 @testset "IndependentCopula conditional"  begin
     # [GenericTests integration]: Yes. This checks condition(X,J,·) reduces to subsetdims for independence; can be generalized and added to GenericTests.
-    X = SklarDist(IndependentCopula(3), (Normal(), Exponential(), LogNormal()))
+    X = SklarDist(IndependentCopula{3}(), (Normal(), Exponential(), LogNormal()))
     Y = condition(X, 2, 0.7)
     Z = Copulas.subsetdims(X, (1,3))
 
@@ -19,7 +19,7 @@
 end
 
 @testset "Distortion densities agree with their cdf derivatives" begin
-    C = FGMCopula(2, 0.4)
+    C = FGMCopula{2}(0.4)
     for j in 1:2
         i = 3 - j
         D = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (0.4,), i)
@@ -35,7 +35,7 @@ end
 
 @testset "Plackett distortion closed-form quantile" begin
     for θ in (0.5, 2.0), j in 1:2
-        C = PlackettCopula(θ)
+        C = PlackettCopula{2}(θ)
         uⱼ = j == 1 ? 0.3 : 0.7
         D = condition(C, (j,), (uⱼ,))
         @test D isa Copulas.PlackettDistortion
@@ -62,10 +62,10 @@ end
 
 @testset "Algebraic Archimedean distortion quantiles" begin
     copulas = (
-        FrankCopula(2, -2.0),
-        FrankCopula(2, 3.0),
-        AMHCopula(2, -0.5),
-        AMHCopula(2, 0.5),
+        FrankCopula{2}(-2.0),
+        FrankCopula{2}(3.0),
+        AMHCopula{2}(-0.5),
+        AMHCopula{2}(0.5),
     )
     for C in copulas
         D = condition(C, (1,), (0.4,))
@@ -81,8 +81,8 @@ end
 
 @testset "Gumbel and Log distortion closed-form quantiles" begin
     for θ in (1.001, 1.2, 2.5, 8.0), uⱼ in (0.25, 0.7)
-        Dg = condition(GumbelCopula(2, θ), (1,), (uⱼ,))
-        Dl = condition(LogCopula(2, θ), (1,), (uⱼ,))
+        Dg = condition(GumbelCopula{2}(θ), (1,), (uⱼ,))
+        Dl = condition(LogCopula{2}(θ), (1,), (uⱼ,))
         for α in (0.1, 0.5, 0.9)
             qg = quantile(Dg, α)
             ql = quantile(Dl, α)
@@ -97,12 +97,12 @@ end
 
 @testset "Lambert-W Archimedean distortion quantiles" begin
     copulas = (
-        InvGaussianCopula(2, 0.01),
-        InvGaussianCopula(2, 0.5),
-        InvGaussianCopula(2, 2.0),
-        BB9Copula(2, 1.0, 0.8),
-        BB9Copula(2, 1.001, 0.8),
-        BB9Copula(2, 2.5, 0.8),
+        InvGaussianCopula{2}(0.01),
+        InvGaussianCopula{2}(0.5),
+        InvGaussianCopula{2}(2.0),
+        BB9Copula{2}(1.0, 0.8),
+        BB9Copula{2}(1.001, 0.8),
+        BB9Copula{2}(2.5, 0.8),
     )
     for C in copulas
         D = condition(C, (1,), (0.4,))
@@ -118,7 +118,7 @@ end
 
 @testset "Gumbel-Barnett distortion closed-form quantile" begin
     for θ in (0.01, 0.2, 0.8), uⱼ in (0.3, 0.7)
-        D = condition(GumbelBarnettCopula(2, θ), (1,), (uⱼ,))
+        D = condition(GumbelBarnettCopula{2}(θ), (1,), (uⱼ,))
         for α in (0.1, 0.5, 0.9)
             q = quantile(D, α)
             generic = @invoke quantile(D::Copulas.Distortion, α::Real)
@@ -130,7 +130,7 @@ end
 end
 
 @testset "Gaussian distortion log-scale formulas" begin
-    D = condition(GaussianCopula([1.0 0.6; 0.6 1.0]), (1,), (0.3,))
+    D = condition(GaussianCopula{2}([1.0 0.6; 0.6 1.0]), (1,), (0.3,))
     N = Normal()
     for u in (1e-12, 0.2, 0.5, 0.8)
         q = quantile(N, u)
@@ -145,7 +145,7 @@ end
 end
 
 @testset "Student distortion logcdf" begin
-    D = condition(TCopula(4, [1.0 0.5; 0.5 1.0]), (1,), (0.3,))
+    D = condition(TCopula{2}(4, [1.0 0.5; 0.5 1.0]), (1,), (0.3,))
     @test D.Tu isa TDist
     @test D.Tcond isa TDist
     for u in (1e-10, 0.2, 0.5, 0.8)
@@ -157,7 +157,7 @@ end
 
 @testset "Elliptical conditioning shares matrix factorizations" begin
     Σ = [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]
-    for C in (GaussianCopula(Σ), TCopula(4, Σ))
+    for C in (GaussianCopula{3}(Σ), TCopula{3}(4, Σ))
         conditioned = condition(C, (1,), (0.35,))
         @test length(conditioned.m) == 2
         for (k, i) in enumerate((2, 3)), u in (0.2, 0.7)
@@ -168,7 +168,7 @@ end
 end
 
 @testset "Student matrix Rosenblatt fast path" begin
-    C = TCopula(5, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])
+    C = TCopula{3}(5, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])
     u = [0.2 0.7; 0.4 0.6; 0.8 0.3]
     fast = rosenblatt(C, u)
     reference = @invoke Copulas.rosenblatt(C::Copulas.Copula{3}, u)
@@ -180,7 +180,7 @@ end
 end
 
 @testset "Distorted distribution logcdf" begin
-    D = condition(GaussianCopula([1.0 0.6; 0.6 1.0]), (1,), (0.3,))(Logistic())
+    D = condition(GaussianCopula{2}([1.0 0.6; 0.6 1.0]), (1,), (0.3,))(Logistic())
     @test D isa Copulas.DistortedDist
     for x in (-8.0, -0.5, 1.0)
         @test logcdf(D, x) ≈ logcdf(D.D, cdf(D.X, x)) atol = 2e-13
@@ -188,10 +188,10 @@ end
 end
 
 @testset "Extreme-value conditioning caches fixed transforms" begin
-    DEV = condition(GalambosCopula(2, 2.5), (1,), (0.3,))
+    DEV = condition(GalambosCopula{2}(2.5), (1,), (0.3,))
     @test DEV.negloguⱼ == -log(DEV.uⱼ)
 
-    DAM = condition(ArchimaxCopula(2, Copulas.FrankGenerator(0.8),
+    DAM = condition(ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),
                                   Copulas.HuslerReissTail(0.6)), (1,), (0.3,))
     @test DAM.yⱼ == Copulas.ϕ⁻¹(DAM.gen, DAM.uⱼ)
     @test DAM.invderivⱼ == Copulas.ϕ⁻¹⁽¹⁾(DAM.gen, DAM.uⱼ)
@@ -199,9 +199,9 @@ end
 
 @testset "Archimedean distortion logcdf" begin
     distortions = (
-        condition(ClaytonCopula(3, 2.0), (1, 2), (0.3, 0.6)),
-        condition(FrankCopula(3, 2.0), (1, 2), (0.3, 0.6)),
-        condition(GumbelCopula(3, 2.0), (1, 2), (0.3, 0.6)),
+        condition(ClaytonCopula{3}(2.0), (1, 2), (0.3, 0.6)),
+        condition(FrankCopula{3}(2.0), (1, 2), (0.3, 0.6)),
+        condition(GumbelCopula{3}(2.0), (1, 2), (0.3, 0.6)),
     )
     for D in distortions, u in (1e-10, 0.2, 0.5, 0.8)
         @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 3e-12
@@ -211,7 +211,7 @@ end
 end
 
 @testset "Flip distortion logcdf" begin
-    S = SurvivalCopula(ClaytonCopula(2, 2.0), (2,))
+    S = SurvivalCopula{2}(ClaytonCopula{2}(2.0), (2,))
     D = condition(S, (1,), (0.3,))
     @test D isa Copulas.FlipDistortion
     for u in (0.2, 0.5, 0.8)
@@ -226,7 +226,7 @@ end
 
 @testset "FGM distortion log-scale formulas" begin
     for θ in (-0.8, 0.8), uⱼ in (0.2, 0.7)
-        D = condition(FGMCopula(2, θ), (1,), (uⱼ,))
+        D = condition(FGMCopula{2}(θ), (1,), (uⱼ,))
         for u in (1e-12, 0.2, 0.5, 0.8)
             @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 2e-14
         end
@@ -238,7 +238,7 @@ end
 end
 
 @testset "Generic ConditionalCopula density" begin
-    C = GaussianCopula([
+    C = GaussianCopula{3}([
         1.0 0.35 0.20
         0.35 1.0 0.25
         0.20 0.25 1.0
@@ -246,7 +246,7 @@ end
     js = (3,)
     ujs = (0.4,)
     generic = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{3}, js, ujs)
-    Cgeneric = FGMCopula(3, [0.1, 0.2, 0.3, 0.4])
+    Cgeneric = FGMCopula{3}([0.1, 0.2, 0.3, 0.4])
     conditioned = condition(Cgeneric, js, ujs)
     @test conditioned.C isa Copulas.ConditionalCopula
     @test conditioned.m === conditioned.C.distortions
@@ -260,7 +260,7 @@ end
     end
     @test pdf(generic, [-0.1, 0.5]) == 0
 
-    Cclayton = ClaytonCopula(3, 2.0)
+    Cclayton = ClaytonCopula{3}(2.0)
     generic_big = @invoke Copulas.ConditionalCopula(
         Cclayton::Copulas.Copula{3},
         (3,),
@@ -288,7 +288,7 @@ end
 end
 
 @testset "Checkerboard distortion supports multiple conditioning dimensions" begin
-    C = CheckerboardCopula(randn(rng, 3, 30); pseudo_values=false)
+    C = CheckerboardCopula{3}(randn(rng, 3, 30); pseudo_values=false)
     D = Copulas.DistortionFromCop(C, (1, 2), (0.3, 0.7), 3)
 
     @test D isa Copulas.HistogramBinDistortion
@@ -298,7 +298,7 @@ end
 end
 
 @testset "Bernstein distortion quantiles use bounded bisection" begin
-    C = BernsteinCopula(GaussianCopula(2, 0.3); m=5)
+    C = BernsteinCopula{2}(GaussianCopula{2}(0.3); m=5)
     D = condition(C, (1,), (0.4,))
     @test D isa Copulas.BernsteinDistortion
     for p in (0.1, 0.5, 0.9)
@@ -312,8 +312,8 @@ end
     # Compare the GENERIC DistortionFromCop (forced via @invoke) against AD-based reference
     # on a tiny, fast subset to validate the generic path independent of family specifics.
     examples = (
-        FGMCopula(2, 0.4),
-        ArchimaxCopula(2, Copulas.JoeGenerator(2.5),      Copulas.AsymGalambosTail(0.35, 0.65, 0.3))
+        FGMCopula{2}(0.4),
+        ArchimaxCopula{2}(Copulas.JoeGenerator(2.5),      Copulas.AsymGalambosTail(0.35, 0.65, 0.3))
     )
     us = (0.2, 0.5, 0.8)
     for C in examples
@@ -352,8 +352,8 @@ end
     # Validate the GENERIC ConditionalCopula cdf against an AD-based reference
     # on a tiny 3D subset for two representative families.
     examples = (
-        FrankCopula(3, 2.7),
-        ClaytonCopula(3, 1.2),
+        FrankCopula{3}(2.7),
+        ClaytonCopula{3}(1.2),
     )
     pts = ((0.2, 0.3), (0.5, 0.5), (0.8, 0.6))
     for C in examples
@@ -379,7 +379,7 @@ end
     # [GenericTests integration]: Yes. Univariate conditional on independent copula should be Uniform; Sklar with independent copula preserves marginal.
     # Suitable for a generic conditional smoke test.
     # Uniform-scale: Independent copula -> Uniform when one dim remains
-    C = IndependentCopula(2)
+    C = IndependentCopula{2}()
     J = (1,)
     u1 = 0.3
     Ucond = condition(C, J, (u1,))
@@ -399,7 +399,7 @@ end
     # [GenericTests integration]: Yes. This is a model-specific formula but fits an "analytic conditional for Gaussian" block in GenericTests.
     ρ = 0.6
     Σ = [1.0 ρ; ρ 1.0]
-    C = GaussianCopula(Σ)
+    C = GaussianCopula{2}(Σ)
     J = (2,)
     u2 = 0.2
     D = condition(C, J, (u2,))
@@ -425,9 +425,9 @@ end
     # H(u | v) = ϕ'(ϕ^{-1}(u) + ϕ^{-1}(v)) / ϕ'(ϕ^{-1}(v))
     # Test it across multiple families by looping instead of duplicating code.
     examples = (
-        ClaytonCopula(2,1.2),
-        FrankCopula(2, 1.0),
-        GumbelCopula(2, 1.2),
+        ClaytonCopula{2}(1.2),
+        FrankCopula{2}(1.0),
+        GumbelCopula{2}(1.2),
     )
     J = (2,)
     tol = 5e-5
@@ -457,7 +457,7 @@ end
     # normalize to correlation
     s = sqrt.(diag(Σ))
     Σ = Symmetric(Σ ./ (s*s'))
-    C = GaussianCopula(Matrix(Σ))
+    C = GaussianCopula{4}(Matrix(Σ))
     # Choose J and uJ
     J = (2,4)
     uJ = (0.3, 0.8)
@@ -523,7 +523,7 @@ end
     Random.seed!(rng,43)
     d = 3
     Σ = [1 0.7 0.3;0.7 1 0.7; 0.3 0.7 1]
-    C = GaussianCopula(Σ)
+    C = GaussianCopula{3}(Σ)
     μ = zeros(d)
     
     X = SklarDist(C, Tuple(Normal(μ[i],Σ[i,i]) for i in 1:d))
@@ -561,7 +561,7 @@ end
     # [GenericTests integration]: Partially. Monotonicity and quantile-roundtrip are generic; keep Clayton-specific here or parameterize family list.
     Random.seed!(rng,44)
     d = 2
-    C = ClaytonCopula(d, 0.7)
+    C = ClaytonCopula{d}(0.7)
     m = (Normal(), LogNormal())
     X = SklarDist(C, m)
     J = (1,)
@@ -590,8 +590,8 @@ end
     # NTuple{p,<:Real}; non-Float64 values are converted to Float64 downstream, so
     # the conditioning result matches the Float64-input result (tolerance allows
     # for the fast-vs-generic distortion method difference on the converted path).
-    C3 = ClaytonCopula(3, 2.0)
-    C4 = ClaytonCopula(4, 2.0)
+    C3 = ClaytonCopula{3}(2.0)
+    C4 = ClaytonCopula{4}(2.0)
 
     # Copula entry, single conditioned dim (p == D-1) → univariate Distortion.
     r1 = condition(C3, (1, 2), (0.3, 0.4))
@@ -628,7 +628,7 @@ end
     # condition() accepts non-Float64 values, AND the conditioning point now
     # survives into the ConditionalCopula/DistortionFromCop (no Float64 downcast),
     # so BigFloat precision flows through to the conditional CDF.
-    C = ClaytonCopula(4, 2.0)
+    C = ClaytonCopula{4}(2.0)
     xf = [0.3, 0.5, 0.4, 0.6]; xb = big.(xf)
 
     # single-conditioned distortion (p = d-1): the conditional marginal of coord 2

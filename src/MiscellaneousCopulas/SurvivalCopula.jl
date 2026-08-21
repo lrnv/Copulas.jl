@@ -40,8 +40,7 @@ struct SurvivalCopula{d,CT,flips} <: Copula{d}
         end
         return new{d,typeof(C),flips}(C)
     end
-    SurvivalCopula(C::CT, flips::Tuple) where {d, CT<:Copula{d}} = SurvivalCopula{d,CT,flips}(C)
-    SurvivalCopula(C::CT, flips) where {d, CT<:Copula{d}} = SurvivalCopula(C, tuple(flips...))
+    SurvivalCopula(C::Copula{d}, flips) where {d} = SurvivalCopula{d}(C, flips)
     SurvivalCopula{D,CT,flips}(d::Int, args...;kwargs...) where {D, CT, flips} = SurvivalCopula{d,CT,flips}(CT(d, args...; kwargs...))
 end
 
@@ -72,6 +71,10 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     Distributions._rand!(rng, C.C, A)
     return reverse!(A, flips)
+end
+function SurvivalCopula{d}(C::Copula{d}, flips) where {d}
+    flip_tuple = Tuple(flips)
+    return SurvivalCopula{d,typeof(C),flip_tuple}(C)
 end
 
 # Fitting: delegate to the base copula after flipping the requested indices in U
