@@ -1,9 +1,11 @@
 """
     MOTail{T}, MOCopula{d,T}
 
+    MOCopula{2}(λ₁, λ₂, λ₁₂)
     MOCopula(2, λ₁, λ₂, λ₁₂)
-    MOCopula(λ::AbstractVector)
+    MOCopula{d}(λ::AbstractVector)
     MOCopula(d, λ::AbstractVector)
+    MOCopula(λ::AbstractVector)
 
 Marshall-Olkin extreme-value family.
 
@@ -238,9 +240,14 @@ function _mo_dimension(λ::AbstractVector)
     return d
 end
 
-(::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(λ::AbstractVector) = MOMultivariateCopula(_mo_dimension(λ), λ)
+function (CT::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(λ::AbstractVector)
+    inferred = _mo_dimension(λ)
+    d = _ev_resolve_dimension(CT, inferred, "Marshall-Olkin shock-vector")
+    return MOMultivariateCopula(d, λ)
+end
 
-(::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(d::Int, λ::AbstractVector,) = MOMultivariateCopula(d, λ)
+(::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(d::Int, λ::AbstractVector,) =
+    MOMultivariateCopula(d, λ)
 
 MOMultivariateCopula(tail::MOTail) = ExtremeValueCopula(2, MOMultivariateTail(tail))
 

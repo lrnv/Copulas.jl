@@ -891,7 +891,7 @@ end
             @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
                 @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
             end
-            @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
+            @test Copulas._unbound_params(CT, d, Distributions.params(Copulas._construct_from_params(CT, d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
 
             # Then on the copula we have at hand:
             θ₀ = Distributions.params(C)
@@ -899,7 +899,7 @@ end
             @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
                 @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
             end
-            @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
+            @test Copulas._unbound_params(CT, d, Distributions.params(Copulas._construct_from_params(CT, d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
         end
 
         methods = Copulas._available_fitting_methods(CT, d)

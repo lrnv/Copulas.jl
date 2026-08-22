@@ -516,14 +516,37 @@ function EmpiricalEVMultivariateTail(u::AbstractMatrix; method::Symbol=:ols, deg
 end
 
 """
+    EmpiricalEVMultivariateCopula{d}(u; kwargs...)
+    EmpiricalEVMultivariateCopula(d, u; kwargs...)
     EmpiricalEVMultivariateCopula(u; kwargs...)
 
 Construct a shape-valid multivariate empirical extreme-value copula from a
-`d × n` sample.  In dimensions `d ≥ 3`, this is the preferred nonparametric EV
-constructor.  The historical `EmpiricalEVCopula` remains the backward-compatible
-bivariate implementation.
+`d × n` sample. The `{d}` form is canonical; the runtime-`d` and inferred
+forms are convenience constructors. In dimensions `d ≥ 3`, this is the
+preferred nonparametric EV constructor. The historical `EmpiricalEVCopula`
+remains the backward-compatible bivariate implementation.
 """
-EmpiricalEVMultivariateCopula(u::AbstractMatrix; kwargs...) =ExtremeValueCopula(size(u, 1), EmpiricalEVMultivariateTail(u; kwargs...),)
+const EmpiricalEVMultivariateCopula{d} =
+    ExtremeValueCopula{d,EmpiricalEVMultivariateTail}
+
+function (CT::Type{<:ExtremeValueCopula{D,<:EmpiricalEVMultivariateTail} where D})(
+    u::AbstractMatrix;
+    kwargs...,
+)
+    d = _ev_resolve_dimension(CT, size(u, 1), "sample")
+    return ExtremeValueCopula{d}(EmpiricalEVMultivariateTail(u; kwargs...))
+end
+
+function (::Type{<:ExtremeValueCopula{D,<:EmpiricalEVMultivariateTail} where D})(
+    d::Int,
+    u::AbstractMatrix;
+    kwargs...,
+)
+    d == size(u, 1) || throw(DimensionMismatch(
+        "d=$d does not match sample dimension $(size(u, 1))",
+    ))
+    return ExtremeValueCopula{d}(EmpiricalEVMultivariateTail(u; kwargs...))
+end
 
 StatsBase.dof(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}) where {d} = 0
 _available_fitting_methods(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, dim,) where {d} = (:ols, :cfg, :pickands)

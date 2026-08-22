@@ -1,6 +1,7 @@
 """
     MixedTail{T}, MixedCopula{d,T}
 
+    MixedCopula{d}(θ)
     MixedCopula(d, θ)
 
 Mixed extreme-value model with `θ ∈ [0,1]`.

@@ -7,6 +7,7 @@ Fields:
 
 Constructor
 
+  AsymMixedCopula{2}(θ₁, θ₂)
   AsymMixedCopula(2, θ₁, θ₂)
   ExtremeValueCopula(2, AsymMixedTail(θ₁, θ₂))
 
@@ -61,7 +62,7 @@ Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ
 # keeps the (θ₁, θ₂) interface.
 function _example(CT::Type{<:ExtremeValueCopula{D,<:AsymMixedTail} where D}, d::Int,)
     d == 2 || throw(DimensionMismatch("AsymMixedCopula is only defined in dimension two",))
-    return CT(d, 0.50, 0.10)
+    return _construct_from_params(CT, d, 0.50, 0.10)
 end
 
 

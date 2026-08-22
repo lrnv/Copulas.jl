@@ -1,22 +1,66 @@
 using Random
 
 @testset "Extreme-value architecture" begin
-    @testset "dimension-aware constructors" begin
-        for (C, d) in (
-            (LogCopula(5, 2.0), 5),
-            (GalambosCopula(4, 0.7), 4),
-            (HuslerReissCopula(3, 1.0), 3),
-            (MixedCopula(4, 0.5), 4),
-            (tEVCopula(3, 4.0, 0.2), 3),
+    @testset "canonical dimension constructors" begin
+        for (Ctyped, Cruntime, d) in (
+            (LogCopula{5}(2.0), LogCopula(5, 2.0), 5),
+            (GalambosCopula{4}(0.7), GalambosCopula(4, 0.7), 4),
+            (HuslerReissCopula{3}(1.0), HuslerReissCopula(3, 1.0), 3),
+            (MixedCopula{4}(0.5), MixedCopula(4, 0.5), 4),
+            (CuadrasAugeCopula{4}(0.5), CuadrasAugeCopula(4, 0.5), 4),
+            (tEVCopula{3}(4.0, 0.2), tEVCopula(3, 4.0, 0.2), 3),
         )
-            @test length(C) == d
+            @test length(Ctyped) == d
+            @test length(Cruntime) == d
+            @test typeof(Ctyped) == typeof(Cruntime)
+            @test Distributions.params(Ctyped) == Distributions.params(Cruntime)
         end
 
-        @test_throws ArgumentError AsymLogCopula(3, 1.5, 0.4, 0.6)
-        @test_throws ArgumentError Copulas.ExtremeValueCopula(1, Copulas.GalambosTail(0.7))
+        # Integer-valued parameters remain parameters once d is encoded.
+        @test Distributions.params(LogCopula{2}(2)).θ == 2.0
+        @test Distributions.params(tEVCopula{2}(4, 0.2)).ν == 4
 
-        Cind = LogCopula(3, 1.0)
-        Cdep = LogCopula(3, Inf)
+        # Generic fitting reconstructs from concrete typeof(C) through the
+        # internal hook, not through an ambiguous FamilyCopula{d,T}(d, ...) call.
+        C0 = GalambosCopula{2}(0.9)
+        C1 = Copulas._construct_from_params(typeof(C0), 2, 0.9)
+        @test typeof(C1) == typeof(C0)
+        @test Distributions.params(C1) == Distributions.params(C0)
+
+        # Scalar-parameter families no longer infer an implicit d=2.
+        @test_throws MethodError GalambosCopula(2.3)
+        @test_throws MethodError MixedCopula(0.5)
+
+        @test_throws ArgumentError AsymLogCopula(3, 1.5, 0.4, 0.6)
+        @test_throws ArgumentError Copulas.ExtremeValueCopula(
+            1,
+            Copulas.GalambosTail(0.7),
+        )
+
+        @test cdf(
+            AsymLogCopula{2}(1.5, 0.4, 0.6),
+            [0.31, 0.67],
+        ) ≈ cdf(
+            AsymLogCopula(2, 1.5, 0.4, 0.6),
+            [0.31, 0.67],
+        )
+        @test cdf(
+            BC2Copula{2}(0.2, 0.5),
+            [0.31, 0.67],
+        ) ≈ cdf(
+            BC2Copula(2, 0.2, 0.5),
+            [0.31, 0.67],
+        )
+        @test cdf(
+            MOCopula{2}(1.0, 2.0, 0.5),
+            [0.31, 0.67],
+        ) ≈ cdf(
+            MOCopula(2, 1.0, 2.0, 0.5),
+            [0.31, 0.67],
+        )
+
+        Cind = LogCopula{3}(1.0)
+        Cdep = LogCopula{3}(Inf)
         @test length(Cind) == 3
         @test length(Cdep) == 3
         @test cdf(Cind, fill(0.5, 3)) ≈ 0.5^3
@@ -25,55 +69,109 @@ using Random
 
     @testset "parameter-structured constructors" begin
         Γ = [0.0 1.0 1.0; 1.0 0.0 1.0; 1.0 1.0 0.0]
-        Chr = HuslerReissCopula(Γ)
-        @test length(Chr) == 3
-        @test Chr.tail isa Copulas.HuslerReissVariogramTail
+        Chr_typed = HuslerReissCopula{3}(Γ)
+        Chr_runtime = HuslerReissCopula(3, Γ)
+        Chr_inferred = HuslerReissCopula(Γ)
+        @test typeof(Chr_typed) == typeof(Chr_runtime) == typeof(Chr_inferred)
+        @test Chr_typed.tail isa Copulas.HuslerReissVariogramTail
 
         Γ2 = [0.0 1.0; 1.0 0.0]
-        Chr2 = HuslerReissCopula(Γ2)
+        Chr2 = HuslerReissCopula{2}(Γ2)
         @test Chr2.tail isa Copulas.HuslerReissTail
-        @test cdf(Chr2, [0.4, 0.7]) ≈ cdf(HuslerReissCopula(2, 2.0), [0.4, 0.7])
+        @test cdf(Chr2, [0.4, 0.7]) ≈
+              cdf(HuslerReissCopula{2}(2.0), [0.4, 0.7])
 
         R = [1.0 0.2 0.1; 0.2 1.0 0.3; 0.1 0.3 1.0]
-        Ctev = tEVCopula(4.0, R)
-        @test length(Ctev) == 3
-        @test Ctev.tail isa Copulas.tEVCorrelationTail
+        Ctev_typed = tEVCopula{3}(4.0, R)
+        Ctev_runtime = tEVCopula(3, 4.0, R)
+        Ctev_inferred = tEVCopula(4.0, R)
+        @test typeof(Ctev_typed) == typeof(Ctev_runtime) == typeof(Ctev_inferred)
+        @test Ctev_typed.tail isa Copulas.tEVCorrelationTail
 
         R2 = [1.0 0.3; 0.3 1.0]
-        Ctev2 = tEVCopula(4.0, R2)
+        Ctev2 = tEVCopula{2}(4.0, R2)
         @test Ctev2.tail isa Copulas.tEVTail
-        @test cdf(Ctev2, [0.4, 0.7]) ≈ cdf(tEVCopula(2, 4.0, 0.3), [0.4, 0.7])
+        @test cdf(Ctev2, [0.4, 0.7]) ≈
+              cdf(tEVCopula{2}(4.0, 0.3), [0.4, 0.7])
 
-        Ctawn = TawnCopula(2.0, [0.6, 0.7, 0.8])
-        @test length(Ctawn) == 3
-        @test Ctawn.tail isa Copulas.TawnTail
-        @test length(TawnCopula(2, [0.6, 0.7, 0.8])) == 3
-        @test length(tEVCopula(4, R)) == 3
-        @test length(AsymGalambosCopula(1, [0.6, 0.7, 0.8])) == 3
+        weights = [0.6, 0.7, 0.8]
+        Ctawn_typed = TawnCopula{3}(2.0, weights)
+        Ctawn_runtime = TawnCopula(3, 2.0, weights)
+        Ctawn_inferred = TawnCopula(2.0, weights)
+        @test typeof(Ctawn_typed) ==
+              typeof(Ctawn_runtime) ==
+              typeof(Ctawn_inferred)
+        @test Ctawn_typed.tail isa Copulas.TawnTail
+        @test length(TawnCopula{3}(2, weights)) == 3
+        @test length(TawnCopula(2, weights)) == 3
 
         asy = [[0.4], [0.3], [0.6, 0.7]]
-        @test length(TawnCopula(2, [2.0], asy)) == 2
-        @test length(AsymGalambosCopula(2, [0.7], asy)) == 2
+        dep_tawn = [2.0]
+        Ctawn_full_typed = TawnCopula{2}(dep_tawn, asy)
+        Ctawn_full_runtime = TawnCopula(2, dep_tawn, asy)
+        Ctawn_full_inferred = TawnCopula(dep_tawn, asy)
+        @test typeof(Ctawn_full_typed) ==
+              typeof(Ctawn_full_runtime) ==
+              typeof(Ctawn_full_inferred)
 
-        Cag = AsymGalambosCopula(0.7, [0.6, 0.7, 0.8])
-        @test length(Cag) == 3
-        @test Cag.tail isa Copulas.AsymGalambosMultiTail
+        Cag_typed = AsymGalambosCopula{3}(0.7, weights)
+        Cag_runtime = AsymGalambosCopula(3, 0.7, weights)
+        Cag_inferred = AsymGalambosCopula(0.7, weights)
+        @test typeof(Cag_typed) == typeof(Cag_runtime) == typeof(Cag_inferred)
+        @test Cag_typed.tail isa Copulas.AsymGalambosMultiTail
+        @test length(AsymGalambosCopula{3}(1, weights)) == 3
+        @test length(AsymGalambosCopula(1, weights)) == 3
 
-        Cag2 = AsymGalambosCopula(0.7, [0.6, 0.7])
-        Cagref = AsymGalambosCopula(2, 0.7, 0.6, 0.7)
+        dep_gal = [0.7]
+        Cag_full_typed = AsymGalambosCopula{2}(dep_gal, asy)
+        Cag_full_runtime = AsymGalambosCopula(2, dep_gal, asy)
+        Cag_full_inferred = AsymGalambosCopula(dep_gal, asy)
+        @test typeof(Cag_full_typed) ==
+              typeof(Cag_full_runtime) ==
+              typeof(Cag_full_inferred)
+
+        Cag2 = AsymGalambosCopula{2}(0.7, [0.6, 0.7])
+        Cagref = AsymGalambosCopula{2}(0.7, 0.6, 0.7)
         @test cdf(Cag2, [0.4, 0.7]) ≈ cdf(Cagref, [0.4, 0.7])
 
-        @test length(BC2Copula([0.2, 0.5, 0.8])) == 3
-        @test BC2Copula([0.2, 0.5]).tail isa Copulas.BC2Tail
+        a = [0.2, 0.5, 0.8]
+        Cbc_typed = BC2Copula{3}(a)
+        Cbc_runtime = BC2Copula(3, a)
+        Cbc_inferred = BC2Copula(a)
+        @test typeof(Cbc_typed) == typeof(Cbc_runtime) == typeof(Cbc_inferred)
+        @test BC2Copula{2}([0.2, 0.5]).tail isa Copulas.BC2Tail
 
         λ = ones(7)
-        Cmo = MOCopula(λ)
-        @test length(Cmo) == 3
-        @test Cmo.tail isa Copulas.MOMultivariateTail
-        @test length(MOCopula(3, λ)) == 3
+        Cmo_typed = MOCopula{3}(λ)
+        Cmo_runtime = MOCopula(3, λ)
+        Cmo_inferred = MOCopula(λ)
+        @test typeof(Cmo_typed) == typeof(Cmo_runtime) == typeof(Cmo_inferred)
+        @test Cmo_typed.tail isa Copulas.MOMultivariateTail
 
+        Uemp = [
+            0.20 0.40 0.70
+            0.30 0.60 0.80
+            0.25 0.55 0.75
+        ]
+        Cemp_typed = EmpiricalEVMultivariateCopula{3}(Uemp; degree=1)
+        Cemp_runtime = EmpiricalEVMultivariateCopula(3, Uemp; degree=1)
+        Cemp_inferred = EmpiricalEVMultivariateCopula(Uemp; degree=1)
+        @test typeof(Cemp_typed) ==
+              typeof(Cemp_runtime) ==
+              typeof(Cemp_inferred)
+
+        @test_throws DimensionMismatch HuslerReissCopula{4}(Γ)
         @test_throws DimensionMismatch HuslerReissCopula(4, Γ)
+        @test_throws DimensionMismatch tEVCopula{4}(4.0, R)
         @test_throws DimensionMismatch tEVCopula(4, 4.0, R)
+        @test_throws DimensionMismatch TawnCopula{4}(2.0, weights)
+        @test_throws DimensionMismatch AsymGalambosCopula{4}(0.7, weights)
+        @test_throws DimensionMismatch BC2Copula{4}(a)
+        @test_throws DimensionMismatch MOCopula{4}(λ)
+        @test_throws DimensionMismatch EmpiricalEVMultivariateCopula{4}(
+            Uemp;
+            degree=1,
+        )
         @test_throws DimensionMismatch MOCopula(ones(5))
     end
 

@@ -1,7 +1,10 @@
 """
     HuslerReissTail{T}, HuslerReissCopula{d,T}
 
+    HuslerReissCopula{d}(θ)
     HuslerReissCopula(d, θ)
+    HuslerReissCopula{d}(Γ)
+    HuslerReissCopula(d, Γ)
     HuslerReissCopula(Γ)
 
 Hüsler-Reiss extreme-value copula.
@@ -136,10 +139,15 @@ function _husler_reiss_copula(Γ::AbstractMatrix)
     return ExtremeValueCopula(d1, tail)
 end
 
-(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D})(Γ::AbstractMatrix) = _husler_reiss_copula(Γ)
+function (CT::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D})(Γ::AbstractMatrix)
+    _ev_resolve_dimension(CT, size(Γ, 1), "variogram")
+    return _husler_reiss_copula(Γ)
+end
 
 function (::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D})(d::Int, Γ::AbstractMatrix,)
-    d == size(Γ, 1) || throw(DimensionMismatch("d=$d does not match variogram dimension $(size(Γ, 1))",))
+    d == size(Γ, 1) || throw(DimensionMismatch(
+        "d=$d does not match variogram dimension $(size(Γ, 1))",
+    ))
     return _husler_reiss_copula(Γ)
 end
 

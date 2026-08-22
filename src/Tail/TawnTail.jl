@@ -40,8 +40,12 @@ struct TawnTail{T} <: Tail
 end
 
 """
+    TawnCopula{d}(α, weights)
+    TawnCopula(d, α, weights)
     TawnCopula(α, weights)
+    TawnCopula{d}(dep, asy)
     TawnCopula(d, dep, asy)
+    TawnCopula(dep, asy)
 
 Construct a Tawn asymmetric-logistic extreme-value copula.
 
@@ -142,16 +146,47 @@ function TawnTail(α::Real, weights::AbstractVector)
     return TawnTail(d, dep, asy)
 end
 
-function (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(α::Real, weights::AbstractVector,)
-    tail = TawnTail(α, weights)
-    return ExtremeValueCopula(tail.d, tail)
-end
-function (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(α::Int, weights::AbstractVector,)
-    tail = TawnTail(α, weights)
-    return ExtremeValueCopula(tail.d, tail)
+function _tawn_dimension_from_subset_weights(asy::AbstractVector)
+    m = length(asy) + 1
+    ispow2(m) || throw(DimensionMismatch(
+        "asy must contain 2^d-1 subset-weight vectors",
+    ))
+    d = trailing_zeros(m)
+    d >= 2 || throw(ArgumentError("Tawn dimension must be at least two"))
+    return d
 end
 
-(::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(d::Int, dep::AbstractVector, asy::AbstractVector,) = ExtremeValueCopula(d, TawnTail(d, dep, asy))
+function _tawn_convenience_copula(CT, α::Real, weights::AbstractVector)
+    tail = TawnTail(α, weights)
+    d = _ev_resolve_dimension(CT, tail.d, "weight-vector")
+    return ExtremeValueCopula{d}(tail)
+end
+
+function (CT::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(α::Real, weights::AbstractVector,)
+    return _tawn_convenience_copula(CT, α, weights)
+end
+
+function (CT::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(α::Int, weights::AbstractVector,)
+    return _tawn_convenience_copula(CT, α, weights)
+end
+
+function (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(d::Int, α::Real, weights::AbstractVector,)
+    tail = TawnTail(α, weights)
+    d == tail.d || throw(DimensionMismatch(
+        "d=$d does not match weight-vector dimension $(tail.d)",
+    ))
+    return ExtremeValueCopula{d}(tail)
+end
+
+function (CT::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(dep::AbstractVector, asy::AbstractVector,)
+    inferred = _tawn_dimension_from_subset_weights(asy)
+    d = _ev_resolve_dimension(CT, inferred, "subset")
+    return ExtremeValueCopula{d}(TawnTail(d, dep, asy))
+end
+
+function (::Type{<:ExtremeValueCopula{D,<:TawnTail} where D})(d::Int, dep::AbstractVector, asy::AbstractVector,)
+    return ExtremeValueCopula{d}(TawnTail(d, dep, asy))
+end
 
 Distributions.params(tail::TawnTail) = (α = tail.α, β = tail.β)
 _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d
