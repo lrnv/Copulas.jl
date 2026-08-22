@@ -1,7 +1,10 @@
 """
     tEVTail{Tdf,Tρ}, tEVCopula{d,T}
 
+    tEVCopula{d}(ν, ρ)
     tEVCopula(d, ν, ρ)
+    tEVCopula{d}(ν, R)
+    tEVCopula(d, ν, R)
     tEVCopula(ν, R)
 
 Extremal-`t` extreme-value copula with degrees of freedom `ν > 0`.
@@ -417,11 +420,23 @@ function _tev_copula_from_correlation(ν::Real, R::AbstractMatrix)
     return ExtremeValueCopula(d1, tail)
 end
 
-(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(ν::Real, R::AbstractMatrix,) = _tev_copula_from_correlation(ν, R)
-(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(ν::Int, R::AbstractMatrix,) = _tev_copula_from_correlation(ν, R)
+function _tev_correlation_copula_for_type(CT, ν::Real, R::AbstractMatrix)
+    _ev_resolve_dimension(CT, size(R, 1), "correlation-matrix")
+    return _tev_copula_from_correlation(ν, R)
+end
+
+function (CT::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(ν::Real, R::AbstractMatrix,)
+    return _tev_correlation_copula_for_type(CT, ν, R)
+end
+
+function (CT::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(ν::Int, R::AbstractMatrix,)
+    return _tev_correlation_copula_for_type(CT, ν, R)
+end
 
 function (::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(d::Int, ν::Real, R::AbstractMatrix,)
-    d == size(R, 1) || throw(DimensionMismatch("d=$d does not match correlation dimension $(size(R, 1))",))
+    d == size(R, 1) || throw(DimensionMismatch(
+        "d=$d does not match correlation dimension $(size(R, 1))",
+    ))
     return _tev_copula_from_correlation(ν, R)
 end
 

@@ -1,6 +1,7 @@
 """
     LogTail{T}, LogCopula{d,T}
 
+    LogCopula{d}(θ)
     LogCopula(d, θ)
 
 Logistic (Gumbel-Hougaard) extreme-value copula in dimension `d ≥ 2`, with

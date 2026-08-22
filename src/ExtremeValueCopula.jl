@@ -39,39 +39,81 @@ References:
 struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
     tail::TT
     function ExtremeValueCopula{d}(tail::Tail) where {d}
-        @assert _is_valid_in_dim(tail, d)
-        return new{d, typeof(tail)}(tail)
+        d >= 2 || throw(ArgumentError("an extreme-value copula requires d ≥ 2"))
+        _is_valid_in_dim(tail, d) || throw(ArgumentError(
+            "$(typeof(tail)) is not valid in dimension $d",
+        ))
+        return new{d,typeof(tail)}(tail)
     end
 end
 
 ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
-_typed_extreme_value(CT, d, args...; kwargs...) =
-    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
-function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
+
+@inline _ev_encoded_dimension(CT) = Base.unwrap_unionall(CT).parameters[1]
+
+function _typed_extreme_value(CT, d::Int, args...; kwargs...)
+    encoded = _ev_encoded_dimension(CT)
+    if !(encoded isa TypeVar) && encoded != d
+        throw(DimensionMismatch(
+            "encoded dimension d=$encoded does not match requested dimension $d",
+        ))
+    end
+    return ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+end
+
+function _ev_resolve_dimension(CT, inferred::Int, what::AbstractString)
+    d = _ev_encoded_dimension(CT)
+    d isa TypeVar && return inferred
+    d == inferred || throw(DimensionMismatch(
+        "encoded dimension d=$d does not match $what dimension $inferred",
+    ))
+    return d
+end
+
+# Canonical constructor: FamilyCopula{d}(params...).
+#
+# If `d` is not encoded in the type, non-structured parameterizations must use
+# the runtime convenience form FamilyCopula(d, params...). Structured family
+# constructors may provide more specific methods that infer `d` from a matrix
+# or vector.
+function (CT::Type{<:ExtremeValueCopula{D}})(args...; kwargs...) where {D}
+    d = _ev_encoded_dimension(CT)
+    d isa TypeVar && throw(ArgumentError(
+        "the copula dimension must be specified as FamilyCopula{d}(...) " *
+        "or FamilyCopula(d, ...)",
+    ))
     return _typed_extreme_value(CT, d, args...; kwargs...)
 end
-function (CT::Type{<:ExtremeValueCopula{D,TT}})(d::Int, args...; kwargs...) where {D,TT}
-    # Dropping TT's parameters is intentional for the current parametric
-    # tails: they only encode the numeric parameter type, which fitting may
-    # need to replace (e.g. with a Dual). Revisit this if a tail with structural
-    # type parameters is routed through this constructor.
-    TailType = Base.typename(TT).wrapper
-    return ExtremeValueCopula{d}(TailType(args...; kwargs...))
-end
+
+# Resolve the only generic intersection left by integer-valued parameters:
+# for FamilyCopula{d}(first::Int, ...), `first` is a parameter; for the
+# unparameterized FamilyCopula(first::Int, ...), it is the runtime dimension.
 function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) where {D}
-    d = Base.unwrap_unionall(CT).parameters[1]
-    # An integer can be either the runtime dimension in CT(d, parameters...)
-    # or the first parameter in CT{d}(parameters...). For the families
-    # currently provided, constructor arity matches the tail field count.
-    # This heuristic must be revisited if optional/non-field parameters appear.
-    nparams = fieldcount(Base.unwrap_unionall(tailof(CT)))
-    if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
+    d = _ev_encoded_dimension(CT)
+    if d isa TypeVar
         return _typed_extreme_value(CT, first, args...; kwargs...)
     end
     return _typed_extreme_value(CT, d, first, args...; kwargs...)
 end
+
+# Runtime-dimension sugar for an unparameterized family alias:
+#     FamilyCopula(d, params...)
+#
+# This deliberately stays separate from the canonical encoded-dimension route
+# above. In particular, FamilyCopula{d}(integer_parameter, ...) always treats
+# the integer as a model parameter.
 (CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) =
     _typed_extreme_value(CT, d, args...; kwargs...)
+
+# Generic fitting reconstructs from concrete `typeof(C)` values. It should not
+# call the public runtime constructor on a fully concrete FamilyCopula{d,T},
+# because that would make an integer model parameter indistinguishable from d.
+_construct_from_params(
+    CT::Type{<:ExtremeValueCopula},
+    d::Int,
+    args...;
+    kwargs...,
+) = _typed_extreme_value(CT, d, args...; kwargs...)
 
 function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     u1, u2 = u
@@ -207,7 +249,7 @@ tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 ####### Fitting functions for univariate tails only (Extreme Value Copulas).
 ##############################################################################################################################
 
-_example(CT::Type{<:ExtremeValueCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...)
+_example(CT::Type{<:ExtremeValueCopula}, d) = _typed_extreme_value(CT, d; _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...)
 _unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = _unbound_params(tailof(CT), d, θ)
 _rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(CT), d, α)
 
@@ -232,11 +274,11 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     lo, hi = _θ_bounds(tailof(CT), 2)
     # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
     θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
-    return CT(2, θ), (; θ̂=(θ=θ,))
+    return _typed_extreme_value(CT, 2, θ), (; θ̂=(θ=θ,))
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
     θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(tailof(CT), 2)...)
-    return CT(2, θ), (; θ̂=(θ=θ,))
+    return _typed_extreme_value(CT, 2, θ), (; θ̂=(θ=θ,))
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
@@ -261,7 +303,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     θ0 = (; θ=θ0_clamped)
     α0 = _unbound_params(CT, d, θ0)
     all(isfinite, α0) || throw(ArgumentError("MLE start must map to finite unbounded parameters"))
-    cop(α) = CT(d, _rebound_params(CT, d, α)...)
+    cop(α) = _typed_extreme_value(CT, d, _rebound_params(CT, d, α)...)
     f(α) = -Distributions.loglikelihood(cop(α), U)
     res = try
         Optim.optimize(f, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
@@ -269,7 +311,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
         Optim.optimize(f, α0, Optim.NelderMead())
     end
     θ̂ = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θ̂...), (; θ̂=θ̂, optimizer=Optim.summary(res),
+    return _typed_extreme_value(CT, d, θ̂...), (; θ̂=θ̂, optimizer=Optim.summary(res),
                         xtol=xtol, converged=Optim.converged(res),
                         iterations=Optim.iterations(res))
 end

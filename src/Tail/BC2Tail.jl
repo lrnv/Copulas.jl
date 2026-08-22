@@ -1,7 +1,10 @@
 """
     BC2Tail{T}, BC2Copula{d,T}
 
-    BC2Copula(a, b)
+    BC2Copula{2}(a, b)
+    BC2Copula(2, a, b)
+    BC2Copula{d}(a::AbstractVector)
+    BC2Copula(d, a::AbstractVector)
     BC2Copula(a::AbstractVector)
 
 BC2 extreme-value family with a finite two-atom spectral representation.
@@ -203,14 +206,27 @@ function BC2MultivariateTail(a::AbstractVector)
 end
 
 BC2MultivariateTail(tail::BC2Tail) = BC2MultivariateTail([tail.a, tail.b])
-BC2MultivariateCopula(a::AbstractVector) = ExtremeValueCopula(length(a), BC2MultivariateTail(a))
+BC2MultivariateCopula(a::AbstractVector) =
+    ExtremeValueCopula{length(a)}(BC2MultivariateTail(a))
 
-function (::Type{<:ExtremeValueCopula{2,<:BC2Tail}})(a::AbstractVector)
-    length(a) == 2 && return ExtremeValueCopula(2, BC2Tail(a[1], a[2]))
-    return BC2MultivariateCopula(a)
+function _bc2_public_copula(d::Int, a::AbstractVector)
+    d == length(a) || throw(DimensionMismatch(
+        "d=$d does not match BC2 weight-vector dimension $(length(a))",
+    ))
+    d == 2 && return ExtremeValueCopula{2}(BC2Tail(a[1], a[2]))
+    return ExtremeValueCopula{d}(BC2MultivariateTail(a))
 end
 
-BC2MultivariateCopula(tail::BC2Tail) = ExtremeValueCopula(2, BC2MultivariateTail(tail))
+function (CT::Type{<:ExtremeValueCopula{D,<:BC2Tail} where D})(a::AbstractVector)
+    d = _ev_resolve_dimension(CT, length(a), "BC2 weight-vector")
+    return _bc2_public_copula(d, a)
+end
+
+(::Type{<:ExtremeValueCopula{D,<:BC2Tail} where D})(d::Int, a::AbstractVector,) =
+    _bc2_public_copula(d, a)
+
+BC2MultivariateCopula(tail::BC2Tail) =
+    ExtremeValueCopula{2}(BC2MultivariateTail(tail))
 
 Distributions.params(tail::BC2MultivariateTail) = (a = tail.a,)
 _is_valid_in_dim(tail::BC2MultivariateTail, d::Int) = length(tail.a) == d

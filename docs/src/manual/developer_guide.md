@@ -313,11 +313,49 @@ Hüsler-Reiss, Mixed, extremal-``t``, and Cuadras-Augé.
 
 ### Constructor convention
 
-Public constructors should reflect the mathematical parameterization:
+The canonical EV constructor encodes the dimension in the type:
 
-- scalar/exchangeable parameters: `FamilyCopula(d, θ...)`;
-- a matrix or vector that determines dimension: `FamilyCopula(structured_parameter...)`;
-- a full subset parameterization: explicit `d` when needed for validation.
+```julia
+FamilyCopula{d}(params...)
+```
+
+The runtime-dimension form is only syntactic sugar:
+
+```julia
+FamilyCopula(d, params...)
+```
+
+Scalar and exchangeable families do **not** infer an implicit bivariate
+dimension. For example, use `GalambosCopula{2}(2.3)` (or the runtime sugar
+`GalambosCopula(2, 2.3)`), not `GalambosCopula(2.3)`.
+
+Structured parameterizations follow the same rule. Their canonical forms are,
+for example,
+
+```julia
+HuslerReissCopula{d}(Γ)
+tEVCopula{d}(ν, R)
+TawnCopula{d}(α, weights)
+AsymGalambosCopula{d}(α, weights)
+BC2Copula{d}(a)
+MOCopula{d}(λ)
+EmpiricalEVMultivariateCopula{d}(U)
+```
+
+When a matrix or vector determines `d` unambiguously, an inferred-dimension
+constructor may additionally be provided as convenience syntax, such as
+`HuslerReissCopula(Γ)` or `MOCopula(λ)`. It must validate to the same
+mathematical copula as the canonical `{d}` constructor.
+
+Full subset parameterizations obey the same contract:
+
+```julia
+TawnCopula{d}(dep, asy)
+AsymGalambosCopula{d}(dep, asy)
+```
+
+with `FamilyCopula(d, ...)` as runtime sugar. When the subset count
+`2^d-1` determines the dimension, the no-`d` convenience form may infer it.
 
 A public constructor may map a ``2\times2`` matrix to a specialized scalar tail
 and a larger matrix to a general tail. Do not use the concrete stored tail type

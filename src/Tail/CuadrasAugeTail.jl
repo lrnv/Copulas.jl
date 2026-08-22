@@ -1,6 +1,7 @@
 """
     CuadrasAugeTail{T}, CuadrasAugeCopula{d,T}
 
+    CuadrasAugeCopula{d}(θ)
     CuadrasAugeCopula(d, θ)
 
 Cuadras-Augé extreme-value copula in dimension `d ≥ 2`, with `θ ∈ [0,1]`.

@@ -95,25 +95,52 @@ The current EV implementation goes beyond the historical bivariate-only design:
 
 ## Constructors and dimensional conventions
 
-The public constructor follows one simple rule.
-
-!!! tip "When should I pass `d`?"
-    If the parameters do **not** contain dimensional information, pass `d`
-    explicitly. If a vector or matrix parameterization already determines the
-    dimension, the constructor infers it.
-
-Scalar or exchangeable families therefore look like
+The canonical constructor always makes the dimension part of the type:
 
 ```julia
-LogCopula(d, θ)
-GalambosCopula(d, θ)
-MixedCopula(d, θ)
-CuadrasAugeCopula(d, θ)
-HuslerReissCopula(d, θ)
-tEVCopula(d, ν, ρ)
+FamilyCopula{d}(params...)
 ```
 
-while structured parameterizations can infer ``d``:
+The equivalent runtime-dimension form
+
+```julia
+FamilyCopula(d, params...)
+```
+
+is convenient but is not type-stable with respect to `d`.
+
+!!! warning "No implicit bivariate dimension for scalar parameters"
+    Scalar/exchangeable EV families require an explicit dimension. For example,
+    write `GalambosCopula{2}(2.3)` or `GalambosCopula(2, 2.3)`;
+    `GalambosCopula(2.3)` is intentionally not a constructor.
+
+Scalar or exchangeable families therefore have canonical forms
+
+```julia
+LogCopula{d}(θ)
+GalambosCopula{d}(θ)
+MixedCopula{d}(θ)
+CuadrasAugeCopula{d}(θ)
+HuslerReissCopula{d}(θ)
+tEVCopula{d}(ν, ρ)
+```
+
+with `FamilyCopula(d, ...)` as runtime sugar.
+
+Structured parameterizations follow exactly the same rule:
+
+```julia
+HuslerReissCopula{d}(Γ)
+tEVCopula{d}(ν, R)
+TawnCopula{d}(α, weights)
+AsymGalambosCopula{d}(α, weights)
+BC2Copula{d}(a)
+MOCopula{d}(λ)
+EmpiricalEVMultivariateCopula{d}(U)
+```
+
+Because these objects determine their own dimension, the following additional
+convenience forms are also available:
 
 ```julia
 HuslerReissCopula(Γ)
@@ -125,38 +152,40 @@ MOCopula(λ)
 EmpiricalEVMultivariateCopula(U)
 ```
 
-The full asymmetric/subset parameterizations keep an explicit dimension:
+The full subset representations are likewise available as
 
 ```julia
-TawnCopula(d, dep, asy)
-AsymGalambosCopula(d, dep, asy)
-MOCopula(d, λ)
+TawnCopula{d}(dep, asy)
+AsymGalambosCopula{d}(dep, asy)
 ```
 
-| Family | Constructor | Supported dimension | Interpretation |
+together with `FamilyCopula(d, dep, asy)`. Since `asy` contains exactly
+`2^d-1` subset-weight vectors, `TawnCopula(dep, asy)` and
+`AsymGalambosCopula(dep, asy)` can infer `d` and construct the same model.
+
+| Family | Canonical constructor | Supported dimension | Interpretation |
 |---|---|---:|---|
-| Logistic | `LogCopula(d, θ)` | ``d\ge2`` | exchangeable |
-| Galambos | `GalambosCopula(d, θ)` | ``d\ge2`` | exchangeable negative logistic |
-| Mixed | `MixedCopula(d, θ)` | ``d\ge2`` | scalar Copulas.jl extension of the bivariate mixed model |
-| Cuadras-Augé | `CuadrasAugeCopula(d, θ)` | ``d\ge2`` | scalar |
-| Hüsler-Reiss | `HuslerReissCopula(d, θ)` | ``d\ge2`` | exchangeable variogram |
-| Hüsler-Reiss | `HuslerReissCopula(Γ)` | inferred | general variogram |
-| extremal-``t`` | `tEVCopula(d, ν, ρ)` | ``d\ge2`` | equicorrelation |
-| extremal-``t`` | `tEVCopula(ν, R)` | inferred | general correlation matrix |
-| Tawn | `TawnCopula(α, weights)` | inferred | full-set logistic component + singleton remainders |
-| Tawn | `TawnCopula(d, dep, asy)` | explicit | full subset representation |
-| Asymmetric Galambos | `AsymGalambosCopula(2, α, θ₁, θ₂)` | 2 | specialized bivariate kernel |
-| Asymmetric Galambos | `AsymGalambosCopula(α, weights)` | inferred | full-set negative-logistic component + singleton remainders |
-| Asymmetric Galambos | `AsymGalambosCopula(d, dep, asy)` | explicit | full subset representation |
-| BC2 | `BC2Copula(a, b)` | 2 | classical bivariate representation |
-| BC2 | `BC2Copula(a::AbstractVector)` | inferred | two-atom spectral representation |
-| Marshall-Olkin | `MOCopula(λ₁, λ₂, λ₁₂)` | 2 | classical three-shock representation |
-| Marshall-Olkin | `MOCopula(λ)` | inferred when `length(λ)=2^d-1` | full subset-shock representation |
-| Marshall-Olkin | `MOCopula(d, λ)` | explicit | full subset-shock representation |
-| Empirical EV | `EmpiricalEVCopula(U)` | 2 | bivariate Pickands/CFG/OLS estimator |
-| Empirical EV | `EmpiricalEVMultivariateCopula(U)` | inferred | shape-constrained multivariate spectral estimator |
-| Asymmetric logistic | `AsymLogCopula(2, ...)` | 2 | bivariate |
-| Asymmetric mixed | `AsymMixedCopula(2, ...)` | 2 | bivariate |
+| Logistic | `LogCopula{d}(θ)` | ``d\ge2`` | exchangeable |
+| Galambos | `GalambosCopula{d}(θ)` | ``d\ge2`` | exchangeable negative logistic |
+| Mixed | `MixedCopula{d}(θ)` | ``d\ge2`` | scalar Copulas.jl extension of the bivariate mixed model |
+| Cuadras-Augé | `CuadrasAugeCopula{d}(θ)` | ``d\ge2`` | scalar |
+| Hüsler-Reiss | `HuslerReissCopula{d}(θ)` | ``d\ge2`` | exchangeable variogram |
+| Hüsler-Reiss | `HuslerReissCopula{d}(Γ)` | ``d=\mathrm{size}(Γ,1)`` | general variogram |
+| extremal-``t`` | `tEVCopula{d}(ν, ρ)` | ``d\ge2`` | equicorrelation |
+| extremal-``t`` | `tEVCopula{d}(ν, R)` | ``d=\mathrm{size}(R,1)`` | general correlation matrix |
+| Tawn | `TawnCopula{d}(α, weights)` | ``d=\mathrm{length}(weights)`` | full-set logistic component + singleton remainders |
+| Tawn | `TawnCopula{d}(dep, asy)` | ``d\ge2`` | full subset representation |
+| Asymmetric Galambos | `AsymGalambosCopula{2}(α, θ₁, θ₂)` | 2 | specialized bivariate kernel |
+| Asymmetric Galambos | `AsymGalambosCopula{d}(α, weights)` | ``d=\mathrm{length}(weights)`` | full-set negative-logistic component + singleton remainders |
+| Asymmetric Galambos | `AsymGalambosCopula{d}(dep, asy)` | ``d\ge2`` | full subset representation |
+| BC2 | `BC2Copula{2}(a, b)` | 2 | classical bivariate representation |
+| BC2 | `BC2Copula{d}(a::AbstractVector)` | ``d=\mathrm{length}(a)`` | two-atom spectral representation |
+| Marshall-Olkin | `MOCopula{2}(λ₁, λ₂, λ₁₂)` | 2 | classical three-shock representation |
+| Marshall-Olkin | `MOCopula{d}(λ)` | ``\mathrm{length}(λ)=2^d-1`` | full subset-shock representation |
+| Empirical EV | `EmpiricalEVCopula{2}(U)` | 2 | bivariate Pickands/CFG/OLS estimator |
+| Empirical EV | `EmpiricalEVMultivariateCopula{d}(U)` | ``d=\mathrm{size}(U,1)`` | shape-constrained multivariate spectral estimator |
+| Asymmetric logistic | `AsymLogCopula{2}(...)` | 2 | bivariate |
+| Asymmetric mixed | `AsymMixedCopula{2}(...)` | 2 | bivariate |
 
 ### Exchangeable versus general Hüsler-Reiss and extremal-t
 
@@ -170,7 +199,7 @@ maps the exchangeable scalar parameter to the common off-diagonal variogram
 entry. Thus
 
 ```julia
-HuslerReissCopula(d, θ)
+HuslerReissCopula{d}(θ)
 ```
 
 is an exchangeable submodel, while
@@ -186,7 +215,7 @@ bivariate representation. The family seen by the user does not change.
 The extremal-``t`` family follows the same pattern:
 
 ```julia
-tEVCopula(d, ν, ρ) # equicorrelation
+tEVCopula{d}(ν, ρ) # equicorrelation
 tEVCopula(ν, R)    # general correlation matrix
 ```
 
@@ -219,7 +248,7 @@ non-singleton subsets.
 Accordingly,
 
 ```julia
-TawnCopula(d, dep, asy)
+TawnCopula{d}(dep, asy)
 ```
 
 contains one dependence parameter per non-singleton subset and one asymmetry

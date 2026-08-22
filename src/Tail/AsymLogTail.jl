@@ -8,6 +8,7 @@ Fields:
 
 Constructor
 
+    AsymLogCopula{2}(α, θ₁, θ₂)
     AsymLogCopula(2, α, θ₁, θ₂)
     ExtremeValueCopula(2, AsymLogTail(α, θ₁, θ₂))
 

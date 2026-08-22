@@ -1,6 +1,7 @@
 """
     GalambosTail{T}, GalambosCopula{d,T}
 
+    GalambosCopula{d}(θ)
     GalambosCopula(d, θ)
 
 Galambos (negative-logistic) extreme-value copula in dimension `d ≥ 2`, with
