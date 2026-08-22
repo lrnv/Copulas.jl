@@ -81,16 +81,12 @@ end
 Once defined, these automatically integrate with the `Copulas.jl` and `Distributions.jl` interface.
 
 !!! info "Sampling contract"
-    The matrix sampler is the required primitive. The generic vector sampler presents its
-    output as a `d × 1` matrix and delegates to it, so implementing a vector method is never
-    required for correctness. A family may still provide a vector specialization when
-    benchmarks show that its scalar setup cost matters:
-    ```julia
-    function Distributions._rand!(rng::Distributions.AbstractRNG, C::MyCopula, u::AbstractVector{<:Real})
-        # Optional performance specialization for one sample.
-        return u
-    end
-    ```
+    The matrix `_rand!` method is the sampling primitive. The generic
+    `Distributions.jl` machinery handles the one-sample/vector interface by
+    delegating to the matrix sampler, so copula implementations should define
+    only the matrix method. When several sampling algorithms are available,
+    select among them with ordinary Julia dispatch on the copula/tail type
+    rather than with a separate routing trait.
 
 
 ## 1.3 Dependence metrics
