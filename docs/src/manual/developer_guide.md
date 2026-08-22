@@ -396,6 +396,30 @@ method uses the partition formula above, so a family-specific `_logpdf` method
 is only needed when the family provides a genuinely different numerical
 algorithm.
 
+
+### Conditioning and Rosenblatt in higher dimensions
+
+No separate extreme-value Rosenblatt algorithm is required. The generic
+conditioning framework is dimension-agnostic: `DistortionFromCop` obtains
+conditional marginals from mixed derivatives of the copula CDF, while
+`rosenblatt` and `inverse_rosenblatt` build the usual sequence of conditional
+distributions from that interface.
+
+Consequently, smooth multivariate EV families whose numerical CDF/STDF path is
+compatible with automatic differentiation inherit `condition`, `rosenblatt`,
+and `inverse_rosenblatt` in `d > 2`. The Logistic and Galambos families are
+covered explicitly by the architecture tests. In `d = 2`,
+`BivariatePickandsTail` retains the faster native `BivEVDistortion` path.
+
+This generic guarantee is computational rather than purely mathematical.
+Families whose multivariate STDF relies on numerical probability routines that
+materialize `Float64` values may require a specialized distortion instead of
+the ForwardDiff fallback; the current multivariate Hüsler--Reiss and
+extremal-``t`` numerical kernels fall in this category. Likewise, discrete
+spectral EV models can contain singular components, so a global Lebesgue
+density and the ordinary smooth conditional-derivative construction need not
+exist in general.
+
 ### Sampling interface and dispatch
 
 The required public behavior is simply

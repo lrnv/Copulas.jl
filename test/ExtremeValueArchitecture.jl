@@ -210,6 +210,39 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         u = [0.31, 0.57, 0.82]
         @test logpdf(Cgeneric, u) ≈ logpdf(Canalytic, u) atol=2e-10 rtol=2e-10
     end
+    @testset "multivariate EV generic conditioning and Rosenblatt" begin
+        # The generic conditioning framework is dimension-agnostic. Smooth EV
+        # families whose CDF/STDF path is ForwardDiff-compatible inherit it.
+        for C in (
+            LogCopula{3}(2.0),
+            GalambosCopula{3}(0.7),
+        )
+            # Conditioning on two coordinates leaves a univariate distortion.
+            D = condition(C, (1, 2), (0.31, 0.58))
+            @test D isa Copulas.Distortion
+            for α in (0.2, 0.6, 0.85)
+                q = Distributions.quantile(D, α)
+                @test Distributions.cdf(D, q) ≈ α atol=2e-7 rtol=2e-7
+            end
+
+            # Conditioning on one coordinate leaves a two-dimensional
+            # conditional distribution.
+            H = condition(C, (1,), (0.31,))
+            @test H isa SklarDist
+            h = Distributions.cdf(H, [0.42, 0.73])
+            @test isfinite(h)
+            @test 0.0 <= h <= 1.0
+
+            # Rosenblatt and its inverse use those same sequential conditional
+            # distortions in d > 2.
+            u = [0.21, 0.53, 0.74]
+            s = rosenblatt(C, u)
+            @test all(isfinite, s)
+            @test all(x -> 0.0 <= x <= 1.0, s)
+            @test inverse_rosenblatt(C, s) ≈ u atol=2e-7 rtol=2e-7
+        end
+    end
+
     @testset "bivariate density specialization" begin
         u = [0.31, 0.67]
         x, y = -log.(u)
