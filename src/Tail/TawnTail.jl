@@ -289,17 +289,6 @@ function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
     return expected_sign, _tawn_logsumexp(logs)
 end
 
-_ellpartial_signlog(tail::TawnTail, x, I::AbstractVector{<:Integer}) = _ellpartial_signlog(tail, x, Tuple(I))
-
-function ellpartial(tail::TawnTail, x, I::Tuple{Vararg{Int}})
-    isempty(I) && return ℓ(tail, x)
-    sign, logabs = _ellpartial_signlog(tail, x, I)
-    sign == 0 && return zero(float(first(x)))
-    return sign * exp(logabs)
-end
-
-ellpartial(tail::TawnTail, x, I::AbstractVector{<:Integer}) = ellpartial(tail, x, Tuple(I))
-
 function _tawn_rand_multivariate!(rng::Distributions.AbstractRNG, tail::TawnTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     d == tail.d || throw(DimensionMismatch("output dimension does not match Tawn tail dimension",))

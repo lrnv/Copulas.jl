@@ -384,16 +384,8 @@ function _ellpartial_signlog(tail::AsymGalambosMultiTail, x, I::Tuple{Vararg{Int
     return expected_sign, _asymgal_logsumexp(logs)
 end
 
-_ellpartial_signlog(tail::AsymGalambosMultiTail, x, I::AbstractVector{<:Integer},) = _ellpartial_signlog(tail, x, Tuple(I))
 
-function ellpartial(tail::AsymGalambosMultiTail, x, I::Tuple{Vararg{Int}},)
-    isempty(I) && return ℓ(tail, x)
-    sign, logabs = _ellpartial_signlog(tail, x, I)
-    sign == 0 && return zero(float(first(x)))
-    return sign * exp(logabs)
-end
 
-ellpartial(tail::AsymGalambosMultiTail, x, I::AbstractVector{<:Integer},) = ellpartial(tail, x, Tuple(I))
 
 function _asymgal_rand_multivariate!(rng::Distributions.AbstractRNG, tail::AsymGalambosMultiTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)

@@ -16,19 +16,7 @@ function _assemble(D, is, js, uᵢₛ, uⱼₛ)
     @inbounds for (k,j) in pairs(js); w[j] = uⱼₛ[k]; end
     return w
 end
-function _swap(u, i, uᵢ)
-    T = promote_type(eltype(u), typeof(uᵢ))
-    v = similar(u, T)
-    @inbounds for k in eachindex(u)
-        v[k] = u[k]
-    end
-    v[i] = uᵢ
-    return v
-end
-_der(f, u, i::Int) = ForwardDiff.derivative(uᵢ -> f(_swap(u, i, uᵢ)), u[i])
-_der(f, u, is::NTuple{1,Int}) = _der(f, u, is[1])
-_der(f, u, is::NTuple{N,Int}) where {N} = _der(u′ -> _der(f, u′, (is[end],)), u, is[1:end-1])
-_partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _der(u -> Distributions.cdf(C, u), _assemble(length(C), is, js, uᵢₛ, uⱼₛ), js)
+_partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _mixed_partial(u -> Distributions.cdf(C, u),_assemble(length(C), is, js, uᵢₛ, uⱼₛ), js,)
 
 _process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs) 
 _process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,)) 
@@ -154,7 +142,7 @@ function Distributions.logpdf(d::DistortionFromCop, u::Real)
     D = length(d.C)
     z = _assemble(D, (d.i,), d.js, (float(u),), d.uⱼₛ)
     # Mixed partial derivative of order p+1 w.r.t. (J..., i)
-    num = _der(u -> Distributions.cdf(d.C, u), z, (d.js..., d.i))
+    num = _mixed_partial(u -> Distributions.cdf(d.C, u), z, (d.js..., d.i),)
     (num <= 0 || !isfinite(num)) && return -Inf
     return log(num) - log(d.den)
 end

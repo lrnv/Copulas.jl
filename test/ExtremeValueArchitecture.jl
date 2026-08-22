@@ -1,5 +1,13 @@
 using Random
 
+# Test-only tail implementing exactly the minimal multivariate EV contract: ℓ.
+struct ADOnlyLogisticTail{T} <: Copulas.Tail
+    θ::T
+end
+
+Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
+    sum(xi^tail.θ for xi in x)^(inv(tail.θ))
+
 @testset "Extreme-value architecture" begin
     @testset "canonical dimension constructors" begin
         for (Ctyped, Cruntime, d) in (
@@ -175,6 +183,33 @@ using Random
         @test_throws DimensionMismatch MOCopula(ones(5))
     end
 
+    @testset "shared generic mixed-partial interface" begin
+        f(z) = z[1]^2 * z[2]^3 + z[3]
+        z = [0.4, 0.7, 1.1]
+        expected12 = 6 * z[1] * z[2]^2
+        @test Copulas._mixed_partial(f, z, (1, 2)) ≈ expected12
+        @test Copulas._mixed_partial(f, Tuple(z), [1, 2]) ≈ expected12
+
+        θ = 2.0
+        tail = ADOnlyLogisticTail(θ)
+        x = (0.4, 0.7, 1.1)
+        S = sum(xi^θ for xi in x)
+        for I in ((1,), (1, 3), (1, 2, 3))
+            k = length(I)
+            coeff = k == 1 ? one(θ) : prod(1 - j * θ for j in 1:(k - 1))
+            expected = coeff * S^(inv(θ) - k) * prod(x[i]^(θ - 1) for i in I)
+            got = Copulas.ellpartial(tail, x, I)
+            @test got ≈ expected atol=3e-12 rtol=3e-11
+            sign, logabs = Copulas._ellpartial_signlog(tail, x, I)
+            @test sign == (signbit(expected) ? -1 : 1)
+            @test exp(logabs) ≈ abs(expected) atol=3e-12 rtol=3e-11
+        end
+
+        Cgeneric = Copulas.ExtremeValueCopula{3}(tail)
+        Canalytic = LogCopula{3}(θ)
+        u = [0.31, 0.57, 0.82]
+        @test logpdf(Cgeneric, u) ≈ logpdf(Canalytic, u) atol=2e-10 rtol=2e-10
+    end
     @testset "bivariate density specialization" begin
         u = [0.31, 0.67]
         x, y = -log.(u)

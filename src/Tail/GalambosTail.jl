@@ -122,7 +122,7 @@ function _galambos_partial_signlog_big(tail::GalambosTail, x, I)
     throw(ArgumentError("Galambos mixed partial could not be resolved numerically"))
 end
 
-function _ellpartial_signlog(tail::GalambosTail, x, I)
+function _ellpartial_signlog(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
     I = Tuple(I)
     sgn, logabs, resolved = _galambos_partial_signlog_native(tail, x, I)
     resolved && return sgn, logabs
@@ -131,11 +131,6 @@ function _ellpartial_signlog(tail::GalambosTail, x, I)
     return _galambos_partial_signlog_big(tail, x, I)
 end
 
-function ellpartial(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
-    isempty(I) && return ℓ(tail, x)
-    sgn, logabs = _ellpartial_signlog(tail, x, I)
-    return sgn * exp(logabs)
-end
 
 # Exact spectral sampler for the multivariate negative-logistic/Galambos model.
 # The common scale of the Weibull/Gamma construction cancels after

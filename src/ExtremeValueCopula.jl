@@ -144,12 +144,6 @@ function Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     return -val + log(core) + x + y
 end
 
-@inline function _ellpartial_signlog(tail::Tail, x, I)
-    v = ellpartial(tail, x, Tuple(I))
-    iszero(v) && return 0, oftype(v, -Inf)
-    return v < zero(v) ? -1 : 1, log(abs(v))
-end
-
 # Generic d-dimensional density from the mixed STDF partials and the
 # partition formula for absolutely continuous extreme-value copulas.
 function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}

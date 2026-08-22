@@ -119,7 +119,7 @@ _probability_z(tail::LogTail, ::Real) = (tail.θ - one(tail.θ)) / tail.θ
 # The bivariate logistic EV copula is exactly Gumbel.
 Distributions._logpdf(C::ExtremeValueCopula{2,<:LogTail}, u) = Distributions._logpdf(GumbelCopula(2, C.tail.θ), u)
 
-function _ellpartial_signlog(tail::LogTail, x, I)
+function _ellpartial_signlog(tail::LogTail, x, I::Tuple{Vararg{Int}})
     k = length(I)
     θ = tail.θ
     logabs = (one(θ) - k * θ) * log(ℓ(tail, x))
@@ -128,11 +128,6 @@ function _ellpartial_signlog(tail::LogTail, x, I)
     return isodd(k - 1) ? -1 : 1, logabs
 end
 
-function ellpartial(tail::LogTail, x, I::Tuple{Vararg{Int}})
-    isempty(I) && return ℓ(tail, x)
-    sgn, logabs = _ellpartial_signlog(tail, x, I)
-    return sgn * exp(logabs)
-end
 
 function Distributions.logpdf(D::BivEVDistortion{<:LogTail}, z::Real)
     T = float(promote_type(typeof(z), typeof(D.uⱼ), typeof(D.tail.θ)))
