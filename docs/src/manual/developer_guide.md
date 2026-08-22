@@ -828,8 +828,10 @@ Copulas._θ_bounds(::Type{<:GumbelTail}, d) = (1, Inf)
 Once the tail is defined, constructing the copula is immediate:
 
 ```@example generic_copula_example
-const GumbelEVCopula{T} = Copulas.ExtremeValueCopula{2, GumbelTail{T}}
-C = GumbelEVCopula(2, 2.5)
+const GumbelEVCopula{d,T} = Copulas.ExtremeValueCopula{d, GumbelTail{T}}
+C = GumbelEVCopula{2}(2.5)
+C_runtime = GumbelEVCopula(2, 2.5)
+@assert typeof(C_runtime) == typeof(C)
 ```
 
 All standard API methods (`cdf`, `pdf`, `rand`, `fit`, etc.) are automatically inherited
@@ -850,7 +852,7 @@ For the `GumbelEVCopula`, we define the available methods and optional parameter
 
 ```@example generic_copula_example
 Copulas._available_fitting_methods(::Type{GumbelEVCopula}, d) = (:iupper, :mle)
-Copulas._example(::Type{GumbelEVCopula}, d) = GumbelEVCopula(2, 2.5)
+Copulas._example(::Type{GumbelEVCopula}, d) = GumbelEVCopula{d}(2.5)
 ```
 
 #### Closed-form estimator from upper-tail dependence
@@ -871,7 +873,7 @@ function Copulas._fit(::Type{CT}, U, ::Val{:iupper}) where {CT<:GumbelEVCopula}
     λ̂ = Copulas.λᵤ(U)                # empirical upper-tail dependence
     θ  = 1 / log2(2 - λ̂)
     θ  = clamp(θ, 1.0, 50.0)
-    Ĉ = CT(d, θ)
+    Ĉ = Copulas._construct_from_params(CT, d, θ)
     return Ĉ, (; θ̂ = (; θ = θ), λ̂ = λ̂, method = :iupper)
 end
 ```
@@ -880,7 +882,7 @@ end
 
 ```@example generic_copula_example
 Random.seed!(123)
-U = rand(GumbelEVCopula(2, 4.5), 300)
+U = rand(GumbelEVCopula{2}(4.5), 300)
 M = fit(CopulaModel, GumbelEVCopula, U)
 M
 ```
