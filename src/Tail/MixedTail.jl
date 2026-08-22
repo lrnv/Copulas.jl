@@ -41,7 +41,7 @@ Special case:
 """
 MixedTail, MixedCopula
 
-struct MixedTail{T} <: AbstractUnivariateTail2
+struct MixedTail{T} <: OneParameterPickandsTail
     θ::T
     function MixedTail(θ)
         (0 ≤ θ ≤ 1+eps(θ)) || throw(ArgumentError("θ must be in [0,1], provided θ=$θ"))

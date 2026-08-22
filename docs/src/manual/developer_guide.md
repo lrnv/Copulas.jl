@@ -263,48 +263,51 @@ capabilities.
 
 ### `Tail`: the mathematical STDF interface
 
-A multivariate EV tail should subtype `Tail`, declare its dimensional validity,
-and implement its STDF:
+A multivariate EV tail should subtype `Tail` and implement its STDF:
 
 ```julia
 struct MyTail{T} <: Copulas.Tail
     θ::T
 end
 
-Copulas._is_valid_in_dim(::MyTail, d::Int) = d >= 2
 Copulas.ℓ(tail::MyTail, x) = ...
 Distributions.params(tail::MyTail) = (; θ = tail.θ)
 ```
 
+`Tail` is valid by default for every `d >= 2`. Override
+`_is_valid_in_dim(tail, d)` only when the mathematical family has additional
+dimensional restrictions.
+
 `ExtremeValueCopula(d, tail)` checks `_is_valid_in_dim(tail, d)` at
 construction time.
 
-### `Tail2`: a bivariate capability, not necessarily a dimension restriction
+### `BivariatePickandsTail`: the scalar bivariate Pickands capability
 
-`Tail2 <: Tail` means that the tail has a native scalar Pickands kernel:
+`BivariatePickandsTail <: Tail` means that the tail provides the native scalar
+bivariate Pickands representation `A(t)`, and therefore can use the specialized
+Pickands derivative, density, conditioning, and sampling machinery:
 
 ```julia
-struct MyTail{T} <: Copulas.Tail2
+struct MyTail{T} <: Copulas.BivariatePickandsTail
     θ::T
 end
 
 Copulas.A(tail::MyTail, t::Real) = ...
 ```
 
-The default validity of `Tail2` is `d == 2`. If the same mathematical tail has a
+Its default validity is `d == 2`. If the same mathematical family also has a
 valid STDF in higher dimension, opt in explicitly:
 
 ```julia
-Copulas._is_valid_in_dim(::MyTail, d::Int) = d >= 2
 Copulas.ℓ(tail::MyTail, x) = ...
 ```
 
 This is the pattern used by families such as Logistic, Galambos,
 Hüsler-Reiss, Mixed, extremal-``t``, and Cuadras-Augé.
 
-!!! info "Why keep `Tail2`?"
+!!! info "Why keep `BivariatePickandsTail`?"
     A multivariate family can still have exceptionally good analytic formulas
-    in dimension two. `Tail2` lets the package retain `A`, `dA`, `d²A`,
+    in dimension two. `BivariatePickandsTail` lets the package retain `A`, `dA`, `d²A`,
     conditional distortions, and the Ghoudi sampler without pretending that the
     mathematical family stops at ``d=2``.
 
@@ -348,7 +351,7 @@ The generic `ellpartial` fallback uses automatic differentiation recursively.
 Analytic sign/log implementations are preferred for numerically difficult
 families and for higher-dimensional density evaluation.
 
-Density selection itself uses ordinary Julia dispatch. In ``d=2``, a `Tail2`
+Density selection itself uses ordinary Julia dispatch. In ``d=2``, a `BivariatePickandsTail`
 uses the native Pickands derivative kernel. The generic `ExtremeValueCopula{d}`
 method uses the partition formula above, so a family-specific `_logpdf` method
 is only needed when the family provides a genuinely different numerical
@@ -366,13 +369,13 @@ Extreme-value sampling is selected directly through Julia dispatch on the
 copula dimension and the concrete tail type. There is no separate sampling
 backend trait or routing layer.
 
-For a `Tail2` in ``d=2``, the generic extreme-value method uses the native
+For a `BivariatePickandsTail` in ``d=2``, the generic extreme-value method uses the native
 Ghoudi/Pickands sampler:
 
 ```julia
 function Distributions._rand!(
     rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:Tail2},
+    C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
 ) where {T<:Real}
     return _rand_ghoudi!(rng, C, X)
@@ -395,9 +398,9 @@ function Distributions._rand!(
 end
 ```
 
-If `MyTail <: Tail2` and the family should use its exact sampler also in
+If `MyTail <: BivariatePickandsTail` and the family should use its exact sampler also in
 dimension two, the family-wide method intersects with the generic
-`ExtremeValueCopula{2,<:Tail2}` method. Resolve that intersection explicitly
+`ExtremeValueCopula{2,<:BivariatePickandsTail}` method. Resolve that intersection explicitly
 with a ``d=2`` specialization:
 
 ```julia
@@ -757,7 +760,7 @@ which specifies the Pickands function `A(t)` and its parameterization.
 ```@example generic_copula_example
 using LogExpFunctions
 
-struct GumbelTail{T} <: Copulas.AbstractUnivariateTail2 # subtype of Tail
+struct GumbelTail{T} <: Copulas.OneParameterPickandsTail # subtype of Tail
     θ::T
     function GumbelTail(θ)
         !(1 <= θ) && throw(ArgumentError("θ must be in [1, ∞)"))

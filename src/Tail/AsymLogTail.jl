@@ -30,7 +30,7 @@ References:
 """
 AsymLogTail, AsymLogCopula
 
-struct AsymLogTail{T} <: Tail2
+struct AsymLogTail{T} <: BivariatePickandsTail
     α::T
     θ₁::T
     θ₂::T

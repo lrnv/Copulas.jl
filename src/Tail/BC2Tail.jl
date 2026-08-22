@@ -38,7 +38,7 @@ specialized bivariate representation.
 """
 BC2Tail, BC2Copula
 
-struct BC2Tail{T} <: Tail2
+struct BC2Tail{T} <: BivariatePickandsTail
     a::T
     b::T
     function BC2Tail(a, b)

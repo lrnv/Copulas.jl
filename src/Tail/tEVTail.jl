@@ -44,7 +44,7 @@ References:
 """
 tEVTail, tEVCopula
 
-struct tEVTail{T} <: Tail2
+struct tEVTail{T} <: BivariatePickandsTail
     ν::T
     ρ::T
     function tEVTail(ν::Real, ρ::Real)

@@ -74,9 +74,9 @@ A\!\left(
 The current EV implementation goes beyond the historical bivariate-only design:
 
 - the core representation is a dimension-aware STDF `ℓ`;
-- `Tail2` identifies a tail with a native bivariate Pickands kernel and is a
-  **computational capability**, not necessarily a mathematical restriction to
-  dimension two;
+- `BivariatePickandsTail` identifies a tail with a native scalar bivariate
+  Pickands kernel and is a **computational capability**, not necessarily a
+  mathematical restriction to dimension two;
 - several classical EV families now use the same public constructor in
   ``d=2`` and ``d>2``;
 - matrix and vector parameterizations infer the dimension when the parameter

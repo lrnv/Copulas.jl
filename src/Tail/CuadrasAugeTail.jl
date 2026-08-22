@@ -33,7 +33,7 @@ References:
 """
 CuadrasAugeTail, CuadrasAugeCopula
 
-struct CuadrasAugeTail{T} <: AbstractUnivariateTail2
+struct CuadrasAugeTail{T} <: OneParameterPickandsTail
     θ::T
     function CuadrasAugeTail(θ)
         (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))

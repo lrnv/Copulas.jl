@@ -43,7 +43,7 @@ References:
 """
 HuslerReissTail, HuslerReissCopula
 
-struct HuslerReissTail{T} <: AbstractUnivariateTail2
+struct HuslerReissTail{T} <: OneParameterPickandsTail
     θ::T
     function HuslerReissTail(θ)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))

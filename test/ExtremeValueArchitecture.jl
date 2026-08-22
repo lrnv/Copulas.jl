@@ -118,7 +118,7 @@ using Random
             @test Xdispatch == Xdirect
         end
 
-        # Tail2 default: the bivariate Logistic model uses the native
+        # BivariatePickandsTail default: the bivariate Logistic model uses the native
         # Ghoudi/Pickands sampler.
         check_direct_sampler(
             LogCopula(2, 2.0),
