@@ -33,7 +33,7 @@ References
 * [gudendorf2011nonparametric] Gudendorf, Segers (2011) Journal of Multivariate Analysis
 """
 EmpiricalEVTail, EmpiricalEVCopula
-struct EmpiricalEVTail <: Tail2
+struct EmpiricalEVTail <: BivariatePickandsTail
     tgrid::Vector{Float64}
     Ahat::Vector{Float64}
     slope::Vector{Float64}

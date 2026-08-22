@@ -43,7 +43,7 @@ References:
 """
 AsymGalambosTail, AsymGalambosCopula
 
-struct AsymGalambosTail{T} <: Tail2
+struct AsymGalambosTail{T} <: BivariatePickandsTail
     α::T                 # α ≥ 0
     θ₁::T
     θ₂::T

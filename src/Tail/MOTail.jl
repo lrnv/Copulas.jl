@@ -37,7 +37,7 @@ References:
 """
 MOTail, MOCopula
 
-struct MOTail{T} <: Tail2
+struct MOTail{T} <: BivariatePickandsTail
     λ₁::T
     λ₂::T
     λ₁₂::T

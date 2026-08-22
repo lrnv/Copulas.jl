@@ -71,7 +71,7 @@ end
 
 (CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) = _typed_extreme_value(CT, d, args...; kwargs...)
 
-function _cdf(C::ExtremeValueCopula{2,<:Tail2}, u)
+function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     u1, u2 = u
     z = zero(u1 + u2)
     o = one(u1 + u2)
@@ -87,9 +87,9 @@ end
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
-# Density selection follows Julia dispatch directly. Tail2 families retain the
-# native bivariate Pickands derivative kernel in d=2.
-function Distributions._logpdf(C::ExtremeValueCopula{2,<:Tail2}, u)
+# Density selection follows Julia dispatch directly. BivariatePickandsTail
+# families retain the native scalar Pickands derivative kernel in d=2.
+function Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf
     (isone(u1) || isone(u2)) && return -Inf
@@ -156,10 +156,11 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
 
-# Sampling is selected directly through Julia dispatch. Tail2 families use the
-# native bivariate Ghoudi/Pickands sampler in d=2 by default, while families
-# with a preferable exact sampler specialize _rand! for their concrete tail.
-function _rand_ghoudi!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:Tail2}, X::AbstractMatrix{T},) where {T<:Real}
+# Sampling is selected directly through Julia dispatch. BivariatePickandsTail
+# families use the native Ghoudi/Pickands sampler in d=2 by default, while
+# families with a preferable exact sampler specialize `_rand!` for their
+# concrete tail.
+function _rand_ghoudi!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BivariatePickandsTail}, X::AbstractMatrix{T},) where {T<:Real}
     size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extreme-value copula",))
 
     E = ExtremeDist(C.tail)
@@ -174,7 +175,7 @@ function _rand_ghoudi!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<
     return X
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:Tail2}, X::AbstractMatrix{T},) where {T<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BivariatePickandsTail}, X::AbstractMatrix{T},) where {T<:Real}
     size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extreme-value copula",))
     return _rand_ghoudi!(rng, C, X)
 end
@@ -210,7 +211,7 @@ _rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(
 
 _available_fitting_methods(::Type{ExtremeValueCopula}, d) = (:ols, :cfg, :pickands)
 _available_fitting_methods(CT::Type{<:ExtremeValueCopula}, d) = (:mle,)
-_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}, d) =  (:mle, :itau, :irho, :ibeta, :iupper)
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:OneParameterPickandsTail}}, d) =  (:mle, :itau, :irho, :ibeta, :iupper)
 
 # Fitting empírico (OLS, CFG, Pickands):
 function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
@@ -222,7 +223,7 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     C = EmpiricalEVMultivariateCopula(U; method=m, pseudo_values=pseudo_values, kwargs...)
     return C, (; pseudo_values, method=m, degree=C.tail.degree, projection_rmse=C.tail.projection_rmse)
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) :
         m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) :
                            β⁻¹(CT,  corblomqvist(U')[1,2])
@@ -231,12 +232,12 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
     θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
     return CT(2, θ), (; θ̂=(θ=θ,))
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
     θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(tailof(CT), 2)...)
     return CT(2, θ), (; θ̂=(θ=θ,))
 end
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     d = size(U,1)
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, d)

@@ -33,7 +33,7 @@ References:
 """
 GalambosTail, GalambosCopula
 
-struct GalambosTail{T} <: AbstractUnivariateTail2
+struct GalambosTail{T} <: OneParameterPickandsTail
     θ::T
     function GalambosTail(θ)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))

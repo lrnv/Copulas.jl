@@ -34,7 +34,7 @@ References:
 """
 AsymMixedTail, AsymMixedCopula
 
-struct AsymMixedTail{T} <: Tail2
+struct AsymMixedTail{T} <: BivariatePickandsTail
   θ₁::T
   θ₂::T
   function AsymMixedTail(θ₁, θ₂)

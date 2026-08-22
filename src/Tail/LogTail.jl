@@ -27,7 +27,7 @@ References:
 """
 LogTail, LogCopula
 
-struct LogTail{T} <: AbstractUnivariateTail2
+struct LogTail{T} <: OneParameterPickandsTail
     θ::T
     function LogTail(θ)
         !(1 <= θ) && throw(ArgumentError(" The param θ must be in [1, ∞)"))

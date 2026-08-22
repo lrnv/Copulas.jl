@@ -417,10 +417,10 @@ function generator_specialization(gen::TG) where TG<:Copulas.Generator
 end
 
 function tail_specialization(tail::TT) where TT<:Copulas.Tail
-    dA =        which(Copulas.dA,        (TT, Float64))                 != which(Copulas.dA,        (Copulas.Tail2, Float64))
-    d²A =       which(Copulas.d²A,       (TT, Float64))                 != which(Copulas.d²A,       (Copulas.Tail2, Float64))
-    _A_dA_d²A = which(Copulas._A_dA_d²A, (TT, Float64))                 != which(Copulas._A_dA_d²A, (Copulas.Tail2, Float64))
-    ℓ =         which(Copulas.ℓ,         (TT, Tuple{Float64, Float64})) != which(Copulas.ℓ,         (Copulas.Tail2, Tuple{Float64, Float64}))
+    dA =        which(Copulas.dA,        (TT, Float64))                 != which(Copulas.dA,        (Copulas.BivariatePickandsTail, Float64))
+    d²A =       which(Copulas.d²A,       (TT, Float64))                 != which(Copulas.d²A,       (Copulas.BivariatePickandsTail, Float64))
+    _A_dA_d²A = which(Copulas._A_dA_d²A, (TT, Float64))                 != which(Copulas._A_dA_d²A, (Copulas.BivariatePickandsTail, Float64))
+    ℓ =         which(Copulas.ℓ,         (TT, Tuple{Float64, Float64})) != which(Copulas.ℓ,         (Copulas.BivariatePickandsTail, Tuple{Float64, Float64}))
     return (; dA, d²A, _A_dA_d²A, ℓ)
 end
 
