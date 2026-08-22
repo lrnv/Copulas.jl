@@ -1,25 +1,32 @@
 """
     GalambosTail{T}, GalambosCopula{d,T}
 
-Fields:
-  - θ::Real — dependence parameter, θ ≥ 0
+    GalambosCopula{d}(θ)
+    GalambosCopula(d, θ)
 
-Constructor
-
-    GalambosCopula(θ)
-    ExtremeValueCopula(2, GalambosTail(θ))
-
-The (bivariate) Galambos extreme-value copula is parameterized by ``\\theta \\in [0, \\infty)``.
-Its Pickands dependence function is
+Galambos (negative-logistic) extreme-value copula in dimension `d ≥ 2`, with
+`θ ∈ [0, ∞]`. Its stable tail dependence function is
 
 ```math
-A(t) = 1 - \\Big( t^{-\\theta} + (1-t)^{-\\theta} \\Big)^{-1/\\theta}, \\quad t \\in (0,1).
+\\ell(x)
+=
+\\sum_{\\varnothing \\ne I \\subseteq \\{1,\\ldots,d\\}}
+(-1)^{|I|+1}
+\\left(\\sum_{i\\in I}x_i^{-\\theta}\\right)^{-1/\\theta}.
 ```
+
+For `d = 2`, the equivalent Pickands dependence function is
+
+```math
+A(t)=1-\\left(t^{-\\theta}+(1-t)^{-\\theta}\\right)^{-1/\\theta},
+```
+
+and the implementation uses the native bivariate derivatives when beneficial.
 
 Special cases:
 
-* θ = 0   ⇒ IndependentCopula
-* θ = ∞   ⇒ MCopula (upper Fréchet-Hoeffding bound)
+* `θ = 0` returns `IndependentCopula(d)`.
+* `θ = ∞` returns `MCopula(d)`.
 
 References:
 
@@ -27,7 +34,7 @@ References:
 """
 GalambosTail, GalambosCopula
 
-struct GalambosTail{T} <: AbstractUnivariateTail2
+struct GalambosTail{T} <: OneParameterPickandsTail
     θ::T
     function GalambosTail(θ)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
@@ -38,10 +45,149 @@ struct GalambosTail{T} <: AbstractUnivariateTail2
 end
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
+_is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
 Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
 _unbound_params(::Type{<:GalambosTail}, d, θ) = [log(θ.θ)]           # θ > 0
 _rebound_params(::Type{<:GalambosTail}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:GalambosTail}, d) = (0.0, Inf)
+
+function ℓ(tail::GalambosTail, x)
+    any(isinf, x) && return maximum(x)
+    θ = tail.θ
+    out = sum(x)
+    d = length(x)
+    for k in 2:d, I in Combinatorics.combinations(1:d, k)
+        any(i -> iszero(x[i]), I) && continue
+        m = minimum(x[i] for i in I)
+        s = sum((x[i] / m)^(-θ) for i in I)
+        out += (isodd(k) ? one(out) : -one(out)) * m * s^(-inv(θ))
+    end
+    return out
+end
+
+@inline function _galambos_subset_partial_logabs(θ, x, I, S)
+    k = length(I)
+    m = minimum(x[j] for j in S)
+    s = sum((x[j] / m)^(-θ) for j in S)
+    out = (one(θ) - k) * log(m) - (inv(θ) + k) * log(s)
+    out += (-θ - one(θ)) * sum(log(x[i] / m) for i in I)
+    k > 1 && (out += sum(log1p(r * θ) for r in 1:k-1))
+    return out
+end
+
+function _galambos_partial_signlog_native(tail::GalambosTail, x, I)
+    θ = tail.θ
+    expected = isodd(length(I)) ? 1 : -1
+    base = float(x[first(I)] + θ)
+    logpos = logneg = oftype(base, -Inf)
+    rest = [j for j in eachindex(x) if j ∉ I]
+
+    for r in 0:length(rest), J in Combinatorics.combinations(rest, r)
+        S = (I..., J...)
+        logterm = _galambos_subset_partial_logabs(θ, x, I, S)
+        if isodd(length(S))
+            logpos = LogExpFunctions.logaddexp(logpos, logterm)
+        else
+            logneg = LogExpFunctions.logaddexp(logneg, logterm)
+        end
+    end
+
+    dominant, other = expected == 1 ? (logpos, logneg) : (logneg, logpos)
+    isfinite(dominant) || return expected, dominant, false
+    !isfinite(other) && return expected, dominant, true
+    dominant > other || return expected, dominant, false
+
+    reldiff = -expm1(-(dominant - other))
+    tol = base isa AbstractFloat ? sqrt(eps(base)) : zero(base)
+    reldiff > tol || return expected, dominant, false
+    return expected, dominant + log(reldiff), true
+end
+
+# Inclusion-exclusion can lose hundreds of digits for strong dependence.
+# Retry only unresolved partials at increasing precision.
+function _galambos_partial_signlog_big(tail::GalambosTail, x, I)
+    T = typeof(float(x[first(I)] + tail.θ))
+    bits = max(256,
+               x[first(I)] isa BigFloat ? precision(x[first(I)]) : 0,
+               tail.θ isa BigFloat ? precision(tail.θ) : 0)
+    for _ in 1:7
+        sgn, logabs, resolved = setprecision(BigFloat, bits) do
+            xb = BigFloat.(x)
+            tb = GalambosTail(BigFloat(tail.θ))
+            _galambos_partial_signlog_native(tb, xb, I)
+        end
+        resolved && return sgn, convert(T, logabs)
+        bits *= 2
+    end
+    throw(ArgumentError("Galambos mixed partial could not be resolved numerically"))
+end
+
+function _ellpartial_signlog(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
+    I = Tuple(I)
+    sgn, logabs, resolved = _galambos_partial_signlog_native(tail, x, I)
+    resolved && return sgn, logabs
+    all(xi -> xi isa AbstractFloat, x) || return sgn, logabs
+    tail.θ isa AbstractFloat || return sgn, logabs
+    return _galambos_partial_signlog_big(tail, x, I)
+end
+
+
+# Exact spectral sampler for the multivariate negative-logistic/Galambos model.
+# The common scale of the Weibull/Gamma construction cancels after
+# normalization to the simplex.
+function _rand_galambos_spectral!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    S = promote_type(T, typeof(C.tail.θ))
+    θ = S(C.tail.θ)
+    invθ = inv(θ)
+    shape = one(S) + invθ
+    weibull = Distributions.Weibull(θ, one(S))
+    gamma = Distributions.Gamma(shape, one(S))
+    q = Vector{S}(undef, d)
+    z = Vector{S}(undef, d)
+    invd = inv(S(d))
+
+    for col in axes(X, 2)
+        fill!(z, zero(S))
+        arrival = S(Random.randexp(rng)) * invd
+        radius = inv(arrival)
+
+        while radius > minimum(z)
+            j = rand(rng, 1:d)
+            @inbounds for i in 1:d
+                q[i] = rand(rng, weibull)
+            end
+            q[j] = rand(rng, gamma)^invθ
+
+            qsum = sum(q)
+            @inbounds for i in 1:d
+                qi = q[i] / qsum
+                z[i] = max(z[i], radius * qi)
+            end
+
+            arrival += S(Random.randexp(rng)) * invd
+            radius = inv(arrival)
+        end
+
+        @inbounds for i in 1:d
+            X[i, col] = exp(-inv(z[i]))
+        end
+    end
+    return X
+end
+
+
+# Galambos uses its exact spectral sampler directly through Julia dispatch.
+# This also applies in d=2, where it is substantially faster than the generic
+# bivariate Ghoudi/Pickands sampler.
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:GalambosTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate Galambos copula",))
+    return _rand_galambos_spectral!(rng, C, X)
+end
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
+    return _rand_galambos_spectral!(rng, C, X)
+end
 
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
 function A(tail::GalambosTail, t::Real)
@@ -112,5 +258,9 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
 τ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
 τ⁻¹(::Type{<:GalambosTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
 ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
-β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta) = -1/log2(log2(beta+1))
+function β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta)
+    beta <= 0 && return 0.0
+    beta >= 1 && return Inf
+    return -inv(log2(log2(beta + 1)))
+end
 λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) = -1.0 / log2(λ)

@@ -81,16 +81,12 @@ end
 Once defined, these automatically integrate with the `Copulas.jl` and `Distributions.jl` interface.
 
 !!! info "Sampling contract"
-    The matrix sampler is the required primitive. The generic vector sampler presents its
-    output as a `d × 1` matrix and delegates to it, so implementing a vector method is never
-    required for correctness. A family may still provide a vector specialization when
-    benchmarks show that its scalar setup cost matters:
-    ```julia
-    function Distributions._rand!(rng::Distributions.AbstractRNG, C::MyCopula, u::AbstractVector{<:Real})
-        # Optional performance specialization for one sample.
-        return u
-    end
-    ```
+    The matrix `_rand!` method is the sampling primitive. The generic
+    `Distributions.jl` machinery handles the one-sample/vector interface by
+    delegating to the matrix sampler, so copula implementations should define
+    only the matrix method. When several sampling algorithms are available,
+    select among them with ordinary Julia dispatch on the copula/tail type
+    rather than with a separate routing trait.
 
 
 ## 1.3 Dependence metrics
@@ -250,49 +246,260 @@ Only fitting routines or dependence metrics need to be added if the defaults are
 
 ## 2.2 Extreme-Value copulas
 
-Bivariate Extreme-Value (EV) copulas are defined by a stable tail dependence function `ℓ` and the associated **Pickands dependence function** `A`.
-To implement a new bivariate Extreme-Value family, define a subtype of [`Tail`](@ref) with the following methods:
+Extreme-value copulas are represented by an [`ExtremeValueCopula`](@ref)
+containing a stable tail dependence function object, [`Tail`](@ref). The
+dimension-free mathematical identity is
 
-```julia
-struct MyTail{T} <: Tail
-    θ::T
-end
-const MyEVCopula{d,T} = ExtremeValueCopula{d, MyTail{T}}
-ℓ(T::MyTail, x, y) = ...
-A(T::MyTail, t) = ...
-Distributions.params(T::MyTail) = (θ = T.θ,)
+```math
+C(\boldsymbol u)=\exp\{-\ell(-\log\boldsymbol u)\}.
 ```
 
-### Required methods
+The EV API deliberately separates the mathematical family from computational
+capabilities.
 
-| Method                    | Purpose                                                            | Required    |
-| ------------------------- | ------------------------------------------------------------------ | ----------- |
-| `A(T, t)` or `ℓ(T, x, y)` | Pickands dependence function   OR stable tail dependence function  | ✅          |
-| `Distributions.params(T)` | Return parameters as a `NamedTuple`                                | ✅          |
-| `dA(T, t)`                | Derivative of the Pickands function                                | ⚙️ Optional |
-| `d²A(T, t)`               | Second derivative of the Pickands function                         | ⚙️ Optional |
+### `Tail`: the mathematical STDF interface
 
-!!! note "ℓ function"
-    For Extreme-Value copulas, the `ℓ` function is mandatory only for multivariate extensions.
-    For Bivariate EV copulas, it is sufficient to implement the Pickands function `A`.
+A multivariate EV tail should subtype `Tail` and implement its STDF:
 
-Once `A` or `ℓ` is provided, `Copulas.jl` automatically handles the rest of the API.
+```julia
+struct MyTail{T} <: Copulas.Tail
+    θ::T
+end
 
-!!! note "Inherited interfaces in structured families"
-    For structured copula families such as **Archimedean** and **Extreme-Value**,
-    most of the general interface (`cdf`, `logpdf`, `rand`, `fit`, etc.) is already implemented internally in `Copulas.jl`.
+Copulas.ℓ(tail::MyTail, x) = ...
+Distributions.params(tail::MyTail) = (; θ = tail.θ)
+```
+
+`Tail` is valid by default for every `d >= 2`. Override
+`_is_valid_in_dim(tail, d)` only when the mathematical family has additional
+dimensional restrictions.
+
+`ExtremeValueCopula(d, tail)` checks `_is_valid_in_dim(tail, d)` at
+construction time.
+
+### `BivariatePickandsTail`: the scalar bivariate Pickands capability
+
+`BivariatePickandsTail <: Tail` means that the tail provides the native scalar
+bivariate Pickands representation `A(t)`, and therefore can use the specialized
+Pickands derivative, density, conditioning, and sampling machinery:
+
+```julia
+struct MyTail{T} <: Copulas.BivariatePickandsTail
+    θ::T
+end
+
+Copulas.A(tail::MyTail, t::Real) = ...
+```
+
+Its default validity is `d == 2`. If the same mathematical family also has a
+valid STDF in higher dimension, opt in explicitly:
+
+```julia
+Copulas.ℓ(tail::MyTail, x) = ...
+```
+
+This is the pattern used by families such as Logistic, Galambos,
+Hüsler-Reiss, Mixed, extremal-``t``, and Cuadras-Augé.
+
+!!! info "Why keep `BivariatePickandsTail`?"
+    A multivariate family can still have exceptionally good analytic formulas
+    in dimension two. `BivariatePickandsTail` lets the package retain `A`, `dA`, `d²A`,
+    conditional distortions, and the Ghoudi sampler without pretending that the
+    mathematical family stops at ``d=2``.
+
+### Constructor convention
+
+The canonical EV constructor encodes the dimension in the type:
+
+```julia
+FamilyCopula{d}(params...)
+```
+
+The runtime-dimension form is only syntactic sugar:
+
+```julia
+FamilyCopula(d, params...)
+```
+
+Scalar and exchangeable families do **not** infer an implicit bivariate
+dimension. For example, use `GalambosCopula{2}(2.3)` (or the runtime sugar
+`GalambosCopula(2, 2.3)`), not `GalambosCopula(2.3)`.
+
+Structured parameterizations follow the same rule. Their canonical forms are,
+for example,
+
+```julia
+HuslerReissCopula{d}(Γ)
+tEVCopula{d}(ν, R)
+TawnCopula{d}(α, weights)
+AsymGalambosCopula{d}(α, weights)
+BC2Copula{d}(a)
+MOCopula{d}(λ)
+EmpiricalEVMultivariateCopula{d}(U)
+```
+
+When a matrix or vector determines `d` unambiguously, an inferred-dimension
+constructor may additionally be provided as convenience syntax, such as
+`HuslerReissCopula(Γ)` or `MOCopula(λ)`. It must validate to the same
+mathematical copula as the canonical `{d}` constructor.
+
+Full subset parameterizations obey the same contract:
+
+```julia
+TawnCopula{d}(dep, asy)
+AsymGalambosCopula{d}(dep, asy)
+```
+
+with `FamilyCopula(d, ...)` as runtime sugar. When the subset count
+`2^d-1` determines the dimension, the no-`d` convenience form may infer it.
+
+A public constructor may map a ``2\times2`` matrix to a specialized scalar tail
+and a larger matrix to a general tail. Do not use the concrete stored tail type
+as the public family identity.
+
+### Density interface
+
+For ``x_i=-\log u_i``, an absolutely continuous EV density can be written
+
+```math
+c(\boldsymbol u)
+=
+\frac{\exp\{-\ell(\boldsymbol x)\}}{\prod_i u_i}
+\sum_{\pi\in\Pi_d}
+(-1)^{d+|\pi|}
+\prod_{B\in\pi}\partial_B\ell(\boldsymbol x),
+```
+
+where ``\Pi_d`` is the set of partitions of ``\{1,\ldots,d\}``.
+
+The generic multivariate path needs mixed STDF partials, but these are not an
+additional requirement for a new family. The common `_mixed_partial` utility
+computes mixed derivatives with `ForwardDiff` and is shared by the EV density
+machinery and generic conditioning.
+
+| Method | Meaning | Required |
+|---|---|---|
+| `ℓ(tail, x)` | stable tail dependence function | ✅ |
+| `_ellpartial_signlog(tail, x, I)` | stable sign/log-absolute mixed partial | ⚙️ Optional |
+| `A`, `dA`, `d²A` | native bivariate Pickands kernel | ⚙️ Optional |
+
+By default, `_ellpartial_signlog` is obtained from `ℓ` through the shared
+automatic-differentiation helper, and `ellpartial(tail, x, I)` is reconstructed
+from that sign/log representation. A new multivariate EV tail therefore needs
+to implement **only `ℓ`** for the generic density path. Override
+`_ellpartial_signlog` only when an analytic expression is materially more
+stable or faster.
+
+Density selection itself uses ordinary Julia dispatch. In ``d=2``, a `BivariatePickandsTail`
+uses the native Pickands derivative kernel. The generic `ExtremeValueCopula{d}`
+method uses the partition formula above, so a family-specific `_logpdf` method
+is only needed when the family provides a genuinely different numerical
+algorithm.
 
 
-Therefore, these methods are **not mandatory** for each new subtype.  
-Defining the corresponding *core component* — the `Generator` (for Archimedean) or the `Tail` (for Extreme-Value) —  
-is sufficient to automatically enable the entire probability interface, fitting routines, and dependence measures.
+### Conditioning and Rosenblatt in higher dimensions
 
-In other words:
-- The only **mandatory** definitions are those listed in each sub-API table (`ϕ`, `max_monotony` for Archimedean; `A` for Extreme-Value).  
-- All other methods become **optional overrides**, recommended only when analytical or more stable forms are available.
+No separate extreme-value Rosenblatt algorithm is required. The generic
+conditioning framework is dimension-agnostic: `DistortionFromCop` obtains
+conditional marginals from mixed derivatives of the copula CDF, while
+`rosenblatt` and `inverse_rosenblatt` build the usual sequence of conditional
+distributions from that interface.
 
+Consequently, smooth multivariate EV families whose numerical CDF/STDF path is
+compatible with automatic differentiation inherit `condition`, `rosenblatt`,
+and `inverse_rosenblatt` in `d > 2`. The Logistic and Galambos families are
+covered explicitly by the architecture tests. In `d = 2`,
+`BivariatePickandsTail` retains the faster native `BivEVDistortion` path.
 
+This generic guarantee is computational rather than purely mathematical.
+Families whose multivariate STDF relies on numerical probability routines that
+materialize `Float64` values may require a specialized distortion instead of
+the ForwardDiff fallback; the current multivariate Hüsler--Reiss and
+extremal-``t`` numerical kernels fall in this category. Likewise, discrete
+spectral EV models can contain singular components, so a global Lebesgue
+density and the ordinary smooth conditional-derivative construction need not
+exist in general.
 
+### Sampling interface and dispatch
+
+The required public behavior is simply
+
+```julia
+rand(C, n)
+```
+
+Extreme-value sampling is selected directly through Julia dispatch on the
+copula dimension and the concrete tail type. There is no separate sampling
+backend trait or routing layer.
+
+For a `BivariatePickandsTail` in ``d=2``, the generic extreme-value method uses the native
+Ghoudi/Pickands sampler:
+
+```julia
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:BivariatePickandsTail},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    return _rand_ghoudi!(rng, C, X)
+end
+```
+
+A family with its own exact multivariate sampler implements `_rand!` directly
+for its concrete tail type:
+
+```julia
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:MyTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
+    return _my_exact_rand!(rng, C.tail, X)
+end
+```
+
+If `MyTail <: BivariatePickandsTail` and the family should use its exact sampler also in
+dimension two, the family-wide method intersects with the generic
+`ExtremeValueCopula{2,<:BivariatePickandsTail}` method. Resolve that intersection explicitly
+with a ``d=2`` specialization:
+
+```julia
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:MyTail},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    return _my_exact_rand!(rng, C.tail, X)
+end
+```
+
+This keeps algorithm selection in Julia's dispatch system rather than encoding
+the same information in a parallel trait hierarchy. Logistic retains its
+native bivariate Ghoudi/Pickands route, while Galambos, Hüsler-Reiss, Mixed,
+and extremal-``t`` use their exact family samplers in dimension two.
+
+Algorithm-specific helpers such as `_rand_ghoudi!`,
+`_discrete_spectral_rand!`, or family spectral samplers may be used internally
+when they represent a reusable numerical algorithm rather than a routing
+layer.
+
+!!! warning "Internal, non-stable API"
+    `_rand_ghoudi!`, algorithm-specific sampling helpers, and
+    `_ellpartial_signlog` are contributor-facing internals. Public user code
+    should call `rand`, `cdf`, `pdf`, etc.
+
+### Source organization
+
+One source file corresponds to one mathematical family. A family can contain
+multiple internal representations in that file; for example an optimized
+bivariate tail and a general matrix/subset tail. This keeps family semantics
+together while allowing dispatch to specialize the computational backend.
+
+See [Extreme Value family](@ref Extreme_theory) for the user-facing theory,
+constructor table, bivariate Ghoudi development, and model documentation.
 
 ## 2.3 Elliptical copulas
 
@@ -616,7 +823,7 @@ which specifies the Pickands function `A(t)` and its parameterization.
 ```@example generic_copula_example
 using LogExpFunctions
 
-struct GumbelTail{T} <: Copulas.AbstractUnivariateTail2 # subtype of Tail
+struct GumbelTail{T} <: Copulas.OneParameterPickandsTail # subtype of Tail
     θ::T
     function GumbelTail(θ)
         !(1 <= θ) && throw(ArgumentError("θ must be in [1, ∞)"))
@@ -646,8 +853,10 @@ Copulas._θ_bounds(::Type{<:GumbelTail}, d) = (1, Inf)
 Once the tail is defined, constructing the copula is immediate:
 
 ```@example generic_copula_example
-const GumbelEVCopula{T} = Copulas.ExtremeValueCopula{2, GumbelTail{T}}
-C = GumbelEVCopula(2, 2.5)
+const GumbelEVCopula{d,T} = Copulas.ExtremeValueCopula{d, GumbelTail{T}}
+C = GumbelEVCopula{2}(2.5)
+C_runtime = GumbelEVCopula(2, 2.5)
+@assert typeof(C_runtime) == typeof(C)
 ```
 
 All standard API methods (`cdf`, `pdf`, `rand`, `fit`, etc.) are automatically inherited
@@ -668,7 +877,7 @@ For the `GumbelEVCopula`, we define the available methods and optional parameter
 
 ```@example generic_copula_example
 Copulas._available_fitting_methods(::Type{GumbelEVCopula}, d) = (:iupper, :mle)
-Copulas._example(::Type{GumbelEVCopula}, d) = GumbelEVCopula(2, 2.5)
+Copulas._example(::Type{GumbelEVCopula}, d) = GumbelEVCopula{d}(2.5)
 ```
 
 #### Closed-form estimator from upper-tail dependence
@@ -689,7 +898,7 @@ function Copulas._fit(::Type{CT}, U, ::Val{:iupper}) where {CT<:GumbelEVCopula}
     λ̂ = Copulas.λᵤ(U)                # empirical upper-tail dependence
     θ  = 1 / log2(2 - λ̂)
     θ  = clamp(θ, 1.0, 50.0)
-    Ĉ = CT(d, θ)
+    Ĉ = Copulas._construct_from_params(CT, d, θ)
     return Ĉ, (; θ̂ = (; θ = θ), λ̂ = λ̂, method = :iupper)
 end
 ```
@@ -698,7 +907,7 @@ end
 
 ```@example generic_copula_example
 Random.seed!(123)
-U = rand(GumbelEVCopula(2, 4.5), 300)
+U = rand(GumbelEVCopula{2}(4.5), 300)
 M = fit(CopulaModel, GumbelEVCopula, U)
 M
 ```

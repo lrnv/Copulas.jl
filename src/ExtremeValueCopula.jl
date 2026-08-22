@@ -36,57 +36,154 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press.
 * [mai2014financial](@cite) Mai, J. F., & Scherer, M. (2014). Financial engineering with copulas explained (p. 168). London: Palgrave Macmillan.
 """
-struct ExtremeValueCopula{d, TT<:Tail} <: Copula{d}
+struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
     tail::TT
     function ExtremeValueCopula{d}(tail::Tail) where {d}
-        @assert _is_valid_in_dim(tail, d)
-        return new{d, typeof(tail)}(tail)
+        d >= 2 || throw(ArgumentError("an extreme-value copula requires d ≥ 2"))
+        _is_valid_in_dim(tail, d) || throw(ArgumentError(
+            "$(typeof(tail)) is not valid in dimension $d",
+        ))
+        return new{d,typeof(tail)}(tail)
     end
 end
 
 ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
-_typed_extreme_value(CT, d, args...; kwargs...) =
-    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
-function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
+
+@inline _ev_encoded_dimension(CT) = Base.unwrap_unionall(CT).parameters[1]
+
+function _typed_extreme_value(CT, d::Int, args...; kwargs...)
+    encoded = _ev_encoded_dimension(CT)
+    if !(encoded isa TypeVar) && encoded != d
+        throw(DimensionMismatch(
+            "encoded dimension d=$encoded does not match requested dimension $d",
+        ))
+    end
+    return ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+end
+
+function _ev_resolve_dimension(CT, inferred::Int, what::AbstractString)
+    d = _ev_encoded_dimension(CT)
+    d isa TypeVar && return inferred
+    d == inferred || throw(DimensionMismatch(
+        "encoded dimension d=$d does not match $what dimension $inferred",
+    ))
+    return d
+end
+
+# Canonical constructor: FamilyCopula{d}(params...).
+#
+# If `d` is not encoded in the type, non-structured parameterizations must use
+# the runtime convenience form FamilyCopula(d, params...). Structured family
+# constructors may provide more specific methods that infer `d` from a matrix
+# or vector.
+function (CT::Type{<:ExtremeValueCopula{D}})(args...; kwargs...) where {D}
+    d = _ev_encoded_dimension(CT)
+    d isa TypeVar && throw(ArgumentError(
+        "the copula dimension must be specified as FamilyCopula{d}(...) " *
+        "or FamilyCopula(d, ...)",
+    ))
     return _typed_extreme_value(CT, d, args...; kwargs...)
 end
-function (CT::Type{<:ExtremeValueCopula{D,TT}})(d::Int, args...; kwargs...) where {D,TT}
-    # Dropping TT's parameters is intentional for the current parametric
-    # tails: they only encode the numeric parameter type, which fitting may
-    # need to replace (e.g. with a Dual). Revisit this if a tail with structural
-    # type parameters is routed through this constructor.
-    TailType = Base.typename(TT).wrapper
-    return ExtremeValueCopula{d}(TailType(args...; kwargs...))
-end
+
+# Resolve the only generic intersection left by integer-valued parameters:
+# for FamilyCopula{d}(first::Int, ...), `first` is a parameter; for the
+# unparameterized FamilyCopula(first::Int, ...), it is the runtime dimension.
 function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) where {D}
-    d = Base.unwrap_unionall(CT).parameters[1]
-    # An integer can be either the runtime dimension in CT(d, parameters...)
-    # or the first parameter in CT{d}(parameters...). For the families
-    # currently provided, constructor arity matches the tail field count.
-    # This heuristic must be revisited if optional/non-field parameters appear.
-    nparams = fieldcount(Base.unwrap_unionall(tailof(CT)))
-    if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
+    d = _ev_encoded_dimension(CT)
+    if d isa TypeVar
         return _typed_extreme_value(CT, first, args...; kwargs...)
     end
     return _typed_extreme_value(CT, d, first, args...; kwargs...)
 end
+
+# Runtime-dimension sugar for an unparameterized family alias:
+#     FamilyCopula(d, params...)
+#
+# This deliberately stays separate from the canonical encoded-dimension route
+# above. In particular, FamilyCopula{d}(integer_parameter, ...) always treats
+# the integer as a model parameter.
 (CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) =
     _typed_extreme_value(CT, d, args...; kwargs...)
+
+# Generic fitting reconstructs from concrete `typeof(C)` values. It should not
+# call the public runtime constructor on a fully concrete FamilyCopula{d,T},
+# because that would make an integer model parameter indistinguishable from d.
+_construct_from_params(
+    CT::Type{<:ExtremeValueCopula},
+    d::Int,
+    args...;
+    kwargs...,
+) = _typed_extreme_value(CT, d, args...; kwargs...)
+
+function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
+    u1, u2 = u
+    z = zero(u1 + u2)
+    o = one(u1 + u2)
+    (u1 <= z || u2 <= z) && return z
+    u1 >= o && return min(o, u2)
+    u2 >= o && return min(o, u1)
+
+    x, y = -log(u1), -log(u2)
+    s = x + y
+    return exp(-s * A(C.tail, x / s))
+end
 
 _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
-#### Restriction to bivariate cases of the following methods:
-function Distributions._logpdf(C::ExtremeValueCopula{2, TT}, u) where {TT}
+# Density selection follows Julia dispatch directly. BivariatePickandsTail
+# families retain the native scalar Pickands derivative kernel in d=2.
+function Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf
-    # On the broder, the limit of the pdf is 0 and thus logpdf tends to -Inf
-    (u1 == 1.0 || u2 == 1.0) && return -Inf
+    (isone(u1) || isone(u2)) && return -Inf
     x, y = -log(u1), -log(u2)
     val, du, dv, dudv = _biv_der_ℓ(C.tail, (x, y))
-    core = -dudv + du*dv
+    core = -dudv + du * dv
     core ≤ 0 && return -Inf
     return -val + log(core) + x + y
+end
+
+# Generic d-dimensional density from the mixed STDF partials and the
+# partition formula for absolutely continuous extreme-value copulas.
+function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
+    all(ui -> zero(ui) < ui <= one(ui), u) || return oftype(float(first(u)), -Inf)
+    x = -log.(u)
+    val = ℓ(C.tail, x)
+    any(isone, u) && return oftype(val, -Inf)
+    logpos = logneg = oftype(val, -Inf)
+    partials = Dict{Tuple{Vararg{Int}},Tuple{Int,typeof(val)}}()
+
+    for π in Combinatorics.partitions(collect(1:d))
+        sgn = isodd(d + length(π)) ? -1 : 1
+        logabs = zero(val)
+        nonzero = true
+        for block in π
+            I = Tuple(block)
+            blocksgn, blocklog = get!(partials, I) do
+                _ellpartial_signlog(C.tail, x, I)
+            end
+            if iszero(blocksgn)
+                nonzero = false
+                break
+            end
+            sgn *= blocksgn
+            logabs += blocklog
+        end
+        nonzero || continue
+        if sgn > 0
+            logpos = LogExpFunctions.logaddexp(logpos, logabs)
+        else
+            logneg = LogExpFunctions.logaddexp(logneg, logabs)
+        end
+    end
+
+    isfinite(logpos) || return oftype(val, -Inf)
+    if isfinite(logneg)
+        logneg < logpos || return oftype(val, -Inf)
+        logpos += log1p(-exp(logneg - logpos))
+    end
+    return -val + sum(x) + logpos
 end
 τ(C::ExtremeValueCopula{2}) = QuadGK.quadgk(t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)), 0.0, 1.0)[1]
 ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C.tail, t))^2, 0.0, 1.0)[1] - 3
@@ -97,27 +194,34 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, TT}, X::AbstractMatrix{T}) where {T<:Real, TT}
-    # More efficient Matrix sampler:
-    d,n = size(X)
-    @assert d==2
+# Sampling is selected directly through Julia dispatch. BivariatePickandsTail
+# families use the native Ghoudi/Pickands sampler in d=2 by default, while
+# families with a preferable exact sampler specialize `_rand!` for their
+# concrete tail.
+function _rand_ghoudi!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BivariatePickandsTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extreme-value copula",))
+
     E = ExtremeDist(C.tail)
-    for i in 1:n
+    for i in axes(X, 2)
         z = rand(rng, E)
-        w = rand(rng) < _probability_z(C.tail, z) ? rand(rng) : rand(rng) * rand(rng)
+        w = rand(rng) < _probability_z(C.tail, z) ?
+            rand(rng) : rand(rng) * rand(rng)
         a = A(C.tail, z)
-        X[1,i] = exp(log(w)*z/a)
-        X[2,i] = exp(log(w)*(1-z)/a)
+        X[1, i] = exp(log(w) * z / a)
+        X[2, i] = exp(log(w) * (1 - z) / a)
     end
     return X
 end
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BivariatePickandsTail}, X::AbstractMatrix{T},) where {T<:Real}
+    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extreme-value copula",))
+    return _rand_ghoudi!(rng, C, X)
+end
+
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
-
-
 
 # Fitting functions: the default one is in the EmpiricalEvTail because this is what will happen by default.
 # For this moment generic mle works... maybe we could be implement others specifyc methods maybe upper and lower tail
-
 
 # # Parametric-type constructors to allow generic fit to reconstruct from NamedTuple params
 # function (::Type{ExtremeValueCopula{D, TT}})(d::Integer, θ::NamedTuple) where {D, TT<:Tail}
@@ -139,35 +243,39 @@ tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 ####### Fitting functions for univariate tails only (Extreme Value Copulas).
 ##############################################################################################################################
 
-_example(CT::Type{<:ExtremeValueCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...)
+_example(CT::Type{<:ExtremeValueCopula}, d) = _typed_extreme_value(CT, d; _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...)
 _unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = _unbound_params(tailof(CT), d, θ)
 _rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(CT), d, α)
 
 _available_fitting_methods(::Type{ExtremeValueCopula}, d) = (:ols, :cfg, :pickands)
 _available_fitting_methods(CT::Type{<:ExtremeValueCopula}, d) = (:mle,)
-_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:UnivariateTail2}}, d) =  (:mle, :itau, :irho, :ibeta, :iupper)
+_available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:OneParameterPickandsTail}}, d) =  (:mle, :itau, :irho, :ibeta, :iupper)
 
 # Fitting empírico (OLS, CFG, Pickands):
-function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
-              pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
-    C = EmpiricalEVCopula(U; method=typeof(method).parameters[1], grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
-    return C, (; pseudo_values, grid, eps)
+function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; pseudo_values=true, grid::Int=401, eps::Real=1e-3, kwargs...)
+    m = typeof(method).parameters[1]
+    if size(U, 1) == 2
+        C = EmpiricalEVCopula(U; method=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
+        return C, (; pseudo_values, method=m, grid, eps)
+    end
+    C = EmpiricalEVMultivariateCopula(U; method=m, pseudo_values=pseudo_values, kwargs...)
+    return C, (; pseudo_values, method=m, degree=C.tail.degree, projection_rmse=C.tail.projection_rmse)
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) :
         m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) :
                            β⁻¹(CT,  corblomqvist(U')[1,2])
     lo, hi = _θ_bounds(tailof(CT), 2)
     # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
     θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
-    return CT(2, θ), (; θ̂=(θ=θ,))
+    return _typed_extreme_value(CT, 2, θ), (; θ̂=(θ=θ,))
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:iupper})
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
     θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(tailof(CT), 2)...)
-    return CT(2, θ), (; θ̂=(θ=θ,))
+    return _typed_extreme_value(CT, 2, θ), (; θ̂=(θ=θ,))
 end
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     d = size(U,1)
     TT = tailof(CT)
     lo, hi = _θ_bounds(TT, d)
@@ -189,7 +297,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
     θ0 = (; θ=θ0_clamped)
     α0 = _unbound_params(CT, d, θ0)
     all(isfinite, α0) || throw(ArgumentError("MLE start must map to finite unbounded parameters"))
-    cop(α) = CT(d, _rebound_params(CT, d, α)...)
+    cop(α) = _typed_extreme_value(CT, d, _rebound_params(CT, d, α)...)
     f(α) = -Distributions.loglikelihood(cop(α), U)
     res = try
         Optim.optimize(f, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
@@ -197,7 +305,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:UnivariateTail2
         Optim.optimize(f, α0, Optim.NelderMead())
     end
     θ̂ = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θ̂...), (; θ̂=θ̂, optimizer=Optim.summary(res),
+    return _typed_extreme_value(CT, d, θ̂...), (; θ̂=θ̂, optimizer=Optim.summary(res),
                         xtol=xtol, converged=Optim.converged(res),
                         iterations=Optim.iterations(res))
 end

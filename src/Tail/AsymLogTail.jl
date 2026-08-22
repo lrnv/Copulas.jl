@@ -8,7 +8,8 @@ Fields:
 
 Constructor
 
-    AsymLogCopula(α, θ₁, θ₂)
+    AsymLogCopula{2}(α, θ₁, θ₂)
+    AsymLogCopula(2, α, θ₁, θ₂)
     ExtremeValueCopula(2, AsymLogTail(α, θ₁, θ₂))
 
 The (bivariate) asymmetric logistic extreme–value copula is parameterized by
@@ -30,7 +31,7 @@ References:
 """
 AsymLogTail, AsymLogCopula
 
-struct AsymLogTail{T} <: Tail2
+struct AsymLogTail{T} <: BivariatePickandsTail
     α::T
     θ₁::T
     θ₂::T

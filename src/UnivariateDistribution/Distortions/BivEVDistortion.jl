@@ -12,13 +12,45 @@ function BivEVDistortion(tail, j::Int8, uⱼ::Real)
     negloguⱼ = uⱼ > zero(uⱼ) ? -log(uⱼ) : typeof(uⱼ)(Inf)
     return BivEVDistortion{typeof(tail),typeof(uⱼ)}(tail, j, uⱼ, negloguⱼ)
 end
+
+@inline function _biv_ev_endpoint_shape(D::BivEVDistortion, lower::Bool, ::Type{T}) where T
+    use_left = (D.j == 2) == lower
+    slope = use_left ? _pickands_left_slope(D.tail, one(T)) :
+                       _pickands_right_slope(D.tail, one(T))
+    return max(one(T) + (use_left ? slope : -slope), zero(T))
+end
+
+@inline function _biv_ev_endpoint_logcdf(D, z, lower::Bool, ::Type{T}) where T
+    κ = _biv_ev_endpoint_shape(D, lower, T)
+    lower && return iszero(κ) ? zero(T) : κ * log(T(z))
+    return iszero(κ) ? T(-Inf) : log(T(z)) + log(κ)
+end
+
+@inline function _biv_ev_endpoint_logpdf(D, z, lower::Bool, ::Type{T}) where T
+    κ = _biv_ev_endpoint_shape(D, lower, T)
+    iszero(κ) && return T(-Inf)
+    return lower ? log(κ) + (κ - one(T)) * log(T(z)) : log(κ)
+end
+
+@inline function _biv_ev_endpoint_quantile(D, p, lower::Bool, ::Type{T}) where T
+    pT = T(p)
+    κ = _biv_ev_endpoint_shape(D, lower, T)
+    lower && return iszero(κ) ? zero(T) : pT^inv(κ)
+    iszero(pT) && return zero(T)
+    iszero(κ) && return one(T)
+    return pT <= κ ? pT / κ : one(T)
+end
+
+@inline _ev_kink_tol(x, y) = 16 * _δ(x) * max(one(x), abs(x), abs(y))
+@inline _ev_lt(x, y) = x < y - _ev_kink_tol(x, y)
+@inline _ev_le(x, y) = x <= y + _ev_kink_tol(x, y)
+
 function Distributions.logcdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1}
     T = promote_type(typeof(z), TF1)
-    # bounds and degeneracies
-    z ≤ 0    && return T(-Inf)   # P(X ≤ 0) = 0
-    z ≥ 1    && return T(0)      # P(X ≤ 1) = 1
-    D.uⱼ ≤ 0 && return T(-Inf)   # conditioning on 0 ⇒ degenerate at 0
-    D.uⱼ ≥ 1 && return T(log(z)) # conditioning on 1 ⇒ uniform[0,1], so logcdf = log(z)
+    z ≤ 0 && return T(-Inf)
+    z ≥ 1 && return T(0)
+    D.uⱼ ≤ 0 && return _biv_ev_endpoint_logcdf(D, z, true, T)
+    D.uⱼ ≥ 1 && return _biv_ev_endpoint_logcdf(D, z, false, T)
 
     if D.j == 2
         # Condition on the second variable : V = D.uⱼ, free = u=z
@@ -43,11 +75,10 @@ function Distributions.logcdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1
 end
 function Distributions.logpdf(D::BivEVDistortion{TT,TF1}, z::Real) where {TT,TF1}
     T = promote_type(typeof(z), TF1)
-    # Support and degeneracies
-    z ≤ 0    && return T(-Inf)
-    z ≥ 1    && return T(-Inf)
-    D.uⱼ ≤ 0 && return T(-Inf)
-    D.uⱼ ≥ 1 && return T(0)  # conditioning on 1 ⇒ uniform density = 1 => logpdf = 0
+    z ≤ 0 && return T(-Inf)
+    z ≥ 1 && return T(-Inf)
+    D.uⱼ ≤ 0 && return _biv_ev_endpoint_logpdf(D, z, true, T)
+    D.uⱼ ≥ 1 && return _biv_ev_endpoint_logpdf(D, z, false, T)
 
     if D.j == 2
         # Condition on the second variable : V = D.uⱼ, free = u=z

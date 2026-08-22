@@ -1,35 +1,45 @@
 """
     MOTail{T}, MOCopula{d,T}
 
-Fields:
-  - λ₁::Real      — parameter ≥ 0
-  - λ₂::Real      — parameter ≥ 0
-  - λ₁₂::Real     — parameter ≥ 0
+    MOCopula{2}(λ₁, λ₂, λ₁₂)
+    MOCopula(2, λ₁, λ₂, λ₁₂)
+    MOCopula{d}(λ::AbstractVector)
+    MOCopula(d, λ::AbstractVector)
+    MOCopula(λ::AbstractVector)
 
-Constructor
+Marshall-Olkin extreme-value family.
 
-    MOCopula(λ₁, λ₂, λ₁₂)
-    ExtremeValueCopula(2, MOTail(λ₁, λ₂, λ₁₂))
+The specialized bivariate representation uses private-shock intensities
+`λ₁, λ₂ ≥ 0` and common-shock intensity `λ₁₂ ≥ 0`.
 
-The (bivariate) Marshall-Olkin extreme-value copula is parameterized by ``\\lambda_i \\in [0,\\infty), i = 1, 2, \\{1,2\\}``
-Its Pickands dependence function is
+The multivariate representation assigns one nonnegative shock intensity `λ_S`
+to every nonempty subset `S ⊆ {1,…,d}`. Therefore `λ` has length `2^d-1`,
+ordered by subset cardinality and then lexicographically. If only `λ` is
+supplied, the dimension is inferred from its length.
+
+With
 
 ```math
-A(t) = \\frac{\\lambda_1 (1-t)}{\\lambda_1 + \\lambda_{1,2}} + \\frac{\\lambda_2 t}{\\lambda_2 + \\lambda_{1,2}} + \\lambda_{1,2}\\max\\left \\{\\frac{1-t}{\\lambda_1 + \\lambda_{1,2}}, \\frac{t}{\\lambda_2 + \\lambda_{1,2}} \\right \\}
+r_i=\\sum_{S\\ni i}\\lambda_S,
 ```
 
-Special cases:
+the stable tail dependence function is
 
-* If λ₁₂ = 0, reduces to an asymmetric independence-like form.
-* If λ₁ = λ₂ = 0, degenerates to complete dependence.
+```math
+\\ell(x)=\\sum_{\\varnothing\\ne S}\\max_{i\\in S}
+\\left(\\frac{\\lambda_S}{r_i}x_i\\right).
+```
+
+Every margin must have positive total shock rate. Multiplying all shock
+intensities by the same positive constant leaves the copula unchanged.
 
 References:
 
-* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
+* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications. World Scientific.
 """
 MOTail, MOCopula
 
-struct MOTail{T} <: Tail2
+struct MOTail{T} <: BivariatePickandsTail
     λ₁::T
     λ₂::T
     λ₁₂::T
@@ -60,21 +70,36 @@ function A(tail::MOTail{T}, t::Real) where T
     term3 = λ₁₂ * max(m1, m2)
     return r1 + r2 + term3
 end
+function _mo_exponents(tail::MOTail, ::Type{R}) where R
+    λ₁, λ₂, λ₁₂ = R(tail.λ₁), R(tail.λ₂), R(tail.λ₁₂)
+    d1, d2 = λ₁ + λ₁₂, λ₂ + λ₁₂
+    a = iszero(d2) ? zero(R) : λ₂ / d2  # exponent of u
+    b = iszero(d1) ? zero(R) : λ₁ / d1  # exponent of v
+    return a, b
+end
+function _pickands_left_slope(tail::MOTail, x::Real)
+    R = promote_type(typeof(x), typeof(tail.λ₂), typeof(tail.λ₁₂))
+    a, _ = _mo_exponents(tail, R)
+    return a - one(R)
+end
+function _pickands_right_slope(tail::MOTail, x::Real)
+    R = promote_type(typeof(x), typeof(tail.λ₁), typeof(tail.λ₁₂))
+    _, b = _mo_exponents(tail, R)
+    return one(R) - b
+end
 function τ(C::ExtremeValueCopula{2,<:MOTail})
     a = C.tail.λ₁/(C.tail.λ₁+C.tail.λ₁₂)
     b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
     return a*b/(a+b-a*b)
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MOTail},
-                              A::AbstractMatrix{S}) where {S<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MOTail}, A::AbstractMatrix{S}) where {S<:Real}
     size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
     T = promote_type(typeof(float(λ₁)), typeof(float(λ₂)), typeof(float(λ₁₂)))
     λ₁T, λ₂T, λ₁₂T = T(λ₁), T(λ₂), T(λ₁₂)
     rate_u, rate_v = λ₂T + λ₁₂T, λ₁T + λ₁₂T
-    (rate_u > 0 && rate_v > 0) ||
-        throw(ArgumentError("Each Marshall-Olkin margin must have a positive total rate"))
+    (rate_u > 0 && rate_v > 0) || throw(ArgumentError("Each Marshall-Olkin margin must have a positive total rate"))
     waiting_time(rate) = iszero(rate) ? T(Inf) : T(Random.randexp(rng)) / rate
 
     # The first Pickands coordinate used by A is -log(u), so its private
@@ -90,101 +115,147 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
 end
 
 function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {T, S}
-    a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
-    b = D.tail.λ₂ / (D.tail.λ₂ + D.tail.λ₁₂)
+    R = promote_type(T, S, typeof(float(z)))
+    a, b = _mo_exponents(D.tail, R)
 
-    # guard domain of z and conditioning value
-    if !(0.0 < z < 1.0)
-        return z <= 0 ? T(-Inf) : T(0.0)
-    end
-    ucond = D.uⱼ
-    if !(0.0 < ucond < 1.0)
-        return ucond <= 0 ? T(-Inf) : T(log(z)) # conditioning on 1 -> uniform
-    end
+    z ≤ 0 && return R(-Inf)
+    z ≥ 1 && return zero(R)
+    D.uⱼ ≤ 0 && return _biv_ev_endpoint_logcdf(D, z, true, R)
+    D.uⱼ ≥ 1 && return _biv_ev_endpoint_logcdf(D, z, false, R)
+
+    u, v = D.j == 2 ? (R(z), R(D.uⱼ)) : (R(D.uⱼ), R(z))
+    lu, lv = log(u), log(v)
+    s1, s2 = a*lu + lv, lu + b*lv
 
     if D.j == 2
-        # Condition on V = v, free variable is u = z
-        u = z; v = ucond
-        lu, lv = log(u), -D.negloguⱼ
-        # Determine active branch of min(u^a v, u v^b)
-        s1 = a*lu + lv
-        s2 = lu + b*lv
-        if s1 <= s2
-            # C = u^a v, dC/dv = u^a = (C/v) * 1
-            logC = s1
-            factor = 1.0
-        else
-            # C = u v^b, dC/dv = b u v^{b-1} = (C/v) * b
-            logC = s2
-            factor = b
-        end
-        return factor <= 0 ? T(-Inf) : T(logC - log(v) + log(factor))
+        # Equality is the post-jump side as the free variable u increases.
+        logC, factor = _ev_le(s1, s2) ? (s1, one(R)) : (s2, b)
+        return iszero(factor) ? R(-Inf) : logC - lv + log(factor)
     else
-        # Condition on U = u, free variable is v = z
-        v = z; u = ucond
-        lu, lv = -D.negloguⱼ, log(v)
-        s1 = a*lu + lv
-        s2 = lu + b*lv
-        if s1 <= s2
-            # C = u^a v, dC/du = a u^{a-1} v = (C/u) * a
-            logC = s1
-            factor = a
-        else
-            # C = u v^b, dC/du = v^b = (C/u) * 1
-            logC = s2
-            factor = 1.0
-        end
-        return factor <= 0 ? T(-Inf) : T(logC - log(u) + log(factor))
+        # Equality is the post-jump side as the free variable v increases.
+        logC, factor = _ev_lt(s1, s2) ? (s1, a) : (s2, one(R))
+        return iszero(factor) ? R(-Inf) : logC - lu + log(factor)
     end
 end
 function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) where {T, S}
-    a = D.tail.λ₁ / (D.tail.λ₁ + D.tail.λ₁₂)
-    b = D.tail.λ₂ / (D.tail.λ₂ + D.tail.λ₁₂)
-    v_or_u = D.uⱼ
-    if !(0.0 <= α <= 1.0)
-        throw(ArgumentError("α must be in [0,1]"))
-    end
-    if !(0.0 < v_or_u < 1.0)
-        if v_or_u <= 0.0
-            return 0.0
-        else
-            # conditioning on 1 ⇒ uniform
-            return α
-        end
+    R = promote_type(T, S, typeof(float(α)))
+    p = R(α)
+    zero(R) ≤ p ≤ one(R) || throw(ArgumentError("α must be in [0,1]"))
+    p == zero(R) && return zero(R)
+
+    a, b = _mo_exponents(D.tail, R)
+    t = R(D.uⱼ)
+    t ≤ zero(R) && return _biv_ev_endpoint_quantile(D, p, true, R)
+    t ≥ one(R) && return _biv_ev_endpoint_quantile(D, p, false, R)
+
+    # Degenerate parameter cases are safest through the generalized inverse.
+    if !(zero(R) < a < one(R) && zero(R) < b < one(R))
+        return _unit_quantile(D, p)
     end
 
     if D.j == 2
-        # Quantile of U | V = v
-        v = v_or_u
-        logv = log(v)
-        ustar = exp(((1 - b) / (1 - a)) * logv)
-        α2 = exp(a * log(ustar))           # right-continuous CDF value at u*
-        α1 = b * α2                        # left-limit value at u* (before jump)
-        if α < α1
-            # invert left branch: F = b u v^{b-1}
-            return (α / b) * exp((1 - b) * logv)
-        elseif α <= α2
-            # atom at u*
-            return ustar
-        else
-            # invert right branch: F = u^a
-            return exp((1 / a) * log(α))
-        end
+        logt = log(t)
+        star = exp(((one(R) - b) / (one(R) - a)) * logt)
+        α2 = exp(a * log(star))
+        α1 = b * α2
+        p < α1 && return (p / b) * exp((one(R) - b) * logt)
+        p <= α2 && return star
+        return exp(log(p) / a)
     else
-        # Quantile of V | U = u
-        u = v_or_u
-        logu = log(u)
-        vstar = exp(((1 - a) / (1 - b)) * logu)
-        α2 = exp(b * log(vstar))
+        logt = log(t)
+        star = exp(((one(R) - a) / (one(R) - b)) * logt)
+        α2 = exp(b * log(star))
         α1 = a * α2
-        if α < α1
-            # invert left branch: F = a v u^{a-1}
-            return (α / a) * exp((1 - a) * logu)
-        elseif α <= α2
-            return vstar
-        else
-            # invert right branch: F = v^b
-            return exp((1 / b) * log(α))
+        p < α1 && return (p / a) * exp((one(R) - a) * logt)
+        p <= α2 && return star
+        return exp(log(p) / b)
+    end
+end
+
+"""
+    MOMultivariateTail(d, λ)
+
+General `d`-variate Marshall-Olkin extreme-value tail. `λ` contains one
+nonnegative shock intensity for every nonempty subset of `1:d`, ordered first
+by subset cardinality and then lexicographically.
+
+For margin `i`, let `rᵢ = sum(λ[S] for S containing i)`. The STDF is
+
+    ℓ(x) = sum_S max_{i in S} (λ[S] / rᵢ) xᵢ.
+
+The historical bivariate `MOTail(λ₁, λ₂, λ₁₂)` uses crossed names for the two
+private shocks. `MOMultivariateTail(tail::MOTail)` preserves that convention
+exactly.
+"""
+struct MOMultivariateTail{T} <: Tail
+    d::Int
+    λ::Vector{T}
+    spectral::DiscreteSpectralTail{T}
+end
+
+function MOMultivariateTail(d::Int, λ::AbstractVector)
+    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two",))
+
+    subsets = _spectral_subsets(d)
+    length(λ) == length(subsets) || throw(DimensionMismatch("expected $(length(subsets)) shock intensities for dimension $d",))
+
+    vals = collect(λ)
+    T = promote_type(Float64, map(typeof, vals)...)
+    rates = T.(λ)
+
+    all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite",))
+    all(v -> v >= zero(T), rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be nonnegative",))
+
+    r = zeros(T, d)
+    @inbounds for (k, S) in enumerate(subsets)
+        rate = rates[k]
+        for i in S
+            r[i] += rate
         end
     end
+
+    all(v -> v > zero(T), r) || throw(ArgumentError("every Marshall-Olkin margin must have positive total shock rate",))
+
+    B = zeros(T, d, length(subsets))
+    @inbounds for (k, S) in enumerate(subsets)
+        rate = rates[k]
+        for i in S
+            B[i, k] = rate / r[i]
+        end
+    end
+
+    spectral = DiscreteSpectralTail(B)
+    return MOMultivariateTail{T}(d, rates, spectral)
+end
+
+MOMultivariateTail(tail::MOTail) = MOMultivariateTail(2, [tail.λ₂, tail.λ₁, tail.λ₁₂],)
+
+MOMultivariateCopula(d::Int, λ::AbstractVector) = ExtremeValueCopula(d, MOMultivariateTail(d, λ))
+
+function _mo_dimension(λ::AbstractVector)
+    m = length(λ) + 1
+    ispow2(m) || throw(DimensionMismatch("Marshall-Olkin λ must have length 2^d-1",))
+    d = trailing_zeros(m)
+    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least 2"))
+    return d
+end
+
+function (CT::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(λ::AbstractVector)
+    inferred = _mo_dimension(λ)
+    d = _ev_resolve_dimension(CT, inferred, "Marshall-Olkin shock-vector")
+    return MOMultivariateCopula(d, λ)
+end
+
+(::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(d::Int, λ::AbstractVector,) =
+    MOMultivariateCopula(d, λ)
+
+MOMultivariateCopula(tail::MOTail) = ExtremeValueCopula(2, MOMultivariateTail(tail))
+
+Distributions.params(tail::MOMultivariateTail) = (λ = tail.λ,)
+_is_valid_in_dim(tail::MOMultivariateTail, d::Int) = tail.d == d
+ℓ(tail::MOMultivariateTail, x) = ℓ(tail.spectral, x)
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MOMultivariateTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
+    return _discrete_spectral_rand!(rng, C.tail.spectral, X)
 end

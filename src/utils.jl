@@ -1,7 +1,33 @@
 # Three small utility functions. 
 
-@inline _δ(t) = oftype(t, 1e-12)
+@inline _δ(t::AbstractFloat) = eps(one(t))
+@inline _δ(t::ForwardDiff.Dual) = oftype(t, eps(one(ForwardDiff.value(t))))
+@inline _δ(t::Real) = eps(float(one(t)))
 @inline _safett(t) = clamp(t, _δ(t), one(t) - _δ(t))
+
+# Replace one coordinate while preserving the container shape and
+# promoting the element type when ForwardDiff introduces a Dual.
+@inline _replace_coordinate(x::Tuple, i::Int, xi) = ntuple(j -> j == i ? xi : x[j], length(x))
+
+function _replace_coordinate(x::AbstractVector, i::Int, xi)
+    T = promote_type(eltype(x), typeof(xi))
+    y = similar(x, T)
+    copyto!(y, x)
+    y[i] = xi
+    return y
+end
+
+# Common mixed-partial AD primitive used by conditioning and EV tails.
+function _mixed_partial(f, x, I::Tuple{Vararg{Int}})
+    isempty(I) && return f(x)
+    i = first(I)
+    return ForwardDiff.derivative(
+        xi -> _mixed_partial(f, _replace_coordinate(x, i, xi), Base.tail(I),),
+        x[i],
+    )
+end
+
+_mixed_partial(f, x, I::AbstractVector{<:Integer}) = _mixed_partial(f, x, Tuple(I))
 _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
     fa,fb = f(0.0), f(1.0)
     while fb ≤ 0 && b < θmax
