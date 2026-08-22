@@ -27,9 +27,35 @@ A valid STDF is convex and one-homogeneous and satisfies
 \max_i x_i\le \ell(\boldsymbol x)\le\sum_{i=1}^d x_i.
 ```
 
-By homogeneity, ``\ell`` can be restricted to the simplex to obtain the
-multivariate Pickands dependence function. In dimension two this reduces to the
-familiar scalar function ``A:[0,1]\to[1/2,1]``:
+By homogeneity, ``\ell`` can be restricted to the simplex
+
+```math
+\Delta_{d-1}
+=
+\left\{
+\boldsymbol w\in[0,1]^d:
+\sum_{i=1}^d w_i=1
+\right\}
+```
+
+to obtain the multivariate Pickands dependence function
+``A:\Delta_{d-1}\to\mathbb R``. For
+``r=\sum_i x_i`` and ``\boldsymbol w=\boldsymbol x/r``,
+
+```math
+A(\boldsymbol w)=\ell(\boldsymbol w),
+\qquad
+\ell(\boldsymbol x)
+=
+r\,A\!\left(\frac{\boldsymbol x}{r}\right),
+```
+
+with ``\max_i w_i\le A(\boldsymbol w)\le1``. Thus the Pickands
+representation itself is not restricted to dimension two.
+
+What is specifically bivariate is the scalar parametrization of the simplex.
+For ``d=2``, write ``\boldsymbol w=(t,1-t)``; then
+``A:[0,1]\to[1/2,1]`` and
 
 ```math
 \ell(x_1,x_2)
@@ -43,6 +69,10 @@ where
 ```math
 \max\{t,1-t\}\le A(t)\le1,\qquad A(0)=A(1)=1.
 ```
+
+Accordingly, Copulas.jl uses the STDF ``\ell`` as the dimension-independent
+EV interface, while `BivariatePickandsTail` names the additional scalar
+Pickands capability used by specialized ``d=2`` algorithms.
 
 The bivariate copula therefore has the classical representation
 
