@@ -50,13 +50,22 @@ function ℓ(tail::Tail, x)
     return s == 0 ? zero(eltype(x)) : s * A(tail, ntuple(i->x[i]/s, length(x)))
 end
 
-# Mixed partial of the STDF with respect to the distinct coordinates in I.
+# Mixed STDF partials. A new Tail only needs to implement ℓ.
+# Generic mixed partials come from the shared AD helper.
+function _ellpartial_signlog(tail::Tail, x, I::Tuple{Vararg{Int}})
+    v = _mixed_partial(z -> ℓ(tail, z), x, I)
+    iszero(v) && return 0, oftype(v, -Inf)
+    return v < zero(v) ? -1 : 1, log(abs(v))
+end
+
+_ellpartial_signlog(tail::Tail, x, I::AbstractVector{<:Integer}) = _ellpartial_signlog(tail, x, Tuple(I))
+
 function ellpartial(tail::Tail, x, I::Tuple{Vararg{Int}})
     isempty(I) && return ℓ(tail, x)
-    i = first(I)
-    return ForwardDiff.derivative(z ->
-        ellpartial(tail, ntuple(j -> j == i ? z : x[j], length(x)), Base.tail(I)), x[i])
+    sign, logabs = _ellpartial_signlog(tail, x, I)
+    return iszero(sign) ? zero(logabs) : sign * exp(logabs)
 end
+
 ellpartial(tail::Tail, x, I::AbstractVector{<:Integer}) = ellpartial(tail, x, Tuple(I))
 
 # Native scalar Pickands interface in d=2.

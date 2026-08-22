@@ -105,16 +105,8 @@ function _ellpartial_signlog(tail::MixedTail, x, I::Tuple{Vararg{Int}},)
     return signg, log(θ) + logg
 end
 
-_ellpartial_signlog(tail::MixedTail, x, I::AbstractVector{<:Integer},) = _ellpartial_signlog(tail, x, Tuple(I))
 
-function ellpartial(tail::MixedTail, x, I::Tuple{Vararg{Int}},)
-    isempty(I) && return ℓ(tail, x)
-    sign, logabs = _ellpartial_signlog(tail, x, I)
-    sign == 0 && return zero(float(first(x)))
-    return sign * exp(logabs)
-end
 
-ellpartial(tail::MixedTail, x, I::AbstractVector{<:Integer},) = ellpartial(tail, x, Tuple(I))
 
 function _mixed_rand_multivariate!(rng::Distributions.AbstractRNG, tail::MixedTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)

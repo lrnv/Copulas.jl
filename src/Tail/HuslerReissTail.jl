@@ -331,7 +331,7 @@ function _hr_ellpartial_signlog(Γ::AbstractMatrix, x, I::Tuple{Vararg{Int}})
     return isodd(length(I)) ? 1 : -1, logabs
 end
 
-function _ellpartial_signlog(tail::HuslerReissTail, x, I)
+function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
     d = length(x)
     γ = abs2(2 / tail.θ)
     Γ = fill(float(γ), d, d)
@@ -341,11 +341,6 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I)
     return _hr_ellpartial_signlog(Γ, x, Tuple(I))
 end
 
-function ellpartial(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
-    isempty(I) && return ℓ(tail, x)
-    sgn, logabs = _ellpartial_signlog(tail, x, I)
-    return sgn * exp(logabs)
-end
 
 @inline function _hr_logsumexp(v)
     m = maximum(v)
@@ -428,13 +423,8 @@ end
 
 ℓ(tail::HuslerReissVariogramTail, x) = _hr_stdf(tail.Γ, x)
 
-_ellpartial_signlog(tail::HuslerReissVariogramTail, x, I) = _hr_ellpartial_signlog(tail.Γ, x, Tuple(I))
+_ellpartial_signlog(tail::HuslerReissVariogramTail, x, I::Tuple{Vararg{Int}}) = _hr_ellpartial_signlog(tail.Γ, x, Tuple(I))
 
-function ellpartial(tail::HuslerReissVariogramTail, x, I::Tuple{Vararg{Int}},)
-    isempty(I) && return ℓ(tail, x)
-    sgn, logabs = _ellpartial_signlog(tail, x, I)
-    return sgn * exp(logabs)
-end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissVariogramTail}, X::AbstractMatrix{T},) where {d,T<:Real}
     size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))

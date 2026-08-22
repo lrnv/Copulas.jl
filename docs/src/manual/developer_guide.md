@@ -376,18 +376,23 @@ c(\boldsymbol u)
 
 where ``\Pi_d`` is the set of partitions of ``\{1,\ldots,d\}``.
 
-The generic multivariate path therefore needs mixed STDF partials. The relevant
-extension hooks are:
+The generic multivariate path needs mixed STDF partials, but these are not an
+additional requirement for a new family. The common `_mixed_partial` utility
+computes mixed derivatives with `ForwardDiff` and is shared by the EV density
+machinery and generic conditioning.
 
-| Method | Meaning |
-|---|---|
-| `ellpartial(tail, x, I)` | mixed partial ``\partial_I\ell`` |
-| `_ellpartial_signlog(tail, x, I)` | numerically stable sign/log-absolute form |
-| `A`, `dA`, `d²A` | native bivariate Pickands kernel |
+| Method | Meaning | Required |
+|---|---|---|
+| `ℓ(tail, x)` | stable tail dependence function | ✅ |
+| `_ellpartial_signlog(tail, x, I)` | stable sign/log-absolute mixed partial | ⚙️ Optional |
+| `A`, `dA`, `d²A` | native bivariate Pickands kernel | ⚙️ Optional |
 
-The generic `ellpartial` fallback uses automatic differentiation recursively.
-Analytic sign/log implementations are preferred for numerically difficult
-families and for higher-dimensional density evaluation.
+By default, `_ellpartial_signlog` is obtained from `ℓ` through the shared
+automatic-differentiation helper, and `ellpartial(tail, x, I)` is reconstructed
+from that sign/log representation. A new multivariate EV tail therefore needs
+to implement **only `ℓ`** for the generic density path. Override
+`_ellpartial_signlog` only when an analytic expression is materially more
+stable or faster.
 
 Density selection itself uses ordinary Julia dispatch. In ``d=2``, a `BivariatePickandsTail`
 uses the native Pickands derivative kernel. The generic `ExtremeValueCopula{d}`

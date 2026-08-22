@@ -174,12 +174,7 @@ function ℓ(tail::tEVTail, x)
     return _tev_stdf(tail.ν, R, x)
 end
 
-function _tev_block_logintensity(
-    ν::Real,
-    R::AbstractMatrix,
-    z,
-    B::Tuple{Vararg{Int}},
-)
+function _tev_block_logintensity(ν::Real, R::AbstractMatrix, z, B::Tuple{Vararg{Int}},)
     b = length(B)
     b > 0 || throw(ArgumentError("the differentiation block must be nonempty"))
 
@@ -246,17 +241,12 @@ function _tev_ellpartial_signlog(ν::Real, R::AbstractMatrix, x, I::Tuple{Vararg
     return isodd(length(I)) ? 1 : -1, logabs
 end
 
-function _ellpartial_signlog(tail::tEVTail, x, I)
+function _ellpartial_signlog(tail::tEVTail, x, I::Tuple{Vararg{Int}})
     d = length(x)
     R = _tev_exchangeable_correlation(d, tail.ρ)
     return _tev_ellpartial_signlog(tail.ν, R, x, Tuple(I))
 end
 
-function ellpartial(tail::tEVTail, x, I::Tuple{Vararg{Int}})
-    isempty(I) && return ℓ(tail, x)
-    sgn, logabs = _ellpartial_signlog(tail, x, I)
-    return sgn * exp(logabs)
-end
 
 function _tev_spectral_cache(R::AbstractMatrix)
     d = size(R, 1)
@@ -442,13 +432,7 @@ end
 
 ℓ(tail::tEVCorrelationTail, x) = _tev_stdf(tail.ν, tail.R, x)
 
-_ellpartial_signlog(tail::tEVCorrelationTail, x, I) = _tev_ellpartial_signlog(tail.ν, tail.R, x, Tuple(I))
-
-function ellpartial(tail::tEVCorrelationTail, x, I::Tuple{Vararg{Int}},)
-    isempty(I) && return ℓ(tail, x)
-    sgn, logabs = _ellpartial_signlog(tail, x, I)
-    return sgn * exp(logabs)
-end
+_ellpartial_signlog(tail::tEVCorrelationTail, x, I::Tuple{Vararg{Int}}) = _tev_ellpartial_signlog(tail.ν, tail.R, x, Tuple(I))
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T},) where {d,T<:Real}
     size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
