@@ -116,8 +116,32 @@ end
 
 _probability_z(tail::LogTail, ::Real) = (tail.θ - one(tail.θ)) / tail.θ
 
-# The bivariate logistic EV copula is exactly Gumbel.
-Distributions._logpdf(C::ExtremeValueCopula{2,<:LogTail}, u) = Distributions._logpdf(GumbelCopula(2, C.tail.θ), u)
+# Stable closed-form bivariate density for the logistic model.
+#
+# For ℓ(x,y) = (x^θ + y^θ)^(1/θ),
+#
+#   ℓ₁ℓ₂ - ℓ₁₂
+#   = x^(θ-1) y^(θ-1) ℓ^(1-2θ) (ℓ + θ - 1).
+#
+# Evaluating the logarithm of this expression directly avoids the cancellation
+# that can affect the generic Pickands derivative kernel under strong
+# dependence, while avoiding the overhead of delegating to GumbelCopula.
+function Distributions._logpdf(C::ExtremeValueCopula{2,<:LogTail}, u)
+    u1, u2 = u
+    (zero(u1) < u1 <= one(u1) && zero(u2) < u2 <= one(u2)) ||
+        return oftype(float(u1 + u2), -Inf)
+    (isone(u1) || isone(u2)) && return oftype(float(u1 + u2), -Inf)
+
+    x, y = -log(u1), -log(u2)
+    θ = C.tail.θ
+    val = ℓ(C.tail, (x, y))
+    oneθ = one(θ)
+
+    return -val + x + y +
+           (θ - oneθ) * (log(x) + log(y)) +
+           (oneθ - 2θ) * log(val) +
+           log(val + θ - oneθ)
+end
 
 function _ellpartial_signlog(tail::LogTail, x, I::Tuple{Vararg{Int}})
     k = length(I)
