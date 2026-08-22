@@ -264,8 +264,22 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         for θ in (2.0, 13.5, 210.0)
             C = LogCopula(2, θ)
             G = Copulas.GumbelCopula(2, θ)
-            for u in ([1e-3, 0.99], [0.01, 0.9], [0.99, 0.5], [0.99, 0.99])
-                @test logpdf(C, u) ≈ logpdf(G, u) atol=2e-12 rtol=2e-12
+            for u in (
+                [1e-8, 0.999999],
+                [1e-3, 0.99],
+                [0.01, 0.9],
+                [0.99, 0.5],
+                [0.99, 0.99],
+            )
+                expected = logpdf(G, u)
+                generic = invoke(
+                    Distributions._logpdf,
+                    Tuple{Copulas.ExtremeValueCopula{2},typeof(u)},
+                    C,
+                    u,
+                )
+                @test logpdf(C, u) ≈ expected atol=2e-12 rtol=2e-12
+                @test logpdf(C, u) ≈ generic atol=2e-12 rtol=2e-12
             end
         end
     end
