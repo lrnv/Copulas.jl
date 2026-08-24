@@ -50,6 +50,13 @@
             @test cdf(margin, q) ≈ 1 - 1e-5 atol=1e-8
         end
         @test pdf(C, fill(1e-5, 2)) >= 0
+
+        compact = LiouvilleCopula{2}(
+            Copulas.𝒲(Dirac(1.0), 3.0), (1.0, 1.5),
+        )
+        U = [0.0381381669078521 0.31245769899113895;
+             0.8625027238260481 0.7240497397443919]
+        @test inverse_rosenblatt(compact, rosenblatt(compact, U)) ≈ U atol=1e-8
     end
 
     @testset "conditioning and Rosenblatt" begin

@@ -51,29 +51,17 @@ end
 function ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t)
     f(x) = ϕ⁽ᵏ⁾(G, k, x) - t
     T = typeof(float(t))
-    fallback = eps(T)
-    candidate = T(start_at)
-    starts = isfinite(candidate) && candidate >= zero(T) && candidate != fallback ?
-             (candidate, fallback) : (fallback,)
+    lo, hi = eps(T), one(T)
+    flo, fhi = f(lo), f(hi)
+    iszero(flo) && return lo
+    iszero(fhi) && return hi
 
-    # Conditional inversions know that the requested root lies at or above
-    # `start_at`. Respecting that bound prevents roundoff from returning a
-    # smaller cumulative radius (and hence a negative Archimedean increment).
-    # The fallback preserves callers that historically left `start_at` at its
-    # default value, which is the derivative target rather than a coordinate.
-    for lo in starts
-        hi = max(one(T), lo + one(T))
-        flo, fhi = f(lo), f(hi)
-        iszero(flo) && return lo
+    for _ in 1:64
+        signbit(flo) != signbit(fhi) &&
+            return Roots.find_zero(f, (lo, hi), Roots.Bisection())
+        hi *= 2
+        fhi = f(hi)
         iszero(fhi) && return hi
-
-        for _ in 1:64
-            signbit(flo) != signbit(fhi) &&
-                return Roots.find_zero(f, (lo, hi), Roots.Bisection())
-            hi *= 2
-            fhi = f(hi)
-            iszero(fhi) && return hi
-        end
     end
     throw(ArgumentError("Could not bracket the inverse generator derivative"))
 end
@@ -254,6 +242,21 @@ end
 # and reuses the radial distribution's specialized cdf/pdf implementations.
 function Distributions.cdf(
     dist::WilliamsonBetaProduct{<:Distributions.ContinuousUnivariateDistribution},
+    x::Real,
+)
+    x <= 0 && return zero(float(x))
+    x >= Base.maximum(dist) && return one(float(x))
+    return Distributions.expectation(b -> Distributions.cdf(dist.X, x / b), dist.B)
+end
+
+# The beta-density endpoint singularity makes the otherwise preferable
+# E[F_X(x/B)] representation inaccurate in the upper tail for finite-support
+# negative-Clayton radials. This radial is atomless, so its complementary-tail
+# integral is exact and numerically stable. Keep the specialization narrow:
+# generic Williamson inverses may carry boundary atoms despite their nominal
+# ContinuousUnivariateDistribution type.
+function Distributions.cdf(
+    dist::WilliamsonBetaProduct{<:ClaytonWilliamsonDistribution},
     x::Real,
 )
     x <= 0 && return zero(float(x))
