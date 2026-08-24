@@ -38,6 +38,20 @@
         @test logpdf(L, u) ≈ logpdf(A, u)
     end
 
+    @testset "finite-support beta-product quantiles" begin
+        C = LiouvilleCopula{2}(
+            Copulas.ClaytonGenerator(-0.25), (0.75, 1.25),
+        )
+        for α in C.α
+            margin = Copulas.𝒲₋₁(C.G, α)
+            @test cdf(margin, maximum(margin)) == 1
+            q = quantile(margin, 1 - 1e-5)
+            @test q < maximum(margin)
+            @test cdf(margin, q) ≈ 1 - 1e-5 atol=1e-8
+        end
+        @test pdf(C, fill(1e-5, 2)) >= 0
+    end
+
     @testset "conditioning and Rosenblatt" begin
         integer_C = LiouvilleCopula{3}(
             Copulas.ClaytonGenerator(1.0), (1.0, 1.0, 2.0),

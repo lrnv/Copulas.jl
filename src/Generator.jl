@@ -51,17 +51,29 @@ end
 function ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t)
     f(x) = ϕ⁽ᵏ⁾(G, k, x) - t
     T = typeof(float(t))
-    lo, hi = eps(T), one(T)
-    flo, fhi = f(lo), f(hi)
-    iszero(flo) && return lo
-    iszero(fhi) && return hi
+    fallback = eps(T)
+    candidate = T(start_at)
+    starts = isfinite(candidate) && candidate >= zero(T) && candidate != fallback ?
+             (candidate, fallback) : (fallback,)
 
-    for _ in 1:64
-        signbit(flo) != signbit(fhi) &&
-            return Roots.find_zero(f, (lo, hi), Roots.Bisection())
-        hi *= 2
-        fhi = f(hi)
+    # Conditional inversions know that the requested root lies at or above
+    # `start_at`. Respecting that bound prevents roundoff from returning a
+    # smaller cumulative radius (and hence a negative Archimedean increment).
+    # The fallback preserves callers that historically left `start_at` at its
+    # default value, which is the derivative target rather than a coordinate.
+    for lo in starts
+        hi = max(one(T), lo + one(T))
+        flo, fhi = f(lo), f(hi)
+        iszero(flo) && return lo
         iszero(fhi) && return hi
+
+        for _ in 1:64
+            signbit(flo) != signbit(fhi) &&
+                return Roots.find_zero(f, (lo, hi), Roots.Bisection())
+            hi *= 2
+            fhi = f(hi)
+            iszero(fhi) && return hi
+        end
     end
     throw(ArgumentError("Could not bracket the inverse generator derivative"))
 end
@@ -245,7 +257,18 @@ function Distributions.cdf(
     x::Real,
 )
     x <= 0 && return zero(float(x))
-    return Distributions.expectation(b -> Distributions.cdf(dist.X, x / b), dist.B)
+    upper = Base.maximum(dist)
+    x >= upper && return one(float(x))
+
+    # Evaluate the upper tail directly. Besides avoiding cancellation near the
+    # finite endpoint, this exposes `x` as an integration boundary instead of
+    # hiding a discontinuity inside E[F_B(x / X)]. This matters for beta
+    # reductions whose density is singular at an endpoint.
+    lower = max(x, Base.minimum(dist.X))
+    tail = QuadGK.quadgk(lower, Base.maximum(dist.X)) do r
+        Distributions.pdf(dist.X, r) * Distributions.ccdf(dist.B, x / r)
+    end
+    return clamp(one(tail[1]) - tail[1], zero(tail[1]), one(tail[1]))
 end
 
 function Distributions.pdf(
@@ -274,13 +297,6 @@ function _positive_distribution_quantile(dist, p::Real)
             hi *= 2
             isfinite(hi) || return hi  # fallback for unbounded case
         end
-    end
-    # Ensure we have a valid bracket
-    cdf_lo = Distributions.cdf(dist, lo)
-    cdf_hi = Distributions.cdf(dist, hi)
-    if !(cdf_lo <= p <= cdf_hi)
-        # If bracketing fails, use a more robust method
-        return Roots.find_zero(x -> Distributions.cdf(dist, x) - p, (lo, hi))
     end
     objective(x) = x == lo ? -p :
                    x == hi ? one(p) - p :

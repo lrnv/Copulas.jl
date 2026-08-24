@@ -326,7 +326,9 @@ can_pdf(C::ArchimedeanCopula) = length(C) > Copulas.max_monotony(C.G)
 
 check_rosenblatt(C::Copulas.Copula) = true
 check_rosenblatt(C::ArchimedeanCopula) = length(C) > Copulas.max_monotony(C.G)
-check_rosenblatt(C::FrankCopula) = C.G.θ < 100
+# Above this range the Frank copula is already indistinguishable from the
+# comonotonic limit at Float64 precision for some conditional coordinates.
+check_rosenblatt(C::FrankCopula) = C.G.θ < 35
 check_rosenblatt(C::GumbelCopula) = C.G.θ < 20
 check_rosenblatt(C::MCopula{4}) = false
 check_rosenblatt(C::EmpiricalCopula) = false
