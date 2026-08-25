@@ -84,6 +84,7 @@ module Copulas
     # Archimedean copulas
     include("Generator.jl")
     include("ArchimedeanCopula.jl")
+    include("LiouvilleCopula.jl")
 
     # Generators
     include("Generator/AMHGenerator.jl")
@@ -147,6 +148,7 @@ module Copulas
            SklarDist, # SklarDist to make multivariate models
            AMHCopula, # And a bunch of copulas.
            ArchimedeanCopula,
+           LiouvilleCopula,
            NestedArchimedeanCopula,
            AsymGalambosCopula,
            AsymLogCopula,

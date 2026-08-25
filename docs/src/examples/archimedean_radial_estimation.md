@@ -280,7 +280,7 @@ C(\boldsymbol{U}) = \varphi_d\!\left(\sum_{i=1}^d \varphi_{\alpha_i}^{-1}(U_i)\r
 
 so Kendall atoms have the same form as in the Archimedean case, and the triangular inversion applies. Estimation of the Dirichlet parameters can be handled separately.
 
-Once Liouville copulas are implemented in the package, we will probably use this method to fit them. 
+`LiouvilleCopula` implements this radial-simplex construction for positive real Dirichlet parameters. The estimation procedure developed in this example currently targets Archimedean copulas only; fitting the radial and Dirichlet parameters jointly is outside its scope.
 
 ## Appendix: Jacobian of the recursion (might be usefull for inference). 
 

@@ -84,7 +84,7 @@ has the Archimax copula $C_{\phi,A}$.
 
 **Notes on the objects used.**
 
-* *Frailty distribution.* By Bernstein’s theorem, a completely monotone $\phi$ is a Laplace transform. The helper `frailty(G::Generator)` returns a distribution for $M$ such that `E(exp(-s*M)) = ϕ(gen, s)` and returns an error if the generator is nt completely monotonous.
+* *Frailty distribution.* By Bernstein’s theorem, a completely monotone $\phi$ is a Laplace transform. The internal helper `frailty(G::Generator)` returns a distribution for $M$ such that `E(exp(-s*M)) = ϕ(gen, s)`, or `nothing` when no frailty representation is available.
 * *EV sampling.* Step (1) uses the EV sampler already provided in this package (via `ℓ(tail::Tail, x)` and `A(tail::Tail, x)`), as documented in the EV section.
 * *Generality.* The recipe extends to $d>2$ by simulating $(V_1,\dots,V_d)$ (But remember that it is not so simple to obtain it) from the EV copula of variable $d$ and applying steps (2)–(3) by components.
 

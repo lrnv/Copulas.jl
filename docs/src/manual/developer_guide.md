@@ -230,7 +230,7 @@ Distributions.params(G::MyGenerator) = (θ = G.θ,)
 | `ϕ⁻¹⁽¹⁾(G, t)`                      | Generator function derivative of the inverse                       | ⚙️ Optional |
 | `ϕ⁽ᵏ⁾(G, k::Int, t)`                | Generator function kth derivative                                  | ⚙️ Optional |
 | `ϕ⁽ᵏ⁾⁻¹(G, k::Int, t; start_at=t)`  | Generator function kth derivative's inverse                        | ⚙️ Optional |
-| `𝒲₋₁(G, d::Int)`                   | Williamson transform                                               | ⚙️ Optional |
+| `𝒲₋₁(G, d::Real)`                  | Inverse Williamson transform; integer specializations are preserved | ⚙️ Optional |
 
 
 Once the generator defines `ϕ`, and `max_monotony`, all functions such as

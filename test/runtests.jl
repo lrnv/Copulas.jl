@@ -9,6 +9,7 @@ const rng = StableRNG(123)
 testfiles = [
     "Aqua",
     "ArchimedeanCopulas",
+    "LiouvilleCopula",
     "NestedArchimedeanCopula",
     "ConditionalDistribution",
     "Constructors",

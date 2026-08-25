@@ -170,6 +170,7 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
     end
     return U
 end
+
 function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     @assert d == size(u, 1)
     U = zero(u)
@@ -184,7 +185,7 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
             else
                 Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, j - 1, Cᵢⱼ) * u[j,i]
                 R = ϕ⁽ᵏ⁾⁻¹(C.G, j - 1, Dᵢⱼ; start_at=Cᵢⱼ)
-                U[j, i] = ϕ(C.G, R - Cᵢⱼ)
+                U[j, i] = ϕ(C.G, max(zero(R), R - Cᵢⱼ))
                 Cᵢⱼ = R
             end
         end
