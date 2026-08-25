@@ -194,7 +194,6 @@ module Copulas
            BB4Copula,
            BB5Copula,
            EmpiricalEVCopula,
-           EmpiricalEVMultivariateCopula,
            BernsteinCopula,
            BetaCopula,
            CheckerboardCopula,

@@ -161,9 +161,9 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
             0.30 0.60 0.80
             0.25 0.55 0.75
         ]
-        Cemp_typed = EmpiricalEVMultivariateCopula{3}(Uemp; degree=1)
-        Cemp_runtime = EmpiricalEVMultivariateCopula(3, Uemp; degree=1)
-        Cemp_inferred = EmpiricalEVMultivariateCopula(Uemp; degree=1)
+        Cemp_typed = EmpiricalEVCopula{3}(Uemp; degree=1)
+        Cemp_runtime = EmpiricalEVCopula(3, Uemp; degree=1)
+        Cemp_inferred = EmpiricalEVCopula(Uemp; degree=1)
         @test typeof(Cemp_typed) ==
               typeof(Cemp_runtime) ==
               typeof(Cemp_inferred)
@@ -176,7 +176,7 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         @test_throws DimensionMismatch AsymGalambosCopula{4}(0.7, weights)
         @test_throws DimensionMismatch BC2Copula{4}(a)
         @test_throws DimensionMismatch MOCopula{4}(λ)
-        @test_throws DimensionMismatch EmpiricalEVMultivariateCopula{4}(
+        @test_throws DimensionMismatch EmpiricalEVCopula{4}(
             Uemp;
             degree=1,
         )

@@ -335,7 +335,7 @@ TawnCopula{d}(α, weights)
 AsymGalambosCopula{d}(α, weights)
 BC2Copula{d}(a)
 MOCopula{d}(λ)
-EmpiricalEVMultivariateCopula{d}(U)
+EmpiricalEVCopula{d}(U)
 ```
 
 When a matrix or vector determines `d` unambiguously, an inferred-dimension

@@ -138,9 +138,6 @@ function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, 
     
     return EmpiricalEVTail(tgrid, Â, slope)
 end
-const EmpiricalEVCopula{d} = ExtremeValueCopula{d, EmpiricalEVTail}
-EmpiricalEVCopula(u::AbstractMatrix; kwargs...) = ExtremeValueCopula(2, EmpiricalEVTail(u; kwargs...))
-
 Base.eltype(::EmpiricalEVTail) = Float64
 Distributions.params(t::EmpiricalEVTail) = (tgrid = t.tgrid, Ahat = t.Ahat, slope = t.slope) #for API fit we need modify this
 
@@ -168,8 +165,8 @@ function dA(tail::EmpiricalEVTail, t::Real)
 end
 
 # Fitting plug-in (empírico) para EmpiricalEVCopula
-StatsBase.dof(::EmpiricalEVCopula) = 0
-_available_fitting_methods(::Type{<:EmpiricalEVCopula}, d) = (:ols, :cfg, :pickands)
+StatsBase.dof(::ExtremeValueCopula{2,<:EmpiricalEVTail}) = 0
+_available_fitting_methods(::Type{<:ExtremeValueCopula{2,<:EmpiricalEVTail}}, d) = (:ols, :cfg, :pickands)
 """
     _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
          grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...) -> (C, meta)
@@ -190,7 +187,7 @@ Empirical bivariate extreme value copula fitting via the Pickands function
 
 **Note**: Method with no free parameters (`dof=0`).
 """
-function _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...)
+function _fit(::Type{<:ExtremeValueCopula{2,<:EmpiricalEVTail}}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...)
     m = typeof(method).parameters[1]  # :ols | :cfg | :pickands
     C = EmpiricalEVCopula(U; method=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
     return C, (; emp_kind=:ev_tail, pseudo_values, method=m, grid, eps)
@@ -515,40 +512,51 @@ function EmpiricalEVMultivariateTail(u::AbstractMatrix; method::Symbol=:ols, deg
 end
 
 """
-    EmpiricalEVMultivariateCopula{d}(u; kwargs...)
-    EmpiricalEVMultivariateCopula(d, u; kwargs...)
-    EmpiricalEVMultivariateCopula(u; kwargs...)
+    EmpiricalEVCopula{d}(u; kwargs...)
+    EmpiricalEVCopula(d, u; kwargs...)
+    EmpiricalEVCopula(u; kwargs...)
 
 Construct a shape-valid multivariate empirical extreme-value copula from a
 `d × n` sample. The `{d}` form is canonical; the runtime-`d` and inferred
-forms are convenience constructors. In dimensions `d ≥ 3`, this is the
-preferred nonparametric EV constructor. The historical `EmpiricalEVCopula`
-remains the backward-compatible bivariate implementation.
+forms are convenience constructors. The bivariate path preserves the
+historical Pickands estimator; dimensions `d ≥ 3` use the shape-constrained
+spectral estimator internally.
 """
-const EmpiricalEVMultivariateCopula{d} =
-    ExtremeValueCopula{d,EmpiricalEVMultivariateTail}
+const EmpiricalEVCopula{d} = ExtremeValueCopula{d,TT} where {
+    TT<:Union{EmpiricalEVTail,EmpiricalEVMultivariateTail},
+}
 
-function (CT::Type{<:ExtremeValueCopula{D,<:EmpiricalEVMultivariateTail} where D})(
+function _empirical_ev_copula(d::Int, u::AbstractMatrix; kwargs...)
+    d == size(u, 1) || throw(DimensionMismatch(
+        "d=$d does not match sample dimension $(size(u, 1))",
+    ))
+    tail = d == 2 ? EmpiricalEVTail(u; kwargs...) :
+                    EmpiricalEVMultivariateTail(u; kwargs...)
+    return ExtremeValueCopula{d}(tail)
+end
+
+function (CT::Type{<:EmpiricalEVCopula{D} where D})(
     u::AbstractMatrix;
     kwargs...,
 )
     d = _ev_resolve_dimension(CT, size(u, 1), "sample")
-    return ExtremeValueCopula{d}(EmpiricalEVMultivariateTail(u; kwargs...))
+    return _empirical_ev_copula(d, u; kwargs...)
 end
 
-function (::Type{<:ExtremeValueCopula{D,<:EmpiricalEVMultivariateTail} where D})(
+function (CT::Type{<:EmpiricalEVCopula{D} where D})(
     d::Int,
     u::AbstractMatrix;
     kwargs...,
 )
-    d == size(u, 1) || throw(DimensionMismatch(
-        "d=$d does not match sample dimension $(size(u, 1))",
+    encoded = _ev_encoded_dimension(CT)
+    (encoded isa TypeVar || encoded == d) || throw(DimensionMismatch(
+        "encoded dimension d=$encoded does not match requested dimension $d",
     ))
-    return ExtremeValueCopula{d}(EmpiricalEVMultivariateTail(u; kwargs...))
+    return _empirical_ev_copula(d, u; kwargs...)
 end
 
 StatsBase.dof(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}) where {d} = 0
-_available_fitting_methods(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, dim,) where {d} = (:ols, :cfg, :pickands)
+_available_fitting_methods(::Type{<:EmpiricalEVCopula}, d) = (:ols, :cfg, :pickands)
 
 function Distributions._logpdf(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}, u,) where {d}
     throw(ArgumentError(

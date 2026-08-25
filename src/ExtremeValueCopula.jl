@@ -258,7 +258,7 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
         C = EmpiricalEVCopula(U; method=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
         return C, (; pseudo_values, method=m, grid, eps)
     end
-    C = EmpiricalEVMultivariateCopula(U; method=m, pseudo_values=pseudo_values, kwargs...)
+    C = EmpiricalEVCopula(U; method=m, pseudo_values=pseudo_values, kwargs...)
     return C, (; pseudo_values, method=m, degree=C.tail.degree, projection_rmse=C.tail.projection_rmse)
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})

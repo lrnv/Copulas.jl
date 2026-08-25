@@ -1988,7 +1988,7 @@ end
     end
 
     @testset "constructor and exact sampling from projected model" begin
-        Cemp = Copulas.EmpiricalEVMultivariateCopula(
+        Cemp = Copulas.EmpiricalEVCopula(
             U;
             method=:ols,
             degree=4,

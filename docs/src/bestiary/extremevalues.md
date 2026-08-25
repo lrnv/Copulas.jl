@@ -166,7 +166,7 @@ TawnCopula{d}(α, weights)
 AsymGalambosCopula{d}(α, weights)
 BC2Copula{d}(a)
 MOCopula{d}(λ)
-EmpiricalEVMultivariateCopula{d}(U)
+EmpiricalEVCopula{d}(U)
 ```
 
 Because these objects determine their own dimension, the following additional
@@ -179,7 +179,7 @@ TawnCopula(α, weights)
 AsymGalambosCopula(α, weights)
 BC2Copula(a)
 MOCopula(λ)
-EmpiricalEVMultivariateCopula(U)
+EmpiricalEVCopula(U)
 ```
 
 The full subset representations are likewise available as
@@ -213,7 +213,7 @@ together with `FamilyCopula(d, dep, asy)`. Since `asy` contains exactly
 | Marshall-Olkin | `MOCopula{2}(λ₁, λ₂, λ₁₂)` | 2 | classical three-shock representation |
 | Marshall-Olkin | `MOCopula{d}(λ)` | ``\mathrm{length}(λ)=2^d-1`` | full subset-shock representation |
 | Empirical EV | `EmpiricalEVCopula{2}(U)` | 2 | bivariate Pickands/CFG/OLS estimator |
-| Empirical EV | `EmpiricalEVMultivariateCopula{d}(U)` | ``d=\mathrm{size}(U,1)`` | shape-constrained multivariate spectral estimator |
+| Empirical EV | `EmpiricalEVCopula{d}(U)` | ``d=\mathrm{size}(U,1)`` | shape-constrained multivariate spectral estimator |
 | Asymmetric logistic | `AsymLogCopula{2}(...)` | 2 | bivariate |
 | Asymmetric mixed | `AsymMixedCopula{2}(...)` | 2 | bivariate |
 
@@ -332,13 +332,13 @@ which is the historical Mixed Pickands model.
 
 ### Multivariate empirical EV estimation
 
-`EmpiricalEVCopula` preserves the historical bivariate estimator based on
-Pickands/CFG/OLS estimation of ``A``.
+`EmpiricalEVCopula` selects the estimator from the sample dimension. In two
+dimensions it preserves the historical Pickands/CFG/OLS estimator of ``A``.
 
 For ``d\ge3``,
 
 ```julia
-EmpiricalEVMultivariateCopula(U; method=:ols)
+EmpiricalEVCopula(U; method=:ols)
 ```
 
 first constructs a multivariate Pickands pilot estimator and then projects it
@@ -352,10 +352,10 @@ Gudendorf and Segers [gudendorf2012multivariate](@cite).
 The resulting object stores a `DiscreteSpectralTail`; consequently the fitted
 STDF is valid by construction and exact spectral sampling is available.
 
-!!! info "The bivariate estimator is still there"
-    `EmpiricalEVCopula` remains the lightweight backward-compatible bivariate
-    implementation. `EmpiricalEVMultivariateCopula` is the shape-constrained
-    arbitrary-dimensional route.
+!!! info "One public constructor, two internal representations"
+    `EmpiricalEVCopula` uses the lightweight historical implementation in two
+    dimensions and the shape-constrained spectral representation in higher
+    dimensions.
 
 ## Advanced Concepts
 
