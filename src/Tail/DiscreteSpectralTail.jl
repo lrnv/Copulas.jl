@@ -114,23 +114,12 @@ function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::Discrete
     return X
 end
 
-function Distributions._rand!(
+function _rand_tail!(
     rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:DiscreteSpectralCapableTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
-    return _discrete_spectral_rand!(rng, _spectral_tail(C.tail), X)
-end
-
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:DiscreteSpectralPickandsTail},
+    tail::DiscreteSpectralCapableTail,
     X::AbstractMatrix{T},
 ) where {T<:Real}
-    return _discrete_spectral_rand!(rng, _spectral_tail(C.tail), X)
+    return _discrete_spectral_rand!(rng, _spectral_tail(tail), X)
 end
 
 function Distributions._logpdf(::ExtremeValueCopula{d,<:DiscreteSpectralCapableTail}, u,) where {d}
