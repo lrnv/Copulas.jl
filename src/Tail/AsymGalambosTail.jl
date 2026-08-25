@@ -208,19 +208,9 @@ struct AsymGalambosMultiTail{T} <: Tail
     β::Matrix{T}
 end
 
-function _asymgal_subsets(d::Int)
-    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    subsets = Vector{Vector{Int}}()
-    for k in 1:d
-        for C in Combinatorics.combinations(1:d, k)
-            push!(subsets, collect(C))
-        end
-    end
-    return subsets
-end
-
 function AsymGalambosMultiTail(d::Int, dep::AbstractVector, asy::AbstractVector,)
-    subsets = _asymgal_subsets(d)
+    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
+    subsets = _nonempty_subsets(d)
     m = length(subsets)
 
     length(dep) == m - d || throw(DimensionMismatch("dep must contain one parameter for each non-singleton subset: expected $(m-d)",))
@@ -269,7 +259,7 @@ function AsymGalambosMultiTail(α::Real, weights::AbstractVector)
 d = length(weights)
     d >= 2 || throw(ArgumentError("weights must contain at least two entries",))
 
-    subsets = _asymgal_subsets(d)
+    subsets = _nonempty_subsets(d)
     m = length(subsets)
     T = promote_type(Float64, typeof(α), eltype(weights))
     a = T(α)
@@ -299,7 +289,7 @@ Distributions.params(tail::AsymGalambosMultiTail) = (α = tail.α, β = tail.β)
 _is_valid_in_dim(tail::AsymGalambosMultiTail, d::Int) = d == tail.d
 
 function _asymgal_component_data(tail::AsymGalambosMultiTail, j, x)
-    C = _asymgal_subsets(tail.d)[j]
+    C = _nonempty_subsets(tail.d)[j]
     active = [i for i in C if tail.β[i, j] > 0]
     y = [tail.β[i, j] * x[i] for i in active]
     return C, active, y
@@ -308,7 +298,7 @@ end
 function ℓ(tail::AsymGalambosMultiTail, x)
     length(x) == tail.d || throw(DimensionMismatch("input dimension does not match asymmetric Galambos tail dimension",))
 
-    subsets = _asymgal_subsets(tail.d)
+    subsets = _nonempty_subsets(tail.d)
     T = promote_type(eltype(x), eltype(tail.α), eltype(tail.β))
     out = zero(T)
 
@@ -343,7 +333,7 @@ function _asymgal_component_partial_signlog(tail::AsymGalambosMultiTail, j::Int,
     k = length(I)
     k > 0 || throw(ArgumentError("partial block must be nonempty"))
 
-    C = _asymgal_subsets(tail.d)[j]
+    C = _nonempty_subsets(tail.d)[j]
     active = [i for i in C if tail.β[i, j] > 0]
 
     all(i -> i in active, I) || return 0, -Inf
@@ -391,7 +381,7 @@ function _asymgal_rand_multivariate!(rng::Distributions.AbstractRNG, tail::AsymG
     d, n = size(X)
     d == tail.d || throw(DimensionMismatch("output dimension does not match asymmetric Galambos tail dimension",))
 
-    subsets = _asymgal_subsets(d)
+    subsets = _nonempty_subsets(d)
 
     # Work on unit-Fréchet margins. Independent max-stable components add
     # their exponent functions, so their componentwise maximum has the sum

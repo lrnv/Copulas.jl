@@ -60,19 +60,9 @@ one.
 """
 const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
 
-function _tawn_subsets(d::Int)
-    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    subsets = Vector{Vector{Int}}()
-    for k in 1:d
-        for C in Combinatorics.combinations(1:d, k)
-            push!(subsets, collect(C))
-        end
-    end
-    return subsets
-end
-
 function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
-    subsets = _tawn_subsets(d)
+    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
+    subsets = _nonempty_subsets(d)
     m = length(subsets)
 
     length(dep) == m - d || throw(DimensionMismatch("dep must contain one parameter for each non-singleton subset: expected $(m-d)",))
@@ -121,7 +111,7 @@ function TawnTail(α::Real, weights::AbstractVector)
     d = length(weights)
     d >= 2 || throw(ArgumentError("weights must contain at least two entries"))
 
-    subsets = _tawn_subsets(d)
+    subsets = _nonempty_subsets(d)
     m = length(subsets)
     T = promote_type(Float64, typeof(α), eltype(weights))
     a = T(α)
@@ -211,7 +201,7 @@ end
 function ℓ(tail::TawnTail, x)
     length(x) == tail.d || throw(DimensionMismatch("input dimension does not match Tawn tail dimension",))
 
-    subsets = _tawn_subsets(tail.d)
+    subsets = _nonempty_subsets(tail.d)
     T = promote_type(eltype(x), eltype(tail.α), eltype(tail.β))
     out = zero(T)
 
@@ -274,7 +264,7 @@ end
 function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return 1, log(float(ℓ(tail, x)))
 
-    subsets = _tawn_subsets(tail.d)
+    subsets = _nonempty_subsets(tail.d)
     logs = Float64[]
     expected_sign = isodd(length(I)) ? 1 : -1
 
@@ -293,7 +283,7 @@ function _tawn_rand_multivariate!(rng::Distributions.AbstractRNG, tail::TawnTail
     d, n = size(X)
     d == tail.d || throw(DimensionMismatch("output dimension does not match Tawn tail dimension",))
 
-    subsets = _tawn_subsets(d)
+    subsets = _nonempty_subsets(d)
 
     # Work on unit-Fréchet margins. Independent max-stable components add
     # their exponent functions; componentwise maxima therefore recover the

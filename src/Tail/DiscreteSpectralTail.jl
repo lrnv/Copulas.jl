@@ -82,17 +82,6 @@ function ℓ(tail::DiscreteSpectralTail, x)
     return out
 end
 
-function _spectral_subsets(d::Int)
-    d >= 1 || throw(ArgumentError("dimension must be positive"))
-    out = Vector{Vector{Int}}()
-    for k in 1:d
-        for S in Combinatorics.combinations(1:d, k)
-            push!(out, collect(S))
-        end
-    end
-    return out
-end
-
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     d == size(tail.B, 1) || throw(DimensionMismatch("output dimension does not match discrete spectral tail dimension",))

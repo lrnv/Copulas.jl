@@ -196,7 +196,7 @@ end
 function MOMultivariateTail(d::Int, λ::AbstractVector)
     d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two",))
 
-    subsets = _spectral_subsets(d)
+    subsets = _nonempty_subsets(d)
     length(λ) == length(subsets) || throw(DimensionMismatch("expected $(length(subsets)) shock intensities for dimension $d",))
 
     vals = collect(λ)

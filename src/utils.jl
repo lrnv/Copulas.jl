@@ -28,6 +28,12 @@ function _mixed_partial(f, x, I::Tuple{Vararg{Int}})
 end
 
 _mixed_partial(f, x, I::AbstractVector{<:Integer}) = _mixed_partial(f, x, Tuple(I))
+
+function _nonempty_subsets(d::Int)
+    d >= 1 || throw(ArgumentError("dimension must be positive"))
+    return [collect(S) for k in 1:d for S in Combinatorics.combinations(1:d, k)]
+end
+
 _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
     fa,fb = f(0.0), f(1.0)
     while fb ≤ 0 && b < θmax
