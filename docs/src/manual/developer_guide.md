@@ -441,7 +441,7 @@ function Distributions._rand!(
     C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
 ) where {T<:Real}
-    return _rand_ghoudi!(rng, C, X)
+    # Ghoudi/Pickands algorithm
 end
 ```
 
@@ -460,6 +460,9 @@ function Distributions._rand!(
     return _my_exact_rand!(rng, C.tail, X)
 end
 ```
+
+If the intersection should instead keep the generic sampler, delegate to that
+less-specific method with `invoke`.
 
 If `MyTail <: BivariatePickandsTail` and the family should use its exact sampler also in
 dimension two, the family-wide method intersects with the generic
@@ -481,15 +484,15 @@ the same information in a parallel trait hierarchy. Logistic retains its
 native bivariate Ghoudi/Pickands route, while Galambos, Hüsler-Reiss, Mixed,
 and extremal-``t`` use their exact family samplers in dimension two.
 
-Algorithm-specific helpers such as `_rand_ghoudi!`,
-`_discrete_spectral_rand!`, or family spectral samplers may be used internally
+Algorithm-specific helpers such as `_discrete_spectral_rand!` or family
+spectral samplers may be used internally
 when they represent a reusable numerical algorithm rather than a routing
 layer.
 
 !!! warning "Internal, non-stable API"
-    `_rand_ghoudi!`, algorithm-specific sampling helpers, and
-    `_ellpartial_signlog` are contributor-facing internals. Public user code
-    should call `rand`, `cdf`, `pdf`, etc.
+    Algorithm-specific sampling helpers and `_ellpartial_signlog` are
+    contributor-facing internals. Public user code should call `rand`, `cdf`,
+    `pdf`, etc.
 
 ### Source organization
 

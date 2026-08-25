@@ -198,24 +198,16 @@ end
 # families use the native Ghoudi/Pickands sampler in d=2 by default, while
 # families with a preferable exact sampler specialize `_rand!` for their
 # concrete tail.
-function _rand_ghoudi!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BivariatePickandsTail}, X::AbstractMatrix{T},) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extreme-value copula",))
-
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BivariatePickandsTail}, X::AbstractMatrix{T},) where {T<:Real}
     E = ExtremeDist(C.tail)
     for i in axes(X, 2)
         z = rand(rng, E)
-        w = rand(rng) < _probability_z(C.tail, z) ?
-            rand(rng) : rand(rng) * rand(rng)
+        w = rand(rng) < _probability_z(C.tail, z) ? rand(rng) : rand(rng) * rand(rng)
         a = A(C.tail, z)
         X[1, i] = exp(log(w) * z / a)
         X[2, i] = exp(log(w) * (1 - z) / a)
     end
     return X
-end
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BivariatePickandsTail}, X::AbstractMatrix{T},) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extreme-value copula",))
-    return _rand_ghoudi!(rng, C, X)
 end
 
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))

@@ -169,7 +169,12 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:LogTail}, X::AbstractMatrix{T},) where {T<:Real}
-    return _rand_ghoudi!(rng, C, X)
+    signature = Tuple{
+        Distributions.AbstractRNG,
+        ExtremeValueCopula{2,<:BivariatePickandsTail},
+        AbstractMatrix{T},
+    }
+    return invoke(Distributions._rand!, signature, rng, C, X)
 end
 
 # LogCopula is the bivariate Gumbel copula, so its conditional quantile can use

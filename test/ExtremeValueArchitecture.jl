@@ -298,13 +298,6 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
             @test Xdispatch == Xdirect
         end
 
-        # BivariatePickandsTail default: the bivariate Logistic model uses the native
-        # Ghoudi/Pickands sampler.
-        check_direct_sampler(
-            LogCopula(2, 2.0),
-            Copulas._rand_ghoudi!,
-        )
-
         # These families have preferable exact/spectral samplers in d=2.
         check_direct_sampler(
             MixedCopula(2, 0.5),
