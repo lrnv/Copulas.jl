@@ -39,7 +39,7 @@ References:
 """
 MOTail, MOCopula
 
-struct MOTail{T} <: BivariatePickandsTail
+struct MOTail{T} <: DiscreteSpectralPickandsTail
     d::Int
     λ::Vector{T}
     spectral::DiscreteSpectralTail{T}
@@ -220,31 +220,4 @@ end
 MOCopula(λ::AbstractVector) =
     ExtremeValueCopula{trailing_zeros(length(λ) + 1)}(MOTail(λ))
 
-ℓ(tail::MOTail, x) = ℓ(tail.spectral, x)
 _is_valid_in_dim(tail::MOTail, d::Int) = tail.d == d
-
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:MOTail},
-    X::AbstractMatrix{T},
-) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
-    return _discrete_spectral_rand!(rng, C.tail.spectral, X)
-end
-
-function Distributions._logpdf(
-    ::ExtremeValueCopula{d,<:MOTail},
-    u,
-) where {d}
-    throw(ArgumentError(
-        "a Marshall-Olkin copula can contain singular components; " *
-        "a global Lebesgue log-density is not defined in general",
-    ))
-end
-
-# Preserve the historical bivariate Pickands density path. In higher
-# dimensions the model is generally singular, so no global density is exposed.
-Distributions._logpdf(C::ExtremeValueCopula{2,<:MOTail}, u) =
-    _bivariate_pickands_logpdf(C, u)

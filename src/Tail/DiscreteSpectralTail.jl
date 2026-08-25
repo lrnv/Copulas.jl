@@ -17,6 +17,15 @@ for unit-Fréchet / uniform margins.
 """
 abstract type DiscreteSpectralBackedTail <: Tail end
 
+# Combined capability for tails that expose both a native bivariate Pickands
+# representation and a finite discrete spectral representation in any valid
+# dimension.
+abstract type DiscreteSpectralPickandsTail <: BivariatePickandsTail end
+const DiscreteSpectralCapableTail = Union{
+    DiscreteSpectralBackedTail,
+    DiscreteSpectralPickandsTail,
+}
+
 struct DiscreteSpectralTail{T} <: DiscreteSpectralBackedTail
     B::Matrix{T}
     function DiscreteSpectralTail{T}(B::Matrix{T}) where {T}
@@ -25,7 +34,7 @@ struct DiscreteSpectralTail{T} <: DiscreteSpectralBackedTail
 end
 
 _spectral_tail(tail::DiscreteSpectralTail) = tail
-_spectral_tail(tail::DiscreteSpectralBackedTail) = tail.spectral
+_spectral_tail(tail::DiscreteSpectralCapableTail) = tail.spectral
 
 function DiscreteSpectralTail(B::AbstractMatrix)
     d, m = size(B)
@@ -87,7 +96,7 @@ function ℓ(tail::DiscreteSpectralTail, x)
     return out
 end
 
-ℓ(tail::DiscreteSpectralBackedTail, x) = ℓ(_spectral_tail(tail), x)
+ℓ(tail::DiscreteSpectralCapableTail, x) = ℓ(_spectral_tail(tail), x)
 
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
@@ -121,7 +130,7 @@ end
 
 function Distributions._rand!(
     rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:DiscreteSpectralBackedTail},
+    C::ExtremeValueCopula{d,<:DiscreteSpectralCapableTail},
     X::AbstractMatrix{T},
 ) where {d,T<:Real}
     size(X, 1) == d || throw(DimensionMismatch(
@@ -130,7 +139,18 @@ function Distributions._rand!(
     return _discrete_spectral_rand!(rng, _spectral_tail(C.tail), X)
 end
 
-function Distributions._logpdf(::ExtremeValueCopula{d,<:DiscreteSpectralBackedTail}, u,) where {d}
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{2,<:DiscreteSpectralPickandsTail},
+    X::AbstractMatrix{T},
+) where {T<:Real}
+    return _discrete_spectral_rand!(rng, _spectral_tail(C.tail), X)
+end
+
+function Distributions._logpdf(::ExtremeValueCopula{d,<:DiscreteSpectralCapableTail}, u,) where {d}
     throw(ArgumentError("a discrete-spectral extreme-value copula can contain singular components; " *
         "a global Lebesgue log-density is not defined in general",))
 end
+
+Distributions._logpdf(C::ExtremeValueCopula{2,<:DiscreteSpectralPickandsTail}, u) =
+    _bivariate_pickands_logpdf(C, u)

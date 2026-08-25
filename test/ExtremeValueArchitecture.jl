@@ -1229,6 +1229,7 @@ end
     oldtail = Copulas.MOTail(0.30, 0.50, 0.70)
     newtail = Copulas.MOTail(2, [0.50, 0.30, 0.70])
     @test typeof(oldtail) == typeof(newtail)
+    @test oldtail isa Copulas.DiscreteSpectralPickandsTail
     @test Distributions.params(oldtail) == (λ₁=0.30, λ₂=0.50, λ₃=0.70)
     Cold = Copulas.ExtremeValueCopula(2, oldtail)
     Cnew = Copulas.ExtremeValueCopula(2, newtail)
