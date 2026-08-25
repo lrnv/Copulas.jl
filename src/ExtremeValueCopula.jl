@@ -77,20 +77,6 @@ function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) whe
     return ExtremeValueCopula{d}(tailof(CT)(first, args...; kwargs...))
 end
 
-function _construct_from_params(
-    CT::Type{<:ExtremeValueCopula},
-    d::Int,
-    args...;
-    kwargs...,
-)
-    encoded = _ev_encoded_dimension(CT)
-    encoded isa TypeVar && return CT(d, args...; kwargs...)
-    encoded == d || throw(DimensionMismatch(
-        "encoded dimension d=$encoded does not match requested dimension $d",
-    ))
-    return CT(args...; kwargs...)
-end
-
 function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     u1, u2 = u
     z = zero(u1 + u2)
@@ -201,7 +187,9 @@ tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 ##############################################################################################################################
 
 _example(CT::Type{<:ExtremeValueCopula}, d) =
-    _construct_from_params(CT, d; _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...)
+    ExtremeValueCopula{d}(tailof(CT)(;
+        _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...,
+    ))
 _unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = _unbound_params(tailof(CT), d, θ)
 _rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(CT), d, α)
 
@@ -226,11 +214,11 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     lo, hi = _θ_bounds(tailof(CT), 2)
     # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
     θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
-    return _construct_from_params(CT, 2, θ), (; θ̂=(θ=θ,))
+    return ExtremeValueCopula{2}(tailof(CT)(θ)), (; θ̂=(θ=θ,))
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
     θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(tailof(CT), 2)...)
-    return _construct_from_params(CT, 2, θ), (; θ̂=(θ=θ,))
+    return ExtremeValueCopula{2}(tailof(CT)(θ)), (; θ̂=(θ=θ,))
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
@@ -255,7 +243,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     θ0 = (; θ=θ0_clamped)
     α0 = _unbound_params(CT, d, θ0)
     all(isfinite, α0) || throw(ArgumentError("MLE start must map to finite unbounded parameters"))
-    cop(α) = _construct_from_params(CT, d, _rebound_params(CT, d, α)...)
+    cop(α) = ExtremeValueCopula{d}(TT(_rebound_params(CT, d, α)...))
     f(α) = -Distributions.loglikelihood(cop(α), U)
     res = try
         Optim.optimize(f, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
@@ -263,7 +251,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
         Optim.optimize(f, α0, Optim.NelderMead())
     end
     θ̂ = _rebound_params(CT, d, Optim.minimizer(res))
-    return _construct_from_params(CT, d, θ̂...), (; θ̂=θ̂, optimizer=Optim.summary(res),
+    return ExtremeValueCopula{d}(TT(θ̂...)), (; θ̂=θ̂, optimizer=Optim.summary(res),
                         xtol=xtol, converged=Optim.converged(res),
                         iterations=Optim.iterations(res))
 end

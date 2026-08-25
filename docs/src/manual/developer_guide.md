@@ -885,7 +885,7 @@ function Copulas._fit(::Type{CT}, U, ::Val{:iupper}) where {CT<:GumbelEVCopula}
     λ̂ = Copulas.λᵤ(U)                # empirical upper-tail dependence
     θ  = 1 / log2(2 - λ̂)
     θ  = clamp(θ, 1.0, 50.0)
-    Ĉ = Copulas._construct_from_params(CT, d, θ)
+    Ĉ = CT(d, θ)
     return Ĉ, (; θ̂ = (; θ = θ), λ̂ = λ̂, method = :iupper)
 end
 ```

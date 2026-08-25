@@ -62,7 +62,7 @@ Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ
 # keeps the (θ₁, θ₂) interface.
 function _example(CT::Type{<:ExtremeValueCopula{D,<:AsymMixedTail} where D}, d::Int,)
     d == 2 || throw(DimensionMismatch("AsymMixedCopula is only defined in dimension two",))
-    return _construct_from_params(CT, d, 0.50, 0.10)
+    return ExtremeValueCopula{d}(AsymMixedTail(0.50, 0.10))
 end
 
 

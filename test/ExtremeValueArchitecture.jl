@@ -30,20 +30,16 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         @test Distributions.params(HuslerReissCopula{2}(1)).θ == 1.0
         @test Distributions.params(tEVCopula{2}(4, 0.2)).ν == 4
 
-        # Generic fitting reconstructs from concrete typeof(C) through the
-        # internal hook, not through an ambiguous FamilyCopula{d,T}(d, ...) call.
+        # Concrete types reconstruct directly without confusing an integer
+        # model parameter with the dimension.
         C0 = GalambosCopula{2}(0.9)
-        C1 = Copulas._construct_from_params(typeof(C0), 2, 0.9)
+        C1 = typeof(C0)(0.9)
         @test typeof(C1) == typeof(C0)
         @test Distributions.params(C1) == Distributions.params(C0)
 
         Cint = LogCopula{2}(2)
-        @test Distributions.params(
-            Copulas._construct_from_params(typeof(Cint), 2, 2),
-        ).θ == 2.0
-        @test Distributions.params(
-            Copulas._construct_from_params(LogCopula, 2, 2),
-        ).θ == 2.0
+        @test Distributions.params(typeof(Cint)(2)).θ == 2.0
+        @test Distributions.params(LogCopula(2, 2)).θ == 2.0
 
         # Scalar-parameter families no longer infer an implicit d=2.
         @test_throws MethodError GalambosCopula(2.3)

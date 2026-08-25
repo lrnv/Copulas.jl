@@ -77,22 +77,16 @@ Return the parameters of the given distribution `C`. Our extension gives these p
 """
 Distributions.params(C::Copula) = throw("You need to specify the Distributions.params() function as returning a named tuple with parameters.")
 
-# Internal reconstruction hook used by generic fitting.
-#
-# Most copula families use the public runtime constructor CT(d, params...).
-# Families whose concrete type already encodes d can specialize this hook
-# without overloading an ambiguous concrete constructor.
-_construct_from_params(CT::Type{<:Copula}, d::Int, args...; kwargs...) =
-    CT(d, args...; kwargs...)
-
 _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::Type{T}, d)` function for your copula type, returning an example of the copula type in dimension d.")
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
 function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
     # generic MLE routine (agnostic to vcov/inference)
     d   = size(U,1)
-        cop(α) = _construct_from_params(CT, d, _rebound_params(CT, d, α)...)
-    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    example = _example(CT, d)
+    ConcreteCT = typeof(example)
+    cop(α) = ConcreteCT(_rebound_params(CT, d, α)...)
+    α₀  = _unbound_params(CT, d, Distributions.params(example))
     loss(C) = -Distributions.loglikelihood(C, U)
     res = try
         Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
@@ -100,7 +94,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
         Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     end
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return _construct_from_params(CT, d, θhat...), (; θ̂=θhat,
+    return ConcreteCT(θhat...), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
@@ -122,8 +116,10 @@ Use [`Distributions.fit(CopulaModel, ...)`] instead.
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     # generic rank-based routine (agnostic to vcov/inference)
     d   = size(U,1)
-    cop(α) = _construct_from_params(CT, d, _rebound_params(CT, d, α)...)
-    α₀ = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    example = _example(CT, d)
+    ConcreteCT = typeof(example)
+    cop(α) = ConcreteCT(_rebound_params(CT, d, α)...)
+    α₀ = _unbound_params(CT, d, Distributions.params(example))
     @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
     fun  = method isa Val{:itau} ? StatsBase.corkendall :
            method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
@@ -131,7 +127,7 @@ function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:
     loss(C) = sum(abs2, est .- fun(C))
     res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return _construct_from_params(CT, d, θhat...), (; θ̂=θhat,
+    return ConcreteCT(θhat...), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
