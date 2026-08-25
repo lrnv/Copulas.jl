@@ -104,12 +104,9 @@ _available_fitting_methods(
 
 _tev_rho(tail::tEVTail{<:Any,<:Real}) = tail.parameter
 _tev_rho(tail::tEVTail{<:Any,<:AbstractMatrix}) = tail.parameter[1, 2]
-_tev_correlation(tail::tEVTail{<:Any,<:Real}, d::Int) =
-    _tev_exchangeable_correlation(d, tail.parameter)
-_tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = tail.parameter
-
-function _tev_exchangeable_correlation(d::Int, ρ::Real)
+function _tev_correlation(tail::tEVTail{<:Any,<:Real}, d::Int)
     d >= 2 || throw(ArgumentError("dimension must be at least 2"))
+    ρ = tail.parameter
     lower = -inv(d - 1)
     ρ > lower || throw(ArgumentError("equicorrelation ρ must satisfy ρ > -1/(d-1) in dimension d=$d",))
     ρ < 1 || throw(ArgumentError("the non-degenerate equicorrelation representation requires ρ < 1",))
@@ -120,16 +117,7 @@ function _tev_exchangeable_correlation(d::Int, ρ::Real)
     end
     return R
 end
-
-function _tev_mvnormcdf(Σ::AbstractMatrix, upper)
-    q = length(upper)
-    q == 0 && return 1.0
-    q == 1 && return Distributions.cdf(Distributions.Normal(0.0, sqrt(Float64(Σ[1, 1]))), Float64(upper[1]),)
-
-    Σf = Matrix{Float64}(LinearAlgebra.Symmetric(Matrix{Float64}(Σ)))
-    b = Float64.(upper)
-    return MvNormalCDF.mvnormcdf(Σf, fill(-Inf, q), b; rng=Random.Xoshiro(0),)[1]
-end
+_tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = tail.parameter
 
 function _tev_mvtcdf(df::Real, μ, Σ::AbstractMatrix, upper; rtol::Real=2e-6,)
     q = length(upper)
@@ -154,7 +142,7 @@ function _tev_mvtcdf(df::Real, μ, Σ::AbstractMatrix, upper; rtol::Real=2e-6,)
         pp = clamp(Float64(p), lo, hi)
         w = Distributions.quantile(χ, pp)
         b = sqrt(w / dff) .* δ
-        _tev_mvnormcdf(Σf, b)
+        MvNormalCDF.mvnormcdf(Σf, fill(-Inf, q), b; rng=Random.Xoshiro(0),)[1]
     end
 
     val = QuadGK.quadgk(integrand, 0.0, 1.0; rtol=rtol)[1]
