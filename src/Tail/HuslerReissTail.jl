@@ -57,9 +57,6 @@ struct HuslerReissTail{T} <: OneParameterPickandsTail
 end
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
 _is_valid_in_dim(::HuslerReissTail, d::Int) = d >= 2
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:HuslerReissTail}, X::AbstractMatrix{T},) where {T<:Real}
-    return _rand_hr_exchangeable!(rng, C, X)
-end
 Distributions.params(tail::HuslerReissTail) = (θ = tail.θ,)
 
 """
@@ -389,17 +386,13 @@ function _hr_rand_multivariate!(rng::Distributions.AbstractRNG, Γ::AbstractMatr
     return X
 end
 
-function _rand_hr_exchangeable!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
     γ = abs2(2 / C.tail.θ)
     Γ = fill(float(γ), d, d)
     @inbounds for i in 1:d
         Γ[i, i] = 0.0
     end
     return _hr_rand_multivariate!(rng, Γ, X)
-end
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    return _rand_hr_exchangeable!(rng, C, X)
 end
 
 ℓ(tail::HuslerReissVariogramTail, x) = _hr_stdf(tail.Γ, x)
@@ -411,8 +404,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     return _hr_rand_multivariate!(rng, C.tail.Γ, X)
 end
 
-function dA(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
-    θ = C.tail.θ
+function dA(tail::HuslerReissTail, t::Real)
+    θ = tail.θ
     N = Distributions.Normal()
     Φ = Distributions.cdf
     ϕ = Distributions.pdf
@@ -425,8 +418,8 @@ function dA(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
 
     return dA_term1 + dA_term2
 end
-function d²A(C::ExtremeValueCopula{2,HuslerReissTail{T}}, t::Real) where {T}
-    θ = C.tail.θ
+function d²A(tail::HuslerReissTail, t::Real)
+    θ = tail.θ
     N  = Distributions.Normal()
     ϕ  = Distributions.pdf
     invθ = inv(θ)

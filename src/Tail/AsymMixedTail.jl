@@ -41,13 +41,13 @@ struct AsymMixedTail{T} <: BivariatePickandsTail
   function AsymMixedTail(θ₁, θ₂)
       θ₁, θ₂ = promote(θ₁, θ₂)
       T = typeof(θ₁)
-      θ₁ == 0 && θ₂ == 0 && return NoTail()
-      θ₂ == 0 && return MixedTail(θ₁)
       (θ₁ ≥ 0)             || throw(ArgumentError("θ₁ must be ≥ 0"))
       (θ₁ + θ₂ ≤ 1)        || throw(ArgumentError("θ₁+θ₂ ≤ 1"))
       (θ₁ + 2θ₂ ≤ 1)       || throw(ArgumentError("θ₁+2θ₂ ≤ 1"))
       (θ₁ + 3θ₂ ≥ 0)       || throw(ArgumentError("θ₁+3θ₂ ≥ 0"))
-      new{T}(θ₁, θ₂)
+      θ₁ == 0 && θ₂ == 0 && return NoTail()
+      θ₂ == 0 && return MixedTail(θ₁)
+      return new{T}(θ₁, θ₂)
   end
 end
 

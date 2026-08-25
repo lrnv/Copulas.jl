@@ -39,6 +39,10 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         @test_throws MethodError GalambosCopula(2.3)
         @test_throws MethodError MixedCopula(0.5)
 
+        @test Copulas.AsymLogTail(1.0, 0.4, 0.6) isa Copulas.NoTail
+        @test Copulas.AsymLogTail(1.5, 0.0, 0.6) isa Copulas.NoTail
+        @test Copulas.AsymLogTail(1.5, 1.0, 1.0) isa Copulas.LogTail
+
         @test_throws ArgumentError AsymLogCopula(3, 1.5, 0.4, 0.6)
         @test_throws ArgumentError Copulas.ExtremeValueCopula(
             1,
@@ -287,19 +291,8 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
 
         # These families have preferable exact/spectral samplers in d=2.
         check_direct_sampler(
-            MixedCopula(2, 0.5),
-            (rng, C, X) ->
-                Copulas._mixed_rand_multivariate!(rng, C.tail, X),
-        )
-
-        check_direct_sampler(
             GalambosCopula(2, 0.7),
             Copulas._rand_galambos_spectral!,
-        )
-
-        check_direct_sampler(
-            HuslerReissCopula(2, 1.0),
-            Copulas._rand_hr_exchangeable!,
         )
 
         check_direct_sampler(
@@ -821,6 +814,11 @@ end
     end
 
     @testset "symmetric logistic reduction" begin
+        @test Copulas.TawnTail(2, [2.0], [[0.0], [0.0], [1.0, 1.0]]) isa
+              Copulas.LogTail
+        @test Copulas.TawnTail(2, [2.0], [[1.0], [1.0], [0.0, 0.0]]) isa
+              Copulas.NoTail
+
         for d in (3, 4), α in (1.2, 2.5)
             Ctawn = Copulas.ExtremeValueCopula(
                 d,
@@ -932,6 +930,11 @@ end
     end
 
     @testset "symmetric Galambos reduction" begin
+        @test Copulas.AsymGalambosTail(2, [0.7], [[0.0], [0.0], [1.0, 1.0]]) isa
+              Copulas.GalambosTail
+        @test Copulas.AsymGalambosTail(2, [0.7], [[1.0], [1.0], [0.0, 0.0]]) isa
+              Copulas.NoTail
+
         for d in (3, 4), α in (0.7, 1.7)
             Casym = Copulas.ExtremeValueCopula(
                 d,

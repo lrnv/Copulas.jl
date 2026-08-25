@@ -54,6 +54,16 @@ struct AsymGalambosTail{T} <: BivariatePickandsTail
             valid_parameter=parameter -> parameter >= zero(parameter),
             family="Galambos",
         )
+
+        component_is_active(j) = !iszero(α[j]) && count(!iszero, @view β[:, j]) > 1
+        non_singletons = (d + 1):length(α)
+        any(component_is_active, non_singletons) || return NoTail()
+
+        fullset = lastindex(α)
+        preceding = (d + 1):(fullset - 1)
+        if !any(component_is_active, preceding) && all(isone, @view β[:, fullset])
+            return GalambosTail(α[fullset])
+        end
         return new{eltype(α)}(d, α, β)
     end
 end
@@ -62,20 +72,12 @@ const AsymGalambosCopula{d,T} = ExtremeValueCopula{d,AsymGalambosTail{T}}
 
 # Convenience submodel: one full-set Galambos component plus singleton
 # remainders.
-function AsymGalambosTail(α::Real, weights::AbstractVector)
-    α >= zero(α) || throw(ArgumentError("α must be ≥ 0"))
-    d = length(weights)
-    d >= 2 || throw(ArgumentError("weights must contain at least two entries"))
-    all(weight -> zero(weight) <= weight <= one(weight), weights) ||
-        throw(ArgumentError("all full-set weights must lie in [0,1]"))
-    d == 2 && (iszero(α) || all(iszero, weights)) && return NoTail()
-    d == 2 && all(isone, weights) && return GalambosTail(α)
-    _, dep, asy = _expand_fullset_asymmetric_component(α, weights; singleton_parameter=0.0)
-    return AsymGalambosTail(d, dep, asy)
-end
-
-AsymGalambosTail(α::Real, θ₁::Real, θ₂::Real) = AsymGalambosTail(α, [θ₁, θ₂])
-AsymGalambosTail(dep::AbstractVector, asy::AbstractVector) = AsymGalambosTail(trailing_zeros(length(asy) + 1), dep, asy)
+AsymGalambosTail(α::Real, weights::AbstractVector) =
+    AsymGalambosTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=0.0)...)
+AsymGalambosTail(α::Real, θ₁::Real, θ₂::Real) =
+    AsymGalambosTail(α, [θ₁, θ₂])
+AsymGalambosTail(dep::AbstractVector, asy::AbstractVector) =
+    AsymGalambosTail(trailing_zeros(length(asy) + 1), dep, asy)
 
 _is_valid_in_dim(tail::AsymGalambosTail, d::Int) = d == tail.d
 

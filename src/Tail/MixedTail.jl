@@ -55,9 +55,6 @@ end
 const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
 Distributions.params(tail::MixedTail) = (θ = tail.θ,)
 _is_valid_in_dim(::MixedTail, d::Int) = d >= 2
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MixedTail}, X::AbstractMatrix{T},) where {T<:Real}
-    return _mixed_rand_multivariate!(rng, C.tail, X)
-end
 _unbound_params(::Type{<:MixedTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
 _rebound_params(::Type{<:MixedTail}, d, α) = begin
     θ = LogExpFunctions.logistic(α[1])
@@ -107,10 +104,10 @@ end
 
 
 
-function _mixed_rand_multivariate!(rng::Distributions.AbstractRNG, tail::MixedTail, X::AbstractMatrix{T},) where {T<:Real}
-    d, n = size(X)
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MixedTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    n = size(X, 2)
 
-    θ = Float64(tail.θ)
+    θ = Float64(C.tail.θ)
     Z = zeros(Float64, d, n)
 
     # Independent max-stable component with exponent
@@ -143,10 +140,6 @@ function _mixed_rand_multivariate!(rng::Distributions.AbstractRNG, tail::MixedTa
     end
 
     return X
-end
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MixedTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    return _mixed_rand_multivariate!(rng, C.tail, X)
 end
 
 function dA(tail::MixedTail, t::Real)

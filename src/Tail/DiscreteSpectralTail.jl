@@ -17,33 +17,29 @@ for unit-Fréchet / uniform margins.
 """
 struct DiscreteSpectralTail{T} <: DiscreteSpectralBackedTail
     B::Matrix{T}
-    function DiscreteSpectralTail{T}(B::Matrix{T}) where {T}
-        return new{T}(B)
+    function DiscreteSpectralTail(B::AbstractMatrix)
+        d, m = size(B)
+        d >= 2 || throw(ArgumentError("a discrete spectral tail requires dimension d ≥ 2",))
+        m >= 1 || throw(ArgumentError("a discrete spectral tail requires at least one spectral atom",))
+
+        vals = collect(B)
+        T = promote_type(Float64, map(typeof, vals)...)
+        BB = Matrix{T}(B)
+
+        all(isfinite, BB) || throw(ArgumentError("all discrete spectral coefficients must be finite",))
+        all(v -> v >= zero(T), BB) || throw(ArgumentError("all discrete spectral coefficients must be nonnegative",))
+
+        tol = sqrt(eps(T))
+        @inbounds for i in 1:d
+            s = sum(@view BB[i, :])
+            isapprox(s, one(T); atol=tol, rtol=tol) || throw(ArgumentError("row $i of B must sum to one; got $s",))
+        end
+
+        return new{T}(BB)
     end
 end
 
 _spectral_tail(tail::DiscreteSpectralTail) = tail
-
-function DiscreteSpectralTail(B::AbstractMatrix)
-    d, m = size(B)
-    d >= 2 || throw(ArgumentError("a discrete spectral tail requires dimension d ≥ 2",))
-    m >= 1 || throw(ArgumentError("a discrete spectral tail requires at least one spectral atom",))
-
-    vals = collect(B)
-    T = promote_type(Float64, map(typeof, vals)...)
-    BB = Matrix{T}(B)
-
-    all(isfinite, BB) || throw(ArgumentError("all discrete spectral coefficients must be finite",))
-    all(v -> v >= zero(T), BB) || throw(ArgumentError("all discrete spectral coefficients must be nonnegative",))
-  
-    tol = sqrt(eps(T))
-    @inbounds for i in 1:d
-        s = sum(@view BB[i, :])
-        isapprox(s, one(T); atol=tol, rtol=tol) || throw(ArgumentError("row $i of B must sum to one; got $s",))
-    end
-
-    return DiscreteSpectralTail{T}(BB)
-end
 
 Base.eltype(::DiscreteSpectralTail{T}) where {T} = T
 Distributions.params(tail::DiscreteSpectralTail) = (B = tail.B,)

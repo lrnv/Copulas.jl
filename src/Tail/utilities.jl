@@ -69,21 +69,17 @@ end
 # and its weights into the general all-subsets constructor representation.
 function _expand_fullset_asymmetric_component(parameter::Real, weights::AbstractVector; singleton_parameter)
     d = length(weights)
-    d >= 2 || throw(ArgumentError("weights must contain at least two entries"))
-    subsets = _nonempty_subsets(d)
-    T = promote_type(Float64, typeof(parameter), eltype(weights))
+    subsets = d == 0 ? Vector{Vector{Int}}() : _nonempty_subsets(d)
+    T = promote_type(Float64, typeof(parameter), map(typeof, weights)...)
     w = T.(weights)
-    all(value -> zero(T) <= value <= one(T), w) || throw(ArgumentError(
-        "all full-set weights must lie in [0,1]",
-    ))
 
     dep = fill(T(singleton_parameter), length(subsets) - d)
-    dep[end] = T(parameter)
+    isempty(dep) || (dep[end] = T(parameter))
     asy = [zeros(T, length(subset)) for subset in subsets]
     @inbounds for i in 1:d
         asy[i][1] = one(T) - w[i]
     end
-    asy[end] .= w
+    isempty(asy) || (asy[end] .= w)
     return d, dep, asy
 end
 

@@ -44,28 +44,20 @@ BC2Tail, BC2Copula
 struct BC2Tail{T} <: DiscreteSpectralPickandsTail
     a::Vector{T}
     spectral::DiscreteSpectralTail{T}
+    function BC2Tail(a::AbstractVector)
+        length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates",))
+        vals = collect(a)
+        T = promote_type(Float64, map(typeof, vals)...)
+        aa = T.(a)
+        return new{T}(aa, DiscreteSpectralTail(hcat(aa, one(T) .- aa)))
+    end
 end
 
 const BC2Copula{d,T} = ExtremeValueCopula{d, BC2Tail{T}}
 
-function BC2Tail(a::AbstractVector)
-    length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates",))
-    vals = collect(a)
-    T = promote_type(Float64, map(typeof, vals)...)
-    aa = T.(a)
-    all(isfinite, aa) || throw(ArgumentError("all BC2 weights must be finite",))
-    all(v -> zero(T) <= v <= one(T), aa) || throw(ArgumentError(
-        "all BC2 weights must lie in [0,1]",
-    ))
-    return BC2Tail{T}(aa, DiscreteSpectralTail(hcat(aa, one(T) .- aa)))
-end
-
 BC2Tail(a, b) = BC2Tail([a, b])
 
 function _bc2_bivariate_weights(tail::BC2Tail)
-    length(tail.a) == 2 || throw(DimensionMismatch(
-        "the scalar Pickands representation requires a bivariate tail",
-    ))
     return tail.a[1], tail.a[2]
 end
 

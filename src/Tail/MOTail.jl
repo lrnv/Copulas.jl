@@ -43,38 +43,37 @@ struct MOTail{T} <: DiscreteSpectralPickandsTail
     d::Int
     λ::Vector{T}
     spectral::DiscreteSpectralTail{T}
+    function MOTail(d::Int, λ::AbstractVector)
+        d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two",))
+
+        subsets = _nonempty_subsets(d)
+        length(λ) == length(subsets) || throw(DimensionMismatch(
+            "expected $(length(subsets)) shock intensities for dimension $d",
+        ))
+
+        vals = collect(λ)
+        T = promote_type(Float64, map(typeof, vals)...)
+        rates = T.(λ)
+        all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite",))
+        all(v -> v >= zero(T), rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be nonnegative",))
+
+        r = zeros(T, d)
+        @inbounds for (k, S) in enumerate(subsets), i in S
+            r[i] += rates[k]
+        end
+        all(v -> v > zero(T), r) || throw(ArgumentError(
+            "every Marshall-Olkin margin must have positive total shock rate",
+        ))
+
+        B = zeros(T, d, length(subsets))
+        @inbounds for (k, S) in enumerate(subsets), i in S
+            B[i, k] = rates[k] / r[i]
+        end
+        return new{T}(d, rates, DiscreteSpectralTail(B))
+    end
 end
 
 const MOCopula{d,T} = ExtremeValueCopula{d, MOTail{T}}
-
-function MOTail(d::Int, λ::AbstractVector)
-    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two",))
-
-    subsets = _nonempty_subsets(d)
-    length(λ) == length(subsets) || throw(DimensionMismatch(
-        "expected $(length(subsets)) shock intensities for dimension $d",
-    ))
-
-    vals = collect(λ)
-    T = promote_type(Float64, map(typeof, vals)...)
-    rates = T.(λ)
-    all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite",))
-    all(v -> v >= zero(T), rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be nonnegative",))
-
-    r = zeros(T, d)
-    @inbounds for (k, S) in enumerate(subsets), i in S
-        r[i] += rates[k]
-    end
-    all(v -> v > zero(T), r) || throw(ArgumentError(
-        "every Marshall-Olkin margin must have positive total shock rate",
-    ))
-
-    B = zeros(T, d, length(subsets))
-    @inbounds for (k, S) in enumerate(subsets), i in S
-        B[i, k] = rates[k] / r[i]
-    end
-    return MOTail{T}(d, rates, DiscreteSpectralTail(B))
-end
 
 # The historical bivariate API names the private shocks in the opposite order
 # from the subset ordering ([1], [2], [1,2]) used by the general model.
@@ -82,9 +81,6 @@ MOTail(λ₁, λ₂, λ₁₂) = MOTail(2, [λ₂, λ₁, λ₁₂])
 MOTail(λ::AbstractVector) = MOTail(trailing_zeros(length(λ) + 1), λ)
 
 function _mo_bivariate_rates(tail::MOTail)
-    tail.d == 2 || throw(DimensionMismatch(
-        "the scalar Pickands representation requires a bivariate tail",
-    ))
     return tail.λ[2], tail.λ[1], tail.λ[3]
 end
 

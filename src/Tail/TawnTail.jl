@@ -37,6 +37,25 @@ struct TawnTail{T} <: Tail
     d::Int
     α::Vector{T}
     β::Matrix{T}
+    function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
+        α, β = _normalize_asymmetric_subset_components(
+            d, dep, asy;
+            singleton_parameter=1.0,
+            valid_parameter=parameter -> parameter >= one(parameter),
+            family="Tawn",
+        )
+
+        component_is_active(j) = !isone(α[j]) && count(!iszero, @view β[:, j]) > 1
+        non_singletons = (d + 1):length(α)
+        any(component_is_active, non_singletons) || return NoTail()
+
+        fullset = lastindex(α)
+        preceding = (d + 1):(fullset - 1)
+        if !any(component_is_active, preceding) && all(isone, @view β[:, fullset])
+            return LogTail(α[fullset])
+        end
+        return new{eltype(α)}(d, α, β)
+    end
 end
 
 """
@@ -58,22 +77,9 @@ one.
 """
 const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
 
-function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
-    α, β = _normalize_asymmetric_subset_components(
-        d, dep, asy;
-        singleton_parameter=1.0,
-        valid_parameter=parameter -> parameter >= one(parameter),
-        family="Tawn",
-    )
-    return TawnTail{eltype(α)}(d, α, β)
-end
-
 # Convenience submodel: one full-set logistic component plus singleton remainders.
-function TawnTail(α::Real, weights::AbstractVector)
-    α >= one(α) || throw(ArgumentError("α must be ≥ 1"))
-    d, dep, asy = _expand_fullset_asymmetric_component(α, weights; singleton_parameter=1.0)
-    return TawnTail(d, dep, asy)
-end
+TawnTail(α::Real, weights::AbstractVector) =
+    TawnTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=1.0)...)
 
 TawnTail(dep::AbstractVector, asy::AbstractVector) =
     TawnTail(trailing_zeros(length(asy) + 1), dep, asy)
@@ -164,14 +170,11 @@ function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
     end
 end
 
-function _tawn_rand_multivariate!(rng::Distributions.AbstractRNG, tail::TawnTail, X::AbstractMatrix{T},) where {T<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    tail = C.tail
     return _rand_subset_components!(
         rng, X, tail.α, tail.β, isone,
         (dimension, α) -> ExtremeValueCopula(dimension, LogTail(α));
         family="Tawn",
     )
-end
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    return _tawn_rand_multivariate!(rng, C.tail, X)
 end

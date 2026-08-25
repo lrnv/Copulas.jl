@@ -60,9 +60,6 @@ end
 const tEVCopula{d,T} = ExtremeValueCopula{d, tEVTail{T}}
 Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
 _is_valid_in_dim(tail::tEVTail, d::Int) = d >= 2 && tail.ρ > -inv(d - 1)
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:tEVTail}, X::AbstractMatrix{T},) where {T<:Real}
-    return _tev_rand_multivariate!(rng, C.tail.ν, _tev_exchangeable_correlation(2, C.tail.ρ), X,)
-end
 _unbound_params(::Type{<:tEVTail}, d, θ) = [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
 _rebound_params(::Type{<:tEVTail}, d, α) = (; ν = exp(α[1]), ρ = tanh(α[2]))
 
