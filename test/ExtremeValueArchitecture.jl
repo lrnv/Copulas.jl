@@ -126,7 +126,7 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         Cag_runtime = AsymGalambosCopula(3, 0.7, weights)
         Cag_inferred = AsymGalambosCopula(0.7, weights)
         @test typeof(Cag_typed) == typeof(Cag_runtime) == typeof(Cag_inferred)
-        @test Cag_typed.tail isa Copulas.AsymGalambosMultiTail
+        @test Cag_typed.tail isa Copulas.AsymGalambosTail
         @test length(AsymGalambosCopula{3}(1, weights)) == 3
         @test length(AsymGalambosCopula(1, weights)) == 3
 
@@ -925,7 +925,11 @@ end
         )
         Cnew = Copulas.ExtremeValueCopula(
             2,
-            Copulas.AsymGalambosMultiTail(α, [θ1, θ2]),
+            Copulas.AsymGalambosTail(
+                2,
+                [α],
+                [[1 - θ1], [1 - θ2], [θ1, θ2]],
+            ),
         )
 
         for u in (
@@ -944,7 +948,7 @@ end
         for d in (3, 4), α in (0.7, 1.7)
             Casym = Copulas.ExtremeValueCopula(
                 d,
-                Copulas.AsymGalambosMultiTail(α, ones(d)),
+                Copulas.AsymGalambosTail(α, ones(d)),
             )
             Csym = Copulas.ExtremeValueCopula(
                 d,
@@ -969,9 +973,13 @@ end
             [0.40, 0.40, 0.40],
         ]
 
-        tail = Copulas.AsymGalambosMultiTail(3, dep, asy)
+        tail = Copulas.AsymGalambosTail(3, dep, asy)
         C = Copulas.ExtremeValueCopula(3, tail)
         x = (0.37, 0.79, 1.28)
+
+        reconstructed = Copulas.AsymGalambosTail(values(params(tail))...)
+        @test reconstructed.α == tail.α
+        @test reconstructed.β == tail.β
 
         @test Copulas.ℓ(tail, x) ≈ 1.8097921615972135 atol=3e-13 rtol=3e-12
 
@@ -1011,7 +1019,7 @@ end
             [0.40, 0.40, 0.40],
         ]
 
-        @test_throws DimensionMismatch Copulas.AsymGalambosMultiTail(
+        @test_throws DimensionMismatch Copulas.AsymGalambosTail(
             3,
             dep[1:3],
             good,
@@ -1019,7 +1027,7 @@ end
 
         badsum = deepcopy(good)
         badsum[end][1] = 0.30
-        @test_throws ArgumentError Copulas.AsymGalambosMultiTail(
+        @test_throws ArgumentError Copulas.AsymGalambosTail(
             3,
             dep,
             badsum,
@@ -1027,7 +1035,7 @@ end
 
         baddep = copy(dep)
         baddep[2] = -0.1
-        @test_throws ArgumentError Copulas.AsymGalambosMultiTail(
+        @test_throws ArgumentError Copulas.AsymGalambosTail(
             3,
             baddep,
             good,

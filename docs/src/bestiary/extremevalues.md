@@ -205,7 +205,7 @@ together with `FamilyCopula(d, dep, asy)`. Since `asy` contains exactly
 | extremal-``t`` | `tEVCopula{d}(ν, R)` | ``d=\mathrm{size}(R,1)`` | general correlation matrix |
 | Tawn | `TawnCopula{d}(α, weights)` | ``d=\mathrm{length}(weights)`` | full-set logistic component + singleton remainders |
 | Tawn | `TawnCopula{d}(dep, asy)` | ``d\ge2`` | full subset representation |
-| Asymmetric Galambos | `AsymGalambosCopula{2}(α, θ₁, θ₂)` | 2 | specialized bivariate kernel |
+| Asymmetric Galambos | `AsymGalambosCopula{2}(α, θ₁, θ₂)` | 2 | scalar Pickands fast path of the unified subset model |
 | Asymmetric Galambos | `AsymGalambosCopula{d}(α, weights)` | ``d=\mathrm{length}(weights)`` | full-set negative-logistic component + singleton remainders |
 | Asymmetric Galambos | `AsymGalambosCopula{d}(dep, asy)` | ``d\ge2`` | full subset representation |
 | BC2 | `BC2Copula{2}(a, b)` | 2 | classical bivariate representation |
