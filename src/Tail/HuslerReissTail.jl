@@ -26,7 +26,7 @@ positive and the variogram is strictly conditionally negative definite.
 Scalar and matrix parameters are stored by the same `HuslerReissTail` type;
 its parameter type selects the exchangeable or general-variogram algorithms.
 A `2×2` variogram uses the specialized bivariate kernel after recovering
-``\theta=2/\sqrt{\Gamma_{12}}``. In dimension two,
+``\\theta=2/\\sqrt{\\Gamma_{12}}``. In dimension two,
 
 ```math
 A(t)

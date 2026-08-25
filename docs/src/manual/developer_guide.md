@@ -357,9 +357,11 @@ AsymGalambosCopula{d}(dep, asy)
 with `FamilyCopula(d, ...)` as runtime sugar. These multi-parameter forms do
 not infer `d`.
 
-A public constructor may map a ``2\times2`` matrix to a specialized scalar tail
-and a larger matrix to a general tail. Do not use the concrete stored tail type
-as the public family identity.
+A public family may store scalar and matrix parameterizations in the same tail
+type and use the parameter type for dispatch. A matrix parameterization can
+still select a specialized bivariate kernel without being converted to a
+different representation. Do not use the concrete stored parameter type as
+the public family identity.
 
 ### Density interface
 

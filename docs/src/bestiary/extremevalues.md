@@ -234,8 +234,8 @@ HuslerReissCopula(Γ)
 ```
 
 accepts a general valid variogram matrix. In dimension two a matrix
-parameterization is validated and then reduced internally to the scalar
-bivariate representation. The family seen by the user does not change.
+parameterization keeps its matrix representation, while dispatch selects the
+specialized bivariate kernel after recovering the scalar parameter.
 
 The extremal-``t`` family follows the same pattern:
 
@@ -244,13 +244,14 @@ tEVCopula{d}(ν, ρ) # equicorrelation
 tEVCopula{d}(ν, R) # general correlation matrix
 ```
 
-A valid ``2\times2`` correlation matrix is likewise reduced to the specialized
-bivariate tail.
+A valid ``2\times2`` correlation matrix likewise keeps its matrix
+representation, while dispatch selects the specialized bivariate kernel from
+its off-diagonal correlation.
 
-!!! info "Public family ≠ internal representation"
-    Two constructors of the same mathematical family may store different tail
-    types internally. This is deliberate: it lets Copulas.jl retain fast
-    bivariate kernels without duplicating the public family.
+!!! info "One public family, parameter-driven dispatch"
+    Scalar and matrix constructors of each family share one tail type. The
+    stored parameter type selects the exchangeable or general representation,
+    and dimension-specific methods retain the fast bivariate kernels.
 
 ### Tawn and asymmetric Galambos subset models
 
