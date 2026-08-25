@@ -207,23 +207,19 @@ function _ellpartial_signlog(tail::AsymGalambosTail, x, I::Tuple{Vararg{Int}})
     end
 end
 
-function _asymgal_rand_multivariate!(rng::Distributions.AbstractRNG, tail::AsymGalambosTail, X::AbstractMatrix{T}) where {T<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:AsymGalambosTail}, X::AbstractMatrix{T}) where {d,T<:Real}
     return _rand_subset_components!(
         rng,
         X,
-        tail.α,
-        tail.β,
+        C.tail.α,
+        C.tail.β,
         iszero,
         (dimension, α) -> ExtremeValueCopula(dimension, GalambosTail(α));
         family="asymmetric Galambos",
     )
 end
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:AsymGalambosTail}, X::AbstractMatrix{T}) where {d,T<:Real}
-    return _asymgal_rand_multivariate!(rng, C.tail, X)
-end
-
-# Resolve the intersection above with the generic bivariate Pickands sampler.
+# Retain the generic Pickands sampler in dimension two.
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:AsymGalambosTail}, X::AbstractMatrix{T}) where {T<:Real}
     signature = Tuple{
         Distributions.AbstractRNG,
