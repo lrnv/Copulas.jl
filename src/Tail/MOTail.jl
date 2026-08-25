@@ -187,7 +187,7 @@ The historical bivariate `MOTail(λ₁, λ₂, λ₁₂)` uses crossed names for
 private shocks. `MOMultivariateTail(tail::MOTail)` preserves that convention
 exactly.
 """
-struct MOMultivariateTail{T} <: Tail
+struct MOMultivariateTail{T} <: DiscreteSpectralBackedTail
     d::Int
     λ::Vector{T}
     spectral::DiscreteSpectralTail{T}
@@ -253,9 +253,3 @@ MOMultivariateCopula(tail::MOTail) = ExtremeValueCopula(2, MOMultivariateTail(ta
 
 Distributions.params(tail::MOMultivariateTail) = (λ = tail.λ,)
 _is_valid_in_dim(tail::MOMultivariateTail, d::Int) = tail.d == d
-ℓ(tail::MOMultivariateTail, x) = ℓ(tail.spectral, x)
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MOMultivariateTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
-    return _discrete_spectral_rand!(rng, C.tail.spectral, X)
-end

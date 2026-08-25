@@ -233,7 +233,7 @@ dimension-adaptive degree and the numerical projection details are Copulas.jl
 implementation choices; the statistical estimator and shape-constrained
 spectral projection are literature-based.
 """
-struct EmpiricalEVMultivariateTail <: Tail
+struct EmpiricalEVMultivariateTail <: DiscreteSpectralBackedTail
     d::Int
     method::Symbol
     degree::Int
@@ -244,7 +244,6 @@ end
 Base.eltype(::EmpiricalEVMultivariateTail) = Float64
 Distributions.params(t::EmpiricalEVMultivariateTail) = (B = t.spectral.B,)
 _is_valid_in_dim(t::EmpiricalEVMultivariateTail, d::Int) = t.d == d
-ℓ(t::EmpiricalEVMultivariateTail, x) = ℓ(t.spectral, x)
 A(t::EmpiricalEVMultivariateTail, w::NTuple{d,<:Real}) where {d} = ℓ(t, w)
 
 function _empirical_ev_default_degree(d::Int; max_atoms::Int=120)
@@ -550,11 +549,6 @@ end
 
 StatsBase.dof(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}) where {d} = 0
 _available_fitting_methods(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, dim,) where {d} = (:ols, :cfg, :pickands)
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
-    return _discrete_spectral_rand!(rng, C.tail.spectral, X)
-end
 
 function Distributions._logpdf(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}, u,) where {d}
     throw(ArgumentError(

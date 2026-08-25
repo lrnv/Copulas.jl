@@ -15,12 +15,17 @@ the associated spectral measure is `sum(h[k] δ_{v[:,k]})`.
 The row-sum constraints are exactly the spectral moment constraints required
 for unit-Fréchet / uniform margins.
 """
-struct DiscreteSpectralTail{T} <: Tail
+abstract type DiscreteSpectralBackedTail <: Tail end
+
+struct DiscreteSpectralTail{T} <: DiscreteSpectralBackedTail
     B::Matrix{T}
     function DiscreteSpectralTail{T}(B::Matrix{T}) where {T}
         return new{T}(B)
     end
 end
+
+_spectral_tail(tail::DiscreteSpectralTail) = tail
+_spectral_tail(tail::DiscreteSpectralBackedTail) = tail.spectral
 
 function DiscreteSpectralTail(B::AbstractMatrix)
     d, m = size(B)
@@ -82,6 +87,8 @@ function ℓ(tail::DiscreteSpectralTail, x)
     return out
 end
 
+ℓ(tail::DiscreteSpectralBackedTail, x) = ℓ(_spectral_tail(tail), x)
+
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     d == size(tail.B, 1) || throw(DimensionMismatch("output dimension does not match discrete spectral tail dimension",))
@@ -114,16 +121,16 @@ end
 
 function Distributions._rand!(
     rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:DiscreteSpectralTail},
+    C::ExtremeValueCopula{d,<:DiscreteSpectralBackedTail},
     X::AbstractMatrix{T},
 ) where {d,T<:Real}
     size(X, 1) == d || throw(DimensionMismatch(
         "output dimension does not match copula dimension",
     ))
-    return _discrete_spectral_rand!(rng, C.tail, X)
+    return _discrete_spectral_rand!(rng, _spectral_tail(C.tail), X)
 end
 
-function Distributions._logpdf(::ExtremeValueCopula{d,<:DiscreteSpectralTail}, u,) where {d}
-    throw(ArgumentError("DiscreteSpectralCopula can contain singular components; " *
+function Distributions._logpdf(::ExtremeValueCopula{d,<:DiscreteSpectralBackedTail}, u,) where {d}
+    throw(ArgumentError("a discrete-spectral extreme-value copula can contain singular components; " *
         "a global Lebesgue log-density is not defined in general",))
 end
