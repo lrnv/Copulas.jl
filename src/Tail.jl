@@ -110,3 +110,21 @@ function _ghoudi_mixture_probability(tail::BivariatePickandsTail, z::Real)
     p = num / dem 
     return clamp(p, 0, 1) 
 end
+
+# Finite discrete-spectral capabilities.
+#
+# `DiscreteSpectralBackedTail` provides a finite spectral representation.
+# `DiscreteSpectralPickandsTail` additionally exposes the native scalar
+# Pickands interface used by the specialized bivariate algorithms above.
+abstract type DiscreteSpectralBackedTail <: Tail end
+abstract type DiscreteSpectralPickandsTail <: BivariatePickandsTail end
+
+const DiscreteSpectralCapableTail = Union{
+    DiscreteSpectralBackedTail,
+    DiscreteSpectralPickandsTail,
+}
+
+# Concrete capable tails store their canonical finite representation in a
+# `spectral` field. `DiscreteSpectralTail` itself specializes this accessor.
+_spectral_tail(tail::DiscreteSpectralCapableTail) = tail.spectral
+ℓ(tail::DiscreteSpectralCapableTail, x) = ℓ(_spectral_tail(tail), x)

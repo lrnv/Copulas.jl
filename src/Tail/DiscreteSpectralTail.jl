@@ -15,17 +15,6 @@ the associated spectral measure is `sum(h[k] δ_{v[:,k]})`.
 The row-sum constraints are exactly the spectral moment constraints required
 for unit-Fréchet / uniform margins.
 """
-abstract type DiscreteSpectralBackedTail <: Tail end
-
-# Combined capability for tails that expose both a native bivariate Pickands
-# representation and a finite discrete spectral representation in any valid
-# dimension.
-abstract type DiscreteSpectralPickandsTail <: BivariatePickandsTail end
-const DiscreteSpectralCapableTail = Union{
-    DiscreteSpectralBackedTail,
-    DiscreteSpectralPickandsTail,
-}
-
 struct DiscreteSpectralTail{T} <: DiscreteSpectralBackedTail
     B::Matrix{T}
     function DiscreteSpectralTail{T}(B::Matrix{T}) where {T}
@@ -34,7 +23,6 @@ struct DiscreteSpectralTail{T} <: DiscreteSpectralBackedTail
 end
 
 _spectral_tail(tail::DiscreteSpectralTail) = tail
-_spectral_tail(tail::DiscreteSpectralCapableTail) = tail.spectral
 
 function DiscreteSpectralTail(B::AbstractMatrix)
     d, m = size(B)
@@ -95,8 +83,6 @@ function ℓ(tail::DiscreteSpectralTail, x)
 
     return out
 end
-
-ℓ(tail::DiscreteSpectralCapableTail, x) = ℓ(_spectral_tail(tail), x)
 
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
