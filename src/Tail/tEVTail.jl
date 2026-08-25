@@ -267,59 +267,20 @@ function _ellpartial_signlog(tail::tEVTail, x, I::Tuple{Vararg{Int}})
 end
 
 
-function _tev_spectral_cache(R::AbstractMatrix)
-    d = size(R, 1)
-    size(R, 2) == d || throw(DimensionMismatch("R must be square"))
-
-    return ntuple(d) do m
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    ν = C.tail.ν
+    R = _tev_correlation(C.tail, d)
+    cache = ntuple(d) do m
         J = [i for i in 1:d if i != m]
         r = Vector{Float64}(R[J, m])
         Σ = Matrix{Float64}(R[J, J]) - r * transpose(r)
         F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ))
         (; J, r, F)
     end
-end
-
-function _tev_log_normalized_spectral!(rng::Distributions.AbstractRNG, logq::AbstractVector{Float64}, ν::Real, R::AbstractMatrix, cache,)
-    d = length(logq)
-    m = Random.rand(rng, 1:d)
-    entry = cache[m]
-
-    # Size-biasing the Gaussian spectral vector by (W_m^+)^ν gives
-    # W_m^2 ~ χ²_{ν+1}, with the positive square root.
-    wm = sqrt(Random.rand(rng, Distributions.Chisq(Float64(ν) + 1.0)))
-
-    fill!(logq, -Inf)
-    logq[m] = Float64(ν) * log(wm)
-
-    q = length(entry.J)
-    if q > 0
-        ξ = Random.randn(rng, q)
-        wJ = entry.r .* wm .+ entry.F.L * ξ
-
-        @inbounds for a in 1:q
-            wi = wJ[a]
-            if wi > 0
-                logq[entry.J[a]] = Float64(ν) * log(wi)
-            end
-        end
-    end
-
-    logsum = LogExpFunctions.logsumexp(logq)
-    @inbounds for i in eachindex(logq)
-        logq[i] -= logsum
-    end
-    return logq
-end
-
-function _tev_rand_multivariate!(rng::Distributions.AbstractRNG, ν::Real, R::AbstractMatrix, X::AbstractMatrix{T},) where {T<:Real}
-    d, n = size(X)
-
-    cache = _tev_spectral_cache(R)
     logq = Vector{Float64}(undef, d)
     logz = Vector{Float64}(undef, d)
 
-    @inbounds for col in 1:n
+    @inbounds for col in axes(X, 2)
         fill!(logz, -Inf)
         s = 0.0
 
@@ -334,7 +295,29 @@ function _tev_rand_multivariate!(rng::Distributions.AbstractRNG, ν::Real, R::Ab
                 break
             end
 
-            _tev_log_normalized_spectral!(rng, logq, ν, R, cache)
+            m = Random.rand(rng, 1:d)
+            entry = cache[m]
+
+            # Size-biasing the Gaussian spectral vector by (W_m^+)^ν gives
+            # W_m² ~ χ²_{ν+1}, with the positive square root.
+            wm = sqrt(Random.rand(rng, Distributions.Chisq(Float64(ν) + 1.0)))
+            fill!(logq, -Inf)
+            logq[m] = Float64(ν) * log(wm)
+
+            q = length(entry.J)
+            if q > 0
+                ξ = Random.randn(rng, q)
+                wJ = entry.r .* wm .+ entry.F.L * ξ
+                for a in 1:q
+                    wi = wJ[a]
+                    wi > 0 && (logq[entry.J[a]] = Float64(ν) * log(wi))
+                end
+            end
+
+            logsum = LogExpFunctions.logsumexp(logq)
+            for i in eachindex(logq)
+                logq[i] -= logsum
+            end
 
             for i in 1:d
                 candidate = logradius + logq[i]
@@ -354,10 +337,6 @@ end
 
 ℓ(tail::tEVTail{<:Any,<:AbstractMatrix}, x) =
     _tev_stdf(tail.ν, tail.parameter, x)
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    return _tev_rand_multivariate!(rng, C.tail.ν, _tev_correlation(C.tail, d), X,)
-end
 
 function A(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν

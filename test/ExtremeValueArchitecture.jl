@@ -297,37 +297,7 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         end
     end
 
-    @testset "sampling direct dispatch" begin
-        function check_direct_sampler(C, sampler!)
-            Xdispatch = zeros(length(C), 32)
-            Xdirect = similar(Xdispatch)
-
-            rng_dispatch = Random.Xoshiro(20260820)
-            rng_direct = Random.Xoshiro(20260820)
-
-            Distributions._rand!(rng_dispatch, C, Xdispatch)
-            sampler!(rng_direct, C, Xdirect)
-
-            @test Xdispatch == Xdirect
-        end
-
-        # These families have preferable exact/spectral samplers in d=2.
-        check_direct_sampler(
-            tEVCopula(2, 4.0, 0.5),
-            (rng, C, X) ->
-                Copulas._tev_rand_multivariate!(
-                    rng,
-                    C.tail.ν,
-                    Copulas._tev_exchangeable_correlation(
-                        2,
-                        Copulas._tev_rho(C.tail),
-                    ),
-                    X,
-                ),
-        )
-
-        # The same public families remain sampleable in higher dimensions;
-        # dispatch selects their concrete multivariate implementation.
+    @testset "multivariate sampling" begin
         for C in (
             LogCopula(10, 2.0),
             MixedCopula(10, 0.5),
@@ -760,7 +730,10 @@ end
             (3, 1.3, 0.25),
             (4, 2.2, 0.4),
         )
-            R = Copulas._tev_exchangeable_correlation(d, ρ)
+            R = fill(ρ, d, d)
+            for i in 1:d
+                R[i, i] = 1.0
+            end
 
             Cscalar = Copulas.ExtremeValueCopula(
                 d,
