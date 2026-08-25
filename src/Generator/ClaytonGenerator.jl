@@ -95,19 +95,13 @@ end
 # dedicated finite-support ClaytonWilliamsonDistribution, while non-integer
 # orders fall back to the generic exact beta reduction from the next integer
 # Williamson order.
-function _clayton_williamson_inverse(G::ClaytonGenerator, d::Real)
-    scale = inv(G.θ)
-    radial = Distributions.BetaPrime(d, scale)
-    return scale * radial
-end
 function 𝒲₋₁(G::ClaytonGenerator, d::Integer)
-    G.θ >= 0 && return _clayton_williamson_inverse(G, d)
+    G.θ >= 0 && return Distributions.BetaPrime(d, inv(G.θ))*inv(G.θ)
     return ClaytonWilliamsonDistribution(G.θ, d)
 end
 function 𝒲₋₁(G::ClaytonGenerator, d::Real)
-    return G.θ >= 0 ?
-           _clayton_williamson_inverse(G, d) :
-           invoke(𝒲₋₁, Tuple{Generator,Real}, G, d)
+    G.θ >= 0 && return Distributions.BetaPrime(d, inv(G.θ))*inv(G.θ)
+    return invoke(𝒲₋₁, Tuple{Generator,Real}, G, d)
 end
 
 

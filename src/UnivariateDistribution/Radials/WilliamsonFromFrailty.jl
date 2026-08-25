@@ -17,9 +17,7 @@ end
 # BetaPrime(order, a) / b. Keep this ratio in closed form instead of evaluating
 # expectations over the frailty for every cdf/pdf/quantile call.
 function WilliamsonFromFrailty(frailty_dist::Distributions.Gamma, order::Real)
-    isfinite(order) && order > 0 || throw(ArgumentError(
-        "the Williamson order must be finite and positive",
-    ))
+    isfinite(order) && order > 0 || throw(ArgumentError("the Williamson order must be finite and positive",))
     shape, scale = Distributions.params(frailty_dist)
     return inv(scale) * Distributions.BetaPrime(order, shape)
 end
@@ -32,16 +30,12 @@ end
 function Distributions.cdf(D::WilliamsonFromFrailty, x::Real)
     x <= 0 && return zero(float(x))
     isinf(x) && return one(float(x))
-    return Distributions.expectation(
-        v -> Distributions.cdf(D.numerator, x * v), D.frailty_dist,
-    )
+    return Distributions.expectation(v -> Distributions.cdf(D.numerator, x * v), D.frailty_dist)
 end
 function Distributions.pdf(D::WilliamsonFromFrailty, x::Real)
     x <= 0 && return zero(float(x))
     isinf(x) && return zero(float(x))
-    return Distributions.expectation(
-        v -> v * Distributions.pdf(D.numerator, x * v), D.frailty_dist,
-    )
+    return Distributions.expectation(v -> v * Distributions.pdf(D.numerator, x * v), D.frailty_dist)
 end
 function Distributions.quantile(D::WilliamsonFromFrailty, p::Real)
     0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
@@ -54,30 +48,18 @@ Base.maximum(::WilliamsonFromFrailty) = Inf
 
 # Posterior frailty after observing Liouville coordinates whose Dirichlet
 # parameters sum to `power` and whose radial coordinates sum to `shift`.
-struct PowerTiltedFrailty{S<:Distributions.ValueSupport,TF,TP,TS,TN} <:
-       Distributions.UnivariateDistribution{S}
+struct PowerTiltedFrailty{S<:Distributions.ValueSupport,TF,TP,TS,TN} <: Distributions.UnivariateDistribution{S}
     base::TF
     power::TP
     shift::TS
     normalizer::TN
-
     function PowerTiltedFrailty(base, power::Real, shift::Real)
-        isfinite(power) && power >= 0 || throw(ArgumentError(
-            "the frailty tilt power must be finite and non-negative",
-        ))
-        isfinite(shift) && shift >= 0 || throw(ArgumentError(
-            "the frailty tilt shift must be finite and non-negative",
-        ))
-        normalizer = Distributions.expectation(
-            v -> _power_tilt_weight(v, power, shift), base,
-        )
-        isfinite(normalizer) && normalizer > 0 || throw(ArgumentError(
-            "the conditional frailty has zero or non-finite normalizing mass",
-        ))
+        isfinite(power) && power >= 0 || throw(ArgumentError("the frailty tilt power must be finite and non-negative"))
+        isfinite(shift) && shift >= 0 || throw(ArgumentError("the frailty tilt shift must be finite and non-negative"))
+        normalizer = Distributions.expectation(v -> _power_tilt_weight(v, power, shift), base)
+        isfinite(normalizer) && normalizer > 0 || throw(ArgumentError("the conditional frailty has zero or non-finite normalizing mass"))
         support = Distributions.value_support(typeof(base))
-        return new{support,typeof(base),typeof(power),typeof(shift),typeof(normalizer)}(
-            base, power, shift, normalizer,
-        )
+        return new{support,typeof(base),typeof(power),typeof(shift),typeof(normalizer)}(base, power, shift, normalizer)
     end
 end
 
@@ -85,15 +67,9 @@ end
 # Multiplying a Gamma(a, b) density by v^power * exp(-shift*v) gives another
 # Gamma law, with shape a + power and rate inv(b) + shift. In particular this
 # preserves Clayton's exact Beta-prime radial after Liouville conditioning.
-function PowerTiltedFrailty(
-    base::Distributions.Gamma, power::Real, shift::Real,
-)
-    isfinite(power) && power >= 0 || throw(ArgumentError(
-        "the frailty tilt power must be finite and non-negative",
-    ))
-    isfinite(shift) && shift >= 0 || throw(ArgumentError(
-        "the frailty tilt shift must be finite and non-negative",
-    ))
+function PowerTiltedFrailty(base::Distributions.Gamma, power::Real, shift::Real)
+    isfinite(power) && power >= 0 || throw(ArgumentError("the frailty tilt power must be finite and non-negative"))
+    isfinite(shift) && shift >= 0 || throw(ArgumentError("the frailty tilt shift must be finite and non-negative"))
     shape, scale = Distributions.params(base)
     return Distributions.Gamma(shape + power, inv(inv(scale) + shift))
 end

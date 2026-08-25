@@ -190,9 +190,7 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
                 U[j,i] = zero(Cᵢⱼ)
             else
                 Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, j - 1, Cᵢⱼ) * u[j,i]
-                U[j, i], Cᵢⱼ = _inverse_archimedean_step(
-                    C.G, j - 1, Dᵢⱼ, Cᵢⱼ,
-                )
+                U[j, i], Cᵢⱼ = _inverse_archimedean_step(C.G, j - 1, Dᵢⱼ, Cᵢⱼ,)
             end
         end
     end

@@ -1,5 +1,4 @@
-_supports_liouville_order(G::Generator, order::Real) =
-    ceil(Int, order) <= max_monotony(G)
+_supports_liouville_order(G::Generator, order::Real) = ceil(Int, order) <= max_monotony(G)
 _supports_liouville_order(G::𝒲, order::Real) = order <= G.order
 
 """
@@ -41,17 +40,13 @@ parameters”.
 struct LiouvilleCopula{d,TG,Tα} <: Copula{d}
     G::TG
     α::NTuple{d,Tα}
-
     function LiouvilleCopula{d}(G::Generator, α) where {d}
         d >= 2 || throw(ArgumentError("a Liouville copula must have dimension at least 2"))
         length(α) == d || throw(ArgumentError("expected $d Dirichlet parameters, got $(length(α))"))
         αtuple = promote(map(float, α)...)
-        all(a -> isfinite(a) && a > 0, αtuple) ||
-            throw(ArgumentError("Dirichlet parameters must be finite and positive"))
+        all(a -> isfinite(a) && a > 0, αtuple) || throw(ArgumentError("Dirichlet parameters must be finite and positive"))
         α₀ = sum(αtuple)
-        _supports_liouville_order(G, α₀) || throw(ArgumentError(
-            "the generator $G cannot provide the required Williamson order sum(α) = $α₀",
-        ))
+        _supports_liouville_order(G, α₀) || throw(ArgumentError("the generator $G cannot provide the required Williamson order sum(α) = $α₀"))
         all(isone, αtuple) && return ArchimedeanCopula{d}(G)
         return new{d,typeof(G),eltype(αtuple)}(G, αtuple)
     end
@@ -132,8 +127,7 @@ function _cdf(C::LiouvilleCopula{d}, u) where {d}
         return Distributions.ccdf(radial, threshold)
     end
 
-    value = HCubature.hcubature(integrand, zeros(T, d - 1), ones(T, d - 1);
-                                rtol=sqrt(eps(T)))[1]
+    value = HCubature.hcubature(integrand, zeros(T, d - 1), ones(T, d - 1); rtol=sqrt(eps(T)))[1]
     return clamp(value, zero(value), one(value))
 end
 
@@ -158,8 +152,7 @@ end
 # Radial representation of a fractional tilt. For X = R * D_α and fixed
 # X_J = x_J, the sum S of the remaining coordinates has density proportional
 # to f_R(S+s_J) * (S+s_J)^(1-α₀) * S^(α_I-1).
-struct LiouvilleConditionalRadial{TR,TS,TA0,TAI,TN} <:
-       Distributions.ContinuousUnivariateDistribution
+struct LiouvilleConditionalRadial{TR,TS,TA0,TAI,TN} <: Distributions.ContinuousUnivariateDistribution
     radial::TR
     shift::TS
     source_order::TA0
@@ -168,23 +161,13 @@ struct LiouvilleConditionalRadial{TR,TS,TA0,TAI,TN} <:
     integration_knots::Vector{TN}
     cumulative_masses::Vector{TN}
 
-    function LiouvilleConditionalRadial(
-        radial::TR, shift::TS, source_order::TA0, target_order::TAI,
-    ) where {TR,TS,TA0,TAI}
+    function LiouvilleConditionalRadial(radial::TR, shift::TS, source_order::TA0, target_order::TAI) where {TR,TS,TA0,TAI}
         upper = Base.maximum(radial) - shift
-        upper > 0 || throw(ArgumentError(
-            "the conditioning point is outside the radial support",
-        ))
+        upper > 0 || throw(ArgumentError("the conditioning point is outside the radial support"))
         T = typeof(float(shift + source_order + target_order))
-        transformed_kernel(t) = _liouville_conditional_transformed_kernel(
-            radial, shift, source_order, target_order, upper, t,
-        )
-        normalizer, _, segments = QuadGK.quadgk_segbuf(
-            transformed_kernel, zero(T), one(T); rtol=sqrt(eps(T)),
-        )
-        isfinite(normalizer) && normalizer > 0 || throw(ArgumentError(
-            "the conditioning event has zero or non-finite density",
-        ))
+        transformed_kernel(t) = _liouville_conditional_transformed_kernel(radial, shift, source_order, target_order, upper, t)
+        normalizer, _, segments = QuadGK.quadgk_segbuf(transformed_kernel, zero(T), one(T); rtol=sqrt(eps(T)))
+        isfinite(normalizer) && normalizer > 0 || throw(ArgumentError("the conditioning event has zero or non-finite density"))
         sort!(segments; by=segment -> segment.a)
         integration_knots = [first(segments).a; map(segment -> segment.b, segments)]
         cumulative_masses = [zero(normalizer); cumsum(map(segment -> segment.I, segments))]

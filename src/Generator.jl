@@ -139,9 +139,7 @@ end
 function 𝒲₋₁(G::Generator, d::Real)
     isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
     n = ceil(Int, d)
-    n <= max_monotony(G) || throw(ArgumentError(
-        "cannot invert a generator of maximal monotonicity $(max_monotony(G)) at order $d",
-    ))
+    n <= max_monotony(G) || throw(ArgumentError("cannot invert a generator of maximal monotonicity $(max_monotony(G)) at order $d"))
     isinteger(d) && return 𝒲₋₁(G, n)
     return WilliamsonBetaProduct(𝒲₋₁(G, n), Distributions.Beta(d, n - d), n)
 end
@@ -199,29 +197,20 @@ _williamson_beta_source_order(B::Distributions.Beta) = sum(Distributions.params(
 WilliamsonBetaProduct(X, B::Distributions.Beta) =
     WilliamsonBetaProduct(X, B, _williamson_beta_source_order(B))
 
-function WilliamsonBetaProduct(
-    X::WilliamsonFromFrailty, B::Distributions.Beta, source_order::Real,
-)
+function WilliamsonBetaProduct(X::WilliamsonFromFrailty, B::Distributions.Beta, source_order::Real)
     target_order = first(Distributions.params(B))
-    source_order == X.order ||
-        return WilliamsonBetaProduct{typeof(X),typeof(B),typeof(source_order)}(
-            X, B, source_order,
-        )
+    source_order == X.order || return WilliamsonBetaProduct{typeof(X),typeof(B),typeof(source_order)}(X, B, source_order)
     return WilliamsonFromFrailty(X.frailty_dist, target_order)
 end
 
-function WilliamsonBetaProduct(
-    X::WilliamsonBetaProduct, B::Distributions.Beta, source_order::Real,
-)
+function WilliamsonBetaProduct(X::WilliamsonBetaProduct, B::Distributions.Beta, source_order::Real)
     inner_target = first(Distributions.params(X.B))
     outer_target = first(Distributions.params(B))
     if source_order == inner_target
         merged_beta = Distributions.Beta(outer_target, X.source_order - outer_target)
         return WilliamsonBetaProduct(X.X, merged_beta, X.source_order)
     end
-    return WilliamsonBetaProduct{typeof(X),typeof(B),typeof(source_order)}(
-        X, B, source_order,
-    )
+    return WilliamsonBetaProduct{typeof(X),typeof(B),typeof(source_order)}(X, B, source_order)
 end
 
 function Distributions.cdf(dist::WilliamsonBetaProduct, x::Real)
@@ -440,9 +429,7 @@ end
 function _williamson_inverse_preserved(G::𝒲, d::Real)
     isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))
     d == G.order && return G.X
-    d < G.order && return WilliamsonBetaProduct(
-        G.X, Distributions.Beta(d, G.order - d), G.order,
-    )
+    d < G.order && return WilliamsonBetaProduct(G.X, Distributions.Beta(d, G.order - d), G.order)
     throw(ArgumentError("cannot invert a Williamson transform above its source order $(G.order)"))
 end
 𝒲₋₁(G::𝒲, d::Integer) = _williamson_inverse_preserved(G, d)
