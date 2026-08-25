@@ -103,13 +103,11 @@ end
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D}, d) =
     d == 2 ? (:mle,) : ()
 
-function _unbound_params(::Type{<:AsymGalambosTail}, d, θ)
-    d == 2 || throw(ArgumentError("generic fitting is not implemented for multivariate asymmetric Galambos tails"))
+function _unbound_params(::Type{<:AsymGalambosTail}, _, θ)
     return [log(θ.α), LogExpFunctions.logit(θ.θ₁), LogExpFunctions.logit(θ.θ₂)]
 end
 
-function _rebound_params(::Type{<:AsymGalambosTail}, d, α)
-    d == 2 || throw(ArgumentError("generic fitting is not implemented for multivariate asymmetric Galambos tails"))
+function _rebound_params(::Type{<:AsymGalambosTail}, _, α)
     return (; α=exp(α[1]), θ₁=LogExpFunctions.logistic(α[2]), θ₂=LogExpFunctions.logistic(α[3]))
 end
 
