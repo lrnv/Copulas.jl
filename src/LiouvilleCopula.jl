@@ -59,10 +59,8 @@ Distributions.params(C::LiouvilleCopula) = (; G = C.G, α = C.α)
 _liouville_order(C::LiouvilleCopula) = sum(C.α)
 _liouville_radial(C::LiouvilleCopula) = 𝒲₋₁(C.G, _liouville_order(C))
 _liouville_margin(C::LiouvilleCopula, i::Integer) = 𝒲₋₁(C.G, C.α[i])
-_liouville_evaluation_distribution(G::Generator, order::Real) = 𝒲₋₁(G, order)
-_liouville_evaluation_distribution(G::𝒲, order::Real) = 𝒲₋₁(G, order)
 function _liouville_coordinates(C::LiouvilleCopula{d}, u) where {d}
-    margins = ntuple(i -> _liouville_evaluation_distribution(C.G, C.α[i]), d)
+    margins = ntuple(i -> 𝒲₋₁(C.G, C.α[i]), d)
     x = ntuple(i -> Distributions.quantile(margins[i], 1 - u[i]), d)
     return margins, x
 end
@@ -92,7 +90,7 @@ function _cdf(C::LiouvilleCopula{2}, u)
     isone(u[1]) && return u[2]
     isone(u[2]) && return u[1]
     _, x = _liouville_coordinates(C, u)
-    radial = _liouville_evaluation_distribution(C.G, _liouville_order(C))
+    radial = 𝒲₋₁(C.G, _liouville_order(C))
     beta = Distributions.Beta(C.α...)
     xsum = sum(x)
 
@@ -109,7 +107,7 @@ function _cdf(C::LiouvilleCopula{d}, u) where {d}
     # TODO: When all Dirichlet parameters are integers, replace this cubature
     # with the corresponding exact finite-sum expression.
     _, x = _liouville_coordinates(C, u)
-    radial = _liouville_evaluation_distribution(C.G, _liouville_order(C))
+    radial = 𝒲₋₁(C.G, _liouville_order(C))
     betas = ntuple(i -> Distributions.Beta(C.α[i], sum(C.α[(i + 1):d])), d - 1)
     T = float(promote_type(eltype(u), eltype(C.α)))
 
@@ -134,7 +132,7 @@ end
 function Distributions._logpdf(C::LiouvilleCopula{d}, u) where {d}
     all(x -> 0 < x < 1, u) || return eltype(u)(-Inf)
 
-    radial = _liouville_evaluation_distribution(C.G, _liouville_order(C))
+    radial = 𝒲₋₁(C.G, _liouville_order(C))
     margins, x = _liouville_coordinates(C, u)
     r = sum(x)
     α₀ = _liouville_order(C)
@@ -296,7 +294,7 @@ function _liouville_conditional_components(
     source_order = _liouville_order(C)
     target_order = sum(C.α[i] for i in is)
     tilted_order = sum(C.α[j] for j in js)
-    original_margins = ntuple(i -> _liouville_evaluation_distribution(C.G, C.α[i]), D)
+    original_margins = ntuple(i -> 𝒲₋₁(C.G, C.α[i]), D)
     xⱼₛ = ntuple(k -> Distributions.quantile(original_margins[js[k]], 1 - uⱼₛ[k]), p)
     shift = sum(xⱼₛ)
 
@@ -308,7 +306,7 @@ function _liouville_conditional_components(
     elseif isinteger(tilted_order)
         TiltedGenerator(C.G, Int(tilted_order), shift)
     else
-        source_radial = _liouville_evaluation_distribution(C.G, source_order)
+        source_radial = 𝒲₋₁(C.G, source_order)
         conditional_radial = LiouvilleConditionalRadial(
             source_radial, shift, source_order, target_order,
         )
@@ -316,7 +314,7 @@ function _liouville_conditional_components(
     end
 
     conditional_margins = ntuple(
-        k -> _liouville_evaluation_distribution(conditional_generator, C.α[is[k]]),
+        k -> 𝒲₋₁(conditional_generator, C.α[is[k]]),
         length(is),
     )
     distortions = ntuple(

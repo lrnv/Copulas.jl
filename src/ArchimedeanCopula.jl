@@ -171,12 +171,6 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
     return U
 end
 
-function _inverse_archimedean_step(G::Generator, k::Int, target, start)
-    radial = ϕ⁽ᵏ⁾⁻¹(G, k, target; start_at=start)
-    increment = max(zero(radial), radial - start)
-    return ϕ(G, increment), radial
-end
-
 function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     @assert d == size(u, 1)
     U = zero(u)
@@ -190,7 +184,9 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
                 U[j,i] = zero(Cᵢⱼ)
             else
                 Dᵢⱼ = ϕ⁽ᵏ⁾(C.G, j - 1, Cᵢⱼ) * u[j,i]
-                U[j, i], Cᵢⱼ = _inverse_archimedean_step(C.G, j - 1, Dᵢⱼ, Cᵢⱼ,)
+                R = ϕ⁽ᵏ⁾⁻¹(C.G, j - 1, Dᵢⱼ; start_at=Cᵢⱼ)
+                U[j, i] = ϕ(C.G, max(zero(R), R - Cᵢⱼ))
+                Cᵢⱼ = R
             end
         end
     end
