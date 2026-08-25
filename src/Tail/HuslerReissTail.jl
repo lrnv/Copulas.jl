@@ -112,11 +112,8 @@ HuslerReissCopula(Γ::AbstractMatrix) =
 _unbound_params(::Type{<:HuslerReissTail{<:Real}}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissTail{<:Real}}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:HuslerReissTail{<:Real}}, d) = (0.0, Inf)
-# The unparameterized public family denotes the scalar exchangeable model
-# during fitting; matrix-valued concrete types are excluded below.
-_unbound_params(::Type{HuslerReissTail}, d, θ) = [log(θ.θ)]
-_rebound_params(::Type{HuslerReissTail}, d, α) = (; θ = exp(α[1]))
-_θ_bounds(::Type{HuslerReissTail}, d) = (0.0, Inf)
+_example(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, d) =
+    HuslerReissCopula{d}(0.01)
 _available_fitting_methods(
     ::Type{<:ExtremeValueCopula{D,<:HuslerReissTail{<:AbstractMatrix}} where D},
     d,
@@ -133,12 +130,6 @@ function A(tail::HuslerReissTail, t::Real)
     term2 = (1-tt) * Φ(N, inv(θ) + 0.5*θ*log((1-tt)/tt))
     return term1 + term2
 end
-function _hr_mvnormcdf(R, upper)
-    q = length(upper)
-    q == 1 && return Distributions.cdf(Distributions.Normal(), upper[1])
-    return MvNormalCDF.mvnormcdf(R, fill(-Inf, q), upper; rng=Random.Xoshiro(0))[1]
-end
-
 function _hr_stdf(Γ::AbstractMatrix, x)
     d = length(x)
     any(isinf, x) && return Inf
@@ -179,7 +170,15 @@ function _hr_stdf(Γ::AbstractMatrix, x)
             end
         end
 
-        out += yi * _hr_mvnormcdf(R, upper)
+        probability = q == 1 ?
+            Distributions.cdf(Distributions.Normal(), upper[1]) :
+            MvNormalCDF.mvnormcdf(
+                R,
+                fill(-Inf, q),
+                upper;
+                rng=Random.Xoshiro(0),
+            )[1]
+        out += yi * probability
     end
     return Float64(scale) * out
 end
@@ -228,29 +227,8 @@ function _hr_anchor_covariance(Γ::AbstractMatrix, k::Int)
     return J, Σ
 end
 
-function _hr_logpdf_zero_normal(Σ::AbstractMatrix, x)
-    q = length(x)
-    q == 0 && return 0.0
-    if q == 1
-        return Distributions.logpdf(Distributions.Normal(0.0, sqrt(Σ[1, 1])), x[1])
-    end
-    return Distributions.logpdf(
-        Distributions.MvNormal(zeros(q), LinearAlgebra.Symmetric(Σ)),
-        x,
-    )
-end
-
-function _hr_logcdf_normal(μ, Σ::AbstractMatrix, upper)
-    q = length(upper)
-    q == 0 && return 0.0
-    if q == 1
-        return Distributions.logcdf(Distributions.Normal(μ[1], sqrt(Σ[1, 1])), upper[1],)
-    end
-    p = MvNormalCDF.mvnormcdf(μ, Matrix(Σ), fill(-Inf, q), upper; rng=Random.Xoshiro(0),)[1]
-    return iszero(p) ? -Inf : log(p)
-end
-
-function _hr_ellpartial_signlog(Γ::AbstractMatrix, x, I::Tuple{Vararg{Int}})
+function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
+    Γ = _hr_variogram(tail, length(x))
     isempty(I) && return 1, log(_hr_stdf(Γ, x))
     all(xi -> xi > 0, x) || return 0, -Inf
 
@@ -272,7 +250,16 @@ function _hr_ellpartial_signlog(Γ::AbstractMatrix, x, I::Tuple{Vararg{Int}})
     if !isempty(apos)
         tA = t[apos]
         ΣAA = Σ[apos, apos]
-        logϕ = _hr_logpdf_zero_normal(ΣAA, tA)
+        q = length(tA)
+        logϕ = q == 1 ?
+            Distributions.logpdf(
+                Distributions.Normal(0.0, sqrt(ΣAA[1, 1])),
+                tA[1],
+            ) :
+            Distributions.logpdf(
+                Distributions.MvNormal(zeros(q), LinearAlgebra.Symmetric(ΣAA)),
+                tA,
+            )
     end
 
     logΦ = 0.0
@@ -289,7 +276,22 @@ function _hr_ellpartial_signlog(Γ::AbstractMatrix, x, I::Tuple{Vararg{Int}})
             Σcond = Σ[cpos, cpos] - ΣCA * (F \ ΣAC)
             Σcond = Matrix(LinearAlgebra.Symmetric(Σcond))
         end
-        logΦ = _hr_logcdf_normal(μC, Σcond, tC)
+        q = length(tC)
+        if q == 1
+            logΦ = Distributions.logcdf(
+                Distributions.Normal(μC[1], sqrt(Σcond[1, 1])),
+                tC[1],
+            )
+        else
+            p = MvNormalCDF.mvnormcdf(
+                μC,
+                Matrix(Σcond),
+                fill(-Inf, q),
+                tC;
+                rng=Random.Xoshiro(0),
+            )[1]
+            logΦ = iszero(p) ? -Inf : log(p)
+        end
     end
 
     logjac = isempty(A) ? 0.0 : sum(log(Float64(x[i])) for i in A)
@@ -297,15 +299,8 @@ function _hr_ellpartial_signlog(Γ::AbstractMatrix, x, I::Tuple{Vararg{Int}})
     return isodd(length(I)) ? 1 : -1, logabs
 end
 
-function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
-    d = length(x)
-    Γ = _hr_variogram(tail, d)
-    return _hr_ellpartial_signlog(Γ, x, Tuple(I))
-end
-
-
-function _hr_rand_multivariate!(rng::Distributions.AbstractRNG, Γ::AbstractMatrix, X::AbstractMatrix{T},) where {T<:Real}
-    d, n = size(X)
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    Γ = _hr_variogram(C.tail, d)
 
     roots = Vector{Vector{Int}}(undef, d)
     means = Vector{Vector{Float64}}(undef, d)
@@ -361,10 +356,6 @@ function _hr_rand_multivariate!(rng::Distributions.AbstractRNG, Γ::AbstractMatr
     end
 
     return X
-end
-
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    return _hr_rand_multivariate!(rng, _hr_variogram(C.tail, d), X)
 end
 
 ℓ(tail::HuslerReissTail{<:AbstractMatrix}, x) = _hr_stdf(tail.parameter, x)

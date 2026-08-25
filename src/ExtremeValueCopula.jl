@@ -208,27 +208,31 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     return C, (; pseudo_values, method=m, degree=C.tail.degree, projection_rmse=C.tail.projection_rmse)
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
+    TT = tailof(typeof(_example(CT, 2)))
     θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) :
         m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) :
                            β⁻¹(CT,  corblomqvist(U')[1,2])
-    lo, hi = _θ_bounds(tailof(CT), 2)
+    lo, hi = _θ_bounds(TT, 2)
     # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
     θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
-    return ExtremeValueCopula{2}(tailof(CT)(θ)), (; θ̂=(θ=θ,))
+    return ExtremeValueCopula{2}(TT(θ)), (; θ̂=(θ=θ,))
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
-    θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(tailof(CT), 2)...)
-    return ExtremeValueCopula{2}(tailof(CT)(θ)), (; θ̂=(θ=θ,))
+    TT = tailof(typeof(_example(CT, 2)))
+    θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(TT, 2)...)
+    return ExtremeValueCopula{2}(TT(θ)), (; θ̂=(θ=θ,))
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
     d = size(U,1)
-    TT = tailof(CT)
+    example = _example(CT, d)
+    ConcreteCT = typeof(example)
+    TT = tailof(ConcreteCT)
     lo, hi = _θ_bounds(TT, d)
     θ0_val = if start isa Real
         start
     else
-        initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : only(Distributions.params(_example(CT, d)))
+        initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : only(Distributions.params(example))
         initial_params.θ
     end
     # Keep the starting value strictly inside every finite boundary before
@@ -241,16 +245,16 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     hi_start = isfinite(hiT) ? hiT - inward(hiT) : Tθ(1e16)
     θ0_clamped = clamp(Tθ(θ0_val), lo_start, hi_start)
     θ0 = (; θ=θ0_clamped)
-    α0 = _unbound_params(CT, d, θ0)
+    α0 = _unbound_params(ConcreteCT, d, θ0)
     all(isfinite, α0) || throw(ArgumentError("MLE start must map to finite unbounded parameters"))
-    cop(α) = ExtremeValueCopula{d}(TT(_rebound_params(CT, d, α)...))
+    cop(α) = ExtremeValueCopula{d}(TT(_rebound_params(ConcreteCT, d, α)...))
     f(α) = -Distributions.loglikelihood(cop(α), U)
     res = try
         Optim.optimize(f, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     catch
         Optim.optimize(f, α0, Optim.NelderMead())
     end
-    θ̂ = _rebound_params(CT, d, Optim.minimizer(res))
+    θ̂ = _rebound_params(ConcreteCT, d, Optim.minimizer(res))
     return ExtremeValueCopula{d}(TT(θ̂...)), (; θ̂=θ̂, optimizer=Optim.summary(res),
                         xtol=xtol, converged=Optim.converged(res),
                         iterations=Optim.iterations(res))
