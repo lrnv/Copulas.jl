@@ -1,4 +1,4 @@
-# Three small utility functions. 
+# Three small utility functions.
 
 @inline _δ(t::AbstractFloat) = eps(one(t))
 @inline _δ(t::ForwardDiff.Dual) = oftype(t, eps(one(ForwardDiff.value(t))))
@@ -114,7 +114,7 @@ end
 """
     taylor(f::F, x₀, d::Int) where {F}
 
-Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back the derivatives as a vector of length d+1. (first value is f(x₀)). 
+Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back the derivatives as a vector of length d+1. (first value is f(x₀)).
 
 # Arguments
 - `f`: A function to be expanded.
@@ -124,10 +124,10 @@ Compute the Taylor series expansion of the function `f` around the point `x₀` 
 # Returns
 A tuple with value ``(f(x₀), f'(x₀),...,f^{(d)}(x₀))``.
 """
-function taylor(f::F, x₀, d::Int) where {F} 
+function taylor(f::F, x₀, d::Int) where {F}
     rez = f(x₀ + TaylorSeries.Taylor1(eltype(x₀), d)).coeffs
     p = length(rez)
-    # The length of rez is no longer always equal to d+1 since updates in TaylorSeries.jl, so we enforce it: 
+    # The length of rez is no longer always equal to d+1 since updates in TaylorSeries.jl, so we enforce it:
     p == d+1 && return rez
     if p < d+1
         v = zeros(d+1)
@@ -191,12 +191,12 @@ function pseudos(sample::AbstractMatrix)
     return U
 end
 
-# Pairwise component metrics applied to (n,d)-shaped matrices: 
+# Pairwise component metrics applied to (n,d)-shaped matrices:
 function corblomqvist(X::AbstractMatrix{<:Real})
-    # We expect the number of dimension to be the second axes here, 
-    # contrary to the whole package but to be coherent with 
-    # StatsBase.corspearman and StatsBase.corkendall. 
-    n = size(X, 2) 
+    # We expect the number of dimension to be the second axes here,
+    # contrary to the whole package but to be coherent with
+    # StatsBase.corspearman and StatsBase.corkendall.
+    n = size(X, 2)
     C = Matrix{Float64}(LinearAlgebra.I, n, n)
     anynan = Vector{Bool}(undef, n)
     m = size(X, 1)
@@ -228,9 +228,9 @@ function corblomqvist(X::AbstractMatrix{<:Real})
     return C
 end
 function corgini(X::AbstractMatrix{<:Real})
-    # We expect the number of dimension to be the second axes here, 
-    # contrary to the whole package but to be coherent with 
-    # StatsBase.corspearman and StatsBase.corkendall. 
+    # We expect the number of dimension to be the second axes here,
+    # contrary to the whole package but to be coherent with
+    # StatsBase.corspearman and StatsBase.corkendall.
     m, n = size(X)
     C = Matrix{Float64}(LinearAlgebra.I, n, n)
     anynan = Vector{Bool}(undef, n)
@@ -265,9 +265,9 @@ function corgini(X::AbstractMatrix{<:Real})
     return C
 end
 function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::Int=32)
-    # We expect the number of dimension to be the second axes here, 
-    # contrary to the whole package but to be coherent with 
-    # StatsBase.corspearman and StatsBase.corkendall. 
+    # We expect the number of dimension to be the second axes here,
+    # contrary to the whole package but to be coherent with
+    # StatsBase.corspearman and StatsBase.corkendall.
     m, n = size(X)
     Cnan = Vector{Bool}(undef, n)
     for j in 1:n
@@ -300,9 +300,9 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
     return H
 end
 function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtmueller, p = nothing)
-    # We expect the number of dimension to be the second axes here, 
-    # contrary to the whole package but to be coherent with 
-    # StatsBase.corspearman and StatsBase.corkendall. 
+    # We expect the number of dimension to be the second axes here,
+    # contrary to the whole package but to be coherent with
+    # StatsBase.corspearman and StatsBase.corkendall.
     m, n = size(X)
     n ≥ 2 || throw(ArgumentError("≥ 2 variables (columns) are required."))
     (t === :lower || t === :upper) || throw(ArgumentError("t ∈ {:lower,:upper}"))

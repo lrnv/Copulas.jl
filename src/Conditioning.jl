@@ -3,12 +3,12 @@
 #####  Conditioning framework.
 #####  User-facing function: `condition(), rosenblatt(), inverse_rosenblatt()`
 #####
-#####  When implementing new models, you can overwrite: 
+#####  When implementing new models, you can overwrite:
 #####   - `DistortionFromCop(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {d, p}`
 #####   - `ConditionalCopula(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}) where {d, p}`
 ###############################################################################
 
-# A few utilities : 
+# A few utilities :
 function _assemble(D, is, js, uᵢₛ, uⱼₛ)
     Tᵢ = eltype(typeof(uᵢₛ)); Tⱼ = eltype(typeof(uⱼₛ)); T = promote_type(Tᵢ, Tⱼ)
     w = fill(one(T), D)
@@ -18,8 +18,8 @@ function _assemble(D, is, js, uᵢₛ, uⱼₛ)
 end
 _partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _mixed_partial(u -> Distributions.cdf(C, u),_assemble(length(C), is, js, uᵢₛ, uⱼₛ), js,)
 
-_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs) 
-_process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,)) 
+_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs)
+_process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,))
 function _process_tuples(::Val{D}, js, ujs) where D
     p, p2 = length(js), length(ujs)
     @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
@@ -48,7 +48,7 @@ abstract type Distortion<:Distributions.ContinuousUnivariateDistribution end
 (D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X)
 Distributions.minimum(::Distortion) = 0.0
 Distributions.maximum(::Distortion) = 1.0
-function Distributions.quantile(d::Distortion, α::Real) 
+function Distributions.quantile(d::Distortion, α::Real)
     T = typeof(float(α))
     ϵ = eps(T)
     α < ϵ && return zero(T)
@@ -61,7 +61,7 @@ function Distributions.quantile(d::Distortion, α::Real)
     fhi <= zero(fhi) && return hi
     return Roots.find_zero(f, (lo, hi), Roots.Bisection(); xtol = sqrt(eps(T)))
 end
-# You have to implement a cdf, and you can implement a pdf, either in log scaleor not: 
+# You have to implement a cdf, and you can implement a pdf, either in log scaleor not:
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
 function Distributions.logpdf(d::Distortion, u::Real)
@@ -306,7 +306,7 @@ function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::
 end
 
 ###########################################################################
-#####  Methods for conditioning subsetcopulas. 
+#####  Methods for conditioning subsetcopulas.
 ###########################################################################
 
 
@@ -371,7 +371,7 @@ end
 """
     inverse_rosenblatt(C::Copula, u)
 
-Computes the inverse rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ Π, the independence copula, the result should be distributed as C. Also look at `rosenblatt(C, u)` for the inverse transformation. The interface proposes faster versions for matrix inputs `u`. 
+Computes the inverse rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ Π, the independence copula, the result should be distributed as C. Also look at `rosenblatt(C, u)` for the inverse transformation. The interface proposes faster versions for matrix inputs `u`.
 
 Generic inverse Rosenblatt using conditional distortions:
 U₁ = S₁, U_k = H_{k|1:(k-1)}^{-1}(S_k | U₁:U_{k-1}).
