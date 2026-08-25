@@ -109,7 +109,6 @@ end
 
 function _mixed_rand_multivariate!(rng::Distributions.AbstractRNG, tail::MixedTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
-    d >= 2 || throw(DimensionMismatch("MixedTail requires at least two output rows",))
 
     θ = Float64(tail.θ)
     Z = zeros(Float64, d, n)

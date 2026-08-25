@@ -99,8 +99,6 @@ function _tawn_component_stdf(α, βcol, C, x)
 end
 
 function ℓ(tail::TawnTail, x)
-    length(x) == tail.d || throw(DimensionMismatch("input dimension does not match Tawn tail dimension",))
-
     subsets = _nonempty_subsets(tail.d)
     T = promote_type(eltype(x), eltype(tail.α), eltype(tail.β))
     out = zero(T)

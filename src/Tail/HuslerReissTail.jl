@@ -163,7 +163,6 @@ end
 
 function _hr_stdf(Γ::AbstractMatrix, x)
     d = length(x)
-    size(Γ) == (d, d) || throw(DimensionMismatch("Γ must be a $d×$d variogram matrix"))
     any(isinf, x) && return Inf
 
     # Remove zero coordinates before numerical Gaussian integration so that
@@ -333,7 +332,6 @@ end
 
 function _hr_rand_multivariate!(rng::Distributions.AbstractRNG, Γ::AbstractMatrix, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
-    size(Γ) == (d, d) || throw(DimensionMismatch("Γ must be a $d×$d variogram matrix"))
 
     roots = Vector{Vector{Int}}(undef, d)
     means = Vector{Vector{Float64}}(undef, d)

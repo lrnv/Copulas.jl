@@ -65,8 +65,6 @@ DiscreteSpectralCopula(tail::DiscreteSpectralTail) =
 
 function ℓ(tail::DiscreteSpectralTail, x)
     d, m = size(tail.B)
-    length(x) == d || throw(DimensionMismatch("input dimension does not match discrete spectral tail dimension",))
-
     T = promote_type(eltype(tail.B), typeof(first(x)))
     out = zero(T)
 

@@ -121,7 +121,6 @@ end
 
 function _tev_stdf(ν::Real, R::AbstractMatrix, x)
     d = length(x)
-    size(R) == (d, d) || throw(DimensionMismatch("correlation matrix must be $d×$d",))
 
     active = findall(xi -> xi > 0, x)
     isempty(active) && return 0.0
@@ -293,7 +292,6 @@ end
 
 function _tev_rand_multivariate!(rng::Distributions.AbstractRNG, ν::Real, R::AbstractMatrix, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
-    size(R) == (d, d) || throw(DimensionMismatch("correlation matrix must be $d×$d",))
 
     cache = _tev_spectral_cache(R)
     logq = Vector{Float64}(undef, d)
