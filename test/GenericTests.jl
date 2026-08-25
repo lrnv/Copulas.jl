@@ -928,6 +928,32 @@ end
     end
 end
 
+function _test_ev_sample(
+    C,
+    seed,
+    n;
+    marginal_atol,
+    point=nothing,
+    cdf_atol=0.04,
+)
+    d = length(C)
+    U = rand(StableRNG(seed), C, n)
+
+    @test size(U) == (d, n)
+    @test all(isfinite, U)
+    @test all(u -> 0 < u < 1, U)
+    @test all(abs(mean(@view U[i, :]) - 0.5) < marginal_atol for i in 1:d)
+
+    if !isnothing(point)
+        reference = cdf(C, point)
+        empirical = mean(vec(all(U .<= point, dims=1)))
+        se = sqrt(max(reference * (1 - reference), 1e-12) / n)
+        @test abs(empirical - reference) < max(cdf_atol, 6 * se)
+    end
+
+    return U
+end
+
 @testset "Extreme-value numerical regressions" begin
     @testset "ExtremeDist support and typed safeguards" begin
         E = Copulas.ExtremeDist(Copulas.LogTail(2.0))
@@ -1118,22 +1144,13 @@ end
 
         for (d, θ, seed) in cases
             C = Copulas.ExtremeValueCopula(d, Copulas.GalambosTail(θ))
-            U = rand(StableRNG(seed), C, n)
-            @test size(U) == (d, n)
-            @test all(isfinite, U)
-            @test all(u -> 0 < u < 1, U)
-
-            # Every copula margin is Uniform(0,1).
-            for i in 1:d
-                @test abs(sum(@view(U[i, :])) / n - 0.5) < 0.02
-            end
-
-            # Full-dimensional empirical CDF against the exact CDF.
             u = collect(range(0.34, 0.82; length=d))
-            empirical = count(j -> all(i -> U[i, j] <= u[i], 1:d), 1:n) / n
-            reference = cdf(C, u)
-            mc_tol = max(0.025, 6sqrt(reference * (1 - reference) / n))
-            @test abs(empirical - reference) < mc_tol
+            U = _test_ev_sample(
+                C, seed, n;
+                marginal_atol=0.02,
+                point=u,
+                cdf_atol=0.025,
+            )
 
             # Every pairwise margin recovers the historical bivariate Galambos.
             B = Copulas.ExtremeValueCopula(2, Copulas.GalambosTail(θ))
@@ -1181,18 +1198,8 @@ end
         for (d, θ, seed) in cases
             tail = Copulas.HuslerReissTail(θ)
             C = Copulas.ExtremeValueCopula(d, tail)
-            U = rand(StableRNG(seed), C, n)
-
-            @test size(U) == (d, n)
-            @test all(isfinite, U)
-            @test all(u -> 0.0 < u < 1.0, U)
-            @test all(abs(mean(@view U[i, :]) - 0.5) < 0.025 for i in 1:d)
-
             u = collect(range(0.34, 0.78; length=d))
-            prob = cdf(C, u)
-            phat = mean(vec(all(U .<= u, dims=1)))
-            se = sqrt(max(prob * (1 - prob), 1e-12) / n)
-            @test abs(phat - prob) < max(0.03, 6 * se)
+            _test_ev_sample(C, seed, n; marginal_atol=0.025, point=u, cdf_atol=0.03)
 
             @test isfinite(logpdf(C, collect(range(0.29, 0.83; length=d))))
         end
@@ -1230,7 +1237,7 @@ end
         @test logpdf(Cp, u[pidx]) ≈ logpdf(C, u) atol=5e-3 rtol=5e-3
 
         n = 6_000
-        U = rand(StableRNG(3710), C, n)
+        U = _test_ev_sample(C, 3710, n; marginal_atol=0.025)
         q = (0.42, 0.74)
 
         for i in 1:3, j in i+1:4
@@ -1275,16 +1282,7 @@ end
             @test 0.0 < cdf(C, u) < 1.0
             @test isfinite(logpdf(C, u))
 
-            U = rand(StableRNG(seed), C, 4_000)
-            @test size(U) == (d, 4_000)
-            @test all(isfinite, U)
-            @test all(v -> 0.0 < v < 1.0, U)
-            @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:d)
-
-            target = cdf(C, u)
-            empirical = mean(vec(all(U .<= u, dims=1)))
-            se = sqrt(max(target * (1 - target), 1e-12) / size(U, 2))
-            @test abs(empirical - target) < max(0.04, 6 * se)
+            _test_ev_sample(C, seed, 4_000; marginal_atol=0.03, point=u)
         end
 
         @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.7), 3)
@@ -1309,10 +1307,7 @@ end
         @test 0.0 < cdf(C, u) < 1.0
         @test isfinite(logpdf(C, u))
 
-        U = rand(StableRNG(4710), C, 6_000)
-        @test size(U) == (3, 6_000)
-        @test all(isfinite, U)
-        @test all(v -> 0.0 < v < 1.0, U)
+        U = _test_ev_sample(C, 4710, 6_000; marginal_atol=0.03)
 
         q = [0.41, 0.75]
         for i in 1:2, j in (i + 1):3
@@ -1405,11 +1400,7 @@ end
             @test logpdf(Ctawn, u) ≈ logpdf(Cold, u) atol=3e-11 rtol=3e-11
         end
 
-        U = rand(StableRNG(4801), Ctawn, 4_000)
-        @test size(U) == (2, 4_000)
-        @test all(isfinite, U)
-        @test all(v -> 0.0 < v < 1.0, U)
-        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:2)
+        _test_ev_sample(Ctawn, 4801, 4_000; marginal_atol=0.03)
     end
 
     @testset "symmetric logistic reduction" begin
@@ -1464,16 +1455,7 @@ end
         u = [0.34, 0.57, 0.81]
         @test logpdf(C, u) ≈ -0.2449881198991001 atol=3e-12 rtol=3e-12
 
-        U = rand(StableRNG(4802), C, 6_000)
-        @test size(U) == (3, 6_000)
-        @test all(isfinite, U)
-        @test all(v -> 0.0 < v < 1.0, U)
-        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:3)
-
-        target = cdf(C, u)
-        empirical = mean(vec(all(U .<= u, dims=1)))
-        se = sqrt(max(target * (1 - target), 1e-12) / size(U, 2))
-        @test abs(empirical - target) < max(0.04, 6 * se)
+        _test_ev_sample(C, 4802, 6_000; marginal_atol=0.03, point=u)
     end
 
     @testset "constructor validation" begin
@@ -1525,11 +1507,7 @@ end
             @test logpdf(Cnew, u) ≈ logpdf(Cold, u) atol=3e-9 rtol=3e-9
         end
 
-        U = rand(StableRNG(4901), Cnew, 4_000)
-        @test size(U) == (2, 4_000)
-        @test all(isfinite, U)
-        @test all(v -> 0.0 < v < 1.0, U)
-        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:2)
+        _test_ev_sample(Cnew, 4901, 4_000; marginal_atol=0.03)
     end
 
     @testset "symmetric Galambos reduction" begin
@@ -1588,16 +1566,7 @@ end
         u = [0.34, 0.57, 0.81]
         @test logpdf(C, u) ≈ -0.3221640487545458 atol=3e-10 rtol=3e-10
 
-        U = rand(StableRNG(4902), C, 6_000)
-        @test size(U) == (3, 6_000)
-        @test all(isfinite, U)
-        @test all(v -> 0.0 < v < 1.0, U)
-        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:3)
-
-        target = cdf(C, u)
-        empirical = mean(vec(all(U .<= u, dims=1)))
-        se = sqrt(max(target * (1 - target), 1e-12) / size(U, 2))
-        @test abs(empirical - target) < max(0.04, 6 * se)
+        _test_ev_sample(C, 4902, 6_000; marginal_atol=0.03, point=u)
     end
 
     @testset "constructor validation" begin
@@ -1696,16 +1665,7 @@ end
 
         @test logpdf(C, u) ≈ -0.118043090304781 atol=3e-12 rtol=3e-12
 
-        U = rand(StableRNG(5001), C, 6_000)
-        @test size(U) == (3, 6_000)
-        @test all(isfinite, U)
-        @test all(v -> 0.0 < v < 1.0, U)
-        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.03 for i in 1:3)
-
-        target = cdf(C, u)
-        empirical = mean(vec(all(U .<= u, dims=1)))
-        se = sqrt(max(target * (1 - target), 1e-12) / size(U, 2))
-        @test abs(empirical - target) < max(0.04, 6 * se)
+        _test_ev_sample(C, 5001, 6_000; marginal_atol=0.03, point=u)
     end
 end
 
@@ -1814,11 +1774,7 @@ end
         for k in axes(B, 2)
     )) atol=3e-14 rtol=3e-14
 
-    U = rand(StableRNG(5101), C, 5_000)
-    @test size(U) == (3, 5_000)
-    @test all(isfinite, U)
-    @test all(v -> 0 < v < 1, U)
-    @test all(abs(mean(@view U[i, :]) - 0.5) < 0.035 for i in 1:3)
+    _test_ev_sample(C, 5101, 5_000; marginal_atol=0.035)
 
     @test_throws ArgumentError Copulas.DiscreteSpectralTail([
         0.4 0.4
@@ -1859,8 +1815,7 @@ end
         @test cdf(Cnew, u) ≈ cdf(Cold, u) atol=4e-14 rtol=4e-14
     end
 
-    U = rand(StableRNG(5102), C, 5_000)
-    @test all(abs(mean(@view U[i, :]) - 0.5) < 0.035 for i in 1:d)
+    _test_ev_sample(C, 5102, 5_000; marginal_atol=0.035)
 
     @test_throws DimensionMismatch Copulas.MOMultivariateTail(3, λ[1:6])
     @test_throws ArgumentError Copulas.MOMultivariateTail(
@@ -1894,8 +1849,7 @@ end
         @test cdf(Cnew, u) ≈ cdf(Cold, u) atol=3e-14 rtol=3e-14
     end
 
-    U = rand(StableRNG(5103), C, 5_000)
-    @test all(abs(mean(@view U[i, :]) - 0.5) < 0.035 for i in 1:4)
+    _test_ev_sample(C, 5103, 5_000; marginal_atol=0.035)
 
     @test_throws ArgumentError Copulas.BC2MultivariateTail([0.2])
     @test_throws ArgumentError Copulas.BC2MultivariateTail([0.2, 1.1])
@@ -1917,8 +1871,7 @@ end
         @test cdf(C, u) ≈
               minimum(u)^θ * prod(u)^(1 - θ) atol=3e-14 rtol=3e-14
 
-        U = rand(StableRNG(seed), C, 5_000)
-        @test all(abs(mean(@view U[i, :]) - 0.5) < 0.035 for i in 1:d)
+        _test_ev_sample(C, seed, 5_000; marginal_atol=0.035)
     end
 
     for xx in ([0.37, 1.29], [1.11, 0.46])
@@ -1997,17 +1950,8 @@ end
 
         @test Cemp.tail isa Copulas.EmpiricalEVMultivariateTail
 
-        Usim = rand(StableRNG(5202), Cemp, 6_000)
-        @test size(Usim) == (3, 6_000)
-        @test all(isfinite, Usim)
-        @test all(v -> 0 < v < 1, Usim)
-        @test all(abs(mean(@view Usim[i, :]) - 0.5) < 0.035 for i in 1:3)
-
         u0 = [0.36, 0.58, 0.79]
-        target = cdf(Cemp, u0)
-        empirical = mean(vec(all(Usim .<= u0, dims=1)))
-        se = sqrt(max(target * (1 - target), 1e-12) / size(Usim, 2))
-        @test abs(empirical - target) < max(0.04, 6se)
+        _test_ev_sample(Cemp, 5202, 6_000; marginal_atol=0.035, point=u0)
 
         @test_throws ArgumentError logpdf(Cemp, u0)
     end
