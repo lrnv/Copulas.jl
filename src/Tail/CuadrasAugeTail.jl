@@ -89,7 +89,6 @@ function _cuadras_auge_spectral_tail(tail::CuadrasAugeTail, d::Int,)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:CuadrasAugeTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _discrete_spectral_rand!(rng, _cuadras_auge_spectral_tail(C.tail, d), X,)
 end
 _pickands_left_slope(tail::CuadrasAugeTail, prototype::Real) = -convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
@@ -100,7 +99,6 @@ dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 
 function Distributions._rand!(rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2, CuadrasAugeTail{T}},
     A::AbstractMatrix{S}) where {T,S<:Real}
-    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     θ = C.tail.θ
     E = rand(rng, Distributions.Exponential(θ/(1-θ)), 2, size(A, 2))
     E₁₂ = rand(rng, Distributions.Exponential(), size(A, 2))

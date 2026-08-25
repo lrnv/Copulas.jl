@@ -61,7 +61,6 @@ const tEVCopula{d,T} = ExtremeValueCopula{d, tEVTail{T}}
 Distributions.params(tail::tEVTail) = (ν = tail.ν, ρ = tail.ρ)
 _is_valid_in_dim(tail::tEVTail, d::Int) = d >= 2 && tail.ρ > -inv(d - 1)
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:tEVTail}, X::AbstractMatrix{T},) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate extremal-t copula",))
     return _tev_rand_multivariate!(rng, C.tail.ν, _tev_exchangeable_correlation(2, C.tail.ρ), X,)
 end
 _unbound_params(::Type{<:tEVTail}, d, θ) = [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
@@ -412,12 +411,10 @@ end
 _ellpartial_signlog(tail::tEVCorrelationTail, x, I::Tuple{Vararg{Int}}) = _tev_ellpartial_signlog(tail.ν, tail.R, x, Tuple(I))
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _tev_rand_multivariate!(rng, C.tail.ν, _tev_exchangeable_correlation(d, C.tail.ρ), X,)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVCorrelationTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _tev_rand_multivariate!(rng, C.tail.ν, C.tail.R, X)
 end
 

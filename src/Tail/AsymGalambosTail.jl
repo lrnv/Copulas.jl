@@ -224,8 +224,6 @@ function _ellpartial_signlog(tail::AsymGalambosTail, x, I::Tuple{Vararg{Int}})
 end
 
 function _asymgal_rand_multivariate!(rng::Distributions.AbstractRNG, tail::AsymGalambosTail, X::AbstractMatrix{T}) where {T<:Real}
-    d = size(X, 1)
-    d == tail.d || throw(DimensionMismatch("output dimension does not match asymmetric Galambos tail dimension"))
     return _rand_subset_components!(
         rng,
         X,
@@ -238,7 +236,6 @@ function _asymgal_rand_multivariate!(rng::Distributions.AbstractRNG, tail::AsymG
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:AsymGalambosTail}, X::AbstractMatrix{T}) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension"))
     return _asymgal_rand_multivariate!(rng, C.tail, X)
 end
 

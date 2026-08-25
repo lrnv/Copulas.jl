@@ -180,12 +180,10 @@ end
 # This also applies in d=2, where it is substantially faster than the generic
 # bivariate Ghoudi/Pickands sampler.
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:GalambosTail}, X::AbstractMatrix{T},) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate Galambos copula",))
     return _rand_galambos_spectral!(rng, C, X)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _rand_galambos_spectral!(rng, C, X)
 end
 

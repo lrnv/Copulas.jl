@@ -84,9 +84,12 @@ Once defined, these automatically integrate with the `Copulas.jl` and `Distribut
     The matrix `_rand!` method is the sampling primitive. The generic
     `Distributions.jl` machinery handles the one-sample/vector interface by
     delegating to the matrix sampler, so copula implementations should define
-    only the matrix method. When several sampling algorithms are available,
-    select among them with ordinary Julia dispatch on the copula/tail type
-    rather than with a separate routing trait.
+    only the matrix method. Before `_rand!` is called, the public interface
+    validates that the output has `length(C)` rows; implementations may assume
+    that the matrix has size `d × n` and should not repeat this check. When
+    several sampling algorithms are available, select among them with ordinary
+    Julia dispatch on the copula/tail type rather than with a separate routing
+    trait.
 
 
 ## 1.3 Dependence metrics
@@ -439,9 +442,9 @@ Ghoudi/Pickands sampler:
 ```julia
 function Distributions._rand!(
     rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:BivariatePickandsTail},
+    C::ExtremeValueCopula{d,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
-) where {T<:Real}
+) where {d,T<:Real}
     # Ghoudi/Pickands algorithm
 end
 ```
@@ -455,35 +458,15 @@ function Distributions._rand!(
     C::ExtremeValueCopula{d,<:MyTail},
     X::AbstractMatrix{T},
 ) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
     return _my_exact_rand!(rng, C.tail, X)
 end
 ```
 
-If the intersection should instead keep the generic sampler, delegate to that
-less-specific method with `invoke`.
-
-If `MyTail <: BivariatePickandsTail` and the family should use its exact sampler also in
-dimension two, the family-wide method intersects with the generic
-`ExtremeValueCopula{2,<:BivariatePickandsTail}` method. Resolve that intersection explicitly
-with a ``d=2`` specialization:
-
-```julia
-function Distributions._rand!(
-    rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{2,<:MyTail},
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    return _my_exact_rand!(rng, C.tail, X)
-end
-```
-
-This keeps algorithm selection in Julia's dispatch system rather than encoding
-the same information in a parallel trait hierarchy. Logistic retains its
-native bivariate Ghoudi/Pickands route, while Galambos, Hüsler-Reiss, Mixed,
-and extremal-``t`` use their exact family samplers in dimension two.
+Because the fallback leaves `d` generic, a method on a concrete `MyTail` is
+naturally more specific and needs no intersection-resolving specialization.
+This keeps algorithm selection entirely in Julia's dispatch system. Logistic
+retains its native bivariate Ghoudi/Pickands route, while Galambos,
+Hüsler-Reiss, Mixed, and extremal-``t`` use their exact family samplers.
 
 Algorithm-specific helpers such as `_discrete_spectral_rand!` or family
 spectral samplers may be used internally

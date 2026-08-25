@@ -196,12 +196,6 @@ function Distributions._rand!(
     C::ExtremeValueCopula{d,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
 ) where {d,T<:Real}
-    d == 2 || throw(DimensionMismatch(
-        "the scalar Pickands sampler requires a bivariate copula",
-    ))
-    size(X, 1) == d || throw(DimensionMismatch(
-        "output dimension does not match copula dimension",
-    ))
     E = ExtremeDist(C.tail)
     for i in axes(X, 2)
         z = rand(rng, E)

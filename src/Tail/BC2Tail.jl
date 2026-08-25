@@ -108,7 +108,6 @@ function ρ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T}
     return num / den
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, BC2Tail{T}}, A::AbstractMatrix{S}) where {T,S<:Real}
-    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     a, b = _bc2_bivariate_weights(C.tail)
     V = rand(rng, S, 2, size(A, 2))
     @inbounds for (j, col) in enumerate(axes(A, 2))

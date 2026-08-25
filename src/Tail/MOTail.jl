@@ -139,7 +139,6 @@ function τ(C::ExtremeValueCopula{2,<:MOTail})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MOTail}, A::AbstractMatrix{S}) where {S<:Real}
-    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     λ₁, λ₂, λ₁₂ = _mo_bivariate_rates(C.tail)
     T = promote_type(typeof(float(λ₁)), typeof(float(λ₂)), typeof(float(λ₁₂)))
     λ₁T, λ₂T, λ₁₂T = T(λ₁), T(λ₂), T(λ₁₂)

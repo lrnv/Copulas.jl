@@ -167,9 +167,6 @@ function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
 end
 
 function _tawn_rand_multivariate!(rng::Distributions.AbstractRNG, tail::TawnTail, X::AbstractMatrix{T},) where {T<:Real}
-    d, n = size(X)
-    d == tail.d || throw(DimensionMismatch("output dimension does not match Tawn tail dimension",))
-
     return _rand_subset_components!(
         rng, X, tail.α, tail.β, isone,
         (dimension, α) -> ExtremeValueCopula(dimension, LogTail(α));
@@ -178,6 +175,5 @@ function _tawn_rand_multivariate!(rng::Distributions.AbstractRNG, tail::TawnTail
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _tawn_rand_multivariate!(rng, C.tail, X)
 end

@@ -56,7 +56,6 @@ const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
 Distributions.params(tail::MixedTail) = (θ = tail.θ,)
 _is_valid_in_dim(::MixedTail, d::Int) = d >= 2
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MixedTail}, X::AbstractMatrix{T},) where {T<:Real}
-    size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate Mixed copula",))
     return _mixed_rand_multivariate!(rng, C.tail, X)
 end
 _unbound_params(::Type{<:MixedTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
@@ -148,7 +147,6 @@ function _mixed_rand_multivariate!(rng::Distributions.AbstractRNG, tail::MixedTa
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MixedTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return _mixed_rand_multivariate!(rng, C.tail, X)
 end
 

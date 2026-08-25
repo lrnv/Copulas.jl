@@ -164,7 +164,6 @@ function Distributions.logpdf(D::BivEVDistortion{<:LogTail}, z::Real)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:LogTail}, X::AbstractMatrix{T},) where {T<:Real,d}
-    size(X, 1) == d || throw(DimensionMismatch("output dimension does not match copula dimension",))
     return Distributions._rand!(rng, GumbelCopula(d, C.tail.θ), X)
 end
 

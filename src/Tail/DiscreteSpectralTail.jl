@@ -86,8 +86,6 @@ end
 
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
-    d == size(tail.B, 1) || throw(DimensionMismatch("output dimension does not match discrete spectral tail dimension",))
-
     fill!(X, zero(T))
     m = size(tail.B, 2)
 
