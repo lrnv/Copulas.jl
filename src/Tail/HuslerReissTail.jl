@@ -52,7 +52,8 @@ struct HuslerReissTail{T} <: OneParameterPickandsTail
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
         θ == 0 && return NoTail()
         isinf(θ) && return MTail()
-    return new{typeof(θ)}(θ)
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}

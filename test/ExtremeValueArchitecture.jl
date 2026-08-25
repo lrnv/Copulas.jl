@@ -26,6 +26,8 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
 
         # Integer-valued parameters remain parameters once d is encoded.
         @test Distributions.params(LogCopula{2}(2)).θ == 2.0
+        @test Distributions.params(MixedCopula{2}(1)).θ == 1.0
+        @test Distributions.params(HuslerReissCopula{2}(1)).θ == 1.0
         @test Distributions.params(tEVCopula{2}(4, 0.2)).ν == 4
 
         # Generic fitting reconstructs from concrete typeof(C) through the
@@ -159,14 +161,14 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
               typeof(Cemp_runtime) ==
               typeof(Cemp_inferred)
 
-        @test_throws DimensionMismatch HuslerReissCopula{4}(Γ)
-        @test_throws DimensionMismatch HuslerReissCopula(4, Γ)
-        @test_throws DimensionMismatch tEVCopula{4}(4.0, R)
-        @test_throws DimensionMismatch tEVCopula(4, 4.0, R)
-        @test_throws DimensionMismatch TawnCopula{4}(2.0, weights)
-        @test_throws DimensionMismatch AsymGalambosCopula{4}(0.7, weights)
-        @test_throws DimensionMismatch BC2Copula{4}(a)
-        @test_throws DimensionMismatch MOCopula{4}(λ)
+        @test_throws ArgumentError HuslerReissCopula{4}(Γ)
+        @test_throws ArgumentError HuslerReissCopula(4, Γ)
+        @test_throws ArgumentError tEVCopula{4}(4.0, R)
+        @test_throws ArgumentError tEVCopula(4, 4.0, R)
+        @test_throws ArgumentError TawnCopula{4}(2.0, weights)
+        @test_throws ArgumentError AsymGalambosCopula{4}(0.7, weights)
+        @test_throws ArgumentError BC2Copula{4}(a)
+        @test_throws ArgumentError MOCopula{4}(λ)
         @test_throws DimensionMismatch EmpiricalEVCopula{4}(
             Uemp;
             degree=1,
@@ -329,6 +331,8 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         @test Copulas.β⁻¹(GalambosCopula, -0.1) == 0.0
         @test Copulas.β⁻¹(GalambosCopula, 0.0) == 0.0
         @test Copulas.β⁻¹(GalambosCopula, 1.0) == Inf
+        @test Copulas.λᵤ⁻¹(GalambosCopula, 0.0) == 0.0
+        @test Copulas.λᵤ⁻¹(GalambosCopula, 1.0) == Inf
 
         for θ in (0.1, 0.3, 1.0, 3.0)
             C = GalambosCopula(2, θ)

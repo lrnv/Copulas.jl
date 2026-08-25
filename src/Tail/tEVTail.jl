@@ -53,7 +53,7 @@ struct tEVTail{T} <: BivariatePickandsTail
         (ν > 0)     || throw(ArgumentError("ν must be > 0"))
         (-1 < ρ ≤ 1)|| throw(ArgumentError("ρ must be in (-1,1]"))
         ρ == 1 && return MTail()
-        νT, ρT = promote(ν, ρ)
+        νT, ρT = promote(float(ν), float(ρ))
         return new{typeof(ρT)}(νT, ρT)
     end
 end

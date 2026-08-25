@@ -45,10 +45,11 @@ MixedTail, MixedCopula
 struct MixedTail{T} <: OneParameterPickandsTail
     θ::T
     function MixedTail(θ)
-        (0 ≤ θ ≤ 1+eps(θ)) || throw(ArgumentError("θ must be in [0,1], provided θ=$θ"))
-        θ = clamp(θ, 0, 1)
-        θ == 0 && return NoTail()
-        return new{typeof(θ)}(θ)
+        θf = float(θ)
+        (0 ≤ θf ≤ 1 + eps(θf)) || throw(ArgumentError("θ must be in [0,1], provided θ=$θ"))
+        θf = clamp(θf, zero(θf), one(θf))
+        iszero(θf) && return NoTail()
+        return new{typeof(θf)}(θf)
     end
 end
 

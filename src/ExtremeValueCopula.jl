@@ -193,9 +193,9 @@ end
 # exact sampler may specialize `_rand!` for their concrete copula type.
 function Distributions._rand!(
     rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:BivariatePickandsTail},
+    C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
-) where {d,T<:Real}
+) where {T<:Real}
     E = ExtremeDist(C.tail)
     for i in axes(X, 2)
         z = rand(rng, E)
@@ -209,23 +209,6 @@ end
 
 DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
 
-# Fitting functions: the default one is in the EmpiricalEvTail because this is what will happen by default.
-# For this moment generic mle works... maybe we could be implement others specifyc methods maybe upper and lower tail
-
-# # Parametric-type constructors to allow generic fit to reconstruct from NamedTuple params
-# function (::Type{ExtremeValueCopula{D, TT}})(d::Integer, θ::NamedTuple) where {D, TT<:Tail}
-#     d == D || @warn "Dimension mismatch constructing ExtremeValueCopula: got d=$(d), type encodes D=$(D). Proceeding with d."
-#     # Get parameter order from an example of the tail
-#     Tex = _example(ExtremeValueCopula{D, TT}, D).tail
-#     names = collect(keys(Distributions.params(Tex)))
-#     # Support both plain names and optional tail_-prefixed names
-#     getp(nt::NamedTuple, k::Symbol) = haskey(nt, k) ? nt[k] : (haskey(nt, Symbol(:tail_, k)) ? nt[Symbol(:tail_, k)] : throw(ArgumentError("Missing parameter $(k) for ExtremeValueCopula.")))
-#     vals = map(n -> getp(θ, n), names)
-#     return ExtremeValueCopula(d, TT(vals...))
-# end
-# function (::Type{ExtremeValueCopula{D, TT}})(d::Integer; kwargs...) where {D, TT<:Tail}
-#     return (ExtremeValueCopula{D, TT})(d, NamedTuple(kwargs))
-# end
 tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 
 ##############################################################################################################################

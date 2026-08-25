@@ -176,13 +176,8 @@ function _rand_galambos_spectral!(rng::Distributions.AbstractRNG, C::ExtremeValu
 end
 
 
-# Galambos uses its exact spectral sampler directly through Julia dispatch.
-# This also applies in d=2, where it is substantially faster than the generic
-# bivariate Ghoudi/Pickands sampler.
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:GalambosTail}, X::AbstractMatrix{T},) where {T<:Real}
-    return _rand_galambos_spectral!(rng, C, X)
-end
-
+# Galambos uses its exact spectral sampler in every dimension, including d=2
+# where it is substantially faster than the generic Ghoudi/Pickands sampler.
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
     return _rand_galambos_spectral!(rng, C, X)
 end
@@ -256,5 +251,7 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
 τ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
 τ⁻¹(::Type{<:GalambosTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
 ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
-β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta) = -1/log2(log2(beta+1))
-λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) = -1.0 / log2(λ)
+β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta) =
+    beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) =
+    λ <= 0 ? 0.0 : λ >= 1 ? Inf : -inv(log2(λ))

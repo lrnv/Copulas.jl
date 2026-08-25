@@ -442,9 +442,9 @@ Ghoudi/Pickands sampler:
 ```julia
 function Distributions._rand!(
     rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d,<:BivariatePickandsTail},
+    C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
-) where {d,T<:Real}
+) where {T<:Real}
     # Ghoudi/Pickands algorithm
 end
 ```
