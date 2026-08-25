@@ -114,13 +114,11 @@ function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::Discrete
     return X
 end
 
-function _rand_tail!(
-    rng::Distributions.AbstractRNG,
-    tail::DiscreteSpectralCapableTail,
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    return _discrete_spectral_rand!(rng, _spectral_tail(tail), X)
-end
+Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:DiscreteSpectralBackedTail}, X::AbstractMatrix{T}) where {d,T<:Real} =
+    _discrete_spectral_rand!(rng, _spectral_tail(C.tail), X)
+
+Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:DiscreteSpectralPickandsTail}, X::AbstractMatrix{T}) where {d,T<:Real} =
+    _discrete_spectral_rand!(rng, _spectral_tail(C.tail), X)
 
 function Distributions._logpdf(::ExtremeValueCopula{d,<:DiscreteSpectralCapableTail}, u,) where {d}
     throw(ArgumentError("a discrete-spectral extreme-value copula can contain singular components; " *

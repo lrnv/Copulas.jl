@@ -189,29 +189,24 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
 end
 
 
-# Sampling is selected by tail capability. Families with a preferable exact
-# sampler may still specialize `_rand!` for their concrete copula type.
+# Sampling is selected directly by tail capability. Families with a preferable
+# exact sampler may specialize `_rand!` for their concrete copula type.
 function Distributions._rand!(
     rng::Distributions.AbstractRNG,
-    C::ExtremeValueCopula{d},
+    C::ExtremeValueCopula{d,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
 ) where {d,T<:Real}
+    d == 2 || throw(DimensionMismatch(
+        "the scalar Pickands sampler requires a bivariate copula",
+    ))
     size(X, 1) == d || throw(DimensionMismatch(
         "output dimension does not match copula dimension",
     ))
-    return _rand_tail!(rng, C.tail, X)
-end
-
-function _rand_tail!(
-    rng::Distributions.AbstractRNG,
-    tail::BivariatePickandsTail,
-    X::AbstractMatrix{T},
-) where {T<:Real}
-    E = ExtremeDist(tail)
+    E = ExtremeDist(C.tail)
     for i in axes(X, 2)
         z = rand(rng, E)
-        w = rand(rng) < _ghoudi_mixture_probability(tail, z) ? rand(rng) : rand(rng) * rand(rng)
-        a = A(tail, z)
+        w = rand(rng) < _ghoudi_mixture_probability(C.tail, z) ? rand(rng) : rand(rng) * rand(rng)
+        a = A(C.tail, z)
         X[1, i] = exp(log(w) * z / a)
         X[2, i] = exp(log(w) * (1 - z) / a)
     end
