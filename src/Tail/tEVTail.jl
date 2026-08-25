@@ -1,5 +1,5 @@
 """
-    tEVTail{T,P}, tEVCopula{d,T}
+    tEVTail{T,P}, tEVCopula{d,T,P}
 
     tEVCopula{d}(ν, ρ)
     tEVCopula(d, ν, ρ)
@@ -84,16 +84,16 @@ struct tEVTail{T,P} <: BivariatePickandsTail
         return new{typeof(νf),typeof(RF)}(νf, RF)
     end
 end
-const tEVCopula{d,T} = ExtremeValueCopula{d, tEVTail{T}}
+const tEVCopula{d,T,P} = ExtremeValueCopula{d,tEVTail{T,P}}
 Distributions.params(tail::tEVTail{<:Any,<:Real}) = (ν = tail.ν, ρ = tail.parameter)
 Distributions.params(tail::tEVTail{<:Any,<:AbstractMatrix}) = (ν = tail.ν, R = tail.parameter)
 _is_valid_in_dim(tail::tEVTail{<:Any,<:Real}, d::Int) =
     d >= 2 && tail.parameter > -inv(d - 1)
 _is_valid_in_dim(tail::tEVTail{<:Any,<:AbstractMatrix}, d::Int) =
     d == size(tail.parameter, 1)
-_unbound_params(::Type{<:tEVTail{<:Any,<:Real}}, d, θ) =
+_unbound_params(::Type{<:tEVTail}, d, θ) =
     [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
-_rebound_params(::Type{<:tEVTail{<:Any,<:Real}}, d, α) =
+_rebound_params(::Type{<:tEVTail}, d, α) =
     (; ν = exp(α[1]), ρ = tanh(α[2]))
 _example(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D}, d) =
     tEVCopula{d}(2.0, 0.5)

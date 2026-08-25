@@ -77,6 +77,10 @@ function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) whe
     return ExtremeValueCopula{d}(tailof(CT)(first, args...; kwargs...))
 end
 
+# Runtime-dimension form for an unparameterized named family alias.
+(CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) =
+    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+
 function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     u1, u2 = u
     z = zero(u1 + u2)
