@@ -91,11 +91,12 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         Chr_runtime = HuslerReissCopula(3, Γ)
         Chr_inferred = HuslerReissCopula(Γ)
         @test typeof(Chr_typed) == typeof(Chr_runtime) == typeof(Chr_inferred)
-        @test Chr_typed.tail isa Copulas.HuslerReissVariogramTail
+        @test Chr_typed.tail isa Copulas.HuslerReissTail{<:AbstractMatrix}
 
         Γ2 = [0.0 1.0; 1.0 0.0]
         Chr2 = HuslerReissCopula{2}(Γ2)
-        @test Chr2.tail isa Copulas.HuslerReissTail
+        @test Chr2.tail isa Copulas.HuslerReissTail{<:AbstractMatrix}
+        @test Distributions.params(Chr2).Γ == Γ2
         @test cdf(Chr2, [0.4, 0.7]) ≈
               cdf(HuslerReissCopula{2}(2.0), [0.4, 0.7])
 
@@ -631,7 +632,7 @@ end
             end
         end
 
-        tail = Copulas.HuslerReissVariogramTail(Γ)
+        tail = Copulas.HuslerReissTail(Γ)
         C = Copulas.ExtremeValueCopula(4, tail)
 
         @test Copulas._is_valid_in_dim(tail, 4)
@@ -644,7 +645,7 @@ end
         pidx = [3, 1, 4, 2]
         Cp = Copulas.ExtremeValueCopula(
             4,
-            Copulas.HuslerReissVariogramTail(Γ[pidx, pidx]),
+            Copulas.HuslerReissTail(Γ[pidx, pidx]),
         )
         @test cdf(Cp, u[pidx]) ≈ cdf(C, u) atol=5e-4 rtol=5e-4
         @test logpdf(Cp, u[pidx]) ≈ logpdf(C, u) atol=5e-3 rtol=5e-3
@@ -662,13 +663,14 @@ end
             @test abs(empirical - target) < max(0.03, 6 * se)
         end
 
-        @test_throws DimensionMismatch Copulas.HuslerReissVariogramTail(zeros(3, 4))
-        @test_throws ArgumentError Copulas.HuslerReissVariogramTail([0.0 1.0; 1.0 0.0])
+        @test_throws DimensionMismatch Copulas.HuslerReissTail(zeros(3, 4))
+        @test Copulas.HuslerReissTail([0.0 1.0; 1.0 0.0]) isa
+              Copulas.HuslerReissTail{<:AbstractMatrix}
 
         Γbad = [0.0 1.0 10.0;
                 1.0 0.0 1.0;
                 10.0 1.0 0.0]
-        @test_throws ArgumentError Copulas.HuslerReissVariogramTail(Γbad)
+        @test_throws ArgumentError Copulas.HuslerReissTail(Γbad)
     end
 end
 
