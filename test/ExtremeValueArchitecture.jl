@@ -37,6 +37,14 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         @test typeof(C1) == typeof(C0)
         @test Distributions.params(C1) == Distributions.params(C0)
 
+        Cint = LogCopula{2}(2)
+        @test Distributions.params(
+            Copulas._construct_from_params(typeof(Cint), 2, 2),
+        ).θ == 2.0
+        @test Distributions.params(
+            Copulas._construct_from_params(LogCopula, 2, 2),
+        ).θ == 2.0
+
         # Scalar-parameter families no longer infer an implicit d=2.
         @test_throws MethodError GalambosCopula(2.3)
         @test_throws MethodError MixedCopula(0.5)
