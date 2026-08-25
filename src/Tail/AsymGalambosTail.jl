@@ -76,11 +76,7 @@ function AsymGalambosTail(α::Real, weights::AbstractVector)
 end
 
 AsymGalambosTail(α::Real, θ₁::Real, θ₂::Real) = AsymGalambosTail(α, [θ₁, θ₂])
-
-function AsymGalambosTail(dep::AbstractVector, asy::AbstractVector)
-    d = trailing_zeros(length(asy) + 1)
-    return AsymGalambosTail(d, dep, asy)
-end
+AsymGalambosTail(dep::AbstractVector, asy::AbstractVector) = AsymGalambosTail(trailing_zeros(length(asy) + 1), dep, asy)
 
 _is_valid_in_dim(tail::AsymGalambosTail, d::Int) = d == tail.d
 
@@ -163,10 +159,6 @@ function d²A(tail::AsymGalambosTail, t::Real)
 end
 
 function ℓ(tail::AsymGalambosTail, x)
-    length(x) == tail.d || throw(DimensionMismatch(
-        "input dimension does not match asymmetric Galambos tail dimension",
-    ))
-
     subsets = _nonempty_subsets(tail.d)
     T = promote_type(eltype(x), eltype(tail.α), eltype(tail.β))
     out = zero(T)
@@ -189,35 +181,29 @@ function ℓ(tail::AsymGalambosTail, x)
     return out
 end
 
-function _asymgal_component_partial_signlog(tail::AsymGalambosTail, j::Int, x, I::Tuple{Vararg{Int}})
-    k = length(I)
-    k > 0 || throw(ArgumentError("partial block must be nonempty"))
-
-    subset = _nonempty_subsets(tail.d)[j]
-    active = [i for i in subset if tail.β[i, j] > 0]
-    all(i -> i in active, I) || return 0, -Inf
-
-    α = tail.α[j]
-    if iszero(α) || length(active) == 1
-        k == 1 && return 1, log(float(tail.β[only(I), j]))
-        return 0, -Inf
-    end
-
-    y = [tail.β[i, j] * x[i] for i in active]
-    positions = Dict(i => q for (q, i) in enumerate(active))
-    localI = ntuple(q -> positions[I[q]], k)
-    sign, logabs = _ellpartial_signlog(GalambosTail(α), y, localI)
-    iszero(sign) && return 0, -Inf
-
-    logchain = sum(log(float(tail.β[i, j])) for i in I)
-    return sign, logabs + logchain
-end
-
 function _ellpartial_signlog(tail::AsymGalambosTail, x, I::Tuple{Vararg{Int}})
     isempty(I) && return 1, log(float(ℓ(tail, x)))
-    expected_sign = isodd(length(I)) ? 1 : -1
+    k = length(I)
+    expected_sign = isodd(k) ? 1 : -1
+    subsets = _nonempty_subsets(tail.d)
     return _sum_component_partials(size(tail.β, 2), expected_sign) do j
-        _asymgal_component_partial_signlog(tail, j, x, I)
+        active = [i for i in subsets[j] if tail.β[i, j] > 0]
+        all(i -> i in active, I) || return 0, -Inf
+
+        α = tail.α[j]
+        if iszero(α) || length(active) == 1
+            k == 1 && return 1, log(float(tail.β[only(I), j]))
+            return 0, -Inf
+        end
+
+        y = [tail.β[i, j] * x[i] for i in active]
+        positions = Dict(i => q for (q, i) in enumerate(active))
+        localI = ntuple(q -> positions[I[q]], k)
+        sign, logabs = _ellpartial_signlog(GalambosTail(α), y, localI)
+        iszero(sign) && return 0, -Inf
+
+        logchain = sum(log(float(tail.β[i, j])) for i in I)
+        return sign, logabs + logchain
     end
 end
 
