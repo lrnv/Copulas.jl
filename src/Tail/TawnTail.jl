@@ -61,89 +61,24 @@ one.
 const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
 
 function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
-    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    subsets = _nonempty_subsets(d)
-    m = length(subsets)
-
-    length(dep) == m - d || throw(DimensionMismatch("dep must contain one parameter for each non-singleton subset: expected $(m-d)",))
-    length(asy) == m || throw(DimensionMismatch("asy must contain one weight vector for each nonempty subset: expected $m",))
-
-    vals = Any[1.0]
-    append!(vals, dep)
-    for w in asy
-        w isa AbstractVector || throw(ArgumentError("each asymmetry component must be an AbstractVector",))
-        append!(vals, w)
-    end
-    T = promote_type(Float64, map(typeof, vals)...)
-
-    α = ones(T, m)
-    @inbounds for j in (d + 1):m
-        a = T(dep[j - d])
-        a >= one(T) || throw(ArgumentError("each non-singleton dependence parameter must be ≥ 1",))
-        α[j] = a
-    end
-
-    β = zeros(T, d, m)
-    @inbounds for (j, C) in enumerate(subsets)
-        w = asy[j]
-        length(w) == length(C) || throw(DimensionMismatch("asy[$j] must have length $(length(C)) for subset $(Tuple(C))",))
-        for (a, i) in enumerate(C)
-            wij = T(w[a])
-            zero(T) <= wij <= one(T) || throw(ArgumentError("all asymmetry weights must lie in [0,1]",))
-            β[i, j] = wij
-        end
-    end
-
-    tol = 64 * eps(T)
-    @inbounds for i in 1:d
-        rowsum = sum(@view β[i, :])
-        abs(rowsum - one(T)) <= tol * max(one(T), abs(rowsum)) ||
-            throw(ArgumentError(
-                "asymmetry weights for margin $i must sum to one; got $rowsum",
-            ))
-    end
-
-    return TawnTail{T}(d, α, β)
+    α, β = _subset_model_parameters(
+        d, dep, asy;
+        singleton_parameter=1.0,
+        valid_parameter=parameter -> parameter >= one(parameter),
+        family="Tawn",
+    )
+    return TawnTail{eltype(α)}(d, α, β)
 end
 
 # Convenience submodel: one full-set logistic component plus singleton remainders.
 function TawnTail(α::Real, weights::AbstractVector)
-    d = length(weights)
-    d >= 2 || throw(ArgumentError("weights must contain at least two entries"))
-
-    subsets = _nonempty_subsets(d)
-    m = length(subsets)
-    T = promote_type(Float64, typeof(α), eltype(weights))
-    a = T(α)
-    a >= one(T) || throw(ArgumentError("α must be ≥ 1"))
-
-    w = T.(weights)
-    all(v -> zero(T) <= v <= one(T), w) || throw(ArgumentError("all full-set weights must lie in [0,1]"))
-
-    dep = ones(T, m - d)
-    dep[end] = a
-
-    asy = Vector{Vector{T}}(undef, m)
-    for (j, C) in enumerate(subsets)
-        asy[j] = zeros(T, length(C))
-    end
-
-    for i in 1:d
-        asy[i][1] = one(T) - w[i]
-    end
-    asy[end] .= w
-
+    α >= one(α) || throw(ArgumentError("α must be ≥ 1"))
+    d, dep, asy = _fullset_subset_parameters(α, weights; singleton_parameter=1.0)
     return TawnTail(d, dep, asy)
 end
 
 function _tawn_dimension_from_subset_weights(asy::AbstractVector)
-    m = length(asy) + 1
-    ispow2(m) || throw(DimensionMismatch(
-        "asy must contain 2^d-1 subset-weight vectors",
-    ))
-    d = trailing_zeros(m)
-    d >= 2 || throw(ArgumentError("Tawn dimension must be at least two"))
-    return d
+    return _subset_dimension(asy, "Tawn")
 end
 
 function _tawn_convenience_copula(CT, α::Real, weights::AbstractVector)
@@ -216,13 +151,6 @@ function ℓ(tail::TawnTail, x)
     return out
 end
 
-@inline function _tawn_logsumexp(logs::AbstractVector)
-    isempty(logs) && return -Inf
-    m = maximum(logs)
-    isinf(m) && return m
-    return m + log(sum(exp(v - m) for v in logs))
-end
-
 function _tawn_component_partial_signlog(α::Real, βcol, C, x, I::Tuple{Vararg{Int}},)
     k = length(I)
     k > 0 || throw(ArgumentError("partial block must be nonempty"))
@@ -241,7 +169,7 @@ function _tawn_component_partial_signlog(α::Real, βcol, C, x, I::Tuple{Vararg{
         yi > 0 && push!(logterms, float(α) * log(yi))
     end
     isempty(logterms) && return 0, -Inf
-    logS = _tawn_logsumexp(logterms)
+    logS = _logsumexp_values(logterms)
 
     logcoef = 0.0
     @inbounds for j in 1:(k - 1)
@@ -265,75 +193,23 @@ function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return 1, log(float(ℓ(tail, x)))
 
     subsets = _nonempty_subsets(tail.d)
-    logs = Float64[]
     expected_sign = isodd(length(I)) ? 1 : -1
-
-    @inbounds for j in eachindex(subsets)
-        sign, logabs = _tawn_component_partial_signlog(tail.α[j], @view(tail.β[:, j]), subsets[j], x, I,)
-        sign == 0 && continue
-        sign == expected_sign || throw(ArgumentError("unexpected Tawn component partial sign",))
-        push!(logs, logabs)
+    return _sum_component_partials(length(subsets), expected_sign) do j
+        _tawn_component_partial_signlog(
+            tail.α[j], @view(tail.β[:, j]), subsets[j], x, I,
+        )
     end
-
-    isempty(logs) && return 0, -Inf
-    return expected_sign, _tawn_logsumexp(logs)
 end
 
 function _tawn_rand_multivariate!(rng::Distributions.AbstractRNG, tail::TawnTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     d == tail.d || throw(DimensionMismatch("output dimension does not match Tawn tail dimension",))
 
-    subsets = _nonempty_subsets(d)
-
-    # Work on unit-Fréchet margins. Independent max-stable components add
-    # their exponent functions; componentwise maxima therefore recover the
-    # complete Tawn exponent.
-    Z = zeros(Float64, d, n)
-
-    @inbounds for j in eachindex(subsets)
-        C = subsets[j]
-        α = tail.α[j]
-        active = [i for i in C if tail.β[i, j] > 0]
-        isempty(active) && continue
-
-        # α = 1 is a linear exponent contribution and hence independent
-        # across the active coordinates. A one-coordinate component is also
-        # simply unit-Fréchet regardless of α.
-        if α == 1 || length(active) == 1
-            for i in active
-                βij = Float64(tail.β[i, j])
-                for col in 1:n
-                    candidate = βij / Random.randexp(rng)
-                    if candidate > Z[i, col]
-                        Z[i, col] = candidate
-                    end
-                end
-            end
-            continue
-        end
-
-        k = length(active)
-        Clog = ExtremeValueCopula(k, LogTail(α))
-        U = Random.rand(rng, Clog, n)
-
-        for (a, i) in enumerate(active)
-            βij = Float64(tail.β[i, j])
-            for col in 1:n
-                candidate = βij / (-log(Float64(U[a, col])))
-                if candidate > Z[i, col]
-                    Z[i, col] = candidate
-                end
-            end
-        end
-    end
-
-    @inbounds for i in 1:d, col in 1:n
-        zi = Z[i, col]
-        zi > 0 || throw(ArgumentError("Tawn weights leave margin $i without a positive spectral component",))
-        X[i, col] = T(exp(-inv(zi)))
-    end
-
-    return X
+    return _rand_subset_components!(
+        rng, X, tail.α, tail.β, isone,
+        (dimension, α) -> ExtremeValueCopula(dimension, LogTail(α));
+        family="Tawn",
+    )
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real}
