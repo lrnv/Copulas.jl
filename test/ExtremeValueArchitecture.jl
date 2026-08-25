@@ -1254,7 +1254,7 @@ end
 
 @testset "Multivariate BC2 EV" begin
     a = [0.20, 0.65, 0.40, 0.75]
-    tail = Copulas.BC2MultivariateTail(a)
+    tail = Copulas.BC2Tail(a)
     C = Copulas.ExtremeValueCopula(4, tail)
 
     x = [0.27, 0.64, 1.03, 1.31]
@@ -1264,7 +1264,10 @@ end
     @test tail.spectral.B ≈ hcat(a, 1 .- a) atol=3e-15 rtol=3e-15
 
     oldtail = Copulas.BC2Tail(0.30, 0.70)
-    newtail = Copulas.BC2MultivariateTail(oldtail)
+    newtail = Copulas.BC2Tail([0.30, 0.70])
+    @test typeof(oldtail) == typeof(newtail)
+    @test oldtail isa Copulas.DiscreteSpectralPickandsTail
+    @test Distributions.params(oldtail) == (a=0.30, b=0.70)
     Cold = Copulas.ExtremeValueCopula(2, oldtail)
     Cnew = Copulas.ExtremeValueCopula(2, newtail)
 
@@ -1279,8 +1282,8 @@ end
 
     _test_ev_sample(C, 5103, 5_000; marginal_atol=0.035)
 
-    @test_throws ArgumentError Copulas.BC2MultivariateTail([0.2])
-    @test_throws ArgumentError Copulas.BC2MultivariateTail([0.2, 1.1])
+    @test_throws ArgumentError Copulas.BC2Tail([0.2])
+    @test_throws ArgumentError Copulas.BC2Tail([0.2, 1.1])
 end
 
 @testset "Multivariate Cuadras-Auge EV" begin

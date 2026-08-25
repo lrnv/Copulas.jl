@@ -30,8 +30,8 @@ Copulas.jl also accepts a vector `a=(a₁,…,a_d)` and uses the direct
 \\max_i((1-a_i)x_i).
 ```
 
-The vector length determines `d`; a vector of length two is reduced to the
-specialized bivariate representation.
+The vector length determines `d`; in dimension two the same representation
+activates the specialized Pickands methods.
 
 !!! note "Copulas.jl multivariate parameterization"
     The bivariate BC2 model is documented in [mai2011bivariate](@cite). The
@@ -41,49 +41,75 @@ specialized bivariate representation.
 """
 BC2Tail, BC2Copula
 
-struct BC2Tail{T} <: BivariatePickandsTail
-    a::T
-    b::T
-    function BC2Tail(a, b)
-        T = promote_type(typeof(a), typeof(b))
-        (0 ≤ a ≤ 1) || throw(ArgumentError("a must be in [0,1]"))
-        (0 ≤ b ≤ 1) || throw(ArgumentError("b must be in [0,1]"))
-        return new{T}(T(a), T(b))
-    end
+struct BC2Tail{T} <: DiscreteSpectralPickandsTail
+    a::Vector{T}
+    spectral::DiscreteSpectralTail{T}
 end
 
 const BC2Copula{d,T} = ExtremeValueCopula{d, BC2Tail{T}}
-Distributions.params(tail::BC2Tail) = (a = tail.a, b = tail.b)
+
+function BC2Tail(a::AbstractVector)
+    length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates",))
+    vals = collect(a)
+    T = promote_type(Float64, map(typeof, vals)...)
+    aa = T.(a)
+    all(isfinite, aa) || throw(ArgumentError("all BC2 weights must be finite",))
+    all(v -> zero(T) <= v <= one(T), aa) || throw(ArgumentError(
+        "all BC2 weights must lie in [0,1]",
+    ))
+    return BC2Tail{T}(aa, DiscreteSpectralTail(hcat(aa, one(T) .- aa)))
+end
+
+BC2Tail(a, b) = BC2Tail([a, b])
+
+function _bc2_bivariate_weights(tail::BC2Tail)
+    length(tail.a) == 2 || throw(DimensionMismatch(
+        "the scalar Pickands representation requires a bivariate tail",
+    ))
+    return tail.a[1], tail.a[2]
+end
+
+function Distributions.params(tail::BC2Tail)
+    length(tail.a) == 2 || return (a=tail.a,)
+    a, b = _bc2_bivariate_weights(tail)
+    return (; a, b)
+end
+
 _unbound_params(::Type{<:BC2Tail}, d, θ) = [LogExpFunctions.logit(θ.a), LogExpFunctions.logit(θ.b)]
 _rebound_params(::Type{<:BC2Tail}, d, α) = begin
     (; a = LogExpFunctions.logistic(α[1]), b = LogExpFunctions.logistic(α[2]))
 end
+_available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:BC2Tail} where D}, d) =
+    d == 2 ? (:mle,) : ()
 
 function A(tail::BC2Tail, t::Real)
     tt = _safett(t)
-    a, b = tail.a, tail.b
+    a, b = _bc2_bivariate_weights(tail)
     return max(a*tt, b*(1-tt)) + max((1-a)*tt, (1-b)*(1-tt))
 end
 function _pickands_left_slope(tail::BC2Tail, x::Real)
-    R = promote_type(typeof(x), typeof(tail.a), typeof(tail.b))
-    a, b = R(tail.a), R(tail.b)
+    R = promote_type(typeof(x), eltype(tail.a))
+    a, b = R.(_bc2_bivariate_weights(tail))
     return iszero(b) ? a - one(R) : isone(b) ? -a : -one(R)
 end
 function _pickands_right_slope(tail::BC2Tail, x::Real)
-    R = promote_type(typeof(x), typeof(tail.a), typeof(tail.b))
-    a, b = R(tail.a), R(tail.b)
+    R = promote_type(typeof(x), eltype(tail.a))
+    a, b = R.(_bc2_bivariate_weights(tail))
     return iszero(a) ? one(R) - b : isone(a) ? b : one(R)
 end
-τ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T} = 1 - abs(C.tail.a - C.tail.b)
+function τ(C::ExtremeValueCopula{2,BC2Tail{T}}) where {T}
+    a, b = _bc2_bivariate_weights(C.tail)
+    return 1 - abs(a - b)
+end
 function ρ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T}
-    a, b = C.tail.a, C.tail.b
+    a, b = _bc2_bivariate_weights(C.tail)
     num = 2 * (a + b + a*b + max(a,b) - 2a^2 - 2b^2)
     den = (3 - a - b - min(a,b)) * (a + b + max(a,b))
     return num / den
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, BC2Tail{T}}, A::AbstractMatrix{S}) where {T,S<:Real}
     size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
-    a, b = C.tail.a, C.tail.b
+    a, b = _bc2_bivariate_weights(C.tail)
     V = rand(rng, S, 2, size(A, 2))
     @inbounds for (j, col) in enumerate(axes(A, 2))
         v1, v2 = V[1, j], V[2, j]
@@ -95,7 +121,7 @@ end
 function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{TF1}, TF2}, z::Real) where {TF1,TF2}
     T = promote_type(TF1, TF2, typeof(z))
 
-    a, b = D.tail.a, D.tail.b
+    a, b = _bc2_bivariate_weights(D.tail)
 
     if !(0.0 < z < 1.0)
         return z <= 0 ? T(-Inf) : T(0.0)
@@ -174,47 +200,5 @@ function Distributions.quantile(D::BivEVDistortion{BC2Tail{T}, S}, α::Real) whe
 end
 
 
-"""
-    BC2MultivariateTail(a)
-
-Multivariate two-atom discrete-spectral extension of the historical BC2 model.
-For `a = (a₁,...,a_d)` with every `aᵢ in [0,1]`,
-
-    ℓ(x) = max_i(aᵢ xᵢ) + max_i((1-aᵢ) xᵢ).
-
-For `d=2`, `BC2MultivariateTail([a,b])` reproduces `BC2Tail(a,b)` exactly.
-"""
-struct BC2MultivariateTail{T} <: DiscreteSpectralBackedTail
-    a::Vector{T}
-    spectral::DiscreteSpectralTail{T}
-end
-
-function BC2MultivariateTail(a::AbstractVector)
-    length(a) >= 2 || throw(ArgumentError("BC2MultivariateTail requires at least two coordinates",))
-
-    vals = collect(a)
-    T = promote_type(Float64, map(typeof, vals)...)
-    aa = T.(a)
-
-    all(isfinite, aa) || throw(ArgumentError("all BC2 weights must be finite",))
-    all(v -> zero(T) <= v <= one(T), aa) || throw(ArgumentError("all BC2 weights must lie in [0,1]",))
-
-    B = hcat(aa, one(T) .- aa)
-    spectral = DiscreteSpectralTail(B)
-    return BC2MultivariateTail{T}(aa, spectral)
-end
-
-BC2MultivariateTail(tail::BC2Tail) = BC2MultivariateTail([tail.a, tail.b])
-BC2MultivariateCopula(a::AbstractVector) =
-    ExtremeValueCopula{length(a)}(BC2MultivariateTail(a))
-
-BC2Tail(a::AbstractVector) =
-    length(a) == 2 ? BC2Tail(a[1], a[2]) : BC2MultivariateTail(a)
-
 BC2Copula(a::AbstractVector) = ExtremeValueCopula{length(a)}(BC2Tail(a))
-
-BC2MultivariateCopula(tail::BC2Tail) =
-    ExtremeValueCopula{2}(BC2MultivariateTail(tail))
-
-Distributions.params(tail::BC2MultivariateTail) = (a = tail.a,)
-_is_valid_in_dim(tail::BC2MultivariateTail, d::Int) = length(tail.a) == d
+_is_valid_in_dim(tail::BC2Tail, d::Int) = length(tail.a) == d

@@ -567,7 +567,8 @@ end
             x = .-log.(spl1000[1, :])
             y = .-log.(spl1000[2, :])
             if C isa Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}
-                a, b = C.tail.a, C.tail.b
+                params = Distributions.params(C.tail)
+                a, b = params.a, params.b
                 ray1 = isapprox.(a .* x, b .* y; atol=1e-10, rtol=1e-7)
                 ray2 = isapprox.((1-a) .* x, (1-b) .* y; atol=1e-10, rtol=1e-7)
                 observed = mean(ray1 .| ray2)
