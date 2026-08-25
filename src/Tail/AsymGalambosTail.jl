@@ -47,19 +47,18 @@ struct AsymGalambosTail{T} <: BivariatePickandsTail
     d::Int
     α::Vector{T}
     β::Matrix{T}
+    function AsymGalambosTail(d::Int, dep::AbstractVector, asy::AbstractVector)
+        α, β = _normalize_asymmetric_subset_components(
+            d, dep, asy;
+            singleton_parameter=0.0,
+            valid_parameter=parameter -> parameter >= zero(parameter),
+            family="Galambos",
+        )
+        return new{eltype(α)}(d, α, β)
+    end
 end
 
 const AsymGalambosCopula{d,T} = ExtremeValueCopula{d,AsymGalambosTail{T}}
-
-function AsymGalambosTail(d::Int, dep::AbstractVector, asy::AbstractVector)
-    α, β = _normalize_asymmetric_subset_components(
-        d, dep, asy;
-        singleton_parameter=0.0,
-        valid_parameter=parameter -> parameter >= zero(parameter),
-        family="Galambos",
-    )
-    return AsymGalambosTail{eltype(α)}(d, α, β)
-end
 
 # Convenience submodel: one full-set Galambos component plus singleton
 # remainders.
@@ -81,7 +80,6 @@ AsymGalambosTail(dep::AbstractVector, asy::AbstractVector) = AsymGalambosTail(tr
 _is_valid_in_dim(tail::AsymGalambosTail, d::Int) = d == tail.d
 
 @inline function _asymgal_bivariate_parameters(tail::AsymGalambosTail)
-    tail.d == 2 || throw(DimensionMismatch("the scalar Pickands representation requires a bivariate tail"))
     return tail.α[end], tail.β[1, end], tail.β[2, end]
 end
 
