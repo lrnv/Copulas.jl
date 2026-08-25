@@ -61,7 +61,7 @@ one.
 const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
 
 function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
-    α, β = _subset_model_parameters(
+    α, β = _normalize_asymmetric_subset_components(
         d, dep, asy;
         singleton_parameter=1.0,
         valid_parameter=parameter -> parameter >= one(parameter),
@@ -73,12 +73,12 @@ end
 # Convenience submodel: one full-set logistic component plus singleton remainders.
 function TawnTail(α::Real, weights::AbstractVector)
     α >= one(α) || throw(ArgumentError("α must be ≥ 1"))
-    d, dep, asy = _fullset_subset_parameters(α, weights; singleton_parameter=1.0)
+    d, dep, asy = _expand_fullset_asymmetric_component(α, weights; singleton_parameter=1.0)
     return TawnTail(d, dep, asy)
 end
 
 function _tawn_dimension_from_subset_weights(asy::AbstractVector)
-    return _subset_dimension(asy, "Tawn")
+    return _dimension_from_asymmetric_subset_weights(asy, "Tawn")
 end
 
 function _tawn_convenience_copula(CT, α::Real, weights::AbstractVector)

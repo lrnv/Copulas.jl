@@ -34,6 +34,30 @@ function _nonempty_subsets(d::Int)
     return [collect(S) for k in 1:d for S in Combinatorics.combinations(1:d, k)]
 end
 
+# Generalized inverse of a CDF supported on [0, 1]. Bisection returns the
+# smallest representable point whose CDF is at least `p`, including for
+# distributions with atoms.
+function _unit_quantile(d, p::Real)
+    T = typeof(float(p))
+    zero(T) <= p <= one(T) || throw(ArgumentError("p must be between 0 and 1"))
+    p == zero(T) && return zero(T)
+    p == one(T) && return one(T)
+
+    lo, hi = zero(T), one(T)
+    Distributions.cdf(d, lo) >= p && return lo
+    Distributions.cdf(d, hi) < p && return hi
+    for _ in 1:precision(T)
+        mid = (lo + hi) / 2
+        (mid == lo || mid == hi) && break
+        if Distributions.cdf(d, mid) >= p
+            hi = mid
+        else
+            lo = mid
+        end
+    end
+    return hi
+end
+
 _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
     fa,fb = f(0.0), f(1.0)
     while fb ≤ 0 && b < θmax

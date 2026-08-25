@@ -3,20 +3,19 @@ struct ExtremeDist{C} <: Distributions.ContinuousUnivariateDistribution
 end
 
 function Distributions.cdf(d::ExtremeDist, z::Real)
-    z <= zero(z) && return zero(float(z))
-    z >= one(z)  && return one(float(z))
+    z <= 0 && return zero(float(z))
+    z >= 1 && return one(float(z))
     return z + z * (1 - z) * (dA(d.tail, z) / A(d.tail, z))
 end
 
-function _pdf(d::ExtremeDist, z::Real)
+function Distributions.pdf(d::ExtremeDist, z::Real)
     (z <= zero(z) || z >= one(z)) && return zero(float(z))
-    Aval, A1, A2 = _A_dA_d²A(d.tail, z)
-    return 1 + (1 - 2z) * A1 / Aval +
-           z * (1 - z) * (A2 * Aval - A1^2) / Aval^2
+    A, A1, A2 = _A_dA_d²A(d.tail, z)
+    return 1 + (1 - 2z) * A1 / A + z * (1 - z) * (A2 * A - A1^2) / A^2
 end
 
 function Distributions.logpdf(d::ExtremeDist, z::Real)
-    f = _pdf(d, z)
+    f = Distributions.pdf(d, z)
     f > zero(f) || return oftype(f, -Inf)
     return log(f)
 end

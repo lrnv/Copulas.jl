@@ -103,7 +103,7 @@ function Distributions.logpdf(d::ExtremeDist{<:LogTail}, z::Real)
     logS = LogExpFunctions.logaddexp(θ * log(z), θ * log1p(-z))
     return log(θ) + (θ - 1) * (log(z) + log1p(-z)) - 2 * logS
 end
-_pdf(d::ExtremeDist{<:LogTail}, z::Real) = exp(Distributions.logpdf(d, z))
+Distributions.pdf(d::ExtremeDist{<:LogTail}, z::Real) = exp(Distributions.logpdf(d, z))
 
 function Distributions.quantile(d::ExtremeDist{<:LogTail}, p::Real)
     T = float(promote_type(typeof(p), typeof(d.tail.θ)))
@@ -114,7 +114,7 @@ function Distributions.quantile(d::ExtremeDist{<:LogTail}, p::Real)
     return inv(one(T) + exp(-x))
 end
 
-_probability_z(tail::LogTail, ::Real) = (tail.θ - one(tail.θ)) / tail.θ
+_ghoudi_mixture_probability(tail::LogTail, ::Real) = (tail.θ - one(tail.θ)) / tail.θ
 
 # Stable closed-form bivariate density for the logistic model.
 #

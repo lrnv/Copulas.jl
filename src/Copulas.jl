@@ -108,6 +108,7 @@ module Copulas
 
     #Extreme value copulas
     include("Tail.jl")
+    include("Tail/utilities.jl")
     include("ExtremeValueCopula.jl")
 
     # Stable tail dependence functions

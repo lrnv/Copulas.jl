@@ -68,7 +68,7 @@ end
 const AsymGalambosCopula{d,T} = ExtremeValueCopula{d,AsymGalambosTail{T}}
 
 function _asymgal_dimension_from_subset_weights(asy::AbstractVector)
-    return _subset_dimension(asy, "Asymmetric Galambos")
+    return _dimension_from_asymmetric_subset_weights(asy, "Asymmetric Galambos")
 end
 
 function _asymgal_convenience_copula(CT, α::Real, weights::AbstractVector)
@@ -202,7 +202,7 @@ struct AsymGalambosMultiTail{T} <: Tail
 end
 
 function AsymGalambosMultiTail(d::Int, dep::AbstractVector, asy::AbstractVector,)
-    α, β = _subset_model_parameters(
+    α, β = _normalize_asymmetric_subset_components(
         d, dep, asy;
         singleton_parameter=0.0,
         valid_parameter=parameter -> parameter >= zero(parameter),
@@ -216,7 +216,7 @@ end
 # weights in the same coordinate order: [θ₁, θ₂].
 function AsymGalambosMultiTail(α::Real, weights::AbstractVector)
     α >= zero(α) || throw(ArgumentError("α must be ≥ 0"))
-    d, dep, asy = _fullset_subset_parameters(α, weights; singleton_parameter=0.0)
+    d, dep, asy = _expand_fullset_asymmetric_component(α, weights; singleton_parameter=0.0)
     return AsymGalambosMultiTail(d, dep, asy)
 end
 

@@ -434,7 +434,7 @@ end
             G = Copulas.GumbelCopula(2, θ)
             E = Copulas.ExtremeDist(L)
 
-            @test Copulas._probability_z(L, 0.01) ≈ (θ - 1) / θ
+            @test Copulas._ghoudi_mixture_probability(L, 0.01) ≈ (θ - 1) / θ
             for z in (1e-4, 0.01, 0.5, 0.99, 1 - 1e-4)
                 @test pdf(E, z) >= 0
                 @test isfinite(logpdf(E, z))

@@ -194,15 +194,17 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
 
+
 # Sampling is selected directly through Julia dispatch. BivariatePickandsTail
 # families use the native Ghoudi/Pickands sampler in d=2 by default, while
 # families with a preferable exact sampler specialize `_rand!` for their
 # concrete tail.
+
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:BivariatePickandsTail}, X::AbstractMatrix{T},) where {T<:Real}
     E = ExtremeDist(C.tail)
     for i in axes(X, 2)
         z = rand(rng, E)
-        w = rand(rng) < _probability_z(C.tail, z) ? rand(rng) : rand(rng) * rand(rng)
+        w = rand(rng) < _ghoudi_mixture_probability(C.tail, z) ? rand(rng) : rand(rng) * rand(rng)
         a = A(C.tail, z)
         X[1, i] = exp(log(w) * z / a)
         X[2, i] = exp(log(w) * (1 - z) / a)
