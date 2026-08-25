@@ -117,11 +117,11 @@ end
 Distributions.params(tail::HuslerReissVariogramTail) = (Γ = tail.Γ,)
 _is_valid_in_dim(tail::HuslerReissVariogramTail, d::Int) = d == size(tail.Γ, 1)
 
-function _husler_reiss_copula(Γ::AbstractMatrix)
+function HuslerReissTail(Γ::AbstractMatrix)
     d1, d2 = size(Γ)
     d1 == d2 || throw(DimensionMismatch("Γ must be square"))
     d1 >= 2 || throw(ArgumentError("Γ must have dimension at least 2"))
-    all(iszero, Γ) && return MCopula(d1)
+    all(iszero, Γ) && return MTail()
 
     if d1 == 2
         G = Matrix{Float64}(Γ)
@@ -132,24 +132,14 @@ function _husler_reiss_copula(Γ::AbstractMatrix)
         maximum(abs, LinearAlgebra.diag(G)) <= tol || throw(ArgumentError("Γ must have zero diagonal"))
         γ = 0.5 * (G[1, 2] + G[2, 1])
         γ > 0.0 || throw(ArgumentError("Γ must have a strictly positive off-diagonal entry",))
-        return ExtremeValueCopula(2, HuslerReissTail(2 / sqrt(γ)))
+        return HuslerReissTail(2 / sqrt(γ))
     end
 
-    tail = HuslerReissVariogramTail(Γ)
-    return ExtremeValueCopula(d1, tail)
+    return HuslerReissVariogramTail(Γ)
 end
 
-function (CT::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D})(Γ::AbstractMatrix)
-    _ev_resolve_dimension(CT, size(Γ, 1), "variogram")
-    return _husler_reiss_copula(Γ)
-end
-
-function (::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D})(d::Int, Γ::AbstractMatrix,)
-    d == size(Γ, 1) || throw(DimensionMismatch(
-        "d=$d does not match variogram dimension $(size(Γ, 1))",
-    ))
-    return _husler_reiss_copula(Γ)
-end
+HuslerReissCopula(Γ::AbstractMatrix) =
+    ExtremeValueCopula{size(Γ, 1)}(HuslerReissTail(Γ))
 
 _unbound_params(::Type{<:HuslerReissTail}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissTail}, d, α) = (; θ = exp(α[1]))

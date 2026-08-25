@@ -539,7 +539,8 @@ function (CT::Type{<:EmpiricalEVCopula{D} where D})(
     u::AbstractMatrix;
     kwargs...,
 )
-    d = _ev_resolve_dimension(CT, size(u, 1), "sample")
+    d = _ev_encoded_dimension(CT)
+    d isa TypeVar && (d = size(u, 1))
     return _empirical_ev_copula(d, u; kwargs...)
 end
 

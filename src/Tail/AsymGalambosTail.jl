@@ -5,10 +5,8 @@
     AsymGalambosCopula(2, α, θ₁, θ₂)
     AsymGalambosCopula{d}(α, weights)
     AsymGalambosCopula(d, α, weights)
-    AsymGalambosCopula(α, weights)
     AsymGalambosCopula{d}(dep, asy)
     AsymGalambosCopula(d, dep, asy)
-    AsymGalambosCopula(dep, asy)
 
 Asymmetric Galambos (negative-logistic) extreme-value family.
 
@@ -27,10 +25,10 @@ with nonnegative asymmetry weights satisfying the marginal normalization
 constraints.
 
 `AsymGalambosCopula(d, dep, asy)` exposes the full subset representation.
-`AsymGalambosCopula(α, weights)` is a convenience parameterization with one
-full-set negative-logistic component and singleton remainders. In `d=2`, it
-is equivalent to the historical `(α, θ₁, θ₂)` parameterization and retains
-the specialized scalar Pickands formulas.
+`AsymGalambosCopula{d}(α, weights)` is a convenience parameterization with
+one full-set negative-logistic component and singleton remainders. In `d=2`,
+it is equivalent to the historical `(α, θ₁, θ₂)` parameterization and
+retains the specialized scalar Pickands formulas.
 
 !!! note "Literature model versus package parameterization"
     [Joe1990](@cite) supports the multivariate min-stable/negative-logistic
@@ -77,36 +75,12 @@ function AsymGalambosTail(α::Real, weights::AbstractVector)
     return AsymGalambosTail(d, dep, asy)
 end
 
-AsymGalambosTail(α::Real, θ₁::Real, θ₂::Real) =
-    AsymGalambosTail(α, [θ₁, θ₂])
+AsymGalambosTail(α::Real, θ₁::Real, θ₂::Real) = AsymGalambosTail(α, [θ₁, θ₂])
 
 function AsymGalambosTail(dep::AbstractVector, asy::AbstractVector)
-    d = _dimension_from_asymmetric_subset_weights(asy, "Asymmetric Galambos")
+    d = trailing_zeros(length(asy) + 1)
     return AsymGalambosTail(d, dep, asy)
 end
-
-function _asymgal_convenience_copula(CT, α::Real, weights::AbstractVector)
-    d = _ev_resolve_dimension(CT, length(weights), "weight-vector")
-    tail = AsymGalambosTail(α, weights)
-    return ExtremeValueCopula{d}(tail)
-end
-
-function _asymgal_convenience_copula(CT, dep::AbstractVector, asy::AbstractVector)
-    inferred = _dimension_from_asymmetric_subset_weights(asy, "Asymmetric Galambos")
-    d = _ev_resolve_dimension(CT, inferred, "subset")
-    tail = AsymGalambosTail(d, dep, asy)
-    return ExtremeValueCopula{d}(tail)
-end
-
-# These dimension-inferred forms supplement the constructors centralized in
-# ExtremeValueCopula.jl. The Int specialization resolves its intersection with
-# the generic runtime-dimension constructor.
-(CT::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D})(α::Real, weights::AbstractVector) =
-    _asymgal_convenience_copula(CT, α, weights)
-(CT::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D})(α::Int, weights::AbstractVector) =
-    _asymgal_convenience_copula(CT, α, weights)
-(CT::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D})(dep::AbstractVector, asy::AbstractVector) =
-    _asymgal_convenience_copula(CT, dep, asy)
 
 _is_valid_in_dim(tail::AsymGalambosTail, d::Int) = d == tail.d
 

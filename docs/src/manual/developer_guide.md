@@ -338,10 +338,11 @@ MOCopula{d}(λ)
 EmpiricalEVCopula{d}(U)
 ```
 
-When a matrix or vector determines `d` unambiguously, an inferred-dimension
-constructor may additionally be provided as convenience syntax, such as
+An inferred-dimension constructor may additionally be provided only when a
+single parameter determines `d` immediately and unambiguously, such as
 `HuslerReissCopula(Γ)` or `MOCopula(λ)`. It must validate to the same
-mathematical copula as the canonical `{d}` constructor.
+mathematical copula as the canonical `{d}` constructor. Do not add inference
+machinery merely to support a shorter spelling.
 
 Full subset parameterizations obey the same contract:
 
@@ -350,8 +351,8 @@ TawnCopula{d}(dep, asy)
 AsymGalambosCopula{d}(dep, asy)
 ```
 
-with `FamilyCopula(d, ...)` as runtime sugar. When the subset count
-`2^d-1` determines the dimension, the no-`d` convenience form may infer it.
+with `FamilyCopula(d, ...)` as runtime sugar. These multi-parameter forms do
+not infer `d`.
 
 A public constructor may map a ``2\times2`` matrix to a specialized scalar tail
 and a larger matrix to a general tail. Do not use the concrete stored tail type

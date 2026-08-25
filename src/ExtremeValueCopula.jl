@@ -61,15 +61,6 @@ function _typed_extreme_value(CT, d::Int, args...; kwargs...)
     return ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
 end
 
-function _ev_resolve_dimension(CT, inferred::Int, what::AbstractString)
-    d = _ev_encoded_dimension(CT)
-    d isa TypeVar && return inferred
-    d == inferred || throw(DimensionMismatch(
-        "encoded dimension d=$d does not match $what dimension $inferred",
-    ))
-    return d
-end
-
 # Canonical constructor: FamilyCopula{d}(params...).
 #
 # If `d` is not encoded in the type, non-structured parameterizations must use

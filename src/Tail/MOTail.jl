@@ -232,22 +232,10 @@ MOMultivariateTail(tail::MOTail) = MOMultivariateTail(2, [tail.λ₂, tail.λ₁
 
 MOMultivariateCopula(d::Int, λ::AbstractVector) = ExtremeValueCopula(d, MOMultivariateTail(d, λ))
 
-function _mo_dimension(λ::AbstractVector)
-    m = length(λ) + 1
-    ispow2(m) || throw(DimensionMismatch("Marshall-Olkin λ must have length 2^d-1",))
-    d = trailing_zeros(m)
-    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least 2"))
-    return d
-end
+MOTail(λ::AbstractVector) = MOMultivariateTail(trailing_zeros(length(λ) + 1), λ)
 
-function (CT::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(λ::AbstractVector)
-    inferred = _mo_dimension(λ)
-    d = _ev_resolve_dimension(CT, inferred, "Marshall-Olkin shock-vector")
-    return MOMultivariateCopula(d, λ)
-end
-
-(::Type{<:ExtremeValueCopula{D,<:MOTail} where D})(d::Int, λ::AbstractVector,) =
-    MOMultivariateCopula(d, λ)
+MOCopula(λ::AbstractVector) =
+    ExtremeValueCopula{trailing_zeros(length(λ) + 1)}(MOTail(λ))
 
 MOMultivariateCopula(tail::MOTail) = ExtremeValueCopula(2, MOMultivariateTail(tail))
 

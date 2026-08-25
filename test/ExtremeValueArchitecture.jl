@@ -92,8 +92,7 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         R = [1.0 0.2 0.1; 0.2 1.0 0.3; 0.1 0.3 1.0]
         Ctev_typed = tEVCopula{3}(4.0, R)
         Ctev_runtime = tEVCopula(3, 4.0, R)
-        Ctev_inferred = tEVCopula(4.0, R)
-        @test typeof(Ctev_typed) == typeof(Ctev_runtime) == typeof(Ctev_inferred)
+        @test typeof(Ctev_typed) == typeof(Ctev_runtime)
         @test Ctev_typed.tail isa Copulas.tEVCorrelationTail
 
         R2 = [1.0 0.3; 0.3 1.0]
@@ -105,38 +104,26 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         weights = [0.6, 0.7, 0.8]
         Ctawn_typed = TawnCopula{3}(2.0, weights)
         Ctawn_runtime = TawnCopula(3, 2.0, weights)
-        Ctawn_inferred = TawnCopula(2.0, weights)
-        @test typeof(Ctawn_typed) ==
-              typeof(Ctawn_runtime) ==
-              typeof(Ctawn_inferred)
+        @test typeof(Ctawn_typed) == typeof(Ctawn_runtime)
         @test Ctawn_typed.tail isa Copulas.TawnTail
         @test length(TawnCopula{3}(2, weights)) == 3
-        @test length(TawnCopula(2, weights)) == 3
 
         asy = [[0.4], [0.3], [0.6, 0.7]]
         dep_tawn = [2.0]
         Ctawn_full_typed = TawnCopula{2}(dep_tawn, asy)
         Ctawn_full_runtime = TawnCopula(2, dep_tawn, asy)
-        Ctawn_full_inferred = TawnCopula(dep_tawn, asy)
-        @test typeof(Ctawn_full_typed) ==
-              typeof(Ctawn_full_runtime) ==
-              typeof(Ctawn_full_inferred)
+        @test typeof(Ctawn_full_typed) == typeof(Ctawn_full_runtime)
 
         Cag_typed = AsymGalambosCopula{3}(0.7, weights)
         Cag_runtime = AsymGalambosCopula(3, 0.7, weights)
-        Cag_inferred = AsymGalambosCopula(0.7, weights)
-        @test typeof(Cag_typed) == typeof(Cag_runtime) == typeof(Cag_inferred)
+        @test typeof(Cag_typed) == typeof(Cag_runtime)
         @test Cag_typed.tail isa Copulas.AsymGalambosTail
         @test length(AsymGalambosCopula{3}(1, weights)) == 3
-        @test length(AsymGalambosCopula(1, weights)) == 3
 
         dep_gal = [0.7]
         Cag_full_typed = AsymGalambosCopula{2}(dep_gal, asy)
         Cag_full_runtime = AsymGalambosCopula(2, dep_gal, asy)
-        Cag_full_inferred = AsymGalambosCopula(dep_gal, asy)
-        @test typeof(Cag_full_typed) ==
-              typeof(Cag_full_runtime) ==
-              typeof(Cag_full_inferred)
+        @test typeof(Cag_full_typed) == typeof(Cag_full_runtime)
 
         Cag2 = AsymGalambosCopula{2}(0.7, [0.6, 0.7])
         Cagref = AsymGalambosCopula{2}(0.7, 0.6, 0.7)
@@ -180,7 +167,7 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
             Uemp;
             degree=1,
         )
-        @test_throws DimensionMismatch MOCopula(ones(5))
+        @test_throws ArgumentError MOCopula(ones(5))
     end
 
     @testset "shared generic mixed-partial interface" begin

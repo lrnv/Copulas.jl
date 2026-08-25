@@ -5,7 +5,6 @@
     tEVCopula(d, ν, ρ)
     tEVCopula{d}(ν, R)
     tEVCopula(d, ν, R)
-    tEVCopula(ν, R)
 
 Extremal-`t` extreme-value copula with degrees of freedom `ν > 0`.
 
@@ -16,8 +15,8 @@ off-diagonal correlation `ρ`. For a non-degenerate `d`-dimensional model,
 -\\frac{1}{d-1}<\\rho<1.
 ```
 
-`tEVCopula(ν, R)` uses a general correlation matrix `R`; its size determines
-the dimension. `R` must be finite, symmetric, have unit diagonal, and be
+`tEVCopula{d}(ν, R)` uses a general correlation matrix `R`. `R` must be
+`d×d`, finite, symmetric, have unit diagonal, and be
 strictly positive definite in the non-degenerate general representation.
 A valid `2×2` matrix is automatically reduced to `tEVTail(ν, ρ)` so the
 specialized bivariate analytic kernel is retained.
@@ -341,8 +340,8 @@ Internal general correlation-matrix representation of the extremal-`t` family
 for `d ≥ 3`. `R` must be finite, symmetric, have unit diagonal, and be
 strictly positive definite.
 
-Prefer `tEVCopula(ν, R)` in user code. The public constructor infers the
-dimension and reduces valid `2×2` matrices to `tEVTail(ν, ρ)`.
+Use `tEVCopula{d}(ν, R)` or `tEVCopula(d, ν, R)` in user code. The public
+constructor reduces valid `2×2` matrices to `tEVTail(ν, ρ)`.
 """
 struct tEVCorrelationTail{T,MT<:AbstractMatrix} <: Tail
     ν::T
@@ -384,12 +383,12 @@ end
 Distributions.params(tail::tEVCorrelationTail) = (ν = tail.ν, R = tail.R)
 _is_valid_in_dim(tail::tEVCorrelationTail, d::Int) = d == size(tail.R, 1)
 
-function _tev_copula_from_correlation(ν::Real, R::AbstractMatrix)
+function tEVTail(ν::Real, R::AbstractMatrix)
     ν > 0 || throw(ArgumentError("ν must be > 0"))
     d1, d2 = size(R)
     d1 == d2 || throw(DimensionMismatch("R must be square"))
     d1 >= 2 || throw(ArgumentError("R must have dimension at least 2"))
-    all(isone, R) && return MCopula(d1)
+    all(isone, R) && return MTail()
 
     if d1 == 2
         RF = Matrix{Float64}(R)
@@ -402,31 +401,10 @@ function _tev_copula_from_correlation(ν::Real, R::AbstractMatrix)
             throw(ArgumentError("R must have unit diagonal"))
         ρ = 0.5 * (RF[1, 2] + RF[2, 1])
         -1.0 < ρ < 1.0 || throw(ArgumentError("a non-degenerate 2×2 correlation matrix requires -1 < ρ < 1",))
-        return ExtremeValueCopula(2, tEVTail(float(ν), ρ))
+        return tEVTail(float(ν), ρ)
     end
 
-    tail = tEVCorrelationTail(ν, R)
-    return ExtremeValueCopula(d1, tail)
-end
-
-function _tev_correlation_copula_for_type(CT, ν::Real, R::AbstractMatrix)
-    _ev_resolve_dimension(CT, size(R, 1), "correlation-matrix")
-    return _tev_copula_from_correlation(ν, R)
-end
-
-function (CT::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(ν::Real, R::AbstractMatrix,)
-    return _tev_correlation_copula_for_type(CT, ν, R)
-end
-
-function (CT::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(ν::Int, R::AbstractMatrix,)
-    return _tev_correlation_copula_for_type(CT, ν, R)
-end
-
-function (::Type{<:ExtremeValueCopula{D,<:tEVTail} where D})(d::Int, ν::Real, R::AbstractMatrix,)
-    d == size(R, 1) || throw(DimensionMismatch(
-        "d=$d does not match correlation dimension $(size(R, 1))",
-    ))
-    return _tev_copula_from_correlation(ν, R)
+    return tEVCorrelationTail(ν, R)
 end
 
 ℓ(tail::tEVCorrelationTail, x) = _tev_stdf(tail.ν, tail.R, x)

@@ -87,17 +87,6 @@ function _expand_fullset_asymmetric_component(parameter::Real, weights::Abstract
     return d, dep, asy
 end
 
-# Infer d from the required number 2^d - 1 of nonempty-subset weight vectors.
-function _dimension_from_asymmetric_subset_weights(asy::AbstractVector, family::AbstractString)
-    m = length(asy) + 1
-    ispow2(m) || throw(DimensionMismatch(
-        "$family asy must contain 2^d-1 subset-weight vectors",
-    ))
-    d = trailing_zeros(m)
-    d >= 2 || throw(ArgumentError("$family dimension must be at least two"))
-    return d
-end
-
 function _sum_component_partials(component, count::Int, expected_sign::Int)
     logs = Float64[]
     @inbounds for j in 1:count

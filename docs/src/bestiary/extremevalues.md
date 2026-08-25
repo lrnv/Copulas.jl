@@ -109,8 +109,8 @@ The current EV implementation goes beyond the historical bivariate-only design:
   mathematical restriction to dimension two;
 - several classical EV families now use the same public constructor in
   ``d=2`` and ``d>2``;
-- matrix and vector parameterizations infer the dimension when the parameter
-  shape determines it;
+- a few matrix and vector parameterizations infer the dimension when a single
+  parameter determines it immediately;
 - general Hüsler-Reiss variograms and extremal-``t`` correlation matrices are
   supported in addition to exchangeable submodels;
 - Tawn and asymmetric Galambos expose structured multivariate subset
@@ -174,9 +174,6 @@ convenience forms are also available:
 
 ```julia
 HuslerReissCopula(Γ)
-tEVCopula(ν, R)
-TawnCopula(α, weights)
-AsymGalambosCopula(α, weights)
 BC2Copula(a)
 MOCopula(λ)
 EmpiricalEVCopula(U)
@@ -189,9 +186,7 @@ TawnCopula{d}(dep, asy)
 AsymGalambosCopula{d}(dep, asy)
 ```
 
-together with `FamilyCopula(d, dep, asy)`. Since `asy` contains exactly
-`2^d-1` subset-weight vectors, `TawnCopula(dep, asy)` and
-`AsymGalambosCopula(dep, asy)` can infer `d` and construct the same model.
+together with `FamilyCopula(d, dep, asy)`.
 
 | Family | Canonical constructor | Supported dimension | Interpretation |
 |---|---|---:|---|
@@ -246,7 +241,7 @@ The extremal-``t`` family follows the same pattern:
 
 ```julia
 tEVCopula{d}(ν, ρ) # equicorrelation
-tEVCopula(ν, R)    # general correlation matrix
+tEVCopula{d}(ν, R) # general correlation matrix
 ```
 
 A valid ``2\times2`` correlation matrix is likewise reduced to the specialized
@@ -285,7 +280,7 @@ contains one dependence parameter per non-singleton subset and one asymmetry
 weight vector per nonempty subset. The weights involving each margin must sum
 to one.
 
-`TawnCopula(α, weights)` is a convenient lower-dimensional parameterization
+`TawnCopula{d}(α, weights)` is a convenient lower-dimensional parameterization
 implemented in Copulas.jl: one logistic component acts on the full set and
 singleton components carry the remaining marginal mass.
 
@@ -294,7 +289,7 @@ the multivariate min-stable framework is described by Joe [Joe1990](@cite).
 The convenience constructor
 
 ```julia
-AsymGalambosCopula(α, weights)
+AsymGalambosCopula{d}(α, weights)
 ```
 
 is a Copulas.jl parameterization of that valid subset model, not a separate
