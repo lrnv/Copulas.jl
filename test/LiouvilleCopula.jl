@@ -87,11 +87,23 @@
         discrete_C = LiouvilleCopula{3}(
             Copulas.AMHGenerator(0.5), (0.6, 1.1, 1.3),
         )
-        discrete_conditional = Copulas.ConditionalCopula(discrete_C, (1,), (0.4,))
+        discrete_conditioned = condition(discrete_C, (1,), (0.4,))
+        discrete_conditional = discrete_conditioned.C
         @test discrete_conditional.G.X.frailty_dist isa Copulas.PowerTiltedFrailty
         @test Distributions.value_support(
             typeof(discrete_conditional.G.X.frailty_dist),
         ) == Distributions.Discrete
+
+        posterior = discrete_conditional.G.X.frailty_dist
+        @test pdf(posterior, 1) > 0
+        @test cdf(posterior, 0) == 0
+        @test cdf(posterior, 1) ≈ pdf(posterior, 1)
+        for p in (0.1, 0.5, 0.9)
+            q = quantile(posterior, p)
+            @test cdf(posterior, q) >= p
+            @test cdf(posterior, prevfloat(q)) < p
+        end
+        @test rand(liouville_rng, posterior) >= minimum(posterior)
 
         gamma_posterior = Copulas.PowerTiltedFrailty(Gamma(2.0, 3.0), 0.75, 0.4)
         @test gamma_posterior isa Gamma
