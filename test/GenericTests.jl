@@ -573,7 +573,8 @@ end
                 observed = mean(ray1 .| ray2)
                 expected = 1 - abs(a-b)
             elseif C isa Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}
-                λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
+                params = Distributions.params(C.tail)
+                λ₁, λ₂, λ₁₂ = params.λ₁, params.λ₂, params.λ₃
                 atom = isapprox.((λ₁+λ₁₂) .* x, (λ₂+λ₁₂) .* y;
                                 atol=1e-10, rtol=1e-7)
                 observed = mean(atom)

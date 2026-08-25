@@ -141,7 +141,7 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         Cmo_runtime = MOCopula(3, λ)
         Cmo_inferred = MOCopula(λ)
         @test typeof(Cmo_typed) == typeof(Cmo_runtime) == typeof(Cmo_inferred)
-        @test Cmo_typed.tail isa Copulas.MOMultivariateTail
+        @test Cmo_typed.tail isa Copulas.MOTail
 
         Uemp = [
             0.20 0.40 0.70
@@ -1215,7 +1215,7 @@ end
 @testset "Multivariate Marshall-Olkin EV" begin
     d = 3
     λ = [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]
-    tail = Copulas.MOMultivariateTail(d, λ)
+    tail = Copulas.MOTail(d, λ)
     C = Copulas.ExtremeValueCopula(d, tail)
 
     B = tail.spectral.B
@@ -1227,7 +1227,9 @@ end
     @test Copulas.ℓ(tail, x) ≈ ref atol=3e-14 rtol=3e-14
 
     oldtail = Copulas.MOTail(0.30, 0.50, 0.70)
-    newtail = Copulas.MOMultivariateTail(oldtail)
+    newtail = Copulas.MOTail(2, [0.50, 0.30, 0.70])
+    @test typeof(oldtail) == typeof(newtail)
+    @test Distributions.params(oldtail) == (λ₁=0.30, λ₂=0.50, λ₃=0.70)
     Cold = Copulas.ExtremeValueCopula(2, oldtail)
     Cnew = Copulas.ExtremeValueCopula(2, newtail)
 
@@ -1242,8 +1244,8 @@ end
 
     _test_ev_sample(C, 5102, 5_000; marginal_atol=0.035)
 
-    @test_throws DimensionMismatch Copulas.MOMultivariateTail(3, λ[1:6])
-    @test_throws ArgumentError Copulas.MOMultivariateTail(
+    @test_throws DimensionMismatch Copulas.MOTail(3, λ[1:6])
+    @test_throws ArgumentError Copulas.MOTail(
         3,
         [0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0],
     )

@@ -124,7 +124,7 @@ Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
 # Density selection follows Julia dispatch directly. BivariatePickandsTail
 # families retain the native scalar Pickands derivative kernel in d=2.
-function Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
+function _bivariate_pickands_logpdf(C, u)
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return -Inf
     (isone(u1) || isone(u2)) && return -Inf
@@ -134,6 +134,9 @@ function Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     core ≤ 0 && return -Inf
     return -val + log(core) + x + y
 end
+
+Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u) =
+    _bivariate_pickands_logpdf(C, u)
 
 # Generic d-dimensional density from the mixed STDF partials and the
 # partition formula for absolutely continuous extreme-value copulas.

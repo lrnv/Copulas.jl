@@ -9,7 +9,7 @@
 
 Marshall-Olkin extreme-value family.
 
-The specialized bivariate representation uses private-shock intensities
+The bivariate parameterization uses private-shock intensities
 `λ₁, λ₂ ≥ 0` and common-shock intensity `λ₁₂ ≥ 0`.
 
 The multivariate representation assigns one nonnegative shock intensity `λ_S`
@@ -40,25 +40,69 @@ References:
 MOTail, MOCopula
 
 struct MOTail{T} <: BivariatePickandsTail
-    λ₁::T
-    λ₂::T
-    λ₁₂::T
-    function MOTail(λ₁, λ₂, λ₁₂)
-        (λ₁ ≥ 0 && λ₂ ≥ 0 && λ₁₂ ≥ 0) || throw(ArgumentError("All λ must be ≥ 0"))
-        T = promote_type(typeof(λ₁), typeof(λ₂), typeof(λ₁₂))
-        return new{T}(T(λ₁), T(λ₂), T(λ₁₂))
-    end
+    d::Int
+    λ::Vector{T}
+    spectral::DiscreteSpectralTail{T}
 end
 
 const MOCopula{d,T} = ExtremeValueCopula{d, MOTail{T}}
-Distributions.params(tail::MOTail) = (λ₁ = tail.λ₁, λ₂ = tail.λ₂, λ₃ = tail.λ₁₂)
+
+function MOTail(d::Int, λ::AbstractVector)
+    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two",))
+
+    subsets = _nonempty_subsets(d)
+    length(λ) == length(subsets) || throw(DimensionMismatch(
+        "expected $(length(subsets)) shock intensities for dimension $d",
+    ))
+
+    vals = collect(λ)
+    T = promote_type(Float64, map(typeof, vals)...)
+    rates = T.(λ)
+    all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite",))
+    all(v -> v >= zero(T), rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be nonnegative",))
+
+    r = zeros(T, d)
+    @inbounds for (k, S) in enumerate(subsets), i in S
+        r[i] += rates[k]
+    end
+    all(v -> v > zero(T), r) || throw(ArgumentError(
+        "every Marshall-Olkin margin must have positive total shock rate",
+    ))
+
+    B = zeros(T, d, length(subsets))
+    @inbounds for (k, S) in enumerate(subsets), i in S
+        B[i, k] = rates[k] / r[i]
+    end
+    return MOTail{T}(d, rates, DiscreteSpectralTail(B))
+end
+
+# The historical bivariate API names the private shocks in the opposite order
+# from the subset ordering ([1], [2], [1,2]) used by the general model.
+MOTail(λ₁, λ₂, λ₁₂) = MOTail(2, [λ₂, λ₁, λ₁₂])
+MOTail(λ::AbstractVector) = MOTail(trailing_zeros(length(λ) + 1), λ)
+
+function _mo_bivariate_rates(tail::MOTail)
+    tail.d == 2 || throw(DimensionMismatch(
+        "the scalar Pickands representation requires a bivariate tail",
+    ))
+    return tail.λ[2], tail.λ[1], tail.λ[3]
+end
+
+function Distributions.params(tail::MOTail)
+    tail.d == 2 || return (λ=tail.λ,)
+    λ₁, λ₂, λ₁₂ = _mo_bivariate_rates(tail)
+    return (λ₁=λ₁, λ₂=λ₂, λ₃=λ₁₂)
+end
+
 _unbound_params(::Type{<:MOTail}, d, θ) = [log(θ.λ₁), log(θ.λ₂), log(θ.λ₃)]
 _rebound_params(::Type{<:MOTail}, d, α) = (; λ₁ = exp(α[1]), λ₂ = exp(α[2]), λ₃ = exp(α[3]))
+_available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:MOTail} where D}, d) =
+    d == 2 ? (:mle,) : ()
 
 function A(tail::MOTail{T}, t::Real) where T
     tt = _safett(t)
     zz = zero(promote_type(T, typeof(tt)))
-    λ₁, λ₂, λ₁₂ = tail.λ₁, tail.λ₂, tail.λ₁₂
+    λ₁, λ₂, λ₁₂ = _mo_bivariate_rates(tail)
     om = 1 - tt
     d1 = λ₁ + λ₁₂
     d2 = λ₂ + λ₁₂
@@ -71,31 +115,32 @@ function A(tail::MOTail{T}, t::Real) where T
     return r1 + r2 + term3
 end
 function _mo_exponents(tail::MOTail, ::Type{R}) where R
-    λ₁, λ₂, λ₁₂ = R(tail.λ₁), R(tail.λ₂), R(tail.λ₁₂)
+    λ₁, λ₂, λ₁₂ = R.(_mo_bivariate_rates(tail))
     d1, d2 = λ₁ + λ₁₂, λ₂ + λ₁₂
     a = iszero(d2) ? zero(R) : λ₂ / d2  # exponent of u
     b = iszero(d1) ? zero(R) : λ₁ / d1  # exponent of v
     return a, b
 end
 function _pickands_left_slope(tail::MOTail, x::Real)
-    R = promote_type(typeof(x), typeof(tail.λ₂), typeof(tail.λ₁₂))
+    R = promote_type(typeof(x), eltype(tail.λ))
     a, _ = _mo_exponents(tail, R)
     return a - one(R)
 end
 function _pickands_right_slope(tail::MOTail, x::Real)
-    R = promote_type(typeof(x), typeof(tail.λ₁), typeof(tail.λ₁₂))
+    R = promote_type(typeof(x), eltype(tail.λ))
     _, b = _mo_exponents(tail, R)
     return one(R) - b
 end
 function τ(C::ExtremeValueCopula{2,<:MOTail})
-    a = C.tail.λ₁/(C.tail.λ₁+C.tail.λ₁₂)
-    b = C.tail.λ₂/(C.tail.λ₂+C.tail.λ₁₂)
+    λ₁, λ₂, λ₁₂ = _mo_bivariate_rates(C.tail)
+    a = λ₁/(λ₁+λ₁₂)
+    b = λ₂/(λ₂+λ₁₂)
     return a*b/(a+b-a*b)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MOTail}, A::AbstractMatrix{S}) where {S<:Real}
     size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
-    λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
+    λ₁, λ₂, λ₁₂ = _mo_bivariate_rates(C.tail)
     T = promote_type(typeof(float(λ₁)), typeof(float(λ₂)), typeof(float(λ₁₂)))
     λ₁T, λ₂T, λ₁₂T = T(λ₁), T(λ₂), T(λ₁₂)
     rate_u, rate_v = λ₂T + λ₁₂T, λ₁T + λ₁₂T
@@ -172,72 +217,34 @@ function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) wher
     end
 end
 
-"""
-    MOMultivariateTail(d, λ)
-
-General `d`-variate Marshall-Olkin extreme-value tail. `λ` contains one
-nonnegative shock intensity for every nonempty subset of `1:d`, ordered first
-by subset cardinality and then lexicographically.
-
-For margin `i`, let `rᵢ = sum(λ[S] for S containing i)`. The STDF is
-
-    ℓ(x) = sum_S max_{i in S} (λ[S] / rᵢ) xᵢ.
-
-The historical bivariate `MOTail(λ₁, λ₂, λ₁₂)` uses crossed names for the two
-private shocks. `MOMultivariateTail(tail::MOTail)` preserves that convention
-exactly.
-"""
-struct MOMultivariateTail{T} <: DiscreteSpectralBackedTail
-    d::Int
-    λ::Vector{T}
-    spectral::DiscreteSpectralTail{T}
-end
-
-function MOMultivariateTail(d::Int, λ::AbstractVector)
-    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two",))
-
-    subsets = _nonempty_subsets(d)
-    length(λ) == length(subsets) || throw(DimensionMismatch("expected $(length(subsets)) shock intensities for dimension $d",))
-
-    vals = collect(λ)
-    T = promote_type(Float64, map(typeof, vals)...)
-    rates = T.(λ)
-
-    all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite",))
-    all(v -> v >= zero(T), rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be nonnegative",))
-
-    r = zeros(T, d)
-    @inbounds for (k, S) in enumerate(subsets)
-        rate = rates[k]
-        for i in S
-            r[i] += rate
-        end
-    end
-
-    all(v -> v > zero(T), r) || throw(ArgumentError("every Marshall-Olkin margin must have positive total shock rate",))
-
-    B = zeros(T, d, length(subsets))
-    @inbounds for (k, S) in enumerate(subsets)
-        rate = rates[k]
-        for i in S
-            B[i, k] = rate / r[i]
-        end
-    end
-
-    spectral = DiscreteSpectralTail(B)
-    return MOMultivariateTail{T}(d, rates, spectral)
-end
-
-MOMultivariateTail(tail::MOTail) = MOMultivariateTail(2, [tail.λ₂, tail.λ₁, tail.λ₁₂],)
-
-MOMultivariateCopula(d::Int, λ::AbstractVector) = ExtremeValueCopula(d, MOMultivariateTail(d, λ))
-
-MOTail(λ::AbstractVector) = MOMultivariateTail(trailing_zeros(length(λ) + 1), λ)
-
 MOCopula(λ::AbstractVector) =
     ExtremeValueCopula{trailing_zeros(length(λ) + 1)}(MOTail(λ))
 
-MOMultivariateCopula(tail::MOTail) = ExtremeValueCopula(2, MOMultivariateTail(tail))
+ℓ(tail::MOTail, x) = ℓ(tail.spectral, x)
+_is_valid_in_dim(tail::MOTail, d::Int) = tail.d == d
 
-Distributions.params(tail::MOMultivariateTail) = (λ = tail.λ,)
-_is_valid_in_dim(tail::MOMultivariateTail, d::Int) = tail.d == d
+function Distributions._rand!(
+    rng::Distributions.AbstractRNG,
+    C::ExtremeValueCopula{d,<:MOTail},
+    X::AbstractMatrix{T},
+) where {d,T<:Real}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output dimension does not match copula dimension",
+    ))
+    return _discrete_spectral_rand!(rng, C.tail.spectral, X)
+end
+
+function Distributions._logpdf(
+    ::ExtremeValueCopula{d,<:MOTail},
+    u,
+) where {d}
+    throw(ArgumentError(
+        "a Marshall-Olkin copula can contain singular components; " *
+        "a global Lebesgue log-density is not defined in general",
+    ))
+end
+
+# Preserve the historical bivariate Pickands density path. In higher
+# dimensions the model is generally singular, so no global density is exposed.
+Distributions._logpdf(C::ExtremeValueCopula{2,<:MOTail}, u) =
+    _bivariate_pickands_logpdf(C, u)
