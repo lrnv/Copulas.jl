@@ -201,16 +201,25 @@ function ℓ(tail::tEVTail{<:Any,<:Real}, x)
     return _tev_stdf(tail.ν, R, x)
 end
 
-function _tev_block_logintensity(ν::Real, R::AbstractMatrix, z, B::Tuple{Vararg{Int}},)
-    b = length(B)
+function _ellpartial_signlog(tail::tEVTail, x, I::Tuple{Vararg{Int}})
+    d = length(x)
+    R = _tev_correlation(tail, d)
+    ν = tail.ν
+    isempty(I) && return 1, log(_tev_stdf(ν, R, x))
+
+    all(xi -> xi >= 0, x) || return 0, -Inf
+    all(i -> x[i] > 0, I) || return 0, -Inf
+
+    z = [iszero(xi) ? Inf : inv(Float64(xi)) for xi in x]
+    b = length(I)
     b > 0 || throw(ArgumentError("the differentiation block must be nonempty"))
 
     νf = Float64(ν)
-    Bv = collect(B)
-    C = [i for i in eachindex(z) if i ∉ B]
+    Bv = collect(I)
+    C = [i for i in eachindex(z) if i ∉ I]
     zB = Float64.(z[Bv])
 
-    all(zi -> zi > 0, zB) || return -Inf
+    all(zi -> zi > 0, zB) || return 0, -Inf
 
     RB = Matrix{Float64}(R[Bv, Bv])
     FB = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(RB))
@@ -228,50 +237,33 @@ function _tev_block_logintensity(ν::Real, R::AbstractMatrix, z, B::Tuple{Vararg
         (1 / νf - 1) * sum(log, zB) -
         ((νf + b) / 2) * log(q)
 
-    isempty(C) && return logλB
+    logq = if isempty(C)
+        logλB
+    else
+        RCB = Matrix{Float64}(R[C, Bv])
+        RBC = Matrix{Float64}(R[Bv, C])
+        RCC = Matrix{Float64}(R[C, C])
 
-    RCB = Matrix{Float64}(R[C, Bv])
-    RBC = Matrix{Float64}(R[Bv, C])
-    RCC = Matrix{Float64}(R[C, C])
+        μ = RCB * solved
+        base = RCC - RCB * (FB \ RBC)
+        Σcond = (q / (νf + b)) .* base
+        Σcond = Matrix(LinearAlgebra.Symmetric(Σcond))
 
-    μ = RCB * solved
-    base = RCC - RCB * (FB \ RBC)
-    Σcond = (q / (νf + b)) .* base
-    Σcond = Matrix(LinearAlgebra.Symmetric(Σcond))
+        upper = Vector{Float64}(undef, length(C))
+        @inbounds for (a, i) in enumerate(C)
+            zi = z[i]
+            upper[a] = isinf(zi) ? Inf : Float64(zi)^(1 / νf)
+        end
 
-    upper = Vector{Float64}(undef, length(C))
-    @inbounds for (a, i) in enumerate(C)
-        zi = z[i]
-        upper[a] = isinf(zi) ? Inf : Float64(zi)^(1 / νf)
+        p = _tev_mvtcdf(νf + b, μ, Σcond, upper)
+        iszero(p) ? -Inf : logλB + log(p)
     end
 
-    p = _tev_mvtcdf(νf + b, μ, Σcond, upper)
-    return iszero(p) ? -Inf : logλB + log(p)
-end
-
-function _tev_ellpartial_signlog(ν::Real, R::AbstractMatrix, x, I::Tuple{Vararg{Int}},)
-    isempty(I) && return 1, log(_tev_stdf(ν, R, x))
-
-    all(xi -> xi >= 0, x) || return 0, -Inf
-    all(i -> x[i] > 0, I) || return 0, -Inf
-
-    z = [
-        iszero(xi) ? Inf : inv(Float64(xi))
-        for xi in x
-    ]
-
-    logq = _tev_block_logintensity(ν, R, z, I)
     isfinite(logq) || return 0, -Inf
 
     logjac = 2 * sum(log(Float64(x[i])) for i in I)
     logabs = logq - logjac
     return isodd(length(I)) ? 1 : -1, logabs
-end
-
-function _ellpartial_signlog(tail::tEVTail, x, I::Tuple{Vararg{Int}})
-    d = length(x)
-    R = _tev_correlation(tail, d)
-    return _tev_ellpartial_signlog(tail.ν, R, x, Tuple(I))
 end
 
 
