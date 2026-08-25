@@ -134,16 +134,6 @@ function _cdf(C::ArchimedeanCopula{2,G}, u::AbstractVector{<:Real}) where {G<:BB
     return exp(-r)  # C(u,v)
 end
 
-@inline function _log1pexpm1(a::Real, b::Real)
-    T = promote_type(typeof(a), typeof(b))
-    if max(a,b) < T(30)
-        return log1p(expm1(a) + expm1(b))
-    else
-        ℓ = LogExpFunctions.logaddexp(a,b)
-        return ℓ + log1p(-exp(-ℓ))
-    end
-end
-
 function Distributions._logpdf(C::ArchimedeanCopula{2,G},
                                u::AbstractVector{<:Real}) where {G<:BB3Generator}
     u1, u2 = u[1], u[2]
@@ -158,7 +148,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G},
     t1, t2 = -log(u1c), -log(u2c)
 
     # L = log( e^a + e^b - 1 ),  (1+s)=e^L
-    L    = _log1pexpm1(a, b)
+    L    = LogExpFunctions.logexpm1(LogExpFunctions.logaddexp(a, b))
     logL = log(L)
     eL   = exp(L)
 

@@ -93,7 +93,7 @@ function Distributions.cdf(d::ExtremeDist{<:LogTail}, z::Real)
     z <= zero(z) && return zero(float(z))
     z >= one(z) && return one(float(z))
     θ = d.tail.θ
-    x = θ * (log(z) - log1p(-z))
+    x = θ * LogExpFunctions.logit(z)
     return inv(one(x) + exp(-x))
 end
 
@@ -110,7 +110,7 @@ function Distributions.quantile(d::ExtremeDist{<:LogTail}, p::Real)
     zero(T) <= p <= one(T) || throw(ArgumentError("p must be between 0 and 1"))
     p == zero(T) && return zero(T)
     p == one(T) && return one(T)
-    x = (log(T(p)) - log1p(-T(p))) / T(d.tail.θ)
+    x = LogExpFunctions.logit(T(p)) / T(d.tail.θ)
     return inv(one(T) + exp(-x))
 end
 

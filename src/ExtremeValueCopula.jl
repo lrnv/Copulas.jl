@@ -181,7 +181,7 @@ function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
     isfinite(logpos) || return oftype(val, -Inf)
     if isfinite(logneg)
         logneg < logpos || return oftype(val, -Inf)
-        logpos += log1p(-exp(logneg - logpos))
+        logpos = LogExpFunctions.logsubexp(logpos, logneg)
     end
     return -val + sum(x) + logpos
 end

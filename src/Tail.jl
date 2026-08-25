@@ -161,13 +161,6 @@ function _subset_dimension(asy::AbstractVector, family::AbstractString)
     return d
 end
 
-@inline function _logsumexp_values(values::AbstractVector)
-    isempty(values) && return -Inf
-    maximum_value = maximum(values)
-    isinf(maximum_value) && return maximum_value
-    return maximum_value + log(sum(exp(value - maximum_value) for value in values))
-end
-
 function _sum_component_partials(component, count::Int, expected_sign::Int)
     logs = Float64[]
     @inbounds for j in 1:count
@@ -177,7 +170,7 @@ function _sum_component_partials(component, count::Int, expected_sign::Int)
         push!(logs, logabs)
     end
     isempty(logs) && return 0, -Inf
-    return expected_sign, _logsumexp_values(logs)
+    return expected_sign, LogExpFunctions.logsumexp(logs)
 end
 
 function _rand_subset_components!(

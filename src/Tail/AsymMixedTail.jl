@@ -119,7 +119,7 @@ function _unbound_params(::Type{<:AsymMixedTail}, d, θ)
     u = clamp(u, δ, 1 - δ)
     v = clamp(v, δ, 1 - δ)
 
-    return [log(u) - log1p(-u), log(v) - log1p(-v)]
+    return [LogExpFunctions.logit(u), LogExpFunctions.logit(v)]
 end
 
 function A(tail::AsymMixedTail, t::Real)

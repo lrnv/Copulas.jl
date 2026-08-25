@@ -59,9 +59,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     size(X, 1) == 2 || throw(DimensionMismatch("output must have two rows for a bivariate Mixed copula",))
     return _mixed_rand_multivariate!(rng, C.tail, X)
 end
-_unbound_params(::Type{<:MixedTail}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
+_unbound_params(::Type{<:MixedTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
 _rebound_params(::Type{<:MixedTail}, d, α) = begin
-    θ = 1 / (1 + exp(-α[1]))
+    θ = LogExpFunctions.logistic(α[1])
     return (; θ)
 end
 _θ_bounds(::Type{<:MixedTail}, d) = (0.0, 1.0)

@@ -169,7 +169,7 @@ function _tawn_component_partial_signlog(α::Real, βcol, C, x, I::Tuple{Vararg{
         yi > 0 && push!(logterms, float(α) * log(yi))
     end
     isempty(logterms) && return 0, -Inf
-    logS = _logsumexp_values(logterms)
+    logS = LogExpFunctions.logsumexp(logterms)
 
     logcoef = 0.0
     @inbounds for j in 1:(k - 1)

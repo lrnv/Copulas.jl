@@ -286,8 +286,7 @@ function _tev_log_normalized_spectral!(rng::Distributions.AbstractRNG, logq::Abs
         end
     end
 
-    c = maximum(logq)
-    logsum = c + log(sum(exp(v - c) for v in logq))
+    logsum = LogExpFunctions.logsumexp(logq)
     @inbounds for i in eachindex(logq)
         logq[i] -= logsum
     end

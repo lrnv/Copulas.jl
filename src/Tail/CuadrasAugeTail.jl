@@ -48,9 +48,9 @@ end
 const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
 Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
 _is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2
-_unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
+_unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
 _rebound_params(::Type{<:CuadrasAugeTail}, d, α) = begin
-    p = 1 / (1 + exp(-α[1]))
+    p = LogExpFunctions.logistic(α[1])
     (; θ = p)
 end
 _θ_bounds(::Type{<:CuadrasAugeTail}, d) = (0.0, 1.0)

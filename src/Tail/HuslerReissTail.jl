@@ -342,11 +342,6 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
 end
 
 
-@inline function _hr_logsumexp(v)
-    m = maximum(v)
-    return m + log(sum(exp(x - m) for x in v))
-end
-
 function _hr_rand_multivariate!(rng::Distributions.AbstractRNG, Γ::AbstractMatrix, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     size(Γ) == (d, d) || throw(DimensionMismatch("Γ must be a $d×$d variogram matrix"))
@@ -389,7 +384,7 @@ function _hr_rand_multivariate!(rng::Distributions.AbstractRNG, Γ::AbstractMatr
                 logw[J[a]] = μ[a] + work[a]
             end
 
-            lognorm = _hr_logsumexp(logw)
+            lognorm = LogExpFunctions.logsumexp(logw)
             @inbounds for i in 1:d
                 candidate = logradius + logw[i] - lognorm
                 logz[i] = max(logz[i], candidate)

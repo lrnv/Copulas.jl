@@ -38,8 +38,8 @@ end
 
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
 Distributions.params(G::BB10Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB10Generator}, d, θ) = [log(θ.θ), log(θ.δ) - log1p(-θ.δ)]  # logit(δ)
-_rebound_params(::Type{<:BB10Generator}, d, α) = (; θ = exp(α[1]), δ = 1 / (1 + exp(-α[2])))
+_unbound_params(::Type{<:BB10Generator}, d, θ) = [log(θ.θ), LogExpFunctions.logit(θ.δ)]
+_rebound_params(::Type{<:BB10Generator}, d, α) = (; θ = exp(α[1]), δ = LogExpFunctions.logistic(α[2]))
 
 ϕ(G::BB10Generator, s) = begin
     θ, δ = G.θ, G.δ

@@ -104,10 +104,9 @@ function (::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D})(d::Int, de
 end
 
 Distributions.params(tail::AsymGalambosTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
-_unbound_params(::Type{<:AsymGalambosTail}, d, θ) = [log(θ.α), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)] 
+_unbound_params(::Type{<:AsymGalambosTail}, d, θ) = [log(θ.α), LogExpFunctions.logit(θ.θ₁), LogExpFunctions.logit(θ.θ₂)]
 _rebound_params(::Type{<:AsymGalambosTail}, d, α) = begin 
-    σ(x) = 1 / (1 + exp(-x)) 
-    (; α = exp(α[1]), θ₁ = σ(α[2]), θ₂ = σ(α[3])) 
+    (; α = exp(α[1]), θ₁ = LogExpFunctions.logistic(α[2]), θ₂ = LogExpFunctions.logistic(α[3]))
 end
 
 function A(tail::AsymGalambosTail, t::Real)

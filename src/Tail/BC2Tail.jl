@@ -54,10 +54,9 @@ end
 
 const BC2Copula{d,T} = ExtremeValueCopula{d, BC2Tail{T}}
 Distributions.params(tail::BC2Tail) = (a = tail.a, b = tail.b)
-_unbound_params(::Type{<:BC2Tail}, d, θ) = [log(θ.a) - log1p(-θ.a), log(θ.b) - log1p(-θ.b)]
+_unbound_params(::Type{<:BC2Tail}, d, θ) = [LogExpFunctions.logit(θ.a), LogExpFunctions.logit(θ.b)]
 _rebound_params(::Type{<:BC2Tail}, d, α) = begin
-    σ(x) = 1 / (1 + exp(-x))
-    (; a = σ(α[1]), b = σ(α[2]))
+    (; a = LogExpFunctions.logistic(α[1]), b = LogExpFunctions.logistic(α[2]))
 end
 
 function A(tail::BC2Tail, t::Real)
