@@ -297,11 +297,6 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
 
         # These families have preferable exact/spectral samplers in d=2.
         check_direct_sampler(
-            GalambosCopula(2, 0.7),
-            Copulas._rand_galambos_spectral!,
-        )
-
-        check_direct_sampler(
             tEVCopula(2, 4.0, 0.5),
             (rng, C, X) ->
                 Copulas._tev_rand_multivariate!(

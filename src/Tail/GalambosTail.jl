@@ -65,56 +65,55 @@ function ℓ(tail::GalambosTail, x)
     return out
 end
 
-@inline function _galambos_subset_partial_logabs(θ, x, I, S)
-    k = length(I)
-    m = minimum(x[j] for j in S)
-    s = sum((x[j] / m)^(-θ) for j in S)
-    out = (one(θ) - k) * log(m) - (inv(θ) + k) * log(s)
-    out += (-θ - one(θ)) * sum(log(x[i] / m) for i in I)
-    k > 1 && (out += sum(log1p(r * θ) for r in 1:k-1))
-    return out
-end
+function _ellpartial_signlog(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
+    function evaluate(current_tail, current_x)
+        θ = current_tail.θ
+        k = length(I)
+        expected = isodd(k) ? 1 : -1
+        base = float(current_x[first(I)] + θ)
+        logpos = logneg = oftype(base, -Inf)
+        rest = [j for j in eachindex(current_x) if j ∉ I]
 
-function _galambos_partial_signlog_native(tail::GalambosTail, x, I)
-    θ = tail.θ
-    expected = isodd(length(I)) ? 1 : -1
-    base = float(x[first(I)] + θ)
-    logpos = logneg = oftype(base, -Inf)
-    rest = [j for j in eachindex(x) if j ∉ I]
+        for r in 0:length(rest), J in Combinatorics.combinations(rest, r)
+            S = (I..., J...)
+            m = minimum(current_x[j] for j in S)
+            s = sum((current_x[j] / m)^(-θ) for j in S)
+            logterm = (one(θ) - k) * log(m) - (inv(θ) + k) * log(s)
+            logterm += (-θ - one(θ)) * sum(log(current_x[i] / m) for i in I)
+            k > 1 && (logterm += sum(log1p(q * θ) for q in 1:k-1))
 
-    for r in 0:length(rest), J in Combinatorics.combinations(rest, r)
-        S = (I..., J...)
-        logterm = _galambos_subset_partial_logabs(θ, x, I, S)
-        if isodd(length(S))
-            logpos = LogExpFunctions.logaddexp(logpos, logterm)
-        else
-            logneg = LogExpFunctions.logaddexp(logneg, logterm)
+            if isodd(length(S))
+                logpos = LogExpFunctions.logaddexp(logpos, logterm)
+            else
+                logneg = LogExpFunctions.logaddexp(logneg, logterm)
+            end
         end
+
+        dominant, other = expected == 1 ? (logpos, logneg) : (logneg, logpos)
+        isfinite(dominant) || return expected, dominant, false
+        !isfinite(other) && return expected, dominant, true
+        dominant > other || return expected, dominant, false
+
+        reldiff = -expm1(-(dominant - other))
+        tol = base isa AbstractFloat ? sqrt(eps(base)) : zero(base)
+        reldiff > tol || return expected, dominant, false
+        return expected, dominant + log(reldiff), true
     end
 
-    dominant, other = expected == 1 ? (logpos, logneg) : (logneg, logpos)
-    isfinite(dominant) || return expected, dominant, false
-    !isfinite(other) && return expected, dominant, true
-    dominant > other || return expected, dominant, false
+    sgn, logabs, resolved = evaluate(tail, x)
+    resolved && return sgn, logabs
+    all(xi -> xi isa AbstractFloat, x) || return sgn, logabs
+    tail.θ isa AbstractFloat || return sgn, logabs
 
-    reldiff = -expm1(-(dominant - other))
-    tol = base isa AbstractFloat ? sqrt(eps(base)) : zero(base)
-    reldiff > tol || return expected, dominant, false
-    return expected, dominant + log(reldiff), true
-end
-
-# Inclusion-exclusion can lose hundreds of digits for strong dependence.
-# Retry only unresolved partials at increasing precision.
-function _galambos_partial_signlog_big(tail::GalambosTail, x, I)
+    # Inclusion-exclusion can lose hundreds of digits for strong dependence.
+    # Retry only unresolved partials at increasing precision.
     T = typeof(float(x[first(I)] + tail.θ))
     bits = max(256,
                x[first(I)] isa BigFloat ? precision(x[first(I)]) : 0,
                tail.θ isa BigFloat ? precision(tail.θ) : 0)
     for _ in 1:7
         sgn, logabs, resolved = setprecision(BigFloat, bits) do
-            xb = BigFloat.(x)
-            tb = GalambosTail(BigFloat(tail.θ))
-            _galambos_partial_signlog_native(tb, xb, I)
+            evaluate(GalambosTail(BigFloat(tail.θ)), BigFloat.(x))
         end
         resolved && return sgn, convert(T, logabs)
         bits *= 2
@@ -122,20 +121,12 @@ function _galambos_partial_signlog_big(tail::GalambosTail, x, I)
     throw(ArgumentError("Galambos mixed partial could not be resolved numerically"))
 end
 
-function _ellpartial_signlog(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
-    I = Tuple(I)
-    sgn, logabs, resolved = _galambos_partial_signlog_native(tail, x, I)
-    resolved && return sgn, logabs
-    all(xi -> xi isa AbstractFloat, x) || return sgn, logabs
-    tail.θ isa AbstractFloat || return sgn, logabs
-    return _galambos_partial_signlog_big(tail, x, I)
-end
 
-
-# Exact spectral sampler for the multivariate negative-logistic/Galambos model.
+# Galambos uses its exact spectral sampler in every dimension, including d=2
+# where it is substantially faster than the generic Ghoudi/Pickands sampler.
 # The common scale of the Weibull/Gamma construction cancels after
 # normalization to the simplex.
-function _rand_galambos_spectral!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
     S = promote_type(T, typeof(C.tail.θ))
     θ = S(C.tail.θ)
     invθ = inv(θ)
@@ -173,13 +164,6 @@ function _rand_galambos_spectral!(rng::Distributions.AbstractRNG, C::ExtremeValu
         end
     end
     return X
-end
-
-
-# Galambos uses its exact spectral sampler in every dimension, including d=2
-# where it is substantially faster than the generic Ghoudi/Pickands sampler.
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    return _rand_galambos_spectral!(rng, C, X)
 end
 
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
