@@ -72,6 +72,23 @@ Les premiers candidats à examiner sont :
 
 Cette liste est un point de départ : l’audit doit être mécanique afin de ne pas oublier un symbole documenté ailleurs.
 
+### Décisions de visibilité
+
+Première classification retenue :
+
+- ajouter `ExtremeValueCopula` aux exports, par cohérence avec les constructeurs génériques `ArchimedeanCopula`, `ArchimaxCopula` et `LiouvilleCopula` ;
+- retirer `TiltedGenerator` des exports : il reste une représentation interne susceptible d’être retournée par certains algorithmes, mais ne constitue pas un point d’entrée utilisateur ;
+- déclarer `public`, sans les exporter, les mesures `τ`, `ρ`, `β`, `γ`, `ι`, `λₗ`, `λᵤ`, leurs inverses effectivement définies, les fonctions pairwise `corblomqvist`, `corgini`, `corentropy`, `corlowertail`, `coruppertail`, ainsi que `measure` ;
+- ne pas inclure `aicc` et `hqc` dans cette déclaration pour le moment ;
+- déclarer publics uniquement les principaux types abstraits d’architecture : `Copula`, `Distortion`, `Generator` et `Tail` ;
+- déclarer publiques les primitives mathématiques documentées des générateurs et tails ;
+- déclarer publics mais qualifiés les générateurs et tails concrets destinés à composer des modèles génériques ;
+- conserver privés les autres types abstraits intermédiaires, les distributions radiales, frailties, distortions concrètes et helpers d’implémentation ;
+- réduire l’exposition documentaire de `SubsetCopula`, `ConditionalCopula` et `DistortionFromCop` : le contrat utilisateur porte sur `subsetdims` et `condition`, pas sur les représentations concrètes retournées ;
+- maintenir l’API développeur hors du contrat SemVer et l’indiquer sans ambiguïté dans le guide développeur. Les points d’extension internes, y compris ceux préfixés `_`, peuvent évoluer entre versions mineures avant 1.0 et ne doivent pas être déclarés `public` par accident.
+
+Les méthodes définies pour des fonctions publiques externes — notamment `StatsBase.corkendall`, `StatsBase.corspearman`, `Distributions.fit`, `cdf`, `pdf`, `logpdf`, `loglikelihood` et `rand` — font pleinement partie du contrat comportemental à tester. Elles ne nécessitent pas de déclaration `public` dans Copulas.jl, puisque leurs symboles appartiennent à leurs modules d’origine.
+
 ### Contrat comportemental
 
 La table normative de la documentation publique précise, pour chaque opération :
