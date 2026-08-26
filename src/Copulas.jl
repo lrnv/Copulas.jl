@@ -108,6 +108,7 @@ module Copulas
 
     #Extreme value copulas
     include("Tail.jl")
+    include("Tail/utilities.jl")
     include("ExtremeValueCopula.jl")
 
     # Stable tail dependence functions
@@ -115,7 +116,9 @@ module Copulas
     include("Tail/MTail.jl")
     include("Tail/AsymGalambosTail.jl")
     include("Tail/AsymLogTail.jl")
+    include("Tail/TawnTail.jl")
     include("Tail/AsymMixedTail.jl")
+    include("Tail/DiscreteSpectralTail.jl")
     include("Tail/BC2Tail.jl")
     include("Tail/CuadrasAugeTail.jl")
     include("Tail/GalambosTail.jl")
@@ -161,6 +164,8 @@ module Copulas
            BB7Copula,
            BB8Copula,
            BB9Copula,
+           DiscreteSpectralTail,
+           DiscreteSpectralCopula,
            BC2Copula,
            ClaytonCopula,
            CuadrasAugeCopula,
@@ -182,6 +187,7 @@ module Copulas
            PlackettCopula,
            RafteryCopula,
            SurvivalCopula,
+           TawnCopula,
            TCopula,
            tEVCopula,
            WCopula,

@@ -88,7 +88,9 @@ end
     end
     @test GalambosCopula{2}(2) isa GalambosCopula{2}
     @test tEVCopula{2}(4, 0.5) isa tEVCopula{2}
-    @test typeof(GalambosCopula{2}(1.0))(2, 0.5) isa GalambosCopula{2}
+    # Once d is encoded, reconstruction takes model parameters only.
+    # `typeof(C)(d, params...)` is intentionally not part of the public EV API.
+    @test typeof(GalambosCopula{2}(1.0))(0.5) isa GalambosCopula{2}
     @test isfinite(Copulas.τ⁻¹(typeof(GalambosCopula{2}(1.0)), 0.2))
     @test isfinite(Copulas.τ⁻¹(typeof(CuadrasAugeCopula{2}(0.5)), 0.2))
     @test CuadrasAugeCopula{2}(0.0) isa IndependentCopula{2}

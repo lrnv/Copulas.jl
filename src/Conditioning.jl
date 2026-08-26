@@ -3,12 +3,12 @@
 #####  Conditioning framework.
 #####  User-facing function: `condition(), rosenblatt(), inverse_rosenblatt()`
 #####
-#####  When implementing new models, you can overwrite: 
+#####  When implementing new models, you can overwrite:
 #####   - `DistortionFromCop(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {d, p}`
 #####   - `ConditionalCopula(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}) where {d, p}`
 ###############################################################################
 
-# A few utilities : 
+# A few utilities :
 function _assemble(D, is, js, uᵢₛ, uⱼₛ)
     Tᵢ = eltype(typeof(uᵢₛ)); Tⱼ = eltype(typeof(uⱼₛ)); T = promote_type(Tᵢ, Tⱼ)
     w = fill(one(T), D)
@@ -16,22 +16,10 @@ function _assemble(D, is, js, uᵢₛ, uⱼₛ)
     @inbounds for (k,j) in pairs(js); w[j] = uⱼₛ[k]; end
     return w
 end
-function _swap(u, i, uᵢ)
-    T = promote_type(eltype(u), typeof(uᵢ))
-    v = similar(u, T)
-    @inbounds for k in eachindex(u)
-        v[k] = u[k]
-    end
-    v[i] = uᵢ
-    return v
-end
-_der(f, u, i::Int) = ForwardDiff.derivative(uᵢ -> f(_swap(u, i, uᵢ)), u[i])
-_der(f, u, is::NTuple{1,Int}) = _der(f, u, is[1])
-_der(f, u, is::NTuple{N,Int}) where {N} = _der(u′ -> _der(f, u′, (is[end],)), u, is[1:end-1])
-_partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _der(u -> Distributions.cdf(C, u), _assemble(length(C), is, js, uᵢₛ, uⱼₛ), js)
+_partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _mixed_partial(u -> Distributions.cdf(C, u),_assemble(length(C), is, js, uᵢₛ, uⱼₛ), js,)
 
-_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs) 
-_process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,)) 
+_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs)
+_process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,))
 function _process_tuples(::Val{D}, js, ujs) where D
     p, p2 = length(js), length(ujs)
     @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
@@ -56,32 +44,11 @@ is the distribution of `X_i | U_J = u_J`.
 """
 abstract type Distortion<:Distributions.ContinuousUnivariateDistribution end
 
-function _unit_quantile(d, p::Real)
-    T = typeof(float(p))
-    zero(T) <= p <= one(T) || throw(ArgumentError("p must be between 0 and 1"))
-    p == zero(T) && return zero(T)
-    p == one(T) && return one(T)
-
-    lo, hi = zero(T), one(T)
-    Distributions.cdf(d, lo) >= p && return lo
-    Distributions.cdf(d, hi) < p && return hi
-    for _ in 1:precision(T)
-        mid = (lo + hi) / 2
-        (mid == lo || mid == hi) && break
-        if Distributions.cdf(d, mid) >= p
-            hi = mid
-        else
-            lo = mid
-        end
-    end
-    return hi
-end
-
 (D::Distortion)(::Distributions.Uniform) = D
 (D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X)
 Distributions.minimum(::Distortion) = 0.0
 Distributions.maximum(::Distortion) = 1.0
-function Distributions.quantile(d::Distortion, α::Real) 
+function Distributions.quantile(d::Distortion, α::Real)
     T = typeof(float(α))
     ϵ = eps(T)
     α < ϵ && return zero(T)
@@ -94,7 +61,7 @@ function Distributions.quantile(d::Distortion, α::Real)
     fhi <= zero(fhi) && return hi
     return Roots.find_zero(f, (lo, hi), Roots.Bisection(); xtol = sqrt(eps(T)))
 end
-# You have to implement a cdf, and you can implement a pdf, either in log scaleor not: 
+# You have to implement a cdf, and you can implement a pdf, either in log scaleor not:
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))
 function Distributions.logpdf(d::Distortion, u::Real)
@@ -150,11 +117,16 @@ function Distributions.logpdf(d::DistortionFromCop, u::Real)
     (0 < u < 1) || return -Inf
     d.den <= 0 && return -Inf
 
-    # Assemble the evaluation point with u at coordinate i, u_J fixed, others at 1
-    D = length(d.C)
-    z = _assemble(D, (d.i,), d.js, (float(u),), d.uⱼₛ)
-    # Mixed partial derivative of order p+1 w.r.t. (J..., i)
-    num = _der(u -> Distributions.cdf(d.C, u), z, (d.js..., d.i))
+    # Mixed partial derivative of order p+1 w.r.t. (J..., i). Going through
+    # `_partial_cdf` lets models provide this quantity without differentiating
+    # their numerical CDF implementation.
+    num = _partial_cdf(
+        d.C,
+        (),
+        (d.js..., d.i),
+        (),
+        (d.uⱼₛ..., float(u)),
+    )
     (num <= 0 || !isfinite(num)) && return -Inf
     return log(num) - log(d.den)
 end
@@ -339,7 +311,7 @@ function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::
 end
 
 ###########################################################################
-#####  Methods for conditioning subsetcopulas. 
+#####  Methods for conditioning subsetcopulas.
 ###########################################################################
 
 
@@ -404,7 +376,7 @@ end
 """
     inverse_rosenblatt(C::Copula, u)
 
-Computes the inverse rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ Π, the independence copula, the result should be distributed as C. Also look at `rosenblatt(C, u)` for the inverse transformation. The interface proposes faster versions for matrix inputs `u`. 
+Computes the inverse rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ Π, the independence copula, the result should be distributed as C. Also look at `rosenblatt(C, u)` for the inverse transformation. The interface proposes faster versions for matrix inputs `u`.
 
 Generic inverse Rosenblatt using conditional distortions:
 U₁ = S₁, U_k = H_{k|1:(k-1)}^{-1}(S_k | U₁:U_{k-1}).

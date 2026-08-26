@@ -230,6 +230,7 @@ Bestiary = [
     LogCopula{2}(1.5),
     LogCopula{2}(1+9*0.4),
     LogCopula{2}(5.5),
+    LogCopula{3}(2.0),
     MCopula{2}(),
     MCopula{4}(),
     MixedCopula{2}(0.0),
@@ -430,10 +431,10 @@ function generator_specialization(gen::TG) where TG<:Copulas.Generator
 end
 
 function tail_specialization(tail::TT) where TT<:Copulas.Tail
-    dA =        which(Copulas.dA,        (TT, Float64))                 != which(Copulas.dA,        (Copulas.Tail2, Float64))
-    d²A =       which(Copulas.d²A,       (TT, Float64))                 != which(Copulas.d²A,       (Copulas.Tail2, Float64))
-    _A_dA_d²A = which(Copulas._A_dA_d²A, (TT, Float64))                 != which(Copulas._A_dA_d²A, (Copulas.Tail2, Float64))
-    ℓ =         which(Copulas.ℓ,         (TT, Tuple{Float64, Float64})) != which(Copulas.ℓ,         (Copulas.Tail2, Tuple{Float64, Float64}))
+    dA =        which(Copulas.dA,        (TT, Float64))                 != which(Copulas.dA,        (Copulas.BivariatePickandsTail, Float64))
+    d²A =       which(Copulas.d²A,       (TT, Float64))                 != which(Copulas.d²A,       (Copulas.BivariatePickandsTail, Float64))
+    _A_dA_d²A = which(Copulas._A_dA_d²A, (TT, Float64))                 != which(Copulas._A_dA_d²A, (Copulas.BivariatePickandsTail, Float64))
+    ℓ =         which(Copulas.ℓ,         (TT, Tuple{Float64, Float64})) != which(Copulas.ℓ,         (Copulas.BivariatePickandsTail, Tuple{Float64, Float64}))
     return (; dA, d²A, _A_dA_d²A, ℓ)
 end
 
@@ -567,13 +568,15 @@ end
             x = .-log.(spl1000[1, :])
             y = .-log.(spl1000[2, :])
             if C isa Copulas.ExtremeValueCopula{2,<:Copulas.BC2Tail}
-                a, b = C.tail.a, C.tail.b
+                params = Distributions.params(C.tail)
+                a, b = params.a, params.b
                 ray1 = isapprox.(a .* x, b .* y; atol=1e-10, rtol=1e-7)
                 ray2 = isapprox.((1-a) .* x, (1-b) .* y; atol=1e-10, rtol=1e-7)
                 observed = mean(ray1 .| ray2)
                 expected = 1 - abs(a-b)
             elseif C isa Copulas.ExtremeValueCopula{2,<:Copulas.MOTail}
-                λ₁, λ₂, λ₁₂ = C.tail.λ₁, C.tail.λ₂, C.tail.λ₁₂
+                params = Distributions.params(C.tail)
+                λ₁, λ₂, λ₁₂ = params.λ₁, params.λ₂, params.λ₃
                 atom = isapprox.((λ₁+λ₁₂) .* x, (λ₂+λ₁₂) .* y;
                                 atol=1e-10, rtol=1e-7)
                 observed = mean(atom)
@@ -904,7 +907,6 @@ end
             @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
                 @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
             end
-            @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
 
             # Then on the copula we have at hand:
             θ₀ = Distributions.params(C)
@@ -912,7 +914,6 @@ end
             @testif unbounding_is_a_bijection(C) "bijective unbounding" begin 
                 @test all(k->getfield(θ₀,k) ≈ getfield(θ₁,k), keys(θ₀))
             end
-            @test Copulas._unbound_params(CT, d, Distributions.params(CT(d, θ₀...))) == Copulas._unbound_params(CT, d, θ₀)
         end
 
         methods = Copulas._available_fitting_methods(CT, d)

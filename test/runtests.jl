@@ -20,6 +20,7 @@ testfiles = [
     "NatafTest",
     "SklarDist",
     "Subsetting",
+    "ExtremeValueArchitecture",
     "GenericTests",
 ]
 

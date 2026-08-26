@@ -1,33 +1,40 @@
 """
     CuadrasAugeTail{T}, CuadrasAugeCopula{d,T}
 
-Fields:
-  - θ::Real — dependence parameter, θ ∈ [0,1]
+    CuadrasAugeCopula{d}(θ)
+    CuadrasAugeCopula(d, θ)
 
-Constructor
-
-    CuadrasAugeCopula(θ)
-    ExtremeValueCopula(2, CuadrasAugeTail(θ))
-
-The (bivariate) Cuadras-Augé extreme-value copula is parameterized by ``\\theta \\in [0,1]``.
-Its Pickands dependence function is
+Cuadras-Augé extreme-value copula in dimension `d ≥ 2`, with `θ ∈ [0,1]`.
+Copulas.jl uses the stable tail dependence function
 
 ```math
-A(t) = \\max\\{t, 1-t\\} + (1-\\theta)\\min\\{t,1-t\\}, \\quad t \\in [0,1].
+\\ell(x)
+=
+(1-\\theta)\\sum_{i=1}^d x_i
++
+\\theta\\max_{1\\le i\\le d}x_i.
 ```
+
+For `d = 2` this yields the usual Pickands dependence function
+
+```math
+A(t)=\\max\\{t,1-t\\}+(1-\\theta)\\min\\{t,1-t\\}.
+```
+
+The model has a finite discrete-spectral representation.
 
 Special cases:
 
-* θ = 0 ⇒ IndependentCopula
-* θ = 1 ⇒ MCopula (comonotone copula)
+* `θ = 0` returns `IndependentCopula(d)`.
+* `θ = 1` returns `MCopula(d)`.
 
 References:
 
-* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications (Vol. 4). World Scientific.
+* [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications. World Scientific.
 """
 CuadrasAugeTail, CuadrasAugeCopula
 
-struct CuadrasAugeTail{T} <: AbstractUnivariateTail2
+struct CuadrasAugeTail{T} <: OneParameterPickandsTail
     θ::T
     function CuadrasAugeTail(θ)
         (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))
@@ -40,9 +47,10 @@ end
 
 const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
 Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
-_unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
+_is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2
+_unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
 _rebound_params(::Type{<:CuadrasAugeTail}, d, α) = begin
-    p = 1 / (1 + exp(-α[1]))
+    p = LogExpFunctions.logistic(α[1])
     (; θ = p)
 end
 _θ_bounds(::Type{<:CuadrasAugeTail}, d) = (0.0, 1.0)
@@ -52,12 +60,37 @@ function A(tail::CuadrasAugeTail, t::Real)
     θ = tail.θ
     return max(tt, 1-tt) + (1-θ) * min(tt, 1-tt)
 end
-dA(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t::Real) where {T} = (t <= 0.5 ? -tail.θ : C.tail.θ)
-ℓ(C::ExtremeValueCopula{2, CuadrasAugeTail{T}}, t) where {T} = max(t[1], t[2]) + (1 - C.tail.θ) * min(t[1], t[2])
+
+
+# Dimension-free Cuadras-Auge STDF:
+#
+#   ℓ(x) = (1-θ) Σᵢ xᵢ + θ maxᵢ xᵢ.
+#
+# This is a discrete spectral model with one private atom per coordinate and
+# one common atom.
+function ℓ(tail::CuadrasAugeTail, x)
+    θ = tail.θ
+    return (one(θ) - θ) * sum(x) + θ * maximum(x)
+end
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:CuadrasAugeTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    θ = C.tail.θ
+    B = zeros(typeof(θ), d, d + 1)
+
+    @inbounds for i in 1:d
+        B[i, i] = one(θ) - θ
+        B[i, end] = θ
+    end
+
+    return _discrete_spectral_rand!(rng, DiscreteSpectralTail(B), X)
+end
+_pickands_left_slope(tail::CuadrasAugeTail, prototype::Real) = -convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
+_pickands_right_slope(tail::CuadrasAugeTail, prototype::Real) = convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
+dA(tail::CuadrasAugeTail, t::Real) = t <= 0.5 ? -tail.θ : tail.θ
+
 function Distributions._rand!(rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2, CuadrasAugeTail{T}},
     A::AbstractMatrix{S}) where {T,S<:Real}
-    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     θ = C.tail.θ
     E = rand(rng, Distributions.Exponential(θ/(1-θ)), 2, size(A, 2))
     E₁₂ = rand(rng, Distributions.Exponential(), size(A, 2))
@@ -72,8 +105,8 @@ function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real
     # bounds and degeneracies
     z ≤ 0    && return S(-Inf)
     z ≥ 1    && return S(0)
-    D.uⱼ ≤ 0 && return S(-Inf)
-    D.uⱼ ≥ 1 && return S(log(z))
+    D.uⱼ ≤ 0 && return _biv_ev_endpoint_logcdf(D, z, true, S)
+    D.uⱼ ≥ 1 && return _biv_ev_endpoint_logcdf(D, z, false, S)
 
     z ≥ D.uⱼ && return (1-θ) * log(z)
     return log1p(-θ) + log(z) + θ * D.negloguⱼ
@@ -83,8 +116,8 @@ function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::R
     θ = D.tail.θ
     α ≤ 0 && return 0.0
     α ≥ 1 && return 1.0
-    D.uⱼ ≤ 0 && return 0.0
-    D.uⱼ ≥ 1 && return α
+    D.uⱼ ≤ 0 && return _biv_ev_endpoint_quantile(D, α, true, T)
+    D.uⱼ ≥ 1 && return _biv_ev_endpoint_quantile(D, α, false, T)
 
     la = log(α)
     lu = -D.negloguⱼ

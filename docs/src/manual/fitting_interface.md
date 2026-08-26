@@ -203,13 +203,19 @@ In addition to parametric families (MLE / rank-based), `Copulas.jl` exposes seve
 - `BetaCopula`
 - `BernsteinCopula`
 - `CheckerboardCopula`
-- `EmpiricalEVCopula` (built from `EmpiricalEVTail`, bivariate extreme-value case)
+- `EmpiricalEVCopula` (bivariate Pickands estimation or shape-constrained
+  multivariate spectral estimation, selected from the data dimension)
 
 See the dedicated page for theory, properties, and references: [Empirical models](@ref empirical_copulas).
 
-All **StatsBase / StatsModels** functionality works identically for these copulas:  
+For empirical models with a density, the **StatsBase / StatsModels** functionality works identically:
 you can call `coef`, `aic`, `bic`, `deviance`, `predict`, `residuals`, etc.,  
 and obtain a full `CopulaModel` object with the same structure and printing behavior.  
+
+The multivariate `EmpiricalEVCopula` projection may contain singular spectral
+components and therefore has no global Lebesgue density. Its quick `fit`
+interface, CDF, and sampler remain available, but likelihood-based summaries
+are not applicable.
 
 The only difference is that empirical models are **parameter-free** (`dof(M) = 0`),  
 so `vcov(M)`, `stderror(M)`, and `confint(M)` return `nothing`,  

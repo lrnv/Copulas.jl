@@ -1,61 +1,106 @@
 """
     BC2Tail{T}, BC2Copula{d,T}
 
-Fields:
-  - a::Real — parameter (a ∈ [0,1])
-  - b::Real — parameter (b ∈ [0,1])
+    BC2Copula{2}(a, b)
+    BC2Copula(2, a, b)
+    BC2Copula{d}(a::AbstractVector)
+    BC2Copula(d, a::AbstractVector)
+    BC2Copula(a::AbstractVector)
 
-Constructor
+BC2 extreme-value family with a finite two-atom spectral representation.
 
-    BC2Copula(a, b)
-    ExtremeValueCopula(2, BC2Tail(a, b))
-
-The bivariate BC2 extreme-value copula is parameterized by two parameters ``a, b \\in [0,1]``. Its Pickands dependence function is
+For the classical bivariate model [mai2011bivariate](@cite),
 
 ```math
-A(t) = \\max\\{a t, b (1-t) \\} + \\max\\{(1-a)t, (1-b)(1-t)\\}, \\quad t \\in [0,1].
+A(t)
+=
+\\max\\{at,b(1-t)\\}
++
+\\max\\{(1-a)t,(1-b)(1-t)\\}.
 ```
 
-References:
+Copulas.jl also accepts a vector `a=(a₁,…,a_d)` and uses the direct
+`d`-dimensional two-atom spectral extension
 
-* [mai2011bivariate](@cite) Mai, J. F., & Scherer, M. (2011). Bivariate extreme-value copulas with discrete Pickands dependence measure. Extremes, 14, 311-324. Springer, 2011.
+```math
+\\ell(x)
+=
+\\max_i(a_i x_i)
++
+\\max_i((1-a_i)x_i).
+```
+
+The vector length determines `d`; in dimension two the same representation
+activates the specialized Pickands methods.
+
+!!! note "Copulas.jl multivariate parameterization"
+    The bivariate BC2 model is documented in [mai2011bivariate](@cite). The
+    vector constructor is the direct higher-dimensional two-atom spectral
+    construction used by Copulas.jl; general finite spectral constructions are
+    discussed in [mai2012simulating](@cite).
 """
 BC2Tail, BC2Copula
 
-struct BC2Tail{T} <: Tail2
-    a::T
-    b::T
-    function BC2Tail(a, b)
-        T = promote_type(typeof(a), typeof(b))
-        (0 ≤ a ≤ 1) || throw(ArgumentError("a must be in [0,1]"))
-        (0 ≤ b ≤ 1) || throw(ArgumentError("b must be in [0,1]"))
-        return new{T}(T(a), T(b))
+struct BC2Tail{T} <: DiscreteSpectralPickandsTail
+    a::Vector{T}
+    spectral::DiscreteSpectralTail{T}
+    function BC2Tail(a::AbstractVector)
+        length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates",))
+        vals = collect(a)
+        T = promote_type(Float64, map(typeof, vals)...)
+        aa = T.(a)
+        return new{T}(aa, DiscreteSpectralTail(hcat(aa, one(T) .- aa)))
     end
 end
 
 const BC2Copula{d,T} = ExtremeValueCopula{d, BC2Tail{T}}
-Distributions.params(tail::BC2Tail) = (a = tail.a, b = tail.b)
-_unbound_params(::Type{<:BC2Tail}, d, θ) = [log(θ.a) - log1p(-θ.a), log(θ.b) - log1p(-θ.b)]
-_rebound_params(::Type{<:BC2Tail}, d, α) = begin
-    σ(x) = 1 / (1 + exp(-x))
-    (; a = σ(α[1]), b = σ(α[2]))
+
+BC2Tail(a, b) = BC2Tail([a, b])
+
+function _bc2_bivariate_weights(tail::BC2Tail)
+    return tail.a[1], tail.a[2]
 end
+
+function Distributions.params(tail::BC2Tail)
+    length(tail.a) == 2 || return (a=tail.a,)
+    a, b = _bc2_bivariate_weights(tail)
+    return (; a, b)
+end
+
+_unbound_params(::Type{<:BC2Tail}, d, θ) = [LogExpFunctions.logit(θ.a), LogExpFunctions.logit(θ.b)]
+_rebound_params(::Type{<:BC2Tail}, d, α) = begin
+    (; a = LogExpFunctions.logistic(α[1]), b = LogExpFunctions.logistic(α[2]))
+end
+_available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:BC2Tail} where D}, d) =
+    d == 2 ? (:mle,) : ()
 
 function A(tail::BC2Tail, t::Real)
     tt = _safett(t)
-    a, b = tail.a, tail.b
+    a, b = _bc2_bivariate_weights(tail)
     return max(a*tt, b*(1-tt)) + max((1-a)*tt, (1-b)*(1-tt))
 end
-τ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T} = 1 - abs(C.tail.a - C.tail.b)
+function _pickands_left_slope(tail::BC2Tail, x::Real)
+    R = promote_type(typeof(x), eltype(tail.a))
+    a, b = R.(_bc2_bivariate_weights(tail))
+    return iszero(b) ? a - one(R) : isone(b) ? -a : -one(R)
+end
+function _pickands_right_slope(tail::BC2Tail, x::Real)
+    R = promote_type(typeof(x), eltype(tail.a))
+    a, b = R.(_bc2_bivariate_weights(tail))
+    return iszero(a) ? one(R) - b : isone(a) ? b : one(R)
+end
+function τ(C::ExtremeValueCopula{2,BC2Tail{T}}) where {T}
+    a, b = _bc2_bivariate_weights(C.tail)
+    return 1 - abs(a - b)
+end
 function ρ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T}
-    a, b = C.tail.a, C.tail.b
+    a, b = _bc2_bivariate_weights(C.tail)
     num = 2 * (a + b + a*b + max(a,b) - 2a^2 - 2b^2)
     den = (3 - a - b - min(a,b)) * (a + b + max(a,b))
     return num / den
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, BC2Tail{T}}, A::AbstractMatrix{S}) where {T,S<:Real}
-    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
-    a, b = C.tail.a, C.tail.b
+    a, b = _bc2_bivariate_weights(C.tail)
     V = rand(rng, S, 2, size(A, 2))
     @inbounds for (j, col) in enumerate(axes(A, 2))
         v1, v2 = V[1, j], V[2, j]
@@ -67,22 +112,23 @@ end
 function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{TF1}, TF2}, z::Real) where {TF1,TF2}
     T = promote_type(TF1, TF2, typeof(z))
 
-    a, b = D.tail.a, D.tail.b
+    a, b = _bc2_bivariate_weights(D.tail)
 
     if !(0.0 < z < 1.0)
         return z <= 0 ? T(-Inf) : T(0.0)
     end
     ucond = D.uⱼ
-    if !(0.0 < ucond < 1.0)
-        return ucond <= 0 ? T(-Inf) : T(log(z))
-    end
+    ucond <= 0 && return _biv_ev_endpoint_logcdf(D, z, true, T)
+    ucond >= 1 && return _biv_ev_endpoint_logcdf(D, z, false, T)
 
     if D.j == 2
         # Condition on V = v, free = u = z
         u = z; v = ucond
         lu, lv = log(u), -D.negloguⱼ
-        c1 = a*lu <= b*lv             # decide for min(u^a, v^b)
-        c2 = (1-a)*lu <= (1-b)*lv     # decide for min(u^{1-a}, v^{1-b})
+        lhs1, rhs1 = a*lu, b*lv
+        lhs2, rhs2 = (1-a)*lu, (1-b)*lv
+        c1 = _ev_lt(lhs1, rhs1)  # post-jump side at equality
+        c2 = _ev_lt(lhs2, rhs2)
         if c1 && c2
             # C = u, dC/dv = 0
             return T(-Inf)
@@ -106,8 +152,10 @@ function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{TF1}, TF2}, z::Real) 
         # Condition on U = u, free = v = z
         v = z; u = ucond
         lu, lv = -D.negloguⱼ, log(v)
-        c1 = a*lu <= b*lv
-        c2 = (1-a)*lu <= (1-b)*lv
+        lhs1, rhs1 = a*lu, b*lv
+        lhs2, rhs2 = (1-a)*lu, (1-b)*lv
+        c1 = _ev_le(lhs1, rhs1)  # post-jump side at equality
+        c2 = _ev_le(lhs2, rhs2)
         if c1 && c2
             # C = u, dC/du = 1
             logC = lu
@@ -130,76 +178,18 @@ function Distributions.logcdf(D::BivEVDistortion{<:BC2Tail{TF1}, TF2}, z::Real) 
     end
 end
 function Distributions.quantile(D::BivEVDistortion{BC2Tail{T}, S}, α::Real) where {T, S}
-    a, b = D.tail.a, D.tail.b
     t = D.uⱼ
     if !(0.0 <= α <= 1.0)
         throw(ArgumentError("α must be in [0,1]"))
     end
-    if !(0.0 < t < 1.0)
-        if t <= 0.0
-            return 0.0
-        else
-            return α
-        end
-    end
+    R = promote_type(T, S, typeof(float(α)))
+    t <= 0 && return _biv_ev_endpoint_quantile(D, α, true, R)
+    t >= 1 && return _biv_ev_endpoint_quantile(D, α, false, R)
 
-    if D.j == 2
-        # Quantile of U | V = v (v = t)
-        v = t
-        # thresholds where mins switch
-        u1 = (a == 0) ? 0.0 : v^(b/a)              # boundary for min(u^a, v^b)
-        u2 = (a == 1) ? 1.0 : v^((1-b)/(1-a))      # boundary for min(u^{1-a}, v^{1-b})
-        if u2 <= u1
-            # order: 0 -- u2 (jump) -- (cont: case B) -- u1 (jump to 1)
-            α0 = (1-b) * (u2 / v)                  # jump at u2
-            if α <= α0
-                return u2
-            elseif α < 1 - b
-                # continuous: F = (1-b) u^a v^{-b}
-                return ((α) * v^b / (1-b))^(1/a)
-            else
-                # jump at u1 to 1
-                return u1
-            end
-        else
-            # order: 0 -- u1 (jump) -- (cont: case C) -- u2 (jump to 1)
-            α0 = b * (u1^(1-a) * v^(b-1))          # jump at u1
-            if α <= α0
-                return u1
-            elseif α < b
-                # continuous: F = b u^{1-a} v^{b-1}
-                return (α * v^(1-b) / b)^(1/(1-a))
-            else
-                return u2
-            end
-        end
-    else
-        # Quantile of V | U = u (u = t)
-        u = t
-        v1 = (b == 0) ? 0.0 : u^(a/b)
-        v2 = (b == 1) ? 1.0 : u^((1-a)/(1-b))
-        if v2 <= v1
-            # order: 0 -- v2 (jump) -- (cont with factor a) -- v1 (jump to 1)
-            α0 = a * (v2 / u)                      # jump at v2
-            if α <= α0
-                return v2
-            elseif α < a
-                # continuous: F = a v u^{a-1}
-                return (α * u^(1-a) / a)
-            else
-                return v1
-            end
-        else
-            # order: 0 -- v1 (jump) -- (cont with factor 1-a) -- v2 (jump to 1)
-            α0 = (1-a) * (v1^b * u^(-a))           # jump at v1
-            if α <= α0
-                return v1
-            elseif α < 1 - a
-                # continuous: F = (1-a) v^b u^{-a}
-                return (α * u^a / (1-a))^(1/b)
-            else
-                return v2
-            end
-        end
-    end
+    # The two interior atoms can change order; invert the CDF robustly.
+    return _unit_quantile(D, α)
 end
+
+
+BC2Copula(a::AbstractVector) = ExtremeValueCopula{length(a)}(BC2Tail(a))
+_is_valid_in_dim(tail::BC2Tail, d::Int) = length(tail.a) == d

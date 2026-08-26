@@ -1,7 +1,63 @@
-# Three small utility functions. 
+# Three small utility functions.
 
-@inline _δ(t) = oftype(t, 1e-12)
+@inline _δ(t::AbstractFloat) = eps(one(t))
+@inline _δ(t::ForwardDiff.Dual) = oftype(t, eps(one(ForwardDiff.value(t))))
+@inline _δ(t::Real) = eps(float(one(t)))
 @inline _safett(t) = clamp(t, _δ(t), one(t) - _δ(t))
+
+# Replace one coordinate while preserving the container shape and
+# promoting the element type when ForwardDiff introduces a Dual.
+@inline _replace_coordinate(x::Tuple, i::Int, xi) = ntuple(j -> j == i ? xi : x[j], length(x))
+
+function _replace_coordinate(x::AbstractVector, i::Int, xi)
+    T = promote_type(eltype(x), typeof(xi))
+    y = similar(x, T)
+    copyto!(y, x)
+    y[i] = xi
+    return y
+end
+
+# Common mixed-partial AD primitive used by conditioning and EV tails.
+function _mixed_partial(f, x, I::Tuple{Vararg{Int}})
+    isempty(I) && return f(x)
+    i = first(I)
+    return ForwardDiff.derivative(
+        xi -> _mixed_partial(f, _replace_coordinate(x, i, xi), Base.tail(I),),
+        x[i],
+    )
+end
+
+_mixed_partial(f, x, I::AbstractVector{<:Integer}) = _mixed_partial(f, x, Tuple(I))
+
+function _nonempty_subsets(d::Int)
+    d >= 1 || throw(ArgumentError("dimension must be positive"))
+    return [collect(S) for k in 1:d for S in Combinatorics.combinations(1:d, k)]
+end
+
+# Generalized inverse of a CDF supported on [0, 1]. Bisection returns the
+# smallest representable point whose CDF is at least `p`, including for
+# distributions with atoms.
+function _unit_quantile(d, p::Real)
+    T = typeof(float(p))
+    zero(T) <= p <= one(T) || throw(ArgumentError("p must be between 0 and 1"))
+    p == zero(T) && return zero(T)
+    p == one(T) && return one(T)
+
+    lo, hi = zero(T), one(T)
+    Distributions.cdf(d, lo) >= p && return lo
+    Distributions.cdf(d, hi) < p && return hi
+    for _ in 1:precision(T)
+        mid = (lo + hi) / 2
+        (mid == lo || mid == hi) && break
+        if Distributions.cdf(d, mid) >= p
+            hi = mid
+        else
+            lo = mid
+        end
+    end
+    return hi
+end
+
 _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
     fa,fb = f(0.0), f(1.0)
     while fb ≤ 0 && b < θmax
@@ -58,7 +114,7 @@ end
 """
     taylor(f::F, x₀, d::Int) where {F}
 
-Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back the derivatives as a vector of length d+1. (first value is f(x₀)). 
+Compute the Taylor series expansion of the function `f` around the point `x₀` up to order `d`, and gives you back the derivatives as a vector of length d+1. (first value is f(x₀)).
 
 # Arguments
 - `f`: A function to be expanded.
@@ -68,10 +124,10 @@ Compute the Taylor series expansion of the function `f` around the point `x₀` 
 # Returns
 A tuple with value ``(f(x₀), f'(x₀),...,f^{(d)}(x₀))``.
 """
-function taylor(f::F, x₀, d::Int) where {F} 
+function taylor(f::F, x₀, d::Int) where {F}
     rez = f(x₀ + TaylorSeries.Taylor1(eltype(x₀), d)).coeffs
     p = length(rez)
-    # The length of rez is no longer always equal to d+1 since updates in TaylorSeries.jl, so we enforce it: 
+    # The length of rez is no longer always equal to d+1 since updates in TaylorSeries.jl, so we enforce it:
     p == d+1 && return rez
     if p < d+1
         v = zeros(d+1)
@@ -135,12 +191,12 @@ function pseudos(sample::AbstractMatrix)
     return U
 end
 
-# Pairwise component metrics applied to (n,d)-shaped matrices: 
+# Pairwise component metrics applied to (n,d)-shaped matrices:
 function corblomqvist(X::AbstractMatrix{<:Real})
-    # We expect the number of dimension to be the second axes here, 
-    # contrary to the whole package but to be coherent with 
-    # StatsBase.corspearman and StatsBase.corkendall. 
-    n = size(X, 2) 
+    # We expect the number of dimension to be the second axes here,
+    # contrary to the whole package but to be coherent with
+    # StatsBase.corspearman and StatsBase.corkendall.
+    n = size(X, 2)
     C = Matrix{Float64}(LinearAlgebra.I, n, n)
     anynan = Vector{Bool}(undef, n)
     m = size(X, 1)
@@ -172,9 +228,9 @@ function corblomqvist(X::AbstractMatrix{<:Real})
     return C
 end
 function corgini(X::AbstractMatrix{<:Real})
-    # We expect the number of dimension to be the second axes here, 
-    # contrary to the whole package but to be coherent with 
-    # StatsBase.corspearman and StatsBase.corkendall. 
+    # We expect the number of dimension to be the second axes here,
+    # contrary to the whole package but to be coherent with
+    # StatsBase.corspearman and StatsBase.corkendall.
     m, n = size(X)
     C = Matrix{Float64}(LinearAlgebra.I, n, n)
     anynan = Vector{Bool}(undef, n)
@@ -209,9 +265,9 @@ function corgini(X::AbstractMatrix{<:Real})
     return C
 end
 function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::Int=32)
-    # We expect the number of dimension to be the second axes here, 
-    # contrary to the whole package but to be coherent with 
-    # StatsBase.corspearman and StatsBase.corkendall. 
+    # We expect the number of dimension to be the second axes here,
+    # contrary to the whole package but to be coherent with
+    # StatsBase.corspearman and StatsBase.corkendall.
     m, n = size(X)
     Cnan = Vector{Bool}(undef, n)
     for j in 1:n
@@ -244,9 +300,9 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
     return H
 end
 function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtmueller, p = nothing)
-    # We expect the number of dimension to be the second axes here, 
-    # contrary to the whole package but to be coherent with 
-    # StatsBase.corspearman and StatsBase.corkendall. 
+    # We expect the number of dimension to be the second axes here,
+    # contrary to the whole package but to be coherent with
+    # StatsBase.corspearman and StatsBase.corkendall.
     m, n = size(X)
     n ≥ 2 || throw(ArgumentError("≥ 2 variables (columns) are required."))
     (t === :lower || t === :upper) || throw(ArgumentError("t ∈ {:lower,:upper}"))

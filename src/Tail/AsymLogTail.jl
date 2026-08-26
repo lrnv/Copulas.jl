@@ -8,7 +8,8 @@ Fields:
 
 Constructor
 
-    AsymLogCopula(α, θ₁, θ₂)
+    AsymLogCopula{2}(α, θ₁, θ₂)
+    AsymLogCopula(2, α, θ₁, θ₂)
     ExtremeValueCopula(2, AsymLogTail(α, θ₁, θ₂))
 
 The (bivariate) asymmetric logistic extreme–value copula is parameterized by
@@ -22,7 +23,7 @@ A(t) = \\Big( \\theta_1^{\\alpha}(1-t)^{\\alpha} + \\theta_2^{\\alpha}t^{\\alpha
 Special cases:
 
 * θ₁ = θ₂ = 1 ⇒ symmetric Logistic (Gumbel) copula
-* θ₁ = θ₂ = 0 ⇒ independence (A(t) ≡ 1)
+* α = 1 or either asymmetry weight is zero ⇒ independence (`A(t) ≡ 1`)
 
 References:
 
@@ -30,7 +31,7 @@ References:
 """
 AsymLogTail, AsymLogCopula
 
-struct AsymLogTail{T} <: Tail2
+struct AsymLogTail{T} <: BivariatePickandsTail
     α::T
     θ₁::T
     θ₂::T
@@ -39,16 +40,17 @@ struct AsymLogTail{T} <: Tail2
         θ₁, θ₂, αT = T(θ₁), T(θ₂), T(α)
         (αT ≥ 1) || throw(ArgumentError("α must be ≥ 1"))
         (0 ≤ θ₁ ≤ 1 && 0 ≤ θ₂ ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
-        new{T}(αT, θ₁, θ₂)
+        (isone(αT) || iszero(θ₁) || iszero(θ₂)) && return NoTail()
+        (isone(θ₁) && isone(θ₂)) && return LogTail(αT)
+        return new{T}(αT, θ₁, θ₂)
     end
 end
 
 const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
 Distributions.params(tail::AsymLogTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
-_unbound_params(::Type{<:AsymLogTail}, d, θ) = [log(θ.α - 1), log(θ.θ₁) - log1p(-θ.θ₁), log(θ.θ₂) - log1p(-θ.θ₂)]
+_unbound_params(::Type{<:AsymLogTail}, d, θ) = [log(θ.α - 1), LogExpFunctions.logit(θ.θ₁), LogExpFunctions.logit(θ.θ₂)]
 _rebound_params(::Type{<:AsymLogTail}, d, α) = begin
-    σ(x) = 1 / (1 + exp(-x))
-    (; α = exp(α[1]) + 1, θ₁ = σ(α[2]), θ₂ = σ(α[3]))
+    (; α = exp(α[1]) + 1, θ₁ = LogExpFunctions.logistic(α[2]), θ₂ = LogExpFunctions.logistic(α[3]))
 end
 
 function A(tail::AsymLogTail, t::Real)

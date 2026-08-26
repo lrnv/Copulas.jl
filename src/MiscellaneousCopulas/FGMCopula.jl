@@ -187,7 +187,7 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
             v = 1 + _fgm_red(θ, ε)
             if soft
                 # Softplus barrier: smooth penalty, finite outside feasible region
-                total += log1p(exp(-10*v)) / 10  # mild smoothness
+                total += LogExpFunctions.log1pexp(-10v) / 10  # mild smoothness
             else
                 if v <= 0
                     return Inf  # hard barrier: outside feasible set

@@ -44,8 +44,8 @@ RafteryCopula(d, θ) = RafteryCopula{d}(θ)
 Base.eltype(R::RafteryCopula) = eltype(R.θ)
 Distributions.params(R::RafteryCopula) = (θ = R.θ,)
 _example(::Type{<:RafteryCopula}, d) = RafteryCopula(d, 0.5)
-_unbound_params(::Type{<:RafteryCopula}, d, θ) = [log(θ.θ) - log1p(-θ.θ)]
-_rebound_params(::Type{<:RafteryCopula}, d, α) = (; θ = 1 / (1 + exp(-α[1])))
+_unbound_params(::Type{<:RafteryCopula}, d, θ) = [LogExpFunctions.logit(θ.θ)]
+_rebound_params(::Type{<:RafteryCopula}, d, α) = (; θ = LogExpFunctions.logistic(α[1]))
 function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
     # Order the vector u
     u_ordered = sort(u)
