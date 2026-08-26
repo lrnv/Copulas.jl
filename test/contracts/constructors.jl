@@ -1,9 +1,10 @@
 function test_constructor_case(case)
     @testset "$(case.name)" begin
-        typed = @inferred case.typed()
+        typed = case.inferred ? (@inferred case.typed()) : case.typed()
         dynamic = case.dynamic()
         @test typed == dynamic
         @test typeof(typed) === typeof(dynamic)
+        @test params(typed) == params(dynamic)
     end
 end
 

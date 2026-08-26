@@ -11,7 +11,7 @@ const TAIL_CASES = (
     (Copulas.MOTail(0.2, 0.3, 0.4), 2),
     (Copulas.TawnTail(2.0, [0.6, 0.7, 0.8]), 3),
     (Copulas.tEVTail(4.0, 0.5), 2),
-    (EmpiricalEVCopula{2}(_FIXTURE_DATA; degree=1, pseudo_values=false).tail, 2),
+    (EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false).tail, 2),
     (EmpiricalEVCopula{3}(vcat(_FIXTURE_DATA,
         reshape([0.24, 0.76, 0.45, 0.91, 0.33, 0.58], 1, :));
         degree=1, pseudo_values=false).tail, 3),
@@ -48,7 +48,7 @@ const PICKANDS_CASES = (
     Copulas.MixedTail(0.5),
     Copulas.MOTail(0.2, 0.3, 0.4),
     Copulas.tEVTail(4.0, 0.5),
-    EmpiricalEVCopula{2}(_FIXTURE_DATA; degree=1, pseudo_values=false).tail,
+    EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false).tail,
 )
 
 @testset "bivariate Pickands identities" begin

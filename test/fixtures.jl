@@ -48,7 +48,7 @@ const COPULA_CASES = (
     copula_case("Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4); kind=:mixed, rosenblatt=false),
     copula_case("Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8])),
     copula_case("t-EV", () -> tEVCopula{2}(4.0, 0.5)),
-    copula_case("empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; degree=1, pseudo_values=false)),
+    copula_case("empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false)),
     copula_case("empirical EV multivariate", () -> EmpiricalEVCopula{3}(
         vcat(_FIXTURE_DATA, reshape([0.24, 0.76, 0.45, 0.91, 0.33, 0.58], 1, :));
         degree=1, pseudo_values=false)),
@@ -70,7 +70,7 @@ const COPULA_CASES = (
     copula_case("survival", () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3))),
 )
 
-constructor_case(name, typed, dynamic) = (; name, typed, dynamic)
+constructor_case(name, typed, dynamic; inferred=true) = (; name, typed, dynamic, inferred)
 
 const CONSTRUCTOR_CASES = (
     constructor_case("AMH", () -> AMHCopula{2}(0.5), () -> AMHCopula(2, 0.5)),
@@ -102,7 +102,9 @@ const CONSTRUCTOR_CASES = (
     constructor_case("t-EV", () -> tEVCopula{2}(4.0, 0.5), () -> tEVCopula(2, 4.0, 0.5)),
     constructor_case("BB4", () -> BB4Copula{2}(1.5, 1.0), () -> BB4Copula(2, 1.5, 1.0)),
     constructor_case("BB5", () -> BB5Copula{2}(1.5, 1.0), () -> BB5Copula(2, 1.5, 1.0)),
-    constructor_case("Gaussian", () -> GaussianCopula{3}(0.3), () -> GaussianCopula(3, 0.3)),
+    # The scalar-correlation constructor intentionally infers a small union because
+    # its independence boundary returns IndependentCopula.
+    constructor_case("Gaussian", () -> GaussianCopula{3}(0.3), () -> GaussianCopula(3, 0.3); inferred=false),
     constructor_case("Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0]), () -> TCopula(2, 4.0, [1.0 0.3; 0.3 1.0])),
     constructor_case("independence", () -> IndependentCopula{3}(), () -> IndependentCopula(3)),
     constructor_case("upper Frechet", () -> MCopula{3}(), () -> MCopula(3)),
@@ -114,7 +116,7 @@ const CONSTRUCTOR_CASES = (
     constructor_case("beta", () -> BetaCopula{2}(_FIXTURE_DATA), () -> BetaCopula(2, _FIXTURE_DATA)),
     constructor_case("checkerboard", () -> CheckerboardCopula{2}(_FIXTURE_DATA; m=2), () -> CheckerboardCopula(2, _FIXTURE_DATA; m=2)),
     constructor_case("empirical", () -> EmpiricalCopula{2}(_FIXTURE_DATA), () -> EmpiricalCopula(2, _FIXTURE_DATA)),
-    constructor_case("empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; degree=1, pseudo_values=false), () -> EmpiricalEVCopula(2, _FIXTURE_DATA; degree=1, pseudo_values=false)),
+    constructor_case("empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false), () -> EmpiricalEVCopula(2, _FIXTURE_DATA; method=:cfg, pseudo_values=false)),
 )
 
 const FITTING_CASES = (

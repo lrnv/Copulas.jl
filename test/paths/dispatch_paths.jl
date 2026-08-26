@@ -5,7 +5,8 @@
             u = fill(0.6, d)
             @test 0 <= cdf(C, u) <= 1
             @test size(rand(StableRNG(51), C, 2)) == (d, 2)
-            D = condition(C, 1, 0.4)
+            js = Tuple(1:(d - 1))
+            D = condition(C, js, ntuple(_ -> 0.4, d - 1))
             @test 0 <= cdf(D, 0.6) <= 1
         end
     end

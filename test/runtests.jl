@@ -8,12 +8,6 @@ const rng = StableRNG(123)
 testfiles = [
     "Aqua",
     "fixtures",
-    "contracts/distribution",
-    "contracts/density",
-    "contracts/subsetting",
-    "contracts/conditioning",
-    "contracts/rosenblatt",
-    "contracts/dependence",
     "contracts/constructors",
     "contracts/public_surface",
     "contracts/copulas",

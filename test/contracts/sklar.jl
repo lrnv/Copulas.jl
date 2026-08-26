@@ -4,6 +4,7 @@
     x = [0.1, 1.2]
     @test length(D) == 2
     @test params(D) isa NamedTuple
+    @test StatsBase.dof(D) == StatsBase.dof(C) + sum(StatsBase.dof, D.m)
     @test 0 <= cdf(D, x) <= 1
     @test logcdf(D, x) ≈ log(cdf(D, x))
     @test pdf(D, x) >= 0

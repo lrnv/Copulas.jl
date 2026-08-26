@@ -23,6 +23,10 @@ const CDF_DERIVATIVE_CASES = DENSITY_COHERENCE_CASES[1:5]
                                               rtol=2e-3)
             @test partial ≈ cdf(C, upper) atol=5e-3
 
+            lower = [0.15, 0.25]
+            rectangle, _ = HCubature.hcubature(u -> pdf(C, u), lower, upper;
+                                                rtol=2e-3)
+            @test rectangle ≈ Copulas.measure(C, lower, upper) atol=5e-3
         end
     end
 end
