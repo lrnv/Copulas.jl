@@ -80,11 +80,13 @@ Distributions.params(C::Copula) = throw("You need to specify the Distributions.p
 _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::Type{T}, d)` function for your copula type, returning an example of the copula type in dimension d.")
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
+_fit_copula(CT::Type{<:Copula}, d, θ, example) = CT(d, θ...)
 function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
     # generic MLE routine (agnostic to vcov/inference)
     d   = size(U,1)
-    cop(α) = CT(d, _rebound_params(CT, d, α)...)
-    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    example = _example(CT, d)
+    cop(α) = _fit_copula(CT, d, _rebound_params(CT, d, α), example)
+    α₀  = _unbound_params(CT, d, Distributions.params(example))
     loss(C) = -Distributions.loglikelihood(C, U)
     res = try
         Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
@@ -92,7 +94,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
         Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     end
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θhat...), (; θ̂=θhat,
+    return _fit_copula(CT, d, θhat, example), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
@@ -114,8 +116,9 @@ Use [`Distributions.fit(CopulaModel, ...)`] instead.
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     # generic rank-based routine (agnostic to vcov/inference)
     d   = size(U,1)
-    cop(α) = CT(d, _rebound_params(CT, d, α)...)
-    α₀ = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
+    example = _example(CT, d)
+    cop(α) = _fit_copula(CT, d, _rebound_params(CT, d, α), example)
+    α₀ = _unbound_params(CT, d, Distributions.params(example))
     @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
     fun  = method isa Val{:itau} ? StatsBase.corkendall :
            method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
@@ -123,7 +126,7 @@ function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:
     loss(C) = sum(abs2, est .- fun(C))
     res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return CT(d, θhat...), (; θ̂=θhat,
+    return _fit_copula(CT, d, θhat, example), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
