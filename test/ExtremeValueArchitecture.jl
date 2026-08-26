@@ -228,11 +228,13 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         @test logpdf(Cgeneric, u) ≈ logpdf(Canalytic, u) atol=2e-10 rtol=2e-10
     end
     @testset "multivariate EV generic conditioning and Rosenblatt" begin
-        # The generic conditioning framework is dimension-agnostic. Smooth EV
-        # families whose CDF/STDF path is ForwardDiff-compatible inherit it.
+        # Exercise the common STDF-partial path across distinct tail families.
         for C in (
             LogCopula{3}(2.0),
             GalambosCopula{3}(0.7),
+            MixedCopula{3}(0.5),
+            TawnCopula{3}(2.0, [0.6, 0.7, 0.8]),
+            AsymGalambosCopula{3}(0.7, [0.6, 0.7, 0.8]),
         )
             # Conditioning on two coordinates leaves a univariate distortion.
             D = condition(C, (1, 2), (0.31, 0.58))
@@ -257,6 +259,38 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
             @test all(isfinite, s)
             @test all(x -> 0.0 <= x <= 1.0, s)
             @test inverse_rosenblatt(C, s) ≈ u atol=2e-7 rtol=2e-7
+        end
+
+        # The new formula must agree with the previous AD fallback whenever
+        # the latter is available.
+        z = [0.31, 0.57, 0.73]
+        for C in (LogCopula{3}(2.0), GalambosCopula{3}(0.7))
+            got = Copulas._partial_cdf(C, (3,), (1, 2), (z[3],), (z[1], z[2]))
+            reference = ForwardDiff.derivative(
+                a -> ForwardDiff.derivative(b -> cdf(C, [a, b, z[3]]), z[2]),
+                z[1],
+            )
+            @test got ≈ reference atol=1e-11 rtol=2e-8
+        end
+    end
+
+    @testset "numerical-kernel EV conditioning and Rosenblatt" begin
+        # These CDFs use Float64 numerical probability kernels and therefore
+        # cannot be differentiated with ForwardDiff dual numbers. Keep one
+        # full round trip per family while avoiding a costly parameter grid.
+        for C in (
+            HuslerReissCopula{3}(1.0),
+            tEVCopula{3}(4.0, 0.2),
+        )
+            D = condition(C, (1, 2), (0.31, 0.58))
+            q = quantile(D, 0.6)
+            @test cdf(D, q) ≈ 0.6 atol=2e-6 rtol=2e-6
+
+            u = [0.21, 0.53, 0.74]
+            s = rosenblatt(C, u)
+            @test all(isfinite, s)
+            @test all(x -> 0.0 <= x <= 1.0, s)
+            @test inverse_rosenblatt(C, s) ≈ u atol=2e-6 rtol=2e-6
         end
     end
 
