@@ -241,6 +241,7 @@ Les erreurs de constructeurs relèvent du contrat commun, même si leurs paramè
 ```text
 test/
   runtests.jl
+  Aqua.jl
   fixtures.jl
 
   old/                 # suite historique, toujours exécutée pendant la migration

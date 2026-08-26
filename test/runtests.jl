@@ -5,10 +5,13 @@ using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
 
 const rng = StableRNG(123)
 
+testfiles = [
+    "Aqua",
+]
+
 # Legacy files remain enabled while their coverage is migrated to the new
 # contract-based test architecture.
 legacy_testfiles = [
-    "Aqua",
     "ArchimedeanCopulas",
     "LiouvilleCopula",
     "NestedArchimedeanCopula",
@@ -32,6 +35,11 @@ GenericTestFilter(C) = true # the default value lets every copula go through.
 # GenericTestFilter(C) = C isa BC2Copula || C isa MOCopula || C isa CuadrasAugeCopula # || C isa GumbelCopula # You can filter on your model. 
 
 @testset verbose=true "Copulas.jl testings"  begin
+    @testset verbose=true "$f.jl" for f in testfiles
+        @info "Launching test file $f.jl"
+        include(joinpath(@__DIR__, "$f.jl"))
+    end
+
     @testset verbose=true "legacy/$f.jl" for f in legacy_testfiles
         @info "Launching legacy test file $f.jl"
         include(joinpath(@__DIR__, "old", "$f.jl"))
