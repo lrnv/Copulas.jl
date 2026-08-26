@@ -277,6 +277,12 @@ Notes
     The “conditional copula” is `ConditionalCopula(C, js, u_js)`, i.e., the copula
     of that conditional distribution.
 """
+function condition(C::Copula{2}, j::Int, uⱼ::Real)
+    1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
+    zero(uⱼ) ≤ uⱼ ≤ one(uⱼ) || throw(ArgumentError("Conditioning values must lie in [0, 1]."))
+    return DistortionFromCop(C, (j,), (float(uⱼ),), 3 - j)
+end
+
 condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
 # Accept any real `uⱼₛ` (not only `Float64`): `_process_tuples` calls `float.`,
 # which keeps `BigFloat`/`Float32` as-is, so a `Float64`-only signature here let

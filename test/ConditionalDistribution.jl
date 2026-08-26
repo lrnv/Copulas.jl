@@ -18,6 +18,41 @@
     @test Z.m[2] == LogNormal()
 end
 
+@testset "Bivariate scalar condition fast path" begin
+    # Representative specialized and fallback distortions, including the
+    # Liouville and extreme-value architectures added since this fast path was
+    # first proposed. The generic copula bestiary exercises the remaining
+    # bivariate families through this same scalar entry point.
+    examples = (
+        GaussianCopula{2}(0.4),
+        ClaytonCopula{2}(2.0),
+        HuslerReissCopula{2}(1.0),
+        LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (0.75, 1.25)),
+        RafteryCopula{2}(0.5),
+        MCopula{2}(),
+        WCopula{2}(),
+    )
+    for C in examples, j in 1:2
+        direct = condition(C, j, 0.4)
+        reference = condition(C, (j,), (0.4,))
+        @test typeof(direct) == typeof(reference)
+        @test cdf(direct, 0.3) ≈ cdf(reference, 0.3)
+        @test quantile(direct, 0.6) ≈ quantile(reference, 0.6)
+    end
+
+    C = GaussianCopula{2}(0.4)
+    @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
+    for j in 1:2, uⱼ in (0.2f0, big"0.8")
+        @test typeof(condition(C, j, uⱼ)) ==
+              typeof(condition(C, (j,), (float(uⱼ),)))
+    end
+
+    @test_throws ArgumentError condition(C, 0, 0.4)
+    @test_throws ArgumentError condition(C, 3, 0.4)
+    @test_throws ArgumentError condition(C, 1, -0.1)
+    @test_throws ArgumentError condition(C, 1, 1.1)
+end
+
 @testset "Distortion densities agree with their cdf derivatives" begin
     C = FGMCopula{2}(0.4)
     for j in 1:2
