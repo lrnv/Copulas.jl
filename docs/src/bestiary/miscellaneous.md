@@ -32,14 +32,10 @@ WCopula
 SurvivalCopula
 ```
 
-### `SubsetCopula`
+### Subsetting
 
 ```@docs; canonical = false
 Copulas.subsetdims
-```
-
-```@docs; canonical = false
-Copulas.SubsetCopula
 ```
 
 ## Others

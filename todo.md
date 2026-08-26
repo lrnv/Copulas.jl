@@ -25,15 +25,6 @@ Les seules adaptations admises correspondent à des limites mathématiques expli
 
 La convention Julia/Pkg définit l’API publique par les comportements documentés des symboles publics. Un symbole est public s’il est déclaré avec `export`, ou avec `public` sans être injecté par `using`. Les déclarations de visibilité et la documentation comportementale sont donc toutes les deux normatives : aucune ne suffit seule.
 
-Copulas.jl ne possède pas encore une représentation complète et cohérente de ce contrat :
-
-- les `export` déclarent bien des symboles publics, mais ne décrivent pas leurs garanties ;
-- certains symboles utilisés avec qualification, notamment les mesures de dépendance, sont documentés comme une API sans être exportés ni explicitement déclarés `public` ;
-- les méthodes ajoutées à des fonctions publiques de `Distributions.jl`, `StatsBase.jl` ou d’autres dépendances ne figurent pas naturellement dans la liste des exports de Copulas.jl ;
-- `docs/src/api/public.md` utilise `@autodocs Private=false` et fournit un inventaire automatique, pas un contrat comportemental ;
-- le guide développeur contient la description la plus proche d’un contrat, mais sa table est annoncée comme non exhaustive et classe encore plusieurs opérations génériques comme optionnelles ;
-- le manuel et les exemples promettent des comportements supplémentaires sans les rassembler au même endroit.
-
 La source de vérité doit donc avoir trois couches cohérentes :
 
 1. `export` et `public` déclarent exhaustivement les symboles appartenant à l’API de Copulas.jl ;
@@ -41,53 +32,6 @@ La source de vérité doit donc avoir trois couches cohérentes :
 3. les contrats de test vérifient ces comportements.
 
 Le guide développeur explique seulement les points d’extension internes permettant de satisfaire ce contrat.
-
-Comme `public` n’existe nativement qu’à partir de Julia 1.11, relever la version minimale de Julia à 1.11 au moment de stabiliser cette API. Modifier ensemble `Project.toml`, les environnements de documentation et la matrice CI, puis utiliser directement le mot-clé `public` sans couche de compatibilité. Cette rupture de compatibilité Julia doit être annoncée et accompagnée du changement de version approprié selon la convention SemVer de Pkg.
-
-Le job CI `lts` actuel doit alors disparaître ou être remplacé par un job explicite `1.11` tant que la LTS officielle est antérieure à la compatibilité minimale du paquet. Ne pas conserver un job symbolique qui sélectionne une version devenue incompatible. Les workflows de documentation, benchmarks, extensions et release doivent également être audités pour éviter qu’un sélecteur générique ou un ancien manifeste continue à tester une version hors contrat.
-
-### Audit de visibilité
-
-Construire trois inventaires comparables :
-
-- symboles déclarés par `export` ou `public` ;
-- fonctions et types présentés comme publics dans toute la documentation ;
-- méthodes publiques ajoutées aux interfaces de dépendances.
-
-Pour chaque différence, prendre une décision explicite :
-
-- déclarer le symbole `public` s’il fait partie de l’API mais doit rester qualifié ;
-- l’exporter s’il doit aussi être disponible après `using Copulas` ;
-- le retirer ou le présenter comme interne dans la documentation s’il n’est pas promis ;
-- documenter les méthodes étendant une fonction externe dans la table de l’API de Copulas.jl.
-
-Les premiers candidats à examiner sont :
-
-- les mesures `τ`, `ρ`, `β`, `γ`, `ι`, `λₗ` et `λᵤ`, ainsi que leurs variantes pairwise ;
-- `measure` et `corkendall` ;
-- les abstractions et fonctions de générateurs utilisées par les utilisateurs avancés ;
-- les types de tails et représentations spectrales constructibles publiquement ;
-- les fonctions de fitting et résultats venant de `Distributions.jl` et `StatsBase.jl` ;
-- toute fonction qualifiée `Copulas.foo` dans le manuel ou les exemples.
-
-Cette liste est un point de départ : l’audit doit être mécanique afin de ne pas oublier un symbole documenté ailleurs.
-
-### Décisions de visibilité
-
-Première classification retenue :
-
-- ajouter `ExtremeValueCopula` aux exports, par cohérence avec les constructeurs génériques `ArchimedeanCopula`, `ArchimaxCopula` et `LiouvilleCopula` ;
-- retirer `TiltedGenerator` des exports : il reste une représentation interne susceptible d’être retournée par certains algorithmes, mais ne constitue pas un point d’entrée utilisateur ;
-- déclarer `public`, sans les exporter, les mesures `τ`, `ρ`, `β`, `γ`, `ι`, `λₗ`, `λᵤ`, leurs inverses effectivement définies, les fonctions pairwise `corblomqvist`, `corgini`, `corentropy`, `corlowertail`, `coruppertail`, ainsi que `measure` ;
-- ne pas inclure `aicc` et `hqc` dans cette déclaration pour le moment ;
-- déclarer publics uniquement les principaux types abstraits d’architecture : `Copula`, `Distortion`, `Generator` et `Tail` ;
-- déclarer publiques les primitives mathématiques documentées des générateurs et tails ;
-- déclarer publics mais qualifiés les générateurs et tails concrets destinés à composer des modèles génériques ;
-- conserver privés les autres types abstraits intermédiaires, les distributions radiales, frailties, distortions concrètes et helpers d’implémentation ;
-- réduire l’exposition documentaire de `SubsetCopula`, `ConditionalCopula` et `DistortionFromCop` : le contrat utilisateur porte sur `subsetdims` et `condition`, pas sur les représentations concrètes retournées ;
-- maintenir l’API développeur hors du contrat SemVer et l’indiquer sans ambiguïté dans le guide développeur. Les points d’extension internes, y compris ceux préfixés `_`, peuvent évoluer entre versions mineures avant 1.0 et ne doivent pas être déclarés `public` par accident.
-
-Les méthodes définies pour des fonctions publiques externes — notamment `StatsBase.corkendall`, `StatsBase.corspearman`, `Distributions.fit`, `cdf`, `pdf`, `logpdf`, `loglikelihood` et `rand` — font pleinement partie du contrat comportemental à tester. Elles ne nécessitent pas de déclaration `public` dans Copulas.jl, puisque leurs symboles appartiennent à leurs modules d’origine.
 
 ### Contrat comportemental
 
@@ -104,8 +48,8 @@ La table normative de la documentation publique précise, pour chaque opération
 L’inventaire de #426 doit couvrir :
 
 - les noms exportés ou déclarés publics par `Copulas.jl` ;
-- les fonctions actuellement non publiques mais documentées comme telles, notamment les mesures de dépendance et `measure`, afin de résoudre leur statut ;
-- les extensions de `Distributions.jl`, `StatsBase.jl` et des autres interfaces adoptées ;
+- les méthodes publiques de Copulas.jl, notamment les mesures de dépendance et `measure` ;
+- les extensions de `Distributions.jl`, `StatsBase.jl` et des autres interfaces adoptées, notamment `fit`, `cdf`, `pdf`, `logpdf`, `loglikelihood`, `rand`, `corkendall` et `corspearman` ;
 - les constructeurs et leurs garanties de validation et de stabilité de type ;
 - `SklarDist`, `CopulaModel`, les générateurs exportés et les représentations spectrales publiques.
 
@@ -395,17 +339,14 @@ Lorsque la LTS officielle devient compatible avec le minimum du paquet, le séle
 
 ## Ordre d’implémentation
 
-1. Inventorier séparément les symboles `export`/`public`, les symboles documentés et les méthodes publiques étendant des dépendances.
-2. Relever la compatibilité minimale à Julia 1.11 dans `Project.toml`, adapter tous les workflows et environnements, et enregistrer cette rupture dans la version et les notes de release.
-3. Décider explicitement quels symboles supplémentaires doivent devenir `public`, exportés ou internes, puis déclarer directement cette visibilité dans le module.
-4. Écrire la table normative de l’API publique, puis aligner la page API, le manuel et le guide développeur conformément à #426 et #428.
-5. Ajouter un chronométrage par fichier et établir la baseline de #425.
-6. Créer `fixtures.jl`, le bestiaire et les helpers de contrats sans supprimer de tests.
-7. Faire passer chaque copule par le contrat public complet.
-8. Construire la matrice des chemins de dispatch demandée par #424.
-9. Migrer puis supprimer `GenericTests.jl`.
-10. Supprimer les duplications des fichiers familiaux.
-11. Réorganiser les fichiers seulement après stabilisation du contenu.
-12. Comparer temps total, temps de compilation et nombre de `MethodInstance`.
+1. Écrire la table normative de l’API publique, puis aligner la page API, le manuel et le guide développeur conformément à #426 et #428.
+2. Ajouter un chronométrage par fichier et établir la baseline de #425.
+3. Créer `fixtures.jl`, le bestiaire et les helpers de contrats sans supprimer de tests.
+4. Faire passer chaque copule par le contrat public complet.
+5. Construire la matrice des chemins de dispatch demandée par #424.
+6. Migrer puis supprimer `GenericTests.jl`.
+7. Supprimer les duplications des fichiers familiaux.
+8. Réorganiser les fichiers seulement après stabilisation du contenu.
+9. Comparer temps total, temps de compilation et nombre de `MethodInstance`.
 
 Le premier objectif structurel est de remplacer entièrement `GenericTests.jl` par un contrat public explicite, appliqué à chaque copule, et par un registre séparé des chemins internes. L’inventaire documentaire préalable évite de transformer les hypothèses historiques des tests en nouvelle API par accident.

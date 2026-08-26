@@ -14,6 +14,13 @@ mathematical details.
     This page is intended for package contributors and advanced users who want to extend 
     `Copulas.jl` with new copula families, internal optimizations, or additional features.
 
+!!! warning "Internal interfaces are not covered by SemVer"
+    This guide documents both the public extension surface and implementation details
+    used inside Copulas.jl. Only names exported or declared `public` by the `Copulas`
+    module belong to the SemVer-stable API. Other bindings shown here—including
+    underscore-prefixed hooks—may change between releases. Downstream packages should
+    rely on them only when they accept that maintenance cost.
+
 
 # 1. The main API
 
@@ -120,18 +127,22 @@ Copulas.ρ(C::MyCopula) = ...
 
 ## 1.4 Conditioning and subsetting
 
-The conditining framework works by default, and you can already use `condition(C::MyCopula, dims, us)`.
-You don’t need to override anything else unless your copula has a closed form for conditional distributions 
-(univariate or multivariate), or a semi-closed-form that is better than our generics.  
-If it does, then it is **highly recomended** that you overwrite these two bindings: 
+The conditioning framework works by default, and you can already use
+`condition(C::MyCopula, dims, us)`. No additional public method is required.
+
+Inside Copulas.jl, specialized families currently optimize this path through the
+following internal hooks:
 
 ```julia
 ConditionalCopula(C::MyCopula, dims, us) = ...
 DistortionFromCop(C::MyCopula, dims, us, i) = ...
 ```
 
-These allow `Copulas.jl` to build conditional distributions internally.
-If not defined, conditioning will fall back to a generic (and thus slower) path.
+These bindings are documented for contributors working on Copulas.jl itself. They
+are not public extension points and are not covered by SemVer. Downstream packages
+should prefer the generic `condition` interface; if a missing fast path matters,
+please coordinate its implementation upstream. If the hooks are not defined,
+conditioning falls back to the generic path.
 
 * The first binding returns a `SklarDist`, containing the conditional copula as a copula, 
   and conditional marginals as the marginals. This literally represent the conditional 
@@ -191,7 +202,7 @@ Once the above methods are implemented, your family becomes automatically compat
 - `fit`, `CopulaModel`
 - `StatsBase.vcov`, `StatsBase.confint`
 - `Distributions.loglikelihood`
-- `StatsBase.aic`, `StatsBase.bic`, `Copulas.aicc`, `Copulas.hqc`
+- `StatsBase.aic`, `StatsBase.bic`
 
 
 

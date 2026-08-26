@@ -34,11 +34,11 @@ On the original scale for a compound distribution `X = SklarDist(C, (X_1,…,X_D
 F_{X_i\mid X_J}(x\mid \mathbf x_J) = H_{i\mid J}\big(F_i(x)\mid \mathbf u_J\big).
 ```
 
-The copula of the conditional vector $U_I | U_J = u_J$ is a genuine copula denoted $C_{I|J}(·|u_J)$, which is the copula of $H_{I|J}$. In our implementation, this is materialized by the a `ConditionalCopula(C, J, u_J)` and used internally by `condition`. The `condition` function can be used as follows: 
+The copula of the conditional vector $U_I | U_J = u_J$ is a genuine copula denoted $C_{I|J}(·|u_J)$, which is the copula of $H_{I|J}$. The public entry point is `condition`:
 
-- `condition(C::Copula, js, u_js)` returns the conditional distribution on the uniform scale for `I = setdiff(1:D, js)`. If `length(I) == 1`, the result is a univariate distribution supported on $[0,1]$, subclass of `Distortion`, and otherwise it is a `SklarDist(::ConditionalCopula, NTuple{d,<:Distortion})`.
+- `condition(C::Copula, js, u_js)` returns the conditional distribution on the uniform scale for `I = setdiff(1:D, js)`. If `length(I) == 1`, the result is a univariate distribution supported on $[0,1]`; otherwise it is a multivariate distribution implementing the usual `Distributions.jl` interface.
 - `condition(X::SklarDist, js, x_js)` returns the conditional distribution on the original scale by pushing forward each distortion through the corresponding marginal.
-- For known parametric families, there are fast paths implemented mostly as subclass to `Distortions` or `ConditionalCopula`, but this should be completely transparent to the user. 
+- Known parametric families may use specialized representations, but their concrete types are implementation details and do not change this contract.
 
 !!! tip "Missing fast-paths?"
     If you find a conditional that should admit a faster closed-form or semi-analytic path but currently falls back to the generic construction, please open an issue, we’ll happily implement it :)
@@ -101,7 +101,7 @@ plot(H)
 
 ### Relation to the conditional copula
 
-The conditional copula $C_{I|J}(·|u_J)$ is the copula of the conditional distribution $H_{I|J}(·|u_J)$. In the implementation it is represented by `ConditionalCopula(C, js, u_js)` and is used as the copula of the conditional joint when `|I| > 1`. When `condition` returns a `SklarDist` (i.e., when `|I| > 1`), you can access this copula directly via the `.C` field of the returned object:
+The conditional copula $C_{I|J}(·|u_J)$ is the copula of the conditional distribution $H_{I|J}(·|u_J)$. A multivariate result currently follows the `SklarDist` interface, so its copula and margins can be inspected as follows. Code should nevertheless rely on the public distribution interface rather than on a particular internal wrapper type:
 
 ```@example cond1
 H.C # the copula
@@ -117,9 +117,6 @@ H.m # the marginals
 ```@docs; canonical=false
 condition
 Distortion
-DistortionFromCop
-DistortedDist
-ConditionalCopula
 ```
 
 
@@ -140,7 +137,7 @@ There are two entry points:
 - `subsetdims(X::SklarDist, dims)` returns a `SklarDist` with copula `subsetdims(C, dims)`
   and marginals `(m[i] for i in dims)`.
 
-Internally, we materialize subsetting with a small wrapper type `SubsetCopula{p}(C, dims)` which delegates `cdf`, `pdf`, and sampling to the base copula by saturating non-selected coordinates at 1. For many families we provide specialized constructors that return the natural reduced-parameter form instead of a wrapper (e.g., elliptical copulas return the appropriate submatrix, Archimedean keeps the same generator with reduced dimension, etc.). It can be used as follows: 
+The concrete representation is family-dependent. Some families return a natural reduced-parameter form, while the generic path uses an internal delegating representation. Both implement the same public copula interface:
 
 ```@example subset1
 using Copulas, Distributions
@@ -155,9 +152,9 @@ X13 = subsetdims(X, (1,3))  # keeps marginals (Normal(), LogNormal()) and reduce
 length(X13.C), length(X13.m)
 ```
 
-The resulting object depends on the copula familly, since some fast paths are given. If no specialization exists, a `SubsetCopula` wrapper is returned. It’s fully usable and equivalent from an API perspective; specialized forms simply yield better performance and clearer display.
+The exact result type is not part of the contract. Specialized forms may provide better performance or clearer display, while every result remains usable through the same copula API.
 
-Subsetting and conditioning commute in the obvious way: conditioning on coordinates `J` and then extracting a subset of the remaining coordinates is equivalent to subsetting the base copula first and then conditioning on the corresponding indices. In code, if `S = subsetdims(C, dims)`, conditioning on indices `js` within `S` is implemented by mapping `js` to indices in the base copula and delegating to `ConditionalCopula(C, ·, ·)`; the resulting conditional copula of `S` is either the base conditional copula (when all remaining coordinates are kept) or a further `SubsetCopula` of it.
+Subsetting and conditioning commute in the obvious way: conditioning on coordinates `J` and then extracting a subset of the remaining coordinates is equivalent to subsetting the base copula first and then conditioning on the corresponding indices.
 
 ### Examples
 
@@ -181,7 +178,6 @@ typeof(S13), S13 isa SurvivalCopula
 
 ```@docs; canonical=false
 Copulas.subsetdims
-Copulas.SubsetCopula
 ```
 
 ## Rosenblatt transformations

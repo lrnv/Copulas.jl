@@ -138,66 +138,45 @@ module Copulas
 
     include("show.jl")
 
-    export pseudos, # utility functions and methods making the interface:
-           rosenblatt,
-           inverse_rosenblatt,
-           subsetdims,
-           condition,
-           Nataf,
-           WilliamsonGenerator,
-           𝒲,
-           TiltedGenerator,
-           EmpiricalGenerator,
-           SklarDist, # SklarDist to make multivariate models
-           AMHCopula, # And a bunch of copulas.
-           ArchimedeanCopula,
-           LiouvilleCopula,
-           NestedArchimedeanCopula,
-           AsymGalambosCopula,
-           AsymLogCopula,
-           AsymMixedCopula,
-           BB10Copula,
-           BB1Copula,
-           BB2Copula,
-           BB3Copula,
-           BB6Copula,
-           BB7Copula,
-           BB8Copula,
-           BB9Copula,
-           DiscreteSpectralTail,
-           DiscreteSpectralCopula,
-           BC2Copula,
-           ClaytonCopula,
-           CuadrasAugeCopula,
-           EmpiricalCopula,
-           FGMCopula,
-           FrankCopula,
-           GalambosCopula,
-           GaussianCopula,
-           GumbelBarnettCopula,
-           GumbelCopula,
-           HuslerReissCopula,
-           IndependentCopula,
-           InvGaussianCopula,
-           JoeCopula,
-           LogCopula,
-           MCopula,
-           MixedCopula,
-           MOCopula,
-           PlackettCopula,
-           RafteryCopula,
-           SurvivalCopula,
-           TawnCopula,
-           TCopula,
-           tEVCopula,
-           WCopula,
-           ArchimaxCopula,
-           BB4Copula,
-           BB5Copula,
-           EmpiricalEVCopula,
-           BernsteinCopula,
-           BetaCopula,
-           CheckerboardCopula,
-           CopulaModel
+    export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
+    export SklarDist, CopulaModel
+
+    export WilliamsonGenerator, 𝒲, EmpiricalGenerator, DiscreteSpectralTail
+    export ArchimedeanCopula, ExtremeValueCopula, LiouvilleCopula
+    export NestedArchimedeanCopula, ArchimaxCopula, DiscreteSpectralCopula
+
+    export AMHCopula, ClaytonCopula, FrankCopula, GumbelCopula
+    export GumbelBarnettCopula, InvGaussianCopula, JoeCopula
+    export BB1Copula, BB2Copula, BB3Copula, BB6Copula, BB7Copula
+    export BB8Copula, BB9Copula, BB10Copula
+
+    export AsymGalambosCopula, AsymLogCopula, AsymMixedCopula, BC2Copula
+    export CuadrasAugeCopula, EmpiricalEVCopula, GalambosCopula
+    export HuslerReissCopula, LogCopula, MixedCopula, MOCopula
+    export TawnCopula, tEVCopula, BB4Copula, BB5Copula
+
+    export GaussianCopula, TCopula
+    export BernsteinCopula, BetaCopula, CheckerboardCopula, EmpiricalCopula
+    export FGMCopula, IndependentCopula, MCopula, WCopula
+    export PlackettCopula, RafteryCopula, SurvivalCopula
+
+    public Copula, Distortion, Generator, Tail
+
+    public ϕ, ϕ⁻¹, ϕ⁽¹⁾, ϕ⁻¹⁽¹⁾, ϕ⁽ᵏ⁾, ϕ⁽ᵏ⁾⁻¹, 𝒲₋₁, max_monotony
+    public A, dA, d²A, ℓ, ellpartial
+
+    public τ, ρ, β, γ, ι, λₗ, λᵤ
+    public τ⁻¹, ρ⁻¹, β⁻¹, λᵤ⁻¹
+    public corblomqvist, corgini, corentropy, corlowertail, coruppertail, measure
+
+    public IndependentGenerator, MGenerator, WGenerator, FrailtyGenerator
+    public AMHGenerator, ClaytonGenerator, FrankGenerator, GumbelGenerator
+    public GumbelBarnettGenerator, InvGaussianGenerator, JoeGenerator
+    public BB1Generator, BB2Generator, BB3Generator, BB6Generator, BB7Generator
+    public BB8Generator, BB9Generator, BB10Generator
+
+    public AsymGalambosTail, AsymLogTail, AsymMixedTail, BC2Tail, CuadrasAugeTail
+    public EmpiricalEVTail, EmpiricalEVMultivariateTail, GalambosTail
+    public HuslerReissTail, LogTail, MixedTail, MOTail, TawnTail, tEVTail
 
 end
