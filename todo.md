@@ -67,23 +67,37 @@ Cette classification doit être terminée avant de figer les helpers. Les helper
 Créer des helpers courts par groupe cohérent d’opérations :
 
 ```julia
-test_constructors(C)
-test_distribution_contract(C)
-test_density_contract(C)
-test_subsetting_contract(C)
-test_conditioning_contract(C)
-test_rosenblatt_contract(C)
-test_dependence_contract(C)
-test_fitting_contract(CT, data; method)
+test_constructors(case)
+test_distribution_contract(case, ctx)
+test_density_contract(case, ctx)
+test_subsetting_contract(case, ctx)
+test_conditioning_contract(case, ctx)
+test_rosenblatt_contract(case, ctx)
+test_dependence_contract(case, ctx)
+test_fitting_contract(case, ctx)
 ```
 
 Une fonction de haut niveau applique l’ensemble du contrat à chaque entrée du bestiaire :
 
 ```julia
-test_copula_contract(C; fitting_cases=...)
+test_copula_contract(case)
 ```
 
-Elle appelle tous les groupes pertinents selon les règles définies dans la table normative. Les particularités ne sont pas déterminées par des prédicats propres à chaque instance, mais par quelques catégories mathématiques publiques et stables.
+Elle construit la copule une seule fois, prépare un petit contexte partagé (`u`, `U`, indices et probabilités intérieures), puis appelle tous les groupes. Aucun helper ne doit rééchantillonner ou reconstruire le même modèle sans nécessité.
+
+Le bestiaire doit rester une donnée Julia simple, composée de tuples nommés et de modèles construits exclusivement avec l’API publique. Ne pas créer une hiérarchie de types ou une macro de fixtures. Séparer seulement les cohortes correspondant à une différence mathématique du contrat : copules absolument continues, singulières et mixtes. Les valeurs par défaut portent le contrat complet ; les cohortes non régulières ne changent que la sémantique de la densité et de l’inversion de Rosenblatt.
+
+Maintenir trois registres indépendants lorsque leurs axes ne coïncident pas :
+
+- `COPULA_CASES` pour le contrat commun sur des instances ;
+- `CONSTRUCTOR_CASES` pour comparer les formes typées, dynamiques et éventuellement inférables ;
+- `FITTING_CASES` pour les méthodes publiquement promises par chaque famille.
+
+Ne pas interroger `_available_fitting_methods` dans les contrats : cette fonction est interne et non-SemVer. Les méthodes publiques d’ajustement doivent être déclarées explicitement par les fixtures à partir de la documentation normative.
+
+Le bestiaire doit contenir à la fois les alias familiaux usuels et quelques compositions génériques réellement constructibles par l’API publique : générateur + `ArchimedeanCopula`, tail + `ExtremeValueCopula`, générateur + tail + `ArchimaxCopula`, générateur + paramètres de Dirichlet + `LiouvilleCopula`, transformations et `SklarDist`.
+
+Les tests contractuels utilisent très peu d’observations et de points. Leur rôle est de vérifier que chaque opération existe et respecte ses invariants. Les validations statistiques, intégrations et comparaisons de formules appartiennent aux tests de chemins, composants ou régressions.
 
 ### Constructeurs
 
@@ -349,14 +363,24 @@ Lorsque la LTS officielle devient compatible avec le minimum du paquet, le séle
 
 ## Ordre d’implémentation
 
-1. Écrire la table normative de l’API publique, puis aligner la page API, le manuel et le guide développeur conformément à #426 et #428.
-2. Ajouter un chronométrage par fichier et établir la baseline de #425.
-3. Créer `fixtures.jl`, le bestiaire et les helpers de contrats sans supprimer de tests.
-4. Faire passer chaque copule par le contrat public complet.
-5. Construire la matrice des chemins de dispatch demandée par #424.
-6. Migrer puis supprimer `GenericTests.jl`.
-7. Supprimer les duplications des fichiers familiaux.
-8. Réorganiser les fichiers seulement après stabilisation du contenu.
-9. Comparer temps total, temps de compilation et nombre de `MethodInstance`.
+Chaque point ci-dessous correspond autant que possible à un commit autonome. Le commit retire cette ligne du TODO et supprime simultanément les assertions historiques qu’il remplace.
+
+1. Enregistrer dans #425 la baseline de la suite historique encore intacte, avec temps par fichier et temps total.
+2. Écrire la table normative de l’API publique et l’utiliser pour figer les cohortes et registres de `fixtures.jl`.
+3. Ajouter le driver `test_copula_contract`, le contexte partagé et le contrat des constructeurs ; migrer la partie correspondante de `old/Constructors.jl` et `old/GenericTests.jl`.
+4. Ajouter le contrat `Distributions.jl` fondamental : dimension, type, paramètres, support, `cdf`, `logcdf` et échantillonnage vectoriel/matriciel ; retirer les doublons historiques.
+5. Ajouter le contrat de densité et vraisemblance avec sa sémantique continue/singulière/mixte ; conserver les intégrations approfondies uniquement dans les tests de chemins.
+6. Ajouter le contrat de `subsetdims` pour `Copula` et `SklarDist`, puis réduire `old/Subsetting.jl` aux seules régressions non génériques.
+7. Ajouter le contrat de `condition` scalaire et multiple sur les échelles copule et Sklar ; migrer les invariants génériques de `old/ConditionalDistribution.jl`.
+8. Ajouter le contrat des transformations de Rosenblatt vectorielles et matricielles, avec bijection seulement lorsqu’elle est promise mathématiquement.
+9. Ajouter le contrat des mesures scalaires et pairwise, y compris les méthodes `StatsBase`, sans répéter une validation statistique coûteuse pour chaque modèle.
+10. Ajouter les contrats de `fit` et `CopulaModel` à partir de `FITTING_CASES`, puis conserver dans `old/FittingTest.jl` seulement les régressions algorithmiques.
+11. Ajouter le contrat complet de `SklarDist` sans recopier les validations déjà garanties par la copule sous-jacente.
+12. Ajouter les contrats autonomes de `pseudos`, `measure`, `Nataf`, des générateurs publics et de la représentation spectrale publique.
+13. Supprimer `old/GenericTests.jl` dès que toutes ses assertions utiles sont classées dans les contrats précédents, un test de chemin ou une régression familiale.
+14. Construire la matrice des chemins de dispatch demandée par #424 et y déplacer les validations coûteuses représentatives.
+15. Migrer les contrats des composants partagés : générateurs, tails, distortions, distributions radiales et samplers.
+16. Répartir les dernières régressions utiles dans `families/` et `extensions/`, puis supprimer chaque fichier restant de `old/`.
+17. Ajouter un chronométrage par groupe, comparer à la baseline de #425 et supprimer entièrement `test/old/`.
 
 Le premier objectif structurel est de remplacer entièrement `GenericTests.jl` par un contrat public explicite, appliqué à chaque copule, et par un registre séparé des chemins internes. L’inventaire documentaire préalable évite de transformer les hypothèses historiques des tests en nouvelle API par accident.
