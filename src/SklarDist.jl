@@ -57,6 +57,7 @@ end
 SklarDist(C, m) = SklarDist(C, Tuple(m))
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
 Base.eltype(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = Base.eltype(S.C)
+Distributions.params(S::SklarDist) = (copula=S.C, margins=S.m)
 @inline function _sklar_work_eltype(S::SklarDist, x)
     T = promote_type(eltype(S.C), eltype(x))
     for margin in S.m
