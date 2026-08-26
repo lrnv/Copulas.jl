@@ -21,3 +21,25 @@
         end
     end
 end
+
+@testset "complete StatsBase model-result interface" begin
+    C = ClaytonCopula{2}(1.5)
+    U = [0.2 0.4 0.7 0.8; 0.3 0.6 0.5 0.9]
+    M = CopulaModel(C, 4, loglikelihood(C, U), :fixture;
+        vcov=reshape([0.04], 1, 1),
+        method_details=(θ̂=(θ=1.5,), U=U, null_ll=0.0))
+    @test StatsBase.isfitted(M)
+    @test StatsBase.nobs(M) == 4
+    @test StatsBase.coef(M) == [1.5]
+    @test StatsBase.coefnames(M) == ["θ"]
+    @test StatsBase.vcov(M) == reshape([0.04], 1, 1)
+    @test StatsBase.stderror(M) == [0.2]
+    lo, hi = StatsBase.confint(M)
+    @test lo[1] < 1.5 < hi[1]
+    @test StatsBase.nullloglikelihood(M) == 0
+    @test StatsBase.nulldeviance(M) == 0
+    @test size(StatsBase.residuals(M)) == size(U)
+    @test size(StatsBase.residuals(M; transform=:normal)) == size(U)
+    @test length(StatsBase.predict(M; newdata=U, what=:cdf)) == size(U, 2)
+    @test length(StatsBase.predict(M; newdata=U, what=:pdf)) == size(U, 2)
+end

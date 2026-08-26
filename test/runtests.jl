@@ -15,13 +15,19 @@ testfiles = [
     "contracts/rosenblatt",
     "contracts/dependence",
     "contracts/constructors",
+    "contracts/public_surface",
     "contracts/copulas",
     "contracts/fitting",
     "contracts/sklar",
     "contracts/utilities",
     "components/generators",
     "components/tails",
+    "components/public_compositions",
+    "components/measure_inverses",
     "paths/dispatch_paths",
+    "paths/mathematical_coherence",
+    "paths/statistical_paths",
+    "paths/fitting_paths",
 ]
 
 # Legacy files remain enabled while their coverage is migrated to the new

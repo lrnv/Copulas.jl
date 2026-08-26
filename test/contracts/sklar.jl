@@ -5,10 +5,12 @@
     @test length(D) == 2
     @test params(D) isa NamedTuple
     @test 0 <= cdf(D, x) <= 1
+    @test logcdf(D, x) ≈ log(cdf(D, x))
     @test pdf(D, x) >= 0
     @test logpdf(D, x) ≈ log(pdf(D, x))
     X = rand(StableRNG(31), D, 4)
     @test size(X) == (2, 4)
+    @test loglikelihood(D, X) isa Real
 
     S = subsetdims(D, (2, 1))
     @test length(S) == 2

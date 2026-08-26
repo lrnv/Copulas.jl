@@ -68,12 +68,14 @@ struct BernsteinCopula{d} <: Copula{d}
 end
 Distributions.params(C::BernsteinCopula) = (m=C.m, weights=C.weights)
 BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base; kwargs...)
+BernsteinCopula(d::Integer, base::Copula; kwargs...) = BernsteinCopula{d}(base; kwargs...)
 function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}
     size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     return BernsteinCopula{d}(EmpiricalCopula{d}(data; pseudo_values=get(kwargs, :pseudo_values, true));
                               m=get(kwargs, :m, nothing))
 end
 BernsteinCopula(data::AbstractMatrix; kwargs...) = BernsteinCopula{size(data, 1)}(data; kwargs...)
+BernsteinCopula(d::Integer, data::AbstractMatrix; kwargs...) = BernsteinCopula{d}(data; kwargs...)
 
 @inline function _bernvec_all(u::T, m::Int) where {T<:Real}
     v = zeros(T, m+1)

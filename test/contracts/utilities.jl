@@ -13,4 +13,16 @@
     target = [1.0 0.4; 0.4 1.0]
     @test Nataf((Normal(), Normal(2, 3)), target) == target
     @test Nataf((Uniform(), Uniform()), 0.4) ≈ 2sinpi(0.4 / 6)
+
+    sample = rand(StableRNG(91), ClaytonCopula{2}(1.5), 80)
+    for scalar in (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι,
+                   Copulas.λₗ, Copulas.λᵤ)
+        @test scalar(sample) isa Real
+    end
+    for pairwise in (StatsBase.corkendall, StatsBase.corspearman,
+                     Copulas.corblomqvist, Copulas.corgini,
+                     Copulas.corentropy, Copulas.corlowertail,
+                     Copulas.coruppertail)
+        @test size(pairwise(transpose(sample))) == (2, 2)
+    end
 end

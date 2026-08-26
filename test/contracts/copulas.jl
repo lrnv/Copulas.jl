@@ -18,7 +18,7 @@ function test_copula_contract(case, seed)
         test_subsetting_contract(C, ctx)
         test_conditioning_contract(C, ctx)
         test_rosenblatt_contract(C, ctx, case.rosenblatt)
-        test_dependence_contract(C)
+        test_dependence_contract(C, case.kind)
     end
 end
 

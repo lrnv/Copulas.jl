@@ -10,3 +10,14 @@
         end
     end
 end
+
+
+@testset "generic numeric sampler buffers" begin
+    C = ClaytonCopula{3}(1.0)
+    storage = fill(Float32(NaN), 5, 2)
+    buffer = @view storage[2:4, :]
+    @test rand!(StableRNG(52), C, buffer) === buffer
+    @test all(x -> 0 <= x <= 1, buffer)
+    @test all(isnan, storage[[1, 5], :])
+    @test_throws DimensionMismatch rand!(StableRNG(52), C, zeros(Float32, 2, 1))
+end

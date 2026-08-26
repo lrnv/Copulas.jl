@@ -11,12 +11,18 @@ const TAIL_CASES = (
     (Copulas.MOTail(0.2, 0.3, 0.4), 2),
     (Copulas.TawnTail(2.0, [0.6, 0.7, 0.8]), 3),
     (Copulas.tEVTail(4.0, 0.5), 2),
+    (EmpiricalEVCopula{2}(_FIXTURE_DATA; degree=1, pseudo_values=false).tail, 2),
+    (EmpiricalEVCopula{3}(vcat(_FIXTURE_DATA,
+        reshape([0.24, 0.76, 0.45, 0.91, 0.33, 0.58], 1, :));
+        degree=1, pseudo_values=false).tail, 3),
+    (DiscreteSpectralTail([0.7 0.3; 0.2 0.8]), 2),
 )
 
 @testset "public extreme-value tail primitives" begin
     for (tail, d) in TAIL_CASES
         @testset "$(nameof(typeof(tail))) d=$d" begin
             x = collect(range(0.4, 1.0; length=d))
+            @test params(tail) isa NamedTuple
             value = Copulas.ℓ(tail, x)
             @test maximum(x) <= value <= sum(x)
             @test Copulas.ℓ(tail, 2 .* x) ≈ 2value
@@ -26,6 +32,37 @@ const TAIL_CASES = (
                 @test Copulas.ℓ(tail, e) ≈ 1
             end
             @test Copulas.ellpartial(tail, x, (1,)) isa Real
+        end
+    end
+end
+
+const PICKANDS_CASES = (
+    Copulas.AsymGalambosTail(1.0, 0.4, 0.6),
+    Copulas.AsymLogTail(1.5, 0.4, 0.6),
+    Copulas.AsymMixedTail(0.3, 0.2),
+    Copulas.BC2Tail(0.5, 0.3),
+    Copulas.CuadrasAugeTail(0.5),
+    Copulas.GalambosTail(1.0),
+    Copulas.HuslerReissTail(1.0),
+    Copulas.LogTail(1.5),
+    Copulas.MixedTail(0.5),
+    Copulas.MOTail(0.2, 0.3, 0.4),
+    Copulas.tEVTail(4.0, 0.5),
+    EmpiricalEVCopula{2}(_FIXTURE_DATA; degree=1, pseudo_values=false).tail,
+)
+
+@testset "bivariate Pickands identities" begin
+    for tail in PICKANDS_CASES
+        @test Copulas.A(tail, 0.0) ≈ 1
+        @test Copulas.A(tail, 1.0) ≈ 1
+        for t in (0.2, 0.5, 0.8)
+            a = Copulas.A(tail, t)
+            @test max(t, 1 - t) <= a <= 1
+            h = 1e-5
+            finite_dA = (Copulas.A(tail, t + h) - Copulas.A(tail, t - h)) / (2h)
+            finite_d²A = (Copulas.dA(tail, t + h) - Copulas.dA(tail, t - h)) / (2h)
+            @test Copulas.dA(tail, t) ≈ finite_dA atol=2e-5
+            @test Copulas.d²A(tail, t) ≈ finite_d²A atol=2e-4
         end
     end
 end

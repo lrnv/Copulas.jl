@@ -388,7 +388,7 @@ struct 𝒲{TX, TO<:Real} <: Generator
 end
 const WilliamsonGenerator = 𝒲
 @doc (@doc 𝒲) WilliamsonGenerator
-Distributions.params(G::𝒲) = (G.X,)
+Distributions.params(G::𝒲) = (X=G.X, order=G.order)
 max_monotony(G::𝒲) = G.order
 """
 Generic fallback for ϕ on WilliamsonGenerator (non-discrete-nonparametric TX).

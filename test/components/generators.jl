@@ -21,12 +21,25 @@ const GENERATOR_CASES = (
     for G in GENERATOR_CASES
         @testset "$(nameof(typeof(G)))" begin
             @test Copulas.max_monotony(G) >= 2
+            @test params(G) isa NamedTuple
             @test Copulas.ϕ(G, 0.0) ≈ 1
             @test 0 <= Copulas.ϕ(G, 0.7) <= 1
             p = Copulas.ϕ(G, 0.7)
             @test Copulas.ϕ⁻¹(G, p) ≈ 0.7 atol=2e-6 rtol=2e-6
             @test Copulas.ϕ⁽¹⁾(G, 0.7) <= 0
             @test Copulas.ϕ⁽ᵏ⁾(G, 0, 0.7) ≈ p
+            derivative_rtol = G isa WilliamsonGenerator ? 1e-4 : 2e-7
+            @test Copulas.ϕ⁽¹⁾(G, 0.7) ≈
+                  ForwardDiff.derivative(t -> Copulas.ϕ(G, t), 0.7) rtol=derivative_rtol
+            @test Copulas.ϕ⁽ᵏ⁾(G, 1, 0.7) ≈ Copulas.ϕ⁽¹⁾(G, 0.7)
+            @test Copulas.ϕ⁽ᵏ⁾(G, 2, 0.7) ≈
+                  ForwardDiff.derivative(t -> Copulas.ϕ⁽¹⁾(G, t), 0.7) rtol=derivative_rtol
+            h = 1e-5
+            inverse_derivative = (Copulas.ϕ⁻¹(G, 0.5 + h) -
+                                  Copulas.ϕ⁻¹(G, 0.5 - h)) / (2h)
+            @test Copulas.ϕ⁻¹⁽¹⁾(G, 0.5) ≈ inverse_derivative rtol=2e-5
+            y = Copulas.ϕ⁽ᵏ⁾(G, 1, 0.3)
+            @test Copulas.ϕ⁽ᵏ⁾⁻¹(G, 1, y) ≈ 0.3 atol=2e-5 rtol=2e-5
         end
     end
 end
