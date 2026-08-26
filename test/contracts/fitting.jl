@@ -1,7 +1,7 @@
 @testset "public fitting and model-result contracts" begin
     for (i, case) in pairs(FITTING_CASES)
         @testset "$(case.name)" begin
-            source = case.family(2, 1.5)
+            source = case.build()
             U = rand(StableRNG(20_000 + i), source, 12)
             fitted = fit(case.family, U; method=case.method, vcov=false,
                          derived_measures=false)

@@ -80,8 +80,10 @@ const CONSTRUCTOR_CASES = (
 )
 
 const FITTING_CASES = (
-    (; name="Clayton inversion of tau", family=ClaytonCopula, method=:itau),
-    (; name="Gaussian inversion of tau", family=GaussianCopula, method=:itau),
+    (; name="Clayton inversion of tau", family=ClaytonCopula,
+       build=() -> ClaytonCopula{2}(1.5), method=:itau),
+    (; name="Gaussian inversion of tau", family=GaussianCopula,
+       build=() -> GaussianCopula{2}(0.3), method=:itau),
 )
 
 const PATH_CASES = (

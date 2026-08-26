@@ -6,6 +6,12 @@ function test_dependence_contract(C)
         @test value isa Real
         @test !isnan(value)
     end
-    @test StatsBase.corkendall(C) == Copulas.τ(C)
-    @test StatsBase.corspearman(C) == Copulas.ρ(C)
+    K = StatsBase.corkendall(C)
+    S = StatsBase.corspearman(C)
+    @test size(K) == size(S) == (2, 2)
+    @test K ≈ transpose(K)
+    @test S ≈ transpose(S)
+    @test diag(K) == diag(S) == ones(2)
+    @test K[1, 2] ≈ Copulas.τ(C)
+    @test S[1, 2] ≈ Copulas.ρ(C)
 end
