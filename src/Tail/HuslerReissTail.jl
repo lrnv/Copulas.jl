@@ -109,8 +109,8 @@ _hr_variogram(tail::HuslerReissTail{<:AbstractMatrix}, ::Int) = tail.parameter
 HuslerReissCopula(Γ::AbstractMatrix) =
     ExtremeValueCopula{size(Γ, 1)}(HuslerReissTail(Γ))
 
-_unbound_params(::Type{<:HuslerReissTail{<:Real}}, d, θ) = [log(θ.θ)]
-_rebound_params(::Type{<:HuslerReissTail{<:Real}}, d, α) = (; θ = exp(α[1]))
+_unbound_params(::Type{<:HuslerReissTail}, d, θ) = [log(θ.θ)]
+_rebound_params(::Type{<:HuslerReissTail}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:HuslerReissTail{<:Real}}, d) = (0.0, Inf)
 _example(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, d) =
     HuslerReissCopula{d}(0.01)

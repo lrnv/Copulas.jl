@@ -83,10 +83,8 @@ _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebou
 function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
     # generic MLE routine (agnostic to vcov/inference)
     d   = size(U,1)
-    example = _example(CT, d)
-    ConcreteCT = typeof(example)
-    cop(α) = ConcreteCT(_rebound_params(CT, d, α)...)
-    α₀  = _unbound_params(CT, d, Distributions.params(example))
+    cop(α) = CT(d, _rebound_params(CT, d, α)...)
+    α₀  = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
     loss(C) = -Distributions.loglikelihood(C, U)
     res = try
         Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
@@ -94,7 +92,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
         Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     end
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return ConcreteCT(θhat...), (; θ̂=θhat,
+    return CT(d, θhat...), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
@@ -116,10 +114,8 @@ Use [`Distributions.fit(CopulaModel, ...)`] instead.
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     # generic rank-based routine (agnostic to vcov/inference)
     d   = size(U,1)
-    example = _example(CT, d)
-    ConcreteCT = typeof(example)
-    cop(α) = ConcreteCT(_rebound_params(CT, d, α)...)
-    α₀ = _unbound_params(CT, d, Distributions.params(example))
+    cop(α) = CT(d, _rebound_params(CT, d, α)...)
+    α₀ = _unbound_params(CT, d, Distributions.params(_example(CT, d)))
     @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
     fun  = method isa Val{:itau} ? StatsBase.corkendall :
            method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
@@ -127,7 +123,7 @@ function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:
     loss(C) = sum(abs2, est .- fun(C))
     res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return ConcreteCT(θhat...), (; θ̂=θhat,
+    return CT(d, θhat...), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))

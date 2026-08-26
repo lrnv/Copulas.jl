@@ -102,8 +102,10 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
 
         Chr2scalar = HuslerReissCopula{2}(2.0)
         @test pdf(Chr2, [0.4, 0.7]) ≈ pdf(Chr2scalar, [0.4, 0.7])
-        @test (Copulas.τ(Chr2), Copulas.ρ(Chr2), Copulas.β(Chr2), Copulas.λᵤ(Chr2)) ≈
-              (Copulas.τ(Chr2scalar), Copulas.ρ(Chr2scalar), Copulas.β(Chr2scalar), Copulas.λᵤ(Chr2scalar))
+        @test all(isapprox.(
+            (Copulas.τ(Chr2), Copulas.ρ(Chr2), Copulas.β(Chr2), Copulas.λᵤ(Chr2)),
+            (Copulas.τ(Chr2scalar), Copulas.ρ(Chr2scalar), Copulas.β(Chr2scalar), Copulas.λᵤ(Chr2scalar)),
+        ))
         @test rand(Random.Xoshiro(4101), Chr2, 16) ==
               rand(Random.Xoshiro(4101), Chr2scalar, 16)
 
@@ -122,8 +124,10 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
 
         Ctev2scalar = tEVCopula{2}(4.0, 0.3)
         @test pdf(Ctev2, [0.4, 0.7]) ≈ pdf(Ctev2scalar, [0.4, 0.7])
-        @test (Copulas.τ(Ctev2), Copulas.ρ(Ctev2), Copulas.β(Ctev2), Copulas.λᵤ(Ctev2)) ≈
-              (Copulas.τ(Ctev2scalar), Copulas.ρ(Ctev2scalar), Copulas.β(Ctev2scalar), Copulas.λᵤ(Ctev2scalar))
+        @test all(isapprox.(
+            (Copulas.τ(Ctev2), Copulas.ρ(Ctev2), Copulas.β(Ctev2), Copulas.λᵤ(Ctev2)),
+            (Copulas.τ(Ctev2scalar), Copulas.ρ(Ctev2scalar), Copulas.β(Ctev2scalar), Copulas.λᵤ(Ctev2scalar)),
+        ))
         @test rand(Random.Xoshiro(4102), Ctev2, 16) ==
               rand(Random.Xoshiro(4102), Ctev2scalar, 16)
 
