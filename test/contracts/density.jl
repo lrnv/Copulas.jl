@@ -1,5 +1,5 @@
 function test_density_contract(C, ctx, kind)
-    kind === :singular && return
+    kind === :continuous || return
     p = pdf(C, ctx.u)
     lp = logpdf(C, ctx.u)
     @test p >= 0

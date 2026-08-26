@@ -13,7 +13,7 @@
             @test StatsBase.coef(M) isa AbstractVector
             @test StatsBase.coefnames(M) isa AbstractVector
             @test StatsBase.dof(M) == length(StatsBase.coef(M))
-            @test StatsBase.deviance(M) == -2M.ll
+            @test StatsBase.deviance(M) == -2 * M.ll
             @test isfinite(StatsBase.aic(M))
             @test isfinite(StatsBase.bic(M))
             @test size(StatsBase.residuals(M)) == size(U)

@@ -19,6 +19,8 @@ testfiles = [
     "contracts/fitting",
     "contracts/sklar",
     "contracts/utilities",
+    "components/generators",
+    "components/tails",
     "paths/dispatch_paths",
 ]
 
