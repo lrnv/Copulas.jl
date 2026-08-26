@@ -66,7 +66,7 @@ function test_subsetting_contract(C, ctx)
     @test_throws Exception subsetdims(C, (0,))
 end
 
-function test_conditioning_contract(C, ctx)
+function test_conditioning_contract(C, ctx, kind)
     d = length(C)
     if d > 2
         joint = condition(C, 1, ctx.u[1])
@@ -86,9 +86,11 @@ function test_conditioning_contract(C, ctx)
     @test minimum(D) == 0
     @test maximum(D) == 1
     vals = cdf.(Ref(D), (0.25, 0.5, 0.75))
-    densities = pdf.(Ref(D), (0.25, 0.5, 0.75))
     @test issorted(vals)
-    @test all(x -> x >= 0, densities)
+    if kind === :continuous
+        densities = pdf.(Ref(D), (0.25, 0.5, 0.75))
+        @test all(x -> x >= 0, densities)
+    end
     @test all(x -> 0 <= x <= 1, rand(StableRNG(73), D, 3))
     q = quantile(D, 0.5)
     @test 0 <= q <= 1
@@ -106,7 +108,7 @@ function test_rosenblatt_contract(C, ctx, invertible)
 end
 
 function test_dependence_contract(C, kind)
-    length(C) == 2 || return
+    d = length(C)
     scalar_measures = kind === :continuous ?
         (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι,
          Copulas.λₗ, Copulas.λᵤ) :
@@ -119,27 +121,29 @@ function test_dependence_contract(C, kind)
     end
     K = StatsBase.corkendall(C)
     S = StatsBase.corspearman(C)
-    @test size(K) == size(S) == (2, 2)
+    @test size(K) == size(S) == (d, d)
     @test K ≈ transpose(K)
     @test S ≈ transpose(S)
-    @test diag(K) == diag(S) == ones(2)
-    @test K[1, 2] ≈ Copulas.τ(C)
-    @test S[1, 2] ≈ Copulas.ρ(C)
+    @test diag(K) == diag(S) == ones(d)
+    pair = subsetdims(C, (1, 2))
+    @test K[1, 2] ≈ Copulas.τ(pair)
+    @test S[1, 2] ≈ Copulas.ρ(pair)
 
     pairwise_measures = (
-        (Copulas.corblomqvist, Copulas.β),
-        (Copulas.corgini, Copulas.γ),
-        (Copulas.corlowertail, Copulas.λₗ),
-        (Copulas.coruppertail, Copulas.λᵤ),
+        (Copulas.corblomqvist, Copulas.β, 1),
+        (Copulas.corgini, Copulas.γ, 1),
+        (Copulas.corlowertail, Copulas.λₗ, 1),
+        (Copulas.coruppertail, Copulas.λᵤ, 1),
     )
     if kind === :continuous
-        pairwise_measures = (pairwise_measures..., (Copulas.corentropy, Copulas.ι))
+        pairwise_measures = (pairwise_measures..., (Copulas.corentropy, Copulas.ι, 0))
     end
-    for (pairwise, scalar) in pairwise_measures
+    for (pairwise, scalar, diagonal) in pairwise_measures
         M = pairwise(C)
-        @test size(M) == (2, 2)
+        @test size(M) == (d, d)
         @test M ≈ transpose(M)
-        @test M[1, 2] ≈ scalar(C)
+        @test diag(M) == fill(diagonal, d)
+        @test M[1, 2] ≈ scalar(pair)
     end
 end
 
@@ -150,7 +154,7 @@ function test_copula_contract(case, seed)
         test_distribution_contract(C, ctx)
         test_density_contract(C, ctx, case.kind)
         test_subsetting_contract(C, ctx)
-        test_conditioning_contract(C, ctx)
+        test_conditioning_contract(C, ctx, case.kind)
         test_rosenblatt_contract(C, ctx, case.rosenblatt)
         test_dependence_contract(C, case.kind)
     end

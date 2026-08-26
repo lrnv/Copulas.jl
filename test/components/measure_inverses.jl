@@ -6,9 +6,9 @@
                                    (Copulas.ρ, Copulas.ρ⁻¹),
                                    (Copulas.β, Copulas.β⁻¹),
                                    (Copulas.λᵤ, Copulas.λᵤ⁻¹))
-            value = Copulas.measure(C)
+            value = measure(C)
             rebuilt = CT(inverse(CT, value))
-            @test Copulas.measure(rebuilt) ≈ value atol=2e-6
+            @test measure(rebuilt) ≈ value atol=2e-6
         end
     end
 end
@@ -20,9 +20,9 @@ end
         GT = typeof(G)
         for (measure, inverse) in ((Copulas.τ, Copulas.τ⁻¹),
                                    (Copulas.ρ, Copulas.ρ⁻¹))
-            value = Copulas.measure(G)
+            value = measure(G)
             rebuilt = GT(inverse(GT, value))
-            @test Copulas.measure(rebuilt) ≈ value atol=2e-6
+            @test measure(rebuilt) ≈ value atol=2e-6
         end
     end
 end

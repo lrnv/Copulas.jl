@@ -6,6 +6,10 @@ const _FIXTURE_DATA = [
     0.12 0.31 0.54 0.73 0.89 0.42
     0.81 0.22 0.63 0.47 0.15 0.68
 ]
+const _FIXTURE_DATA3 = vcat(
+    _FIXTURE_DATA,
+    reshape([0.24, 0.76, 0.45, 0.91, 0.33, 0.58], 1, :),
+)
 
 # One ordinary interior point per public family is intentional. Numerical
 # limits and alternate algorithms belong to path and family regressions, not
@@ -50,8 +54,7 @@ const COPULA_CASES = (
     copula_case("t-EV", () -> tEVCopula{2}(4.0, 0.5)),
     copula_case("empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false)),
     copula_case("empirical EV multivariate", () -> EmpiricalEVCopula{3}(
-        vcat(_FIXTURE_DATA, reshape([0.24, 0.76, 0.45, 0.91, 0.33, 0.58], 1, :));
-        degree=1, pseudo_values=false)),
+        _FIXTURE_DATA3; degree=1, pseudo_values=false)),
     copula_case("generic EV", () -> ExtremeValueCopula{2}(Copulas.GalambosTail(1.0))),
     copula_case("discrete spectral", () -> DiscreteSpectralCopula([0.7 0.3; 0.2 0.8]);
         kind=:singular, rosenblatt=false),
@@ -70,7 +73,8 @@ const COPULA_CASES = (
     copula_case("survival", () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3))),
 )
 
-constructor_case(name, typed, dynamic; inferred=true) = (; name, typed, dynamic, inferred)
+constructor_case(name, typed, dynamic; inferred=true, reconstruct=true) =
+    (; name, typed, dynamic, inferred, reconstruct)
 
 const CONSTRUCTOR_CASES = (
     constructor_case("AMH", () -> AMHCopula{2}(0.5), () -> AMHCopula(2, 0.5)),
@@ -117,13 +121,92 @@ const CONSTRUCTOR_CASES = (
     constructor_case("checkerboard", () -> CheckerboardCopula{2}(_FIXTURE_DATA; m=2), () -> CheckerboardCopula(2, _FIXTURE_DATA; m=2)),
     constructor_case("empirical", () -> EmpiricalCopula{2}(_FIXTURE_DATA), () -> EmpiricalCopula(2, _FIXTURE_DATA)),
     constructor_case("empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false), () -> EmpiricalEVCopula(2, _FIXTURE_DATA; method=:cfg, pseudo_values=false)),
+    constructor_case("empirical EV multivariate",
+        () -> EmpiricalEVCopula{3}(_FIXTURE_DATA3; degree=1, pseudo_values=false),
+        () -> EmpiricalEVCopula(3, _FIXTURE_DATA3; degree=1, pseudo_values=false)),
+    constructor_case("generic Archimedean",
+        () -> ArchimedeanCopula{2}(Copulas.ClaytonGenerator(1.5)),
+        () -> ArchimedeanCopula(2, Copulas.ClaytonGenerator(1.5)); inferred=false),
+    constructor_case("generic extreme value",
+        () -> ExtremeValueCopula{2}(Copulas.GalambosTail(1.0)),
+        () -> ExtremeValueCopula(2, Copulas.GalambosTail(1.0)); inferred=false),
+    constructor_case("Liouville",
+        () -> LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
+        () -> LiouvilleCopula(2, Copulas.ClaytonGenerator(1.0), (1.0, 2.0)); inferred=false),
+    constructor_case("nested Archimedean",
+        () -> NestedArchimedeanCopula{4}(Copulas.ClaytonGenerator(1.0);
+            leaves=[1, 2], children=[ClaytonCopula{2}(2.0)]),
+        () -> NestedArchimedeanCopula(4, Copulas.ClaytonGenerator(1.0);
+            leaves=[1, 2], children=[ClaytonCopula{2}(2.0)]);
+        inferred=false),
+    constructor_case("Archimax",
+        () -> ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0)),
+        () -> ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0)); inferred=false),
+    constructor_case("discrete spectral",
+        () -> DiscreteSpectralCopula{2}([0.7 0.3; 0.2 0.8]),
+        () -> DiscreteSpectralCopula(2, [0.7 0.3; 0.2 0.8])),
+    constructor_case("survival",
+        () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3)),
+        () -> SurvivalCopula(3, ClaytonCopula{3}(1.5), (1, 3)); inferred=false),
 )
 
+fitting_case(name, build; method=:default, model=false, kwargs=NamedTuple()) =
+    (; name, build, method, model, kwargs)
+
 const FITTING_CASES = (
-    (; name="Clayton inversion of tau", family=ClaytonCopula,
-       build=() -> ClaytonCopula{2}(1.5), method=:itau),
-    (; name="Gaussian inversion of tau", family=GaussianCopula,
-       build=() -> GaussianCopula{2}(0.3), method=:itau),
+    fitting_case("AMH", () -> AMHCopula{2}(0.5)),
+    fitting_case("BB1", () -> BB1Copula{2}(1.2, 1.5)),
+    fitting_case("BB2", () -> BB2Copula{2}(1.2, 0.5)),
+    fitting_case("BB3", () -> BB3Copula{2}(2.0, 1.5)),
+    fitting_case("BB6", () -> BB6Copula{2}(1.2, 1.6)),
+    fitting_case("BB7", () -> BB7Copula{2}(1.2, 1.6)),
+    fitting_case("BB8", () -> BB8Copula{2}(1.2, 0.4)),
+    fitting_case("BB9", () -> BB9Copula{2}(1.5, 2.4)),
+    fitting_case("BB10", () -> BB10Copula{2}(1.5, 0.7)),
+    fitting_case("Clayton", () -> ClaytonCopula{2}(1.5); method=:itau, model=true),
+    fitting_case("Frank", () -> FrankCopula{2}(2.0); method=:itau),
+    fitting_case("Gumbel", () -> GumbelCopula{2}(1.5); method=:itau),
+    fitting_case("Gumbel--Barnett", () -> GumbelBarnettCopula{2}(0.5); method=:itau),
+    fitting_case("inverse Gaussian", () -> InvGaussianCopula{2}(0.5); method=:itau),
+    fitting_case("Joe", () -> JoeCopula{2}(1.5); method=:itau),
+    fitting_case("Archimax", () -> ArchimaxCopula{2}(
+        Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0))),
+    fitting_case("BB4", () -> BB4Copula{2}(1.5, 1.0)),
+    fitting_case("BB5", () -> BB5Copula{2}(1.5, 1.0)),
+    fitting_case("asymmetric Galambos", () -> AsymGalambosCopula{2}(1.0, 0.4, 0.6)),
+    fitting_case("asymmetric logistic", () -> AsymLogCopula{2}(1.5, 0.4, 0.6)),
+    fitting_case("asymmetric mixed", () -> AsymMixedCopula{2}(0.3, 0.2)),
+    fitting_case("BC2", () -> BC2Copula{2}(0.5, 0.3)),
+    fitting_case("Cuadras--Auge", () -> CuadrasAugeCopula{2}(0.5); method=:itau),
+    fitting_case("Galambos", () -> GalambosCopula{2}(1.0); method=:itau),
+    fitting_case("Husler--Reiss", () -> HuslerReissCopula{2}(1.0); method=:itau),
+    fitting_case("logistic EV", () -> LogCopula{2}(1.5); method=:itau),
+    fitting_case("mixed EV", () -> MixedCopula{2}(0.5); method=:itau),
+    fitting_case("Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4)),
+    fitting_case("Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8])),
+    fitting_case("t-EV", () -> tEVCopula{2}(4.0, 0.5)),
+    fitting_case("empirical EV", () -> EmpiricalEVCopula{2}(
+        _FIXTURE_DATA; method=:cfg, pseudo_values=false); method=:cfg),
+    fitting_case("empirical EV multivariate", () -> EmpiricalEVCopula{3}(
+        _FIXTURE_DATA3; degree=1, pseudo_values=false); method=:cfg,
+        kwargs=(degree=1,)),
+    fitting_case("Gaussian", () -> GaussianCopula{2}(0.3); method=:itau, model=true),
+    fitting_case("Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0])),
+    fitting_case("Bernstein", () -> BernsteinCopula{2}(
+        IndependentCopula{2}(); m=2); method=:bernstein, kwargs=(m=2,)),
+    fitting_case("beta", () -> BetaCopula{2}(_FIXTURE_DATA); method=:beta),
+    fitting_case("checkerboard", () -> CheckerboardCopula{2}(
+        _FIXTURE_DATA; m=2); method=:exact, kwargs=(m=2,)),
+    fitting_case("empirical", () -> EmpiricalCopula{2}(
+        _FIXTURE_DATA); method=:deheuvels),
+    fitting_case("FGM", () -> FGMCopula{2}(0.5); method=:itau),
+    fitting_case("independence", () -> IndependentCopula{2}(); method=:mle),
+    fitting_case("upper Frechet", () -> MCopula{2}(); method=:mle),
+    fitting_case("lower Frechet", () -> WCopula{2}(); method=:mle),
+    fitting_case("Plackett", () -> PlackettCopula{2}(2.0); method=:itau),
+    fitting_case("Raftery", () -> RafteryCopula{2}(0.5); method=:itau),
+    fitting_case("survival", () -> SurvivalCopula{2}(
+        ClaytonCopula{2}(1.5), (1,)); method=:itau),
 )
 
 const PATH_CASES = (

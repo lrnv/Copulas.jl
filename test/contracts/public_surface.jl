@@ -33,6 +33,9 @@ const PUBLIC_SYMBOLS = (
 )
 
 @testset "declared public surface is present" begin
+    declared = Set(names(Copulas; all=false, imported=false))
+    delete!(declared, :Copulas)
+    @test declared == Set(PUBLIC_SYMBOLS)
     for symbol in PUBLIC_SYMBOLS
         @test isdefined(Copulas, symbol)
         @test Base.ispublic(Copulas, symbol)

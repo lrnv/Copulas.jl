@@ -7,6 +7,7 @@
     @test ArchimedeanCopula{2}(Copulas.WGenerator()) isa WCopula{2}
 
     frailty_generator = Copulas.FrailtyGenerator(Exponential())
+    @test params(frailty_generator) == (F=Exponential(),)
     for t in (0.0, 0.5, 1.0)
         @test Copulas.ϕ(frailty_generator, t) == mgf(Exponential(), -t)
     end

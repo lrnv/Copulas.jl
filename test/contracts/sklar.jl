@@ -23,4 +23,11 @@
     R = rosenblatt(D, X)
     @test size(R) == size(X)
     @test inverse_rosenblatt(D, R) ≈ X atol=2e-5 rtol=2e-5
+
+    D3 = SklarDist(GaussianCopula{3}(0.3), (Normal(), Exponential(), Gamma(2, 1)))
+    x3 = [0.1, 1.2, 0.8]
+    joint = condition(D3, 1, x3[1])
+    @test length(joint) == 2
+    @test 0 <= cdf(joint, x3[2:3]) <= 1
+    @test length(subsetdims(D3, (3, 1))) == 2
 end

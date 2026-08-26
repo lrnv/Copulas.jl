@@ -3,12 +3,14 @@
         @testset "$(case.name)" begin
             source = case.build()
             U = rand(StableRNG(20_000 + i), source, 12)
-            fitted = fit(case.family, U; method=case.method, vcov=false,
-                         derived_measures=false)
-            @test fitted isa Copulas.Copula{2}
+            family = typeof(source)
+            fitted = fit(family, U; method=case.method, case.kwargs...,
+                         vcov=false, derived_measures=false)
+            @test fitted isa Copulas.Copula{length(source)}
 
-            M = fit(CopulaModel, case.family, U; method=case.method,
-                    vcov=false, derived_measures=false)
+            case.model || continue
+            M = fit(CopulaModel, family, U; method=case.method,
+                    case.kwargs..., vcov=false, derived_measures=false)
             @test StatsBase.nobs(M) == size(U, 2)
             @test StatsBase.coef(M) isa AbstractVector
             @test StatsBase.coefnames(M) isa AbstractVector
@@ -19,6 +21,24 @@
             @test size(StatsBase.residuals(M)) == size(U)
             @test size(StatsBase.predict(M; what=:simulate, nsim=3)) == (2, 3)
         end
+    end
+end
+
+@testset "structural and non-fittable public families" begin
+    nested = NestedArchimedeanCopula{4}(Copulas.ClaytonGenerator(1.0);
+        leaves=[1, 2], children=[ClaytonCopula{2}(2.0)])
+    nested_data = rand(StableRNG(20_100), nested, 8)
+    @test fit(nested, nested_data; vcov=false, derived_measures=false) isa
+          NestedArchimedeanCopula{4}
+
+    non_fittable = (
+        LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
+        DiscreteSpectralCopula{2}([0.7 0.3; 0.2 0.8]),
+    )
+    for C in non_fittable
+        U = rand(StableRNG(20_101), C, 4)
+        @test_throws Exception fit(typeof(C), U; vcov=false,
+                                   derived_measures=false)
     end
 end
 

@@ -14,6 +14,7 @@ const GENERATOR_CASES = (
     Copulas.GumbelGenerator(1.5),
     Copulas.InvGaussianGenerator(0.5),
     Copulas.JoeGenerator(1.5),
+    Copulas.FrailtyGenerator(Exponential()),
     WilliamsonGenerator(Dirac(1.0), 2.0),
 )
 
@@ -22,6 +23,8 @@ const GENERATOR_CASES = (
         @testset "$(nameof(typeof(G)))" begin
             @test Copulas.max_monotony(G) >= 2
             @test params(G) isa NamedTuple
+            rebuilt = typeof(G)(values(params(G))...)
+            @test params(rebuilt) == params(G)
             @test Copulas.ϕ(G, 0.0) ≈ 1
             @test 0 <= Copulas.ϕ(G, 0.7) <= 1
             p = Copulas.ϕ(G, 0.7)
