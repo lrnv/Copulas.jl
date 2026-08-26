@@ -16,6 +16,10 @@ testfiles = [
     "contracts/dependence",
     "contracts/constructors",
     "contracts/copulas",
+    "contracts/fitting",
+    "contracts/sklar",
+    "contracts/utilities",
+    "paths/dispatch_paths",
 ]
 
 # Legacy files remain enabled while their coverage is migrated to the new

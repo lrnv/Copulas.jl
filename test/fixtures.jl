@@ -80,6 +80,18 @@ const CONSTRUCTOR_CASES = (
 )
 
 const FITTING_CASES = (
-    (; name="Clayton MPL", family=ClaytonCopula, method=:mpl),
-    (; name="Gaussian MPL", family=GaussianCopula, method=:mpl),
+    (; name="Clayton inversion of tau", family=ClaytonCopula, method=:itau),
+    (; name="Gaussian inversion of tau", family=GaussianCopula, method=:itau),
+)
+
+const PATH_CASES = (
+    generic_cdf=FGMCopula{2}(0.4),
+    archimedean_frailty=FrankCopula{3}(2.0),
+    matrix_sampler=ClaytonCopula{5}(1.5),
+    biv_ev_distortion=GalambosCopula{2}(1.0),
+    generic_condition=RafteryCopula{2}(0.5),
+    singular_condition=MCopula{2}(),
+    numerical_ev=HuslerReissCopula{3}(1.0),
+    fractional_williamson=LiouvilleCopula{2}(
+        Copulas.ClaytonGenerator(1.0), (0.75, 1.25)),
 )
