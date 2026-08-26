@@ -37,6 +37,7 @@ struct BetaCopula{d,MT} <: Copula{d}
     end
 end
 BetaCopula(data::AbstractMatrix) = BetaCopula{size(data, 1)}(data)
+Distributions.params(C::BetaCopula) = (ranks=C.ranks,)
 function _bernvec_n(u::T, n::Int) where {T<:Real}
     v = zeros(T, n+1)
     if iszero(u)

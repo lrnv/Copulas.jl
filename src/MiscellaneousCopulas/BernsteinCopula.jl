@@ -66,6 +66,7 @@ struct BernsteinCopula{d} <: Copula{d}
     end
     BernsteinCopula{d}(m::NTuple{d, Int}, weights::Array{Float64, d}) where d = new{d}(m, weights) # cheating constructor. 
 end
+Distributions.params(C::BernsteinCopula) = (m=C.m, weights=C.weights)
 BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base; kwargs...)
 function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}
     size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))

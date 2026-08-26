@@ -429,6 +429,8 @@ struct NestedArchimedeanCopula{d, TG<:Generator} <: Copula{d}
 end
 
 Base.length(::NestedArchimedeanCopula{d}) where {d} = d
+Distributions.params(C::NestedArchimedeanCopula) =
+    (G=C.G, leaves=C.leafdims, children=C.children)
 
 # Element type of a single generator's parameters (promote across its params).
 # `init = Bool` is the identity for `promote_type`, so a 0-param generator
