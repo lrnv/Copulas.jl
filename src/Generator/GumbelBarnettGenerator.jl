@@ -90,7 +90,8 @@ end
 ϕ⁻¹(G::GumbelBarnettGenerator, t) = log1p(-G.θ * log(t))
 ϕ⁻¹⁽¹⁾(G::GumbelBarnettGenerator, t) = -G.θ / (t - G.θ * t * log(t))
 function ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, k::Int, t)
-    α = 1/G.θ    
+    iszero(k) && return ϕ(G, t)
+    α = 1/G.θ
     C = -α*exp(t)
     R = C * exp(α + C)
     k == 1 && return R

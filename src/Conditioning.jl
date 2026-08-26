@@ -143,6 +143,8 @@ struct DistortedDist{Disto, Distrib}<:Distributions.ContinuousUnivariateDistribu
         return new{typeof(D), typeof(X)}(D, X)
     end
 end
+Base.minimum(D::DistortedDist) = minimum(D.X)
+Base.maximum(D::DistortedDist) = maximum(D.X)
 Distributions.cdf(D::DistortedDist, t::Real) = Distributions.cdf(D.D, Distributions.cdf(D.X, t))
 Distributions.logcdf(D::DistortedDist, t::Real) = Distributions.logcdf(D.D, Distributions.cdf(D.X, t))
 Distributions.quantile(D::DistortedDist, α::Real) = Distributions.quantile(D.X, Distributions.quantile(D.D, α))
