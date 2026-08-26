@@ -6,11 +6,11 @@ struct MDistortion{T} <: Distortion
     j::Int8
 end
 function Distributions.cdf(D::MDistortion, u::Real)
-    z = u / D.v
-    return clamp(z, zero(z), one(z))
+    T = promote_type(typeof(float(u)), typeof(D.v))
+    return u < D.v ? zero(T) : one(T)
 end
-Distributions.quantile(D::MDistortion, α::Real) = α * D.v
+Distributions.quantile(D::MDistortion, α::Real) = D.v
 function Distributions.logpdf(D::MDistortion, u::Real)
     T = promote_type(typeof(float(u)), typeof(D.v))
-    return 0 <= u <= D.v ? T(-log(D.v)) : T(-Inf)
+    return u == D.v ? zero(T) : T(-Inf)
 end

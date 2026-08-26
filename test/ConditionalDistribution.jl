@@ -287,6 +287,22 @@ end
     end
 end
 
+@testset "Fréchet-bound conditionals are point masses" begin
+    v = 0.4
+    for (C, atom) in ((MCopula{2}(), v), (WCopula{2}(), 1-v))
+        for j in 1:2
+            D = condition(C, j, v)
+            @test cdf(D, prevfloat(atom)) == 0
+            @test cdf(D, atom) == 1
+            @test cdf(D, nextfloat(atom)) == 1
+            @test all(quantile(D, p) == atom for p in (0.0, 0.2, 0.8, 1.0))
+            @test rand(rng, D, 10) == fill(atom, 10)
+            @test pdf(D, atom) == 1
+            @test pdf(D, prevfloat(atom)) == 0
+        end
+    end
+end
+
 @testset "Checkerboard distortion supports multiple conditioning dimensions" begin
     C = CheckerboardCopula{3}(randn(rng, 3, 30); pseudo_values=false)
     D = Copulas.DistortionFromCop(C, (1, 2), (0.3, 0.7), 3)

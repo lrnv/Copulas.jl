@@ -6,11 +6,11 @@ struct WDistortion{T} <: Distortion
     j::Int8
 end
 function Distributions.cdf(D::WDistortion, u::Real)
-    z = (u + D.v - 1) / D.v
-    return clamp(z, zero(z), one(z))
+    T = promote_type(typeof(float(u)), typeof(D.v))
+    return u < one(T) - D.v ? zero(T) : one(T)
 end
-Distributions.quantile(D::WDistortion, α::Real) = α * D.v + (1 - D.v)
+Distributions.quantile(D::WDistortion, α::Real) = one(D.v) - D.v
 function Distributions.logpdf(D::WDistortion, u::Real)
     T = promote_type(typeof(float(u)), typeof(D.v))
-    return 0 <= u <= 1 && u + D.v > 1 ? T(-log(D.v)) : T(-Inf)
+    return u == one(T) - D.v ? zero(T) : T(-Inf)
 end

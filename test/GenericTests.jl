@@ -712,9 +712,9 @@ end
                             @test isapprox(vf, vg, atol=tol, rtol=tol)
                         end
                     elseif CT <: Copulas.MCopula
-                        @test all(vals .≈ min.(collect(us) ./ v, 1))
+                        @test collect(vals) == [u < v ? 0.0 : 1.0 for u in us]
                     elseif CT <: Copulas.WCopula
-                        @test all(vals .≈ max.(collect(us) .+ v .- 1, 0) ./ v)
+                        @test collect(vals) == [u < 1-v ? 0.0 : 1.0 for u in us]
                     end
                 end
             end
