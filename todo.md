@@ -1,5 +1,24 @@
 # Redesign de l’architecture des tests
 
+## État de l’implémentation
+
+- [x] Julia 1.11 est la version minimale et l’API SemVer est déclarée.
+- [x] La table comportementale publique est documentée.
+- [x] Le bestiaire compact et les registres indépendants de constructeurs,
+  fitting et chemins de dispatch existent dans `test/fixtures.jl`.
+- [x] Les contrats copule couvrent distribution, densité selon la nature
+  mathématique, sous-ensembles, conditionnement, Rosenblatt et dépendance.
+- [x] Les API autonomes `SklarDist`, `CopulaModel`, `pseudos`, `measure` et
+  `Nataf` ont leurs propres contrats.
+- [x] Les primitives publiques des générateurs et tails ont des contrats de
+  composants, et les chemins internes coûteux ont un registre transversal.
+- [x] Le bestiaire cartésien et les prédicats de capacité de
+  `old/GenericTests.jl` ont été supprimés.
+- [ ] Faire passer la nouvelle suite en CI, corriger les divergences révélées,
+  puis migrer fichier par fichier les régressions historiques restantes.
+- [ ] Enregistrer les temps par groupe et supprimer `test/old/` quand sa
+  dernière régression utile a été reclassée.
+
 Les issues #422, #424, #425, #426, #428 et #430 pointent déjà dans la bonne direction, mais le design doit être précisé davantage.
 
 Aujourd’hui, `GenericTests.jl` mélange contrat public, détection de capacités, introspection du dispatch, tests statistiques, intégration numérique, propriétés propres aux familles et exemptions ad hoc. Le résultat est une matrice implicite « toutes les copules × presque toutes les opérations », avec beaucoup de spécialisations Julia compilées uniquement pour répéter la même propriété.

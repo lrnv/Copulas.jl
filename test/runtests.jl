@@ -40,23 +40,18 @@ legacy_testfiles = [
     "SklarDist",
     "Subsetting",
     "ExtremeValueArchitecture",
-    "GenericTests",
 ]
-
-# You can override the definition of this GenericTestFilter if you want. 
-GenericTestFilter(C) = true # the default value lets every copula go through. 
-
-# An example: 
-# GenericTestFilter(C) = C isa BC2Copula || C isa MOCopula || C isa CuadrasAugeCopula # || C isa GumbelCopula # You can filter on your model. 
 
 @testset verbose=true "Copulas.jl testings"  begin
     @testset verbose=true "$f.jl" for f in testfiles
         @info "Launching test file $f.jl"
-        include(joinpath(@__DIR__, "$f.jl"))
+        elapsed = @elapsed include(joinpath(@__DIR__, "$f.jl"))
+        @info "Completed test file $f.jl" elapsed
     end
 
     @testset verbose=true "legacy/$f.jl" for f in legacy_testfiles
         @info "Launching legacy test file $f.jl"
-        include(joinpath(@__DIR__, "old", "$f.jl"))
+        elapsed = @elapsed include(joinpath(@__DIR__, "old", "$f.jl"))
+        @info "Completed legacy test file $f.jl" elapsed
     end
 end
