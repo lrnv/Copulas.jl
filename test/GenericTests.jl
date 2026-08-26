@@ -230,6 +230,7 @@ Bestiary = [
     LogCopula{2}(1.5),
     LogCopula{2}(1+9*0.4),
     LogCopula{2}(5.5),
+    LogCopula{3}(2.0),
     MCopula{2}(),
     MCopula{4}(),
     MixedCopula{2}(0.0),

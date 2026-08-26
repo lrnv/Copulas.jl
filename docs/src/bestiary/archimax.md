@@ -142,7 +142,9 @@ This requires the generator to be **completely monotone** (so that a frailty dis
 Archimax copulas are built by pairing an Archimedean generator with an extreme value tail bahavior. Beyond the named families below, **any Archimedean model in this package can be combined with any EV model** via the generic constructor `ArchimaxCopula(gen, tail)`.
 
 !!! info "Bivariate only"
-The current implementation is only bivariate since we only have bivariate extreme value tails. If you’re interested in contributing a multivariate extensions, please reach out.
+The current `ArchimaxCopula` implementation remains bivariate. The package now
+provides multivariate extreme-value tails, but extending the Archimax density,
+conditioning, and sampling machinery beyond dimension two is separate work.
 
 ### `BB4Copula`
 

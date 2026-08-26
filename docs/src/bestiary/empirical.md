@@ -186,17 +186,57 @@ CheckerboardCopula
 - For large n choose coarser m to reduce occupied boxes; for small n a finer grid is possible but may leave many empty boxes.
 
 
-## Empirical Extreme-Value copula (Pickands estimator)
+## [Empirical Extreme-Value copula](@id empirical_ev_copula)
 
-In addition to the empirical, beta, Bernstein and checkerboard constructions, we provide a nonparametric bivariate Extreme Value copula built from data by estimating the Pickands dependence function. The tail implementation [`EmpiricalEVTail`](@ref) supports several classical estimators (Pickands, CFG, OLS intercept), and a convenience constructor `EmpiricalEVCopula` builds the corresponding `ExtremeValueCopula` directly from pseudo-observations.
+In addition to the empirical, beta, Bernstein and checkerboard constructions,
+Copulas.jl provides a nonparametric extreme-value estimator through
+[`EmpiricalEVCopula`](@ref). It accepts a sample in the usual ``d\times n``
+layout and returns an [`ExtremeValueCopula`](@ref) whose tail is estimated from
+the pseudo-observations.
 
-Typical workflow:
+The same public constructor selects a dimension-appropriate representation:
 
+- in ``d=2``, [`EmpiricalEVTail`](@ref) estimates the scalar Pickands function
+  using the Pickands, CFG, or OLS-intercept estimator;
+- in ``d\ge3``, [`EmpiricalEVMultivariateTail`](@ref) builds a multivariate
+  Pickands pilot and projects it onto a finite discrete spectral measure. The
+  projection enforces a valid stable tail dependence function and provides an
+  exact spectral sampler for the fitted model.
 
-See the Extreme Value manual page for background and the bestiary entry for the full API of [`EmpiricalEVTail`](@ref available_extreme_models).
+Here is a complete multivariate workflow:
+
+```@example empirical_ev
+using Copulas, Distributions, Random
+
+rng = Xoshiro(42)
+Ctrue = LogCopula{3}(2.0)
+U = rand(rng, Ctrue, 300)
+
+Chat = EmpiricalEVCopula{3}(U; method=:ols, degree=3)
+(cdf(Chat, [0.4, 0.6, 0.8]), size(rand(rng, Chat, 100)))
+```
+
+The runtime-dimension and inferred-dimension forms are equivalent:
+
+```julia
+Chat_runtime = EmpiricalEVCopula(3, U; method=:ols, degree=3)
+Chat_inferred = EmpiricalEVCopula(U; method=:ols, degree=3)
+```
+
+The estimator is also available through the common fitting interface:
+
+```julia
+Chat_fit = fit(Copulas.ExtremeValueCopula, U; method=:ols, degree=3)
+```
+
+The projected multivariate model may contain singular components. Therefore
+`cdf` and `rand` are supported, but a global Lebesgue `pdf` is deliberately not
+defined. See [Extreme Value copulas](@ref Extreme_theory) for the STDF theory,
+the projection references, and the complete list of EV families.
 
 ```@docs; canonical=false
 EmpiricalEVTail
+EmpiricalEVMultivariateTail
 ```
 
 
@@ -254,10 +294,10 @@ BetaCopula
 ```
 
 
-### `EmpiricalEvTail`
+### `EmpiricalEVCopula`
 
 ```@docs; canonical=false
-EmpiricalEVTail
+EmpiricalEVCopula
 ```
 
 
