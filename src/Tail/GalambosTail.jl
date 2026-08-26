@@ -75,6 +75,7 @@ function _ellpartial_signlog(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
         rest = [j for j in eachindex(current_x) if j ∉ I]
 
         for r in 0:length(rest), J in Combinatorics.combinations(rest, r)
+            any(j -> iszero(current_x[j]), J) && continue
             S = (I..., J...)
             m = minimum(current_x[j] for j in S)
             s = sum((current_x[j] / m)^(-θ) for j in S)

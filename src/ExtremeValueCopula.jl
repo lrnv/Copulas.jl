@@ -113,24 +113,21 @@ end
 Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u) =
     _bivariate_pickands_logpdf(C, u)
 
-# Generic d-dimensional density from the mixed STDF partials and the
-# partition formula for absolutely continuous extreme-value copulas.
-function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
+function _ev_logcdf_partial(C::ExtremeValueCopula, u, I)
     all(ui -> zero(ui) < ui <= one(ui), u) || return oftype(float(first(u)), -Inf)
     x = -log.(u)
     val = ℓ(C.tail, x)
-    any(isone, u) && return oftype(val, -Inf)
     logpos = logneg = oftype(val, -Inf)
     partials = Dict{Tuple{Vararg{Int}},Tuple{Int,typeof(val)}}()
 
-    for π in Combinatorics.partitions(collect(1:d))
-        sgn = isodd(d + length(π)) ? -1 : 1
+    for π in Combinatorics.partitions(collect(I))
+        sgn = isodd(length(I) + length(π)) ? -1 : 1
         logabs = zero(val)
         nonzero = true
         for block in π
-            I = Tuple(block)
-            blocksgn, blocklog = get!(partials, I) do
-                _ellpartial_signlog(C.tail, x, I)
+            block_I = Tuple(block)
+            blocksgn, blocklog = get!(partials, block_I) do
+                _ellpartial_signlog(C.tail, x, block_I)
             end
             if iszero(blocksgn)
                 nonzero = false
@@ -152,7 +149,25 @@ function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
         logneg < logpos || return oftype(val, -Inf)
         logpos = LogExpFunctions.logsubexp(logpos, logneg)
     end
-    return -val + sum(x) + logpos
+    return -val - sum(log(u[i]) for i in I) + logpos
+end
+
+# Generic d-dimensional density from the mixed STDF partials and the
+# partition formula for absolutely continuous extreme-value copulas.
+function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
+    any(isone, u) && return oftype(float(first(u)), -Inf)
+    return _ev_logcdf_partial(C, u, 1:d)
+end
+
+# Conditioning needs mixed CDF partials, not derivatives of the numerical
+# implementation used to evaluate the STDF. In particular, multivariate
+# Hüsler--Reiss and extremal-t contain Float64 probability kernels that cannot
+# accept ForwardDiff dual numbers, while their STDF partials are available
+# directly through `_ellpartial_signlog`.
+function _partial_cdf(C::ExtremeValueCopula, is, js, uᵢₛ, uⱼₛ)
+    u = _assemble(length(C), is, js, uᵢₛ, uⱼₛ)
+    logvalue = _ev_logcdf_partial(C, u, js)
+    return isfinite(logvalue) ? exp(logvalue) : zero(float(first(u)))
 end
 τ(C::ExtremeValueCopula{2}) = QuadGK.quadgk(t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)), 0.0, 1.0)[1]
 ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C.tail, t))^2, 0.0, 1.0)[1] - 3

@@ -230,7 +230,18 @@ end
 function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
     Γ = _hr_variogram(tail, length(x))
     isempty(I) && return 1, log(_hr_stdf(Γ, x))
-    all(xi -> xi > 0, x) || return 0, -Inf
+    all(xi -> xi >= 0, x) || return 0, -Inf
+    all(i -> x[i] > 0, I) || return 0, -Inf
+
+    active = findall(>(0), x)
+    if length(active) < length(x)
+        length(active) == 1 && return length(I) == 1 ? (1, 0.0) : (0, -Inf)
+        positions = Dict(i => k for (k, i) in pairs(active))
+        reduced_I = Tuple(positions[i] for i in I)
+        reduced_tail = tail isa HuslerReissTail{<:Real} ? tail :
+                       HuslerReissTail(Γ[active, active])
+        return _ellpartial_signlog(reduced_tail, x[active], reduced_I)
+    end
 
     d = length(x)
     k = first(I)

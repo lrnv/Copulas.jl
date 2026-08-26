@@ -117,11 +117,16 @@ function Distributions.logpdf(d::DistortionFromCop, u::Real)
     (0 < u < 1) || return -Inf
     d.den <= 0 && return -Inf
 
-    # Assemble the evaluation point with u at coordinate i, u_J fixed, others at 1
-    D = length(d.C)
-    z = _assemble(D, (d.i,), d.js, (float(u),), d.uⱼₛ)
-    # Mixed partial derivative of order p+1 w.r.t. (J..., i)
-    num = _mixed_partial(u -> Distributions.cdf(d.C, u), z, (d.js..., d.i),)
+    # Mixed partial derivative of order p+1 w.r.t. (J..., i). Going through
+    # `_partial_cdf` lets models provide this quantity without differentiating
+    # their numerical CDF implementation.
+    num = _partial_cdf(
+        d.C,
+        (),
+        (d.js..., d.i),
+        (),
+        (d.uⱼₛ..., float(u)),
+    )
     (num <= 0 || !isfinite(num)) && return -Inf
     return log(num) - log(d.den)
 end
