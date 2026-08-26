@@ -53,6 +53,7 @@ struct LiouvilleCopula{d,TG,Tα} <: Copula{d}
 end
 
 LiouvilleCopula(G::Generator, α) = LiouvilleCopula{length(α)}(G, α)
+LiouvilleCopula(d::Integer, G::Generator, α) = LiouvilleCopula{d}(G, α)
 
 Distributions.params(C::LiouvilleCopula) = (; G = C.G, α = C.α)
 

@@ -685,11 +685,11 @@ max_monotony(::AbstractFrailtyGenerator) = Inf
 struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator
     F::TF
     function FrailtyGenerator(F::Distributions.ContinuousUnivariateDistribution)
-        @assert Base.minimum(F) > 0
+        @assert Base.minimum(F) >= 0
         return new{typeof(F)}(F)
     end
 end
-Distributions.params(G::FrailtyGenerator) = Distributions.params(G.F)
+Distributions.params(G::FrailtyGenerator) = (F=G.F,)
 frailty(G::FrailtyGenerator) = G.F
 
 # Add univaraite generator bindins: 

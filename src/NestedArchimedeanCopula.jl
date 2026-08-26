@@ -526,12 +526,29 @@ end
 
 NestedArchimedeanCopula(G::Generator; kwargs...) = _nested_archimedean(nothing, G; kwargs...)
 NestedArchimedeanCopula{d}(G::Generator; kwargs...) where {d} = _nested_archimedean(Val(d), G; kwargs...)
+NestedArchimedeanCopula(d::Integer, G::Generator; kwargs...) =
+    NestedArchimedeanCopula{d}(G; kwargs...)
 
 # Legacy positional form: children in consecutive blocks, no root leaves.
 NestedArchimedeanCopula(G::Generator, children::AbstractVector) =
     NestedArchimedeanCopula(G; leaves = Int[], children = collect(Any, children))
 NestedArchimedeanCopula{d}(G::Generator, children::AbstractVector) where {d} =
     NestedArchimedeanCopula{d}(G; leaves = Int[], children = collect(Any, children))
+NestedArchimedeanCopula(d::Integer, G::Generator, children::AbstractVector) =
+    NestedArchimedeanCopula{d}(G, children)
+
+_nested_constructor_child(ch::Tuple) = ch[1] => ch[2]
+_nested_constructor_child(ch::NestedArchimedeanCopula) = ch => ch.dims
+_nested_constructor_child(ch::Pair) = ch
+function NestedArchimedeanCopula{d}(
+    G::Generator, leaves::AbstractVector, children::AbstractVector,
+) where {d}
+    reconstructible = map(_nested_constructor_child, children)
+    return NestedArchimedeanCopula{d}(G; leaves, children=reconstructible)
+end
+NestedArchimedeanCopula(d::Integer, G::Generator, leaves::AbstractVector,
+                        children::AbstractVector) =
+    NestedArchimedeanCopula{d}(G, leaves, children)
 
 # ---- Dimension placement ----------------------------------------------------
 # A flat child keeps its generator and is tagged with its (global) dims.

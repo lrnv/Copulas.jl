@@ -76,6 +76,10 @@ function SurvivalCopula{d}(C::Copula{d}, flips) where {d}
     flip_tuple = Tuple(flips)
     return SurvivalCopula{d,typeof(C),flip_tuple}(C)
 end
+SurvivalCopula(d::Integer, C::Copula, flips) = SurvivalCopula{d}(C, flips)
+function (::Type{SurvivalCopula{d,CT,flips}})(args...; kwargs...) where {d,CT,flips}
+    return SurvivalCopula{d,CT,flips}(CT(args...; kwargs...))
+end
 
 # Fitting: delegate to the base copula after flipping the requested indices in U
 Distributions.params(S::SurvivalCopula) = Distributions.params(S.C)
