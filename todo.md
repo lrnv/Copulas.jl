@@ -243,6 +243,8 @@ test/
   runtests.jl
   fixtures.jl
 
+  old/                 # suite historique, toujours exécutée pendant la migration
+
   contracts/
     copulas.jl
     constructors.jl
@@ -282,6 +284,13 @@ test/
 ```
 
 Pas de macro compliquée. De simples fonctions de test et des tuples de fixtures suffisent.
+
+La suite historique a été déplacée sans modification dans `test/old/` et reste
+incluse par `runtests.jl`. Chaque migration vers les nouveaux contrats doit retirer
+dans le même commit les assertions devenues redondantes du fichier historique
+concerné. Le dossier `old/` disparaît lorsque sa dernière garantie utile a été
+reclassée comme contrat public, test de composant, test de chemin ou régression
+familiale.
 
 ## Couverture sans produit cartésien
 
