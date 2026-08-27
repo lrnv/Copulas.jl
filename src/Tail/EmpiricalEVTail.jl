@@ -558,6 +558,14 @@ end
 StatsBase.dof(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}) where {d} = 0
 _available_fitting_methods(::Type{<:EmpiricalEVCopula}, d) = (:ols, :cfg, :pickands)
 
+function _fit(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, U,
+              method::Union{Val{:ols},Val{:cfg},Val{:pickands}};
+              pseudo_values::Bool=true, kwargs...) where {d}
+    m = typeof(method).parameters[1]
+    C = EmpiricalEVCopula{d}(U; method=m, pseudo_values=pseudo_values, kwargs...)
+    return C, (; emp_kind=:ev_multivariate_tail, pseudo_values, method=m)
+end
+
 function Distributions._logpdf(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}, u,) where {d}
     throw(ArgumentError(
         "the shape-constrained multivariate empirical EV copula uses a " *

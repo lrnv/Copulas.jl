@@ -683,6 +683,14 @@ abstract type AbstractFrailtyGenerator<:Generator end
 frailty(::Generator) = nothing
 max_monotony(::AbstractFrailtyGenerator) = Inf
 ϕ(G::AbstractFrailtyGenerator, t) = Distributions.mgf(frailty(G), -t)
+function ϕ⁽ᵏ⁾(G::AbstractFrailtyGenerator, k::Int, t)
+    k >= 0 || throw(ArgumentError("k must be non-negative"))
+    k == 0 && return ϕ(G, t)
+    value = Distributions.expectation(frailty(G)) do v
+        v^k * exp(-t * v)
+    end
+    return isodd(k) ? -value : value
+end
 𝒲₋₁(G::AbstractFrailtyGenerator, d::Int) = WilliamsonFromFrailty(frailty(G), d)
 
 struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator

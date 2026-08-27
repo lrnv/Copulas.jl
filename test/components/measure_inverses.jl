@@ -22,7 +22,7 @@ end
         GumbelCopula{2}(1.5), GumbelBarnettCopula{2}(0.5),
         InvGaussianCopula{2}(0.5), JoeCopula{2}(1.5),
     )
-    for C in (archimedean..., FGMCopula{2}(0.5))
+    for C in archimedean
         CT = typeof(C)
         for (measure, inverse) in ((Copulas.τ, Copulas.τ⁻¹),
                                    (Copulas.ρ, Copulas.ρ⁻¹))
@@ -30,6 +30,14 @@ end
             rebuilt = CT(inverse(CT, value))
             @test measure(rebuilt) ≈ value atol=2e-6
         end
+    end
+
+    C = FGMCopula{2}(0.5)
+    for (measure, inverse) in ((Copulas.τ, Copulas.τ⁻¹),
+                               (Copulas.ρ, Copulas.ρ⁻¹))
+        value = measure(C)
+        rebuilt = FGMCopula{2}(inverse(FGMCopula{2}, value))
+        @test measure(rebuilt) ≈ value atol=2e-6
     end
 end
 

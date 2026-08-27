@@ -331,7 +331,7 @@ function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtm
 
     elseif method === :SchmidSchmidt
         pmu = max.(0.0, p .- U)
-        S   = Matrix{Float64}(I, n, n)
+        S   = Matrix{Float64}(LinearAlgebra.I, n, n)
         @inbounds @views for j in 2:n
             anynan[j] && continue
             y = pmu[:, j]

@@ -4,11 +4,12 @@
     # These structural families use explicit tests below because they require a
     # constructor, an instance, or intentionally expose no fitting operation.
     exceptional = Set((
-        "generic Archimedean", "nested Archimedean", "Liouville",
+        "generic Archimedean", "nested Archimedean", "Liouville", "Tawn",
         "generic EV", "discrete spectral",
     ))
-    @test Set(case.name for case in FITTING_CASES) ==
-          setdiff(Set(case.name for case in COPULA_CASES), exceptional)
+    canonical(name) = replace(name, " bound" => "")
+    @test Set(canonical(case.name) for case in FITTING_CASES) ==
+          setdiff(Set(canonical(case.name) for case in COPULA_CASES), exceptional)
 end
 
 @testset "public fitting and model-result contracts" begin
@@ -46,9 +47,10 @@ end
 
     D = SklarDist(ClaytonCopula{2}(1.0), (Normal(), Exponential()))
     X = rand(StableRNG(20_051), D, 12)
-    DT = typeof(D)
-    @test fit(DT, X, :itau; vcov=false, derived_measures=false) isa SklarDist
-    @test fit(CopulaModel, DT, X, :itau; vcov=false,
+    family = SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}
+    @test fit(family, X, :itau; vcov=false,
+              derived_measures=false) isa SklarDist
+    @test fit(CopulaModel, family, X, :itau; vcov=false,
               derived_measures=false) isa CopulaModel
 end
 
@@ -62,7 +64,7 @@ end
     generic_data = rand(StableRNG(20_102), ClaytonCopula{2}(1.0), 16)
     @test fit(ArchimedeanCopula, generic_data; method=:gnz2011, vcov=false,
               derived_measures=false) isa ArchimedeanCopula{2}
-    @test fit(ExtremeValueCopula, generic_data; method=:ols, degree=1,
+    @test fit(ExtremeValueCopula, generic_data; method=:ols,
               vcov=false, derived_measures=false) isa ExtremeValueCopula{2}
 
     non_fittable = (

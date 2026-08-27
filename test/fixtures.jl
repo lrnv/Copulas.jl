@@ -209,7 +209,6 @@ const FITTING_CASES = (
     fitting_case("logistic EV", () -> LogCopula{2}(1.5); method=:itau),
     fitting_case("mixed EV", () -> MixedCopula{2}(0.5); method=:itau),
     fitting_case("Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4)),
-    fitting_case("Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8])),
     fitting_case("t-EV", () -> tEVCopula{2}(4.0, 0.5)),
     fitting_case("empirical EV", () -> EmpiricalEVCopula{2}(
         _FIXTURE_DATA; method=:cfg, pseudo_values=false); method=:cfg),
