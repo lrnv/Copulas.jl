@@ -1,5 +1,5 @@
-# Legacy migration layer: preserves Gaussian and Student copula reference,
-# fitting, marginal, and numerical regressions pending focused migration.
+# Family-regression layer: Gaussian and Student copula reference,
+# fitting, marginal, and numerical regressions.
 @testset "TCopula degrees of freedom are data, not a type value" begin
     Σ = [1.0 0.25; 0.25 1.0]
     C2 = TCopula{2}(2, copy(Σ))

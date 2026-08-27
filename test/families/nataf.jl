@@ -1,5 +1,5 @@
-# Legacy migration layer: preserves exact and numerical Nataf-correction
-# identities and input-validation regressions pending focused migration.
+# Family-regression layer: exact and numerical Nataf-correction
+# identities and input-validation regressions.
 @testset "Nataf correction" begin
 
     @testset "zero targets stay exactly zero, structure is preserved" begin

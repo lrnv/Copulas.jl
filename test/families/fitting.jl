@@ -1,4 +1,4 @@
-# Legacy migration layer: the fitting and StatsBase contracts now live under
+# Family-regression layer: the fitting and StatsBase contracts live under
 # `contracts/` and `paths/`; only optimizer recovery, boundary starts, and an
 # unavailable-metadata error regression remain here.
 

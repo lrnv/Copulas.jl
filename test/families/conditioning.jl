@@ -1,4 +1,4 @@
-# Legacy migration layer: preserves historical conditional-distribution and
+# Family-regression layer: historical conditional-distribution and
 # distortion regressions until component and family replacements are complete.
 
 @testset "Bivariate scalar condition fast path" begin

@@ -1,4 +1,4 @@
-# Legacy migration layer: preserves developer-level extreme-value extension,
+# Family-regression layer: developer-level extreme-value extension,
 # automatic-differentiation, sampler, and fallback-dispatch regressions.
 using Random
 

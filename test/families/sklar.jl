@@ -1,4 +1,4 @@
-# Legacy migration layer: the generic Sklar contract has moved to
+# Family-regression layer: the generic Sklar contract lives in
 # `contracts/sklar.jl`; only numeric-promotion regressions remain here.
 @testset "SklarDist work buffers promote all numeric inputs" begin
     S = SklarDist(IndependentCopula{2}(), (Normal(), Normal()))

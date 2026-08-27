@@ -1,4 +1,4 @@
-# Legacy migration layer: preserves family-specific extreme-value identities,
+# Family-regression layer: family-specific extreme-value identities,
 # reference values, estimators, fitting, and numerical corner cases.
 using InteractiveUtils
 using Copulas, Distributions

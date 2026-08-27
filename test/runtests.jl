@@ -1,5 +1,5 @@
-# Test-suite orchestrator: loads shared dependencies and executes the new
-# architecture by layer before the temporary legacy migration suite.
+# Test-suite orchestrator: executes contracts and mechanism paths first, then
+# focused family and optional-extension regressions.
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
@@ -28,24 +28,23 @@ testfiles = [
     "paths/fitting_paths",
 ]
 
-# Legacy files remain enabled while their coverage is migrated to the new
-# contract-based test architecture.
-legacy_testfiles = [
-    "ArchimedeanCopulas",
-    "LiouvilleCopula",
-    "NestedArchimedeanCopula",
-    "ConditionalDistribution",
-    "Constructors",
-    "EllipticalCopulas",
-    "ExpectationMaximizationExt",
-    "FittingTest",
-    "MiscelaneousCopulas",
-    "NatafTest",
-    "SklarDist",
-    "Subsetting",
-    "ExtremeValueArchitecture",
-    "ExtremeValueCopulas",
+family_testfiles = [
+    "archimedean",
+    "conditioning",
+    "constructors",
+    "elliptical",
+    "extreme_value_architecture",
+    "extreme_value",
+    "fitting",
+    "liouville",
+    "miscellaneous",
+    "nataf",
+    "nested_archimedean",
+    "sklar",
+    "subsetting",
 ]
+
+extension_testfiles = ["expectation_maximization"]
 
 @testset verbose=true "Copulas.jl testings"  begin
     @testset verbose=true "$f.jl" for f in testfiles
@@ -54,9 +53,15 @@ legacy_testfiles = [
         @info "Completed test file $f.jl" elapsed
     end
 
-    @testset verbose=true "legacy/$f.jl" for f in legacy_testfiles
-        @info "Launching legacy test file $f.jl"
-        elapsed = @elapsed include(joinpath(@__DIR__, "old", "$f.jl"))
-        @info "Completed legacy test file $f.jl" elapsed
+    @testset verbose=true "families/$f.jl" for f in family_testfiles
+        @info "Launching family regression file $f.jl"
+        elapsed = @elapsed include(joinpath(@__DIR__, "families", "$f.jl"))
+        @info "Completed family regression file $f.jl" elapsed
+    end
+
+    @testset verbose=true "extensions/$f.jl" for f in extension_testfiles
+        @info "Launching extension regression file $f.jl"
+        elapsed = @elapsed include(joinpath(@__DIR__, "extensions", "$f.jl"))
+        @info "Completed extension regression file $f.jl" elapsed
     end
 end

@@ -1,4 +1,4 @@
-# Legacy migration layer: preserves targeted miscellaneous-family identities,
+# Family-regression layer: targeted miscellaneous-family identities,
 # quantile regressions, boundary cases, and previously reported bugs.
 
 @testset "Extreme-value quantiles use bounded bisection" begin

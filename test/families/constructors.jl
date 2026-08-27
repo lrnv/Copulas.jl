@@ -1,4 +1,4 @@
-# Legacy migration layer: valid public constructor forms and reconstruction are
+# Family-regression layer: valid public constructor forms and reconstruction are
 # covered exhaustively by `contracts/constructors.jl`; only validation,
 # boundary-specialization, keyword, and numeric-parameter regressions remain.
 
