@@ -17,9 +17,20 @@ const TAIL_CASES = (
     (DiscreteSpectralTail([0.7 0.3; 0.2 0.8]), 2),
 )
 
+@testset "public tail registry is exhaustive" begin
+    public_families = Set(getfield(Copulas, symbol) for symbol in PUBLIC_SYMBOLS
+        if getfield(Copulas, symbol) isa Type &&
+           symbol !== :Tail &&
+           getfield(Copulas, symbol) <: Copulas.Tail)
+    represented = Set(typeof(tail) for (tail, _) in TAIL_CASES)
+    @test all(F -> any(T -> T <: F, represented), public_families)
+    @test all(T -> any(F -> T <: F, public_families), represented)
+end
+
 @testset "public extreme-value tail primitives" begin
     for (tail, d) in TAIL_CASES
         @testset "$(nameof(typeof(tail))) d=$d" begin
+            @test tail isa Copulas.Tail
             x = collect(range(0.4, 1.0; length=d))
             @test params(tail) isa NamedTuple
             rebuilt = typeof(tail)(values(params(tail))...)
@@ -27,12 +38,17 @@ const TAIL_CASES = (
             value = Copulas.ℓ(tail, x)
             @test maximum(x) <= value <= sum(x)
             @test Copulas.ℓ(tail, 2 .* x) ≈ 2value
+            ω = Tuple(x ./ sum(x))
+            @test Copulas.A(tail, ω) ≈ value / sum(x)
             for i in 1:d
                 e = zeros(d)
                 e[i] = 1
                 @test Copulas.ℓ(tail, e) ≈ 1
             end
             @test Copulas.ellpartial(tail, x, (1,)) isa Real
+            @test Copulas.ellpartial(tail, x, Int[]) == value
+            @test Copulas.ellpartial(tail, x, [1]) ≈
+                  Copulas.ellpartial(tail, x, (1,))
         end
     end
 end

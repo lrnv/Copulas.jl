@@ -341,6 +341,9 @@ function _vcov_margin_generic(d::TD, x::AbstractVector) where {TD<:Distributions
 end
 
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Symbol, override::Union{Symbol,Nothing}=nothing)
+    allowed = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
+    isnothing(override) || override in allowed ||
+        throw(ArgumentError("unknown vcov method `$override`; expected one of $allowed"))
     vcovm = !isnothing(override) ? override :
             method === :mle      ? :hessian :
             method === :itau     ? :godambe :
@@ -572,12 +575,12 @@ Can be `nothing` if not available.
 StatsBase.vcov(M::CopulaModel) = M.vcov
 function StatsBase.stderror(M::CopulaModel)
     V = StatsBase.vcov(M)
-    V === nothing && throw(ArgumentError("stderror: vcov(M) == nothing."))
+    V === nothing && return nothing
     return sqrt.(LinearAlgebra.diag(V))
 end
 function StatsBase.confint(M::CopulaModel; level::Real=0.95)
     V = StatsBase.vcov(M)
-    V === nothing && throw(ArgumentError("confint: vcov(M) == nothing."))
+    V === nothing && return nothing
     z = Distributions.quantile(Distributions.Normal(), 1 - (1 - level)/2)
     θ = StatsBase.coef(M)
     se = sqrt.(LinearAlgebra.diag(V))
@@ -628,6 +631,8 @@ Compute Rosenblatt residuals of a fitted copula model.
 The residuals should be i.i.d. Uniform(0,1) under a correctly specified model.
 """
 StatsBase.residuals(M::CopulaModel; transform=:uniform) = begin
+    transform in (:uniform, :normal) ||
+        throw(ArgumentError("`transform` must be :uniform or :normal. Got `$transform`."))
     haskey(M.method_details, :U) || throw(ArgumentError("method_details must contain pseudo-observations :U"))
     U = M.method_details[:U]
     R = rosenblatt(_copula_of(M), U)

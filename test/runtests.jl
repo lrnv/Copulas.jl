@@ -8,8 +8,8 @@ const rng = StableRNG(123)
 testfiles = [
     "Aqua",
     "fixtures",
-    "contracts/constructors",
     "contracts/public_surface",
+    "contracts/constructors",
     "contracts/copulas",
     "contracts/fitting",
     "contracts/sklar",

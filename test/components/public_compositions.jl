@@ -15,18 +15,29 @@
     empirical = EmpiricalGenerator(_FIXTURE_DATA)
     @test empirical isa Copulas.Generator
     @test Copulas.ϕ(empirical, Copulas.ϕ⁻¹(empirical, 0.5)) ≈ 0.5 atol=1e-8
+    ranked_empirical = EmpiricalGenerator(_FIXTURE_DATA; pseudo_values=false)
+    @test params(ranked_empirical) == params(EmpiricalGenerator(pseudos(_FIXTURE_DATA)))
 end
 
 @testset "Williamson inverse public distribution" begin
     G = Copulas.ClaytonGenerator(1.0)
+    @test Copulas.𝒲(Dirac(1.0), 2.0) isa WilliamsonGenerator
     for order in (2, 2.5)
         radial = Copulas.𝒲₋₁(G, order)
         @test minimum(radial) >= 0
         @test cdf(radial, minimum(radial)) >= 0
         @test pdf(radial, 0.7) >= 0
+        @test logpdf(radial, 0.7) ≈ log(pdf(radial, 0.7))
+        @test maximum(radial) >= minimum(radial)
         @test quantile(radial, 0.5) >= minimum(radial)
         @test rand(StableRNG(81), radial) >= minimum(radial)
     end
+
+    source = Copulas.𝒲(LogNormal(), 3.0)
+    reduced = Copulas.𝒲₋₁(source, 2.5)
+    restored = Copulas.𝒲(reduced, 2.5)
+    @test Copulas.max_monotony(restored) == 3.0
+    @test Copulas.ϕ(restored, 0.7) ≈ Copulas.ϕ(source, 0.7)
 end
 
 @testset "discrete spectral public API" begin

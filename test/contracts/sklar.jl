@@ -3,7 +3,9 @@
     D = SklarDist(C, (Normal(), Exponential()))
     x = [0.1, 1.2]
     @test length(D) == 2
+    @test_throws AssertionError SklarDist(C, (Normal(),))
     @test params(D) isa NamedTuple
+    @test typeof(D)(values(params(D))...) == D
     @test StatsBase.dof(D) == StatsBase.dof(C) + sum(StatsBase.dof, D.m)
     @test 0 <= cdf(D, x) <= 1
     @test logcdf(D, x) ≈ log(cdf(D, x))
@@ -11,23 +13,44 @@
     @test logpdf(D, x) ≈ log(pdf(D, x))
     X = rand(StableRNG(31), D, 4)
     @test size(X) == (2, 4)
+    @test eltype(X) == eltype(D)
+    @test cdf(D, X) == [cdf(D, column) for column in eachcol(X)]
+    @test logcdf(D, X) ≈ log.(cdf(D, X))
+    @test pdf(D, X) == [pdf(D, column) for column in eachcol(X)]
+    @test logpdf(D, X) ≈ log.(pdf(D, X))
+    @test_throws ArgumentError cdf(D, zeros(3))
+    @test_throws ArgumentError cdf(D, zeros(3, 1))
+    @test_throws ArgumentError logpdf(D, zeros(3))
+    @test_throws ArgumentError logpdf(D, zeros(3, 1))
     @test loglikelihood(D, X) isa Real
 
     S = subsetdims(D, (2, 1))
     @test length(S) == 2
     @test S.C == subsetdims(C, (2, 1))
+    @test subsetdims(D, (1,)) == D.m[1]
     conditional = condition(D, 1, x[1])
     @test minimum(conditional) == 0
+    @test maximum(conditional) == Inf
     @test cdf(conditional, quantile(conditional, 0.5)) >= 0.5 - sqrt(eps())
+    @test pdf(conditional, 1.0) >= 0
+    @test logpdf(conditional, 1.0) ≈ log(pdf(conditional, 1.0))
+    @test rand(StableRNG(32), conditional) >= 0
 
     R = rosenblatt(D, X)
     @test size(R) == size(X)
     @test inverse_rosenblatt(D, R) ≈ X atol=2e-5 rtol=2e-5
+    @test rosenblatt(D, x) ≈ vec(rosenblatt(D, reshape(x, :, 1)))
+    @test inverse_rosenblatt(D, rosenblatt(D, x)) ≈ x atol=2e-5 rtol=2e-5
+
+    clayton_joint = SklarDist(ClaytonCopula{2}(1.0), (Normal(), Exponential()))
+    @test StatsBase.dof(clayton_joint) == 3
 
     D3 = SklarDist(GaussianCopula{3}(0.3), (Normal(), Exponential(), Gamma(2, 1)))
     x3 = [0.1, 1.2, 0.8]
     joint = condition(D3, 1, x3[1])
     @test length(joint) == 2
     @test 0 <= cdf(joint, x3[2:3]) <= 1
+    @test pdf(joint, x3[2:3]) >= 0
+    @test size(rand(StableRNG(33), joint, 2)) == (2, 2)
     @test length(subsetdims(D3, (3, 1))) == 2
 end

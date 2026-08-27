@@ -4,9 +4,6 @@
 
 - Make the new public-contract suite pass in CI and resolve every behavioral
   discrepancy it exposes.
-- Perform a final mechanical audit matching every exported or public symbol,
-  adopted `Distributions.jl`/`StatsBase.jl` method, and documented constructor
-  against an explicit behavioral test.
 
 ## Mathematical correctness
 
@@ -22,7 +19,6 @@
 
 ## Shared components
 
-- Complete direct contracts for generators and extreme-value tails.
 - Add focused contracts for distortions, radial and other internal univariate
   distributions, spectral representations, and shared samplers where testing
   only through complete copulas would obscure failures or duplicate compilation.

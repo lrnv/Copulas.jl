@@ -20,18 +20,27 @@ function test_distribution_contract(C, ctx)
     @test logcdf(C, ctx.u) ≈ log(c)
     @test cdf(C, zeros(d)) == 0
     @test cdf(C, ones(d)) == 1
+    @test cdf(C, fill(-0.1, d)) == 0
+    @test cdf(C, fill(1.1, d)) == 1
     for i in 1:d
         margin = ones(d)
         margin[i] = 0.37
         @test cdf(C, margin) ≈ 0.37 atol=1e-6
+        extended_margin = fill(1.1, d)
+        extended_margin[i] = 0.37
+        @test cdf(C, extended_margin) ≈ 0.37 atol=1e-6
     end
-    @test cdf(C, reshape(ctx.u, :, 1)) == [c]
+    matrix_u = reshape(ctx.u, :, 1)
+    @test cdf(C, matrix_u) == [c]
+    @test logcdf(C, matrix_u) ≈ log.([c])
     @test Copulas.measure(C, zeros(d), ones(d)) ≈ 1
     @test Copulas.measure(C, fill(0.2, d), fill(0.6, d)) >= 0
     @test size(ctx.U) == (d, 4)
+    @test eltype(ctx.U) == eltype(C)
     @test all(x -> 0 <= x <= 1, ctx.U)
     x = rand(StableRNG(41), C)
     @test length(x) == d
+    @test eltype(x) == eltype(C)
     @test all(y -> 0 <= y <= 1, x)
     @test_throws ArgumentError cdf(C, zeros(d + 1))
     @test_throws ArgumentError cdf(C, zeros(d + 1, 1))
@@ -48,6 +57,7 @@ function test_density_contract(C, ctx, kind)
     @test iszero(p) ? lp == -Inf : lp ≈ log(p)
     matrix_pdf = pdf(C, reshape(ctx.u, :, 1))
     @test matrix_pdf == [p]
+    @test logpdf(C, reshape(ctx.u, :, 1)) ≈ log.(matrix_pdf)
     @test all(isfinite, matrix_pdf)
     @test loglikelihood(C, ctx.U) isa Real
 end
@@ -68,6 +78,12 @@ end
 
 function test_conditioning_contract(C, ctx, kind)
     d = length(C)
+    if d == 2
+        scalar = condition(C, 1, ctx.u[1])
+        tupled = condition(C, (1,), (ctx.u[1],))
+        @test scalar isa Copulas.Distortion
+        @test cdf(scalar, ctx.u[2]) ≈ cdf(tupled, ctx.u[2])
+    end
     if d > 2
         joint = condition(C, 1, ctx.u[1])
         @test length(joint) == d - 1
@@ -83,13 +99,18 @@ function test_conditioning_contract(C, ctx, kind)
     js = Tuple(1:(d - 1))
     values = Tuple(ctx.u[1:(d - 1)])
     D = condition(C, js, values)
+    @test D isa Copulas.Distortion
     @test minimum(D) == 0
     @test maximum(D) == 1
     vals = cdf.(Ref(D), (0.25, 0.5, 0.75))
     @test issorted(vals)
+    @test logcdf(D, 0.5) ≈ log(cdf(D, 0.5))
     if kind === :continuous
         densities = pdf.(Ref(D), (0.25, 0.5, 0.75))
         @test all(x -> x >= 0, densities)
+        density = pdf(D, 0.5)
+        @test iszero(density) ? logpdf(D, 0.5) == -Inf :
+              logpdf(D, 0.5) ≈ log(density)
     end
     @test all(x -> 0 <= x <= 1, rand(StableRNG(73), D, 3))
     q = quantile(D, 0.5)
@@ -118,6 +139,9 @@ function test_dependence_contract(C, kind)
         value = f(C)
         @test value isa Real
         @test !isnan(value)
+        if f !== Copulas.ι
+            @test -1 <= value <= 1
+        end
     end
     K = StatsBase.corkendall(C)
     S = StatsBase.corspearman(C)

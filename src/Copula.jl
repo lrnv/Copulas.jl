@@ -24,16 +24,22 @@ function Distributions._rand!(::Distributions.AbstractRNG, C::Copula{d}, ::Abstr
 end
 function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
     length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
-    if any(iszero,u)
+    if any(x -> x <= zero(x), u)
         return zero(u[1])
-    elseif all(isone,u)
+    elseif all(x -> x >= one(x), u)
         return one(u[1])
     end
-    return _cdf(C,u)
+    bounded = any(x -> x > one(x), u) ? min.(u, one(eltype(u))) : u
+    return _cdf(C, bounded)
 end
 function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
     size(A,1) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     return [Distributions.cdf(C,u) for u in eachcol(A)]
+end
+Distributions.logcdf(C::Copula, A::AbstractMatrix) = log.(Distributions.cdf(C, A))
+function Distributions.logpdf(C::Copula{d}, A::AbstractMatrix) where d
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    return [Distributions.logpdf(C, u) for u in eachcol(A)]
 end
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)

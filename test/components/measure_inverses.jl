@@ -1,6 +1,7 @@
 @testset "public dependence-measure inverses" begin
     for C in (CuadrasAugeCopula{2}(0.4), GalambosCopula{2}(1.0),
-              LogCopula{2}(1.5), MixedCopula{2}(0.4))
+              HuslerReissCopula{2}(1.0), LogCopula{2}(1.5),
+              MixedCopula{2}(0.4))
         CT = typeof(C)
         for (measure, inverse) in ((Copulas.τ, Copulas.τ⁻¹),
                                    (Copulas.ρ, Copulas.ρ⁻¹),
@@ -13,10 +14,29 @@
     end
 end
 
+@testset "one-parameter copula dependence-measure inverses" begin
+    archimedean = (
+        AMHCopula{2}(0.5), ClaytonCopula{2}(1.0), FrankCopula{2}(2.0),
+        GumbelCopula{2}(1.5), GumbelBarnettCopula{2}(0.5),
+        InvGaussianCopula{2}(0.5), JoeCopula{2}(1.5),
+    )
+    for C in (archimedean..., FGMCopula{2}(0.5))
+        CT = typeof(C)
+        for (measure, inverse) in ((Copulas.τ, Copulas.τ⁻¹),
+                                   (Copulas.ρ, Copulas.ρ⁻¹))
+            value = measure(C)
+            rebuilt = CT(inverse(CT, value))
+            @test measure(rebuilt) ≈ value atol=2e-6
+        end
+    end
+end
+
 
 @testset "generator dependence-measure inverses" begin
-    for G in (Copulas.ClaytonGenerator(1.0), Copulas.GumbelGenerator(1.5),
-              Copulas.FrankGenerator(2.0), Copulas.JoeGenerator(1.5))
+    for G in (Copulas.AMHGenerator(0.5), Copulas.ClaytonGenerator(1.0),
+              Copulas.FrankGenerator(2.0), Copulas.GumbelGenerator(1.5),
+              Copulas.GumbelBarnettGenerator(0.5),
+              Copulas.InvGaussianGenerator(0.5), Copulas.JoeGenerator(1.5))
         GT = typeof(G)
         for (measure, inverse) in ((Copulas.τ, Copulas.τ⁻¹),
                                    (Copulas.ρ, Copulas.ρ⁻¹))

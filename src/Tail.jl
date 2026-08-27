@@ -14,7 +14,8 @@ Pickands representation. By homogeneity, for ``x\\neq 0`` let ``\\left\\| x\\rig
 ``\\ell(x)=\\left\\| x\\right\\|_1·A(\\omega)``. For ``d=2``, ``A`` reduces to a convex function on ``[0,1]`` with
 ``\\max(t,1-t)≤A(t)≤1`` and ``A(0)=A(1)=1``.
 
-Interface.
+Interface. A concrete tail must implement either `A` or `ℓ`; each representation
+is derived from the other by homogeneity.
 - `A(tail::Tail, ω::NTuple{d,Real})` — Pickands function on the simplex `\\Delta_{d-1}`.
   (For `d=2`, a convenience `A(tail::Tail{2}, t::Real)` may be provided.)
 - `ℓ(tail::Tail, x::NTuple{d,Real})` — STDF. By default the package defines
@@ -40,7 +41,7 @@ Base.broadcastable(tail::Tail) = Ref(tail)
 
 ####### Functions you need to overload: 
 _is_valid_in_dim(::Tail, d::Int) = d >= 2
-A(::Tail, ω::NTuple{d,<:Real}) where {d} = throw(ArgumentError("Implement A(Tail{$d}, ω) en el simplex Δ_{d-1}"))
+A(tail::Tail, ω::NTuple{d,<:Real}) where {d} = ℓ(tail, ω)
 
 ####### Rest of the interface you can overload if more efficient:
 needs_binary_search(::Tail) = false

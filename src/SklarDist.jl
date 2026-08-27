@@ -67,6 +67,7 @@ Distributions.params(S::SklarDist) = (copula=S.C, margins=S.m)
 end
 function Distributions.cdf(S::SklarDist{CT,TplMargins}, x) where {CT,TplMargins}
     d = length(S)
+    length(x) == d || throw(ArgumentError("Dimension mismatch between distribution and input vector"))
     T = _sklar_work_eltype(S, x)
     u = Vector{T}(undef, d)
     @inbounds for i in 1:d
@@ -75,6 +76,19 @@ function Distributions.cdf(S::SklarDist{CT,TplMargins}, x) where {CT,TplMargins}
     return Distributions.cdf(S.C, u)
 end
 Distributions.logcdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = log(Distributions.cdf(S, x))
+function Distributions.cdf(S::SklarDist, X::AbstractMatrix)
+    size(X, 1) == length(S) || throw(ArgumentError("Dimension mismatch between distribution and input matrix"))
+    return [Distributions.cdf(S, x) for x in eachcol(X)]
+end
+Distributions.logcdf(S::SklarDist, X::AbstractMatrix) = log.(Distributions.cdf(S, X))
+function Distributions.pdf(S::SklarDist, X::AbstractMatrix)
+    size(X, 1) == length(S) || throw(ArgumentError("Dimension mismatch between distribution and input matrix"))
+    return [Distributions.pdf(S, x) for x in eachcol(X)]
+end
+function Distributions.logpdf(S::SklarDist, X::AbstractMatrix)
+    size(X, 1) == length(S) || throw(ArgumentError("Dimension mismatch between distribution and input matrix"))
+    return [Distributions.logpdf(S, x) for x in eachcol(X)]
+end
 function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,TplMargins}, A::AbstractMatrix{T}) where {CT,TplMargins,T}
     size(A, 1) == length(S) || throw(ArgumentError("Dimension mismatch between distribution and output matrix"))
     Random.rand!(rng, S.C, A)
@@ -90,6 +104,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist, x::A
 end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins}, u) where {CT,TplMargins}
     d = length(S)
+    length(u) == d || throw(ArgumentError("Dimension mismatch between distribution and input vector"))
     T = _sklar_work_eltype(S, u)
     # sum marginal logpdfs without generator comprehensions
     s = zero(T)
@@ -104,7 +119,15 @@ function Distributions._logpdf(S::SklarDist{CT,TplMargins}, u) where {CT,TplMarg
     return s + Distributions.logpdf(S.C, U)
 end
 function StatsBase.dof(S::SklarDist)
-    a = StatsBase.dof(S.C)
+    a = hasmethod(StatsBase.dof, Tuple{typeof(S.C)}) ?
+        StatsBase.dof(S.C) : _parameter_dof(Distributions.params(S.C))
     b = sum(hasmethod(StatsBase.dof, Tuple{typeof(d)}) ? StatsBase.dof(d) : length(Distributions.params(d)) for d in S.m)
     return a+b
 end
+
+_parameter_dof(x::Number) = 1
+_parameter_dof(x::NamedTuple) = sum(_parameter_dof, values(x); init=0)
+_parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)
+_parameter_dof(x::AbstractArray{<:Number}) = length(x)
+_parameter_dof(x::Union{Generator,Tail,Copula}) = _parameter_dof(Distributions.params(x))
+_parameter_dof(::Any) = 0

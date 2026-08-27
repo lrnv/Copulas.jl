@@ -543,7 +543,7 @@ end
 
 
 """
-    EmpiricalGenerator(u::AbstractMatrix)
+    EmpiricalGenerator(u::AbstractMatrix; pseudo_values=true)
 
 Nonparametric Archimedean generator fit via inversion of the empirical Kendall distribution.
 
@@ -554,7 +554,8 @@ Usage
 
     G = EmpiricalGenerator(u)
 
-where `u::AbstractMatrix` is a `d×n` matrix of observations (already on copula or pseudo scale).
+where `u::AbstractMatrix` is a `d×n` matrix of pseudo-observations. Pass
+`pseudo_values=false` to rank-transform raw observations first.
 
 Notes
 * The recovered discrete radial support is rescaled so its largest atom equals 1 (scale is not identifiable).
@@ -566,9 +567,10 @@ References
 * [williamson1956](@cite)
 * [genest2011a](@cite) Genest, Neslehova and Ziegel (2011), Inference in Multivariate Archimedean Copula Models
 """
-function EmpiricalGenerator(u::AbstractMatrix)
+function EmpiricalGenerator(u::AbstractMatrix; pseudo_values=true)
     d = size(u, 1)
-    W = _kendall_sample(u)
+    U = pseudo_values ? u : pseudos(u)
+    W = _kendall_sample(U)
     kw = StatsBase.proportionmap(W)
     x = collect(keys(kw))
     N = length(x)

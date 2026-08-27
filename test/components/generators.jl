@@ -16,11 +16,29 @@ const GENERATOR_CASES = (
     Copulas.JoeGenerator(1.5),
     Copulas.FrailtyGenerator(Exponential()),
     WilliamsonGenerator(Dirac(1.0), 2.0),
+    WilliamsonGenerator(Dirac(1.0), 2.5),
 )
+
+const ALL_PUBLIC_GENERATORS = (
+    GENERATOR_CASES...,
+    Copulas.IndependentGenerator(), Copulas.MGenerator(), Copulas.WGenerator(),
+    EmpiricalGenerator(_FIXTURE_DATA),
+)
+
+@testset "public generator registry is exhaustive" begin
+    public_families = Set(getfield(Copulas, symbol) for symbol in PUBLIC_SYMBOLS
+        if getfield(Copulas, symbol) isa Type &&
+           symbol !== :Generator &&
+           getfield(Copulas, symbol) <: Copulas.Generator)
+    represented = Set(typeof(G) for G in ALL_PUBLIC_GENERATORS)
+    @test all(F -> any(T -> T <: F, represented), public_families)
+    @test all(T -> any(F -> T <: F, public_families), represented)
+end
 
 @testset "public generator primitives" begin
     for G in GENERATOR_CASES
         @testset "$(nameof(typeof(G)))" begin
+            @test G isa Copulas.Generator
             @test Copulas.max_monotony(G) >= 2
             @test params(G) isa NamedTuple
             rebuilt = typeof(G)(values(params(G))...)

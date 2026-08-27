@@ -9,6 +9,8 @@
     @test Copulas.measure(C, zeros(2), ones(2)) == 1
     @test Copulas.measure(C, [0.7, 0.2], [0.4, 0.8]) == 0
     @test 0 <= Copulas.measure(C, [0.2, 0.3], [0.7, 0.8]) <= 1
+    @test Copulas.measure(C, (0.2, 0.3), (0.7, 0.8)) ≈
+          Copulas.measure(C, [0.2, 0.3], [0.7, 0.8])
 
     target = [1.0 0.4; 0.4 1.0]
     @test Nataf((Normal(), Normal(2, 3)), target) == target
@@ -24,5 +26,17 @@
                      Copulas.corentropy, Copulas.corlowertail,
                      Copulas.coruppertail)
         @test size(pairwise(transpose(sample))) == (2, 2)
+    end
+
+    sample3 = rand(StableRNG(92), ClaytonCopula{3}(1.5), 20)
+    for scalar in (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ,
+                   Copulas.ι, Copulas.λₗ, Copulas.λᵤ)
+        @test scalar(sample3) isa Real
+    end
+    for pairwise in (StatsBase.corkendall, StatsBase.corspearman,
+                     Copulas.corblomqvist, Copulas.corgini,
+                     Copulas.corentropy, Copulas.corlowertail,
+                     Copulas.coruppertail)
+        @test size(pairwise(transpose(sample3))) == (3, 3)
     end
 end

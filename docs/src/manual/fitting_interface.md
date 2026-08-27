@@ -77,7 +77,7 @@ The `CopulaModel{CT} <: StatsBase.StatisticalModel` supports the standard `Stats
 | `aic(M)` / `bic(M)`						     | Information criteria from ``StatsBase.jl``                                                        |
 | `coef(M)` / `coefnames(M)`                     | Estimated parameters and their names.                                                             |
 | `vcov(M)`                                      | Parameter variance–covariance matrix (may be `nothing`).                                          |
-| `stderror(M)` / `confint(M; level=0.95)`       | Standard errors and Wald confidence intervals (require `vcov(M) ≠ nothing`).                      |
+| `stderror(M)` / `confint(M; level=0.95)`       | Standard errors and Wald confidence intervals; return `nothing` when `vcov(M) === nothing`.       |
 | `residuals(M; transform=:uniform \| :normal)`  | Rosenblatt residuals on `[0,1]` or Normal scale (requires `method_details[:U]`).                  |
 | `predict(M; what=:cdf\|:pdf\|:simulate, ...)`  | CDF/PDF at `newdata`, or simulation (`nsim`; default `nsim = M.n` if `nsim == 0`).                |
 

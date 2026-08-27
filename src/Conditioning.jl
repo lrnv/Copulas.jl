@@ -380,6 +380,8 @@ function rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
     end
     return rosenblatt(D.C, v)
 end
+rosenblatt(D::SklarDist, u::AbstractVector{<:Real}) =
+    vec(rosenblatt(D, reshape(u, :, 1)))
 
 """
     inverse_rosenblatt(C::Copula, u)
@@ -418,3 +420,5 @@ function inverse_rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
     end
     return v
 end
+inverse_rosenblatt(D::SklarDist, u::AbstractVector{<:Real}) =
+    vec(inverse_rosenblatt(D, reshape(u, :, 1)))

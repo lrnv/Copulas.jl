@@ -59,13 +59,10 @@ end
 DiscreteSpectralCopula(tail::DiscreteSpectralTail) =
     ExtremeValueCopula(size(tail.B, 1), tail)
 
-DiscreteSpectralCopula{d}(B::AbstractMatrix) where {d} =
+DiscreteSpectralCopula(d::Integer, B::AbstractMatrix) =
     ExtremeValueCopula{d}(DiscreteSpectralTail(B))
-DiscreteSpectralCopula(d::Integer, B::AbstractMatrix) = DiscreteSpectralCopula{d}(B)
-DiscreteSpectralCopula{d}(tail::DiscreteSpectralTail) where {d} =
-    ExtremeValueCopula{d}(tail)
 DiscreteSpectralCopula(d::Integer, tail::DiscreteSpectralTail) =
-    DiscreteSpectralCopula{d}(tail)
+    ExtremeValueCopula{d}(tail)
 
 function ℓ(tail::DiscreteSpectralTail, x)
     d, m = size(tail.B)
