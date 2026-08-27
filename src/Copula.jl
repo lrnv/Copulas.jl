@@ -37,7 +37,7 @@ function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
     return [Distributions.cdf(C,u) for u in eachcol(A)]
 end
 Distributions.logcdf(C::Copula, A::AbstractMatrix) = log.(Distributions.cdf(C, A))
-Distributions.logcdf(C::Copulas, v::AbstractVector) = log(Distributions.cdf(C,v))
+Distributions.logcdf(C::Copula, v::AbstractVector) = log(Distributions.cdf(C,v))
 function Distributions.logpdf(C::Copula{d}, A::AbstractMatrix) where d
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
     return [Distributions.logpdf(C, u) for u in eachcol(A)]
