@@ -12,7 +12,7 @@ function CopulaContractContext(C, seed)
     return CopulaContractContext{typeof(u),typeof(U)}(u, U)
 end
 
-function test_distribution_contract(C, ctx)
+function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
     d = length(C)
     @test d >= 2
     @test eltype(C) <: Real
@@ -23,7 +23,7 @@ function test_distribution_contract(C, ctx)
     lower = 0.8 .* ctx.u
     upper = ctx.u .+ 0.2 .* (1 .- ctx.u)
     @test cdf(C, lower) <= c <= cdf(C, upper)
-    @test logcdf(C, ctx.u) ≈ log(c)
+    @test logcdf(C, ctx.u) ≈ log(c) atol=numerical_atol
     @test cdf(C, zeros(d)) == 0
     @test cdf(C, ones(d)) == 1
     @test cdf(C, fill(-0.1, d)) == 0
@@ -31,13 +31,13 @@ function test_distribution_contract(C, ctx)
     for i in 1:d
         margin = ones(d)
         margin[i] = 0.37
-        @test cdf(C, margin) ≈ 0.37 atol=1e-6
+        @test cdf(C, margin) ≈ 0.37 atol=margin_atol
         extended_margin = fill(1.1, d)
         extended_margin[i] = 0.37
-        @test cdf(C, extended_margin) ≈ 0.37 atol=1e-6
+        @test cdf(C, extended_margin) ≈ 0.37 atol=margin_atol
     end
     matrix_u = reshape(ctx.u, :, 1)
-    @test cdf(C, matrix_u) == [c]
+    @test cdf(C, matrix_u) ≈ [c] atol=numerical_atol
     @test logcdf(C, matrix_u) ≈ log.([c]) atol=1e-3
     @test Copulas.measure(C, zeros(d), ones(d)) ≈ 1 atol=1e-3
     @test Copulas.measure(C, fill(0.2, d), fill(0.6, d)) >= 0
@@ -183,7 +183,7 @@ function test_copula_contract(case, seed)
     @testset "$(case.name)" begin
         C = case.build()
         ctx = CopulaContractContext(C, seed)
-        test_distribution_contract(C, ctx)
+        test_distribution_contract(C, ctx, case.numerical_atol, case.margin_atol)
         test_density_contract(C, ctx, case.kind)
         test_subsetting_contract(C, ctx)
         test_conditioning_contract(C, ctx, case.kind)

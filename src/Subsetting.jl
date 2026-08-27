@@ -28,7 +28,7 @@ struct SubsetCopula{d,CT} <: Copula{d}
         # coordinates. The identity `dims == 1:d` is already returned above.
         @assert 1 <= p <= d "You cannot construct a subsetcopula with dimension p < 1 or p > d (d = $d, p = $p provided)"
         dims == Tuple(1:d) && return C
-        @assert all(1<= dims .<= d)
+        @assert all(i -> 1 <= i <= d, dims)
         @assert p <= d
         @assert length(unique(dims))==length(dims)
         p==1 && return Distributions.Uniform()

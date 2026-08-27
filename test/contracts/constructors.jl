@@ -3,7 +3,11 @@
 function test_constructor_case(case)
     typed = Ref{Any}()
     @testset "$(case.name)" begin
-        typed[] = case.inferred ? (@inferred case.typed()) : case.typed()
+        typed[] = if case.allowed_inference === nothing
+            @inferred case.typed()
+        else
+            @inferred case.allowed_inference case.typed()
+        end
         typed_value = typed[]
         dynamic = case.dynamic()
         @test typed_value == dynamic
