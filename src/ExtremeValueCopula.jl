@@ -170,6 +170,10 @@ function _partial_cdf(C::ExtremeValueCopula, is, js, uᵢₛ, uⱼₛ)
     return isfinite(logvalue) ? exp(logvalue) : zero(float(first(u)))
 end
 τ(C::ExtremeValueCopula{2}) = QuadGK.quadgk(t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)), 0.0, 1.0)[1]
+# The second derivative of a discrete spectral Pickands function is a measure,
+# not an ordinary function.  Use the generic copula estimator rather than lose
+# its atoms in the smooth extreme-value formula above.
+τ(C::ExtremeValueCopula{2,<:DiscreteSpectralTail}) = @invoke τ(C::Copula)
 ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C.tail, t))^2, 0.0, 1.0)[1] - 3
 β(C::ExtremeValueCopula{2}) = 4^(1 - A(C.tail, 0.5)) - 1
 λᵤ(C::ExtremeValueCopula{2}) = 2 * (1 - A(C.tail, 0.5))

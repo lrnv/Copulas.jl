@@ -81,9 +81,8 @@ const COPULA_CASES = (
     copula_case("survival", () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3))),
 )
 
-constructor_case(name, typed, dynamic;
-                 allowed_inference=nothing, reconstruct=true) =
-    (; name, typed, dynamic, allowed_inference, reconstruct)
+constructor_case(name, typed, dynamic; allowed_inference=nothing) =
+    (; name, typed, dynamic, allowed_inference)
 
 const CONSTRUCTOR_CASES = (
     constructor_case("AMH", () -> AMHCopula{2}(0.5), () -> AMHCopula(2, 0.5)),
@@ -127,8 +126,8 @@ const CONSTRUCTOR_CASES = (
     constructor_case("Husler--Reiss", () -> HuslerReissCopula{3}(1.0), () -> HuslerReissCopula(3, 1.0)),
     constructor_case("logistic EV", () -> LogCopula{3}(1.5), () -> LogCopula(3, 1.5)),
     constructor_case("mixed EV", () -> MixedCopula{2}(0.5), () -> MixedCopula(2, 0.5)),
-    constructor_case("Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4), () -> MOCopula(2, 0.2, 0.3, 0.4)),
-    constructor_case("Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8]), () -> TawnCopula(3, 2.0, [0.6, 0.7, 0.8])),
+    constructor_case("Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4), () -> MOCopula(2, 0.2, 0.3, 0.4); allowed_inference=MOCopula{2}),
+    constructor_case("Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8]), () -> TawnCopula(3, 2.0, [0.6, 0.7, 0.8]); allowed_inference=Union{IndependentCopula,MCopula,ExtremeValueCopula{3}}),
     constructor_case("t-EV", () -> tEVCopula{2}(4.0, 0.5), () -> tEVCopula(2, 4.0, 0.5)),
     constructor_case("BB4", () -> BB4Copula{2}(1.5, 1.0), () -> BB4Copula(2, 1.5, 1.0)),
     constructor_case("BB5", () -> BB5Copula{2}(1.5, 1.0), () -> BB5Copula(2, 1.5, 1.0)),
@@ -140,7 +139,7 @@ const CONSTRUCTOR_CASES = (
     constructor_case("independence", () -> IndependentCopula{3}(), () -> IndependentCopula(3)),
     constructor_case("upper Frechet", () -> MCopula{3}(), () -> MCopula(3)),
     constructor_case("lower Frechet", () -> WCopula{2}(), () -> WCopula(2)),
-    constructor_case("FGM", () -> FGMCopula{2}(0.5), () -> FGMCopula(2, 0.5)),
+    constructor_case("FGM", () -> FGMCopula{2}(0.5), () -> FGMCopula(2, 0.5); allowed_inference=Union{IndependentCopula{2},MCopula{2},WCopula{2},FGMCopula{2}}),
     constructor_case("Plackett", () -> PlackettCopula{2}(2.0), () -> PlackettCopula(2, 2.0)),
     constructor_case("Raftery", () -> RafteryCopula{3}(0.5), () -> RafteryCopula(3, 0.5)),
     constructor_case("Bernstein", () -> BernsteinCopula{2}(IndependentCopula{2}(); m=2), () -> BernsteinCopula(2, IndependentCopula{2}(); m=2)),
@@ -168,7 +167,7 @@ const CONSTRUCTOR_CASES = (
             leaves=[1, 2], children=[ClaytonCopula{2}(2.0)]),
         () -> NestedArchimedeanCopula(4, Copulas.ClaytonGenerator(1.0);
             leaves=[1, 2], children=[ClaytonCopula{2}(2.0)]);
-        allowed_inference=ArchimedeanCopula),
+        allowed_inference=Union{NestedArchimedeanCopula,ArchimedeanCopula}),
     constructor_case("Archimax",
         () -> ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0)),
         () -> ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0))),

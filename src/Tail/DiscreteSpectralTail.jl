@@ -71,6 +71,13 @@ function A(tail::DiscreteSpectralTail, t::Real)
     return ℓ(tail, (t, one(t) - t))
 end
 
+# A finite spectral measure has a piecewise-linear Pickands function.  Its
+# ordinary derivative is sufficient for conditioning away from the atoms;
+# its distributional second derivative is deliberately not represented by
+# `d²A`, because that would discard the atomic mass.
+dA(tail::DiscreteSpectralTail, t::Real) =
+    ForwardDiff.derivative(z -> A(tail, z), t)
+
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     fill!(X, zero(T))

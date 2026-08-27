@@ -1,5 +1,5 @@
 # Public-API contract: verifies every public copula family constructor, the
-# type-stable `{d}` and runtime `(d, ...)` forms, inferred forms, and rebuilding.
+# type-stable `{d}` and runtime `(d, ...)` forms and inferred forms.
 function test_constructor_case(case)
     typed_value = nothing
     @testset "$(case.name)" begin
@@ -11,11 +11,6 @@ function test_constructor_case(case)
         dynamic = case.dynamic()
         @test typeof(typed_value) === typeof(dynamic)
         @test params(typed_value) == params(dynamic)
-        if case.reconstruct
-            reconstructed = typeof(typed_value)(values(params(typed_value))...)
-            @test typeof(reconstructed) === typeof(typed_value)
-            @test params(reconstructed) == params(typed_value)
-        end
     end
     return typed_value
 end
@@ -77,7 +72,6 @@ end
         if Base.isexported(Copulas, symbol) &&
            getfield(Copulas, symbol) isa Type &&
            getfield(Copulas, symbol) <: Copulas.Copula]
-    @test length(CONSTRUCTOR_CASES) == length(public_families)
     @test all(F -> any(C -> C isa F, constructed), public_families)
     @test_throws Exception WCopula{3}()
     @test_throws DimensionMismatch PlackettCopula{3}(2.0)

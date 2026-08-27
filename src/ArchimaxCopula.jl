@@ -254,6 +254,8 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.197-198
 """
 const BB4Copula{d,T} = ArchimaxCopula{d, ClaytonGenerator{T}, GalambosTail{T}}
+(::Type{<:BB4Copula{d}})(θ::Real, δ::Real) where {d} =
+    ArchimaxCopula{d}(ClaytonGenerator(θ), GalambosTail(δ))
 function _cdf(C::BB4Copula{2,T}, u) where T
     θ, δ = C.gen.θ, C.tail.θ
     θ == 0 && return u1*u2
@@ -335,6 +337,8 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.197-198
 """
 const BB5Copula{d,T} = ArchimaxCopula{d, GumbelGenerator{T}, GalambosTail{T}}
+(::Type{<:BB5Copula{d}})(θ::Real, δ::Real) where {d} =
+    ArchimaxCopula{d}(GumbelGenerator(θ), GalambosTail(δ))
 function _cdf(C::BB5Copula{2,T}, u) where T
     θ, δ = C.gen.θ, C.tail.θ
     u1, u2 = u
