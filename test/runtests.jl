@@ -1,5 +1,6 @@
-# Test-suite orchestrator: executes contracts and mechanism paths first, then
-# focused family and optional-extension regressions.
+# Test-suite orchestrator. See test/README.md for the four proof obligations
+# implemented by contracts, mathematical oracles, specialization comparisons,
+# and exhaustive dispatch registries.
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
