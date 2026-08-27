@@ -256,6 +256,7 @@ References:
 const BB4Copula{d,T} = ArchimaxCopula{d, ClaytonGenerator{T}, GalambosTail{T}}
 (::Type{<:BB4Copula{d}})(θ::Real, δ::Real) where {d} =
     ArchimaxCopula{d}(ClaytonGenerator(θ), GalambosTail(δ))
+(::Type{<:BB4Copula})(d::Int, θ::Real, δ::Real) = BB4Copula{d}(θ, δ)
 function _cdf(C::BB4Copula{2,T}, u) where T
     θ, δ = C.gen.θ, C.tail.θ
     θ == 0 && return u1*u2
@@ -339,6 +340,7 @@ References:
 const BB5Copula{d,T} = ArchimaxCopula{d, GumbelGenerator{T}, GalambosTail{T}}
 (::Type{<:BB5Copula{d}})(θ::Real, δ::Real) where {d} =
     ArchimaxCopula{d}(GumbelGenerator(θ), GalambosTail(δ))
+(::Type{<:BB5Copula})(d::Int, θ::Real, δ::Real) = BB5Copula{d}(θ, δ)
 function _cdf(C::BB5Copula{2,T}, u) where T
     θ, δ = C.gen.θ, C.tail.θ
     u1, u2 = u

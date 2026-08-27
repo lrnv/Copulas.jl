@@ -5,7 +5,7 @@ struct CopulaContractContext{TU,TM}
     U::TM
 end
 
-function CopulaContractContext(C, seed)
+function copula_contract_context(C, seed)
     d = length(C)
     u = collect(range(0.31, 0.69; length=d))
     U = rand(StableRNG(seed), C, 4)
@@ -183,14 +183,22 @@ end
 
 function test_copula_contract(case, seed)
     @testset "$(case.name)" begin
+        @info "Testing public copula contract" copula=case.name
         C = case.build()
-        ctx = CopulaContractContext(C, seed)
+        ctx = copula_contract_context(C, seed)
+        @info "Testing copula operation group" copula=case.name group=:distribution
         test_distribution_contract(C, ctx, case.numerical_atol, case.margin_atol)
+        @info "Testing copula operation group" copula=case.name group=:density
         test_density_contract(C, ctx, case.kind)
+        @info "Testing copula operation group" copula=case.name group=:subsetting
         test_subsetting_contract(C, ctx, case.numerical_atol)
+        @info "Testing copula operation group" copula=case.name group=:conditioning
         test_conditioning_contract(C, ctx, case.kind)
+        @info "Testing copula operation group" copula=case.name group=:rosenblatt
         test_rosenblatt_contract(C, ctx, case.rosenblatt)
+        @info "Testing copula operation group" copula=case.name group=:dependence
         test_dependence_contract(C, case.kind)
+        @info "Completed public copula contract" copula=case.name
     end
 end
 
