@@ -129,5 +129,5 @@ _parameter_dof(x::Number) = 1
 _parameter_dof(x::NamedTuple) = sum(_parameter_dof, values(x); init=0)
 _parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)
 _parameter_dof(x::AbstractArray{<:Number}) = length(x)
-_parameter_dof(x::Union{Generator,Tail,Copula}) = _parameter_dof(Distributions.params(x))
+_parameter_dof(x::Copula) = _parameter_dof(Distributions.params(x))
 _parameter_dof(::Any) = 0

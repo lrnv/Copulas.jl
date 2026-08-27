@@ -37,6 +37,7 @@ function (TT::Type{<:Tail})(args...;kwargs...)
     T = S.name.wrapper 
     return T(args..., values(kwargs)...)
 end
+_parameter_dof(x::Tail) = _parameter_dof(Distributions.params(x))
 Base.broadcastable(tail::Tail) = Ref(tail)
 
 ####### Functions you need to overload: 

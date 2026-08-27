@@ -38,6 +38,7 @@ function (TG::Type{<:Generator})(args...;kwargs...)
     return T(args..., values(kwargs)...)
 end
 Base.broadcastable(x::Generator) = Ref(x)
+_parameter_dof(x::Generator) = _parameter_dof(Distributions.params(x))
 max_monotony(G::Generator) = throw("This generator does not have a defined max monotony. You need to implement `max_monotony(G)`.")
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
 ϕ(G::Generator) = Base.Fix1(ϕ,G)
