@@ -1,17 +1,5 @@
 # Legacy migration layer: preserves Gaussian and Student copula reference,
 # fitting, marginal, and numerical regressions pending focused migration.
-@testset "GaussianCopula" begin
-    # [GenericTests integration]: Maybe. The broken fit on mixed marginals is out-of-scope for generic copula properties; keep here.
-    Random.seed!(rng,123)
-    C = GaussianCopula{2}([1 -0.1; -0.1 1])
-    M1 = Beta(2,3)
-    M2 = LogNormal(2,3)
-    D = SklarDist(C,(M1,M2))
-    X = rand(rng,D,10)
-    loglikelihood(D,X)
-    @test true
-end
-
 @testset "TCopula degrees of freedom are data, not a type value" begin
     Σ = [1.0 0.25; 0.25 1.0]
     C2 = TCopula{2}(2, copy(Σ))

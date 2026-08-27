@@ -29,3 +29,42 @@ end
     @test_throws ArgumentError fit(CopulaModel, ClaytonCopula{2}, U;
         method=:mle, vcov=true, vcov_method=:invalid, derived_measures=false)
 end
+
+const _FITTING_PATH_MODELS = Tuple(case.build() for case in COPULA_CASES)
+const _PRIMARY_FITTING_METHOD = Dict(case.name => case.method for case in FITTING_CASES)
+
+_has_fitting_parameters(C) =
+    !(C isa Union{IndependentCopula,MCopula,WCopula}) && !isempty(params(C))
+_check_parameter_roundtrip(C) =
+    !(C isa EmpiricalEVCopula) && !(C isa FGMCopula && length(C) != 2)
+
+@testset "advertised fitting routes beyond the primary family contract" begin
+    for (index, (case, C)) in enumerate(zip(COPULA_CASES, _FITTING_PATH_MODELS))
+        CT, d = typeof(C), length(C)
+        methods = Copulas._available_fitting_methods(CT, d)
+
+        if :mle in methods && _has_fitting_parameters(C) &&
+           _check_parameter_roundtrip(C)
+            bounded = params(C)
+            restored = Copulas._rebound_params(
+                CT, d, Copulas._unbound_params(CT, d, bounded))
+            @test all(key -> getfield(bounded, key) ≈ getfield(restored, key),
+                      keys(bounded))
+        end
+
+        primary = get(_PRIMARY_FITTING_METHOD, case.name, nothing)
+        remaining = filter(!=(primary), methods)
+        isempty(remaining) && continue
+
+        U = rand(StableRNG(30_000 + index), C, 12)
+        for method in remaining
+            if (CT <: GumbelCopula && C.G.θ > 19 && method == :irho) ||
+               (CT <: FrankCopula && C.G.θ > 99 && method == :mle) ||
+               (CT <: RafteryCopula && d == 3 && method == :itau)
+                continue
+            end
+            @test fit(CT, U, method; vcov=false,
+                      derived_measures=false) isa Copulas.Copula{d}
+        end
+    end
+end

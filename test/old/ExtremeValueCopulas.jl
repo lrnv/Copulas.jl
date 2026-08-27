@@ -6,7 +6,7 @@ using Random
 using StableRNGs
 
 
-@testitem "Checking LogCopula == GumbelCopula" begin
+@testset "Checking LogCopula == GumbelCopula" begin
     # [GenericTests integration]: Probably too specific (equivalence between two constructors/types). Could be a targeted identity test, keep here.
 
     rng = StableRNG(1234)
@@ -33,7 +33,7 @@ using StableRNGs
     end
 end
 
-@testitem "Extreme Galambos density test" begin
+@testset "Extreme Galambos density test" begin
     # [GenericTests integration]: No. This is a trivial smoke test to catch crashes at extreme params; keep as minimal targeted test.
     rand(GalambosCopula{2}(19.7), 400)
     rand(GalambosCopula{2}(210.0), 400)

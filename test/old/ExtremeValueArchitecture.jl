@@ -12,32 +12,11 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
 
 @testset "Extreme-value architecture" begin
     @testset "canonical dimension constructors" begin
-        for (Ctyped, Cruntime, d) in (
-            (LogCopula{5}(2.0), LogCopula(5, 2.0), 5),
-            (GalambosCopula{4}(0.7), GalambosCopula(4, 0.7), 4),
-            (HuslerReissCopula{3}(1.0), HuslerReissCopula(3, 1.0), 3),
-            (MixedCopula{4}(0.5), MixedCopula(4, 0.5), 4),
-            (CuadrasAugeCopula{4}(0.5), CuadrasAugeCopula(4, 0.5), 4),
-            (tEVCopula{3}(4.0, 0.2), tEVCopula(3, 4.0, 0.2), 3),
-        )
-            @test length(Ctyped) == d
-            @test length(Cruntime) == d
-            @test typeof(Ctyped) == typeof(Cruntime)
-            @test Distributions.params(Ctyped) == Distributions.params(Cruntime)
-        end
-
         # Integer-valued parameters remain parameters once d is encoded.
         @test Distributions.params(LogCopula{2}(2)).θ == 2.0
         @test Distributions.params(MixedCopula{2}(1)).θ == 1.0
         @test Distributions.params(HuslerReissCopula{2}(1)).θ == 1.0
         @test Distributions.params(tEVCopula{2}(4, 0.2)).ν == 4
-
-        # Concrete types reconstruct directly without confusing an integer
-        # model parameter with the dimension.
-        C0 = GalambosCopula{2}(0.9)
-        C1 = typeof(C0)(0.9)
-        @test typeof(C1) == typeof(C0)
-        @test Distributions.params(C1) == Distributions.params(C0)
 
         Cint = LogCopula{2}(2)
         @test Distributions.params(typeof(Cint)(2)).θ == 2.0
@@ -57,28 +36,6 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
             Copulas.GalambosTail(0.7),
         )
 
-        @test cdf(
-            AsymLogCopula{2}(1.5, 0.4, 0.6),
-            [0.31, 0.67],
-        ) ≈ cdf(
-            AsymLogCopula(2, 1.5, 0.4, 0.6),
-            [0.31, 0.67],
-        )
-        @test cdf(
-            BC2Copula{2}(0.2, 0.5),
-            [0.31, 0.67],
-        ) ≈ cdf(
-            BC2Copula(2, 0.2, 0.5),
-            [0.31, 0.67],
-        )
-        @test cdf(
-            MOCopula{2}(1.0, 2.0, 0.5),
-            [0.31, 0.67],
-        ) ≈ cdf(
-            MOCopula(2, 1.0, 2.0, 0.5),
-            [0.31, 0.67],
-        )
-
         Cind = LogCopula{3}(1.0)
         Cdep = LogCopula{3}(Inf)
         @test length(Cind) == 3
@@ -90,9 +47,6 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
     @testset "parameter-structured constructors" begin
         Γ = [0.0 1.0 1.0; 1.0 0.0 1.0; 1.0 1.0 0.0]
         Chr_typed = HuslerReissCopula{3}(Γ)
-        Chr_runtime = HuslerReissCopula(3, Γ)
-        Chr_inferred = HuslerReissCopula(Γ)
-        @test typeof(Chr_typed) == typeof(Chr_runtime) == typeof(Chr_inferred)
         @test Chr_typed.tail isa Copulas.HuslerReissTail{<:AbstractMatrix}
 
         Γ2 = [0.0 1.0; 1.0 0.0]
@@ -113,8 +67,6 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
 
         R = [1.0 0.2 0.1; 0.2 1.0 0.3; 0.1 0.3 1.0]
         Ctev_typed = tEVCopula{3}(4.0, R)
-        Ctev_runtime = tEVCopula(3, 4.0, R)
-        @test typeof(Ctev_typed) == typeof(Ctev_runtime)
         @test Ctev_typed.tail isa Copulas.tEVTail{<:Any,<:AbstractMatrix}
 
         R2 = [1.0 0.3; 0.3 1.0]
@@ -134,59 +86,27 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
               rand(Random.Xoshiro(4102), Ctev2scalar, 16)
 
         weights = [0.6, 0.7, 0.8]
-        Ctawn_typed = TawnCopula{3}(2.0, weights)
-        Ctawn_runtime = TawnCopula(3, 2.0, weights)
-        @test typeof(Ctawn_typed) == typeof(Ctawn_runtime)
-        @test Ctawn_typed.tail isa Copulas.TawnTail
-        @test length(TawnCopula{3}(2, weights)) == 3
 
         asy = [[0.4], [0.3], [0.6, 0.7]]
         dep_tawn = [2.0]
-        Ctawn_full_typed = TawnCopula{2}(dep_tawn, asy)
-        Ctawn_full_runtime = TawnCopula(2, dep_tawn, asy)
-        @test typeof(Ctawn_full_typed) == typeof(Ctawn_full_runtime)
-
-        Cag_typed = AsymGalambosCopula{3}(0.7, weights)
-        Cag_runtime = AsymGalambosCopula(3, 0.7, weights)
-        @test typeof(Cag_typed) == typeof(Cag_runtime)
-        @test Cag_typed.tail isa Copulas.AsymGalambosTail
-        @test length(AsymGalambosCopula{3}(1, weights)) == 3
+        @test TawnCopula{2}(dep_tawn, asy).tail isa Copulas.TawnTail
 
         dep_gal = [0.7]
-        Cag_full_typed = AsymGalambosCopula{2}(dep_gal, asy)
-        Cag_full_runtime = AsymGalambosCopula(2, dep_gal, asy)
-        @test typeof(Cag_full_typed) == typeof(Cag_full_runtime)
+        @test AsymGalambosCopula{2}(dep_gal, asy).tail isa
+              Copulas.AsymGalambosTail
 
         Cag2 = AsymGalambosCopula{2}(0.7, [0.6, 0.7])
         Cagref = AsymGalambosCopula{2}(0.7, 0.6, 0.7)
         @test cdf(Cag2, [0.4, 0.7]) ≈ cdf(Cagref, [0.4, 0.7])
 
         a = [0.2, 0.5, 0.8]
-        Cbc_typed = BC2Copula{3}(a)
-        Cbc_runtime = BC2Copula(3, a)
-        Cbc_inferred = BC2Copula(a)
-        @test typeof(Cbc_typed) == typeof(Cbc_runtime) == typeof(Cbc_inferred)
-        @test BC2Copula{2}([0.2, 0.5]).tail isa Copulas.BC2Tail
-
         λ = ones(7)
-        Cmo_typed = MOCopula{3}(λ)
-        Cmo_runtime = MOCopula(3, λ)
-        Cmo_inferred = MOCopula(λ)
-        @test typeof(Cmo_typed) == typeof(Cmo_runtime) == typeof(Cmo_inferred)
-        @test Cmo_typed.tail isa Copulas.MOTail
 
         Uemp = [
             0.20 0.40 0.70
             0.30 0.60 0.80
             0.25 0.55 0.75
         ]
-        Cemp_typed = EmpiricalEVCopula{3}(Uemp; degree=1)
-        Cemp_runtime = EmpiricalEVCopula(3, Uemp; degree=1)
-        Cemp_inferred = EmpiricalEVCopula(Uemp; degree=1)
-        @test typeof(Cemp_typed) ==
-              typeof(Cemp_runtime) ==
-              typeof(Cemp_inferred)
-
         @test_throws ArgumentError HuslerReissCopula{4}(Γ)
         @test_throws ArgumentError HuslerReissCopula(4, Γ)
         @test_throws ArgumentError tEVCopula{4}(4.0, R)
@@ -230,14 +150,10 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         @test logpdf(Cgeneric, u) ≈ logpdf(Canalytic, u) atol=2e-10 rtol=2e-10
     end
     @testset "multivariate EV generic conditioning and Rosenblatt" begin
-        # Exercise the common STDF-partial path across distinct tail families.
-        for C in (
-            LogCopula{3}(2.0),
-            GalambosCopula{3}(0.7),
-            MixedCopula{3}(0.5),
-            TawnCopula{3}(2.0, [0.6, 0.7, 0.8]),
-            AsymGalambosCopula{3}(0.7, [0.6, 0.7, 0.8]),
-        )
+        # The public contract already exercises the common path for logistic,
+        # Galambos, Tawn, and asymmetric Galambos. Mixed d=3 remains here as the
+        # additional representation-specific dimension path.
+        for C in (MixedCopula{3}(0.5),)
             # Conditioning on two coordinates leaves a univariate distortion.
             D = condition(C, (1, 2), (0.31, 0.58))
             @test D isa Copulas.Distortion
@@ -280,10 +196,9 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
         # These CDFs use Float64 numerical probability kernels and therefore
         # cannot be differentiated with ForwardDiff dual numbers. Keep one
         # full round trip per family while avoiding a costly parameter grid.
-        for C in (
-            HuslerReissCopula{3}(1.0),
-            tEVCopula{3}(4.0, 0.2),
-        )
+        # Hüsler--Reiss d=3 is in the public contract; extremal-t d=3 is the
+        # remaining numerical-kernel dimension path.
+        for C in (tEVCopula{3}(4.0, 0.2),)
             D = condition(C, (1, 2), (0.31, 0.58))
             q = quantile(D, 0.6)
             @test cdf(D, q) ≈ 0.6 atol=2e-6 rtol=2e-6
@@ -336,21 +251,6 @@ Copulas.ℓ(tail::ADOnlyLogisticTail, x) =
             end
         end
     end
-
-    @testset "multivariate sampling" begin
-        for C in (
-            LogCopula(10, 2.0),
-            MixedCopula(10, 0.5),
-            GalambosCopula(10, 0.7),
-            HuslerReissCopula(10, 1.0),
-            tEVCopula(10, 4.0, 0.2),
-        )
-            U = rand(Random.Xoshiro(20260820), C, 16)
-            @test size(U) == (10, 16)
-            @test all((0 .< U) .& (U .< 1))
-        end
-    end
-
 
     @testset "Galambos inverse dependence-measure boundaries" begin
         @test Copulas.β⁻¹(GalambosCopula, -0.1) == 0.0

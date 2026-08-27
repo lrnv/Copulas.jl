@@ -42,6 +42,7 @@ legacy_testfiles = [
     "SklarDist",
     "Subsetting",
     "ExtremeValueArchitecture",
+    "ExtremeValueCopulas",
 ]
 
 @testset verbose=true "Copulas.jl testings"  begin

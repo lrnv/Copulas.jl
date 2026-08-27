@@ -55,4 +55,20 @@
     @test pdf(joint, x3[2:3]) >= 0
     @test size(rand(StableRNG(33), joint, 2)) == (2, 2)
     @test length(subsetdims(D3, (3, 1))) == 2
+
+    independent = SklarDist(
+        IndependentCopula{3}(), (Normal(), Exponential(), LogNormal()))
+    independent_conditional = condition(independent, 2, 0.7)
+    independent_subset = subsetdims(independent, (1, 3))
+    @test independent_conditional.C == independent_subset.C
+    @test independent_conditional.m == independent_subset.m
+
+    uniform_conditional = condition(IndependentCopula{2}(), 1, 0.3)
+    @test uniform_conditional == Uniform()
+    original_scale = condition(
+        SklarDist(IndependentCopula{2}(), (Normal(), Exponential())),
+        1, 0.0)
+    for t in (-1.0, 0.0, 1.2)
+        @test cdf(original_scale, t) ≈ cdf(Exponential(), t)
+    end
 end

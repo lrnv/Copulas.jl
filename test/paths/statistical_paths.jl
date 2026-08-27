@@ -42,3 +42,20 @@ end
         @test abs(observed - expected) <= max(5se, 0.03)
     end
 end
+
+@testset "empirical dependence estimators match their theoretical targets" begin
+    C = ClaytonCopula{2}(2.0)
+    U = rand(StableRNG(104), C, 2_000)
+    for measure in (Copulas.τ, Copulas.ρ, Copulas.β)
+        @test measure(U) ≈ measure(C) atol=0.1
+    end
+    @test Copulas.γ(U) ≈ Copulas.γ(C) atol=0.15
+    @test Copulas.ι(U) ≈ Copulas.ι(C) atol=0.15
+
+    observations = transpose(U)
+    @test Copulas.corblomqvist(observations)[1, 2] ≈ Copulas.β(C) atol=0.1
+    @test Copulas.corgini(observations)[1, 2] ≈ Copulas.γ(C) atol=0.1
+    entropy = Copulas.corentropy(observations)
+    @test diag(entropy) == zeros(2)
+    @test isfinite(entropy[1, 2])
+end

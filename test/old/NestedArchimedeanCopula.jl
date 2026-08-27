@@ -600,8 +600,8 @@ end
     end
 
     @testset "pairwise Kendall structure" begin
-        # GenericTests exercises the sampler against both CDF and Kendall targets.
-        # Keep only independent analytic anchors for those theoretical targets here.
+        # The public contract checks pairwise-matrix structure and subsetting.
+        # Keep only independent analytic anchors for this nested tree here.
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                 children = [ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)])   # d=4
         @test subsetdims(C, (1, 2)) isa ArchimedeanCopula{2}

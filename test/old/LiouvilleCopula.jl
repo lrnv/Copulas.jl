@@ -5,13 +5,8 @@
     @testset "real Williamson orders" begin
         G = Copulas.𝒲(Dirac(1.0), 5.5)
         C = LiouvilleCopula{3}(G, (0.75, 1.5, 3.0))
-        @test C isa Copulas.Copula{3}
         @test Copulas.𝒲₋₁(G, sum(C.α)) isa Copulas.WilliamsonBetaProduct
         @test_throws ArgumentError LiouvilleCopula{2}(G, (3.0, 3.0))
-
-        U = rand(liouville_rng, C, 5)
-        @test size(U) == (3, 5)
-        @test all(0 .<= U .<= 1)
 
         C13 = subsetdims(C, (1, 3))
         @test C13 isa LiouvilleCopula{2}

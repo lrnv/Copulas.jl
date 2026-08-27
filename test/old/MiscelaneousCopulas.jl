@@ -70,16 +70,8 @@ end
 end
 
 @testset "RafteryCopula CDF" begin
-    # [GenericTests integration]: Maybe. The numeric values are specific regression checks; a lighter generic monotonicity/nonnegativity check exists.
-    Random.seed!(rng,123)
-    for d in [2, 3, 4]
-        F = RafteryCopula{d}(0.5)
-        cdf_value = cdf(F, rand(d))
-        pdf_value = pdf(F,rand(d))
-        @test cdf_value >= 0 && cdf_value <= 1
-        @test pdf_value >= 0 
-    end
-
+    # Generic CDF/PDF bounds moved to `contracts/copulas.jl`; retain only fixed
+    # family reference values and dependence regressions.
     @test cdf(RafteryCopula{2}(0.8), [0.2, 0.5]) ≈ 0.199432 atol=1e-5
     @test cdf(RafteryCopula{2}(0.5), [0.3, 0.8]) ≈ 0.2817 atol=1e-5
     @test cdf(RafteryCopula{3}(0.5), [0.1, 0.2, 0.3]) ≈ 0.08236007 atol=1e-5

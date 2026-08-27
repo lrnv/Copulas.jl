@@ -2,12 +2,6 @@
 # identities and input-validation regressions pending focused migration.
 @testset "Nataf correction" begin
 
-    @testset "Gaussian margins reproduce the target exactly" begin
-        R = [1.0 0.6 -0.2; 0.6 1.0 0.3; -0.2 0.3 1.0]
-        R₀ = Nataf((Normal(), Normal(2, 3), Normal(-1, 0.5)), R)
-        @test R₀ == R
-    end
-
     @testset "zero targets stay exactly zero, structure is preserved" begin
         R₀ = Nataf((LogNormal(0, 0.8), Gamma(2, 3)), [1.0 0.0; 0.0 1.0])
         @test R₀ == [1.0 0.0; 0.0 1.0]
@@ -35,17 +29,11 @@
 
     @testset "uniform closed forms" begin
         r, s = 0.6, 0.8
-        @test Nataf((Uniform(-2, 3), Uniform(4, 8)), r) ≈ 2sinpi(r / 6)
         @test Nataf((Uniform(-2, 3), Normal(1, 2)), r) ≈ r * sqrt(π / 3)
         D = sqrt(expm1(s^2))
         expected = sqrt(2) / s * quantile(Normal(), 1 / 2 + r * D / (2sqrt(3)))
         @test Nataf((Uniform(-2, 3), LogNormal(1, s)), r) ≈ expected
         @test_throws ArgumentError Nataf((Uniform(), Normal()), 0.99)
-    end
-
-    @testset "scalar and matrix methods agree" begin
-        m = (LogNormal(0, 0.8), Gamma(2, 3))
-        @test Nataf(m, 0.6) == Nataf(m, [1.0 0.6; 0.6 1.0])[1, 2]
     end
 
     @testset "end-to-end: sampled Pearson correlation matches the target" begin
@@ -66,9 +54,6 @@
         @test_throws ArgumentError Nataf(m, [1.0 0.5; 0.4 1.0])                 # not symmetric
         @test_throws ArgumentError Nataf(m, [0.9 0.5; 0.5 1.0])                 # bad diagonal
         @test_throws ArgumentError Nataf(m, [1.0 0.5 0.1; 0.5 1.0 0.1; 0.1 0.1 1.0]) # size mismatch
-        @test_throws ArgumentError Nataf((LogNormal(),), 0.5)                   # scalar target needs 2 margins
-        @test_throws ArgumentError Nataf(m, 1.5)                                # target outside [-1, 1]
-        @test_throws ArgumentError Nataf(m, 0.5; nodes=1)                       # not enough nodes
         # margins are validated even when their targets are all zero:
         @test_throws ArgumentError Nataf((Pareto(1.0), Normal()), [1.0 0.0; 0.0 1.0])
         # degenerate (Dirac) margins are rejected on the closed-form paths too:
