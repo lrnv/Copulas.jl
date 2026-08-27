@@ -89,7 +89,7 @@ _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d
 
 # The full subset parameterization does not yet expose an unconstrained fitting
 # map. Do not advertise the generic MLE fallback until that map is implemented.
-_available_fitting_methods(::Type{<:ExtremeValueCopula{d,<:TawnTail}}, d) where {d} = ()
+_available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:TawnTail}}, d) where {D} = ()
 
 function _tawn_component_stdf(α, βcol, C, x)
     T = promote_type(typeof(α), eltype(x), eltype(βcol))
