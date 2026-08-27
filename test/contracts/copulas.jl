@@ -136,49 +136,57 @@ function test_rosenblatt_contract(C, ctx, invertible)
     @test inverse_rosenblatt(C, rosenblatt(C, ctx.u)) ≈ ctx.u atol=2e-5 rtol=2e-5
 end
 
-function test_dependence_contract(C, kind)
-    d = length(C)
-    scalar_measures = kind === :continuous ?
-        (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι,
-         Copulas.λₗ, Copulas.λᵤ) :
-        (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ,
-         Copulas.λₗ, Copulas.λᵤ)
-    for f in scalar_measures
-        value = f(C)
-        @test value isa Real
-        @test !isnan(value)
-        if f !== Copulas.ι
-            @test -1 <= value <= 1
-        end
-    end
-    K = StatsBase.corkendall(C)
-    S = StatsBase.corspearman(C)
-    @test size(K) == size(S) == (d, d)
-    @test K ≈ transpose(K)
-    @test S ≈ transpose(S)
-    @test diag(K) == diag(S) == ones(d)
-    @test all(x -> x isa Real && !isnan(x), K)
-    @test all(x -> x isa Real && !isnan(x), S)
+const SCALAR_DEPENDENCE_MEASURES = (
+    Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι,
+    Copulas.λₗ, Copulas.λᵤ,
+)
+const PAIRWISE_DEPENDENCE_MEASURES = (
+    (StatsBase.corkendall, 1),
+    (StatsBase.corspearman, 1),
+    (Copulas.corblomqvist, 1),
+    (Copulas.corgini, 1),
+    (Copulas.corentropy, 0),
+    (Copulas.corlowertail, 1),
+    (Copulas.coruppertail, 1),
+)
 
-    pairwise_measures = (
-        (Copulas.corblomqvist, Copulas.β, 1),
-        (Copulas.corgini, Copulas.γ, 1),
-        (Copulas.corlowertail, Copulas.λₗ, 1),
-        (Copulas.coruppertail, Copulas.λᵤ, 1),
-    )
-    if kind === :continuous
-        pairwise_measures = (pairwise_measures..., (Copulas.corentropy, Copulas.ι, 0))
+_dependence_is_defined(::typeof(Copulas.ι), kind) = kind === :continuous
+_dependence_is_defined(::typeof(Copulas.corentropy), kind) = kind === :continuous
+_dependence_is_defined(::Any, ::Any) = true
+_dependence_dispatch_key(measure, C) =
+    (which(measure, Tuple{typeof(C)}), length(C) == 2 ? :bivariate : :multivariate)
+
+function test_dependence_contract(C, kind)
+    # Distribution, density, sampling and subsetting primitives are exercised
+    # above for every family.  The expensive generic measures only compose
+    # those primitives, so the per-family API contract needs to guarantee that
+    # dispatch exists; each distinct implementation is executed once below.
+    for measure in SCALAR_DEPENDENCE_MEASURES
+        _dependence_is_defined(measure, kind) || continue
+        @test applicable(measure, C)
     end
-    for (pairwise, scalar, diagonal) in pairwise_measures
-        M = pairwise(C)
-        @test size(M) == (d, d)
-        @test M ≈ transpose(M)
-        @test diag(M) == fill(diagonal, d)
-        # Some generic scalar measures are Monte Carlo estimators. Their
-        # mathematical agreement with deterministic/specialized paths belongs
-        # to the statistical and dispatch layers, not to this API contract.
-        @test all(x -> x isa Real && !isnan(x), M)
+    for (measure, _) in PAIRWISE_DEPENDENCE_MEASURES
+        _dependence_is_defined(measure, kind) || continue
+        @test applicable(measure, C)
     end
+end
+
+function test_scalar_dependence_result(measure, C)
+    value = measure(C)
+    @test value isa Real
+    @test !isnan(value)
+    if measure !== Copulas.ι
+        @test -1 <= value <= 1
+    end
+end
+
+function test_pairwise_dependence_result(measure, diagonal, C)
+    d = length(C)
+    matrix = measure(C)
+    @test size(matrix) == (d, d)
+    @test matrix ≈ transpose(matrix)
+    @test diag(matrix) == fill(diagonal, d)
+    @test all(x -> x isa Real && !isnan(x), matrix)
 end
 
 function test_copula_contract(case, seed)
@@ -215,5 +223,33 @@ end
 @testset "public copula contract" begin
     for (i, case) in pairs(COPULA_CASES)
         test_copula_contract(case, 10_000 + i)
+    end
+end
+
+@testset "one execution per dependence-measure dispatch" begin
+    models = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
+
+    for measure in SCALAR_DEPENDENCE_MEASURES
+        seen = Set{Any}()
+        for (; case, copula) in models
+            _dependence_is_defined(measure, case.kind) || continue
+            method, dimension_path = _dependence_dispatch_key(measure, copula)
+            (method, dimension_path) in seen && continue
+            push!(seen, (method, dimension_path))
+            @info "Testing scalar dependence dispatch" measure=nameof(measure) copula=case.name method
+            test_scalar_dependence_result(measure, copula)
+        end
+    end
+
+    for (measure, diagonal) in PAIRWISE_DEPENDENCE_MEASURES
+        seen = Set{Any}()
+        for (; case, copula) in models
+            _dependence_is_defined(measure, case.kind) || continue
+            method, dimension_path = _dependence_dispatch_key(measure, copula)
+            (method, dimension_path) in seen && continue
+            push!(seen, (method, dimension_path))
+            @info "Testing pairwise dependence dispatch" measure=nameof(measure) copula=case.name method
+            test_pairwise_dependence_result(measure, diagonal, copula)
+        end
     end
 end

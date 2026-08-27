@@ -1,5 +1,5 @@
 """
-    EmpiricalEVTail, EmpiricalEVCopula
+    EmpiricalEVTail
 
 Fields:
   - `tgrid::Vector{Float64}` — evaluation grid in (0,1)
@@ -32,7 +32,6 @@ References
 * [caperaa1997nonparametric] Capéraà, Fougères, Genest (1997) Biometrika
 * [gudendorf2011nonparametric] Gudendorf, Segers (2011) Journal of Multivariate Analysis
 """
-EmpiricalEVTail, EmpiricalEVCopula
 struct EmpiricalEVTail <: BivariatePickandsTail
     tgrid::Vector{Float64}
     Ahat::Vector{Float64}
