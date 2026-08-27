@@ -1,3 +1,5 @@
+# Mechanism-path layer: exercises one representative of each important generic
+# or specialized sampling, conditioning, subsetting, and numerical dispatch path.
 @testset "representative dispatch paths" begin
     for (name, C) in pairs(PATH_CASES)
         @testset "$name" begin

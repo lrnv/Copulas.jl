@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves exact and numerical Nataf-correction
+# identities and input-validation regressions pending focused migration.
 @testset "Nataf correction" begin
 
     @testset "Gaussian margins reproduce the target exactly" begin

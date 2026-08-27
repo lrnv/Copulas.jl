@@ -1,3 +1,5 @@
+# Test-suite orchestrator: loads shared dependencies and executes the new
+# architecture by layer before the temporary legacy migration suite.
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,

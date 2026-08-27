@@ -1,9 +1,10 @@
+# Public-API contract: mechanically fixes the complete exported and `public`
+# namespace, so adding or removing a SemVer-governed symbol requires a test edit.
 const PUBLIC_SYMBOLS = (
     :pseudos, :condition, :subsetdims, :rosenblatt, :inverse_rosenblatt, :Nataf,
     :SklarDist, :CopulaModel, :WilliamsonGenerator, :𝒲, :EmpiricalGenerator,
     :DiscreteSpectralTail, :ArchimedeanCopula, :ExtremeValueCopula,
     :LiouvilleCopula, :NestedArchimedeanCopula, :ArchimaxCopula,
-    :DiscreteSpectralCopula,
     :AMHCopula, :ClaytonCopula, :FrankCopula, :GumbelCopula,
     :GumbelBarnettCopula, :InvGaussianCopula, :JoeCopula,
     :BB1Copula, :BB2Copula, :BB3Copula, :BB6Copula, :BB7Copula,

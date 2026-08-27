@@ -1,5 +1,6 @@
-# Expensive mathematical equivalences are checked once per implementation
-# mechanism, not for every parameterization of every public family.
+# Mathematical-path layer: expensive CDF/PDF, derivative, integral, rectangle,
+# and transform equivalences are checked once per implementation mechanism,
+# not for every parameterization of every public family.
 const DENSITY_COHERENCE_CASES = (
     ClaytonCopula{2}(1.5),
     GaussianCopula{2}(0.3),

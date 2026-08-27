@@ -1,4 +1,4 @@
-# Tests for NestedArchimedeanCopula: the nested-Archimedean density and its
+# Legacy migration layer: tests NestedArchimedeanCopula's density and its
 # lower-tail partial-observation likelihood as an EMERGENT capability of the standard
 # condition + subsetdims framework (Yang & Li, arXiv:2605.23134).
 #

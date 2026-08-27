@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves Liouville and real-order Williamson
+# identities, conditional paths, caches, and performance-sensitive regressions.
 @testset "Liouville copulas" begin
     liouville_rng = StableRNG(405)
     @testset "real Williamson orders" begin

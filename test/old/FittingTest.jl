@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves broad fitting, covariance, and StatsBase
+# regressions until each is assigned to a contract or focused mechanism test.
 
 @testset "Fitting + vcov + StatsBase interfaces" begin
     rng = StableRNG(2025)

@@ -1,3 +1,5 @@
+# Public-component layer: verifies each public dependence-measure inverse on
+# representative supported families and both type- and instance-based dispatch.
 @testset "public dependence-measure inverses" begin
     for C in (CuadrasAugeCopula{2}(0.4), GalambosCopula{2}(1.0),
               HuslerReissCopula{2}(1.0), LogCopula{2}(1.5),

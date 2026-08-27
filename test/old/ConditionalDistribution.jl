@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves historical conditional-distribution and
+# distortion regressions until component and family replacements are complete.
 
 @testset "IndependentCopula conditional"  begin
     # [GenericTests integration]: Yes. This checks condition(X,J,·) reduces to subsetdims for independence; can be generalized and added to GenericTests.

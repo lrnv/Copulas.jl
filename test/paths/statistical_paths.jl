@@ -1,3 +1,5 @@
+# Statistical-path layer: validates representative samplers and Rosenblatt
+# transforms statistically without repeating Monte Carlo checks for every family.
 @testset "representative sampler and Rosenblatt statistics" begin
     for C in (ClaytonCopula{2}(1.5), GaussianCopula{2}(0.3),
               GalambosCopula{2}(1.0), FGMCopula{2}(0.4))

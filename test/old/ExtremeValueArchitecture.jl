@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves developer-level extreme-value extension,
+# automatic-differentiation, sampler, and fallback-dispatch regressions.
 using Random
 
 # Test-only tail implementing exactly the minimal multivariate EV contract: ℓ.
@@ -1206,7 +1208,7 @@ end
     ]
 
     tail = Copulas.DiscreteSpectralTail(B)
-    C = Copulas.DiscreteSpectralCopula(B)
+    C = ExtremeValueCopula{3}(tail)
     x = [0.37, 0.79, 1.28]
 
     ref = sum(maximum(B[i, k] * x[i] for i in axes(B, 1))

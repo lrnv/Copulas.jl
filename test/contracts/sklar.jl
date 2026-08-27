@@ -1,3 +1,5 @@
+# Public-API contract: checks SklarDist construction and the adopted
+# Distributions, conditioning, Rosenblatt, sampling, and matrix interfaces.
 @testset "SklarDist public contract" begin
     C = GaussianCopula{2}(0.3)
     D = SklarDist(C, (Normal(), Exponential()))

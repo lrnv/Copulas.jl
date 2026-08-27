@@ -1,3 +1,16 @@
+# Public-API contract: checks `fit`, positional adapters, non-fittable families,
+# `CopulaModel`, and the StatsBase model-result interface.
+@testset "public fitting registry is exhaustive" begin
+    # These structural families use explicit tests below because they require a
+    # constructor, an instance, or intentionally expose no fitting operation.
+    exceptional = Set((
+        "generic Archimedean", "nested Archimedean", "Liouville",
+        "generic EV", "discrete spectral",
+    ))
+    @test Set(case.name for case in FITTING_CASES) ==
+          setdiff(Set(case.name for case in COPULA_CASES), exceptional)
+end
+
 @testset "public fitting and model-result contracts" begin
     for (i, case) in pairs(FITTING_CASES)
         @testset "$(case.name)" begin
@@ -54,7 +67,7 @@ end
 
     non_fittable = (
         LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
-        DiscreteSpectralCopula(2, [0.7 0.3; 0.2 0.8]),
+        ExtremeValueCopula{2}(DiscreteSpectralTail([0.7 0.3; 0.2 0.8])),
     )
     for C in non_fittable
         U = rand(StableRNG(20_101), C, 4)

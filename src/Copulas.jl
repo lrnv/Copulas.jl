@@ -143,7 +143,7 @@ module Copulas
 
     export WilliamsonGenerator, 𝒲, EmpiricalGenerator, DiscreteSpectralTail
     export ArchimedeanCopula, ExtremeValueCopula, LiouvilleCopula
-    export NestedArchimedeanCopula, ArchimaxCopula, DiscreteSpectralCopula
+    export NestedArchimedeanCopula, ArchimaxCopula
 
     export AMHCopula, ClaytonCopula, FrankCopula, GumbelCopula
     export GumbelBarnettCopula, InvGaussianCopula, JoeCopula

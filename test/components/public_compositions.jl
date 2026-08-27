@@ -1,3 +1,5 @@
+# Public-component layer: checks public constructors whose behavior is chiefly
+# composition or specialization into generators, tails, and complete copulas.
 @testset "remaining public generator constructors" begin
     @test Copulas.τ(Copulas.IndependentGenerator()) == 0
     @test Copulas.τ(Copulas.MGenerator()) == 1
@@ -43,7 +45,7 @@ end
 @testset "discrete spectral public API" begin
     B = [0.7 0.3; 0.2 0.8]
     tail = DiscreteSpectralTail(B)
-    C = DiscreteSpectralCopula(tail)
+    C = ExtremeValueCopula{2}(tail)
     @test params(tail) == (B=Float64.(B),)
     @test Copulas.ℓ(tail, [1.0, 0.0]) ≈ 1
     @test length(C) == 2

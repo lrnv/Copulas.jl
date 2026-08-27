@@ -1,3 +1,5 @@
+# Shared test data and registries: declares the minimal representative models
+# consumed by contracts and path tests; it contains no assertions itself.
 """A public copula fixture and the mathematical contract it must satisfy."""
 copula_case(name, build; kind=:continuous, rosenblatt=true) =
     (; name, build, kind, rosenblatt)
@@ -56,7 +58,8 @@ const COPULA_CASES = (
     copula_case("empirical EV multivariate", () -> EmpiricalEVCopula{3}(
         _FIXTURE_DATA3; degree=1, pseudo_values=false)),
     copula_case("generic EV", () -> ExtremeValueCopula{2}(Copulas.GalambosTail(1.0))),
-    copula_case("discrete spectral", () -> DiscreteSpectralCopula([0.7 0.3; 0.2 0.8]);
+    copula_case("discrete spectral", () -> ExtremeValueCopula{2}(
+        DiscreteSpectralTail([0.7 0.3; 0.2 0.8]));
         kind=:singular, rosenblatt=false),
     copula_case("Gaussian", () -> GaussianCopula{3}(0.3)),
     copula_case("Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0])),

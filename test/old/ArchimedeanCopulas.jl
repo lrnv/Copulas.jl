@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves detailed Archimedean generator, frailty,
+# Williamson, density, fitting, and numerical regressions pending classification.
 
 @testset "Williamson real orders and exact lower-order radial" begin
     X = Dirac(2.0)

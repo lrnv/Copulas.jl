@@ -1,3 +1,5 @@
+# Public-component layer: exhaustively covers public EV-tail families and
+# verifies stable-tail, Pickands, derivative, and reconstruction identities.
 const TAIL_CASES = (
     (Copulas.AsymGalambosTail(1.0, 0.4, 0.6), 2),
     (Copulas.AsymLogTail(1.5, 0.4, 0.6), 2),

@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves Gaussian and Student copula reference,
+# fitting, marginal, and numerical regressions pending focused migration.
 @testset "GaussianCopula" begin
     # [GenericTests integration]: Maybe. The broken fit on mixed marginals is out-of-scope for generic copula properties; keep here.
     Random.seed!(rng,123)

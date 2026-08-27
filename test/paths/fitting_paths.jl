@@ -1,3 +1,5 @@
+# Mechanism-path layer: exercises representative Sklar, empirical, covariance,
+# optimizer, and model-result fitting routes beyond the universal fit contract.
 @testset "public Sklar fitting path" begin
     source = SklarDist(ClaytonCopula{2}(1.0), (Normal(), Exponential()))
     data = rand(StableRNG(111), source, 16)

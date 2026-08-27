@@ -1,3 +1,5 @@
+# Public-component layer: exhaustively covers public generator families and
+# verifies their transform, inverse, derivative, and reconstruction identities.
 const GENERATOR_CASES = (
     Copulas.AMHGenerator(0.5),
     Copulas.BB1Generator(1.2, 1.5),

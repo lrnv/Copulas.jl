@@ -45,25 +45,6 @@ Base.eltype(::DiscreteSpectralTail{T}) where {T} = T
 Distributions.params(tail::DiscreteSpectralTail) = (B = tail.B,)
 _is_valid_in_dim(tail::DiscreteSpectralTail, d::Int) = size(tail.B, 1) == d
 
-"""
-    DiscreteSpectralCopula(B)
-
-Construct the extreme-value copula associated with the discrete spectral
-coefficient matrix `B`.
-"""
-function DiscreteSpectralCopula(B::AbstractMatrix)
-    tail = DiscreteSpectralTail(B)
-    return ExtremeValueCopula(size(tail.B, 1), tail)
-end
-
-DiscreteSpectralCopula(tail::DiscreteSpectralTail) =
-    ExtremeValueCopula(size(tail.B, 1), tail)
-
-DiscreteSpectralCopula(d::Integer, B::AbstractMatrix) =
-    ExtremeValueCopula{d}(DiscreteSpectralTail(B))
-DiscreteSpectralCopula(d::Integer, tail::DiscreteSpectralTail) =
-    ExtremeValueCopula{d}(tail)
-
 function ℓ(tail::DiscreteSpectralTail, x)
     d, m = size(tail.B)
     T = promote_type(eltype(tail.B), typeof(first(x)))

@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves broad SklarDist family composition,
+# conditioning, fitting, support, and matrix-interface regressions.
 @testset "Generic API plumbing" begin
     GenericModels = (
         # 3D Gaussian copula with modest correlations

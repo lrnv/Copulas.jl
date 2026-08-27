@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves subset permutation, reconstruction, and
+# family-specific parameter-projection regressions pending focused migration.
 # Full-permutation `subsetdims` (p == d). Reordering *all* coordinates with a
 # non-identity permutation of `1:d` previously threw `@assert p < d`; it now
 # returns the correctly-reordered copula. (The identity `dims == 1:d` still

@@ -1,3 +1,5 @@
+# Public-API contract: applies the universal distribution, sampling, subsetting,
+# conditioning, Rosenblatt, and dependence-measure behavior to every family.
 struct CopulaContractContext{TU,TM}
     u::TU
     U::TM
@@ -60,6 +62,8 @@ function test_density_contract(C, ctx, kind)
     @test logpdf(C, reshape(ctx.u, :, 1)) ≈ log.(matrix_pdf)
     @test all(isfinite, matrix_pdf)
     @test loglikelihood(C, ctx.U) isa Real
+    @test_throws ArgumentError logpdf(C, zeros(length(C) + 1))
+    @test_throws ArgumentError logpdf(C, zeros(length(C) + 1, 1))
 end
 
 function test_subsetting_contract(C, ctx)
@@ -182,6 +186,16 @@ function test_copula_contract(case, seed)
         test_rosenblatt_contract(C, ctx, case.rosenblatt)
         test_dependence_contract(C, case.kind)
     end
+end
+
+@testset "public copula registry is exhaustive" begin
+    public_families = Set(getfield(Copulas, symbol) for symbol in PUBLIC_SYMBOLS
+        if getfield(Copulas, symbol) isa Type &&
+           symbol !== :Copula &&
+           getfield(Copulas, symbol) <: Copulas.Copula)
+    represented = Set(typeof(case.build()) for case in COPULA_CASES)
+    @test all(F -> any(T -> T <: F, represented), public_families)
+    @test all(T -> any(F -> T <: F, public_families), represented)
 end
 
 @testset "public copula contract" begin

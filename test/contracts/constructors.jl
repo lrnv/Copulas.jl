@@ -1,3 +1,5 @@
+# Public-API contract: verifies every public copula family constructor, the
+# type-stable `{d}` and runtime `(d, ...)` forms, inferred forms, and rebuilding.
 function test_constructor_case(case)
     typed = Ref{Any}()
     @testset "$(case.name)" begin
@@ -47,9 +49,9 @@ end
 
     B = [0.7 0.3; 0.2 0.8]
     spectral = DiscreteSpectralTail(B)
-    same_model(DiscreteSpectralCopula(B), DiscreteSpectralCopula(2, B))
-    same_model(DiscreteSpectralCopula(spectral),
-               DiscreteSpectralCopula(2, spectral))
+    same_model(ExtremeValueCopula(2, spectral),
+               ExtremeValueCopula{2}(spectral))
+    @test_throws ArgumentError ExtremeValueCopula{3}(spectral)
     same_model(BC2Copula([0.3, 0.7, 0.5]),
                BC2Copula{3}([0.3, 0.7, 0.5]))
     same_model(MOCopula([0.2, 0.3, 0.4]),

@@ -1,3 +1,5 @@
+# Legacy migration layer: preserves constructor validation and specialization
+# regressions not yet proven redundant with the public constructor contract.
 @testset "dimension-first constructors" begin
     @test @inferred(IndependentCopula{3}()) isa IndependentCopula{3}
     @test @inferred(MCopula{3}()) isa MCopula{3}
