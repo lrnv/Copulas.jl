@@ -78,6 +78,11 @@ end
 dA(tail::DiscreteSpectralTail, t::Real) =
     ForwardDiff.derivative(z -> A(tail, z), t)
 
+# Its second derivative is a measure, not an ordinary function.  Use the
+# generic copula estimator rather than lose the atoms in the smooth
+# extreme-value formula.
+τ(C::ExtremeValueCopula{2,<:DiscreteSpectralTail}) = @invoke τ(C::Copula)
+
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     fill!(X, zero(T))
