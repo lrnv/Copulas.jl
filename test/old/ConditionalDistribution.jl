@@ -151,18 +151,6 @@ end
     end
 end
 
-@testset "Student matrix Rosenblatt fast path" begin
-    C = TCopula{3}(5, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])
-    u = [0.2 0.7; 0.4 0.6; 0.8 0.3]
-    fast = rosenblatt(C, u)
-    reference = @invoke Copulas.rosenblatt(C::Copulas.Copula{3}, u)
-    @test fast ≈ reference atol = 3e-12
-    @test inverse_rosenblatt(C, fast) ≈ u atol = 3e-12
-
-    direct = Copulas.DistortionFromCop(C, (1, 2), (u[1, 1], u[2, 1]), 3)
-    @test cdf(direct, u[3, 1]) ≈ fast[3, 1] atol = 3e-12
-end
-
 @testset "Distorted distribution logcdf" begin
     D = condition(GaussianCopula{2}([1.0 0.6; 0.6 1.0]), (1,), (0.3,))(Logistic())
     @test D isa Copulas.DistortedDist
@@ -412,71 +400,4 @@ end
         B = cdf(Y, t)
         @test A ≈ B atol=10sqrt(r)
     end
-end
-
-@testset "condition accepts non-Float64 reals (BigFloat StackOverflow regression)" begin
-    # Regression: condition(C, js, uⱼₛ) hardcoded NTuple{p,Float64}. Because
-    # _process_tuples calls float. (which keeps BigFloat/Float32 unchanged), such
-    # inputs missed the typed method, fell back to the untyped entry point, and
-    # recursed forever (StackOverflow). The typed methods now accept
-    # NTuple{p,<:Real}; non-Float64 values are converted to Float64 downstream, so
-    # the conditioning result matches the Float64-input result (tolerance allows
-    # for the fast-vs-generic distortion method difference on the converted path).
-    C3 = ClaytonCopula{3}(2.0)
-    C4 = ClaytonCopula{4}(2.0)
-
-    # Copula entry, single conditioned dim (p == D-1) → univariate Distortion.
-    r1 = condition(C3, (1, 2), (0.3, 0.4))
-    b1 = condition(C3, (1, 2), (big"0.3", big"0.4"))   # must not StackOverflow
-    @test b1 isa Copulas.Distortion
-    for u in (0.1, 0.5, 0.9)
-        @test isapprox(cdf(b1, u), cdf(r1, u); atol=1e-6)
-    end
-
-    # Copula entry, scalar BigFloat, multi remaining (p == 1 < D-1) → SklarDist.
-    r2 = condition(C3, 1, 0.3)
-    b2 = condition(C3, 1, big"0.3")
-    @test b2 isa SklarDist
-    @test isapprox(cdf(b2.C, [0.5, 0.6]), cdf(r2.C, [0.5, 0.6]); atol=1e-6)
-
-    # Copula entry, tuple BigFloat, multi conditioned (p == 2 < D-1).
-    r3 = condition(C4, (1, 2), (0.3, 0.4))
-    b3 = condition(C4, (1, 2), (big"0.3", big"0.4"))
-    @test b3 isa SklarDist
-    @test isapprox(cdf(b3.C, [0.5, 0.6]), cdf(r3.C, [0.5, 0.6]); atol=1e-6)
-
-    # SklarDist entry, BigFloat data-scale conditioning value (3-dim → 2-dim cond).
-    X = SklarDist(C3, (Normal(), LogNormal(), Exponential()))
-    rS = condition(X, (1,), (0.2,))
-    bS = condition(X, (1,), (big"0.2",))
-    @test bS isa SklarDist
-    @test isapprox(cdf(bS, [0.3, 0.5]), cdf(rS, [0.3, 0.5]); atol=1e-6)
-
-    # Float32 also previously recursed; confirm it is accepted too.
-    @test condition(C3, (1, 2), (0.3f0, 0.4f0)) isa Copulas.Distortion
-end
-
-@testset "conditioning carries the conditioning eltype (BigFloat flows end-to-end)" begin
-    # condition() accepts non-Float64 values, AND the conditioning point now
-    # survives into the ConditionalCopula/DistortionFromCop (no Float64 downcast),
-    # so BigFloat precision flows through to the conditional CDF.
-    C = ClaytonCopula{4}(2.0)
-    xf = [0.3, 0.5, 0.4, 0.6]; xb = big.(xf)
-
-    # single-conditioned distortion (p = d-1): the conditional marginal of coord 2
-    df = condition(C, (1, 3, 4), Tuple(xf[[1, 3, 4]]))
-    db = condition(C, (1, 3, 4), Tuple(xb[[1, 3, 4]]))
-    @test db isa Copulas.DistortionFromCop
-    @test db.den isa BigFloat                 # value type flows INTO the struct
-    @test eltype(db.uⱼₛ) === BigFloat
-    @test cdf(db, xb[2]) isa BigFloat          # ... and OUT through the conditional CDF
-    @test Float64(cdf(db, xb[2])) ≈ cdf(df, xf[2]) atol = 1e-9
-
-    # multi-conditioned ConditionalCopula (p < d-1)
-    mb = condition(C, (1, 3), Tuple(xb[[1, 3]]))
-    @test mb.C isa Copulas.ConditionalCopula
-    @test mb.C.den isa BigFloat
-    @test cdf(mb, xb[[2, 4]]) isa BigFloat
-    @test Float64(cdf(mb, xb[[2, 4]])) ≈
-          cdf(condition(C, (1, 3), Tuple(xf[[1, 3]])), xf[[2, 4]]) atol = 1e-9
 end

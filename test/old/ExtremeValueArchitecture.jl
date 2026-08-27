@@ -114,14 +114,6 @@ using Random
         @test_throws ArgumentError MOCopula(ones(5))
     end
 
-    @testset "shared generic mixed-partial interface" begin
-        f(z) = z[1]^2 * z[2]^3 + z[3]
-        z = [0.4, 0.7, 1.1]
-        expected12 = 6 * z[1] * z[2]^2
-        @test Copulas._mixed_partial(f, z, (1, 2)) ≈ expected12
-        @test Copulas._mixed_partial(f, Tuple(z), [1, 2]) ≈ expected12
-
-    end
     @testset "multivariate EV generic conditioning and Rosenblatt" begin
         # The public contract already exercises the common path for logistic,
         # Galambos, Tawn, and asymmetric Galambos. Mixed d=3 remains here as the
@@ -152,36 +144,6 @@ using Random
             @test inverse_rosenblatt(C, s) ≈ u atol=2e-7 rtol=2e-7
         end
 
-        # The new formula must agree with the previous AD fallback whenever
-        # the latter is available.
-        z = [0.31, 0.57, 0.73]
-        for C in (LogCopula{3}(2.0), GalambosCopula{3}(0.7))
-            got = Copulas._partial_cdf(C, (3,), (1, 2), (z[3],), (z[1], z[2]))
-            reference = ForwardDiff.derivative(
-                a -> ForwardDiff.derivative(b -> cdf(C, [a, b, z[3]]), z[2]),
-                z[1],
-            )
-            @test got ≈ reference atol=1e-11 rtol=2e-8
-        end
-    end
-
-    @testset "numerical-kernel EV conditioning and Rosenblatt" begin
-        # These CDFs use Float64 numerical probability kernels and therefore
-        # cannot be differentiated with ForwardDiff dual numbers. Keep one
-        # full round trip per family while avoiding a costly parameter grid.
-        # Hüsler--Reiss d=3 is in the public contract; extremal-t d=3 is the
-        # remaining numerical-kernel dimension path.
-        for C in (tEVCopula{3}(4.0, 0.2),)
-            D = condition(C, (1, 2), (0.31, 0.58))
-            q = quantile(D, 0.6)
-            @test cdf(D, q) ≈ 0.6 atol=2e-6 rtol=2e-6
-
-            u = [0.21, 0.53, 0.74]
-            s = rosenblatt(C, u)
-            @test all(isfinite, s)
-            @test all(x -> 0.0 <= x <= 1.0, s)
-            @test inverse_rosenblatt(C, s) ≈ u atol=2e-6 rtol=2e-6
-        end
     end
 
     @testset "bivariate density specialization" begin

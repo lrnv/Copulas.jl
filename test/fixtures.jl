@@ -233,15 +233,3 @@ const FITTING_CASES = (
     fitting_case("survival", () -> SurvivalCopula{2}(
         ClaytonCopula{2}(1.5), (1,)); method=:itau),
 )
-
-const PATH_CASES = (
-    generic_cdf=FGMCopula{2}(0.4),
-    archimedean_frailty=FrankCopula{3}(2.0),
-    matrix_sampler=ClaytonCopula{5}(1.5),
-    biv_ev_distortion=GalambosCopula{2}(1.0),
-    generic_condition=RafteryCopula{2}(0.5),
-    singular_condition=MCopula{2}(),
-    numerical_ev=HuslerReissCopula{3}(1.0),
-    fractional_williamson=LiouvilleCopula{2}(
-        Copulas.ClaytonGenerator(1.0), (0.75, 1.25)),
-)
