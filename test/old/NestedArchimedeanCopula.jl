@@ -201,34 +201,6 @@ end
     end
 
     # -----------------------------------------------------------------------
-    # 2. Uncensored density vs the independent ForwardDiff reference.
-    # -----------------------------------------------------------------------
-    @testset "uncensored density vs independent ForwardDiff reference" begin
-        # Same-family Clayton: root(1.5) over two Clayton(3.0) panels (dims 1:2, 3:4).
-        C = NestedArchimedeanCopula(ClaytonGenerator(1.5);
-                children = [ClaytonCopula{2}(3.0), ClaytonCopula{2}(3.0)])
-        for u0 in ([0.25, 0.40, 0.65, 0.80], [0.72, 0.31, 0.58, 0.44])
-            u = big.(u0)
-            spec = RefSpec(ClaytonGenerator(big(1.5)),
-                       Tuple{BigFloat,Bool}[],
-                       [RefSpec(ClaytonGenerator(big(3.0)), [(u[1], false), (u[2], false)]),
-                        RefSpec(ClaytonGenerator(big(3.0)), [(u[3], false), (u[4], false)])])
-            @test logpdf(C, u) ≈ ref_logpdf(spec) atol = 1e-10
-        end
-        # Heterogeneous: Clayton root over a Gumbel panel + a Frank panel.
-        H = NestedArchimedeanCopula(ClaytonGenerator(1.5);
-                children = [GumbelCopula{2}(2.0), FrankCopula{2}(3.0)])
-        for u0 in ([0.23, 0.47, 0.71, 0.59], [0.76, 0.35, 0.42, 0.68])
-            u = big.(u0)
-            spec = RefSpec(ClaytonGenerator(big(1.5)),
-                       Tuple{BigFloat,Bool}[],
-                       [RefSpec(GumbelGenerator(big(2.0)), [(u[1], false), (u[2], false)]),
-                        RefSpec(FrankGenerator(big(3.0)),  [(u[3], false), (u[4], false)])])
-            @test logpdf(H, u) ≈ ref_logpdf(spec) atol = 1e-10
-        end
-    end
-
-    # -----------------------------------------------------------------------
     # 3. Uncensored density vs external acopula reference log-likelihoods.
     #    Files in test/data/nested/ : 2-level nesting, equal-size sectors with
     #    a single sector parameter; compared at Float64 tolerance.

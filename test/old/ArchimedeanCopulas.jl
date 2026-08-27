@@ -41,9 +41,6 @@
     @test recovered.order == 4.5
 
     generic_radial = Copulas.𝒲₋₁(Copulas.FrankGenerator(-2.0), 2)
-    x₀, h = 1.0, 1e-5
-    cdf_derivative = (cdf(generic_radial, x₀ + h) - cdf(generic_radial, x₀ - h)) / (2h)
-    @test pdf(generic_radial, x₀) ≈ cdf_derivative rtol=1e-7
     @test 𝒲(generic_radial, 2) === generic_radial.G
     remapped = 𝒲(generic_radial, 3)
     @test remapped.X === generic_radial

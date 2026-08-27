@@ -17,21 +17,6 @@
     @test_throws ArgumentError condition(C, 1, 1.1)
 end
 
-@testset "Distortion densities agree with their cdf derivatives" begin
-    C = FGMCopula{2}(0.4)
-    for j in 1:2
-        i = 3 - j
-        D = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (0.4,), i)
-        for u in (0.25, 0.65)
-            reference = ForwardDiff.derivative(t -> cdf(D, t), u)
-            @test isapprox(pdf(D, u), reference; atol=1e-8, rtol=1e-8)
-            @test isapprox(cdf(D, quantile(D, u)), u; atol=1e-6, rtol=1e-6)
-        end
-        @test pdf(D, -0.1) == 0
-        @test logpdf(D, 1.1) == -Inf
-    end
-end
-
 @testset "Plackett distortion closed-form quantile" begin
     for θ in (0.5, 2.0), j in 1:2
         C = PlackettCopula{2}(θ)
@@ -320,73 +305,6 @@ end
         q = quantile(D, p)
         @test 0 <= q <= 1
         @test cdf(D, q) ≈ p atol = 2e-12
-    end
-end
-
-@testset "Generic Distortion vs AD (bivariate small subset)" begin
-    # Compare the GENERIC DistortionFromCop (forced via @invoke) against AD-based reference
-    # on a tiny, fast subset to validate the generic path independent of family specifics.
-    examples = (
-        FGMCopula{2}(0.4),
-        ArchimaxCopula{2}(Copulas.JoeGenerator(2.5),      Copulas.AsymGalambosTail(0.35, 0.65, 0.3))
-    )
-    us = (0.2, 0.5, 0.8)
-    for C in examples
-        # j = conditioned index, i = remaining index
-        for j in 1:2
-            i = 3 - j
-            for v in (0.3, 0.7)
-                # Force the generic DistortionFromCop
-                Dgen = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{2}, (j,), (v,), i)
-                vals_gen = cdf.(Ref(Dgen), us)
-
-                refs = similar(collect(us))
-                if j == 1
-                    # condition on first coordinate, vary derivative w.r.t u1
-                    # numerator at (u1=v, u2=u), denominator at (u1=v, u2≈1)
-                    for (k, u) in pairs(us)
-                        refs[k] = ForwardDiff.derivative(w -> cdf(C, [w, u]), v)
-                    end
-                else
-                    # j == 2: derivative w.r.t u2; points (u1=u, u2=v) and (u1≈1, u2=v)
-                    for (k, u) in pairs(us)
-                        refs[k] = ForwardDiff.derivative(t -> cdf(C, [u, t]), v)
-                    end
-                end
-
-                for (vg, r) in zip(vals_gen, refs)
-                    @test isfinite(r) && 0.0 <= r <= 1.0
-                    @test isapprox(vg, r; atol=1e-3, rtol=1e-3)
-                end
-            end
-        end
-    end
-end
-
-@testset "Generic ConditionalCopula vs AD (3D, p=1)" begin
-    # Validate the GENERIC ConditionalCopula cdf against an AD-based reference
-    # on a tiny 3D subset for two representative families.
-    examples = (
-        FrankCopula{3}(2.7),
-        ClaytonCopula{3}(1.2),
-    )
-    pts = ((0.2, 0.3), (0.5, 0.5), (0.8, 0.6))
-    for C in examples
-        js = (3,)
-        for w in (0.25, 0.7)
-            # Force the GENERIC equivalent to conditioning: 
-            CC      = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{3}, js, (w,))
-            margin1 = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{3}, js, (w,), 1)
-            margin2 = @invoke Copulas.DistortionFromCop(C::Copulas.Copula{3}, js, (w,), 2)
-            CondObj = SklarDist(CC, (margin1, margin2))
-            for (u1, u2) in pts
-                val_fast = cdf(CondObj, [u1, u2])
-                # AD reference: ratio of partial derivatives w.r.t. u3 at (u1,u2,w) vs (≈1,≈1,w)
-                val_ref = ForwardDiff.derivative(t -> cdf(C, [u1, u2, t]), w)
-                @test isfinite(val_ref) && 0.0 <= val_ref <= 1.0
-                @test isapprox(val_fast, val_ref; atol=5e-4, rtol=5e-4)
-            end
-        end
     end
 end
 

@@ -22,20 +22,7 @@ end
     @test all(isapprox.(vec(mean(U; dims=2)), 0.5; atol=0.03, rtol=0))
 end
 
-@testset "Testing survival stuff" begin
-    # [GenericTests integration]: Yes. Symmetry of survival transformations on pdf/cdf is generic; we can add survival invariance checks.
-    Random.seed!(rng,123)
-    C = ClaytonCopula{2}(3.0) # bivariate clayton with theta = 3.0
-    C90 = SurvivalCopula{2}(C,(1,)) # flips the first dimension
-    C270 = SurvivalCopula{2}(C,(2,)) # flips only the second dimension.
-    C180 = SurvivalCopula{2}(C,(1,2)) # flips both dimensions.
-
-    u1,u2 = rand(rng,2)
-    p = pdf(C,[u1,u2])
-    @test pdf(C90,[1-u1,u2]) == p
-    @test pdf(C270,[u1,1-u2]) == p
-    @test pdf(C180,[1-u1,1-u2]) == p
-
+@testset "Survival subsetting and conditioning regressions" begin
     C3 = SurvivalCopula{3}(ClaytonCopula{3}(2.0), (3,))
     S13 = subsetdims(C3, (1, 3))
     Sref = SurvivalCopula{2}(ClaytonCopula{2}(2.0), (2,))

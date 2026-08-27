@@ -1,17 +1,6 @@
 # Mathematical-path layer: expensive CDF/PDF, derivative, integral, rectangle,
 # and transform equivalences are checked once per implementation mechanism,
 # not for every parameterization of every public family.
-const DENSITY_COHERENCE_CASES = (
-    ClaytonCopula{2}(1.5),
-    GaussianCopula{2}(0.3),
-    GalambosCopula{2}(1.0),
-    ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0)),
-    FGMCopula{2}(0.4),
-    LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
-)
-
-const CDF_DERIVATIVE_CASES = DENSITY_COHERENCE_CASES[1:5]
-
 # Classification inherited from the former generic suite:
 # - universal invariants: copula margins, support and API identities live in
 #   contracts/copulas.jl;
@@ -22,24 +11,37 @@ const CDF_DERIVATIVE_CASES = DENSITY_COHERENCE_CASES[1:5]
 
 # Smooth polynomial oracle. Its closed forms are independent of the generic
 # integration, conditioning and Rosenblatt machinery exercised below.
-struct PolynomialOracleCopula{T} <: Copulas.Copula{2}
+struct PolynomialOracleCopula{d,T} <: Copulas.Copula{d}
     θ::T
 end
+PolynomialOracleCopula(θ) = PolynomialOracleCopula{2,typeof(θ)}(θ)
 Distributions.params(C::PolynomialOracleCopula) = (; θ=C.θ)
 function Copulas._cdf(C::PolynomialOracleCopula, u)
-    x, y = u
-    return x * y * (1 + C.θ * (1 - x) * (1 - y))
+    return prod(u) * (1 + C.θ * prod(1 .- u))
 end
 function Distributions._logpdf(C::PolynomialOracleCopula, u)
-    x, y = u
-    return log1p(C.θ * (1 - 2x) * (1 - 2y))
+    return log1p(C.θ * prod(1 .- 2 .* u))
 end
 _oracle_cdf(C::PolynomialOracleCopula, u) =
-    u[1] * u[2] * (1 + C.θ * (1 - u[1]) * (1 - u[2]))
+    prod(u) * (1 + C.θ * prod(1 .- u))
 _oracle_pdf(C::PolynomialOracleCopula, u) =
-    1 + C.θ * (1 - 2u[1]) * (1 - 2u[2])
+    1 + C.θ * prod(1 .- 2 .* u)
 _oracle_conditional_cdf(C::PolynomialOracleCopula, conditioned, target) =
     target * (1 + C.θ * (1 - 2conditioned) * (1 - target))
+
+function Distributions._rand!(rng::Distributions.AbstractRNG,
+                              C::PolynomialOracleCopula{2},
+                              U::AbstractMatrix{T}) where {T<:Real}
+    for j in axes(U, 2)
+        x, p = rand(rng), rand(rng)
+        y = Roots.find_zero(
+            target -> _oracle_conditional_cdf(C, x, target) - p,
+            (zero(T), one(T)), Roots.Bisection())
+        U[1, j] = x
+        U[2, j] = y
+    end
+    return U
+end
 
 # Generator oracle: every derivative and inverse except ϕ itself must use the
 # defaults from Generator.jl.
@@ -59,15 +61,55 @@ Distributions.params(tail::LogisticOracleTail) = (; θ=tail.θ)
 Copulas.ℓ(tail::LogisticOracleTail, x) =
     sum(xᵢ -> xᵢ^tail.θ, x)^(inv(tail.θ))
 
+# Complementary tail oracle: only Pickands' A is supplied, so ℓ and the first
+# two Pickands derivatives must all use the generic BivariatePickandsTail API.
+struct QuadraticPickandsOracleTail{T} <: Copulas.BivariatePickandsTail
+    κ::T
+end
+Distributions.params(tail::QuadraticPickandsOracleTail) = (; κ=tail.κ)
+Copulas.A(tail::QuadraticPickandsOracleTail, t::Real) =
+    1 - tail.κ * t * (1 - t)
+
+# Differentiate once in every coordinate without using the nested-copula
+# Faà di Bruno implementation. This is intentionally small: family variants and
+# censored/deep-tree regressions belong to the family and dispatch layers.
+function _oracle_mixed_partial(f, u, coordinates=eachindex(u))
+    function recurse(k, x)
+        k > length(coordinates) && return f(x)
+        i = coordinates[k]
+        return ForwardDiff.derivative(x[i]) do value
+            T = promote_type(typeof(value), eltype(x))
+            next = T[j == i ? value : x[j] for j in eachindex(x)]
+            recurse(k + 1, next)
+        end
+    end
+    return recurse(1, u)
+end
+
 @testset "generic smooth-copula oracle" begin
     C = PolynomialOracleCopula(0.4)
     u = [0.37, 0.68]
     @test cdf(C, u) ≈ _oracle_cdf(C, u)
     @test pdf(C, u) ≈ _oracle_pdf(C, u)
+    @test cdf(C, [u[1], 1.0]) ≈ u[1]
+    @test cdf(C, [1.0, u[2]]) ≈ u[2]
+    @test max(sum(u) - 1, 0) <= cdf(C, u) <= minimum(u)
 
     # Bypass the analytic _cdf method and exercise Copula.jl's density integral.
     integrated = invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
     @test integrated ≈ _oracle_cdf(C, u) atol=2e-5
+
+    lower = [0.15, 0.25]
+    upper = [0.55, 0.65]
+    oracle_rectangle = (
+        _oracle_cdf(C, upper) - _oracle_cdf(C, [lower[1], upper[2]]) -
+        _oracle_cdf(C, [upper[1], lower[2]]) + _oracle_cdf(C, lower)
+    )
+    @test Copulas.measure(C, lower, upper) ≈ oracle_rectangle
+    split = 0.4
+    @test Copulas.measure(C, lower, upper) ≈
+          Copulas.measure(C, lower, [split, upper[2]]) +
+          Copulas.measure(C, [split, lower[2]], upper)
 
     D = condition(C, 1, u[1])
     @test D isa Copulas.DistortionFromCop
@@ -80,6 +122,98 @@ Copulas.ℓ(tail::LogisticOracleTail, x) =
     @test inverse_rosenblatt(C, R) ≈ u atol=2e-6
     @test Copulas.ρ(C) ≈ C.θ / 3 atol=2e-5
     @test Copulas.β(C) ≈ C.θ / 4
+    @test Copulas.τ(C) ≈ 2 * C.θ / 9 atol=3e-2
+
+    gini_integrand(v) = (
+        1 + minimum(v) - maximum(v) + abs(sum(v) - 1)
+    ) / 2
+    gini_expectation, _ = HCubature.hcubature(
+        v -> gini_integrand(v) * _oracle_pdf(C, v), zeros(2), ones(2))
+    @test Copulas.γ(C) ≈ (gini_expectation - 0.5) / 0.25 atol=3e-2
+    entropy, _ = HCubature.hcubature(zeros(2), ones(2)) do v
+        density = _oracle_pdf(C, v)
+        -density * log(density)
+    end
+    @test Copulas.ι(C) ≈ entropy atol=3e-2
+    @test Copulas.λₗ(C) ≈ 0 atol=1e-8
+    @test Copulas.λᵤ(C) ≈ 0 atol=1e-8
+
+    conditional_mass, _ = QuadGK.quadgk(y -> pdf(D, y), 0.0, 1.0)
+    @test conditional_mass ≈ 1
+    @test pdf(C, u) ≈ pdf(D, u[2])
+
+    C3 = PolynomialOracleCopula{3,Float64}(0.4)
+    conditioned = 0.41
+    target = [0.37, 0.68]
+    H = condition(C3, (3,), (conditioned,))
+    expected_conditional = prod(target) * (
+        1 + C3.θ * prod(1 .- target) * (1 - 2conditioned))
+    @test cdf(H, target) ≈ expected_conditional
+    @test pdf(H, target) ≈
+          1 + C3.θ * prod(1 .- 2 .* target) * (1 - 2conditioned)
+end
+
+@testset "Sklar change-of-variables identities" begin
+    C = PolynomialOracleCopula(0.4)
+    margins = (Normal(0.3, 1.2), Gamma(2.3, 0.8))
+    D = SklarDist(C, margins)
+    x = [0.1, 1.4]
+    u = [cdf(margins[i], x[i]) for i in eachindex(x)]
+
+    @test cdf(D, x) ≈ _oracle_cdf(C, u)
+    @test pdf(D, x) ≈
+          _oracle_pdf(C, u) * prod(pdf(margins[i], x[i]) for i in eachindex(x))
+end
+
+@testset "Liouville radial-Dirichlet identity" begin
+    α = (0.8, 1.4)
+    α₀ = sum(α)
+    radial = Beta(2.3, 1.7)
+    C = LiouvilleCopula{2}(WilliamsonGenerator(radial, α₀), α)
+    u = [0.75, 0.80]
+    margins = ntuple(i -> Copulas.𝒲₋₁(C.G, α[i]), 2)
+    x = ntuple(i -> quantile(margins[i], 1 - u[i]), 2)
+    direction = Beta(α...)
+
+    # Directly integrate the defining R * Dirichlet representation. The
+    # production bivariate CDF uses expectation dispatch on the radial law.
+    integrand(r) = begin
+        r <= sum(x) && return 0.0
+        lo = cdf(direction, x[1] / r)
+        hi = cdf(direction, 1 - x[2] / r)
+        pdf(radial, r) * max(0.0, hi - lo)
+    end
+    expected, _ = QuadGK.quadgk(integrand, sum(x), 1.0)
+    @test cdf(C, u) ≈ expected atol=2e-7
+
+    # The copula density must be the mixed derivative of that independently
+    # integrated CDF, including both non-integer marginal transformations.
+    # The CDF itself contains adaptive quadrature and numerical marginal
+    # inversions; a moderately wide stencil avoids differentiating their noise.
+    h = 1e-2
+    mixed = (
+        cdf(C, u .+ (h, h)) - cdf(C, u .+ (h, -h)) -
+        cdf(C, u .+ (-h, h)) + cdf(C, u .- (h, h))
+    ) / (4h^2)
+    @test pdf(C, u) ≈ mixed atol=5e-4 rtol=5e-4
+end
+
+@testset "nested Archimedean composition identity" begin
+    root = Copulas.ClaytonGenerator(1.5)
+    left = Copulas.GumbelGenerator(2.0)
+    right = Copulas.FrankGenerator(3.0)
+    C = NestedArchimedeanCopula(root;
+        children=[GumbelCopula{2}(2.0), FrankCopula{2}(3.0)])
+    u = [0.23, 0.47, 0.71, 0.59]
+
+    child_value(G, x, I) = Copulas.ϕ(G, sum(Copulas.ϕ⁻¹(G, x[i]) for i in I))
+    nested_cdf(x) = Copulas.ϕ(root,
+        Copulas.ϕ⁻¹(root, child_value(left, x, 1:2)) +
+        Copulas.ϕ⁻¹(root, child_value(right, x, 3:4)))
+
+    @test cdf(C, u) ≈ nested_cdf(u)
+    expected_density = _oracle_mixed_partial(nested_cdf, u)
+    @test pdf(C, u) ≈ expected_density atol=2e-8 rtol=2e-8
 end
 
 @testset "generic generator oracle" begin
@@ -99,6 +233,10 @@ end
         @test Copulas.ϕ⁻¹⁽¹⁾(G, p) ≈
               -G.θ * (-log(p))^(G.θ - 1) / p
     end
+
+    exponential = PowerExponentialOracleGenerator(1.0)
+    t = 0.7
+    @test Copulas.ϕ⁽ᵏ⁾⁻¹(exponential, 2, exp(-t); start_at=t) ≈ t
 end
 
 @testset "generic tail and extreme-value oracle" begin
@@ -107,6 +245,30 @@ end
     expected_ℓ = sum(x .^ tail.θ)^(inv(tail.θ))
     @test Copulas.ℓ(tail, x) ≈ expected_ℓ
     @test Copulas.A(tail, Tuple(x ./ sum(x))) ≈ expected_ℓ / sum(x)
+    S = sum(x .^ tail.θ)
+    first_x = x[1]^(tail.θ - 1) * S^(inv(tail.θ) - 1)
+    mixed_xy = (1 - tail.θ) * prod(x .^ (tail.θ - 1)) *
+               S^(inv(tail.θ) - 2)
+    @test Copulas.ellpartial(tail, x, (1,)) ≈ first_x
+    @test Copulas.ellpartial(tail, x, (1, 2)) ≈ mixed_xy
+    @test maximum(x) <= Copulas.ℓ(tail, x) <= sum(x)
+    @test Copulas.ℓ(tail, 1.7 .* x) ≈ 1.7 * Copulas.ℓ(tail, x)
+
+    y = reverse(x) .+ 0.2
+    λ = 0.37
+    @test Copulas.ℓ(tail, λ .* x .+ (1 - λ) .* y) <=
+          λ * Copulas.ℓ(tail, x) + (1 - λ) * Copulas.ℓ(tail, y)
+
+    x3 = [0.4, 0.7, 1.1]
+    S3 = sum(x3 .^ tail.θ)
+    for I in ((1,), (1, 3), (1, 2, 3))
+        k = length(I)
+        coefficient = k == 1 ? one(tail.θ) :
+            prod(1 - j * tail.θ for j in 1:(k - 1))
+        expected = coefficient * S3^(inv(tail.θ) - k) *
+                   prod(x3[i]^(tail.θ - 1) for i in I)
+        @test Copulas.ellpartial(tail, x3, I) ≈ expected
+    end
 
     C = ExtremeValueCopula{2}(tail)
     u = [0.37, 0.68]
@@ -123,6 +285,21 @@ end
     C3 = ExtremeValueCopula{3}(tail)
     u3 = [0.37, 0.55, 0.73]
     @test cdf(C3, u3 .^ 1.7) ≈ cdf(C3, u3)^1.7
+
+    pickands = QuadraticPickandsOracleTail(0.5)
+    weight = 0.37
+    expected_A = 1 - pickands.κ * weight * (1 - weight)
+    @test Copulas.A(pickands, weight) == expected_A
+    @test Copulas.dA(pickands, weight) ≈ pickands.κ * (2 * weight - 1)
+    @test Copulas.d²A(pickands, weight) ≈ 2 * pickands.κ
+    @test Copulas.ℓ(pickands, x) ≈ sum(x) * Copulas.A(pickands, x[1] / sum(x))
+
+    pickands_copula = ExtremeValueCopula{2}(pickands)
+    pickands_cdf(v) = exp(-sum(-log.(v)) *
+        Copulas.A(pickands, -log(v[1]) / sum(-log.(v))))
+    expected_density = ForwardDiff.hessian(pickands_cdf, u)[1, 2]
+    @test cdf(pickands_copula, u) ≈ pickands_cdf(u)
+    @test pdf(pickands_copula, u) ≈ expected_density atol=2e-6
 end
 
 @testset "generic Williamson oracle" begin
@@ -132,44 +309,20 @@ end
     expected = 1 - 2t * log(2) + t^2 / 2
     @test Copulas.ϕ(G, t) ≈ expected
     @test Copulas.𝒲₋₁(G, 3.0) === radial
-end
 
-@testset "CDF and density mathematical coherence" begin
-    for C in DENSITY_COHERENCE_CASES
-        @testset "$(nameof(typeof(C)))" begin
-            total, _ = HCubature.hcubature(u -> pdf(C, u), zeros(2), ones(2);
-                                            rtol=2e-3)
-            @test total ≈ 1 atol=5e-3
-
-            upper = [0.55, 0.65]
-            partial, _ = HCubature.hcubature(u -> pdf(C, u), zeros(2), upper;
-                                              rtol=2e-3)
-            @test partial ≈ cdf(C, upper) atol=5e-3
-
-            lower = [0.15, 0.25]
-            rectangle, _ = HCubature.hcubature(u -> pdf(C, u), lower, upper;
-                                                rtol=2e-3)
-            @test rectangle ≈ Copulas.measure(C, lower, upper) atol=5e-3
+    # exp(-t) is the Williamson transform of Gamma(d, 1) at every order d.
+    # The real-order case also exercises the exact beta-product reduction.
+    exponential = PowerExponentialOracleGenerator(1.0)
+    for order in (3, 2.4)
+        inverse = Copulas.𝒲₋₁(exponential, order)
+        reference = Gamma(order, 1.0)
+        for x in (0.4, 1.2, 3.0)
+            @test cdf(inverse, x) ≈ cdf(reference, x) atol=2e-7
+            @test pdf(inverse, x) ≈ pdf(reference, x) atol=2e-7
         end
-    end
-end
-
-@testset "density is the mixed CDF derivative" begin
-    for C in CDF_DERIVATIVE_CASES
-        u = [0.43, 0.61]
-        derivative = ForwardDiff.hessian(x -> cdf(C, x), u)[1, 2]
-        @test pdf(C, u) ≈ derivative atol=2e-4 rtol=2e-3
-    end
-end
-
-@testset "conditional CDF is the normalized CDF derivative" begin
-    for C in (ClaytonCopula{2}(1.5), GaussianCopula{2}(0.3),
-              GalambosCopula{2}(1.0), FGMCopula{2}(0.4))
-        conditioned = 0.41
-        target = 0.63
-        D = condition(C, 1, conditioned)
-        derivative = ForwardDiff.derivative(v -> cdf(C, [v, target]), conditioned)
-        @test cdf(D, target) ≈ derivative atol=2e-5 rtol=2e-5
+        for p in (0.2, 0.6, 0.9)
+            @test quantile(inverse, p) ≈ quantile(reference, p) atol=2e-6
+        end
     end
 end
 

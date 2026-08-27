@@ -44,7 +44,7 @@ max_monotony(G::Generator) = throw("This generator does not have a defined max m
 ϕ(G::Generator) = Base.Fix1(ϕ,G)
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
-ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
+ϕ⁻¹⁽¹⁾(G::Generator, t) = inv(ϕ⁽¹⁾(G, ϕ⁻¹(G, t)))
 function ϕ⁽ᵏ⁾(G::Generator, k::Int, t)
     k ≥ 0 || throw(ArgumentError("k must be non-negative"))
     return _mul_factorial(taylor(ϕ(G), t, k)[end], k)
