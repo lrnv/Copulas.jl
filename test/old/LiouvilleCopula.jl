@@ -13,11 +13,6 @@
         @test C13.G === C.G
         @test C13.α == (C.α[1], C.α[3])
 
-        source = Copulas.WilliamsonFromFrailty(LogNormal(), 2.0)
-        reduced = Copulas.WilliamsonBetaProduct(source, Beta(0.75, 1.25))
-        @test reduced isa Copulas.WilliamsonFromFrailty
-        @test reduced.order == 0.75
-
         dirac_radial = Copulas.WilliamsonFromFrailty(Dirac(2.0), 0.75)
         @test cdf(dirac_radial, 0.4) ≈ cdf(Gamma(0.75, 0.5), 0.4)
 
@@ -101,14 +96,6 @@
             @test cdf(posterior, prevfloat(q)) < p
         end
         @test rand(liouville_rng, posterior) >= minimum(posterior)
-
-        gamma_posterior = Copulas.PowerTiltedFrailty(Gamma(2.0, 3.0), 0.75, 0.4)
-        @test gamma_posterior isa Gamma
-        @test all(isapprox.(
-            params(gamma_posterior), (2.75, inv(inv(3.0) + 0.4)),
-        ))
-        @test Copulas.WilliamsonFromFrailty(gamma_posterior, 1.2) isa
-              Distributions.LocationScale
 
         D = Copulas.DistortionFromCop(fractional_C, (1,), (0.4,), 2)
         p = Distributions.cdf(D, 0.6)

@@ -32,5 +32,5 @@ function Distributions.cdf(d::Sibuya, u::Real)
     return 1 - abs(binom(d.p-1, k))
 end
 function Distributions.logpdf(d::Sibuya, x::Real)
-    insupport(d, x) ? log(abs(binom(d.p, k))) : -Inf
+    insupport(d, x) ? log(abs(binom(d.p, trunc(x)))) : -Inf
 end

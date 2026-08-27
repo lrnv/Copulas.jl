@@ -18,6 +18,8 @@ testfiles = [
     "contracts/utilities",
     "components/generators",
     "components/tails",
+    "components/distortions",
+    "components/univariate_distributions",
     "components/public_compositions",
     "components/measure_inverses",
     "paths/mathematical_coherence",

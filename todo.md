@@ -5,14 +5,6 @@
 - Make the new public-contract suite pass in CI and resolve every behavioral
   discrepancy it exposes.
 
-## Shared components
-
-- Add focused contracts for distortions, radial and other internal univariate
-  distributions, spectral representations, and shared samplers where testing
-  only through complete copulas would obscure failures or duplicate compilation.
-- Check boundary behavior, generalized quantiles, atoms, inverse identities,
-  derivatives, support, and numerical fallbacks wherever relevant.
-
 ## Dispatch and numerical paths
 
 - Build an explicit, compact registry containing one representative for every

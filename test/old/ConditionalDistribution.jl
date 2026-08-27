@@ -255,38 +255,6 @@ end
     @test isfinite(value_big)
 end
 
-@testset "Elementary distortions respect their support" begin
-    distortions = (
-        Copulas.NoDistortion(),
-        Copulas.MDistortion(0.4, Int8(2)),
-        Copulas.WDistortion(0.4, Int8(2)),
-    )
-    for D in distortions
-        @test cdf(D, -0.2) == 0
-        @test cdf(D, 1.2) == 1
-        @test pdf(D, -0.2) == 0
-        @test pdf(D, 1.2) == 0
-        @test logpdf(D, -0.2) == -Inf
-        @test logpdf(D, 1.2) == -Inf
-    end
-end
-
-@testset "Fréchet-bound conditionals are point masses" begin
-    v = 0.4
-    for (C, atom) in ((MCopula{2}(), v), (WCopula{2}(), 1-v))
-        for j in 1:2
-            D = condition(C, j, v)
-            @test cdf(D, prevfloat(atom)) == 0
-            @test cdf(D, atom) == 1
-            @test cdf(D, nextfloat(atom)) == 1
-            @test all(quantile(D, p) == atom for p in (0.0, 0.2, 0.8, 1.0))
-            @test rand(rng, D, 10) == fill(atom, 10)
-            @test pdf(D, atom) == 1
-            @test pdf(D, prevfloat(atom)) == 0
-        end
-    end
-end
-
 @testset "Checkerboard distortion supports multiple conditioning dimensions" begin
     C = CheckerboardCopula{3}(randn(rng, 3, 30); pseudo_values=false)
     D = Copulas.DistortionFromCop(C, (1, 2), (0.3, 0.7), 3)
