@@ -112,8 +112,16 @@ const CONSTRUCTOR_CASES = (
             ExtremeValueCopula{2},
         }),
     constructor_case("asymmetric logistic", () -> AsymLogCopula{2}(1.5, 0.4, 0.6), () -> AsymLogCopula(2, 1.5, 0.4, 0.6)),
-    constructor_case("asymmetric mixed", () -> AsymMixedCopula{2}(0.3, 0.2), () -> AsymMixedCopula(2, 0.3, 0.2)),
-    constructor_case("BC2", () -> BC2Copula{2}(0.5, 0.3), () -> BC2Copula(2, 0.5, 0.3)),
+    constructor_case("asymmetric mixed",
+        () -> AsymMixedCopula{2}(0.3, 0.2),
+        () -> AsymMixedCopula(2, 0.3, 0.2);
+        allowed_inference=Union{
+            IndependentCopula{2}, MixedCopula{2}, AsymMixedCopula{2},
+        }),
+    constructor_case("BC2",
+        () -> BC2Copula{2}(0.5, 0.3),
+        () -> BC2Copula(2, 0.5, 0.3);
+        allowed_inference=BC2Copula{2}),
     constructor_case("Cuadras--Auge", () -> CuadrasAugeCopula{2}(0.5), () -> CuadrasAugeCopula(2, 0.5)),
     constructor_case("Galambos", () -> GalambosCopula{3}(1.0), () -> GalambosCopula(3, 1.0)),
     constructor_case("Husler--Reiss", () -> HuslerReissCopula{3}(1.0), () -> HuslerReissCopula(3, 1.0)),

@@ -64,6 +64,13 @@ function ℓ(tail::DiscreteSpectralTail, x)
     return out
 end
 
+function A(tail::DiscreteSpectralTail, t::Real)
+    size(tail.B, 1) == 2 || throw(ArgumentError(
+        "the scalar Pickands function is only defined for a two-dimensional spectral tail",
+    ))
+    return ℓ(tail, (t, one(t) - t))
+end
+
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     fill!(X, zero(T))

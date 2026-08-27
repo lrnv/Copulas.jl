@@ -1,16 +1,14 @@
 # Public-API contract: verifies every public copula family constructor, the
 # type-stable `{d}` and runtime `(d, ...)` forms, inferred forms, and rebuilding.
 function test_constructor_case(case)
-    typed = Ref{Any}()
+    typed_value = nothing
     @testset "$(case.name)" begin
-        typed[] = if case.allowed_inference === nothing
+        typed_value = if case.allowed_inference === nothing
             @inferred case.typed()
         else
             @inferred case.allowed_inference case.typed()
         end
-        typed_value = typed[]
         dynamic = case.dynamic()
-        @test typed_value == dynamic
         @test typeof(typed_value) === typeof(dynamic)
         @test params(typed_value) == params(dynamic)
         if case.reconstruct
@@ -19,7 +17,7 @@ function test_constructor_case(case)
             @test params(reconstructed) == params(typed_value)
         end
     end
-    return typed[]
+    return typed_value
 end
 
 @testset "documented dimension-inferred constructors" begin

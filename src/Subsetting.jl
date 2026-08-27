@@ -87,7 +87,12 @@ Return a new copula or Sklar distribution corresponding to the subset of dimensi
 # Details
 This function extracts the dependence structure among the specified dimensions from the original copula or Sklar distribution. Specialized methods exist for some copula types to ensure efficiency and correctness.
 """
-subsetdims(C::Copula{d},dims::NTuple{p, Int}) where {d,p} = SubsetCopula{p}(C,dims)
+function subsetdims(C::Copula, dims::NTuple{p,Int}) where {p}
+    # Keep the universal one-dimensional marginal and its validation in the
+    # framework; otherwise let ordinary dispatch select a native submodel.
+    p == 1 && return SubsetCopula{1}(C, dims)
+    return SubsetCopula(C, dims)
+end
 function subsetdims(D::SklarDist, dims::NTuple{p, Int}) where p
     p==1 && return D.m[dims[1]] # if dims[1] is not a valid index, this will throw.
     return SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
