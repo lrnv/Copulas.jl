@@ -20,8 +20,8 @@ testfiles = [
     "components/tails",
     "components/public_compositions",
     "components/measure_inverses",
-    "paths/dispatch_paths",
     "paths/mathematical_coherence",
+    "paths/dispatch_paths",
     "paths/statistical_paths",
     "paths/fitting_paths",
 ]

@@ -55,7 +55,9 @@ end
             @test Copulas.ϕ⁽¹⁾(G, 0.7) ≈
                   ForwardDiff.derivative(t -> Copulas.ϕ(G, t), 0.7) rtol=derivative_rtol
             @test Copulas.ϕ⁽ᵏ⁾(G, 1, 0.7) ≈ Copulas.ϕ⁽¹⁾(G, 0.7)
-            @test Copulas.ϕ⁽ᵏ⁾(G, 2, 0.7) ≈
+            second_derivative = Copulas.ϕ⁽ᵏ⁾(G, 2, 0.7)
+            @test second_derivative >= -sqrt(eps(Float64))
+            @test second_derivative ≈
                   ForwardDiff.derivative(t -> Copulas.ϕ⁽¹⁾(G, t), 0.7) rtol=derivative_rtol
             h = 1e-5
             inverse_derivative = (Copulas.ϕ⁻¹(G, 0.5 + h) -

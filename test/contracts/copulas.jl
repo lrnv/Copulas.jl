@@ -19,6 +19,10 @@ function test_distribution_contract(C, ctx)
     @test params(C) isa NamedTuple
     c = cdf(C, ctx.u)
     @test 0 <= c <= 1
+    @test max(sum(ctx.u) - d + 1, 0) - 1e-8 <= c <= minimum(ctx.u) + 1e-8
+    lower = 0.8 .* ctx.u
+    upper = ctx.u .+ 0.2 .* (1 .- ctx.u)
+    @test cdf(C, lower) <= c <= cdf(C, upper)
     @test logcdf(C, ctx.u) ≈ log(c)
     @test cdf(C, zeros(d)) == 0
     @test cdf(C, ones(d)) == 1
