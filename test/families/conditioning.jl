@@ -2,7 +2,7 @@
 # distortion regressions until component and family replacements are complete.
 
 @testset "Bivariate scalar condition fast path" begin
-    # Scalar/tuple equivalence is part of `contracts/copulas.jl`; retain only
+    # Scalar/tuple equivalence is part of `obligations/contracts/copulas.jl`; retain only
     # inference, numeric-type propagation, and input-validation regressions.
     C = GaussianCopula{2}(0.4)
     @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion

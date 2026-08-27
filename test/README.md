@@ -26,17 +26,20 @@ correct generic mechanisms
 = correct public behaviour for every family.
 ```
 
-## Layers
+## Layout
 
-- `contracts/` implements obligation 1 and maintains exhaustive public-family
-  and public-symbol registries.
-- `paths/mathematical_coherence.jl`, `components/generators.jl`, and
-  `components/tails.jl` implement obligation 2.
-- `paths/dispatch_paths.jl` implements obligations 3 and 4. Merely executing a
-  distinct method satisfies route coverage, but does **not** establish
-  specialization equivalence.
-- `paths/statistical_paths.jl` replaces draw-by-draw equivalence for random
-  samplers with distributional identities.
+- `obligations/contracts/` implements obligation 1 and maintains exhaustive
+  public-family and public-symbol registries.
+- `obligations/correctness/` implements obligation 2 with independent
+  mathematical and statistical oracles.
+- `obligations/equivalence/` implements obligation 3. A specialization belongs
+  here only when it is compared with a fallback or an independent identity.
+- `obligations/routing/` implements obligation 4 by discovering and exercising
+  every distinct method selected by the public fixtures. Merely executing a
+  method establishes routing, not correctness or equivalence.
+- Statistical tests replace draw-by-draw equivalence for random samplers with
+  distributional identities.
+- `Aqua.jl` and `fixtures.jl` provide infrastructure shared by all obligations.
 - `families/` contains parameter boundaries, singular atoms, published values,
   and regressions that cannot be derived from the shared contracts.
 - `extensions/` contains contracts and regressions for optional package

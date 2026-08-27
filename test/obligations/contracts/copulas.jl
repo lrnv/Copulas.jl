@@ -125,7 +125,7 @@ function test_conditioning_contract(C, ctx, kind)
     @test 0 <= q <= 1
     # Continuous conditionals invert their CDF. For mixed/singular models the
     # public quantile convention is only required to return a valid support
-    # point; atom semantics are checked separately in mathematical_coherence.
+    # point; atom semantics are checked in `correctness/mathematical.jl`.
     kind === :continuous && @test cdf(D, q) >= 0.5 - sqrt(eps(Float64))
 end
 

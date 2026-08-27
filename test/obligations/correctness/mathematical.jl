@@ -3,11 +3,10 @@
 # not for every parameterization of every public family.
 # Classification inherited from the former generic suite:
 # - universal invariants: copula margins, support and API identities live in
-#   contracts/copulas.jl;
+#   `obligations/contracts/copulas.jl`;
 # - mechanism identities: derivatives, integrals, transforms and defining
 #   representations are checked below on one representative implementation;
-# - family formulas, limits and fixed regressions remain in focused old tests
-#   until the family-regression migration phase.
+# - family formulas, limits and fixed regressions live in `test/families/`.
 
 # Smooth polynomial oracle. Its closed forms are independent of the generic
 # integration, conditioning and Rosenblatt machinery exercised below.

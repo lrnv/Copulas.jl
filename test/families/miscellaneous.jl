@@ -57,7 +57,7 @@ end
 end
 
 @testset "RafteryCopula CDF" begin
-    # Generic CDF/PDF bounds moved to `contracts/copulas.jl`; retain only fixed
+    # Generic CDF/PDF bounds moved to `obligations/contracts/copulas.jl`; retain only fixed
     # family reference values and dependence regressions.
     @test cdf(RafteryCopula{2}(0.8), [0.2, 0.5]) ≈ 0.199432 atol=1e-5
     @test cdf(RafteryCopula{2}(0.5), [0.3, 0.8]) ≈ 0.2817 atol=1e-5

@@ -8,26 +8,21 @@ using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
 
 const rng = StableRNG(123)
 
-testfiles = [
-    "Aqua",
-    "fixtures",
-    "contracts/public_surface",
-    "contracts/constructors",
-    "contracts/copulas",
-    "contracts/fitting",
-    "contracts/sklar",
-    "contracts/utilities",
-    "components/generators",
-    "components/tails",
-    "components/distortions",
-    "components/univariate_distributions",
-    "components/public_compositions",
-    "components/measure_inverses",
-    "paths/mathematical_coherence",
-    "paths/dispatch_paths",
-    "paths/statistical_paths",
-    "paths/fitting_paths",
-]
+infrastructure_testfiles = ["Aqua", "fixtures"]
+
+obligation_testfiles = (
+    contracts = [
+        "public_surface", "constructors", "copulas", "fitting", "sklar",
+        "utilities", "distortions", "univariate_distributions",
+        "public_compositions",
+    ],
+    correctness = [
+        "generators", "tails", "measure_inverses", "mathematical",
+        "statistical",
+    ],
+    equivalence = ["specializations"],
+    routing = ["dispatch", "fitting"],
+)
 
 family_testfiles = [
     "archimedean",
@@ -48,10 +43,21 @@ family_testfiles = [
 extension_testfiles = ["expectation_maximization"]
 
 @testset verbose=true "Copulas.jl testings"  begin
-    @testset verbose=true "$f.jl" for f in testfiles
+    @testset verbose=true "infrastructure/$f.jl" for f in infrastructure_testfiles
         @info "Launching test file $f.jl"
         elapsed = @elapsed include(joinpath(@__DIR__, "$f.jl"))
         @info "Completed test file $f.jl" elapsed
+    end
+
+    for (obligation, files) in pairs(obligation_testfiles)
+        @testset verbose=true "obligation: $obligation" begin
+            for f in files
+                @info "Launching obligation test file" obligation file=f
+                elapsed = @elapsed include(joinpath(
+                    @__DIR__, "obligations", string(obligation), "$f.jl"))
+                @info "Completed obligation test file" obligation file=f elapsed
+            end
+        end
     end
 
     @testset verbose=true "families/$f.jl" for f in family_testfiles

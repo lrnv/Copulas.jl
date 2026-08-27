@@ -1,5 +1,6 @@
 # Family-regression layer: the fitting and StatsBase contracts live under
-# `contracts/` and `paths/`; only optimizer recovery, boundary starts, and an
+# `obligations/contracts/` and `obligations/routing/`; only optimizer recovery,
+# boundary starts, and an
 # unavailable-metadata error regression remain here.
 
 @testset "family fitting parameter-recovery regressions" begin
