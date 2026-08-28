@@ -200,6 +200,9 @@ C = fit(GumbelCopula, U; method=:itau)
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         method=:default, quick_fit=false, derived_measures=true,
         vcov=true, vcov_method=nothing, kwargs...)
+    allowed_vcov = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
+    isnothing(vcov_method) || vcov_method in allowed_vcov ||
+        throw(ArgumentError("unknown vcov method `$vcov_method`; expected one of $allowed_vcov"))
     d, n = size(U)
     method = _find_method(CT, d, method)
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))

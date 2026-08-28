@@ -84,7 +84,10 @@ GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula{d}(Σ)
 U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
-    x = StatsBase.quantile.(Distributions.Normal(), u)
+    # MvNormalCDF mutates its upper-bound work vector. HCubature supplies
+    # immutable StaticArrays to integrands, so always hand the backend a
+    # mutable dense vector.
+    x = collect(StatsBase.quantile.(Distributions.Normal(), u))
     d = length(C)
     return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
 end

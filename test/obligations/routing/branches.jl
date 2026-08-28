@@ -45,7 +45,7 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
     end
 
     @testset "independent conditioning output dimension" begin
-        @test condition(IndependentCopula{2}(), 1, 0.4) isa Uniform
+        @test condition(IndependentCopula{2}(), 1, 0.4) isa Copulas.NoDistortion
         @test condition(IndependentCopula{3}(), 1, 0.4) isa IndependentCopula{2}
         prove_branches!(:independent_scalar_condition,
                         :independent_copula_condition)

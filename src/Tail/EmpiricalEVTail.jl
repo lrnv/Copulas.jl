@@ -192,7 +192,6 @@ function _fit(::Type{<:ExtremeValueCopula{2,<:EmpiricalEVTail}}, U, method::Unio
     return C, (; emp_kind=:ev_tail, pseudo_values, method=m, grid, eps)
 end
 
-
 # ==============================================================================
 # Multivariate empirical extreme-value copula
 # ==============================================================================
@@ -557,6 +556,28 @@ end
 
 StatsBase.dof(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}) where {d} = 0
 _available_fitting_methods(::Type{<:EmpiricalEVCopula}, d) = (:ols, :cfg, :pickands)
+
+# Public aliases such as `EmpiricalEVCopula{2}` are UnionAll types rather than
+# concrete subtypes of the storage-specific signatures above.
+function _fit(::Type{EmpiricalEVCopula{2}}, U,
+              method::Union{Val{:ols},Val{:cfg},Val{:pickands}};
+              grid::Int=401, eps::Real=1e-3,
+              pseudo_values::Bool=true, kwargs...)
+    m = typeof(method).parameters[1]
+    C = EmpiricalEVCopula{2}(U; method=m, grid=grid, eps=eps,
+                             pseudo_values=pseudo_values, kwargs...)
+    return C, (; emp_kind=:ev_tail, pseudo_values, method=m, grid, eps)
+end
+
+function _fit(::Type{EmpiricalEVCopula}, U,
+              method::Union{Val{:ols},Val{:cfg},Val{:pickands}};
+              pseudo_values::Bool=true, kwargs...)
+    d = size(U, 1)
+    m = typeof(method).parameters[1]
+    C = EmpiricalEVCopula{d}(U; method=m, pseudo_values=pseudo_values, kwargs...)
+    return C, (; emp_kind=d == 2 ? :ev_tail : :ev_multivariate_tail,
+               pseudo_values, method=m)
+end
 
 function _fit(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, U,
               method::Union{Val{:ols},Val{:cfg},Val{:pickands}};

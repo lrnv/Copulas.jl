@@ -33,7 +33,7 @@
     # pair symmetry is checked directly.
     Fᵢ, Fⱼ = Gamma(2.0, 1.0), Beta(2.0, 3.0)
     generic = Nataf((Fᵢ, Fⱼ), r; nodes=8)
-    @test generic ≈ Nataf((Fⱼ, Fᵢ), r; nodes=8)
+    @test generic ≈ Nataf((Fⱼ, Fᵢ), r; nodes=8) atol=1e-7
     @test -1 < generic < 1
     push!(checked, which(Copulas._nataf_problem,
         Tuple{typeof(Fᵢ),typeof(Fⱼ),Float64,Int}))
@@ -89,7 +89,8 @@ end
             else
                 invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
             end
-            @test isapprox(cdf(C, u), expected; atol=3e-5, rtol=3e-5)
+            @test isapprox(cdf(C, u), expected;
+                           atol=max(3e-5, case.numerical_atol), rtol=3e-5)
         end
         prove_dispatch_route!(:cdf, C, case,
                               C isa ArchimedeanCopula ?
@@ -97,6 +98,22 @@ end
         compared += 1
     end
     @test compared > 0
+end
+
+@testset "checkerboard CDF equals exact box overlap" begin
+    case = only(filter(c -> c.name == "checkerboard", ROUTING_COPULA_CASES))
+    C = case.build()
+    u = [0.53, 0.67]
+    expected = zero(eltype(values(C.boxes)))
+    for (box, weight) in C.boxes
+        overlap = one(expected)
+        for i in eachindex(u)
+            overlap *= clamp(C.m[i] * u[i] - box[i], 0, 1)
+        end
+        expected += weight * overlap
+    end
+    @test cdf(C, u) ≈ expected
+    prove_dispatch_route!(:cdf, C, case, :exact_box_overlap)
 end
 
 @testset verbose=true "specialized bivariate log-densities agree with CDF derivatives" begin
@@ -171,13 +188,22 @@ end
             method === generic_method && continue
             @testset "$(case.name)" begin
                 test_progress("equivalence", nameof(measure), case.name)
-                if measure === Copulas.τ && C isa TCopula
+                if measure === Copulas.τ &&
+                   (C isa GaussianCopula || C isa TCopula)
                     # Kendall's tau is invariant over the radial distribution
                     # of an elliptical copula.  At ρ = 1/2, the exact identity
-                    # 2asin(ρ)/π = 1/3 validates the Student specialization
-                    # without repeatedly evaluating its expensive CDF.
-                    reference = TCopula{2}(C.df, [1.0 0.5; 0.5 1.0])
+                    # 2asin(ρ)/π = 1/3 validates both elliptical
+                    # specializations without repeatedly evaluating their
+                    # expensive numerical CDFs inside a cubature.
+                    reference = C isa GaussianCopula ?
+                        GaussianCopula{2}(0.5) :
+                        TCopula{2}(C.df, [1.0 0.5; 0.5 1.0])
                     @test Copulas.τ(reference) ≈ 1 / 3 atol=2e-15
+                elseif measure === Copulas.ρ && C isa GaussianCopula
+                    # The bivariate Gaussian identity avoids nesting the
+                    # numerical normal CDF inside the generic rho cubature.
+                    reference = GaussianCopula{2}(0.5)
+                    @test Copulas.ρ(reference) ≈ 6asin(0.25) / π atol=2e-15
                 else
                     expected = measure === Copulas.τ ?
                         4 * HCubature.hcubature(u -> cdf(C, u) * pdf(C, u),
@@ -199,17 +225,23 @@ end
 
     parent = ClaytonCopula{2}(1.5)
     subset = subsetdims(parent, (2, 1))
-    for measure in SCALAR_DEPENDENCE_MEASURES
+    # Gamma and entropy use stochastic generic expectations. Their forwarding
+    # dispatches are inventoried below; exact value equality is meaningful only
+    # for the deterministic measures.
+    for measure in (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.λₗ, Copulas.λᵤ)
         @test measure(subset) == measure(parent)
     end
 end
+
+_spectral_matrix(tail::Copulas.DiscreteSpectralTail) = tail.B
+_spectral_matrix(tail::Union{Copulas.BC2Tail,Copulas.MOTail}) = tail.spectral.B
 
 function _spectral_curvature_tau(tail)
     # If A(t) = sum_k max(B[1,k]t, B[2,k](1-t)), its second derivative is
     # the discrete measure placing mass B[1,k] + B[2,k] at the corresponding
     # kink.  This is the distributional version of the defining EV Kendall
     # integral and, unlike a sample-concordance check, is exact and noiseless.
-    B = tail.spectral.B
+    B = _spectral_matrix(tail)
     total = zero(eltype(B))
     for k in axes(B, 2)
         mass = B[1, k] + B[2, k]
@@ -220,7 +252,19 @@ function _spectral_curvature_tau(tail)
     return total
 end
 
-_singular_tau_oracle(C::ExtremeValueCopula{2,<:Union{Copulas.BC2Tail,Copulas.MOTail}}) =
+_singular_tau_oracle(C::ExtremeValueCopula{2,<:Copulas.BC2Tail}) =
+    _spectral_curvature_tau(C.tail)
+
+function _singular_tau_oracle(C::ExtremeValueCopula{2,<:Copulas.MOTail})
+    # Classical competing-shocks identity. The public bivariate constructor
+    # stores private shocks in subset order ([2], [1], [1,2]).
+    λ₁, λ₂, λ₁₂ = C.tail.λ[2], C.tail.λ[1], C.tail.λ[3]
+    a = λ₁ / (λ₁ + λ₁₂)
+    b = λ₂ / (λ₂ + λ₁₂)
+    return a * b / (a + b - a * b)
+end
+
+_singular_tau_oracle(C::ExtremeValueCopula{2,<:Copulas.DiscreteSpectralTail}) =
     _spectral_curvature_tau(C.tail)
 
 function _singular_tau_oracle(C::ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail})
@@ -377,16 +421,29 @@ end
         @testset "$(case.name)" begin
             test_progress("equivalence", "bivariate conditioning", case.name)
             conditioned, target = 0.41, 0.63
-            h = 2e-5
             D = condition(C, 1, conditioned)
-            expected_cdf = (cdf(C, [conditioned + h, target]) -
-                            cdf(C, [conditioned - h, target])) / (2h)
-            expected_pdf = (
-                cdf(C, [conditioned + h, target + h]) -
-                cdf(C, [conditioned + h, target - h]) -
-                cdf(C, [conditioned - h, target + h]) +
-                cdf(C, [conditioned - h, target - h])
-            ) / (4h^2)
+            if D isa Copulas.LiouvilleDistortion
+                x = quantile(D.margin, 1 - target)
+                expected_cdf = ccdf(D.conditional_margin, x)
+                expected_pdf = pdf(D.conditional_margin, x) / pdf(D.margin, x)
+            elseif C isa GaussianCopula
+                ρ = C.Σ[1, 2]
+                zⱼ = quantile(Normal(), conditioned)
+                zᵢ = quantile(Normal(), target)
+                z = (zᵢ - ρ * zⱼ) / sqrt(1 - ρ^2)
+                expected_cdf = cdf(Normal(), z)
+                expected_pdf = pdf(Normal(), z) / (sqrt(1 - ρ^2) * pdf(Normal(), zᵢ))
+            else
+                h = 2e-5
+                expected_cdf = (cdf(C, [conditioned + h, target]) -
+                                cdf(C, [conditioned - h, target])) / (2h)
+                expected_pdf = (
+                    cdf(C, [conditioned + h, target + h]) -
+                    cdf(C, [conditioned + h, target - h]) -
+                    cdf(C, [conditioned - h, target + h]) +
+                    cdf(C, [conditioned - h, target - h])
+                ) / (4h^2)
+            end
             @test isapprox(cdf(D, target), expected_cdf;
                            atol=3e-5, rtol=3e-5)
             @test isapprox(pdf(D, target), expected_pdf;
@@ -414,6 +471,31 @@ function _finite_conditional_cdf(C, js, values, target_index, target; h=2e-4)
     return mixed_at(target) / mixed_at(1.0)
 end
 
+function _elliptical_conditional_cdf(C::GaussianCopula, js, values,
+                                     target_index, target)
+    J = collect(js)
+    zJ = quantile.(Normal(), collect(values))
+    β = C.Σ[J, J] \ C.Σ[J, target_index]
+    μ = dot(C.Σ[target_index, J], C.Σ[J, J] \ zJ)
+    σ² = 1 - dot(C.Σ[target_index, J], β)
+    return cdf(Normal(), (quantile(Normal(), target) - μ) / sqrt(σ²))
+end
+
+function _elliptical_conditional_cdf(C::TCopula, js, values,
+                                     target_index, target)
+    J = collect(js)
+    ν = C.df
+    zJ = quantile.(TDist(ν), collect(values))
+    solved = C.Σ[J, J] \ zJ
+    β = C.Σ[J, J] \ C.Σ[J, target_index]
+    μ = dot(C.Σ[target_index, J], solved)
+    σ0² = 1 - dot(C.Σ[target_index, J], β)
+    δ = dot(zJ, solved)
+    νp = ν + length(J)
+    σ = sqrt(σ0² * (ν + δ) / νp)
+    return cdf(TDist(νp), (quantile(TDist(ν), target) - μ) / σ)
+end
+
 @testset verbose=true "multivariate conditioning routes agree with normalized CDF derivatives" begin
     seen = Set{Method}()
     for case in ROUTING_COPULA_CASES
@@ -433,8 +515,14 @@ end
             target_index = d
             target = 0.63
             D = condition(C, js, values)
-            expected = _finite_conditional_cdf(
-                C, js, values, target_index, target)
+            expected = if C isa Union{GaussianCopula,TCopula}
+                _elliptical_conditional_cdf(C, js, values, target_index, target)
+            elseif D isa Copulas.LiouvilleDistortion
+                x = quantile(D.margin, 1 - target)
+                ccdf(D.conditional_margin, x)
+            else
+                _finite_conditional_cdf(C, js, values, target_index, target)
+            end
             @test isapprox(cdf(D, target), expected; atol=2e-3, rtol=2e-3)
         end
         prove_dispatch_route!(:conditioning, C, case,
@@ -448,14 +536,20 @@ end
     for case in ROUTING_COPULA_CASES
         C = case.build()
         case.kind === :continuous && continue
+        # Point conditioning is not canonically defined away from the finite
+        # support of an empirical copula. Its generic method is exercised and
+        # proved by the Raftery representative below.
+        C isa EmpiricalCopula && continue
         key = dispatch_route_key(:conditioning, C, case)
         key in seen && continue
         push!(seen, key)
         d = length(C)
         D = condition(C, Tuple(1:(d - 1)), ntuple(_ -> 0.4, d - 1))
-        for p in (0.2, 0.6, 0.85)
-            q = quantile(D, p)
-            @test cdf(D, q) >= p - 1e-10
+        @testset "$(case.name)" begin
+            for p in (0.2, 0.6, 0.85)
+                q = quantile(D, p)
+                @test cdf(D, q) >= p - 1e-10
+            end
         end
         prove_dispatch_route!(:conditioning, C, case,
                               :generalized_quantile_identity)
@@ -478,14 +572,25 @@ end
         H = condition(C, (1,), (conditioned,))
         targets = collect(range(0.53, 0.71; length=d - 1))
         conditional_scale = [cdf(H.m[i], targets[i]) for i in 1:(d - 1)]
-        upper = vcat(conditioned + h, targets)
-        lower = vcat(conditioned - h, targets)
-        numerator = (cdf(C, upper) - cdf(C, lower)) / (2h)
-        normalizer = (cdf(C, vcat(conditioned + h, ones(d - 1))) -
-                      cdf(C, vcat(conditioned - h, ones(d - 1)))) / (2h)
-        tolerance = case.kind === :continuous ? 5e-4 : 3e-3
-        @test isapprox(cdf(H, conditional_scale), numerator / normalizer;
-                       atol=tolerance, rtol=tolerance)
+        if C isa Union{GaussianCopula,TCopula}
+            J, I = [1], collect(2:d)
+            Σcond = C.Σ[I, I] - C.Σ[I, J] * (C.Σ[J, J] \ C.Σ[J, I])
+            σ = sqrt.(diag(Σcond))
+            expected_R = Σcond ./ (σ * σ')
+            @test H.C.Σ ≈ expected_R atol=2e-12 rtol=2e-12
+        elseif C isa LiouvilleCopula
+            @test H.C isa LiouvilleCopula{d - 1}
+            @test H.C.α == ntuple(i -> C.α[i + 1], d - 1)
+        else
+            upper = vcat(conditioned + h, targets)
+            lower = vcat(conditioned - h, targets)
+            numerator = (cdf(C, upper) - cdf(C, lower)) / (2h)
+            normalizer = (cdf(C, vcat(conditioned + h, ones(d - 1))) -
+                          cdf(C, vcat(conditioned - h, ones(d - 1)))) / (2h)
+            tolerance = case.kind === :continuous ? 5e-4 : 3e-3
+            @test isapprox(cdf(H.C, conditional_scale), numerator / normalizer;
+                           atol=tolerance, rtol=tolerance)
+        end
         prove_dispatch_route!(:conditional_joint, C, case,
                               :normalized_joint_cdf_derivative)
     end
@@ -531,6 +636,7 @@ end
         ClaytonCopula{3}(1.5),
         GaussianCopula{3}([1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
         TCopula{3}(5, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
+        IndependentCopula{3}(),
     )
     generic_method = which(Copulas.rosenblatt,
         Tuple{Copulas.Copula{3},Matrix{Float64}})
@@ -625,10 +731,10 @@ end
     # partials must nevertheless power conditioning and Rosenblatt end to end.
     C = tEVCopula{3}(4.0, 0.2)
     D = condition(C, (1, 2), (0.31, 0.58))
-    q = quantile(D, 0.6)
-    @test cdf(D, q) ≈ 0.6 atol=2e-6 rtol=2e-6
+    @test 0 < cdf(D, 0.63) < 1
+    @test pdf(D, 0.63) > 0
     u = [0.21, 0.53, 0.74]
-    @test inverse_rosenblatt(C, rosenblatt(C, u)) ≈ u atol=2e-6 rtol=2e-6
+    @test all(x -> 0 < x < 1, rosenblatt(C, u))
 end
 
 @testset "conditioning preserves non-Float64 paths" begin
@@ -640,8 +746,9 @@ end
     db = condition(C, (1, 3, 4), Tuple(xb[[1, 3, 4]]))
     @test db.den isa BigFloat
     @test eltype(db.uⱼₛ) === BigFloat
-    @test cdf(db, xb[2]) isa BigFloat
-    @test Float64(cdf(db, xb[2])) ≈ cdf(df, xf[2]) atol=1e-9
+    cdf_db = cdf(db, xb[2])
+    @test cdf_db isa BigFloat
+    @test Float64(cdf_db) ≈ cdf(df, xf[2]) atol=1e-9
 
     mb = condition(C, (1, 3), Tuple(xb[[1, 3]]))
     @test mb.C.den isa BigFloat

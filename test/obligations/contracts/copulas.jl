@@ -142,20 +142,6 @@ function test_rosenblatt_contract(C, ctx, invertible)
     @test inverse_rosenblatt(C, rosenblatt(C, ctx.u)) ≈ ctx.u atol=2e-5 rtol=2e-5
 end
 
-const SCALAR_DEPENDENCE_MEASURES = (
-    Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι,
-    Copulas.λₗ, Copulas.λᵤ,
-)
-const PAIRWISE_DEPENDENCE_MEASURES = (
-    (StatsBase.corkendall, 1),
-    (StatsBase.corspearman, 1),
-    (Copulas.corblomqvist, 1),
-    (Copulas.corgini, 1),
-    (Copulas.corentropy, 0),
-    (Copulas.corlowertail, 1),
-    (Copulas.coruppertail, 1),
-)
-
 _dependence_is_defined(::typeof(Copulas.ι), kind) = kind === :continuous
 _dependence_is_defined(::typeof(Copulas.corentropy), kind) = kind === :continuous
 _dependence_is_defined(::Any, ::Any) = true

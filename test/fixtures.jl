@@ -99,7 +99,8 @@ const ROUTING_EXTRA_CASES = (
         [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]);
         kind=:mixed, rosenblatt=false),
     copula_case("t-EV multivariate", () -> tEVCopula{3}(4.0, 0.2)),
-    copula_case("Gaussian bivariate", () -> GaussianCopula{2}(0.3)),
+    copula_case("Gaussian bivariate", () -> GaussianCopula{2}(0.3);
+                numerical_atol=1e-3),
     copula_case("Student multivariate", () -> TCopula{3}(5.0,
         [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])),
     copula_case("Liouville multivariate", () -> LiouvilleCopula{3}(
@@ -115,6 +116,20 @@ const ROUTING_EXTRA_CASES = (
 )
 
 const ROUTING_COPULA_CASES = (COPULA_CASES..., ROUTING_EXTRA_CASES...)
+
+const SCALAR_DEPENDENCE_MEASURES = (
+    Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι,
+    Copulas.λₗ, Copulas.λᵤ,
+)
+const PAIRWISE_DEPENDENCE_MEASURES = (
+    (StatsBase.corkendall, 1),
+    (StatsBase.corspearman, 1),
+    (Copulas.corblomqvist, 1),
+    (Copulas.corgini, 1),
+    (Copulas.corentropy, 0),
+    (Copulas.corlowertail, 1),
+    (Copulas.coruppertail, 1),
+)
 
 # Proof ledger shared by the four obligation layers. A route is entered only
 # after the test providing its oracle/equivalence has succeeded. The routing

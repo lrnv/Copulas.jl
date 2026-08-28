@@ -79,10 +79,19 @@ end
 dA(tail::DiscreteSpectralTail, t::Real) =
     ForwardDiff.derivative(z -> A(tail, z), t)
 
-# Its second derivative is a measure, not an ordinary function.  Use the
-# generic copula estimator rather than lose the atoms in the smooth
-# extreme-value formula.
-τ(C::ExtremeValueCopula{2,<:DiscreteSpectralTail}) = @invoke τ(C::Copula)
+# Its second derivative is a measure, not an ordinary function. Integrating
+# the atoms of that measure gives the exact extreme-value Kendall identity.
+function τ(C::ExtremeValueCopula{2,<:DiscreteSpectralTail})
+    B = C.tail.B
+    total = zero(eltype(B))
+    @inbounds for k in axes(B, 2)
+        mass = B[1, k] + B[2, k]
+        iszero(mass) && continue
+        kink = B[2, k] / mass
+        total += mass * kink * (1 - kink) / A(C.tail, kink)
+    end
+    return total
+end
 
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
