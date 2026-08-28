@@ -68,6 +68,15 @@ const PICKANDS_CASES = (
     EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false).tail,
 )
 
+function is_spectral_kink(tail, t)
+    tail isa Copulas.DiscreteSpectralBackedTail || return false
+    B = Copulas._spectral_tail(tail).B
+    return any(axes(B, 2)) do k
+        mass = B[1, k] + B[2, k]
+        !iszero(mass) && isapprox(t, B[2, k] / mass; atol=10eps(Float64))
+    end
+end
+
 @testset "bivariate Pickands identities" begin
     for tail in PICKANDS_CASES
         @test Copulas.A(tail, 0.0) ≈ 1
@@ -80,7 +89,7 @@ const PICKANDS_CASES = (
             finite_d²A = (Copulas.dA(tail, t + h) - Copulas.dA(tail, t - h)) / (2h)
             # Spectral atoms are legitimate kinks: classical first and second
             # derivatives need not agree with centered finite differences there.
-            if !(tail isa Copulas.DiscreteSpectralBackedTail)
+            if !is_spectral_kink(tail, t)
                 @test Copulas.dA(tail, t) ≈ finite_dA atol=2e-5
                 @test Copulas.d²A(tail, t) ≈ finite_d²A atol=2e-4
             end

@@ -22,6 +22,18 @@
     end
 end
 
+@testset "public tail Kendall inverses" begin
+    for tail in (Copulas.CuadrasAugeTail(0.4), Copulas.GalambosTail(1.0),
+                 Copulas.HuslerReissTail(1.0), Copulas.LogTail(1.5),
+                 Copulas.MixedTail(0.4))
+        C = ExtremeValueCopula{2}(tail)
+        value = Copulas.τ(C)
+        parameter = Copulas.τ⁻¹(typeof(tail), value)
+        rebuilt = ExtremeValueCopula{2}(typeof(tail)(parameter))
+        @test Copulas.τ(rebuilt) ≈ value atol=2e-6
+    end
+end
+
 @testset "one-parameter copula dependence-measure inverses" begin
     archimedean = (
         AMHCopula{2}(0.5), ClaytonCopula{2}(1.0), FrankCopula{2}(2.0),
