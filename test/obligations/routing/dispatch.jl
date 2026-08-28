@@ -58,6 +58,5 @@ end
         missing = setdiff(selected, proven)
         isempty(missing) || @info "Dispatch routes without a proof" operation missing
         @test isempty(missing)
-        @test selected == intersect(selected, proven)
     end
 end

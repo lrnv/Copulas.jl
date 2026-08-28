@@ -30,8 +30,12 @@ end
         method=:mle, vcov=true, vcov_method=:invalid, derived_measures=false)
 end
 
-const _FITTING_PATH_MODELS = Tuple(case.build() for case in COPULA_CASES)
+const _FITTING_PATH_MODELS = Tuple(case.build() for case in ROUTING_COPULA_CASES)
 const _PRIMARY_FITTING_METHOD = Dict(case.name => case.method for case in FITTING_CASES)
+const _PRIMARY_FITTING_TYPE = Dict(case.name => typeof(case.build())
+                                   for case in FITTING_CASES)
+_canonical_fitting_name(name) = replace(name,
+    " bivariate" => "", " multivariate" => "")
 
 _has_fitting_parameters(C) =
     !(C isa Union{IndependentCopula,MCopula,WCopula}) && !isempty(params(C))
@@ -39,7 +43,8 @@ _check_parameter_roundtrip(C) =
     !(C isa EmpiricalEVCopula) && !(C isa FGMCopula && length(C) != 2)
 
 @testset "advertised fitting routes beyond the primary family contract" begin
-    for (index, (case, C)) in enumerate(zip(COPULA_CASES, _FITTING_PATH_MODELS))
+    for (index, (case, C)) in
+        enumerate(zip(ROUTING_COPULA_CASES, _FITTING_PATH_MODELS))
         CT, d = typeof(C), length(C)
         methods = Copulas._available_fitting_methods(CT, d)
 
@@ -52,7 +57,9 @@ _check_parameter_roundtrip(C) =
                       keys(bounded))
         end
 
-        primary = get(_PRIMARY_FITTING_METHOD, case.name, nothing)
+        canonical_name = _canonical_fitting_name(case.name)
+        primary = get(_PRIMARY_FITTING_TYPE, canonical_name, nothing) === CT ?
+            get(_PRIMARY_FITTING_METHOD, canonical_name, nothing) : nothing
         remaining = filter(!=(primary), methods)
         isempty(remaining) && continue
 

@@ -165,8 +165,8 @@ end
     for d in (2, 3)
         density_only = DensityOnlyPolynomialOracleCopula{d,Float64}(0.4)
         point = collect(range(0.37, 0.73; length=d))
-        @test cdf(density_only, point) ≈ _oracle_cdf(density_only, point)
-              atol=3e-5
+        @test isapprox(cdf(density_only, point),
+                       _oracle_cdf(density_only, point); atol=3e-5)
         prove_dispatch_route!(:cdf, density_only,
                               (kind=:continuous, rosenblatt=true),
                               :generic_density_integral)
