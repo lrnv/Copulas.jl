@@ -1031,6 +1031,16 @@ representative its own result and timing without duplicating test code. Keep
 large contract files subdivided by public behaviour so a slow operation is
 visible directly in CI rather than only through ad hoc logging.
 
+Two additional registries cover cases that ordinary method discovery cannot
+see. `PUBLIC_BEHAVIOURS` links methods adopted from `Distributions`,
+`StatsBase`, and `Random` to their contract, oracle, and routing files.
+`BEHAVIOURAL_BRANCHES` records dimension-, value-, and representation-dependent
+branches inside otherwise identical Julia methods. A new public branch must be
+added there unless an existing case already exercises it. During the ongoing
+suite migration, concise `Test progress` messages are emitted before each file
+and potentially expensive representative so a stalled CI job identifies its
+current path before the enclosing testset completes.
+
 ## 4.3 Behaviour coverage matrix
 
 Every public behaviour must be accounted for across the four obligations. The

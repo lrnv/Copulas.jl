@@ -15,6 +15,7 @@ end
 @testset "public fitting and model-result contracts" begin
     for (i, case) in pairs(FITTING_CASES)
         @testset "$(case.name)" begin
+            test_progress("contracts", "fitting", case.name)
             source = case.build()
             U = rand(StableRNG(20_000 + i), source, 12)
             family = typeof(source)

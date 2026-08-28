@@ -38,6 +38,7 @@ end
             key in seen && continue
             push!(seen, key)
             @testset "$(case.name)" begin
+                test_progress("routing", operation, case.name)
                 _exercise_dispatch_path(operation, copula)
             end
         end

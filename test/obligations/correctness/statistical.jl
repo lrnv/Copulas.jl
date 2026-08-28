@@ -13,6 +13,7 @@
         push!(seen, key)
 
         @testset "$(case.name)" begin
+            test_progress("correctness", "sampler", case.name)
             n = 160
             U = rand(route_rng, C, n)
             point = fill(0.72, d)

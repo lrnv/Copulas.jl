@@ -83,6 +83,7 @@ end
             continue
         end
         @testset "$(case.name)" begin
+            test_progress("equivalence", "cdf", case.name)
             expected = if C isa ArchimedeanCopula
                 Copulas.ϕ(C.G, sum(Copulas.ϕ⁻¹(C.G, x) for x in u))
             else
@@ -108,6 +109,7 @@ end
     h = 2e-5
     for (; case, C, method) in routes
         @testset "$(case.name)" begin
+            test_progress("equivalence", "logpdf", case.name)
             expected = (
                 cdf(C, u .+ (h, h)) - cdf(C, u .+ (h, -h)) -
                 cdf(C, u .+ (-h, h)) + cdf(C, u .- (h, h))
@@ -168,6 +170,7 @@ end
         for (; case, C, method) in routes
             method === generic_method && continue
             @testset "$(case.name)" begin
+                test_progress("equivalence", nameof(measure), case.name)
                 if measure === Copulas.τ && C isa TCopula
                     # Kendall's tau is invariant over the radial distribution
                     # of an elliptical copula.  At ρ = 1/2, the exact identity
@@ -243,6 +246,7 @@ _singular_tau_oracle(::WCopula{2}) = -1
         (; case, C, method) = route
         method === generic_method && continue
         @testset "$(case.name)" begin
+            test_progress("equivalence", "singular Kendall", case.name)
             expected = _singular_tau_oracle(C)
             @test Copulas.τ(C) ≈ expected atol=2e-12 rtol=2e-12
         end
@@ -351,6 +355,7 @@ end
         method in seen && continue
         push!(seen, method)
         @testset "$name" begin
+            test_progress("equivalence", "distortion quantile", name)
             generic = invoke(quantile, Tuple{Copulas.Distortion,Real}, D, 0.63)
             @test isapprox(quantile(D, 0.63), generic; atol=2e-8, rtol=2e-8)
         end
@@ -370,6 +375,7 @@ end
         push!(seen, method)
 
         @testset "$(case.name)" begin
+            test_progress("equivalence", "bivariate conditioning", case.name)
             conditioned, target = 0.41, 0.63
             h = 2e-5
             D = condition(C, 1, conditioned)
@@ -423,6 +429,7 @@ end
         push!(seen, method)
 
         @testset "$(case.name)" begin
+            test_progress("equivalence", "multivariate conditioning", case.name)
             target_index = d
             target = 0.63
             D = condition(C, js, values)

@@ -4,9 +4,10 @@
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
-    Statistics, StatsBase, Test
+    Statistics, StatsBase, Test, TOML
 
 const rng = StableRNG(123)
+test_progress(parts...) = @info "Test progress" path=join(string.(parts), " / ")
 
 obligation_testfiles = (
     contracts = [
@@ -19,7 +20,7 @@ obligation_testfiles = (
         "statistical",
     ],
     equivalence = ["specializations"],
-    routing = ["dispatch", "fitting"],
+    routing = ["dispatch", "branches", "fitting"],
 )
 
 family_testfiles = [
@@ -38,18 +39,23 @@ family_testfiles = [
     "subsetting",
 ]
 
-extension_testfiles = ["expectation_maximization", "plots"]
+extension_testfiles = (
+    CopulasExpectationMaximizationExt="expectation_maximization",
+    CopulasPlotsExt="plots",
+)
 
 # Fixtures define registries and helpers but contain no assertions.  Load them
 # before opening the test hierarchy so they do not appear as an empty testset.
 include(joinpath(@__DIR__, "fixtures.jl"))
 
 @testset verbose=true "Copulas.jl" begin
+    test_progress("Aqua.jl")
     include(joinpath(@__DIR__, "Aqua.jl"))
 
     for (obligation, files) in pairs(obligation_testfiles)
         @testset verbose=true "$obligation obligations" begin
             @testset verbose=true "$f.jl" for f in files
+                test_progress("$obligation obligations", "$f.jl")
                 include(joinpath(
                     @__DIR__, "obligations", string(obligation), "$f.jl"))
             end
@@ -58,12 +64,19 @@ include(joinpath(@__DIR__, "fixtures.jl"))
 
     @testset verbose=true "family regressions" begin
         @testset verbose=true "$f.jl" for f in family_testfiles
+            test_progress("family regressions", "$f.jl")
             include(joinpath(@__DIR__, "families", "$f.jl"))
         end
     end
 
     @testset verbose=true "extension regressions" begin
-        @testset verbose=true "$f.jl" for f in extension_testfiles
+        declared = Set(keys(TOML.parsefile(
+            joinpath(@__DIR__, "..", "Project.toml"))["extensions"]))
+        represented = Set(string.(keys(extension_testfiles)))
+        @test declared == represented
+        @testset verbose=true "$(extension) ($(getproperty(extension_testfiles, extension)).jl)" for extension in keys(extension_testfiles)
+            f = getproperty(extension_testfiles, extension)
+            test_progress("extension regressions", "$f.jl")
             include(joinpath(@__DIR__, "extensions", "$f.jl"))
         end
     end

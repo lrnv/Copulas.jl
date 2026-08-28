@@ -199,21 +199,27 @@ function test_copula_contract(case, seed)
     C = case.build()
     ctx = copula_contract_context(C, seed)
     @testset "distribution" begin
+        test_progress("contracts", "copulas", case.name, "distribution")
         test_distribution_contract(C, ctx, case.numerical_atol, case.margin_atol)
     end
     @testset "density" begin
+        test_progress("contracts", "copulas", case.name, "density")
         test_density_contract(C, ctx, case.kind)
     end
     @testset "subsetting" begin
+        test_progress("contracts", "copulas", case.name, "subsetting")
         test_subsetting_contract(C, ctx, case.numerical_atol)
     end
     @testset "conditioning" begin
+        test_progress("contracts", "copulas", case.name, "conditioning")
         test_conditioning_contract(C, ctx, case.kind)
     end
     @testset "Rosenblatt" begin
+        test_progress("contracts", "copulas", case.name, "Rosenblatt")
         test_rosenblatt_contract(C, ctx, case.rosenblatt)
     end
     @testset "dependence" begin
+        test_progress("contracts", "copulas", case.name, "dependence")
         test_dependence_contract(C, case.kind)
     end
 end
@@ -260,6 +266,7 @@ end
             (method, dimension_path) in seen && continue
             push!(seen, (method, dimension_path))
             @testset "$(case.name)" begin
+                test_progress("contracts", "dependence", nameof(measure), case.name)
                 test_scalar_dependence_result(measure, copula)
             end
         end
@@ -274,6 +281,7 @@ end
             (method, dimension_path) in seen && continue
             push!(seen, (method, dimension_path))
             @testset "$(case.name)" begin
+                test_progress("contracts", "dependence", nameof(measure), case.name)
                 test_pairwise_dependence_result(measure, diagonal, copula)
             end
         end
