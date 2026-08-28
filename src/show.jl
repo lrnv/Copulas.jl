@@ -64,6 +64,31 @@ Pretty p-value formatting: show very small values as inequalities.
 """
 _pstr(p) = p < 1e-16 ? "<1e-16" : Printf.@sprintf("%.4g", p)
 
+function Base.show(io::IO, ::MIME"text/plain", table::CopulaSelectionTable)
+    criterion_label = uppercase(String(table.criterion))
+    println(io, "Copula model selection (criterion: ", criterion_label, ")")
+    _hr(io)
+    Printf.@printf(io, "%-2s %-24s %-14s %-10s %12s %12s\n",
+        "", "Family", "Status", "Method", "LogLik", criterion_label)
+
+    for row in table
+        selected = row.candidate === table.selected_family ? "-" : ""
+        family = replace(string(row.candidate), "Copulas." => "")
+        loglik = isfinite(row.loglikelihood) ?
+            Printf.@sprintf("%.3f", row.loglikelihood) :
+            string(row.loglikelihood)
+        value = getproperty(row, table.criterion)
+        criterion_value = isfinite(value) ? Printf.@sprintf("%.3f", value) : "-"
+        Printf.@printf(io, "%-2s %-24s %-14s %-10s %12s %12s\n",
+            selected, family, String(row.status), String(row.method),
+            loglik, criterion_value)
+    end
+
+    _hr(io)
+    println(io, "- selected model")
+end
+
+
 """
 Key-value aligned printing for header lines.
 """
@@ -182,6 +207,17 @@ function Base.show(io::IO, M::CopulaModel)
         _kv(io, "Method", String(M.method))
     end
     _kv(io, "Number of observations", Printf.@sprintf("%d", StatsBase.nobs(M)))
+
+    md = M.method_details
+    if get(md, :selection, false)
+        _section(io, "Model selection")
+        _kv(io, "Criterion", uppercase(String(md.criterion)))
+        _kv(io, "Candidate families", string(length(md.candidates)))
+        _kv(io, "Selected family", string(md.selected_family))
+        excluded = count(row -> row.status !== :ok, md.selection_table)
+        excluded > 0 && _kv(io, "Excluded or failed", string(excluded))
+    end
+
 
     _section(io, "Fit metrics")
     ll  = M.ll

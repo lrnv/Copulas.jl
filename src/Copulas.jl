@@ -148,6 +148,7 @@ module Copulas
            𝒲,
            TiltedGenerator,
            EmpiricalGenerator,
+           Copula,
            SklarDist, # SklarDist to make multivariate models
            AMHCopula, # And a bunch of copulas.
            ArchimedeanCopula,
@@ -198,6 +199,7 @@ module Copulas
            BernsteinCopula,
            BetaCopula,
            CheckerboardCopula,
-           CopulaModel
+           CopulaModel,
+           selectiontable
 
 end
