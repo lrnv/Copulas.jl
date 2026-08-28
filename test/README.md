@@ -59,7 +59,7 @@ Each public behaviour must be accounted for as follows.
 | Rosenblatt transforms | every public family | conditional-CDF factorization | specialized transforms vs generic | dispatch inventory |
 | dependence measures | applicability on every family | defining integral or statistical identity | closed forms vs generic/independent oracle | one execution per dispatch |
 | fitting | every advertised family/method | recovery and parameter-map identities | specialized estimators vs their defining statistic | advertised-method registry |
-| generator primitives | every public generator | differentiation and inversion identities | closed forms vs generic primitive | generator registry |
+| generator primitives | every numerical public generator; explicit reduction contract for marker generators | differentiation and inversion identities | closed forms vs generic primitive | generator registry |
 | tail primitives | every public tail | homogeneity, convexity, and derivative identities | analytic partials vs AD/finite differences | tail registry |
 | Sklar composition | public composition contract | change-of-variable identities | specialized conditioning/transforms vs generic | composition paths |
 | optional extensions | every declared extension | extension-specific public identity | extension-specific | extension registry |

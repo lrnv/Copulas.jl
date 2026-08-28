@@ -21,6 +21,15 @@ end
             fitted = fit(family, U; method=case.method, case.kwargs...,
                          vcov=false, derived_measures=false)
             @test fitted isa Copulas.Copula{length(source)}
+            resolved_method = Copulas._find_method(
+                family, length(source), case.method)
+            if resolved_method === :mle && !isempty(params(source))
+                fitted_ll = loglikelihood(fitted, U)
+                source_ll = loglikelihood(source, U)
+                if isfinite(fitted_ll) && isfinite(source_ll)
+                    @test fitted_ll >= source_ll - 1e-6
+                end
+            end
             fitted_statistic = fitting_statistic(Val(case.method), fitted)
             if !isnothing(fitted_statistic)
                 sample_statistic = fitting_statistic(Val(case.method), U)

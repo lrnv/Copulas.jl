@@ -63,10 +63,8 @@ end
             inverse_derivative = (Copulas.ϕ⁻¹(G, 0.5 + h) -
                                   Copulas.ϕ⁻¹(G, 0.5 - h)) / (2h)
             @test Copulas.ϕ⁻¹⁽¹⁾(G, 0.5) ≈ inverse_derivative rtol=2e-5
-            if !(G isa WilliamsonGenerator)
-                y = Copulas.ϕ⁽ᵏ⁾(G, 1, 0.3)
-                @test Copulas.ϕ⁽ᵏ⁾⁻¹(G, 1, y) ≈ 0.3 atol=2e-5 rtol=2e-5
-            end
+            y = Copulas.ϕ⁽ᵏ⁾(G, 1, 0.3)
+            @test Copulas.ϕ⁽ᵏ⁾⁻¹(G, 1, y) ≈ 0.3 atol=2e-5 rtol=2e-5
         end
     end
 end

@@ -49,6 +49,27 @@ end
             @test Copulas.ellpartial(tail, x, Int[]) == value
             @test Copulas.ellpartial(tail, x, [1]) ≈
                   Copulas.ellpartial(tail, x, (1,))
+            if !(tail isa Copulas.DiscreteSpectralBackedTail)
+                h = 1e-5
+                xplus, xminus = copy(x), copy(x)
+                xplus[1] += h
+                xminus[1] -= h
+                finite_first = (Copulas.ℓ(tail, xplus) -
+                                Copulas.ℓ(tail, xminus)) / (2h)
+                @test Copulas.ellpartial(tail, x, (1,)) ≈ finite_first
+
+                if d > 1
+                    xpp, xpm, xmp, xmm = copy(x), copy(x), copy(x), copy(x)
+                    xpp[1] += h; xpp[2] += h
+                    xpm[1] += h; xpm[2] -= h
+                    xmp[1] -= h; xmp[2] += h
+                    xmm[1] -= h; xmm[2] -= h
+                    finite_mixed = (Copulas.ℓ(tail, xpp) - Copulas.ℓ(tail, xpm) -
+                                    Copulas.ℓ(tail, xmp) + Copulas.ℓ(tail, xmm)) /
+                                   (4h^2)
+                    @test Copulas.ellpartial(tail, x, (1, 2)) ≈ finite_mixed atol=5e-4 rtol=5e-4
+                end
+            end
         end
     end
 end

@@ -39,6 +39,26 @@ end
     @test compared > 0
 end
 
+@testset "specialized bivariate log-densities agree with CDF derivatives" begin
+    routes = _unique_bivariate_routes(
+        (_, C) -> which(Distributions._logpdf,
+                        Tuple{typeof(C),Vector{Float64}}),
+        (case, _) -> case.kind === :continuous,
+    )
+    u = [0.53, 0.67]
+    h = 2e-5
+    for (; case, C, method) in routes
+        expected = (
+            cdf(C, u .+ (h, h)) - cdf(C, u .+ (h, -h)) -
+            cdf(C, u .+ (-h, h)) + cdf(C, u .- (h, h))
+        ) / (4h^2)
+        @info "Comparing log-density route with mixed CDF derivative" copula=case.name method
+        @test isapprox(pdf(C, u), expected; atol=8e-4, rtol=8e-4)
+        @test logpdf(C, u) ≈ log(pdf(C, u))
+    end
+    @test !isempty(routes)
+end
+
 @testset "specialized dependence measures agree with generic definitions" begin
     # Entropy and Gini's gamma use substantially more expensive multidimensional
     # integrals and are covered by their independent identities in correctness/.
@@ -56,6 +76,20 @@ end
             @info "Comparing specialized dependence measure with generic definition" measure=nameof(measure) copula=case.name method
             @test isapprox(measure(C), expected; atol=3e-4, rtol=3e-4)
         end
+    end
+end
+
+@testset "limit and subset dependence routes agree with independent identities" begin
+    independence = IndependentCopula{2}()
+    @test Copulas.γ(independence) == 0
+    @test Copulas.ι(independence) == 0
+    @test Copulas.γ(MCopula{2}()) == 1
+    @test Copulas.ι(MCopula{2}()) == -Inf
+
+    parent = ClaytonCopula{2}(1.5)
+    subset = subsetdims(parent, (2, 1))
+    for measure in SCALAR_DEPENDENCE_MEASURES
+        @test measure(subset) == measure(parent)
     end
 end
 
@@ -174,6 +208,48 @@ end
     @test !isempty(seen)
 end
 
+function _finite_conditional_cdf(C, js, values, target_index, target; h=2e-4)
+    d = length(C)
+    function mixed_at(target_value)
+        total = 0.0
+        for corner in Iterators.product(ntuple(_ -> (-1, 1), length(js))...)
+            point = ones(d)
+            point[target_index] = target_value
+            for k in eachindex(js)
+                point[js[k]] = values[k] + corner[k] * h
+            end
+            total += prod(corner) * cdf(C, point)
+        end
+        return total / (2h)^length(js)
+    end
+    return mixed_at(target) / mixed_at(1.0)
+end
+
+@testset "multivariate conditioning routes agree with normalized CDF derivatives" begin
+    seen = Set{Method}()
+    for case in COPULA_CASES
+        C = case.build()
+        d = length(C)
+        d > 2 || continue
+        case.kind === :continuous || continue
+        js = Tuple(1:(d - 1))
+        values = ntuple(k -> 0.3 + 0.08k, d - 1)
+        method = which(Copulas.DistortionFromCop,
+            Tuple{typeof(C),typeof(js),typeof(values),Int})
+        method in seen && continue
+        push!(seen, method)
+
+        target_index = d
+        target = 0.63
+        D = condition(C, js, values)
+        expected = _finite_conditional_cdf(
+            C, js, values, target_index, target)
+        @info "Comparing multivariate conditioning route with normalized CDF derivatives" copula=case.name method
+        @test isapprox(cdf(D, target), expected; atol=2e-3, rtol=2e-3)
+    end
+    @test !isempty(seen)
+end
+
 @testset "specialized Rosenblatt implementations agree with the generic path" begin
     u = [0.2 0.7; 0.4 0.6; 0.8 0.3]
     for C in (
@@ -213,6 +289,22 @@ end
         for C in checked
     )
     @test selected_methods == checked_methods
+
+    generic_inverse_method = which(Copulas.inverse_rosenblatt,
+        Tuple{Copulas.Copula{3},Matrix{Float64}})
+    selected_inverse_methods = Set(
+        which(Copulas.inverse_rosenblatt,
+              Tuple{typeof(C),Matrix{Float64}})
+        for C in candidates
+        if which(Copulas.inverse_rosenblatt,
+                 Tuple{typeof(C),Matrix{Float64}}) !== generic_inverse_method
+    )
+    checked_inverse_methods = Set(
+        which(Copulas.inverse_rosenblatt,
+              Tuple{typeof(C),Matrix{Float64}})
+        for C in checked
+    )
+    @test selected_inverse_methods == checked_inverse_methods
 end
 
 @testset "EV analytic partials agree with the differentiable CDF path" begin
