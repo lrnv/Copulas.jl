@@ -1,5 +1,9 @@
 # Equivalence obligation: deterministic optimized implementations must agree
 # with a generic fallback or an independent mathematical oracle.
+# Multivariate Archimedean, EV, Liouville, nested, and Gaussian formulas are
+# covered by their defining identities in correctness/mathematical.jl and the
+# focused family regressions. Singular and mixed CDFs have no Lebesgue-density
+# fallback; their mass identities and sampler structure are checked there too.
 
 function _unique_bivariate_routes(operation, predicate)
     seen = Set{Method}()
