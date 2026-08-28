@@ -35,8 +35,11 @@ correct generic mechanisms
 - `obligations/equivalence/` implements obligation 3. A specialization belongs
   here only when it is compared with a fallback or an independent identity.
 - `obligations/routing/` implements obligation 4 by discovering and exercising
-  every distinct method selected by the public fixtures. Merely executing a
-  method establishes routing, not correctness or equivalence.
+  every distinct method selected by the public fixtures. Deterministic copula
+  routes are also compared mechanically with the proof ledger populated by the
+  correctness and equivalence layers. Merely executing a method establishes
+  routing, not correctness or equivalence, and therefore does not enter it in
+  that ledger.
 - Statistical tests replace draw-by-draw equivalence for random samplers with
   distributional identities.
 - `Aqua.jl` and `fixtures.jl` provide infrastructure shared by all obligations.
@@ -55,7 +58,7 @@ Each public behaviour must be accounted for as follows.
 | CDF, log-CDF, PDF and log-PDF | every applicable family | derivatives and numerical integration | deterministic formulas vs fallback | dispatch inventory |
 | sampling | every public family | distributional identities | no draw-by-draw comparison | sampler dispatch inventory |
 | subsetting | every public family | marginal CDF identity | specialized subsets vs parent | dispatch inventory |
-| conditioning | every public family | normalized mixed derivatives | distortions vs generic conditional | distortion and dispatch registries |
+| conditioning | every public family | normalized mixed derivatives | scalar distortions and joint conditional components vs the parent CDF | distortion and dispatch registries |
 | Rosenblatt transforms | every public family | conditional-CDF factorization | specialized transforms vs generic | dispatch inventory |
 | dependence measures | applicability on every family | defining integral or statistical identity | closed forms vs generic/independent oracle | one execution per dispatch |
 | fitting | every advertised family/method | recovery and parameter-map identities | specialized estimators vs their defining statistic | advertised-method registry |

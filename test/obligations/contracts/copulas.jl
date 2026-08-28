@@ -230,7 +230,7 @@ end
 end
 
 @testset "one execution per dependence-measure dispatch" begin
-    models = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
+    models = Tuple((case=case, copula=case.build()) for case in ROUTING_COPULA_CASES)
 
     for measure in SCALAR_DEPENDENCE_MEASURES
         seen = Set{Any}()

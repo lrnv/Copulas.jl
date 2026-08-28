@@ -13,6 +13,15 @@
 struct PolynomialOracleCopula{d,T} <: Copulas.Copula{d}
     θ::T
 end
+
+# Same density, deliberately without a CDF method. It selects Copula.jl's
+# generic density-integration route and therefore proves that route directly.
+struct DensityOnlyPolynomialOracleCopula{d,T} <: Copulas.Copula{d}
+    θ::T
+end
+Distributions.params(C::DensityOnlyPolynomialOracleCopula) = (; θ=C.θ)
+Distributions._logpdf(C::DensityOnlyPolynomialOracleCopula, u) =
+    log1p(C.θ * prod(1 .- 2 .* u))
 PolynomialOracleCopula(θ) = PolynomialOracleCopula{2,typeof(θ)}(θ)
 Distributions.params(C::PolynomialOracleCopula) = (; θ=C.θ)
 function Copulas._cdf(C::PolynomialOracleCopula, u)
@@ -21,9 +30,9 @@ end
 function Distributions._logpdf(C::PolynomialOracleCopula, u)
     return log1p(C.θ * prod(1 .- 2 .* u))
 end
-_oracle_cdf(C::PolynomialOracleCopula, u) =
+_oracle_cdf(C, u) =
     prod(u) * (1 + C.θ * prod(1 .- u))
-_oracle_pdf(C::PolynomialOracleCopula, u) =
+_oracle_pdf(C, u) =
     1 + C.θ * prod(1 .- 2 .* u)
 _oracle_conditional_cdf(C::PolynomialOracleCopula, conditioned, target) =
     target * (1 + C.θ * (1 - 2conditioned) * (1 - target))
@@ -152,6 +161,16 @@ end
     @test cdf(H, target) ≈ expected_conditional
     @test pdf(H, target) ≈
           1 + C3.θ * prod(1 .- 2 .* target) * (1 - 2conditioned)
+
+    for d in (2, 3)
+        density_only = DensityOnlyPolynomialOracleCopula{d,Float64}(0.4)
+        point = collect(range(0.37, 0.73; length=d))
+        @test cdf(density_only, point) ≈ _oracle_cdf(density_only, point)
+              atol=3e-5
+        prove_dispatch_route!(:cdf, density_only,
+                              (kind=:continuous, rosenblatt=true),
+                              :generic_density_integral)
+    end
 end
 
 @testset "Sklar change-of-variables identities" begin
@@ -197,6 +216,10 @@ end
         cdf(C, u .+ (-h, h)) + cdf(C, u .- (h, h))
     ) / (4h^2)
     @test pdf(C, u) ≈ mixed atol=5e-4 rtol=5e-4
+    prove_dispatch_route!(:cdf, C, (kind=:continuous, rosenblatt=true),
+                          :radial_dirichlet_identity)
+    prove_dispatch_route!(:logpdf, C, (kind=:continuous, rosenblatt=true),
+                          :radial_dirichlet_identity)
 end
 
 @testset "nested Archimedean composition identity" begin
@@ -215,6 +238,9 @@ end
     @test cdf(C, u) ≈ nested_cdf(u)
     expected_density = _oracle_mixed_partial(nested_cdf, u)
     @test pdf(C, u) ≈ expected_density atol=2e-8 rtol=2e-8
+    proof_case = (kind=:continuous, rosenblatt=true)
+    prove_dispatch_route!(:cdf, C, proof_case, :nested_composition_identity)
+    prove_dispatch_route!(:logpdf, C, proof_case, :nested_composition_identity)
 end
 
 @testset "independent multivariate density identities" begin
@@ -229,6 +255,9 @@ end
         expected = Copulas.ϕ⁽ᵐ⁾(G, 3, t) *
                    prod(Copulas.ϕ⁻¹⁽¹⁾(G, p) for p in u)
         @test pdf(C, u) ≈ expected rtol=2e-10
+        prove_dispatch_route!(:logpdf, C,
+                              (kind=:continuous, rosenblatt=true),
+                              :archimedean_change_of_variables)
     end
 
     # Extreme-value densities are the full mixed derivative of their defining
@@ -236,6 +265,14 @@ end
     # multivariate EV density construction independently.
     ev = ExtremeValueCopula{3}(LogisticOracleTail(1.5))
     @test pdf(ev, u) ≈ _oracle_mixed_partial(v -> cdf(ev, v), u) rtol=2e-8
+    prove_dispatch_route!(:logpdf, ev, (kind=:continuous, rosenblatt=true),
+                          :ev_cdf_mixed_derivative)
+
+    logev = LogCopula{3}(1.5)
+    @test pdf(logev, u) ≈ _oracle_mixed_partial(v -> cdf(logev, v), u) rtol=2e-8
+    prove_dispatch_route!(:logpdf, logev,
+                          (kind=:continuous, rosenblatt=true),
+                          :ev_cdf_mixed_derivative)
 
     # Elliptical copula density is the multivariate density divided by all
     # standardized marginal densities. Cover both normal and Student kernels.
@@ -245,6 +282,9 @@ end
     gaussian_expected = pdf(MvNormal(zeros(3), Σ), znormal) /
                         prod(pdf.(Normal(), znormal))
     @test pdf(gaussian, u) ≈ gaussian_expected rtol=2e-12
+    prove_dispatch_route!(:logpdf, gaussian,
+                          (kind=:continuous, rosenblatt=true),
+                          :elliptical_change_of_variables)
 
     ν = 5.0
     student = TCopula{3}(ν, copy(Σ))
@@ -253,6 +293,9 @@ end
     student_expected = pdf(MvTDist(ν, Σ), zstudent) /
                        prod(pdf.(marginal, zstudent))
     @test pdf(student, u) ≈ student_expected rtol=2e-12
+    prove_dispatch_route!(:logpdf, student,
+                          (kind=:continuous, rosenblatt=true),
+                          :elliptical_change_of_variables)
 
     # Liouville's radial--Dirichlet density, including non-integer marginal
     # Williamson orders and their Jacobians.
@@ -269,6 +312,24 @@ end
         sum((α[i] - 1) * log(x[i]) - logpdf(margins[i], x[i]) for i in 1:3)
     @test logpdf(liouville, u) ≈ expected_logdensity rtol=2e-10
 
+    # Independently integrate the defining R*Dirichlet survival event using a
+    # direct simplex density (the implementation uses beta stick-breaking).
+    direction = Dirichlet(collect(α))
+    expected_cdf, _ = HCubature.hcubature(zeros(2), ones(2)) do z
+        a, b = z
+        (iszero(a) || isone(a) || iszero(b) || isone(b)) && return 0.0
+        simplex = [a, (1 - a) * b, (1 - a) * (1 - b)]
+        threshold = maximum(x[i] / simplex[i] for i in 1:3)
+        pdf(direction, simplex) * (1 - a) * ccdf(radial, threshold)
+    end
+    @test cdf(liouville, u) ≈ expected_cdf atol=3e-5 rtol=3e-5
+    prove_dispatch_route!(:cdf, liouville,
+                          (kind=:continuous, rosenblatt=true),
+                          :radial_dirichlet_identity)
+    prove_dispatch_route!(:logpdf, liouville,
+                          (kind=:continuous, rosenblatt=true),
+                          :radial_dirichlet_identity)
+
     # With only the full interaction coefficient nonzero, multivariate FGM is
     # exactly the polynomial oracle above. This covers the composed polynomial
     # density route without repeating its implementation.
@@ -276,6 +337,10 @@ end
     polynomial = PolynomialOracleCopula{3,Float64}(0.4)
     @test cdf(fgm, u) ≈ _oracle_cdf(polynomial, u)
     @test pdf(fgm, u) ≈ _oracle_pdf(polynomial, u)
+    prove_dispatch_route!(:cdf, fgm, (kind=:continuous, rosenblatt=true),
+                          :polynomial_identity)
+    prove_dispatch_route!(:logpdf, fgm, (kind=:continuous, rosenblatt=true),
+                          :polynomial_identity)
 
     # Survival composition has unit absolute Jacobian; its density is the
     # wrapped copula density evaluated at the reflected coordinates.
@@ -283,6 +348,9 @@ end
     survival = SurvivalCopula{3}(parent, (1, 3))
     reflected = [1 - u[1], u[2], 1 - u[3]]
     @test pdf(survival, u) ≈ pdf(parent, reflected)
+    prove_dispatch_route!(:logpdf, survival,
+                          (kind=:continuous, rosenblatt=true),
+                          :survival_jacobian_identity)
 end
 
 @testset "generic generator oracle" begin
@@ -412,6 +480,11 @@ end
         @test cdf(C, u) ≈ exp(-Copulas.ℓ(tail, -log.(u)))
         power = 1.7
         @test cdf(C, u .^ power) ≈ cdf(C, u)^power
+        prove_dispatch_route!(:cdf, C,
+                              (kind=tail isa Copulas.DiscreteSpectralBackedTail ?
+                                    :singular : :continuous,
+                               rosenblatt=false),
+                              :stable_tail_representation)
     end
 end
 
@@ -442,8 +515,16 @@ end
     @test Copulas.measure(C, lower, upper) ≈
           Copulas.measure(C, lower, left_upper) +
           Copulas.measure(C, right_lower, upper) atol=2e-8
-    @test Copulas.measure(IndependentCopula{3}(), lower, upper) ≈
-          prod(upper - lower)
+    independence = IndependentCopula{3}()
+    @test Copulas.measure(independence, lower, upper) ≈ prod(upper - lower)
+    u = [0.32, 0.54, 0.76]
+    @test cdf(independence, u) == prod(u)
+    @test logpdf(independence, u) == 0
+    proof_case = (kind=:continuous, rosenblatt=true)
+    prove_dispatch_route!(:cdf, independence, proof_case,
+                          :independence_product_identity)
+    prove_dispatch_route!(:logpdf, independence, proof_case,
+                          :independence_product_identity)
 end
 
 @testset "higher-order conditionals are normalized mixed derivatives" begin
@@ -570,9 +651,24 @@ end
 end
 
 @testset "multivariate Archimedean defining formula" begin
-    C = ClaytonCopula{3}(1.5)
     u = [0.32, 0.54, 0.76]
-    @test cdf(C, u) ≈ Copulas.ϕ(C.G, sum(Copulas.ϕ⁻¹.(Ref(C.G), u)))
+    for C in (ClaytonCopula{3}(1.5), FrankCopula{3}(2.0),
+              GumbelCopula{3}(1.5))
+        @test cdf(C, u) ≈ Copulas.ϕ(C.G,
+            sum(Copulas.ϕ⁻¹.(Ref(C.G), u)))
+        prove_dispatch_route!(:cdf, C,
+                              (kind=:continuous, rosenblatt=true),
+                              :archimedean_defining_formula)
+    end
+end
+
+@testset "multivariate Gaussian CDF agrees with density integration" begin
+    C = GaussianCopula{3}(0.3)
+    u = [0.32, 0.54, 0.76]
+    expected = invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
+    @test cdf(C, u) ≈ expected atol=1e-3 rtol=1e-3
+    prove_dispatch_route!(:cdf, C, (kind=:continuous, rosenblatt=true),
+                          :density_integration)
 end
 
 @testset "survival transformation is an involution" begin
@@ -582,6 +678,22 @@ end
     u = [0.32, 0.54, 0.76]
     @test cdf(restored, u) ≈ cdf(C, u)
     @test pdf(restored, u) ≈ pdf(C, u)
+    wrapped = SurvivalCopula{3}(C, flips)
+    expected = 0.0
+    for mask in Iterators.product((0:1 for _ in flips)...)
+        point = copy(u)
+        for i in flips
+            point[i] = 1.0
+        end
+        for (k, i) in pairs(flips)
+            mask[k] == 1 && (point[i] = 1 - u[i])
+        end
+        expected += (-1)^sum(mask) * cdf(C, point)
+    end
+    @test cdf(wrapped, u) ≈ expected
+    prove_dispatch_route!(:cdf, wrapped,
+                          (kind=:continuous, rosenblatt=true),
+                          :survival_inclusion_exclusion)
 end
 
 @testset "dependence measures agree with their definitions" begin

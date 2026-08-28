@@ -30,10 +30,16 @@ end
     compared = 0
     u = [0.53, 0.67]
     for (; case, C, method) in routes
-        method === generic_method && continue
+        if method === generic_method
+            # The generic density integral is independently validated by the
+            # polynomial oracle in correctness/mathematical.jl.
+            prove_dispatch_route!(:cdf, C, case, :generic_density_integral)
+            continue
+        end
         expected = invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
         @info "Comparing specialized CDF with generic integration" copula=case.name method
         @test isapprox(cdf(C, u), expected; atol=3e-5, rtol=3e-5)
+        prove_dispatch_route!(:cdf, C, case, :density_integration)
         compared += 1
     end
     @test compared > 0
@@ -55,8 +61,39 @@ end
         @info "Comparing log-density route with mixed CDF derivative" copula=case.name method
         @test isapprox(pdf(C, u), expected; atol=8e-4, rtol=8e-4)
         @test logpdf(C, u) ≈ log(pdf(C, u))
+        prove_dispatch_route!(:logpdf, C, case, :cdf_mixed_derivative)
     end
     @test !isempty(routes)
+end
+
+@testset "singular and mixed CDF routes satisfy mass identities" begin
+    seen = Set{Any}()
+    split = 0.46
+    for case in ROUTING_COPULA_CASES
+        C = case.build()
+        case.kind === :continuous && continue
+        key = dispatch_route_key(:cdf, C, case)
+        key in seen && continue
+        push!(seen, key)
+        d = length(C)
+        for i in 1:d
+            margin_point = ones(d)
+            margin_point[i] = 0.37
+            @test cdf(C, margin_point) ≈ 0.37
+        end
+        lower = collect(range(0.12, 0.18; length=d))
+        upper = collect(range(0.78, 0.84; length=d))
+        whole = Copulas.measure(C, lower, upper)
+        left_upper = copy(upper)
+        left_upper[1] = split
+        right_lower = copy(lower)
+        right_lower[1] = split
+        @test whole ≈
+              Copulas.measure(C, lower, left_upper) +
+              Copulas.measure(C, right_lower, upper)
+        prove_dispatch_route!(:cdf, C, case, :singular_mass_identity)
+    end
+    @test !isempty(seen)
 end
 
 @testset "specialized dependence measures agree with generic definitions" begin
@@ -249,6 +286,7 @@ end
                        atol=3e-5, rtol=3e-5)
         @test isapprox(pdf(D, target), expected_pdf;
                        atol=3e-4, rtol=3e-4)
+        prove_dispatch_route!(:conditioning, C, case, :cdf_derivative)
     end
     @test !isempty(seen)
 end
@@ -291,6 +329,76 @@ end
             C, js, values, target_index, target)
         @info "Comparing multivariate conditioning route with normalized CDF derivatives" copula=case.name method
         @test isapprox(cdf(D, target), expected; atol=2e-3, rtol=2e-3)
+        prove_dispatch_route!(:conditioning, C, case,
+                              :normalized_cdf_derivative)
+    end
+    @test !isempty(seen)
+end
+
+@testset "atomic conditioning routes satisfy generalized inversion" begin
+    seen = Set{Any}()
+    for case in ROUTING_COPULA_CASES
+        C = case.build()
+        case.kind === :continuous && continue
+        key = dispatch_route_key(:conditioning, C, case)
+        key in seen && continue
+        push!(seen, key)
+        d = length(C)
+        D = condition(C, Tuple(1:(d - 1)), ntuple(_ -> 0.4, d - 1))
+        for p in (0.2, 0.6, 0.85)
+            q = quantile(D, p)
+            @test cdf(D, q) >= p - 1e-10
+        end
+        prove_dispatch_route!(:conditioning, C, case,
+                              :generalized_quantile_identity)
+    end
+    @test !isempty(seen)
+end
+
+@testset "joint conditioning routes agree with normalized CDF derivatives" begin
+    seen = Set{Any}()
+    conditioned = 0.41
+    h = 2e-5
+    for case in ROUTING_COPULA_CASES
+        C = case.build()
+        d = length(C)
+        d > 2 || continue
+        key = dispatch_route_key(:conditional_joint, C, case)
+        key in seen && continue
+        push!(seen, key)
+
+        H = condition(C, (1,), (conditioned,))
+        targets = collect(range(0.53, 0.71; length=d - 1))
+        conditional_scale = [cdf(H.m[i], targets[i]) for i in 1:(d - 1)]
+        upper = vcat(conditioned + h, targets)
+        lower = vcat(conditioned - h, targets)
+        numerator = (cdf(C, upper) - cdf(C, lower)) / (2h)
+        normalizer = (cdf(C, vcat(conditioned + h, ones(d - 1))) -
+                      cdf(C, vcat(conditioned - h, ones(d - 1)))) / (2h)
+        tolerance = case.kind === :continuous ? 5e-4 : 3e-3
+        @test isapprox(cdf(H, conditional_scale), numerator / normalizer;
+                       atol=tolerance, rtol=tolerance)
+        prove_dispatch_route!(:conditional_joint, C, case,
+                              :normalized_joint_cdf_derivative)
+    end
+    @test !isempty(seen)
+end
+
+@testset "subsetting routes preserve parent margins" begin
+    seen = Set{Any}()
+    for case in ROUTING_COPULA_CASES
+        C = case.build()
+        d = length(C)
+        dims = d == 2 ? (2, 1) : (1, d)
+        key = dispatch_route_key(:subsetting, C, case)
+        key in seen && continue
+        push!(seen, key)
+        S = subsetdims(C, dims)
+        u = [0.37, 0.68]
+        parent_point = ones(d)
+        parent_point[collect(dims)] .= u
+        @test cdf(S, u) ≈ cdf(C, parent_point)
+        prove_dispatch_route!(:subsetting, C, case, :parent_margin_identity)
     end
     @test !isempty(seen)
 end
@@ -350,6 +458,39 @@ end
         for C in checked
     )
     @test selected_inverse_methods == checked_inverse_methods
+end
+
+@testset "every Rosenblatt route equals sequential conditioning" begin
+    seen_forward = Set{Any}()
+    seen_inverse = Set{Any}()
+    for case in ROUTING_COPULA_CASES
+        case.rosenblatt || continue
+        C = case.build()
+        d = length(C)
+        u = collect(range(0.31, 0.73; length=d))
+        forward_key = dispatch_route_key(:rosenblatt, C, case)
+        inverse_key = dispatch_route_key(:inverse_rosenblatt, C, case)
+        forward_key in seen_forward && inverse_key in seen_inverse && continue
+
+        R = rosenblatt(C, u)
+        expected = similar(R)
+        expected[1] = u[1]
+        for i in 2:d
+            js = Tuple(1:(i - 1))
+            values = Tuple(u[1:(i - 1)])
+            expected[i] = cdf(Copulas.DistortionFromCop(C, js, values, i),
+                              u[i])
+        end
+        @test R ≈ expected atol=2e-6 rtol=2e-6
+        @test inverse_rosenblatt(C, R) ≈ u atol=2e-6 rtol=2e-6
+        prove_dispatch_route!(:rosenblatt, C, case, :sequential_conditioning)
+        prove_dispatch_route!(:inverse_rosenblatt, C, case,
+                              :sequential_conditioning_inverse)
+        push!(seen_forward, forward_key)
+        push!(seen_inverse, inverse_key)
+    end
+    @test !isempty(seen_forward)
+    @test !isempty(seen_inverse)
 end
 
 @testset "EV analytic partials agree with the differentiable CDF path" begin

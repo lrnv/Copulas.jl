@@ -85,21 +85,92 @@ const COPULA_CASES = (
 # from the one-instance-per-family public contract above. They are consumed by
 # routing and proof tests only, avoiding repetition of the full API contract.
 const ROUTING_EXTRA_CASES = (
+    copula_case("Gumbel bivariate", () -> GumbelCopula{2}(1.5)),
+    copula_case("Galambos bivariate", () -> GalambosCopula{2}(1.0)),
+    copula_case("Husler--Reiss bivariate", () -> HuslerReissCopula{2}(1.0)),
+    copula_case("logistic EV bivariate", () -> LogCopula{2}(1.5)),
     copula_case("asymmetric Galambos multivariate",
         () -> AsymGalambosCopula{3}(1.0, [0.4, 0.5, 0.6])),
     copula_case("BC2 multivariate",
         () -> BC2Copula{3}([0.3, 0.7, 0.5]); kind=:mixed, rosenblatt=false),
     copula_case("Cuadras--Auge multivariate",
         () -> CuadrasAugeCopula{3}(0.5); kind=:mixed, rosenblatt=false),
+    copula_case("Marshall--Olkin multivariate", () -> MOCopula{3}(
+        [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]);
+        kind=:mixed, rosenblatt=false),
     copula_case("t-EV multivariate", () -> tEVCopula{3}(4.0, 0.2)),
+    copula_case("Gaussian bivariate", () -> GaussianCopula{2}(0.3)),
     copula_case("Student multivariate", () -> TCopula{3}(5.0,
         [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])),
     copula_case("Liouville multivariate", () -> LiouvilleCopula{3}(
         Copulas.ClaytonGenerator(1.0), (0.8, 1.1, 1.3))),
     copula_case("FGM multivariate", () -> FGMCopula{3}([0.0, 0.0, 0.0, 0.4])),
+    copula_case("independence bivariate", () -> IndependentCopula{2}()),
+    copula_case("upper Frechet multivariate", () -> MCopula{3}();
+        kind=:singular, rosenblatt=false),
+    copula_case("Raftery bivariate", () -> RafteryCopula{2}(0.5);
+        kind=:mixed, rosenblatt=false),
+    copula_case("survival bivariate", () -> SurvivalCopula{2}(
+        ClaytonCopula{2}(1.5), (1,))),
 )
 
 const ROUTING_COPULA_CASES = (COPULA_CASES..., ROUTING_EXTRA_CASES...)
+
+# Proof ledger shared by the four obligation layers. A route is entered only
+# after the test providing its oracle/equivalence has succeeded. The routing
+# layer, which runs last, compares this ledger with every method selected by the
+# public fixtures.
+const PROVEN_DISPATCH_ROUTES = Dict{Symbol,Dict{Any,Set{Symbol}}}()
+
+_which(f, args...) = which(f, Tuple{typeof.(args)...})
+
+function dispatch_path(operation, C, case)
+    d = length(C)
+    u = fill(0.6, d)
+    if operation === :cdf
+        return _which(Copulas._cdf, C, u)
+    elseif operation === :logpdf
+        case.kind === :continuous || return nothing
+        return _which(Distributions._logpdf, C, u)
+    elseif operation === :sampling
+        return _which(Distributions._rand!, StableRNG(51), C, zeros(d, 1))
+    elseif operation === :conditioning
+        js = Tuple(1:(d - 1))
+        values = ntuple(_ -> 0.4, d - 1)
+        return _which(Copulas.DistortionFromCop, C, js, values, d)
+    elseif operation === :conditional_joint
+        d > 2 || return nothing
+        js = (1,)
+        values = (0.4,)
+        is = Tuple(2:d)
+        return _which(Copulas._conditional_components, C, js, values, is)
+    elseif operation === :rosenblatt
+        case.rosenblatt || return nothing
+        return _which(Copulas.rosenblatt, C, reshape(u, :, 1))
+    elseif operation === :inverse_rosenblatt
+        case.rosenblatt || return nothing
+        return _which(Copulas.inverse_rosenblatt, C, reshape(u, :, 1))
+    elseif operation === :subsetting
+        dims = d == 2 ? (2, 1) : (1, d)
+        return _which(Copulas.subsetdims, C, dims)
+    end
+    error("unknown dispatch operation $operation")
+end
+
+function dispatch_route_key(operation, C, case)
+    method = dispatch_path(operation, C, case)
+    isnothing(method) && return nothing
+    return (method, length(C) == 2 ? :bivariate : :multivariate)
+end
+
+function prove_dispatch_route!(operation, C, case, source::Symbol)
+    key = dispatch_route_key(operation, C, case)
+    isnothing(key) && return nothing
+    sources = get!(get!(PROVEN_DISPATCH_ROUTES, operation, Dict{Any,Set{Symbol}}()),
+                   key, Set{Symbol}())
+    push!(sources, source)
+    return key
+end
 
 constructor_case(name, typed, dynamic; allowed_inference=nothing) =
     (; name, typed, dynamic, allowed_inference)

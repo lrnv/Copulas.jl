@@ -61,6 +61,13 @@ _check_parameter_roundtrip(C) =
             fitted = fit(CT, U, method; vcov=false,
                          derived_measures=false)
             @test fitted isa Copulas.Copula{d}
+            if method === :mle
+                fitted_ll = loglikelihood(fitted, U)
+                source_ll = loglikelihood(C, U)
+                if isfinite(fitted_ll) && isfinite(source_ll)
+                    @test fitted_ll >= source_ll - 1e-6
+                end
+            end
             fitted_statistic = fitting_statistic(Val(method), fitted)
             isnothing(fitted_statistic) && continue
             sample_statistic = fitting_statistic(Val(method), U)
