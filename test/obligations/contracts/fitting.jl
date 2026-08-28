@@ -69,6 +69,40 @@ end
               derived_measures=false) isa CopulaModel
 end
 
+@testset "empirical fitting routes equal their defining estimators" begin
+    U = _FIXTURE_DATA
+    point = [0.43, 0.71]
+    estimators = (
+        (EmpiricalCopula, :deheuvels, NamedTuple(),
+         () -> EmpiricalCopula(U)),
+        (BetaCopula, :beta, NamedTuple(),
+         () -> BetaCopula(U)),
+        (CheckerboardCopula, :exact, (; m=2),
+         () -> CheckerboardCopula(U; m=2)),
+        (BernsteinCopula, :bernstein, (; m=2),
+         () -> BernsteinCopula(U; m=2)),
+        (EmpiricalEVCopula, :cfg, (; grid=21),
+         () -> EmpiricalEVCopula(U; method=:cfg, grid=21)),
+    )
+    for (family, method, kwargs, direct) in estimators
+        fitted = fit(family, U; method=method, kwargs...,
+                     vcov=false, derived_measures=false)
+        expected = direct()
+        @test typeof(fitted) == typeof(expected)
+        @test params(fitted) == params(expected)
+        @test cdf(fitted, point) ≈ cdf(expected, point)
+    end
+
+    U3 = _FIXTURE_DATA3
+    fitted3 = fit(EmpiricalEVCopula, U3; method=:cfg, degree=1,
+                  vcov=false, derived_measures=false)
+    expected3 = EmpiricalEVCopula(U3; method=:cfg, degree=1)
+    @test typeof(fitted3) == typeof(expected3)
+    @test params(fitted3) == params(expected3)
+    @test cdf(fitted3, [0.41, 0.59, 0.73]) ≈
+          cdf(expected3, [0.41, 0.59, 0.73])
+end
+
 @testset "structural and non-fittable public families" begin
     nested = NestedArchimedeanCopula{4}(Copulas.ClaytonGenerator(1.0);
         leaves=[1, 2], children=[ClaytonCopula{2}(2.0)])

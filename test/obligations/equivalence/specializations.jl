@@ -8,7 +8,7 @@
 function _unique_bivariate_routes(operation, predicate)
     seen = Set{Method}()
     routes = NamedTuple[]
-    for case in COPULA_CASES
+    for case in ROUTING_COPULA_CASES
         C = case.build()
         length(C) == 2 || continue
         predicate(case, C) || continue
@@ -61,13 +61,17 @@ end
 
 @testset "specialized dependence measures agree with generic definitions" begin
     # Entropy and Gini's gamma use substantially more expensive multidimensional
-    # integrals and are covered by their independent identities in correctness/.
-    # The measures below account for every inexpensive closed-form route.
+    # expectations and are covered by their independent identities in
+    # correctness/. Kendall's generic definition is stochastic, so singular
+    # Kendall formulas keep their exact family identities instead of a noisy,
+    # repeated 10_000-observation comparison here. The CDF-only definitions of
+    # rho, beta and tail dependence remain valid for singular and mixed laws.
     for index in (1, 2, 3, 6, 7)
         measure = SCALAR_DEPENDENCE_MEASURES[index]
         routes = _unique_bivariate_routes(
             (_, C) -> which(measure, Tuple{typeof(C)}),
-            (case, _) -> case.kind === :continuous,
+            (case, _) -> measure === Copulas.τ ?
+                case.kind === :continuous : true,
         )
         generic_method = which(measure, Tuple{Copulas.Copula{2}})
         for (; case, C, method) in routes
@@ -90,6 +94,47 @@ end
     subset = subsetdims(parent, (2, 1))
     for measure in SCALAR_DEPENDENCE_MEASURES
         @test measure(subset) == measure(parent)
+    end
+end
+
+@testset "singular Kendall routes agree with sample concordance" begin
+    routes = _unique_bivariate_routes(
+        (_, C) -> which(Copulas.τ, Tuple{typeof(C)}),
+        (case, _) -> case.kind !== :continuous,
+    )
+    generic_method = which(Copulas.τ, Tuple{Copulas.Copula{2}})
+    compared = 0
+    for (index, route) in pairs(routes)
+        (; case, C, method) = route
+        method === generic_method && continue
+        U = rand(StableRNG(8_000 + index), C, 600)
+        empirical = StatsBase.corkendall(transpose(U))[1, 2]
+        @info "Comparing singular Kendall route with sample concordance" copula=case.name method
+        @test Copulas.τ(C) ≈ empirical atol=0.12
+        compared += 1
+    end
+    @test compared > 0
+end
+
+@testset "all gamma and entropy dispatches have an independent proof" begin
+    parent = ClaytonCopula{2}(1.5)
+    subset = subsetdims(parent, (2, 1))
+    candidates = Any[]
+    for case in ROUTING_COPULA_CASES
+        C = case.build()
+        length(C) == 2 && push!(candidates, C)
+    end
+    push!(candidates, subset)
+
+    for (measure, checked) in (
+        (Copulas.γ, (PolynomialOracleCopula(0.4), IndependentCopula{2}(),
+                     MCopula{2}(), subset)),
+        (Copulas.ι, (PolynomialOracleCopula(0.4), IndependentCopula{2}(),
+                     MCopula{2}(), subset)),
+    )
+        selected_methods = Set(which(measure, Tuple{typeof(C)}) for C in candidates)
+        checked_methods = Set(which(measure, Tuple{typeof(C)}) for C in checked)
+        @test selected_methods == checked_methods
     end
 end
 
@@ -179,7 +224,7 @@ end
 
 @testset "bivariate conditioning routes agree with CDF derivatives" begin
     seen = Set{Method}()
-    for case in COPULA_CASES
+    for case in ROUTING_COPULA_CASES
         C = case.build()
         length(C) == 2 || continue
         case.kind === :continuous || continue
@@ -227,7 +272,7 @@ end
 
 @testset "multivariate conditioning routes agree with normalized CDF derivatives" begin
     seen = Set{Method}()
-    for case in COPULA_CASES
+    for case in ROUTING_COPULA_CASES
         C = case.build()
         d = length(C)
         d > 2 || continue
@@ -274,7 +319,7 @@ end
     generic_method = which(Copulas.rosenblatt,
         Tuple{Copulas.Copula{3},Matrix{Float64}})
     candidates = Any[checked[3]]
-    for case in COPULA_CASES
+    for case in ROUTING_COPULA_CASES
         C = case.build()
         length(C) == 3 && case.rosenblatt && push!(candidates, C)
     end

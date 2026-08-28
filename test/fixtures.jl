@@ -81,6 +81,26 @@ const COPULA_CASES = (
     copula_case("survival", () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3))),
 )
 
+# Additional dimensional representations that select methods not reachable
+# from the one-instance-per-family public contract above. They are consumed by
+# routing and proof tests only, avoiding repetition of the full API contract.
+const ROUTING_EXTRA_CASES = (
+    copula_case("asymmetric Galambos multivariate",
+        () -> AsymGalambosCopula{3}(1.0, [0.4, 0.5, 0.6])),
+    copula_case("BC2 multivariate",
+        () -> BC2Copula{3}([0.3, 0.7, 0.5]); kind=:mixed, rosenblatt=false),
+    copula_case("Cuadras--Auge multivariate",
+        () -> CuadrasAugeCopula{3}(0.5); kind=:mixed, rosenblatt=false),
+    copula_case("t-EV multivariate", () -> tEVCopula{3}(4.0, 0.2)),
+    copula_case("Student multivariate", () -> TCopula{3}(5.0,
+        [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])),
+    copula_case("Liouville multivariate", () -> LiouvilleCopula{3}(
+        Copulas.ClaytonGenerator(1.0), (0.8, 1.1, 1.3))),
+    copula_case("FGM multivariate", () -> FGMCopula{3}([0.0, 0.0, 0.0, 0.4])),
+)
+
+const ROUTING_COPULA_CASES = (COPULA_CASES..., ROUTING_EXTRA_CASES...)
+
 constructor_case(name, typed, dynamic; allowed_inference=nothing) =
     (; name, typed, dynamic, allowed_inference)
 

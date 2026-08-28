@@ -51,7 +51,7 @@ function _exercise_dispatch_path(operation, C)
 end
 
 @testset "one representative per copula dispatch mechanism" begin
-    models = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
+    models = Tuple((case=case, copula=case.build()) for case in ROUTING_COPULA_CASES)
     for operation in (:cdf, :logpdf, :sampling, :conditioning, :rosenblatt,
                       :inverse_rosenblatt, :subsetting)
         seen = Set{Any}()

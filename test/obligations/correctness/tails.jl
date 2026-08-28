@@ -29,7 +29,38 @@ const TAIL_CASES = (
     @test all(T -> any(F -> T <: F, public_families), represented)
 end
 
+@testset "discrete spectral partials follow the active atoms" begin
+    # Away from a spectral kink, each atom contributes the coefficient of its
+    # unique maximizing coordinate to the corresponding first derivative. The
+    # STDF is locally linear, hence every mixed derivative of order >= 2 is 0.
+    # This is the independent oracle for the non-smooth routes intentionally
+    # excluded from finite-difference checks elsewhere in this file.
+    for (tail, d) in TAIL_CASES
+        tail isa Copulas.DiscreteSpectralBackedTail || continue
+        B = Copulas._spectral_tail(tail).B
+        x = collect(range(0.37, 1.13; length=d))
+        winners = [argmax(B[:, k] .* x) for k in axes(B, 2)]
+        for i in 1:d
+            expected = sum(B[i, k] for k in axes(B, 2) if winners[k] == i)
+            @test Copulas.ellpartial(tail, x, (i,)) ≈ expected
+        end
+        d > 1 && @test Copulas.ellpartial(tail, x, (1, 2)) ≈ 0 atol=1e-12
+    end
+end
+
 @testset "public extreme-value tail primitives" begin
+    operations = (
+        stable_tail = (Copulas.ℓ,
+                       (tail, d) -> Tuple{typeof(tail),Vector{Float64}}),
+        pickands = (Copulas.A,
+                    (tail, d) -> Tuple{typeof(tail),NTuple{d,Float64}}),
+        partial = (Copulas.ellpartial,
+                   (tail, d) -> Tuple{typeof(tail),Vector{Float64},Tuple{Int}}),
+    )
+    selected_routes = Dict(name => Set(which(f, signature(tail, d))
+        for (tail, d) in TAIL_CASES)
+        for (name, (f, signature)) in pairs(operations))
+    checked_routes = Dict(name => Set{Method}() for name in keys(operations))
     for (tail, d) in TAIL_CASES
         @testset "$(nameof(typeof(tail))) d=$d" begin
             @test tail isa Copulas.Tail
@@ -70,8 +101,12 @@ end
                     @test Copulas.ellpartial(tail, x, (1, 2)) ≈ finite_mixed atol=5e-4 rtol=5e-4
                 end
             end
+            for (name, (f, signature)) in pairs(operations)
+                push!(checked_routes[name], which(f, signature(tail, d)))
+            end
         end
     end
+    @test checked_routes == selected_routes
 end
 
 const PICKANDS_CASES = (

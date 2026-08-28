@@ -38,6 +38,18 @@ const ALL_PUBLIC_GENERATORS = (
 end
 
 @testset "public generator primitives" begin
+    operations = (
+        phi = (Copulas.ϕ, G -> Tuple{typeof(G),Float64}),
+        inverse = (Copulas.ϕ⁻¹, G -> Tuple{typeof(G),Float64}),
+        first = (Copulas.ϕ⁽¹⁾, G -> Tuple{typeof(G),Float64}),
+        derivative = (Copulas.ϕ⁽ᵏ⁾, G -> Tuple{typeof(G),Int,Float64}),
+        inverse_first = (Copulas.ϕ⁻¹⁽¹⁾, G -> Tuple{typeof(G),Float64}),
+        derivative_inverse =
+            (Copulas.ϕ⁽ᵏ⁾⁻¹, G -> Tuple{typeof(G),Int,Float64}),
+    )
+    selected_routes = Dict(name => Set(which(f, signature(G))
+        for G in GENERATOR_CASES) for (name, (f, signature)) in pairs(operations))
+    checked_routes = Dict(name => Set{Method}() for name in keys(operations))
     for G in GENERATOR_CASES
         @testset "$(nameof(typeof(G)))" begin
             @test G isa Copulas.Generator
@@ -65,6 +77,10 @@ end
             @test Copulas.ϕ⁻¹⁽¹⁾(G, 0.5) ≈ inverse_derivative rtol=2e-5
             y = Copulas.ϕ⁽ᵏ⁾(G, 1, 0.3)
             @test Copulas.ϕ⁽ᵏ⁾⁻¹(G, 1, y) ≈ 0.3 atol=2e-5 rtol=2e-5
+            for (name, (f, signature)) in pairs(operations)
+                push!(checked_routes[name], which(f, signature(G)))
+            end
         end
     end
+    @test checked_routes == selected_routes
 end

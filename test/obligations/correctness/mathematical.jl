@@ -217,6 +217,74 @@ end
     @test pdf(C, u) ≈ expected_density atol=2e-8 rtol=2e-8
 end
 
+@testset "independent multivariate density identities" begin
+    u = [0.31, 0.53, 0.74]
+
+    # Archimedean change of variables: the d-th generator derivative is the
+    # radial density term and every inverse-generator derivative contributes a
+    # marginal Jacobian. This oracle does not call the copula density method.
+    for C in (ClaytonCopula{3}(1.5), GumbelCopula{3}(1.5))
+        G = C.G
+        t = sum(Copulas.ϕ⁻¹(G, p) for p in u)
+        expected = Copulas.ϕ⁽ᵐ⁾(G, 3, t) *
+                   prod(Copulas.ϕ⁻¹⁽¹⁾(G, p) for p in u)
+        @test pdf(C, u) ≈ expected rtol=2e-10
+    end
+
+    # Extreme-value densities are the full mixed derivative of their defining
+    # CDF. The logistic oracle uses only ℓ, so it exercises the generic
+    # multivariate EV density construction independently.
+    ev = ExtremeValueCopula{3}(LogisticOracleTail(1.5))
+    @test pdf(ev, u) ≈ _oracle_mixed_partial(v -> cdf(ev, v), u) rtol=2e-8
+
+    # Elliptical copula density is the multivariate density divided by all
+    # standardized marginal densities. Cover both normal and Student kernels.
+    Σ = [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]
+    gaussian = GaussianCopula{3}(copy(Σ))
+    znormal = quantile.(Normal(), u)
+    gaussian_expected = pdf(MvNormal(zeros(3), Σ), znormal) /
+                        prod(pdf.(Normal(), znormal))
+    @test pdf(gaussian, u) ≈ gaussian_expected rtol=2e-12
+
+    ν = 5.0
+    student = TCopula{3}(ν, copy(Σ))
+    marginal = TDist(ν)
+    zstudent = quantile.(marginal, u)
+    student_expected = pdf(MvTDist(ν, Σ), zstudent) /
+                       prod(pdf.(marginal, zstudent))
+    @test pdf(student, u) ≈ student_expected rtol=2e-12
+
+    # Liouville's radial--Dirichlet density, including non-integer marginal
+    # Williamson orders and their Jacobians.
+    α = (0.8, 1.1, 1.3)
+    liouville = LiouvilleCopula{3}(Copulas.ClaytonGenerator(1.0), α)
+    α₀ = sum(α)
+    radial = Copulas.𝒲₋₁(liouville.G, α₀)
+    margins = ntuple(i -> Copulas.𝒲₋₁(liouville.G, α[i]), 3)
+    x = ntuple(i -> quantile(margins[i], 1 - u[i]), 3)
+    radius = sum(x)
+    expected_logdensity = SpecialFunctions.loggamma(α₀) -
+        sum(SpecialFunctions.loggamma, α) + logpdf(radial, radius) +
+        (1 - α₀) * log(radius) +
+        sum((α[i] - 1) * log(x[i]) - logpdf(margins[i], x[i]) for i in 1:3)
+    @test logpdf(liouville, u) ≈ expected_logdensity rtol=2e-10
+
+    # With only the full interaction coefficient nonzero, multivariate FGM is
+    # exactly the polynomial oracle above. This covers the composed polynomial
+    # density route without repeating its implementation.
+    fgm = FGMCopula{3}([0.0, 0.0, 0.0, 0.4])
+    polynomial = PolynomialOracleCopula{3,Float64}(0.4)
+    @test cdf(fgm, u) ≈ _oracle_cdf(polynomial, u)
+    @test pdf(fgm, u) ≈ _oracle_pdf(polynomial, u)
+
+    # Survival composition has unit absolute Jacobian; its density is the
+    # wrapped copula density evaluated at the reflected coordinates.
+    parent = ClaytonCopula{3}(1.5)
+    survival = SurvivalCopula{3}(parent, (1, 3))
+    reflected = [1 - u[1], u[2], 1 - u[3]]
+    @test pdf(survival, u) ≈ pdf(parent, reflected)
+end
+
 @testset "generic generator oracle" begin
     G = PowerExponentialOracleGenerator(1.5)
     a = inv(G.θ)
