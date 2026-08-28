@@ -340,7 +340,7 @@ function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtm
                     S[i,j] = S[j,i] = NaN
                 else
                     x = pmu[:, i]
-                    S[i,j] = S[j,i] = dot(x, y) / m
+                    S[i,j] = S[j,i] = LinearAlgebra.dot(x, y) / m
                 end
             end
         end

@@ -67,7 +67,7 @@ end
     @test fit(nested, nested_data; vcov=false, derived_measures=false) isa
           NestedArchimedeanCopula{4}
 
-    generic_data = rand(StableRNG(20_102), ClaytonCopula{2}(1.0), 16)
+    generic_data = rand(StableRNG(20_102), ClaytonCopula{2}(1.0), 64)
     @test fit(ArchimedeanCopula, generic_data; method=:gnz2011, vcov=false,
               derived_measures=false) isa ArchimedeanCopula{2}
     @test fit(ExtremeValueCopula, generic_data; method=:ols,

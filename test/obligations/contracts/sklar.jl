@@ -5,7 +5,7 @@
     D = SklarDist(C, (Normal(), Exponential()))
     x = [0.1, 1.2]
     @test length(D) == 2
-    @test_throws AssertionError SklarDist(C, (Normal(),))
+    @test_throws DimensionMismatch SklarDist(C, (Normal(),))
     @test params(D) isa NamedTuple
     @test StatsBase.dof(D) == 4
     @test 0 <= cdf(D, x) <= 1

@@ -60,7 +60,7 @@ end
 
     gamma = Copulas.PowerTiltedFrailty(Gamma(2.0, 3.0), 0.75, 0.4)
     @test gamma isa Gamma
-    @test params(gamma) ≈ (2.75, inv(inv(3.0) + 0.4))
+    @test all(isapprox.(params(gamma), (2.75, inv(inv(3.0) + 0.4))))
 end
 
 @testset "conditional Liouville radial cache" begin

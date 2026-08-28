@@ -54,7 +54,13 @@ struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribut
         return new{typeof(C),typeof(m)}(C,m)
     end    
 end
-SklarDist(C, m) = SklarDist(C, Tuple(m))
+function SklarDist(C::Copula, m)
+    margins = Tuple(m)
+    length(margins) == length(C) || throw(DimensionMismatch(
+        "the number of margins must match the copula dimension",
+    ))
+    return SklarDist(C, margins)
+end
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
 Base.eltype(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = Base.eltype(S.C)
 Distributions.params(S::SklarDist) = (copula=S.C, margins=S.m)

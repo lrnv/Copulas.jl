@@ -53,7 +53,7 @@ Distributions.params(G::PowerExponentialOracleGenerator) = (; θ=G.θ)
 
 # Tail oracle: A, mixed partials and the EV implementation must all be derived
 # from this sole STDF definition.
-struct LogisticOracleTail{T} <: Copulas.Tail
+struct LogisticOracleTail{T} <: Copulas.BivariatePickandsTail
     θ::T
 end
 Distributions.params(tail::LogisticOracleTail) = (; θ=tail.θ)
@@ -396,8 +396,11 @@ end
     gaussian = GaussianCopula{3}(0.3)
     joint = condition(gaussian, 1, 0.41)
     point = [0.57, 0.69]
-    expected = (cdf(gaussian, [0.41 + h, point[1], point[2]]) -
-                cdf(gaussian, [0.41 - h, point[1], point[2]])) / (2h)
+    numerator = (cdf(gaussian, [0.41 + h, point[1], point[2]]) -
+                 cdf(gaussian, [0.41 - h, point[1], point[2]])) / (2h)
+    normalizer = (cdf(gaussian, [0.41 + h, 1.0, 1.0]) -
+                  cdf(gaussian, [0.41 - h, 1.0, 1.0])) / (2h)
+    expected = numerator / normalizer
     @test cdf(joint, point) ≈ expected atol=3e-5 rtol=3e-5
 end
 
@@ -406,7 +409,7 @@ end
     u = [0.31, 0.52, 0.74]
     R = rosenblatt(C, u)
     @test R[1] ≈ u[1]
-    @test R[2] ≈ cdf(condition(C, 1, u[1]), u[2])
+    @test R[2] ≈ cdf(condition(C, 1, u[1]).m[1], u[2])
     @test R[3] ≈ cdf(condition(C, (1, 2), (u[1], u[2])), u[3])
     @test inverse_rosenblatt(C, R) ≈ u atol=2e-6 rtol=2e-6
 
@@ -422,7 +425,7 @@ end
         third = condition(C, (1, 2), (u[1], u[2]))
         second_density = pdf(second, u[2:3])
         third_density = pdf(third, u[3])
-        marginal_second = pdf(condition(C, 1, u[1]), u[2])
+        marginal_second = pdf(second.m[1], u[2])
         @test pdf(C, u) ≈ marginal_second * third_density
         @test second_density ≈ marginal_second * third_density
     end

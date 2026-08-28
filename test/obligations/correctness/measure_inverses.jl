@@ -1,16 +1,22 @@
 # Correctness obligation: verifies each public dependence-measure inverse on
 # representative supported families and both type- and instance-based dispatch.
 @testset "public dependence-measure inverses" begin
-    for C in (CuadrasAugeCopula{2}(0.4), GalambosCopula{2}(1.0),
-              HuslerReissCopula{2}(1.0), LogCopula{2}(1.5),
-              MixedCopula{2}(0.4))
+    cases = (
+        (CuadrasAugeCopula{2}(0.4), (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.λᵤ)),
+        (GalambosCopula{2}(1.0), (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.λᵤ)),
+        (HuslerReissCopula{2}(1.0), (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.λᵤ)),
+        (LogCopula{2}(1.5), (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.λᵤ)),
+        (MixedCopula{2}(0.4), (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.λᵤ)),
+    )
+    inverses = Dict(Copulas.τ => Copulas.τ⁻¹, Copulas.ρ => Copulas.ρ⁻¹,
+                    Copulas.β => Copulas.β⁻¹, Copulas.λᵤ => Copulas.λᵤ⁻¹)
+    for (C, measures) in cases
         CT = typeof(C)
-        for (measure, inverse) in ((Copulas.τ, Copulas.τ⁻¹),
-                                   (Copulas.ρ, Copulas.ρ⁻¹),
-                                   (Copulas.β, Copulas.β⁻¹),
-                                   (Copulas.λᵤ, Copulas.λᵤ⁻¹))
+        for measure in measures
+            inverse = inverses[measure]
             value = measure(C)
-            rebuilt = CT(inverse(CT, value))
+            parameter = inverse(CT, value)
+            rebuilt = ExtremeValueCopula{2}(typeof(C.tail)(parameter))
             @test measure(rebuilt) ≈ value atol=2e-6
         end
     end

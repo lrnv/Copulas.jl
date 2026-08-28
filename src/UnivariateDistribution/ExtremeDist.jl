@@ -2,6 +2,9 @@ struct ExtremeDist{C} <: Distributions.ContinuousUnivariateDistribution
     tail::C
 end
 
+Base.minimum(::ExtremeDist) = 0
+Base.maximum(::ExtremeDist) = 1
+
 function Distributions.cdf(d::ExtremeDist, z::Real)
     z <= 0 && return zero(float(z))
     z >= 1 && return one(float(z))

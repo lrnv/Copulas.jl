@@ -80,7 +80,7 @@ const PICKANDS_CASES = (
             finite_d²A = (Copulas.dA(tail, t + h) - Copulas.dA(tail, t - h)) / (2h)
             # Spectral atoms are legitimate kinks: classical first and second
             # derivatives need not agree with centered finite differences there.
-            if !(tail isa DiscreteSpectralTail)
+            if !(tail isa Copulas.DiscreteSpectralBackedTail)
                 @test Copulas.dA(tail, t) ≈ finite_dA atol=2e-5
                 @test Copulas.d²A(tail, t) ≈ finite_d²A atol=2e-4
             end
