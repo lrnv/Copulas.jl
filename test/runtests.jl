@@ -1,14 +1,12 @@
-# Test-suite orchestrator. See test/README.md for the four proof obligations
-# implemented by contracts, mathematical oracles, specialization comparisons,
-# and exhaustive dispatch registries.
+# Test-suite orchestrator. See the developer guide's "Testing architecture"
+# section for the four proof obligations implemented by contracts,
+# mathematical oracles, specialization comparisons, and dispatch registries.
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
     Statistics, StatsBase, Test
 
 const rng = StableRNG(123)
-
-infrastructure_testfiles = ["Aqua", "fixtures"]
 
 obligation_testfiles = (
     contracts = [
@@ -42,33 +40,31 @@ family_testfiles = [
 
 extension_testfiles = ["expectation_maximization", "plots"]
 
-@testset verbose=true "Copulas.jl testings"  begin
-    @testset verbose=true "infrastructure/$f.jl" for f in infrastructure_testfiles
-        @info "Launching test file $f.jl"
-        elapsed = @elapsed include(joinpath(@__DIR__, "$f.jl"))
-        @info "Completed test file $f.jl" elapsed
-    end
+# Fixtures define registries and helpers but contain no assertions.  Load them
+# before opening the test hierarchy so they do not appear as an empty testset.
+include(joinpath(@__DIR__, "fixtures.jl"))
+
+@testset verbose=true "Copulas.jl" begin
+    include(joinpath(@__DIR__, "Aqua.jl"))
 
     for (obligation, files) in pairs(obligation_testfiles)
-        @testset verbose=true "obligation: $obligation" begin
-            for f in files
-                @info "Launching obligation test file" obligation file=f
-                elapsed = @elapsed include(joinpath(
+        @testset verbose=true "$obligation obligations" begin
+            @testset verbose=true "$f.jl" for f in files
+                include(joinpath(
                     @__DIR__, "obligations", string(obligation), "$f.jl"))
-                @info "Completed obligation test file" obligation file=f elapsed
             end
         end
     end
 
-    @testset verbose=true "families/$f.jl" for f in family_testfiles
-        @info "Launching family regression file $f.jl"
-        elapsed = @elapsed include(joinpath(@__DIR__, "families", "$f.jl"))
-        @info "Completed family regression file $f.jl" elapsed
+    @testset verbose=true "family regressions" begin
+        @testset verbose=true "$f.jl" for f in family_testfiles
+            include(joinpath(@__DIR__, "families", "$f.jl"))
+        end
     end
 
-    @testset verbose=true "extensions/$f.jl" for f in extension_testfiles
-        @info "Launching extension regression file $f.jl"
-        elapsed = @elapsed include(joinpath(@__DIR__, "extensions", "$f.jl"))
-        @info "Completed extension regression file $f.jl" elapsed
+    @testset verbose=true "extension regressions" begin
+        @testset verbose=true "$f.jl" for f in extension_testfiles
+            include(joinpath(@__DIR__, "extensions", "$f.jl"))
+        end
     end
 end

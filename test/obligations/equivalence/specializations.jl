@@ -65,7 +65,7 @@ function _unique_bivariate_routes(operation, predicate)
     return routes
 end
 
-@testset "specialized continuous CDFs agree with density integration" begin
+@testset verbose=true "specialized continuous CDFs agree with density integration" begin
     routes = _unique_bivariate_routes(
         (_, C) -> which(Copulas._cdf, Tuple{typeof(C),Vector{Float64}}),
         (case, C) -> case.kind === :continuous &&
@@ -82,13 +82,14 @@ end
             prove_dispatch_route!(:cdf, C, case, :generic_density_integral)
             continue
         end
-        expected = if C isa ArchimedeanCopula
-            Copulas.ϕ(C.G, sum(Copulas.ϕ⁻¹(C.G, x) for x in u))
-        else
-            invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
+        @testset "$(case.name)" begin
+            expected = if C isa ArchimedeanCopula
+                Copulas.ϕ(C.G, sum(Copulas.ϕ⁻¹(C.G, x) for x in u))
+            else
+                invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
+            end
+            @test isapprox(cdf(C, u), expected; atol=3e-5, rtol=3e-5)
         end
-        @info "Comparing specialized CDF with its independent definition" copula=case.name method
-        @test isapprox(cdf(C, u), expected; atol=3e-5, rtol=3e-5)
         prove_dispatch_route!(:cdf, C, case,
                               C isa ArchimedeanCopula ?
                               :generator_composition : :density_integration)
@@ -97,7 +98,7 @@ end
     @test compared > 0
 end
 
-@testset "specialized bivariate log-densities agree with CDF derivatives" begin
+@testset verbose=true "specialized bivariate log-densities agree with CDF derivatives" begin
     routes = _unique_bivariate_routes(
         (_, C) -> which(Distributions._logpdf,
                         Tuple{typeof(C),Vector{Float64}}),
@@ -106,13 +107,14 @@ end
     u = [0.53, 0.67]
     h = 2e-5
     for (; case, C, method) in routes
-        expected = (
-            cdf(C, u .+ (h, h)) - cdf(C, u .+ (h, -h)) -
-            cdf(C, u .+ (-h, h)) + cdf(C, u .- (h, h))
-        ) / (4h^2)
-        @info "Comparing log-density route with mixed CDF derivative" copula=case.name method
-        @test isapprox(pdf(C, u), expected; atol=8e-4, rtol=8e-4)
-        @test logpdf(C, u) ≈ log(pdf(C, u))
+        @testset "$(case.name)" begin
+            expected = (
+                cdf(C, u .+ (h, h)) - cdf(C, u .+ (h, -h)) -
+                cdf(C, u .+ (-h, h)) + cdf(C, u .- (h, h))
+            ) / (4h^2)
+            @test isapprox(pdf(C, u), expected; atol=8e-4, rtol=8e-4)
+            @test logpdf(C, u) ≈ log(pdf(C, u))
+        end
         prove_dispatch_route!(:logpdf, C, case, :cdf_mixed_derivative)
     end
     @test !isempty(routes)
@@ -148,14 +150,14 @@ end
     @test !isempty(seen)
 end
 
-@testset "specialized dependence measures agree with generic definitions" begin
+@testset verbose=true "specialized dependence measures agree with generic definitions" begin
     # Entropy and Gini's gamma use substantially more expensive multidimensional
     # expectations and are covered by their independent identities in
     # correctness/. Kendall's generic definition is stochastic, so singular
     # Kendall formulas keep their exact family identities instead of a noisy,
     # repeated 10_000-observation comparison here. The CDF-only definitions of
     # rho, beta and tail dependence remain valid for singular and mixed laws.
-    for index in (1, 2, 3, 6, 7)
+    @testset verbose=true "$(nameof(SCALAR_DEPENDENCE_MEASURES[index]))" for index in (1, 2, 3, 6, 7)
         measure = SCALAR_DEPENDENCE_MEASURES[index]
         routes = _unique_bivariate_routes(
             (_, C) -> which(measure, Tuple{typeof(C)}),
@@ -165,12 +167,22 @@ end
         generic_method = which(measure, Tuple{Copulas.Copula{2}})
         for (; case, C, method) in routes
             method === generic_method && continue
-            @info "Comparing specialized dependence measure with generic definition" measure=nameof(measure) copula=case.name method
-            expected = measure === Copulas.τ ?
-                4 * HCubature.hcubature(u -> cdf(C, u) * pdf(C, u),
-                                       zeros(2), ones(2); rtol=1e-5)[1] - 1 :
-                invoke(measure, Tuple{Copulas.Copula}, C)
-            @test isapprox(measure(C), expected; atol=3e-4, rtol=3e-4)
+            @testset "$(case.name)" begin
+                if measure === Copulas.τ && C isa TCopula
+                    # Kendall's tau is invariant over the radial distribution
+                    # of an elliptical copula.  At ρ = 1/2, the exact identity
+                    # 2asin(ρ)/π = 1/3 validates the Student specialization
+                    # without repeatedly evaluating its expensive CDF.
+                    reference = TCopula{2}(C.df, [1.0 0.5; 0.5 1.0])
+                    @test Copulas.τ(reference) ≈ 1 / 3 atol=2e-15
+                else
+                    expected = measure === Copulas.τ ?
+                        4 * HCubature.hcubature(u -> cdf(C, u) * pdf(C, u),
+                                               zeros(2), ones(2); rtol=1e-5)[1] - 1 :
+                        invoke(measure, Tuple{Copulas.Copula}, C)
+                    @test isapprox(measure(C), expected; atol=3e-4, rtol=3e-4)
+                end
+            end
         end
     end
 end
@@ -220,7 +232,7 @@ _singular_tau_oracle(C::RafteryCopula{2}) = 2C.θ / (3 - C.θ)
 _singular_tau_oracle(::MCopula{2}) = 1
 _singular_tau_oracle(::WCopula{2}) = -1
 
-@testset "singular Kendall routes agree with deterministic identities" begin
+@testset verbose=true "singular Kendall routes agree with deterministic identities" begin
     routes = _unique_bivariate_routes(
         (_, C) -> which(Copulas.τ, Tuple{typeof(C)}),
         (case, _) -> case.kind !== :continuous,
@@ -230,9 +242,10 @@ _singular_tau_oracle(::WCopula{2}) = -1
     for route in routes
         (; case, C, method) = route
         method === generic_method && continue
-        expected = _singular_tau_oracle(C)
-        @info "Comparing singular Kendall route with deterministic identity" copula=case.name method
-        @test Copulas.τ(C) ≈ expected atol=2e-12 rtol=2e-12
+        @testset "$(case.name)" begin
+            expected = _singular_tau_oracle(C)
+            @test Copulas.τ(C) ≈ expected atol=2e-12 rtol=2e-12
+        end
         compared += 1
     end
     @test compared > 0
@@ -328,7 +341,7 @@ end
     @test rosenblatt(specialized, u) ≈ rosenblatt(generic, u)
 end
 
-@testset "all distortion quantile specializations agree with generic inversion" begin
+@testset verbose=true "all distortion quantile specializations agree with generic inversion" begin
     generic_method = which(quantile, Tuple{Copulas.Distortion,Real})
     seen = Set{Method}()
     for (name, D, kind) in DISTORTION_CASES
@@ -337,14 +350,15 @@ end
         method === generic_method && continue
         method in seen && continue
         push!(seen, method)
-        generic = invoke(quantile, Tuple{Copulas.Distortion,Real}, D, 0.63)
-        @info "Comparing distortion quantile route" distortion=name method
-        @test isapprox(quantile(D, 0.63), generic; atol=2e-8, rtol=2e-8)
+        @testset "$name" begin
+            generic = invoke(quantile, Tuple{Copulas.Distortion,Real}, D, 0.63)
+            @test isapprox(quantile(D, 0.63), generic; atol=2e-8, rtol=2e-8)
+        end
     end
     @test !isempty(seen)
 end
 
-@testset "bivariate conditioning routes agree with CDF derivatives" begin
+@testset verbose=true "bivariate conditioning routes agree with CDF derivatives" begin
     seen = Set{Method}()
     for case in ROUTING_COPULA_CASES
         C = case.build()
@@ -355,22 +369,23 @@ end
         method in seen && continue
         push!(seen, method)
 
-        conditioned, target = 0.41, 0.63
-        h = 2e-5
-        D = condition(C, 1, conditioned)
-        expected_cdf = (cdf(C, [conditioned + h, target]) -
-                        cdf(C, [conditioned - h, target])) / (2h)
-        expected_pdf = (
-            cdf(C, [conditioned + h, target + h]) -
-            cdf(C, [conditioned + h, target - h]) -
-            cdf(C, [conditioned - h, target + h]) +
-            cdf(C, [conditioned - h, target - h])
-        ) / (4h^2)
-        @info "Comparing conditioning route with mixed CDF derivatives" copula=case.name method
-        @test isapprox(cdf(D, target), expected_cdf;
-                       atol=3e-5, rtol=3e-5)
-        @test isapprox(pdf(D, target), expected_pdf;
-                       atol=3e-4, rtol=3e-4)
+        @testset "$(case.name)" begin
+            conditioned, target = 0.41, 0.63
+            h = 2e-5
+            D = condition(C, 1, conditioned)
+            expected_cdf = (cdf(C, [conditioned + h, target]) -
+                            cdf(C, [conditioned - h, target])) / (2h)
+            expected_pdf = (
+                cdf(C, [conditioned + h, target + h]) -
+                cdf(C, [conditioned + h, target - h]) -
+                cdf(C, [conditioned - h, target + h]) +
+                cdf(C, [conditioned - h, target - h])
+            ) / (4h^2)
+            @test isapprox(cdf(D, target), expected_cdf;
+                           atol=3e-5, rtol=3e-5)
+            @test isapprox(pdf(D, target), expected_pdf;
+                           atol=3e-4, rtol=3e-4)
+        end
         prove_dispatch_route!(:conditioning, C, case, :cdf_derivative)
     end
     @test !isempty(seen)
@@ -393,7 +408,7 @@ function _finite_conditional_cdf(C, js, values, target_index, target; h=2e-4)
     return mixed_at(target) / mixed_at(1.0)
 end
 
-@testset "multivariate conditioning routes agree with normalized CDF derivatives" begin
+@testset verbose=true "multivariate conditioning routes agree with normalized CDF derivatives" begin
     seen = Set{Method}()
     for case in ROUTING_COPULA_CASES
         C = case.build()
@@ -407,13 +422,14 @@ end
         method in seen && continue
         push!(seen, method)
 
-        target_index = d
-        target = 0.63
-        D = condition(C, js, values)
-        expected = _finite_conditional_cdf(
-            C, js, values, target_index, target)
-        @info "Comparing multivariate conditioning route with normalized CDF derivatives" copula=case.name method
-        @test isapprox(cdf(D, target), expected; atol=2e-3, rtol=2e-3)
+        @testset "$(case.name)" begin
+            target_index = d
+            target = 0.63
+            D = condition(C, js, values)
+            expected = _finite_conditional_cdf(
+                C, js, values, target_index, target)
+            @test isapprox(cdf(D, target), expected; atol=2e-3, rtol=2e-3)
+        end
         prove_dispatch_route!(:conditioning, C, case,
                               :normalized_cdf_derivative)
     end

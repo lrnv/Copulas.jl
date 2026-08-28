@@ -24,11 +24,12 @@ function _exercise_dispatch_path(operation, C)
     end
 end
 
-@testset "one representative per copula dispatch mechanism" begin
+@testset verbose=true "one representative per copula dispatch mechanism" begin
     models = Tuple((case=case, copula=case.build()) for case in ROUTING_COPULA_CASES)
-    for operation in (:cdf, :logpdf, :sampling, :conditioning,
-                      :conditional_joint, :rosenblatt, :inverse_rosenblatt,
-                      :subsetting)
+    operations = (:cdf, :logpdf, :sampling, :conditioning,
+                  :conditional_joint, :rosenblatt, :inverse_rosenblatt,
+                  :subsetting)
+    @testset verbose=true "$operation" for operation in operations
         seen = Set{Any}()
         for (; case, copula) in models
             method = dispatch_path(operation, copula, case)
@@ -36,17 +37,18 @@ end
             key = (method, length(copula) == 2 ? :bivariate : :multivariate)
             key in seen && continue
             push!(seen, key)
-            @info "Testing dispatch mechanism" operation copula=case.name method
-            _exercise_dispatch_path(operation, copula)
+            @testset "$(case.name)" begin
+                _exercise_dispatch_path(operation, copula)
+            end
         end
         @test !isempty(seen)
     end
 end
 
-@testset "every selected deterministic route has a proof" begin
+@testset verbose=true "every selected deterministic route has a proof" begin
     deterministic = (:cdf, :logpdf, :conditioning, :conditional_joint,
                      :rosenblatt, :inverse_rosenblatt, :subsetting)
-    for operation in deterministic
+    @testset "$operation" for operation in deterministic
         selected = Set{Any}()
         for case in ROUTING_COPULA_CASES
             C = case.build()

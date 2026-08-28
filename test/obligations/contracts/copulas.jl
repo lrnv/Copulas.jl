@@ -196,23 +196,25 @@ function test_pairwise_dependence_result(measure, diagonal, C)
 end
 
 function test_copula_contract(case, seed)
-    @testset "$(case.name)" begin
-        @info "Testing public copula contract" copula=case.name
-        C = case.build()
-        ctx = copula_contract_context(C, seed)
-        @info "Testing copula operation group" copula=case.name group=:distribution
+    C = case.build()
+    ctx = copula_contract_context(C, seed)
+    @testset "distribution" begin
         test_distribution_contract(C, ctx, case.numerical_atol, case.margin_atol)
-        @info "Testing copula operation group" copula=case.name group=:density
+    end
+    @testset "density" begin
         test_density_contract(C, ctx, case.kind)
-        @info "Testing copula operation group" copula=case.name group=:subsetting
+    end
+    @testset "subsetting" begin
         test_subsetting_contract(C, ctx, case.numerical_atol)
-        @info "Testing copula operation group" copula=case.name group=:conditioning
+    end
+    @testset "conditioning" begin
         test_conditioning_contract(C, ctx, case.kind)
-        @info "Testing copula operation group" copula=case.name group=:rosenblatt
+    end
+    @testset "Rosenblatt" begin
         test_rosenblatt_contract(C, ctx, case.rosenblatt)
-        @info "Testing copula operation group" copula=case.name group=:dependence
+    end
+    @testset "dependence" begin
         test_dependence_contract(C, case.kind)
-        @info "Completed public copula contract" copula=case.name
     end
 end
 
@@ -226,8 +228,9 @@ end
     @test all(T -> any(F -> T <: F, public_families), represented)
 end
 
-@testset "public copula contract" begin
-    for (i, case) in pairs(COPULA_CASES)
+@testset verbose=true "public copula contract" begin
+    @testset verbose=true "$(COPULA_CASES[i].name)" for i in eachindex(COPULA_CASES)
+        case = COPULA_CASES[i]
         test_copula_contract(case, 10_000 + i)
     end
 end
@@ -240,7 +243,7 @@ end
           cdf(condition(C, (1,), (u[1],)), u[2:3])
 end
 
-@testset "one execution per dependence-measure dispatch" begin
+@testset verbose=true "one execution per dependence-measure dispatch" begin
     # Several families can select the exact same adapter.  Prefer cheap,
     # closed-form representatives for that one execution; applicability is
     # still checked independently for every public family above.
@@ -249,27 +252,30 @@ end
     ordered_cases = sort(collect(ROUTING_COPULA_CASES); by=route_cost)
     models = Tuple((case=case, copula=case.build()) for case in ordered_cases)
 
-    for measure in SCALAR_DEPENDENCE_MEASURES
+    @testset verbose=true "$(nameof(measure))" for measure in SCALAR_DEPENDENCE_MEASURES
         seen = Set{Any}()
         for (; case, copula) in models
             _dependence_is_defined(measure, case.kind) || continue
             method, dimension_path = _dependence_dispatch_key(measure, copula)
             (method, dimension_path) in seen && continue
             push!(seen, (method, dimension_path))
-            @info "Testing scalar dependence dispatch" measure=nameof(measure) copula=case.name method
-            test_scalar_dependence_result(measure, copula)
+            @testset "$(case.name)" begin
+                test_scalar_dependence_result(measure, copula)
+            end
         end
     end
 
-    for (measure, diagonal) in PAIRWISE_DEPENDENCE_MEASURES
+    @testset verbose=true "$(nameof(first(entry)))" for entry in PAIRWISE_DEPENDENCE_MEASURES
+        measure, diagonal = entry
         seen = Set{Any}()
         for (; case, copula) in models
             _dependence_is_defined(measure, case.kind) || continue
             method, dimension_path = _dependence_dispatch_key(measure, copula)
             (method, dimension_path) in seen && continue
             push!(seen, (method, dimension_path))
-            @info "Testing pairwise dependence dispatch" measure=nameof(measure) copula=case.name method
-            test_pairwise_dependence_result(measure, diagonal, copula)
+            @testset "$(case.name)" begin
+                test_pairwise_dependence_result(measure, diagonal, copula)
+            end
         end
     end
 end

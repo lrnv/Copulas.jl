@@ -1010,10 +1010,53 @@ The corresponding directories are:
 - `test/extensions/` for optional package-extension contracts and regressions.
 
 The fixtures and proof ledger shared by these layers live in
-`test/fixtures.jl`. `test/README.md` contains the concise checklist maintained
-next to the suite.
+`test/fixtures.jl`. This file defines infrastructure and contains no assertions,
+so `runtests.jl` loads it before opening the visible test hierarchy. Aqua is a
+root quality check; the remaining results follow this nesting:
 
-## 4.3 Adding a public copula family
+```text
+Copulas.jl
+â”œâ”€ <obligation> obligations
+â”‚  â””â”€ <file>.jl
+â”‚     â””â”€ <behaviour or mechanism>
+â”‚        â””â”€ <family or dispatch representative>
+â”œâ”€ family regressions
+â”‚  â””â”€ <file>.jl
+â””â”€ extension regressions
+   â””â”€ <file>.jl
+```
+
+Parameterized `@testset ... for ...` blocks give every family or dispatch
+representative its own result and timing without duplicating test code. Keep
+large contract files subdivided by public behaviour so a slow operation is
+visible directly in CI rather than only through ad hoc logging.
+
+## 4.3 Behaviour coverage matrix
+
+Every public behaviour must be accounted for across the four obligations. The
+table below is the checklist used when reviewing additions to the API or the
+test suite.
+
+| Behaviour | Contract | Generic oracle | Specialized paths | Exhaustive routing |
+|:--|:--|:--|:--|:--|
+| construction and validation | every public family | canonical `{d}` constructor | reductions and inferred forms | constructor registry |
+| CDF, log-CDF, PDF and log-PDF | every applicable family | derivatives and numerical integration | deterministic formulas vs fallback | dispatch inventory |
+| sampling | every public family | distributional identities | no draw-by-draw comparison | sampler dispatch inventory |
+| subsetting | every public family | marginal CDF identity | specialized subsets vs parent | dispatch inventory |
+| conditioning | every public family | normalized mixed derivatives | scalar distortions and joint conditional components vs parent CDF | distortion and dispatch registries |
+| Rosenblatt transforms | every public family | conditional-CDF factorization | specialized transforms vs generic | dispatch inventory |
+| dependence measures | applicability on every family | defining integral or statistical identity | closed forms vs generic or independent oracle | one execution per dispatch |
+| fitting | every advertised family and method | recovery and parameter-map identities | specialized estimators vs defining statistic | advertised-method registry |
+| generator primitives | every numerical public generator; explicit reduction contract for marker generators | differentiation and inversion identities | closed forms vs generic primitive | generator registry |
+| tail primitives | every public tail | homogeneity, convexity, and derivative identities | analytic partials vs AD or finite differences | tail registry |
+| Sklar composition | public composition contract | change-of-variable identities | specialized conditioning and transforms vs generic | composition paths |
+| optional extensions | every declared extension | extension-specific public identity | extension-specific | extension registry |
+
+When adding a public family or a specialized method, update the corresponding
+registry and supply the missing proof obligation. Do not repeat an expensive
+mathematical identity for every family merely to obtain coverage.
+
+## 4.4 Adding a public copula family
 
 After implementing and documenting `MyCopula`, update the tests in this order:
 
@@ -1047,7 +1090,7 @@ to `GENERATOR_CASES` or `TAIL_CASES`; their primitive-operation registries check
 that every selected implementation of the documented mathematical primitives
 is exercised and validated.
 
-## 4.4 Adding or changing public behaviour
+## 4.5 Adding or changing public behaviour
 
 When introducing a new public operation, changing its promised semantics, or
 making an existing internal operation public:
@@ -1074,7 +1117,7 @@ family nor exhaustiveness of dispatch. Adding only the universal contract is
 also insufficient: it proves availability, not the mathematical correctness of
 all underlying algorithms.
 
-## 4.5 Keeping the suite efficient
+## 4.6 Keeping the suite efficient
 
 Use the cheapest representative that selects a route. Expensive integration,
 automatic differentiation, fitting, and statistical checks should run once per
