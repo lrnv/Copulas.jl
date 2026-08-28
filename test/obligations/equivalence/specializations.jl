@@ -5,6 +5,51 @@
 # focused family regressions. Singular and mixed CDFs have no Lebesgue-density
 # fallback; their mass identities and sampler structure are checked there too.
 
+@testset "all documented Nataf dispatches have an oracle" begin
+    r, s = 0.2, 0.8
+    lognormal_scale = sqrt(expm1(s^2))
+    uniform_lognormal = sqrt(2) / s * quantile(
+        Normal(), 1 / 2 + r * lognormal_scale / (2sqrt(3)))
+    exact_cases = (
+        (Normal(), Normal(2, 3), r),
+        (LogNormal(0, s), LogNormal(1, s), log1p(r * expm1(s^2)) / s^2),
+        (Normal(), LogNormal(0, s), r * lognormal_scale / s),
+        (LogNormal(0, s), Normal(), r * lognormal_scale / s),
+        (Uniform(), Uniform(-2, 3), 2sinpi(r / 6)),
+        (Uniform(), Normal(), r * sqrt(π / 3)),
+        (Normal(), Uniform(), r * sqrt(π / 3)),
+        (Uniform(), LogNormal(0, s), uniform_lognormal),
+        (LogNormal(0, s), Uniform(), uniform_lognormal),
+    )
+    checked = Set{Method}()
+    for (Fᵢ, Fⱼ, expected) in exact_cases
+        @test Nataf((Fᵢ, Fⱼ), r) ≈ expected
+        push!(checked, which(Copulas._nataf_problem,
+            Tuple{typeof(Fᵢ),typeof(Fⱼ),Float64,Int}))
+    end
+
+    # The generic quadrature route is independently validated end to end in
+    # families/nataf.jl; here it is included in the dispatch inventory and its
+    # pair symmetry is checked directly.
+    Fᵢ, Fⱼ = Gamma(2.0, 1.0), Beta(2.0, 3.0)
+    generic = Nataf((Fᵢ, Fⱼ), r; nodes=8)
+    @test generic ≈ Nataf((Fⱼ, Fᵢ), r; nodes=8)
+    @test -1 < generic < 1
+    push!(checked, which(Copulas._nataf_problem,
+        Tuple{typeof(Fᵢ),typeof(Fⱼ),Float64,Int}))
+
+    documented_pairs = (
+        (Normal(), Normal()), (Normal(), LogNormal(0, s)),
+        (Normal(), Uniform()), (LogNormal(0, s), Normal()),
+        (LogNormal(0, s), LogNormal(0, s)), (LogNormal(0, s), Uniform()),
+        (Uniform(), Normal()), (Uniform(), LogNormal(0, s)),
+        (Uniform(), Uniform()), (Fᵢ, Fⱼ),
+    )
+    selected = Set(which(Copulas._nataf_problem,
+        Tuple{typeof(a),typeof(b),Float64,Int}) for (a, b) in documented_pairs)
+    @test selected == checked
+end
+
 function _unique_bivariate_routes(operation, predicate)
     seen = Set{Method}()
     routes = NamedTuple[]
@@ -464,13 +509,14 @@ end
     seen_forward = Set{Any}()
     seen_inverse = Set{Any}()
     for case in ROUTING_COPULA_CASES
-        case.rosenblatt || continue
         C = case.build()
         d = length(C)
         u = collect(range(0.31, 0.73; length=d))
         forward_key = dispatch_route_key(:rosenblatt, C, case)
         inverse_key = dispatch_route_key(:inverse_rosenblatt, C, case)
-        forward_key in seen_forward && inverse_key in seen_inverse && continue
+        forward_done = forward_key in seen_forward
+        inverse_done = isnothing(inverse_key) || inverse_key in seen_inverse
+        forward_done && inverse_done && continue
 
         R = rosenblatt(C, u)
         expected = similar(R)
@@ -482,12 +528,14 @@ end
                               u[i])
         end
         @test R ≈ expected atol=2e-6 rtol=2e-6
-        @test inverse_rosenblatt(C, R) ≈ u atol=2e-6 rtol=2e-6
         prove_dispatch_route!(:rosenblatt, C, case, :sequential_conditioning)
-        prove_dispatch_route!(:inverse_rosenblatt, C, case,
-                              :sequential_conditioning_inverse)
         push!(seen_forward, forward_key)
-        push!(seen_inverse, inverse_key)
+        if !isnothing(inverse_key)
+            @test inverse_rosenblatt(C, R) ≈ u atol=2e-6 rtol=2e-6
+            prove_dispatch_route!(:inverse_rosenblatt, C, case,
+                                  :sequential_conditioning_inverse)
+            push!(seen_inverse, inverse_key)
+        end
     end
     @test !isempty(seen_forward)
     @test !isempty(seen_inverse)

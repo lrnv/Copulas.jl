@@ -44,6 +44,9 @@ function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
     @test size(ctx.U) == (d, 4)
     @test eltype(ctx.U) == eltype(C)
     @test all(x -> 0 <= x <= 1, ctx.U)
+    buffer = zeros(eltype(C), d, 2)
+    @test rand!(StableRNG(40), C, buffer) === buffer
+    @test all(x -> 0 <= x <= 1, buffer)
     x = rand(StableRNG(41), C)
     @test length(x) == d
     @test eltype(x) == eltype(C)
@@ -133,9 +136,9 @@ function test_rosenblatt_contract(C, ctx, invertible)
     R = rosenblatt(C, ctx.U)
     @test size(R) == size(ctx.U)
     @test all(x -> 0 <= x <= 1, R)
+    @test rosenblatt(C, ctx.u) ≈ vec(rosenblatt(C, reshape(ctx.u, :, 1)))
     invertible || return
     @test inverse_rosenblatt(C, R) ≈ ctx.U atol=2e-5 rtol=2e-5
-    @test rosenblatt(C, ctx.u) ≈ vec(rosenblatt(C, reshape(ctx.u, :, 1)))
     @test inverse_rosenblatt(C, rosenblatt(C, ctx.u)) ≈ ctx.u atol=2e-5 rtol=2e-5
 end
 
@@ -227,6 +230,14 @@ end
     for (i, case) in pairs(COPULA_CASES)
         test_copula_contract(case, 10_000 + i)
     end
+end
+
+@testset "collection adapters preserve the public semantics" begin
+    C = ClaytonCopula{3}(1.5)
+    u = [0.3, 0.5, 0.7]
+    @test subsetdims(C, [3, 1]) == subsetdims(C, (3, 1))
+    @test cdf(condition(C, [1], [u[1]]), u[2:3]) ≈
+          cdf(condition(C, (1,), (u[1],)), u[2:3])
 end
 
 @testset "one execution per dependence-measure dispatch" begin

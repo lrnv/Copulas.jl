@@ -145,7 +145,6 @@ function dispatch_path(operation, C, case)
         is = Tuple(2:d)
         return _which(Copulas._conditional_components, C, js, values, is)
     elseif operation === :rosenblatt
-        case.rosenblatt || return nothing
         return _which(Copulas.rosenblatt, C, reshape(u, :, 1))
     elseif operation === :inverse_rosenblatt
         case.rosenblatt || return nothing
