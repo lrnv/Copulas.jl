@@ -40,7 +40,7 @@ family_testfiles = [
     "subsetting",
 ]
 
-extension_testfiles = ["expectation_maximization"]
+extension_testfiles = ["expectation_maximization", "plots"]
 
 @testset verbose=true "Copulas.jl testings"  begin
     @testset verbose=true "infrastructure/$f.jl" for f in infrastructure_testfiles
