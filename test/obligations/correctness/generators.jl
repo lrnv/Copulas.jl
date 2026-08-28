@@ -1,4 +1,4 @@
-# Public-component layer: exhaustively covers public generator families and
+# Correctness obligation: exhaustively covers public generator families and
 # verifies their transform, inverse, derivative, and reconstruction identities.
 const GENERATOR_CASES = (
     Copulas.AMHGenerator(0.5),

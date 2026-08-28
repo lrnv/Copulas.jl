@@ -1,6 +1,60 @@
 # Equivalence obligation: deterministic optimized implementations must agree
 # with a generic fallback or an independent mathematical oracle.
 
+function _unique_bivariate_routes(operation, predicate)
+    seen = Set{Method}()
+    routes = NamedTuple[]
+    for case in COPULA_CASES
+        C = case.build()
+        length(C) == 2 || continue
+        predicate(case, C) || continue
+        method = operation(case, C)
+        method in seen && continue
+        push!(seen, method)
+        push!(routes, (; case, C, method))
+    end
+    return routes
+end
+
+@testset "specialized continuous CDFs agree with density integration" begin
+    routes = _unique_bivariate_routes(
+        (_, C) -> which(Copulas._cdf, Tuple{typeof(C),Vector{Float64}}),
+        (case, _) -> case.kind === :continuous,
+    )
+    generic_method = which(Copulas._cdf,
+        Tuple{Copulas.Copula,Vector{Float64}})
+    compared = 0
+    u = [0.53, 0.67]
+    for (; case, C, method) in routes
+        method === generic_method && continue
+        expected = invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
+        @info "Comparing specialized CDF with generic integration" copula=case.name method
+        @test isapprox(cdf(C, u), expected; atol=3e-5, rtol=3e-5)
+        compared += 1
+    end
+    @test compared > 0
+end
+
+@testset "specialized dependence measures agree with generic definitions" begin
+    # Entropy and Gini's gamma use substantially more expensive multidimensional
+    # integrals and are covered by their independent identities in correctness/.
+    # The measures below account for every inexpensive closed-form route.
+    for index in (1, 2, 3, 6, 7)
+        measure = SCALAR_DEPENDENCE_MEASURES[index]
+        routes = _unique_bivariate_routes(
+            (_, C) -> which(measure, Tuple{typeof(C)}),
+            (case, _) -> case.kind === :continuous,
+        )
+        generic_method = which(measure, Tuple{Copulas.Copula{2}})
+        for (; case, C, method) in routes
+            method === generic_method && continue
+            expected = invoke(measure, Tuple{Copulas.Copula}, C)
+            @info "Comparing specialized dependence measure with generic definition" measure=nameof(measure) copula=case.name method
+            @test isapprox(measure(C), expected; atol=3e-4, rtol=3e-4)
+        end
+    end
+end
+
 @testset "specialized FGM paths agree with the generic polynomial oracle" begin
     θ = 0.4
     generic = PolynomialOracleCopula(θ)
@@ -69,18 +123,51 @@ end
     @test rosenblatt(specialized, u) ≈ rosenblatt(generic, u)
 end
 
-@testset "closed-form distortion quantiles agree with the generic inverse" begin
-    distortions = (
-        condition(PlackettCopula{2}(2.0), 1, 0.4),
-        condition(FrankCopula{2}(2.0), 1, 0.4),
-        condition(GumbelCopula{2}(2.0), 1, 0.4),
-        condition(InvGaussianCopula{2}(0.5), 1, 0.4),
-        condition(GumbelBarnettCopula{2}(0.5), 1, 0.4),
-    )
-    for D in distortions, p in (0.2, 0.7)
-        generic = invoke(quantile, Tuple{Copulas.Distortion,Real}, D, p)
-        @test quantile(D, p) ≈ generic atol=2e-8 rtol=2e-8
+@testset "all distortion quantile specializations agree with generic inversion" begin
+    generic_method = which(quantile, Tuple{Copulas.Distortion,Real})
+    seen = Set{Method}()
+    for (name, D, kind) in DISTORTION_CASES
+        kind === :continuous || continue
+        method = which(quantile, Tuple{typeof(D),Float64})
+        method === generic_method && continue
+        method in seen && continue
+        push!(seen, method)
+        generic = invoke(quantile, Tuple{Copulas.Distortion,Real}, D, 0.63)
+        @info "Comparing distortion quantile route" distortion=name method
+        @test isapprox(quantile(D, 0.63), generic; atol=2e-8, rtol=2e-8)
     end
+    @test !isempty(seen)
+end
+
+@testset "bivariate conditioning routes agree with CDF derivatives" begin
+    seen = Set{Method}()
+    for case in COPULA_CASES
+        C = case.build()
+        length(C) == 2 || continue
+        case.kind === :continuous || continue
+        method = which(Copulas.DistortionFromCop,
+            Tuple{typeof(C),Tuple{Int},Tuple{Float64},Int})
+        method in seen && continue
+        push!(seen, method)
+
+        conditioned, target = 0.41, 0.63
+        h = 2e-5
+        D = condition(C, 1, conditioned)
+        expected_cdf = (cdf(C, [conditioned + h, target]) -
+                        cdf(C, [conditioned - h, target])) / (2h)
+        expected_pdf = (
+            cdf(C, [conditioned + h, target + h]) -
+            cdf(C, [conditioned + h, target - h]) -
+            cdf(C, [conditioned - h, target + h]) +
+            cdf(C, [conditioned - h, target - h])
+        ) / (4h^2)
+        @info "Comparing conditioning route with mixed CDF derivatives" copula=case.name method
+        @test isapprox(cdf(D, target), expected_cdf;
+                       atol=3e-5, rtol=3e-5)
+        @test isapprox(pdf(D, target), expected_pdf;
+                       atol=3e-4, rtol=3e-4)
+    end
+    @test !isempty(seen)
 end
 
 @testset "specialized Rosenblatt implementations agree with the generic path" begin
@@ -96,6 +183,32 @@ end
         @test specialized ≈ generic atol=3e-10
         @test inverse_rosenblatt(C, specialized) ≈ u atol=3e-10
     end
+end
+
+@testset "all specialized Rosenblatt routes have an equivalence proof" begin
+    checked = (
+        ClaytonCopula{3}(1.5),
+        GaussianCopula{3}([1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
+        TCopula{3}(5, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
+    )
+    generic_method = which(Copulas.rosenblatt,
+        Tuple{Copulas.Copula{3},Matrix{Float64}})
+    candidates = Any[checked[3]]
+    for case in COPULA_CASES
+        C = case.build()
+        length(C) == 3 && case.rosenblatt && push!(candidates, C)
+    end
+    selected_methods = Set(
+        which(Copulas.rosenblatt, Tuple{typeof(C),Matrix{Float64}})
+        for C in candidates
+        if which(Copulas.rosenblatt,
+                 Tuple{typeof(C),Matrix{Float64}}) !== generic_method
+    )
+    checked_methods = Set(
+        which(Copulas.rosenblatt, Tuple{typeof(C),Matrix{Float64}})
+        for C in checked
+    )
+    @test selected_methods == checked_methods
 end
 
 @testset "EV analytic partials agree with the differentiable CDF path" begin

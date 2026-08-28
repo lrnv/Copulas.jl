@@ -19,6 +19,9 @@ function _dispatch_path(operation, C, case)
     elseif operation === :rosenblatt
         case.rosenblatt || return nothing
         return _which(Copulas.rosenblatt, C, reshape(u, :, 1))
+    elseif operation === :inverse_rosenblatt
+        case.rosenblatt || return nothing
+        return _which(Copulas.inverse_rosenblatt, C, reshape(u, :, 1))
     elseif operation === :subsetting
         dims = d == 2 ? (2, 1) : (1, d)
         return _which(Copulas.subsetdims, C, dims)
@@ -40,6 +43,8 @@ function _exercise_dispatch_path(operation, C)
         @test 0 <= cdf(D, 0.6) <= 1
     elseif operation === :rosenblatt
         @test size(rosenblatt(C, reshape(u, :, 1))) == (d, 1)
+    elseif operation === :inverse_rosenblatt
+        @test size(inverse_rosenblatt(C, reshape(u, :, 1))) == (d, 1)
     elseif operation === :subsetting
         @test length(subsetdims(C, d == 2 ? (2, 1) : (1, d))) == 2
     end
@@ -47,7 +52,8 @@ end
 
 @testset "one representative per copula dispatch mechanism" begin
     models = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
-    for operation in (:cdf, :logpdf, :sampling, :conditioning, :rosenblatt, :subsetting)
+    for operation in (:cdf, :logpdf, :sampling, :conditioning, :rosenblatt,
+                      :inverse_rosenblatt, :subsetting)
         seen = Set{Any}()
         for (; case, copula) in models
             method = _dispatch_path(operation, copula, case)

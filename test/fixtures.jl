@@ -179,6 +179,12 @@ const CONSTRUCTOR_CASES = (
 fitting_case(name, build; method=:default, model=false, kwargs=NamedTuple()) =
     (; name, build, method, model, kwargs)
 
+fitting_statistic(::Val{:itau}, object) = SCALAR_DEPENDENCE_MEASURES[1](object)
+fitting_statistic(::Val{:irho}, object) = SCALAR_DEPENDENCE_MEASURES[2](object)
+fitting_statistic(::Val{:ibeta}, object) = SCALAR_DEPENDENCE_MEASURES[3](object)
+fitting_statistic(::Val{:iupper}, object) = SCALAR_DEPENDENCE_MEASURES[7](object)
+fitting_statistic(::Val, _) = nothing
+
 const FITTING_CASES = (
     fitting_case("AMH", () -> AMHCopula{2}(0.5)),
     fitting_case("BB1", () -> BB1Copula{2}(1.2, 1.5)),

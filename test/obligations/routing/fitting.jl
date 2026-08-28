@@ -58,13 +58,14 @@ _check_parameter_roundtrip(C) =
 
         U = rand(StableRNG(30_000 + index), C, 12)
         for method in remaining
-            if (CT <: GumbelCopula && C.G.θ > 19 && method == :irho) ||
-               (CT <: FrankCopula && C.G.θ > 99 && method == :mle) ||
-               (CT <: RafteryCopula && d == 3 && method == :itau)
-                continue
-            end
-            @test fit(CT, U, method; vcov=false,
-                      derived_measures=false) isa Copulas.Copula{d}
+            fitted = fit(CT, U, method; vcov=false,
+                         derived_measures=false)
+            @test fitted isa Copulas.Copula{d}
+            fitted_statistic = fitting_statistic(Val(method), fitted)
+            isnothing(fitted_statistic) && continue
+            sample_statistic = fitting_statistic(Val(method), U)
+            @test isapprox(fitted_statistic, sample_statistic;
+                           atol=2e-5, rtol=2e-5)
         end
     end
 end

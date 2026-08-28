@@ -1,4 +1,4 @@
-# Shared-component layer: exercises the common univariate conditional API once
+# Contract obligation: exercises the common univariate conditional API once
 # for every distortion implementation reached through the public `condition`
 # entry point. Family formulas remain in focused regression tests.
 const DISTORTION_CASES = (

@@ -1,4 +1,4 @@
-# Public-component layer: checks public constructors whose behavior is chiefly
+# Contract obligation: checks public constructors whose behavior is chiefly
 # composition or specialization into generators, tails, and complete copulas.
 @testset "remaining public generator constructors" begin
     @test Copulas.τ(Copulas.IndependentGenerator()) == 0

@@ -21,6 +21,12 @@ end
             fitted = fit(family, U; method=case.method, case.kwargs...,
                          vcov=false, derived_measures=false)
             @test fitted isa Copulas.Copula{length(source)}
+            fitted_statistic = fitting_statistic(Val(case.method), fitted)
+            if !isnothing(fitted_statistic)
+                sample_statistic = fitting_statistic(Val(case.method), U)
+                @test isapprox(fitted_statistic, sample_statistic;
+                               atol=2e-5, rtol=2e-5)
+            end
 
             case.model || continue
             M = fit(CopulaModel, family, U; method=case.method,

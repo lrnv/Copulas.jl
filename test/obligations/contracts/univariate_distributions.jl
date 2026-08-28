@@ -1,4 +1,4 @@
-# Shared-component layer: checks radial and auxiliary univariate distributions
+# Contract obligation: checks radial and auxiliary univariate distributions
 # directly, including finite/infinite support and continuous/discrete paths.
 function test_continuous_univariate_contract(D; atol=2e-7)
     lo, hi = minimum(D), maximum(D)

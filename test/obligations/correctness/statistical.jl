@@ -1,5 +1,30 @@
-# Statistical-path layer: validates representative samplers and Rosenblatt
-# transforms statistically without repeating Monte Carlo checks for every family.
+# Correctness obligation: validates samplers and Rosenblatt transforms
+# statistically once per distinct implementation route.
+@testset "one distributional identity per sampler dispatch" begin
+    seen = Set{Any}()
+    for (index, case) in pairs(COPULA_CASES)
+        C = case.build()
+        d = length(C)
+        route_rng = StableRNG(400 + index)
+        method = which(Distributions._rand!,
+            Tuple{typeof(route_rng),typeof(C),Matrix{Float64}})
+        key = (method, d == 2 ? :bivariate : :multivariate)
+        key in seen && continue
+        push!(seen, key)
+
+        n = 160
+        U = rand(route_rng, C, n)
+        point = fill(0.72, d)
+        theoretical = cdf(C, point)
+        empirical = mean(all(U .<= point; dims=1))
+        se = sqrt(max(theoretical * (1 - theoretical), eps()) / n)
+        @info "Testing sampler distribution" copula=case.name method
+        @test abs(empirical - theoretical) <= max(6se, 0.08)
+        @test all(abs(mean(view(U, i, :)) - 0.5) <= 0.12 for i in 1:d)
+    end
+    @test !isempty(seen)
+end
+
 @testset "representative sampler and Rosenblatt statistics" begin
     for C in (ClaytonCopula{2}(1.5), GaussianCopula{2}(0.3),
               GalambosCopula{2}(1.0), FGMCopula{2}(0.4))
