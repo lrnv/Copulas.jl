@@ -11,7 +11,8 @@ struct Logarithmic{T<:Real} <: Distributions.DiscreteUnivariateDistribution
 end
 Base.eltype(::Logarithmic{T}) where T = T
 function Distributions.logpdf(d::Logarithmic{T}, x::Real) where T
-    insupport(d, x) ? x*log1p(-d.α) - log(x) - log(-log(d.α)) : log(zero(T))
+    Distributions.insupport(d, x) ?
+        x*log1p(-d.α) - log(x) - log(-log(d.α)) : log(zero(T))
 end
 function Distributions.rand(rng::Distributions.AbstractRNG, d::Logarithmic{T}) where T
     # Sample a Log(p) distribution with the algorithms "LK" and "LS" of Kemp (1981).

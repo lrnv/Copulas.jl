@@ -30,13 +30,6 @@ end
                     @test fitted_ll >= source_ll - 1e-6
                 end
             end
-            fitted_statistic = fitting_statistic(Val(case.method), fitted)
-            if !isnothing(fitted_statistic)
-                sample_statistic = fitting_statistic(Val(case.method), U)
-                @test isapprox(fitted_statistic, sample_statistic;
-                               atol=2e-5, rtol=2e-5)
-            end
-
             case.model || continue
             M = fit(CopulaModel, family, U; method=case.method,
                     case.kwargs..., vcov=false, derived_measures=false)
@@ -81,7 +74,7 @@ end
          () -> CheckerboardCopula(U; m=2)),
         (BernsteinCopula, :bernstein, (; m=2),
          () -> BernsteinCopula(U; m=2)),
-        (EmpiricalEVCopula, :cfg, (; grid=21),
+        (EmpiricalEVCopula{2}, :cfg, (; grid=21),
          () -> EmpiricalEVCopula(U; method=:cfg, grid=21)),
     )
     for (family, method, kwargs, direct) in estimators

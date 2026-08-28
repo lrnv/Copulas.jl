@@ -76,7 +76,12 @@ end
                                   Copulas.ϕ⁻¹(G, 0.5 - h)) / (2h)
             @test Copulas.ϕ⁻¹⁽¹⁾(G, 0.5) ≈ inverse_derivative rtol=2e-5
             y = Copulas.ϕ⁽ᵏ⁾(G, 1, 0.3)
-            @test Copulas.ϕ⁽ᵏ⁾⁻¹(G, 1, y) ≈ 0.3 atol=2e-5 rtol=2e-5
+            derivative_inverse = Copulas.ϕ⁽ᵏ⁾⁻¹(G, 1, y)
+            @test Copulas.ϕ⁽ᵏ⁾(G, 1, derivative_inverse) ≈ y
+            # A Williamson derivative may be flat between radial atoms, so its
+            # generalized inverse need not recover the particular input point.
+            G isa WilliamsonGenerator ||
+                @test derivative_inverse ≈ 0.3 atol=2e-5 rtol=2e-5
             for (name, (f, signature)) in pairs(operations)
                 push!(checked_routes[name], which(f, signature(G)))
             end

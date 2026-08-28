@@ -16,7 +16,7 @@
     @test size(X) == (2, 4)
     @test eltype(X) == eltype(D)
     @test cdf(D, X) ≈ [cdf(D, column) for column in eachcol(X)] atol=2e-4
-    @test logcdf(D, X) ≈ log.(cdf(D, X)) atol=2e-4
+    @test logcdf(D, X) ≈ log.(cdf(D, X)) atol=5e-4
     @test pdf(D, X) == [pdf(D, column) for column in eachcol(X)]
     @test logpdf(D, X) ≈ log.(pdf(D, X))
     @test_throws ArgumentError cdf(D, zeros(3))

@@ -8,7 +8,7 @@ struct Sibuya{T<:Real} <: Distributions.DiscreteUnivariateDistribution
     end
     Sibuya{T}(p) where T = Sibuya(T(p))
 end
-Base.minimum(::Sibuya) = 0
+Base.minimum(::Sibuya) = 1
 Base.maximum(::Sibuya) = Inf
 function Distributions.rand(rng::Distributions.AbstractRNG, d::Sibuya{T}) where {T <: Real}
     u = rand(rng, T)
@@ -28,9 +28,20 @@ function Distributions.rand(rng::Distributions.AbstractRNG, d::Sibuya{T}) where 
 end
 Distributions.mgf(D::Sibuya, t) = 1-(-expm1(t))^(D.p)
 function Distributions.cdf(d::Sibuya, u::Real)
-    k = trunc(u)
-    return 1 - abs(binom(d.p-1, k))
+    u < 1 && return zero(float(u))
+    isinf(u) && return one(float(u))
+    d.p == 1 && return one(float(u))
+    k = floor(Int, u)
+    logtail = SpecialFunctions.loggamma(k + 1 - d.p) -
+              SpecialFunctions.loggamma(1 - d.p) -
+              SpecialFunctions.loggamma(k + 1)
+    return -expm1(logtail)
 end
 function Distributions.logpdf(d::Sibuya, x::Real)
-    insupport(d, x) ? log(abs(binom(d.p, trunc(x)))) : -Inf
+    Distributions.insupport(d, x) || return -Inf
+    k = Int(x)
+    d.p == 1 && return k == 1 ? zero(float(x)) : -Inf
+    return log(d.p) + SpecialFunctions.loggamma(k - d.p) -
+           SpecialFunctions.loggamma(1 - d.p) -
+           SpecialFunctions.loggamma(k + 1)
 end

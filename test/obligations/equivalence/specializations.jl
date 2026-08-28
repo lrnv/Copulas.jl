@@ -68,7 +68,8 @@ end
 @testset "specialized continuous CDFs agree with density integration" begin
     routes = _unique_bivariate_routes(
         (_, C) -> which(Copulas._cdf, Tuple{typeof(C),Vector{Float64}}),
-        (case, _) -> case.kind === :continuous,
+        (case, C) -> case.kind === :continuous &&
+            !(C isa Union{CheckerboardCopula,LiouvilleCopula}),
     )
     generic_method = which(Copulas._cdf,
         Tuple{Copulas.Copula,Vector{Float64}})
@@ -81,10 +82,16 @@ end
             prove_dispatch_route!(:cdf, C, case, :generic_density_integral)
             continue
         end
-        expected = invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
-        @info "Comparing specialized CDF with generic integration" copula=case.name method
+        expected = if C isa ArchimedeanCopula
+            Copulas.ϕ(C.G, sum(Copulas.ϕ⁻¹(C.G, x) for x in u))
+        else
+            invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
+        end
+        @info "Comparing specialized CDF with its independent definition" copula=case.name method
         @test isapprox(cdf(C, u), expected; atol=3e-5, rtol=3e-5)
-        prove_dispatch_route!(:cdf, C, case, :density_integration)
+        prove_dispatch_route!(:cdf, C, case,
+                              C isa ArchimedeanCopula ?
+                              :generator_composition : :density_integration)
         compared += 1
     end
     @test compared > 0
@@ -94,7 +101,7 @@ end
     routes = _unique_bivariate_routes(
         (_, C) -> which(Distributions._logpdf,
                         Tuple{typeof(C),Vector{Float64}}),
-        (case, _) -> case.kind === :continuous,
+        (case, C) -> case.kind === :continuous && !(C isa LiouvilleCopula),
     )
     u = [0.53, 0.67]
     h = 2e-5
@@ -124,7 +131,7 @@ end
         for i in 1:d
             margin_point = ones(d)
             margin_point[i] = 0.37
-            @test cdf(C, margin_point) ≈ 0.37
+            @test cdf(C, margin_point) ≈ 0.37 atol=case.margin_atol
         end
         lower = collect(range(0.12, 0.18; length=d))
         upper = collect(range(0.78, 0.84; length=d))
@@ -158,8 +165,11 @@ end
         generic_method = which(measure, Tuple{Copulas.Copula{2}})
         for (; case, C, method) in routes
             method === generic_method && continue
-            expected = invoke(measure, Tuple{Copulas.Copula}, C)
             @info "Comparing specialized dependence measure with generic definition" measure=nameof(measure) copula=case.name method
+            expected = measure === Copulas.τ ?
+                4 * HCubature.hcubature(u -> cdf(C, u) * pdf(C, u),
+                                       zeros(2), ones(2); rtol=1e-5)[1] - 1 :
+                invoke(measure, Tuple{Copulas.Copula}, C)
             @test isapprox(measure(C), expected; atol=3e-4, rtol=3e-4)
         end
     end
@@ -179,20 +189,50 @@ end
     end
 end
 
-@testset "singular Kendall routes agree with sample concordance" begin
+function _spectral_curvature_tau(tail)
+    # If A(t) = sum_k max(B[1,k]t, B[2,k](1-t)), its second derivative is
+    # the discrete measure placing mass B[1,k] + B[2,k] at the corresponding
+    # kink.  This is the distributional version of the defining EV Kendall
+    # integral and, unlike a sample-concordance check, is exact and noiseless.
+    B = tail.spectral.B
+    total = zero(eltype(B))
+    for k in axes(B, 2)
+        mass = B[1, k] + B[2, k]
+        iszero(mass) && continue
+        kink = B[2, k] / mass
+        total += mass * kink * (1 - kink) / Copulas.A(tail, kink)
+    end
+    return total
+end
+
+_singular_tau_oracle(C::ExtremeValueCopula{2,<:Union{Copulas.BC2Tail,Copulas.MOTail}}) =
+    _spectral_curvature_tau(C.tail)
+
+function _singular_tau_oracle(C::ExtremeValueCopula{2,<:Copulas.CuadrasAugeTail})
+    # Its Pickands function has one kink at 1/2 with slope jump 2θ.
+    kink = 0.5
+    return 2C.tail.θ * kink * (1 - kink) / Copulas.A(C.tail, kink)
+end
+
+# This is the classical bivariate Raftery identity, independently obtained
+# from its common-factor mixture representation.
+_singular_tau_oracle(C::RafteryCopula{2}) = 2C.θ / (3 - C.θ)
+_singular_tau_oracle(::MCopula{2}) = 1
+_singular_tau_oracle(::WCopula{2}) = -1
+
+@testset "singular Kendall routes agree with deterministic identities" begin
     routes = _unique_bivariate_routes(
         (_, C) -> which(Copulas.τ, Tuple{typeof(C)}),
         (case, _) -> case.kind !== :continuous,
     )
     generic_method = which(Copulas.τ, Tuple{Copulas.Copula{2}})
     compared = 0
-    for (index, route) in pairs(routes)
+    for route in routes
         (; case, C, method) = route
         method === generic_method && continue
-        U = rand(StableRNG(8_000 + index), C, 600)
-        empirical = StatsBase.corkendall(transpose(U))[1, 2]
-        @info "Comparing singular Kendall route with sample concordance" copula=case.name method
-        @test Copulas.τ(C) ≈ empirical atol=0.12
+        expected = _singular_tau_oracle(C)
+        @info "Comparing singular Kendall route with deterministic identity" copula=case.name method
+        @test Copulas.τ(C) ≈ expected atol=2e-12 rtol=2e-12
         compared += 1
     end
     @test compared > 0

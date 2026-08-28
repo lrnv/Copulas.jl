@@ -944,3 +944,146 @@ M
     EV copulas usually lack smooth closed-form densities.
     Analytical forms are optional but highly recommended to improve numerical stability.
     Otherwise, `Copulas.jl` will fall back to numerical integration based on the Pickands function.
+
+
+# 4. Testing architecture
+
+The test suite is organized as a proof of the public contract, rather than as
+an independent collection of examples for every family. This distinction keeps
+the suite exhaustive without repeating every expensive numerical identity for
+every concrete copula.
+
+## 4.1 Defining the surface to test
+
+The source of truth for the SemVer-stable API has two parts:
+
+1. symbols exported or declared `public` by `Copulas`; and
+2. documented methods added to adopted interfaces, notably those of
+   `Distributions`, `StatsBase`, and `Random`.
+
+The behavioural table on the [Public API](@ref) page defines what those methods
+promise. `test/obligations/contracts/public_surface.jl` independently fixes the
+complete public namespace in `PUBLIC_SYMBOLS`: changing a public declaration
+without updating the test therefore fails explicitly. Undocumented internal
+hooks, including underscore-prefixed methods, are implementation details and do
+not acquire a stability guarantee merely because the tests call them.
+
+## 4.2 The four proof obligations
+
+Every public behaviour is established through four complementary obligations:
+
+1. **Contract coverage** applies the operation to every public family and checks
+   its observable shape, support, bounds, type, and documented error semantics.
+2. **Generic correctness** checks each reusable implementation mechanism against
+   an independent mathematical or statistical oracle.
+3. **Specialization equivalence** compares each optimized deterministic method
+   with the valid generic implementation. When no generic implementation is
+   mathematically applicable, it uses an independent identity instead.
+4. **Route exhaustiveness** discovers the methods selected by representative
+   public models and proves that every selected route is one of the mechanisms
+   validated by obligations 2 or 3.
+
+Thus the suite establishes
+
+```text
+correct generic mechanisms
++ correct or equivalent specializations
++ every public family routed through one of those mechanisms
+= correct public behaviour for every public family.
+```
+
+Merely executing a method is not a proof of numerical correctness. Deterministic
+routes are consequently entered in `PROVEN_DISPATCH_ROUTES` only after their
+oracle or equivalence assertion has passed. Random samplers cannot be compared
+draw by draw; they are covered by public sampling contracts, sampler-route
+inventory, and representative distributional identities instead.
+
+The corresponding directories are:
+
+- `test/obligations/contracts/` for the public surface and per-family contracts;
+- `test/obligations/correctness/` for independent mathematical and statistical
+  oracles;
+- `test/obligations/equivalence/` for optimized paths versus generic paths;
+- `test/obligations/routing/` for exhaustive method inventories;
+- `test/families/` for published values, boundary cases, singular atoms, and
+  regressions that cannot be deduced from the shared obligations;
+- `test/extensions/` for optional package-extension contracts and regressions.
+
+The fixtures and proof ledger shared by these layers live in
+`test/fixtures.jl`. `test/README.md` contains the concise checklist maintained
+next to the suite.
+
+## 4.3 Adding a public copula family
+
+After implementing and documenting `MyCopula`, update the tests in this order:
+
+1. Add one ordinary, inexpensive instance to `COPULA_CASES` in
+   `test/fixtures.jl`. State whether it is continuous and whether its Rosenblatt
+   transform is bijective. This automatically subjects it to construction,
+   distribution, sampling, density when applicable, subsetting, conditioning,
+   transforms, and dependence contracts.
+2. If dimension changes dispatch or representation, add the missing bivariate
+   or multivariate instance to `ROUTING_EXTRA_CASES`. Do not add another fixture
+   merely to vary a parameter when it selects the same methods.
+3. If the family advertises fitting, register each supported method in the
+   fitting fixtures. The contract checks applicability and result shape; the
+   routing layer executes every distinct estimator path.
+4. If the family introduces a new generic numerical mechanism, add one
+   independent oracle in `obligations/correctness/`. If it specializes an
+   existing operation, compare the specialization with its fallback in
+   `obligations/equivalence/` and register the proven route only after that
+   comparison.
+5. Add a focused file or testset under `test/families/` only for genuinely
+   family-specific facts: published reference values, parameter boundaries,
+   atom masses, reductions to another family, or a reproduced regression.
+
+The public-family registry test verifies mechanically that every public subtype
+of `Copula` has a contract fixture and that every fixture represents a public
+family. The dispatch inventory then prevents a new representation or
+dimension-specific method from silently bypassing the validated paths.
+
+Public generators and extreme-value tails follow the same principle. Add them
+to `GENERATOR_CASES` or `TAIL_CASES`; their primitive-operation registries check
+that every selected implementation of the documented mathematical primitives
+is exercised and validated.
+
+## 4.4 Adding or changing public behaviour
+
+When introducing a new public operation, changing its promised semantics, or
+making an existing internal operation public:
+
+1. Declare it with `export` or `public` when it belongs to the `Copulas`
+   namespace, add its docstring, and update the behavioural table on the
+   [Public API](@ref) page. For an adopted external interface, document the
+   supported methods without redeclaring the external symbol.
+2. Update `PUBLIC_SYMBOLS` when the `Copulas` namespace changes.
+3. Add a contract helper and call it for every applicable public family. If the
+   operation is intentionally unavailable for a mathematical class, encode
+   that applicability explicitly in the fixture metadata or contract rather
+   than silently skipping failures.
+4. Add an independent oracle for every new generic mechanism.
+5. Inventory all dispatch routes selected by the public and dimension-specific
+   fixtures. Compare each specialization with the generic route, or provide an
+   independent identity where comparison is impossible.
+6. Add focused family or extension regressions only for behaviour not implied
+   by the preceding proof.
+
+Conversely, adding only a family regression is insufficient for a public
+feature: it demonstrates one example but proves neither applicability to every
+family nor exhaustiveness of dispatch. Adding only the universal contract is
+also insufficient: it proves availability, not the mathematical correctness of
+all underlying algorithms.
+
+## 4.5 Keeping the suite efficient
+
+Use the cheapest representative that selects a route. Expensive integration,
+automatic differentiation, fitting, and statistical checks should run once per
+implementation mechanism, not once per family. Per-family contracts should use
+small deterministic inputs and verify only public semantics. Before adding a
+new numerical assertion, first determine whether an existing generic oracle and
+the route ledger already imply it.
+
+This organization makes omissions visible: a new public family fails the family
+registry, a new public symbol fails the namespace registry, and a newly selected
+deterministic method fails the proof-ledger comparison until its correctness or
+equivalence has been demonstrated.

@@ -241,7 +241,13 @@ end
 end
 
 @testset "one execution per dependence-measure dispatch" begin
-    models = Tuple((case=case, copula=case.build()) for case in ROUTING_COPULA_CASES)
+    # Several families can select the exact same adapter.  Prefer cheap,
+    # closed-form representatives for that one execution; applicability is
+    # still checked independently for every public family above.
+    route_cost(case) = case.name == "FGM" ? 0 :
+                       case.name == "Clayton" ? 1 : 2
+    ordered_cases = sort(collect(ROUTING_COPULA_CASES); by=route_cost)
+    models = Tuple((case=case, copula=case.build()) for case in ordered_cases)
 
     for measure in SCALAR_DEPENDENCE_MEASURES
         seen = Set{Any}()

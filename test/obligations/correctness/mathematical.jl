@@ -70,6 +70,7 @@ Copulas.ℓ(tail::LogisticOracleTail, x) =
     sum(xᵢ -> xᵢ^tail.θ, x)^(inv(tail.θ))
 Copulas.A(tail::LogisticOracleTail, t::Real) =
     Copulas.ℓ(tail, (t, 1 - t))
+Copulas._is_valid_in_dim(::LogisticOracleTail, d::Int) = d >= 2
 
 # Complementary tail oracle: only Pickands' A is supplied, so ℓ and the first
 # two Pickands derivatives must all use the generic BivariatePickandsTail API.
@@ -252,7 +253,7 @@ end
     for C in (ClaytonCopula{3}(1.5), GumbelCopula{3}(1.5))
         G = C.G
         t = sum(Copulas.ϕ⁻¹(G, p) for p in u)
-        expected = Copulas.ϕ⁽ᵐ⁾(G, 3, t) *
+        expected = Copulas.ϕ⁽ᵏ⁾(G, 3, t) *
                    prod(Copulas.ϕ⁻¹⁽¹⁾(G, p) for p in u)
         @test pdf(C, u) ≈ expected rtol=2e-10
         prove_dispatch_route!(:logpdf, C,
@@ -542,14 +543,13 @@ end
     conditional_derivative = (cdf(D, target + h) - cdf(D, target - h)) / (2h)
     @test pdf(D, target) ≈ conditional_derivative atol=3e-5 rtol=3e-5
 
-    gaussian = GaussianCopula{3}(0.3)
+    ρ = 0.3
+    gaussian = GaussianCopula{3}(ρ)
     joint = condition(gaussian, 1, 0.41)
     point = [0.57, 0.69]
-    numerator = (cdf(gaussian, [0.41 + h, point[1], point[2]]) -
-                 cdf(gaussian, [0.41 - h, point[1], point[2]])) / (2h)
-    normalizer = (cdf(gaussian, [0.41 + h, 1.0, 1.0]) -
-                  cdf(gaussian, [0.41 - h, 1.0, 1.0])) / (2h)
-    expected = numerator / normalizer
+    # Conditioning an exchangeable Gaussian correlation matrix on one
+    # coordinate leaves correlation (ρ-ρ²)/(1-ρ²)=ρ/(1+ρ).
+    expected = cdf(GaussianCopula{2}(ρ / (1 + ρ)), point)
     @test cdf(joint, point) ≈ expected atol=3e-5 rtol=3e-5
 end
 
