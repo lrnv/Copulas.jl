@@ -45,6 +45,59 @@ Returns a [`CopulaModel`](@ref) with:
 - `vcov` (if available),
 - `method_details` (a `NamedTuple` with method-specific metadata).
 
+## Automatic copula-family selection
+
+When the copula family is unknown, `CopulaModel` can select it automatically
+from a collection of candidate families:
+
+```@example fitting_interface
+Ctrue = ClaytonCopula(2, 4.0)
+Usel = rand(Ctrue, 1_000)
+
+Msel = fit(
+    CopulaModel,
+    Copula,
+    Usel;
+    candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
+    criterion=:bic,
+    vcov=false,
+)
+Msel
+```
+
+The available information criteria are:
+
+- `:bic` — Bayesian information criterion,
+- `:aic` — Akaike information criterion,
+- `:aicc` — finite-sample corrected AIC,
+- `:hqc` — Hannan–Quinn criterion.
+
+With `criterion=:default`, BIC is used.
+
+Candidate fits are compared using the requested criterion, and the family with
+the smallest eligible finite value is selected. The winning family is then
+fitted once more using the inference options requested by the user.
+
+The complete comparison can be inspected with [`selectiontable`](@ref):
+
+```@example fitting_interface
+selectiontable(Msel)
+```
+
+Each row stores the candidate family, fitting status and method,
+log-likelihood, number of parameters, and all four information criteria.
+Candidates that fail to fit can be skipped with `on_error=:skip` (the default)
+or propagated immediately with `on_error=:throw`.
+
+Two built-in candidate collections are available:
+
+- `candidates=:default` uses a conservative set of commonly used parametric families;
+- `candidates=:all` considers the broader built-in parametric repertoire compatible with the data dimension.
+
+An explicit tuple of families is recommended when the scientific problem
+already restricts the plausible candidate set.
+
+
 ---
 
 ## Behavior & conventions (important)
