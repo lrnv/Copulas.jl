@@ -102,9 +102,5 @@ En particulier :
 - [ ] Comparer avant fusion les ensembles de familles, routes `which`, branches
   comportementales, classes dimensionnelles et entrées du proof ledger avec la
   référence. Aucun de ces ensembles ne peut diminuer.
-- [ ] Si le temps séquentiel reste supérieur à huit minutes après les
-  optimisations démontrées, répartir la CI en deux shards équilibrés. Le
-  sharding réduit le temps mural, pas le budget CPU, et ne remplace aucun test.
-
 Le fichier sera supprimé lorsque les optimisations démontrées auront été
 appliquées et que la cible aura été observée sur trois runs consécutifs.

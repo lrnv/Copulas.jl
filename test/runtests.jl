@@ -87,6 +87,45 @@ extension_testfiles = (
     CopulasPlotsExt="plots",
 )
 
+function run_obligations(groups)
+    Base.@nospecialize groups
+    for obligation in groups
+        files = getproperty(obligation_testfiles, obligation)
+        @testset verbose=true "$obligation obligations" begin
+            @testset verbose=true "$f.jl" for f in files
+                test_progress("$obligation obligations", "$f.jl")
+                timed_include("$obligation/$f.jl", joinpath(
+                    @__DIR__, "obligations", string(obligation), "$f.jl"))
+            end
+        end
+    end
+end
+
+function run_family_regressions()
+    @testset verbose=true "family regressions" begin
+        @testset verbose=true "$f.jl" for f in family_testfiles
+            test_progress("family regressions", "$f.jl")
+            timed_include("families/$f.jl",
+                joinpath(@__DIR__, "families", "$f.jl"))
+        end
+    end
+end
+
+function run_extension_regressions()
+    @testset verbose=true "extension regressions" begin
+        declared = Set(keys(TOML.parsefile(
+            joinpath(@__DIR__, "..", "Project.toml"))["extensions"]))
+        represented = Set(string.(keys(extension_testfiles)))
+        @test declared == represented
+        @testset verbose=true "$(extension) ($(getproperty(extension_testfiles, extension)).jl)" for extension in keys(extension_testfiles)
+            f = getproperty(extension_testfiles, extension)
+            test_progress("extension regressions", "$f.jl")
+            timed_include("extensions/$f.jl",
+                joinpath(@__DIR__, "extensions", "$f.jl"))
+        end
+    end
+end
+
 # Fixtures define registries and helpers but contain no assertions.  Load them
 # before opening the test hierarchy so they do not appear as an empty testset.
 timed_include("infrastructure/fixtures.jl", joinpath(@__DIR__, "fixtures.jl"))
@@ -110,40 +149,28 @@ timed_include("infrastructure/fixtures.jl", joinpath(@__DIR__, "fixtures.jl"))
         test_progress("targeted", "routing", "fitting")
         timed_include("routing/fitting.jl",
             joinpath(@__DIR__, "obligations", "routing", "fitting.jl"))
+    elseif selection === :contracts
+        run_obligations((:contracts,))
+    elseif selection === :proofs
+        # The proof files consume the public-symbol and distortion registries.
+        # Loading these two small contract files keeps the shard self-contained;
+        # all other contract files remain exclusive to the contracts shard.
+        for file in ("public_surface", "distortions")
+            timed_include("contracts/$file.jl", joinpath(
+                @__DIR__, "obligations", "contracts", "$file.jl"))
+        end
+        run_obligations((:correctness, :equivalence, :routing))
+    elseif selection === :regressions
+        test_progress("Aqua.jl")
+        timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
+        run_family_regressions()
+        run_extension_regressions()
     elseif selection === :all
         test_progress("Aqua.jl")
         timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
-
-        for (obligation, files) in pairs(obligation_testfiles)
-            @testset verbose=true "$obligation obligations" begin
-                @testset verbose=true "$f.jl" for f in files
-                    test_progress("$obligation obligations", "$f.jl")
-                    timed_include("$obligation/$f.jl", joinpath(
-                        @__DIR__, "obligations", string(obligation), "$f.jl"))
-                end
-            end
-        end
-
-        @testset verbose=true "family regressions" begin
-            @testset verbose=true "$f.jl" for f in family_testfiles
-                test_progress("family regressions", "$f.jl")
-                timed_include("families/$f.jl",
-                    joinpath(@__DIR__, "families", "$f.jl"))
-            end
-        end
-
-        @testset verbose=true "extension regressions" begin
-            declared = Set(keys(TOML.parsefile(
-                joinpath(@__DIR__, "..", "Project.toml"))["extensions"]))
-            represented = Set(string.(keys(extension_testfiles)))
-            @test declared == represented
-            @testset verbose=true "$(extension) ($(getproperty(extension_testfiles, extension)).jl)" for extension in keys(extension_testfiles)
-                f = getproperty(extension_testfiles, extension)
-                test_progress("extension regressions", "$f.jl")
-                timed_include("extensions/$f.jl",
-                    joinpath(@__DIR__, "extensions", "$f.jl"))
-            end
-        end
+        run_obligations(keys(obligation_testfiles))
+        run_family_regressions()
+        run_extension_regressions()
     else
         error("unknown test selection: $selection")
     end
