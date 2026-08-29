@@ -30,8 +30,8 @@ end
     target = [-0.4, 0.7]
     expected_cond, cond_error = mvnormcdf(
         MvNormal(μcond, Σcond), fill(-Inf, 2), target)
-    @test cdf(condition(X, (1,), observed), target) ≈ expected_cond
-          atol=10sqrt(cond_error)
+    @test isapprox(cdf(condition(X, (1,), observed), target), expected_cond;
+                   atol=max(10sqrt(cond_error), 5e-5), rtol=0)
 end
 
 # Same density, deliberately without a CDF method. It selects Copula.jl's

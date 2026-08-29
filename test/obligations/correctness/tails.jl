@@ -87,7 +87,12 @@ end
             @test Copulas.ellpartial(tail, x, [1]) ≈
                   Copulas.ellpartial(tail, x, (1,))
             if !(tail isa Copulas.DiscreteSpectralBackedTail)
-                h = 1e-5
+                # HR and extremal-t evaluate ℓ through multivariate Gaussian or
+                # Student probabilities. A 1e-5 stencil amplifies the numerical
+                # CDF error, especially in the mixed second derivative; use the
+                # larger finite-difference scale appropriate to that oracle.
+                h = tail isa Union{Copulas.HuslerReissTail,Copulas.tEVTail} ?
+                    1e-3 : 1e-5
                 xplus, xminus = copy(x), copy(x)
                 xplus[1] += h
                 xminus[1] -= h

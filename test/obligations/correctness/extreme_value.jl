@@ -362,8 +362,8 @@ end
                 2,
                 Copulas.tEVTail(ν, R[i, j]),
             )
-            @test cdf(subsetdims(C, (i, j)), q) ≈ cdf(Cij, q)
-                  atol=5e-4 rtol=5e-4
+            @test isapprox(cdf(subsetdims(C, (i, j)), q), cdf(Cij, q);
+                           atol=5e-4, rtol=5e-4)
         end
     end
 
