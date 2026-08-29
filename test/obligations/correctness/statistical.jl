@@ -2,8 +2,8 @@
 # statistically once per distinct implementation route.
 @testset verbose=true "one distributional identity per sampler dispatch" begin
     seen = Set{Any}()
-    for (index, case) in pairs(ROUTING_COPULA_CASES)
-        C = case.build()
+    for (index, fixture) in pairs(ROUTING_COPULA_FIXTURES)
+        case, C = fixture.case, fixture.copula
         d = length(C)
         route_rng = StableRNG(400 + index)
         method = which(Distributions._rand!,

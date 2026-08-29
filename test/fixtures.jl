@@ -117,6 +117,16 @@ const ROUTING_EXTRA_CASES = (
 
 const ROUTING_COPULA_CASES = (COPULA_CASES..., ROUTING_EXTRA_CASES...)
 
+# Deterministic model fixtures are constructed once and shared by the proof
+# layers.  RNGs, sample buffers, conditionals, and fitted results remain local
+# to each test, so this cache removes only identical constructor work and does
+# not introduce order-dependent state.
+const COPULA_FIXTURES = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
+const ROUTING_COPULA_FIXTURES = (
+    COPULA_FIXTURES...,
+    ((case=case, copula=case.build()) for case in ROUTING_EXTRA_CASES)...,
+)
+
 const SCALAR_DEPENDENCE_MEASURES = (
     Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι,
     Copulas.λₗ, Copulas.λᵤ,
@@ -344,3 +354,6 @@ const FITTING_CASES = (
     fitting_case("survival", () -> SurvivalCopula{2}(
         ClaytonCopula{2}(1.5), (1,)); method=:itau),
 )
+
+const FITTING_FIXTURES = Tuple((case=case, copula=case.build())
+                               for case in FITTING_CASES)

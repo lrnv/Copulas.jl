@@ -53,8 +53,8 @@ end
 function _unique_bivariate_routes(operation, predicate)
     seen = Set{Method}()
     routes = NamedTuple[]
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         length(C) == 2 || continue
         predicate(case, C) || continue
         method = operation(case, C)
@@ -101,8 +101,9 @@ end
 end
 
 @testset "checkerboard CDF equals exact box overlap" begin
-    case = only(filter(c -> c.name == "checkerboard", ROUTING_COPULA_CASES))
-    C = case.build()
+    fixture = only(filter(x -> x.case.name == "checkerboard",
+                          ROUTING_COPULA_FIXTURES))
+    case, C = fixture.case, fixture.copula
     u = [0.53, 0.67]
     expected = zero(eltype(values(C.boxes)))
     for (box, weight) in C.boxes
@@ -142,8 +143,8 @@ end
 @testset "singular and mixed CDF routes satisfy mass identities" begin
     seen = Set{Any}()
     split = 0.46
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         case.kind === :continuous && continue
         key = dispatch_route_key(:cdf, C, case)
         key in seen && continue
@@ -303,8 +304,8 @@ end
     parent = ClaytonCopula{2}(1.5)
     subset = subsetdims(parent, (2, 1))
     candidates = Any[]
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         length(C) == 2 && push!(candidates, C)
     end
     push!(candidates, subset)
@@ -409,8 +410,8 @@ end
 
 @testset verbose=true "bivariate conditioning routes agree with CDF derivatives" begin
     seen = Set{Method}()
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         length(C) == 2 || continue
         case.kind === :continuous || continue
         method = which(Copulas.DistortionFromCop,
@@ -498,8 +499,8 @@ end
 
 @testset verbose=true "multivariate conditioning routes agree with normalized CDF derivatives" begin
     seen = Set{Method}()
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         d = length(C)
         d > 2 || continue
         case.kind === :continuous || continue
@@ -533,8 +534,8 @@ end
 
 @testset "atomic conditioning routes satisfy generalized inversion" begin
     seen = Set{Any}()
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         case.kind === :continuous && continue
         # Point conditioning is not canonically defined away from the finite
         # support of an empirical copula. Its generic method is exercised and
@@ -561,8 +562,8 @@ end
     seen = Set{Any}()
     conditioned = 0.41
     h = 2e-5
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         d = length(C)
         d > 2 || continue
         key = dispatch_route_key(:conditional_joint, C, case)
@@ -599,8 +600,8 @@ end
 
 @testset "subsetting routes preserve parent margins" begin
     seen = Set{Any}()
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         d = length(C)
         dims = d == 2 ? (2, 1) : (1, d)
         key = dispatch_route_key(:subsetting, C, case)
@@ -641,8 +642,8 @@ end
     generic_method = which(Copulas.rosenblatt,
         Tuple{Copulas.Copula{3},Matrix{Float64}})
     candidates = Any[checked[3]]
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         length(C) == 3 && case.rosenblatt && push!(candidates, C)
     end
     selected_methods = Set(
@@ -677,8 +678,8 @@ end
 @testset "every Rosenblatt route equals sequential conditioning" begin
     seen_forward = Set{Any}()
     seen_inverse = Set{Any}()
-    for case in ROUTING_COPULA_CASES
-        C = case.build()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
         d = length(C)
         u = collect(range(0.31, 0.73; length=d))
         forward_key = dispatch_route_key(:rosenblatt, C, case)

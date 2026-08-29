@@ -35,13 +35,13 @@ end
         method=:itau, vcov=true, vcov_method=:invalid, derived_measures=false)
 end
 
-const _FITTING_PATH_MODELS = Tuple(case.build() for case in ROUTING_COPULA_CASES)
-const _PRIMARY_FITTING_METHOD = Dict(case.name => begin
-    C = case.build()
+const _FITTING_PATH_MODELS = Tuple(fixture.copula for fixture in ROUTING_COPULA_FIXTURES)
+const _PRIMARY_FITTING_METHOD = Dict(fixture.case.name => begin
+    case, C = fixture.case, fixture.copula
     Copulas._find_method(typeof(C), length(C), case.method)
-end for case in FITTING_CASES)
-const _PRIMARY_FITTING_TYPE = Dict(case.name => typeof(case.build())
-                                   for case in FITTING_CASES)
+end for fixture in FITTING_FIXTURES)
+const _PRIMARY_FITTING_TYPE = Dict(fixture.case.name => typeof(fixture.copula)
+                                   for fixture in FITTING_FIXTURES)
 _canonical_fitting_name(name) = replace(name,
     " bivariate" => "", " multivariate" => "")
 

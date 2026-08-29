@@ -59,8 +59,9 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         names = ("Husler--Reiss bivariate", "Husler--Reiss",
                  "t-EV", "t-EV multivariate")
         for name in names
-            case = only(filter(c -> c.name == name, ROUTING_COPULA_CASES))
-            C = case.build()
+            fixture = only(filter(x -> x.case.name == name,
+                                  ROUTING_COPULA_FIXTURES))
+            case, C = fixture.case, fixture.copula
             key = dispatch_route_key(:logpdf, C, case)
             @test key in keys(PROVEN_DISPATCH_ROUTES[:logpdf])
         end

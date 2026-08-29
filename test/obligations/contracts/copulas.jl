@@ -181,8 +181,7 @@ function test_pairwise_dependence_result(measure, diagonal, C)
     @test all(x -> x isa Real && !isnan(x), matrix)
 end
 
-function test_copula_contract(case, seed)
-    C = case.build()
+function test_copula_contract(case, C, seed)
     ctx = copula_contract_context(C, seed)
     @testset "distribution" begin
         test_progress("contracts", "copulas", case.name, "distribution")
@@ -215,15 +214,15 @@ end
         if getfield(Copulas, symbol) isa Type &&
            symbol !== :Copula &&
            getfield(Copulas, symbol) <: Copulas.Copula)
-    represented = Set(typeof(case.build()) for case in COPULA_CASES)
+    represented = Set(typeof(fixture.copula) for fixture in COPULA_FIXTURES)
     @test all(F -> any(T -> T <: F, represented), public_families)
     @test all(T -> any(F -> T <: F, public_families), represented)
 end
 
 @testset verbose=true "public copula contract" begin
     @testset verbose=true "$(COPULA_CASES[i].name)" for i in eachindex(COPULA_CASES)
-        case = COPULA_CASES[i]
-        test_copula_contract(case, 10_000 + i)
+        (; case, copula) = COPULA_FIXTURES[i]
+        test_copula_contract(case, copula, 10_000 + i)
     end
 end
 
@@ -239,10 +238,14 @@ end
     # Several families can select the exact same adapter.  Prefer cheap,
     # closed-form representatives for that one execution; applicability is
     # still checked independently for every public family above.
-    route_cost(case) = case.name == "FGM" ? 0 :
+    # Bernstein selects the unbranched generic `Copula` measures while its
+    # polynomial CDF is much cheaper to integrate than Liouville's numerical
+    # CDF. Liouville's family-specific radial identities remain independently
+    # proved in the correctness layer.
+    route_cost(case) = case.name == "Bernstein" ? 0 :
+                       case.name == "FGM" ? 0 :
                        case.name == "Clayton" ? 1 : 2
-    ordered_cases = sort(collect(ROUTING_COPULA_CASES); by=route_cost)
-    models = Tuple((case=case, copula=case.build()) for case in ordered_cases)
+    models = sort(collect(ROUTING_COPULA_FIXTURES); by=x -> route_cost(x.case))
 
     @testset verbose=true "$(nameof(measure))" for measure in SCALAR_DEPENDENCE_MEASURES
         seen = Set{Any}()

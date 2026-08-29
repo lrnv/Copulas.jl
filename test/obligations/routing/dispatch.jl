@@ -25,7 +25,7 @@ function _exercise_dispatch_path(operation, C)
 end
 
 @testset verbose=true "one representative per copula dispatch mechanism" begin
-    models = Tuple((case=case, copula=case.build()) for case in ROUTING_COPULA_CASES)
+    models = ROUTING_COPULA_FIXTURES
     operations = (:cdf, :logpdf, :sampling, :conditioning,
                   :conditional_joint, :rosenblatt, :inverse_rosenblatt,
                   :subsetting)
@@ -51,8 +51,8 @@ end
                      :rosenblatt, :inverse_rosenblatt, :subsetting)
     @testset "$operation" for operation in deterministic
         selected = Set{Any}()
-        for case in ROUTING_COPULA_CASES
-            C = case.build()
+        for fixture in ROUTING_COPULA_FIXTURES
+            case, C = fixture.case, fixture.copula
             key = dispatch_route_key(operation, C, case)
             isnothing(key) || push!(selected, key)
         end

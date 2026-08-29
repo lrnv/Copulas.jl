@@ -9,11 +9,35 @@ using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
 const rng = StableRNG(123)
 const _TEST_RUN_STARTED = time()
 const _TEST_PROGRESS_LAST = Ref(_TEST_RUN_STARTED)
+const _TEST_TIMINGS = Dict{String,Float64}()
 function test_progress(parts...)
     now = time()
     @info "Test progress" path=join(string.(parts), " / ") elapsed=round(now - _TEST_PROGRESS_LAST[]; digits=2) total=round(now - _TEST_RUN_STARTED; digits=2)
     _TEST_PROGRESS_LAST[] = now
 end
+
+function timed_include(label, path)
+    started = time()
+    try
+        return include(path)
+    finally
+        _TEST_TIMINGS[string(label)] = time() - started
+    end
+end
+
+function write_test_timings()
+    path = get(ENV, "COPULAS_TEST_TIMINGS", "")
+    isempty(path) && return
+    mkpath(dirname(abspath(path)))
+    report = Dict(
+        "total_seconds" => time() - _TEST_RUN_STARTED,
+        "files" => _TEST_TIMINGS,
+    )
+    open(path, "w") do io
+        TOML.print(io, report; sorted=true)
+    end
+end
+atexit(write_test_timings)
 
 obligation_testfiles = (
     contracts = [
@@ -52,7 +76,7 @@ extension_testfiles = (
 
 # Fixtures define registries and helpers but contain no assertions.  Load them
 # before opening the test hierarchy so they do not appear as an empty testset.
-include(joinpath(@__DIR__, "fixtures.jl"))
+timed_include("infrastructure/fixtures.jl", joinpath(@__DIR__, "fixtures.jl"))
 
 @testset verbose=true "Copulas.jl" begin
     selection = isempty(ARGS) ? :all : Symbol(only(ARGS))
@@ -66,20 +90,22 @@ include(joinpath(@__DIR__, "fixtures.jl"))
                                    ("correctness", "mathematical"),
                                    ("equivalence", "specializations"))
             test_progress("targeted", obligation, file)
-            include(joinpath(@__DIR__, "obligations", obligation, "$file.jl"))
+            timed_include("$obligation/$file.jl",
+                joinpath(@__DIR__, "obligations", obligation, "$file.jl"))
         end
     elseif selection === :routing_fitting
         test_progress("targeted", "routing", "fitting")
-        include(joinpath(@__DIR__, "obligations", "routing", "fitting.jl"))
+        timed_include("routing/fitting.jl",
+            joinpath(@__DIR__, "obligations", "routing", "fitting.jl"))
     elseif selection === :all
         test_progress("Aqua.jl")
-        include(joinpath(@__DIR__, "Aqua.jl"))
+        timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
 
         for (obligation, files) in pairs(obligation_testfiles)
             @testset verbose=true "$obligation obligations" begin
                 @testset verbose=true "$f.jl" for f in files
                     test_progress("$obligation obligations", "$f.jl")
-                    include(joinpath(
+                    timed_include("$obligation/$f.jl", joinpath(
                         @__DIR__, "obligations", string(obligation), "$f.jl"))
                 end
             end
@@ -88,7 +114,8 @@ include(joinpath(@__DIR__, "fixtures.jl"))
         @testset verbose=true "family regressions" begin
             @testset verbose=true "$f.jl" for f in family_testfiles
                 test_progress("family regressions", "$f.jl")
-                include(joinpath(@__DIR__, "families", "$f.jl"))
+                timed_include("families/$f.jl",
+                    joinpath(@__DIR__, "families", "$f.jl"))
             end
         end
 
@@ -100,7 +127,8 @@ include(joinpath(@__DIR__, "fixtures.jl"))
             @testset verbose=true "$(extension) ($(getproperty(extension_testfiles, extension)).jl)" for extension in keys(extension_testfiles)
                 f = getproperty(extension_testfiles, extension)
                 test_progress("extension regressions", "$f.jl")
-                include(joinpath(@__DIR__, "extensions", "$f.jl"))
+                timed_include("extensions/$f.jl",
+                    joinpath(@__DIR__, "extensions", "$f.jl"))
             end
         end
     else

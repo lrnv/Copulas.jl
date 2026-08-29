@@ -13,10 +13,10 @@
 end
 
 @testset "public fitting and model-result contracts" begin
-    for (i, case) in pairs(FITTING_CASES)
+    for (i, fixture) in pairs(FITTING_FIXTURES)
+        case, source = fixture.case, fixture.copula
         @testset "$(case.name)" begin
             test_progress("contracts", "fitting", case.name)
-            source = case.build()
             U = rand(StableRNG(20_000 + i), source, 12)
             family = typeof(source)
             fitted = fit(family, U; method=case.method, case.kwargs...,
