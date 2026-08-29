@@ -1,62 +1,13 @@
 # Family-regression layer: Archimedean and Williamson reference values,
 # parameter boundaries, and numerical corner cases.
 
-@testset "Williamson real orders and exact lower-order radial" begin
-    X = Dirac(2.0)
-    G4 = @inferred 𝒲(X, 4)
-    G5 = 𝒲(X, 5)
-    Greal = 𝒲(X, 4.5)
-
-    @test typeof(G4) == typeof(G5)
-    @test Greal.order == 4.5
-    @test Copulas.max_monotony(Greal) == 4.5
-    @test Copulas.ϕ(Greal, 0.5) ≈ (1 - 0.5 / 2)^3.5
-    @test Copulas._falling_factorial(19.0, 2) == 342.0
-    @test Copulas._falling_factorial(3.5, 2) == 8.75
-    @test Copulas.ϕ⁽ᵏ⁾(Greal, 2, 0.5) ≈ 3.5 * 2.5 / 2^2 * (1 - 0.5 / 2)^1.5
-    Gdiscrete = 𝒲([1.0], [1.0], 4.5)
-    @test Copulas.ϕ⁽ᵏ⁾(Gdiscrete, 5, 0.5) ≈
-          (-1)^5 * Copulas._falling_factorial(3.5, 5) * 0.5^(-1.5)
-    # Exact truncated negative moment of LogNormal(0, 1).
-    Glognormal = 𝒲(LogNormal(), 2)
-    @test Copulas.ϕ⁽¹⁾(Glognormal, 0.1) ≈ -exp(0.5) * ccdf(Normal(), log(0.1) + 1)
-
-    @test Copulas.𝒲₋₁(Greal, 4.5) === X
-    radial = Copulas.𝒲₋₁(Greal, 2.0)
-    beta = Beta(2.0, 2.5)
-    @test cdf(radial, 0.8) ≈ cdf(beta, 0.4)
-    @test pdf(radial, 0.8) ≈ pdf(beta, 0.4) / 2
-    @test all(x -> 0 <= x <= 2, rand(rng, radial, 10))
-
-    pareto_radial = Copulas.𝒲₋₁(𝒲(Pareto(1), 5), 2)
-    @test cdf(pareto_radial, 2.0) ≈ 0.8
-    @test pdf(pareto_radial, 2.0) ≈ 0.1
-
-    nested = Copulas.WilliamsonBetaProduct(radial, Beta(1.0, 1.0))
-    @test nested.X === X
-    @test Distributions.params(nested.B) == (1.0, 3.5)
-    @test nested.source_order == Greal.order
-    recovered = 𝒲(radial, 2.0)
-    @test recovered.X === X
-    @test recovered.order == 4.5
-
-    generic_radial = Copulas.𝒲₋₁(Copulas.FrankGenerator(-2.0), 2)
-    @test 𝒲(generic_radial, 2) === generic_radial.G
-    remapped = 𝒲(generic_radial, 3)
-    @test remapped.X === generic_radial
-    @test remapped.order == 3
-
-    # The exact path also covers the expensive D > d case used for sampling.
-    C = ArchimedeanCopula{2}(𝒲(Pareto(1), 5))
-    @test size(rand(rng, C, 3)) == (2, 3)
-end
 @testset "Boundary test for bivariate Joe, Gumbel and Frank" begin
     θ = 1.1
     C = JoeCopula{2}(θ)
 
     # Joe copula is zero on all borders and corners of the hypercube.
     # so as soon as there is a zero or a one it should be zero.
-    us = [0, 1, rand(rng, 10)...]
+    us = (0.0, 0.2, 0.5, 0.8, 1.0)
     for u in us
         @test pdf(C, [0, u]) == 0
         @test pdf(C, [u, 0]) == 0

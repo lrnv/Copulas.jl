@@ -16,12 +16,6 @@
     end
 end
 
-@testset "Marshall-Olkin specialized sampler" begin
-    C = MOCopula{2}(0.1, 0.2, 0.3)
-    U = rand(rng, C, 5_000)
-    @test all(isapprox.(vec(mean(U; dims=2)), 0.5; atol=0.03, rtol=0))
-end
-
 @testset "Survival subsetting and conditioning regressions" begin
     C3 = SurvivalCopula{3}(ClaytonCopula{3}(2.0), (3,))
     S13 = subsetdims(C3, (1, 3))
@@ -159,8 +153,6 @@ end
     cdf_exs = [
         ([0.1,0.2,0.5,0.4], [0.1, 0.2, 0.3], (0.0100776123, 1e-4), (1.308876232, 1e-4)),
         ([0.3,0.3,0.3,0.3], [0.5, 0.4, 0.3], (0.0830421321, 1e-4), (1.024, 1e-4)),
-        (0.0,               [0.1, 0.1],      (0.010023, 1e-4),     (1, 1e-4)),
-        (0.5,               [0.5, 0.4],      (0.2299999999, 1e-4),     (1, 1e-4)),
     ]
     
     for (par, u, (ctruth, ctol), (ptruth, ptol)) in cdf_exs

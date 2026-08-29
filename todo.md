@@ -1,5 +1,29 @@
 # Réduction du temps de la suite de tests
 
+## Migration exhaustive des tests historiques
+
+Chaque fichier ci-dessous doit être certifié assertion par assertion : cible
+parmi les quatre obligations, absence de doublon sur la même route et le même
+cas mathématique, oracle indépendant, et représentant aussi peu coûteux que
+possible. Le fichier historique peut disparaître ou être entièrement réécrit ;
+seules les obligations prouvées doivent être préservées.
+
+- [ ] `families/archimedean.jl`
+- [ ] `families/conditioning.jl`
+- [ ] `families/constructors.jl`
+- [ ] `families/elliptical.jl`
+- [ ] `families/liouville.jl`
+- [ ] `families/miscellaneous.jl`
+- [ ] `families/nataf.jl`
+- [ ] `obligations/correctness/extreme_value.jl`
+- [ ] `obligations/correctness/nested_archimedean.jl`
+- [ ] `obligations/equivalence/conditioning.jl`
+
+La certification finale doit comparer les registres de familles, méthodes,
+branches comportementales et routes de preuve avant/après la migration. Elle
+doit aussi rechercher explicitement les oracles circulaires et les calculs
+stochastiques ou quadratures qui répètent une preuve déterministe existante.
+
 Référence CI du 28 août 2026 : **13 min 30,8 s** pour 8 785 tests
 (8 784 réussis, 1 broken). La cible indicative est **6 min 45 s**, mais elle
 ne justifie jamais une perte de couverture ou une dégradation d'oracle.

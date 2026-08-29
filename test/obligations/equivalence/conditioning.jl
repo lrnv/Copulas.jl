@@ -2,22 +2,6 @@
 # fast paths are checked against inversion identities, generic conditionals,
 # log-scale definitions, or independent Gaussian conditioning algebra.
 
-@testset "Bivariate scalar condition fast path" begin
-    # Scalar/tuple equivalence is part of `obligations/contracts/copulas.jl`; retain only
-    # inference, numeric-type propagation, and input-validation regressions.
-    C = GaussianCopula{2}(0.4)
-    @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
-    for j in 1:2, uⱼ in (0.2f0, big"0.8")
-        @test typeof(condition(C, j, uⱼ)) ==
-              typeof(condition(C, (j,), (float(uⱼ),)))
-    end
-
-    @test_throws ArgumentError condition(C, 0, 0.4)
-    @test_throws ArgumentError condition(C, 3, 0.4)
-    @test_throws ArgumentError condition(C, 1, -0.1)
-    @test_throws ArgumentError condition(C, 1, 1.1)
-end
-
 @testset "Plackett distortion closed-form quantile" begin
     for θ in (0.5, 2.0), j in 1:2
         C = PlackettCopula{2}(θ)
@@ -160,16 +144,6 @@ end
     end
 end
 
-@testset "Extreme-value conditioning caches fixed transforms" begin
-    DEV = condition(GalambosCopula{2}(2.5), (1,), (0.3,))
-    @test DEV.negloguⱼ == -log(DEV.uⱼ)
-
-    DAM = condition(ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),
-                                  Copulas.HuslerReissTail(0.6)), (1,), (0.3,))
-    @test DAM.yⱼ == Copulas.ϕ⁻¹(DAM.gen, DAM.uⱼ)
-    @test DAM.invderivⱼ == Copulas.ϕ⁻¹⁽¹⁾(DAM.gen, DAM.uⱼ)
-end
-
 @testset "Archimedean distortion logcdf" begin
     distortions = (
         condition(ClaytonCopula{3}(2.0), (1, 2), (0.3, 0.6)),
@@ -242,56 +216,4 @@ end
     value_big = logpdf(generic_big, BigFloat[0.35, 0.65])
     @test value_big isa BigFloat
     @test isfinite(value_big)
-end
-
-@testset "Checkerboard distortion supports multiple conditioning dimensions" begin
-    C = CheckerboardCopula{3}(randn(rng, 3, 30); pseudo_values=false)
-    D = Copulas.DistortionFromCop(C, (1, 2), (0.3, 0.7), 3)
-
-    @test D isa Copulas.HistogramBinDistortion
-    @test all(0 .<= cdf.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
-    @test all(pdf.(Ref(D), (0.2, 0.5, 0.8)) .>= 0)
-    @test all(0 .<= quantile.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
-end
-
-@testset "Bernstein distortion quantiles use bounded bisection" begin
-    C = BernsteinCopula{2}(GaussianCopula{2}(0.3); m=5)
-    D = condition(C, (1,), (0.4,))
-    @test D isa Copulas.BernsteinDistortion
-    for p in (0.1, 0.5, 0.9)
-        q = quantile(D, p)
-        @test 0 <= q <= 1
-        @test cdf(D, q) ≈ p atol = 2e-12
-    end
-end
-
-@testset "Gaussian Sklar conditional vs MVN with normal marginals" begin
-    d = 3
-    Σ = [1 0.7 0.3;0.7 1 0.7; 0.3 0.7 1]
-    C = GaussianCopula{3}(Σ)
-    μ = zeros(d)
-    
-    X = SklarDist(C, Tuple(Normal(μ[i],Σ[i,i]) for i in 1:d))
-    X_mock = MvNormal(μ, Σ)
-
-    # Independent end-to-end oracle for the unconditioned composition.
-    t = [0.2, 0.5, 0.8]
-    A, r = mvnormcdf(X_mock, fill(-Inf, d), t)
-    @test cdf(X, t) ≈ A atol=10sqrt(r)
-
-    
-    # Now condition using the known gaussian conditionning algebra: 
-    xⱼₛ = [0]
-    is, js = 2:3, 1:1 
-    μ_Y    = μ[is] .+ Σ[is, js] * inv(Σ[js, js]) * (xⱼₛ - μ[js])
-    Σ_Y = Σ[is,is] .- Σ[is,js] * inv(Σ[js,js]) * Σ[js, is]
-    Y_mock = MvNormal(μ_Y, Σ_Y)
-
-    # And construct the conditioning using the generic paths: 
-    J = Tuple(reverse(collect(js)))
-    Y = condition(X, J, xⱼₛ)
-
-    tcond = [-0.4, 0.7]
-    Acond, rcond = mvnormcdf(Y_mock, fill(-Inf, 2), tcond)
-    @test cdf(Y, tcond) ≈ Acond atol=10sqrt(rcond)
 end

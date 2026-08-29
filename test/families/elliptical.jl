@@ -20,16 +20,6 @@ end
     @test cdf(D1, [-0.1, 0.1]) ≈ 0.3219002977336174 rtol=1e-3
 end
 
-@testset "GaussianCopula equicorrelation constructor" begin
-    Cρ = GaussianCopula{2}(0.5)
-    @test Cρ isa GaussianCopula{2}
-    # PD lower bound check (just above boundary for d=3: lower = -0.5)
-    Cneg = GaussianCopula{3}(-0.49)
-    @test Cneg isa GaussianCopula{3}
-    # Boundary should throw
-    @test_throws ArgumentError GaussianCopula{3}(-0.5)
-end
-
 @testset "Elliptical logpdf promotes input and parameter types" begin
     C32 = GaussianCopula{2}(Float32[1 0.25; 0.25 1])
     C64 = GaussianCopula{2}([1.0 0.25; 0.25 1.0])

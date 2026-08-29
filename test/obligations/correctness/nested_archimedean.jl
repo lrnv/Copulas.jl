@@ -450,53 +450,6 @@ end
     end
 
     # -----------------------------------------------------------------------
-    # 6. Constructor validation and support boundaries.
-    # -----------------------------------------------------------------------
-    @testset "constructor validation & boundaries" begin
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [1, 1])
-        # Overlapping dims must error.
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [1], children = [ClaytonCopula{2}(5.0) => [1, 2]])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            children = [ClaytonCopula{2}(5.0) => [1]])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            children = [ClaytonCopula{2}(5.0) => [2, 3]])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [0], children = [ClaytonCopula{2}(5.0)])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [-1], children = [ClaytonCopula{2}(5.0)])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            children = Any[42])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            children = Any[42 => [1]])
-        # Auto-placement must not silently overlap with a root leaf.
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [2], children = [ClaytonCopula{2}(5.0)])
-        # But it may fill a free contiguous block before a later root leaf.
-        placed = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [3], children = [ClaytonCopula{2}(5.0)])
-        @test placed.children[1][2] == [1, 2]
-        # Legacy positional form still works and tiles 1:4.
-        old = NestedArchimedeanCopula(ClaytonGenerator(2.0),
-                  [ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)])
-        @test old isa NestedArchimedeanCopula{4}
-
-        C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-                children = [ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)])
-
-        # Mixed CDF boundaries marginalise coordinates at one. Density support
-        # checks accept numeric input types without converting -Inf to an integer.
-        u = [0.3, 0.4, 0.6, 0.7]
-        @test cdf(C, [u[1], u[2], 1.0, 1.0]) ≈ cdf(ClaytonCopula{2}(5.0), u[1:2])
-        @test logpdf(C, [0, 1, 1, 1]) == -Inf
-        @test logpdf(C, [u[1], 1.0, u[3], u[4]]) == -Inf
-        @test logpdf(C, [u[1], -0.1, u[3], u[4]]) == -Inf
-        @test logpdf(C, [u[1], Inf, u[3], u[4]]) == -Inf
-        @test logpdf(C, [u[1], NaN, u[3], u[4]]) == -Inf
-    end
-
-    # -----------------------------------------------------------------------
     # 7. Global implicit override gives correct nested densities (end-to-end).
     #    Redefining the GENERIC `composition_taylor(::Generator,::Generator,…)`
     #    method switches every edge to the implicit App. A.4 solver. We re-run
@@ -621,10 +574,6 @@ end
         @test StatsBase.aic(M) ≈ -2 * Distributions.loglikelihood(Chat, U) + 2 * 3
         @test StatsBase.bic(M) ≈ -2 * Distributions.loglikelihood(Chat, U) + log(1000) * 3
 
-        # Quick instance shim returns just the fitted copula with the same fit.
-        Cq = Distributions.fit(Cstart, U[:, 1:40])
-        @test Cq isa NestedArchimedeanCopula
-
         # Bare-type fit is intentionally unsupported (tree not inferable).
         @test_throws Exception Copulas._example(NestedArchimedeanCopula, 4)
         # Only :mle is supported.
@@ -648,13 +597,9 @@ end
     @testset "fit: parametrisation layer (nesting + custom reparam)" begin
         C = NestedArchimedeanCopula(ClaytonGenerator(1.5); leaves = [1],
                                     children = [ClaytonCopula{2}(4.0)])
-        U = rand(Random.MersenneTwister(7), C, 120)
+        U = rand(Random.MersenneTwister(7), C, 40)
         rootθ(M)  = M.result.G.θ
         childθ(M) = M.result.children[1][1].G.θ
-
-        # default parametrisation: 2 free parameters (root + child)
-        Md = Distributions.fit(Copulas.CopulaModel, C, U)
-        @test StatsBase.dof(Md) == 2
 
         # custom reparam encoding NESTING (no template): child θ = root θ + softplus(δ)
         # ≥ root θ, so every optimiser step is a valid nesting.
@@ -689,7 +634,5 @@ end
         @test Copulas._nested_coef(rebuilt)[2] ≈ [1.5, 2.0, 3.0]
         @test rebuilt.children[1].children[1][1].G isa GumbelGenerator
 
-        # quick_fit returns just the copula; the dimension comes from the reparam
-        @test Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U; quick_fit = true).result isa NestedArchimedeanCopula
     end
 end

@@ -865,6 +865,25 @@ end
           Copulas.Distortion
 end
 
+@testset "bivariate EV matrix and scalar representations agree" begin
+    point = [0.4, 0.7]
+    pairs = (
+        (HuslerReissCopula{2}([0.0 1.0; 1.0 0.0]),
+         HuslerReissCopula{2}(2.0), 4101),
+        (tEVCopula{2}(4.0, [1.0 0.3; 0.3 1.0]),
+         tEVCopula{2}(4.0, 0.3), 4102),
+    )
+    for (matrix_model, scalar_model, seed) in pairs
+        @test cdf(matrix_model, point) ≈ cdf(scalar_model, point)
+        @test pdf(matrix_model, point) ≈ pdf(scalar_model, point)
+        for measure in (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.λᵤ)
+            @test measure(matrix_model) ≈ measure(scalar_model)
+        end
+        @test rand(Random.Xoshiro(seed), matrix_model, 16) ==
+              rand(Random.Xoshiro(seed), scalar_model, 16)
+    end
+end
+
 
 @testset "generic numeric sampler buffers" begin
     C = ClaytonCopula{3}(1.0)

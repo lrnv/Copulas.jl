@@ -14,6 +14,26 @@ struct PolynomialOracleCopula{d,T} <: Copulas.Copula{d}
     θ::T
 end
 
+@testset "Gaussian Sklar conditioning agrees with multivariate normal algebra" begin
+    d = 3
+    Σ = [1.0 0.7 0.3; 0.7 1.0 0.7; 0.3 0.7 1.0]
+    μ = zeros(d)
+    X = SklarDist(GaussianCopula{3}(Σ),
+                  ntuple(i -> Normal(μ[i], Σ[i, i]), d))
+    point = [0.2, 0.5, 0.8]
+    expected, error = mvnormcdf(MvNormal(μ, Σ), fill(-Inf, d), point)
+    @test cdf(X, point) ≈ expected atol=10sqrt(error)
+
+    js, is, observed = 1:1, 2:3, [0.0]
+    μcond = μ[is] + Σ[is, js] * (Σ[js, js] \ (observed - μ[js]))
+    Σcond = Σ[is, is] - Σ[is, js] * (Σ[js, js] \ Σ[js, is])
+    target = [-0.4, 0.7]
+    expected_cond, cond_error = mvnormcdf(
+        MvNormal(μcond, Σcond), fill(-Inf, 2), target)
+    @test cdf(condition(X, (1,), observed), target) ≈ expected_cond
+          atol=10sqrt(cond_error)
+end
+
 # Same density, deliberately without a CDF method. It selects Copula.jl's
 # generic density-integration route and therefore proves that route directly.
 struct DensityOnlyPolynomialOracleCopula{d,T} <: Copulas.Copula{d}

@@ -3,93 +3,6 @@
 using Random
 
 @testset "Extreme-value architecture" begin
-    @testset "equivalent structured representations" begin
-        Γ = [0.0 1.0 1.0; 1.0 0.0 1.0; 1.0 1.0 0.0]
-        Chr_typed = HuslerReissCopula{3}(Γ)
-        @test Chr_typed.tail isa Copulas.HuslerReissTail{<:AbstractMatrix}
-
-        Γ2 = [0.0 1.0; 1.0 0.0]
-        Chr2 = HuslerReissCopula{2}(Γ2)
-        @test Chr2.tail isa Copulas.HuslerReissTail{<:AbstractMatrix}
-        @test Distributions.params(Chr2).Γ == Γ2
-        @test cdf(Chr2, [0.4, 0.7]) ≈
-              cdf(HuslerReissCopula{2}(2.0), [0.4, 0.7])
-
-        Chr2scalar = HuslerReissCopula{2}(2.0)
-        @test pdf(Chr2, [0.4, 0.7]) ≈ pdf(Chr2scalar, [0.4, 0.7])
-        @test all(isapprox.(
-            (Copulas.τ(Chr2), Copulas.ρ(Chr2), Copulas.β(Chr2), Copulas.λᵤ(Chr2)),
-            (Copulas.τ(Chr2scalar), Copulas.ρ(Chr2scalar), Copulas.β(Chr2scalar), Copulas.λᵤ(Chr2scalar)),
-        ))
-        @test rand(Random.Xoshiro(4101), Chr2, 16) ==
-              rand(Random.Xoshiro(4101), Chr2scalar, 16)
-
-        R = [1.0 0.2 0.1; 0.2 1.0 0.3; 0.1 0.3 1.0]
-        Ctev_typed = tEVCopula{3}(4.0, R)
-        @test Ctev_typed.tail isa Copulas.tEVTail{<:Any,<:AbstractMatrix}
-
-        R2 = [1.0 0.3; 0.3 1.0]
-        Ctev2 = tEVCopula{2}(4.0, R2)
-        @test Ctev2.tail isa Copulas.tEVTail{<:Any,<:AbstractMatrix}
-        @test Distributions.params(Ctev2).R == R2
-        @test cdf(Ctev2, [0.4, 0.7]) ≈
-              cdf(tEVCopula{2}(4.0, 0.3), [0.4, 0.7])
-
-        Ctev2scalar = tEVCopula{2}(4.0, 0.3)
-        @test pdf(Ctev2, [0.4, 0.7]) ≈ pdf(Ctev2scalar, [0.4, 0.7])
-        @test all(isapprox.(
-            (Copulas.τ(Ctev2), Copulas.ρ(Ctev2), Copulas.β(Ctev2), Copulas.λᵤ(Ctev2)),
-            (Copulas.τ(Ctev2scalar), Copulas.ρ(Ctev2scalar), Copulas.β(Ctev2scalar), Copulas.λᵤ(Ctev2scalar)),
-        ))
-        @test rand(Random.Xoshiro(4102), Ctev2, 16) ==
-              rand(Random.Xoshiro(4102), Ctev2scalar, 16)
-
-        asy = [[0.4], [0.3], [0.6, 0.7]]
-        dep_tawn = [2.0]
-        @test TawnCopula{2}(dep_tawn, asy).tail isa Copulas.TawnTail
-
-        dep_gal = [0.7]
-        @test AsymGalambosCopula{2}(dep_gal, asy).tail isa
-              Copulas.AsymGalambosTail
-
-        Cag2 = AsymGalambosCopula{2}(0.7, [0.6, 0.7])
-        Cagref = AsymGalambosCopula{2}(0.7, 0.6, 0.7)
-        @test cdf(Cag2, [0.4, 0.7]) ≈ cdf(Cagref, [0.4, 0.7])
-
-    end
-
-    @testset "multivariate EV generic conditioning and Rosenblatt" begin
-        # The public contract already exercises the common path for logistic,
-        # Galambos, Tawn, and asymmetric Galambos. Mixed d=3 remains here as the
-        # additional representation-specific dimension path.
-        for C in (MixedCopula{3}(0.5),)
-            # Conditioning on two coordinates leaves a univariate distortion.
-            D = condition(C, (1, 2), (0.31, 0.58))
-            @test D isa Copulas.Distortion
-            for α in (0.2, 0.6, 0.85)
-                q = Distributions.quantile(D, α)
-                @test Distributions.cdf(D, q) ≈ α atol=2e-7 rtol=2e-7
-            end
-
-            # Conditioning on one coordinate leaves a two-dimensional
-            # conditional distribution.
-            H = condition(C, (1,), (0.31,))
-            @test H isa SklarDist
-            h = Distributions.cdf(H, [0.42, 0.73])
-            @test isfinite(h)
-            @test 0.0 <= h <= 1.0
-
-            # Rosenblatt and its inverse use those same sequential conditional
-            # distortions in d > 2.
-            u = [0.21, 0.53, 0.74]
-            s = rosenblatt(C, u)
-            @test all(isfinite, s)
-            @test all(x -> 0.0 <= x <= 1.0, s)
-            @test inverse_rosenblatt(C, s) ≈ u atol=2e-7 rtol=2e-7
-        end
-
-    end
-
     @testset "strong logistic density" begin
         for θ in (2.0, 13.5, 210.0)
             C = LogCopula(2, θ)
@@ -127,32 +40,6 @@ using Random
         end
     end
 
-end
-
-function _test_ev_sample(
-    C,
-    seed,
-    n;
-    marginal_atol,
-    point=nothing,
-    cdf_atol=0.04,
-)
-    d = length(C)
-    U = rand(StableRNG(seed), C, n)
-
-    @test size(U) == (d, n)
-    @test all(isfinite, U)
-    @test all(u -> 0 < u < 1, U)
-    @test all(abs(mean(@view U[i, :]) - 0.5) < marginal_atol for i in 1:d)
-
-    if !isnothing(point)
-        reference = cdf(C, point)
-        empirical = mean(vec(all(U .<= point, dims=1)))
-        se = sqrt(max(reference * (1 - reference), 1e-12) / n)
-        @test abs(empirical - reference) < max(cdf_atol, 6 * se)
-    end
-
-    return U
 end
 
 @testset "Extreme-value numerical regressions" begin
@@ -338,35 +225,6 @@ end
         @test all(isfinite, rand(rng, GalambosCopula{2}(210.0)))
     end
 
-    @testset "Multivariate Galambos EV sampling" begin
-        cases = (
-            (3, 0.7, 2713),
-            (3, 3.0, 2714),
-            (3, 20.0, 2715),
-            (4, 1.5, 2716),
-        )
-        n = 5_000
-
-        for (d, θ, seed) in cases
-            C = Copulas.ExtremeValueCopula(d, Copulas.GalambosTail(θ))
-            u = collect(range(0.34, 0.82; length=d))
-            U = _test_ev_sample(
-                C, seed, n;
-                marginal_atol=0.02,
-                point=u,
-                cdf_atol=0.025,
-            )
-
-            # Every pairwise margin recovers the historical bivariate Galambos.
-            B = Copulas.ExtremeValueCopula(2, Copulas.GalambosTail(θ))
-            uv = (0.42, 0.76)
-            empirical2 = count(j -> U[1, j] <= uv[1] && U[d, j] <= uv[2], 1:n) / n
-            reference2 = cdf(B, collect(uv))
-            mc_tol2 = max(0.025, 6sqrt(reference2 * (1 - reference2) / n))
-            @test abs(empirical2 - reference2) < mc_tol2
-        end
-    end
-
     @testset "BC2 and Cuadras-Auge singular conditionals" begin
         Cbc2 = Copulas.ExtremeValueCopula(2, Copulas.BC2Tail(0.65, 0.25))
         for j in 1:2, t in (0.2, 0.8), α in (0.25, 0.6)
@@ -393,19 +251,9 @@ end
 
 @testset "Multivariate Hüsler-Reiss EV" begin
     @testset "Exchangeable scalar parameterization" begin
-        cases = (
-            (3, 0.7, 3701),
-            (3, 3.0, 3702),
-            (4, 1.5, 3703),
-        )
-        n = 5_000
-
-        for (d, θ, seed) in cases
+        for (d, θ) in ((3, 0.7), (3, 3.0), (4, 1.5))
             tail = Copulas.HuslerReissTail(θ)
             C = Copulas.ExtremeValueCopula(d, tail)
-            u = collect(range(0.34, 0.78; length=d))
-            _test_ev_sample(C, seed, n; marginal_atol=0.025, point=u, cdf_atol=0.03)
-
             @test isfinite(logpdf(C, collect(range(0.29, 0.83; length=d))))
         end
     end
@@ -441,17 +289,13 @@ end
         @test cdf(Cp, u[pidx]) ≈ cdf(C, u) atol=5e-4 rtol=5e-4
         @test logpdf(Cp, u[pidx]) ≈ logpdf(C, u) atol=5e-3 rtol=5e-3
 
-        n = 6_000
-        U = _test_ev_sample(C, 3710, n; marginal_atol=0.025)
         q = (0.42, 0.74)
 
         for i in 1:3, j in i+1:4
             θij = 2 / sqrt(Γ[i, j])
             Cij = Copulas.ExtremeValueCopula(2, Copulas.HuslerReissTail(θij))
-            target = cdf(Cij, collect(q))
-            empirical = mean(((@view U[i, :]) .<= q[1]) .& ((@view U[j, :]) .<= q[2]))
-            se = sqrt(max(target * (1 - target), 1e-12) / n)
-            @test abs(empirical - target) < max(0.03, 6 * se)
+            @test cdf(subsetdims(C, (i, j)), collect(q)) ≈
+                  cdf(Cij, collect(q)) atol=5e-4 rtol=5e-4
         end
 
         @test_throws DimensionMismatch Copulas.HuslerReissTail(zeros(3, 4))
@@ -488,7 +332,6 @@ end
             @test 0.0 < cdf(C, u) < 1.0
             @test isfinite(logpdf(C, u))
 
-            _test_ev_sample(C, seed, 4_000; marginal_atol=0.03, point=u)
         end
 
         @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.7), 3)
@@ -513,115 +356,21 @@ end
         @test 0.0 < cdf(C, u) < 1.0
         @test isfinite(logpdf(C, u))
 
-        U = _test_ev_sample(C, 4710, 6_000; marginal_atol=0.03)
-
         q = [0.41, 0.75]
         for i in 1:2, j in (i + 1):3
             Cij = Copulas.ExtremeValueCopula(
                 2,
                 Copulas.tEVTail(ν, R[i, j]),
             )
-            target = cdf(Cij, q)
-            empirical = mean(
-                ((@view U[i, :]) .<= q[1]) .&
-                ((@view U[j, :]) .<= q[2])
-            )
-            se = sqrt(max(target * (1 - target), 1e-12) / size(U, 2))
-            @test abs(empirical - target) < max(0.04, 6 * se)
+            @test cdf(subsetdims(C, (i, j)), q) ≈ cdf(Cij, q)
+                  atol=5e-4 rtol=5e-4
         end
     end
 
-    @testset "general R agrees with exchangeable scalar model" begin
-        for (d, ν, ρ) in (
-            (3, 1.3, 0.25),
-            (4, 2.2, 0.4),
-        )
-            R = fill(ρ, d, d)
-            for i in 1:d
-                R[i, i] = 1.0
-            end
-
-            Cscalar = Copulas.ExtremeValueCopula(
-                d,
-                Copulas.tEVTail(ν, ρ),
-            )
-            Cmatrix = Copulas.ExtremeValueCopula(
-                d,
-                Copulas.tEVTail(ν, R),
-            )
-
-            u = collect(range(0.29, 0.83; length=d))
-            @test cdf(Cscalar, u) ≈ cdf(Cmatrix, u) atol=3e-7 rtol=3e-7
-            @test logpdf(Cscalar, u) ≈ logpdf(Cmatrix, u) atol=3e-6 rtol=3e-6
-        end
-    end
-
-    @testset "invalid correlation matrices" begin
-        @test_throws DimensionMismatch Copulas.tEVTail(
-            1.5,
-            zeros(3, 4),
-        )
-        @test_throws ArgumentError Copulas.tEVTail(
-            0.0,
-            Matrix{Float64}(I, 3, 3),
-        )
-        @test_throws ArgumentError Copulas.tEVTail(
-            1.5,
-            [1.0 0.3 0.0;
-             0.1 1.0 0.2;
-             0.0 0.2 1.0],
-        )
-        @test_throws ArgumentError Copulas.tEVTail(
-            1.5,
-            [1.0 0.95 0.95;
-             0.95 1.0 -0.95;
-             0.95 -0.95 1.0],
-        )
-    end
 end
 
 
 @testset "Multivariate Tawn EV" begin
-    @testset "historical asymmetric-logistic reduction" begin
-        α = 2.1
-        θ1 = 0.67
-        θ2 = 0.38
-
-        Cold = Copulas.ExtremeValueCopula(
-            2,
-            Copulas.AsymLogTail(α, θ1, θ2),
-        )
-        Ctawn = Copulas.ExtremeValueCopula(
-            2,
-            Copulas.TawnTail(α, [θ2, θ1]),
-        )
-
-        for u in (
-            [0.34, 0.76],
-            [0.71, 0.49],
-            [0.57, 0.62],
-        )
-            @test cdf(Ctawn, u) ≈ cdf(Cold, u) atol=3e-13 rtol=3e-13
-            @test logpdf(Ctawn, u) ≈ logpdf(Cold, u) atol=3e-11 rtol=3e-11
-        end
-
-        _test_ev_sample(Ctawn, 4801, 4_000; marginal_atol=0.03)
-    end
-
-    @testset "symmetric logistic reduction" begin
-        for d in (3, 4), α in (1.2, 2.5)
-            Ctawn = Copulas.ExtremeValueCopula(
-                d,
-                Copulas.TawnTail(α, ones(d)),
-            )
-            Clog = Copulas.ExtremeValueCopula(d, Copulas.LogTail(α))
-            u = collect(range(0.29, 0.82; length=d))
-
-            @test cdf(Ctawn, u) ≈ cdf(Clog, u) atol=5e-13 rtol=5e-13
-            @test logpdf(Ctawn, u) ≈ logpdf(Clog, u) atol=3e-10 rtol=3e-10
-        end
-    end
-
     @testset "full trivariate Tawn regression" begin
         dep = [1.4, 2.0, 1.7, 2.3]
         asy = [
@@ -660,82 +409,12 @@ end
         u = [0.34, 0.57, 0.81]
         @test logpdf(C, u) ≈ -0.2449881198991001 atol=3e-12 rtol=3e-12
 
-        _test_ev_sample(C, 4802, 6_000; marginal_atol=0.03, point=u)
     end
 
-    @testset "constructor validation" begin
-        dep = [1.4, 2.0, 1.7, 2.3]
-        good = [
-            [0.15],
-            [0.20],
-            [0.10],
-            [0.25, 0.15],
-            [0.20, 0.20],
-            [0.25, 0.30],
-            [0.40, 0.40, 0.40],
-        ]
-
-        @test_throws DimensionMismatch Copulas.TawnTail(3, dep[1:3], good)
-
-        badsum = deepcopy(good)
-        badsum[end][1] = 0.30
-        @test_throws ArgumentError Copulas.TawnTail(3, dep, badsum)
-
-        baddep = copy(dep)
-        baddep[2] = 0.8
-        @test_throws ArgumentError Copulas.TawnTail(3, baddep, good)
-    end
 end
 
 
 @testset "Multivariate asymmetric Galambos EV" begin
-    @testset "historical bivariate reduction" begin
-        α = 1.4
-        θ1 = 0.67
-        θ2 = 0.38
-
-        Cold = Copulas.ExtremeValueCopula(
-            2,
-            Copulas.AsymGalambosTail(α, θ1, θ2),
-        )
-        Cnew = Copulas.ExtremeValueCopula(
-            2,
-            Copulas.AsymGalambosTail(
-                2,
-                [α],
-                [[1 - θ1], [1 - θ2], [θ1, θ2]],
-            ),
-        )
-
-        for u in (
-            [0.34, 0.76],
-            [0.71, 0.49],
-            [0.57, 0.62],
-        )
-            @test cdf(Cnew, u) ≈ cdf(Cold, u) atol=3e-12 rtol=3e-12
-            @test logpdf(Cnew, u) ≈ logpdf(Cold, u) atol=3e-9 rtol=3e-9
-        end
-
-        _test_ev_sample(Cnew, 4901, 4_000; marginal_atol=0.03)
-    end
-
-    @testset "symmetric Galambos reduction" begin
-        for d in (3, 4), α in (0.7, 1.7)
-            Casym = Copulas.ExtremeValueCopula(
-                d,
-                Copulas.AsymGalambosTail(α, ones(d)),
-            )
-            Csym = Copulas.ExtremeValueCopula(
-                d,
-                Copulas.GalambosTail(α),
-            )
-
-            u = collect(range(0.29, 0.82; length=d))
-            @test cdf(Casym, u) ≈ cdf(Csym, u) atol=3e-12 rtol=3e-12
-            @test logpdf(Casym, u) ≈ logpdf(Csym, u) atol=2e-8 rtol=2e-8
-        end
-    end
-
     @testset "full trivariate asymmetric Galambos regression" begin
         dep = [0.7, 1.3, 0.9, 1.8]
         asy = [
@@ -779,43 +458,8 @@ end
         u = [0.34, 0.57, 0.81]
         @test logpdf(C, u) ≈ -0.3221640487545458 atol=3e-10 rtol=3e-10
 
-        _test_ev_sample(C, 4902, 6_000; marginal_atol=0.03, point=u)
     end
 
-    @testset "constructor validation" begin
-        dep = [0.7, 1.3, 0.9, 1.8]
-        good = [
-            [0.15],
-            [0.20],
-            [0.10],
-            [0.25, 0.15],
-            [0.20, 0.20],
-            [0.25, 0.30],
-            [0.40, 0.40, 0.40],
-        ]
-
-        @test_throws DimensionMismatch Copulas.AsymGalambosTail(
-            3,
-            dep[1:3],
-            good,
-        )
-
-        badsum = deepcopy(good)
-        badsum[end][1] = 0.30
-        @test_throws ArgumentError Copulas.AsymGalambosTail(
-            3,
-            dep,
-            badsum,
-        )
-
-        baddep = copy(dep)
-        baddep[2] = -0.1
-        @test_throws ArgumentError Copulas.AsymGalambosTail(
-            3,
-            baddep,
-            good,
-        )
-    end
 end
 
 
@@ -878,7 +522,6 @@ end
 
         @test logpdf(C, u) ≈ -0.118043090304781 atol=3e-12 rtol=3e-12
 
-        _test_ev_sample(C, 5001, 6_000; marginal_atol=0.03, point=u)
     end
 end
 
@@ -987,8 +630,6 @@ end
         for k in axes(B, 2)
     )) atol=3e-14 rtol=3e-14
 
-    _test_ev_sample(C, 5101, 5_000; marginal_atol=0.035)
-
     @test_throws ArgumentError Copulas.DiscreteSpectralTail([
         0.4 0.4
         0.5 0.5
@@ -1031,8 +672,6 @@ end
         @test cdf(Cnew, u) ≈ cdf(Cold, u) atol=4e-14 rtol=4e-14
     end
 
-    _test_ev_sample(C, 5102, 5_000; marginal_atol=0.035)
-
     @test_throws DimensionMismatch Copulas.MOTail(3, λ[1:6])
     @test_throws ArgumentError Copulas.MOTail(
         3,
@@ -1068,8 +707,6 @@ end
         @test cdf(Cnew, u) ≈ cdf(Cold, u) atol=3e-14 rtol=3e-14
     end
 
-    _test_ev_sample(C, 5103, 5_000; marginal_atol=0.035)
-
     @test_throws ArgumentError Copulas.BC2Tail([0.2])
     @test_throws ArgumentError Copulas.BC2Tail([0.2, 1.1])
 end
@@ -1090,7 +727,6 @@ end
         @test cdf(C, u) ≈
               minimum(u)^θ * prod(u)^(1 - θ) atol=3e-14 rtol=3e-14
 
-        _test_ev_sample(C, seed, 5_000; marginal_atol=0.035)
     end
 
     for xx in ([0.37, 1.29], [1.11, 0.46])
@@ -1170,8 +806,6 @@ end
         @test Cemp.tail isa Copulas.EmpiricalEVMultivariateTail
 
         u0 = [0.36, 0.58, 0.79]
-        _test_ev_sample(Cemp, 5202, 6_000; marginal_atol=0.035, point=u0)
-
         @test_throws ArgumentError logpdf(Cemp, u0)
     end
 

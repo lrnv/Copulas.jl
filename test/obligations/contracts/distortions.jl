@@ -1,6 +1,19 @@
 # Contract obligation: exercises the common univariate conditional API once
 # for every distortion implementation reached through the public `condition`
 # entry point. Family formulas remain in focused regression tests.
+@testset "bivariate scalar conditioning contract" begin
+    C = GaussianCopula{2}(0.4)
+    @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
+    for j in 1:2, uⱼ in (0.2f0, big"0.8")
+        @test typeof(condition(C, j, uⱼ)) ==
+              typeof(condition(C, (j,), (float(uⱼ),)))
+    end
+    @test_throws ArgumentError condition(C, 0, 0.4)
+    @test_throws ArgumentError condition(C, 3, 0.4)
+    @test_throws ArgumentError condition(C, 1, -0.1)
+    @test_throws ArgumentError condition(C, 1, 1.1)
+end
+
 const DISTORTION_CASES = (
     ("identity", condition(IndependentCopula{2}(), 1, 0.4), :continuous),
     ("upper Frechet atom", condition(MCopula{2}(), 1, 0.4), :atomic),

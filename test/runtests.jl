@@ -60,14 +60,16 @@ obligation_testfiles = (
     ],
     correctness = [
         "generators", "tails", "measure_inverses", "mathematical",
-        "statistical", "numerical", "extreme_value", "nested_archimedean",
+        "statistical", "numerical", "williamson", "extreme_value",
+        "nested_archimedean",
     ],
-    equivalence = ["specializations", "conditioning"],
+    equivalence = ["specializations", "conditioning", "extreme_value"],
     routing = ["dispatch", "branches", "fitting"],
 )
 
 family_testfiles = [
     "archimedean",
+    "conditioning",
     "constructors",
     "elliptical",
     "liouville",
