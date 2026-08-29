@@ -2,17 +2,23 @@
 # verifies stable-tail, Pickands, derivative, and reconstruction identities.
 const TAIL_CASES = (
     (Copulas.AsymGalambosTail(1.0, 0.4, 0.6), 2),
+    (Copulas.AsymGalambosTail(1.0, [0.4, 0.5, 0.6]), 3),
     (Copulas.AsymLogTail(1.5, 0.4, 0.6), 2),
     (Copulas.AsymMixedTail(0.3, 0.2), 2),
     (Copulas.BC2Tail(0.5, 0.3), 2),
+    (Copulas.BC2Tail([0.3, 0.7, 0.5]), 3),
     (Copulas.CuadrasAugeTail(0.5), 2),
     (Copulas.GalambosTail(1.0), 3),
     (Copulas.HuslerReissTail(1.0), 3),
+    (Copulas.HuslerReissTail([0.0 1.0 1.0; 1.0 0.0 1.0; 1.0 1.0 0.0]), 3),
     (Copulas.LogTail(1.5), 3),
     (Copulas.MixedTail(0.5), 2),
     (Copulas.MOTail(0.2, 0.3, 0.4), 2),
+    (Copulas.MOTail([0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]), 3),
     (Copulas.TawnTail(2.0, [0.6, 0.7, 0.8]), 3),
     (Copulas.tEVTail(4.0, 0.5), 2),
+    (Copulas.tEVTail(4.0,
+        [1.0 0.2 0.2; 0.2 1.0 0.2; 0.2 0.2 1.0]), 3),
     (EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false).tail, 2),
     (EmpiricalEVCopula{3}(_FIXTURE_DATA3;
         degree=1, pseudo_values=false).tail, 3),

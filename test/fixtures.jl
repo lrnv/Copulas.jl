@@ -418,7 +418,10 @@ function fitting_route_key(C, U, method)
     # Empirical EV fits reconstruct their non-parametric tail directly from
     # the observations; the generic EV forwarding method is technically
     # applicable but its parametric tail transform is not part of that route.
-    if !(C isa EmpiricalEVCopula) && !isempty(bounded) &&
+    # Multivariate FGM uses its dedicated constrained MLE directly; its
+    # bivariate-only scalar transform is applicable by signature but rejects d>2.
+    if !(C isa EmpiricalEVCopula) &&
+       !(C isa FGMCopula && d != 2) && !isempty(bounded) &&
        applicable(Copulas._unbound_params, CT, d, bounded)
         unbound = Copulas._unbound_params(CT, d, bounded)
         push!(components,

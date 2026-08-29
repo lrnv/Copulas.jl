@@ -99,6 +99,7 @@ end
 function _rebound_params(::Type{<:tEVTail}, d, α)
     lower = -inv(d - 1)
     ρ = lower + (1 - lower) * (1 + tanh(α[2])) / 2
+    ρ = clamp(ρ, nextfloat(float(lower)), prevfloat(one(ρ)))
     return (; ν=exp(α[1]), ρ)
 end
 _example(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D}, d) =

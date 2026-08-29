@@ -170,7 +170,10 @@ end
     @test Copulas.ρ⁻¹(ClaytonCopula, 1.0) == Inf
 
     @test Copulas.ρ⁻¹(GumbelCopula, 0.5) ≈ 1.5410704204332681
-    @test_broken Copulas.ρ⁻¹(GumbelCopula, 0.0001) == 1.
+    ρweak = 1.0e-4
+    θweak = Copulas.ρ⁻¹(GumbelCopula, ρweak)
+    @test 1 < θweak < 1.01
+    @test Copulas.ρ(GumbelCopula{2}(θweak)) ≈ ρweak atol=1.0e-7
 
     @test Copulas.ρ⁻¹(FrankCopula, 1/3) ≈ 2.116497 atol=1.0e-5
     @test Copulas.ρ⁻¹(FrankCopula, -0.5572) ≈ -4. atol=1.0e-3

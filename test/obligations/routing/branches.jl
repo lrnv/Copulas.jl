@@ -6,9 +6,12 @@ const BEHAVIOURAL_BRANCHES = (
     :beta_bivariate, :beta_multivariate,
     :frank_negative_bivariate, :frank_positive_multivariate,
     :fgm_independence_boundary, :fgm_frechet_boundaries,
+    :generator_boundary_reductions, :misc_copula_boundary_reductions,
+    :tail_boundary_reductions,
     :independent_scalar_condition, :independent_copula_condition,
     :husler_reiss_bivariate, :husler_reiss_multivariate,
     :tev_bivariate, :tev_multivariate,
+    :tev_fitting_bivariate_bounds, :tev_fitting_multivariate_bounds,
     :gumbel_barnett_dimension_bounds,
     :amh_frailty, :amh_generic_williamson,
     :frank_frailty, :frank_generic_williamson,
@@ -48,6 +51,68 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         prove_branches!(:fgm_independence_boundary, :fgm_frechet_boundaries)
     end
 
+    @testset "public constructor boundary reductions" begin
+        generator_reductions = (
+            (Copulas.AMHGenerator(0.0), Copulas.IndependentGenerator),
+            (Copulas.ClaytonGenerator(-1.0), Copulas.WGenerator),
+            (Copulas.ClaytonGenerator(0.0), Copulas.IndependentGenerator),
+            (Copulas.ClaytonGenerator(Inf), Copulas.MGenerator),
+            (Copulas.FrankGenerator(-Inf), Copulas.WGenerator),
+            (Copulas.FrankGenerator(0.0), Copulas.IndependentGenerator),
+            (Copulas.FrankGenerator(Inf), Copulas.MGenerator),
+            (Copulas.GumbelBarnettGenerator(0.0), Copulas.IndependentGenerator),
+            (Copulas.GumbelGenerator(1.0), Copulas.IndependentGenerator),
+            (Copulas.GumbelGenerator(Inf), Copulas.MGenerator),
+            (Copulas.InvGaussianGenerator(0.0), Copulas.IndependentGenerator),
+            (Copulas.JoeGenerator(1.0), Copulas.IndependentGenerator),
+            (Copulas.JoeGenerator(Inf), Copulas.MGenerator),
+        )
+        for (value, expected) in generator_reductions
+            @test value isa expected
+        end
+        prove_branches!(:generator_boundary_reductions)
+
+        copula_reductions = (
+            (GaussianCopula{3}(0.0), IndependentCopula{3}),
+            (PlackettCopula{2}(0.0), MCopula{2}),
+            (PlackettCopula{2}(1.0), IndependentCopula{2}),
+            (PlackettCopula{2}(Inf), WCopula{2}),
+            (RafteryCopula{3}(0.0), IndependentCopula{3}),
+            (RafteryCopula{3}(1.0), MCopula{3}),
+        )
+        for (value, expected) in copula_reductions
+            @test value isa expected
+        end
+        prove_branches!(:misc_copula_boundary_reductions)
+
+        tail_reductions = (
+            (Copulas.CuadrasAugeTail(0.0), Copulas.NoTail),
+            (Copulas.CuadrasAugeTail(1.0), Copulas.MTail),
+            (Copulas.GalambosTail(0.0), Copulas.NoTail),
+            (Copulas.GalambosTail(Inf), Copulas.MTail),
+            (Copulas.HuslerReissTail(0.0), Copulas.NoTail),
+            (Copulas.HuslerReissTail(Inf), Copulas.MTail),
+            (Copulas.HuslerReissTail(zeros(3, 3)), Copulas.MTail),
+            (Copulas.LogTail(1.0), Copulas.NoTail),
+            (Copulas.LogTail(Inf), Copulas.MTail),
+            (Copulas.MixedTail(0.0), Copulas.NoTail),
+            (Copulas.tEVTail(4.0, 1.0), Copulas.MTail),
+            (Copulas.tEVTail(4.0, ones(3, 3)), Copulas.MTail),
+            (Copulas.AsymLogTail(1.0, 0.4, 0.6), Copulas.NoTail),
+            (Copulas.AsymLogTail(1.5, 1.0, 1.0), Copulas.LogTail),
+            (Copulas.AsymMixedTail(0.0, 0.0), Copulas.NoTail),
+            (Copulas.AsymMixedTail(0.3, 0.0), Copulas.MixedTail),
+            (Copulas.AsymGalambosTail(1.5, [0.0, 0.0]), Copulas.NoTail),
+            (Copulas.AsymGalambosTail(1.5, [1.0, 1.0]), Copulas.GalambosTail),
+            (Copulas.TawnTail(1.0, [0.4, 0.6]), Copulas.NoTail),
+            (Copulas.TawnTail(1.5, [1.0, 1.0]), Copulas.LogTail),
+        )
+        for (value, expected) in tail_reductions
+            @test value isa expected
+        end
+        prove_branches!(:tail_boundary_reductions)
+    end
+
     @testset "independent conditioning output dimension" begin
         @test condition(IndependentCopula{2}(), 1, 0.4) isa Copulas.NoDistortion
         @test condition(IndependentCopula{3}(), 1, 0.4) isa IndependentCopula{2}
@@ -80,6 +145,21 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test GumbelBarnettCopula{4}(0.2) isa GumbelBarnettCopula{4}
         @test_throws AssertionError GumbelBarnettCopula{4}(0.3)
         prove_branches!(:gumbel_barnett_dimension_bounds)
+    end
+
+    @testset "extremal-t fitting bounds by dimension" begin
+        for (d, lower) in ((2, -1.0), (3, -0.5))
+            CT = typeof(tEVCopula{d}(4.0, 0.2))
+            bounded = (; ν=4.0, ρ=0.2)
+            unbound = Copulas._unbound_params(CT, d, bounded)
+            restored = Copulas._rebound_params(CT, d, unbound)
+            @test restored.ν ≈ bounded.ν
+            @test restored.ρ ≈ bounded.ρ
+            @test lower < Copulas._rebound_params(CT, d, [0.0, -100.0]).ρ < 1
+            @test lower < Copulas._rebound_params(CT, d, [0.0, 100.0]).ρ < 1
+        end
+        prove_branches!(:tev_fitting_bivariate_bounds,
+                        :tev_fitting_multivariate_bounds)
     end
 
     @testset "Williamson inversion parameter branches" begin

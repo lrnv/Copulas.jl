@@ -19,12 +19,12 @@ const GENERATOR_CASES = (
     Copulas.FrailtyGenerator(Exponential()),
     WilliamsonGenerator(Dirac(1.0), 2.0),
     WilliamsonGenerator(Dirac(1.0), 2.5),
+    EmpiricalGenerator(_FIXTURE_DATA),
 )
 
 const ALL_PUBLIC_GENERATORS = (
     GENERATOR_CASES...,
     Copulas.IndependentGenerator(), Copulas.MGenerator(), Copulas.WGenerator(),
-    EmpiricalGenerator(_FIXTURE_DATA),
 )
 
 @testset "public generator registry is exhaustive" begin
