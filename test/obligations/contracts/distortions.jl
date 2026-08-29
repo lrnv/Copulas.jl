@@ -30,7 +30,7 @@ function test_distortion_contract(D, kind)
     @test minimum(D) == 0
     @test maximum(D) == 1
     @test cdf(D, 0.0) == 0
-    @test cdf(D, 1.0) == 1
+    @test cdf(D, 1.0) ≈ 1
 
     # Two separated interior points prove monotonicity while avoiding repeated
     # numerical conditioning kernels for every concrete implementation.

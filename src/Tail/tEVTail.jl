@@ -91,10 +91,16 @@ _is_valid_in_dim(tail::tEVTail{<:Any,<:Real}, d::Int) =
     d >= 2 && tail.parameter > -inv(d - 1)
 _is_valid_in_dim(tail::tEVTail{<:Any,<:AbstractMatrix}, d::Int) =
     d == size(tail.parameter, 1)
-_unbound_params(::Type{<:tEVTail}, d, θ) =
-    [log(θ.ν), atanh(clamp(θ.ρ, -0.999999, 0.999999))]
-_rebound_params(::Type{<:tEVTail}, d, α) =
-    (; ν = exp(α[1]), ρ = tanh(α[2]))
+function _unbound_params(::Type{<:tEVTail}, d, θ)
+    lower = -inv(d - 1)
+    scaled = 2 * (θ.ρ - lower) / (1 - lower) - 1
+    return [log(θ.ν), atanh(clamp(scaled, -0.999999, 0.999999))]
+end
+function _rebound_params(::Type{<:tEVTail}, d, α)
+    lower = -inv(d - 1)
+    ρ = lower + (1 - lower) * (1 + tanh(α[2])) / 2
+    return (; ν=exp(α[1]), ρ)
+end
 _example(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D}, d) =
     tEVCopula{d}(2.0, 0.5)
 _available_fitting_methods(
