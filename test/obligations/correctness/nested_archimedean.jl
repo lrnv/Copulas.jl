@@ -1,4 +1,4 @@
-# Family-regression layer: tests NestedArchimedeanCopula's density and its
+# Mathematical-correctness layer: tests NestedArchimedeanCopula's density and its
 # lower-tail partial-observation likelihood as an EMERGENT capability of the standard
 # condition + subsetdims framework (Yang & Li, arXiv:2605.23134).
 #
@@ -206,7 +206,7 @@ end
     #    a single sector parameter; compared at Float64 tolerance.
     # -----------------------------------------------------------------------
     @testset "uncensored density vs external acopula reference" begin
-        datadir = joinpath(@__DIR__, "..", "data", "nested")
+        datadir = joinpath(@__DIR__, "..", "..", "data", "nested")
         for case in _ACOPULA_CASES
             @test acopula_maxerr(datadir, case...; nrows = 12) < 1e-9
         end
@@ -510,7 +510,7 @@ end
     #    Per-edge coverage already spans every family; two cases suffice here.
     # -----------------------------------------------------------------------
     @testset "implicit dispatch gives correct nested densities" begin
-        datadir = joinpath(@__DIR__, "..", "data", "nested")
+        datadir = joinpath(@__DIR__, "..", "..", "data", "nested")
         for case in (_ACOPULA_CASES[1], _ACOPULA_CASES[4])
             @test implicit_acopula_maxerr(datadir, case...) < 1e-9
         end

@@ -1,5 +1,6 @@
-# Family-regression layer: historical conditional-distribution and
-# distortion regressions until component and family replacements are complete.
+# Specialization-equivalence layer: conditional-distribution and distortion
+# fast paths are checked against inversion identities, generic conditionals,
+# log-scale definitions, or independent Gaussian conditioning algebra.
 
 @testset "Bivariate scalar condition fast path" begin
     # Scalar/tuple equivalence is part of `obligations/contracts/copulas.jl`; retain only

@@ -1,5 +1,5 @@
-# Family-regression layer: developer-level extreme-value extension,
-# automatic-differentiation, sampler, and fallback-dispatch regressions.
+# Mathematical-correctness layer: extreme-value representations, numerical
+# identities, sampler laws, empirical estimators, and historical EV regressions.
 using Random
 
 @testset "Extreme-value architecture" begin

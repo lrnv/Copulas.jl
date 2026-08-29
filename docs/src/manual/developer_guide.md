@@ -1009,6 +1009,13 @@ The corresponding directories are:
   regressions that cannot be deduced from the shared obligations;
 - `test/extensions/` for optional package-extension contracts and regressions.
 
+Classify a test by the statement it proves, not by the concrete model used to
+exercise it. In particular, an operation-wide conditioning comparison belongs
+under `equivalence/`, and a family architecture backed by independent formulas
+or external reference values belongs under `correctness/`. A file under
+`families/` must remain a genuinely irreducible family regression; it must not
+become an alternative contract or correctness suite for that family.
+
 The fixtures and proof ledger shared by these layers live in
 `test/fixtures.jl`. This file defines infrastructure and contains no assertions,
 so `runtests.jl` loads it before opening the visible test hierarchy. Aqua is a
