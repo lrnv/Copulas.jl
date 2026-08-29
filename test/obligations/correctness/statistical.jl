@@ -23,6 +23,7 @@
             @test abs(empirical - theoretical) <= max(6se, 0.08)
             @test all(abs(mean(view(U, i, :)) - 0.5) <= 0.12 for i in 1:d)
         end
+        prove_dispatch_route!(:sampling, C, case, :distributional_identity)
     end
     @test !isempty(seen)
 end

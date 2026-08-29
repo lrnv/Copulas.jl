@@ -146,6 +146,8 @@ const PAIRWISE_DEPENDENCE_MEASURES = (
 # layer, which runs last, compares this ledger with every method selected by the
 # public fixtures.
 const PROVEN_DISPATCH_ROUTES = Dict{Symbol,Dict{Any,Set{Symbol}}}()
+const PROVEN_DEPENDENCE_ROUTES = Dict(
+    measure => Set{Any}() for measure in SCALAR_DEPENDENCE_MEASURES)
 
 _which(f, args...) = which(f, Tuple{typeof.(args)...})
 
@@ -177,6 +179,8 @@ function dispatch_path(operation, C, case)
     elseif operation === :subsetting
         dims = d == 2 ? (2, 1) : (1, d)
         return _which(Copulas.subsetdims, C, dims)
+    elseif operation === :measure
+        return _which(Copulas.measure, C, zeros(d), ones(d))
     end
     error("unknown dispatch operation $operation")
 end
@@ -194,6 +198,17 @@ function prove_dispatch_route!(operation, C, case, source::Symbol)
                    key, Set{Symbol}())
     push!(sources, source)
     return key
+end
+
+function dependence_route_key(measure, C)
+    Base.@nospecialize measure C
+    return (which(measure, Tuple{typeof(C)}),
+            length(C) == 2 ? :bivariate : :multivariate)
+end
+function prove_dependence_route!(measure, C)
+    Base.@nospecialize measure C
+    return push!(PROVEN_DEPENDENCE_ROUTES[measure],
+                 dependence_route_key(measure, C))
 end
 
 constructor_case(name, typed, dynamic; allowed_inference=nothing) =
@@ -291,6 +306,24 @@ const CONSTRUCTOR_CASES = (
         () -> SurvivalCopula(3, ClaytonCopula{3}(1.5), (1, 3))),
 )
 
+# Exact public binding exercised by each constructor case.  This intentionally
+# preserves aliases and repeated dimensional representations: comparing only
+# concrete return types would let two distinct public spellings collapse.
+const CONSTRUCTOR_SYMBOLS = (
+    :AMHCopula, :BB1Copula, :BB2Copula, :BB3Copula, :BB6Copula,
+    :BB7Copula, :BB8Copula, :BB9Copula, :BB10Copula,
+    :ClaytonCopula, :FrankCopula, :GumbelCopula, :GumbelBarnettCopula,
+    :InvGaussianCopula, :JoeCopula, :AsymGalambosCopula, :AsymLogCopula,
+    :AsymMixedCopula, :BC2Copula, :CuadrasAugeCopula, :GalambosCopula,
+    :HuslerReissCopula, :LogCopula, :MixedCopula, :MOCopula, :TawnCopula,
+    :tEVCopula, :BB4Copula, :BB5Copula, :GaussianCopula, :TCopula,
+    :IndependentCopula, :MCopula, :WCopula, :FGMCopula, :PlackettCopula,
+    :RafteryCopula, :BernsteinCopula, :BetaCopula, :CheckerboardCopula,
+    :EmpiricalCopula, :EmpiricalEVCopula, :EmpiricalEVCopula,
+    :ArchimedeanCopula, :ExtremeValueCopula, :LiouvilleCopula,
+    :NestedArchimedeanCopula, :ArchimaxCopula, :SurvivalCopula,
+)
+
 fitting_case(name, build; method=:default, model=false, kwargs=NamedTuple()) =
     (; name, build, method, model, kwargs)
 
@@ -357,3 +390,49 @@ const FITTING_CASES = (
 
 const FITTING_FIXTURES = Tuple((case=case, copula=case.build())
                                for case in FITTING_CASES)
+
+# A fitting route is the complete internal composition, not merely `_fit`.
+# Generic fitting additionally depends on the example, parameter transform,
+# and reconstruction methods selected for the concrete family.
+const PROVEN_FITTING_ROUTES = Set{Any}()
+function fitting_route_key(C, U, method)
+    Base.@nospecialize C U method
+    CT, d = typeof(C), length(C)
+    components = Any[
+        which(Copulas._available_fitting_methods, Tuple{Type{CT},Int}),
+        which(Copulas._find_method, Tuple{Type{CT},Int,Symbol}),
+        which(Copulas._fit, Tuple{Type{CT},typeof(U),Val{method}}),
+    ]
+    applicable(Copulas._example, CT, d) &&
+        push!(components, which(Copulas._example, Tuple{Type{CT},Int}))
+    bounded = params(C)
+    topology = (keys(bounded), map(values(bounded)) do value
+        value isa AbstractArray ? (typeof(value), size(value)) : typeof(value)
+    end)
+    component_type = C isa ArchimedeanCopula ? typeof(C.G) :
+                     C isa ExtremeValueCopula ? typeof(C.tail) : nothing
+    bounds = !isnothing(component_type) &&
+             applicable(Copulas._θ_bounds, component_type, d) ?
+             (which(Copulas._θ_bounds, Tuple{Type{component_type},Int}),
+              Copulas._θ_bounds(component_type, d)) : nothing
+    if !isempty(bounded) && applicable(Copulas._unbound_params, CT, d, bounded)
+        unbound = Copulas._unbound_params(CT, d, bounded)
+        push!(components,
+              which(Copulas._unbound_params,
+                    Tuple{Type{CT},Int,typeof(bounded)}))
+        applicable(Copulas._rebound_params, CT, d, unbound) &&
+            push!(components,
+                  which(Copulas._rebound_params,
+                        Tuple{Type{CT},Int,typeof(unbound)}))
+        applicable(Copulas._fit_copula, CT, d, bounded, C) &&
+            push!(components,
+                  which(Copulas._fit_copula,
+                        Tuple{Type{CT},Int,typeof(bounded),typeof(C)}))
+    end
+    return (Tuple(components), method, topology, bounds,
+            d == 2 ? :bivariate : :multivariate)
+end
+function prove_fitting_route!(C, U, method)
+    Base.@nospecialize C U method
+    return push!(PROVEN_FITTING_ROUTES, fitting_route_key(C, U, method))
+end

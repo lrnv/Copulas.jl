@@ -125,12 +125,22 @@ const PICKANDS_CASES = (
 )
 
 function is_pickands_kink(tail, t, h)
+    Base.@nospecialize tail
     left = (Copulas.A(tail, t) - Copulas.A(tail, t - h)) / h
     right = (Copulas.A(tail, t + h) - Copulas.A(tail, t)) / h
     return !isapprox(left, right; atol=1e-3, rtol=1e-3)
 end
 
 @testset "bivariate Pickands identities" begin
+    selected_routes = Dict(
+        :A => Set(which(Copulas.A, Tuple{typeof(tail),Float64})
+                  for tail in PICKANDS_CASES),
+        :dA => Set(which(Copulas.dA, Tuple{typeof(tail),Float64})
+                   for tail in PICKANDS_CASES),
+        :d²A => Set(which(Copulas.d²A, Tuple{typeof(tail),Float64})
+                    for tail in PICKANDS_CASES),
+    )
+    checked_routes = Dict(name => Set{Method}() for name in keys(selected_routes))
     for tail in PICKANDS_CASES
         @test Copulas.A(tail, 0.0) ≈ 1
         @test Copulas.A(tail, 1.0) ≈ 1
@@ -147,5 +157,9 @@ end
                 @test Copulas.d²A(tail, t) ≈ finite_d²A atol=2e-4
             end
         end
+        push!(checked_routes[:A], which(Copulas.A, Tuple{typeof(tail),Float64}))
+        push!(checked_routes[:dA], which(Copulas.dA, Tuple{typeof(tail),Float64}))
+        push!(checked_routes[:d²A], which(Copulas.d²A, Tuple{typeof(tail),Float64}))
     end
+    @test checked_routes == selected_routes
 end

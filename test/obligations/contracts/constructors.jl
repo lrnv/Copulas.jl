@@ -69,12 +69,16 @@ end
 end
 
 @testset "public constructors" begin
+    @test length(CONSTRUCTOR_SYMBOLS) == length(CONSTRUCTOR_CASES)
     constructed = map(test_constructor_case, CONSTRUCTOR_CASES)
-    public_families = [getfield(Copulas, symbol) for symbol in PUBLIC_SYMBOLS
+    public_symbols = Set(symbol for symbol in PUBLIC_SYMBOLS
         if Base.isexported(Copulas, symbol) &&
            getfield(Copulas, symbol) isa Type &&
-           getfield(Copulas, symbol) <: Copulas.Copula]
-    @test all(F -> any(C -> C isa F, constructed), public_families)
+           getfield(Copulas, symbol) <: Copulas.Copula)
+    @test Set(CONSTRUCTOR_SYMBOLS) == public_symbols
+    for (symbol, C) in zip(CONSTRUCTOR_SYMBOLS, constructed)
+        @test C isa getfield(Copulas, symbol)
+    end
     @test_throws Exception WCopula{3}()
     @test_throws DimensionMismatch PlackettCopula{3}(2.0)
 end

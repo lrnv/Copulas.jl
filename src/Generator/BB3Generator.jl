@@ -172,9 +172,3 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,G},
 
     return logφdd + logSu + logSv
 end
-
-function Distributions.pdf(C::ArchimedeanCopula{2,G},
-                           u::AbstractVector{<:Real}) where {G<:BB3Generator}
-    lp = Distributions._logpdf(C, u)
-    return (lp < -745) ? 0.0 : exp(lp)
-end

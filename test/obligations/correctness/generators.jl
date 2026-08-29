@@ -39,6 +39,7 @@ end
 
 @testset "public generator primitives" begin
     operations = (
+        monotonicity = (Copulas.max_monotony, G -> Tuple{typeof(G)}),
         phi = (Copulas.ϕ, G -> Tuple{typeof(G),Float64}),
         inverse = (Copulas.ϕ⁻¹, G -> Tuple{typeof(G),Float64}),
         first = (Copulas.ϕ⁽¹⁾, G -> Tuple{typeof(G),Float64}),
@@ -88,4 +89,29 @@ end
         end
     end
     @test checked_routes == selected_routes
+end
+
+@testset "Williamson inverse dispatch routes" begin
+    # Integer and non-integer orders deliberately select different methods.
+    # Exercise every route reachable from the public generator registry while
+    # keeping one representative per selected Method.
+    checked = Dict{Symbol,Set{Method}}(:integer => Set{Method}(),
+                                       :real => Set{Method}())
+    selected = Dict(
+        :integer => Set(which(Copulas.𝒲₋₁, Tuple{typeof(G),Int})
+                        for G in GENERATOR_CASES),
+        :real => Set(which(Copulas.𝒲₋₁, Tuple{typeof(G),Float64})
+                     for G in GENERATOR_CASES),
+    )
+    for G in GENERATOR_CASES
+        for (kind, order) in ((:integer, 2), (:real, 1.5))
+            method = which(Copulas.𝒲₋₁, Tuple{typeof(G),typeof(order)})
+            method in checked[kind] && continue
+            radial = Copulas.𝒲₋₁(G, order)
+            @test radial isa Distributions.UnivariateDistribution
+            @test minimum(radial) >= 0
+            push!(checked[kind], method)
+        end
+    end
+    @test checked == selected
 end

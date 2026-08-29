@@ -74,4 +74,28 @@
     for t in (-1.0, 0.0, 1.2)
         @test cdf(original_scale, t) ≈ cdf(Exponential(), t)
     end
+
+    # The Sklar wrapper has one implementation route per public operation;
+    # variation in copula, dimension and margins is delegated to components
+    # whose own routes are proved independently.
+    compositions = (D, D3, independent)
+    route_functions = (
+        cdf = S -> which(Distributions.cdf,
+                         Tuple{typeof(S),Vector{Float64}}),
+        logpdf = S -> which(Distributions._logpdf,
+                            Tuple{typeof(S),Vector{Float64}}),
+        sampling = S -> which(Distributions._rand!,
+            Tuple{typeof(StableRNG(34)),typeof(S),Matrix{Float64}}),
+        subsetting = S -> which(Copulas.subsetdims,
+                                Tuple{typeof(S),Tuple{Int,Int}}),
+        conditioning = S -> which(Copulas.condition,
+                                   Tuple{typeof(S),Int,Float64}),
+        rosenblatt = S -> which(Copulas.rosenblatt,
+                                Tuple{typeof(S),Matrix{Float64}}),
+        inverse_rosenblatt = S -> which(Copulas.inverse_rosenblatt,
+            Tuple{typeof(S),Matrix{Float64}}),
+    )
+    for route in values(route_functions)
+        @test length(Set(route(S) for S in compositions)) == 1
+    end
 end

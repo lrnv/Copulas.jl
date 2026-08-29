@@ -1,5 +1,35 @@
 # Routing obligation: discover every copula method selected by the public
 # fixtures and exercise one representative of each distinct dispatch route.
+
+@testset "distribution adapters remain shared" begin
+    # These public operations intentionally delegate to the scalar kernels
+    # inventoried below. A direct family specialization must come with an
+    # equivalence proof and an explicit route before this assertion is relaxed.
+    signatures = (
+        pdf = C -> Tuple{typeof(C),Vector{Float64}},
+        logcdf = C -> Tuple{typeof(C),Vector{Float64}},
+        loglikelihood = C -> Tuple{typeof(C),Matrix{Float64}},
+    )
+    functions = (pdf=Distributions.pdf, logcdf=Distributions.logcdf,
+                 loglikelihood=Distributions.loglikelihood)
+    for name in keys(signatures)
+        selected = Set(which(functions[name], signatures[name](fixture.copula))
+                       for fixture in ROUTING_COPULA_FIXTURES)
+        @test length(selected) == 1
+    end
+end
+
+@testset "every scalar dependence route has an oracle" begin
+    for measure in SCALAR_DEPENDENCE_MEASURES
+        selected = Set(dependence_route_key(measure, fixture.copula)
+                       for fixture in ROUTING_COPULA_FIXTURES
+                       if _dependence_is_defined(measure, fixture.case.kind))
+        missing = setdiff(selected, PROVEN_DEPENDENCE_ROUTES[measure])
+        isempty(missing) || @info "Dependence routes without an oracle" measure missing
+        @test isempty(missing)
+    end
+end
+
 function _exercise_dispatch_path(operation, C)
     Base.@nospecialize operation
     Base.@nospecialize C
@@ -23,6 +53,8 @@ function _exercise_dispatch_path(operation, C)
         @test size(inverse_rosenblatt(C, reshape(u, :, 1))) == (d, 1)
     elseif operation === :subsetting
         @test length(subsetdims(C, d == 2 ? (2, 1) : (1, d))) == 2
+    elseif operation === :measure
+        @test 0 <= Copulas.measure(C, fill(0.2, d), fill(0.8, d)) <= 1
     end
 end
 
@@ -30,7 +62,7 @@ end
     models = ROUTING_COPULA_FIXTURES
     operations = (:cdf, :logpdf, :sampling, :conditioning,
                   :conditional_joint, :rosenblatt, :inverse_rosenblatt,
-                  :subsetting)
+                  :subsetting, :measure)
     @testset verbose=true "$operation" for operation in operations
         seen = Set{Any}()
         for (; case, copula) in models
@@ -49,8 +81,8 @@ end
 end
 
 @testset verbose=true "every selected deterministic route has a proof" begin
-    deterministic = (:cdf, :logpdf, :conditioning, :conditional_joint,
-                     :rosenblatt, :inverse_rosenblatt, :subsetting)
+    deterministic = (:cdf, :logpdf, :sampling, :conditioning, :conditional_joint,
+                     :rosenblatt, :inverse_rosenblatt, :subsetting, :measure)
     @testset "$operation" for operation in deterministic
         selected = Set{Any}()
         for fixture in ROUTING_COPULA_FIXTURES

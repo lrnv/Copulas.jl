@@ -38,7 +38,7 @@ const PUBLIC_SYMBOLS = (
 # test layers that establish availability, correctness, and route coverage.
 const PUBLIC_BEHAVIOURS = (
     (name=:construction,
-     operations=(:constructors, :params, :length),
+     operations=(:constructors, :params, :length, :eltype),
      contracts=("constructors.jl", "public_compositions.jl"),
      proofs=("mathematical.jl",), routes=("constructors.jl",)),
     (name=:distribution,
@@ -58,11 +58,13 @@ const PUBLIC_BEHAVIOURS = (
     (name=:dependence,
      operations=(:τ, :ρ, :β, :γ, :ι, :λₗ, :λᵤ, :corkendall,
                  :corspearman, :corblomqvist, :corgini, :corentropy,
-                 :corlowertail, :coruppertail, :measure),
+                 :corlowertail, :coruppertail, :measure,
+                 :τ⁻¹, :ρ⁻¹, :β⁻¹, :λᵤ⁻¹),
      contracts=("copulas.jl", "utilities.jl"),
-     proofs=("mathematical.jl",), routes=("dispatch.jl",)),
+     proofs=("mathematical.jl", "measure_inverses.jl"),
+     routes=("dispatch.jl", "measure_inverses.jl")),
     (name=:fitting,
-     operations=(:fit, :loglikelihood, :dof, :nobs, :coef, :coefnames,
+     operations=(:fit, :dof, :nobs, :coef, :coefnames,
                  :deviance, :nullloglikelihood, :nulldeviance, :isfitted,
                  :vcov, :stderror, :confint, :aic, :bic, :residuals, :predict),
      contracts=("fitting.jl",), proofs=("measure_inverses.jl",),
@@ -79,10 +81,31 @@ const PUBLIC_BEHAVIOURS = (
     (name=:nataf,
      operations=(:Nataf,), contracts=("utilities.jl",),
      proofs=("specializations.jl",), routes=("specializations.jl",)),
+    (name=:utilities,
+     operations=(:pseudos,), contracts=("utilities.jl",),
+     proofs=("mathematical.jl",), routes=("utilities.jl",)),
     (name=:extensions,
      operations=(:package_extensions,), contracts=("extensions",),
      proofs=("extensions",), routes=("extensions",)),
 )
+
+# Executable transcription of the behavioural table in docs/api/public.md.
+# The equality below prevents an operation from being added to the declared
+# SemVer contract without being assigned all four proof obligations above.
+const DOCUMENTED_PUBLIC_OPERATIONS = Set((
+    :constructors, :params, :length, :eltype,
+    :cdf, :logcdf, :pdf, :logpdf, :loglikelihood, :rand, :rand!,
+    :subsetdims, :condition, :quantile, :rosenblatt, :inverse_rosenblatt,
+    :τ, :ρ, :β, :γ, :ι, :λₗ, :λᵤ, :corkendall, :corspearman,
+    :corblomqvist, :corgini, :corentropy, :corlowertail, :coruppertail,
+    :τ⁻¹, :ρ⁻¹, :β⁻¹, :λᵤ⁻¹, :measure,
+    :fit, :dof, :nobs, :coef, :coefnames, :deviance,
+    :nullloglikelihood, :nulldeviance, :isfitted, :vcov, :stderror,
+    :confint, :aic, :bic, :residuals, :predict,
+    :ϕ, :ϕ⁻¹, :ϕ⁽¹⁾, :ϕ⁻¹⁽¹⁾, :ϕ⁽ᵏ⁾, :ϕ⁽ᵏ⁾⁻¹, :𝒲₋₁,
+    :max_monotony, :A, :dA, :d²A, :ℓ, :ellpartial,
+    :Nataf, :pseudos, :package_extensions,
+))
 
 @testset "declared public surface is present" begin
     declared = Set(names(Copulas; all=false, imported=false))
@@ -96,6 +119,10 @@ end
 
 @testset verbose=true "every public behaviour is linked to a proof" begin
     @test allunique(getproperty.(PUBLIC_BEHAVIOURS, :name))
+    declared_operations = [operation for behaviour in PUBLIC_BEHAVIOURS
+                            for operation in behaviour.operations]
+    @test allunique(declared_operations)
+    @test Set(declared_operations) == DOCUMENTED_PUBLIC_OPERATIONS
     contract_dir = @__DIR__
     correctness_dir = joinpath(dirname(contract_dir), "correctness")
     routing_dir = joinpath(dirname(contract_dir), "routing")

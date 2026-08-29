@@ -10,6 +10,10 @@ const BEHAVIOURAL_BRANCHES = (
     :husler_reiss_bivariate, :husler_reiss_multivariate,
     :tev_bivariate, :tev_multivariate,
     :gumbel_barnett_dimension_bounds,
+    :amh_frailty, :amh_generic_williamson,
+    :frank_frailty, :frank_generic_williamson,
+    :clayton_positive_real_order, :clayton_negative_integer_order,
+    :clayton_negative_real_order,
 )
 const PROVEN_BEHAVIOURAL_BRANCHES = Set{Symbol}()
 prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
@@ -76,6 +80,29 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test GumbelBarnettCopula{4}(0.2) isa GumbelBarnettCopula{4}
         @test_throws AssertionError GumbelBarnettCopula{4}(0.3)
         prove_branches!(:gumbel_barnett_dimension_bounds)
+    end
+
+    @testset "Williamson inversion parameter branches" begin
+        @test Copulas.𝒲₋₁(Copulas.AMHGenerator(0.5), 2) isa
+              Copulas.WilliamsonFromFrailty
+        @test !(Copulas.𝒲₋₁(Copulas.AMHGenerator(-0.5), 2) isa
+                Copulas.WilliamsonFromFrailty)
+        @test Copulas.𝒲₋₁(Copulas.FrankGenerator(2.0), 2) isa
+              Copulas.WilliamsonFromFrailty
+        @test !(Copulas.𝒲₋₁(Copulas.FrankGenerator(-2.0), 2) isa
+                Copulas.WilliamsonFromFrailty)
+
+        @test Copulas.𝒲₋₁(Copulas.ClaytonGenerator(1.0), 1.5) isa
+              Distributions.ContinuousUnivariateDistribution
+        @test Copulas.𝒲₋₁(Copulas.ClaytonGenerator(-0.25), 2) isa
+              Copulas.ClaytonWilliamsonDistribution
+        @test Copulas.𝒲₋₁(Copulas.ClaytonGenerator(-0.25), 1.5) isa
+              Copulas.WilliamsonBetaProduct
+        prove_branches!(:amh_frailty, :amh_generic_williamson,
+                        :frank_frailty, :frank_generic_williamson,
+                        :clayton_positive_real_order,
+                        :clayton_negative_integer_order,
+                        :clayton_negative_real_order)
     end
 
     @test PROVEN_BEHAVIOURAL_BRANCHES == Set(BEHAVIOURAL_BRANCHES)

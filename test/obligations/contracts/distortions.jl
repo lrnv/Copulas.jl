@@ -63,13 +63,35 @@ end
 
 @testset "distortion implementations satisfy the conditional contract" begin
     types = Set{Any}()
+    operations = (
+        cdf=Distributions.cdf, logcdf=Distributions.logcdf,
+        logpdf=Distributions.logpdf, quantile=Distributions.quantile,
+    )
+    selected_routes = Dict(name => Set(which(f, Tuple{typeof(D),Float64})
+        for (_, D, _) in DISTORTION_CASES)
+        for (name, f) in pairs(operations))
+    checked_routes = Dict(name => Set{Method}() for name in keys(operations))
     for (name, D, kind) in DISTORTION_CASES
         @testset "$name ($(nameof(typeof(D))))" begin
             test_distortion_contract(D, kind)
             push!(types, typeof(D))
+            for (operation, f) in pairs(operations)
+                push!(checked_routes[operation],
+                      which(f, Tuple{typeof(D),Float64}))
+            end
         end
     end
     @test length(types) == length(DISTORTION_CASES)
+    @test checked_routes == selected_routes
+
+    # Every concrete univariate result reachable from public bivariate
+    # conditioning must be represented by the distortion contract. Compare
+    # wrappers rather than numeric parameterizations of the same family.
+    reachable = Set(nameof(typeof(condition(fixture.copula, 1, 0.4)))
+                    for fixture in ROUTING_COPULA_FIXTURES
+                    if length(fixture.copula) == 2)
+    represented = Set(nameof(typeof(D)) for (_, D, _) in DISTORTION_CASES)
+    @test reachable ⊆ represented
 end
 
 @testset "distortion push-forwards preserve the marginal scale" begin

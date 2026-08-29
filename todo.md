@@ -55,10 +55,6 @@ En particulier :
   budget de production. Les propriétés statistiques peuvent utiliser un
   oracle déterministe moins coûteux séparé, mais jamais un chemin de production
   modifié uniquement pour les tests.
-- [ ] Construire une clé de fitting composée de `_fit`, `_unbound_params`,
-  `_rebound_params`, bornes, méthode, classe dimensionnelle et topologie des
-  paramètres. L'optimiseur ne peut être mutualisé qu'entre clés identiques ;
-  l'applicabilité et le round-trip restent vérifiés famille par famille.
 - [ ] Réutiliser un résultat ajusté pour le contrat `CopulaModel` seulement si
   cela ne supprime pas l'appel public `fit(CopulaModel, ...)` lui-même.
 - [ ] Garder au moins une Hessienne publique, les routes Sklar IFM et ECDF, et

@@ -24,6 +24,7 @@ end
             @test fitted isa Copulas.Copula{length(source)}
             resolved_method = Copulas._find_method(
                 family, length(source), case.method)
+            prove_fitting_route!(source, U, resolved_method)
             if resolved_method === :mle && !isempty(params(source))
                 fitted_ll = loglikelihood(fitted, U)
                 source_ll = loglikelihood(source, U)

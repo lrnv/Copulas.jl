@@ -51,6 +51,7 @@
 end
 
 function _unique_bivariate_routes(operation, predicate)
+    Base.@nospecialize operation predicate
     seen = Set{Method}()
     routes = NamedTuple[]
     for fixture in ROUTING_COPULA_FIXTURES
@@ -186,7 +187,13 @@ end
         )
         generic_method = which(measure, Tuple{Copulas.Copula{2}})
         for (; case, C, method) in routes
-            method === generic_method && continue
+            if method === generic_method
+                # The bivariate generic mechanism is proved independently by
+                # PolynomialOracleCopula in correctness/mathematical.jl.
+                @test dependence_route_key(measure, C) in
+                      PROVEN_DEPENDENCE_ROUTES[measure]
+                continue
+            end
             @testset "$(case.name)" begin
                 test_progress("equivalence", nameof(measure), case.name)
                 if measure === Copulas.τ &&
@@ -213,6 +220,7 @@ end
                     @test isapprox(measure(C), expected; atol=3e-4, rtol=3e-4)
                 end
             end
+            prove_dependence_route!(measure, C)
         end
     end
 end
@@ -295,6 +303,7 @@ _singular_tau_oracle(::WCopula{2}) = -1
             expected = _singular_tau_oracle(C)
             @test Copulas.τ(C) ≈ expected atol=2e-12 rtol=2e-12
         end
+        prove_dependence_route!(Copulas.τ, C)
         compared += 1
     end
     @test compared > 0
@@ -319,6 +328,50 @@ end
         selected_methods = Set(which(measure, Tuple{typeof(C)}) for C in candidates)
         checked_methods = Set(which(measure, Tuple{typeof(C)}) for C in checked)
         @test selected_methods == checked_methods
+        for C in checked
+            prove_dependence_route!(measure, C)
+        end
+    end
+end
+
+@testset "every pairwise dependence route reduces to bivariate margins" begin
+    scalar = Dict(
+        StatsBase.corkendall => Copulas.τ,
+        StatsBase.corspearman => Copulas.ρ,
+        Copulas.corblomqvist => Copulas.β,
+        Copulas.corgini => Copulas.γ,
+        Copulas.corentropy => Copulas.ι,
+        Copulas.corlowertail => Copulas.λₗ,
+        Copulas.coruppertail => Copulas.λᵤ,
+    )
+    for (pairwise, diagonal) in PAIRWISE_DEPENDENCE_MEASURES
+        selected = Set((which(pairwise, Tuple{typeof(fixture.copula)}),
+                        length(fixture.copula) == 2 ? :bivariate : :multivariate)
+                       for fixture in ROUTING_COPULA_FIXTURES
+                       if _dependence_is_defined(pairwise, fixture.case.kind))
+        checked = Set{Any}()
+        for fixture in ROUTING_COPULA_FIXTURES
+            case, C = fixture.case, fixture.copula
+            _dependence_is_defined(pairwise, case.kind) || continue
+            key = (which(pairwise, Tuple{typeof(C)}),
+                   length(C) == 2 ? :bivariate : :multivariate)
+            key in checked && continue
+            observed = pairwise(C)
+            if C isa EmpiricalCopula &&
+               pairwise in (StatsBase.corkendall, StatsBase.corspearman)
+                expected = pairwise(transpose(C.u))
+            else
+                d = length(C)
+                expected = Matrix{Float64}(I, d, d) .* diagonal
+                for i in 1:d, j in 1:(i - 1)
+                    value = scalar[pairwise](subsetdims(C, (i, j)))
+                    expected[i, j] = expected[j, i] = value
+                end
+            end
+            @test observed ≈ expected atol=1e-8
+            push!(checked, key)
+        end
+        @test checked == selected
     end
 end
 
@@ -613,6 +666,27 @@ end
         parent_point[collect(dims)] .= u
         @test cdf(S, u) ≈ cdf(C, parent_point)
         prove_dispatch_route!(:subsetting, C, case, :parent_margin_identity)
+    end
+    @test !isempty(seen)
+end
+
+@testset "rectangle-measure routes equal CDF inclusion-exclusion" begin
+    seen = Set{Any}()
+    for fixture in ROUTING_COPULA_FIXTURES
+        case, C = fixture.case, fixture.copula
+        key = dispatch_route_key(:measure, C, case)
+        key in seen && continue
+        push!(seen, key)
+        d = length(C)
+        lower = collect(range(0.13, 0.19; length=d))
+        upper = collect(range(0.71, 0.79; length=d))
+        expected = 0.0
+        for mask in Iterators.product(ntuple(_ -> (false, true), d)...)
+            point = [mask[i] ? lower[i] : upper[i] for i in 1:d]
+            expected += (-1)^count(identity, mask) * cdf(C, point)
+        end
+        @test Copulas.measure(C, lower, upper) ≈ expected atol=1e-10
+        prove_dispatch_route!(:measure, C, case, :cdf_inclusion_exclusion)
     end
     @test !isempty(seen)
 end

@@ -148,6 +148,9 @@ end
     @test Copulas.ι(C) ≈ entropy atol=3e-2
     @test Copulas.λₗ(C) ≈ 0 atol=1e-8
     @test Copulas.λᵤ(C) ≈ 0 atol=1e-8
+    for measure in SCALAR_DEPENDENCE_MEASURES
+        prove_dependence_route!(measure, C)
+    end
 
     conditional_mass, _ = QuadGK.quadgk(y -> pdf(D, y), 0.0, 1.0)
     @test conditional_mass ≈ 1
@@ -162,6 +165,52 @@ end
     @test cdf(H, target) ≈ expected_conditional
     @test pdf(H, target) ≈
           1 + C3.θ * prod(1 .- 2 .* target) * (1 - 2conditioned)
+
+    # Independent multivariate oracles close the dimension-dependent generic
+    # dependence routes. They integrate the analytic polynomial CDF/density,
+    # never the production implementations of the measures themselves.
+    d3 = 3
+    cube0, cube1 = zeros(d3), ones(d3)
+    gini_integrand3(x) = (
+        1 + minimum(x) - maximum(x) +
+        max(abs(sum(x) - d3 / 2) - (d3 - 2) / 2, 0.0)
+    ) / 2
+    integrals, _ = HCubature.hcubature(cube0, cube1; rtol=2e-5) do x
+        distribution = _oracle_cdf(C3, x)
+        density = _oracle_pdf(C3, x)
+        [distribution, distribution * density,
+         gini_integrand3(x) * density, -density * log(density)]
+    end
+    cdf_integral, concordance, gini3, entropy3 = integrals
+    rho3 = (2^d3 * (d3 + 1) * cdf_integral - d3 - 1) /
+           (2^d3 - d3 - 1)
+    @test Copulas.ρ(C3) ≈ rho3 atol=3e-4
+
+    tau3 = 2^d3 / (2^(d3 - 1) - 1) * concordance -
+           1 / (2^(d3 - 1) - 1)
+    @test Copulas.τ(C3) ≈ tau3 atol=4e-2
+
+    midpoint = fill(0.5, d3)
+    c0 = _oracle_cdf(C3, midpoint)
+    survival0 = 0.0
+    for mask in Iterators.product(ntuple(_ -> (false, true), d3)...)
+        point = [mask[i] ? midpoint[i] : 1.0 for i in 1:d3]
+        survival0 += (-1)^count(identity, mask) * _oracle_cdf(C3, point)
+    end
+    beta3 = (2.0^(d3 - 1) * c0 + survival0 - 1) /
+            (2^(d3 - 1) - 1)
+    @test Copulas.β(C3) ≈ beta3 atol=1e-12
+
+    a3 = 1 / (d3 + 1) + inv(factorial(d3 + 1))
+    b3 = (2 + 4.0^(1 - d3)) / 3
+    @test Copulas.γ(C3) ≈ (gini3 - a3) / (b3 - a3) atol=4e-2
+
+    @test Copulas.ι(C3) ≈ entropy3 atol=4e-2
+    @test Copulas.λₗ(C3) ≈ 0 atol=1e-8
+    @test Copulas.λᵤ(C3) ≈ 0 atol=1e-8
+    for measure in SCALAR_DEPENDENCE_MEASURES
+        prove_dependence_route!(measure, C3)
+    end
 
     for d in (2, 3)
         density_only = DensityOnlyPolynomialOracleCopula{d,Float64}(0.4)
@@ -713,6 +762,18 @@ end
     @test Copulas.ρ(MCopula{2}()) == 1
     @test Copulas.τ(WCopula{2}()) == -1
     @test Copulas.ρ(WCopula{2}()) == -1
+
+    for C in (IndependentCopula{2}(), IndependentCopula{3}(),
+              MCopula{2}(), MCopula{3}(), WCopula{2}())
+        for measure in SCALAR_DEPENDENCE_MEASURES
+            if applicable(measure, C) &&
+               !(measure in (Copulas.ι,) && C isa WCopula)
+                value = measure(C)
+                @test value isa Real
+                prove_dependence_route!(measure, C)
+            end
+        end
+    end
 end
 
 @testset "singular and mixed copulas use mass identities" begin

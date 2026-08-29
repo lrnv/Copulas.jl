@@ -35,23 +35,33 @@ end
         method=:itau, vcov=true, vcov_method=:invalid, derived_measures=false)
 end
 
-const _FITTING_PATH_MODELS = Tuple(fixture.copula for fixture in ROUTING_COPULA_FIXTURES)
-const _PRIMARY_FITTING_METHOD = Dict(fixture.case.name => begin
-    case, C = fixture.case, fixture.copula
-    Copulas._find_method(typeof(C), length(C), case.method)
-end for fixture in FITTING_FIXTURES)
-const _PRIMARY_FITTING_TYPE = Dict(fixture.case.name => typeof(fixture.copula)
-                                   for fixture in FITTING_FIXTURES)
-_canonical_fitting_name(name) = replace(name,
-    " bivariate" => "", " multivariate" => "")
+@testset "generic empirical EV estimators by dimension" begin
+    checked = Set{Tuple{Method,Symbol,Symbol}}()
+    selected = Set{Tuple{Method,Symbol,Symbol}}()
+    for (U, dimension, kwargs) in ((_FIXTURE_DATA, :bivariate, (; grid=21)),
+                                    (_FIXTURE_DATA3, :multivariate, (; degree=1)))
+        for method in (:ols, :cfg, :pickands)
+            route = (which(Copulas._fit,
+                           Tuple{Type{ExtremeValueCopula},typeof(U),Val{method}}),
+                     method, dimension)
+            push!(selected, route)
+            fitted = fit(ExtremeValueCopula, U; method,
+                         vcov=false, derived_measures=false, kwargs...)
+            @test fitted isa ExtremeValueCopula{size(U, 1)}
+            push!(checked, route)
+        end
+    end
+    @test checked == selected
+end
 
+const _FITTING_PATH_MODELS = Tuple(fixture.copula for fixture in ROUTING_COPULA_FIXTURES)
 _has_fitting_parameters(C) =
     !(C isa Union{IndependentCopula,MCopula,WCopula}) && !isempty(params(C))
 _check_parameter_roundtrip(C) =
     !(C isa EmpiricalEVCopula) && !(C isa FGMCopula && length(C) != 2)
 
 @testset "advertised fitting routes beyond the primary family contract" begin
-    seen_routes = Set{Any}()
+    selected_routes = Set{Any}()
     for (index, (case, C)) in
         enumerate(zip(ROUTING_COPULA_CASES, _FITTING_PATH_MODELS))
         CT, d = typeof(C), length(C)
@@ -66,19 +76,11 @@ _check_parameter_roundtrip(C) =
                       keys(bounded))
         end
 
-        canonical_name = _canonical_fitting_name(case.name)
-        primary = get(_PRIMARY_FITTING_TYPE, canonical_name, nothing) === CT ?
-            get(_PRIMARY_FITTING_METHOD, canonical_name, nothing) : nothing
-        remaining = filter(!=(primary), methods)
-        isempty(remaining) && continue
-
         U = rand(StableRNG(30_000 + index), C, 12)
-        for method in remaining
-            route = (which(Copulas._fit,
-                           Tuple{Type{CT},typeof(U),Val{method}}),
-                     method, d == 2 ? :bivariate : :multivariate)
-            route in seen_routes && continue
-            push!(seen_routes, route)
+        for method in methods
+            route = fitting_route_key(C, U, method)
+            push!(selected_routes, route)
+            route in PROVEN_FITTING_ROUTES && continue
             test_progress("routing fitting", case.name, method,
                           nameof(CT), d)
             # Routing only needs to exercise the empirical EV estimator. Its
@@ -88,11 +90,13 @@ _check_parameter_roundtrip(C) =
             fitted = fit(CT, U, method; vcov=false,
                          derived_measures=false, route_kwargs...)
             @test fitted isa Copulas.Copula{d}
+            prove_fitting_route!(C, U, method)
             if method === :mle && case.kind === :continuous
                 fitted_ll = loglikelihood(fitted, U)
                 @test isfinite(fitted_ll)
             end
         end
     end
-    @test !isempty(seen_routes)
+    @test !isempty(selected_routes)
+    @test selected_routes ⊆ PROVEN_FITTING_ROUTES
 end

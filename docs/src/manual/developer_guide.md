@@ -1095,6 +1095,17 @@ of `Copula` has a contract fixture and that every fixture represents a public
 family. The dispatch inventory then prevents a new representation or
 dimension-specific method from silently bypassing the validated paths.
 
+Constructor coverage is keyed by the exact public binding, not only by the
+returned concrete type. This matters for aliases: two public constructor names
+may intentionally produce the same parametric representation, but both names
+must remain callable and obey the documented `{d}` and `(d, ...)` forms.
+
+Route ledgers are closed by set equality. Sampling routes are registered only
+after their distributional identity succeeds; deterministic operations and
+dependence measures are registered only after an independent oracle or a
+proved reduction succeeds. Merely reaching a method does not enter it in a
+proof ledger.
+
 Public generators and extreme-value tails follow the same principle. Add them
 to `GENERATOR_CASES` or `TAIL_CASES`; their primitive-operation registries check
 that every selected implementation of the documented mathematical primitives
