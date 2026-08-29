@@ -415,7 +415,11 @@ function fitting_route_key(C, U, method)
              applicable(Copulas._θ_bounds, component_type, d) ?
              (which(Copulas._θ_bounds, Tuple{Type{component_type},Int}),
               Copulas._θ_bounds(component_type, d)) : nothing
-    if !isempty(bounded) && applicable(Copulas._unbound_params, CT, d, bounded)
+    # Empirical EV fits reconstruct their non-parametric tail directly from
+    # the observations; the generic EV forwarding method is technically
+    # applicable but its parametric tail transform is not part of that route.
+    if !(C isa EmpiricalEVCopula) && !isempty(bounded) &&
+       applicable(Copulas._unbound_params, CT, d, bounded)
         unbound = Copulas._unbound_params(CT, d, bounded)
         push!(components,
               which(Copulas._unbound_params,

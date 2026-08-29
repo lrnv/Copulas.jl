@@ -38,15 +38,18 @@ _oracle_conditional_cdf(C::PolynomialOracleCopula, conditioned, target) =
     target * (1 + C.θ * (1 - 2conditioned) * (1 - target))
 
 function Distributions._rand!(rng::Distributions.AbstractRNG,
-                              C::PolynomialOracleCopula{2},
-                              U::AbstractMatrix{T}) where {T<:Real}
+                              C::PolynomialOracleCopula{d},
+                              U::AbstractMatrix{T}) where {d,T<:Real}
     for j in axes(U, 2)
-        x, p = rand(rng), rand(rng)
+        for i in 1:(d - 1)
+            U[i, j] = rand(rng)
+        end
+        conditioned = prod(1 - 2U[i, j] for i in 1:(d - 1))
+        p = rand(rng)
         y = Roots.find_zero(
-            target -> _oracle_conditional_cdf(C, x, target) - p,
+            target -> target * (1 + C.θ * conditioned * (1 - target)) - p,
             (zero(T), one(T)), Roots.Bisection())
-        U[1, j] = x
-        U[2, j] = y
+        U[d, j] = y
     end
     return U
 end

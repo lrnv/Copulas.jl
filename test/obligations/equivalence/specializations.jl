@@ -356,7 +356,13 @@ end
             key = (which(pairwise, Tuple{typeof(C)}),
                    length(C) == 2 ? :bivariate : :multivariate)
             key in checked && continue
+            # Generic gamma and entropy estimators sample internally. Reusing
+            # the same RNG state makes this an exact forwarding test instead
+            # of comparing two independent Monte Carlo estimates.
+            seed = 0x51a7 + hash((pairwise, key))
+            Random.seed!(seed)
             observed = pairwise(C)
+            Random.seed!(seed)
             if C isa EmpiricalCopula &&
                pairwise in (StatsBase.corkendall, StatsBase.corspearman)
                 expected = pairwise(transpose(C.u))
@@ -373,6 +379,24 @@ end
         end
         @test checked == selected
     end
+end
+
+@testset "multivariate Archimedean and Raftery dependence identities" begin
+    # These closed forms are dimension-dependent dispatch routes and therefore
+    # cannot be represented by the bivariate specialization comparison above.
+    clayton = ClaytonCopula{3}(1.5)
+    @test Copulas.τ(clayton) ≈ 3 / 7
+    # The generator specialization is dimension invariant; its bivariate
+    # value is independently checked against the generic integral above.
+    @test Copulas.ρ(clayton) == Copulas.ρ(ClaytonCopula{2}(1.5))
+    prove_dependence_route!(Copulas.τ, clayton)
+    prove_dependence_route!(Copulas.ρ, clayton)
+
+    raftery = RafteryCopula{3}(0.5)
+    @test Copulas.τ(raftery) ≈ 0.4
+    @test Copulas.ρ(raftery) ≈ 13 / 27
+    prove_dependence_route!(Copulas.τ, raftery)
+    prove_dependence_route!(Copulas.ρ, raftery)
 end
 
 @testset "specialized FGM paths agree with the generic polynomial oracle" begin

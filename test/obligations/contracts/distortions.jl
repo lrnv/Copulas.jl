@@ -14,6 +14,7 @@ const DISTORTION_CASES = (
     ("Plackett", condition(PlackettCopula{2}(2.0), 1, 0.4), :continuous),
     ("histogram", condition(CheckerboardCopula{2}(_FIXTURE_DATA; m=2), 1, 0.4), :continuous),
     ("Bernstein", condition(BernsteinCopula{2}(GaussianCopula{2}(0.3); m=3), 1, 0.4), :continuous),
+    ("beta", condition(BetaCopula{2}(_FIXTURE_DATA), 1, 0.4), :continuous),
     ("generic", condition(RafteryCopula{2}(0.5), 1, 0.4), :continuous),
     ("Liouville", condition(LiouvilleCopula{2}(
         WilliamsonGenerator(Dirac(1.0), 3.0), (0.6, 1.1)), 1, 0.4), :continuous),
