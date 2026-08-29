@@ -2,7 +2,8 @@
 # lower-tail partial-observation likelihood as an EMERGENT capability of the standard
 # condition + subsetdims framework (Yang & Li, arXiv:2605.23134).
 #
-# Coverage:
+# Historical coverage map (the flat-reduction proof now lives under the
+# specialization-equivalence obligation):
 #   1. Flat dispatch — a leaves-only declaration returns the native
 #      ArchimedeanCopula and gives a bit-for-bit identical logpdf.
 #   2. Uncensored density vs an INDEPENDENT reference: the nested CDF assembled
@@ -40,17 +41,6 @@ Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ⁽ᵏ⁾(G::ImplicitTestGenerator, k::Int, t) = ϕ⁽ᵏ⁾(G.inner, k, t)
 Copulas.composition_taylor(o::ImplicitTestGenerator, i::ImplicitTestGenerator, t₀, d::Int) =
     Copulas.composition_taylor_implicit(o.inner, i.inner, t₀, d)
-
-# Seeded RNG, matching runtests' `StableRNG(123)` when StableRNGs is on the path
-# (the package test environment); falls back to a seeded Xoshiro so this file
-# also runs standalone via `--project=.`. The value is invariant either way:
-# every draw feeds BOTH sides of each equality.
-const _NEST_RNG = try
-    @eval import StableRNGs
-    StableRNGs.StableRNG(123)
-catch
-    Random.Xoshiro(123)
-end
 
 # ---------------------------------------------------------------------------
 # Independent reference: nested-Archimedean CDF assembled straight from the
@@ -174,32 +164,6 @@ function implicit_acopula_maxerr(datadir, name, GT, sectors, θroot, θsector; n
 end
 
 @testset "NestedArchimedeanCopula" begin
-    # Local seeded RNG so this file is self-contained standalone AND under
-    # runtests.jl (where a `const rng = StableRNG(123)` also exists); every draw
-    # feeds both sides of each equality, so the value is invariant.
-    rng = _NEST_RNG
-
-    # -----------------------------------------------------------------------
-    # 1. Flat dispatch → native ArchimedeanCopula, bit-for-bit logpdf.
-    # -----------------------------------------------------------------------
-    @testset "flat declaration dispatches to native (bit-for-bit)" begin
-        C = NestedArchimedeanCopula(ClaytonGenerator(2.0); leaves = [1, 2, 3])
-        @test C isa ArchimedeanCopula{3}
-        @test !(C isa NestedArchimedeanCopula)
-        native = ClaytonCopula{3}(2.0)
-        for _ in 1:5
-            u = rand(rng, 3) .* 0.6 .+ 0.2
-            @test logpdf(C, u) === logpdf(native, u)
-        end
-        Cg = NestedArchimedeanCopula(GumbelGenerator(2.5); leaves = [1, 2, 3, 4])
-        @test Cg isa ArchimedeanCopula{4}
-        ng = GumbelCopula{4}(2.5)
-        for _ in 1:5
-            u = rand(rng, 4) .* 0.6 .+ 0.2
-            @test logpdf(Cg, u) === logpdf(ng, u)
-        end
-    end
-
     # -----------------------------------------------------------------------
     # 3. Uncensored density vs external acopula reference log-likelihoods.
     #    Files in test/data/nested/ : 2-level nesting, equal-size sectors with
@@ -574,15 +538,6 @@ end
         @test StatsBase.aic(M) ≈ -2 * Distributions.loglikelihood(Chat, U) + 2 * 3
         @test StatsBase.bic(M) ≈ -2 * Distributions.loglikelihood(Chat, U) + log(1000) * 3
 
-        # Bare-type fit is intentionally unsupported (tree not inferable).
-        @test_throws Exception Copulas._example(NestedArchimedeanCopula, 4)
-        # Only :mle is supported.
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, U; method = :itau)
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, U[1:3, :])
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, zeros(4, 0))
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, hcat(zeros(4), ones(4)))
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, fill(NaN, 4, 2))
-
         # A small mixed-family fit exercises family-specific parameter
         # unbinding/rebuilding without another statistical recovery workload.
         Cmix = NestedArchimedeanCopula(ClaytonGenerator(1.0);
@@ -618,11 +573,6 @@ end
         Ms = Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U)
         @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
         @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
-
-        @test_throws ArgumentError Distributions.fit(
-            Copulas.CopulaModel, recon, [log(2.0)], U[1:2, :])
-        @test_throws ArgumentError Distributions.fit(
-            Copulas.CopulaModel, recon, [log(2.0)], zeros(3, 0))
 
         # Arbitrary-depth, non-Clayton templates preserve every family and
         # parameter through the same flatten/rebuild machinery used by fit().

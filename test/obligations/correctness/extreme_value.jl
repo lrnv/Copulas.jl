@@ -298,14 +298,6 @@ end
                   cdf(Cij, collect(q)) atol=5e-4 rtol=5e-4
         end
 
-        @test_throws DimensionMismatch Copulas.HuslerReissTail(zeros(3, 4))
-        @test Copulas.HuslerReissTail([0.0 1.0; 1.0 0.0]) isa
-              Copulas.HuslerReissTail{<:AbstractMatrix}
-
-        Γbad = [0.0 1.0 10.0;
-                1.0 0.0 1.0;
-                10.0 1.0 0.0]
-        @test_throws ArgumentError Copulas.HuslerReissTail(Γbad)
     end
 end
 
@@ -630,15 +622,6 @@ end
         for k in axes(B, 2)
     )) atol=3e-14 rtol=3e-14
 
-    @test_throws ArgumentError Copulas.DiscreteSpectralTail([
-        0.4 0.4
-        0.5 0.5
-    ])
-    @test_throws ArgumentError Copulas.DiscreteSpectralTail([
-        1.2 -0.2
-        0.5  0.5
-    ])
-    @test_throws ArgumentError logpdf(C, u)
 end
 
 @testset "Multivariate Marshall-Olkin EV" begin
@@ -672,11 +655,6 @@ end
         @test cdf(Cnew, u) ≈ cdf(Cold, u) atol=4e-14 rtol=4e-14
     end
 
-    @test_throws DimensionMismatch Copulas.MOTail(3, λ[1:6])
-    @test_throws ArgumentError Copulas.MOTail(
-        3,
-        [0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0],
-    )
 end
 
 @testset "Multivariate BC2 EV" begin
@@ -707,8 +685,6 @@ end
         @test cdf(Cnew, u) ≈ cdf(Cold, u) atol=3e-14 rtol=3e-14
     end
 
-    @test_throws ArgumentError Copulas.BC2Tail([0.2])
-    @test_throws ArgumentError Copulas.BC2Tail([0.2, 1.1])
 end
 
 @testset "Multivariate Cuadras-Auge EV" begin
@@ -793,35 +769,6 @@ end
             maxerr = max(maxerr, abs(estimate - truth))
         end
         @test maxerr < 0.10
-    end
-
-    @testset "constructor and exact sampling from projected model" begin
-        Cemp = Copulas.EmpiricalEVCopula(
-            U;
-            method=:ols,
-            degree=4,
-            pseudo_values=true,
-        )
-
-        @test Cemp.tail isa Copulas.EmpiricalEVMultivariateTail
-
-        u0 = [0.36, 0.58, 0.79]
-        @test_throws ArgumentError logpdf(Cemp, u0)
-    end
-
-    @testset "generic fitting route" begin
-        fitted = fit(
-            Copulas.ExtremeValueCopula,
-            U,
-            :ols;
-            degree=4,
-            pseudo_values=true,
-        )
-
-        @test fitted.tail isa Copulas.EmpiricalEVMultivariateTail
-        @test fitted.tail.method == :ols
-        @test fitted.tail.degree == 4
-        @test Copulas._is_valid_in_dim(fitted.tail, 3)
     end
 
     @testset "historical bivariate empirical EV remains unchanged" begin

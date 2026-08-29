@@ -50,4 +50,5 @@ end
     @test Copulas.ℓ(tail, [1.0, 0.0]) ≈ 1
     @test length(C) == 2
     @test size(rand(StableRNG(82), C, 3)) == (2, 3)
+    @test_throws ArgumentError logpdf(C, [0.4, 0.7])
 end

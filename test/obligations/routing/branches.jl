@@ -15,6 +15,7 @@ const BEHAVIOURAL_BRANCHES = (
     :tev_bivariate, :tev_multivariate,
     :tev_fitting_bivariate_bounds, :tev_fitting_multivariate_bounds,
     :gumbel_barnett_dimension_bounds,
+    :distortion_quantile_parameter_regimes,
     :amh_frailty, :amh_generic_williamson,
     :frank_frailty, :frank_generic_williamson,
     :clayton_positive_real_order, :clayton_negative_integer_order,
@@ -181,6 +182,31 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test GumbelBarnettCopula{4}(0.2) isa GumbelBarnettCopula{4}
         @test_throws AssertionError GumbelBarnettCopula{4}(0.3)
         prove_branches!(:gumbel_barnett_dimension_bounds)
+    end
+
+    @testset "parameter-dependent distortion quantile regimes" begin
+        # `which` inventories one method per concrete distortion, but cannot
+        # see value branches within that method.  Compare every such regime to
+        # the generic inversion without repeating the full distortion contract.
+        cases = (
+            condition(PlackettCopula{2}(0.5), 2, 0.7),
+            condition(FrankCopula{2}(-2.0), 1, 0.4),
+            condition(AMHCopula{2}(-0.5), 1, 0.4),
+            condition(GumbelCopula{2}(1.001), 1, 0.25),
+            condition(GumbelCopula{2}(8.0), 1, 0.7),
+            condition(LogCopula{2}(1.001), 1, 0.25),
+            condition(InvGaussianCopula{2}(0.01), 1, 0.4),
+            condition(BB9Copula{2}(1.001, 0.8), 1, 0.4),
+            condition(GumbelBarnettCopula{2}(0.01), 1, 0.3),
+            condition(GumbelBarnettCopula{2}(0.8), 1, 0.7),
+        )
+        for D in cases
+            p = 0.63
+            generic = invoke(quantile, Tuple{Copulas.Distortion,Real}, D, p)
+            @test quantile(D, p) ≈ generic atol=2e-8 rtol=2e-8
+        end
+        @test quantile(Copulas.PlackettDistortion(1.0, Int8(1), 0.4), 0.37) ≈ 0.37
+        prove_branches!(:distortion_quantile_parameter_regimes)
     end
 
     @testset "extremal-t fitting bounds by dimension" begin

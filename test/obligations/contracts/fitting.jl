@@ -163,3 +163,21 @@ end
     M = CopulaModel(IndependentCopula{2}(), 10, 0.0, :dummy)
     @test_throws ArgumentError StatsBase.residuals(M)
 end
+
+@testset "nested Archimedean fitting validation" begin
+    C = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
+        children=[ClaytonCopula{2}(3.0), ClaytonCopula{2}(3.0)])
+    U = rand(StableRNG(20_110), C, 4)
+    @test_throws Exception Copulas._example(NestedArchimedeanCopula, 4)
+    @test_throws ArgumentError fit(CopulaModel, C, U; method=:itau)
+    @test_throws ArgumentError fit(CopulaModel, C, U[1:3, :])
+    @test_throws ArgumentError fit(CopulaModel, C, zeros(4, 0))
+    @test_throws ArgumentError fit(CopulaModel, C, hcat(zeros(4), ones(4)))
+    @test_throws ArgumentError fit(CopulaModel, C, fill(NaN, 4, 2))
+
+    rebuild = α -> (θ=exp(α[1]); NestedArchimedeanCopula(
+        Copulas.ClaytonGenerator(θ); leaves=[1],
+        children=[ClaytonCopula{2}(θ)]))
+    @test_throws ArgumentError fit(CopulaModel, rebuild, [log(2.0)], U[1:2, :])
+    @test_throws ArgumentError fit(CopulaModel, rebuild, [log(2.0)], zeros(3, 0))
+end

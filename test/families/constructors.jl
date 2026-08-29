@@ -118,4 +118,17 @@ end
         [1.0 0.3 0.0; 0.1 1.0 0.2; 0.0 0.2 1.0])
     @test_throws ArgumentError Copulas.tEVTail(1.5,
         [1.0 0.95 0.95; 0.95 1.0 -0.95; 0.95 -0.95 1.0])
+
+    @test_throws DimensionMismatch Copulas.HuslerReissTail(zeros(3, 4))
+    @test_throws ArgumentError Copulas.HuslerReissTail(
+        [0.0 1.0 10.0; 1.0 0.0 1.0; 10.0 1.0 0.0])
+    @test_throws ArgumentError Copulas.DiscreteSpectralTail(
+        [0.4 0.4; 0.5 0.5])
+    @test_throws ArgumentError Copulas.DiscreteSpectralTail(
+        [1.2 -0.2; 0.5 0.5])
+    @test_throws DimensionMismatch Copulas.MOTail(3, ones(6))
+    @test_throws ArgumentError Copulas.MOTail(
+        3, [0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0])
+    @test_throws ArgumentError Copulas.BC2Tail([0.2])
+    @test_throws ArgumentError Copulas.BC2Tail([0.2, 1.1])
 end
