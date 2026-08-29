@@ -60,7 +60,7 @@ obligation_testfiles = (
     ],
     correctness = [
         "generators", "tails", "measure_inverses", "mathematical",
-        "statistical",
+        "statistical", "numerical",
     ],
     equivalence = ["specializations"],
     routing = ["dispatch", "branches", "fitting"],
@@ -72,14 +72,10 @@ family_testfiles = [
     "constructors",
     "elliptical",
     "extreme_value_architecture",
-    "extreme_value",
-    "fitting",
     "liouville",
     "miscellaneous",
     "nataf",
     "nested_archimedean",
-    "sklar",
-    "subsetting",
 ]
 
 extension_testfiles = (

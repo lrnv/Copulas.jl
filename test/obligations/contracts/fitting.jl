@@ -158,3 +158,8 @@ end
     @test StatsBase.confint(M0) === nothing
     @test StatsBase.aic(M0) == StatsBase.bic(M0) == 0
 end
+
+@testset "unavailable model metadata" begin
+    M = CopulaModel(IndependentCopula{2}(), 10, 0.0, :dummy)
+    @test_throws ArgumentError StatsBase.residuals(M)
+end

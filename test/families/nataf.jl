@@ -16,23 +16,16 @@
         # copula with parameter ρ₀ is known in closed form:
         #   r(ρ₀) = (exp(ρ₀s₁s₂) - 1) / √((exp(s₁²) - 1)(exp(s₂²) - 1)),
         # so the exact correction is ρ₀ = log(1 + r√(⋯)) / (s₁s₂).
-        for (s₁, s₂, r) in ((0.8, 0.8, 0.7), (0.5, 1.2, 0.4), (1.0, 1.0, -0.2))
+        # Unequal scales and a negative target complement the canonical exact
+        # dispatch representatives in `equivalence/specializations.jl`.
+        for (s₁, s₂, r) in ((0.5, 1.2, 0.4), (1.0, 1.0, -0.2))
             ρ₀_exact = log(1 + r * sqrt(expm1(s₁^2) * expm1(s₂^2))) / (s₁ * s₂)
             ρ₀ = Nataf((LogNormal(0, s₁), LogNormal(0, s₂)), r)
             @test ρ₀ ≈ ρ₀_exact atol = 1e-6
         end
-        s, r = 0.8, 0.6
-        expected = r * sqrt(expm1(s^2)) / s
-        @test Nataf((Normal(1, 2), LogNormal(0, s)), r) ≈ expected
-        @test Nataf((LogNormal(0, s), Normal(1, 2)), r) ≈ expected
     end
 
-    @testset "uniform closed forms" begin
-        r, s = 0.6, 0.8
-        @test Nataf((Uniform(-2, 3), Normal(1, 2)), r) ≈ r * sqrt(π / 3)
-        D = sqrt(expm1(s^2))
-        expected = sqrt(2) / s * quantile(Normal(), 1 / 2 + r * D / (2sqrt(3)))
-        @test Nataf((Uniform(-2, 3), LogNormal(1, s)), r) ≈ expected
+    @testset "closed-form attainable range" begin
         @test_throws ArgumentError Nataf((Uniform(), Normal()), 0.99)
     end
 

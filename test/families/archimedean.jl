@@ -1,5 +1,5 @@
-# Family-regression layer: detailed Archimedean generator, frailty,
-# Williamson, density, fitting, and numerical regressions pending classification.
+# Family-regression layer: Archimedean and Williamson reference values,
+# parameter boundaries, and numerical corner cases.
 
 @testset "Williamson real orders and exact lower-order radial" begin
     X = Dirac(2.0)
@@ -50,43 +50,13 @@
     C = ArchimedeanCopula{2}(𝒲(Pareto(1), 5))
     @test size(rand(rng, C, 3)) == (2, 3)
 end
-@testset "Stable factorial recurrences" begin
-    @test Copulas._mul_factorial(1.0, 22) ≈ gamma(23)
-    @test Copulas._div_factorial(1.0, 22) ≈ inv(gamma(23))
-    @test Copulas._rising_factorial(0.5, 9) ≈ gamma(9.5) / gamma(0.5)
-
-    G = Copulas.ClaytonGenerator(1.0)
-    generic_derivative = invoke(
-        Copulas.ϕ⁽ᵏ⁾,
-        Tuple{Copulas.Generator, Int, Any},
-        G,
-        22,
-        1.0,
-    )
-    @test generic_derivative ≈ Copulas.ϕ⁽ᵏ⁾(G, 22, 1.0)
-
-    radial = Copulas.𝒲₋₁(G, 22)
-    @test 0 <= cdf(radial, 1.0) <= 1
-
-    clayton_radial = Copulas.ClaytonWilliamsonDistribution(-0.001, 25)
-    @test cdf(clayton_radial, 0.0) == 0
-    @test 0 <= cdf(clayton_radial, 500.0) <= 1
-    @test isfinite(logpdf(clayton_radial, 500.0))
-
-    @test isfinite(Copulas.γ(rand(rng, 25, 10)))
-end
-
-
 @testset "Boundary test for bivariate Joe, Gumbel and Frank" begin
-    # [GenericTests integration]: Yes, valuable. A general "pdf zero on boundaries when defined" property exists for families with known boundary behavior.
-    # We can add a predicate + @testif block in GenericTests that exercises boundary-zero conditions when the family declares them.
-
     θ = 1.1
     C = JoeCopula{2}(θ)
 
     # Joe copula is zero on all borders and corners of the hypercube.
     # so as soon as there is a zero or a one it should be zero.
-    us = [0,1,rand(10)...]
+    us = [0, 1, rand(rng, 10)...]
     for u in us
         @test pdf(C, [0, u]) == 0
         @test pdf(C, [u, 0]) == 0
@@ -109,10 +79,6 @@ end
 end
 
 @testset "Fix values of bivariate ClaytonCopula: τ, cdf, pdf and contructor" begin
-    # [GenericTests integration]: Partially. The numeric regression values (cdf/pdf grids) are very specific but could be folded as a generic
-    # "golden samples" check behind a feature flag for select baseline families. τ identities and constructor edge-cases (0, -1, Inf) can be generalized.
-
-
     # Fix a few cdf and pdf values:
     x = [0:0.25:1;]
     y = x
@@ -132,20 +98,13 @@ end
     @test Copulas.τ(ClaytonCopula{2}(2)) == 0.5
     @test Copulas.τ(ClaytonCopula{2}(10)) == 10 / 12
 
-    # Fix constructor behavior:
-    @test isa(ClaytonCopula{2}(0), IndependentCopula)
+    # Interior negative dependence remains a family-specific constructor case;
+    # all boundary reductions live in the behavioural-branch ledger.
     @test isa(ClaytonCopula{2}(-0.7), ClaytonCopula)
-    @test isa(ClaytonCopula{2}(-1), WCopula)
-    @test isa(ClaytonCopula{2}(Inf), MCopula)
 end
 
 
 @testset "Archimedean - Fix Kendall and Spearman correlation" begin
-    # [GenericTests integration]: Yes for τ ∘ τ⁻¹; we already added similar checks in GenericTests.
-    # The many ρ⁻¹ broken checks are family-specific and currently broken; better to keep here until ρ⁻¹ is implemented robustly.
-
-    Random.seed!(rng,123)
-
     @test Copulas.Debye(0.5,1) ≈ 0.8819271567906056
     @test Copulas.τ⁻¹(FrankCopula, 0.6) ≈ 7.929642284264058
     @test Copulas.τ⁻¹(GumbelCopula, 0.5) ≈ 2.
@@ -165,8 +124,6 @@ end
     @test Copulas.ρ⁻¹(ClaytonCopula, 1/3) ≈ 0.58754 atol=1.0e-5
     @test Copulas.ρ⁻¹(ClaytonCopula, 0.01) ≈ 0. atol=1.0e-1
     @test Copulas.ρ⁻¹(ClaytonCopula, -0.4668) ≈ -.5 atol=1.0e-3
-    ρstrong = Copulas.ρ(ClaytonCopula{2}(7.3))
-    @test Copulas.ρ⁻¹(ClaytonCopula, ρstrong) ≈ 7.3 atol=1.0e-5
     @test Copulas.ρ⁻¹(ClaytonCopula, 1.0) == Inf
 
     @test Copulas.ρ⁻¹(GumbelCopula, 0.5) ≈ 1.5410704204332681

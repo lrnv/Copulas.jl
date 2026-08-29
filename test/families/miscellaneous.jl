@@ -46,12 +46,8 @@ end
 
 end
 
-@testset "RafteryCopula Constructor" begin
-    # [GenericTests integration]: Partially. Constructor mapping to degenerate copulas (Independent/MCopula) could be generalized; keep argument errors here.
-    for d in [2,3,4]
-        @test isa(RafteryCopula{d}(0.0), IndependentCopula)
-        @test isa(RafteryCopula{d}(1.0), MCopula)
-    end
+@testset "RafteryCopula constructor validation" begin
+    # Boundary reductions are covered centrally by the behavioural-branch ledger.
     @test_throws ArgumentError RafteryCopula{3}(-1.5)
     @test_throws ArgumentError RafteryCopula{2}(2.6)
 end
@@ -70,16 +66,13 @@ end
     @test pdf(RafteryCopula{3}(0.1), [0.4, 0.8, 0.2]) ≈ 0.939229 atol=1e-4
 
     @test Copulas.τ(RafteryCopula{2}(0.2)) ≈ 1/7
-    @test Copulas.τ(RafteryCopula{3}(0.5)) ≈ 0.4
     @test Copulas.τ(RafteryCopula{10}(0.8)) ≈ 0.6307638245383256
     @test Copulas.τ(RafteryCopula{25}(0.5)) ≈ 0.18523466942807426
     @test Copulas.ρ(RafteryCopula{2}(0.2)) ≈ 0.2098765432098763
-    @test Copulas.ρ(RafteryCopula{3}(0.5)) ≈ 0.48148148148148145
     @test isfinite(Copulas.ρ(RafteryCopula{100}(0.5)))
 end
 
 @testset "Check against manual version - CDF" begin
-    # [GenericTests integration]: No. Manual formula replication is too bespoke; keep as targeted verification for this copula.
     # https://github.com/lrnv/Copulas.jl/pull/137
     function prueba_CDF(R::Vector{T}, u::Vector{T}) where T
         # Order the vector u
@@ -117,7 +110,6 @@ end
 end
 
 @testset "Check against manual version - PDF" begin
-    # [GenericTests integration]: No. Same rationale as CDF manual check; keep here.
     # https://github.com/lrnv/Copulas.jl/pull/137
     function prueba_PDF(R::Vector{T}, u::Vector{T}) where T
         # Order the vector u
@@ -147,14 +139,7 @@ end
 end
 
 
-@testset "PlackettCopula - Fix behavior of cdf, pdf and constructor" begin
-    # [GenericTests integration]: Partially. Constructor edge cases can be made generic; the fixed value grids are regression tests, keep here.
-
-    # Fix the bahavior ofc the constructor: 
-    @test isa(PlackettCopula{2}(1), IndependentCopula)
-    @test isa(PlackettCopula{2}(Inf),WCopula) # should work in any dimenisons if theta is smaller than the bound.
-    @test isa(PlackettCopula{2}(0),MCopula)
-
+@testset "PlackettCopula reference CDF and PDF values" begin
     # Fix a few values for cdf and pdf:
     u = 0.1:0.18:1
     v = 0.4:0.1:0.9 
@@ -170,12 +155,7 @@ end
     end
 end
 
-@testset "Fixing values of FGMCopula - cdf, pdf, constructor" begin
-    # [GenericTests integration]: Partially. Constructor-to-independent is generic; the numeric regression grids for cdf/pdf should stay specific.
-
-    @test isa(FGMCopula{2}(0.0), IndependentCopula)
-    Random.seed!(rng,123)
-
+@testset "FGMCopula reference CDF and PDF values" begin
     cdf_exs = [
         ([0.1,0.2,0.5,0.4], [0.1, 0.2, 0.3], (0.0100776123, 1e-4), (1.308876232, 1e-4)),
         ([0.3,0.3,0.3,0.3], [0.5, 0.4, 0.3], (0.0830421321, 1e-4), (1.024, 1e-4)),

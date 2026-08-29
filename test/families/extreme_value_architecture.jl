@@ -3,40 +3,7 @@
 using Random
 
 @testset "Extreme-value architecture" begin
-    @testset "canonical dimension constructors" begin
-        # Integer-valued parameters remain parameters once d is encoded.
-        @test Distributions.params(LogCopula{2}(2)).θ == 2.0
-        @test Distributions.params(MixedCopula{2}(1)).θ == 1.0
-        @test Distributions.params(HuslerReissCopula{2}(1)).θ == 1.0
-        @test Distributions.params(tEVCopula{2}(4, 0.2)).ν == 4
-
-        Cint = LogCopula{2}(2)
-        @test Distributions.params(typeof(Cint)(2)).θ == 2.0
-        @test Distributions.params(LogCopula(2, 2)).θ == 2.0
-
-        # Scalar-parameter families no longer infer an implicit d=2.
-        @test_throws MethodError GalambosCopula(2.3)
-        @test_throws MethodError MixedCopula(0.5)
-
-        @test Copulas.AsymLogTail(1.0, 0.4, 0.6) isa Copulas.NoTail
-        @test Copulas.AsymLogTail(1.5, 0.0, 0.6) isa Copulas.NoTail
-        @test Copulas.AsymLogTail(1.5, 1.0, 1.0) isa Copulas.LogTail
-
-        @test_throws ArgumentError AsymLogCopula(3, 1.5, 0.4, 0.6)
-        @test_throws ArgumentError Copulas.ExtremeValueCopula(
-            1,
-            Copulas.GalambosTail(0.7),
-        )
-
-        Cind = LogCopula{3}(1.0)
-        Cdep = LogCopula{3}(Inf)
-        @test length(Cind) == 3
-        @test length(Cdep) == 3
-        @test cdf(Cind, fill(0.5, 3)) ≈ 0.5^3
-        @test cdf(Cdep, fill(0.5, 3)) ≈ 0.5
-    end
-
-    @testset "parameter-structured constructors" begin
+    @testset "equivalent structured representations" begin
         Γ = [0.0 1.0 1.0; 1.0 0.0 1.0; 1.0 1.0 0.0]
         Chr_typed = HuslerReissCopula{3}(Γ)
         @test Chr_typed.tail isa Copulas.HuslerReissTail{<:AbstractMatrix}
@@ -77,8 +44,6 @@ using Random
         @test rand(Random.Xoshiro(4102), Ctev2, 16) ==
               rand(Random.Xoshiro(4102), Ctev2scalar, 16)
 
-        weights = [0.6, 0.7, 0.8]
-
         asy = [[0.4], [0.3], [0.6, 0.7]]
         dep_tawn = [2.0]
         @test TawnCopula{2}(dep_tawn, asy).tail isa Copulas.TawnTail
@@ -91,27 +56,6 @@ using Random
         Cagref = AsymGalambosCopula{2}(0.7, 0.6, 0.7)
         @test cdf(Cag2, [0.4, 0.7]) ≈ cdf(Cagref, [0.4, 0.7])
 
-        a = [0.2, 0.5, 0.8]
-        λ = ones(7)
-
-        Uemp = [
-            0.20 0.40 0.70
-            0.30 0.60 0.80
-            0.25 0.55 0.75
-        ]
-        @test_throws ArgumentError HuslerReissCopula{4}(Γ)
-        @test_throws ArgumentError HuslerReissCopula(4, Γ)
-        @test_throws ArgumentError tEVCopula{4}(4.0, R)
-        @test_throws ArgumentError tEVCopula(4, 4.0, R)
-        @test_throws ArgumentError TawnCopula{4}(2.0, weights)
-        @test_throws ArgumentError AsymGalambosCopula{4}(0.7, weights)
-        @test_throws ArgumentError BC2Copula{4}(a)
-        @test_throws ArgumentError MOCopula{4}(λ)
-        @test_throws DimensionMismatch EmpiricalEVCopula{4}(
-            Uemp;
-            degree=1,
-        )
-        @test_throws ArgumentError MOCopula(ones(5))
     end
 
     @testset "multivariate EV generic conditioning and Rosenblatt" begin
@@ -144,23 +88,6 @@ using Random
             @test inverse_rosenblatt(C, s) ≈ u atol=2e-7 rtol=2e-7
         end
 
-    end
-
-    @testset "bivariate density specialization" begin
-        u = [0.31, 0.67]
-        x, y = -log.(u)
-
-        for C in (
-            GalambosCopula(2, 0.7),
-            HuslerReissCopula(2, 1.0),
-            MixedCopula(2, 0.5),
-            tEVCopula(2, 4.0, 0.5),
-        )
-            val, du, dv, dudv = Copulas._biv_der_ℓ(C.tail, (x, y))
-            core = -dudv + du * dv
-            expected = -val + log(core) + x + y
-            @test logpdf(C, u) == expected
-        end
     end
 
     @testset "strong logistic density" begin
@@ -405,6 +332,10 @@ end
         @test sgn == 1
         @test isfinite(logabs)
         @test logabs ≈ -1515.8850568704655 atol=2e-8 rtol=2e-10
+
+        # Bivariate sampler overflow regressions at the same extreme scale.
+        @test all(isfinite, rand(rng, GalambosCopula{2}(19.7)))
+        @test all(isfinite, rand(rng, GalambosCopula{2}(210.0)))
     end
 
     @testset "Multivariate Galambos EV sampling" begin
@@ -678,11 +609,6 @@ end
     end
 
     @testset "symmetric logistic reduction" begin
-        @test Copulas.TawnTail(2, [2.0], [[0.0], [0.0], [1.0, 1.0]]) isa
-              Copulas.LogTail
-        @test Copulas.TawnTail(2, [2.0], [[1.0], [1.0], [0.0, 0.0]]) isa
-              Copulas.NoTail
-
         for d in (3, 4), α in (1.2, 2.5)
             Ctawn = Copulas.ExtremeValueCopula(
                 d,
@@ -794,11 +720,6 @@ end
     end
 
     @testset "symmetric Galambos reduction" begin
-        @test Copulas.AsymGalambosTail(2, [0.7], [[0.0], [0.0], [1.0, 1.0]]) isa
-              Copulas.GalambosTail
-        @test Copulas.AsymGalambosTail(2, [0.7], [[1.0], [1.0], [0.0, 0.0]]) isa
-              Copulas.NoTail
-
         for d in (3, 4), α in (0.7, 1.7)
             Casym = Copulas.ExtremeValueCopula(
                 d,

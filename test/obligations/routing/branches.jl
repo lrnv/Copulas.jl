@@ -9,6 +9,8 @@ const BEHAVIOURAL_BRANCHES = (
     :generator_boundary_reductions, :misc_copula_boundary_reductions,
     :tail_boundary_reductions,
     :independent_scalar_condition, :independent_copula_condition,
+    :subsetting_full_permutation_generic,
+    :subsetting_full_permutation_elliptical,
     :husler_reiss_bivariate, :husler_reiss_multivariate,
     :tev_bivariate, :tev_multivariate,
     :tev_fitting_bivariate_bounds, :tev_fitting_multivariate_bounds,
@@ -104,8 +106,16 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
             (Copulas.AsymMixedTail(0.3, 0.0), Copulas.MixedTail),
             (Copulas.AsymGalambosTail(1.5, [0.0, 0.0]), Copulas.NoTail),
             (Copulas.AsymGalambosTail(1.5, [1.0, 1.0]), Copulas.GalambosTail),
+            (Copulas.AsymGalambosTail(2, [0.7],
+                [[1.0], [1.0], [0.0, 0.0]]), Copulas.NoTail),
+            (Copulas.AsymGalambosTail(2, [0.7],
+                [[0.0], [0.0], [1.0, 1.0]]), Copulas.GalambosTail),
             (Copulas.TawnTail(1.0, [0.4, 0.6]), Copulas.NoTail),
             (Copulas.TawnTail(1.5, [1.0, 1.0]), Copulas.LogTail),
+            (Copulas.TawnTail(2, [2.0],
+                [[1.0], [1.0], [0.0, 0.0]]), Copulas.NoTail),
+            (Copulas.TawnTail(2, [2.0],
+                [[0.0], [0.0], [1.0, 1.0]]), Copulas.LogTail),
         )
         for (value, expected) in tail_reductions
             @test value isa expected
@@ -118,6 +128,32 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test condition(IndependentCopula{3}(), 1, 0.4) isa IndependentCopula{2}
         prove_branches!(:independent_scalar_condition,
                         :independent_copula_condition)
+    end
+
+    @testset "full-coordinate subsetting permutations" begin
+        function permuted_point(perm, u)
+            v = similar(u)
+            for (i, j) in enumerate(perm)
+                v[j] = u[i]
+            end
+            return v
+        end
+
+        C = ClaytonCopula{3}(2.0)
+        perm = (2, 3, 1)
+        S = subsetdims(C, perm)
+        u = [0.31, 0.57, 0.79]
+        @test cdf(S, u) ≈ cdf(C, permuted_point(perm, u)) atol=1e-8
+        @test logpdf(S, u) ≈ logpdf(C, permuted_point(perm, u)) atol=1e-8
+        prove_branches!(:subsetting_full_permutation_generic)
+
+        Σ = [1.0 0.6 0.2; 0.6 1.0 0.5; 0.2 0.5 1.0]
+        G = GaussianCopula{3}(Σ)
+        permuted = subsetdims(G, perm)
+        @test permuted.Σ ≈ Σ[collect(perm), collect(perm)]
+        @test logpdf(permuted, u) ≈
+              logpdf(G, permuted_point(perm, u)) atol=1e-8
+        prove_branches!(:subsetting_full_permutation_elliptical)
     end
 
     @testset "elliptical EV representation by dimension" begin

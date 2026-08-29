@@ -54,6 +54,16 @@ end
     @test checked == selected
 end
 
+@testset "extreme-value MLE accepts boundary starts" begin
+    U = [0.10 0.25 0.40 0.55 0.70 0.85;
+         0.15 0.20 0.45 0.60 0.75 0.90]
+    for CT in (CuadrasAugeCopula, LogCopula)
+        fitted = fit(CT, U, :mle; start=1.0)
+        @test fitted isa Copulas.Copula
+        @test all(isfinite, params(fitted))
+    end
+end
+
 const _FITTING_PATH_MODELS = Tuple(fixture.copula for fixture in ROUTING_COPULA_FIXTURES)
 _has_fitting_parameters(C) =
     !(C isa Union{IndependentCopula,MCopula,WCopula}) && !isempty(params(C))
@@ -94,6 +104,10 @@ _check_parameter_roundtrip(C) =
             if method === :mle && case.kind === :continuous
                 fitted_ll = loglikelihood(fitted, U)
                 @test isfinite(fitted_ll)
+                source_ll = loglikelihood(C, U)
+                if isfinite(source_ll)
+                    @test fitted_ll >= source_ll - 1e-6
+                end
             end
         end
     end

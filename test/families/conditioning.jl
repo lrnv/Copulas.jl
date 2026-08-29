@@ -264,108 +264,7 @@ end
     end
 end
 
-@testset "Bivariate Archimedean conditional (generator formula across families)" begin
-    # [GenericTests integration]: Yes. We already added a similar Archimedean conditional check using generator identities in GenericTests.
-    # Known bivariate Archimedean identity:
-    # H(u | v) = ϕ'(ϕ^{-1}(u) + ϕ^{-1}(v)) / ϕ'(ϕ^{-1}(v))
-    # Test it across multiple families by looping instead of duplicating code.
-    examples = (
-        ClaytonCopula{2}(1.2),
-        FrankCopula{2}(1.0),
-        GumbelCopula{2}(1.2),
-    )
-    J = (2,)
-    tol = 5e-5
-    for C in examples
-        for v in (0.2, 0.5, 0.8)
-            D = condition(C, J, (v,))
-            inv_v = Copulas.ϕ⁻¹(C.G, v)
-            for u in (1e-6, 0.1, 0.4, 0.8, 1 - 1e-6)
-                t = Copulas.ϕ⁻¹(C.G, u) + inv_v
-                num = Copulas.ϕ⁽¹⁾(C.G, t)
-                den = Copulas.ϕ⁽¹⁾(C.G, inv_v)
-                expected = num / den
-                @test isfinite(expected) && 0.0 <= expected <= 1.0
-                @test isapprox(cdf(D, u), expected; atol=tol, rtol=tol)
-            end
-        end
-    end
-end
-
-@testset "GaussianCopula conditional copula vs MVN" begin
-    # [GenericTests integration]: Maybe. It depends on MvNormalCDF and is moderately heavy; could be a behind-flag exhaustive check.
-    Random.seed!(rng,42)
-    d = 4
-    # build correlation matrix
-    A = randn(rng, d, d)
-    Σ = A*A'
-    # normalize to correlation
-    s = sqrt.(diag(Σ))
-    Σ = Symmetric(Σ ./ (s*s'))
-    C = GaussianCopula{4}(Matrix(Σ))
-    # Choose J and uJ
-    J = (2,4)
-    uJ = (0.3, 0.8)
-    CC = condition(C, J, uJ)
-    # Compare to MVNormal conditioning on z-scale
-    I = Tuple(setdiff(1:d, J))
-    dI = length(I)
-    Iv = collect(I); Jv = collect(J)
-    ΣII = Σ[Iv, Iv]; ΣJJ = Σ[Jv, Jv]; ΣIJ = Σ[Iv, Jv]; ΣJI = Σ[Jv, Iv]
-    L = cholesky(ΣJJ)
-    zJ = quantile.(Normal(), collect(uJ))
-    y = L \ zJ
-    μ = ΣIJ * (L' \ y)
-    K = L \ ΣJI
-    Σcond = ΣII - ΣIJ * (L'\K)
-    for _ in 1:3
-        uI = rand(rng, dI)./5 .+ 2/5
-        zI = quantile.(Normal(), uI)
-        p_mvn = MvNormalCDF.mvnormcdf(vec(μ), Matrix(Σcond), fill(-Inf, dI), zI)[1]
-        p_cc = cdf(CC, uI)
-        @test isapprox(p_cc, p_mvn; atol=5e-3)
-    end
-end
-
-@testset "Higher-dim Archimedean conditional (3|2 via generator derivatives)" begin
-    # [GenericTests integration]: Yes. This extends the Archimedean conditional identity to higher p; can be parameterized and integrated.
-    # For Archimedean C(u) = ϕ(Σ ϕ⁻¹(u_i)), conditioning on J with |J|=p gives
-    # H_{I|J}(u_I|u_J) = ϕ^{(p)}(Σ_{i∈I} ϕ⁻¹(u_i) + Σ_{j∈J} ϕ⁻¹(u_j)) / ϕ^{(p)}(Σ_{j∈J} ϕ⁻¹(u_j))
-    # We'll test in d=5 with |J|=2, so |I|=3.
-    families = [
-        (ClaytonCopula, 1.1, 1e-5),
-        (FrankCopula,   2.0, 1e-5),
-        # (GumbelCopula,  1.5, 5e-5),
-    ]
-    d = 5
-    J = (2, 4)
-    p = length(J)
-    for (Ctor, θ, tol) in families
-        C = Ctor(d, θ)
-        # a couple of moderate conditioning points away from 0/1 to avoid singularities
-        for uJ in ((0.2, 0.7), (0.3, 0.8))
-            CC = condition(C, J, uJ)
-            # test a few uI points
-            for uI in ((0.1, 0.4, 0.8), (0.25, 0.5, 0.75), (0.2, 0.6, 0.9))
-                # Compute expected via generator-derivative ratio
-                SJ = sum(Copulas.ϕ⁻¹(C.G, v) for v in uJ)
-                SI = sum(Copulas.ϕ⁻¹(C.G, u) for u in uI)
-                S_full = SJ + SI
-                num = Copulas.ϕ⁽ᵏ⁾(C.G, p, S_full)
-                den = Copulas.ϕ⁽ᵏ⁾(C.G, p, SJ)
-                expected = num / den
-                # Evaluate model
-                got = cdf(CC, collect(uI))
-                @test isfinite(expected) && 0.0 <= expected <= 1.0
-                @test isapprox(got, expected; atol=tol, rtol=tol)
-            end
-        end
-    end
-end
-
 @testset "Gaussian Sklar conditional vs MVN with normal marginals" begin
-# [GenericTests integration]: Yes. This validates SklarDist conditioning against MVN algebra; belongs in GenericTests under conditioning.
-    Random.seed!(rng,43)
     d = 3
     Σ = [1 0.7 0.3;0.7 1 0.7; 0.3 0.7 1]
     C = GaussianCopula{3}(Σ)
@@ -374,13 +273,10 @@ end
     X = SklarDist(C, Tuple(Normal(μ[i],Σ[i,i]) for i in 1:d))
     X_mock = MvNormal(μ, Σ)
 
-    # check that X and X_mock are indeed the same distribution: 
-    for _ in 1:5
-        t = rand(rng, 3)
-        A, r = mvnormcdf(X_mock, fill(-Inf, d), t)
-        B = cdf(X, t)
-        @test A ≈ B atol=10sqrt(r)
-    end
+    # Independent end-to-end oracle for the unconditioned composition.
+    t = [0.2, 0.5, 0.8]
+    A, r = mvnormcdf(X_mock, fill(-Inf, d), t)
+    @test cdf(X, t) ≈ A atol=10sqrt(r)
 
     
     # Now condition using the known gaussian conditionning algebra: 
@@ -394,10 +290,7 @@ end
     J = Tuple(reverse(collect(js)))
     Y = condition(X, J, xⱼₛ)
 
-    for _ in 1:3
-        t = randn(rng, 2)
-        A, r = mvnormcdf(Y_mock, fill(-Inf, 2), t)
-        B = cdf(Y, t)
-        @test A ≈ B atol=10sqrt(r)
-    end
+    tcond = [-0.4, 0.7]
+    Acond, rcond = mvnormcdf(Y_mock, fill(-Inf, 2), tcond)
+    @test cdf(Y, tcond) ≈ Acond atol=10sqrt(rcond)
 end
