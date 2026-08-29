@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.shard }} - ${{ github.event_name }}
+    name: Julia ${{ matrix.version }} - ${{ github.event_name }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -39,10 +39,6 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
-        shard:
-          - contracts
-          - proofs
-          - regressions
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
@@ -53,16 +49,15 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         env:
-          COPULAS_TEST_TIMINGS: ${{ github.workspace }}/test-timings-${{ matrix.shard }}.toml
+          COPULAS_TEST_TIMINGS: ${{ github.workspace }}/test-timings.toml
         with:
           force_latest_compatible_version: ${{ matrix.version == '1.11' && 'false' || 'auto' }}
           coverage: ${{ matrix.version == '1.11' }}
-          test_args: ${{ matrix.shard }}
       - uses: actions/upload-artifact@v7
         if: always()
         with:
-          name: test-timings-julia-${{ matrix.version }}-${{ matrix.shard }}
-          path: test-timings-${{ matrix.shard }}.toml
+          name: test-timings-julia-${{ matrix.version }}
+          path: test-timings.toml
           if-no-files-found: warn
       - uses: julia-actions/julia-processcoverage@v1
         if: matrix.version == '1.11'
@@ -70,6 +65,5 @@ jobs:
         if: matrix.version == '1.11'
         with:
           files: lcov.info
-          flags: ${{ matrix.shard }}
-          name: julia-${{ matrix.version }}-${{ matrix.shard }}
+          name: julia-${{ matrix.version }}
           token: ${{ secrets.CODECOV_TOKEN }}

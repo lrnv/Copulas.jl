@@ -131,47 +131,9 @@ end
 timed_include("infrastructure/fixtures.jl", joinpath(@__DIR__, "fixtures.jl"))
 
 @testset verbose=true "Copulas.jl" begin
-    selection = isempty(ARGS) ? :all : Symbol(only(ARGS))
-
-    if selection === :equivalence
-        # Minimal dependency chain for the equivalence ledger: distortion
-        # fixtures and mathematical oracle types are defined by these files.
-        for (obligation, file) in (("contracts", "public_surface"),
-                                   ("contracts", "distortions"),
-                                   ("correctness", "tails"),
-                                   ("correctness", "mathematical"),
-                                   ("equivalence", "specializations"))
-            test_progress("targeted", obligation, file)
-            timed_include("$obligation/$file.jl",
-                joinpath(@__DIR__, "obligations", obligation, "$file.jl"))
-        end
-    elseif selection === :routing_fitting
-        test_progress("targeted", "routing", "fitting")
-        timed_include("routing/fitting.jl",
-            joinpath(@__DIR__, "obligations", "routing", "fitting.jl"))
-    elseif selection === :contracts
-        run_obligations((:contracts,))
-    elseif selection === :proofs
-        # The proof files consume the public-symbol and distortion registries.
-        # Loading these two small contract files keeps the shard self-contained;
-        # all other contract files remain exclusive to the contracts shard.
-        for file in ("public_surface", "distortions")
-            timed_include("contracts/$file.jl", joinpath(
-                @__DIR__, "obligations", "contracts", "$file.jl"))
-        end
-        run_obligations((:correctness, :equivalence, :routing))
-    elseif selection === :regressions
-        test_progress("Aqua.jl")
-        timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
-        run_family_regressions()
-        run_extension_regressions()
-    elseif selection === :all
-        test_progress("Aqua.jl")
-        timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
-        run_obligations(keys(obligation_testfiles))
-        run_family_regressions()
-        run_extension_regressions()
-    else
-        error("unknown test selection: $selection")
-    end
+    test_progress("Aqua.jl")
+    timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
+    run_obligations(keys(obligation_testfiles))
+    run_family_regressions()
+    run_extension_regressions()
 end
