@@ -9,8 +9,11 @@ using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
 const rng = StableRNG(123)
 const _TEST_RUN_STARTED = time()
 const _TEST_PROGRESS_LAST = Ref(_TEST_RUN_STARTED)
-const _TEST_TIMINGS = Dict{String,Float64}()
+const _TEST_TIMINGS = Dict{String,Any}()
 function test_progress(parts...)
+    # Logging must not generate a new method instance for every combination of
+    # family names, symbols, dimensions, and fitting methods passed by tests.
+    Base.@nospecialize parts
     now = time()
     @info "Test progress" path=join(string.(parts), " / ") elapsed=round(now - _TEST_PROGRESS_LAST[]; digits=2) total=round(now - _TEST_RUN_STARTED; digits=2)
     _TEST_PROGRESS_LAST[] = now
@@ -19,9 +22,19 @@ end
 function timed_include(label, path)
     started = time()
     try
-        return include(path)
+        timing = @timed include(path)
+        _TEST_TIMINGS[string(label)] = Dict(
+            "elapsed_seconds" => timing.time,
+            "compile_seconds" => timing.compile_time,
+            "recompile_seconds" => timing.recompile_time,
+        )
+        return timing.value
     finally
-        _TEST_TIMINGS[string(label)] = time() - started
+        get!(_TEST_TIMINGS, string(label), Dict(
+            "elapsed_seconds" => time() - started,
+            "compile_seconds" => -1.0,
+            "recompile_seconds" => -1.0,
+        ))
     end
 end
 

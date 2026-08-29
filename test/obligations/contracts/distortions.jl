@@ -24,6 +24,7 @@ const DISTORTION_CASES = (
 )
 
 function test_distortion_contract(D, kind)
+    Base.@nospecialize D
     @test D isa Distributions.UnivariateDistribution
     @test minimum(D) == 0
     @test maximum(D) == 1

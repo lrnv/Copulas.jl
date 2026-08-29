@@ -1,6 +1,8 @@
 # Routing obligation: discover every copula method selected by the public
 # fixtures and exercise one representative of each distinct dispatch route.
 function _exercise_dispatch_path(operation, C)
+    Base.@nospecialize operation
+    Base.@nospecialize C
     d = length(C)
     u = fill(0.6, d)
     if operation === :cdf

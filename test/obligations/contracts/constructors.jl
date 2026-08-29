@@ -17,6 +17,8 @@ end
 
 @testset "documented dimension-inferred constructors" begin
     function same_model(inferred, canonical)
+        Base.@nospecialize inferred
+        Base.@nospecialize canonical
         @test typeof(inferred) === typeof(canonical)
         @test params(inferred) == params(canonical)
     end

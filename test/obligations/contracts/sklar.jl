@@ -1,7 +1,11 @@
 # Public-API contract: checks SklarDist construction and the adopted
 # Distributions, conditioning, Rosenblatt, sampling, and matrix interfaces.
 @testset "SklarDist public contract" begin
-    C = GaussianCopula{2}(0.3)
+    # Use an analytic CDF here: this is an identity of the Sklar adapter, not
+    # a test of the numerical multivariate-normal integrator (covered in the
+    # elliptical tests). Calling the latter twice made this exact identity
+    # depend on integration noise across Julia versions.
+    C = ClaytonCopula{2}(1.0)
     D = SklarDist(C, (Normal(), Exponential()))
     x = [0.1, 1.2]
     @test length(D) == 2
@@ -9,7 +13,7 @@
     @test params(D) isa NamedTuple
     @test StatsBase.dof(D) == 4
     @test 0 <= cdf(D, x) <= 1
-    @test logcdf(D, x) ≈ log(cdf(D, x)) atol=2e-4
+    @test logcdf(D, x) ≈ log(cdf(D, x))
     @test pdf(D, x) >= 0
     @test logpdf(D, x) ≈ log(pdf(D, x))
     X = rand(StableRNG(31), D, 4)

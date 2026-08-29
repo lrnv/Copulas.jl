@@ -6,6 +6,7 @@ struct CopulaContractContext{TU,TM}
 end
 
 function copula_contract_context(C, seed)
+    Base.@nospecialize C
     d = length(C)
     u = collect(range(0.31, 0.69; length=d))
     U = rand(StableRNG(seed), C, 4)
@@ -13,6 +14,8 @@ function copula_contract_context(C, seed)
 end
 
 function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
+    Base.@nospecialize C
+    Base.@nospecialize ctx
     d = length(C)
     @test d >= 2
     @test eltype(C) <: Real
@@ -56,6 +59,8 @@ function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
 end
 
 function test_density_contract(C, ctx, kind)
+    Base.@nospecialize C
+    Base.@nospecialize ctx
     kind === :continuous || return
     p = pdf(C, ctx.u)
     lp = logpdf(C, ctx.u)
@@ -74,6 +79,8 @@ function test_density_contract(C, ctx, kind)
 end
 
 function test_subsetting_contract(C, ctx, numerical_atol)
+    Base.@nospecialize C
+    Base.@nospecialize ctx
     d = length(C)
     dims = d == 2 ? (2, 1) : (1, d)
     S = subsetdims(C, dims)
@@ -88,6 +95,8 @@ function test_subsetting_contract(C, ctx, numerical_atol)
 end
 
 function test_conditioning_contract(C, ctx, kind)
+    Base.@nospecialize C
+    Base.@nospecialize ctx
     d = length(C)
     if d == 2
         scalar = condition(C, 1, ctx.u[1])
@@ -133,6 +142,8 @@ function test_conditioning_contract(C, ctx, kind)
 end
 
 function test_rosenblatt_contract(C, ctx, invertible)
+    Base.@nospecialize C
+    Base.@nospecialize ctx
     R = rosenblatt(C, ctx.U)
     @test size(R) == size(ctx.U)
     @test all(x -> 0 <= x <= 1, R)
@@ -149,6 +160,7 @@ _dependence_dispatch_key(measure, C) =
     (which(measure, Tuple{typeof(C)}), length(C) == 2 ? :bivariate : :multivariate)
 
 function test_dependence_contract(C, kind)
+    Base.@nospecialize C
     # Distribution, density, sampling and subsetting primitives are exercised
     # above for every family.  The expensive generic measures only compose
     # those primitives, so the per-family API contract needs to guarantee that
@@ -164,6 +176,7 @@ function test_dependence_contract(C, kind)
 end
 
 function test_scalar_dependence_result(measure, C)
+    Base.@nospecialize C
     value = measure(C)
     @test value isa Real
     @test !isnan(value)
@@ -173,6 +186,7 @@ function test_scalar_dependence_result(measure, C)
 end
 
 function test_pairwise_dependence_result(measure, diagonal, C)
+    Base.@nospecialize C
     d = length(C)
     matrix = measure(C)
     @test size(matrix) == (d, d)
@@ -182,6 +196,8 @@ function test_pairwise_dependence_result(measure, diagonal, C)
 end
 
 function test_copula_contract(case, C, seed)
+    Base.@nospecialize case
+    Base.@nospecialize C
     ctx = copula_contract_context(C, seed)
     @testset "distribution" begin
         test_progress("contracts", "copulas", case.name, "distribution")

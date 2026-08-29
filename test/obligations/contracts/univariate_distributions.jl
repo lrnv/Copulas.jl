@@ -1,6 +1,7 @@
 # Contract obligation: checks radial and auxiliary univariate distributions
 # directly, including finite/infinite support and continuous/discrete paths.
 function test_continuous_univariate_contract(D; atol=2e-7)
+    Base.@nospecialize D
     lo, hi = minimum(D), maximum(D)
     @test lo <= hi
     @test cdf(D, lo) == 0
