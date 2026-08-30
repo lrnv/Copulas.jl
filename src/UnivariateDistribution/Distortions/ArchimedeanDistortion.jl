@@ -9,6 +9,9 @@ struct ArchimedeanDistortion{TG, T} <: Distortion
     ArchimedeanDistortion(G::TG, p::Int, sJ::T, den::T) where {T<:Real, TG} = new{TG, T}(G, p, sJ, den)
 end
 function Distributions.cdf(D::ArchimedeanDistortion{TG, T}, u::Real) where {TG, T}
+    R = float(promote_type(typeof(u), T))
+    u <= 0 && return zero(R)
+    u >= 1 && return one(R)
     return ϕ⁽ᵏ⁾(D.G, D.p, D.sJ + ϕ⁻¹(D.G, float(u))) / D.den
 end
 function Distributions.logcdf(D::ArchimedeanDistortion, u::Real)

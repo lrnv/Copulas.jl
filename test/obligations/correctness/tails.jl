@@ -92,7 +92,7 @@ end
                 # CDF error, especially in the mixed second derivative; use the
                 # larger finite-difference scale appropriate to that oracle.
                 h = tail isa Union{Copulas.HuslerReissTail,Copulas.tEVTail} ?
-                    1e-3 : 1e-5
+                    5e-3 : 1e-5
                 xplus, xminus = copy(x), copy(x)
                 xplus[1] += h
                 xminus[1] -= h

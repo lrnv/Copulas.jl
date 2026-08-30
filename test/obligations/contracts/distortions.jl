@@ -104,7 +104,9 @@ end
             end
         end
     end
-    @test length(types) == length(DISTORTION_CASES)
+    # Multiple entries may deliberately exercise value branches of the same
+    # concrete implementation (for example positive and negative parameters).
+    @test allunique(first.(DISTORTION_CASES))
     @test checked_routes == selected_routes
 
     # Every concrete univariate result reachable from public bivariate
