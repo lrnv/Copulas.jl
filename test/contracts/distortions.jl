@@ -1,6 +1,7 @@
 # Contract obligation: exercises the common univariate conditional API once
-# for every distortion implementation reached through the public `condition`
-# entry point. Family formulas remain in focused regression tests.
+# for every result reached through the public `condition` entry point. Most
+# results are `Distortion`s, but families may legitimately return another
+# `UnivariateDistribution`, such as BetaCopula's exact `MixtureModel`.
 @testset "bivariate scalar conditioning contract" begin
     C = GaussianCopula{2}(0.4)
     @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
@@ -14,7 +15,7 @@
     @test_throws ArgumentError condition(C, 1, 1.1)
 end
 
-const DISTORTION_CASES = (
+const CONDITIONAL_DISTRIBUTION_CASES = (
     ("identity", condition(IndependentCopula{2}(), 1, 0.4), :continuous),
     ("upper Frechet atom", condition(MCopula{2}(), 1, 0.4), :atomic),
     ("lower Frechet atom", condition(WCopula{2}(), 1, 0.4), :atomic),
@@ -36,6 +37,7 @@ const DISTORTION_CASES = (
     ("Plackett", condition(PlackettCopula{2}(2.0), 1, 0.4), :continuous),
     ("histogram", condition(CheckerboardCopula{2}(_FIXTURE_DATA; m=2), 1, 0.4), :continuous),
     ("Bernstein", condition(BernsteinCopula{2}(GaussianCopula{2}(0.3); m=3), 1, 0.4), :continuous),
+    ("beta mixture", condition(BetaCopula{2}(_FIXTURE_DATA), 1, 0.4), :continuous),
     ("generic", condition(RafteryCopula{2}(0.5), 1, 0.4), :continuous),
     ("Liouville", condition(LiouvilleCopula{2}(
         WilliamsonGenerator(Dirac(1.0), 3.0), (0.6, 1.1)), 1, 0.4), :continuous),
@@ -53,7 +55,16 @@ function test_distortion_contract(D, kind)
     @test cdf(D, 0.0) == 0
     @test cdf(D, 1.0) ≈ 1
     @test cdf(D, -0.2) == 0
-    @test cdf(D, 1.2) == 1
+    upper = cdf(D, 1.2)
+    if D isa Copulas.Distortion
+        @test upper == 1
+    else
+        # Distributions.MixtureModel may accumulate a few ulps above one when
+        # all component CDFs are numerically saturated. BetaCopula deliberately
+        # returns that native mixture, so require numerical rather than bitwise
+        # unity only for external univariate-distribution implementations.
+        @test upper ≈ 1
+    end
 
     # Two separated interior points prove monotonicity while avoiding repeated
     # numerical conditioning kernels for every concrete implementation.
@@ -89,16 +100,16 @@ function test_distortion_contract(D, kind)
     end
 end
 
-@testset "distortion implementations satisfy the conditional contract" begin
+@testset "conditional distributions satisfy the public contract" begin
     operations = (
         cdf=Distributions.cdf, logcdf=Distributions.logcdf,
         logpdf=Distributions.logpdf, quantile=Distributions.quantile,
     )
     selected_routes = Dict(name => Set(which(f, Tuple{typeof(D),Float64})
-        for (_, D, _) in DISTORTION_CASES)
+        for (_, D, _) in CONDITIONAL_DISTRIBUTION_CASES)
         for (name, f) in pairs(operations))
     checked_routes = Dict(name => Set{Method}() for name in keys(operations))
-    for (name, D, kind) in DISTORTION_CASES
+    for (name, D, kind) in CONDITIONAL_DISTRIBUTION_CASES
         @testset "$name ($(nameof(typeof(D))))" begin
             test_distortion_contract(D, kind)
             for (operation, f) in pairs(operations)
@@ -109,7 +120,7 @@ end
     end
     # Multiple entries may deliberately exercise value branches of the same
     # concrete implementation (for example positive and negative parameters).
-    @test allunique(first.(DISTORTION_CASES))
+    @test allunique(first.(CONDITIONAL_DISTRIBUTION_CASES))
     @test checked_routes == selected_routes
 
     # Every concrete univariate result reachable from public bivariate
@@ -118,7 +129,8 @@ end
     reachable = Set(nameof(typeof(condition(fixture.copula, 1, 0.4)))
                     for fixture in ROUTING_COPULA_FIXTURES
                     if length(fixture.copula) == 2)
-    represented = Set(nameof(typeof(D)) for (_, D, _) in DISTORTION_CASES)
+    represented = Set(nameof(typeof(D))
+                      for (_, D, _) in CONDITIONAL_DISTRIBUTION_CASES)
     @test reachable ⊆ represented
 end
 
