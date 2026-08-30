@@ -1,6 +1,5 @@
-# Focused conditioning regressions that inspect implementation state or
-# reproduce family-specific numerical bugs; shared identities live under the
-# contract and equivalence obligations.
+# Correctness obligation: conditioning regressions that inspect cached state
+# or reproduce numerical bugs not implied by the public contract.
 
 @testset "Extreme-value conditioning caches fixed transforms" begin
     DEV = condition(GalambosCopula{2}(2.5), (1,), (0.3,))

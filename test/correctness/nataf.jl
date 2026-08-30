@@ -1,19 +1,6 @@
-# Family-regression layer: exact and numerical Nataf-correction
-# identities and input-validation regressions.
+# Correctness obligation: exact, statistical, type-generic, and boundary
+# regressions for the public Nataf correction.
 @testset "Nataf correction" begin
-
-    @testset "zero targets stay exactly zero, structure is preserved" begin
-        R₀ = Nataf((LogNormal(0, 0.8), Gamma(2, 3)), [1.0 0.0; 0.0 1.0])
-        @test R₀ == [1.0 0.0; 0.0 1.0]
-        R₀ = Nataf((LogNormal(0, 0.8), Gamma(2, 3), Beta(2, 5)), [1.0 0.5 0.0; 0.5 1.0 -0.3; 0.0 -0.3 1.0])
-        @test LinearAlgebra.issymmetric(R₀)
-        @test all(LinearAlgebra.diag(R₀) .== 1)
-        @test R₀[1, 3] == 0
-    end
-
-    @testset "closed-form attainable range" begin
-        @test_throws ArgumentError Nataf((Uniform(), Normal()), 0.99)
-    end
 
     @testset "end-to-end: sampled Pearson correlation matches the target" begin
         m  = (LogNormal(0, 0.8), Gamma(1, 2), Beta(1, 2))
@@ -24,22 +11,6 @@
         # while the uncorrected copula misses the lognormal pair by far more:
         R̃ = Statistics.cor(rand(rng, SklarDist(GaussianCopula{length(m)}(R), m), 10^5)')
         @test abs(R̃[1, 2] - R[1, 2]) > 0.03
-    end
-
-    @testset "invalid inputs throw" begin
-        m = (LogNormal(0, 0.8), Gamma(2, 3))
-        @test_throws ArgumentError Nataf((Pareto(1.0), Normal()), 0.5)          # infinite mean
-        @test_throws ArgumentError Nataf((LogNormal(0, 2), LogNormal(0, 2)), -0.5) # unattainable target
-        @test_throws ArgumentError Nataf(m, [1.0 0.5; 0.4 1.0])                 # not symmetric
-        @test_throws ArgumentError Nataf(m, [0.9 0.5; 0.5 1.0])                 # bad diagonal
-        @test_throws ArgumentError Nataf(m, [1.0 0.5 0.1; 0.5 1.0 0.1; 0.1 0.1 1.0]) # size mismatch
-        # margins are validated even when their targets are all zero:
-        @test_throws ArgumentError Nataf((Pareto(1.0), Normal()), [1.0 0.0; 0.0 1.0])
-        # degenerate (Dirac) margins are rejected on the closed-form paths too:
-        @test_throws ArgumentError Nataf((Normal(0, 0), Normal()), 0.5)
-        @test_throws ArgumentError Nataf((LogNormal(0, 0), LogNormal(0, 1)), 0.3)
-        # a bare distribution instead of a collection gets a clean error:
-        @test_throws ArgumentError Nataf(Normal(), [1.0 0.5; 0.5 1.0])
     end
 
     @testset "type-generic: BigFloat inputs give BigFloat results" begin

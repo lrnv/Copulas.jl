@@ -1,8 +1,8 @@
 # Equivalence obligation: deterministic optimized implementations must agree
 # with a generic fallback or an independent mathematical oracle.
 # Multivariate Archimedean, EV, Liouville, nested, and Gaussian formulas are
-# covered by their defining identities in correctness/mathematical.jl and the
-# focused family regressions. Singular and mixed CDFs have no Lebesgue-density
+# covered by their defining identities in the correctness obligations.
+# Singular and mixed CDFs have no Lebesgue-density
 # fallback; their mass identities and sampler structure are checked there too.
 
 @testset "all documented Nataf dispatches have an oracle" begin
@@ -29,7 +29,7 @@
     end
 
     # The generic quadrature route is independently validated end to end in
-    # families/nataf.jl; here it is included in the dispatch inventory and its
+    # correctness/nataf.jl; here it is included in the dispatch inventory and its
     # pair symmetry is checked directly.
     Fᵢ, Fⱼ = Gamma(2.0, 1.0), Beta(2.0, 3.0)
     generic = Nataf((Fᵢ, Fⱼ), r; nodes=8)

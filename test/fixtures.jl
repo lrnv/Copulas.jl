@@ -15,7 +15,7 @@ const _FIXTURE_DATA3 = vcat(
 )
 
 # One ordinary interior point per public family is intentional. Numerical
-# limits and alternate algorithms belong to path and family regressions, not
+# limits and alternate algorithms belong to focused obligation tests, not
 # to the public contract matrix.
 const COPULA_CASES = (
     copula_case("AMH", () -> AMHCopula{2}(0.5)),

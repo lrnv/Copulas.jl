@@ -1,5 +1,5 @@
-# Family-regression layer: Archimedean and Williamson reference values,
-# parameter boundaries, and numerical corner cases.
+# Correctness obligation: independent Archimedean reference values, support
+# boundaries, and conditional numerical anchors.
 
 @testset "Boundary test for bivariate Joe, Gumbel and Frank" begin
     θ = 1.1

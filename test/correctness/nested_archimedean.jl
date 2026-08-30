@@ -33,6 +33,7 @@ import Copulas: NestedDistortion, subsetdims, condition, _censored_copula_logpdf
 struct ImplicitTestGenerator{G<:Generator} <: Generator
     inner::G
 end
+
 Distributions.params(G::ImplicitTestGenerator) = Distributions.params(G.inner)
 Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ(G::ImplicitTestGenerator, t) = ϕ(G.inner, t)
@@ -563,5 +564,17 @@ end
         @test Copulas._nested_coef(rebuilt)[2] ≈ [1.5, 2.0, 3.0]
         @test rebuilt.children[1].children[1][1].G isa GumbelGenerator
 
+    end
+end
+
+@testset "nested Archimedean boundary regressions" begin
+    C = NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
+        children=[ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)])
+    u = [0.3, 0.4, 0.6, 0.7]
+    @test cdf(C, [u[1], u[2], 1.0, 1.0]) ≈
+          cdf(ClaytonCopula{2}(5.0), u[1:2])
+    for point in ([0, 1, 1, 1], [u[1], 1.0, u[3], u[4]],
+                  [u[1], -0.1, u[3], u[4]], [u[1], NaN, u[3], u[4]])
+        @test logpdf(C, point) == -Inf
     end
 end

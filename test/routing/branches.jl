@@ -12,6 +12,7 @@ const BEHAVIOURAL_BRANCHES = (
     :independent_scalar_condition, :independent_copula_condition,
     :subsetting_full_permutation_generic,
     :subsetting_full_permutation_elliptical,
+    :survival_conditional_flip_remap,
     :husler_reiss_bivariate, :husler_reiss_multivariate,
     :tev_bivariate, :tev_multivariate,
     :tev_fitting_bivariate_bounds, :tev_fitting_multivariate_bounds,
@@ -164,6 +165,14 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test logpdf(permuted, u) ≈
               logpdf(G, permuted_point(perm, u)) atol=1e-8
         prove_branches!(:subsetting_full_permutation_elliptical)
+    end
+
+    @testset "Survival conditional flip remapping" begin
+        C = SurvivalCopula{4}(ClaytonCopula{4}(2.0), (2, 4))
+        conditioned = condition(C, (1, 3), (0.25, 0.75))
+        @test conditioned.C isa SurvivalCopula{2}
+        @test 0.0 <= cdf(conditioned, [0.4, 0.6]) <= 1.0
+        prove_branches!(:survival_conditional_flip_remap)
     end
 
     @testset "elliptical EV representation by dimension" begin

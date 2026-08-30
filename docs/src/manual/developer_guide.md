@@ -962,7 +962,7 @@ The source of truth for the SemVer-stable API has two parts:
    `Distributions`, `StatsBase`, and `Random`.
 
 The behavioural table on the [Public API](@ref) page defines what those methods
-promise. `test/obligations/contracts/public_surface.jl` independently fixes the
+promise. `test/contracts/public_surface.jl` independently fixes the
 complete public namespace in `PUBLIC_SYMBOLS`: changing a public declaration
 without updating the test therefore fails explicitly. Undocumented internal
 hooks, including underscore-prefixed methods, are implementation details and do
@@ -1000,21 +1000,20 @@ inventory, and representative distributional identities instead.
 
 The corresponding directories are:
 
-- `test/obligations/contracts/` for the public surface and per-family contracts;
-- `test/obligations/correctness/` for independent mathematical and statistical
+- `test/contracts/` for the public surface and per-family contracts;
+- `test/correctness/` for independent mathematical and statistical
   oracles;
-- `test/obligations/equivalence/` for optimized paths versus generic paths;
-- `test/obligations/routing/` for exhaustive method inventories;
-- `test/families/` for published values, boundary cases, singular atoms, and
-  regressions that cannot be deduced from the shared obligations;
+- `test/equivalence/` for optimized paths versus generic paths;
+- `test/routing/` for exhaustive method inventories;
 - `test/extensions/` for optional package-extension contracts and regressions.
 
 Classify a test by the statement it proves, not by the concrete model used to
 exercise it. In particular, an operation-wide conditioning comparison belongs
 under `equivalence/`, and a family architecture backed by independent formulas
-or external reference values belongs under `correctness/`. A file under
-`families/` must remain a genuinely irreducible family regression; it must not
-become an alternative contract or correctness suite for that family.
+or external reference values belongs under `correctness/`. Published family
+values, parameter boundaries, atom masses, reductions, and reproduced bugs are
+not a separate layer: classify each under the obligation established by its
+oracle.
 
 The fixtures and proof ledger shared by these layers live in
 `test/fixtures.jl`. This file defines infrastructure and contains no assertions,
@@ -1027,8 +1026,6 @@ Copulas.jl
 â”‚  â””â”€ <file>.jl
 â”‚     â””â”€ <behaviour or mechanism>
 â”‚        â””â”€ <family or dispatch representative>
-â”œâ”€ family regressions
-â”‚  â””â”€ <file>.jl
 â””â”€ extension regressions
    â””â”€ <file>.jl
 ```
@@ -1089,13 +1086,14 @@ After implementing and documenting `MyCopula`, update the tests in this order:
    fitting fixtures. The contract checks applicability and result shape; the
    routing layer executes every distinct estimator path.
 4. If the family introduces a new generic numerical mechanism, add one
-   independent oracle in `obligations/correctness/`. If it specializes an
+   independent oracle in `correctness/`. If it specializes an
    existing operation, compare the specialization with its fallback in
-   `obligations/equivalence/` and register the proven route only after that
+   `equivalence/` and register the proven route only after that
    comparison.
-5. Add a focused file or testset under `test/families/` only for genuinely
-   family-specific facts: published reference values, parameter boundaries,
-   atom masses, reductions to another family, or a reproduced regression.
+5. Classify family-specific facts by proof: published reference values and
+   reproduced numerical bugs belong under `correctness/`; optimized reductions
+   under `equivalence/`; value-dependent parameter boundaries under `routing/`;
+   and documented validation errors under `contracts/`.
 
 The public-family registry test verifies mechanically that every public subtype
 of `Copula` has a contract fixture and that every fixture represents a public

@@ -1,5 +1,5 @@
-# Family-regression layer: Liouville and real-order Williamson
-# identities, conditional paths, caches, and performance-sensitive regressions.
+# Correctness obligation: Liouville and real-order Williamson identities,
+# conditional paths, caches, and performance-sensitive regressions.
 @testset "Liouville copulas" begin
     @testset "real Williamson orders" begin
         G = Copulas.𝒲(Dirac(1.0), 5.5)

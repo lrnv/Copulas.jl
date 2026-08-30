@@ -54,30 +54,21 @@ atexit(write_test_timings)
 
 obligation_testfiles = (
     contracts = [
-        "public_surface", "constructors", "copulas", "fitting", "sklar",
-        "utilities", "distortions", "univariate_distributions",
-        "public_compositions",
+        "public_surface", "constructors", "constructor_validation",
+        "copulas", "fitting", "sklar", "utilities", "nataf", "distortions",
+        "univariate_distributions", "public_compositions",
     ],
     correctness = [
-        "generators", "tails", "measure_inverses", "mathematical",
-        "statistical", "numerical", "williamson", "extreme_value",
+        "generators", "archimedean", "tails", "elliptical",
+        "measure_inverses", "mathematical", "statistical", "numerical",
+        "williamson", "liouville", "conditioning", "nataf",
+        "bivariate_families", "extreme_value", "extreme_value_quantiles",
         "nested_archimedean", "fitting",
     ],
-    equivalence = ["specializations", "conditioning", "extreme_value",
-                   "nested_archimedean"],
+    equivalence = ["specializations", "conditioning", "survival",
+                   "extreme_value", "nested_archimedean"],
     routing = ["dispatch", "branches", "fitting"],
 )
-
-family_testfiles = [
-    "archimedean",
-    "conditioning",
-    "constructors",
-    "elliptical",
-    "liouville",
-    "miscellaneous",
-    "nataf",
-    "nested_archimedean",
-]
 
 extension_testfiles = (
     CopulasExpectationMaximizationExt="expectation_maximization",
@@ -92,18 +83,8 @@ function run_obligations(groups)
             @testset verbose=true "$f.jl" for f in files
                 test_progress("$obligation obligations", "$f.jl")
                 timed_include("$obligation/$f.jl", joinpath(
-                    @__DIR__, "obligations", string(obligation), "$f.jl"))
+                    @__DIR__, string(obligation), "$f.jl"))
             end
-        end
-    end
-end
-
-function run_family_regressions()
-    @testset verbose=true "family regressions" begin
-        @testset verbose=true "$f.jl" for f in family_testfiles
-            test_progress("family regressions", "$f.jl")
-            timed_include("families/$f.jl",
-                joinpath(@__DIR__, "families", "$f.jl"))
         end
     end
 end
@@ -131,6 +112,5 @@ timed_include("infrastructure/fixtures.jl", joinpath(@__DIR__, "fixtures.jl"))
     test_progress("Aqua.jl")
     timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
     run_obligations(keys(obligation_testfiles))
-    run_family_regressions()
     run_extension_regressions()
 end

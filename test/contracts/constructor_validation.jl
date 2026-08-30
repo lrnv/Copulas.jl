@@ -1,6 +1,5 @@
-# Family-regression layer: valid public constructor forms and reconstruction are
-# covered exhaustively by `obligations/contracts/constructors.jl`; only validation,
-# boundary-specialization, keyword, and numeric-parameter regressions remain.
+# Public-API contract: validation, boundary specialization, keyword forms, and
+# accepted numeric parameter types beyond the universal constructor inventory.
 
 @testset "constructor validation regressions" begin
     data = [0.1 0.4 0.8 0.6; 0.3 0.9 0.2 0.7]
