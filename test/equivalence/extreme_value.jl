@@ -18,8 +18,7 @@ end
         @test Copulas.ℓ(structured, x) ≈
               sum(x) * Copulas.A(historical, x[1] / sum(x)) atol=tol rtol=tol
         @test cdf(ExtremeValueCopula{2}(historical), [0.34, 0.76]) ≈
-              cdf(ExtremeValueCopula{2}(structured), [0.34, 0.76])
-              atol=tol rtol=tol
+              cdf(ExtremeValueCopula{2}(structured), [0.34, 0.76]) atol=tol rtol=tol
     end
     @test params(cases[1][1]) == (λ₁=0.30, λ₂=0.50, λ₃=0.70)
     @test params(cases[2][1]) == (a=0.30, b=0.70)

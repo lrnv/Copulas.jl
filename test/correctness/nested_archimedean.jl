@@ -171,7 +171,7 @@ end
     #    a single sector parameter; compared at Float64 tolerance.
     # -----------------------------------------------------------------------
     @testset "uncensored density vs external acopula reference" begin
-        datadir = joinpath(@__DIR__, "..", "..", "data", "nested")
+        datadir = joinpath(@__DIR__, "..", "data", "nested")
         for case in _ACOPULA_CASES
             # First, central, and last rows exercise the same external-oracle
             # identity without repeating the expensive BigFloat density route.
@@ -425,7 +425,7 @@ end
     #    Per-edge coverage already spans every family; two cases suffice here.
     # -----------------------------------------------------------------------
     @testset "implicit dispatch gives correct nested densities" begin
-        datadir = joinpath(@__DIR__, "..", "..", "data", "nested")
+        datadir = joinpath(@__DIR__, "..", "data", "nested")
         for case in (_ACOPULA_CASES[1], _ACOPULA_CASES[4])
             @test implicit_acopula_maxerr(datadir, case...) < 1e-9
         end

@@ -124,17 +124,8 @@ end
         r = C.ranks[i, idx]
         comps[idx] = Distributions.Beta(r, n + 1 - r)
     end
-    return BetaDistortion(Distributions.MixtureModel(comps, w))
+    return Distributions.MixtureModel(comps, w)
 end
-
-struct BetaDistortion{M} <: Distortion
-    mixture::M
-end
-Distributions.cdf(d::BetaDistortion, u::Real) = Distributions.cdf(d.mixture, u)
-Distributions.logcdf(d::BetaDistortion, u::Real) = Distributions.logcdf(d.mixture, u)
-Distributions.pdf(d::BetaDistortion, u::Real) = Distributions.pdf(d.mixture, u)
-Distributions.logpdf(d::BetaDistortion, u::Real) = Distributions.logpdf(d.mixture, u)
-Distributions.quantile(d::BetaDistortion, p::Real) = _unit_quantile(d, p)
 
 # Fitting collocated
 StatsBase.dof(::BetaCopula)         = 0
