@@ -10,6 +10,8 @@ struct Logarithmic{T<:Real} <: Distributions.DiscreteUnivariateDistribution
     Logarithmic{T}(h) where T = Logarithmic(T(h))
 end
 Base.eltype(::Logarithmic{T}) where T = T
+Base.minimum(::Logarithmic) = 1
+Base.maximum(::Logarithmic) = Inf
 function Distributions.logpdf(d::Logarithmic{T}, x::Real) where T
     Distributions.insupport(d, x) ?
         x*log1p(-d.α) - log(x) - log(-log(d.α)) : log(zero(T))

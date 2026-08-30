@@ -264,7 +264,7 @@ end
     # Repeated subsetting composes coordinate maps relative to the original.
     first_subset = Copulas.SubsetCopula(C, (3, 1, 2))
     second_subset = Copulas.SubsetCopula(first_subset, (2, 3))
-    @test second_subset.dims == (1, 2)
+    @test second_subset == subsetdims(C, (1, 2))
 end
 
 @testset verbose=true "one execution per dependence-measure dispatch" begin
