@@ -109,7 +109,12 @@ struct DistortionFromCop{TC,p,T}<:Distortion
         return new{typeof(C), p, T}(C, i, jst, NTuple{p,T}(uⱼₛt), T(den))
     end
 end
-Distributions.cdf(d::DistortionFromCop, u::Real) = _partial_cdf(d.C, (d.i,), d.js, (u,), d.uⱼₛ) / d.den
+function Distributions.cdf(d::DistortionFromCop, u::Real)
+    T = float(promote_type(typeof(u), typeof(d.den)))
+    u <= 0 && return zero(T)
+    u >= 1 && return one(T)
+    return _partial_cdf(d.C, (d.i,), d.js, (T(u),), d.uⱼₛ) / d.den
+end
 
 # Density on the uniform scale: f_{i|J}(u | u_J) = (∂^{p+1} C / ∂(J..., i))(u, u_J) / (∂^{p} C / ∂J)(1, u_J)
 function Distributions.logpdf(d::DistortionFromCop, u::Real)

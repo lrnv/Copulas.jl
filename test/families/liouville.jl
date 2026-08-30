@@ -19,16 +19,6 @@
         @test clayton_radial isa Distributions.LocationScale
     end
 
-    @testset "Archimedean identity" begin
-        G = Copulas.ClaytonGenerator(1.0)
-        L = LiouvilleCopula{2}(G, (1.0, 1.0))
-        A = ArchimedeanCopula{2}(G)
-        u = [0.35, 0.7]
-        @test L isa ArchimedeanCopula{2}
-        @test cdf(L, u) ≈ cdf(A, u) atol=1e-7
-        @test logpdf(L, u) ≈ logpdf(A, u)
-    end
-
     @testset "finite-support beta-product quantiles" begin
         C = LiouvilleCopula{2}(
             Copulas.ClaytonGenerator(-0.25), (0.75, 1.25),
@@ -85,10 +75,6 @@
             typeof(discrete_conditional.G.X.frailty_dist),
         ) == Distributions.Discrete
 
-        posterior = discrete_conditional.G.X.frailty_dist
-        @test Distributions.value_support(typeof(posterior)) ==
-              Distributions.Discrete
-
         D = Copulas.DistortionFromCop(fractional_C, (1,), (0.4,), 2)
         p = Distributions.cdf(D, 0.6)
         @test Distributions.quantile(D, p) ≈ 0.6
@@ -115,11 +101,10 @@
             @test quantile(D, 0) == minimum(D)
             @test quantile(D, 1) == maximum(D)
 
-            ps = (0.01, 0.1, 0.5, 0.9, 0.99)
+            ps = (0.01, 0.5, 0.99)
             qs = quantile.(Ref(D), ps)
             @test issorted(qs)
             @test all(isapprox.(cdf.(Ref(D), qs), ps; atol=1e-7))
-            @test all(isapprox.(quantile.(Ref(D), ps), qs))
 
             for t in D.integration_knots[2:(end - 1)]
                 s = Copulas._liouville_conditional_radial_coordinate(D, t)

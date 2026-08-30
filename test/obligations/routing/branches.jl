@@ -5,6 +5,7 @@
 const BEHAVIOURAL_BRANCHES = (
     :beta_bivariate, :beta_multivariate,
     :frank_negative_bivariate, :frank_positive_multivariate,
+    :clayton_negative_bivariate,
     :fgm_independence_boundary, :fgm_frechet_boundaries,
     :generator_boundary_reductions, :misc_copula_boundary_reductions,
     :tail_boundary_reductions,
@@ -15,7 +16,10 @@ const BEHAVIOURAL_BRANCHES = (
     :tev_bivariate, :tev_multivariate,
     :tev_fitting_bivariate_bounds, :tev_fitting_multivariate_bounds,
     :gumbel_barnett_dimension_bounds,
+    :galambos_inverse_boundaries,
     :distortion_quantile_parameter_regimes,
+    :liouville_archimedean_reduction,
+    :nested_singleton_subtree_collapse,
     :amh_frailty, :amh_generic_williamson,
     :frank_frailty, :frank_generic_williamson,
     :clayton_positive_real_order, :clayton_negative_integer_order,
@@ -44,6 +48,11 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test params(FrankCopula{3}(2.0)).θ == 2.0
         @test_throws AssertionError FrankCopula{3}(-2.0)
         prove_branches!(:frank_negative_bivariate, :frank_positive_multivariate)
+    end
+
+    @testset "Clayton negative bivariate domain" begin
+        @test ClaytonCopula{2}(-0.7) isa ClaytonCopula{2}
+        prove_branches!(:clayton_negative_bivariate)
     end
 
     @testset "FGM value-dependent reductions" begin
@@ -184,6 +193,15 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         prove_branches!(:gumbel_barnett_dimension_bounds)
     end
 
+    @testset "Galambos dependence-inverse boundaries" begin
+        @test Copulas.β⁻¹(GalambosCopula, -0.1) == 0.0
+        @test Copulas.β⁻¹(GalambosCopula, 0.0) == 0.0
+        @test Copulas.β⁻¹(GalambosCopula, 1.0) == Inf
+        @test Copulas.λᵤ⁻¹(GalambosCopula, 0.0) == 0.0
+        @test Copulas.λᵤ⁻¹(GalambosCopula, 1.0) == Inf
+        prove_branches!(:galambos_inverse_boundaries)
+    end
+
     @testset "parameter-dependent distortion quantile regimes" begin
         # `which` inventories one method per concrete distortion, but cannot
         # see value branches within that method.  Compare every such regime to
@@ -207,6 +225,28 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         end
         @test quantile(Copulas.PlackettDistortion(1.0, Int8(1), 0.4), 0.37) ≈ 0.37
         prove_branches!(:distortion_quantile_parameter_regimes)
+    end
+
+    @testset "Liouville all-one Dirichlet reduction" begin
+        G = Copulas.ClaytonGenerator(1.0)
+        reduced = LiouvilleCopula{2}(G, (1.0, 1.0))
+        native = ArchimedeanCopula{2}(G)
+        @test typeof(reduced) == typeof(native)
+        @test reduced.G === G
+        @test cdf(reduced, [0.35, 0.7]) == cdf(native, [0.35, 0.7])
+        prove_branches!(:liouville_archimedean_reduction)
+    end
+
+    @testset "nested singleton subtree collapse" begin
+        inner = NestedArchimedeanCopula(Copulas.GumbelGenerator(2.0);
+            leaves=[1], children=[GumbelCopula{2}(4.0)])
+        deep = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.5);
+            leaves=[1], children=[inner])
+        collapsed = subsetdims(deep, (1, 3))
+        native = ClaytonCopula{2}(1.5)
+        @test typeof(collapsed) == typeof(native)
+        @test cdf(collapsed, [0.4, 0.7]) == cdf(native, [0.4, 0.7])
+        prove_branches!(:nested_singleton_subtree_collapse)
     end
 
     @testset "extremal-t fitting bounds by dimension" begin

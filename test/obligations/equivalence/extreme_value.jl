@@ -5,6 +5,26 @@ function test_ev_equivalence(left, right, point; atol, rtol)
     @test logpdf(left, point) ≈ logpdf(right, point) atol=10atol rtol=10rtol
 end
 
+@testset "historical discrete-spectral parameterizations" begin
+    cases = (
+        (Copulas.MOTail(0.30, 0.50, 0.70),
+         Copulas.MOTail(2, [0.50, 0.30, 0.70]), 4e-14),
+        (Copulas.BC2Tail(0.30, 0.70), Copulas.BC2Tail([0.30, 0.70]), 3e-14),
+    )
+    for (historical, structured, tol) in cases
+        @test typeof(historical) == typeof(structured)
+        @test historical isa Copulas.DiscreteSpectralPickandsTail
+        x = [0.37, 1.29]
+        @test Copulas.ℓ(structured, x) ≈
+              sum(x) * Copulas.A(historical, x[1] / sum(x)) atol=tol rtol=tol
+        @test cdf(ExtremeValueCopula{2}(historical), [0.34, 0.76]) ≈
+              cdf(ExtremeValueCopula{2}(structured), [0.34, 0.76])
+              atol=tol rtol=tol
+    end
+    @test params(cases[1][1]) == (λ₁=0.30, λ₂=0.50, λ₃=0.70)
+    @test params(cases[2][1]) == (a=0.30, b=0.70)
+end
+
 @testset "equivalent extremal-t parameterizations" begin
     for (d, ν, ρ) in ((3, 1.3, 0.25), (4, 2.2, 0.4))
         R = fill(ρ, d, d)

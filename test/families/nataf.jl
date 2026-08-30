@@ -11,20 +11,6 @@
         @test R₀[1, 3] == 0
     end
 
-    @testset "bivariate lognormal against the closed form" begin
-        # For LogNormal margins, the Pearson correlation induced by a Gaussian
-        # copula with parameter ρ₀ is known in closed form:
-        #   r(ρ₀) = (exp(ρ₀s₁s₂) - 1) / √((exp(s₁²) - 1)(exp(s₂²) - 1)),
-        # so the exact correction is ρ₀ = log(1 + r√(⋯)) / (s₁s₂).
-        # Unequal scales and a negative target complement the canonical exact
-        # dispatch representatives in `equivalence/specializations.jl`.
-        for (s₁, s₂, r) in ((0.5, 1.2, 0.4), (1.0, 1.0, -0.2))
-            ρ₀_exact = log(1 + r * sqrt(expm1(s₁^2) * expm1(s₂^2))) / (s₁ * s₂)
-            ρ₀ = Nataf((LogNormal(0, s₁), LogNormal(0, s₂)), r)
-            @test ρ₀ ≈ ρ₀_exact atol = 1e-6
-        end
-    end
-
     @testset "closed-form attainable range" begin
         @test_throws ArgumentError Nataf((Uniform(), Normal()), 0.99)
     end

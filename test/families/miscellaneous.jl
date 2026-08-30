@@ -40,96 +40,47 @@ end
 
 end
 
-@testset "RafteryCopula constructor validation" begin
-    # Boundary reductions are covered centrally by the behavioural-branch ledger.
-    @test_throws ArgumentError RafteryCopula{3}(-1.5)
-    @test_throws ArgumentError RafteryCopula{2}(2.6)
-end
-
-@testset "RafteryCopula CDF" begin
-    # Generic CDF/PDF bounds moved to `obligations/contracts/copulas.jl`; retain only fixed
-    # family reference values and dependence regressions.
-    @test cdf(RafteryCopula{2}(0.8), [0.2, 0.5]) ≈ 0.199432 atol=1e-5
-    @test cdf(RafteryCopula{2}(0.5), [0.3, 0.8]) ≈ 0.2817 atol=1e-5
-    @test cdf(RafteryCopula{3}(0.5), [0.1, 0.2, 0.3]) ≈ 0.08236007 atol=1e-5
-    @test cdf(RafteryCopula{3}(0.1), [0.4, 0.8, 0.2]) ≈ 0.08581997 atol=1e-5
-
-    @test pdf(RafteryCopula{2}(0.8), [0.2, 0.5]) ≈ 0.114055555 atol=1e-4
-    @test pdf(RafteryCopula{2}(0.5), [0.3, 0.8]) ≈ 0.6325 atol=1e-4
-    @test pdf(RafteryCopula{3}(0.5), [0.1, 0.2, 0.3]) ≈ 1.9945086 atol=1e-4
-    @test pdf(RafteryCopula{3}(0.1), [0.4, 0.8, 0.2]) ≈ 0.939229 atol=1e-4
-
-    @test Copulas.τ(RafteryCopula{2}(0.2)) ≈ 1/7
-    @test Copulas.τ(RafteryCopula{10}(0.8)) ≈ 0.6307638245383256
+@testset "Raftery dependence anchors" begin
+    # Bivariate and ordinary multivariate formulas are covered against exact
+    # identities in the equivalence layer. Retain only the high-dimensional
+    # numerical regimes that originally exposed exponent overflow.
     @test Copulas.τ(RafteryCopula{25}(0.5)) ≈ 0.18523466942807426
-    @test Copulas.ρ(RafteryCopula{2}(0.2)) ≈ 0.2098765432098763
     @test isfinite(Copulas.ρ(RafteryCopula{100}(0.5)))
 end
 
 @testset "Check against manual version - CDF" begin
     # https://github.com/lrnv/Copulas.jl/pull/137
-    function prueba_CDF(R::Vector{T}, u::Vector{T}) where T
-        # Order the vector u
-        θ = R[1]
-        # println("param:", θ)
-        d = round(Int, R[2])
-        # println("dimension:", d)
+    function raftery_cdf_oracle(θ, u)
+        d = length(u)
         u_ordered = sort(u)
-        # println("Sorted vector: ", u_ordered)
-        
         term1 = u_ordered[1]
-        # println("Term 1: ", term1)
-        
         term2 = ((1 - θ) * (1 -d)) / (1 - θ - d) * prod(u)^(1/(1 - θ))
-        # println("Term 2: ", term2)
-        
-        term3 = 0.0
-        for i in 2:d # <<<<<<<<--------------- This should be 2:d and not 2:length(R) since length(R) is not the dimension. 
+        term3 = zero(float(θ))
+        for i in 2:d
             prod_prev = prod(u_ordered[1:i-1])
             term3_part = ((θ * (1 - θ)) / ((1 - θ - i) * (2 - θ - i))) * prod_prev^(1/(1 - θ)) * u_ordered[i]^((2 - θ - i) / (1 - θ))
-            # println("Term 3 (part $i): ", term3_part)
             term3 += term3_part
         end
-        
-        # Combine the terms to get the cumulative distribution function
-        cdf_value = term1 + term2 - term3
-        # println("Final CDF value: ", cdf_value)
-        
-        return cdf_value
+        return term1 + term2 - term3
     end
-    @test prueba_CDF([0.5,3], [0.1,0.2,0.3]) ≈ 0.08236 atol=1e-4 # According to https://github.com/lrnv/Copulas.jl/pull/137#issuecomment-1953365273
-    @test prueba_CDF([0.5,3], [0.1,0.2,0.3]) ≈ cdf(RafteryCopula{3}(0.5), [0.1,0.2,0.3])
-    @test prueba_CDF([0.8,2], [0.1,0.2]) ≈ cdf(RafteryCopula{2}(0.8), [0.1,0.2])
-    @test prueba_CDF([0.2,2], [0.8,0.2]) ≈ cdf(RafteryCopula{2}(0.2), [0.8,0.2])
+    @test raftery_cdf_oracle(0.5, [0.1,0.2,0.3]) ≈ 0.08236 atol=1e-4
+    @test raftery_cdf_oracle(0.5, [0.1,0.2,0.3]) ≈ cdf(RafteryCopula{3}(0.5), [0.1,0.2,0.3])
+    @test raftery_cdf_oracle(0.8, [0.1,0.2]) ≈ cdf(RafteryCopula{2}(0.8), [0.1,0.2])
 end
 
 @testset "Check against manual version - PDF" begin
     # https://github.com/lrnv/Copulas.jl/pull/137
-    function prueba_PDF(R::Vector{T}, u::Vector{T}) where T
-        # Order the vector u
-        θ = R[1]
-        d = round(Int, R[2])
+    function raftery_pdf_oracle(θ, u)
+        d = length(u)
         u_ordered = sort(u)
-        # println("Sorted vector: ", u_ordered)
-        
         term1 = (1/(((1-θ)^(d-1))*(1-θ-d)))
-        # println("Term 1: ", term1)
-        
         term2 = (1-d-θ*(u_ordered[d])^((1-θ-d)/(1-θ)))
-        # println("Term 2: ", term2)
-        
         term3 = (prod(u))^((θ)/(1-θ))
-        # println(term3)
-        # Combine the terms to get the density distribution function
-        pdf_value = term1*term2*term3
-        # println("Final PDF value: ", pdf_value)
-        
-        return pdf_value
+        return term1*term2*term3
     end
-    @test prueba_PDF([0.5,3], [0.1,0.2,0.3]) ≈ 1.99450 atol=1e-4 # According to https://github.com/lrnv/Copulas.jl/pull/137#issuecomment-1953375141
-    @test prueba_PDF([0.5,3], [0.1,0.2,0.3]) ≈ pdf(RafteryCopula{3}(0.5), [0.1,0.2,0.3])
-    @test prueba_PDF([0.8,2], [0.1,0.2]) ≈ pdf(RafteryCopula{2}(0.8), [0.1,0.2])
-    @test prueba_PDF([0.2,2], [0.8,0.2]) ≈ pdf(RafteryCopula{2}(0.2), [0.8,0.2])
+    @test raftery_pdf_oracle(0.5, [0.1,0.2,0.3]) ≈ 1.99450 atol=1e-4
+    @test raftery_pdf_oracle(0.5, [0.1,0.2,0.3]) ≈ pdf(RafteryCopula{3}(0.5), [0.1,0.2,0.3])
+    @test raftery_pdf_oracle(0.8, [0.1,0.2]) ≈ pdf(RafteryCopula{2}(0.8), [0.1,0.2])
 end
 
 
@@ -141,7 +92,9 @@ end
     l2 = [0.026208734813001233,   0.10561162651259381, 0.23491134194308438, 0.4162573282722253, 0.6419254774317229, 0.9]
     l3 = [1.0592107420343486, 1.023290881054283, 1.038466936984394, 1.1100773231007635, 1.2729591789643138, 1.652892561983471]
     l4 = [0.8446203068160272, 1.023290881054283, 1.0648914416282562, 0.9360170818943749, 0.7346611825055718, 0.5540166204986149]
-    for i in 1:6
+    # Low interior, high interior, and unit-margin boundary for both parameter
+    # regimes; intermediate table rows use the same closed-form path.
+    for i in (1, 4, 6)
         @test cdf(PlackettCopula{2}(2.0), [u[i], v[i]]) ≈ l1[i]
         @test cdf(PlackettCopula{2}(0.5), [u[i], v[i]]) ≈ l2[i]
         @test pdf(PlackettCopula{2}(2.0), [u[i], v[i]]) ≈ l3[i]

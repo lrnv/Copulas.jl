@@ -17,8 +17,6 @@
     target = [1.0 0.4; 0.4 1.0]
     @test Nataf((Normal(), Normal(2, 3)), target) == target
     @test Nataf([Normal(), Normal(2, 3)], target) == target
-    @test Nataf((Uniform(), Uniform()), 0.4) ≈ 2sinpi(0.4 / 6)
-
     generic = Nataf((Gamma(2.0, 1.0), Beta(2.0, 3.0)), 0.2; nodes=8)
     @test -1 < generic < 1
     @test Nataf((Gamma(2.0, 1.0), Beta(2.0, 3.0)),

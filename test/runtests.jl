@@ -61,7 +61,7 @@ obligation_testfiles = (
     correctness = [
         "generators", "tails", "measure_inverses", "mathematical",
         "statistical", "numerical", "williamson", "extreme_value",
-        "nested_archimedean",
+        "nested_archimedean", "fitting",
     ],
     equivalence = ["specializations", "conditioning", "extreme_value",
                    "nested_archimedean"],
@@ -76,6 +76,7 @@ family_testfiles = [
     "liouville",
     "miscellaneous",
     "nataf",
+    "nested_archimedean",
 ]
 
 extension_testfiles = (

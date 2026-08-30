@@ -91,14 +91,32 @@ end
                 # Student probabilities. A 1e-5 stencil amplifies the numerical
                 # CDF error, especially in the mixed second derivative; use the
                 # larger finite-difference scale appropriate to that oracle.
-                h = tail isa Union{Copulas.HuslerReissTail,Copulas.tEVTail} ?
-                    5e-3 : 1e-5
+                noisy_cdf = tail isa Union{Copulas.HuslerReissTail,Copulas.tEVTail}
+                h = noisy_cdf ? 5e-3 : 1e-5
                 xplus, xminus = copy(x), copy(x)
                 xplus[1] += h
                 xminus[1] -= h
-                finite_first = (Copulas.ℓ(tail, xplus) -
-                                Copulas.ℓ(tail, xminus)) / (2h)
-                @test Copulas.ellpartial(tail, x, (1,)) ≈ finite_first atol=2e-4 rtol=2e-4
+                if noisy_cdf
+                    # Differentiating an approximate multivariate CDF amplifies
+                    # its stable numerical bias. Compare the unscaled increment
+                    # with the integral of the derivative instead.
+                    width = 0.05
+                    left, right = copy(x), copy(x)
+                    left[1] -= width
+                    right[1] += width
+                    integrated, _ = QuadGK.quadgk(x[1] - width, x[1] + width) do t
+                        point = copy(x)
+                        point[1] = t
+                        Copulas.ellpartial(tail, point, (1,))
+                    end
+                    @test Copulas.ℓ(tail, right) - Copulas.ℓ(tail, left) ≈
+                          integrated atol=3e-5 rtol=2e-4
+                else
+                    finite_first = (Copulas.ℓ(tail, xplus) -
+                                    Copulas.ℓ(tail, xminus)) / (2h)
+                    @test Copulas.ellpartial(tail, x, (1,)) ≈
+                          finite_first atol=2e-4 rtol=2e-4
+                end
 
                 if d > 1
                     xpp, xpm, xmp, xmm = copy(x), copy(x), copy(x), copy(x)

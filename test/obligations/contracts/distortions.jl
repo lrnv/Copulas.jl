@@ -53,6 +53,8 @@ function test_distortion_contract(D, kind)
     @test maximum(D) == 1
     @test cdf(D, 0.0) == 0
     @test cdf(D, 1.0) ≈ 1
+    @test cdf(D, -0.2) == 0
+    @test cdf(D, 1.2) == 1
 
     # Two separated interior points prove monotonicity while avoiding repeated
     # numerical conditioning kernels for every concrete implementation.
@@ -76,6 +78,10 @@ function test_distortion_contract(D, kind)
     @test all(x -> 0 <= x <= 1, samples)
 
     kind === :continuous || return
+    @test pdf(D, -0.2) == 0
+    @test pdf(D, 1.2) == 0
+    @test logpdf(D, -0.2) == -Inf
+    @test logpdf(D, 1.2) == -Inf
     for u in grid
         density = pdf(D, u)
         @test density >= 0
@@ -85,7 +91,6 @@ function test_distortion_contract(D, kind)
 end
 
 @testset "distortion implementations satisfy the conditional contract" begin
-    types = Set{Any}()
     operations = (
         cdf=Distributions.cdf, logcdf=Distributions.logcdf,
         logpdf=Distributions.logpdf, quantile=Distributions.quantile,
@@ -97,7 +102,6 @@ end
     for (name, D, kind) in DISTORTION_CASES
         @testset "$name ($(nameof(typeof(D))))" begin
             test_distortion_contract(D, kind)
-            push!(types, typeof(D))
             for (operation, f) in pairs(operations)
                 push!(checked_routes[operation],
                       which(f, Tuple{typeof(D),Float64}))

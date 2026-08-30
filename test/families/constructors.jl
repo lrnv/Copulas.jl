@@ -11,9 +11,11 @@
         leaves=[1, 2], children=[ClaytonCopula{2}(2.0)])
     @test_throws ArgumentError AsymLogCopula(3, 1.5, 0.4, 0.6)
     @test_throws ArgumentError ExtremeValueCopula(1, Copulas.GalambosTail(0.7))
+    @test_throws ArgumentError RafteryCopula{3}(-1.5)
+    @test_throws ArgumentError RafteryCopula{2}(2.6)
 end
 
-@testset "nested Archimedean constructor and boundary regressions" begin
+@testset "nested Archimedean constructor regressions" begin
     G = Copulas.ClaytonGenerator(2.0)
     invalid = (
         (; leaves=[1, 1]),
@@ -37,16 +39,6 @@ end
         [ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)]) isa
         NestedArchimedeanCopula{4}
 
-    C = NestedArchimedeanCopula(G;
-        children=[ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)])
-    u = [0.3, 0.4, 0.6, 0.7]
-    @test cdf(C, [u[1], u[2], 1.0, 1.0]) ≈
-          cdf(ClaytonCopula{2}(5.0), u[1:2])
-    for point in ([0, 1, 1, 1], [u[1], 1.0, u[3], u[4]],
-                  [u[1], -0.1, u[3], u[4]], [u[1], Inf, u[3], u[4]],
-                  [u[1], NaN, u[3], u[4]])
-        @test logpdf(C, point) == -Inf
-    end
 end
 
 @testset "structured extreme-value dimension validation" begin

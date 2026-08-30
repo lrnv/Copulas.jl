@@ -27,6 +27,41 @@ const _GENERATOR_INVERSE_CASES = (
     Copulas.GumbelBarnettGenerator(0.5),
     Copulas.InvGaussianGenerator(0.5), Copulas.JoeGenerator(1.5),
 )
+
+@testset "dependence-measure numerical anchors and boundary regimes" begin
+    @test Copulas.Debye(0.5, 1) ≈ 0.8819271567906056
+    @test Copulas.τ⁻¹(FrankCopula, 0.6) ≈ 7.929642284264058
+    @test Copulas.τ⁻¹(GumbelCopula, 0.5) ≈ 2.0
+    @test Copulas.τ⁻¹(ClaytonCopula, 1 / 3) ≈ 1.0
+    @test Copulas.τ⁻¹(AMHCopula, 1 / 4) ≈ 0.8384520912688538
+    @test Copulas.τ⁻¹(AMHCopula, 0.0) ≈ 0.0
+    @test Copulas.τ⁻¹(AMHCopula, 1 / 3 + 0.0001) ≈ 1.0
+    @test Copulas.τ⁻¹(AMHCopula, -2 / 11) ≈ -1.0
+    @test Copulas.τ⁻¹(AMHCopula, -0.1505) ≈ -0.8 atol=1e-3
+    @test Copulas.τ⁻¹(FrankCopula, -0.3881) ≈ -4.0 atol=1e-3
+    @test Copulas.τ⁻¹(ClaytonCopula, -1 / 3) ≈ -0.5 atol=1e-5
+
+    @test Copulas.ρ⁻¹(ClaytonCopula, 1 / 3) ≈ 0.58754 atol=1e-5
+    @test Copulas.ρ⁻¹(ClaytonCopula, 0.01) ≈ 0.0 atol=1e-1
+    @test Copulas.ρ⁻¹(ClaytonCopula, -0.4668) ≈ -0.5 atol=1e-3
+    @test Copulas.ρ⁻¹(ClaytonCopula, 1.0) == Inf
+
+    @test Copulas.ρ⁻¹(GumbelCopula, 0.5) ≈ 1.5410704204332681
+    ρweak = 1e-4
+    θweak = Copulas.ρ⁻¹(GumbelCopula, ρweak)
+    @test 1 < θweak < 1.01
+    @test Copulas.ρ(GumbelCopula{2}(θweak)) ≈ ρweak atol=1e-7
+
+    @test Copulas.ρ⁻¹(FrankCopula, 1 / 3) ≈ 2.116497 atol=1e-5
+    @test Copulas.ρ⁻¹(FrankCopula, -0.5572) ≈ -4.0 atol=1e-3
+
+    @test Copulas.ρ⁻¹(AMHCopula, 0.2) ≈ 0.5168580913147318
+    @test Copulas.ρ⁻¹(AMHCopula, 0.0) ≈ 0.0 atol=1e-4
+    @test Copulas.ρ⁻¹(AMHCopula, 0.49) ≈ 1 atol=1e-4
+    @test Copulas.ρ⁻¹(AMHCopula, -0.273) ≈ -1 atol=1e-4
+    @test Copulas.ρ⁻¹(AMHCopula, -0.2246) ≈ -0.8 atol=1e-3
+end
+
 function _record_inverse_route!(inverse, argument_type)
     Base.@nospecialize inverse argument_type
     push!(_CHECKED_INVERSE_METHODS[inverse],

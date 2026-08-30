@@ -19,7 +19,10 @@ function StudentDistortion(μz::Real, σz::Real, ν::Integer, νp::Integer)
     )
 end
 function Distributions.cdf(d::StudentDistortion, u::Real)
-    z = Distributions.quantile(d.Tu, float(u))
+    T = float(promote_type(typeof(u), typeof(d.μz), typeof(d.σz)))
+    u <= 0 && return zero(T)
+    u >= 1 && return one(T)
+    z = Distributions.quantile(d.Tu, T(u))
     return Distributions.cdf(d.Tcond, (z - d.μz) / d.σz)
 end
 function Distributions.logcdf(d::StudentDistortion, u::Real)
@@ -35,6 +38,8 @@ function Distributions.quantile(d::StudentDistortion, α::Real)
 end
 ## Methods moved next to TCopula type
 function Distributions.logpdf(d::StudentDistortion, u::Real)
-    z = Distributions.quantile(d.Tu, float(u))
+    T = float(promote_type(typeof(u), typeof(d.μz), typeof(d.σz)))
+    0 < u < 1 || return T(-Inf)
+    z = Distributions.quantile(d.Tu, T(u))
     return Distributions.logpdf(d.Tcond, (z - d.μz) / d.σz) - log(abs(d.σz)) - Distributions.logpdf(d.Tu, z)
 end
