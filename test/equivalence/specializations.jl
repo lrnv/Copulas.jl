@@ -534,6 +534,7 @@ end
 end
 
 function _finite_conditional_cdf(C, js, values, target_index, target; h=2e-4)
+    Base.@nospecialize C js values
     d = length(C)
     function mixed_at(target_value)
         total = 0.0

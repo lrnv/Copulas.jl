@@ -156,8 +156,11 @@ end
 _dependence_is_defined(::typeof(Copulas.ι), kind) = kind === :continuous
 _dependence_is_defined(::typeof(Copulas.corentropy), kind) = kind === :continuous
 _dependence_is_defined(::Any, ::Any) = true
-_dependence_dispatch_key(measure, C) =
-    (which(measure, Tuple{typeof(C)}), length(C) == 2 ? :bivariate : :multivariate)
+function _dependence_dispatch_key(measure, C)
+    Base.@nospecialize measure C
+    return (which(measure, Tuple{typeof(C)}),
+            length(C) == 2 ? :bivariate : :multivariate)
+end
 
 function test_dependence_contract(C, kind)
     Base.@nospecialize C
@@ -176,7 +179,7 @@ function test_dependence_contract(C, kind)
 end
 
 function test_scalar_dependence_result(measure, C)
-    Base.@nospecialize C
+    Base.@nospecialize measure C
     value = measure(C)
     @test value isa Real
     @test !isnan(value)
@@ -186,7 +189,7 @@ function test_scalar_dependence_result(measure, C)
 end
 
 function test_pairwise_dependence_result(measure, diagonal, C)
-    Base.@nospecialize C
+    Base.@nospecialize measure diagonal C
     d = length(C)
     matrix = measure(C)
     @test size(matrix) == (d, d)

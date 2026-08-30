@@ -149,9 +149,13 @@ const PROVEN_DISPATCH_ROUTES = Dict{Symbol,Dict{Any,Set{Symbol}}}()
 const PROVEN_DEPENDENCE_ROUTES = Dict(
     measure => Set{Any}() for measure in SCALAR_DEPENDENCE_MEASURES)
 
-_which(f, args...) = which(f, Tuple{typeof.(args)...})
+function _which(f, args...)
+    Base.@nospecialize f args
+    return which(f, Tuple{typeof.(args)...})
+end
 
 function dispatch_path(operation, C, case)
+    Base.@nospecialize operation C case
     d = length(C)
     u = fill(0.6, d)
     if operation === :cdf
@@ -186,12 +190,14 @@ function dispatch_path(operation, C, case)
 end
 
 function dispatch_route_key(operation, C, case)
+    Base.@nospecialize operation C case
     method = dispatch_path(operation, C, case)
     isnothing(method) && return nothing
     return (method, length(C) == 2 ? :bivariate : :multivariate)
 end
 
 function prove_dispatch_route!(operation, C, case, source::Symbol)
+    Base.@nospecialize operation C case
     key = dispatch_route_key(operation, C, case)
     isnothing(key) && return nothing
     sources = get!(get!(PROVEN_DISPATCH_ROUTES, operation, Dict{Any,Set{Symbol}}()),
