@@ -436,8 +436,11 @@ function fitting_route_key(C, U, method)
                   which(Copulas._fit_copula,
                         Tuple{Type{CT},Int,typeof(bounded),typeof(C)}))
     end
-    return (Tuple(components), method, topology, bounds,
-            d == 2 ? :bivariate : :multivariate)
+    # `which` already distinguishes genuinely dimension-specific dispatches:
+    # adding the dimension itself would instead execute the same generic
+    # algorithm once per representation. Parameter topology and bounds retain
+    # the non-dispatch differences that affect generic reconstruction.
+    return (Tuple(components), method, topology, bounds)
 end
 function prove_fitting_route!(C, U, method)
     Base.@nospecialize C U method

@@ -86,13 +86,18 @@ _check_parameter_roundtrip(C) =
                       keys(bounded))
         end
 
-        U = rand(StableRNG(30_000 + index), C, 12)
+        # Route selection depends on the matrix type, not on sampled values.
+        # Delay sampling until an actually new route must be executed: this
+        # avoids running samplers merely to discover that the fitting route
+        # was already proven by the public contract.
+        route_data = fill(0.5, d, 2)
         for method in methods
-            route = fitting_route_key(C, U, method)
+            route = fitting_route_key(C, route_data, method)
             push!(selected_routes, route)
             route in PROVEN_FITTING_ROUTES && continue
             test_progress("routing fitting", case.name, method,
                           nameof(CT), d)
+            U = rand(StableRNG(30_000 + index), C, 12)
             # Routing only needs to exercise the empirical EV estimator. Its
             # high-resolution grid is validated in the fitting contract.
             route_kwargs = C isa EmpiricalEVCopula ?
