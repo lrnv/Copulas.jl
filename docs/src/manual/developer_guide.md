@@ -1006,6 +1006,9 @@ The corresponding directories are:
 - `test/equivalence/` for optimized paths versus generic paths;
 - `test/routing/` for exhaustive method inventories;
 - `test/extensions/` for optional package-extension contracts and regressions.
+  Extensions whose public behaviour is already exercised by executable
+  Documenter examples, such as `CopulasPlotsExt`, are inventoried by the test
+  runner but are not loaded again during `Pkg.test`.
 
 Classify a test by the statement it proves, not by the concrete model used to
 exercise it. In particular, an operation-wide conditioning comparison belongs

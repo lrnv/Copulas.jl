@@ -76,6 +76,8 @@ end
 
 @testset "extreme-value radial distribution" begin
     D = Copulas.ExtremeDist(Copulas.LogTail(2.0))
+    @test minimum(D) == 0
+    @test maximum(D) == 1
     test_continuous_univariate_contract(D; atol=2e-6)
 end
 
@@ -113,7 +115,12 @@ end
     end
 
     sibuya = Copulas.Sibuya(0.6)
+    @test minimum(sibuya) == 1
     @test cdf(sibuya, 0) == 0
     @test cdf(sibuya, 1) ≈ 0.6
     @test pdf(sibuya, 1) ≈ 0.6
+
+    logarithmic = Copulas.Logarithmic(-2.0)
+    @test isfinite(logpdf(logarithmic, 1))
+    @test logpdf(logarithmic, 0) == -Inf
 end

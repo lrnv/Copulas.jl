@@ -168,6 +168,9 @@ end
                    for tail in PICKANDS_CASES),
         :d²A => Set(which(Copulas.d²A, Tuple{typeof(tail),Float64})
                     for tail in PICKANDS_CASES),
+        :combined => Set(which(Copulas._A_dA_d²A,
+                               Tuple{typeof(tail),Float64})
+                         for tail in PICKANDS_CASES),
     )
     checked_routes = Dict(name => Set{Method}() for name in keys(selected_routes))
     for tail in PICKANDS_CASES
@@ -176,6 +179,10 @@ end
         for t in (0.2, 0.5, 0.8)
             a = Copulas.A(tail, t)
             @test max(t, 1 - t) <= a + 10eps(Float64) <= 1 + 10eps(Float64)
+            combined = Copulas._A_dA_d²A(tail, t)
+            @test combined[1] ≈ a
+            @test combined[2] ≈ Copulas.dA(tail, t)
+            @test combined[3] ≈ Copulas.d²A(tail, t)
             h = 1e-5
             finite_dA = (Copulas.A(tail, t + h) - Copulas.A(tail, t - h)) / (2h)
             finite_d²A = (Copulas.dA(tail, t + h) - Copulas.dA(tail, t - h)) / (2h)
@@ -189,6 +196,8 @@ end
         push!(checked_routes[:A], which(Copulas.A, Tuple{typeof(tail),Float64}))
         push!(checked_routes[:dA], which(Copulas.dA, Tuple{typeof(tail),Float64}))
         push!(checked_routes[:d²A], which(Copulas.d²A, Tuple{typeof(tail),Float64}))
+        push!(checked_routes[:combined],
+              which(Copulas._A_dA_d²A, Tuple{typeof(tail),Float64}))
     end
     @test checked_routes == selected_routes
 end

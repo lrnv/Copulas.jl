@@ -1,6 +1,8 @@
 # Correctness obligation: independent numerical regressions for internal
 # primitives shared by several public families.
 @testset "stable factorial recurrences" begin
+    @test Copulas._falling_factorial(19.0, 2) == 342.0
+    @test Copulas._falling_factorial(3.5, 2) == 8.75
     @test Copulas._mul_factorial(1.0, 22) ≈ gamma(23)
     @test Copulas._div_factorial(1.0, 22) ≈ inv(gamma(23))
     @test Copulas._rising_factorial(0.5, 9) ≈ gamma(9.5) / gamma(0.5)

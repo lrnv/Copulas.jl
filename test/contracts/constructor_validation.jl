@@ -38,6 +38,20 @@ end
         [ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)]) isa
         NestedArchimedeanCopula{4}
 
+    # Reconstruction accepts every representation stored or produced by the
+    # fitting machinery: stored tuples, explicit pairs, and nested children.
+    from_tuple = NestedArchimedeanCopula(
+        3, G, placed.leafdims, placed.children)
+    from_pair = NestedArchimedeanCopula(
+        3, G, [3], [ClaytonCopula{2}(5.0) => [1, 2]])
+    @test params(from_tuple) == params(from_pair) == params(placed)
+
+    nested_child = NestedArchimedeanCopula(Copulas.ClaytonGenerator(3.0);
+        leaves=[3], children=[ClaytonCopula{2}(5.0)])
+    from_nested = NestedArchimedeanCopula{3}(
+        Copulas.ClaytonGenerator(2.0), Int[], [nested_child])
+    @test from_nested.children[1] isa NestedArchimedeanCopula
+
 end
 
 @testset "structured extreme-value dimension validation" begin

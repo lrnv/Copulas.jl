@@ -79,7 +79,7 @@ const PUBLIC_BEHAVIOURS = (
      contracts=("public_compositions.jl",),
      proofs=("tails.jl", "mathematical.jl"), routes=("tails.jl",)),
     (name=:nataf,
-     operations=(:Nataf,), contracts=("utilities.jl",),
+     operations=(:Nataf,), contracts=("nataf.jl", "utilities.jl"),
      proofs=("specializations.jl",), routes=("specializations.jl",)),
     (name=:utilities,
      operations=(:pseudos,), contracts=("utilities.jl",),

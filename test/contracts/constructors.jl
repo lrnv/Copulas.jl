@@ -33,6 +33,8 @@ end
                CheckerboardCopula{2}(_FIXTURE_DATA; m=2))
     same_model(BernsteinCopula(IndependentCopula{2}(); m=2),
                BernsteinCopula{2}(IndependentCopula{2}(); m=2))
+    same_model(BernsteinCopula(2, _FIXTURE_DATA; m=2),
+               BernsteinCopula{2}(_FIXTURE_DATA; m=2))
     same_model(PlackettCopula(2.0), PlackettCopula{2}(2.0))
     same_model(WCopula(), WCopula{2}())
 
@@ -45,6 +47,8 @@ end
     base = ClaytonCopula{3}(1.5)
     same_model(SurvivalCopula(base, (1, 3)),
                SurvivalCopula{3}(base, (1, 3)))
+    survival = SurvivalCopula{2}(ClaytonCopula{2}(1.5), (1,))
+    same_model(typeof(survival)(1.5), survival)
 
     B = [0.7 0.3; 0.2 0.8]
     spectral = DiscreteSpectralTail(B)

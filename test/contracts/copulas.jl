@@ -5,6 +5,11 @@ struct CopulaContractContext{TU,TM}
     U::TM
 end
 
+# Deliberately omits the matrix sampler required from concrete copulas. It
+# exercises the generic developer-facing diagnostic without duplicating a
+# public operation implementation.
+struct MissingSamplerContractCopula <: Copulas.Copula{2} end
+
 function copula_contract_context(C, seed)
     Base.@nospecialize C
     d = length(C)
@@ -248,9 +253,18 @@ end
 @testset "collection adapters preserve the public semantics" begin
     C = ClaytonCopula{3}(1.5)
     u = [0.3, 0.5, 0.7]
+    @test Base.broadcastable(C)[] === C
     @test subsetdims(C, [3, 1]) == subsetdims(C, (3, 1))
     @test cdf(condition(C, [1], [u[1]]), u[2:3]) ≈
           cdf(condition(C, (1,), (u[1],)), u[2:3])
+
+    @test_throws ArgumentError rand!(
+        StableRNG(42), MissingSamplerContractCopula(), zeros(2, 1))
+
+    # Repeated subsetting composes coordinate maps relative to the original.
+    first_subset = Copulas.SubsetCopula(C, (3, 1, 2))
+    second_subset = Copulas.SubsetCopula(first_subset, (2, 3))
+    @test second_subset.dims == (1, 2)
 end
 
 @testset verbose=true "one execution per dependence-measure dispatch" begin

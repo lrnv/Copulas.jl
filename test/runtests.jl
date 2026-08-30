@@ -72,8 +72,8 @@ obligation_testfiles = (
 
 extension_testfiles = (
     CopulasExpectationMaximizationExt="expectation_maximization",
-    CopulasPlotsExt="plots",
 )
+const DOCUMENTED_EXTENSIONS = Set(("CopulasPlotsExt",))
 
 function run_obligations(groups)
     Base.@nospecialize groups
@@ -93,7 +93,8 @@ function run_extension_regressions()
     @testset verbose=true "extension regressions" begin
         declared = Set(keys(TOML.parsefile(
             joinpath(@__DIR__, "..", "Project.toml"))["extensions"]))
-        represented = Set(string.(keys(extension_testfiles)))
+        represented = union(Set(string.(keys(extension_testfiles))),
+                            DOCUMENTED_EXTENSIONS)
         @test declared == represented
         @testset verbose=true "$(extension) ($(getproperty(extension_testfiles, extension)).jl)" for extension in keys(extension_testfiles)
             f = getproperty(extension_testfiles, extension)
