@@ -427,6 +427,22 @@ function ϕ(G::𝒲, x::TaylorSeries.Taylor1{TF}) where {TF}
     return TaylorSeries.Taylor1(rez)
 end
 
+distortion_measure_style(D::ArchimedeanDistortion{<:WilliamsonGenerator}) =
+    archimedean_measure_style(D.G, Val(D.p + 1))
+function Distributions.quantile(
+    D::ArchimedeanDistortion{<:WilliamsonGenerator},
+    α::Real,
+)
+    distortion_measure_style(D) isa NonAbsolutelyContinuousMeasure &&
+        return _unit_quantile(D, α)
+    return invoke(
+        Distributions.quantile,
+        Tuple{ArchimedeanDistortion,Real},
+        D,
+        α,
+    )
+end
+
 # Exact inverse paths when the forward transform retains its radial law.
 function _williamson_inverse_preserved(G::𝒲, d::Real)
     isfinite(d) && d > 0 || throw(ArgumentError("the Williamson order must be finite and positive"))

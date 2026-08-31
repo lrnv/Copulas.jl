@@ -66,12 +66,8 @@ obligation_testfiles = (
            "public_compositions", "sklar", "utilities"],
     components = ["generators", "tails", "univariate_distributions"],
     operations = ["measure", "subsetting", "rosenblatt", "sampling",
-                  "dependence", "dependence_inverses", "dependence_specializations",
-                  "distribution", "distribution_specializations", "conditioning",
-                  "conditioning_distortions", "conditioning_equivalence",
-                  "conditioning_specializations", "fitting",
-                  "fitting_parameterizations", "fitting_routes",
-                  "nataf_contract", "nataf_correctness"],
+                  "dependence", "distribution",  "conditioning", "fitting",
+                  "fitting_parameterizations", "fitting_routes", "nataf"],
     routing = ["dispatch", "branches"],
 )
 
