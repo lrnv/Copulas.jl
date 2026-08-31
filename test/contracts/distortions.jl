@@ -15,37 +15,35 @@
     @test_throws ArgumentError condition(C, 1, 1.1)
 end
 
-const CONDITIONAL_DISTRIBUTION_CASES = (
-    ("identity", condition(IndependentCopula{2}(), 1, 0.4)),
-    ("upper Frechet atom", condition(MCopula{2}(), 1, 0.4)),
-    ("lower Frechet atom", condition(WCopula{2}(), 1, 0.4)),
-    ("Gaussian", condition(GaussianCopula{2}(0.4), 1, 0.4)),
-    ("Student", condition(TCopula{2}(4, [1.0 0.4; 0.4 1.0]), 1, 0.4)),
-    ("Clayton", condition(ClaytonCopula{2}(1.5), 1, 0.4)),
-    ("Frank positive", condition(FrankCopula{2}(2.0), 1, 0.4)),
+function conditional_distribution(fixture)
+    Base.@nospecialize fixture
+    C = fixture.copula
+    d = length(C)
+    js = Tuple(1:(d - 1))
+    values = ntuple(_ -> 0.4, d - 1)
+    return condition(C, js, values)
+end
+
+# Value branches that select different formulas without changing dispatch.
+const CONDITIONAL_BRANCH_CASES = (
     ("Frank negative", condition(FrankCopula{2}(-2.0), 1, 0.4)),
-    ("AMH positive", condition(AMHCopula{2}(0.5), 1, 0.4)),
     ("AMH negative", condition(AMHCopula{2}(-0.5), 1, 0.4)),
-    ("Gumbel", condition(GumbelCopula{2}(1.5), 1, 0.4)),
-    ("inverse Gaussian", condition(InvGaussianCopula{2}(0.5), 1, 0.4)),
-    ("BB9", condition(BB9Copula{2}(1.5, 0.8), 1, 0.4)),
-    ("extreme value", condition(GalambosCopula{2}(1.0), 1, 0.4)),
-    ("logistic extreme value", condition(LogCopula{2}(1.5), 1, 0.4)),
-    ("Gumbel--Barnett", condition(GumbelBarnettCopula{2}(0.5), 1, 0.4)),
-    ("Archimax", condition(BB4Copula{2}(1.0, 1.0), 1, 0.4)),
-    ("FGM", condition(FGMCopula{2}(0.5), 1, 0.4)),
-    ("Plackett", condition(PlackettCopula{2}(2.0), 1, 0.4)),
-    ("histogram", condition(CheckerboardCopula{2}(_FIXTURE_DATA; m=2), 1, 0.4)),
-    ("Bernstein", condition(BernsteinCopula{2}(GaussianCopula{2}(0.3); m=3), 1, 0.4)),
-    ("beta mixture", condition(BetaCopula{2}(_FIXTURE_DATA), 1, 0.4)),
-    ("generic", condition(RafteryCopula{2}(0.5), 1, 0.4)),
-    ("Liouville", condition(LiouvilleCopula{2}(
-        WilliamsonGenerator(Dirac(1.0), 3.0), (0.6, 1.1)), 1, 0.4)),
-    ("nested Archimedean", condition(NestedArchimedeanCopula{4}(
-        Copulas.ClaytonGenerator(1.0); leaves=[1, 2],
-        children=[ClaytonCopula{2}(2.0)]), (1, 2, 3), (0.3, 0.4, 0.5))),
-    ("survival flip", condition(SurvivalCopula{2}(ClaytonCopula{2}(1.5), (2,)), 1, 0.4)),
 )
+
+conditional_route_key(D) = Tuple(which(f, Tuple{typeof(D),Float64}) for f in (
+    Distributions.cdf, Distributions.logcdf, Distributions.logpdf,
+    Distributions.quantile,
+))
+
+const CONDITIONAL_DISTRIBUTION_CANDIDATES = (
+    ((fixture.case.name, conditional_distribution(fixture))
+     for fixture in ROUTING_COPULA_FIXTURES)...,
+    CONDITIONAL_BRANCH_CASES...,
+)
+const CONDITIONAL_DISTRIBUTION_CASES = Tuple(unique(
+    case -> conditional_route_key(last(case)),
+    CONDITIONAL_DISTRIBUTION_CANDIDATES,
+))
 
 conditional_measure_style(D::Copulas.Distortion) =
     Copulas.distortion_measure_style(D)
@@ -128,15 +126,13 @@ end
     @test allunique(first.(CONDITIONAL_DISTRIBUTION_CASES))
     @test checked_routes == selected_routes
 
-    # Every concrete univariate result reachable from public bivariate
-    # conditioning must be represented by the distortion contract. Compare
-    # wrappers rather than numeric parameterizations of the same family.
-    reachable = Set(nameof(typeof(condition(fixture.copula, 1, 0.4)))
-                    for fixture in ROUTING_COPULA_FIXTURES
-                    if length(fixture.copula) == 2)
-    represented = Set(nameof(typeof(D))
+    # Every route reached by full conditioning of a bivariate or multivariate
+    # bestiary entry must be represented by the univariate contract.
+    reachable = Set(conditional_route_key(D)
+                    for (_, D) in CONDITIONAL_DISTRIBUTION_CANDIDATES)
+    represented = Set(conditional_route_key(D)
                       for (_, D) in CONDITIONAL_DISTRIBUTION_CASES)
-    @test reachable ⊆ represented
+    @test reachable == represented
 end
 
 @testset "distortion push-forwards preserve the marginal scale" begin
