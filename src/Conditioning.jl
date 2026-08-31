@@ -44,6 +44,12 @@ is the distribution of `X_i | U_J = u_J`.
 """
 abstract type Distortion<:Distributions.ContinuousUnivariateDistribution end
 
+# Some exact conditional laws are atomic despite the historical continuous
+# supertype of `Distortion`. Keep that semantic capability explicit so callers
+# need not infer it from concrete implementation names.
+distortion_measure_style(::Type{<:Distortion}) = AbsolutelyContinuousMeasure()
+distortion_measure_style(D::Distortion) = distortion_measure_style(typeof(D))
+
 (D::Distortion)(::Distributions.Uniform) = D
 (D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X)
 Distributions.minimum(::Distortion) = 0.0

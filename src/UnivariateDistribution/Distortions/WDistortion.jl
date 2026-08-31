@@ -5,6 +5,7 @@ struct WDistortion{T} <: Distortion
     v::T
     j::Int8
 end
+distortion_measure_style(::Type{<:WDistortion}) = NonAbsolutelyContinuousMeasure()
 function Distributions.cdf(D::WDistortion, u::Real)
     T = promote_type(typeof(float(u)), typeof(D.v))
     return u < one(T) - D.v ? zero(T) : one(T)

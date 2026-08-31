@@ -16,38 +16,43 @@
 end
 
 const CONDITIONAL_DISTRIBUTION_CASES = (
-    ("identity", condition(IndependentCopula{2}(), 1, 0.4), :continuous),
-    ("upper Frechet atom", condition(MCopula{2}(), 1, 0.4), :atomic),
-    ("lower Frechet atom", condition(WCopula{2}(), 1, 0.4), :atomic),
-    ("Gaussian", condition(GaussianCopula{2}(0.4), 1, 0.4), :continuous),
-    ("Student", condition(TCopula{2}(4, [1.0 0.4; 0.4 1.0]), 1, 0.4), :continuous),
-    ("Clayton", condition(ClaytonCopula{2}(1.5), 1, 0.4), :continuous),
-    ("Frank positive", condition(FrankCopula{2}(2.0), 1, 0.4), :continuous),
-    ("Frank negative", condition(FrankCopula{2}(-2.0), 1, 0.4), :continuous),
-    ("AMH positive", condition(AMHCopula{2}(0.5), 1, 0.4), :continuous),
-    ("AMH negative", condition(AMHCopula{2}(-0.5), 1, 0.4), :continuous),
-    ("Gumbel", condition(GumbelCopula{2}(1.5), 1, 0.4), :continuous),
-    ("inverse Gaussian", condition(InvGaussianCopula{2}(0.5), 1, 0.4), :continuous),
-    ("BB9", condition(BB9Copula{2}(1.5, 0.8), 1, 0.4), :continuous),
-    ("extreme value", condition(GalambosCopula{2}(1.0), 1, 0.4), :continuous),
-    ("logistic extreme value", condition(LogCopula{2}(1.5), 1, 0.4), :continuous),
-    ("Gumbel--Barnett", condition(GumbelBarnettCopula{2}(0.5), 1, 0.4), :continuous),
-    ("Archimax", condition(BB4Copula{2}(1.0, 1.0), 1, 0.4), :continuous),
-    ("FGM", condition(FGMCopula{2}(0.5), 1, 0.4), :continuous),
-    ("Plackett", condition(PlackettCopula{2}(2.0), 1, 0.4), :continuous),
-    ("histogram", condition(CheckerboardCopula{2}(_FIXTURE_DATA; m=2), 1, 0.4), :continuous),
-    ("Bernstein", condition(BernsteinCopula{2}(GaussianCopula{2}(0.3); m=3), 1, 0.4), :continuous),
-    ("beta mixture", condition(BetaCopula{2}(_FIXTURE_DATA), 1, 0.4), :continuous),
-    ("generic", condition(RafteryCopula{2}(0.5), 1, 0.4), :continuous),
+    ("identity", condition(IndependentCopula{2}(), 1, 0.4)),
+    ("upper Frechet atom", condition(MCopula{2}(), 1, 0.4)),
+    ("lower Frechet atom", condition(WCopula{2}(), 1, 0.4)),
+    ("Gaussian", condition(GaussianCopula{2}(0.4), 1, 0.4)),
+    ("Student", condition(TCopula{2}(4, [1.0 0.4; 0.4 1.0]), 1, 0.4)),
+    ("Clayton", condition(ClaytonCopula{2}(1.5), 1, 0.4)),
+    ("Frank positive", condition(FrankCopula{2}(2.0), 1, 0.4)),
+    ("Frank negative", condition(FrankCopula{2}(-2.0), 1, 0.4)),
+    ("AMH positive", condition(AMHCopula{2}(0.5), 1, 0.4)),
+    ("AMH negative", condition(AMHCopula{2}(-0.5), 1, 0.4)),
+    ("Gumbel", condition(GumbelCopula{2}(1.5), 1, 0.4)),
+    ("inverse Gaussian", condition(InvGaussianCopula{2}(0.5), 1, 0.4)),
+    ("BB9", condition(BB9Copula{2}(1.5, 0.8), 1, 0.4)),
+    ("extreme value", condition(GalambosCopula{2}(1.0), 1, 0.4)),
+    ("logistic extreme value", condition(LogCopula{2}(1.5), 1, 0.4)),
+    ("Gumbel--Barnett", condition(GumbelBarnettCopula{2}(0.5), 1, 0.4)),
+    ("Archimax", condition(BB4Copula{2}(1.0, 1.0), 1, 0.4)),
+    ("FGM", condition(FGMCopula{2}(0.5), 1, 0.4)),
+    ("Plackett", condition(PlackettCopula{2}(2.0), 1, 0.4)),
+    ("histogram", condition(CheckerboardCopula{2}(_FIXTURE_DATA; m=2), 1, 0.4)),
+    ("Bernstein", condition(BernsteinCopula{2}(GaussianCopula{2}(0.3); m=3), 1, 0.4)),
+    ("beta mixture", condition(BetaCopula{2}(_FIXTURE_DATA), 1, 0.4)),
+    ("generic", condition(RafteryCopula{2}(0.5), 1, 0.4)),
     ("Liouville", condition(LiouvilleCopula{2}(
-        WilliamsonGenerator(Dirac(1.0), 3.0), (0.6, 1.1)), 1, 0.4), :continuous),
+        WilliamsonGenerator(Dirac(1.0), 3.0), (0.6, 1.1)), 1, 0.4)),
     ("nested Archimedean", condition(NestedArchimedeanCopula{4}(
         Copulas.ClaytonGenerator(1.0); leaves=[1, 2],
-        children=[ClaytonCopula{2}(2.0)]), (1, 2, 3), (0.3, 0.4, 0.5)), :continuous),
-    ("survival flip", condition(SurvivalCopula{2}(ClaytonCopula{2}(1.5), (2,)), 1, 0.4), :continuous),
+        children=[ClaytonCopula{2}(2.0)]), (1, 2, 3), (0.3, 0.4, 0.5))),
+    ("survival flip", condition(SurvivalCopula{2}(ClaytonCopula{2}(1.5), (2,)), 1, 0.4)),
 )
 
-function test_distortion_contract(D, kind)
+conditional_measure_style(D::Copulas.Distortion) =
+    Copulas.distortion_measure_style(D)
+conditional_measure_style(::Distributions.UnivariateDistribution) =
+    Copulas.AbsolutelyContinuousMeasure()
+
+function test_distortion_contract(D)
     Base.@nospecialize D
     @test D isa Distributions.UnivariateDistribution
     @test minimum(D) == 0
@@ -87,7 +92,7 @@ function test_distortion_contract(D, kind)
     samples = rand(StableRNG(501), D, 1)
     @test all(x -> 0 <= x <= 1, samples)
 
-    kind === :continuous || return
+    conditional_measure_style(D) isa Copulas.AbsolutelyContinuousMeasure || return
     @test pdf(D, -0.2) == 0
     @test pdf(D, 1.2) == 0
     @test logpdf(D, -0.2) == -Inf
@@ -106,12 +111,12 @@ end
         logpdf=Distributions.logpdf, quantile=Distributions.quantile,
     )
     selected_routes = Dict(name => Set(which(f, Tuple{typeof(D),Float64})
-        for (_, D, _) in CONDITIONAL_DISTRIBUTION_CASES)
+        for (_, D) in CONDITIONAL_DISTRIBUTION_CASES)
         for (name, f) in pairs(operations))
     checked_routes = Dict(name => Set{Method}() for name in keys(operations))
-    for (name, D, kind) in CONDITIONAL_DISTRIBUTION_CASES
+    for (name, D) in CONDITIONAL_DISTRIBUTION_CASES
         @testset "$name ($(nameof(typeof(D))))" begin
-            test_distortion_contract(D, kind)
+            test_distortion_contract(D)
             for (operation, f) in pairs(operations)
                 push!(checked_routes[operation],
                       which(f, Tuple{typeof(D),Float64}))
@@ -130,7 +135,7 @@ end
                     for fixture in ROUTING_COPULA_FIXTURES
                     if length(fixture.copula) == 2)
     represented = Set(nameof(typeof(D))
-                      for (_, D, _) in CONDITIONAL_DISTRIBUTION_CASES)
+                      for (_, D) in CONDITIONAL_DISTRIBUTION_CASES)
     @test reachable ⊆ represented
 end
 

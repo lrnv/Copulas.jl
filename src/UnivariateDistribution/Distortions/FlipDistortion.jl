@@ -4,6 +4,7 @@
 struct FlipDistortion{Disto} <: Distortion
     base::Disto
 end
+distortion_measure_style(D::FlipDistortion) = distortion_measure_style(D.base)
 function Distributions.cdf(D::FlipDistortion, u::Real)
     u <= 0 && return zero(float(u))
     u >= 1 && return one(float(u))
