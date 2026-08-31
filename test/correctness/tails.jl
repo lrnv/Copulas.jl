@@ -8,9 +8,12 @@ const TAIL_CASES = (
     (Copulas.BC2Tail(0.5, 0.3), 2),
     (Copulas.BC2Tail([0.3, 0.7, 0.5]), 3),
     (Copulas.CuadrasAugeTail(0.5), 2),
+    (Copulas.GalambosTail(1.0), 2),
     (Copulas.GalambosTail(1.0), 3),
+    (Copulas.HuslerReissTail(1.0), 2),
     (Copulas.HuslerReissTail(1.0), 3),
     (Copulas.HuslerReissTail([0.0 1.0 1.0; 1.0 0.0 1.0; 1.0 1.0 0.0]), 3),
+    (Copulas.LogTail(1.5), 2),
     (Copulas.LogTail(1.5), 3),
     (Copulas.MixedTail(0.5), 2),
     (Copulas.MOTail(0.2, 0.3, 0.4), 2),
@@ -138,20 +141,8 @@ end
     @test checked_routes == selected_routes
 end
 
-const PICKANDS_CASES = (
-    Copulas.AsymGalambosTail(1.0, 0.4, 0.6),
-    Copulas.AsymLogTail(1.5, 0.4, 0.6),
-    Copulas.AsymMixedTail(0.3, 0.2),
-    Copulas.BC2Tail(0.5, 0.3),
-    Copulas.CuadrasAugeTail(0.5),
-    Copulas.GalambosTail(1.0),
-    Copulas.HuslerReissTail(1.0),
-    Copulas.LogTail(1.5),
-    Copulas.MixedTail(0.5),
-    Copulas.MOTail(0.2, 0.3, 0.4),
-    Copulas.tEVTail(4.0, 0.5),
-    EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false).tail,
-)
+const PICKANDS_CASES = Tuple(tail for (tail, d) in TAIL_CASES
+                             if d == 2 && tail isa Copulas.BivariatePickandsTail)
 
 function is_pickands_kink(tail, t, h)
     Base.@nospecialize tail

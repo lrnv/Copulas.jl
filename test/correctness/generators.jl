@@ -22,19 +22,16 @@ const GENERATOR_CASES = (
     EmpiricalGenerator(_FIXTURE_DATA),
 )
 
-const ALL_PUBLIC_GENERATORS = (
-    GENERATOR_CASES...,
-    Copulas.IndependentGenerator(), Copulas.MGenerator(), Copulas.WGenerator(),
-)
-
 @testset "public generator registry is exhaustive" begin
     public_families = Set(getfield(Copulas, symbol) for symbol in PUBLIC_SYMBOLS
         if getfield(Copulas, symbol) isa Type &&
            symbol !== :Generator &&
            getfield(Copulas, symbol) <: Copulas.Generator)
-    represented = Set(typeof(G) for G in ALL_PUBLIC_GENERATORS)
-    @test all(F -> any(T -> T <: F, represented), public_families)
-    @test all(T -> any(F -> T <: F, public_families), represented)
+    numerical_families = Set(F for F in public_families
+                             if !(F <: Copulas.MarkerGenerator))
+    represented = Set(typeof(G) for G in GENERATOR_CASES)
+    @test all(F -> any(T -> T <: F, represented), numerical_families)
+    @test all(T -> any(F -> T <: F, numerical_families), represented)
 end
 
 @testset "public generator primitives" begin

@@ -79,9 +79,10 @@ end
 # τ⁻¹(G::Generator, τ_val) = @error("This generator has no inverse kendall tau implemented.")
 # ρ⁻¹(G::Generator, ρ_val) = @error ("This generator has no inverse Spearman rho implemented.")
 
-struct IndependentGenerator <: Generator end 
-struct MGenerator <: Generator end
-struct WGenerator <: Generator end
+abstract type MarkerGenerator <: Generator end
+struct IndependentGenerator <: MarkerGenerator end
+struct MGenerator <: MarkerGenerator end
+struct WGenerator <: MarkerGenerator end
 
 τ(::IndependentGenerator)  = 0
 τ(::MGenerator)  = 1
