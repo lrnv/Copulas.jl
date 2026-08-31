@@ -21,70 +21,6 @@ const _FIXTURE_DATA3 = vcat(
 # One ordinary interior point per public family is intentional. Numerical
 # limits and alternate algorithms belong to focused obligation tests, not
 # to the public contract matrix.
-const COPULA_CASES = (
-    copula_case("AMH", () -> AMHCopula{2}(0.5)),
-    copula_case("BB1", () -> BB1Copula{2}(1.2, 1.5)),
-    copula_case("BB2", () -> BB2Copula{2}(1.2, 0.5)),
-    copula_case("BB3", () -> BB3Copula{2}(2.0, 1.5)),
-    copula_case("BB6", () -> BB6Copula{2}(1.2, 1.6)),
-    copula_case("BB7", () -> BB7Copula{2}(1.2, 1.6)),
-    copula_case("BB8", () -> BB8Copula{2}(1.2, 0.4)),
-    copula_case("BB9", () -> BB9Copula{2}(1.5, 2.4)),
-    copula_case("BB10", () -> BB10Copula{2}(1.5, 0.7)),
-    copula_case("Clayton", () -> ClaytonCopula{3}(1.5)),
-    copula_case("Frank", () -> FrankCopula{3}(2.0)),
-    copula_case("Gumbel", () -> GumbelCopula{3}(1.5)),
-    copula_case("Gumbel--Barnett", () -> GumbelBarnettCopula{2}(0.5)),
-    copula_case("inverse Gaussian", () -> InvGaussianCopula{2}(0.5)),
-    copula_case("Joe", () -> JoeCopula{2}(1.5)),
-    copula_case("generic Archimedean", () -> ArchimedeanCopula{2}(Copulas.ClaytonGenerator(1.5))),
-    copula_case("discrete-radial Archimedean", () -> ArchimedeanCopula{2}(
-        WilliamsonGenerator([1.0, 2.0], [0.4, 0.6], 2))),
-    copula_case("nested Archimedean", () -> NestedArchimedeanCopula{4}(
-        Copulas.ClaytonGenerator(1.0); leaves=[1, 2],
-        children=[ClaytonCopula{2}(2.0)])),
-    copula_case("Liouville", () -> LiouvilleCopula{2}(
-        Copulas.ClaytonGenerator(1.0), (1.0, 2.0))),
-    copula_case("Archimax", () -> ArchimaxCopula{2}(
-        Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0))),
-    copula_case("BB4", () -> BB4Copula{2}(1.5, 1.0)),
-    copula_case("BB5", () -> BB5Copula{2}(1.5, 1.0)),
-    copula_case("asymmetric Galambos", () -> AsymGalambosCopula{2}(1.0, 0.4, 0.6)),
-    copula_case("asymmetric logistic", () -> AsymLogCopula{2}(1.5, 0.4, 0.6)),
-    copula_case("asymmetric mixed", () -> AsymMixedCopula{2}(0.3, 0.2)),
-    copula_case("BC2", () -> BC2Copula{2}(0.5, 0.3)),
-    copula_case("Cuadras--Auge", () -> CuadrasAugeCopula{2}(0.5)),
-    copula_case("Galambos", () -> GalambosCopula{3}(1.0)),
-    copula_case("Husler--Reiss", () -> HuslerReissCopula{3}(1.0)),
-    copula_case("logistic EV", () -> LogCopula{3}(1.5)),
-    copula_case("mixed EV", () -> MixedCopula{2}(0.5)),
-    copula_case("Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4)),
-    copula_case("Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8])),
-    copula_case("t-EV", () -> tEVCopula{2}(4.0, 0.5)),
-    copula_case("empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false)),
-    copula_case("empirical EV multivariate", () -> EmpiricalEVCopula{3}(
-        _FIXTURE_DATA3; degree=1, pseudo_values=false)),
-    copula_case("generic EV", () -> ExtremeValueCopula{2}(Copulas.GalambosTail(1.0))),
-    copula_case("discrete spectral", () -> ExtremeValueCopula{2}(
-        DiscreteSpectralTail([0.7 0.3; 0.2 0.8]))),
-    # Gaussian probabilities use numerical multivariate-normal integration.
-    copula_case("Gaussian", () -> GaussianCopula{3}(0.3); numerical_atol=1e-3),
-    copula_case("Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0])),
-    copula_case("Bernstein", () -> BernsteinCopula{2}(IndependentCopula{2}(); m=2)),
-    copula_case("beta", () -> BetaCopula{2}(_FIXTURE_DATA)),
-    copula_case("checkerboard", () -> CheckerboardCopula{2}(_FIXTURE_DATA; m=2)),
-    # An empirical copula has discrete-uniform margins with jumps of size 1/n.
-    copula_case("empirical", () -> EmpiricalCopula{2}(_FIXTURE_DATA);
-        margin_atol=inv(size(_FIXTURE_DATA, 2))),
-    copula_case("FGM", () -> FGMCopula{2}(0.5)),
-    copula_case("independence", () -> IndependentCopula{3}()),
-    copula_case("upper Frechet bound", () -> MCopula{2}()),
-    copula_case("lower Frechet bound", () -> WCopula{2}()),
-    copula_case("Plackett", () -> PlackettCopula{2}(2.0)),
-    copula_case("Raftery", () -> RafteryCopula{3}(0.5)),
-    copula_case("survival", () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3))),
-)
-
 # Additional dimensional representations that select methods not reachable
 # from the one-instance-per-family public contract above. They are consumed by
 # routing and proof tests only, avoiding repetition of the full API contract.
@@ -114,18 +50,6 @@ const ROUTING_EXTRA_CASES = (
     copula_case("Raftery bivariate", () -> RafteryCopula{2}(0.5)),
     copula_case("survival bivariate", () -> SurvivalCopula{2}(
         ClaytonCopula{2}(1.5), (1,))),
-)
-
-const ROUTING_COPULA_CASES = (COPULA_CASES..., ROUTING_EXTRA_CASES...)
-
-# Deterministic model fixtures are constructed once and shared by the proof
-# layers.  RNGs, sample buffers, conditionals, and fitted results remain local
-# to each test, so this cache removes only identical constructor work and does
-# not introduce order-dependent state.
-const COPULA_FIXTURES = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
-const ROUTING_COPULA_FIXTURES = (
-    COPULA_FIXTURES...,
-    ((case=case, copula=case.build()) for case in ROUTING_EXTRA_CASES)...,
 )
 
 const SCALAR_DEPENDENCE_MEASURES = (
@@ -218,8 +142,10 @@ function prove_dependence_route!(measure, C)
                  dependence_route_key(measure, C))
 end
 
-constructor_case(symbol, name, typed, dynamic; allowed_inference=nothing) =
-    (; symbol, name, typed, dynamic, allowed_inference)
+constructor_case(symbol, name, typed, dynamic; allowed_inference=nothing,
+                 numerical_atol=1e-8, margin_atol=1e-6) =
+    (; symbol, name, typed, dynamic, allowed_inference,
+       numerical_atol, margin_atol)
 
 const CONSTRUCTOR_CASES = (
     constructor_case(:AMHCopula, "AMH", () -> AMHCopula{2}(0.5), () -> AMHCopula(2, 0.5)),
@@ -271,7 +197,8 @@ const CONSTRUCTOR_CASES = (
     # The scalar-correlation constructor intentionally infers a small union because
     # its independence boundary returns IndependentCopula.
     constructor_case(:GaussianCopula, "Gaussian", () -> GaussianCopula{3}(0.3),
-        () -> GaussianCopula(3, 0.3); allowed_inference=IndependentCopula),
+        () -> GaussianCopula(3, 0.3); allowed_inference=IndependentCopula,
+        numerical_atol=1e-3),
     constructor_case(:TCopula, "Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0]), () -> TCopula(2, 4.0, [1.0 0.3; 0.3 1.0])),
     constructor_case(:IndependentCopula, "independence", () -> IndependentCopula{3}(), () -> IndependentCopula(3)),
     constructor_case(:MCopula, "upper Frechet", () -> MCopula{3}(), () -> MCopula(3)),
@@ -282,7 +209,9 @@ const CONSTRUCTOR_CASES = (
     constructor_case(:BernsteinCopula, "Bernstein", () -> BernsteinCopula{2}(IndependentCopula{2}(); m=2), () -> BernsteinCopula(2, IndependentCopula{2}(); m=2)),
     constructor_case(:BetaCopula, "beta", () -> BetaCopula{2}(_FIXTURE_DATA), () -> BetaCopula(2, _FIXTURE_DATA)),
     constructor_case(:CheckerboardCopula, "checkerboard", () -> CheckerboardCopula{2}(_FIXTURE_DATA; m=2), () -> CheckerboardCopula(2, _FIXTURE_DATA; m=2)),
-    constructor_case(:EmpiricalCopula, "empirical", () -> EmpiricalCopula{2}(_FIXTURE_DATA), () -> EmpiricalCopula(2, _FIXTURE_DATA)),
+    constructor_case(:EmpiricalCopula, "empirical", () -> EmpiricalCopula{2}(_FIXTURE_DATA),
+        () -> EmpiricalCopula(2, _FIXTURE_DATA);
+        margin_atol=inv(size(_FIXTURE_DATA, 2))),
     constructor_case(:EmpiricalEVCopula, "empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false), () -> EmpiricalEVCopula(2, _FIXTURE_DATA; method=:cfg, pseudo_values=false)),
     constructor_case(:EmpiricalEVCopula, "empirical EV multivariate",
         () -> EmpiricalEVCopula{3}(_FIXTURE_DATA3; degree=1, pseudo_values=false),
@@ -311,6 +240,22 @@ const CONSTRUCTOR_CASES = (
     constructor_case(:SurvivalCopula, "survival",
         () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3)),
         () -> SurvivalCopula(3, ClaytonCopula{3}(1.5), (1, 3))),
+)
+
+const COPULA_CASES = Tuple(copula_case(
+    case.name, case.typed;
+    numerical_atol=case.numerical_atol,
+    margin_atol=case.margin_atol,
+) for case in CONSTRUCTOR_CASES)
+
+const ROUTING_COPULA_CASES = (COPULA_CASES..., ROUTING_EXTRA_CASES...)
+
+# Deterministic model fixtures are constructed once and shared by the proof
+# layers. RNGs, sample buffers, conditionals, and fitted results remain local.
+const COPULA_FIXTURES = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
+const ROUTING_COPULA_FIXTURES = (
+    COPULA_FIXTURES...,
+    ((case=case, copula=case.build()) for case in ROUTING_EXTRA_CASES)...,
 )
 
 # A fitting route is the complete internal composition, not merely `_fit`.
