@@ -70,7 +70,7 @@ _has_fitting_parameters(C) =
 _check_parameter_roundtrip(C) =
     !(C isa EmpiricalEVCopula) && !(C isa FGMCopula && length(C) != 2)
 
-@testset "advertised fitting routes beyond the primary family contract" begin
+@testset "all distinct advertised fitting routes" begin
     selected_routes = Set{Any}()
     for (index, (case, C)) in
         enumerate(zip(ROUTING_COPULA_CASES, _FITTING_PATH_MODELS))

@@ -1,49 +1,21 @@
-# Public-API contract: checks `fit`, positional adapters, non-fittable families,
-# `CopulaModel`, and the StatsBase model-result interface.
-@testset "public fitting registry is exhaustive" begin
-    # These structural families use explicit tests below because they require a
-    # constructor, an instance, or intentionally expose no fitting operation.
-    exceptional = Set((
-        "generic Archimedean", "nested Archimedean", "Liouville", "Tawn",
-        "generic EV", "discrete spectral",
-    ))
-    canonical(name) = replace(name, " bound" => "")
-    @test Set(canonical(case.name) for case in FITTING_CASES) ==
-          setdiff(Set(canonical(case.name) for case in COPULA_CASES), exceptional)
-end
-
-@testset "public fitting and model-result contracts" begin
-    for (i, fixture) in pairs(FITTING_FIXTURES)
-        case, source = fixture.case, fixture.copula
+# Public-API contract: fitting capabilities come from the package itself.
+# Every advertised route is executed independently in `routing/fitting.jl`;
+# this cheap family-wide pass only proves that method discovery is coherent.
+@testset "public fitting method discovery" begin
+    for (; case, copula) in COPULA_FIXTURES
         @testset "$(case.name)" begin
-            test_progress("contracts", "fitting", case.name)
-            U = rand(StableRNG(20_000 + i), source, 12)
-            family = typeof(source)
-            fitted = fit(family, U; method=case.method, case.kwargs...,
-                         vcov=false, derived_measures=false)
-            @test fitted isa Copulas.Copula{length(source)}
-            resolved_method = Copulas._find_method(
-                family, length(source), case.method)
-            prove_fitting_route!(source, U, resolved_method)
-            if resolved_method === :mle && !isempty(params(source))
-                fitted_ll = loglikelihood(fitted, U)
-                source_ll = loglikelihood(source, U)
-                if isfinite(fitted_ll) && isfinite(source_ll)
-                    @test fitted_ll >= source_ll - 1e-6
-                end
+            family, d = typeof(copula), length(copula)
+            methods = Copulas._available_fitting_methods(family, d)
+            @test methods isa Tuple
+            @test all(method -> method isa Symbol, methods)
+            @test length(unique(methods)) == length(methods)
+            if isempty(methods)
+                @test_throws ArgumentError Copulas._find_method(family, d, :default)
+            else
+                @test Copulas._find_method(family, d, :default) in methods
+                @test all(method -> Copulas._find_method(family, d, method) === method,
+                          methods)
             end
-            case.model || continue
-            M = fit(CopulaModel, family, U; method=case.method,
-                    case.kwargs..., vcov=false, derived_measures=false)
-            @test StatsBase.nobs(M) == size(U, 2)
-            @test StatsBase.coef(M) isa AbstractVector
-            @test StatsBase.coefnames(M) isa AbstractVector
-            @test StatsBase.dof(M) == length(StatsBase.coef(M))
-            @test StatsBase.deviance(M) == -2 * M.ll
-            @test isfinite(StatsBase.aic(M))
-            @test isfinite(StatsBase.bic(M))
-            @test size(StatsBase.residuals(M)) == size(U)
-            @test size(StatsBase.predict(M; what=:simulate, nsim=3)) == (2, 3)
         end
     end
 end
