@@ -963,10 +963,10 @@ The source of truth for the SemVer-stable API has two parts:
 
 The behavioural table on the [Public API](@ref) page defines what those methods
 promise. Tests discover the complete namespace directly from Julia's `export`
-and `public` declarations, then prove that every public family appears in the
-relevant contracts. Undocumented internal hooks, including underscore-prefixed
-methods, are implementation details and do not acquire a stability guarantee
-merely because the tests call them.
+and `public` declarations through the shared fixtures, then prove that every
+public family appears in the relevant contracts. Undocumented internal hooks,
+including underscore-prefixed methods, are implementation details and do not
+acquire a stability guarantee merely because the tests call them.
 
 ## 4.2 The four proof obligations
 
@@ -1038,14 +1038,15 @@ representative its own result and timing without duplicating test code. Keep
 large contract files subdivided by public behaviour so a slow operation is
 visible directly in CI rather than only through ad hoc logging.
 
-`PUBLIC_BEHAVIOURS` covers the information that Julia's namespace cannot carry:
-it links methods adopted from `Distributions`, `StatsBase`, and `Random` to
-their contract, oracle, and routing files. Dimension-, value-, and
-representation-dependent branches are represented directly by the smallest
-fixture that selects them. During the ongoing suite migration, concise `Test
-progress` messages are emitted before each file and potentially expensive
-representative so a stalled CI job identifies its current path before the
-enclosing testset completes.
+Methods adopted from `Distributions`, `StatsBase`, and `Random` cannot be
+discovered through `names(Copulas)`. Their documented behaviour is therefore
+the source of truth, but the tests do not transcribe that documentation into a
+second registry: the contract, oracle, equivalence, and routing assertions are
+the proof. Dimension-, value-, and representation-dependent branches are
+represented directly by the smallest fixture that selects them. During the
+ongoing suite migration, concise `Test progress` messages are emitted before
+each file and potentially expensive representative so a stalled CI job
+identifies its current path before the enclosing testset completes.
 
 ## 4.3 Behaviour coverage matrix
 

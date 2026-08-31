@@ -1,5 +1,7 @@
 # Shared test data and registries: declares the minimal representative models
 # consumed by contracts and path tests; it contains no assertions itself.
+public_symbols() = filter(!=(:Copulas), names(Copulas; all=false, imported=false))
+
 """A public copula fixture and the mathematical contract it must satisfy."""
 copula_case(name, build; numerical_atol=1e-8, margin_atol=1e-6) =
     (; name, build, numerical_atol, margin_atol)

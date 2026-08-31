@@ -54,7 +54,7 @@ atexit(write_test_timings)
 
 obligation_testfiles = (
     contracts = [
-        "public_surface", "constructors", "constructor_validation",
+        "constructors", "constructor_validation",
         "copulas", "fitting", "sklar", "utilities", "nataf", "distortions",
         "univariate_distributions", "public_compositions",
     ],
