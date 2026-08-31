@@ -24,44 +24,6 @@ const _FIXTURE_DATA3 = vcat(
 # Additional dimensional representations that select methods not reachable
 # from the one-instance-per-family public contract above. They are consumed by
 # routing and proof tests only, avoiding repetition of the full API contract.
-const ROUTING_EXTRA_CASES = (
-    copula_case("frailty Archimedean", () -> ArchimedeanCopula{2}(
-        Copulas.FrailtyGenerator(Exponential()))),
-    copula_case("integer-order Williamson Archimedean", () ->
-        ArchimedeanCopula{2}(WilliamsonGenerator(Dirac(1.0), 2.0))),
-    copula_case("real-order Williamson Archimedean", () ->
-        ArchimedeanCopula{2}(WilliamsonGenerator(Dirac(1.0), 2.5))),
-    copula_case("empirical-generator Archimedean", () ->
-        ArchimedeanCopula{2}(EmpiricalGenerator(_FIXTURE_DATA))),
-    copula_case("Gumbel bivariate", () -> GumbelCopula{2}(1.5)),
-    copula_case("Galambos bivariate", () -> GalambosCopula{2}(1.0)),
-    copula_case("Husler--Reiss bivariate", () -> HuslerReissCopula{2}(1.0)),
-    copula_case("Husler--Reiss variogram", () -> HuslerReissCopula{3}(
-        [0.0 1.0 1.0; 1.0 0.0 1.0; 1.0 1.0 0.0])),
-    copula_case("logistic EV bivariate", () -> LogCopula{2}(1.5)),
-    copula_case("asymmetric Galambos multivariate",
-        () -> AsymGalambosCopula{3}(1.0, [0.4, 0.5, 0.6])),
-    copula_case("BC2 multivariate",
-        () -> BC2Copula{3}([0.3, 0.7, 0.5])),
-    copula_case("Cuadras--Auge multivariate",
-        () -> CuadrasAugeCopula{3}(0.5)),
-    copula_case("Marshall--Olkin multivariate", () -> MOCopula{3}(
-        [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70])),
-    copula_case("t-EV multivariate", () -> tEVCopula{3}(4.0, 0.2)),
-    copula_case("Gaussian bivariate", () -> GaussianCopula{2}(0.3);
-                numerical_atol=1e-3),
-    copula_case("Student multivariate", () -> TCopula{3}(5.0,
-        [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])),
-    copula_case("Liouville multivariate", () -> LiouvilleCopula{3}(
-        Copulas.ClaytonGenerator(1.0), (0.8, 1.1, 1.3))),
-    copula_case("FGM multivariate", () -> FGMCopula{3}([0.0, 0.0, 0.0, 0.4])),
-    copula_case("independence bivariate", () -> IndependentCopula{2}()),
-    copula_case("upper Frechet multivariate", () -> MCopula{3}()),
-    copula_case("Raftery bivariate", () -> RafteryCopula{2}(0.5)),
-    copula_case("survival bivariate", () -> SurvivalCopula{2}(
-        ClaytonCopula{2}(1.5), (1,))),
-)
-
 const SCALAR_DEPENDENCE_MEASURES = (
     Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι,
     Copulas.λₗ, Copulas.λᵤ,
@@ -152,121 +114,129 @@ function prove_dependence_route!(measure, C)
                  dependence_route_key(measure, C))
 end
 
-constructor_case(symbol, name, typed, dynamic; allowed_inference=nothing,
-                 numerical_atol=1e-8, margin_atol=1e-6) =
-    (; symbol, name, typed, dynamic, allowed_inference,
-       numerical_atol, margin_atol)
+function _public_copula_symbol(family)
+    symbols = [symbol for symbol in public_symbols()
+               if getfield(Copulas, symbol) === family]
+    return only(symbols)
+end
 
-const CONSTRUCTOR_CASES = (
-    constructor_case(:AMHCopula, "AMH", () -> AMHCopula{2}(0.5), () -> AMHCopula(2, 0.5)),
-    constructor_case(:BB1Copula, "BB1", () -> BB1Copula{2}(1.2, 1.5), () -> BB1Copula(2, 1.2, 1.5)),
-    constructor_case(:BB2Copula, "BB2", () -> BB2Copula{2}(1.2, 0.5), () -> BB2Copula(2, 1.2, 0.5)),
-    constructor_case(:BB3Copula, "BB3", () -> BB3Copula{2}(2.0, 1.5), () -> BB3Copula(2, 2.0, 1.5)),
-    constructor_case(:BB6Copula, "BB6", () -> BB6Copula{2}(1.2, 1.6), () -> BB6Copula(2, 1.2, 1.6)),
-    constructor_case(:BB7Copula, "BB7", () -> BB7Copula{2}(1.2, 1.6), () -> BB7Copula(2, 1.2, 1.6)),
-    constructor_case(:BB8Copula, "BB8", () -> BB8Copula{2}(1.2, 0.4), () -> BB8Copula(2, 1.2, 0.4)),
-    constructor_case(:BB9Copula, "BB9", () -> BB9Copula{2}(1.5, 2.4), () -> BB9Copula(2, 1.5, 2.4)),
-    constructor_case(:BB10Copula, "BB10", () -> BB10Copula{2}(1.5, 0.7), () -> BB10Copula(2, 1.5, 0.7)),
-    constructor_case(:ClaytonCopula, "Clayton", () -> ClaytonCopula{3}(1.5), () -> ClaytonCopula(3, 1.5)),
-    constructor_case(:FrankCopula, "Frank", () -> FrankCopula{3}(2.0), () -> FrankCopula(3, 2.0)),
-    constructor_case(:GumbelCopula, "Gumbel", () -> GumbelCopula{3}(1.5), () -> GumbelCopula(3, 1.5)),
-    constructor_case(:GumbelBarnettCopula, "Gumbel--Barnett", () -> GumbelBarnettCopula{2}(0.5), () -> GumbelBarnettCopula(2, 0.5)),
-    constructor_case(:InvGaussianCopula, "inverse Gaussian", () -> InvGaussianCopula{2}(0.5), () -> InvGaussianCopula(2, 0.5)),
-    constructor_case(:JoeCopula, "Joe", () -> JoeCopula{2}(1.5), () -> JoeCopula(2, 1.5)),
-    # Its value-dependent boundary simplifications intentionally infer a small
-    # union rather than one concrete family.
-    constructor_case(:AsymGalambosCopula, "asymmetric Galambos",
-        () -> AsymGalambosCopula{2}(1.0, 0.4, 0.6),
-        () -> AsymGalambosCopula(2, 1.0, 0.4, 0.6);
-        allowed_inference=Union{
-            IndependentCopula,
-            MCopula,
-            ExtremeValueCopula{2},
-        }),
-    constructor_case(:AsymLogCopula, "asymmetric logistic", () -> AsymLogCopula{2}(1.5, 0.4, 0.6), () -> AsymLogCopula(2, 1.5, 0.4, 0.6)),
-    constructor_case(:AsymMixedCopula, "asymmetric mixed",
-        () -> AsymMixedCopula{2}(0.3, 0.2),
-        () -> AsymMixedCopula(2, 0.3, 0.2);
-        allowed_inference=Union{
-            IndependentCopula{2}, MixedCopula{2}, AsymMixedCopula{2},
-        }),
-    constructor_case(:BC2Copula, "BC2",
-        () -> BC2Copula{2}(0.5, 0.3),
-        () -> BC2Copula(2, 0.5, 0.3);
-        allowed_inference=BC2Copula{2}),
-    constructor_case(:CuadrasAugeCopula, "Cuadras--Auge", () -> CuadrasAugeCopula{2}(0.5), () -> CuadrasAugeCopula(2, 0.5)),
-    constructor_case(:GalambosCopula, "Galambos", () -> GalambosCopula{3}(1.0), () -> GalambosCopula(3, 1.0)),
-    constructor_case(:HuslerReissCopula, "Husler--Reiss", () -> HuslerReissCopula{3}(1.0), () -> HuslerReissCopula(3, 1.0)),
-    constructor_case(:LogCopula, "logistic EV", () -> LogCopula{3}(1.5), () -> LogCopula(3, 1.5)),
-    constructor_case(:MixedCopula, "mixed EV", () -> MixedCopula{2}(0.5), () -> MixedCopula(2, 0.5)),
-    constructor_case(:MOCopula, "Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4), () -> MOCopula(2, 0.2, 0.3, 0.4); allowed_inference=MOCopula{2}),
-    constructor_case(:TawnCopula, "Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8]), () -> TawnCopula(3, 2.0, [0.6, 0.7, 0.8]); allowed_inference=Union{IndependentCopula,MCopula,ExtremeValueCopula{3}}),
-    constructor_case(:tEVCopula, "t-EV", () -> tEVCopula{2}(4.0, 0.5), () -> tEVCopula(2, 4.0, 0.5)),
-    constructor_case(:BB4Copula, "BB4", () -> BB4Copula{2}(1.5, 1.0), () -> BB4Copula(2, 1.5, 1.0)),
-    constructor_case(:BB5Copula, "BB5", () -> BB5Copula{2}(1.5, 1.0), () -> BB5Copula(2, 1.5, 1.0)),
-    # The scalar-correlation constructor intentionally infers a small union because
-    # its independence boundary returns IndependentCopula.
-    constructor_case(:GaussianCopula, "Gaussian", () -> GaussianCopula{3}(0.3),
-        () -> GaussianCopula(3, 0.3); allowed_inference=IndependentCopula,
-        numerical_atol=1e-3),
-    constructor_case(:TCopula, "Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0]), () -> TCopula(2, 4.0, [1.0 0.3; 0.3 1.0])),
-    constructor_case(:IndependentCopula, "independence", () -> IndependentCopula{3}(), () -> IndependentCopula(3)),
-    constructor_case(:MCopula, "upper Frechet", () -> MCopula{2}(), () -> MCopula(2)),
-    constructor_case(:WCopula, "lower Frechet", () -> WCopula{2}(), () -> WCopula(2)),
-    constructor_case(:FGMCopula, "FGM", () -> FGMCopula{2}(0.5), () -> FGMCopula(2, 0.5); allowed_inference=Union{IndependentCopula{2},MCopula{2},WCopula{2},FGMCopula{2}}),
-    constructor_case(:PlackettCopula, "Plackett", () -> PlackettCopula{2}(2.0), () -> PlackettCopula(2, 2.0)),
-    constructor_case(:RafteryCopula, "Raftery", () -> RafteryCopula{3}(0.5), () -> RafteryCopula(3, 0.5)),
-    constructor_case(:BernsteinCopula, "Bernstein", () -> BernsteinCopula{2}(IndependentCopula{2}(); m=2), () -> BernsteinCopula(2, IndependentCopula{2}(); m=2)),
-    constructor_case(:BetaCopula, "beta", () -> BetaCopula{2}(_FIXTURE_DATA), () -> BetaCopula(2, _FIXTURE_DATA)),
-    constructor_case(:CheckerboardCopula, "checkerboard", () -> CheckerboardCopula{2}(_FIXTURE_DATA; m=2), () -> CheckerboardCopula(2, _FIXTURE_DATA; m=2)),
-    constructor_case(:EmpiricalCopula, "empirical", () -> EmpiricalCopula{2}(_FIXTURE_DATA),
-        () -> EmpiricalCopula(2, _FIXTURE_DATA);
+function copula_case(family, d::Int, args...; constructor_kwargs=NamedTuple(),
+                     allowed_inference=nothing, numerical_atol=1e-8,
+                     margin_atol=1e-6)
+    symbol = _public_copula_symbol(family)
+    name = replace(string(symbol), r"Copula$" => "")
+    typed_family = Core.apply_type(family, d)
+    typed = () -> typed_family(args...; constructor_kwargs...)
+    dynamic = () -> family(d, args...; constructor_kwargs...)
+    return (; family, symbol, name, d, args, constructor_kwargs, typed,
+            dynamic, build=typed, allowed_inference, numerical_atol,
+            margin_atol)
+end
+
+# The single central bestiary. The first entry for each public family is its
+# canonical contract/constructor representative; later entries exercise extra
+# dimensions, representations, or value-dependent routes only.
+const ALL_COPULA_CASES = (
+    copula_case(AMHCopula, 2, 0.5),
+    copula_case(BB1Copula, 2, 1.2, 1.5),
+    copula_case(BB2Copula, 2, 1.2, 0.5),
+    copula_case(BB3Copula, 2, 2.0, 1.5),
+    copula_case(BB6Copula, 2, 1.2, 1.6),
+    copula_case(BB7Copula, 2, 1.2, 1.6),
+    copula_case(BB8Copula, 2, 1.2, 0.4),
+    copula_case(BB9Copula, 2, 1.5, 2.4),
+    copula_case(BB10Copula, 2, 1.5, 0.7),
+    copula_case(ClaytonCopula, 3, 1.5),
+    copula_case(FrankCopula, 3, 2.0),
+    copula_case(GumbelCopula, 3, 1.5),
+    copula_case(GumbelBarnettCopula, 2, 0.5),
+    copula_case(InvGaussianCopula, 2, 0.5),
+    copula_case(JoeCopula, 2, 1.5),
+    copula_case(AsymGalambosCopula, 2, 1.0, 0.4, 0.6;
+        allowed_inference=Union{IndependentCopula,MCopula,ExtremeValueCopula{2}}),
+    copula_case(AsymLogCopula, 2, 1.5, 0.4, 0.6),
+    copula_case(AsymMixedCopula, 2, 0.3, 0.2;
+        allowed_inference=Union{IndependentCopula{2},MixedCopula{2},AsymMixedCopula{2}}),
+    copula_case(BC2Copula, 2, 0.5, 0.3; allowed_inference=BC2Copula{2}),
+    copula_case(CuadrasAugeCopula, 2, 0.5),
+    copula_case(GalambosCopula, 3, 1.0),
+    copula_case(HuslerReissCopula, 3, 1.0),
+    copula_case(LogCopula, 3, 1.5),
+    copula_case(MixedCopula, 2, 0.5),
+    copula_case(MOCopula, 2, 0.2, 0.3, 0.4; allowed_inference=MOCopula{2}),
+    copula_case(TawnCopula, 3, 2.0, [0.6, 0.7, 0.8];
+        allowed_inference=Union{IndependentCopula,MCopula,ExtremeValueCopula{3}}),
+    copula_case(tEVCopula, 2, 4.0, 0.5),
+    copula_case(BB4Copula, 2, 1.5, 1.0),
+    copula_case(BB5Copula, 2, 1.5, 1.0),
+    copula_case(GaussianCopula, 3, 0.3;
+        allowed_inference=IndependentCopula, numerical_atol=1e-3),
+    copula_case(TCopula, 2, 4.0, [1.0 0.3; 0.3 1.0]),
+    copula_case(IndependentCopula, 3),
+    copula_case(MCopula, 2),
+    copula_case(WCopula, 2),
+    copula_case(FGMCopula, 2, 0.5;
+        allowed_inference=Union{IndependentCopula{2},MCopula{2},WCopula{2},FGMCopula{2}}),
+    copula_case(PlackettCopula, 2, 2.0),
+    copula_case(RafteryCopula, 3, 0.5),
+    copula_case(BernsteinCopula, 2, IndependentCopula{2}();
+        constructor_kwargs=(; m=2)),
+    copula_case(BetaCopula, 2, _FIXTURE_DATA),
+    copula_case(CheckerboardCopula, 2, _FIXTURE_DATA;
+        constructor_kwargs=(; m=2)),
+    copula_case(EmpiricalCopula, 2, _FIXTURE_DATA;
         margin_atol=inv(size(_FIXTURE_DATA, 2))),
-    constructor_case(:EmpiricalEVCopula, "empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false), () -> EmpiricalEVCopula(2, _FIXTURE_DATA; method=:cfg, pseudo_values=false)),
-    constructor_case(:EmpiricalEVCopula, "empirical EV multivariate",
-        () -> EmpiricalEVCopula{3}(_FIXTURE_DATA3; degree=1, pseudo_values=false),
-        () -> EmpiricalEVCopula(3, _FIXTURE_DATA3; degree=1, pseudo_values=false)),
-    constructor_case(:ArchimedeanCopula, "generic Archimedean",
-        () -> ArchimedeanCopula{2}(Copulas.ClaytonGenerator(1.5)),
-        () -> ArchimedeanCopula(2, Copulas.ClaytonGenerator(1.5))),
-    constructor_case(:ExtremeValueCopula, "generic extreme value",
-        () -> ExtremeValueCopula{2}(Copulas.GalambosTail(1.0)),
-        () -> ExtremeValueCopula(2, Copulas.GalambosTail(1.0))),
-    # The all-one Dirichlet boundary is exactly Archimedean.
-    constructor_case(:LiouvilleCopula, "Liouville",
-        () -> LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
-        () -> LiouvilleCopula(2, Copulas.ClaytonGenerator(1.0), (1.0, 2.0));
+    copula_case(EmpiricalEVCopula, 2, _FIXTURE_DATA;
+        constructor_kwargs=(; method=:cfg, pseudo_values=false)),
+    copula_case(ArchimedeanCopula, 2, Copulas.ClaytonGenerator(1.5)),
+    copula_case(ExtremeValueCopula, 2, Copulas.GalambosTail(1.0)),
+    copula_case(LiouvilleCopula, 2, Copulas.ClaytonGenerator(1.0), (1.0, 2.0);
         allowed_inference=ArchimedeanCopula),
-    # An empty children collection produces the flat Archimedean fast path.
-    constructor_case(:NestedArchimedeanCopula, "nested Archimedean",
-        () -> NestedArchimedeanCopula{4}(Copulas.ClaytonGenerator(1.0);
-            leaves=[1, 2], children=[ClaytonCopula{2}(2.0)]),
-        () -> NestedArchimedeanCopula(4, Copulas.ClaytonGenerator(1.0);
-            leaves=[1, 2], children=[ClaytonCopula{2}(2.0)]);
+    copula_case(NestedArchimedeanCopula, 4, Copulas.ClaytonGenerator(1.0);
+        constructor_kwargs=(; leaves=[1, 2], children=[ClaytonCopula{2}(2.0)]),
         allowed_inference=Union{NestedArchimedeanCopula,ArchimedeanCopula}),
-    constructor_case(:ArchimaxCopula, "Archimax",
-        () -> ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0)),
-        () -> ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0))),
-    constructor_case(:SurvivalCopula, "survival",
-        () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3)),
-        () -> SurvivalCopula(3, ClaytonCopula{3}(1.5), (1, 3))),
+    copula_case(ArchimaxCopula, 2, Copulas.ClaytonGenerator(1.5),
+        Copulas.GalambosTail(1.0)),
+    copula_case(SurvivalCopula, 3, ClaytonCopula{3}(1.5), (1, 3)),
+
+    # Additional dispatch representatives.
+    copula_case(EmpiricalEVCopula, 3, _FIXTURE_DATA3;
+        constructor_kwargs=(; degree=1, pseudo_values=false)),
+    copula_case(ArchimedeanCopula, 2, Copulas.FrailtyGenerator(Exponential())),
+    copula_case(ArchimedeanCopula, 2, WilliamsonGenerator(Dirac(1.0), 2.0)),
+    copula_case(ArchimedeanCopula, 2, WilliamsonGenerator(Dirac(1.0), 2.5)),
+    copula_case(ArchimedeanCopula, 2, EmpiricalGenerator(_FIXTURE_DATA)),
+    copula_case(GumbelCopula, 2, 1.5),
+    copula_case(GalambosCopula, 2, 1.0),
+    copula_case(HuslerReissCopula, 2, 1.0),
+    copula_case(HuslerReissCopula, 3,
+        [0.0 1.0 1.0; 1.0 0.0 1.0; 1.0 1.0 0.0]),
+    copula_case(LogCopula, 2, 1.5),
+    copula_case(AsymGalambosCopula, 3, 1.0, [0.4, 0.5, 0.6]),
+    copula_case(BC2Copula, 3, [0.3, 0.7, 0.5]),
+    copula_case(CuadrasAugeCopula, 3, 0.5),
+    copula_case(MOCopula, 3,
+        [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]),
+    copula_case(tEVCopula, 3, 4.0, 0.2),
+    copula_case(GaussianCopula, 2, 0.3; numerical_atol=1e-3),
+    copula_case(TCopula, 3, 5.0,
+        [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
+    copula_case(LiouvilleCopula, 3, Copulas.ClaytonGenerator(1.0),
+        (0.8, 1.1, 1.3)),
+    copula_case(FGMCopula, 3, [0.0, 0.0, 0.0, 0.4]),
+    copula_case(IndependentCopula, 2),
+    copula_case(MCopula, 3),
+    copula_case(RafteryCopula, 2, 0.5),
+    copula_case(SurvivalCopula, 2, ClaytonCopula{2}(1.5), (1,)),
 )
 
-const COPULA_CASES = Tuple(copula_case(
-    case.name, case.typed;
-    numerical_atol=case.numerical_atol,
-    margin_atol=case.margin_atol,
-) for case in CONSTRUCTOR_CASES)
-
-const ROUTING_COPULA_CASES = (COPULA_CASES..., ROUTING_EXTRA_CASES...)
-
-# Deterministic model fixtures are constructed once and shared by the proof
-# layers. RNGs, sample buffers, conditionals, and fitted results remain local.
-const COPULA_FIXTURES = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
-const ROUTING_COPULA_FIXTURES = (
-    COPULA_FIXTURES...,
-    ((case=case, copula=case.build()) for case in ROUTING_EXTRA_CASES)...,
-)
+const COPULA_CASES = Tuple(unique(case -> case.symbol, ALL_COPULA_CASES))
+const CONSTRUCTOR_CASES = COPULA_CASES
+const ROUTING_COPULA_CASES = ALL_COPULA_CASES
+const COPULA_FIXTURES = Tuple((case=case, copula=case.build())
+                              for case in COPULA_CASES)
+const ROUTING_COPULA_FIXTURES = Tuple((case=case, copula=case.build())
+                                      for case in ROUTING_COPULA_CASES)
 
 # A fitting route is the complete internal composition, not merely `_fit`.
 # Generic fitting additionally depends on the example, parameter transform,

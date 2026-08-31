@@ -102,7 +102,7 @@ end
 end
 
 @testset "checkerboard CDF equals exact box overlap" begin
-    fixture = only(filter(x -> x.case.name == "checkerboard",
+    fixture = only(filter(x -> x.copula isa CheckerboardCopula,
                           ROUTING_COPULA_FIXTURES))
     case, C = fixture.case, fixture.copula
     u = [0.53, 0.67]

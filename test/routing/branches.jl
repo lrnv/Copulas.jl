@@ -139,11 +139,12 @@
         # representatives have already populated the proof ledger, so this
         # branch registry verifies that both representations are linked rather
         # than executing the same numerical identities a second time.
-        names = ("Husler--Reiss bivariate", "Husler--Reiss",
-                 "t-EV", "t-EV multivariate")
-        for name in names
-            fixture = only(filter(x -> x.case.name == name,
-                                  ROUTING_COPULA_FIXTURES))
+        fixtures = filter(ROUTING_COPULA_FIXTURES) do fixture
+            fixture.copula isa Union{HuslerReissCopula,tEVCopula} &&
+                !(fixture.copula isa HuslerReissCopula{3} &&
+                  fixture.copula.tail.parameter isa AbstractMatrix)
+        end
+        for fixture in fixtures
             case, C = fixture.case, fixture.copula
             key = dispatch_route_key(:logpdf, C)
             @test key in keys(PROVEN_DISPATCH_ROUTES[:logpdf])

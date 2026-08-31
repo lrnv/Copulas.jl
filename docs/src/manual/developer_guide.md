@@ -1094,8 +1094,8 @@ After implementing and documenting `MyCopula`, update the tests in this order:
    `archimedean_measure_style(G, Val(d))` instead. Williamson generators do
    this automatically from their preserved radial law and source order.
 3. If dimension changes dispatch or representation, add the missing bivariate
-   or multivariate instance to `ROUTING_EXTRA_CASES`. Do not add another fixture
-   merely to vary a parameter when it selects the same methods.
+   or multivariate representative to `ALL_COPULA_CASES`. Do not add another
+   entry merely to vary a parameter when it selects the same methods.
 4. If the family advertises fitting through `_available_fitting_methods`, the
    fitting contract and routing inventory discover those methods automatically.
 5. If the family introduces a new generic numerical mechanism, add one
@@ -1127,7 +1127,7 @@ proof ledger.
 Public generators and extreme-value tails are extracted automatically from the
 Archimedean and extreme-value copulas in the bestiary. If a standalone
 component needs coverage, add a cheap associated copula to
-`ROUTING_EXTRA_CASES`; do not maintain a parallel component list.
+`ALL_COPULA_CASES`; do not maintain a parallel component list.
 
 ## 4.5 Adding or changing public behaviour
 
