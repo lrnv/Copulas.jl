@@ -207,7 +207,7 @@ obligation_testfiles = (
         "nested_archimedean_equivalence", "family_specialization_equivalence",
     ],
     api = ["copulas", "constructors", "constructor_validation",
-           "public_compositions", "sklar", "utilities"? "generators", 
+           "public_compositions", "sklar", "utilities", "generators", 
            "tails", "univariate_distributions"],
     operations = ["measure", "subsetting", "rosenblatt", "sampling",
                   "dependence", "distribution",  "conditioning", "fitting",
