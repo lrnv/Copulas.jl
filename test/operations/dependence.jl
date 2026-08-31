@@ -444,6 +444,8 @@ end
 
 rebuild_inverse_case(C::ExtremeValueCopula{2}, parameter) =
     ExtremeValueCopula{2}(typeof(C.tail)(parameter))
+rebuild_inverse_case(C::FGMCopula{d}, parameter) where {d} =
+    FGMCopula{d}(parameter)
 rebuild_inverse_case(C::Copulas.Copula, parameter) = typeof(C)(parameter)
 rebuild_inverse_case(G::Copulas.Generator, parameter) = typeof(G)(parameter)
 

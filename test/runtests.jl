@@ -182,7 +182,14 @@ function copula_case(family, d::Int, args...; constructor_kwargs=NamedTuple(),
     typed_family = Core.apply_type(family, d)
     typed = () -> typed_family(args...; constructor_kwargs...)
     dynamic = () -> family(d, args...; constructor_kwargs...)
+    call = Any[QuoteNode(typed_family)]
+    isempty(constructor_kwargs) || push!(call, Expr(:parameters,
+        (Expr(:kw, key, QuoteNode(value))
+         for (key, value) in pairs(constructor_kwargs))...))
+    append!(call, QuoteNode.(args))
+    typed_expr = Expr(:call, call...)
     return (; family, symbol, name, d, args, constructor_kwargs, typed,
+            typed_expr,
             dynamic, build=typed, allowed_inference, numerical_atol,
             margin_atol, conditional_at)
 end

@@ -1,6 +1,16 @@
 # Component proof: exhaustively covers public EV-tail families and
 # verifies stable-tail, Pickands, derivative, and reconstruction identities.
 
+struct LogisticOracleTail{T} <: Copulas.BivariatePickandsTail
+    θ::T
+end
+Distributions.params(tail::LogisticOracleTail) = (; θ=tail.θ)
+Copulas.ℓ(tail::LogisticOracleTail, x) =
+    sum(xᵢ -> xᵢ^tail.θ, x)^(inv(tail.θ))
+Copulas.A(tail::LogisticOracleTail, t::Real) =
+    Copulas.ℓ(tail, (t, 1 - t))
+Copulas._is_valid_in_dim(::LogisticOracleTail, d::Int) = d >= 2
+
 @testset "specialized logistic tail agrees with its generic oracle" begin
     θ = 1.5
     generic_tail = LogisticOracleTail(θ)

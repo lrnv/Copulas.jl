@@ -78,27 +78,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
     return U
 end
 
-# Generator oracle: every derivative and inverse except ϕ itself must use the
-# defaults from Generator.jl.
-struct PowerExponentialOracleGenerator{T} <: Copulas.Generator
-    θ::T
-end
-Copulas.ϕ(G::PowerExponentialOracleGenerator, t) = exp(-t^(inv(G.θ)))
-Copulas.max_monotony(::PowerExponentialOracleGenerator) = Inf
-Distributions.params(G::PowerExponentialOracleGenerator) = (; θ=G.θ)
-
-# Tail oracle: A, mixed partials and the EV implementation must all be derived
-# from this sole STDF definition.
-struct LogisticOracleTail{T} <: Copulas.BivariatePickandsTail
-    θ::T
-end
-Distributions.params(tail::LogisticOracleTail) = (; θ=tail.θ)
-Copulas.ℓ(tail::LogisticOracleTail, x) =
-    sum(xᵢ -> xᵢ^tail.θ, x)^(inv(tail.θ))
-Copulas.A(tail::LogisticOracleTail, t::Real) =
-    Copulas.ℓ(tail, (t, 1 - t))
-Copulas._is_valid_in_dim(::LogisticOracleTail, d::Int) = d >= 2
-
 # Complementary tail oracle: only Pickands' A is supplied, so ℓ and the first
 # two Pickands derivatives must all use the generic BivariatePickandsTail API.
 struct QuadraticPickandsOracleTail{T} <: Copulas.BivariatePickandsTail

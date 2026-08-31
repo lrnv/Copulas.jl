@@ -49,6 +49,34 @@ function test_conditioning_contract(C, ctx)
         @test cdf(D, q) >= 0.5 - sqrt(eps(Float64))
 end
 
+function conditional_distribution(fixture)
+    Base.@nospecialize fixture
+    C = fixture.copula
+    d = length(C)
+    js = Tuple(1:(d - 1))
+    values = ntuple(_ -> 0.4, d - 1)
+    return condition(C, js, values)
+end
+
+conditional_route_key(D) = Tuple(which(f, Tuple{typeof(D),Float64}) for f in (
+    Distributions.cdf, Distributions.logcdf, Distributions.logpdf,
+    Distributions.quantile,
+))
+
+const CONDITIONAL_DISTRIBUTION_CANDIDATES = (
+    ((fixture.case.name, conditional_distribution(fixture))
+     for fixture in ROUTING_COPULA_FIXTURES)...,
+)
+const CONDITIONAL_DISTRIBUTION_CASES = Tuple(unique(
+    case -> conditional_route_key(last(case)),
+    CONDITIONAL_DISTRIBUTION_CANDIDATES,
+))
+
+conditional_measure_style(D::Copulas.Distortion) =
+    Copulas.distortion_measure_style(D)
+conditional_measure_style(::Distributions.UnivariateDistribution) =
+    Copulas.AbsolutelyContinuousMeasure()
+
 @testset verbose=true "public conditioning contract" begin
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
         test_progress("operations", "conditioning", fixture.case.name, "contract")
@@ -460,34 +488,6 @@ end
     @test_throws ArgumentError condition(C, 1, -0.1)
     @test_throws ArgumentError condition(C, 1, 1.1)
 end
-
-function conditional_distribution(fixture)
-    Base.@nospecialize fixture
-    C = fixture.copula
-    d = length(C)
-    js = Tuple(1:(d - 1))
-    values = ntuple(_ -> 0.4, d - 1)
-    return condition(C, js, values)
-end
-
-conditional_route_key(D) = Tuple(which(f, Tuple{typeof(D),Float64}) for f in (
-    Distributions.cdf, Distributions.logcdf, Distributions.logpdf,
-    Distributions.quantile,
-))
-
-const CONDITIONAL_DISTRIBUTION_CANDIDATES = (
-    ((fixture.case.name, conditional_distribution(fixture))
-     for fixture in ROUTING_COPULA_FIXTURES)...,
-)
-const CONDITIONAL_DISTRIBUTION_CASES = Tuple(unique(
-    case -> conditional_route_key(last(case)),
-    CONDITIONAL_DISTRIBUTION_CANDIDATES,
-))
-
-conditional_measure_style(D::Copulas.Distortion) =
-    Copulas.distortion_measure_style(D)
-conditional_measure_style(::Distributions.UnivariateDistribution) =
-    Copulas.AbsolutelyContinuousMeasure()
 
 function test_distortion_contract(D)
     Base.@nospecialize D

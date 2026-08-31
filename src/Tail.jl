@@ -35,7 +35,10 @@ abstract type Tail end
 function (TT::Type{<:Tail})(args...; kwargs...)
     S = hasproperty(TT, :body) ? TT.body : TT
     T = S.name.wrapper
-    T === TT && throw(MethodError(TT, args))
+    # Keyword-only calls are deliberately converted to the canonical
+    # positional constructor below.  Refuse only a genuinely argument-free
+    # recursive call.
+    T === TT && isempty(args) && isempty(kwargs) && throw(MethodError(TT, args))
     return T(args..., values(kwargs)...)
 end
 _parameter_dof(x::Tail) = _parameter_dof(Distributions.params(x))

@@ -1,6 +1,13 @@
 # Component proof: exhaustively covers public generator families and
 # verifies their transform, inverse, derivative, and reconstruction identities.
 
+struct PowerExponentialOracleGenerator{T} <: Copulas.Generator
+    θ::T
+end
+Copulas.ϕ(G::PowerExponentialOracleGenerator, t) = exp(-t^(inv(G.θ)))
+Copulas.max_monotony(::PowerExponentialOracleGenerator) = Inf
+Distributions.params(G::PowerExponentialOracleGenerator) = (; θ=G.θ)
+
 @testset "specialized Gumbel generator agrees with its generic oracle" begin
     θ = 1.5
     generic = PowerExponentialOracleGenerator(θ)
