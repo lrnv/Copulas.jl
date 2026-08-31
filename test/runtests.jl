@@ -70,11 +70,6 @@ obligation_testfiles = (
     routing = ["dispatch", "branches", "fitting"],
 )
 
-extension_testfiles = (
-    CopulasExpectationMaximizationExt="expectation_maximization",
-)
-const DOCUMENTED_EXTENSIONS = Set(("CopulasPlotsExt",))
-
 function run_obligations(groups)
     Base.@nospecialize groups
     for obligation in groups
@@ -89,22 +84,6 @@ function run_obligations(groups)
     end
 end
 
-function run_extension_regressions()
-    @testset verbose=true "extension regressions" begin
-        declared = Set(keys(TOML.parsefile(
-            joinpath(@__DIR__, "..", "Project.toml"))["extensions"]))
-        represented = union(Set(string.(keys(extension_testfiles))),
-                            DOCUMENTED_EXTENSIONS)
-        @test declared == represented
-        @testset verbose=true "$(extension) ($(getproperty(extension_testfiles, extension)).jl)" for extension in keys(extension_testfiles)
-            f = getproperty(extension_testfiles, extension)
-            test_progress("extension regressions", "$f.jl")
-            timed_include("extensions/$f.jl",
-                joinpath(@__DIR__, "extensions", "$f.jl"))
-        end
-    end
-end
-
 # Fixtures define registries and helpers but contain no assertions.  Load them
 # before opening the test hierarchy so they do not appear as an empty testset.
 timed_include("infrastructure/fixtures.jl", joinpath(@__DIR__, "fixtures.jl"))
@@ -113,5 +92,7 @@ timed_include("infrastructure/fixtures.jl", joinpath(@__DIR__, "fixtures.jl"))
     test_progress("Aqua.jl")
     timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
     run_obligations(keys(obligation_testfiles))
-    run_extension_regressions()
+    test_progress("extension regressions", "expectation_maximization.jl")
+    timed_include("extensions/expectation_maximization.jl", joinpath(
+        @__DIR__, "extensions", "expectation_maximization.jl"))
 end

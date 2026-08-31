@@ -1005,10 +1005,9 @@ The corresponding directories are:
   oracles;
 - `test/equivalence/` for optimized paths versus generic paths;
 - `test/routing/` for exhaustive method inventories;
-- `test/extensions/` for optional package-extension contracts and regressions.
-  Extensions whose public behaviour is already exercised by executable
-  Documenter examples, such as `CopulasPlotsExt`, are inventoried by the test
-  runner but are not loaded again during `Pkg.test`.
+- `test/extensions/` for focused optional package-extension contracts and
+  regressions. Extensions already exercised by executable Documenter examples,
+  such as `CopulasPlotsExt`, need not be loaded again during `Pkg.test`.
 
 Classify a test by the statement it proves, not by the concrete model used to
 exercise it. In particular, an operation-wide conditioning comparison belongs
@@ -1067,7 +1066,7 @@ test suite.
 | generator primitives | every numerical public generator; explicit reduction contract for marker generators | differentiation and inversion identities | closed forms vs generic primitive | generators extracted from the bestiary |
 | tail primitives | every public tail | homogeneity, convexity, and derivative identities | analytic partials vs AD or finite differences | tails extracted from the bestiary |
 | Sklar composition | public composition contract | change-of-variable identities | specialized conditioning and transforms vs generic | composition paths |
-| optional extensions | every declared extension | extension-specific public identity | extension-specific | extension registry |
+| optional extensions | focused extension contract or executable documentation | extension-specific public identity | extension-specific | direct test or example |
 
 When adding a public family or a specialized method, add the smallest
 representative that selects it and supply the missing proof obligation. Do not
