@@ -1,7 +1,8 @@
 # Test-suite orchestrator. See the developer guide's "Testing architecture"
-# section for the four proof obligations. During the operation-oriented
-# migration, completed operations colocate all four proofs under `operations/`;
-# the remaining tests retain the historical obligation directories.
+# section for the proof obligations. Tests run from foundational public-API
+# checks through mathematical and operation proofs; routing closure runs only
+# after those proofs have populated its ledgers, and optional extensions run
+# last in isolation.
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
@@ -192,54 +193,54 @@ const TAIL_CASES = Tuple(unique(tail_case_key,
      if fixture.copula isa ExtremeValueCopula]))
 
 
-# Now launch the tests themselves: 
+# Run cheap foundational checks first, then mathematical and operation proofs.
+# Routing must remain after every test that records proven dispatch routes.
+# Exact `.jl` paths are used throughout; `timed_include` does not alter them.
 
 testfiles = (
     "Aqua.jl",
-    "api/constructors", 
-    "api/constructor_validation",
-    "api/copulas", 
-    "api/public_compositions", 
-    "api/sklar", 
-    "api/utilities", 
-    "api/generators", 
-    "api/tails", 
-    "api/univariate_distributions",
-    "correctness/archimedean", 
-    "correctness/elliptical", 
-    "correctness/mathematical",
-    "correctness/statistical", 
-    "correctness/numerical",
-    "correctness/williamson", 
-    "correctness/liouville", 
-    "correctness/conditioning",
-    "correctness/bivariate_families", 
-    "correctness/extreme_value", 
-    "correctness/extreme_value_quantiles",
-    "correctness/extreme_value_equivalence", 
-    "correctness/nested_archimedean",
-    "correctness/nested_archimedean_equivalence", 
-    "correctness/family_specialization_equivalence",
-    "operations/measure", 
-    "operations/subsetting", 
-    "operations/rosenblatt", 
-    "operations/sampling",
-    "operations/dependence", 
-    "operations/distribution",  
-    "operations/conditioning", 
-    "operations/fitting",
-    "operations/fitting_parameterizations", 
-    "operations/fitting_routes", 
-    "operations/nataf",
-    "routing/dispatch", 
-    "routing/branches",
+    "api/constructors.jl",
+    "api/constructor_validation.jl",
+    "api/public_compositions.jl",
+    "api/copulas.jl",
+    "api/generators.jl",
+    "api/tails.jl",
+    "api/univariate_distributions.jl",
+    "api/sklar.jl",
+    "api/utilities.jl",
+    "correctness/numerical.jl",
+    "correctness/williamson.jl",
+    "correctness/mathematical.jl",
+    "correctness/archimedean.jl",
+    "correctness/elliptical.jl",
+    "correctness/bivariate_families.jl",
+    "correctness/extreme_value.jl",
+    "correctness/extreme_value_quantiles.jl",
+    "correctness/extreme_value_equivalence.jl",
+    "correctness/liouville.jl",
+    "correctness/nested_archimedean.jl",
+    "correctness/nested_archimedean_equivalence.jl",
+    "correctness/family_specialization_equivalence.jl",
+    "correctness/conditioning.jl",
+    "correctness/statistical.jl",
+    "operations/distribution.jl",
+    "operations/measure.jl",
+    "operations/sampling.jl",
+    "operations/subsetting.jl",
+    "operations/conditioning.jl",
+    "operations/rosenblatt.jl",
+    "operations/dependence.jl",
+    "operations/fitting.jl",
+    "operations/nataf.jl",
+    "routing/branches.jl",
+    "routing/dispatch.jl",
     "extensions/expectation_maximization.jl"
 )
 
 @info "Starting main tests."
 @testset verbose=true "Copulas.jl" begin
-    @testset verbose=true "$f.jl" for f in testfiles
-        test_progress("$f.jl")
-        timed_include("$f.jl", "$f.jl")
+    @testset verbose=true "$f" for f in testfiles
+        test_progress(f)
+        timed_include(f, f)
     end
 end

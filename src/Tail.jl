@@ -32,9 +32,10 @@ References:
 * Rasell
 """
 abstract type Tail end
-function (TT::Type{<:Tail})(args...;kwargs...)
+function (TT::Type{<:Tail})(args...; kwargs...)
     S = hasproperty(TT, :body) ? TT.body : TT
-    T = S.name.wrapper 
+    T = S.name.wrapper
+    T === TT && throw(MethodError(TT, args))
     return T(args..., values(kwargs)...)
 end
 _parameter_dof(x::Tail) = _parameter_dof(Distributions.params(x))
