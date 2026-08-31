@@ -11,13 +11,28 @@ using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
 const rng = StableRNG(123)
 const _TEST_RUN_STARTED = time()
 const _TEST_PROGRESS_LAST = Ref(_TEST_RUN_STARTED)
+const _TEST_PROGRESS_CURRENT = Ref{Union{Nothing,String}}(nothing)
 const _TEST_TIMINGS = Dict{String,Any}()
 function test_progress(parts...)
     # Logging must not generate a new method instance for every combination of
     # family names, symbols, dimensions, and fitting methods passed by tests.
     Base.@nospecialize parts
+    next_path = join(string.(parts), " / ")
     now = time()
-    @info "Test progress" path=join(string.(parts), " / ") elapsed=round(now - _TEST_PROGRESS_LAST[]; digits=2) total=round(now - _TEST_RUN_STARTED; digits=2)
+    if isnothing(_TEST_PROGRESS_CURRENT[])
+        @info "Starting test" path=next_path total=round(now - _TEST_RUN_STARTED; digits=2)
+    else
+        @info "Test progress" completed=_TEST_PROGRESS_CURRENT[] elapsed=round(now - _TEST_PROGRESS_LAST[]; digits=2) next=next_path total=round(now - _TEST_RUN_STARTED; digits=2)
+    end
+    _TEST_PROGRESS_CURRENT[] = next_path
+    _TEST_PROGRESS_LAST[] = now
+end
+
+function finish_test_progress()
+    isnothing(_TEST_PROGRESS_CURRENT[]) && return
+    now = time()
+    @info "Test progress" completed=_TEST_PROGRESS_CURRENT[] elapsed=round(now - _TEST_PROGRESS_LAST[]; digits=2) total=round(now - _TEST_RUN_STARTED; digits=2)
+    _TEST_PROGRESS_CURRENT[] = nothing
     _TEST_PROGRESS_LAST[] = now
 end
 
@@ -237,9 +252,13 @@ testfiles = (
 )
 
 @info "Starting main tests."
-@testset verbose=true "Copulas.jl" begin
-    @testset verbose=true "$f" for f in testfiles
-        test_progress(f)
-        timed_include(f, f)
+try
+    @testset verbose=true "Copulas.jl" begin
+        @testset verbose=true "$f" for f in testfiles
+            test_progress(f)
+            timed_include(f, f)
+        end
     end
+finally
+    finish_test_progress()
 end
