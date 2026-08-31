@@ -1,13 +1,12 @@
 # Correctness obligation: verifies each public dependence-measure inverse on
 # representative supported families and both type- and instance-based dispatch.
-const _DEPENDENCE_INVERSES =
-    (Copulas.τ⁻¹, Copulas.ρ⁻¹, Copulas.β⁻¹, Copulas.λᵤ⁻¹)
-const _CHECKED_INVERSE_METHODS =
-    Dict(inverse => Set{Method}() for inverse in _DEPENDENCE_INVERSES)
 const _INVERSE_PAIRS = (
     (Copulas.τ, Copulas.τ⁻¹), (Copulas.ρ, Copulas.ρ⁻¹),
     (Copulas.β, Copulas.β⁻¹), (Copulas.λᵤ, Copulas.λᵤ⁻¹),
 )
+const _DEPENDENCE_INVERSES = last.(_INVERSE_PAIRS)
+const _CHECKED_INVERSE_METHODS =
+    Dict(inverse => Set{Method}() for inverse in _DEPENDENCE_INVERSES)
 
 has_scalar_parameter(object) = length(params(object)) == 1
 supports_inverse(object, inverse) = has_scalar_parameter(object) &&

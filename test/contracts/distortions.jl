@@ -38,12 +38,12 @@ conditional_route_key(D) = Tuple(which(f, Tuple{typeof(D),Float64}) for f in (
 const CONDITIONAL_DISTRIBUTION_CANDIDATES = (
     ((fixture.case.name, conditional_distribution(fixture))
      for fixture in ROUTING_COPULA_FIXTURES)...,
+)
+const CONDITIONAL_DISTRIBUTION_CASES = (
+    unique(case -> conditional_route_key(last(case)),
+           CONDITIONAL_DISTRIBUTION_CANDIDATES)...,
     CONDITIONAL_BRANCH_CASES...,
 )
-const CONDITIONAL_DISTRIBUTION_CASES = Tuple(unique(
-    case -> conditional_route_key(last(case)),
-    CONDITIONAL_DISTRIBUTION_CANDIDATES,
-))
 
 conditional_measure_style(D::Copulas.Distortion) =
     Copulas.distortion_measure_style(D)
@@ -129,7 +129,8 @@ end
     # Every route reached by full conditioning of a bivariate or multivariate
     # bestiary entry must be represented by the univariate contract.
     reachable = Set(conditional_route_key(D)
-                    for (_, D) in CONDITIONAL_DISTRIBUTION_CANDIDATES)
+                    for (_, D) in (CONDITIONAL_DISTRIBUTION_CANDIDATES...,
+                                   CONDITIONAL_BRANCH_CASES...))
     represented = Set(conditional_route_key(D)
                       for (_, D) in CONDITIONAL_DISTRIBUTION_CASES)
     @test reachable == represented
