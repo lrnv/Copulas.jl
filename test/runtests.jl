@@ -92,7 +92,9 @@ timed_include("infrastructure/fixtures.jl", joinpath(@__DIR__, "fixtures.jl"))
     test_progress("Aqua.jl")
     timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
     run_obligations(keys(obligation_testfiles))
-    test_progress("extension regressions", "expectation_maximization.jl")
-    timed_include("extensions/expectation_maximization.jl", joinpath(
-        @__DIR__, "extensions", "expectation_maximization.jl"))
+    @testset verbose=true "extension regressions" begin
+        test_progress("extension regressions", "expectation_maximization.jl")
+        timed_include("extensions/expectation_maximization.jl", joinpath(
+            @__DIR__, "extensions", "expectation_maximization.jl"))
+    end
 end

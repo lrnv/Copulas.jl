@@ -163,9 +163,11 @@ _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C),
 
 function _find_method(CT, d, method)
     avail = _available_fitting_methods(CT, d)
-    isempty(avail) && error("No fitting methods available for $CT.")
+    isempty(avail) && throw(ArgumentError("No fitting methods available for $CT."))
     method === :default && return avail[1]
-    method ∉ avail && error("Method '$method' not available for $CT. Available: $(join(avail, ", ")).")
+    method ∉ avail && throw(ArgumentError(
+        "Method '$method' not available for $CT. Available: $(join(avail, ", ")).",
+    ))
     return method
 end
 

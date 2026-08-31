@@ -24,12 +24,6 @@ function conditional_distribution(fixture)
     return condition(C, js, values)
 end
 
-# Value branches that select different formulas without changing dispatch.
-const CONDITIONAL_BRANCH_CASES = (
-    ("Frank negative", condition(FrankCopula{2}(-2.0), 1, 0.4)),
-    ("AMH negative", condition(AMHCopula{2}(-0.5), 1, 0.4)),
-)
-
 conditional_route_key(D) = Tuple(which(f, Tuple{typeof(D),Float64}) for f in (
     Distributions.cdf, Distributions.logcdf, Distributions.logpdf,
     Distributions.quantile,
@@ -39,11 +33,10 @@ const CONDITIONAL_DISTRIBUTION_CANDIDATES = (
     ((fixture.case.name, conditional_distribution(fixture))
      for fixture in ROUTING_COPULA_FIXTURES)...,
 )
-const CONDITIONAL_DISTRIBUTION_CASES = (
-    unique(case -> conditional_route_key(last(case)),
-           CONDITIONAL_DISTRIBUTION_CANDIDATES)...,
-    CONDITIONAL_BRANCH_CASES...,
-)
+const CONDITIONAL_DISTRIBUTION_CASES = Tuple(unique(
+    case -> conditional_route_key(last(case)),
+    CONDITIONAL_DISTRIBUTION_CANDIDATES,
+))
 
 conditional_measure_style(D::Copulas.Distortion) =
     Copulas.distortion_measure_style(D)
@@ -121,16 +114,12 @@ end
             end
         end
     end
-    # Multiple entries may deliberately exercise value branches of the same
-    # concrete implementation (for example positive and negative parameters).
-    @test allunique(first.(CONDITIONAL_DISTRIBUTION_CASES))
     @test checked_routes == selected_routes
 
     # Every route reached by full conditioning of a bivariate or multivariate
     # bestiary entry must be represented by the univariate contract.
     reachable = Set(conditional_route_key(D)
-                    for (_, D) in (CONDITIONAL_DISTRIBUTION_CANDIDATES...,
-                                   CONDITIONAL_BRANCH_CASES...))
+                    for (_, D) in CONDITIONAL_DISTRIBUTION_CANDIDATES)
     represented = Set(conditional_route_key(D)
                       for (_, D) in CONDITIONAL_DISTRIBUTION_CASES)
     @test reachable == represented

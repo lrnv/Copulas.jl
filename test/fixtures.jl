@@ -2,10 +2,6 @@
 # consumed by contracts and path tests; it contains no assertions itself.
 public_symbols() = filter(!=(:Copulas), names(Copulas; all=false, imported=false))
 
-"""A public copula fixture and the mathematical contract it must satisfy."""
-copula_case(name, build; numerical_atol=1e-8, margin_atol=1e-6) =
-    (; name, build, numerical_atol, margin_atol)
-
 is_absolutely_continuous(C) =
     Copulas.copula_measure_style(C) isa Copulas.AbsolutelyContinuousMeasure
 
@@ -122,7 +118,7 @@ end
 
 function copula_case(family, d::Int, args...; constructor_kwargs=NamedTuple(),
                      allowed_inference=nothing, numerical_atol=1e-8,
-                     margin_atol=1e-6)
+                     margin_atol=1e-6, conditional_at=nothing)
     symbol = _public_copula_symbol(family)
     name = replace(string(symbol), r"Copula$" => "")
     typed_family = Core.apply_type(family, d)
@@ -130,7 +126,7 @@ function copula_case(family, d::Int, args...; constructor_kwargs=NamedTuple(),
     dynamic = () -> family(d, args...; constructor_kwargs...)
     return (; family, symbol, name, d, args, constructor_kwargs, typed,
             dynamic, build=typed, allowed_inference, numerical_atol,
-            margin_atol)
+            margin_atol, conditional_at)
 end
 
 # The single central bestiary. The first entry for each public family is its
@@ -200,12 +196,24 @@ const ALL_COPULA_CASES = (
     copula_case(SurvivalCopula, 3, ClaytonCopula{3}(1.5), (1, 3)),
 
     # Additional dispatch representatives.
+    copula_case(FrankCopula, 2, -2.0; conditional_at=(1, 0.4)),
+    copula_case(AMHCopula, 2, -0.5; conditional_at=(1, 0.4)),
+    copula_case(PlackettCopula, 2, 0.5; conditional_at=(2, 0.7)),
+    copula_case(GumbelCopula, 2, 1.001; conditional_at=(1, 0.25)),
+    copula_case(GumbelCopula, 2, 8.0; conditional_at=(1, 0.7)),
+    copula_case(LogCopula, 2, 1.001; conditional_at=(1, 0.25)),
+    copula_case(InvGaussianCopula, 2, 0.01; conditional_at=(1, 0.4)),
+    copula_case(BB9Copula, 2, 1.001, 0.8; conditional_at=(1, 0.4)),
+    copula_case(GumbelBarnettCopula, 2, 0.01; conditional_at=(1, 0.3)),
+    copula_case(GumbelBarnettCopula, 2, 0.8; conditional_at=(1, 0.7)),
     copula_case(EmpiricalEVCopula, 3, _FIXTURE_DATA3;
         constructor_kwargs=(; degree=1, pseudo_values=false)),
     copula_case(ArchimedeanCopula, 2, Copulas.FrailtyGenerator(Exponential())),
     copula_case(ArchimedeanCopula, 2, WilliamsonGenerator(Dirac(1.0), 2.0)),
     copula_case(ArchimedeanCopula, 2, WilliamsonGenerator(Dirac(1.0), 2.5)),
     copula_case(ArchimedeanCopula, 2, EmpiricalGenerator(_FIXTURE_DATA)),
+    copula_case(ExtremeValueCopula, 2,
+        DiscreteSpectralTail([0.7 0.3; 0.2 0.8])),
     copula_case(GumbelCopula, 2, 1.5),
     copula_case(GalambosCopula, 2, 1.0),
     copula_case(HuslerReissCopula, 2, 1.0),
@@ -218,6 +226,8 @@ const ALL_COPULA_CASES = (
     copula_case(MOCopula, 3,
         [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]),
     copula_case(tEVCopula, 3, 4.0, 0.2),
+    copula_case(tEVCopula, 3, 4.0,
+        [1.0 0.2 0.2; 0.2 1.0 0.2; 0.2 0.2 1.0]),
     copula_case(GaussianCopula, 2, 0.3; numerical_atol=1e-3),
     copula_case(TCopula, 3, 5.0,
         [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
@@ -231,65 +241,7 @@ const ALL_COPULA_CASES = (
 )
 
 const COPULA_CASES = Tuple(unique(case -> case.symbol, ALL_COPULA_CASES))
-const CONSTRUCTOR_CASES = COPULA_CASES
-const ROUTING_COPULA_CASES = ALL_COPULA_CASES
 const COPULA_FIXTURES = Tuple((case=case, copula=case.build())
                               for case in COPULA_CASES)
 const ROUTING_COPULA_FIXTURES = Tuple((case=case, copula=case.build())
-                                      for case in ROUTING_COPULA_CASES)
-
-# A fitting route is the complete internal composition, not merely `_fit`.
-# Generic fitting additionally depends on the example, parameter transform,
-# and reconstruction methods selected for the concrete family.
-const PROVEN_FITTING_ROUTES = Set{Any}()
-function fitting_route_key(C, U, method)
-    Base.@nospecialize C U method
-    CT, d = typeof(C), length(C)
-    components = Any[
-        which(Copulas._available_fitting_methods, Tuple{Type{CT},Int}),
-        which(Copulas._find_method, Tuple{Type{CT},Int,Symbol}),
-        which(Copulas._fit, Tuple{Type{CT},typeof(U),Val{method}}),
-    ]
-    applicable(Copulas._example, CT, d) &&
-        push!(components, which(Copulas._example, Tuple{Type{CT},Int}))
-    bounded = params(C)
-    topology = (keys(bounded), map(values(bounded)) do value
-        value isa AbstractArray ? (typeof(value), size(value)) : typeof(value)
-    end)
-    component_type = C isa ArchimedeanCopula ? typeof(C.G) :
-                     C isa ExtremeValueCopula ? typeof(C.tail) : nothing
-    bounds = !isnothing(component_type) &&
-             applicable(Copulas._θ_bounds, component_type, d) ?
-             (which(Copulas._θ_bounds, Tuple{Type{component_type},Int}),
-              Copulas._θ_bounds(component_type, d)) : nothing
-    # Empirical EV fits reconstruct their non-parametric tail directly from
-    # the observations; the generic EV forwarding method is technically
-    # applicable but its parametric tail transform is not part of that route.
-    # Multivariate FGM uses its dedicated constrained MLE directly; its
-    # bivariate-only scalar transform is applicable by signature but rejects d>2.
-    if !(C isa EmpiricalEVCopula) &&
-       !(C isa FGMCopula && d != 2) && !isempty(bounded) &&
-       applicable(Copulas._unbound_params, CT, d, bounded)
-        unbound = Copulas._unbound_params(CT, d, bounded)
-        push!(components,
-              which(Copulas._unbound_params,
-                    Tuple{Type{CT},Int,typeof(bounded)}))
-        applicable(Copulas._rebound_params, CT, d, unbound) &&
-            push!(components,
-                  which(Copulas._rebound_params,
-                        Tuple{Type{CT},Int,typeof(unbound)}))
-        applicable(Copulas._fit_copula, CT, d, bounded, C) &&
-            push!(components,
-                  which(Copulas._fit_copula,
-                        Tuple{Type{CT},Int,typeof(bounded),typeof(C)}))
-    end
-    # `which` already distinguishes genuinely dimension-specific dispatches:
-    # adding the dimension itself would instead execute the same generic
-    # algorithm once per representation. Parameter topology and bounds retain
-    # the non-dispatch differences that affect generic reconstruction.
-    return (Tuple(components), method, topology, bounds)
-end
-function prove_fitting_route!(C, U, method)
-    Base.@nospecialize C U method
-    return push!(PROVEN_FITTING_ROUTES, fitting_route_key(C, U, method))
-end
+                                      for case in ALL_COPULA_CASES)

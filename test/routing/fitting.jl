@@ -64,7 +64,57 @@ end
     end
 end
 
-const _FITTING_PATH_MODELS = Tuple(fixture.copula for fixture in ROUTING_COPULA_FIXTURES)
+# A fitting route is the complete internal composition, not merely `_fit`.
+# Generic fitting additionally depends on the example, parameter transform,
+# and reconstruction methods selected for the concrete family.
+function fitting_route_key(C, U, method)
+    Base.@nospecialize C U method
+    CT, d = typeof(C), length(C)
+    components = Any[
+        which(Copulas._available_fitting_methods, Tuple{Type{CT},Int}),
+        which(Copulas._find_method, Tuple{Type{CT},Int,Symbol}),
+        which(Copulas._fit, Tuple{Type{CT},typeof(U),Val{method}}),
+    ]
+    applicable(Copulas._example, CT, d) &&
+        push!(components, which(Copulas._example, Tuple{Type{CT},Int}))
+    bounded = params(C)
+    topology = (keys(bounded), map(values(bounded)) do value
+        value isa AbstractArray ? (typeof(value), size(value)) : typeof(value)
+    end)
+    component_type = C isa ArchimedeanCopula ? typeof(C.G) :
+                     C isa ExtremeValueCopula ? typeof(C.tail) : nothing
+    bounds = !isnothing(component_type) &&
+             applicable(Copulas._θ_bounds, component_type, d) ?
+             (which(Copulas._θ_bounds, Tuple{Type{component_type},Int}),
+              Copulas._θ_bounds(component_type, d)) : nothing
+    # Empirical EV fits reconstruct their non-parametric tail directly from
+    # the observations; the generic EV forwarding method is technically
+    # applicable but its parametric tail transform is not part of that route.
+    # Multivariate FGM uses its dedicated constrained MLE directly; its
+    # bivariate-only scalar transform is applicable by signature but rejects d>2.
+    if !(C isa EmpiricalEVCopula) &&
+       !(C isa FGMCopula && d != 2) && !isempty(bounded) &&
+       applicable(Copulas._unbound_params, CT, d, bounded)
+        unbound = Copulas._unbound_params(CT, d, bounded)
+        push!(components,
+              which(Copulas._unbound_params,
+                    Tuple{Type{CT},Int,typeof(bounded)}))
+        applicable(Copulas._rebound_params, CT, d, unbound) &&
+            push!(components,
+                  which(Copulas._rebound_params,
+                        Tuple{Type{CT},Int,typeof(unbound)}))
+        applicable(Copulas._fit_copula, CT, d, bounded, C) &&
+            push!(components,
+                  which(Copulas._fit_copula,
+                        Tuple{Type{CT},Int,typeof(bounded),typeof(C)}))
+    end
+    # `which` already distinguishes genuinely dimension-specific dispatches:
+    # adding the dimension itself would instead execute the same generic
+    # algorithm once per representation. Parameter topology and bounds retain
+    # the non-dispatch differences that affect generic reconstruction.
+    return (Tuple(components), method, topology, bounds)
+end
+
 _has_fitting_parameters(C) =
     !(C isa Union{IndependentCopula,MCopula,WCopula}) && !isempty(params(C))
 _check_parameter_roundtrip(C) =
@@ -72,8 +122,9 @@ _check_parameter_roundtrip(C) =
 
 @testset "all distinct advertised fitting routes" begin
     selected_routes = Set{Any}()
-    for (index, (case, C)) in
-        enumerate(zip(ROUTING_COPULA_CASES, _FITTING_PATH_MODELS))
+    tested_routes = Set{Any}()
+    for (index, fixture) in enumerate(ROUTING_COPULA_FIXTURES)
+        case, C = fixture.case, fixture.copula
         CT, d = typeof(C), length(C)
         methods = Copulas._available_fitting_methods(CT, d)
 
@@ -87,14 +138,13 @@ _check_parameter_roundtrip(C) =
         end
 
         # Route selection depends on the matrix type, not on sampled values.
-        # Delay sampling until an actually new route must be executed: this
-        # avoids running samplers merely to discover that the fitting route
-        # was already proven by the public contract.
+        # Delay sampling until an actually new route must be executed, so
+        # families sharing the same fitting composition do not repeat it.
         route_data = fill(0.5, d, 2)
         for method in methods
             route = fitting_route_key(C, route_data, method)
             push!(selected_routes, route)
-            route in PROVEN_FITTING_ROUTES && continue
+            route in tested_routes && continue
             test_progress("routing fitting", case.name, method,
                           nameof(CT), d)
             U = rand(StableRNG(30_000 + index), C, 12)
@@ -105,7 +155,7 @@ _check_parameter_roundtrip(C) =
             fitted = fit(CT, U, method; vcov=false,
                          derived_measures=false, route_kwargs...)
             @test fitted isa Copulas.Copula{d}
-            prove_fitting_route!(C, U, method)
+            push!(tested_routes, route)
             if method === :mle && is_absolutely_continuous(C)
                 fitted_ll = loglikelihood(fitted, U)
                 @test isfinite(fitted_ll)
@@ -117,5 +167,5 @@ _check_parameter_roundtrip(C) =
         end
     end
     @test !isempty(selected_routes)
-    @test selected_routes ⊆ PROVEN_FITTING_ROUTES
+    @test tested_routes == selected_routes
 end

@@ -1077,11 +1077,15 @@ coverage.
 
 After implementing and documenting `MyCopula`, update the tests in this order:
 
-1. Add one ordinary, inexpensive entry to `CONSTRUCTOR_CASES` in
-   `test/fixtures.jl`, including its `{d}` and `(d, ...)` constructor forms.
-   This is the canonical copula bestiary: `COPULA_CASES` is derived from it and
-   automatically subjects the result to distribution, sampling,
+1. Add one ordinary, inexpensive `copula_case(MyCopula, d, args...)` entry to
+   `ALL_COPULA_CASES` in `test/fixtures.jl`. The helper derives the public
+   binding, display name, and both `{d}` and `(d, ...)` constructor forms. The
+   first representative of each family enters `COPULA_CASES` automatically and
+   is subjected to distribution, sampling,
    subsetting, conditioning, transforms, and dependence contracts.
+   Pass constructor keywords through `constructor_kwargs=(; keyword=value)`;
+   tolerances, permitted inference unions, and inputs needed to reach a
+   value-dependent numerical branch remain exceptional test metadata.
    Absolutely-continuous models additionally receive the density and
    invertible-Rosenblatt contracts.
 2. Copulas are assumed absolutely continuous by default. If the new family has
@@ -1094,8 +1098,12 @@ After implementing and documenting `MyCopula`, update the tests in this order:
    `archimedean_measure_style(G, Val(d))` instead. Williamson generators do
    this automatically from their preserved radial law and source order.
 3. If dimension changes dispatch or representation, add the missing bivariate
-   or multivariate representative to `ALL_COPULA_CASES`. Do not add another
-   entry merely to vary a parameter when it selects the same methods.
+   or multivariate representative to `ALL_COPULA_CASES`. Method discovery uses
+   `which`, so it cannot see branches selected from parameter or argument
+   values inside a method. When such branches exist, add the smallest set of
+   additional representatives needed to exercise every regime, even though
+   they select the same method. Otherwise, do not add entries that merely vary
+   parameters without reaching a distinct implementation path.
 4. If the family advertises fitting through `_available_fitting_methods`, the
    fitting contract and routing inventory discover those methods automatically.
 5. If the family introduces a new generic numerical mechanism, add one
@@ -1123,6 +1131,17 @@ after their distributional identity succeeds; deterministic operations and
 dependence measures are registered only after an independent oracle or a
 proved reduction succeeds. Merely reaching a method does not enter it in a
 proof ledger.
+
+Every entry in `ALL_COPULA_CASES` also feeds specialization discovery. The
+equivalence layer uses `which` to retain one representative per selected
+method and compares it with the operation-level generic oracle whenever that
+fallback is valid. Adding a family therefore does not require registering its
+specializations separately; only a genuinely new mechanism without a valid
+fallback needs a new operation-level oracle. Because value-dependent branches
+are invisible to `which`, their representatives are deliberately not
+deduplicated solely by method: list every relevant value regime in
+`ALL_COPULA_CASES` and attach exceptional operation inputs, such as
+`conditional_at`, to that entry when required.
 
 Public generators and extreme-value tails are extracted automatically from the
 Archimedean and extreme-value copulas in the bestiary. If a standalone

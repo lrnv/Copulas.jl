@@ -66,7 +66,7 @@ end
 
 rebuild_inverse_case(C::ExtremeValueCopula{2}, parameter) =
     ExtremeValueCopula{2}(typeof(C.tail)(parameter))
-rebuild_inverse_case(C::Copula, parameter) = typeof(C)(parameter)
+rebuild_inverse_case(C::Copulas.Copula, parameter) = typeof(C)(parameter)
 rebuild_inverse_case(G::Copulas.Generator, parameter) = typeof(G)(parameter)
 
 @testset "dispatched copula dependence-measure inverses" begin

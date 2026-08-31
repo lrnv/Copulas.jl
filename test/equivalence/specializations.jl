@@ -287,6 +287,12 @@ end
 _singular_tau_oracle(C::RafteryCopula{2}) = 2C.θ / (3 - C.θ)
 _singular_tau_oracle(::MCopula{2}) = 1
 _singular_tau_oracle(::WCopula{2}) = -1
+# The order-two Williamson transform of a Dirac radial is
+# ϕ(t) = (1 - t/r)₊, hence its bivariate copula is the lower
+# Fréchet--Hoeffding bound independently of the positive radius r.
+_singular_tau_oracle(
+    ::ArchimedeanCopula{2,<:WilliamsonGenerator{<:Dirac}},
+) = -1
 
 @testset verbose=true "singular Kendall routes agree with deterministic identities" begin
     routes = _unique_bivariate_routes(

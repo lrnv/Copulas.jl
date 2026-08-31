@@ -140,9 +140,7 @@
         # branch registry verifies that both representations are linked rather
         # than executing the same numerical identities a second time.
         fixtures = filter(ROUTING_COPULA_FIXTURES) do fixture
-            fixture.copula isa Union{HuslerReissCopula,tEVCopula} &&
-                !(fixture.copula isa HuslerReissCopula{3} &&
-                  fixture.copula.tail.parameter isa AbstractMatrix)
+            fixture.copula isa Union{HuslerReissCopula,tEVCopula}
         end
         for fixture in fixtures
             case, C = fixture.case, fixture.copula
@@ -171,18 +169,14 @@
         # `which` inventories one method per concrete distortion, but cannot
         # see value branches within that method.  Compare every such regime to
         # the generic inversion without repeating the full distortion contract.
-        cases = (
-            condition(PlackettCopula{2}(0.5), 2, 0.7),
-            condition(FrankCopula{2}(-2.0), 1, 0.4),
-            condition(AMHCopula{2}(-0.5), 1, 0.4),
-            condition(GumbelCopula{2}(1.001), 1, 0.25),
-            condition(GumbelCopula{2}(8.0), 1, 0.7),
-            condition(LogCopula{2}(1.001), 1, 0.25),
-            condition(InvGaussianCopula{2}(0.01), 1, 0.4),
-            condition(BB9Copula{2}(1.001, 0.8), 1, 0.4),
-            condition(GumbelBarnettCopula{2}(0.01), 1, 0.3),
-            condition(GumbelBarnettCopula{2}(0.8), 1, 0.7),
-        )
+        cases = Any[]
+        for case in ALL_COPULA_CASES
+            isnothing(case.conditional_at) && continue
+            C = case.build()
+            is_absolutely_continuous(C) || continue
+            j, value = case.conditional_at
+            push!(cases, condition(C, j, value))
+        end
         for D in cases
             p = 0.63
             generic = invoke(quantile, Tuple{Copulas.Distortion,Real}, D, p)

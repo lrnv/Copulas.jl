@@ -161,7 +161,7 @@ Distributions.cdf(d::BernsteinDistortion, u::Real) =
     u <= 0 ? zero(float(u)) : u >= 1 ? one(float(u)) : Distributions.cdf(d.mixture, u)
 Distributions.logcdf(d::BernsteinDistortion, u::Real) = log(Distributions.cdf(d, u))
 Distributions.pdf(d::BernsteinDistortion, u::Real) = Distributions.pdf(d.mixture, u)
-Distributions.logpdf(d::BernsteinDistortion, u::Real) = Distributions.logpdf(d.mixture, u)
+Distributions.logpdf(d::BernsteinDistortion, u::Real) = log(Distributions.pdf(d, u))
 Distributions.quantile(d::BernsteinDistortion, p::Real) = _unit_quantile(d, p)
 
 function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
