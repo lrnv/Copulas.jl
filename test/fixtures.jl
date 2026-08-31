@@ -25,9 +25,19 @@ const _FIXTURE_DATA3 = vcat(
 # from the one-instance-per-family public contract above. They are consumed by
 # routing and proof tests only, avoiding repetition of the full API contract.
 const ROUTING_EXTRA_CASES = (
+    copula_case("frailty Archimedean", () -> ArchimedeanCopula{2}(
+        Copulas.FrailtyGenerator(Exponential()))),
+    copula_case("integer-order Williamson Archimedean", () ->
+        ArchimedeanCopula{2}(WilliamsonGenerator(Dirac(1.0), 2.0))),
+    copula_case("real-order Williamson Archimedean", () ->
+        ArchimedeanCopula{2}(WilliamsonGenerator(Dirac(1.0), 2.5))),
+    copula_case("empirical-generator Archimedean", () ->
+        ArchimedeanCopula{2}(EmpiricalGenerator(_FIXTURE_DATA))),
     copula_case("Gumbel bivariate", () -> GumbelCopula{2}(1.5)),
     copula_case("Galambos bivariate", () -> GalambosCopula{2}(1.0)),
     copula_case("Husler--Reiss bivariate", () -> HuslerReissCopula{2}(1.0)),
+    copula_case("Husler--Reiss variogram", () -> HuslerReissCopula{3}(
+        [0.0 1.0 1.0; 1.0 0.0 1.0; 1.0 1.0 0.0])),
     copula_case("logistic EV bivariate", () -> LogCopula{2}(1.5)),
     copula_case("asymmetric Galambos multivariate",
         () -> AsymGalambosCopula{3}(1.0, [0.4, 0.5, 0.6])),

@@ -1,26 +1,10 @@
 # Correctness obligation: exhaustively covers public generator families and
 # verifies their transform, inverse, derivative, and reconstruction identities.
-const GENERATOR_CASES = (
-    Copulas.AMHGenerator(0.5),
-    Copulas.BB1Generator(1.2, 1.5),
-    Copulas.BB2Generator(1.2, 0.5),
-    Copulas.BB3Generator(2.0, 1.5),
-    Copulas.BB6Generator(1.2, 1.6),
-    Copulas.BB7Generator(1.2, 1.6),
-    Copulas.BB8Generator(1.2, 0.4),
-    Copulas.BB9Generator(1.5, 2.4),
-    Copulas.BB10Generator(1.5, 0.7),
-    Copulas.ClaytonGenerator(1.5),
-    Copulas.FrankGenerator(2.0),
-    Copulas.GumbelBarnettGenerator(0.5),
-    Copulas.GumbelGenerator(1.5),
-    Copulas.InvGaussianGenerator(0.5),
-    Copulas.JoeGenerator(1.5),
-    Copulas.FrailtyGenerator(Exponential()),
-    WilliamsonGenerator(Dirac(1.0), 2.0),
-    WilliamsonGenerator(Dirac(1.0), 2.5),
-    EmpiricalGenerator(_FIXTURE_DATA),
-)
+generator_case_key(G) = (typeof(G),
+    G isa WilliamsonGenerator ? isinteger(G.order) : nothing)
+const GENERATOR_CASES = Tuple(unique(generator_case_key,
+    [fixture.copula.G for fixture in ROUTING_COPULA_FIXTURES
+     if fixture.copula isa ArchimedeanCopula]))
 
 @testset "public generator registry is exhaustive" begin
     public_families = Set(getfield(Copulas, symbol) for symbol in public_symbols()
