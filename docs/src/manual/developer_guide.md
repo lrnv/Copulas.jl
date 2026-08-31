@@ -1056,30 +1056,32 @@ test suite.
 
 | Behaviour | Contract | Generic oracle | Specialized paths | Exhaustive routing |
 |:--|:--|:--|:--|:--|
-| construction and validation | every public family | canonical `{d}` constructor | reductions and inferred forms | constructor registry |
+| construction and validation | every public family | canonical `{d}` constructor | reductions and inferred forms | public bestiary |
 | CDF, log-CDF, PDF and log-PDF | every applicable family | derivatives and numerical integration | deterministic formulas vs fallback | dispatch inventory |
 | sampling | every public family | distributional identities | no draw-by-draw comparison | sampler dispatch inventory |
 | subsetting | every public family | marginal CDF identity | specialized subsets vs parent | dispatch inventory |
-| conditioning | every public family | normalized mixed derivatives | scalar distortions and joint conditional components vs parent CDF | distortion and dispatch registries |
+| conditioning | every public family | normalized mixed derivatives | scalar distortions and joint conditional components vs parent CDF | conditionals derived from the bestiary |
 | Rosenblatt transforms | every public family | conditional-CDF factorization | specialized transforms vs generic | dispatch inventory |
 | dependence measures | applicability on every family | defining integral or statistical identity | closed forms vs generic or independent oracle | one execution per dispatch |
-| fitting | every advertised family and method | recovery and parameter-map identities | specialized estimators vs defining statistic | advertised-method registry |
-| generator primitives | every numerical public generator; explicit reduction contract for marker generators | differentiation and inversion identities | closed forms vs generic primitive | generator registry |
-| tail primitives | every public tail | homogeneity, convexity, and derivative identities | analytic partials vs AD or finite differences | tail registry |
+| fitting | every advertised family and method | recovery and parameter-map identities | specialized estimators vs defining statistic | methods advertised by package dispatch |
+| generator primitives | every numerical public generator; explicit reduction contract for marker generators | differentiation and inversion identities | closed forms vs generic primitive | generators extracted from the bestiary |
+| tail primitives | every public tail | homogeneity, convexity, and derivative identities | analytic partials vs AD or finite differences | tails extracted from the bestiary |
 | Sklar composition | public composition contract | change-of-variable identities | specialized conditioning and transforms vs generic | composition paths |
 | optional extensions | every declared extension | extension-specific public identity | extension-specific | extension registry |
 
-When adding a public family or a specialized method, update the corresponding
-registry and supply the missing proof obligation. Do not repeat an expensive
-mathematical identity for every family merely to obtain coverage.
+When adding a public family or a specialized method, add the smallest
+representative that selects it and supply the missing proof obligation. Do not
+repeat an expensive mathematical identity for every family merely to obtain
+coverage.
 
 ## 4.4 Adding a public copula family
 
 After implementing and documenting `MyCopula`, update the tests in this order:
 
-1. Add one ordinary, inexpensive instance to `COPULA_CASES` in
-   `test/fixtures.jl`. The fixture describes test data, not capabilities: this
-   automatically subjects it to construction, distribution, sampling,
+1. Add one ordinary, inexpensive entry to `CONSTRUCTOR_CASES` in
+   `test/fixtures.jl`, including its `{d}` and `(d, ...)` constructor forms.
+   This is the canonical copula bestiary: `COPULA_CASES` is derived from it and
+   automatically subjects the result to distribution, sampling,
    subsetting, conditioning, transforms, and dependence contracts.
    Absolutely-continuous models additionally receive the density and
    invertible-Rosenblatt contracts.
@@ -1095,9 +1097,8 @@ After implementing and documenting `MyCopula`, update the tests in this order:
 3. If dimension changes dispatch or representation, add the missing bivariate
    or multivariate instance to `ROUTING_EXTRA_CASES`. Do not add another fixture
    merely to vary a parameter when it selects the same methods.
-4. If the family advertises fitting, register each supported method in the
-   fitting fixtures. The contract checks applicability and result shape; the
-   routing layer executes every distinct estimator path.
+4. If the family advertises fitting through `_available_fitting_methods`, the
+   fitting contract and routing inventory discover those methods automatically.
 5. If the family introduces a new generic numerical mechanism, add one
    independent oracle in `correctness/`. If it specializes an
    existing operation, compare the specialization with its fallback in
@@ -1124,10 +1125,10 @@ dependence measures are registered only after an independent oracle or a
 proved reduction succeeds. Merely reaching a method does not enter it in a
 proof ledger.
 
-Public generators and extreme-value tails follow the same principle. Add them
-to `GENERATOR_CASES` or `TAIL_CASES`; their primitive-operation registries check
-that every selected implementation of the documented mathematical primitives
-is exercised and validated.
+Public generators and extreme-value tails are extracted automatically from the
+Archimedean and extreme-value copulas in the bestiary. If a standalone
+component needs coverage, add a cheap associated copula to
+`ROUTING_EXTRA_CASES`; do not maintain a parallel component list.
 
 ## 4.5 Adding or changing public behaviour
 
@@ -1140,8 +1141,8 @@ making an existing internal operation public:
    supported methods without redeclaring the external symbol.
 2. Add a contract helper and call it for every applicable public family. If the
    operation is intentionally unavailable for a mathematical class, encode
-   that applicability explicitly in the fixture metadata or contract rather
-   than silently skipping failures.
+   that applicability in the package's type structure, trait, or advertised
+   methods rather than silently skipping failures or duplicating it in fixtures.
 3. Add an independent oracle for every new generic mechanism.
 4. Inventory all dispatch routes selected by the public and dimension-specific
    fixtures. Compare each specialization with the generic route, or provide an
@@ -1164,7 +1165,7 @@ small deterministic inputs and verify only public semantics. Before adding a
 new numerical assertion, first determine whether an existing generic oracle and
 the route ledger already imply it.
 
-This organization makes omissions visible: a new public family fails the family
-registry, a new public symbol fails the namespace registry, and a newly selected
-deterministic method fails the proof-ledger comparison until its correctness or
-equivalence has been demonstrated.
+This organization makes omissions visible: a new public family fails the
+bestiary exhaustiveness check, and a newly selected deterministic method fails
+the proof-ledger comparison until its correctness or equivalence has been
+demonstrated.

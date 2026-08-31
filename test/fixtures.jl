@@ -211,7 +211,7 @@ const CONSTRUCTOR_CASES = (
         numerical_atol=1e-3),
     constructor_case(:TCopula, "Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0]), () -> TCopula(2, 4.0, [1.0 0.3; 0.3 1.0])),
     constructor_case(:IndependentCopula, "independence", () -> IndependentCopula{3}(), () -> IndependentCopula(3)),
-    constructor_case(:MCopula, "upper Frechet", () -> MCopula{3}(), () -> MCopula(3)),
+    constructor_case(:MCopula, "upper Frechet", () -> MCopula{2}(), () -> MCopula(2)),
     constructor_case(:WCopula, "lower Frechet", () -> WCopula{2}(), () -> WCopula(2)),
     constructor_case(:FGMCopula, "FGM", () -> FGMCopula{2}(0.5), () -> FGMCopula(2, 0.5); allowed_inference=Union{IndependentCopula{2},MCopula{2},WCopula{2},FGMCopula{2}}),
     constructor_case(:PlackettCopula, "Plackett", () -> PlackettCopula{2}(2.0), () -> PlackettCopula(2, 2.0)),
