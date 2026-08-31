@@ -79,7 +79,7 @@ end
 @testset verbose=true "every Rosenblatt route equals sequential conditioning" begin
     selected_forward = Set(rosenblatt_route_key(fixture.copula)
                            for fixture in ROUTING_COPULA_FIXTURES)
-    selected_inverse = Set(filter(!isnothing,
+    selected_inverse = Set(filter(x -> !isnothing(x),
         (inverse_rosenblatt_route_key(fixture.copula)
          for fixture in ROUTING_COPULA_FIXTURES)))
     tested_forward = Set{Any}()

@@ -44,10 +44,13 @@ not discard representatives intentionally added for such branches.
 
 - [x] Migrate `measure` and `subsetdims` as initial deterministic examples.
 - [x] Extract Rosenblatt and inverse Rosenblatt.
-- [ ] Extract scalar and pairwise dependence measures.
-- [ ] Extract distribution evaluation.
+- [ ] Finish scalar and pairwise dependence measures (the contract and route
+      execution are migrated; mathematical oracles remain to consolidate).
+- [ ] Finish distribution evaluation (the family-wide contract is migrated;
+      generic and specialized proofs remain to consolidate).
 - [x] Extract sampling.
-- [ ] Extract conditioning and its distortion API.
+- [ ] Finish conditioning and its distortion API (the family-wide contract is
+      migrated; generic and specialized proofs remain to consolidate).
 - [ ] Extract fitting and model-result behavior.
 - [ ] Consolidate generator, tail, and auxiliary univariate APIs.
 - [ ] Move Sklar, Nataf, constructors, and standalone utilities.

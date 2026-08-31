@@ -68,7 +68,8 @@ obligation_testfiles = (
     ],
     equivalence = ["specializations", "conditioning",
                    "extreme_value", "nested_archimedean"],
-    operations = ["measure", "subsetting", "rosenblatt", "sampling"],
+    operations = ["measure", "subsetting", "rosenblatt", "sampling",
+                  "dependence", "distribution", "conditioning"],
     routing = ["dispatch", "branches", "fitting"],
 )
 

@@ -5,6 +5,14 @@ public_symbols() = filter(!=(:Copulas), names(Copulas; all=false, imported=false
 is_absolutely_continuous(C) =
     Copulas.copula_measure_style(C) isa Copulas.AbsolutelyContinuousMeasure
 
+_dependence_is_defined(measure, C::Copulas.Copula) =
+    _dependence_is_defined(measure, Copulas.copula_measure_style(C))
+_dependence_is_defined(
+    ::Union{typeof(Copulas.ι),typeof(Copulas.corentropy)},
+    ::Copulas.NonAbsolutelyContinuousMeasure,
+) = false
+_dependence_is_defined(::Any, ::Copulas.CopulaMeasureStyle) = true
+
 const _FIXTURE_DATA = [
     0.12 0.31 0.54 0.73 0.89 0.42
     0.81 0.22 0.63 0.47 0.15 0.68
