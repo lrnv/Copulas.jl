@@ -470,8 +470,9 @@ end
 @testset verbose=true "all distortion quantile specializations agree with generic inversion" begin
     generic_method = which(quantile, Tuple{Copulas.Distortion,Real})
     seen = Set{Method}()
-    for (name, D, kind) in CONDITIONAL_DISTRIBUTION_CASES
-        kind === :continuous || continue
+    for (name, D) in CONDITIONAL_DISTRIBUTION_CASES
+        conditional_measure_style(D) isa Copulas.AbsolutelyContinuousMeasure ||
+            continue
         D isa Copulas.Distortion || continue
         method = which(quantile, Tuple{typeof(D),Float64})
         method === generic_method && continue
