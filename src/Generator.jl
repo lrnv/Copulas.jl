@@ -427,8 +427,7 @@ function ϕ(G::𝒲, x::TaylorSeries.Taylor1{TF}) where {TF}
     return TaylorSeries.Taylor1(rez)
 end
 
-distortion_measure_style(D::ArchimedeanDistortion{<:WilliamsonGenerator}) =
-    archimedean_measure_style(D.G, Val(D.p + 1))
+distortion_measure_style(D::ArchimedeanDistortion{<:WilliamsonGenerator}) = archimedean_measure_style(D.G, Val(D.p + 1))
 function Distributions.quantile(
     D::ArchimedeanDistortion{<:WilliamsonGenerator},
     α::Real,

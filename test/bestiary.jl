@@ -2,17 +2,6 @@
 # canonical contract/constructor representative; later entries exercise extra
 # dimensions, representations, or value-dependent routes only.
 
-
-# Syntax: 
-# copula_case(family, dimension::Int, constructor_args...)
-# additional kwords: 
-#    constructor_kwargs=NamedTuple(),
-#    allowed_inference=nothing,
-#    numerical_atol=1e-8,
-#    margin_atol=1e-6,
-#    conditional_at=nothing
-
-
 const ALL_COPULA_CASES = (
     copula_case(AMHCopula, 2, 0.5),
     copula_case(BB1Copula, 2, 1.2, 1.5),

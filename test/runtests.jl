@@ -174,16 +174,13 @@ end
 include("bestiary.jl")
 
 const COPULA_CASES = Tuple(unique(case -> case.symbol, ALL_COPULA_CASES))
-const COPULA_FIXTURES = Tuple((case=case, copula=case.build())
-                              for case in COPULA_CASES)
-const ROUTING_COPULA_FIXTURES = Tuple((case=case, copula=case.build())
-                                      for case in ALL_COPULA_CASES)
+const COPULA_FIXTURES = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
+const ROUTING_COPULA_FIXTURES = Tuple((case=case, copula=case.build()) for case in ALL_COPULA_CASES)
 
 # Public component cases derive from the same central copula bestiary. They
 # live here because several earlier mathematical-oracle files consume them
 # before the component operation suites themselves are included.
-generator_case_key(G) = (typeof(G),
-    G isa WilliamsonGenerator ? isinteger(G.order) : nothing)
+generator_case_key(G) = (typeof(G), G isa WilliamsonGenerator ? isinteger(G.order) : nothing)
 const GENERATOR_CASES = Tuple(unique(generator_case_key,
     [fixture.copula.G for fixture in ROUTING_COPULA_FIXTURES
      if fixture.copula isa ArchimedeanCopula]))
@@ -197,46 +194,52 @@ const TAIL_CASES = Tuple(unique(tail_case_key,
 
 # Now launch the tests themselves: 
 
-obligation_testfiles = (
-    correctness = [
-        "archimedean", "elliptical", "mathematical",
-        "statistical", "numerical",
-        "williamson", "liouville", "conditioning",
-        "bivariate_families", "extreme_value", "extreme_value_quantiles",
-        "extreme_value_equivalence", "nested_archimedean",
-        "nested_archimedean_equivalence", "family_specialization_equivalence",
-    ],
-    api = ["copulas", "constructors", "constructor_validation",
-           "public_compositions", "sklar", "utilities", "generators", 
-           "tails", "univariate_distributions"],
-    operations = ["measure", "subsetting", "rosenblatt", "sampling",
-                  "dependence", "distribution",  "conditioning", "fitting",
-                  "fitting_parameterizations", "fitting_routes", "nataf"],
-    routing = ["dispatch", "branches"],
+testfiles = (
+    "Aqua.jl",
+    "api/constructors", 
+    "api/constructor_validation",
+    "api/copulas", 
+    "api/public_compositions", 
+    "api/sklar", 
+    "api/utilities", 
+    "api/generators", 
+    "api/tails", 
+    "api/univariate_distributions",
+    "correctness/archimedean", 
+    "correctness/elliptical", 
+    "correctness/mathematical",
+    "correctness/statistical", 
+    "correctness/numerical",
+    "correctness/williamson", 
+    "correctness/liouville", 
+    "correctness/conditioning",
+    "correctness/bivariate_families", 
+    "correctness/extreme_value", 
+    "correctness/extreme_value_quantiles",
+    "correctness/extreme_value_equivalence", 
+    "correctness/nested_archimedean",
+    "correctness/nested_archimedean_equivalence", 
+    "correctness/family_specialization_equivalence",
+    "operations/measure", 
+    "operations/subsetting", 
+    "operations/rosenblatt", 
+    "operations/sampling",
+    "operations/dependence", 
+    "operations/distribution",  
+    "operations/conditioning", 
+    "operations/fitting",
+    "operations/fitting_parameterizations", 
+    "operations/fitting_routes", 
+    "operations/nataf",
+    "routing/dispatch", 
+    "routing/branches",
+    "extensions/expectation_maximization.jl"
 )
 
-function run_obligations(groups)
-    Base.@nospecialize groups
-    for obligation in groups
-        files = getproperty(obligation_testfiles, obligation)
-        @testset verbose=true "$obligation obligations" begin
-            @testset verbose=true "$f.jl" for f in files
-                test_progress("$obligation obligations", "$f.jl")
-                timed_include("$obligation/$f.jl", joinpath(
-                    @__DIR__, string(obligation), "$f.jl"))
-            end
-        end
-    end
-end
-
-
+@info "Starting main tests."
 @testset verbose=true "Copulas.jl" begin
-    test_progress("Aqua.jl")
-    timed_include("infrastructure/Aqua.jl", joinpath(@__DIR__, "Aqua.jl"))
-    run_obligations(keys(obligation_testfiles))
-    @testset verbose=true "extension regressions" begin
-        test_progress("extension regressions", "expectation_maximization.jl")
-        timed_include("extensions/expectation_maximization.jl", joinpath(
-            @__DIR__, "extensions", "expectation_maximization.jl"))
+    @testset verbose=true "$f.jl" for f in testfiles
+        test_progress("$f.jl")
+        timed_include("$f.jl", "$f.jl")
     end
 end
