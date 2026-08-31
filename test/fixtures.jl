@@ -216,28 +216,28 @@ function prove_dependence_route!(measure, C)
                  dependence_route_key(measure, C))
 end
 
-constructor_case(name, typed, dynamic; allowed_inference=nothing) =
-    (; name, typed, dynamic, allowed_inference)
+constructor_case(symbol, name, typed, dynamic; allowed_inference=nothing) =
+    (; symbol, name, typed, dynamic, allowed_inference)
 
 const CONSTRUCTOR_CASES = (
-    constructor_case("AMH", () -> AMHCopula{2}(0.5), () -> AMHCopula(2, 0.5)),
-    constructor_case("BB1", () -> BB1Copula{2}(1.2, 1.5), () -> BB1Copula(2, 1.2, 1.5)),
-    constructor_case("BB2", () -> BB2Copula{2}(1.2, 0.5), () -> BB2Copula(2, 1.2, 0.5)),
-    constructor_case("BB3", () -> BB3Copula{2}(2.0, 1.5), () -> BB3Copula(2, 2.0, 1.5)),
-    constructor_case("BB6", () -> BB6Copula{2}(1.2, 1.6), () -> BB6Copula(2, 1.2, 1.6)),
-    constructor_case("BB7", () -> BB7Copula{2}(1.2, 1.6), () -> BB7Copula(2, 1.2, 1.6)),
-    constructor_case("BB8", () -> BB8Copula{2}(1.2, 0.4), () -> BB8Copula(2, 1.2, 0.4)),
-    constructor_case("BB9", () -> BB9Copula{2}(1.5, 2.4), () -> BB9Copula(2, 1.5, 2.4)),
-    constructor_case("BB10", () -> BB10Copula{2}(1.5, 0.7), () -> BB10Copula(2, 1.5, 0.7)),
-    constructor_case("Clayton", () -> ClaytonCopula{3}(1.5), () -> ClaytonCopula(3, 1.5)),
-    constructor_case("Frank", () -> FrankCopula{3}(2.0), () -> FrankCopula(3, 2.0)),
-    constructor_case("Gumbel", () -> GumbelCopula{3}(1.5), () -> GumbelCopula(3, 1.5)),
-    constructor_case("Gumbel--Barnett", () -> GumbelBarnettCopula{2}(0.5), () -> GumbelBarnettCopula(2, 0.5)),
-    constructor_case("inverse Gaussian", () -> InvGaussianCopula{2}(0.5), () -> InvGaussianCopula(2, 0.5)),
-    constructor_case("Joe", () -> JoeCopula{2}(1.5), () -> JoeCopula(2, 1.5)),
+    constructor_case(:AMHCopula, "AMH", () -> AMHCopula{2}(0.5), () -> AMHCopula(2, 0.5)),
+    constructor_case(:BB1Copula, "BB1", () -> BB1Copula{2}(1.2, 1.5), () -> BB1Copula(2, 1.2, 1.5)),
+    constructor_case(:BB2Copula, "BB2", () -> BB2Copula{2}(1.2, 0.5), () -> BB2Copula(2, 1.2, 0.5)),
+    constructor_case(:BB3Copula, "BB3", () -> BB3Copula{2}(2.0, 1.5), () -> BB3Copula(2, 2.0, 1.5)),
+    constructor_case(:BB6Copula, "BB6", () -> BB6Copula{2}(1.2, 1.6), () -> BB6Copula(2, 1.2, 1.6)),
+    constructor_case(:BB7Copula, "BB7", () -> BB7Copula{2}(1.2, 1.6), () -> BB7Copula(2, 1.2, 1.6)),
+    constructor_case(:BB8Copula, "BB8", () -> BB8Copula{2}(1.2, 0.4), () -> BB8Copula(2, 1.2, 0.4)),
+    constructor_case(:BB9Copula, "BB9", () -> BB9Copula{2}(1.5, 2.4), () -> BB9Copula(2, 1.5, 2.4)),
+    constructor_case(:BB10Copula, "BB10", () -> BB10Copula{2}(1.5, 0.7), () -> BB10Copula(2, 1.5, 0.7)),
+    constructor_case(:ClaytonCopula, "Clayton", () -> ClaytonCopula{3}(1.5), () -> ClaytonCopula(3, 1.5)),
+    constructor_case(:FrankCopula, "Frank", () -> FrankCopula{3}(2.0), () -> FrankCopula(3, 2.0)),
+    constructor_case(:GumbelCopula, "Gumbel", () -> GumbelCopula{3}(1.5), () -> GumbelCopula(3, 1.5)),
+    constructor_case(:GumbelBarnettCopula, "Gumbel--Barnett", () -> GumbelBarnettCopula{2}(0.5), () -> GumbelBarnettCopula(2, 0.5)),
+    constructor_case(:InvGaussianCopula, "inverse Gaussian", () -> InvGaussianCopula{2}(0.5), () -> InvGaussianCopula(2, 0.5)),
+    constructor_case(:JoeCopula, "Joe", () -> JoeCopula{2}(1.5), () -> JoeCopula(2, 1.5)),
     # Its value-dependent boundary simplifications intentionally infer a small
     # union rather than one concrete family.
-    constructor_case("asymmetric Galambos",
+    constructor_case(:AsymGalambosCopula, "asymmetric Galambos",
         () -> AsymGalambosCopula{2}(1.0, 0.4, 0.6),
         () -> AsymGalambosCopula(2, 1.0, 0.4, 0.6);
         allowed_inference=Union{
@@ -245,88 +245,70 @@ const CONSTRUCTOR_CASES = (
             MCopula,
             ExtremeValueCopula{2},
         }),
-    constructor_case("asymmetric logistic", () -> AsymLogCopula{2}(1.5, 0.4, 0.6), () -> AsymLogCopula(2, 1.5, 0.4, 0.6)),
-    constructor_case("asymmetric mixed",
+    constructor_case(:AsymLogCopula, "asymmetric logistic", () -> AsymLogCopula{2}(1.5, 0.4, 0.6), () -> AsymLogCopula(2, 1.5, 0.4, 0.6)),
+    constructor_case(:AsymMixedCopula, "asymmetric mixed",
         () -> AsymMixedCopula{2}(0.3, 0.2),
         () -> AsymMixedCopula(2, 0.3, 0.2);
         allowed_inference=Union{
             IndependentCopula{2}, MixedCopula{2}, AsymMixedCopula{2},
         }),
-    constructor_case("BC2",
+    constructor_case(:BC2Copula, "BC2",
         () -> BC2Copula{2}(0.5, 0.3),
         () -> BC2Copula(2, 0.5, 0.3);
         allowed_inference=BC2Copula{2}),
-    constructor_case("Cuadras--Auge", () -> CuadrasAugeCopula{2}(0.5), () -> CuadrasAugeCopula(2, 0.5)),
-    constructor_case("Galambos", () -> GalambosCopula{3}(1.0), () -> GalambosCopula(3, 1.0)),
-    constructor_case("Husler--Reiss", () -> HuslerReissCopula{3}(1.0), () -> HuslerReissCopula(3, 1.0)),
-    constructor_case("logistic EV", () -> LogCopula{3}(1.5), () -> LogCopula(3, 1.5)),
-    constructor_case("mixed EV", () -> MixedCopula{2}(0.5), () -> MixedCopula(2, 0.5)),
-    constructor_case("Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4), () -> MOCopula(2, 0.2, 0.3, 0.4); allowed_inference=MOCopula{2}),
-    constructor_case("Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8]), () -> TawnCopula(3, 2.0, [0.6, 0.7, 0.8]); allowed_inference=Union{IndependentCopula,MCopula,ExtremeValueCopula{3}}),
-    constructor_case("t-EV", () -> tEVCopula{2}(4.0, 0.5), () -> tEVCopula(2, 4.0, 0.5)),
-    constructor_case("BB4", () -> BB4Copula{2}(1.5, 1.0), () -> BB4Copula(2, 1.5, 1.0)),
-    constructor_case("BB5", () -> BB5Copula{2}(1.5, 1.0), () -> BB5Copula(2, 1.5, 1.0)),
+    constructor_case(:CuadrasAugeCopula, "Cuadras--Auge", () -> CuadrasAugeCopula{2}(0.5), () -> CuadrasAugeCopula(2, 0.5)),
+    constructor_case(:GalambosCopula, "Galambos", () -> GalambosCopula{3}(1.0), () -> GalambosCopula(3, 1.0)),
+    constructor_case(:HuslerReissCopula, "Husler--Reiss", () -> HuslerReissCopula{3}(1.0), () -> HuslerReissCopula(3, 1.0)),
+    constructor_case(:LogCopula, "logistic EV", () -> LogCopula{3}(1.5), () -> LogCopula(3, 1.5)),
+    constructor_case(:MixedCopula, "mixed EV", () -> MixedCopula{2}(0.5), () -> MixedCopula(2, 0.5)),
+    constructor_case(:MOCopula, "Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4), () -> MOCopula(2, 0.2, 0.3, 0.4); allowed_inference=MOCopula{2}),
+    constructor_case(:TawnCopula, "Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8]), () -> TawnCopula(3, 2.0, [0.6, 0.7, 0.8]); allowed_inference=Union{IndependentCopula,MCopula,ExtremeValueCopula{3}}),
+    constructor_case(:tEVCopula, "t-EV", () -> tEVCopula{2}(4.0, 0.5), () -> tEVCopula(2, 4.0, 0.5)),
+    constructor_case(:BB4Copula, "BB4", () -> BB4Copula{2}(1.5, 1.0), () -> BB4Copula(2, 1.5, 1.0)),
+    constructor_case(:BB5Copula, "BB5", () -> BB5Copula{2}(1.5, 1.0), () -> BB5Copula(2, 1.5, 1.0)),
     # The scalar-correlation constructor intentionally infers a small union because
     # its independence boundary returns IndependentCopula.
-    constructor_case("Gaussian", () -> GaussianCopula{3}(0.3),
+    constructor_case(:GaussianCopula, "Gaussian", () -> GaussianCopula{3}(0.3),
         () -> GaussianCopula(3, 0.3); allowed_inference=IndependentCopula),
-    constructor_case("Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0]), () -> TCopula(2, 4.0, [1.0 0.3; 0.3 1.0])),
-    constructor_case("independence", () -> IndependentCopula{3}(), () -> IndependentCopula(3)),
-    constructor_case("upper Frechet", () -> MCopula{3}(), () -> MCopula(3)),
-    constructor_case("lower Frechet", () -> WCopula{2}(), () -> WCopula(2)),
-    constructor_case("FGM", () -> FGMCopula{2}(0.5), () -> FGMCopula(2, 0.5); allowed_inference=Union{IndependentCopula{2},MCopula{2},WCopula{2},FGMCopula{2}}),
-    constructor_case("Plackett", () -> PlackettCopula{2}(2.0), () -> PlackettCopula(2, 2.0)),
-    constructor_case("Raftery", () -> RafteryCopula{3}(0.5), () -> RafteryCopula(3, 0.5)),
-    constructor_case("Bernstein", () -> BernsteinCopula{2}(IndependentCopula{2}(); m=2), () -> BernsteinCopula(2, IndependentCopula{2}(); m=2)),
-    constructor_case("beta", () -> BetaCopula{2}(_FIXTURE_DATA), () -> BetaCopula(2, _FIXTURE_DATA)),
-    constructor_case("checkerboard", () -> CheckerboardCopula{2}(_FIXTURE_DATA; m=2), () -> CheckerboardCopula(2, _FIXTURE_DATA; m=2)),
-    constructor_case("empirical", () -> EmpiricalCopula{2}(_FIXTURE_DATA), () -> EmpiricalCopula(2, _FIXTURE_DATA)),
-    constructor_case("empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false), () -> EmpiricalEVCopula(2, _FIXTURE_DATA; method=:cfg, pseudo_values=false)),
-    constructor_case("empirical EV multivariate",
+    constructor_case(:TCopula, "Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0]), () -> TCopula(2, 4.0, [1.0 0.3; 0.3 1.0])),
+    constructor_case(:IndependentCopula, "independence", () -> IndependentCopula{3}(), () -> IndependentCopula(3)),
+    constructor_case(:MCopula, "upper Frechet", () -> MCopula{3}(), () -> MCopula(3)),
+    constructor_case(:WCopula, "lower Frechet", () -> WCopula{2}(), () -> WCopula(2)),
+    constructor_case(:FGMCopula, "FGM", () -> FGMCopula{2}(0.5), () -> FGMCopula(2, 0.5); allowed_inference=Union{IndependentCopula{2},MCopula{2},WCopula{2},FGMCopula{2}}),
+    constructor_case(:PlackettCopula, "Plackett", () -> PlackettCopula{2}(2.0), () -> PlackettCopula(2, 2.0)),
+    constructor_case(:RafteryCopula, "Raftery", () -> RafteryCopula{3}(0.5), () -> RafteryCopula(3, 0.5)),
+    constructor_case(:BernsteinCopula, "Bernstein", () -> BernsteinCopula{2}(IndependentCopula{2}(); m=2), () -> BernsteinCopula(2, IndependentCopula{2}(); m=2)),
+    constructor_case(:BetaCopula, "beta", () -> BetaCopula{2}(_FIXTURE_DATA), () -> BetaCopula(2, _FIXTURE_DATA)),
+    constructor_case(:CheckerboardCopula, "checkerboard", () -> CheckerboardCopula{2}(_FIXTURE_DATA; m=2), () -> CheckerboardCopula(2, _FIXTURE_DATA; m=2)),
+    constructor_case(:EmpiricalCopula, "empirical", () -> EmpiricalCopula{2}(_FIXTURE_DATA), () -> EmpiricalCopula(2, _FIXTURE_DATA)),
+    constructor_case(:EmpiricalEVCopula, "empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false), () -> EmpiricalEVCopula(2, _FIXTURE_DATA; method=:cfg, pseudo_values=false)),
+    constructor_case(:EmpiricalEVCopula, "empirical EV multivariate",
         () -> EmpiricalEVCopula{3}(_FIXTURE_DATA3; degree=1, pseudo_values=false),
         () -> EmpiricalEVCopula(3, _FIXTURE_DATA3; degree=1, pseudo_values=false)),
-    constructor_case("generic Archimedean",
+    constructor_case(:ArchimedeanCopula, "generic Archimedean",
         () -> ArchimedeanCopula{2}(Copulas.ClaytonGenerator(1.5)),
         () -> ArchimedeanCopula(2, Copulas.ClaytonGenerator(1.5))),
-    constructor_case("generic extreme value",
+    constructor_case(:ExtremeValueCopula, "generic extreme value",
         () -> ExtremeValueCopula{2}(Copulas.GalambosTail(1.0)),
         () -> ExtremeValueCopula(2, Copulas.GalambosTail(1.0))),
     # The all-one Dirichlet boundary is exactly Archimedean.
-    constructor_case("Liouville",
+    constructor_case(:LiouvilleCopula, "Liouville",
         () -> LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
         () -> LiouvilleCopula(2, Copulas.ClaytonGenerator(1.0), (1.0, 2.0));
         allowed_inference=ArchimedeanCopula),
     # An empty children collection produces the flat Archimedean fast path.
-    constructor_case("nested Archimedean",
+    constructor_case(:NestedArchimedeanCopula, "nested Archimedean",
         () -> NestedArchimedeanCopula{4}(Copulas.ClaytonGenerator(1.0);
             leaves=[1, 2], children=[ClaytonCopula{2}(2.0)]),
         () -> NestedArchimedeanCopula(4, Copulas.ClaytonGenerator(1.0);
             leaves=[1, 2], children=[ClaytonCopula{2}(2.0)]);
         allowed_inference=Union{NestedArchimedeanCopula,ArchimedeanCopula}),
-    constructor_case("Archimax",
+    constructor_case(:ArchimaxCopula, "Archimax",
         () -> ArchimaxCopula{2}(Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0)),
         () -> ArchimaxCopula(2, Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0))),
-    constructor_case("survival",
+    constructor_case(:SurvivalCopula, "survival",
         () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3)),
         () -> SurvivalCopula(3, ClaytonCopula{3}(1.5), (1, 3))),
-)
-
-# Exact public binding exercised by each constructor case.  This intentionally
-# preserves aliases and repeated dimensional representations: comparing only
-# concrete return types would let two distinct public spellings collapse.
-const CONSTRUCTOR_SYMBOLS = (
-    :AMHCopula, :BB1Copula, :BB2Copula, :BB3Copula, :BB6Copula,
-    :BB7Copula, :BB8Copula, :BB9Copula, :BB10Copula,
-    :ClaytonCopula, :FrankCopula, :GumbelCopula, :GumbelBarnettCopula,
-    :InvGaussianCopula, :JoeCopula, :AsymGalambosCopula, :AsymLogCopula,
-    :AsymMixedCopula, :BC2Copula, :CuadrasAugeCopula, :GalambosCopula,
-    :HuslerReissCopula, :LogCopula, :MixedCopula, :MOCopula, :TawnCopula,
-    :tEVCopula, :BB4Copula, :BB5Copula, :GaussianCopula, :TCopula,
-    :IndependentCopula, :MCopula, :WCopula, :FGMCopula, :PlackettCopula,
-    :RafteryCopula, :BernsteinCopula, :BetaCopula, :CheckerboardCopula,
-    :EmpiricalCopula, :EmpiricalEVCopula, :EmpiricalEVCopula,
-    :ArchimedeanCopula, :ExtremeValueCopula, :LiouvilleCopula,
-    :NestedArchimedeanCopula, :ArchimaxCopula, :SurvivalCopula,
 )
 
 fitting_case(name, build; method=:default, model=false, kwargs=NamedTuple()) =
