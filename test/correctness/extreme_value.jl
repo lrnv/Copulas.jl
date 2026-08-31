@@ -1,0 +1,621 @@
+# Mathematical-correctness layer: extreme-value representations, numerical
+# identities, sampler laws, empirical estimators, and historical EV regressions.
+# These are grouped by family because each independent family identity may span
+# CDF, density, sampling, subsetting, and conditioning. Operation-wide contracts
+# and dispatch equivalences live in `test/operations/`.
+using Random
+
+@testset "Extreme-value numerical regressions" begin
+    @testset "ExtremeDist support and typed safeguards" begin
+        E = Copulas.ExtremeDist(Copulas.LogTail(2.0))
+        @test cdf(E, -0.1) == 0.0
+        @test cdf(E, 1.1) == 1.0
+        @test pdf(E, -0.1) == 0.0
+        @test pdf(E, 1.1) == 0.0
+        @test isfinite(logpdf(E, 0.5))
+        @test 0f0 < Copulas._safett(1f0) < 1f0
+        x = BigFloat("1e-30")
+        @test Copulas._safett(x) == x
+        @test Copulas._safett(one(x) - x) == one(x) - x
+    end
+
+    @testset "Smooth EV conditional endpoints" begin
+        C = Copulas.ExtremeValueCopula(2, Copulas.LogTail(2.0))
+        for j in 1:2
+            D0 = Copulas.condition(C, j, 0.0)
+            D1 = Copulas.condition(C, j, 1.0)
+            @test cdf(D0, 0.4) ≈ 1.0 atol=1e-12
+            @test cdf(D1, 0.4) ≈ 0.0 atol=1e-12
+            @test quantile(D0, 0.5) == 0.0
+            @test quantile(D1, 0.5) == 1.0
+        end
+    end
+
+    @testset "Marshall-Olkin conditional regression" begin
+        λ1, λ2, λ12 = 0.4, 0.7, 0.8
+        C = Copulas.ExtremeValueCopula(2, Copulas.MOTail(λ1, λ2, λ12))
+        a, b = λ2 / (λ2 + λ12), λ1 / (λ1 + λ12)
+        u, v = 0.37, 0.61
+        @test cdf(Copulas.condition(C, 2, v), u) ≈
+              ForwardDiff.derivative(vv -> cdf(C, [u, vv]), v) atol=2e-8 rtol=2e-7
+        @test cdf(Copulas.condition(C, 1, u), v) ≈
+              ForwardDiff.derivative(uu -> cdf(C, [uu, v]), u) atol=2e-8 rtol=2e-7
+        @test cdf(Copulas.condition(C, 2, 0.0), u) ≈ u^a
+        @test cdf(Copulas.condition(C, 1, 0.0), v) ≈ v^b
+        @test cdf(Copulas.condition(C, 2, 1.0), u) ≈ b*u
+        @test cdf(Copulas.condition(C, 1, 1.0), v) ≈ a*v
+        @test quantile(Copulas.condition(C, 2, 1.0), 0.8) == 1.0
+        @test quantile(Copulas.condition(C, 1, 1.0), 0.8) == 1.0
+    end
+
+    @testset "Strong logistic EV stability" begin
+        for θ in (210.0,)
+            L = Copulas.LogTail(θ)
+            C = Copulas.ExtremeValueCopula(2, L)
+            G = Copulas.GumbelCopula(2, θ)
+            E = Copulas.ExtremeDist(L)
+
+            @test Copulas._ghoudi_mixture_probability(L, 0.01) ≈ (θ - 1) / θ
+            for z in (1e-4, 0.5, 1 - 1e-4)
+                @test pdf(E, z) >= 0
+                @test isfinite(logpdf(E, z))
+                @test cdf(E, quantile(E, z)) ≈ z atol=2e-12 rtol=2e-12
+            end
+
+            for uv in ([1e-3, 0.99], [0.01, 0.9], [0.99, 0.5], [0.99, 0.99])
+                @test cdf(C, uv) ≈ cdf(G, uv) atol=2e-13 rtol=2e-13
+                @test logpdf(C, uv) ≈ logpdf(G, uv) atol=2e-12 rtol=2e-12
+            end
+        end
+
+        C = Copulas.ExtremeValueCopula(2, Copulas.LogTail(13.5))
+        for j in 1:2, ucond in (1e-3, 0.99), z in (1e-3, 0.9)
+            D = Copulas.condition(C, j, ucond)
+            uv = j == 2 ? [z, ucond] : [ucond, z]
+            @test logpdf(D, z) ≈ logpdf(C, uv) atol=2e-12 rtol=2e-12
+        end
+    end
+
+    @testset "Multivariate logistic EV" begin
+        for d in (3, 5)
+            θ = 3.5
+            C = Copulas.ExtremeValueCopula(d, Copulas.LogTail(θ))
+            G = Copulas.GumbelCopula(d, θ)
+            u = collect(range(0.21, 0.87; length=d))
+            @test cdf(C, u) ≈ cdf(G, u) atol=2e-13 rtol=2e-13
+            @test logpdf(C, u) ≈ logpdf(G, u) atol=2e-10 rtol=2e-10
+
+            rng1, rng2 = StableRNG(1700 + d), StableRNG(1700 + d)
+            @test rand(rng1, C, 16) == rand(rng2, G, 16)
+        end
+
+        θ = 2.3
+        L = Copulas.LogTail(θ)
+        x = (0.4, 0.7, 1.1, 1.6)
+        S = sum(xi^θ for xi in x)
+        for I in ((1,), (1, 3), (1, 2, 4), (1, 2, 3, 4))
+            k = length(I)
+            coeff = k == 1 ? one(θ) : prod(1 - j * θ for j in 1:k-1)
+            expected = coeff * S^(inv(θ) - k) * prod(x[i]^(θ - 1) for i in I)
+            @test Copulas.ellpartial(L, x, I) ≈ expected atol=2e-13 rtol=2e-12
+        end
+
+        Gtail = Copulas.GalambosTail(0.7)
+        x2 = (0.4, 0.7)
+        _, d1, d2, d12 = Copulas._biv_der_ℓ(Gtail, x2)
+        @test Copulas.ellpartial(Gtail, x2, (1,)) ≈ d1
+        @test Copulas.ellpartial(Gtail, x2, (2,)) ≈ d2
+        @test Copulas.ellpartial(Gtail, x2, (1, 2)) ≈ d12
+
+        C4 = Copulas.ExtremeValueCopula(4, L)
+        C2 = Copulas.ExtremeValueCopula(2, L)
+        u, v = 0.37, 0.81
+        @test cdf(C4, [u, v, 1.0, 1.0]) ≈ cdf(C2, [u, v]) atol=2e-14 rtol=2e-14
+        @test cdf(C4, [0.0, v, 0.7, 0.9]) == 0.0
+        @test isinf(Copulas.ℓ(L, (Inf, 0.7, 0.0, 0.0)))
+        @test Copulas.ℓ(L, (0.4, 0.7, 0.0, 0.0)) ≈ Copulas.ℓ(L, (0.4, 0.7))
+    end
+
+    @testset "Multivariate Galambos EV" begin
+        function galambos_stdf_reference(x, θ)
+            out = sum(x)
+            d = length(x)
+            for k in 2:d, I in Copulas.Combinatorics.combinations(1:d, k)
+                any(i -> iszero(x[i]), I) && continue
+                term = sum(x[i]^(-θ) for i in I)^(-inv(θ))
+                out += (isodd(k) ? 1 : -1) * term
+            end
+            return out
+        end
+
+        for d in (3, 4)
+            θ = 1.5
+            tail = Copulas.GalambosTail(θ)
+            C = Copulas.ExtremeValueCopula(d, tail)
+            x = collect(range(0.31, 1.27; length=d))
+            u = exp.(-x)
+            ref = galambos_stdf_reference(x, θ)
+
+            @test Copulas.ℓ(tail, x) ≈ ref atol=2e-13 rtol=2e-13
+            @test cdf(C, u) ≈ exp(-ref) atol=2e-13 rtol=2e-13
+            @test isfinite(logpdf(C, u))
+        end
+
+        tail = Copulas.GalambosTail(1.7)
+        C3 = Copulas.ExtremeValueCopula(3, tail)
+        C4 = Copulas.ExtremeValueCopula(4, tail)
+        x3 = (0.35, 0.72, 1.18)
+        @test Copulas.ℓ(tail, (x3..., 0.0)) ≈ Copulas.ℓ(tail, x3) atol=2e-14 rtol=2e-14
+        @test cdf(C4, [0.37, 0.61, 0.83, 1.0]) ≈ cdf(C3, [0.37, 0.61, 0.83]) atol=2e-14 rtol=2e-14
+        @test cdf(C4, [0.0, 0.61, 0.83, 0.92]) == 0.0
+        @test isinf(Copulas.ℓ(tail, (Inf, 0.7, 0.2, 0.0)))
+
+        # Strong dependence: the generic AD fallback loses tiny mixed partials
+        # through cancellation, so keep high-precision reference regressions.
+        strong_cases = (
+            (3, 20.0, collect(range(0.31, 1.37; length=3)), -41.822573144200335),
+            (4, 50.0, collect(range(0.31, 1.37; length=4)), -156.06017188457903),
+            (5, 210.0, collect(range(0.2, 2.0; length=5)), -1491.783077378844),
+        )
+        for (d, θ, x, reference) in strong_cases
+            C = Copulas.ExtremeValueCopula(d, Copulas.GalambosTail(θ))
+            lp = logpdf(C, exp.(-x))
+            @test isfinite(lp)
+            @test lp ≈ reference atol=2e-8 rtol=2e-10
+        end
+
+        # This first partial is about 4.6e-659 and therefore underflows as a
+        # Float64 value; its sign/log representation must nevertheless survive.
+        x = collect(range(0.2, 2.0; length=5))
+        sgn, logabs = Copulas._ellpartial_signlog(Copulas.GalambosTail(210.0), x, (1,))
+        @test sgn == 1
+        @test isfinite(logabs)
+        @test logabs ≈ -1515.8850568704655 atol=2e-8 rtol=2e-10
+
+        # Bivariate sampler overflow regressions at the same extreme scale.
+        @test all(isfinite, rand(rng, GalambosCopula{2}(19.7)))
+        @test all(isfinite, rand(rng, GalambosCopula{2}(210.0)))
+    end
+
+    @testset "BC2 and Cuadras-Auge singular conditionals" begin
+        Cbc2 = Copulas.ExtremeValueCopula(2, Copulas.BC2Tail(0.65, 0.25))
+        for j in 1:2, t in (0.2, 0.8), α in (0.25, 0.6)
+            D = Copulas.condition(Cbc2, j, t)
+            q = quantile(D, α)
+            @test 0.0 <= q <= 1.0
+            @test cdf(D, q) >= α - 5e-10
+        end
+        for j in 1:2
+            @test cdf(Copulas.condition(Cbc2, j, 0.0), 0.3) ≈ 1.0 atol=1e-12
+            @test cdf(Copulas.condition(Cbc2, j, 1.0), 0.7) ≈ 0.0 atol=1e-12
+        end
+
+        θ = 0.6
+        Cca = Copulas.ExtremeValueCopula(2, Copulas.CuadrasAugeTail(θ))
+        for j in 1:2
+            @test cdf(Copulas.condition(Cca, j, 0.0), 0.37) ≈ 0.37^(1-θ)
+            @test cdf(Copulas.condition(Cca, j, 1.0), 0.37) ≈ (1-θ)*0.37
+            @test quantile(Copulas.condition(Cca, j, 1.0), 0.8) == 1.0
+        end
+    end
+end
+
+
+@testset "Multivariate Hüsler-Reiss EV" begin
+    @testset "Exchangeable scalar parameterization" begin
+        for (d, θ) in ((3, 0.7), (3, 3.0), (4, 1.5))
+            tail = Copulas.HuslerReissTail(θ)
+            C = Copulas.ExtremeValueCopula(d, tail)
+            @test isfinite(logpdf(C, collect(range(0.29, 0.83; length=d))))
+        end
+    end
+
+    @testset "General variogram parameterization" begin
+        Σ = [1.20 0.35 0.18;
+             0.35 0.90 0.22;
+             0.18 0.22 1.05]
+
+        Γ = zeros(4, 4)
+        for i in 1:3
+            Γ[i, 4] = Γ[4, i] = Σ[i, i]
+            for j in 1:3
+                Γ[i, j] = Σ[i, i] + Σ[j, j] - 2Σ[i, j]
+            end
+        end
+
+        tail = Copulas.HuslerReissTail(Γ)
+        C = Copulas.ExtremeValueCopula(4, tail)
+
+        @test Copulas._is_valid_in_dim(tail, 4)
+        @test !Copulas._is_valid_in_dim(tail, 3)
+
+        u = [0.31, 0.49, 0.67, 0.82]
+        @test 0.0 < cdf(C, u) < 1.0
+        @test isfinite(logpdf(C, u))
+
+        pidx = [3, 1, 4, 2]
+        Cp = Copulas.ExtremeValueCopula(
+            4,
+            Copulas.HuslerReissTail(Γ[pidx, pidx]),
+        )
+        @test cdf(Cp, u[pidx]) ≈ cdf(C, u) atol=5e-4 rtol=5e-4
+        @test logpdf(Cp, u[pidx]) ≈ logpdf(C, u) atol=5e-3 rtol=5e-3
+
+        q = (0.42, 0.74)
+
+        for i in 1:3, j in i+1:4
+            θij = 2 / sqrt(Γ[i, j])
+            Cij = Copulas.ExtremeValueCopula(2, Copulas.HuslerReissTail(θij))
+            @test cdf(subsetdims(C, (i, j)), collect(q)) ≈
+                  cdf(Cij, collect(q)) atol=5e-4 rtol=5e-4
+        end
+
+    end
+end
+
+
+@testset "Multivariate extremal-t EV" begin
+    @testset "rho=0 regression and exchangeable scalar API" begin
+        tail0 = Copulas.tEVTail(1.0, 0.0)
+        @test tail0 isa Copulas.tEVTail
+        @test 2 * Copulas.A(tail0, 0.5) ≈ 1 + inv(sqrt(2)) atol=2e-12 rtol=2e-12
+
+        cases = (
+            (3, 1.7, 0.0, 4701),
+            (3, 2.3, -0.2, 4702),
+            (4, 2.0, 0.4, 4703),
+        )
+
+        for (d, ν, ρ, seed) in cases
+            tail = Copulas.tEVTail(ν, ρ)
+            @test Copulas._is_valid_in_dim(tail, d)
+
+            C = Copulas.ExtremeValueCopula(d, tail)
+            u = collect(range(0.31, 0.82; length=d))
+
+            @test 0.0 < cdf(C, u) < 1.0
+            @test isfinite(logpdf(C, u))
+
+        end
+
+        @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.7), 3)
+        @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.4), 4)
+    end
+
+    @testset "general correlation parameterization" begin
+        R = [1.0  0.35 -0.20;
+             0.35 1.0   0.15;
+            -0.20 0.15  1.0]
+        ν = 1.7
+
+        tail = Copulas.tEVTail(ν, R)
+        C = Copulas.ExtremeValueCopula(3, tail)
+
+        @test Copulas._is_valid_in_dim(tail, 3)
+        @test !Copulas._is_valid_in_dim(tail, 4)
+        @test Distributions.params(tail).ν == ν
+        @test Distributions.params(tail).R ≈ R
+
+        u = [0.34, 0.58, 0.79]
+        @test 0.0 < cdf(C, u) < 1.0
+        @test isfinite(logpdf(C, u))
+
+        q = [0.41, 0.75]
+        for i in 1:2, j in (i + 1):3
+            Cij = Copulas.ExtremeValueCopula(
+                2,
+                Copulas.tEVTail(ν, R[i, j]),
+            )
+            @test isapprox(cdf(subsetdims(C, (i, j)), q), cdf(Cij, q);
+                           atol=5e-4, rtol=5e-4)
+        end
+    end
+
+end
+
+
+@testset "Multivariate Tawn EV" begin
+    @testset "full trivariate Tawn regression" begin
+        dep = [1.4, 2.0, 1.7, 2.3]
+        asy = [
+            [0.15],
+            [0.20],
+            [0.10],
+            [0.25, 0.15],
+            [0.20, 0.20],
+            [0.25, 0.30],
+            [0.40, 0.40, 0.40],
+        ]
+
+        tail = Copulas.TawnTail(3, dep, asy)
+        C = Copulas.ExtremeValueCopula(3, tail)
+        x = (0.37, 0.79, 1.28)
+
+        @test Copulas.ℓ(tail, x) ≈ 1.824598177317017 atol=2e-14 rtol=2e-14
+
+        refs = (
+            ((1,), 0.4661019902512721),
+            ((2,), 0.6461594736259313),
+            ((3,), 0.8919331693434068),
+            ((1, 2), -0.08353819466501686),
+            ((1, 3), -0.08853049949907850),
+            ((2, 3), -0.18780484302735106),
+            ((1, 2, 3), 0.05249667842788736),
+        )
+
+        for (I, ref) in refs
+            @test Copulas.ellpartial(tail, x, I) ≈ ref atol=3e-13 rtol=3e-12
+            sign, logabs = Copulas._ellpartial_signlog(tail, x, I)
+            @test sign == (isodd(length(I)) ? 1 : -1)
+            @test exp(logabs) ≈ abs(ref) atol=3e-13 rtol=3e-12
+        end
+
+        u = [0.34, 0.57, 0.81]
+        @test logpdf(C, u) ≈ -0.2449881198991001 atol=3e-12 rtol=3e-12
+
+    end
+
+end
+
+
+@testset "Multivariate asymmetric Galambos EV" begin
+    @testset "full trivariate asymmetric Galambos regression" begin
+        dep = [0.7, 1.3, 0.9, 1.8]
+        asy = [
+            [0.15],
+            [0.20],
+            [0.10],
+            [0.25, 0.15],
+            [0.20, 0.20],
+            [0.25, 0.30],
+            [0.40, 0.40, 0.40],
+        ]
+
+        tail = Copulas.AsymGalambosTail(3, dep, asy)
+        C = Copulas.ExtremeValueCopula(3, tail)
+        x = (0.37, 0.79, 1.28)
+
+        reconstructed = Copulas.AsymGalambosTail(values(params(tail))...)
+        @test reconstructed.α == tail.α
+        @test reconstructed.β == tail.β
+
+        @test Copulas.ℓ(tail, x) ≈ 1.8097921615972135 atol=3e-13 rtol=3e-12
+
+        refs = (
+            ((1,), 0.42313975454450815),
+            ((2,), 0.6425106046268907),
+            ((3,), 0.8950367771566420),
+            ((1, 2), -0.09404641593762274),
+            ((1, 3), -0.07302518430676948),
+            ((2, 3), -0.19707592644863348),
+            ((1, 2, 3), 0.04639197718394051),
+        )
+
+        for (I, ref) in refs
+            @test Copulas.ellpartial(tail, x, I) ≈ ref atol=3e-11 rtol=3e-10
+
+            sign, logabs = Copulas._ellpartial_signlog(tail, x, I)
+            @test sign == (isodd(length(I)) ? 1 : -1)
+            @test exp(logabs) ≈ abs(ref) atol=3e-11 rtol=3e-10
+        end
+
+        u = [0.34, 0.57, 0.81]
+        @test logpdf(C, u) ≈ -0.3221640487545458 atol=3e-10 rtol=3e-10
+
+    end
+
+end
+
+
+@testset "Multivariate Mixed EV" begin
+    @testset "bivariate tail-dependence anchor" begin
+        θ = 0.55
+        C = Copulas.ExtremeValueCopula(2, Copulas.MixedTail(θ))
+        @test Copulas.λᵤ(C) ≈ θ / 2 atol=2e-15 rtol=2e-15
+    end
+
+    @testset "multivariate Galambos-mixture identity" begin
+        θ = 0.63
+        tail = Copulas.MixedTail(θ)
+
+        for d in (3, 4)
+            x = collect(range(0.31, 1.28; length=d))
+            ref = (1 - θ) * sum(x) +
+                  θ * Copulas.ℓ(Copulas.GalambosTail(1.0), x)
+
+            @test Copulas._is_valid_in_dim(tail, d)
+            @test Copulas.ℓ(tail, x) ≈ ref atol=3e-13 rtol=3e-12
+
+            for I in (
+                (1,),
+                (1, 2),
+                ntuple(identity, d),
+            )
+                got = Copulas.ellpartial(tail, x, I)
+
+                if length(I) == 1
+                    refp = (1 - θ) +
+                           θ * Copulas.ellpartial(
+                               Copulas.GalambosTail(1.0),
+                               x,
+                               I,
+                           )
+                else
+                    refp = θ * Copulas.ellpartial(
+                        Copulas.GalambosTail(1.0),
+                        x,
+                        I,
+                    )
+                end
+
+                @test got ≈ refp atol=3e-11 rtol=3e-10
+            end
+        end
+    end
+
+    @testset "multivariate log-density anchor" begin
+        θ = 0.63
+        C = Copulas.ExtremeValueCopula(3, Copulas.MixedTail(θ))
+        u = [0.34, 0.57, 0.81]
+
+        @test logpdf(C, u) ≈ -0.118043090304781 atol=3e-12 rtol=3e-12
+
+    end
+end
+
+@testset "Discrete spectral multivariate EV" begin
+    B = [
+        0.40 0.20 0.10 0.30
+        0.10 0.50 0.20 0.20
+        0.30 0.10 0.40 0.20
+    ]
+
+    tail = Copulas.DiscreteSpectralTail(B)
+    C = ExtremeValueCopula{3}(tail)
+    x = [0.37, 0.79, 1.28]
+
+    ref = sum(maximum(B[i, k] * x[i] for i in axes(B, 1))
+              for k in axes(B, 2))
+
+    @test Copulas._is_valid_in_dim(tail, 3)
+    @test !Copulas._is_valid_in_dim(tail, 2)
+    @test Copulas.ℓ(tail, x) ≈ ref atol=3e-14 rtol=3e-14
+    @test maximum(x) <= ref <= sum(x)
+
+    for i in 1:3
+        e = zeros(3)
+        e[i] = 1
+        @test Copulas.ℓ(tail, e) ≈ 1 atol=3e-14 rtol=3e-14
+    end
+
+    u = [0.34, 0.57, 0.81]
+    @test cdf(C, u) ≈ exp(-sum(
+        maximum(B[i, k] * (-log(u[i])) for i in axes(B, 1))
+        for k in axes(B, 2)
+    )) atol=3e-14 rtol=3e-14
+
+end
+
+@testset "Multivariate Marshall-Olkin EV" begin
+    d = 3
+    λ = [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]
+    tail = Copulas.MOTail(d, λ)
+    C = Copulas.ExtremeValueCopula(d, tail)
+
+    B = tail.spectral.B
+    @test all(abs.(vec(sum(B, dims=2)) .- 1) .< 3e-14)
+
+    x = [0.31, 0.82, 1.41]
+    ref = sum(maximum(B[i, k] * x[i] for i in axes(B, 1))
+              for k in axes(B, 2))
+    @test Copulas.ℓ(tail, x) ≈ ref atol=3e-14 rtol=3e-14
+
+end
+
+@testset "Multivariate BC2 EV" begin
+    a = [0.20, 0.65, 0.40, 0.75]
+    tail = Copulas.BC2Tail(a)
+    C = Copulas.ExtremeValueCopula(4, tail)
+
+    x = [0.27, 0.64, 1.03, 1.31]
+    ref = maximum(a .* x) + maximum((1 .- a) .* x)
+
+    @test Copulas.ℓ(tail, x) ≈ ref atol=3e-14 rtol=3e-14
+    @test tail.spectral.B ≈ hcat(a, 1 .- a) atol=3e-15 rtol=3e-15
+
+end
+
+@testset "Multivariate Cuadras-Auge EV" begin
+    θ = 0.62
+    tail = Copulas.CuadrasAugeTail(θ)
+
+    for (d, seed) in ((3, 5104), (4, 5105))
+        C = Copulas.ExtremeValueCopula(d, tail)
+        x = collect(range(0.29, 1.34; length=d))
+
+        @test Copulas._is_valid_in_dim(tail, d)
+        @test Copulas.ℓ(tail, x) ≈
+              (1 - θ) * sum(x) + θ * maximum(x) atol=3e-14 rtol=3e-14
+
+        u = collect(range(0.34, 0.82; length=d))
+        @test cdf(C, u) ≈
+              minimum(u)^θ * prod(u)^(1 - θ) atol=3e-14 rtol=3e-14
+
+    end
+
+    for xx in ([0.37, 1.29], [1.11, 0.46])
+        oldref = sum(xx) * Copulas.A(tail, xx[1] / sum(xx))
+        @test Copulas.ℓ(tail, xx) ≈ oldref atol=3e-14 rtol=3e-14
+    end
+end
+
+@testset "Multivariate empirical EV" begin
+    Ctrue = Copulas.ExtremeValueCopula(3, Copulas.LogTail(2.2))
+    U = rand(StableRNG(5201), Ctrue, 2_500)
+
+    @testset "shape-valid spectral projection" begin
+        # OLS is exercised with its accuracy oracle below; here retain the two
+        # other estimator routes and their projected spectral-shape proof.
+        for method in (:pickands, :cfg)
+            tail = Copulas.EmpiricalEVMultivariateTail(
+                U;
+                method=method,
+                degree=4,
+                pseudo_values=true,
+            )
+
+            @test tail.d == 3
+            @test tail.method == method
+            @test tail.degree == 4
+            @test isfinite(tail.projection_rmse)
+            @test tail.projection_rmse >= 0
+            @test Copulas._is_valid_in_dim(tail, 3)
+            @test !Copulas._is_valid_in_dim(tail, 2)
+
+            B = tail.spectral.B
+            @test size(B, 1) == 3
+            @test all(B .>= 0)
+            @test all(abs.(vec(sum(B, dims=2)) .- 1) .< 3e-12)
+
+        end
+    end
+
+    @testset "OLS default and oracle accuracy" begin
+        tail = Copulas.EmpiricalEVMultivariateTail(
+            U;
+            degree=5,
+            pseudo_values=true,
+        )
+        @test tail.method == :ols
+        @test Copulas._is_valid_in_dim(tail, 3)
+        @test size(tail.spectral.B, 1) == 3
+        @test all(tail.spectral.B .>= 0)
+        @test all(abs.(vec(sum(tail.spectral.B, dims=2)) .- 1) .< 3e-12)
+
+        maxerr = 0.0
+        for w in (
+            [1/3, 1/3, 1/3],
+            [0.60, 0.25, 0.15],
+            [0.10, 0.55, 0.35],
+            [0.25, 0.15, 0.60],
+        )
+            truth = Copulas.ℓ(Ctrue.tail, w)
+            estimate = Copulas.ℓ(tail, w)
+            maxerr = max(maxerr, abs(estimate - truth))
+        end
+        @test maxerr < 0.10
+    end
+
+    @testset "bivariate empirical EV estimator routes" begin
+        C2 = Copulas.ExtremeValueCopula(2, Copulas.LogTail(2.0))
+        U2 = rand(StableRNG(5203), C2, 1_000)
+        # CFG is exercised by the public fitting contract; retain the two
+        # remaining bivariate algorithms here.
+        for method in (:ols, :pickands)
+            fitted = Copulas.EmpiricalEVCopula(
+                U2; method=method, grid=101, pseudo_values=true)
+            @test fitted.tail isa Copulas.EmpiricalEVTail
+            @test isfinite(cdf(fitted, [0.43, 0.71]))
+        end
+    end
+end

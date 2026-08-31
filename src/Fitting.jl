@@ -138,7 +138,8 @@ end
 
 Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(CopulaModel, CT, U; kwargs...)`).
 """
-@inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
+@inline Distributions.fit(T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
+@inline Distributions.fit(T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(T, U; copula_method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; copula_method=method, kwargs...)
 @inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; quick_fit=true, kwargs...).result
@@ -162,9 +163,11 @@ _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C),
 
 function _find_method(CT, d, method)
     avail = _available_fitting_methods(CT, d)
-    isempty(avail) && error("No fitting methods available for $CT.")
+    isempty(avail) && throw(ArgumentError("No fitting methods available for $CT."))
     method === :default && return avail[1]
-    method ∉ avail && error("Method '$method' not available for $CT. Available: $(join(avail, ", ")).")
+    method ∉ avail && throw(ArgumentError(
+        "Method '$method' not available for $CT. Available: $(join(avail, ", ")).",
+    ))
     return method
 end
 
@@ -199,6 +202,9 @@ C = fit(GumbelCopula, U; method=:itau)
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         method=:default, quick_fit=false, derived_measures=true,
         vcov=true, vcov_method=nothing, kwargs...)
+    allowed_vcov = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
+    isnothing(vcov_method) || vcov_method in allowed_vcov ||
+        throw(ArgumentError("unknown vcov method `$vcov_method`; expected one of $allowed_vcov"))
     d, n = size(U)
     method = _find_method(CT, d, method)
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
@@ -341,6 +347,9 @@ function _vcov_margin_generic(d::TD, x::AbstractVector) where {TD<:Distributions
 end
 
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Symbol, override::Union{Symbol,Nothing}=nothing)
+    allowed = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
+    isnothing(override) || override in allowed ||
+        throw(ArgumentError("unknown vcov method `$override`; expected one of $allowed"))
     vcovm = !isnothing(override) ? override :
             method === :mle      ? :hessian :
             method === :itau     ? :godambe :
@@ -572,12 +581,12 @@ Can be `nothing` if not available.
 StatsBase.vcov(M::CopulaModel) = M.vcov
 function StatsBase.stderror(M::CopulaModel)
     V = StatsBase.vcov(M)
-    V === nothing && throw(ArgumentError("stderror: vcov(M) == nothing."))
+    V === nothing && return nothing
     return sqrt.(LinearAlgebra.diag(V))
 end
 function StatsBase.confint(M::CopulaModel; level::Real=0.95)
     V = StatsBase.vcov(M)
-    V === nothing && throw(ArgumentError("confint: vcov(M) == nothing."))
+    V === nothing && return nothing
     z = Distributions.quantile(Distributions.Normal(), 1 - (1 - level)/2)
     θ = StatsBase.coef(M)
     se = sqrt.(LinearAlgebra.diag(V))
@@ -628,6 +637,8 @@ Compute Rosenblatt residuals of a fitted copula model.
 The residuals should be i.i.d. Uniform(0,1) under a correctly specified model.
 """
 StatsBase.residuals(M::CopulaModel; transform=:uniform) = begin
+    transform in (:uniform, :normal) ||
+        throw(ArgumentError("`transform` must be :uniform or :normal. Got `$transform`."))
     haskey(M.method_details, :U) || throw(ArgumentError("method_details must contain pseudo-observations :U"))
     U = M.method_details[:U]
     R = rosenblatt(_copula_of(M), U)

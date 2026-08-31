@@ -93,12 +93,6 @@ function τ(C::ExtremeValueCopula{2,BC2Tail{T}}) where {T}
     a, b = _bc2_bivariate_weights(C.tail)
     return 1 - abs(a - b)
 end
-function ρ(C::ExtremeValueCopula{2, BC2Tail{T}}) where {T}
-    a, b = _bc2_bivariate_weights(C.tail)
-    num = 2 * (a + b + a*b + max(a,b) - 2a^2 - 2b^2)
-    den = (3 - a - b - min(a,b)) * (a + b + max(a,b))
-    return num / den
-end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2, BC2Tail{T}}, A::AbstractMatrix{S}) where {T,S<:Real}
     a, b = _bc2_bivariate_weights(C.tail)
     V = rand(rng, S, 2, size(A, 2))

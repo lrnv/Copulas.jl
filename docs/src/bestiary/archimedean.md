@@ -357,11 +357,6 @@ WilliamsonGenerator
 EmpiricalGenerator
 ```
 
-### `TiltedGenerator`
-```@docs; canonical=false
-TiltedGenerator
-```
-
 ### `FrailtyGenerator`
 ```@docs; canonical=false
 FrailtyGenerator

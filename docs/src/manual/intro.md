@@ -207,6 +207,11 @@ multivariate_stats = (
 )
 ```
 
+The entropy measure `ι` requires an ordinary Lebesgue density and is therefore
+not defined for purely singular copulas. The other summaries are available for
+continuous, mixed, and singular models through their documented generic or
+specialized implementations.
+
 The same functions have dispatches for `u::Abstractmatrix` of size `(d,d)` where `d` is the dimension of the copula and `n` is the number of observations, which provide sample versions of the same quantities. Moreover, since most of these statistics are more common in bivariate case, we provide the folllowing bindings for pairwise matrices of the same dependence metrics: 
 
 ```@example api
@@ -317,5 +322,4 @@ The documentation of this package aims to combine theoretical information and re
 Pages = [@__FILE__]
 Canonical = false
 ```
-
 

@@ -60,6 +60,7 @@ end
 # corredponsing generic :)
 
 function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Int, t)
+    iszero(d) && return ϕ(G, t)
     α = 1 / G.θ
     ntα = -t^α
     return ϕ(G, t) * t^(-d) * sum(

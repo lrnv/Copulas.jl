@@ -15,6 +15,7 @@ References:
 struct MCopula{d} <: Copula{d}
     MCopula{d}() where {d} = new{d}()
 end
+copula_measure_style(::Type{<:MCopula}) = NonAbsolutelyContinuousMeasure()
 MCopula(d) = MCopula{d}()
 Distributions._logpdf(::MCopula{d}, u) where {d} = all(u == u[1]) ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::MCopula{d}, u) where {d} = Base.minimum(u)

@@ -66,13 +66,16 @@ struct BernsteinCopula{d} <: Copula{d}
     end
     BernsteinCopula{d}(m::NTuple{d, Int}, weights::Array{Float64, d}) where d = new{d}(m, weights) # cheating constructor. 
 end
+Distributions.params(C::BernsteinCopula) = (m=C.m, weights=C.weights)
 BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base; kwargs...)
+BernsteinCopula(d::Integer, base::Copula; kwargs...) = BernsteinCopula{d}(base; kwargs...)
 function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}
     size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     return BernsteinCopula{d}(EmpiricalCopula{d}(data; pseudo_values=get(kwargs, :pseudo_values, true));
                               m=get(kwargs, :m, nothing))
 end
 BernsteinCopula(data::AbstractMatrix; kwargs...) = BernsteinCopula{size(data, 1)}(data; kwargs...)
+BernsteinCopula(d::Integer, data::AbstractMatrix; kwargs...) = BernsteinCopula{d}(data; kwargs...)
 
 @inline function _bernvec_all(u::T, m::Int) where {T<:Real}
     v = zeros(T, m+1)
@@ -154,10 +157,11 @@ end
 struct BernsteinDistortion{M} <: Distortion
     mixture::M
 end
-Distributions.cdf(d::BernsteinDistortion, u::Real) = Distributions.cdf(d.mixture, u)
-Distributions.logcdf(d::BernsteinDistortion, u::Real) = Distributions.logcdf(d.mixture, u)
+Distributions.cdf(d::BernsteinDistortion, u::Real) =
+    u <= 0 ? zero(float(u)) : u >= 1 ? one(float(u)) : Distributions.cdf(d.mixture, u)
+Distributions.logcdf(d::BernsteinDistortion, u::Real) = log(Distributions.cdf(d, u))
 Distributions.pdf(d::BernsteinDistortion, u::Real) = Distributions.pdf(d.mixture, u)
-Distributions.logpdf(d::BernsteinDistortion, u::Real) = Distributions.logpdf(d.mixture, u)
+Distributions.logpdf(d::BernsteinDistortion, u::Real) = log(Distributions.pdf(d, u))
 Distributions.quantile(d::BernsteinDistortion, p::Real) = _unit_quantile(d, p)
 
 function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}

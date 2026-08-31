@@ -23,16 +23,24 @@ struct SubsetCopula{d,CT} <: Copula{d}
     C::CT
     dims::NTuple{d,Int}
     function SubsetCopula{p}(C::Copula{d}, dims::NTuple{p, Int}) where {d, p}
-        @assert 2 <= p <= d "You cannot construct a subsetcopula with dimension p=1 or p > d (d = $d, p = $p provided)"
+
+        # p == d is allowed: a `dims` that is a (non-identity) permutation reorders the
+        # coordinates. The identity `dims == 1:d` is already returned above.
+        @assert 1 <= p <= d "You cannot construct a subsetcopula with dimension p < 1 or p > d (d = $d, p = $p provided)"
         dims == Tuple(1:d) && return C
-        @assert all(dims .<= d)
+        @assert all(i -> 1 <= i <= d, dims)
+        @assert p <= d
+        @assert length(unique(dims))==length(dims)
+        p==1 && return Distributions.Uniform()
         return new{p, typeof(C)}(C,Tuple(Int.(dims)))
     end
 end
+copula_measure_style(::Type{<:SubsetCopula{d,CT}}) where {d,CT} =
+    copula_measure_style(CT)
+copula_measure_style(C::SubsetCopula) = copula_measure_style(C.C)
 SubsetCopula(C::Copula, dims::NTuple{p,Int}) where {p} = SubsetCopula{p}(C, dims)
 function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT,p}
-    @assert 2 <= p <= d
-    return SubsetCopula(CS.C, ntuple(i -> CS.dims[dims2[i]], p))
+    return SubsetCopula{p}(CS.C, ntuple(i -> CS.dims[dims2[i]], p))
 end
 _available_fitting_methods(::Type{<:SubsetCopula}, d) = Tuple{}() # cannot be fitted. 
 Base.eltype(C::SubsetCopula{d,CT}) where {d,CT} = Base.eltype(C.C)
@@ -82,18 +90,18 @@ Return a new copula or Sklar distribution corresponding to the subset of dimensi
 # Details
 This function extracts the dependence structure among the specified dimensions from the original copula or Sklar distribution. Specialized methods exist for some copula types to ensure efficiency and correctness.
 """
-function subsetdims(C::Copula{d},dims::NTuple{p, Int}) where {d,p}
-    p==1 && return Distributions.Uniform()
-    dims==ntuple(i->i, d) && return C
-    # p == d is allowed: a `dims` that is a (non-identity) permutation reorders the
-    # coordinates. The identity `dims == 1:d` is already returned above.
-    @assert p <= d
-    @assert length(unique(dims))==length(dims)
-    @assert all(dims .<= d)
-    return SubsetCopula(C,dims)
+function subsetdims(C::Copula{d}, dims::NTuple{p,Int}) where {d,p}
+    # Validate the public operation before dispatching to a native submodel:
+    # specialized `SubsetCopula(C, dims)` methods may assume valid indices.
+    @assert 1 <= p <= d "You cannot construct a subsetcopula with dimension p < 1 or p > d (d = $d, p = $p provided)"
+    @assert all(i -> 1 <= i <= d, dims)
+    @assert length(unique(dims)) == p
+    dims == Tuple(1:d) && return C
+    p == 1 && return Distributions.Uniform()
+    return SubsetCopula(C, dims)
 end
 function subsetdims(D::SklarDist, dims::NTuple{p, Int}) where p
-    p==1 && return D.m[dims[1]]
+    p==1 && return D.m[dims[1]] # if dims[1] is not a valid index, this will throw.
     return SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
 end
 subsetdims(C::Union{Copula, SklarDist}, dims) = subsetdims(C, Tuple(collect(Int, dims)))

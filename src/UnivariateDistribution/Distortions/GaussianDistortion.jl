@@ -6,8 +6,11 @@ struct GaussianDistortion{T} <: Distortion
     σz::T
 end
 function Distributions.cdf(d::GaussianDistortion, u::Real)
+    T = float(promote_type(typeof(u), typeof(d.μz), typeof(d.σz)))
+    u <= 0 && return zero(T)
+    u >= 1 && return one(T)
     N = Distributions.Normal()
-    q = Distributions.quantile(N, u)
+    q = Distributions.quantile(N, T(u))
     return Distributions.cdf(N, (q - d.μz)/d.σz)
 end
 function Distributions.logcdf(d::GaussianDistortion, u::Real)

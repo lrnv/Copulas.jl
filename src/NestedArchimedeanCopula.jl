@@ -429,6 +429,20 @@ struct NestedArchimedeanCopula{d, TG<:Generator} <: Copula{d}
 end
 
 Base.length(::NestedArchimedeanCopula{d}) where {d} = d
+Distributions.params(C::NestedArchimedeanCopula) =
+    (G=C.G, leaves=C.leafdims, children=C.children)
+
+function copula_measure_style(C::NestedArchimedeanCopula)
+    local_dimension = length(C.leafdims) + length(C.children)
+    root_style = radial_measure_style(C.G, local_dimension)
+    root_style isa NonAbsolutelyContinuousMeasure && return root_style
+    for child in C.children
+        child_copula = child isa Tuple ? child[1] : child
+        style = copula_measure_style(child_copula)
+        style isa NonAbsolutelyContinuousMeasure && return style
+    end
+    return AbsolutelyContinuousMeasure()
+end
 
 # Element type of a single generator's parameters (promote across its params).
 # `init = Bool` is the identity for `promote_type`, so a 0-param generator
@@ -524,12 +538,29 @@ end
 
 NestedArchimedeanCopula(G::Generator; kwargs...) = _nested_archimedean(nothing, G; kwargs...)
 NestedArchimedeanCopula{d}(G::Generator; kwargs...) where {d} = _nested_archimedean(Val(d), G; kwargs...)
+NestedArchimedeanCopula(d::Integer, G::Generator; kwargs...) =
+    NestedArchimedeanCopula{d}(G; kwargs...)
 
 # Legacy positional form: children in consecutive blocks, no root leaves.
 NestedArchimedeanCopula(G::Generator, children::AbstractVector) =
     NestedArchimedeanCopula(G; leaves = Int[], children = collect(Any, children))
 NestedArchimedeanCopula{d}(G::Generator, children::AbstractVector) where {d} =
     NestedArchimedeanCopula{d}(G; leaves = Int[], children = collect(Any, children))
+NestedArchimedeanCopula(d::Integer, G::Generator, children::AbstractVector) =
+    NestedArchimedeanCopula{d}(G, children)
+
+_nested_constructor_child(ch::Tuple) = ch[1] => ch[2]
+_nested_constructor_child(ch::NestedArchimedeanCopula) = ch => ch.dims
+_nested_constructor_child(ch::Pair) = ch
+function NestedArchimedeanCopula{d}(
+    G::Generator, leaves::AbstractVector, children::AbstractVector,
+) where {d}
+    reconstructible = map(_nested_constructor_child, children)
+    return NestedArchimedeanCopula{d}(G; leaves, children=reconstructible)
+end
+NestedArchimedeanCopula(d::Integer, G::Generator, leaves::AbstractVector,
+                        children::AbstractVector) =
+    NestedArchimedeanCopula{d}(G, leaves, children)
 
 # ---- Dimension placement ----------------------------------------------------
 # A flat child keeps its generator and is tagged with its (global) dims.

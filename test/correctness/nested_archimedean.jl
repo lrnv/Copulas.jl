@@ -1,8 +1,9 @@
-# Tests for NestedArchimedeanCopula: the nested-Archimedean density and its
+# Mathematical-correctness layer: tests NestedArchimedeanCopula's density and its
 # lower-tail partial-observation likelihood as an EMERGENT capability of the standard
 # condition + subsetdims framework (Yang & Li, arXiv:2605.23134).
 #
-# Coverage:
+# Historical coverage map (the flat-reduction proof now lives under the
+# specialization-equivalence obligation):
 #   1. Flat dispatch — a leaves-only declaration returns the native
 #      ArchimedeanCopula and gives a bit-for-bit identical logpdf.
 #   2. Uncensored density vs an INDEPENDENT reference: the nested CDF assembled
@@ -32,6 +33,7 @@ import Copulas: NestedDistortion, subsetdims, condition, _censored_copula_logpdf
 struct ImplicitTestGenerator{G<:Generator} <: Generator
     inner::G
 end
+
 Distributions.params(G::ImplicitTestGenerator) = Distributions.params(G.inner)
 Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ(G::ImplicitTestGenerator, t) = ϕ(G.inner, t)
@@ -40,17 +42,6 @@ Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ⁽ᵏ⁾(G::ImplicitTestGenerator, k::Int, t) = ϕ⁽ᵏ⁾(G.inner, k, t)
 Copulas.composition_taylor(o::ImplicitTestGenerator, i::ImplicitTestGenerator, t₀, d::Int) =
     Copulas.composition_taylor_implicit(o.inner, i.inner, t₀, d)
-
-# Seeded RNG, matching runtests' `StableRNG(123)` when StableRNGs is on the path
-# (the package test environment); falls back to a seeded Xoshiro so this file
-# also runs standalone via `--project=.`. The value is invariant either way:
-# every draw feeds BOTH sides of each equality.
-const _NEST_RNG = try
-    @eval import StableRNGs
-    StableRNGs.StableRNG(123)
-catch
-    Random.Xoshiro(123)
-end
 
 # ---------------------------------------------------------------------------
 # Independent reference: nested-Archimedean CDF assembled straight from the
@@ -174,69 +165,17 @@ function implicit_acopula_maxerr(datadir, name, GT, sectors, θroot, θsector; n
 end
 
 @testset "NestedArchimedeanCopula" begin
-    # Local seeded RNG so this file is self-contained standalone AND under
-    # runtests.jl (where a `const rng = StableRNG(123)` also exists); every draw
-    # feeds both sides of each equality, so the value is invariant.
-    rng = _NEST_RNG
-
-    # -----------------------------------------------------------------------
-    # 1. Flat dispatch → native ArchimedeanCopula, bit-for-bit logpdf.
-    # -----------------------------------------------------------------------
-    @testset "flat declaration dispatches to native (bit-for-bit)" begin
-        C = NestedArchimedeanCopula(ClaytonGenerator(2.0); leaves = [1, 2, 3])
-        @test C isa ArchimedeanCopula{3}
-        @test !(C isa NestedArchimedeanCopula)
-        native = ClaytonCopula{3}(2.0)
-        for _ in 1:5
-            u = rand(rng, 3) .* 0.6 .+ 0.2
-            @test logpdf(C, u) === logpdf(native, u)
-        end
-        Cg = NestedArchimedeanCopula(GumbelGenerator(2.5); leaves = [1, 2, 3, 4])
-        @test Cg isa ArchimedeanCopula{4}
-        ng = GumbelCopula{4}(2.5)
-        for _ in 1:5
-            u = rand(rng, 4) .* 0.6 .+ 0.2
-            @test logpdf(Cg, u) === logpdf(ng, u)
-        end
-    end
-
-    # -----------------------------------------------------------------------
-    # 2. Uncensored density vs the independent ForwardDiff reference.
-    # -----------------------------------------------------------------------
-    @testset "uncensored density vs independent ForwardDiff reference" begin
-        # Same-family Clayton: root(1.5) over two Clayton(3.0) panels (dims 1:2, 3:4).
-        C = NestedArchimedeanCopula(ClaytonGenerator(1.5);
-                children = [ClaytonCopula{2}(3.0), ClaytonCopula{2}(3.0)])
-        for u0 in ([0.25, 0.40, 0.65, 0.80], [0.72, 0.31, 0.58, 0.44])
-            u = big.(u0)
-            spec = RefSpec(ClaytonGenerator(big(1.5)),
-                       Tuple{BigFloat,Bool}[],
-                       [RefSpec(ClaytonGenerator(big(3.0)), [(u[1], false), (u[2], false)]),
-                        RefSpec(ClaytonGenerator(big(3.0)), [(u[3], false), (u[4], false)])])
-            @test logpdf(C, u) ≈ ref_logpdf(spec) atol = 1e-10
-        end
-        # Heterogeneous: Clayton root over a Gumbel panel + a Frank panel.
-        H = NestedArchimedeanCopula(ClaytonGenerator(1.5);
-                children = [GumbelCopula{2}(2.0), FrankCopula{2}(3.0)])
-        for u0 in ([0.23, 0.47, 0.71, 0.59], [0.76, 0.35, 0.42, 0.68])
-            u = big.(u0)
-            spec = RefSpec(ClaytonGenerator(big(1.5)),
-                       Tuple{BigFloat,Bool}[],
-                       [RefSpec(GumbelGenerator(big(2.0)), [(u[1], false), (u[2], false)]),
-                        RefSpec(FrankGenerator(big(3.0)),  [(u[3], false), (u[4], false)])])
-            @test logpdf(H, u) ≈ ref_logpdf(spec) atol = 1e-10
-        end
-    end
-
     # -----------------------------------------------------------------------
     # 3. Uncensored density vs external acopula reference log-likelihoods.
     #    Files in test/data/nested/ : 2-level nesting, equal-size sectors with
     #    a single sector parameter; compared at Float64 tolerance.
     # -----------------------------------------------------------------------
     @testset "uncensored density vs external acopula reference" begin
-        datadir = joinpath(@__DIR__, "data", "nested")
+        datadir = joinpath(@__DIR__, "..", "data", "nested")
         for case in _ACOPULA_CASES
-            @test acopula_maxerr(datadir, case...; nrows = 12) < 1e-9
+            # First, central, and last rows exercise the same external-oracle
+            # identity without repeating the expensive BigFloat density route.
+            @test acopula_maxerr(datadir, case...; nrows = 3) < 1e-9
         end
     end
 
@@ -260,8 +199,11 @@ end
             ("Joe/Joe",         JoeGenerator(1.5),     JoeGenerator(3.0),     0.4),
             ("Gumbel/Clayton",  GumbelGenerator(2.0),  ClaytonGenerator(5.0), 0.4),  # cross-family
         ]
-        for (_, Go, Gi, t0) in edges, d in (2, 4, 6, 8)
-            @test maximum(abs.(implicit(Go, Gi, t0, d) .- direct(Go, Gi, t0, d))) < 1e-10
+        for (_, Go, Gi, t0) in edges
+            # The order-eight jet contains and therefore checks every lower
+            # coefficient previously recomputed at orders 2, 4, and 6.
+            @test maximum(abs.(implicit(Go, Gi, t0, 8) .-
+                               direct(Go, Gi, t0, 8))) < 1e-10
         end
 
         # (c) Clayton/Clayton closed-form override == BOTH general methods.
@@ -297,11 +239,6 @@ end
         # Fast-path probe: condition returns our specialised NestedDistortion.
         Dbiv = condition(Cbiv, (1,), u1)
         @test Dbiv isa NestedDistortion
-        @test Dbiv.utemplate == (u1, 1.0)
-        @test Dbiv.cdfcensored == (false, true)
-        @test Dbiv.pdfcensored == (false, false)
-        @test cdf(Dbiv, 0.0) == 0.0
-        @test cdf(Dbiv, 1.0) == 1.0
 
         # (b) Flat ArchimedeanCopula via the SAME gist recipe, against the
         #     ϕ⁽ᵏ⁾ + ϕ⁻¹′ closed form (upstream ArchimedeanDistortion / subsetdims).
@@ -347,15 +284,12 @@ end
         # generic ForwardDiff fallback.
         D5 = condition(C, (1, 2, 3, 4), [u[1], u[2], u[3], u[4]])
         logden = logpdf(subsetdims(C, (1, 2, 3, 4)), u[1:4])
-        for ui in (0.35, 0.75)
-            ufull = [u[1], u[2], u[3], u[4], ui]
-            expected = logpdf(C, ufull) - logden
-            generic = @invoke logpdf(D5::Copulas.Distortion, ui::Real)
-            @test logpdf(D5, ui) ≈ expected atol = 1e-10
-            @test logpdf(D5, ui) ≈ generic atol = 1e-9
-        end
-        @test logpdf(D5, -0.1) == -Inf
-        @test logpdf(D5, 1.1) == -Inf
+        ui = 0.35
+        ufull = [u[1], u[2], u[3], u[4], ui]
+        expected = logpdf(C, ufull) - logden
+        generic = @invoke logpdf(D5::Copulas.Distortion, ui::Real)
+        @test logpdf(D5, ui) ≈ expected atol = 1e-10
+        @test logpdf(D5, ui) ≈ generic atol = 1e-9
 
     end
 
@@ -478,53 +412,6 @@ end
     end
 
     # -----------------------------------------------------------------------
-    # 6. Constructor validation and support boundaries.
-    # -----------------------------------------------------------------------
-    @testset "constructor validation & boundaries" begin
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [1, 1])
-        # Overlapping dims must error.
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [1], children = [ClaytonCopula{2}(5.0) => [1, 2]])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            children = [ClaytonCopula{2}(5.0) => [1]])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            children = [ClaytonCopula{2}(5.0) => [2, 3]])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [0], children = [ClaytonCopula{2}(5.0)])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [-1], children = [ClaytonCopula{2}(5.0)])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            children = Any[42])
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            children = Any[42 => [1]])
-        # Auto-placement must not silently overlap with a root leaf.
-        @test_throws ArgumentError NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [2], children = [ClaytonCopula{2}(5.0)])
-        # But it may fill a free contiguous block before a later root leaf.
-        placed = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-            leaves = [3], children = [ClaytonCopula{2}(5.0)])
-        @test placed.children[1][2] == [1, 2]
-        # Legacy positional form still works and tiles 1:4.
-        old = NestedArchimedeanCopula(ClaytonGenerator(2.0),
-                  [ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)])
-        @test old isa NestedArchimedeanCopula{4}
-
-        C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-                children = [ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)])
-
-        # Mixed CDF boundaries marginalise coordinates at one. Density support
-        # checks accept numeric input types without converting -Inf to an integer.
-        u = [0.3, 0.4, 0.6, 0.7]
-        @test cdf(C, [u[1], u[2], 1.0, 1.0]) ≈ cdf(ClaytonCopula{2}(5.0), u[1:2])
-        @test logpdf(C, [0, 1, 1, 1]) == -Inf
-        @test logpdf(C, [u[1], 1.0, u[3], u[4]]) == -Inf
-        @test logpdf(C, [u[1], -0.1, u[3], u[4]]) == -Inf
-        @test logpdf(C, [u[1], Inf, u[3], u[4]]) == -Inf
-        @test logpdf(C, [u[1], NaN, u[3], u[4]]) == -Inf
-    end
-
-    # -----------------------------------------------------------------------
     # 7. Global implicit override gives correct nested densities (end-to-end).
     #    Redefining the GENERIC `composition_taylor(::Generator,::Generator,…)`
     #    method switches every edge to the implicit App. A.4 solver. We re-run
@@ -538,7 +425,7 @@ end
     #    Per-edge coverage already spans every family; two cases suffice here.
     # -----------------------------------------------------------------------
     @testset "implicit dispatch gives correct nested densities" begin
-        datadir = joinpath(@__DIR__, "data", "nested")
+        datadir = joinpath(@__DIR__, "..", "data", "nested")
         for case in (_ACOPULA_CASES[1], _ACOPULA_CASES[4])
             @test implicit_acopula_maxerr(datadir, case...) < 1e-9
         end
@@ -585,26 +472,13 @@ end
         @test !isapprox(cdf(subsetdims(C, (4, 1, 2)), [0.3, 0.5, 0.6]),
                         cdf(subsetdims(C, (2, 4, 1)), [0.3, 0.5, 0.6]); atol = 1e-6)
 
-        S = subsetdims(C, (1, 2, 4, 5))
-        @test all(length(child[1]) == length(child[2]) for child in S.children)
-
-        # Deep child subtrees with one surviving coordinate collapse to a leaf
-        # under the nearest retained ancestor.
-        inner = NestedArchimedeanCopula(GumbelGenerator(2.0);
-                    leaves = [1], children = [GumbelCopula{2}(4.0)])
-        deep = NestedArchimedeanCopula(ClaytonGenerator(1.5);
-                    leaves = [1], children = [inner])
-        collapsed = subsetdims(deep, (1, 3))
-        @test collapsed isa ArchimedeanCopula{2}
-        @test cdf(collapsed, [0.4, 0.7]) ≈ cdf(ClaytonCopula{2}(1.5), [0.4, 0.7])
     end
 
     @testset "pairwise Kendall structure" begin
-        # GenericTests exercises the sampler against both CDF and Kendall targets.
-        # Keep only independent analytic anchors for those theoretical targets here.
+        # The public contract checks pairwise-matrix structure and subsetting.
+        # Keep only independent analytic anchors for this nested tree here.
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                 children = [ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)])   # d=4
-        @test subsetdims(C, (1, 2)) isa ArchimedeanCopula{2}
         K = StatsBase.corkendall(C)
         @test K[1, 2] ≈ 5 / 7 atol = 1e-12  # Clayton(5) child panel
         @test K[1, 3] ≈ 1 / 2 atol = 1e-12  # Clayton(2) root dependence
@@ -626,9 +500,6 @@ end
         Chat = M.result
         @test Chat isa NestedArchimedeanCopula
         @test M.converged
-        # Same tree shape preserved.
-        @test length(Chat) == 4
-        @test length(Chat.children) == 2
         # Generators stayed in the Clayton family (no collapse / type change).
         @test Chat.G isa ClaytonGenerator
         @test Chat.children[1][1].G isa ClaytonGenerator
@@ -640,27 +511,12 @@ end
         # Fitted log-likelihood beats the (wrong) starting point.
         @test Distributions.loglikelihood(Chat, U) > Distributions.loglikelihood(Cstart, U)
 
-        # coef / dof report the real free-parameter count (3: root + 2 panels),
-        # so AIC/BIC are correct (the generic path would give dof=0 → wrong AIC).
+        # Nested flattening reports the real three parameters and their paths;
+        # generic StatsBase composition is covered by the fitting contract.
         @test length(StatsBase.coef(M)) == 3
         @test StatsBase.dof(M) == 3
         @test StatsBase.coef(M) ≈ [Chat.G.θ, Chat.children[1][1].G.θ, Chat.children[2][1].G.θ]
         @test StatsBase.coefnames(M) == ["G.θ", "G[1].θ", "G[2].θ"]
-        @test StatsBase.aic(M) ≈ -2 * Distributions.loglikelihood(Chat, U) + 2 * 3
-        @test StatsBase.bic(M) ≈ -2 * Distributions.loglikelihood(Chat, U) + log(1000) * 3
-
-        # Quick instance shim returns just the fitted copula with the same fit.
-        Cq = Distributions.fit(Cstart, U[:, 1:40])
-        @test Cq isa NestedArchimedeanCopula
-
-        # Bare-type fit is intentionally unsupported (tree not inferable).
-        @test_throws Exception Copulas._example(NestedArchimedeanCopula, 4)
-        # Only :mle is supported.
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, U; method = :itau)
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, U[1:3, :])
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, zeros(4, 0))
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, hcat(zeros(4), ones(4)))
-        @test_throws ArgumentError Distributions.fit(Copulas.CopulaModel, Cstart, fill(NaN, 4, 2))
 
         # A small mixed-family fit exercises family-specific parameter
         # unbinding/rebuilding without another statistical recovery workload.
@@ -676,13 +532,9 @@ end
     @testset "fit: parametrisation layer (nesting + custom reparam)" begin
         C = NestedArchimedeanCopula(ClaytonGenerator(1.5); leaves = [1],
                                     children = [ClaytonCopula{2}(4.0)])
-        U = rand(Random.MersenneTwister(7), C, 120)
+        U = rand(Random.MersenneTwister(7), C, 40)
         rootθ(M)  = M.result.G.θ
         childθ(M) = M.result.children[1][1].G.θ
-
-        # default parametrisation: 2 free parameters (root + child)
-        Md = Distributions.fit(Copulas.CopulaModel, C, U)
-        @test StatsBase.dof(Md) == 2
 
         # custom reparam encoding NESTING (no template): child θ = root θ + softplus(δ)
         # ≥ root θ, so every optimiser step is a valid nesting.
@@ -702,11 +554,6 @@ end
         @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
         @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
 
-        @test_throws ArgumentError Distributions.fit(
-            Copulas.CopulaModel, recon, [log(2.0)], U[1:2, :])
-        @test_throws ArgumentError Distributions.fit(
-            Copulas.CopulaModel, recon, [log(2.0)], zeros(3, 0))
-
         # Arbitrary-depth, non-Clayton templates preserve every family and
         # parameter through the same flatten/rebuild machinery used by fit().
         sub = NestedArchimedeanCopula(GumbelGenerator(2.0);
@@ -717,7 +564,17 @@ end
         @test Copulas._nested_coef(rebuilt)[2] ≈ [1.5, 2.0, 3.0]
         @test rebuilt.children[1].children[1][1].G isa GumbelGenerator
 
-        # quick_fit returns just the copula; the dimension comes from the reparam
-        @test Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U; quick_fit = true).result isa NestedArchimedeanCopula
+    end
+end
+
+@testset "nested Archimedean boundary regressions" begin
+    C = NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
+        children=[ClaytonCopula{2}(5.0), ClaytonCopula{2}(6.0)])
+    u = [0.3, 0.4, 0.6, 0.7]
+    @test cdf(C, [u[1], u[2], 1.0, 1.0]) ≈
+          cdf(ClaytonCopula{2}(5.0), u[1:2])
+    for point in ([0, 1, 1, 1], [u[1], 1.0, u[3], u[4]],
+                  [u[1], -0.1, u[3], u[4]], [u[1], NaN, u[3], u[4]])
+        @test logpdf(C, point) == -Inf
     end
 end

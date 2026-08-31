@@ -6,7 +6,12 @@ struct BivFGMDistortion{T} <: Distortion
     j::Int8
     uⱼ::T
 end
-Distributions.cdf(D::BivFGMDistortion, u::Real) = u + D.θ * u * (1 - u) * (1 - 2D.uⱼ)
+function Distributions.cdf(D::BivFGMDistortion, u::Real)
+    T = float(promote_type(typeof(u), typeof(D.θ), typeof(D.uⱼ)))
+    u <= 0 && return zero(T)
+    u >= 1 && return one(T)
+    return u + D.θ * u * (1 - u) * (1 - 2D.uⱼ)
+end
 function Distributions.logcdf(D::BivFGMDistortion, u::Real)
     T = float(promote_type(typeof(u), typeof(D.θ), typeof(D.uⱼ)))
     u <= 0 && return T(-Inf)

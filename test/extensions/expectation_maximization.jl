@@ -1,3 +1,5 @@
+# Extension-regression layer: verifies Copulas' optional ExpectationMaximization
+# integration; it remains isolated because the dependency is extension-specific.
 using Copulas
 using Distributions
 using ExpectationMaximization

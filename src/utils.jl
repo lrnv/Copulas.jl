@@ -59,9 +59,12 @@ function _unit_quantile(d, p::Real)
 end
 
 _invmono(f; tol=1e-8, θmax=1e6, a=0.0, b=1.0) = begin
-    fa,fb = f(0.0), f(1.0)
+    fa,fb = f(a), f(b)
+    iszero(fa) && return a
+    iszero(fb) && return b
     while fb ≤ 0 && b < θmax
         b = min(2b, θmax); fb = f(b)
+        iszero(fb) && return b
         !isfinite(fb) && (b = θmax; break)
     end
     (fa < 0 && fb > 0) || error("Could not bound root at [0, $θmax].")
@@ -331,7 +334,7 @@ function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtm
 
     elseif method === :SchmidSchmidt
         pmu = max.(0.0, p .- U)
-        S   = Matrix{Float64}(I, n, n)
+        S   = Matrix{Float64}(LinearAlgebra.I, n, n)
         @inbounds @views for j in 2:n
             anynan[j] && continue
             y = pmu[:, j]
@@ -340,7 +343,7 @@ function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtm
                     S[i,j] = S[j,i] = NaN
                 else
                     x = pmu[:, i]
-                    S[i,j] = S[j,i] = dot(x, y) / m
+                    S[i,j] = S[j,i] = LinearAlgebra.dot(x, y) / m
                 end
             end
         end

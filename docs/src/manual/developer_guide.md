@@ -14,6 +14,13 @@ mathematical details.
     This page is intended for package contributors and advanced users who want to extend 
     `Copulas.jl` with new copula families, internal optimizations, or additional features.
 
+!!! warning "Internal interfaces are not covered by SemVer"
+    This guide documents both the public extension surface and implementation details
+    used inside Copulas.jl. Only names exported or declared `public` by the `Copulas`
+    module belong to the SemVer-stable API. Other bindings shown here—including
+    underscore-prefixed hooks—may change between releases. Downstream packages should
+    rely on them only when they accept that maintenance cost.
+
 
 # 1. The main API
 
@@ -25,17 +32,17 @@ Every copula type in `Copulas.jl` provides an extensive set of methods, to integ
 | -------------------------------- | ----------------------------------- | ----------- |
 | `length(C)`                      | Dimension d of the copula           | ✅          |
 | `cdf(C, u)`                      | Cumulative distribution function    | ✅          |
-| `pdf(C, u)`                      | Density                             | ✅          |
-| `logpdf(C, u)`                   | Joint log density                   | ✅          |
+| `pdf(C, u)`                      | Lebesgue density                    | ✅ when absolutely continuous |
+| `logpdf(C, u)`                   | Joint log density                   | ✅ when absolutely continuous |
 | `rand(C, n)`                     | Random generation                   | ✅          |
 | `params(C)`                      | Return parameters as a `NamedTuple` | ✅          |
-| `fit(::Type{<:MyCopula}, C, u)`  | Model fitting interface             | ⚙️ Optional |
-| `τ(C)`, `ρ(C)`, etc...           | Dependence metrics                  | ⚙️ Optional |
-| `λₗ(C)`, `λᵤ(C)`                  | Tail dependence coefficients        | ⚙️ Optional |
-| `condition(C, dims, us)`         | Conditional copula                  | ⚙️ Optional |
-| `subsetdims(C, dims)`            | Conditional copula                  | ⚙️ Optional |
-| `rosenblatt(C, u)`               | Rosenblatt transformation           | ⚙️ Optional |
-| `inverse_rosenblatt(C, u)`       | Inverse Rosenblatt transformation   | ⚙️ Optional |
+| `fit(::Type{<:MyCopula}, u)`     | Model fitting interface             | ✅ when the family declares a fitting method |
+| `τ(C)`, `ρ(C)`, etc...           | Dependence metrics                  | ✅ through generic fallbacks |
+| `λₗ(C)`, `λᵤ(C)`                  | Tail dependence coefficients        | ✅ through generic fallbacks |
+| `condition(C, dims, us)`         | Conditional distribution            | ✅ through the generic framework |
+| `subsetdims(C, dims)`            | Marginal copula                     | ✅ through the generic framework |
+| `rosenblatt(C, u)`               | Rosenblatt transformation           | ✅ |
+| `inverse_rosenblatt(C, u)`       | Inverse Rosenblatt transformation   | ✅ when mathematically invertible |
 
 
 However, direct implementation of these methods is not always the best way to fullfill the contract. 
@@ -43,10 +50,20 @@ If you want to implement a new copula, this document will quide you into the rig
 The easiest way is probably to look at another copula's code, choosing a copula *from the same family as yours* if possible, and then 
 reading this code in parralell to this doucment. 
 
+Here, "required" describes the user-facing behavior, not the number of methods a
+new type must implement directly. Generic fallbacks provide many of these
+operations. Singular and mixed copulas do not acquire a Lebesgue density or a
+bijective Rosenblatt transform merely to satisfy an interface; their documented
+mathematical semantics take precedence. Likewise, fitting is public only for
+families that declare at least one supported fitting method.
+
 
 ## 1.2 Probability interface (`cdf`, `pdf`, `rand`)
 
-All copulas have a joint `cdf()` over the hypercube, and they might have a `pdf()` too (optional but highly recomended).
+All copulas have a joint `cdf()` over the hypercube. Absolutely continuous
+copulas also provide `pdf()` and `logpdf()`; these are not promised for purely
+singular copulas, and entropy-based dependence is consequently restricted to
+models with an ordinary density.
 The `rand(C, n)` method should generate an `d × n` matrix of samples from the copula. 
 
 Public API : `rand(C, n)`, `cdf(C, u)`, `pdf(C, u )`, `logpdf(C, u )`, `loglikelihood(C, u )`. 
@@ -77,6 +94,13 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::MyCopula, U::Ab
     return U
 end 
 ```
+
+Every public copula family provides both `MyCopula{d}(parameters...)`, the
+canonical type-stable path, and the thin runtime-dimension convenience form
+`MyCopula(d, parameters...)`. When `params(C)` describes an ordinary parametric
+instance, `typeof(C)(values(params(C))...)` reconstructs it. Structural models
+may expose additional explicitly documented constructors, but must still provide
+the two dimension spellings above.
 
 Once defined, these automatically integrate with the `Copulas.jl` and `Distributions.jl` interface.
 
@@ -120,18 +144,22 @@ Copulas.ρ(C::MyCopula) = ...
 
 ## 1.4 Conditioning and subsetting
 
-The conditining framework works by default, and you can already use `condition(C::MyCopula, dims, us)`.
-You don’t need to override anything else unless your copula has a closed form for conditional distributions 
-(univariate or multivariate), or a semi-closed-form that is better than our generics.  
-If it does, then it is **highly recomended** that you overwrite these two bindings: 
+The conditioning framework works by default, and you can already use
+`condition(C::MyCopula, dims, us)`. No additional public method is required.
+
+Inside Copulas.jl, specialized families currently optimize this path through the
+following internal hooks:
 
 ```julia
 ConditionalCopula(C::MyCopula, dims, us) = ...
 DistortionFromCop(C::MyCopula, dims, us, i) = ...
 ```
 
-These allow `Copulas.jl` to build conditional distributions internally.
-If not defined, conditioning will fall back to a generic (and thus slower) path.
+These bindings are documented for contributors working on Copulas.jl itself. They
+are not public extension points and are not covered by SemVer. Downstream packages
+should prefer the generic `condition` interface; if a missing fast path matters,
+please coordinate its implementation upstream. If the hooks are not defined,
+conditioning falls back to the generic path.
 
 * The first binding returns a `SklarDist`, containing the conditional copula as a copula, 
   and conditional marginals as the marginals. This literally represent the conditional 
@@ -191,7 +219,7 @@ Once the above methods are implemented, your family becomes automatically compat
 - `fit`, `CopulaModel`
 - `StatsBase.vcov`, `StatsBase.confint`
 - `Distributions.loglikelihood`
-- `StatsBase.aic`, `StatsBase.bic`, `Copulas.aicc`, `Copulas.hqc`
+- `StatsBase.aic`, `StatsBase.bic`
 
 
 
@@ -916,3 +944,97 @@ M
     EV copulas usually lack smooth closed-form densities.
     Analytical forms are optional but highly recommended to improve numerical stability.
     Otherwise, `Copulas.jl` will fall back to numerical integration based on the Pickands function.
+
+
+# 4. Testing architecture
+
+The test suite proves the documented public API while avoiding the repetition of
+expensive numerical checks for every copula family.
+
+## 4.1 Current organization
+
+The SemVer-stable surface consists of symbols exported or declared `public` by
+`Copulas`, together with documented methods extending interfaces such as
+`Distributions`, `StatsBase`, and `Random`. Undocumented internal hooks are
+not covered by this guarantee.
+
+Tests are organized as follows:
+
+- `test/bestiary.jl` is the central registry of public copula representatives;
+- `test/api/` checks constructors, components, compositions, and standalone
+  public utilities;
+- `test/operations/` checks each public copula operation;
+- `test/correctness/` contains independent mathematical, statistical, and
+  numerical references that span operations or describe a family;
+- `test/routing/` verifies that every dispatch and value-dependent branch
+  reached from the bestiary has a proof;
+- `test/extensions/` contains optional-extension regressions.
+
+For each public operation, the suite combines four kinds of evidence: the
+public contract is exercised on every applicable family; generic mechanisms are
+checked against independent oracles; specialized methods are compared with
+their generic implementation or another independent identity; and routing
+tests verify that every representative selects a proven path. Expensive
+integration, differentiation, fitting, and statistical checks should therefore
+run once per implementation mechanism, not once per family.
+
+## 4.2 Adding a copula family
+
+After implementing and documenting `MyCopula`:
+
+1. Add the cheapest ordinary representative to `ALL_COPULA_CASES` in
+   `test/bestiary.jl`:
+
+   ```julia
+   copula_case(MyCopula, d, parameters...)
+   ```
+
+   This automatically checks the public `MyCopula{d}(...)` and
+   `MyCopula(d, ...)` constructors and subjects the first representative to
+   the family-wide operation contracts. Constructor keywords, exceptional
+   tolerances, or a legitimate inferred return union are optional metadata.
+2. Add further bestiary entries only when another dimension, representation, or
+   parameter regime selects different code. Julia's `which` detects method
+   dispatch, but not value-dependent branches inside a method, so each such
+   regime needs a representative.
+3. If the copula can be singular or mixed, implement the appropriate internal
+   measure-style trait. This determines whether density and invertible
+   Rosenblatt requirements apply; do not duplicate that classification in the
+   tests.
+4. If the family exposes a new generic numerical mechanism, add one independent
+   oracle under `test/correctness/`. If it adds a specialization of an existing
+   operation, add its generic-equivalence check to the corresponding
+   `test/operations/` file. A specialization without a valid generic fallback
+   needs an independent identity instead.
+5. Add a focused family regression only for information not implied by those
+   proofs, such as a published value, boundary reduction, atom mass, or
+   reproduced bug. Fitting methods advertised by package dispatch are
+   discovered automatically.
+
+Archimedean generators and extreme-value tails used by bestiary copulas are
+extracted automatically for their component contracts. Add a separate copula
+representative when a new public generator or tail would otherwise be absent.
+
+## 4.3 Adding a public feature
+
+When adding or changing a public operation `newstuff(C::Copula)`:
+
+1. Declare and document the public interface, including applicability,
+   return shape, bounds, and errors. For an adopted external interface, document
+   the supported methods without redeclaring its symbol.
+2. Create or extend `test/operations/newstuff.jl`. Apply a cheap contract helper
+   to every applicable entry in `COPULA_FIXTURES`.
+3. Test every generic implementation mechanism once against an independent
+   mathematical or statistical oracle.
+4. Discover the routes selected by `ROUTING_COPULA_FIXTURES`. Compare each
+   specialization with the generic implementation, or use an independent
+   identity when no generic comparison is valid. Add bestiary representatives
+   for any missing dimension-, representation-, or value-dependent branch.
+5. Close the route inventory by set equality, so a future unproved
+   specialization fails automatically. Add the operation file to
+   `test/runtests.jl`.
+
+A contract alone proves availability but not numerical correctness; one family
+example proves neither applicability nor dispatch exhaustiveness. Conversely,
+do not repeat an oracle after the generic mechanism and every route leading to
+it have already been proved.

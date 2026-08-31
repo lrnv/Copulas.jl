@@ -50,20 +50,61 @@ struct ArchimedeanCopula{d,TG} <: Copula{d}
     end
 end
 
+# Absolute continuity of an Archimedean copula is determined by its radial
+# law, not merely by the generator type. Generic generators are smooth unless
+# they opt out below; Williamson generators retain enough information to make
+# the distinction exactly at their source order.
+radial_measure_style(::Generator, ::Real) = AbsolutelyContinuousMeasure()
+function radial_measure_style(G::𝒲, order::Real)
+    order < G.order && return AbsolutelyContinuousMeasure()
+    order == G.order || throw(ArgumentError(
+        "Williamson order $order exceeds source order $(G.order)",
+    ))
+    return radial_measure_style(G.X)
+end
+archimedean_measure_style(G::Generator, ::Val{d}) where {d} =
+    radial_measure_style(G, d)
+archimedean_measure_style(G::TiltedGenerator, ::Val{d}) where {d} =
+    archimedean_measure_style(G.G, Val(d + G.p))
+
+radial_measure_style(::Distributions.ContinuousUnivariateDistribution) =
+    AbsolutelyContinuousMeasure()
+radial_measure_style(::Distributions.DiscreteUnivariateDistribution) =
+    NonAbsolutelyContinuousMeasure()
+# A custom univariate distribution whose measure class is not expressed in
+# the Distributions.jl hierarchy must opt into absolute continuity explicitly.
+radial_measure_style(::Distributions.UnivariateDistribution) =
+    NonAbsolutelyContinuousMeasure()
+
+copula_measure_style(C::ArchimedeanCopula{d}) where {d} =
+    archimedean_measure_style(C.G, Val(d))
+
 # Constructors:
 ArchimedeanCopula(d::Int, G::Generator) = ArchimedeanCopula{d}(G)
 ArchimedeanCopula{d}(::IndependentGenerator) where {d} = IndependentCopula{d}()
 ArchimedeanCopula{d}(::MGenerator) where {d} = MCopula{d}()
 ArchimedeanCopula{d}(::WGenerator) where {d} = WCopula{d}()
-function _typed_archimedean(CT, d, args...; kwargs...)
+function _wrap_archimedean(::Val{d}, G::TG) where {d,TG<:Generator}
+    return invoke(ArchimedeanCopula{d}, Tuple{Generator}, G)::ArchimedeanCopula{d,TG}
+end
+function _typed_archimedean(CT::Type{<:ArchimedeanCopula{d}}, args...; kwargs...) where {d}
     G = generatorof(CT)(args...; kwargs...)
     G isa IndependentGenerator && return IndependentCopula{d}()
     G isa MGenerator && return MCopula{d}()
     G isa WGenerator && return WCopula{d}()
+    return _wrap_archimedean(Val(d), G)
+end
+function _dynamic_archimedean(CT::Type{<:ArchimedeanCopula}, d::Int, args...; kwargs...)
+    G = generatorof(CT)(args...; kwargs...)
+
+    G isa IndependentGenerator && return IndependentCopula{d}()
+    G isa MGenerator && return MCopula{d}()
+    G isa WGenerator && return WCopula{d}()
+
     return invoke(ArchimedeanCopula{d}, Tuple{Generator}, G)
 end
 function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
-    return _typed_archimedean(CT, d, args...; kwargs...)
+    return _typed_archimedean(CT, args...; kwargs...)
 end
 function (CT::Type{<:ArchimedeanCopula{D,TG}})(d::Int, args...; kwargs...) where {D,TG}
     # Dropping TG's parameters is intentional for the current parametric
@@ -81,9 +122,9 @@ function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, arg
     # This heuristic must be revisited if optional/non-field parameters appear.
     nparams = fieldcount(Base.unwrap_unionall(generatorof(CT)))
     if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
-        return _typed_archimedean(CT, first, args...; kwargs...)
+        return _dynamic_archimedean(CT, first, args...; kwargs...)
     end
-    return _typed_archimedean(CT, d, first, args...; kwargs...)
+    return _typed_archimedean(CT, first, args...; kwargs...)
 end
 
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters.
@@ -219,6 +260,7 @@ _rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generato
 _available_fitting_methods(::Type{ArchimedeanCopula}, d) = (:gnz2011,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}, d) = (:mle,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}, d) = (:mle, :itau, :irho, :ibeta)
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where d}, d) = Tuple{}()
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = Tuple{}() # No fitting method.
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲{<:Distributions.DiscreteNonParametric}} where d}, d) = (:gnz2011,)
 

@@ -156,7 +156,8 @@ function d²A(tail::MixedTail, t::Real)
     return 2θ
 end
 
-_tau_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 : 1 + 4 * QuadGK.quadgk(t -> ((2θ*t - θ) / (θ*t^2 - θ*t + 1)) * t * (1-t), 0, 1; kw...)[1]
+_tau_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 :
+    8 / sqrt(θ * (4 - θ)) * atan(sqrt(θ / (4 - θ))) - 2
 _rho_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 : 12 * QuadGK.quadgk(t -> inv((θ*t^2 - θ*t + 1 + 1)^2), 0, 1; kw...)[1] - 3
 
 τ(C::ExtremeValueCopula{2,<:MixedTail}) = 8 / sqrt(C.tail.θ * (4 - C.tail.θ)) * atan( sqrt(C.tail.θ / (4 - C.tail.θ)) ) - 2

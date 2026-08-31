@@ -37,6 +37,7 @@ function Distributions.pdf(D::WilliamsonFromFrailty, x::Real)
     isinf(x) && return zero(float(x))
     return Distributions.expectation(v -> v * Distributions.pdf(D.numerator, x * v), D.frailty_dist)
 end
+Distributions.logpdf(D::WilliamsonFromFrailty, x::Real) = log(Distributions.pdf(D, x))
 function Distributions.quantile(D::WilliamsonFromFrailty, p::Real)
     0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
     iszero(p) && return minimum(D)
@@ -91,6 +92,7 @@ function Distributions.pdf(D::PowerTiltedFrailty, v::Real)
     return Distributions.pdf(D.base, v) *
            _power_tilt_weight(v, D.power, D.shift) / D.normalizer
 end
+Distributions.logpdf(D::PowerTiltedFrailty, v::Real) = log(Distributions.pdf(D, v))
 function Distributions.cdf(D::PowerTiltedFrailty, x::Real)
     x < minimum(D) && return zero(float(x))
     x >= maximum(D) && return one(float(x))

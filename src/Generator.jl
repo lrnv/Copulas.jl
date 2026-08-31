@@ -38,12 +38,13 @@ function (TG::Type{<:Generator})(args...;kwargs...)
     return T(args..., values(kwargs)...)
 end
 Base.broadcastable(x::Generator) = Ref(x)
+_parameter_dof(x::Generator) = _parameter_dof(Distributions.params(x))
 max_monotony(G::Generator) = throw("This generator does not have a defined max monotony. You need to implement `max_monotony(G)`.")
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
 ϕ(G::Generator) = Base.Fix1(ϕ,G)
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
-ϕ⁻¹⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ⁻¹(G, x), t)
+ϕ⁻¹⁽¹⁾(G::Generator, t) = inv(ϕ⁽¹⁾(G, ϕ⁻¹(G, t)))
 function ϕ⁽ᵏ⁾(G::Generator, k::Int, t)
     k ≥ 0 || throw(ArgumentError("k must be non-negative"))
     return _mul_factorial(taylor(ϕ(G), t, k)[end], k)
@@ -78,9 +79,10 @@ end
 # τ⁻¹(G::Generator, τ_val) = @error("This generator has no inverse kendall tau implemented.")
 # ρ⁻¹(G::Generator, ρ_val) = @error ("This generator has no inverse Spearman rho implemented.")
 
-struct IndependentGenerator <: Generator end 
-struct MGenerator <: Generator end
-struct WGenerator <: Generator end
+abstract type MarkerGenerator <: Generator end
+struct IndependentGenerator <: MarkerGenerator end
+struct MGenerator <: MarkerGenerator end
+struct WGenerator <: MarkerGenerator end
 
 τ(::IndependentGenerator)  = 0
 τ(::MGenerator)  = 1
@@ -388,7 +390,7 @@ struct 𝒲{TX, TO<:Real} <: Generator
 end
 const WilliamsonGenerator = 𝒲
 @doc (@doc 𝒲) WilliamsonGenerator
-Distributions.params(G::𝒲) = (G.X,)
+Distributions.params(G::𝒲) = (X=G.X, order=G.order)
 max_monotony(G::𝒲) = G.order
 """
 Generic fallback for ϕ on WilliamsonGenerator (non-discrete-nonparametric TX).
@@ -423,6 +425,21 @@ function ϕ(G::𝒲, x::TaylorSeries.Taylor1{TF}) where {TF}
         rez[i] = Distributions.expectation(fᵢ, G.X)
     end
     return TaylorSeries.Taylor1(rez)
+end
+
+distortion_measure_style(D::ArchimedeanDistortion{<:WilliamsonGenerator}) = archimedean_measure_style(D.G, Val(D.p + 1))
+function Distributions.quantile(
+    D::ArchimedeanDistortion{<:WilliamsonGenerator},
+    α::Real,
+)
+    distortion_measure_style(D) isa NonAbsolutelyContinuousMeasure &&
+        return _unit_quantile(D, α)
+    return invoke(
+        Distributions.quantile,
+        Tuple{ArchimedeanDistortion,Real},
+        D,
+        α,
+    )
 end
 
 # Exact inverse paths when the forward transform retains its radial law.
@@ -543,7 +560,7 @@ end
 
 
 """
-    EmpiricalGenerator(u::AbstractMatrix)
+    EmpiricalGenerator(u::AbstractMatrix; pseudo_values=true)
 
 Nonparametric Archimedean generator fit via inversion of the empirical Kendall distribution.
 
@@ -554,7 +571,8 @@ Usage
 
     G = EmpiricalGenerator(u)
 
-where `u::AbstractMatrix` is a `d×n` matrix of observations (already on copula or pseudo scale).
+where `u::AbstractMatrix` is a `d×n` matrix of pseudo-observations. Pass
+`pseudo_values=false` to rank-transform raw observations first.
 
 Notes
 * The recovered discrete radial support is rescaled so its largest atom equals 1 (scale is not identifiable).
@@ -566,9 +584,10 @@ References
 * [williamson1956](@cite)
 * [genest2011a](@cite) Genest, Neslehova and Ziegel (2011), Inference in Multivariate Archimedean Copula Models
 """
-function EmpiricalGenerator(u::AbstractMatrix)
+function EmpiricalGenerator(u::AbstractMatrix; pseudo_values=true)
     d = size(u, 1)
-    W = _kendall_sample(u)
+    U = pseudo_values ? u : pseudos(u)
+    W = _kendall_sample(U)
     kw = StatsBase.proportionmap(W)
     x = collect(keys(kw))
     N = length(x)
@@ -680,16 +699,24 @@ abstract type AbstractFrailtyGenerator<:Generator end
 frailty(::Generator) = nothing
 max_monotony(::AbstractFrailtyGenerator) = Inf
 ϕ(G::AbstractFrailtyGenerator, t) = Distributions.mgf(frailty(G), -t)
+function ϕ⁽ᵏ⁾(G::AbstractFrailtyGenerator, k::Int, t)
+    k >= 0 || throw(ArgumentError("k must be non-negative"))
+    k == 0 && return ϕ(G, t)
+    value = Distributions.expectation(frailty(G)) do v
+        v^k * exp(-t * v)
+    end
+    return isodd(k) ? -value : value
+end
 𝒲₋₁(G::AbstractFrailtyGenerator, d::Int) = WilliamsonFromFrailty(frailty(G), d)
 
 struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator
     F::TF
     function FrailtyGenerator(F::Distributions.ContinuousUnivariateDistribution)
-        @assert Base.minimum(F) > 0
+        @assert Base.minimum(F) >= 0
         return new{typeof(F)}(F)
     end
 end
-Distributions.params(G::FrailtyGenerator) = Distributions.params(G.F)
+Distributions.params(G::FrailtyGenerator) = (F=G.F,)
 frailty(G::FrailtyGenerator) = G.F
 
 # Add univaraite generator bindins: 

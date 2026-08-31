@@ -28,6 +28,8 @@ References:
 struct EmpiricalCopula{d,MT} <: Copula{d}
     u::MT
 end
+copula_measure_style(::Type{<:EmpiricalCopula}) =
+    NonAbsolutelyContinuousMeasure()
 Base.eltype(C::EmpiricalCopula{d,MT}) where {d,MT} = Base.eltype(C.u)
 function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
     size(u, 1) == d || throw(DimensionMismatch("data must have $d rows"))
@@ -41,6 +43,8 @@ function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
     return EmpiricalCopula{d,typeof(u)}(u)
 end
 EmpiricalCopula(u; kwargs...) = EmpiricalCopula{size(u, 1)}(u; kwargs...)
+EmpiricalCopula(d::Integer, u; kwargs...) = EmpiricalCopula{d}(u; kwargs...)
+Distributions.params(C::EmpiricalCopula) = (u=C.u,)
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return sum(all(C.u .<= u,dims=1))/size(C.u,2) # might not be very efficient implementation. 
 end

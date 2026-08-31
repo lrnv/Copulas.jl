@@ -43,6 +43,9 @@ struct SurvivalCopula{d,CT,flips} <: Copula{d}
     SurvivalCopula(C::Copula{d}, flips) where {d} = SurvivalCopula{d}(C, flips)
     SurvivalCopula{D,CT,flips}(d::Int, args...;kwargs...) where {D, CT, flips} = SurvivalCopula{d,CT,flips}(CT(d, args...; kwargs...))
 end
+copula_measure_style(::Type{<:SurvivalCopula{d,CT}}) where {d,CT} =
+    copula_measure_style(CT)
+copula_measure_style(C::SurvivalCopula) = copula_measure_style(C.C)
 
 function reverse!(u, idx::Tuple)
     if ndims(u) == 1
@@ -75,6 +78,10 @@ end
 function SurvivalCopula{d}(C::Copula{d}, flips) where {d}
     flip_tuple = Tuple(flips)
     return SurvivalCopula{d,typeof(C),flip_tuple}(C)
+end
+SurvivalCopula(d::Integer, C::Copula, flips) = SurvivalCopula{d}(C, flips)
+function (::Type{SurvivalCopula{d,CT,flips}})(args...; kwargs...) where {d,CT,flips}
+    return SurvivalCopula{d,CT,flips}(CT(args...; kwargs...))
 end
 
 # Fitting: delegate to the base copula after flipping the requested indices in U

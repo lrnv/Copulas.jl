@@ -47,6 +47,8 @@ struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
     end
 end
 
+copula_measure_style(C::ExtremeValueCopula) = tail_measure_style(C.tail)
+
 ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
 
 @inline _ev_encoded_dimension(CT) = Base.unwrap_unionall(CT).parameters[1]
@@ -57,12 +59,7 @@ ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
 # the runtime convenience form FamilyCopula(d, params...). Structured family
 # constructors may provide more specific methods that infer `d` from a matrix
 # or vector.
-function (CT::Type{<:ExtremeValueCopula{D}})(args...; kwargs...) where {D}
-    d = _ev_encoded_dimension(CT)
-    d isa TypeVar && throw(ArgumentError(
-        "the copula dimension must be specified as FamilyCopula{d}(...) " *
-        "or FamilyCopula(d, ...)",
-    ))
+function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
     return ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
 end
 

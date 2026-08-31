@@ -1,7 +1,5 @@
+# Infrastructure layer: applies Aqua's package-level hygiene checks. This is
+# independent of the public behavioral and mathematical contracts below.
 @testset "Aqua.jl" begin
-  Aqua.test_all(
-    Copulas;
-    persistent_tasks = VERSION != v"1.10.10", # Disable persistent tasks only on Julia 1.10.10 (workaround for that release)
-    ambiguities = false,
-  )
+  Aqua.test_all(Copulas; ambiguities = false)
 end

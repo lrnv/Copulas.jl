@@ -44,6 +44,12 @@ is the distribution of `X_i | U_J = u_J`.
 """
 abstract type Distortion<:Distributions.ContinuousUnivariateDistribution end
 
+# Some exact conditional laws are atomic despite the historical continuous
+# supertype of `Distortion`. Keep that semantic capability explicit so callers
+# need not infer it from concrete implementation names.
+distortion_measure_style(::Type{<:Distortion}) = AbsolutelyContinuousMeasure()
+distortion_measure_style(D::Distortion) = distortion_measure_style(typeof(D))
+
 (D::Distortion)(::Distributions.Uniform) = D
 (D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X)
 Distributions.minimum(::Distortion) = 0.0
@@ -109,7 +115,12 @@ struct DistortionFromCop{TC,p,T}<:Distortion
         return new{typeof(C), p, T}(C, i, jst, NTuple{p,T}(uⱼₛt), T(den))
     end
 end
-Distributions.cdf(d::DistortionFromCop, u::Real) = _partial_cdf(d.C, (d.i,), d.js, (u,), d.uⱼₛ) / d.den
+function Distributions.cdf(d::DistortionFromCop, u::Real)
+    T = float(promote_type(typeof(u), typeof(d.den)))
+    u <= 0 && return zero(T)
+    u >= 1 && return one(T)
+    return _partial_cdf(d.C, (d.i,), d.js, (T(u),), d.uⱼₛ) / d.den
+end
 
 # Density on the uniform scale: f_{i|J}(u | u_J) = (∂^{p+1} C / ∂(J..., i))(u, u_J) / (∂^{p} C / ∂J)(1, u_J)
 function Distributions.logpdf(d::DistortionFromCop, u::Real)
@@ -143,6 +154,8 @@ struct DistortedDist{Disto, Distrib}<:Distributions.ContinuousUnivariateDistribu
         return new{typeof(D), typeof(X)}(D, X)
     end
 end
+Base.minimum(D::DistortedDist) = minimum(D.X)
+Base.maximum(D::DistortedDist) = maximum(D.X)
 Distributions.cdf(D::DistortedDist, t::Real) = Distributions.cdf(D.D, Distributions.cdf(D.X, t))
 Distributions.logcdf(D::DistortedDist, t::Real) = Distributions.logcdf(D.D, Distributions.cdf(D.X, t))
 Distributions.quantile(D::DistortedDist, α::Real) = Distributions.quantile(D.X, Distributions.quantile(D.D, α))
@@ -378,6 +391,8 @@ function rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
     end
     return rosenblatt(D.C, v)
 end
+rosenblatt(D::SklarDist, u::AbstractVector{<:Real}) =
+    vec(rosenblatt(D, reshape(u, :, 1)))
 
 """
     inverse_rosenblatt(C::Copula, u)
@@ -416,3 +431,5 @@ function inverse_rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
     end
     return v
 end
+inverse_rosenblatt(D::SklarDist, u::AbstractVector{<:Real}) =
+    vec(inverse_rosenblatt(D, reshape(u, :, 1)))

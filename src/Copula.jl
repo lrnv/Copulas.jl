@@ -1,17 +1,30 @@
 ###############################################################################
-#####  Main Copula interface. 
-#####  User-facing function: 
+#####  Main Copula interface.
+#####  User-facing function:
 #####       1) Distributions.jl's API: cdf, pdf, logpdf, loglikelyhood, etc..
-#####       2) ρ, τ, β, γ, ι, λₗ and λᵤ: repectively the spearman rho, kendall tau,  blomqvist's beta, 
-#####          gini's gamma,entropy eta, and lower and upper tail dependencies. 
-#####       3) measure(C, us, vs) that get the measure associated with the copula.  
-#####       3) pseudo(data) construct pseudo-data from a given dataset.  
+#####       2) ρ, τ, β, γ, ι, λₗ and λᵤ: repectively the spearman rho, kendall tau,  blomqvist's beta,
+#####          gini's gamma,entropy eta, and lower and upper tail dependencies.
+#####       3) measure(C, us, vs) that get the measure associated with the copula.
+#####       3) pseudo(data) construct pseudo-data from a given dataset.
 #####
 #####  When implementing a new copula, you have to overwrite `Copulas._cdf()`
 #####  and `Distributions._rand!()` for matrix inputs.
-#####  and you may overwrite ρ, τ, β, γ, ι, λₗ, λᵤ, measure for performances. 
+#####  and you may overwrite ρ, τ, β, γ, ι, λₗ, λᵤ, measure for performances.
 ###############################################################################
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
+
+# Copulas are represented as continuous multivariate distributions for the
+# Distributions.jl API, but their probability measure need not admit a density
+# with respect to Lebesgue measure. This internal trait is the single source of
+# truth for code that must distinguish absolutely-continuous copulas from
+# singular or mixed ones.
+abstract type CopulaMeasureStyle end
+struct AbsolutelyContinuousMeasure <: CopulaMeasureStyle end
+struct NonAbsolutelyContinuousMeasure <: CopulaMeasureStyle end
+
+copula_measure_style(::Type{<:Copula}) = AbsolutelyContinuousMeasure()
+copula_measure_style(C::Copula) = copula_measure_style(typeof(C))
+
 Base.broadcastable(C::Copula) = Ref(C)
 Base.length(::Copula{d}) where d = d
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::Copula{d}, x::AbstractVector{T}) where {d,T<:Real}
@@ -24,16 +37,23 @@ function Distributions._rand!(::Distributions.AbstractRNG, C::Copula{d}, ::Abstr
 end
 function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
     length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
-    if any(iszero,u)
+    if any(x -> x <= zero(x), u)
         return zero(u[1])
-    elseif all(isone,u)
+    elseif all(x -> x >= one(x), u)
         return one(u[1])
     end
-    return _cdf(C,u)
+    bounded = any(x -> x > one(x), u) ? min.(u, one(eltype(u))) : u
+    return _cdf(C, bounded)
 end
 function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
     size(A,1) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
     return [Distributions.cdf(C,u) for u in eachcol(A)]
+end
+Distributions.logcdf(C::Copula, A::AbstractMatrix) = log.(Distributions.cdf(C, A))
+Distributions.logcdf(C::Copula, v::AbstractVector) = log(Distributions.cdf(C,v))
+function Distributions.logpdf(C::Copula{d}, A::AbstractMatrix) where d
+    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    return [Distributions.logpdf(C, u) for u in eachcol(A)]
 end
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)
@@ -41,13 +61,13 @@ function _cdf(C::CT,u) where {CT<:Copula}
     return HCubature.hcubature(f,z,u,rtol=sqrt(eps()))[1]
 end
 
-# Multivariate dependence metrics 
+# Multivariate dependence metrics
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     z = zeros(d)
     i = ones(d)
     r = HCubature.hcubature(F, z, i, rtol=sqrt(eps()))[1]
-    return (2^d * (d+1) * r - d - 1)/(2^d - d - 1) # Ok for multivariate. 
+    return (2^d * (d+1) * r - d - 1)/(2^d - d - 1) # Ok for multivariate.
 end
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
@@ -71,17 +91,17 @@ end
 function ι(C::Copula{d}) where {d}
     return Distributions.expectation(u -> -Distributions.logpdf(C, u), C; nsamples=10^4)
 end
-function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
+function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d}
     g(e) = Distributions.cdf(C, fill(e, d)) / e
     return clamp(2*g(ε/2) - g(ε), 0.0, 1.0)
 end
-function λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d} 
+function λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d}
     Sc   = SurvivalCopula(C, Tuple(1:d))
     f(e) = Distributions.cdf(Sc, fill(e, d)) / e
     return clamp(2*f(ε/2) - f(ε), 0.0, 1.0)
 end
 
-# Multivariate dependence metrics applied to a matrix. 
+# Multivariate dependence metrics applied to a matrix.
 function β(U::AbstractMatrix)
     # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
     d, n = size(U)
@@ -235,7 +255,7 @@ function ι(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
     return H
 end
 
-# Measure function. 
+# Measure function.
 function measure(C::Copula{d}, us,vs) where {d}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]

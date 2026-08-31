@@ -75,10 +75,9 @@ The `CopulaModel{CT} <: StatsBase.StatisticalModel` supports the standard `Stats
 | `nullloglikelihood(M)`                         | Log-likelihood under independence with same margins (available for Sklar fits).                   |
 | `nulldeviance(M)`                              | Deviance of the null model (−2 · `nullloglikelihood(M)`).                                         |
 | `aic(M)` / `bic(M)`						     | Information criteria from ``StatsBase.jl``                                                        |
-| `aicc(M)` / `hqc(M)`     						 | Information criteria from ``Copulas.jl``                                                          |
 | `coef(M)` / `coefnames(M)`                     | Estimated parameters and their names.                                                             |
 | `vcov(M)`                                      | Parameter variance–covariance matrix (may be `nothing`).                                          |
-| `stderror(M)` / `confint(M; level=0.95)`       | Standard errors and Wald confidence intervals (require `vcov(M) ≠ nothing`).                      |
+| `stderror(M)` / `confint(M; level=0.95)`       | Standard errors and Wald confidence intervals; return `nothing` when `vcov(M) === nothing`.       |
 | `residuals(M; transform=:uniform \| :normal)`  | Rosenblatt residuals on `[0,1]` or Normal scale (requires `method_details[:U]`).                  |
 | `predict(M; what=:cdf\|:pdf\|:simulate, ...)`  | CDF/PDF at `newdata`, or simulation (`nsim`; default `nsim = M.n` if `nsim == 0`).                |
 
@@ -88,8 +87,6 @@ The `CopulaModel{CT} <: StatsBase.StatisticalModel` supports the standard `Stats
 # Information criteria
 StatsBase.aic(M)
 StatsBase.bic(M)
-Copulas.aicc(M)
-Copulas.hqc(M)
 ```
 
 ```@example fitting_interface

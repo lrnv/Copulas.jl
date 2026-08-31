@@ -53,12 +53,15 @@ struct LiouvilleCopula{d,TG,Tα} <: Copula{d}
 end
 
 LiouvilleCopula(G::Generator, α) = LiouvilleCopula{length(α)}(G, α)
+LiouvilleCopula(d::Integer, G::Generator, α) = LiouvilleCopula{d}(G, α)
 
 Distributions.params(C::LiouvilleCopula) = (; G = C.G, α = C.α)
 
 _liouville_order(C::LiouvilleCopula) = sum(C.α)
 _liouville_radial(C::LiouvilleCopula) = 𝒲₋₁(C.G, _liouville_order(C))
 _liouville_margin(C::LiouvilleCopula, i::Integer) = 𝒲₋₁(C.G, C.α[i])
+copula_measure_style(C::LiouvilleCopula) =
+    radial_measure_style(C.G, _liouville_order(C))
 function _liouville_coordinates(C::LiouvilleCopula{d}, u) where {d}
     margins = ntuple(i -> 𝒲₋₁(C.G, C.α[i]), d)
     x = ntuple(i -> Distributions.quantile(margins[i], 1 - u[i]), d)
