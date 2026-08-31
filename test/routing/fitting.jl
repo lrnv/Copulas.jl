@@ -106,7 +106,7 @@ _check_parameter_roundtrip(C) =
                          derived_measures=false, route_kwargs...)
             @test fitted isa Copulas.Copula{d}
             prove_fitting_route!(C, U, method)
-            if method === :mle && case.kind === :continuous
+            if method === :mle && is_absolutely_continuous(C)
                 fitted_ll = loglikelihood(fitted, U)
                 @test isfinite(fitted_ll)
                 # source_ll = loglikelihood(C, U)

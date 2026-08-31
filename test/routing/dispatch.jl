@@ -23,7 +23,7 @@ end
     for measure in SCALAR_DEPENDENCE_MEASURES
         selected = Set(dependence_route_key(measure, fixture.copula)
                        for fixture in ROUTING_COPULA_FIXTURES
-                       if _dependence_is_defined(measure, fixture.case.kind))
+                       if _dependence_is_defined(measure, fixture.copula))
         missing = setdiff(selected, PROVEN_DEPENDENCE_ROUTES[measure])
         isempty(missing) || @info "Dependence routes without an oracle" measure missing
         @test isempty(missing)
@@ -66,7 +66,7 @@ end
     @testset verbose=true "$operation" for operation in operations
         seen = Set{Any}()
         for (; case, copula) in models
-            method = dispatch_path(operation, copula, case)
+            method = dispatch_path(operation, copula)
             isnothing(method) && continue
             key = (method, length(copula) == 2 ? :bivariate : :multivariate)
             key in seen && continue
@@ -87,7 +87,7 @@ end
         selected = Set{Any}()
         for fixture in ROUTING_COPULA_FIXTURES
             case, C = fixture.case, fixture.copula
-            key = dispatch_route_key(operation, C, case)
+            key = dispatch_route_key(operation, C)
             isnothing(key) || push!(selected, key)
         end
         proven = Set(keys(get(PROVEN_DISPATCH_ROUTES, operation,

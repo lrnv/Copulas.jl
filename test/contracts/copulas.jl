@@ -10,6 +10,41 @@ end
 # public operation implementation.
 struct MissingSamplerContractCopula <: Copulas.Copula{2} end
 
+@testset "copula measure-style trait" begin
+    discrete_radial = WilliamsonGenerator([1.0, 2.0], [0.4, 0.6], 3)
+    @test Copulas.copula_measure_style(ArchimedeanCopula{3}(discrete_radial)) isa
+          Copulas.NonAbsolutelyContinuousMeasure
+    # Marginalization multiplies the preserved radial by a continuous beta
+    # variable, so a positive discrete source becomes absolutely continuous.
+    @test Copulas.copula_measure_style(ArchimedeanCopula{2}(discrete_radial)) isa
+          Copulas.AbsolutelyContinuousMeasure
+    @test Copulas.copula_measure_style(
+        ArchimedeanCopula{2}(WilliamsonGenerator(Uniform(1.0, 2.0), 2)),
+    ) isa Copulas.AbsolutelyContinuousMeasure
+    @test Copulas.copula_measure_style(ClaytonCopula{3}(-0.5)) isa
+          Copulas.NonAbsolutelyContinuousMeasure
+
+    discrete_liouville = LiouvilleCopula{2}(
+        WilliamsonGenerator([1.0, 2.0], [0.4, 0.6], 2), (0.8, 1.2),
+    )
+    @test Copulas.copula_measure_style(discrete_liouville) isa
+          Copulas.NonAbsolutelyContinuousMeasure
+    discrete_archimax = ArchimaxCopula{2}(
+        WilliamsonGenerator([1.0, 2.0], [0.4, 0.6], 2),
+        Copulas.GalambosTail(1.0),
+    )
+    @test Copulas.copula_measure_style(discrete_archimax) isa
+          Copulas.NonAbsolutelyContinuousMeasure
+
+    singular = RafteryCopula{3}(0.5)
+    @test Copulas.copula_measure_style(
+        Copulas.SubsetCopula(singular, (1, 2)),
+    ) isa Copulas.NonAbsolutelyContinuousMeasure
+    @test Copulas.copula_measure_style(
+        SurvivalCopula{3}(singular, (1,)),
+    ) isa Copulas.NonAbsolutelyContinuousMeasure
+end
+
 function copula_contract_context(C, seed)
     Base.@nospecialize C
     d = length(C)
@@ -63,10 +98,12 @@ function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
     @test_throws ArgumentError cdf(C, zeros(d + 1, 1))
 end
 
-function test_density_contract(C, ctx, kind)
+test_density_contract(C, ctx) =
+    test_density_contract(Copulas.copula_measure_style(C), C, ctx)
+test_density_contract(::Copulas.NonAbsolutelyContinuousMeasure, C, ctx) = nothing
+function test_density_contract(::Copulas.AbsolutelyContinuousMeasure, C, ctx)
     Base.@nospecialize C
     Base.@nospecialize ctx
-    kind === :continuous || return
     p = pdf(C, ctx.u)
     lp = logpdf(C, ctx.u)
     @test p >= 0
@@ -99,7 +136,7 @@ function test_subsetting_contract(C, ctx, numerical_atol)
     @test_throws Exception subsetdims(C, (0,))
 end
 
-function test_conditioning_contract(C, ctx, kind)
+function test_conditioning_contract(C, ctx)
     Base.@nospecialize C
     Base.@nospecialize ctx
     d = length(C)
@@ -130,7 +167,7 @@ function test_conditioning_contract(C, ctx, kind)
     vals = cdf.(Ref(D), (0.25, 0.5, 0.75))
     @test issorted(vals)
     @test logcdf(D, 0.5) ≈ log(cdf(D, 0.5))
-    if kind === :continuous
+    if is_absolutely_continuous(C)
         densities = pdf.(Ref(D), (0.25, 0.5, 0.75))
         @test all(x -> x >= 0, densities)
         density = pdf(D, 0.5)
@@ -143,42 +180,55 @@ function test_conditioning_contract(C, ctx, kind)
     # Continuous conditionals invert their CDF. For mixed/singular models the
     # public quantile convention is only required to return a valid support
     # point; atom semantics are checked in `correctness/mathematical.jl`.
-    kind === :continuous && @test cdf(D, q) >= 0.5 - sqrt(eps(Float64))
+    is_absolutely_continuous(C) &&
+        @test cdf(D, q) >= 0.5 - sqrt(eps(Float64))
 end
 
-function test_rosenblatt_contract(C, ctx, invertible)
+function test_rosenblatt_contract(C, ctx)
     Base.@nospecialize C
     Base.@nospecialize ctx
     R = rosenblatt(C, ctx.U)
     @test size(R) == size(ctx.U)
     @test all(x -> 0 <= x <= 1, R)
     @test rosenblatt(C, ctx.u) ≈ vec(rosenblatt(C, reshape(ctx.u, :, 1)))
-    invertible || return
+    test_rosenblatt_inverse_contract(Copulas.copula_measure_style(C), C, ctx, R)
+end
+
+test_rosenblatt_inverse_contract(
+    ::Copulas.NonAbsolutelyContinuousMeasure, C, ctx, R,
+) = nothing
+function test_rosenblatt_inverse_contract(
+    ::Copulas.AbsolutelyContinuousMeasure, C, ctx, R,
+)
     @test inverse_rosenblatt(C, R) ≈ ctx.U atol=2e-5 rtol=2e-5
     @test inverse_rosenblatt(C, rosenblatt(C, ctx.u)) ≈ ctx.u atol=2e-5 rtol=2e-5
 end
 
-_dependence_is_defined(::typeof(Copulas.ι), kind) = kind === :continuous
-_dependence_is_defined(::typeof(Copulas.corentropy), kind) = kind === :continuous
-_dependence_is_defined(::Any, ::Any) = true
+_dependence_is_defined(measure, C::Copulas.Copula) =
+    _dependence_is_defined(measure, Copulas.copula_measure_style(C))
+_dependence_is_defined(
+    ::Union{typeof(Copulas.ι),typeof(Copulas.corentropy)},
+    ::Copulas.NonAbsolutelyContinuousMeasure,
+) = false
+_dependence_is_defined(::Any, ::Copulas.CopulaMeasureStyle) = true
 function _dependence_dispatch_key(measure, C)
     Base.@nospecialize measure C
     return (which(measure, Tuple{typeof(C)}),
             length(C) == 2 ? :bivariate : :multivariate)
 end
 
-function test_dependence_contract(C, kind)
+function test_dependence_contract(C)
     Base.@nospecialize C
     # Distribution, density, sampling and subsetting primitives are exercised
     # above for every family.  The expensive generic measures only compose
     # those primitives, so the per-family API contract needs to guarantee that
     # dispatch exists; each distinct implementation is executed once below.
     for measure in SCALAR_DEPENDENCE_MEASURES
-        _dependence_is_defined(measure, kind) || continue
+        _dependence_is_defined(measure, C) || continue
         @test applicable(measure, C)
     end
     for (measure, _) in PAIRWISE_DEPENDENCE_MEASURES
-        _dependence_is_defined(measure, kind) || continue
+        _dependence_is_defined(measure, C) || continue
         @test applicable(measure, C)
     end
 end
@@ -213,7 +263,7 @@ function test_copula_contract(case, C, seed)
     end
     @testset "density" begin
         test_progress("contracts", "copulas", case.name, "density")
-        test_density_contract(C, ctx, case.kind)
+        test_density_contract(C, ctx)
     end
     @testset "subsetting" begin
         test_progress("contracts", "copulas", case.name, "subsetting")
@@ -221,15 +271,15 @@ function test_copula_contract(case, C, seed)
     end
     @testset "conditioning" begin
         test_progress("contracts", "copulas", case.name, "conditioning")
-        test_conditioning_contract(C, ctx, case.kind)
+        test_conditioning_contract(C, ctx)
     end
     @testset "Rosenblatt" begin
         test_progress("contracts", "copulas", case.name, "Rosenblatt")
-        test_rosenblatt_contract(C, ctx, case.rosenblatt)
+        test_rosenblatt_contract(C, ctx)
     end
     @testset "dependence" begin
         test_progress("contracts", "copulas", case.name, "dependence")
-        test_dependence_contract(C, case.kind)
+        test_dependence_contract(C)
     end
 end
 
@@ -283,7 +333,7 @@ end
     @testset verbose=true "$(nameof(measure))" for measure in SCALAR_DEPENDENCE_MEASURES
         seen = Set{Any}()
         for (; case, copula) in models
-            _dependence_is_defined(measure, case.kind) || continue
+            _dependence_is_defined(measure, copula) || continue
             method, dimension_path = _dependence_dispatch_key(measure, copula)
             (method, dimension_path) in seen && continue
             push!(seen, (method, dimension_path))
@@ -298,7 +348,7 @@ end
         measure, diagonal = entry
         seen = Set{Any}()
         for (; case, copula) in models
-            _dependence_is_defined(measure, case.kind) || continue
+            _dependence_is_defined(measure, copula) || continue
             method, dimension_path = _dependence_dispatch_key(measure, copula)
             (method, dimension_path) in seen && continue
             push!(seen, (method, dimension_path))

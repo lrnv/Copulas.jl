@@ -1,9 +1,11 @@
 # Shared test data and registries: declares the minimal representative models
 # consumed by contracts and path tests; it contains no assertions itself.
 """A public copula fixture and the mathematical contract it must satisfy."""
-copula_case(name, build; kind=:continuous, rosenblatt=true,
-            numerical_atol=1e-8, margin_atol=1e-6) =
-    (; name, build, kind, rosenblatt, numerical_atol, margin_atol)
+copula_case(name, build; numerical_atol=1e-8, margin_atol=1e-6) =
+    (; name, build, numerical_atol, margin_atol)
+
+is_absolutely_continuous(C) =
+    Copulas.copula_measure_style(C) isa Copulas.AbsolutelyContinuousMeasure
 
 const _FIXTURE_DATA = [
     0.12 0.31 0.54 0.73 0.89 0.42
@@ -34,6 +36,8 @@ const COPULA_CASES = (
     copula_case("inverse Gaussian", () -> InvGaussianCopula{2}(0.5)),
     copula_case("Joe", () -> JoeCopula{2}(1.5)),
     copula_case("generic Archimedean", () -> ArchimedeanCopula{2}(Copulas.ClaytonGenerator(1.5))),
+    copula_case("discrete-radial Archimedean", () -> ArchimedeanCopula{2}(
+        WilliamsonGenerator([1.0, 2.0], [0.4, 0.6], 2))),
     copula_case("nested Archimedean", () -> NestedArchimedeanCopula{4}(
         Copulas.ClaytonGenerator(1.0); leaves=[1, 2],
         children=[ClaytonCopula{2}(2.0)])),
@@ -46,23 +50,21 @@ const COPULA_CASES = (
     copula_case("asymmetric Galambos", () -> AsymGalambosCopula{2}(1.0, 0.4, 0.6)),
     copula_case("asymmetric logistic", () -> AsymLogCopula{2}(1.5, 0.4, 0.6)),
     copula_case("asymmetric mixed", () -> AsymMixedCopula{2}(0.3, 0.2)),
-    copula_case("BC2", () -> BC2Copula{2}(0.5, 0.3); kind=:mixed, rosenblatt=false),
-    copula_case("Cuadras--Auge", () -> CuadrasAugeCopula{2}(0.5); kind=:mixed, rosenblatt=false),
+    copula_case("BC2", () -> BC2Copula{2}(0.5, 0.3)),
+    copula_case("Cuadras--Auge", () -> CuadrasAugeCopula{2}(0.5)),
     copula_case("Galambos", () -> GalambosCopula{3}(1.0)),
     copula_case("Husler--Reiss", () -> HuslerReissCopula{3}(1.0)),
     copula_case("logistic EV", () -> LogCopula{3}(1.5)),
     copula_case("mixed EV", () -> MixedCopula{2}(0.5)),
-    copula_case("Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4); kind=:mixed, rosenblatt=false),
+    copula_case("Marshall--Olkin", () -> MOCopula{2}(0.2, 0.3, 0.4)),
     copula_case("Tawn", () -> TawnCopula{3}(2.0, [0.6, 0.7, 0.8])),
     copula_case("t-EV", () -> tEVCopula{2}(4.0, 0.5)),
     copula_case("empirical EV", () -> EmpiricalEVCopula{2}(_FIXTURE_DATA; method=:cfg, pseudo_values=false)),
     copula_case("empirical EV multivariate", () -> EmpiricalEVCopula{3}(
-        _FIXTURE_DATA3; degree=1, pseudo_values=false);
-        kind=:singular, rosenblatt=false),
+        _FIXTURE_DATA3; degree=1, pseudo_values=false)),
     copula_case("generic EV", () -> ExtremeValueCopula{2}(Copulas.GalambosTail(1.0))),
     copula_case("discrete spectral", () -> ExtremeValueCopula{2}(
-        DiscreteSpectralTail([0.7 0.3; 0.2 0.8]));
-        kind=:singular, rosenblatt=false),
+        DiscreteSpectralTail([0.7 0.3; 0.2 0.8]))),
     # Gaussian probabilities use numerical multivariate-normal integration.
     copula_case("Gaussian", () -> GaussianCopula{3}(0.3); numerical_atol=1e-3),
     copula_case("Student", () -> TCopula{2}(4.0, [1.0 0.3; 0.3 1.0])),
@@ -71,13 +73,13 @@ const COPULA_CASES = (
     copula_case("checkerboard", () -> CheckerboardCopula{2}(_FIXTURE_DATA; m=2)),
     # An empirical copula has discrete-uniform margins with jumps of size 1/n.
     copula_case("empirical", () -> EmpiricalCopula{2}(_FIXTURE_DATA);
-        kind=:singular, rosenblatt=false, margin_atol=inv(size(_FIXTURE_DATA, 2))),
+        margin_atol=inv(size(_FIXTURE_DATA, 2))),
     copula_case("FGM", () -> FGMCopula{2}(0.5)),
     copula_case("independence", () -> IndependentCopula{3}()),
-    copula_case("upper Frechet bound", () -> MCopula{2}(); kind=:singular, rosenblatt=false),
-    copula_case("lower Frechet bound", () -> WCopula{2}(); kind=:singular, rosenblatt=false),
+    copula_case("upper Frechet bound", () -> MCopula{2}()),
+    copula_case("lower Frechet bound", () -> WCopula{2}()),
     copula_case("Plackett", () -> PlackettCopula{2}(2.0)),
-    copula_case("Raftery", () -> RafteryCopula{3}(0.5); kind=:mixed, rosenblatt=false),
+    copula_case("Raftery", () -> RafteryCopula{3}(0.5)),
     copula_case("survival", () -> SurvivalCopula{3}(ClaytonCopula{3}(1.5), (1, 3))),
 )
 
@@ -92,12 +94,11 @@ const ROUTING_EXTRA_CASES = (
     copula_case("asymmetric Galambos multivariate",
         () -> AsymGalambosCopula{3}(1.0, [0.4, 0.5, 0.6])),
     copula_case("BC2 multivariate",
-        () -> BC2Copula{3}([0.3, 0.7, 0.5]); kind=:mixed, rosenblatt=false),
+        () -> BC2Copula{3}([0.3, 0.7, 0.5])),
     copula_case("Cuadras--Auge multivariate",
-        () -> CuadrasAugeCopula{3}(0.5); kind=:mixed, rosenblatt=false),
+        () -> CuadrasAugeCopula{3}(0.5)),
     copula_case("Marshall--Olkin multivariate", () -> MOCopula{3}(
-        [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]);
-        kind=:mixed, rosenblatt=false),
+        [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70])),
     copula_case("t-EV multivariate", () -> tEVCopula{3}(4.0, 0.2)),
     copula_case("Gaussian bivariate", () -> GaussianCopula{2}(0.3);
                 numerical_atol=1e-3),
@@ -107,10 +108,8 @@ const ROUTING_EXTRA_CASES = (
         Copulas.ClaytonGenerator(1.0), (0.8, 1.1, 1.3))),
     copula_case("FGM multivariate", () -> FGMCopula{3}([0.0, 0.0, 0.0, 0.4])),
     copula_case("independence bivariate", () -> IndependentCopula{2}()),
-    copula_case("upper Frechet multivariate", () -> MCopula{3}();
-        kind=:singular, rosenblatt=false),
-    copula_case("Raftery bivariate", () -> RafteryCopula{2}(0.5);
-        kind=:mixed, rosenblatt=false),
+    copula_case("upper Frechet multivariate", () -> MCopula{3}()),
+    copula_case("Raftery bivariate", () -> RafteryCopula{2}(0.5)),
     copula_case("survival bivariate", () -> SurvivalCopula{2}(
         ClaytonCopula{2}(1.5), (1,))),
 )
@@ -154,14 +153,14 @@ function _which(f, args...)
     return which(f, Tuple{typeof.(args)...})
 end
 
-function dispatch_path(operation, C, case)
-    Base.@nospecialize operation C case
+function dispatch_path(operation, C)
+    Base.@nospecialize operation C
     d = length(C)
     u = fill(0.6, d)
     if operation === :cdf
         return _which(Copulas._cdf, C, u)
     elseif operation === :logpdf
-        case.kind === :continuous || return nothing
+        is_absolutely_continuous(C) || return nothing
         return _which(Distributions._logpdf, C, u)
     elseif operation === :sampling
         return _which(Distributions._rand!, StableRNG(51), C, zeros(d, 1))
@@ -178,7 +177,7 @@ function dispatch_path(operation, C, case)
     elseif operation === :rosenblatt
         return _which(Copulas.rosenblatt, C, reshape(u, :, 1))
     elseif operation === :inverse_rosenblatt
-        case.rosenblatt || return nothing
+        is_absolutely_continuous(C) || return nothing
         return _which(Copulas.inverse_rosenblatt, C, reshape(u, :, 1))
     elseif operation === :subsetting
         dims = d == 2 ? (2, 1) : (1, d)
@@ -189,16 +188,16 @@ function dispatch_path(operation, C, case)
     error("unknown dispatch operation $operation")
 end
 
-function dispatch_route_key(operation, C, case)
-    Base.@nospecialize operation C case
-    method = dispatch_path(operation, C, case)
+function dispatch_route_key(operation, C)
+    Base.@nospecialize operation C
+    method = dispatch_path(operation, C)
     isnothing(method) && return nothing
     return (method, length(C) == 2 ? :bivariate : :multivariate)
 end
 
-function prove_dispatch_route!(operation, C, case, source::Symbol)
-    Base.@nospecialize operation C case
-    key = dispatch_route_key(operation, C, case)
+function prove_dispatch_route!(operation, C, source::Symbol)
+    Base.@nospecialize operation C
+    key = dispatch_route_key(operation, C)
     isnothing(key) && return nothing
     sources = get!(get!(PROVEN_DISPATCH_ROUTES, operation, Dict{Any,Set{Symbol}}()),
                    key, Set{Symbol}())

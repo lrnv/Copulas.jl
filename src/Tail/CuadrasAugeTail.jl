@@ -46,6 +46,7 @@ struct CuadrasAugeTail{T} <: OneParameterPickandsTail
 end
 
 const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
+tail_measure_style(::CuadrasAugeTail) = NonAbsolutelyContinuousMeasure()
 Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
 _is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2
 _unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]

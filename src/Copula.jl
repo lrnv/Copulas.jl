@@ -12,6 +12,19 @@
 #####  and you may overwrite ρ, τ, β, γ, ι, λₗ, λᵤ, measure for performances.
 ###############################################################################
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
+
+# Copulas are represented as continuous multivariate distributions for the
+# Distributions.jl API, but their probability measure need not admit a density
+# with respect to Lebesgue measure. This internal trait is the single source of
+# truth for code that must distinguish absolutely-continuous copulas from
+# singular or mixed ones.
+abstract type CopulaMeasureStyle end
+struct AbsolutelyContinuousMeasure <: CopulaMeasureStyle end
+struct NonAbsolutelyContinuousMeasure <: CopulaMeasureStyle end
+
+copula_measure_style(::Type{<:Copula}) = AbsolutelyContinuousMeasure()
+copula_measure_style(C::Copula) = copula_measure_style(typeof(C))
+
 Base.broadcastable(C::Copula) = Ref(C)
 Base.length(::Copula{d}) where d = d
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::Copula{d}, x::AbstractVector{T}) where {d,T<:Real}

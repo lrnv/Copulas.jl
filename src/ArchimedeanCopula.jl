@@ -50,6 +50,35 @@ struct ArchimedeanCopula{d,TG} <: Copula{d}
     end
 end
 
+# Absolute continuity of an Archimedean copula is determined by its radial
+# law, not merely by the generator type. Generic generators are smooth unless
+# they opt out below; Williamson generators retain enough information to make
+# the distinction exactly at their source order.
+radial_measure_style(::Generator, ::Real) = AbsolutelyContinuousMeasure()
+function radial_measure_style(G::𝒲, order::Real)
+    order < G.order && return AbsolutelyContinuousMeasure()
+    order == G.order || throw(ArgumentError(
+        "Williamson order $order exceeds source order $(G.order)",
+    ))
+    return radial_measure_style(G.X)
+end
+archimedean_measure_style(G::Generator, ::Val{d}) where {d} =
+    radial_measure_style(G, d)
+archimedean_measure_style(G::TiltedGenerator, ::Val{d}) where {d} =
+    archimedean_measure_style(G.G, Val(d + G.p))
+
+radial_measure_style(::Distributions.ContinuousUnivariateDistribution) =
+    AbsolutelyContinuousMeasure()
+radial_measure_style(::Distributions.DiscreteUnivariateDistribution) =
+    NonAbsolutelyContinuousMeasure()
+# A custom univariate distribution whose measure class is not expressed in
+# the Distributions.jl hierarchy must opt into absolute continuity explicitly.
+radial_measure_style(::Distributions.UnivariateDistribution) =
+    NonAbsolutelyContinuousMeasure()
+
+copula_measure_style(C::ArchimedeanCopula{d}) where {d} =
+    archimedean_measure_style(C.G, Val(d))
+
 # Constructors:
 ArchimedeanCopula(d::Int, G::Generator) = ArchimedeanCopula{d}(G)
 ArchimedeanCopula{d}(::IndependentGenerator) where {d} = IndependentCopula{d}()

@@ -18,6 +18,7 @@ struct WCopula{d} <: Copula{d}
         return new{2}()
     end
 end
+copula_measure_style(::Type{<:WCopula}) = NonAbsolutelyContinuousMeasure()
 WCopula() = WCopula{2}()
 WCopula(d) = WCopula{d}()
 Distributions._logpdf(::WCopula,           u) = sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)

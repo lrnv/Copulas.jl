@@ -186,7 +186,7 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
             fixture = only(filter(x -> x.case.name == name,
                                   ROUTING_COPULA_FIXTURES))
             case, C = fixture.case, fixture.copula
-            key = dispatch_route_key(:logpdf, C, case)
+            key = dispatch_route_key(:logpdf, C)
             @test key in keys(PROVEN_DISPATCH_ROUTES[:logpdf])
         end
         prove_branches!(:husler_reiss_bivariate, :husler_reiss_multivariate,

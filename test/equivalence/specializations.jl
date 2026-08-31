@@ -69,7 +69,7 @@ end
 @testset verbose=true "specialized continuous CDFs agree with density integration" begin
     routes = _unique_bivariate_routes(
         (_, C) -> which(Copulas._cdf, Tuple{typeof(C),Vector{Float64}}),
-        (case, C) -> case.kind === :continuous &&
+        (case, C) -> is_absolutely_continuous(C) &&
             !(C isa Union{CheckerboardCopula,LiouvilleCopula}),
     )
     generic_method = which(Copulas._cdf,
@@ -80,7 +80,7 @@ end
         if method === generic_method
             # The generic density integral is independently validated by the
             # polynomial oracle in correctness/mathematical.jl.
-            prove_dispatch_route!(:cdf, C, case, :generic_density_integral)
+            prove_dispatch_route!(:cdf, C, :generic_density_integral)
             continue
         end
         @testset "$(case.name)" begin
@@ -93,7 +93,7 @@ end
             @test isapprox(cdf(C, u), expected;
                            atol=max(3e-5, case.numerical_atol), rtol=3e-5)
         end
-        prove_dispatch_route!(:cdf, C, case,
+        prove_dispatch_route!(:cdf, C,
                               C isa ArchimedeanCopula ?
                               :generator_composition : :density_integration)
         compared += 1
@@ -115,14 +115,14 @@ end
         expected += weight * overlap
     end
     @test cdf(C, u) ≈ expected
-    prove_dispatch_route!(:cdf, C, case, :exact_box_overlap)
+    prove_dispatch_route!(:cdf, C, :exact_box_overlap)
 end
 
 @testset verbose=true "specialized bivariate log-densities agree with CDF derivatives" begin
     routes = _unique_bivariate_routes(
         (_, C) -> which(Distributions._logpdf,
                         Tuple{typeof(C),Vector{Float64}}),
-        (case, C) -> case.kind === :continuous && !(C isa LiouvilleCopula),
+        (case, C) -> is_absolutely_continuous(C) && !(C isa LiouvilleCopula),
     )
     u = [0.53, 0.67]
     h = 2e-5
@@ -136,7 +136,7 @@ end
             @test isapprox(pdf(C, u), expected; atol=8e-4, rtol=8e-4)
             @test logpdf(C, u) ≈ log(pdf(C, u))
         end
-        prove_dispatch_route!(:logpdf, C, case, :cdf_mixed_derivative)
+        prove_dispatch_route!(:logpdf, C, :cdf_mixed_derivative)
     end
     @test !isempty(routes)
 end
@@ -146,8 +146,8 @@ end
     split = 0.46
     for fixture in ROUTING_COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
-        case.kind === :continuous && continue
-        key = dispatch_route_key(:cdf, C, case)
+        is_absolutely_continuous(C) && continue
+        key = dispatch_route_key(:cdf, C)
         key in seen && continue
         push!(seen, key)
         d = length(C)
@@ -166,7 +166,7 @@ end
         @test whole ≈
               Copulas.measure(C, lower, left_upper) +
               Copulas.measure(C, right_lower, upper)
-        prove_dispatch_route!(:cdf, C, case, :singular_mass_identity)
+        prove_dispatch_route!(:cdf, C, :singular_mass_identity)
     end
     @test !isempty(seen)
 end
@@ -182,8 +182,8 @@ end
         measure = SCALAR_DEPENDENCE_MEASURES[index]
         routes = _unique_bivariate_routes(
             (_, C) -> which(measure, Tuple{typeof(C)}),
-            (case, _) -> measure === Copulas.τ ?
-                case.kind === :continuous : true,
+            (_, C) -> measure === Copulas.τ ?
+                is_absolutely_continuous(C) : true,
         )
         generic_method = which(measure, Tuple{Copulas.Copula{2}})
         for (; case, C, method) in routes
@@ -291,7 +291,7 @@ _singular_tau_oracle(::WCopula{2}) = -1
 @testset verbose=true "singular Kendall routes agree with deterministic identities" begin
     routes = _unique_bivariate_routes(
         (_, C) -> which(Copulas.τ, Tuple{typeof(C)}),
-        (case, _) -> case.kind !== :continuous,
+        (_, C) -> !is_absolutely_continuous(C),
     )
     generic_method = which(Copulas.τ, Tuple{Copulas.Copula{2}})
     compared = 0
@@ -348,11 +348,11 @@ end
         selected = Set((which(pairwise, Tuple{typeof(fixture.copula)}),
                         length(fixture.copula) == 2 ? :bivariate : :multivariate)
                        for fixture in ROUTING_COPULA_FIXTURES
-                       if _dependence_is_defined(pairwise, fixture.case.kind))
+                       if _dependence_is_defined(pairwise, fixture.copula))
         checked = Set{Any}()
         for fixture in ROUTING_COPULA_FIXTURES
             case, C = fixture.case, fixture.copula
-            _dependence_is_defined(pairwise, case.kind) || continue
+            _dependence_is_defined(pairwise, C) || continue
             key = (which(pairwise, Tuple{typeof(C)}),
                    length(C) == 2 ? :bivariate : :multivariate)
             key in checked && continue
@@ -491,7 +491,7 @@ end
     for fixture in ROUTING_COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         length(C) == 2 || continue
-        case.kind === :continuous || continue
+        is_absolutely_continuous(C) || continue
         method = which(Copulas.DistortionFromCop,
             Tuple{typeof(C),Tuple{Int},Tuple{Float64},Int})
         method in seen && continue
@@ -528,7 +528,7 @@ end
             @test isapprox(pdf(D, target), expected_pdf;
                            atol=3e-4, rtol=3e-4)
         end
-        prove_dispatch_route!(:conditioning, C, case, :cdf_derivative)
+        prove_dispatch_route!(:conditioning, C, :cdf_derivative)
     end
     @test !isempty(seen)
 end
@@ -582,7 +582,7 @@ end
         case, C = fixture.case, fixture.copula
         d = length(C)
         d > 2 || continue
-        case.kind === :continuous || continue
+        is_absolutely_continuous(C) || continue
         js = Tuple(1:(d - 1))
         values = ntuple(k -> 0.3 + 0.08k, d - 1)
         method = which(Copulas.DistortionFromCop,
@@ -605,7 +605,7 @@ end
             end
             @test isapprox(cdf(D, target), expected; atol=2e-3, rtol=2e-3)
         end
-        prove_dispatch_route!(:conditioning, C, case,
+        prove_dispatch_route!(:conditioning, C,
                               :normalized_cdf_derivative)
     end
     @test !isempty(seen)
@@ -615,12 +615,12 @@ end
     seen = Set{Any}()
     for fixture in ROUTING_COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
-        case.kind === :continuous && continue
+        is_absolutely_continuous(C) && continue
         # Point conditioning is not canonically defined away from the finite
         # support of an empirical copula. Its generic method is exercised and
         # proved by the Raftery representative below.
         C isa EmpiricalCopula && continue
-        key = dispatch_route_key(:conditioning, C, case)
+        key = dispatch_route_key(:conditioning, C)
         key in seen && continue
         push!(seen, key)
         d = length(C)
@@ -631,7 +631,7 @@ end
                 @test cdf(D, q) >= p - 1e-10
             end
         end
-        prove_dispatch_route!(:conditioning, C, case,
+        prove_dispatch_route!(:conditioning, C,
                               :generalized_quantile_identity)
     end
     @test !isempty(seen)
@@ -645,7 +645,7 @@ end
         case, C = fixture.case, fixture.copula
         d = length(C)
         d > 2 || continue
-        key = dispatch_route_key(:conditional_joint, C, case)
+        key = dispatch_route_key(:conditional_joint, C)
         key in seen && continue
         push!(seen, key)
 
@@ -667,11 +667,11 @@ end
             numerator = (cdf(C, upper) - cdf(C, lower)) / (2h)
             normalizer = (cdf(C, vcat(conditioned + h, ones(d - 1))) -
                           cdf(C, vcat(conditioned - h, ones(d - 1)))) / (2h)
-            tolerance = case.kind === :continuous ? 5e-4 : 3e-3
+            tolerance = is_absolutely_continuous(C) ? 5e-4 : 3e-3
             @test isapprox(cdf(H.C, conditional_scale), numerator / normalizer;
                            atol=tolerance, rtol=tolerance)
         end
-        prove_dispatch_route!(:conditional_joint, C, case,
+        prove_dispatch_route!(:conditional_joint, C,
                               :normalized_joint_cdf_derivative)
     end
     @test !isempty(seen)
@@ -683,7 +683,7 @@ end
         case, C = fixture.case, fixture.copula
         d = length(C)
         dims = d == 2 ? (2, 1) : (1, d)
-        key = dispatch_route_key(:subsetting, C, case)
+        key = dispatch_route_key(:subsetting, C)
         key in seen && continue
         push!(seen, key)
         S = subsetdims(C, dims)
@@ -691,7 +691,7 @@ end
         parent_point = ones(d)
         parent_point[collect(dims)] .= u
         @test cdf(S, u) ≈ cdf(C, parent_point)
-        prove_dispatch_route!(:subsetting, C, case, :parent_margin_identity)
+        prove_dispatch_route!(:subsetting, C, :parent_margin_identity)
     end
     @test !isempty(seen)
 end
@@ -700,7 +700,7 @@ end
     seen = Set{Any}()
     for fixture in ROUTING_COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
-        key = dispatch_route_key(:measure, C, case)
+        key = dispatch_route_key(:measure, C)
         key in seen && continue
         push!(seen, key)
         d = length(C)
@@ -712,7 +712,7 @@ end
             expected += (-1)^count(identity, mask) * cdf(C, point)
         end
         @test Copulas.measure(C, lower, upper) ≈ expected atol=1e-10
-        prove_dispatch_route!(:measure, C, case, :cdf_inclusion_exclusion)
+        prove_dispatch_route!(:measure, C, :cdf_inclusion_exclusion)
     end
     @test !isempty(seen)
 end
@@ -744,7 +744,7 @@ end
     candidates = Any[checked[3]]
     for fixture in ROUTING_COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
-        length(C) == 3 && case.rosenblatt && push!(candidates, C)
+        length(C) == 3 && is_absolutely_continuous(C) && push!(candidates, C)
     end
     selected_methods = Set(
         which(Copulas.rosenblatt, Tuple{typeof(C),Matrix{Float64}})
@@ -782,8 +782,8 @@ end
         case, C = fixture.case, fixture.copula
         d = length(C)
         u = collect(range(0.31, 0.73; length=d))
-        forward_key = dispatch_route_key(:rosenblatt, C, case)
-        inverse_key = dispatch_route_key(:inverse_rosenblatt, C, case)
+        forward_key = dispatch_route_key(:rosenblatt, C)
+        inverse_key = dispatch_route_key(:inverse_rosenblatt, C)
         forward_done = forward_key in seen_forward
         inverse_done = isnothing(inverse_key) || inverse_key in seen_inverse
         forward_done && inverse_done && continue
@@ -798,11 +798,11 @@ end
                               u[i])
         end
         @test R ≈ expected atol=2e-6 rtol=2e-6
-        prove_dispatch_route!(:rosenblatt, C, case, :sequential_conditioning)
+        prove_dispatch_route!(:rosenblatt, C, :sequential_conditioning)
         push!(seen_forward, forward_key)
         if !isnothing(inverse_key)
             @test inverse_rosenblatt(C, R) ≈ u atol=2e-6 rtol=2e-6
-            prove_dispatch_route!(:inverse_rosenblatt, C, case,
+            prove_dispatch_route!(:inverse_rosenblatt, C,
                                   :sequential_conditioning_inverse)
             push!(seen_inverse, inverse_key)
         end

@@ -28,6 +28,8 @@ References:
 struct EmpiricalCopula{d,MT} <: Copula{d}
     u::MT
 end
+copula_measure_style(::Type{<:EmpiricalCopula}) =
+    NonAbsolutelyContinuousMeasure()
 Base.eltype(C::EmpiricalCopula{d,MT}) where {d,MT} = Base.eltype(C.u)
 function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
     size(u, 1) == d || throw(DimensionMismatch("data must have $d rows"))

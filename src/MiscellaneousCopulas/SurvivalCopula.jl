@@ -43,6 +43,9 @@ struct SurvivalCopula{d,CT,flips} <: Copula{d}
     SurvivalCopula(C::Copula{d}, flips) where {d} = SurvivalCopula{d}(C, flips)
     SurvivalCopula{D,CT,flips}(d::Int, args...;kwargs...) where {D, CT, flips} = SurvivalCopula{d,CT,flips}(CT(d, args...; kwargs...))
 end
+copula_measure_style(::Type{<:SurvivalCopula{d,CT}}) where {d,CT} =
+    copula_measure_style(CT)
+copula_measure_style(C::SurvivalCopula) = copula_measure_style(C.C)
 
 function reverse!(u, idx::Tuple)
     if ndims(u) == 1

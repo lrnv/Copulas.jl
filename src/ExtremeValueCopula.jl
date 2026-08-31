@@ -47,6 +47,8 @@ struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
     end
 end
 
+copula_measure_style(C::ExtremeValueCopula) = tail_measure_style(C.tail)
+
 ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
 
 @inline _ev_encoded_dimension(CT) = Base.unwrap_unionall(CT).parameters[1]

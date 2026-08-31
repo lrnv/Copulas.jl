@@ -35,6 +35,9 @@ struct SubsetCopula{d,CT} <: Copula{d}
         return new{p, typeof(C)}(C,Tuple(Int.(dims)))
     end
 end
+copula_measure_style(::Type{<:SubsetCopula{d,CT}}) where {d,CT} =
+    copula_measure_style(CT)
+copula_measure_style(C::SubsetCopula) = copula_measure_style(C.C)
 SubsetCopula(C::Copula, dims::NTuple{p,Int}) where {p} = SubsetCopula{p}(C, dims)
 function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT,p}
     return SubsetCopula{p}(CS.C, ntuple(i -> CS.dims[dims2[i]], p))

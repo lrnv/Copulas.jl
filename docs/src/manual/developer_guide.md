@@ -1078,22 +1078,32 @@ mathematical identity for every family merely to obtain coverage.
 After implementing and documenting `MyCopula`, update the tests in this order:
 
 1. Add one ordinary, inexpensive instance to `COPULA_CASES` in
-   `test/fixtures.jl`. State whether it is continuous and whether its Rosenblatt
-   transform is bijective. This automatically subjects it to construction,
-   distribution, sampling, density when applicable, subsetting, conditioning,
-   transforms, and dependence contracts.
-2. If dimension changes dispatch or representation, add the missing bivariate
+   `test/fixtures.jl`. The fixture describes test data, not capabilities: this
+   automatically subjects it to construction, distribution, sampling,
+   subsetting, conditioning, transforms, and dependence contracts.
+   Absolutely-continuous models additionally receive the density and
+   invertible-Rosenblatt contracts.
+2. Copulas are assumed absolutely continuous by default. If the new family has
+   singular or mixed components, specialize the internal
+   `copula_measure_style(::Type{<:MyCopula})` trait to return
+   `NonAbsolutelyContinuousMeasure()`. Wrappers such as `SurvivalCopula` and
+   `SubsetCopula` inherit the classification of their wrapped copula. Do not
+   duplicate this information in test fixtures. For an Archimedean family
+   whose measure class depends on its generator or dimension, specialize
+   `archimedean_measure_style(G, Val(d))` instead. Williamson generators do
+   this automatically from their preserved radial law and source order.
+3. If dimension changes dispatch or representation, add the missing bivariate
    or multivariate instance to `ROUTING_EXTRA_CASES`. Do not add another fixture
    merely to vary a parameter when it selects the same methods.
-3. If the family advertises fitting, register each supported method in the
+4. If the family advertises fitting, register each supported method in the
    fitting fixtures. The contract checks applicability and result shape; the
    routing layer executes every distinct estimator path.
-4. If the family introduces a new generic numerical mechanism, add one
+5. If the family introduces a new generic numerical mechanism, add one
    independent oracle in `correctness/`. If it specializes an
    existing operation, compare the specialization with its fallback in
    `equivalence/` and register the proven route only after that
    comparison.
-5. Classify family-specific facts by proof: published reference values and
+6. Classify family-specific facts by proof: published reference values and
    reproduced numerical bugs belong under `correctness/`; optimized reductions
    under `equivalence/`; value-dependent parameter boundaries under `routing/`;
    and documented validation errors under `contracts/`.

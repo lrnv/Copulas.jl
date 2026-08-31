@@ -126,6 +126,10 @@ const DiscreteSpectralCapableTail = Union{
     DiscreteSpectralPickandsTail,
 }
 
+tail_measure_style(::Tail) = AbsolutelyContinuousMeasure()
+tail_measure_style(::DiscreteSpectralCapableTail) =
+    NonAbsolutelyContinuousMeasure()
+
 # Concrete capable tails store their canonical finite representation in a
 # `spectral` field. `DiscreteSpectralTail` itself specializes this accessor.
 _spectral_tail(tail::DiscreteSpectralCapableTail) = tail.spectral

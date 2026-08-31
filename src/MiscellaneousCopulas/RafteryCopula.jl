@@ -39,6 +39,8 @@ struct RafteryCopula{d, P} <: Copula{d}
         end
     end
 end
+copula_measure_style(::Type{<:RafteryCopula}) =
+    NonAbsolutelyContinuousMeasure()
 RafteryCopula(d, θ) = RafteryCopula{d}(θ)
 (::Type{<:RafteryCopula{D,P}})(d::Int, θ) where {D,P} = RafteryCopula{d}(θ)
 Base.eltype(R::RafteryCopula) = eltype(R.θ)

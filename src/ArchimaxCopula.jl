@@ -37,6 +37,11 @@ struct ArchimaxCopula{d, TG, TT} <: Copula{d}
         return new{d, typeof(gen), typeof(tail)}(gen, tail)
     end
 end
+function copula_measure_style(C::ArchimaxCopula{d}) where {d}
+    radial = radial_measure_style(C.gen, d)
+    radial isa NonAbsolutelyContinuousMeasure && return radial
+    return tail_measure_style(C.tail)
+end
 ArchimaxCopula(d, gen::Generator, tail::Tail) = ArchimaxCopula{d}(gen, tail)
 ArchimaxCopula{d}(gen::Generator, ::NoTail) where {d} = ArchimedeanCopula{d}(gen)
 ArchimaxCopula{d}(::IndependentGenerator, tail::Tail) where {d} = ExtremeValueCopula{d}(tail)
