@@ -16,7 +16,7 @@
     @test pdf(G, [0.1,0.0]) == 0.0
     @test pdf(G, [0.0,0.1]) == 0.0
     @test pdf(G, [0.0,0.0]) == 0.0
-    
+
     # Issue 247
     @test pdf(FrankCopula{2}(2.5), [1,1]*eps()) ≈ 2.723563724584597
     @test pdf(FrankCopula{2}(-2.5), [1,1]*eps()) ≈ 0.22356372458463078
