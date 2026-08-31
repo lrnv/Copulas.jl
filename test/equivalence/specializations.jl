@@ -49,7 +49,6 @@
         Tuple{typeof(a),typeof(b),Float64,Int}) for (a, b) in documented_pairs)
     @test selected == checked
 end
-
 function _unique_bivariate_routes(operation, predicate)
     Base.@nospecialize operation predicate
     seen = Set{Method}()
@@ -684,140 +683,6 @@ end
     @test !isempty(seen)
 end
 
-@testset "subsetting routes preserve parent margins" begin
-    seen = Set{Any}()
-    for fixture in ROUTING_COPULA_FIXTURES
-        case, C = fixture.case, fixture.copula
-        d = length(C)
-        dims = d == 2 ? (2, 1) : (1, d)
-        key = dispatch_route_key(:subsetting, C)
-        key in seen && continue
-        push!(seen, key)
-        S = subsetdims(C, dims)
-        u = [0.37, 0.68]
-        parent_point = ones(d)
-        parent_point[collect(dims)] .= u
-        @test cdf(S, u) ≈ cdf(C, parent_point)
-        prove_dispatch_route!(:subsetting, C, :parent_margin_identity)
-    end
-    @test !isempty(seen)
-end
-
-@testset "rectangle-measure routes equal CDF inclusion-exclusion" begin
-    seen = Set{Any}()
-    for fixture in ROUTING_COPULA_FIXTURES
-        case, C = fixture.case, fixture.copula
-        key = dispatch_route_key(:measure, C)
-        key in seen && continue
-        push!(seen, key)
-        d = length(C)
-        lower = collect(range(0.13, 0.19; length=d))
-        upper = collect(range(0.71, 0.79; length=d))
-        expected = 0.0
-        for mask in Iterators.product(ntuple(_ -> (false, true), d)...)
-            point = [mask[i] ? lower[i] : upper[i] for i in 1:d]
-            expected += (-1)^count(identity, mask) * cdf(C, point)
-        end
-        @test Copulas.measure(C, lower, upper) ≈ expected atol=1e-10
-        prove_dispatch_route!(:measure, C, :cdf_inclusion_exclusion)
-    end
-    @test !isempty(seen)
-end
-
-@testset "specialized Rosenblatt implementations agree with the generic path" begin
-    u = [0.2 0.7; 0.4 0.6; 0.8 0.3]
-    for C in (
-        ClaytonCopula{3}(1.5),
-        GaussianCopula{3}([1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
-        TCopula{3}(5, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
-    )
-        specialized = rosenblatt(C, u)
-        generic = invoke(Copulas.rosenblatt,
-            Tuple{Copulas.Copula{3},AbstractMatrix{<:Real}}, C, u)
-        @test specialized ≈ generic atol=3e-10
-        @test inverse_rosenblatt(C, specialized) ≈ u atol=3e-10
-    end
-end
-
-@testset "all specialized Rosenblatt routes have an equivalence proof" begin
-    checked = (
-        ClaytonCopula{3}(1.5),
-        GaussianCopula{3}([1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
-        TCopula{3}(5, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
-        IndependentCopula{3}(),
-    )
-    generic_method = which(Copulas.rosenblatt,
-        Tuple{Copulas.Copula{3},Matrix{Float64}})
-    candidates = Any[checked[3]]
-    for fixture in ROUTING_COPULA_FIXTURES
-        case, C = fixture.case, fixture.copula
-        length(C) == 3 && is_absolutely_continuous(C) && push!(candidates, C)
-    end
-    selected_methods = Set(
-        which(Copulas.rosenblatt, Tuple{typeof(C),Matrix{Float64}})
-        for C in candidates
-        if which(Copulas.rosenblatt,
-                 Tuple{typeof(C),Matrix{Float64}}) !== generic_method
-    )
-    checked_methods = Set(
-        which(Copulas.rosenblatt, Tuple{typeof(C),Matrix{Float64}})
-        for C in checked
-    )
-    @test selected_methods == checked_methods
-
-    generic_inverse_method = which(Copulas.inverse_rosenblatt,
-        Tuple{Copulas.Copula{3},Matrix{Float64}})
-    selected_inverse_methods = Set(
-        which(Copulas.inverse_rosenblatt,
-              Tuple{typeof(C),Matrix{Float64}})
-        for C in candidates
-        if which(Copulas.inverse_rosenblatt,
-                 Tuple{typeof(C),Matrix{Float64}}) !== generic_inverse_method
-    )
-    checked_inverse_methods = Set(
-        which(Copulas.inverse_rosenblatt,
-              Tuple{typeof(C),Matrix{Float64}})
-        for C in checked
-    )
-    @test selected_inverse_methods == checked_inverse_methods
-end
-
-@testset "every Rosenblatt route equals sequential conditioning" begin
-    seen_forward = Set{Any}()
-    seen_inverse = Set{Any}()
-    for fixture in ROUTING_COPULA_FIXTURES
-        case, C = fixture.case, fixture.copula
-        d = length(C)
-        u = collect(range(0.31, 0.73; length=d))
-        forward_key = dispatch_route_key(:rosenblatt, C)
-        inverse_key = dispatch_route_key(:inverse_rosenblatt, C)
-        forward_done = forward_key in seen_forward
-        inverse_done = isnothing(inverse_key) || inverse_key in seen_inverse
-        forward_done && inverse_done && continue
-
-        R = rosenblatt(C, u)
-        expected = similar(R)
-        expected[1] = u[1]
-        for i in 2:d
-            js = Tuple(1:(i - 1))
-            values = Tuple(u[1:(i - 1)])
-            expected[i] = cdf(Copulas.DistortionFromCop(C, js, values, i),
-                              u[i])
-        end
-        @test R ≈ expected atol=2e-6 rtol=2e-6
-        prove_dispatch_route!(:rosenblatt, C, :sequential_conditioning)
-        push!(seen_forward, forward_key)
-        if !isnothing(inverse_key)
-            @test inverse_rosenblatt(C, R) ≈ u atol=2e-6 rtol=2e-6
-            prove_dispatch_route!(:inverse_rosenblatt, C,
-                                  :sequential_conditioning_inverse)
-            push!(seen_inverse, inverse_key)
-        end
-    end
-    @test !isempty(seen_forward)
-    @test !isempty(seen_inverse)
-end
-
 @testset "EV analytic partials agree with the differentiable CDF path" begin
     f(z) = z[1]^2 * z[2]^3 + z[3]
     mixed_point = [0.4, 0.7, 1.1]
@@ -891,15 +756,4 @@ end
         @test rand(Random.Xoshiro(seed), matrix_model, 16) ==
               rand(Random.Xoshiro(seed), scalar_model, 16)
     end
-end
-
-
-@testset "generic numeric sampler buffers" begin
-    C = ClaytonCopula{3}(1.0)
-    storage = fill(Float32(NaN), 5, 2)
-    buffer = @view storage[2:4, :]
-    @test rand!(StableRNG(52), C, buffer) === buffer
-    @test all(x -> 0 <= x <= 1, buffer)
-    @test all(isnan, storage[[1, 5], :])
-    @test_throws DimensionMismatch rand!(StableRNG(52), C, zeros(Float32, 2, 1))
 end

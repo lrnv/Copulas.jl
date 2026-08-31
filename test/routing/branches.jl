@@ -103,30 +103,6 @@
         @test condition(IndependentCopula{3}(), 1, 0.4) isa IndependentCopula{2}
     end
 
-    @testset "full-coordinate subsetting permutations" begin
-        function permuted_point(perm, u)
-            v = similar(u)
-            for (i, j) in enumerate(perm)
-                v[j] = u[i]
-            end
-            return v
-        end
-
-        C = ClaytonCopula{3}(2.0)
-        perm = (2, 3, 1)
-        S = subsetdims(C, perm)
-        u = [0.31, 0.57, 0.79]
-        @test cdf(S, u) ≈ cdf(C, permuted_point(perm, u)) atol=1e-8
-        @test logpdf(S, u) ≈ logpdf(C, permuted_point(perm, u)) atol=1e-8
-
-        Σ = [1.0 0.6 0.2; 0.6 1.0 0.5; 0.2 0.5 1.0]
-        G = GaussianCopula{3}(Σ)
-        permuted = subsetdims(G, perm)
-        @test permuted.Σ ≈ Σ[collect(perm), collect(perm)]
-        @test logpdf(permuted, u) ≈
-              logpdf(G, permuted_point(perm, u)) atol=1e-8
-    end
-
     @testset "Survival conditional flip remapping" begin
         C = SurvivalCopula{4}(ClaytonCopula{4}(2.0), (2, 4))
         conditioned = condition(C, (1, 3), (0.25, 0.75))

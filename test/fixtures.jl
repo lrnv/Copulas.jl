@@ -56,8 +56,6 @@ function dispatch_path(operation, C)
     elseif operation === :logpdf
         is_absolutely_continuous(C) || return nothing
         return _which(Distributions._logpdf, C, u)
-    elseif operation === :sampling
-        return _which(Distributions._rand!, StableRNG(51), C, zeros(d, 1))
     elseif operation === :conditioning
         js = Tuple(1:(d - 1))
         values = ntuple(_ -> 0.4, d - 1)
@@ -68,16 +66,6 @@ function dispatch_path(operation, C)
         values = (0.4,)
         is = Tuple(2:d)
         return _which(Copulas._conditional_components, C, js, values, is)
-    elseif operation === :rosenblatt
-        return _which(Copulas.rosenblatt, C, reshape(u, :, 1))
-    elseif operation === :inverse_rosenblatt
-        is_absolutely_continuous(C) || return nothing
-        return _which(Copulas.inverse_rosenblatt, C, reshape(u, :, 1))
-    elseif operation === :subsetting
-        dims = d == 2 ? (2, 1) : (1, d)
-        return _which(Copulas.subsetdims, C, dims)
-    elseif operation === :measure
-        return _which(Copulas.measure, C, zeros(d), ones(d))
     end
     error("unknown dispatch operation $operation")
 end

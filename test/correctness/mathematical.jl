@@ -134,27 +134,12 @@ end
     integrated = invoke(Copulas._cdf, Tuple{Copulas.Copula,Any}, C, u)
     @test integrated ≈ _oracle_cdf(C, u) atol=2e-5
 
-    lower = [0.15, 0.25]
-    upper = [0.55, 0.65]
-    oracle_rectangle = (
-        _oracle_cdf(C, upper) - _oracle_cdf(C, [lower[1], upper[2]]) -
-        _oracle_cdf(C, [upper[1], lower[2]]) + _oracle_cdf(C, lower)
-    )
-    @test Copulas.measure(C, lower, upper) ≈ oracle_rectangle
-    split = 0.4
-    @test Copulas.measure(C, lower, upper) ≈
-          Copulas.measure(C, lower, [split, upper[2]]) +
-          Copulas.measure(C, [split, lower[2]], upper)
-
     D = condition(C, 1, u[1])
     @test D isa Copulas.DistortionFromCop
     @test cdf(D, u[2]) ≈ _oracle_conditional_cdf(C, u[1], u[2])
     @test pdf(D, u[2]) ≈
           ForwardDiff.derivative(v -> _oracle_conditional_cdf(C, u[1], v), u[2])
 
-    R = rosenblatt(C, u)
-    @test R ≈ [u[1], _oracle_conditional_cdf(C, u[1], u[2])]
-    @test inverse_rosenblatt(C, R) ≈ u atol=2e-6
     @test Copulas.ρ(C) ≈ C.θ / 3 atol=2e-5
     @test Copulas.β(C) ≈ C.θ / 4
     @test Copulas.τ(C) ≈ 2 * C.θ / 9 atol=3e-2
@@ -547,26 +532,8 @@ end
     @test cdf(C, u) ≈ expected
 end
 
-@testset "copula volumes are inclusion-exclusion measures" begin
-    C = PolynomialOracleCopula{3,Float64}(0.3)
-    lower = [0.12, 0.18, 0.24]
-    upper = [0.68, 0.73, 0.81]
-    expected = sum(Iterators.product((0:1 for _ in 1:3)...)) do corner
-        point = [corner[i] == 1 ? upper[i] : lower[i] for i in 1:3]
-        (-1)^(3 - sum(corner)) * cdf(C, point)
-    end
-    @test Copulas.measure(C, lower, upper) ≈ expected atol=2e-8
-
-    split = 0.46
-    left_upper = copy(upper)
-    left_upper[1] = split
-    right_lower = copy(lower)
-    right_lower[1] = split
-    @test Copulas.measure(C, lower, upper) ≈
-          Copulas.measure(C, lower, left_upper) +
-          Copulas.measure(C, right_lower, upper) atol=2e-8
+@testset "independent multivariate formulas" begin
     independence = IndependentCopula{3}()
-    @test Copulas.measure(independence, lower, upper) ≈ prod(upper - lower)
     u = [0.32, 0.54, 0.76]
     @test cdf(independence, u) == prod(u)
     @test logpdf(independence, u) == 0
@@ -597,20 +564,6 @@ end
     # coordinate leaves correlation (ρ-ρ²)/(1-ρ²)=ρ/(1+ρ).
     expected = GaussianCopula{2}(ρ / (1 + ρ))
     @test joint.C.Σ ≈ expected.Σ atol=2e-12 rtol=2e-12
-end
-
-@testset "Rosenblatt coordinates are conditional distribution functions" begin
-    C = GaussianCopula{3}(0.3)
-    u = [0.31, 0.52, 0.74]
-    R = rosenblatt(C, u)
-    @test R[1] ≈ u[1]
-    @test R[2] ≈ cdf(condition(C, 1, u[1]).m[1], u[2])
-    @test R[3] ≈ cdf(condition(C, (1, 2), (u[1], u[2])), u[3])
-    @test inverse_rosenblatt(C, R) ≈ u atol=2e-6 rtol=2e-6
-
-    independent = IndependentCopula{3}()
-    @test rosenblatt(independent, u) == u
-    @test inverse_rosenblatt(independent, u) == u
 end
 
 @testset "Rosenblatt conditional densities factorize the copula density" begin
@@ -771,20 +724,9 @@ end
     @test cdf(MCopula{2}(), u) == minimum(u)
     @test cdf(WCopula{2}(), u) == max(sum(u) - 1, 0)
 
-    lower = [0.2, 0.2]
-    upper = [0.7, 0.7]
-    @test Copulas.measure(MCopula{2}(), lower, upper) ≈ 0.5
-    @test Copulas.measure(WCopula{2}(), lower, upper) ≈ 0.4
-
-    C = MOCopula{2}(0.2, 0.3, 0.4)
-    split = 0.45
-    whole = Copulas.measure(C, [0.1, 0.15], [0.8, 0.75])
-    left = Copulas.measure(C, [0.1, 0.15], [split, 0.75])
-    right = Copulas.measure(C, [split, 0.15], [0.8, 0.75])
-    @test whole ≈ left + right atol=1e-12
-
     # Generalized conditional quantiles remain valid in the presence of atoms;
     # a bijective Rosenblatt identity is intentionally not asserted here.
+    C = MOCopula{2}(0.2, 0.3, 0.4)
     D = condition(C, 1, 0.4)
     probabilities = collect(0.05:0.05:0.95)
     quantiles = quantile.(Ref(D), probabilities)

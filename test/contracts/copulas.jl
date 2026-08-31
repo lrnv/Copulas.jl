@@ -1,5 +1,7 @@
-# Public-API contract: applies the universal distribution, sampling, subsetting,
+# Public-API contract: applies the universal distribution, sampling,
 # conditioning, Rosenblatt, and dependence-measure behavior to every family.
+# Migrated operation suites, currently `measure` and `subsetdims`, apply their
+# family-wide contracts from `test/operations/`.
 struct CopulaContractContext
     u::Vector{Float64}
     U::Matrix{Float64}
@@ -91,21 +93,6 @@ function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
     matrix_u = reshape(ctx.u, :, 1)
     @test cdf(C, matrix_u) ≈ [c] atol=numerical_atol
     @test logcdf(C, matrix_u) ≈ log.([c]) atol=1e-3
-    @test Copulas.measure(C, zeros(d), ones(d)) ≈ 1 atol=1e-3
-    @test Copulas.measure(C, fill(0.2, d), fill(0.6, d)) >= 0
-    @test size(ctx.U) == (d, 4)
-    @test eltype(ctx.U) == eltype(C)
-    @test all(x -> 0 <= x <= 1, ctx.U)
-
-    buffer = zeros(eltype(C), d, 2)
-    @test rand!(StableRNG(40), C, buffer) === buffer
-    @test all(x -> 0 <= x <= 1, buffer)
-
-    x = rand(StableRNG(41), C)
-    @test length(x) == d
-    @test eltype(x) == eltype(C)
-    @test all(y -> 0 <= y <= 1, x)
-
     @test_throws ArgumentError cdf(C, zeros(d + 1))
     @test_throws ArgumentError cdf(C, zeros(d + 1, 1))
 end
@@ -132,24 +119,6 @@ function test_density_contract(::Copulas.AbsolutelyContinuousMeasure, C, ctx)
 
     @test_throws DimensionMismatch logpdf(C, zeros(length(C) + 1))
     @test_throws ArgumentError logpdf(C, zeros(length(C) + 1, 1))
-end
-
-function test_subsetting_contract(C, ctx, numerical_atol)
-    Base.@nospecialize C
-    Base.@nospecialize ctx
-
-    d = length(C)
-    dims = d == 2 ? (2, 1) : (1, d)
-    S = subsetdims(C, dims)
-    point = ctx.u[collect(dims)]
-    full_point = ones(d)
-    full_point[collect(dims)] = point
-
-    @test length(S) == length(dims)
-    @test cdf(S, point) ≈ cdf(C, full_point) atol=max(1e-5, numerical_atol)
-    @test length(subsetdims(S, (1,))) == 1
-    @test_throws Exception subsetdims(C, (1, 1))
-    @test_throws Exception subsetdims(C, (0,))
 end
 
 function test_conditioning_contract(C, ctx)
@@ -204,22 +173,6 @@ function test_conditioning_contract(C, ctx)
         @test cdf(D, q) >= 0.5 - sqrt(eps(Float64))
 end
 
-function test_rosenblatt_contract(C, ctx)
-    Base.@nospecialize C
-    Base.@nospecialize ctx
-    R = rosenblatt(C, ctx.U)
-    @test size(R) == size(ctx.U)
-    @test all(x -> 0 <= x <= 1, R)
-    @test rosenblatt(C, ctx.u) ≈ vec(rosenblatt(C, reshape(ctx.u, :, 1)))
-    test_rosenblatt_inverse_contract(Copulas.copula_measure_style(C), C, ctx, R)
-end
-
-test_rosenblatt_inverse_contract(::Copulas.NonAbsolutelyContinuousMeasure, C, ctx, R) = nothing
-function test_rosenblatt_inverse_contract(::Copulas.AbsolutelyContinuousMeasure, C, ctx, R)
-    @test inverse_rosenblatt(C, R) ≈ ctx.U atol=2e-5 rtol=2e-5
-    @test inverse_rosenblatt(C, rosenblatt(C, ctx.u)) ≈ ctx.u atol=2e-5 rtol=2e-5
-end
-
 _dependence_is_defined(measure, C::Copulas.Copula) =
     _dependence_is_defined(measure, Copulas.copula_measure_style(C))
 _dependence_is_defined(
@@ -234,8 +187,8 @@ end
 
 function test_dependence_contract(C)
     Base.@nospecialize C
-    # Distribution, density, sampling and subsetting primitives are exercised
-    # above for every family.  The expensive generic measures only compose
+    # Distribution, density, and sampling primitives are exercised above for
+    # every family. The expensive generic measures only compose
     # those primitives, so the per-family API contract needs to guarantee that
     # dispatch exists; each distinct implementation is executed once below.
     for measure in SCALAR_DEPENDENCE_MEASURES
@@ -280,17 +233,9 @@ function test_copula_contract(case, C, seed)
         test_progress("contracts", "copulas", case.name, "density")
         test_density_contract(C, ctx)
     end
-    @testset "subsetting" begin
-        test_progress("contracts", "copulas", case.name, "subsetting")
-        test_subsetting_contract(C, ctx, case.numerical_atol)
-    end
     @testset "conditioning" begin
         test_progress("contracts", "copulas", case.name, "conditioning")
         test_conditioning_contract(C, ctx)
-    end
-    @testset "Rosenblatt" begin
-        test_progress("contracts", "copulas", case.name, "Rosenblatt")
-        test_rosenblatt_contract(C, ctx)
     end
     @testset "dependence" begin
         test_progress("contracts", "copulas", case.name, "dependence")
@@ -319,17 +264,9 @@ end
     C = ClaytonCopula{3}(1.5)
     u = [0.3, 0.5, 0.7]
     @test Base.broadcastable(C)[] === C
-    @test subsetdims(C, [3, 1]) == subsetdims(C, (3, 1))
     @test cdf(condition(C, [1], [u[1]]), u[2:3]) ≈
           cdf(condition(C, (1,), (u[1],)), u[2:3])
 
-    @test_throws ArgumentError rand!(
-        StableRNG(42), MissingSamplerContractCopula(), zeros(2, 1))
-
-    # Repeated subsetting composes coordinate maps relative to the original.
-    first_subset = Copulas.SubsetCopula(C, (3, 1, 2))
-    second_subset = Copulas.SubsetCopula(first_subset, (2, 3))
-    @test second_subset == subsetdims(C, (1, 2))
 end
 
 @testset verbose=true "one execution per dependence-measure dispatch" begin

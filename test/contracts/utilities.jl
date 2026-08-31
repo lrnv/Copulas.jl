@@ -7,13 +7,6 @@
     @test all(x -> 0 < x < 1, U)
     @test pseudos(U) == U
 
-    C = ClaytonCopula{2}(1.5)
-    @test Copulas.measure(C, zeros(2), ones(2)) == 1
-    @test Copulas.measure(C, [0.7, 0.2], [0.4, 0.8]) == 0
-    @test 0 <= Copulas.measure(C, [0.2, 0.3], [0.7, 0.8]) <= 1
-    @test Copulas.measure(C, (0.2, 0.3), (0.7, 0.8)) ≈
-          Copulas.measure(C, [0.2, 0.3], [0.7, 0.8])
-
     target = [1.0 0.4; 0.4 1.0]
     @test Nataf((Normal(), Normal(2, 3)), target) == target
     @test Nataf([Normal(), Normal(2, 3)], target) == target

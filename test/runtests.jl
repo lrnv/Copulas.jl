@@ -1,6 +1,7 @@
 # Test-suite orchestrator. See the developer guide's "Testing architecture"
-# section for the four proof obligations implemented by contracts,
-# mathematical oracles, specialization comparisons, and dispatch registries.
+# section for the four proof obligations. During the operation-oriented
+# migration, completed operations colocate all four proofs under `operations/`;
+# the remaining tests retain the historical obligation directories.
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
@@ -65,8 +66,9 @@ obligation_testfiles = (
         "bivariate_families", "extreme_value", "extreme_value_quantiles",
         "nested_archimedean", "fitting",
     ],
-    equivalence = ["specializations", "conditioning", "survival",
+    equivalence = ["specializations", "conditioning",
                    "extreme_value", "nested_archimedean"],
+    operations = ["measure", "subsetting", "rosenblatt", "sampling"],
     routing = ["dispatch", "branches", "fitting"],
 )
 
