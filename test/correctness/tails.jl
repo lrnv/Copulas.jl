@@ -29,7 +29,7 @@ const TAIL_CASES = (
 )
 
 @testset "public tail registry is exhaustive" begin
-    public_families = Set(getfield(Copulas, symbol) for symbol in PUBLIC_SYMBOLS
+    public_families = Set(getfield(Copulas, symbol) for symbol in public_symbols()
         if getfield(Copulas, symbol) isa Type &&
            symbol !== :Tail &&
            getfield(Copulas, symbol) <: Copulas.Tail)

@@ -74,11 +74,11 @@ end
 
 @testset "public constructors" begin
     constructed = map(test_constructor_case, CONSTRUCTOR_CASES)
-    public_symbols = Set(symbol for symbol in PUBLIC_SYMBOLS
+    declared_symbols = Set(symbol for symbol in public_symbols()
         if Base.isexported(Copulas, symbol) &&
            getfield(Copulas, symbol) isa Type &&
            getfield(Copulas, symbol) <: Copulas.Copula)
-    @test Set(case.symbol for case in CONSTRUCTOR_CASES) == public_symbols
+    @test Set(case.symbol for case in CONSTRUCTOR_CASES) == declared_symbols
     for (case, C) in zip(CONSTRUCTOR_CASES, constructed)
         @test C isa getfield(Copulas, case.symbol)
     end

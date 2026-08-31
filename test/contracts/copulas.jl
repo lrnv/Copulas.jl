@@ -284,7 +284,7 @@ function test_copula_contract(case, C, seed)
 end
 
 @testset "public copula registry is exhaustive" begin
-    public_families = Set(getfield(Copulas, symbol) for symbol in PUBLIC_SYMBOLS
+    public_families = Set(getfield(Copulas, symbol) for symbol in public_symbols()
         if getfield(Copulas, symbol) isa Type &&
            symbol !== :Copula &&
            getfield(Copulas, symbol) <: Copulas.Copula)

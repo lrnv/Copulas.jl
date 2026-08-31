@@ -962,11 +962,11 @@ The source of truth for the SemVer-stable API has two parts:
    `Distributions`, `StatsBase`, and `Random`.
 
 The behavioural table on the [Public API](@ref) page defines what those methods
-promise. `test/contracts/public_surface.jl` independently fixes the
-complete public namespace in `PUBLIC_SYMBOLS`: changing a public declaration
-without updating the test therefore fails explicitly. Undocumented internal
-hooks, including underscore-prefixed methods, are implementation details and do
-not acquire a stability guarantee merely because the tests call them.
+promise. Tests discover the complete namespace directly from Julia's `export`
+and `public` declarations, then prove that every public family appears in the
+relevant contracts. Undocumented internal hooks, including underscore-prefixed
+methods, are implementation details and do not acquire a stability guarantee
+merely because the tests call them.
 
 ## 4.2 The four proof obligations
 
@@ -1038,15 +1038,14 @@ representative its own result and timing without duplicating test code. Keep
 large contract files subdivided by public behaviour so a slow operation is
 visible directly in CI rather than only through ad hoc logging.
 
-Two additional registries cover cases that ordinary method discovery cannot
-see. `PUBLIC_BEHAVIOURS` links methods adopted from `Distributions`,
-`StatsBase`, and `Random` to their contract, oracle, and routing files.
-`BEHAVIOURAL_BRANCHES` records dimension-, value-, and representation-dependent
-branches inside otherwise identical Julia methods. A new public branch must be
-added there unless an existing case already exercises it. During the ongoing
-suite migration, concise `Test progress` messages are emitted before each file
-and potentially expensive representative so a stalled CI job identifies its
-current path before the enclosing testset completes.
+`PUBLIC_BEHAVIOURS` covers the information that Julia's namespace cannot carry:
+it links methods adopted from `Distributions`, `StatsBase`, and `Random` to
+their contract, oracle, and routing files. Dimension-, value-, and
+representation-dependent branches are represented directly by the smallest
+fixture that selects them. During the ongoing suite migration, concise `Test
+progress` messages are emitted before each file and potentially expensive
+representative so a stalled CI job identifies its current path before the
+enclosing testset completes.
 
 ## 4.3 Behaviour coverage matrix
 
@@ -1138,16 +1137,15 @@ making an existing internal operation public:
    namespace, add its docstring, and update the behavioural table on the
    [Public API](@ref) page. For an adopted external interface, document the
    supported methods without redeclaring the external symbol.
-2. Update `PUBLIC_SYMBOLS` when the `Copulas` namespace changes.
-3. Add a contract helper and call it for every applicable public family. If the
+2. Add a contract helper and call it for every applicable public family. If the
    operation is intentionally unavailable for a mathematical class, encode
    that applicability explicitly in the fixture metadata or contract rather
    than silently skipping failures.
-4. Add an independent oracle for every new generic mechanism.
-5. Inventory all dispatch routes selected by the public and dimension-specific
+3. Add an independent oracle for every new generic mechanism.
+4. Inventory all dispatch routes selected by the public and dimension-specific
    fixtures. Compare each specialization with the generic route, or provide an
    independent identity where comparison is impossible.
-6. Add focused family or extension regressions only for behaviour not implied
+5. Add focused family or extension regressions only for behaviour not implied
    by the preceding proof.
 
 Conversely, adding only a family regression is insufficient for a public
