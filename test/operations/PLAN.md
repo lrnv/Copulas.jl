@@ -57,7 +57,9 @@ not discard representatives intentionally added for such branches.
 - [x] Consolidate Nataf contract and correctness tests under operations.
 - [x] Move Sklar and standalone utilities; constructor coverage lives under
       `api/` because construction is API surface, not a copula operation.
-- [ ] Remove the old obligation directories once no tests remain in them.
+- [x] Remove the obsolete `contracts/` and `equivalence/` categories;
+      cross-operation family correctness and final routing closure remain
+      explicitly grouped under `correctness/` and `routing/`.
 - [ ] Replace this plan with the stable developer-guide instructions.
 
 Migration is assertion-preserving: an old assertion is removed only after its
