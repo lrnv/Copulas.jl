@@ -1,37 +1,8 @@
 # Routing obligation: methods selected by `which` do not reveal value-,
-# dimension-, or representation-dependent branches inside their bodies.  This
-# focused registry exercises those public branches without repeating the full
+# dimension-, or representation-dependent branches inside their bodies. These
+# focused tests exercise such public branches without repeating the full
 # per-family contract.
-const BEHAVIOURAL_BRANCHES = (
-    :beta_bivariate, :beta_multivariate,
-    :frank_negative_bivariate, :frank_positive_multivariate,
-    :clayton_negative_bivariate,
-    :fgm_independence_boundary, :fgm_frechet_boundaries,
-    :generator_boundary_reductions, :misc_copula_boundary_reductions,
-    :tail_boundary_reductions,
-    :independent_scalar_condition, :independent_copula_condition,
-    :subsetting_full_permutation_generic,
-    :subsetting_full_permutation_elliptical,
-    :survival_conditional_flip_remap,
-    :husler_reiss_bivariate, :husler_reiss_multivariate,
-    :tev_bivariate, :tev_multivariate,
-    :tev_fitting_bivariate_bounds, :tev_fitting_multivariate_bounds,
-    :gumbel_barnett_dimension_bounds,
-    :galambos_inverse_boundaries,
-    :distortion_quantile_parameter_regimes,
-    :liouville_archimedean_reduction,
-    :nested_singleton_subtree_collapse,
-    :amh_frailty, :amh_generic_williamson,
-    :frank_frailty, :frank_generic_williamson,
-    :clayton_positive_real_order, :clayton_negative_integer_order,
-    :clayton_negative_real_order,
-)
-const PROVEN_BEHAVIOURAL_BRANCHES = Set{Symbol}()
-prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
-
 @testset verbose=true "non-dispatch behavioural branches" begin
-    @test allunique(BEHAVIOURAL_BRANCHES)
-
     @testset "beta by dimension" begin
         C2 = FGMCopula{2}(0.4)
         @test Copulas.β(C2) ≈ 4cdf(C2, [0.5, 0.5]) - 1
@@ -41,19 +12,16 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         survival = SurvivalCopula(C3, (1, 2, 3))
         expected = (4cdf(C3, u) + cdf(survival, u) - 1) / 3
         @test Copulas.β(C3) ≈ expected
-        prove_branches!(:beta_bivariate, :beta_multivariate)
     end
 
     @testset "Frank parameter domain by dimension" begin
         @test params(FrankCopula{2}(-2.0)).θ == -2.0
         @test params(FrankCopula{3}(2.0)).θ == 2.0
         @test_throws AssertionError FrankCopula{3}(-2.0)
-        prove_branches!(:frank_negative_bivariate, :frank_positive_multivariate)
     end
 
     @testset "Clayton negative bivariate domain" begin
         @test ClaytonCopula{2}(-0.7) isa ClaytonCopula{2}
-        prove_branches!(:clayton_negative_bivariate)
     end
 
     @testset "FGM value-dependent reductions" begin
@@ -61,7 +29,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test FGMCopula{2}(1.0) isa MCopula{2}
         @test FGMCopula{2}(-1.0) isa WCopula{2}
         @test FGMCopula{3}([0.0, 0.0, 0.0, 0.4]) isa FGMCopula{3}
-        prove_branches!(:fgm_independence_boundary, :fgm_frechet_boundaries)
     end
 
     @testset "public constructor boundary reductions" begin
@@ -83,7 +50,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         for (value, expected) in generator_reductions
             @test value isa expected
         end
-        prove_branches!(:generator_boundary_reductions)
 
         copula_reductions = (
             (GaussianCopula{3}(0.0), IndependentCopula{3}),
@@ -96,7 +62,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         for (value, expected) in copula_reductions
             @test value isa expected
         end
-        prove_branches!(:misc_copula_boundary_reductions)
 
         tail_reductions = (
             (Copulas.CuadrasAugeTail(0.0), Copulas.NoTail),
@@ -131,14 +96,11 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         for (value, expected) in tail_reductions
             @test value isa expected
         end
-        prove_branches!(:tail_boundary_reductions)
     end
 
     @testset "independent conditioning output dimension" begin
         @test condition(IndependentCopula{2}(), 1, 0.4) isa Copulas.NoDistortion
         @test condition(IndependentCopula{3}(), 1, 0.4) isa IndependentCopula{2}
-        prove_branches!(:independent_scalar_condition,
-                        :independent_copula_condition)
     end
 
     @testset "full-coordinate subsetting permutations" begin
@@ -156,7 +118,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         u = [0.31, 0.57, 0.79]
         @test cdf(S, u) ≈ cdf(C, permuted_point(perm, u)) atol=1e-8
         @test logpdf(S, u) ≈ logpdf(C, permuted_point(perm, u)) atol=1e-8
-        prove_branches!(:subsetting_full_permutation_generic)
 
         Σ = [1.0 0.6 0.2; 0.6 1.0 0.5; 0.2 0.5 1.0]
         G = GaussianCopula{3}(Σ)
@@ -164,7 +125,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test permuted.Σ ≈ Σ[collect(perm), collect(perm)]
         @test logpdf(permuted, u) ≈
               logpdf(G, permuted_point(perm, u)) atol=1e-8
-        prove_branches!(:subsetting_full_permutation_elliptical)
     end
 
     @testset "Survival conditional flip remapping" begin
@@ -172,7 +132,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         conditioned = condition(C, (1, 3), (0.25, 0.75))
         @test conditioned.C isa SurvivalCopula{2}
         @test 0.0 <= cdf(conditioned, [0.4, 0.6]) <= 1.0
-        prove_branches!(:survival_conditional_flip_remap)
     end
 
     @testset "elliptical EV representation by dimension" begin
@@ -189,8 +148,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
             key = dispatch_route_key(:logpdf, C)
             @test key in keys(PROVEN_DISPATCH_ROUTES[:logpdf])
         end
-        prove_branches!(:husler_reiss_bivariate, :husler_reiss_multivariate,
-                        :tev_bivariate, :tev_multivariate)
     end
 
     @testset "Gumbel--Barnett dimension-dependent validity" begin
@@ -199,7 +156,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test_throws AssertionError GumbelBarnettCopula{3}(0.5)
         @test GumbelBarnettCopula{4}(0.2) isa GumbelBarnettCopula{4}
         @test_throws AssertionError GumbelBarnettCopula{4}(0.3)
-        prove_branches!(:gumbel_barnett_dimension_bounds)
     end
 
     @testset "Galambos dependence-inverse boundaries" begin
@@ -208,7 +164,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test Copulas.β⁻¹(GalambosCopula, 1.0) == Inf
         @test Copulas.λᵤ⁻¹(GalambosCopula, 0.0) == 0.0
         @test Copulas.λᵤ⁻¹(GalambosCopula, 1.0) == Inf
-        prove_branches!(:galambos_inverse_boundaries)
     end
 
     @testset "parameter-dependent distortion quantile regimes" begin
@@ -233,7 +188,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
             @test quantile(D, p) ≈ generic atol=2e-8 rtol=2e-8
         end
         @test quantile(Copulas.PlackettDistortion(1.0, Int8(1), 0.4), 0.37) ≈ 0.37
-        prove_branches!(:distortion_quantile_parameter_regimes)
     end
 
     @testset "Liouville all-one Dirichlet reduction" begin
@@ -243,7 +197,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         @test typeof(reduced) == typeof(native)
         @test reduced.G === G
         @test cdf(reduced, [0.35, 0.7]) == cdf(native, [0.35, 0.7])
-        prove_branches!(:liouville_archimedean_reduction)
     end
 
     @testset "nested singleton subtree collapse" begin
@@ -255,7 +208,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
         native = ClaytonCopula{2}(1.5)
         @test typeof(collapsed) == typeof(native)
         @test cdf(collapsed, [0.4, 0.7]) == cdf(native, [0.4, 0.7])
-        prove_branches!(:nested_singleton_subtree_collapse)
     end
 
     @testset "extremal-t fitting bounds by dimension" begin
@@ -269,8 +221,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
             @test lower < Copulas._rebound_params(CT, d, [0.0, -100.0]).ρ < 1
             @test lower < Copulas._rebound_params(CT, d, [0.0, 100.0]).ρ < 1
         end
-        prove_branches!(:tev_fitting_bivariate_bounds,
-                        :tev_fitting_multivariate_bounds)
     end
 
     @testset "Williamson inversion parameter branches" begin
@@ -289,12 +239,6 @@ prove_branches!(branches...) = union!(PROVEN_BEHAVIOURAL_BRANCHES, branches)
               Copulas.ClaytonWilliamsonDistribution
         @test Copulas.𝒲₋₁(Copulas.ClaytonGenerator(-0.25), 1.5) isa
               Copulas.WilliamsonBetaProduct
-        prove_branches!(:amh_frailty, :amh_generic_williamson,
-                        :frank_frailty, :frank_generic_williamson,
-                        :clayton_positive_real_order,
-                        :clayton_negative_integer_order,
-                        :clayton_negative_real_order)
     end
 
-    @test PROVEN_BEHAVIOURAL_BRANCHES == Set(BEHAVIOURAL_BRANCHES)
 end
