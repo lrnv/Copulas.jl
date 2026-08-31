@@ -90,7 +90,7 @@ function τ⁻¹(::Type{<:FrankGenerator}, tau)
     s, v = sign(tau), abs(tau)
     v == 0 && return v
     v == 1 && return s * Inf
-    emθ = Roots.find_zero(x -> _frank_tau(-log(x))-v, 0, 1)
+    emθ = Roots.find_zero(x -> _frank_tau(-log(x))-v, (0, 1))
     return - s * log(emθ)
 end
 function _frank_rho(θ)
@@ -103,6 +103,6 @@ function ρ⁻¹(::Type{<:FrankGenerator}, rho)
     s, v = sign(rho), abs(rho)
     v == 0 && return v
     v == 1 && return s * Inf
-    emθ = Roots.find_zero(x -> _frank_rho(-log(x))-v, 0, 1)
+    emθ = Roots.find_zero(x -> _frank_rho(-log(x))-v, (0, 1))
     return - s * log(emθ)
 end

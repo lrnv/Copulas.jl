@@ -82,6 +82,7 @@ const ALL_COPULA_CASES = (
     copula_case(ArchimedeanCopula, 2, Copulas.FrailtyGenerator(Exponential())),
     copula_case(ArchimedeanCopula, 2, WilliamsonGenerator(Dirac(1.0), 2.0)),
     copula_case(ArchimedeanCopula, 2, WilliamsonGenerator(Dirac(1.0), 2.5)),
+    copula_case(ArchimedeanCopula, 2, WilliamsonGenerator(Pareto(1.0), 4)),
     copula_case(ArchimedeanCopula, 2, EmpiricalGenerator(_FIXTURE_DATA)),
     copula_case(ExtremeValueCopula, 2, DiscreteSpectralTail([0.7 0.3; 0.2 0.8])),
     copula_case(GumbelCopula, 2, 1.5; allowed_inference=allow_IM(2)),
