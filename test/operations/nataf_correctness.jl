@@ -1,5 +1,47 @@
-# Correctness obligation: exact, statistical, type-generic, and boundary
+# Nataf-operation correctness: exact, statistical, type-generic, and boundary
 # regressions for the public Nataf correction.
+
+@testset "all documented Nataf dispatches have an oracle" begin
+    r, s = 0.2, 0.8
+    lognormal_scale = sqrt(expm1(s^2))
+    uniform_lognormal = sqrt(2) / s * quantile(
+        Normal(), 1 / 2 + r * lognormal_scale / (2sqrt(3)))
+    exact_cases = (
+        (Normal(), Normal(2, 3), r),
+        (LogNormal(0, s), LogNormal(1, s), log1p(r * expm1(s^2)) / s^2),
+        (Normal(), LogNormal(0, s), r * lognormal_scale / s),
+        (LogNormal(0, s), Normal(), r * lognormal_scale / s),
+        (Uniform(), Uniform(-2, 3), 2sinpi(r / 6)),
+        (Uniform(), Normal(), r * sqrt(π / 3)),
+        (Normal(), Uniform(), r * sqrt(π / 3)),
+        (Uniform(), LogNormal(0, s), uniform_lognormal),
+        (LogNormal(0, s), Uniform(), uniform_lognormal),
+    )
+    checked = Set{Method}()
+    for (Fᵢ, Fⱼ, expected) in exact_cases
+        @test Nataf((Fᵢ, Fⱼ), r) ≈ expected
+        push!(checked, which(Copulas._nataf_problem,
+            Tuple{typeof(Fᵢ),typeof(Fⱼ),Float64,Int}))
+    end
+
+    Fᵢ, Fⱼ = Gamma(2.0, 1.0), Beta(2.0, 3.0)
+    generic = Nataf((Fᵢ, Fⱼ), r; nodes=8)
+    @test generic ≈ Nataf((Fⱼ, Fᵢ), r; nodes=8) atol=1e-7
+    @test -1 < generic < 1
+    push!(checked, which(Copulas._nataf_problem,
+        Tuple{typeof(Fᵢ),typeof(Fⱼ),Float64,Int}))
+
+    documented_pairs = (
+        (Normal(), Normal()), (Normal(), LogNormal(0, s)),
+        (Normal(), Uniform()), (LogNormal(0, s), Normal()),
+        (LogNormal(0, s), LogNormal(0, s)), (LogNormal(0, s), Uniform()),
+        (Uniform(), Normal()), (Uniform(), LogNormal(0, s)),
+        (Uniform(), Uniform()), (Fᵢ, Fⱼ),
+    )
+    selected = Set(which(Copulas._nataf_problem,
+        Tuple{typeof(a),typeof(b),Float64,Int}) for (a, b) in documented_pairs)
+    @test selected == checked
+end
 @testset "Nataf correction" begin
 
     @testset "end-to-end: sampled Pearson correlation matches the target" begin

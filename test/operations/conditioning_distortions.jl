@@ -1,4 +1,4 @@
-# Contract obligation: exercises the common univariate conditional API once
+# Conditioning-operation proof: exercises the common univariate API once
 # for every result reached through the public `condition` entry point. Most
 # results are `Distortion`s, but families may legitimately return another
 # `UnivariateDistribution`, such as BetaCopula's exact `MixtureModel`.

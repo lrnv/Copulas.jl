@@ -1,4 +1,4 @@
-# Correctness obligation: verifies each public dependence-measure inverse on
+# Dependence-operation proof: verifies each public measure inverse on
 # representative supported families and both type- and instance-based dispatch.
 const _INVERSE_PAIRS = (
     (Copulas.τ, Copulas.τ⁻¹), (Copulas.ρ, Copulas.ρ⁻¹),

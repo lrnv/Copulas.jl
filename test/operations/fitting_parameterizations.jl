@@ -1,4 +1,4 @@
-# Mathematical-correctness obligation for fitting parameterizations. Public
+# Fitting-operation proof for parameterizations. Public
 # route availability and result interfaces are covered by contracts/routing;
 # this file checks that unconstrained coordinates map bijectively to the
 # intended constrained parameter space.

@@ -1,11 +1,32 @@
-# Correctness obligation: exhaustively covers public EV-tail families and
+# Component proof: exhaustively covers public EV-tail families and
 # verifies stable-tail, Pickands, derivative, and reconstruction identities.
-tail_case_key((tail, d)) = (typeof(tail), d, typeof(params(tail)))
-const TAIL_CASES = Tuple(unique(tail_case_key,
-    [(fixture.copula.tail, length(fixture.copula))
-     for fixture in ROUTING_COPULA_FIXTURES
-     if fixture.copula isa ExtremeValueCopula]))
 
+@testset "specialized logistic tail agrees with its generic oracle" begin
+    θ = 1.5
+    generic_tail = LogisticOracleTail(θ)
+    specialized_tail = Copulas.LogTail(θ)
+    x = [0.4, 0.7]
+    weight = Tuple(x ./ sum(x))
+    @test Copulas.ℓ(specialized_tail, x) ≈ Copulas.ℓ(generic_tail, x)
+    @test Copulas.A(specialized_tail, weight) ≈ Copulas.A(generic_tail, weight)
+    for indices in ((), (1,), (2,), (1, 2))
+        @test Copulas.ellpartial(specialized_tail, x, indices) ≈
+              Copulas.ellpartial(generic_tail, x, indices) atol=2e-6
+    end
+
+    generic = ExtremeValueCopula{2}(generic_tail)
+    specialized = LogCopula{2}(θ)
+    u = [0.37, 0.68]
+    @test cdf(specialized, u) ≈ cdf(generic, u)
+    @test pdf(specialized, u) ≈ pdf(generic, u) atol=2e-6
+
+    generic_D = condition(generic, 1, u[1])
+    specialized_D = condition(specialized, 1, u[1])
+    @test cdf(specialized_D, u[2]) ≈ cdf(generic_D, u[2])
+    @test pdf(specialized_D, u[2]) ≈ pdf(generic_D, u[2]) atol=2e-6
+    @test quantile(specialized_D, 0.6) ≈ quantile(generic_D, 0.6) atol=2e-6
+    @test rosenblatt(specialized, u) ≈ rosenblatt(generic, u)
+end
 @testset "public tail registry is exhaustive" begin
     public_families = Set(getfield(Copulas, symbol) for symbol in public_symbols()
         if getfield(Copulas, symbol) isa Type &&

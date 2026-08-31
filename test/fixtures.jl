@@ -241,3 +241,18 @@ const COPULA_FIXTURES = Tuple((case=case, copula=case.build())
                               for case in COPULA_CASES)
 const ROUTING_COPULA_FIXTURES = Tuple((case=case, copula=case.build())
                                       for case in ALL_COPULA_CASES)
+
+# Public component cases derive from the same central copula bestiary. They
+# live here because several earlier mathematical-oracle files consume them
+# before the component operation suites themselves are included.
+generator_case_key(G) = (typeof(G),
+    G isa WilliamsonGenerator ? isinteger(G.order) : nothing)
+const GENERATOR_CASES = Tuple(unique(generator_case_key,
+    [fixture.copula.G for fixture in ROUTING_COPULA_FIXTURES
+     if fixture.copula isa ArchimedeanCopula]))
+
+tail_case_key((tail, d)) = (typeof(tail), d, typeof(params(tail)))
+const TAIL_CASES = Tuple(unique(tail_case_key,
+    [(fixture.copula.tail, length(fixture.copula))
+     for fixture in ROUTING_COPULA_FIXTURES
+     if fixture.copula isa ExtremeValueCopula]))

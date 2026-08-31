@@ -5,50 +5,6 @@
 # Singular and mixed CDFs have no Lebesgue-density
 # fallback; their mass identities and sampler structure are checked there too.
 
-@testset "all documented Nataf dispatches have an oracle" begin
-    r, s = 0.2, 0.8
-    lognormal_scale = sqrt(expm1(s^2))
-    uniform_lognormal = sqrt(2) / s * quantile(
-        Normal(), 1 / 2 + r * lognormal_scale / (2sqrt(3)))
-    exact_cases = (
-        (Normal(), Normal(2, 3), r),
-        (LogNormal(0, s), LogNormal(1, s), log1p(r * expm1(s^2)) / s^2),
-        (Normal(), LogNormal(0, s), r * lognormal_scale / s),
-        (LogNormal(0, s), Normal(), r * lognormal_scale / s),
-        (Uniform(), Uniform(-2, 3), 2sinpi(r / 6)),
-        (Uniform(), Normal(), r * sqrt(π / 3)),
-        (Normal(), Uniform(), r * sqrt(π / 3)),
-        (Uniform(), LogNormal(0, s), uniform_lognormal),
-        (LogNormal(0, s), Uniform(), uniform_lognormal),
-    )
-    checked = Set{Method}()
-    for (Fᵢ, Fⱼ, expected) in exact_cases
-        @test Nataf((Fᵢ, Fⱼ), r) ≈ expected
-        push!(checked, which(Copulas._nataf_problem,
-            Tuple{typeof(Fᵢ),typeof(Fⱼ),Float64,Int}))
-    end
-
-    # The generic quadrature route is independently validated end to end in
-    # correctness/nataf.jl; here it is included in the dispatch inventory and its
-    # pair symmetry is checked directly.
-    Fᵢ, Fⱼ = Gamma(2.0, 1.0), Beta(2.0, 3.0)
-    generic = Nataf((Fᵢ, Fⱼ), r; nodes=8)
-    @test generic ≈ Nataf((Fⱼ, Fᵢ), r; nodes=8) atol=1e-7
-    @test -1 < generic < 1
-    push!(checked, which(Copulas._nataf_problem,
-        Tuple{typeof(Fᵢ),typeof(Fⱼ),Float64,Int}))
-
-    documented_pairs = (
-        (Normal(), Normal()), (Normal(), LogNormal(0, s)),
-        (Normal(), Uniform()), (LogNormal(0, s), Normal()),
-        (LogNormal(0, s), LogNormal(0, s)), (LogNormal(0, s), Uniform()),
-        (Uniform(), Normal()), (Uniform(), LogNormal(0, s)),
-        (Uniform(), Uniform()), (Fᵢ, Fⱼ),
-    )
-    selected = Set(which(Copulas._nataf_problem,
-        Tuple{typeof(a),typeof(b),Float64,Int}) for (a, b) in documented_pairs)
-    @test selected == checked
-end
 function _unique_bivariate_routes(operation, predicate)
     Base.@nospecialize operation predicate
     seen = Set{Method}()
@@ -428,48 +384,6 @@ end
           inverse_rosenblatt(generic, rosenblatt(generic, u)) atol=2e-6
     @test Copulas.ρ(specialized) ≈ Copulas.ρ(generic) atol=2e-5
     @test Copulas.β(specialized) ≈ Copulas.β(generic)
-end
-
-@testset "specialized Gumbel generator agrees with its generic oracle" begin
-    θ = 1.5
-    generic = PowerExponentialOracleGenerator(θ)
-    specialized = Copulas.GumbelGenerator(θ)
-    for t in (0.2, 0.7, 1.4)
-        p = Copulas.ϕ(generic, t)
-        @test Copulas.ϕ(specialized, t) ≈ p
-        @test Copulas.ϕ⁻¹(specialized, p) ≈ Copulas.ϕ⁻¹(generic, p)
-        @test Copulas.ϕ⁽¹⁾(specialized, t) ≈ Copulas.ϕ⁽¹⁾(generic, t)
-        @test Copulas.ϕ⁽ᵏ⁾(specialized, 2, t) ≈
-              Copulas.ϕ⁽ᵏ⁾(generic, 2, t)
-        @test Copulas.ϕ⁻¹⁽¹⁾(specialized, p) ≈ Copulas.ϕ⁻¹⁽¹⁾(generic, p)
-    end
-end
-
-@testset "specialized logistic tail agrees with its generic oracle" begin
-    θ = 1.5
-    generic_tail = LogisticOracleTail(θ)
-    specialized_tail = Copulas.LogTail(θ)
-    x = [0.4, 0.7]
-    weight = Tuple(x ./ sum(x))
-    @test Copulas.ℓ(specialized_tail, x) ≈ Copulas.ℓ(generic_tail, x)
-    @test Copulas.A(specialized_tail, weight) ≈ Copulas.A(generic_tail, weight)
-    for indices in ((), (1,), (2,), (1, 2))
-        @test Copulas.ellpartial(specialized_tail, x, indices) ≈
-              Copulas.ellpartial(generic_tail, x, indices) atol=2e-6
-    end
-
-    generic = ExtremeValueCopula{2}(generic_tail)
-    specialized = LogCopula{2}(θ)
-    u = [0.37, 0.68]
-    @test cdf(specialized, u) ≈ cdf(generic, u)
-    @test pdf(specialized, u) ≈ pdf(generic, u) atol=2e-6
-
-    generic_D = condition(generic, 1, u[1])
-    specialized_D = condition(specialized, 1, u[1])
-    @test cdf(specialized_D, u[2]) ≈ cdf(generic_D, u[2])
-    @test pdf(specialized_D, u[2]) ≈ pdf(generic_D, u[2]) atol=2e-6
-    @test quantile(specialized_D, 0.6) ≈ quantile(generic_D, 0.6) atol=2e-6
-    @test rosenblatt(specialized, u) ≈ rosenblatt(generic, u)
 end
 
 @testset verbose=true "all distortion quantile specializations agree with generic inversion" begin

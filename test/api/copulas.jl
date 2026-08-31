@@ -1,4 +1,4 @@
-# Shared copula-contract fixtures and the proof that the central bestiary
+# Public-API fixtures and proof that the central bestiary
 # represents every public copula family. Operation contracts live under
 # `test/operations/`.
 struct CopulaContractContext

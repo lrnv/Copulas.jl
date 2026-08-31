@@ -1,4 +1,4 @@
-# Public-API contract: checks SklarDist construction and the adopted
+# Public-API proof: checks SklarDist construction and the adopted
 # Distributions, conditioning, Rosenblatt, sampling, and matrix interfaces.
 @testset "SklarDist public contract" begin
     # Use an analytic CDF here: this is an identity of the Sklar adapter, not

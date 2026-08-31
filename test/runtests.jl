@@ -54,23 +54,24 @@ end
 atexit(write_test_timings)
 
 obligation_testfiles = (
-    contracts = [
-        "constructors", "constructor_validation",
-        "copulas", "fitting", "sklar", "utilities", "nataf", "distortions",
-        "univariate_distributions", "public_compositions",
-    ],
     correctness = [
-        "generators", "archimedean", "tails", "elliptical",
-        "measure_inverses", "mathematical", "statistical", "numerical",
-        "williamson", "liouville", "conditioning", "nataf",
+        "archimedean", "elliptical", "mathematical",
+        "statistical", "numerical",
+        "williamson", "liouville", "conditioning",
         "bivariate_families", "extreme_value", "extreme_value_quantiles",
-        "nested_archimedean", "fitting",
+        "extreme_value_equivalence", "nested_archimedean",
+        "nested_archimedean_equivalence",
     ],
-    equivalence = ["specializations", "conditioning",
-                   "extreme_value", "nested_archimedean"],
+    equivalence = ["specializations"],
+    api = ["copulas", "constructors", "constructor_validation",
+           "public_compositions", "sklar", "utilities"],
+    components = ["generators", "tails", "univariate_distributions"],
     operations = ["measure", "subsetting", "rosenblatt", "sampling",
-                  "dependence", "distribution", "conditioning"],
-    routing = ["dispatch", "branches", "fitting"],
+                  "dependence", "dependence_inverses", "distribution", "conditioning",
+                  "conditioning_distortions", "conditioning_equivalence", "fitting",
+                  "fitting_parameterizations", "fitting_routes",
+                  "nataf_contract", "nataf_correctness"],
+    routing = ["dispatch", "branches"],
 )
 
 function run_obligations(groups)

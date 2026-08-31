@@ -1,11 +1,19 @@
-# Correctness obligation: exhaustively covers public generator families and
+# Component proof: exhaustively covers public generator families and
 # verifies their transform, inverse, derivative, and reconstruction identities.
-generator_case_key(G) = (typeof(G),
-    G isa WilliamsonGenerator ? isinteger(G.order) : nothing)
-const GENERATOR_CASES = Tuple(unique(generator_case_key,
-    [fixture.copula.G for fixture in ROUTING_COPULA_FIXTURES
-     if fixture.copula isa ArchimedeanCopula]))
 
+@testset "specialized Gumbel generator agrees with its generic oracle" begin
+    θ = 1.5
+    generic = PowerExponentialOracleGenerator(θ)
+    specialized = Copulas.GumbelGenerator(θ)
+    for t in (0.2, 0.7, 1.4)
+        p = Copulas.ϕ(generic, t)
+        @test Copulas.ϕ(specialized, t) ≈ p
+        @test Copulas.ϕ⁻¹(specialized, p) ≈ Copulas.ϕ⁻¹(generic, p)
+        @test Copulas.ϕ⁽¹⁾(specialized, t) ≈ Copulas.ϕ⁽¹⁾(generic, t)
+        @test Copulas.ϕ⁽ᵏ⁾(specialized, 2, t) ≈ Copulas.ϕ⁽ᵏ⁾(generic, 2, t)
+        @test Copulas.ϕ⁻¹⁽¹⁾(specialized, p) ≈ Copulas.ϕ⁻¹⁽¹⁾(generic, p)
+    end
+end
 @testset "public generator registry is exhaustive" begin
     public_families = Set(getfield(Copulas, symbol) for symbol in public_symbols()
         if getfield(Copulas, symbol) isa Type &&

@@ -1,4 +1,4 @@
-# Specialization-equivalence layer: conditional-distribution and distortion
+# Conditioning-operation equivalence: conditional-distribution and distortion
 # fast paths are checked against inversion identities, generic conditionals,
 # log-scale definitions, or independent Gaussian conditioning algebra.
 

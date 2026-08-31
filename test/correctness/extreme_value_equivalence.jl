@@ -1,4 +1,4 @@
-# Equivalence obligation for alternative public parameterizations of the same
+# Family correctness: alternative public parameterizations of the same
 # extreme-value model. Full multivariate numerical oracles live in correctness.
 function test_ev_equivalence(left, right, point; atol, rtol)
     @test cdf(left, point) ≈ cdf(right, point) atol=atol rtol=rtol

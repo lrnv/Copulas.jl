@@ -1,4 +1,4 @@
-# Public-API contract: fitting capabilities come from the package itself.
+# Fitting-operation contract: capabilities come from the package itself.
 # Every advertised route is executed independently in `routing/fitting.jl`;
 # this cheap family-wide pass only proves that method discovery is coherent.
 @testset "public fitting method discovery" begin

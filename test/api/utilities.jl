@@ -1,4 +1,4 @@
-# Public-API contract: checks standalone public functions and data-based
+# Public-API proof: checks standalone public functions and data-based
 # dependence measures that do not naturally belong to one model contract.
 @testset "standalone public utilities" begin
     X = [3.0 1.0 2.0 4.0; 2.0 4.0 1.0 3.0]

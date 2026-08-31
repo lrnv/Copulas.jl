@@ -1,4 +1,4 @@
-# Specialization-equivalence obligation: a flat nested declaration reduces to
+# Family correctness: a flat nested declaration reduces to
 # the native Archimedean representation without changing its density route.
 @testset "flat nested declarations dispatch to native copulas" begin
     cases = (

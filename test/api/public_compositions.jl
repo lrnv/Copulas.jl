@@ -1,4 +1,4 @@
-# Contract obligation: checks public constructors whose behavior is chiefly
+# Public-API proof: checks public constructors whose behavior is chiefly
 # composition or specialization into generators, tails, and complete copulas.
 @testset "remaining public generator constructors" begin
     @test Copulas.τ(Copulas.IndependentGenerator()) == 0

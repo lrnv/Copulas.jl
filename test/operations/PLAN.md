@@ -51,9 +51,12 @@ not discard representatives intentionally added for such branches.
 - [x] Extract sampling.
 - [ ] Finish conditioning and its distortion API (the family-wide contract is
       migrated; generic and specialized proofs remain to consolidate).
-- [ ] Extract fitting and model-result behavior.
-- [ ] Consolidate generator, tail, and auxiliary univariate APIs.
-- [ ] Move Sklar, Nataf, constructors, and standalone utilities.
+- [x] Extract fitting and model-result behavior.
+- [x] Consolidate generator, tail, and auxiliary univariate APIs under
+      `components/`; they are public building blocks, not copula operations.
+- [x] Consolidate Nataf contract and correctness tests under operations.
+- [x] Move Sklar and standalone utilities; constructor coverage lives under
+      `api/` because construction is API surface, not a copula operation.
 - [ ] Remove the old obligation directories once no tests remain in them.
 - [ ] Replace this plan with the stable developer-guide instructions.
 

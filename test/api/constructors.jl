@@ -1,4 +1,4 @@
-# Public-API contract: verifies every public copula family constructor, the
+# Public-API proof: verifies every public copula family constructor, the
 # type-stable `{d}` and runtime `(d, ...)` forms and inferred forms.
 function test_constructor_case(case)
     typed_value = nothing

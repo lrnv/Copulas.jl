@@ -1,4 +1,4 @@
-# Public-API contract: matrix structure, attainable ranges, and documented
+# Nataf-operation contract: matrix structure, attainable ranges, and documented
 # validation errors for `Nataf`.
 @testset "Nataf structure and validation" begin
     R₀ = Nataf((LogNormal(0, 0.8), Gamma(2, 3)), [1.0 0.0; 0.0 1.0])

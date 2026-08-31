@@ -1,4 +1,4 @@
-# Contract obligation: checks radial and auxiliary univariate distributions
+# Component proof: checks radial and auxiliary univariate distributions
 # directly, including finite/infinite support and continuous/discrete paths.
 function test_continuous_univariate_contract(D; atol=2e-7)
     Base.@nospecialize D

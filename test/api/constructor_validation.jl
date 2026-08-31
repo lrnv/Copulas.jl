@@ -1,4 +1,4 @@
-# Public-API contract: validation, boundary specialization, keyword forms, and
+# Public-API proof: validation, boundary specialization, keyword forms, and
 # accepted numeric parameter types beyond the universal constructor inventory.
 
 @testset "constructor validation regressions" begin
