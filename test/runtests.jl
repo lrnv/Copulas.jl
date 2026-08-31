@@ -221,7 +221,6 @@ testfiles = (
     "correctness/nested_archimedean.jl",
     "correctness/nested_archimedean_equivalence.jl",
     "correctness/family_specialization_equivalence.jl",
-    "correctness/conditioning.jl",
     "correctness/statistical.jl",
     "operations/distribution.jl",
     "operations/measure.jl",

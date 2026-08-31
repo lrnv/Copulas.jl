@@ -1,6 +1,6 @@
-# Public contract for copula distribution evaluation. Independent mathematical
-# oracles and specialization proofs remain in their historical files until the
-# rest of this operation is migrated.
+# Complete operation proof for copula distribution evaluation: public CDF and
+# density contracts, independent identities, specialization equivalence, and
+# exhaustive dispatch-route registration.
 
 function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
     Base.@nospecialize C ctx
@@ -192,4 +192,10 @@ end
         prove_dispatch_route!(:cdf, C, :singular_mass_identity)
     end
     @test !isempty(seen)
+end
+
+@testset "Fréchet bounds use their exact mass identities" begin
+    u = [0.37, 0.68]
+    @test cdf(MCopula{2}(), u) == minimum(u)
+    @test cdf(WCopula{2}(), u) == max(sum(u) - 1, 0)
 end

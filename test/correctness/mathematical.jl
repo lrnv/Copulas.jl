@@ -1,9 +1,12 @@
 # Mathematical-path layer: expensive CDF/PDF, derivative, integral, rectangle,
 # and transform equivalences are checked once per implementation mechanism,
 # not for every parameterization of every public family.
+# The oracle types below are intentionally colocated because several testsets
+# reuse them across operations; operation-specific contracts and identities
+# belong in `test/operations/` instead.
 # Classification inherited from the former generic suite:
 # - universal invariants: copula margins, support and API identities live in
-#   `contracts/copulas.jl`;
+#   `operations/distribution.jl` and the other operation contracts;
 # - mechanism identities: derivatives, integrals, transforms and defining
 #   representations are checked below on one representative implementation;
 # - family formulas, limits and fixed regressions live in focused correctness,
@@ -688,51 +691,4 @@ end
     end
     @test cdf(wrapped, u) ≈ expected
     prove_dispatch_route!(:cdf, wrapped, :survival_inclusion_exclusion)
-end
-
-@testset "dependence measures agree with their definitions" begin
-    C = FGMCopula{2}(0.4)
-    integral, _ = HCubature.hcubature(u -> cdf(C, u), zeros(2), ones(2);
-                                      rtol=2e-5)
-    @test Copulas.ρ(C) ≈ 12integral - 3 atol=2e-4
-    @test Copulas.β(C) ≈ 4cdf(C, [0.5, 0.5]) - 1
-
-    @test Copulas.τ(IndependentCopula{2}()) == 0
-    @test Copulas.ρ(IndependentCopula{2}()) == 0
-    @test Copulas.β(IndependentCopula{2}()) == 0
-    @test Copulas.γ(IndependentCopula{2}()) == 0
-    @test Copulas.τ(MCopula{2}()) == 1
-    @test Copulas.ρ(MCopula{2}()) == 1
-    @test Copulas.τ(WCopula{2}()) == -1
-    @test Copulas.ρ(WCopula{2}()) == -1
-
-    for C in (IndependentCopula{2}(), IndependentCopula{3}(),
-              MCopula{2}(), MCopula{3}(), WCopula{2}())
-        for measure in SCALAR_DEPENDENCE_MEASURES
-            if applicable(measure, C) &&
-               !(measure in (Copulas.ι,) && C isa WCopula)
-                value = measure(C)
-                @test value isa Real
-                prove_dependence_route!(measure, C)
-            end
-        end
-    end
-end
-
-@testset "singular and mixed copulas use mass identities" begin
-    u = [0.37, 0.68]
-    @test cdf(MCopula{2}(), u) == minimum(u)
-    @test cdf(WCopula{2}(), u) == max(sum(u) - 1, 0)
-
-    # Generalized conditional quantiles remain valid in the presence of atoms;
-    # a bijective Rosenblatt identity is intentionally not asserted here.
-    C = MOCopula{2}(0.2, 0.3, 0.4)
-    D = condition(C, 1, 0.4)
-    probabilities = collect(0.05:0.05:0.95)
-    quantiles = quantile.(Ref(D), probabilities)
-    @test issorted(quantiles)
-    @test any(iszero, diff(quantiles))
-    for (p, q) in zip(probabilities, quantiles)
-        @test cdf(D, q) >= p - 1e-10
-    end
 end

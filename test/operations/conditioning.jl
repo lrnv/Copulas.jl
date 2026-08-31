@@ -1,6 +1,6 @@
-# Public contract for marginal distortions and conditional copulas. Independent
-# identities and specialization proofs remain in the historical conditioning
-# files until the complete operation is consolidated here.
+# Complete operation proof for marginal distortions and conditional copulas:
+# public contracts, independent identities, specialization equivalence,
+# family regressions, and route coverage are colocated here.
 
 function test_conditioning_contract(C, ctx)
     Base.@nospecialize C ctx
@@ -231,6 +231,20 @@ end
                               :generalized_quantile_identity)
     end
     @test !isempty(seen)
+end
+
+@testset "mixed conditional laws use generalized quantiles" begin
+    # A bijective Rosenblatt identity is intentionally not asserted in the
+    # presence of atoms.
+    C = MOCopula{2}(0.2, 0.3, 0.4)
+    D = condition(C, 1, 0.4)
+    probabilities = collect(0.05:0.05:0.95)
+    quantiles = quantile.(Ref(D), probabilities)
+    @test issorted(quantiles)
+    @test any(iszero, diff(quantiles))
+    for (p, q) in zip(probabilities, quantiles)
+        @test cdf(D, q) >= p - 1e-10
+    end
 end
 
 @testset "joint conditioning routes agree with normalized CDF derivatives" begin
@@ -591,5 +605,37 @@ end
         @test pdf(D, 1.2) == 0
         @test logpdf(D, -0.2) == -Inf
         @test logpdf(D, 1.2) == -Inf
+    end
+end
+
+# Focused regressions retain implementation-sensitive assertions that are not
+# implied by the operation-wide mathematical contracts above.
+@testset "Extreme-value conditioning caches fixed transforms" begin
+    DEV = condition(GalambosCopula{2}(2.5), (1,), (0.3,))
+    @test DEV.negloguⱼ == -log(DEV.uⱼ)
+
+    DAM = condition(ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),
+        Copulas.HuslerReissTail(0.6)), (1,), (0.3,))
+    @test DAM.yⱼ == Copulas.ϕ⁻¹(DAM.gen, DAM.uⱼ)
+    @test DAM.invderivⱼ == Copulas.ϕ⁻¹⁽¹⁾(DAM.gen, DAM.uⱼ)
+end
+
+@testset "Checkerboard multidimensional conditioning regression" begin
+    C = CheckerboardCopula{3}(randn(rng, 3, 30); pseudo_values=false)
+    D = Copulas.DistortionFromCop(C, (1, 2), (0.3, 0.7), 3)
+    @test D isa Copulas.HistogramBinDistortion
+    @test all(0 .<= cdf.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
+    @test all(pdf.(Ref(D), (0.2, 0.5, 0.8)) .>= 0)
+    @test all(0 .<= quantile.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
+end
+
+@testset "Bernstein distortion bounded inversion regression" begin
+    D = condition(BernsteinCopula{2}(GaussianCopula{2}(0.3); m=5),
+                  (1,), (0.4,))
+    @test D isa Copulas.BernsteinDistortion
+    for p in (0.1, 0.5, 0.9)
+        q = quantile(D, p)
+        @test 0 <= q <= 1
+        @test cdf(D, q) ≈ p atol=2e-12
     end
 end

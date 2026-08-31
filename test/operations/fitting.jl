@@ -329,7 +329,8 @@ end
 
 
 # Fitting-operation proof for parameterizations. Public
-# route availability and result interfaces are covered by contracts/routing;
+# route availability and result interfaces are covered by this operation and
+# the final routing inventory;
 # this file checks that unconstrained coordinates map bijectively to the
 # intended constrained parameter space.
 @testset "asymmetric Mixed feasible fitting parameterization" begin

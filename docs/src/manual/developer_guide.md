@@ -1000,36 +1000,39 @@ inventory, and representative distributional identities instead.
 
 The corresponding directories are:
 
-- `test/contracts/` for the public surface and per-family contracts;
-- `test/correctness/` for independent mathematical and statistical
-  oracles;
-- `test/equivalence/` for optimized paths versus generic paths;
-- `test/routing/` for exhaustive method inventories;
+- `test/api/` for constructor, component, composition, and standalone public
+  API contracts;
+- `test/operations/` for public copula operations. Each operation file owns
+  its family-wide contract, generic or independent oracle, specialization
+  comparisons, and route registration whenever those concepts apply;
+- `test/correctness/` for mechanism-wide mathematics, published family
+  identities, numerical regressions, and statistical laws that span several
+  operations or do not belong to one public operation;
+- `test/routing/` for the final exhaustive method and value-branch inventories;
 - `test/extensions/` for focused optional package-extension contracts and
   regressions. Extensions already exercised by executable Documenter examples,
   such as `CopulasPlotsExt`, need not be loaded again during `Pkg.test`.
 
 Classify a test by the statement it proves, not by the concrete model used to
 exercise it. In particular, an operation-wide conditioning comparison belongs
-under `equivalence/`, and a family architecture backed by independent formulas
-or external reference values belongs under `correctness/`. Published family
-values, parameter boundaries, atom masses, reductions, and reproduced bugs are
-not a separate layer: classify each under the obligation established by its
-oracle.
+in `operations/conditioning.jl`, while a family architecture backed by
+independent formulas or external reference values belongs under `correctness/`.
+Published family values, parameter boundaries, atom masses, reductions, and
+reproduced bugs are not a separate layer: classify each under the operation or
+correctness statement established by its oracle.
 
-The fixtures and proof ledger shared by these layers live in
-`test/fixtures.jl`. This file defines infrastructure and contains no assertions,
-so `runtests.jl` loads it before opening the visible test hierarchy. Aqua is a
-root quality check; the remaining results follow this nesting:
+The central representative registry lives in `test/bestiary.jl`; common test
+infrastructure and proof ledgers live in `test/runtests.jl`. Both are evaluated
+before the visible test hierarchy. Aqua is a root quality check; the remaining
+results follow this nesting:
 
 ```text
 Copulas.jl
-â”œâ”€ <obligation> obligations
-â”‚  â””â”€ <file>.jl
-â”‚     â””â”€ <behaviour or mechanism>
-â”‚        â””â”€ <family or dispatch representative>
-â””â”€ extension regressions
-   â””â”€ <file>.jl
+|-- <api, correctness, operation, or routing file>.jl
+|   `-- <behaviour or mechanism>
+|       `-- <family or dispatch representative>
+`-- extension regressions
+    `-- <file>.jl
 ```
 
 Parameterized `@testset ... for ...` blocks give every family or dispatch
@@ -1042,10 +1045,10 @@ discovered through `names(Copulas)`. Their documented behaviour is therefore
 the source of truth, but the tests do not transcribe that documentation into a
 second registry: the contract, oracle, equivalence, and routing assertions are
 the proof. Dimension-, value-, and representation-dependent branches are
-represented directly by the smallest fixture that selects them. During the
-ongoing suite migration, concise `Test progress` messages are emitted before
-each file and potentially expensive representative so a stalled CI job
-identifies its current path before the enclosing testset completes.
+represented directly by the smallest fixture that selects them. Concise
+`Test progress` messages are emitted before each file and potentially expensive
+representative so a stalled CI job identifies its current path before the
+enclosing testset completes.
 
 ## 4.3 Behaviour coverage matrix
 
@@ -1078,7 +1081,7 @@ coverage.
 After implementing and documenting `MyCopula`, update the tests in this order:
 
 1. Add one ordinary, inexpensive `copula_case(MyCopula, d, args...)` entry to
-   `ALL_COPULA_CASES` in `test/fixtures.jl`. The helper derives the public
+   `ALL_COPULA_CASES` in `test/bestiary.jl`. The helper derives the public
    binding, display name, and both `{d}` and `(d, ...)` constructor forms. The
    first representative of each family enters `COPULA_CASES` automatically and
    is subjected to distribution, sampling,
@@ -1108,13 +1111,14 @@ After implementing and documenting `MyCopula`, update the tests in this order:
    fitting contract and routing inventory discover those methods automatically.
 5. If the family introduces a new generic numerical mechanism, add one
    independent oracle in `correctness/`. If it specializes an
-   existing operation, compare the specialization with its fallback in
-   `equivalence/` and register the proven route only after that
-   comparison.
+   existing operation, compare the specialization with its fallback in the
+   corresponding `test/operations/` file and register the proven route only
+   after that comparison.
 6. Classify family-specific facts by proof: published reference values and
    reproduced numerical bugs belong under `correctness/`; optimized reductions
-   under `equivalence/`; value-dependent parameter boundaries under `routing/`;
-   and documented validation errors under `contracts/`.
+   belong in the corresponding `operations/` file; value-dependent parameter
+   boundaries belong under `routing/`; and documented validation errors belong
+   under `api/`.
 
 The public-family registry test verifies mechanically that every public subtype
 of `Copula` has a contract fixture and that every fixture represents a public

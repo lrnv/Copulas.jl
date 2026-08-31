@@ -1,5 +1,8 @@
 # Mathematical-correctness layer: extreme-value representations, numerical
 # identities, sampler laws, empirical estimators, and historical EV regressions.
+# These are grouped by family because each independent family identity may span
+# CDF, density, sampling, subsetting, and conditioning. Operation-wide contracts
+# and dispatch equivalences live in `test/operations/`.
 using Random
 
 @testset "Extreme-value numerical regressions" begin

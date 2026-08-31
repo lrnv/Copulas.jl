@@ -1,11 +1,40 @@
-# Operation proof for scalar and pairwise dependence measures. During the
-# migration, mathematical oracles still live in correctness/ and equivalence/;
-# this file already owns the family-wide contract and one execution per route.
+# Complete operation proof for scalar and pairwise dependence measures:
+# family-wide contracts, independent defining identities, specialization
+# equivalence, inverse behaviour, and exhaustive dispatch execution.
 
 function dependence_operation_route_key(measure, C)
     Base.@nospecialize measure C
     method = which(measure, Tuple{typeof(C)})
     return (method, length(C) == 2 ? :bivariate : :multivariate)
+end
+
+@testset "dependence measures agree with their definitions" begin
+    C = FGMCopula{2}(0.4)
+    integral, _ = HCubature.hcubature(u -> cdf(C, u), zeros(2), ones(2);
+                                      rtol=2e-5)
+    @test Copulas.ρ(C) ≈ 12integral - 3 atol=2e-4
+    @test Copulas.β(C) ≈ 4cdf(C, [0.5, 0.5]) - 1
+
+    @test Copulas.τ(IndependentCopula{2}()) == 0
+    @test Copulas.ρ(IndependentCopula{2}()) == 0
+    @test Copulas.β(IndependentCopula{2}()) == 0
+    @test Copulas.γ(IndependentCopula{2}()) == 0
+    @test Copulas.τ(MCopula{2}()) == 1
+    @test Copulas.ρ(MCopula{2}()) == 1
+    @test Copulas.τ(WCopula{2}()) == -1
+    @test Copulas.ρ(WCopula{2}()) == -1
+
+    for C in (IndependentCopula{2}(), IndependentCopula{3}(),
+              MCopula{2}(), MCopula{3}(), WCopula{2}())
+        for measure in SCALAR_DEPENDENCE_MEASURES
+            if applicable(measure, C) &&
+               !(measure in (Copulas.ι,) && C isa WCopula)
+                value = measure(C)
+                @test value isa Real
+                prove_dependence_route!(measure, C)
+            end
+        end
+    end
 end
 
 function test_dependence_contract(C)
