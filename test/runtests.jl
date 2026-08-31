@@ -20,9 +20,9 @@ function test_progress(parts...)
     next_path = join(string.(parts), " / ")
     now = time()
     if isnothing(_TEST_PROGRESS_CURRENT[])
-        @info "Starting test" path=next_path total=round(now - _TEST_RUN_STARTED; digits=2)
+        @info "Starting test: path=$next_path, total=$(round(now - _TEST_RUN_STARTED; digits=2))"
     else
-        @info "Test progress" completed=_TEST_PROGRESS_CURRENT[] elapsed=round(now - _TEST_PROGRESS_LAST[]; digits=2) next=next_path total=round(now - _TEST_RUN_STARTED; digits=2)
+        @info "Test progress: completed=$(_TEST_PROGRESS_CURRENT[]), elapsed=$(round(now - _TEST_PROGRESS_LAST[]; digits=2)), next=$next_path, total=$(round(now - _TEST_RUN_STARTED; digits=2))"
     end
     _TEST_PROGRESS_CURRENT[] = next_path
     _TEST_PROGRESS_LAST[] = now
@@ -31,7 +31,7 @@ end
 function finish_test_progress()
     isnothing(_TEST_PROGRESS_CURRENT[]) && return
     now = time()
-    @info "Test progress" completed=_TEST_PROGRESS_CURRENT[] elapsed=round(now - _TEST_PROGRESS_LAST[]; digits=2) total=round(now - _TEST_RUN_STARTED; digits=2)
+    @info "Test progress completed=$(_TEST_PROGRESS_CURRENT[]), elapsed=$(round(now - _TEST_PROGRESS_LAST[]; digits=2)), total=$(round(now - _TEST_RUN_STARTED; digits=2))"
     _TEST_PROGRESS_CURRENT[] = nothing
     _TEST_PROGRESS_LAST[] = now
 end
