@@ -392,6 +392,15 @@ supports_inverse(object, inverse) = has_scalar_parameter(object) &&
 supports_inverse(C::ArchimedeanCopula, inverse) =
     has_scalar_parameter(C) &&
     hasmethod(inverse, Tuple{Type{typeof(C.G)},Float64})
+function supports_inverse(C::ExtremeValueCopula, inverse)
+    has_scalar_parameter(C) || return false
+    # The generic EV Kendall inverse forwards to the tail.  Its signature is
+    # therefore present for every EV copula even when that tail provides no
+    # inverse (for example DiscreteSpectralTail).
+    inverse === Copulas.τ⁻¹ && return hasmethod(
+        inverse, Tuple{Type{typeof(C.tail)},Float64})
+    return hasmethod(inverse, Tuple{Type{typeof(C)},Float64})
+end
 
 const _COPULA_INVERSE_CASES = Tuple(unique(typeof,
     [fixture.copula for fixture in ROUTING_COPULA_FIXTURES
