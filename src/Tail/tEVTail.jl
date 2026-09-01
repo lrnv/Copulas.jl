@@ -83,9 +83,10 @@ struct tEVTail{T,P} <: BivariatePickandsTail
         return new{typeof(νf),typeof(RF)}(νf, RF)
     end
 end
-_reduced_tail(tail::tEVTail{<:Any,<:Real}) = isone(tail.parameter) ? MTail() : nothing
-_reduced_tail(tail::tEVTail{<:Any,<:AbstractMatrix}) =
-    all(isone, tail.parameter) ? MTail() : nothing
+@inline limit_kind(tail::tEVTail{<:Any,<:Real}, ::Val) =
+    isone(tail.parameter) ? M_LIMIT : NO_LIMIT
+@inline limit_kind(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Val) =
+    all(isone, tail.parameter) ? M_LIMIT : NO_LIMIT
 const tEVCopula{d,T,P} = ExtremeValueCopula{d,tEVTail{T,P}}
 Distributions.params(tail::tEVTail{<:Any,<:Real}) = (ν = tail.ν, ρ = tail.parameter)
 Distributions.params(tail::tEVTail{<:Any,<:AbstractMatrix}) = (ν = tail.ν, R = tail.parameter)
@@ -195,6 +196,7 @@ function _tev_stdf(ν::Real, R::AbstractMatrix, x)
 end
 
 function ℓ(tail::tEVTail{<:Any,<:Real}, x)
+    isone(tail.parameter) && return maximum(x)
     d = length(x)
 
     # Preserve the historical closed bivariate route. It is analytic,
@@ -277,6 +279,7 @@ end
 
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
     ν = C.tail.ν
     R = _tev_correlation(C.tail, d)
     cache = ntuple(d) do m
@@ -345,14 +348,15 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
 end
 
 ℓ(tail::tEVTail{<:Any,<:AbstractMatrix}, x) =
-    _tev_stdf(tail.ν, tail.parameter, x)
+    all(isone, tail.parameter) ? maximum(x) : _tev_stdf(tail.ν, tail.parameter, x)
 
 function A(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν
+    tt = _safett(t)
+    isone(ρ) && return max(tt, one(tt) - tt)
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
 
-    tt = _safett(t)
     om = 1 - tt
     # log-ratios for stability
     log_t  = log(tt)

@@ -84,10 +84,11 @@ struct HuslerReissTail{P} <: OneParameterPickandsTail
         return new{typeof(θf)}(θf)
     end
 end
-_reduced_tail(tail::HuslerReissTail{<:Real}) =
-    iszero(tail.parameter) ? NoTail() : isinf(tail.parameter) ? MTail() : nothing
-_reduced_tail(tail::HuslerReissTail{<:AbstractMatrix}) =
-    all(iszero, tail.parameter) ? MTail() : nothing
+@inline _hr_is_independent(tail::HuslerReissTail{<:Real}) = iszero(tail.parameter)
+@inline limit_kind(tail::HuslerReissTail{<:Real}, ::Val) =
+    isinf(tail.parameter) ? M_LIMIT : NO_LIMIT
+@inline limit_kind(tail::HuslerReissTail{<:AbstractMatrix}, ::Val) =
+    all(iszero, tail.parameter) ? M_LIMIT : NO_LIMIT
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
 _is_valid_in_dim(::HuslerReissTail{<:Real}, d::Int) = d >= 2
 _is_valid_in_dim(tail::HuslerReissTail{<:AbstractMatrix}, d::Int) =
@@ -229,6 +230,12 @@ function _hr_anchor_covariance(Γ::AbstractMatrix, k::Int)
 end
 
 function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
+    if tail isa HuslerReissTail{<:Real} && _hr_is_independent(tail)
+        isempty(I) && return 1, log(float(sum(x)))
+        length(I) == 1 && return 1, zero(float(first(x)))
+        return 0, oftype(float(first(x)), -Inf)
+    end
+
     Γ = _hr_variogram(tail, length(x))
     isempty(I) && return 1, log(_hr_stdf(Γ, x))
     all(xi -> xi >= 0, x) || return 0, -Inf
@@ -312,6 +319,9 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
+    C.tail isa HuslerReissTail{<:Real} && _hr_is_independent(C.tail) &&
+        return Random.rand!(rng, X)
     Γ = _hr_variogram(C.tail, d)
 
     roots = Vector{Vector{Int}}(undef, d)
@@ -370,10 +380,12 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     return X
 end
 
-ℓ(tail::HuslerReissTail{<:AbstractMatrix}, x) = _hr_stdf(tail.parameter, x)
+ℓ(tail::HuslerReissTail{<:AbstractMatrix}, x) =
+    all(iszero, tail.parameter) ? maximum(x) : _hr_stdf(tail.parameter, x)
 
 function dA(tail::HuslerReissTail, t::Real)
     θ = _hr_theta(tail)
+    iszero(θ) && return zero(t * θ)
     N = Distributions.Normal()
     Φ = Distributions.cdf
     ϕ = Distributions.pdf
@@ -388,6 +400,7 @@ function dA(tail::HuslerReissTail, t::Real)
 end
 function d²A(tail::HuslerReissTail, t::Real)
     θ = _hr_theta(tail)
+    iszero(θ) && return zero(t * θ)
     N  = Distributions.Normal()
     ϕ  = Distributions.pdf
     invθ = inv(θ)

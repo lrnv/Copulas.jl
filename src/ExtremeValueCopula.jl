@@ -50,9 +50,7 @@ end
 function copula_measure_style(C::ExtremeValueCopula{d}) where {d}
     limit_kind(C.tail, Val(d)) === M_LIMIT &&
         return NonAbsolutelyContinuousMeasure()
-    reduced = _reduced_tail(C.tail)
-    return reduced === nothing ? tail_measure_style(C.tail) :
-           copula_measure_style(ExtremeValueCopula{d}(reduced))
+    return tail_measure_style(C.tail)
 end
 
 ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
@@ -87,8 +85,6 @@ end
 @inline function _cdf(C::ExtremeValueCopula{d}, u) where {d}
     kind = limit_kind(C.tail, Val(d))
     kind === M_LIMIT && return minimum(u)
-    reduced = _reduced_tail(C.tail)
-    reduced === nothing || return Distributions.cdf(ExtremeValueCopula{d}(reduced), u)
     return _ev_cdf(C, u)
 end
 
@@ -170,8 +166,6 @@ end
     if kind === M_LIMIT
         return all(x -> x == first(u), u) ? zero(eltype(u)) : eltype(u)(-Inf)
     end
-    reduced = _reduced_tail(C.tail)
-    reduced === nothing || return Distributions.logpdf(ExtremeValueCopula{d}(reduced), u)
     return _ev_logpdf(C, u)
 end
 
@@ -208,9 +202,6 @@ function Distributions._rand!(
     X::AbstractMatrix{T},
 ) where {T<:Real}
     limit_kind(C.tail, Val(2)) === M_LIMIT && return _rand_M!(rng, X)
-    reduced = _reduced_tail(C.tail)
-    reduced === nothing ||
-        return Distributions._rand!(rng, ExtremeValueCopula{2}(reduced), X)
     E = ExtremeDist(C.tail)
     for i in axes(X, 2)
         z = rand(rng, E)
