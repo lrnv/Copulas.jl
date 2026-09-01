@@ -33,8 +33,8 @@ struct BB6Generator{T} <: AbstractFrailtyGenerator
 end
 
 const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
-_reduced_generator(G::BB6Generator) =
-    isone(G.δ) ? JoeGenerator(G.θ) : isone(G.θ) ? GumbelGenerator(G.δ) : nothing
+@inline limit_kind(G::BB6Generator, ::Val) =
+    (isinf(G.θ) || isinf(G.δ)) ? M_LIMIT : NO_LIMIT
 Distributions.params(G::BB6Generator) = (θ = G.θ, δ = G.δ)
 _unbound_params(::Type{<:BB6Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ - 1)]
 _rebound_params(::Type{<:BB6Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = 1 + exp(α[2]))
@@ -89,10 +89,8 @@ end
 
 frailty(G::BB6Generator) = SibuyaStoppedPosStable(G.θ, G.δ)
 # ------------------ CDF (d = 2) ------------------
-function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB6Generator}
+function _archimedean_cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB6Generator}
     θ, δ = C.G.θ, C.G.δ
-    isone(δ) && return Distributions.cdf(JoeCopula{2}(θ), u)
-    isone(θ) && return Distributions.cdf(GumbelCopula{2}(δ), u)
     ū = 1 - u[1];  v̄ = 1 - u[2]
     x = -log1p(- ū^θ)         # x = -log(1 - (1-u)^θ)
     y = -log1p(- v̄^θ)
@@ -106,7 +104,7 @@ archimedean_measure_style(G::BB6Generator, ::Val{d}) where {d} =
     (isinf(G.θ) || isinf(G.δ)) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
 # ------------------ log-PDF (d = 2) ------------------
-function Distributions._logpdf(C::ArchimedeanCopula{2,BB6Generator{TF}}, u) where {TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{2,BB6Generator{TF}}, u) where {TF}
     Tret = promote_type(TF, eltype(u))
     (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return Tret(-Inf)
 
