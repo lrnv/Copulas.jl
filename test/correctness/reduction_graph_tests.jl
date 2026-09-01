@@ -1,1 +1,94 @@
 test_constructor_reduction_graph()
+
+
+@testset "primitive compositional boundary routing" begin
+    @test Copulas.limit_kind(Copulas.BB1Generator(Inf, 1.0), Val(2)) === Copulas.M_LIMIT
+    @test Copulas.limit_kind(Copulas.BB6Generator(Inf, 1.5), Val(2)) === Copulas.M_LIMIT
+    @test Copulas.limit_kind(Copulas.BB6Generator(1.5, Inf), Val(2)) === Copulas.M_LIMIT
+
+    for (seed, C) in (
+        (2101, BB1Copula{2}(Inf, 1.0)),
+        (2102, BB6Copula{2}(Inf, 1.5)),
+        (2103, BB6Copula{2}(1.5, Inf)),
+    )
+        U = rand(StableRNG(seed), C, 8)
+        @test view(U, 1, :) == view(U, 2, :)
+    end
+
+    asym_log_ind = (
+        Copulas.AsymLogTail(1.0, 0.4, 0.6),
+        Copulas.AsymLogTail(1.5, 0.0, 0.6),
+        Copulas.AsymLogTail(1.5, 0.4, 0.0),
+    )
+    for tail in asym_log_ind, t in (0.2, 0.5, 0.8)
+        @test Copulas.A(tail, t) == 1.0
+        @test Copulas.dA(tail, t) == 0.0
+        @test Copulas.d²A(tail, t) == 0.0
+    end
+
+    asym_log = Copulas.AsymLogTail(1.7, 1.0, 1.0)
+    log_tail = Copulas.LogTail(1.7)
+    asym_gal = Copulas.AsymGalambosTail(1.7, 1.0, 1.0)
+    gal_tail = Copulas.GalambosTail(1.7)
+    for t in (0.2, 0.5, 0.8)
+        @test Copulas.A(asym_log, t) ≈ Copulas.A(log_tail, t)
+        @test Copulas.dA(asym_log, t) ≈ Copulas.dA(log_tail, t)
+        @test Copulas.d²A(asym_log, t) ≈ Copulas.d²A(log_tail, t)
+        @test Copulas.A(asym_gal, t) ≈ Copulas.A(gal_tail, t)
+        @test Copulas.dA(asym_gal, t) ≈ Copulas.dA(gal_tail, t)
+        @test Copulas.d²A(asym_gal, t) ≈ Copulas.d²A(gal_tail, t)
+    end
+
+    inactive_gal = Copulas.AsymGalambosTail(1.5, 0.0, 0.6)
+    @test Copulas.A(inactive_gal, 0.37) == 1.0
+    @test Copulas.dA(inactive_gal, 0.37) == 0.0
+    @test Copulas.d²A(inactive_gal, 0.37) == 0.0
+
+    for (seed, C) in (
+        (2111, AsymLogCopula{2}(Inf, 1.0, 1.0)),
+        (2112, AsymGalambosCopula{2}(Inf, 1.0, 1.0)),
+    )
+        @test Copulas.limit_kind(C.tail, Val(2)) === Copulas.M_LIMIT
+        U = rand(StableRNG(seed), C, 8)
+        @test view(U, 1, :) == view(U, 2, :)
+    end
+end
+
+
+@testset "remaining EV algebraic boundary routing" begin
+    x3 = (0.2, 0.7, 1.1)
+
+    mixed0 = Copulas.MixedTail(0.0)
+    @test Copulas.ℓ(mixed0, x3) == sum(x3)
+
+    asym_mixed0 = Copulas.AsymMixedTail(0.0, 0.0)
+    mixed = Copulas.MixedTail(0.6)
+    asym_mixed = Copulas.AsymMixedTail(0.6, 0.0)
+    for t in (0.2, 0.5, 0.8)
+        @test Copulas.A(asym_mixed0, t) == 1.0
+        @test Copulas.dA(asym_mixed0, t) == 0.0
+        @test Copulas.d²A(asym_mixed0, t) == 0.0
+        @test Copulas.A(asym_mixed, t) ≈ Copulas.A(mixed, t)
+        @test Copulas.dA(asym_mixed, t) ≈ Copulas.dA(mixed, t)
+        @test Copulas.d²A(asym_mixed, t) ≈ Copulas.d²A(mixed, t)
+    end
+
+    tawn = Copulas.TawnTail(1.7, ones(3))
+    @test Copulas.ℓ(tawn, x3) ≈ Copulas.ℓ(Copulas.LogTail(1.7), x3)
+    tawn_M = Copulas.TawnTail(Inf, ones(3))
+    @test Copulas.limit_kind(tawn_M, Val(3)) === Copulas.M_LIMIT
+    U = rand(StableRNG(2121), Copulas.ExtremeValueCopula(3, tawn_M), 8)
+    @test all(view(U, i, :) == view(U, 1, :) for i in 2:3)
+
+    ca0 = Copulas.CuadrasAugeTail(0.0)
+    ca1 = Copulas.CuadrasAugeTail(1.0)
+    @test Copulas.copula_measure_style(Copulas.ExtremeValueCopula(2, ca0)) isa
+          Copulas.AbsolutelyContinuousMeasure
+    @test Copulas.limit_kind(ca1, Val(2)) === Copulas.M_LIMIT
+
+    rng1, rng2 = StableRNG(2131), StableRNG(2131)
+    @test rand(rng1, Copulas.ExtremeValueCopula(2, ca0), 8) ==
+          rand(rng2, IndependentCopula{2}(), 8)
+    Uca = rand(StableRNG(2132), Copulas.ExtremeValueCopula(2, ca1), 8)
+    @test view(Uca, 1, :) == view(Uca, 2, :)
+end
