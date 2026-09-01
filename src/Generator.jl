@@ -99,8 +99,6 @@ max_monotony(::WGenerator) = 2
 ϕ⁽ᵏ⁾(::IndependentGenerator, k::Int, t) = (-1)^k * exp(-t)
 ϕ⁽ᵏ⁾⁻¹(::IndependentGenerator, ::Int, u; start_at=u) =
     iszero(u) ? oftype(float(u), Inf) : -log(abs(u))
-𝒲₋₁(::IndependentGenerator, d::Integer) = Distributions.Gamma(d, 1)
-𝒲₋₁(::IndependentGenerator, d::Real) = Distributions.Gamma(d, 1)
 frailty(::IndependentGenerator) = Distributions.Dirac(1.0)
 
 τ(::IndependentGenerator)  = 0
@@ -164,6 +162,10 @@ function 𝒲₋₁(G::Generator, d::Real)
     isinteger(d) && return 𝒲₋₁(G, n)
     return WilliamsonBetaProduct(𝒲₋₁(G, n), Distributions.Beta(d, n - d), n)
 end
+
+𝒲₋₁(::IndependentGenerator, d::Integer) = Distributions.Gamma(d, 1)
+𝒲₋₁(::IndependentGenerator, d::Real) = Distributions.Gamma(d, 1)
+
 function Distributions.cdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
     rez, scaled_power = zero(x), one(x)
