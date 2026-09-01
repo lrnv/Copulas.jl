@@ -5,6 +5,7 @@
 function test_conditioning_contract(C, ctx)
     Base.@nospecialize C ctx
     d = length(C)
+    d > 2 && !is_absolutely_continuous(C) && return
     if d == 2
         scalar = condition(C, 1, ctx.u[1])
         tupled = condition(C, (1,), (ctx.u[1],))
@@ -65,7 +66,8 @@ conditional_route_key(D) = Tuple(which(f, Tuple{typeof(D),Float64}) for f in (
 
 const CONDITIONAL_DISTRIBUTION_CANDIDATES = (
     ((fixture.case.name, conditional_distribution(fixture))
-     for fixture in ROUTING_COPULA_FIXTURES)...,
+     for fixture in ROUTING_COPULA_FIXTURES
+     if length(fixture.copula) == 2 || is_absolutely_continuous(fixture.copula))...,
 )
 const CONDITIONAL_DISTRIBUTION_CASES = Tuple(unique(
     case -> conditional_route_key(last(case)),

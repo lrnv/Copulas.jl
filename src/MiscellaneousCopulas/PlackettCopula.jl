@@ -74,6 +74,9 @@ import Random
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::AbstractMatrix{T}) where {T<:Real, CT<:PlackettCopula}
     size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    iszero(C.θ) && return _rand_W!(rng, A)
+    isinf(C.θ) && return _rand_M!(rng, A)
+    isone(C.θ) && return Random.rand!(rng, A)
     Random.rand!(rng, view(A, 1, :))
     ts = rand(rng, T, size(A, 2))
     @inbounds for (j, col) in enumerate(axes(A, 2))
@@ -89,9 +92,15 @@ end
 
 # Calculate Spearman's rho based on the PlackettCopula parameters
 function ρ(c::PlackettCopula)
+    iszero(c.θ) && return -one(c.θ)
+    isone(c.θ) && return zero(c.θ)
+    isinf(c.θ) && return one(c.θ)
     return (c.θ+1)/(c.θ-1)-(2*c.θ*log(c.θ)/(c.θ-1)^2)
 end
 function β(c::PlackettCopula)
+    iszero(c.θ) && return -one(c.θ)
+    isone(c.θ) && return zero(c.θ)
+    isinf(c.θ) && return one(c.θ)
     return (sqrt(c.θ)-1)/(sqrt(c.θ)+1)
     # and inverse beta: θ = ((1+β)/(1-β))^2
 end

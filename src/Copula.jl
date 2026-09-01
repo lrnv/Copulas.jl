@@ -91,7 +91,8 @@ function ρ(C::Copula{d}) where d
     z = zeros(d)
     i = ones(d)
     r = HCubature.hcubature(F, z, i, rtol=sqrt(eps()))[1]
-    return (2^d * (d+1) * r - d - 1)/(2^d - d - 1) # Ok for multivariate.
+    value = (2^d * (d+1) * r - d - 1)/(2^d - d - 1)
+    return clamp(value, -one(value), one(value))
 end
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)

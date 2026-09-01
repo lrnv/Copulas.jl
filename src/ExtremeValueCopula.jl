@@ -114,7 +114,9 @@ function _bivariate_pickands_logpdf(C, u)
     val, du, dv, dudv = _biv_der_ℓ(C.tail, (x, y))
     core = -dudv + du * dv
     core ≤ 0 && return -Inf
-    return -val + log(core) + x + y
+    # Group the exponent contribution so independence (val == x + y,
+    # core == 1) returns exactly zero instead of a cancellation residual.
+    return log(core) + (x + y - val)
 end
 
 _ev_logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u) =

@@ -532,7 +532,8 @@ function _nested_archimedean(expected_dimension, G::Generator;
 end
 
 NestedArchimedeanCopula(G::Generator; kwargs...) = _nested_archimedean(nothing, G; kwargs...)
-NestedArchimedeanCopula{d}(G::Generator; kwargs...) where {d} = _nested_archimedean(Val(d), G; kwargs...)
+NestedArchimedeanCopula{d}(G::Generator; kwargs...) where {d} =
+    _nested_archimedean(Val(d), G; kwargs...)::NestedArchimedeanCopula{d,typeof(G)}
 NestedArchimedeanCopula(d::Integer, G::Generator; kwargs...) =
     NestedArchimedeanCopula{d}(G; kwargs...)
 

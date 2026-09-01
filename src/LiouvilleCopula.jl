@@ -74,6 +74,8 @@ function Distributions._rand!(
     A::AbstractMatrix{T},
 ) where {d,T<:Real}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    all(isone, C.α) &&
+        return Distributions._rand!(rng, ArchimedeanCopula{d}(C.G), A)
     radial = _liouville_radial(C)
     simplex = Distributions.Dirichlet(collect(C.α))
     margins = ntuple(i -> _liouville_margin(C, i), d)

@@ -524,6 +524,16 @@ const EmpiricalEVCopula{d} = ExtremeValueCopula{d,TT} where {
     TT<:Union{EmpiricalEVTail,EmpiricalEVMultivariateTail},
 }
 
+function (CT::Type{<:EmpiricalEVCopula{2}})(
+    u::AbstractMatrix;
+    kwargs...,
+)
+    size(u, 1) == 2 || throw(DimensionMismatch(
+        "sample dimension $(size(u, 1)) does not match d=2",
+    ))
+    return ExtremeValueCopula{2}(EmpiricalEVTail(u; kwargs...))
+end
+
 function _empirical_ev_copula(d::Int, u::AbstractMatrix; kwargs...)
     d == size(u, 1) || throw(DimensionMismatch(
         "d=$d does not match sample dimension $(size(u, 1))",

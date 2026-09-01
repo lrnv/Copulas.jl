@@ -528,19 +528,8 @@ const CONSTRUCTOR_REDUCTIONS = (
         expected_family = FGMCopula{2}
     ),
 
-    (
-        name = "FGM bivariate upper endpoint -> M",
-        source = () -> FGMCopula{2}(1.0),
-        target = () -> MCopula{2}(),
-        expected_family = FGMCopula{2}
-    ),
-
-    (
-        name = "FGM bivariate lower endpoint -> W",
-        source = () -> FGMCopula{2}(-1.0),
-        target = () -> WCopula{2}(),
-        expected_family = FGMCopula{2}
-    ),
+    # The bivariate FGM endpoints θ = ±1 are ordinary FGM laws, not
+    # Fréchet bounds, so they deliberately have no reduction-graph entries.
 
     (
         name = "FGM multivariate zero parameters -> Independent",

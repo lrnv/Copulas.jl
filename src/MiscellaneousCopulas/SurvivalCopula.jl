@@ -70,7 +70,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{
     Distributions._rand!(rng, C.C, A)
     return reverse!(A, flips)
 end
-function SurvivalCopula{d}(C::Copula{d}, flips) where {d}
+Base.@constprop :aggressive function SurvivalCopula{d}(C::Copula{d}, flips) where {d}
     flip_tuple = Tuple(flips)
     return SurvivalCopula{d,typeof(C),flip_tuple}(C)
 end

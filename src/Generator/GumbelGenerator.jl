@@ -71,6 +71,8 @@ function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Int, t)
     )
 end
 function ϕ⁽ᵏ⁾⁻¹(G::GumbelGenerator, k::Int, t; start_at=t)
+    isone(G.θ) &&
+        return ϕ⁽ᵏ⁾⁻¹(IndependentGenerator(), k, t; start_at=start_at)
     k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
     T = float(promote_type(typeof(t), typeof(G.θ)))
     θ = T(G.θ)

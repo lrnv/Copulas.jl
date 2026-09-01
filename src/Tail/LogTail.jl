@@ -137,6 +137,7 @@ function _ev_logpdf(C::ExtremeValueCopula{2,<:LogTail}, u)
 
     x, y = -log(u1), -log(u2)
     θ = C.tail.θ
+    isone(θ) && return zero(float(u1 + u2 + θ))
     val = ℓ(C.tail, (x, y))
     oneθ = one(θ)
 

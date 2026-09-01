@@ -52,7 +52,7 @@ struct MOTail{T} <: DiscreteSpectralPickandsTail
         ))
 
         vals = collect(λ)
-        T = promote_type(Float64, map(typeof, vals)...)
+        T = promote_type(Float64, eltype(vals))
         rates = T.(λ)
         all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite",))
         all(v -> v >= zero(T), rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be nonnegative",))

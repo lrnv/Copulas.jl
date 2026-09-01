@@ -263,6 +263,21 @@ _singular_tau_oracle(
     ::ArchimedeanCopula{2,<:WilliamsonGenerator{<:Dirac}},
 ) = -1
 
+_singular_limit_kind(C::ArchimedeanCopula{2}) =
+    Copulas.limit_kind(C.G, Val(2))
+_singular_limit_kind(C::ExtremeValueCopula{2}) =
+    Copulas.limit_kind(C.tail, Val(2))
+_singular_limit_kind(C::ArchimaxCopula{2}) =
+    Copulas._archimax_limit_kind(C)
+_singular_limit_kind(::Copulas.Copula{2}) = Copulas.NO_LIMIT
+
+function _singular_tau_oracle_with_limits(C::Copulas.Copula{2})
+    kind = _singular_limit_kind(C)
+    kind === Copulas.M_LIMIT && return 1
+    kind === Copulas.W_LIMIT && return -1
+    return _singular_tau_oracle(C)
+end
+
 @testset verbose=true "singular Kendall routes agree with deterministic identities" begin
     routes = _unique_dependence_routes(
         (_, C) -> which(Copulas.τ, Tuple{typeof(C)}),
@@ -275,7 +290,7 @@ _singular_tau_oracle(
         method === generic_method && continue
         @testset "$(case.name)" begin
             test_progress("equivalence", "singular Kendall", case.name)
-            expected = _singular_tau_oracle(C)
+            expected = _singular_tau_oracle_with_limits(C)
             @test Copulas.τ(C) ≈ expected atol=2e-12 rtol=2e-12
         end
         prove_dependence_route!(Copulas.τ, C)

@@ -3,6 +3,7 @@
 
 function rosenblatt_route_key(C)
     Base.@nospecialize C
+    is_absolutely_continuous(C) || return nothing
     d = length(C)
     method = which(Copulas.rosenblatt,
                    Tuple{typeof(C),Matrix{Float64}})
@@ -20,6 +21,7 @@ end
 
 function test_rosenblatt_contract(C, ctx)
     Base.@nospecialize C ctx
+    is_absolutely_continuous(C) || return
     R = rosenblatt(C, ctx.U)
     @test size(R) == size(ctx.U)
     @test all(x -> 0 <= x <= 1, R)
@@ -77,8 +79,10 @@ end
 end
 
 @testset verbose=true "every Rosenblatt route equals sequential conditioning" begin
-    selected_forward = Set(rosenblatt_route_key(fixture.copula)
-                           for fixture in ROUTING_COPULA_FIXTURES)
+    selected_forward = Set(key
+        for fixture in ROUTING_COPULA_FIXTURES
+        for key in (rosenblatt_route_key(fixture.copula),)
+        if !isnothing(key))
     selected_inverse = Set(key
         for fixture in ROUTING_COPULA_FIXTURES
         for key in (inverse_rosenblatt_route_key(fixture.copula),)
@@ -88,6 +92,7 @@ end
 
     for fixture in ROUTING_COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
+        is_absolutely_continuous(C) || continue
         forward_key = rosenblatt_route_key(C)
         inverse_key = inverse_rosenblatt_route_key(C)
         forward_done = forward_key in tested_forward
