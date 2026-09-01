@@ -334,7 +334,7 @@ where `R` and `D` are independent. `LiouvilleCopula` is the survival copula of `
 \left\lceil\alpha_0\right\rceil\leq\operatorname{max\_monotony}(G).
 ```
 
-When `G = 𝒲(R, source_order)` retains its source radial, the sharper condition `α₀ <= source_order` applies: no ceiling is necessary. Integer components automatically use the specialized integer inverse paths, even when other components are non-integer. When `α == ones(d)`, the constructor returns `ArchimedeanCopula{d}(G)` directly so that its specialized algorithms remain available.
+When `G = 𝒲(R, source_order)` retains its source radial, the sharper condition `α₀ <= source_order` applies: no ceiling is necessary. Integer components automatically use the specialized integer inverse paths, even when other components are non-integer. When `α == ones(d)`, the model remains a `LiouvilleCopula{d}` but is mathematically Archimedean; its numerical methods exploit the corresponding specialized identity.
 
 Any implemented `Generator` can be used when it has sufficient monotonicity. Conversely, any supported non-negative univariate radial distribution can define the generator through `𝒲(R, order)`. This covers the full radial-simplex construction for positive real Dirichlet parameters; a singular radial may naturally produce a copula without a density.
 

@@ -545,14 +545,13 @@ Minimal outline:
 ```julia
 struct MyEllipticalCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
-    function MyEllipticalCopula(Σ)
-        if LinearAlgebra.isdiag(Σ)
-            return IndependentCopula(size(Σ,1))
-        end
+    function MyEllipticalCopula{d}(Σ) where {d}
+        size(Σ) == (d, d) || throw(DimensionMismatch("expected a $d×$d matrix"))
         make_cor!(Σ)  # normalize to correlation matrix
-        return new{size(Σ,1), typeof(Σ)}(Σ)
+        return new{d,typeof(Σ)}(Σ)
     end
 end
+MyEllipticalCopula(d, Σ) = MyEllipticalCopula{d}(Σ)
 
 # Required bindings
 U(::Type{<:MyEllipticalCopula}) = UnivariateDistribution
@@ -595,21 +594,14 @@ using Copulas, Distributions, Random
 
 struct MardiaCopula{P} <: Copulas.Copula{2}
     θ::P
-    function MardiaCopula(d, θ)
-        @assert d ==2
-        if !(-1 <= θ <= 1)
-            throw(ArgumentError("θ must be in [-1,1]"))
-        elseif θ == 0
-            return IndependentCopula(2)
-        elseif θ == 1
-            return MCopula(2)
-        elseif θ == -1
-            return WCopula(2)
-        else
-            return new{typeof(θ)}(θ)
-        end
+    function MardiaCopula(θ)
+        -1 <= θ <= 1 || throw(ArgumentError("θ must be in [-1,1]"))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
+MardiaCopula(d, θ) = d == 2 ? MardiaCopula(θ) :
+    throw(DimensionMismatch("MardiaCopula is bivariate"))
 Distributions.params(C::MardiaCopula) = (; θ = C.θ,)
 function Copulas._cdf(C::MardiaCopula, u)
     # The joint CDF follows Mardia’s formulation:
@@ -621,6 +613,12 @@ function Copulas._cdf(C::MardiaCopula, u)
     return term1 + term2 + term3
 end
 ```
+
+Boundary parameters must not make a constructor return another copula type.
+Keeping `MardiaCopula(0)`, `MardiaCopula(1)`, and `MardiaCopula(-1)` in the
+`MardiaCopula` family makes inference independent of runtime values. Handle
+equivalent independence or Fréchet-bound cases inside numerical methods when a
+generic formula is undefined or a dedicated path is materially better.
 
 
 ### Defining the PDF and Random Generation
@@ -990,9 +988,10 @@ After implementing and documenting `MyCopula`:
    ```
 
    This automatically checks the public `MyCopula{d}(...)` and
-   `MyCopula(d, ...)` constructors and subjects the first representative to
-   the family-wide operation contracts. Constructor keywords, exceptional
-   tolerances, or a legitimate inferred return union are optional metadata.
+   `MyCopula(d, ...)` constructors and subjects every representative to the
+   family-wide operation contracts. Constructors must infer their concrete
+   family without a return union. Constructor keywords and exceptional
+   numerical tolerances remain optional metadata.
 2. Add further bestiary entries only when another dimension, representation, or
    parameter regime selects different code. Julia's `which` detects method
    dispatch, but not value-dependent branches inside a method, so each such
@@ -1007,9 +1006,11 @@ After implementing and documenting `MyCopula`:
    `test/operations/` file. A specialization without a valid generic fallback
    needs an independent identity instead.
 5. Add a focused family regression only for information not implied by those
-   proofs, such as a published value, boundary reduction, atom mass, or
-   reproduced bug. Fitting methods advertised by package dispatch are
-   discovered automatically.
+   proofs, such as a published value, atom mass, or reproduced bug. Record
+   value-dependent equivalences in `test/correctness/reduction_graph.jl`; its
+   source constructors are automatically added to the bestiary and therefore
+   receive every public operation contract. Fitting methods advertised by
+   package dispatch are discovered automatically.
 
 Archimedean generators and extreme-value tails used by bestiary copulas are
 extracted automatically for their component contracts. Add a separate copula

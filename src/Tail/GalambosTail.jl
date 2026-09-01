@@ -25,8 +25,8 @@ and the implementation uses the native bivariate derivatives when beneficial.
 
 Special cases:
 
-* `θ = 0` returns `IndependentCopula(d)`.
-* `θ = ∞` returns `MCopula(d)`.
+* `θ = 0` represents `IndependentCopula(d)`.
+* `θ = ∞` represents `MCopula(d)`.
 
 References:
 

@@ -38,7 +38,7 @@ dimension. In `d=2` it reduces exactly to the historical Mixed Pickands model.
 
 Special case:
 
-* `θ = 0` returns `IndependentCopula(d)`.
+* `θ = 0` represents `IndependentCopula(d)`.
 """
 MixedTail, MixedCopula
 

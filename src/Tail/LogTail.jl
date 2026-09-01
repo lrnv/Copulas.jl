@@ -19,8 +19,8 @@ dimension, while dimension two retains specialized analytic kernels.
 
 Special cases:
 
-* `θ = 1` returns `IndependentCopula(d)`.
-* `θ = ∞` returns `MCopula(d)`.
+* `θ = 1` represents `IndependentCopula(d)`.
+* `θ = ∞` represents `MCopula(d)`.
 
 References:
 

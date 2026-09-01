@@ -16,9 +16,11 @@ C_{\\theta}(u,v) = \\frac{\\left [1+(\\theta-1)(u+v)\\right]- \\sqrt{[1+(\\theta
 and for ``\\theta = 1`` we have ``C_{1}(u,v) = uv``.
 
 Special cases:
-- θ = 0: MCopula (upper Fréchet–Hoeffding bound)
+- θ = 0: WCopula (lower Fréchet–Hoeffding bound)
 - θ = 1: IndependentCopula
-- θ = ∞: WCopula (lower Fréchet–Hoeffding bound)
+- θ = ∞: MCopula (upper Fréchet–Hoeffding bound)
+
+These values retain the concrete `PlackettCopula` family type.
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164

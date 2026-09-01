@@ -38,8 +38,8 @@ t\\Phi\\!\\left(\\theta^{-1}+\\frac{\\theta}{2}\\log\\frac{t}{1-t}\\right)
 
 Special cases:
 
-* `θ = 0` returns `IndependentCopula(d)`.
-* `θ = ∞`, or an all-zero variogram, returns `MCopula(d)`.
+* `θ = 0` represents `IndependentCopula(d)`.
+* `θ = ∞`, or an all-zero variogram, represents `MCopula(d)`.
 
 References:
 

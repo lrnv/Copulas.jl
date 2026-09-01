@@ -39,7 +39,7 @@ Z_x
 
 Special case:
 
-* `ρ = 1` returns `MCopula(d)`.
+* `ρ = 1` represents `MCopula(d)`.
 
 References:
 

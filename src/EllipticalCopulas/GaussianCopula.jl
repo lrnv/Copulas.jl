@@ -21,8 +21,8 @@ C = GaussianCopula(d, ρ)            # == GaussianCopula(Σ)
 ```
 
 Validity domain (equicorrelated PD matrix): `-1/(d-1) < ρ < 1`. The boundary
-`ρ = -1/(d-1)` is singular and rejected. If `ρ == 0`, this returns
-`IndependentCopula(d)` (same fast-path as when passing a diagonal matrix).
+`ρ = -1/(d-1)` is singular and rejected. If `ρ == 0`, the resulting
+`GaussianCopula` represents independence, as it does for any diagonal matrix.
 
 The Gaussian copula is the copula of a multivariate normal distribution. It is defined by
 
@@ -41,7 +41,8 @@ pdf(C, u); cdf(C, u)
 ```
 
 Special case:
-- If `isdiag(Σ)`, the constructor returns `IndependentCopula(d)`.
+- If `isdiag(Σ)`, the `GaussianCopula` represents independence while retaining
+  its concrete family type.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

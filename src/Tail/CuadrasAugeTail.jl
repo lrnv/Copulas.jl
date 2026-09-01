@@ -25,8 +25,8 @@ The model has a finite discrete-spectral representation.
 
 Special cases:
 
-* `θ = 0` returns `IndependentCopula(d)`.
-* `θ = 1` returns `MCopula(d)`.
+* `θ = 0` represents `IndependentCopula(d)`.
+* `θ = 1` represents `MCopula(d)`.
 
 References:
 
