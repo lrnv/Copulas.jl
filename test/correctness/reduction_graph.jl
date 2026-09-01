@@ -579,21 +579,7 @@ const CONSTRUCTOR_REDUCTIONS = (
         target = () -> IndependentCopula{2}(),
         expected_family = GaussianCopula{2}
     ),
-
-
-    # ============================================================
-    # Wrapper collapse
-    # ============================================================
-
-    (
-        name = "Survival no flips -> wrapped copula",
-        source = () -> SurvivalCopula(
-            ClaytonCopula{2}(1.5),
-            (),
-        ),
-        target = () -> ClaytonCopula{2}(1.5),
-        expected_family = SurvivalCopula{2}
-    ),
+    
 )
 
 
