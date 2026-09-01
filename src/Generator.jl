@@ -102,6 +102,7 @@ max_monotony(::WGenerator) = 2
 ϕ⁽ᵏ⁾(::IndependentGenerator, k::Int, t) = (-1)^k * exp(-t)
 ϕ⁽ᵏ⁾⁻¹(::IndependentGenerator, ::Int, u; start_at=u) =
     iszero(u) ? oftype(float(u), Inf) : -log(abs(u))
+𝒲₋₁(::IndependentGenerator, d::Integer) = Distributions.Gamma(d, 1)
 𝒲₋₁(::IndependentGenerator, d::Real) = Distributions.Gamma(d, 1)
 frailty(::IndependentGenerator) = Distributions.Dirac(1.0)
 
