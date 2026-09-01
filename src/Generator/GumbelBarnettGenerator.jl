@@ -27,17 +27,13 @@ GumbelBarnettGenerator, GumbelBarnettCopula
 struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function GumbelBarnettGenerator(θ)
-        if (θ < 0) || (θ > 1)
-            throw(ArgumentError("Theta must be in [0,1]"))
-        elseif θ == 0
-            return IndependentGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        (0 <= θ <= 1) || throw(ArgumentError("Theta must be in [0,1]"))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
+_reduced_generator(G::GumbelBarnettGenerator) = iszero(G.θ) ? IndependentGenerator() : nothing
 Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
 function _unbound_params(::Type{<:GumbelBarnettGenerator}, d, θ)
     u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
@@ -48,6 +44,13 @@ function _rebound_params(::Type{<:GumbelBarnettGenerator}, d, α)
     return (; θ = u*(tanh(α[1])+1)/2)
 end
 _θ_bounds(::Type{<:GumbelBarnettGenerator}, d) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
+
+_cdf(C::GumbelBarnettCopula, u) =
+    iszero(C.G.θ) ? prod(u) : @invoke _cdf(C::ArchimedeanCopula, u)
+function Distributions._logpdf(C::GumbelBarnettCopula, u)
+    iszero(C.G.θ) && return all(0 .< u .< 1) ? zero(eltype(u)) : eltype(u)(-Inf)
+    return @invoke Distributions._logpdf(C::ArchimedeanCopula, u)
+end
 
 function _find_critical_value_gumbelbarnett(d::Integer)
     d == 2 && return 1.0

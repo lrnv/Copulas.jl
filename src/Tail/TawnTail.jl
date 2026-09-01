@@ -47,15 +47,19 @@ struct TawnTail{T} <: Tail
 
         component_is_active(j) = !isone(α[j]) && count(!iszero, @view β[:, j]) > 1
         non_singletons = (d + 1):length(α)
-        any(component_is_active, non_singletons) || return NoTail()
-
-        fullset = lastindex(α)
-        preceding = (d + 1):(fullset - 1)
-        if !any(component_is_active, preceding) && all(isone, @view β[:, fullset])
-            return LogTail(α[fullset])
-        end
         return new{eltype(α)}(d, α, β)
     end
+end
+
+function _reduced_tail(tail::TawnTail)
+    component_is_active(j) = !isone(tail.α[j]) && count(!iszero, @view tail.β[:, j]) > 1
+    non_singletons = (tail.d + 1):length(tail.α)
+    any(component_is_active, non_singletons) || return NoTail()
+    fullset = lastindex(tail.α)
+    preceding = (tail.d + 1):(fullset - 1)
+    !any(component_is_active, preceding) && all(isone, @view tail.β[:, fullset]) &&
+        return LogTail(tail.α[fullset])
+    return nothing
 end
 
 """

@@ -47,7 +47,11 @@ struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
     end
 end
 
-copula_measure_style(C::ExtremeValueCopula) = tail_measure_style(C.tail)
+function copula_measure_style(C::ExtremeValueCopula{d}) where {d}
+    reduced = _reduced_tail(C.tail)
+    return reduced === nothing ? tail_measure_style(C.tail) :
+           copula_measure_style(ExtremeValueCopula{d}(reduced))
+end
 
 ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
 
@@ -79,6 +83,8 @@ end
     ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
 
 function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
+    reduced = _reduced_tail(C.tail)
+    reduced === nothing || return Distributions.cdf(ExtremeValueCopula{2}(reduced), u)
     u1, u2 = u
     z = zero(u1 + u2)
     o = one(u1 + u2)
@@ -91,7 +97,11 @@ function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     return exp(-s * A(C.tail, x / s))
 end
 
-_cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
+function _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT}
+    reduced = _reduced_tail(C.tail)
+    reduced === nothing || return Distributions.cdf(ExtremeValueCopula{d}(reduced), u)
+    return exp(-ℓ(C.tail, .- log.(u)))
+end
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
 # Density selection follows Julia dispatch directly. BivariatePickandsTail
@@ -108,7 +118,10 @@ function _bivariate_pickands_logpdf(C, u)
 end
 
 Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u) =
-    _bivariate_pickands_logpdf(C, u)
+    let reduced = _reduced_tail(C.tail)
+        reduced === nothing ? _bivariate_pickands_logpdf(C, u) :
+        Distributions.logpdf(ExtremeValueCopula{2}(reduced), u)
+    end
 
 function _ev_logcdf_partial(C::ExtremeValueCopula, u, I)
     all(ui -> zero(ui) < ui <= one(ui), u) || return oftype(float(first(u)), -Inf)

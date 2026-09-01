@@ -50,9 +50,6 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function GaussianCopula{d}(Σ::AbstractMatrix) where {d}
         size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
-        if LinearAlgebra.isdiag(Σ)
-            return IndependentCopula{d}()
-        end
         make_cor!(Σ)
         N(GaussianCopula)(Σ)
         return new{d,typeof(Σ)}(Σ)
@@ -67,9 +64,6 @@ function GaussianCopula{d}(ρ::Real) where {d}
     lower = -1/(d-1)
     ρ ≤ lower && throw(ArgumentError("Equicorrelation value ρ=$(ρ) not in (-1/(d-1), 1). For d=$d the lower open bound is $(lower)."))
     ρ ≥ 1 && throw(ArgumentError("Equicorrelation value ρ must be < 1."))
-    if ρ == 0
-        return IndependentCopula(d)
-    end
     Σ = fill(float(ρ), d, d)
     @inbounds for i in 1:d
         Σ[i,i] = one(ρ)

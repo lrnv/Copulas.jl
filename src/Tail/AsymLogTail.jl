@@ -40,11 +40,12 @@ struct AsymLogTail{T} <: BivariatePickandsTail
         θ₁, θ₂, αT = T(θ₁), T(θ₂), T(α)
         (αT ≥ 1) || throw(ArgumentError("α must be ≥ 1"))
         (0 ≤ θ₁ ≤ 1 && 0 ≤ θ₂ ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
-        (isone(αT) || iszero(θ₁) || iszero(θ₂)) && return NoTail()
-        (isone(θ₁) && isone(θ₂)) && return LogTail(αT)
         return new{T}(αT, θ₁, θ₂)
     end
 end
+_reduced_tail(tail::AsymLogTail) =
+    (isone(tail.α) || iszero(tail.θ₁) || iszero(tail.θ₂)) ? NoTail() :
+    (isone(tail.θ₁) && isone(tail.θ₂)) ? LogTail(tail.α) : nothing
 
 const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
 Distributions.params(tail::AsymLogTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)

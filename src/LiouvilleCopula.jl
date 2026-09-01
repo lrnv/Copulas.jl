@@ -47,7 +47,6 @@ struct LiouvilleCopula{d,TG,Tα} <: Copula{d}
         all(a -> isfinite(a) && a > 0, αtuple) || throw(ArgumentError("Dirichlet parameters must be finite and positive"))
         α₀ = sum(αtuple)
         _supports_liouville_order(G, α₀) || throw(ArgumentError("the generator $G cannot provide the required Williamson order sum(α) = $α₀"))
-        all(isone, αtuple) && return ArchimedeanCopula{d}(G)
         return new{d,typeof(G),eltype(αtuple)}(G, αtuple)
     end
 end
@@ -90,6 +89,7 @@ function Distributions._rand!(
 end
 
 function _cdf(C::LiouvilleCopula{2}, u)
+    all(isone, C.α) && return Distributions.cdf(ArchimedeanCopula{2}(C.G), u)
     isone(u[1]) && return u[2]
     isone(u[2]) && return u[1]
     _, x = _liouville_coordinates(C, u)
@@ -107,6 +107,7 @@ function _cdf(C::LiouvilleCopula{2}, u)
 end
 
 function _cdf(C::LiouvilleCopula{d}, u) where {d}
+    all(isone, C.α) && return Distributions.cdf(ArchimedeanCopula{d}(C.G), u)
     # TODO: When all Dirichlet parameters are integers, replace this cubature
     # with the corresponding exact finite-sum expression.
     _, x = _liouville_coordinates(C, u)
@@ -133,6 +134,7 @@ function _cdf(C::LiouvilleCopula{d}, u) where {d}
 end
 
 function Distributions._logpdf(C::LiouvilleCopula{d}, u) where {d}
+    all(isone, C.α) && return Distributions.logpdf(ArchimedeanCopula{d}(C.G), u)
     all(x -> 0 < x < 1, u) || return eltype(u)(-Inf)
 
     radial = 𝒲₋₁(C.G, _liouville_order(C))

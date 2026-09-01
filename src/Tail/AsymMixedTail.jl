@@ -45,11 +45,12 @@ struct AsymMixedTail{T} <: BivariatePickandsTail
       (θ₁ + θ₂ ≤ 1)        || throw(ArgumentError("θ₁+θ₂ ≤ 1"))
       (θ₁ + 2θ₂ ≤ 1)       || throw(ArgumentError("θ₁+2θ₂ ≤ 1"))
       (θ₁ + 3θ₂ ≥ 0)       || throw(ArgumentError("θ₁+3θ₂ ≥ 0"))
-      θ₁ == 0 && θ₂ == 0 && return NoTail()
-      θ₂ == 0 && return MixedTail(θ₁)
       return new{T}(θ₁, θ₂)
   end
 end
+_reduced_tail(tail::AsymMixedTail) =
+    iszero(tail.θ₁) && iszero(tail.θ₂) ? NoTail() :
+    iszero(tail.θ₂) ? MixedTail(tail.θ₁) : nothing
 
 const AsymMixedCopula{d,T} = ExtremeValueCopula{d, AsymMixedTail{T}}
 Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ₂)

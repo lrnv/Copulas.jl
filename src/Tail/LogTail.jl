@@ -32,12 +32,11 @@ struct LogTail{T} <: OneParameterPickandsTail
     θ::T
     function LogTail(θ)
         !(1 <= θ) && throw(ArgumentError(" The param θ must be in [1, ∞)"))
-        θ == 1 && return NoTail()
-        isinf(θ) && return MTail()
         θ, _ = promote(θ, 1.0)
         return new{typeof(θ)}(θ)
     end
 end
+_reduced_tail(tail::LogTail) = isone(tail.θ) ? NoTail() : isinf(tail.θ) ? MTail() : nothing
 
 const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
 _is_valid_in_dim(::LogTail, d::Int) = d >= 2

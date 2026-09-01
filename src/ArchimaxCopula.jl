@@ -38,13 +38,22 @@ struct ArchimaxCopula{d, TG, TT} <: Copula{d}
     end
 end
 function copula_measure_style(C::ArchimaxCopula{d}) where {d}
+    reduced = _reduced_archimax(C)
+    reduced === nothing || return copula_measure_style(reduced)
     radial = radial_measure_style(C.gen, d)
     radial isa NonAbsolutelyContinuousMeasure && return radial
     return tail_measure_style(C.tail)
 end
 ArchimaxCopula(d, gen::Generator, tail::Tail) = ArchimaxCopula{d}(gen, tail)
-ArchimaxCopula{d}(gen::Generator, ::NoTail) where {d} = ArchimedeanCopula{d}(gen)
-ArchimaxCopula{d}(::IndependentGenerator, tail::Tail) where {d} = ExtremeValueCopula{d}(tail)
+
+function _reduced_archimax(C::ArchimaxCopula{d}) where {d}
+    reduced_tail = _reduced_tail(C.tail)
+    reduced_tail isa NoTail && return ArchimedeanCopula{d}(C.gen)
+    reduced_tail isa MTail && return MCopula{d}()
+    reduced_gen = _reduced_generator(C.gen)
+    reduced_gen isa IndependentGenerator && return ExtremeValueCopula{d}(C.tail)
+    return nothing
+end
 
 # Constructor from prefixed parameter NamedTuple (stable across models)
 function ArchimaxCopula(d::Int, TG::Type{<:Generator}, TT::Type{<:Tail}, θ::NamedTuple)
@@ -165,6 +174,8 @@ DistortionFromCop(C::ArchimaxCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Flo
 
 # --- CDF ---
 function _cdf(C::ArchimaxCopula{2}, u)
+    reduced = _reduced_archimax(C)
+    reduced === nothing || return Distributions.cdf(reduced, u)
     u1, u2 = u
     (0.0 ≤ u1 ≤ 1.0 && 0.0 ≤ u2 ≤ 1.0) || return 0.0
     (u1 == 0.0 || u2 == 0.0) && return 0.0
@@ -180,6 +191,8 @@ end
 
 # --- log-PDF stable ---
 function Distributions._logpdf(C::ArchimaxCopula{2, TG, TT}, u) where {TG, TT}
+    reduced = _reduced_archimax(C)
+    reduced === nothing || return Distributions.logpdf(reduced, u)
     T = typeof(A(C.tail, one(ϕ(C.gen, one(eltype(u))))/2))
     @assert length(u) == 2
     u1, u2 = u
@@ -263,6 +276,8 @@ const BB4Copula{d,T} = ArchimaxCopula{d, ClaytonGenerator{T}, GalambosTail{T}}
     ArchimaxCopula{d}(ClaytonGenerator(θ), GalambosTail(δ))
 (::Type{BB4Copula})(d::Int, θ::Real, δ::Real) = BB4Copula{d}(θ, δ)
 function _cdf(C::BB4Copula{2,T}, u) where T
+    reduced = _reduced_archimax(C)
+    reduced === nothing || return Distributions.cdf(reduced, u)
     θ, δ = C.gen.θ, C.tail.θ
     u1, u2 = u
     θ == 0 && return u1*u2
@@ -278,6 +293,8 @@ function _cdf(C::BB4Copula{2,T}, u) where T
     return r^(-1/θ)
 end
 function Distributions._logpdf(C::BB4Copula{2,T}, u) where T
+    reduced = _reduced_archimax(C)
+    reduced === nothing || return Distributions.logpdf(reduced, u)
     Tret = promote_type(T, Float64, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)
@@ -347,6 +364,8 @@ const BB5Copula{d,T} = ArchimaxCopula{d, GumbelGenerator{T}, GalambosTail{T}}
     ArchimaxCopula{d}(GumbelGenerator(θ), GalambosTail(δ))
 (::Type{BB5Copula})(d::Int, θ::Real, δ::Real) = BB5Copula{d}(θ, δ)
 function _cdf(C::BB5Copula{2,T}, u) where T
+    reduced = _reduced_archimax(C)
+    reduced === nothing || return Distributions.cdf(reduced, u)
     θ, δ = C.gen.θ, C.tail.θ
     u1, u2 = u
     x = -log(u1);  y = -log(u2) 
@@ -357,6 +376,8 @@ function _cdf(C::BB5Copula{2,T}, u) where T
     return exp(-f)
 end
 function Distributions._logpdf(C::BB5Copula{2,T}, u) where T
+    reduced = _reduced_archimax(C)
+    reduced === nothing || return Distributions.logpdf(reduced, u)
     Tret = promote_type(T, Float64, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)

@@ -30,15 +30,12 @@ struct BB1Generator{T} <: AbstractFrailtyGenerator
     function BB1Generator(θ, δ)
         (θ > 0) || throw(ArgumentError("θ must be > 0"))
         (δ ≥ 1) || throw(ArgumentError("δ must be ≥ 1"))
-        if δ == 1
-            return ClaytonGenerator(θ)
-        else
-            θ, δ, _ = promote(θ, δ, 1.0)
-            return new{typeof(θ)}(θ, δ)
-        end
+        θf, δf = promote(float(θ), float(δ))
+        return new{typeof(θf)}(θf, δf)
     end
 end
 const BB1Copula{d, T} = ArchimedeanCopula{d, BB1Generator{T}}
+_reduced_generator(G::BB1Generator) = isone(G.δ) ? ClaytonGenerator(G.θ) : nothing
 Distributions.params(G::BB1Generator) = (θ = G.θ, δ = G.δ)
 _unbound_params(::Type{<:BB1Generator}, d, θ) = [log(θ.θ), log(θ.δ - 1)]
 _rebound_params(::Type{<:BB1Generator}, d, α) = (; θ = exp(α[1]), δ = 1 + exp(α[2]))
@@ -82,12 +79,16 @@ frailty(G::BB1Generator) = GammaStoppedPositiveStable(inv(G.δ), inv(G.θ))
 # --- CDF and logpdf (d=2), numeric stable version ---
 function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB1Generator}
     θ, δ = C.G.θ, C.G.δ
+    isone(δ) && return Distributions.cdf(ClaytonCopula{2}(θ), u)
     w1 = expm1(-θ*log(u[1]))                 # u1^{-θ} - 1
     w2 = expm1(-θ*log(u[2]))                 # u2^{-θ} - 1
     s  = w1^δ + w2^δ
     sa = s^(1/δ)
     return exp( - (1/θ) * log1p(sa) )
 end
+
+archimedean_measure_style(G::BB1Generator, ::Val{d}) where {d} =
+    isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
 function Distributions._logpdf(C::ArchimedeanCopula{2,BB1Generator{TF}}, u) where {TF}
     T = promote_type(TF, eltype(u))
@@ -127,4 +128,3 @@ end
     βstar = (1 + 2.0^(1/δ) * (2.0^θ - 1.0))^(-1/θ)
     4βstar - 1
 end
-

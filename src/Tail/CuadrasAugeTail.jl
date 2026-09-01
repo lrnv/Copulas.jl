@@ -38,12 +38,11 @@ struct CuadrasAugeTail{T} <: OneParameterPickandsTail
     θ::T
     function CuadrasAugeTail(θ)
         (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))
-        θ == 0 && return NoTail()
-        θ == 1 && return MTail()
         θf = float(θ)
         new{typeof(θf)}(θf)
     end
 end
+_reduced_tail(tail::CuadrasAugeTail) = iszero(tail.θ) ? NoTail() : isone(tail.θ) ? MTail() : nothing
 
 const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
 tail_measure_style(::CuadrasAugeTail) = NonAbsolutelyContinuousMeasure()

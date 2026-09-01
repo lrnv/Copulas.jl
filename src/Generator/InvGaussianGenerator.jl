@@ -30,21 +30,24 @@ InvGaussianGenerator, InvGaussianCopula
 struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function InvGaussianGenerator(θ)
-        if θ < 0
-            throw(ArgumentError("Theta must be non-negative."))
-        elseif θ == 0
-            return IndependentGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        θ < 0 && throw(ArgumentError("Theta must be non-negative."))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const InvGaussianCopula{d, T}   = ArchimedeanCopula{d, InvGaussianGenerator{T}}
+_reduced_generator(G::InvGaussianGenerator) = iszero(G.θ) ? IndependentGenerator() : nothing
 Distributions.params(G::InvGaussianGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:InvGaussianGenerator}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:InvGaussianGenerator}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:InvGaussianGenerator}, d) = (0.0, Inf)
+
+_cdf(C::InvGaussianCopula, u) =
+    iszero(C.G.θ) ? prod(u) : @invoke _cdf(C::ArchimedeanCopula, u)
+function Distributions._logpdf(C::InvGaussianCopula, u)
+    iszero(C.G.θ) && return all(0 .< u .< 1) ? zero(eltype(u)) : eltype(u)(-Inf)
+    return @invoke Distributions._logpdf(C::ArchimedeanCopula, u)
+end
 
 ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
 ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? log(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))

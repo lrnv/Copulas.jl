@@ -4,9 +4,9 @@
 Fields:
 - θ::Real - parameter
 
-Constructors: 
+Constructors:
 
-    AMHGenerator(θ)  # Constructs the generator. 
+    AMHGenerator(θ)  # Constructs the generator.
     AMHCopula(d,θ)   # Construct the copula
 
 The [AMH Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) in dimension `d` is parameterized by `θ ∈ [-1,1)`. It is an Archimedean copula with generator:
@@ -16,7 +16,7 @@ The [AMH Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_
 ```
 
 Special cases:
-- When θ = 0, it collapses to independence. 
+- When θ = 0, it collapses to independence.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
@@ -26,17 +26,13 @@ AMHGenerator, AMHCopula
 struct AMHGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function AMHGenerator(θ)
-        if (θ < -1) || (θ > 1)
-            throw(ArgumentError("Theta must be in [-1,1), you provided $θ."))
-        elseif θ == 0
-            return IndependentGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        ((θ < -1) || (θ > 1)) && throw(ArgumentError("Theta must be in [-1,1), you provided $θ."))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
+_reduced_generator(G::AMHGenerator) = iszero(G.θ) ? IndependentGenerator() : nothing
 Distributions.params(G::AMHGenerator) = (θ = G.θ,)
 function _unbound_params(CT::Type{<:AMHGenerator}, d, θ)
     l =  _find_critical_value_amh(d, step=1e-7)
@@ -95,7 +91,9 @@ end
 ϕ(  G::AMHGenerator, t) = (1-G.θ)/(exp(t)-G.θ)
 ϕ⁻¹(G::AMHGenerator, t) = log(G.θ + (1-G.θ)/t)
 ϕ⁽¹⁾(G::AMHGenerator, t) = -((1-G.θ) * exp(t)) / (exp(t) - G.θ)^2
-ϕ⁽ᵏ⁾(G::AMHGenerator, k::Int, t) = (-1)^k * (1 - G.θ) / G.θ * PolyLog.reli(-k, G.θ * exp(-t))
+ϕ⁽ᵏ⁾(G::AMHGenerator, k::Int, t) =
+    iszero(G.θ) ? (-1)^k * exp(-t) :
+    (-1)^k * (1 - G.θ) / G.θ * PolyLog.reli(-k, G.θ * exp(-t))
 function ϕ⁽ᵏ⁾⁻¹(G::AMHGenerator, k::Int, t; start_at=t)
     k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
     T = float(promote_type(typeof(t), typeof(G.θ)))
@@ -109,6 +107,14 @@ end
 ϕ⁻¹⁽¹⁾(G::AMHGenerator, t) = (G.θ - 1) / (G.θ * (t - 1) * t + t)
 𝒲₋₁(G::AMHGenerator, d::Int) = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),d) : @invoke 𝒲₋₁(G::Generator, d)
 frailty(G::AMHGenerator) = G.θ >= 0 ? 1 + Distributions.Geometric(1-G.θ) : nothing
+
+_cdf(C::AMHCopula, u) =
+    iszero(C.G.θ) ? prod(u) : @invoke _cdf(C::ArchimedeanCopula, u)
+
+function Distributions._logpdf(C::AMHCopula, u)
+    iszero(C.G.θ) && return all(0 .< u .< 1) ? zero(eltype(u)) : eltype(u)(-Inf)
+    return @invoke Distributions._logpdf(C::ArchimedeanCopula, u)
+end
 function _amh_tau(θ)
     if abs(θ) < 0.01
         return 2/9  * θ

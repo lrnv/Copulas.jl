@@ -175,8 +175,8 @@ function _public_copula_symbol(family)
 end
 
 function copula_case(family, d::Int, args...; constructor_kwargs=NamedTuple(),
-                     allowed_inference=nothing, numerical_atol=1e-8,
-                     margin_atol=1e-6, conditional_at=nothing)
+                     numerical_atol=1e-8, margin_atol=1e-6,
+                     conditional_at=nothing)
     symbol = _public_copula_symbol(family)
     name = replace(string(symbol), r"Copula$" => "")
     typed_family = Core.apply_type(family, d)
@@ -189,16 +189,18 @@ function copula_case(family, d::Int, args...; constructor_kwargs=NamedTuple(),
     append!(call, QuoteNode.(args))
     typed_expr = Expr(:call, call...)
     return (; family, symbol, name, d, args, constructor_kwargs, typed,
-            typed_expr,
-            dynamic, build=typed, allowed_inference, numerical_atol,
+            typed_expr, dynamic, build=typed, numerical_atol,
             margin_atol, conditional_at)
 end
 
+include("correctness/reduction_graph.jl")
 include("bestiary.jl")
 
 const COPULA_CASES = Tuple(unique(case -> case.symbol, ALL_COPULA_CASES))
-const COPULA_FIXTURES = Tuple((case=case, copula=case.build()) for case in COPULA_CASES)
-const ROUTING_COPULA_FIXTURES = Tuple((case=case, copula=case.build()) for case in ALL_COPULA_CASES)
+const COPULA_FIXTURES = Tuple((case=case, copula=case.build())
+                              for case in ALL_COPULA_CASES)
+const ROUTING_COPULA_FIXTURES = Tuple((case=case, copula=case.build())
+                                      for case in ALL_COPULA_CASES)
 
 # Public component cases derive from the same central copula bestiary. They
 # live here because several earlier mathematical-oracle files consume them
@@ -223,6 +225,7 @@ testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
     "api/constructor_validation.jl",
+    "correctness/reduction_graph_tests.jl",
     "api/public_compositions.jl",
     "api/copulas.jl",
     "api/generators.jl",

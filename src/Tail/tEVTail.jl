@@ -53,7 +53,6 @@ struct tEVTail{T,P} <: BivariatePickandsTail
     function tEVTail(ν::Real, ρ::Real)
         (ν > 0)     || throw(ArgumentError("ν must be > 0"))
         (-1 < ρ ≤ 1)|| throw(ArgumentError("ρ must be in (-1,1]"))
-        ρ == 1 && return MTail()
         νT, ρT = promote(float(ν), float(ρ))
         return new{typeof(νT),typeof(ρT)}(νT, ρT)
     end
@@ -62,8 +61,6 @@ struct tEVTail{T,P} <: BivariatePickandsTail
         d1, d2 = size(R)
         d1 == d2 || throw(DimensionMismatch("R must be square"))
         d1 >= 2 || throw(ArgumentError("R must have dimension at least 2"))
-        all(isone, R) && return MTail()
-
         RF = Matrix{Float64}(R)
         all(isfinite, RF) || throw(ArgumentError("R must contain only finite entries"))
         scale = max(1.0, maximum(abs, RF))
@@ -74,16 +71,21 @@ struct tEVTail{T,P} <: BivariatePickandsTail
             RF[i, i] = 1.0
         end
         RF = Matrix(LinearAlgebra.Symmetric((RF + transpose(RF)) / 2))
-        try
-            LinearAlgebra.cholesky(LinearAlgebra.Symmetric(RF); check=true)
-        catch
-            throw(ArgumentError("R must be strictly positive definite"))
+        if !all(isone, RF)
+            try
+                LinearAlgebra.cholesky(LinearAlgebra.Symmetric(RF); check=true)
+            catch
+                throw(ArgumentError("R must be strictly positive definite"))
+            end
         end
 
         νf = float(ν)
         return new{typeof(νf),typeof(RF)}(νf, RF)
     end
 end
+_reduced_tail(tail::tEVTail{<:Any,<:Real}) = isone(tail.parameter) ? MTail() : nothing
+_reduced_tail(tail::tEVTail{<:Any,<:AbstractMatrix}) =
+    all(isone, tail.parameter) ? MTail() : nothing
 const tEVCopula{d,T,P} = ExtremeValueCopula{d,tEVTail{T,P}}
 Distributions.params(tail::tEVTail{<:Any,<:Real}) = (ν = tail.ν, ρ = tail.parameter)
 Distributions.params(tail::tEVTail{<:Any,<:AbstractMatrix}) = (ν = tail.ν, R = tail.parameter)

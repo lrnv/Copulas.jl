@@ -6,10 +6,7 @@ function test_constructor_case(case)
         # Evaluate the natural constructor call itself.  Applying `@inferred`
         # to the closure stored by the bestiary tests closure inference instead
         # and returns `Any` on Julia 1.11 even when the constructor is stable.
-        inferred = case.allowed_inference === nothing ?
-            :(@inferred $(case.typed_expr)) :
-            :(@inferred $(case.allowed_inference) $(case.typed_expr))
-        typed_value = Core.eval(@__MODULE__, inferred)
+        typed_value = Core.eval(@__MODULE__, :(@inferred $(case.typed_expr)))
         dynamic = case.dynamic()
         @test typeof(typed_value) === typeof(dynamic)
         @test params(typed_value) == params(dynamic)

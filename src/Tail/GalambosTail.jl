@@ -38,11 +38,10 @@ struct GalambosTail{T} <: OneParameterPickandsTail
     θ::T
     function GalambosTail(θ)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
-        θ == 0 && return NoTail()
-        isinf(θ) && return MTail()
         new{typeof(float(θ))}(float(θ))
     end
 end
+_reduced_tail(tail::GalambosTail) = iszero(tail.θ) ? NoTail() : isinf(tail.θ) ? MTail() : nothing
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2

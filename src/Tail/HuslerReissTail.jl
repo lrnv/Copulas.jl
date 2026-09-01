@@ -53,8 +53,6 @@ struct HuslerReissTail{P} <: OneParameterPickandsTail
         d1, d2 = size(Γ)
         d1 == d2 || throw(DimensionMismatch("Γ must be square"))
         d1 >= 2 || throw(ArgumentError("Γ must have dimension at least 2"))
-        all(iszero, Γ) && return MTail()
-
         G = Matrix{Float64}(Γ)
         all(isfinite, G) || throw(ArgumentError("Γ must contain only finite entries"))
         scale = max(1.0, maximum(abs, G))
@@ -65,28 +63,31 @@ struct HuslerReissTail{P} <: OneParameterPickandsTail
         @inbounds for i in 1:d1
             G[i, i] = 0.0
         end
-        @inbounds for i in 1:d1, j in i+1:d1
-            G[i, j] > 0.0 || throw(ArgumentError("Γ must have strictly positive off-diagonal entries"))
-        end
-
-        k = d1
-        J = 1:(d1 - 1)
-        Σ = [0.5 * (G[i, k] + G[j, k] - G[i, j]) for i in J, j in J]
-        try
-            LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ); check=true)
-        catch
-            throw(ArgumentError("Γ must be strictly conditionally negative definite"))
+        if !all(iszero, G)
+            @inbounds for i in 1:d1, j in i+1:d1
+                G[i, j] > 0.0 || throw(ArgumentError("Γ must have strictly positive off-diagonal entries"))
+            end
+            k = d1
+            J = 1:(d1 - 1)
+            Σ = [0.5 * (G[i, k] + G[j, k] - G[i, j]) for i in J, j in J]
+            try
+                LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ); check=true)
+            catch
+                throw(ArgumentError("Γ must be strictly conditionally negative definite"))
+            end
         end
         return new{typeof(G)}(G)
     end
     function HuslerReissTail(θ::Real)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
-        θ == 0 && return NoTail()
-        isinf(θ) && return MTail()
         θf = float(θ)
         return new{typeof(θf)}(θf)
     end
 end
+_reduced_tail(tail::HuslerReissTail{<:Real}) =
+    iszero(tail.parameter) ? NoTail() : isinf(tail.parameter) ? MTail() : nothing
+_reduced_tail(tail::HuslerReissTail{<:AbstractMatrix}) =
+    all(iszero, tail.parameter) ? MTail() : nothing
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
 _is_valid_in_dim(::HuslerReissTail{<:Real}, d::Int) = d >= 2
 _is_valid_in_dim(tail::HuslerReissTail{<:AbstractMatrix}, d::Int) =

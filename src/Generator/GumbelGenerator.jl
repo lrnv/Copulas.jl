@@ -27,25 +27,23 @@ GumbelGenerator, GumbelCopula
 struct GumbelGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function GumbelGenerator(θ)
-        if θ < 1
-            throw(ArgumentError("Theta must be greater than or equal to 1"))
-        elseif θ == 1
-            return IndependentGenerator()
-        elseif θ == Inf
-            return MGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        θ < 1 && throw(ArgumentError("Theta must be greater than or equal to 1"))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
+_reduced_generator(G::GumbelGenerator) =
+    isone(G.θ) ? IndependentGenerator() : isinf(G.θ) ? MGenerator() : nothing
 frailty(G::GumbelGenerator) = AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0))
 Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:GumbelGenerator}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
 _rebound_params(::Type{<:GumbelGenerator}, d, α) = (; θ = 1 + exp(α[1]))
 _θ_bounds(::Type{<:GumbelGenerator}, d) = (1, Inf)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:GumbelGenerator} where {d}}, d) = (:mle, :itau, :ibeta, :irho)
+
+archimedean_measure_style(G::GumbelGenerator, ::Val{d}) where {d} =
+    isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
 ϕ(  G::GumbelGenerator, t) = exp(-exp(log(t)/G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = exp(log(-log(t))*G.θ)
@@ -90,6 +88,8 @@ end
 
 function _cdf(C::ArchimedeanCopula{d,G}, u) where {d, G<:GumbelGenerator}
     θ = C.G.θ
+    isone(θ) && return prod(u)
+    isinf(θ) && return minimum(u)
     lx = log.(.-log.(u))
     return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logsumexp(θ .* lx) ./ θ)
 end
@@ -98,6 +98,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) w
     !all(0 .< u .<= 1) && return T(-Inf) # if not in range return -Inf
 
     θ = C.G.θ
+    isone(θ) && return zero(T)
     x₁, x₂ = -log(u[1]), -log(u[2])
     lx₁, lx₂ = log(x₁), log(x₂)
     A = LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂)
@@ -120,6 +121,7 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) w
     !all(0 .< u .<= 1) && return T(-Inf)
 
     θ = C.G.θ
+    isone(θ) && return zero(T)
     α = 1 / θ
 
     # Step 1. Compute x_i = -log(u_i)

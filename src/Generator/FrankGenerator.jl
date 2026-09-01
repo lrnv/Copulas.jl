@@ -28,27 +28,23 @@ FrankGenerator, FrankCopula
 struct FrankGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function FrankGenerator(θ)
-        if θ == -Inf
-            return WGenerator()
-        elseif θ == 0
-            return IndependentGenerator()
-        elseif θ == Inf
-            return MGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
+_reduced_generator(G::FrankGenerator) =
+    G.θ == -Inf ? WGenerator() : iszero(G.θ) ? IndependentGenerator() : G.θ == Inf ? MGenerator() : nothing
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
 Distributions.params(G::FrankGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:FrankGenerator}, d, θ) = d == 2 ? [θ.θ] : [log(θ.θ)]
 _rebound_params(::Type{<:FrankGenerator}, d, α) = d==2 ? (; θ = α[1]) : (; θ = exp(α[1]))
 _θ_bounds(::Type{<:FrankGenerator}, d) = d==2 ? (-Inf, Inf) : (0, Inf)
 
+archimedean_measure_style(G::FrankGenerator, ::Val{d}) where {d} =
+    isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
-ϕ(G::FrankGenerator, t) = G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
+ϕ(G::FrankGenerator, t) = iszero(G.θ) ? exp(-t) : G.θ > 0 ? -LogExpFunctions.log1mexp(LogExpFunctions.log1mexp(-G.θ)-t)/G.θ : -log1p(exp(-t) * expm1(-G.θ))/G.θ
 ϕ⁽¹⁾(G::FrankGenerator, t) = (1 - 1 / (1 + exp(-t)*expm1(-G.θ))) / G.θ
 ϕ⁻¹⁽¹⁾(G::FrankGenerator, t) = G.θ / (-expm1(G.θ * t))
 function ϕ⁽ᵏ⁾(G::FrankGenerator, k::Int, t)
@@ -63,7 +59,7 @@ function ϕ⁽ᵏ⁾⁻¹(G::FrankGenerator, k::Int, t; start_at=t)
     z = θ * target
     return log(abs(expm1(-θ))) + log1p(-z) - log(abs(z))
 end
-ϕ⁻¹(G::FrankGenerator, t) = G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
+ϕ⁻¹(G::FrankGenerator, t) = iszero(G.θ) ? -log(t) : G.θ > 0 ? LogExpFunctions.log1mexp(-G.θ) - LogExpFunctions.log1mexp(-t*G.θ) : -log(expm1(-t*G.θ)/expm1(-G.θ))
 
 # Taylor1-compatible ϕ / ϕ⁻¹: the θ>0 scalar forms above use `log1mexp`, which has
 # no `TaylorSeries.Taylor1` method, so the nested direct edge composition (a jet
@@ -77,6 +73,19 @@ end
 ϕ⁻¹(G::FrankGenerator, t::TaylorSeries.Taylor1{T}) where {T} = -log(expm1(-T(G.θ) * t) / expm1(-T(G.θ)))
 𝒲₋₁(G::FrankGenerator, d::Int) = G.θ > 0 ? WilliamsonFromFrailty(Logarithmic(-G.θ), d) : @invoke 𝒲₋₁(G::Generator, d)
 frailty(G::FrankGenerator) = G.θ > 0 ? Logarithmic(-G.θ) : nothing
+
+function _cdf(C::FrankCopula{d}, u) where {d}
+    θ = C.G.θ
+    θ == -Inf && return max(sum(u) - (d - 1), zero(eltype(u)))
+    iszero(θ) && return prod(u)
+    θ == Inf && return minimum(u)
+    return @invoke _cdf(C::ArchimedeanCopula, u)
+end
+
+function Distributions._logpdf(C::FrankCopula, u)
+    iszero(C.G.θ) && return all(0 .< u .< 1) ? zero(eltype(u)) : eltype(u)(-Inf)
+    return @invoke Distributions._logpdf(C::ArchimedeanCopula, u)
+end
 
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]
 

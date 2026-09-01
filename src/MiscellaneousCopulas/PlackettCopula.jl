@@ -30,18 +30,9 @@ struct PlackettCopula{d,P} <: Copula{d} # only d = 2 is valid
 
     function PlackettCopula{d}(θ) where {d}
         d == 2 || throw(DimensionMismatch("PlackettCopula is only defined in dimension 2"))
-        if θ < 0
-            throw(ArgumentError("Theta must be non-negative"))
-        elseif θ == 0
-            return MCopula{2}()
-        elseif θ == 1
-            return IndependentCopula{2}()
-        elseif θ == Inf
-            return WCopula{2}()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{2,typeof(θ)}(θ)
-        end
+        θ < 0 && throw(ArgumentError("Theta must be non-negative"))
+        θf = float(θ)
+        return new{2,typeof(θf)}(θf)
     end
 end
 PlackettCopula(θ) = PlackettCopula{2}(θ)
@@ -57,11 +48,17 @@ _rebound_params(::Type{<:PlackettCopula}, d::Integer, α) = (; θ = exp(α[1]))
 # CDF calculation for bivariate Plackett Copula
 function _cdf(S::PlackettCopula, uv)
     u, v = uv
+    iszero(S.θ) && return max(u + v - 1, zero(u + v))
+    isone(S.θ) && return u * v
+    isinf(S.θ) && return min(u, v)
     η = S.θ - 1
     term1 = 1 + η * (u + v)
     term2 = sqrt(term1^2 - 4 * S.θ * η * u * v)
     return 0.5 * η^(-1) * (term1 - term2)
 end
+
+copula_measure_style(C::PlackettCopula) =
+    (iszero(C.θ) || isinf(C.θ)) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
 # PDF calculation for bivariate Plackett Copula
 function Distributions._logpdf(S::PlackettCopula, uv)

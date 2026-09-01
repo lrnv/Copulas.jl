@@ -48,10 +48,10 @@ struct MixedTail{T} <: OneParameterPickandsTail
         θf = float(θ)
         (0 ≤ θf ≤ 1 + eps(θf)) || throw(ArgumentError("θ must be in [0,1], provided θ=$θ"))
         θf = clamp(θf, zero(θf), one(θf))
-        iszero(θf) && return NoTail()
         return new{typeof(θf)}(θf)
     end
 end
+_reduced_tail(tail::MixedTail) = iszero(tail.θ) ? NoTail() : nothing
 
 const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
 Distributions.params(tail::MixedTail) = (θ = tail.θ,)

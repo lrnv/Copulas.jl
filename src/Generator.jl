@@ -84,6 +84,12 @@ struct IndependentGenerator <: MarkerGenerator end
 struct MGenerator <: MarkerGenerator end
 struct WGenerator <: MarkerGenerator end
 
+_reduced_generator(::Generator) = nothing
+_reduced_generator(G::MarkerGenerator) = G
+max_monotony(::IndependentGenerator) = Inf
+max_monotony(::MGenerator) = Inf
+max_monotony(::WGenerator) = 2
+
 τ(::IndependentGenerator)  = 0
 τ(::MGenerator)  = 1
 τ(::WGenerator)  = -1

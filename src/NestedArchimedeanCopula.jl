@@ -525,11 +525,6 @@ function _nested_archimedean(expected_dimension, G::Generator;
         d == expected || throw(DimensionMismatch("constructed copula has dimension $d, expected $expected"))
     end
 
-    # Flat declaration (no children) → native ArchimedeanCopula (fast path).
-    if isempty(kids)
-        return expected_dimension isa Val ? ArchimedeanCopula{only(typeof(expected_dimension).parameters)}(G) : ArchimedeanCopula(d, G)
-    end
-
     kids2 = Any[_place_dims(kids[i], kiddims[i]) for i in eachindex(kids)]
     return expected_dimension isa Val ?
         NestedArchimedeanCopula{only(typeof(expected_dimension).parameters),typeof(G)}(G, leafdims, kids2, alldims) :

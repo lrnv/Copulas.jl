@@ -32,12 +32,6 @@ References:
 struct SurvivalCopula{d,CT,flips} <: Copula{d}
     C::CT
     function SurvivalCopula{d,CT,flips}(C::Copula{d}) where {d,CT,flips}
-        if length(flips) == 0
-            return C
-        end
-        if typeof(C) == IndependentCopula
-            return C
-        end
         return new{d,typeof(C),flips}(C)
     end
     SurvivalCopula(C::Copula{d}, flips) where {d} = SurvivalCopula{d}(C, flips)
@@ -61,6 +55,7 @@ function reverse!(u, idx::Tuple)
 end
 reverse(u, idx::Tuple) = [i ∈ idx ? 1-uᵢ : uᵢ for (i,uᵢ) in enumerate(u)]
 function _cdf(C::SurvivalCopula{d,CT,flips}, u) where {d,CT,flips}
+    isempty(flips) && return Distributions.cdf(C.C, u)
     i = flips[end]
     newC = SurvivalCopula{d,CT,Base.tuple(flips[1:end-1]...)}(C.C)
     v = reverse(u, (i,))
