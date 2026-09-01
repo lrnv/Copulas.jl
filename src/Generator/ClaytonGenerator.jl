@@ -38,6 +38,13 @@ end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 _reduced_generator(G::ClaytonGenerator) =
     G.θ == -1 ? WGenerator() : iszero(G.θ) ? IndependentGenerator() : isinf(G.θ) ? MGenerator() : nothing
+
+@inline function limit_kind(G::ClaytonGenerator, ::Val{d}) where {d}
+    isinf(G.θ) && return M_LIMIT
+    d == 2 && G.θ == -1 && return W_LIMIT
+    return NO_LIMIT
+end
+
 Distributions.params(G::ClaytonGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:ClaytonGenerator}, d, θ) = [log(θ.θ + 1/(d-1))] # θ > -1/(d-1) ⇒ θ+1/(d-1)>0
 _rebound_params(::Type{<:ClaytonGenerator}, d, α) = (; θ = exp(α[1]) - 1/(d-1))
@@ -114,6 +121,7 @@ end
 
 
 frailty(G::ClaytonGenerator) =
+    iszero(G.θ) ? Distributions.Dirac(1.0) :
     G.θ > 0 && isfinite(G.θ) ? Distributions.Gamma(inv(G.θ), G.θ) : nothing
 
 function _cdf(C::ClaytonCopula{d}, u) where {d}

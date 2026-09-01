@@ -35,7 +35,13 @@ end
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
 _reduced_generator(G::GumbelGenerator) =
     isone(G.θ) ? IndependentGenerator() : isinf(G.θ) ? MGenerator() : nothing
-frailty(G::GumbelGenerator) = AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0))
+
+@inline limit_kind(G::GumbelGenerator, ::Val) =
+    isinf(G.θ) ? M_LIMIT : NO_LIMIT
+
+frailty(G::GumbelGenerator) =
+    isone(G.θ) ? Distributions.Dirac(1.0) :
+    AlphaStable(α = 1/G.θ, β = 1, scale = cos(π/(2G.θ))^G.θ, location = 0)
 Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:GumbelGenerator}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
 _rebound_params(::Type{<:GumbelGenerator}, d, α) = (; θ = 1 + exp(α[1]))

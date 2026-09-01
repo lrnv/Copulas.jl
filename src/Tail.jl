@@ -132,6 +132,7 @@ const DiscreteSpectralCapableTail = Union{
 
 tail_measure_style(::Tail) = AbsolutelyContinuousMeasure()
 _reduced_tail(::Tail) = nothing
+@inline limit_kind(::Tail, ::Val) = NO_LIMIT
 tail_measure_style(::DiscreteSpectralCapableTail) =
     NonAbsolutelyContinuousMeasure()
 

@@ -86,9 +86,24 @@ struct WGenerator <: MarkerGenerator end
 
 _reduced_generator(::Generator) = nothing
 _reduced_generator(G::MarkerGenerator) = G
+
+@inline limit_kind(::Generator, ::Val) = NO_LIMIT
+@inline limit_kind(::MGenerator, ::Val) = M_LIMIT
+@inline limit_kind(::WGenerator, ::Val) = W_LIMIT
+
 max_monotony(::IndependentGenerator) = Inf
 max_monotony(::MGenerator) = Inf
 max_monotony(::WGenerator) = 2
+
+ϕ(::IndependentGenerator, t) = exp(-t)
+ϕ⁻¹(::IndependentGenerator, u) = -log(u)
+ϕ⁽¹⁾(::IndependentGenerator, t) = -exp(-t)
+ϕ⁻¹⁽¹⁾(::IndependentGenerator, u) = -inv(u)
+ϕ⁽ᵏ⁾(::IndependentGenerator, k::Int, t) = (-1)^k * exp(-t)
+ϕ⁽ᵏ⁾⁻¹(::IndependentGenerator, ::Int, u; start_at=u) =
+    iszero(u) ? oftype(float(u), Inf) : -log(abs(u))
+𝒲₋₁(::IndependentGenerator, d::Real) = Distributions.Gamma(d, 1)
+frailty(::IndependentGenerator) = Distributions.Dirac(1.0)
 
 τ(::IndependentGenerator)  = 0
 τ(::MGenerator)  = 1
