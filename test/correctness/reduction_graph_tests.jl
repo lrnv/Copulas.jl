@@ -139,3 +139,53 @@ end
         @test all(view(U, i, :) == view(U, 1, :) for i in 2:3)
     end
 end
+
+@testset "Archimedean boundary architecture closure" begin
+    @test !isdefined(Copulas, :_reduced_generator)
+    @test !isdefined(Copulas, :_reduced_tail)
+
+    t = 0.73
+    u = 0.41
+    independence_generators = (
+        Copulas.AMHGenerator(0.0),
+        Copulas.GumbelBarnettGenerator(0.0),
+        Copulas.InvGaussianGenerator(0.0),
+        Copulas.JoeGenerator(1.0),
+    )
+    for G in independence_generators
+        @test Copulas.ϕ(G, t) ≈ exp(-t)
+        @test Copulas.ϕ⁻¹(G, u) ≈ -log(u)
+        @test Copulas.ϕ⁽¹⁾(G, t) ≈ -exp(-t)
+        @test Copulas.ϕ⁻¹⁽¹⁾(G, u) ≈ -inv(u)
+        @test Copulas.ϕ⁽ᵏ⁾(G, 3, t) ≈ -exp(-t)
+    end
+
+    Rgb = Copulas.𝒲₋₁(Copulas.GumbelBarnettGenerator(0.0), 3)
+    @test Rgb isa Distributions.Gamma
+    @test Distributions.params(Rgb) == (3.0, 1.0)
+    @test Copulas.frailty(Copulas.InvGaussianGenerator(0.0)) isa Distributions.Dirac
+
+    point = [0.31, 0.72]
+    for C in (
+        AMHCopula{2}(0.0),
+        GumbelBarnettCopula{2}(0.0),
+        InvGaussianCopula{2}(0.0),
+        JoeCopula{2}(1.0),
+    )
+        @test cdf(C, point) ≈ prod(point)
+        @test logpdf(C, point) ≈ 0.0
+        U = rand(StableRNG(2160), C, 8)
+        @test all(isfinite, U)
+        @test all(x -> 0 <= x <= 1, U)
+    end
+
+    bb7_M = BB7Copula{2}(1.0, Inf)
+    bb8_M = BB8Copula{2}(Inf, 1.0)
+    @test Copulas.limit_kind(bb7_M.G, Val(2)) === Copulas.M_LIMIT
+    @test Copulas.limit_kind(bb8_M.G, Val(2)) === Copulas.M_LIMIT
+    for (seed, C) in ((2171, bb7_M), (2172, bb8_M))
+        @test cdf(C, point) == minimum(point)
+        U = rand(StableRNG(seed), C, 8)
+        @test view(U, 1, :) == view(U, 2, :)
+    end
+end

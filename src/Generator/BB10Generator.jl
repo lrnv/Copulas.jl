@@ -33,7 +33,6 @@ struct BB10Generator{T} <: AbstractFrailtyGenerator
 end
 
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
-_reduced_generator(G::BB10Generator) = isone(G.θ) ? AMHGenerator(G.δ) : nothing
 Distributions.params(G::BB10Generator) = (θ = G.θ, δ = G.δ)
 _unbound_params(::Type{<:BB10Generator}, d, θ) = [log(θ.θ), LogExpFunctions.logit(θ.δ)]
 _rebound_params(::Type{<:BB10Generator}, d, α) = (; θ = exp(α[1]), δ = LogExpFunctions.logistic(α[2]))
@@ -84,16 +83,15 @@ end
 end
 
 frailty(G::BB10Generator) = ShiftedNegBin(inv(G.θ), 1 - G.δ)
-function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
+function _archimedean_cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
     θ, δ = C.G.θ, C.G.δ
-    isone(θ) && return Distributions.cdf(AMHCopula{2}(δ), u)
     uθ, vθ = u[1]^θ, u[2]^θ
     D = 1 - δ*(1 - uθ)*(1 - vθ)
     return exp( log(u[1]) + log(u[2]) - (1/θ)*log(D) )
 end
 
 # --- log-density
-function Distributions._logpdf(C::ArchimedeanCopula{2,BB10Generator{TF}}, u) where {TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{2,BB10Generator{TF}}, u) where {TF}
     T = promote_type(TF, eltype(u))
     (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return T(-Inf)
 

@@ -33,8 +33,6 @@ struct FrankGenerator{T} <: AbstractUnivariateGenerator
     end
 end
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
-_reduced_generator(G::FrankGenerator) =
-    G.θ == -Inf ? WGenerator() : iszero(G.θ) ? IndependentGenerator() : G.θ == Inf ? MGenerator() : nothing
 @inline function limit_kind(G::FrankGenerator, ::Val{d}) where {d}
     G.θ == Inf && return M_LIMIT
     d == 2 && G.θ == -Inf && return W_LIMIT

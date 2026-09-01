@@ -32,7 +32,6 @@ struct AMHGenerator{T} <: AbstractUnivariateGenerator
     end
 end
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
-_reduced_generator(G::AMHGenerator) = iszero(G.θ) ? IndependentGenerator() : nothing
 Distributions.params(G::AMHGenerator) = (θ = G.θ,)
 function _unbound_params(CT::Type{<:AMHGenerator}, d, θ)
     l =  _find_critical_value_amh(d, step=1e-7)
@@ -108,13 +107,6 @@ end
 𝒲₋₁(G::AMHGenerator, d::Int) = G.θ >= 0 ? WilliamsonFromFrailty(1 + Distributions.Geometric(1-G.θ),d) : @invoke 𝒲₋₁(G::Generator, d)
 frailty(G::AMHGenerator) = G.θ >= 0 ? 1 + Distributions.Geometric(1-G.θ) : nothing
 
-_cdf(C::AMHCopula, u) =
-    iszero(C.G.θ) ? prod(u) : @invoke _cdf(C::ArchimedeanCopula, u)
-
-function Distributions._logpdf(C::AMHCopula, u)
-    iszero(C.G.θ) && return all(0 .< u .< 1) ? zero(eltype(u)) : eltype(u)(-Inf)
-    return @invoke Distributions._logpdf(C::ArchimedeanCopula, u)
-end
 function _amh_tau(θ)
     if abs(θ) < 0.01
         return 2/9  * θ

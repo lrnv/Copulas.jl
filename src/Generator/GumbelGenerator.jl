@@ -33,9 +33,6 @@ struct GumbelGenerator{T} <: AbstractUnivariateFrailtyGenerator
     end
 end
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
-_reduced_generator(G::GumbelGenerator) =
-    isone(G.θ) ? IndependentGenerator() : isinf(G.θ) ? MGenerator() : nothing
-
 @inline limit_kind(G::GumbelGenerator, ::Val) =
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
 

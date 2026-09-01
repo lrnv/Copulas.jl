@@ -35,7 +35,8 @@ struct BB8Generator{T} <: AbstractFrailtyGenerator
 end
 
 const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
-_reduced_generator(G::BB8Generator) = isone(G.δ) ? JoeGenerator(G.ϑ) : nothing
+@inline limit_kind(G::BB8Generator, ::Val) =
+    isone(G.δ) && isinf(G.ϑ) ? M_LIMIT : NO_LIMIT
 Distributions.params(G::BB8Generator) = (ϑ = G.ϑ, δ = G.δ)
 _unbound_params(::Type{<:BB8Generator}, d, θ) = [log(θ.ϑ - 1), LogExpFunctions.logit(θ.δ)]
 _rebound_params(::Type{<:BB8Generator}, d, α) = (; ϑ = 1 + exp(α[1]), δ = LogExpFunctions.logistic(α[2]))
@@ -74,9 +75,8 @@ end
 ϕ⁻¹⁽¹⁾(G::BB8Generator, t) = -G.ϑ*G.δ * (1 - G.δ*t)^(G.ϑ - 1) / (1 - (1 - G.δ*t)^G.ϑ)
 
 frailty(G::BB8Generator) = GeneralizedSibuya(G.ϑ, G.δ)
-function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB8Generator}
+function _archimedean_cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB8Generator}
     ϑ, δ = C.G.ϑ, C.G.δ
-    isone(δ) && return Distributions.cdf(JoeCopula{2}(ϑ), u)
     η = -expm1(ϑ*log1p(-δ))
     x = -expm1(ϑ*log1p(-δ*u[1]))
     y = -expm1(ϑ*log1p(-δ*u[2]))
@@ -88,7 +88,7 @@ end
 archimedean_measure_style(G::BB8Generator, ::Val{d}) where {d} =
     isinf(G.ϑ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
-function Distributions._logpdf(C::ArchimedeanCopula{2,BB8Generator{TF}}, u) where {TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{2,BB8Generator{TF}}, u) where {TF}
     Tret = promote_type(TF, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)

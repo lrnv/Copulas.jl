@@ -33,8 +33,8 @@ struct JoeGenerator{T} <: AbstractUnivariateFrailtyGenerator
     end
 end
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
-_reduced_generator(G::JoeGenerator) =
-    isone(G.θ) ? IndependentGenerator() : isinf(G.θ) ? MGenerator() : nothing
+@inline limit_kind(G::JoeGenerator, ::Val) =
+    isinf(G.θ) ? M_LIMIT : NO_LIMIT
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
 Distributions.params(G::JoeGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:JoeGenerator}, d, θ) = [log(θ.θ - 1)]
@@ -80,13 +80,3 @@ function ρ⁻¹(::Type{<:JoeGenerator}, ρ)
     return Roots.find_zero(θ -> _rho_joe(θ) - ρ, (1, Inf))
 end
 
-function _cdf(C::JoeCopula, u)
-    isone(C.G.θ) && return prod(u)
-    isinf(C.G.θ) && return minimum(u)
-    return @invoke _cdf(C::ArchimedeanCopula, u)
-end
-
-function Distributions._logpdf(C::JoeCopula, u)
-    isone(C.G.θ) && return all(0 .< u .< 1) ? zero(eltype(u)) : eltype(u)(-Inf)
-    return @invoke Distributions._logpdf(C::ArchimedeanCopula, u)
-end

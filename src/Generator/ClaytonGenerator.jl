@@ -36,9 +36,6 @@ struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
     end
 end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
-_reduced_generator(G::ClaytonGenerator) =
-    G.θ == -1 ? WGenerator() : iszero(G.θ) ? IndependentGenerator() : isinf(G.θ) ? MGenerator() : nothing
-
 @inline function limit_kind(G::ClaytonGenerator, ::Val{d}) where {d}
     isinf(G.θ) && return M_LIMIT
     d == 2 && G.θ == -1 && return W_LIMIT

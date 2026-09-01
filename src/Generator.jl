@@ -84,9 +84,6 @@ struct IndependentGenerator <: MarkerGenerator end
 struct MGenerator <: MarkerGenerator end
 struct WGenerator <: MarkerGenerator end
 
-_reduced_generator(::Generator) = nothing
-_reduced_generator(G::MarkerGenerator) = G
-
 @inline limit_kind(::Generator, ::Val) = NO_LIMIT
 @inline limit_kind(::MGenerator, ::Val) = M_LIMIT
 @inline limit_kind(::WGenerator, ::Val) = W_LIMIT

@@ -33,7 +33,8 @@ struct BB7Generator{T} <: AbstractFrailtyGenerator
 end
 
 const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
-_reduced_generator(G::BB7Generator) = isone(G.θ) ? ClaytonGenerator(G.δ) : nothing
+@inline limit_kind(G::BB7Generator, ::Val) =
+    isone(G.θ) && isinf(G.δ) ? M_LIMIT : NO_LIMIT
 Distributions.params(G::BB7Generator) = (θ = G.θ, δ = G.δ)
 _unbound_params(::Type{<:BB7Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
 _rebound_params(::Type{<:BB7Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
@@ -90,9 +91,8 @@ end
 frailty(G::BB7Generator) = SibuyaStoppedGamma(G.θ, G.δ)
 # --------------- CDF y log-PDF (d = 2) ----------------
 
-function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB7Generator}
+function _archimedean_cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB7Generator}
     θ, δ = C.G.θ, C.G.δ
-    isone(θ) && return Distributions.cdf(ClaytonCopula{2}(δ), u)
     u1, u2 = u
 
     log1mu1 = log1p(-u1)
@@ -112,7 +112,7 @@ end
 archimedean_measure_style(G::BB7Generator, ::Val{d}) where {d} =
     isinf(G.δ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
-function Distributions._logpdf(C::ArchimedeanCopula{2,BB7Generator{TF}}, u) where {TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{2,BB7Generator{TF}}, u) where {TF}
     Tret = promote_type(TF, eltype(u))
     u1, u2 = u
     (0.0 < u1 ≤ 1.0 && 0.0 < u2 ≤ 1.0) || return Tret(-Inf)
