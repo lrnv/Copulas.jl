@@ -42,10 +42,12 @@ struct CuadrasAugeTail{T} <: OneParameterPickandsTail
         new{typeof(θf)}(θf)
     end
 end
-_reduced_tail(tail::CuadrasAugeTail) = iszero(tail.θ) ? NoTail() : isone(tail.θ) ? MTail() : nothing
+@inline limit_kind(tail::CuadrasAugeTail, ::Val) =
+    isone(tail.θ) ? M_LIMIT : NO_LIMIT
 
 const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
-tail_measure_style(::CuadrasAugeTail) = NonAbsolutelyContinuousMeasure()
+tail_measure_style(tail::CuadrasAugeTail) =
+    iszero(tail.θ) ? AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
 _is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2
 _unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
@@ -92,6 +94,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2, CuadrasAugeTail{T}},
     A::AbstractMatrix{S}) where {T,S<:Real}
     θ = C.tail.θ
+    iszero(θ) && return Random.rand!(rng, A)
+    isone(θ) && return _rand_M!(rng, A)
     E = rand(rng, Distributions.Exponential(θ/(1-θ)), 2, size(A, 2))
     E₁₂ = rand(rng, Distributions.Exponential(), size(A, 2))
     @inbounds for (j, col) in enumerate(axes(A, 2))

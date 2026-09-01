@@ -51,7 +51,6 @@ struct MixedTail{T} <: OneParameterPickandsTail
         return new{typeof(θf)}(θf)
     end
 end
-_reduced_tail(tail::MixedTail) = iszero(tail.θ) ? NoTail() : nothing
 
 const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
 Distributions.params(tail::MixedTail) = (θ = tail.θ,)

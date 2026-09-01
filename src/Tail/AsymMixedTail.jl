@@ -48,10 +48,6 @@ struct AsymMixedTail{T} <: BivariatePickandsTail
       return new{T}(θ₁, θ₂)
   end
 end
-_reduced_tail(tail::AsymMixedTail) =
-    iszero(tail.θ₁) && iszero(tail.θ₂) ? NoTail() :
-    iszero(tail.θ₂) ? MixedTail(tail.θ₁) : nothing
-
 const AsymMixedCopula{d,T} = ExtremeValueCopula{d, AsymMixedTail{T}}
 Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 

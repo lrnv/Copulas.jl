@@ -51,15 +51,29 @@ struct TawnTail{T} <: Tail
     end
 end
 
-function _reduced_tail(tail::TawnTail)
-    component_is_active(j) = !isone(tail.α[j]) && count(!iszero, @view tail.β[:, j]) > 1
-    non_singletons = (tail.d + 1):length(tail.α)
-    any(component_is_active, non_singletons) || return NoTail()
+@inline _tawn_component_is_active(tail::TawnTail, j) =
+    !isone(tail.α[j]) && count(!iszero, @view tail.β[:, j]) > 1
+
+function _tawn_is_fullset_logistic(tail::TawnTail)
     fullset = lastindex(tail.α)
     preceding = (tail.d + 1):(fullset - 1)
-    !any(component_is_active, preceding) && all(isone, @view tail.β[:, fullset]) &&
-        return LogTail(tail.α[fullset])
-    return nothing
+    any(j -> _tawn_component_is_active(tail, j), preceding) && return false
+    return all(isone, @view tail.β[:, fullset])
+end
+
+@inline function limit_kind(tail::TawnTail, ::Val{d}) where {d}
+    d == tail.d || return NO_LIMIT
+    fullset = lastindex(tail.α)
+    return _tawn_is_fullset_logistic(tail) && isinf(tail.α[fullset]) ?
+           M_LIMIT : NO_LIMIT
+end
+
+function tail_measure_style(tail::TawnTail)
+    for j in (tail.d + 1):lastindex(tail.α)
+        _tawn_component_is_active(tail, j) && isinf(tail.α[j]) &&
+            return NonAbsolutelyContinuousMeasure()
+    end
+    return AbsolutelyContinuousMeasure()
 end
 
 """
@@ -179,6 +193,7 @@ function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
     tail = C.tail
     return _rand_subset_components!(
         rng, X, tail.α, tail.β, isone,
