@@ -124,19 +124,14 @@ frailty(G::ClaytonGenerator) =
     iszero(G.θ) ? Distributions.Dirac(1.0) :
     G.θ > 0 && isfinite(G.θ) ? Distributions.Gamma(inv(G.θ), G.θ) : nothing
 
-function _cdf(C::ClaytonCopula{d}, u) where {d}
-    θ = C.G.θ
-    θ == -inv(d - 1) && return max(sum(u) - (d - 1), zero(eltype(u)))
-    iszero(θ) && return prod(u)
-    isinf(θ) && return minimum(u)
-    return @invoke _cdf(C::ArchimedeanCopula, u)
+function _archimedean_cdf(C::ClaytonCopula{d}, u) where {d}
+    return @invoke _archimedean_cdf(C::ArchimedeanCopula, u)
 end
 
-function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
+function _archimedean_logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
     # Check if all elements are in (0,1) and if θ < 0, check the sum condition
 
-    iszero(C.G.θ) && return zero(eltype(u))
-    isinf(C.G.θ) && throw(ArgumentError("ClaytonCopula with θ = Inf is not absolutely continuous"))
+    iszero(C.G.θ) && return @invoke _archimedean_logpdf(C::ArchimedeanCopula, u)
 
     if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
         return eltype(u)(-Inf)

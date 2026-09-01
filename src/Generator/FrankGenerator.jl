@@ -35,6 +35,11 @@ end
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
 _reduced_generator(G::FrankGenerator) =
     G.θ == -Inf ? WGenerator() : iszero(G.θ) ? IndependentGenerator() : G.θ == Inf ? MGenerator() : nothing
+@inline function limit_kind(G::FrankGenerator, ::Val{d}) where {d}
+    G.θ == Inf && return M_LIMIT
+    d == 2 && G.θ == -Inf && return W_LIMIT
+    return NO_LIMIT
+end
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
 Distributions.params(G::FrankGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:FrankGenerator}, d, θ) = d == 2 ? [θ.θ] : [log(θ.θ)]
@@ -88,17 +93,12 @@ function 𝒲₋₁(G::FrankGenerator, d::Real)
 end
 frailty(G::FrankGenerator) = iszero(G.θ) ? Distributions.Dirac(1.0) : G.θ > 0 && isfinite(G.θ) ? Logarithmic(-G.θ) : nothing
 
-function _cdf(C::FrankCopula{d}, u) where {d}
-    θ = C.G.θ
-    θ == -Inf && return max(sum(u) - (d - 1), zero(eltype(u)))
-    iszero(θ) && return prod(u)
-    θ == Inf && return minimum(u)
-    return @invoke _cdf(C::ArchimedeanCopula, u)
+function _archimedean_cdf(C::FrankCopula{d}, u) where {d}
+    return @invoke _archimedean_cdf(C::ArchimedeanCopula, u)
 end
 
-function Distributions._logpdf(C::FrankCopula, u)
-    iszero(C.G.θ) && return all(0 .< u .< 1) ? zero(eltype(u)) : eltype(u)(-Inf)
-    return @invoke Distributions._logpdf(C::ArchimedeanCopula, u)
+function _archimedean_logpdf(C::FrankCopula, u)
+    return @invoke _archimedean_logpdf(C::ArchimedeanCopula, u)
 end
 
 Debye(x, k::Int=1) = k / x^k * QuadGK.quadgk(t -> t^k/expm1(t), 0, x)[1]

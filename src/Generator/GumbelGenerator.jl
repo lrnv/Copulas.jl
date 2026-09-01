@@ -92,19 +92,16 @@ function τ⁻¹(::Type{<:GumbelGenerator}, τ)
     return 1/(1-τ)
 end
 
-function _cdf(C::ArchimedeanCopula{d,G}, u) where {d, G<:GumbelGenerator}
+function _archimedean_cdf(C::ArchimedeanCopula{d,G}, u) where {d,G<:GumbelGenerator}
     θ = C.G.θ
-    isone(θ) && return prod(u)
-    isinf(θ) && return minimum(u)
     lx = log.(.-log.(u))
     return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logsumexp(θ .* lx) ./ θ)
 end
-function Distributions._logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) where {TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) where {TF}
     T = promote_type(TF, eltype(u))
     !all(0 .< u .<= 1) && return T(-Inf) # if not in range return -Inf
 
     θ = C.G.θ
-    isone(θ) && return zero(T)
     x₁, x₂ = -log(u[1]), -log(u[2])
     lx₁, lx₂ = log(x₁), log(x₂)
     A = LogExpFunctions.logaddexp(θ * lx₁, θ * lx₂)
@@ -122,12 +119,11 @@ function ρ⁻¹(::Type{<:GumbelGenerator}, ρ)
 end
 
 
-function Distributions._logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) where {d,TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) where {d,TF}
     T = promote_type(TF, eltype(u))
     !all(0 .< u .<= 1) && return T(-Inf)
 
     θ = C.G.θ
-    isone(θ) && return zero(T)
     α = 1 / θ
 
     # Step 1. Compute x_i = -log(u_i)
