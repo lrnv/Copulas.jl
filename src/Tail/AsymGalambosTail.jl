@@ -61,15 +61,29 @@ struct AsymGalambosTail{T} <: BivariatePickandsTail
     end
 end
 
-function _reduced_tail(tail::AsymGalambosTail)
-    component_is_active(j) = !iszero(tail.α[j]) && count(!iszero, @view tail.β[:, j]) > 1
-    non_singletons = (tail.d + 1):length(tail.α)
-    any(component_is_active, non_singletons) || return NoTail()
+@inline _asymgal_component_is_active(tail::AsymGalambosTail, j) =
+    !iszero(tail.α[j]) && count(!iszero, @view tail.β[:, j]) > 1
+
+function _asymgal_is_fullset_galambos(tail::AsymGalambosTail)
     fullset = lastindex(tail.α)
     preceding = (tail.d + 1):(fullset - 1)
-    !any(component_is_active, preceding) && all(isone, @view tail.β[:, fullset]) &&
-        return GalambosTail(tail.α[fullset])
-    return nothing
+    any(j -> _asymgal_component_is_active(tail, j), preceding) && return false
+    return all(isone, @view tail.β[:, fullset])
+end
+
+@inline function limit_kind(tail::AsymGalambosTail, ::Val{d}) where {d}
+    d == tail.d || return NO_LIMIT
+    fullset = lastindex(tail.α)
+    return _asymgal_is_fullset_galambos(tail) && isinf(tail.α[fullset]) ?
+           M_LIMIT : NO_LIMIT
+end
+
+function tail_measure_style(tail::AsymGalambosTail)
+    for j in (tail.d + 1):lastindex(tail.α)
+        _asymgal_component_is_active(tail, j) && isinf(tail.α[j]) &&
+            return NonAbsolutelyContinuousMeasure()
+    end
+    return AbsolutelyContinuousMeasure()
 end
 
 const AsymGalambosCopula{d,T} = ExtremeValueCopula{d,AsymGalambosTail{T}}
@@ -115,18 +129,21 @@ function A(tail::AsymGalambosTail, t::Real)
     tt = _safett(t)
     α, θ₁, θ₂ = _asymgal_bivariate_parameters(tail)
 
-    (iszero(α) || (iszero(θ₁) && iszero(θ₂))) && return one(tt)
-    x1 = -α * log(θ₁ * tt)
-    x2 = -α * log(θ₂ * (1 - tt))
-    s = LogExpFunctions.logaddexp(x1, x2) / α
-    return -LogExpFunctions.expm1(-s)
+    x = θ₁ * tt
+    y = θ₂ * (1 - tt)
+    # For the bivariate Galambos STDF,
+    #   x + y - ℓ_Galambos(x,y) = (x^-α + y^-α)^(-1/α).
+    # Writing the asymmetric model through that primitive makes the α=0,
+    # inactive-support, symmetric, and α=∞ boundaries emerge naturally.
+    dependence = x + y - ℓ(GalambosTail(α), (x, y))
+    return one(tt) - dependence
 end
 
 function dA(tail::AsymGalambosTail, t::Real)
     tt = _safett(t)
     α, θ₁, θ₂ = _asymgal_bivariate_parameters(tail)
 
-    (iszero(α) || (iszero(θ₁) && iszero(θ₂))) && return zero(tt)
+    (iszero(α) || iszero(θ₁) || iszero(θ₂)) && return zero(tt)
 
     a = tt
     b = 1 - tt
@@ -144,7 +161,7 @@ function d²A(tail::AsymGalambosTail, t::Real)
     tt = _safett(t)
     α, θ₁, θ₂ = _asymgal_bivariate_parameters(tail)
 
-    (iszero(α) || (iszero(θ₁) && iszero(θ₂))) && return zero(tt)
+    (iszero(α) || iszero(θ₁) || iszero(θ₂)) && return zero(tt)
 
     a = tt
     b = 1 - tt
@@ -212,6 +229,7 @@ function _ellpartial_signlog(tail::AsymGalambosTail, x, I::Tuple{Vararg{Int}})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:AsymGalambosTail}, X::AbstractMatrix{T}) where {d,T<:Real}
+    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
     return _rand_subset_components!(
         rng,
         X,

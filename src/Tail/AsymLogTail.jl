@@ -43,9 +43,13 @@ struct AsymLogTail{T} <: BivariatePickandsTail
         return new{T}(αT, θ₁, θ₂)
     end
 end
-_reduced_tail(tail::AsymLogTail) =
-    (isone(tail.α) || iszero(tail.θ₁) || iszero(tail.θ₂)) ? NoTail() :
-    (isone(tail.θ₁) && isone(tail.θ₂)) ? LogTail(tail.α) : nothing
+@inline _asym_log_independent(tail::AsymLogTail) =
+    isone(tail.α) || iszero(tail.θ₁) || iszero(tail.θ₂)
+@inline limit_kind(tail::AsymLogTail, ::Val{2}) =
+    isinf(tail.α) && isone(tail.θ₁) && isone(tail.θ₂) ? M_LIMIT : NO_LIMIT
+tail_measure_style(tail::AsymLogTail) =
+    _asym_log_independent(tail) || !isinf(tail.α) ?
+    AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 
 const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
 Distributions.params(tail::AsymLogTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
@@ -56,16 +60,19 @@ end
 
 function A(tail::AsymLogTail, t::Real)
     tt = _safett(t)
-    α  = tail.α
+    _asym_log_independent(tail) && return one(tt)
+
+    α = tail.α
     θ₁, θ₂ = tail.θ₁, tail.θ₂
-    return ((θ₁^α) * (1-tt)^α + (θ₂^α) * tt^α)^(1/α) + (θ₁ - θ₂)*tt + 1 - θ₁
+    logistic = ℓ(LogTail(α), (θ₂ * tt, θ₁ * (1 - tt)))
+    return logistic + (θ₁ - θ₂) * tt + 1 - θ₁
 end
 
 function dA(tail::AsymLogTail, t::Real)
     tt = _safett(t)
     α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
 
-    (θ₁ == 0 && θ₂ == 0) && return zero(tt)
+    _asym_log_independent(tail) && return zero(tt)
 
     a = tt
     b = 1 - tt
@@ -83,8 +90,7 @@ function d²A(tail::AsymLogTail, t::Real)
     tt = _safett(t)
     α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
 
-    (θ₁ == 0 && θ₂ == 0) && return zero(tt)
-    α == 1 && return zero(tt)
+    _asym_log_independent(tail) && return zero(tt)
 
     a = tt
     b = 1 - tt
