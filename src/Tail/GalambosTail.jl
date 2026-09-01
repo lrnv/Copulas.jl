@@ -41,7 +41,6 @@ struct GalambosTail{T} <: OneParameterPickandsTail
         new{typeof(float(θ))}(float(θ))
     end
 end
-_reduced_tail(tail::GalambosTail) = iszero(tail.θ) ? NoTail() : isinf(tail.θ) ? MTail() : nothing
 @inline limit_kind(tail::GalambosTail, ::Val) =
     isinf(tail.θ) ? M_LIMIT : NO_LIMIT
 
@@ -138,6 +137,7 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
     S = promote_type(T, typeof(C.tail.θ))
     θ = S(C.tail.θ)
+    isinf(θ) && return _rand_M!(rng, X)
     iszero(θ) && return Random.rand!(rng, X)
     invθ = inv(θ)
     shape = one(S) + invθ

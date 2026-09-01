@@ -36,7 +36,8 @@ struct LogTail{T} <: OneParameterPickandsTail
         return new{typeof(θ)}(θ)
     end
 end
-_reduced_tail(tail::LogTail) = isone(tail.θ) ? NoTail() : isinf(tail.θ) ? MTail() : nothing
+@inline limit_kind(tail::LogTail, ::Val) =
+    isinf(tail.θ) ? M_LIMIT : NO_LIMIT
 
 const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
 _is_valid_in_dim(::LogTail, d::Int) = d >= 2
@@ -47,6 +48,7 @@ _θ_bounds(::Type{<:LogTail}, d) = (1, Inf)
 
 
 function ℓ(tail::LogTail, x)
+    isone(tail.θ) && return sum(x)
     m = maximum(x)
     isinf(m) && return m
     iszero(m) && return zero(m * one(tail.θ))
@@ -56,6 +58,7 @@ end
 A(tail::LogTail, t::Real) = ℓ(tail, (t, one(t) - t))
 function dA(tail::LogTail, t::Real)
     θ = tail.θ
+    isone(θ) && return zero(t * θ)
 
     # B = t^θ + (1-t)^θ
     logB = LogExpFunctions.logaddexp(θ*log(t), θ*log1p(-t))
@@ -79,6 +82,7 @@ _pickands_right_slope(::LogTail, prototype::Real) = one(prototype)
 function d²A(tail::LogTail, t::Real)
     tt = _safett(t)
     θ = tail.θ
+    isone(θ) && return zero(tt * θ)
     logB = LogExpFunctions.logaddexp(θ * log(tt), θ * log1p(-tt))
     # (θ-1) * [t(1-t)]^(θ-2) * (t^θ + (1-t)^θ)^(1/θ-2)
     logA2 = log(θ - 1) + (θ - 2) * (log(tt) + log1p(-tt)) +
@@ -125,7 +129,7 @@ _ghoudi_mixture_probability(tail::LogTail, ::Real) = (tail.θ - one(tail.θ)) / 
 # Evaluating the logarithm of this expression directly avoids the cancellation
 # that can affect the generic Pickands derivative kernel under strong
 # dependence, while avoiding the overhead of delegating to GumbelCopula.
-function Distributions._logpdf(C::ExtremeValueCopula{2,<:LogTail}, u)
+function _ev_logpdf(C::ExtremeValueCopula{2,<:LogTail}, u)
     u1, u2 = u
     (zero(u1) < u1 <= one(u1) && zero(u2) < u2 <= one(u2)) ||
         return oftype(float(u1 + u2), -Inf)
@@ -143,6 +147,12 @@ function Distributions._logpdf(C::ExtremeValueCopula{2,<:LogTail}, u)
 end
 
 function _ellpartial_signlog(tail::LogTail, x, I::Tuple{Vararg{Int}})
+    if isone(tail.θ)
+        isempty(I) && return 1, log(float(sum(x)))
+        length(I) == 1 && return 1, zero(float(first(x)))
+        return 0, oftype(float(first(x)), -Inf)
+    end
+
     k = length(I)
     θ = tail.θ
     logabs = (one(θ) - k * θ) * log(ℓ(tail, x))

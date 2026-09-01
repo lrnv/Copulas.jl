@@ -48,6 +48,8 @@ struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
 end
 
 function copula_measure_style(C::ExtremeValueCopula{d}) where {d}
+    limit_kind(C.tail, Val(d)) === M_LIMIT &&
+        return NonAbsolutelyContinuousMeasure()
     reduced = _reduced_tail(C.tail)
     return reduced === nothing ? tail_measure_style(C.tail) :
            copula_measure_style(ExtremeValueCopula{d}(reduced))
@@ -82,9 +84,15 @@ end
 (CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) =
     ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
 
-function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
+@inline function _cdf(C::ExtremeValueCopula{d}, u) where {d}
+    kind = limit_kind(C.tail, Val(d))
+    kind === M_LIMIT && return minimum(u)
     reduced = _reduced_tail(C.tail)
-    reduced === nothing || return Distributions.cdf(ExtremeValueCopula{2}(reduced), u)
+    reduced === nothing || return Distributions.cdf(ExtremeValueCopula{d}(reduced), u)
+    return _ev_cdf(C, u)
+end
+
+function _ev_cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     u1, u2 = u
     z = zero(u1 + u2)
     o = one(u1 + u2)
@@ -97,11 +105,7 @@ function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     return exp(-s * A(C.tail, x / s))
 end
 
-function _cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT}
-    reduced = _reduced_tail(C.tail)
-    reduced === nothing || return Distributions.cdf(ExtremeValueCopula{d}(reduced), u)
-    return exp(-ℓ(C.tail, .- log.(u)))
-end
+_ev_cdf(C::ExtremeValueCopula, u) = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
 # Density selection follows Julia dispatch directly. BivariatePickandsTail
@@ -117,11 +121,8 @@ function _bivariate_pickands_logpdf(C, u)
     return -val + log(core) + x + y
 end
 
-Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u) =
-    let reduced = _reduced_tail(C.tail)
-        reduced === nothing ? _bivariate_pickands_logpdf(C, u) :
-        Distributions.logpdf(ExtremeValueCopula{2}(reduced), u)
-    end
+_ev_logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u) =
+    _bivariate_pickands_logpdf(C, u)
 
 function _ev_logcdf_partial(C::ExtremeValueCopula, u, I)
     all(ui -> zero(ui) < ui <= one(ui), u) || return oftype(float(first(u)), -Inf)
@@ -164,7 +165,17 @@ end
 
 # Generic d-dimensional density from the mixed STDF partials and the
 # partition formula for absolutely continuous extreme-value copulas.
-function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
+@inline function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
+    kind = limit_kind(C.tail, Val(d))
+    if kind === M_LIMIT
+        return all(x -> x == first(u), u) ? zero(eltype(u)) : eltype(u)(-Inf)
+    end
+    reduced = _reduced_tail(C.tail)
+    reduced === nothing || return Distributions.logpdf(ExtremeValueCopula{d}(reduced), u)
+    return _ev_logpdf(C, u)
+end
+
+function _ev_logpdf(C::ExtremeValueCopula{d}, u) where {d}
     any(isone, u) && return oftype(float(first(u)), -Inf)
     return _ev_logcdf_partial(C, u, 1:d)
 end
@@ -196,6 +207,10 @@ function Distributions._rand!(
     C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
 ) where {T<:Real}
+    limit_kind(C.tail, Val(2)) === M_LIMIT && return _rand_M!(rng, X)
+    reduced = _reduced_tail(C.tail)
+    reduced === nothing ||
+        return Distributions._rand!(rng, ExtremeValueCopula{2}(reduced), X)
     E = ExtremeDist(C.tail)
     for i in axes(X, 2)
         z = rand(rng, E)
@@ -207,7 +222,16 @@ function Distributions._rand!(
     return X
 end
 
-DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
+function DistortionFromCop(
+    C::ExtremeValueCopula{2,TT},
+    js::NTuple{1,Int},
+    uⱼₛ::NTuple{1,Float64},
+    ::Int,
+) where {TT}
+    limit_kind(C.tail, Val(2)) === M_LIMIT &&
+        return MDistortion(float(uⱼₛ[1]), Int8(js[1]))
+    return BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
+end
 
 tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 
