@@ -92,3 +92,50 @@ end
     Uca = rand(StableRNG(2132), Copulas.ExtremeValueCopula(2, ca1), 8)
     @test view(Uca, 1, :) == view(Uca, 2, :)
 end
+
+@testset "EV genuine degeneracy routing" begin
+    x3 = (0.2, 0.7, 1.1)
+    u3 = [0.23, 0.61, 0.84]
+
+    hr_ind = Copulas.HuslerReissTail(0.0)
+    @test Copulas.limit_kind(hr_ind, Val(3)) === Copulas.NO_LIMIT
+    @test Copulas.ℓ(hr_ind, x3) == sum(x3)
+    @test Copulas.dA(hr_ind, 0.37) == 0.0
+    @test Copulas.d²A(hr_ind, 0.37) == 0.0
+    @test Copulas.ellpartial(hr_ind, x3, (1,)) == 1.0
+    @test Copulas.ellpartial(hr_ind, x3, (1, 2)) == 0.0
+
+    C_hr_ind = Copulas.ExtremeValueCopula(3, hr_ind)
+    @test cdf(C_hr_ind, u3) ≈ prod(u3)
+    rng1, rng2 = StableRNG(2140), StableRNG(2140)
+    @test rand(rng1, C_hr_ind, 8) == rand(rng2, IndependentCopula{3}(), 8)
+
+    hr_limits = (
+        Copulas.HuslerReissTail(Inf),
+        Copulas.HuslerReissTail(zeros(3, 3)),
+    )
+    for (k, tail) in enumerate(hr_limits)
+        @test Copulas.limit_kind(tail, Val(3)) === Copulas.M_LIMIT
+        @test Copulas.ℓ(tail, x3) == maximum(x3)
+        C = Copulas.ExtremeValueCopula(3, tail)
+        @test Copulas.copula_measure_style(C) isa Copulas.NonAbsolutelyContinuousMeasure
+        @test cdf(C, u3) == minimum(u3)
+        U = rand(StableRNG(2140 + k), C, 8)
+        @test all(view(U, i, :) == view(U, 1, :) for i in 2:3)
+    end
+
+    tev_limits = (
+        Copulas.tEVTail(4.0, 1.0),
+        Copulas.tEVTail(4.0, ones(3, 3)),
+    )
+    for (k, tail) in enumerate(tev_limits)
+        @test Copulas.limit_kind(tail, Val(3)) === Copulas.M_LIMIT
+        @test Copulas.ℓ(tail, x3) == maximum(x3)
+        @test Copulas.A(tail, 0.37) == 0.63
+        C = Copulas.ExtremeValueCopula(3, tail)
+        @test Copulas.copula_measure_style(C) isa Copulas.NonAbsolutelyContinuousMeasure
+        @test cdf(C, u3) == minimum(u3)
+        U = rand(StableRNG(2150 + k), C, 8)
+        @test all(view(U, i, :) == view(U, 1, :) for i in 2:3)
+    end
+end
