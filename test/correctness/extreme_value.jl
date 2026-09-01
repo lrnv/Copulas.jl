@@ -19,6 +19,41 @@ using Random
         @test Copulas._safett(one(x) - x) == one(x) - x
     end
 
+    @testset "Logistic and Galambos boundary primitives" begin
+        x = (0.2, 0.7, 1.1)
+        log_ind = Copulas.LogTail(1.0)
+        gal_ind = Copulas.GalambosTail(0.0)
+
+        @test Copulas.ℓ(log_ind, x) == sum(x)
+        @test Copulas.ℓ(gal_ind, x) == sum(x)
+        @test Copulas.dA(log_ind, 0.37) == 0.0
+        @test Copulas.d²A(log_ind, 0.37) == 0.0
+
+        for tail in (log_ind, gal_ind)
+            @test Copulas.limit_kind(tail, Val(3)) === Copulas.NO_LIMIT
+            @test Copulas.ellpartial(tail, x, (1,)) == 1.0
+            @test Copulas.ellpartial(tail, x, (1, 2)) == 0.0
+        end
+
+        log_M = Copulas.LogTail(Inf)
+        gal_M = Copulas.GalambosTail(Inf)
+        @test Copulas.limit_kind(log_M, Val(3)) === Copulas.M_LIMIT
+        @test Copulas.limit_kind(gal_M, Val(3)) === Copulas.M_LIMIT
+
+        u = [0.23, 0.61, 0.84]
+        @test cdf(Copulas.ExtremeValueCopula(3, log_ind), u) ≈ prod(u)
+        @test cdf(Copulas.ExtremeValueCopula(3, gal_ind), u) ≈ prod(u)
+        @test cdf(Copulas.ExtremeValueCopula(3, log_M), u) == minimum(u)
+        @test cdf(Copulas.ExtremeValueCopula(3, gal_M), u) == minimum(u)
+
+        for (k, tail) in enumerate((log_M, gal_M)), d in (2, 3)
+            C = Copulas.ExtremeValueCopula(d, tail)
+            @test Copulas.copula_measure_style(C) isa Copulas.NonAbsolutelyContinuousMeasure
+            U = rand(StableRNG(1900 + 10k + d), C, 8)
+            @test all(view(U, i, :) == view(U, 1, :) for i in 2:d)
+        end
+    end
+
     @testset "Smooth EV conditional endpoints" begin
         C = Copulas.ExtremeValueCopula(2, Copulas.LogTail(2.0))
         for j in 1:2
