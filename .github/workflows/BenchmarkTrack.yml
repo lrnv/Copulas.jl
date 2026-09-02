@@ -23,7 +23,7 @@ jobs:
     outputs:
       benchmarked: ${{ steps.scope.outputs.code-changed }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
@@ -97,7 +97,7 @@ jobs:
       group: gh-pages-publish
       cancel-in-progress: false
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           fetch-depth: 0
 
