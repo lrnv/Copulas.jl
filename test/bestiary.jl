@@ -96,18 +96,11 @@ const BASE_COPULA_CASES = (
 # Boundary representatives are declared once in the reduction graph. Adding
 # their source constructors here makes every one pass the same public contracts
 # and routing proofs as the manually declared representatives.
-const REDUCTION_COPULA_BUILDERS = getindex.(CONSTRUCTOR_REDUCTIONS, :source)
-function reduction_case(edge, build)
-    C = build()
-    prototype = first(case for case in BASE_COPULA_CASES if C isa case.family)
-    return merge(prototype, (; name=edge.name, typed=build,
-        dynamic=build, build))
+function reduction_case(edge)
+    prototype = first(case for case in BASE_COPULA_CASES if edge.expected_family <: case.family)
+    build = edge.source
+    return merge(prototype, (; name=edge.name, typed=build, dynamic=build, build))
 end
 
-# Historical constructor reductions now remain in their source family.
-# Their source models therefore belong to the global bestiary: although
-# mathematically equivalent to simpler targets, they exercise distinct
-# value-dependent numerical branches.
-const REDUCTION_COPULA_CASES = Tuple(reduction_case(edge, build)
-    for (edge, build) in zip(CONSTRUCTOR_REDUCTIONS, REDUCTION_COPULA_BUILDERS))
+const REDUCTION_COPULA_CASES = Tuple(reduction_case(edge) for edge in CONSTRUCTOR_REDUCTIONS)
 const ALL_COPULA_CASES = (BASE_COPULA_CASES..., REDUCTION_COPULA_CASES...)
