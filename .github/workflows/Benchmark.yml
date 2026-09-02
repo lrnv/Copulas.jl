@@ -27,7 +27,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - uses: KristofferC/Tachometer.jl@334a994520a7e1c80167a5db1289d4f8f5d9c8d3
+      - uses: KristofferC/Tachometer.jl@d598409830fa4118d82668463400e7ddc060d7b8
         with:
           julia-version: "1"
           nruns: "3"
