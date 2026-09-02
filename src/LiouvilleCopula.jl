@@ -296,16 +296,6 @@ function Distributions.logpdf(D::LiouvilleDistortion, u::Real)
 end
 
 _liouville_conditioning_radial(G::Generator, d::Real) = 𝒲₋₁(G, d)
-function _liouville_conditioning_radial(G::GumbelGenerator, d::Real)
-    n = ceil(Int, d)
-
-    # Deliberately bypass the AbstractFrailtyGenerator specialization:
-    # AlphaStable is sampleable but has no pdf/logpdf, while the generic
-    # Williamson inverse can use Gumbel's explicit generator derivatives.
-    radial = invoke(𝒲₋₁, Tuple{Generator,Integer}, G, n)
-    isinteger(d) && return radial
-    return WilliamsonBetaProduct(radial, Distributions.Beta(d, n - d), n)
-end
 
 
 function _liouville_conditional_components(

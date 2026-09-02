@@ -161,3 +161,14 @@ function _archimedean_logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) whe
     # Step 5. Combine
     return T(logφd + sum_log_invderiv)
 end
+
+function _liouville_conditioning_radial(G::GumbelGenerator, d::Real)
+    n = ceil(Int, d)
+
+    # Deliberately bypass the AbstractFrailtyGenerator specialization:
+    # AlphaStable is sampleable but has no pdf/logpdf, while the generic
+    # Williamson inverse can use Gumbel's explicit generator derivatives.
+    radial = invoke(𝒲₋₁, Tuple{Generator,Integer}, G, n)
+    isinteger(d) && return radial
+    return WilliamsonBetaProduct(radial, Distributions.Beta(d, n - d), n)
+end
