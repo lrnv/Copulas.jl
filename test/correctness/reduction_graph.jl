@@ -7,7 +7,7 @@
 #### `reduction_graph_tests.jl`, once the test hierarchy is running.
 
 
-const CONSTRUCTOR_REDUCTIONS = (
+const CONSTRUCTOR_REDUCTIONS = Any[
 
     # ============================================================
     # Archimedean generators -> canonical generators/copulas
@@ -572,9 +572,7 @@ const CONSTRUCTOR_REDUCTIONS = (
         target = () -> MCopula{2}(),
         expected_family = RafteryCopula{2}
     ),
-
-    
-)
+]
 
 
 function test_boundary_equivalence(source, target; atol = 1e-10, rtol = 1e-10)

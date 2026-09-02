@@ -79,7 +79,7 @@ conditional_measure_style(D::Copulas.Distortion) =
 conditional_measure_style(::Distributions.UnivariateDistribution) =
     Copulas.AbsolutelyContinuousMeasure()
 
-@testset verbose=true "public conditioning contract" begin
+@testset "public conditioning contract" begin
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
         test_progress("operations", "conditioning", fixture.case.name, "contract")
         test_conditioning_contract(

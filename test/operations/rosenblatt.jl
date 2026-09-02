@@ -32,7 +32,7 @@ function test_rosenblatt_contract(C, ctx)
     end
 end
 
-@testset verbose=true "public Rosenblatt contract" begin
+@testset "public Rosenblatt contract" begin
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
         test_progress("operations", "rosenblatt", fixture.case.name, "contract")
         test_rosenblatt_contract(

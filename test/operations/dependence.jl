@@ -81,7 +81,7 @@ function test_pairwise_dependence_result(measure, diagonal, C)
     @test all(x -> x isa Real && !isnan(x), matrix)
 end
 
-@testset verbose=true "public dependence-measure contract" begin
+@testset "public dependence-measure contract" begin
     @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES
         test_progress("operations", "dependence", fixture.case.name, "contract")
         test_dependence_contract(fixture.copula)

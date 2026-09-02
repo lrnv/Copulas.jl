@@ -9,7 +9,7 @@ function sampling_route_key(C)
     return (method, length(C) == 2 ? :bivariate : :multivariate)
 end
 
-@testset verbose=true "public sampling contract" begin
+@testset "public sampling contract" begin
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
         case, C = fixture.case, fixture.copula
         d = length(C)

@@ -4,7 +4,7 @@
 # and constructor-boundary regimes that select materially different code.
 
 
-const BASE_COPULA_CASES = (
+const BASE_COPULA_CASES = Any[
     copula_case(AMHCopula, 2, 0.5),
     copula_case(BB1Copula, 2, 1.2, 1.5),
     copula_case(BB2Copula, 2, 1.2, 0.5),
@@ -91,7 +91,7 @@ const BASE_COPULA_CASES = (
     copula_case(MCopula, 3),
     copula_case(RafteryCopula, 2, 0.5),
     copula_case(SurvivalCopula, 2, ClaytonCopula{2}(1.5), (1,)),
-)
+]
 
 # Boundary representatives are declared once in the reduction graph. Adding
 # their source constructors here makes every one pass the same public contracts
@@ -102,5 +102,6 @@ function reduction_case(edge)
     return merge(prototype, (; name=edge.name, typed=build, dynamic=build, build))
 end
 
-const REDUCTION_COPULA_CASES = Tuple(reduction_case(edge) for edge in CONSTRUCTOR_REDUCTIONS)
-const ALL_COPULA_CASES = (BASE_COPULA_CASES..., REDUCTION_COPULA_CASES...)
+const REDUCTION_COPULA_CASES = Any[reduction_case(edge) for edge in CONSTRUCTOR_REDUCTIONS]
+
+const ALL_COPULA_CASES = vcat(BASE_COPULA_CASES, REDUCTION_COPULA_CASES)

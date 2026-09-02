@@ -60,7 +60,7 @@ function test_density_contract(::Copulas.AbsolutelyContinuousMeasure, C, ctx)
     @test_throws ArgumentError logpdf(C, zeros(length(C) + 1, 1))
 end
 
-@testset verbose=true "public distribution-evaluation contract" begin
+@testset "public distribution-evaluation contract" begin
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
         case, C = fixture.case, fixture.copula
         ctx = copula_contract_context(C, 10_000 + seed)
