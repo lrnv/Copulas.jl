@@ -667,3 +667,66 @@ end
     @test restored == (;)
     @test restored == bounded
 end
+
+
+@testset "EV canonical limit routing" begin
+    u = [0.3, 0.7]
+
+    independent_cases = (
+        LogCopula{2}(1.0),
+        GalambosCopula{2}(0.0),
+        HuslerReissCopula{2}(0.0),
+        CuadrasAugeCopula{2}(0.0),
+        MixedCopula{2}(0.0),
+        AsymMixedCopula{2}(0.0, 0.0),
+        AsymLogCopula{2}(1.0, 0.4, 0.6),
+        AsymGalambosCopula{2}(0.0, 0.4, 0.6),
+    )
+
+    for C in independent_cases
+        @test Copulas.limit_kind(C.tail, Val(2)) === Copulas.Π_LIMIT
+
+        @test cdf(C, u) == prod(u)
+        @test logpdf(C, u) == 0.0
+        @test Copulas.τ(C) == 0.0
+
+        D = condition(C, 1, 0.4)
+        @test D isa Copulas.NoDistortion
+        @test cdf(D, 0.63) == 0.63
+    end
+
+    m_cases = (
+        LogCopula{2}(Inf),
+        GalambosCopula{2}(Inf),
+        HuslerReissCopula{2}(Inf),
+        CuadrasAugeCopula{2}(1.0),
+        AsymLogCopula{2}(Inf, 1.0, 1.0),
+        AsymGalambosCopula{2}(Inf, 1.0, 1.0),
+    )
+
+    for C in m_cases
+        @test Copulas.limit_kind(C.tail, Val(2)) === Copulas.M_LIMIT
+        @test cdf(C, u) == minimum(u)
+        @test Copulas.τ(C) == 1.0
+    end
+end
+
+@testset "multivariate EV Π limits" begin
+    cases = (
+        LogCopula{3}(1.0),
+        GalambosCopula{3}(0.0),
+        HuslerReissCopula{3}(0.0),
+        CuadrasAugeCopula{3}(0.0),
+        MixedCopula{3}(0.0),
+        AsymGalambosCopula{3}(0.0, [0.4, 0.5, 0.6]),
+        TawnCopula{3}(1.0, [0.4, 0.5, 0.6]),
+    )
+
+    u = [0.3, 0.5, 0.7]
+
+    for C in cases
+        @test Copulas.limit_kind(C.tail, Val(3)) === Copulas.Π_LIMIT
+        @test cdf(C, u) == prod(u)
+        @test logpdf(C, u) == 0.0
+    end
+end

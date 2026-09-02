@@ -63,9 +63,11 @@ end
 
 @inline function limit_kind(tail::TawnTail, ::Val{d}) where {d}
     d == tail.d || return NO_LIMIT
+    non_singletons = (tail.d + 1):lastindex(tail.α)
+    any(j -> _tawn_component_is_active(tail, j), non_singletons) || return Π_LIMIT
+
     fullset = lastindex(tail.α)
-    return _tawn_is_fullset_logistic(tail) && isinf(tail.α[fullset]) ?
-           M_LIMIT : NO_LIMIT
+    return _tawn_is_fullset_logistic(tail) && isinf(tail.α[fullset]) ? M_LIMIT : NO_LIMIT
 end
 
 function tail_measure_style(tail::TawnTail)
@@ -193,7 +195,10 @@ function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
+    kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
+    
     tail = C.tail
     return _rand_subset_components!(
         rng, X, tail.α, tail.β, isone,

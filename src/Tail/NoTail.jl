@@ -4,6 +4,9 @@
 Corresponds to the case where the pickads function is identically One, which means no particular tail behavior.
 """
 struct NoTail <: Tail end
+
+@inline limit_kind(::NoTail, ::Val) = Π_LIMIT
+
 Distributions.params(::NoTail) = (;)
 
 _unbound_params(::Type{NoTail}, d, ::NamedTuple) = Float64[]

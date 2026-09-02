@@ -46,7 +46,9 @@ end
 @inline _asym_log_independent(tail::AsymLogTail) =
     isone(tail.α) || iszero(tail.θ₁) || iszero(tail.θ₂)
 @inline limit_kind(tail::AsymLogTail, ::Val{2}) =
-    isinf(tail.α) && isone(tail.θ₁) && isone(tail.θ₂) ? M_LIMIT : NO_LIMIT
+    _asym_log_independent(tail) ? Π_LIMIT :
+    isinf(tail.α) && isone(tail.θ₁) && isone(tail.θ₂) ? M_LIMIT :
+    NO_LIMIT
 tail_measure_style(tail::AsymLogTail) =
     _asym_log_independent(tail) || !isinf(tail.α) ?
     AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()

@@ -73,6 +73,9 @@ end
 
 @inline function limit_kind(tail::AsymGalambosTail, ::Val{d}) where {d}
     d == tail.d || return NO_LIMIT
+    non_singletons = (tail.d + 1):lastindex(tail.α)
+    any(j -> _asymgal_component_is_active(tail, j), non_singletons) || return Π_LIMIT
+
     fullset = lastindex(tail.α)
     return _asymgal_is_fullset_galambos(tail) && isinf(tail.α[fullset]) ?
            M_LIMIT : NO_LIMIT
@@ -229,7 +232,11 @@ function _ellpartial_signlog(tail::AsymGalambosTail, x, I::Tuple{Vararg{Int}})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:AsymGalambosTail}, X::AbstractMatrix{T}) where {d,T<:Real}
-    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
+    kind = limit_kind(C.tail, Val(d))
+
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
+    
     return _rand_subset_components!(
         rng,
         X,

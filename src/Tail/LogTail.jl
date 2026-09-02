@@ -37,7 +37,9 @@ struct LogTail{T} <: OneParameterPickandsTail
     end
 end
 @inline limit_kind(tail::LogTail, ::Val) =
-    isinf(tail.θ) ? M_LIMIT : NO_LIMIT
+    isone(tail.θ) ? Π_LIMIT :
+    isinf(tail.θ) ? M_LIMIT :
+    NO_LIMIT
 
 const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
 _is_valid_in_dim(::LogTail, d::Int) = d >= 2

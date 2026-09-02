@@ -92,6 +92,7 @@ end
 
 @inline function _cdf(C::ExtremeValueCopula{d}, u) where {d}
     kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return prod(u)
     kind === M_LIMIT && return minimum(u)
     return _ev_cdf(C, u)
 end
@@ -173,7 +174,9 @@ end
 # partition formula for absolutely continuous extreme-value copulas.
 @inline function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
     kind = limit_kind(C.tail, Val(d))
-    if kind === M_LIMIT
+    if kind === Π_LIMIT
+        return all(x -> zero(x) <= x <= one(x), u) ? zero(eltype(u)) : eltype(u)(-Inf)
+    elseif kind === M_LIMIT
         return all(x -> x == first(u), u) ? zero(eltype(u)) : eltype(u)(-Inf)
     end
     return _ev_logpdf(C, u)
@@ -190,22 +193,55 @@ end
 # accept ForwardDiff dual numbers, while their STDF partials are available
 # directly through `_ellpartial_signlog`.
 function _partial_cdf(C::ExtremeValueCopula, is, js, uᵢₛ, uⱼₛ)
+    limit_kind(C.tail, Val(d)) === Π_LIMIT && return prod(uᵢₛ)
     u = _assemble(length(C), is, js, uᵢₛ, uⱼₛ)
     logvalue = _ev_logcdf_partial(C, u, js)
     return isfinite(logvalue) ? exp(logvalue) : zero(float(first(u)))
 end
 function τ(C::ExtremeValueCopula{2})
-    limit_kind(C.tail, Val(2)) === M_LIMIT && return 1.0
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
     return QuadGK.quadgk(
-        t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)),
+        t -> d²A(C.tail, t) * t * (1 - t) /
+             max(A(C.tail, t), _δ(t)),
         0.0,
         1.0,
     )[1]
 end
-ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C.tail, t))^2, 0.0, 1.0)[1] - 3
-β(C::ExtremeValueCopula{2}) = 4^(1 - A(C.tail, 0.5)) - 1
-λᵤ(C::ExtremeValueCopula{2}) = 2 * (1 - A(C.tail, 0.5))
-λₗ(C::ExtremeValueCopula{2}) =  A(C.tail, 0.5) > 0.5 ? 0.0 : 1.0
+function ρ(C::ExtremeValueCopula{2})
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
+    return 12 * QuadGK.quadgk(
+        t -> 1 / (1 + A(C.tail, t))^2,
+        0.0,
+        1.0,
+    )[1] - 3
+end
+function β(C::ExtremeValueCopula{2})
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
+    return 4^(1 - A(C.tail, 0.5)) - 1
+end
+function λᵤ(C::ExtremeValueCopula{2})
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
+    return 2 * (1 - A(C.tail, 0.5))
+end
+function λₗ(C::ExtremeValueCopula{2})
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
+    return A(C.tail, 0.5) > 0.5 ? 0.0 : 1.0
+end
 function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
@@ -218,7 +254,9 @@ function Distributions._rand!(
     C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
 ) where {T<:Real}
-    limit_kind(C.tail, Val(2)) === M_LIMIT && return _rand_M!(rng, X)
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
     E = ExtremeDist(C.tail)
     for i in axes(X, 2)
         z = rand(rng, E)
@@ -236,9 +274,13 @@ function DistortionFromCop(
     uⱼₛ::NTuple{1,Float64},
     ::Int,
 ) where {TT}
-    limit_kind(C.tail, Val(2)) === M_LIMIT &&
-        return MDistortion(float(uⱼₛ[1]), Int8(js[1]))
-    return BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return NoDistortion()
+
+    j = Int8(js[1])
+    uⱼ = float(uⱼₛ[1])
+    kind === M_LIMIT && return MDistortion(uⱼ, j)
+    return BivEVDistortion(C.tail, j, uⱼ)
 end
 
 tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)

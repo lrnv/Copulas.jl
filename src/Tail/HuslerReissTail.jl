@@ -86,7 +86,9 @@ struct HuslerReissTail{P} <: OneParameterPickandsTail
 end
 @inline _hr_is_independent(tail::HuslerReissTail{<:Real}) = iszero(tail.parameter)
 @inline limit_kind(tail::HuslerReissTail{<:Real}, ::Val) =
-    isinf(tail.parameter) ? M_LIMIT : NO_LIMIT
+    iszero(tail.parameter) ? Π_LIMIT :
+    isinf(tail.parameter) ? M_LIMIT :
+    NO_LIMIT
 @inline limit_kind(tail::HuslerReissTail{<:AbstractMatrix}, ::Val) =
     all(iszero, tail.parameter) ? M_LIMIT : NO_LIMIT
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
@@ -319,9 +321,10 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
-    C.tail isa HuslerReissTail{<:Real} && _hr_is_independent(C.tail) &&
-        return Random.rand!(rng, X)
+    kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
+    
     Γ = _hr_variogram(C.tail, d)
 
     roots = Vector{Vector{Int}}(undef, d)

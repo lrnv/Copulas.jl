@@ -42,7 +42,9 @@ struct GalambosTail{T} <: OneParameterPickandsTail
     end
 end
 @inline limit_kind(tail::GalambosTail, ::Val) =
-    isinf(tail.θ) ? M_LIMIT : NO_LIMIT
+    iszero(tail.θ) ? Π_LIMIT :
+    isinf(tail.θ) ? M_LIMIT :
+    NO_LIMIT
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
@@ -135,10 +137,13 @@ end
 # The common scale of the Weibull/Gamma construction cancels after
 # normalization to the simplex.
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+
+    kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
+
     S = promote_type(T, typeof(C.tail.θ))
     θ = S(C.tail.θ)
-    isinf(θ) && return _rand_M!(rng, X)
-    iszero(θ) && return Random.rand!(rng, X)
     invθ = inv(θ)
     shape = one(S) + invθ
     weibull = Distributions.Weibull(θ, one(S))
