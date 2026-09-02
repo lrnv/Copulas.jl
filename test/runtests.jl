@@ -82,7 +82,11 @@ atexit(write_test_timings)
 # consumed by contracts and path tests; it contains no assertions itself.
 public_symbols() = filter(!=(:Copulas), names(Copulas; all=false, imported=false))
 
-is_absolutely_continuous(C) = Copulas.copula_measure_style(C) isa Copulas.AbsolutelyContinuousMeasure
+function is_absolutely_continuous(C)
+    Base.@nospecialize C
+    return Copulas.copula_measure_style(C) isa
+           Copulas.AbsolutelyContinuousMeasure
+end
 
 _dependence_is_defined(measure, C::Copulas.Copula) = _dependence_is_defined(measure, Copulas.copula_measure_style(C))
 _dependence_is_defined(::Union{typeof(Copulas.ι),typeof(Copulas.corentropy)}, ::Copulas.NonAbsolutelyContinuousMeasure) = false

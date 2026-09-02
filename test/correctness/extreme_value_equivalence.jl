@@ -1,6 +1,8 @@
 # Family correctness: alternative public parameterizations of the same
 # extreme-value model. Full multivariate numerical oracles live in correctness.
 function test_ev_equivalence(left, right, point; atol, rtol)
+    Base.@nospecialize left right point
+
     @test cdf(left, point) ≈ cdf(right, point) atol=atol rtol=rtol
     @test logpdf(left, point) ≈ logpdf(right, point) atol=10atol rtol=10rtol
 end

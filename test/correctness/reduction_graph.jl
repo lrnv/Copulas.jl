@@ -1,6 +1,4 @@
 #### Each entry is an edge of the historical constructor-reduction graph.
-#### Constructors now preserve `expected_family`; numerical methods must still
-#### agree with the former canonical target at every listed boundary.
 
 #### Loaded by `runtests.jl` before the central bestiary, which consumes its
 #### source constructors. The assertions are started later by
