@@ -111,6 +111,18 @@ end
 
 function _cdf(C::LiouvilleCopula{d}, u) where {d}
     all(isone, C.α) && return Distributions.cdf(ArchimedeanCopula{d}(C.G), u)
+
+    # Copula margins are exact when one or more coordinates are equal to one.
+    # Avoid integrating inactive coordinates numerically.
+    active = Tuple(i for i in 1:d if !isone(u[i]))
+    isempty(active) && return one(eltype(u))
+    length(active) == 1 && return u[active[1]]
+    if length(active) < d
+        S = subsetdims(C, active)
+        v = [u[i] for i in active]
+        return Distributions.cdf(S, v)
+    end
+
     # TODO: When all Dirichlet parameters are integers, replace this cubature
     # with the corresponding exact finite-sum expression.
     _, x = _liouville_coordinates(C, u)
