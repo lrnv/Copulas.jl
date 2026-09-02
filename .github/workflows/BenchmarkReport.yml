@@ -20,4 +20,4 @@ jobs:
       group: tachometer-report-${{ github.event.action }}-${{ github.event.workflow_run.head_repository.full_name }}-${{ github.event.workflow_run.head_branch }}
       cancel-in-progress: ${{ github.event.action == 'requested' }}
     steps:
-      - uses: KristofferC/Tachometer.jl/reporter@334a994520a7e1c80167a5db1289d4f8f5d9c8d3
+      - uses: KristofferC/Tachometer.jl/reporter@d598409830fa4118d82668463400e7ddc060d7b8
