@@ -33,7 +33,8 @@ struct JoeGenerator{T} <: AbstractUnivariateFrailtyGenerator
     end
 end
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
-@inline limit_kind(G::JoeGenerator, ::Val) =
+@inline limit_kind(G::JoeGenerator, ::Val) = 
+    isone(G.θ) ? Π_LIMIT : 
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
 Distributions.params(G::JoeGenerator) = (θ = G.θ,)

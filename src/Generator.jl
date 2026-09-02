@@ -89,6 +89,7 @@ Distributions.params(::MarkerGenerator) = (;)
 @inline limit_kind(::Generator, ::Val) = NO_LIMIT
 @inline limit_kind(::MGenerator, ::Val) = M_LIMIT
 @inline limit_kind(::WGenerator, ::Val) = W_LIMIT
+@inline limit_kind(::IndependentGenerator, ::Val) = Π_LIMIT
 
 max_monotony(::IndependentGenerator) = Inf
 max_monotony(::MGenerator) = Inf
@@ -416,14 +417,18 @@ const WilliamsonGenerator = 𝒲
 Distributions.params(G::𝒲) = (X=G.X, order=G.order)
 max_monotony(G::𝒲) = G.order
 
+_williamson_primal(t) = t
+_williamson_primal(t::ForwardDiff.Dual) = ForwardDiff.value(t)
+
 """
 Generic fallback for ϕ on WilliamsonGenerator (non-discrete-nonparametric TX).
 Specializations for `TX<:DiscreteNonParametric` are provided below.
 """
 function _williamson_tail_expectation(f, X::Distributions.ContinuousUnivariateDistribution, t)
-    p = Distributions.ccdf(X, t)
+    a = _williamson_primal(t)
+    p = Distributions.ccdf(X, a)
     iszero(p) && return zero(float(t))
-    Xt = Distributions.truncated(X, t, Inf)
+    Xt = Distributions.truncated(X, a, Inf)
     return p * Distributions.expectation(f, Xt)
 end
 function ϕ(G::𝒲, t)

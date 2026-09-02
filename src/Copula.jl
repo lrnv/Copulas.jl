@@ -24,6 +24,7 @@ struct NonAbsolutelyContinuousMeasure <: CopulaMeasureStyle end
 
 @enum LimitKind::UInt8 begin
     NO_LIMIT
+    Π_LIMIT
     M_LIMIT
     W_LIMIT
 end

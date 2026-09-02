@@ -31,8 +31,10 @@ struct BB10Generator{T} <: AbstractFrailtyGenerator
         return new{typeof(θf)}(θf, δf)
     end
 end
-
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
+
+@inline limit_kind(G::BB10Generator, ::Val) = iszero(G.δ) ? Π_LIMIT : NO_LIMIT
+
 Distributions.params(G::BB10Generator) = (θ = G.θ, δ = G.δ)
 _unbound_params(::Type{<:BB10Generator}, d, θ) = [log(θ.θ), LogExpFunctions.logit(θ.δ)]
 _rebound_params(::Type{<:BB10Generator}, d, α) = (; θ = exp(α[1]), δ = LogExpFunctions.logistic(α[2]))

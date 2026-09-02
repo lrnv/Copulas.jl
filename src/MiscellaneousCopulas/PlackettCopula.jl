@@ -107,5 +107,11 @@ end
 
 # Conditioning colocated
 function DistortionFromCop(C::PlackettCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int)
-    return PlackettDistortion(float(C.θ), Int8(js[1]), float(uⱼₛ[1]))
+    j = Int8(js[1])
+    uⱼ = float(uⱼₛ[1])
+
+    iszero(C.θ) && return WDistortion(uⱼ, j)
+    isone(C.θ)  && return NoDistortion()
+    isinf(C.θ)  && return MDistortion(uⱼ, j)
+    return PlackettDistortion(float(C.θ), j, uⱼ)
 end

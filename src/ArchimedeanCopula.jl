@@ -133,6 +133,7 @@ Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by defa
 
 @inline function _cdf(C::ArchimedeanCopula{d}, u) where {d}
     kind = limit_kind(C.G, Val(d))
+    kind === Π_LIMIT && return prod(u)
     kind === M_LIMIT && return minimum(u)
     if kind === W_LIMIT
         @assert d == 2
@@ -146,6 +147,7 @@ _archimedean_cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
 
 @inline function Distributions._logpdf(C::ArchimedeanCopula{d}, u) where {d}
     kind = limit_kind(C.G, Val(d))
+    kind === Π_LIMIT && return zero(eltype(u))
     if kind === M_LIMIT
         return all(x -> x == u[1], u) ? zero(eltype(u)) : eltype(u)(-Inf)
     elseif kind === W_LIMIT
@@ -166,6 +168,7 @@ end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d,TG}, A::AbstractMatrix{T}) where {T<:Real,d,TG}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     kind = limit_kind(C.G, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, A)
     kind === M_LIMIT && return _rand_M!(rng, A)
     if kind === W_LIMIT
         @assert d == 2
@@ -271,6 +274,12 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
 end
 
 function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+
+    kind = limit_kind(C.G, Val(2))
+    kind === Π_LIMIT && return NoDistortion()
+    kind === M_LIMIT && return MDistortion(float(uⱼₛ[1]), Int8(js[1]))
+    kind === W_LIMIT && return WDistortion(float(uⱼₛ[1]), Int8(js[1]))
+
     @assert length(js) == length(uⱼₛ)
     T = eltype(uⱼₛ)
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
