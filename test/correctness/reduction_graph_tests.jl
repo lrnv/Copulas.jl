@@ -98,7 +98,7 @@ end
     u3 = [0.23, 0.61, 0.84]
 
     hr_ind = Copulas.HuslerReissTail(0.0)
-    @test Copulas.limit_kind(hr_ind, Val(3)) === Copulas.NO_LIMIT
+    @test Copulas.limit_kind(hr_ind, Val(3)) === Copulas.Π_LIMIT
     @test Copulas.ℓ(hr_ind, x3) == sum(x3)
     @test Copulas.dA(hr_ind, 0.37) == 0.0
     @test Copulas.d²A(hr_ind, 0.37) == 0.0

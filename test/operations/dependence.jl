@@ -10,7 +10,7 @@ end
 
 @testset "dependence measures agree with their definitions" begin
     C = FGMCopula{2}(0.4)
-    integral, _ = HCubature.hcubature(u -> cdf(C, u), zeros(2), ones(2);
+    integral, _ = HCubature.hcubature(CDFOracleIntegrand(C), zeros(2), ones(2);
                                       rtol=2e-5)
     @test Copulas.ρ(C) ≈ 12integral - 3 atol=2e-4
     @test Copulas.β(C) ≈ 4cdf(C, [0.5, 0.5]) - 1
@@ -139,6 +139,16 @@ function _unique_dependence_routes(operation, predicate)
     return routes
 end
 
+struct CDFOracleIntegrand
+    C::Copulas.Copula
+end
+(f::CDFOracleIntegrand)(u) = cdf(f.C, u)
+
+struct TauOracleIntegrand
+    C::Copulas.Copula
+end
+(f::TauOracleIntegrand)(u) = cdf(f.C, u) * pdf(f.C, u)
+
 @testset verbose=true "specialized dependence measures agree with generic definitions" begin
     # Entropy and Gini's gamma use substantially more expensive multidimensional
     # expectations and are covered by their independent identities in
@@ -179,7 +189,7 @@ end
                     @test Copulas.ρ(reference) ≈ 6asin(0.25) / π atol=2e-15
                 else
                     expected = measure === Copulas.τ ?
-                        4 * HCubature.hcubature(u -> cdf(C, u) * pdf(C, u),
+                        4 * HCubature.hcubature(TauOracleIntegrand(C),
                                                zeros(2), ones(2); rtol=1e-5)[1] - 1 :
                         invoke(measure, Tuple{Copulas.Copula}, C)
                     @test isapprox(measure(C), expected; atol=3e-4, rtol=3e-4)

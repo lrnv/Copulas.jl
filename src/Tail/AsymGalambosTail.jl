@@ -93,10 +93,19 @@ const AsymGalambosCopula{d,T} = ExtremeValueCopula{d,AsymGalambosTail{T}}
 
 # Convenience submodel: one full-set Galambos component plus singleton
 # remainders.
+function AsymGalambosTail(α::TA, weights::AbstractVector{TW}) where {TA<:Real,TW<:Real}
+    T = promote_type(Float64, TA, TW)
+    tail = AsymGalambosTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=0.0)...)
+    return tail::AsymGalambosTail{T}
+end
+
+function AsymGalambosTail(α::TA, θ₁::T1, θ₂::T2) where {TA<:Real,T1<:Real,T2<:Real}
+    T = promote_type(Float64, TA, T1, T2)
+    weights = T[θ₁, θ₂]
+    return AsymGalambosTail(T(α), weights)::AsymGalambosTail{T}
+end
 AsymGalambosTail(α::Real, weights::AbstractVector) =
     AsymGalambosTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=0.0)...)
-AsymGalambosTail(α::Real, θ₁::Real, θ₂::Real) =
-    AsymGalambosTail(α, [θ₁, θ₂])
 AsymGalambosTail(dep::AbstractVector, asy::AbstractVector) =
     AsymGalambosTail(trailing_zeros(length(asy) + 1), dep, asy)
 

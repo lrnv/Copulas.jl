@@ -98,6 +98,12 @@ one.
 const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
 
 # Convenience submodel: one full-set logistic component plus singleton remainders.
+function TawnTail(α::TA, weights::AbstractVector{TW}) where {TA<:Real,TW<:Real}
+    T = promote_type(Float64, TA, TW)
+    tail = TawnTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=1.0)...)
+    return tail::TawnTail{T}
+end
+
 TawnTail(α::Real, weights::AbstractVector) =
     TawnTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=1.0)...)
 

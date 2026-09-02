@@ -101,9 +101,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2, CuadrasAugeTail{T}},
     A::AbstractMatrix{S}) where {T,S<:Real}
 
-    kind = limit_kind(C.tail, Val(d))
-    kind === Π_LIMIT && return Random.rand!(rng, X)
-    kind === M_LIMIT && return _rand_M!(rng, X)
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return Random.rand!(rng, A)
+    kind === M_LIMIT && return _rand_M!(rng, A)
 
     θ = C.tail.θ
     E = rand(rng, Distributions.Exponential(θ/(1-θ)), 2, size(A, 2))

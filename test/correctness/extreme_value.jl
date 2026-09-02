@@ -30,7 +30,7 @@ using Random
         @test Copulas.d²A(log_ind, 0.37) == 0.0
 
         for tail in (log_ind, gal_ind)
-            @test Copulas.limit_kind(tail, Val(3)) === Copulas.NO_LIMIT
+            @test Copulas.limit_kind(tail, Val(3)) === Copulas.Π_LIMIT
             @test Copulas.ellpartial(tail, x, (1,)) == 1.0
             @test Copulas.ellpartial(tail, x, (1, 2)) == 0.0
         end

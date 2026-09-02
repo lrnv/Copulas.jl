@@ -54,6 +54,16 @@ function timed_include(label, path)
     end
 end
 
+function record_timing!(label, timing)
+    _TEST_TIMINGS[string(label)] = Dict(
+        "elapsed_seconds" => timing.time,
+        "compile_seconds" => timing.compile_time,
+        "recompile_seconds" => timing.recompile_time,
+    )
+
+    return timing.value
+end
+
 function write_test_timings()
     path = get(ENV, "COPULAS_TEST_TIMINGS", "")
     isempty(path) && return
@@ -164,26 +174,52 @@ function copula_case(family, d::Int, args...; constructor_kwargs=NamedTuple(),
             margin_atol, conditional_at)
 end
 
-include("correctness/reduction_graph.jl")
-include("bestiary.jl")
+timed_include("setup/reduction_graph.jl", "correctness/reduction_graph.jl")
+timed_include("setup/bestiary.jl", "bestiary.jl")
 
 const PUBLIC_FAMILY_CASES = Tuple(unique(case -> case.symbol, ALL_COPULA_CASES))
-const COPULA_FIXTURES = Tuple((case=case, copula=case.build())
-                              for case in ALL_COPULA_CASES)
+const _COPULA_FIXTURES_TIMING = @timed Tuple((case=case, copula=case.build()) for case in ALL_COPULA_CASES)
+const COPULA_FIXTURES = _COPULA_FIXTURES_TIMING.value
+record_timing!("setup/copula_fixtures", _COPULA_FIXTURES_TIMING)
 
 # Public component cases derive from the same central copula bestiary. They
 # live here because several earlier mathematical-oracle files consume them
 # before the component operation suites themselves are included.
 generator_case_key(G) = (typeof(G), G isa WilliamsonGenerator ? isinteger(G.order) : nothing)
-const GENERATOR_CASES = Tuple(unique(generator_case_key,
-    [fixture.copula.G for fixture in COPULA_FIXTURES
-     if fixture.copula isa ArchimedeanCopula]))
+const _GENERATOR_CASES_TIMING = @timed Tuple(unique(
+    generator_case_key,
+    [
+        fixture.copula.G
+        for fixture in COPULA_FIXTURES
+        if fixture.copula isa ArchimedeanCopula
+    ],
+))
+
+const GENERATOR_CASES =
+    _GENERATOR_CASES_TIMING.value
+
+record_timing!(
+    "setup/generator_cases",
+    _GENERATOR_CASES_TIMING,
+)
 
 tail_case_key((tail, d)) = (typeof(tail), d, typeof(params(tail)))
-const TAIL_CASES = Tuple(unique(tail_case_key,
-    [(fixture.copula.tail, length(fixture.copula))
-     for fixture in COPULA_FIXTURES
-     if fixture.copula isa ExtremeValueCopula]))
+const _TAIL_CASES_TIMING = @timed Tuple(unique(
+    tail_case_key,
+    [
+        (fixture.copula.tail, length(fixture.copula))
+        for fixture in COPULA_FIXTURES
+        if fixture.copula isa ExtremeValueCopula
+    ],
+))
+
+const TAIL_CASES =
+    _TAIL_CASES_TIMING.value
+
+record_timing!(
+    "setup/tail_cases",
+    _TAIL_CASES_TIMING,
+)
 
 
 # Run cheap foundational checks first, then mathematical and operation proofs.
