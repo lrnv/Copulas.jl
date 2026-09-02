@@ -99,11 +99,13 @@ const BASE_COPULA_CASES = Any[
 function reduction_case(edge)
     Base.@nospecialize edge
 
-    expected_family = edge.expected_family
+    source = edge.source
+    source_type = constructor_type(source)
+
     prototype = nothing
 
     for case in BASE_COPULA_CASES
-        if expected_family <: case.family
+        if source_type <: case.family
             prototype = case
             break
         end
@@ -111,8 +113,7 @@ function reduction_case(edge)
 
     isnothing(prototype) && error("no prototype for $(edge.name)")
 
-    build = edge.source
-    return merge(prototype, (; name=edge.name, typed=build, dynamic=build, build))
+    return merge(prototype, source, (; name=edge.name))
 end
 
 const REDUCTION_COPULA_CASES = Any[reduction_case(edge) for edge in CONSTRUCTOR_REDUCTIONS]

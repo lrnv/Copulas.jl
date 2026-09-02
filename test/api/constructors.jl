@@ -4,11 +4,10 @@ function test_constructor_case(case)
     Base.@nospecialize case
     typed_value = nothing
     @testset "$(case.name)" begin
-        # Evaluate the natural constructor call itself.  Applying `@inferred`
-        # to the closure stored by the bestiary tests closure inference instead
-        # and returns `Any` on Julia 1.11 even when the constructor is stable.
-        typed_value = Core.eval(@__MODULE__, :(@inferred $(case.typed_expr)))
-        dynamic = case.dynamic()
+        expr = typed_constructor_expr(case)
+        typed_value = Core.eval(@__MODULE__, :(@inferred $expr))
+
+        dynamic = build_dynamic(case)
         @test typeof(typed_value) === typeof(dynamic)
         @test params(typed_value) == params(dynamic)
     end
@@ -63,8 +62,7 @@ end
 end
 
 @testset "public constructors" begin
-    # constructed = map(test_constructor_case, COPULA_CASES)
-    constructed = map(test_constructor_case, PUBLIC_FAMILY_CASES)
+    constructed = map(test_constructor_case, ALL_COPULA_CASES)
     declared_symbols = Set(symbol for symbol in public_symbols()
         if Base.isexported(Copulas, symbol) &&
            getfield(Copulas, symbol) isa Type &&

@@ -164,33 +164,99 @@ function _public_copula_symbol(family)
     return found
 end
 
-function copula_case(family, d::Int, args...; constructor_kwargs=NamedTuple(),
-                     numerical_atol=1e-8, margin_atol=1e-6,
-                     conditional_at=nothing)
+function constructor_spec(family, d::Int, args...; kwargs...)
+    Base.@nospecialize family args
+
+    return (
+        family = family,
+        d = d,
+        args = args,
+        constructor_kwargs = (; kwargs...),
+    )
+end
+
+function constructor_type(spec)
+    Base.@nospecialize spec
+    return Core.apply_type(spec.family, spec.d)
+end
+
+function build_typed(spec)
+    Base.@nospecialize spec
+
+    family = constructor_type(spec)
+    return family(
+        spec.args...;
+        spec.constructor_kwargs...,
+    )
+end
+
+function build_dynamic(spec)
+    Base.@nospecialize spec
+
+    return spec.family(
+        spec.d,
+        spec.args...;
+        spec.constructor_kwargs...,
+    )
+end
+
+function typed_constructor_expr(spec)
+    Base.@nospecialize spec
+
+    call = Any[QuoteNode(constructor_type(spec))]
+
+    if !isempty(spec.constructor_kwargs)
+        parameters = Expr(:parameters)
+        for (key, value) in pairs(spec.constructor_kwargs)
+            push!(
+                parameters.args,
+                Expr(:kw, key, QuoteNode(value)),
+            )
+        end
+        push!(call, parameters)
+    end
+
+    for arg in spec.args
+        push!(call, QuoteNode(arg))
+    end
+
+    return Expr(:call, call...)
+end
+
+function copula_case(
+    family,
+    d::Int,
+    args...;
+    constructor_kwargs=NamedTuple(),
+    numerical_atol=1e-8,
+    margin_atol=1e-6,
+    conditional_at=nothing,
+)
+    Base.@nospecialize family args
+
     symbol = _public_copula_symbol(family)
     name = replace(string(symbol), r"Copula$" => "")
-    typed_family = Core.apply_type(family, d)
-    typed = () -> typed_family(args...; constructor_kwargs...)
-    dynamic = () -> family(d, args...; constructor_kwargs...)
-    call = Any[QuoteNode(typed_family)]
-    isempty(constructor_kwargs) || push!(call, Expr(:parameters,
-        (Expr(:kw, key, QuoteNode(value))
-         for (key, value) in pairs(constructor_kwargs))...))
-    append!(call, QuoteNode.(args))
-    typed_expr = Expr(:call, call...)
-    return (; family, symbol, name, d, args, constructor_kwargs, typed,
-            typed_expr, dynamic, build=typed, numerical_atol,
-            margin_atol, conditional_at)
+
+    return (
+        family = family,
+        symbol = symbol,
+        name = name,
+        d = d,
+        args = args,
+        constructor_kwargs = constructor_kwargs,
+        numerical_atol = numerical_atol,
+        margin_atol = margin_atol,
+        conditional_at = conditional_at,
+    )
 end
 
 timed_include("setup/reduction_graph.jl", "correctness/reduction_graph.jl")
 timed_include("setup/bestiary.jl", "bestiary.jl")
 
-const PUBLIC_FAMILY_CASES = unique(case -> case.symbol, ALL_COPULA_CASES)
 
 function build_copula_fixture(case)
     Base.@nospecialize case
-    return (case = case, copula = case.build())
+    return (case = case, copula = build_typed(case))
 end
 const _COPULA_FIXTURES_TIMING = @timed map(build_copula_fixture, ALL_COPULA_CASES)
 const COPULA_FIXTURES = _COPULA_FIXTURES_TIMING.value

@@ -58,7 +58,7 @@
         cases = Any[]
         for case in ALL_COPULA_CASES
             isnothing(case.conditional_at) && continue
-            C = case.build()
+            C = build_typed(case)
             is_absolutely_continuous(C) || continue
             j, value = case.conditional_at
             push!(cases, condition(C, j, value))
