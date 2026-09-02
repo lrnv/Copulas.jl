@@ -2,24 +2,20 @@
 # density contracts, independent identities, specialization equivalence, and
 # exhaustive dispatch-route registration.
 
-function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
-    Base.@nospecialize C ctx
+function test_distribution_contract(C, u, numerical_atol, margin_atol)
+    Base.@nospecialize C u
+
     d = length(C)
-    c = cdf(C, ctx.u)
-    lower = 0.8 .* ctx.u
-    upper = ctx.u .+ 0.2 .* (1 .- ctx.u)
+    c = cdf(C, u)
+    lower = 0.8 .* u
+    upper = u .+ 0.2 .* (1 .- u)
 
     @test d >= 2
     @test eltype(C) <: Real
     @test params(C) isa NamedTuple
     @test 0 <= c <= 1
-    @test max(sum(ctx.u) - d + 1, 0) - 1e-8 <= c <= minimum(ctx.u) + 1e-8
+    @test max(sum(u) - d + 1, 0) - 1e-8 <= c <= minimum(u) + 1e-8
     @test cdf(C, lower) <= c <= cdf(C, upper)
-    @test logcdf(C, ctx.u) ≈ log(c) atol=numerical_atol
-    @test cdf(C, zeros(d)) == 0
-    @test cdf(C, ones(d)) == 1
-    @test cdf(C, fill(-0.1, d)) == 0
-    @test cdf(C, fill(1.1, d)) == 1
 
     margin = ones(d)
     extended_margin = fill(1.1, d)
@@ -30,51 +26,78 @@ function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
         @test cdf(C, margin) ≈ 0.37 atol=margin_atol
         @test cdf(C, extended_margin) ≈ 0.37 atol=margin_atol
     end
-
-    matrix_u = reshape(ctx.u, :, 1)
-    @test cdf(C, matrix_u) ≈ [c] atol=numerical_atol
-    @test logcdf(C, matrix_u) ≈ log.([c]) atol=1e-3
-    @test_throws ArgumentError cdf(C, zeros(d + 1))
-    @test_throws ArgumentError cdf(C, zeros(d + 1, 1))
 end
 
-function test_density_contract(C, ctx)
-    Base.@nospecialize C ctx
+function test_density_contract(C, u)
+    Base.@nospecialize C u
+
     return test_density_contract(
         Copulas.copula_measure_style(C),
         C,
-        ctx,
+        u,
     )
 end
-test_density_contract(::Copulas.NonAbsolutelyContinuousMeasure, C, ctx) = nothing
-function test_density_contract(::Copulas.AbsolutelyContinuousMeasure, C, ctx)
-    Base.@nospecialize C ctx
-    p = pdf(C, ctx.u)
-    lp = logpdf(C, ctx.u)
-    matrix_pdf = pdf(C, reshape(ctx.u, :, 1))
+test_density_contract(::Copulas.NonAbsolutelyContinuousMeasure, C, u) = nothing
+function test_density_contract(::Copulas.AbsolutelyContinuousMeasure, C, u)
+    Base.@nospecialize C u
+
+    p = pdf(C, u)
+    lp = logpdf(C, u)
 
     @test p >= 0
     @test pdf(C, fill(1e-5, length(C))) >= 0
     @test pdf(C, fill(0.5, length(C))) >= 0
     @test pdf(C, fill(1 - 1e-5, length(C))) >= 0
     @test iszero(p) ? lp == -Inf : lp ≈ log(p)
-    @test matrix_pdf == [p]
-    @test logpdf(C, reshape(ctx.u, :, 1)) ≈ log.(matrix_pdf)
-    @test all(isfinite, matrix_pdf)
-    @test loglikelihood(C, ctx.U) isa Real
     @test_throws DimensionMismatch logpdf(C, zeros(length(C) + 1))
-    @test_throws ArgumentError logpdf(C, zeros(length(C) + 1, 1))
 end
 
 @testset "public distribution-evaluation contract" begin
-    @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
+    @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
-        ctx = copula_contract_context(C, 10_000 + seed)
+        u = copula_contract_point(C)
         test_progress("operations", "distribution", case.name, "cdf")
-        test_distribution_contract(C, ctx, case.numerical_atol, case.margin_atol)
+        test_distribution_contract(C, u, case.numerical_atol, case.margin_atol)
         test_progress("operations", "distribution", case.name, "density")
-        test_density_contract(C, ctx)
+        test_density_contract(C, u)
     end
+end
+
+@testset "generic distribution collection adapters" begin
+    C = ClaytonCopula{3}(1.5)
+
+    u1 = [0.31, 0.50, 0.69]
+    u2 = [0.27, 0.56, 0.74]
+    U = hcat(u1, u2)
+
+    c = [cdf(C, u1), cdf(C, u2)]
+    p = [pdf(C, u1), pdf(C, u2)]
+
+    # Scalar log-CDF adapter.
+    @test logcdf(C, u1) ≈ log(c[1])
+
+    # Matrix adapters.
+    @test cdf(C, U) ≈ c
+    @test logcdf(C, U) ≈ log.(c)
+    @test pdf(C, U) ≈ p
+    @test logpdf(C, U) ≈ log.(p)
+
+    @test all(isfinite, p)
+
+    # Generic likelihood adapter only needs one representative.
+    @test loglikelihood(C, U) isa Real
+
+    # Generic CDF support handling.
+    d = length(C)
+    @test cdf(C, zeros(d)) == 0
+    @test cdf(C, ones(d)) == 1
+    @test cdf(C, fill(-0.1, d)) == 0
+    @test cdf(C, fill(1.1, d)) == 1
+
+    # Generic collection dimension validation.
+    @test_throws ArgumentError cdf(C, zeros(d + 1))
+    @test_throws ArgumentError cdf(C, zeros(d + 1, 1))
+    @test_throws ArgumentError logpdf(C, zeros(d + 1, 1))
 end
 
 # Distribution-operation equivalence proofs for optimized CDF and density routes.

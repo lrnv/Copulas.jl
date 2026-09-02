@@ -19,26 +19,25 @@ function inverse_rosenblatt_route_key(C)
     return (method, d == 2 ? :bivariate : :multivariate)
 end
 
-function test_rosenblatt_contract(C, ctx)
-    Base.@nospecialize C ctx
-    is_absolutely_continuous(C) || return
-    R = rosenblatt(C, ctx.U)
-    @test size(R) == size(ctx.U)
+function test_rosenblatt_contract(C, u, U)
+    Base.@nospecialize C u U
+
+    R = rosenblatt(C, U)
+    @test size(R) == size(U)
     @test all(x -> 0 <= x <= 1, R)
-    @test rosenblatt(C, ctx.u) ≈ vec(rosenblatt(C, reshape(ctx.u, :, 1)))
-    if is_absolutely_continuous(C)
-        @test inverse_rosenblatt(C, R) ≈ ctx.U atol=2e-5 rtol=2e-5
-        @test inverse_rosenblatt(C, rosenblatt(C, ctx.u)) ≈ ctx.u atol=2e-5 rtol=2e-5
-    end
+    @test rosenblatt(C, u) ≈ vec(rosenblatt(C, reshape(u, :, 1)))
+    @test inverse_rosenblatt(C, R) ≈ U atol=2e-5 rtol=2e-5
+    @test inverse_rosenblatt(C, rosenblatt(C, u)) ≈ u atol=2e-5 rtol=2e-5
 end
 
 @testset "public Rosenblatt contract" begin
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
+        C = fixture.copula
+        is_absolutely_continuous(C) || continue
         test_progress("operations", "rosenblatt", fixture.case.name, "contract")
-        test_rosenblatt_contract(
-            fixture.copula,
-            copula_contract_context(fixture.copula, 10_000 + seed),
-        )
+        u = copula_contract_point(C)
+        U = rand(StableRNG(10_000 + seed), C, 4)
+        test_rosenblatt_contract(C, u, U)
     end
 end
 

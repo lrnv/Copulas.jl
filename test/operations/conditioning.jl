@@ -2,30 +2,31 @@
 # public contracts, independent identities, specialization equivalence,
 # family regressions, and route coverage are colocated here.
 
-function test_conditioning_contract(C, ctx)
-    Base.@nospecialize C ctx
+function test_conditioning_contract(C, u)
+    Base.@nospecialize C u
+
     d = length(C)
     d > 2 && !is_absolutely_continuous(C) && return
     if d == 2
-        scalar = condition(C, 1, ctx.u[1])
-        tupled = condition(C, (1,), (ctx.u[1],))
+        scalar = condition(C, 1, u[1])
+        tupled = condition(C, (1,), (u[1],))
         @test scalar isa Distributions.UnivariateDistribution
-        @test cdf(scalar, ctx.u[2]) ≈ cdf(tupled, ctx.u[2])
+        @test cdf(scalar, u[2]) ≈ cdf(tupled, u[2])
     end
     if d > 2
-        joint = condition(C, 1, ctx.u[1])
+        joint = condition(C, 1, u[1])
         @test length(joint) == d - 1
-        @test 0 <= cdf(joint, ctx.u[2:end]) <= 1
+        @test 0 <= cdf(joint, u[2:end]) <= 1
     end
     if d > 3
         js = Tuple(1:(d - 2))
-        joint = condition(C, js, Tuple(ctx.u[1:(d - 2)]))
+        joint = condition(C, js, Tuple(u[1:(d - 2)]))
         @test length(joint) == 2
-        @test 0 <= cdf(joint, ctx.u[(d - 1):d]) <= 1
+        @test 0 <= cdf(joint, u[(d - 1):d]) <= 1
     end
 
     js = Tuple(1:(d - 1))
-    values = Tuple(ctx.u[1:(d - 1)])
+    values = Tuple(u[1:(d - 1)])
     D = condition(C, js, values)
     vals = cdf.(Ref(D), (0.25, 0.5, 0.75))
     q = quantile(D, 0.5)
@@ -88,11 +89,11 @@ conditional_measure_style(::Distributions.UnivariateDistribution) =
     Copulas.AbsolutelyContinuousMeasure()
 
 @testset "public conditioning contract" begin
-    @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
+    @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES
         test_progress("operations", "conditioning", fixture.case.name, "contract")
         test_conditioning_contract(
             fixture.copula,
-            copula_contract_context(fixture.copula, 10_000 + seed),
+            copula_contract_point(fixture.copula),
         )
     end
 end

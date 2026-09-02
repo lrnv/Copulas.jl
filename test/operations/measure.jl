@@ -21,8 +21,7 @@ end
             @testset "$(case.name)" begin
                 test_progress("operations", "measure", "contract", case.name)
                 @test Copulas.measure(C, zeros(d), ones(d)) ≈ 1 atol=1e-3
-                interior = Copulas.measure(C, fill(0.2, d), fill(0.6, d))
-                @test 0 <= interior <= 1
+                @test Copulas.measure(C, fill(0.6, d), fill(0.2, d)) == 0
             end
         end
 

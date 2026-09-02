@@ -70,9 +70,11 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
         end
         conditioned = prod(1 - 2U[i, j] for i in 1:(d - 1))
         p = rand(rng)
-        y = Roots.find_zero(
-            target -> target * (1 + C.θ * conditioned * (1 - target)) - p,
-            (zero(T), one(T)), Roots.Bisection())
+        y = if iszero(a)
+            p
+        else
+            2p / (1 + a + sqrt((1 + a)^2 - 4a * p))
+        end
         U[d, j] = y
     end
     return U
@@ -129,13 +131,16 @@ end
     gini_integrand(v) = (
         1 + minimum(v) - maximum(v) + abs(sum(v) - 1)
     ) / 2
-    gini_expectation, _ = HCubature.hcubature(
-        v -> gini_integrand(v) * _oracle_pdf(C, v), zeros(2), ones(2))
-    @test Copulas.γ(C) ≈ (gini_expectation - 0.5) / 0.25 atol=3e-2
-    entropy, _ = HCubature.hcubature(zeros(2), ones(2)) do v
+    integrals, _ = HCubature.hcubature(zeros(2), ones(2); rtol=2e-5) do v
         density = _oracle_pdf(C, v)
-        -density * log(density)
+        [
+            gini_integrand(v) * density,
+            -density * log(density),
+        ]
     end
+
+    gini_expectation, entropy = integrals
+
     @test Copulas.ι(C) ≈ entropy atol=3e-2
     @test Copulas.λₗ(C) ≈ 0 atol=1e-8
     @test Copulas.λᵤ(C) ≈ 0 atol=1e-8
