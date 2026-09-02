@@ -1,8 +1,7 @@
-# Test-suite orchestrator. See the developer guide's "Testing architecture"
-# section for the proof obligations. Tests run from foundational public-API
-# checks through mathematical and operation proofs; routing closure runs only
-# after those proofs have populated its ledgers, and optional extensions run
-# last in isolation.
+# Test-suite orchestrator. Public contracts exercise every bestiary regime;
+# expensive numerical identities are deduplicated locally by implementation
+# mechanism inside the corresponding operation tests.
+
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
@@ -105,13 +104,6 @@ const PAIRWISE_DEPENDENCE_MEASURES = (
     (Copulas.coruppertail, 1),
 )
 
-# Proof ledger shared by the four obligation layers. A route is entered only
-# after the test providing its oracle/equivalence has succeeded. The routing
-# layer, which runs last, compares this ledger with every method selected by the
-# public fixtures.
-const PROVEN_DISPATCH_ROUTES = Dict{Symbol,Dict{Any,Set{Symbol}}}()
-const PROVEN_DEPENDENCE_ROUTES = Dict(measure => Set{Any}() for measure in SCALAR_DEPENDENCE_MEASURES)
-
 function _which(f, args...)
     Base.@nospecialize f args
     return which(f, Tuple{typeof.(args)...})
@@ -147,27 +139,6 @@ function dispatch_route_key(operation, C)
     return (method, length(C) == 2 ? :bivariate : :multivariate)
 end
 
-function prove_dispatch_route!(operation, C, source::Symbol)
-    Base.@nospecialize operation C
-    key = dispatch_route_key(operation, C)
-    isnothing(key) && return nothing
-    sources = get!(get!(PROVEN_DISPATCH_ROUTES, operation, Dict{Any,Set{Symbol}}()),
-                   key, Set{Symbol}())
-    push!(sources, source)
-    return key
-end
-
-function dependence_route_key(measure, C)
-    Base.@nospecialize measure C
-    return (which(measure, Tuple{typeof(C)}),
-            length(C) == 2 ? :bivariate : :multivariate)
-end
-function prove_dependence_route!(measure, C)
-    Base.@nospecialize measure C
-    return push!(PROVEN_DEPENDENCE_ROUTES[measure],
-                 dependence_route_key(measure, C))
-end
-
 function _public_copula_symbol(family)
     symbols = [symbol for symbol in public_symbols()
                if getfield(Copulas, symbol) === family]
@@ -196,24 +167,22 @@ end
 include("correctness/reduction_graph.jl")
 include("bestiary.jl")
 
-const COPULA_CASES = Tuple(unique(case -> case.symbol, ALL_COPULA_CASES))
+const PUBLIC_FAMILY_CASES = Tuple(unique(case -> case.symbol, ALL_COPULA_CASES))
 const COPULA_FIXTURES = Tuple((case=case, copula=case.build())
                               for case in ALL_COPULA_CASES)
-const ROUTING_COPULA_FIXTURES = Tuple((case=case, copula=case.build())
-                                      for case in ALL_COPULA_CASES)
 
 # Public component cases derive from the same central copula bestiary. They
 # live here because several earlier mathematical-oracle files consume them
 # before the component operation suites themselves are included.
 generator_case_key(G) = (typeof(G), G isa WilliamsonGenerator ? isinteger(G.order) : nothing)
 const GENERATOR_CASES = Tuple(unique(generator_case_key,
-    [fixture.copula.G for fixture in ROUTING_COPULA_FIXTURES
+    [fixture.copula.G for fixture in COPULA_FIXTURES
      if fixture.copula isa ArchimedeanCopula]))
 
 tail_case_key((tail, d)) = (typeof(tail), d, typeof(params(tail)))
 const TAIL_CASES = Tuple(unique(tail_case_key,
     [(fixture.copula.tail, length(fixture.copula))
-     for fixture in ROUTING_COPULA_FIXTURES
+     for fixture in COPULA_FIXTURES
      if fixture.copula isa ExtremeValueCopula]))
 
 
@@ -247,6 +216,7 @@ testfiles = (
     "correctness/nested_archimedean_equivalence.jl",
     "correctness/family_specialization_equivalence.jl",
     "correctness/statistical.jl",
+    "correctness/behavioural_branches.jl",
     "operations/distribution.jl",
     "operations/measure.jl",
     "operations/sampling.jl",
@@ -256,8 +226,6 @@ testfiles = (
     "operations/dependence.jl",
     "operations/fitting.jl",
     "operations/nataf.jl",
-    "routing/branches.jl",
-    "routing/dispatch.jl",
     "extensions/expectation_maximization.jl"
 )
 

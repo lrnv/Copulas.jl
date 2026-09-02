@@ -66,7 +66,7 @@ conditional_route_key(D) = Tuple(which(f, Tuple{typeof(D),Float64}) for f in (
 
 const CONDITIONAL_DISTRIBUTION_CANDIDATES = (
     ((fixture.case.name, conditional_distribution(fixture))
-     for fixture in ROUTING_COPULA_FIXTURES
+     for fixture in COPULA_FIXTURES
      if length(fixture.copula) == 2 || is_absolutely_continuous(fixture.copula))...,
 )
 const CONDITIONAL_DISTRIBUTION_CASES = Tuple(unique(
@@ -114,7 +114,7 @@ end
 
 @testset verbose=true "bivariate conditioning routes agree with CDF derivatives" begin
     seen = Set{Method}()
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         length(C) == 2 || continue
         is_absolutely_continuous(C) || continue
@@ -154,7 +154,6 @@ end
             @test isapprox(pdf(D, target), expected_pdf;
                            atol=3e-4, rtol=3e-4)
         end
-        prove_dispatch_route!(:conditioning, C, :cdf_derivative)
     end
     @test !isempty(seen)
 end
@@ -204,7 +203,7 @@ end
 
 @testset verbose=true "multivariate conditioning routes agree with normalized CDF derivatives" begin
     seen = Set{Method}()
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         d = length(C)
         d > 2 || continue
@@ -231,15 +230,13 @@ end
             end
             @test isapprox(cdf(D, target), expected; atol=2e-3, rtol=2e-3)
         end
-        prove_dispatch_route!(:conditioning, C,
-                              :normalized_cdf_derivative)
     end
     @test !isempty(seen)
 end
 
 @testset "atomic conditioning routes satisfy generalized inversion" begin
     seen = Set{Any}()
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         is_absolutely_continuous(C) && continue
         # Point conditioning is not canonically defined away from the finite
@@ -257,8 +254,6 @@ end
                 @test cdf(D, q) >= p - 1e-10
             end
         end
-        prove_dispatch_route!(:conditioning, C,
-                              :generalized_quantile_identity)
     end
     @test !isempty(seen)
 end
@@ -281,7 +276,7 @@ end
     seen = Set{Any}()
     conditioned = 0.41
     h = 2e-5
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         d = length(C)
         d > 2 || continue
@@ -311,8 +306,6 @@ end
             @test isapprox(cdf(H.C, conditional_scale), numerator / normalizer;
                            atol=tolerance, rtol=tolerance)
         end
-        prove_dispatch_route!(:conditional_joint, C,
-                              :normalized_joint_cdf_derivative)
     end
     @test !isempty(seen)
 end

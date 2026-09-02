@@ -964,17 +964,15 @@ Tests are organized as follows:
 - `test/operations/` checks each public copula operation;
 - `test/correctness/` contains independent mathematical, statistical, and
   numerical references that span operations or describe a family;
-- `test/routing/` verifies that every dispatch and value-dependent branch
-  reached from the bestiary has a proof;
 - `test/extensions/` contains optional-extension regressions.
 
-For each public operation, the suite combines four kinds of evidence: the
-public contract is exercised on every applicable family; generic mechanisms are
-checked against independent oracles; specialized methods are compared with
-their generic implementation or another independent identity; and routing
-tests verify that every representative selects a proven path. Expensive
-integration, differentiation, fitting, and statistical checks should therefore
-run once per implementation mechanism, not once per family.
+- Every bestiary representative receives the applicable public-operation contracts.
+- Expensive mathematical or numerical mechanisms are validated once against an
+  independent oracle; `which` may be used locally to avoid repeating the same
+  proof for several families selecting the same implementation.
+- Parameter- or dimension-dependent branches invisible to method dispatch receive
+  focused regressions. Historical constructor reductions additionally receive
+  direct source/target equivalence tests.
 
 ## 4.2 Adding a copula family
 
@@ -992,10 +990,9 @@ After implementing and documenting `MyCopula`:
    family-wide operation contracts. Constructors must infer their concrete
    family without a return union. Constructor keywords and exceptional
    numerical tolerances remain optional metadata.
-2. Add further bestiary entries only when another dimension, representation, or
-   parameter regime selects different code. Julia's `which` detects method
-   dispatch, but not value-dependent branches inside a method, so each such
-   regime needs a representative.
+2. Add another bestiary entry whenever another dimension, representation or
+    parameter regime exercises materially different code. Every such entry receives
+    the applicable public-operation contracts.
 3. If the copula can be singular or mixed, implement the appropriate internal
    measure-style trait. This determines whether density and invertible
    Rosenblatt requirements apply; do not duplicate that classification in the
@@ -1027,15 +1024,8 @@ When adding or changing a public operation `newstuff(C::Copula)`:
    to every applicable entry in `COPULA_FIXTURES`.
 3. Test every generic implementation mechanism once against an independent
    mathematical or statistical oracle.
-4. Discover the routes selected by `ROUTING_COPULA_FIXTURES`. Compare each
-   specialization with the generic implementation, or use an independent
-   identity when no generic comparison is valid. Add bestiary representatives
-   for any missing dimension-, representation-, or value-dependent branch.
-5. Close the route inventory by set equality, so a future unproved
-   specialization fails automatically. Add the operation file to
-   `test/runtests.jl`.
 
-A contract alone proves availability but not numerical correctness; one family
-example proves neither applicability nor dispatch exhaustiveness. Conversely,
-do not repeat an oracle after the generic mechanism and every route leading to
-it have already been proved.
+Use `which` locally to identify distinct implementations reached by the bestiary,
+and validate each distinct implementation once against the generic method or an
+independent oracle. Add focused regressions for important value-dependent branches
+that share the same Julia method.

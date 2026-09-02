@@ -31,9 +31,9 @@ end
 
 @testset verbose=true "one distributional identity per sampler dispatch" begin
     selected_routes = Set(sampling_route_key(fixture.copula)
-                          for fixture in ROUTING_COPULA_FIXTURES)
+                          for fixture in COPULA_FIXTURES)
     tested_routes = Set{Any}()
-    for (index, fixture) in pairs(ROUTING_COPULA_FIXTURES)
+    for (index, fixture) in pairs(COPULA_FIXTURES)
         case, C = fixture.case, fixture.copula
         key = sampling_route_key(C)
         key in tested_routes && continue

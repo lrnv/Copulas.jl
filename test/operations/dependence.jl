@@ -31,7 +31,6 @@ end
                !(measure in (Copulas.ι,) && C isa WCopula)
                 value = measure(C)
                 @test value isa Real
-                prove_dependence_route!(measure, C)
             end
         end
     end
@@ -84,7 +83,7 @@ end
     # the same route. Applicability remains checked for every family above.
     route_cost(case) = case.family in (BernsteinCopula, FGMCopula) ? 0 :
                        case.family === ClaytonCopula ? 1 : 2
-    models = sort(collect(ROUTING_COPULA_FIXTURES); by=x -> route_cost(x.case))
+    models = sort(collect(COPULA_FIXTURES); by=x -> route_cost(x.case))
 
     @testset verbose=true "$(nameof(measure))" for measure in SCALAR_DEPENDENCE_MEASURES
         selected_routes = Set(dependence_operation_route_key(measure, fixture.copula)
@@ -128,7 +127,7 @@ function _unique_dependence_routes(operation, predicate)
     Base.@nospecialize operation predicate
     seen = Set{Method}()
     routes = NamedTuple[]
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         length(C) == 2 || continue
         predicate(case, C) || continue
@@ -157,10 +156,7 @@ end
         generic_method = which(measure, Tuple{Copulas.Copula{2}})
         for (; case, C, method) in routes
             if method === generic_method
-                # The bivariate generic mechanism is proved independently by
-                # PolynomialOracleCopula in correctness/mathematical.jl.
-                @test dependence_route_key(measure, C) in
-                      PROVEN_DEPENDENCE_ROUTES[measure]
+                # Generic mechanism is independently covered in correctness/mathematical.jl.
                 continue
             end
             @testset "$(case.name)" begin
@@ -189,7 +185,6 @@ end
                     @test isapprox(measure(C), expected; atol=3e-4, rtol=3e-4)
                 end
             end
-            prove_dependence_route!(measure, C)
         end
     end
 end
@@ -293,7 +288,6 @@ end
             expected = _singular_tau_oracle_with_limits(C)
             @test Copulas.τ(C) ≈ expected atol=2e-12 rtol=2e-12
         end
-        prove_dependence_route!(Copulas.τ, C)
         compared += 1
     end
     @test compared > 0
@@ -303,7 +297,7 @@ end
     parent = ClaytonCopula{2}(1.5)
     subset = subsetdims(parent, (2, 1))
     candidates = Any[]
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         length(C) == 2 && push!(candidates, C)
     end
@@ -318,9 +312,6 @@ end
         selected_methods = Set(which(measure, Tuple{typeof(C)}) for C in candidates)
         checked_methods = Set(which(measure, Tuple{typeof(C)}) for C in checked)
         @test selected_methods == checked_methods
-        for C in checked
-            prove_dependence_route!(measure, C)
-        end
     end
 end
 
@@ -337,10 +328,10 @@ end
     for (pairwise, diagonal) in PAIRWISE_DEPENDENCE_MEASURES
         selected = Set((which(pairwise, Tuple{typeof(fixture.copula)}),
                         length(fixture.copula) == 2 ? :bivariate : :multivariate)
-                       for fixture in ROUTING_COPULA_FIXTURES
+                       for fixture in COPULA_FIXTURES
                        if _dependence_is_defined(pairwise, fixture.copula))
         checked = Set{Any}()
-        for fixture in ROUTING_COPULA_FIXTURES
+        for fixture in COPULA_FIXTURES
             case, C = fixture.case, fixture.copula
             _dependence_is_defined(pairwise, C) || continue
             key = (which(pairwise, Tuple{typeof(C)}),
@@ -379,14 +370,10 @@ end
     # The generator specialization is dimension invariant; its bivariate
     # value is independently checked against the generic integral above.
     @test Copulas.ρ(clayton) == Copulas.ρ(ClaytonCopula{2}(1.5))
-    prove_dependence_route!(Copulas.τ, clayton)
-    prove_dependence_route!(Copulas.ρ, clayton)
 
     raftery = RafteryCopula{3}(0.5)
     @test Copulas.τ(raftery) ≈ 0.4
     @test Copulas.ρ(raftery) ≈ 13 / 27
-    prove_dependence_route!(Copulas.τ, raftery)
-    prove_dependence_route!(Copulas.ρ, raftery)
 end
 
 
@@ -418,7 +405,7 @@ function supports_inverse(C::ExtremeValueCopula, inverse)
 end
 
 const _COPULA_INVERSE_CASES = Tuple(unique(typeof,
-    [fixture.copula for fixture in ROUTING_COPULA_FIXTURES
+    [fixture.copula for fixture in COPULA_FIXTURES
      if length(fixture.copula) == 2 && has_scalar_parameter(fixture.copula)]))
 const _GENERATOR_INVERSE_CASES = Tuple(unique(typeof,
     [G for G in GENERATOR_CASES if has_scalar_parameter(G)]))

@@ -61,8 +61,12 @@ end
     same_model(tEVCopula{3}(4.0, Σ3),ExtremeValueCopula{3}(Copulas.tEVTail(4.0, Σ3)))
 end
 
+const PUBLIC_FAMILY_CASES =
+    Tuple(unique(case -> case.symbol, ALL_COPULA_CASES))
+
 @testset "public constructors" begin
-    constructed = map(test_constructor_case, COPULA_CASES)
+    # constructed = map(test_constructor_case, COPULA_CASES)
+    constructed = map(test_constructor_case, PUBLIC_FAMILY_CASES)
     declared_symbols = Set(symbol for symbol in public_symbols()
         if Base.isexported(Copulas, symbol) &&
            getfield(Copulas, symbol) isa Type &&

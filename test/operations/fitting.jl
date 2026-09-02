@@ -123,7 +123,7 @@ _check_parameter_roundtrip(C) =
 @testset "all distinct advertised fitting routes" begin
     selected_routes = Set{Any}()
     tested_routes = Set{Any}()
-    for (index, fixture) in enumerate(ROUTING_COPULA_FIXTURES)
+    for (index, fixture) in enumerate(COPULA_FIXTURES)
         case, C = fixture.case, fixture.copula
         CT, d = typeof(C), length(C)
         methods = Copulas._available_fitting_methods(CT, d)

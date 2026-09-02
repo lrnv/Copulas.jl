@@ -1,6 +1,7 @@
-# The single central bestiary. The first entry for each public family is its
-# canonical contract/constructor representative; later entries exercise extra
-# dimensions, representations, or value-dependent routes only.
+# Central registry of public copula regimes exercised by the operation
+# contracts. The first entry for each family is an ordinary representative;
+# additional entries cover dimensions, representations, parameter branches,
+# and constructor-boundary regimes that select materially different code.
 
 
 const BASE_COPULA_CASES = (
@@ -102,6 +103,11 @@ function reduction_case(edge, build)
     return merge(prototype, (; name=edge.name, typed=build,
         dynamic=build, build))
 end
+
+# Historical constructor reductions now remain in their source family.
+# Their source models therefore belong to the global bestiary: although
+# mathematically equivalent to simpler targets, they exercise distinct
+# value-dependent numerical branches.
 const REDUCTION_COPULA_CASES = Tuple(reduction_case(edge, build)
     for (edge, build) in zip(CONSTRUCTOR_REDUCTIONS, REDUCTION_COPULA_BUILDERS))
 const ALL_COPULA_CASES = (BASE_COPULA_CASES..., REDUCTION_COPULA_CASES...)

@@ -1,7 +1,6 @@
-# Routing obligation: methods selected by `which` do not reveal value-,
-# dimension-, or representation-dependent branches inside their bodies. These
-# focused tests exercise such public branches without repeating the full
-# per-family contract.
+# Focused regressions for dimension-, representation-, and parameter-dependent
+# branches that Julia's method dispatch alone cannot distinguish.
+
 @testset verbose=true "non-dispatch behavioural branches" begin
     @testset "beta by dimension" begin
         C2 = FGMCopula{2}(0.4)
@@ -34,21 +33,6 @@
         conditioned = condition(C, (1, 3), (0.25, 0.75))
         @test conditioned.C isa SurvivalCopula{2}
         @test 0.0 <= cdf(conditioned, [0.4, 0.6]) <= 1.0
-    end
-
-    @testset "elliptical EV representation by dimension" begin
-        # These kernels are expensive.  Their bivariate and multivariate
-        # representatives have already populated the proof ledger, so this
-        # branch registry verifies that both representations are linked rather
-        # than executing the same numerical identities a second time.
-        fixtures = filter(ROUTING_COPULA_FIXTURES) do fixture
-            fixture.copula isa Union{HuslerReissCopula,tEVCopula}
-        end
-        for fixture in fixtures
-            case, C = fixture.case, fixture.copula
-            key = dispatch_route_key(:logpdf, C)
-            @test key in keys(PROVEN_DISPATCH_ROUTES[:logpdf])
-        end
     end
 
     @testset "Gumbel--Barnett dimension-dependent validity" begin

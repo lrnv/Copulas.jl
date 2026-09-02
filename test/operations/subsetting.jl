@@ -49,7 +49,7 @@ subsetting_route_key(C) = (
     @testset "specialization equivalence and route exhaustiveness" begin
         selected_routes = Set{Any}()
         tested_routes = Set{Any}()
-        for fixture in ROUTING_COPULA_FIXTURES
+        for fixture in COPULA_FIXTURES
             case, C = fixture.case, fixture.copula
             route = subsetting_route_key(C)
             push!(selected_routes, route)

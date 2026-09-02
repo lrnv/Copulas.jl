@@ -77,7 +77,7 @@ function _unique_distribution_routes(operation, predicate)
     Base.@nospecialize operation predicate
     seen = Set{Method}()
     routes = NamedTuple[]
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         length(C) == 2 || continue
         predicate(case, C) || continue
@@ -103,7 +103,6 @@ end
         if method === generic_method
             # The generic density integral is independently validated by the
             # polynomial oracle in correctness/mathematical.jl.
-            prove_dispatch_route!(:cdf, C, :generic_density_integral)
             continue
         end
         @testset "$(case.name)" begin
@@ -116,9 +115,6 @@ end
             @test isapprox(cdf(C, u), expected;
                            atol=max(3e-5, case.numerical_atol), rtol=3e-5)
         end
-        prove_dispatch_route!(:cdf, C,
-                              C isa ArchimedeanCopula ?
-                              :generator_composition : :density_integration)
         compared += 1
     end
     @test compared > 0
@@ -126,7 +122,7 @@ end
 
 @testset "checkerboard CDF equals exact box overlap" begin
     fixture = only(filter(x -> x.copula isa CheckerboardCopula,
-                          ROUTING_COPULA_FIXTURES))
+                          COPULA_FIXTURES))
     case, C = fixture.case, fixture.copula
     u = [0.53, 0.67]
     expected = zero(eltype(values(C.boxes)))
@@ -138,7 +134,6 @@ end
         expected += weight * overlap
     end
     @test cdf(C, u) ≈ expected
-    prove_dispatch_route!(:cdf, C, :exact_box_overlap)
 end
 
 @testset verbose=true "specialized bivariate log-densities agree with CDF derivatives" begin
@@ -159,7 +154,6 @@ end
             @test isapprox(pdf(C, u), expected; atol=8e-4, rtol=8e-4)
             @test logpdf(C, u) ≈ log(pdf(C, u))
         end
-        prove_dispatch_route!(:logpdf, C, :cdf_mixed_derivative)
     end
     @test !isempty(routes)
 end
@@ -167,7 +161,7 @@ end
 @testset "singular and mixed CDF routes satisfy mass identities" begin
     seen = Set{Any}()
     split = 0.46
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         is_absolutely_continuous(C) && continue
         key = dispatch_route_key(:cdf, C)
@@ -189,7 +183,6 @@ end
         @test whole ≈
               Copulas.measure(C, lower, left_upper) +
               Copulas.measure(C, right_lower, upper)
-        prove_dispatch_route!(:cdf, C, :singular_mass_identity)
     end
     @test !isempty(seen)
 end
