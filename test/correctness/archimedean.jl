@@ -54,3 +54,33 @@ end
     @test cdf(conditional, [0.2, 0.3]) ≈ 3.0484941754695964e-5
     @test cdf(conditional.C, [0.2, 0.3]) ≈ 0.13034531809769517
 end
+
+@testset "Clayton specialized log-density" begin
+    for (d, θ) in (
+        (2, -0.5),
+        (2, 0.5),
+        (2, 2.0),
+        (3, -0.25),
+        (3, 0.5),
+        (3, 2.0),
+        (4, 1.5),
+    )
+        C = ClaytonCopula{d}(θ)
+        u = collect(range(0.31, 0.69; length=d))
+
+        specialized = Copulas._archimedean_logpdf(C, u)
+
+        generic = @invoke Copulas._archimedean_logpdf(
+            C::ArchimedeanCopula,
+            u,
+        )
+
+        @test specialized ≈ generic rtol=1e-10 atol=1e-12
+    end
+
+    @test Copulas._archimedean_logpdf(
+        ClaytonCopula{3}(0.0),
+        [0.3, 0.5, 0.7],
+    ) == 0
+end
+

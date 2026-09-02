@@ -126,22 +126,30 @@ function _archimedean_cdf(C::ClaytonCopula{d}, u) where {d}
 end
 
 function _archimedean_logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
-    # Check if all elements are in (0,1) and if θ < 0, check the sum condition
+    θ = C.G.θ
+    T = θ + zero(eltype(u))
 
-    iszero(C.G.θ) && return @invoke _archimedean_logpdf(C::ArchimedeanCopula, u)
-
-    if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
-        return eltype(u)(-Inf)
+    # Continuous independence extension.
+    iszero(θ) && return zero(T)
+    S1 = zero(T)
+    S2 = zero(eltype(u))
+    @inbounds for t in u
+        zero(t) < t < one(t) || return oftype(T, -Inf)
+        S1 += t^(-θ)
+        S2 += log(t)
     end
 
-    θ = C.G.θ
-    # Compute the sum of transformed variables
-    S1 = sum(t ^ (-θ) for t in u)
-    S2 = sum(log(t) for t in u)
-    # Compute the log of the density according to the explicit formula for Clayton copula
-    # See McNeil & Neslehova (2009), eq. (13)
-    S1==d-1 && return eltype(u)(-Inf)
-    return log(θ + 1) * (d - 1) - (θ + 1) * S2 + (-1 / θ - d) * log(S1 - d + 1)
+    if θ < 0 && S1 < d - 1
+        return oftype(T, -Inf)
+    end
+
+    S1 == d - 1 && return oftype(T, -Inf)
+    logcoef = zero(T)
+    @inbounds for k in 1:(d - 1)
+        logcoef += log1p(k * θ)
+    end
+
+    return logcoef - (θ + 1) * S2 + (-inv(θ) - d) * log(S1 - d + 1)
 end
 
 ρ(G::ClaytonGenerator) =
