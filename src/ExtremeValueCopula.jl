@@ -54,6 +54,9 @@ function copula_measure_style(C::ExtremeValueCopula{d}) where {d}
 end
 
 ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
+@inline function _wrap_extreme_value(::Val{d}, tail::TT) where {d,TT<:Tail}
+    return invoke(ExtremeValueCopula{d}, Tuple{Tail}, tail)::ExtremeValueCopula{d,TT}
+end
 
 @inline _ev_encoded_dimension(CT) = Base.unwrap_unionall(CT).parameters[1]
 
@@ -64,7 +67,8 @@ ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
 # constructors may provide more specific methods that infer `d` from a matrix
 # or vector.
 function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
-    return ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+    tail = tailof(CT)(args...; kwargs...)
+    return _wrap_extreme_value(Val(d), tail)
 end
 
 # Resolve the only generic intersection left by integer-valued parameters:
@@ -73,14 +77,18 @@ end
 function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) where {D}
     d = _ev_encoded_dimension(CT)
     if d isa TypeVar
-        return ExtremeValueCopula{first}(tailof(CT)(args...; kwargs...))
+        tail = tailof(CT)(args...; kwargs...)
+        return _wrap_extreme_value(Val(first), tail)
     end
-    return ExtremeValueCopula{d}(tailof(CT)(first, args...; kwargs...))
+    tail = tailof(CT)(first, args...; kwargs...)
+    return _wrap_extreme_value(Val(d), tail)
 end
 
 # Runtime-dimension form for an unparameterized named family alias.
-(CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) =
-    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+function (CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...)
+    tail = tailof(CT)(args...; kwargs...)
+    return _wrap_extreme_value(Val(d), tail)
+end
 
 @inline function _cdf(C::ExtremeValueCopula{d}, u) where {d}
     kind = limit_kind(C.tail, Val(d))
@@ -186,7 +194,14 @@ function _partial_cdf(C::ExtremeValueCopula, is, js, uᵢₛ, uⱼₛ)
     logvalue = _ev_logcdf_partial(C, u, js)
     return isfinite(logvalue) ? exp(logvalue) : zero(float(first(u)))
 end
-τ(C::ExtremeValueCopula{2}) = QuadGK.quadgk(t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)), 0.0, 1.0)[1]
+function τ(C::ExtremeValueCopula{2})
+    limit_kind(C.tail, Val(2)) === M_LIMIT && return 1.0
+    return QuadGK.quadgk(
+        t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)),
+        0.0,
+        1.0,
+    )[1]
+end
 ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C.tail, t))^2, 0.0, 1.0)[1] - 3
 β(C::ExtremeValueCopula{2}) = 4^(1 - A(C.tail, 0.5)) - 1
 λᵤ(C::ExtremeValueCopula{2}) = 2 * (1 - A(C.tail, 0.5))
