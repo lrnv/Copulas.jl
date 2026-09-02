@@ -115,4 +115,23 @@
             end
         end
     end
+
+    @testset "Liouville inactive coordinates reduce exactly" begin
+        C = LiouvilleCopula{3}(
+            Copulas.ClaytonGenerator(1.0),
+            (0.8, 1.1, 1.3),
+        )
+
+        u = [0.37, 0.68]
+
+        S13 = subsetdims(C, (1, 3))
+        @test cdf(C, [u[1], 1.0, u[2]]) ≈ cdf(S13, u)
+
+        S12 = subsetdims(C, (1, 2))
+        @test cdf(C, [u[1], u[2], 1.0]) ≈ cdf(S12, u)
+
+        @test cdf(C, [1.0, 1.0, 0.42]) == 0.42
+        @test cdf(C, ones(3)) == 1.0
+    end
 end
+

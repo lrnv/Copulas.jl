@@ -128,13 +128,14 @@ _check_parameter_roundtrip(C) =
         CT, d = typeof(C), length(C)
         methods = Copulas._available_fitting_methods(CT, d)
 
-        if :mle in methods && _has_fitting_parameters(C) &&
-           _check_parameter_roundtrip(C)
+        if :mle in methods && _has_fitting_parameters(C) && _check_parameter_roundtrip(C)
             bounded = params(C)
             restored = Copulas._rebound_params(
                 CT, d, Copulas._unbound_params(CT, d, bounded))
-            @test all(key -> getfield(bounded, key) ≈ getfield(restored, key),
-                      keys(bounded))
+
+            @testset "parameter roundtrip: $(case.name)" begin
+                @test all(key -> getfield(bounded, key) ≈ getfield(restored, key), keys(bounded))
+            end
         end
 
         # Route selection depends on the matrix type, not on sampled values.

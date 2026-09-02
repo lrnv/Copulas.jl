@@ -71,8 +71,8 @@ const PUBLIC_FAMILY_CASES =
         if Base.isexported(Copulas, symbol) &&
            getfield(Copulas, symbol) isa Type &&
            getfield(Copulas, symbol) <: Copulas.Copula)
-    @test Set(case.symbol for case in COPULA_CASES) == declared_symbols
-    for (case, C) in zip(COPULA_CASES, constructed)
+    @test Set(case.symbol for case in ALL_COPULA_CASES) == declared_symbols
+    for (case, C) in zip(ALL_COPULA_CASES, constructed)
         @test C isa case.family
     end
     @test_throws Exception WCopula{3}()

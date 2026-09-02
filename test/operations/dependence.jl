@@ -575,3 +575,13 @@ end
 
     @test Copulas.τ(C) ≈ expected
 end
+
+@testset "Extreme-value M-limit Kendall tau" begin
+    @test Copulas.τ(
+        AsymGalambosCopula{2}(Inf, 1.0, 1.0)
+    ) == 1
+
+    @test Copulas.τ(
+        GalambosCopula{2}(Inf)
+    ) == 1
+end

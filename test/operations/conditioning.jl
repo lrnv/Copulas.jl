@@ -704,3 +704,44 @@ end
         @test τbb6 == expected
     end
 end
+
+@testset "Archimedean independence boundaries use identity distortion" begin
+    cases = (
+        JoeCopula{2}(1.0),
+        BB6Copula{2}(1.0, 1.0),
+        BB8Copula{2}(1.0, 0.4),
+        BB10Copula{2}(2.0, 0.0),
+    )
+
+    for C in cases
+        D = condition(C, 1, 0.4)
+
+        @test D isa Copulas.NoDistortion
+        @test cdf(D, 0.2) == 0.2
+        @test cdf(D, 0.7) == 0.7
+        @test quantile(D, 0.6) == 0.6
+        @test logpdf(D, 0.5) == 0.0
+    end
+end
+
+@testset "Plackett boundary distortions" begin
+    D_W = condition(PlackettCopula{2}(0.0), 1, 0.4)
+    D_I = condition(PlackettCopula{2}(1.0), 1, 0.4)
+    D_M = condition(PlackettCopula{2}(Inf), 1, 0.4)
+
+    @test D_W isa Copulas.WDistortion
+    @test D_I isa Copulas.NoDistortion
+    @test D_M isa Copulas.MDistortion
+
+    # W: U₂ = 1 - U₁.
+    @test quantile(D_W, 0.2) ≈ 0.6
+    @test quantile(D_W, 0.8) ≈ 0.6
+
+    # Independence: conditional law stays uniform.
+    @test quantile(D_I, 0.7) == 0.7
+    @test cdf(D_I, 0.7) == 0.7
+
+    # M: U₂ = U₁.
+    @test quantile(D_M, 0.2) ≈ 0.4
+    @test quantile(D_M, 0.8) ≈ 0.4
+end

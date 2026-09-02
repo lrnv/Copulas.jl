@@ -654,3 +654,16 @@ end
         end
     end
 end
+
+@testset "NoTail parameter roundtrip" begin
+    C = ExtremeValueCopula{2}(Copulas.NoTail())
+    CT = typeof(C)
+
+    bounded = params(C)
+    unbounded = Copulas._unbound_params(CT, 2, bounded)
+    restored = Copulas._rebound_params(CT, 2, unbounded)
+
+    @test isempty(unbounded)
+    @test restored == (;)
+    @test restored == bounded
+end
