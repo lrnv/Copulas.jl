@@ -295,6 +295,19 @@ function Distributions.logpdf(D::LiouvilleDistortion, u::Real)
            log(Distributions.pdf(D.margin, x))
 end
 
+_liouville_conditioning_radial(G::Generator, d::Real) = 𝒲₋₁(G, d)
+function _liouville_conditioning_radial(G::GumbelGenerator, d::Real)
+    n = ceil(Int, d)
+
+    # Deliberately bypass the AbstractFrailtyGenerator specialization:
+    # AlphaStable is sampleable but has no pdf/logpdf, while the generic
+    # Williamson inverse can use Gumbel's explicit generator derivatives.
+    radial = invoke(𝒲₋₁, Tuple{Generator,Integer}, G, n)
+    isinteger(d) && return radial
+    return WilliamsonBetaProduct(radial, Distributions.Beta(d, n - d), n)
+end
+
+
 function _liouville_conditional_components(
     C::LiouvilleCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real},
 ) where {D,p}
@@ -302,19 +315,19 @@ function _liouville_conditional_components(
     source_order = _liouville_order(C)
     target_order = sum(C.α[i] for i in is)
     tilted_order = sum(C.α[j] for j in js)
-    original_margins = ntuple(i -> 𝒲₋₁(C.G, C.α[i]), D)
+    original_margins = ntuple(i -> _liouville_conditioning_radial(C.G, C.α[i]), D)
     xⱼₛ = ntuple(k -> Distributions.quantile(original_margins[js[k]], 1 - uⱼₛ[k]), p)
     shift = sum(xⱼₛ)
 
     source_frailty = frailty(C.G)
-    conditional_generator = if source_frailty !== nothing
+    conditional_generator = if source_frailty !== nothing && !(source_frailty isa AlphaStable)
         conditional_frailty = PowerTiltedFrailty(source_frailty, tilted_order, shift)
         conditional_radial = WilliamsonFromFrailty(conditional_frailty, target_order)
         𝒲(conditional_radial, target_order)
     elseif isinteger(tilted_order)
         TiltedGenerator(C.G, Int(tilted_order), shift)
     else
-        source_radial = 𝒲₋₁(C.G, source_order)
+        source_radial = _liouville_conditioning_radial(C.G, source_order)
         conditional_radial = LiouvilleConditionalRadial(
             source_radial, shift, source_order, target_order,
         )

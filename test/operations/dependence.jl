@@ -528,3 +528,63 @@ end
     end
     @test _CHECKED_INVERSE_METHODS == reachable
 end
+
+@testset "BB6 Kendall tau identities and limits" begin
+    # Interior BB6 value: exact reduction to Joe.
+    θ, δ = 2.3, 1.7
+    expected = 1 - (1 - Copulas.τ(JoeCopula{2}(θ))) / δ
+    @test Copulas.τ(BB6Copula{2}(θ, δ)) ≈ expected
+
+    # θ = 1 gives Gumbel: τ = 1 - 1/δ.
+    for δ in (1.5, 2.0, 5.0)
+        @test Copulas.τ(BB6Copula{2}(1.0, δ)) ≈ 1 - 1 / δ
+    end
+
+    # Infinite-parameter limits are comonotonic.
+    @test Copulas.τ(BB6Copula{2}(1.0, Inf)) == 1
+    @test Copulas.τ(BB6Copula{2}(2.3, Inf)) == 1
+    @test Copulas.τ(BB6Copula{2}(Inf, 1.5)) == 1
+    @test Copulas.τ(BB6Copula{2}(Inf, Inf)) == 1
+end
+
+@testset "BB6 Kendall tau Joe boundary" begin
+    for θ in (1.2, 2.3, 5.0)
+        @test Copulas.τ(BB6Copula{2}(θ, 1.0)) ≈
+              Copulas.τ(JoeCopula{2}(θ))
+    end
+end
+
+@testset "AsymLog Kendall tau boundaries" begin
+    # Independence boundaries.
+    @test Copulas.τ(AsymLogCopula{2}(1.0, 0.4, 0.7)) == 0
+    @test Copulas.τ(AsymLogCopula{2}(2.3, 0.0, 0.7)) == 0
+    @test Copulas.τ(AsymLogCopula{2}(2.3, 0.4, 0.0)) == 0
+
+    # Symmetric logistic boundary.
+    for α in (1.5, 2.0, 5.0)
+        @test Copulas.τ(AsymLogCopula{2}(α, 1.0, 1.0)) ==
+              1 - 1 / α
+    end
+
+    # Infinite-α / Marshall–Olkin limit.
+    for (θ₁, θ₂) in ((0.4, 0.7), (0.2, 1.0), (1.0, 0.6))
+        expected = θ₁ * θ₂ / (θ₁ + θ₂ - θ₁ * θ₂)
+        @test Copulas.τ(AsymLogCopula{2}(Inf, θ₁, θ₂)) ≈ expected
+    end
+
+    @test Copulas.τ(AsymLogCopula{2}(Inf, 1.0, 1.0)) == 1
+    @test Copulas.τ(AsymLogCopula{2}(Inf, 0.0, 0.7)) == 0
+    @test Copulas.τ(AsymLogCopula{2}(Inf, 0.4, 0.0)) == 0
+end
+
+@testset "AsymLog Kendall tau interior agrees with generic EV formula" begin
+    C = AsymLogCopula{2}(2.3, 0.4, 0.7)
+
+    expected = invoke(
+        Copulas.τ,
+        Tuple{Copulas.ExtremeValueCopula{2}},
+        C,
+    )
+
+    @test Copulas.τ(C) ≈ expected
+end

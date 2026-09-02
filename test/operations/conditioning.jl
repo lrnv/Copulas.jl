@@ -641,3 +641,73 @@ end
         @test cdf(D, q) ≈ p atol=2e-12
     end
 end
+
+
+@testset "Gumbel Liouville conditioning without AlphaStable density" begin
+    G = Copulas.GumbelGenerator(2.3)
+    C = LiouvilleCopula(G, (1, 2))
+
+    # The global Gumbel radial route is deliberately unchanged:
+    # sampling can still use the AlphaStable frailty.
+    @test Copulas.𝒲₋₁(G, 3) isa Copulas.WilliamsonFromFrailty
+
+    D = condition(C, 1, 0.3)
+
+    @test D isa Copulas.LiouvilleDistortion
+
+    # Conditioning deliberately uses the generic Williamson inversion
+    # instead of WilliamsonFromFrailty{AlphaStable}.
+    @test D.margin isa Copulas.𝒲₋₁
+    @test D.conditional_margin isa Copulas.𝒲₋₁
+
+    for u in (0.2, 0.5, 0.8)
+        value = cdf(D, u)
+        density = pdf(D, u)
+
+        @test isfinite(value)
+        @test 0 <= value <= 1
+        @test isfinite(density)
+        @test density >= 0
+        @test logpdf(D, u) ≈ log(density)
+    end
+
+    for p in (0.2, 0.5, 0.8)
+        q = quantile(D, p)
+
+        @test isfinite(q)
+        @test 0 <= q <= 1
+        @test cdf(D, q) ≈ p atol=1e-8 rtol=1e-8
+    end
+end
+
+@testset "Gumbel Liouville fractional conditioning" begin
+    G = Copulas.GumbelGenerator(2.3)
+    C = LiouvilleCopula(G, (1.25, 1.75))
+
+    D = condition(C, 1, 0.3)
+
+    @test D isa Copulas.LiouvilleDistortion
+
+    # α₁ = 1.25 -> generic integer Williamson inverse + Beta reduction.
+    @test D.margin isa Copulas.WilliamsonBetaProduct
+
+    # Non-integer tilt uses the conditional-radial representation.
+    @test D.conditional_margin isa Copulas.LiouvilleConditionalRadial
+
+    for p in (0.2, 0.5, 0.8)
+        q = quantile(D, p)
+
+        @test isfinite(q)
+        @test 0 <= q <= 1
+        @test cdf(D, q) ≈ p atol=2e-7 rtol=2e-7
+    end
+end
+
+@testset "BB6 Kendall tau θ = 1 boundary is exact" begin
+    for δ in (1.5, 2.0, 5.0, Inf)
+        τbb6 = Copulas.τ(BB6Copula{2}(1.0, δ))
+        expected = isinf(δ) ? 1.0 : 1 - 1 / δ
+
+        @test τbb6 == expected
+    end
+end

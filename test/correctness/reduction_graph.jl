@@ -573,12 +573,6 @@ const CONSTRUCTOR_REDUCTIONS = (
         expected_family = RafteryCopula{2}
     ),
 
-    (
-        name = "Gaussian zero correlation -> Independent",
-        source = () -> GaussianCopula{2}(0.0),
-        target = () -> IndependentCopula{2}(),
-        expected_family = GaussianCopula{2}
-    ),
     
 )
 

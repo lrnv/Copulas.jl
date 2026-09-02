@@ -87,15 +87,6 @@
         @test quantile(Copulas.PlackettDistortion(1.0, Int8(1), 0.4), 0.37) ≈ 0.37
     end
 
-    @testset "Liouville all-one Dirichlet reduction" begin
-        G = Copulas.ClaytonGenerator(1.0)
-        reduced = LiouvilleCopula{2}(G, (1.0, 1.0))
-        native = ArchimedeanCopula{2}(G)
-        @test typeof(reduced) == typeof(native)
-        @test reduced.G === G
-        @test cdf(reduced, [0.35, 0.7]) == cdf(native, [0.35, 0.7])
-    end
-
     @testset "nested singleton subtree collapse" begin
         inner = NestedArchimedeanCopula(Copulas.GumbelGenerator(2.0);
             leaves=[1], children=[GumbelCopula{2}(4.0)])

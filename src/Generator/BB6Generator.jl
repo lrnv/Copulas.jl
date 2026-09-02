@@ -149,14 +149,13 @@ function β(G::BB6Generator)
     return 4*beta_star - 1
 end
 
-# --- Kendall tau (BB6) — vía integral para la CÓPULA ---
-# τ(C) = 1 + 4 ∫ φ(t)/φ'(t) dt, con φ = ϕ⁻¹ del generador de C
-function τ(C::BB6Copula; rtol=1e-8)
-    G = C.G
-    φ(t)  = ϕ⁻¹(G, t)
-    φ′(t) = ϕ⁻¹⁽¹⁾(G, t)        # ya lo tienes; si no, diferencia/AD
-    f(t)  = φ(t) / φ′(t)
-    a = eps(Float64); b = 1 - eps(Float64)
-    val = QuadGK.quadgk(f, a, b; rtol=rtol)[1]   # o tu cuadratura preferida
-    return 1 + 4*val
+# --- Kendall tau (BB6) ---
+# τ_BB6(θ, δ) = 1 - (1 - τ_Joe(θ)) / δ
+function τ(G::BB6Generator)
+    isone(G.θ) && return 1 - inv(G.δ)
+    isinf(G.θ) && return one(G.θ)
+    isinf(G.δ) && return one(G.δ)
+
+    τjoe = _joe_tau(G.θ)
+    return 1 - (1 - τjoe) / G.δ
 end

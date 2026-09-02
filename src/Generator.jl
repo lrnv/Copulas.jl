@@ -415,12 +415,24 @@ const WilliamsonGenerator = 𝒲
 @doc (@doc 𝒲) WilliamsonGenerator
 Distributions.params(G::𝒲) = (X=G.X, order=G.order)
 max_monotony(G::𝒲) = G.order
+
 """
 Generic fallback for ϕ on WilliamsonGenerator (non-discrete-nonparametric TX).
 Specializations for `TX<:DiscreteNonParametric` are provided below.
 """
+function _williamson_tail_expectation(f, X::Distributions.ContinuousUnivariateDistribution, t)
+    p = Distributions.ccdf(X, t)
+    iszero(p) && return zero(float(t))
+    Xt = Distributions.truncated(X, t, Inf)
+    return p * Distributions.expectation(f, Xt)
+end
 function ϕ(G::𝒲, t)
     t <= 0 && return one(t)
+    if G.X isa Distributions.ContinuousUnivariateDistribution
+        return _williamson_tail_expectation(G.X, t) do y
+            (1 - t / y)^(G.order - 1)
+        end
+    end
     return Distributions.expectation(y -> (y > t) ? (1 - t / y)^(G.order - 1) : zero(t), G.X)
 end
 
@@ -428,13 +440,29 @@ function ϕ⁽ᵏ⁾(G::𝒲, k::Int, t)
     k ≥ 0 || throw(ArgumentError("k must be non-negative"))
     k == 0 && return ϕ(G, t)
     t < 0 && return zero(float(t))
-    k < G.order || return invoke(ϕ⁽ᵏ⁾, Tuple{Generator, Int, Any}, G, k, t)
 
-    coefficient = _falling_factorial(G.order - 1, k)
-    value = Distributions.expectation(G.X) do y
-        y > t ? (1 - t / y)^(G.order - 1 - k) / y^k : zero(t + y + G.order)
+    if k < G.order
+        coefficient = _falling_factorial(G.order - 1, k)
+        value = if G.X isa Distributions.ContinuousUnivariateDistribution
+            _williamson_tail_expectation(G.X, t) do y
+                (1 - t / y)^(G.order - 1 - k) / y^k
+            end
+        else
+            Distributions.expectation(G.X) do y
+                y > t ? (1 - t / y)^(G.order - 1 - k) / y^k : zero(t + y + G.order)
+            end
+        end
+        return (isodd(k) ? -coefficient : coefficient) * value
     end
-    return (isodd(k) ? -coefficient : coefficient) * value
+
+    if k == G.order &&
+       G.X isa Distributions.ContinuousUnivariateDistribution &&
+       t > 0
+        value = factorial(k - 1) * Distributions.pdf(G.X, t) / t^(k - 1)
+        return isodd(k) ? -value : value
+    end
+
+    return invoke(ϕ⁽ᵏ⁾, Tuple{Generator, Int, Any}, G, k, t)
 end
 ϕ⁽¹⁾(G::𝒲, t) = ϕ⁽ᵏ⁾(G, 1, t)
 function ϕ(G::𝒲, x::TaylorSeries.Taylor1{TF}) where {TF}

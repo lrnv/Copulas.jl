@@ -104,3 +104,19 @@ function d²A(tail::AsymLogTail, t::Real)
 
     return (α - 1) * R^(inv(α) - 2) * (R * E - D^2)
 end
+
+function τ(C::ExtremeValueCopula{2,<:AsymLogTail})
+    tail = C.tail
+    α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
+
+    # Independence boundaries.
+    (isone(α) || iszero(θ₁) || iszero(θ₂)) && return zero(float(α + θ₁ + θ₂))
+
+    # Symmetric logistic boundary.
+    isone(θ₁) && isone(θ₂) && return isinf(α) ? one(float(α)) : 1 - inv(α)
+
+    # α → ∞: Marshall–Olkin limit.
+    isinf(α) && return θ₁ * θ₂ / (θ₁ + θ₂ - θ₁ * θ₂)
+
+    return @invoke τ(C::ExtremeValueCopula{2})
+end
