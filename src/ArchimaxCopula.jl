@@ -168,6 +168,16 @@ end
 
 _available_fitting_methods(::Type{<:ArchimaxCopula}, d) = (:mle,)
 
+function _fit(::Type{<:ArchimaxCopula{d,IndependentGenerator,TT}}, U, method::Val{:mle}; kwargs...) where {d,TT<:Tail}
+    E, meta = _fit(ExtremeValueCopula{d,TT}, U, method; kwargs...)
+    C = ArchimaxCopula{d}(IndependentGenerator(), E.tail,)
+    return C, merge(meta, (; θ̂=Distributions.params(C)))
+end
+
+function _available_fitting_methods(::Type{<:ArchimaxCopula{D,IndependentGenerator,TT}}, d) where {D,TT}
+    return _available_fitting_methods(ExtremeValueCopula{D,TT}, d)
+end
+
 # Fast conditional distortion binding (bivariate)
 function DistortionFromCop(
     C::ArchimaxCopula{2},

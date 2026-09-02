@@ -2,6 +2,16 @@
 # family-wide contracts, independent defining identities, specialization
 # equivalence, inverse behaviour, and exhaustive dispatch execution.
 
+struct CDFOracleIntegrand
+    C::Copulas.Copula
+end
+(f::CDFOracleIntegrand)(u) = cdf(f.C, u)
+
+struct TauOracleIntegrand
+    C::Copulas.Copula
+end
+(f::TauOracleIntegrand)(u) = cdf(f.C, u) * pdf(f.C, u)
+
 function dependence_operation_route_key(measure, C)
     Base.@nospecialize measure C
     method = which(measure, Tuple{typeof(C)})
@@ -139,15 +149,7 @@ function _unique_dependence_routes(operation, predicate)
     return routes
 end
 
-struct CDFOracleIntegrand
-    C::Copulas.Copula
-end
-(f::CDFOracleIntegrand)(u) = cdf(f.C, u)
 
-struct TauOracleIntegrand
-    C::Copulas.Copula
-end
-(f::TauOracleIntegrand)(u) = cdf(f.C, u) * pdf(f.C, u)
 
 @testset verbose=true "specialized dependence measures agree with generic definitions" begin
     # Entropy and Gini's gamma use substantially more expensive multidimensional

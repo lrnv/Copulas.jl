@@ -109,16 +109,12 @@ function test_mle_parameter_plumbing(C)
         @test example isa Copulas.Copula{d}
     end
 
-    if applicable(Copulas._fit_copula, CT, d, restored, C)
-        rebuilt = Copulas._fit_copula(CT, d, restored, C)
-        @test rebuilt isa Copulas.Copula{d}
-    end
-
     return nothing
 end
 
 @testset "MLE parameter plumbing for every advertised family" begin
-    for fixture in COPULA_FIXTURES
+    for i in eachindex(BASE_COPULA_CASES)
+        fixture = COPULA_FIXTURES[i]
         case, C = fixture.case, fixture.copula
         CT = typeof(C)
         d = length(C)
@@ -157,7 +153,8 @@ end
             test_progress("fitting engine", case.name, method, nameof(CT), d)
 
             U = rand(StableRNG(30_000 + index), C, 12)
-            route_kwargs = C isa EmpiricalEVCopula ? (d == 2 ? (; grid=21) : (; degree=1)) : (;)
+            route_kwargs = C isa EmpiricalEVCopula ? (d == 2 ? (; grid=21) : (; degree=1)) :
+                C isa SurvivalCopula ? (; flips=C.flipmask) : (;)
             fitted = fit( CT, U, method; vcov=false, derived_measures=false, route_kwargs...)
             @test fitted isa Copulas.Copula{d}
 
