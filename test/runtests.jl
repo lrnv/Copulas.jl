@@ -149,10 +149,19 @@ function dispatch_route_key(operation, C)
     return (method, length(C) == 2 ? :bivariate : :multivariate)
 end
 
+const _PUBLIC_SYMBOLS = public_symbols()
 function _public_copula_symbol(family)
-    symbols = [symbol for symbol in public_symbols()
-               if getfield(Copulas, symbol) === family]
-    return only(symbols)
+    Base.@nospecialize family
+
+    found = nothing
+    for symbol in _PUBLIC_SYMBOLS
+        getfield(Copulas, symbol) === family || continue
+        isnothing(found) || error("multiple public symbols for $family")
+        found = symbol
+    end
+
+    isnothing(found) && error("no public symbol for $family")
+    return found
 end
 
 function copula_case(family, d::Int, args...; constructor_kwargs=NamedTuple(),

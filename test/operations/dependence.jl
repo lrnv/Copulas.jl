@@ -158,7 +158,7 @@ end
     # Kendall formulas keep their exact family identities instead of a noisy,
     # repeated 10_000-observation comparison here. The CDF-only definitions of
     # rho, beta and tail dependence remain valid for singular and mixed laws.
-    @testset verbose=true "$(nameof(SCALAR_DEPENDENCE_MEASURES[index]))" for index in (1, 2, 3, 6, 7)
+    @testset "$(nameof(SCALAR_DEPENDENCE_MEASURES[index]))" for index in (1, 2, 3, 6, 7)
         measure = SCALAR_DEPENDENCE_MEASURES[index]
         routes = _unique_dependence_routes(
             (_, C) -> which(measure, Tuple{typeof(C)}),
@@ -285,7 +285,7 @@ function _singular_tau_oracle_with_limits(C::Copulas.Copula{2})
     return _singular_tau_oracle(C)
 end
 
-@testset verbose=true "singular Kendall routes agree with deterministic identities" begin
+@testset "singular Kendall routes agree with deterministic identities" begin
     routes = _unique_dependence_routes(
         (_, C) -> which(Copulas.τ, Tuple{typeof(C)}),
         (_, C) -> !is_absolutely_continuous(C),

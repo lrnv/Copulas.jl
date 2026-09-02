@@ -61,15 +61,12 @@ end
 
 function conditional_route_key(D)
     Base.@nospecialize D
-
-    return Tuple(
-        which(f, Tuple{typeof(D),Float64})
-        for f in (
-            Distributions.cdf,
-            Distributions.logcdf,
-            Distributions.logpdf,
-            Distributions.quantile,
-        )
+    DT = typeof(D)
+    return (
+        which(Distributions.cdf, Tuple{DT,Float64}),
+        which(Distributions.logcdf, Tuple{DT,Float64}),
+        which(Distributions.logpdf, Tuple{DT,Float64}),
+        which(Distributions.quantile, Tuple{DT,Float64}),
     )
 end
 
