@@ -1,10 +1,17 @@
 # Operation suite: public contract, parent-margin correctness, specialized
 # representations, value branches, and exhaustive route closure for subsetdims.
 
-subsetting_route_key(C) = (
-    which(Copulas.subsetdims, Tuple{typeof(C),Tuple{Int,Int}}),
-    length(C) == 2 ? :bivariate : :multivariate,
-)
+function subsetting_route_key(C)
+    Base.@nospecialize C
+
+    return (
+        which(
+            Copulas.subsetdims,
+            Tuple{typeof(C),Tuple{Int,Int}},
+        ),
+        length(C) == 2 ? :bivariate : :multivariate,
+    )
+end
 
 @testset "subsetdims" begin
     @testset "public contract" begin

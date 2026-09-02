@@ -1,6 +1,7 @@
 # Public-API proof: verifies every public copula family constructor, the
 # type-stable `{d}` and runtime `(d, ...)` forms and inferred forms.
 function test_constructor_case(case)
+    Base.@nospecialize case
     typed_value = nothing
     @testset "$(case.name)" begin
         # Evaluate the natural constructor call itself.  Applying `@inferred`
@@ -60,9 +61,6 @@ end
     same_model(AsymGalambosCopula{3}(1.0, [0.4, 0.5, 0.6]), ExtremeValueCopula{3}(Copulas.AsymGalambosTail(1.0, [0.4, 0.5, 0.6])))
     same_model(tEVCopula{3}(4.0, Σ3),ExtremeValueCopula{3}(Copulas.tEVTail(4.0, Σ3)))
 end
-
-const PUBLIC_FAMILY_CASES =
-    Tuple(unique(case -> case.symbol, ALL_COPULA_CASES))
 
 @testset "public constructors" begin
     # constructed = map(test_constructor_case, COPULA_CASES)

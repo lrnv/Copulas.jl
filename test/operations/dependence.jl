@@ -400,30 +400,58 @@ const _DEPENDENCE_INVERSES = last.(_INVERSE_PAIRS)
 const _CHECKED_INVERSE_METHODS =
     Dict(inverse => Set{Method}() for inverse in _DEPENDENCE_INVERSES)
 
-has_scalar_parameter(object) = length(params(object)) == 1
-supports_inverse(object, inverse) = has_scalar_parameter(object) &&
-    hasmethod(inverse, Tuple{Type{typeof(object)},Float64})
-supports_inverse(C::ArchimedeanCopula, inverse) =
-    has_scalar_parameter(C) &&
-    hasmethod(inverse, Tuple{Type{typeof(C.G)},Float64})
+function has_scalar_parameter(object)
+    Base.@nospecialize object
+    return length(params(object)) == 1
+end
+
+function supports_inverse(object, inverse)
+    Base.@nospecialize object inverse
+
+    return has_scalar_parameter(object) &&
+           hasmethod(
+               inverse,
+               Tuple{Type{typeof(object)},Float64},
+           )
+end
+
+function supports_inverse(C::ArchimedeanCopula, inverse)
+    Base.@nospecialize C inverse
+
+    return has_scalar_parameter(C) &&
+           hasmethod(
+               inverse,
+               Tuple{Type{typeof(C.G)},Float64},
+           )
+end
+
 function supports_inverse(C::ExtremeValueCopula, inverse)
+    Base.@nospecialize C inverse
+
     has_scalar_parameter(C) || return false
-    # The generic EV Kendall inverse forwards to the tail.  Its signature is
+
+    # The generic EV Kendall inverse forwards to the tail. Its signature is
     # therefore present for every EV copula even when that tail provides no
     # inverse (for example DiscreteSpectralTail).
     inverse === Copulas.τ⁻¹ && return hasmethod(
-        inverse, Tuple{Type{typeof(C.tail)},Float64})
-    return hasmethod(inverse, Tuple{Type{typeof(C)},Float64})
+        inverse,
+        Tuple{Type{typeof(C.tail)},Float64},
+    )
+
+    return hasmethod(
+        inverse,
+        Tuple{Type{typeof(C)},Float64},
+    )
 end
 
-const _COPULA_INVERSE_CASES = Tuple(unique(typeof,
+const _COPULA_INVERSE_CASES = unique(typeof,
     [fixture.copula for fixture in COPULA_FIXTURES
-     if length(fixture.copula) == 2 && has_scalar_parameter(fixture.copula)]))
-const _GENERATOR_INVERSE_CASES = Tuple(unique(typeof,
-    [G for G in GENERATOR_CASES if has_scalar_parameter(G)]))
-const _TAIL_INVERSE_CASES = Tuple(unique(typeof,
+     if length(fixture.copula) == 2 && has_scalar_parameter(fixture.copula)])
+const _GENERATOR_INVERSE_CASES = unique(typeof,
+    [G for G in GENERATOR_CASES if has_scalar_parameter(G)])
+const _TAIL_INVERSE_CASES = unique(typeof,
     [tail for (tail, d) in TAIL_CASES
-     if d == 2 && has_scalar_parameter(tail)]))
+     if d == 2 && has_scalar_parameter(tail)])
 
 @testset "dependence-measure numerical anchors and boundary regimes" begin
     @test Copulas.Debye(0.5, 1) ≈ 0.8819271567906056

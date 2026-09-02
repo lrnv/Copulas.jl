@@ -576,6 +576,7 @@ const CONSTRUCTOR_REDUCTIONS = Any[
 
 
 function test_boundary_equivalence(source, target; atol = 1e-10, rtol = 1e-10)
+    Base.@nospecialize source target
     @test length(source) == length(target)
 
     d = length(source)

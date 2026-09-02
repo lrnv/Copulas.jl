@@ -1,11 +1,17 @@
 # Operation suite: public contract, generic correctness, specialization
 # equivalence, and exhaustive route closure for rectangle probabilities.
 
-measure_route_key(C) = (
-    which(Copulas.measure,
-          Tuple{typeof(C),Vector{Float64},Vector{Float64}}),
-    length(C) == 2 ? :bivariate : :multivariate,
-)
+function measure_route_key(C)
+    Base.@nospecialize C
+
+    return (
+        which(
+            Copulas.measure,
+            Tuple{typeof(C),Vector{Float64},Vector{Float64}},
+        ),
+        length(C) == 2 ? :bivariate : :multivariate,
+    )
+end
 
 @testset "measure" begin
     @testset "public contract" begin

@@ -97,9 +97,18 @@ const BASE_COPULA_CASES = Any[
 # their source constructors here makes every one pass the same public contracts
 # and routing proofs as the manually declared representatives.
 function reduction_case(edge)
-    prototype = first(case for case in BASE_COPULA_CASES if edge.expected_family <: case.family)
+    Base.@nospecialize edge
+
+    prototype = first(
+        case for case in BASE_COPULA_CASES
+        if edge.expected_family <: case.family
+    )
     build = edge.source
-    return merge(prototype, (; name=edge.name, typed=build, dynamic=build, build))
+
+    return merge(
+        prototype,
+        (; name=edge.name, typed=build, dynamic=build, build),
+    )
 end
 
 const REDUCTION_COPULA_CASES = Any[reduction_case(edge) for edge in CONSTRUCTOR_REDUCTIONS]

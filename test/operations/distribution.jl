@@ -38,8 +38,14 @@ function test_distribution_contract(C, ctx, numerical_atol, margin_atol)
     @test_throws ArgumentError cdf(C, zeros(d + 1, 1))
 end
 
-test_density_contract(C, ctx) =
-    test_density_contract(Copulas.copula_measure_style(C), C, ctx)
+function test_density_contract(C, ctx)
+    Base.@nospecialize C ctx
+    return test_density_contract(
+        Copulas.copula_measure_style(C),
+        C,
+        ctx,
+    )
+end
 test_density_contract(::Copulas.NonAbsolutelyContinuousMeasure, C, ctx) = nothing
 function test_density_contract(::Copulas.AbsolutelyContinuousMeasure, C, ctx)
     Base.@nospecialize C ctx

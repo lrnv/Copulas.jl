@@ -59,20 +59,31 @@ function conditional_distribution(fixture)
     return condition(C, js, values)
 end
 
-conditional_route_key(D) = Tuple(which(f, Tuple{typeof(D),Float64}) for f in (
-    Distributions.cdf, Distributions.logcdf, Distributions.logpdf,
-    Distributions.quantile,
-))
+function conditional_route_key(D)
+    Base.@nospecialize D
 
-const CONDITIONAL_DISTRIBUTION_CANDIDATES = (
-    ((fixture.case.name, conditional_distribution(fixture))
-     for fixture in COPULA_FIXTURES
-     if length(fixture.copula) == 2 || is_absolutely_continuous(fixture.copula))...,
-)
-const CONDITIONAL_DISTRIBUTION_CASES = Tuple(unique(
+    return Tuple(
+        which(f, Tuple{typeof(D),Float64})
+        for f in (
+            Distributions.cdf,
+            Distributions.logcdf,
+            Distributions.logpdf,
+            Distributions.quantile,
+        )
+    )
+end
+
+const CONDITIONAL_DISTRIBUTION_CANDIDATES = [
+    (fixture.case.name, conditional_distribution(fixture))
+    for fixture in COPULA_FIXTURES
+    if length(fixture.copula) == 2 ||
+       is_absolutely_continuous(fixture.copula)
+]
+
+const CONDITIONAL_DISTRIBUTION_CASES = unique(
     case -> conditional_route_key(last(case)),
     CONDITIONAL_DISTRIBUTION_CANDIDATES,
-))
+)
 
 conditional_measure_style(D::Copulas.Distortion) =
     Copulas.distortion_measure_style(D)
