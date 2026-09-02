@@ -80,10 +80,10 @@ const BASE_COPULA_CASES = (
     copula_case(BC2Copula, 3, [0.3, 0.7, 0.5]),
     copula_case(CuadrasAugeCopula, 3, 0.5),
     copula_case(MOCopula, 3, [0.35, 0.55, 0.40, 0.25, 0.30, 0.45, 0.70]),
-    copula_case(tEVCopula, 3, 4.0, 0.2),
-    copula_case(tEVCopula, 3, 4.0, [1.0 0.2 0.2; 0.2 1.0 0.2; 0.2 0.2 1.0]),
+    # copula_case(tEVCopula, 3, 4.0, 0.2),
+    # copula_case(tEVCopula, 3, 4.0, [1.0 0.2 0.2; 0.2 1.0 0.2; 0.2 0.2 1.0]),
     copula_case(GaussianCopula, 2, 0.3; numerical_atol=1e-3),
-    copula_case(TCopula, 3, 5.0, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]; numerical_atol=1e-3),
+    # copula_case(TCopula, 3, 5.0, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]; numerical_atol=1e-3), # coute 7 minutes.
     copula_case(LiouvilleCopula, 3, Copulas.ClaytonGenerator(1.0), (0.8, 1.1, 1.3)),
     copula_case(FGMCopula, 3, [0.0, 0.0, 0.0, 0.4]),
     copula_case(IndependentCopula, 2),

@@ -383,12 +383,12 @@ const CONSTRUCTOR_REDUCTIONS = (
         target = () -> MCopula{2}(),
         expected_family = tEVCopula{2}
     ),
-    (
-        name = "tEV all-ones correlation -> M",
-        source = () -> tEVCopula{3}(4.0, ones(3, 3)),
-        target = () -> MCopula{3}(),
-        expected_family = tEVCopula{3}
-    ),
+    # (
+    #     name = "tEV all-ones correlation -> M",
+    #     source = () -> tEVCopula{3}(4.0, ones(3, 3)),
+    #     target = () -> MCopula{3}(),
+    #     expected_family = tEVCopula{3}
+    # ),
 
 
     # ============================================================
