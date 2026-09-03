@@ -48,14 +48,20 @@ Note that the range $\mathrm{Ran}(F)$ of a distribution function $F$, univariate
 
 There is a fundamental functional link between the function $F$ and its marginals $F_1,...,F_d$. This link is expressed by the mean of *copulas*. 
 
-!!! definition "Copula" 
-    A copula, usually denoted $C$, is the distribution function of a random vector with marginals that are all uniform on $[0,1]$, i.e.
-    
-    $C_i(u) = u\mathbb 1_{u \in [0,1]} \text{ for all }i \in 1,...,d.$
+::: definition Copula 
+
+A copula, usually denoted $C$, is the distribution function of a random vector with marginals that are all uniform on $[0,1]$, i.e.
+
+$C_i(u) = u\mathbb 1_{u \in [0,1]} \text{ for all }i \in 1,...,d.$
+
+:::
 
 
-!!! info "Vocabulary"
-    In this documentation but more largely in the literature, the term *Copula* refers both to the random vector and its distribution function. Usually, the distinction is clear from context. 
+::: info Vocabulary
+
+In this documentation but more largely in the literature, the term *Copula* refers both to the random vector and its distribution function. Usually, the distinction is clear from context. 
+
+:::
 
 You may define a copula object in Julia by simply calling its constructor: 
 
@@ -91,25 +97,31 @@ plot(C, :logpdf)
 
 See [the visualizations page](@ref viz_page) for details on the visualisations tools. It’s often useful to get an intuition by looking at scatter plots.
 
-!!! example "Independence"
-    To give another example, the function 
+::: example Independence
 
-    $\Pi : \boldsymbol x \mapsto \prod_{i=1}^d x_i = \boldsymbol x^{\boldsymbol 1}$ is a copula, corresponding to independent random vectors.
+To give another example, the function 
 
-    This copula can be constructed using the [`IndependentCopula(d)`](@ref IndependentCopula) syntax as follows: 
-    
-    ```@example 1
-    Π = IndependentCopula(d) # A 4-variate independence structure.
-    nothing # hide
-    ```
+$\Pi : \boldsymbol x \mapsto \prod_{i=1}^d x_i = \boldsymbol x^{\boldsymbol 1}$ is a copula, corresponding to independent random vectors.
+
+This copula can be constructed using the [`IndependentCopula(d)`](@ref IndependentCopula) syntax as follows: 
+
+```@example 1
+Π = IndependentCopula(d) # A 4-variate independence structure.
+nothing # hide
+```
+
+:::
 
 One of the reasons that makes copulas so useful is the bijective map from the Sklar Theorem [sklar1959](@cite):
 
-!!! theorem "Sklar (1959)"
-    For every random vector $\boldsymbol X$, there exists a copula $C$ such that 
+::: theorem Sklar (1959)
 
-    $\forall \boldsymbol x\in \mathbb R^d, F(\boldsymbol x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
-    The copula $C$ is uniquely determined on $\mathrm{Ran}(F_{1}) \times ... \times \mathrm{Ran}(F_{d})$, where $\mathrm{Ran}(F_i)$ denotes the range of the function $F_i$. In particular, if all marginals are absolutely continuous, $C$ is unique.
+For every random vector $\boldsymbol X$, there exists a copula $C$ such that 
+
+$\forall \boldsymbol x\in \mathbb R^d, F(\boldsymbol x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).$
+The copula $C$ is uniquely determined on $\mathrm{Ran}(F_{1}) \times ... \times \mathrm{Ran}(F_{d})$, where $\mathrm{Ran}(F_i)$ denotes the range of the function $F_i$. In particular, if all marginals are absolutely continuous, $C$ is unique.
+
+:::
 
 
 This result allows to decompose the distribution of $\boldsymbol X$ into several components: the marginal distributions on one side, and the copula on the other side, which governs the dependence structure between the marginals. This object is central in our work, and therefore deserves a moment of attention. 
@@ -144,12 +156,15 @@ Sklar's theorem can be used the other way around (from the marginal space to the
 
 Copulas are bounded functions with values in [0,1] since they correspond to probabilities. But their range can be bounded more precisely, and [lux2017](@cite) gives us:
 
-!!! property "Fréchet-Hoeffding bounds" 
-    For all $\boldsymbol x \in [0,1]^d$, every copula $C$ satisfies : 
+::: property Fréchet-Hoeffding bounds
 
-    $$\langle \boldsymbol 1, \boldsymbol x - 1 + d^{-1}\rangle_{+} \le C(\boldsymbol x) \le \min \boldsymbol x,$$
-    
-    where $y_{+} = \max(0,y)$.
+For all $\boldsymbol x \in [0,1]^d$, every copula $C$ satisfies : 
+
+$$\langle \boldsymbol 1, \boldsymbol x - 1 + d^{-1}\rangle_{+} \le C(\boldsymbol x) \le \min \boldsymbol x,$$
+
+where $y_{+} = \max(0,y)$.
+
+:::
 
 The function $M : \boldsymbol x \mapsto \min\boldsymbol x$, called the upper Fréchet-Hoeffding bound, is a copula. The function $W : \boldsymbol x \mapsto \langle \boldsymbol 1, \boldsymbol x - 1 + d^{-1}\rangle_{+}$, called the lower Fréchet-Hoeffding bound, is on the other hand a copula only when $d=2$. 
 These two copulas can be constructed through [`MCopula(d)`](@ref MCopula) and [`WCopula(2)`](@ref WCopula). 

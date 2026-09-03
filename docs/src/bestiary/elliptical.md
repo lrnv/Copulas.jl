@@ -8,10 +8,13 @@ CurrentModule = Copulas
 
 The easiest families of copulas are the one derived from known families of random vectors, and the first presented one are, generally, the Elliptical families (in particular, the Gaussian and Student families are very standard in the litterature). 
 
-!!! definition "Spherical and elliptical random vectors" 
-    A random vector $\boldsymbol X$ is said to be spherical if for all orthogonal matrix $\boldsymbol A \in O_d(\mathbb R)$, $\boldsymbol A\boldsymbol X \sim \boldsymbol X$. 
+::: definition Spherical and elliptical random vectors
 
-    For every matrix $\boldsymbol B$ and vector $\boldsymbol c$, the random vector $\boldsymbol B \boldsymbol X + \boldsymbol c$ is then said to be elliptical.
+A random vector $\boldsymbol X$ is said to be spherical if for all orthogonal matrix $\boldsymbol A \in O_d(\mathbb R)$, $\boldsymbol A\boldsymbol X \sim \boldsymbol X$. 
+
+For every matrix $\boldsymbol B$ and vector $\boldsymbol c$, the random vector $\boldsymbol B \boldsymbol X + \boldsymbol c$ is then said to be elliptical.
+
+:::
 
 Spherical random vectors have several interesting properties. First, the shape of the distribution must be the same in every direction since it is stable by rotations. Moreover, their characteristic functions (c.f.) only depend on the norm of their arguments. Indeed, for any $\boldsymbol A \in O_d(\mathbb R)$, 
 ```math

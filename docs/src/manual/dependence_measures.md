@@ -11,42 +11,57 @@ We implement the most well-known ones in this package.
 
 ## Core dependence metrics τ, ρ, β, γ and ι
 
-!!! definition "Kendall' τ"
-    For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
+::: definition Kendall' τ
 
-    $$\tau = \frac{2^d}{2^{d-1} - 1} \int C(\boldsymbol u) \, c(\boldsymbol u) \;d\boldsymbol u - \frac{1}{2^{d-1}-1}$$
+For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
 
-!!! definition "Spearman's ρ"
-    For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Spearman's ρ is defined as: 
+$$\tau = \frac{2^d}{2^{d-1} - 1} \int C(\boldsymbol u) \, c(\boldsymbol u) \;d\boldsymbol u - \frac{1}{2^{d-1}-1}$$
 
-    $$\rho = \frac{2^d * (d+1)}{2^d -d-1} \int C(\boldsymbol u) d\boldsymbol u - \frac{d+1}{2^d - (d+1)}.$$
+:::
 
-!!! definition "Definition (Blomqvist's β):"
-    For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Blomqvist's β is defined as: 
+::: definition Spearman's ρ
 
-    $$\beta = \frac{2^{d-1}}{2^{d-1} -1} \left(C(\frac{\boldsymbol{1}}{\boldsymbol{2}}) + \bar{C}(\frac{\boldsymbol{1}}{\boldsymbol{2}})\right) - \frac{1}{2^{d-1} - 1}.$$
+For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Spearman's ρ is defined as: 
 
-    where $\bar{C}$ is the survival copula associated with $C$. 
+$$\rho = \frac{2^d * (d+1)}{2^d -d-1} \int C(\boldsymbol u) d\boldsymbol u - \frac{d+1}{2^d - (d+1)}.$$
 
-!!! definition "Definition (Gini's γ):"
-    For a copula $C$ with a density $c$, **regardless of its dimension $d$**, the multivariate Gini’s gamma is defined as [behboodian2007multivariate](@cite):
+:::
 
-    $$\gamma = \frac{1}{b(d)-a(d)}\left[\int_{[0,1]^d}\{A(\boldsymbol{u}) + \bar{A}(\boldsymbol{u})\}dC(\boldsymbol{u}) - a(d)\right],$$
+::: definition Definition (Blomqvist's β)
 
-    with
+For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Blomqvist's β is defined as: 
 
-    $$A(u)=\frac{1}{2}\left(\min(u)+\max\Big(\textstyle\sum_{i=1}^d u_i-d+1,0\Big)\right), \quad \bar{A}(u)=\frac{1}{2}\left(1-\max(u)+\max\Big(1-\sum_{i=1}^d u_i,0\Big)\right),$$
+$$\beta = \frac{2^{d-1}}{2^{d-1} -1} \left(C(\frac{\boldsymbol{1}}{\boldsymbol{2}}) + \bar{C}(\frac{\boldsymbol{1}}{\boldsymbol{2}})\right) - \frac{1}{2^{d-1} - 1}.$$
 
-    where the normalizing constants depend only on the dimension $d$ and match our implementation:
+where $\bar{C}$ is the survival copula associated with $C$.
 
-    $$a(d) = \frac{1}{d+1} + \frac{1}{(d+1)!} \quad \text{(independence)}, \qquad b(d) = \frac{2 + 4^{\,1-d}}{3} \quad \text{(comonotonicity)}.$$
+:::
 
-!!! definition "Definition (Copula entropy ι):"
-    For a copula $C$ with density $c$, the copula entropy is
+::: definition Definition (Gini's γ)
 
-    $$\iota(C) = - \int_{[0,1]^d} c(u) \log c(u)\,du.$$
+For a copula $C$ with a density $c$, **regardless of its dimension $d$**, the multivariate Gini’s gamma is defined as [behboodian2007multivariate](@cite):
 
-    It satisfies $I(X_1,\dots,X_d) = -\iota(C)$ (see [ma2011mutual](@cite)).
+$$\gamma = \frac{1}{b(d)-a(d)}\left[\int_{[0,1]^d}\{A(\boldsymbol{u}) + \bar{A}(\boldsymbol{u})\}dC(\boldsymbol{u}) - a(d)\right],$$
+
+with
+
+$$A(u)=\frac{1}{2}\left(\min(u)+\max\Big(\textstyle\sum_{i=1}^d u_i-d+1,0\Big)\right), \quad \bar{A}(u)=\frac{1}{2}\left(1-\max(u)+\max\Big(1-\sum_{i=1}^d u_i,0\Big)\right),$$
+
+where the normalizing constants depend only on the dimension $d$ and match our implementation:
+
+$$a(d) = \frac{1}{d+1} + \frac{1}{(d+1)!} \quad \text{(independence)}, \qquad b(d) = \frac{2 + 4^{\,1-d}}{3} \quad \text{(comonotonicity)}.$$
+
+:::
+
+::: definition Definition (Copula entropy ι)
+
+For a copula $C$ with density $c$, the copula entropy is
+
+$$\iota(C) = - \int_{[0,1]^d} c(u) \log c(u)\,du.$$
+
+It satisfies $I(X_1,\dots,X_d) = -\iota(C)$ (see [ma2011mutual](@cite)).
+
+:::
 
 
 These dependence measures are very common when $d=2$, and a bit less when $d > 2$. We sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated with a multivariate copula. 
@@ -65,9 +80,12 @@ For historical reasons, `τ(data)`, `ρ(data)`, `β(data)`, `γ(data)`, `ι(data
     
     They do not depend on the marginals. This is why we say that they measure the 'strength' of the dependency.
 
-!!! todo "Work in progress"
-    The package implements generic version of the dependence metrics, but some families have faster versions (closed form formulas or better integration paths). 
-    However, all the potential fast-paths are not implemented yet. If you feel a specific method for a certain copula is missing, do not hesitate to open an issue !
+::: todo Work in progress
+
+The package implements generic version of the dependence metrics, but some families have faster versions (closed form formulas or better integration paths). 
+However, all the potential fast-paths are not implemented yet. If you feel a specific method for a certain copula is missing, do not hesitate to open an issue !
+
+:::
 
 Many copula estimators are based on the relationship between parameters and these coefficients (see e.g., [genest2011,fredricks2007,derumigny2017](@cite)).
 Here is for example the relationship between the Kendall $\tau$ and the parameter of a Clayton copula:  
@@ -110,28 +128,31 @@ Note that the correction cannot work miracles: the attainable Pearson range of a
 
 Many people are interested in the tail behavior of their dependence structures. Tail coefficients summarize this tail behavior.
 
-!!! definition "Tail dependency"
-    For a copula $C$, we define the upper tail statisticss (when they exist):
+::: definition Tail dependency
 
-    ```math
-    \begin{align}
-        \lambda_U(u) &= \frac{1 - 2u - C(u,..,u)}{1- u}\\
-        \lambda_U &= \lim\limits_{u \to 1_-} \lambda_U(u) \in [0,1]\\
-        \chi_U(u) &= \frac{2 \ln(1-u)}{\ln(1-2u+C(u,...,u))} -1\\
-        \chi_U &= \lim\limits_{u \to 1_-} \chi_U(u) \in [-1,1]
-    \end{align}
-    ```
+For a copula $C$, we define the upper tail statisticss (when they exist):
 
-    Simetric tools can be constructed for the lower tail: 
+```math
+\begin{align}
+    \lambda_U(u) &= \frac{1 - 2u - C(u,..,u)}{1- u}\\
+    \lambda_U &= \lim\limits_{u \to 1_-} \lambda_U(u) \in [0,1]\\
+    \chi_U(u) &= \frac{2 \ln(1-u)}{\ln(1-2u+C(u,...,u))} -1\\
+    \chi_U &= \lim\limits_{u \to 1_-} \chi_U(u) \in [-1,1]
+\end{align}
+```
 
-    ```math
-    \begin{align}
-        \lambda_L(u) &= \frac{C(u,..,u)}{u}\\
-        \lambda_L &= \lim\limits_{u \to 0_+} \lambda_L(u) \in [0,1]\\
-        \chi_L(u) &= \frac{2 \ln(u)}{\ln(C(u,...,u))} -1\\
-        \chi_L &= \lim\limits_{u \to 0_+} \chi(u) \in [-1,1]
-    \end{align}
-    ```
+Simetric tools can be constructed for the lower tail: 
+
+```math
+\begin{align}
+    \lambda_L(u) &= \frac{C(u,..,u)}{u}\\
+    \lambda_L &= \lim\limits_{u \to 0_+} \lambda_L(u) \in [0,1]\\
+    \chi_L(u) &= \frac{2 \ln(u)}{\ln(C(u,...,u))} -1\\
+    \chi_L &= \lim\limits_{u \to 0_+} \chi(u) \in [-1,1]
+\end{align}
+```
+
+:::
 
     
 When $\lambda_U > 0$ (resp $\lambda_L > 0$), we say that there is strong upper (resp lower) tail dependency, and $\chi_U = 1$ (resp $\chi_L = 1$).

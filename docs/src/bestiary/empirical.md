@@ -9,12 +9,15 @@ CurrentModule = Copulas
 
 Through the statistical process leading to the estimation of copulas, one usually observes the data and information on the marginals scale and not on the copula scale. This discrepancy between the observed information and the modeled distribution must be taken into account. A key concept is that of pseudo-observations. 
 
-!!! definition "Pseudo-observations"
-    If $\boldsymbol x \in \mathbb{R}^{N \times d}$ is an $N$-sample of a $d$-variate real-valued random vector $\boldsymbol X$, then the pseudo-observations are the normalized ranks of the marginals of $\boldsymbol x$, defined as:
+::: definition Pseudo-observations
 
-    $$\boldsymbol u \in [0,1]^{N \times d}:\; u_{i,j} = \frac{\mathrm{Rank}(x_{i,j}, \boldsymbol x_{\cdot,j})}{N+1} = \frac{1}{N+1} \sum_{k=1}^N \mathbb{1}_{x_{k,j} \le x_{i,j}},$$
+If $\boldsymbol x \in \mathbb{R}^{N \times d}$ is an $N$-sample of a $d$-variate real-valued random vector $\boldsymbol X$, then the pseudo-observations are the normalized ranks of the marginals of $\boldsymbol x$, defined as:
 
-    where $\mathrm{Rank}(y, \boldsymbol x) = \sum_{x_i \in \boldsymbol x} \mathbb{1}_{x_i \le y}$.
+$$\boldsymbol u \in [0,1]^{N \times d}:\; u_{i,j} = \frac{\mathrm{Rank}(x_{i,j}, \boldsymbol x_{\cdot,j})}{N+1} = \frac{1}{N+1} \sum_{k=1}^N \mathbb{1}_{x_{k,j} \le x_{i,j}},$$
+
+where $\mathrm{Rank}(y, \boldsymbol x) = \sum_{x_i \in \boldsymbol x} \mathbb{1}_{x_i \le y}$.
+
+:::
 
 
 In `Copulas.jl`, we provide a function `pseudos` that implement this transformation directly. 
@@ -27,15 +30,21 @@ pseudos
 
 From these pseudo-observations, an empirical copula is defined and anlysed in [deheuvels1979](@cite) as follows:
 
-!!! definition "Deheuvel's empirical copula" 
-    The empirical distribution function of the normalized ranks,
+::: definition Deheuvel's empirical copula
 
-    $$\hat{C}_N(\boldsymbol u) = \frac{1}{N} \sum_{i=1}^N \mathbb 1_{\boldsymbol u_i \le \boldsymbol u},$$ is called the empirical copula function.
+The empirical distribution function of the normalized ranks,
 
-!!! theorem "Exhaustivity and consistency" 
-    $\hat{C}_N$ is an exhaustive estimator of $C$, and moreover for any normalizing constants $\{\phi_N, N\in \mathbb N\}$ such that $\lim\limits_{N \to \infty} \phi_N \sqrt{N^{-1}\ln \ln N} = 0$, 
+$$\hat{C}_N(\boldsymbol u) = \frac{1}{N} \sum_{i=1}^N \mathbb 1_{\boldsymbol u_i \le \boldsymbol u},$$ is called the empirical copula function.
 
-    $$\lim\limits_{N\to\infty} \phi_N \sup_{\boldsymbol u \in [0,1]^d} \lvert\hat{C}_N(\boldsymbol u) - C(\boldsymbol u) \rvert = 0 \text{ a.s.}$$
+:::
+
+::: theorem Exhaustivity and consistency
+
+$\hat{C}_N$ is an exhaustive estimator of $C$, and moreover for any normalizing constants $\{\phi_N, N\in \mathbb N\}$ such that $\lim\limits_{N \to \infty} \phi_N \sqrt{N^{-1}\ln \ln N} = 0$, 
+
+$$\lim\limits_{N\to\infty} \phi_N \sup_{\boldsymbol u \in [0,1]^d} \lvert\hat{C}_N(\boldsymbol u) - C(\boldsymbol u) \rvert = 0 \text{ a.s.}$$
+
+:::
 
 $\hat{C}_N$ then converges (weakly) to $C$, the true copula of the random vector $\boldsymbol X$, when the number of observations $N$ goes to infinity. 
 
@@ -69,14 +78,19 @@ plot(plot(X.C), plot(Ĉ); layout=(1,2))
 The empirical copula function is not a copula. An easy way to fix this problem is to smooth out the marginals with beta distribution functions. The Beta copula is thus defined and analysed in [segers2017](@cite) as follows:
 
 
-!!! definition "Definition (Beta Copula):"
-    Denoting $F_{n,r}(x) = \sum_{s=r}^n \binom{n}{s} x^s(1-x)^{n-s}$ as the distribution function of a $\mathrm{Beta}(r, n+1-r)$ random variable, the function
+::: definition Definition (Beta Copula)
 
-    $$\hat{C}_N^\beta : \boldsymbol x \mapsto \frac{1}{N} \sum_{i=1}^N \prod_{j=1}^d F_{n,(N+1)u_{i,j}}(x_j)$$ is a genuine copula, called the Beta copula. 
+Denoting $F_{n,r}(x) = \sum_{s=r}^n \binom{n}{s} x^s(1-x)^{n-s}$ as the distribution function of a $\mathrm{Beta}(r, n+1-r)$ random variable, the function
 
-!!! property "Proximity of $\hat{C}_N$ and $\hat{C}_N^\beta$"
+$$\hat{C}_N^\beta : \boldsymbol x \mapsto \frac{1}{N} \sum_{i=1}^N \prod_{j=1}^d F_{n,(N+1)u_{i,j}}(x_j)$$ is a genuine copula, called the Beta copula.
 
-    $$\sup_{\boldsymbol u \in [0,1]^d} |\hat{C}_N(\boldsymbol u) - \hat{C}_N^\beta(\boldsymbol u)| \le d\left(\sqrt{\frac{\ln n}{n}} + \sqrt{\frac{1}{n}} + \frac{1}{n}\right)$$
+:::
+
+::: property Proximity of $\hat{C}_N$ and $\hat{C}_N^\beta$
+
+$$\sup_{\boldsymbol u \in [0,1]^d} |\hat{C}_N(\boldsymbol u) - \hat{C}_N^\beta(\boldsymbol u)| \le d\left(\sqrt{\frac{\ln n}{n}} + \sqrt{\frac{1}{n}} + \frac{1}{n}\right)$$
+
+:::
 
 In the package, this copula is implemented as `BetaCopula`:
 
@@ -130,18 +144,24 @@ $$B_{\boldsymbol i, \boldsymbol m} = \left]\frac{\boldsymbol i}{\boldsymbol m}, 
 
 Furthermore, for any copula $C$ (or more generally distribution function $F$), we denote $\mu_{C}$ (resp $\mu_F$) the associated measure.  For example, for the independence copula $Pi$, $\mu_{\Pi}(A) = \lambda(A \cup [\boldsymbol 0, \boldsymbol 1])$ where $\lambda$ is the Lebesgue measure.
 
-!!! definition "Empirical Checkerboard copulas"
-    Let $\boldsymbol m \in \mathbb{N}^d$. The $\boldsymbol m$-Checkerboard copula $\hat{C}_{N,\boldsymbol m}$, defined by
+::: definition Empirical Checkerboard copulas
 
-    $$\hat{C}_{N,\boldsymbol m}(\boldsymbol x) = \boldsymbol m^{\boldsymbol 1} \sum_{\boldsymbol i < \boldsymbol m} \mu_{\hat{C}_N}(B_{\boldsymbol i, \boldsymbol m}) \mu_{\Pi}(B_{\boldsymbol i, \boldsymbol m} \cap [0,\boldsymbol x]),$$
+Let $\boldsymbol m \in \mathbb{N}^d$. The $\boldsymbol m$-Checkerboard copula $\hat{C}_{N,\boldsymbol m}$, defined by
 
-    is a genuine copula as soon as $m_1, ..., m_d$ all divide $N$.
+$$\hat{C}_{N,\boldsymbol m}(\boldsymbol x) = \boldsymbol m^{\boldsymbol 1} \sum_{\boldsymbol i < \boldsymbol m} \mu_{\hat{C}_N}(B_{\boldsymbol i, \boldsymbol m}) \mu_{\Pi}(B_{\boldsymbol i, \boldsymbol m} \cap [0,\boldsymbol x]),$$
+
+is a genuine copula as soon as $m_1, ..., m_d$ all divide $N$.
+
+:::
 
 
-!!! property "Consistency of $\hat{C}_{N,\boldsymbol m}$"
-    If all $m_1, ..., m_d$ divide $N$,
+::: property Consistency of $\hat{C}_{N,\boldsymbol m}$
 
-    $$\sup_{\boldsymbol u \in [0,1]^d} |\hat{C}_{N,\boldsymbol m}(\boldsymbol u) - C(\boldsymbol u)| \le \frac{d}{2m} + \mathcal{O}_{\mathbb{P}}\left(n^{-1/2}\right).$$
+If all $m_1, ..., m_d$ divide $N$,
+
+$$\sup_{\boldsymbol u \in [0,1]^d} |\hat{C}_{N,\boldsymbol m}(\boldsymbol u) - C(\boldsymbol u)| \le \frac{d}{2m} + \mathcal{O}_{\mathbb{P}}\left(n^{-1/2}\right).$$
+
+:::
 
 
 This copula is called *Checkerboard*, as it fills the unit hypercube with hyperrectangles of same shapes $B_{\boldsymbol i, \boldsymbol m}$, conditionally on which the distribution is uniform, and the mixing weights are the empirical frequencies of the hyperrectangles. 
@@ -161,11 +181,14 @@ where we intend $\boldsymbol m ]\boldsymbol a, \boldsymbol b] = ] \boldsymbol m 
 
 This allows for an easy generalization in the framework of patchwork copulas [durante2012,durante2013,durante2015](@cite):
 
-!!! definition "Patchwork copulas"
-    Let $\boldsymbol m \in \mathbb{N}^d$ all divide $N$, and let $\mathcal{C} = \{C_{\boldsymbol i}, \boldsymbol i < \boldsymbol m\}$ be a given collection of copulas. The distribution function:
+::: definition Patchwork copulas
 
-    $$\hat{C}_{N,\boldsymbol m, \mathcal{C}}(\boldsymbol x) = \sum_{\boldsymbol i < \boldsymbol m} \mu_{\hat{C}_N}(B_{\boldsymbol i, \boldsymbol m}) \mu_{C_{\boldsymbol i}}(\boldsymbol m B_{\boldsymbol i, \boldsymbol m}(\boldsymbol x))$$
-    is a copula. 
+Let $\boldsymbol m \in \mathbb{N}^d$ all divide $N$, and let $\mathcal{C} = \{C_{\boldsymbol i}, \boldsymbol i < \boldsymbol m\}$ be a given collection of copulas. The distribution function:
+
+$$\hat{C}_{N,\boldsymbol m, \mathcal{C}}(\boldsymbol x) = \sum_{\boldsymbol i < \boldsymbol m} \mu_{\hat{C}_N}(B_{\boldsymbol i, \boldsymbol m}) \mu_{C_{\boldsymbol i}}(\boldsymbol m B_{\boldsymbol i, \boldsymbol m}(\boldsymbol x))$$
+is a copula. 
+
+:::
 
 In fact, replacing $\hat{C}_N$ by any copula in the patchwork construct still yields a genuine copula, with no more conditions that all components of $\boldsymbol m$ divide $N$. The Checkerboard grids are practical in the sense that computations associated to a Checkerboard copula can be really fast: if the grid is large, the number of boxes is small, and otherwise if the grid is very refined, many boxes are probably empty. On the other hand, the grid is fixed a priori, see [laverny2020](@cite) for a construction with an adaptive grid.
 
