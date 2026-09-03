@@ -48,7 +48,7 @@ makedocs(;
             "Bayesian inference with Turing.jl"=>"examples/turing.md",
             "Loss-ALAE fitting"=>"examples/lossalae.md",
             "Other use cases"=>"examples/other_usecases.md",
-        ]
+        ],
         "API" => [
             "Public"=>"api/public.md",
         ],
