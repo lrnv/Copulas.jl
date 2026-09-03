@@ -27,8 +27,6 @@ makedocs(;
             "Dependence metrics"=>"manual/dependence_measures.md",
             "Fitting"=>"manual/fitting_interface.md",
             "Visualizations"=>"manual/visualizations.md",
-            "Performance benchmarks"=>"manual/benchmarks.md",
-            "Developper guide"=>"manual/developer_guide.md",
         ],
         "Bestiary" => [
             "Elliptical copulas"=>"bestiary/elliptical.md",
@@ -42,18 +40,22 @@ makedocs(;
             "Other copulas"=>"bestiary/miscellaneous.md",
         ],
         "Examples" => [
-            "Nonparametric estimation of the radial law in Archimedean copulas"=>"examples/archimedean_radial_estimation.md",
-            "Empirical Kendall function and Archimedean's λ function."=>"examples/lambda_viz.md",
-            "Loss-Alae fitting example"=>"examples/lossalae.md",
+            "Nonparametric radial estimation"=>"examples/archimedean_radial_estimation.md",
+            "Empirical Kendall function and Archimedean λ"=>"examples/lambda_viz.md",
             "Fitting compound distributions"=>"examples/fitting_sklar.md",
+            "Influence of the estimation method"=>"examples/ifm1.md",
             "Mixture models with ExpectationMaximization.jl"=>"examples/expectation_maximization.md",
-            "Influence of the method of estimation"=>"examples/ifm1.md",
-            "Bayesian inference with `Turing.jl`"=>"examples/turing.md",
-            "Other known use cases"=>"examples/other_usecases.md"
-        ],
+            "Bayesian inference with Turing.jl"=>"examples/turing.md",
+            "Loss-ALAE fitting"=>"examples/lossalae.md",
+            "Other use cases"=>"examples/other_usecases.md",
+        ]
         "API" => [
             "Public"=>"api/public.md",
-            "Internal (non-stable)"=>"api/internal.md",
+        ],
+        "Development" => [
+            "Extending Copulas.jl"=>"manual/developer_guide.md",
+            "Performance benchmarks"=>"manual/benchmarks.md",
+            "Internal API"=>"api/internal.md",
         ],
         "References" => "references.md",
     ],
