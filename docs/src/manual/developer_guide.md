@@ -769,9 +769,8 @@ the core functional behavior of the family.
 struct Nelsen2Generator{T} <: Copulas.AbstractUnivariateGenerator # subtype of Generator
     θ::T
     function Nelsen2Generator(θ)
-            θf = float(θ)
-            return new{typeof(θf)}(θf)
-        end
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 
