@@ -69,6 +69,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
             U[i, j] = rand(rng)
         end
         conditioned = prod(1 - 2U[i, j] for i in 1:(d - 1))
+        a = C.θ * conditioned
         p = rand(rng)
         y = if iszero(a)
             p

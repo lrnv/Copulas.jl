@@ -76,7 +76,7 @@ struct HuslerReissTail{P} <: OneParameterPickandsTail
                 throw(ArgumentError("Γ must be strictly conditionally negative definite"))
             end
         end
-        return new{typeof(G)}(G)
+        return new{Matrix{Float64}}(G)
     end
     function HuslerReissTail(θ::Real)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
@@ -112,6 +112,12 @@ _hr_variogram(tail::HuslerReissTail{<:AbstractMatrix}, ::Int) = tail.parameter
 
 HuslerReissCopula(Γ::AbstractMatrix) =
     ExtremeValueCopula{size(Γ, 1)}(HuslerReissTail(Γ))
+
+function (::Type{HuslerReissCopula{d}})(Γ::AbstractMatrix) where {d}
+    size(Γ) == (d, d) || throw(DimensionMismatch("variogram dimension $(size(Γ)) does not match d=$d"))
+    tail = HuslerReissTail(Γ)
+    return _wrap_extreme_value(Val(d), tail)
+end
 
 _unbound_params(::Type{<:HuslerReissTail}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissTail}, d, α) = (; θ = exp(α[1]))

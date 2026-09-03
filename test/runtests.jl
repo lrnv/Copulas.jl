@@ -8,6 +8,10 @@ using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     Statistics, StatsBase, Test, TOML
 
 const rng = StableRNG(123)
+
+
+##### Timings stuff
+
 const _TEST_RUN_STARTED = time()
 const _TEST_PROGRESS_LAST = Ref(_TEST_RUN_STARTED)
 const _TEST_PROGRESS_CURRENT = Ref{Union{Nothing,String}}(nothing)
@@ -78,19 +82,13 @@ function write_test_timings()
 end
 atexit(write_test_timings)
 
-# Shared test data and registries: declares the minimal representative models
-# consumed by contracts and path tests; it contains no assertions itself.
-public_symbols() = filter(!=(:Copulas), names(Copulas; all=false, imported=false))
+
+######## Helpers for the actual tests
 
 function is_absolutely_continuous(C)
     Base.@nospecialize C
-    return Copulas.copula_measure_style(C) isa
-           Copulas.AbsolutelyContinuousMeasure
+    return Copulas.copula_measure_style(C) isa Copulas.AbsolutelyContinuousMeasure
 end
-
-_dependence_is_defined(measure, C::Copulas.Copula) = _dependence_is_defined(measure, Copulas.copula_measure_style(C))
-_dependence_is_defined(::Union{typeof(Copulas.ι),typeof(Copulas.corentropy)}, ::Copulas.NonAbsolutelyContinuousMeasure) = false
-_dependence_is_defined(::Any, ::Copulas.CopulaMeasureStyle) = true
 
 const _FIXTURE_DATA = [
     0.12 0.31 0.54 0.73 0.89 0.42
@@ -99,23 +97,6 @@ const _FIXTURE_DATA = [
 const _FIXTURE_DATA3 = vcat(
     _FIXTURE_DATA,
     reshape([0.24, 0.76, 0.45, 0.91, 0.33, 0.58], 1, :),
-)
-
-# One ordinary interior point per public family is intentional. Numerical
-# limits and alternate algorithms belong to focused obligation tests, not
-# to the public contract matrix.
-# Additional dimensional representations that select methods not reachable
-# from the one-instance-per-family public contract above. They are consumed by
-# routing and proof tests only, avoiding repetition of the full API contract.
-const SCALAR_DEPENDENCE_MEASURES = (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι, Copulas.λₗ, Copulas.λᵤ)
-const PAIRWISE_DEPENDENCE_MEASURES = (
-    (StatsBase.corkendall, 1),
-    (StatsBase.corspearman, 1),
-    (Copulas.corblomqvist, 1),
-    (Copulas.corgini, 1),
-    (Copulas.corentropy, 0),
-    (Copulas.corlowertail, 1),
-    (Copulas.coruppertail, 1),
 )
 
 function _which(f, args...)
@@ -153,6 +134,9 @@ function dispatch_route_key(operation, C)
     return (method, length(C) == 2 ? :bivariate : :multivariate)
 end
 
+# Shared test data and registries: declares the minimal representative models
+# consumed by contracts and path tests; it contains no assertions itself.
+public_symbols() = filter(!=(:Copulas), names(Copulas; all=false, imported=false))
 const _PUBLIC_SYMBOLS = public_symbols()
 function _public_copula_symbol(family)
     Base.@nospecialize family
@@ -170,63 +154,36 @@ end
 
 function constructor_spec(family, d::Int, args...; kwargs...)
     Base.@nospecialize family args
-
-    return (
-        family = family,
-        d = d,
-        args = args,
-        constructor_kwargs = (; kwargs...),
-    )
+    return (family = family, d = d, args = args, constructor_kwargs = (; kwargs...))
 end
-
 function constructor_type(spec)
     Base.@nospecialize spec
     return Core.apply_type(spec.family, spec.d)
 end
-
 function build_typed(spec)
     Base.@nospecialize spec
-
     family = constructor_type(spec)
-    return family(
-        spec.args...;
-        spec.constructor_kwargs...,
-    )
+    return family(spec.args...; spec.constructor_kwargs...)
 end
-
 function build_dynamic(spec)
     Base.@nospecialize spec
-
-    return spec.family(
-        spec.d,
-        spec.args...;
-        spec.constructor_kwargs...,
-    )
+    return spec.family(spec.d, spec.args...; spec.constructor_kwargs...)
 end
-
 function typed_constructor_expr(spec)
     Base.@nospecialize spec
-
     call = Any[QuoteNode(constructor_type(spec))]
-
     if !isempty(spec.constructor_kwargs)
         parameters = Expr(:parameters)
         for (key, value) in pairs(spec.constructor_kwargs)
-            push!(
-                parameters.args,
-                Expr(:kw, key, QuoteNode(value)),
-            )
+            push!(parameters.args, Expr(:kw, key, QuoteNode(value)))
         end
         push!(call, parameters)
     end
-
     for arg in spec.args
         push!(call, QuoteNode(arg))
     end
-
     return Expr(:call, call...)
 end
-
 function copula_case(
     family,
     d::Int,
@@ -237,10 +194,8 @@ function copula_case(
     conditional_at=nothing,
 )
     Base.@nospecialize family args
-
     symbol = _public_copula_symbol(family)
     name = replace(string(symbol), r"Copula$" => "")
-
     return (
         family = family,
         symbol = symbol,

@@ -543,6 +543,21 @@ function _empirical_ev_copula(d::Int, u::AbstractMatrix; kwargs...)
     return ExtremeValueCopula{d}(tail)
 end
 
+function (::Type{EmpiricalEVCopula{d}})(
+    u::AbstractMatrix;
+    kwargs...,
+) where {d}
+    d == size(u, 1) || throw(DimensionMismatch(
+        "d=$d does not match sample dimension $(size(u, 1))",
+    ))
+
+    tail = d == 2 ?
+        EmpiricalEVTail(u; kwargs...) :
+        EmpiricalEVMultivariateTail(u; kwargs...)
+
+    return _wrap_extreme_value(Val(d), tail)
+end
+
 function (CT::Type{<:EmpiricalEVCopula{D} where D})(
     u::AbstractMatrix;
     kwargs...,
