@@ -87,12 +87,15 @@ A\!\left(
 \right\}.
 ```
 
-!!! info "Bivariate and multivariate EV copulas"
-    Copulas.jl now uses ``\ell`` as the mathematical EV interface in arbitrary
-    dimension while preserving the mature bivariate Pickands machinery.
-    Bivariate formulas based on `A`, `dA`, `d²A`, Ghoudi sampling, conditional
-    distortions, and family-specific kernels remain available whenever the tail
-    provides them.
+::: info Bivariate and multivariate EV copulas
+
+Copulas.jl now uses ``\ell`` as the mathematical EV interface in arbitrary
+dimension while preserving the mature bivariate Pickands machinery.
+Bivariate formulas based on `A`, `dA`, `d²A`, Ghoudi sampling, conditional
+distortions, and family-specific kernels remain available whenever the tail
+provides them.
+
+:::
 
 !!! tip "Think family first, backend second"
     A public constructor identifies the **mathematical family**. It does not ask
@@ -248,10 +251,13 @@ A valid ``2\times2`` correlation matrix likewise keeps its matrix
 representation, while dispatch selects the specialized bivariate kernel from
 its off-diagonal correlation.
 
-!!! info "One public family, parameter-driven dispatch"
-    Scalar and matrix constructors of each family share one tail type. The
-    stored parameter type selects the exchangeable or general representation,
-    and dimension-specific methods retain the fast bivariate kernels.
+::: info One public family, parameter-driven dispatch
+
+Scalar and matrix constructors of each family share one tail type. The
+stored parameter type selects the exchangeable or general representation,
+and dimension-specific methods retain the fast bivariate kernels.
+
+:::
 
 ### Tawn and asymmetric Galambos subset models
 
@@ -348,10 +354,13 @@ Gudendorf and Segers [gudendorf2012multivariate](@cite).
 The resulting object stores a `DiscreteSpectralTail`; consequently the fitted
 STDF is valid by construction and exact spectral sampling is available.
 
-!!! info "One public constructor, two internal representations"
-    `EmpiricalEVCopula` uses the lightweight historical implementation in two
-    dimensions and the shape-constrained spectral representation in higher
-    dimensions.
+::: info One public constructor, two internal representations
+
+`EmpiricalEVCopula` uses the lightweight historical implementation in two
+dimensions and the shape-constrained spectral representation in higher
+dimensions.
+
+:::
 
 ## Advanced Concepts
 
@@ -359,12 +368,15 @@ Here, we present some important concepts from the theory of extreme value copula
 
 Let $(X,Y) \sim C$ where $C$ is a bivariate extreme value copula. We have the following result from [ghoudi1998proprietes](@cite):
 
-!!! property "Ghoudi 1998"
-    Let $(X, Y) \sim C$, where $C$ is an extreme value copula. The joint distribution of $X$ and $Z = \frac{\log(X)}{\log(XY)}$ is given by:
+::: property Ghoudi 1998
 
-    $$P(Z \leq z, X \leq x) = G(z, x) = \left(z + z(1 - z)\frac{A'(z)}{A(z)}\right)x^{A(z)/z}, \quad 0 \leq x, z \leq 1$$
+Let $(X, Y) \sim C$, where $C$ is an extreme value copula. The joint distribution of $X$ and $Z = \frac{\log(X)}{\log(XY)}$ is given by:
 
-    where $A'(z)$ denotes the derivative of $A(z)$ at point $z.$
+$$P(Z \leq z, X \leq x) = G(z, x) = \left(z + z(1 - z)\frac{A'(z)}{A(z)}\right)x^{A(z)/z}, \quad 0 \leq x, z \leq 1$$
+
+where $A'(z)$ denotes the derivative of $A(z)$ at point $z.$
+
+:::
 
 Since $A$ is a convex function defined on $[0, 1]$ and satisfies $-1 \leq A'(z) \leq 1$, by extension, we define $A'(1)$ as the supremum of $A'(z)$ over $(0, 1)$. By setting $x = 1$ in the previous result, we obtain the marginal distribution of $Z$:
 $$P(Z \leq z) = G_Z(z) = z + z(1 - z) \frac{A'(z)}{A(z)}, \quad 0 \leq z \leq 1.$$
@@ -398,12 +410,14 @@ Since $g_Z(z)$ is the derivative of the cumulative distribution function of $Z$,
 
 For the class of Extreme Value Copulas, We follow the methodology proposed by Ghoudi,1998. page 191. [ghoudi1998proprietes](@cite). Here, is a detailed algorithm for sampling from bivariate Extreme Value Copulas:
 
-!!! algorithm "Bivariate Extreme Value Copulas sampling"
+::: algorithm Bivariate Extreme Value Copulas sampling
 
-    * Simulate $U_1, U_2 \sim \mathcal{U}[0, 1]$
-    * Simulate $Z \sim G_Z(z)$
-    * Select $W = U_1$ with probability $p(Z)$ and $W = U_1U_2$ with probability $1 - p(Z)$
-    * Return $X = W^{Z/A(Z)}$ and $Y = W^{(1 - Z)/A(Z)}$  
+* Simulate $U_1, U_2 \sim \mathcal{U}[0, 1]$
+* Simulate $Z \sim G_Z(z)$
+* Select $W = U_1$ with probability $p(Z)$ and $W = U_1U_2$ with probability $1 - p(Z)$
+* Return $X = W^{Z/A(Z)}$ and $Y = W^{(1 - Z)/A(Z)}$
+
+:::
 
 Note that all functions present in the algorithm were previously defined to ensure that the implemented methodology has a solid theoretical basis.
 

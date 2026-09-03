@@ -17,7 +17,7 @@ Pickands representation. By homogeneity, for ``x\\neq 0`` let ``\\left\\| x\\rig
 Interface. A concrete tail must implement either `A` or `ℓ`; each representation
 is derived from the other by homogeneity.
 - `A(tail::Tail, ω::NTuple{d,Real})` — Pickands function on the simplex `\\Delta_{d-1}`.
-  (For `d=2`, a convenience `A(tail::Tail{2}, t::Real)` may be provided.)
+  (For `d=2`, a convenience `A(tail::Tail, t::Real)` may be provided.)
 - `ℓ(tail::Tail, x::NTuple{d,Real})` — STDF. By default the package defines
   `ℓ(tail, x) = ‖x‖₁ * A(tail, x/‖x‖₁)` when `A` is available.
 

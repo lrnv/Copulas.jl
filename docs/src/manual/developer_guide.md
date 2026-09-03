@@ -10,9 +10,12 @@ It focuses on what must be defined for a new copula to work consistently
 with the main interfaces (`cdf`, `pdf`, `rand`, `fit`, etc.), without going into
 mathematical details.
 
-!!! info "Target audience"
-    This page is intended for package contributors and advanced users who want to extend 
-    `Copulas.jl` with new copula families, internal optimizations, or additional features.
+::: info Target audience
+
+This page is intended for package contributors and advanced users who want to extend 
+`Copulas.jl` with new copula families, internal optimizations, or additional features.
+
+:::
 
 !!! warning "Internal interfaces are not covered by SemVer"
     This guide documents both the public extension surface and implementation details
@@ -104,17 +107,19 @@ the two dimension spellings above.
 
 Once defined, these automatically integrate with the `Copulas.jl` and `Distributions.jl` interface.
 
-!!! info "Sampling contract"
-    The matrix `_rand!` method is the sampling primitive. The generic
-    `Distributions.jl` machinery handles the one-sample/vector interface by
-    delegating to the matrix sampler, so copula implementations should define
-    only the matrix method. Before `_rand!` is called, the public interface
-    validates that the output has `length(C)` rows; implementations may assume
-    that the matrix has size `d × n` and should not repeat this check. When
-    several sampling algorithms are available, select among them with ordinary
-    Julia dispatch on the copula/tail type rather than with a separate routing
-    trait.
+::: info Sampling contract
 
+The matrix `_rand!` method is the sampling primitive. The generic
+`Distributions.jl` machinery handles the one-sample/vector interface by
+delegating to the matrix sampler, so copula implementations should define
+only the matrix method. Before `_rand!` is called, the public interface
+validates that the output has `length(C)` rows; implementations may assume
+that the matrix has size `d × n` and should not repeat this check. When
+several sampling algorithms are available, select among them with ordinary
+Julia dispatch on the copula/tail type rather than with a separate routing
+trait.
+
+:::
 
 ## 1.3 Dependence metrics
 
@@ -187,15 +192,33 @@ This is how we enable conditioning on the SklarDist level.
 The fitting interface allows your copula to work with `fit(::Type{CopulaModel}, ...)`
 and the general estimation framework.
 
-### Required internal methods
+### Required fitting methods
+
+| Method                              | Purpose                                                       |
+| ----------------------------------- | ------------------------------------------------------------- |
+| `_available_fitting_methods(CT, d)` | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
+| `_fit(CT, U, ::Val{:method})`       | Core fitting routine returning `(copula, meta)`               |
+
+Example minimal skeleton to produce a fitting rtoutine for a custom fitting method: 
+
+```julia
+_available_fitting_methods(::Type{MyCopula}, d) = (:mymethod,)
+
+function _fit(::Type{MyCopula}, U, ::Val{:mymethod})
+    θ̂ = .... # do things.
+    return MyCopula(size(U, 1), θ̂), (; θ̂,)
+end
+```
+
+but sometimes its easier to opt into know fitting methods: 
+
+### Opting into generic fitting methods
 
 | Method                              | Purpose                                                       |
 | ----------------------------------- | ------------------------------------------------------------- |
 | `_example(CT, d)`                   | Returns a representative instance used for defaults           |
 | `_unbound_params(CT, d, params)`    | Maps parameter tuple → unconstrained vector                   |
 | `_rebound_params(CT, d, α)`         | Inverse map for optimizer results                             |
-| `_available_fitting_methods(CT, d)` | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
-| `_fit(CT, U, ::Val{:method})`       | Core fitting routine returning `(copula, meta)`               |
 
 Example minimal skeleton:
 
@@ -203,11 +226,11 @@ Example minimal skeleton:
 _example(::Type{MyCopula}, d) = MyCopula(d, default_parameters...)
 _unbound_params(::Type{MyCopula}, d, params) = [log(params.θ)]
 _rebound_params(::Type{MyCopula}, d, α) = (; θ = exp(α[1]))
-_available_fitting_methods(::Type{MyCopula}, d) = (:mle, :itau)
+_available_fitting_methods(::Type{MyCopula}, d) = (:mle, :itau, :ibeta,) # or others...
 
 function _fit(::Type{MyCopula}, U, ::Val{:mle})
     θ̂ = optimize_mle(U)
-    return MyCopula(size(U, 2), θ̂), (; θ̂, optimizer = :lbfgs, converged = true)
+    return MyCopula(size(U, 1), θ̂), (; θ̂, optimizer = :lbfgs, converged = true)
 end
 ```
 
@@ -221,6 +244,7 @@ Once the above methods are implemented, your family becomes automatically compat
 - `Distributions.loglikelihood`
 - `StatsBase.aic`, `StatsBase.bic`
 
+the requires _fit function for :mle for example might already be provided by the package, test your case.
 
 
 
@@ -266,14 +290,14 @@ Once the generator defines `ϕ`, and `max_monotony`, all functions such as
 
 Only fitting routines or dependence metrics need to be added if the defaults are insufficient.
 
-!!! info "Other generator interfaces"
-    1) If you generator has only a one-dimensional parametrisation, then you might look at the `UnivariateGenerator<:Generator` interface that is a bit easier. 
-    2) If your generator is a Frailty, then there is `FrailtyGenerator`
-    3) If you know the radial part, use `𝒲 === WilliamsonGenerator` directly. 
-    4) If you are lost, just open an issue ;)
+::: info Other generator interfaces
 
+1) If you generator has only a one-dimensional parametrisation, then you might look at the `UnivariateGenerator<:Generator` interface that is a bit easier. 
+2) If your generator is a Frailty, then there is `FrailtyGenerator`
+3) If you know the radial part, use `𝒲 === WilliamsonGenerator` directly. 
+4) If you are lost, just open an issue ;)
 
-
+:::
 
 ## 2.2 Extreme-Value copulas
 
@@ -332,11 +356,14 @@ Copulas.ℓ(tail::MyTail, x) = ...
 This is the pattern used by families such as Logistic, Galambos,
 Hüsler-Reiss, Mixed, extremal-``t``, and Cuadras-Augé.
 
-!!! info "Why keep `BivariatePickandsTail`?"
-    A multivariate family can still have exceptionally good analytic formulas
-    in dimension two. `BivariatePickandsTail` lets the package retain `A`, `dA`, `d²A`,
-    conditional distortions, and the Ghoudi sampler without pretending that the
-    mathematical family stops at ``d=2``.
+::: info Why keep `BivariatePickandsTail`?
+
+A multivariate family can still have exceptionally good analytic formulas
+in dimension two. `BivariatePickandsTail` lets the package retain `A`, `dA`, `d²A`,
+conditional distortions, and the Ghoudi sampler without pretending that the
+mathematical family stops at ``d=2``.
+
+:::
 
 ### Constructor convention
 
@@ -742,16 +769,8 @@ the core functional behavior of the family.
 struct Nelsen2Generator{T} <: Copulas.AbstractUnivariateGenerator # subtype of Generator
     θ::T
     function Nelsen2Generator(θ)
-        if θ < 1
-            throw(ArgumentError("θ must be ≥ 1"))
-        elseif θ == 1
-            return Copulas.WGenerator()
-        elseif θ == Inf
-            return Copulas.MGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 
@@ -842,10 +861,8 @@ struct GumbelTail{T} <: Copulas.OneParameterPickandsTail # subtype of Tail
     θ::T
     function GumbelTail(θ)
         !(1 <= θ) && throw(ArgumentError("θ must be in [1, ∞)"))
-        θ == 1 && return NoTail()
-        isinf(θ) && return MTail()
-        θ, _ = promote(θ, 1.0)
-        return new{typeof(θ)}(θ)
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 

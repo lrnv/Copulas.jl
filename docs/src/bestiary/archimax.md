@@ -49,12 +49,15 @@ plot(C)
 !!! note "Tail behaviour:"
     The **upper tail** is governed by the extreme value structure, while the **lower tail** is driven by the curvature of the Archimedean generator $\phi$. For specific families (e.g., BB5Copula) there are closed forms for $\lambda_U$ and for lower-tail orders.
 
-!!! theorem "Exhaustivity and consistency" 
-    For bivariate Archimax copulas,
+::: theorem Exhaustivity and consistency 
 
-    $$\tau_{\phi,A} \;=\; \tau_A \;+\; (1-\tau_A)\,\tau_\phi,$$
+For bivariate Archimax copulas,
 
-    where $\tau_A$ is Kendall’s $\tau$ of the EV copula with Pickands $A$, and $\tau_\phi$ is Kendall’s $\tau$ of the Archimedean copula with generator $\phi$ (Capéraà, Fougères & Genest, 2000).
+$$\tau_{\phi,A} \;=\; \tau_A \;+\; (1-\tau_A)\,\tau_\phi,$$
+
+where $\tau_A$ is Kendall’s $\tau$ of the EV copula with Pickands $A$, and $\tau_\phi$ is Kendall’s $\tau$ of the Archimedean copula with generator $\phi$ (Capéraà, Fougères & Genest, 2000).
+
+:::
 
 ---
 
@@ -73,14 +76,19 @@ $$U_j \;=\; \phi\!\big(-\log V_j\,/\,M\big),\qquad j=1,2,$$
 
 has the Archimax copula $C_{\phi,A}$.
 
-!!! algorithm "Bivariate Archimax sampling"
+::: algorithm Bivariate Archimax sampling
 
-    * Simulate $(V_1,V_2) \sim C_{\text{EV}}$ with stable tail function $\ell$ (i.e., Pickands $A$).
-    * Simulate a frailty $M \ge 0$ whose Laplace transform is $\mathbb{E}[e^{-sM}] = \phi(s)$.
-    * Set $U_j := \phi\!\big(-\log(V_j)/M\big)$, $j=1,2$. Return $(U_1,U_2)$.
+* Simulate $(V_1,V_2) \sim C_{\text{EV}}$ with stable tail function $\ell$ (i.e., Pickands $A$).
+* Simulate a frailty $M \ge 0$ whose Laplace transform is $\mathbb{E}[e^{-sM}] = \phi(s)$.
+* Set $U_j := \phi\!\big(-\log(V_j)/M\big)$, $j=1,2$. Return $(U_1,U_2)$.
 
-!!! todo "Allow any generator"
-    According to [charpentier2014](@cite), it should be possible to use any d-monotonous generator. If you want to implement the corresponding sampler, please reach out.
+:::
+
+::: todo Allow any generator
+
+According to [charpentier2014](@cite), it should be possible to use any d-monotonous generator. If you want to implement the corresponding sampler, please reach out.
+
+:::
 
 **Notes on the objects used.**
 
@@ -141,10 +149,13 @@ This requires the generator to be **completely monotone** (so that a frailty dis
 
 Archimax copulas are built by pairing an Archimedean generator with an extreme value tail bahavior. Beyond the named families below, **any Archimedean model in this package can be combined with any EV model** via the generic constructor `ArchimaxCopula(gen, tail)`.
 
-!!! info "Bivariate only"
+::: info Bivariate only
+
 The current `ArchimaxCopula` implementation remains bivariate. The package now
 provides multivariate extreme-value tails, but extending the Archimax density,
 conditioning, and sampling machinery beyond dimension two is separate work.
+
+:::
 
 ### `BB4Copula`
 

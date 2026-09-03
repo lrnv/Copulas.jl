@@ -1,6 +1,5 @@
 import { defineConfig } from 'vitepress'
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
-import mathjax3 from "markdown-it-mathjax3"
 import footnote from "markdown-it-footnote"
 import markdownItContainer from 'markdown-it-container'
 import path from 'path'
@@ -75,14 +74,19 @@ export default defineConfig({
     math: true,
     config(md) {
       md.use(tabsMarkdownPlugin)
-      md.use(mathjax3)
       md.use(footnote)
 
       // Completely override container rendering with a custom plugin
       // This plugin will add a test phrase to every block so you know it's working
       function customContainerPlugin(md) {
         const types = [
-          'tip', 'note', 'info', 'warning', 'danger', 'todo', 'definition', 'property', 'remark', 'theorem', 'example'
+          'todo',
+          'definition',
+          'property',
+          'remark',
+          'theorem',
+          'example',
+          'algorithm',
         ];
         for (const type of types) {
           md.use(markdownItContainer, type, {
@@ -97,7 +101,8 @@ export default defineConfig({
                   title = info.slice(firstSpaceIndex + 1).trim();
                 }
                 const typeLabel = type.charAt(0).toUpperCase() + type.slice(1);
-                const fullTitle = title ? `${typeLabel}: ${title}` : typeLabel;
+                const renderedTitle = title ? md.renderInline(title) : '';
+                const fullTitle = title ? `${typeLabel}: ${renderedTitle}` : typeLabel;
                 return `<div class="${type} custom-block">\n` +
                   `<div class="custom-block-title">${fullTitle}</div>\n` +
                   `<div class="custom-block-content">\n`;
@@ -110,7 +115,6 @@ export default defineConfig({
         }
       }
       customContainerPlugin(md);
-      dark: "github-dark"
     },
   },
   themeConfig: {

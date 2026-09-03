@@ -32,12 +32,6 @@ WCopula
 SurvivalCopula
 ```
 
-### Subsetting
-
-```@docs; canonical = false
-Copulas.subsetdims
-```
-
 ## Others
 
 ### `PlackettCopula`
