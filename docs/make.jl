@@ -33,6 +33,7 @@ makedocs(;
         "Bestiary" => [
             "Elliptical copulas"=>"bestiary/elliptical.md",
             "Archimedean copulas"=>"bestiary/archimedean.md",
+            "Liouville copulas"=>"bestiary/liouville.md",
             "Nested Archimedean copulas"=>"bestiary/nested.md",
             "Extreme Value copulas"=>"bestiary/extremevalues.md",
             "Archimax copulas"=>"bestiary/archimax.md",
@@ -41,7 +42,6 @@ makedocs(;
             "Other copulas"=>"bestiary/miscellaneous.md",
         ],
         "Examples" => [
-            "Liouville copulas with real Dirichlet parameters"=>"examples/liouville.md",
             "Nonparametric estimation of the radial law in Archimedean copulas"=>"examples/archimedean_radial_estimation.md",
             "Empirical Kendall function and Archimedean's λ function."=>"examples/lambda_viz.md",
             "Loss-Alae fitting example"=>"examples/lossalae.md",

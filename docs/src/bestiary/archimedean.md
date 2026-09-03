@@ -368,7 +368,7 @@ Any implemented `Generator` can be used when it has sufficient monotonicity. Con
 LiouvilleCopula
 ```
 
-See the [Liouville copulas with real Dirichlet parameters](@ref liouville_example) example for construction from both a radial distribution and a conventional generator, order reductions, sampling, evaluation, and subsetting.
+See the [Liouville copulas](@ref liouville_copulas) example for construction from both a radial distribution and a conventional generator, order reductions, sampling, evaluation, and subsetting.
 
 
 ## [Available models](@id available_archimedean_models)
