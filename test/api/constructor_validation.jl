@@ -65,7 +65,7 @@ end
         0.30 0.60 0.80
         0.25 0.55 0.75
     ]
-    @test_throws ArgumentError HuslerReissCopula{4}(Γ)
+    @test_throws DimensionMismatch HuslerReissCopula{4}(Γ)
     @test_throws ArgumentError HuslerReissCopula(4, Γ)
     @test_throws ArgumentError tEVCopula{4}(4.0, R)
     @test_throws ArgumentError tEVCopula(4, 4.0, R)

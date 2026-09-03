@@ -12,6 +12,25 @@ struct TauOracleIntegrand
 end
 (f::TauOracleIntegrand)(u) = cdf(f.C, u) * pdf(f.C, u)
 
+const SCALAR_DEPENDENCE_MEASURES = (
+    Copulas.τ, 
+    Copulas.ρ, 
+    Copulas.β, 
+    Copulas.γ, 
+    Copulas.ι, 
+    Copulas.λₗ, 
+    Copulas.λᵤ,
+)
+const PAIRWISE_DEPENDENCE_MEASURES = (
+    (StatsBase.corkendall, 1),
+    (StatsBase.corspearman, 1),
+    (Copulas.corblomqvist, 1),
+    (Copulas.corgini, 1),
+    (Copulas.corentropy, 0),
+    (Copulas.corlowertail, 1),
+    (Copulas.coruppertail, 1),
+)
+
 function dependence_operation_route_key(measure, C)
     Base.@nospecialize measure C
     method = which(measure, Tuple{typeof(C)})
@@ -49,17 +68,6 @@ end
 _dependence_is_defined(measure, C::Copulas.Copula) = _dependence_is_defined(measure, Copulas.copula_measure_style(C))
 _dependence_is_defined(::Union{typeof(Copulas.ι),typeof(Copulas.corentropy)}, ::Copulas.NonAbsolutelyContinuousMeasure) = false
 _dependence_is_defined(::Any, ::Copulas.CopulaMeasureStyle) = true
-
-const SCALAR_DEPENDENCE_MEASURES = (Copulas.τ, Copulas.ρ, Copulas.β, Copulas.γ, Copulas.ι, Copulas.λₗ, Copulas.λᵤ)
-const PAIRWISE_DEPENDENCE_MEASURES = (
-    (StatsBase.corkendall, 1),
-    (StatsBase.corspearman, 1),
-    (Copulas.corblomqvist, 1),
-    (Copulas.corgini, 1),
-    (Copulas.corentropy, 0),
-    (Copulas.corlowertail, 1),
-    (Copulas.coruppertail, 1),
-)
 
 function test_dependence_contract(C)
     Base.@nospecialize C
