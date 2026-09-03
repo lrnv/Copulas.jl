@@ -84,6 +84,26 @@ struct IndependentGenerator <: MarkerGenerator end
 struct MGenerator <: MarkerGenerator end
 struct WGenerator <: MarkerGenerator end
 
+Distributions.params(::MarkerGenerator) = (;)
+
+@inline limit_kind(::Generator, ::Val) = NO_LIMIT
+@inline limit_kind(::MGenerator, ::Val) = M_LIMIT
+@inline limit_kind(::WGenerator, ::Val) = W_LIMIT
+@inline limit_kind(::IndependentGenerator, ::Val) = Π_LIMIT
+
+max_monotony(::IndependentGenerator) = Inf
+max_monotony(::MGenerator) = Inf
+max_monotony(::WGenerator) = 2
+
+ϕ(::IndependentGenerator, t) = exp(-t)
+ϕ⁻¹(::IndependentGenerator, u) = -log(u)
+ϕ⁽¹⁾(::IndependentGenerator, t) = -exp(-t)
+ϕ⁻¹⁽¹⁾(::IndependentGenerator, u) = -inv(u)
+ϕ⁽ᵏ⁾(::IndependentGenerator, k::Int, t) = (-1)^k * exp(-t)
+ϕ⁽ᵏ⁾⁻¹(::IndependentGenerator, ::Int, u; start_at=u) =
+    iszero(u) ? oftype(float(u), Inf) : -log(abs(u))
+frailty(::IndependentGenerator) = Distributions.Dirac(1.0)
+
 τ(::IndependentGenerator)  = 0
 τ(::MGenerator)  = 1
 τ(::WGenerator)  = -1
@@ -145,6 +165,10 @@ function 𝒲₋₁(G::Generator, d::Real)
     isinteger(d) && return 𝒲₋₁(G, n)
     return WilliamsonBetaProduct(𝒲₋₁(G, n), Distributions.Beta(d, n - d), n)
 end
+
+𝒲₋₁(::IndependentGenerator, d::Integer) = Distributions.Gamma(d, 1)
+𝒲₋₁(::IndependentGenerator, d::Real) = Distributions.Gamma(d, 1)
+
 function Distributions.cdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
     rez, scaled_power = zero(x), one(x)
@@ -392,12 +416,28 @@ const WilliamsonGenerator = 𝒲
 @doc (@doc 𝒲) WilliamsonGenerator
 Distributions.params(G::𝒲) = (X=G.X, order=G.order)
 max_monotony(G::𝒲) = G.order
+
+_williamson_primal(t) = t
+_williamson_primal(t::ForwardDiff.Dual) = ForwardDiff.value(t)
+
 """
 Generic fallback for ϕ on WilliamsonGenerator (non-discrete-nonparametric TX).
 Specializations for `TX<:DiscreteNonParametric` are provided below.
 """
+function _williamson_tail_expectation(f, X::Distributions.ContinuousUnivariateDistribution, t)
+    a = _williamson_primal(t)
+    p = Distributions.ccdf(X, a)
+    iszero(p) && return zero(float(t))
+    Xt = Distributions.truncated(X, a, Inf)
+    return p * Distributions.expectation(f, Xt)
+end
 function ϕ(G::𝒲, t)
     t <= 0 && return one(t)
+    if G.X isa Distributions.ContinuousUnivariateDistribution
+        return _williamson_tail_expectation(G.X, t) do y
+            (1 - t / y)^(G.order - 1)
+        end
+    end
     return Distributions.expectation(y -> (y > t) ? (1 - t / y)^(G.order - 1) : zero(t), G.X)
 end
 
@@ -405,13 +445,29 @@ function ϕ⁽ᵏ⁾(G::𝒲, k::Int, t)
     k ≥ 0 || throw(ArgumentError("k must be non-negative"))
     k == 0 && return ϕ(G, t)
     t < 0 && return zero(float(t))
-    k < G.order || return invoke(ϕ⁽ᵏ⁾, Tuple{Generator, Int, Any}, G, k, t)
 
-    coefficient = _falling_factorial(G.order - 1, k)
-    value = Distributions.expectation(G.X) do y
-        y > t ? (1 - t / y)^(G.order - 1 - k) / y^k : zero(t + y + G.order)
+    if k < G.order
+        coefficient = _falling_factorial(G.order - 1, k)
+        value = if G.X isa Distributions.ContinuousUnivariateDistribution
+            _williamson_tail_expectation(G.X, t) do y
+                (1 - t / y)^(G.order - 1 - k) / y^k
+            end
+        else
+            Distributions.expectation(G.X) do y
+                y > t ? (1 - t / y)^(G.order - 1 - k) / y^k : zero(t + y + G.order)
+            end
+        end
+        return (isodd(k) ? -coefficient : coefficient) * value
     end
-    return (isodd(k) ? -coefficient : coefficient) * value
+
+    if k == G.order &&
+       G.X isa Distributions.ContinuousUnivariateDistribution &&
+       t > 0
+        value = factorial(k - 1) * Distributions.pdf(G.X, t) / t^(k - 1)
+        return isodd(k) ? -value : value
+    end
+
+    return invoke(ϕ⁽ᵏ⁾, Tuple{Generator, Int, Any}, G, k, t)
 end
 ϕ⁽¹⁾(G::𝒲, t) = ϕ⁽ᵏ⁾(G, 1, t)
 function ϕ(G::𝒲, x::TaylorSeries.Taylor1{TF}) where {TF}

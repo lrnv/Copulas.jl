@@ -25,8 +25,8 @@ The model has a finite discrete-spectral representation.
 
 Special cases:
 
-* `θ = 0` returns `IndependentCopula(d)`.
-* `θ = 1` returns `MCopula(d)`.
+* `θ = 0` represents `IndependentCopula(d)`.
+* `θ = 1` represents `MCopula(d)`.
 
 References:
 
@@ -38,15 +38,18 @@ struct CuadrasAugeTail{T} <: OneParameterPickandsTail
     θ::T
     function CuadrasAugeTail(θ)
         (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))
-        θ == 0 && return NoTail()
-        θ == 1 && return MTail()
         θf = float(θ)
         new{typeof(θf)}(θf)
     end
 end
+@inline limit_kind(tail::CuadrasAugeTail, ::Val) =
+    iszero(tail.θ) ? Π_LIMIT :
+    isone(tail.θ) ? M_LIMIT :
+    NO_LIMIT
 
 const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
-tail_measure_style(::CuadrasAugeTail) = NonAbsolutelyContinuousMeasure()
+tail_measure_style(tail::CuadrasAugeTail) =
+    iszero(tail.θ) ? AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
 _is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2
 _unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
@@ -75,6 +78,11 @@ function ℓ(tail::CuadrasAugeTail, x)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:CuadrasAugeTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+
+    kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
+
     θ = C.tail.θ
     B = zeros(typeof(θ), d, d + 1)
 
@@ -92,6 +100,11 @@ dA(tail::CuadrasAugeTail, t::Real) = t <= 0.5 ? -tail.θ : tail.θ
 function Distributions._rand!(rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2, CuadrasAugeTail{T}},
     A::AbstractMatrix{S}) where {T,S<:Real}
+
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return Random.rand!(rng, A)
+    kind === M_LIMIT && return _rand_M!(rng, A)
+
     θ = C.tail.θ
     E = rand(rng, Distributions.Exponential(θ/(1-θ)), 2, size(A, 2))
     E₁₂ = rand(rng, Distributions.Exponential(), size(A, 2))

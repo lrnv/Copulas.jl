@@ -21,8 +21,8 @@ C = GaussianCopula(d, ρ)            # == GaussianCopula(Σ)
 ```
 
 Validity domain (equicorrelated PD matrix): `-1/(d-1) < ρ < 1`. The boundary
-`ρ = -1/(d-1)` is singular and rejected. If `ρ == 0`, this returns
-`IndependentCopula(d)` (same fast-path as when passing a diagonal matrix).
+`ρ = -1/(d-1)` is singular and rejected. If `ρ == 0`, the resulting
+`GaussianCopula` represents independence, as it does for any diagonal matrix.
 
 The Gaussian copula is the copula of a multivariate normal distribution. It is defined by
 
@@ -41,7 +41,8 @@ pdf(C, u); cdf(C, u)
 ```
 
 Special case:
-- If `isdiag(Σ)`, the constructor returns `IndependentCopula(d)`.
+- If `isdiag(Σ)`, the `GaussianCopula` represents independence while retaining
+  its concrete family type.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
@@ -50,9 +51,6 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function GaussianCopula{d}(Σ::AbstractMatrix) where {d}
         size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
-        if LinearAlgebra.isdiag(Σ)
-            return IndependentCopula{d}()
-        end
         make_cor!(Σ)
         N(GaussianCopula)(Σ)
         return new{d,typeof(Σ)}(Σ)
@@ -67,9 +65,6 @@ function GaussianCopula{d}(ρ::Real) where {d}
     lower = -1/(d-1)
     ρ ≤ lower && throw(ArgumentError("Equicorrelation value ρ=$(ρ) not in (-1/(d-1), 1). For d=$d the lower open bound is $(lower)."))
     ρ ≥ 1 && throw(ArgumentError("Equicorrelation value ρ must be < 1."))
-    if ρ == 0
-        return IndependentCopula(d)
-    end
     Σ = fill(float(ρ), d, d)
     @inbounds for i in 1:d
         Σ[i,i] = one(ρ)

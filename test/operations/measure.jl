@@ -1,11 +1,17 @@
 # Operation suite: public contract, generic correctness, specialization
 # equivalence, and exhaustive route closure for rectangle probabilities.
 
-measure_route_key(C) = (
-    which(Copulas.measure,
-          Tuple{typeof(C),Vector{Float64},Vector{Float64}}),
-    length(C) == 2 ? :bivariate : :multivariate,
-)
+function measure_route_key(C)
+    Base.@nospecialize C
+
+    return (
+        which(
+            Copulas.measure,
+            Tuple{typeof(C),Vector{Float64},Vector{Float64}},
+        ),
+        length(C) == 2 ? :bivariate : :multivariate,
+    )
+end
 
 @testset "measure" begin
     @testset "public contract" begin
@@ -13,10 +19,8 @@ measure_route_key(C) = (
             case, C = fixture.case, fixture.copula
             d = length(C)
             @testset "$(case.name)" begin
-                test_progress("operations", "measure", "contract", case.name)
                 @test Copulas.measure(C, zeros(d), ones(d)) ≈ 1 atol=1e-3
-                interior = Copulas.measure(C, fill(0.2, d), fill(0.6, d))
-                @test 0 <= interior <= 1
+                @test Copulas.measure(C, fill(0.6, d), fill(0.2, d)) == 0
             end
         end
 
@@ -67,7 +71,7 @@ measure_route_key(C) = (
     @testset "specialization equivalence and route exhaustiveness" begin
         selected_routes = Set{Any}()
         tested_routes = Set{Any}()
-        for fixture in ROUTING_COPULA_FIXTURES
+        for fixture in COPULA_FIXTURES
             case, C = fixture.case, fixture.copula
             route = measure_route_key(C)
             push!(selected_routes, route)
@@ -82,7 +86,6 @@ measure_route_key(C) = (
                 expected += (-1)^count(identity, mask) * cdf(C, point)
             end
             @testset "$(case.name)" begin
-                test_progress("operations", "measure", "route", case.name)
                 @test Copulas.measure(C, lower, upper) ≈ expected atol=1e-10
             end
             push!(tested_routes, route)

@@ -40,11 +40,18 @@ struct AsymLogTail{T} <: BivariatePickandsTail
         θ₁, θ₂, αT = T(θ₁), T(θ₂), T(α)
         (αT ≥ 1) || throw(ArgumentError("α must be ≥ 1"))
         (0 ≤ θ₁ ≤ 1 && 0 ≤ θ₂ ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
-        (isone(αT) || iszero(θ₁) || iszero(θ₂)) && return NoTail()
-        (isone(θ₁) && isone(θ₂)) && return LogTail(αT)
         return new{T}(αT, θ₁, θ₂)
     end
 end
+@inline _asym_log_independent(tail::AsymLogTail) =
+    isone(tail.α) || iszero(tail.θ₁) || iszero(tail.θ₂)
+@inline limit_kind(tail::AsymLogTail, ::Val{2}) =
+    _asym_log_independent(tail) ? Π_LIMIT :
+    isinf(tail.α) && isone(tail.θ₁) && isone(tail.θ₂) ? M_LIMIT :
+    NO_LIMIT
+tail_measure_style(tail::AsymLogTail) =
+    _asym_log_independent(tail) || !isinf(tail.α) ?
+    AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 
 const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
 Distributions.params(tail::AsymLogTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
@@ -55,16 +62,19 @@ end
 
 function A(tail::AsymLogTail, t::Real)
     tt = _safett(t)
-    α  = tail.α
+    _asym_log_independent(tail) && return one(tt)
+
+    α = tail.α
     θ₁, θ₂ = tail.θ₁, tail.θ₂
-    return ((θ₁^α) * (1-tt)^α + (θ₂^α) * tt^α)^(1/α) + (θ₁ - θ₂)*tt + 1 - θ₁
+    logistic = ℓ(LogTail(α), (θ₂ * tt, θ₁ * (1 - tt)))
+    return logistic + (θ₁ - θ₂) * tt + 1 - θ₁
 end
 
 function dA(tail::AsymLogTail, t::Real)
     tt = _safett(t)
     α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
 
-    (θ₁ == 0 && θ₂ == 0) && return zero(tt)
+    _asym_log_independent(tail) && return zero(tt)
 
     a = tt
     b = 1 - tt
@@ -82,8 +92,7 @@ function d²A(tail::AsymLogTail, t::Real)
     tt = _safett(t)
     α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
 
-    (θ₁ == 0 && θ₂ == 0) && return zero(tt)
-    α == 1 && return zero(tt)
+    _asym_log_independent(tail) && return zero(tt)
 
     a = tt
     b = 1 - tt
@@ -96,4 +105,20 @@ function d²A(tail::AsymLogTail, t::Real)
     E = c2 * a^(α - 2) + c1 * b^(α - 2)
 
     return (α - 1) * R^(inv(α) - 2) * (R * E - D^2)
+end
+
+function τ(C::ExtremeValueCopula{2,<:AsymLogTail})
+    tail = C.tail
+    α, θ₁, θ₂ = tail.α, tail.θ₁, tail.θ₂
+
+    # Independence boundaries.
+    (isone(α) || iszero(θ₁) || iszero(θ₂)) && return zero(float(α + θ₁ + θ₂))
+
+    # Symmetric logistic boundary.
+    isone(θ₁) && isone(θ₂) && return isinf(α) ? one(float(α)) : 1 - inv(α)
+
+    # α → ∞: Marshall–Olkin limit.
+    isinf(α) && return θ₁ * θ₂ / (θ₁ + θ₂ - θ₁ * θ₂)
+
+    return @invoke τ(C::ExtremeValueCopula{2})
 end

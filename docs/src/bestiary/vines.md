@@ -30,29 +30,17 @@ for the full API and current scope.
 
 ## A small D-vine example
 
-```@example vines
-using Copulas
-using VineCopulas
-using Distributions: logpdf, pdf
-using Random
+```julia
+using Copulas, VineCopulas
 
 C12 = GaussianCopula([1.0 0.5; 0.5 1.0])
 C23 = ClaytonCopula(2, 2.0)
 C13_2 = FrankCopula(2, 3.0)
 
 vine = DVineCopula([1, 2, 3], [[C12, C23], [C13_2]])
-
-u = [0.2, 0.5, 0.7]
-(logpdf(vine, u), pdf(vine, u))
 ```
 
-```@example vines
-U = rand(MersenneTwister(123), vine, 5)
-size(U)
-```
-
-Matrices follow the same convention as in `Copulas.jl`: rows are dimensions and
-columns are observations. See the
+The obtained object is a genuine copula, with (at least) the same API described here. See the
 [`VineCopulas.jl` documentation](https://santymax98.github.io/VineCopulas.jl/dev/)
 for the full API and current scope.
 

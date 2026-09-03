@@ -3,20 +3,17 @@
 @testset "public Sklar fitting path" begin
     source = SklarDist(ClaytonCopula{2}(1.0), (Normal(), Exponential()))
     data = rand(StableRNG(111), source, 8)
-    test_progress("routing fitting", "Sklar IFM")
     fitted = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
                  copula_method=:itau, vcov=false, derived_measures=false)
     @test fitted isa SklarDist
     @test fitted.C isa ClaytonCopula{2}
 
-    test_progress("routing fitting", "Sklar model")
     model = fit(CopulaModel,
         SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
         copula_method=:itau, vcov=false, derived_measures=false)
     @test model.result isa SklarDist
     @test StatsBase.nobs(model) == size(data, 2)
 
-    test_progress("routing fitting", "Sklar ECDF")
     ecdf_fit = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
                    sklar_method=:ecdf, copula_method=:itau, vcov=false,
                    derived_measures=false)
@@ -25,12 +22,10 @@ end
 
 @testset "public covariance fitting option" begin
     U = rand(StableRNG(112), ClaytonCopula{2}(1.0), 8)
-    test_progress("routing fitting", "covariance hessian")
     model = fit(CopulaModel, ClaytonCopula{2}, U; method=:itau,
                 vcov=true, vcov_method=:hessian, derived_measures=false)
     @test StatsBase.vcov(model) isa AbstractMatrix
     @test size(StatsBase.vcov(model)) == (StatsBase.dof(model), StatsBase.dof(model))
-    test_progress("routing fitting", "invalid covariance method")
     @test_throws ArgumentError fit(CopulaModel, ClaytonCopula{2}, U;
         method=:itau, vcov=true, vcov_method=:invalid, derived_measures=false)
 end
@@ -67,52 +62,23 @@ end
 # A fitting route is the complete internal composition, not merely `_fit`.
 # Generic fitting additionally depends on the example, parameter transform,
 # and reconstruction methods selected for the concrete family.
-function fitting_route_key(C, U, method)
+function fitting_execution_route_key(C, U, method)
     Base.@nospecialize C U method
-    CT, d = typeof(C), length(C)
-    components = Any[
-        which(Copulas._available_fitting_methods, Tuple{Type{CT},Int}),
-        which(Copulas._find_method, Tuple{Type{CT},Int,Symbol}),
-        which(Copulas._fit, Tuple{Type{CT},typeof(U),Val{method}}),
-    ]
-    applicable(Copulas._example, CT, d) &&
-        push!(components, which(Copulas._example, Tuple{Type{CT},Int}))
-    bounded = params(C)
-    topology = (keys(bounded), map(values(bounded)) do value
-        value isa AbstractArray ? (typeof(value), size(value)) : typeof(value)
-    end)
-    component_type = C isa ArchimedeanCopula ? typeof(C.G) :
-                     C isa ExtremeValueCopula ? typeof(C.tail) : nothing
-    bounds = !isnothing(component_type) &&
-             applicable(Copulas._θ_bounds, component_type, d) ?
-             (which(Copulas._θ_bounds, Tuple{Type{component_type},Int}),
-              Copulas._θ_bounds(component_type, d)) : nothing
-    # Empirical EV fits reconstruct their non-parametric tail directly from
-    # the observations; the generic EV forwarding method is technically
-    # applicable but its parametric tail transform is not part of that route.
-    # Multivariate FGM uses its dedicated constrained MLE directly; its
-    # bivariate-only scalar transform is applicable by signature but rejects d>2.
-    if method === :mle && !(C isa EmpiricalEVCopula) &&
-       !(C isa FGMCopula && d != 2) && !isempty(bounded) &&
-       applicable(Copulas._unbound_params, CT, d, bounded)
-        unbound = Copulas._unbound_params(CT, d, bounded)
-        push!(components,
-              which(Copulas._unbound_params,
-                    Tuple{Type{CT},Int,typeof(bounded)}))
-        applicable(Copulas._rebound_params, CT, d, unbound) &&
-            push!(components,
-                  which(Copulas._rebound_params,
-                        Tuple{Type{CT},Int,typeof(unbound)}))
-        applicable(Copulas._fit_copula, CT, d, bounded, C) &&
-            push!(components,
-                  which(Copulas._fit_copula,
-                        Tuple{Type{CT},Int,typeof(bounded),typeof(C)}))
-    end
-    # `which` already distinguishes genuinely dimension-specific dispatches:
-    # adding the dimension itself would instead execute the same generic
-    # algorithm once per representation. Parameter topology and bounds retain
-    # the non-dispatch differences that affect generic reconstruction.
-    return (Tuple(components), method, topology, bounds)
+
+    CT = typeof(C)
+    d = length(C)
+    fit_method = which(Copulas._fit, Tuple{Type{CT},typeof(U),Val{method}})
+
+    parameter_dof = method === :mle ? Copulas._parameter_dof(params(C)) : nothing
+
+    dimension = d == 2 ? :bivariate : :multivariate
+
+    return (
+        fit_method,
+        method,
+        dimension,
+        parameter_dof,
+    )
 end
 
 _has_fitting_parameters(C) =
@@ -120,56 +86,83 @@ _has_fitting_parameters(C) =
 _check_parameter_roundtrip(C) =
     !(C isa EmpiricalEVCopula) && !(C isa FGMCopula && length(C) != 2)
 
-@testset "all distinct advertised fitting routes" begin
-    selected_routes = Set{Any}()
-    tested_routes = Set{Any}()
-    for (index, fixture) in enumerate(ROUTING_COPULA_FIXTURES)
+function test_mle_parameter_plumbing(C)
+    Base.@nospecialize C
+
+    CT = typeof(C)
+    d = length(C)
+    bounded = params(C)
+    unbounded = Copulas._unbound_params(CT, d, bounded)
+    restored = Copulas._rebound_params(CT, d, unbounded)
+
+    @test keys(restored) == keys(bounded)
+
+    @test all(key -> getfield(bounded, key) ≈ getfield(restored, key), keys(bounded))
+
+    if applicable(Copulas._example, CT, d)
+        example = Copulas._example(CT, d)
+        @test example isa Copulas.Copula{d}
+    end
+
+    return nothing
+end
+
+@testset "MLE parameter plumbing for every advertised family" begin
+    for i in eachindex(BASE_COPULA_CASES)
+        fixture = COPULA_FIXTURES[i]
         case, C = fixture.case, fixture.copula
-        CT, d = typeof(C), length(C)
+        CT = typeof(C)
+        d = length(C)
+
         methods = Copulas._available_fitting_methods(CT, d)
 
-        if :mle in methods && _has_fitting_parameters(C) &&
-           _check_parameter_roundtrip(C)
-            bounded = params(C)
-            restored = Copulas._rebound_params(
-                CT, d, Copulas._unbound_params(CT, d, bounded))
-            @test all(key -> getfield(bounded, key) ≈ getfield(restored, key),
-                      keys(bounded))
-        end
+        :mle in methods || continue
+        _has_fitting_parameters(C) || continue
+        _check_parameter_roundtrip(C) || continue
 
-        # Route selection depends on the matrix type, not on sampled values.
-        # Delay sampling until an actually new route must be executed, so
-        # families sharing the same fitting composition do not repeat it.
+        @testset "$(case.name)" begin
+            test_mle_parameter_plumbing(C)
+        end
+    end
+end
+
+@testset "one execution per fitting engine" begin
+    selected_routes = Set{Any}()
+    tested_routes = Set{Any}()
+
+    for (index, fixture) in enumerate(COPULA_FIXTURES)
+        case, C = fixture.case, fixture.copula
+        CT = typeof(C)
+        d = length(C)
+
+        methods = Copulas._available_fitting_methods(CT, d)
+
+        # The route depends on the matrix type, not on its values.
         route_data = fill(0.5, d, 2)
+
         for method in methods
-            route = fitting_route_key(C, route_data, method)
+            route = fitting_execution_route_key(C, route_data, method)
             push!(selected_routes, route)
             route in tested_routes && continue
-            test_progress("routing fitting", case.name, method,
-                          nameof(CT), d)
+
             U = rand(StableRNG(30_000 + index), C, 12)
-            # Routing only needs to exercise the empirical EV estimator. Its
-            # high-resolution grid is validated in the fitting contract.
-            route_kwargs = C isa EmpiricalEVCopula ?
-                (d == 2 ? (; grid=21) : (; degree=1)) : (;)
-            fitted = fit(CT, U, method; vcov=false,
-                         derived_measures=false, route_kwargs...)
+            route_kwargs = C isa EmpiricalEVCopula ? (d == 2 ? (; grid=21) : (; degree=1)) :
+                C isa SurvivalCopula ? (; flips=C.flipmask) : (;)
+            fitted = fit( CT, U, method; vcov=false, derived_measures=false, route_kwargs...)
             @test fitted isa Copulas.Copula{d}
-            push!(tested_routes, route)
+
             if method === :mle && is_absolutely_continuous(C)
                 fitted_ll = loglikelihood(fitted, U)
                 @test isfinite(fitted_ll)
-                # source_ll = loglikelihood(C, U)
-                # if isfinite(source_ll)
-                #     @test fitted_ll >= source_ll - 1e-6
-                # end
             end
+
+            push!(tested_routes, route)
         end
     end
+
     @test !isempty(selected_routes)
     @test tested_routes == selected_routes
 end
-
 
 # Fitting-operation contract: capabilities come from the package itself.
 # Every advertised route is executed independently in `routing/fitting.jl`;

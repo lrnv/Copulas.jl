@@ -49,10 +49,13 @@ Returns a [`CopulaModel`](@ref) with:
 
 ## Behavior & conventions (important)
 
-- ``fit`` operates on **types**, not on pre-constructed instances.  
+- ``fit`` usually operates on **types**. Structural models whose configuration
+  is stored in fields, such as `NestedArchimedeanCopula`,
+  are instead fitted from a template instance.
   Pass a copula or Sklar type, e.g. `fit(GumbelCopula, U)` or  
   `fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X)`.  
-  If you already have an instance `C0`, re-estimate its parameters with `fit(typeof(C0), U)`.
+  If an instance `C0` is completely described by its type, re-estimate its
+  parameters with `fit(typeof(C0), U)`. For a structural model, use `fit(C0, U)`.
 
 - **Default method selection.** Each family exposes allowed fitting strategies via `_available_fitting_methods(CT, d)`.  
   With `method = :default`, the **first** element of that tuple is used.  

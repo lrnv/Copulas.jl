@@ -76,7 +76,7 @@ rng = Xoshiro(42)
 (typeof(C13), C13.α, rand(rng, C13))
 ```
 
-For `α = ones(d)`, every marginal survival function is the generator itself and the construction is exactly Archimedean. The constructor therefore returns the corresponding `ArchimedeanCopula` directly, preserving all its specialized algorithms:
+For `α = ones(d)`, every marginal survival function is the generator itself and the construction is exactly Archimedean. The object remains a `LiouvilleCopula`, while its numerical methods exploit the equivalent `ArchimedeanCopula` path:
 
 ```@example liouville
 G2 = Copulas.ClaytonGenerator(1.5)

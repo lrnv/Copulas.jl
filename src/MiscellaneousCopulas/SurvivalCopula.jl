@@ -1,20 +1,15 @@
 """
     SurvivalCopula(C, flips)
-    SurvivalCopula{d,CT,flips}
+    SurvivalCopula{d,CT}
 
 Construct the survival (flipped) version of a copula by flipping the arguments at the given indices.
 
-**Type-level encoding:**
-The indices to flip are encoded at the type level as a tuple of integers, e.g. `SurvivalCopula{4,ClaytonCopula,(2,3)}`. This enables compile-time specialization and dispatch, and ensures that the flipping pattern is part of the type.
-
-**Sugar constructor:**
-The ergonomic constructor `SurvivalCopula(C, flips::Tuple)` infers the type parameters from the arguments, so you can write:
+The ergonomic constructor `SurvivalCopula(C, flips)` accepts the indices to flip:
 
     SurvivalCopula(ClaytonCopula(4, θ), (2,3))
 
-which is equivalent to the explicit type form:
-
-    SurvivalCopula{4,ClaytonCopula,(2,3)}(ClaytonCopula(4, θ))
+The flip pattern is stored in the object rather than its type, so distinct
+rotations of the same copula share one concrete type.
 
 For a copula `C` in dimension `d` and indices `i₁, ..., iₖ ∈ 1:d`, the survival copula flips the corresponding arguments:
 
@@ -29,121 +24,131 @@ Notes:
 References:
 * [nelsen2006](@cite) Nelsen (2006), An introduction to copulas.
 """
-struct SurvivalCopula{d,CT,flips} <: Copula{d}
+struct SurvivalCopula{d,CT} <: Copula{d}
     C::CT
-    function SurvivalCopula{d,CT,flips}(C::Copula{d}) where {d,CT,flips}
-        if length(flips) == 0
-            return C
-        end
-        if typeof(C) == IndependentCopula
-            return C
-        end
-        return new{d,typeof(C),flips}(C)
+    flipmask::NTuple{d,Bool}
+    function SurvivalCopula{d}(C::Copula{d}, flips) where {d}
+        mask = _survival_flipmask(Val(d), flips)
+        return new{d,typeof(C)}(C, mask)
     end
-    SurvivalCopula(C::Copula{d}, flips) where {d} = SurvivalCopula{d}(C, flips)
-    SurvivalCopula{D,CT,flips}(d::Int, args...;kwargs...) where {D, CT, flips} = SurvivalCopula{d,CT,flips}(CT(d, args...; kwargs...))
 end
+
+function _survival_flipmask(::Val{d}, flips::NTuple{d,Bool}) where {d}
+    return flips
+end
+function _survival_flipmask(::Val{d}, flips) where {d}
+    indices = Tuple(flips)
+    all(i -> i isa Integer && 1 <= i <= d, indices) ||
+        throw(ArgumentError("flip indices must belong to 1:$d"))
+    length(unique(indices)) == length(indices) ||
+        throw(ArgumentError("flip indices must be unique"))
+    return ntuple(i -> i in indices, d)
+end
+_survival_flipindices(mask::NTuple{d,Bool}) where {d} =
+    Tuple(i for i in 1:d if mask[i])
+
+SurvivalCopula(C::Copula{d}, flips) where {d} = SurvivalCopula{d}(C, flips)
+SurvivalCopula(d::Integer, C::Copula, flips) = SurvivalCopula{d}(C, flips)
+
 copula_measure_style(::Type{<:SurvivalCopula{d,CT}}) where {d,CT} =
     copula_measure_style(CT)
 copula_measure_style(C::SurvivalCopula) = copula_measure_style(C.C)
 
-function reverse!(u, idx::Tuple)
+function _survival_reverse!(u, mask::Tuple)
     if ndims(u) == 1
-        for i in idx
-            u[i] = 1 - u[i]
+        for i in eachindex(mask)
+            mask[i] && (u[i] = 1 - u[i])
         end
     else
-        for i in idx
-            u[i,:] .= 1 .- u[i,:]
+        for i in eachindex(mask)
+            mask[i] && (u[i,:] .= 1 .- u[i,:])
         end
     end
     return u
 end
-reverse(u, idx::Tuple) = [i ∈ idx ? 1-uᵢ : uᵢ for (i,uᵢ) in enumerate(u)]
-function _cdf(C::SurvivalCopula{d,CT,flips}, u) where {d,CT,flips}
-    i = flips[end]
-    newC = SurvivalCopula{d,CT,Base.tuple(flips[1:end-1]...)}(C.C)
-    v = reverse(u, (i,))
-    r2 = _cdf(newC,v)
+_survival_reverse(u, mask::Tuple) =
+    [mask[i] ? 1 - uᵢ : uᵢ for (i, uᵢ) in enumerate(u)]
+
+function _survival_cdf(C, u, mask::NTuple{d,Bool}) where {d}
+    i = findlast(identity, mask)
+    isnothing(i) && return Distributions.cdf(C, u)
+    remaining = ntuple(k -> k == i ? false : mask[k], d)
+    v = collect(u)
+    v[i] = 1 - v[i]
+    r2 = _survival_cdf(C, v, remaining)
     v[i] = 1
-    r1 = _cdf(newC,v)
+    r1 = _survival_cdf(C, v, remaining)
     return r1 - r2
 end
-Distributions._logpdf(C::SurvivalCopula{d,CT,flips}, u) where {d,CT,flips} = Distributions._logpdf(C.C, reverse(u, flips))
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d,CT,flips}, A::AbstractMatrix{T}) where {d,CT,flips,T<:Real}
+_cdf(C::SurvivalCopula, u) = _survival_cdf(C.C, u, C.flipmask)
+Distributions._logpdf(C::SurvivalCopula, u) =
+    Distributions._logpdf(C.C, _survival_reverse(u, C.flipmask))
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::SurvivalCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
     Distributions._rand!(rng, C.C, A)
-    return reverse!(A, flips)
-end
-function SurvivalCopula{d}(C::Copula{d}, flips) where {d}
-    flip_tuple = Tuple(flips)
-    return SurvivalCopula{d,typeof(C),flip_tuple}(C)
-end
-SurvivalCopula(d::Integer, C::Copula, flips) = SurvivalCopula{d}(C, flips)
-function (::Type{SurvivalCopula{d,CT,flips}})(args...; kwargs...) where {d,CT,flips}
-    return SurvivalCopula{d,CT,flips}(CT(args...; kwargs...))
+    return _survival_reverse!(A, C.flipmask)
 end
 
 # Fitting: delegate to the base copula after flipping the requested indices in U
 Distributions.params(S::SurvivalCopula) = Distributions.params(S.C)
 
 # Twice the same function but cannot be joined... weirdly. 
-function _fit(::Type{<:SurvivalCopula{d,subCT,flips}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}}; kwargs...) where {d,subCT,flips}
-    dU = size(U, 1)
-    @assert dU == d "Dimension mismatch in SurvivalCopula fit."
+function _fit(::Type{<:SurvivalCopula{d,subCT}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}}; flips=nothing, kwargs...) where {d,subCT}
+    flips = isnothing(flips) ? ntuple(i -> true, d) : _survival_flipmask(Val{d}(),flips)
     Uflip = copy(U)
-    reverse!(Uflip, flips)
+    _survival_reverse!(Uflip, flips)
     C, meta = _fit(subCT, Uflip, m; kwargs...)
-    return SurvivalCopula{d,subCT,flips}(C), meta
+    return SurvivalCopula{d}(C, flips), meta
 end
-function _fit(::Type{<:SurvivalCopula{d,subCT,flips}}, U, m::Val{:mle}; kwargs...) where {d,subCT,flips}
-    dU = size(U, 1)
-    @assert dU == d "Dimension mismatch in SurvivalCopula fit."
+function _fit(::Type{<:SurvivalCopula{d,subCT}}, U, m::Val{:mle}; flips=nothing, kwargs...) where {d,subCT}
+    flips = isnothing(flips) ? ntuple(i -> true, d) : _survival_flipmask(Val{d}(),flips)
     Uflip = copy(U)
-    reverse!(Uflip, flips)
+    _survival_reverse!(Uflip, flips)
     C, meta = _fit(subCT, Uflip, m; kwargs...)
-    return SurvivalCopula{d,subCT,flips}(C), meta
+    return SurvivalCopula{d}(C, flips), meta
 end
 
-_available_fitting_methods(::Type{<:SurvivalCopula{D,subCT,flips}}, d) where {D, subCT, flips} = _available_fitting_methods(subCT, d)
-_example(CT::Type{<:SurvivalCopula{D,subCT,flips}}, d) where {D, subCT, flips} = SurvivalCopula(_example(subCT, d), flips)
+_available_fitting_methods(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} =
+    _available_fitting_methods(subCT, d)
+_example(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} =
+    SurvivalCopula(_example(subCT, d), ())
 
 
 # Parameter transfer for fitting: delegate to underlying copula
-function _unbound_params(::Type{<:SurvivalCopula{d,CT,flips}}, d_, θ) where {d,CT,flips}
+function _unbound_params(::Type{<:SurvivalCopula{d,CT}}, d_, θ) where {d,CT}
     return _unbound_params(CT, d_, θ)
 end
 
-function _rebound_params(::Type{<:SurvivalCopula{d,CT,flips}}, d_, α) where {d,CT,flips}
+function _rebound_params(::Type{<:SurvivalCopula{d,CT}}, d_, α) where {d,CT}
     return _rebound_params(CT, d_, α)
 end
 
 
 
 # Conditioning bindings colocated
-function DistortionFromCop(S::SurvivalCopula{D,CT,flips}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,CT,flips,p}
-    uⱼₛ′ = ntuple(k -> (js[k] in flips ? 1 - uⱼₛ[k] : uⱼₛ[k]), p)
+function DistortionFromCop(S::SurvivalCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
+    uⱼₛ′ = ntuple(k -> (S.flipmask[js[k]] ? 1 - uⱼₛ[k] : uⱼₛ[k]), p)
     base = DistortionFromCop(S.C, js, uⱼₛ′, i)
-    return (i in flips) ? FlipDistortion(base) : base
+    return FlipDistortion(base, S.flipmask[i])
 end
-function ConditionalCopula(S::SurvivalCopula{D,CT,flips}, js, uⱼₛ) where {D,CT,flips}
-    uⱼₛ′ = Tuple(j in flips ? 1 - float(u) : float(u) for (j,u) in zip(js, uⱼₛ))
+function ConditionalCopula(S::SurvivalCopula{D}, js, uⱼₛ) where {D}
+    uⱼₛ′ = Tuple(S.flipmask[j] ? 1 - float(u) : float(u) for (j,u) in zip(js, uⱼₛ))
     CC_base = ConditionalCopula(S.C, js, uⱼₛ′)
     I = Tuple(setdiff(1:D, Tuple(collect(Int, js))))
-    flip_positions = Tuple(p for (p, idx) in enumerate(I) if idx in flips)
-    return isempty(flip_positions) ? CC_base : SurvivalCopula(CC_base, flip_positions)
+    flip_positions = Tuple(p for (p, idx) in enumerate(I) if S.flipmask[idx])
+    return SurvivalCopula(CC_base, flip_positions)
 end
 
 # Subsetting colocated: subset and remap flipped indices to the new positions
-function SubsetCopula(C::SurvivalCopula{d,CT,flips}, dims::NTuple{p, Int}) where {d,CT,flips,p}
-    newflips = Tuple(k for (k, i) in enumerate(dims) if i in flips)
+function SubsetCopula(C::SurvivalCopula{d}, dims::NTuple{p, Int}) where {d,p}
+    newflips = Tuple(k for (k, i) in enumerate(dims) if C.flipmask[i])
     return SurvivalCopula(subsetdims(C.C, dims), newflips)
 end
 
 
-function τ(C::SurvivalCopula{2,CT,flips}) where {CT,flips}
+function τ(C::SurvivalCopula{2})
     # For bivariate, flipping one margin negates tau, flipping both leaves tau unchanged
-    if length(flips) % 2 == 1
+    if count(identity, C.flipmask) % 2 == 1
         return -τ(C.C)
     else
         return τ(C.C)

@@ -27,14 +27,9 @@ GumbelBarnettGenerator, GumbelBarnettCopula
 struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function GumbelBarnettGenerator(θ)
-        if (θ < 0) || (θ > 1)
-            throw(ArgumentError("Theta must be in [0,1]"))
-        elseif θ == 0
-            return IndependentGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        (0 <= θ <= 1) || throw(ArgumentError("Theta must be in [0,1]"))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
@@ -48,6 +43,7 @@ function _rebound_params(::Type{<:GumbelBarnettGenerator}, d, α)
     return (; θ = u*(tanh(α[1])+1)/2)
 end
 _θ_bounds(::Type{<:GumbelBarnettGenerator}, d) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
+
 
 function _find_critical_value_gumbelbarnett(d::Integer)
     d == 2 && return 1.0
@@ -85,12 +81,19 @@ function max_monotony(G::GumbelBarnettGenerator)
 end
 
 
-ϕ(G::GumbelBarnettGenerator, t) = exp((1 - exp(t)) / G.θ)
-ϕ⁽¹⁾(G::GumbelBarnettGenerator, t) = -exp((1 - exp(t)) / G.θ) * exp(t) / G.θ
-ϕ⁻¹(G::GumbelBarnettGenerator, t) = log1p(-G.θ * log(t))
-ϕ⁻¹⁽¹⁾(G::GumbelBarnettGenerator, t) = -G.θ / (t - G.θ * t * log(t))
+ϕ(G::GumbelBarnettGenerator, t) = iszero(G.θ) ? exp(-t) : exp((1 - exp(t)) / G.θ)
+ϕ⁽¹⁾(G::GumbelBarnettGenerator, t) = iszero(G.θ) ? -exp(-t) : -exp((1 - exp(t)) / G.θ) * exp(t) / G.θ
+ϕ⁻¹(G::GumbelBarnettGenerator, t) = iszero(G.θ) ? -log(t) : log1p(-G.θ * log(t))
+ϕ⁻¹⁽¹⁾(G::GumbelBarnettGenerator, t) =
+    iszero(G.θ) ? -inv(t) : -G.θ / (t - G.θ * t * log(t))
+
+𝒲₋₁(G::GumbelBarnettGenerator, d::Integer) =
+    iszero(G.θ) ? Distributions.Gamma(d, 1) : @invoke 𝒲₋₁(G::Generator, d)
+𝒲₋₁(G::GumbelBarnettGenerator, d::Real) =
+    iszero(G.θ) ? Distributions.Gamma(d, 1) : @invoke 𝒲₋₁(G::Generator, d)
 function ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, k::Int, t)
     iszero(k) && return ϕ(G, t)
+    iszero(G.θ) && return (-1)^k * exp(-t)
     α = 1/G.θ
     C = -α*exp(t)
     R = C * exp(α + C)
@@ -99,9 +102,10 @@ function ϕ⁽ᵏ⁾(G::GumbelBarnettGenerator, k::Int, t)
 end
 
 function ϕ⁽ᵏ⁾⁻¹(G::GumbelBarnettGenerator, k::Int, t; start_at=t)
-    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
     T = float(promote_type(typeof(t), typeof(G.θ)))
     target = T(t)
+    iszero(G.θ) && return iszero(target) ? T(Inf) : -log(abs(target))
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
     iszero(target) && return T(Inf)
     θ = T(G.θ)
     w = _lambertwm1_negexp(log(-target) - inv(θ))

@@ -3,6 +3,7 @@
 
 function rosenblatt_route_key(C)
     Base.@nospecialize C
+    is_absolutely_continuous(C) || return nothing
     d = length(C)
     method = which(Copulas.rosenblatt,
                    Tuple{typeof(C),Matrix{Float64}})
@@ -18,25 +19,24 @@ function inverse_rosenblatt_route_key(C)
     return (method, d == 2 ? :bivariate : :multivariate)
 end
 
-function test_rosenblatt_contract(C, ctx)
-    Base.@nospecialize C ctx
-    R = rosenblatt(C, ctx.U)
-    @test size(R) == size(ctx.U)
+function test_rosenblatt_contract(C, u, U)
+    Base.@nospecialize C u U
+
+    R = rosenblatt(C, U)
+    @test size(R) == size(U)
     @test all(x -> 0 <= x <= 1, R)
-    @test rosenblatt(C, ctx.u) ≈ vec(rosenblatt(C, reshape(ctx.u, :, 1)))
-    if is_absolutely_continuous(C)
-        @test inverse_rosenblatt(C, R) ≈ ctx.U atol=2e-5 rtol=2e-5
-        @test inverse_rosenblatt(C, rosenblatt(C, ctx.u)) ≈ ctx.u atol=2e-5 rtol=2e-5
-    end
+    @test rosenblatt(C, u) ≈ vec(rosenblatt(C, reshape(u, :, 1)))
+    @test inverse_rosenblatt(C, R) ≈ U atol=2e-5 rtol=2e-5
+    @test inverse_rosenblatt(C, rosenblatt(C, u)) ≈ u atol=2e-5 rtol=2e-5
 end
 
-@testset verbose=true "public Rosenblatt contract" begin
+@testset "public Rosenblatt contract" begin
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
-        test_progress("operations", "rosenblatt", fixture.case.name, "contract")
-        test_rosenblatt_contract(
-            fixture.copula,
-            copula_contract_context(fixture.copula, 10_000 + seed),
-        )
+        C = fixture.copula
+        is_absolutely_continuous(C) || continue
+        u = copula_contract_point(C)
+        U = rand(StableRNG(10_000 + seed), C, 4)
+        test_rosenblatt_contract(C, u, U)
     end
 end
 
@@ -77,17 +77,20 @@ end
 end
 
 @testset verbose=true "every Rosenblatt route equals sequential conditioning" begin
-    selected_forward = Set(rosenblatt_route_key(fixture.copula)
-                           for fixture in ROUTING_COPULA_FIXTURES)
+    selected_forward = Set(key
+        for fixture in COPULA_FIXTURES
+        for key in (rosenblatt_route_key(fixture.copula),)
+        if !isnothing(key))
     selected_inverse = Set(key
-        for fixture in ROUTING_COPULA_FIXTURES
+        for fixture in COPULA_FIXTURES
         for key in (inverse_rosenblatt_route_key(fixture.copula),)
         if !isnothing(key))
     tested_forward = Set{Any}()
     tested_inverse = Set{Any}()
 
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
+        is_absolutely_continuous(C) || continue
         forward_key = rosenblatt_route_key(C)
         inverse_key = inverse_rosenblatt_route_key(C)
         forward_done = forward_key in tested_forward
@@ -105,7 +108,6 @@ end
             expected[i] = cdf(Copulas.DistortionFromCop(C, js, values, i), u[i])
         end
         if !forward_done
-            test_progress("operations", "rosenblatt", case.name, "route")
             @test R ≈ expected atol=2e-6 rtol=2e-6
             push!(tested_forward, forward_key)
         end

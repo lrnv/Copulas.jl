@@ -25,8 +25,8 @@ and the implementation uses the native bivariate derivatives when beneficial.
 
 Special cases:
 
-* `θ = 0` returns `IndependentCopula(d)`.
-* `θ = ∞` returns `MCopula(d)`.
+* `θ = 0` represents `IndependentCopula(d)`.
+* `θ = ∞` represents `MCopula(d)`.
 
 References:
 
@@ -38,11 +38,13 @@ struct GalambosTail{T} <: OneParameterPickandsTail
     θ::T
     function GalambosTail(θ)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
-        θ == 0 && return NoTail()
-        isinf(θ) && return MTail()
         new{typeof(float(θ))}(float(θ))
     end
 end
+@inline limit_kind(tail::GalambosTail, ::Val) =
+    iszero(tail.θ) ? Π_LIMIT :
+    isinf(tail.θ) ? M_LIMIT :
+    NO_LIMIT
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
@@ -54,6 +56,7 @@ _θ_bounds(::Type{<:GalambosTail}, d) = (0.0, Inf)
 function ℓ(tail::GalambosTail, x)
     any(isinf, x) && return maximum(x)
     θ = tail.θ
+    iszero(θ) && return sum(x)
     out = sum(x)
     d = length(x)
     for k in 2:d, I in Combinatorics.combinations(1:d, k)
@@ -66,6 +69,12 @@ function ℓ(tail::GalambosTail, x)
 end
 
 function _ellpartial_signlog(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
+    if iszero(tail.θ)
+        isempty(I) && return 1, log(float(sum(x)))
+        length(I) == 1 && return 1, zero(float(first(x)))
+        return 0, oftype(float(first(x)), -Inf)
+    end
+
     function evaluate(current_tail, current_x)
         θ = current_tail.θ
         k = length(I)
@@ -128,6 +137,11 @@ end
 # The common scale of the Weibull/Gamma construction cancels after
 # normalization to the simplex.
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+
+    kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
+
     S = promote_type(T, typeof(C.tail.θ))
     θ = S(C.tail.θ)
     invθ = inv(θ)

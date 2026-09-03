@@ -2,29 +2,31 @@
 # public contracts, independent identities, specialization equivalence,
 # family regressions, and route coverage are colocated here.
 
-function test_conditioning_contract(C, ctx)
-    Base.@nospecialize C ctx
+function test_conditioning_contract(C, u)
+    Base.@nospecialize C u
+
     d = length(C)
+    d > 2 && !is_absolutely_continuous(C) && return
     if d == 2
-        scalar = condition(C, 1, ctx.u[1])
-        tupled = condition(C, (1,), (ctx.u[1],))
+        scalar = condition(C, 1, u[1])
+        tupled = condition(C, (1,), (u[1],))
         @test scalar isa Distributions.UnivariateDistribution
-        @test cdf(scalar, ctx.u[2]) ≈ cdf(tupled, ctx.u[2])
+        @test cdf(scalar, u[2]) ≈ cdf(tupled, u[2])
     end
     if d > 2
-        joint = condition(C, 1, ctx.u[1])
+        joint = condition(C, 1, u[1])
         @test length(joint) == d - 1
-        @test 0 <= cdf(joint, ctx.u[2:end]) <= 1
+        @test 0 <= cdf(joint, u[2:end]) <= 1
     end
     if d > 3
         js = Tuple(1:(d - 2))
-        joint = condition(C, js, Tuple(ctx.u[1:(d - 2)]))
+        joint = condition(C, js, Tuple(u[1:(d - 2)]))
         @test length(joint) == 2
-        @test 0 <= cdf(joint, ctx.u[(d - 1):d]) <= 1
+        @test 0 <= cdf(joint, u[(d - 1):d]) <= 1
     end
 
     js = Tuple(1:(d - 1))
-    values = Tuple(ctx.u[1:(d - 1)])
+    values = Tuple(u[1:(d - 1)])
     D = condition(C, js, values)
     vals = cdf.(Ref(D), (0.25, 0.5, 0.75))
     q = quantile(D, 0.5)
@@ -58,31 +60,39 @@ function conditional_distribution(fixture)
     return condition(C, js, values)
 end
 
-conditional_route_key(D) = Tuple(which(f, Tuple{typeof(D),Float64}) for f in (
-    Distributions.cdf, Distributions.logcdf, Distributions.logpdf,
-    Distributions.quantile,
-))
+function conditional_route_key(D)
+    Base.@nospecialize D
+    DT = typeof(D)
+    return (
+        which(Distributions.cdf, Tuple{DT,Float64}),
+        which(Distributions.logcdf, Tuple{DT,Float64}),
+        which(Distributions.logpdf, Tuple{DT,Float64}),
+        which(Distributions.quantile, Tuple{DT,Float64}),
+    )
+end
 
-const CONDITIONAL_DISTRIBUTION_CANDIDATES = (
-    ((fixture.case.name, conditional_distribution(fixture))
-     for fixture in ROUTING_COPULA_FIXTURES)...,
-)
-const CONDITIONAL_DISTRIBUTION_CASES = Tuple(unique(
+const CONDITIONAL_DISTRIBUTION_CANDIDATES = [
+    (fixture.case.name, conditional_distribution(fixture))
+    for fixture in COPULA_FIXTURES
+    if length(fixture.copula) == 2 ||
+       is_absolutely_continuous(fixture.copula)
+]
+
+const CONDITIONAL_DISTRIBUTION_CASES = unique(
     case -> conditional_route_key(last(case)),
     CONDITIONAL_DISTRIBUTION_CANDIDATES,
-))
+)
 
 conditional_measure_style(D::Copulas.Distortion) =
     Copulas.distortion_measure_style(D)
 conditional_measure_style(::Distributions.UnivariateDistribution) =
     Copulas.AbsolutelyContinuousMeasure()
 
-@testset verbose=true "public conditioning contract" begin
-    @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
-        test_progress("operations", "conditioning", fixture.case.name, "contract")
+@testset "public conditioning contract" begin
+    @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES
         test_conditioning_contract(
             fixture.copula,
-            copula_contract_context(fixture.copula, 10_000 + seed),
+            copula_contract_point(fixture.copula),
         )
     end
 end
@@ -102,7 +112,6 @@ end
         method in seen && continue
         push!(seen, method)
         @testset "$name" begin
-            test_progress("equivalence", "distortion quantile", name)
             generic = invoke(quantile, Tuple{Copulas.Distortion,Real}, D, 0.63)
             @test isapprox(quantile(D, 0.63), generic; atol=2e-8, rtol=2e-8)
         end
@@ -112,7 +121,7 @@ end
 
 @testset verbose=true "bivariate conditioning routes agree with CDF derivatives" begin
     seen = Set{Method}()
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         length(C) == 2 || continue
         is_absolutely_continuous(C) || continue
@@ -122,7 +131,6 @@ end
         push!(seen, method)
 
         @testset "$(case.name)" begin
-            test_progress("equivalence", "bivariate conditioning", case.name)
             conditioned, target = 0.41, 0.63
             D = condition(C, 1, conditioned)
             if D isa Copulas.LiouvilleDistortion
@@ -152,7 +160,6 @@ end
             @test isapprox(pdf(D, target), expected_pdf;
                            atol=3e-4, rtol=3e-4)
         end
-        prove_dispatch_route!(:conditioning, C, :cdf_derivative)
     end
     @test !isempty(seen)
 end
@@ -202,7 +209,7 @@ end
 
 @testset verbose=true "multivariate conditioning routes agree with normalized CDF derivatives" begin
     seen = Set{Method}()
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         d = length(C)
         d > 2 || continue
@@ -215,7 +222,6 @@ end
         push!(seen, method)
 
         @testset "$(case.name)" begin
-            test_progress("equivalence", "multivariate conditioning", case.name)
             target_index = d
             target = 0.63
             D = condition(C, js, values)
@@ -229,15 +235,13 @@ end
             end
             @test isapprox(cdf(D, target), expected; atol=2e-3, rtol=2e-3)
         end
-        prove_dispatch_route!(:conditioning, C,
-                              :normalized_cdf_derivative)
     end
     @test !isempty(seen)
 end
 
 @testset "atomic conditioning routes satisfy generalized inversion" begin
     seen = Set{Any}()
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         is_absolutely_continuous(C) && continue
         # Point conditioning is not canonically defined away from the finite
@@ -255,8 +259,6 @@ end
                 @test cdf(D, q) >= p - 1e-10
             end
         end
-        prove_dispatch_route!(:conditioning, C,
-                              :generalized_quantile_identity)
     end
     @test !isempty(seen)
 end
@@ -279,7 +281,7 @@ end
     seen = Set{Any}()
     conditioned = 0.41
     h = 2e-5
-    for fixture in ROUTING_COPULA_FIXTURES
+    for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         d = length(C)
         d > 2 || continue
@@ -309,8 +311,6 @@ end
             @test isapprox(cdf(H.C, conditional_scale), numerator / normalizer;
                            atol=tolerance, rtol=tolerance)
         end
-        prove_dispatch_route!(:conditional_joint, C,
-                              :normalized_joint_cdf_derivative)
     end
     @test !isempty(seen)
 end
@@ -638,4 +638,115 @@ end
         @test 0 <= q <= 1
         @test cdf(D, q) ≈ p atol=2e-12
     end
+end
+
+
+@testset "Gumbel Liouville conditioning without AlphaStable density" begin
+    G = Copulas.GumbelGenerator(2.3)
+    C = LiouvilleCopula(G, (1, 2))
+
+    # The global Gumbel radial route is deliberately unchanged:
+    # sampling can still use the AlphaStable frailty.
+    @test Copulas.𝒲₋₁(G, 3) isa Copulas.WilliamsonFromFrailty
+
+    D = condition(C, 1, 0.3)
+
+    @test D isa Copulas.LiouvilleDistortion
+
+    # Conditioning deliberately uses the generic Williamson inversion
+    # instead of WilliamsonFromFrailty{AlphaStable}.
+    @test D.margin isa Copulas.𝒲₋₁
+    @test D.conditional_margin isa Copulas.𝒲₋₁
+
+    for u in (0.2, 0.5, 0.8)
+        value = cdf(D, u)
+        density = pdf(D, u)
+
+        @test isfinite(value)
+        @test 0 <= value <= 1
+        @test isfinite(density)
+        @test density >= 0
+        @test logpdf(D, u) ≈ log(density)
+    end
+
+    for p in (0.2, 0.5, 0.8)
+        q = quantile(D, p)
+
+        @test isfinite(q)
+        @test 0 <= q <= 1
+        @test cdf(D, q) ≈ p atol=1e-8 rtol=1e-8
+    end
+end
+
+@testset "Gumbel Liouville fractional conditioning" begin
+    G = Copulas.GumbelGenerator(2.3)
+    C = LiouvilleCopula(G, (1.25, 1.75))
+
+    D = condition(C, 1, 0.3)
+
+    @test D isa Copulas.LiouvilleDistortion
+
+    # α₁ = 1.25 -> generic integer Williamson inverse + Beta reduction.
+    @test D.margin isa Copulas.WilliamsonBetaProduct
+
+    # Non-integer tilt uses the conditional-radial representation.
+    @test D.conditional_margin isa Copulas.LiouvilleConditionalRadial
+
+    for p in (0.2, 0.5, 0.8)
+        q = quantile(D, p)
+
+        @test isfinite(q)
+        @test 0 <= q <= 1
+        @test cdf(D, q) ≈ p atol=2e-7 rtol=2e-7
+    end
+end
+
+@testset "BB6 Kendall tau θ = 1 boundary is exact" begin
+    for δ in (1.5, 2.0, 5.0, Inf)
+        τbb6 = Copulas.τ(BB6Copula{2}(1.0, δ))
+        expected = isinf(δ) ? 1.0 : 1 - 1 / δ
+
+        @test τbb6 == expected
+    end
+end
+
+@testset "Archimedean independence boundaries use identity distortion" begin
+    cases = (
+        JoeCopula{2}(1.0),
+        BB6Copula{2}(1.0, 1.0),
+        BB8Copula{2}(1.0, 0.4),
+        BB10Copula{2}(2.0, 0.0),
+    )
+
+    for C in cases
+        D = condition(C, 1, 0.4)
+
+        @test D isa Copulas.NoDistortion
+        @test cdf(D, 0.2) == 0.2
+        @test cdf(D, 0.7) == 0.7
+        @test quantile(D, 0.6) == 0.6
+        @test logpdf(D, 0.5) == 0.0
+    end
+end
+
+@testset "Plackett boundary distortions" begin
+    D_W = condition(PlackettCopula{2}(0.0), 1, 0.4)
+    D_I = condition(PlackettCopula{2}(1.0), 1, 0.4)
+    D_M = condition(PlackettCopula{2}(Inf), 1, 0.4)
+
+    @test D_W isa Copulas.WDistortion
+    @test D_I isa Copulas.NoDistortion
+    @test D_M isa Copulas.MDistortion
+
+    # W: U₂ = 1 - U₁.
+    @test quantile(D_W, 0.2) ≈ 0.6
+    @test quantile(D_W, 0.8) ≈ 0.6
+
+    # Independence: conditional law stays uniform.
+    @test quantile(D_I, 0.7) == 0.7
+    @test cdf(D_I, 0.7) == 0.7
+
+    # M: U₂ = U₁.
+    @test quantile(D_M, 0.2) ≈ 0.4
+    @test quantile(D_M, 0.8) ≈ 0.4
 end

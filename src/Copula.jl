@@ -22,11 +22,36 @@ abstract type CopulaMeasureStyle end
 struct AbsolutelyContinuousMeasure <: CopulaMeasureStyle end
 struct NonAbsolutelyContinuousMeasure <: CopulaMeasureStyle end
 
+@enum LimitKind::UInt8 begin
+    NO_LIMIT
+    Π_LIMIT
+    M_LIMIT
+    W_LIMIT
+end
+
 copula_measure_style(::Type{<:Copula}) = AbsolutelyContinuousMeasure()
 copula_measure_style(C::Copula) = copula_measure_style(typeof(C))
 
 Base.broadcastable(C::Copula) = Ref(C)
 Base.length(::Copula{d}) where d = d
+
+function _rand_M!(rng::Distributions.AbstractRNG, A::AbstractMatrix{T}) where {T<:Real}
+    Random.rand!(rng, view(A, 1, :))
+    @inbounds for row in 2:size(A, 1)
+        A[row, :] .= view(A, 1, :)
+    end
+    return A
+end
+
+function _rand_W!(rng::Distributions.AbstractRNG, A::AbstractMatrix{T}) where {T<:Real}
+    size(A, 1) == 2 || throw(ArgumentError("W limit only exists in dimension 2"))
+    Random.rand!(rng, view(A, 1, :))
+    @inbounds for col in axes(A, 2)
+        A[2, col] = one(T) - A[1, col]
+    end
+    return A
+end
+
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::Copula{d}, x::AbstractVector{T}) where {d,T<:Real}
     length(x) == d || throw(ArgumentError("Dimension mismatch between copula and output vector"))
     Distributions._rand!(rng, C, reshape(x, d, 1))
@@ -67,7 +92,8 @@ function ρ(C::Copula{d}) where d
     z = zeros(d)
     i = ones(d)
     r = HCubature.hcubature(F, z, i, rtol=sqrt(eps()))[1]
-    return (2^d * (d+1) * r - d - 1)/(2^d - d - 1) # Ok for multivariate.
+    value = (2^d * (d+1) * r - d - 1)/(2^d - d - 1)
+    return clamp(value, -one(value), one(value))
 end
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)

@@ -29,17 +29,7 @@ References:
 struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     θ::Tθ
     fᵢ::Tf
-    function FGMCopula{d}(θ) where {d}
-        if (θ isa NTuple) || (θ isa Vector)
-            vθ = collect(promote(θ..., 1.0))[1:end-1]
-        else
-            vθ = [promote(θ, 1.0)[1]]
-        end
-
-        all(vθ .== 0) && return IndependentCopula{d}()
-        d==2 && vθ[1]==1 && return MCopula{2}()
-        d==2 && vθ[1]==-1 && return WCopula{2}()
-
+    function FGMCopula{d}(vθ::Vector) where {d}
         # Check first restrictions on parameters
         any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
@@ -53,16 +43,24 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
 
         # Now construct the stochastic representation:
         wᵢ = [_fgm_red(vθ, 1 .- 2*Base.reverse(digits(i, base=2, pad=d))) for i in 0:(2^d-1)]
-        fᵢ = Distributions.DiscreteNonParametric(0:(2^d-1), (1 .+ wᵢ)/2^d)
+        support = 0:(2^d-1)
+        probabilities = (1 .+ wᵢ) / 2^d
+        Tf = Distributions.DiscreteNonParametric{
+            eltype(support), eltype(probabilities), typeof(support), typeof(probabilities),
+        }
+        fᵢ = Distributions.DiscreteNonParametric(support, probabilities)::Tf
         return new{d, typeof(vθ), typeof(fᵢ)}(vθ, fᵢ)
     end
 end
+FGMCopula{d}(θ::Real) where {d} = FGMCopula{d}([float(θ)])
+FGMCopula{d}(θ::Tuple) where {d} = FGMCopula{d}(collect(float.(θ)))
+FGMCopula{d}(θ::AbstractVector) where {d} = FGMCopula{d}(collect(float.(θ)))
 FGMCopula(d, θ) = FGMCopula{d}(θ)
 (::Type{<:FGMCopula{D,Tθ,Tf}})(d::Int, θ) where {D,Tθ,Tf} = FGMCopula{d}(θ)
 function _fgm_red(θ, v)
     # This function implements the reduction over combinations of the fgm copula.
     # It is non-alocative thus performant :)
-    rez, d, i = zero(eltype(v)), length(v), 1
+    rez, d, i = zero(promote_type(eltype(θ), eltype(v))), length(v), 1
     for k in 2:d
         for indices in Combinatorics.combinations(1:d, k)
             rez += θ[i] * prod(v[indices])
@@ -92,7 +90,13 @@ end
 
 
 
-_cdf(fgm::FGMCopula, u::Vector{T}) where {T} = prod(u) * (1 + _fgm_red(fgm.θ, 1 .-u))
+function _cdf(fgm::FGMCopula{d}, u::Vector{T}) where {d,T}
+    d == 2 && isone(fgm.θ[1]) && return minimum(u)
+    d == 2 && fgm.θ[1] == -1 && return max(sum(u) - 1, zero(T))
+    return prod(u) * (1 + _fgm_red(fgm.θ, 1 .-u))
+end
+copula_measure_style(C::FGMCopula{d}) where {d} =
+    d == 2 && abs(C.θ[1]) == 1 ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 Distributions._logpdf(fgm::FGMCopula, u) = log1p(_fgm_red(fgm.θ, 1 .-2u))
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d, Tθ, Tf}, A::AbstractMatrix{T}) where {d,Tθ, Tf, T <: Real}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))

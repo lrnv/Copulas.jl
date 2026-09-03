@@ -19,8 +19,8 @@ with the continuous extension ``\\phi(t) = e^{-t}`` at ``\\theta = 0``.
 
 Special cases (for the copula in dimension ``d``):
 - When ``\\theta = -1/(d-1)``, it is the WCopula (Lower Fréchet–Hoeffding bound)
-- When ``\\theta \\to 0``, it is the IndependentCopula
-- When ``\\theta \\to \\infty``, it is the MCopula (Upper Fréchet–Hoeffding bound)
+- When ``\\theta = 0``, it is the IndependentCopula
+- When ``\\theta = \\infty``, it is the MCopula (Upper Fréchet–Hoeffding bound)
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
@@ -30,37 +30,32 @@ ClaytonGenerator, ClaytonCopula
 struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function ClaytonGenerator(θ)
-        if θ < -1
-            throw(ArgumentError("Theta must be greater than -1"))
-        elseif θ == -1
-            return WGenerator()
-        elseif θ == 0
-            return IndependentGenerator()
-        elseif θ == Inf
-            return MGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        θ >= -1 || throw(ArgumentError("Theta must be greater than or equal to -1"))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
+@inline function limit_kind(G::ClaytonGenerator, ::Val{d}) where {d}
+    isinf(G.θ) && return M_LIMIT
+    d == 2 && G.θ == -1 && return W_LIMIT
+    return NO_LIMIT
+end
+
 Distributions.params(G::ClaytonGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:ClaytonGenerator}, d, θ) = [log(θ.θ + 1/(d-1))] # θ > -1/(d-1) ⇒ θ+1/(d-1)>0
 _rebound_params(::Type{<:ClaytonGenerator}, d, α) = (; θ = exp(α[1]) - 1/(d-1))
 _θ_bounds(::Type{<:ClaytonGenerator}, d) = (-1/(d-1), Inf)
 
-
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : (1 - 1/G.θ)
 archimedean_measure_style(G::ClaytonGenerator, ::Val{d}) where {d} =
-    G.θ == -1 / (d - 1) ? NonAbsolutelyContinuousMeasure() :
-    AbsolutelyContinuousMeasure()
-ϕ(  G::ClaytonGenerator, t) = max(1+G.θ*t,zero(t))^(-1/G.θ)
-ϕ⁻¹(G::ClaytonGenerator, t) = (t^(-G.θ)-1)/G.θ
-ϕ⁽¹⁾(G::ClaytonGenerator, t) = (1+G.θ*t) ≤ 0 ? 0 : - (1+G.θ*t)^(-1/G.θ -1)
-ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t) = -t^(-G.θ-1)
-ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Int, t) = (1+G.θ*t) ≤ 0 ? 0 : (1 + G.θ * t)^(-1/G.θ - k) * prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1)
-ϕ⁽ᵏ⁾⁻¹(G::ClaytonGenerator, k::Int, t; start_at=t) = ((t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))^(1/(-1/G.θ - k)) -1)/G.θ
+    (G.θ == -1 / (d - 1) || !isfinite(G.θ)) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
+ϕ(  G::ClaytonGenerator, t) = iszero(G.θ) ? exp(-t) : max(1+G.θ*t,zero(t))^(-1/G.θ)
+ϕ⁻¹(G::ClaytonGenerator, t) = iszero(G.θ) ? -log(t) : (t^(-G.θ)-1)/G.θ
+ϕ⁽¹⁾(G::ClaytonGenerator, t) = iszero(G.θ) ? -exp(-t) : (1+G.θ*t) ≤ 0 ? 0 : - (1+G.θ*t)^(-1/G.θ -1)
+ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t) = iszero(G.θ) ? -inv(t) : -t^(-G.θ-1)
+ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Int, t) = (1+G.θ*t) ≤ 0 ? 0 : iszero(G.θ) ? (-1)^k * exp(-t) : (1 + G.θ * t)^(-1/G.θ - k) * prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1)
+ϕ⁽ᵏ⁾⁻¹(G::ClaytonGenerator, k::Int, t; start_at=t) = iszero(G.θ) ? -log(abs(t)) : ((t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))^(1/(-1/G.θ - k)) -1)/G.θ
 
 # Closed-form edge-composition override for a Clayton-over-Clayton nesting. Overrides the
 # default `composition_taylor` hook (nested/NestedArchimedeanDensity.jl) by dispatch, and
@@ -71,6 +66,17 @@ archimedean_measure_style(G::ClaytonGenerator, ::Val{d}) where {d} =
 # conditioned) high-order derivatives of the inverse. NOTE: the θ live INSIDE ϕ here, so the
 # expansion base is 1+θ_in·t₀ (NOT 1+t₀); θ promotes into T so Float64/BigFloat stay exact.
 function composition_taylor(outer::ClaytonGenerator, inner::ClaytonGenerator, t₀::T, d::Int) where {T}
+    if iszero(outer.θ) || iszero(inner.θ) || !isfinite(outer.θ) || !isfinite(inner.θ)
+        return invoke(
+            composition_taylor,
+            Tuple{Generator,Generator,T,Int},
+            outer,
+            inner,
+            t₀,
+            d,
+        )
+    end
+
     θ_out = T(outer.θ)
     θ_in  = T(inner.θ)
     r     = θ_out / θ_in
@@ -99,34 +105,57 @@ end
 # orders fall back to the generic exact beta reduction from the next integer
 # Williamson order.
 function 𝒲₋₁(G::ClaytonGenerator, d::Integer)
-    G.θ >= 0 && return Distributions.BetaPrime(d, inv(G.θ))*inv(G.θ)
-    return ClaytonWilliamsonDistribution(G.θ, d)
+    iszero(G.θ) && return Distributions.Gamma(d, 1)
+    G.θ > 0 && isfinite(G.θ) && return Distributions.BetaPrime(d, inv(G.θ))*inv(G.θ)
+    G.θ <= 0 && return ClaytonWilliamsonDistribution(G.θ, d)
+    return invoke(𝒲₋₁, Tuple{Generator,Integer}, G, d)
 end
 function 𝒲₋₁(G::ClaytonGenerator, d::Real)
-    G.θ >= 0 && return Distributions.BetaPrime(d, inv(G.θ))*inv(G.θ)
+    iszero(G.θ) && return Distributions.Gamma(d, 1)
+    G.θ > 0 && isfinite(G.θ) && return Distributions.BetaPrime(d, inv(G.θ))*inv(G.θ)
     return invoke(𝒲₋₁, Tuple{Generator,Real}, G, d)
 end
 
 
 frailty(G::ClaytonGenerator) =
-    G.θ >= 0 ? Distributions.Gamma(inv(G.θ), G.θ) : nothing
-function Distributions._logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
-    # Check if all elements are in (0,1) and if θ < 0, check the sum condition
-    if !all(0 .< u .< 1) || (C.G.θ < 0 && sum(u .^ -(C.G.θ)) < (d - 1))
-        return eltype(u)(-Inf)
-    end
+    iszero(G.θ) ? Distributions.Dirac(1.0) :
+    G.θ > 0 && isfinite(G.θ) ? Distributions.Gamma(inv(G.θ), G.θ) : nothing
 
-    θ = C.G.θ
-    # Compute the sum of transformed variables
-    S1 = sum(t ^ (-θ) for t in u)
-    S2 = sum(log(t) for t in u)
-    # Compute the log of the density according to the explicit formula for Clayton copula
-    # See McNeil & Neslehova (2009), eq. (13)
-    S1==d-1 && return eltype(u)(-Inf)
-    return log(θ + 1) * (d - 1) - (θ + 1) * S2 + (-1 / θ - d) * log(S1 - d + 1)
+function _archimedean_cdf(C::ClaytonCopula{d}, u) where {d}
+    return @invoke _archimedean_cdf(C::ArchimedeanCopula, u)
 end
 
-ρ(G::ClaytonGenerator) = @invoke ρ(ArchimedeanCopula(2, G)::Copula)
+function _archimedean_logpdf(C::ClaytonCopula{d}, u) where {d}
+    θ = C.G.θ
+    T = θ + zero(eltype(u))
+
+    # Continuous independence extension.
+    iszero(θ) && return zero(T)
+    S1 = zero(T)
+    S2 = zero(eltype(u))
+    @inbounds for t in u
+        zero(t) < t < one(t) || return oftype(T, -Inf)
+        S1 += t^(-θ)
+        S2 += log(t)
+    end
+
+    if θ < 0 && S1 < d - 1
+        return oftype(T, -Inf)
+    end
+
+    S1 == d - 1 && return oftype(T, -Inf)
+    logcoef = zero(T)
+    @inbounds for k in 1:(d - 1)
+        logcoef += log1p(k * θ)
+    end
+
+    return logcoef - (θ + 1) * S2 + (-inv(θ) - d) * log(S1 - d + 1)
+end
+
+ρ(G::ClaytonGenerator) =
+    isinf(G.θ) ? 1 :
+    iszero(G.θ) ? 0 :
+    @invoke ρ(ArchimedeanCopula(2, G)::Copula)
 
 # Inverse ρ → θ for Clayton (without trimming to [0,1])
 function ρ⁻¹(::Type{<:ClaytonGenerator}, ρ̂; atol=1e-10)

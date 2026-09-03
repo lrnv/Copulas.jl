@@ -47,15 +47,35 @@ struct TawnTail{T} <: Tail
 
         component_is_active(j) = !isone(α[j]) && count(!iszero, @view β[:, j]) > 1
         non_singletons = (d + 1):length(α)
-        any(component_is_active, non_singletons) || return NoTail()
-
-        fullset = lastindex(α)
-        preceding = (d + 1):(fullset - 1)
-        if !any(component_is_active, preceding) && all(isone, @view β[:, fullset])
-            return LogTail(α[fullset])
-        end
         return new{eltype(α)}(d, α, β)
     end
+end
+
+@inline _tawn_component_is_active(tail::TawnTail, j) =
+    !isone(tail.α[j]) && count(!iszero, @view tail.β[:, j]) > 1
+
+function _tawn_is_fullset_logistic(tail::TawnTail)
+    fullset = lastindex(tail.α)
+    preceding = (tail.d + 1):(fullset - 1)
+    any(j -> _tawn_component_is_active(tail, j), preceding) && return false
+    return all(isone, @view tail.β[:, fullset])
+end
+
+@inline function limit_kind(tail::TawnTail, ::Val{d}) where {d}
+    d == tail.d || return NO_LIMIT
+    non_singletons = (tail.d + 1):lastindex(tail.α)
+    any(j -> _tawn_component_is_active(tail, j), non_singletons) || return Π_LIMIT
+
+    fullset = lastindex(tail.α)
+    return _tawn_is_fullset_logistic(tail) && isinf(tail.α[fullset]) ? M_LIMIT : NO_LIMIT
+end
+
+function tail_measure_style(tail::TawnTail)
+    for j in (tail.d + 1):lastindex(tail.α)
+        _tawn_component_is_active(tail, j) && isinf(tail.α[j]) &&
+            return NonAbsolutelyContinuousMeasure()
+    end
+    return AbsolutelyContinuousMeasure()
 end
 
 """
@@ -78,6 +98,12 @@ one.
 const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
 
 # Convenience submodel: one full-set logistic component plus singleton remainders.
+function TawnTail(α::TA, weights::AbstractVector{TW}) where {TA<:Real,TW<:Real}
+    T = promote_type(Float64, TA, TW)
+    tail = TawnTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=1.0)...)
+    return tail::TawnTail{T}
+end
+
 TawnTail(α::Real, weights::AbstractVector) =
     TawnTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=1.0)...)
 
@@ -175,6 +201,10 @@ function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
+    
     tail = C.tail
     return _rand_subset_components!(
         rng, X, tail.α, tail.β, isone,

@@ -2,6 +2,9 @@
 # nonempty subsets of the margins (currently Tawn and Galambos). Subsets follow
 # `_nonempty_subsets(d)`: singletons first, then increasing cardinality.
 
+_component_eltype(::Type{<:AbstractVector{T}}) where {T} = T
+_component_eltype(::Type) = Any
+
 function _normalize_asymmetric_subset_components(
     d::Int,
     dep::AbstractVector,
@@ -19,16 +22,16 @@ function _normalize_asymmetric_subset_components(
     length(asy) == m || throw(DimensionMismatch(
         "asy must contain one weight vector for each nonempty subset: expected $m",
     ))
+    all(weights -> weights isa AbstractVector, asy) || throw(ArgumentError(
+        "each asymmetry component must be an AbstractVector",
+    ))
 
-    vals = Any[singleton_parameter]
-    append!(vals, dep)
-    for weights in asy
-        weights isa AbstractVector || throw(ArgumentError(
-            "each asymmetry component must be an AbstractVector",
-        ))
-        append!(vals, weights)
-    end
-    T = promote_type(Float64, map(typeof, vals)...)
+    T = promote_type(
+        Float64,
+        typeof(singleton_parameter),
+        eltype(dep),
+        _component_eltype(eltype(asy)),
+    )
 
     parameters = fill(T(singleton_parameter), m)
     @inbounds for j in (d + 1):m
@@ -70,7 +73,7 @@ end
 function _expand_fullset_asymmetric_component(parameter::Real, weights::AbstractVector; singleton_parameter)
     d = length(weights)
     subsets = d == 0 ? Vector{Vector{Int}}() : _nonempty_subsets(d)
-    T = promote_type(Float64, typeof(parameter), map(typeof, weights)...)
+    T = promote_type(Float64, typeof(parameter), typeof(singleton_parameter), eltype(weights))
     w = T.(weights)
 
     dep = fill(T(singleton_parameter), length(subsets) - d)

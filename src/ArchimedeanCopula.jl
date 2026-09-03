@@ -76,8 +76,10 @@ radial_measure_style(::Distributions.DiscreteUnivariateDistribution) =
 radial_measure_style(::Distributions.UnivariateDistribution) =
     NonAbsolutelyContinuousMeasure()
 
-copula_measure_style(C::ArchimedeanCopula{d}) where {d} =
-    archimedean_measure_style(C.G, Val(d))
+function copula_measure_style(C::ArchimedeanCopula{d}) where {d}
+    limit_kind(C.G, Val(d)) === NO_LIMIT || return NonAbsolutelyContinuousMeasure()
+    return archimedean_measure_style(C.G, Val(d))
+end
 
 # Constructors:
 ArchimedeanCopula(d::Int, G::Generator) = ArchimedeanCopula{d}(G)
@@ -129,15 +131,53 @@ end
 
 Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters.
 
-_cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
-function Distributions._logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
+@inline function _cdf(C::ArchimedeanCopula{d}, u) where {d}
+    kind = limit_kind(C.G, Val(d))
+    kind === Π_LIMIT && return prod(u)
+    kind === M_LIMIT && return minimum(u)
+    if kind === W_LIMIT
+        @assert d == 2
+        s = u[1] + u[2]
+        return max(s - one(s), zero(s))
+    end
+    return _archimedean_cdf(C, u)
+end
+
+_archimedean_cdf(C::ArchimedeanCopula, u) = ϕ(C.G, sum(ϕ⁻¹.(C.G, u)))
+
+@inline function Distributions._logpdf(C::ArchimedeanCopula{d}, u) where {d}
+    kind = limit_kind(C.G, Val(d))
+    kind === Π_LIMIT && return zero(eltype(u))
+    if kind === M_LIMIT
+        return all(x -> x == u[1], u) ? zero(eltype(u)) : eltype(u)(-Inf)
+    elseif kind === W_LIMIT
+        @assert d == 2
+        s = u[1] + u[2]
+        return s == one(s) ? zero(eltype(u)) : eltype(u)(-Inf)
+    end
+    return _archimedean_logpdf(C, u)
+end
+
+function _archimedean_logpdf(C::ArchimedeanCopula{d,TG}, u) where {d,TG}
     if !all(0 .< u .< 1)
         return eltype(u)(-Inf)
     end
     return log(max(ϕ⁽ᵏ⁾(C.G, d, sum(ϕ⁻¹.(C.G, u))) * prod(ϕ⁻¹⁽¹⁾.(C.G, u)), 0))
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, TG}, A::AbstractMatrix{T}) where {T<:Real, d, TG}
+
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d,TG}, A::AbstractMatrix{T}) where {T<:Real,d,TG}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    kind = limit_kind(C.G, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, A)
+    kind === M_LIMIT && return _rand_M!(rng, A)
+    if kind === W_LIMIT
+        @assert d == 2
+        return _rand_W!(rng, A)
+    end
+    return _rand_archimedean!(rng, C, A)
+end
+
+function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d,TG}, A::AbstractMatrix{T}) where {T<:Real,d,TG}
     R = 𝒲₋₁(C.G, d)
     @inbounds for col in axes(A, 2)
         sample = view(A, :, col)
@@ -150,8 +190,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopu
     end
     return A
 end
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d, GT}, A::AbstractMatrix{T}) where {T<:Real, d, GT<:AbstractFrailtyGenerator}
-    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula{d,GT}, A::AbstractMatrix{T}) where {T<:Real,d,GT<:AbstractFrailtyGenerator}
     F = frailty(C.G)
     @inbounds for col in axes(A, 2)
         sample = view(A, :, col)
@@ -235,6 +274,12 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
 end
 
 function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+
+    kind = limit_kind(C.G, Val(2))
+    kind === Π_LIMIT && return NoDistortion()
+    kind === M_LIMIT && return MDistortion(float(uⱼₛ[1]), Int8(js[1]))
+    kind === W_LIMIT && return WDistortion(float(uⱼₛ[1]), Int8(js[1]))
+
     @assert length(js) == length(uⱼₛ)
     T = eltype(uⱼₛ)
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))

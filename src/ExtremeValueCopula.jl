@@ -47,9 +47,16 @@ struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
     end
 end
 
-copula_measure_style(C::ExtremeValueCopula) = tail_measure_style(C.tail)
+function copula_measure_style(C::ExtremeValueCopula{d}) where {d}
+    limit_kind(C.tail, Val(d)) === M_LIMIT &&
+        return NonAbsolutelyContinuousMeasure()
+    return tail_measure_style(C.tail)
+end
 
 ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
+@inline function _wrap_extreme_value(::Val{d}, tail::TT) where {d,TT<:Tail}
+    return invoke(ExtremeValueCopula{d}, Tuple{Tail}, tail)::ExtremeValueCopula{d,TT}
+end
 
 @inline _ev_encoded_dimension(CT) = Base.unwrap_unionall(CT).parameters[1]
 
@@ -60,7 +67,8 @@ ExtremeValueCopula(d::Int, tail::Tail) = ExtremeValueCopula{d}(tail)
 # constructors may provide more specific methods that infer `d` from a matrix
 # or vector.
 function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
-    return ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+    tail = tailof(CT)(args...; kwargs...)
+    return _wrap_extreme_value(Val(d), tail)
 end
 
 # Resolve the only generic intersection left by integer-valued parameters:
@@ -69,16 +77,27 @@ end
 function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) where {D}
     d = _ev_encoded_dimension(CT)
     if d isa TypeVar
-        return ExtremeValueCopula{first}(tailof(CT)(args...; kwargs...))
+        tail = tailof(CT)(args...; kwargs...)
+        return _wrap_extreme_value(Val(first), tail)
     end
-    return ExtremeValueCopula{d}(tailof(CT)(first, args...; kwargs...))
+    tail = tailof(CT)(first, args...; kwargs...)
+    return _wrap_extreme_value(Val(d), tail)
 end
 
 # Runtime-dimension form for an unparameterized named family alias.
-(CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...) =
-    ExtremeValueCopula{d}(tailof(CT)(args...; kwargs...))
+function (CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...)
+    tail = tailof(CT)(args...; kwargs...)
+    return _wrap_extreme_value(Val(d), tail)
+end
 
-function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
+@inline function _cdf(C::ExtremeValueCopula{d}, u) where {d}
+    kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return prod(u)
+    kind === M_LIMIT && return minimum(u)
+    return _ev_cdf(C, u)
+end
+
+function _ev_cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     u1, u2 = u
     z = zero(u1 + u2)
     o = one(u1 + u2)
@@ -91,7 +110,7 @@ function _cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
     return exp(-s * A(C.tail, x / s))
 end
 
-_cdf(C::ExtremeValueCopula{d, TT}, u) where {d, TT} = exp(-ℓ(C.tail, .- log.(u)))
+_ev_cdf(C::ExtremeValueCopula, u) = exp(-ℓ(C.tail, .- log.(u)))
 Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
 
 # Density selection follows Julia dispatch directly. BivariatePickandsTail
@@ -104,10 +123,12 @@ function _bivariate_pickands_logpdf(C, u)
     val, du, dv, dudv = _biv_der_ℓ(C.tail, (x, y))
     core = -dudv + du * dv
     core ≤ 0 && return -Inf
-    return -val + log(core) + x + y
+    # Group the exponent contribution so independence (val == x + y,
+    # core == 1) returns exactly zero instead of a cancellation residual.
+    return log(core) + (x + y - val)
 end
 
-Distributions._logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u) =
+_ev_logpdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u) =
     _bivariate_pickands_logpdf(C, u)
 
 function _ev_logcdf_partial(C::ExtremeValueCopula, u, I)
@@ -151,7 +172,17 @@ end
 
 # Generic d-dimensional density from the mixed STDF partials and the
 # partition formula for absolutely continuous extreme-value copulas.
-function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
+@inline function Distributions._logpdf(C::ExtremeValueCopula{d}, u) where {d}
+    kind = limit_kind(C.tail, Val(d))
+    if kind === Π_LIMIT
+        return all(x -> zero(x) <= x <= one(x), u) ? zero(eltype(u)) : eltype(u)(-Inf)
+    elseif kind === M_LIMIT
+        return all(x -> x == first(u), u) ? zero(eltype(u)) : eltype(u)(-Inf)
+    end
+    return _ev_logpdf(C, u)
+end
+
+function _ev_logpdf(C::ExtremeValueCopula{d}, u) where {d}
     any(isone, u) && return oftype(float(first(u)), -Inf)
     return _ev_logcdf_partial(C, u, 1:d)
 end
@@ -161,16 +192,56 @@ end
 # Hüsler--Reiss and extremal-t contain Float64 probability kernels that cannot
 # accept ForwardDiff dual numbers, while their STDF partials are available
 # directly through `_ellpartial_signlog`.
-function _partial_cdf(C::ExtremeValueCopula, is, js, uᵢₛ, uⱼₛ)
-    u = _assemble(length(C), is, js, uᵢₛ, uⱼₛ)
+function _partial_cdf(C::ExtremeValueCopula{d}, is, js, uᵢₛ, uⱼₛ) where {d}
+    limit_kind(C.tail, Val{d}()) === Π_LIMIT && return prod(uᵢₛ)
+    u = _assemble(d, is, js, uᵢₛ, uⱼₛ)
     logvalue = _ev_logcdf_partial(C, u, js)
     return isfinite(logvalue) ? exp(logvalue) : zero(float(first(u)))
 end
-τ(C::ExtremeValueCopula{2}) = QuadGK.quadgk(t -> d²A(C.tail, t) * t * (1 - t) / max(A(C.tail, t), _δ(t)), 0.0, 1.0)[1]
-ρ(C::ExtremeValueCopula{2}) = 12 * QuadGK.quadgk(t -> 1 / (1 + A(C.tail, t))^2, 0.0, 1.0)[1] - 3
-β(C::ExtremeValueCopula{2}) = 4^(1 - A(C.tail, 0.5)) - 1
-λᵤ(C::ExtremeValueCopula{2}) = 2 * (1 - A(C.tail, 0.5))
-λₗ(C::ExtremeValueCopula{2}) =  A(C.tail, 0.5) > 0.5 ? 0.0 : 1.0
+function τ(C::ExtremeValueCopula{2})
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
+    return QuadGK.quadgk(
+        t -> d²A(C.tail, t) * t * (1 - t) /
+             max(A(C.tail, t), _δ(t)),
+        0.0,
+        1.0,
+    )[1]
+end
+function ρ(C::ExtremeValueCopula{2})
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
+    return 12 * QuadGK.quadgk(
+        t -> 1 / (1 + A(C.tail, t))^2,
+        0.0,
+        1.0,
+    )[1] - 3
+end
+function β(C::ExtremeValueCopula{2})
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
+    return 4^(1 - A(C.tail, 0.5)) - 1
+end
+function λᵤ(C::ExtremeValueCopula{2})
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
+    return 2 * (1 - A(C.tail, 0.5))
+end
+function λₗ(C::ExtremeValueCopula{2})
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return 0.0
+    kind === M_LIMIT && return 1.0
+
+    return A(C.tail, 0.5) > 0.5 ? 0.0 : 1.0
+end
 function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
@@ -183,6 +254,9 @@ function Distributions._rand!(
     C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
 ) where {T<:Real}
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
     E = ExtremeDist(C.tail)
     for i in axes(X, 2)
         z = rand(rng, E)
@@ -194,7 +268,20 @@ function Distributions._rand!(
     return X
 end
 
-DistortionFromCop(C::ExtremeValueCopula{2, TT}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) where TT = BivEVDistortion(C.tail, Int8(js[1]), float(uⱼₛ[1]))
+function DistortionFromCop(
+    C::ExtremeValueCopula{2,TT},
+    js::NTuple{1,Int},
+    uⱼₛ::NTuple{1,Float64},
+    ::Int,
+) where {TT}
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return NoDistortion()
+
+    j = Int8(js[1])
+    uⱼ = float(uⱼₛ[1])
+    kind === M_LIMIT && return MDistortion(uⱼ, j)
+    return BivEVDistortion(C.tail, j, uⱼ)
+end
 
 tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 

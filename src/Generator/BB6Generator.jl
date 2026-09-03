@@ -27,18 +27,16 @@ struct BB6Generator{T} <: AbstractFrailtyGenerator
     function BB6Generator(θ, δ)
         (θ ≥ 1) || throw(ArgumentError("θ must be ≥ 1"))
         (δ ≥ 1) || throw(ArgumentError("δ must be ≥ 1"))
-        if δ == 1
-            return JoeGenerator(θ)
-        elseif θ == 1
-            return GumbelGenerator(δ)
-        else
-            θ, δ, _ = promote(θ, δ, 1.0)
-            return new{typeof(θ)}(θ, δ)
-        end
+        θf, δf = promote(float(θ), float(δ))
+        return new{typeof(θf)}(θf, δf)
     end
 end
 
 const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
+@inline limit_kind(G::BB6Generator, ::Val) =
+    isone(G.θ) && isone(G.δ) ? Π_LIMIT :
+    (isinf(G.θ) || isinf(G.δ)) ? M_LIMIT :
+    NO_LIMIT
 Distributions.params(G::BB6Generator) = (θ = G.θ, δ = G.δ)
 _unbound_params(::Type{<:BB6Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ - 1)]
 _rebound_params(::Type{<:BB6Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = 1 + exp(α[2]))
@@ -93,7 +91,7 @@ end
 
 frailty(G::BB6Generator) = SibuyaStoppedPosStable(G.θ, G.δ)
 # ------------------ CDF (d = 2) ------------------
-function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB6Generator}
+function _archimedean_cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB6Generator}
     θ, δ = C.G.θ, C.G.δ
     ū = 1 - u[1];  v̄ = 1 - u[2]
     x = -log1p(- ū^θ)         # x = -log(1 - (1-u)^θ)
@@ -104,8 +102,11 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB6Generator}
     return 1 - (1 - w)^(inv(θ))
 end
 
+archimedean_measure_style(G::BB6Generator, ::Val{d}) where {d} =
+    (isinf(G.θ) || isinf(G.δ)) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
+
 # ------------------ log-PDF (d = 2) ------------------
-function Distributions._logpdf(C::ArchimedeanCopula{2,BB6Generator{TF}}, u) where {TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{2,BB6Generator{TF}}, u) where {TF}
     Tret = promote_type(TF, eltype(u))
     (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return Tret(-Inf)
 
@@ -150,14 +151,13 @@ function β(G::BB6Generator)
     return 4*beta_star - 1
 end
 
-# --- Kendall tau (BB6) — vía integral para la CÓPULA ---
-# τ(C) = 1 + 4 ∫ φ(t)/φ'(t) dt, con φ = ϕ⁻¹ del generador de C
-function τ(C::BB6Copula; rtol=1e-8)
-    G = C.G
-    φ(t)  = ϕ⁻¹(G, t)
-    φ′(t) = ϕ⁻¹⁽¹⁾(G, t)        # ya lo tienes; si no, diferencia/AD
-    f(t)  = φ(t) / φ′(t)
-    a = eps(Float64); b = 1 - eps(Float64)
-    val = QuadGK.quadgk(f, a, b; rtol=rtol)[1]   # o tu cuadratura preferida
-    return 1 + 4*val
+# --- Kendall tau (BB6) ---
+# τ_BB6(θ, δ) = 1 - (1 - τ_Joe(θ)) / δ
+function τ(G::BB6Generator)
+    isone(G.θ) && return 1 - inv(G.δ)
+    isinf(G.θ) && return one(G.θ)
+    isinf(G.δ) && return one(G.δ)
+
+    τjoe = _joe_tau(G.θ)
+    return 1 - (1 - τjoe) / G.δ
 end

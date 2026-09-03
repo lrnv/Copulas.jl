@@ -1,16 +1,13 @@
 # Public-API proof: verifies every public copula family constructor, the
 # type-stable `{d}` and runtime `(d, ...)` forms and inferred forms.
 function test_constructor_case(case)
+    Base.@nospecialize case
     typed_value = nothing
     @testset "$(case.name)" begin
-        # Evaluate the natural constructor call itself.  Applying `@inferred`
-        # to the closure stored by the bestiary tests closure inference instead
-        # and returns `Any` on Julia 1.11 even when the constructor is stable.
-        inferred = case.allowed_inference === nothing ?
-            :(@inferred $(case.typed_expr)) :
-            :(@inferred $(case.allowed_inference) $(case.typed_expr))
-        typed_value = Core.eval(@__MODULE__, inferred)
-        dynamic = case.dynamic()
+        expr = typed_constructor_expr(case)
+        typed_value = Core.eval(@__MODULE__, :(@inferred $expr))
+
+        dynamic = build_dynamic(case)
         @test typeof(typed_value) === typeof(dynamic)
         @test params(typed_value) == params(dynamic)
     end
@@ -48,7 +45,7 @@ end
     same_model(SurvivalCopula(base, (1, 3)), SurvivalCopula{3}(base, (1, 3)))
 
     survival = SurvivalCopula{2}(ClaytonCopula{2}(1.5), (1,))
-    same_model(typeof(survival)(1.5), survival)
+    same_model(SurvivalCopula{2}(ClaytonCopula{2}(1.5), (1,)), survival)
 
     B = [0.7 0.3; 0.2 0.8]
     spectral = DiscreteSpectralTail(B)
@@ -65,13 +62,13 @@ end
 end
 
 @testset "public constructors" begin
-    constructed = map(test_constructor_case, COPULA_CASES)
+    constructed = map(test_constructor_case, ALL_COPULA_CASES)
     declared_symbols = Set(symbol for symbol in public_symbols()
         if Base.isexported(Copulas, symbol) &&
            getfield(Copulas, symbol) isa Type &&
            getfield(Copulas, symbol) <: Copulas.Copula)
-    @test Set(case.symbol for case in COPULA_CASES) == declared_symbols
-    for (case, C) in zip(COPULA_CASES, constructed)
+    @test Set(case.symbol for case in ALL_COPULA_CASES) == declared_symbols
+    for (case, C) in zip(ALL_COPULA_CASES, constructed)
         @test C isa case.family
     end
     @test_throws Exception WCopula{3}()

@@ -27,16 +27,9 @@ References:
 struct RafteryCopula{d, P} <: Copula{d}
     θ::P  # Copula parameter
     function RafteryCopula{d}(θ) where {d}
-        if (θ < 0) || (θ > 1)
-            throw(ArgumentError("Theta must be in [0,1]"))
-        elseif θ == 0
-            return IndependentCopula{d}()
-        elseif θ == 1
-            return MCopula{d}()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{d,typeof(θ)}(θ)
-        end
+        (0 <= θ <= 1) || throw(ArgumentError("Theta must be in [0,1]"))
+        θf = float(θ)
+        return new{d,typeof(θf)}(θf)
     end
 end
 copula_measure_style(::Type{<:RafteryCopula}) =
@@ -49,6 +42,8 @@ _example(::Type{<:RafteryCopula}, d) = RafteryCopula(d, 0.5)
 _unbound_params(::Type{<:RafteryCopula}, d, θ) = [LogExpFunctions.logit(θ.θ)]
 _rebound_params(::Type{<:RafteryCopula}, d, α) = (; θ = LogExpFunctions.logistic(α[1]))
 function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
+    iszero(R.θ) && return prod(u)
+    isone(R.θ) && return minimum(u)
     # Order the vector u
     u_ordered = sort(u)
     term1 = u_ordered[1]

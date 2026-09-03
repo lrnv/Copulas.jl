@@ -39,7 +39,7 @@ Z_x
 
 Special case:
 
-* `ρ = 1` returns `MCopula(d)`.
+* `ρ = 1` represents `MCopula(d)`.
 
 References:
 
@@ -53,7 +53,6 @@ struct tEVTail{T,P} <: BivariatePickandsTail
     function tEVTail(ν::Real, ρ::Real)
         (ν > 0)     || throw(ArgumentError("ν must be > 0"))
         (-1 < ρ ≤ 1)|| throw(ArgumentError("ρ must be in (-1,1]"))
-        ρ == 1 && return MTail()
         νT, ρT = promote(float(ν), float(ρ))
         return new{typeof(νT),typeof(ρT)}(νT, ρT)
     end
@@ -62,8 +61,6 @@ struct tEVTail{T,P} <: BivariatePickandsTail
         d1, d2 = size(R)
         d1 == d2 || throw(DimensionMismatch("R must be square"))
         d1 >= 2 || throw(ArgumentError("R must have dimension at least 2"))
-        all(isone, R) && return MTail()
-
         RF = Matrix{Float64}(R)
         all(isfinite, RF) || throw(ArgumentError("R must contain only finite entries"))
         scale = max(1.0, maximum(abs, RF))
@@ -74,16 +71,22 @@ struct tEVTail{T,P} <: BivariatePickandsTail
             RF[i, i] = 1.0
         end
         RF = Matrix(LinearAlgebra.Symmetric((RF + transpose(RF)) / 2))
-        try
-            LinearAlgebra.cholesky(LinearAlgebra.Symmetric(RF); check=true)
-        catch
-            throw(ArgumentError("R must be strictly positive definite"))
+        if !all(isone, RF)
+            try
+                LinearAlgebra.cholesky(LinearAlgebra.Symmetric(RF); check=true)
+            catch
+                throw(ArgumentError("R must be strictly positive definite"))
+            end
         end
 
         νf = float(ν)
         return new{typeof(νf),typeof(RF)}(νf, RF)
     end
 end
+@inline limit_kind(tail::tEVTail{<:Any,<:Real}, ::Val) =
+    isone(tail.parameter) ? M_LIMIT : NO_LIMIT
+@inline limit_kind(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Val) =
+    all(isone, tail.parameter) ? M_LIMIT : NO_LIMIT
 const tEVCopula{d,T,P} = ExtremeValueCopula{d,tEVTail{T,P}}
 Distributions.params(tail::tEVTail{<:Any,<:Real}) = (ν = tail.ν, ρ = tail.parameter)
 Distributions.params(tail::tEVTail{<:Any,<:AbstractMatrix}) = (ν = tail.ν, R = tail.parameter)
@@ -193,6 +196,7 @@ function _tev_stdf(ν::Real, R::AbstractMatrix, x)
 end
 
 function ℓ(tail::tEVTail{<:Any,<:Real}, x)
+    isone(tail.parameter) && return maximum(x)
     d = length(x)
 
     # Preserve the historical closed bivariate route. It is analytic,
@@ -275,6 +279,7 @@ end
 
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
     ν = C.tail.ν
     R = _tev_correlation(C.tail, d)
     cache = ntuple(d) do m
@@ -343,14 +348,15 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
 end
 
 ℓ(tail::tEVTail{<:Any,<:AbstractMatrix}, x) =
-    _tev_stdf(tail.ν, tail.parameter, x)
+    all(isone, tail.parameter) ? maximum(x) : _tev_stdf(tail.ν, tail.parameter, x)
 
 function A(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν
+    tt = _safett(t)
+    isone(ρ) && return max(tt, one(tt) - tt)
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
 
-    tt = _safett(t)
     om = 1 - tt
     # log-ratios for stability
     log_t  = log(tt)

@@ -38,8 +38,8 @@ t\\Phi\\!\\left(\\theta^{-1}+\\frac{\\theta}{2}\\log\\frac{t}{1-t}\\right)
 
 Special cases:
 
-* `θ = 0` returns `IndependentCopula(d)`.
-* `θ = ∞`, or an all-zero variogram, returns `MCopula(d)`.
+* `θ = 0` represents `IndependentCopula(d)`.
+* `θ = ∞`, or an all-zero variogram, represents `MCopula(d)`.
 
 References:
 
@@ -53,8 +53,6 @@ struct HuslerReissTail{P} <: OneParameterPickandsTail
         d1, d2 = size(Γ)
         d1 == d2 || throw(DimensionMismatch("Γ must be square"))
         d1 >= 2 || throw(ArgumentError("Γ must have dimension at least 2"))
-        all(iszero, Γ) && return MTail()
-
         G = Matrix{Float64}(Γ)
         all(isfinite, G) || throw(ArgumentError("Γ must contain only finite entries"))
         scale = max(1.0, maximum(abs, G))
@@ -65,28 +63,34 @@ struct HuslerReissTail{P} <: OneParameterPickandsTail
         @inbounds for i in 1:d1
             G[i, i] = 0.0
         end
-        @inbounds for i in 1:d1, j in i+1:d1
-            G[i, j] > 0.0 || throw(ArgumentError("Γ must have strictly positive off-diagonal entries"))
+        if !all(iszero, G)
+            @inbounds for i in 1:d1, j in i+1:d1
+                G[i, j] > 0.0 || throw(ArgumentError("Γ must have strictly positive off-diagonal entries"))
+            end
+            k = d1
+            J = 1:(d1 - 1)
+            Σ = [0.5 * (G[i, k] + G[j, k] - G[i, j]) for i in J, j in J]
+            try
+                LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ); check=true)
+            catch
+                throw(ArgumentError("Γ must be strictly conditionally negative definite"))
+            end
         end
-
-        k = d1
-        J = 1:(d1 - 1)
-        Σ = [0.5 * (G[i, k] + G[j, k] - G[i, j]) for i in J, j in J]
-        try
-            LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ); check=true)
-        catch
-            throw(ArgumentError("Γ must be strictly conditionally negative definite"))
-        end
-        return new{typeof(G)}(G)
+        return new{Matrix{Float64}}(G)
     end
     function HuslerReissTail(θ::Real)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
-        θ == 0 && return NoTail()
-        isinf(θ) && return MTail()
         θf = float(θ)
         return new{typeof(θf)}(θf)
     end
 end
+@inline _hr_is_independent(tail::HuslerReissTail{<:Real}) = iszero(tail.parameter)
+@inline limit_kind(tail::HuslerReissTail{<:Real}, ::Val) =
+    iszero(tail.parameter) ? Π_LIMIT :
+    isinf(tail.parameter) ? M_LIMIT :
+    NO_LIMIT
+@inline limit_kind(tail::HuslerReissTail{<:AbstractMatrix}, ::Val) =
+    all(iszero, tail.parameter) ? M_LIMIT : NO_LIMIT
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
 _is_valid_in_dim(::HuslerReissTail{<:Real}, d::Int) = d >= 2
 _is_valid_in_dim(tail::HuslerReissTail{<:AbstractMatrix}, d::Int) =
@@ -108,6 +112,12 @@ _hr_variogram(tail::HuslerReissTail{<:AbstractMatrix}, ::Int) = tail.parameter
 
 HuslerReissCopula(Γ::AbstractMatrix) =
     ExtremeValueCopula{size(Γ, 1)}(HuslerReissTail(Γ))
+
+function (::Type{HuslerReissCopula{d}})(Γ::AbstractMatrix) where {d}
+    size(Γ) == (d, d) || throw(DimensionMismatch("variogram dimension $(size(Γ)) does not match d=$d"))
+    tail = HuslerReissTail(Γ)
+    return _wrap_extreme_value(Val(d), tail)
+end
 
 _unbound_params(::Type{<:HuslerReissTail}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:HuslerReissTail}, d, α) = (; θ = exp(α[1]))
@@ -228,6 +238,12 @@ function _hr_anchor_covariance(Γ::AbstractMatrix, k::Int)
 end
 
 function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
+    if tail isa HuslerReissTail{<:Real} && _hr_is_independent(tail)
+        isempty(I) && return 1, log(float(sum(x)))
+        length(I) == 1 && return 1, zero(float(first(x)))
+        return 0, oftype(float(first(x)), -Inf)
+    end
+
     Γ = _hr_variogram(tail, length(x))
     isempty(I) && return 1, log(_hr_stdf(Γ, x))
     all(xi -> xi >= 0, x) || return 0, -Inf
@@ -311,6 +327,10 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
+    
     Γ = _hr_variogram(C.tail, d)
 
     roots = Vector{Vector{Int}}(undef, d)
@@ -369,10 +389,12 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     return X
 end
 
-ℓ(tail::HuslerReissTail{<:AbstractMatrix}, x) = _hr_stdf(tail.parameter, x)
+ℓ(tail::HuslerReissTail{<:AbstractMatrix}, x) =
+    all(iszero, tail.parameter) ? maximum(x) : _hr_stdf(tail.parameter, x)
 
 function dA(tail::HuslerReissTail, t::Real)
     θ = _hr_theta(tail)
+    iszero(θ) && return zero(t * θ)
     N = Distributions.Normal()
     Φ = Distributions.cdf
     ϕ = Distributions.pdf
@@ -387,6 +409,7 @@ function dA(tail::HuslerReissTail, t::Real)
 end
 function d²A(tail::HuslerReissTail, t::Real)
     θ = _hr_theta(tail)
+    iszero(θ) && return zero(t * θ)
     N  = Distributions.Normal()
     ϕ  = Distributions.pdf
     invθ = inv(θ)

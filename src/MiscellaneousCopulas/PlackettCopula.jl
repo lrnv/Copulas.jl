@@ -16,9 +16,11 @@ C_{\\theta}(u,v) = \\frac{\\left [1+(\\theta-1)(u+v)\\right]- \\sqrt{[1+(\\theta
 and for ``\\theta = 1`` we have ``C_{1}(u,v) = uv``.
 
 Special cases:
-- θ = 0: MCopula (upper Fréchet–Hoeffding bound)
+- θ = 0: WCopula (lower Fréchet–Hoeffding bound)
 - θ = 1: IndependentCopula
-- θ = ∞: WCopula (lower Fréchet–Hoeffding bound)
+- θ = ∞: MCopula (upper Fréchet–Hoeffding bound)
+
+These values retain the concrete `PlackettCopula` family type.
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
@@ -30,18 +32,9 @@ struct PlackettCopula{d,P} <: Copula{d} # only d = 2 is valid
 
     function PlackettCopula{d}(θ) where {d}
         d == 2 || throw(DimensionMismatch("PlackettCopula is only defined in dimension 2"))
-        if θ < 0
-            throw(ArgumentError("Theta must be non-negative"))
-        elseif θ == 0
-            return MCopula{2}()
-        elseif θ == 1
-            return IndependentCopula{2}()
-        elseif θ == Inf
-            return WCopula{2}()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{2,typeof(θ)}(θ)
-        end
+        θ < 0 && throw(ArgumentError("Theta must be non-negative"))
+        θf = float(θ)
+        return new{2,typeof(θf)}(θf)
     end
 end
 PlackettCopula(θ) = PlackettCopula{2}(θ)
@@ -57,11 +50,17 @@ _rebound_params(::Type{<:PlackettCopula}, d::Integer, α) = (; θ = exp(α[1]))
 # CDF calculation for bivariate Plackett Copula
 function _cdf(S::PlackettCopula, uv)
     u, v = uv
+    iszero(S.θ) && return max(u + v - 1, zero(u + v))
+    isone(S.θ) && return u * v
+    isinf(S.θ) && return min(u, v)
     η = S.θ - 1
     term1 = 1 + η * (u + v)
     term2 = sqrt(term1^2 - 4 * S.θ * η * u * v)
     return 0.5 * η^(-1) * (term1 - term2)
 end
+
+copula_measure_style(C::PlackettCopula) =
+    (iszero(C.θ) || isinf(C.θ)) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
 # PDF calculation for bivariate Plackett Copula
 function Distributions._logpdf(S::PlackettCopula, uv)
@@ -75,6 +74,9 @@ import Random
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::AbstractMatrix{T}) where {T<:Real, CT<:PlackettCopula}
     size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    iszero(C.θ) && return _rand_W!(rng, A)
+    isinf(C.θ) && return _rand_M!(rng, A)
+    isone(C.θ) && return Random.rand!(rng, A)
     Random.rand!(rng, view(A, 1, :))
     ts = rand(rng, T, size(A, 2))
     @inbounds for (j, col) in enumerate(axes(A, 2))
@@ -90,14 +92,26 @@ end
 
 # Calculate Spearman's rho based on the PlackettCopula parameters
 function ρ(c::PlackettCopula)
+    iszero(c.θ) && return -one(c.θ)
+    isone(c.θ) && return zero(c.θ)
+    isinf(c.θ) && return one(c.θ)
     return (c.θ+1)/(c.θ-1)-(2*c.θ*log(c.θ)/(c.θ-1)^2)
 end
 function β(c::PlackettCopula)
+    iszero(c.θ) && return -one(c.θ)
+    isone(c.θ) && return zero(c.θ)
+    isinf(c.θ) && return one(c.θ)
     return (sqrt(c.θ)-1)/(sqrt(c.θ)+1)
     # and inverse beta: θ = ((1+β)/(1-β))^2
 end
 
 # Conditioning colocated
 function DistortionFromCop(C::PlackettCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int)
-    return PlackettDistortion(float(C.θ), Int8(js[1]), float(uⱼₛ[1]))
+    j = Int8(js[1])
+    uⱼ = float(uⱼₛ[1])
+
+    iszero(C.θ) && return WDistortion(uⱼ, j)
+    isone(C.θ)  && return NoDistortion()
+    isinf(C.θ)  && return MDistortion(uⱼ, j)
+    return PlackettDistortion(float(C.θ), j, uⱼ)
 end

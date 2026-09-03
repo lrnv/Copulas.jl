@@ -1,10 +1,17 @@
 # Operation suite: public contract, parent-margin correctness, specialized
 # representations, value branches, and exhaustive route closure for subsetdims.
 
-subsetting_route_key(C) = (
-    which(Copulas.subsetdims, Tuple{typeof(C),Tuple{Int,Int}}),
-    length(C) == 2 ? :bivariate : :multivariate,
-)
+function subsetting_route_key(C)
+    Base.@nospecialize C
+
+    return (
+        which(
+            Copulas.subsetdims,
+            Tuple{typeof(C),Tuple{Int,Int}},
+        ),
+        length(C) == 2 ? :bivariate : :multivariate,
+    )
+end
 
 @testset "subsetdims" begin
     @testset "public contract" begin
@@ -17,7 +24,6 @@ subsetting_route_key(C) = (
             parent_point = ones(d)
             parent_point[collect(dims)] = point
             @testset "$(case.name)" begin
-                test_progress("operations", "subsetdims", "contract", case.name)
                 @test length(S) == 2
                 @test cdf(S, point) ≈ cdf(C, parent_point) atol=max(1e-5, case.numerical_atol)
                 @test length(subsetdims(S, (1,))) == 1
@@ -49,7 +55,7 @@ subsetting_route_key(C) = (
     @testset "specialization equivalence and route exhaustiveness" begin
         selected_routes = Set{Any}()
         tested_routes = Set{Any}()
-        for fixture in ROUTING_COPULA_FIXTURES
+        for fixture in COPULA_FIXTURES
             case, C = fixture.case, fixture.copula
             route = subsetting_route_key(C)
             push!(selected_routes, route)
@@ -62,7 +68,6 @@ subsetting_route_key(C) = (
             parent_point = ones(d)
             parent_point[collect(dims)] .= u
             @testset "$(case.name)" begin
-                test_progress("operations", "subsetdims", "route", case.name)
                 @test cdf(S, u) ≈ cdf(C, parent_point)
             end
             push!(tested_routes, route)

@@ -5,7 +5,7 @@ function Base.show(io::IO, C::FGMCopula{d, Tθ, Tf}) where {d, Tθ, Tf}
     print(io, "FGMCopula{$d}(θ = $(C.θ))")
 end
 function Base.show(io::IO, C::SurvivalCopula)
-    print(io, "SurvivalCopula($(C.C))")
+    print(io, "SurvivalCopula($(C.C), $(_survival_flipindices(C.flipmask)))")
 end
 function Base.show(io::IO, C::ArchimedeanCopula)
     print(io, "$(typeof(C))$(Distributions.params(C))")

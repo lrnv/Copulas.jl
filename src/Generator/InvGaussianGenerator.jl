@@ -30,14 +30,9 @@ InvGaussianGenerator, InvGaussianCopula
 struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function InvGaussianGenerator(θ)
-        if θ < 0
-            throw(ArgumentError("Theta must be non-negative."))
-        elseif θ == 0
-            return IndependentGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        θ < 0 && throw(ArgumentError("Theta must be non-negative."))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const InvGaussianCopula{d, T}   = ArchimedeanCopula{d, InvGaussianGenerator{T}}
@@ -46,10 +41,13 @@ _unbound_params(::Type{<:InvGaussianGenerator}, d, θ) = [log(θ.θ)]
 _rebound_params(::Type{<:InvGaussianGenerator}, d, α) = (; θ = exp(α[1]))
 _θ_bounds(::Type{<:InvGaussianGenerator}, d) = (0.0, Inf)
 
-ϕ(  G::InvGaussianGenerator, t) = isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
-ϕ⁻¹(G::InvGaussianGenerator, t) = isinf(G.θ) ? log(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))
+
+ϕ(  G::InvGaussianGenerator, t) = iszero(G.θ) ? exp(-t) : isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
+ϕ⁻¹(G::InvGaussianGenerator, t) = iszero(G.θ) ? -log(t) : isinf(G.θ) ? log(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))
 function ϕ⁽¹⁾(G::InvGaussianGenerator, t)
-    if isinf(G.θ)
+    if iszero(G.θ)
+        return -exp(-t)
+    elseif isinf(G.θ)
         s = sqrt(2*t)
         return -exp(-s) / s
     else
@@ -62,6 +60,7 @@ end
 function ϕ⁽ᵏ⁾(G::InvGaussianGenerator, k::Int, t)
     k == 0 && return ϕ(G, t)
     k == 1 && return ϕ⁽¹⁾(G, t)
+    iszero(G.θ) && return (-1)^k * exp(-t)
     # Closed-form via Faà di Bruno: ϕ^{(k)} = ϕ * Y_k(f', f'', ..., f^{(k)})
     # where f(t) = (1 - sqrt(1 + 2θ^2 t))/θ for finite θ, and f(t) = -sqrt(2t) for θ=∞.
     # f^{(n)}(t) = (-1)^n (2n-3)!! * A_n / S^{2n-1}, with
@@ -111,9 +110,10 @@ function ϕ⁽ᵏ⁾(G::InvGaussianGenerator, k::Int, t)
 end
 
 function ϕ⁽ᵏ⁾⁻¹(G::InvGaussianGenerator, k::Int, t; start_at=t)
-    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
     T = float(promote_type(typeof(t), typeof(G.θ)))
     target = T(t)
+    iszero(G.θ) && return iszero(target) ? T(Inf) : -log(abs(target))
+    k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
     iszero(target) && return T(Inf)
 
     if isinf(G.θ)
@@ -127,7 +127,9 @@ function ϕ⁽ᵏ⁾⁻¹(G::InvGaussianGenerator, k::Int, t; start_at=t)
 end
 
 function ϕ⁻¹⁽¹⁾(G::InvGaussianGenerator, t)
-    if isinf(G.θ)
+    if iszero(G.θ)
+        return -inv(t)
+    elseif isinf(G.θ)
         return log(t) / t
     else
         θ = G.θ
@@ -157,7 +159,7 @@ function τ⁻¹(::Type{<:InvGaussianGenerator}, τ)
     τ ≥ 1/2 && return τ * Inf
     return Roots.find_zero(x -> _invgaussian_tau(x) - τ, (0, Inf))
 end
-frailty(G::InvGaussianGenerator) = Distributions.InverseGaussian(G.θ,1)
+frailty(G::InvGaussianGenerator) = iszero(G.θ) ? Distributions.Dirac(1.0) : Distributions.InverseGaussian(G.θ,1)
 
 ρ(G::InvGaussianGenerator) = @invoke ρ(ArchimedeanCopula(2, G)::Copula)
 function ρ⁻¹(::Type{<:InvGaussianGenerator}, rho)

@@ -54,3 +54,5 @@ function Distributions.rand(rng::Distributions.AbstractRNG, d::AlphaStable{T}) w
 end
 
 Base.eltype(::Type{<:AlphaStable{T}}) where {T<:AbstractFloat} = T
+Base.minimum(::AlphaStable) = 0 # this is plain wrong but Ok in our usecase. 
+Base.maximum(::AlphaStable) = Inf

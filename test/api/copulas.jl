@@ -1,9 +1,9 @@
 # Public-API fixtures and proof that the central bestiary
 # represents every public copula family. Operation contracts live under
 # `test/operations/`.
-struct CopulaContractContext
-    u::Vector{Float64}
-    U::Matrix{Float64}
+function copula_contract_point(C)
+    Base.@nospecialize C
+    return collect(range(0.31, 0.69; length=length(C)))
 end
 
 # Deliberately omits the matrix sampler required from concrete copulas. It
@@ -44,14 +44,6 @@ struct MissingSamplerContractCopula <: Copulas.Copula{2} end
     @test Copulas.copula_measure_style(
         SurvivalCopula{3}(singular, (1,)),
     ) isa Copulas.NonAbsolutelyContinuousMeasure
-end
-
-function copula_contract_context(C, seed)
-    Base.@nospecialize C
-    d = length(C)
-    u = collect(range(0.31, 0.69; length=d))
-    U = rand(StableRNG(seed), C, 4)
-    return CopulaContractContext(u, U)
 end
 
 @testset "public copula registry is exhaustive" begin

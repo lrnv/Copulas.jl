@@ -27,25 +27,26 @@ GumbelGenerator, GumbelCopula
 struct GumbelGenerator{T} <: AbstractUnivariateFrailtyGenerator
     θ::T
     function GumbelGenerator(θ)
-        if θ < 1
-            throw(ArgumentError("Theta must be greater than or equal to 1"))
-        elseif θ == 1
-            return IndependentGenerator()
-        elseif θ == Inf
-            return MGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
-        end
+        θ < 1 && throw(ArgumentError("Theta must be greater than or equal to 1"))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
-frailty(G::GumbelGenerator) = AlphaStable(α = 1/G.θ, β = 1,scale = cos(π/(2G.θ))^G.θ, location = (G.θ == 1 ? 1 : 0))
+@inline limit_kind(G::GumbelGenerator, ::Val) =
+    isinf(G.θ) ? M_LIMIT : NO_LIMIT
+
+frailty(G::GumbelGenerator) =
+    isone(G.θ) ? Distributions.Dirac(1.0) :
+    AlphaStable(α = 1/G.θ, β = 1, scale = cos(π/(2G.θ))^G.θ, location = 0)
 Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 _unbound_params(::Type{<:GumbelGenerator}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
 _rebound_params(::Type{<:GumbelGenerator}, d, α) = (; θ = 1 + exp(α[1]))
 _θ_bounds(::Type{<:GumbelGenerator}, d) = (1, Inf)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:GumbelGenerator} where {d}}, d) = (:mle, :itau, :ibeta, :irho)
+
+archimedean_measure_style(G::GumbelGenerator, ::Val{d}) where {d} =
+    isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
 ϕ(  G::GumbelGenerator, t) = exp(-exp(log(t)/G.θ))
 ϕ⁻¹(G::GumbelGenerator, t) = exp(log(-log(t))*G.θ)
@@ -70,6 +71,8 @@ function ϕ⁽ᵏ⁾(G::GumbelGenerator, d::Int, t)
     )
 end
 function ϕ⁽ᵏ⁾⁻¹(G::GumbelGenerator, k::Int, t; start_at=t)
+    isone(G.θ) &&
+        return ϕ⁽ᵏ⁾⁻¹(IndependentGenerator(), k, t; start_at=start_at)
     k == 1 || return @invoke ϕ⁽ᵏ⁾⁻¹(G::Generator, k, t; start_at=start_at)
     T = float(promote_type(typeof(t), typeof(G.θ)))
     θ = T(G.θ)
@@ -88,12 +91,12 @@ function τ⁻¹(::Type{<:GumbelGenerator}, τ)
     return 1/(1-τ)
 end
 
-function _cdf(C::ArchimedeanCopula{d,G}, u) where {d, G<:GumbelGenerator}
+function _archimedean_cdf(C::ArchimedeanCopula{d,G}, u) where {d,G<:GumbelGenerator}
     θ = C.G.θ
     lx = log.(.-log.(u))
     return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logsumexp(θ .* lx) ./ θ)
 end
-function Distributions._logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) where {TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) where {TF}
     T = promote_type(TF, eltype(u))
     !all(0 .< u .<= 1) && return T(-Inf) # if not in range return -Inf
 
@@ -115,7 +118,7 @@ function ρ⁻¹(::Type{<:GumbelGenerator}, ρ)
 end
 
 
-function Distributions._logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) where {d,TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) where {d,TF}
     T = promote_type(TF, eltype(u))
     !all(0 .< u .<= 1) && return T(-Inf)
 
@@ -157,4 +160,15 @@ function Distributions._logpdf(C::ArchimedeanCopula{d,GumbelGenerator{TF}}, u) w
 
     # Step 5. Combine
     return T(logφd + sum_log_invderiv)
+end
+
+function _liouville_conditioning_radial(G::GumbelGenerator, d::Real)
+    n = ceil(Int, d)
+
+    # Deliberately bypass the AbstractFrailtyGenerator specialization:
+    # AlphaStable is sampleable but has no pdf/logpdf, while the generic
+    # Williamson inverse can use Gumbel's explicit generator derivatives.
+    radial = invoke(𝒲₋₁, Tuple{Generator,Integer}, G, n)
+    isinteger(d) && return radial
+    return WilliamsonBetaProduct(radial, Distributions.Beta(d, n - d), n)
 end

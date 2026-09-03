@@ -9,11 +9,10 @@ function sampling_route_key(C)
     return (method, length(C) == 2 ? :bivariate : :multivariate)
 end
 
-@testset verbose=true "public sampling contract" begin
+@testset "public sampling contract" begin
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
         case, C = fixture.case, fixture.copula
         d = length(C)
-        test_progress("operations", "sampling", case.name, "contract")
 
         buffer = zeros(eltype(C), d, 2)
         @test rand!(StableRNG(20_000 + seed), C, buffer) === buffer
@@ -31,16 +30,15 @@ end
 
 @testset verbose=true "one distributional identity per sampler dispatch" begin
     selected_routes = Set(sampling_route_key(fixture.copula)
-                          for fixture in ROUTING_COPULA_FIXTURES)
+                          for fixture in COPULA_FIXTURES)
     tested_routes = Set{Any}()
-    for (index, fixture) in pairs(ROUTING_COPULA_FIXTURES)
+    for (index, fixture) in pairs(COPULA_FIXTURES)
         case, C = fixture.case, fixture.copula
         key = sampling_route_key(C)
         key in tested_routes && continue
 
         d = length(C)
         route_rng = StableRNG(400 + index)
-        test_progress("operations", "sampling", case.name, "route")
         n = 160
         U = rand(route_rng, C, n)
         point = fill(0.72, d)

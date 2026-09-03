@@ -27,16 +27,14 @@ struct BB10Generator{T} <: AbstractFrailtyGenerator
     function BB10Generator(θ, δ)
         (θ > 0) || throw(ArgumentError("θ must be > 0"))
         (0 ≤ δ ≤ 1) || throw(ArgumentError("δ must be in [0,1]"))
-        if θ == 1
-            return AMHGenerator(δ)
-        else 
-            θ, δ, _ = promote(θ, δ, 1.0)
-            return new{typeof(θ)}(θ, δ)
-        end
+        θf, δf = promote(float(θ), float(δ))
+        return new{typeof(θf)}(θf, δf)
     end
 end
-
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
+
+@inline limit_kind(G::BB10Generator, ::Val) = iszero(G.δ) ? Π_LIMIT : NO_LIMIT
+
 Distributions.params(G::BB10Generator) = (θ = G.θ, δ = G.δ)
 _unbound_params(::Type{<:BB10Generator}, d, θ) = [log(θ.θ), LogExpFunctions.logit(θ.δ)]
 _rebound_params(::Type{<:BB10Generator}, d, α) = (; θ = exp(α[1]), δ = LogExpFunctions.logistic(α[2]))
@@ -87,7 +85,7 @@ end
 end
 
 frailty(G::BB10Generator) = ShiftedNegBin(inv(G.θ), 1 - G.δ)
-function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
+function _archimedean_cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
     θ, δ = C.G.θ, C.G.δ
     uθ, vθ = u[1]^θ, u[2]^θ
     D = 1 - δ*(1 - uθ)*(1 - vθ)
@@ -95,7 +93,7 @@ function _cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB10Generator}
 end
 
 # --- log-density
-function Distributions._logpdf(C::ArchimedeanCopula{2,BB10Generator{TF}}, u) where {TF}
+function _archimedean_logpdf(C::ArchimedeanCopula{2,BB10Generator{TF}}, u) where {TF}
     T = promote_type(TF, eltype(u))
     (0.0 < u[1] ≤ 1.0 && 0.0 < u[2] ≤ 1.0) || return T(-Inf)
 

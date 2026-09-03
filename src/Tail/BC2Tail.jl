@@ -47,7 +47,7 @@ struct BC2Tail{T} <: DiscreteSpectralPickandsTail
     function BC2Tail(a::AbstractVector)
         length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates",))
         vals = collect(a)
-        T = promote_type(Float64, map(typeof, vals)...)
+        T = promote_type(Float64, eltype(vals))
         aa = T.(a)
         return new{T}(aa, DiscreteSpectralTail(hcat(aa, one(T) .- aa)))
     end

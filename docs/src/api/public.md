@@ -16,7 +16,7 @@ not.
 
 | Area | Public operations | Guaranteed behaviour |
 |:--|:--|:--|
-| Construction | `Family{d}(parameters...)`, `Family(d, parameters...)` | Both forms select dimension `d`, validate their inputs and construct equivalent models. A family may document an additional dimension-inferred form. |
+| Construction | `Family{d}(parameters...)`, `Family(d, parameters...)` | Both forms select dimension `d`, validate their inputs and construct equivalent models of that family. Parameter values may represent simpler limiting copulas without changing the concrete family returned. A family may document an additional dimension-inferred form. |
 | Distribution | `length`, `eltype`, `params`, `cdf`, `logcdf`, `rand` | Every copula is a multivariate distribution with uniform margins and support in the unit hypercube. Vector and matrix sampling preserve dimension and numeric type. |
 | Density | `pdf`, `logpdf`, `loglikelihood` | Available for absolutely continuous components. Singular and mixed copulas follow their documented generalized-density semantics and need not possess a Lebesgue density. |
 | Marginalization | `subsetdims` | Preserves the requested coordinates and their order. One coordinate yields its univariate marginal. |

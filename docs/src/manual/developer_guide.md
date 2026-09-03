@@ -545,14 +545,13 @@ Minimal outline:
 ```julia
 struct MyEllipticalCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
-    function MyEllipticalCopula(Σ)
-        if LinearAlgebra.isdiag(Σ)
-            return IndependentCopula(size(Σ,1))
-        end
+    function MyEllipticalCopula{d}(Σ) where {d}
+        size(Σ) == (d, d) || throw(DimensionMismatch("expected a $d×$d matrix"))
         make_cor!(Σ)  # normalize to correlation matrix
-        return new{size(Σ,1), typeof(Σ)}(Σ)
+        return new{d,typeof(Σ)}(Σ)
     end
 end
+MyEllipticalCopula(d, Σ) = MyEllipticalCopula{d}(Σ)
 
 # Required bindings
 U(::Type{<:MyEllipticalCopula}) = UnivariateDistribution
@@ -595,21 +594,14 @@ using Copulas, Distributions, Random
 
 struct MardiaCopula{P} <: Copulas.Copula{2}
     θ::P
-    function MardiaCopula(d, θ)
-        @assert d ==2
-        if !(-1 <= θ <= 1)
-            throw(ArgumentError("θ must be in [-1,1]"))
-        elseif θ == 0
-            return IndependentCopula(2)
-        elseif θ == 1
-            return MCopula(2)
-        elseif θ == -1
-            return WCopula(2)
-        else
-            return new{typeof(θ)}(θ)
-        end
+    function MardiaCopula(θ)
+        -1 <= θ <= 1 || throw(ArgumentError("θ must be in [-1,1]"))
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
+MardiaCopula(d, θ) = d == 2 ? MardiaCopula(θ) :
+    throw(DimensionMismatch("MardiaCopula is bivariate"))
 Distributions.params(C::MardiaCopula) = (; θ = C.θ,)
 function Copulas._cdf(C::MardiaCopula, u)
     # The joint CDF follows Mardia’s formulation:
@@ -621,6 +613,12 @@ function Copulas._cdf(C::MardiaCopula, u)
     return term1 + term2 + term3
 end
 ```
+
+Boundary parameters must not make a constructor return another copula type.
+Keeping `MardiaCopula(0)`, `MardiaCopula(1)`, and `MardiaCopula(-1)` in the
+`MardiaCopula` family makes inference independent of runtime values. Handle
+equivalent independence or Fréchet-bound cases inside numerical methods when a
+generic formula is undefined or a dedicated path is materially better.
 
 
 ### Defining the PDF and Random Generation
@@ -966,17 +964,15 @@ Tests are organized as follows:
 - `test/operations/` checks each public copula operation;
 - `test/correctness/` contains independent mathematical, statistical, and
   numerical references that span operations or describe a family;
-- `test/routing/` verifies that every dispatch and value-dependent branch
-  reached from the bestiary has a proof;
 - `test/extensions/` contains optional-extension regressions.
 
-For each public operation, the suite combines four kinds of evidence: the
-public contract is exercised on every applicable family; generic mechanisms are
-checked against independent oracles; specialized methods are compared with
-their generic implementation or another independent identity; and routing
-tests verify that every representative selects a proven path. Expensive
-integration, differentiation, fitting, and statistical checks should therefore
-run once per implementation mechanism, not once per family.
+- Every bestiary representative receives the applicable public-operation contracts.
+- Expensive mathematical or numerical mechanisms are validated once against an
+  independent oracle; `which` may be used locally to avoid repeating the same
+  proof for several families selecting the same implementation.
+- Parameter- or dimension-dependent branches invisible to method dispatch receive
+  focused regressions. Historical constructor reductions additionally receive
+  direct source/target equivalence tests.
 
 ## 4.2 Adding a copula family
 
@@ -990,13 +986,13 @@ After implementing and documenting `MyCopula`:
    ```
 
    This automatically checks the public `MyCopula{d}(...)` and
-   `MyCopula(d, ...)` constructors and subjects the first representative to
-   the family-wide operation contracts. Constructor keywords, exceptional
-   tolerances, or a legitimate inferred return union are optional metadata.
-2. Add further bestiary entries only when another dimension, representation, or
-   parameter regime selects different code. Julia's `which` detects method
-   dispatch, but not value-dependent branches inside a method, so each such
-   regime needs a representative.
+   `MyCopula(d, ...)` constructors and subjects every representative to the
+   family-wide operation contracts. Constructors must infer their concrete
+   family without a return union. Constructor keywords and exceptional
+   numerical tolerances remain optional metadata.
+2. Add another bestiary entry whenever another dimension, representation or
+    parameter regime exercises materially different code. Every such entry receives
+    the applicable public-operation contracts.
 3. If the copula can be singular or mixed, implement the appropriate internal
    measure-style trait. This determines whether density and invertible
    Rosenblatt requirements apply; do not duplicate that classification in the
@@ -1007,9 +1003,11 @@ After implementing and documenting `MyCopula`:
    `test/operations/` file. A specialization without a valid generic fallback
    needs an independent identity instead.
 5. Add a focused family regression only for information not implied by those
-   proofs, such as a published value, boundary reduction, atom mass, or
-   reproduced bug. Fitting methods advertised by package dispatch are
-   discovered automatically.
+   proofs, such as a published value, atom mass, or reproduced bug. Record
+   value-dependent equivalences in `test/correctness/reduction_graph.jl`; its
+   source constructors are automatically added to the bestiary and therefore
+   receive every public operation contract. Fitting methods advertised by
+   package dispatch are discovered automatically.
 
 Archimedean generators and extreme-value tails used by bestiary copulas are
 extracted automatically for their component contracts. Add a separate copula
@@ -1026,15 +1024,8 @@ When adding or changing a public operation `newstuff(C::Copula)`:
    to every applicable entry in `COPULA_FIXTURES`.
 3. Test every generic implementation mechanism once against an independent
    mathematical or statistical oracle.
-4. Discover the routes selected by `ROUTING_COPULA_FIXTURES`. Compare each
-   specialization with the generic implementation, or use an independent
-   identity when no generic comparison is valid. Add bestiary representatives
-   for any missing dimension-, representation-, or value-dependent branch.
-5. Close the route inventory by set equality, so a future unproved
-   specialization fails automatically. Add the operation file to
-   `test/runtests.jl`.
 
-A contract alone proves availability but not numerical correctness; one family
-example proves neither applicability nor dispatch exhaustiveness. Conversely,
-do not repeat an oracle after the generic mechanism and every route leading to
-it have already been proved.
+Use `which` locally to identify distinct implementations reached by the bestiary,
+and validate each distinct implementation once against the generic method or an
+independent oracle. Add focused regressions for important value-dependent branches
+that share the same Julia method.
