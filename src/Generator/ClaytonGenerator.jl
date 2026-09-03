@@ -125,7 +125,7 @@ function _archimedean_cdf(C::ClaytonCopula{d}, u) where {d}
     return @invoke _archimedean_cdf(C::ArchimedeanCopula, u)
 end
 
-function _archimedean_logpdf(C::ClaytonCopula{d,TG}, u) where {d,TG<:ClaytonGenerator}
+function _archimedean_logpdf(C::ClaytonCopula{d}, u) where {d}
     θ = C.G.θ
     T = θ + zero(eltype(u))
 
