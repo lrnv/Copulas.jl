@@ -90,7 +90,6 @@ conditional_measure_style(::Distributions.UnivariateDistribution) =
 
 @testset "public conditioning contract" begin
     @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES
-        test_progress("operations", "conditioning", fixture.case.name, "contract")
         test_conditioning_contract(
             fixture.copula,
             copula_contract_point(fixture.copula),
@@ -113,7 +112,6 @@ end
         method in seen && continue
         push!(seen, method)
         @testset "$name" begin
-            test_progress("equivalence", "distortion quantile", name)
             generic = invoke(quantile, Tuple{Copulas.Distortion,Real}, D, 0.63)
             @test isapprox(quantile(D, 0.63), generic; atol=2e-8, rtol=2e-8)
         end
@@ -133,7 +131,6 @@ end
         push!(seen, method)
 
         @testset "$(case.name)" begin
-            test_progress("equivalence", "bivariate conditioning", case.name)
             conditioned, target = 0.41, 0.63
             D = condition(C, 1, conditioned)
             if D isa Copulas.LiouvilleDistortion
@@ -225,7 +222,6 @@ end
         push!(seen, method)
 
         @testset "$(case.name)" begin
-            test_progress("equivalence", "multivariate conditioning", case.name)
             target_index = d
             target = 0.63
             D = condition(C, js, values)

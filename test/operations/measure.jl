@@ -19,7 +19,6 @@ end
             case, C = fixture.case, fixture.copula
             d = length(C)
             @testset "$(case.name)" begin
-                test_progress("operations", "measure", "contract", case.name)
                 @test Copulas.measure(C, zeros(d), ones(d)) ≈ 1 atol=1e-3
                 @test Copulas.measure(C, fill(0.6, d), fill(0.2, d)) == 0
             end
@@ -87,7 +86,6 @@ end
                 expected += (-1)^count(identity, mask) * cdf(C, point)
             end
             @testset "$(case.name)" begin
-                test_progress("operations", "measure", "route", case.name)
                 @test Copulas.measure(C, lower, upper) ≈ expected atol=1e-10
             end
             push!(tested_routes, route)

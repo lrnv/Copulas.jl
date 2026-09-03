@@ -24,7 +24,6 @@ end
             parent_point = ones(d)
             parent_point[collect(dims)] = point
             @testset "$(case.name)" begin
-                test_progress("operations", "subsetdims", "contract", case.name)
                 @test length(S) == 2
                 @test cdf(S, point) ≈ cdf(C, parent_point) atol=max(1e-5, case.numerical_atol)
                 @test length(subsetdims(S, (1,))) == 1
@@ -69,7 +68,6 @@ end
             parent_point = ones(d)
             parent_point[collect(dims)] .= u
             @testset "$(case.name)" begin
-                test_progress("operations", "subsetdims", "route", case.name)
                 @test cdf(S, u) ≈ cdf(C, parent_point)
             end
             push!(tested_routes, route)

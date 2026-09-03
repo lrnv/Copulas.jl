@@ -13,7 +13,6 @@ end
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
         case, C = fixture.case, fixture.copula
         d = length(C)
-        test_progress("operations", "sampling", case.name, "contract")
 
         buffer = zeros(eltype(C), d, 2)
         @test rand!(StableRNG(20_000 + seed), C, buffer) === buffer
@@ -40,7 +39,6 @@ end
 
         d = length(C)
         route_rng = StableRNG(400 + index)
-        test_progress("operations", "sampling", case.name, "route")
         n = 160
         U = rand(route_rng, C, n)
         point = fill(0.72, d)

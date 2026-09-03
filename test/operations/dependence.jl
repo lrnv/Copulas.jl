@@ -98,7 +98,6 @@ end
 
 @testset "public dependence-measure contract" begin
     @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES
-        test_progress("operations", "dependence", fixture.case.name, "contract")
         test_dependence_contract(fixture.copula)
     end
 end
@@ -119,7 +118,6 @@ end
             _dependence_is_defined(measure, copula) || continue
             key = dependence_operation_route_key(measure, copula)
             key in tested_routes && continue
-            test_progress("operations", "dependence", nameof(measure), case.name)
             test_scalar_dependence_result(measure, copula)
             push!(tested_routes, key)
         end
@@ -136,7 +134,6 @@ end
             _dependence_is_defined(measure, copula) || continue
             key = dependence_operation_route_key(measure, copula)
             key in tested_routes && continue
-            test_progress("operations", "dependence", nameof(measure), case.name)
             test_pairwise_dependence_result(measure, diagonal, copula)
             push!(tested_routes, key)
         end
@@ -187,7 +184,6 @@ end
                 continue
             end
             @testset "$(case.name)" begin
-                test_progress("equivalence", nameof(measure), case.name)
                 if measure === Copulas.τ &&
                    (C isa GaussianCopula || C isa TCopula)
                     # Kendall's tau is invariant over the radial distribution
@@ -311,7 +307,6 @@ end
         (; case, C, method) = route
         method === generic_method && continue
         @testset "$(case.name)" begin
-            test_progress("equivalence", "singular Kendall", case.name)
             expected = _singular_tau_oracle_with_limits(C)
             @test Copulas.τ(C) ≈ expected atol=2e-12 rtol=2e-12
         end

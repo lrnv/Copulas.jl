@@ -5,86 +5,11 @@
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
-    Statistics, StatsBase, Test, TOML
+    Statistics, StatsBase, Test
 
 const rng = StableRNG(123)
 
-
-##### Timings stuff
-
-const _TEST_RUN_STARTED = time()
-const _TEST_PROGRESS_LAST = Ref(_TEST_RUN_STARTED)
-const _TEST_PROGRESS_CURRENT = Ref{Union{Nothing,String}}(nothing)
-const _TEST_TIMINGS = Dict{String,Any}()
-function test_progress(parts...)
-    # Logging must not generate a new method instance for every combination of
-    # family names, symbols, dimensions, and fitting methods passed by tests.
-    Base.@nospecialize parts
-    next_path = join(string.(parts), " / ")
-    now = time()
-    if isnothing(_TEST_PROGRESS_CURRENT[])
-        @info "Starting test: path=$next_path, total=$(round(now - _TEST_RUN_STARTED; digits=2))"
-    else
-        @info "Test progress: completed=$(_TEST_PROGRESS_CURRENT[]), elapsed=$(round(now - _TEST_PROGRESS_LAST[]; digits=2)), next=$next_path, total=$(round(now - _TEST_RUN_STARTED; digits=2))"
-    end
-    _TEST_PROGRESS_CURRENT[] = next_path
-    _TEST_PROGRESS_LAST[] = now
-end
-
-function finish_test_progress()
-    isnothing(_TEST_PROGRESS_CURRENT[]) && return
-    now = time()
-    @info "Test progress completed=$(_TEST_PROGRESS_CURRENT[]), elapsed=$(round(now - _TEST_PROGRESS_LAST[]; digits=2)), total=$(round(now - _TEST_RUN_STARTED; digits=2))"
-    _TEST_PROGRESS_CURRENT[] = nothing
-    _TEST_PROGRESS_LAST[] = now
-end
-
-function timed_include(label, path)
-    started = time()
-    try
-        timing = @timed include(path)
-        _TEST_TIMINGS[string(label)] = Dict(
-            "elapsed_seconds" => timing.time,
-            "compile_seconds" => timing.compile_time,
-            "recompile_seconds" => timing.recompile_time,
-        )
-        return timing.value
-    finally
-        get!(_TEST_TIMINGS, string(label), Dict(
-            "elapsed_seconds" => time() - started,
-            "compile_seconds" => -1.0,
-            "recompile_seconds" => -1.0,
-        ))
-    end
-end
-
-function record_timing!(label, timing)
-    _TEST_TIMINGS[string(label)] = Dict(
-        "elapsed_seconds" => timing.time,
-        "compile_seconds" => timing.compile_time,
-        "recompile_seconds" => timing.recompile_time,
-    )
-
-    return timing.value
-end
-
-function write_test_timings()
-    path = get(ENV, "COPULAS_TEST_TIMINGS", "")
-    isempty(path) && return
-    mkpath(dirname(abspath(path)))
-    report = Dict(
-        "total_seconds" => time() - _TEST_RUN_STARTED,
-        "files" => _TEST_TIMINGS,
-    )
-    open(path, "w") do io
-        TOML.print(io, report; sorted=true)
-    end
-end
-atexit(write_test_timings)
-
-
 ######## Helpers for the actual tests
-
 function is_absolutely_continuous(C)
     Base.@nospecialize C
     return Copulas.copula_measure_style(C) isa Copulas.AbsolutelyContinuousMeasure
@@ -103,7 +28,6 @@ function _which(f, args...)
     Base.@nospecialize f args
     return which(f, Tuple{typeof.(args)...})
 end
-
 function dispatch_path(operation, C)
     Base.@nospecialize operation C
     d = length(C)
@@ -126,7 +50,6 @@ function dispatch_path(operation, C)
     end
     error("unknown dispatch operation $operation")
 end
-
 function dispatch_route_key(operation, C)
     Base.@nospecialize operation C
     method = dispatch_path(operation, C)
@@ -209,17 +132,14 @@ function copula_case(
     )
 end
 
-timed_include("setup/reduction_graph.jl", "correctness/reduction_graph.jl")
-timed_include("setup/bestiary.jl", "bestiary.jl")
-
+include("reduction_bestiary.jl")
+include("bestiary.jl")
 
 function build_copula_fixture(case)
     Base.@nospecialize case
     return (case = case, copula = build_typed(case))
 end
-const _COPULA_FIXTURES_TIMING = @timed map(build_copula_fixture, ALL_COPULA_CASES)
-const COPULA_FIXTURES = _COPULA_FIXTURES_TIMING.value
-record_timing!("setup/copula_fixtures", _COPULA_FIXTURES_TIMING)
+const COPULA_FIXTURES = map(build_copula_fixture, ALL_COPULA_CASES)
 
 # Public component cases derive from the same central copula bestiary. They
 # live here because several earlier mathematical-oracle files consume them
@@ -228,7 +148,7 @@ function generator_case_key(G)
     Base.@nospecialize G
     return (typeof(G), G isa WilliamsonGenerator ? isinteger(G.order) : nothing)
 end
-const _GENERATOR_CASES_TIMING = @timed unique(generator_case_key,
+const GENERATOR_CASES = unique(generator_case_key,
     [
         fixture.copula.G
         for fixture in COPULA_FIXTURES
@@ -236,34 +156,29 @@ const _GENERATOR_CASES_TIMING = @timed unique(generator_case_key,
     ],
 )
 
-const GENERATOR_CASES = _GENERATOR_CASES_TIMING.value
-record_timing!("setup/generator_cases", _GENERATOR_CASES_TIMING)
-
 function tail_case_key(entry)
     Base.@nospecialize entry
     tail, d = entry
     return (typeof(tail), d, typeof(params(tail)))
 end
-const _TAIL_CASES_TIMING = @timed unique(tail_case_key,
+const TAIL_CASES = unique(tail_case_key,
     [
         (fixture.copula.tail, length(fixture.copula))
         for fixture in COPULA_FIXTURES
         if fixture.copula isa ExtremeValueCopula
     ],
 )
-const TAIL_CASES = _TAIL_CASES_TIMING.value
-record_timing!("setup/tail_cases", _TAIL_CASES_TIMING)
 
 
 # Run cheap foundational checks first, then mathematical and operation proofs.
 # Routing must remain after every test that records proven dispatch routes.
-# Exact `.jl` paths are used throughout; `timed_include` does not alter them.
+# Exact `.jl` paths are used throughout;
 
 testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
     "api/constructor_validation.jl",
-    "correctness/reduction_graph_tests.jl",
+    "correctness/reduction_graph.jl",
     "api/public_compositions.jl",
     "api/copulas.jl",
     "api/generators.jl",
@@ -298,14 +213,12 @@ testfiles = (
     "extensions/expectation_maximization.jl"
 )
 
-@info "Starting main tests."
-try
-    @testset verbose=true "Copulas.jl" begin
-        @testset verbose=true "$f" for f in testfiles
-            test_progress(f)
-            timed_include(f, f)
+@testset verbose=true "Copulas.jl" begin
+    nfiles = length(testfiles)
+    for (i, f) in enumerate(testfiles)
+        @info "Running tests [$i/$nfiles]" file=f
+        @testset "$f" begin
+            include(f)
         end
     end
-finally
-    finish_test_progress()
 end

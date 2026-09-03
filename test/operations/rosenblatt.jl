@@ -34,7 +34,6 @@ end
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
         C = fixture.copula
         is_absolutely_continuous(C) || continue
-        test_progress("operations", "rosenblatt", fixture.case.name, "contract")
         u = copula_contract_point(C)
         U = rand(StableRNG(10_000 + seed), C, 4)
         test_rosenblatt_contract(C, u, U)
@@ -109,7 +108,6 @@ end
             expected[i] = cdf(Copulas.DistortionFromCop(C, js, values, i), u[i])
         end
         if !forward_done
-            test_progress("operations", "rosenblatt", case.name, "route")
             @test R ≈ expected atol=2e-6 rtol=2e-6
             push!(tested_forward, forward_key)
         end

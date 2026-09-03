@@ -56,9 +56,7 @@ end
     @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES
         case, C = fixture.case, fixture.copula
         u = copula_contract_point(C)
-        test_progress("operations", "distribution", case.name, "cdf")
         test_distribution_contract(C, u, case.numerical_atol, case.margin_atol)
-        test_progress("operations", "distribution", case.name, "density")
         test_density_contract(C, u)
     end
 end
@@ -135,7 +133,6 @@ end
             continue
         end
         @testset "$(case.name)" begin
-            test_progress("equivalence", "cdf", case.name)
             expected = if C isa ArchimedeanCopula
                 Copulas.ϕ(C.G, sum(Copulas.ϕ⁻¹(C.G, x) for x in u))
             else
@@ -175,7 +172,6 @@ end
     h = 2e-5
     for (; case, C, method) in routes
         @testset "$(case.name)" begin
-            test_progress("equivalence", "logpdf", case.name)
             expected = (
                 cdf(C, u .+ (h, h)) - cdf(C, u .+ (h, -h)) -
                 cdf(C, u .+ (-h, h)) + cdf(C, u .- (h, h))

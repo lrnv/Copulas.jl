@@ -3,20 +3,17 @@
 @testset "public Sklar fitting path" begin
     source = SklarDist(ClaytonCopula{2}(1.0), (Normal(), Exponential()))
     data = rand(StableRNG(111), source, 8)
-    test_progress("routing fitting", "Sklar IFM")
     fitted = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
                  copula_method=:itau, vcov=false, derived_measures=false)
     @test fitted isa SklarDist
     @test fitted.C isa ClaytonCopula{2}
 
-    test_progress("routing fitting", "Sklar model")
     model = fit(CopulaModel,
         SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
         copula_method=:itau, vcov=false, derived_measures=false)
     @test model.result isa SklarDist
     @test StatsBase.nobs(model) == size(data, 2)
 
-    test_progress("routing fitting", "Sklar ECDF")
     ecdf_fit = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
                    sklar_method=:ecdf, copula_method=:itau, vcov=false,
                    derived_measures=false)
@@ -25,12 +22,10 @@ end
 
 @testset "public covariance fitting option" begin
     U = rand(StableRNG(112), ClaytonCopula{2}(1.0), 8)
-    test_progress("routing fitting", "covariance hessian")
     model = fit(CopulaModel, ClaytonCopula{2}, U; method=:itau,
                 vcov=true, vcov_method=:hessian, derived_measures=false)
     @test StatsBase.vcov(model) isa AbstractMatrix
     @test size(StatsBase.vcov(model)) == (StatsBase.dof(model), StatsBase.dof(model))
-    test_progress("routing fitting", "invalid covariance method")
     @test_throws ArgumentError fit(CopulaModel, ClaytonCopula{2}, U;
         method=:itau, vcov=true, vcov_method=:invalid, derived_measures=false)
 end
@@ -149,8 +144,6 @@ end
             route = fitting_execution_route_key(C, route_data, method)
             push!(selected_routes, route)
             route in tested_routes && continue
-
-            test_progress("fitting engine", case.name, method, nameof(CT), d)
 
             U = rand(StableRNG(30_000 + index), C, 12)
             route_kwargs = C isa EmpiricalEVCopula ? (d == 2 ? (; grid=21) : (; degree=1)) :
