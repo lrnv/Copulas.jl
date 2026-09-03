@@ -31,22 +31,23 @@ which is still a function of only the norm of $\boldsymbol t$.
 
 To fix ideas, for Gaussian random vectors, $\psi(t) = e^{-\frac{t^2}{2}}$.
 
-!!! info "Sampling with `Distributions.jl`"
-    Elliptical random vectors in the Gaussian and Student families are available from `Distributions.jl`:
+::: info Sampling with `Distributions.jl`
 
-    ```@example 3
-    using Distributions
-    Σ = [1 0.5
-        0.5 1] # variance-covariance matrix.
-    ν = 3 # number of degrees of freedom for the student.
-    N = MvNormal(Σ)
-    ```
+Elliptical random vectors in the Gaussian and Student families are available from `Distributions.jl`:
 
-    ```@example 3
-    T = MvTDist(ν,Σ)
-    ```
+```@example 3
+using Distributions
+Σ = [1 0.5
+    0.5 1] # variance-covariance matrix.
+ν = 3 # number of degrees of freedom for the student.
+N = MvNormal(Σ)
+```
 
+```@example 3
+T = MvTDist(ν,Σ)
+```
 
+:::
 
 Elliptical copulas are simply copulas of elliptical distributions. This simplicity of definition is paid for in the expression of the copulas itself: the obtained function has usually no better expression than: 
 ```math
@@ -63,9 +64,11 @@ Moreover, the form of dependence structures that can be reached inside this clas
 On the other hand, there exist performant estimators of high-dimensional covariance matrices, and a large theory is built on the elliptical assumption of high dimensional random vectors, see e.g., [elidan2013,friedman2010,muller2019](@cite) among others. See also [derumigny2022](@cite) for a recent work on nonparametric estimation of the underlying univariate spherical distribution. 
 
 
-!!! info "Note on internal implementation"
-    If the exposition we just did on characteristic functions of Elliptical random vectors is fundamental to the definition of elliptical copulas, the package does not use this at all to function, and rather rely on the existence of multivariate and corresponding univariate families of distributions in `Distributions.jl`. 
+::: info Note on internal implementation
 
+If the exposition we just did on characteristic functions of Elliptical random vectors is fundamental to the definition of elliptical copulas, the package does not use this at all to function, and rather rely on the existence of multivariate and corresponding univariate families of distributions in `Distributions.jl`. 
+
+:::
 
 You can obtain these elliptical copulas by the following code: 
 ```julia

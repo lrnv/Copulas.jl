@@ -36,8 +36,11 @@ In this package, there is an abstract class [`Generator`](@ref) that contains th
 
     On the other hand, many parametric Archimedean generators are specifically implemented, see [this list of implemented archimedean generator](@ref available_archimedean_models) to get an overview of which ones are availiable. 
 
-!!! info "Empirical generator estimator"
-    From data, you can estimate a $d$-Archimedean generator nonparametrically via the empirical Kendall distribution. The estimator is available as [`EmpiricalGenerator`](@ref), see the empirical manual page for the method and usage.
+::: info Empirical generator estimator
+
+From data, you can estimate a $d$-Archimedean generator nonparametrically via the empirical Kendall distribution. The estimator is available as [`EmpiricalGenerator`](@ref), see the empirical manual page for the method and usage.
+
+:::
 
 If you do not find the generator you need, you may define it yourself by subtyping `Generator`. The API requires only two methods:
 
@@ -107,12 +110,15 @@ In this package, we implemented it through the [`WilliamsonGenerator`](@ref) cla
 
 This function computes the Williamson d-transform of the provided random variable $X$. See [williamson1956, mcneil2009](@cite) for the literature.
 
-!!! info "`max_monotony` of Williamson generators"
-    The $d$-transform of a positive random variable is $k$-monotone for integer dimensions $k \le d$. Its max monotony is stored as the real order $d$. This has a few implications, one of the biggest being that at an integer order $d$, the corresponding $d$-variate Archimedean copula has no density.
-    
-    More generally, if you want your Archimedean copula to have a density, you must use a generator that is more-monotone than the dimension of your model.
+::: info `max_monotony` of Williamson generators
 
-    Orders below two remain useful for Williamson reductions and Liouville marginals or conditionals, even though they cannot by themselves generate a multivariate Archimedean copula.
+The $d$-transform of a positive random variable is $k$-monotone for integer dimensions $k \le d$. Its max monotony is stored as the real order $d$. This has a few implications, one of the biggest being that at an integer order $d$, the corresponding $d$-variate Archimedean copula has no density.
+
+More generally, if you want your Archimedean copula to have a density, you must use a generator that is more-monotone than the dimension of your model.
+
+Orders below two remain useful for Williamson reductions and Liouville marginals or conditionals, even though they cannot by themselves generate a multivariate Archimedean copula.
+
+:::
 
 ```@docs; canonical=false
 WilliamsonGenerator
@@ -255,25 +261,27 @@ using Copulas: 𝒲₋₁, ClaytonGenerator
 
 for which the corresponding distribution is known but has no particular name, thus we implemented it under the `ClaytonWilliamsonDistribution` name.
 
-!!! info "Frailty decomposition for completely monotone generators"
-    It is well-known that completely monotone generators are Laplace transforms of non-negative random variables. This gives rise to another decomposition in [hofert2013](@cite):
+::: property Frailty decomposition
 
-    ::: property Frailty decomposition
+When $\phi$ is completely monotone, it is the Laplace transform of a non-negative random variable $W$ such that
 
-    When $\phi$ is completely monotone, it is the Laplace transform of a non-negative random variable $W$ such that
+$$\boldsymbol U = \phi(\boldsymbol Y / W),$$  where $\boldsymbol Y$ is a vector of independent and identically distributed (i.i.d.) exponential distributions.
 
-    $$\boldsymbol U = \phi(\boldsymbol Y / W),$$  where $\boldsymbol Y$ is a vector of independent and identically distributed (i.i.d.) exponential distributions.
+:::
 
-    :::
+::: info Frailty decomposition for completely monotone generators
 
-    The link between the distribution of $R$ and the distribution of $W$ can be made explicit. We provide the `WilliamsonFromFrailty()` constructor to build the distribution of $R$ from the distribution of $W$ and return the corresponding `WilliamsonGenerator` from the frailty distribution itself. The corresponding φ is simply the Laplace transform of $W$. This is another way to construct new Archimedean copulas !  
+It is well-known that completely monotone generators are Laplace transforms of non-negative random variables. This gives rise to another decomposition in [hofert2013](@cite):
 
-    We use this fraily approach for several generators, since sometimes it is faster, including e.g. the Clayton one with positive dependence:
-    ```@example
-    using Copulas: 𝒲₋₁, ClaytonGenerator
-    𝒲₋₁(ClaytonGenerator(10), 3)
-    ```
+The link between the distribution of $R$ and the distribution of $W$ can be made explicit. We provide the `WilliamsonFromFrailty()` constructor to build the distribution of $R$ from the distribution of $W$ and return the corresponding `WilliamsonGenerator` from the frailty distribution itself. The corresponding φ is simply the Laplace transform of $W$. This is another way to construct new Archimedean copulas !  
 
+We use this fraily approach for several generators, since sometimes it is faster, including e.g. the Clayton one with positive dependence:
+```@example
+using Copulas: 𝒲₋₁, ClaytonGenerator
+𝒲₋₁(ClaytonGenerator(10), 3)
+```
+
+:::
 
 ```@docs; canonical=false
 ArchimedeanCopula

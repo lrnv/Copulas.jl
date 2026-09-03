@@ -198,8 +198,11 @@ We now generate samples from several radial laws, fit R̂, and compare:
 - original vs simulated copula scatter,
 - optionally histograms of R vs R̂ (or their logs for heavy tails).
 
-!!! info "Sample sizes"
-    To keep docs fast, we use modest sample sizes (n ≈ 1000–1500). Increase locally if you want smoother curves.
+::: info Sample sizes
+
+To keep docs fast, we use modest sample sizes (n ≈ 1000–1500). Increase locally if you want smoother curves.
+
+:::
 
 ### 1) Dirac at 1 (lower-bound Clayton), d = 3
 

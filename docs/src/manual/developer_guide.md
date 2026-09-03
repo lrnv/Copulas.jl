@@ -10,9 +10,12 @@ It focuses on what must be defined for a new copula to work consistently
 with the main interfaces (`cdf`, `pdf`, `rand`, `fit`, etc.), without going into
 mathematical details.
 
-!!! info "Target audience"
-    This page is intended for package contributors and advanced users who want to extend 
-    `Copulas.jl` with new copula families, internal optimizations, or additional features.
+::: info Target audience
+
+This page is intended for package contributors and advanced users who want to extend 
+`Copulas.jl` with new copula families, internal optimizations, or additional features.
+
+:::
 
 !!! warning "Internal interfaces are not covered by SemVer"
     This guide documents both the public extension surface and implementation details
@@ -104,17 +107,19 @@ the two dimension spellings above.
 
 Once defined, these automatically integrate with the `Copulas.jl` and `Distributions.jl` interface.
 
-!!! info "Sampling contract"
-    The matrix `_rand!` method is the sampling primitive. The generic
-    `Distributions.jl` machinery handles the one-sample/vector interface by
-    delegating to the matrix sampler, so copula implementations should define
-    only the matrix method. Before `_rand!` is called, the public interface
-    validates that the output has `length(C)` rows; implementations may assume
-    that the matrix has size `d × n` and should not repeat this check. When
-    several sampling algorithms are available, select among them with ordinary
-    Julia dispatch on the copula/tail type rather than with a separate routing
-    trait.
+::: info Sampling contract
 
+The matrix `_rand!` method is the sampling primitive. The generic
+`Distributions.jl` machinery handles the one-sample/vector interface by
+delegating to the matrix sampler, so copula implementations should define
+only the matrix method. Before `_rand!` is called, the public interface
+validates that the output has `length(C)` rows; implementations may assume
+that the matrix has size `d × n` and should not repeat this check. When
+several sampling algorithms are available, select among them with ordinary
+Julia dispatch on the copula/tail type rather than with a separate routing
+trait.
+
+:::
 
 ## 1.3 Dependence metrics
 
@@ -266,14 +271,14 @@ Once the generator defines `ϕ`, and `max_monotony`, all functions such as
 
 Only fitting routines or dependence metrics need to be added if the defaults are insufficient.
 
-!!! info "Other generator interfaces"
-    1) If you generator has only a one-dimensional parametrisation, then you might look at the `UnivariateGenerator<:Generator` interface that is a bit easier. 
-    2) If your generator is a Frailty, then there is `FrailtyGenerator`
-    3) If you know the radial part, use `𝒲 === WilliamsonGenerator` directly. 
-    4) If you are lost, just open an issue ;)
+::: info Other generator interfaces
 
+1) If you generator has only a one-dimensional parametrisation, then you might look at the `UnivariateGenerator<:Generator` interface that is a bit easier. 
+2) If your generator is a Frailty, then there is `FrailtyGenerator`
+3) If you know the radial part, use `𝒲 === WilliamsonGenerator` directly. 
+4) If you are lost, just open an issue ;)
 
-
+:::
 
 ## 2.2 Extreme-Value copulas
 
@@ -332,11 +337,14 @@ Copulas.ℓ(tail::MyTail, x) = ...
 This is the pattern used by families such as Logistic, Galambos,
 Hüsler-Reiss, Mixed, extremal-``t``, and Cuadras-Augé.
 
-!!! info "Why keep `BivariatePickandsTail`?"
-    A multivariate family can still have exceptionally good analytic formulas
-    in dimension two. `BivariatePickandsTail` lets the package retain `A`, `dA`, `d²A`,
-    conditional distortions, and the Ghoudi sampler without pretending that the
-    mathematical family stops at ``d=2``.
+::: info Why keep `BivariatePickandsTail`?
+
+A multivariate family can still have exceptionally good analytic formulas
+in dimension two. `BivariatePickandsTail` lets the package retain `A`, `dA`, `d²A`,
+conditional distortions, and the Ghoudi sampler without pretending that the
+mathematical family stops at ``d=2``.
+
+:::
 
 ### Constructor convention
 

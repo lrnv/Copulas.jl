@@ -87,12 +87,15 @@ A\!\left(
 \right\}.
 ```
 
-!!! info "Bivariate and multivariate EV copulas"
-    Copulas.jl now uses ``\ell`` as the mathematical EV interface in arbitrary
-    dimension while preserving the mature bivariate Pickands machinery.
-    Bivariate formulas based on `A`, `dA`, `d²A`, Ghoudi sampling, conditional
-    distortions, and family-specific kernels remain available whenever the tail
-    provides them.
+::: info Bivariate and multivariate EV copulas
+
+Copulas.jl now uses ``\ell`` as the mathematical EV interface in arbitrary
+dimension while preserving the mature bivariate Pickands machinery.
+Bivariate formulas based on `A`, `dA`, `d²A`, Ghoudi sampling, conditional
+distortions, and family-specific kernels remain available whenever the tail
+provides them.
+
+:::
 
 !!! tip "Think family first, backend second"
     A public constructor identifies the **mathematical family**. It does not ask
@@ -248,10 +251,13 @@ A valid ``2\times2`` correlation matrix likewise keeps its matrix
 representation, while dispatch selects the specialized bivariate kernel from
 its off-diagonal correlation.
 
-!!! info "One public family, parameter-driven dispatch"
-    Scalar and matrix constructors of each family share one tail type. The
-    stored parameter type selects the exchangeable or general representation,
-    and dimension-specific methods retain the fast bivariate kernels.
+::: info One public family, parameter-driven dispatch
+
+Scalar and matrix constructors of each family share one tail type. The
+stored parameter type selects the exchangeable or general representation,
+and dimension-specific methods retain the fast bivariate kernels.
+
+:::
 
 ### Tawn and asymmetric Galambos subset models
 
@@ -348,10 +354,13 @@ Gudendorf and Segers [gudendorf2012multivariate](@cite).
 The resulting object stores a `DiscreteSpectralTail`; consequently the fitted
 STDF is valid by construction and exact spectral sampling is available.
 
-!!! info "One public constructor, two internal representations"
-    `EmpiricalEVCopula` uses the lightweight historical implementation in two
-    dimensions and the shape-constrained spectral representation in higher
-    dimensions.
+::: info One public constructor, two internal representations
+
+`EmpiricalEVCopula` uses the lightweight historical implementation in two
+dimensions and the shape-constrained spectral representation in higher
+dimensions.
+
+:::
 
 ## Advanced Concepts
 

@@ -48,8 +48,11 @@ $$\lim\limits_{N\to\infty} \phi_N \sup_{\boldsymbol u \in [0,1]^d} \lvert\hat{C}
 
 $\hat{C}_N$ then converges (weakly) to $C$, the true copula of the random vector $\boldsymbol X$, when the number of observations $N$ goes to infinity. 
 
-!!! info "The empirical copula is not a true copula"
-    Despite its name, $\hat{C}_N$ is not a copula since it does not have uniform marginals. Be careful. 
+::: info The empirical copula is not a true copula
+
+Despite its name, $\hat{C}_N$ is not a copula since it does not have uniform marginals. Be careful. 
+
+:::
 
 In the package, this copula is implemented as the `EmpiricalCopula`: 
 
@@ -57,9 +60,12 @@ In the package, this copula is implemented as the `EmpiricalCopula`:
 EmpiricalCopula
 ```
 
-!!! info "Conditionals and distortions"
-    - Distortions: available via the generic implementation (partial-derivative ratios). For the empirical copula, derivatives are stepwise; interpret results carefully near sample jumps.
-    - Conditional copulas: available via the generic implementation. No specialized fast path is provided.
+::: info Conditionals and distortions
+
+- Distortions: available via the generic implementation (partial-derivative ratios). For the empirical copula, derivatives are stepwise; interpret results carefully near sample jumps.
+- Conditional copulas: available via the generic implementation. No specialized fast path is provided.
+
+:::
 
 ### Visual: empirical copula from pseudo-observations
 
@@ -98,9 +104,12 @@ In the package, this copula is implemented as `BetaCopula`:
 BetaCopula
 ```
 
-!!! info "Conditionals and distortions"
-    - Distortions: specialized fast path returning a MixtureModel of Beta components for efficient evaluation and sampling.
-    - Conditional copulas: available via the generic implementation (no dedicated fast path).
+::: info Conditionals and distortions
+
+- Distortions: specialized fast path returning a MixtureModel of Beta components for efficient evaluation and sampling.
+- Conditional copulas: available via the generic implementation (no dedicated fast path).
+
+:::
 
 ### Performance notes
 - Construction is O(d·n) after pseudo-observations are computed. Evaluation at a point uses O(d·n) basis lookups; consider subsampling for very large n.
@@ -126,9 +135,12 @@ In the package, this copula is implemented as `BernsteinCopula`:
 BernsteinCopula
 ```
 
-!!! info "Conditionals and distortions"
-    - Distortions: specialized fast path returning a MixtureModel of Beta components (weights from Bernstein grid finite differences conditioned on $\boldsymbol u_J$).
-    - Conditional copulas: available via the generic implementation (no dedicated fast path).
+::: info Conditionals and distortions
+
+- Distortions: specialized fast path returning a MixtureModel of Beta components (weights from Bernstein grid finite differences conditioned on $\boldsymbol u_J$).
+- Conditional copulas: available via the generic implementation (no dedicated fast path).
+
+:::
 
 ### Performance notes
 - Complexity grows with the grid size ∏_j (m_j+1) for cdf and ∏_j m_j for pdf. In higher dimensions, keep m small or prefer the 2D specialized paths provided.
@@ -200,9 +212,12 @@ In the package, this copula is implemented as `CheckerboardCopula`:
 CheckerboardCopula
 ```
 
-!!! info "Conditionals and distortions"
-    - Distortions: specialized for conditioning on a single coordinate (p=1) via a histogram-bin distortion on the corresponding slice.
-    - Conditional copulas: specialized projection onto remaining axes, renormalizing the mass in the fixed bins, still returns a Checkerboard. 
+::: info Conditionals and distortions
+
+- Distortions: specialized for conditioning on a single coordinate (p=1) via a histogram-bin distortion on the corresponding slice.
+- Conditional copulas: specialized projection onto remaining axes, renormalizing the mass in the fixed bins, still returns a Checkerboard. 
+
+:::
 
 ### Performance notes
 - Construction cost scales with sample size but stores only occupied boxes (sparse). CDF evaluation is O(#occupied boxes) at query time.
