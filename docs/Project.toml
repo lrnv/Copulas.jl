@@ -14,8 +14,6 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 Roots = "f2b01f46-fcfa-551c-844a-d8ac1e96c665"
 Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 StatsBase = "2913bbd2-ae8a-5f71-8c99-4fb6c76f3a91"
-VineCopulas = "58f8e485-d1fe-48aa-8792-3d6ba0b7fb45"
 
 [sources]
 DocumenterVitepress = {rev = "allow_custom_admonitions", url = "https://github.com/lrnv/DocumenterVitepress.jl"}
-VineCopulas = {url = "https://github.com/Santymax98/VineCopulas.jl"}
