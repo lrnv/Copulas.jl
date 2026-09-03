@@ -18,6 +18,7 @@ makedocs(;
     sitename="Copulas.jl",
     format=DocumenterVitepress.MarkdownVitepress(
         repo = "https://github.com/lrnv/Copulas.jl",
+        keep = :patch,
     ),
     pages=[
         "Home"=>"index.md",
