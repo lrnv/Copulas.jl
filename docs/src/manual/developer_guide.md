@@ -192,15 +192,33 @@ This is how we enable conditioning on the SklarDist level.
 The fitting interface allows your copula to work with `fit(::Type{CopulaModel}, ...)`
 and the general estimation framework.
 
-### Required internal methods
+### Required fitting methods
+
+| Method                              | Purpose                                                       |
+| ----------------------------------- | ------------------------------------------------------------- |
+| `_available_fitting_methods(CT, d)` | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
+| `_fit(CT, U, ::Val{:method})`       | Core fitting routine returning `(copula, meta)`               |
+
+Example minimal skeleton to produce a fitting rtoutine for a custom fitting method: 
+
+```julia
+_available_fitting_methods(::Type{MyCopula}, d) = (:mymethod,)
+
+function _fit(::Type{MyCopula}, U, ::Val{:mymethod})
+    θ̂ = .... # do things.
+    return MyCopula(size(U, 1), θ̂), (; θ̂,)
+end
+```
+
+but sometimes its easier to opt into know fitting methods: 
+
+### Opting into generic fitting methods
 
 | Method                              | Purpose                                                       |
 | ----------------------------------- | ------------------------------------------------------------- |
 | `_example(CT, d)`                   | Returns a representative instance used for defaults           |
 | `_unbound_params(CT, d, params)`    | Maps parameter tuple → unconstrained vector                   |
 | `_rebound_params(CT, d, α)`         | Inverse map for optimizer results                             |
-| `_available_fitting_methods(CT, d)` | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
-| `_fit(CT, U, ::Val{:method})`       | Core fitting routine returning `(copula, meta)`               |
 
 Example minimal skeleton:
 
@@ -208,11 +226,11 @@ Example minimal skeleton:
 _example(::Type{MyCopula}, d) = MyCopula(d, default_parameters...)
 _unbound_params(::Type{MyCopula}, d, params) = [log(params.θ)]
 _rebound_params(::Type{MyCopula}, d, α) = (; θ = exp(α[1]))
-_available_fitting_methods(::Type{MyCopula}, d) = (:mle, :itau)
+_available_fitting_methods(::Type{MyCopula}, d) = (:mle, :itau, :ibeta,) # or others...
 
 function _fit(::Type{MyCopula}, U, ::Val{:mle})
     θ̂ = optimize_mle(U)
-    return MyCopula(size(U, 2), θ̂), (; θ̂, optimizer = :lbfgs, converged = true)
+    return MyCopula(size(U, 1), θ̂), (; θ̂, optimizer = :lbfgs, converged = true)
 end
 ```
 
@@ -226,6 +244,7 @@ Once the above methods are implemented, your family becomes automatically compat
 - `Distributions.loglikelihood`
 - `StatsBase.aic`, `StatsBase.bic`
 
+the requires _fit function for :mle for example might already be provided by the package, test your case.
 
 
 
@@ -750,15 +769,8 @@ the core functional behavior of the family.
 struct Nelsen2Generator{T} <: Copulas.AbstractUnivariateGenerator # subtype of Generator
     θ::T
     function Nelsen2Generator(θ)
-        if θ < 1
-            throw(ArgumentError("θ must be ≥ 1"))
-        elseif θ == 1
-            return Copulas.WGenerator()
-        elseif θ == Inf
-            return Copulas.MGenerator()
-        else
-            θ, _ = promote(θ, 1.0)
-            return new{typeof(θ)}(θ)
+            θf = float(θ)
+            return new{typeof(θf)}(θf)
         end
     end
 end
@@ -850,10 +862,8 @@ struct GumbelTail{T} <: Copulas.OneParameterPickandsTail # subtype of Tail
     θ::T
     function GumbelTail(θ)
         !(1 <= θ) && throw(ArgumentError("θ must be in [1, ∞)"))
-        θ == 1 && return NoTail()
-        isinf(θ) && return MTail()
-        θ, _ = promote(θ, 1.0)
-        return new{typeof(θ)}(θ)
+        θf = float(θ)
+        return new{typeof(θf)}(θf)
     end
 end
 
