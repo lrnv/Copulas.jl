@@ -400,14 +400,14 @@ function _exchangeability_sn_statistic(U::AbstractMatrix, permutations, weight::
             s += abs2(diff) * _exchangeability_weight(u, perm, weight)
         end
     end
-    return s / n
+    return s
 end
 
 function _multiplier_representation(h::ExchangeabilityHypothesis, ::Val{:Sn}, U::AbstractMatrix)
     permutations = _exchangeability_permutations(h.permutations, size(U, 1))
     matrices, weights, bandwidth = _exchangeability_multiplier_matrices(U, permutations, h.weight)
     _, n = size(U)
-    return (;matrices, weights, scale=inv(n^2), strict=true, correction=nothing,
+    return (;matrices, weights, scale=inv(n), strict=true, correction=nothing,
             details=(; permutations=h.permutations, generator=permutations, weight=h.weight, multiplier=:exponential, derivative_bandwidth=bandwidth),)
 end
 

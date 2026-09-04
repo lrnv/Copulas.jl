@@ -271,7 +271,6 @@ For a collection `\mathcal G` of non-identity permutations, the implemented stat
 ```math
 S_n^{\mathrm{ex}}
 =
-\frac{1}{n}
 \sum_{\pi\in\mathcal G}
 \sum_{i=1}^{n}
 \left[

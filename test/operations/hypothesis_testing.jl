@@ -119,6 +119,24 @@ end
     end
 
     @testset "ExchangeabilityCopulaTest" begin
+        @testset "Published Sn normalization" begin
+            Udet = [
+                0.2 0.5 0.8
+                0.3 0.9 0.6
+            ]
+
+            permutations = ((2, 1),)
+            expected = 1 / 3
+
+            @test Copulas._exchangeability_sn_statistic(Udet, permutations, :none,) ≈ expected
+
+            hdet = Copulas.ExchangeabilityHypothesis(permutations=(2, 1), weight=:none,)
+            rep = Copulas._multiplier_representation(hdet, Val(:Sn), Udet,)
+            @test rep.scale == inv(size(Udet, 2))
+            Tdet = ExchangeabilityCopulaTest(Udet; permutations=(2, 1), weight=:none, pseudo_values=true, N=1, rng=Xoshiro(779),)
+            @test teststatistic(Tdet) ≈ expected
+        end
+
         U2 = rand(Xoshiro(123), ClaytonCopula(2, 3.0), 80)
         t2 = ExchangeabilityCopulaTest(U2; N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
 
