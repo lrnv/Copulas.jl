@@ -78,6 +78,14 @@ pseudo_values=true
 
 to avoid ranking them again.
 
+::: warning Continuous margins and ties
+
+The currently implemented copula hypothesis tests assume continuous margins and therefore require tie-free observations in every margin. Tied or discrete data are rejected with an `ArgumentError`.
+
+This is intentional: ordinal ranking would otherwise assign distinct ranks to tied observations and could produce apparently valid p-values without the tie-aware empirical-process or bootstrap theory required for such data. Tie-aware procedures are outside the scope of the current implementation.
+
+:::
+
 Given pseudo-observations $\boldsymbol U_1,\ldots,\boldsymbol U_n$, the empirical copula is
 
 ```math

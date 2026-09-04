@@ -68,6 +68,26 @@ end
         @test !(:testname in names(Copulas))
     end
 
+    @testset "Tied margins are rejected" begin
+        Utied = [
+            0.1 0.1 0.4 0.7
+            0.2 0.3 0.6 0.8
+        ]
+
+        err = try
+            IndependenceCopulaTest(Utied; N=2, rng=Xoshiro(10),)
+        catch e
+            e
+        end
+
+        @test err isa ArgumentError
+        @test occursin("tie-free margins", sprint(showerror, err))
+        @test occursin("margin 1", sprint(showerror, err))
+
+        # Supplying pseudo-observations must not bypass the tie check.
+        @test_throws ArgumentError IndependenceCopulaTest(Utied; pseudo_values=true, N=2, rng=Xoshiro(11),)
+    end
+
     @testset "IndependenceCopulaTest" begin
         U0 = rand(Xoshiro(123), IndependentCopula(2), 80)
         t0 = IndependenceCopulaTest(U0; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
@@ -126,7 +146,7 @@ end
         @test tc.details.generator == ((2, 1, 3),)
 
         x = rand(Xoshiro(2), 120)
-        y = clamp.(x .+ 0.04 .* randn(Xoshiro(3), 120), 0, 1)
+        y = x .+ 0.04 .* randn(Xoshiro(3), 120)
         z = rand(Xoshiro(4), 120)
         Ua = permutedims(hcat(x, y, z))
         ta = ExchangeabilityCopulaTest(Ua; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
@@ -235,6 +255,40 @@ end
         @test Tc.hypothesis.kind === :composite
         @test Tc.hypothesis.model === M
         @test 0 < pvalue(Tc) < 1
+
+        @testset "Composite GOF preserves runtime fitting structure" begin
+            # NestedArchimedeanCopula stores its tree structure and inner
+            # generator families in the instance, so refitting from typeof(C)
+            # is insufficient.
+            Cnested = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.5); leaves=[1], children=[ClaytonCopula(2, 3.0) => [2, 3]],)
+            Unested = rand(Xoshiro(901), Cnested, 30)
+
+            Mnested = fit(CopulaModel, Cnested, Unested; vcov=false, derived_measures=false,)
+
+            Mnested_refit = Copulas._gof_refit(Mnested, Unested)
+            Cnested_refit = Copulas._copula_of(Mnested_refit)
+
+            @test Cnested_refit isa NestedArchimedeanCopula
+            @test Cnested_refit.leafdims == Cnested.leafdims
+            @test length(Cnested_refit.children) == length(Cnested.children)
+            @test Cnested_refit.children[1][2] == Cnested.children[1][2]
+            @test typeof(Cnested_refit.G).name.wrapper === typeof(Cnested.G).name.wrapper
+            @test typeof(Cnested_refit.children[1][1].G).name.wrapper === typeof(Cnested.children[1][1].G).name.wrapper
+
+            # SurvivalCopula stores the flip pattern in the instance rather
+            # than in its concrete type.
+            Csurvival = SurvivalCopula(ClaytonCopula(3, 2.5), (1, 3))
+            Usurvival = rand(Xoshiro(902), Csurvival, 40)
+
+            Msurvival = fit(CopulaModel, typeof(Csurvival), Usurvival; method=:itau, flips=Csurvival.flipmask, vcov=false, derived_measures=false,)
+
+            Msurvival_refit = Copulas._gof_refit(Msurvival, Usurvival)
+            Csurvival_refit = Copulas._copula_of(Msurvival_refit)
+
+            @test Csurvival_refit isa SurvivalCopula
+            @test Csurvival_refit.flipmask == Csurvival.flipmask
+            @test Csurvival_refit.flipmask == (true, false, true)
+        end
 
         io = IOBuffer()
         show(io, MIME("text/plain"), Tc)

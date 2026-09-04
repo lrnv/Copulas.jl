@@ -134,11 +134,18 @@ end
 
 function _test_pseudos(U::AbstractMatrix{<:Real}, pseudo_values::Bool)
     all(isfinite, U) || throw(ArgumentError("input data must be finite"))
-    V = pseudo_values ? Matrix{Float64}(U) : pseudos(U)
-    all(x -> 0 <= x <= 1, V) || throw(ArgumentError("pseudo-observations must lie in [0, 1]"))
-    d, n = size(V)
+    d, n = size(U)
     d >= 2 || throw(ArgumentError("at least two components are required"))
     n >= 2 || throw(ArgumentError("at least two observations are required"))
+
+    for j in 1:d
+        allunique(@view U[j, :]) || throw(ArgumentError(
+            "copula hypothesis tests currently require continuous, tie-free margins; " *
+            "ties were detected in margin $j. Tie-aware procedures are not yet implemented."))
+    end
+
+    V = pseudo_values ? Matrix{Float64}(U) : pseudos(U)
+    all(x -> 0 <= x <= 1, V) || throw(ArgumentError("pseudo-observations must lie in [0, 1]"))
     return V, d, n
 end
 
@@ -695,6 +702,16 @@ function _bootstrap_hypothesis(h::GoodnessOfFitHypothesis{<:CopulaModel},
     return GoodnessOfFitHypothesis(_gof_refit(h.model, U))
 end
 
-function _gof_refit(M::CopulaModel, U::AbstractMatrix)
-    return Distributions.fit(CopulaModel, typeof(_copula_of(M)), U; method=M.method, quick_fit=false, derived_measures=false, vcov=false)
+_gof_refit(M::CopulaModel, U::AbstractMatrix) = _gof_refit(_copula_of(M), M, U)
+
+function _gof_refit(C::Copula, M::CopulaModel, U::AbstractMatrix)
+    return Distributions.fit(CopulaModel, typeof(C), U; method=M.method, derived_measures=false, vcov=false,)
+end
+
+function _gof_refit(C::NestedArchimedeanCopula, M::CopulaModel, U::AbstractMatrix)
+    return Distributions.fit(CopulaModel, C, U; method=M.method, derived_measures=false, vcov=false,)
+end
+
+function _gof_refit(C::SurvivalCopula, M::CopulaModel, U::AbstractMatrix)
+    return Distributions.fit(CopulaModel, typeof(C), U; method=M.method, flips=C.flipmask, derived_measures=false, vcov=false,)
 end
