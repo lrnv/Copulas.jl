@@ -236,6 +236,20 @@ end
     end
 
     @testset "GOFCopulaTest" begin
+        @testset "Published Sn normalization" begin
+            Udet = [
+                0.2 0.5 0.8
+                0.3 0.6 0.9
+            ]
+            Cdet = IndependentCopula(2)
+
+            expected = 647 / 2250
+
+            @test Copulas._gof_sn_statistic(Udet, Cdet) ≈ expected
+            Tdet = GOFCopulaTest(Cdet, Udet; pseudo_values=true, N=1, rng=Xoshiro(777),)
+            @test teststatistic(Tdet) ≈ expected
+        end
+
         U = rand(Xoshiro(123), ClaytonCopula(2, 3.0), 60)
         Ts = GOFCopulaTest(ClaytonCopula(2, 3.0), U;
             N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))

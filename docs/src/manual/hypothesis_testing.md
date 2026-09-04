@@ -674,7 +674,6 @@ The implemented Cramér--von Mises-type statistic is
 ```math
 S_n^{\mathrm{GOF}}
 =
-\frac{1}{n}
 \sum_{i=1}^{n}
 \left[
 C_n(\boldsymbol U_i)
@@ -735,7 +734,6 @@ and the observed statistic is
 ```math
 S_n^{\mathrm{GOF}}
 =
-\frac{1}{n}
 \sum_{i=1}^{n}
 \left[
 C_n(\boldsymbol U_i)

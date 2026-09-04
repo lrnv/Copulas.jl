@@ -692,7 +692,7 @@ function _gof_sn_statistic(U::AbstractMatrix, C::Copula)
     @inbounds for u in eachcol(U)
         s += abs2(Distributions.cdf(Cn, u) - Distributions.cdf(C, u))
     end
-    return s / size(U, 2)
+    return s
 end
 
 _bootstrap_copula(h::GoodnessOfFitHypothesis) = _gof_copula(h)
