@@ -276,6 +276,21 @@ end
     end
 
     @testset "RadialSymmetryCopulaTest" begin
+        @testset "Randomization reranking of induced ties" begin
+            sample = [
+                0.25 0.25 0.75 0.75
+                0.20 0.40 0.60 0.80
+            ]
+
+            V = Copulas._randomization_pseudos(Copulas.RadialSymmetryHypothesis(), sample,)
+
+            @test V[1, :] ≈ [0.3, 0.3, 0.7, 0.7] # Average ranks in the first margin:
+                                                 # (1.5, 1.5, 3.5, 3.5) / (4 + 1)
+            @test V[2, :] ≈ [0.2, 0.4, 0.6, 0.8] # Without ties, tied ranks coincide with ordinary ranks.
+            @test V[1, 1] == V[1, 2]
+            @test V[1, 3] == V[1, 4]
+        end
+
         @testset "Published Sn normalization" begin
             Udet = [
                 0.2 0.5 0.8
@@ -429,6 +444,12 @@ end
             @test typeof(Cnested_refit.G).name.wrapper === typeof(Cnested.G).name.wrapper
             @test typeof(Cnested_refit.children[1][1].G).name.wrapper === typeof(Cnested.children[1][1].G).name.wrapper
 
+            Tnested = GOFCopulaTest(Mnested; N=1, rng=Xoshiro(903),)
+
+            @test Tnested.hypothesis.kind === :composite
+            @test isfinite(teststatistic(Tnested))
+            @test 0 <= pvalue(Tnested) <= 1
+
             # SurvivalCopula stores the flip pattern in the instance rather
             # than in its concrete type.
             Csurvival = SurvivalCopula(ClaytonCopula(3, 2.5), (1, 3))
@@ -442,6 +463,12 @@ end
             @test Csurvival_refit isa SurvivalCopula
             @test Csurvival_refit.flipmask == Csurvival.flipmask
             @test Csurvival_refit.flipmask == (true, false, true)
+
+            Tsurvival = GOFCopulaTest(Msurvival; N=1, rng=Xoshiro(904),)
+
+            @test Tsurvival.hypothesis.kind === :composite
+            @test isfinite(teststatistic(Tsurvival))
+            @test 0 <= pvalue(Tsurvival) <= 1
         end
 
         io = IOBuffer()

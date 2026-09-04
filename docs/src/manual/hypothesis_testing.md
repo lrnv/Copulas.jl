@@ -514,7 +514,9 @@ B_i=1.
 \end{cases}
 ```
 
-The randomized sample is converted back to pseudo-observations before the statistic is evaluated. Thus the default reflection probability is exactly
+The randomized sample is converted back to pseudo-observations before the statistic is evaluated. Because radial reflection of rank-grid values can create exact ties even when the original sample is tie-free, ties induced by the randomization itself are reranked using average ranks. This does not relax the requirement that the original input margins be tie-free.
+
+Thus the default reflection probability is exactly
 
 ```math
 \Pr(B_i=1)=\frac12.
@@ -918,7 +920,7 @@ The framework currently provides four reusable calibration mechanisms.
 | `:simulation`           | Generate directly under `H_0`                     | Independence                              |
 | `:randomization`        | Exploit invariance under `H_0`                    | Radial symmetry                           |
 | `:multiplier`           | Approximate an empirical-copula process           | Exchangeability, extreme-value dependence |
-| `:parametric_bootstrap` | Simulate from a parametric fitted/specifed copula | Goodness of fit                           |
+| `:parametric_bootstrap` | Simulate from a parametric fitted/specified copula | Goodness of fit                           |
 
 The empirical-copula multiplier methodology is related to [remillard2009equality](@cite) and [bucher2010bootstrap](@cite), while the parametric-bootstrap framework for composite goodness-of-fit hypotheses is studied in [genest2008bootstrap](@cite).
 

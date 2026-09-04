@@ -187,12 +187,13 @@ function _randomization_sample(h::CopulaHypothesis, U::AbstractMatrix, rng::Dist
 end
 
 _randomization_details(::CopulaHypothesis) = (;)
+_randomization_pseudos(::CopulaHypothesis, sample::AbstractMatrix) = pseudos(sample)
 
 function _calibrate(h::CopulaHypothesis, ::Val{:randomization}, stat::Val, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG, kwargs...)
     N = _check_resamples(N)
     exceedances = 0
     for _ in 1:N
-        sample = pseudos(_randomization_sample(h, U, rng))
+        sample = _randomization_pseudos(h, _randomization_sample(h, U, rng),)
         exceedances += _teststatistic(h, stat, sample; kwargs...) >= observed
     end
     return _exceedance_pvalue(exceedances, N), N, _randomization_details(h)
@@ -342,7 +343,7 @@ function _teststatistic(h::ExchangeabilityHypothesis, ::Val{:Sn}, U::AbstractMat
     d, n = size(U)
     _check_exchangeability_all_cost(h.permutations, d, n)
     return _exchangeability_sn_statistic(U, _exchangeability_permutations(h.permutations, d), h.weight,)
-    end
+end
 
 const _MAX_EXCHANGEABILITY_MATRIX_BYTES = 512 * 1024^2
 
@@ -531,6 +532,20 @@ function _randomization_sample(::RadialSymmetryHypothesis, U::AbstractMatrix, rn
     end
     return sample
 end
+
+function _average_pseudos(sample::AbstractMatrix)
+    d, n = size(sample)
+    U = Matrix{Float64}(undef, d, n)
+    denom = n + 1
+
+    @inbounds for j in 1:d
+        U[j, :] .= StatsBase.tiedrank(@view sample[j, :]) ./ denom
+    end
+
+    return U
+end
+
+_randomization_pseudos(::RadialSymmetryHypothesis, sample::AbstractMatrix,) = _average_pseudos(sample)
 
 _randomization_details(::RadialSymmetryHypothesis) = (; reflection_probability=0.5,)
 
