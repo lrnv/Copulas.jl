@@ -186,6 +186,20 @@ end
     end
 
     @testset "RadialSymmetryCopulaTest" begin
+        @testset "Published Sn normalization" begin
+            Udet = [
+                0.2 0.5 0.8
+                0.3 0.9 0.6
+            ]
+
+            expected = 1 / 9
+
+            hdet = Copulas.RadialSymmetryHypothesis()
+            @test Copulas._teststatistic(hdet, Val(:Sn), Udet,) ≈ expected
+            Tdet = RadialSymmetryCopulaTest(Udet; pseudo_values=true, N=1, rng=Xoshiro(780),)
+            @test teststatistic(Tdet) ≈ expected
+        end
+
         Us = rand(Xoshiro(123), GaussianCopula(3, 0.5), 100)
         ts = RadialSymmetryCopulaTest(Us; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
 

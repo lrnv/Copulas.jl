@@ -476,7 +476,6 @@ The implemented statistic is
 ```math
 S_n^{\mathrm{rad}}
 =
-\frac{1}{n}
 \sum_{i=1}^{n}
 \left[
 C_n(\boldsymbol U_i)

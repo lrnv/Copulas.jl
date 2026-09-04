@@ -493,7 +493,7 @@ function _teststatistic(::RadialSymmetryHypothesis, ::Val{:Sn}, U::AbstractMatri
     @inbounds for u in eachcol(U)
         s += abs2(Distributions.cdf(Cn, u) - Distributions.cdf(Cbar, u))
     end
-    return s / size(U, 2)
+    return s
 end
 
 function _randomization_sample(::RadialSymmetryHypothesis, U::AbstractMatrix, rng::Distributions.AbstractRNG)
