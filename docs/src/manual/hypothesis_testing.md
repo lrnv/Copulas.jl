@@ -392,7 +392,7 @@ Uses the transpositions
 
 Uses all non-identity permutations.
 
-Because the current multiplier implementation materializes one dense `n × n` matrix for every selected permutation, `permutations=:all` is protected by a memory-cost guard. Problems whose estimated matrix storage exceeds the safety limit raise an `ArgumentError`. For larger dimensions or samples, use `:G1`, `:G2`, or an explicit smaller collection of permutations.
+Because the current multiplier implementation materializes one dense `n × n` matrix for every selected permutation, the resolved permutation collection is protected by a memory-cost guard. For `permutations=:all`, the factorial-sized collection is checked before it is materialized; explicit custom collections are checked after validation using their actual resolved size. Problems whose estimated matrix storage exceeds the safety limit raise an `ArgumentError`. For larger dimensions or samples, use `:G1`, `:G2`, or a smaller custom collection of permutations.
 
 A custom permutation or collection of permutations can also be supplied directly.
 

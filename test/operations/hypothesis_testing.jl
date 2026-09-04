@@ -265,6 +265,32 @@ end
             @test err isa ArgumentError
             @test occursin("permutations=:all", sprint(showerror, err))
             @test occursin("safety limit", sprint(showerror, err))
+
+            # Explicit collections must be guarded by their resolved size as
+            # well; otherwise they bypass the preflight specific to `:all`.
+            explicit_permutations = fill((2, 1, 3), 70)
+            resolved = Copulas._exchangeability_permutations(explicit_permutations, 3)
+
+            @test length(resolved) == 70
+            @test Copulas._check_exchangeability_matrix_cost(64, 1000) === nothing
+            @test_throws ArgumentError Copulas._check_exchangeability_matrix_cost(70, 1000)
+
+            Uexplicit = rand(Xoshiro(783), 3, 1000)
+            explicit_err = try
+                ExchangeabilityCopulaTest(
+                    Uexplicit;
+                    permutations=explicit_permutations,
+                    N=1,
+                    rng=Xoshiro(784),
+                )
+            catch e
+                e
+            end
+
+            @test explicit_err isa ArgumentError
+            @test occursin("requested permutation collection", sprint(showerror, explicit_err))
+            @test occursin("70 dense", sprint(showerror, explicit_err))
+            @test occursin("safety limit", sprint(showerror, explicit_err))
         end
 
         @test_throws ArgumentError ExchangeabilityCopulaTest(U2; statistic=:Rn, N=9, rng=Xoshiro(1))

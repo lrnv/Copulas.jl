@@ -341,17 +341,25 @@ _available_calibrations(::ExchangeabilityHypothesis, ::Val{:Sn}) = (:multiplier,
 
 function _teststatistic(h::ExchangeabilityHypothesis, ::Val{:Sn}, U::AbstractMatrix; kwargs...)
     d, n = size(U)
+
+    # `:all` must be checked before resolution because materializing d!
+    # permutations may itself be prohibitive.
     _check_exchangeability_all_cost(h.permutations, d, n)
-    return _exchangeability_sn_statistic(U, _exchangeability_permutations(h.permutations, d), h.weight,)
+
+    permutations = _exchangeability_permutations(h.permutations, d)
+
+    # Once resolved, guard the actual number of selected permutations. This also
+    # protects explicit custom collections.
+    _check_exchangeability_matrix_cost(length(permutations), n)
+
+    return _exchangeability_sn_statistic(U, permutations, h.weight,)
 end
 
 const _MAX_EXCHANGEABILITY_MATRIX_BYTES = 512 * 1024^2
 
-function _check_exchangeability_all_cost(permutations, d::Integer, n::Integer)
-    permutations === :all || return nothing
-
-    nperms = factorial(big(d)) - 1
-    matrix_bytes = nperms * big(n)^2 * sizeof(Float64)
+function _check_exchangeability_matrix_cost(nperms::Integer, n::Integer;
+        label::AbstractString="the requested permutation collection")
+    matrix_bytes = big(nperms) * big(n)^2 * sizeof(Float64)
 
     matrix_bytes <= _MAX_EXCHANGEABILITY_MATRIX_BYTES && return nothing
 
@@ -359,11 +367,23 @@ function _check_exchangeability_all_cost(permutations, d::Integer, n::Integer)
     limit_mib = _MAX_EXCHANGEABILITY_MATRIX_BYTES / 1024^2
 
     throw(ArgumentError(
-        "`permutations=:all` would materialize $(nperms) dense $(n)×$(n) " *
+        "$(label) would materialize $(nperms) dense $(n)×$(n) " *
         "multiplier matrices (approximately $(round(estimated_mib; digits=1)) MiB), " *
         "exceeding the current $(round(limit_mib; digits=0)) MiB safety limit. " *
         "Use `permutations=:G1`, `:G2`, or provide a smaller custom collection."
     ))
+end
+
+function _check_exchangeability_all_cost(permutations, d::Integer, n::Integer)
+    permutations === :all || return nothing
+
+    # Check the factorial-sized collection before materializing it.
+    nperms = factorial(big(d)) - 1
+    return _check_exchangeability_matrix_cost(
+        nperms,
+        n;
+        label="`permutations=:all`",
+    )
 end
 
 function _exchangeability_permutations(permutations, d::Integer)
@@ -431,6 +451,7 @@ function _multiplier_representation(h::ExchangeabilityHypothesis, ::Val{:Sn}, U:
     d, n = size(U)
     _check_exchangeability_all_cost(h.permutations, d, n)
     permutations = _exchangeability_permutations(h.permutations, d)
+    _check_exchangeability_matrix_cost(length(permutations), n)
     matrices, weights, bandwidth = _exchangeability_multiplier_matrices(U, permutations, h.weight)
     return (;matrices, weights, scale=inv(n), strict=true, correction=nothing,
             details=(; permutations=h.permutations, generator=permutations, weight=h.weight, multiplier=:exponential, derivative_bandwidth=bandwidth),)
