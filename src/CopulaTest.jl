@@ -339,7 +339,30 @@ _available_statistics(::ExchangeabilityHypothesis) = (:Sn,)
 _available_calibrations(::ExchangeabilityHypothesis, ::Val{:Sn}) = (:multiplier,)
 
 function _teststatistic(h::ExchangeabilityHypothesis, ::Val{:Sn}, U::AbstractMatrix; kwargs...)
-    return _exchangeability_sn_statistic(U, _exchangeability_permutations(h.permutations, size(U, 1)), h.weight)
+    d, n = size(U)
+    _check_exchangeability_all_cost(h.permutations, d, n)
+    return _exchangeability_sn_statistic(U, _exchangeability_permutations(h.permutations, d), h.weight,)
+    end
+
+const _MAX_EXCHANGEABILITY_MATRIX_BYTES = 512 * 1024^2
+
+function _check_exchangeability_all_cost(permutations, d::Integer, n::Integer)
+    permutations === :all || return nothing
+
+    nperms = factorial(big(d)) - 1
+    matrix_bytes = nperms * big(n)^2 * sizeof(Float64)
+
+    matrix_bytes <= _MAX_EXCHANGEABILITY_MATRIX_BYTES && return nothing
+
+    estimated_mib = Float64(matrix_bytes) / 1024^2
+    limit_mib = _MAX_EXCHANGEABILITY_MATRIX_BYTES / 1024^2
+
+    throw(ArgumentError(
+        "`permutations=:all` would materialize $(nperms) dense $(n)×$(n) " *
+        "multiplier matrices (approximately $(round(estimated_mib; digits=1)) MiB), " *
+        "exceeding the current $(round(limit_mib; digits=0)) MiB safety limit. " *
+        "Use `permutations=:G1`, `:G2`, or provide a smaller custom collection."
+    ))
 end
 
 function _exchangeability_permutations(permutations, d::Integer)
@@ -357,7 +380,7 @@ function _exchangeability_permutations(permutations, d::Integer)
     end
 
     result = NTuple{d,Int}[]
-    for perm in raw
+    for perm in raw         
         p = Tuple(Int.(perm))
         length(p) == d || throw(ArgumentError("permutations must have length $d"))
         sort(collect(p)) == collect(1:d) || throw(ArgumentError("invalid permutation `$perm`"))
@@ -404,9 +427,10 @@ function _exchangeability_sn_statistic(U::AbstractMatrix, permutations, weight::
 end
 
 function _multiplier_representation(h::ExchangeabilityHypothesis, ::Val{:Sn}, U::AbstractMatrix)
-    permutations = _exchangeability_permutations(h.permutations, size(U, 1))
+    d, n = size(U)
+    _check_exchangeability_all_cost(h.permutations, d, n)
+    permutations = _exchangeability_permutations(h.permutations, d)
     matrices, weights, bandwidth = _exchangeability_multiplier_matrices(U, permutations, h.weight)
-    _, n = size(U)
     return (;matrices, weights, scale=inv(n), strict=true, correction=nothing,
             details=(; permutations=h.permutations, generator=permutations, weight=h.weight, multiplier=:exponential, derivative_bandwidth=bandwidth),)
 end

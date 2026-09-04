@@ -177,6 +177,27 @@ end
         @test occursin("Permutations:", printed)
         @test occursin("Weight:", printed)
 
+        @testset "Cost guard for all permutations" begin
+            # Small problems may still use all permutations.
+            @test Copulas._check_exchangeability_all_cost(:all, 3, 20) === nothing
+            @test Copulas._check_exchangeability_all_cost(:G2, 20, 5000) === nothing
+
+            # 5! - 1 = 119 dense 1000×1000 Float64 matrices would require
+            # roughly 908 MiB before accounting for auxiliary allocations.
+            @test_throws ArgumentError Copulas._check_exchangeability_all_cost(:all, 5, 1000,)
+
+            Ularge = rand(Xoshiro(781), 5, 1000)
+            err = try
+                ExchangeabilityCopulaTest(Ularge; permutations=:all, N=1, rng=Xoshiro(782),)
+            catch e
+                e
+            end
+
+            @test err isa ArgumentError
+            @test occursin("permutations=:all", sprint(showerror, err))
+            @test occursin("safety limit", sprint(showerror, err))
+        end
+
         @test_throws ArgumentError ExchangeabilityCopulaTest(U2; statistic=:Rn, N=9, rng=Xoshiro(1))
         @test_throws ArgumentError ExchangeabilityCopulaTest(U2; calibration=:randomization, N=9, rng=Xoshiro(1))
         @test_throws ArgumentError ExchangeabilityCopulaTest(U2; weight=:wm, N=9, rng=Xoshiro(1))
