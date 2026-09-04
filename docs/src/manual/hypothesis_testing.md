@@ -149,10 +149,13 @@ Printing the object gives a summary of the hypothesis, statistic, calibration, p
 test
 ```
 
-!!! note "Number of resamples"
+::: note Number of resamples
+
 The small values of `N` used in the documentation keep the examples fast.
 For statistical work, substantially larger values should generally be used,
 depending on the desired Monte Carlo precision.
+
+:::
 
 ---
 
@@ -767,7 +770,6 @@ and computes
 ```math
 S_n^\star
 =
-\frac{1}{n}
 \sum_{i=1}^{n}
 \left[
 C_n^\star(\boldsymbol U_i^\star)
@@ -825,6 +827,14 @@ calibration=:default
 ```
 
 are resolved through capability declarations.
+
+::: warning Internal dispatch hooks
+
+The underscore-prefixed functions shown below are implementation interfaces
+for contributors to `Copulas.jl`. They are not public extension points and are
+not covered by SemVer.
+
+:::
 
 For a hypothesis `h`, the available statistics are declared by
 
@@ -888,11 +898,14 @@ _calibrate(..., Val(calibration), Val(statistic))
 
 The generic `CopulaTest` constructor therefore does not need to know which statistics are implemented by any particular hypothesis.
 
-!!! info "Why use `Val` internally?"
+::: info Why use `Val` internally?
+
 Users interact with ordinary symbols such as `:Sn`, `:cvm`, `:simulation`,
 and `:multiplier`. Internally those symbols are converted to `Val` objects,
 allowing Julia's multiple dispatch to select the appropriate mathematical
 implementation without central `if`/`elseif` tables.
+
+:::
 
 ---
 
@@ -946,9 +959,11 @@ Accordingly, $N$ controls Monte Carlo precision rather than the definition of th
 
 ---
 
-# Extending the framework
+# Internal contributor extension mechanism
 
-The hypothesis-testing API is designed so that new procedures can reuse the common constructor and existing calibration engines.
+The internal hypothesis-testing machinery is designed so that contributors to
+`Copulas.jl` can add new procedures while reusing the common constructor and
+existing calibration engines.
 
 A new hypothesis starts with
 
@@ -992,7 +1007,7 @@ test = CopulaTest(MyHypothesis(), U; N=999,)
 
 No change to `CopulaTest`, the generic result type, or the display machinery is required.
 
-For a more complete description of the extension contract, see the [Developer Guide](@ref developer_fitting).
+For a more complete contributor-facing description of these internal hooks, see the [Developer Guide](@ref developer_fitting).
 
 ---
 
