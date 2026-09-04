@@ -88,6 +88,75 @@ end
         @test_throws ArgumentError IndependenceCopulaTest(Utied; pseudo_values=true, N=2, rng=Xoshiro(11),)
     end
 
+    @testset "RNG reproducibility" begin
+        # Simulation calibration
+        Uind = rand(Xoshiro(810), IndependentCopula(2), 30)
+
+        tsim1 = IndependenceCopulaTest(
+            Uind;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(811),
+        )
+        tsim2 = IndependenceCopulaTest(
+            Uind;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(811),
+        )
+
+        @test pvalue(tsim1) == pvalue(tsim2)
+
+        # Multiplier calibration
+        Uex = rand(Xoshiro(812), GaussianCopula(3, 0.5), 30)
+
+        tmul1 = ExchangeabilityCopulaTest(
+            Uex;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(813),
+        )
+        tmul2 = ExchangeabilityCopulaTest(
+            Uex;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(813),
+        )
+
+        @test pvalue(tmul1) == pvalue(tmul2)
+
+        # Randomization calibration
+        Urad = rand(Xoshiro(814), GaussianCopula(3, 0.5), 30)
+
+        tran1 = RadialSymmetryCopulaTest(
+            Urad;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(815),
+        )
+        tran2 = RadialSymmetryCopulaTest(
+            Urad;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(815),
+        )
+
+        @test pvalue(tran1) == pvalue(tran2)
+
+        # Parametric-bootstrap calibration
+        Cgof = ClaytonCopula(2, 2.5)
+        Ugof = rand(Xoshiro(816), Cgof, 30)
+
+        tboot1 = GOFCopulaTest(
+            Cgof,
+            Ugof;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(817),
+        )
+        tboot2 = GOFCopulaTest(
+            Cgof,
+            Ugof;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(817),
+        )
+
+        @test pvalue(tboot1) == pvalue(tboot2)
+    end
+
     @testset "IndependenceCopulaTest" begin
         U0 = rand(Xoshiro(123), IndependentCopula(2), 80)
         t0 = IndependenceCopulaTest(U0; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
