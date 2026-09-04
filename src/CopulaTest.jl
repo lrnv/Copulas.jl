@@ -573,14 +573,14 @@ function _extreme_value_sn_statistic(U::AbstractMatrix, powers)
             s += abs2(diff)
         end
     end
-    return s / n
+    return s
 end
 
 function _multiplier_representation(h::ExtremeValueHypothesis, ::Val{:Sn}, U::AbstractMatrix)
     powers = _max_stability_powers(h.powers)
     matrices, bandwidth = _extreme_value_multiplier_matrices(U, powers)
     _, n = size(U)
-    return (;matrices, scale=inv(n^2), strict=false, correction=0.5,
+    return (;matrices, scale=inv(n), strict=false, correction=0.5,
             details=(; powers, multiplier=:exponential, derivative_bandwidth=bandwidth),)
 end
 

@@ -198,6 +198,24 @@ end
     end
 
     @testset "ExtremeValueCopulaTest" begin
+        @testset "Published Sn normalization" begin
+            Udet = [
+                0.2 0.5 0.8
+                0.3 0.6 0.9
+            ]
+
+            expected = 8 / 81
+
+            @test Copulas._extreme_value_sn_statistic(Udet, (2.0,)) ≈ expected
+
+            hdet = Copulas.ExtremeValueHypothesis(; powers=2)
+            rep = Copulas._multiplier_representation(hdet, Val(:Sn), Udet)
+
+            @test rep.scale == inv(size(Udet, 2))
+            Tdet = ExtremeValueCopulaTest(Udet; powers=2, pseudo_values=true, N=1, rng=Xoshiro(778),)
+            @test teststatistic(Tdet) ≈ expected
+        end
+
         Uev = rand(Xoshiro(123), GumbelCopula(3, 3.0), 100)
         tev = ExtremeValueCopulaTest(Uev; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
 

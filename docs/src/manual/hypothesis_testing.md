@@ -592,7 +592,6 @@ the implemented statistic is
 ```math
 S_n^{\mathrm{EV}}
 =
-\frac{1}{n}
 \sum_{r\in\mathcal R}
 \sum_{i=1}^{n}
 \left[
