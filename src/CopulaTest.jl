@@ -692,6 +692,18 @@ GoodnessOfFitHypothesis(M::CopulaModel) = GoodnessOfFitHypothesis(M, :composite)
     GOFCopulaTest(model; kwargs...)
 
 Test goodness of fit for a copula or fitted copula model.
+
+`GOFCopulaTest(C, U)` treats `C` as a fixed specified copula and tests a simple
+null hypothesis.
+
+`GOFCopulaTest(M)` tests the fitting sample stored by `M` under a composite null
+hypothesis. The estimator specification that produced `M` is replayed in every
+parametric-bootstrap replicate.
+
+`GOFCopulaTest(M, U)` first refits that estimator specification on `U`; the
+resulting fitted model is used for the observed statistic, and the same fitting
+procedure is repeated in every bootstrap replicate. If the fitting procedure is
+not reproducibly specified, composite GOF throws an `ArgumentError`.
 """
 const GOFCopulaTest = CopulaTest{<:GoodnessOfFitHypothesis}
 
@@ -699,13 +711,25 @@ function (::Type{<:CopulaTest{<:GoodnessOfFitHypothesis}})(C::Copula, U::Abstrac
     return CopulaTest(GoodnessOfFitHypothesis(C), U; kwargs...)
 end
 
-function (::Type{<:CopulaTest{<:GoodnessOfFitHypothesis}})(M::CopulaModel, U::AbstractMatrix{<:Real}; kwargs...)
-    return CopulaTest(GoodnessOfFitHypothesis(M), U; kwargs...)
+function (::Type{<:CopulaTest{<:GoodnessOfFitHypothesis}})(M::CopulaModel, U::AbstractMatrix{<:Real}; pseudo_values::Bool=false, kwargs...)
+    # For a composite null, M describes the estimator specification.
+    # The observed statistic must use parameters estimated from the sample being
+    # tested, just as every bootstrap replicate is refitted.
+    V, _, _ = _test_pseudos(U, pseudo_values)
+    Mrefit = _refit(M, V)
+    return CopulaTest(GoodnessOfFitHypothesis(Mrefit), V; pseudo_values=true, kwargs...,)
 end
 
 function (::Type{<:CopulaTest{<:GoodnessOfFitHypothesis}})(M::CopulaModel; kwargs...)
-    haskey(M.method_details, :U) || throw(ArgumentError("the fitted model does not store pseudo-observations"))
-    return CopulaTest(GoodnessOfFitHypothesis(M), M.method_details.U; pseudo_values=true, kwargs...)
+    haskey(M.method_details, :U) || throw(ArgumentError("the fitted model does not store its fitting sample"))
+
+    # Most copula fits receive pseudo-observations directly. Empirical fitting
+    # routines may instead have received raw data with `pseudo_values=false`;
+    # respect that metadata rather than silently treating the stored input as
+    # already ranked.
+    stored_pseudo_values = get(M.method_details, :pseudo_values, true)
+
+    return CopulaTest(GoodnessOfFitHypothesis(M), M.method_details.U; pseudo_values=stored_pseudo_values, kwargs...,)
 end
 
 testname(::GoodnessOfFitHypothesis) = "Copula goodness-of-fit test"
@@ -736,21 +760,6 @@ end
 
 _bootstrap_copula(h::GoodnessOfFitHypothesis) = _gof_copula(h)
 
-function _bootstrap_hypothesis(h::GoodnessOfFitHypothesis{<:CopulaModel},
-        U::AbstractMatrix)
-    return GoodnessOfFitHypothesis(_gof_refit(h.model, U))
-end
-
-_gof_refit(M::CopulaModel, U::AbstractMatrix) = _gof_refit(_copula_of(M), M, U)
-
-function _gof_refit(C::Copula, M::CopulaModel, U::AbstractMatrix)
-    return Distributions.fit(CopulaModel, typeof(C), U; method=M.method, derived_measures=false, vcov=false,)
-end
-
-function _gof_refit(C::NestedArchimedeanCopula, M::CopulaModel, U::AbstractMatrix)
-    return Distributions.fit(CopulaModel, C, U; method=M.method, derived_measures=false, vcov=false,)
-end
-
-function _gof_refit(C::SurvivalCopula, M::CopulaModel, U::AbstractMatrix)
-    return Distributions.fit(CopulaModel, typeof(C), U; method=M.method, flips=C.flipmask, derived_measures=false, vcov=false,)
+function _bootstrap_hypothesis(h::GoodnessOfFitHypothesis{<:CopulaModel}, U::AbstractMatrix)
+    return GoodnessOfFitHypothesis(_refit(h.model, U))
 end

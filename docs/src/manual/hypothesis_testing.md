@@ -756,7 +756,7 @@ In `Copulas.jl`, every composite bootstrap replicate performs the following step
 C_{\widehat\theta},
 ```
 
-then refits the **same copula family**,
+then refits using the **same estimator specification**,
 
 ```math
 \widehat\theta^\star
@@ -782,6 +782,9 @@ C_{\widehat\theta^\star}(\boldsymbol U_i^\star)
 
 Thus parameter estimation is repeated inside every bootstrap replicate rather than treating the fitted parameters as fixed.
 
+The fitting procedure itself is also reproduced. In particular, estimator-defining runtime information such as the fitting method, method-specific keywords, and copula structure is retained whenever the fitted model records a reproducible fitting specification.
+This matters for models whose fitting procedure cannot be reconstructed from the fitted copula type alone.
+
 ## Usage
 
 First fit a model:
@@ -800,15 +803,17 @@ tcomposite = GOFCopulaTest(M; N=49, rng=Xoshiro(12),)
 (tcomposite.hypothesis.kind, pvalue(tcomposite))
 ```
 
-`GOFCopulaTest(M)` uses the pseudo-observations stored in `M.method_details`.
+`GOFCopulaTest(M)` tests the data used to fit `M`. The stored fitting input is preprocessed consistently with the original fit before the observed statistic is computed. The fitted model `M` supplies both the estimated null model and the estimator specification that is replayed in every bootstrap replicate.
 
-The equivalent explicit-data form is
+A separate sample can be tested with
 
 ```julia
 GOFCopulaTest(M, U)
 ```
 
-when a different data matrix is to be tested against the fitted family.
+In this form, `M` is interpreted as an **estimator specification**, not as a fixed set of parameter estimates. The same fitting procedure is first reapplied to `U`, so the observed statistic uses parameters estimated from the sample being tested. Each parametric-bootstrap replicate then repeats that same fitting procedure.
+
+Consequently, the observed statistic and every bootstrap statistic are based on the same estimation rule. If the original fitting procedure cannot be reproduced safely, composite goodness-of-fit testing raises an `ArgumentError` rather than silently replacing it by a different estimator.
 
 The current defaults are
 

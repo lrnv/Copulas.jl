@@ -425,6 +425,19 @@ end
         @test Tc.hypothesis.model === M
         @test 0 < pvalue(Tc) < 1
 
+        @testset "Composite GOF refits the tested sample" begin
+            Unew = rand(Xoshiro(905), ClaytonCopula(2, 1.2), 40)
+            Vnew = pseudos(Unew)
+
+            Mexpected = Copulas._refit(M, Vnew)
+            Tnew = GOFCopulaTest(M, Unew; N=1, rng=Xoshiro(906),)
+
+            @test Tnew.hypothesis.kind === :composite
+            @test Tnew.hypothesis.model !== M
+            @test StatsBase.coef(Tnew.hypothesis.model) ≈ StatsBase.coef(Mexpected)
+            @test teststatistic(Tnew) ≈ Copulas._gof_sn_statistic(Vnew, Copulas._copula_of(Mexpected))
+        end
+
         @testset "Composite GOF preserves runtime fitting structure" begin
             # NestedArchimedeanCopula stores its tree structure and inner
             # generator families in the instance, so refitting from typeof(C)
@@ -434,7 +447,7 @@ end
 
             Mnested = fit(CopulaModel, Cnested, Unested; vcov=false, derived_measures=false,)
 
-            Mnested_refit = Copulas._gof_refit(Mnested, Unested)
+            Mnested_refit = Copulas._refit(Mnested, Unested)
             Cnested_refit = Copulas._copula_of(Mnested_refit)
 
             @test Cnested_refit isa NestedArchimedeanCopula
@@ -457,7 +470,7 @@ end
 
             Msurvival = fit(CopulaModel, typeof(Csurvival), Usurvival; method=:itau, flips=Csurvival.flipmask, vcov=false, derived_measures=false,)
 
-            Msurvival_refit = Copulas._gof_refit(Msurvival, Usurvival)
+            Msurvival_refit = Copulas._refit(Msurvival, Usurvival)
             Csurvival_refit = Copulas._copula_of(Msurvival_refit)
 
             @test Csurvival_refit isa SurvivalCopula
@@ -469,6 +482,56 @@ end
             @test Tsurvival.hypothesis.kind === :composite
             @test isfinite(teststatistic(Tsurvival))
             @test 0 <= pvalue(Tsurvival) <= 1
+
+            # Estimator-defining runtime keywords must also survive refitting.
+            Uchecker = rand(Xoshiro(907), GaussianCopula(2, 0.4), 36)
+            Mchecker = fit(CopulaModel, CheckerboardCopula, Uchecker; m=3, vcov=false, derived_measures=false,)
+            Mchecker_refit = Copulas._refit(Mchecker, Uchecker)
+
+            @test Tuple(Mchecker_refit.result.m) == (3, 3)
+
+            # If an empirical fit ranked raw input internally, GOF(model) must
+            # apply the same preprocessing to the stored fitting sample.
+            Xraw = [
+                0.12 0.91 0.35 0.67 0.48 0.76
+                0.88 0.22 0.71 0.41 0.59 0.13
+            ]
+
+            Mraw = fit(CopulaModel, CheckerboardCopula, Xraw; m=2, pseudo_values=false, vcov=false, derived_measures=false,)
+
+            Traw = GOFCopulaTest(Mraw; N=1, rng=Xoshiro(908),)
+            Vraw = pseudos(Xraw)
+            Mraw_refit = Copulas._refit(Mraw, Vraw)
+
+            @test Mraw.method_details.pseudo_values === false
+            @test Mraw_refit.method_details.pseudo_values === true
+            @test Tuple(Mraw_refit.result.m) == (2, 2)
+            @test teststatistic(Traw) ≈ Copulas._gof_sn_statistic(Vraw, Copulas._copula_of(Mraw))
+
+            @testset "Unreproducible custom parametrisation is rejected" begin
+                # An arbitrary user-supplied parametrisation may capture external
+                # state and cannot be reconstructed safely from the fitted result.
+                # Composite GOF therefore rejects such models rather than silently
+                # changing the estimator used by the bootstrap.
+                reparam = α -> begin
+                    θ = exp(α[1])
+                    NestedArchimedeanCopula(Copulas.ClaytonGenerator(θ); leaves=[1], children=[ClaytonCopula(2, θ + one(θ)) => [2, 3]],)
+                end
+
+                Mcustom = fit(CopulaModel, reparam, [log(1.5)], Unested; vcov=false, derived_measures=false,)
+                @test Mcustom.method_details._fit_spec === nothing
+
+                refit_err = try
+                    Copulas._refit(Mcustom, Unested)
+                catch err
+                    err
+                end
+
+                @test refit_err isa ArgumentError
+                @test occursin("reproducible fitting specification", sprint(showerror, refit_err),)
+                @test_throws ArgumentError GOFCopulaTest(Mcustom; N=1, rng=Xoshiro(909),)
+            end
+
         end
 
         io = IOBuffer()
