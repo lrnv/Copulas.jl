@@ -246,7 +246,435 @@ Once the above methods are implemented, your family becomes automatically compat
 
 the requires _fit function for :mle for example might already be provided by the package, test your case.
 
+## 1.6 Hypothesis-testing interface
 
+The hypothesis-testing machinery is dispatch-oriented, similarly to the fitting
+interface. The user-facing testing API is deliberately small; the underscore-
+prefixed hooks described below are **internal contributor interfaces** used to
+implement tests inside `Copulas.jl`. They are not public extension points and
+are not covered by SemVer, so their signatures may evolve as the framework
+develops.
+
+```text
+Hypothesis × Statistic × Calibration
+                  ↓
+              CopulaTest
+```
+
+The role of each component is deliberately separated:
+
+* a `CopulaHypothesis` describes the mathematical null hypothesis;
+* `_teststatistic` defines how a statistic is computed;
+* `_calibrate` or one of the generic calibration hooks defines how its null distribution is approximated;
+* `CopulaTest` stores the common result and implements the `StatsAPI.HypothesisTest` interface.
+
+The generic constructor knows nothing about independence, exchangeability, max-stability, goodness of fit, or any other particular statistical problem. Those properties enter exclusively through Julia dispatch.
+
+### Relationship with the fitting interface
+
+The design intentionally mirrors the existing fitting API. Fitting uses
+
+```text
+_available_fitting_methods(CT, d)
+             ↓
+       first = default
+             ↓
+_find_method(...)
+             ↓
+_fit(CT, U, Val(method))
+```
+
+Hypothesis testing uses
+
+```text
+_available_statistics(h)
+             ↓
+       first = default
+             ↓
+_find_statistic(...)
+             ↓
+_teststatistic(h, Val(statistic), U)
+```
+
+and subsequently
+
+```text
+_available_calibrations(h, Val(statistic))
+             ↓
+       first = default
+             ↓
+_find_calibration(...)
+             ↓
+_calibrate(h, Val(calibration), Val(statistic),...)
+```
+
+Within the internal testing machinery, **the order returned by `_available_statistics` and `_available_calibrations` is significant**. The first entry is the default used when the corresponding public keyword is `:default`.
+
+For example,
+
+```julia
+_available_statistics(::MyHypothesis) = (:cvm, :ks)
+```
+
+means that both statistics are supported, while `:cvm` is the default. Likewise,
+
+```julia
+_available_calibrations(::MyHypothesis, ::Val{:cvm},) = (:multiplier, :simulation)
+```
+
+means that both calibrations are valid for `:cvm`, with `:multiplier` selected by default.
+
+### Defining a new hypothesis
+
+A new null hypothesis starts by subtyping [`CopulaHypothesis`](@ref):
+
+```julia
+struct MyHypothesis <: CopulaHypothesis end
+```
+
+The hypothesis should then define a human-readable test name and null hypothesis:
+
+```julia
+Copulas.testname(::MyHypothesis) = "My copula hypothesis test"
+
+Copulas.nullhypothesis(::MyHypothesis) = "The null hypothesis holds."
+```
+
+`testname` and `nullhypothesis` are extension hooks used by the generic display machinery. `testname` is intentionally not exported, so contributors should extend it through the qualified name `Copulas.testname`.
+
+Next declare the available statistics:
+
+```julia
+Copulas._available_statistics(::MyHypothesis) = (:Sn, :ks)
+```
+
+and the available calibrations for each statistic:
+
+```julia
+Copulas._available_calibrations(::MyHypothesis, ::Val{:Sn},) = (:simulation,)
+
+Copulas._available_calibrations(::MyHypothesis, ::Val{:ks},) = (:simulation,)
+```
+
+Finally implement the mathematical statistics:
+
+```julia
+function Copulas._teststatistic(::MyHypothesis, ::Val{:Sn}, U::AbstractMatrix; kwargs...,)
+    # Compute Sₙ.
+end
+
+function Copulas._teststatistic(::MyHypothesis, ::Val{:ks}, U::AbstractMatrix; kwargs...,)
+    # Compute the KS statistic.
+end
+```
+
+At this point no constructor-specific branch has been introduced. Selection is performed entirely by dispatch on `Val{:Sn}` or `Val{:ks}`.
+
+### Adding another statistic to an existing hypothesis
+
+Suppose an existing hypothesis currently declares
+
+```julia
+_available_statistics(::SomeHypothesis) = (:cvm,)
+```
+
+and a contributor implements a new Kolmogorov--Smirnov statistic. The capability declaration becomes
+
+```julia
+_available_statistics(::SomeHypothesis) = (:cvm, :ks)
+```
+
+and the new statistic is added independently:
+
+```julia
+function _teststatistic(::SomeHypothesis, ::Val{:ks}, U::AbstractMatrix; kwargs...,)
+    # ...
+end
+```
+
+Its valid calibrations are then declared:
+
+```julia
+_available_calibrations(::SomeHypothesis, ::Val{:ks},) = (:simulation,)
+```
+
+The existing public constructor automatically accepts
+
+```julia
+SomeCopulaTest(U; statistic=:ks,)
+```
+
+without any modification to `CopulaTest`, `show`, or a central routing table. If the new statistic should become the default, simply change the order:
+
+```julia
+_available_statistics(::SomeHypothesis) = (:ks, :cvm)
+```
+
+The same convention is already used by `_available_fitting_methods`.
+
+### Generic calibration engines
+
+A contributor should normally reuse one of the generic calibration engines rather than reimplementing resampling loops.
+
+The currently available engines are:
+
+| Calibration             | Required hypothesis-specific hook        | Purpose                                          |
+| ----------------------- | ---------------------------------------- | ------------------------------------------------ |
+| `:simulation`           | `_simulation_sample(h, U, rng)`          | Generate a sample directly under `H_0`           |
+| `:randomization`        | `_randomization_sample(h, U, rng)`       | Apply a null-invariant random transformation     |
+| `:multiplier`           | `_multiplier_representation(h, stat, U)` | Supply the empirical-process representation      |
+| `:parametric_bootstrap` | `_bootstrap_copula(h)`                   | Supply the copula used for parametric simulation |
+
+For parametric-bootstrap tests, a hypothesis may additionally implement
+
+```julia
+_bootstrap_hypothesis(h, Ustar)
+```
+
+when something must be recomputed from every bootstrap sample. For example, composite goodness-of-fit testing uses this hook to refit the model in every bootstrap replicate.
+
+---
+
+### Simulation calibration
+
+If the null distribution can be simulated directly, declare
+
+```julia
+_available_calibrations(::MyHypothesis, ::Val{:Sn},) = (:simulation,)
+```
+
+and implement only
+
+```julia
+function _simulation_sample(::MyHypothesis, U::AbstractMatrix, rng::Distributions.AbstractRNG,)
+    d, n = size(U)
+
+    # Generate a d × n sample under H₀.
+    sample = ...
+
+    return sample
+end
+```
+
+The generic engine handles:
+
+* repetition over `N` resamples;
+* conversion to pseudo-observations;
+* recomputation of the selected statistic;
+* exceedance counting;
+* p-value construction;
+* storage of the actual number of resamples.
+
+---
+
+### Randomization calibration
+
+For a hypothesis characterized by a transformation group that leaves the null distribution invariant, implement
+
+```julia
+function _randomization_sample(::MyHypothesis, U::AbstractMatrix, rng::Distributions.AbstractRNG,)
+    # Randomly transform U under H₀.
+end
+```
+
+Optional information printed or stored with the result can be provided through
+
+```julia
+_randomization_details(::MyHypothesis) = (; some_property=value)
+```
+
+The radial-symmetry test is an example: every observation is independently kept or radially reflected with probability `1/2`.
+
+---
+
+### Multiplier calibration
+
+Statistics based on an empirical-copula process can use the generic multiplier engine by implementing
+
+```julia
+function _multiplier_representation(h::MyHypothesis, ::Val{:Sn}, U::AbstractMatrix,)
+    # Construct the empirical-process representation.
+    return (matrices=..., scale=..., details=(; ...),)
+end
+```
+
+The returned `NamedTuple` may contain
+
+| Field        | Meaning                                               |
+| ------------ | ----------------------------------------------------- |
+| `matrices`   | Linear representations used by the multiplier process |
+| `scale`      | Final scale applied to the bootstrap statistic        |
+| `weights`    | Optional observation weights                          |
+| `strict`     | Whether exceedance means `>` instead of `≥`           |
+| `correction` | Optional Monte Carlo p-value correction               |
+| `details`    | Metadata stored in the resulting `CopulaTest`         |
+
+The generic multiplier engine generates centered exponential multipliers and performs the repeated linear-algebra operations.
+
+The hypothesis-specific method should therefore describe the **mathematical empirical-process representation**, not the mechanics of bootstrap iteration.
+
+---
+
+### Parametric bootstrap calibration
+
+For a parametric null hypothesis, implement
+
+```julia
+_bootstrap_copula(h::MyHypothesis) = ...
+```
+
+and declare
+
+```julia
+_available_calibrations(::MyHypothesis, ::Val{:Sn},) = (:parametric_bootstrap,)
+```
+
+The generic calibration engine repeatedly generates
+
+```math
+\boldsymbol U_1^\star,\ldots,\boldsymbol U_n^\star
+\sim C_0,
+```
+
+converts them to pseudo-observations, constructs the bootstrap hypothesis, and recomputes the statistic.
+
+The default bootstrap hypothesis is unchanged:
+
+```julia
+_bootstrap_hypothesis(h::CopulaHypothesis, Ustar::AbstractMatrix,) = h
+```
+
+Override this only when the null model must be re-estimated. For example, a composite goodness-of-fit hypothesis uses
+
+```julia
+function _bootstrap_hypothesis(h::GoodnessOfFitHypothesis{<:CopulaModel}, Ustar::AbstractMatrix,)
+    # Refit the same copula family on Ustar.
+end
+```
+
+This keeps parameter-estimation uncertainty inside the bootstrap rather than treating fitted parameters as fixed.
+
+---
+
+### Implementing a new calibration mechanism
+
+If none of the reusable engines is appropriate, a new calibration can be added through dispatch:
+
+```julia
+function _calibrate(h::MyHypothesis, ::Val{:my_calibration}, stat::Val, U::AbstractMatrix, observed::Real; kwargs...,)
+    # ...
+    return p, n_resamples, details
+end
+```
+
+The return contract is always
+
+```julia
+(p, n_resamples, details)
+```
+
+where
+
+* `p` is the resulting p-value;
+* `n_resamples` is the actual number of resampling replicates used;
+* `details` is a `NamedTuple` containing calibration-specific metadata.
+
+A non-resampling calibration, such as a future analytical or asymptotic calibration, can therefore return
+
+```julia
+return p, 0, (;)
+```
+
+without pretending that the constructor's `N` value was used. Validation of `N` belongs to resampling calibrations, not to the generic `CopulaTest` constructor.
+
+---
+
+### Result interface
+
+Every procedure ultimately returns the same type:
+
+```julia
+CopulaTest{H<:CopulaHypothesis, S<:Real, P<:Real, D<:NamedTuple}
+```
+
+The common API is
+
+```julia
+teststatistic(test)
+pvalue(test)
+StatsBase.nobs(test)
+Copulas.testname(test)
+Copulas.nullhypothesis(test)
+```
+
+and the result contains
+
+```julia
+test.hypothesis
+test.dimension
+test.statistic
+test.calibration
+test.n_resamples
+test.details
+```
+
+This common result type is the reason a contributor should generally add behavior through `CopulaHypothesis`, statistic, and calibration dispatch rather than introducing a new result struct.
+
+---
+
+### Generic display
+
+`Base.show(::MIME"text/plain", test::CopulaTest)` is generic.
+
+A new hypothesis therefore receives the common output automatically from
+
+```julia
+testname(h)
+nullhypothesis(h)
+teststatistic(test)
+pvalue(test)
+```
+
+without modifying `show.jl`.
+
+When a hypothesis needs additional output, extend the corresponding display hook rather than adding hypothesis-specific branching to the generic printer.
+
+The guiding rule is:
+
+> Mathematical differences should be expressed by dispatch; common mechanics
+> should remain generic.
+
+---
+
+### Minimal extension checklist
+
+To add a new hypothesis using an existing calibration engine, the usual minimum
+is:
+
+```julia
+struct MyHypothesis <: CopulaHypothesis end
+
+Copulas.testname(::MyHypothesis) = "..."
+Copulas.nullhypothesis(::MyHypothesis) = "..."
+
+Copulas._available_statistics(::MyHypothesis) = (:my_statistic,)
+
+Copulas._available_calibrations(::MyHypothesis, ::Val{:my_statistic},) = (:simulation,)
+
+Copulas._teststatistic(::MyHypothesis, ::Val{:my_statistic}, U; kwargs...,) = ...
+
+Copulas._simulation_sample(::MyHypothesis, U, rng,) = ...
+```
+
+After those methods are defined,
+
+```julia
+CopulaTest(MyHypothesis(), U; N=1000,)
+```
+
+uses the complete common infrastructure automatically.
+
+No modification of the generic constructor is required.
 
 # 2. Specific sub-APIs
 Some families of copulas in `Copulas.jl` have additional internal structures or specific mathematical representations.

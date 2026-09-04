@@ -1088,7 +1088,8 @@ one of two ways:
 use `fit(CopulaModel, reparam, init, U).result`.
 """
 # Shared optimiser + model assembly for a parametrisation `recon: α -> copula`.
-function _fit_nested(recon, α₀::AbstractVector, U, d::Int, n::Int; quick_fit, derived_measures)
+function _fit_nested(recon, α₀::AbstractVector, U, d::Int, n::Int;
+        quick_fit, derived_measures, fit_spec=nothing)
     loss(α) = -Distributions.loglikelihood(recon(α), U)
     t = @elapsed res = try
         Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff = ADTypes.AutoForwardDiff())
@@ -1102,7 +1103,8 @@ function _fit_nested(recon, α₀::AbstractVector, U, d::Int, n::Int; quick_fit,
     # (type-positional reconstruction we do not have) is never reached.
     md = (; d, n, method = :mle, nparams = length(α₀),
           optimizer = Optim.summary(res), converged = Optim.converged(res),
-          iterations = Optim.iterations(res), elapsed_sec = t, derived_measures, U = U)
+          iterations = Optim.iterations(res), elapsed_sec = t, derived_measures,
+          U = U, _fit_spec = fit_spec)
     return CopulaModel(Chat, n, ll, :mle; vcov = nothing,
         converged = Optim.converged(res), iterations = Optim.iterations(res),
         elapsed_sec = t, method_details = md)
@@ -1123,8 +1125,9 @@ function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, 
         method=:mle, quick_fit=false, vcov=false, derived_measures=true, kwargs...) where {d}
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     _validate_nested_fit_data(U, d)
+    fit_spec = _CopulaFitSpec(C0, :mle, (; kwargs...))
     return _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U, d, size(U, 2);
-                       quick_fit, derived_measures)
+                       quick_fit, derived_measures, fit_spec)
 end
 
 # Custom parametrisation: a map `reparam : α -> NestedArchimedeanCopula` and its

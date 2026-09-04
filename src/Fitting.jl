@@ -62,6 +62,47 @@ struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: Sta
     end
 end
 
+# Internal description of the estimator that produced a CopulaModel.
+#
+# `target` is the fitting target accepted by `fit(CopulaModel, target, U; ...)`
+# (normally a copula type, but it can also be a runtime template such as a
+# NestedArchimedeanCopula instance). `kwargs` contains estimator-defining
+# keywords only: generic inference controls such as `vcov` and
+# `derived_measures` are handled separately by `fit`.
+struct _CopulaFitSpec{T,K<:NamedTuple}
+    target::T
+    method::Symbol
+    kwargs::K
+end
+
+# Bootstrap/refit samples are already on the copula scale. If the original
+# estimator accepted raw data through `pseudo_values=false`, replay the same
+# estimator on the supplied pseudo-observations without ranking them again.
+function _refit_kwargs(kwargs::NamedTuple)
+    haskey(kwargs, :pseudo_values) || return kwargs
+    return merge(kwargs, (; pseudo_values=true))
+end
+
+"""
+    _refit(M::CopulaModel, U)
+
+Refit the same estimator specification that produced `M` to pseudo-observations
+`U`.
+
+This is an internal inference hook. A model is refittable only when its fitting
+entry point recorded a reproducible `_CopulaFitSpec`.
+"""
+function _refit(M::CopulaModel, U::AbstractMatrix)
+    spec = get(M.method_details, :_fit_spec, nothing)
+    spec isa _CopulaFitSpec || throw(ArgumentError(
+        "this fitted model does not store a reproducible fitting specification; " *
+        "composite goodness-of-fit refitting is unavailable for this model"))
+
+    kwargs = _refit_kwargs(spec.kwargs)
+
+    return Distributions.fit(CopulaModel, spec.target, U; method=spec.method, derived_measures=false, vcov=false, kwargs...,)
+end
+
 # Fallbacks that throw if the interface is not implemented correctly.
 """
     Distributions.params(C::Copula)
@@ -207,6 +248,7 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         throw(ArgumentError("unknown vcov method `$vcov_method`; expected one of $allowed_vcov"))
     d, n = size(U)
     method = _find_method(CT, d, method)
+    fit_spec = _CopulaFitSpec(CT, method, (; kwargs...))
     t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
     C, meta = rez
     quick_fit && return (result=C,) # as soon as possible.
@@ -230,8 +272,7 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         meta = (; meta..., vcov, vmeta...)
     end
 
-    md = (; d, n, method, meta..., null_ll=0.0,
-        elapsed_sec=t, derived_measures, U=U)
+    md = (; d, n, method, meta..., null_ll=0.0, elapsed_sec=t, derived_measures, U=U, _fit_spec=fit_spec)
 
     return CopulaModel(C, n, ll, method;
         vcov         = get(md, :vcov, nothing),

@@ -21,6 +21,7 @@ module Copulas
     import Printf
     import TaylorSeries
     import ADTypes
+    import StatsAPI: HypothesisTest, pvalue
 
     # Main code
     include("utils.jl")
@@ -136,10 +137,16 @@ module Copulas
     include("ArchimaxCopula.jl")
 
 
+    include("CopulaTest.jl")
+
     include("show.jl")
 
     export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
     export SklarDist, CopulaModel
+    export CopulaHypothesis, CopulaTest
+    export IndependenceCopulaTest, ExchangeabilityCopulaTest
+    export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
+    export pvalue, teststatistic
 
     export WilliamsonGenerator, 𝒲, EmpiricalGenerator, DiscreteSpectralTail
     export ArchimedeanCopula, ExtremeValueCopula, LiouvilleCopula

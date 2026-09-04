@@ -209,6 +209,7 @@ testfiles = (
     "operations/rosenblatt.jl",
     "operations/dependence.jl",
     "operations/fitting.jl",
+    "operations/hypothesis_testing.jl",
     "operations/nataf.jl",
     "extensions/expectation_maximization.jl"
 )
