@@ -254,6 +254,15 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
     quick_fit && return (result=C,) # as soon as possible.
     ll = Distributions.loglikelihood(C, U)
 
+    return _finish_copula_fit(CT, C, U, ll, method, meta, t, fit_spec;
+        derived_measures, vcov, vcov_method)
+end
+
+# Assemble inference around an existing fit, without rerunning its estimator.
+function _finish_copula_fit(CT, C, U, ll, method, meta, t, fit_spec;
+        derived_measures=true, vcov=true, vcov_method=nothing)
+    d, n = size(U)
+
     if vcov && C isa TCopula
         vcov = false
         @info "Setting vcov = false for TCopula since _beta_inc_inv derivative are not implemented"
@@ -711,218 +720,87 @@ end
 ###############################################################################
 
 """
-    _available_selection_criteria()
-
-Return the information criteria available for automatic copula selection.
-The first entry is used when `criterion=:default`.
-"""
-_available_selection_criteria() = (:bic, :aic, :aicc, :hqc)
-
-struct CopulaSelectionTable{T,R<:AbstractVector{T}} <: AbstractVector{T}
-    rows::R
-    criterion::Symbol
-    selected_family
-end
-
-Base.IndexStyle(::Type{<:CopulaSelectionTable}) = IndexLinear()
-Base.size(table::CopulaSelectionTable) = size(table.rows)
-Base.getindex(table::CopulaSelectionTable, i::Int) = table.rows[i]
-Base.sort(table::CopulaSelectionTable; kwargs...) =
-    CopulaSelectionTable(sort(table.rows; kwargs...), table.criterion, table.selected_family)
-
-"""
-    _default_copula_candidates(d)
-
-Return the built-in parametric copula families considered by automatic
-selection in dimension `d` when `candidates=:default`.
-"""
-function _default_copula_candidates(d::Integer)
-    common = (
-        GaussianCopula,
-        TCopula,
-        AMHCopula,
-        ClaytonCopula,
-        FrankCopula,
-        GumbelCopula,
-        JoeCopula,
-        GalambosCopula,
-        HuslerReissCopula,
-        LogCopula,
-    )
-    d == 2 && return (common..., PlackettCopula)
-    return common
-end
-
-"""
-    _all_copula_candidates(d)
-
-Return the broad built-in parametric copula repertoire considered by automatic
-selection when `candidates=:all`.
-"""
-function _all_copula_candidates(d::Integer)
-    common = (
-        IndependentCopula,
-        GaussianCopula,
-        TCopula,
-        AMHCopula,
-        ClaytonCopula,
-        FrankCopula,
-        GumbelCopula,
-        GumbelBarnettCopula,
-        InvGaussianCopula,
-        JoeCopula,
-        BB1Copula,
-        BB2Copula,
-        BB3Copula,
-        BB6Copula,
-        BB7Copula,
-        BB8Copula,
-        BB9Copula,
-        BB10Copula,
-        RafteryCopula,
-        GalambosCopula,
-        HuslerReissCopula,
-        LogCopula,
-        CuadrasAugeCopula,
-        MixedCopula,
-        MOCopula,
-        TawnCopula,
-    )
-    d == 2 && return (
-        common...,
-        PlackettCopula,
-        FGMCopula,
-        BB4Copula,
-        BB5Copula,
-        AsymGalambosCopula,
-        AsymLogCopula,
-        AsymMixedCopula,
-        BC2Copula,
-    )
-    return common
-end
-
-function _selection_candidates(candidates, d::Integer)
-    candidates === :default && return _default_copula_candidates(d)
-    candidates === :all && return _all_copula_candidates(d)
-    return (candidates isa Type || candidates isa UnionAll) ? (candidates,) : Tuple(candidates)
-end
-
-"""
     selectiontable(model::CopulaModel)
 
-Return the candidate-comparison table stored in an automatically selected
-copula model.
+Return the vector of candidate comparison rows from automatic family selection.
 """
 function selectiontable(M::CopulaModel)
-    get(M.method_details, :selection, false) ||
+    haskey(M.method_details, :selection_table) ||
         throw(ArgumentError("The model was not produced by automatic copula selection."))
-    return CopulaSelectionTable(
-        M.method_details.selection_table,
-        M.method_details.criterion,
-        M.method_details.selected_family,
-    )
+    return M.method_details.selection_table
 end
 
 """
-    fit(CopulaModel, Copula, U; candidates=:default, criterion=:default, method=:default, kwargs...)
+    fit(CopulaModel, Copula, U; candidates, criterion=:bic, method=:default, kwargs...)
 
-Fit candidate copula families to the `d x n` pseudo-observation matrix `U`,
-select the family minimizing the requested information criterion, and return
-the selected model.
+Fit an explicit collection of candidate families and select the smallest finite
+information criterion (`:bic`, `:aic`, `:aicc`, or `:hqc`). The winning fit is
+reused; only its requested inference is computed afterwards. Prefer maximum
+likelihood fitting when interpreting these as information criteria.
 
-Candidate fits used only for comparison are performed with `vcov=false`. The
-winning family is fitted once with the inference options requested by the user.
+Failed candidates are recorded with `on_error=:skip`, or rethrown with
+`on_error=:throw`. Interruptions always propagate. Composite GOF after selection
+is not yet supported.
 """
 function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
-        candidates=:default, criterion::Symbol=:default, method::Symbol=:default,
+        candidates, criterion::Symbol=:bic, method::Symbol=:default,
         on_error::Symbol=:skip, require_convergence::Bool=true,
         quick_fit::Bool=false, derived_measures::Bool=true, vcov::Bool=true,
         vcov_method=nothing, kwargs...)
-    d, _ = size(U)
-    available_criteria = _available_selection_criteria()
-    criterion = criterion === :default ? first(available_criteria) : criterion
-    criterion in available_criteria ||
-        throw(ArgumentError("Criterion '$criterion' is not available. Available: $(join(available_criteria, ", "))."))
-    on_error in (:skip, :throw) || throw(ArgumentError("`on_error` must be either `:skip` or `:throw`."))
-
-    candidate_types = _selection_candidates(candidates, d)
+    criterion in (:bic, :aic, :aicc, :hqc) ||
+        throw(ArgumentError("Unknown selection criterion: $criterion"))
+    on_error in (:skip, :throw) ||
+        throw(ArgumentError("`on_error` must be :skip or :throw."))
+    allowed_vcov = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
+    isnothing(vcov_method) || vcov_method in allowed_vcov ||
+        throw(ArgumentError("unknown vcov method `$vcov_method`"))
+    candidate_types = collect(candidates)
+    isempty(candidate_types) && throw(ArgumentError("at least one candidate is required"))
+    all(CT -> CT isa Type && CT <: Copula && CT !== Copula, candidate_types) ||
+        throw(ArgumentError("candidates must be concrete copula families, not Copula itself"))
+    unique!(candidate_types)
 
     rows = NamedTuple[]
-    best_type = nothing
-    best_method = nothing
-    best_score = Inf
+    best = nothing
     best_index = 0
-    selection_start = time()
-
+    best_score = Inf
+    started = time()
     for CT in candidate_types
-        CT <: Copula || throw(ArgumentError("Candidate `$CT` is not a subtype of `Copula`."))
-        CT === Copula && throw(ArgumentError("`Copula` cannot itself appear inside `candidates`."))
-        try
-            M = Distributions.fit(CopulaModel, CT, U; method=method,
-                quick_fit=false, derived_measures=false, vcov=false, kwargs...)
-            aic_value = StatsBase.aic(M)
-            aicc_value = aicc(M)
-            bic_value = StatsBase.bic(M)
-            hqc_value = hqc(M)
-            score =
-                criterion === :bic  ? bic_value :
-                criterion === :aic  ? aic_value :
-                criterion === :aicc ? aicc_value : hqc_value
-            status =
-                !isfinite(M.ll) || !isfinite(score) ? :nonfinite :
-                require_convergence && !M.converged ? :not_converged :
-                :ok
-            if status === :nonfinite
-                aic_value = isfinite(aic_value) ? aic_value : Inf
-                aicc_value = isfinite(aicc_value) ? aicc_value : Inf
-                bic_value = isfinite(bic_value) ? bic_value : Inf
-                hqc_value = isfinite(hqc_value) ? hqc_value : Inf
-                score = Inf
-            end
-            push!(rows, (candidate=CT, status=status, method=M.method,
-                converged=M.converged, nparams=StatsBase.dof(M),
-                loglikelihood=M.ll, aic=aic_value, aicc=aicc_value,
-                bic=bic_value, hqc=hqc_value,
-                criterion_value=score, elapsed_sec=M.elapsed_sec,
-                error=nothing))
-            if status === :ok && score < best_score
-                best_type = CT
-                best_method = M.method
-                best_score = score
-                best_index = length(rows)
-            end
+        M = try
+            Distributions.fit(CopulaModel, CT, U; method,
+                derived_measures=false, vcov=false, kwargs...)
         catch err
-            on_error === :throw && rethrow()
+            (err isa InterruptException || on_error === :throw) && rethrow()
             push!(rows, (candidate=CT, status=:failed, method=method,
                 converged=false, nparams=0, loglikelihood=NaN,
                 aic=Inf, aicc=Inf, bic=Inf, hqc=Inf,
-                criterion_value=Inf, elapsed_sec=NaN,
                 error=sprint(showerror, err)))
+            continue
+        end
+        criteria = (; aic=StatsBase.aic(M), aicc=aicc(M),
+            bic=StatsBase.bic(M), hqc=hqc(M))
+        score = getproperty(criteria, criterion)
+        status = !isfinite(M.ll) || !isfinite(score) ? :nonfinite :
+            require_convergence && !M.converged ? :not_converged : :ok
+        push!(rows, (; candidate=CT, status, method=M.method,
+            converged=M.converged, nparams=StatsBase.dof(M),
+            loglikelihood=M.ll, criteria..., error=nothing))
+        if status === :ok && score < best_score
+            best, best_index, best_score = M, length(rows), score
         end
     end
+    best === nothing && throw(ArgumentError("No candidate copula produced an eligible finite fit."))
+    quick_fit && return (result=best.result,)
 
-    best_type === nothing && throw(ErrorException("No candidate copula produced an eligible finite fit."))
-    selected = Distributions.fit(CopulaModel, best_type, U; method=best_method,
-        quick_fit=quick_fit, derived_measures=derived_measures, vcov=vcov,
-        vcov_method=vcov_method, kwargs...)
-    quick_fit && return selected
-
-    elapsed_sec = time() - selection_start
+    CT = rows[best_index].candidate
+    selected = _finish_copula_fit(CT, best.result, U, best.ll, best.method,
+        best.method_details, best.elapsed_sec, nothing;
+        derived_measures, vcov, vcov_method)
+    # No single-family fit specification can reproduce model selection. Until
+    # selection-aware bootstrap exists, _refit must reject this model.
     return CopulaModel(selected.result, selected.n, selected.ll, selected.method;
-        vcov=selected.vcov,
-        converged=selected.converged,
-        iterations=selected.iterations,
-        elapsed_sec=elapsed_sec,
-        method_details=(; selected.method_details...,
-            selection=true,
-            criterion=criterion,
-            candidates=candidate_types,
-            requested_method=method,
-            selection_options=(; on_error, require_convergence, kwargs...),
-            selection_table=rows,
-            selected_family=best_type,
-            selected_index=best_index,
-            selected_score=best_score,
-            selection_elapsed_sec=elapsed_sec))
+        vcov=selected.vcov, converged=selected.converged,
+        iterations=selected.iterations, elapsed_sec=time() - started,
+        method_details=(; selected.method_details..., criterion,
+            selection_table=rows, selected_index=best_index))
 end
