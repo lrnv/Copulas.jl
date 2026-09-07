@@ -246,7 +246,25 @@ Once the above methods are implemented, your family becomes automatically compat
 
 the requires _fit function for :mle for example might already be provided by the package, test your case.
 
+## 1.6 Hypothesis tests
 
+The public procedures and their assumptions are documented in
+[Hypothesis testing](@ref hypothesis_testing). They return a common
+`CopulaTest <: StatsAPI.HypothesisTest`, with `pvalue`, `teststatistic`
+and `StatsBase.nobs` accessors.
+
+To contribute a new procedure, add an internal hypothesis description and
+implement its statistic and calibration in `src/CopulaTest.jl`. A public function
+validates procedure-specific options and calls `_run_copula_test`, which handles
+common data validation and result assembly. Dispatch is on the hypothesis:
+there is no registry of hypothetical statistic/calibration combinations.
+The two multiplier procedures share the numerical resampling loop.
+
+Add a small independent statistic/process oracle and reproducibility checks to
+`test/operations/hypothesis_testing.jl`, then document the precise procedure,
+reference, applicability and finite-sample conventions. Composite GOF must replay
+the estimator specification for every bootstrap sample.
+These implementation details are internal and are not covered by SemVer.
 
 # 2. Specific sub-APIs
 Some families of copulas in `Copulas.jl` have additional internal structures or specific mathematical representations.

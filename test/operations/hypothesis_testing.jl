@@ -1,0 +1,545 @@
+const COPULA_TEST_RESAMPLES = parse(Int, get(ENV, "COPULAS_TEST_RESAMPLES", "19"))
+const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
+
+@testset "Copula hypothesis tests [copula_tests]" begin
+    @testset "Multiplier process oracles" begin
+        # Compute the empirical process from scalar sums, independently of the
+        # production matrix assembly. Include a non-self-inverse permutation.
+        U = [0.12 0.36 0.62 0.87; 0.72 0.18 0.91 0.43; 0.31 0.82 0.16 0.68]
+        d, n = size(U)
+        xi = [-1.5, -0.5, 0.5, 1.5]
+        empirical(u) = count(j -> all(U[:, j] .<= u), 1:n) / n
+        function derivative(u, k)
+            lo, hi = copy(u), copy(u)
+            lo[k] = max(0.0, u[k] - inv(sqrt(n)))
+            hi[k] = min(1.0, u[k] + inv(sqrt(n)))
+            return (empirical(hi) - empirical(lo)) / (hi[k] - lo[k])
+        end
+        bridge(u) = sum(xi[j] * all(U[:, j] .<= u) for j in 1:n)
+        margin(k, z) = sum(xi[j] * (U[k, j] <= z) for j in 1:n)
+        process(u) = bridge(u) - sum(derivative(u, k) * margin(k, u[k]) for k in 1:d)
+
+        powers = [2.0, 3.5]
+        matrices, _ = Copulas._extreme_value_multiplier_matrices(U, powers)
+        for (Q, r) in zip(matrices, powers)
+            expected = [r * empirical(u .^ inv(r))^(r - 1) * process(u .^ inv(r)) - process(u) for u in eachcol(U)]
+            @test Q * xi ≈ expected atol=1e-14
+        end
+
+        permutations = [(2, 1, 3), (2, 3, 1)]
+        matrices, weights, _ = Copulas._exchangeability_multiplier_matrices(U, permutations, :none)
+        for (Q, perm, w) in zip(matrices, permutations, weights)
+            inverse = invperm(collect(perm))
+            expected = [bridge(u) - bridge(u[collect(perm)]) -
+                sum(derivative(u, k) * (margin(k, u[k]) - margin(inverse[k], u[k])) for k in 1:d)
+                for u in eachcol(U)]
+            @test Q * xi ≈ expected atol=1e-14
+            @test w == ones(n)
+        end
+
+        # Independently reproduce the quadratic statistic and exceedance count,
+        # covering both weighted/strict and unweighted/corrected conventions.
+        Q = [1.0 2.0; -0.5 1.0]
+        for weighted in (false, true)
+            rng = Xoshiro(946)
+            exceedances = 0
+            for _ in 1:9
+                z = randexp(rng, 2)
+                z .-= sum(z) / 2
+                value = sum((weighted ? i : 1) * sum(Q[i, j] * z[j] for j in 1:2)^2 for i in 1:2) / 4
+                exceedances += weighted ? value > 0.2 : value >= 0.2
+            end
+            expected = weighted ? exceedances / 9 : (exceedances + 0.5) / 10
+            actual = Copulas._multiplier_pvalue([Q], 0.2, 9, Xoshiro(946);
+                weights=weighted ? [[1.0, 2.0]] : nothing, scale=0.5,
+                strict=weighted, correction=weighted ? nothing : 0.5)
+            @test actual == expected
+        end
+    end
+
+    @testset "Common public contract" begin
+        U = [0.2 0.5 0.8; 0.3 0.6 0.9]
+        result = IndependenceCopulaTest(U; pseudo_values=true, N=1, rng=Xoshiro(1))
+        @test result isa Copulas.HypothesisTest
+        @test StatsBase.nobs(result) == 3
+        @test teststatistic(result) ≈ 647 / 2250
+        @test_throws MethodError ExtremeValueCopulaTest(U; powres=2, N=1)
+        @test_throws MethodError ExchangeabilityCopulaTest(U; weigh=:none, N=1)
+        for invalid in (zeros(1, 3), zeros(2, 1), [NaN 0.2; 0.3 0.4])
+            @test_throws ArgumentError IndependenceCopulaTest(invalid; N=1)
+        end
+        @test_throws ArgumentError IndependenceCopulaTest(
+            [-0.1 0.5 0.8; 0.3 0.6 0.9]; pseudo_values=true, N=1)
+    end
+
+    @testset "Tied margins are rejected" begin
+        Utied = [
+            0.1 0.1 0.4 0.7
+            0.2 0.3 0.6 0.8
+        ]
+
+        err = try
+            IndependenceCopulaTest(Utied; N=2, rng=Xoshiro(10),)
+        catch e
+            e
+        end
+
+        @test err isa ArgumentError
+        @test occursin("tie-free margins", sprint(showerror, err))
+        @test occursin("margin 1", sprint(showerror, err))
+
+        # Supplying pseudo-observations must not bypass the tie check.
+        @test_throws ArgumentError IndependenceCopulaTest(Utied; pseudo_values=true, N=2, rng=Xoshiro(11),)
+    end
+
+    @testset "RNG reproducibility" begin
+        # Simulation calibration
+        Uind = rand(Xoshiro(810), IndependentCopula(2), 30)
+
+        tsim1 = IndependenceCopulaTest(
+            Uind;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(811),
+        )
+        tsim2 = IndependenceCopulaTest(
+            Uind;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(811),
+        )
+
+        @test pvalue(tsim1) == pvalue(tsim2)
+
+        # Multiplier calibration
+        Uex = rand(Xoshiro(812), GaussianCopula(3, 0.5), 30)
+
+        tmul1 = ExchangeabilityCopulaTest(
+            Uex;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(813),
+        )
+        tmul2 = ExchangeabilityCopulaTest(
+            Uex;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(813),
+        )
+
+        @test pvalue(tmul1) == pvalue(tmul2)
+
+        # Randomization calibration
+        Urad = rand(Xoshiro(814), GaussianCopula(3, 0.5), 30)
+
+        tran1 = RadialSymmetryCopulaTest(
+            Urad;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(815),
+        )
+        tran2 = RadialSymmetryCopulaTest(
+            Urad;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(815),
+        )
+
+        @test pvalue(tran1) == pvalue(tran2)
+
+        # Parametric-bootstrap calibration
+        Cgof = ClaytonCopula(2, 2.5)
+        Ugof = rand(Xoshiro(816), Cgof, 30)
+
+        tboot1 = GOFCopulaTest(
+            Cgof,
+            Ugof;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(817),
+        )
+        tboot2 = GOFCopulaTest(
+            Cgof,
+            Ugof;
+            N=COPULA_TEST_TINY_RESAMPLES,
+            rng=Xoshiro(817),
+        )
+
+        @test pvalue(tboot1) == pvalue(tboot2)
+    end
+
+    @testset "IndependenceCopulaTest" begin
+        U0 = rand(Xoshiro(123), IndependentCopula(2), 80)
+        t0 = IndependenceCopulaTest(U0; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
+
+        @test t0 isa CopulaTest
+        @test t0.statistic === :cvm
+        @test t0.calibration === :simulation
+        @test Copulas.testname(t0) == "Copula independence test"
+        @test StatsBase.nobs(t0) == 80
+        @test t0.dimension == 2
+        @test isfinite(teststatistic(t0))
+        @test 0 < pvalue(t0) < 1
+
+        U1 = rand(Xoshiro(456), ClaytonCopula(2, 8.0), 80)
+        t1 = IndependenceCopulaTest(U1; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
+
+        @test teststatistic(t1) > teststatistic(t0)
+        @test pvalue(t1) <= 0.05
+
+        io = IOBuffer()
+        show(io, MIME("text/plain"), t1)
+        printed = String(take!(io))
+        @test occursin("Statistic:", printed)
+        @test occursin("Observed value:", printed)
+
+        @test_throws MethodError IndependenceCopulaTest(U0; statistic=:ks, N=9, rng=Xoshiro(1))
+        @test_throws MethodError IndependenceCopulaTest(U0; calibration=:bootstrap, N=9, rng=Xoshiro(1))
+        @test_throws ArgumentError IndependenceCopulaTest(U0; N=0, rng=Xoshiro(1))
+    end
+
+    @testset "ExchangeabilityCopulaTest" begin
+        @testset "Published Sn normalization" begin
+            Udet = [
+                0.2 0.5 0.8
+                0.3 0.9 0.6
+            ]
+
+            permutations = ((2, 1),)
+            expected = 1 / 3
+
+            @test Copulas._exchangeability_sn_statistic(Udet, permutations, :none,) ≈ expected
+
+            hdet = Copulas.ExchangeabilityHypothesis(permutations=((2, 1),), weight=:none,)
+            rep = Copulas._multiplier_representation(hdet, Udet,)
+            @test rep.scale == inv(size(Udet, 2))
+            Tdet = ExchangeabilityCopulaTest(Udet; permutations=(2, 1), weight=:none, pseudo_values=true, N=1, rng=Xoshiro(779),)
+            @test teststatistic(Tdet) ≈ expected
+        end
+
+        U2 = rand(Xoshiro(123), ClaytonCopula(2, 3.0), 80)
+        t2 = ExchangeabilityCopulaTest(U2; N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
+
+        @test t2 isa CopulaTest
+        @test t2.statistic === :Sn
+        @test t2.calibration === :multiplier
+        @test t2.details.permutations == [(2, 1)]
+        @test t2.details.generator == [(2, 1)]
+        @test t2.details.weight === :wm2
+        @test StatsBase.nobs(t2) == 80
+        @test t2.dimension == 2
+        @test Copulas.testname(t2) == "Copula exchangeability test"
+        @test isfinite(teststatistic(t2))
+        @test 0 <= pvalue(t2) <= 1
+
+
+        Ue = rand(Xoshiro(234), ClaytonCopula(3, 3.0), 120)
+        te = ExchangeabilityCopulaTest(Ue; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
+        @test te.details.generator == [(2, 1, 3), (2, 3, 1)]
+        @test pvalue(te) > 0.05
+
+        tc = ExchangeabilityCopulaTest(Ue; permutations=(2, 1, 3), N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
+        @test tc.details.generator == [(2, 1, 3)]
+
+        x = rand(Xoshiro(2), 120)
+        y = x .+ 0.04 .* randn(Xoshiro(3), 120)
+        z = rand(Xoshiro(4), 120)
+        Ua = permutedims(hcat(x, y, z))
+        ta = ExchangeabilityCopulaTest(Ua; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
+        @test teststatistic(ta) > teststatistic(te)
+        @test pvalue(ta) <= 0.05
+
+        io = IOBuffer()
+        show(io, MIME("text/plain"), ta)
+        printed = String(take!(io))
+        @test occursin("Permutations:", printed)
+        @test occursin("Weight:", printed)
+
+        @testset "Permutation selection and multiplier memory" begin
+            @test Copulas._exchangeability_permutations(:G1, 3) == [(2, 1, 3), (3, 2, 1)]
+            @test Copulas._exchangeability_permutations(:G2, 3) == [(2, 1, 3), (2, 3, 1)]
+            @test_throws ArgumentError ExchangeabilityCopulaTest(U2; permutations=:all, N=1)
+            @test_throws ArgumentError Copulas._check_multiplier_matrix_cost(70, 1000)
+            @test Copulas._check_multiplier_matrix_cost(1, 10) === nothing
+            @test Copulas._exchangeability_permutations([(2, 1), (2, 1)], 2) == [(2, 1)]
+            # Stateful iterators must be consumed only once, before statistic/calibration.
+            selected = Iterators.Stateful([(2, 1)])
+            t = ExchangeabilityCopulaTest(U2; permutations=selected, N=1, rng=Xoshiro(1))
+            @test t.details.generator == [(2, 1)]
+            powers = Iterators.Stateful([2.0, 3.0])
+            t = ExtremeValueCopulaTest(U2; powers, N=1, rng=Xoshiro(1))
+            @test t.details.powers == [2.0, 3.0]
+        end
+
+        @test_throws MethodError ExchangeabilityCopulaTest(U2; statistic=:Rn, N=9, rng=Xoshiro(1))
+        @test_throws MethodError ExchangeabilityCopulaTest(U2; calibration=:randomization, N=9, rng=Xoshiro(1))
+        @test_throws ArgumentError ExchangeabilityCopulaTest(U2; weight=:wm, N=9, rng=Xoshiro(1))
+        @test_throws ArgumentError ExchangeabilityCopulaTest(U2; permutations=(1, 1), N=9, rng=Xoshiro(1))
+        @test_throws ArgumentError ExchangeabilityCopulaTest(U2; permutations=(1, 2), N=9, rng=Xoshiro(1))
+        @test_throws ArgumentError ExchangeabilityCopulaTest(U2; N=0, rng=Xoshiro(1))
+    end
+
+    @testset "RadialSymmetryCopulaTest" begin
+        @testset "Randomization reranking of induced ties" begin
+            sample = [
+                0.25 0.25 0.75 0.75
+                0.20 0.40 0.60 0.80
+            ]
+
+            V = Copulas._randomization_pseudos(Copulas.RadialSymmetryHypothesis(), sample,)
+
+            @test V[1, :] ≈ [0.3, 0.3, 0.7, 0.7] # Average ranks in the first margin:
+                                                 # (1.5, 1.5, 3.5, 3.5) / (4 + 1)
+            @test V[2, :] ≈ [0.2, 0.4, 0.6, 0.8] # Without ties, tied ranks coincide with ordinary ranks.
+            @test V[1, 1] == V[1, 2]
+            @test V[1, 3] == V[1, 4]
+        end
+
+        @testset "Published Sn normalization" begin
+            Udet = [
+                0.2 0.5 0.8
+                0.3 0.9 0.6
+            ]
+
+            expected = 1 / 9
+
+            hdet = Copulas.RadialSymmetryHypothesis()
+            @test Copulas._teststatistic(hdet, Udet,) ≈ expected
+            Tdet = RadialSymmetryCopulaTest(Udet; pseudo_values=true, N=1, rng=Xoshiro(780),)
+            @test teststatistic(Tdet) ≈ expected
+        end
+
+        Us = rand(Xoshiro(123), GaussianCopula(3, 0.5), 100)
+        ts = RadialSymmetryCopulaTest(Us; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
+
+        @test ts isa CopulaTest
+        @test ts.statistic === :Sn
+        @test ts.calibration === :randomization
+        @test ts.details.reflection_probability == 0.5
+        @test StatsBase.nobs(ts) == 100
+        @test ts.dimension == 3
+        @test Copulas.testname(ts) == "Copula radial symmetry test"
+        @test isfinite(teststatistic(ts))
+        @test 0 < pvalue(ts) < 1
+
+        Ua = rand(Xoshiro(456), ClaytonCopula(3, 4.0), 100)
+        ta = RadialSymmetryCopulaTest(Ua; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
+
+        @test teststatistic(ta) > teststatistic(ts)
+
+        io = IOBuffer()
+        show(io, MIME("text/plain"), ta)
+        printed = String(take!(io))
+        @test occursin("Reflection probability:", printed)
+        @test occursin("The copula is radially symmetric.", printed)
+
+        @test_throws MethodError RadialSymmetryCopulaTest(Us; statistic=:cvm, N=9, rng=Xoshiro(1))
+        @test_throws MethodError RadialSymmetryCopulaTest(Us; calibration=:multiplier, N=9, rng=Xoshiro(1))
+        @test_throws ArgumentError RadialSymmetryCopulaTest(Us; N=0, rng=Xoshiro(1))
+    end
+
+    @testset "ExtremeValueCopulaTest" begin
+        @testset "Published Sn normalization" begin
+            Udet = [
+                0.2 0.5 0.8
+                0.3 0.6 0.9
+            ]
+
+            expected = 8 / 81
+
+            @test Copulas._extreme_value_sn_statistic(Udet, (2.0,)) ≈ expected
+
+            hdet = Copulas.ExtremeValueHypothesis(; powers=[2.0])
+            rep = Copulas._multiplier_representation(hdet, Udet)
+
+            @test rep.scale == inv(size(Udet, 2))
+            Tdet = ExtremeValueCopulaTest(Udet; powers=2, pseudo_values=true, N=1, rng=Xoshiro(778),)
+            @test teststatistic(Tdet) ≈ expected
+        end
+
+        Uev = rand(Xoshiro(123), GumbelCopula(3, 3.0), 100)
+        tev = ExtremeValueCopulaTest(Uev; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
+
+        @test tev isa CopulaTest
+        @test tev.statistic === :Sn
+        @test tev.calibration === :multiplier
+        @test tev.details.powers == [3.0, 4.0, 5.0]
+        @test tev.details.multiplier === :exponential
+        @test tev.details.derivative_bandwidth == inv(sqrt(100))
+        @test StatsBase.nobs(tev) == 100
+        @test tev.dimension == 3
+        @test Copulas.testname(tev) == "Extreme-value copula test"
+        @test isfinite(teststatistic(tev))
+        @test 0 < pvalue(tev) < 1
+
+        Ucl = rand(Xoshiro(456), ClaytonCopula(3, 3.0), 100)
+        tcl = ExtremeValueCopulaTest(Ucl; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
+
+        @test teststatistic(tcl) > teststatistic(tev)
+        @test pvalue(tcl) <= 0.05
+
+        tp = ExtremeValueCopulaTest(Uev; powers=2, N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
+        @test tp.details.powers == [2.0]
+
+        io = IOBuffer()
+        show(io, MIME("text/plain"), tcl)
+        printed = String(take!(io))
+        @test occursin("Powers:", printed)
+        @test occursin("The copula belongs to the extreme-value class.", printed)
+
+        @test_throws MethodError ExtremeValueCopulaTest(Uev; statistic=:cvm, N=9, rng=Xoshiro(1))
+        @test_throws MethodError ExtremeValueCopulaTest(Uev; calibration=:simulation, N=9, rng=Xoshiro(1))
+        @test_throws ArgumentError ExtremeValueCopulaTest(Uev; powers=1, N=9, rng=Xoshiro(1))
+        @test_throws ArgumentError ExtremeValueCopulaTest(Uev; powers=(), N=9, rng=Xoshiro(1))
+        @test_throws ArgumentError ExtremeValueCopulaTest(Uev; N=0, rng=Xoshiro(1))
+    end
+
+    @testset "GOFCopulaTest" begin
+        @testset "Published Sn normalization" begin
+            Udet = [
+                0.2 0.5 0.8
+                0.3 0.6 0.9
+            ]
+            Cdet = IndependentCopula(2)
+
+            expected = 647 / 2250
+
+            @test Copulas._gof_sn_statistic(Udet, Cdet) ≈ expected
+            Tdet = GOFCopulaTest(Cdet, Udet; pseudo_values=true, N=1, rng=Xoshiro(777),)
+            @test teststatistic(Tdet) ≈ expected
+        end
+
+        U = rand(Xoshiro(123), ClaytonCopula(2, 3.0), 60)
+        Ts = GOFCopulaTest(ClaytonCopula(2, 3.0), U;
+            N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
+
+        @test Ts isa CopulaTest
+        @test Ts.hypothesis.model isa Copulas.Copula
+        @test Ts.statistic === :Sn
+        @test Ts.calibration === :parametric_bootstrap
+        @test StatsBase.nobs(Ts) == 60
+        @test Ts.dimension == 2
+        @test Copulas.testname(Ts) == "Copula goodness-of-fit test"
+        @test isfinite(teststatistic(Ts))
+        @test 0 < pvalue(Ts) < 1
+
+        M = fit(CopulaModel, ClaytonCopula, U; vcov=false)
+        Tc = GOFCopulaTest(M; N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
+        @test Tc.hypothesis.model isa CopulaModel
+        @test Tc.hypothesis.model === M
+        @test 0 < pvalue(Tc) < 1
+
+        @testset "Composite GOF refits the tested sample" begin
+            Unew = rand(Xoshiro(905), ClaytonCopula(2, 1.2), 40)
+            Vnew = pseudos(Unew)
+
+            Mexpected = Copulas._refit(M, Vnew)
+            Tnew = GOFCopulaTest(M, Unew; N=1, rng=Xoshiro(906),)
+
+            @test Tnew.hypothesis.model isa CopulaModel
+            @test Tnew.hypothesis.model !== M
+            @test StatsBase.coef(Tnew.hypothesis.model) ≈ StatsBase.coef(Mexpected)
+            @test teststatistic(Tnew) ≈ Copulas._gof_sn_statistic(Vnew, Copulas._copula_of(Mexpected))
+        end
+
+        @testset "Composite GOF preserves runtime fitting structure" begin
+            # NestedArchimedeanCopula stores its tree structure and inner
+            # generator families in the instance, so refitting from typeof(C)
+            # is insufficient.
+            Cnested = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.5); leaves=[1], children=[ClaytonCopula(2, 3.0) => [2, 3]],)
+            Unested = rand(Xoshiro(901), Cnested, 30)
+
+            Mnested = fit(CopulaModel, Cnested, Unested; vcov=false, derived_measures=false,)
+
+            Mnested_refit = Copulas._refit(Mnested, Unested)
+            Cnested_refit = Copulas._copula_of(Mnested_refit)
+
+            @test Cnested_refit isa NestedArchimedeanCopula
+            @test Cnested_refit.leafdims == Cnested.leafdims
+            @test length(Cnested_refit.children) == length(Cnested.children)
+            @test Cnested_refit.children[1][2] == Cnested.children[1][2]
+            @test typeof(Cnested_refit.G).name.wrapper === typeof(Cnested.G).name.wrapper
+            @test typeof(Cnested_refit.children[1][1].G).name.wrapper === typeof(Cnested.children[1][1].G).name.wrapper
+
+            Tnested = GOFCopulaTest(Mnested; N=1, rng=Xoshiro(903),)
+
+            @test Tnested.hypothesis.model isa CopulaModel
+            @test isfinite(teststatistic(Tnested))
+            @test 0 <= pvalue(Tnested) <= 1
+
+            # SurvivalCopula stores the flip pattern in the instance rather
+            # than in its concrete type.
+            Csurvival = SurvivalCopula(ClaytonCopula(3, 2.5), (1, 3))
+            Usurvival = rand(Xoshiro(902), Csurvival, 40)
+
+            Msurvival = fit(CopulaModel, typeof(Csurvival), Usurvival; method=:itau, flips=Csurvival.flipmask, vcov=false, derived_measures=false,)
+
+            Msurvival_refit = Copulas._refit(Msurvival, Usurvival)
+            Csurvival_refit = Copulas._copula_of(Msurvival_refit)
+
+            @test Csurvival_refit isa SurvivalCopula
+            @test Csurvival_refit.flipmask == Csurvival.flipmask
+            @test Csurvival_refit.flipmask == (true, false, true)
+
+            Tsurvival = GOFCopulaTest(Msurvival; N=1, rng=Xoshiro(904),)
+
+            @test Tsurvival.hypothesis.model isa CopulaModel
+            @test isfinite(teststatistic(Tsurvival))
+            @test 0 <= pvalue(Tsurvival) <= 1
+
+            # Estimator-defining runtime keywords must also survive refitting.
+            Uchecker = rand(Xoshiro(907), GaussianCopula(2, 0.4), 36)
+            Mchecker = fit(CopulaModel, CheckerboardCopula, Uchecker; m=3, vcov=false, derived_measures=false,)
+            Mchecker_refit = Copulas._refit(Mchecker, Uchecker)
+
+            @test Tuple(Mchecker_refit.result.m) == (3, 3)
+
+            # If an empirical fit ranked raw input internally, GOF(model) must
+            # apply the same preprocessing to the stored fitting sample.
+            Xraw = [
+                0.12 0.91 0.35 0.67 0.48 0.76
+                0.88 0.22 0.71 0.41 0.59 0.13
+            ]
+
+            Mraw = fit(CopulaModel, CheckerboardCopula, Xraw; m=2, pseudo_values=false, vcov=false, derived_measures=false,)
+
+            Traw = GOFCopulaTest(Mraw; N=1, rng=Xoshiro(908),)
+            Vraw = pseudos(Xraw)
+            Mraw_refit = Copulas._refit(Mraw, Vraw)
+
+            @test Mraw.method_details.pseudo_values === false
+            @test Mraw_refit.method_details.pseudo_values === true
+            @test Tuple(Mraw_refit.result.m) == (2, 2)
+            @test teststatistic(Traw) ≈ Copulas._gof_sn_statistic(Vraw, Copulas._copula_of(Mraw))
+
+            @testset "Unreproducible custom parametrisation is rejected" begin
+                # An arbitrary user-supplied parametrisation may capture external
+                # state and cannot be reconstructed safely from the fitted result.
+                # Composite GOF therefore rejects such models rather than silently
+                # changing the estimator used by the bootstrap.
+                reparam = α -> begin
+                    θ = exp(α[1])
+                    NestedArchimedeanCopula(Copulas.ClaytonGenerator(θ); leaves=[1], children=[ClaytonCopula(2, θ + one(θ)) => [2, 3]],)
+                end
+
+                Mcustom = fit(CopulaModel, reparam, [log(1.5)], Unested; vcov=false, derived_measures=false,)
+                @test Mcustom.method_details._fit_spec === nothing
+
+                refit_err = try
+                    Copulas._refit(Mcustom, Unested)
+                catch err
+                    err
+                end
+
+                @test refit_err isa ArgumentError
+                @test occursin("reproducible fitting specification", sprint(showerror, refit_err),)
+                @test_throws ArgumentError GOFCopulaTest(Mcustom; N=1, rng=Xoshiro(909),)
+            end
+
+        end
+
+        io = IOBuffer()
+        show(io, MIME("text/plain"), Tc)
+        printed = String(take!(io))
+        @test occursin("Hypothesis:", printed)
+        @test occursin("Fitted model:", printed)
+
+        @test_throws MethodError GOFCopulaTest(ClaytonCopula(2, 3.0), U; statistic=:ks, N=2)
+        @test_throws MethodError GOFCopulaTest(M, U; calibration=:multiplier, N=2)
+        @test_throws ArgumentError GOFCopulaTest(M, U; N=0)
+        @test_throws DimensionMismatch GOFCopulaTest(ClaytonCopula(3, 3.0), U; N=2)
+    end
+end

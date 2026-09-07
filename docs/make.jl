@@ -27,6 +27,7 @@ makedocs(;
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
             "Dependence metrics"=>"manual/dependence_measures.md",
             "Fitting"=>"manual/fitting_interface.md",
+            "Hypothesis testing" => "manual/hypothesis_testing.md",
             "Visualizations"=>"manual/visualizations.md",
         ],
         "Bestiary" => [
