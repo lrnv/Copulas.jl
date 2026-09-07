@@ -1,146 +1,74 @@
-# Selection decisions and public fitting API; numerical fitting oracles live in fitting.jl.
+# Public selection contract and selection-specific decisions. Estimator accuracy
+# is tested in fitting.jl; reuse fits here rather than duplicating those oracles.
+struct SelectionProbe{mode} <: Copula{2} end
+const SELECTION_PROBE_CALLS = Ref(0)
+function Distributions.fit(::Type{CopulaModel}, ::Type{SelectionProbe{mode}}, U; kwargs...) where {mode}
+    SELECTION_PROBE_CALLS[] += 1
+    mode === :interrupt && throw(InterruptException())
+    return CopulaModel(IndependentCopula{2}(), size(U, 2),
+        mode === :nonfinite ? NaN : 0.0, :probe;
+        converged=mode !== :not_converged, method_details=(; U))
+end
+
 @testset "Automatic copula-family selection" begin
-    U = rand(rng, ClaytonCopula(2, 6.0), 300)
+    U = rand(StableRNG(436), ClaytonCopula{2}(6.0), 80)
+    candidates = (IndependentCopula, ClaytonCopula)
+    M = fit(CopulaModel, Copula, U; candidates, vcov=false, derived_measures=false)
+    table = selectiontable(M)
+    @test M isa CopulaModel
+    @test table isa Vector
+    @test getproperty.(table, :candidate) == collect(candidates)
+    @test all(row -> row.status === :ok, table)
+    @test table[M.method_details.selected_index].bic == minimum(row.bic for row in table)
+    @test loglikelihood(M) == table[M.method_details.selected_index].loglikelihood
+    @test M.result isa ClaytonCopula
+    @test occursin("Model selection", sprint(show, M))
+    @test_throws ArgumentError GOFCopulaTest(M; N=1)
+    @test_throws ArgumentError GOFCopulaTest(M, U; N=1)
 
-    candidates = (
-        IndependentCopula,
-        ClaytonCopula,
-    )
-
-    @testset "BIC selection" begin
-        M = fit(
-            CopulaModel,
-            Copula,
-            U;
-            candidates=candidates,
-            criterion=:bic,
-            vcov=false,
-        )
-
-        @test M isa CopulaModel
-        @test M.method_details.selection === true
-        @test M.method_details.criterion === :bic
-        @test M.method_details.candidates == candidates
-        @test M.method_details.selected_family === ClaytonCopula
-        @test M.method_details.selected_index in eachindex(candidates)
-        @test isfinite(M.method_details.selected_score)
-
-        table = selectiontable(M)
-
-        @test table isa AbstractVector
-        @test length(table) == length(candidates)
-        @test table.criterion === :bic
-        @test table.selected_family === ClaytonCopula
-
-        @test [row.candidate for row in table] == collect(candidates)
-        @test all(row -> row.status === :ok, table)
-        @test all(row -> isfinite(row.loglikelihood), table)
-        @test all(row -> isfinite(row.bic), table)
-
-        selected_row = only(filter(
-            row -> row.candidate === ClaytonCopula,
-            table,
-        ))
-
-        @test selected_row.bic == minimum(row.bic for row in table)
-        @test M.method_details.selected_score == selected_row.bic
+    @testset "Information criterion $criterion" for criterion in (:aic, :aicc, :hqc)
+        selected = fit(CopulaModel, Copula, U; candidates, criterion,
+            vcov=false, derived_measures=false)
+        rows = selectiontable(selected)
+        @test getproperty(rows[selected.method_details.selected_index], criterion) ==
+            minimum(getproperty(row, criterion) for row in rows)
     end
 
-    @testset "Selection table display" begin
-        M = fit(
-            CopulaModel,
-            Copula,
-            U;
-            candidates=candidates,
-            vcov=false,
-        )
-
-        table = selectiontable(M)
-
-        io = IOBuffer()
-        show(io, MIME("text/plain"), table)
-        printed = String(take!(io))
-
-        @test occursin("Copula model selection", printed)
-        @test occursin("BIC", printed)
-        @test occursin("IndependentCopula", printed)
-        @test occursin("ClaytonCopula", printed)
-        @test occursin("selected model", printed)
-
-        io = IOBuffer()
-        show(io, MIME("text/plain"), M)
-        printed = String(take!(io))
-
-        @test occursin("Model selection", printed)
-        @test occursin("Criterion:", printed)
-        @test occursin("Selected family:", printed)
-    end
-
-    @testset "Information criteria" begin
-        for criterion in (:aic, :aicc, :hqc)
-            M = fit(
-                CopulaModel,
-                Copula,
-                U;
-                candidates=candidates,
-                criterion=criterion,
-                vcov=false,
-            )
-
-            table = selectiontable(M)
-
-            @test M.method_details.criterion === criterion
-            @test table.criterion === criterion
-
-            eligible = filter(row -> row.status === :ok, table)
-            values = getproperty.(eligible, criterion)
-
-            @test M.method_details.selected_score == minimum(values)
+    @testset "Validation and failed candidates" begin
+        SELECTION_PROBE_CALLS[] = 0
+        fit(CopulaModel, Copula, U; candidates=(SelectionProbe{:ok},), vcov=false)
+        @test SELECTION_PROBE_CALLS[] == 1
+        @test_throws InterruptException fit(CopulaModel, Copula, U;
+            candidates=(SelectionProbe{:interrupt},), vcov=false)
+        for mode in (:nonfinite, :not_converged)
+            probe = fit(CopulaModel, Copula, U;
+                candidates=(SelectionProbe{mode}, IndependentCopula), vcov=false)
+            @test selectiontable(probe)[1].status === mode
+            @test probe.method_details.selected_index == 2
         end
-    end
-
-    @testset "API errors" begin
-        fitted = fit(
-            CopulaModel,
-            ClaytonCopula,
-            U;
-            vcov=false,
-        )
-
-        @test_throws ArgumentError selectiontable(fitted)
-
-        @test_throws ArgumentError fit(
-            CopulaModel,
-            Copula,
-            U;
-            candidates=candidates,
-            criterion=:invalid,
-            vcov=false,
-        )
-
-        @test_throws ArgumentError fit(
-            CopulaModel,
-            Copula,
-            U;
-            candidates=candidates,
-            on_error=:invalid,
-            vcov=false,
-        )
-
-        @test_throws ArgumentError fit(
-            CopulaModel,
-            Copula,
-            U;
-            candidates=(Normal,),
-            vcov=false,
-        )
-
-        @test_throws ArgumentError fit(
-            CopulaModel,
-            Copula,
-            U;
-            candidates=(Copula,),
-            vcov=false,
-        )
+        relaxed = fit(CopulaModel, Copula, U;
+            candidates=(SelectionProbe{:not_converged},), require_convergence=false, vcov=false)
+        @test !relaxed.converged
+        @test only(selectiontable(relaxed)).status === :ok
+        @test_throws ArgumentError selectiontable(
+            fit(CopulaModel, IndependentCopula, U; vcov=false))
+        @test_throws ArgumentError fit(CopulaModel, Copula, U; candidates=())
+        @test_throws ArgumentError fit(CopulaModel, Copula, U; candidates=(Normal,))
+        @test_throws ArgumentError fit(CopulaModel, Copula, U; candidates=(Copula,))
+        @test_throws ArgumentError fit(CopulaModel, Copula, U; candidates, criterion=:invalid)
+        @test_throws ArgumentError fit(CopulaModel, Copula, U; candidates, on_error=:invalid)
+        @test_throws ArgumentError fit(CopulaModel, Copula, U; candidates, vcov_method=:invalid)
+        # Abstract families cannot be fitted without a model specification.
+        invalid = (Copulas.SubsetCopula, IndependentCopula)
+        skipped = fit(CopulaModel, Copula, U; candidates=invalid, vcov=false)
+        @test selectiontable(skipped)[1].status === :failed
+        @test selectiontable(skipped)[2].status === :ok
+        @test_throws ArgumentError fit(CopulaModel, Copula, U;
+            candidates=invalid, on_error=:throw)
+        @test_throws ArgumentError fit(CopulaModel, Copula, U; candidates=(Copulas.SubsetCopula,))
+        @test fit(Copula, U; candidates=(IndependentCopula,)) isa IndependentCopula
+        # An undefined small-sample AICc excludes the fit.
+        @test_throws ArgumentError fit(CopulaModel, Copula, U[:, 1:1];
+            candidates=(IndependentCopula,), criterion=:aicc)
     end
 end
