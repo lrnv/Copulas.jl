@@ -14,7 +14,7 @@ More details about Inverse Gaussian Archimedean copula are found in :
     Mai, Jan-Frederik, and Matthias Scherer. Simulating copulas: stochastic models, sampling algorithms, and applications. Vol. 6. # N/A, 2017. Page 74.
 
 Special cases:
-- When θ = 0, it is the IndependentCopula
+- `θ = 0` gives the independence copula.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

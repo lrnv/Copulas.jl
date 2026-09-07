@@ -23,9 +23,7 @@ zero diagonal, and must satisfy the Hüsler-Reiss variogram validity conditions.
 For a non-degenerate `d ≥ 3` representation, off-diagonal entries are strictly
 positive and the variogram is strictly conditionally negative definite.
 
-Scalar and matrix parameters are stored by the same `HuslerReissTail` type;
-its parameter type selects the exchangeable or general-variogram algorithms.
-A `2×2` variogram uses the specialized bivariate kernel after recovering
+A `2×2` variogram is equivalent to the scalar parameter
 ``\\theta=2/\\sqrt{\\Gamma_{12}}``. In dimension two,
 
 ```math

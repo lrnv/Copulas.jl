@@ -9,6 +9,9 @@ The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\
 \\phi(t) = 1 - \\Big[ 1 - (1 + t)^{-1/\\delta} \\Big]^{1/\\theta}.
 ```
 
+The limiting combination `θ = 1`, `δ = Inf` gives the upper
+Fréchet–Hoeffding bound.
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.202-203
 """

@@ -10,7 +10,7 @@ The Gumbel-Barnett copula is an archimdean copula with generator:
 ```
 
 Special cases:
-- When θ = 0, it is the IndependentCopula
+- `θ = 0` gives the independence copula.
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.437

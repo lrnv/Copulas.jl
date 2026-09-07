@@ -9,6 +9,8 @@ The BB10 copula has parameters ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [
 \\phi(t) = \\Big(\\tfrac{1-\\delta}{e^{t}-\\delta}\\Big)^{1/\\theta},
 ```
 
+The special case `δ = 0` gives the independence copula.
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.206-207
 """

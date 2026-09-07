@@ -3,16 +3,16 @@
     FrankCopula{d}(θ)
     FrankCopula(d, θ)
 
-The [Frank](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in (-\\infty,\\infty)`` (with independence as the limit ``\\theta\\to 0``). It is an Archimedean copula with generator
+The [Frank](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula is parameterized by ``\\theta \\in (-\\infty,\\infty)``. Negative values are valid only in dimension two; nonnegative values are valid in every supported dimension. It is an Archimedean copula with generator
 
 ```math
 \\phi(t) = -\\tfrac{1}{\\theta} \\log\\big( 1 - (1 - e^{-\\theta}) e^{-t} \\big).
 ```
 
 Special cases:
-- When ``\\theta \\to -\\infty``, it is the WCopula (Lower Fréchet–Hoeffding bound)
-- When ``\\theta \\to 0``, it is the IndependentCopula
-- When ``\\theta \\to \\infty``, it is the MCopula (Upper Fréchet–Hoeffding bound)
+- ``\\theta = -\\infty`` gives the bivariate lower Fréchet–Hoeffding bound.
+- ``\\theta = 0`` gives the independence copula (continuous extension).
+- ``\\theta = \\infty`` gives the upper Fréchet–Hoeffding bound.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

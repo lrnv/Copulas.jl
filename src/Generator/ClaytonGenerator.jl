@@ -12,9 +12,9 @@ The [Clayton](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_imp
 with the continuous extension ``\\phi(t) = e^{-t}`` at ``\\theta = 0``.
 
 Special cases (for the copula in dimension ``d``):
-- When ``\\theta = -1/(d-1)``, it is the WCopula (Lower Fréchet–Hoeffding bound)
-- When ``\\theta = 0``, it is the IndependentCopula
-- When ``\\theta = \\infty``, it is the MCopula (Upper Fréchet–Hoeffding bound)
+- ``\\theta = -1/(d-1)`` gives the lower Fréchet–Hoeffding bound.
+- ``\\theta = 0`` gives the independence copula.
+- ``\\theta = \\infty`` gives the upper Fréchet–Hoeffding bound.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

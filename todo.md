@@ -2,10 +2,8 @@
 
 Only unfinished work belongs here; remove completed items as changes are committed.
 
-- Finish the semantic audit of public component docstrings beyond their constructor
-  signatures: validity domains, limiting cases and operation preconditions. Check
-  remaining code examples for qualified non-exported names. Constructor signatures
-  now avoid storage parameters; verify their rendered placement with Documenter.
+- Verify the rendered placement of the revised public component docstrings and
+  their qualified non-exported names with Documenter.
 - Align the developer guide's compatibility definition with documented extensions
   of Distributions.jl and StatsBase.jl; do not promise a stable contributor protocol.
 - Verify the new contributor examples in Documenter CI.

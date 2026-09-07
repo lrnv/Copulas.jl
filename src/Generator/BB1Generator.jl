@@ -10,7 +10,8 @@ The BB1 copula is parameterized by ``\\theta \\in (0,\\infty)`` and ``\\delta \\
 ```
 
 Special cases:
-- When δ = 1, it is the ClaytonCopula with parameter ``\\theta``. 
+- `δ = 1` gives the Clayton copula with parameter ``\\theta``.
+- `θ = Inf` gives the upper Fréchet–Hoeffding bound.
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.190-192

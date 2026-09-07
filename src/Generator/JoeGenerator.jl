@@ -10,8 +10,8 @@ The [Joe](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_importa
 ```
 
 It has a few special cases:
-- When θ = 1, it is the IndependentCopula
-- When θ = ∞, it is the MCopula (Upper Fréchet–Hoeffding bound)
+- `θ = 1` gives the independence copula.
+- `θ = Inf` gives the upper Fréchet–Hoeffding bound.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
