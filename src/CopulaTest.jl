@@ -601,13 +601,16 @@ function GOFCopulaTest(C::Copula, U::AbstractMatrix{<:Real}; kwargs...)
     return _run_copula_test(GoodnessOfFitHypothesis(C), U; kwargs...)
 end
 
-function GOFCopulaTest(M::CopulaModel, U::AbstractMatrix{<:Real}; pseudo_values::Bool=false, kwargs...)
+function GOFCopulaTest(M::CopulaModel, U::AbstractMatrix{<:Real};
+        N::Integer=1000, pseudo_values::Bool=false,
+        rng::Distributions.AbstractRNG=Random.default_rng())
     # For a composite null, M describes the estimator specification.
     # The observed statistic must use parameters estimated from the sample being
     # tested, just as every bootstrap replicate is refitted.
+    N = _check_resamples(N)
     V, _, _ = _test_pseudos(U, pseudo_values)
     Mrefit = _refit(M, V)
-    return _run_copula_test(GoodnessOfFitHypothesis(Mrefit), V; pseudo_values=true, kwargs...,)
+    return _run_copula_test(GoodnessOfFitHypothesis(Mrefit), V; pseudo_values=true, N, rng)
 end
 
 function GOFCopulaTest(M::CopulaModel; kwargs...)
