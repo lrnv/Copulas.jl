@@ -256,7 +256,6 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         derived_measures, vcov, vcov_method)
 end
 
-# Assemble inference around an existing fit, without rerunning its estimator.
 function _check_vcov_method(method)
     allowed = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
     isnothing(method) || method in allowed ||
@@ -264,6 +263,7 @@ function _check_vcov_method(method)
     return nothing
 end
 
+# Assemble inference around an existing fit, without rerunning its estimator.
 function _finish_copula_fit(CT, C, U, ll, method, meta, t, fit_spec;
         derived_measures=true, vcov=true, vcov_method=nothing)
     d, n = size(U)

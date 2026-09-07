@@ -32,6 +32,21 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
     @test_throws ArgumentError GOFCopulaTest(M; N=1)
     @test_throws ArgumentError GOFCopulaTest(M, U; N=1)
 
+    @testset "Deferred covariance matches ordinary fitting" begin
+        ordinary = fit(CopulaModel, ClaytonCopula, U;
+            method=:mle, vcov=true, vcov_method=:hessian, derived_measures=false)
+        selected = fit(CopulaModel, Copula, U; candidates=(ClaytonCopula,),
+            method=:mle, vcov=true, vcov_method=:hessian, derived_measures=false)
+        @test StatsBase.coef(selected) ≈ StatsBase.coef(ordinary)
+        @test loglikelihood(selected) ≈ loglikelihood(ordinary)
+        @test selected.vcov !== nothing
+        @test ordinary.vcov !== nothing
+        @test all(isfinite, selected.vcov)
+        @test selected.vcov ≈ ordinary.vcov
+        @test selected.converged == ordinary.converged
+        @test selected.iterations == ordinary.iterations
+    end
+
     @testset "Information criterion $criterion" for criterion in (:aic, :aicc, :hqc)
         selected = fit(CopulaModel, Copula, U; candidates, criterion,
             vcov=false, derived_measures=false)
