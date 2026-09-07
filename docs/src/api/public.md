@@ -30,7 +30,7 @@ not.
 | Marginalization | `subsetdims` | Preserves the requested coordinates and their order. One coordinate yields its univariate marginal. |
 | Conditioning | `condition` | Produces the conditional univariate distortion or lower-dimensional distribution, with generalized quantiles where atoms occur. |
 | Transforms | `rosenblatt`, `inverse_rosenblatt` | Vector and matrix forms are supported. Round trips hold almost surely when successive conditional CDFs are continuous and invertible on their supports; atomic conditionals need not give a bijection or a uniform forward transform. |
-| Dependence | `τ`, `ρ`, `β`, `γ`, `ι`, `λₗ`, `λᵤ`, their documented inverses, `StatsBase.corkendall`, `StatsBase.corspearman` | Results have the documented scalar or pairwise-matrix shape, bounds and symmetry. Closed forms and numerical fallbacks have the same contract. |
+| Dependence | `τ`, `ρ`, `β`, `γ`, `ι`, `λₗ`, `λᵤ`, `StatsBase.corkendall`, `StatsBase.corspearman` | Results have the documented scalar or pairwise-matrix shape, bounds and symmetry. Closed forms and numerical fallbacks have the same contract. Parameter inversions used by fitting are internal. |
 | Fitting | `fit`, `CopulaModel` and the StatsBase model interface | Documented family/method pairs return valid fitted models. `CopulaModel` exposes observations, coefficients, covariance when computed, information criteria, residuals and prediction. |
 | Composition | `SklarDist` | Distribution operations, marginalization, conditioning and Rosenblatt transforms are expressed on the marginal scales. |
 | Utilities | `pseudos`, `measure`, `Nataf` | Rank pseudo-observations, copula rectangle probability, and Nataf correlation correction respectively. |

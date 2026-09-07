@@ -91,7 +91,7 @@ A\!\left(
 
 Copulas.jl now uses ``\ell`` as the mathematical EV interface in arbitrary
 dimension while preserving the mature bivariate Pickands machinery.
-Bivariate formulas based on `A`, `dA`, `d²A`, Ghoudi sampling, conditional
+Bivariate formulas based on the Pickands representation, Ghoudi sampling, conditional
 distortions, and family-specific kernels remain available whenever the tail
 provides them.
 

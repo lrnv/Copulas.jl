@@ -26,6 +26,11 @@
 
 end
 
+@testset "empirical generator inverse" begin
+    empirical = EmpiricalGenerator(_FIXTURE_DATA)
+    @test Copulas.ϕ(empirical, Copulas.ϕ⁻¹(empirical, 0.5)) ≈ 0.5 atol=1e-8
+end
+
 @testset "bivariate Clayton CDF/PDF numerical anchors" begin
     # Fix a few cdf and pdf values:
     x = [0:0.25:1;]
@@ -83,4 +88,3 @@ end
         [0.3, 0.5, 0.7],
     ) == 0
 end
-

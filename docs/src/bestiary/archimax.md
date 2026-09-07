@@ -25,12 +25,13 @@ When $d = 2$, we abuse the $A$ notation by setting $A(w) = A(w, 1-w)$.
 
 This package provides the abstract type [`ArchimaxCopula`](@ref). Because we expose a wide set of Archimedean generators and extreme-value copulas, **many combinations are possible**: any Archimedean copula can be paired with any extreme-value copula to produce a valid Archimax copula.
 
-The API is minimal and generic:
+The constructor combines supported components:
 
-* Provide an Archimedean generator `gen::Generator` with methods `ϕ(G, s)` and `ϕ⁻¹(G, u)`. See [`Generator`](@ref) and [available Archimedean generators](@ref available_archimedean_models).
-* Provide an extreme-value tail `tail::Tail` with its Pickands function `A(tail, w)` ro stable tail dependence function `ℓ(tail, x)`. See [`ExtremeValueCopula`](@ref) and [available extreme-value models](@ref available_extreme_models).
+* Provide a supported Archimedean generator `gen::Generator`. See [`Generator`](@ref) and [available Archimedean generators](@ref available_archimedean_models).
+* Provide a supported extreme-value tail `tail::Tail`. See [`ExtremeValueCopula`](@ref) and [available extreme-value models](@ref available_extreme_models).
 
-With these conventions, the constructor `ArchimaxCopula(d, gen, tail)` produces the correct d-variate model, accross all possiibilities through all implemented (and obviously new user-defined) models.
+With these conventions, `ArchimaxCopula(d, gen, tail)` builds the corresponding
+copula whenever the two components support the requested dimension.
 
 You can define an archimax copula as follows: 
 ```@example
@@ -90,11 +91,8 @@ According to [charpentier2014](@cite), it should be possible to use any d-monoto
 
 :::
 
-**Notes on the objects used.**
-
-* *Frailty distribution.* By Bernstein’s theorem, a completely monotone $\phi$ is a Laplace transform. The internal helper `frailty(G::Generator)` returns a distribution for $M$ such that `E(exp(-s*M)) = ϕ(gen, s)`, or `nothing` when no frailty representation is available.
-* *EV sampling.* Step (1) uses the EV sampler already provided in this package (via `ℓ(tail::Tail, x)` and `A(tail::Tail, x)`), as documented in the EV section.
-* *Generality.* The recipe extends to $d>2$ by simulating $(V_1,\dots,V_d)$ (But remember that it is not so simple to obtain it) from the EV copula of variable $d$ and applying steps (2)–(3) by components.
+The sampling recipe uses the supported generator and extreme-value components;
+its internal representations are not part of the public contract.
 
 ```@docs; canonical=false
 ArchimaxCopula

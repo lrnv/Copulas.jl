@@ -252,7 +252,8 @@ The first method in the list is used by default.
 
 > **Remark.** Rank-based methods require that the number of free parameters does not exceed the information contained in the chosen coefficient(s); `:ibeta` enforces this explicitly.
 
-For **extreme-value** copulas, `:mle` / `:iupper` may rely on the Pickands function `A(t)` and its derivatives (`A`, `dA`, `d²A`) with Brent-type inversion.
+For **extreme-value** copulas, `:mle` / `:iupper` may rely on the Pickands
+representation and internal derivative machinery, with Brent-type inversion.
 
 ## Nonparametric fits (Empirical Copulas)
 

@@ -200,6 +200,7 @@ testfiles = (
     "correctness/nested_archimedean_equivalence.jl",
     "correctness/family_specialization_equivalence.jl",
     "correctness/statistical.jl",
+    "correctness/dependence_inverses.jl",
     "correctness/behavioural_branches.jl",
     "operations/distribution.jl",
     "operations/measure.jl",

@@ -2,9 +2,6 @@
 
 Only unfinished work belongs here; remove completed items as changes are committed.
 
-- Confirm the retained mathematical surface (`A`, `𝒲₋₁`, `IndependentGenerator`)
-  and its relationship to internal Pickands/frailty protocols. Specify inverse
-  Williamson results by distribution semantics, not concrete type or continuity.
 - Finish the semantic audit of public component docstrings beyond their constructor
   signatures: validity domains, limiting cases and operation preconditions. Check
   remaining code examples for qualified non-exported names. Constructor signatures

@@ -38,7 +38,7 @@ The density is the mixed partial of this CDF over the differentiated
 coordinates. Differentiating the composition of generators is exactly Faà di
 Bruno's formula; the implementation carries the partial Bell polynomials through
 truncated Taylor series over the generator tree, building only on the package's
-generator interface (`ϕ`, `ϕ⁻¹`, `ϕ⁽ᵏ⁾`).
+generator machinery.
 
 ## Building a tree
 
@@ -170,54 +170,6 @@ can lose `Float64` precision:
 logpdf(C, big.([0.3, 0.5, 0.4, 0.6]))
 ```
 
-## Edge-composition method
-
-Each parent→child edge in the Faà di Bruno recursion needs the truncated Taylor
-expansion of the inner-to-outer link ``h = \phi^{-1}_{\text{outer}} \circ
-\phi_{\text{inner}}`` at the child's argument. It goes through the overloadable
-hook `composition_taylor(outer, inner, t₀, d)`, selected by dispatch exactly as
-you override `ϕ⁽ᵏ⁾` — most-specific method wins, no keyword or flag. Three methods
-are available:
-
-**1. Direct (default).** `composition_taylor_direct` puts a single jet through
-the explicit composition. Fast and accurate for ordinary inputs. It requires both
-``\phi`` and ``\phi^{-1}`` to accept a `Taylor1` argument.
-
-**2. Implicit.** `composition_taylor_implicit` solves
-``\phi_{\text{outer}}(h(t)) = \phi_{\text{inner}}(t)`` order-by-order, using only
-the scalar derivatives ``\phi^{(k)}`` of both generators and a single scalar
-``\phi^{-1}_{\text{outer}}`` — it never puts a `Taylor1` through ``\phi^{-1}``.
-Use it when a generator's ``\phi^{-1}`` has no `Taylor1` method (for instance, an
-inverse defined only through root-finding), where the direct jet cannot run.
-Select it globally by redefining the generic method:
-
-```julia
-Copulas.composition_taylor(o::Copulas.Generator, i::Copulas.Generator, t₀, d) =
-    Copulas.composition_taylor_implicit(o, i, t₀, d)
-```
-
-(Redefining the shipped default prints a benign "method overwritten" warning.)
-
-**3. Closed form (per generator pair).** Register a more-specific method when you
-know ``h`` analytically — the fastest and most robust option. The package ships
-Clayton/Clayton (in `Generator/ClaytonGenerator.jl`),
-``h(t) = ((1+\theta_{\text{in}} t)^{\theta_{\text{out}}/\theta_{\text{in}}} - 1)/
-\theta_{\text{out}}``; add your own the same way:
-
-```julia
-function Copulas.composition_taylor(outer::MyGenerator, inner::MyGenerator, t₀, d::Int)
-    # return [h'(t₀)/1!, …, h⁽ᵈ⁾(t₀)/d!]
-end
-```
-
-If you implement your own closed-form for rather-standard cases, do not hesitate to share them with others through a PR on the package. 
-
-The method choice is about *availability and speed*, not accuracy: all three are
-exact in exact arithmetic. For deep-tail or very high-``d`` inputs where a
-`Float64` jet can overflow or lose precision, pass `BigFloat` coordinates (see
-[Precision](#Precision)) — that is the precision fix, independent of which
-composition method is in use.
-
 ## Partial-observation likelihood
 
 Lower-tail partial-observation likelihoods are an **emergent capability** of the
@@ -245,10 +197,7 @@ the observed coordinates,
 ```
 
 because the denominator ``c_O`` in `condition` cancels against the
-`subsetdims` marginal density. Both factors route through the Faà di Bruno tree
-walk via the `subsetdims` / `condition` specialisations for this type — no
-ForwardDiff for the observed-marginal density nor for the conditional CDF (for
-any number of lower-tail coordinates).
+`subsetdims` marginal density.
 
 ```@example nested
 using Distributions
