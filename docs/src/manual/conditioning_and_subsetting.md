@@ -55,7 +55,7 @@ not establish correct conditioning for that case.
 A copula of the conditional vector is denoted $C_{I|J}(·|u_J)$; it need not be
 unique when conditional margins have atoms. The public entry point is `condition`:
 
-- `condition(C::Copula, js, u_js)` returns the conditional distribution on the uniform scale for `I = setdiff(1:D, js)`. If `length(I) == 1`, the result is a univariate distribution supported on $[0,1]`; otherwise it is a multivariate distribution implementing the usual `Distributions.jl` interface.
+- `condition(C::Copula, js, u_js)` returns the conditional distribution of the remaining `U_I` on the original copula coordinate scale for `I = setdiff(1:D, js)`. Its conditional margins need not be uniform. If `length(I) == 1`, the result is a univariate distribution supported on $[0,1]`; otherwise it is a multivariate distribution implementing the usual `Distributions.jl` interface.
 - `condition(X::SklarDist, js, x_js)` returns the conditional distribution on the original scale by pushing forward each distortion through the corresponding marginal.
 - Known parametric families may use specialized representations, but their concrete types are implementation details and do not change this contract.
 
