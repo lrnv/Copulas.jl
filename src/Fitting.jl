@@ -243,9 +243,7 @@ C = fit(GumbelCopula, U; method=:itau)
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         method=:default, quick_fit=false, derived_measures=true,
         vcov=true, vcov_method=nothing, kwargs...)
-    allowed_vcov = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
-    isnothing(vcov_method) || vcov_method in allowed_vcov ||
-        throw(ArgumentError("unknown vcov method `$vcov_method`; expected one of $allowed_vcov"))
+    _check_vcov_method(vcov_method)
     d, n = size(U)
     method = _find_method(CT, d, method)
     fit_spec = _CopulaFitSpec(CT, method, (; kwargs...))
@@ -253,6 +251,22 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
     C, meta = rez
     quick_fit && return (result=C,) # as soon as possible.
     ll = Distributions.loglikelihood(C, U)
+
+    return _finish_copula_fit(CT, C, U, ll, method, meta, t, fit_spec;
+        derived_measures, vcov, vcov_method)
+end
+
+function _check_vcov_method(method)
+    allowed = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
+    isnothing(method) || method in allowed ||
+        throw(ArgumentError("unknown vcov method `$method`; expected one of $allowed"))
+    return nothing
+end
+
+# Assemble inference around an existing fit, without rerunning its estimator.
+function _finish_copula_fit(CT, C, U, ll, method, meta, t, fit_spec;
+        derived_measures=true, vcov=true, vcov_method=nothing)
+    d, n = size(U)
 
     if vcov && C isa TCopula
         vcov = false
@@ -704,4 +718,95 @@ function StatsBase.predict(M::CopulaModel; newdata=nothing, what=:cdf, nsim=0)
            what === :cdf      ? (newdata === nothing ? throw(ArgumentError("`newdata` required for `:cdf`")) : Distributions.cdf(C, newdata)) :
            what === :pdf      ? (newdata === nothing ? throw(ArgumentError("`newdata` required for `:pdf`")) : Distributions.pdf(C, newdata)) :
            throw(ArgumentError("`what` must be one of :simulate, :cdf, or :pdf. Got `$what`."))
+end
+
+###############################################################################
+##### Automatic copula-family selection
+###############################################################################
+
+"""
+    selectiontable(model::CopulaModel)
+
+Return a copy of the vector of candidate comparison rows from automatic family selection.
+"""
+function selectiontable(M::CopulaModel)
+    haskey(M.method_details, :selection_table) ||
+        throw(ArgumentError("The model was not produced by automatic copula selection."))
+    return copy(M.method_details.selection_table)
+end
+
+"""
+    fit(CopulaModel, Copula, U; candidates, criterion=:bic, method=:default, kwargs...)
+
+Fit an explicit collection of candidate families and select the smallest finite
+information criterion (`:bic`, `:aic`, `:aicc`, or `:hqc`). The winning fit is
+reused; only its requested inference is computed afterwards. Prefer maximum
+likelihood fitting when interpreting these as information criteria.
+
+Failed candidates are recorded with `on_error=:skip`, or rethrown with
+`on_error=:throw`. Interruptions always propagate. Composite GOF after selection
+is not yet supported.
+"""
+function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
+        candidates, criterion::Symbol=:bic, method::Symbol=:default,
+        on_error::Symbol=:skip, require_convergence::Bool=true,
+        quick_fit::Bool=false, derived_measures::Bool=true, vcov::Bool=true,
+        vcov_method=nothing, kwargs...)
+    criterion in (:bic, :aic, :aicc, :hqc) ||
+        throw(ArgumentError("Unknown selection criterion: $criterion"))
+    on_error in (:skip, :throw) ||
+        throw(ArgumentError("`on_error` must be :skip or :throw."))
+    _check_vcov_method(vcov_method)
+    candidate_types = collect(candidates)
+    isempty(candidate_types) && throw(ArgumentError("at least one candidate is required"))
+    all(CT -> CT isa Type && CT <: Copula && CT !== Copula, candidate_types) ||
+        throw(ArgumentError("candidates must be concrete copula families, not Copula itself"))
+    unique!(candidate_types)
+
+    rows = NamedTuple[]
+    best = nothing
+    best_index = 0
+    best_score = Inf
+    started = time()
+    for CT in candidate_types
+        evaluated = try
+            M = Distributions.fit(CopulaModel, CT, U; method,
+                derived_measures=false, vcov=false, kwargs...)
+            criteria = (; aic=StatsBase.aic(M), aicc=aicc(M),
+                bic=StatsBase.bic(M), hqc=hqc(M))
+            (M, criteria, StatsBase.dof(M))
+        catch err
+            (err isa InterruptException || on_error === :throw) && rethrow()
+            push!(rows, (candidate=CT, status=:failed, method=method,
+                converged=false, nparams=0, loglikelihood=NaN,
+                aic=Inf, aicc=Inf, bic=Inf, hqc=Inf,
+                error=sprint(showerror, err)))
+            continue
+        end
+        M, criteria, nparams = evaluated
+        score = getproperty(criteria, criterion)
+        status = !isfinite(M.ll) || !isfinite(score) ? :nonfinite :
+            require_convergence && !M.converged ? :not_converged : :ok
+        push!(rows, (; candidate=CT, status, method=M.method,
+            converged=M.converged, nparams,
+            loglikelihood=M.ll, criteria..., error=nothing))
+        if status === :ok && score < best_score
+            best, best_index, best_score = M, length(rows), score
+        end
+    end
+    best === nothing && throw(ArgumentError("No candidate copula produced an eligible finite fit."))
+    quick_fit && return (result=best.result,)
+
+    CT = rows[best_index].candidate
+    selected = _finish_copula_fit(CT, best.result, U, best.ll, best.method,
+        (; best.method_details..., converged=best.converged, iterations=best.iterations),
+        best.elapsed_sec, nothing;
+        derived_measures, vcov, vcov_method)
+    # No single-family fit specification can reproduce model selection. Until
+    # selection-aware bootstrap exists, _refit must reject this model.
+    return CopulaModel(selected.result, selected.n, selected.ll, selected.method;
+        vcov=selected.vcov, converged=selected.converged,
+        iterations=selected.iterations, elapsed_sec=time() - started,
+        method_details=(; selected.method_details..., criterion,
+            selection_table=rows, selected_index=best_index))
 end

@@ -45,6 +45,65 @@ Returns a [`CopulaModel`](@ref) with:
 - `vcov` (if available),
 - `method_details` (a `NamedTuple` with method-specific metadata).
 
+## Automatic copula-family selection
+
+When the copula family is unknown, `CopulaModel` can select it automatically
+from a collection of candidate families:
+
+```@example fitting_interface
+Ctrue = ClaytonCopula(2, 4.0)
+Usel = rand(Ctrue, 1_000)
+
+Msel = fit(
+    CopulaModel,
+    Copulas.Copula,
+    Usel;
+    candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
+    criterion=:bic,
+    vcov=false,
+)
+Msel
+```
+
+The available information criteria are:
+
+- `:bic` — Bayesian information criterion,
+- `:aic` — Akaike information criterion,
+- `:aicc` — finite-sample corrected AIC,
+- `:hqc` — Hannan–Quinn criterion.
+
+BIC is the default criterion.
+
+Candidate fits are compared using the requested criterion, and the family with
+the smallest eligible finite value is selected. The winning fit is reused:
+only its requested inference (such as covariance estimation) is computed afterwards.
+
+The complete comparison can be inspected with [`selectiontable`](@ref):
+
+```@example fitting_interface
+selectiontable(Msel)
+```
+
+Each row stores the candidate family, fitting status and method,
+log-likelihood, number of parameters, and all four information criteria.
+Candidates that fail to fit can be skipped with `on_error=:skip` (the default)
+or propagated immediately with `on_error=:throw`.
+
+The candidate collection is required and explicit; choose families appropriate
+for the scientific problem and the data dimension. `selectiontable` returns a
+plain vector of comparison rows. Nonfinite scores and, by default, nonconverged
+fits are excluded. Interruptions always propagate, even with `on_error=:skip`.
+
+Use maximum-likelihood fitting for the usual information-criterion interpretation;
+passing another fitting method merely compares the scores at those estimates.
+The shorter `fit(Copulas.Copula, U; candidates=(...))` returns only the selected copula.
+
+`GOFCopulaTest(Msel)` and `GOFCopulaTest(Msel, U)` are deliberately unsupported:
+a valid selection-aware bootstrap must repeat family selection in every replicate,
+not just refit the winning family. These calls throw rather than silently omit
+the selection step.
+
+
 ---
 
 ## Behavior & conventions (important)

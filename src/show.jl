@@ -183,6 +183,13 @@ function Base.show(io::IO, M::CopulaModel)
     end
     _kv(io, "Number of observations", Printf.@sprintf("%d", StatsBase.nobs(M)))
 
+    if haskey(M.method_details, :selection_table)
+        md = M.method_details
+        _section(io, "Model selection")
+        _kv(io, "Criterion", uppercase(String(md.criterion)))
+        _kv(io, "Selected family", string(md.selection_table[md.selected_index].candidate))
+    end
+
     _section(io, "Fit metrics")
     ll  = M.ll
     ll0 = get(M.method_details, :null_ll, NaN)
