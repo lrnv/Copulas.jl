@@ -211,8 +211,8 @@ A(w)=\\sum_{k=1}^m h_k\\max_i(w_i v_{ik}),
 ```
 
 subject to nonnegative masses and the spectral moment constraints. The
-resulting tail is stored as a `DiscreteSpectralTail`, so STDF validity and exact
-spectral simulation follow by construction.
+resulting finite spectral measure defines a valid STDF and permits exact
+spectral simulation. Its concrete storage type is an implementation detail.
 
 `degree` controls the simplex-grid resolution. The automatic
 dimension-adaptive degree and the numerical projection details are Copulas.jl

@@ -26,16 +26,19 @@ This type stores the result of fitting a copula (or a Sklar distribution) to
 pseudo-observations or raw data, together with auxiliary information useful
 for statistical inference and model comparison.
 
-# Fields
-- `result::CT`          — the fitted copula (or `SklarDist`).
-- `n::Int`              — number of observations used in the fit.
-- `ll::Float64`         — log-likelihood at the optimum.
-- `method::Symbol`      — fitting method used (e.g. `:mle`, `:itau`, `:deheuvels`).
-- `vcov::Union{Nothing, AbstractMatrix}` — estimated covariance of the parameters, if available.
-- `converged::Bool`     — whether the optimizer reported convergence.
-- `iterations::Int`     — number of iterations used in optimization.
-- `elapsed_sec::Float64` — time spent in fitting.
-- `method_details::NamedTuple` — additional method-specific metadata (grid size, pseudo-values, etc.).
+# Result properties
+- `result` — the fitted copula (or `SklarDist`).
+- `n` — number of observations used in the fit.
+- `ll` — log-likelihood of the fitted model.
+- `method` — fitting method used (e.g. `:mle`, `:itau`, `:deheuvels`).
+- `vcov` — estimated parameter covariance, or `nothing` when unavailable.
+- `converged` — whether the optimizer reported convergence.
+- `iterations` — number of iterations used in optimization.
+- `elapsed_sec` — time spent in fitting.
+- `method_details` — method-specific metadata; keys depend on the estimator.
+
+These properties describe the result, not its concrete storage types or type
+parameter order. Prefer the model interface below where an accessor exists.
 
 `CopulaModel` implements the standard `StatsBase.StatisticalModel` interface:
 [`StatsBase.nobs`](@ref), [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),

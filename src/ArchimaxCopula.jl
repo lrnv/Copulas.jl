@@ -380,12 +380,6 @@ end
     BB5Copula{2}(θ, δ)
     BB5Copula(2, θ, δ)
 
-Fields:
-    - θ::Real - dependence parameter (θ ≥ 1)
-    - δ::Real - shape parameter (δ > 0)
-
-Constructor
-
     BB5Copula(θ, δ)
 
 The BB5 copula is a two-parameter [Archimax](@ref ArchimaxCopula) copula, constructed from the Galambos tail and the Gumbel generator. Its distribution function is

@@ -8,6 +8,14 @@ This page lists all public docstrings exposed by the package.
 
 ## Behavioural contract
 
+Docstrings list supported constructor calls, rather than complete concrete type
+signatures. For copula families that support both forms, `Family{d}(args...)`
+supplies the dimension through the type and `Family(d, args...)` supplies it at
+runtime. The former is the inference-friendly path when `d` is known to the
+compiler; this is not a blanket inference guarantee for arbitrary argument types.
+Additional storage parameters shown by Julia when printing a type are not
+constructor arguments or supported extension points unless explicitly documented.
+
 The public API consists of documented symbols declared with `export` or
 `public`, together with the documented methods that Copulas.jl adds to adopted
 interfaces such as Distributions.jl and StatsBase.jl. These behaviours follow
