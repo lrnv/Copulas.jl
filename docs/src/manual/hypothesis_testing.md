@@ -4,25 +4,7 @@ CurrentModule = Copulas
 
 # [Hypothesis testing](@id hypothesis_testing)
 
-`Copulas.jl` provides a common interface for rank-based hypothesis tests on copulas. The framework separates three distinct ingredients:
-
-1. the **null hypothesis** being tested;
-2. the **test statistic** used to measure departures from the null;
-3. the **calibration method** used to obtain a p-value.
-
-Conceptually,
-
-```text
-CopulaHypothesis
-      ×
-  Statistic
-      ×
- Calibration
-      ↓
-  CopulaTest
-```
-
-This separation makes it possible to reuse the same calibration machinery across different hypotheses and to introduce new statistics or hypotheses without modifying the generic test constructor.
+Each public test runs one documented statistic and calibration procedure and returns a `CopulaTest`.
 
 The current implementation includes tests of:
 
@@ -99,7 +81,7 @@ C_n(\boldsymbol u)
 \right),
 ```
 
-where the inequality is understood componentwise. 
+where the inequality is understood componentwise.
 
 Empirical-copula processes and their weak convergence form the theoretical basis for many of the statistics and multiplier approximations used below [fermanian2004empirical](@cite).
 
@@ -135,13 +117,7 @@ pvalue(test)
 nobs(test)
 ```
 
-A test also records:
-
-* `test.statistic`: the statistic used;
-* `test.calibration`: the calibration method;
-* `test.n_resamples`: number of resampling replicates;
-* `test.dimension`: dimension of the copula;
-* `test.details`: test-specific metadata.
+The public result interface consists of these accessors and the printed summary. Internal fields are not an extension API.
 
 Printing the object gives a summary of the hypothesis, statistic, calibration, p-value, and relevant test-specific information.
 
@@ -219,15 +195,9 @@ Uind = rand(Xoshiro(1), IndependentCopula(3), 100)
 
 tind = IndependenceCopulaTest(Uind; N=49, rng=Xoshiro(2),)
 
-(tind.statistic, tind.calibration, pvalue(tind))
+(teststatistic(tind), pvalue(tind))
 ```
 
-The current defaults are
-
-```text
-statistic   = :cvm
-calibration = :simulation
-```
 
 ---
 
@@ -388,13 +358,13 @@ Uses the transpositions
 (12),(13),\ldots,(1d).
 ```
 
-### `permutations=:all`
+An explicit permutation or collection may also be supplied. Duplicate permutations
+are removed. Collections are normalized once and stored as vectors.
+The factorial option `permutations=:all` is deliberately unsupported.
 
-Uses all non-identity permutations.
-
-Because the current multiplier implementation materializes one dense `n × n` matrix for every selected permutation, the resolved permutation collection is protected by a memory-cost guard. For `permutations=:all`, the factorial-sized collection is checked before it is materialized; explicit custom collections are checked after validation using their actual resolved size. Problems whose estimated matrix storage exceeds the safety limit raise an `ArgumentError`. For larger dimensions or samples, use `:G1`, `:G2`, or a smaller custom collection of permutations.
-
-A custom permutation or collection of permutations can also be supplied directly.
+The multiplier procedures retain one dense `n × n` matrix per permutation or
+power. A shared guard rejects matrix payloads above 512 MiB; total memory also
+includes auxiliary storage.
 
 ## Multiplier calibration
 
@@ -431,15 +401,9 @@ Uex = rand(Xoshiro(4), GumbelCopula(3, 2.0), 80)
 
 tex = ExchangeabilityCopulaTest(Uex; permutations=:G2, weight=:wm2, N=49, rng=Xoshiro(5),)
 
-(tex.statistic, tex.calibration)
+(teststatistic(tex), pvalue(tex))
 ```
 
-The current defaults are
-
-```text
-statistic   = :Sn
-calibration = :multiplier
-```
 
 ---
 
@@ -534,12 +498,6 @@ trad = RadialSymmetryCopulaTest(Urad; N=49, rng=Xoshiro(7),)
 (trad.statistic, trad.calibration, trad.details.reflection_probability)
 ```
 
-The current defaults are
-
-```text
-statistic   = :Sn
-calibration = :randomization
-```
 
 ---
 
@@ -645,12 +603,6 @@ ExtremeValueCopulaTest(U; powers=2)
 
 All supplied powers must be finite and strictly larger than one.
 
-The current defaults are
-
-```text
-statistic   = :Sn
-calibration = :multiplier
-```
 
 ---
 
@@ -694,10 +646,10 @@ Ugof = rand(Xoshiro(10), C0, 80)
 
 tsimple = GOFCopulaTest(C0, Ugof; N=49, rng=Xoshiro(11),)
 
-tsimple.hypothesis.kind
+pvalue(tsimple)
 ```
 
-which produces a `:simple` goodness-of-fit hypothesis.
+This tests the fully specified copula.
 
 ### Parametric bootstrap
 
@@ -790,7 +742,7 @@ This matters for models whose fitting procedure cannot be reconstructed from the
 First fit a model:
 
 ```@example hypothesis_testing
-M = fit(CopulaModel, ClaytonCopula, Ugof; vcov=false,)
+M = fit(CopulaModel, ClaytonCopula, Ugof; method=:itau, vcov=false,)
 
 nothing # hide
 ```
@@ -800,7 +752,7 @@ Then run the test directly from the fitted model:
 ```@example hypothesis_testing
 tcomposite = GOFCopulaTest(M; N=49, rng=Xoshiro(12),)
 
-(tcomposite.hypothesis.kind, pvalue(tcomposite))
+pvalue(tcomposite)
 ```
 
 `GOFCopulaTest(M)` tests the data used to fit `M`. The stored fitting input is preprocessed consistently with the original fit before the observed statistic is computed. The fitted model `M` supplies both the estimated null model and the estimator specification that is replayed in every bootstrap replicate.
@@ -815,212 +767,33 @@ In this form, `M` is interpreted as an **estimator specification**, not as a fix
 
 Consequently, the observed statistic and every bootstrap statistic are based on the same estimation rule. If the original fitting procedure cannot be reproduced safely, composite goodness-of-fit testing raises an `ArgumentError` rather than silently replacing it by a different estimator.
 
-The current defaults are
-
-```text
-statistic   = :Sn
-calibration = :parametric_bootstrap
-```
 
 ---
 
-# Statistics and calibrations
 
-The public keywords
+## Monte Carlo convention
 
-```julia
-statistic=:default
-calibration=:default
-```
+Simulation, randomization and parametric bootstrap use
+`(0.5 + count(Tstar >= Tobserved)) / (N + 1)`.
+The EV multiplier test uses the same convention; the exchangeability multiplier
+test uses the uncorrected strict proportion `count(Tstar > Tobserved) / N`.
+These are resampling approximations, not exact finite-sample level guarantees.
 
-are resolved through capability declarations.
+## Applicability and reference variants
 
-::: warning Internal dispatch hooks
+Observations must be independent and identically distributed. Continuous,
+tie-free margins alone do not establish the regularity assumptions required
+by empirical-copula multiplier theory; consult the cited procedures before
+applying them to singular models.
 
-The underscore-prefixed functions shown below are implementation interfaces
-for contributors to `Copulas.jl`. They are not public extension points and are
-not covered by SemVer.
+The radial randomization implemented here reranks using average ranks.
+It is a variant of the bivariate procedure of [beare2020symmetry](@cite),
+which additionally breaks induced ties with a small random perturbation.
+The multidimensional version implemented here extends the reflection and
+reranking operations; the cited bivariate theorem does not by itself establish
+its validity in higher dimensions.
 
-:::
-
-For a hypothesis `h`, the available statistics are declared by
-
-```julia
-Copulas._available_statistics(h)
-```
-
-and the available calibrations for a statistic `s` by
-
-```julia
-Copulas._available_calibrations(h, Val(s))
-```
-
-The **first element** of each returned tuple is the default.
-
-For example, the independence hypothesis declares conceptually
-
-```julia
-_available_statistics(::IndependenceHypothesis) = (:cvm,)
-
-_available_calibrations(::IndependenceHypothesis, ::Val{:cvm},) = (:simulation,)
-```
-
-while the extreme-value hypothesis declares
-
-```julia
-_available_statistics(::ExtremeValueHypothesis) = (:Sn,)
-
-_available_calibrations(::ExtremeValueHypothesis, ::Val{:Sn},) = (:multiplier,)
-```
-
-This convention deliberately mirrors the fitting interface:
-
-```text
-_available_fitting_methods
-          ↓
-    first = default
-          ↓
-_fit(..., Val(method))
-```
-
-and, for hypothesis tests,
-
-```text
-_available_statistics
-          ↓
-    first = default
-          ↓
-_teststatistic(..., Val(statistic))
-```
-
-followed by
-
-```text
-_available_calibrations
-          ↓
-    first = default
-          ↓
-_calibrate(..., Val(calibration), Val(statistic))
-```
-
-The generic `CopulaTest` constructor therefore does not need to know which statistics are implemented by any particular hypothesis.
-
-::: info Why use `Val` internally?
-
-Users interact with ordinary symbols such as `:Sn`, `:cvm`, `:simulation`,
-and `:multiplier`. Internally those symbols are converted to `Val` objects,
-allowing Julia's multiple dispatch to select the appropriate mathematical
-implementation without central `if`/`elseif` tables.
-
-:::
-
----
-
-# Calibration engines
-
-The framework currently provides four reusable calibration mechanisms.
-
-| Calibration             | Principle                                         | Typical use                               |
-| ----------------------- | ------------------------------------------------- | ----------------------------------------- |
-| `:simulation`           | Generate directly under `H_0`                     | Independence                              |
-| `:randomization`        | Exploit invariance under `H_0`                    | Radial symmetry                           |
-| `:multiplier`           | Approximate an empirical-copula process           | Exchangeability, extreme-value dependence |
-| `:parametric_bootstrap` | Simulate from a parametric fitted/specified copula | Goodness of fit                           |
-
-The empirical-copula multiplier methodology is related to [remillard2009equality](@cite) and [bucher2010bootstrap](@cite), while the parametric-bootstrap framework for composite goodness-of-fit hypotheses is studied in [genest2008bootstrap](@cite).
-
-The concrete hypothesis only provides the mathematical ingredients required by the selected engine. The mechanics of repeated simulation, randomization, multiplier generation, or parametric bootstrap remain centralized.
-
----
-
-# Monte Carlo p-values
-
-Let $T_n$ be the observed statistic and let
-
-```math
-T_n^{(1)},\ldots,T_n^{(N)}
-```
-
-denote resampled statistics.
-
-For calibrations using the finite-sample correction in the generic engine, `Copulas.jl` computes
-
-```math
-\widehat p
-=
-\frac{
-1/2+
-\sum_{b=1}^{N}
-\mathbf 1
-\left\{
-T_n^{(b)}\ge T_n
-\right\}
-}{
-N+1
-}.
-```
-
-Specific calibration methods may override the comparison convention when their theoretical construction requires it. In particular, the exchangeability multiplier implementation uses strict exceedances and its corresponding uncorrected empirical proportion.
-
-Accordingly, $N$ controls Monte Carlo precision rather than the definition of the test statistic itself.
-
----
-
-# Internal contributor extension mechanism
-
-The internal hypothesis-testing machinery is designed so that contributors to
-`Copulas.jl` can add new procedures while reusing the common constructor and
-existing calibration engines.
-
-A new hypothesis starts with
-
-```julia
-struct MyHypothesis <: CopulaHypothesis end
-```
-
-and then declares its name, null hypothesis, supported statistics, and calibrations:
-
-```julia
-Copulas.testname(::MyHypothesis) = "My copula hypothesis test"
-
-Copulas.nullhypothesis(::MyHypothesis) = "The null hypothesis holds."
-
-Copulas._available_statistics(::MyHypothesis) = (:Sn, :ks)
-
-Copulas._available_calibrations(::MyHypothesis, ::Val{:Sn},) = (:simulation,)
-```
-
-The statistic is added through dispatch:
-
-```julia
-function Copulas._teststatistic(::MyHypothesis, ::Val{:Sn}, U; kwargs...,)
-    # Compute and return the observed statistic.
-end
-```
-
-If the generic simulation engine is appropriate, the hypothesis only needs to specify how to generate data under its null:
-
-```julia
-function Copulas._simulation_sample(::MyHypothesis, U, rng,)
-    # Return a d × n sample generated under H₀.
-end
-```
-
-The generic constructor then works automatically:
-
-```julia
-test = CopulaTest(MyHypothesis(), U; N=999,)
-```
-
-No change to `CopulaTest`, the generic result type, or the display machinery is required.
-
-For a more complete contributor-facing description of these internal hooks, see the [Developer Guide](@ref developer_fitting).
-
----
-
-## References
-
-```@bibliography
-Pages = [@__FILE__]
-Canonical = false
-```
+The EV statistic uses the empirical copula directly, without the finite-sample
+offset used by some implementations. Its multiplier approximation and default
+powers `3:5` follow [kojadinovic2011extremevalue](@cite). Do not expect identical
+finite-sample p-values from implementations with different corrections.

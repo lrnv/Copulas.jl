@@ -352,7 +352,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
             N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
 
         @test Ts isa CopulaTest
-        @test Ts.hypothesis.kind === :simple
+        @test Ts.hypothesis.model isa Copulas.Copula
         @test Ts.statistic === :Sn
         @test Ts.calibration === :parametric_bootstrap
         @test StatsBase.nobs(Ts) == 60
@@ -363,7 +363,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
 
         M = fit(CopulaModel, ClaytonCopula, U; vcov=false)
         Tc = GOFCopulaTest(M; N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
-        @test Tc.hypothesis.kind === :composite
+        @test Tc.hypothesis.model isa CopulaModel
         @test Tc.hypothesis.model === M
         @test 0 < pvalue(Tc) < 1
 
@@ -374,7 +374,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
             Mexpected = Copulas._refit(M, Vnew)
             Tnew = GOFCopulaTest(M, Unew; N=1, rng=Xoshiro(906),)
 
-            @test Tnew.hypothesis.kind === :composite
+            @test Tnew.hypothesis.model isa CopulaModel
             @test Tnew.hypothesis.model !== M
             @test StatsBase.coef(Tnew.hypothesis.model) ≈ StatsBase.coef(Mexpected)
             @test teststatistic(Tnew) ≈ Copulas._gof_sn_statistic(Vnew, Copulas._copula_of(Mexpected))
@@ -401,7 +401,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
 
             Tnested = GOFCopulaTest(Mnested; N=1, rng=Xoshiro(903),)
 
-            @test Tnested.hypothesis.kind === :composite
+            @test Tnested.hypothesis.model isa CopulaModel
             @test isfinite(teststatistic(Tnested))
             @test 0 <= pvalue(Tnested) <= 1
 
@@ -421,7 +421,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
 
             Tsurvival = GOFCopulaTest(Msurvival; N=1, rng=Xoshiro(904),)
 
-            @test Tsurvival.hypothesis.kind === :composite
+            @test Tsurvival.hypothesis.model isa CopulaModel
             @test isfinite(teststatistic(Tsurvival))
             @test 0 <= pvalue(Tsurvival) <= 1
 

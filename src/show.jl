@@ -286,21 +286,20 @@ end
 ##### Copula hypothesis tests
 ###############################################################################
 
-_show_test_model(::IO, ::CopulaHypothesis, ::Val, ::Val, ::NamedTuple) = nothing
-function _show_test_model(io::IO, h::GoodnessOfFitHypothesis, ::Val, ::Val, ::NamedTuple)
+_show_test_model(::IO, ::CopulaHypothesis) = nothing
+function _show_test_model(io::IO, h::GoodnessOfFitHypothesis)
     label =
-        h.kind === :simple ? "Specified copula" :
+        h.model isa Copula ? "Specified copula" :
                              "Fitted model"
-                             
+
     model = h.model isa CopulaModel ? _copula_of(h.model) : h.model
-    model_label = replace(string(typeof(model)), "Copulas." => "")
-    println(io, "Hypothesis:             ", h.kind)
+    model_label = string(model)
+    println(io, "Hypothesis:             ", h.model isa Copula ? :simple : :composite)
     println(io, label, ":           ", model_label)
 end
 
-_show_test_details(::IO, ::CopulaHypothesis, ::Val, ::Val, ::NamedTuple) = nothing
-function _show_test_details(io::IO, ::ExchangeabilityHypothesis, ::Val{:Sn},
-        ::Val{:multiplier}, details::NamedTuple)
+_show_test_details(::IO, ::CopulaHypothesis, ::NamedTuple) = nothing
+function _show_test_details(io::IO, ::ExchangeabilityHypothesis, details::NamedTuple)
     hasproperty(details, :permutations) || return nothing
     println(io, "Permutations:           ", details.permutations)
     println(io, "Weight:                 ", details.weight)
@@ -312,14 +311,12 @@ function _show_test_details(io::IO, ::ExchangeabilityHypothesis, ::Val{:Sn},
     end
 end
 
-function _show_test_details(io::IO, ::RadialSymmetryHypothesis, ::Val{:Sn},
-        ::Val{:randomization}, details::NamedTuple)
+function _show_test_details(io::IO, ::RadialSymmetryHypothesis, details::NamedTuple)
     hasproperty(details, :reflection_probability) || return nothing
     println(io, "Reflection probability: ", details.reflection_probability)
 end
 
-function _show_test_details(io::IO, ::ExtremeValueHypothesis, ::Val{:Sn},
-        ::Val{:multiplier}, details::NamedTuple)
+function _show_test_details(io::IO, ::ExtremeValueHypothesis, details::NamedTuple)
     hasproperty(details, :powers) || return nothing
     println(io, "Powers:                 ", details.powers)
     println(io, "Multiplier:             ", details.multiplier)
@@ -331,14 +328,12 @@ function Base.show(io::IO, ::MIME"text/plain", test::CopulaTest)
     println(io, name)
     println(io, repeat('-', length(name)))
     h = test.hypothesis
-    statistic = Val(test.statistic)
-    calibration = Val(test.calibration)
-    _show_test_model(io, h, statistic, calibration, test.details)
+    _show_test_model(io, h)
     println(io, "Number of observations: ", StatsBase.nobs(test))
     println(io, "Dimension:              ", test.dimension)
     println(io, "Statistic:              ", replace(string(test.statistic), '_' => ' '))
     println(io, "Observed value:         ", teststatistic(test))
-    _show_test_details(io, h, statistic, calibration, test.details)
+    _show_test_details(io, h, test.details)
     if test.n_resamples > 0
         println(io, "Number of resamples:    ", test.n_resamples)
         println(io, "Calibration:            ", replace(string(test.calibration), '_' => ' '))

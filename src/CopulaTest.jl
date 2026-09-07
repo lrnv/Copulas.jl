@@ -22,7 +22,6 @@ end
 
 struct GoodnessOfFitHypothesis{M} <: CopulaHypothesis
     model::M
-    kind::Symbol
 end
 
 """
@@ -577,8 +576,7 @@ end
 ################################################################################
 
 
-GoodnessOfFitHypothesis(C::Copula) = GoodnessOfFitHypothesis(C, :simple)
-GoodnessOfFitHypothesis(M::CopulaModel) = GoodnessOfFitHypothesis(M, :composite)
+
 
 """
     GOFCopulaTest(C, U; N=1000, pseudo_values=false, rng=Random.default_rng())
@@ -625,10 +623,8 @@ function GOFCopulaTest(M::CopulaModel; kwargs...)
 end
 
 testname(::GoodnessOfFitHypothesis) = "Copula goodness-of-fit test"
-function nullhypothesis(h::GoodnessOfFitHypothesis)
-    h.kind === :simple && return "The data follow the specified copula."
-    return "The data belong to the specified copula family."
-end
+nullhypothesis(::GoodnessOfFitHypothesis{<:Copula}) = "The data follow the specified copula."
+nullhypothesis(::GoodnessOfFitHypothesis{<:CopulaModel}) = "The data belong to the specified copula family."
 
 _test_method(::GoodnessOfFitHypothesis) = (:Sn, :parametric_bootstrap)
 
