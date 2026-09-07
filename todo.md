@@ -4,8 +4,6 @@ Only unfinished work belongs here; remove completed items as changes are committ
 
 - Verify the rendered placement of the revised public component docstrings and
   their qualified non-exported names with Documenter.
-- Align the developer guide's compatibility definition with documented extensions
-  of Distributions.jl and StatsBase.jl; do not promise a stable contributor protocol.
 - Verify the new contributor examples in Documenter CI.
 - Finish the audit of conditioning return values and document SurvivalCopula
   fitting configuration.

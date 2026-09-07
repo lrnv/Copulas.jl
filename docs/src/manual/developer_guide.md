@@ -29,23 +29,19 @@ This page is intended for package contributors and advanced users who want to ex
 
 ## 1.1 Overview
 
-Every copula type in `Copulas.jl` provides an extensive set of methods, to integrate correctly with the ecosystem: (non-exhaustive table)
+The stable user-facing contract is defined by the [Public API](@ref), not by
+the implementation recipes on this page. It includes documented methods owned
+by `Copulas` as well as documented extensions of ecosystem interfaces:
 
-| Method                           | Purpose                             | Required    |
+| Public operation                 | Owning interface                    | Availability |
 | -------------------------------- | ----------------------------------- | ----------- |
-| `length(C)`                      | Dimension d of the copula           | ✅          |
-| `cdf(C, u)`                      | Cumulative distribution function    | ✅          |
-| `pdf(C, u)`                      | Lebesgue density                    | ✅ when absolutely continuous |
-| `logpdf(C, u)`                   | Joint log density                   | ✅ when absolutely continuous |
-| `rand(C, n)`                     | Random generation                   | ✅          |
-| `params(C)`                      | Return parameters as a `NamedTuple` | ✅          |
-| `fit(::Type{<:MyCopula}, u)`     | Model fitting interface             | ✅ when the family declares a fitting method |
-| `τ(C)`, `ρ(C)`, etc...           | Dependence metrics                  | ✅ through generic fallbacks |
-| `λₗ(C)`, `λᵤ(C)`                  | Tail dependence coefficients        | ✅ through generic fallbacks |
-| `condition(C, dims, us)`         | Conditional distribution            | ✅ through the generic framework |
-| `subsetdims(C, dims)`            | Marginal copula                     | ✅ through the generic framework |
-| `rosenblatt(C, u)`               | Rosenblatt transformation           | ✅ |
-| `inverse_rosenblatt(C, u)`       | Inverse Rosenblatt transformation   | ✅ when mathematically invertible |
+| `length`                          | `Base`                              | all copulas |
+| `cdf`, `params`                   | `Distributions.jl`                  | all copulas |
+| `pdf`, `logpdf`, `loglikelihood` | `Distributions.jl`                  | when the documented measure semantics permit it |
+| `rand`                            | `Random` / `Distributions.jl`       | all copulas |
+| `fit`                             | `Distributions.jl` / `StatsBase.jl` | declared family/method pairs |
+| `corkendall`, `corspearman`       | `StatsBase.jl`                      | all copulas |
+| dependence measures, subsetting, conditioning and transforms | `Copulas` | according to their public mathematical preconditions |
 
 
 However, direct implementation of these methods is not always the best way to fullfill the contract. 
@@ -53,12 +49,11 @@ If you want to implement a new copula, this document will quide you into the rig
 The easiest way is probably to look at another copula's code, choosing a copula *from the same family as yours* if possible, and then 
 reading this code in parralell to this doucment. 
 
-Here, "required" describes the user-facing behavior, not the number of methods a
-new type must implement directly. Generic fallbacks provide many of these
-operations. Singular and mixed copulas do not acquire a Lebesgue density or a
-bijective Rosenblatt transform merely to satisfy an interface; their documented
-mathematical semantics take precedence. Likewise, fitting is public only for
-families that declare at least one supported fitting method.
+The table summarizes adopted user-facing interfaces; it does not make their
+internal hooks stable. Generic fallbacks provide many operations. Singular and
+mixed copulas do not acquire a Lebesgue density or a bijective Rosenblatt
+transform merely to satisfy an interface; their documented mathematical
+semantics take precedence.
 
 
 ## 1.2 Probability interface (`cdf`, `pdf`, `rand`)
@@ -69,8 +64,9 @@ singular copulas, and entropy-based dependence is consequently restricted to
 models with an ordinary density.
 The `rand(C, n)` method should generate an `d × n` matrix of samples from the copula. 
 
-Public API : `rand(C, n)`, `cdf(C, u)`, `pdf(C, u )`, `logpdf(C, u )`, `loglikelihood(C, u )`. 
-For these methodes to work corectly, you need to overwrite a few internal methods, as in the following minimal example: 
+The corresponding public behavior is documented on the [Public API](@ref) page.
+Inside this repository, it is currently supplied by the following internal
+methods; these hooks may change independently of that behavior:
 
 ```julia
 struct MyCopula{d, P} <: Copula{d} # Note that the size of the copula must be part of the type. 
@@ -105,7 +101,8 @@ instance, `typeof(C)(values(params(C))...)` reconstructs it. Structural models
 may expose additional explicitly documented constructors, but must still provide
 the two dimension spellings above.
 
-Once defined, these automatically integrate with the `Copulas.jl` and `Distributions.jl` interface.
+Once defined, the public wrappers integrate the type with the documented
+`Distributions.jl` and `Random` operations.
 
 ::: info Sampling contract
 
