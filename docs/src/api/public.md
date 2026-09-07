@@ -41,17 +41,11 @@ storage type parameters, intermediate subtype hierarchies, caches, AD backends,
 or numerical algorithms as extension contracts. Explicitly documented public
 relationships and constructor syntax remain part of the contract.
 
-The public mathematical operations on components are `ϕ`, `max_monotony`, `A`,
-`ℓ`, and `𝒲₋₁`. Their public status describes evaluation of supported components;
-it does not guarantee that implementing one of them automatically supplies every
-copula operation. In particular, sampling, density and conditioning have their
-own mathematical and implementation requirements.
-
-Derivative and inverse helpers (`ϕ⁻¹`, `ϕ⁽¹⁾`, `ϕ⁻¹⁽¹⁾`, `ϕ⁽ᵏ⁾`,
-`ϕ⁽ᵏ⁾⁻¹`, `dA`, `d²A`, `ellpartial`), the `Distortion` protocol and
-the `MGenerator`/`WGenerator` limit representations are internal. See the
-[developer guide](@ref developer_fitting) for their current implementation role;
-their qualified availability is not a compatibility guarantee.
+The public mathematical operations on components are documented below. Their
+public status describes evaluation of supported components; it does not imply
+that defining one operation supplies every copula capability. The current
+implementation machinery is described separately in the
+[developer guide](@ref developer_fitting) and is not part of this contract.
 
 ```@autodocs
 Modules = [Copulas]

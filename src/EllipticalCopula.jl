@@ -1,50 +1,11 @@
 """
-    EllipticalCopula{d,MT}
+    EllipticalCopula
 
-This is an abstract type. It implements an interface for all Elliptical copulas. We construct internally elliptical copulas using the sklar's theorem, by considering the copula ``C`` to be defined as : 
-
-```math
-C = F \\circ (F_1^{-1},...,F_d^{-1}),
-```
-
-where ``F`` and ``F_1,...,F_d`` are respectively the multivariate distribution function of some elliptical random vector and the univariate distribution function of its marginals.  For a type `MyCop <: EllipitcalCopula`, it is necessary to implement the following methods: 
-
-- `N(::Type{MyCOp})`, returning the constructor of the elliptical random vector from its correlation matrix. For example, `N(GaussianCopula)` simply returns `MvNormal` from `Distributions.jl`.
-- `U(::Type{MyCOp})`, returning the constructor for the univariate marginal, usually in standardized form. For example, `U(GaussianCopula)` returns `Normal` from `Distributions.jl`.
-
-From these two functions, the abstract type provides a fully functional copula. 
-
-# Details 
-
-Recall the definition of spherical random vectors: 
-
-!!! note "Definition - Spherical and elliptical random vectors"
-    A random vector ``\\boldsymbol X`` is said to be spherical if for all orthogonal matrix ``\\boldsymbol A \\in O_d(\\mathbb R)``, ``\\boldsymbol A\\boldsymbol X \\sim \\boldsymbol X``. 
-
-    For every matrix ``\\boldsymbol B`` and vector ``\\boldsymbol c``, the random vector ``\\boldsymbol B \\boldsymbol X + \\boldsymbol c`` is then said to be elliptical.
-
-
-Recall that spherical random vectors are random vectors which characteristic functions (c.f.) only depend on the norm of their arguments. Indeed, for any ``\\boldsymbol A \\in O_d(\\mathbb R)``, 
-```math
-\\phi(\\boldsymbol t) = \\mathbb E\\left(e^{\\langle \\boldsymbol t, \\boldsymbol X \\rangle}\\right)= \\mathbb E\\left(e^{\\langle \\boldsymbol t, \\boldsymbol A\\boldsymbol X \\rangle}\\right) = \\mathbb E\\left(e^{\\langle \\boldsymbol A\\boldsymbol t, \\boldsymbol X \\rangle}\\right) = \\phi(\\boldsymbol A\\boldsymbol t).
-```
-
-We can therefore express this characteristic function as ``\\phi(\\boldsymbol t) = \\psi(\\lVert \\boldsymbol t \\rVert_2^2)``, where ``\\psi`` is a function that characterizes the spherical family, called the *generator* of the family. Any characteristic function that can be expressed as a function of the norm of its argument is the characteristic function of a spherical random vector, since ``\\lVert \\boldsymbol A \\boldsymbol t \\rVert_2 = \\lVert \\boldsymbol t \\rVert_2`` for any orthogonal matrix ``\\boldsymbol A``. 
-
-However, note that this is not how the underlying code is working, we do not check for validity of the proposed generator (we dont even use it). You can construct such an elliptical family using simply Sklar: 
-
-```julia
-struct MyElliptical{d,T} <: EllipticalCopula{d,T}
-    θ:T
-end
-U(::Type{MyElliptical{d,T}}) where {d,T} # Distribution of the univaraite marginals, Normal() for the Gaussian case. 
-N(::Type{MyElliptical{d,T}}) where {d,T} # Distribution of the mutlivariate random vector, MvNormal(C.Σ) for the Gaussian case. 
-```
-
-These two functions are enough to implement the rest of the interface. 
-
-References:
-* [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
+Internal abstract representation shared by elliptical copula implementations.
+Users should construct and operate on documented concrete families such as
+`GaussianCopula` and `TCopula`. Its type parameters and implementation hooks
+are not public API; the current contributor architecture is described in the
+developer guide.
 """
 abstract type EllipticalCopula{d,MT} <: Copula{d} end
 U(C::CT) where {CT<:EllipticalCopula} = U(CT)

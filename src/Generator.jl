@@ -1,40 +1,15 @@
 """
     Generator
 
-Abstract type. Implements the API for archimedean generators.
+Abstract representation of an Archimedean generator. A generator is a decreasing
+function `ϕ : [0,∞) → [0,1]` with `ϕ(0)=1` and `ϕ(∞)=0`; constructing a
+`d`-dimensional Archimedean copula additionally requires the appropriate
+`d`-monotonicity.
 
-An Archimedean generator is simply a function
-``\\phi :\\mathbb R_+ \\to [0,1]`` such that ``\\phi(0) = 1`` and ``\\phi(+\\infty) = 0``.
-
-To generate an archimedean copula in dimension ``d``, the function also needs to be ``d``-monotone, that is :
-
-- ``\\phi`` is ``d-2`` times derivable.
-- ``(-1)^k \\phi^{(k)} \\ge 0 \\;\\forall k \\in \\{1,..,d-2\\},`` and if ``(-1)^{d-2}\\phi^{(d-2)}`` is a non-increasing and convex function.
-
-The access to the function ``\\phi`` itself is done through the interface:
-
-    ϕ(G::Generator, t)
-
-We do not check algorithmically that the proposed generators are d-monotonous. Instead, it is up to the person implementing the generator to tell the interface how big can ``d`` be through the function
-
-    max_monotony(G::MyGenerator) = # supported monotonicity order (a positive Real or Inf)
-
-The reported order need not be an integer: Williamson generators can carry a
-real order. An Archimedean copula still has an integer dimension `d`, which must
-not exceed the supported order. The derivative characterization above concerns
-integer `d ≥ 2`.
-
-
-More methods can be implemented for performance, althouhg there are implement defaults in the package :
-
-* `ϕ⁻¹( G::Generator, x)` gives the inverse function of the generator.
-* `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative of the generator
-* `ϕ⁽ᵏ⁾(G::Generator, k::Int, t)` gives the kth derivative of the generator
-* `ϕ⁻¹⁽¹⁾(G::Generator, t)` gives the first derivative of the inverse generator.
-* `𝒲₋₁(G::Generator, d::Real)` gives the inverse Williamson transform of the generator as a positive univariate distribution. Positive non-integer orders use an exact beta reduction from `ceil(Int, d)`.
-
-References:
-* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
+Public component contracts concern the documented mathematical operations and
+constructors. The subtype hierarchy, derivative machinery, inversions, radial
+representations and numerical fallbacks are internal implementation details.
+See the developer guide for the current contributor architecture.
 """
 abstract type Generator end
 function (TG::Type{<:Generator})(args...;kwargs...)

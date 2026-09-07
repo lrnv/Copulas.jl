@@ -11,10 +11,7 @@ Only unfinished work belongs here; remove completed items as changes are committ
   now avoid storage parameters; verify their rendered placement with Documenter.
 - Align the developer guide's compatibility definition with documented extensions
   of Distributions.jl and StatsBase.jl; do not promise a stable contributor protocol.
-- Correct #445's fitting skeleton and distinguish custom fitting from generic
-  engine opt-in; replace the inconsistent Nelsen2/boundary examples.
-- Correct EV dimension validity, sampling and smoothness claims; update Tail and
-  EllipticalCopula descriptions to the actual object-based architecture.
+- Verify the new contributor examples in Documenter CI.
 - Finish the audit of conditioning return values and document SurvivalCopula
   fitting configuration.
 - Correct empirical-generator return semantics, dependence terminology and
