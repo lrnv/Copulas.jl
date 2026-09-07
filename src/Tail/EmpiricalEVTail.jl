@@ -1,8 +1,6 @@
 """
-    EmpiricalEVTail
-
-  EmpiricalEVTail(u; method=:ols, grid=401, eps=1e-3, pseudo_values=true)
-  ExtremeValueCopula(2, EmpiricalEVTail(u; ...))
+    EmpiricalEVTail(u; method=:ols, grid=401, eps=1e-3, pseudo_values=true)
+    ExtremeValueCopula(2, EmpiricalEVTail(u; ...))
 
 The empirical extreme-value (EV) copula (bivariate) is defined from pseudo-observations
 `u = (U₁, U₂)` and a nonparametric estimator of the Pickands dependence function. Supported

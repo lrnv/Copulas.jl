@@ -1,4 +1,5 @@
 """
+    GalambosTail(θ)
     GalambosCopula{d}(θ)
     GalambosCopula(d, θ)
 

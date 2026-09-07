@@ -1,6 +1,10 @@
 """
     TawnTail(d, dep, asy)
     TawnTail(α, weights)
+    TawnCopula{d}(dep, asy)
+    TawnCopula{d}(α, weights)
+    TawnCopula(d, dep, asy)
+    TawnCopula(d, α, weights)
 
 Multivariate asymmetric-logistic stable tail dependence function. The full
 subset representation follows Tawn's multivariate extreme-value construction

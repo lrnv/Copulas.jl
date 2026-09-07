@@ -333,19 +333,9 @@ end
 
 
 """
-    𝒲{TX, TO} (alias WilliamsonGenerator{TX, TO})
-
-Fields:
-* `X::TX` -- a random variable that represents its Williamson d-transform
-* `order::TO` -- the order of the Williamson transform
-
-The type parameter `TO` is the numeric type of the order, not its value.
-
-Constructor
-
     WilliamsonGenerator(X::Distributions.UnivariateDistribution, d)
-    𝒲(X::Distributions.UnivariateDistribution,d)
     WilliamsonGenerator(atoms::AbstractVector, weights::AbstractVector, d)
+    𝒲(X::Distributions.UnivariateDistribution,d)
     𝒲(atoms::AbstractVector, weights::AbstractVector, d)
 
 The `𝒲` type (also available as `WilliamsonGenerator`) constructs a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation is implemented fully generically in the package.

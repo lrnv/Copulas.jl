@@ -1,4 +1,6 @@
 """
+    tEVTail(ν, ρ)
+    tEVTail(ν, R)
     tEVCopula{d}(ν, ρ)
     tEVCopula(d, ν, ρ)
     tEVCopula{d}(ν, R)
