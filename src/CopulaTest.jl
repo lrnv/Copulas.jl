@@ -495,7 +495,7 @@ function _max_stability_powers(powers)
         push!(result, Float64(r))
     end
     isempty(result) && throw(ArgumentError("at least one max-stability power is required"))
-    return Tuple(result)
+    return result
 end
 
 function _extreme_value_sn_statistic(U::AbstractMatrix, powers)
