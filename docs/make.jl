@@ -55,9 +55,8 @@ makedocs(;
             "Public"=>"api/public.md",
         ],
         "Development" => [
-            "Extending Copulas.jl"=>"manual/developer_guide.md",
-            "Performance benchmarks"=>"manual/benchmarks.md",
-            "Internal API"=>"api/internal.md",
+            "Extending Copulas.jl"=>"dev/developer_guide.md",
+            "Performance benchmarks"=>"dev/benchmarks.md",
         ],
         "References" => "references.md",
     ],
