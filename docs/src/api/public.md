@@ -29,7 +29,7 @@ not.
 | Density | `pdf`, `logpdf`, `loglikelihood` | Available for absolutely continuous components. Singular and mixed copulas follow their documented generalized-density semantics and need not possess a Lebesgue density. |
 | Marginalization | `subsetdims` | Preserves the requested coordinates and their order. One coordinate yields its univariate marginal. |
 | Conditioning | `condition` | Produces the conditional univariate distortion or lower-dimensional distribution, with generalized quantiles where atoms occur. |
-| Transforms | `rosenblatt`, `inverse_rosenblatt` | Vector and matrix forms are supported. Round-trip bijectivity is guaranteed only for continuous models without atoms. |
+| Transforms | `rosenblatt`, `inverse_rosenblatt` | Vector and matrix forms are supported. Round trips hold almost surely when successive conditional CDFs are continuous and invertible on their supports; atomic conditionals need not give a bijection or a uniform forward transform. |
 | Dependence | `τ`, `ρ`, `β`, `γ`, `ι`, `λₗ`, `λᵤ`, their documented inverses, `StatsBase.corkendall`, `StatsBase.corspearman` | Results have the documented scalar or pairwise-matrix shape, bounds and symmetry. Closed forms and numerical fallbacks have the same contract. |
 | Fitting | `fit`, `CopulaModel` and the StatsBase model interface | Documented family/method pairs return valid fitted models. `CopulaModel` exposes observations, coefficients, covariance when computed, information criteria, residuals and prediction. |
 | Composition | `SklarDist` | Distribution operations, marginalization, conditioning and Rosenblatt transforms are expressed on the marginal scales. |

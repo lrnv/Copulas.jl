@@ -357,7 +357,13 @@ end
 """
     rosenblatt(C::Copula, u)
 
-Computes the rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ C, the result should be uniformely distributed on the unit hypercube. The importance of this transofrmation comes from its bijectivity: `inverse_rosenblatt(C, rand(d))` is equivalent to `rand(C)`. The interface proposes faster versions for matrix inputs `u`.
+Evaluate successive conditional CDFs associated with `C` on the vector `u`.
+For `U ∼ C`, the result consists of independent uniforms when the successive
+conditional laws are atomless. Forward/inverse round trips hold almost surely
+when those CDFs are continuous and invertible on their supports, not universally
+for singular or atomic models. Generalized conditional quantiles may still sample
+such models through `inverse_rosenblatt`; they do not make the deterministic
+forward transform bijective. Matrix inputs evaluate observations columnwise.
 
 Generic Rosenblatt transform using conditional distortions:
 S₁ = U₁, S_k = H_{k|1:(k-1)}(U_k | U₁:U_{k-1}).

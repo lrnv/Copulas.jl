@@ -15,10 +15,10 @@ Only unfinished work belongs here; remove completed items as changes are committ
   engine opt-in; replace the inconsistent Nelsen2/boundary examples.
 - Correct EV dimension validity, sampling and smoothness claims; update Tail and
   EllipticalCopula descriptions to the actual object-based architecture.
-- Audit conditioning return values and qualify derivative formulas and Rosenblatt
-  inverses for singular/atomic models; document SurvivalCopula fitting configuration.
-- Correct generator monotonicity order, empirical-generator return semantics,
-  Archimedean formula, dependence terminology and input-shape/pseudos typos.
+- Finish the audit of conditioning return values and document SurvivalCopula
+  fitting configuration.
+- Correct empirical-generator return semantics, dependence terminology and
+  input-shape/pseudos typos.
 - Review the public operation table against actual supported cases, including the
   newly added hypothesis tests and family selection; link authoritative docstrings.
 - Relabel/reorganize internal primitive tests currently presented as public API
