@@ -495,7 +495,7 @@ Urad = rand(Xoshiro(6), GaussianCopula([1.0 0.6; 0.6 1.0]), 80)
 
 trad = RadialSymmetryCopulaTest(Urad; N=49, rng=Xoshiro(7),)
 
-(trad.statistic, trad.calibration, trad.details.reflection_probability)
+(teststatistic(trad), pvalue(trad))
 ```
 
 
@@ -592,7 +592,7 @@ Uev = rand(Xoshiro(8), GumbelCopula(2, 2.5), 80)
 
 tev = ExtremeValueCopulaTest(Uev; powers=3:5, N=49, rng=Xoshiro(9),)
 
-(tev.statistic, tev.calibration, tev.details.powers)
+(teststatistic(tev), pvalue(tev))
 ```
 
 A single power is also allowed:

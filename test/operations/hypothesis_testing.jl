@@ -2,6 +2,61 @@ const COPULA_TEST_RESAMPLES = parse(Int, get(ENV, "COPULAS_TEST_RESAMPLES", "19"
 const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
 
 @testset "Copula hypothesis tests [copula_tests]" begin
+    @testset "Multiplier process oracles" begin
+        # Compute the empirical process from scalar sums, independently of the
+        # production matrix assembly. Include a non-self-inverse permutation.
+        U = [0.12 0.36 0.62 0.87; 0.72 0.18 0.91 0.43; 0.31 0.82 0.16 0.68]
+        d, n = size(U)
+        xi = [-1.5, -0.5, 0.5, 1.5]
+        empirical(u) = count(j -> all(U[:, j] .<= u), 1:n) / n
+        function derivative(u, k)
+            lo, hi = copy(u), copy(u)
+            lo[k] = max(0.0, u[k] - inv(sqrt(n)))
+            hi[k] = min(1.0, u[k] + inv(sqrt(n)))
+            return (empirical(hi) - empirical(lo)) / (hi[k] - lo[k])
+        end
+        bridge(u) = sum(xi[j] * all(U[:, j] .<= u) for j in 1:n)
+        margin(k, z) = sum(xi[j] * (U[k, j] <= z) for j in 1:n)
+        process(u) = bridge(u) - sum(derivative(u, k) * margin(k, u[k]) for k in 1:d)
+
+        powers = [2.0, 3.5]
+        matrices, _ = Copulas._extreme_value_multiplier_matrices(U, powers)
+        for (Q, r) in zip(matrices, powers)
+            expected = [r * empirical(u .^ inv(r))^(r - 1) * process(u .^ inv(r)) - process(u) for u in eachcol(U)]
+            @test Q * xi ≈ expected atol=1e-14
+        end
+
+        permutations = [(2, 1, 3), (2, 3, 1)]
+        matrices, weights, _ = Copulas._exchangeability_multiplier_matrices(U, permutations, :none)
+        for (Q, perm, w) in zip(matrices, permutations, weights)
+            inverse = invperm(collect(perm))
+            expected = [bridge(u) - bridge(u[collect(perm)]) -
+                sum(derivative(u, k) * (margin(k, u[k]) - margin(inverse[k], u[k])) for k in 1:d)
+                for u in eachcol(U)]
+            @test Q * xi ≈ expected atol=1e-14
+            @test w == ones(n)
+        end
+
+        # Independently reproduce the quadratic statistic and exceedance count,
+        # covering both weighted/strict and unweighted/corrected conventions.
+        Q = [1.0 2.0; -0.5 1.0]
+        for weighted in (false, true)
+            rng = Xoshiro(946)
+            exceedances = 0
+            for _ in 1:9
+                z = randexp(rng, 2)
+                z .-= sum(z) / 2
+                value = sum((weighted ? i : 1) * sum(Q[i, j] * z[j] for j in 1:2)^2 for i in 1:2) / 4
+                exceedances += weighted ? value > 0.2 : value >= 0.2
+            end
+            expected = weighted ? exceedances / 9 : (exceedances + 0.5) / 10
+            actual = Copulas._multiplier_pvalue([Q], 0.2, 9, Xoshiro(946);
+                weights=weighted ? [[1.0, 2.0]] : nothing, scale=0.5,
+                strict=weighted, correction=weighted ? nothing : 0.5)
+            @test actual == expected
+        end
+    end
+
     @testset "Common public contract" begin
         U = [0.2 0.5 0.8; 0.3 0.6 0.9]
         result = IndependenceCopulaTest(U; pseudo_values=true, N=1, rng=Xoshiro(1))
