@@ -22,7 +22,7 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
     @test getproperty.(table, :candidate) == collect(candidates)
     @test all(row -> row.status === :ok, table)
     @test table[M.method_details.selected_index].bic == minimum(row.bic for row in table)
-    @test loglikelihood(M) == table[M.method_details.selected_index].loglikelihood
+    @test M.ll == table[M.method_details.selected_index].loglikelihood
     @test M.result isa ClaytonCopula
     @test occursin("Model selection", sprint(show, M))
     displayed = sprint(show, M)
@@ -38,7 +38,7 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
         selected = fit(CopulaModel, Copulas.Copula, U; candidates=(ClaytonCopula,),
             method=:mle, vcov=true, vcov_method=:hessian, derived_measures=false)
         @test StatsBase.coef(selected) ≈ StatsBase.coef(ordinary)
-        @test loglikelihood(selected) ≈ loglikelihood(ordinary)
+        @test selected.ll ≈ ordinary.ll
         @test selected.vcov !== nothing
         @test ordinary.vcov !== nothing
         @test all(isfinite, selected.vcov)
