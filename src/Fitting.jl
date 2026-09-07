@@ -722,12 +722,12 @@ end
 """
     selectiontable(model::CopulaModel)
 
-Return the vector of candidate comparison rows from automatic family selection.
+Return a copy of the vector of candidate comparison rows from automatic family selection.
 """
 function selectiontable(M::CopulaModel)
     haskey(M.method_details, :selection_table) ||
         throw(ArgumentError("The model was not produced by automatic copula selection."))
-    return M.method_details.selection_table
+    return copy(M.method_details.selection_table)
 end
 
 """
@@ -794,7 +794,8 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
 
     CT = rows[best_index].candidate
     selected = _finish_copula_fit(CT, best.result, U, best.ll, best.method,
-        best.method_details, best.elapsed_sec, nothing;
+        (; best.method_details..., converged=best.converged, iterations=best.iterations),
+        best.elapsed_sec, nothing;
         derived_measures, vcov, vcov_method)
     # No single-family fit specification can reproduce model selection. Until
     # selection-aware bootstrap exists, _refit must reject this model.

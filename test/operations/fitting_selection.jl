@@ -7,7 +7,7 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{SelectionProbe{mode}}, U;
     mode === :interrupt && throw(InterruptException())
     return CopulaModel(IndependentCopula{2}(), size(U, 2),
         mode === :nonfinite ? NaN : 0.0, :probe;
-        converged=mode !== :not_converged, method_details=(; U))
+        converged=mode !== :not_converged, iterations=7, method_details=(; U))
 end
 
 @testset "Automatic copula-family selection" begin
@@ -23,6 +23,10 @@ end
     @test loglikelihood(M) == table[M.method_details.selected_index].loglikelihood
     @test M.result isa ClaytonCopula
     @test occursin("Model selection", sprint(show, M))
+    displayed = sprint(show, M)
+    reverse!(table)
+    @test getproperty.(selectiontable(M), :candidate) == collect(candidates)
+    @test sprint(show, M) == displayed
     @test_throws ArgumentError GOFCopulaTest(M; N=1)
     @test_throws ArgumentError GOFCopulaTest(M, U; N=1)
 
@@ -49,6 +53,7 @@ end
         relaxed = fit(CopulaModel, Copula, U;
             candidates=(SelectionProbe{:not_converged},), require_convergence=false, vcov=false)
         @test !relaxed.converged
+        @test relaxed.iterations == 7
         @test only(selectiontable(relaxed)).status === :ok
         @test_throws ArgumentError selectiontable(
             fit(CopulaModel, IndependentCopula, U; vcov=false))
