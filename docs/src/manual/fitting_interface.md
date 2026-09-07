@@ -72,11 +72,11 @@ The available information criteria are:
 - `:aicc` — finite-sample corrected AIC,
 - `:hqc` — Hannan–Quinn criterion.
 
-With `criterion=:default`, BIC is used.
+BIC is the default criterion.
 
 Candidate fits are compared using the requested criterion, and the family with
-the smallest eligible finite value is selected. The winning family is then
-fitted once more using the inference options requested by the user.
+the smallest eligible finite value is selected. The winning fit is reused:
+only its requested inference (such as covariance estimation) is computed afterwards.
 
 The complete comparison can be inspected with [`selectiontable`](@ref):
 
@@ -89,13 +89,19 @@ log-likelihood, number of parameters, and all four information criteria.
 Candidates that fail to fit can be skipped with `on_error=:skip` (the default)
 or propagated immediately with `on_error=:throw`.
 
-Two built-in candidate collections are available:
+The candidate collection is required and explicit; choose families appropriate
+for the scientific problem and the data dimension. `selectiontable` returns a
+plain vector of comparison rows. Nonfinite scores and, by default, nonconverged
+fits are excluded. Interruptions always propagate, even with `on_error=:skip`.
 
-- `candidates=:default` uses a conservative set of commonly used parametric families;
-- `candidates=:all` considers the broader built-in parametric repertoire compatible with the data dimension.
+Use maximum-likelihood fitting for the usual information-criterion interpretation;
+passing another fitting method merely compares the scores at those estimates.
+The shorter `fit(Copula, U; candidates=(...))` returns only the selected copula.
 
-An explicit tuple of families is recommended when the scientific problem
-already restricts the plausible candidate set.
+`GOFCopulaTest(Msel)` and `GOFCopulaTest(Msel, U)` are deliberately unsupported:
+a valid selection-aware bootstrap must repeat family selection in every replicate,
+not just refit the winning family. These calls throw rather than silently omit
+the selection step.
 
 
 ---
