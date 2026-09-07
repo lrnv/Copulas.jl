@@ -598,20 +598,21 @@ end
 
 Nonparametric Archimedean generator fit via inversion of the empirical Kendall distribution.
 
-This function returns a `WilliamsonGenerator{TX, TO}` whose underlying distribution `TX` is a `Distributions.DiscreteNonParametric`, rather than a separate struct.
-The returned object still implements all optimized methods (ϕ, derivatives, inverses) via specialized dispatch on `WilliamsonGenerator{<:DiscreteNonParametric}`.
+It returns a [`Generator`](@ref) representing the fitted generator. Its concrete
+representation is an implementation detail and may depend on the data.
 
 Usage
 
     G = EmpiricalGenerator(u)
 
-where `u::AbstractMatrix` is a `d×n` matrix of pseudo-observations. Pass
-`pseudo_values=false` to rank-transform raw observations first.
+where `u::AbstractMatrix` has one component per row and one observation per
+column (`d×n`). With `pseudo_values=true`, values must already be
+pseudo-observations; pass `pseudo_values=false` to rank-transform raw data.
 
 Notes
 * The recovered discrete radial support is rescaled so its largest atom equals 1 (scale is not identifiable).
-* We keep the old documentation entry point for backward compatibility; existing code that
-  relied on the `EmpiricalGenerator` type should instead treat the result as a `Generator`.
+* Code should use the documented `Generator` operations rather than rely on a
+  particular concrete return type.
 
 References
 * [mcneil2009](@cite)

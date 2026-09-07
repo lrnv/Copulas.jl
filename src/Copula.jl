@@ -5,7 +5,7 @@
 #####       2) ρ, τ, β, γ, ι, λₗ and λᵤ: repectively the spearman rho, kendall tau,  blomqvist's beta,
 #####          gini's gamma,entropy eta, and lower and upper tail dependencies.
 #####       3) measure(C, us, vs) that get the measure associated with the copula.
-#####       3) pseudo(data) construct pseudo-data from a given dataset.
+#####       3) pseudos(data) constructs pseudo-observations from a given dataset.
 #####
 #####  When implementing a new copula, you have to overwrite `Copulas._cdf()`
 #####  and `Distributions._rand!()` for matrix inputs.
@@ -147,7 +147,7 @@ function τ(U::AbstractMatrix)
     return (2.0^d * pc - 2.0) / (2.0^d - 2.0)
 end
 function ρ(U::AbstractMatrix)
-    # Sample version of multivariate Spearman's tau for pseudo-data
+    # Sample version of multivariate Spearman's rho for pseudo-observations
     d, n = size(U)
     R = hcat((StatsBase.tiedrank(U[k, :]) for k in 1:d)...)   # n×d
     μ = Statistics.mean(prod(R, dims=2)) / (n + 1)^d          # ≈ E[∏ U_i]

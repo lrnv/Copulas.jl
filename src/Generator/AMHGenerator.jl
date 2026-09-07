@@ -3,7 +3,7 @@
     AMHCopula{d}(θ)
     AMHCopula(d, θ)
 
-The [AMH Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) is parameterized by `θ ∈ [-1,1]`. Negative values are valid only in dimensions `d ≤ max_monotony(AMHGenerator(θ))`. It is an Archimedean copula with generator:
+The [AMH Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) is parameterized by `θ ∈ [-1,1)`. Negative values are valid only in dimensions `d ≤ max_monotony(AMHGenerator(θ))`. It is an Archimedean copula with generator:
 
 ```math
 \\phi(t) = \\frac{1-\\theta}{e^t - \\theta}.
@@ -20,7 +20,7 @@ AMHGenerator, AMHCopula
 struct AMHGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function AMHGenerator(θ)
-        ((θ < -1) || (θ > 1)) && throw(ArgumentError("Theta must be in [-1,1], you provided $θ."))
+        ((θ < -1) || (θ > 1)) && throw(ArgumentError("Theta must be in [-1,1), you provided $θ."))
         θf = float(θ)
         return new{typeof(θf)}(θf)
     end

@@ -129,9 +129,9 @@ providing specific methods (with analytical forms when possible) is highly recom
 | ---------------- | --------------------------- | --------------------------- |
 | `Copulas.τ(C)`   | Kendall’s tau               | Default numerical estimator |
 | `Copulas.ρ(C)`   | Spearman’s rho              | Default numerical estimator |
-| `Copulas.β(C)`   | Kendall’s tau               | Default numerical estimator |
-| `Copulas.γ(C)`   | Spearman’s rho              | Default numerical estimator |
-| `Copulas.ι(C)`   | Kendall’s tau               | Default numerical estimator |
+| `Copulas.β(C)`   | Blomqvist's beta            | Default numerical estimator |
+| `Copulas.γ(C)`   | Gini's gamma                | Default numerical estimator |
+| `Copulas.ι(C)`   | Copula entropy              | Default numerical estimator |
 | `Copulas.λₗ(C)`  | Lower tail dependence        | Default extrapolation-based |
 | `Copulas.λᵤ(C)`  | Upper tail dependence       | Default extrapolation-based |
 

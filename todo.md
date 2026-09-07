@@ -5,8 +5,6 @@ Only unfinished work belongs here; remove completed items as changes are committ
 - Verify the rendered placement of the revised public component docstrings and
   their qualified non-exported names with Documenter.
 - Verify the new contributor examples in Documenter CI.
-- Correct empirical-generator return semantics, dependence terminology and
-  input-shape/pseudos typos.
 - Review the public operation table against actual supported cases, including the
   newly added hypothesis tests and family selection; link authoritative docstrings.
 - Relabel/reorganize internal primitive tests currently presented as public API
