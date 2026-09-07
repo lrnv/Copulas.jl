@@ -148,7 +148,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
 
             @test Copulas._exchangeability_sn_statistic(Udet, permutations, :none,) ≈ expected
 
-            hdet = Copulas.ExchangeabilityHypothesis(permutations=(2, 1), weight=:none,)
+            hdet = Copulas.ExchangeabilityHypothesis(permutations=((2, 1),), weight=:none,)
             rep = Copulas._multiplier_representation(hdet, Udet,)
             @test rep.scale == inv(size(Udet, 2))
             Tdet = ExchangeabilityCopulaTest(Udet; permutations=(2, 1), weight=:none, pseudo_values=true, N=1, rng=Xoshiro(779),)
@@ -161,8 +161,8 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
         @test t2 isa CopulaTest
         @test t2.statistic === :Sn
         @test t2.calibration === :multiplier
-        @test t2.details.permutations === :G2
-        @test t2.details.generator == ((2, 1),)
+        @test t2.details.permutations == [(2, 1)]
+        @test t2.details.generator == [(2, 1)]
         @test t2.details.weight === :wm2
         @test StatsBase.nobs(t2) == 80
         @test t2.dimension == 2
@@ -170,16 +170,14 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
         @test isfinite(teststatistic(t2))
         @test 0 <= pvalue(t2) <= 1
 
-        tall = ExchangeabilityCopulaTest(U2; permutations=:all, N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
-        @test tall.details.generator == ((2, 1),)
 
         Ue = rand(Xoshiro(234), ClaytonCopula(3, 3.0), 120)
         te = ExchangeabilityCopulaTest(Ue; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
-        @test te.details.generator == ((2, 1, 3), (2, 3, 1))
+        @test te.details.generator == [(2, 1, 3), (2, 3, 1)]
         @test pvalue(te) > 0.05
 
         tc = ExchangeabilityCopulaTest(Ue; permutations=(2, 1, 3), N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
-        @test tc.details.generator == ((2, 1, 3),)
+        @test tc.details.generator == [(2, 1, 3)]
 
         x = rand(Xoshiro(2), 120)
         y = x .+ 0.04 .* randn(Xoshiro(3), 120)
@@ -195,51 +193,20 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
         @test occursin("Permutations:", printed)
         @test occursin("Weight:", printed)
 
-        @testset "Cost guard for all permutations" begin
-            # Small problems may still use all permutations.
-            @test Copulas._check_exchangeability_all_cost(:all, 3, 20) === nothing
-            @test Copulas._check_exchangeability_all_cost(:G2, 20, 5000) === nothing
-
-            # 5! - 1 = 119 dense 1000×1000 Float64 matrices would require
-            # roughly 908 MiB before accounting for auxiliary allocations.
-            @test_throws ArgumentError Copulas._check_exchangeability_all_cost(:all, 5, 1000,)
-
-            Ularge = rand(Xoshiro(781), 5, 1000)
-            err = try
-                ExchangeabilityCopulaTest(Ularge; permutations=:all, N=1, rng=Xoshiro(782),)
-            catch e
-                e
-            end
-
-            @test err isa ArgumentError
-            @test occursin("permutations=:all", sprint(showerror, err))
-            @test occursin("safety limit", sprint(showerror, err))
-
-            # Explicit collections must be guarded by their resolved size as
-            # well; otherwise they bypass the preflight specific to `:all`.
-            explicit_permutations = fill((2, 1, 3), 70)
-            resolved = Copulas._exchangeability_permutations(explicit_permutations, 3)
-
-            @test length(resolved) == 70
-            @test Copulas._check_exchangeability_matrix_cost(64, 1000) === nothing
-            @test_throws ArgumentError Copulas._check_exchangeability_matrix_cost(70, 1000)
-
-            Uexplicit = rand(Xoshiro(783), 3, 1000)
-            explicit_err = try
-                ExchangeabilityCopulaTest(
-                    Uexplicit;
-                    permutations=explicit_permutations,
-                    N=1,
-                    rng=Xoshiro(784),
-                )
-            catch e
-                e
-            end
-
-            @test explicit_err isa ArgumentError
-            @test occursin("requested permutation collection", sprint(showerror, explicit_err))
-            @test occursin("70 dense", sprint(showerror, explicit_err))
-            @test occursin("safety limit", sprint(showerror, explicit_err))
+        @testset "Permutation selection and multiplier memory" begin
+            @test Copulas._exchangeability_permutations(:G1, 3) == [(2, 1, 3), (3, 2, 1)]
+            @test Copulas._exchangeability_permutations(:G2, 3) == [(2, 1, 3), (2, 3, 1)]
+            @test_throws ArgumentError ExchangeabilityCopulaTest(U2; permutations=:all, N=1)
+            @test_throws ArgumentError Copulas._check_multiplier_matrix_cost(70, 1000)
+            @test Copulas._check_multiplier_matrix_cost(1, 10) === nothing
+            @test Copulas._exchangeability_permutations([(2, 1), (2, 1)], 2) == [(2, 1)]
+            # Stateful iterators must be consumed only once, before statistic/calibration.
+            selected = Iterators.Stateful([(2, 1)])
+            t = ExchangeabilityCopulaTest(U2; permutations=selected, N=1, rng=Xoshiro(1))
+            @test t.details.generator == [(2, 1)]
+            powers = Iterators.Stateful([2.0, 3.0])
+            t = ExtremeValueCopulaTest(U2; powers, N=1, rng=Xoshiro(1))
+            @test t.details.powers == [2.0, 3.0]
         end
 
         @test_throws MethodError ExchangeabilityCopulaTest(U2; statistic=:Rn, N=9, rng=Xoshiro(1))
@@ -320,7 +287,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
 
             @test Copulas._extreme_value_sn_statistic(Udet, (2.0,)) ≈ expected
 
-            hdet = Copulas.ExtremeValueHypothesis(; powers=2)
+            hdet = Copulas.ExtremeValueHypothesis(; powers=[2.0])
             rep = Copulas._multiplier_representation(hdet, Udet)
 
             @test rep.scale == inv(size(Udet, 2))
@@ -334,7 +301,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
         @test tev isa CopulaTest
         @test tev.statistic === :Sn
         @test tev.calibration === :multiplier
-        @test tev.details.powers == (3.0, 4.0, 5.0)
+        @test tev.details.powers == [3.0, 4.0, 5.0]
         @test tev.details.multiplier === :exponential
         @test tev.details.derivative_bandwidth == inv(sqrt(100))
         @test StatsBase.nobs(tev) == 100
@@ -350,7 +317,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
         @test pvalue(tcl) <= 0.05
 
         tp = ExtremeValueCopulaTest(Uev; powers=2, N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
-        @test tp.details.powers == (2.0,)
+        @test tp.details.powers == [2.0]
 
         io = IOBuffer()
         show(io, MIME("text/plain"), tcl)

@@ -253,7 +253,12 @@ ExchangeabilityHypothesis(; permutations=:G2, weight::Symbol=:wm2) = Exchangeabi
 Test exchangeability of a copula in arbitrary dimension.
 """
 function ExchangeabilityCopulaTest(U::AbstractMatrix{<:Real}; permutations=:G2, weight::Symbol=:wm2, kwargs...)
-    return _run_copula_test(ExchangeabilityHypothesis(; permutations, weight), U; kwargs...)
+    d, n = size(U)
+    d >= 2 || throw(ArgumentError("at least two components are required"))
+    weight in (:none, :wm2) || throw(ArgumentError("expected weight=:none or :wm2"))
+    selected = _exchangeability_permutations(permutations, d)
+    _check_multiplier_matrix_cost(length(selected), n)
+    return _run_copula_test(ExchangeabilityHypothesis(selected, weight), U; kwargs...)
 end
 
 testname(::ExchangeabilityHypothesis) = "Copula exchangeability test"
@@ -261,50 +266,26 @@ nullhypothesis(::ExchangeabilityHypothesis) = "The copula is exchangeable."
 _test_method(::ExchangeabilityHypothesis) = (:Sn, :multiplier)
 
 function _teststatistic(h::ExchangeabilityHypothesis, U::AbstractMatrix)
-    d, n = size(U)
-
-    # `:all` must be checked before resolution because materializing d!
-    # permutations may itself be prohibitive.
-    _check_exchangeability_all_cost(h.permutations, d, n)
-
-    permutations = _exchangeability_permutations(h.permutations, d)
-
-    # Once resolved, guard the actual number of selected permutations. This also
-    # protects explicit custom collections.
-    _check_exchangeability_matrix_cost(length(permutations), n)
-
-    return _exchangeability_sn_statistic(U, permutations, h.weight,)
+    return _exchangeability_sn_statistic(U, h.permutations, h.weight)
 end
 
-const _MAX_EXCHANGEABILITY_MATRIX_BYTES = 512 * 1024^2
+const _MAX_MULTIPLIER_MATRIX_BYTES = 512 * 1024^2
 
-function _check_exchangeability_matrix_cost(nperms::Integer, n::Integer;
-        label::AbstractString="the requested permutation collection")
+function _check_multiplier_matrix_cost(nperms::Integer, n::Integer;
+        label::AbstractString="the requested collection")
     matrix_bytes = big(nperms) * big(n)^2 * sizeof(Float64)
 
-    matrix_bytes <= _MAX_EXCHANGEABILITY_MATRIX_BYTES && return nothing
+    matrix_bytes <= _MAX_MULTIPLIER_MATRIX_BYTES && return nothing
 
     estimated_mib = Float64(matrix_bytes) / 1024^2
-    limit_mib = _MAX_EXCHANGEABILITY_MATRIX_BYTES / 1024^2
+    limit_mib = _MAX_MULTIPLIER_MATRIX_BYTES / 1024^2
 
     throw(ArgumentError(
         "$(label) would materialize $(nperms) dense $(n)×$(n) " *
         "multiplier matrices (approximately $(round(estimated_mib; digits=1)) MiB), " *
         "exceeding the current $(round(limit_mib; digits=0)) MiB safety limit. " *
-        "Use `permutations=:G1`, `:G2`, or provide a smaller custom collection."
+        "Use a smaller sample or fewer permutations/powers."
     ))
-end
-
-function _check_exchangeability_all_cost(permutations, d::Integer, n::Integer)
-    permutations === :all || return nothing
-
-    # Check the factorial-sized collection before materializing it.
-    nperms = factorial(big(d)) - 1
-    return _check_exchangeability_matrix_cost(
-        nperms,
-        n;
-        label="`permutations=:all`",
-    )
 end
 
 function _exchangeability_permutations(permutations, d::Integer)
@@ -314,22 +295,22 @@ function _exchangeability_permutations(permutations, d::Integer)
         ((2, 1, ntuple(i -> i + 2, d - 2)...), ntuple(i -> i == d ? 1 : i + 1, d))
     elseif permutations === :G1
         ntuple(i -> Tuple(j == 1 ? i + 1 : j == i + 1 ? 1 : j for j in 1:d), d - 1)
-    elseif permutations === :all
-        Combinatorics.permutations(1:d)
+    elseif permutations isa Symbol
+        throw(ArgumentError("expected permutations=:G1, :G2, or an explicit collection; :all is unsupported"))
     else
         is_single = (permutations isa Tuple || permutations isa AbstractVector) && length(permutations) == d && all(x -> x isa Integer, permutations)
         is_single ? (permutations,) : permutations
     end
 
     result = NTuple{d,Int}[]
-    for perm in raw         
+    for perm in raw
         p = Tuple(Int.(perm))
         length(p) == d || throw(ArgumentError("permutations must have length $d"))
         sort(collect(p)) == collect(1:d) || throw(ArgumentError("invalid permutation `$perm`"))
         p == identity_perm || push!(result, p)
     end
     isempty(result) && throw(ArgumentError("at least one non-identity permutation is required"))
-    return Tuple(result)
+    return unique!(result)
 end
 
 function _exchangeability_weight(u::AbstractVector, perm::Tuple, weight::Symbol)
@@ -369,10 +350,8 @@ function _exchangeability_sn_statistic(U::AbstractMatrix, permutations, weight::
 end
 
 function _multiplier_representation(h::ExchangeabilityHypothesis, U::AbstractMatrix)
-    d, n = size(U)
-    _check_exchangeability_all_cost(h.permutations, d, n)
-    permutations = _exchangeability_permutations(h.permutations, d)
-    _check_exchangeability_matrix_cost(length(permutations), n)
+    _, n = size(U)
+    permutations = h.permutations
     matrices, weights, bandwidth = _exchangeability_multiplier_matrices(U, permutations, h.weight)
     return (;matrices, weights, scale=inv(n), strict=true, correction=nothing,
             details=(; permutations=h.permutations, generator=permutations, weight=h.weight, multiplier=:exponential, derivative_bandwidth=bandwidth),)
@@ -495,7 +474,9 @@ ExtremeValueHypothesis(; powers=3:5) = ExtremeValueHypothesis(powers)
 Test whether a copula belongs to the extreme-value class.
 """
 function ExtremeValueCopulaTest(U::AbstractMatrix{<:Real}; powers=3:5, kwargs...)
-    return _run_copula_test(ExtremeValueHypothesis(; powers), U; kwargs...)
+    selected = _max_stability_powers(powers)
+    _check_multiplier_matrix_cost(length(selected), size(U, 2))
+    return _run_copula_test(ExtremeValueHypothesis(selected), U; kwargs...)
 end
 
 testname(::ExtremeValueHypothesis) = "Extreme-value copula test"
@@ -503,11 +484,11 @@ nullhypothesis(::ExtremeValueHypothesis) = "The copula belongs to the extreme-va
 _test_method(::ExtremeValueHypothesis) = (:Sn, :multiplier)
 
 function _teststatistic(h::ExtremeValueHypothesis, U::AbstractMatrix)
-    return _extreme_value_sn_statistic(U, _max_stability_powers(h.powers))
+    return _extreme_value_sn_statistic(U, h.powers)
 end
 
 function _max_stability_powers(powers)
-    raw = powers isa Real ? (powers,) : Tuple(powers)
+    raw = powers isa Real ? (powers,) : powers
     result = Float64[]
     for r in raw
         isfinite(r) && r > 1 ||
@@ -538,7 +519,7 @@ function _extreme_value_sn_statistic(U::AbstractMatrix, powers)
 end
 
 function _multiplier_representation(h::ExtremeValueHypothesis, U::AbstractMatrix)
-    powers = _max_stability_powers(h.powers)
+    powers = h.powers
     matrices, bandwidth = _extreme_value_multiplier_matrices(U, powers)
     _, n = size(U)
     return (;matrices, scale=inv(n), strict=false, correction=0.5,
