@@ -1,12 +1,7 @@
 """
-    EmpiricalCopula{d, MT}
-
-Fields:
-- `u::MT` — pseudo-observation matrix of size `(d, N)`.
-
-Constructor
-
     EmpiricalCopula(u; pseudo_values=true)
+    EmpiricalCopula{d}(u; pseudo_values=true)
+    EmpiricalCopula(d, u; pseudo_values=true)
 
 The empirical copula in dimension ``d`` is defined from a matrix of pseudo-observations
 ``\\mathbf u = (u_{i,j})_{1\\le i \\le d,\\ 1\\le j \\le N}`` with entries in ``[0,1]``.

@@ -1,13 +1,7 @@
 """
-    FrankGenerator{T}, FrankCopula{d, T}
-
-Fields:
-  - θ::Real - parameter
-
-Constructor
-
     FrankGenerator(θ)
-    FrankCopula(d,θ)
+    FrankCopula{d}(θ)
+    FrankCopula(d, θ)
 
 The [Frank](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in (-\\infty,\\infty)`` (with independence as the limit ``\\theta\\to 0``). It is an Archimedean copula with generator
 

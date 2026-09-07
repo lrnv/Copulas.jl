@@ -1,5 +1,6 @@
 """
-    WCopula
+    WCopula{2}()
+    WCopula(2)
 
 The lower Fréchet–Hoeffding bound is the copula with the smallest value among all copulas. Note that ``W`` is a proper copula only when ``d = 2``; for ``d > 2`` it remains the pointwise lower bound but is not itself a copula. For any copula ``C`` and all ``\\mathbf{u} \\in [0,1]^d``,
 

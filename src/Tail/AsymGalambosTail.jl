@@ -1,6 +1,4 @@
 """
-    AsymGalambosTail{T}, AsymGalambosCopula{d,T}
-
     AsymGalambosCopula{2}(α, θ₁, θ₂)
     AsymGalambosCopula(2, α, θ₁, θ₂)
     AsymGalambosCopula{d}(α, weights)

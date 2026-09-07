@@ -1,12 +1,4 @@
 """
-    ArchimaxCopula{d, TG, TT}
-
-Fields
-- `gen::TG`  Archimedean generator ``\\phi`` (implements `ϕ`, `ϕ⁻¹`, derivatives)
-- `tail::TT` Extreme-value tail (implements Pickands `A` / STDF `ℓ`)
-
-Constructor
-
     ArchimaxCopula(d, gen::Generator, tail::Tail)
     ArchimaxCopula{d}(gen::Generator, tail::Tail)
 
@@ -305,14 +297,8 @@ end
 
 
 """
-    BB4Copula{d,T}
-
-Fields:
-    - θ::Real - dependence parameter (θ ≥ 0)
-    - δ::Real - shape parameter (δ > 0)
-
-Constructor
-
+    BB4Copula{2}(θ, δ)
+    BB4Copula(2, θ, δ)
     BB4Copula(θ, δ)
 
 The BB4 copula is a two-parameter [Archimax](@ref ArchimaxCopula) copula constructed from the Galambos tail and the Clayton generator. Its distribution function is
@@ -391,7 +377,8 @@ function _archimax_logpdf(C::BB4Copula{2,T}, u) where T
 end
 
 """
-    BB5Copula{d,T}
+    BB5Copula{2}(θ, δ)
+    BB5Copula(2, θ, δ)
 
 Fields:
     - θ::Real - dependence parameter (θ ≥ 1)

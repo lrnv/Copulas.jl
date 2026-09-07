@@ -1,12 +1,6 @@
 """
-    GaussianCopula{d, MT}
-
-Fields:
-- `Σ::MT` — correlation matrix (the constructor coerces the input to a correlation matrix).
-
-Constructors
-
     GaussianCopula(Σ)
+    GaussianCopula(d, Σ)
     GaussianCopula(d, ρ)
     GaussianCopula{d}(Σ)
     GaussianCopula{d}(ρ)

@@ -1,13 +1,6 @@
 """
-    BB6Generator{T}, BB6Copula{d, T}
-
-Fields:
-  - θ::Real - parameter
-  - δ::Real - parameter
-
-Constructor
-
     BB6Generator(θ, δ)
+    BB6Copula{d}(θ, δ)
     BB6Copula(d, θ, δ)
 
 The BB6 copula has parameters ``\\theta, \\delta \\in [1,\\infty)``. It is an Archimedean copula with generator:

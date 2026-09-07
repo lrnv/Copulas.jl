@@ -1,13 +1,6 @@
 """
-    BB2Generator{T}, BB2Copula{d, T}
-
-Fields:
-  - θ::Real - parameter
-  - δ::Real - parameter
-
-Constructor
-
     BB2Generator(θ, δ)
+    BB2Copula{d}(θ, δ)
     BB2Copula(d, θ, δ)
 
 The BB2 copula has parameters ``\\theta, \\delta \\in (0,\\infty)``. It is an Archimedean copula with generator:

@@ -1,13 +1,7 @@
 """
-    GumbelBarnettGenerator{T}, GumbelBarnettCopula{d, T}
-
-Fields:
-  - θ::Real - parameter
-
-Constructor
-
     GumbelBarnettGenerator(θ)
-    GumbelBarnettCopula(d,θ)
+    GumbelBarnettCopula{d}(θ)
+    GumbelBarnettCopula(d, θ)
 
 The Gumbel-Barnett copula is an archimdean copula with generator:
 

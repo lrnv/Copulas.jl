@@ -1,14 +1,7 @@
 """
-    CheckerboardCopula{d, T}
-
-Fields:
-- `m::Vector{Int}` — length d; number of partitions per dimension (grid resolution).
-- `boxes::Dict{NTuple{d,Int}, T}` — dictionary-like mapping from grid box indices to empirical weights.
-    Typically `Dict{NTuple{d,Int}, Float64}` built with `StatsBase.proportionmap`.
-
-Constructor:
-
     CheckerboardCopula(X; m=nothing, pseudo_values=true)
+    CheckerboardCopula{d}(X; m=nothing, pseudo_values=true)
+    CheckerboardCopula(d, X; m=nothing, pseudo_values=true)
 
 Builds a piecewise-constant (histogram) copula on a regular grid. The unit cube
 in each dimension i is partitioned into `m[i]` equal bins. Each observation is

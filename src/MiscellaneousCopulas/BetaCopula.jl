@@ -1,12 +1,7 @@
 """
-    BetaCopula{d, MT}
-
-Fields:
-- `ranks::MT` - ranks matrix (d × n), each row contains integers 1..n
-
-Constructor
-
     BetaCopula(u)
+    BetaCopula{d}(u)
+    BetaCopula(d, u)
     
 The empirical beta copula in dimension ``d`` is defined as
 

@@ -1,13 +1,7 @@
 """
-    AMHGenerator{T}, AMHCopula{d, T}
-
-Fields:
-- θ::Real - parameter
-
-Constructors:
-
-    AMHGenerator(θ)  # Constructs the generator.
-    AMHCopula(d,θ)   # Construct the copula
+    AMHGenerator(θ)
+    AMHCopula{d}(θ)
+    AMHCopula(d, θ)
 
 The [AMH Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) in dimension `d` is parameterized by `θ ∈ [-1,1)`. It is an Archimedean copula with generator:
 

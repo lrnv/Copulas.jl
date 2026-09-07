@@ -1,6 +1,4 @@
 """
-    HuslerReissTail{T}, HuslerReissCopula{d,T}
-
     HuslerReissCopula{d}(θ)
     HuslerReissCopula(d, θ)
     HuslerReissCopula{d}(Γ)

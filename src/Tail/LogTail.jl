@@ -1,6 +1,4 @@
 """
-    LogTail{T}, LogCopula{d,T}
-
     LogCopula{d}(θ)
     LogCopula(d, θ)
 

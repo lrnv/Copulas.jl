@@ -1,13 +1,6 @@
 """
-    BB9Generator{T}, BB9Copula{d, T}
-
-Fields:
-  - ϑ::Real - parameter
-  - δ::Real - parameter
-
-Constructor
-
     BB9Generator(ϑ, δ)
+    BB9Copula{d}(ϑ, δ)
     BB9Copula(d, ϑ, δ)
 
 The BB9 copula has parameters ``\\vartheta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator:

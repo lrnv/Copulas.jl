@@ -1,5 +1,6 @@
 """
     IndependentCopula(d)
+    IndependentCopula{d}()
 
 The independent copula in dimension ``d`` has distribution function
 

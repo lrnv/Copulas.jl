@@ -1,6 +1,4 @@
 """
-    MOTail{T}, MOCopula{d,T}
-
     MOCopula{2}(λ₁, λ₂, λ₁₂)
     MOCopula(2, λ₁, λ₂, λ₁₂)
     MOCopula{d}(λ::AbstractVector)

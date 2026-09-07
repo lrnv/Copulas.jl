@@ -1,5 +1,6 @@
 """
     MCopula(d)
+    MCopula{d}()
 
 The upper Fréchet–Hoeffding bound is the copula with the largest value among all copulas; it corresponds to comonotone random vectors. For any copula ``C`` and all ``\\mathbf{u} \\in [0,1]^d``,
 

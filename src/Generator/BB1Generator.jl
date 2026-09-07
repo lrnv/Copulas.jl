@@ -1,13 +1,6 @@
 """
-    BB1Generator{T}, BB1Copula{d, T}
-
-Fields:
-  - θ::Real - parameter
-  - δ::Real - parameter
-
-Constructor
-
     BB1Generator(θ, δ)
+    BB1Copula{d}(θ, δ)
     BB1Copula(d, θ, δ)
 
 The BB1 copula is parameterized by ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [1, \\infty)``. It is an Archimedean copula with generator:

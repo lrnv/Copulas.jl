@@ -1,13 +1,4 @@
 """
-    AsymLogTail{T}, AsymLogCopula{d,T}
-
-Fields:
-  - α::Real  — dependence parameter (α ≥ 1)
-  - θ₁::Real — asymmetry weight in [0,1]
-  - θ₂::Real — asymmetry weight in [0,1]
-
-Constructor
-
     AsymLogCopula{2}(α, θ₁, θ₂)
     AsymLogCopula(2, α, θ₁, θ₂)
     ExtremeValueCopula(2, AsymLogTail(α, θ₁, θ₂))

@@ -18,7 +18,7 @@
 ###############################################################################
 
 """
-    CopulaModel{CT, TM, TD} <: StatsBase.StatisticalModel
+    fit(CopulaModel, family, data; kwargs...)
 
 A fitted copula model.
 

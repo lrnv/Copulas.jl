@@ -313,7 +313,9 @@ end
 
 
 """
-    NestedArchimedeanCopula{d, TG}
+    NestedArchimedeanCopula(G; leaves=Int[], children=[])
+    NestedArchimedeanCopula{d}(G; leaves=Int[], children=[])
+    NestedArchimedeanCopula(d, G; leaves=Int[], children=[])
 
 A nested (hierarchical) Archimedean copula: an outer Archimedean
 [`Generator`](@ref) acting on a mix of bare coordinates and inner Archimedean

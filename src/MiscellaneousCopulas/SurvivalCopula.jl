@@ -1,7 +1,7 @@
 """
     SurvivalCopula(C, flips)
-    SurvivalCopula{d,CT}
-
+    SurvivalCopula{d}(C, flips)
+    SurvivalCopula(d, C, flips)
 Construct the survival (flipped) version of a copula by flipping the arguments at the given indices.
 
 The ergonomic constructor `SurvivalCopula(C, flips)` accepts the indices to flip:

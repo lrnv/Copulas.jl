@@ -1,8 +1,4 @@
 """
-    ExtremeValueCopula{d, TT}
-
-Constructor
-
     ExtremeValueCopula(d, tail::Tail)
     ExtremeValueCopula{d}(tail::Tail)
 

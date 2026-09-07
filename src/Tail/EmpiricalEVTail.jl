@@ -1,13 +1,6 @@
 """
     EmpiricalEVTail
 
-Fields:
-  - `tgrid::Vector{Float64}` — evaluation grid in (0,1)
-  - `Ahat::Vector{Float64}`  — estimated Pickands function values on `tgrid`
-  - `slope::Vector{Float64}` — per-segment slopes for linear interpolation
-
-Constructor
-
   EmpiricalEVTail(u; method=:ols, grid=401, eps=1e-3, pseudo_values=true)
   ExtremeValueCopula(2, EmpiricalEVTail(u; ...))
 

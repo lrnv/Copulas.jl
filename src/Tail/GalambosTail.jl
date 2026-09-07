@@ -1,6 +1,4 @@
 """
-    GalambosTail{T}, GalambosCopula{d,T}
-
     GalambosCopula{d}(θ)
     GalambosCopula(d, θ)
 

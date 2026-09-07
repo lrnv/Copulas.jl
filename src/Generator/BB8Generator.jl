@@ -1,13 +1,6 @@
 """
-    BB8Generator{T}, BB8Copula{d, T}
-
-Fields:
-  - ϑ::Real - parameter
-  - δ::Real - parameter
-
-Constructor
-
     BB8Generator(ϑ, δ)
+    BB8Copula{d}(ϑ, δ)
     BB8Copula(d, ϑ, δ)
 
 The BB8 copula has parameters ``\\vartheta \\in [1,\\infty)`` and ``\\delta \\in (0, 1]``. It is an Archimedean copula with generator:

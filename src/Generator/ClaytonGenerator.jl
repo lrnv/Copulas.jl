@@ -1,12 +1,6 @@
 """
-    ClaytonGenerator{T}, ClaytonCopula{d, T}
-
-Fields:
-  - θ::Real - parameter
-
-Constructor
-
     ClaytonGenerator(θ)
+    ClaytonCopula{d}(θ)
     ClaytonCopula(d, θ)
 
 The [Clayton](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [-1/(d-1),\\infty)`` (with the independence case as the limit ``\\theta\\to 0``). It is an Archimedean copula with generator

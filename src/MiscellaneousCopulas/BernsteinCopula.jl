@@ -1,14 +1,8 @@
 """
-    BernsteinCopula{d}
-
-Fields:
-- `m::NTuple{d,Int}` - polynomial degrees (smoothing parameters)
-- `weights::Array{Float64, d}` - precomputed grid of box measures
-
-Constructor
-
     BernsteinCopula(C; m=10)
     BernsteinCopula(data; m=10)
+    BernsteinCopula{d}(C_or_data; m=10)
+    BernsteinCopula(d, C_or_data; m=10)
 
 The Bernstein copula in dimension ``d`` is defined as
 

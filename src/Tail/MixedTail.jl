@@ -1,6 +1,4 @@
 """
-    MixedTail{T}, MixedCopula{d,T}
-
     MixedCopula{d}(θ)
     MixedCopula(d, θ)
 
