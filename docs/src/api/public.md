@@ -27,9 +27,23 @@ not.
 | Composition | `SklarDist` | Distribution operations, marginalization, conditioning and Rosenblatt transforms are expressed on the marginal scales. |
 | Utilities | `pseudos`, `measure`, `Nataf` | Rank pseudo-observations, copula rectangle probability, and Nataf correlation correction respectively. |
 
-The mathematical primitives documented for public generators and extreme-value
-tails are also stable. Concrete internal wrappers, caches, samplers and fallback
-selection are deliberately outside this contract.
+Public component constructors guarantee their documented mathematical semantics
+and supported constructor forms. Public status does not expose undocumented fields,
+storage type parameters, intermediate subtype hierarchies, caches, AD backends,
+or numerical algorithms as extension contracts. Explicitly documented public
+relationships and constructor syntax remain part of the contract.
+
+The public mathematical operations on components are `ϕ`, `max_monotony`, `A`,
+`ℓ`, and `𝒲₋₁`. Their public status describes evaluation of supported components;
+it does not guarantee that implementing one of them automatically supplies every
+copula operation. In particular, sampling, density and conditioning have their
+own mathematical and implementation requirements.
+
+Derivative and inverse helpers (`ϕ⁻¹`, `ϕ⁽¹⁾`, `ϕ⁻¹⁽¹⁾`, `ϕ⁽ᵏ⁾`,
+`ϕ⁽ᵏ⁾⁻¹`, `dA`, `d²A`, `ellpartial`), the `Distortion` protocol and
+the `MGenerator`/`WGenerator` limit representations are internal. See the
+[developer guide](@ref developer_fitting) for their current implementation role;
+their qualified availability is not a compatibility guarantee.
 
 ```@autodocs
 Modules = [Copulas]

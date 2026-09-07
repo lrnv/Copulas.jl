@@ -71,7 +71,7 @@ const BASE_COPULA_CASES = Any[
     copula_case(ArchimedeanCopula, 2, WilliamsonGenerator(Dirac(1.0), 2.5)),
     copula_case(ArchimedeanCopula, 2, WilliamsonGenerator(Pareto(1.0), 4)),
     copula_case(ArchimedeanCopula, 2, EmpiricalGenerator(_FIXTURE_DATA)),
-    copula_case(ExtremeValueCopula, 2, DiscreteSpectralTail([0.7 0.3; 0.2 0.8])),
+    copula_case(ExtremeValueCopula, 2, Copulas.DiscreteSpectralTail([0.7 0.3; 0.2 0.8])),
     copula_case(GumbelCopula, 2, 1.5),
     copula_case(GalambosCopula, 2, 1.0),
     copula_case(HuslerReissCopula, 2, 1.0),

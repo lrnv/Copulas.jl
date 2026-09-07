@@ -44,7 +44,7 @@ end
 
 @testset "discrete spectral public API" begin
     B = [0.7 0.3; 0.2 0.8]
-    tail = DiscreteSpectralTail(B)
+    tail = Copulas.DiscreteSpectralTail(B)
     C = ExtremeValueCopula{2}(tail)
     @test params(tail) == (B=Float64.(B),)
     @test Copulas.ℓ(tail, [1.0, 0.0]) ≈ 1

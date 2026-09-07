@@ -148,7 +148,7 @@ module Copulas
     export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
     export pvalue, teststatistic
 
-    export WilliamsonGenerator, 𝒲, EmpiricalGenerator, DiscreteSpectralTail
+    export WilliamsonGenerator, 𝒲, EmpiricalGenerator
     export ArchimedeanCopula, ExtremeValueCopula, LiouvilleCopula
     export NestedArchimedeanCopula, ArchimaxCopula
 
@@ -167,21 +167,21 @@ module Copulas
     export FGMCopula, IndependentCopula, MCopula, WCopula
     export PlackettCopula, RafteryCopula, SurvivalCopula
 
-    public Copula, Distortion, Generator, Tail
+    public Copula, Generator, Tail
 
-    public ϕ, ϕ⁻¹, ϕ⁽¹⁾, ϕ⁻¹⁽¹⁾, ϕ⁽ᵏ⁾, ϕ⁽ᵏ⁾⁻¹, 𝒲₋₁, max_monotony
-    public A, dA, d²A, ℓ, ellpartial
+    public ϕ, 𝒲₋₁, max_monotony
+    public A, ℓ
 
     public τ, ρ, β, γ, ι, λₗ, λᵤ
-    public τ⁻¹, ρ⁻¹, β⁻¹, λᵤ⁻¹
     public corblomqvist, corgini, corentropy, corlowertail, coruppertail, measure
 
-    public IndependentGenerator, MGenerator, WGenerator, FrailtyGenerator
+    public IndependentGenerator, FrailtyGenerator
     public AMHGenerator, ClaytonGenerator, FrankGenerator, GumbelGenerator
     public GumbelBarnettGenerator, InvGaussianGenerator, JoeGenerator
     public BB1Generator, BB2Generator, BB3Generator, BB6Generator, BB7Generator
     public BB8Generator, BB9Generator, BB10Generator
 
+    public DiscreteSpectralTail
     public AsymGalambosTail, AsymLogTail, AsymMixedTail, BC2Tail, CuadrasAugeTail
     public EmpiricalEVTail, EmpiricalEVMultivariateTail, GalambosTail
     public HuslerReissTail, LogTail, MixedTail, MOTail, TawnTail, tEVTail
