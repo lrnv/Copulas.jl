@@ -56,7 +56,7 @@ Usel = rand(Ctrue, 1_000)
 
 Msel = fit(
     CopulaModel,
-    Copula,
+    Copulas.Copula,
     Usel;
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
@@ -96,7 +96,7 @@ fits are excluded. Interruptions always propagate, even with `on_error=:skip`.
 
 Use maximum-likelihood fitting for the usual information-criterion interpretation;
 passing another fitting method merely compares the scores at those estimates.
-The shorter `fit(Copula, U; candidates=(...))` returns only the selected copula.
+The shorter `fit(Copulas.Copula, U; candidates=(...))` returns only the selected copula.
 
 `GOFCopulaTest(Msel)` and `GOFCopulaTest(Msel, U)` are deliberately unsupported:
 a valid selection-aware bootstrap must repeat family selection in every replicate,
