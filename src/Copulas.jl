@@ -143,7 +143,7 @@ module Copulas
 
     export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
     export SklarDist, CopulaModel
-    export CopulaHypothesis, CopulaTest
+    export CopulaTest
     export IndependenceCopulaTest, ExchangeabilityCopulaTest
     export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
     export pvalue, teststatistic

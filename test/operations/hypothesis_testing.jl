@@ -1,71 +1,20 @@
 const COPULA_TEST_RESAMPLES = parse(Int, get(ENV, "COPULAS_TEST_RESAMPLES", "19"))
 const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
 
-struct MockHypothesis <: CopulaHypothesis end
-
-Copulas.testname(::MockHypothesis) = "Mock copula hypothesis test"
-Copulas.nullhypothesis(::MockHypothesis) = "The mock null hypothesis holds."
-Copulas._available_statistics(::MockHypothesis) = (:mean, :sum)
-Copulas._available_calibrations(::MockHypothesis, ::Val{:mean}) = (:simulation,)
-Copulas._available_calibrations(::MockHypothesis, ::Val{:sum}) = (:simulation,)
-Copulas._teststatistic(::MockHypothesis, ::Val{:mean}, U::AbstractMatrix; kwargs...) =
-    sum(U) / length(U)
-Copulas._teststatistic(::MockHypothesis, ::Val{:sum}, U::AbstractMatrix; kwargs...) = sum(U)
-
-function Copulas._simulation_sample(::MockHypothesis, U::AbstractMatrix, rng::Distributions.AbstractRNG)
-    sample = similar(U)
-    Random.rand!(rng, sample)
-    return sample
-end
-
 @testset "Copula hypothesis tests [copula_tests]" begin
-    @testset "Extensible framework" begin
-        U = rand(Xoshiro(123), 2, 40)
-        test = CopulaTest(MockHypothesis(), U; N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
-
-        @test test isa CopulaTest{MockHypothesis}
-        @test Copulas.default_statistic(MockHypothesis()) === :mean
-        @test Copulas.default_calibration(MockHypothesis(), Val(:mean)) === :simulation
-        @test Copulas.testname(test) == "Mock copula hypothesis test"
-        @test Copulas.nullhypothesis(test) == "The mock null hypothesis holds."
-        @test test.statistic === :mean
-        @test test.calibration === :simulation
-        @test StatsBase.nobs(test) == 40
-        @test isfinite(teststatistic(test))
-        @test 0 < pvalue(test) < 1
-
-        io = IOBuffer()
-        show(io, MIME("text/plain"), test)
-        printed = String(take!(io))
-        @test occursin("Mock copula hypothesis test", printed)
-        @test occursin("The mock null hypothesis holds.", printed)
-
-        other = CopulaTest(MockHypothesis(), U; statistic=:sum, N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
-        @test other isa CopulaTest{MockHypothesis}
-        @test other.statistic === :sum
-        @test other.calibration === :simulation
-        @test isfinite(teststatistic(other))
-        @test IndependenceCopulaTest(U; N=2, rng=Xoshiro(1)).statistic === :cvm
-
-        stat_err = try
-            CopulaTest(MockHypothesis(), U; statistic=:missing, N=2)
-        catch err
-            err
+    @testset "Common public contract" begin
+        U = [0.2 0.5 0.8; 0.3 0.6 0.9]
+        result = IndependenceCopulaTest(U; pseudo_values=true, N=1, rng=Xoshiro(1))
+        @test result isa Copulas.HypothesisTest
+        @test StatsBase.nobs(result) == 3
+        @test teststatistic(result) ≈ 647 / 2250
+        @test_throws MethodError ExtremeValueCopulaTest(U; powres=2, N=1)
+        @test_throws MethodError ExchangeabilityCopulaTest(U; weigh=:none, N=1)
+        for invalid in (zeros(1, 3), zeros(2, 1), [NaN 0.2; 0.3 0.4])
+            @test_throws ArgumentError IndependenceCopulaTest(invalid; N=1)
         end
-        @test stat_err isa ArgumentError
-        @test occursin("Statistic :missing", sprint(showerror, stat_err))
-        @test occursin("Available statistics: :mean, :sum", sprint(showerror, stat_err))
-
-        cal_err = try
-            CopulaTest(MockHypothesis(), U; calibration=:multiplier, N=2)
-        catch err
-            err
-        end
-        @test cal_err isa ArgumentError
-        @test occursin("Calibration :multiplier", sprint(showerror, cal_err))
-        @test occursin("Available calibrations: :simulation", sprint(showerror, cal_err))
-
-        @test !(:testname in names(Copulas))
+        @test_throws ArgumentError IndependenceCopulaTest(
+            [-0.1 0.5 0.8; 0.3 0.6 0.9]; pseudo_values=true, N=1)
     end
 
     @testset "Tied margins are rejected" begin
@@ -161,7 +110,7 @@ end
         U0 = rand(Xoshiro(123), IndependentCopula(2), 80)
         t0 = IndependenceCopulaTest(U0; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
 
-        @test t0 isa IndependenceCopulaTest
+        @test t0 isa CopulaTest
         @test t0.statistic === :cvm
         @test t0.calibration === :simulation
         @test Copulas.testname(t0) == "Copula independence test"
@@ -182,8 +131,8 @@ end
         @test occursin("Statistic:", printed)
         @test occursin("Observed value:", printed)
 
-        @test_throws ArgumentError IndependenceCopulaTest(U0; statistic=:ks, N=9, rng=Xoshiro(1))
-        @test_throws ArgumentError IndependenceCopulaTest(U0; calibration=:bootstrap, N=9, rng=Xoshiro(1))
+        @test_throws MethodError IndependenceCopulaTest(U0; statistic=:ks, N=9, rng=Xoshiro(1))
+        @test_throws MethodError IndependenceCopulaTest(U0; calibration=:bootstrap, N=9, rng=Xoshiro(1))
         @test_throws ArgumentError IndependenceCopulaTest(U0; N=0, rng=Xoshiro(1))
     end
 
@@ -200,7 +149,7 @@ end
             @test Copulas._exchangeability_sn_statistic(Udet, permutations, :none,) ≈ expected
 
             hdet = Copulas.ExchangeabilityHypothesis(permutations=(2, 1), weight=:none,)
-            rep = Copulas._multiplier_representation(hdet, Val(:Sn), Udet,)
+            rep = Copulas._multiplier_representation(hdet, Udet,)
             @test rep.scale == inv(size(Udet, 2))
             Tdet = ExchangeabilityCopulaTest(Udet; permutations=(2, 1), weight=:none, pseudo_values=true, N=1, rng=Xoshiro(779),)
             @test teststatistic(Tdet) ≈ expected
@@ -209,7 +158,7 @@ end
         U2 = rand(Xoshiro(123), ClaytonCopula(2, 3.0), 80)
         t2 = ExchangeabilityCopulaTest(U2; N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
 
-        @test t2 isa ExchangeabilityCopulaTest
+        @test t2 isa CopulaTest
         @test t2.statistic === :Sn
         @test t2.calibration === :multiplier
         @test t2.details.permutations === :G2
@@ -293,8 +242,8 @@ end
             @test occursin("safety limit", sprint(showerror, explicit_err))
         end
 
-        @test_throws ArgumentError ExchangeabilityCopulaTest(U2; statistic=:Rn, N=9, rng=Xoshiro(1))
-        @test_throws ArgumentError ExchangeabilityCopulaTest(U2; calibration=:randomization, N=9, rng=Xoshiro(1))
+        @test_throws MethodError ExchangeabilityCopulaTest(U2; statistic=:Rn, N=9, rng=Xoshiro(1))
+        @test_throws MethodError ExchangeabilityCopulaTest(U2; calibration=:randomization, N=9, rng=Xoshiro(1))
         @test_throws ArgumentError ExchangeabilityCopulaTest(U2; weight=:wm, N=9, rng=Xoshiro(1))
         @test_throws ArgumentError ExchangeabilityCopulaTest(U2; permutations=(1, 1), N=9, rng=Xoshiro(1))
         @test_throws ArgumentError ExchangeabilityCopulaTest(U2; permutations=(1, 2), N=9, rng=Xoshiro(1))
@@ -326,7 +275,7 @@ end
             expected = 1 / 9
 
             hdet = Copulas.RadialSymmetryHypothesis()
-            @test Copulas._teststatistic(hdet, Val(:Sn), Udet,) ≈ expected
+            @test Copulas._teststatistic(hdet, Udet,) ≈ expected
             Tdet = RadialSymmetryCopulaTest(Udet; pseudo_values=true, N=1, rng=Xoshiro(780),)
             @test teststatistic(Tdet) ≈ expected
         end
@@ -334,7 +283,7 @@ end
         Us = rand(Xoshiro(123), GaussianCopula(3, 0.5), 100)
         ts = RadialSymmetryCopulaTest(Us; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
 
-        @test ts isa RadialSymmetryCopulaTest
+        @test ts isa CopulaTest
         @test ts.statistic === :Sn
         @test ts.calibration === :randomization
         @test ts.details.reflection_probability == 0.5
@@ -355,8 +304,8 @@ end
         @test occursin("Reflection probability:", printed)
         @test occursin("The copula is radially symmetric.", printed)
 
-        @test_throws ArgumentError RadialSymmetryCopulaTest(Us; statistic=:cvm, N=9, rng=Xoshiro(1))
-        @test_throws ArgumentError RadialSymmetryCopulaTest(Us; calibration=:multiplier, N=9, rng=Xoshiro(1))
+        @test_throws MethodError RadialSymmetryCopulaTest(Us; statistic=:cvm, N=9, rng=Xoshiro(1))
+        @test_throws MethodError RadialSymmetryCopulaTest(Us; calibration=:multiplier, N=9, rng=Xoshiro(1))
         @test_throws ArgumentError RadialSymmetryCopulaTest(Us; N=0, rng=Xoshiro(1))
     end
 
@@ -372,7 +321,7 @@ end
             @test Copulas._extreme_value_sn_statistic(Udet, (2.0,)) ≈ expected
 
             hdet = Copulas.ExtremeValueHypothesis(; powers=2)
-            rep = Copulas._multiplier_representation(hdet, Val(:Sn), Udet)
+            rep = Copulas._multiplier_representation(hdet, Udet)
 
             @test rep.scale == inv(size(Udet, 2))
             Tdet = ExtremeValueCopulaTest(Udet; powers=2, pseudo_values=true, N=1, rng=Xoshiro(778),)
@@ -382,7 +331,7 @@ end
         Uev = rand(Xoshiro(123), GumbelCopula(3, 3.0), 100)
         tev = ExtremeValueCopulaTest(Uev; N=COPULA_TEST_RESAMPLES, rng=Xoshiro(1))
 
-        @test tev isa ExtremeValueCopulaTest
+        @test tev isa CopulaTest
         @test tev.statistic === :Sn
         @test tev.calibration === :multiplier
         @test tev.details.powers == (3.0, 4.0, 5.0)
@@ -409,8 +358,8 @@ end
         @test occursin("Powers:", printed)
         @test occursin("The copula belongs to the extreme-value class.", printed)
 
-        @test_throws ArgumentError ExtremeValueCopulaTest(Uev; statistic=:cvm, N=9, rng=Xoshiro(1))
-        @test_throws ArgumentError ExtremeValueCopulaTest(Uev; calibration=:simulation, N=9, rng=Xoshiro(1))
+        @test_throws MethodError ExtremeValueCopulaTest(Uev; statistic=:cvm, N=9, rng=Xoshiro(1))
+        @test_throws MethodError ExtremeValueCopulaTest(Uev; calibration=:simulation, N=9, rng=Xoshiro(1))
         @test_throws ArgumentError ExtremeValueCopulaTest(Uev; powers=1, N=9, rng=Xoshiro(1))
         @test_throws ArgumentError ExtremeValueCopulaTest(Uev; powers=(), N=9, rng=Xoshiro(1))
         @test_throws ArgumentError ExtremeValueCopulaTest(Uev; N=0, rng=Xoshiro(1))
@@ -435,7 +384,7 @@ end
         Ts = GOFCopulaTest(ClaytonCopula(2, 3.0), U;
             N=COPULA_TEST_TINY_RESAMPLES, rng=Xoshiro(1))
 
-        @test Ts isa GOFCopulaTest
+        @test Ts isa CopulaTest
         @test Ts.hypothesis.kind === :simple
         @test Ts.statistic === :Sn
         @test Ts.calibration === :parametric_bootstrap
@@ -566,8 +515,8 @@ end
         @test occursin("Hypothesis:", printed)
         @test occursin("Fitted model:", printed)
 
-        @test_throws ArgumentError GOFCopulaTest(ClaytonCopula(2, 3.0), U; statistic=:ks, N=2)
-        @test_throws ArgumentError GOFCopulaTest(M, U; calibration=:multiplier, N=2)
+        @test_throws MethodError GOFCopulaTest(ClaytonCopula(2, 3.0), U; statistic=:ks, N=2)
+        @test_throws MethodError GOFCopulaTest(M, U; calibration=:multiplier, N=2)
         @test_throws ArgumentError GOFCopulaTest(M, U; N=0)
         @test_throws DimensionMismatch GOFCopulaTest(ClaytonCopula(3, 3.0), U; N=2)
     end

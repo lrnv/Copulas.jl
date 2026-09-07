@@ -3,11 +3,27 @@
 
 Abstract supertype for hypotheses about copulas.
 
-Subtypes describe what is being tested. The generic [`CopulaTest`](@ref)
-constructor combines a hypothesis, a statistic, and a calibration method to
-produce a standard `StatsAPI.HypothesisTest` result.
+Internal description of a test procedure. This is not a public extension API.
 """
 abstract type CopulaHypothesis end
+
+struct IndependenceHypothesis <: CopulaHypothesis end
+
+struct ExchangeabilityHypothesis{P} <: CopulaHypothesis
+    permutations::P
+    weight::Symbol
+end
+
+struct RadialSymmetryHypothesis <: CopulaHypothesis end
+
+struct ExtremeValueHypothesis{P} <: CopulaHypothesis
+    powers::P
+end
+
+struct GoodnessOfFitHypothesis{M} <: CopulaHypothesis
+    model::M
+    kind::Symbol
+end
 
 """
     CopulaTest{H<:CopulaHypothesis} <: HypothesisTest
@@ -62,73 +78,15 @@ Return the textual null hypothesis for a copula hypothesis or test. This is an e
 """
 nullhypothesis(test::CopulaTest) = nullhypothesis(test.hypothesis)
 
-"""
-    _available_statistics(h::CopulaHypothesis)
-
-Return the statistic symbols available for `h`. The first entry is the default, mirroring `_available_fitting_methods`.
-"""
-function _available_statistics(h::CopulaHypothesis)
-    throw(ArgumentError("No statistics are implemented for $(nameof(typeof(h)))."))
-end
-
-function default_statistic(h::CopulaHypothesis)
-    return _find_statistic(h, :default)
-end
-
-"""
-    _available_calibrations(h::CopulaHypothesis, ::Val{statistic})
-
-Return the calibration symbols available for a hypothesis/statistic pair. The first entry is the default calibration.
-"""
-function _available_calibrations(h::CopulaHypothesis, ::Val{statistic}) where {statistic}
-    throw(ArgumentError("Statistic :$statistic is not implemented for $(nameof(typeof(h)))."))
-end
-
-function default_calibration(h::CopulaHypothesis, stat::Val)
-    return _find_calibration(h, stat, :default)
-end
-
-_symbol_list(symbols) = join((":" * String(symbol) for symbol in symbols), ", ")
-
-function _find_statistic(h::CopulaHypothesis, statistic::Symbol)
-    statistics = _available_statistics(h)
-    isempty(statistics) && throw(ArgumentError("No statistics are available for $(nameof(typeof(h)))."))
-    statistic === :default && return first(statistics)
-    statistic in statistics || throw(ArgumentError("Statistic :$statistic is not available for $(nameof(typeof(h))). Available statistics: $(_symbol_list(statistics))."))
-    return statistic
-end
-
-function _find_calibration(h::CopulaHypothesis, stat::Val{statistic}, calibration::Symbol) where {statistic}
-    calibrations = _available_calibrations(h, stat)
-    isempty(calibrations) && throw(ArgumentError("No calibrations are available for statistic :$statistic under $(nameof(typeof(h)))."))
-    calibration === :default && return first(calibrations)
-    calibration in calibrations || throw(ArgumentError("Calibration :$calibration is not available for statistic :$statistic under $(nameof(typeof(h))). Available calibrations: $(_symbol_list(calibrations))."))
-    return calibration
-end
-
-function _teststatistic(h::CopulaHypothesis, ::Val{statistic}, U::AbstractMatrix; kwargs...) where {statistic}
-    throw(ArgumentError("Statistic :$statistic is not implemented for $(nameof(typeof(h)))."))
-end
-
-function _calibrate(h::CopulaHypothesis, ::Val{calibration}, ::Val{statistic}, U::AbstractMatrix, observed::Real; kwargs...) where {calibration,statistic}
-    throw(ArgumentError("Calibration :$calibration is not implemented for statistic :$statistic under $(nameof(typeof(h)))."))
-end
-
-"""
-    CopulaTest(hypothesis, U; statistic, calibration, N, pseudo_values, rng)
-
-Run a copula hypothesis test.
-
-`statistic` and `calibration` are public symbols and are converted internally to `Val` dispatch. New hypotheses, statistics, and calibrations extend the framework by adding methods, not by modifying this constructor.
-"""
-function CopulaTest(h::CopulaHypothesis, U::AbstractMatrix{<:Real}; statistic::Symbol=:default, calibration::Symbol=:default,
-                    N::Integer=1000, pseudo_values::Bool=false, rng::Distributions.AbstractRNG=Random.default_rng(), kwargs...)
+# Shared input validation and result assembly; each hypothesis has one procedure.
+function _run_copula_test(h::CopulaHypothesis, U::AbstractMatrix{<:Real};
+        N::Integer=1000, pseudo_values::Bool=false,
+        rng::Distributions.AbstractRNG=Random.default_rng())
+    N = _check_resamples(N)
     V, d, n = _test_pseudos(U, pseudo_values)
-    statistic = _find_statistic(h, statistic)
-    stat = Val(statistic)
-    calibration = _find_calibration(h, stat, calibration)
-    observed = _teststatistic(h, stat, V; kwargs...)
-    p, n_resamples, details = _calibrate(h, Val(calibration), stat, V, observed; N=Int(N), rng=rng, kwargs...)
+    observed = _teststatistic(h, V)
+    p, n_resamples, details = _calibrate(h, V, observed; N, rng)
+    statistic, calibration = _test_method(h)
     return CopulaTest(h, n, d, observed, p, n_resamples, statistic, calibration, details)
 end
 
@@ -168,44 +126,32 @@ function _check_resamples(N::Integer)
     return Int(N)
 end
 
-function _simulation_sample(h::CopulaHypothesis, U::AbstractMatrix, rng::Distributions.AbstractRNG)
-    throw(ArgumentError("Simulation under the null is not implemented for $(nameof(typeof(h)))."))
-end
-
-function _calibrate(h::CopulaHypothesis, ::Val{:simulation}, stat::Val, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG, kwargs...)
+function _calibrate(h::IndependenceHypothesis, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG)
     N = _check_resamples(N)
     exceedances = 0
     for _ in 1:N
         sample = pseudos(_simulation_sample(h, U, rng))
-        exceedances += _teststatistic(h, stat, sample; kwargs...) >= observed
+        exceedances += _teststatistic(h, sample) >= observed
     end
     return _exceedance_pvalue(exceedances, N), N, (;)
-end
-
-function _randomization_sample(h::CopulaHypothesis, U::AbstractMatrix, rng::Distributions.AbstractRNG)
-    throw(ArgumentError("Randomization under the null is not implemented for $(nameof(typeof(h)))."))
 end
 
 _randomization_details(::CopulaHypothesis) = (;)
 _randomization_pseudos(::CopulaHypothesis, sample::AbstractMatrix) = pseudos(sample)
 
-function _calibrate(h::CopulaHypothesis, ::Val{:randomization}, stat::Val, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG, kwargs...)
+function _calibrate(h::RadialSymmetryHypothesis, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG)
     N = _check_resamples(N)
     exceedances = 0
     for _ in 1:N
         sample = _randomization_pseudos(h, _randomization_sample(h, U, rng),)
-        exceedances += _teststatistic(h, stat, sample; kwargs...) >= observed
+        exceedances += _teststatistic(h, sample) >= observed
     end
     return _exceedance_pvalue(exceedances, N), N, _randomization_details(h)
 end
 
-function _multiplier_representation(h::CopulaHypothesis, ::Val{statistic}, U::AbstractMatrix) where {statistic}
-    throw(ArgumentError("Calibration :multiplier is not implemented for statistic :$statistic under $(nameof(typeof(h)))."))
-end
-
-function _calibrate(h::CopulaHypothesis, ::Val{:multiplier}, stat::Val, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG, kwargs...)
+function _calibrate(h::Union{ExchangeabilityHypothesis,ExtremeValueHypothesis}, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG)
     N = _check_resamples(N)
-    rep = _multiplier_representation(h, stat, U)
+    rep = _multiplier_representation(h, U)
     p = _multiplier_pvalue(rep.matrices, observed, N, rng;
         weights=get(rep, :weights, nothing),
         scale=rep.scale,
@@ -249,20 +195,16 @@ function _multiplier_pvalue(matrices, observed::Real, N::Integer, rng::Distribut
     return _exceedance_pvalue(exceedances, N; correction)
 end
 
-function _bootstrap_copula(h::CopulaHypothesis)
-    throw(ArgumentError("Parametric bootstrap is not implemented for $(nameof(typeof(h)))."))
-end
-
 _bootstrap_hypothesis(h::CopulaHypothesis, ::AbstractMatrix) = h
 
-function _calibrate(h::CopulaHypothesis, ::Val{:parametric_bootstrap}, stat::Val, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG, kwargs...)
+function _calibrate(h::GoodnessOfFitHypothesis, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG)
     N = _check_resamples(N)
     _, n = size(U)
     exceedances = 0
     for _ in 1:N
         sample = pseudos(rand(rng, _bootstrap_copula(h), n))
         bootstrap_hypothesis = _bootstrap_hypothesis(h, sample)
-        exceedances += _teststatistic(bootstrap_hypothesis, stat, sample; kwargs...) >= observed
+        exceedances += _teststatistic(bootstrap_hypothesis, sample) >= observed
     end
     return _exceedance_pvalue(exceedances, N), N, (;)
 end
@@ -271,28 +213,19 @@ end
 ##### Independence
 ################################################################################
 
-"""
-    IndependenceHypothesis()
-
-Hypothesis that the components of a copula are mutually independent.
-"""
-struct IndependenceHypothesis <: CopulaHypothesis end
 
 """
-    IndependenceCopulaTest(U; statistic=:cvm, N=1000, calibration=:simulation, pseudo_values=false, rng=Random.default_rng())
+    IndependenceCopulaTest(U; N=1000, pseudo_values=false, rng=Random.default_rng())
 
 Test mutual independence between the components of a random vector.
 """
-const IndependenceCopulaTest = CopulaTest{IndependenceHypothesis}
-
-(::Type{CopulaTest{IndependenceHypothesis}})(U::AbstractMatrix{<:Real}; kwargs...) = CopulaTest(IndependenceHypothesis(), U; kwargs...)
+IndependenceCopulaTest(U::AbstractMatrix{<:Real}; kwargs...) = _run_copula_test(IndependenceHypothesis(), U; kwargs...)
 
 testname(::IndependenceHypothesis) = "Copula independence test"
 nullhypothesis(::IndependenceHypothesis) = "The components are mutually independent."
-_available_statistics(::IndependenceHypothesis) = (:cvm,)
-_available_calibrations(::IndependenceHypothesis, ::Val{:cvm}) = (:simulation,)
+_test_method(::IndependenceHypothesis) = (:cvm, :simulation)
 
-function _teststatistic(::IndependenceHypothesis, ::Val{:cvm}, U::AbstractMatrix; kwargs...)
+function _teststatistic(::IndependenceHypothesis, U::AbstractMatrix)
     Cn = EmpiricalCopula(U; pseudo_values=true)
     s = 0.0
     @inbounds for u in eachcol(U)
@@ -311,35 +244,23 @@ end
 ##### Exchangeability
 ################################################################################
 
-"""
-    ExchangeabilityHypothesis(; permutations=:G2, weight=:wm2)
-
-Hypothesis that a copula is invariant under coordinate permutations.
-"""
-struct ExchangeabilityHypothesis{P} <: CopulaHypothesis
-    permutations::P
-    weight::Symbol
-end
 
 ExchangeabilityHypothesis(; permutations=:G2, weight::Symbol=:wm2) = ExchangeabilityHypothesis(permutations, weight)
 
 """
-    ExchangeabilityCopulaTest(U; statistic=:Sn, permutations=:G2, weight=:wm2, N=1000, calibration=:multiplier, pseudo_values=false, rng=Random.default_rng())
+    ExchangeabilityCopulaTest(U; permutations=:G2, weight=:wm2, N=1000, pseudo_values=false, rng=Random.default_rng())
 
 Test exchangeability of a copula in arbitrary dimension.
 """
-const ExchangeabilityCopulaTest = CopulaTest{<:ExchangeabilityHypothesis}
-
-function (::Type{<:CopulaTest{<:ExchangeabilityHypothesis}})(U::AbstractMatrix{<:Real}; permutations=:G2, weight::Symbol=:wm2, kwargs...)
-    return CopulaTest(ExchangeabilityHypothesis(; permutations, weight), U; kwargs...)
+function ExchangeabilityCopulaTest(U::AbstractMatrix{<:Real}; permutations=:G2, weight::Symbol=:wm2, kwargs...)
+    return _run_copula_test(ExchangeabilityHypothesis(; permutations, weight), U; kwargs...)
 end
 
 testname(::ExchangeabilityHypothesis) = "Copula exchangeability test"
 nullhypothesis(::ExchangeabilityHypothesis) = "The copula is exchangeable."
-_available_statistics(::ExchangeabilityHypothesis) = (:Sn,)
-_available_calibrations(::ExchangeabilityHypothesis, ::Val{:Sn}) = (:multiplier,)
+_test_method(::ExchangeabilityHypothesis) = (:Sn, :multiplier)
 
-function _teststatistic(h::ExchangeabilityHypothesis, ::Val{:Sn}, U::AbstractMatrix; kwargs...)
+function _teststatistic(h::ExchangeabilityHypothesis, U::AbstractMatrix)
     d, n = size(U)
 
     # `:all` must be checked before resolution because materializing d!
@@ -447,7 +368,7 @@ function _exchangeability_sn_statistic(U::AbstractMatrix, permutations, weight::
     return s
 end
 
-function _multiplier_representation(h::ExchangeabilityHypothesis, ::Val{:Sn}, U::AbstractMatrix)
+function _multiplier_representation(h::ExchangeabilityHypothesis, U::AbstractMatrix)
     d, n = size(U)
     _check_exchangeability_all_cost(h.permutations, d, n)
     permutations = _exchangeability_permutations(h.permutations, d)
@@ -511,28 +432,19 @@ end
 ##### Radial Symmetry
 ################################################################################
 
-"""
-    RadialSymmetryHypothesis()
-
-Hypothesis that a copula is radially symmetric.
-"""
-struct RadialSymmetryHypothesis <: CopulaHypothesis end
 
 """
-    RadialSymmetryCopulaTest(U; statistic=:Sn, N=1000, calibration=:randomization, pseudo_values=false, rng=Random.default_rng())
+    RadialSymmetryCopulaTest(U; N=1000, pseudo_values=false, rng=Random.default_rng())
 
 Test radial symmetry of a copula.
 """
-const RadialSymmetryCopulaTest = CopulaTest{RadialSymmetryHypothesis}
-
-(::Type{CopulaTest{RadialSymmetryHypothesis}})(U::AbstractMatrix{<:Real}; kwargs...) = CopulaTest(RadialSymmetryHypothesis(), U; kwargs...)
+RadialSymmetryCopulaTest(U::AbstractMatrix{<:Real}; kwargs...) = _run_copula_test(RadialSymmetryHypothesis(), U; kwargs...)
 
 testname(::RadialSymmetryHypothesis) = "Copula radial symmetry test"
 nullhypothesis(::RadialSymmetryHypothesis) = "The copula is radially symmetric."
-_available_statistics(::RadialSymmetryHypothesis) = (:Sn,)
-_available_calibrations(::RadialSymmetryHypothesis, ::Val{:Sn}) = (:randomization,)
+_test_method(::RadialSymmetryHypothesis) = (:Sn, :randomization)
 
-function _teststatistic(::RadialSymmetryHypothesis, ::Val{:Sn}, U::AbstractMatrix; kwargs...)
+function _teststatistic(::RadialSymmetryHypothesis, U::AbstractMatrix)
     Cn = EmpiricalCopula(U; pseudo_values=true)
     Cbar = EmpiricalCopula(1 .- U; pseudo_values=true)
     s = 0.0
@@ -574,34 +486,23 @@ _randomization_details(::RadialSymmetryHypothesis) = (; reflection_probability=0
 ##### Extreme Value
 ################################################################################
 
-"""
-    ExtremeValueHypothesis(; powers=3:5)
-
-Hypothesis that a copula belongs to the extreme-value class.
-"""
-struct ExtremeValueHypothesis{P} <: CopulaHypothesis
-    powers::P
-end
 
 ExtremeValueHypothesis(; powers=3:5) = ExtremeValueHypothesis(powers)
 
 """
-    ExtremeValueCopulaTest(U; statistic=:Sn, powers=3:5, N=1000, calibration=:multiplier, pseudo_values=false, rng=Random.default_rng())
+    ExtremeValueCopulaTest(U; powers=3:5, N=1000, pseudo_values=false, rng=Random.default_rng())
 
 Test whether a copula belongs to the extreme-value class.
 """
-const ExtremeValueCopulaTest = CopulaTest{<:ExtremeValueHypothesis}
-
-function (::Type{<:CopulaTest{<:ExtremeValueHypothesis}})(U::AbstractMatrix{<:Real}; powers=3:5, kwargs...)
-    return CopulaTest(ExtremeValueHypothesis(; powers), U; kwargs...)
+function ExtremeValueCopulaTest(U::AbstractMatrix{<:Real}; powers=3:5, kwargs...)
+    return _run_copula_test(ExtremeValueHypothesis(; powers), U; kwargs...)
 end
 
 testname(::ExtremeValueHypothesis) = "Extreme-value copula test"
 nullhypothesis(::ExtremeValueHypothesis) = "The copula belongs to the extreme-value class."
-_available_statistics(::ExtremeValueHypothesis) = (:Sn,)
-_available_calibrations(::ExtremeValueHypothesis, ::Val{:Sn}) = (:multiplier,)
+_test_method(::ExtremeValueHypothesis) = (:Sn, :multiplier)
 
-function _teststatistic(h::ExtremeValueHypothesis, ::Val{:Sn}, U::AbstractMatrix; kwargs...)
+function _teststatistic(h::ExtremeValueHypothesis, U::AbstractMatrix)
     return _extreme_value_sn_statistic(U, _max_stability_powers(h.powers))
 end
 
@@ -636,7 +537,7 @@ function _extreme_value_sn_statistic(U::AbstractMatrix, powers)
     return s
 end
 
-function _multiplier_representation(h::ExtremeValueHypothesis, ::Val{:Sn}, U::AbstractMatrix)
+function _multiplier_representation(h::ExtremeValueHypothesis, U::AbstractMatrix)
     powers = _max_stability_powers(h.powers)
     matrices, bandwidth = _extreme_value_multiplier_matrices(U, powers)
     _, n = size(U)
@@ -694,23 +595,14 @@ end
 ##### Goodness of Fit
 ################################################################################
 
-"""
-    GoodnessOfFitHypothesis(model)
-
-Hypothesis that data follow a specified copula or fitted copula model. The field `kind` distinguishes `:simple` and `:composite`.
-"""
-struct GoodnessOfFitHypothesis{M} <: CopulaHypothesis
-    model::M
-    kind::Symbol
-end
 
 GoodnessOfFitHypothesis(C::Copula) = GoodnessOfFitHypothesis(C, :simple)
 GoodnessOfFitHypothesis(M::CopulaModel) = GoodnessOfFitHypothesis(M, :composite)
 
 """
-    GOFCopulaTest(C, U; statistic=:Sn, N=1000, calibration=:parametric_bootstrap, pseudo_values=false, rng=Random.default_rng())
-    GOFCopulaTest(model, U; statistic=:Sn, N=1000, calibration=:parametric_bootstrap, pseudo_values=false, rng=Random.default_rng())
-    GOFCopulaTest(model; kwargs...)
+    GOFCopulaTest(C, U; N=1000, pseudo_values=false, rng=Random.default_rng())
+    GOFCopulaTest(model, U; N=1000, pseudo_values=false, rng=Random.default_rng())
+    GOFCopulaTest(model)
 
 Test goodness of fit for a copula or fitted copula model.
 
@@ -726,22 +618,20 @@ resulting fitted model is used for the observed statistic, and the same fitting
 procedure is repeated in every bootstrap replicate. If the fitting procedure is
 not reproducibly specified, composite GOF throws an `ArgumentError`.
 """
-const GOFCopulaTest = CopulaTest{<:GoodnessOfFitHypothesis}
-
-function (::Type{<:CopulaTest{<:GoodnessOfFitHypothesis}})(C::Copula, U::AbstractMatrix{<:Real}; kwargs...)
-    return CopulaTest(GoodnessOfFitHypothesis(C), U; kwargs...)
+function GOFCopulaTest(C::Copula, U::AbstractMatrix{<:Real}; kwargs...)
+    return _run_copula_test(GoodnessOfFitHypothesis(C), U; kwargs...)
 end
 
-function (::Type{<:CopulaTest{<:GoodnessOfFitHypothesis}})(M::CopulaModel, U::AbstractMatrix{<:Real}; pseudo_values::Bool=false, kwargs...)
+function GOFCopulaTest(M::CopulaModel, U::AbstractMatrix{<:Real}; pseudo_values::Bool=false, kwargs...)
     # For a composite null, M describes the estimator specification.
     # The observed statistic must use parameters estimated from the sample being
     # tested, just as every bootstrap replicate is refitted.
     V, _, _ = _test_pseudos(U, pseudo_values)
     Mrefit = _refit(M, V)
-    return CopulaTest(GoodnessOfFitHypothesis(Mrefit), V; pseudo_values=true, kwargs...,)
+    return _run_copula_test(GoodnessOfFitHypothesis(Mrefit), V; pseudo_values=true, kwargs...,)
 end
 
-function (::Type{<:CopulaTest{<:GoodnessOfFitHypothesis}})(M::CopulaModel; kwargs...)
+function GOFCopulaTest(M::CopulaModel; kwargs...)
     haskey(M.method_details, :U) || throw(ArgumentError("the fitted model does not store its fitting sample"))
 
     # Most copula fits receive pseudo-observations directly. Empirical fitting
@@ -750,7 +640,7 @@ function (::Type{<:CopulaTest{<:GoodnessOfFitHypothesis}})(M::CopulaModel; kwarg
     # already ranked.
     stored_pseudo_values = get(M.method_details, :pseudo_values, true)
 
-    return CopulaTest(GoodnessOfFitHypothesis(M), M.method_details.U; pseudo_values=stored_pseudo_values, kwargs...,)
+    return _run_copula_test(GoodnessOfFitHypothesis(M), M.method_details.U; pseudo_values=stored_pseudo_values, kwargs...,)
 end
 
 testname(::GoodnessOfFitHypothesis) = "Copula goodness-of-fit test"
@@ -759,10 +649,9 @@ function nullhypothesis(h::GoodnessOfFitHypothesis)
     return "The data belong to the specified copula family."
 end
 
-_available_statistics(::GoodnessOfFitHypothesis) = (:Sn,)
-_available_calibrations(::GoodnessOfFitHypothesis, ::Val{:Sn}) = (:parametric_bootstrap,)
+_test_method(::GoodnessOfFitHypothesis) = (:Sn, :parametric_bootstrap)
 
-function _teststatistic(h::GoodnessOfFitHypothesis, ::Val{:Sn}, U::AbstractMatrix; kwargs...)
+function _teststatistic(h::GoodnessOfFitHypothesis, U::AbstractMatrix)
     C = _gof_copula(h)
     length(C) == size(U, 1) || throw(DimensionMismatch("model dimension does not match input data"))
     return _gof_sn_statistic(U, C)
