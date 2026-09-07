@@ -5,10 +5,12 @@ const SELECTION_PROBE_CALLS = Ref(0)
 function Distributions.fit(::Type{CopulaModel}, ::Type{SelectionProbe{mode}}, U; kwargs...) where {mode}
     SELECTION_PROBE_CALLS[] += 1
     mode === :interrupt && throw(InterruptException())
+    mode === :bad_score && return CopulaModel(SelectionProbe{:bad_score}(), size(U, 2), 0.0, :probe)
     return CopulaModel(IndependentCopula{2}(), size(U, 2),
         mode === :nonfinite ? NaN : 0.0, :probe;
         converged=mode !== :not_converged, iterations=7, method_details=(; U))
 end
+StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError("unavailable parameter count"))
 
 @testset "Automatic copula-family selection" begin
     U = rand(StableRNG(436), ClaytonCopula{2}(6.0), 80)
@@ -39,6 +41,12 @@ end
     end
 
     @testset "Validation and failed candidates" begin
+        score_failure = fit(CopulaModel, Copula, U;
+            candidates=(SelectionProbe{:bad_score}, IndependentCopula), vcov=false)
+        @test first(selectiontable(score_failure)).status === :failed
+        @test occursin("unavailable parameter count", first(selectiontable(score_failure)).error)
+        @test_throws ArgumentError fit(CopulaModel, Copula, U;
+            candidates=(SelectionProbe{:bad_score},), on_error=:throw)
         SELECTION_PROBE_CALLS[] = 0
         fit(CopulaModel, Copula, U; candidates=(SelectionProbe{:ok},), vcov=false)
         @test SELECTION_PROBE_CALLS[] == 1

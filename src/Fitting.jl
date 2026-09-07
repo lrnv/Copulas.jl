@@ -243,9 +243,7 @@ C = fit(GumbelCopula, U; method=:itau)
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
         method=:default, quick_fit=false, derived_measures=true,
         vcov=true, vcov_method=nothing, kwargs...)
-    allowed_vcov = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
-    isnothing(vcov_method) || vcov_method in allowed_vcov ||
-        throw(ArgumentError("unknown vcov method `$vcov_method`; expected one of $allowed_vcov"))
+    _check_vcov_method(vcov_method)
     d, n = size(U)
     method = _find_method(CT, d, method)
     fit_spec = _CopulaFitSpec(CT, method, (; kwargs...))
@@ -259,6 +257,13 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
 end
 
 # Assemble inference around an existing fit, without rerunning its estimator.
+function _check_vcov_method(method)
+    allowed = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
+    isnothing(method) || method in allowed ||
+        throw(ArgumentError("unknown vcov method `$method`; expected one of $allowed"))
+    return nothing
+end
+
 function _finish_copula_fit(CT, C, U, ll, method, meta, t, fit_spec;
         derived_measures=true, vcov=true, vcov_method=nothing)
     d, n = size(U)
@@ -751,9 +756,7 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
         throw(ArgumentError("Unknown selection criterion: $criterion"))
     on_error in (:skip, :throw) ||
         throw(ArgumentError("`on_error` must be :skip or :throw."))
-    allowed_vcov = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
-    isnothing(vcov_method) || vcov_method in allowed_vcov ||
-        throw(ArgumentError("unknown vcov method `$vcov_method`"))
+    _check_vcov_method(vcov_method)
     candidate_types = collect(candidates)
     isempty(candidate_types) && throw(ArgumentError("at least one candidate is required"))
     all(CT -> CT isa Type && CT <: Copula && CT !== Copula, candidate_types) ||
@@ -766,9 +769,12 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
     best_score = Inf
     started = time()
     for CT in candidate_types
-        M = try
-            Distributions.fit(CopulaModel, CT, U; method,
+        evaluated = try
+            M = Distributions.fit(CopulaModel, CT, U; method,
                 derived_measures=false, vcov=false, kwargs...)
+            criteria = (; aic=StatsBase.aic(M), aicc=aicc(M),
+                bic=StatsBase.bic(M), hqc=hqc(M))
+            (M, criteria, StatsBase.dof(M))
         catch err
             (err isa InterruptException || on_error === :throw) && rethrow()
             push!(rows, (candidate=CT, status=:failed, method=method,
@@ -777,13 +783,12 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
                 error=sprint(showerror, err)))
             continue
         end
-        criteria = (; aic=StatsBase.aic(M), aicc=aicc(M),
-            bic=StatsBase.bic(M), hqc=hqc(M))
+        M, criteria, nparams = evaluated
         score = getproperty(criteria, criterion)
         status = !isfinite(M.ll) || !isfinite(score) ? :nonfinite :
             require_convergence && !M.converged ? :not_converged : :ok
         push!(rows, (; candidate=CT, status, method=M.method,
-            converged=M.converged, nparams=StatsBase.dof(M),
+            converged=M.converged, nparams,
             loglikelihood=M.ll, criteria..., error=nothing))
         if status === :ok && score < best_score
             best, best_index, best_score = M, length(rows), score
