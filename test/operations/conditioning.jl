@@ -291,16 +291,19 @@ end
 
         H = condition(C, (1,), (conditioned,))
         targets = collect(range(0.53, 0.71; length=d - 1))
-        conditional_scale = [cdf(H.m[i], targets[i]) for i in 1:(d - 1)]
+        conditional_copula = H isa SklarDist ? H.C : H
+        conditional_scale = H isa SklarDist ?
+                            [cdf(H.m[i], targets[i]) for i in 1:(d - 1)] :
+                            targets
         if C isa Union{GaussianCopula,TCopula}
             J, I = [1], collect(2:d)
             Σcond = C.Σ[I, I] - C.Σ[I, J] * (C.Σ[J, J] \ C.Σ[J, I])
             σ = sqrt.(diag(Σcond))
             expected_R = Σcond ./ (σ * σ')
-            @test H.C.Σ ≈ expected_R atol=2e-12 rtol=2e-12
+            @test conditional_copula.Σ ≈ expected_R atol=2e-12 rtol=2e-12
         elseif C isa LiouvilleCopula
-            @test H.C isa LiouvilleCopula{d - 1}
-            @test H.C.α == ntuple(i -> C.α[i + 1], d - 1)
+            @test conditional_copula isa LiouvilleCopula{d - 1}
+            @test conditional_copula.α == ntuple(i -> C.α[i + 1], d - 1)
         else
             upper = vcat(conditioned + h, targets)
             lower = vcat(conditioned - h, targets)
@@ -308,7 +311,7 @@ end
             normalizer = (cdf(C, vcat(conditioned + h, ones(d - 1))) -
                           cdf(C, vcat(conditioned - h, ones(d - 1)))) / (2h)
             tolerance = is_absolutely_continuous(C) ? 5e-4 : 3e-3
-            @test isapprox(cdf(H.C, conditional_scale), numerator / normalizer;
+            @test isapprox(cdf(conditional_copula, conditional_scale), numerator / normalizer;
                            atol=tolerance, rtol=tolerance)
         end
     end
