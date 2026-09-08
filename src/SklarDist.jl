@@ -54,12 +54,21 @@ function SklarDist(C::Copula, m)
     return SklarDist(C, margins)
 end
 Base.length(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = length(S.C)
-Base.eltype(S::SklarDist{CT,TplMargins}) where {CT,TplMargins} = Base.eltype(S.C)
+function Base.eltype(S::SklarDist)
+    T = mapreduce(Distributions.partype, promote_type, S.m; init=Union{})
+    return T === Union{} ? Float64 : float(T)
+end
+function Distributions.partype(S::SklarDist)
+    return promote_type(
+        Distributions.partype(S.C),
+        mapreduce(Distributions.partype, promote_type, S.m; init=Union{}),
+    )
+end
 Distributions.params(S::SklarDist) = (copula=S.C, margins=S.m)
 @inline function _sklar_work_eltype(S::SklarDist, x)
     T = promote_type(eltype(S.C), eltype(x))
     for margin in S.m
-        T = promote_type(T, eltype(margin))
+        T = promote_type(T, Distributions.partype(margin))
     end
     return T
 end

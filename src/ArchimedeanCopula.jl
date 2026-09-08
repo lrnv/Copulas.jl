@@ -44,6 +44,7 @@ struct ArchimedeanCopula{d,TG} <: Copula{d}
         return new{d,typeof(G)}(G)
     end
 end
+Base.eltype(C::ArchimedeanCopula) = eltype(C.G)
 
 # Absolute continuity of an Archimedean copula is determined by its radial
 # law, not merely by the generator type. Generic generators are smooth unless

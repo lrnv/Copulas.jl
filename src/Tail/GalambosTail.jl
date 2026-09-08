@@ -153,7 +153,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
 
     for col in axes(X, 2)
         fill!(z, zero(S))
-        arrival = S(Random.randexp(rng)) * invd
+        arrival = Random.randexp(rng, S) * invd
         radius = inv(arrival)
 
         while radius > minimum(z)
@@ -169,7 +169,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
                 z[i] = max(z[i], radius * qi)
             end
 
-            arrival += S(Random.randexp(rng)) * invd
+            arrival += Random.randexp(rng, S) * invd
             radius = inv(arrival)
         end
 

@@ -190,6 +190,7 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
         )
     end
 end
+Base.eltype(::ConditionalCopula{d,D,p,T}) where {d,D,p,T} = T
 conditional_copula(C::Copula, js, uⱼₛ) = ConditionalCopula(C, js, uⱼₛ)
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
     uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)

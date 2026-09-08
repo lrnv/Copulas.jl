@@ -16,6 +16,7 @@ conditioning and sampling backends are internal and may require additional
 family-specific conditions. See the developer guide for the current architecture.
 """
 abstract type Tail end
+Base.eltype(tail::Tail) = _sample_eltype(tail)
 function (TT::Type{<:Tail})(args...; kwargs...)
     S = hasproperty(TT, :body) ? TT.body : TT
     T = S.name.wrapper

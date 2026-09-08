@@ -36,10 +36,11 @@ not.
 | Composition | `SklarDist` | Distribution operations, marginalization, conditioning and Rosenblatt transforms are expressed on the marginal scales. |
 | Utilities | `pseudos`, `measure`, `Nataf` | Rank pseudo-observations, copula rectangle probability, and Nataf correlation correction respectively. |
 
-!!! warning "Known sampling type bug"
-    Numeric-type preservation is part of the intended sampling contract, but
-    some current sampling paths still return `Float64`. This known violation is
-    tracked in [issue #195](https://github.com/lrnv/Copulas.jl/issues/195).
+For continuous distributions, `eltype` follows the Distributions.jl convention:
+it is the default numeric type allocated by `rand`. Parameterized copulas
+propagate the numeric representation of their parameters, composite copulas
+promote their components, and parameter-free copulas default to `Float64`.
+`rand!` may instead target any compatible real-valued buffer type.
 
 Public component constructors guarantee their documented mathematical semantics
 and supported constructor forms. Public status does not expose undocumented fields,

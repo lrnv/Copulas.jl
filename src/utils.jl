@@ -158,7 +158,8 @@ different tie convention is required.
 function pseudos(sample::AbstractMatrix)
     # Fast pseudo-observations (d×n) using per-row ordinal ranks without allocations per row
     d, n = size(sample)
-    U = Matrix{Float64}(undef, d, n)
+    T = float(eltype(sample))
+    U = Matrix{T}(undef, d, n)
     tmp_idx = Vector{Int}(undef, n)
     @inbounds for i in 1:d
         # compute ordinal ranks for row i
@@ -167,7 +168,7 @@ function pseudos(sample::AbstractMatrix)
         sortperm!(tmp_idx, x; by=identity, alg=Base.Sort.DEFAULT_STABLE)
         # ranks: position in sorted order; ties preserve order of appearance
         for (rank, idx) in enumerate(tmp_idx)
-            U[i, idx] = rank / (n + 1)
+            U[i, idx] = T(rank) / T(n + 1)
         end
     end
     return U
@@ -385,4 +386,36 @@ function _kendall_sample(u::AbstractMatrix)
         W[i] = count_le / (n + 1)
     end
     return W
+end
+# Numeric type carried by a parameter object. Integer and Boolean values are
+# structural unless they occur in an array whose element type is the actual
+# stored numeric representation.
+_parameter_eltype(::Integer) = Union{}
+_parameter_eltype(::Bool) = Union{}
+_parameter_eltype(x::Real) = typeof(float(x))
+_parameter_eltype(x::AbstractArray{<:Real}) = float(eltype(x))
+function _parameter_eltype(x::AbstractArray)
+    T = Union{}
+    for value in x
+        S = _parameter_eltype(value)
+        S === Union{} && continue
+        T = T === Union{} ? S : promote_type(T, S)
+    end
+    return T
+end
+_parameter_eltype(x::Distributions.Distribution) = float(Distributions.partype(x))
+_parameter_eltype(x::NamedTuple) = _parameter_eltype(values(x))
+_parameter_eltype(x::Tuple) = _parameter_eltype(x...)
+_parameter_eltype() = Union{}
+function _parameter_eltype(x, xs...)
+    T = _parameter_eltype(x)
+    S = _parameter_eltype(xs...)
+    T === Union{} && return S
+    S === Union{} && return T
+    return promote_type(T, S)
+end
+_parameter_eltype(x) = _parameter_eltype(Distributions.params(x))
+function _sample_eltype(x)
+    T = _parameter_eltype(x)
+    return T === Union{} ? Float64 : T
 end

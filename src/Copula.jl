@@ -13,6 +13,12 @@
 ###############################################################################
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 
+# Distributions.jl uses `eltype` as the default element type allocated by
+# `rand`. Parameter-free copulas therefore sample as Float64 unless a concrete
+# family propagates another numeric representation below its own definition.
+Base.eltype(::Copula) = Float64
+Distributions.partype(C::Copula) = eltype(C)
+
 # Copulas are represented as continuous multivariate distributions for the
 # Distributions.jl API, but their probability measure need not admit a density
 # with respect to Lebesgue measure. This internal trait is the single source of

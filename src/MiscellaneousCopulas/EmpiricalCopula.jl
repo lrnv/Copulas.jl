@@ -28,7 +28,7 @@ copula_measure_style(::Type{<:EmpiricalCopula}) =
 Base.eltype(C::EmpiricalCopula{d,MT}) where {d,MT} = Base.eltype(C.u)
 function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
     size(u, 1) == d || throw(DimensionMismatch("data must have $d rows"))
-    T = promote_type(eltype(u), Float64)
+    T = float(eltype(u))
     u = T.(u)
     if !pseudo_values
         u = pseudos(u)

@@ -1,6 +1,7 @@
 struct ExtremeDist{C} <: Distributions.ContinuousUnivariateDistribution
     tail::C
 end
+Base.eltype(d::ExtremeDist) = eltype(d.tail)
 
 Base.minimum(::ExtremeDist) = 0
 Base.maximum(::ExtremeDist) = 1
@@ -28,4 +29,5 @@ function Distributions.quantile(d::ExtremeDist, p)
 end
 
 # Generate random samples from the radial distribution using the quantile function
-Distributions.rand(rng::Distributions.AbstractRNG, d::ExtremeDist) = Distributions.quantile(d, rand(rng))
+Distributions.rand(rng::Distributions.AbstractRNG, d::ExtremeDist) =
+    Distributions.quantile(d, rand(rng, eltype(d)))

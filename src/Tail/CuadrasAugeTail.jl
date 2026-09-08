@@ -104,9 +104,10 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
     kind === Π_LIMIT && return Random.rand!(rng, A)
     kind === M_LIMIT && return _rand_M!(rng, A)
 
-    θ = C.tail.θ
-    E = rand(rng, Distributions.Exponential(θ/(1-θ)), 2, size(A, 2))
-    E₁₂ = rand(rng, Distributions.Exponential(), size(A, 2))
+    R = promote_type(T, S)
+    θ = R(C.tail.θ)
+    E = rand(rng, Distributions.Exponential(θ / (one(R) - θ)), 2, size(A, 2))
+    E₁₂ = rand(rng, Distributions.Exponential(one(R)), size(A, 2))
     @inbounds for (j, col) in enumerate(axes(A, 2))
         A[1, col] = exp(-(1/θ) * min(E[1, j], E₁₂[j]))
         A[2, col] = exp(-(1/θ) * min(E[2, j], E₁₂[j]))

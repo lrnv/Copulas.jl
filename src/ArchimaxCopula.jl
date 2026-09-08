@@ -29,6 +29,7 @@ struct ArchimaxCopula{d, TG, TT} <: Copula{d}
         return new{d, typeof(gen), typeof(tail)}(gen, tail)
     end
 end
+Base.eltype(C::ArchimaxCopula) = promote_type(eltype(C.gen), eltype(C.tail))
 @inline function _archimax_limit_kind(C::ArchimaxCopula{d}) where {d}
     gkind = limit_kind(C.gen, Val(d))
     tkind = limit_kind(C.tail, Val(d))

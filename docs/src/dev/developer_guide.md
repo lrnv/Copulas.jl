@@ -514,6 +514,13 @@ The required public behavior is simply
 rand(C, n)
 ```
 
+Distributions.jl allocates this result in `float(eltype(C))`. A copula that
+stores numeric parameters must therefore define `eltype(C)` from that stored
+representation; wrappers propagate the wrapped copula type and compositions
+promote their components. The generic fallback is `Float64` for genuinely
+parameter-free copulas. In-place `_rand!` implementations must use the element
+type of their output buffer rather than assuming that it equals `eltype(C)`.
+
 Extreme-value sampling is selected directly through Julia dispatch on the
 copula dimension and the concrete tail type. There is no separate sampling
 backend trait or routing layer.

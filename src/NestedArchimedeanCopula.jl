@@ -468,6 +468,7 @@ function _tree_param_eltype(C::NestedArchimedeanCopula)
     end
     return T
 end
+Base.eltype(C::NestedArchimedeanCopula) = float(_tree_param_eltype(C))
 
 # Dimension count of a sub-copula entry.
 _subdim(c::ArchimedeanCopula) = length(c)
