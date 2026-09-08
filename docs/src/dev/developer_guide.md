@@ -96,6 +96,15 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::MyCopula, U::Ab
 end 
 ```
 
+Copula densities are defined only almost everywhere, so their values on the
+boundary of the unit hypercube do not affect the represented probability
+measure. The public `logpdf` interface preserves any finite or infinite value
+returned by a family's `_logpdf`. If that formula instead returns `NaN` at a
+boundary point, the interface replaces it with `-Inf` (`pdf = 0`). A `NaN`
+inside the open hypercube is deliberately preserved so that numerical or
+implementation errors remain visible. Family implementations therefore need
+special boundary handling only when they provide a meaningful preferred value.
+
 Every public copula family provides both `MyCopula{d}(parameters...)`, the
 canonical type-stable path, and the thin runtime-dimension convenience form
 `MyCopula(d, parameters...)`. When `params(C)` describes an ordinary parametric

@@ -76,6 +76,22 @@ function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
 end
 Distributions.logcdf(C::Copula, A::AbstractMatrix) = log.(Distributions.cdf(C, A))
 Distributions.logcdf(C::Copula, v::AbstractVector) = log(Distributions.cdf(C,v))
+@inline function Distributions.logpdf(
+    C::Copula{d}, u::AbstractVector{<:Real},
+) where d
+    @boundscheck length(u) == d || throw(DimensionMismatch(
+        "input dimension does not match copula dimension",
+    ))
+    value = Distributions._logpdf(C, u)
+    isnan(value) || return value
+    return _resolve_boundary_logpdf(value, u)
+end
+function _resolve_boundary_logpdf(value, u)
+    @inbounds for x in u
+        (iszero(x) || isone(x)) && return oftype(value, -Inf)
+    end
+    return value
+end
 function Distributions.logpdf(C::Copula{d}, A::AbstractMatrix) where d
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
     return [Distributions.logpdf(C, u) for u in eachcol(A)]
