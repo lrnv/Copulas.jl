@@ -191,6 +191,8 @@ function Distributions.quantile(dist::𝒲₋₁, p::Real)
     return _quantile(dist, p)
 end
 
+include("UnivariateDistribution/Radials/WilliamsonBetaProduct.jl")
+
 """
     WilliamsonGenerator(X::Distributions.UnivariateDistribution, d)
     WilliamsonGenerator(atoms::AbstractVector, weights::AbstractVector, d)

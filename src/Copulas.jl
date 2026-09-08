@@ -88,7 +88,6 @@ module Copulas
 
     # Archimedean copulas
     include("Generator.jl")
-    include("UnivariateDistribution/Radials/WilliamsonBetaProduct.jl")
     include("UnivariateDistribution/Radials/LiouvilleConditionalRadial.jl")
     include("ArchimedeanCopula.jl")
     include("LiouvilleCopula.jl")
