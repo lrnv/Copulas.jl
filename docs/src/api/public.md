@@ -20,8 +20,7 @@ The public API consists of documented symbols declared with `export` or
 `public`, together with the documented methods that Copulas.jl adds to adopted
 interfaces such as Distributions.jl and StatsBase.jl. These behaviours follow
 semantic versioning; implementation hooks described in the developer guide do
-not. Maintainers apply the separate [compatibility and release policy](@ref compatibility_policy)
-when changing this contract.
+not.
 
 | Area | Public operations | Guaranteed behaviour |
 |:--|:--|:--|

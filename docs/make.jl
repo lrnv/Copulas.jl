@@ -56,7 +56,6 @@ makedocs(;
         ],
         "Development" => [
             "Extending Copulas.jl"=>"dev/developer_guide.md",
-            "Compatibility and releases"=>"dev/compatibility.md",
             "Internal implementation reference"=>"api/internal.md",
             "Performance benchmarks"=>"dev/benchmarks.md",
         ],

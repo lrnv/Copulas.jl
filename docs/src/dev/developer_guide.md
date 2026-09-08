@@ -24,9 +24,6 @@ This page is intended for package contributors and advanced users who want to ex
     Exported/public mathematical objects retain only their public documented
     semantics; this guide does not enlarge that compatibility promise.
 
-    Maintainers should follow the [compatibility and release policy](@ref compatibility_policy)
-    before changing documented public behaviour.
-
 
 # 1. Implementing the public behaviour internally
 
