@@ -98,6 +98,30 @@ end
     @test_throws ArgumentError logpdf(C, zeros(d + 1, 1))
 end
 
+@testset "boundary log-density convention" begin
+    # Elliptical formulas contain Inf - Inf on mixed boundary faces. The
+    # public adapter replaces only that indeterminate boundary value.
+    gaussian = GaussianCopula{2}(0.5)
+    @test isnan(Distributions._logpdf(gaussian, [0.0, 0.4]))
+    @test logpdf(gaussian, [0.0, 0.4]) == -Inf
+    @test pdf(gaussian, [0.0, 0.4]) == 0.0
+
+    # Existing family choices remain authoritative when they are defined.
+    independent = IndependentCopula{2}()
+    @test logpdf(independent, [0.0, 1.0]) == 0.0
+    @test logpdf(gaussian, zeros(2)) == Inf
+    for (C, u) in (
+        (PlackettCopula{2}(2.0), [0.0, 0.4]),
+        (RafteryCopula{3}(0.5), ones(3)),
+    )
+        @test logpdf(C, u) == Distributions._logpdf(C, u)
+    end
+
+    # Interior NaNs still expose genuine implementation or numerical errors.
+    @test isnan(Copulas._resolve_boundary_logpdf(NaN, [0.2, 0.8]))
+    @test Copulas._resolve_boundary_logpdf(NaN, [0.0, 0.8]) == -Inf
+end
+
 # Distribution-operation equivalence proofs for optimized CDF and density routes.
 
 function _unique_distribution_routes(operation, predicate)
