@@ -94,6 +94,7 @@ end
     )
     for (C, T) in cases
         @test eltype(C) === T
+        @test partype(C) === T
         @test eltype(rand(StableRNG(61), C)) === T
         @test eltype(rand(StableRNG(62), C, 2)) === T
     end
@@ -106,6 +107,7 @@ end
     )
     for C in big_cases
         @test eltype(C) === BigFloat
+        @test partype(C) === BigFloat
         @test eltype(rand(StableRNG(65), C, 2)) === BigFloat
     end
 
@@ -115,6 +117,7 @@ end
                   (Normal(Float32(0), Float32(1)),
                    Exponential(Float32(1))))
     @test eltype(S) === Float32
+    @test partype(S) === Float64
     @test eltype(rand(StableRNG(63), S)) === Float32
     @test eltype(rand(StableRNG(64), S, 2)) === Float32
 end
