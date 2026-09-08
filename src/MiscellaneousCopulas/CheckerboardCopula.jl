@@ -37,6 +37,7 @@ struct CheckerboardCopula{d, T} <: Copula{d}
     m::Vector{Int}
     boxes::Dict{NTuple{d,Int}, T}
 end
+Base.eltype(::CheckerboardCopula{d,T}) where {d,T} = T
 function CheckerboardCopula{d}(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool=true) where {d,T}
     size(X, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     n = size(X, 2)

@@ -45,6 +45,7 @@ struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
         return new{d,typeof(tail)}(tail)
     end
 end
+Base.eltype(C::ExtremeValueCopula) = eltype(C.tail)
 
 function copula_measure_style(C::ExtremeValueCopula{d}) where {d}
     limit_kind(C.tail, Val(d)) === M_LIMIT &&

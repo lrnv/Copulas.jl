@@ -36,6 +36,7 @@ struct SurvivalCopula{d,CT} <: Copula{d}
         return new{d,typeof(C)}(C, mask)
     end
 end
+Base.eltype(C::SurvivalCopula) = eltype(C.C)
 
 function _survival_flipmask(::Val{d}, flips::NTuple{d,Bool}) where {d}
     return flips

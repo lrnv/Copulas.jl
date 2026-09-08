@@ -43,6 +43,7 @@ struct LiouvilleCopula{d,TG,Tα} <: Copula{d}
         return new{d,typeof(G),eltype(αtuple)}(G, αtuple)
     end
 end
+Base.eltype(C::LiouvilleCopula) = promote_type(eltype(C.G), eltype(C.α))
 
 LiouvilleCopula(G::Generator, α) = LiouvilleCopula{length(α)}(G, α)
 LiouvilleCopula(d::Integer, G::Generator, α) = LiouvilleCopula{d}(G, α)

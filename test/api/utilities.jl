@@ -6,6 +6,7 @@
     @test size(U) == size(X)
     @test all(x -> 0 < x < 1, U)
     @test pseudos(U) == U
+    @test eltype(pseudos(Float32.(X))) === Float32
 
     target = [1.0 0.4; 0.4 1.0]
     @test Nataf((Normal(), Normal(2, 3)), target) == target

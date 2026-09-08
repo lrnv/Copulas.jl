@@ -12,6 +12,7 @@ representations and numerical fallbacks are internal implementation details.
 See the developer guide for the current contributor architecture.
 """
 abstract type Generator end
+Base.eltype(G::Generator) = _sample_eltype(G)
 function (TG::Type{<:Generator})(args...;kwargs...)
     S = hasproperty(TG, :body) ? TG.body : TG
     T = S.name.wrapper 

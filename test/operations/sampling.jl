@@ -61,3 +61,49 @@ end
     @test all(isnan, storage[[1, 5], :])
     @test_throws DimensionMismatch rand!(StableRNG(52), C, zeros(Float32, 2, 1))
 end
+
+@testset "default sample element types" begin
+    Carch = ClaytonCopula{2}(Float32(1))
+    Cev = GalambosCopula{2}(Float32(1))
+    Cell = GaussianCopula{2}(Float32(0.3))
+    Cliouville = LiouvilleCopula{2}(
+        Copulas.ClaytonGenerator(Float32(1)), (Float32(1), Float32(2)))
+    Carchimax = ArchimaxCopula{2}(
+        Copulas.ClaytonGenerator(Float32(1)),
+        Copulas.GalambosTail(Float64(1)),
+    )
+    Cstudent = TCopula{2}(
+        Float32(4), Float32[1 0.3; 0.3 1])
+    Cempirical = EmpiricalCopula{2}(
+        Float32[0.2 0.4 0.6 0.8; 0.8 0.6 0.4 0.2])
+
+    cases = (
+        Carch => Float32,
+        Cev => Float32,
+        Cell => Float32,
+        Cstudent => Float32,
+        FGMCopula{2}(Float32(0.5)) => Float32,
+        PlackettCopula{2}(Float32(2)) => Float32,
+        RafteryCopula{2}(Float32(0.5)) => Float32,
+        Cempirical => Float32,
+        Cliouville => Float32,
+        SurvivalCopula(Carch, (1,)) => Float32,
+        subsetdims(ClaytonCopula{3}(Float32(1)), (1, 2)) => Float32,
+        Carchimax => Float64,
+        IndependentCopula{2}() => Float64,
+    )
+    for (C, T) in cases
+        @test eltype(C) === T
+        @test eltype(rand(StableRNG(61), C)) === T
+        @test eltype(rand(StableRNG(62), C, 2)) === T
+    end
+
+    # A Sklar distribution samples on its marginal scales. The copula's
+    # probability representation therefore must not widen Float32 margins.
+    S = SklarDist(IndependentCopula{2}(),
+                  (Normal(Float32(0), Float32(1)),
+                   Exponential(Float32(1))))
+    @test eltype(S) === Float32
+    @test eltype(rand(StableRNG(63), S)) === Float32
+    @test eltype(rand(StableRNG(64), S, 2)) === Float32
+end
