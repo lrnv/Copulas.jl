@@ -393,8 +393,17 @@ end
 _parameter_eltype(::Integer) = Union{}
 _parameter_eltype(::Bool) = Union{}
 _parameter_eltype(x::Real) = typeof(float(x))
-_parameter_eltype(x::AbstractArray) = float(eltype(x))
-_parameter_eltype(x::Distributions.Distribution) = float(eltype(x))
+_parameter_eltype(x::AbstractArray{<:Real}) = float(eltype(x))
+function _parameter_eltype(x::AbstractArray)
+    T = Union{}
+    for value in x
+        S = _parameter_eltype(value)
+        S === Union{} && continue
+        T = T === Union{} ? S : promote_type(T, S)
+    end
+    return T
+end
+_parameter_eltype(x::Distributions.Distribution) = float(Distributions.partype(x))
 _parameter_eltype(x::NamedTuple) = _parameter_eltype(values(x))
 _parameter_eltype(x::Tuple) = _parameter_eltype(x...)
 _parameter_eltype() = Union{}
