@@ -116,9 +116,9 @@ the selection step.
   If an instance `C0` is completely described by its type, re-estimate its
   parameters with `fit(typeof(C0), U)`. For a structural model, use `fit(C0, U)`.
 
-- **Default method selection.** Each family exposes allowed fitting strategies via `_available_fitting_methods(CT, d)`.  
-  With `method = :default`, the **first** element of that tuple is used.  
-  Example: `Copulas._available_fitting_methods(MyCopula, d)`.
+- **Default method selection.** With `method=:default`, each family selects its
+  documented default fitting strategy. Supported explicit methods depend on the
+  family.
 
 - `CopulaModel` is the full result returned by `Distributions.fit(::Type{CopulaModel}, ...)`.  
   The lightweight shortcut `fit(MyCopula, U)` returns only a copula; use `fit(CopulaModel, ...)` to get diagnostics and metadata.
@@ -140,7 +140,7 @@ The `CopulaModel{CT} <: StatsBase.StatisticalModel` supports the standard `Stats
 | `coef(M)` / `coefnames(M)`                     | Estimated parameters and their names.                                                             |
 | `vcov(M)`                                      | Parameter variance–covariance matrix (may be `nothing`).                                          |
 | `stderror(M)` / `confint(M; level=0.95)`       | Standard errors and Wald confidence intervals; return `nothing` when `vcov(M) === nothing`.       |
-| `residuals(M; transform=:uniform \| :normal)`  | Rosenblatt residuals on `[0,1]` or Normal scale (requires `method_details[:U]`).                  |
+| `residuals(M; transform=:uniform \| :normal)`  | Rosenblatt residuals on `[0,1]` or Normal scale when the fit retains the required observations.  |
 | `predict(M; what=:cdf\|:pdf\|:simulate, ...)`  | CDF/PDF at `newdata`, or simulation (`nsim`; default `nsim = M.n` if `nsim == 0`).                |
 
 **Examples**
@@ -180,7 +180,7 @@ When fitting with `fit(CopulaModel, ...)`, the keyword `vcov=true` triggers esti
 
 > **Default.** `vcov = true`. Covariance is computed automatically unless the user disables it (`vcov=false`) or a family turns it off internally (e.g., `TCopula`, `FGMCopula`, `tEVCopula`) when required derivatives are not implemented.
 
-The internal dispatcher `_vcov(CT, U, θ̂; method, override)` selects the estimator:
+The `vcov_method` keyword selects the estimator:
 
 | Symbol               | Description                                                                                      |
 |----------------------|--------------------------------------------------------------------------------------------------|
@@ -197,9 +197,11 @@ M2 = fit(CopulaModel, GumbelCopula, U; method=:mle, vcov=true, vcov_method=:boot
 StatsBase.vcov(M2) isa AbstractMatrix
 ```
 
-Each method returns a symmetric (positive semi-definite) matrix `Vθ`, stored as `M.vcov` and exposed by `StatsBase.vcov(M)`.
+Each method returns a symmetric positive semi-definite matrix exposed by
+`StatsBase.vcov(M)`.
 
-**Fallbacks.** If non-finite values appear in Hessian/Godambe computations, the algorithm automatically falls back (first to `:bootstrap`; if instability persists, to `:jackknife`).
+If the requested covariance calculation is numerically unavailable,
+`StatsBase.vcov(M)` may be `nothing`.
 
 **Note.** In the example above we set `derived_measures=false`, which disables the automatic calculation and storage of dependence measures (e.g., Kendall’s τ, Spearman’s ρ, Blomqvist’s β, , Gini's γ, upper/lower tail coefficients, entropy). By default this is enabled. Disabling it reduces computation and memory footprint and omits the *Dependence metrics* section in the REPL summary.
 ---
@@ -233,15 +235,10 @@ plot(Ŝ.result)
 
 ---
 
-## Available fitting methods
+## Fitting methods
 
-The names and **availability** of fitting methods depend on the family. Inspect them via:
-
-```@example fitting_interface
-Copulas._available_fitting_methods(ClaytonCopula, 3)
-```
-
-The first method in the list is used by default.
+The names and availability of fitting methods depend on the family. Use
+`method=:default` unless a family documents a more appropriate explicit method.
 
 ### Short descriptions
 
@@ -268,9 +265,9 @@ In addition to parametric families (MLE / rank-based), `Copulas.jl` exposes seve
 
 See the dedicated page for theory, properties, and references: [Empirical models](@ref empirical_copulas).
 
-For empirical models with a density, the **StatsBase / StatsModels** functionality works identically:
+For empirical models with a density, the **StatsBase / StatsModels** interface works identically:
 you can call `coef`, `aic`, `bic`, `deviance`, `predict`, `residuals`, etc.,  
-and obtain a full `CopulaModel` object with the same structure and printing behavior.  
+and obtain a full `CopulaModel` with the same documented model interface.
 
 The multivariate `EmpiricalEVCopula` projection may contain singular spectral
 components and therefore has no global Lebesgue density. Its quick `fit`

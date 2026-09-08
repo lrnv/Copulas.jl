@@ -142,7 +142,7 @@ nest = α -> NestedArchimedeanCopula(ClaytonGenerator(exp(α[1]));
     children = [ClaytonCopula(2, exp(α[1]) + softplus(α[2])),
                 ClaytonCopula(2, exp(α[1]) + softplus(α[3]))])
 Mn = fit(CopulaModel, nest, [0.0, 0.0, 0.0], U)
-(Mn.result.G.θ, Mn.result.children[1][1].G.θ)   # inner θ ≥ outer θ, by construction
+Mn.result # inner θ ≥ outer θ by construction
 ```
 
 Or share one ``\theta`` across the root and both panels — a single free parameter:
@@ -152,7 +152,7 @@ recon = α -> (θ = exp(α[1]);
     NestedArchimedeanCopula(ClaytonGenerator(θ);
         children = [ClaytonCopula(2, θ), ClaytonCopula(2, θ)]))
 Ms = fit(CopulaModel, recon, [0.0], U)
-(Ms.result.G.θ, Ms.result.children[1][1].G.θ)   # equal — the shared parameter
+Ms.result # the root and both panels share one parameter by construction
 ```
 
 `fit(C0, U)` is a shorthand returning just the fitted copula; for the custom form
@@ -218,7 +218,8 @@ coordinates. On the copula scale this computes
 coordinates:
 
 ```@example nested
-u = [cdf(S.m[i], x[i]) for i in 1:6]
+margins = params(S).margins
+u = [cdf(margins[i], x[i]) for i in 1:6]
 Cs = SurvivalCopula(Cpart, C)
 logpdf(subsetdims(Cpart, O), u[collect(O)]) +
     log(cdf(condition(Cs, O, u[collect(O)]), 1 .- u[collect(C)]))

@@ -68,15 +68,15 @@ For the marginals, we can for example check quantile quantile plots (again, on l
 ```@example 6
 n = size(data,2)
 plot(
-    scatter(sort(log.(loss)), log.(quantile.(Ref(fit_clayton.m[1]),(1:n)./(n+1))), label="Loss"),
-    scatter(sort(log.(alae)), log.(quantile.(Ref(fit_clayton.m[2]),(1:n)./(n+1))), label="Alae")
+    scatter(sort(log.(loss)), log.(quantile.(Ref(params(fit_clayton).margins[1]),(1:n)./(n+1))), label="Loss"),
+    scatter(sort(log.(alae)), log.(quantile.(Ref(params(fit_clayton).margins[2]),(1:n)./(n+1))), label="Alae")
 )
 ```
 
 These quantile-quantile plots are not perfect, we see that both tails are a bit wiggly.
 For the dependence structure, we can sample a new dataset from the fitted copula to check if the ranks behaviors looks like what we had before: 
 ```@example 6
-u = rand(fit_clayton.C, 1500)
+u = rand(params(fit_clayton).copula, 1500)
 scatter(u[1,:],u[2,:])
 ```
 
@@ -91,10 +91,10 @@ There are potential improvements that can be made to this fit:
 ```@example 6
 using Copulas: MCopula
 Cs = (
-    fit_gaussian.C,
-    fit_clayton.C,
-    fit_gumbel.C,
-    fit_frank.C,
+    params(fit_gaussian).copula,
+    params(fit_clayton).copula,
+    params(fit_gumbel).copula,
+    params(fit_frank).copula,
     MCopula(2),
 )
 labels = ("Gaussian", "Clayton", "Gumbel", "Frank", "M bound")
@@ -108,7 +108,7 @@ plot(ps...; layout=(2,3), size=(950,600))
 ```@example 6
 using StatsBase
 Uhat = Copulas.pseudos(data)
-S = reduce(hcat, (rosenblatt(fit_clayton.C, Uhat[:,i]) for i in 1:size(Uhat,1)))
+S = reduce(hcat, (rosenblatt(params(fit_clayton).copula, Uhat[:,i]) for i in 1:size(Uhat,1)))
 ts = range(0.0, 1.0; length=400)
 E1 = ecdf(S[1,:]); E2 = ecdf(S[2,:])
 plot(ts, ts; label="Uniform", color=:blue)

@@ -53,7 +53,7 @@ fitted_sklar = fit_mle(
     copula_kwargs=(; vcov=false, derived_measures=false),
 )
 
-typeof(fitted_sklar.m[1])
+typeof(params(fitted_sklar).margins[1])
 ```
 
 The result remains a single `SklarDist`: the marginal mixture is fitted as a
