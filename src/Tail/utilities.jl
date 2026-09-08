@@ -26,12 +26,11 @@ function _normalize_asymmetric_subset_components(
         "each asymmetry component must be an AbstractVector",
     ))
 
-    T = promote_type(
-        Float64,
+    T = float(promote_type(
         typeof(singleton_parameter),
         eltype(dep),
         _component_eltype(eltype(asy)),
-    )
+    ))
 
     parameters = fill(T(singleton_parameter), m)
     @inbounds for j in (d + 1):m
@@ -73,7 +72,7 @@ end
 function _expand_fullset_asymmetric_component(parameter::Real, weights::AbstractVector; singleton_parameter)
     d = length(weights)
     subsets = d == 0 ? Vector{Vector{Int}}() : _nonempty_subsets(d)
-    T = promote_type(Float64, typeof(parameter), typeof(singleton_parameter), eltype(weights))
+    T = float(promote_type(typeof(parameter), typeof(singleton_parameter), eltype(weights)))
     w = T.(weights)
 
     dep = fill(T(singleton_parameter), length(subsets) - d)
@@ -109,7 +108,8 @@ function _rand_subset_components!(
 ) where {T<:Real}
     d, n = size(X)
     subsets = _nonempty_subsets(d)
-    Z = zeros(Float64, d, n)
+    S = promote_type(T, eltype(parameters), eltype(β))
+    Z = zeros(S, d, n)
 
     @inbounds for j in eachindex(subsets)
         active = [i for i in subsets[j] if β[i, j] > 0]
@@ -117,14 +117,14 @@ function _rand_subset_components!(
         parameter = parameters[j]
         if is_independent(parameter) || length(active) == 1
             for i in active, col in 1:n
-                Z[i, col] = max(Z[i, col], Float64(β[i, j]) / Random.randexp(rng))
+                Z[i, col] = max(Z[i, col], S(β[i, j]) / Random.randexp(rng, S))
             end
             continue
         end
 
         U = rand(rng, component_copula(length(active), parameter), n)
         for (position, i) in enumerate(active), col in 1:n
-            candidate = Float64(β[i, j]) / (-log(Float64(U[position, col])))
+            candidate = S(β[i, j]) / (-log(S(U[position, col])))
             Z[i, col] = max(Z[i, col], candidate)
         end
     end

@@ -52,7 +52,7 @@ struct MOTail{T} <: DiscreteSpectralPickandsTail
         ))
 
         vals = collect(λ)
-        T = promote_type(Float64, eltype(vals))
+        T = float(eltype(vals))
         rates = T.(λ)
         all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite",))
         all(v -> v >= zero(T), rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be nonnegative",))
@@ -136,11 +136,11 @@ end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{2,<:MOTail}, A::AbstractMatrix{S}) where {S<:Real}
     λ₁, λ₂, λ₁₂ = _mo_bivariate_rates(C.tail)
-    T = promote_type(typeof(float(λ₁)), typeof(float(λ₂)), typeof(float(λ₁₂)))
+    T = promote_type(S, typeof(float(λ₁)), typeof(float(λ₂)), typeof(float(λ₁₂)))
     λ₁T, λ₂T, λ₁₂T = T(λ₁), T(λ₂), T(λ₁₂)
     rate_u, rate_v = λ₂T + λ₁₂T, λ₁T + λ₁₂T
     (rate_u > 0 && rate_v > 0) || throw(ArgumentError("Each Marshall-Olkin margin must have a positive total rate"))
-    waiting_time(rate) = iszero(rate) ? T(Inf) : T(Random.randexp(rng)) / rate
+    waiting_time(rate) = iszero(rate) ? T(Inf) : Random.randexp(rng, T) / rate
 
     # The first Pickands coordinate used by A is -log(u), so its private
     # shock has rate λ₂; the second coordinate analogously uses rate λ₁.

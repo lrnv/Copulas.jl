@@ -23,7 +23,7 @@ struct DiscreteSpectralTail{T} <: DiscreteSpectralBackedTail
         m >= 1 || throw(ArgumentError("a discrete spectral tail requires at least one spectral atom",))
 
         vals = collect(B)
-        T = promote_type(Float64, map(typeof, vals)...)
+        T = float(promote_type(map(typeof, vals)...))
         BB = Matrix{T}(B)
 
         all(isfinite, BB) || throw(ArgumentError("all discrete spectral coefficients must be finite",))
@@ -95,12 +95,13 @@ end
 
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
+    S = promote_type(T, eltype(tail))
     fill!(X, zero(T))
     m = size(tail.B, 2)
 
     @inbounds for col in 1:n
         for k in 1:m
-            invE = inv(Random.randexp(rng))
+            invE = inv(Random.randexp(rng, S))
             for i in 1:d
                 b = tail.B[i, k]
                 iszero(b) && continue

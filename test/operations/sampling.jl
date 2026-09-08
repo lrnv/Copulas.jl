@@ -98,6 +98,17 @@ end
         @test eltype(rand(StableRNG(62), C, 2)) === T
     end
 
+    big_cases = (
+        ClaytonCopula{2}(big"1.0"),
+        ClaytonCopula{2}(big"0.0"),
+        GalambosCopula{2}(big"1.0"),
+        PlackettCopula{2}(big"2.0"),
+    )
+    for C in big_cases
+        @test eltype(C) === BigFloat
+        @test eltype(rand(StableRNG(65), C, 2)) === BigFloat
+    end
+
     # A Sklar distribution samples on its marginal scales. The copula's
     # probability representation therefore must not widen Float32 margins.
     S = SklarDist(IndependentCopula{2}(),

@@ -111,26 +111,27 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     limit_kind(C.tail, Val(d)) === Π_LIMIT && return Random.rand!(rng, X)
     n = size(X, 2)
 
-    θ = Float64(C.tail.θ)
-    Z = zeros(Float64, d, n)
+    S = promote_type(T, typeof(C.tail.θ))
+    θ = S(C.tail.θ)
+    Z = zeros(S, d, n)
 
     # Independent max-stable component with exponent
     # (1-θ) Σᵢ xᵢ.
     if θ < 1
         w = 1 - θ
         @inbounds for i in 1:d, col in 1:n
-            Z[i, col] = w / Random.randexp(rng)
+            Z[i, col] = w / Random.randexp(rng, S)
         end
     end
 
     # Galambos(1) max-stable component with exponent
     # θ ℓ_Galambos,1.
     if θ > 0
-        Cgal = ExtremeValueCopula(d, GalambosTail(1.0))
+        Cgal = ExtremeValueCopula(d, GalambosTail(one(S)))
         U = Random.rand(rng, Cgal, n)
 
         @inbounds for i in 1:d, col in 1:n
-            candidate = θ / (-log(Float64(U[i, col])))
+            candidate = θ / (-log(U[i, col]))
             if candidate > Z[i, col]
                 Z[i, col] = candidate
             end

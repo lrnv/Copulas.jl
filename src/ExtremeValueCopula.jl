@@ -258,9 +258,11 @@ function Distributions._rand!(
     kind === Π_LIMIT && return Random.rand!(rng, X)
     kind === M_LIMIT && return _rand_M!(rng, X)
     E = ExtremeDist(C.tail)
+    S = promote_type(T, eltype(C))
     for i in axes(X, 2)
         z = rand(rng, E)
-        w = rand(rng) < _ghoudi_mixture_probability(C.tail, z) ? rand(rng) : rand(rng) * rand(rng)
+        w = rand(rng, S) < _ghoudi_mixture_probability(C.tail, z) ?
+            rand(rng, S) : rand(rng, S) * rand(rng, S)
         a = A(C.tail, z)
         X[1, i] = exp(log(w) * z / a)
         X[2, i] = exp(log(w) * (1 - z) / a)

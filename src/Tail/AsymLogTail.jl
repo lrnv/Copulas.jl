@@ -27,7 +27,7 @@ struct AsymLogTail{T} <: BivariatePickandsTail
     θ₁::T
     θ₂::T
     function AsymLogTail(α, θ₁, θ₂)
-        T = promote_type(Float64, typeof(α), typeof(θ₁), typeof(θ₂))
+        T = float(promote_type(typeof(α), typeof(θ₁), typeof(θ₂)))
         θ₁, θ₂, αT = T(θ₁), T(θ₂), T(α)
         (αT ≥ 1) || throw(ArgumentError("α must be ≥ 1"))
         (0 ≤ θ₁ ≤ 1 && 0 ≤ θ₂ ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))

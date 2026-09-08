@@ -31,6 +31,7 @@ struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
 end
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 @inline function limit_kind(G::ClaytonGenerator, ::Val{d}) where {d}
+    iszero(G.θ) && return Π_LIMIT
     isinf(G.θ) && return M_LIMIT
     d == 2 && G.θ == -1 && return W_LIMIT
     return NO_LIMIT
