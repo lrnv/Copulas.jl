@@ -13,7 +13,8 @@ This section summarizes how to **fit** copulas (and Sklar distributions) in `Cop
 - We work with **pseudo-observations** `U ∈ (0,1)^{d×n}` (rows = dimensions, columns = observations).  
   Use `pseudos(X)` to obtain normalized ranks from raw data `X`.
 - Rank-based routines (tau / rho / beta / gamma) assume pseudo-observations.
-- `StatsBase` pairwise correlation helpers use the `n×d` convention; internally we transpose as needed (e.g., `U'`).
+- `StatsBase` pairwise correlation helpers use the `n×d` convention rather than
+  the package's `d×n` fitting convention.
 
 ---
 
@@ -108,8 +109,8 @@ the selection step.
 
 ## Behavior & conventions (important)
 
-- ``fit`` usually operates on **types**. Structural models whose configuration
-  is stored in fields, such as `NestedArchimedeanCopula`,
+- ``fit`` usually operates on **types**. Structural models with runtime
+  configuration, such as `NestedArchimedeanCopula`,
   are instead fitted from a template instance.
   Pass a copula or Sklar type, e.g. `fit(GumbelCopula, U)` or  
   `fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X)`.  
@@ -127,11 +128,12 @@ the selection step.
 
 ## `CopulaModel` interface (summary)
 
-The `CopulaModel{CT} <: StatsBase.StatisticalModel` supports the standard `StatsBase` API and a few additional fields:
+`CopulaModel` implements `StatsBase.StatisticalModel` and supports the following
+documented functions and properties:
 
-| Function / Field                               | Description                                                                                       |
+| Function / property                            | Description                                                                                       |
 |-----------------------------------------------|---------------------------------------------------------------------------------------------------|
-| **Field** `M.ll`                               | Log-likelihood at the optimum (numeric field stored in the model).                                |
+| `M.ll`                                         | Log-likelihood at the optimum.                                                                    |
 | `nobs(M)`                                      | Number of observations used in the fit.                                                           |
 | `deviance(M)`                                  | Deviance (= −2 · `M.ll`).                                                                         |
 | `nullloglikelihood(M)`                         | Log-likelihood under independence with same margins (available for Sklar fits).                   |
@@ -178,7 +180,8 @@ X̂  = StatsBase.predict(M; what=:simulate, nsim=1_000)     # simulate 1,000 obs
 
 When fitting with `fit(CopulaModel, ...)`, the keyword `vcov=true` triggers estimation of the **parameter covariance matrix**.
 
-> **Default.** `vcov = true`. Covariance is computed automatically unless the user disables it (`vcov=false`) or a family turns it off internally (e.g., `TCopula`, `FGMCopula`, `tEVCopula`) when required derivatives are not implemented.
+> **Default.** `vcov = true`. Covariance is computed automatically unless the
+> user disables it (`vcov=false`) or it is unavailable for the fitted family.
 
 The `vcov_method` keyword selects the estimator:
 
@@ -249,8 +252,8 @@ The names and availability of fitting methods depend on the family. Use
 
 > **Remark.** Rank-based methods require that the number of free parameters does not exceed the information contained in the chosen coefficient(s); `:ibeta` enforces this explicitly.
 
-For **extreme-value** copulas, `:mle` / `:iupper` may rely on the Pickands
-representation and internal derivative machinery, with Brent-type inversion.
+For **extreme-value** copulas, `:mle` / `:iupper` use the documented Pickands
+representation when supported by the family.
 
 ## Nonparametric fits (Empirical Copulas)
 
