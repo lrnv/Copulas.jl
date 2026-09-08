@@ -108,7 +108,7 @@ end
 τ(C::TCopula{2}) = 2*asin(C.Σ[1,2])/π
 
 # Conditioning colocated
-function DistortionFromCop(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p,D}
+function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p,D}
     ν = C.df
     Σ = C.Σ; jst = js; ist = Tuple(setdiff(1:D, jst)); @assert i in ist
     Jv = collect(jst); zJ = Distributions.quantile.(Distributions.TDist(ν), collect(uⱼₛ))
@@ -125,7 +125,7 @@ function DistortionFromCop(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,F
     νp = ν + length(Jv); σz = sqrt(max(σ0², zero(σ0²))) * sqrt((ν + δ) / νp)
     return StudentDistortion(float(μz), float(σz), Int(ν), Int(νp))
 end
-function ConditionalCopula(C::TCopula{D}, js, uⱼₛ) where {D}
+function conditional_copula(C::TCopula{D}, js, uⱼₛ) where {D}
     df = C.df
     p = length(js); J = collect(Int, js); I = collect(setdiff(1:D, J)); Σ = C.Σ
     if p == 1

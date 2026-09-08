@@ -204,7 +204,7 @@ function _liouville_conditional_components(
     return conditional_copula, distortions, is
 end
 
-function DistortionFromCop(
+function distortion(
     C::LiouvilleCopula,
     js::NTuple{p,Int},
     uⱼₛ::NTuple{p,<:Real},
@@ -216,7 +216,7 @@ function DistortionFromCop(
     return distortions[position]
 end
 
-function ConditionalCopula(C::LiouvilleCopula, js, uⱼₛ)
+function conditional_copula(C::LiouvilleCopula, js, uⱼₛ)
     conditional_copula, _, _ = _liouville_conditional_components(C, js, uⱼₛ)
     conditional_copula === nothing && throw(ArgumentError(
         "conditioning leaves one margin and therefore no conditional copula",
@@ -226,11 +226,10 @@ end
 
 # `condition` needs both the conditional copula and all marginal distortions,
 # whereas Rosenblatt and one-dimensional conditioning request individual
-# distortions through `DistortionFromCop`. Specializing this shared hook avoids
+# distortions through `distortion`. Specializing this shared helper avoids
 # rebuilding (and renormalizing) the same conditional frailty or radial once
-# for the copula and once per remaining margin. We still define
-# `ConditionalCopula` and `DistortionFromCop` above because they are independent
-# extension points used directly by the generic conditioning interface.
+# for the copula and once per remaining margin. The `conditional_copula` and
+# `distortion` methods above remain the family extension points.
 function _conditional_components(C::LiouvilleCopula, js, uⱼₛ, is)
     conditional_copula, distortions, computed_is =
         _liouville_conditional_components(C, js, uⱼₛ)

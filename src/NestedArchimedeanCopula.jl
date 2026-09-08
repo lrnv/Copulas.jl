@@ -637,7 +637,7 @@ end
 
 # Sampling. NestedArchimedeanCopula has no bespoke Marshall–Olkin frailty
 # sampler; instead we draw via the inverse Rosenblatt transform, which is driven
-# by our closed-form `_cdf`/`DistortionFromCop`/`subsetdims` specialisations
+# by our closed-form `_cdf`/`distortion`/`subsetdims` specialisations
 # (nested/NestedConditioning.jl). The matrix sampler applies the inverse
 # Rosenblatt transform to a complete batch; the generic copula vector sampler
 # delegates to this method with a single-column matrix. Dispatches only on
@@ -654,7 +654,7 @@ end
 
 # Copula-scale mixed partial of the nested CDF over the observed coordinates.
 # Internal numerator kernel for the nested condition/subsetdims fast path
-# (`DistortionFromCop(::NestedArchimedeanCopula, …)` in nested/NestedConditioning.jl);
+# (`distortion(::NestedArchimedeanCopula, …)` below);
 # it works on copula-scale arguments `u ∈ (0,1)^d`. `censored[i] == true` means
 # coordinate `i` enters only the argument-sum (not differentiated).
 function _censored_copula_logpdf(C::NestedArchimedeanCopula{d}, u, censored, ::Type{T}) where {d, T}
@@ -672,7 +672,7 @@ Base.show(io::IO, C::NestedArchimedeanCopula{d}) where {d} =
 # Conditioning / subsetting fast paths for NestedArchimedeanCopula.
 #
 # These specialise upstream's standard conditioning/subsetting framework
-# (`subsetdims`, `condition`, `DistortionFromCop`, `SubsetCopula`) so that
+# (`subsetdims`, `condition`, `distortion`, `SubsetCopula`) so that
 # per-variable censoring becomes an EMERGENT capability of the standard API,
 # routed through our O(d²) Faà di Bruno tree walk rather than ForwardDiff.
 #
@@ -694,7 +694,7 @@ Base.show(io::IO, C::NestedArchimedeanCopula{d}) where {d} =
 #       NestedArchimedeanCopula (or a flat ArchimedeanCopula when no genuine
 #       sub-nesting survives). Reached automatically from `subsetdims`. Its
 #       existing `_logpdf` then yields the observed-marginal density c_O.
-#   (2) DistortionFromCop(::NestedArchimedeanCopula, js, ujs, i) — the closed-form
+#   (2) distortion(::NestedArchimedeanCopula, js, ujs, i) — the closed-form
 #       conditional marginal U_i | U_js = u_js, whose cdf is the mixed partial
 #       over js (with i and every other coord entering only as a CDF argument)
 #       divided by c_O. Handles GENERAL p, so it also accelerates each
@@ -710,7 +710,7 @@ Base.show(io::IO, C::NestedArchimedeanCopula{d}) where {d} =
 # method is selected without `ConditionalCopula` needing to carry the inner type.
 # The override assembles `u` (js→uⱼₛ, is→uᵢₛ, others→1) and returns
 # `exp(_censored_copula_logpdf(C, u, cens, T))` with `cens[k] = !(k ∈ js)`. Thus
-# BOTH `DistortionFromCop.cdf` (single-conditioned) and `ConditionalCopula._cdf`
+# BOTH the specialized distortion CDF (single-conditioned) and `ConditionalCopula._cdf`
 # (multi-conditioned) compute the conditional CDF with our O(d²) Faà di Bruno
 # walk — ZERO ForwardDiff for ANY number of censored dims.
 #
@@ -841,15 +841,15 @@ function SubsetCopula(C::NestedArchimedeanCopula{d, TG}, dims::NTuple{p, Int}) w
     return _remap_dims(pruned, remap)
 end
 
-# ---- (2) DistortionFromCop: closed-form conditional marginal U_i | U_js ------
+# ---- (2) Distortion: closed-form conditional marginal U_i | U_js -------------
 
 
-function DistortionFromCop(C::NestedArchimedeanCopula{D}, js::NTuple{p, Int},
+function distortion(C::NestedArchimedeanCopula{D}, js::NTuple{p, Int},
                           ujs::NTuple{p, Float64}, i::Int) where {D, p}
     # den = c_O = pdf of the observed marginal. Identical to upstream's generic
-    # DistortionFromCop.den, so num/den stays consistent. For p==1 subsetdims
+    # generic distortion denominator, so num/den stays consistent. For p==1 subsetdims
     # returns Uniform() ⇒ den = 1; otherwise it is our pruned-tree multivariate
-    # pdf. Do NOT assert p==D-1: condition() builds DistortionFromCop for EVERY
+    # pdf. Do NOT assert p==D-1: condition() builds a distortion for EVERY
     # i∉js, so in the multi-unobserved case p < D-1.
     den = p == 1 ? Distributions.pdf(subsetdims(C, js), ujs[1]) :
                    Distributions.pdf(subsetdims(C, js), collect(ujs))

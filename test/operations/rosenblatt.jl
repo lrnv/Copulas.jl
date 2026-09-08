@@ -105,7 +105,7 @@ end
         for i in 2:d
             js = Tuple(1:(i - 1))
             values = Tuple(u[1:(i - 1)])
-            expected[i] = cdf(Copulas.DistortionFromCop(C, js, values, i), u[i])
+            expected[i] = cdf(Copulas.distortion(C, js, values, i), u[i])
         end
         if !forward_done
             @test R ≈ expected atol=2e-6 rtol=2e-6

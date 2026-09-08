@@ -44,7 +44,7 @@
         integer_C = LiouvilleCopula{3}(
             Copulas.ClaytonGenerator(1.0), (1.0, 1.0, 2.0),
         )
-        integer_conditional = Copulas.ConditionalCopula(integer_C, (1,), (0.4,))
+        integer_conditional = Copulas.conditional_copula(integer_C, (1,), (0.4,))
         @test integer_conditional.G isa Copulas.𝒲
         @test integer_conditional.G.X isa Distributions.LocationScale
         @test integer_conditional.G.X.ρ isa BetaPrime
@@ -56,13 +56,13 @@
         fallback_C = LiouvilleCopula{3}(
             Copulas.ClaytonGenerator(-0.25), (1.0, 1.0, 1.5),
         )
-        fallback_conditional = Copulas.ConditionalCopula(fallback_C, (1,), (0.4,))
+        fallback_conditional = Copulas.conditional_copula(fallback_C, (1,), (0.4,))
         @test fallback_conditional.G isa Copulas.TiltedGenerator
 
         fractional_C = LiouvilleCopula{3}(
             Copulas.𝒲(Dirac(1.0), 4.0), (0.6, 1.1, 1.3),
         )
-        fractional_conditional = Copulas.ConditionalCopula(fractional_C, (1,), (0.4,))
+        fractional_conditional = Copulas.conditional_copula(fractional_C, (1,), (0.4,))
         @test fractional_conditional.G isa Copulas.𝒲
 
         discrete_C = LiouvilleCopula{3}(
@@ -75,7 +75,7 @@
             typeof(discrete_conditional.G.X.frailty_dist),
         ) == Distributions.Discrete
 
-        D = Copulas.DistortionFromCop(fractional_C, (1,), (0.4,), 2)
+        D = Copulas.distortion(fractional_C, (1,), (0.4,), 2)
         p = Distributions.cdf(D, 0.6)
         @test Distributions.quantile(D, p) ≈ 0.6
 
@@ -134,4 +134,3 @@
         @test cdf(C, ones(3)) == 1.0
     end
 end
-

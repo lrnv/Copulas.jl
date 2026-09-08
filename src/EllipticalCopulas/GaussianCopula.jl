@@ -97,7 +97,7 @@ end
 ρ(C::GaussianCopula{2,MT}) where MT = 6*asin(C.Σ[1,2]/2)/π
 
 # Conditioning and subsetting fast paths colocated with the type
-function DistortionFromCop(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
+function distortion(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
     ist = Tuple(setdiff(1:D, js))
     @assert i in ist
     J = collect(js)
@@ -112,7 +112,7 @@ function DistortionFromCop(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::
     end
     return GaussianDistortion(float(μz), float(σz))
 end
-function ConditionalCopula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D,MT,p}
+function conditional_copula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D,MT,p}
     @assert 0 < p < D-1
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))

@@ -183,7 +183,7 @@ function _available_fitting_methods(::Type{<:ArchimaxCopula{D,IndependentGenerat
 end
 
 # Fast conditional distortion binding (bivariate)
-function DistortionFromCop(
+function distortion(
     C::ArchimaxCopula{2},
     js::NTuple{1,Int},
     uⱼₛ::NTuple{1,Float64},

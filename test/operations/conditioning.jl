@@ -125,7 +125,7 @@ end
         case, C = fixture.case, fixture.copula
         length(C) == 2 || continue
         is_absolutely_continuous(C) || continue
-        method = which(Copulas.DistortionFromCop,
+        method = which(Copulas.distortion,
             Tuple{typeof(C),Tuple{Int},Tuple{Float64},Int})
         method in seen && continue
         push!(seen, method)
@@ -216,7 +216,7 @@ end
         is_absolutely_continuous(C) || continue
         js = Tuple(1:(d - 1))
         values = ntuple(k -> 0.3 + 0.08k, d - 1)
-        method = which(Copulas.DistortionFromCop,
+        method = which(Copulas.distortion,
             Tuple{typeof(C),typeof(js),typeof(values),Int})
         method in seen && continue
         push!(seen, method)
@@ -291,16 +291,19 @@ end
 
         H = condition(C, (1,), (conditioned,))
         targets = collect(range(0.53, 0.71; length=d - 1))
-        conditional_scale = [cdf(H.m[i], targets[i]) for i in 1:(d - 1)]
+        conditional_copula = H isa SklarDist ? H.C : H
+        conditional_scale = H isa SklarDist ?
+                            [cdf(H.m[i], targets[i]) for i in 1:(d - 1)] :
+                            targets
         if C isa Union{GaussianCopula,TCopula}
             J, I = [1], collect(2:d)
             Σcond = C.Σ[I, I] - C.Σ[I, J] * (C.Σ[J, J] \ C.Σ[J, I])
             σ = sqrt.(diag(Σcond))
             expected_R = Σcond ./ (σ * σ')
-            @test H.C.Σ ≈ expected_R atol=2e-12 rtol=2e-12
+            @test conditional_copula.Σ ≈ expected_R atol=2e-12 rtol=2e-12
         elseif C isa LiouvilleCopula
-            @test H.C isa LiouvilleCopula{d - 1}
-            @test H.C.α == ntuple(i -> C.α[i + 1], d - 1)
+            @test conditional_copula isa LiouvilleCopula{d - 1}
+            @test conditional_copula.α == ntuple(i -> C.α[i + 1], d - 1)
         else
             upper = vcat(conditioned + h, targets)
             lower = vcat(conditioned - h, targets)
@@ -308,7 +311,7 @@ end
             normalizer = (cdf(C, vcat(conditioned + h, ones(d - 1))) -
                           cdf(C, vcat(conditioned - h, ones(d - 1)))) / (2h)
             tolerance = is_absolutely_continuous(C) ? 5e-4 : 3e-3
-            @test isapprox(cdf(H.C, conditional_scale), numerator / normalizer;
+            @test isapprox(cdf(conditional_copula, conditional_scale), numerator / normalizer;
                            atol=tolerance, rtol=tolerance)
         end
     end
@@ -382,7 +385,7 @@ end
         conditioned = condition(C, (1,), (0.35,))
         @test length(conditioned.m) == 2
         for (k, i) in enumerate((2, 3)), u in (0.2, 0.7)
-            reference = Copulas.DistortionFromCop(C, (1,), (0.35,), i)
+            reference = Copulas.distortion(C, (1,), (0.35,), i)
             @test cdf(conditioned.m[k], u) ≈ cdf(reference, u) atol = 2e-12
         end
     end
@@ -451,7 +454,7 @@ end
     @test conditioned.m === conditioned.C.distortions
     @test conditioned.C.is == (1, 2)
     @test generic.logden == log(generic.den)
-    specialized = Copulas.ConditionalCopula(C, js, ujs)
+    specialized = Copulas.conditional_copula(C, js, ujs)
 
     for u in ([0.25, 0.35], [0.5, 0.5], [0.75, 0.65])
         @test isapprox(logpdf(generic, u), logpdf(specialized, u); atol=1e-8, rtol=1e-8)
@@ -622,7 +625,7 @@ end
 
 @testset "Checkerboard multidimensional conditioning regression" begin
     C = CheckerboardCopula{3}(randn(rng, 3, 30); pseudo_values=false)
-    D = Copulas.DistortionFromCop(C, (1, 2), (0.3, 0.7), 3)
+    D = Copulas.distortion(C, (1, 2), (0.3, 0.7), 3)
     @test D isa Copulas.HistogramBinDistortion
     @test all(0 .<= cdf.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
     @test all(pdf.(Ref(D), (0.2, 0.5, 0.8)) .>= 0)
