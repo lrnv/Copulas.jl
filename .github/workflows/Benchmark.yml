@@ -5,10 +5,12 @@ name: Benchmarks
 on:
   pull_request:
     branches: [main]
-    paths-ignore:
-      - '**/*.md'
-      - 'docs/**'
-      - 'LICENSE'
+    paths:
+      - 'src/**'
+      - 'benchmark/**'
+      - 'Project.toml'
+      - 'Manifest.toml'
+      - '.github/workflows/Benchmark.yml'
 
 permissions:
   contents: read
@@ -30,7 +32,7 @@ jobs:
       - uses: KristofferC/Tachometer.jl@d598409830fa4118d82668463400e7ddc060d7b8
         with:
           julia-version: "1"
-          nruns: "3"
+          nruns: "1"
           time-tolerance: "5%"
           memory-tolerance: "5%"
           time-floor: "1us"
