@@ -6,4 +6,4 @@ Distributions.cdf(d::BernsteinDistortion, u::Real) =
 Distributions.logcdf(d::BernsteinDistortion, u::Real) = log(Distributions.cdf(d, u))
 Distributions.pdf(d::BernsteinDistortion, u::Real) = Distributions.pdf(d.mixture, u)
 Distributions.logpdf(d::BernsteinDistortion, u::Real) = log(Distributions.pdf(d, u))
-Distributions.quantile(d::BernsteinDistortion, p::Real) = _unit_quantile(d, p)
+Distributions.quantile(d::BernsteinDistortion, p::Real) = _quantile_from_cdf(d, p)

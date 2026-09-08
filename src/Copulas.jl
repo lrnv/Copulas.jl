@@ -25,6 +25,7 @@ module Copulas
 
     # Main code
     include("utils.jl")
+    include("UnivariateDistribution/quantile.jl")
     include("Copula.jl")
     include("SklarDist.jl")
     include("Subsetting.jl")

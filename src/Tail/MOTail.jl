@@ -190,7 +190,7 @@ function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) wher
 
     # Degenerate parameter cases are safest through the generalized inverse.
     if !(zero(R) < a < one(R) && zero(R) < b < one(R))
-        return _unit_quantile(D, p)
+        return _quantile_from_cdf(D, p)
     end
 
     if D.j == 2

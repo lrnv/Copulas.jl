@@ -24,7 +24,7 @@ function Distributions.logpdf(d::ExtremeDist, z::Real)
 end
 
 function Distributions.quantile(d::ExtremeDist, p)
-    return _unit_quantile(d, p)
+    return _quantile_from_cdf(d, p)
 end
 
 # Generate random samples from the radial distribution using the quantile function
