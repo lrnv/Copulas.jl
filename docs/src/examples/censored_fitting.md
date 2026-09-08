@@ -14,7 +14,10 @@ using Copulas, Distributions, Optim, Random
 
 rng = Xoshiro(361)
 margins = (Weibull(1.6, 2.0), LogNormal(0.2, 0.55))
-true_copula = ArchimaxCopula{2}(ClaytonGenerator(1.4), GalambosTail(0.8))
+true_copula = ArchimaxCopula{2}(
+    Copulas.ClaytonGenerator(1.4),
+    Copulas.GalambosTail(0.8),
+)
 joint = SklarDist(true_copula, margins)
 
 n = 80
@@ -62,7 +65,7 @@ marginal parameters jointly.
 
 ```@example censored-fitting
 objective(θ) = -censored_loglikelihood(
-    ArchimaxCopula{2}(ClaytonGenerator(θ), GalambosTail(0.8)),
+    ArchimaxCopula{2}(Copulas.ClaytonGenerator(θ), Copulas.GalambosTail(0.8)),
     margins,
     observed,
     exact,
@@ -70,7 +73,10 @@ objective(θ) = -censored_loglikelihood(
 
 result = optimize(objective, 0.05, 4.0)
 θ̂ = Optim.minimizer(result)
-fitted_copula = ArchimaxCopula{2}(ClaytonGenerator(θ̂), GalambosTail(0.8))
+fitted_copula = ArchimaxCopula{2}(
+    Copulas.ClaytonGenerator(θ̂),
+    Copulas.GalambosTail(0.8),
+)
 (θ̂ = θ̂, converged = Optim.converged(result), fitted = fitted_copula)
 ```
 
