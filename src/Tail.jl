@@ -1,35 +1,19 @@
 """
     Tail
 
-Abstract type. Implements the API for stable tail dependence functions (STDFs) of extreme-value copulas in dimension `d`.
+Abstract representation of the stable tail dependence function of an
+extreme-value copula. A valid STDF `ℓ : [0,∞)^d → [0,∞)` is convex,
+one-homogeneous, and satisfies
 
-A STDF is a function
-``\\ell : \\mathbb{R}_{+}^d → [0,\\infty)`` that is 1-homogeneous (``\\ell(t·x)=t·\\ell(x)`` for all ``t≥0``), convex, 
-and satisfies the bounds
-``\\max(x_1,\\ldots,x_d) ≤ \\ell(x) ≤ x_1+ \\cdots +x_d`` (in particular ``\\ell(e_i)=1``).
+```math
+\\max_i x_i \\leq \\ell(x) \\leq \\sum_i x_i.
+```
 
-Pickands representation. By homogeneity, for ``x\\neq 0`` let ``\\left\\| x\\right\\|_1=x_1+\\cdots+x_d`` and
-``\\omega=x/\\left\\| x \\right\\|_1 \\in \\Delta_{d-1}``. There exists a Pickands dependence function
-``A:\\Delta_{d-1}\\to [0,1]`` (convex, ``\\max(\\omega_i)≤A(\\omega)≤1``) such that
-``\\ell(x)=\\left\\| x\\right\\|_1·A(\\omega)``. For ``d=2``, ``A`` reduces to a convex function on ``[0,1]`` with
-``\\max(t,1-t)≤A(t)≤1`` and ``A(0)=A(1)=1``.
-
-Interface. A concrete tail must implement either `A` or `ℓ`; each representation
-is derived from the other by homogeneity.
-- `A(tail::Tail, ω::NTuple{d,Real})` — Pickands function on the simplex `\\Delta_{d-1}`.
-  (For `d=2`, a convenience `A(tail::Tail, t::Real)` may be provided.)
-- `ℓ(tail::Tail, x::NTuple{d,Real})` — STDF. By default the package defines
-  `ℓ(tail, x) = ‖x‖₁ * A(tail, x/‖x‖₁)` when `A` is available.
-
-We do not algorithmically verify convexity/bounds; implementers are responsible for validity.
-
-Additional helpers (with defaults).
-- For `d=2`: `dA`, `d²A` via AD; stable `logpdf`/`rand` (Ghoudi sampler).
-- In any `d`: `cdf(u) = exp(-ℓ(-log.(u)))`.
-
-References:
-* Pickands (1981); Gudendorf & Segers (2010); Ghoudi, Khoudraji & Rivest (1998); de Haan & Ferreira (2006).
-* Rasell
+Equivalently, on the unit simplex it defines a Pickands dependence function
+`A(w)=ℓ(w)`. Public component contracts concern documented constructors and
+mathematical evaluation. Dimension validation, derivative machinery, density,
+conditioning and sampling backends are internal and may require additional
+family-specific conditions. See the developer guide for the current architecture.
 """
 abstract type Tail end
 function (TT::Type{<:Tail})(args...; kwargs...)

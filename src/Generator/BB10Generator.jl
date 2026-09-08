@@ -1,13 +1,6 @@
 """
-    BB10Generator{T}, BB10Copula{d, T}
-
-Fields:
-  - θ::Real - parameter
-  - δ::Real - parameter
-
-Constructor
-
     BB10Generator(θ, δ)
+    BB10Copula{d}(θ, δ)
     BB10Copula(d, θ, δ)
 
 The BB10 copula has parameters ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [0, 1]``. It is an Archimedean copula with generator:
@@ -15,6 +8,8 @@ The BB10 copula has parameters ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [
 ```math
 \\phi(t) = \\Big(\\tfrac{1-\\delta}{e^{t}-\\delta}\\Big)^{1/\\theta},
 ```
+
+The special case `δ = 0` gives the independence copula.
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.206-207

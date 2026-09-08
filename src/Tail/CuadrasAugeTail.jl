@@ -1,6 +1,5 @@
 """
-    CuadrasAugeTail{T}, CuadrasAugeCopula{d,T}
-
+    CuadrasAugeTail(θ)
     CuadrasAugeCopula{d}(θ)
     CuadrasAugeCopula(d, θ)
 

@@ -1,5 +1,5 @@
 """
-    NoTail
+    NoTail()
 
 Corresponds to the case where the pickads function is identically One, which means no particular tail behavior.
 """

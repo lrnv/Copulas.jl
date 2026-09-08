@@ -1,6 +1,6 @@
 """
-    tEVTail{T,P}, tEVCopula{d,T,P}
-
+    tEVTail(ν, ρ)
+    tEVTail(ν, R)
     tEVCopula{d}(ν, ρ)
     tEVCopula(d, ν, ρ)
     tEVCopula{d}(ν, R)
@@ -18,9 +18,8 @@ off-diagonal correlation `ρ`. For a non-degenerate `d`-dimensional model,
 `tEVCopula{d}(ν, R)` uses a general correlation matrix `R`. `R` must be
 `d×d`, finite, symmetric, have unit diagonal, and be
 strictly positive definite in the non-degenerate general representation.
-Scalar and matrix parameters are stored by the same `tEVTail` type. A valid
-`2×2` matrix retains its matrix representation while the specialized
-bivariate analytic kernel recovers `ρ` from its off-diagonal entry.
+A valid `2×2` matrix is equivalent to the scalar parameter given by its
+off-diagonal entry `ρ`.
 
 For `d = 2`, the Pickands dependence function is
 

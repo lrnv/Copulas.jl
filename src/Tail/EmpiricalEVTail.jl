@@ -1,15 +1,6 @@
 """
-    EmpiricalEVTail
-
-Fields:
-  - `tgrid::Vector{Float64}` — evaluation grid in (0,1)
-  - `Ahat::Vector{Float64}`  — estimated Pickands function values on `tgrid`
-  - `slope::Vector{Float64}` — per-segment slopes for linear interpolation
-
-Constructor
-
-  EmpiricalEVTail(u; method=:ols, grid=401, eps=1e-3, pseudo_values=true)
-  ExtremeValueCopula(2, EmpiricalEVTail(u; ...))
+    EmpiricalEVTail(u; method=:ols, grid=401, eps=1e-3, pseudo_values=true)
+    ExtremeValueCopula(2, EmpiricalEVTail(u; ...))
 
 The empirical extreme-value (EV) copula (bivariate) is defined from pseudo-observations
 `u = (U₁, U₂)` and a nonparametric estimator of the Pickands dependence function. Supported
@@ -220,8 +211,8 @@ A(w)=\\sum_{k=1}^m h_k\\max_i(w_i v_{ik}),
 ```
 
 subject to nonnegative masses and the spectral moment constraints. The
-resulting tail is stored as a `DiscreteSpectralTail`, so STDF validity and exact
-spectral simulation follow by construction.
+resulting finite spectral measure defines a valid STDF and permits exact
+spectral simulation. Its concrete storage type is an implementation detail.
 
 `degree` controls the simplex-grid resolution. The automatic
 dimension-adaptive degree and the numerical projection details are Copulas.jl

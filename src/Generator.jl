@@ -1,35 +1,15 @@
 """
     Generator
 
-Abstract type. Implements the API for archimedean generators.
+Abstract representation of an Archimedean generator. A generator is a decreasing
+function `ϕ : [0,∞) → [0,1]` with `ϕ(0)=1` and `ϕ(∞)=0`; constructing a
+`d`-dimensional Archimedean copula additionally requires the appropriate
+`d`-monotonicity.
 
-An Archimedean generator is simply a function
-``\\phi :\\mathbb R_+ \\to [0,1]`` such that ``\\phi(0) = 1`` and ``\\phi(+\\infty) = 0``.
-
-To generate an archimedean copula in dimension ``d``, the function also needs to be ``d``-monotone, that is :
-
-- ``\\phi`` is ``d-2`` times derivable.
-- ``(-1)^k \\phi^{(k)} \\ge 0 \\;\\forall k \\in \\{1,..,d-2\\},`` and if ``(-1)^{d-2}\\phi^{(d-2)}`` is a non-increasing and convex function.
-
-The access to the function ``\\phi`` itself is done through the interface:
-
-    ϕ(G::Generator, t)
-
-We do not check algorithmically that the proposed generators are d-monotonous. Instead, it is up to the person implementing the generator to tell the interface how big can ``d`` be through the function
-
-    max_monotony(G::MyGenerator) = # some integer, the maximum d so that the generator is d-monotonous.
-
-
-More methods can be implemented for performance, althouhg there are implement defaults in the package :
-
-* `ϕ⁻¹( G::Generator, x)` gives the inverse function of the generator.
-* `ϕ⁽¹⁾(G::Generator, t)` gives the first derivative of the generator
-* `ϕ⁽ᵏ⁾(G::Generator, k::Int, t)` gives the kth derivative of the generator
-* `ϕ⁻¹⁽¹⁾(G::Generator, t)` gives the first derivative of the inverse generator.
-* `𝒲₋₁(G::Generator, d::Real)` gives the inverse Williamson transform of the generator as a positive univariate distribution. Positive non-integer orders use an exact beta reduction from `ceil(Int, d)`.
-
-References:
-* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
+Public component contracts concern the documented mathematical operations and
+constructors. The subtype hierarchy, derivative machinery, inversions, radial
+representations and numerical fallbacks are internal implementation details.
+See the developer guide for the current contributor architecture.
 """
 abstract type Generator end
 function (TG::Type{<:Generator})(args...;kwargs...)
@@ -127,21 +107,23 @@ specialized integer dispatch path. If `G = 𝒲(X, source_order)` retains its
 source radial, every `d <= source_order` is instead reduced directly from `X`;
 the ceiling condition is then unnecessary.
 
-A ``d``-monotone archimedean generator is a function ``\\phi`` on ``\\mathbb R_+`` that has these three properties:
+For integer ``d ≥ 2``, a ``d``-monotone Archimedean generator ``\\phi`` has these properties:
 - ``\\phi(0) = 1`` and ``\\phi(Inf) = 0``
 - ``\\phi`` is ``d-2`` times derivable, and the signs of its derivatives alternates : ``\\forall k \\in 0,...,d-2, (-1)^k \\phi^{(k)} \\ge 0``.
-- ``\\phi^{(d-2)}`` is convex.
+- ``(-1)^{d-2}\\phi^{(d-2)}`` is non-increasing and convex.
 
 For such a function ``\\phi``, the inverse Williamson-d-transform of ``\\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``X``, defined by : 
 
 ```math
-F(x) = 𝒲_{d}^{-1}(\\phi)(x) = 1 - \\frac{(-x)^{d-1} \\phi_+^{(d-1)}(x)}{k!} - \\sum_{k=0}^{d-2} \\frac{(-x)^k \\phi^{(k)}(x)}{k!}
+F(x) = 𝒲_{d}^{-1}(\\phi)(x) = 1 - \\frac{(-x)^{d-1} \\phi_+^{(d-1)}(x)}{(d-1)!} - \\sum_{k=0}^{d-2} \\frac{(-x)^k \\phi^{(k)}(x)}{k!}
 ```
 
-We return this cumulative distribution function in the form of the corresponding random variable `<:Distributions.ContinuousUnivariateDistribution` from `Distributions.jl`. You may then compute : 
-    - The cdf via `Distributions.cdf`
-    - The pdf via `Distributions.pdf` and the logpdf via `Distributions.logpdf`
-    - Samples from the distribution via `rand(X,n)`
+The result is the corresponding non-negative univariate distribution, not a
+particular concrete distribution type. It need not be continuous: an inverse
+at the original Williamson order can return the original discrete radial law.
+Use `Distributions.cdf` and `rand` to evaluate its CDF and sample it. Density or
+mass evaluation follows the returned distribution's supported interface; no
+Lebesgue density is promised for discrete or singular laws.
 
 References: 
     - Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
@@ -333,19 +315,9 @@ end
 
 
 """
-    𝒲{TX, TO} (alias WilliamsonGenerator{TX, TO})
-
-Fields:
-* `X::TX` -- a random variable that represents its Williamson d-transform
-* `order::TO` -- the order of the Williamson transform
-
-The type parameter `TO` is the numeric type of the order, not its value.
-
-Constructor
-
     WilliamsonGenerator(X::Distributions.UnivariateDistribution, d)
-    𝒲(X::Distributions.UnivariateDistribution,d)
     WilliamsonGenerator(atoms::AbstractVector, weights::AbstractVector, d)
+    𝒲(X::Distributions.UnivariateDistribution,d)
     𝒲(atoms::AbstractVector, weights::AbstractVector, d)
 
 The `𝒲` type (also available as `WilliamsonGenerator`) constructs a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation is implemented fully generically in the package.
@@ -356,12 +328,16 @@ For a univariate non-negative random variable ``X``, with cumulative distributio
 \\phi(t) = 𝒲_{d}(X)(t) = \\int_{t}^{\\infty} \\left(1 - \\frac{t}{x}\\right)^{d-1} dF(x) = \\mathbb E\\left( (1 - \\frac{t}{X})^{d-1}_+\\right) \\mathbb 1_{t > 0} + \\left(1 - F(0)\\right)\\mathbb 1_{t <0}
 ```
 
-This function has several properties: 
+For integer ``d ≥ 2`` and a strictly positive radial variable, this function has
+the following properties:
 - We have that ``\\phi(0) = 1`` and ``\\phi(Inf) = 0``
 - ``\\phi`` is ``d-2`` times derivable, and the signs of its derivatives alternates : ``\\forall k \\in 0,...,d-2, (-1)^k \\phi^{(k)} \\ge 0``.
-- ``\\phi^{(d-2)}`` is convex.
+- ``(-1)^{d-2}\\phi^{(d-2)}`` is non-increasing and convex.
 
-These properties makes this function what is called a *d-monotone archimedean generator*, able to generate *archimedean copulas* in dimensions up to ``d``. Our implementation provides this through the `Generator` interface: the function ``\\phi`` can be accessed by 
+These properties characterize a *d-monotone Archimedean generator*. Real orders
+are also supported, but the integer derivative characterization above should
+not be read as a definition of fractional derivatives. Copula dimensions remain
+integers and are checked against the supported order. The function is accessed by
 
     G = WilliamsonGenerator(X, d)
     ϕ(G,t)
@@ -373,7 +349,9 @@ Note that you'll always have:
 
 Special case (finite-support discrete X)
 
-- If `X isa Distributions.DiscreteUnivariateDistribution` and `support(X)` is finite, or if you pass directly atoms and weights to the constructor, the produced generator is piecewise-polynomial `ϕ(t) = ∑_j w_j · (1 − t/r_j)_+^(d−1)` matching the Williamson transform of a discrete radial law. It has specialized methods. 
+- For a finite discrete radial law, the transform is
+  `ϕ(t) = ∑_j w_j · (1 − t/r_j)_+^(d−1)`. It is piecewise polynomial for
+  integer orders; real orders need not give polynomials.
 - For infinite-support discrete distributions or when the support is not accessible as a finite
     iterable, the standard `WilliamsonGenerator` is constructed.
 
@@ -620,20 +598,21 @@ end
 
 Nonparametric Archimedean generator fit via inversion of the empirical Kendall distribution.
 
-This function returns a `WilliamsonGenerator{TX, TO}` whose underlying distribution `TX` is a `Distributions.DiscreteNonParametric`, rather than a separate struct.
-The returned object still implements all optimized methods (ϕ, derivatives, inverses) via specialized dispatch on `WilliamsonGenerator{<:DiscreteNonParametric}`.
+It returns a [`Generator`](@ref) representing the fitted generator. Its concrete
+representation is an implementation detail and may depend on the data.
 
 Usage
 
     G = EmpiricalGenerator(u)
 
-where `u::AbstractMatrix` is a `d×n` matrix of pseudo-observations. Pass
-`pseudo_values=false` to rank-transform raw observations first.
+where `u::AbstractMatrix` has one component per row and one observation per
+column (`d×n`). With `pseudo_values=true`, values must already be
+pseudo-observations; pass `pseudo_values=false` to rank-transform raw data.
 
 Notes
 * The recovered discrete radial support is rescaled so its largest atom equals 1 (scale is not identifiable).
-* We keep the old documentation entry point for backward compatibility; existing code that
-  relied on the `EmpiricalGenerator` type should instead treat the result as a `Generator`.
+* Code should use the documented `Generator` operations rather than rely on a
+  particular concrete return type.
 
 References
 * [mcneil2009](@cite)

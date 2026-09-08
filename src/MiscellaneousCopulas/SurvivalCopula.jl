@@ -1,7 +1,7 @@
 """
     SurvivalCopula(C, flips)
-    SurvivalCopula{d,CT}
-
+    SurvivalCopula{d}(C, flips)
+    SurvivalCopula(d, C, flips)
 Construct the survival (flipped) version of a copula by flipping the arguments at the given indices.
 
 The ergonomic constructor `SurvivalCopula(C, flips)` accepts the indices to flip:
@@ -20,6 +20,10 @@ For a copula `C` in dimension `d` and indices `i₁, ..., iₖ ∈ 1:d`, the sur
 Notes:
 - In the bivariate case, this includes the usual 90/180/270-degree "rotations" of a copula family.
 - The resulting object is handled like the base copula: same API (cdf, pdf/logpdf, rand, fit) and uniform marginals in ``[0,1]^d``.
+- Since the flip pattern belongs to an instance rather than its type, preserve a
+  particular pattern during fitting with
+  `fit(typeof(S), U; flips=(...))`. If `flips` is omitted, fitting flips every
+  coordinate. The fitting methods available are those of the underlying copula.
 
 References:
 * [nelsen2006](@cite) Nelsen (2006), An introduction to copulas.

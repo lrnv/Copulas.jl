@@ -1,13 +1,7 @@
 """
-    GumbelGenerator{T}, GumbelCopula{d, T}
-
-Fields:
-  - θ::Real - parameter
-
-Constructor
-
     GumbelGenerator(θ)
-    GumbelCopula(d,θ)
+    GumbelCopula{d}(θ)
+    GumbelCopula(d, θ)
 
 The [Gumbel](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) copula in dimension ``d`` is parameterized by ``\\theta \\in [1,\\infty)``. It is an Archimedean copula with generator :
 
@@ -16,8 +10,8 @@ The [Gumbel](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_impo
 ```
 
 It has a few special cases:
-- When θ = 1, it is the IndependentCopula
-- When θ → ∞, it is the MCopula (Upper Fréchet–Hoeffding bound)
+- `θ = 1` gives the independence copula.
+- `θ = Inf` gives the upper Fréchet–Hoeffding bound.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

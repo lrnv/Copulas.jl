@@ -1,12 +1,7 @@
 """
-    PlackettCopula{d, P}
-
-Fields:
-    - θ::Real - parameter
-
-Constructor
-
     PlackettCopula(θ)
+    PlackettCopula{2}(θ)
+    PlackettCopula(2, θ)
 
 The Plackett copula is parameterized by ``\\theta > 0`` and is defined by
 

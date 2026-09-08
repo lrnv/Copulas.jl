@@ -267,17 +267,16 @@ Arguments
 
 Returns
 - If the number of remaining coordinates `d = D - length(js)` is 1:
-    - `condition(C, js, u_js)` returns a `Distortion` on [0,1] describing
-        `U_i | U_js = u_js`.
-    - `condition(X, js, x_js)` returns an unconditional univariate distribution
-        for `X_i | X_js = x_js`, computed as the push-forward `D(X.m[i])` where
-        `D = condition(C, js, u_js)` and `u_js = cdf.(X.m[js], x_js)`.
+    - `condition(C, js, u_js)` returns the univariate conditional distribution
+      of `U_i | U_js = u_js`, supported on `[0,1]`.
+    - `condition(X, js, x_js)` returns the univariate conditional distribution
+      of `X_i | X_js = x_js` on the original marginal scale.
 - If `d > 1`:
-    - `condition(C, js, u_js)` returns the conditional joint distribution on
-        the uniform scale as a `SklarDist(ConditionalCopula, distortions)`.
-    - `condition(X, js, x_js)` returns the conditional joint distribution on the
-        original scale as a `SklarDist` with copula `ConditionalCopula(C, js, u_js)` and
-        appropriately distorted marginals `D_k(X.m[i_k])`.
+    - `condition(C, js, u_js)` returns the conditional joint distribution of
+      `U_I | U_js = u_js` on the original copula coordinate scale `[0,1]^d`;
+      its conditional margins need not be uniform.
+    - `condition(X, js, x_js)` returns the conditional joint distribution on
+      the original marginal scales.
 
 Notes
 - For best performance, pass `js` and `u_js` as NTuple to keep `p = length(js)`
@@ -286,9 +285,8 @@ Notes
 - Specializations are provided for many copula families (Independent, Gaussian, t,
     Archimedean, several bivariate families). Others fall back to an automatic
     differentiation based construction.
-- This function returns the conditional joint distribution `H_{I|J}(· | u_J)`.
-    The “conditional copula” is `ConditionalCopula(C, js, u_js)`, i.e., the copula
-    of that conditional distribution.
+- Concrete return types are implementation details. Use the standard
+  `Distributions.jl` operations on the returned distribution.
 """
 function condition(C::Copula{2}, j::Int, uⱼ::Real)
     1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
@@ -357,7 +355,13 @@ end
 """
     rosenblatt(C::Copula, u)
 
-Computes the rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ C, the result should be uniformely distributed on the unit hypercube. The importance of this transofrmation comes from its bijectivity: `inverse_rosenblatt(C, rand(d))` is equivalent to `rand(C)`. The interface proposes faster versions for matrix inputs `u`.
+Evaluate successive conditional CDFs associated with `C` on the vector `u`.
+For `U ∼ C`, the result consists of independent uniforms when the successive
+conditional laws are atomless. Forward/inverse round trips hold almost surely
+when those CDFs are continuous and invertible on their supports, not universally
+for singular or atomic models. Generalized conditional quantiles may still sample
+such models through `inverse_rosenblatt`; they do not make the deterministic
+forward transform bijective. Matrix inputs evaluate observations columnwise.
 
 Generic Rosenblatt transform using conditional distortions:
 S₁ = U₁, S_k = H_{k|1:(k-1)}(U_k | U₁:U_{k-1}).

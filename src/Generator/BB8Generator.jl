@@ -1,13 +1,6 @@
 """
-    BB8Generator{T}, BB8Copula{d, T}
-
-Fields:
-  - ϑ::Real - parameter
-  - δ::Real - parameter
-
-Constructor
-
     BB8Generator(ϑ, δ)
+    BB8Copula{d}(ϑ, δ)
     BB8Copula(d, ϑ, δ)
 
 The BB8 copula has parameters ``\\vartheta \\in [1,\\infty)`` and ``\\delta \\in (0, 1]``. It is an Archimedean copula with generator:
@@ -17,6 +10,11 @@ The BB8 copula has parameters ``\\vartheta \\in [1,\\infty)`` and ``\\delta \\in
 ```
 
 where ``\\eta = 1 - (1 - \\delta)^{\\vartheta}``.
+
+Special cases:
+
+- `ϑ = 1` gives the independence copula.
+- `δ = 1`, `ϑ = Inf` gives the upper Fréchet–Hoeffding bound.
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.204-205

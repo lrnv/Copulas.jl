@@ -1,13 +1,6 @@
 """
-    TCopula{d, Tν, MT}
-
-Fields:
-- `df::Tν` — degrees of freedom
-- `Σ::MT` — correlation matrix
-
-Constructor
-
     TCopula(df, Σ)
+    TCopula(d, df, Σ)
     TCopula{d}(df, Σ)
 
 The Student t copula is the copula of a multivariate Student t distribution. It is defined by
@@ -188,5 +181,3 @@ end
 
 
 _available_fitting_methods(::Type{<:TCopula}, d) = (:mle,)
-
-

@@ -42,22 +42,9 @@ From data, you can estimate a $d$-Archimedean generator nonparametrically via th
 
 :::
 
-If you do not find the generator you need, you may define it yourself by subtyping `Generator`. The API requires only two methods:
-
-* The `φ(G::MyGenerator, t)` function returns the value of the Archimedean generator itself.
-* The `max_monotony(G::MyGenerator)` returns its maximum monotony, i.e., the greatest integer $d$ for which the generator is $d$-monotone.
-
-Thus, a new generator implementation may simply look like:
-
-```julia
-struct MyGenerator{T} <: Generator
-    θ::T
-end
-ϕ(G::MyGenerator,t) = exp(-G.θ * t) # can you recognise this one ?
-max_monotony(G::MyGenerator) = Inf
-```
-!!! tip "Win-Win strategy"
-    These two functions are enough to sample the corresponding Archimedean copula (see the [Inverse Williamson $d$-transforms](@ref w_trans_section) section of the documentation). However, if you know more about your generator, implementing a few additional methods can greatly speed up the algorithms. More details on these methods are in the [`Generator`](@ref) docstring.
+The supported generator families are listed below. Contributor-facing extension
+points are intentionally outside the stable public API and are described in the
+[developer guide](@ref developer_fitting).
 
 
 For example, Here is a graph of a few Clayton Generators: 
@@ -71,23 +58,13 @@ plot!(x -> ϕ(ClaytonGenerator(1),x), label="ClaytonGenerator(1)")
 plot!(x -> ϕ(ClaytonGenerator(5),x), label="ClaytonGenerator(5)")
 ```
 
-And the corresponding inverse functions: 
-
-```@example
-using Copulas: ϕ⁻¹,ClaytonGenerator,IndependentGenerator
-using Plots
-plot( x -> ϕ⁻¹(ClaytonGenerator(-0.5),x), xlims=(0,1), ylims=(0,5), label="ClaytonGenerator(-0.5)")
-plot!(x -> -log(x), label="IndependentGenerator()")
-plot!(x -> ϕ⁻¹(ClaytonGenerator(0.5),x), label="ClaytonGenerator(0.5)")
-plot!(x -> ϕ⁻¹(ClaytonGenerator(1),x), label="ClaytonGenerator(1)")
-plot!(x -> ϕ⁻¹(ClaytonGenerator(5),x), label="ClaytonGenerator(5)")
-```
-
 ```@docs; canonical=false
 Generator
 ```
 
-Note that the rate at which these functions approach 0 (and their inverse approaches infinity on the left boundary) can vary significantly between generators. The difference between each is easier to see on the inverse plot.
+Note that the rate at which these functions approach zero can vary significantly
+between generators. Their inverses are used internally when evaluating the
+corresponding copulas.
 
 
 ## Williamson d-transform
@@ -192,23 +169,23 @@ As an example of a generator produced by the Williamson transformation and its i
 
 ```@example
 using Distributions
-using Copulas: 𝒲, ϕ⁻¹, IndependentGenerator
+using Copulas: 𝒲, ϕ
 using Plots
 G = 𝒲(LogNormal(), 2)
-plot(x -> ϕ⁻¹(G,x), xlims=(0.1,0.9), label="G")
-plot!(x -> -log(x), label="Independence")
+plot(x -> ϕ(G,x), xlims=(0,5), label="G")
+plot!(x -> exp(-x), label="Independence")
 ```
 
 The `𝒲` alias stands for `WiliamsonGenerator`. To stress the generality of the approach, remark that any positive distribution is allowed, including discrete ones: 
 
 ```@example
 using Distributions
-using Copulas: 𝒲, ϕ⁻¹
+using Copulas: 𝒲, ϕ
 using Plots
 G1 = 𝒲(Binomial(10,0.3), 2)
 G2 = 𝒲(Binomial(10,0.3), 3)
-plot(x -> ϕ⁻¹(G1,x), xlims=(0.1,0.9), label="G1")
-plot!(x -> ϕ⁻¹(G2,x), xlims=(0.1,0.9), label="G2")
+plot(x -> ϕ(G1,x), xlims=(0,10), label="G1")
+plot!(x -> ϕ(G2,x), label="G2")
 ```
 
 As obvious from the definition of the Williamson transform, using a discrete distribution produces piecewise-linear generators, where the number of pieces is dependent on the order of the transformation. 

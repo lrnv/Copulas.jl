@@ -48,7 +48,7 @@ end
     same_model(SurvivalCopula{2}(ClaytonCopula{2}(1.5), (1,)), survival)
 
     B = [0.7 0.3; 0.2 0.8]
-    spectral = DiscreteSpectralTail(B)
+    spectral = Copulas.DiscreteSpectralTail(B)
     same_model(ExtremeValueCopula(2, spectral), ExtremeValueCopula{2}(spectral))
 
     @test_throws ArgumentError ExtremeValueCopula{3}(spectral)

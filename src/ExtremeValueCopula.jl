@@ -1,8 +1,4 @@
 """
-    ExtremeValueCopula{d, TT}
-
-Constructor
-
     ExtremeValueCopula(d, tail::Tail)
     ExtremeValueCopula{d}(tail::Tail)
 
@@ -20,12 +16,15 @@ For ``d=2``, write ``x=-\\log u``, ``y=-\\log v``, ``s=x+y``, and ``t = x/s``. T
 ```
 
 Usage
-- Provide any valid tail `tail::Tail` (which implements `A` and/or `ℓ`) to construct the copula.
-- Sampling, cdf, and logpdf follow the standard `Distributions.jl` API.
+- Provide a tail valid in the requested dimension to construct the copula.
+- CDF evaluation uses its STDF. Density requires the appropriate regularity or
+  a documented specialized representation; a multivariate sampler does not
+  follow from defining the STDF alone. See the developer guide for implementation
+  requirements beyond the public constructor.
 
 Example
 ```julia
-C = ExtremeValueCopula(2, GalambosTail(θ))
+C = ExtremeValueCopula{2}(Copulas.GalambosTail(1.0))
 U = rand(C, 1000)
 logpdf.(Ref(C), eachcol(U))
 ```

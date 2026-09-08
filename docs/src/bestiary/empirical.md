@@ -292,7 +292,9 @@ The radii and weights are recovered from the empirical Kendall distribution via 
 
 Usage:
 
-- Build from data `u::d×n` (raw or pseudos): `Ĝ = EmpiricalGenerator(u; pseudo_values=true)`
+- Build from `d×n` pseudo-observations:
+  `Ĝ = EmpiricalGenerator(u; pseudo_values=true)`. For raw data, use
+  `pseudo_values=false`.
 - Use directly in an Archimedean copula: `Ĉ = ArchimedeanCopula(d, Ĝ)`
 - Access the fitted radial law: `R̂ = 𝒲₋₁(Ĝ, d)`
 

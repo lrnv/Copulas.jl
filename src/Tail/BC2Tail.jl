@@ -1,6 +1,6 @@
 """
-    BC2Tail{T}, BC2Copula{d,T}
-
+    BC2Tail(a, b)
+    BC2Tail(a::AbstractVector)
     BC2Copula{2}(a, b)
     BC2Copula(2, a, b)
     BC2Copula{d}(a::AbstractVector)

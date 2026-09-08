@@ -1,13 +1,6 @@
 """
-    BB6Generator{T}, BB6Copula{d, T}
-
-Fields:
-  - θ::Real - parameter
-  - δ::Real - parameter
-
-Constructor
-
     BB6Generator(θ, δ)
+    BB6Copula{d}(θ, δ)
     BB6Copula(d, θ, δ)
 
 The BB6 copula has parameters ``\\theta, \\delta \\in [1,\\infty)``. It is an Archimedean copula with generator:
@@ -15,6 +8,11 @@ The BB6 copula has parameters ``\\theta, \\delta \\in [1,\\infty)``. It is an Ar
 ```math
 \\phi(t) = 1 - [1 - \\exp(-t^{\\frac{1}{\\delta}})]^{\\frac{1}{\\theta}}
 ```
+
+Special cases:
+
+- `θ = δ = 1` gives the independence copula.
+- `θ = Inf` or `δ = Inf` gives the upper Fréchet–Hoeffding bound.
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.200-201

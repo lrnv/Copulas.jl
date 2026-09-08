@@ -10,7 +10,10 @@ This page introduces conditional distributions under a copula model and shows ho
 
 ### Overview
 
-Take a D-variate copula $C$ and consider a split of the indices $1,..,d$ into $J = 1,...,p$ and $I = p+1,..,d$ wihtout loss of generality (reorder the marignals if necessary). The conditional joint distribution of the I's given the J's is given, on the uniform scale, by the function
+Take a $d$-variate copula $C$ and partition the coordinates into conditioned
+indices $J$ and remaining indices $I$. In the regular case, where the required
+derivatives exist and the conditioning marginal has a finite, positive density,
+the conditional CDF on the uniform scale is given almost everywhere by
 
 ```math
 H_{I\mid J}(\mathbf u_I\mid\mathbf u_J)
@@ -18,7 +21,16 @@ H_{I\mid J}(\mathbf u_I\mid\mathbf u_J)
 \Big/ \frac{\partial^p C(\mathbf 1_I, \mathbf u_J)}{\partial \mathbf u_J},
 ```
 
-which is a proper distribution on $[0,1]^{\lvert I\rvert}$. Each conditional marginal (uniform scale) can moreover be expressed as a “distortion” $H_{i|J}(· | u_J)$, which is the distribution function of a random variable with support $[0,1]$ (but non-uniform):
+which defines a distribution on $[0,1]^{\lvert I\rvert}$ under these assumptions.
+This derivative ratio is not a universal construction at singular points or
+where the denominator vanishes. Supported singular models may instead use
+specialized conditional distributions, including atoms. A conditional law is
+determined only almost everywhere with respect to the conditioning marginal;
+values outside that set require a choice of version.
+
+Each conditional marginal can be expressed as a “distortion” $H_{i|J}(· | u_J)$,
+a distribution on $[0,1]$ that need not be uniform. Under the same regularity
+assumptions, its CDF is
 
 ```math
 H_{i\mid J}(u\mid\mathbf u_J)
@@ -28,15 +40,22 @@ H_{i\mid J}(u\mid\mathbf u_J)
 
 where $\mathbf u^{(i)}(u_I)$ has coordinate `u` at index `i` and `1` elsewhere in `I`.
 
-On the original scale for a compound distribution `X = SklarDist(C, (X_1,…,X_D))`, conditioning on values $x_J$ is obtained by mapping to uniforms $u_J = (F_j(x_j))_{j\in J}$ then pushing forward each distortion through the corresponding marginal:
+For continuous, invertible conditioning margins of
+`X = SklarDist(C, (X_1,…,X_D))`, conditioning on $x_J$ can be transferred to
+$u_J = (F_j(x_j))_{j\in J}$ and expressed on the remaining marginal scales:
 
 ```math
 F_{X_i\mid X_J}(x\mid \mathbf x_J) = H_{i\mid J}\big(F_i(x)\mid \mathbf u_J\big).
 ```
 
-The copula of the conditional vector $U_I | U_J = u_J$ is a genuine copula denoted $C_{I|J}(·|u_J)$, which is the copula of $H_{I|J}$. The public entry point is `condition`:
+For discrete conditioning margins, observing $x_j$ corresponds to an interval
+of latent uniforms, not merely the endpoint $F_j(x_j)$; the formula above does
+not establish correct conditioning for that case.
 
-- `condition(C::Copula, js, u_js)` returns the conditional distribution on the uniform scale for `I = setdiff(1:D, js)`. If `length(I) == 1`, the result is a univariate distribution supported on $[0,1]`; otherwise it is a multivariate distribution implementing the usual `Distributions.jl` interface.
+A copula of the conditional vector is denoted $C_{I|J}(·|u_J)$; it need not be
+unique when conditional margins have atoms. The public entry point is `condition`:
+
+- `condition(C::Copula, js, u_js)` returns the conditional distribution of the remaining `U_I` on the original copula coordinate scale for `I = setdiff(1:D, js)`. Its conditional margins need not be uniform. If `length(I) == 1`, the result is a univariate distribution supported on $[0,1]`; otherwise it is a multivariate distribution implementing the usual `Distributions.jl` interface.
 - `condition(X::SklarDist, js, x_js)` returns the conditional distribution on the original scale by pushing forward each distortion through the corresponding marginal.
 - Known parametric families may use specialized representations, but their concrete types are implementation details and do not change this contract.
 
@@ -186,7 +205,9 @@ Copulas.subsetdims
 
 ::: definition Rosenblatt transformation
 
-The Rosenblatt transformation considers a random vector ``X`` distributed according to a certain multivariate cumulative distribution function ``F_{X}(x)``, and maps it back to a uniform distribution on the unit hypercube.
+The Rosenblatt transformation evaluates successive conditional CDFs of a random
+vector ``X``. With atomless successive conditional distributions, it transforms
+``X`` into independent uniforms.
 
 More formally, consider the map ``R_X(x)`` defined as follows:
 
@@ -204,7 +225,15 @@ References:
 In certain circumstances, in particular for Archimedean copulas, this map simplifies to tractable expressions. It has a few nice properties:
 
 * ``R_X(X) \sim \texttt{Uniform(Unit Hypercube)}``
-* ``R_X`` is a bijection. 
+* The forward and inverse transforms are inverses almost surely when the
+  successive conditional CDFs are continuous and invertible on their supports.
+
+The uniformity statement also requires atomless successive conditional laws.
+For atomic or singular models, the deterministic CDF transform need not produce
+independent uniforms and need not be invertible. Generalized conditional quantiles
+can still generate samples from independent uniforms when those conditional laws
+are implemented; this does not require a bijective forward transform. No additional
+randomization within CDF jumps is implicit in `rosenblatt`.
 
 These two properties are leveraged in some cases to construct the inverse Rosenblatt transformations, which map random noise to proper samples from the copula. In some cases, this is the best sampling algorithm available. 
 

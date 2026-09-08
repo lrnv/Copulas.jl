@@ -1,13 +1,7 @@
 """
-    InvGaussianGenerator{T}, InvGaussianCopula{d, T}
-
-Fields:
-  - θ::Real - parameter
-
-Constructor
-
     InvGaussianGenerator(θ)
-    InvGaussianCopula(d,θ)
+    InvGaussianCopula{d}(θ)
+    InvGaussianCopula(d, θ)
 
 The Inverse Gaussian copula in dimension ``d`` is parameterized by ``\\theta \\in [0,\\infty)``. It is an Archimedean copula with generator:
 
@@ -20,7 +14,7 @@ More details about Inverse Gaussian Archimedean copula are found in :
     Mai, Jan-Frederik, and Matthias Scherer. Simulating copulas: stochastic models, sampling algorithms, and applications. Vol. 6. # N/A, 2017. Page 74.
 
 Special cases:
-- When θ = 0, it is the IndependentCopula
+- `θ = 0` gives the independence copula.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

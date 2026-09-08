@@ -64,12 +64,6 @@ Moreover, the form of dependence structures that can be reached inside this clas
 On the other hand, there exist performant estimators of high-dimensional covariance matrices, and a large theory is built on the elliptical assumption of high dimensional random vectors, see e.g., [elidan2013,friedman2010,muller2019](@cite) among others. See also [derumigny2022](@cite) for a recent work on nonparametric estimation of the underlying univariate spherical distribution. 
 
 
-::: info Note on internal implementation
-
-If the exposition we just did on characteristic functions of Elliptical random vectors is fundamental to the definition of elliptical copulas, the package does not use this at all to function, and rather rely on the existence of multivariate and corresponding univariate families of distributions in `Distributions.jl`. 
-
-:::
-
 You can obtain these elliptical copulas by the following code: 
 ```julia
 using Copulas

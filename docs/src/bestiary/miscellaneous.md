@@ -32,6 +32,16 @@ WCopula
 SurvivalCopula
 ```
 
+When fitting a rotated model, pass the desired flip indices explicitly because
+they belong to the instance rather than its type:
+
+```julia
+using Distributions
+S = SurvivalCopula(ClaytonCopula(2, 2.0), (1,))
+U = rand(S, 100)
+Ŝ = fit(typeof(S), U; flips=(1,))
+```
+
 ## Others
 
 ### `PlackettCopula`

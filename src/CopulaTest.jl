@@ -25,13 +25,14 @@ struct GoodnessOfFitHypothesis{M} <: CopulaHypothesis
 end
 
 """
-    CopulaTest{H<:CopulaHypothesis} <: HypothesisTest
+    CopulaTest
 
 Result of a copula hypothesis test.
 
-The hypothesis stores the mathematical null being tested; `CopulaTest` stores
-the common result fields: sample size, dimension, observed statistic, p-value,
-resampling method, and details useful for display or reproducibility.
+Obtain this result from the public hypothesis-test functions, not by constructing
+its internal representation. Use `pvalue`, `teststatistic`, `StatsBase.nobs`
+and the displayed summary to inspect the result. Type parameters and internal
+calibration metadata are not part of the public constructor interface.
 """
 struct CopulaTest{H<:CopulaHypothesis,S<:Real,P<:Real,D<:NamedTuple} <: HypothesisTest
     hypothesis::H

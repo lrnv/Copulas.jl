@@ -7,14 +7,6 @@
 ###############################################################################
 
 """
-    SklarDist{CT,TplMargins} 
-
-Fields:
-  - `C::CT` - The copula
-  - `m::TplMargins` - a Tuple representing the marginal distributions
-
-Constructor
-
     SklarDist(C,m)
 
 Construct a joint distribution via Sklar's theorem from marginals and a copula. See [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem):

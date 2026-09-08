@@ -71,8 +71,8 @@ where
 ```
 
 Accordingly, Copulas.jl uses the STDF ``\ell`` as the dimension-independent
-EV interface, while `BivariatePickandsTail` names the additional scalar
-Pickands capability used by specialized ``d=2`` algorithms.
+EV interface and also supports the scalar Pickands representation in dimension
+two.
 
 The bivariate copula therefore has the classical representation
 
@@ -89,27 +89,21 @@ A\!\left(
 
 ::: info Bivariate and multivariate EV copulas
 
-Copulas.jl now uses ``\ell`` as the mathematical EV interface in arbitrary
-dimension while preserving the mature bivariate Pickands machinery.
-Bivariate formulas based on `A`, `dA`, `d²A`, Ghoudi sampling, conditional
-distortions, and family-specific kernels remain available whenever the tail
-provides them.
+Copulas.jl uses ``\ell`` as the mathematical EV interface in arbitrary
+dimension while retaining optimized bivariate formulas and sampling algorithms
+where available.
 
 :::
 
-!!! tip "Think family first, backend second"
+!!! tip "Choose the family, not the algorithm"
     A public constructor identifies the **mathematical family**. It does not ask
-    the user to choose a bivariate or multivariate algorithm. Copulas.jl selects
-    the appropriate density and sampling representation internally.
+    the user to choose a bivariate or multivariate numerical algorithm.
 
 ## What is new in the EV subsystem?
 
 The current EV implementation goes beyond the historical bivariate-only design:
 
 - the core representation is a dimension-aware STDF `ℓ`;
-- `BivariatePickandsTail` identifies a tail with a native scalar bivariate
-  Pickands kernel and is a **computational capability**, not necessarily a
-  mathematical restriction to dimension two;
 - several classical EV families now use the same public constructor in
   ``d=2`` and ``d>2``;
 - a few matrix and vector parameterizations infer the dimension when a single
@@ -121,10 +115,8 @@ The current EV implementation goes beyond the historical bivariate-only design:
 - BC2 and Marshall-Olkin have multivariate spectral/shock representations;
 - multivariate empirical EV estimation is available through a shape-constrained
   discrete spectral projection;
-- multivariate densities can be built from mixed partial derivatives of
-  ``\ell``;
-- `rand(C, n)` uses internal backend routing, so optimized bivariate and
-  multivariate samplers coexist behind one public API.
+- multivariate densities and exact sampling are available for the documented
+  families.
 
 ## Constructors and dimensional conventions
 
@@ -351,16 +343,7 @@ Gudendorf and Segers [gudendorf2011nonparametric](@cite), and the
 shape-constrained discrete spectral projection follows
 Gudendorf and Segers [gudendorf2012multivariate](@cite).
 
-The resulting object stores a `DiscreteSpectralTail`; consequently the fitted
-STDF is valid by construction and exact spectral sampling is available.
-
-::: info One public constructor, two internal representations
-
-`EmpiricalEVCopula` uses the lightweight historical implementation in two
-dimensions and the shape-constrained spectral representation in higher
-dimensions.
-
-:::
+The fitted STDF is valid by construction and exact sampling is available.
 
 ## Advanced Concepts
 
@@ -422,30 +405,27 @@ For the class of Extreme Value Copulas, We follow the methodology proposed by Gh
 Note that all functions present in the algorithm were previously defined to ensure that the implemented methodology has a solid theoretical basis.
 
 
-### Multivariate sampling and backend routing
+### Multivariate sampling
 
 The bivariate Ghoudi construction above remains an important part of the EV
 implementation. It is **not** replaced by multivariate sampling.
 
-The public interface is always
+The public interface is
 
 ```julia
 rand(C, n)
 ```
 
-and Copulas.jl chooses the backend internally. A tail with a native bivariate
-Pickands kernel can use the Ghoudi route in ``d=2``; a family with a faster or
-more natural exact multivariate representation can transparently use that
-representation even in dimension two.
+and Copulas.jl selects an appropriate exact algorithm for each documented
+family and dimension.
 
 !!! tip "You never select the sampler yourself"
     `rand(LogCopula(2, θ), n)` and `rand(LogCopula(10, θ), n)` have the same
     public API. The same is true for Galambos, Hüsler-Reiss, Mixed, and
-    extremal-``t``. Backend routing is an implementation detail.
+    extremal-``t``.
 
-This separation is useful because the best algorithm is family-specific:
-specialized bivariate Pickands sampling is excellent for some tails, whereas
-spectral or max-stable constructions can be dramatically faster for others.
+The numerical implementation remains free to evolve without changing that
+public behavior.
 
 ```@docs; canonical=false
 Tail

@@ -69,15 +69,15 @@ Common λ functions can be easily derived by hand for standard archimedean gener
 Let's try to compare the empirical λ function from our dataset to a few theoretical ones. For that, we setup parameters of the relevant generators to match the kendall τ of the dataset (because we can). We include for the record the independent and completely monotonous cases.
 
 ```@example lambda
-using Copulas: ϕ⁽¹⁾, ϕ⁻¹, τ⁻¹, ClaytonGenerator, GumbelGenerator
 using StatsBase: corkendall
-λ(G,t) = ϕ⁽¹⁾(G,ϕ⁻¹(G,t)) * ϕ⁻¹(G,t)
 plot(u -> u - K(u), xlims = (0,1), label="Empirical λ function")
 κ = corkendall(x')[1,2] # empirical kendall tau
-θ_cl = τ⁻¹(ClaytonGenerator,κ)
-θ_gb = τ⁻¹(GumbelGenerator,κ)
-plot!(u -> λ(ClaytonGenerator(θ_cl),u), label="Clayton")
-plot!(u -> λ(GumbelGenerator(θ_gb),u), label="Gumbel")
+θ_cl = 2κ / (1 - κ)
+θ_gu = 1 / (1 - κ)
+λ_cl(u) = (u^(1 + θ_cl) - u) / θ_cl
+λ_gu(u) = u * log(u) / θ_gu
+plot!(λ_cl, label="Clayton")
+plot!(λ_gu, label="Gumbel")
 plot!(u -> 0, label="Comonotony")
 plot!(u -> u*log(u), label="Independence")
 ```

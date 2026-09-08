@@ -251,7 +251,7 @@ end
 
     non_fittable = (
         LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
-        ExtremeValueCopula{2}(DiscreteSpectralTail([0.7 0.3; 0.2 0.8])),
+        ExtremeValueCopula{2}(Copulas.DiscreteSpectralTail([0.7 0.3; 0.2 0.8])),
     )
     for C in non_fittable
         U = rand(StableRNG(20_101), C, 4)

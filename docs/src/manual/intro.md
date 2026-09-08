@@ -146,11 +146,11 @@ The obtained multivariate random vector object are genuine multivariate random v
 x = rand(D,10)
 p = pdf(D, x)
 l = logpdf(D, x)
-c = pdf(D, x)
+c = cdf(D, x)
 [x' p l c]
 ```
 
-Sklar's theorem can be used the other way around (from the marginal space to the unit hypercube): this is, for example, what the [`pseudo()`](@ref Pseudo-observations) function does, computing ranks.
+Sklar's theorem can be used the other way around (from the marginal space to the unit hypercube): this is, for example, what [`pseudos`](@ref Pseudo-observations) does by computing normalized ranks.
 
 ::: info Independent random vectors
 
@@ -232,7 +232,10 @@ not defined for purely singular copulas. The other summaries are available for
 continuous, mixed, and singular models through their documented generic or
 specialized implementations.
 
-The same functions have dispatches for `u::Abstractmatrix` of size `(d,d)` where `d` is the dimension of the copula and `n` is the number of observations, which provide sample versions of the same quantities. Moreover, since most of these statistics are more common in bivariate case, we provide the folllowing bindings for pairwise matrices of the same dependence metrics: 
+The same functions accept a `d×n` matrix, with variables in rows and
+observations in columns, and provide sample versions of these quantities.
+Since these statistics are especially common in the bivariate case, the
+following functions return matrices of pairwise dependence measures:
 
 ```@example api
 StatsBase.corkendall(C)
@@ -244,7 +247,9 @@ Copulas.corlowertail(C)
 Copulas.coruppertail(C)
 ```
 
-and of course once again the same functions dispatch on `u::Abstractmatrix`, but, for historical reasons, they require dataset to be `(n,d)`-shaped and not `(d,n)`, so you have to transpose.
+For a data matrix, these pairwise functions follow the `StatsBase` convention:
+observations in rows and variables in columns (`n×d`), unlike the scalar
+multivariate functions above.
 
 ### Measure function 
 

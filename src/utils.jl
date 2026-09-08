@@ -172,9 +172,12 @@ end
 """
     pseudos(sample)
 
-Compute the pseudo-observations of a multivariate sample. Note that the sample has to be given in wide format (d,n), where d is the dimension and n the number of observations.
+Compute pseudo-observations from a `d×n` sample, with variables in rows and
+observations in columns.
 
-Warning: the order used is ordinal ranking like https://en.wikipedia.org/wiki/Ranking#Ordinal_ranking_.28.221234.22_ranking.29, see `StatsBase.ordinalrank` for the ordering we use. If you want more flexibility, checkout `NormalizeQuantiles.sampleranks`.
+Ties are resolved by stable ordinal ranking, so tied values receive distinct
+ranks in their order of appearance. Use a dedicated rank transformation when a
+different tie convention is required.
 """
 function pseudos(sample::AbstractMatrix)
     # Fast pseudo-observations (d×n) using per-row ordinal ranks without allocations per row

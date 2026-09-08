@@ -1,11 +1,5 @@
 """
-    FGMCopula{d,T}
-
-Fields:
-  - θ::Real - parameter
-
-Constructor
-
+    FGMCopula{d}(θ)
     FGMCopula(d, θ)
 
 The multivariate Farlie–Gumbel–Morgenstern (FGM) copula of dimension d has ``2^d-d-1`` parameters ``\\theta`` and

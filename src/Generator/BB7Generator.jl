@@ -1,13 +1,6 @@
 """
-    BB7Generator{T}, BB7Copula{d, T}
-
-Fields:
-  - θ::Real - parameter
-  - δ::Real - parameter
-
-Constructor
-
     BB7Generator(θ, δ)
+    BB7Copula{d}(θ, δ)
     BB7Copula(d, θ, δ)
 
 The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0, \\infty)``. It is an Archimedean copula with generator:
@@ -15,6 +8,9 @@ The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\
 ```math
 \\phi(t) = 1 - \\Big[ 1 - (1 + t)^{-1/\\delta} \\Big]^{1/\\theta}.
 ```
+
+The limiting combination `θ = 1`, `δ = Inf` gives the upper
+Fréchet–Hoeffding bound.
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.202-203

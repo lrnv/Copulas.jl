@@ -7,14 +7,6 @@
 #####   - `SubsetCopula(C::Copula{d}, dims::NTuple{p, Int}) where {d, p}`
 ###############################################################################
 """
-    SubsetCopula{d,CT}
-
-Fields:
-  - `C::CT` - The copula
-  - `dims::Tuple{Int}` - a Tuple representing which dimensions are used. 
-
-Constructor
-
     SubsetCopula(C::Copula,dims)
 
 This class allows to construct a random vector corresponding to a few dimensions of the starting copula. If ``(X_1,...,X_n)`` is the random vector corresponding to the copula `C`, this returns the copula of `(` ``X_i`` `for i in dims)`. The dependence structure is preserved. There are specialized methods for some copulas. 

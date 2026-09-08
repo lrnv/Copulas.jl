@@ -1,5 +1,5 @@
 """
-    MTail
+    MTail()
 
 Corresponds to the MCopula viewed as an etreme value copula.
 """

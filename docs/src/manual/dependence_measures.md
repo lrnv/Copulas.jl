@@ -11,9 +11,9 @@ We implement the most well-known ones in this package.
 
 ## Core dependence metrics τ, ρ, β, γ and ι
 
-::: definition Kendall' τ
+::: definition Kendall's τ
 
-For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Kendall's τ is defined as: 
+For an absolutely continuous copula $C$ with density $c$, Kendall's τ is defined as:
 
 $$\tau = \frac{2^d}{2^{d-1} - 1} \int C(\boldsymbol u) \, c(\boldsymbol u) \;d\boldsymbol u - \frac{1}{2^{d-1}-1}$$
 
@@ -21,7 +21,7 @@ $$\tau = \frac{2^d}{2^{d-1} - 1} \int C(\boldsymbol u) \, c(\boldsymbol u) \;d\b
 
 ::: definition Spearman's ρ
 
-For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Spearman's ρ is defined as: 
+For a copula $C$, Spearman's ρ is defined as:
 
 $$\rho = \frac{2^d * (d+1)}{2^d -d-1} \int C(\boldsymbol u) d\boldsymbol u - \frac{d+1}{2^d - (d+1)}.$$
 
@@ -29,7 +29,7 @@ $$\rho = \frac{2^d * (d+1)}{2^d -d-1} \int C(\boldsymbol u) d\boldsymbol u - \fr
 
 ::: definition Definition (Blomqvist's β)
 
-For a copula $C$ with a density $c$, **regardless of its dimension $d$**, Blomqvist's β is defined as: 
+For a copula $C$, Blomqvist's β is defined as:
 
 $$\beta = \frac{2^{d-1}}{2^{d-1} -1} \left(C(\frac{\boldsymbol{1}}{\boldsymbol{2}}) + \bar{C}(\frac{\boldsymbol{1}}{\boldsymbol{2}})\right) - \frac{1}{2^{d-1} - 1}.$$
 
@@ -64,19 +64,24 @@ It satisfies $I(X_1,\dots,X_d) = -\iota(C)$ (see [ma2011mutual](@cite)).
 :::
 
 
-These dependence measures are very common when $d=2$, and a bit less when $d > 2$. We sometimes refer to the Kendall's matrix or the Spearman's matrix for the collection of bivariate coefficients associated with a multivariate copula. 
+These dependence measures are especially common when $d=2$. A Kendall or
+Spearman matrix collects the bivariate coefficients of every pair of components
+of a multivariate copula.
 We thus provide two different interfaces:
 * `Copulas.τ()`, `Copulas.ρ()`, `Copulas.β()`, `Copulas.γ()` and `Copulas.ι()` provide the upper formulas, yielding a scalar whatever the dimension of the copula.
 * `StatsBase.corkendall()`, `StatsBase.corspearman()`, `Copulas.corblomqvist()`, `Copulas.corgini()` and `Copulas.corentropy()` provide matrices of pairwise dependence metrics. 
 * All these functions have methods for a single argument `C::Copula`, yielding theoretical quantities, and for a dataset `data::AbstractMatrix` yielding empirical estimates.
 
-For historical reasons, `τ(data)`, `ρ(data)`, `β(data)`, `γ(data)`, `ι(data)` require `(d,n)`-shaped datasets (observations or pseudo-observations), while  `corkendall(data)`, `corspearman(data)`, `corblomqvist(data)`, `corgini(data)`, and `corentropy(data)` do require transposed `(n,d)`-shaped datasets. 
+The scalar multivariate functions `τ(data)`, `ρ(data)`, `β(data)`, `γ(data)` and
+`ι(data)` expect `d×n` matrices. Pairwise functions such as
+`corkendall(data)`, `corspearman(data)`, `corblomqvist(data)`, `corgini(data)`
+and `corentropy(data)` follow the `StatsBase` `n×d` convention.
 
 !!! note "Ranges of τ, ρ, β and γ."
     Kendall's $\tau$, Spearman's $\rho$, Blomqvist's $\beta$ and Gini's $\gamma$ all belong to $[-1, 1]$. They are equal to :
-    * 0 if and only if the copula is a `IndependentCopula`.
-    * -1 is and only if the copula is a `WCopula`.
-    * 1 if and only if the copula is a `MCopula`. 
+    Independence gives zero and comonotonicity gives one. A zero coefficient
+    does not, in general, imply independence. In dimension two, the lower
+    Fréchet–Hoeffding bound gives minus one.
     
     They do not depend on the marginals. This is why we say that they measure the 'strength' of the dependency.
 
@@ -130,18 +135,18 @@ Many people are interested in the tail behavior of their dependence structures. 
 
 ::: definition Tail dependency
 
-For a copula $C$, we define the upper tail statisticss (when they exist):
+For a copula $C$, define the upper-tail statistics, when they exist:
 
 ```math
 \begin{align}
-    \lambda_U(u) &= \frac{1 - 2u - C(u,..,u)}{1- u}\\
+    \lambda_U(u) &= \frac{1 - 2u + C(u,..,u)}{1- u}\\
     \lambda_U &= \lim\limits_{u \to 1_-} \lambda_U(u) \in [0,1]\\
     \chi_U(u) &= \frac{2 \ln(1-u)}{\ln(1-2u+C(u,...,u))} -1\\
     \chi_U &= \lim\limits_{u \to 1_-} \chi_U(u) \in [-1,1]
 \end{align}
 ```
 
-Simetric tools can be constructed for the lower tail: 
+Symmetric quantities are defined for the lower tail:
 
 ```math
 \begin{align}
@@ -155,13 +160,16 @@ Simetric tools can be constructed for the lower tail:
 :::
 
     
-When $\lambda_U > 0$ (resp $\lambda_L > 0$), we say that there is strong upper (resp lower) tail dependency, and $\chi_U = 1$ (resp $\chi_L = 1$).
-When $\lambda_U > 0$ (resp $\lambda_L > 0$), if furthermore $\chi_U \neq 0$ (resp $\chi_L \neq 0$), we say that there is weak upper tail dependency.
-Otherwise we ay there is no tail dependency. Thus, the graph of $\lambda_L(u), \chi_L(u)$ over $[0, \frac{1}{2}]$, and the graph of  $\lambda_U(u), \chi_U(u)$ over $[\frac{1}{2},1]$ are usefull tools to diagnose the potential limits.
+When $\lambda_U > 0$ (respectively $\lambda_L > 0$), there is strong upper
+(respectively lower) tail dependence and the corresponding $\chi$ equals one.
+When $\lambda=0$ but $\chi>0$, there is weaker positive tail association; when
+both vanish, there is no asymptotic tail association under this diagnostic.
+Negative $\chi$ indicates negative residual association. Plotting the
+finite-threshold quantities is a useful way to diagnose these limits.
 
 ```@example chi_graph
 using Copulas, Distributions, Plots
-λᵤ(C::Copulas.Copula{d}, u) where d = (1 - 2u - cdf(C, fill(u,d)))/(1-u)
+λᵤ(C::Copulas.Copula{d}, u) where d = (1 - 2u + cdf(C, fill(u,d)))/(1-u)
 χᵤ(C::Copulas.Copula{d}, u) where d = 2 * log1p(- u) / log1p(- 2u + cdf(C, fill(u,d))) - 1
 
 C = GumbelCopula(2, 2.5)

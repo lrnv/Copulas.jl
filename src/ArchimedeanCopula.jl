@@ -1,23 +1,18 @@
 """
-    ArchimedeanCopula{d, TG}
-
-Fields:
-    - G::TG : the generator <: Generator.
-
-Constructor:
-
     ArchimedeanCopula(d::Int, G::Generator)
     ArchimedeanCopula{d}(G::Generator)
 
 For some Archimedean [`Generator`](@ref) `G::Generator` and some dimenson `d`, this class models the archimedean copula which has this generator. The constructor checks for validity by ensuring that `max_monotony(G) ≥ d`. The ``d``-variate archimedean copula with generator ``\\phi`` writes:
 
 ```math
-C(\\mathbf u) = \\phi^{-1}\\left(\\sum_{i=1}^d \\phi(u_i)\\right)
+C(\\mathbf u) = \\phi\\left(\\sum_{i=1}^d \\phi^{-1}(u_i)\\right)
 ```
 
 The default sampling method is the Radial-simplex decomposition using the Williamson transformation of ``\\phi``.
 
-There exists several known parametric generators that are implement in the package. For every `NamedGenerator <: Generator` implemented in the package, we provide a type alias ``NamedCopula{d,...} = ArchimedeanCopula{d,NamedGenerator{...}}` to be able to manipulate the classic archimedean copulas without too much hassle for known and usefull special cases.
+Named families provide convenient constructors such as `GumbelCopula{d}(θ)`
+and `GumbelCopula(d, θ)`. Their storage representation and alias expansion
+are implementation details.
 
 A generic archimedean copula can be constructed as follows:
 

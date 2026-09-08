@@ -1,22 +1,16 @@
 """
-    AMHGenerator{T}, AMHCopula{d, T}
+    AMHGenerator(θ)
+    AMHCopula{d}(θ)
+    AMHCopula(d, θ)
 
-Fields:
-- θ::Real - parameter
-
-Constructors:
-
-    AMHGenerator(θ)  # Constructs the generator.
-    AMHCopula(d,θ)   # Construct the copula
-
-The [AMH Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) in dimension `d` is parameterized by `θ ∈ [-1,1)`. It is an Archimedean copula with generator:
+The [AMH Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_important_Archimedean_copulas) is parameterized by `θ ∈ [-1,1]`. Negative values are valid only in dimensions `d ≤ max_monotony(AMHGenerator(θ))`. It is an Archimedean copula with generator:
 
 ```math
-\\phi(t) = 1 - \\frac{1-\\theta}{e^{-t} - \\theta}.
+\\phi(t) = \\frac{1-\\theta}{e^t - \\theta}.
 ```
 
 Special cases:
-- When θ = 0, it collapses to independence.
+- `θ = 0` gives the independence copula.
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
@@ -26,7 +20,7 @@ AMHGenerator, AMHCopula
 struct AMHGenerator{T} <: AbstractUnivariateGenerator
     θ::T
     function AMHGenerator(θ)
-        ((θ < -1) || (θ > 1)) && throw(ArgumentError("Theta must be in [-1,1), you provided $θ."))
+        ((θ < -1) || (θ > 1)) && throw(ArgumentError("Theta must be in [-1,1], you provided $θ."))
         θf = float(θ)
         return new{typeof(θf)}(θf)
     end

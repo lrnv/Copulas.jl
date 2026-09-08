@@ -2,10 +2,10 @@
 CurrentModule = Copulas
 ```
 
-# [Developer Guide: Extending the Copulas.jl API](@id developer_fitting)
+# [Developer Guide: current contributor architecture](@id developer_fitting)
 
-This page provides a complete overview of the internal developer API required
-to add new copula families to `Copulas.jl`.
+This page describes the current internal machinery used by package contributors
+to add and maintain copula families in this repository.
 It focuses on what must be defined for a new copula to work consistently
 with the main interfaces (`cdf`, `pdf`, `rand`, `fit`, etc.), without going into
 mathematical details.
@@ -18,47 +18,44 @@ This page is intended for package contributors and advanced users who want to ex
 :::
 
 !!! warning "Internal interfaces are not covered by SemVer"
-    This guide documents both the public extension surface and implementation details
-    used inside Copulas.jl. Only names exported or declared `public` by the `Copulas`
-    module belong to the SemVer-stable API. Other bindings shown here—including
-    underscore-prefixed hooks—may change between releases. Downstream packages should
-    rely on them only when they accept that maintenance cost.
+    This is architectural documentation, not a supported downstream extension API.
+    Every hook, abstract subtype and dispatch pattern shown here may change without
+    deprecation unless its behavior is separately documented in the public API.
+    Exported/public mathematical objects retain only their public documented
+    semantics; this guide does not enlarge that compatibility promise.
 
 
-# 1. The main API
+# 1. Implementing the public behaviour internally
 
 ## 1.1 Overview
 
-Every copula type in `Copulas.jl` provides an extensive set of methods, to integrate correctly with the ecosystem: (non-exhaustive table)
+The stable user-facing contract is defined by the [Public API](@ref), not by
+the implementation recipes on this page. It includes documented methods owned
+by `Copulas` as well as documented extensions of ecosystem interfaces:
 
-| Method                           | Purpose                             | Required    |
+| Public operation                 | Owning interface                    | Availability |
 | -------------------------------- | ----------------------------------- | ----------- |
-| `length(C)`                      | Dimension d of the copula           | ✅          |
-| `cdf(C, u)`                      | Cumulative distribution function    | ✅          |
-| `pdf(C, u)`                      | Lebesgue density                    | ✅ when absolutely continuous |
-| `logpdf(C, u)`                   | Joint log density                   | ✅ when absolutely continuous |
-| `rand(C, n)`                     | Random generation                   | ✅          |
-| `params(C)`                      | Return parameters as a `NamedTuple` | ✅          |
-| `fit(::Type{<:MyCopula}, u)`     | Model fitting interface             | ✅ when the family declares a fitting method |
-| `τ(C)`, `ρ(C)`, etc...           | Dependence metrics                  | ✅ through generic fallbacks |
-| `λₗ(C)`, `λᵤ(C)`                  | Tail dependence coefficients        | ✅ through generic fallbacks |
-| `condition(C, dims, us)`         | Conditional distribution            | ✅ through the generic framework |
-| `subsetdims(C, dims)`            | Marginal copula                     | ✅ through the generic framework |
-| `rosenblatt(C, u)`               | Rosenblatt transformation           | ✅ |
-| `inverse_rosenblatt(C, u)`       | Inverse Rosenblatt transformation   | ✅ when mathematically invertible |
+| `length`                          | `Base`                              | all copulas |
+| `cdf`, `params`                   | `Distributions.jl`                  | all copulas |
+| `pdf`, `logpdf`, `loglikelihood` | `Distributions.jl`                  | when the documented measure semantics permit it |
+| `rand`                            | `Random` / `Distributions.jl`       | all copulas |
+| `fit`                             | `Distributions.jl` / `StatsBase.jl` | declared family/method pairs |
+| automatic family selection       | `Copulas` / `StatsBase.jl`          | explicit candidate collections |
+| copula hypothesis tests          | `Copulas` / `StatsAPI.jl`           | documented procedures and assumptions |
+| `corkendall`, `corspearman`       | `StatsBase.jl`                      | all copulas |
+| dependence measures, subsetting, conditioning and transforms | `Copulas` | according to their public mathematical preconditions |
 
 
-However, direct implementation of these methods is not always the best way to fullfill the contract. 
-If you want to implement a new copula, this document will quide you into the right methods that you need to implement.
-The easiest way is probably to look at another copula's code, choosing a copula *from the same family as yours* if possible, and then 
-reading this code in parralell to this doucment. 
+However, directly implementing these methods is not always the best way to
+fulfil the contract. When implementing a new copula, this document identifies
+the internal methods that need to be provided. It is also useful to read the
+implementation of an existing copula from the same family alongside this guide.
 
-Here, "required" describes the user-facing behavior, not the number of methods a
-new type must implement directly. Generic fallbacks provide many of these
-operations. Singular and mixed copulas do not acquire a Lebesgue density or a
-bijective Rosenblatt transform merely to satisfy an interface; their documented
-mathematical semantics take precedence. Likewise, fitting is public only for
-families that declare at least one supported fitting method.
+The table summarizes adopted user-facing interfaces; it does not make their
+internal hooks stable. Generic fallbacks provide many operations. Singular and
+mixed copulas do not acquire a Lebesgue density or a bijective Rosenblatt
+transform merely to satisfy an interface; their documented mathematical
+semantics take precedence.
 
 
 ## 1.2 Probability interface (`cdf`, `pdf`, `rand`)
@@ -67,10 +64,11 @@ All copulas have a joint `cdf()` over the hypercube. Absolutely continuous
 copulas also provide `pdf()` and `logpdf()`; these are not promised for purely
 singular copulas, and entropy-based dependence is consequently restricted to
 models with an ordinary density.
-The `rand(C, n)` method should generate an `d × n` matrix of samples from the copula. 
+The `rand(C, n)` method should generate a `d × n` matrix of samples from the copula.
 
-Public API : `rand(C, n)`, `cdf(C, u)`, `pdf(C, u )`, `logpdf(C, u )`, `loglikelihood(C, u )`. 
-For these methodes to work corectly, you need to overwrite a few internal methods, as in the following minimal example: 
+The corresponding public behavior is documented on the [Public API](@ref) page.
+Inside this repository, it is currently supplied by the following internal
+methods; these hooks may change independently of that behavior:
 
 ```julia
 struct MyCopula{d, P} <: Copula{d} # Note that the size of the copula must be part of the type. 
@@ -82,7 +80,7 @@ function Distributions.params(C::MyCopula)
     # It will be assumed that `MyCopula{d}(params(C)...)` reproduces `C`.
     # Keep `MyCopula(d, ...)` as a thin forwarder to this canonical constructor.
     # The return value should be a NamedTuple. 
-    return (θ = C.θ,) # Return a named tuple with the parametrisation. 
+    return (θ = C.θ,) # Return a named tuple containing the parameters.
 end
 function Copulas._cdf(C::MyCopula, u)
      # You can safely assume u to be an abstract vector of the right length and inside the hypercube.
@@ -105,7 +103,8 @@ instance, `typeof(C)(values(params(C))...)` reconstructs it. Structural models
 may expose additional explicitly documented constructors, but must still provide
 the two dimension spellings above.
 
-Once defined, these automatically integrate with the `Copulas.jl` and `Distributions.jl` interface.
+Once defined, the public wrappers integrate the type with the documented
+`Distributions.jl` and `Random` operations.
 
 ::: info Sampling contract
 
@@ -132,9 +131,9 @@ providing specific methods (with analytical forms when possible) is highly recom
 | ---------------- | --------------------------- | --------------------------- |
 | `Copulas.τ(C)`   | Kendall’s tau               | Default numerical estimator |
 | `Copulas.ρ(C)`   | Spearman’s rho              | Default numerical estimator |
-| `Copulas.β(C)`   | Kendall’s tau               | Default numerical estimator |
-| `Copulas.γ(C)`   | Spearman’s rho              | Default numerical estimator |
-| `Copulas.ι(C)`   | Kendall’s tau               | Default numerical estimator |
+| `Copulas.β(C)`   | Blomqvist's beta            | Default numerical estimator |
+| `Copulas.γ(C)`   | Gini's gamma                | Default numerical estimator |
+| `Copulas.ι(C)`   | Copula entropy              | Default numerical estimator |
 | `Copulas.λₗ(C)`  | Lower tail dependence        | Default extrapolation-based |
 | `Copulas.λᵤ(C)`  | Upper tail dependence       | Default extrapolation-based |
 
@@ -166,18 +165,19 @@ should prefer the generic `condition` interface; if a missing fast path matters,
 please coordinate its implementation upstream. If the hooks are not defined,
 conditioning falls back to the generic path.
 
-* The first binding returns a `SklarDist`, containing the conditional copula as a copula, 
-  and conditional marginals as the marginals. This literally represent the conditional 
-  distribution of the random vector, but already splitted by the Sklar's theorem. 
-* The second binding corresponds to the ith marginal of the first. It must return an object
-  `<:Distortion`, which itself subtypes `Distributions.ContinuousUnivariateDistribution` supported on [0,1],
-  corresponding to the distortion. You need to implement its `cdf`, `pdf` or `logpdf` (as you want), 
-  and eventually (recomended) the `quantile` function. The returned object will be used as a 
-  functor to distord marginals as follows (already implemented):  
+* The first binding returns a `SklarDist` containing the conditional copula and
+  conditional marginals. It represents the conditional random vector through
+  Sklar's theorem.
+* The second binding corresponds to the `i`th marginal of the first. It must
+  return a `<:Distortion`, itself a
+  `Distributions.ContinuousUnivariateDistribution` supported on `[0, 1]`.
+  Implement its `cdf` and either `pdf` or `logpdf`; implementing `quantile` is
+  also recommended. The returned object is used as a functor to distort
+  marginals as follows:
 
 ```julia
-(D::Distortion)(::Distributions.Uniform) = D # Always, no need to implement its already there. 
-(D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X) # the default. 
+(D::Distortion)(::Distributions.Uniform) = D # Already provided by the framework.
+(D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X) # Default.
 ```
 
 This is how we enable conditioning on the SklarDist level.
@@ -192,14 +192,17 @@ This is how we enable conditioning on the SklarDist level.
 The fitting interface allows your copula to work with `fit(::Type{CopulaModel}, ...)`
 and the general estimation framework.
 
-### Required fitting methods
+### Implementing a custom fitting method
+
+These hooks are contributor-facing internals. A custom estimator does not need
+parameter reparameterizations merely to return its fitted copula.
 
 | Method                              | Purpose                                                       |
 | ----------------------------------- | ------------------------------------------------------------- |
 | `_available_fitting_methods(CT, d)` | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
 | `_fit(CT, U, ::Val{:method})`       | Core fitting routine returning `(copula, meta)`               |
 
-Example minimal skeleton to produce a fitting rtoutine for a custom fitting method: 
+Minimal skeleton for a custom fitting method:
 
 ```julia
 _available_fitting_methods(::Type{MyCopula}, d) = (:mymethod,)
@@ -210,7 +213,7 @@ function _fit(::Type{MyCopula}, U, ::Val{:mymethod})
 end
 ```
 
-but sometimes its easier to opt into know fitting methods: 
+Alternatively, reuse a generic fitting engine rather than defining `_fit`.
 
 ### Opting into generic fitting methods
 
@@ -228,23 +231,17 @@ _unbound_params(::Type{MyCopula}, d, params) = [log(params.θ)]
 _rebound_params(::Type{MyCopula}, d, α) = (; θ = exp(α[1]))
 _available_fitting_methods(::Type{MyCopula}, d) = (:mle, :itau, :ibeta,) # or others...
 
-function _fit(::Type{MyCopula}, U, ::Val{:mle})
-    θ̂ = optimize_mle(U)
-    return MyCopula(size(U, 1), θ̂), (; θ̂, optimizer = :lbfgs, converged = true)
-end
+# No _fit definition: the generic engine consumes these hooks.
 ```
 
 Each fitting method is dispatched on `Val{:method}` for performance and clarity.
 
-**Automatic compatibility**  
-Once the above methods are implemented, your family becomes automatically compatible with:
-
-- `fit`, `CopulaModel`
-- `StatsBase.vcov`, `StatsBase.confint`
-- `Distributions.loglikelihood`
-- `StatsBase.aic`, `StatsBase.bic`
-
-the requires _fit function for :mle for example might already be provided by the package, test your case.
+Declare only methods supported by the model: MLE needs an evaluable likelihood,
+and rank-based fitting needs the corresponding dependence measures and an
+identifiable parameterization. Covariance and confidence intervals require
+additional regularity and a supported covariance procedure; returning a fitted
+copula does not guarantee their availability. Data have shape `d × n`, so the
+dimension is `size(U, 1)`, not the number of observations.
 
 ## 1.6 Hypothesis tests
 
@@ -302,15 +299,19 @@ Distributions.params(G::MyGenerator) = (θ = G.θ,)
 | `𝒲₋₁(G, d::Real)`                  | Inverse Williamson transform; integer specializations are preserved | ⚙️ Optional |
 
 
-Once the generator defines `ϕ`, and `max_monotony`, all functions such as
-`cdf`, `logpdf`, and `rand` become available automatically through
-`ArchimedeanCopula`’s generic implementation. The default we have for the rest of the methods are pretty efficient, so, even if a theoretical version exists, time it against our generics it might be slower. 
+The generator definition enables the generic Archimedean construction in valid
+dimensions. CDF evaluation also needs a working inverse, supplied analytically
+or numerically. Density requires appropriate derivatives and measure semantics;
+radial sampling requires an evaluable and sampleable inverse Williamson law.
+Do not infer that every singular or numerically difficult generator automatically
+supports every operation. Check the paths exercised by the proposed model before
+adding specializations, and benchmark numerical alternatives when relevant.
 
 Only fitting routines or dependence metrics need to be added if the defaults are insufficient.
 
 ::: info Other generator interfaces
 
-1) If you generator has only a one-dimensional parametrisation, then you might look at the `UnivariateGenerator<:Generator` interface that is a bit easier. 
+1) In-package one-parameter families can use the internal `AbstractUnivariateGenerator` hierarchy.
 2) If your generator is a Frailty, then there is `FrailtyGenerator`
 3) If you know the radial part, use `𝒲 === WilliamsonGenerator` directly. 
 4) If you are lost, just open an issue ;)
@@ -369,7 +370,11 @@ valid STDF in higher dimension, opt in explicitly:
 
 ```julia
 Copulas.ℓ(tail::MyTail, x) = ...
+Copulas._is_valid_in_dim(::MyTail, d::Int) = d >= 2
 ```
+
+`_is_valid_in_dim` is an internal validity hook. Defining a multivariate `ℓ`
+alone does not override the bivariate restriction or provide a sampler.
 
 This is the pattern used by families such as Logistic, Galambos,
 Hüsler-Reiss, Mixed, extremal-``t``, and Cuadras-Augé.
@@ -465,7 +470,9 @@ machinery and generic conditioning.
 By default, `_ellpartial_signlog` is obtained from `ℓ` through the shared
 automatic-differentiation helper, and `ellpartial(tail, x, I)` is reconstructed
 from that sign/log representation. A new multivariate EV tail therefore needs
-to implement **only `ℓ`** for the generic density path. Override
+to implement **only `ℓ`** for the generic density path when its mixed derivatives
+exist and its implementation supports the required AD inputs. This does not
+represent singular mass. Override
 `_ellpartial_signlog` only when an analytic expression is materially more
 stable or faster.
 
@@ -492,9 +499,9 @@ covered explicitly by the architecture tests. In `d = 2`,
 
 This generic guarantee is computational rather than purely mathematical.
 Families whose multivariate STDF relies on numerical probability routines that
-materialize `Float64` values may require a specialized distortion instead of
-the ForwardDiff fallback; the current multivariate Hüsler--Reiss and
-extremal-``t`` numerical kernels fall in this category. Likewise, discrete
+materialize `Float64` values may require specialized derivatives or a distortion
+instead of the ForwardDiff fallback. Check the current family implementation
+rather than inferring compatibility from its mathematical formula. Discrete
 spectral EV models can contain singular components, so a global Lebesgue
 density and the ordinary smooth conditional-derivative construction need not
 exist in general.
@@ -525,7 +532,8 @@ end
 ```
 
 A family with its own exact multivariate sampler implements `_rand!` directly
-for its concrete tail type:
+for its concrete tail type. There is no universal multivariate EV sampler
+provided by the STDF definition alone:
 
 ```julia
 function Distributions._rand!(
@@ -563,16 +571,18 @@ together while allowing dispatch to specialize the computational backend.
 See [Extreme Value family](@ref Extreme_theory) for the user-facing theory,
 constructor table, bivariate Ghoudi development, and model documentation.
 
-## 2.3 Elliptical copulas
+## 2.3 Elliptical copulas (internal architecture)
 
 Elliptical copulas arise from the dependence structure of multivariate **elliptical distributions** such as the Gaussian or Student-t.
-In `Copulas.jl`, every elliptical family is represented as
+The current implementation shares code through
 
 ```julia
-EllipticalCopula{d, D}
+Copulas.EllipticalCopula{d, MT}
 ```
 
-where `D` is the associated multivariate distribution type (for instance, `MvNormal` or `MvTDist`).
+where `MT` describes the stored correlation-matrix representation, not the
+associated distribution. This is the current internal hierarchy, not a stable
+public storage contract.
 
 Elliptical copulas are characterized by a correlation matrix `Σ` and, optionally, additional shape parameters (e.g. degrees of freedom `ν` for the t-copula).
 
@@ -581,32 +591,39 @@ Elliptical copulas are characterized by a correlation matrix `Σ` and, optionall
 
 | Method                    | Purpose                                                | Required       |
 | ------------------------- | ------------------------------------------------------ | -------------- |
-| `U(::Type{CT})`           | Return the univariate elliptical distribution          | ✅              |
-| `N(::Type{CT})`           | Return the multivariate elliptical distribution        | ✅              |
+| `U(C)`                   | Return the standardized univariate distribution instance | ✅            |
+| `N(C)`                   | Return a callable constructing the multivariate distribution from `Σ` | ✅ |
 | `Distributions.params(C)` | Return parameters as a `NamedTuple`                    | ✅              |
 
 Minimal outline:
 
 ```julia
-struct MyEllipticalCopula{d,MT} <: EllipticalCopula{d,MT}
+struct MyEllipticalCopula{d,MT} <: Copulas.EllipticalCopula{d,MT}
     Σ::MT
     function MyEllipticalCopula{d}(Σ) where {d}
         size(Σ) == (d, d) || throw(DimensionMismatch("expected a $d×$d matrix"))
-        make_cor!(Σ)  # normalize to correlation matrix
-        return new{d,typeof(Σ)}(Σ)
+        matrix = Matrix{Float64}(Σ)
+        Copulas.make_cor!(matrix)  # normalize a copy; validate the family as needed
+        return new{d,typeof(matrix)}(matrix)
     end
 end
 MyEllipticalCopula(d, Σ) = MyEllipticalCopula{d}(Σ)
 
 # Required bindings
-U(::Type{<:MyEllipticalCopula}) = UnivariateDistribution
-N(::Type{<:MyEllipticalCopula}) = MultivariateDistribution
+Copulas.U(C::MyEllipticalCopula) = Normal()
+Copulas.N(C::MyEllipticalCopula) = Σ -> MvNormal(Σ)
 Distributions.params(C::MyEllipticalCopula) = (Σ = C.Σ,)
 ```
 
-Once these bindings are defined, all core functionality —
-`cdf`, `logpdf`, and `rand` —
-is automatically available through the generic `EllipticalCopula` implementation in `Copulas.jl`.
+The example uses Gaussian distributions. For runtime shape parameters, the
+object-based hooks are essential: a Student family uses `TDist(C.df)` for `U(C)`
+and `Σ -> MvTDist(C.df, Σ)` for `N(C)`. Type-based hooks remain convenient when
+the distributions do not depend on runtime fields, through the existing adapters.
+
+The generic evaluation and sampling paths require the corresponding operations
+on those distributions (including univariate quantiles and multivariate density
+or sampling). Defining these hooks does not manufacture a missing multivariate
+CDF or guarantee compatibility with AD-based conditioning.
 
 Most elliptical families (Gaussian, t, Laplace, power-exponential, GED) can be implemented 
 simply by changing their `U` and `N` definitions, reusing the same generic machinery. 
@@ -768,215 +785,90 @@ println(M)
     the family automatically integrates with the `Distributions.jl` and `StatsBase` ecosystems.
 
 
-## 3.2 Archimedean example — *Nelsen2Copula*
+## 3.2 Archimedean example — a positive Clayton generator
 
-The `Nelsen2Copula` is a simple **Archimedean** copula defined by the generator
+For a small contributor example, reproduce the positive-parameter Clayton
+generator. This is not a new Nelsen family; production code should use
+`Copulas.ClaytonGenerator`. Restricting the example to finite `θ > 0` keeps
+its mathematical domain and numerical formulas consistent.
 
-$$\varphi(t) = (1 + θ * t)^{\frac{-1}{θ}}, \quad θ > 0.$$
+```@example generator_contributor
+using Copulas, Distributions
 
-This example demonstrates how to define a new Archimedean copula family using the `Generator` sub-API.
-Once the generator is defined, all the usual functions (`cdf`, `pdf`, `rand`, `fit`, etc.)
-are automatically inherited from the generic `ArchimedeanCopula` implementation.
-
-### Defining the generator
-
-Every Archimedean copula in `Copulas.jl` is built from a subtype of `Generator` that defines
-the core functional behavior of the family.
-
-```@example generic_copula_example
-struct Nelsen2Generator{T} <: Copulas.AbstractUnivariateGenerator # subtype of Generator
+struct ExampleClaytonGenerator{T} <: Copulas.Generator
     θ::T
-    function Nelsen2Generator(θ)
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
+    function ExampleClaytonGenerator(θ::Real)
+        isfinite(θ) && θ > 0 || throw(ArgumentError("θ must be finite and positive"))
+        value = float(θ)
+        new{typeof(value)}(value)
     end
 end
 
-# Validity and parameters
-Copulas.max_monotony(G::Nelsen2Generator) = Inf
-Distributions.params(G::Nelsen2Generator) = (; θ = G.θ,)
+Copulas.max_monotony(::ExampleClaytonGenerator) = Inf
+Distributions.params(G::ExampleClaytonGenerator) = (; θ=G.θ)
+Copulas.ϕ(G::ExampleClaytonGenerator, t) = exp(-log1p(G.θ * t) / G.θ)
 
-# Generator and its inverse
-Copulas.ϕ(G::Nelsen2Generator, s) = (1 + G.θ * s)^(-1 / G.θ)
-Copulas.ϕ⁻¹(G::Nelsen2Generator, t) = (t^(-G.θ) - 1) / G.θ # This is not mandatory
-
-# Nice alias: 
-const Nelsen2Copula{d, T} = ArchimedeanCopula{d, Nelsen2Generator{T}}
-```
-
-### Building the Archimedean copula
-
-With our alias, we can directly construct the copula through: 
-
-```@example generic_copula_example
-C = Nelsen2Copula(2, 3.5)
-```
-
-The resulting object already supports all standard functionality from the general API:
-
-```@example generic_copula_example
+G = ExampleClaytonGenerator(2.0)
+C = ArchimedeanCopula{2}(G)
+reference = ClaytonCopula{2}(2.0)
 u = [0.3, 0.8]
+@assert isapprox(cdf(C, u), cdf(reference, u))
 cdf(C, u)
-pdf(C, u)
 ```
 
-### Fitting interface
+This checks evaluation through the generic inverse rather than defining a
+second inverse solely for the example. Optional derivative, inverse and radial
+specializations are internal numerical hooks, not requirements for this CDF
+example. Density and sampling need separate checks of the generic numerical
+paths; fitting requires the opt-in described in Section 1.5.
 
-Because the `ArchimedeanCopula` type already provides estimation routines for Kendall’s τ and Spearman’s ρ,
-no explicit `_fit` definition is needed unless you wish to override the defaults.
+A family that accepts boundary parameters must preserve its family in the
+constructor and implement its mathematical behavior. Do not return a different
+generator type from the constructor. In-package families use the internal
+`limit_kind` mechanism where appropriate; that mechanism is not a stable
+downstream extension protocol. This example rejects boundaries instead.
 
-To verify:
+## 3.3 Extreme-value example — a bivariate logistic tail
 
-```@example generic_copula_example
-Copulas._unbound_params(::Type{<:Nelsen2Generator}, d, θ) = [log(θ.θ - 1)]
-Copulas._rebound_params(::Type{<:Nelsen2Generator}, d, α) = (; θ = exp(α[1]) + 1)
-Copulas._available_fitting_methods(::Type{Nelsen2Copula}, d) = (:ibeta, :mle)
-Copulas._example(::Type{Nelsen2Copula}, d) = Nelsen2Copula(d, 2.5)
-Copulas._θ_bounds(::Type{<:Nelsen2Generator}, d) = (1, Inf) # specific to the fitting methods of one-parameter archimedean copulas. 
-```
+The following contributor example implements the smooth, finite-parameter
+interior of the logistic model. Production code should use `Copulas.LogTail`.
+Its internal Pickands capability restricts it to dimension two by default.
 
-### Example: quick γ-based fit
+```@example tail_contributor
+using Copulas, Distributions, LogExpFunctions
 
-```@example generic_copula_example
-Random.seed!(123)
-U = rand(C, 250)
-Fit = fit(Nelsen2Copula, U; method=:ibeta) # igamma is the default method
-Fit
-```
-
-For completeness, you can also use the model-based interface using the `:mle` default fit
-for one-parameter Archimedean copulas:
-
-```@example generic_copula_example
-FitModel = fit(CopulaModel, Nelsen2Copula, U; method=:mle, start = 1.5)
-FitModel
-```
-
-!!! tip "About the `:mle` method for Archimedean copulas"
-    The `:mle` fitting method is automatically available for all
-    `ArchimedeanCopula{d, GT}` types where the generator `GT <: UnivariateGenerator`.
-    It performs maximum-likelihood estimation over the parameter bounds
-    defined by `_θ_bounds(GT, d)`, using an adaptive LBFGS optimizer within a
-    box-constrained (`Fminbox`) setup.
-
-
-## 3.3 Extreme-Value example — *GumbelEVCopula*
-
-The `GumbelEVCopula` (also known as the *logistic model*) is one of the most common
-**Extreme-Value (EV)** copulas. It is defined through its **Pickands dependence function**:
-
-$$A(t) = \bigl(t^{θ} + (1-t)^{θ}\bigr)^{1/θ}, \quad θ \ge 1.$$
-
-### Defining the tail function
-
-All bivariate EV copulas in `Copulas.jl` are defined via a subtype of `Tail`,
-which specifies the Pickands function `A(t)` and its parameterization.
-
-```@example generic_copula_example
-using LogExpFunctions
-
-struct GumbelTail{T} <: Copulas.OneParameterPickandsTail # subtype of Tail
+struct ExampleLogTail{T} <: Copulas.BivariatePickandsTail
     θ::T
-    function GumbelTail(θ)
-        !(1 <= θ) && throw(ArgumentError("θ must be in [1, ∞)"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
+    function ExampleLogTail(θ::Real)
+        isfinite(θ) && θ > 1 || throw(ArgumentError("θ must be finite and greater than one"))
+        value = float(θ)
+        new{typeof(value)}(value)
     end
 end
 
-# Pickands dependence function
-function Copulas.A(tail::GumbelTail, t::Real)
-    θ = tail.θ
-    logB = LogExpFunctions.logaddexp(θ * log(t), θ * log1p(-t))
-    return exp(logB / θ)
+function Copulas.A(tail::ExampleLogTail, t::Real)
+    return exp(LogExpFunctions.logaddexp(tail.θ * log(t),
+        tail.θ * log1p(-t)) / tail.θ)
 end
+Distributions.params(tail::ExampleLogTail) = (; θ=tail.θ)
 
-# Parameters and bounds
-Distributions.params(tail::GumbelTail) = (; θ = tail.θ,)
-Copulas._unbound_params(::Type{<:GumbelTail}, d, θ) = [log(θ.θ - 1)]      # θ ≥ 1
-Copulas._rebound_params(::Type{<:GumbelTail}, d, α) = (; θ = exp(α[1]) + 1)
-Copulas._θ_bounds(::Type{<:GumbelTail}, d) = (1, Inf)
-```
-
-### Building the EV copula
-
-Once the tail is defined, constructing the copula is immediate:
-
-```@example generic_copula_example
-const GumbelEVCopula{d,T} = Copulas.ExtremeValueCopula{d, GumbelTail{T}}
-C = GumbelEVCopula{2}(2.5)
-C_runtime = GumbelEVCopula(2, 2.5)
-@assert typeof(C_runtime) == typeof(C)
-```
-
-All standard API methods (`cdf`, `pdf`, `rand`, `fit`, etc.) are automatically inherited
-from `ExtremeValueCopula`, with internal numerical integration based on the Pickands function.
-
-```@example generic_copula_example
+C = ExtremeValueCopula{2}(ExampleLogTail(2.5))
+reference = LogCopula{2}(2.5)
 u = [0.4, 0.7]
-cdf(C, u)
-pdf(C, u)
+@assert isapprox(cdf(C, u), cdf(reference, u))
+cdf(C, u), pdf(C, u)
 ```
 
-### Fitting interface
+For this smooth bivariate model, the Pickands machinery supplies derivatives
+and the Ghoudi sampler. That conclusion does not extend to every convex
+Pickands function: kinks may encode singular mass and require specialized
+density or conditional methods.
 
-The fitting API for EV copulas relies on dependence-based estimators (`:itau`, `:irho`, `:igamma`),
-since likelihood evaluation involves non-smooth densities.
-
-For the `GumbelEVCopula`, we define the available methods and optional parameter reparameterizations:
-
-```@example generic_copula_example
-Copulas._available_fitting_methods(::Type{GumbelEVCopula}, d) = (:iupper, :mle)
-Copulas._example(::Type{GumbelEVCopula}, d) = GumbelEVCopula{d}(2.5)
-```
-
-#### Closed-form estimator from upper-tail dependence
-
-The Gumbel EV copula has a closed-form expression for the upper-tail coefficient:
-
-$$\lambda_U = 2 - 2^{1/θ}.$$
-
-This can be inverted to obtain a simple plug-in estimator for (θ):
-
-$$\hat{θ} = 1 / \log_2(2 - \hat{\lambda}_U).$$
-
-Hence, the `:iupper` method can be implemented as:
-
-```@example generic_copula_example
-function Copulas._fit(::Type{CT}, U, ::Val{:iupper}) where {CT<:GumbelEVCopula}
-    d = size(U, 1)
-    λ̂ = Copulas.λᵤ(U)                # empirical upper-tail dependence
-    θ  = 1 / log2(2 - λ̂)
-    θ  = clamp(θ, 1.0, 50.0)
-    Ĉ = CT(d, θ)
-    return Ĉ, (; θ̂ = (; θ = θ), λ̂ = λ̂, method = :iupper)
-end
-```
-
-### Example: sampling and fitting
-
-```@example generic_copula_example
-Random.seed!(123)
-U = rand(GumbelEVCopula{2}(4.5), 300)
-M = fit(CopulaModel, GumbelEVCopula, U)
-M
-```
-
-
-!!! note "Automatic inheritance"
-    For all `ExtremeValueCopula` types, once the `A(t)` function is defined and satisfies the convexity
-    and boundary conditions, the generic API automatically provides:
-    `cdf`, `pdf`, `rand`, and dependence measures (`τ`, `ρ`, `λ_L`, `λ_U`).
-
-!!! tip "Analytical inversion and custom estimators"
-    EV copulas with known analytical relationships between parameters and tail coefficients
-    can provide fast and numerically stable estimators (e.g., the `:iupper` method shown above),
-    which can complement or replace likelihood-based methods.
-
-!!! tip "Recommended practice"
-    EV copulas usually lack smooth closed-form densities.
-    Analytical forms are optional but highly recommended to improve numerical stability.
-    Otherwise, `Copulas.jl` will fall back to numerical integration based on the Pickands function.
+To extend a family to higher dimensions, supply a valid multivariate STDF,
+opt into those dimensions through `_is_valid_in_dim`, and provide an appropriate
+sampler. Convexity and the usual bounds alone are not sufficient to characterize
+a multivariate STDF. Fitting is a separate opt-in; use either the custom-method
+or generic-engine pattern in Section 1.5.
 
 
 # 4. Testing architecture
