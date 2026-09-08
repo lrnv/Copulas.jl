@@ -17,10 +17,3 @@ versioning commitment.
 Modules = [Copulas]
 Public = false
 ```
-
-## References
-
-```@bibliography
-Pages = [@__FILE__]
-Canonical = false
-```
