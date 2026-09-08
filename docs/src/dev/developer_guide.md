@@ -40,14 +40,16 @@ by `Copulas` as well as documented extensions of ecosystem interfaces:
 | `pdf`, `logpdf`, `loglikelihood` | `Distributions.jl`                  | when the documented measure semantics permit it |
 | `rand`                            | `Random` / `Distributions.jl`       | all copulas |
 | `fit`                             | `Distributions.jl` / `StatsBase.jl` | declared family/method pairs |
+| automatic family selection       | `Copulas` / `StatsBase.jl`          | explicit candidate collections |
+| copula hypothesis tests          | `Copulas` / `StatsAPI.jl`           | documented procedures and assumptions |
 | `corkendall`, `corspearman`       | `StatsBase.jl`                      | all copulas |
 | dependence measures, subsetting, conditioning and transforms | `Copulas` | according to their public mathematical preconditions |
 
 
-However, direct implementation of these methods is not always the best way to fullfill the contract. 
-If you want to implement a new copula, this document will quide you into the right methods that you need to implement.
-The easiest way is probably to look at another copula's code, choosing a copula *from the same family as yours* if possible, and then 
-reading this code in parralell to this doucment. 
+However, directly implementing these methods is not always the best way to
+fulfil the contract. When implementing a new copula, this document identifies
+the internal methods that need to be provided. It is also useful to read the
+implementation of an existing copula from the same family alongside this guide.
 
 The table summarizes adopted user-facing interfaces; it does not make their
 internal hooks stable. Generic fallbacks provide many operations. Singular and
@@ -62,7 +64,7 @@ All copulas have a joint `cdf()` over the hypercube. Absolutely continuous
 copulas also provide `pdf()` and `logpdf()`; these are not promised for purely
 singular copulas, and entropy-based dependence is consequently restricted to
 models with an ordinary density.
-The `rand(C, n)` method should generate an `d × n` matrix of samples from the copula. 
+The `rand(C, n)` method should generate a `d × n` matrix of samples from the copula.
 
 The corresponding public behavior is documented on the [Public API](@ref) page.
 Inside this repository, it is currently supplied by the following internal
@@ -78,7 +80,7 @@ function Distributions.params(C::MyCopula)
     # It will be assumed that `MyCopula{d}(params(C)...)` reproduces `C`.
     # Keep `MyCopula(d, ...)` as a thin forwarder to this canonical constructor.
     # The return value should be a NamedTuple. 
-    return (θ = C.θ,) # Return a named tuple with the parametrisation. 
+    return (θ = C.θ,) # Return a named tuple containing the parameters.
 end
 function Copulas._cdf(C::MyCopula, u)
      # You can safely assume u to be an abstract vector of the right length and inside the hypercube.
@@ -163,18 +165,19 @@ should prefer the generic `condition` interface; if a missing fast path matters,
 please coordinate its implementation upstream. If the hooks are not defined,
 conditioning falls back to the generic path.
 
-* The first binding returns a `SklarDist`, containing the conditional copula as a copula, 
-  and conditional marginals as the marginals. This literally represent the conditional 
-  distribution of the random vector, but already splitted by the Sklar's theorem. 
-* The second binding corresponds to the ith marginal of the first. It must return an object
-  `<:Distortion`, which itself subtypes `Distributions.ContinuousUnivariateDistribution` supported on [0,1],
-  corresponding to the distortion. You need to implement its `cdf`, `pdf` or `logpdf` (as you want), 
-  and eventually (recomended) the `quantile` function. The returned object will be used as a 
-  functor to distord marginals as follows (already implemented):  
+* The first binding returns a `SklarDist` containing the conditional copula and
+  conditional marginals. It represents the conditional random vector through
+  Sklar's theorem.
+* The second binding corresponds to the `i`th marginal of the first. It must
+  return a `<:Distortion`, itself a
+  `Distributions.ContinuousUnivariateDistribution` supported on `[0, 1]`.
+  Implement its `cdf` and either `pdf` or `logpdf`; implementing `quantile` is
+  also recommended. The returned object is used as a functor to distort
+  marginals as follows:
 
 ```julia
-(D::Distortion)(::Distributions.Uniform) = D # Always, no need to implement its already there. 
-(D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X) # the default. 
+(D::Distortion)(::Distributions.Uniform) = D # Already provided by the framework.
+(D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X) # Default.
 ```
 
 This is how we enable conditioning on the SklarDist level.
@@ -199,7 +202,7 @@ parameter reparameterizations merely to return its fitted copula.
 | `_available_fitting_methods(CT, d)` | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
 | `_fit(CT, U, ::Val{:method})`       | Core fitting routine returning `(copula, meta)`               |
 
-Example minimal skeleton to produce a fitting rtoutine for a custom fitting method: 
+Minimal skeleton for a custom fitting method:
 
 ```julia
 _available_fitting_methods(::Type{MyCopula}, d) = (:mymethod,)
@@ -820,7 +823,7 @@ example. Density and sampling need separate checks of the generic numerical
 paths; fitting requires the opt-in described in Section 1.5.
 
 A family that accepts boundary parameters must preserve its family in the
-constructor and implement their mathematical behavior. Do not return a different
+constructor and implement its mathematical behavior. Do not return a different
 generator type from the constructor. In-package families use the internal
 `limit_kind` mechanism where appropriate; that mechanism is not a stable
 downstream extension protocol. This example rejects boundaries instead.

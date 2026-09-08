@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Fitting interface
+# [Fitting interface](@id fitting_interface)
 
 This section summarizes how to **fit** copulas (and Sklar distributions) in `Copulas.jl`, without going into family-specific details.
 
