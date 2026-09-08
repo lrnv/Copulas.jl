@@ -53,6 +53,7 @@ makedocs(;
         ],
         "API" => [
             "Public"=>"api/public.md",
+            "Internal implementation reference"=>"api/internal.md",
         ],
         "Development" => [
             "Extending Copulas.jl"=>"dev/developer_guide.md",

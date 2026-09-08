@@ -41,10 +41,10 @@ These properties describe the result, not its concrete storage types or type
 parameter order. Prefer the model interface below where an accessor exists.
 
 `CopulaModel` implements the standard `StatsBase.StatisticalModel` interface:
-[`StatsBase.nobs`](@ref), [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
-[`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref), [`StatsBase.deviance`](@ref), etc.
+`StatsBase.nobs`, `StatsBase.coef`, `StatsBase.coefnames`, `StatsBase.vcov`,
+`StatsBase.aic`, `StatsBase.bic`, `StatsBase.deviance`, etc.
 
-See also [`Distributions.fit`](@ref).
+See also `Distributions.fit`.
 """
 struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
     result        :: CT
