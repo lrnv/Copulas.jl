@@ -268,7 +268,7 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     return U
 end
 
-function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
 
     kind = limit_kind(C.G, Val(2))
     kind === Π_LIMIT && return NoDistortion()
@@ -280,7 +280,7 @@ function DistortionFromCop(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTu
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
     return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
-function ConditionalCopula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, TG, p}
+function conditional_copula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, TG, p}
     return ArchimedeanCopula{D - p}(TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
 SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula{p}(C.G)

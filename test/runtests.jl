@@ -40,13 +40,12 @@ function dispatch_path(operation, C)
     elseif operation === :conditioning
         js = Tuple(1:(d - 1))
         values = ntuple(_ -> 0.4, d - 1)
-        return _which(Copulas.DistortionFromCop, C, js, values, d)
+        return _which(Copulas.distortion, C, js, values, d)
     elseif operation === :conditional_joint
         d > 2 || return nothing
         js = (1,)
         values = (0.4,)
-        is = Tuple(2:d)
-        return _which(Copulas._conditional_components, C, js, values, is)
+        return _which(Copulas.conditional_copula, C, js, values)
     end
     error("unknown dispatch operation $operation")
 end

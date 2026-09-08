@@ -155,8 +155,8 @@ Inside Copulas.jl, specialized families currently optimize this path through the
 following internal hooks:
 
 ```julia
-ConditionalCopula(C::MyCopula, dims, us) = ...
-DistortionFromCop(C::MyCopula, dims, us, i) = ...
+Copulas.conditional_copula(C::MyCopula, dims, us) = ...
+Copulas.distortion(C::MyCopula, dims, us, i) = ...
 ```
 
 These bindings are documented for contributors working on Copulas.jl itself. They
@@ -165,10 +165,10 @@ should prefer the generic `condition` interface; if a missing fast path matters,
 please coordinate its implementation upstream. If the hooks are not defined,
 conditioning falls back to the generic path.
 
-* The first binding returns a `SklarDist` containing the conditional copula and
-  conditional marginals. It represents the conditional random vector through
-  Sklar's theorem.
-* The second binding corresponds to the `i`th marginal of the first. It must
+* The first binding returns the copula of the conditional random vector.
+  The conditioning framework combines it with the conditional marginals in a
+  `SklarDist` when more than one coordinate remains.
+* The second binding returns the `i`th conditional marginal. It must
   return a `<:Distortion`, itself a
   `Distributions.ContinuousUnivariateDistribution` supported on `[0, 1]`.
   Implement its `cdf` and either `pdf` or `logpdf`; implementing `quantile` is
@@ -486,7 +486,7 @@ algorithm.
 ### Conditioning and Rosenblatt in higher dimensions
 
 No separate extreme-value Rosenblatt algorithm is required. The generic
-conditioning framework is dimension-agnostic: `DistortionFromCop` obtains
+conditioning framework is dimension-agnostic: `distortion` obtains
 conditional marginals from mixed derivatives of the copula CDF, while
 `rosenblatt` and `inverse_rosenblatt` build the usual sequence of conditional
 distributions from that interface.

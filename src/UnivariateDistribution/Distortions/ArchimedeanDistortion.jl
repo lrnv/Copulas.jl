@@ -26,7 +26,7 @@ function Distributions.quantile(D::ArchimedeanDistortion{TG, T}, α::Real) where
     y = ϕ⁽ᵏ⁾⁻¹(D.G, D.p, α * D.den; start_at = D.sJ)
     return ϕ(D.G, y - D.sJ)
 end
-## ConditionalCopula moved next to ArchimedeanCopula definition
+## `conditional_copula` specialization is defined next to ArchimedeanCopula.
 function Distributions.logpdf(D::ArchimedeanDistortion{TG, T}, u::Real) where {TG, T}
     0 <= u <= 1 || return float(promote_type(typeof(u), T))(-Inf)
     ξ = ϕ⁻¹(D.G, float(u))

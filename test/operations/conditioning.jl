@@ -125,7 +125,7 @@ end
         case, C = fixture.case, fixture.copula
         length(C) == 2 || continue
         is_absolutely_continuous(C) || continue
-        method = which(Copulas.DistortionFromCop,
+        method = which(Copulas.distortion,
             Tuple{typeof(C),Tuple{Int},Tuple{Float64},Int})
         method in seen && continue
         push!(seen, method)
@@ -216,7 +216,7 @@ end
         is_absolutely_continuous(C) || continue
         js = Tuple(1:(d - 1))
         values = ntuple(k -> 0.3 + 0.08k, d - 1)
-        method = which(Copulas.DistortionFromCop,
+        method = which(Copulas.distortion,
             Tuple{typeof(C),typeof(js),typeof(values),Int})
         method in seen && continue
         push!(seen, method)
@@ -382,7 +382,7 @@ end
         conditioned = condition(C, (1,), (0.35,))
         @test length(conditioned.m) == 2
         for (k, i) in enumerate((2, 3)), u in (0.2, 0.7)
-            reference = Copulas.DistortionFromCop(C, (1,), (0.35,), i)
+            reference = Copulas.distortion(C, (1,), (0.35,), i)
             @test cdf(conditioned.m[k], u) ≈ cdf(reference, u) atol = 2e-12
         end
     end
@@ -451,7 +451,7 @@ end
     @test conditioned.m === conditioned.C.distortions
     @test conditioned.C.is == (1, 2)
     @test generic.logden == log(generic.den)
-    specialized = Copulas.ConditionalCopula(C, js, ujs)
+    specialized = Copulas.conditional_copula(C, js, ujs)
 
     for u in ([0.25, 0.35], [0.5, 0.5], [0.75, 0.65])
         @test isapprox(logpdf(generic, u), logpdf(specialized, u); atol=1e-8, rtol=1e-8)
@@ -622,7 +622,7 @@ end
 
 @testset "Checkerboard multidimensional conditioning regression" begin
     C = CheckerboardCopula{3}(randn(rng, 3, 30); pseudo_values=false)
-    D = Copulas.DistortionFromCop(C, (1, 2), (0.3, 0.7), 3)
+    D = Copulas.distortion(C, (1, 2), (0.3, 0.7), 3)
     @test D isa Copulas.HistogramBinDistortion
     @test all(0 .<= cdf.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
     @test all(pdf.(Ref(D), (0.2, 0.5, 0.8)) .>= 0)

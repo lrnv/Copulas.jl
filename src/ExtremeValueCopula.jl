@@ -267,7 +267,7 @@ function Distributions._rand!(
     return X
 end
 
-function DistortionFromCop(
+function distortion(
     C::ExtremeValueCopula{2,TT},
     js::NTuple{1,Int},
     uⱼₛ::NTuple{1,Float64},

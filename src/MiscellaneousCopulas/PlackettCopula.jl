@@ -101,7 +101,7 @@ function β(c::PlackettCopula)
 end
 
 # Conditioning colocated
-function DistortionFromCop(C::PlackettCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int)
+function distortion(C::PlackettCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int)
     j = Int8(js[1])
     uⱼ = float(uⱼₛ[1])
 

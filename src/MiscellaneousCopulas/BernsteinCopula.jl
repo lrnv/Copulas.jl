@@ -149,7 +149,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula
 end
 
 
-function DistortionFromCop(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
+function distortion(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
     # Build mixture weights over s_i given fixed u_J for J = js.
     Iset = Tuple(setdiff(1:D, js))
     @assert i in Iset "i must refer to a non-conditioned coordinate"

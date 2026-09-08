@@ -48,7 +48,7 @@ function Distributions.quantile(D::PlackettDistortion, α::Real)
     value = (c - (one(T) - 2q) * d) / (2b)
     return clamp(value, zero(T), one(T))
 end
-## DistortionFromCop moved next to PlackettCopula
+## `distortion` specialization is defined next to PlackettCopula.
 function Distributions.logpdf(D::PlackettDistortion, u::Real)
     T = float(promote_type(typeof(u), typeof(D.θ)))
     0 <= u <= 1 || return T(-Inf)

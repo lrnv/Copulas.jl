@@ -3,9 +3,11 @@
 #####  Conditioning framework.
 #####  User-facing function: `condition(), rosenblatt(), inverse_rosenblatt()`
 #####
-#####  When implementing new models, you can overwrite:
-#####   - `DistortionFromCop(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {d, p}`
-#####   - `ConditionalCopula(C::Copula{d}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}) where {d, p}`
+#####  Internal extension points for model-specific conditioning:
+#####   - `distortion(C, js, uⱼₛ, i)`
+#####   - `conditional_copula(C, js, uⱼₛ)`
+#####  Their generic methods construct `DistortionFromCop` and
+#####  `ConditionalCopula`, respectively.
 ###############################################################################
 
 # A few utilities :
@@ -16,6 +18,10 @@ function _assemble(D, is, js, uᵢₛ, uⱼₛ)
     @inbounds for (k,j) in pairs(js); w[j] = uⱼₛ[k]; end
     return w
 end
+
+# Generic fallbacks. Family implementations specialize these lowercase hooks;
+# the concrete types remain implementation details of the generic path.
+distortion(C::Copula, js, uⱼₛ, i) = DistortionFromCop(C, js, uⱼₛ, i)
 _partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _mixed_partial(u -> Distributions.cdf(C, u),_assemble(length(C), is, js, uᵢₛ, uⱼₛ), js,)
 
 _process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs)
@@ -172,7 +178,7 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
         ist = Tuple(i for i in 1:D if i ∉ jst)
         p = length(jst)
         d = D - p
-        distos = Tuple(DistortionFromCop(C, jst, uⱼₛt, i) for i in ist)
+        distos = Tuple(distortion(C, jst, uⱼₛt, i) for i in ist)
         den = all(disto -> disto isa DistortionFromCop, distos) ? distos[1].den :
               (p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
                       Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt)))
@@ -184,6 +190,7 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
         )
     end
 end
+conditional_copula(C::Copula, js, uⱼₛ) = ConditionalCopula(C, js, uⱼₛ)
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
     uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)
     return _partial_cdf(CC.C, CC.is, CC.js, uI, CC.uⱼₛ) / CC.den
@@ -227,7 +234,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, CC::ConditionalCop
         ujs = [u for u in CC.uⱼₛ]
         for k in 1:d
             iₖ = CC.is[k]
-            uₖ = rand(rng, DistortionFromCop(CC.C, Tuple(J), Tuple(ujs), iₖ))
+            uₖ = rand(rng, distortion(CC.C, Tuple(J), Tuple(ujs), iₖ))
             A[k, col] = Distributions.cdf(CC.distortions[k], uₖ)
             push!(J, iₖ)
             push!(ujs, uₖ)
@@ -281,7 +288,7 @@ Notes
 function condition(C::Copula{2}, j::Int, uⱼ::Real)
     1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
     zero(uⱼ) ≤ uⱼ ≤ one(uⱼ) || throw(ArgumentError("Conditioning values must lie in [0, 1]."))
-    return DistortionFromCop(C, (j,), (float(uⱼ),), 3 - j)
+    return distortion(C, (j,), (float(uⱼ),), 3 - j)
 end
 
 condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
@@ -292,15 +299,15 @@ condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}()
 # store `Float64`, so non-`Float64` values are converted there — the conditioning
 # result is computed in `Float64` regardless of input precision.
 function _conditional_components(C::Copula, js, uⱼₛ, is)
-    CC = ConditionalCopula(C, js, uⱼₛ)
+    CC = conditional_copula(C, js, uⱼₛ)
     distortions = CC isa ConditionalCopula ? CC.distortions :
-                  Tuple(DistortionFromCop(C, js, uⱼₛ, i) for i in is)
+                  Tuple(distortion(C, js, uⱼₛ, i) for i in is)
     return CC, distortions
 end
 
 function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, <:Real}) where {D, p}
     is = Tuple(setdiff(1:D, js))
-    p==D-1 && return DistortionFromCop(C, js, uⱼₛ, is[1])
+    p==D-1 && return distortion(C, js, uⱼₛ, is[1])
     CC, distortions = _conditional_components(C, js, uⱼₛ, is)
     return SklarDist(CC, distortions)
 end
@@ -310,7 +317,7 @@ function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::
     uⱼₛ = Tuple(Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ))
     is = Tuple(setdiff(1:D, js))
     if p == D - 1
-        return DistortionFromCop(X.C, js, uⱼₛ, is[1])(X.m[is[1]])
+        return distortion(X.C, js, uⱼₛ, is[1])(X.m[is[1]])
     end
     CC, distortions = _conditional_components(X.C, js, uⱼₛ, is)
     margins = Tuple(distortions[k](X.m[is[k]]) for k in eachindex(is))
@@ -322,15 +329,15 @@ end
 ###########################################################################
 
 
-function DistortionFromCop(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p}
+function distortion(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p}
     ibase = S.dims[i]
     jsbase = ntuple(k -> S.dims[js[k]], p)
-    return DistortionFromCop(S.C, jsbase, uⱼₛ, ibase)
+    return distortion(S.C, jsbase, uⱼₛ, ibase)
 end
 
-function ConditionalCopula(S::SubsetCopula{d,CT}, js, uⱼₛ) where {d,CT}
+function conditional_copula(S::SubsetCopula{d,CT}, js, uⱼₛ) where {d,CT}
     Jbase = Tuple(S.dims[j] for j in js)
-    CC_base = ConditionalCopula(S.C, Jbase, uⱼₛ)
+    CC_base = conditional_copula(S.C, Jbase, uⱼₛ)
     D = length(S.C); I = Tuple(setdiff(1:D, Jbase))
     dims_remain = Tuple(i for i in S.dims if !(i in Jbase))
     posmap = Dict(i => p for (p,i) in enumerate(I))
@@ -372,7 +379,7 @@ function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
         for k in 2:d
             js = ntuple(i -> i, k - 1)
             ujs = ntuple(i -> float(u[i, j]), k - 1)  # condition on original u's
-            Dk = DistortionFromCop(C, js, ujs, k)
+            Dk = distortion(C, js, ujs, k)
             v[k, j] = Distributions.cdf(Dk, clamp(float(u[k, j]), 0.0, 1.0))
         end
     end
@@ -412,7 +419,7 @@ function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}
         for k in 2:d
             js = ntuple(i -> i, k - 1)
             ujs = ntuple(i -> float(v[i, j]), k - 1)  # use already reconstructed U's
-            Dk = DistortionFromCop(C, js, ujs, k)
+            Dk = distortion(C, js, ujs, k)
             v[k, j] = Distributions.quantile(Dk, clamp(float(s[k, j]), 0.0, 1.0))
         end
     end
