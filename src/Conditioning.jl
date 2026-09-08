@@ -44,6 +44,8 @@ is the distribution of `X_i | U_J = u_J`.
 """
 abstract type Distortion<:Distributions.ContinuousUnivariateDistribution end
 
+quantile_strategy(::Type{<:Distortion}) = LogCDFQuantile()
+
 # Some exact conditional laws are atomic despite the historical continuous
 # supertype of `Distortion`. Keep that semantic capability explicit so callers
 # need not infer it from concrete implementation names.
@@ -54,19 +56,7 @@ distortion_measure_style(D::Distortion) = distortion_measure_style(typeof(D))
 (D::Distortion)(X::Distributions.UnivariateDistribution) = DistortedDist(D, X)
 Distributions.minimum(::Distortion) = 0.0
 Distributions.maximum(::Distortion) = 1.0
-function Distributions.quantile(d::Distortion, α::Real)
-    T = typeof(float(α))
-    ϵ = eps(T)
-    α < ϵ && return zero(T)
-    α > 1 - 2ϵ && return one(T)
-    lα = log(α)
-    f(u) = Distributions.logcdf(d, u) - lα
-    lo, hi = ϵ, one(T) - 2ϵ
-    flo, fhi = f(lo), f(hi)
-    flo >= zero(flo) && return lo
-    fhi <= zero(fhi) && return hi
-    return Roots.find_zero(f, (lo, hi), Roots.Bisection(); xtol = sqrt(eps(T)))
-end
+Distributions.quantile(d::Distortion, α::Real) = _quantile_from_cdf(d, α)
 # You have to implement a cdf, and you can implement a pdf, either in log scaleor not:
 Distributions.logcdf(d::Distortion, t::Real) = log(Distributions.cdf(d, t))
 Distributions.cdf(d::Distortion, t::Real) = exp(Distributions.logcdf(d, t))

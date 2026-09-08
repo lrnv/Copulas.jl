@@ -36,14 +36,7 @@ function Distributions.cdf(D::ClaytonWilliamsonDistribution, x::Real)
     return 1-rez
 end
 function Distributions.quantile(D::ClaytonWilliamsonDistribution, p::Real)
-    0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
-    iszero(p) && return minimum(D)
-    isone(p) && return maximum(D)
-    return Roots.find_zero(
-        x -> Distributions.cdf(D, x) - p,
-        (minimum(D), maximum(D)),
-        Roots.Bisection(),
-    )
+    return _quantile_from_cdf(D, p)
 end
 Distributions.rand(rng::Distributions.AbstractRNG, D::ClaytonWilliamsonDistribution) =
     Distributions.quantile(D, rand(rng))

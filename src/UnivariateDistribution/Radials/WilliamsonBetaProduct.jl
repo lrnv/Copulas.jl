@@ -95,25 +95,6 @@ Distributions.rand(rng::Distributions.AbstractRNG, dist::WilliamsonBetaProduct) 
 Base.minimum(dist::WilliamsonBetaProduct) = zero(float(Base.minimum(dist.X)))
 Base.maximum(dist::WilliamsonBetaProduct) = Base.maximum(dist.X)
 
-function _positive_distribution_quantile(dist, p::Real)
-    lo = float(Base.minimum(dist))
-    hi = float(Base.maximum(dist))
-    if !isfinite(hi)
-        hi = max(one(lo), lo + one(lo))
-        while Distributions.cdf(dist, hi) < p
-            hi *= 2
-            isfinite(hi) || return hi  # fallback for unbounded case
-        end
-    end
-    objective(x) = x == lo ? -p :
-                   x == hi ? one(p) - p :
-                   Distributions.cdf(dist, x) - p
-    return Roots.find_zero(objective, (lo, hi), Roots.Bisection())
-end
-
 function Distributions.quantile(dist::WilliamsonBetaProduct, p::Real)
-    0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
-    iszero(p) && return Base.minimum(dist)
-    isone(p) && return Base.maximum(dist)
-    return _positive_distribution_quantile(dist, p)
+    return _quantile_from_cdf(dist, p)
 end

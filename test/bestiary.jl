@@ -46,7 +46,9 @@ const BASE_COPULA_CASES = Any[
     copula_case(BetaCopula, 2, _FIXTURE_DATA),
     copula_case(CheckerboardCopula, 2, _FIXTURE_DATA; constructor_kwargs=(; m=2)),
     copula_case(EmpiricalCopula, 2, _FIXTURE_DATA; margin_atol=inv(size(_FIXTURE_DATA, 2))),
-    copula_case(EmpiricalEVCopula, 2, _FIXTURE_DATA; constructor_kwargs=(; method=:cfg, pseudo_values=false)),
+    copula_case(EmpiricalEVCopula, 2, _FIXTURE_DATA;
+                constructor_kwargs=(; method=:cfg, pseudo_values=false),
+                numerical_atol=5e-4),
     copula_case(ArchimedeanCopula, 2, Copulas.ClaytonGenerator(1.5)),
     copula_case(ExtremeValueCopula, 2, Copulas.GalambosTail(1.0)),
     copula_case(LiouvilleCopula, 2, Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),

@@ -39,10 +39,7 @@ function Distributions.pdf(D::WilliamsonFromFrailty, x::Real)
 end
 Distributions.logpdf(D::WilliamsonFromFrailty, x::Real) = log(Distributions.pdf(D, x))
 function Distributions.quantile(D::WilliamsonFromFrailty, p::Real)
-    0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
-    iszero(p) && return minimum(D)
-    isone(p) && return maximum(D)
-    return _positive_distribution_quantile(D, p)  # delegate to improved version
+    return _quantile_from_cdf(D, p)
 end
 Base.minimum(::WilliamsonFromFrailty) = 0
 Base.maximum(::WilliamsonFromFrailty) = Inf

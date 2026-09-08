@@ -52,22 +52,7 @@ function Distributions.cdf(D::PowerTiltedFrailty, x::Real)
     end
 end
 function Distributions.quantile(D::PowerTiltedFrailty, p::Real)
-    0 <= p <= 1 || throw(ArgumentError("p must be in [0, 1]"))
-    iszero(p) && return minimum(D)
-    isone(p) && return maximum(D)
-    lo = float(minimum(D))
-    hi = float(maximum(D))
-    if !isfinite(hi)
-        hi = max(one(lo), lo + one(lo))
-        while Distributions.cdf(D, hi) < p
-            hi *= 2
-        end
-    end
-    for _ in 1:64
-        mid = (lo + hi) / 2
-        Distributions.cdf(D, mid) < p ? (lo = mid) : (hi = mid)
-    end
-    return hi
+    return _quantile_from_cdf(D, p)
 end
 function Distributions.rand(rng::Distributions.AbstractRNG, D::PowerTiltedFrailty)
     if iszero(D.power)

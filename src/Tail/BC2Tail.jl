@@ -181,7 +181,7 @@ function Distributions.quantile(D::BivEVDistortion{BC2Tail{T}, S}, α::Real) whe
     t >= 1 && return _biv_ev_endpoint_quantile(D, α, false, R)
 
     # The two interior atoms can change order; invert the CDF robustly.
-    return _unit_quantile(D, α)
+    return _quantile_from_cdf(D, α)
 end
 
 

@@ -182,13 +182,12 @@ function Distributions.pdf(dist::𝒲₋₁, x::Real)
     return max(zero(density), density)
 end
 Distributions.logpdf(dist::𝒲₋₁, x) = log(Distributions.pdf(dist, x))
-_quantile(dist::𝒲₋₁, p) = Roots.find_zero(x -> (Distributions.cdf(dist, x) - p), (0.0, Inf))
-Distributions.rand(rng::Distributions.AbstractRNG, dist::𝒲₋₁) = _quantile(dist, rand(rng))
+Distributions.rand(rng::Distributions.AbstractRNG, dist::𝒲₋₁) =
+    Distributions.quantile(dist, rand(rng))
 Base.minimum(::𝒲₋₁) = 0.0
 Base.maximum(::𝒲₋₁) = Inf
 function Distributions.quantile(dist::𝒲₋₁, p::Real)
-    @assert 0 <= p <= 1
-    return _quantile(dist, p)
+    return _quantile_from_cdf(dist, p)
 end
 
 include("UnivariateDistribution/Radials/WilliamsonBetaProduct.jl")
@@ -346,7 +345,7 @@ function Distributions.quantile(
     α::Real,
 )
     distortion_measure_style(D) isa NonAbsolutelyContinuousMeasure &&
-        return _unit_quantile(D, α)
+        return _quantile_from_cdf(D, α)
     return invoke(
         Distributions.quantile,
         Tuple{ArchimedeanDistortion,Real},
