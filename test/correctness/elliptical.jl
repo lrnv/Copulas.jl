@@ -12,6 +12,14 @@
     @test Copulas.U(C20) == TDist(20)
 end
 
+@testset "Bivariate Student rank dependence" begin
+    C = TCopula{2}(4.0, [1.0 0.5; 0.5 1.0])
+    @test Copulas.τ(C) ≈ 1 / 3 atol=2e-15
+    @test 0 < Copulas.ρ(C) < 6asin(0.25) / π
+    @test Copulas.ρ(TCopula{2}(4.0, [1.0 0.0; 0.0 1.0])) == 0
+    @test Copulas.ρ(TCopula{2}(Inf, [1.0 0.5; 0.5 1.0])) ≈ 6asin(0.25) / π
+end
+
 @testset "Fix value Gaussian Copula & SklarDist" begin
     # source: https://discourse.julialang.org/t/cdf-of-a-copula-from-copulas-jl/85786/20
     Random.seed!(123)

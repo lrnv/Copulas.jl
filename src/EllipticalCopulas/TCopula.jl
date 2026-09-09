@@ -108,6 +108,28 @@ end
 # Lindskog, F., McNeil, A., & Schmock, U. (2003). Kendall’s tau for elliptical distributions. In Credit risk: Measurement, evaluation and management (pp. 149-156). Heidelberg: Physica-Verlag HD.
 τ(C::TCopula{2}) = 2*asin(C.Σ[1,2])/π
 
+# Heinen and Valdesogo (2020), Theorem 2. The one-dimensional expression
+# avoids repeatedly integrating the bivariate copula CDF.
+function ρ(C::TCopula{2})
+    ν = float(C.df)
+    r = float(C.Σ[1, 2])
+    iszero(r) && return zero(promote_type(typeof(ν), typeof(r)))
+    isinf(ν) && return 6asin(r / 2) / π
+
+    logconstant = log(2) + 2 * SpecialFunctions.loggamma(ν) +
+                  SpecialFunctions.loggamma(3ν / 2) -
+                  3 * SpecialFunctions.loggamma(ν / 2) -
+                  SpecialFunctions.loggamma(2ν)
+    constant = exp(logconstant)
+    integrand(v) = begin
+        iszero(v) && return zero(v)
+        h = HypergeometricFunctions.pFq((ν, ν), (2ν,), 1 - v^2)
+        asin(r * v) * constant * v^(ν - 1) * (1 - v^2)^(ν / 2 - 1) * h
+    end
+    value = QuadGK.quadgk(integrand, zero(ν), one(ν); rtol=1e-8)[1]
+    return 6value / π
+end
+
 # Conditioning colocated
 function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p,D}
     ν = C.df
@@ -181,4 +203,27 @@ function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where
 end
 
 
-_available_fitting_methods(::Type{<:TCopula}, d) = (:mle,)
+function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho})
+    size(U, 1) == 2 || throw(ArgumentError("Student rank matching is only defined in dimension 2"))
+    τ̂ = StatsBase.corkendall(U')[1, 2]
+    ρ̂ = StatsBase.corspearman(U')[1, 2]
+    r = clamp(sinpi(τ̂ / 2), -1 + eps(Float64), 1 - eps(Float64))
+    iszero(r) && throw(ArgumentError(
+        "Student degrees of freedom are not identifiable from rank correlations when Kendall's tau is zero",
+    ))
+
+    target = abs(ρ̂)
+    objective(logν) = abs(ρ(TCopula{2}(exp(logν), [1.0 r; r 1.0]))) - target
+    lower, upper = log(0.1), log(100.0)
+    flo, fhi = objective(lower), objective(upper)
+    logν = if signbit(flo) == signbit(fhi)
+        abs(flo) <= abs(fhi) ? lower : upper
+    else
+        Roots.find_zero(objective, (lower, upper), Roots.Bisection())
+    end
+    ν = exp(logν)
+    C = TCopula{2}(ν, [1.0 r; r 1.0])
+    return C, (; θ̂=(; ν, Σ=C.Σ), τ̂, ρ̂)
+end
+
+_available_fitting_methods(::Type{<:TCopula}, d) = d == 2 ? (:mle, :itau_irho) : (:mle,)

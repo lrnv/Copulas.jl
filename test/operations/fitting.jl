@@ -30,6 +30,16 @@ end
         method=:itau, vcov=true, vcov_method=:invalid, derived_measures=false)
 end
 
+@testset "bivariate Student rank matching" begin
+    source = TCopula{2}(4.0, [1.0 0.55; 0.55 1.0])
+    U = rand(StableRNG(316), source, 2_000)
+    fitted = fit(TCopula{2}, U; method=:itau_irho, vcov=false,
+                 derived_measures=false)
+    @test fitted isa TCopula{2}
+    @test fitted.Σ[1, 2] ≈ sinpi(StatsBase.corkendall(U')[1, 2] / 2)
+    @test Copulas.ρ(fitted) ≈ StatsBase.corspearman(U')[1, 2] atol=2e-3
+end
+
 @testset "generic empirical EV estimators by dimension" begin
     checked = Set{Tuple{Method,Symbol,Symbol}}()
     selected = Set{Tuple{Method,Symbol,Symbol}}()
