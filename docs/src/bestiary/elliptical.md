@@ -212,6 +212,26 @@ Nataf
 TCopula
 ```
 
+For a bivariate Student copula, `Copulas.ρ(C)` evaluates Spearman's rank
+correlation using a one-dimensional integral rather than a generic copula
+cubature. The degrees of freedom affect Spearman's rho, whereas Kendall's tau
+depends only on the correlation parameter.
+
+Both rank coefficients can therefore identify the two bivariate parameters:
+
+```@example elliptical
+using Copulas, Distributions, Random
+
+C = TCopula{2}(4.0, [1.0 0.55; 0.55 1.0])
+U = rand(Xoshiro(316), C, 500)
+Ĉ = fit(TCopula{2}, U; method=:itau_irho, vcov=false)
+(df=Ĉ.df, correlation=Ĉ.Σ[1, 2])
+```
+
+This rank-matching method is bivariate. Near zero Kendall correlation, the
+degrees of freedom are not identifiable from these two rank coefficients; use
+maximum likelihood instead.
+
 ## References
 
 ```@bibliography

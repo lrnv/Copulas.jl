@@ -150,6 +150,10 @@ sklar_fit_data = rand(Xoshiro(SEED + 10), sklar_model, 1_000)
 
 SUITE["fitting"]["gumbel_itau"] = bench_fitting(GumbelCopula, gumbel_fit_data; method=:itau)
 SUITE["fitting"]["gaussian_mle"] = bench_fitting(GaussianCopula, gaussian_fit_data; method=:mle)
+student_fit_data = rand(Xoshiro(SEED + 14), student, 2_000)
+SUITE["fitting"]["student_rank_matching"] =
+    bench_fitting(TCopula{2}, student_fit_data; method=:itau_irho,
+                  vcov=false, derived_measures=false)
 SUITE["fitting"]["sklar_ifm"] = bench_fitting(
     SklarDist{ClaytonCopula,Tuple{Normal,LogNormal,Gamma}},
     sklar_fit_data;

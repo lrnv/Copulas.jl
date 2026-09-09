@@ -11,6 +11,13 @@ C(\\mathbf{x}; \\nu, \\boldsymbol{\\Sigma}) = F_{\\nu,\\Sigma}(F_{\\nu,\\Sigma,1
 
 where ``F_{\\nu,\\Sigma}`` is the cdf of a centered multivariate t with correlation ``\\Sigma`` and ``\\nu`` degrees of freedom.
 
+The multivariate CDF is evaluated through the normal scale-mixture
+representation of the Student distribution. The remaining one-dimensional
+radial integral uses adaptive quadrature and the inner normal probabilities use
+`MvNormalCDF.jl`; consequently, returned probabilities are numerical estimates.
+For bivariate copulas, Spearman's rho uses the one-dimensional formula of
+Heinen and Valdesogo (2020).
+
 Example usage:
 ```julia
 C = TCopula(2, Σ)
@@ -21,6 +28,11 @@ pdf(C, u); cdf(C, u)
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
+* [heinen2020spearman](@cite) Heinen, Andréas and Valdesogo, Alfonso.
+  Spearman rank correlation of the bivariate Student t and scale mixtures of
+  normal distributions. Journal of Multivariate Analysis, 2020.
+* [genz1992normal](@cite) Genz, Alan. Numerical computation of multivariate
+  normal probabilities. Journal of Computational and Graphical Statistics, 1992.
 """
 struct TCopula{d,Tν,MT} <: EllipticalCopula{d,MT}
     df::Tν
@@ -45,8 +57,11 @@ N(C::TCopula) = function(Σ)
 end
 
 function _cdf(C::TCopula{d}, u) where d
+    T = promote_type(eltype(C), eltype(u))
+    T <: Union{Float32,Float64} ||
+        return invoke(_cdf, Tuple{Copula,Any}, C, u)
     upper = Distributions.quantile.(Distributions.TDist(C.df), u)
-    return _mvtcdf(C.df, zeros(eltype(upper), d), C.Σ, upper)
+    return T(_mvtcdf(C.df, zeros(eltype(upper), d), C.Σ, upper))
 end
 
 function _student_rosenblatt_cache(C::TCopula{d}) where d

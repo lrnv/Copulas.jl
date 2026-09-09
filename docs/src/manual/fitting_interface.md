@@ -249,6 +249,9 @@ The names and availability of fitting methods depend on the family. Use
 - `:itau` — **Kendall inverse**: matches theoretical `tau(C)` to empirical `tau(U)`. Ideal for single-parameter families with a monotone inverse.
 - `:irho` — **Spearman inverse**: analogous to `rho`; can use scalar or matrix objectives (e.g., multivariate Gaussians).
 - `:ibeta` — **Blomqvist inverse**: scalar; only valid for families with **≤ 1** free parameter.
+- `:itau_irho` — **joint Kendall/Spearman matching** for a bivariate
+  `TCopula`: Kendall's tau determines the correlation parameter and Spearman's
+  rho determines the degrees of freedom.
 
 > **Remark.** Rank-based methods require that the number of free parameters does not exceed the information contained in the chosen coefficient(s); `:ibeta` enforces this explicitly.
 
