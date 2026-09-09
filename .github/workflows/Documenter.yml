@@ -65,7 +65,7 @@ jobs:
           sudo apt-get install --yes libgsl-dev
           Rscript -e 'install.packages("copula")'
       - name: Build and deploy docs
-        run: julia -O0 --project=docs docs/make.jl
+        run: julia -O1 --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # For authentication with SSH deploy key
