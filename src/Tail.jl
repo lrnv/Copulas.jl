@@ -46,7 +46,7 @@ end
 function _ellpartial_signlog(tail::Tail, x, I::Tuple{Vararg{Int}})
     v = _mixed_partial(z -> ℓ(tail, z), x, I)
     iszero(v) && return 0, oftype(v, -Inf)
-    return v < zero(v) ? (-1, log(abs(v))) : (1, log(abs(v)))
+    return v < zero(v) ? -1 : 1, log(abs(v))
 end
 
 _ellpartial_signlog(tail::Tail, x, I::AbstractVector{<:Integer}) = _ellpartial_signlog(tail, x, Tuple(I))

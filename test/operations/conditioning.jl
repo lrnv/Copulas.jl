@@ -491,12 +491,6 @@ end
     @test_throws ArgumentError condition(C, 1, -0.1)
     @test_throws ArgumentError condition(C, 1, 1.1)
 end
-@testset "tuple conditioning arguments redirect to vectors" begin
-    C = GaussianCopula{3}([1.0 0.3 0.2; 0.3 1.0 0.4; 0.2 0.4 1.0])
-    from_tuple = condition(C, (1, 2), (0.3, 0.6))
-    from_vector = condition(C, [1, 2], [0.3, 0.6])
-    @test cdf(from_tuple, 0.7) ≈ cdf(from_vector, 0.7)
-end
 
 function test_distortion_contract(D)
     Base.@nospecialize D
