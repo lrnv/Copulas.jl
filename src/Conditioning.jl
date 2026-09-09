@@ -465,13 +465,15 @@ rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = rosenblatt(C, re
 function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
     size(u, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
     v = similar(u)
+    js = Int[]
+    ujs = typeof(float(zero(eltype(u))))[]
+    sizehint!(js, d - 1)
+    sizehint!(ujs, d - 1)
     @inbounds for j in axes(u, 2)
         # First coordinate is unchanged
         v[1, j] = clamp(float(u[1, j]), 0.0, 1.0)
-        js = Int[]
-        ujs = typeof(float(u[1, j]))[]
-        sizehint!(js, d - 1)
-        sizehint!(ujs, d - 1)
+        empty!(js)
+        empty!(ujs)
         for k in 2:d
             push!(js, k - 1)
             push!(ujs, float(u[k - 1, j])) # condition on original u's
@@ -510,12 +512,14 @@ inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = inverse_
 function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}
     size(s, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
     v = similar(s)
+    js = Int[]
+    ujs = typeof(float(zero(eltype(s))))[]
+    sizehint!(js, d - 1)
+    sizehint!(ujs, d - 1)
     @inbounds for j in axes(s, 2)
         v[1, j] = clamp(float(s[1, j]), 0.0, 1.0)
-        js = Int[]
-        ujs = typeof(float(s[1, j]))[]
-        sizehint!(js, d - 1)
-        sizehint!(ujs, d - 1)
+        empty!(js)
+        empty!(ujs)
         for k in 2:d
             push!(js, k - 1)
             push!(ujs, float(v[k - 1, j])) # use already reconstructed U's
