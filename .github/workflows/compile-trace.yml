@@ -15,6 +15,10 @@ concurrency:
   group: compile-trace-${{ github.ref }}
   cancel-in-progress: true
 
+strategy:
+  matrix:
+    optlevel: [0, 1]
+
 jobs:
   trace:
     name: Julia 1.12 full compile trace
@@ -54,6 +58,7 @@ jobs:
             Pkg.test(;
                 coverage = false,
                 julia_args = [
+                    "--optimize=$(ENV["OPTLEVEL"])",
                     "--trace-compile=$tracefile",
                     "--trace-compile-timing",
                 ],
