@@ -61,7 +61,7 @@ function _process_conditioning_args(::Val{D}, js::AbstractVector{<:Integer}, uj:
     length(js) == 1 || throw(DimensionMismatch(
         "one conditioning value requires exactly one conditioning index",
     ))
-    return _process_conditioning_args(Val(D), js, (uj,))
+    return _process_conditioning_args(Val(D), js, [float(uj)])
 end
 
 _process_conditioning_args(::Val{D}, j::Integer, uj::Real) where {D} =

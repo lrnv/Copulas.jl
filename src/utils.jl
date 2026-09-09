@@ -23,28 +23,22 @@ function _mixed_partial(
     x,
     I::AbstractVector{<:Integer},
 )
-    return _mixed_partial_indexed(f, x, I, 1)
-end
-
-function _mixed_partial_indexed(
-    f,
-    x,
-    I::AbstractVector{<:Integer},
-    pos::Int,
-)
-    pos > length(I) && return f(x)
-
-    i = I[pos]
-
-    return ForwardDiff.derivative(
-        xi -> _mixed_partial_indexed(
-            f,
-            _replace_coordinate(x, i, xi),
-            I,
-            pos + 1,
-        ),
-        x[i],
-    )
+    # Build the derivative composition dynamically. A recursive implementation
+    # indexed by a runtime vector position makes inference explore an unbounded
+    # nesting of ForwardDiff.Dual types because no shrinking tuple type proves
+    # termination to the compiler.
+    local derivative::Function = f
+    for index in Iterators.reverse(I)
+        inner = derivative
+        i = Int(index)
+        derivative = let inner=inner, i=i
+            y -> ForwardDiff.derivative(
+                xi -> inner(_replace_coordinate(y, i, xi)),
+                y[i],
+            )
+        end
+    end
+    return derivative(x)
 end
 
 # Compatibility only.

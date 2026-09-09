@@ -325,14 +325,14 @@ end
 
     df = condition(C, [1, 3, 4], xf[[1, 3, 4]])
     db = condition(C, [1, 3, 4], xb[[1, 3, 4]])
+    @test db.sJ isa BigFloat
     @test db.den isa BigFloat
-    @test eltype(db.uⱼₛ) === BigFloat
     cdf_db = cdf(db, xb[2])
     @test cdf_db isa BigFloat
     @test Float64(cdf_db) ≈ cdf(df, xf[2]) atol=1e-9
 
     mb = condition(C, [1, 3], xb[[1, 3]])
-    @test mb.C.den isa BigFloat
+    @test mb.C.G.sJ isa BigFloat
     @test cdf(mb, xb[[2, 4]]) isa BigFloat
 
     C3 = ClaytonCopula{3}(2.0)

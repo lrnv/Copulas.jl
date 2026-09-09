@@ -278,9 +278,10 @@ function distortion(C::ArchimedeanCopula, js::AbstractVector{<:Integer}, uⱼₛ
 
     @assert length(js) == length(uⱼₛ)
     p = length(js)
-    T = eltype(uⱼₛ)
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
-    return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
+    den = ϕ⁽ᵏ⁾(C.G, p, sJ)
+    T = float(promote_type(typeof(sJ), typeof(den)))
+    return ArchimedeanDistortion(C.G, p, T(sJ), T(den))
 end
 function distortion(C::ArchimedeanCopula, j::Integer, uⱼ::Real, i::Int)
     kind = limit_kind(C.G, Val(2))
@@ -289,8 +290,9 @@ function distortion(C::ArchimedeanCopula, j::Integer, uⱼ::Real, i::Int)
     kind === W_LIMIT && return WDistortion(float(uⱼ), Int8(j))
 
     sJ = ϕ⁻¹(C.G, uⱼ)
-    T = typeof(float(uⱼ))
-    return ArchimedeanDistortion(C.G, 1, float(sJ), float(T(ϕ⁽¹⁾(C.G, sJ))))
+    den = ϕ⁽¹⁾(C.G, sJ)
+    T = float(promote_type(typeof(sJ), typeof(den)))
+    return ArchimedeanDistortion(C.G, 1, T(sJ), T(den))
 end
 function condition(C::ArchimedeanCopula{2}, j::Int, uⱼ::Real)
     1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
