@@ -107,10 +107,11 @@ end
     return HistogramBinDistortion(mᵢ, α)
 end
 
-@inline function conditional_copula(C::CheckerboardCopula{D,T}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D,T,p}
+@inline function conditional_copula(C::CheckerboardCopula{D,T}, js::AbstractArray{<:Integer}, uⱼₛ::AbstractArray{<:Real}) where {D,T}
+    p = length(js)
     # Project boxes onto remaining axes with J-bin fixed by uⱼₛ
-    J = collect(js)
-    I = collect(setdiff(1:D, J))
+    J = js
+    I = setdiff(1:D, J)
     # Compute J-bin indices for the conditioning point
     kJ = ntuple(t -> min(C.m[J[t]]-1, floor(Int, C.m[J[t]] * uⱼₛ[t])), p)
     # Aggregate weights for projected I-box keys

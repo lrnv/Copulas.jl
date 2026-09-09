@@ -116,7 +116,7 @@ function distortion(
     end
     return GaussianDistortion(float(μz), float(σz))
 end
-function conditional_copula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D,MT,p}
+function conditional_copula(C::GaussianCopula{D,MT}, js::AbstractArray{<:Integer}, ::AbstractArray{<:Real}) where {D,MT,p}
     @assert 0 < p < D-1
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))
@@ -124,8 +124,7 @@ function conditional_copula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ:
     return GaussianCopula{D - p}(Σcond)
 end
 
-function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
-                                 uⱼₛ::NTuple{p,Float64}, is) where {D,MT,p}
+function _conditional_components(C::GaussianCopula{D,MT}, js::AbstractArray{<:Integer}, uⱼₛ::AbstractArray{<:Real}, is) where {D,MT}
     J = collect(Int, js)
     I = collect(Int, is)
     Σ = C.Σ

@@ -102,7 +102,7 @@ Parameters
 - `T`: element type for the conditioned values u_J
 
 Construction
-- `DistortionFromCop(C::Copula, js::NTuple{p,Int}, ujs::NTuple{p,<:Real}, i::Int)`
+- `DistortionFromCop(C, js, ujs, i)`
     builds the distortion for the conditional marginal of index `i` given `U_js = ujs`.
 
 Notes
@@ -236,9 +236,9 @@ struct ConditionalCopula{d,D,T,TDs} <: Copula{d}
         )
     end
 end
-Base.eltype(::ConditionalCopula{d,D,p,T}) where {d,D,p,T} = T
+Base.eltype(::ConditionalCopula{d,D,T,TDs}) where {d,D,T,TDs} = T
 conditional_copula(C::Copula, js, uⱼₛ) = ConditionalCopula(C, js, uⱼₛ)
-function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
+function _cdf(CC::ConditionalCopula{d,D,T,TDs}, v::AbstractVector{<:Real}) where {d,D,T, TDs}
     uI = [
         Distributions.quantile(CC.distortions[k], v[k])
         for k in 1:d
@@ -250,7 +250,7 @@ end
 # For v ∈ (0,1)^d, let u_I = quantile(D_k, v_k) with D_k = H_{i_k|J}(·|u_J).
 # Then c_{I|J}(v) = f_{U_I|U_J}(u_I|u_J) / ∏_k f_{U_{i_k}|U_J}(u_{i_k}|u_J).
 # The Jacobian of v_k = D_k(u_k) contributes 1 / pdf(D_k, u_k).
-function Distributions._logpdf(CC::ConditionalCopula{d,D,p,T,TDs}, v::AbstractVector{<:Real}) where {d,D,p,T,TDs}
+function Distributions._logpdf(CC::ConditionalCopula{d,D,T,TDs}, v::AbstractVector{<:Real}) where {d,D,T,TDs}
     TR = promote_type(eltype(v), T)
 
     # Support:

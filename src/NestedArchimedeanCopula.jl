@@ -845,7 +845,7 @@ end
 # ---- (2) Distortion: closed-form conditional marginal U_i | U_js -------------
 
 
-function distortion(C::NestedArchimedeanCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int) where {D, p}
+function distortion(C::NestedArchimedeanCopula{D}, js::AbstractVector{<:Integer}, ujs::AbstractVector{<:Real}, i::Int) where {D}
     # den = c_O = pdf of the observed marginal. Identical to upstream's generic
     # generic distortion denominator, so num/den stays consistent. For p==1 subsetdims
     # returns Uniform() ⇒ den = 1; otherwise it is our pruned-tree multivariate

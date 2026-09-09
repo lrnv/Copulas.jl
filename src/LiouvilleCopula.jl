@@ -166,9 +166,9 @@ _liouville_conditioning_radial(G::Generator, d::Real) = 𝒲₋₁(G, d)
 
 
 function _liouville_conditional_components(
-    C::LiouvilleCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real},
-) where {D,p}
-    is = Tuple(i for i in 1:D if i ∉ js)
+    C::LiouvilleCopula{D}, js::AbstractArray{<:Integer}, uⱼₛ::AbstractArray{<:Real},
+) where {D}
+    is = setdiff(1:d, js)
     source_order = _liouville_order(C)
     target_order = sum(C.α[i] for i in is)
     tilted_order = sum(C.α[j] for j in js)
@@ -210,7 +210,7 @@ function distortion(
     js::AbstractVector{<:Integer}, 
     uⱼₛ::AbstractVector{<:Real}, 
     i::Int,
-) where {p}
+)
     _, distortions, is = _liouville_conditional_components(C, js, uⱼₛ)
     position = findfirst(==(i), is)
     position === nothing && throw(ArgumentError("the target dimension is conditioned"))
