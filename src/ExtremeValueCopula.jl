@@ -272,11 +272,10 @@ end
 
 function distortion(
     C::ExtremeValueCopula{2,TT},
-    js,
-    uⱼₛ,
+    js::AbstractVector{<:Integer},
+    uⱼₛ::AbstractVector{<:Real},
     ::Int,
 ) where {TT}
-    Base.@nospecialize js uⱼₛ
     kind = limit_kind(C.tail, Val(2))
     kind === Π_LIMIT && return NoDistortion()
 

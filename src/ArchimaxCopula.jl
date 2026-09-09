@@ -186,11 +186,10 @@ end
 # Fast conditional distortion binding (bivariate)
 function distortion(
     C::ArchimaxCopula{2},
-    js,
-    uⱼₛ,
+    js::AbstractVector{<:Integer},
+    uⱼₛ::AbstractVector{<:Real},
     ::Int,
 )
-    Base.@nospecialize js uⱼₛ
     length(js) == 1 || throw(ArgumentError("bivariate Archimax conditioning expects one conditioned coordinate"))
     kind = _archimax_limit_kind(C)
     kind === M_LIMIT && return MDistortion(float(uⱼₛ[1]), Int8(js[1]))

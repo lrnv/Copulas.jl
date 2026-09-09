@@ -38,11 +38,10 @@ StatsBase.corkendall(::IndependentCopula{d}) where d = one(zeros(d,d))
 StatsBase.corspearman(::IndependentCopula{d}) where d = one(zeros(d,d))
 
 # Conditioning colocated
-function distortion(::IndependentCopula, js, uⱼₛ, ::Int)
-    Base.@nospecialize js uⱼₛ
+function distortion(::IndependentCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, ::Int)
     return NoDistortion()
 end
-conditional_copula(::IndependentCopula{D}, js, u) where D = IndependentCopula{D - length(js)}()
+conditional_copula(::IndependentCopula{D}, js::AbstractVector{<:Integer}, ::AbstractVector{<:Real}) where D = IndependentCopula{D - length(js)}()
 function _condition(::IndependentCopula{D}, js::Vector{Int}, uⱼₛ::Vector{<:Real}) where {D}
     d = D - length(js)
     return d==1 ? Distributions.Uniform() : IndependentCopula{d}()

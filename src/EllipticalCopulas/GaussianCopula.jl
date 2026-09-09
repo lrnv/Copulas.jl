@@ -99,11 +99,10 @@ end
 # Conditioning and subsetting fast paths colocated with the type
 function distortion(
     C::GaussianCopula{D,MT},
-    js,
-    uⱼₛ,
+    js::AbstractVector{<:Integer},
+    uⱼₛ::AbstractVector{<:Real},
     i::Int,
 ) where {D,MT}
-    Base.@nospecialize js uⱼₛ
     ist = setdiff(1:D, js)
     @assert i in ist
     zⱼ = Distributions.quantile.(Distributions.Normal(), uⱼₛ)
@@ -126,7 +125,7 @@ function conditional_copula(C::GaussianCopula{D,MT}, js::AbstractVector{<:Intege
     return GaussianCopula{D - p}(Σcond)
 end
 
-function _conditional_components(C::GaussianCopula{D,MT}, js::AbstractArray{<:Integer}, uⱼₛ::AbstractArray{<:Real}, is) where {D,MT}
+function _conditional_components(C::GaussianCopula{D,MT}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, is) where {D,MT}
     J = collect(Int, js)
     I = collect(Int, is)
     Σ = C.Σ

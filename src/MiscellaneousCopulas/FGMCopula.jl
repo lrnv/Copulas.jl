@@ -150,8 +150,7 @@ function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int}) where {d,Tθ
     return FGMCopula(p, θ′)
 end
 
-function distortion(C::FGMCopula{2}, js, uⱼₛ, ::Int)
-    Base.@nospecialize js uⱼₛ
+function distortion(C::FGMCopula{2}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, ::Int)
     length(js) == 1 || throw("ONly for dimension 1? should invoke ?")
    return BivFGMDistortion(float(C.θ[1]), Int8(js[1]), float(uⱼₛ[1]))
 end

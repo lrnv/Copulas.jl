@@ -108,24 +108,24 @@ end
 logcdf_or_cdf(D, u::Real) = logcdf(D, u)
 logcdf_or_cdf(S, u::AbstractVector) = log(cdf(S, u))
 function gist_censored(C, u, δ)
-    obs = Tuple(i for i in eachindex(δ) if !δ[i])
+    obs = [i for i in eachindex(δ) if !δ[i]]
     cen = [i for i in eachindex(δ) if δ[i]]
     isempty(cen) && return logpdf(C, u)
     isempty(obs) && return log(cdf(C, u))
     u_obs = length(obs) == 1 ? u[obs[1]] : [u[i] for i in obs]
     u_cen = length(cen) == 1 ? u[cen[1]] : [u[i] for i in cen]
-    return logpdf(subsetdims(C, obs), u_obs) +
+    return logpdf(subsetdims(C, Tuple(obs)), u_obs) +
            logcdf_or_cdf(condition(C, obs, u_obs), u_cen)
 end
 # Data-scale analogue on a SklarDist (subsetdims + condition push-forwards).
 function gist_sklar(S, x, δ)
-    obs = Tuple(i for i in eachindex(δ) if !δ[i])
+    obs = [i for i in eachindex(δ) if !δ[i]]
     cen = [i for i in eachindex(δ) if δ[i]]
     isempty(cen) && return logpdf(S, x)
     isempty(obs) && return log(cdf(S, x))
     x_obs = length(obs) == 1 ? x[obs[1]] : [x[i] for i in obs]
     x_cen = length(cen) == 1 ? x[cen[1]] : [x[i] for i in cen]
-    return logpdf(subsetdims(S, obs), x_obs) +
+    return logpdf(subsetdims(S, Tuple(obs)), x_obs) +
            logcdf_or_cdf(condition(S, obs, x_obs), x_cen)
 end
 
@@ -234,10 +234,10 @@ end
         # Explicit decomposition: subsetdims p==1 ⇒ Uniform (base term 0), so the
         # whole value is logcdf(condition) ⇒ den cancels.
         @test logpdf(subsetdims(Cbiv, (1,)), u1) +
-              logcdf(condition(Cbiv, (1,), u1), u2) ≈ log(dC_du1) atol = 1e-9
+              logcdf(condition(Cbiv, [1], [u1]), u2) ≈ log(dC_du1) atol = 1e-9
         @test logpdf(subsetdims(Cbiv, (1,)), u1) == 0.0      # Uniform marginal
         # Fast-path probe: condition returns our specialised NestedDistortion.
-        Dbiv = condition(Cbiv, (1,), u1)
+        Dbiv = condition(Cbiv, [1], [u1])
         @test Dbiv isa NestedDistortion
 
         # (b) Flat ArchimedeanCopula via the SAME gist recipe, against the
@@ -275,14 +275,14 @@ end
                     [(big(u[1]), false)],
                     [RefSpec(ClaytonGenerator(big(5.0)), [(big(u[2]), false), (big(u[3]), false)]),
                      RefSpec(GumbelGenerator(big(3.0)),  [(big(u[4]), false), (big(u[5]), true)])])
-        @test condition(C, (1, 2, 3, 4), [u[1], u[2], u[3], u[4]]) isa NestedDistortion
+        @test condition(C, [1, 2, 3, 4], [u[1], u[2], u[3], u[4]]) isa NestedDistortion
         @test gist_censored(C, u, δ1) ≈ Float64(ref_logpdf(spec1)) atol = 1e-9
 
         # The conditional marginal density is the full mixed partial over the
         # observed coordinates plus the free coordinate, divided by c_O. Its
         # specialised tree walk must agree with both that identity and the
         # generic ForwardDiff fallback.
-        D5 = condition(C, (1, 2, 3, 4), [u[1], u[2], u[3], u[4]])
+        D5 = condition(C, [1, 2, 3, 4], [u[1], u[2], u[3], u[4]])
         logden = logpdf(subsetdims(C, (1, 2, 3, 4)), u[1:4])
         ui = 0.35
         ufull = [u[1], u[2], u[3], u[4], ui]

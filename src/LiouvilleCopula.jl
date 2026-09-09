@@ -166,10 +166,8 @@ _liouville_conditioning_radial(G::Generator, d::Real) = 𝒲₋₁(G, d)
 
 
 function _liouville_conditional_components(
-    C::LiouvilleCopula{D}, js, uⱼₛ,
+    C::LiouvilleCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real},
 ) where {D}
-    Base.@nospecialize js uⱼₛ
-    js, uⱼₛ = _process_conditioning_args(Val(D), js, uⱼₛ)
     is = setdiff(1:D, js)
     source_order = _liouville_order(C)
     target_order = sum(C.α[i] for i in is)
@@ -212,18 +210,17 @@ end
 
 function distortion(
     C::LiouvilleCopula,
-    js,
-    uⱼₛ,
+    js::AbstractVector{<:Integer},
+    uⱼₛ::AbstractVector{<:Real},
     i::Int,
 )
-    Base.@nospecialize js uⱼₛ
     _, distortions, is = _liouville_conditional_components(C, js, uⱼₛ)
     position = findfirst(==(i), is)
     position === nothing && throw(ArgumentError("the target dimension is conditioned"))
     return distortions[position]
 end
 
-function conditional_copula(C::LiouvilleCopula, js, uⱼₛ)
+function conditional_copula(C::LiouvilleCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real})
     conditional_copula, _, _ = _liouville_conditional_components(C, js, uⱼₛ)
     conditional_copula === nothing && throw(ArgumentError(
         "conditioning leaves one margin and therefore no conditional copula",
@@ -237,7 +234,7 @@ end
 # rebuilding (and renormalizing) the same conditional frailty or radial once
 # for the copula and once per remaining margin. The `conditional_copula` and
 # `distortion` methods above remain the family extension points.
-function _conditional_components(C::LiouvilleCopula, js, uⱼₛ, is)
+function _conditional_components(C::LiouvilleCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, is)
     conditional_copula, distortions, computed_is =
         _liouville_conditional_components(C, js, uⱼₛ)
     computed_is == is || throw(ArgumentError("inconsistent conditioning dimensions"))

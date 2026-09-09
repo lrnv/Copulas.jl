@@ -46,7 +46,7 @@ end
     # Numerical-kernel tails cannot accept dual numbers; their analytic STDF
     # partials must nevertheless power conditioning and Rosenblatt end to end.
     C = tEVCopula{3}(4.0, 0.2)
-    D = condition(C, (1, 2), (0.31, 0.58))
+    D = condition(C, [1, 2], [0.31, 0.58])
     @test 0 < cdf(D, 0.63) < 1
     @test pdf(D, 0.63) > 0
     u = [0.21, 0.53, 0.74]

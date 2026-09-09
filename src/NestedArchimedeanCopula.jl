@@ -406,13 +406,13 @@ logpdf(C, [0.3, 0.5, 0.4, 0.6])
 S = SklarDist(C, ntuple(_ -> Exponential(1.0), 4))
 x = [0.7, 0.3, 0.5, 0.9]
 logpdf(subsetdims(S, (1, 3, 4)), x[[1, 3, 4]]) +
-    logcdf(condition(S, (1, 3, 4), x[[1, 3, 4]]), x[2])
+    logcdf(condition(S, [1, 3, 4], x[[1, 3, 4]]), x[2])
 
 # right-censored dim 2 on the copula scale:
 u = [cdf(S.m[i], x[i]) for i in 1:4]
 Cs = SurvivalCopula(C, (2,))
 logpdf(subsetdims(C, (1, 3, 4)), u[[1, 3, 4]]) +
-    logcdf(condition(Cs, (1, 3, 4), u[[1, 3, 4]]), 1 - u[2])
+    logcdf(condition(Cs, [1, 3, 4], u[[1, 3, 4]]), 1 - u[2])
 ```
 
 The density and the partial-observation likelihood follow the
@@ -841,8 +841,7 @@ end
 # ---- (2) Distortion: closed-form conditional marginal U_i | U_js -------------
 
 
-function distortion(C::NestedArchimedeanCopula{D}, js, ujs, i::Int) where {D}
-    Base.@nospecialize js ujs
+function distortion(C::NestedArchimedeanCopula{D}, js::AbstractVector{<:Integer}, ujs::AbstractVector{<:Real}, i::Int) where {D}
     # den = c_O = pdf of the observed marginal. Identical to upstream's generic
     # generic distortion denominator, so num/den stays consistent. For p==1 subsetdims
     # returns Uniform() ⇒ den = 1; otherwise it is our pruned-tree multivariate

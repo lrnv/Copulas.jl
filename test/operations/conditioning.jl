@@ -9,9 +9,9 @@ function test_conditioning_contract(C, u)
     d > 2 && !is_absolutely_continuous(C) && return
     if d == 2
         scalar = condition(C, 1, u[1])
-        tupled = condition(C, (1,), (u[1],))
+        vectorized = condition(C, [1], [u[1]])
         @test scalar isa Distributions.UnivariateDistribution
-        @test cdf(scalar, u[2]) ≈ cdf(tupled, u[2])
+        @test cdf(scalar, u[2]) ≈ cdf(vectorized, u[2])
     end
     if d > 2
         joint = condition(C, 1, u[1])
@@ -19,14 +19,14 @@ function test_conditioning_contract(C, u)
         @test 0 <= cdf(joint, u[2:end]) <= 1
     end
     if d > 3
-        js = Tuple(1:(d - 2))
-        joint = condition(C, js, Tuple(u[1:(d - 2)]))
+        js = collect(1:(d - 2))
+        joint = condition(C, js, u[1:(d - 2)])
         @test length(joint) == 2
         @test 0 <= cdf(joint, u[(d - 1):d]) <= 1
     end
 
-    js = Tuple(1:(d - 1))
-    values = Tuple(u[1:(d - 1)])
+    js = collect(1:(d - 1))
+    values = u[1:(d - 1)]
     D = condition(C, js, values)
     vals = cdf.(Ref(D), (0.25, 0.5, 0.75))
     q = quantile(D, 0.5)
@@ -55,8 +55,8 @@ function conditional_distribution(fixture)
     Base.@nospecialize fixture
     C = fixture.copula
     d = length(C)
-    js = Tuple(1:(d - 1))
-    values = ntuple(_ -> 0.4, d - 1)
+    js = collect(1:(d - 1))
+    values = fill(0.4, d - 1)
     return condition(C, js, values)
 end
 
@@ -126,7 +126,7 @@ end
         length(C) == 2 || continue
         is_absolutely_continuous(C) || continue
         method = which(Copulas.distortion,
-            Tuple{typeof(C),Tuple{Int},Tuple{Float64},Int})
+            Tuple{typeof(C),Vector{Int},Vector{Float64},Int})
         method in seen && continue
         push!(seen, method)
 
@@ -214,8 +214,8 @@ end
         d = length(C)
         d > 2 || continue
         is_absolutely_continuous(C) || continue
-        js = Tuple(1:(d - 1))
-        values = ntuple(k -> 0.3 + 0.08k, d - 1)
+        js = collect(1:(d - 1))
+        values = [0.3 + 0.08k for k in 1:(d - 1)]
         method = which(Copulas.distortion,
             Tuple{typeof(C),typeof(js),typeof(values),Int})
         method in seen && continue
@@ -252,7 +252,7 @@ end
         key in seen && continue
         push!(seen, key)
         d = length(C)
-        D = condition(C, Tuple(1:(d - 1)), ntuple(_ -> 0.4, d - 1))
+        D = condition(C, collect(1:(d - 1)), fill(0.4, d - 1))
         @testset "$(case.name)" begin
             for p in (0.2, 0.6, 0.85)
                 q = quantile(D, p)
@@ -289,7 +289,7 @@ end
         key in seen && continue
         push!(seen, key)
 
-        H = condition(C, (1,), (conditioned,))
+        H = condition(C, [1], [conditioned])
         targets = collect(range(0.53, 0.71; length=d - 1))
         conditional_copula = H isa SklarDist ? H.C : H
         conditional_scale = H isa SklarDist ?
@@ -323,27 +323,27 @@ end
     xf = [0.3, 0.5, 0.4, 0.6]
     xb = big.(xf)
 
-    df = condition(C, (1, 3, 4), Tuple(xf[[1, 3, 4]]))
-    db = condition(C, (1, 3, 4), Tuple(xb[[1, 3, 4]]))
+    df = condition(C, [1, 3, 4], xf[[1, 3, 4]])
+    db = condition(C, [1, 3, 4], xb[[1, 3, 4]])
     @test db.den isa BigFloat
     @test eltype(db.uⱼₛ) === BigFloat
     cdf_db = cdf(db, xb[2])
     @test cdf_db isa BigFloat
     @test Float64(cdf_db) ≈ cdf(df, xf[2]) atol=1e-9
 
-    mb = condition(C, (1, 3), Tuple(xb[[1, 3]]))
+    mb = condition(C, [1, 3], xb[[1, 3]])
     @test mb.C.den isa BigFloat
     @test cdf(mb, xb[[2, 4]]) isa BigFloat
 
     C3 = ClaytonCopula{3}(2.0)
     @test condition(C3, 1, big"0.3") isa SklarDist
     X = SklarDist(C3, (Normal(), LogNormal(), Exponential()))
-    big_conditioned = condition(X, (1,), (big"0.2",))
-    float_conditioned = condition(X, (1,), (0.2,))
+    big_conditioned = condition(X, [1], [big"0.2"])
+    float_conditioned = condition(X, [1], [0.2])
     @test big_conditioned isa SklarDist
     @test cdf(big_conditioned, [0.3, 0.5]) ≈
           cdf(float_conditioned, [0.3, 0.5]) atol=1e-6
-    @test condition(ClaytonCopula{3}(2.0), (1, 2), (0.3f0, 0.4f0)) isa
+    @test condition(ClaytonCopula{3}(2.0), [1, 2], Float32[0.3, 0.4]) isa
           Copulas.Distortion
 end
 
@@ -354,7 +354,7 @@ end
 # log-scale definitions, or independent Gaussian conditioning algebra.
 
 @testset "Gaussian distortion log-scale formulas" begin
-    D = condition(GaussianCopula{2}([1.0 0.6; 0.6 1.0]), (1,), (0.3,))
+    D = condition(GaussianCopula{2}([1.0 0.6; 0.6 1.0]), [1], [0.3])
     N = Normal()
     for u in (1e-12, 0.2, 0.5, 0.8)
         q = quantile(N, u)
@@ -369,7 +369,7 @@ end
 end
 
 @testset "Student distortion logcdf" begin
-    D = condition(TCopula{2}(4, [1.0 0.5; 0.5 1.0]), (1,), (0.3,))
+    D = condition(TCopula{2}(4, [1.0 0.5; 0.5 1.0]), [1], [0.3])
     @test D.Tu isa TDist
     @test D.Tcond isa TDist
     for u in (1e-10, 0.2, 0.5, 0.8)
@@ -382,17 +382,17 @@ end
 @testset "Elliptical conditioning shares matrix factorizations" begin
     Σ = [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]
     for C in (GaussianCopula{3}(Σ), TCopula{3}(4, Σ))
-        conditioned = condition(C, (1,), (0.35,))
+        conditioned = condition(C, [1], [0.35])
         @test length(conditioned.m) == 2
         for (k, i) in enumerate((2, 3)), u in (0.2, 0.7)
-            reference = Copulas.distortion(C, (1,), (0.35,), i)
+            reference = Copulas.distortion(C, [1], [0.35], i)
             @test cdf(conditioned.m[k], u) ≈ cdf(reference, u) atol = 2e-12
         end
     end
 end
 
 @testset "Distorted distribution logcdf" begin
-    D = condition(GaussianCopula{2}([1.0 0.6; 0.6 1.0]), (1,), (0.3,))(Logistic())
+    D = condition(GaussianCopula{2}([1.0 0.6; 0.6 1.0]), [1], [0.3])(Logistic())
     @test D isa Copulas.DistortedDist
     for x in (-8.0, -0.5, 1.0)
         @test logcdf(D, x) ≈ logcdf(D.D, cdf(D.X, x)) atol = 2e-13
@@ -401,9 +401,9 @@ end
 
 @testset "Archimedean distortion logcdf" begin
     distortions = (
-        condition(ClaytonCopula{3}(2.0), (1, 2), (0.3, 0.6)),
-        condition(FrankCopula{3}(2.0), (1, 2), (0.3, 0.6)),
-        condition(GumbelCopula{3}(2.0), (1, 2), (0.3, 0.6)),
+        condition(ClaytonCopula{3}(2.0), [1, 2], [0.3, 0.6]),
+        condition(FrankCopula{3}(2.0), [1, 2], [0.3, 0.6]),
+        condition(GumbelCopula{3}(2.0), [1, 2], [0.3, 0.6]),
     )
     for D in distortions, u in (1e-10, 0.2, 0.5, 0.8)
         @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 3e-12
@@ -414,7 +414,7 @@ end
 
 @testset "Flip distortion logcdf" begin
     S = SurvivalCopula{2}(ClaytonCopula{2}(2.0), (2,))
-    D = condition(S, (1,), (0.3,))
+    D = condition(S, [1], [0.3])
     @test D isa Copulas.FlipDistortion
     for u in (0.2, 0.5, 0.8)
         @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 2e-12
@@ -428,7 +428,7 @@ end
 
 @testset "FGM distortion log-scale formulas" begin
     for θ in (-0.8, 0.8), uⱼ in (0.2, 0.7)
-        D = condition(FGMCopula{2}(θ), (1,), (uⱼ,))
+        D = condition(FGMCopula{2}(θ), [1], [uⱼ])
         for u in (1e-12, 0.2, 0.5, 0.8)
             @test logcdf(D, u) ≈ log(cdf(D, u)) atol = 2e-14
         end
@@ -445,14 +445,14 @@ end
         0.35 1.0 0.25
         0.20 0.25 1.0
     ])
-    js = (3,)
-    ujs = (0.4,)
+    js = [3]
+    ujs = [0.4]
     generic = @invoke Copulas.ConditionalCopula(C::Copulas.Copula{3}, js, ujs)
     Cgeneric = FGMCopula{3}([0.1, 0.2, 0.3, 0.4])
     conditioned = condition(Cgeneric, js, ujs)
     @test conditioned.C isa Copulas.ConditionalCopula
     @test conditioned.m === conditioned.C.distortions
-    @test conditioned.C.is == (1, 2)
+    @test conditioned.C.is == [1, 2]
     @test generic.logden == log(generic.den)
     specialized = Copulas.conditional_copula(C, js, ujs)
 
@@ -465,8 +465,8 @@ end
     Cclayton = ClaytonCopula{3}(2.0)
     generic_big = @invoke Copulas.ConditionalCopula(
         Cclayton::Copulas.Copula{3},
-        (3,),
-        (big"0.4",),
+        [3],
+        BigFloat[0.4],
     )
     value_big = logpdf(generic_big, BigFloat[0.35, 0.65])
     @test value_big isa BigFloat
@@ -484,12 +484,19 @@ end
     @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
     for j in 1:2, uⱼ in (0.2f0, big"0.8")
         @test typeof(condition(C, j, uⱼ)) ==
-              typeof(condition(C, (j,), (float(uⱼ),)))
+              typeof(condition(C, [j], [float(uⱼ)]))
     end
     @test_throws ArgumentError condition(C, 0, 0.4)
     @test_throws ArgumentError condition(C, 3, 0.4)
     @test_throws ArgumentError condition(C, 1, -0.1)
     @test_throws ArgumentError condition(C, 1, 1.1)
+end
+
+@testset "tuple conditioning arguments redirect to vectors" begin
+    C = GaussianCopula{3}([1.0 0.3 0.2; 0.3 1.0 0.4; 0.2 0.4 1.0])
+    from_tuple = condition(C, (1, 2), (0.3, 0.6))
+    from_vector = condition(C, [1, 2], [0.3, 0.6])
+    @test cdf(from_tuple, 0.7) ≈ cdf(from_vector, 0.7)
 end
 
 function test_distortion_contract(D)
@@ -614,18 +621,18 @@ end
 # Focused regressions retain implementation-sensitive assertions that are not
 # implied by the operation-wide mathematical contracts above.
 @testset "Extreme-value conditioning caches fixed transforms" begin
-    DEV = condition(GalambosCopula{2}(2.5), (1,), (0.3,))
+    DEV = condition(GalambosCopula{2}(2.5), [1], [0.3])
     @test DEV.negloguⱼ == -log(DEV.uⱼ)
 
     DAM = condition(ArchimaxCopula{2}(Copulas.FrankGenerator(0.8),
-        Copulas.HuslerReissTail(0.6)), (1,), (0.3,))
+        Copulas.HuslerReissTail(0.6)), [1], [0.3])
     @test DAM.yⱼ == Copulas.ϕ⁻¹(DAM.gen, DAM.uⱼ)
     @test DAM.invderivⱼ == Copulas.ϕ⁻¹⁽¹⁾(DAM.gen, DAM.uⱼ)
 end
 
 @testset "Checkerboard multidimensional conditioning regression" begin
     C = CheckerboardCopula{3}(randn(rng, 3, 30); pseudo_values=false)
-    D = Copulas.distortion(C, (1, 2), (0.3, 0.7), 3)
+    D = Copulas.distortion(C, [1, 2], [0.3, 0.7], 3)
     @test D isa Copulas.HistogramBinDistortion
     @test all(0 .<= cdf.(Ref(D), (0.2, 0.5, 0.8)) .<= 1)
     @test all(pdf.(Ref(D), (0.2, 0.5, 0.8)) .>= 0)
@@ -634,7 +641,7 @@ end
 
 @testset "Bernstein distortion bounded inversion regression" begin
     D = condition(BernsteinCopula{2}(GaussianCopula{2}(0.3); m=5),
-                  (1,), (0.4,))
+                  [1], [0.4])
     @test D isa Copulas.BernsteinDistortion
     for p in (0.1, 0.5, 0.9)
         q = quantile(D, p)

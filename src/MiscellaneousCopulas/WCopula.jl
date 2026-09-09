@@ -40,8 +40,7 @@ StatsBase.corspearman(::WCopula) = [1 -1; -1 1]
 
 # Subsetting colocated
 SubsetCopula(C::WCopula, ::NTuple{p, Int}) where {p} = (p==2 ? C : error("WCopula only defined for p=2"))
-function distortion(::WCopula, js, uⱼₛ, i::Int)
-    Base.@nospecialize js uⱼₛ
+function distortion(::WCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int)
     length(js) == length(uⱼₛ) == 1 || throw(ArgumentError(
         "bivariate W conditioning expects one conditioned coordinate",
     ))

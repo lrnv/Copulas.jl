@@ -109,8 +109,7 @@ end
 τ(C::TCopula{2}) = 2*asin(C.Σ[1,2])/π
 
 # Conditioning colocated
-function distortion(C::TCopula{D}, js, uⱼₛ, i::Int) where {D}
-    Base.@nospecialize js uⱼₛ
+function distortion(C::TCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int) where {D}
     ν = C.df
     Σ = C.Σ
     is = setdiff(1:D, js)
@@ -132,7 +131,7 @@ function distortion(C::TCopula{D}, js, uⱼₛ, i::Int) where {D}
     νp = ν + length(js); σz = sqrt(max(σ0², zero(σ0²))) * sqrt((ν + δ) / νp)
     return StudentDistortion(float(μz), float(σz), Int(ν), Int(νp))
 end
-function conditional_copula(C::TCopula{D}, js, uⱼₛ) where {D}
+function conditional_copula(C::TCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) where {D}
     df = C.df
     p = length(js); J = collect(Int, js); I = collect(setdiff(1:D, J)); Σ = C.Σ
     if p == 1
@@ -146,7 +145,7 @@ function conditional_copula(C::TCopula{D}, js, uⱼₛ) where {D}
     return TCopula{D - p}(df + p, R_cond)
 end
 
-function _conditional_components(C::TCopula{D}, js::AbstractArray{<:Integer}, uⱼₛ::AbstractArray{<:Real}, is) where {D}
+function _conditional_components(C::TCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, is) where {D}
     p = length(js)
     ν = C.df
     J = collect(Int, js)

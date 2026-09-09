@@ -84,8 +84,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CheckerboardCop
     return A
 end
 
-@inline function distortion(C::CheckerboardCopula{D,T}, js, uⱼₛ, i::Int) where {D,T}
-    Base.@nospecialize js uⱼₛ
+@inline function distortion(C::CheckerboardCopula{D,T}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int) where {D,T}
 
     # Locate the bin index for uⱼₛ : 
     kⱼₛ = Tuple(min(C.m[j]-1, floor(Int, C.m[j] * uⱼ)) for (j,uⱼ) in zip(js, uⱼₛ))
@@ -108,7 +107,7 @@ end
     return HistogramBinDistortion(mᵢ, α)
 end
 
-@inline function conditional_copula(C::CheckerboardCopula{D,T}, js::AbstractArray{<:Integer}, uⱼₛ::AbstractArray{<:Real}) where {D,T}
+@inline function conditional_copula(C::CheckerboardCopula{D,T}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) where {D,T}
     p = length(js)
     # Project boxes onto remaining axes with J-bin fixed by uⱼₛ
     J = js

@@ -21,22 +21,22 @@ end
 
 # Generic fallbacks. Family implementations specialize these lowercase hooks;
 # the concrete types remain implementation details of the generic path.
-function distortion(C::Copula, js, uⱼₛ, i)
-    Base.@nospecialize js uⱼₛ
+function distortion(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i)
     return DistortionFromCop(C, js, uⱼₛ, i)
 end
-
-_partial_indices(js::AbstractVector{<:Integer}) = js
-_partial_indices(js::Tuple{Vararg{Int}}) = collect(js)
 
 _partial_cdf(C, is, js, uᵢₛ, uⱼₛ) =
     _mixed_partial(
         u -> Distributions.cdf(C, u),
         _assemble(length(C), is, js, uᵢₛ, uⱼₛ),
-        _partial_indices(js),
+        js,
     )
 
-function _process_conditioning_args(::Val{D}, js, ujs) where {D}
+function _process_conditioning_args(
+    ::Val{D},
+    js::AbstractVector{<:Integer},
+    ujs::AbstractVector{<:Real},
+) where {D}
     jsv = collect(Int, js)
     ujsv = collect(float.(ujs))
 
@@ -49,7 +49,15 @@ function _process_conditioning_args(::Val{D}, js, ujs) where {D}
     return jsv, ujsv
 end
 
-function _process_conditioning_args(::Val{D}, js, uj::Real) where {D}
+function _process_conditioning_args(::Val{D}, js::Vector{Int}, ujs::Vector{T}) where {D,T<:Real}
+    p = length(js)
+    @assert 0 < p < D
+    @assert p == length(ujs)
+    @assert all(in(1:D), js)
+    return js, ujs
+end
+
+function _process_conditioning_args(::Val{D}, js::AbstractVector{<:Integer}, uj::Real) where {D}
     length(js) == 1 || throw(DimensionMismatch(
         "one conditioning value requires exactly one conditioning index",
     ))
@@ -243,7 +251,8 @@ struct ConditionalCopula{d,D,T,TDs} <: Copula{d}
     end
 end
 Base.eltype(::ConditionalCopula{d,D,T,TDs}) where {d,D,T,TDs} = T
-conditional_copula(C::Copula, js, uⱼₛ) = ConditionalCopula(C, js, uⱼₛ)
+conditional_copula(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) =
+    ConditionalCopula(C, js, uⱼₛ)
 function _cdf(CC::ConditionalCopula{d,D,T,TDs}, v::AbstractVector{<:Real}) where {d,D,T, TDs}
     uI = [
         Distributions.quantile(CC.distortions[k], v[k])
@@ -319,7 +328,7 @@ passing a `SklarDist`).
 Arguments
 - `C::Copula{D}`: D-variate copula
 - `X::SklarDist`: joint distribution with copula `X.C` and marginals `X.m`
-- `js`: indices of conditioned coordinates (tuple, NTuple, or vector)
+- `js`: vector of conditioned-coordinate indices
 - `u_js`: values in [0,1] for `U_js` (when conditioning a copula)
 - `x_js`: values on original scale for `X_js` (when conditioning a SklarDist)
 - `j, u_j, x_j`: 1D convenience overloads for the common p = 1 case
@@ -338,8 +347,8 @@ Returns
       the original marginal scales.
 
 Notes
-- Tuples, vectors, and scalar indices are normalized by the public entry point.
-  The specialized method `condition(::Copula{2}, j, u_j)` handles the common
+- Vectors are normalized by the public entry point. The specialized method
+  `condition(::Copula{2}, j, u_j)` handles the common
   `D = 2, d = 1` case directly.
 - Specializations are provided for many copula families (Independent, Gaussian, t,
     Archimedean, several bivariate families). Others fall back to an automatic
@@ -350,22 +359,29 @@ Notes
 function condition(C::Copula{2}, j::Int, uⱼ::Real)
     1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
     zero(uⱼ) ≤ uⱼ ≤ one(uⱼ) || throw(ArgumentError("Conditioning values must lie in [0, 1]."))
-    return distortion(C, (j,), (float(uⱼ),), 3 - j)
+    return distortion(C, Int[j], [float(uⱼ)], 3 - j)
 end
 
 condition(C::Copula{D}, j::Integer, xⱼ::Real) where D =
     _condition(C, _process_conditioning_args(Val(D), j, xⱼ)...)
 # `_process_conditioning_args` keeps the numeric precision while normalizing
 # the homogeneous index and value collections to vectors.
-function _conditional_components(C::Copula, js, uⱼₛ, is)
+function _conditional_components(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, is)
     CC = conditional_copula(C, js, uⱼₛ)
     distortions = CC isa ConditionalCopula ? CC.distortions :
                   Tuple(distortion(C, js, uⱼₛ, i) for i in is)
     return CC, distortions
 end
 
-condition(C::Copula{D}, js, uⱼₛ) where D =
+condition(C::Copula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) where D =
     _condition(C, _process_conditioning_args(Val(D), js, uⱼₛ)...)
+condition(C::Copula{D}, js::AbstractVector{<:Integer}, uⱼ::Real) where D =
+    _condition(C, _process_conditioning_args(Val(D), js, uⱼ)...)
+condition(C::Copula, js::Tuple, uⱼₛ::Union{Tuple,AbstractVector}) =
+    condition(C, collect(Int, js), collect(float.(uⱼₛ)))
+condition(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::Tuple) =
+    condition(C, js, collect(float.(uⱼₛ)))
+condition(C::Copula, js::Tuple, uⱼ::Real) = condition(C, collect(Int, js), uⱼ)
 function _condition(C::Copula{D}, js::Vector{Int}, uⱼₛ::Vector{<:Real}) where D
     is = setdiff(1:D, js)
     length(js) == D - 1 && return distortion(C, js, uⱼₛ, is[1])
@@ -375,8 +391,15 @@ end
 
 condition(X::SklarDist{<:Copula{D}}, j::Integer, xⱼ::Real) where D =
     _condition(X, _process_conditioning_args(Val(D), j, xⱼ)...)
-condition(X::SklarDist{<:Copula{D}}, js, xⱼₛ) where D =
+condition(X::SklarDist{<:Copula{D}}, js::AbstractVector{<:Integer}, xⱼₛ::AbstractVector{<:Real}) where D =
     _condition(X, _process_conditioning_args(Val(D), js, xⱼₛ)...)
+condition(X::SklarDist{<:Copula{D}}, js::AbstractVector{<:Integer}, xⱼ::Real) where D =
+    _condition(X, _process_conditioning_args(Val(D), js, xⱼ)...)
+condition(X::SklarDist, js::Tuple, xⱼₛ::Union{Tuple,AbstractVector}) =
+    condition(X, collect(Int, js), collect(float.(xⱼₛ)))
+condition(X::SklarDist, js::AbstractVector{<:Integer}, xⱼₛ::Tuple) =
+    condition(X, js, collect(float.(xⱼₛ)))
+condition(X::SklarDist, js::Tuple, xⱼ::Real) = condition(X, collect(Int, js), xⱼ)
 function _condition(X::SklarDist{<:Copula{D}}, js::Vector{Int}, xⱼₛ::Vector{<:Real}) where D
     uⱼₛ = [Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ)]
     is = setdiff(1:D, js)
@@ -393,12 +416,11 @@ end
 ###########################################################################
 
 
-function distortion(S::SubsetCopula, js, uⱼₛ, i::Int)
-    Base.@nospecialize js uⱼₛ
-    return distortion(S.C, S.dims[js], uⱼₛ, S.dims[i])
+function distortion(S::SubsetCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int)
+    return distortion(S.C, [S.dims[j] for j in js], uⱼₛ, S.dims[i])
 end
 
-function conditional_copula(S::SubsetCopula{d,CT}, js, uⱼₛ) where {d,CT}
+function conditional_copula(S::SubsetCopula{d,CT}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) where {d,CT}
     Jbase = [S.dims[j] for j in js]
     CC_base = conditional_copula(S.C, Jbase, uⱼₛ)
     D = length(S.C); I = setdiff(1:D, Jbase)

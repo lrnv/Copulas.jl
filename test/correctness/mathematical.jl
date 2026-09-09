@@ -34,7 +34,7 @@ end
     target = [-0.4, 0.7]
     expected_cond, cond_error = mvnormcdf(
         MvNormal(μcond, Σcond), fill(-Inf, 2), target)
-    @test isapprox(cdf(condition(X, (1,), observed), target), expected_cond;
+    @test isapprox(cdf(condition(X, [1], collect(observed)), target), expected_cond;
                    atol=max(10sqrt(cond_error), 5e-5), rtol=0)
 end
 
@@ -153,7 +153,7 @@ end
     C3 = PolynomialOracleCopula{3,Float64}(0.4)
     conditioned = 0.41
     target = [0.37, 0.68]
-    H = condition(C3, (3,), (conditioned,))
+    H = condition(C3, [3], [conditioned])
     expected_conditional = prod(target) * (
         1 + C3.θ * prod(1 .- target) * (1 - 2conditioned))
     @test cdf(H, target) ≈ expected_conditional
@@ -509,7 +509,7 @@ end
     C = ClaytonCopula{3}(1.5)
     fixed = [0.38, 0.47]
     target = 0.64
-    D = condition(C, (1, 2), Tuple(fixed))
+    D = condition(C, [1, 2], fixed)
     numerator = ForwardDiff.hessian(
         x -> cdf(C, [x[1], x[2], target]), fixed)[1, 2]
     normalizer = ForwardDiff.hessian(
@@ -533,8 +533,8 @@ end
 @testset "Rosenblatt conditional densities factorize the copula density" begin
     u = [0.31, 0.52, 0.74]
     for C in (ClaytonCopula{3}(1.5), GaussianCopula{3}(0.3))
-        second = condition(C, (1,), (u[1],))
-        third = condition(C, (1, 2), (u[1], u[2]))
+        second = condition(C, [1], [u[1]])
+        third = condition(C, [1, 2], u[1:2])
         second_density = pdf(second, u[2:3])
         third_density = pdf(third, u[3])
         marginal_second = pdf(second.m[1], u[2])
@@ -544,7 +544,7 @@ end
 end
 
 @testset "conditional densities are normalized" begin
-    for D in (condition(ClaytonCopula{3}(1.5), (1, 2), (0.38, 0.47)),
+    for D in (condition(ClaytonCopula{3}(1.5), [1, 2], [0.38, 0.47]),
               condition(GalambosCopula{2}(1.0), 1, 0.41))
         mass, _ = QuadGK.quadgk(x -> pdf(D, x), 0.0, 1.0; rtol=2e-6)
         @test mass ≈ 1 atol=2e-5

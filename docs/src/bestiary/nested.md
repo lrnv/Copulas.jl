@@ -205,10 +205,10 @@ Cpart = NestedArchimedeanCopula(ClaytonGenerator(2.0);
             children = [ClaytonCopula(3, 5.0), ClaytonCopula(3, 6.0)])
 S = SklarDist(Cpart, ntuple(_ -> Exponential(1.0), 6))
 x = [0.7, 0.3, 0.9, 0.5, 0.4, 1.1]
-O = (1, 3, 4, 5)        # observed
+O = [1, 3, 4, 5]        # observed
 C = (2, 6)              # lower-tail coordinates
-logpdf(subsetdims(S, O), x[collect(O)]) +
-    log(cdf(condition(S, O, x[collect(O)]), x[collect(C)]))
+logpdf(subsetdims(S, Tuple(O)), x[O]) +
+    log(cdf(condition(S, O, x[O]), x[collect(C)]))
 ```
 
 For right-censored coordinates, flip those coordinates with
@@ -221,8 +221,8 @@ coordinates:
 margins = params(S).margins
 u = [cdf(margins[i], x[i]) for i in 1:6]
 Cs = SurvivalCopula(Cpart, C)
-logpdf(subsetdims(Cpart, O), u[collect(O)]) +
-    log(cdf(condition(Cs, O, u[collect(O)]), 1 .- u[collect(C)]))
+logpdf(subsetdims(Cpart, Tuple(O)), u[O]) +
+    log(cdf(condition(Cs, O, u[O]), 1 .- u[collect(C)]))
 ```
 
 On the data scale, add the observed marginal log densities
