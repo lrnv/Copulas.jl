@@ -482,7 +482,7 @@ end
 @testset "bivariate scalar conditioning contract" begin
     C = GaussianCopula{2}(0.4)
     @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
-    for j in 1:2, uⱼ in (0.2f0, big"0.8")
+    for j in 1:2, uⱼ in (0.2f0, big(0.8))
         @test typeof(condition(C, j, uⱼ)) ==
               typeof(condition(C, [j], [float(uⱼ)]))
     end
