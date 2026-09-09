@@ -124,7 +124,7 @@ function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}
         δ = LinearAlgebra.dot(zJ, solved_zJ)
     end
     νp = ν + length(Jv); σz = sqrt(max(σ0², zero(σ0²))) * sqrt((ν + δ) / νp)
-    return StudentDistortion(float(μz), float(σz), Int(ν), Int(νp))
+    return StudentDistortion(float(μz), float(σz), ν, νp)
 end
 function conditional_copula(C::TCopula{D}, js, uⱼₛ) where {D}
     df = C.df
@@ -157,7 +157,7 @@ function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
     scale = sqrt((ν + δ) / νp)
     distortions = ntuple(k -> begin
         σ² = max(Σcond[k, k], zero(eltype(Σcond)))
-        StudentDistortion(float(μ[k]), float(sqrt(σ²) * scale), Int(ν), Int(νp))
+        StudentDistortion(float(μ[k]), float(sqrt(σ²) * scale), ν, νp)
     end, length(is))
     σ = sqrt.(LinearAlgebra.diag(Σcond))
     Rcond = Matrix(Σcond ./ (σ * σ'))

@@ -2,6 +2,7 @@ module Copulas
 
     import Base
     import Random
+    import Rmath
     import SpecialFunctions
     import Roots
     import Distributions

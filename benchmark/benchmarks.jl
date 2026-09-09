@@ -134,6 +134,10 @@ SUITE["conditioning"]["cdf_bb1_d2"] =
     bench_conditional_cdf(bb1, 2, 0.4, conditional_probabilities)
 SUITE["conditioning"]["quantile_galambos_d2"] =
     bench_conditional_quantile(galambos, 2, 0.4, conditional_probabilities)
+SUITE["conditioning"]["cdf_student_d2"] =
+    bench_conditional_cdf(student, 2, 0.4, conditional_probabilities)
+SUITE["conditioning"]["quantile_student_d2"] =
+    bench_conditional_quantile(student, 2, 0.4, conditional_probabilities)
 
 gumbel_fit_data = rand(Xoshiro(SEED + 8), GumbelCopula{2}(2.0), 2_000)
 gaussian_fit_data = rand(Xoshiro(SEED + 9), GaussianCopula{3}(0.35), 1_000)
