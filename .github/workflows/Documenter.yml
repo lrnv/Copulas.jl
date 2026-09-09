@@ -51,7 +51,7 @@ jobs:
         id: julia-cache
         uses: julia-actions/cache@v3
       - name: Instantiate documentation environment
-        run: julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+        run: julia --project=docs -O1 -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Setup R
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.benchmarks }}
         uses: r-lib/actions/setup-r@v2
