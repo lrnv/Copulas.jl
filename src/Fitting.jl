@@ -404,76 +404,198 @@ function _vcov_margin_generic(d::TD, x::AbstractVector) where {TD<:Distributions
     return LinearAlgebra.Symmetric(Matrix{Float64}(Vθ))
 end
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Symbol, override::Union{Symbol,Nothing}=nothing)
-    allowed = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
-    isnothing(override) || override in allowed ||
-        throw(ArgumentError("unknown vcov method `$override`; expected one of $allowed"))
-    vcovm = !isnothing(override) ? override :
-            method === :mle      ? :hessian :
-            method === :itau     ? :godambe :
-            method === :irho     ? :godambe :
-            method === :ibeta    ? :godambe :
-            method === :iupper   ? :godambe :  :jackknife
+@inline function _vcov_copula(CT, d::Int, α)
+    return CT(d, _rebound_params(CT, d, α)...)
+end
 
-    if vcovm ∉ (:hessian, :godambe, :godambe_pairwise)
-        return _vcov(CT, U, θ, Val{vcovm}(), Val{method}()) # you can write new methods through this interface, as the jacknife method below.
+function _vcov_upper_triangle(A)
+    return [
+        A[idx]
+        for idx in CartesianIndices(A)
+        if idx[1] < idx[2]
+    ]
+end
+
+_vcov_dependence_measure(::Val{:itau}) = τ
+_vcov_dependence_measure(::Val{:irho}) = ρ
+_vcov_dependence_measure(::Val{:ibeta}) = β
+_vcov_dependence_measure(::Val) = λᵤ
+
+_vcov_pairwise_measure(::Val{:itau}) = StatsBase.corkendall
+_vcov_pairwise_measure(::Val{:irho}) = StatsBase.corspearman
+_vcov_pairwise_measure(::Val{:ibeta}) = corblomqvist
+_vcov_pairwise_measure(::Val) = coruppertail
+
+
+function _vcov(
+    CT::Type{<:Copula},
+    U::AbstractMatrix,
+    θ::NamedTuple;
+    method::Symbol,
+    override::Union{Symbol,Nothing}=nothing,
+)
+    _check_vcov_method(override)
+
+    vcovm =
+        !isnothing(override) ? override :
+        method === :mle      ? :hessian :
+        method === :itau     ? :godambe :
+        method === :irho     ? :godambe :
+        method === :ibeta    ? :godambe :
+        method === :iupper   ? :godambe :
+                               :jackknife
+
+    # Compilation barrier: from this point onward the inference method and
+    # fitting method are encoded in dispatch instead of runtime Symbol branches.
+    return _vcov(
+        CT,
+        U,
+        θ,
+        Val(vcovm),
+        Val(method),
+    )
+end
+
+
+function _vcov(
+    CT::Type{<:Copula},
+    U::AbstractMatrix,
+    θ::NamedTuple,
+    ::Val{:hessian},
+    methodv::Val{method},
+) where {method}
+    d = size(U, 1)
+    α = _unbound_params(CT, d, θ)
+
+    ℓ(αv) = Distributions.loglikelihood(
+        _vcov_copula(CT, d, αv),
+        U,
+    )
+
+    H = ForwardDiff.hessian(ℓ, α)
+    Iα = .-H
+
+    if any(!isfinite, Iα)
+        @warn "vcov(:hessian): non-finite Fisher information; falling back" Iα
+        return _vcov(
+            CT,
+            U,
+            θ,
+            Val(:bootstrap),
+            methodv,
+        )
     end
 
+    Iα = (Iα + Iα') / 2
+    p = size(Iα, 1)
+    I_p = Matrix{Float64}(LinearAlgebra.I, p, p)
+
+    λ = 1e-8
+    Vα = nothing
+
+    @inbounds for _ in 1:8
+        A = Iα + λ * I_p
+        ch = LinearAlgebra.cholesky(
+            LinearAlgebra.Symmetric(A);
+            check=false,
+        )
+
+        if ch.info == 0
+            Vα = ch \ I_p
+            break
+        end
+
+        λ *= 10
+    end
+
+    if Vα === nothing || any(!isfinite, Vα)
+        @warn "vcov(:hessian): failed to stabilize Fisher; falling back" λ_final=λ
+        return _vcov(
+            CT,
+            U,
+            θ,
+            Val(:bootstrap),
+            methodv,
+        )
+    end
+
+    return _vcov_finalize(
+        CT,
+        U,
+        θ,
+        d,
+        α,
+        Vα,
+        Val(:hessian),
+        methodv,
+    )
+end
+
+
+function _vcov(
+    CT::Type{<:Copula},
+    U::AbstractMatrix,
+    θ::NamedTuple,
+    ::Val{:godambe},
+    methodv::Val{method},
+) where {method}
+    return _vcov_godambe(
+        CT,
+        U,
+        θ,
+        Val(false),
+        Val(:godambe),
+        methodv,
+    )
+end
+
+
+function _vcov(
+    CT::Type{<:Copula},
+    U::AbstractMatrix,
+    θ::NamedTuple,
+    ::Val{:godambe_pairwise},
+    methodv::Val{method},
+) where {method}
+    return _vcov_godambe(
+        CT,
+        U,
+        θ,
+        Val(true),
+        Val(:godambe_pairwise),
+        methodv,
+    )
+end
+
+
+function _vcov_godambe(
+    CT::Type{<:Copula},
+    U::AbstractMatrix,
+    θ::NamedTuple,
+    ::Val{pairwise},
+    vcovv::Val{vcovm},
+    methodv::Val{method},
+) where {pairwise,vcovm,method}
     d, n = size(U)
-    α  = _unbound_params(CT, d, θ)
-    cop(α) = CT(d, _rebound_params(CT,d,α)...)
-    _upper_triangle(A) = [A[idx] for idx in CartesianIndices(A) if idx[1] < idx[2]]
+    α = _unbound_params(CT, d, θ)
 
-    if vcovm === :hessian
-        ℓ(α) = Distributions.loglikelihood(cop(α), U)
-        H  = ForwardDiff.hessian(ℓ, α)
-        Iα = .-H
-        if any(!isfinite, Iα)
-            @warn "vcov(:hessian): non-finite Fisher information; falling back" Iα
-            return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
-        end
-        Iα = (Iα + Iα')/2
-        p   = size(Iα, 1)
-        I_p = Matrix{Float64}(LinearAlgebra.I, p, p)
-        λ = 1e-8
-        Vα = nothing
-        @inbounds for _ in 1:8
-            A = Iα + λ*I_p
-            ch = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(A); check=false)
-            if ch.info == 0                     # is p.d.
-                Vα = ch \ I_p                   # It is equivalent to inv(A), but stable, we could use pinv but I don't know how optimal it is...
-                break
-            end
-            λ *= 10
-        end
-        if Vα === nothing || any(!isfinite, Vα)
-            @warn "vcov(:hessian): failed to stabilize Fisher; falling back" λ_final=λ
-            return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
-        end
-    else
+    φ = _vcov_dependence_measure(methodv)
 
-        pairwise_φ = method isa Val{:itau}  ? StatsBase.corkendall :
-            method isa Val{:irho}  ? StatsBase.corspearman :
-            method isa Val{:ibeta} ? corblomqvist : coruppertail
-        φ = method isa Val{:itau}  ? τ :
-                method isa Val{:irho}  ? ρ :
-                method isa Val{:ibeta} ? β : λᵤ
-        if vcovm === :godambe
-            q = 1
-            ψ = α -> [φ(cop(α))]
-            ψ_emp = u ->[φ(u)]
-        else # then :godambe_pairwise
-            q = d*(d-1) ÷ 2
-            ψ = α -> _upper_triangle(pairwise_φ(cop(α)))
-            ψ_emp = U -> _upper_triangle(pairwise_φ(U'))
-        end
+    if pairwise
+        pairwise_φ = _vcov_pairwise_measure(methodv)
+        q = d * (d - 1) ÷ 2
 
-        Dα = ForwardDiff.jacobian(ψ, α)
+        Dα = ForwardDiff.jacobian(
+            αv -> _vcov_upper_triangle(
+                pairwise_φ(_vcov_copula(CT, d, αv)),
+            ),
+            α,
+        )
+
         Dα = reshape(Dα, q, length(α))
 
-        # Ω bootstrap
-        B   = clamp(Int(floor(sqrt(n))), 10, 200)
-        M   = Matrix{Float64}(undef, B, q)
+        B = clamp(Int(floor(sqrt(n))), 10, 200)
+        M = Matrix{Float64}(undef, B, q)
         idx = Vector{Int}(undef, n)
         rng = Random.default_rng()
 
@@ -481,32 +603,116 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple; method::Sy
             for i in 1:n
                 idx[i] = rand(rng, 1:n)
             end
+
             Mb = @view U[:, idx]
-            M[b, :] = ψ_emp(Mb)
+            M[b, :] .= _vcov_upper_triangle(
+                pairwise_φ(Mb'),
+            )
         end
-        Ω = n * Statistics.cov(M; corrected=true)
-        DtD = Dα' * Dα
-        ϵI  = 1e-10LinearAlgebra.I
-        Vα  = inv(DtD + ϵI) * (Dα' * Ω * Dα) * inv(DtD + ϵI) / n
+
+    else
+        q = 1
+
+        Dα = ForwardDiff.jacobian(
+            αv -> [φ(_vcov_copula(CT, d, αv))],
+            α,
+        )
+
+        Dα = reshape(Dα, q, length(α))
+
+        B = clamp(Int(floor(sqrt(n))), 10, 200)
+        M = Matrix{Float64}(undef, B, q)
+        idx = Vector{Int}(undef, n)
+        rng = Random.default_rng()
+
+        @inbounds for b in 1:B
+            for i in 1:n
+                idx[i] = rand(rng, 1:n)
+            end
+
+            Mb = @view U[:, idx]
+            M[b, 1] = φ(Mb)
+        end
     end
-    # Delta method Jacobian from α (unbounded) to θ (original params), flattened
-    J  = ForwardDiff.jacobian(αv -> _flatten_params(_rebound_params(CT, d, αv))[2], α)
+
+    Ω = n * Statistics.cov(M; corrected=true)
+
+    DtD = Dα' * Dα
+    ϵI = 1e-10LinearAlgebra.I
+
+    stabilized = DtD + ϵI
+    stabilized_inv = inv(stabilized)
+
+    Vα =
+        stabilized_inv *
+        (Dα' * Ω * Dα) *
+        stabilized_inv / n
+
+    return _vcov_finalize(
+        CT,
+        U,
+        θ,
+        d,
+        α,
+        Vα,
+        vcovv,
+        methodv,
+    )
+end
+
+
+function _vcov_finalize(
+    CT::Type{<:Copula},
+    U::AbstractMatrix,
+    θ::NamedTuple,
+    d::Int,
+    α,
+    Vα,
+    ::Val{vcovm},
+    methodv::Val{method},
+) where {vcovm,method}
+    J = ForwardDiff.jacobian(
+        αv -> _flatten_params(
+            _rebound_params(CT, d, αv),
+        )[2],
+        α,
+    )
+
     Vθ = J * Vα * J'
-    # <<<<<<< KEY CHANGE >>>>>>>>>
-    # Check for finiteness BEFORE calling eigen.
-    # If the matrix already contains Inf/NaN, the estimate was unstable.
-    # We activate the fallback to jackknife immediately.
+
     if !all(isfinite, Vθ)
-        return _vcov(CT, U, θ, Val{:bootstrap}(), Val{method}())
+        return _vcov(
+            CT,
+            U,
+            θ,
+            Val(:bootstrap),
+            methodv,
+        )
     end
-    Vθ = (Vθ + Vθ')/2
+
+    Vθ = (Vθ + Vθ') / 2
+
     λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
     λ_reg = map(x -> max(x, 1e-12), λ)
-    Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
-    # This final check is now a double security.
-    any(!isfinite, Matrix(Vθ)) && return _vcov(CT, U, θ, Val{:jackknife}(), Val{method}())
+
+    Vθ = LinearAlgebra.Symmetric(
+        Q * LinearAlgebra.Diagonal(λ_reg) * Q',
+    )
+
+    if any(!isfinite, Matrix(Vθ))
+        return _vcov(
+            CT,
+            U,
+            θ,
+            Val(:jackknife),
+            methodv,
+        )
+    end
+
     return Vθ, (; vcov_method=vcovm)
 end
+
+
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jackknife}, ::Val{method}) where {method}
     d, n = size(U)
     θminus = zeros(n, length(θ))

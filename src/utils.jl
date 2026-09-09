@@ -18,16 +18,44 @@ function _replace_coordinate(x::AbstractVector, i::Int, xi)
 end
 
 # Common mixed-partial AD primitive used by conditioning and EV tails.
-function _mixed_partial(f, x, I::Tuple{Vararg{Int}})
-    isempty(I) && return f(x)
-    i = first(I)
+function _mixed_partial(
+    f,
+    x,
+    I::Tuple{Vararg{Int}},
+)
+    indices = collect(I)
+    return _mixed_partial_indexed(f, x, indices, 1)
+end
+
+function _mixed_partial(
+    f,
+    x,
+    I::AbstractVector{<:Integer},
+)
+    return _mixed_partial_indexed(f, x, I, 1)
+end
+
+function _mixed_partial_indexed(
+    f,
+    x,
+    I::AbstractVector{<:Integer},
+    pos::Int,
+)
+    pos > length(I) && return f(x)
+
+    i = I[pos]
+
     return ForwardDiff.derivative(
-        xi -> _mixed_partial(f, _replace_coordinate(x, i, xi), Base.tail(I),),
+        xi -> _mixed_partial_indexed(
+            f,
+            _replace_coordinate(x, i, xi),
+            I,
+            pos + 1,
+        ),
         x[i],
     )
 end
 
-_mixed_partial(f, x, I::AbstractVector{<:Integer}) = _mixed_partial(f, x, Tuple(I))
 
 function _nonempty_subsets(d::Int)
     d >= 1 || throw(ArgumentError("dimension must be positive"))
