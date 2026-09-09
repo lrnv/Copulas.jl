@@ -428,9 +428,13 @@ function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
     @inbounds for j in axes(u, 2)
         # First coordinate is unchanged
         v[1, j] = clamp(float(u[1, j]), 0.0, 1.0)
+        js = Int[]
+        ujs = typeof(float(u[1, j]))[]
+        sizehint!(js, d - 1)
+        sizehint!(ujs, d - 1)
         for k in 2:d
-            js = ntuple(i -> i, k - 1)
-            ujs = ntuple(i -> float(u[i, j]), k - 1)  # condition on original u's
+            push!(js, k - 1)
+            push!(ujs, float(u[k - 1, j])) # condition on original u's
             Dk = distortion(C, js, ujs, k)
             v[k, j] = Distributions.cdf(Dk, clamp(float(u[k, j]), 0.0, 1.0))
         end
@@ -468,9 +472,13 @@ function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}
     v = similar(s)
     @inbounds for j in axes(s, 2)
         v[1, j] = clamp(float(s[1, j]), 0.0, 1.0)
+        js = Int[]
+        ujs = typeof(float(s[1, j]))[]
+        sizehint!(js, d - 1)
+        sizehint!(ujs, d - 1)
         for k in 2:d
-            js = ntuple(i -> i, k - 1)
-            ujs = ntuple(i -> float(v[i, j]), k - 1)  # use already reconstructed U's
+            push!(js, k - 1)
+            push!(ujs, float(v[k - 1, j])) # use already reconstructed U's
             Dk = distortion(C, js, ujs, k)
             v[k, j] = Distributions.quantile(Dk, clamp(float(s[k, j]), 0.0, 1.0))
         end

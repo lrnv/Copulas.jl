@@ -23,7 +23,8 @@ struct NestedDistortion{TC,T} <: Distortion
                               cdfcensored, pdfcensored)
         T = promote_type(eltype(ujs), typeof(logden), eltype(utemplate))
         return new{typeof(C),T}(
-            C, i, collect(Int, js), T.(ujs), T(logden), T.(utemplate),
+            C, i, collect(Int, js), collect(T, ujs), T(logden),
+            collect(T, utemplate),
             collect(Bool, cdfcensored), collect(Bool, pdfcensored),
         )
     end

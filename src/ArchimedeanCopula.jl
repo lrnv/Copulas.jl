@@ -282,6 +282,23 @@ function distortion(C::ArchimedeanCopula, js::AbstractVector{<:Integer}, uⱼₛ
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
     return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
+function distortion(C::ArchimedeanCopula, j::Integer, uⱼ::Real, i::Int)
+    kind = limit_kind(C.G, Val(2))
+    kind === Π_LIMIT && return NoDistortion()
+    kind === M_LIMIT && return MDistortion(float(uⱼ), Int8(j))
+    kind === W_LIMIT && return WDistortion(float(uⱼ), Int8(j))
+
+    sJ = ϕ⁻¹(C.G, uⱼ)
+    T = typeof(float(uⱼ))
+    return ArchimedeanDistortion(C.G, 1, float(sJ), float(T(ϕ⁽¹⁾(C.G, sJ))))
+end
+function condition(C::ArchimedeanCopula{2}, j::Int, uⱼ::Real)
+    1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
+    zero(uⱼ) ≤ uⱼ ≤ one(uⱼ) || throw(ArgumentError(
+        "Conditioning values must lie in [0, 1].",
+    ))
+    return distortion(C, j, float(uⱼ), 3 - j)
+end
 function conditional_copula(C::ArchimedeanCopula{D,TG}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) where {D,TG}
     p = length(js)
     return ArchimedeanCopula(D - p, TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
