@@ -26,7 +26,7 @@ This section summarizes how to **fit** copulas (and Sklar distributions) in `Cop
 using Copulas, Random, StatsBase, Distributions, Plots
 Random.seed!(123) # hide
 Ctrue = GumbelCopula(2, 3.0)
-U = rand(Ctrue, 2_000)
+U = rand(Ctrue, 300)
 Ĉ = fit(GumbelCopula, U; method=:mle)
 Ĉ
 ```
@@ -53,7 +53,7 @@ from a collection of candidate families:
 
 ```@example fitting_interface
 Ctrue = ClaytonCopula(2, 4.0)
-Usel = rand(Ctrue, 1_000)
+Usel = rand(Ctrue, 300)
 
 Msel = fit(
     CopulaModel,
@@ -170,7 +170,7 @@ RN = StatsBase.residuals(M; transform=:normal)
 # Predictions and simulation
 P  = StatsBase.predict(M; what=:cdf, newdata=rand(2, 5))   # CDF at 5 points
 F  = StatsBase.predict(M; what=:pdf, newdata=rand(2, 5))   # PDF at 5 points
-X̂  = StatsBase.predict(M; what=:simulate, nsim=1_000)     # simulate 1,000 obs
+X̂  = StatsBase.predict(M; what=:simulate, nsim=200)       # simulate 200 obs
 (size(P), size(F), size(X̂))
 ```
 
@@ -224,7 +224,7 @@ You can pass the `sklar_method` parameter as:
 
 ```@example fitting_interface
 S = SklarDist(ClaytonCopula(2, 5), (Normal(), LogNormal(0, 0.5)))
-X = rand(S, 1000)
+X = rand(S, 300)
 Ŝ = fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X;
 	sklar_method=:ifm, # or :ecdf
 	copula_method=:default, # see next section. 

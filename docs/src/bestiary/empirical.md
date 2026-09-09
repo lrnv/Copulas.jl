@@ -248,7 +248,7 @@ using Copulas, Distributions, Random
 
 rng = Xoshiro(42)
 Ctrue = LogCopula{3}(2.0)
-U = rand(rng, Ctrue, 300)
+U = rand(rng, Ctrue, 150)
 
 Chat = EmpiricalEVCopula{3}(U; method=:ols, degree=3)
 (cdf(Chat, [0.4, 0.6, 0.8]), size(rand(rng, Chat, 100)))

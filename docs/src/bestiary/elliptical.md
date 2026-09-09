@@ -90,7 +90,7 @@ C = TCopula(ν,Σ)
 You can sample it and compute its density and distribution functions via the standard interface. We could try to fit a GaussianCopula on the sampled data, even if we already know that the tails will not be properly taken into account: 
 
 ```@example 4
-u = rand(C,1000)
+u = rand(C,200)
 Ĉ = fit(GaussianCopula,u) # to fit on the sampled data. 
 ```
 

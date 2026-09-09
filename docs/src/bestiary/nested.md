@@ -117,7 +117,7 @@ the template and a `d×n` matrix of pseudo-observations (columns are observation
 using Random
 Ctrue = NestedArchimedeanCopula(ClaytonGenerator(2.0);
             children = [ClaytonCopula(2, 6.0), ClaytonCopula(2, 8.0)])
-U = rand(Random.MersenneTwister(1), Ctrue, 2000)
+U = rand(Random.MersenneTwister(1), Ctrue, 300)
 
 # Fit from a deliberately wrong same-shape template:
 Cstart = NestedArchimedeanCopula(ClaytonGenerator(1.0);
