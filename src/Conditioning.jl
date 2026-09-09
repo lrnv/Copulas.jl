@@ -25,11 +25,12 @@ function distortion(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractV
     return DistortionFromCop(C, js, uⱼₛ, i)
 end
 
-_partial_cdf(C, is, js, uᵢₛ, uⱼₛ) =
-    _mixed_partial(
+_partial_cdf(C::Copula{D}, is, js, uᵢₛ, uⱼₛ) where {D} =
+    _mixed_partial_bounded(
         u -> Distributions.cdf(C, u),
         _assemble(length(C), is, js, uᵢₛ, uⱼₛ),
         js,
+        Val(D),
     )
 
 function _process_conditioning_args(
