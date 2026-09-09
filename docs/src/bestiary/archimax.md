@@ -127,7 +127,7 @@ Use any Archimedean generator `G<:Generator` and any extreme value tail `E<:Tail
 gen = ClaytonGenerator(7.0)   # any Archimedean generator
 tail = GalambosTail(3.2)      # any extreme value tail
 C = ArchimaxCopula(gen, tail) # bivariate Archimax copula
-samples = rand(C,1000)        # sampling
+samples = rand(C,200)         # sampling
 cdf(C,samples)                # cdf
 pdf(C,samples)                # pdf
 ```

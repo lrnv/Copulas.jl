@@ -167,7 +167,7 @@ rand(Dc, 2)
 Fit both marginals and copula from raw data (Sklar):
 
 ```@example 1
-X = rand(D, 500)
+X = rand(D, 150)
 M = fit(CopulaModel, SklarDist{GumbelCopula, Tuple{Gamma,Beta,LogNormal}}, X; copula_method=:mle)
 ```
 
