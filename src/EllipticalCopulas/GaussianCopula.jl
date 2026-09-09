@@ -99,10 +99,11 @@ end
 # Conditioning and subsetting fast paths colocated with the type
 function distortion(
     C::GaussianCopula{D,MT},
-    js::AbstractVector{<:Integer},
-    uⱼₛ::AbstractVector{<:Real},
+    js,
+    uⱼₛ,
     i::Int,
 ) where {D,MT}
+    Base.@nospecialize js uⱼₛ
     ist = setdiff(1:D, js)
     @assert i in ist
     zⱼ = Distributions.quantile.(Distributions.Normal(), uⱼₛ)

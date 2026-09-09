@@ -21,7 +21,10 @@ end
 
 # Generic fallbacks. Family implementations specialize these lowercase hooks;
 # the concrete types remain implementation details of the generic path.
-distortion(C::Copula, js, uⱼₛ, i) = DistortionFromCop(C, js, uⱼₛ, i)
+function distortion(C::Copula, js, uⱼₛ, i)
+    Base.@nospecialize js uⱼₛ
+    return DistortionFromCop(C, js, uⱼₛ, i)
+end
 
 _partial_indices(js::AbstractVector{<:Integer}) = js
 _partial_indices(js::Tuple{Vararg{Int}}) = collect(js)
@@ -44,6 +47,13 @@ function _process_conditioning_args(::Val{D}, js, ujs) where {D}
     @assert all(in(1:D), jsv)
 
     return jsv, ujsv
+end
+
+function _process_conditioning_args(::Val{D}, js, uj::Real) where {D}
+    length(js) == 1 || throw(DimensionMismatch(
+        "one conditioning value requires exactly one conditioning index",
+    ))
+    return _process_conditioning_args(Val(D), js, (uj,))
 end
 
 _process_conditioning_args(::Val{D}, j::Integer, uj::Real) where {D} =
@@ -340,7 +350,7 @@ Notes
 function condition(C::Copula{2}, j::Int, uⱼ::Real)
     1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
     zero(uⱼ) ≤ uⱼ ≤ one(uⱼ) || throw(ArgumentError("Conditioning values must lie in [0, 1]."))
-    return distortion(C, Int[j], [float(uⱼ)], 3 - j)
+    return distortion(C, (j,), (float(uⱼ),), 3 - j)
 end
 
 condition(C::Copula{D}, j::Integer, xⱼ::Real) where D =
@@ -383,7 +393,8 @@ end
 ###########################################################################
 
 
-function distortion(S::SubsetCopula,  js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int)
+function distortion(S::SubsetCopula, js, uⱼₛ, i::Int)
+    Base.@nospecialize js uⱼₛ
     return distortion(S.C, S.dims[js], uⱼₛ, S.dims[i])
 end
 

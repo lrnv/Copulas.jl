@@ -109,7 +109,8 @@ end
 τ(C::TCopula{2}) = 2*asin(C.Σ[1,2])/π
 
 # Conditioning colocated
-function distortion(C::TCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int) where {D}
+function distortion(C::TCopula{D}, js, uⱼₛ, i::Int) where {D}
+    Base.@nospecialize js uⱼₛ
     ν = C.df
     Σ = C.Σ
     is = setdiff(1:D, js)

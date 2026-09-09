@@ -84,7 +84,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CheckerboardCop
     return A
 end
 
-@inline function distortion(C::CheckerboardCopula{D,T}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int) where {D, T}
+@inline function distortion(C::CheckerboardCopula{D,T}, js, uⱼₛ, i::Int) where {D,T}
+    Base.@nospecialize js uⱼₛ
 
     # Locate the bin index for uⱼₛ : 
     kⱼₛ = Tuple(min(C.m[j]-1, floor(Int, C.m[j] * uⱼ)) for (j,uⱼ) in zip(js, uⱼₛ))
