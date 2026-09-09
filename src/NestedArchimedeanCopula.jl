@@ -1046,9 +1046,8 @@ use `fit(CopulaModel, reparam, init, U).result`.
 function _fit_nested(recon, α₀::AbstractVector, U, d::Int, n::Int;
         quick_fit, derived_measures, fit_spec=nothing)
     loss(α) = -Distributions.loglikelihood(recon(α), U)
-    autodiff = ADTypes.AutoFiniteDiff(; fdtype=Val(:central))
     t = @elapsed res = try
-        Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff)
+        Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff = ADTypes.AutoForwardDiff())
     catch err
         Optim.optimize(loss, α₀, Optim.NelderMead())
     end
