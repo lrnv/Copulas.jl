@@ -217,6 +217,10 @@ correlation using a one-dimensional integral rather than a generic copula
 cubature. The degrees of freedom affect Spearman's rho, whereas Kendall's tau
 depends only on the correlation parameter.
 
+The multivariate CDF uses deterministic internal random streams, so repeated
+calls with the same arguments are reproducible. Its result nevertheless remains
+a numerical estimate rather than an exact probability.
+
 Both rank coefficients can therefore identify the two bivariate parameters:
 
 ```@example elliptical

@@ -144,6 +144,16 @@ end
                 z = (zᵢ - ρ * zⱼ) / sqrt(1 - ρ^2)
                 expected_cdf = cdf(Normal(), z)
                 expected_pdf = pdf(Normal(), z) / (sqrt(1 - ρ^2) * pdf(Normal(), zᵢ))
+            elseif C isa TCopula
+                ν = C.df
+                ρ = C.Σ[1, 2]
+                zⱼ = quantile(TDist(ν), conditioned)
+                zᵢ = quantile(TDist(ν), target)
+                σ = sqrt((ν + zⱼ^2) * (1 - ρ^2) / (ν + 1))
+                z = (zᵢ - ρ * zⱼ) / σ
+                expected_cdf = cdf(TDist(ν + 1), z)
+                expected_pdf = pdf(TDist(ν + 1), z) /
+                               (σ * pdf(TDist(ν), zᵢ))
             else
                 h = 2e-5
                 expected_cdf = (cdf(C, [conditioned + h, target]) -
