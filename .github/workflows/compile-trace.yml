@@ -15,14 +15,18 @@ concurrency:
   group: compile-trace-${{ github.ref }}
   cancel-in-progress: true
 
-strategy:
-  matrix:
-    optlevel: [0, 1]
-
 jobs:
   trace:
-    name: Julia 1.12 full compile trace
+    name: Julia 1.12 - O${{ matrix.optlevel }}
     runs-on: ubuntu-latest
+
+    strategy:
+      fail-fast: false
+      matrix:
+        optlevel: [0, 1]
+
+    env:
+      OPTLEVEL: ${{ matrix.optlevel }}
 
     steps:
       - uses: actions/checkout@v7
@@ -41,6 +45,7 @@ jobs:
         run: |
           julia --version | tee julia-version.txt
           git rev-parse HEAD | tee git-sha.txt
+          echo "Optimization level: O${OPTLEVEL}"
 
       - name: Run full test suite with compile trace
         shell: bash
@@ -69,7 +74,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: full-compile-trace-julia-1.12
+          name: full-compile-trace-julia-1.12-O${{ matrix.optlevel }}
           path: |
             compile-trace.txt
             compile-trace-test.log
