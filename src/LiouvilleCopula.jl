@@ -207,8 +207,8 @@ end
 
 function distortion(
     C::LiouvilleCopula,
-    js::NTuple{p,Int},
-    uⱼₛ::NTuple{p,<:Real},
+    js::AbstractVector{<:Integer}, 
+    uⱼₛ::AbstractVector{<:Real}, 
     i::Int,
 ) where {p}
     _, distortions, is = _liouville_conditional_components(C, js, uⱼₛ)

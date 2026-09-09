@@ -101,7 +101,10 @@ function β(c::PlackettCopula)
 end
 
 # Conditioning colocated
-function distortion(C::PlackettCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int)
+function distortion(C::PlackettCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, ::Int)
+
+    length(js) == 1 || throw(ArgumentError("Plackett conditioning expects one conditioned coordinate"))
+
     j = Int8(js[1])
     uⱼ = float(uⱼₛ[1])
 

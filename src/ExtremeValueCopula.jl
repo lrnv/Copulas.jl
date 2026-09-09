@@ -272,8 +272,8 @@ end
 
 function distortion(
     C::ExtremeValueCopula{2,TT},
-    js::NTuple{1,Int},
-    uⱼₛ::NTuple{1,Float64},
+    js::AbstractVector{<:Integer}, 
+    uⱼₛ::AbstractVector{<:Real}, 
     ::Int,
 ) where {TT}
     kind = limit_kind(C.tail, Val(2))

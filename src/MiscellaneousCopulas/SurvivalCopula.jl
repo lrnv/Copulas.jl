@@ -131,7 +131,7 @@ end
 
 
 # Conditioning bindings colocated
-function distortion(S::SurvivalCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
+function distortion(S::SurvivalCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int) where {D}
     uⱼₛ′ = ntuple(k -> (S.flipmask[js[k]] ? 1 - uⱼₛ[k] : uⱼₛ[k]), p)
     base = distortion(S.C, js, uⱼₛ′, i)
     return FlipDistortion(base, S.flipmask[i])

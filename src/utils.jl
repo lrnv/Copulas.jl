@@ -21,15 +21,6 @@ end
 function _mixed_partial(
     f,
     x,
-    I::Tuple{Vararg{Int}},
-)
-    indices = collect(I)
-    return _mixed_partial_indexed(f, x, indices, 1)
-end
-
-function _mixed_partial(
-    f,
-    x,
     I::AbstractVector{<:Integer},
 )
     return _mixed_partial_indexed(f, x, I, 1)
@@ -55,6 +46,9 @@ function _mixed_partial_indexed(
         x[i],
     )
 end
+
+# Compatibility only.
+_mixed_partial(f, x, I::Tuple{Vararg{Int}}) = _mixed_partial(f, x, collect(I))
 
 
 function _nonempty_subsets(d::Int)

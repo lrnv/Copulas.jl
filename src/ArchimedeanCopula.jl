@@ -269,7 +269,7 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     return U
 end
 
-function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+function distortion(C::ArchimedeanCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int)
 
     kind = limit_kind(C.G, Val(2))
     kind === Π_LIMIT && return NoDistortion()

@@ -845,15 +845,14 @@ end
 # ---- (2) Distortion: closed-form conditional marginal U_i | U_js -------------
 
 
-function distortion(C::NestedArchimedeanCopula{D}, js::NTuple{p, Int},
-                          ujs::NTuple{p, Float64}, i::Int) where {D, p}
+function distortion(C::NestedArchimedeanCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int) where {D, p}
     # den = c_O = pdf of the observed marginal. Identical to upstream's generic
     # generic distortion denominator, so num/den stays consistent. For p==1 subsetdims
     # returns Uniform() ⇒ den = 1; otherwise it is our pruned-tree multivariate
     # pdf. Do NOT assert p==D-1: condition() builds a distortion for EVERY
     # i∉js, so in the multi-unobserved case p < D-1.
     den = p == 1 ? Distributions.pdf(subsetdims(C, js), ujs[1]) :
-                   Distributions.pdf(subsetdims(C, js), collect(ujs))
+                   Distributions.pdf(subsetdims(C, js), ujs)
     utemplate = ntuple(D) do k
         pos = findfirst(==(k), js)
         isnothing(pos) ? 1.0 : ujs[pos]

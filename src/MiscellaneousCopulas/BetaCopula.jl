@@ -95,7 +95,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::BetaCopula{d}, 
     end
     return A
 end
-@inline function distortion(C::BetaCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
+@inline function distortion(C::BetaCopula{D,MT}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int) where {D,MT}
     # Build conditional mixture weights over observations given U_js = u_js.
     # w_i ∝ ∏_{t=1..p} BetaPDF(u_jt; r_{j_t,i}, n+1−r_{j_t,i})
     @assert 1 <= i <= D
