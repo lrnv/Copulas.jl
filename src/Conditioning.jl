@@ -25,10 +25,13 @@ function distortion(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractV
     return DistortionFromCop(C, js, uⱼₛ, i)
 end
 
-_partial_cdf(C::Copula, is, js::Tuple, uᵢₛ, uⱼₛ) =
-    _partial_cdf(C, is, collect(Int, js), uᵢₛ, uⱼₛ)
-
-_partial_cdf(C::Copula{D}, is, js::AbstractVector{<:Integer}, uᵢₛ, uⱼₛ) where {D} =
+_partial_cdf(
+    C::Copula{D},
+    is::AbstractVector{<:Integer},
+    js::AbstractVector{<:Integer},
+    uᵢₛ::AbstractVector{<:Real},
+    uⱼₛ::AbstractVector{<:Real},
+) where {D} =
     _mixed_partial_bounded(
         u -> Distributions.cdf(C, u),
         _assemble(length(C), is, js, uᵢₛ, uⱼₛ),
@@ -156,7 +159,7 @@ function Distributions.cdf(d::DistortionFromCop, u::Real)
     T = float(promote_type(typeof(u), typeof(d.den)))
     u <= 0 && return zero(T)
     u >= 1 && return one(T)
-    return _partial_cdf(d.C, (d.i,), d.js, (T(u),), d.uⱼₛ) / d.den
+    return _partial_cdf(d.C, [d.i], d.js, T[T(u)], d.uⱼₛ) / d.den
 end
 
 # Density on the uniform scale: f_{i|J}(u | u_J) = (∂^{p+1} C / ∂(J..., i))(u, u_J) / (∂^{p} C / ∂J)(1, u_J)

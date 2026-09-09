@@ -35,8 +35,8 @@ end
 
     z = [0.31, 0.57, 0.73]
     for C in (LogCopula{3}(2.0), GalambosCopula{3}(0.7))
-        analytic = Copulas._partial_cdf(C, (3,), (1, 2),
-                                        (z[3],), (z[1], z[2]))
+        analytic = Copulas._partial_cdf(C, [3], [1, 2],
+                                        [z[3]], z[1:2])
         differentiated = ForwardDiff.derivative(
             a -> ForwardDiff.derivative(
                 b -> cdf(C, [a, b, z[3]]), z[2]), z[1])

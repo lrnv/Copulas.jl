@@ -878,7 +878,13 @@ end
 # (cens[k] = !(k∈js)), return exp(kernel). A CDF's mixed partial over a coordinate
 # subset is a non-negative sub-density, so exp(log|·|) == the value. `T` is
 # threaded for a future BigFloat upper layer; the standard API stores Float64.
-function _partial_cdf(C::NestedArchimedeanCopula{D}, is, js, uᵢₛ, uⱼₛ) where {D}
+function _partial_cdf(
+    C::NestedArchimedeanCopula{D},
+    is::AbstractVector{<:Integer},
+    js::AbstractVector{<:Integer},
+    uᵢₛ::AbstractVector{<:Real},
+    uⱼₛ::AbstractVector{<:Real},
+) where {D}
     T = float(promote_type(eltype(typeof(uᵢₛ)), eltype(typeof(uⱼₛ))))
     u = _assemble(D, is, js, uᵢₛ, uⱼₛ)        # js→uⱼₛ, is→uᵢₛ, others→1
     cens = trues(D)
