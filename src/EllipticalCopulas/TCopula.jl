@@ -135,6 +135,15 @@ function ρ(C::TCopula{2})
     r = float(C.Σ[1, 2])
     iszero(r) && return zero(promote_type(typeof(ν), typeof(r)))
     isinf(ν) && return 6asin(r / 2) / π
+    if ν > 10
+        # The zero-balanced hypergeometric term becomes poorly scaled in
+        # hardware precision as ν grows. The equivalent density moment remains
+        # stable and is still much cheaper than integrating the numerical CDF.
+        return 12 * HCubature.hcubature(
+            u -> prod(u) * Distributions.pdf(C, u), zeros(2), ones(2);
+            rtol=1e-6,
+        )[1] - 3
+    end
 
     logconstant = log(2) + 2 * SpecialFunctions.loggamma(ν) +
                   SpecialFunctions.loggamma(3ν / 2) -
@@ -234,14 +243,23 @@ function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho})
 
     target = abs(ρ̂)
     objective(logν) = abs(ρ(TCopula{2}(exp(logν), [1.0 r; r 1.0]))) - target
-    lower, upper = log(0.1), log(100.0)
-    flo, fhi = objective(lower), objective(upper)
-    logν = if signbit(flo) == signbit(fhi)
-        abs(flo) <= abs(fhi) ? lower : upper
+    lower, middle, upper = log(0.1), log(10.0), log(100.0)
+    flo, fmid = objective(lower), objective(middle)
+    logν = if flo >= 0
+        lower
+    elseif fmid >= 0
+        Roots.find_zero(objective, (lower, middle), Roots.Bisection())
     else
-        Roots.find_zero(objective, (lower, upper), Roots.Bisection())
+        gaussian_limit = abs(6asin(r / 2) / π) - target
+        if gaussian_limit <= 0
+            Inf
+        else
+            fhi = objective(upper)
+            fhi < 0 ? Inf :
+                Roots.find_zero(objective, (middle, upper), Roots.Bisection())
+        end
     end
-    ν = exp(logν)
+    ν = isinf(logν) ? Inf : exp(logν)
     C = TCopula{2}(ν, [1.0 r; r 1.0])
     return C, (; θ̂=(; ν, Σ=C.Σ), τ̂, ρ̂)
 end
