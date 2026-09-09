@@ -51,7 +51,7 @@ jobs:
         id: julia-cache
         uses: julia-actions/cache@v3
       - name: Instantiate documentation environment
-        run: julia --project=docs -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+        run: julia --project=docs -O1 -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
       - name: Setup R
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.benchmarks }}
         uses: r-lib/actions/setup-r@v2
@@ -65,7 +65,7 @@ jobs:
           sudo apt-get install --yes libgsl-dev
           Rscript -e 'install.packages("copula")'
       - name: Build and deploy docs
-        run: julia -O0 --project=docs docs/make.jl
+        run: julia -O1 --project=docs docs/make.jl
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }} # For authentication with GitHub Actions token
           DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }} # For authentication with SSH deploy key

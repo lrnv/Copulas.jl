@@ -448,8 +448,27 @@ function _empirical_ev_project_spectral(pilot::Vector{Float64}, V::Matrix{Float6
 
     objective(h) = 0.5 * sum(abs2, M * h - pilot)
 
-    result = Optim.optimize(
+    function objective_gradient!(g, h)
+        g .= transpose(M) * (M * h - pilot)
+        return g
+    end
+
+    Hobjective = transpose(M) * M
+
+    function objective_hessian!(H, h)
+        H .= Hobjective
+        return H
+    end
+
+    objective_data = Optim.TwiceDifferentiable(
         objective,
+        objective_gradient!,
+        objective_hessian!,
+        h0,
+    )
+
+    result = Optim.optimize(
+        objective_data,
         constraints,
         h0,
         Optim.IPNewton(),
@@ -457,8 +476,7 @@ function _empirical_ev_project_spectral(pilot::Vector{Float64}, V::Matrix{Float6
             iterations=maxiter,
             allow_f_increases=true,
             successive_f_tol=2,
-        );
-        autodiff=ADTypes.AutoForwardDiff(),
+        ),
     )
 
     h = Float64.(Optim.minimizer(result))

@@ -5,6 +5,10 @@ struct GaussianDistortion{T} <: Distortion
     μz::T
     σz::T
 end
+function GaussianDistortion(μz::Real, σz::Real)
+    μz, σz = promote(float(μz), float(σz))
+    return GaussianDistortion{typeof(μz)}(μz, σz)
+end
 function Distributions.cdf(d::GaussianDistortion, u::Real)
     T = float(promote_type(typeof(u), typeof(d.μz), typeof(d.σz)))
     u <= 0 && return zero(T)
