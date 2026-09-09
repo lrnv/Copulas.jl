@@ -269,7 +269,7 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     return U
 end
 
-function distortion(C::ArchimedeanCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int)
+function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
 
     kind = limit_kind(C.G, Val(2))
     kind === Π_LIMIT && return NoDistortion()
@@ -277,33 +277,12 @@ function distortion(C::ArchimedeanCopula, js::AbstractVector{<:Integer}, uⱼₛ
     kind === W_LIMIT && return WDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
     @assert length(js) == length(uⱼₛ)
-    p = length(js)
+    T = eltype(uⱼₛ)
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
-    den = ϕ⁽ᵏ⁾(C.G, p, sJ)
-    T = float(promote_type(typeof(sJ), typeof(den)))
-    return ArchimedeanDistortion(C.G, p, T(sJ), T(den))
+    return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
-function distortion(C::ArchimedeanCopula, j::Integer, uⱼ::Real, i::Int)
-    kind = limit_kind(C.G, Val(2))
-    kind === Π_LIMIT && return NoDistortion()
-    kind === M_LIMIT && return MDistortion(float(uⱼ), Int8(j))
-    kind === W_LIMIT && return WDistortion(float(uⱼ), Int8(j))
-
-    sJ = ϕ⁻¹(C.G, uⱼ)
-    den = ϕ⁽¹⁾(C.G, sJ)
-    T = float(promote_type(typeof(sJ), typeof(den)))
-    return ArchimedeanDistortion(C.G, 1, T(sJ), T(den))
-end
-function condition(C::ArchimedeanCopula{2}, j::Int, uⱼ::Real)
-    1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
-    zero(uⱼ) ≤ uⱼ ≤ one(uⱼ) || throw(ArgumentError(
-        "Conditioning values must lie in [0, 1].",
-    ))
-    return distortion(C, j, float(uⱼ), 3 - j)
-end
-function conditional_copula(C::ArchimedeanCopula{D,TG}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) where {D,TG}
-    p = length(js)
-    return ArchimedeanCopula(D - p, TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
+function conditional_copula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, TG, p}
+    return ArchimedeanCopula{D - p}(TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
 SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula{p}(C.G)
 

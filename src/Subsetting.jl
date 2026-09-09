@@ -53,8 +53,7 @@ function _cdf(C::SubsetCopula{d,CT},u) where {d,CT}
     return Distributions.cdf(C.C,v)
 end
 function Distributions._logpdf(S::SubsetCopula{d,<:Copula{D}}, u) where {d,D}
-    is = collect(setdiff(1:D, S.dims))
-    return log(_partial_cdf(S.C, is, collect(S.dims), ones(D-d), u))
+    return log(_partial_cdf(S.C, Tuple(setdiff(1:D, S.dims)), S.dims, ones(D-d), u))
 end
 
 # Dependence metrics are symetric in bivariate cases: 

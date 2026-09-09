@@ -286,7 +286,7 @@ Distributions.cdf(Dj, [0.95,0.80])
 On the original scale (Sklar distribution):
 
 ```@example api
-Dc = condition(D, [2, 3], [0.3, 0.2])
+Dc = condition(D, (2,3), (0.3, 0.2))
 rand(Dc, 2)
 ```
 

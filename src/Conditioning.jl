@@ -21,58 +21,20 @@ end
 
 # Generic fallbacks. Family implementations specialize these lowercase hooks;
 # the concrete types remain implementation details of the generic path.
-function distortion(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i)
-    return DistortionFromCop(C, js, uⱼₛ, i)
+distortion(C::Copula, js, uⱼₛ, i) = DistortionFromCop(C, js, uⱼₛ, i)
+_partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _mixed_partial(u -> Distributions.cdf(C, u),_assemble(length(C), is, js, uᵢₛ, uⱼₛ), js,)
+
+_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs)
+_process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,))
+function _process_tuples(::Val{D}, js, ujs) where D
+    p, p2 = length(js), length(ujs)
+    @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
+    @assert p == p2 "uⱼₛ length must match js length"
+    jst = Tuple(collect(Int, js))
+    @assert all(in(1:D), jst)
+    ujst = Tuple(collect(float.(ujs)))
+    return (jst, ujst)
 end
-
-_partial_cdf(
-    C::Copula{D},
-    is::AbstractVector{<:Integer},
-    js::AbstractVector{<:Integer},
-    uᵢₛ::AbstractVector{<:Real},
-    uⱼₛ::AbstractVector{<:Real},
-) where {D} =
-    _mixed_partial_bounded(
-        u -> Distributions.cdf(C, u),
-        _assemble(length(C), is, js, uᵢₛ, uⱼₛ),
-        js,
-        Val(D),
-    )
-
-function _process_conditioning_args(
-    ::Val{D},
-    js::AbstractVector{<:Integer},
-    ujs::AbstractVector{<:Real},
-) where {D}
-    jsv = collect(Int, js)
-    ujsv = collect(float.(ujs))
-
-    p = length(jsv)
-
-    @assert 0 < p < D
-    @assert p == length(ujsv)
-    @assert all(in(1:D), jsv)
-
-    return jsv, ujsv
-end
-
-function _process_conditioning_args(::Val{D}, js::Vector{Int}, ujs::Vector{T}) where {D,T<:Real}
-    p = length(js)
-    @assert 0 < p < D
-    @assert p == length(ujs)
-    @assert all(in(1:D), js)
-    return js, ujs
-end
-
-function _process_conditioning_args(::Val{D}, js::AbstractVector{<:Integer}, uj::Real) where {D}
-    length(js) == 1 || throw(DimensionMismatch(
-        "one conditioning value requires exactly one conditioning index",
-    ))
-    return _process_conditioning_args(Val(D), js, [float(uj)])
-end
-
-_process_conditioning_args(::Val{D}, j::Integer, uj::Real) where {D} =
-    (Int[j], [float(uj)])
 
 """
     Distortion <: Distributions.ContinuousUnivariateDistribution
@@ -113,7 +75,7 @@ end
 Distributions.pdf(d::Distortion, t::Real) = exp(Distributions.logpdf(d, t))
 
 """
-    DistortionFromCop{TC,T} <: Distortion
+    DistortionFromCop{TC,p,T} <: Distortion
 
 Generic, uniform-scale conditional marginal transformation for a copula.
 
@@ -123,43 +85,37 @@ available for a given copula family.
 
 Parameters
 - `TC`: copula type
+- `p`: length of the conditioned index set J (static)
 - `T`: element type for the conditioned values u_J
 
 Construction
-- `DistortionFromCop(C, js, ujs, i)`
+- `DistortionFromCop(C::Copula, js::NTuple{p,Int}, ujs::NTuple{p,<:Real}, i::Int)`
     builds the distortion for the conditional marginal of index `i` given `U_js = ujs`.
 
+Notes
+- A convenience method `DistortionFromCop(C, j::Int, uj::Real, i::Int)` exists for
+    the common `p = 1` case.
 """
-struct DistortionFromCop{TC,T} <: Distortion
+struct DistortionFromCop{TC,p,T}<:Distortion
     C::TC
     i::Int
-    js::Vector{Int}
-    uⱼₛ::Vector{T}
+    js::NTuple{p,Int}
+    uⱼₛ::NTuple{p,T}
     den::T
     function DistortionFromCop(C::Copula{D}, js, uⱼₛ, i) where {D}
-        jsv, ujsv = _process_conditioning_args(Val(D), js, uⱼₛ)
-
-        den =
-            length(jsv) == 1 ?
-            Distributions.pdf(subsetdims(C, jsv), ujsv[1]) :
-            Distributions.pdf(subsetdims(C, jsv), ujsv)
-
-        T = promote_type(eltype(ujsv), typeof(den))
-
-        return new{typeof(C),T}(
-            C,
-            i,
-            jsv,
-            T.(ujsv),
-            T(den),
-        )
+        jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
+        p = length(jst)
+        den = p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
+                     Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
+        T = promote_type(eltype(uⱼₛt), typeof(den))
+        return new{typeof(C), p, T}(C, i, jst, NTuple{p,T}(uⱼₛt), T(den))
     end
 end
 function Distributions.cdf(d::DistortionFromCop, u::Real)
     T = float(promote_type(typeof(u), typeof(d.den)))
     u <= 0 && return zero(T)
     u >= 1 && return one(T)
-    return _partial_cdf(d.C, [d.i], d.js, T[T(u)], d.uⱼₛ) / d.den
+    return _partial_cdf(d.C, (d.i,), d.js, (T(u),), d.uⱼₛ) / d.den
 end
 
 # Density on the uniform scale: f_{i|J}(u | u_J) = (∂^{p+1} C / ∂(J..., i))(u, u_J) / (∂^{p} C / ∂J)(1, u_J)
@@ -171,18 +127,12 @@ function Distributions.logpdf(d::DistortionFromCop, u::Real)
     # Mixed partial derivative of order p+1 w.r.t. (J..., i). Going through
     # `_partial_cdf` lets models provide this quantity without differentiating
     # their numerical CDF implementation.
-    js = copy(d.js)
-    push!(js, d.i)
-
-    ujs = copy(d.uⱼₛ)
-    push!(ujs, float(u))
-
     num = _partial_cdf(
         d.C,
-        Int[],
-        js,
-        eltype(ujs)[],
-        ujs,
+        (),
+        (d.js..., d.i),
+        (),
+        (d.uⱼₛ..., float(u)),
     )
     (num <= 0 || !isfinite(num)) && return -Inf
     return log(num) - log(d.den)
@@ -215,56 +165,35 @@ end
 
 Copula of the conditioned random vector U_I | U_J = u_J.
 """
-struct ConditionalCopula{d,D,T,TDs} <: Copula{d}
+struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     C::Copula{D}
-    js::Vector{Int}
-    is::Vector{Int}
-    uⱼₛ::Vector{T}
+    js::NTuple{p, Int}
+    is::NTuple{d, Int}
+    uⱼₛ::NTuple{p, T}
     den::T
     logden::T
     distortions::TDs
     function ConditionalCopula(C::Copula{D}, js, uⱼₛ) where {D}
-        jsv, ujsv = _process_conditioning_args(Val(D), js, uⱼₛ)
-
-        isv = [i for i in 1:D if i ∉ jsv]
-
-        p = length(jsv)
-        d = length(isv)
-
-        distos = Tuple(
-            distortion(C, jsv, ujsv, i)
-            for i in isv
-        )
-
-        den =
-            all(x -> x isa DistortionFromCop, distos) ?
-            distos[1].den :
-            p == 1 ?
-            Distributions.pdf(subsetdims(C, jsv), ujsv[1]) :
-            Distributions.pdf(subsetdims(C, jsv), ujsv)
-
-        T = promote_type(eltype(ujsv), typeof(den))
+        jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
+        ist = Tuple(i for i in 1:D if i ∉ jst)
+        p = length(jst)
+        d = D - p
+        distos = Tuple(distortion(C, jst, uⱼₛt, i) for i in ist)
+        den = all(disto -> disto isa DistortionFromCop, distos) ? distos[1].den :
+              (p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
+                      Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt)))
+        T = promote_type(eltype(uⱼₛt), typeof(den))
         denT = T(den)
-
-        return new{d,D,T,typeof(distos)}(
-            C,
-            jsv,
-            isv,
-            T.(ujsv),
-            denT,
-            denT > zero(T) ? log(denT) : T(-Inf),
-            distos,
+        return new{d, D, p, T, typeof(distos)}(
+            C, jst, ist, NTuple{p,T}(uⱼₛt), denT,
+            denT > zero(T) ? log(denT) : T(-Inf), distos
         )
     end
 end
-Base.eltype(::ConditionalCopula{d,D,T,TDs}) where {d,D,T,TDs} = T
-conditional_copula(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) =
-    ConditionalCopula(C, js, uⱼₛ)
-function _cdf(CC::ConditionalCopula{d,D,T,TDs}, v::AbstractVector{<:Real}) where {d,D,T, TDs}
-    uI = [
-        Distributions.quantile(CC.distortions[k], v[k])
-        for k in 1:d
-    ]
+Base.eltype(::ConditionalCopula{d,D,p,T}) where {d,D,p,T} = T
+conditional_copula(C::Copula, js, uⱼₛ) = ConditionalCopula(C, js, uⱼₛ)
+function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
+    uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)
     return _partial_cdf(CC.C, CC.is, CC.js, uI, CC.uⱼₛ) / CC.den
 end
 
@@ -272,7 +201,7 @@ end
 # For v ∈ (0,1)^d, let u_I = quantile(D_k, v_k) with D_k = H_{i_k|J}(·|u_J).
 # Then c_{I|J}(v) = f_{U_I|U_J}(u_I|u_J) / ∏_k f_{U_{i_k}|U_J}(u_{i_k}|u_J).
 # The Jacobian of v_k = D_k(u_k) contributes 1 / pdf(D_k, u_k).
-function Distributions._logpdf(CC::ConditionalCopula{d,D,T,TDs}, v::AbstractVector{<:Real}) where {d,D,T,TDs}
+function Distributions._logpdf(CC::ConditionalCopula{d,D,p,T,TDs}, v::AbstractVector{<:Real}) where {d,D,p,T,TDs}
     TR = promote_type(eltype(v), T)
 
     # Support:
@@ -282,10 +211,7 @@ function Distributions._logpdf(CC::ConditionalCopula{d,D,T,TDs}, v::AbstractVect
     end
 
     # 1) Map v → u_I via the stored distortions (non-sequential conditioning on J only)
-    uI = [
-        Distributions.quantile(CC.distortions[k], v[k])
-        for k in 1:d
-    ]
+    uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)
     # 2) Full u vector at which to evaluate the base copula density
     u = _assemble(D, CC.is, CC.js, uI, CC.uⱼₛ)
     # 3) Joint conditional density on the original uniform scale
@@ -305,14 +231,11 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, CC::ConditionalCop
     # copula coordinates are V_k = F_{i_k|J}(U_k | u_J) = cdf(distortions[k], U_k).
     # Sample U sequentially by conditioning on J ∪ previously sampled I.
     for col in axes(A, 2)
-        J = copy(CC.js)
-        ujs = copy(CC.uⱼₛ)
+        J = [j for j in CC.js]
+        ujs = [u for u in CC.uⱼₛ]
         for k in 1:d
             iₖ = CC.is[k]
-            uₖ = rand(
-                rng,
-                distortion(CC.C, J, ujs, iₖ),
-            )
+            uₖ = rand(rng, distortion(CC.C, Tuple(J), Tuple(ujs), iₖ))
             A[k, col] = Distributions.cdf(CC.distortions[k], uₖ)
             push!(J, iₖ)
             push!(ujs, uₖ)
@@ -335,7 +258,7 @@ passing a `SklarDist`).
 Arguments
 - `C::Copula{D}`: D-variate copula
 - `X::SklarDist`: joint distribution with copula `X.C` and marginals `X.m`
-- `js`: vector of conditioned-coordinate indices
+- `js`: indices of conditioned coordinates (tuple, NTuple, or vector)
 - `u_js`: values in [0,1] for `U_js` (when conditioning a copula)
 - `x_js`: values on original scale for `X_js` (when conditioning a SklarDist)
 - `j, u_j, x_j`: 1D convenience overloads for the common p = 1 case
@@ -354,9 +277,9 @@ Returns
       the original marginal scales.
 
 Notes
-- Vectors are normalized by the public entry point. The specialized method
-  `condition(::Copula{2}, j, u_j)` handles the common
-  `D = 2, d = 1` case directly.
+- For best performance, pass `js` and `u_js` as NTuple to keep `p = length(js)`
+    known at compile time. The specialized method `condition(::Copula{2}, j, u_j)`
+    exploits this for the common `D = 2, d = 1` case.
 - Specializations are provided for many copula families (Independent, Gaussian, t,
     Archimedean, several bivariate families). Others fall back to an automatic
     differentiation based construction.
@@ -366,51 +289,35 @@ Notes
 function condition(C::Copula{2}, j::Int, uⱼ::Real)
     1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
     zero(uⱼ) ≤ uⱼ ≤ one(uⱼ) || throw(ArgumentError("Conditioning values must lie in [0, 1]."))
-    return distortion(C, Int[j], [float(uⱼ)], 3 - j)
+    return distortion(C, (j,), (float(uⱼ),), 3 - j)
 end
 
-condition(C::Copula{D}, j::Integer, xⱼ::Real) where D =
-    _condition(C, _process_conditioning_args(Val(D), j, xⱼ)...)
-# `_process_conditioning_args` keeps the numeric precision while normalizing
-# the homogeneous index and value collections to vectors.
-function _conditional_components(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, is)
+condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
+# Accept any real `uⱼₛ` (not only `Float64`): `_process_tuples` calls `float.`,
+# which keeps `BigFloat`/`Float32` as-is, so a `Float64`-only signature here let
+# such inputs fall back to the untyped entry point above and recurse forever
+# (StackOverflow). The downstream `DistortionFromCop`/`ConditionalCopula` still
+# store `Float64`, so non-`Float64` values are converted there — the conditioning
+# result is computed in `Float64` regardless of input precision.
+function _conditional_components(C::Copula, js, uⱼₛ, is)
     CC = conditional_copula(C, js, uⱼₛ)
     distortions = CC isa ConditionalCopula ? CC.distortions :
                   Tuple(distortion(C, js, uⱼₛ, i) for i in is)
     return CC, distortions
 end
 
-condition(C::Copula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) where D =
-    _condition(C, _process_conditioning_args(Val(D), js, uⱼₛ)...)
-condition(C::Copula{D}, js::AbstractVector{<:Integer}, uⱼ::Real) where D =
-    _condition(C, _process_conditioning_args(Val(D), js, uⱼ)...)
-condition(C::Copula, js::Tuple, uⱼₛ::Union{Tuple,AbstractVector}) =
-    condition(C, collect(Int, js), collect(float.(uⱼₛ)))
-condition(C::Copula, js::AbstractVector{<:Integer}, uⱼₛ::Tuple) =
-    condition(C, js, collect(float.(uⱼₛ)))
-condition(C::Copula, js::Tuple, uⱼ::Real) = condition(C, collect(Int, js), uⱼ)
-function _condition(C::Copula{D}, js::Vector{Int}, uⱼₛ::Vector{<:Real}) where D
-    is = setdiff(1:D, js)
-    length(js) == D - 1 && return distortion(C, js, uⱼₛ, is[1])
+function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, <:Real}) where {D, p}
+    is = Tuple(setdiff(1:D, js))
+    p==D-1 && return distortion(C, js, uⱼₛ, is[1])
     CC, distortions = _conditional_components(C, js, uⱼₛ, is)
     return SklarDist(CC, distortions)
 end
 
-condition(X::SklarDist{<:Copula{D}}, j::Integer, xⱼ::Real) where D =
-    _condition(X, _process_conditioning_args(Val(D), j, xⱼ)...)
-condition(X::SklarDist{<:Copula{D}}, js::AbstractVector{<:Integer}, xⱼₛ::AbstractVector{<:Real}) where D =
-    _condition(X, _process_conditioning_args(Val(D), js, xⱼₛ)...)
-condition(X::SklarDist{<:Copula{D}}, js::AbstractVector{<:Integer}, xⱼ::Real) where D =
-    _condition(X, _process_conditioning_args(Val(D), js, xⱼ)...)
-condition(X::SklarDist, js::Tuple, xⱼₛ::Union{Tuple,AbstractVector}) =
-    condition(X, collect(Int, js), collect(float.(xⱼₛ)))
-condition(X::SklarDist, js::AbstractVector{<:Integer}, xⱼₛ::Tuple) =
-    condition(X, js, collect(float.(xⱼₛ)))
-condition(X::SklarDist, js::Tuple, xⱼ::Real) = condition(X, collect(Int, js), xⱼ)
-function _condition(X::SklarDist{<:Copula{D}}, js::Vector{Int}, xⱼₛ::Vector{<:Real}) where D
-    uⱼₛ = [Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ)]
-    is = setdiff(1:D, js)
-    if length(js) == D - 1
+condition(C::SklarDist{<:Copula{D}}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
+function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::NTuple{p, <:Real}) where {D, Tpl, p}
+    uⱼₛ = Tuple(Distributions.cdf(X.m[j], xⱼ) for (j,xⱼ) in zip(js, xⱼₛ))
+    is = Tuple(setdiff(1:D, js))
+    if p == D - 1
         return distortion(X.C, js, uⱼₛ, is[1])(X.m[is[1]])
     end
     CC, distortions = _conditional_components(X.C, js, uⱼₛ, is)
@@ -423,15 +330,17 @@ end
 ###########################################################################
 
 
-function distortion(S::SubsetCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int)
-    return distortion(S.C, [S.dims[j] for j in js], uⱼₛ, S.dims[i])
+function distortion(S::SubsetCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p}
+    ibase = S.dims[i]
+    jsbase = ntuple(k -> S.dims[js[k]], p)
+    return distortion(S.C, jsbase, uⱼₛ, ibase)
 end
 
-function conditional_copula(S::SubsetCopula{d,CT}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) where {d,CT}
-    Jbase = [S.dims[j] for j in js]
+function conditional_copula(S::SubsetCopula{d,CT}, js, uⱼₛ) where {d,CT}
+    Jbase = Tuple(S.dims[j] for j in js)
     CC_base = conditional_copula(S.C, Jbase, uⱼₛ)
-    D = length(S.C); I = setdiff(1:D, Jbase)
-    dims_remain = [i for i in S.dims if !(i in Jbase)]
+    D = length(S.C); I = Tuple(setdiff(1:D, Jbase))
+    dims_remain = Tuple(i for i in S.dims if !(i in Jbase))
     posmap = Dict(i => p for (p,i) in enumerate(I))
     dims_positions = Tuple(posmap[i] for i in dims_remain)
     return (length(dims_positions) == length(I)) ? CC_base : SubsetCopula(CC_base, dims_positions)
@@ -465,18 +374,12 @@ rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = rosenblatt(C, re
 function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
     size(u, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
     v = similar(u)
-    js = Int[]
-    ujs = typeof(float(zero(eltype(u))))[]
-    sizehint!(js, d - 1)
-    sizehint!(ujs, d - 1)
     @inbounds for j in axes(u, 2)
         # First coordinate is unchanged
         v[1, j] = clamp(float(u[1, j]), 0.0, 1.0)
-        empty!(js)
-        empty!(ujs)
         for k in 2:d
-            push!(js, k - 1)
-            push!(ujs, float(u[k - 1, j])) # condition on original u's
+            js = ntuple(i -> i, k - 1)
+            ujs = ntuple(i -> float(u[i, j]), k - 1)  # condition on original u's
             Dk = distortion(C, js, ujs, k)
             v[k, j] = Distributions.cdf(Dk, clamp(float(u[k, j]), 0.0, 1.0))
         end
@@ -512,17 +415,11 @@ inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = inverse_
 function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}
     size(s, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
     v = similar(s)
-    js = Int[]
-    ujs = typeof(float(zero(eltype(s))))[]
-    sizehint!(js, d - 1)
-    sizehint!(ujs, d - 1)
     @inbounds for j in axes(s, 2)
         v[1, j] = clamp(float(s[1, j]), 0.0, 1.0)
-        empty!(js)
-        empty!(ujs)
         for k in 2:d
-            push!(js, k - 1)
-            push!(ujs, float(v[k - 1, j])) # use already reconstructed U's
+            js = ntuple(i -> i, k - 1)
+            ujs = ntuple(i -> float(v[i, j]), k - 1)  # use already reconstructed U's
             Dk = distortion(C, js, ujs, k)
             v[k, j] = Distributions.quantile(Dk, clamp(float(s[k, j]), 0.0, 1.0))
         end

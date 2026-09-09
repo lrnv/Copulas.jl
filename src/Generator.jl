@@ -469,65 +469,7 @@ end
 
 
 
-@inline function _empirical_generator_tail_sum(
-    y::Float64,
-    k::Int,
-    d::Int,
-    r::Vector{Float64},
-    w::Vector{Float64},
-)
-    s = 0.0
-    @inbounds for j in (k + 1):length(r)
-        z = 1.0 - y / r[j]
-        if z > 0.0
-            s += w[j] * z^(d - 1)
-        end
-    end
-    return s
-end
 
-function _empirical_generator_bisect(
-    target::Float64,
-    a::Float64,
-    b::Float64,
-    k::Int,
-    d::Int,
-    r::Vector{Float64},
-    w::Vector{Float64},
-)
-    ga = _empirical_generator_tail_sum(a, k, d, r, w)
-    gb = _empirical_generator_tail_sum(b, k, d, r, w)
-
-    ga >= target >= gb || throw(ArgumentError(
-        "invalid empirical-generator bracket: " *
-        "g(a)=$ga, target=$target, g(b)=$gb",
-    ))
-
-    target == ga && return a
-    target == gb && return b
-
-    while true
-        mid = a + (b - a) / 2
-
-        # Machine-precision convergence.
-        if mid == a || mid == b
-            return abs(ga - target) <= abs(gb - target) ? a : b
-        end
-
-        gm = _empirical_generator_tail_sum(mid, k, d, r, w)
-
-        gm == target && return mid
-
-        # g is non-increasing.
-        if gm > target
-            a = mid
-            ga = gm
-        else
-            b = mid
-            gb = gm
-        end
-    end
-end
 
 
 """
@@ -560,57 +502,45 @@ function EmpiricalGenerator(u::AbstractMatrix; pseudo_values=true)
     d = size(u, 1)
     U = pseudo_values ? u : pseudos(u)
     W = _kendall_sample(U)
-
     kw = StatsBase.proportionmap(W)
-    x = sort!(collect(keys(kw)); rev=true)
+    x = collect(keys(kw))
     N = length(x)
-
-    N == 1 && return ClaytonGenerator(-1 / (d - 1))
-
-    # _kendall_sample returns Float64, so keep this numerical problem
-    # deliberately concrete. This also avoids unnecessary specialization.
-    w = Float64[kw[xi] for xi in x]
-    r = zeros(Float64, N)
-
-    r[end] = 1.0
-    r[end - 1] =
-        1.0 - clamp(Float64(x[N - 1]) / w[N], 0.0, 1.0)^(1 / (d - 1))
-
-    epsr = 1e-14
-
-    for k in (N - 2):-1:1
-        target = Float64(x[k])
-
-        a = 0.0
-        b = max(r[k + 1] - epsr, 0.0)
-
-        ga = _empirical_generator_tail_sum(a, k, d, r, w)
-        gb = _empirical_generator_tail_sum(b, k, d, r, w)
-
-        # Preserve the existing fallback which retries at the actual
-        # neighbouring support point.
-        if !(ga + 1e-12 >= target >= gb - 1e-12)
-            b = r[k + 1]
-            ga = _empirical_generator_tail_sum(a, k, d, r, w)
-            gb = _empirical_generator_tail_sum(b, k, d, r, w)
+    N == 1 && return ClaytonGenerator(-1/(d-1))
+    sort!(x; rev=true)
+    w = [kw[xi] for xi in x]
+    r = zero(x)
+    r[end] = 1
+    r[end-1] = 1 - clamp(x[N-1] / w[N], 0, 1)^(1/(d-1))
+    for k in (N-2):-1:1
+        gk = function(y)
+            s = 0.0
+            @inbounds for j in (k+1):N
+                z = 1.0 - y / r[j]
+                if z > 0.0
+                    s += w[j] * z^(d-1)
+                end
+            end
+            return s
         end
-
-        # Preserve the previous last-resort projection into the valid range.
-        target = ga >= target >= gb ? target : clamp(target, gb, ga)
-
-        r[k] = _empirical_generator_bisect(
-            target,
-            a,
-            b,
-            k,
-            d,
-            r,
-            w,
-        )
-
-        r[k] = clamp(r[k], 0.0, r[k + 1] - epsr)
+        eps = 1e-14
+        a, b = 0.0, max(r[k+1] - eps, 0.0)
+        ga, gb = gk(a), gk(b)
+        # Ensure a valid bracket: gk is nonincreasing in y, target is x[k]
+        # Expand upper bound slightly if needed to include the target
+        if !(ga + 1e-12 >= x[k] >= gb - 1e-12)
+            # Try with full [0, r[k+1]] first
+            a, b = 0.0, r[k+1]
+            ga, gb = gk(a), gk(b)
+        end
+        if !(ga >= x[k] >= gb)
+            # As a last resort, project x[k] into [gb, ga]
+            xk = clamp(x[k], gb, ga)
+            r[k] = Roots.find_zero(y -> gk(y) - xk, (a, b); bisection=true)
+        else
+            r[k] = Roots.find_zero(y -> gk(y) - x[k], (a, b); bisection=true)
+        end
+        r[k] = clamp(r[k], 0.0, r[k+1] - eps)
     end
-
     return 𝒲(r, w, d)
 end
 

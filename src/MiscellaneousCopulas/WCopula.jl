@@ -40,12 +40,7 @@ StatsBase.corspearman(::WCopula) = [1 -1; -1 1]
 
 # Subsetting colocated
 SubsetCopula(C::WCopula, ::NTuple{p, Int}) where {p} = (p==2 ? C : error("WCopula only defined for p=2"))
-function distortion(::WCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int)
-    length(js) == length(uⱼₛ) == 1 || throw(ArgumentError(
-        "bivariate W conditioning expects one conditioned coordinate",
-    ))
-    return WDistortion(float(uⱼₛ[1]), Int8(js[1]))
-end
+distortion(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
 # Fitting/params interface (no parameters)
 Distributions.params(::WCopula) = (;)

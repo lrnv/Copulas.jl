@@ -111,7 +111,7 @@ plot!(xs_grid, Fx.(xs_grid); seriestype=:steppost, label="empirical", alpha=0.6,
 When conditioning on less than $D-1$ dimensions, we obtain a multivariate object, usually a `SklarDist`: 
 
 ```@example cond1
-H = condition(ClaytonCopula(4, 4.2), [2, 3], [0.25, 0.8])
+H = condition(ClaytonCopula(4, 4.2), (2, 3), (0.25, 0.8))
 ```
 
 ```@example cond1

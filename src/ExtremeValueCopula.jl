@@ -192,13 +192,7 @@ end
 # Hüsler--Reiss and extremal-t contain Float64 probability kernels that cannot
 # accept ForwardDiff dual numbers, while their STDF partials are available
 # directly through `_ellpartial_signlog`.
-function _partial_cdf(
-    C::ExtremeValueCopula{d},
-    is::AbstractVector{<:Integer},
-    js::AbstractVector{<:Integer},
-    uᵢₛ::AbstractVector{<:Real},
-    uⱼₛ::AbstractVector{<:Real},
-) where {d}
+function _partial_cdf(C::ExtremeValueCopula{d}, is, js, uᵢₛ, uⱼₛ) where {d}
     limit_kind(C.tail, Val{d}()) === Π_LIMIT && return prod(uᵢₛ)
     u = _assemble(d, is, js, uᵢₛ, uⱼₛ)
     logvalue = _ev_logcdf_partial(C, u, js)
@@ -278,8 +272,8 @@ end
 
 function distortion(
     C::ExtremeValueCopula{2,TT},
-    js::AbstractVector{<:Integer},
-    uⱼₛ::AbstractVector{<:Real},
+    js::NTuple{1,Int},
+    uⱼₛ::NTuple{1,Float64},
     ::Int,
 ) where {TT}
     kind = limit_kind(C.tail, Val(2))

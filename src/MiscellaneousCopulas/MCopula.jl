@@ -38,10 +38,7 @@ StatsBase.corspearman(::MCopula{d}) where d = ones(d,d)
 
 # Subsetting colocated
 SubsetCopula(::MCopula{d}, ::NTuple{p, Int}) where {d,p} = MCopula{p}()
-function distortion(::MCopula{2}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int)
-    length(js) == 1 || throw(ArgumentError("bivariate M conditioning expects one conditioned coordinate"))
-    return MDistortion(float(uⱼₛ[1]), Int8(js[1]))
-end
+distortion(::MCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i::Int) = MDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
 # Fitting/params interface (no parameters)
 Distributions.params(::MCopula) = (;)

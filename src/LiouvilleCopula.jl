@@ -166,17 +166,14 @@ _liouville_conditioning_radial(G::Generator, d::Real) = 𝒲₋₁(G, d)
 
 
 function _liouville_conditional_components(
-    C::LiouvilleCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real},
-) where {D}
-    is = setdiff(1:D, js)
+    C::LiouvilleCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real},
+) where {D,p}
+    is = Tuple(i for i in 1:D if i ∉ js)
     source_order = _liouville_order(C)
     target_order = sum(C.α[i] for i in is)
     tilted_order = sum(C.α[j] for j in js)
     original_margins = ntuple(i -> _liouville_conditioning_radial(C.G, C.α[i]), D)
-    xⱼₛ = [
-        Distributions.quantile(original_margins[j], 1 - u)
-        for (j, u) in zip(js, uⱼₛ)
-    ]
+    xⱼₛ = ntuple(k -> Distributions.quantile(original_margins[js[k]], 1 - uⱼₛ[k]), p)
     shift = sum(xⱼₛ)
 
     source_frailty = frailty(C.G)
@@ -210,17 +207,17 @@ end
 
 function distortion(
     C::LiouvilleCopula,
-    js::AbstractVector{<:Integer},
-    uⱼₛ::AbstractVector{<:Real},
+    js::NTuple{p,Int},
+    uⱼₛ::NTuple{p,<:Real},
     i::Int,
-)
+) where {p}
     _, distortions, is = _liouville_conditional_components(C, js, uⱼₛ)
     position = findfirst(==(i), is)
     position === nothing && throw(ArgumentError("the target dimension is conditioned"))
     return distortions[position]
 end
 
-function conditional_copula(C::LiouvilleCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real})
+function conditional_copula(C::LiouvilleCopula, js, uⱼₛ)
     conditional_copula, _, _ = _liouville_conditional_components(C, js, uⱼₛ)
     conditional_copula === nothing && throw(ArgumentError(
         "conditioning leaves one margin and therefore no conditional copula",
@@ -234,7 +231,7 @@ end
 # rebuilding (and renormalizing) the same conditional frailty or radial once
 # for the copula and once per remaining margin. The `conditional_copula` and
 # `distortion` methods above remain the family extension points.
-function _conditional_components(C::LiouvilleCopula, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, is)
+function _conditional_components(C::LiouvilleCopula, js, uⱼₛ, is)
     conditional_copula, distortions, computed_is =
         _liouville_conditional_components(C, js, uⱼₛ)
     computed_is == is || throw(ArgumentError("inconsistent conditioning dimensions"))

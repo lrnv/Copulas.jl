@@ -38,13 +38,13 @@ function dispatch_path(operation, C)
         is_absolutely_continuous(C) || return nothing
         return _which(Distributions._logpdf, C, u)
     elseif operation === :conditioning
-        js = collect(1:(d - 1))
-        values = fill(0.4, d - 1)
+        js = Tuple(1:(d - 1))
+        values = ntuple(_ -> 0.4, d - 1)
         return _which(Copulas.distortion, C, js, values, d)
     elseif operation === :conditional_joint
         d > 2 || return nothing
-        js = [1]
-        values = [0.4]
+        js = (1,)
+        values = (0.4,)
         return _which(Copulas.conditional_copula, C, js, values)
     end
     error("unknown dispatch operation $operation")

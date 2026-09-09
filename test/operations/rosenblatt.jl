@@ -53,7 +53,7 @@ end
     R = rosenblatt(C, u)
     @test R[1] ≈ u[1]
     @test R[2] ≈ cdf(condition(C, 1, u[1]).m[1], u[2])
-    @test R[3] ≈ cdf(condition(C, [1, 2], u[1:2]), u[3])
+    @test R[3] ≈ cdf(condition(C, (1, 2), (u[1], u[2])), u[3])
     @test inverse_rosenblatt(C, R) ≈ u atol=2e-6 rtol=2e-6
 
     independent = IndependentCopula{3}()
@@ -103,8 +103,8 @@ end
         expected = similar(R)
         expected[1] = u[1]
         for i in 2:d
-            js = collect(1:(i - 1))
-            values = u[1:(i - 1)]
+            js = Tuple(1:(i - 1))
+            values = Tuple(u[1:(i - 1)])
             expected[i] = cdf(Copulas.distortion(C, js, values, i), u[i])
         end
         if !forward_done

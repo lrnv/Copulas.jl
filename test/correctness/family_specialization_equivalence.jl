@@ -35,8 +35,8 @@ end
 
     z = [0.31, 0.57, 0.73]
     for C in (LogCopula{3}(2.0), GalambosCopula{3}(0.7))
-        analytic = Copulas._partial_cdf(C, [3], [1, 2],
-                                        [z[3]], z[1:2])
+        analytic = Copulas._partial_cdf(C, (3,), (1, 2),
+                                        (z[3],), (z[1], z[2]))
         differentiated = ForwardDiff.derivative(
             a -> ForwardDiff.derivative(
                 b -> cdf(C, [a, b, z[3]]), z[2]), z[1])
@@ -46,7 +46,7 @@ end
     # Numerical-kernel tails cannot accept dual numbers; their analytic STDF
     # partials must nevertheless power conditioning and Rosenblatt end to end.
     C = tEVCopula{3}(4.0, 0.2)
-    D = condition(C, [1, 2], [0.31, 0.58])
+    D = condition(C, (1, 2), (0.31, 0.58))
     @test 0 < cdf(D, 0.63) < 1
     @test pdf(D, 0.63) > 0
     u = [0.21, 0.53, 0.74]

@@ -406,13 +406,13 @@ logpdf(C, [0.3, 0.5, 0.4, 0.6])
 S = SklarDist(C, ntuple(_ -> Exponential(1.0), 4))
 x = [0.7, 0.3, 0.5, 0.9]
 logpdf(subsetdims(S, (1, 3, 4)), x[[1, 3, 4]]) +
-    logcdf(condition(S, [1, 3, 4], x[[1, 3, 4]]), x[2])
+    logcdf(condition(S, (1, 3, 4), x[[1, 3, 4]]), x[2])
 
 # right-censored dim 2 on the copula scale:
 u = [cdf(S.m[i], x[i]) for i in 1:4]
 Cs = SurvivalCopula(C, (2,))
 logpdf(subsetdims(C, (1, 3, 4)), u[[1, 3, 4]]) +
-    logcdf(condition(Cs, [1, 3, 4], u[[1, 3, 4]]), 1 - u[2])
+    logcdf(condition(Cs, (1, 3, 4), u[[1, 3, 4]]), 1 - u[2])
 ```
 
 The density and the partial-observation likelihood follow the
@@ -715,8 +715,12 @@ Base.show(io::IO, C::NestedArchimedeanCopula{d}) where {d} =
 # (multi-conditioned) compute the conditional CDF with our O(d²) Faà di Bruno
 # walk — ZERO ForwardDiff for ANY number of censored dims.
 #
-# The conditioning containers preserve the promoted value type, so the same
-# kernel also supports non-`Float64` conditioned values.
+# CAVEAT (forward-compat only): end-to-end BigFloat MULTI-censored *conditioning*
+# via `condition()` is not yet enabled — upstream's `ConditionalCopula`/
+# `DistortionFromCop` `uⱼₛ`/`den` fields are Float64-typed, so the standard API
+# delivers Float64 to the override. Threading `T` future-proofs it (and matches
+# `_assemble`'s own promotion), but BigFloat currently flows only via direct
+# kernel calls or the single-censored `NestedDistortion.logcdf` path.
 # =============================================================================
 
 # ---- (1) SubsetCopula: prune the tree to the observed marginal --------------
@@ -841,22 +845,23 @@ end
 # ---- (2) Distortion: closed-form conditional marginal U_i | U_js -------------
 
 
-function distortion(C::NestedArchimedeanCopula{D}, js::AbstractVector{<:Integer}, ujs::AbstractVector{<:Real}, i::Int) where {D}
+function distortion(C::NestedArchimedeanCopula{D}, js::NTuple{p, Int},
+                          ujs::NTuple{p, Float64}, i::Int) where {D, p}
     # den = c_O = pdf of the observed marginal. Identical to upstream's generic
     # generic distortion denominator, so num/den stays consistent. For p==1 subsetdims
     # returns Uniform() ⇒ den = 1; otherwise it is our pruned-tree multivariate
     # pdf. Do NOT assert p==D-1: condition() builds a distortion for EVERY
     # i∉js, so in the multi-unobserved case p < D-1.
-    den = length(js) == 1 ? Distributions.pdf(subsetdims(C, js), ujs[1]) :
-                   Distributions.pdf(subsetdims(C, js), ujs)
+    den = p == 1 ? Distributions.pdf(subsetdims(C, js), ujs[1]) :
+                   Distributions.pdf(subsetdims(C, js), collect(ujs))
     utemplate = ntuple(D) do k
         pos = findfirst(==(k), js)
         isnothing(pos) ? 1.0 : ujs[pos]
     end
     cdfcensored = ntuple(k -> k ∉ js, D)
     pdfcensored = ntuple(k -> k ∉ js && k != i, D)
-    return NestedDistortion(
-        C, i, js, ujs, log(float(den)), utemplate, cdfcensored, pdfcensored,
+    return NestedDistortion{typeof(C), p, D}(
+        C, i, js, ujs, log(float(den)), utemplate, cdfcensored, pdfcensored
     )
 end
 
@@ -878,13 +883,7 @@ end
 # (cens[k] = !(k∈js)), return exp(kernel). A CDF's mixed partial over a coordinate
 # subset is a non-negative sub-density, so exp(log|·|) == the value. `T` is
 # threaded for a future BigFloat upper layer; the standard API stores Float64.
-function _partial_cdf(
-    C::NestedArchimedeanCopula{D},
-    is::AbstractVector{<:Integer},
-    js::AbstractVector{<:Integer},
-    uᵢₛ::AbstractVector{<:Real},
-    uⱼₛ::AbstractVector{<:Real},
-) where {D}
+function _partial_cdf(C::NestedArchimedeanCopula{D}, is, js, uᵢₛ, uⱼₛ) where {D}
     T = float(promote_type(eltype(typeof(uᵢₛ)), eltype(typeof(uⱼₛ))))
     u = _assemble(D, is, js, uᵢₛ, uⱼₛ)        # js→uⱼₛ, is→uᵢₛ, others→1
     cens = trues(D)

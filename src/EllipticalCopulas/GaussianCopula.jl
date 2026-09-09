@@ -97,27 +97,22 @@ end
 ρ(C::GaussianCopula{2,MT}) where MT = 6*asin(C.Σ[1,2]/2)/π
 
 # Conditioning and subsetting fast paths colocated with the type
-function distortion(
-    C::GaussianCopula{D,MT},
-    js::AbstractVector{<:Integer},
-    uⱼₛ::AbstractVector{<:Real},
-    i::Int,
-) where {D,MT}
-    ist = setdiff(1:D, js)
+function distortion(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
+    ist = Tuple(setdiff(1:D, js))
     @assert i in ist
-    zⱼ = Distributions.quantile.(Distributions.Normal(), uⱼₛ)
-    if length(js) == 1 # if we condition on only one variable
-        μz = C.Σ[i, js[1]] * zⱼ[1]
-        σz = sqrt(1 - C.Σ[i, js[1]]^2)
+    J = collect(js)
+    zⱼ = Distributions.quantile.(Distributions.Normal(), collect(uⱼₛ))
+    if length(J) == 1 # if we condition on only one variable
+        μz = C.Σ[i, J[1]] * zⱼ[1]
+        σz = sqrt(1 - C.Σ[i, J[1]]^2)
     else
-        Reg = C.Σ[i:i, js] * inv(C.Σ[js, js])
+        Reg = C.Σ[i:i, J] * inv(C.Σ[J, J])
         μz = (Reg * zⱼ)[1]
-        σz = sqrt(1 - (Reg * C.Σ[js, i:i])[1])
+        σz = sqrt(1 - (Reg * C.Σ[J, i:i])[1])
     end
     return GaussianDistortion(float(μz), float(σz))
 end
-function conditional_copula(C::GaussianCopula{D,MT}, js::AbstractVector{<:Integer}, ::AbstractVector{<:Real}) where {D,MT}
-    p = length(js)
+function conditional_copula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D,MT,p}
     @assert 0 < p < D-1
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))
@@ -125,7 +120,8 @@ function conditional_copula(C::GaussianCopula{D,MT}, js::AbstractVector{<:Intege
     return GaussianCopula{D - p}(Σcond)
 end
 
-function _conditional_components(C::GaussianCopula{D,MT}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, is) where {D,MT}
+function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
+                                 uⱼₛ::NTuple{p,Float64}, is) where {D,MT,p}
     J = collect(Int, js)
     I = collect(Int, is)
     Σ = C.Σ

@@ -30,7 +30,7 @@
 
     @testset "Survival conditional flip remapping" begin
         C = SurvivalCopula{4}(ClaytonCopula{4}(2.0), (2, 4))
-        conditioned = condition(C, [1, 3], [0.25, 0.75])
+        conditioned = condition(C, (1, 3), (0.25, 0.75))
         @test conditioned.C isa SurvivalCopula{2}
         @test 0.0 <= cdf(conditioned, [0.4, 0.6]) <= 1.0
     end

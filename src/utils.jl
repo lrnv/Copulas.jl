@@ -18,61 +18,16 @@ function _replace_coordinate(x::AbstractVector, i::Int, xi)
 end
 
 # Common mixed-partial AD primitive used by conditioning and EV tails.
-function _mixed_partial(
-    f,
-    x,
-    I::AbstractVector{<:Integer},
-)
-    # Build the derivative composition dynamically. A recursive implementation
-    # indexed by a runtime vector position makes inference explore an unbounded
-    # nesting of ForwardDiff.Dual types because no shrinking tuple type proves
-    # termination to the compiler.
-    local derivative::Function = f
-    for index in Iterators.reverse(I)
-        inner = derivative
-        i = Int(index)
-        derivative = let inner=inner, i=i
-            y -> ForwardDiff.derivative(
-                xi -> inner(_replace_coordinate(y, i, xi)),
-                y[i],
-            )
-        end
-    end
-    return derivative(x)
-end
-
-# Type-stable mixed partial with a statically bounded recursion depth. `N`
-# should come from an existing model dimension, not from `length(I)`: the
-# conditioning order therefore remains runtime data and creates no extra
-# method specialization.
-function _mixed_partial_bounded(f, x, I::AbstractVector{<:Integer}, ::Val{N}) where {N}
-    return _mixed_partial_bounded(f, x, I, 1, Val(N))
-end
-
-function _mixed_partial_bounded(f, x, I::AbstractVector{<:Integer}, pos::Int, ::Val{N}) where {N}
-    pos > length(I) && return f(x)
-    i = I[pos]
+function _mixed_partial(f, x, I::Tuple{Vararg{Int}})
+    isempty(I) && return f(x)
+    i = first(I)
     return ForwardDiff.derivative(
-        xi -> _mixed_partial_bounded(
-            f,
-            _replace_coordinate(x, i, xi),
-            I,
-            pos + 1,
-            Val(N - 1),
-        ),
+        xi -> _mixed_partial(f, _replace_coordinate(x, i, xi), Base.tail(I),),
         x[i],
     )
 end
 
-
-function _mixed_partial_bounded(f, x, I::AbstractVector{<:Integer}, pos::Int, ::Val{0})
-    pos > length(I) || throw(ArgumentError("mixed-partial order exceeds its bound"))
-    return f(x)
-end
-
-# Compatibility only.
-_mixed_partial(f, x, I::Tuple{Vararg{Int}}) = _mixed_partial(f, x, collect(I))
-
+_mixed_partial(f, x, I::AbstractVector{<:Integer}) = _mixed_partial(f, x, Tuple(I))
 
 function _nonempty_subsets(d::Int)
     d >= 1 || throw(ArgumentError("dimension must be positive"))

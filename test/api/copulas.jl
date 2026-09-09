@@ -61,5 +61,5 @@ end
     u = [0.3, 0.5, 0.7]
     @test Base.broadcastable(C)[] === C
     @test cdf(condition(C, [1], [u[1]]), u[2:3]) ≈
-          cdf(condition(C, [1], [u[1]]), u[2:3])
+          cdf(condition(C, (1,), (u[1],)), u[2:3])
 end

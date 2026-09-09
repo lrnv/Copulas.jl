@@ -95,7 +95,7 @@ Conditioning preserves the Liouville structure. If the generator has a frailty, 
 
 ```@example liouville
 conditional_23_given_1 = condition(C, 1, 0.4)
-conditional_3_given_12 = condition(C, [1, 2], [0.4, 0.6])
+conditional_3_given_12 = condition(C, (1, 2), (0.4, 0.6))
 
 u = [0.3, 0.5, 0.8]
 v = rosenblatt(C, u)
