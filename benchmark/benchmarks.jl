@@ -105,6 +105,7 @@ SUITE["density"]["galambos_d2"] = bench_logpdf(galambos, pair_points)
 
 SUITE["cdf"]["bb1_d2"] = bench_cdf(bb1, pair_points)
 SUITE["cdf"]["galambos_d2"] = bench_cdf(galambos, pair_points)
+SUITE["cdf"]["student_d2"] = bench_cdf(student, pair_points[:, 1:10])
 
 raw_data = randn(Xoshiro(SEED + 4), 5, 10_000)
 checkerboard_data = randn(Xoshiro(SEED + 5), 3, 2_000)

@@ -44,6 +44,11 @@ N(C::TCopula) = function(Σ)
     Distributions.MvTDist(C.df, Σ)
 end
 
+function _cdf(C::TCopula{d}, u) where d
+    upper = Distributions.quantile.(Distributions.TDist(C.df), u)
+    return _mvtcdf(C.df, zeros(eltype(upper), d), C.Σ, upper)
+end
+
 function _student_rosenblatt_cache(C::TCopula{d}) where d
     Σ = C.Σ
     return ntuple(d) do k

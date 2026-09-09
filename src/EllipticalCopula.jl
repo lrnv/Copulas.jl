@@ -52,6 +52,36 @@ function make_cor!(Σ)
     end
 end
 
+# Multivariate Student probabilities through the normal scale-mixture
+# representation. A fixed inner RNG makes the quadrature deterministic.
+function _mvtcdf(df::Real, μ, Σ::AbstractMatrix, upper; rtol::Real=2e-6)
+    q = length(upper)
+    q == 0 && return 1.0
+
+    dff = Float64(df)
+    μf = Float64.(μ)
+    upperf = Float64.(upper)
+    Σf = Matrix{Float64}(LinearAlgebra.Symmetric(Matrix{Float64}(Σ)))
+
+    if q == 1
+        σ = sqrt(Σf[1, 1])
+        return StatsFuns.tdistcdf(dff, (upperf[1] - μf[1]) / σ)
+    end
+
+    δ = upperf .- μf
+    χ = Distributions.Chisq(dff)
+    lo, hi = eps(Float64), 1.0 - eps(Float64)
+    integrand(p) = begin
+        w = Distributions.quantile(χ, clamp(Float64(p), lo, hi))
+        b = sqrt(w / dff) .* δ
+        MvNormalCDF.mvnormcdf(
+            Σf, fill(-Inf, q), b; rng=Random.Xoshiro(0),
+        )[1]
+    end
+    value = QuadGK.quadgk(integrand, 0.0, 1.0; rtol)[1]
+    return clamp(value, 0.0, 1.0)
+end
+
 # ——————————————————————————————————————————————————————————
 # Shared correlation-parameterization helpers (LKJ/partial corr)
 # Map between correlation matrices and unconstrained vectors α ∈ ℝ^{d(d-1)/2}

@@ -128,36 +128,6 @@ function _tev_correlation(tail::tEVTail{<:Any,<:Real}, d::Int)
 end
 _tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = tail.parameter
 
-function _tev_mvtcdf(df::Real, μ, Σ::AbstractMatrix, upper; rtol::Real=2e-6,)
-    q = length(upper)
-    q == 0 && return 1.0
-
-    dff = Float64(df)
-    μf = Float64.(μ)
-    upperf = Float64.(upper)
-    Σf = Matrix{Float64}(LinearAlgebra.Symmetric(Matrix{Float64}(Σ)))
-
-    if q == 1
-        σ = sqrt(Σf[1, 1])
-        return Distributions.cdf(Distributions.TDist(dff), (upperf[1] - μf[1]) / σ,)
-    end
-
-    δ = upperf .- μf
-    χ = Distributions.Chisq(dff)
-    lo = eps(Float64)
-    hi = 1.0 - eps(Float64)
-
-    integrand(p) = begin
-        pp = clamp(Float64(p), lo, hi)
-        w = Distributions.quantile(χ, pp)
-        b = sqrt(w / dff) .* δ
-        MvNormalCDF.mvnormcdf(Σf, fill(-Inf, q), b; rng=Random.Xoshiro(0),)[1]
-    end
-
-    val = QuadGK.quadgk(integrand, 0.0, 1.0; rtol=rtol)[1]
-    return clamp(val, 0.0, 1.0)
-end
-
 function _tev_stdf(ν::Real, R::AbstractMatrix, x)
     d = length(x)
 
@@ -187,7 +157,7 @@ function _tev_stdf(ν::Real, R::AbstractMatrix, x)
             for k in J
         ]
 
-        p = _tev_mvtcdf(νf + 1.0, r, Σcond, upper)
+        p = _mvtcdf(νf + 1.0, r, Σcond, upper)
         total += y[j] * p
     end
 
@@ -265,7 +235,7 @@ function _ellpartial_signlog(tail::tEVTail, x, I::Tuple{Vararg{Int}})
             upper[a] = isinf(zi) ? Inf : Float64(zi)^(1 / νf)
         end
 
-        p = _tev_mvtcdf(νf + b, μ, Σcond, upper)
+        p = _mvtcdf(νf + b, μ, Σcond, upper)
         iszero(p) ? -Inf : logλB + log(p)
     end
 

@@ -20,6 +20,16 @@ end
     @test Copulas.ρ(TCopula{2}(Inf, [1.0 0.5; 0.5 1.0])) ≈ 6asin(0.25) / π
 end
 
+@testset "Multivariate Student CDF" begin
+    C2 = TCopula{2}(4.0, [1.0 0.5; 0.5 1.0])
+    @test cdf(C2, [0.5, 0.5]) ≈ 1 / 4 + asin(0.5) / (2π) atol=5e-4
+
+    C3 = TCopula{3}(5.0, Matrix{Float64}(I, 3, 3))
+    @test cdf(C3, fill(0.5, 3)) ≈ 1 / 8 atol=5e-4
+    @test cdf(C3, [0.0, 0.5, 0.5]) == 0
+    @test cdf(C3, ones(3)) == 1
+end
+
 @testset "Fix value Gaussian Copula & SklarDist" begin
     # source: https://discourse.julialang.org/t/cdf-of-a-copula-from-copulas-jl/85786/20
     Random.seed!(123)
