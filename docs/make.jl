@@ -3,6 +3,29 @@ using Documenter
 using DocumenterCitations
 using DocumenterVitepress
 
+# Temporary profiling hook; remove after the documentation runtime audit.
+if get(ENV, "COPULAS_PROFILE_DOCS", "false") == "true"
+    @eval Documenter function expand(doc::Documenter.Document)
+        expandfirst = map(normpath, doc.user.expandfirst)
+        priority_pages = filter(src -> src in keys(doc.blueprint.pages), expandfirst)
+        normal_pages = sort!(filter(src -> !(src in priority_pages), collect(keys(doc.blueprint.pages))))
+        for src in Iterators.flatten((priority_pages, normal_pages))
+            started = time_ns()
+            page = doc.blueprint.pages[src]
+            copy!(page.globals.meta, doc.user.meta)
+            for node in collect(page.mdast.children)
+                Selectors.dispatch(Expanders.ExpanderPipeline, node, page, doc)
+                expand_recursively(node, page, doc)
+            end
+            collect_named_anchors!(page, doc)
+            pagecheck(doc, page)
+            clear_modules!(page.globals.meta)
+            @info "Documentation page expanded" page=src seconds=round((time_ns() - started) / 1e9; digits=3)
+        end
+        return
+    end
+end
+
 DocMeta.setdocmeta!(Copulas, :DocTestSetup, :(using Copulas); recursive=true)
 
 bib = CitationBibliography(

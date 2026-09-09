@@ -52,6 +52,7 @@ jobs:
           GKSwstype: "100" # for Plots.jl plots (if you have them)
           JULIA_DEBUG: "Documenter"
           DATADEPS_ALWAYS_ACCEPT: true
+          COPULAS_PROFILE_DOCS: 'true'
       - name: Save Julia depot cache on cancel or failure
         id: julia-cache-save
         if: cancelled() || failure()
