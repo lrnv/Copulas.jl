@@ -132,12 +132,12 @@ end
 
 # Conditioning bindings colocated
 function distortion(S::SurvivalCopula{D}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}, i::Int) where {D}
-    uⱼₛ′ = ntuple(k -> (S.flipmask[js[k]] ? 1 - uⱼₛ[k] : uⱼₛ[k]), p)
+    uⱼₛ′ = [S.flipmask[j] ? 1 - u : u for (j, u) in zip(js, uⱼₛ)]
     base = distortion(S.C, js, uⱼₛ′, i)
     return FlipDistortion(base, S.flipmask[i])
 end
 function conditional_copula(S::SurvivalCopula{D}, js, uⱼₛ) where {D}
-    uⱼₛ′ = Tuple(S.flipmask[j] ? 1 - float(u) : float(u) for (j,u) in zip(js, uⱼₛ))
+    uⱼₛ′ = [S.flipmask[j] ? 1 - float(u) : float(u) for (j,u) in zip(js, uⱼₛ)]
     CC_base = conditional_copula(S.C, js, uⱼₛ′)
     I = Tuple(setdiff(1:D, Tuple(collect(Int, js))))
     flip_positions = Tuple(p for (p, idx) in enumerate(I) if S.flipmask[idx])

@@ -146,7 +146,7 @@ function conditional_copula(C::TCopula{D}, js, uⱼₛ) where {D}
 end
 
 function _conditional_components(C::TCopula{D}, js::AbstractArray{<:Integer}, uⱼₛ::AbstractArray{<:Real}, is) where {D}
-    p = lenght(js)
+    p = length(js)
     ν = C.df
     J = collect(Int, js)
     I = collect(Int, is)

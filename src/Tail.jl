@@ -53,8 +53,6 @@ function _ellpartial_signlog(tail::Tail, x, I::AbstractVector{<:Integer})
     return v < zero(v) ? (-1, log(abs(v))) : (1, log(abs(v)))
 end
 
-# _ellpartial_signlog(tail::Tail, x, I::AbstractVector{<:Integer}) = _ellpartial_signlog(tail, x, Tuple(I))
-
 function ellpartial(tail::Tail, x, I::Tuple{Vararg{Int}})
     isempty(I) && return ℓ(tail, x)
     sign, logabs = _ellpartial_signlog(tail, x, I)

@@ -190,7 +190,7 @@ function distortion(
     uⱼₛ::AbstractVector{<:Real},
     ::Int,
 )
-    length(js) == 1 || throw(ArgumentError("Plackett conditioning expects one conditioned coordinate"))
+    length(js) == 1 || throw(ArgumentError("bivariate Archimax conditioning expects one conditioned coordinate"))
     kind = _archimax_limit_kind(C)
     kind === M_LIMIT && return MDistortion(float(uⱼₛ[1]), Int8(js[1]))
     kind === W_LIMIT && return WDistortion(float(uⱼₛ[1]), Int8(js[1]))

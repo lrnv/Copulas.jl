@@ -168,12 +168,15 @@ _liouville_conditioning_radial(G::Generator, d::Real) = 𝒲₋₁(G, d)
 function _liouville_conditional_components(
     C::LiouvilleCopula{D}, js::AbstractArray{<:Integer}, uⱼₛ::AbstractArray{<:Real},
 ) where {D}
-    is = setdiff(1:d, js)
+    is = setdiff(1:D, js)
     source_order = _liouville_order(C)
     target_order = sum(C.α[i] for i in is)
     tilted_order = sum(C.α[j] for j in js)
     original_margins = ntuple(i -> _liouville_conditioning_radial(C.G, C.α[i]), D)
-    xⱼₛ = ntuple(k -> Distributions.quantile(original_margins[js[k]], 1 - uⱼₛ[k]), p)
+    xⱼₛ = [
+        Distributions.quantile(original_margins[j], 1 - u)
+        for (j, u) in zip(js, uⱼₛ)
+    ]
     shift = sum(xⱼₛ)
 
     source_frailty = frailty(C.G)

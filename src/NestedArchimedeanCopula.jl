@@ -715,12 +715,8 @@ Base.show(io::IO, C::NestedArchimedeanCopula{d}) where {d} =
 # (multi-conditioned) compute the conditional CDF with our O(d²) Faà di Bruno
 # walk — ZERO ForwardDiff for ANY number of censored dims.
 #
-# CAVEAT (forward-compat only): end-to-end BigFloat MULTI-censored *conditioning*
-# via `condition()` is not yet enabled — upstream's `ConditionalCopula`/
-# `DistortionFromCop` `uⱼₛ`/`den` fields are Float64-typed, so the standard API
-# delivers Float64 to the override. Threading `T` future-proofs it (and matches
-# `_assemble`'s own promotion), but BigFloat currently flows only via direct
-# kernel calls or the single-censored `NestedDistortion.logcdf` path.
+# The conditioning containers preserve the promoted value type, so the same
+# kernel also supports non-`Float64` conditioned values.
 # =============================================================================
 
 # ---- (1) SubsetCopula: prune the tree to the observed marginal --------------
@@ -851,7 +847,7 @@ function distortion(C::NestedArchimedeanCopula{D}, js::AbstractVector{<:Integer}
     # returns Uniform() ⇒ den = 1; otherwise it is our pruned-tree multivariate
     # pdf. Do NOT assert p==D-1: condition() builds a distortion for EVERY
     # i∉js, so in the multi-unobserved case p < D-1.
-    den = p == 1 ? Distributions.pdf(subsetdims(C, js), ujs[1]) :
+    den = length(js) == 1 ? Distributions.pdf(subsetdims(C, js), ujs[1]) :
                    Distributions.pdf(subsetdims(C, js), ujs)
     utemplate = ntuple(D) do k
         pos = findfirst(==(k), js)
@@ -859,8 +855,8 @@ function distortion(C::NestedArchimedeanCopula{D}, js::AbstractVector{<:Integer}
     end
     cdfcensored = ntuple(k -> k ∉ js, D)
     pdfcensored = ntuple(k -> k ∉ js && k != i, D)
-    return NestedDistortion{typeof(C), p, D}(
-        C, i, js, ujs, log(float(den)), utemplate, cdfcensored, pdfcensored
+    return NestedDistortion(
+        C, i, js, ujs, log(float(den)), utemplate, cdfcensored, pdfcensored,
     )
 end
 

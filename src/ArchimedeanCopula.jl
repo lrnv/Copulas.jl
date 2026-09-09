@@ -277,13 +277,14 @@ function distortion(C::ArchimedeanCopula, js::AbstractVector{<:Integer}, uⱼₛ
     kind === W_LIMIT && return WDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
     @assert length(js) == length(uⱼₛ)
+    p = length(js)
     T = eltype(uⱼₛ)
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
     return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
-function conditional_copula(C::ArchimedeanCopula{D, TG}, ::AbstractArray{<:Integer}, uⱼₛ::AbstractArray{<:Real}) where {D, TG}
+function conditional_copula(C::ArchimedeanCopula{D,TG}, js::AbstractVector{<:Integer}, uⱼₛ::AbstractVector{<:Real}) where {D,TG}
     p = length(js)
-    return ArchimedeanCopula{D - p}(TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
+    return ArchimedeanCopula(D - p, TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
 SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula{p}(C.G)
 

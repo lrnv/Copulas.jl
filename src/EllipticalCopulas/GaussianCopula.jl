@@ -110,13 +110,14 @@ function distortion(
         μz = C.Σ[i, js[1]] * zⱼ[1]
         σz = sqrt(1 - C.Σ[i, js[1]]^2)
     else
-        Reg = C.Σ[i:i, J] * inv(C.Σ[js, js])
+        Reg = C.Σ[i:i, js] * inv(C.Σ[js, js])
         μz = (Reg * zⱼ)[1]
         σz = sqrt(1 - (Reg * C.Σ[js, i:i])[1])
     end
     return GaussianDistortion(float(μz), float(σz))
 end
-function conditional_copula(C::GaussianCopula{D,MT}, js::AbstractArray{<:Integer}, ::AbstractArray{<:Real}) where {D,MT,p}
+function conditional_copula(C::GaussianCopula{D,MT}, js::AbstractVector{<:Integer}, ::AbstractVector{<:Real}) where {D,MT}
+    p = length(js)
     @assert 0 < p < D-1
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))
