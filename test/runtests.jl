@@ -212,7 +212,8 @@ testfiles = (
     "operations/fitting_selection.jl",
     "operations/hypothesis_testing.jl",
     "operations/nataf.jl",
-    "extensions/expectation_maximization.jl"
+    "extensions/expectation_maximization.jl",
+    "extensions/partitioned_distributions.jl"
 )
 
 @testset verbose=true "Copulas.jl" begin

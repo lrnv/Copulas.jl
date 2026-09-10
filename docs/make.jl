@@ -47,9 +47,10 @@ makedocs(;
             "Fitting compound distributions"=>"examples/fitting_sklar.md",
             "Influence of the estimation method"=>"examples/ifm1.md",
             "Fitting censored observations"=>"examples/censored_fitting.md",
+            "Fitting Loss-ALAE"=>"examples/lossalae.md",
             "Mixture models with ExpectationMaximization.jl"=>"examples/expectation_maximization.md",
+            "Interoperability with PartitionedDistributions.jl" => "examples/partitioned_distributions.md",
             "Bayesian inference with Turing.jl"=>"examples/turing.md",
-            "Loss-ALAE fitting"=>"examples/lossalae.md",
             "Other use cases"=>"examples/other_usecases.md",
         ],
         "API" => [
