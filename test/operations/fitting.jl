@@ -364,3 +364,23 @@ end
     @test keys(p) == (:θ₁, :θ₂)
     @test !iszero(p.θ₂)
 end
+
+
+@testset "dimension-specialized fitting reconstruction" begin
+    C = ClaytonCopula{3}(2.0)
+    CT = typeof(C)
+    example = C
+
+    f(x) = begin
+        θ = (; θ=x)
+        Cx = Copulas._fit_copula(
+            CT,
+            Val(3),
+            θ,
+            example,
+        )
+        return Distributions.params(Cx).θ
+    end
+
+    @test ForwardDiff.derivative(f, 2.0) ≈ 1.0
+end

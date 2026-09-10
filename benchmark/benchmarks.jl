@@ -140,16 +140,82 @@ SUITE["conditioning"]["cdf_student_d2"] =
 SUITE["conditioning"]["quantile_student_d2"] =
     bench_conditional_quantile(student, 2, 0.4, conditional_probabilities)
 
-gumbel_fit_data = rand(Xoshiro(SEED + 8), GumbelCopula{2}(2.0), 2_000)
-gaussian_fit_data = rand(Xoshiro(SEED + 9), GaussianCopula{3}(0.35), 1_000)
-sklar_model = SklarDist(
+# Dimension-specialized fitting benchmarks (#443).
+# Keep vcov and derived measures disabled below so these workloads isolate
+# the fitting/optimization hot path itself.
+clayton_fit_d2 =    rand(Xoshiro(SEED + 15), ClaytonCopula{2}(2.0), 1_000)
+clayton_fit_d5 =    rand(Xoshiro(SEED + 16), ClaytonCopula{5}(2.0), 1_000)
+gumbel_mle_fit_d2 = rand(Xoshiro(SEED + 17), GumbelCopula{2}(2.0), 1_000)
+gumbel_mle_fit_d5 = rand(Xoshiro(SEED + 18), GumbelCopula{5}(2.0), 1_000)
+bb1_fit_d2 =        rand(Xoshiro(SEED + 19), BB1Copula{2}(1.2, 1.5), 1_000)
+bb1_fit_d5 =        rand(Xoshiro(SEED + 20), BB1Copula{5}(1.2, 1.5), 1_000)
+gumbel_fit_data =   rand(Xoshiro(SEED + 8),  GumbelCopula{2}(2.0), 2_000)
+gaussian_fit_data = rand(Xoshiro(SEED + 9),  GaussianCopula{3}(0.35), 1_000)
+sklar_fit_data =    rand(Xoshiro(SEED + 10), SklarDist(
     ClaytonCopula{3}(2.0),
     (Normal(), LogNormal(0.0, 0.5), Gamma(2.0, 1.0)),
-)
-sklar_fit_data = rand(Xoshiro(SEED + 10), sklar_model, 1_000)
+), 1_000)
 
-SUITE["fitting"]["gumbel_itau"] = bench_fitting(GumbelCopula, gumbel_fit_data; method=:itau)
-SUITE["fitting"]["gaussian_mle"] = bench_fitting(GaussianCopula, gaussian_fit_data; method=:mle)
+
+SUITE["fitting"]["clayton_mle_d2"] = bench_fitting(
+    ClaytonCopula,
+    clayton_fit_d2;
+    method=:mle,
+    vcov=false,
+    derived_measures=false,
+)
+
+SUITE["fitting"]["clayton_mle_d5"] = bench_fitting(
+    ClaytonCopula,
+    clayton_fit_d5;
+    method=:mle,
+    vcov=false,
+    derived_measures=false,
+)
+
+SUITE["fitting"]["gumbel_mle_d2"] = bench_fitting(
+    GumbelCopula,
+    gumbel_mle_fit_d2;
+    method=:mle,
+    vcov=false,
+    derived_measures=false,
+)
+
+SUITE["fitting"]["gumbel_mle_d5"] = bench_fitting(
+    GumbelCopula,
+    gumbel_mle_fit_d5;
+    method=:mle,
+    vcov=false,
+    derived_measures=false,
+)
+
+SUITE["fitting"]["bb1_mle_d2"] = bench_fitting(
+    BB1Copula,
+    bb1_fit_d2;
+    method=:mle,
+    vcov=false,
+    derived_measures=false,
+)
+
+SUITE["fitting"]["bb1_mle_d5"] = bench_fitting(
+    BB1Copula,
+    bb1_fit_d5;
+    method=:mle,
+    vcov=false,
+    derived_measures=false,
+)
+SUITE["fitting"]["gumbel_itau"] = bench_fitting(
+    GumbelCopula,
+    gumbel_fit_data;
+    method=:itau,
+    vcov=false,
+    derived_measures=false,
+)
+SUITE["fitting"]["gaussian_mle"] = bench_fitting(
+    GaussianCopula, 
+    gaussian_fit_data; 
+    method=:mle
+)
 student_fit_data = rand(Xoshiro(SEED + 14), student, 2_000)
 SUITE["fitting"]["student_rank_matching"] =
     bench_fitting(TCopula{2}, student_fit_data; method=:itau_irho,
@@ -159,4 +225,23 @@ SUITE["fitting"]["sklar_ifm"] = bench_fitting(
     sklar_fit_data;
     sklar_method=:ifm,
     copula_method=:mle,
+)
+
+
+SUITE["fitting"]["clayton_mle_hessian_d2"] = bench_fitting(
+    ClaytonCopula,
+    clayton_fit_d2;
+    method=:mle,
+    vcov=true,
+    vcov_method=:hessian,
+    derived_measures=false,
+)
+
+SUITE["fitting"]["gumbel_itau_godambe_d2"] = bench_fitting(
+    GumbelCopula,
+    gumbel_mle_fit_d2;
+    method=:itau,
+    vcov=true,
+    vcov_method=:godambe,
+    derived_measures=false,
 )
