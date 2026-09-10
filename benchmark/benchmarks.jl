@@ -105,6 +105,7 @@ SUITE["density"]["galambos_d2"] = bench_logpdf(galambos, pair_points)
 
 SUITE["cdf"]["bb1_d2"] = bench_cdf(bb1, pair_points)
 SUITE["cdf"]["galambos_d2"] = bench_cdf(galambos, pair_points)
+SUITE["cdf"]["student_d2"] = bench_cdf(student, pair_points[:, 1:10])
 
 raw_data = randn(Xoshiro(SEED + 4), 5, 10_000)
 checkerboard_data = randn(Xoshiro(SEED + 5), 3, 2_000)
@@ -134,6 +135,10 @@ SUITE["conditioning"]["cdf_bb1_d2"] =
     bench_conditional_cdf(bb1, 2, 0.4, conditional_probabilities)
 SUITE["conditioning"]["quantile_galambos_d2"] =
     bench_conditional_quantile(galambos, 2, 0.4, conditional_probabilities)
+SUITE["conditioning"]["cdf_student_d2"] =
+    bench_conditional_cdf(student, 2, 0.4, conditional_probabilities)
+SUITE["conditioning"]["quantile_student_d2"] =
+    bench_conditional_quantile(student, 2, 0.4, conditional_probabilities)
 
 gumbel_fit_data = rand(Xoshiro(SEED + 8), GumbelCopula{2}(2.0), 2_000)
 gaussian_fit_data = rand(Xoshiro(SEED + 9), GaussianCopula{3}(0.35), 1_000)
@@ -145,6 +150,10 @@ sklar_fit_data = rand(Xoshiro(SEED + 10), sklar_model, 1_000)
 
 SUITE["fitting"]["gumbel_itau"] = bench_fitting(GumbelCopula, gumbel_fit_data; method=:itau)
 SUITE["fitting"]["gaussian_mle"] = bench_fitting(GaussianCopula, gaussian_fit_data; method=:mle)
+student_fit_data = rand(Xoshiro(SEED + 14), student, 2_000)
+SUITE["fitting"]["student_rank_matching"] =
+    bench_fitting(TCopula{2}, student_fit_data; method=:itau_irho,
+                  vcov=false, derived_measures=false)
 SUITE["fitting"]["sklar_ifm"] = bench_fitting(
     SklarDist{ClaytonCopula,Tuple{Normal,LogNormal,Gamma}},
     sklar_fit_data;

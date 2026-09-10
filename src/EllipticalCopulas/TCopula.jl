@@ -11,6 +11,13 @@ C(\\mathbf{x}; \\nu, \\boldsymbol{\\Sigma}) = F_{\\nu,\\Sigma}(F_{\\nu,\\Sigma,1
 
 where ``F_{\\nu,\\Sigma}`` is the cdf of a centered multivariate t with correlation ``\\Sigma`` and ``\\nu`` degrees of freedom.
 
+The multivariate CDF is evaluated through the normal scale-mixture
+representation of the Student distribution. The remaining one-dimensional
+radial integral uses adaptive quadrature and the inner normal probabilities use
+`MvNormalCDF.jl`; consequently, returned probabilities are numerical estimates.
+For bivariate copulas, Spearman's rho uses the one-dimensional formula of
+Heinen and Valdesogo (2020).
+
 Example usage:
 ```julia
 C = TCopula(2, Σ)
@@ -21,6 +28,11 @@ pdf(C, u); cdf(C, u)
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
+* [heinen2020spearman](@cite) Heinen, Andréas and Valdesogo, Alfonso.
+  Spearman rank correlation of the bivariate Student t and scale mixtures of
+  normal distributions. Journal of Multivariate Analysis, 2020.
+* [genz1992normal](@cite) Genz, Alan. Numerical computation of multivariate
+  normal probabilities. Journal of Computational and Graphical Statistics, 1992.
 """
 struct TCopula{d,Tν,MT} <: EllipticalCopula{d,MT}
     df::Tν
@@ -42,6 +54,14 @@ TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula{d}(ν, Σ)
 U(C::TCopula) = Distributions.TDist(C.df)
 N(C::TCopula) = function(Σ)
     Distributions.MvTDist(C.df, Σ)
+end
+
+function _cdf(C::TCopula{d}, u) where d
+    T = promote_type(eltype(C), eltype(u))
+    T <: Union{Float32,Float64} ||
+        return invoke(_cdf, Tuple{Copula,Any}, C, u)
+    upper = Distributions.quantile.(Distributions.TDist(C.df), u)
+    return T(_mvtcdf(C.df, zeros(eltype(upper), d), C.Σ, upper))
 end
 
 function _student_rosenblatt_cache(C::TCopula{d}) where d
@@ -108,6 +128,37 @@ end
 # Lindskog, F., McNeil, A., & Schmock, U. (2003). Kendall’s tau for elliptical distributions. In Credit risk: Measurement, evaluation and management (pp. 149-156). Heidelberg: Physica-Verlag HD.
 τ(C::TCopula{2}) = 2*asin(C.Σ[1,2])/π
 
+# Heinen and Valdesogo (2020), Theorem 2. The one-dimensional expression
+# avoids repeatedly integrating the bivariate copula CDF.
+function ρ(C::TCopula{2})
+    ν = float(C.df)
+    r = float(C.Σ[1, 2])
+    iszero(r) && return zero(promote_type(typeof(ν), typeof(r)))
+    isinf(ν) && return 6asin(r / 2) / π
+    if ν > 10
+        # The zero-balanced hypergeometric term becomes poorly scaled in
+        # hardware precision as ν grows. The equivalent density moment remains
+        # stable and is still much cheaper than integrating the numerical CDF.
+        return 12 * HCubature.hcubature(
+            u -> prod(u) * Distributions.pdf(C, u), zeros(2), ones(2);
+            rtol=1e-6,
+        )[1] - 3
+    end
+
+    logconstant = log(2) + 2 * SpecialFunctions.loggamma(ν) +
+                  SpecialFunctions.loggamma(3ν / 2) -
+                  3 * SpecialFunctions.loggamma(ν / 2) -
+                  SpecialFunctions.loggamma(2ν)
+    constant = exp(logconstant)
+    integrand(v) = begin
+        iszero(v) && return zero(v)
+        h = HypergeometricFunctions.pFq((ν, ν), (2ν,), 1 - v^2)
+        asin(r * v) * constant * v^(ν - 1) * (1 - v^2)^(ν / 2 - 1) * h
+    end
+    value = QuadGK.quadgk(integrand, zero(ν), one(ν); rtol=1e-8)[1]
+    return 6value / π
+end
+
 # Conditioning colocated
 function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p,D}
     ν = C.df
@@ -124,7 +175,7 @@ function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}
         δ = LinearAlgebra.dot(zJ, solved_zJ)
     end
     νp = ν + length(Jv); σz = sqrt(max(σ0², zero(σ0²))) * sqrt((ν + δ) / νp)
-    return StudentDistortion(float(μz), float(σz), Int(ν), Int(νp))
+    return StudentDistortion(float(μz), float(σz), ν, νp)
 end
 function conditional_copula(C::TCopula{D}, js, uⱼₛ) where {D}
     df = C.df
@@ -157,7 +208,7 @@ function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
     scale = sqrt((ν + δ) / νp)
     distortions = ntuple(k -> begin
         σ² = max(Σcond[k, k], zero(eltype(Σcond)))
-        StudentDistortion(float(μ[k]), float(sqrt(σ²) * scale), Int(ν), Int(νp))
+        StudentDistortion(float(μ[k]), float(sqrt(σ²) * scale), ν, νp)
     end, length(is))
     σ = sqrt.(LinearAlgebra.diag(Σcond))
     Rcond = Matrix(Σcond ./ (σ * σ'))
@@ -181,4 +232,36 @@ function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where
 end
 
 
-_available_fitting_methods(::Type{<:TCopula}, d) = (:mle,)
+function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho})
+    size(U, 1) == 2 || throw(ArgumentError("Student rank matching is only defined in dimension 2"))
+    τ̂ = StatsBase.corkendall(U')[1, 2]
+    ρ̂ = StatsBase.corspearman(U')[1, 2]
+    r = clamp(sinpi(τ̂ / 2), -1 + eps(Float64), 1 - eps(Float64))
+    iszero(r) && throw(ArgumentError(
+        "Student degrees of freedom are not identifiable from rank correlations when Kendall's tau is zero",
+    ))
+
+    target = abs(ρ̂)
+    objective(logν) = abs(ρ(TCopula{2}(exp(logν), [1.0 r; r 1.0]))) - target
+    lower, middle, upper = log(0.1), log(10.0), log(100.0)
+    flo, fmid = objective(lower), objective(middle)
+    logν = if flo >= 0
+        lower
+    elseif fmid >= 0
+        Roots.find_zero(objective, (lower, middle), Roots.Bisection())
+    else
+        gaussian_limit = abs(6asin(r / 2) / π) - target
+        if gaussian_limit <= 0
+            Inf
+        else
+            fhi = objective(upper)
+            fhi < 0 ? Inf :
+                Roots.find_zero(objective, (middle, upper), Roots.Bisection())
+        end
+    end
+    ν = isinf(logν) ? Inf : exp(logν)
+    C = TCopula{2}(ν, [1.0 r; r 1.0])
+    return C, (; θ̂=(; ν, Σ=C.Σ), τ̂, ρ̂)
+end
+
+_available_fitting_methods(::Type{<:TCopula}, d) = d == 2 ? (:mle, :itau_irho) : (:mle,)

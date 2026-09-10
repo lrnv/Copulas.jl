@@ -203,11 +203,22 @@ end
                         GaussianCopula{2}(0.5) :
                         TCopula{2}(C.df, [1.0 0.5; 0.5 1.0])
                     @test Copulas.τ(reference) ≈ 1 / 3 atol=2e-15
-                elseif measure === Copulas.ρ && C isa GaussianCopula
-                    # The bivariate Gaussian identity avoids nesting the
-                    # numerical normal CDF inside the generic rho cubature.
-                    reference = GaussianCopula{2}(0.5)
-                    @test Copulas.ρ(reference) ≈ 6asin(0.25) / π atol=2e-15
+                elseif measure === Copulas.ρ && C isa Union{GaussianCopula,TCopula}
+                    if C isa GaussianCopula
+                        # The bivariate Gaussian identity avoids nesting the
+                        # numerical normal CDF inside the generic rho cubature.
+                        reference = GaussianCopula{2}(0.5)
+                        @test Copulas.ρ(reference) ≈ 6asin(0.25) / π atol=2e-15
+                    else
+                        # The equivalent density-moment identity is independent
+                        # of the Student one-dimensional formula and avoids a
+                        # cubature whose integrand is itself a numerical CDF.
+                        expected = 12 * HCubature.hcubature(
+                            u -> prod(u) * pdf(C, u), zeros(2), ones(2);
+                            rtol=2e-4,
+                        )[1] - 3
+                        @test Copulas.ρ(C) ≈ expected atol=3e-4
+                    end
                 else
                     expected = measure === Copulas.τ ?
                         4 * HCubature.hcubature(TauOracleIntegrand(C),

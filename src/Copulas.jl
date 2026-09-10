@@ -2,6 +2,7 @@ module Copulas
 
     import Base
     import Random
+    import Rmath
     import SpecialFunctions
     import Roots
     import Distributions
@@ -10,6 +11,7 @@ module Copulas
     import StatsFuns
     import ForwardDiff
     import HCubature
+    import HypergeometricFunctions
     import MvNormalCDF
     import Combinatorics
     import LogExpFunctions
