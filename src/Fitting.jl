@@ -173,7 +173,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irh
     loss(C) = sum(abs2, est .- fun(C))
     res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return _fit_copula(CT, d, θhat, example), (; θ̂=θhat,
+    return _fit_copula(CT, Val(d), θhat, example), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
