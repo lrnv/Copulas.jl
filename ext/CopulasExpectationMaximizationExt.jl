@@ -49,27 +49,62 @@ function fit_mle(
 )
     n = _check_sample(C, U)
     _check_weights(weights, n)
+
     method === :mle || throw(ArgumentError(
         "weighted copula fitting is only implemented for method=:mle",
     ))
+
     isempty(kwargs) || throw(ArgumentError(
         "unsupported keyword arguments for weighted copula MLE: $(keys(kwargs))",
     ))
 
     isempty(Distributions.params(C)) && return C
 
+    return _fit_mle_weighted(
+        C,
+        U,
+        weights,
+        Val(length(C)),
+    )
+end
+
+
+function _fit_mle_weighted(
+    C::Copulas.Copula,
+    U::AbstractMatrix,
+    weights::AbstractVector,
+    ::Val{d},
+) where {d}
     CT = typeof(C)
-    d = length(C)
-    copula(alpha) = CT(d, Copulas._rebound_params(CT, d, alpha)...)
-    alpha0 = Copulas._unbound_params(CT, d, Distributions.params(C))
+    vd = Val(d)
+
+    alpha0 = Copulas._unbound_params(
+        CT,
+        d,
+        Distributions.params(C),
+    )
+
+    copula(alpha) = Copulas._fit_copula(
+        CT,
+        vd,
+        Copulas._rebound_params(CT, d, alpha),
+        C,
+    )
+
     function objective(alpha)
         fitted = copula(alpha)
         loss = zero(eltype(alpha))
+
         @inbounds for j in axes(U, 2)
             weight = weights[j]
             iszero(weight) && continue
-            loss -= weight * Distributions.logpdf(fitted, view(U, :, j))
+
+            loss -= weight * Distributions.logpdf(
+                fitted,
+                view(U, :, j),
+            )
         end
+
         return loss
     end
 
@@ -81,8 +116,13 @@ function fit_mle(
             autodiff=ADTypes.AutoForwardDiff(),
         )
     catch
-        Optim.optimize(objective, alpha0, Optim.NelderMead())
+        Optim.optimize(
+            objective,
+            alpha0,
+            Optim.NelderMead(),
+        )
     end
+
     return copula(Optim.minimizer(result))
 end
 

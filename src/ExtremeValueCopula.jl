@@ -295,7 +295,12 @@ _example(CT::Type{<:ExtremeValueCopula}, d) =
     ExtremeValueCopula{d}(tailof(CT)(;
         _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...,
     ))
-_fit_copula(::Type{<:ExtremeValueCopula}, d, θ, example) =
+_fit_copula(
+    ::Type{<:ExtremeValueCopula},
+    ::Val{d},
+    θ,
+    example,
+) where {d} =
     ExtremeValueCopula{d}(tailof(typeof(example))(θ...))
 _unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = _unbound_params(tailof(CT), d, θ)
 _rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(CT), d, α)

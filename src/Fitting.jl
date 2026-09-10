@@ -124,12 +124,13 @@ Distributions.params(C::Copula) = throw("You need to specify the Distributions.p
 _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::Type{T}, d)` function for your copula type, returning an example of the copula type in dimension d.")
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
-_fit_copula(CT::Type{<:Copula}, d, θ, example) = CT(d, θ...)
-function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
-    # generic MLE routine (agnostic to vcov/inference)
-    d   = size(U,1)
+_fit_copula(CT, ::Val{d}, θ, example) where {d} = CT(d, θ...)
+function _fit(CT::Type{<:Copula}, U, method::Val{:mle})
+    return _fit(CT, U, Val(size(U, 1)), method)
+end
+function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}) where {d}
     example = _example(CT, d)
-    cop(α) = _fit_copula(CT, d, _rebound_params(CT, d, α), example)
+    cop(α) = _fit_copula(CT, Val(d), _rebound_params(CT, d, α), example)
     α₀  = _unbound_params(CT, d, Distributions.params(example))
     loss(C) = -Distributions.loglikelihood(C, U)
     res = try
@@ -138,7 +139,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{:mle})
         Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     end
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return _fit_copula(CT, d, θhat, example), (; θ̂=θhat,
+    return _fit_copula(CT, Val(d), θhat, example), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
@@ -157,11 +158,13 @@ They must return a pair `(copula, meta)` where:
 This is not intended for direct use by end–users.
 Use [`Distributions.fit(CopulaModel, ...)`] instead.
 """
-function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
+function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}})
+    return _fit(CT, U, Val(size(U, 1)), method)
+end
+function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}) where {d}
     # generic rank-based routine (agnostic to vcov/inference)
-    d   = size(U,1)
     example = _example(CT, d)
-    cop(α) = _fit_copula(CT, d, _rebound_params(CT, d, α), example)
+    cop(α) = _fit_copula(CT, Val(d), _rebound_params(CT, d, α), example)
     α₀ = _unbound_params(CT, d, Distributions.params(example))
     @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
     fun  = method isa Val{:itau} ? StatsBase.corkendall :
@@ -404,8 +407,8 @@ function _vcov_margin_generic(d::TD, x::AbstractVector) where {TD<:Distributions
     return LinearAlgebra.Symmetric(Matrix{Float64}(Vθ))
 end
 
-@inline function _vcov_copula(CT, d::Int, α)
-    return CT(d, _rebound_params(CT, d, α)...)
+@inline function _vcov_copula(CT, ::Val{d}, α, example) where {d}
+    return _fit_copula(CT, Val(d), _rebound_params(CT, d, α), example)
 end
 
 function _vcov_upper_triangle(A)
@@ -461,14 +464,26 @@ function _vcov(
     CT::Type{<:Copula},
     U::AbstractMatrix,
     θ::NamedTuple,
-    ::Val{:hessian},
+    vcovv::Val{:hessian},
     methodv::Val{method},
 ) where {method}
-    d = size(U, 1)
+    return _vcov_hessian(CT, U, θ, Val(size(U, 1)), vcovv, methodv)
+end
+
+function _vcov_hessian(
+    CT::Type{<:Copula},
+    U::AbstractMatrix,
+    θ::NamedTuple,
+    ::Val{d},
+    ::Val{:hessian},
+    methodv::Val{method},
+) where {d,method}
     α = _unbound_params(CT, d, θ)
+    example = _example(CT, d)
+    vd = Val(d)
 
     ℓ(αv) = Distributions.loglikelihood(
-        _vcov_copula(CT, d, αv),
+        _vcov_copula(CT, vd, αv, example),
         U,
     )
 
@@ -567,17 +582,39 @@ function _vcov(
     )
 end
 
+function _vcov_godambe(
+    CT::Type{<:Copula},
+    U::AbstractMatrix,
+    θ::NamedTuple,
+    pairwisev::Val{pairwise},
+    vcovv::Val{vcovm},
+    methodv::Val{method},
+) where {pairwise,vcovm,method}
+    return _vcov_godambe(
+        CT,
+        U,
+        θ,
+        Val(size(U, 1)),
+        pairwisev,
+        vcovv,
+        methodv,
+    )
+end
 
 function _vcov_godambe(
     CT::Type{<:Copula},
     U::AbstractMatrix,
     θ::NamedTuple,
+    ::Val{d},
     ::Val{pairwise},
     vcovv::Val{vcovm},
     methodv::Val{method},
-) where {pairwise,vcovm,method}
-    d, n = size(U)
+) where {d,pairwise,vcovm,method}
+    n = size(U, 2)
     α = _unbound_params(CT, d, θ)
+
+    example = _example(CT, d)
+    vd = Val(d)
 
     φ = _vcov_dependence_measure(methodv)
 
@@ -587,7 +624,7 @@ function _vcov_godambe(
 
         Dα = ForwardDiff.jacobian(
             αv -> _vcov_upper_triangle(
-                pairwise_φ(_vcov_copula(CT, d, αv)),
+                pairwise_φ(_vcov_copula(CT, vd, αv, example)),
             ),
             α,
         )
@@ -614,7 +651,7 @@ function _vcov_godambe(
         q = 1
 
         Dα = ForwardDiff.jacobian(
-            αv -> [φ(_vcov_copula(CT, d, αv))],
+            αv -> [φ(_vcov_copula(CT, vd, αv, example))],
             α,
         )
 
@@ -659,7 +696,6 @@ function _vcov_godambe(
         methodv,
     )
 end
-
 
 function _vcov_finalize(
     CT::Type{<:Copula},

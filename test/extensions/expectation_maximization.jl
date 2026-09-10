@@ -41,6 +41,24 @@ const EM_N = 80
         @test fitted_copula isa ClaytonCopula
         @test isfinite(Distributions.params(fitted_copula).θ)
 
+        bb1 = BB1Copula{2}(1.2, 1.5)
+        bb1_uniforms = rand(EM_RNG, bb1, EM_N)
+
+        fitted_bb1 = fit_mle(
+            bb1,
+            bb1_uniforms,
+            weights,
+        )
+
+        @test fitted_bb1 isa BB1Copula{2}
+
+        bb1_params = Distributions.params(fitted_bb1)
+
+        @test isfinite(bb1_params.θ)
+        @test isfinite(bb1_params.δ)
+        @test bb1_params.θ > 0
+        @test bb1_params.δ >= 1
+
         @test fit_mle(IndependentCopula{2}(), uniforms, weights) isa IndependentCopula
 
         @test_throws DimensionMismatch fit_mle(copula, uniforms[1:1, :], weights)
@@ -56,7 +74,7 @@ const EM_N = 80
         directly_fitted_margin = fit_mle(sklar.m[2], view(data, 2, :), weights)
         @test collect(params(fitted_sklar.m[2])) ≈ collect(params(directly_fitted_margin))
     end
-
+    
     @testset "IFM input validation" begin
         sklar = SklarDist(
             ClaytonCopula{2}(1.0),
