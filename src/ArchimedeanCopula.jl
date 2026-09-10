@@ -298,6 +298,28 @@ _example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw
 _unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
 _rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)
 
+@inline function _fit_copula(
+    CT::Type{<:ArchimedeanCopula},
+    ::Val{d},
+    θ,
+    example,
+) where {d}
+    # CT may already carry a concrete numeric generator type, e.g.
+    # ArchimedeanCopula{3,ClaytonGenerator{Float64}}.
+    #
+    # Drop that numeric type parameter so reconstruction remains compatible
+    # with ForwardDiff.Dual values inside fitting objectives.
+    GT = Base.typename(Base.unwrap_unionall(generatorof(CT))).wrapper
+    G = GT(θ...)
+
+    # Preserve the same boundary reductions as the regular constructors.
+    G isa IndependentGenerator && return IndependentCopula{d}()
+    G isa MGenerator && return MCopula{d}()
+    G isa WGenerator && return WCopula{d}()
+
+    return _wrap_archimedean(Val(d), G)
+end
+
 _available_fitting_methods(::Type{ArchimedeanCopula}, d) = (:gnz2011,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}, d) = (:mle,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}, d) = (:mle, :itau, :irho, :ibeta)
@@ -337,23 +359,76 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     return CT(d,θ), (; θ̂=(θ=θ,))
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
-    d = size(U,1)
+function _fit(
+    CT::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}},
+    U,
+    method::Val{:mle};
+    kwargs...,
+)
+    return _fit(CT, U, Val(size(U, 1)), method; kwargs...)
+end
+
+function _fit(
+    CT::Type{<:ArchimedeanCopula{D,GT} where {D,GT<:UnivariateGenerator}},
+    U,
+    ::Val{d},
+    ::Val{:mle};
+    start::Union{Symbol,Real}=:itau,
+    xtol::Real=1e-8,
+) where {d}
     GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
-    θ₀ = [StatsBase.middle(lo,hi)]
+
+    example = _example(CT, d)
+
+    θ₀ = [StatsBase.middle(lo, hi)]
+
     if start isa Real
         θ₀[1] = start
     elseif start ∈ (:itau, :irho)
+        # Keep this call on the existing 3-argument specialized
+        # Archimedean rank-fitting path.
         θ₀[1] = _fit(CT, U, Val{start}())[2].θ̂[1]
     end
+
     if θ₀[1] <= lo || θ₀[1] >= hi
-        θ₀[1] = Distributions.params(_example(CT, d))[1]
+        θ₀[1] = Distributions.params(example)[1]
     end
-    f(θ) = -Distributions.loglikelihood(CT(d, θ[1]), U)
-    res = Optim.optimize(f, Optim.TwiceDifferentiableConstraints([lo], [hi]),  θ₀, Optim.IPNewton(), autodiff = ADTypes.AutoForwardDiff())
-    θ     = Optim.minimizer(res)[1]
-    return CT(d, θ), (; θ̂=(θ=θ,), optimizer=Optim.summary(res),
-                        xtol=xtol, converged=Optim.converged(res),
-                        iterations=Optim.iterations(res))
+
+    vd = Val(d)
+
+    cop(θ) = _fit_copula(
+        CT,
+        vd,
+        (; θ=θ[1]),
+        example,
+    )
+
+    f(θ) = -Distributions.loglikelihood(cop(θ), U)
+
+    res = Optim.optimize(
+        f,
+        Optim.TwiceDifferentiableConstraints([lo], [hi]),
+        θ₀,
+        Optim.IPNewton();
+        autodiff=ADTypes.AutoForwardDiff(),
+    )
+
+    θ = Optim.minimizer(res)[1]
+
+    fitted = _fit_copula(
+        CT,
+        vd,
+        (; θ=θ),
+        example,
+    )
+
+    return fitted, (
+        ;
+        θ̂=(; θ=θ),
+        optimizer=Optim.summary(res),
+        xtol=xtol,
+        converged=Optim.converged(res),
+        iterations=Optim.iterations(res),
+    )
 end
