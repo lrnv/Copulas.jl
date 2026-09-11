@@ -5,7 +5,9 @@
 When both `Copulas.jl` and `PartitionedDistributions.jl` are loaded, an extension connects their APIs in both directions:
 
 * `PartitionedDistributions.marginal` and `PartitionedDistributions.conditional` can be used with `Copula` and `SklarDist` objects;
-* `Copulas.subsetdims` and `Copulas.condition` can be used with vector-valued distributions supported by `PartitionedDistributions.jl`.
+* `Copulas.subsetdims`, `Copulas.condition`, `Copulas.rosenblatt`, and
+  `Copulas.inverse_rosenblatt` can be used with vector-valued distributions
+  supported by `PartitionedDistributions.jl`.
 
 This lets downstream code choose either interface without having to special-case copula-based models.
 
@@ -193,6 +195,19 @@ D1_cond_pd = conditional(D, x, 1)
 (
     copulas_mean = mean(D1_cond_copulas),
     partitioned_mean = mean(D1_cond_pd),
+)
+```
+
+The marginal and conditional interface also supplies the successive laws needed
+by the Rosenblatt transform and its inverse:
+
+```@example partitioned
+u = rosenblatt(D, x)
+x_reconstructed = inverse_rosenblatt(D, u)
+
+(
+    uniforms = u,
+    reconstruction_error = maximum(abs, x_reconstructed .- x),
 )
 ```
 

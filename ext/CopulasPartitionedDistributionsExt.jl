@@ -4,7 +4,7 @@ using Copulas
 using Distributions
 using PartitionedDistributions
 
-import Copulas: condition, subsetdims
+import Copulas: condition, inverse_rosenblatt, rosenblatt, subsetdims
 import PartitionedDistributions: conditional, marginal
 
 
@@ -266,6 +266,98 @@ function condition(
         x,
         _pdist_selector(keep),
     )
+end
+
+
+###############################################################################
+# Rosenblatt transforms for PartitionedDistributions-compatible distributions
+###############################################################################
+
+function _rosenblatt_output(x)
+    return similar(x, float(eltype(x)))
+end
+
+
+"""
+Extend `Copulas.rosenblatt` to vector-valued distributions supported by
+PartitionedDistributions, using successive marginals and conditionals.
+"""
+function rosenblatt(
+    dist::Distributions.Distribution{
+        Distributions.ArrayLikeVariate{1}
+    },
+    x::Union{AbstractVector{<:Real},AbstractMatrix{<:Real}},
+)
+    d = length(dist)
+    size(x, 1) == d || throw(DimensionMismatch(
+        "the distribution has dimension $d, but the input has " *
+        "$(size(x, 1)) rows",
+    ))
+
+    isvector = x isa AbstractVector
+    X = isvector ? reshape(x, d, 1) : x
+    S = _rosenblatt_output(X)
+
+    first_marginal = subsetdims(dist, (1,))
+    @inbounds for j in axes(X, 2)
+        S[1, j] = cdf(first_marginal, X[1, j])
+    end
+
+    for k in 2:d
+        prefix = subsetdims(dist, ntuple(identity, k))
+        observed_dims = ntuple(identity, k - 1)
+
+        @inbounds for j in axes(X, 2)
+            observed = ntuple(i -> X[i, j], k - 1)
+            conditional_k = condition(prefix, observed_dims, observed)
+            S[k, j] = cdf(conditional_k, X[k, j])
+        end
+    end
+
+    return isvector ? vec(S) : S
+end
+
+
+"""
+Extend `Copulas.inverse_rosenblatt` to vector-valued distributions supported
+by PartitionedDistributions, using successive conditional quantiles.
+"""
+function inverse_rosenblatt(
+    dist::Distributions.Distribution{
+        Distributions.ArrayLikeVariate{1}
+    },
+    s::Union{AbstractVector{<:Real},AbstractMatrix{<:Real}},
+)
+    d = length(dist)
+    size(s, 1) == d || throw(DimensionMismatch(
+        "the distribution has dimension $d, but the input has " *
+        "$(size(s, 1)) rows",
+    ))
+
+    isvector = s isa AbstractVector
+    S = isvector ? reshape(s, d, 1) : s
+    X = _rosenblatt_output(S)
+
+    first_marginal = subsetdims(dist, (1,))
+    @inbounds for j in axes(S, 2)
+        X[1, j] = quantile(first_marginal, clamp(float(S[1, j]), 0.0, 1.0))
+    end
+
+    for k in 2:d
+        prefix = subsetdims(dist, ntuple(identity, k))
+        observed_dims = ntuple(identity, k - 1)
+
+        @inbounds for j in axes(S, 2)
+            observed = ntuple(i -> X[i, j], k - 1)
+            conditional_k = condition(prefix, observed_dims, observed)
+            X[k, j] = quantile(
+                conditional_k,
+                clamp(float(S[k, j]), 0.0, 1.0),
+            )
+        end
+    end
+
+    return isvector ? vec(X) : X
 end
 
 

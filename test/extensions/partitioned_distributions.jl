@@ -1,5 +1,6 @@
 using Copulas
 using Distributions
+using LinearAlgebra
 using PartitionedDistributions
 using Statistics
 using Test
@@ -221,6 +222,26 @@ using Test
 
         @test mean(ours_cond1) ≈ mean(theirs_cond1)
         @test std(ours_cond1) ≈ std(theirs_cond1)
+
+        # Sequential transforms are inherited from the same marginal and
+        # conditional interface. For a multivariate Gaussian, the independent
+        # oracle is the standardized lower-Cholesky representation.
+        L = cholesky(Σ).L
+        expected = cdf.(Normal(), L \ (x - μ))
+        transformed = rosenblatt(D, x)
+
+        @test transformed ≈ expected
+        @test inverse_rosenblatt(D, transformed) ≈ x
+
+        X = [x (μ .+ [0.4, -0.2, 0.3])]
+        expected_matrix = cdf.(Normal(), L \ (X .- μ))
+        transformed_matrix = rosenblatt(D, X)
+
+        @test transformed_matrix ≈ expected_matrix
+        @test inverse_rosenblatt(D, transformed_matrix) ≈ X
+
+        @test_throws DimensionMismatch rosenblatt(D, x[1:2])
+        @test_throws DimensionMismatch inverse_rosenblatt(D, transformed[1:2])
     end
 
 

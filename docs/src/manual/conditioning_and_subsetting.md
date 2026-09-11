@@ -118,12 +118,6 @@ H = condition(ClaytonCopula(4, 4.2), (2, 3), (0.25, 0.8))
 plot(H)
 ```
 
-!!! tip "Extending the interface beyond copula models"
-    Loading `PartitionedDistributions.jl` activates an extension that makes
-    `condition` and `subsetdims` available for compatible vector-valued
-    distributions that are not copulas or `SklarDist` models. See the
-    [complete interoperability example](/examples/partitioned_distributions).
-
 ### Relation to the conditional copula
 
 The conditional copula $C_{I|J}(·|u_J)$ is the copula of the conditional distribution $H_{I|J}(·|u_J)$. For a multivariate result, the copula and margins are available through the public `params` interface:
@@ -194,6 +188,45 @@ length(S13), cdf(S13, [0.5, 0.5])
 ```
 
 See the canonical Public API entry for [`subsetdims`](@ref).
+
+## Non-copula random vectors
+
+The operations introduced on this page are not limited to copula-based models.
+
+!!! tip "Extending the interface beyond copula models"
+    Loading `PartitionedDistributions.jl` activates an extension that makes
+    `condition`, `subsetdims`, `rosenblatt`, and `inverse_rosenblatt` available
+    for compatible vector-valued distributions that are not copulas or
+    `SklarDist` models. See the
+    [complete interoperability example](/examples/partitioned_distributions).
+
+For example, the extension supplies the sequential transforms of a multivariate
+normal distribution through its marginal and conditional distributions:
+
+```@example noncopula
+using Copulas, Distributions, PartitionedDistributions
+
+D = MvNormal(
+    [0.2, -0.3, 0.7],
+    [
+        1.0  0.3   0.1
+        0.3  1.2   0.25
+        0.1  0.25  0.8
+    ],
+)
+x = [0.1, -0.4, 1.1]
+
+u = rosenblatt(D, x)
+x_reconstructed = inverse_rosenblatt(D, u)
+(u=u, reconstruction_error=maximum(abs, x_reconstructed .- x))
+```
+
+More generally, the forward transform requires `cdf` on each successive
+conditional law, while the inverse also requires `quantile`.
+
+The usual caveat still applies: the deterministic forward and inverse
+transforms are mutual inverses only when the successive conditional CDFs are
+continuous and invertible on their supports.
 
 ## Rosenblatt transformations
 
