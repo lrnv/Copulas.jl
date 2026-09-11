@@ -1,38 +1,76 @@
 # [Visualizations](@id viz_page)
 
-## Plotting interface
+Visualizations are often the quickest way to build intuition about a dependence
+model. They can reveal asymmetry, concentration near a diagonal, or differences
+between lower and upper tails that a single dependence coefficient conceals.
+They are exploratory tools, however: a convincing plot is not a goodness-of-fit
+test, and a pairwise display cannot characterize genuinely higher-order
+dependence.
 
-`Copulas.jl` provides a dependency‑light plotting interface via `Plots.jl` recipes. Everything (bivariate contours/surfaces, marginal overlays, and high‑dimensional pairwise panels) is driven by keywords to the `plot` function.
+## Two scales for the same dependence model
 
-All `obj::Copula` and `obj::SklarDist` are included in the following unified interface: 
-* `plot(obj)` gives a pairwise matrix of scatterplot of the copula/sklardist, with marginal histograms and Kendall/Spearman corelations.
-* `plot(obj, what)` with `what ∈ (:pdf, :logpdf, :cdf)` – adds contour on top of the scatterplots corresponding to the pdf, logpdf or cdf function respectively. 
-* `plot(obj, what; seriestype=:surface)` – For bivariate objects only : gives 3D surfaces of the pdf, cdf or logpdf.
+::: definition Copula and marginal scales
 
-The following keywords can be used: 
+The **copula scale** represents every coordinate as a uniform variable on
+``[0,1]``. It isolates dependence from the shapes and units of the margins. The
+**Sklar scale** represents a `SklarDist` on its original marginal scales, where
+locations, tail weights and physical units are visible together with dependence.
 
-* `scale=:copula / :sklar` : When plotting a `SklarDist`, can be used to set the scale of the main scatterplots. 
-* `show_marginals = true/false`: Set to `true` to show histograms of the marginals (in bivariate plots only). Defaults to `true` for `obj::SklarDist` and `false` for `obj::Copula`. 
-* `n=1500`: Number of points in the scatterplots.
-* `bins=40`: Number of bins in the histograms. 
-* `pts_alpha=0.3` the alpha for the scatterplot.  
-* `overlay_n=60` the grid size used for contour/surface evaluation.
-* `show_axes=true`: set to false to hide the axes 
-* `marg_alpha=0.6`: alpha to fill the histograms. 
-* `show_corr=true`: show the Kendall/Spearman bivariate values.  
+:::
 
-All standard `Plots.jl` options (colors, `levels`, `colorbar`, `size`, themes, etc.) are available. Surfaces respect `colorbar=true` if set; contours suppress colorbar unless explicitly requested. Quick tips:
+The same `SklarDist` can therefore produce very different-looking scatterplots
+without changing its copula. Use `scale=:copula` when comparing dependence
+structures and `scale=:sklar` when interpreting the resulting random vector.
 
-* Increase `overlay_n` for smoother contours/surfaces (cost grows ~ O(overlay_n²)). Increase `n` for denser scatter.
-* Omit `what` to hide the contour/surface and view only the scatter.
-* Set `colorbar=true` to add a colorbar (contours default to none).
-* Upper triangle correlation text is centered; adjust globally with `annotationfontsize` if desired.
-* Diagonal KDE uses a simple Gaussian kernel (Silverman bandwidth) and is always shown on the marginals.
+## Plot recipes
 
+Loading `Plots.jl` activates a package extension; plotting is not a required
+dependency of the core package. Every `Copula` and `SklarDist` follows the same
+three-level interface:
 
-## Examples
+- `plot(model)` draws samples and summarizes their pairwise structure;
+- `plot(model, :cdf)`, `plot(model, :pdf)`, or `plot(model, :logpdf)` overlays
+  the corresponding function where it is defined;
+- adding `seriestype=:surface` gives a three-dimensional view for a bivariate
+  model.
 
-Let us load `Copulas` and `Plots` to ativate the extension: 
+::: property What a pairwise matrix shows
+
+For a multivariate model, each off-diagonal panel shows one bivariate margin,
+the diagonal describes individual coordinates, and the upper triangle reports
+pairwise Kendall and Spearman coefficients. This representation is invariant to
+neither the selected scale nor the margins, except for the rank coefficients.
+It summarizes all pairs but does not prove that two multivariate models with the
+same pairwise margins have the same joint law.
+
+:::
+
+### Controlling resolution and presentation
+
+The sample size `n` controls the scatterplots, while `overlay_n` controls the
+grid on which contours or surfaces are evaluated. Their roles are distinct:
+increasing `n` reveals the sampled cloud more densely; increasing `overlay_n`
+smooths the functional overlay at a cost proportional to roughly
+`overlay_n^2`.
+
+Other useful choices are `show_marginals`, `show_corr`, `bins`, `pts_alpha`,
+`marg_alpha`, and `show_axes`. Standard `Plots.jl` attributes such as colors,
+themes, `levels`, `size`, and `colorbar` are forwarded to the recipe.
+
+!!! note "Density overlays are model-dependent"
+    A PDF or log-PDF overlay is meaningful only when the displayed model has
+    the corresponding ordinary density. Singular components and boundary
+    behavior can make a scatterplot or CDF substantially more informative than
+    a density contour.
+
+!!! tip "A practical first look"
+    Start with the default scatterplot, compare copula and Sklar scales when
+    margins are present, and only then add a CDF or density overlay. A smoother
+    contour cannot compensate for too few observations or an unsuitable model.
+
+## Bivariate views
+
+Load `Plots` to activate the extension:
 
 ```@example viz
 using Copulas
@@ -43,9 +81,11 @@ Random.seed!(42); nothing       # hide
 ```
 
 
-### Bivariate Copula
+### Isolating the copula
 
-A bivariate Copula can be plotted as follows: 
+A bivariate copula can be viewed as a sample alone or together with its CDF,
+density, or log-density. Comparing the four panels makes the distinction between
+probability accumulation and local density explicit:
 
 ```@example viz
 gc = GaussianCopula(2, 0.75)
@@ -58,9 +98,11 @@ savefig("plots_copula_all_contours.png"); nothing # hide
 ```
 ![](plots_copula_all_contours.png)
 
-### Bivariate SklarDist
+### Restoring the margins
 
-For a bivaraite SklarDist, the default plot shows the scatterplot on the copula scale and add histograms of the marginals: 
+For a bivariate `SklarDist`, the default plot uses the copula scale and adds
+marginal summaries. This view keeps the dependence pattern comparable with a
+bare copula:
 
 ```@example viz
 sd = SklarDist(GaussianCopula(2, 0.7), (Gamma(2,2), LogNormal(0.0,0.4)))
@@ -70,7 +112,8 @@ savefig("plots_sklardist_copula_scale.png"); nothing # hide
 
 ![](plots_sklardist_copula_scale.png)
 
-You can have the scatterplot on the marginal scales by setting `scale=:sklar` as well, and of course the contour by `:pdf, :logpdf, :cdf` still works: 
+Setting `scale=:sklar` maps the same sample back to its original marginal
+units. Functional overlays are evaluated on the selected scale:
 
 ```@example viz
 # Marginal scale with marginals
@@ -80,7 +123,8 @@ savefig("plots_sklardist_marginal_scale.png"); nothing # hide
 
 ![](plots_sklardist_marginal_scale.png)
 
-And finally you can remove the marginals by setting `show_marginals=false` as follows: 
+Marginal panels can be removed when the joint shape is the only object of
+interest:
 
 ```@example viz
 q1 = plot(sd;          scale=:sklar, show_marginals=false, title="Default")
@@ -92,9 +136,10 @@ savefig("plots_sklardist_all_contours.png"); nothing # hide
 ```
 ![](plots_sklardist_all_contours.png)
 
-### Surfaces (Copula & SklarDist)
+### Surface views
 
-You can obtain surface plots of bivariate copulas and sklardist as follows: 
+A surface emphasizes peaks, flat regions, and boundary behavior that may be
+hard to distinguish in contours:
 
 ```@example viz
 fr = FrankCopula(2, 0.8)
@@ -106,7 +151,7 @@ savefig("plots_copula_surfaces.png"); nothing # hide
 ```
 ![](plots_copula_surfaces.png)
 
-By default, the `SklarDist`'s surfaces are on marginal scale:
+For a `SklarDist`, surfaces use the marginal scale by default:
 
 ```@example viz
 sds = SklarDist(FrankCopula(2, 0.8), (Gamma(2,2), LogNormal(0.0,0.5)))
@@ -118,11 +163,25 @@ savefig("plots_sklardist_surfaces.png"); nothing # hide
 ```
 ![](plots_sklardist_surfaces.png)
 
-You can obtain them on copula scale by setting `scale=:copula`.
+Set `scale=:copula` to remove the effect of the margins. Surface height and
+color both encode the selected function, so these plots are best used for
+exploration rather than quantitative comparison between panels with different
+scales.
 
-### Pairwise Matrix – Copula
+## Multivariate pairwise views
 
-When giving a higher dimension object to the plotting function, by default you get a pairwise matrix: 
+::: remark Pairwise evidence has limits
+
+Pairwise panels are useful for locating heterogeneous dependence and suspicious
+margins. They cannot reveal interactions that exist only among three or more
+coordinates, and visual agreement in every panel is not a multivariate
+goodness-of-fit argument.
+
+:::
+
+### Copula models
+
+A higher-dimensional copula is displayed as a pairwise matrix:
 
 ```@example viz
 c5 = FrankCopula(5, 5.0)
@@ -131,7 +190,9 @@ savefig("plots_frank_pairwise1.png"); nothing # hide
 ```
 ![](plots_frank_pairwise1.png)
 
-You can control of course contours by `:pdf, :logpdf, :cdf`, remove the correlations with `show_corr=false`,  and a few other options (see the top of this file for their definitions)
+Overlays and annotations can be adjusted independently. For a busy matrix,
+removing the correlation labels or reducing the sample size often improves
+readability more than adding graphical detail:
 
 ```@example viz
 c5 = FrankCopula(5, 12.0)
@@ -141,9 +202,10 @@ savefig("plots_frank_pairwise2.png"); nothing # hide
 ![](plots_frank_pairwise2.png)
 
 
-### Pairwise Matrix – SklarDist
+### Sklar distributions
 
-By default for a SklarDist, the scatterplots are on copula scale: 
+On the copula scale, heterogeneous margins no longer obscure differences in
+pairwise dependence:
 
 ```@example viz
 SD5 = SklarDist(ClaytonCopula(5, 6.0), (Gamma(1,2), Normal(0,2), Beta(2,6), Beta(6,2), Uniform()))
@@ -152,7 +214,9 @@ savefig("plots_sklar_pairwise.png"); nothing # hide
 ```
 ![](plots_sklar_pairwise.png)
 
-You can change the number of points and the numebr of bins of the histograms to adapt to your case: 
+The number of sampled points and histogram bins should reflect the purpose of
+the plot. Small values are appropriate for a quick diagnostic; larger values
+reduce visual noise but increase rendering time:
 
 ```@example viz
 plot(SD5; n=400, bins=12, show_corr=true)
@@ -160,7 +224,7 @@ savefig("plots_sklar_pairwise_small.png"); nothing # hide
 ```
 ![](plots_sklar_pairwise_small.png)
 
-And you can also have the scatterplots on the `:sklar` scale
+Finally, the Sklar scale restores the original units and marginal shapes:
 
 ```@example viz
 plot(SD5, :pdf; scale=:sklar, n=800, bins=28)
