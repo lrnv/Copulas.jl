@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# [Archimax family](@id Archimax\_theory)
+# [Archimax family](@id Archimax_theory)
 
 *Archimax copulas* form a hybrid family that combines an Archimedean generator $\phi$ with an extreme-value tail defined by its *stable tail dependence function* $\ell$, or its associated *Pickands function* $A_{\ell}(t) = \ell(\frac{t}{\lVert t \rVert})$. They interpolate between purely Archimedean and purely EV structures and underpin families such as **BB4** and **BB5**.
 

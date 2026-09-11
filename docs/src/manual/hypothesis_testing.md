@@ -22,13 +22,7 @@ This page develops tests of:
 The common pattern is simple: define a property of the unknown copula, measure
 its violation with the empirical copula, then calibrate that discrepancy by a
 simulation, randomization, multiplier method or parametric bootstrap. The
-procedures draw on
-
-[genest2004independence](@cite),
-[fermanian2004empirical](@cite),
-[remillard2009equality](@cite),
-[bucher2010bootstrap](@cite), and
-[genest2009gof](@cite).
+procedures draw on [genest2004independence](@cite), [fermanian2004empirical](@cite), [remillard2009equality](@cite), [bucher2010bootstrap](@cite), and [genest2009gof](@cite).
 
 ## From observations to an empirical copula
 
