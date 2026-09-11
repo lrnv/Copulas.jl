@@ -29,8 +29,10 @@ The [Copulas.jl](https://github.com/lrnv/Copulas.jl) package provides a large co
 - random number generation
 - evaluation of (log)density and distribution functions
 - copula-based multivariate distributions via Sklar's theorem
-- fitting procedures, including marginal models
-- evaluation of dependence metrics
+- fitting procedures, model diagnostics, and automatic family selection
+- dependence metrics and tail coefficients
+- marginalization, conditioning, and Rosenblatt transforms
+- resampling-based hypothesis tests for dependence assumptions and goodness of fit
 
 Since copulas are distribution functions, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This compliance allows direct interoperability with other packages based on this API, such as [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
 
@@ -58,7 +60,7 @@ using Copulas, Distributions, Random, Plots
 X₁ = Gamma(2,3)
 X₂ = Beta(1,4)
 X₃ = Normal()
-C = ClaytonCopula(3,5.2) # A 3-variate Clayton Copula with θ = 0.7
+C = ClaytonCopula(3,5.2) # A 3-variate Clayton copula with θ = 5.2
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 
 simu = rand(D,1000) # Generate a dataset
@@ -66,34 +68,40 @@ D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,Normal}}, simu) # estimate 
 plot(D̂) # plot the result
 ```
 
-The list of availiable copula models is *very* large, check it out on our [documentation](https://lrnv.github.io/Copulas.jl/stable) ! 
+The list of available copula models is *very* large; browse the [Bestiary](/bestiary/elliptical) for definitions, parameterizations, constructors, and model-specific caveats.
 The general implementation philosophy is for the code to follow the mathematical boundaries of the implemented concepts. For example, this is the only implementation we know (in any language) that allows for **all** Archimedean copulas to be sampled: we use the Williamson transformation for non-standard generators, including user-provided black-box ones.
 
 ## Feature comparison
 
 
-There are competing packages in Julia, such as [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) which only deals with a few models in bivariate settings but has very nice graphs, or [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl), which only provides sampling and does not have exactly the same models as `Copulas.jl`. Since recently, we cover both of these packages’ functionalities completely, while still bringing, as a key feature, compliance with the broader ecosystem. The following table provides a feature comparison between the three: 
+Other Julia packages cover related use cases. [`BivariateCopulas.jl`](https://github.com/AnderGray/BivariateCopulas.jl) focuses on a compact set of bivariate copulas, joint distributions, conditioning, and visualization. [`DatagenCopulaBased.jl`](https://github.com/iitis/DatagenCopulaBased.jl) focuses on data generation, including selected nested and chained constructions. The comparison below summarizes capabilities documented by each project; “Not documented” means that the linked public README does not advertise the feature, not that no implementation can exist.
 
-|                          | `Copulas.jl`            | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
-|--------------------------|-------------------------|-------------------------|-----------------------|
-| `Distributions.jl`'s API | ✔️                      | ❌                     | ✔️                    |
-| Fitting                  | ✔️                      | ❌                     | ❌                    |
-| Plotting                 | ✔️                      | ❌                     | ✔️                    |
-| Conditioning             | ✔️                      | ❌                     | ⚠️ Bivariate Only     |
-| Available copulas        |                          |                        |                       |
-| - Classic Bivariate      | ✔️                      | ✔️                     | ✔️                    |
-| - Obscure Bivariate      | ✔️                      | ❌                     | ❌                    |
-| - Classic Multivariate   | ✔️                      | ✔️                     | ❌                    |
-| - Archimedeans           | ✔️ All of them          | ⚠️ Selected ones       | ⚠️Selected ones       |
-| - Extreme Value Copulas  | ✔️ Bivariate + multivariate | ❌                  | ❌                    |
-| - Archimax               | ⚠️ Bivariate only       | ❌                     | ❌                    |
-| - Archimedean Chains     | ❌                      | ✔️                     | ❌                    |
+| Capability | `Copulas.jl` | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
+|:--|:--|:--|:--|
+| Sampling | Yes, vector and matrix `rand` interface | Yes, primary interface | Yes, bivariate |
+| `Distributions.jl` distribution API | Yes | Not documented | Yes, bivariate |
+| CDF and density | Yes, when defined by the model | Not documented as a common interface | Yes, bivariate |
+| Copula plus arbitrary margins | `SklarDist`, any supported dimension | Marginal-transformation utilities | Bivariate joint distributions |
+| Parameter fitting | Quick fits and full `CopulaModel` results | Not documented | Not documented |
+| Automatic family selection | Explicit candidate sets with AIC, BIC, AICc, or HQC | Not documented | Not documented |
+| Statistical-model diagnostics | Covariance, confidence intervals, residuals, prediction, information criteria | Not documented | Not documented |
+| Dependence measures | Scalar and pairwise rank and tail measures | Empirical Kendall-correlation examples | Not documented as a common interface |
+| Subsetting and conditioning | Copulas and `SklarDist`; univariate or multivariate results | Not documented | Bivariate conditional CDFs |
+| Rosenblatt and inverse Rosenblatt transforms | Yes | Not documented | Not documented |
+| Hypothesis tests | Independence, exchangeability, radial symmetry, extreme-value dependence, goodness of fit | Not documented | Not documented |
+| Plot recipes | Pairwise samples, margins, CDF/PDF contours and surfaces | Not documented | Bivariate scatter, CDF, density and contour plots |
+| Archimedean models | Clayton, Frank, Gumbel, Joe, AMH, inverse Gaussian, BB1--BB10, and custom/empirical generators | Selected families, same-family nesting, and chains | Clayton and Frank |
+| Structured multivariate models | Liouville and nested Archimedean copulas | Same-family nested copulas and bivariate chains | Not documented |
+| Elliptical models | Gaussian and Student, multivariate | Gaussian and Student | Gaussian, bivariate |
+| Extreme-value models | Logistic, Galambos, Hüsler--Reiss, extremal-``t``, Tawn, asymmetric and spectral families; bivariate and multivariate | Marshall--Olkin | Not documented |
+| Nonparametric copulas | Empirical, beta, Bernstein, checkerboard, empirical EV | Not documented | Not documented |
+| Archimax models | Generic bivariate construction, BB4 and BB5 | Not documented | Not documented |
 
-Since our primary target is maintainability and readability of the implementation, we did not consider the efficiency and the performance of the code yet. Proper benchmarks will come in the near future. 
+The table compares public scope rather than runtime performance; algorithmic cost depends strongly on the family, dimension, and requested operation.
 
 ## Quick API Tour 
 
-Here is a quick, practical tour of the public API. It shows how to construct copulas, build Sklar distributions, compute dependence metrics, subset and condition models, use Rosenblatt transforms, and fit models. For background, theory, details, and model descriptions, see the Manual.
+Here is a practical tour of the main public workflows. For precise behavioral guarantees see the [Public API](/api/public); for theory and model-specific guidance see the Manual and Bestiary.
 
 ### Copulas and Sklar distributions
 
@@ -162,7 +170,7 @@ Dc  = condition(D, (2,3), (0.3, 0.2))
 rand(Dc, 2)
 ```
 
-### Fitting
+### Fitting and automatic family selection
 
 Fit both marginals and copula from raw data (Sklar):
 
@@ -181,6 +189,43 @@ Ĉ = fit(GumbelCopula, U; method=:itau)
 Notes
 - `fit` chooses a reasonable default per family; pass `method`/`copula_method` to control it.
 - Common methods: copulas `:mle`, `:itau`, `:irho`, `:ibeta`; Sklar `:ifm` (parametric CDFs) and `:ecdf` (pseudo-observations).
+
+Use `CopulaModel` when diagnostics and inference matter. If the family is not
+known in advance, fit an explicit, scientifically appropriate candidate set and
+rank successful fits by an information criterion:
+
+```@example 1
+Msel = fit(
+    CopulaModel,
+    Copulas.Copula,
+    U;
+    candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
+    criterion=:bic,
+    vcov=false,
+)
+selectiontable(Msel)
+```
+
+Selection is deliberately explicit: Copulas.jl does not treat every available
+family as a sensible candidate for every dimension or scientific question. See
+the [fitting interface](@ref fitting_interface) for covariance estimation,
+confidence intervals, residuals, prediction, and selection caveats.
+
+### Hypothesis testing
+
+The test constructors share the `StatsAPI.HypothesisTest` interface and return a
+`CopulaTest` queried with `teststatistic`, `pvalue`, and `nobs`. Available
+procedures assess mutual independence, exchangeability, radial symmetry, the
+extreme-value property, and goodness of fit to a specified fitted family.
+
+```@example 1
+test = IndependenceCopulaTest(U; N=19, rng=Xoshiro(42))
+(statistic=teststatistic(test), pvalue=pvalue(test), observations=nobs(test))
+```
+
+These are resampling-based procedures. Set an RNG for reproducibility, use a
+larger `N` for scientific work, and check the assumptions—especially continuity
+and absence of ties—on the [hypothesis-testing page](@ref hypothesis_testing).
 
 
 ## Contributions are welcome
