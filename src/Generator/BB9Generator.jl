@@ -14,7 +14,7 @@ parameter `ϑ`. A large fitted `δ` can therefore leave the second parameter
 weakly identified; log-scale evaluation is preferable for extreme values.
 
 See also: [`GumbelGenerator`](@ref), [`ArchimedeanCopula`](@ref),
-`Distributions.logpdf`, [`Distributions.fit`](@ref).
+[`Distributions.logpdf`](@extref), [`Distributions.fit`](@extref).
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.205-206

@@ -10,8 +10,15 @@ bib = CitationBibliography(
     style=:numeric
 )
 
+using DocumenterInterLinks
+
+links = InterLinks(
+    "Distributions" => "https://juliastats.org/Distributions.jl/stable/objects.inv",
+    "StatsBase" =>  "https://juliastats.org/StatsBase.jl/stable/objects.inv"
+)
+
 makedocs(;
-    plugins=[bib],
+    plugins=[bib,links],
     modules=[Copulas],
     repo = Remotes.GitHub("lrnv", "Copulas.jl"),
     authors="Oskar Laverny <oskar.laverny@univ-amu.fr> and contributors",
