@@ -118,6 +118,12 @@ H = condition(ClaytonCopula(4, 4.2), (2, 3), (0.25, 0.8))
 plot(H)
 ```
 
+!!! tip "Extending the interface beyond copula models"
+    Loading `PartitionedDistributions.jl` activates an extension that makes
+    `condition` and `subsetdims` available for compatible vector-valued
+    distributions that are not copulas or `SklarDist` models. See the
+    [complete interoperability example](/examples/partitioned_distributions).
+
 ### Relation to the conditional copula
 
 The conditional copula $C_{I|J}(·|u_J)$ is the copula of the conditional distribution $H_{I|J}(·|u_J)$. For a multivariate result, the copula and margins are available through the public `params` interface:
