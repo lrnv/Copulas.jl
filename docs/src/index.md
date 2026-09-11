@@ -68,7 +68,7 @@ D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,Normal}}, simu) # estimate 
 plot(D̂) # plot the result
 ```
 
-The list of available copula models is *very* large; browse the [Bestiary](/bestiary/elliptical) for definitions, parameterizations, constructors, and model-specific caveats.
+The list of available copula models is *very* large; browse the [Bestiary](bestiary/elliptical.md) for definitions, parameterizations, constructors, and model-specific caveats.
 The general implementation philosophy is for the code to follow the mathematical boundaries of the implemented concepts. For example, this is the only implementation we know (in any language) that allows for **all** Archimedean copulas to be sampled: we use the Williamson transformation for non-standard generators, including user-provided black-box ones.
 
 ## Feature comparison
@@ -101,7 +101,7 @@ The table compares public scope rather than runtime performance; algorithmic cos
 
 ## Quick API Tour 
 
-Here is a practical tour of the main public workflows. For precise behavioral guarantees see the [Public API](/api/public); for theory and model-specific guidance see the Manual and Bestiary.
+Here is a practical tour of the main public workflows. For precise behavioral guarantees see the [Public API](api/public.md); for theory and model-specific guidance see the Manual and Bestiary.
 
 ### Copulas and Sklar distributions
 

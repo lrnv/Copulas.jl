@@ -198,7 +198,7 @@ The operations introduced on this page are not limited to copula-based models.
     `condition`, `subsetdims`, `rosenblatt`, and `inverse_rosenblatt` available
     for compatible vector-valued distributions that are not copulas or
     `SklarDist` models. See the
-    [complete interoperability example](/examples/partitioned_distributions).
+    [complete interoperability example](../examples/partitioned_distributions.md).
 
 For example, the extension supplies the sequential transforms of a multivariate
 normal distribution through its marginal and conditional distributions:
