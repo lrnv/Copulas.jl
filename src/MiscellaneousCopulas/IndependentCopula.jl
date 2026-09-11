@@ -10,6 +10,20 @@ C(\\mathbf{x}) = \\prod_{i=1}^{d} x_i.
 
 It is Archimedean with generator ``\\psi(s) = e^{-s}``.
 
+The model is parameter free and available in every dimension `d ≥ 1`. Its
+density is one throughout the unit hypercube, sampling produces independent
+uniform coordinates, and both Rosenblatt transforms are the identity. It is
+also the zero-dependence limit of many parametric families; constructing the
+named family at such a limit need not return this concrete type.
+
+# Example
+```julia
+using Copulas, Distributions
+
+C = IndependentCopula(3)
+cdf(C, [0.2, 0.5, 0.8]) == 0.2 * 0.5 * 0.8
+```
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
