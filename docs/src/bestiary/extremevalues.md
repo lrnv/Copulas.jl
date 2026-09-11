@@ -513,6 +513,115 @@ copula constructors.
 | Empirical EV (bivariate) | shape-constrained estimate of ``A`` from pseudo-observations using the Pickands, CFG, or OLS criterion | `EmpiricalEVTail(U; method=:ols)`; `EmpiricalEVCopula{2}(U; method=:ols)` |
 | Empirical EV (multivariate) | finite spectral projection defining a valid homogeneous convex STDF | `EmpiricalEVMultivariateTail(U; method=:ols, degree=3)`; `EmpiricalEVCopula{d}(U; method=:ols, degree=3)` |
 
+### Symmetric parametric models
+
+**Logistic.** This is the extreme-value form of the Gumbel copula. The parameter
+increases monotonically from independence at ``\theta=1`` to comonotonicity as
+``\theta\to\infty``; in dimension two,
+``\lambda_U=2-2^{1/\theta}`` and ``\tau=1-1/\theta``. It is exchangeable, so a
+single parameter cannot represent heterogeneous pairwise extremal dependence
+in high dimension.
+
+**Galambos.** Galambos is the negative-logistic extreme-value family, despite
+describing positive upper-tail association. Zero is independence and infinity
+is the comonotonic limit; bivariately,
+``\lambda_U=2^{-1/\theta}`` for ``\theta>0``. Its parameter is not on the same
+scale as Logistic's, so raw values should not be compared across the two
+families.
+
+**Mixed.** The bivariate Pickands curve interpolates linearly between
+independence and the Galambos model with parameter one, giving
+``\lambda_U=\theta/2``. Thus ``\theta=1`` is not comonotonic. In dimensions
+greater than two, the convex-combination STDF is a Copulas.jl extension of the
+historical bivariate model; results should not be attributed automatically to a
+multivariate “Mixed” family in the cited literature.
+
+**Cuadras--Augé.** This family is a direct mixture, at the STDF level, of
+independence and comonotonicity. The endpoints ``\theta=0`` and ``\theta=1``
+give those two limits, and bivariately ``\lambda_U=\theta``. Every nonzero
+parameter introduces a singular component, so an ordinary Lebesgue density
+does not describe the whole law even away from the fully comonotonic endpoint.
+
+### Gaussian and Student extremal models
+
+**Hüsler--Reiss.** The scalar constructor uses an exchangeable variogram
+``\gamma=(2/\theta)^2``: ``\theta=0`` is independence and
+``\theta\to\infty`` is comonotonicity. The matrix constructor instead accepts
+the variogram directly, for which an all-zero matrix is comonotonic; confusing
+the scalar ``\theta`` with a variogram entry reverses the interpretation. The
+matrix must satisfy conditional negative definiteness, not merely symmetry and
+non-negative entries.
+
+**Extremal-``t``.** Both ``\nu`` and the correlation structure affect extremal
+dependence. In particular, zero correlation does not generally mean
+independence because the common Student scale still couples extremes, while
+``\rho=1`` gives comonotonicity. Equicorrelation must satisfy the
+dimension-dependent lower bound, and a general matrix must be strictly
+positive definite; estimates near either boundary can be numerically delicate.
+
+### Asymmetric subset models
+
+**Tawn.** Tawn decomposes the STDF into logistic components attached to
+coordinate subsets. The dependence parameters control each active subset,
+whereas the asymmetry weights allocate its contribution among margins; the
+per-margin normalization is essential for uniform margins. The compact
+`(α, weights)` constructor retains only a full-set component plus singleton
+remainders, while `(dep, asy)` is the full subset model—these forms should not
+be assumed to have the same number of free parameters.
+
+**Asymmetric Galambos.** This is the analogous subset construction with
+negative-logistic components. Zero dependence parameters deactivate the
+corresponding components; an infinite full-set parameter reaches
+comonotonicity only when its weights are all one and no competing subset is
+active. As with Tawn, the ordering of `dep` and `asy` follows the documented
+nonempty-subset convention, so constructing long vectors manually is prone to
+indexing mistakes.
+
+**Asymmetric logistic.** The bivariate parameters ``\theta_1`` and
+``\theta_2`` allocate extremal dependence asymmetrically to the two margins,
+while ``\alpha`` controls the logistic component. ``\alpha=1`` or either zero
+weight gives independence, making the remaining parameters unidentifiable on
+those boundaries. Comonotonicity is reached only jointly as
+``\alpha\to\infty`` with both weights equal to one.
+
+**Asymmetric Mixed.** Its feasible parameter set is the quadrilateral defined
+by the four inequalities in the table, not a rectangular box. Independent
+unconstrained bounds on ``\theta_1`` and ``\theta_2`` are therefore
+insufficient during optimization. The origin is independence and
+``\theta_2=0`` gives the symmetric Mixed subfamily; close to that line the
+asymmetry parameter can be weakly identified.
+
+### Discrete spectral and empirical models
+
+**BC2.** BC2 is most naturally understood through its two spectral atoms, not
+as two independent “strength” parameters. The parameters must produce a valid
+spectral measure with the required marginal moments, and relabeling the atoms
+can give equivalent descriptions. Discrete spectral mass may create singular
+components, so users should rely on the generalized distribution interface
+rather than assume a globally smooth density.
+
+**Marshall--Olkin.** Each parameter is the intensity of a shock hitting one
+specific nonempty subset of margins. Simultaneous shocks generate singular
+mass and are precisely the feature of the model, not a numerical artifact.
+Multiplying every intensity by the same positive constant leaves the copula
+unchanged, so only relative rates are identifiable; zero rates are allowed, but
+every margin still needs positive total shock intensity.
+
+**Bivariate empirical EV.** Pickands, CFG, and OLS are different estimators of
+the same Pickands curve and need not agree in finite samples. The fitted curve
+is projected to satisfy the shape constraints, so it is not simply the raw
+pointwise estimate. Grid resolution and endpoint trimming affect numerical
+accuracy, and `pseudo_values=false` must be used when the input has not already
+been transformed to ranks.
+
+**Multivariate empirical EV.** The higher-dimensional estimator projects onto
+a finite spectral basis; `degree` trades approximation flexibility against
+optimization cost and potential instability. The result supports `cdf` and
+sampling but can contain singular components, so no global Lebesgue `pdf` is
+promised. Reproducibility and fit quality should be assessed together with the
+projection error returned in fitting metadata, when that interface is used,
+rather than from the constructor succeeding alone.
+
 The canonical [Public API](@ref) documents complete call forms, validation,
 limiting cases, and numerical restrictions.
 
