@@ -879,6 +879,9 @@ Number of observations used in the model fit.
 
 Observations are columns of the matrix supplied to `fit`. This value is the
 sample size used by likelihood summaries and information criteria.
+
+See also: [`CopulaModel`](@ref), [`StatsBase.dof`](@ref),
+[`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref).
 """
 StatsBase.nobs(M::CopulaModel)     = M.n
 
@@ -888,6 +891,8 @@ StatsBase.nobs(M::CopulaModel)     = M.n
 Return `true`: a `CopulaModel` is created only after its fitting procedure has
 produced a result. Consult `M.method_details` or the displayed summary for
 method-specific convergence information when the estimator provides it.
+
+See also: [`CopulaModel`](@ref), [`Distributions.fit`](@ref).
 """
 StatsBase.isfitted(::CopulaModel)  = true
 
@@ -897,6 +902,9 @@ StatsBase.isfitted(::CopulaModel)  = true
 Return the deviance `-2ℓ`, where `ℓ` is the maximized log-likelihood stored in
 the model. For non-likelihood estimators this summary reflects the likelihood
 evaluated at the fitted parameters, not the objective that was optimized.
+
+See also: [`StatsBase.nulldeviance`](@ref), [`StatsBase.aic`](@ref),
+[`StatsBase.bic`](@ref).
 """
 StatsBase.deviance(M::CopulaModel) = -2 * M.ll
 
@@ -906,6 +914,9 @@ StatsBase.deviance(M::CopulaModel) = -2 * M.ll
 Return the number of estimated copula parameters represented by `coef(M)`.
 This excludes fixed structural choices and nonparametric components whose
 effective degrees of freedom are not defined by the current interface.
+
+See also: [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref),
+[`StatsBase.aic`](@ref).
 """
 StatsBase.dof(M::CopulaModel) = length(StatsBase.coef(M))
 
@@ -925,6 +936,9 @@ Return the estimated copula parameters as a flat vector in the same order as
 `coefnames(M)`. Scalars are followed by vector entries and by the strict upper
 triangle of matrix parameters. Models without a finite-dimensional parameter
 record return an empty vector.
+
+See also: [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
+[`StatsBase.confint`](@ref).
 """
 StatsBase.coef(M::CopulaModel) = haskey(M.method_details, :θ̂) ? _flatten_params(M.method_details.θ̂)[2] : Float64[]
 
@@ -934,6 +948,9 @@ coefnames(M::CopulaModel) -> Vector{String}
 Return names for the flattened parameters in `coef(M)`, in matching order.
 Indices are appended to vector and matrix parameter names so each coefficient
 can be identified in covariance matrices and printed summaries.
+
+See also: [`StatsBase.coef`](@ref), [`StatsBase.vcov`](@ref),
+[`CopulaModel`](@ref).
 """
 StatsBase.coefnames(M::CopulaModel) = haskey(M.method_details, :θ̂) ? _flatten_params(M.method_details.θ̂)[1] : String[]
 
@@ -993,6 +1010,9 @@ Return the estimated covariance matrix of `coef(M)`, or `nothing` when
 covariance estimation was disabled or unavailable. Its rows and columns follow
 `coefnames(M)`. The estimation method is recorded in `M.method_details` when
 available.
+
+See also: [`StatsBase.stderror`](@ref), [`StatsBase.confint`](@ref),
+[`StatsBase.coef`](@ref).
 """
 StatsBase.vcov(M::CopulaModel) = M.vcov
 
@@ -1001,6 +1021,9 @@ StatsBase.vcov(M::CopulaModel) = M.vcov
 
 Return coefficient standard errors computed from the diagonal of `vcov(M)`.
 Return `nothing` when no covariance estimate is stored.
+
+See also: [`StatsBase.vcov`](@ref), [`StatsBase.confint`](@ref),
+[`StatsBase.coef`](@ref).
 """
 function StatsBase.stderror(M::CopulaModel)
     V = StatsBase.vcov(M)
@@ -1014,6 +1037,13 @@ end
 Return lower and upper vectors for pointwise Wald confidence intervals on the
 fitted parameter scale. The intervals use a normal approximation and do not
 enforce parameter constraints. Return `nothing` when `vcov(M)` is unavailable.
+
+`level` must lie strictly between zero and one. These are marginal intervals;
+they are neither simultaneous nor transformed to a family's constrained
+parameter space.
+
+See also: [`StatsBase.vcov`](@ref), [`StatsBase.stderror`](@ref),
+[`StatsBase.coefnames`](@ref).
 """
 function StatsBase.confint(M::CopulaModel; level::Real=0.95)
     V = StatsBase.vcov(M)
@@ -1030,6 +1060,9 @@ end
 Return Akaike's information criterion `2k - 2ℓ`, using `k = dof(M)` and the
 log-likelihood stored in the model. Comparisons are meaningful only for models
 fitted to the same observations and likelihood contribution.
+
+See also: [`StatsBase.bic`](@ref), [`StatsBase.deviance`](@ref),
+[`selectiontable`](@ref).
 """
 StatsBase.aic(M::CopulaModel) = 2*StatsBase.dof(M) - 2*M.ll
 
@@ -1039,6 +1072,9 @@ StatsBase.aic(M::CopulaModel) = 2*StatsBase.dof(M) - 2*M.ll
 Return the Bayesian information criterion `k log(n) - 2ℓ`, using
 `k = dof(M)` and `n = nobs(M)`. Comparisons are meaningful only for models
 fitted to the same observations and likelihood contribution.
+
+See also: [`StatsBase.aic`](@ref), [`StatsBase.deviance`](@ref),
+[`selectiontable`](@ref).
 """
 StatsBase.bic(M::CopulaModel) = StatsBase.dof(M)*log(StatsBase.nobs(M)) - 2*M.ll
 function aicc(M::CopulaModel)
@@ -1051,6 +1087,18 @@ function hqc(M::CopulaModel)
     return -2*M.ll + 2k*log(log(max(n, 3)))
 end
 
+"""
+    nullloglikelihood(M::CopulaModel)
+
+Return the null-model log-likelihood recorded by the fitting procedure. This
+quantity is available only for estimators that store `:null_ll` in their method
+details; otherwise an `ArgumentError` is thrown. The precise null model is part
+of that estimator's documented convention and should not be inferred solely
+from the fitted family.
+
+See also: [`StatsBase.nulldeviance`](@ref), [`StatsBase.deviance`](@ref),
+[`CopulaModel`](@ref).
+"""
 function StatsBase.nullloglikelihood(M::CopulaModel)
     if hasproperty(M.method_details, :null_ll)
         return getfield(M.method_details, :null_ll)
@@ -1058,6 +1106,16 @@ function StatsBase.nullloglikelihood(M::CopulaModel)
         throw(ArgumentError("nullloglikelihood not available in method_details."))
     end
 end
+"""
+    nulldeviance(M::CopulaModel)
+
+Return `-2 * nullloglikelihood(M)`. The same availability and null-model
+conventions apply, and an `ArgumentError` is propagated when no null
+log-likelihood was recorded.
+
+See also: [`StatsBase.nullloglikelihood`](@ref),
+[`StatsBase.deviance`](@ref).
+"""
 StatsBase.nulldeviance(M::CopulaModel) = -2 * StatsBase.nullloglikelihood(M)
 """
     StatsBase.residuals(M::CopulaModel; transform=:uniform)

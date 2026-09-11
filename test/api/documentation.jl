@@ -19,6 +19,8 @@
         StatsBase.confint,
         StatsBase.aic,
         StatsBase.bic,
+        StatsBase.nullloglikelihood,
+        StatsBase.nulldeviance,
         StatsBase.predict,
         StatsBase.residuals,
     )
