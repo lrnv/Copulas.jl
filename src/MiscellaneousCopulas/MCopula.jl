@@ -24,6 +24,8 @@ C = MCopula(3)
 cdf(C, [0.2, 0.5, 0.8]) == 0.2
 ```
 
+See also: [`Copula`](@ref), [`WCopula`](@ref), [`measure`](@ref).
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """

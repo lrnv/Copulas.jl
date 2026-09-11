@@ -8,14 +8,11 @@ The ergonomic constructor `SurvivalCopula(C, flips)` accepts the indices to flip
 
     SurvivalCopula(ClaytonCopula(4, θ), (2,3))
 
-The flip pattern is stored in the object rather than its type, so distinct
-rotations of the same copula share one concrete type.
-
-For a copula `C` in dimension `d` and indices `i₁, ..., iₖ ∈ 1:d`, the survival copula flips the corresponding arguments:
-
-```math
-    S(u_1,\\ldots,u_d) = C(v_1,\\ldots,v_d), \\quad v_j = \\begin{cases} 1-u_j & j \\in \\text{flips} \\\\ u_j & \\text{otherwise} \\end{cases}
-```
+If `U ∼ C`, the resulting random vector has coordinates `1-U[i]` for
+`i ∈ flips` and `U[i]` otherwise. Its CDF is the corresponding
+inclusion--exclusion transform of `C`; it is not obtained merely by evaluating
+`C` at reflected arguments. Indices are one-based, unique, and must lie in
+`1:length(C)`. A Boolean tuple of length `d` is also accepted as a flip mask.
 
 Notes:
 - In the bivariate case, this includes the usual 90/180/270-degree "rotations" of a copula family.
@@ -24,6 +21,13 @@ Notes:
   particular pattern during fitting with
   `fit(typeof(S), U; flips=(...))`. If `flips` is omitted, fitting flips every
   coordinate. The fitting methods available are those of the underlying copula.
+
+Flipping all coordinates gives the usual survival copula. Partial flips can
+exchange upper- and lower-tail behavior and can change the sign of pairwise
+association; they do not change the uniform margins.
+
+See also: [`Copula`](@ref), [`subsetdims`](@ref), [`condition`](@ref),
+[`Distributions.fit`](@ref).
 
 References:
 * [nelsen2006](@cite) Nelsen (2006), An introduction to copulas.

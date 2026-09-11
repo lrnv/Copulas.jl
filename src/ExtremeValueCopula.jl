@@ -24,10 +24,20 @@ Usage
 
 Example
 ```julia
+using Copulas, Distributions
+
 C = ExtremeValueCopula{2}(Copulas.GalambosTail(1.0))
 U = rand(C, 1000)
 logpdf.(Ref(C), eachcol(U))
 ```
+
+Finite-spectral and limiting tails can produce singular components; in those
+cases `pdf` is not an ordinary global Lebesgue density. Constructor validity
+checks the tail's dimension but cannot turn a bivariate Pickands model into a
+multivariate STDF.
+
+See also: [`Tail`](@ref), [`A`](@ref), [`ℓ`](@ref),
+[`DiscreteSpectralTail`](@ref), [`ExtremeValueCopulaTest`](@ref).
 
 References:
 

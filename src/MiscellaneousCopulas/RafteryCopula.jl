@@ -14,6 +14,14 @@ Special cases:
 - When θ = 0, it is the IndependentCopula.
 - When θ = 1, it is the the Fréchet upper bound
 
+Increasing `θ` moves from independence toward complete positive dependence.
+The endpoint at one is singular, while finite interior parameters use the
+family's continuous representation. The exchangeable construction uses one
+common parameter in every dimension and cannot represent heterogeneous pairs.
+
+See also: [`Copula`](@ref), [`IndependentCopula`](@ref), [`MCopula`](@ref),
+[`Distributions.fit`](@ref).
+
 References: 
 * [Raftery2023](@cite) Saali, T., M. Mesfioui, and A. Shabri, 2023: Multivariate Extension of Raftery Copula. Mathematics, 11, 414, https://doi.org/10.3390/math11020414. 
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.6. 

@@ -25,6 +25,8 @@ C = WCopula()
 isapprox(cdf(C, [0.7, 0.6]), 0.3)
 ```
 
+See also: [`Copula`](@ref), [`MCopula`](@ref), [`measure`](@ref).
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """

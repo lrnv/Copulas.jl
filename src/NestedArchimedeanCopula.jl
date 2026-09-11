@@ -395,6 +395,7 @@ conditional lower tail of `SurvivalCopula(C, censored_dims)` at `1 .- u_C`.
 # Example
 
 ```julia
+using Copulas, Distributions
 using Copulas: ClaytonGenerator   # generator types are not exported
 
 # outer Clayton(2) over two inner Clayton panels on dims 1:2 and 3:4
@@ -418,6 +419,10 @@ logpdf(subsetdims(C, (1, 3, 4)), u[[1, 3, 4]]) +
 The density and the partial-observation likelihood follow the
 algorithm of Yang & Li (arXiv:2605.23134), computed via Faà di Bruno's formula /
 partial Bell polynomials over the generator tree.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref),
+[`condition`](@ref), [`subsetdims`](@ref), [`SurvivalCopula`](@ref),
+[`Distributions.fit`](@ref).
 
 References:
 * Yang, C. & Li, D. "Archimedean Copula Inference via Taylor-Mode AD."

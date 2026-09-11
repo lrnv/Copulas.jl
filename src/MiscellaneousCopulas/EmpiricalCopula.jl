@@ -14,8 +14,17 @@ C(\\mathbf{x}) = \\frac{1}{N} \\sum_{j=1}^{N} \\mathbf{1}_{\\{ \\mathbf{u}_{\\cd
 where the inequality is componentwise. If `pseudo_values=false`, the constructor first ranks the raw data into pseudo-observations; otherwise it assumes `u` already contains pseudo-observations in ``[0,1]``.
 
 Notes:
-- This is an empirical object based on pseudo-observations; it is not necessarily a true copula for finite ``N`` but is widely used for nonparametric inference.
-- Supports `cdf`, `logpdf` at observed points, random sampling, and subsetting.
+- This is an empirical distribution on the observed pseudo-points. For finite
+  `N`, its margins need not be exactly continuous uniforms, so it is commonly
+  called an empirical copula without being an ordinary absolutely continuous
+  copula.
+- Its probability measure is atomic. `logpdf` reports generalized mass values
+  at stored points and `-Inf` elsewhere; it is not a Lebesgue log-density.
+- Random sampling resamples observed columns, and subsetting preserves their
+  empirical dependence.
+
+See also: [`pseudos`](@ref), [`BetaCopula`](@ref),
+[`CheckerboardCopula`](@ref), [`BernsteinCopula`](@ref).
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

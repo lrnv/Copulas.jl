@@ -20,11 +20,23 @@ Heinen and Valdesogo (2020).
 
 Example usage:
 ```julia
-C = TCopula(2, Σ)
+using Copulas, Distributions
+
+Σ = [1.0 0.6; 0.6 1.0]
+C = TCopula(4.0, Σ)
 u = rand(C, 1000)
-pdf(C, u); cdf(C, u)
-Ĉ = fit(TCopula, u)
+logpdf(C, u[:, 1]), cdf(C, u[:, 1])
+Ĉ = fit(TCopula{2}, u; vcov=false)
 ```
+
+Degrees of freedom must be positive and the correlation matrix positive
+definite. The matrix is normalized to correlation scale in place; pass a copy
+when the input must be preserved. Unlike the Gaussian copula, finite degrees
+of freedom produce symmetric lower- and upper-tail dependence. Large `ν`
+approaches the Gaussian copula and can be weakly identified.
+
+See also: [`EllipticalCopula`](@ref), [`GaussianCopula`](@ref),
+[`SklarDist`](@ref), [`Distributions.fit`](@ref).
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
