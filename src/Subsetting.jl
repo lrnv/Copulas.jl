@@ -19,6 +19,8 @@ Families may specialize this constructor to return a closed-form copula of the
 same marginal law. Such specializations must preserve the requested coordinate
 order and all distribution semantics. Public code should call `subsetdims`;
 the wrapper type and its fields are internal and unstable.
+
+See also: [`subsetdims`](@ref), [`conditional_copula`](@ref), [`_cdf`](@ref).
 """
 struct SubsetCopula{d,CT} <: Copula{d}
     C::CT
@@ -97,6 +99,8 @@ C = GaussianCopula(3, [1.0 0.2 0.6; 0.2 1.0 0.4; 0.6 0.4 1.0])
 C31 = subsetdims(C, (3, 1))
 length(C31) == 2
 ```
+
+See also: [`condition`](@ref), [`SklarDist`](@ref), [`measure`](@ref).
 """
 function subsetdims(C::Copula{d}, dims::NTuple{p,Int}) where {d,p}
     # Validate the public operation before dispatching to a native submodel:

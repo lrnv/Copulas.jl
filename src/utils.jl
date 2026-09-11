@@ -25,6 +25,13 @@ coordinates in `I`, nesting `ForwardDiff.derivative` once per coordinate. An
 empty index set evaluates `f(x)`. This internal shared fallback powers generic
 conditioning and stable-tail derivatives; callers requiring non-AD numerical
 kernels or singular derivatives must provide a specialized route.
+
+Repeated indices request repeated differentiation in that coordinate. Indices
+must address coordinates of `x`; this low-level helper performs no semantic
+validation of a derivative's existence.
+
+See also: [`_partial_cdf`](@ref), [`_ellpartial_signlog`](@ref),
+[`ellpartial`](@ref).
 """
 function _mixed_partial(f, x, I::Tuple{Vararg{Int}})
     isempty(I) && return f(x)
@@ -173,6 +180,9 @@ different tie convention is required.
 X = [30 10 20; 4 6 5]
 pseudos(X) == [0.75 0.25 0.5; 0.25 0.75 0.5]
 ```
+
+See also: [`EmpiricalCopula`](@ref), [`BetaCopula`](@ref),
+[`CheckerboardCopula`](@ref).
 """
 function pseudos(sample::AbstractMatrix)
     # Fast pseudo-observations (d×n) using per-row ordinal ranks without allocations per row

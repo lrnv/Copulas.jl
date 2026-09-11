@@ -10,6 +10,9 @@ quantile directly from the scalar Pickands function and its derivatives,
 including endpoint versions. `conditioned_index` identifies the observed
 coordinate. This fast-path must remain semantically equivalent to the generic
 extreme-value `distortion` and is not public API.
+
+See also: [`BivariatePickandsTail`](@ref), [`dA`](@ref), [`d²A`](@ref),
+[`distortion`](@ref), [`condition`](@ref).
 """
 struct BivEVDistortion{TT,T} <: Distortion
     tail::TT

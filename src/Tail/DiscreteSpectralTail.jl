@@ -110,6 +110,15 @@ spectral representation and transforms unit-Fréchet coordinates to uniforms.
 It preserves the output buffer's element type and returns `X`. This reusable
 algorithm is internal; dispatch to it belongs in family-specific `_rand!`
 methods.
+
+The rows of `tail.B` correspond to margins and its columns to finite spectral
+atoms. Constructors enforce the marginal moment constraints; callers must pass
+a buffer with the same number of rows. This routine deliberately implements
+sampling only: discrete-spectral laws may contain singular mass and therefore
+do not acquire a global Lebesgue density from this representation.
+
+See also: [`DiscreteSpectralTail`](@ref), [`ExtremeValueCopula`](@ref),
+[`Distributions._rand!`](@ref).
 """
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)

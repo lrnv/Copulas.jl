@@ -19,6 +19,9 @@ unit hypercube with uniform univariate margins. Concrete families support the
 standard `Distributions.jl` operations documented for that family. The type
 parameter records dimension; internal storage parameters of concrete subtypes
 are not part of the public contract.
+
+See also: [`SklarDist`](@ref), [`subsetdims`](@ref), [`condition`](@ref),
+[`Distributions.fit`](@ref), [`measure`](@ref).
 """
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 
@@ -35,6 +38,8 @@ Internal measure-capability trait distinguishing copulas with an ordinary
 Lebesgue density from copulas with singular or mixed components. Algorithms use
 this trait to avoid manufacturing density-based behavior from the historical
 `ContinuousMultivariateDistribution` supertype. It is not public API.
+
+See also: [`copula_measure_style`](@ref), [`LimitKind`](@ref), [`Copula`](@ref).
 """
 abstract type CopulaMeasureStyle end
 struct AbsolutelyContinuousMeasure <: CopulaMeasureStyle end
@@ -47,6 +52,8 @@ Internal classification of exact parameter limits: no recognized limit,
 independence (`Π`), comonotonicity (`M`), or the bivariate lower
 Fréchet--Hoeffding bound (`W`). Constructors and algorithms use it to select
 mathematically exact boundary behavior. Enum values are not stable API.
+
+See also: [`limit_kind`](@ref), [`CopulaMeasureStyle`](@ref).
 """
 @enum LimitKind::UInt8 begin
     NO_LIMIT
@@ -62,6 +69,9 @@ Return the internal `CopulaMeasureStyle` of `C`. The default assumes absolute
 continuity; singular or mixed families and exact parameter limits must
 specialize it. This trait controls density-dependent generic operations and is
 not a downstream extension contract.
+
+See also: [`CopulaMeasureStyle`](@ref), [`limit_kind`](@ref),
+[`Distributions.logpdf`](@ref).
 """
 copula_measure_style(::Type{<:Copula}) = AbsolutelyContinuousMeasure()
 copula_measure_style(C::Copula) = copula_measure_style(typeof(C))
@@ -100,6 +110,8 @@ returns the preallocated `d × n` matrix `X`, with one observation per column,
 using only `rng` for randomness and preserving the buffer element type. The
 public vector sampler delegates to this method. Concrete families must provide
 a matrix specialization; callers should use `rand` or `rand!`.
+
+See also: [`_cdf`](@ref), [`Copula`](@ref), [`inverse_rosenblatt`](@ref).
 """
 function Distributions._rand!(::Distributions.AbstractRNG, C::Copula{d}, ::AbstractMatrix{T}) where {d,T<:Real}
     throw(ArgumentError("$(typeof(C)) must implement a matrix Distributions._rand! method"))
@@ -148,6 +160,9 @@ hypercube. Concrete families normally specialize this internal primitive. The
 generic fallback numerically integrates `pdf(C, ·)` over `[0,u]` and therefore
 requires an ordinary density; it is unsuitable for singular copulas and may be
 expensive in high dimension. Public callers must use `cdf`.
+
+See also: [`Distributions._rand!`](@ref), [`copula_measure_style`](@ref),
+[`Distributions.cdf`](@ref).
 """
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)
@@ -169,6 +184,8 @@ This is the normalized multivariate concordance coefficient based on
 positive dependence. The sample form ranks each row internally, so it can also
 be applied to continuous raw observations. Numerical integration becomes
 costly as dimension grows and may be less accurate near singular limits.
+
+See also: [`τ`](@ref), [`StatsBase.corspearman`](@ref), [`subsetdims`](@ref).
 """
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
@@ -193,6 +210,8 @@ complete positive dependence. The generic population method uses Monte Carlo
 expectation, so repeated calls need not be bitwise identical and exact family
 methods should be preferred when available. Ties in sample data do not receive
 a dedicated correction.
+
+See also: [`ρ`](@ref), [`StatsBase.corkendall`](@ref), [`subsetdims`](@ref).
 """
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
@@ -212,6 +231,8 @@ the lower and upper median orthants. Independence maps to zero and complete
 positive dependence to one. The data form expects values already represented
 on the uniform scale and classifies observations relative to `1/2`; use
 `pseudos` first for raw continuous margins.
+
+See also: [`corblomqvist`](@ref), [`pseudos`](@ref), [`τ`](@ref).
 """
 function β(C::Copula{d}) where {d}
     d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
@@ -234,6 +255,8 @@ to one. The sample form expects uniform-scale observations and replaces the
 population expectation by an empirical average. The generic copula method uses
 Monte Carlo expectation; its result therefore has sampling error unless a
 family supplies an exact specialization.
+
+See also: [`corgini`](@ref), [`pseudos`](@ref), [`ρ`](@ref).
 """
 function γ(C::Copula{d}) where {d}
     _integrand(u) = (1 + minimum(u) - maximum(u) + max(abs(sum(u) - d/2) - (d - 2)/2, 0.0)) / 2
@@ -257,6 +280,8 @@ estimator uses the `k`th neighbor under the Minkowski `p`-norm; `leafsize`
 controls only search performance. It requires at least `k+1` observations and
 can be sensitive to ties, boundary effects and the choice of `k`. It is not a
 definition of entropy for singular copulas.
+
+See also: [`corentropy`](@ref), [`Copula`](@ref), [`pseudos`](@ref).
 """
 function ι(C::Copula{d}) where {d}
     return Distributions.expectation(u -> -Distributions.logpdf(C, u), C; nsamples=10^4)
@@ -276,6 +301,8 @@ must already be on the uniform scale. Smaller `p` targets a more extreme region
 but uses fewer observations. Likewise, `ε` is a numerical extrapolation scale,
 not a statistical tolerance; results can be unstable when a closed form is
 unavailable.
+
+See also: [`λᵤ`](@ref), [`corlowertail`](@ref), [`pseudos`](@ref).
 """
 function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d}
     g(e) = Distributions.cdf(C, fill(e, d)) / e
@@ -296,6 +323,8 @@ must already be on the uniform scale. Smaller `p` targets a more extreme region
 but uses fewer observations. Likewise, `ε` is a numerical extrapolation scale,
 not a statistical tolerance; results can be unstable when a closed form is
 unavailable.
+
+See also: [`λₗ`](@ref), [`coruppertail`](@ref), [`pseudos`](@ref).
 """
 function λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d}
     Sc   = SurvivalCopula(C, Tuple(1:d))
@@ -465,6 +494,8 @@ with opposite corners `lower` and `upper`, using CDF inclusion--exclusion.
 Bounds are clipped to the unit hypercube; a rectangle with any non-positive
 width has measure zero. Both corners must contain one value per copula
 dimension.
+
+See also: [`Distributions.cdf`](@ref), [`subsetdims`](@ref), [`Copula`](@ref).
 """
 function measure(C::Copula{d}, us,vs) where {d}
 

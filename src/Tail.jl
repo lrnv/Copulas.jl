@@ -14,6 +14,9 @@ Equivalently, on the unit simplex it defines a Pickands dependence function
 mathematical evaluation. Dimension validation, derivative machinery, density,
 conditioning and sampling backends are internal and may require additional
 family-specific conditions. See the developer guide for the current architecture.
+
+See also: [`ExtremeValueCopula`](@ref), [`A`](@ref), [`ℓ`](@ref),
+[`DiscreteSpectralTail`](@ref).
 """
 abstract type Tail end
 Base.eltype(tail::Tail) = _sample_eltype(tail)
@@ -36,6 +39,8 @@ Return whether `tail` defines a valid stable tail dependence function in
 dimension `d`. This internal constructor-validation hook defaults to `d ≥ 2`;
 bivariate capability types restrict it unless a mathematical family explicitly
 provides a multivariate extension.
+
+See also: [`Tail`](@ref), [`BivariatePickandsTail`](@ref), [`ℓ`](@ref).
 """
 _is_valid_in_dim(::Tail, d::Int) = d >= 2
 
@@ -46,6 +51,8 @@ Evaluate the Pickands representation on the unit simplex. For a generic tail
 this is `ℓ(tail, ω)`; bivariate Pickands-capable tails also accept a scalar
 coordinate. The input must belong to the representation documented by the
 concrete tail.
+
+See also: [`ℓ`](@ref), [`Tail`](@ref), [`ExtremeValueCopula`](@ref).
 """
 A(tail::Tail, ω::NTuple{d,<:Real}) where {d} = ℓ(tail, ω)
 
@@ -57,6 +64,8 @@ needs_binary_search(::Tail) = false
 Evaluate the stable tail dependence function at a nonnegative vector `x`. The
 generic implementation extends `A` from the simplex by one-homogeneity and
 returns zero at the origin.
+
+See also: [`A`](@ref), [`Tail`](@ref), [`ExtremeValueCopula`](@ref).
 """
 function ℓ(tail::Tail, x)
     s = sum(x)
@@ -71,6 +80,8 @@ the coordinates in `I`. This internal signed-log protocol avoids overflow and
 underflow in extreme-value density and conditioning formulas. The generic
 fallback differentiates `ℓ`; specializations must preserve the derivative's
 sign and value, with `(0, -Inf)` representing zero.
+
+See also: [`ellpartial`](@ref), [`ℓ`](@ref), [`_mixed_partial`](@ref).
 """
 function _ellpartial_signlog(tail::Tail, x, I::Tuple{Vararg{Int}})
     v = _mixed_partial(z -> ℓ(tail, z), x, I)
@@ -87,6 +98,9 @@ Evaluate the mixed partial derivative of the STDF with respect to coordinates
 `I`. An empty index set returns `ℓ(tail, x)`. This is internal contributor
 machinery consumed by generic extreme-value CDF, density and conditioning
 algorithms; defining `ℓ` supplies an automatic-differentiation fallback.
+
+See also: [`_ellpartial_signlog`](@ref), [`ℓ`](@ref),
+[`ExtremeValueCopula`](@ref).
 """
 function ellpartial(tail::Tail, x, I::Tuple{Vararg{Int}})
     isempty(I) && return ℓ(tail, x)
@@ -104,6 +118,9 @@ function `A(tail, t)`. It activates generic derivatives, density, conditioning
 and sampling machinery. The capability is valid only in dimension two by
 default; a mathematically valid multivariate family must specialize
 `_is_valid_in_dim` explicitly. This subtype is not a stable downstream API.
+
+See also: [`Tail`](@ref), [`A`](@ref), [`dA`](@ref), [`d²A`](@ref),
+[`_is_valid_in_dim`](@ref).
 """
 abstract type BivariatePickandsTail <: Tail end
 
@@ -119,6 +136,8 @@ A(tail::BivariatePickandsTail, t::NTuple{2, <:Real}) = A(tail, t[1])
 Evaluate the first derivative of the scalar Pickands function. The internal
 fallback uses forward-mode automatic differentiation; specialized formulas
 must retain the same one-sided behavior used by endpoint conditionals.
+
+See also: [`A`](@ref), [`d²A`](@ref), [`BivariatePickandsTail`](@ref).
 """
 dA(tail::BivariatePickandsTail, t::Real) = ForwardDiff.derivative(z -> A(tail, z), t)
 
@@ -129,6 +148,9 @@ Evaluate the second derivative of the scalar Pickands function. The internal
 fallback differentiates `dA`. It represents an ordinary derivative and is not
 appropriate for atomic spectral curvature, which uses discrete-spectral
 machinery instead.
+
+See also: [`A`](@ref), [`dA`](@ref), [`BivariatePickandsTail`](@ref),
+[`DiscreteSpectralTail`](@ref).
 """
 d²A(tail::BivariatePickandsTail, t::Real) = ForwardDiff.derivative(z -> dA(tail, z), t)
 

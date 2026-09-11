@@ -34,6 +34,7 @@ end
         :distortion,
         :_partial_cdf,
         :conditional_copula,
+        :_mixed_partial,
         :Distortion,
         :DistortedDist,
         :ConditionalCopula,
@@ -49,7 +50,10 @@ end
         :_calibrate,
         :_test_method,
         :_bootstrap_hypothesis,
+        :testname,
+        :nullhypothesis,
         :BivariatePickandsTail,
+        :BivEVDistortion,
         :_is_valid_in_dim,
         :dA,
         :d²A,
@@ -60,6 +64,13 @@ end
         :EllipticalCopula,
         :U,
         :N,
+        :make_cor!,
+        :AbstractUnivariateGenerator,
+        :ϕ⁻¹,
+        :ϕ⁽¹⁾,
+        :ϕ⁻¹⁽¹⁾,
+        :ϕ⁽ᵏ⁾,
+        :ϕ⁽ᵏ⁾⁻¹,
     )
 
     for name in guide_bindings

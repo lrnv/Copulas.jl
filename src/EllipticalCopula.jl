@@ -6,6 +6,8 @@ Users should construct and operate on documented concrete families such as
 `GaussianCopula` and `TCopula`. Its type parameters and implementation hooks
 are not public API; the current contributor architecture is described in the
 developer guide.
+
+See also: [`GaussianCopula`](@ref), [`TCopula`](@ref), [`U`](@ref), [`N`](@ref).
 """
 abstract type EllipticalCopula{d,MT} <: Copula{d} end
 
@@ -16,6 +18,9 @@ Return the standardized univariate radial-family margin used to map latent
 elliptical coordinates to uniforms. This internal family hook is consumed by
 generic sampling and density code. Object-based methods may preserve runtime
 parameters such as Student degrees of freedom; it is not public API.
+
+See also: [`N`](@ref), [`EllipticalCopula`](@ref), [`GaussianCopula`](@ref),
+[`TCopula`](@ref).
 """
 U(C::CT) where {CT<:EllipticalCopula} = U(CT)
 
@@ -26,6 +31,9 @@ Return a constructor that maps a correlation matrix to the latent multivariate
 elliptical distribution associated with `C`. Generic sampling and density code
 requires consistency between this law and `U(C)`. Object-based methods may
 capture runtime parameters. This is an internal, non-stable family hook.
+
+See also: [`U`](@ref), [`EllipticalCopula`](@ref), [`GaussianCopula`](@ref),
+[`TCopula`](@ref).
 """
 N(C::CT) where {CT<:EllipticalCopula} = N(CT)
 
@@ -59,6 +67,21 @@ function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
     end
     return Distributions.logpdf(N(C)(C.Σ),x) - s
 end
+"""
+    make_cor!(Σ)
+
+Normalize the square covariance-like matrix `Σ` in place to unit diagonal by
+the congruence transform `Σ[i,j] / sqrt(Σ[i,i]Σ[j,j])`. The diagonal entries
+must be strictly positive and the element type must support the in-place
+division. The function does not check symmetry, positive definiteness, or
+whether the resulting entries form a valid correlation matrix; constructors
+must perform the validation required by their family.
+
+This is an internal constructor helper. Copy user-owned input before calling it
+when mutation would be surprising.
+
+See also: [`EllipticalCopula`](@ref), [`GaussianCopula`](@ref), [`TCopula`](@ref).
+"""
 function make_cor!(Σ)
     # Verify that Σ is a correlation matrix, otherwise make it so : 
     d = size(Σ,1)

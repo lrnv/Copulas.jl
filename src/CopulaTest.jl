@@ -3,7 +3,14 @@
 
 Abstract supertype for hypotheses about copulas.
 
-Internal description of a test procedure. This is not a public extension API.
+Each subtype is an internal, immutable description of one test procedure. The
+generic driver dispatches on it to obtain the discrepancy statistic,
+calibration algorithm, result labels and null-hypothesis text. A hypothesis
+must contain every option needed to reproduce those choices, but no mutable
+resampling state. This is not a public extension API.
+
+See also: [`_run_copula_test`](@ref), [`_teststatistic`](@ref),
+[`_calibrate`](@ref), [`CopulaTest`](@ref).
 """
 abstract type CopulaHypothesis end
 
@@ -33,6 +40,19 @@ Obtain this result from the public hypothesis-test functions, not by constructin
 its internal representation. Use `pvalue`, `teststatistic`, `StatsBase.nobs`
 and the displayed summary to inspect the result. Type parameters and internal
 calibration metadata are not part of the public constructor interface.
+
+# Example
+```julia
+using Copulas, Random
+
+U = rand(Xoshiro(1), IndependentCopula(2), 100)
+test = IndependenceCopulaTest(U; N=199, rng=Xoshiro(2))
+(teststatistic(test), pvalue(test))
+```
+
+See also: [`IndependenceCopulaTest`](@ref),
+[`ExchangeabilityCopulaTest`](@ref), [`RadialSymmetryCopulaTest`](@ref),
+[`ExtremeValueCopulaTest`](@ref), [`GOFCopulaTest`](@ref).
 """
 struct CopulaTest{H<:CopulaHypothesis,S<:Real,P<:Real,D<:NamedTuple} <: HypothesisTest
     hypothesis::H
@@ -82,6 +102,9 @@ StatsBase.nobs(test::CopulaTest) = test.n
 Return the display name for a copula hypothesis or test.
 
 This is an extension hook for new copula tests. It is intentionally not exported to avoid clashes with `HypothesisTests.testname`.
+
+See also: [`nullhypothesis`](@ref), [`CopulaHypothesis`](@ref),
+[`CopulaTest`](@ref).
 """
 testname(test::CopulaTest) = testname(test.hypothesis)
 
@@ -93,6 +116,9 @@ Return the textual null hypothesis for a copula hypothesis or test. This is an e
 Internal hypothesis implementations specialize this function with a concise,
 human-readable statement. It is consumed by `show` for `CopulaTest` results and
 is not a supported downstream extension interface.
+
+See also: [`testname`](@ref), [`CopulaHypothesis`](@ref),
+[`CopulaTest`](@ref).
 """
 nullhypothesis(test::CopulaTest) = nullhypothesis(test.hypothesis)
 
@@ -106,6 +132,9 @@ public `CopulaTest` result. New in-package hypotheses use this driver after
 defining their statistic, calibration and display metadata. Inputs are `d × n`
 with observations in columns. This orchestration hook is internal and is not a
 supported downstream extension point.
+
+See also: [`CopulaHypothesis`](@ref), [`_teststatistic`](@ref),
+[`_calibrate`](@ref), [`_test_method`](@ref), [`CopulaTest`](@ref).
 """
 function _run_copula_test(h::CopulaHypothesis, U::AbstractMatrix{<:Real};
         N::Integer=1000, pseudo_values::Bool=false,
@@ -166,6 +195,9 @@ the actual number of replicates in the result.
 This internal protocol is called exclusively by `_run_copula_test`. A new
 in-package hypothesis pairs one calibration method with `_teststatistic` and
 `_test_method`; downstream users should call a public test constructor.
+
+See also: [`_run_copula_test`](@ref), [`_teststatistic`](@ref),
+[`_test_method`](@ref), [`_bootstrap_hypothesis`](@ref).
 """
 function _calibrate(h::IndependenceHypothesis, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG)
     N = _check_resamples(N)
@@ -243,6 +275,8 @@ Return the hypothesis used for a bootstrap replicate `U`. The internal default
 reuses `h`; composite goodness-of-fit specializes it to refit the estimator on
 every replicate. This distinction is required for valid composite-null
 calibration and is consumed by `_calibrate`.
+
+See also: [`_calibrate`](@ref), [`_refit`](@ref), [`GOFCopulaTest`](@ref).
 """
 _bootstrap_hypothesis(h::CopulaHypothesis, ::AbstractMatrix) = h
 
@@ -277,6 +311,9 @@ the p-value.
 The current procedure assumes continuous, tie-free margins. Larger `N` reduces
 Monte Carlo uncertainty at a proportional computational cost. Supply `rng` for
 reproducible calibration.
+
+See also: [`CopulaTest`](@ref), [`pvalue`](@ref),
+[`ExchangeabilityCopulaTest`](@ref), [`GOFCopulaTest`](@ref).
 """
 IndependenceCopulaTest(U::AbstractMatrix{<:Real}; kwargs...) = _run_copula_test(IndependenceHypothesis(), U; kwargs...)
 
@@ -289,6 +326,9 @@ Return `(statistic, calibration)` symbols describing the procedure represented
 by internal hypothesis `h`. The generic `CopulaTest` display uses these labels;
 they must agree with `_teststatistic` and `_calibrate` and are not selectors for
 runtime algorithm combinations.
+
+See also: [`_run_copula_test`](@ref), [`_teststatistic`](@ref),
+[`_calibrate`](@ref), [`CopulaTest`](@ref).
 """
 _test_method(::IndependenceHypothesis) = (:cvm, :simulation)
 
@@ -300,6 +340,9 @@ pseudo-observations `U`, stored as variables by observations (`d × n`). Larger
 values must represent greater disagreement with the null because calibration
 counts upper-tail exceedances. The result must be deterministic for fixed `U`;
 randomness belongs in `_calibrate`.
+
+See also: [`_run_copula_test`](@ref), [`_calibrate`](@ref),
+[`_test_method`](@ref).
 """
 function _teststatistic(::IndependenceHypothesis, U::AbstractMatrix)
     Cn = EmpiricalCopula(U; pseudo_values=true)
@@ -340,6 +383,9 @@ By default raw continuous margins are ranked; use `pseudo_values=true` for
 precomputed pseudo-observations. Ties are currently rejected. The multiplier
 representation uses dense `n × n` matrices for every selected permutation, so
 large samples or permutation sets may reach the package's memory safety limit.
+
+See also: [`CopulaTest`](@ref), [`pvalue`](@ref),
+[`RadialSymmetryCopulaTest`](@ref).
 """
 function ExchangeabilityCopulaTest(U::AbstractMatrix{<:Real}; permutations=:G2, weight::Symbol=:wm2, kwargs...)
     d, n = size(U)
@@ -515,6 +561,9 @@ Raw continuous margins are ranked unless `pseudo_values=true`. Ties are not
 currently supported. Because calibration is randomized, pass `rng` when the
 result must be reproducible and increase `N` when finer Monte Carlo precision
 is needed.
+
+See also: [`CopulaTest`](@ref), [`pvalue`](@ref),
+[`ExchangeabilityCopulaTest`](@ref).
 """
 RadialSymmetryCopulaTest(U::AbstractMatrix{<:Real}; kwargs...) = _run_copula_test(RadialSymmetryHypothesis(), U; kwargs...)
 
@@ -582,6 +631,9 @@ Raw continuous margins are ranked unless `pseudo_values=true`, and ties are
 currently unsupported. More powers examine more max-stability identities but
 also require one dense `n × n` multiplier matrix per power; very large requests
 may therefore reach the memory safety limit.
+
+See also: [`CopulaTest`](@ref), [`pvalue`](@ref),
+[`ExtremeValueCopula`](@ref), [`GOFCopulaTest`](@ref).
 """
 function ExtremeValueCopulaTest(U::AbstractMatrix{<:Real}; powers=3:5, kwargs...)
     selected = _max_stability_powers(powers)
@@ -707,6 +759,13 @@ parametric-bootstrap replicate.
 resulting fitted model is used for the observed statistic, and the same fitting
 procedure is repeated in every bootstrap replicate. If the fitting procedure is
 not reproducibly specified, composite GOF throws an `ArgumentError`.
+
+The test statistic compares the empirical and fitted copula CDFs at the sample
+points. `N` controls parametric-bootstrap replication, and raw continuous
+margins are ranked unless `pseudo_values=true`. Ties are currently rejected.
+
+See also: [`CopulaTest`](@ref), [`CopulaModel`](@ref),
+[`Distributions.fit`](@ref), [`selectiontable`](@ref).
 """
 function GOFCopulaTest(C::Copula, U::AbstractMatrix{<:Real}; kwargs...)
     return _run_copula_test(GoodnessOfFitHypothesis(C), U; kwargs...)
