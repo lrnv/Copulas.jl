@@ -159,9 +159,20 @@ end
 Compute pseudo-observations from a `d×n` sample, with variables in rows and
 observations in columns.
 
+Each row is replaced by its ordinal ranks divided by `n+1`, so every output is
+strictly inside `(0,1)`. The transformation is invariant under strictly
+increasing changes of each margin and returns a newly allocated floating-point
+matrix.
+
 Ties are resolved by stable ordinal ranking, so tied values receive distinct
 ranks in their order of appearance. Use a dedicated rank transformation when a
 different tie convention is required.
+
+# Example
+```julia
+X = [30 10 20; 4 6 5]
+pseudos(X) == [0.75 0.25 0.5; 0.25 0.75 0.5]
+```
 """
 function pseudos(sample::AbstractMatrix)
     # Fast pseudo-observations (d×n) using per-row ordinal ranks without allocations per row
@@ -190,6 +201,9 @@ end
 Return the symmetric matrix of pairwise Blomqvist beta coefficients. Data follow
 the `StatsBase` convention (`n × d`, observations in rows); a copula is reduced
 to each bivariate margin. Diagonal entries are one.
+
+Data columns are ranked before observations are split at their median. A column
+containing `NaN` produces `NaN` in all corresponding off-diagonal entries.
 """
 function corblomqvist(X::AbstractMatrix{<:Real})
     # We expect the number of dimension to be the second axes here,
@@ -233,6 +247,9 @@ end
 Return the symmetric matrix of pairwise Gini gamma coefficients. Data follow
 the `StatsBase` `n × d` orientation; copula entries are computed from bivariate
 margins. Diagonal entries are one.
+
+The data estimator is rank based. A column containing `NaN` produces `NaN` in
+all corresponding off-diagonal entries.
 """
 function corgini(X::AbstractMatrix{<:Real})
     # We expect the number of dimension to be the second axes here,
@@ -278,6 +295,11 @@ end
 Return pairwise copula entropy as a symmetric matrix with zero diagonal. The
 data method uses `n × d` observations and a nearest-neighbor estimator; the
 copula method requires bivariate margins with ordinary densities.
+
+For data, `k`, `p` and `leafsize` have the same interpretation and caveats as in
+`ι`; columns containing `NaN` propagate `NaN` to the corresponding pairs. The
+zero diagonal is conventional and does not invoke a degenerate self-copula
+entropy calculation.
 """
 function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::Int=32)
     # We expect the number of dimension to be the second axes here,
@@ -390,6 +412,13 @@ Return the symmetric matrix of pairwise lower-tail dependence coefficients.
 Data use the `StatsBase` `n × d` orientation and either the
 `:SchmidtStadtmueller` threshold estimator or `:SchmidSchmidt` integral
 estimator. Copula entries use their bivariate margins.
+
+`p` controls the lower-tail threshold and defaults to `1/√n`. Smaller values
+focus farther into the tail but increase sampling variability. Diagonal entries
+are one; a data column containing `NaN` propagates `NaN` to its off-diagonal
+pairs. Data must already be represented on the uniform scale; apply `pseudos`
+to raw continuous margins. Many ties can make a continuous-tail interpretation
+unreliable.
 """
 corlowertail(X::AbstractMatrix{<:Real}, method = :SchmidtStadtmueller, p=nothing) = _cortail(X; t=:lower, method=method, p=p)
 
@@ -401,6 +430,13 @@ Return the symmetric matrix of pairwise upper-tail dependence coefficients.
 Data use the `StatsBase` `n × d` orientation and either the
 `:SchmidtStadtmueller` threshold estimator or `:SchmidSchmidt` integral
 estimator. Copula entries use their bivariate margins.
+
+`p` controls the upper-tail threshold and defaults to `1/√n`. Smaller values
+focus farther into the tail but increase sampling variability. Diagonal entries
+are one; a data column containing `NaN` propagates `NaN` to its off-diagonal
+pairs. Data must already be represented on the uniform scale; apply `pseudos`
+to raw continuous margins. Many ties can make a continuous-tail interpretation
+unreliable.
 """
 coruppertail(X::AbstractMatrix{<:Real}, method = :SchmidtStadtmueller, p=nothing) = _cortail(X; t=:upper, method=method, p=p)
 

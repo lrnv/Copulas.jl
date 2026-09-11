@@ -163,6 +163,12 @@ end
 Return multivariate Spearman's rho for a copula or for pseudo-observations
 stored as a `d × n` matrix. Family methods may provide exact formulas; the
 generic copula method uses numerical integration.
+
+This is the normalized multivariate concordance coefficient based on
+`∫_[0,1]^d C(u) du`; it is zero under independence and one under complete
+positive dependence. The sample form ranks each row internally, so it can also
+be applied to continuous raw observations. Numerical integration becomes
+costly as dimension grows and may be less accurate near singular limits.
 """
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
@@ -180,6 +186,13 @@ end
 Return multivariate Kendall's tau for a copula or a `d × n` matrix of
 pseudo-observations. Family methods may replace the generic expectation-based
 calculation with an exact formula.
+
+The population coefficient normalizes `E[C(U)]` for `U ∼ C`; the sample form
+counts concordant unordered pairs. It is zero under independence and one under
+complete positive dependence. The generic population method uses Monte Carlo
+expectation, so repeated calls need not be bitwise identical and exact family
+methods should be preferred when available. Ties in sample data do not receive
+a dedicated correction.
 """
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
@@ -193,6 +206,12 @@ end
 
 Return multivariate Blomqvist's beta, a median-orthant measure of concordance,
 for a copula or pseudo-observations stored by columns.
+
+In two dimensions this is `4C(1/2,1/2)-1`; the multivariate extension combines
+the lower and upper median orthants. Independence maps to zero and complete
+positive dependence to one. The data form expects values already represented
+on the uniform scale and classifies observations relative to `1/2`; use
+`pseudos` first for raw continuous margins.
 """
 function β(C::Copula{d}) where {d}
     d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
@@ -209,6 +228,12 @@ end
 Return multivariate Gini's gamma for a copula or for pseudo-observations stored
 as a `d × n` matrix. The generic copula method estimates the defining
 expectation numerically.
+
+The normalization maps independence to zero and complete positive dependence
+to one. The sample form expects uniform-scale observations and replaces the
+population expectation by an empirical average. The generic copula method uses
+Monte Carlo expectation; its result therefore has sampling error unless a
+family supplies an exact specialization.
 """
 function γ(C::Copula{d}) where {d}
     _integrand(u) = (1 + minimum(u) - maximum(u) + max(abs(sum(u) - d/2) - (d - 2)/2, 0.0)) / 2
@@ -225,6 +250,13 @@ end
 Return copula entropy. For a copula, this is the expected negative log-density
 and therefore requires an ordinary Lebesgue density. For data, a nearest-neighbor
 entropy estimator is applied to the `d × n` pseudo-observation matrix.
+
+With the sign convention used here, independence has entropy zero and an
+absolutely continuous dependent copula has a non-positive value. The data
+estimator uses the `k`th neighbor under the Minkowski `p`-norm; `leafsize`
+controls only search performance. It requires at least `k+1` observations and
+can be sensitive to ties, boundary effects and the choice of `k`. It is not a
+definition of entropy for singular copulas.
 """
 function ι(C::Copula{d}) where {d}
     return Distributions.expectation(u -> -Distributions.logpdf(C, u), C; nsamples=10^4)
@@ -238,6 +270,12 @@ Return lower-tail dependence. The generic copula method extrapolates diagonal
 CDF ratios near zero; the data method estimates joint lower-tail frequency at
 threshold `p`, defaulting to `1/√n`. Family-specific exact formulas take
 precedence when available.
+
+For a `d × n` input, rows are variables, columns are observations, and values
+must already be on the uniform scale. Smaller `p` targets a more extreme region
+but uses fewer observations. Likewise, `ε` is a numerical extrapolation scale,
+not a statistical tolerance; results can be unstable when a closed form is
+unavailable.
 """
 function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d}
     g(e) = Distributions.cdf(C, fill(e, d)) / e
@@ -252,6 +290,12 @@ Return upper-tail dependence. The generic copula method applies the lower-tail
 calculation to the survival copula; the data method estimates joint upper-tail
 frequency at threshold `p`, defaulting to `1/√n`. Family-specific exact formulas
 take precedence when available.
+
+For a `d × n` input, rows are variables, columns are observations, and values
+must already be on the uniform scale. Smaller `p` targets a more extreme region
+but uses fewer observations. Likewise, `ε` is a numerical extrapolation scale,
+not a statistical tolerance; results can be unstable when a closed form is
+unavailable.
 """
 function λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d}
     Sc   = SurvivalCopula(C, Tuple(1:d))
