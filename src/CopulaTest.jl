@@ -154,6 +154,19 @@ function _check_resamples(N::Integer)
     return Int(N)
 end
 
+"""
+    _calibrate(h::CopulaHypothesis, U, observed; N, rng)
+
+Calibrate an observed internal test statistic under the null hypothesis `h`.
+Implementations return `(p, n_resamples, details)`, where `details` is a
+`NamedTuple` consumed by result display and diagnostics. They must use only the
+provided `rng`, preserve the validated `d × n` orientation of `U`, and count
+the actual number of replicates in the result.
+
+This internal protocol is called exclusively by `_run_copula_test`. A new
+in-package hypothesis pairs one calibration method with `_teststatistic` and
+`_test_method`; downstream users should call a public test constructor.
+"""
 function _calibrate(h::IndependenceHypothesis, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG)
     N = _check_resamples(N)
     exceedances = 0
@@ -223,6 +236,14 @@ function _multiplier_pvalue(matrices, observed::Real, N::Integer, rng::Distribut
     return _exceedance_pvalue(exceedances, N; correction)
 end
 
+"""
+    _bootstrap_hypothesis(h::CopulaHypothesis, U)
+
+Return the hypothesis used for a bootstrap replicate `U`. The internal default
+reuses `h`; composite goodness-of-fit specializes it to refit the estimator on
+every replicate. This distinction is required for valid composite-null
+calibration and is consumed by `_calibrate`.
+"""
 _bootstrap_hypothesis(h::CopulaHypothesis, ::AbstractMatrix) = h
 
 function _calibrate(h::GoodnessOfFitHypothesis, U::AbstractMatrix, observed::Real; N::Integer, rng::Distributions.AbstractRNG)
@@ -261,8 +282,25 @@ IndependenceCopulaTest(U::AbstractMatrix{<:Real}; kwargs...) = _run_copula_test(
 
 testname(::IndependenceHypothesis) = "Copula independence test"
 nullhypothesis(::IndependenceHypothesis) = "The components are mutually independent."
+"""
+    _test_method(h::CopulaHypothesis)
+
+Return `(statistic, calibration)` symbols describing the procedure represented
+by internal hypothesis `h`. The generic `CopulaTest` display uses these labels;
+they must agree with `_teststatistic` and `_calibrate` and are not selectors for
+runtime algorithm combinations.
+"""
 _test_method(::IndependenceHypothesis) = (:cvm, :simulation)
 
+"""
+    _teststatistic(h::CopulaHypothesis, U)
+
+Evaluate the internal discrepancy statistic for hypothesis `h` on validated
+pseudo-observations `U`, stored as variables by observations (`d × n`). Larger
+values must represent greater disagreement with the null because calibration
+counts upper-tail exceedances. The result must be deterministic for fixed `U`;
+randomness belongs in `_calibrate`.
+"""
 function _teststatistic(::IndependenceHypothesis, U::AbstractMatrix)
     Cn = EmpiricalCopula(U; pseudo_values=true)
     s = 0.0
