@@ -162,7 +162,11 @@ end
 """
     DistortedDist{Disto,Distrib} <: Distributions.UnivariateDistribution
 
-Push-forward of a base marginal by a `Distortion`.
+Internal representation of a conditioned marginal on its original scale.
+`D` describes the conditional law on the uniform scale and `X` is the original
+univariate marginal. Consequently its CDF is `D(cdf(X, x))`, while quantiles
+apply the two generalized inverses in reverse order. This representation is
+used when conditioning a `SklarDist`; its storage fields are not public API.
 """
 struct DistortedDist{Disto, Distrib}<:Distributions.ContinuousUnivariateDistribution
     D::Disto
@@ -184,7 +188,11 @@ end
 """
     ConditionalCopula{d} <: Copula{d}
 
-Copula of the conditioned random vector U_I | U_J = u_J.
+Internal fallback for the copula of the remaining coordinates
+`U_I | U_J = u_J`. It computes each conditional marginal distortion and uses
+mixed CDF partials to normalize the joint conditional law. Coordinates in `I`
+retain their natural order. Family-specific `conditional_copula` methods may
+replace this representation, so its fields are not a downstream contract.
 """
 struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     C::Copula{D}
@@ -430,11 +438,20 @@ rosenblatt(D::SklarDist, u::AbstractVector{<:Real}) =
 """
     inverse_rosenblatt(C::Copula, u)
 
-Computes the inverse rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ Π, the independence copula, the result should be distributed as C. Also look at `rosenblatt(C, u)` for the inverse transformation. The interface proposes faster versions for matrix inputs `u`.
+Map independent uniform inputs to the dependence structure of `C` by successive
+conditional quantiles. If `S` follows the independence copula, the result
+follows `C`. Vector inputs represent one point; matrix inputs store points in
+columns and are processed without changing their order.
 
 Generic inverse Rosenblatt using conditional distortions:
 U₁ = S₁, U_k = H_{k|1:(k-1)}^{-1}(S_k | U₁:U_{k-1}).
 Specialized families may provide faster overrides.
+
+Inputs are clamped to the unit interval. Generalized quantiles make the
+transformation suitable for sampling conditionals with atoms, but in that case
+`rosenblatt(C, inverse_rosenblatt(C, s)) == s` need not hold pointwise. An
+almost-sure round trip requires continuous conditional CDFs that are invertible
+on their supports.
 
 
 References:

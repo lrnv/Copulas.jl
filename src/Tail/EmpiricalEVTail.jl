@@ -33,6 +33,19 @@ end
     EmpiricalEVTail(u; kwargs...)
 
 Construct the empirical Pickands tail from data (2×N).
+
+Rows of `u` are the two margins and columns are observations. With
+`pseudo_values=true`, values are interpreted as pseudo-observations; otherwise
+the margins are ranked first. `method` selects the classical Pickands, CFG, or
+OLS-intercept pilot estimator. The pilot is evaluated on `grid` points between
+`eps` and `1-eps`, then projected onto the convex Pickands class and extended
+with the required endpoint values.
+
+The returned tail evaluates `A` by piecewise-linear interpolation. Increasing
+`grid` gives a finer representation at additional fitting and storage cost;
+`eps` protects logarithmic calculations near zero and one. Shape projection
+guarantees a valid bivariate extreme-value model but can visibly modify a noisy
+pilot estimate, especially for small samples.
 """
 function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true)
 

@@ -89,6 +89,10 @@ testname(test::CopulaTest) = testname(test.hypothesis)
     nullhypothesis(x)
 
 Return the textual null hypothesis for a copula hypothesis or test. This is an extension hook used by the generic display machinery.
+
+Internal hypothesis implementations specialize this function with a concise,
+human-readable statement. It is consumed by `show` for `CopulaTest` results and
+is not a supported downstream extension interface.
 """
 nullhypothesis(test::CopulaTest) = nullhypothesis(test.hypothesis)
 

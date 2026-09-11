@@ -213,7 +213,16 @@ end
 """
     Distributions.fit(CT::Type{<:Copula}, U; kwargs...) -> CT
 
-Quick fit: devuelve solo la cópula ajustada (atajo de `Distributions.fit(CopulaModel, CT, U; kwargs...)`).
+Fit `CT` to the `d × n` matrix `U`, whose columns are observations, and return
+only the fitted copula or Sklar distribution. This is the concise form of
+`fit(CopulaModel, CT, U; kwargs...)`: it uses the same estimator and validation
+but discards inference metadata such as covariance estimates, convergence
+details and the fitting sample.
+
+Use the `CopulaModel` form when diagnostics, information criteria, uncertainty
+quantification, automatic selection, or composite goodness-of-fit testing are
+needed. Accepted keywords and the interpretation of `U` depend on the target
+and fitting method.
 """
 @inline Distributions.fit(T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
 @inline Distributions.fit(T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(T, U; copula_method=method, kwargs...)
@@ -334,11 +343,25 @@ end
 
 _available_fitting_methods(::Type{SklarDist}, d) = (:ifm, :ecdf)
 """
-    fit(CopulaModel, SklarDist{CT, TplMargins}, X; copula_method=:default, sklar_method=:default,
-                                           margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple())
+    fit(CopulaModel, SklarDist{CT,TplMargins}, X;
+        copula_method=:default, sklar_method=:default,
+        margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple(), kwargs...)
 
-Joint margin and copula adjustment (Sklar approach).
-`sklar_method ∈ (:ifm, :ecdf)` controls whether parametric CDFs (`:ifm`) or pseudo-observations (`:ecdf`) are used.
+Fit the margins and dependence structure of a Sklar distribution to a `d × n`
+raw-data matrix `X`, with observations in columns. `TplMargins` supplies one
+univariate distribution family per row and `CT` supplies the copula family.
+
+With `sklar_method=:ifm`, each fitted marginal CDF transforms its row to the
+uniform scale before the copula is fitted. With `:ecdf`, rank
+pseudo-observations are used instead, although the requested parametric margins
+are still fitted for the returned distribution. `margins_kwargs` are forwarded
+to every marginal fit and `copula_kwargs` to the copula fit.
+
+The result is a `CopulaModel` whose `result` is the fitted `SklarDist` and whose
+coefficient and covariance summaries combine the marginal and copula blocks.
+Inference for a block may be unavailable when its estimator does not supply a
+usable covariance estimate. Use `fit(SklarDist{...}, X; ...)` when only the
+fitted distribution is required.
 """
 function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}, X; quick_fit = false,
                            copula_method = :default, sklar_method = :default, margins_kwargs = NamedTuple(),
@@ -820,36 +843,64 @@ end
     nobs(M::CopulaModel) -> Int
 
 Number of observations used in the model fit.
+
+Observations are columns of the matrix supplied to `fit`. This value is the
+sample size used by likelihood summaries and information criteria.
 """
 StatsBase.nobs(M::CopulaModel)     = M.n
+
+"""
+    isfitted(M::CopulaModel) -> Bool
+
+Return `true`: a `CopulaModel` is created only after its fitting procedure has
+produced a result. Consult `M.method_details` or the displayed summary for
+method-specific convergence information when the estimator provides it.
+"""
 StatsBase.isfitted(::CopulaModel)  = true
 
 """
     deviance(M::CopulaModel) -> Float64
 
-Deviation of the fitted model (-2 * loglikelihood).
+Return the deviance `-2ℓ`, where `ℓ` is the maximized log-likelihood stored in
+the model. For non-likelihood estimators this summary reflects the likelihood
+evaluated at the fitted parameters, not the objective that was optimized.
 """
 StatsBase.deviance(M::CopulaModel) = -2 * M.ll
+
+"""
+    dof(M::CopulaModel) -> Int
+
+Return the number of estimated copula parameters represented by `coef(M)`.
+This excludes fixed structural choices and nonparametric components whose
+effective degrees of freedom are not defined by the current interface.
+"""
 StatsBase.dof(M::CopulaModel) = length(StatsBase.coef(M))
 
 """
     _copula_of(M::CopulaModel)
 
-Returns the copula object contained in the model, even if the result is a `SklarDist`.
+Return the copula contained in the fitted result, extracting it from a
+`SklarDist` when margins were fitted jointly. This helper is internal; callers
+that need the complete public fitted result should use `M.result`.
 """
 _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 
 """
     coef(M::CopulaModel) -> Vector{Float64}
 
-Vector with the estimated parameters of the copula.
+Return the estimated copula parameters as a flat vector in the same order as
+`coefnames(M)`. Scalars are followed by vector entries and by the strict upper
+triangle of matrix parameters. Models without a finite-dimensional parameter
+record return an empty vector.
 """
 StatsBase.coef(M::CopulaModel) = haskey(M.method_details, :θ̂) ? _flatten_params(M.method_details.θ̂)[2] : Float64[]
 
 """
 coefnames(M::CopulaModel) -> Vector{String}
 
-Names of the estimated copula parameters.
+Return names for the flattened parameters in `coef(M)`, in matching order.
+Indices are appended to vector and matrix parameter names so each coefficient
+can be identified in covariance matrices and printed summaries.
 """
 StatsBase.coefnames(M::CopulaModel) = haskey(M.method_details, :θ̂) ? _flatten_params(M.method_details.θ̂)[1] : String[]
 
@@ -905,15 +956,32 @@ end
 """
     vcov(M::CopulaModel) -> Union{Nothing, Matrix{Float64}}
 
-Variance and covariance matrix of the estimators.
-Can be `nothing` if not available.
+Return the estimated covariance matrix of `coef(M)`, or `nothing` when
+covariance estimation was disabled or unavailable. Its rows and columns follow
+`coefnames(M)`. The estimation method is recorded in `M.method_details` when
+available.
 """
 StatsBase.vcov(M::CopulaModel) = M.vcov
+
+"""
+    stderror(M::CopulaModel)
+
+Return coefficient standard errors computed from the diagonal of `vcov(M)`.
+Return `nothing` when no covariance estimate is stored.
+"""
 function StatsBase.stderror(M::CopulaModel)
     V = StatsBase.vcov(M)
     V === nothing && return nothing
     return sqrt.(LinearAlgebra.diag(V))
 end
+
+"""
+    confint(M::CopulaModel; level=0.95)
+
+Return lower and upper vectors for pointwise Wald confidence intervals on the
+fitted parameter scale. The intervals use a normal approximation and do not
+enforce parameter constraints. Return `nothing` when `vcov(M)` is unavailable.
+"""
 function StatsBase.confint(M::CopulaModel; level::Real=0.95)
     V = StatsBase.vcov(M)
     V === nothing && return nothing
@@ -926,14 +994,18 @@ end
 """
     aic(M::CopulaModel) -> Float64
 
-Akaike information criterion for the fitted model.
+Return Akaike's information criterion `2k - 2ℓ`, using `k = dof(M)` and the
+log-likelihood stored in the model. Comparisons are meaningful only for models
+fitted to the same observations and likelihood contribution.
 """
 StatsBase.aic(M::CopulaModel) = 2*StatsBase.dof(M) - 2*M.ll
 
 """
     bic(M::CopulaModel) -> Float64
 
-Bayesian information criterion for the fitted model.
+Return the Bayesian information criterion `k log(n) - 2ℓ`, using
+`k = dof(M)` and `n = nobs(M)`. Comparisons are meaningful only for models
+fitted to the same observations and likelihood contribution.
 """
 StatsBase.bic(M::CopulaModel) = StatsBase.dof(M)*log(StatsBase.nobs(M)) - 2*M.ll
 function aicc(M::CopulaModel)
