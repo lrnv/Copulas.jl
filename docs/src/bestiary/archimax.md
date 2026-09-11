@@ -94,9 +94,7 @@ According to [charpentier2014](@cite), it should be possible to use any d-monoto
 The sampling recipe uses the supported generator and extreme-value components;
 its internal representations are not part of the public contract.
 
-```@docs; canonical=false
-ArchimaxCopula
-```
+See the canonical Public API entry for [`ArchimaxCopula`](@ref).
 
 ## Conditionals and distortions
 
@@ -157,15 +155,11 @@ conditioning, and sampling machinery beyond dimension two is separate work.
 
 ### `BB4Copula`
 
-```@docs; canonical=false
-BB4Copula
-```
+See the canonical Public API entry for [`BB4Copula`](@ref).
 
 ### `BB5Copula`
 
-```@docs; canonical=false
-BB5Copula
-```
+See the canonical Public API entry for [`BB5Copula`](@ref).
 
 ## References
 

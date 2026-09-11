@@ -239,15 +239,7 @@ empty (all observed) the recipe reduces to the ordinary joint density
 
 !!! note "Multi-coordinate conditional CDF"
     With two or more lower-tail coordinates the conditional CDF is the mixed
-    partial of the nested CDF over the *observed* coordinates. The generic path
-    takes this by nesting one `ForwardDiff.derivative` per observed coordinate —
-    cost exponential in the number of observed dims, infeasible in high
-    dimension. A `_partial_cdf` specialisation routes it instead through the same
-    polynomial Faà di Bruno tree walk as the single-coordinate case (selected on
-    the conditional copula's concrete nested inner type), for any number of
-    lower-tail coordinates.
-
-    At high differentiation order for fast-tail generators the `Float64` sum can
-    lose precision; pass `BigFloat` coordinates to recover the exact value (as for
-    the density). End-to-end `BigFloat` through `condition()` is not yet enabled —
-    upstream stores the conditioning values as `Float64`.
+    partial of the nested CDF over the *observed* coordinates. Its cost grows
+    quickly with the number of observed coordinates. At high differentiation
+    order, `Float64` calculations can also lose precision; end-to-end `BigFloat`
+    conditioning is not currently supported.

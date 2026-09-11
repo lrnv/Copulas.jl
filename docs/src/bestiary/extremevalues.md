@@ -195,7 +195,7 @@ together with `FamilyCopula(d, dep, asy)`.
 | extremal-``t`` | `tEVCopula{d}(ν, R)` | ``d=\mathrm{size}(R,1)`` | general correlation matrix |
 | Tawn | `TawnCopula{d}(α, weights)` | ``d=\mathrm{length}(weights)`` | full-set logistic component + singleton remainders |
 | Tawn | `TawnCopula{d}(dep, asy)` | ``d\ge2`` | full subset representation |
-| Asymmetric Galambos | `AsymGalambosCopula{2}(α, θ₁, θ₂)` | 2 | scalar Pickands fast path of the unified subset model |
+| Asymmetric Galambos | `AsymGalambosCopula{2}(α, θ₁, θ₂)` | 2 | bivariate form of the unified subset model |
 | Asymmetric Galambos | `AsymGalambosCopula{d}(α, weights)` | ``d=\mathrm{length}(weights)`` | full-set negative-logistic component + singleton remainders |
 | Asymmetric Galambos | `AsymGalambosCopula{d}(dep, asy)` | ``d\ge2`` | full subset representation |
 | BC2 | `BC2Copula{2}(a, b)` | 2 | classical bivariate representation |
@@ -229,8 +229,8 @@ HuslerReissCopula(Γ)
 ```
 
 accepts a general valid variogram matrix. In dimension two a matrix
-parameterization keeps its matrix representation, while dispatch selects the
-specialized bivariate kernel after recovering the scalar parameter.
+parameterization has the same mathematical meaning as the corresponding
+bivariate scalar form.
 
 The extremal-``t`` family follows the same pattern:
 
@@ -239,17 +239,8 @@ tEVCopula{d}(ν, ρ) # equicorrelation
 tEVCopula{d}(ν, R) # general correlation matrix
 ```
 
-A valid ``2\times2`` correlation matrix likewise keeps its matrix
-representation, while dispatch selects the specialized bivariate kernel from
-its off-diagonal correlation.
-
-::: info One public family, parameter-driven dispatch
-
-Scalar and matrix constructors of each family share one tail type. The
-stored parameter type selects the exchangeable or general representation,
-and dimension-specific methods retain the fast bivariate kernels.
-
-:::
+A valid ``2\times2`` correlation matrix likewise defines the bivariate model
+through its off-diagonal correlation.
 
 ### Tawn and asymmetric Galambos subset models
 
@@ -294,7 +285,7 @@ AsymGalambosCopula{d}(α, weights)
 is a Copulas.jl parameterization of that valid subset model, not a separate
 literature family.
 
-### Implementation-derived Mixed extension
+### Copulas.jl Mixed extension
 
 The historical Mixed model is bivariate [tawn1988bivariate](@cite). The
 ``d``-dimensional extension used by Copulas.jl is obtained from the identity
@@ -320,7 +311,7 @@ which is the historical Mixed Pickands model.
     Tawn [tawn1988bivariate](@cite) is the reference for the original bivariate
     Mixed model, and Galambos [galambos1975order](@cite) for the
     negative-logistic component. The dimension-free convex-combination identity
-    above is the extension used and derived in the Copulas.jl implementation;
+    above is the extension defined by Copulas.jl;
     we do not attribute that exact ``d``-dimensional parameterization to either
     paper.
 
@@ -427,10 +418,7 @@ family and dimension.
 The numerical implementation remains free to evolve without changing that
 public behavior.
 
-```@docs; canonical=false
-Tail
-ExtremeValueCopula
-```
+See the canonical Public API entries for [`Tail`](@ref), [`ExtremeValueCopula`](@ref).
 
 ## Conditionals and distortions
 
@@ -463,7 +451,7 @@ Cs = (
 labels = ("Galambos(0.8)", "Hüsler–Reiss(1.0)", "Log(1.6)")
 plot(size=(700, 300))
 for (i, C) in enumerate(Cs)
-    plot!(ts, Copulas.A.(C.tail, ts); label=labels[i])
+    plot!(ts, Copulas.A.(params(C).tail, ts); label=labels[i])
 end
 plot!(ts, max.(ts, 1 .- ts); label="bounds", ls=:dash, color=:black)
 plot!(ts, ones(length(ts)); label="1", ls=:dot, color=:gray)
@@ -502,86 +490,47 @@ plot!(ts, EC[2].(ts); seriestype=:steppost, label="s₂", color=:gray)
 
 ## [Available models](@id available_extreme_models)
 
-### `MTail`
-```@docs; canonical=false
-MTail
-```
-
-
-### `NoTail`
-```@docs; canonical=false
-NoTail
-```
-
 ### `TawnTail`
-```@docs; canonical=false
-TawnTail
-```
+See the canonical Public API entry for [`TawnTail`](@ref).
 
 ### `AsymGalambosTail`
-```@docs; canonical=false
-AsymGalambosTail
-```
+See the canonical Public API entry for [`AsymGalambosTail`](@ref).
 
 ### `AsymLogTail`
-```@docs; canonical=false
-AsymLogTail
-```
+See the canonical Public API entry for [`AsymLogTail`](@ref).
 
 ### `AsymMixedTail`
-```@docs; canonical=false
-AsymMixedTail
-```
+See the canonical Public API entry for [`AsymMixedTail`](@ref).
 
 ### `BC2Tail`
-```@docs; canonical=false
-BC2Tail
-```
+See the canonical Public API entry for [`BC2Tail`](@ref).
 
 ### `CuadrasAugeTail`
-```@docs; canonical=false
-CuadrasAugeTail
-```
+See the canonical Public API entry for [`CuadrasAugeTail`](@ref).
 
 ### `GalambosTail`
-```@docs; canonical=false
-GalambosTail
-```
+See the canonical Public API entry for [`GalambosTail`](@ref).
 
 ### `HuslerReissTail`
-```@docs; canonical=false
-HuslerReissTail
-```
+See the canonical Public API entry for [`HuslerReissTail`](@ref).
 
 ### `LogTail`
-```@docs; canonical=false
-LogTail
-```
+See the canonical Public API entry for [`LogTail`](@ref).
 
 ### `MixedTail`
-```@docs; canonical=false
-MixedTail
-```
+See the canonical Public API entry for [`MixedTail`](@ref).
 
 ### `MOTail`
-```@docs; canonical=false
-MOTail
-```
+See the canonical Public API entry for [`MOTail`](@ref).
 
 ### `tEVTail`
-```@docs; canonical=false
-tEVTail
-```
+See the canonical Public API entry for [`tEVTail`](@ref).
 
 ### `EmpiricalEVTail`
-```@docs; canonical=false
-EmpiricalEVTail
-```
+See the canonical Public API entry for [`EmpiricalEVTail`](@ref).
 
 ### `EmpiricalEVMultivariateTail`
-```@docs; canonical=false
-EmpiricalEVMultivariateTail
-```
+See the canonical Public API entry for [`EmpiricalEVMultivariateTail`](@ref).
 
 ## References
 

@@ -9,28 +9,19 @@ Some copulas, while necessary in certain cases and very useful, are hard to clas
 ## [Independence and Fréchet-Hoeffding bounds](@id bestiary_ref)
 
 ### `IndependentCopula`
-```@docs; canonical=false
-IndependentCopula
-```
+See the canonical Public API entry for [`IndependentCopula`](@ref).
 
 ### `MCopula`
-```@docs; canonical=false
-MCopula
-```
+See the canonical Public API entry for [`MCopula`](@ref).
 
 ### `WCopula`
-```@docs; canonical=false
-WCopula
-```
-
+See the canonical Public API entry for [`WCopula`](@ref).
 
 ## Transformed Copulas
 
 ### `SurvivalCopula`
 
-```@docs; canonical=false
-SurvivalCopula
-```
+See the canonical Public API entry for [`SurvivalCopula`](@ref).
 
 When fitting a rotated model, pass the desired flip indices explicitly because
 they belong to the instance rather than its type:
@@ -46,23 +37,17 @@ Ŝ = fit(typeof(S), U; flips=(1,))
 
 ### `PlackettCopula`
 
-```@docs; canonical=false
-PlackettCopula
-```
+See the canonical Public API entry for [`PlackettCopula`](@ref).
 
 ### `FGMCopula`
 
 Farlie-Gumbel-Morgenstern (FGM) copula
 
-```@docs; canonical=false
-FGMCopula
-```
+See the canonical Public API entry for [`FGMCopula`](@ref).
 
 ### `RafteryCopula`
 
-```@docs; canonical=false
-RafteryCopula
-```
+See the canonical Public API entry for [`RafteryCopula`](@ref).
 
 ## References
 

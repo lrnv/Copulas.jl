@@ -83,7 +83,7 @@ $$x_k = A_k - r_k B_k \;\iff\; r_k = \frac{A_k - x_k}{B_k}.$$
 
 This closed form could be used directly (even if our code does not for the moment). 
 
-## Implementation
+## Worked example
 
 We define a few helpers to visualize and validate the fitted model, and we now use the built-in `EmpiricalGenerator` as the estimator:
  - simulate Archimedean copula samples from a given R,
@@ -96,7 +96,11 @@ using Distributions, StatsBase, Roots, QuadGK, Plots, Copulas
 using Random # hide
 Random.seed!(42) # hide
 
-kendall_function(u::AbstractMatrix) = (W = Copulas._kendall_sample(u); t -> count(w -> w <= t, W) / length(W))
+function kendall_function(u::AbstractMatrix)
+    empirical = EmpiricalCopula(u)
+    values = [cdf(empirical, observation) for observation in eachcol(u)]
+    return t -> count(value -> value <= t, values) / length(values)
+end
 
 # Williamson d-transform φ_R for several R types
 mk_ϕᵣ(R::DiscreteUnivariateDistribution, d) = let supp = support(R), w = pdf.(R, supp)

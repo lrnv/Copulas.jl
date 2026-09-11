@@ -191,6 +191,14 @@ conditioning falls back to the generic path.
 
 This is how we enable conditioning on the SklarDist level.
 
+Nested Archimedean copulas specialize multi-coordinate conditional CDFs through
+an internal `_partial_cdf` method. It evaluates the same polynomial Faà di Bruno
+tree used by the single-coordinate path, selected through the conditional
+copula's concrete nested representation. The generic fallback instead nests one
+`ForwardDiff.derivative` per observed coordinate and can become exponentially
+expensive as that count grows. These dispatch and representation details are
+internal and must not be used by downstream code.
+
 !!! tip "Look at existing distortions"
     Take a look in the `src/UnivariateDistributions/Distortions` folder for examples, there are plenty. 
 

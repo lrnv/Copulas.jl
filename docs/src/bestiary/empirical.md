@@ -22,9 +22,7 @@ where $\mathrm{Rank}(y, \boldsymbol x) = \sum_{x_i \in \boldsymbol x} \mathbb{1}
 
 In `Copulas.jl`, we provide a function `pseudos` that implement this transformation directly. 
 
-```@docs; canonical=false
-pseudos
-```
+See the canonical Public API entry for [`pseudos`](@ref).
 
 ## Deheuvel's empirical copula
 
@@ -56,14 +54,14 @@ Despite its name, $\hat{C}_N$ is not a copula since it does not have uniform mar
 
 In the package, this copula is implemented as the `EmpiricalCopula`: 
 
-```@docs; canonical=false
-EmpiricalCopula
-```
+See the canonical Public API entry for [`EmpiricalCopula`](@ref).
 
 ::: info Conditionals and distortions
 
-- Distortions: available via the generic implementation (partial-derivative ratios). For the empirical copula, derivatives are stepwise; interpret results carefully near sample jumps.
-- Conditional copulas: available via the generic implementation. No specialized fast path is provided.
+- Conditional distortions are defined by partial-derivative ratios. For the
+  empirical copula, derivatives are stepwise; interpret results carefully near
+  sample jumps.
+- Conditional copulas are available through [`condition`](@ref).
 
 :::
 
@@ -75,7 +73,7 @@ using Copulas, Distributions, Plots
 X = SklarDist(ClaytonCopula(2, 1.2), (Normal(), Beta(1, 4)))
 x = rand(X, 1000)
 Ĉ = EmpiricalCopula(x, pseudo_values=false)
-plot(plot(X.C), plot(Ĉ); layout=(1,2))
+plot(plot(params(X).copula), plot(Ĉ); layout=(1,2))
 ```
 
 ## Beta copula
@@ -100,14 +98,12 @@ $$\sup_{\boldsymbol u \in [0,1]^d} |\hat{C}_N(\boldsymbol u) - \hat{C}_N^\beta(\
 
 In the package, this copula is implemented as `BetaCopula`:
 
-```@docs; canonical=false
-BetaCopula
-```
+See the canonical Public API entry for [`BetaCopula`](@ref).
 
 ::: info Conditionals and distortions
 
-- Distortions: specialized fast path returning a MixtureModel of Beta components for efficient evaluation and sampling.
-- Conditional copulas: available via the generic implementation (no dedicated fast path).
+- Conditional distortions support efficient evaluation and sampling.
+- Conditional copulas are available through [`condition`](@ref).
 
 :::
 
@@ -131,14 +127,13 @@ It is a multivariate Bernstein polynomial approximation of $C$ on the uniform gr
 
 In the package, this copula is implemented as `BernsteinCopula`:
 
-```@docs; canonical=false
-BernsteinCopula
-```
+See the canonical Public API entry for [`BernsteinCopula`](@ref).
 
 ::: info Conditionals and distortions
 
-- Distortions: specialized fast path returning a MixtureModel of Beta components (weights from Bernstein grid finite differences conditioned on $\boldsymbol u_J$).
-- Conditional copulas: available via the generic implementation (no dedicated fast path).
+- Conditional distortions are obtained from the Bernstein grid conditioned on
+  $\boldsymbol u_J$ and support evaluation and sampling.
+- Conditional copulas are available through [`condition`](@ref).
 
 :::
 
@@ -208,14 +203,13 @@ Convergence results for this kind of copulas can be found in [durante2015](@cite
 
 In the package, this copula is implemented as `CheckerboardCopula`:
 
-```@docs; canonical=false
-CheckerboardCopula
-```
+See the canonical Public API entry for [`CheckerboardCopula`](@ref).
 
 ::: info Conditionals and distortions
 
-- Distortions: specialized for conditioning on a single coordinate (p=1) via a histogram-bin distortion on the corresponding slice.
-- Conditional copulas: specialized projection onto remaining axes, renormalizing the mass in the fixed bins, still returns a Checkerboard. 
+- Conditioning on one coordinate uses the corresponding histogram slice.
+- Conditioning on several coordinates preserves the checkerboard semantics on
+  the remaining axes and renormalizes the relevant cell probabilities.
 
 :::
 
@@ -272,11 +266,7 @@ The projected multivariate model may contain singular components. Therefore
 defined. See [Extreme Value copulas](@ref Extreme_theory) for the STDF theory,
 the projection references, and the complete list of EV families.
 
-```@docs; canonical=false
-EmpiricalEVTail
-EmpiricalEVMultivariateTail
-```
-
+See the canonical Public API entries for [`EmpiricalEVTail`](@ref), [`EmpiricalEVMultivariateTail`](@ref).
 
 ## Empirical Archimedean generator (Kendall inversion)
 
@@ -298,9 +288,7 @@ Usage:
 - Use directly in an Archimedean copula: `Ĉ = ArchimedeanCopula(d, Ĝ)`
 - Access the fitted radial law: `R̂ = 𝒲₋₁(Ĝ, d)`
 
-```@docs; canonical=false
-EmpiricalGenerator
-```
+See the canonical Public API entry for [`EmpiricalGenerator`](@ref).
 
 ### Performance notes
 - The Kendall sample computation is currently O(n^2) in the number of observations. For large n, future versions may switch to Fenwick-tree–based sweeps to reach ~O(n log n) in bivariate cases and ~O(n log^{d-1} n) for higher d.
@@ -312,34 +300,22 @@ See [This example page](@ref nonpar_archi_gen_example) for more details and exam
 
 ### `EmpiricalCopula`
 
-```@docs; canonical=false
-EmpiricalCopula
-```
+See the canonical Public API entry for [`EmpiricalCopula`](@ref).
 
 ### `BernsteinCopula`
 
-```@docs; canonical=false
-BernsteinCopula
-```
+See the canonical Public API entry for [`BernsteinCopula`](@ref).
 
 ### `CheckerboardCopula`
 
-```@docs; canonical=false
-CheckerboardCopula
-```
+See the canonical Public API entry for [`CheckerboardCopula`](@ref).
 
 ### `BetaCopula`
-```@docs; canonical=false
-BetaCopula
-```
-
+See the canonical Public API entry for [`BetaCopula`](@ref).
 
 ### `EmpiricalEVCopula`
 
-```@docs; canonical=false
-EmpiricalEVCopula
-```
-
+See the canonical Public API entry for [`EmpiricalEVCopula`](@ref).
 
 ## References
 

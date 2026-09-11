@@ -1,6 +1,6 @@
 # [Visualizations](@id viz_page)
 
-## Implementation details
+## Plotting interface
 
 `Copulas.jl` provides a dependency‑light plotting interface via `Plots.jl` recipes. Everything (bivariate contours/surfaces, marginal overlays, and high‑dimensional pairwise panels) is driven by keywords to the `plot` function.
 

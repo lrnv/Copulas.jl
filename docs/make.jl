@@ -5,6 +5,21 @@ using DocumenterVitepress
 
 DocMeta.setdocmeta!(Copulas, :DocTestSetup, :(using Copulas); recursive=true)
 
+# Narrative pages explain supported behavior and link to the canonical API
+# reference; embedding docstrings there would couple them back to source-level
+# implementation documentation.
+for section in ("manual", "bestiary", "examples")
+    for (root, _, files) in walkdir(joinpath(@__DIR__, "src", section))
+        for file in filter(name -> endswith(name, ".md"), files)
+            path = joinpath(root, file)
+            text = read(path, String)
+            occursin(r"```@(?:auto)?docs", text) && error(
+                "Narrative documentation must link to api/public.md instead of embedding docstrings: $path",
+            )
+        end
+    end
+end
+
 bib = CitationBibliography(
     joinpath(@__DIR__,"src","assets","references.bib"),
     style=:numeric

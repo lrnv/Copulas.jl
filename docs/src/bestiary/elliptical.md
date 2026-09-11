@@ -163,18 +163,11 @@ $$\Sigma = \begin{pmatrix} \Sigma_{II} & \Sigma_{IJ} \\ \Sigma_{JI} & \Sigma_{JJ
 These formulas are what the implementation relies on (via `SklarDist` for original scale and via marginal CDF transforms for the copula scale) to compute `condition` and the associated distortions efficiently.
 
 
-```@docs; canonical=false
-EllipticalCopula
-```
-
-
 ## Available models
 
 ### `GaussianCopula`
 
-```@docs; canonical=false
-GaussianCopula
-```
+See the canonical Public API entry for [`GaussianCopula`](@ref).
 
 #### Targeting a Pearson correlation: the Nataf correction
 
@@ -202,15 +195,11 @@ cor(rand(rng, D, 10^5)') # ≈ 0.7 as requested.
 
 Since non-Gaussian marginals cannot attain every Pearson correlation (the Fréchet-Hoeffding bounds of the pair), an unattainable target throws an error reporting the attainable range. Pairs among `Normal`, `LogNormal`, and `Uniform` margins use closed-form corrections; other marginals go through a Gauss-Hermite quadrature.
 
-```@docs; canonical=false
-Nataf
-```
+See the canonical Public API entry for [`Nataf`](@ref).
 
 ### `TCopula`
 
-```@docs; canonical=false
-TCopula
-```
+See the canonical Public API entry for [`TCopula`](@ref).
 
 For a bivariate Student copula, `Copulas.ρ(C)` evaluates Spearman's rank
 correlation using a one-dimensional integral rather than a generic copula
@@ -229,7 +218,7 @@ using Copulas, Distributions, Random
 C = TCopula{2}(4.0, [1.0 0.55; 0.55 1.0])
 U = rand(Xoshiro(316), C, 500)
 Ĉ = fit(TCopula{2}, U; method=:itau_irho, vcov=false)
-(df=Ĉ.df, correlation=Ĉ.Σ[1, 2])
+(df=params(Ĉ).df, correlation=params(Ĉ).Σ[1, 2])
 ```
 
 This rank-matching method is bivariate. Near zero Kendall correlation, the

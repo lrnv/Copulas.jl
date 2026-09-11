@@ -58,9 +58,7 @@ plot!(x -> ϕ(ClaytonGenerator(1),x), label="ClaytonGenerator(1)")
 plot!(x -> ϕ(ClaytonGenerator(5),x), label="ClaytonGenerator(5)")
 ```
 
-```@docs; canonical=false
-Generator
-```
+See the canonical Public API entry for [`Generator`](@ref).
 
 Note that the rate at which these functions approach zero can vary significantly
 between generators. Their inverses are used internally when evaluating the
@@ -97,9 +95,7 @@ Orders below two remain useful for Williamson reductions and Liouville marginals
 
 :::
 
-```@docs; canonical=false
-WilliamsonGenerator
-```
+See the canonical Public API entry for [`WilliamsonGenerator`](@ref).
 
 !!! note "Bijection and identities (matching d)"
     The Williamson $d$-transform and its inverse form a bijection between positive radials and $d$-monotone Archimedean generators. In particular, when the same $d$ is used on both sides:
@@ -260,10 +256,7 @@ using Copulas: 𝒲₋₁, ClaytonGenerator
 
 :::
 
-```@docs; canonical=false
-ArchimedeanCopula
-```
-
+See the canonical Public API entry for [`ArchimedeanCopula`](@ref).
 
 ## Conditionals and distortions
 
@@ -341,9 +334,7 @@ When `G = 𝒲(R, source_order)` retains its source radial, the sharper conditio
 
 Any implemented `Generator` can be used when it has sufficient monotonicity. Conversely, any supported non-negative univariate radial distribution can define the generator through `𝒲(R, order)`. This covers the full radial-simplex construction for positive real Dirichlet parameters; a singular radial may naturally produce a copula without a density.
 
-```@docs; canonical=false
-LiouvilleCopula
-```
+See the canonical Public API entry for [`LiouvilleCopula`](@ref).
 
 See the [Liouville copulas](@ref liouville_copulas) example for construction from both a radial distribution and a conventional generator, order reductions, sampling, evaluation, and subsetting.
 
@@ -351,94 +342,58 @@ See the [Liouville copulas](@ref liouville_copulas) example for construction fro
 ## [Available models](@id available_archimedean_models)
 
 ### `WilliamsonGenerator`
-```@docs; canonical=false
-WilliamsonGenerator
-```
+See the canonical Public API entry for [`WilliamsonGenerator`](@ref).
 
 ### `EmpiricalGenerator`
-```@docs; canonical=false
-EmpiricalGenerator
-```
+See the canonical Public API entry for [`EmpiricalGenerator`](@ref).
 
 ### `FrailtyGenerator`
-```@docs; canonical=false
-FrailtyGenerator
-```
+See the canonical Public API entry for [`FrailtyGenerator`](@ref).
 
 ### `ClaytonGenerator`
-```@docs; canonical=false
-ClaytonGenerator
-```
+See the canonical Public API entry for [`ClaytonGenerator`](@ref).
 
 ### `FrankGenerator`
-```@docs; canonical=false
-FrankGenerator
-```
+See the canonical Public API entry for [`FrankGenerator`](@ref).
 
 ### `GumbelGenerator`
-```@docs; canonical=false
-GumbelGenerator
-```
+See the canonical Public API entry for [`GumbelGenerator`](@ref).
 
 ### `AMHGenerator`
-```@docs; canonical=false
-AMHGenerator
-```
+See the canonical Public API entry for [`AMHGenerator`](@ref).
 
 ### `JoeGenerator`
-```@docs; canonical=false
-JoeGenerator
-```
+See the canonical Public API entry for [`JoeGenerator`](@ref).
 
 ### `GumbelBarnettGenerator`
-```@docs; canonical=false
-GumbelBarnettGenerator
-```
+See the canonical Public API entry for [`GumbelBarnettGenerator`](@ref).
 
 ### `InvGaussianGenerator`
-```@docs; canonical=false
-InvGaussianGenerator
-```
+See the canonical Public API entry for [`InvGaussianGenerator`](@ref).
 
 ### `BB1Generator`
-```@docs; canonical=false
-BB1Generator
-```
+See the canonical Public API entry for [`BB1Generator`](@ref).
 
 ### `BB2Generator`
-```@docs; canonical=false
-BB2Generator
-```
+See the canonical Public API entry for [`BB2Generator`](@ref).
 
 ### `BB3Generator`
-```@docs; canonical=false
-BB3Generator
-```
+See the canonical Public API entry for [`BB3Generator`](@ref).
 
 ### `BB6Generator`
-```@docs; canonical=false
-BB6Generator
-```
+See the canonical Public API entry for [`BB6Generator`](@ref).
 
 ### `BB7Generator`
-```@docs; canonical=false
-BB7Generator
-```
+See the canonical Public API entry for [`BB7Generator`](@ref).
 
 ### `BB8Generator`
-```@docs; canonical=false
-BB8Generator
-```
+See the canonical Public API entry for [`BB8Generator`](@ref).
 
 ### `BB9Generator`
-```@docs; canonical=false
-BB9Generator
-```
+See the canonical Public API entry for [`BB9Generator`](@ref).
 
 ### `BB10Generator`
-```@docs; canonical=false
-BB10Generator
-```
+See the canonical Public API entry for [`BB10Generator`](@ref).
 
 ## References
 
