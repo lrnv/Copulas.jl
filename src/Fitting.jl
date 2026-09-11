@@ -133,7 +133,7 @@ parameters and caches are not. A new in-package family must specialize this
 method before it can use generic fitting and display machinery.
 
 See also: [`Copula`](@ref), [`SklarDist`](@ref), [`Distributions.fit`](@ref),
-[`_example`](@ref).
+[`CopulaModel`](@ref).
 """
 Distributions.params(C::Copula) = throw("You need to specify the Distributions.params() function as returning a named tuple with parameters.")
 
@@ -292,8 +292,9 @@ Fit a copula of type `CT` to pseudo-observations `U`.
 - `U::AbstractMatrix` — a `d×n` matrix of data (each column is an observation).
   If the input is raw data, use `SklarDist` fitting instead to estimate both
   margins and copula simultaneously.
-- `method::Symbol`    — fitting method; defaults to the first available one
-  (see [`_available_fitting_methods`](@ref)).
+- `method::Symbol`    — fitting method; defaults to the family's preferred
+  supported method. Family documentation lists the available choices, and an
+  unsupported value raises an `ArgumentError` that reports them.
 - `kwargs...`         — additional method-specific keyword arguments
   (e.g. `pseudo_values=true`, `grid=401` for extreme-value tails, etc.).
 
