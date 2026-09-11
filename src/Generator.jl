@@ -661,27 +661,34 @@ Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., sJ = G
 
 
 """
-    FrailtyGenerator<:AbstractFrailtyGenerator<:Generator
-
-methods: 
-    - frailty(::FrailtyGenerator) gives the frailty 
-    - ϕ and the rest of generators are automatically defined from the frailty. 
-
-Constructor
-
     FrailtyGenerator(D)
 
-A Frailty generator can be defined by a positive random variable that happens to have a `mgf()` 
-function to compute its moment generating function. The generator is simply: 
+Construct a completely monotone Archimedean generator from a non-negative
+continuous frailty distribution `D`. Its generator is the Laplace transform
 
 ```math
-\\phi(t) = mgf(frailty(G), -t)
+\\phi(t)=\\mathbb{E}[e^{-tV}]=\\operatorname{mgf}_D(-t), \\qquad V\\sim D.
 ```
 
-https://www.uni-ulm.de/fileadmin/website_uni_ulm/mawi.inst.zawa/forschung/2009-08-16_hofert.pdf
+`D` must have non-negative support and implement `Distributions.mgf`.
+Generator derivatives additionally use expectations of `V^k exp(-tV)`, and
+sampling an associated Archimedean copula uses `rand` on the frailty. The
+resulting complete monotonicity permits construction in every dimension.
+
+Multiplying `V` by a positive constant changes the generator scale but not the
+resulting Archimedean copula. Consequently the frailty distribution is not an
+identifiable copula parameterization without a scale convention. This generic
+wrapper is useful for custom frailties; named generator families generally
+offer clearer parameter validation and fitting support.
+
+# Example
+```julia
+G = FrailtyGenerator(Gamma(2.0, 1.0))
+C = ArchimedeanCopula(3, G)
+```
 
 References:
-* [hofert2009](@cite) M. Hoffert (2009). Efficiently sampling Archimedean copulas
+* [hofert2009](@cite) M. Hofert (2009). Efficiently sampling Archimedean copulas.
 """
 FrailtyGenerator
 
