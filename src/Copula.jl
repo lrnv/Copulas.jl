@@ -71,7 +71,7 @@ specialize it. This trait controls density-dependent generic operations and is
 not a downstream extension contract.
 
 See also: [`CopulaMeasureStyle`](@ref), [`limit_kind`](@ref),
-[`Distributions.logpdf`](@ref).
+`Distributions.logpdf`.
 """
 copula_measure_style(::Type{<:Copula}) = AbsolutelyContinuousMeasure()
 copula_measure_style(C::Copula) = copula_measure_style(typeof(C))
@@ -162,7 +162,7 @@ requires an ordinary density; it is unsuitable for singular copulas and may be
 expensive in high dimension. Public callers must use `cdf`.
 
 See also: [`Distributions._rand!`](@ref), [`copula_measure_style`](@ref),
-[`Distributions.cdf`](@ref).
+`Distributions.cdf`.
 """
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)
@@ -185,7 +185,7 @@ positive dependence. The sample form ranks each row internally, so it can also
 be applied to continuous raw observations. Numerical integration becomes
 costly as dimension grows and may be less accurate near singular limits.
 
-See also: [`τ`](@ref), [`StatsBase.corspearman`](@ref), [`subsetdims`](@ref).
+See also: [`τ`](@ref), `StatsBase.corspearman`, [`subsetdims`](@ref).
 """
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
@@ -211,7 +211,7 @@ expectation, so repeated calls need not be bitwise identical and exact family
 methods should be preferred when available. Ties in sample data do not receive
 a dedicated correction.
 
-See also: [`ρ`](@ref), [`StatsBase.corkendall`](@ref), [`subsetdims`](@ref).
+See also: [`ρ`](@ref), `StatsBase.corkendall`, [`subsetdims`](@ref).
 """
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
@@ -495,7 +495,7 @@ Bounds are clipped to the unit hypercube; a rectangle with any non-positive
 width has measure zero. Both corners must contain one value per copula
 dimension.
 
-See also: [`Distributions.cdf`](@ref), [`subsetdims`](@ref), [`Copula`](@ref).
+See also: `Distributions.cdf`, [`subsetdims`](@ref), [`Copula`](@ref).
 """
 function measure(C::Copula{d}, us,vs) where {d}
 

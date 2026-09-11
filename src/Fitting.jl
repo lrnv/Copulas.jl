@@ -1166,7 +1166,7 @@ scale. Density prediction is meaningful only under the fitted copula's
 documented measure semantics.
 
 See also: [`CopulaModel`](@ref), [`StatsBase.residuals`](@ref),
-[`Distributions.cdf`](@ref), [`Distributions.pdf`](@ref).
+`Distributions.cdf`, `Distributions.pdf`.
 """
 function StatsBase.predict(M::CopulaModel; newdata=nothing, what=:cdf, nsim=0)
     C = _copula_of(M)
