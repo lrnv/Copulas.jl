@@ -9,6 +9,14 @@ The BB3 copula has parameters ``\\theta \\in [1,\\infty)`` and ``\\delta \\in (0
 \\phi(t) = \\exp(-[\\delta^{-1}\\log(1 + t)]^{\\frac{1}{\\theta}}),
 ```
 
+Both parameter constraints are essential and should be enforced when
+optimizing. Large values can strongly concentrate probability, making `logpdf`
+preferable to raw density calculations and potentially weakening finite-sample
+parameter identification.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref),
+[`Distributions.logpdf`](@ref), [`Distributions.fit`](@ref).
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.195-196
 """

@@ -14,6 +14,13 @@ Special cases:
 - `θ = δ = 1` gives the independence copula.
 - `θ = Inf` or `δ = Inf` gives the upper Fréchet–Hoeffding bound.
 
+Setting `δ = 1` gives Joe with parameter `θ`, while `θ = 1` gives Gumbel with
+parameter `δ`. Data near either subfamily may not identify both parameters
+well; the common corner `(1,1)` is independence.
+
+See also: [`JoeGenerator`](@ref), [`GumbelGenerator`](@ref),
+[`ArchimedeanCopula`](@ref), [`Distributions.fit`](@ref).
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.200-201
 """

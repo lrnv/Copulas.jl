@@ -12,6 +12,13 @@ The BB7 copula is parameterized by ``\\theta \\in [1,\\infty)`` and ``\\delta \\
 The limiting combination `θ = 1`, `δ = Inf` gives the upper
 Fréchet–Hoeffding bound.
 
+At `θ = 1`, BB7 reduces to Clayton with parameter `δ`. The family can represent
+dependence in both tails, but its two tail coefficients are not independently
+controlled over the entire parameter space; inspect them after fitting.
+
+See also: [`ClaytonGenerator`](@ref), [`ArchimedeanCopula`](@ref),
+[`λₗ`](@ref), [`λᵤ`](@ref), [`Distributions.fit`](@ref).
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.202-203
 """

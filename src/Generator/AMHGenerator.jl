@@ -12,6 +12,13 @@ The [AMH Copula](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Most_
 Special cases:
 - `θ = 0` gives the independence copula.
 
+AMH covers only a modest range of dependence. Negative parameters have a
+parameter-dependent maximum dimension, so constructing the generator alone
+does not establish validity of a requested copula dimension.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref), [`τ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
