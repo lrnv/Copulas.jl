@@ -490,47 +490,31 @@ plot!(ts, EC[2].(ts); seriestype=:steppost, label="s₂", color=:gray)
 
 ## [Available models](@id available_extreme_models)
 
-### `TawnTail`
-See the canonical Public API entry for [`TawnTail`](@ref).
+An extreme-value copula is determined by
+``C(\boldsymbol u)=\exp[-\ell(-\log\boldsymbol u)]``. In dimension two,
+``\ell(x,y)=(x+y)A(x/(x+y))``. The table therefore defines each model through
+its STDF ``\ell`` or Pickands function ``A`` and gives both the component and
+copula constructors.
 
-### `AsymGalambosTail`
-See the canonical Public API entry for [`AsymGalambosTail`](@ref).
+| Model | Mathematical definition and parameter domain | Public constructors |
+|:--|:--|:--|
+| Logistic | ``\ell(\boldsymbol x)=(\sum_i x_i^\theta)^{1/\theta}``, ``\theta\ge1`` | `LogTail(θ)`; `LogCopula{d}(θ)`; `LogCopula(d, θ)` |
+| Galambos | ``\ell(\boldsymbol x)=\sum_i x_i-(\sum_i x_i^{-\theta})^{-1/\theta}``, ``\theta\ge0`` | `GalambosTail(θ)`; `GalambosCopula{d}(θ)`; `GalambosCopula(d, θ)` |
+| Mixed | ``A(t)=1-\theta t(1-t)``, ``0\le\theta\le1``; in higher dimensions Copulas.jl uses the convex combination with the Galambos ``\theta=1`` STDF described above | `MixedTail(θ)`; `MixedCopula{d}(θ)`; `MixedCopula(d, θ)` |
+| Cuadras--Augé | ``\ell(\boldsymbol x)=(1-\theta)\sum_i x_i+\theta\max_i x_i``, ``0\le\theta\le1`` | `CuadrasAugeTail(θ)`; `CuadrasAugeCopula{d}(θ)`; `CuadrasAugeCopula(d, θ)` |
+| Hüsler--Reiss | Brown--Resnick/Hüsler--Reiss STDF determined either by the exchangeable variogram ``\gamma_{ij}=(2/\theta)^2`` with ``\theta\ge0``, or by a finite, symmetric, conditionally negative-definite variogram matrix ``\Gamma`` with zero diagonal | `HuslerReissTail(θ)` / `HuslerReissTail(Γ)`; `HuslerReissCopula{d}(θ)` / `HuslerReissCopula(Γ)` |
+| extremal-``t`` | extremal-``t`` STDF with ``\nu>0`` and correlation ``R``; the exchangeable form uses ``\rho\in(-1/(d-1),1]`` | `tEVTail(ν, ρ)` / `tEVTail(ν, R)`; `tEVCopula{d}(ν, ρ)` / `tEVCopula{d}(ν, R)` / runtime-dimension forms |
+| Tawn asymmetric logistic | sum of logistic STDF components over nonempty coordinate subsets; non-singleton dependence parameters satisfy ``\alpha_S\ge1`` and asymmetry weights lie in ``[0,1]`` and sum to one for each margin | `TawnTail(α, weights)` / `TawnTail(d, dep, asy)`; corresponding `TawnCopula` forms |
+| Asymmetric Galambos | sum of negative-logistic components over coordinate subsets; ``\alpha_S\ge0`` with normalized asymmetry weights | `AsymGalambosTail(α, weights)` / `AsymGalambosTail(dep, asy)`; corresponding `AsymGalambosCopula` forms |
+| Asymmetric logistic (bivariate) | ``A(t)=[\theta_1^\alpha(1-t)^\alpha+\theta_2^\alpha t^\alpha]^{1/\alpha}+(\theta_1-\theta_2)t+1-\theta_1``; ``\alpha\ge1``, ``\theta_i\in[0,1]`` | `AsymLogTail(α, θ₁, θ₂)`; `AsymLogCopula{2}(α, θ₁, θ₂)`; `AsymLogCopula(2, α, θ₁, θ₂)` |
+| Asymmetric mixed (bivariate) | ``A(t)=\theta_2t^3+\theta_1t^2-(\theta_1+\theta_2)t+1``; ``\theta_1\ge0``, ``\theta_1+\theta_2\le1``, ``\theta_1+2\theta_2\le1``, ``\theta_1+3\theta_2\ge0`` | `AsymMixedTail(θ₁, θ₂)`; `AsymMixedCopula{2}(θ₁, θ₂)`; `AsymMixedCopula(2, θ₁, θ₂)` |
+| BC2 spectral | two-atom spectral model; in dimension two ``A(t)=\max(at,b(1-t))+\max((1-a)t,(1-b)(1-t))`` with ``a,b\in[0,1]`` | `BC2Tail(a, b)` / `BC2Tail(a_vector)`; corresponding `BC2Copula` forms |
+| Marshall--Olkin | common-shock model with one non-negative intensity for every nonempty subset of coordinates; the vector therefore has length ``2^d-1`` | `MOTail(λ₁, λ₂, λ₁₂)` / `MOTail(λ)`; corresponding `MOCopula` forms |
+| Empirical EV (bivariate) | shape-constrained estimate of ``A`` from pseudo-observations using the Pickands, CFG, or OLS criterion | `EmpiricalEVTail(U; method=:ols)`; `EmpiricalEVCopula{2}(U; method=:ols)` |
+| Empirical EV (multivariate) | finite spectral projection defining a valid homogeneous convex STDF | `EmpiricalEVMultivariateTail(U; method=:ols, degree=3)`; `EmpiricalEVCopula{d}(U; method=:ols, degree=3)` |
 
-### `AsymLogTail`
-See the canonical Public API entry for [`AsymLogTail`](@ref).
-
-### `AsymMixedTail`
-See the canonical Public API entry for [`AsymMixedTail`](@ref).
-
-### `BC2Tail`
-See the canonical Public API entry for [`BC2Tail`](@ref).
-
-### `CuadrasAugeTail`
-See the canonical Public API entry for [`CuadrasAugeTail`](@ref).
-
-### `GalambosTail`
-See the canonical Public API entry for [`GalambosTail`](@ref).
-
-### `HuslerReissTail`
-See the canonical Public API entry for [`HuslerReissTail`](@ref).
-
-### `LogTail`
-See the canonical Public API entry for [`LogTail`](@ref).
-
-### `MixedTail`
-See the canonical Public API entry for [`MixedTail`](@ref).
-
-### `MOTail`
-See the canonical Public API entry for [`MOTail`](@ref).
-
-### `tEVTail`
-See the canonical Public API entry for [`tEVTail`](@ref).
-
-### `EmpiricalEVTail`
-See the canonical Public API entry for [`EmpiricalEVTail`](@ref).
-
-### `EmpiricalEVMultivariateTail`
-See the canonical Public API entry for [`EmpiricalEVMultivariateTail`](@ref).
+The canonical [Public API](@ref) documents complete call forms, validation,
+limiting cases, and numerical restrictions.
 
 ## References
 

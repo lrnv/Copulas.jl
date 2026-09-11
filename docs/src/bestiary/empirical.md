@@ -300,22 +300,44 @@ See [This example page](@ref nonpar_archi_gen_example) for more details and exam
 
 ### `EmpiricalCopula`
 
-See the canonical Public API entry for [`EmpiricalCopula`](@ref).
+For observations ``\boldsymbol U_1,\ldots,\boldsymbol U_n``, the empirical CDF
+is ``C_n(\boldsymbol u)=n^{-1}\sum_i\mathbf1\{\boldsymbol U_i\le\boldsymbol u\}``.
+Construct it from a ``d\times n`` matrix with
+`EmpiricalCopula(U; pseudo_values=true)`, `EmpiricalCopula{d}(U; ...)`, or
+`EmpiricalCopula(d, U; ...)`; use `pseudo_values=false` for raw observations.
 
 ### `BernsteinCopula`
 
-See the canonical Public API entry for [`BernsteinCopula`](@ref).
+The Bernstein copula applies the multivariate Bernstein polynomial displayed
+above to a base copula or empirical sample. The integer or tuple `m` gives the
+polynomial degrees. Use `BernsteinCopula(C; m=10)`,
+`BernsteinCopula(U; m=10)`, or the corresponding `{d}` / `(d, ...)` forms.
 
 ### `CheckerboardCopula`
 
-See the canonical Public API entry for [`CheckerboardCopula`](@ref).
+The checkerboard copula assigns empirical probability ``w_k`` to each regular
+grid cell and is uniform within that cell. Thus its density there is
+``w_k\prod_jm_j`` and its CDF is the multilinear cell-overlap interpolation.
+Use `CheckerboardCopula(U; m=nothing, pseudo_values=true)` or the corresponding
+`{d}` / `(d, ...)` forms. Every ``m_j`` must divide the sample size.
 
 ### `BetaCopula`
-See the canonical Public API entry for [`BetaCopula`](@ref).
+
+The empirical beta copula replaces each rank indicator by the CDF of a
+``\operatorname{Beta}(R_{ij},n+1-R_{ij})`` variable, as defined above. Build it
+from a ``d\times n`` data matrix with `BetaCopula(U)`, `BetaCopula{d}(U)`, or
+`BetaCopula(d, U)`.
 
 ### `EmpiricalEVCopula`
 
-See the canonical Public API entry for [`EmpiricalEVCopula`](@ref).
+This estimator projects an empirical extreme-value estimate onto a valid
+Pickands function in dimension two or a valid spectral/STDF model in higher
+dimension. Use `EmpiricalEVCopula(U; method=:ols)`,
+`EmpiricalEVCopula{d}(U; method=:ols)`, or
+`EmpiricalEVCopula(d, U; method=:ols)`; `degree` controls the multivariate
+projection basis.
+
+See the canonical [Public API](@ref) for all estimator options and validation.
 
 ## References
 

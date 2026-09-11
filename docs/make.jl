@@ -16,6 +16,14 @@ for section in ("manual", "bestiary", "examples")
             occursin(r"```@(?:auto)?docs", text) && error(
                 "Narrative documentation must link to api/public.md instead of embedding docstrings: $path",
             )
+            if section == "bestiary"
+                occursin(
+                    r"(?m)^### `[^`]+`\s*\n\s*See the canonical Public API entr(?:y|ies)",
+                    text,
+                ) && error(
+                    "A Bestiary model entry must define the model, parameters, and constructor before linking to the API: $path",
+                )
+            end
         end
     end
 end

@@ -4,6 +4,17 @@ CurrentModule = Copulas
 
 # [Developer Guide: current contributor architecture](@id developer_fitting)
 
+## Documentation roles
+
+Manual, Bestiary, and Example pages are narrative user documentation. They use
+public interfaces and may link to the API reference, but they do not embed
+source docstrings. A Bestiary model entry must remain useful without following
+that link: at minimum it gives the mathematical definition, parameter domain,
+supported dimension, and one public constructor. The API page is the canonical
+location for exhaustive signatures, validation details, and reference
+docstrings. Internal dispatch, storage, and performance hooks belong in this
+guide or the internal implementation reference.
+
 This page describes the current internal machinery used by package contributors
 to add and maintain copula families in this repository.
 It focuses on what must be defined for a new copula to work consistently

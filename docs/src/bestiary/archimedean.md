@@ -341,59 +341,35 @@ See the [Liouville copulas](@ref liouville_copulas) example for construction fro
 
 ## [Available models](@id available_archimedean_models)
 
-### `WilliamsonGenerator`
-See the canonical Public API entry for [`WilliamsonGenerator`](@ref).
+Every row below defines the generator in
+``C(\boldsymbol u)=\phi(\sum_i\phi^{-1}(u_i))``. The displayed parameter
+domain is the nominal generator domain; construction of a ``d``-copula also
+checks that the generator is ``d``-monotone. This additional check matters in
+particular for negative Clayton, Frank, AMH, and Gumbel--Barnett parameters.
 
-### `EmpiricalGenerator`
-See the canonical Public API entry for [`EmpiricalGenerator`](@ref).
+| Family | Generator ``\phi(t)`` and parameters | Public constructors |
+|:--|:--|:--|
+| Williamson | ``\mathbb E[(1-t/R)_+^{s-1}]`` for a non-negative radial law ``R`` and order ``s>0`` | `WilliamsonGenerator(R, s)`; `ArchimedeanCopula(d, G)` |
+| Empirical | Williamson generator obtained by the empirical Kendall/radial inversion described [above](@ref nonpar_archi_gen_example) | `EmpiricalGenerator(U)`; `ArchimedeanCopula(d, G)` |
+| Frailty | ``\mathbb E[e^{-tV}]`` for a non-negative frailty ``V`` | `FrailtyGenerator(V)`; `ArchimedeanCopula(d, G)` |
+| Clayton | ``(1+\theta t)_+^{-1/\theta}``, with the continuous limit ``e^{-t}`` at ``\theta=0``; ``\theta\ge-1`` | `ClaytonGenerator(θ)`; `ClaytonCopula{d}(θ)`; `ClaytonCopula(d, θ)` |
+| Frank | ``-\theta^{-1}\log(1-(1-e^{-\theta})e^{-t})``, with limit ``e^{-t}`` at ``\theta=0``; ``\theta\in\mathbb R`` | `FrankGenerator(θ)`; `FrankCopula{d}(θ)`; `FrankCopula(d, θ)` |
+| Gumbel | ``\exp(-t^{1/\theta})``; ``\theta\ge1`` | `GumbelGenerator(θ)`; `GumbelCopula{d}(θ)`; `GumbelCopula(d, θ)` |
+| Ali--Mikhail--Haq (AMH) | ``(1-\theta)/(e^t-\theta)``; ``-1\le\theta\le1`` | `AMHGenerator(θ)`; `AMHCopula{d}(θ)`; `AMHCopula(d, θ)` |
+| Joe | ``1-(1-e^{-t})^{1/\theta}``; ``\theta\ge1`` | `JoeGenerator(θ)`; `JoeCopula{d}(θ)`; `JoeCopula(d, θ)` |
+| Gumbel--Barnett | ``\exp((1-e^t)/\theta)`` for ``\theta>0``, with the independence limit at ``\theta=0``; ``0\le\theta\le1`` | `GumbelBarnettGenerator(θ)`; `GumbelBarnettCopula{d}(θ)`; `GumbelBarnettCopula(d, θ)` |
+| Inverse Gaussian | ``\exp((1-\sqrt{1+2\theta^2t})/\theta)`` for ``\theta>0``, with limit ``e^{-t}`` at zero; ``\theta\ge0`` | `InvGaussianGenerator(θ)`; `InvGaussianCopula{d}(θ)`; `InvGaussianCopula(d, θ)` |
+| BB1 | ``(1+t^{1/\delta})^{-1/\theta}``; ``\theta>0``, ``\delta\ge1`` | `BB1Generator(θ, δ)`; `BB1Copula{d}(θ, δ)`; `BB1Copula(d, θ, δ)` |
+| BB2 | ``(1+\log(1+t)/\delta)^{-1/\theta}``; ``\theta>0``, ``\delta>0`` | `BB2Generator(θ, δ)`; `BB2Copula{d}(θ, δ)`; `BB2Copula(d, θ, δ)` |
+| BB3 | ``\exp[-(\log(1+t)/\delta)^{1/\theta}]``; ``\theta\ge1``, ``\delta>0`` | `BB3Generator(θ, δ)`; `BB3Copula{d}(θ, δ)`; `BB3Copula(d, θ, δ)` |
+| BB6 | ``1-(1-e^{-t^{1/\delta}})^{1/\theta}``; ``\theta\ge1``, ``\delta\ge1`` | `BB6Generator(θ, δ)`; `BB6Copula{d}(θ, δ)`; `BB6Copula(d, θ, δ)` |
+| BB7 | ``1-[1-(1+t)^{-1/\delta}]^{1/\theta}``; ``\theta\ge1``, ``\delta>0`` | `BB7Generator(θ, δ)`; `BB7Copula{d}(θ, δ)`; `BB7Copula(d, θ, δ)` |
+| BB8 | ``\delta^{-1}[1-(1-\eta e^{-t})^{1/\vartheta}]``, where ``\eta=1-(1-\delta)^\vartheta``; ``\vartheta\ge1``, ``0<\delta\le1`` | `BB8Generator(ϑ, δ)`; `BB8Copula{d}(ϑ, δ)`; `BB8Copula(d, ϑ, δ)` |
+| BB9 | ``\exp[\delta^{-1}-(t+\delta^{-\theta})^{1/\theta}]``; ``\theta\ge1``, ``\delta>0`` | `BB9Generator(θ, δ)`; `BB9Copula{d}(θ, δ)`; `BB9Copula(d, θ, δ)` |
+| BB10 | ``[(1-\delta)/(e^t-\delta)]^{1/\theta}``; ``\theta>0``, ``0\le\delta\le1`` | `BB10Generator(θ, δ)`; `BB10Copula{d}(θ, δ)`; `BB10Copula(d, θ, δ)` |
 
-### `FrailtyGenerator`
-See the canonical Public API entry for [`FrailtyGenerator`](@ref).
-
-### `ClaytonGenerator`
-See the canonical Public API entry for [`ClaytonGenerator`](@ref).
-
-### `FrankGenerator`
-See the canonical Public API entry for [`FrankGenerator`](@ref).
-
-### `GumbelGenerator`
-See the canonical Public API entry for [`GumbelGenerator`](@ref).
-
-### `AMHGenerator`
-See the canonical Public API entry for [`AMHGenerator`](@ref).
-
-### `JoeGenerator`
-See the canonical Public API entry for [`JoeGenerator`](@ref).
-
-### `GumbelBarnettGenerator`
-See the canonical Public API entry for [`GumbelBarnettGenerator`](@ref).
-
-### `InvGaussianGenerator`
-See the canonical Public API entry for [`InvGaussianGenerator`](@ref).
-
-### `BB1Generator`
-See the canonical Public API entry for [`BB1Generator`](@ref).
-
-### `BB2Generator`
-See the canonical Public API entry for [`BB2Generator`](@ref).
-
-### `BB3Generator`
-See the canonical Public API entry for [`BB3Generator`](@ref).
-
-### `BB6Generator`
-See the canonical Public API entry for [`BB6Generator`](@ref).
-
-### `BB7Generator`
-See the canonical Public API entry for [`BB7Generator`](@ref).
-
-### `BB8Generator`
-See the canonical Public API entry for [`BB8Generator`](@ref).
-
-### `BB9Generator`
-See the canonical Public API entry for [`BB9Generator`](@ref).
-
-### `BB10Generator`
-See the canonical Public API entry for [`BB10Generator`](@ref).
+The canonical [Public API](@ref) gives validation behavior, limiting cases, and
+the complete callable signatures for these constructors.
 
 ## References
 

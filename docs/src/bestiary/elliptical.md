@@ -167,7 +167,17 @@ These formulas are what the implementation relies on (via `SklarDist` for origin
 
 ### `GaussianCopula`
 
-See the canonical Public API entry for [`GaussianCopula`](@ref).
+For a positive-definite correlation matrix ``\Sigma``, the Gaussian copula is
+
+```math
+C_\Sigma(\boldsymbol u)=\Phi_\Sigma
+\big(\Phi^{-1}(u_1),\ldots,\Phi^{-1}(u_d)\big),
+```
+
+where ``\Phi_\Sigma`` is the centered multivariate normal CDF. Construct it
+with `GaussianCopula(Σ)`, `GaussianCopula{d}(Σ)`, or
+`GaussianCopula(d, Σ)`. The equicorrelation forms `GaussianCopula{d}(ρ)` and
+`GaussianCopula(d, ρ)` require ``-1/(d-1)<\rho<1``.
 
 #### Targeting a Pearson correlation: the Nataf correction
 
@@ -199,7 +209,16 @@ See the canonical Public API entry for [`Nataf`](@ref).
 
 ### `TCopula`
 
-See the canonical Public API entry for [`TCopula`](@ref).
+For degrees of freedom ``\nu>0`` and a positive-definite correlation matrix
+``\Sigma``, the Student copula is
+
+```math
+C_{\nu,\Sigma}(\boldsymbol u)=T_{\nu,\Sigma}
+\big(T_\nu^{-1}(u_1),\ldots,T_\nu^{-1}(u_d)\big).
+```
+
+Construct it with `TCopula(ν, Σ)`, `TCopula{d}(ν, Σ)`, or
+`TCopula(d, ν, Σ)`.
 
 For a bivariate Student copula, `Copulas.ρ(C)` evaluates Spearman's rank
 correlation using a one-dimensional integral rather than a generic copula
@@ -224,6 +243,9 @@ U = rand(Xoshiro(316), C, 500)
 This rank-matching method is bivariate. Near zero Kendall correlation, the
 degrees of freedom are not identifiable from these two rank coefficients; use
 maximum likelihood instead.
+
+See the canonical [Public API](@ref) for complete constructor validation and
+numerical behavior.
 
 ## References
 

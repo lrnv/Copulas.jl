@@ -155,11 +155,37 @@ conditioning, and sampling machinery beyond dimension two is separate work.
 
 ### `BB4Copula`
 
-See the canonical Public API entry for [`BB4Copula`](@ref).
+BB4 combines the Clayton generator with the Galambos stable tail dependence
+function. For ``0\le u,v\le1``,
+
+```math
+C_{\theta,\delta}(u,v)=\left[u^{-\theta}+v^{-\theta}-1
+-\left\{(u^{-\theta}-1)^{-\delta}
++(v^{-\theta}-1)^{-\delta}\right\}^{-1/\delta}\right]^{-1/\theta}.
+```
+
+Its parameters satisfy ``\theta\ge0`` and ``\delta>0``. Construct it with
+`BB4Copula(θ, δ)`, `BB4Copula{2}(θ, δ)`, or `BB4Copula(2, θ, δ)`.
+As ``\delta\to0^+`` it reduces to Clayton; as ``\theta\to0^+`` it reduces to
+Galambos.
 
 ### `BB5Copula`
 
-See the canonical Public API entry for [`BB5Copula`](@ref).
+BB5 combines the Gumbel generator with the Galambos stable tail dependence
+function. With ``x=-\log u`` and ``y=-\log v``,
+
+```math
+C_{\theta,\delta}(u,v)=\exp\!\left(-\left[x^\theta+y^\theta
+-(x^{-\theta\delta}+y^{-\theta\delta})^{-1/\delta}
+\right]^{1/\theta}\right).
+```
+
+Its parameters satisfy ``\theta\ge1`` and ``\delta>0``. Construct it with
+`BB5Copula(θ, δ)`, `BB5Copula{2}(θ, δ)`, or `BB5Copula(2, θ, δ)`.
+The case ``\theta=1`` is Galambos, while ``\delta\to0^+`` is Gumbel.
+
+See the canonical [Public API](@ref) for complete limiting and validation
+behavior.
 
 ## References
 
