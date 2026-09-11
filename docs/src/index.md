@@ -78,24 +78,24 @@ Other Julia packages cover related use cases. [`BivariateCopulas.jl`](https://gi
 
 | Capability | `Copulas.jl` | `DatagenCopulaBased.jl` | `BivariateCopulas.jl` |
 |:--|:--|:--|:--|
-| Sampling | Yes, vector and matrix `rand` interface | Yes, primary interface | Yes, bivariate |
-| `Distributions.jl` distribution API | Yes | Not documented | Yes, bivariate |
-| CDF and density | Yes, when defined by the model | Not documented as a common interface | Yes, bivariate |
-| Copula plus arbitrary margins | `SklarDist`, any supported dimension | Marginal-transformation utilities | Bivariate joint distributions |
-| Parameter fitting | Quick fits and full `CopulaModel` results | Not documented | Not documented |
-| Automatic family selection | Explicit candidate sets with AIC, BIC, AICc, or HQC | Not documented | Not documented |
-| Statistical-model diagnostics | Covariance, confidence intervals, residuals, prediction, information criteria | Not documented | Not documented |
-| Dependence measures | Scalar and pairwise rank and tail measures | Empirical Kendall-correlation examples | Not documented as a common interface |
-| Subsetting and conditioning | Copulas and `SklarDist`; univariate or multivariate results | Not documented | Bivariate conditional CDFs |
-| Rosenblatt and inverse Rosenblatt transforms | Yes | Not documented | Not documented |
-| Hypothesis tests | Independence, exchangeability, radial symmetry, extreme-value dependence, goodness of fit | Not documented | Not documented |
-| Plot recipes | Pairwise samples, margins, CDF/PDF contours and surfaces | Not documented | Bivariate scatter, CDF, density and contour plots |
-| Archimedean models | Clayton, Frank, Gumbel, Joe, AMH, inverse Gaussian, BB1--BB10, and custom/empirical generators | Selected families, same-family nesting, and chains | Clayton and Frank |
-| Structured multivariate models | Liouville and nested Archimedean copulas | Same-family nested copulas and bivariate chains | Not documented |
-| Elliptical models | Gaussian and Student, multivariate | Gaussian and Student | Gaussian, bivariate |
-| Extreme-value models | Logistic, Galambos, Hüsler--Reiss, extremal-``t``, Tawn, asymmetric and spectral families; bivariate and multivariate | Marshall--Olkin | Not documented |
-| Nonparametric copulas | Empirical, beta, Bernstein, checkerboard, empirical EV | Not documented | Not documented |
-| Archimax models | Generic bivariate construction, BB4 and BB5 | Not documented | Not documented |
+| Sampling | ✅ Vector and matrix `rand` interface | ✅ Primary interface | ⚠️ Bivariate |
+| `Distributions.jl` distribution API | ✅ | ❌ Not documented | ⚠️ Bivariate |
+| CDF and density | ✅ When defined by the model | ❌ Not documented as a common interface | ⚠️ Bivariate |
+| Copula plus arbitrary margins | ✅ `SklarDist`, any supported dimension | ⚠️ Marginal-transformation utilities | ⚠️ Bivariate joint distributions |
+| Parameter fitting | ✅ Quick fits and full `CopulaModel` results | ❌ Not documented | ❌ Not documented |
+| Automatic family selection | ✅ Explicit candidate sets with AIC, BIC, AICc, or HQC | ❌ Not documented | ❌ Not documented |
+| Statistical-model diagnostics | ✅ Covariance, confidence intervals, residuals, prediction, information criteria | ❌ Not documented | ❌ Not documented |
+| Dependence measures | ✅ Scalar and pairwise rank and tail measures | ⚠️ Empirical Kendall-correlation examples | ❌ Not documented as a common interface |
+| Subsetting and conditioning | ✅ Copulas and `SklarDist`; univariate or multivariate results | ❌ Not documented | ⚠️ Bivariate conditional CDFs |
+| Rosenblatt and inverse Rosenblatt transforms | ✅ | ❌ Not documented | ❌ Not documented |
+| Hypothesis tests | ✅ Independence, exchangeability, radial symmetry, extreme-value dependence, goodness of fit | ❌ Not documented | ❌ Not documented |
+| Plot recipes | ✅ Pairwise samples, margins, CDF/PDF contours and surfaces | ❌ Not documented | ⚠️ Bivariate scatter, CDF, density and contour plots |
+| Archimedean models | ✅ Clayton, Frank, Gumbel, Joe, AMH, inverse Gaussian, BB1--BB10, and custom/empirical generators | ⚠️ Selected families, same-family nesting, and chains | ⚠️ Clayton and Frank |
+| Structured multivariate models | ✅ Liouville and nested Archimedean copulas | ✅ Same-family nested copulas and bivariate chains | ❌ Not documented |
+| Elliptical models | ✅ Gaussian and Student, multivariate | ✅ Gaussian and Student | ⚠️ Gaussian, bivariate |
+| Extreme-value models | ✅ Logistic, Galambos, Hüsler--Reiss, extremal-``t``, Tawn, asymmetric and spectral families; bivariate and multivariate | ⚠️ Marshall--Olkin | ❌ Not documented |
+| Nonparametric copulas | ✅ Empirical, beta, Bernstein, checkerboard, empirical EV | ❌ Not documented | ❌ Not documented |
+| Archimax models | ⚠️ Generic bivariate construction, BB4 and BB5 | ❌ Not documented | ❌ Not documented |
 
 The table compares public scope rather than runtime performance; algorithmic cost depends strongly on the family, dimension, and requested operation.
 
