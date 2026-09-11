@@ -62,7 +62,7 @@ import{_ as l,o as a,c as t,j as s,a as e,am as n}from"./chunks/framework.B6LYjl
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">BIC:                   -483.475</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Converged:             true</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Iterations:            25</span></span>
-<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Elapsed:               0.376s</span></span>
+<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Elapsed:               0.331s</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">────────────────────────────────────────────────────────────────────────────────</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">[ Dependence metrics ]</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">────────────────────────────────────────────────────────────────────────────────</span></span>
