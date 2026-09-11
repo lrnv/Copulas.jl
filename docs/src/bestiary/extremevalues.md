@@ -443,15 +443,15 @@ so the above derivatives can be written explicitly in terms of $A$ (and $A'$ whe
 ```@example 1
 using Copulas, Plots, Distributions
 ts = range(0.0, 1.0; length=401)
-Cs = (
-    GalambosCopula(2, 0.8),    # upper tail dep.
-    HuslerReissCopula(2, 1.0), # intermediate
-    LogCopula(2, 1.6),         # asymmetric
+tails = (
+    Copulas.GalambosTail(0.8),    # upper tail dep.
+    Copulas.HuslerReissTail(1.0), # intermediate
+    Copulas.LogTail(1.6),         # logistic
 )
 labels = ("Galambos(0.8)", "Hüsler–Reiss(1.0)", "Log(1.6)")
 plot(size=(700, 300))
-for (i, C) in enumerate(Cs)
-    plot!(ts, Copulas.A.(params(C).tail, ts); label=labels[i])
+for (i, tail) in enumerate(tails)
+    plot!(ts, Copulas.A.(Ref(tail), ts); label=labels[i])
 end
 plot!(ts, max.(ts, 1 .- ts); label="bounds", ls=:dash, color=:black)
 plot!(ts, ones(length(ts)); label="1", ls=:dot, color=:gray)

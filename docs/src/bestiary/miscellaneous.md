@@ -67,7 +67,7 @@ C_\theta(u,v)=\frac{1+(\theta-1)(u+v)
 with its continuous value ``uv`` at ``\theta=1``. The parameter satisfies
 ``\theta\ge0``; zero and infinity give the lower and upper
 Fréchet--Hoeffding bounds. Use `PlackettCopula(θ)`,
-`PlackettCopula{2}(θ)`, or `PlackettCopula(2, θ)`.
+`PlackettCopula{2}(θ)`, or `PlackettCopula(2, θ)`; see [nelsen2006](@cite).
 
 ### `FGMCopula`
 
@@ -83,7 +83,8 @@ C(\boldsymbol u)=\prod_{j=1}^d u_j
 The parameter vector therefore has length ``2^d-d-1``. Each coefficient lies
 in ``[-1,1]`` and the joint corner constraints ensuring a non-negative density
 must also hold. Construct the family with `FGMCopula{d}(θ)` or
-`FGMCopula(d, θ)`; in dimension two, `θ` may be supplied as a scalar.
+`FGMCopula(d, θ)`; in dimension two, `θ` may be supplied as a scalar. The
+sampling representation follows [blier2022stochastic](@cite).
 
 ### `RafteryCopula`
 
@@ -101,7 +102,8 @@ C_\theta(\boldsymbol u)=u_{(1)}
 ```
 
 Here ``0\le\theta\le1``; the endpoints give independence and
-comonotonicity. Use `RafteryCopula{d}(θ)` or `RafteryCopula(d, θ)`.
+comonotonicity. Use `RafteryCopula{d}(θ)` or `RafteryCopula(d, θ)`; the
+multivariate extension is described in [Raftery2023](@cite).
 
 See the canonical [Public API](@ref) for detailed validation and limiting
 behavior of these constructors.
