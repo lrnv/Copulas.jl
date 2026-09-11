@@ -1,4 +1,4 @@
-# Interoperability with PartitionedDistributions.jl
+# [Interoperability with PartitionedDistributions.jl](@id partitioned_distributions_example)
 
 [PartitionedDistributions.jl](https://github.com/sethaxen/PartitionedDistributions.jl) provides a generic interface for extracting marginal and conditional distributions from multivariate distributions.
 
