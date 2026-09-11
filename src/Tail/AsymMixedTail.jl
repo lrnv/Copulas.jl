@@ -21,6 +21,14 @@ Special cases:
 * θ₁ = θ₂ = 0 ⇒ IndependentCopula
 * θ₂ = 0      ⇒ symmetric Mixed copula
 
+This polynomial Pickands model is bivariate. The admissible set is the
+intersection of all four inequalities above, not a rectangular parameter box;
+fitting or proposing parameters independently can therefore leave the valid
+region.
+
+See also: [`Tail`](@ref), [`ExtremeValueCopula`](@ref), [`A`](@ref),
+[`MixedTail`](@ref), [`Distributions.fit`](@ref).
+
 References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.

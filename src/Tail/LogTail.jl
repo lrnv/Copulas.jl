@@ -21,6 +21,13 @@ Special cases:
 * `θ = 1` represents `IndependentCopula(d)`.
 * `θ = ∞` represents `MCopula(d)`.
 
+Increasing `θ` strengthens exchangeable upper-tail dependence. This is the
+extreme-value representation of the Gumbel-Hougaard family, so users should not
+fit both names as distinct candidate models.
+
+See also: [`GumbelCopula`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 
 * [tawn1988bivariate](@cite) Tawn, J. A. (1988). Bivariate extreme value theory: models and estimation. Biometrika, 75(3), 397-415.

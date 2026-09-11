@@ -38,6 +38,13 @@ retains the specialized scalar Pickands formulas.
     convenience parameterization introduced at the implementation level in
     Copulas.jl.
 
+The full subset form can be high-dimensional in both parameter count and
+evaluation cost. Zero weights remove subset contributions and can place the
+model on a lower-dimensional or partially independent boundary.
+
+See also: [`Tail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 
 * [galambos1975order](@cite) Order statistics of samples from multivariate distributions. JASA, 1975.

@@ -16,6 +16,13 @@ Special cases:
 * θ₁ = θ₂ = 1 ⇒ symmetric Logistic (Gumbel) copula
 * α = 1 or either asymmetry weight is zero ⇒ independence (`A(t) ≡ 1`)
 
+The model is bivariate. Its weights govern how logistic dependence is allocated
+to the two margins; values near zero approach independence and can make the
+remaining shape parameter weakly identifiable.
+
+See also: [`Tail`](@ref), [`ExtremeValueCopula`](@ref), [`A`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 
 * [tawn1988bivariate](@cite) : Tawn, Jonathan A. "Bivariate extreme value theory: models and estimation." Biometrika 75.3 (1988): 397-415.

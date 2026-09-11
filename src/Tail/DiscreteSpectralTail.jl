@@ -14,6 +14,14 @@ the associated spectral measure is `sum(h[k] δ_{v[:,k]})`.
 
 The row-sum constraints are exactly the spectral moment constraints required
 for unit-Fréchet / uniform margins.
+
+Columns with zero total mass are discarded. Different matrices can represent
+the same spectral measure through repeated or zero atoms, so the matrix is not
+an identifiable statistical parameterization. The resulting copula can contain
+singular components and is sampled through its finite spectral representation.
+
+See also: [`Tail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
+[`A`](@ref).
 """
 struct DiscreteSpectralTail{T} <: DiscreteSpectralBackedTail
     B::Matrix{T}

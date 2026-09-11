@@ -39,6 +39,14 @@ Special cases:
 * `θ = 0` represents `IndependentCopula(d)`.
 * `θ = ∞`, or an all-zero variogram, represents `MCopula(d)`.
 
+The scalar `θ` and variogram magnitudes run in opposite directions: larger
+`θ` means stronger dependence, whereas smaller variogram entries do. Near a
+degenerate variogram boundary, likelihood and matrix calculations can become
+ill-conditioned.
+
+See also: [`Tail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 
 * [husler1989maxima](@cite) Hüsler, J., & Reiss, R. D. (1989). Maxima of normal random vectors: between independence and complete dependence. Statistics & Probability Letters, 7(4), 283-286.

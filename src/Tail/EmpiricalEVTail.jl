@@ -19,6 +19,9 @@ Its Pickands function is
 
 evaluated via piecewise linear interpolation on the grid `tgrid`.
 
+See also: [`EmpiricalEVCopula`](@ref), [`ExtremeValueCopula`](@ref),
+[`A`](@ref), [`Distributions.fit`](@ref).
+
 References
 * [caperaa1997nonparametric] Capéraà, Fougères, Genest (1997) Biometrika
 * [gudendorf2011nonparametric] Gudendorf, Segers (2011) Journal of Multivariate Analysis
@@ -231,6 +234,9 @@ spectral simulation. Its concrete storage type is an implementation detail.
 dimension-adaptive degree and the numerical projection details are Copulas.jl
 implementation choices; the statistical estimator and shape-constrained
 spectral projection are literature-based.
+
+See also: [`EmpiricalEVCopula`](@ref), [`DiscreteSpectralTail`](@ref),
+[`ExtremeValueCopula`](@ref), [`ℓ`](@ref), [`Distributions.fit`](@ref).
 """
 struct EmpiricalEVMultivariateTail <: DiscreteSpectralBackedTail
     d::Int

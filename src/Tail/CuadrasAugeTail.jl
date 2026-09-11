@@ -27,6 +27,13 @@ Special cases:
 * `θ = 0` represents `IndependentCopula(d)`.
 * `θ = 1` represents `MCopula(d)`.
 
+For every positive `θ`, the finite spectral representation contains a singular
+component; density-based methods must therefore follow the documented
+generalized-density semantics rather than assume absolute continuity.
+
+See also: [`DiscreteSpectralTail`](@ref), [`ExtremeValueCopula`](@ref),
+[`ℓ`](@ref), [`Distributions.fit`](@ref).
+
 References:
 
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications. World Scientific.

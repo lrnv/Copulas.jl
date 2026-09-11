@@ -40,6 +40,14 @@ Special case:
 
 * `ρ = 1` represents `MCopula(d)`.
 
+Correlation matrices close to singularity represent strong or constrained
+dependence and can make multivariate probability and likelihood calculations
+ill-conditioned. The degrees of freedom and correlation jointly determine tail
+dependence; neither is a standalone strength parameter.
+
+See also: [`TCopula`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 
 * [nikoloulopoulos2009extreme](@cite) Nikoloulopoulos, A. K., Joe, H., & Li, H. (2009). Extreme value properties of multivariate t copulas. Extremes, 12, 129-148.
