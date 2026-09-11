@@ -53,12 +53,10 @@ makedocs(;
             "Bayesian inference with Turing.jl"=>"examples/turing.md",
             "Other use cases"=>"examples/other_usecases.md",
         ],
-        "API" => [
-            "Public"=>"api/public.md",
-        ],
+        "Public API" => "api/public.md",
         "Development" => [
             "Extending Copulas.jl"=>"dev/developer_guide.md",
-            "Internal implementation reference"=>"api/internal.md",
+            "Internals reference"=>"api/internal.md",
             "Performance benchmarks"=>"dev/benchmarks.md",
         ],
         "References" => "references.md",
