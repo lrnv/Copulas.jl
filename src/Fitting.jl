@@ -65,13 +65,16 @@ struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: Sta
     end
 end
 
-# Internal description of the estimator that produced a CopulaModel.
-#
-# `target` is the fitting target accepted by `fit(CopulaModel, target, U; ...)`
-# (normally a copula type, but it can also be a runtime template such as a
-# NestedArchimedeanCopula instance). `kwargs` contains estimator-defining
-# keywords only: generic inference controls such as `vcov` and
-# `derived_measures` are handled separately by `fit`.
+"""
+    _CopulaFitSpec(target, method, kwargs)
+
+Internal, reproducible description of the estimator that produced a
+`CopulaModel`. `target` is the family type or runtime structural template passed
+to `fit`; `method` selects the estimator; `kwargs` contains only arguments that
+change that estimator. Inference controls such as covariance computation are
+excluded. Composite goodness-of-fit tests consume this record to replay exactly
+the same estimator. Its fields and representation are not stable API.
+"""
 struct _CopulaFitSpec{T,K<:NamedTuple}
     target::T
     method::Symbol
@@ -121,8 +124,35 @@ Return the parameters of the given distribution `C`. Our extension gives these p
 """
 Distributions.params(C::Copula) = throw("You need to specify the Distributions.params() function as returning a named tuple with parameters.")
 
+"""
+    _example(CT, d)
+
+Construct an interior representative of copula family `CT` in dimension `d`.
+This internal fitting hook supplies parameter names, shapes, numeric types and
+an initial point to generic optimization and covariance machinery. The example
+must avoid limiting values and must be reconstructible by the family's fitting
+protocol; it is not a user-facing default model.
+"""
 _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::Type{T}, d)` function for your copula type, returning an example of the copula type in dimension d.")
+
+"""
+    _unbound_params(CT, d, θ)
+
+Map the parameter `NamedTuple` `θ` of family `CT` to an unconstrained real
+vector used by generic optimization and differentiation. This internal fitting
+hook must be inverse-compatible with `_rebound_params`, preserve parameter
+order, and map interior valid parameters to finite coordinates.
+"""
 _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
+
+"""
+    _rebound_params(CT, d, α)
+
+Map an unconstrained optimization vector `α` back to the valid parameter
+`NamedTuple` expected by family `CT`. This internal fitting hook must enforce
+the mathematical parameter domain, accept automatic-differentiation number
+types, and invert `_unbound_params` on interior parameters.
+"""
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
 _fit_copula(CT, ::Val{d}, θ, example) where {d} = CT(d, θ...)
 function _fit(CT::Type{<:Copula}, U, method::Val{:mle})
@@ -972,7 +1002,17 @@ end
 """
     selectiontable(model::CopulaModel)
 
-Return a copy of the vector of candidate comparison rows from automatic family selection.
+Return the candidate comparison rows recorded by automatic family selection.
+
+Each row identifies a candidate, whether fitting succeeded, the selected
+criterion value when finite, and diagnostic information for skipped failures.
+Rows describe only the candidates that were actually considered and retain the
+selection order, which makes the table suitable for explaining why the winning
+model was chosen.
+
+The returned vector is a copy, so changing its membership does not mutate the
+fitted model. An `ArgumentError` is thrown when `model` was not produced by the
+automatic-selection form of `fit`.
 """
 function selectiontable(M::CopulaModel)
     haskey(M.method_details, :selection_table) ||

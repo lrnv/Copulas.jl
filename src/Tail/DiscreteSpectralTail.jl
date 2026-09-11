@@ -93,6 +93,16 @@ function τ(C::ExtremeValueCopula{2,<:DiscreteSpectralTail})
     return total
 end
 
+"""
+    _discrete_spectral_rand!(rng, tail::DiscreteSpectralTail, X)
+
+Fill the `d × n` matrix `X` with samples from the extreme-value copula induced
+by the finite spectral measure `tail`. The routine simulates the max-linear
+spectral representation and transforms unit-Fréchet coordinates to uniforms.
+It preserves the output buffer's element type and returns `X`. This reusable
+algorithm is internal; dispatch to it belongs in family-specific `_rand!`
+methods.
+"""
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     S = promote_type(T, eltype(tail))

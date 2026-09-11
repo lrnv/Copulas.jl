@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# Internal implementation reference
+# [Internal implementation reference](@id internal_api)
 
 The bindings listed on this page are implementation details, not supported API.
 They are collected here only to keep internal docstrings available to

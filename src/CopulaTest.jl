@@ -50,6 +50,10 @@ end
     teststatistic(test::CopulaTest)
 
 Return the observed value of the test statistic.
+
+Larger values indicate a greater discrepancy from the null hypothesis. The
+scale and precise interpretation depend on the test; use `pvalue(test)` for the
+calibrated result rather than comparing statistics produced by different tests.
 """
 teststatistic(test::CopulaTest) = test.statistic_value
 
@@ -57,9 +61,19 @@ teststatistic(test::CopulaTest) = test.statistic_value
     pvalue(test::CopulaTest)
 
 Return the p-value of `test`.
+
+Copula tests calibrate this value by simulation, randomization, multiplier
+resampling, or parametric bootstrap. It is therefore an approximation whose
+Monte Carlo precision depends on the requested number of resamples `N`.
 """
 pvalue(test::CopulaTest) = test.p
 
+"""
+    nobs(test::CopulaTest)
+
+Return the number of observations used by the copula test. Each observation is
+one column of the matrix supplied to the test constructor.
+"""
 StatsBase.nobs(test::CopulaTest) = test.n
 
 """
@@ -78,7 +92,17 @@ Return the textual null hypothesis for a copula hypothesis or test. This is an e
 """
 nullhypothesis(test::CopulaTest) = nullhypothesis(test.hypothesis)
 
-# Shared input validation and result assembly; each hypothesis has one procedure.
+"""
+    _run_copula_test(h::CopulaHypothesis, U; N=1000,
+                     pseudo_values=false, rng=Random.default_rng())
+
+Run the internal test protocol represented by `h`: validate and rank the input,
+evaluate `_teststatistic`, calibrate it with `_calibrate`, and assemble the
+public `CopulaTest` result. New in-package hypotheses use this driver after
+defining their statistic, calibration and display metadata. Inputs are `d × n`
+with observations in columns. This orchestration hook is internal and is not a
+supported downstream extension point.
+"""
 function _run_copula_test(h::CopulaHypothesis, U::AbstractMatrix{<:Real};
         N::Integer=1000, pseudo_values::Bool=false,
         rng::Distributions.AbstractRNG=Random.default_rng())
@@ -218,6 +242,16 @@ end
     IndependenceCopulaTest(U; N=1000, pseudo_values=false, rng=Random.default_rng())
 
 Test mutual independence between the components of a random vector.
+
+`U` is a `d × n` matrix with observations in columns. By default its margins
+are converted to pseudo-observations; pass `pseudo_values=true` when `U` has
+already been ranked. The Cramér--von Mises statistic compares the empirical
+copula with the independence copula, and `N` samples from the latter calibrate
+the p-value.
+
+The current procedure assumes continuous, tie-free margins. Larger `N` reduces
+Monte Carlo uncertainty at a proportional computational cost. Supply `rng` for
+reproducible calibration.
 """
 IndependenceCopulaTest(U::AbstractMatrix{<:Real}; kwargs...) = _run_copula_test(IndependenceHypothesis(), U; kwargs...)
 
@@ -251,6 +285,19 @@ ExchangeabilityHypothesis(; permutations=:G2, weight::Symbol=:wm2) = Exchangeabi
     ExchangeabilityCopulaTest(U; permutations=:G2, weight=:wm2, N=1000, pseudo_values=false, rng=Random.default_rng())
 
 Test exchangeability of a copula in arbitrary dimension.
+
+`U` is a `d × n` matrix with observations in columns. The statistic compares
+the empirical copula with versions obtained by permuting its coordinates.
+`permutations=:G2` uses a compact generating set; `:G1` uses transpositions
+with the first coordinate, and an explicit collection can target particular
+permutations. `weight=:wm2` applies the boundary-aware weight, while `:none`
+leaves the squared discrepancies unweighted. A multiplier procedure with `N`
+replicates calibrates the p-value.
+
+By default raw continuous margins are ranked; use `pseudo_values=true` for
+precomputed pseudo-observations. Ties are currently rejected. The multiplier
+representation uses dense `n × n` matrices for every selected permutation, so
+large samples or permutation sets may reach the package's memory safety limit.
 """
 function ExchangeabilityCopulaTest(U::AbstractMatrix{<:Real}; permutations=:G2, weight::Symbol=:wm2, kwargs...)
     d, n = size(U)
@@ -416,6 +463,16 @@ end
     RadialSymmetryCopulaTest(U; N=1000, pseudo_values=false, rng=Random.default_rng())
 
 Test radial symmetry of a copula.
+
+`U` is a `d × n` matrix with observations in columns. The statistic compares
+the empirical copula with the empirical copula of the reflected observations
+`1 .- U`. Its p-value is calibrated by independently reflecting each
+observation with probability one half over `N` randomizations.
+
+Raw continuous margins are ranked unless `pseudo_values=true`. Ties are not
+currently supported. Because calibration is randomized, pass `rng` when the
+result must be reproducible and increase `N` when finer Monte Carlo precision
+is needed.
 """
 RadialSymmetryCopulaTest(U::AbstractMatrix{<:Real}; kwargs...) = _run_copula_test(RadialSymmetryHypothesis(), U; kwargs...)
 
@@ -472,6 +529,17 @@ ExtremeValueHypothesis(; powers=3:5) = ExtremeValueHypothesis(powers)
     ExtremeValueCopulaTest(U; powers=3:5, N=1000, pseudo_values=false, rng=Random.default_rng())
 
 Test whether a copula belongs to the extreme-value class.
+
+The test probes max-stability through the identities
+`C(u^(1/r))^r = C(u)` for the values `r` in `powers`; every power must be finite
+and greater than one. `U` is a `d × n` matrix whose observations are columns,
+and a multiplier procedure with `N` replicates calibrates the resulting
+Cramér--von Mises statistic.
+
+Raw continuous margins are ranked unless `pseudo_values=true`, and ties are
+currently unsupported. More powers examine more max-stability identities but
+also require one dense `n × n` multiplier matrix per power; very large requests
+may therefore reach the memory safety limit.
 """
 function ExtremeValueCopulaTest(U::AbstractMatrix{<:Real}; powers=3:5, kwargs...)
     selected = _max_stability_powers(powers)

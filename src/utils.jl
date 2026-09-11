@@ -17,7 +17,15 @@ function _replace_coordinate(x::AbstractVector, i::Int, xi)
     return y
 end
 
-# Common mixed-partial AD primitive used by conditioning and EV tails.
+"""
+    _mixed_partial(f, x, I)
+
+Evaluate the mixed partial derivative of `f` at `x` with respect to the ordered
+coordinates in `I`, nesting `ForwardDiff.derivative` once per coordinate. An
+empty index set evaluates `f(x)`. This internal shared fallback powers generic
+conditioning and stable-tail derivatives; callers requiring non-AD numerical
+kernels or singular derivatives must provide a specialized route.
+"""
 function _mixed_partial(f, x, I::Tuple{Vararg{Int}})
     isempty(I) && return f(x)
     i = first(I)
@@ -175,6 +183,14 @@ function pseudos(sample::AbstractMatrix)
 end
 
 # Pairwise component metrics applied to (n,d)-shaped matrices:
+"""
+    corblomqvist(X::AbstractMatrix)
+    corblomqvist(C::Copula)
+
+Return the symmetric matrix of pairwise Blomqvist beta coefficients. Data follow
+the `StatsBase` convention (`n × d`, observations in rows); a copula is reduced
+to each bivariate margin. Diagonal entries are one.
+"""
 function corblomqvist(X::AbstractMatrix{<:Real})
     # We expect the number of dimension to be the second axes here,
     # contrary to the whole package but to be coherent with
@@ -210,6 +226,14 @@ function corblomqvist(X::AbstractMatrix{<:Real})
     end
     return C
 end
+"""
+    corgini(X::AbstractMatrix)
+    corgini(C::Copula)
+
+Return the symmetric matrix of pairwise Gini gamma coefficients. Data follow
+the `StatsBase` `n × d` orientation; copula entries are computed from bivariate
+margins. Diagonal entries are one.
+"""
 function corgini(X::AbstractMatrix{<:Real})
     # We expect the number of dimension to be the second axes here,
     # contrary to the whole package but to be coherent with
@@ -247,6 +271,14 @@ function corgini(X::AbstractMatrix{<:Real})
     end
     return C
 end
+"""
+    corentropy(X::AbstractMatrix; k=5, p=Inf, leafsize=32)
+    corentropy(C::Copula)
+
+Return pairwise copula entropy as a symmetric matrix with zero diagonal. The
+data method uses `n × d` observations and a nearest-neighbor estimator; the
+copula method requires bivariate margins with ordinary densities.
+"""
 function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::Int=32)
     # We expect the number of dimension to be the second axes here,
     # contrary to the whole package but to be coherent with
@@ -350,7 +382,26 @@ function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtm
     end
     return Lam
 end
+"""
+    corlowertail(X::AbstractMatrix, method=:SchmidtStadtmueller, p=nothing)
+    corlowertail(C::Copula)
+
+Return the symmetric matrix of pairwise lower-tail dependence coefficients.
+Data use the `StatsBase` `n × d` orientation and either the
+`:SchmidtStadtmueller` threshold estimator or `:SchmidSchmidt` integral
+estimator. Copula entries use their bivariate margins.
+"""
 corlowertail(X::AbstractMatrix{<:Real}, method = :SchmidtStadtmueller, p=nothing) = _cortail(X; t=:lower, method=method, p=p)
+
+"""
+    coruppertail(X::AbstractMatrix, method=:SchmidtStadtmueller, p=nothing)
+    coruppertail(C::Copula)
+
+Return the symmetric matrix of pairwise upper-tail dependence coefficients.
+Data use the `StatsBase` `n × d` orientation and either the
+`:SchmidtStadtmueller` threshold estimator or `:SchmidSchmidt` integral
+estimator. Copula entries use their bivariate margins.
+"""
 coruppertail(X::AbstractMatrix{<:Real}, method = :SchmidtStadtmueller, p=nothing) = _cortail(X; t=:upper, method=method, p=p)
 
 

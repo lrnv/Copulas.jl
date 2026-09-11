@@ -21,7 +21,28 @@ end
 
 # Generic fallbacks. Family implementations specialize these lowercase hooks;
 # the concrete types remain implementation details of the generic path.
+"""
+    distortion(C::Copula, js, ujs, i)
+
+Return the uniform-scale conditional marginal of coordinate `i` given
+`U[js] = ujs`. This internal extension hook defaults to `DistortionFromCop`,
+which uses mixed CDF partials. Family specializations may provide a faster or
+atom-aware distribution but must preserve the same coordinate ordering, scale,
+and conditional-law semantics. Use public `condition` in downstream code.
+"""
 distortion(C::Copula, js, uⱼₛ, i) = DistortionFromCop(C, js, uⱼₛ, i)
+
+"""
+    _partial_cdf(C, is, js, uis, ujs)
+
+Evaluate the mixed derivative of the copula CDF with respect to coordinates
+`js`, at the point assembled from free coordinates `is => uis`, conditioned
+coordinates `js => ujs`, and ones elsewhere. This internal signed sub-density
+is the common denominator and numerator primitive for generic conditioning.
+The fallback uses automatic differentiation; a specialization is required when
+the numerical CDF cannot accept dual numbers or when singular semantics demand
+an exact implementation.
+"""
 _partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _mixed_partial(u -> Distributions.cdf(C, u),_assemble(length(C), is, js, uᵢₛ, uⱼₛ), js,)
 
 _process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs)
@@ -191,6 +212,16 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     end
 end
 Base.eltype(::ConditionalCopula{d,D,p,T}) where {d,D,p,T} = T
+
+"""
+    conditional_copula(C::Copula, js, ujs)
+
+Return the copula of the remaining coordinates conditional on `U[js] = ujs`.
+The internal fallback builds a `ConditionalCopula` from mixed CDF partials and
+the marginal `distortion`s. A family specialization may provide a simpler or
+faster representation, but must preserve the remaining coordinates' natural
+order and the same conditional law. Public code should call `condition`.
+"""
 conditional_copula(C::Copula, js, uⱼₛ) = ConditionalCopula(C, js, uⱼₛ)
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
     uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)

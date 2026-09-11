@@ -8,7 +8,25 @@ are not public API; the current contributor architecture is described in the
 developer guide.
 """
 abstract type EllipticalCopula{d,MT} <: Copula{d} end
+
+"""
+    U(C::EllipticalCopula)
+
+Return the standardized univariate radial-family margin used to map latent
+elliptical coordinates to uniforms. This internal family hook is consumed by
+generic sampling and density code. Object-based methods may preserve runtime
+parameters such as Student degrees of freedom; it is not public API.
+"""
 U(C::CT) where {CT<:EllipticalCopula} = U(CT)
+
+"""
+    N(C::EllipticalCopula)
+
+Return a constructor that maps a correlation matrix to the latent multivariate
+elliptical distribution associated with `C`. Generic sampling and density code
+requires consistency between this law and `U(C)`. Object-based methods may
+capture runtime parameters. This is an internal, non-stable family hook.
+"""
 N(C::CT) where {CT<:EllipticalCopula} = N(CT)
 
 Base.eltype(C::EllipticalCopula) = Base.eltype(N(C)(C.Σ))

@@ -15,6 +15,39 @@ location for exhaustive signatures, validation details, and reference
 docstrings. Internal dispatch, storage, and performance hooks belong in this
 guide or the internal implementation reference.
 
+### Docstring standard
+
+Documentation quality does not stop at the public boundary. Public and internal
+docstrings serve different readers and make different stability promises, but
+both must explain their subject without requiring the reader to reverse-engineer
+the implementation.
+
+A public docstring describes supported semantics: concise call forms, the
+mathematical object or operation, argument meaning and domains, return value,
+observable behavior, boundary cases, limitations, a minimal example, and useful
+related public operations. It must not present storage parameters or private
+helpers as part of the contract.
+
+An internal docstring describes contributor machinery: the role of the binding,
+the inputs and outputs expected by its callers, invariants a specialization must
+preserve, the generic fallback and when to override it, numerical or dispatch
+assumptions, and the downstream mechanisms that consume it. It must state that
+the binding is internal rather than merely relying on its name or Julia's
+non-public warning.
+
+Not every local calculation needs a docstring. A docstring is required for every
+internal type or function that this guide asks contributors to implement,
+specialize, instantiate, or understand as part of an extension protocol. Small
+private helpers used only inside one implementation may remain source comments.
+The [internal implementation reference](@ref internal_api) collects these docstrings for
+discovery; inclusion there does not turn them into supported downstream API.
+
+For both audiences, prefer definitions and behavioral invariants over anecdotes,
+use consistent mathematical terminology, distinguish mathematical restrictions
+from current implementation limitations, and include an example when it clarifies
+a non-obvious protocol. Related mechanisms should use a recognizable structure,
+but headings should be omitted when they would only add ceremony.
+
 This page describes the current internal machinery used by package contributors
 to add and maintain copula families in this repository.
 It focuses on what must be defined for a new copula to work consistently

@@ -1,6 +1,16 @@
 ###########################################################################
 #####  Bivariate Extreme Value Copulas fast-path (d=2, p=1)
 ###########################################################################
+"""
+    BivEVDistortion(tail, conditioned_index, conditioned_value)
+
+Internal uniform-scale conditional marginal for a bivariate extreme-value
+copula represented by `tail`. It evaluates the conditional CDF, density and
+quantile directly from the scalar Pickands function and its derivatives,
+including endpoint versions. `conditioned_index` identifies the observed
+coordinate. This fast-path must remain semantically equivalent to the generic
+extreme-value `distortion` and is not public API.
+"""
 struct BivEVDistortion{TT,T} <: Distortion
     tail::TT
     j::Int8

@@ -29,20 +29,49 @@ end
 _parameter_dof(x::Tail) = _parameter_dof(Distributions.params(x))
 Base.broadcastable(tail::Tail) = Ref(tail)
 
-####### Functions you need to overload: 
+"""
+    _is_valid_in_dim(tail::Tail, d::Int)
+
+Return whether `tail` defines a valid stable tail dependence function in
+dimension `d`. This internal constructor-validation hook defaults to `d ≥ 2`;
+bivariate capability types restrict it unless a mathematical family explicitly
+provides a multivariate extension.
+"""
 _is_valid_in_dim(::Tail, d::Int) = d >= 2
+
+"""
+    A(tail::Tail, ω)
+
+Evaluate the Pickands representation on the unit simplex. For a generic tail
+this is `ℓ(tail, ω)`; bivariate Pickands-capable tails also accept a scalar
+coordinate. The input must belong to the representation documented by the
+concrete tail.
+"""
 A(tail::Tail, ω::NTuple{d,<:Real}) where {d} = ℓ(tail, ω)
 
 ####### Rest of the interface you can overload if more efficient:
 needs_binary_search(::Tail) = false
-# \ell function
+"""
+    ℓ(tail::Tail, x)
+
+Evaluate the stable tail dependence function at a nonnegative vector `x`. The
+generic implementation extends `A` from the simplex by one-homogeneity and
+returns zero at the origin.
+"""
 function ℓ(tail::Tail, x)
     s = sum(x)
     return s == 0 ? zero(eltype(x)) : s * A(tail, ntuple(i->x[i]/s, length(x)))
 end
 
-# Mixed STDF partials. A new Tail only needs to implement ℓ.
-# Generic mixed partials come from the shared AD helper.
+"""
+    _ellpartial_signlog(tail::Tail, x, I)
+
+Return `(sign, logabs)` for the mixed partial of `ℓ(tail, x)` with respect to
+the coordinates in `I`. This internal signed-log protocol avoids overflow and
+underflow in extreme-value density and conditioning formulas. The generic
+fallback differentiates `ℓ`; specializations must preserve the derivative's
+sign and value, with `(0, -Inf)` representing zero.
+"""
 function _ellpartial_signlog(tail::Tail, x, I::Tuple{Vararg{Int}})
     v = _mixed_partial(z -> ℓ(tail, z), x, I)
     iszero(v) && return 0, oftype(v, -Inf)
@@ -51,6 +80,14 @@ end
 
 _ellpartial_signlog(tail::Tail, x, I::AbstractVector{<:Integer}) = _ellpartial_signlog(tail, x, Tuple(I))
 
+"""
+    ellpartial(tail::Tail, x, I)
+
+Evaluate the mixed partial derivative of the STDF with respect to coordinates
+`I`. An empty index set returns `ℓ(tail, x)`. This is internal contributor
+machinery consumed by generic extreme-value CDF, density and conditioning
+algorithms; defining `ℓ` supplies an automatic-differentiation fallback.
+"""
 function ellpartial(tail::Tail, x, I::Tuple{Vararg{Int}})
     isempty(I) && return ℓ(tail, x)
     sign, logabs = _ellpartial_signlog(tail, x, I)
@@ -59,14 +96,15 @@ end
 
 ellpartial(tail::Tail, x, I::AbstractVector{<:Integer}) = ellpartial(tail, x, Tuple(I))
 
-# Native scalar Pickands interface in d=2.
-#
-# `BivariatePickandsTail` is a computational capability: the tail provides the
-# scalar Pickands representation A(t) and therefore has access to the mature
-# bivariate derivative, density, conditioning, and sampling machinery.
-#
-# The capability is bivariate by default. Mathematical families that also have
-# a valid multivariate STDF override `_is_valid_in_dim`.
+"""
+    BivariatePickandsTail <: Tail
+
+Internal capability type for tails that provide the scalar bivariate Pickands
+function `A(tail, t)`. It activates generic derivatives, density, conditioning
+and sampling machinery. The capability is valid only in dimension two by
+default; a mathematically valid multivariate family must specialize
+`_is_valid_in_dim` explicitly. This subtype is not a stable downstream API.
+"""
 abstract type BivariatePickandsTail <: Tail end
 
 # Marker used by fitting routines for one-parameter Pickands families.
@@ -74,7 +112,24 @@ abstract type OneParameterPickandsTail <: BivariatePickandsTail end
 
 _is_valid_in_dim(::BivariatePickandsTail, d::Int) = d == 2
 A(tail::BivariatePickandsTail, t::NTuple{2, <:Real}) = A(tail, t[1])
+
+"""
+    dA(tail::BivariatePickandsTail, t)
+
+Evaluate the first derivative of the scalar Pickands function. The internal
+fallback uses forward-mode automatic differentiation; specialized formulas
+must retain the same one-sided behavior used by endpoint conditionals.
+"""
 dA(tail::BivariatePickandsTail, t::Real) = ForwardDiff.derivative(z -> A(tail, z), t)
+
+"""
+    d²A(tail::BivariatePickandsTail, t)
+
+Evaluate the second derivative of the scalar Pickands function. The internal
+fallback differentiates `dA`. It represents an ordinary derivative and is not
+appropriate for atomic spectral curvature, which uses discrete-spectral
+machinery instead.
+"""
 d²A(tail::BivariatePickandsTail, t::Real) = ForwardDiff.derivative(z -> dA(tail, z), t)
 
 # One-sided Pickands slopes for conditional endpoint extensions.

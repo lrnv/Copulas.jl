@@ -20,16 +20,73 @@ function (TG::Type{<:Generator})(args...;kwargs...)
 end
 Base.broadcastable(x::Generator) = Ref(x)
 _parameter_dof(x::Generator) = _parameter_dof(Distributions.params(x))
+
+"""
+    max_monotony(G::Generator)
+
+Return the largest Williamson order for which `G` is known to be monotone.
+`Inf` denotes complete monotonicity. This public mathematical query is used to
+validate the dimensions of Archimedean and Liouville constructions.
+"""
 max_monotony(G::Generator) = throw("This generator does not have a defined max monotony. You need to implement `max_monotony(G)`.")
+
+"""
+    ϕ(G::Generator, t)
+    ϕ(G::Generator)
+
+Evaluate the Archimedean generator at `t ≥ 0`, or return its callable unary
+form. A valid implementation is decreasing, satisfies `ϕ(G, 0) = 1`, tends to
+zero at infinity, and has the monotonicity reported by `max_monotony(G)`.
+"""
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
 ϕ(G::Generator) = Base.Fix1(ϕ,G)
+
+"""
+    ϕ⁻¹(G::Generator, u)
+
+Return the generalized inverse of `ϕ(G, ·)` at `u ∈ [0,1]`. The generic
+internal fallback uses scalar root finding; generator implementations may
+specialize it for accuracy, boundary behavior, or performance.
+"""
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
+
+"""
+    ϕ⁽¹⁾(G::Generator, t)
+
+Evaluate the first derivative of the generator. The generic internal fallback
+uses forward-mode automatic differentiation. Specialized methods must preserve
+the derivative of `ϕ`, including its sign and limiting behavior.
+"""
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
+
+"""
+    ϕ⁻¹⁽¹⁾(G::Generator, u)
+
+Evaluate the derivative of the inverse generator through
+`1 / ϕ⁽¹⁾(G, ϕ⁻¹(G, u))`. This is an internal conditioning and sampling hook;
+specializations must agree with that identity wherever the inverse is regular.
+"""
 ϕ⁻¹⁽¹⁾(G::Generator, t) = inv(ϕ⁽¹⁾(G, ϕ⁻¹(G, t)))
+
+"""
+    ϕ⁽ᵏ⁾(G::Generator, k::Int, t)
+
+Evaluate the derivative of order `k ≥ 0`. The generic internal fallback uses a
+Taylor expansion. A specialization is a numerical fast path and must return
+the same derivative, with `k = 0` corresponding to `ϕ(G, t)`.
+"""
 function ϕ⁽ᵏ⁾(G::Generator, k::Int, t)
     k ≥ 0 || throw(ArgumentError("k must be non-negative"))
     return _mul_factorial(taylor(ϕ(G), t, k)[end], k)
 end
+
+"""
+    ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, y; start_at=y)
+
+Invert the `k`th generator derivative on the relevant monotone branch. The
+generic internal fallback expands a positive bracket and applies bisection.
+`start_at` identifies the lower branch boundary used by tilted generators.
+"""
 function ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t)
     f(x) = ϕ⁽ᵏ⁾(G, k, x) - t
     T = typeof(float(t))
@@ -61,12 +118,31 @@ end
 # ρ⁻¹(G::Generator, ρ_val) = @error ("This generator has no inverse Spearman rho implemented.")
 
 abstract type MarkerGenerator <: Generator end
+
+"""
+    IndependentGenerator()
+
+Parameter-free Archimedean generator `ϕ(t) = exp(-t)`, corresponding to the
+independence copula in every dimension. It is useful when composing generic
+generator-based models; ordinary users will usually construct
+`IndependentCopula` directly.
+"""
 struct IndependentGenerator <: MarkerGenerator end
 struct MGenerator <: MarkerGenerator end
 struct WGenerator <: MarkerGenerator end
 
 Distributions.params(::MarkerGenerator) = (;)
 
+"""
+    limit_kind(component, ::Val{d})
+
+Classify whether a generator, tail, or composite component is exactly at a
+canonical dependence limit in dimension `d`. Internal constructors and
+algorithms use the result to preserve independence, comonotonicity, or the
+bivariate lower bound without relying on approximate parameter comparisons.
+Families return `NO_LIMIT` away from those values. This protocol is not public
+API.
+"""
 @inline limit_kind(::Generator, ::Val) = NO_LIMIT
 @inline limit_kind(::MGenerator, ::Val) = M_LIMIT
 @inline limit_kind(::WGenerator, ::Val) = W_LIMIT
@@ -633,7 +709,14 @@ end
 Distributions.params(G::FrailtyGenerator) = (F=G.F,)
 frailty(G::FrailtyGenerator) = G.F
 
-# Add univaraite generator bindins: 
+"""
+    AbstractUnivariateGenerator <: Generator
+
+Internal capability type for parametric generators whose user-facing
+parameters are represented by a single univariate generator object. It is used
+to share constructor and fitting machinery; downstream packages must not rely
+on this subtype as a stable extension interface.
+"""
 abstract type AbstractUnivariateGenerator <: Generator end
 abstract type AbstractUnivariateFrailtyGenerator <: AbstractFrailtyGenerator end
 const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}
