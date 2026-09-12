@@ -39,10 +39,11 @@ Construct the empirical Pickands tail from data (2×N).
 
 Rows of `u` are the two margins and columns are observations. With
 `pseudo_values=true`, values are interpreted as pseudo-observations; otherwise
-the margins are ranked first. `method` selects the classical Pickands, CFG, or
-OLS-intercept pilot estimator. The pilot is evaluated on `grid` points between
-`eps` and `1-eps`, then projected onto the convex Pickands class and extended
-with the required endpoint values.
+the margins are ranked first using the default average-rank tie convention.
+Call `pseudos(data; ties=...)` explicitly to use another convention. `method`
+selects the classical Pickands, CFG, or OLS-intercept pilot estimator. The pilot
+is evaluated on `grid` points between `eps` and `1-eps`, then projected onto the
+convex Pickands class and extended with the required endpoint values.
 
 The returned tail evaluates `A` by piecewise-linear interpolation. Increasing
 `grid` gives a finer representation at additional fitting and storage cost;

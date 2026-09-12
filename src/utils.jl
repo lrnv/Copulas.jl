@@ -258,6 +258,16 @@ function pseudos(sample::AbstractMatrix; ties::Symbol=:average,
     return U
 end
 
+function _require_tie_free_rows(sample::AbstractMatrix, operation::AbstractString)
+    for row in axes(sample, 1)
+        allunique(@view sample[row, :]) || throw(ArgumentError(
+            "$operation requires tie-free margins; ties were detected in margin $row. " *
+            "If deliberate tie breaking is justified, preprocess the data with pseudos " *
+            "using :first, :last, or :random before construction."))
+    end
+    return nothing
+end
+
 # Pairwise component metrics applied to (n,d)-shaped matrices:
 """
     corblomqvist(X::AbstractMatrix)
@@ -513,25 +523,25 @@ Compute the empirical Kendall sample `W` with entries `W[i] = C_n(U[:,i])`,
 where `C_n` is the Deheuvels empirical copula built from the same `u`.
 
 Input and tie handling
-- `u` is expected as a `d×n` matrix (columns are observations). This routine first
-  applies per-margin ordinal ranks (the pre-1.0 `pseudos` policy) so that the
-  result is invariant under strictly increasing marginal transformations.
+- `u` is expected as a `d×n` matrix (columns are observations).
+- Dominance is evaluated directly on `u`, preserving equal values. The result is
+  therefore invariant under strictly increasing marginal transformations and
+  under permutations of the observations, including when ties are present.
+- For any rank transformation that preserves ties, including the default
+  `pseudos(u; ties=:average)`, applying that transformation first leaves the
+  empirical Kendall sample unchanged.
 
 Returns
 - `Vector{Float64}` of length `n` with values in `(0,1)`.
 """
 function _kendall_sample(u::AbstractMatrix)
-    d, n = size(u)
-    R = Matrix{Int}(undef, d, n)
-    @inbounds for i in 1:d
-        R[i, :] = StatsBase.ordinalrank(@view u[i, :])
-    end
+    _, n = size(u)
     W = zeros(Float64, n)
     @inbounds for i in 1:n
-        ri = @view R[:, i]
+        ui = @view u[:, i]
         count_le = 0
         for j in 1:n
-            count_le += all(@view(R[:, j]) .≤ ri)
+            count_le += all(@view(u[:, j]) .≤ ui)
         end
         W[i] = count_le / (n + 1)
     end

@@ -63,7 +63,7 @@ to avoid ranking them again.
 
 The currently implemented copula hypothesis tests assume continuous margins and therefore require tie-free observations in every margin. Tied or discrete data are rejected with an `ArgumentError`.
 
-This is intentional: ordinal ranking would otherwise assign distinct ranks to tied observations and could produce apparently valid p-values without the tie-aware empirical-process or bootstrap theory required for such data. Tie-aware procedures are outside the scope of the current implementation.
+This is intentional: choosing a rank convention would otherwise produce apparently valid p-values without the tie-aware empirical-process or bootstrap theory required for such data. Although [`pseudos`](@ref) uses average ranks by default, that convention alone does not make continuous-margin tests valid for discrete or rounded data. Tie-aware procedures are outside the scope of the current implementation.
 
 :::
 

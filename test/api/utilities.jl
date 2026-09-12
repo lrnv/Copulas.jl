@@ -46,6 +46,13 @@
     @test pseudos(Utied) == Utied
     @test_throws ArgumentError pseudos(Xtied; ties=:dense)
 
+    kendall_data = [1.0 1.0 2.0 3.0; 1.0 2.0 1.0 3.0]
+    kendall = Copulas._kendall_sample(kendall_data)
+    @test kendall == [1.0, 2.0, 2.0, 4.0] ./ 5
+    @test Copulas._kendall_sample(pseudos(kendall_data)) == kendall
+    permuted_kendall = Copulas._kendall_sample(kendall_data[:, permutation])
+    @test permuted_kendall[invperm(permutation)] == kendall
+
 
     target = [1.0 0.4; 0.4 1.0]
     @test Nataf((Normal(), Normal(2, 3)), target) == target
