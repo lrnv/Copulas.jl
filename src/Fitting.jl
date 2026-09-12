@@ -275,9 +275,10 @@ and fitting method.
 Return the tuple of fitting methods available for a given copula family in a given dimension.
 
 This is used internally by [`Distributions.fit`](@ref) to check validity of the
-`method` argument. Maximum pseudo-likelihood (`:mpl`) is a public semantic alias
-of the `:mle` engine and is therefore accepted whenever `:mle` appears in this
-tuple, without requiring every family to duplicate the same implementation.
+`method` argument. Maximum pseudo-likelihood (`:mpl`) is handled by the
+high-level public fitting entry point whenever `:mle` appears in this tuple;
+extensions should continue to advertise and implement only their actual
+`_fit(..., Val{method})` dispatches.
 
 # Example
 ```julia
@@ -291,11 +292,6 @@ See also: [`_fit`](@ref), [`_example`](@ref),
 _available_fitting_methods(::Type{<:Copula}, d) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C), d)
 
-function _supports_fitting_method(CT, d, method)
-    available = _available_fitting_methods(CT, d)
-    return method in available || (method === :mpl && :mle in available)
-end
-
 function _default_fitting_method(CT, d)
     available = _available_fitting_methods(CT, d)
     isempty(available) && throw(ArgumentError("No fitting methods available for $CT."))
@@ -306,9 +302,8 @@ function _find_method(CT, d, method)
     avail = _available_fitting_methods(CT, d)
     isempty(avail) && throw(ArgumentError("No fitting methods available for $CT."))
     method === :default && return _default_fitting_method(CT, d)
-    !_supports_fitting_method(CT, d, method) && throw(ArgumentError(
-        "Method '$method' not available for $CT. Available: $(join(avail, ", "))." *
-        (:mle in avail ? " Maximum pseudo-likelihood (:mpl) is also available." : ""),
+    method ∉ avail && throw(ArgumentError(
+        "Method '$method' not available for $CT. Available: $(join(avail, ", ")).",
     ))
     return method
 end
@@ -372,7 +367,10 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
     _check_vcov_method(vcov_method)
     d, n = size(U)
     requested_method = method === :default ? _default_fitting_method(CT, d) : method
-    _find_method(CT, d, requested_method)
+    # MPL is a public preprocessing/metadata contract backed by the MLE
+    # engine, not an internal `_fit(..., Val{:mpl})` extension hook.
+    validation_method = requested_method === :mpl ? :mle : requested_method
+    _find_method(CT, d, validation_method)
     likelihood_method = requested_method in (:mle, :mpl)
     input_is_pseudo = something(pseudo_values, true)
     method = likelihood_method ?

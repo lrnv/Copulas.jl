@@ -60,6 +60,7 @@ end
     @test normalized_mle.method_details.pseudo_values === true
     @test mpl_fit.method_details.U == U
     @test_throws ArgumentError Copulas._find_method(EmpiricalCopula, 2, :mpl)
+    @test_throws ArgumentError Copulas._find_method(ClaytonCopula{2}, 2, :mpl)
 end
 
 @testset "public covariance fitting option" begin
@@ -234,7 +235,6 @@ end
                 @test all(method -> Copulas._find_method(family, d, method) === method,
                           methods)
                 if :mle in methods
-                    @test Copulas._find_method(family, d, :mpl) === :mpl
                     @test Copulas._default_fitting_method(family, d) === :mle
                 else
                     @test Copulas._default_fitting_method(family, d) === first(methods)
