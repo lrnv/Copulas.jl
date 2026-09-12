@@ -71,7 +71,7 @@ specialize it. This trait controls density-dependent generic operations and is
 not a downstream extension contract.
 
 See also: [`CopulaMeasureStyle`](@ref), [`limit_kind`](@ref),
-[`Distributions.logpdf`](@extref).
+[Distributions `logpdf`](@extref Distributions Probability-evaluation).
 """
 copula_measure_style(::Type{<:Copula}) = AbsolutelyContinuousMeasure()
 copula_measure_style(C::Copula) = copula_measure_style(typeof(C))
@@ -162,7 +162,7 @@ requires an ordinary density; it is unsuitable for singular copulas and may be
 expensive in high dimension. Public callers must use `cdf`.
 
 See also: [`Distributions._rand!`](@ref), [`copula_measure_style`](@ref),
-[`Distributions.cdf`](@extref).
+[`Distributions.cdf`](@extref Distributions Distributions.cdf).
 """
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)
@@ -495,7 +495,8 @@ Bounds are clipped to the unit hypercube; a rectangle with any non-positive
 width has measure zero. Both corners must contain one value per copula
 dimension.
 
-See also: [`Distributions.cdf`](@extref), [`subsetdims`](@ref), [`Copula`](@ref).
+See also: [`Distributions.cdf`](@extref Distributions Distributions.cdf),
+[`subsetdims`](@ref), [`Copula`](@ref).
 """
 function measure(C::Copula{d}, us,vs) where {d}
 

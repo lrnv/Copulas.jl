@@ -15,7 +15,8 @@ preferable to raw density calculations and potentially weakening finite-sample
 parameter identification.
 
 See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref),
-[`Distributions.logpdf`](@extref), [`Distributions.fit`](@extref).
+[Distributions `logpdf`](@extref Distributions Probability-evaluation),
+[`Distributions.fit`](@ref).
 
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.195-196
