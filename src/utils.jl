@@ -213,6 +213,9 @@ function _pseudos(sample::AbstractMatrix, tie_method::Val,
 end
 
 const _PSEUDO_TIE_METHODS = (:average, :first, :last, :min, :max, :random)
+const _GROUPED_PSEUDO_TIE_METHOD = Union{
+    Val{:average}, Val{:last}, Val{:min}, Val{:max}, Val{:random},
+}
 
 function _pseudoranks!(ranks::AbstractVector, x::AbstractVector, tie_method::Val,
         rng::Random.AbstractRNG, order::Vector{Int})
@@ -228,8 +231,9 @@ function _assign_pseudoranks!(ranks::AbstractVector{T}, ::AbstractVector,
     return ranks
 end
 
-function _assign_tied_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
-        order::Vector{Int}, tie_method::Val, rng::Random.AbstractRNG)
+function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
+        order::Vector{Int}, tie_method::_GROUPED_PSEUDO_TIE_METHOD,
+        rng::Random.AbstractRNG)
     n = length(order)
     first = 1
     while first <= n
@@ -241,31 +245,6 @@ function _assign_tied_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
         first = last + 1
     end
     return ranks
-end
-
-function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
-        order::Vector{Int}, tie_method::Val{:average}, rng::Random.AbstractRNG)
-    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
-end
-
-function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
-        order::Vector{Int}, tie_method::Val{:last}, rng::Random.AbstractRNG)
-    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
-end
-
-function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
-        order::Vector{Int}, tie_method::Val{:min}, rng::Random.AbstractRNG)
-    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
-end
-
-function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
-        order::Vector{Int}, tie_method::Val{:max}, rng::Random.AbstractRNG)
-    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
-end
-
-function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
-        order::Vector{Int}, tie_method::Val{:random}, rng::Random.AbstractRNG)
-    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
 end
 
 function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
