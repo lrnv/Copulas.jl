@@ -1,3 +1,5 @@
+include("sync_homepage.jl")
+
 using Copulas
 using Documenter
 using DocumenterCitations

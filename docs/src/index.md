@@ -6,7 +6,7 @@ layout: home
 hero:
   name: Copulas.jl
   text:
-  tagline: A Distributions.jl-compliant copula package. 
+  tagline: A Distributions.jl-compliant copula package.
   image:
     src: logo.svg
     alt: Copulas.jl
@@ -22,6 +22,8 @@ hero:
       link: /bestiary/elliptical
 ---
 ````
+
+<!-- This file is generated from README.md by docs/sync_homepage.jl. -->
 
 # Welcome to Copulas.jl!
 
@@ -47,15 +49,15 @@ The package revolves around two main types:
 
 ## Getting started
 
-The package is registered in Julia's General registry so you may simply install the package by running : 
+The package is registered in Julia's General registry so you may simply install the package by running :
 
 ```julia
 ] add Copulas
 ```
 
-The API contains random number generation, cdf and pdf evaluation, and the `fit` function from `Distributions.jl`. A typical use case might look like this: 
+The API contains random number generation, cdf and pdf evaluation, and the `fit` function from `Distributions.jl`. A typical use case might look like this:
 
-```@example
+```@example home_getting_started
 using Copulas, Distributions, Random, Plots
 X₁ = Gamma(2,3)
 X₂ = Beta(1,4)
@@ -68,7 +70,7 @@ D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,Normal}}, simu) # estimate 
 plot(D̂) # plot the result
 ```
 
-The list of available copula models is *very* large; browse the [Bestiary](@ref elliptical_cops) for definitions, parameterizations, constructors, and model-specific caveats.
+The list of available copula models is *very* large; browse the [Bestiary](https://lrnv.github.io/Copulas.jl/stable/bestiary/elliptical) for definitions, parameterizations, constructors, and model-specific caveats.
 The general implementation philosophy is for the code to follow the mathematical boundaries of the implemented concepts. For example, this is the only implementation we know (in any language) that allows for **all** Archimedean copulas to be sampled: we use the Williamson transformation for non-standard generators, including user-provided black-box ones.
 
 ## Feature comparison
@@ -99,13 +101,13 @@ Other Julia packages cover related use cases. [`BivariateCopulas.jl`](https://gi
 
 The table compares public scope rather than runtime performance; algorithmic cost depends strongly on the family, dimension, and requested operation.
 
-## Quick API Tour 
+## Quick API Tour
 
-Here is a practical tour of the main public workflows. For precise behavioral guarantees see the [Public API](@ref); for theory and model-specific guidance see the Manual and Bestiary.
+Here is a practical tour of the main public workflows. For precise behavioral guarantees see the [Public API](https://lrnv.github.io/Copulas.jl/stable/api/public); for theory and model-specific guidance see the Manual and Bestiary.
 
 ### Copulas and Sklar distributions
 
-You can construct a copula object with their respective constructors. They behave like multivariate distributions from `Distributions.jl` and respect their API: 
+You can construct a copula object with their respective constructors. They behave like multivariate distributions from `Distributions.jl` and respect their API:
 
 ```@example 1
 using Copulas, Distributions, Random, StatsBase
@@ -127,27 +129,27 @@ pdf(D, rand(3))
 
 ### Dependence metrics
 
-You can get scalar dependence metrics at copula level: 
+You can get scalar dependence metrics at copula level:
 
 ```@example 1
 (
     kendall_tau = Copulas.τ(C),
     spearm_rho = Copulas.ρ(C),
     blomqvist_beta = Copulas.β(C),
-    gini_gamma = Copulas.γ(C), 
-    entropy_iota = Copulas.ι(C), 
-    lower_tail_dep = Copulas.λₗ(C), 
+    gini_gamma = Copulas.γ(C),
+    entropy_iota = Copulas.ι(C),
+    lower_tail_dep = Copulas.λₗ(C),
     upper_tail_dep = Copulas.λᵤ(C)
 )
 ```
 
 Pairwise matrices of bivariate versions are available through `StatsBase.corkendall(C)`, `StatsBase.corspearman(C)`, `Copulas.corblomqvist(C)`, `Copulas.corgini(C)`, `Copulas.corentropy(C)`, `Copulas.corlowertail(C)`, and `Copulas.coruppertail(C)`.
 
-Same functions work passing a dataset instead of the copula for their empirical counterpart. 
+Same functions work passing a dataset instead of the copula for their empirical counterpart.
 
 ### Measure and transforms
 
-The `measure` function measures hypercubes under the distribution of the copula. You can access the Rosenblatt transformation of a copula (or a Sklar distribution) through the `rosenblatt` and `inverse_rosenblatt` functions: 
+The `measure` function measures hypercubes under the distribution of the copula. You can access the Rosenblatt transformation of a copula (or a Sklar distribution) through the `rosenblatt` and `inverse_rosenblatt` functions:
 
 ```@example 1
 Copulas.measure(C, (0.1,0.2,0.3), (0.9,0.8,0.7))
@@ -208,7 +210,7 @@ selectiontable(Msel)
 
 Selection is deliberately explicit: Copulas.jl does not treat every available
 family as a sensible candidate for every dimension or scientific question. See
-the [fitting interface](@ref fitting_interface) for covariance estimation,
+the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for covariance estimation,
 confidence intervals, residuals, prediction, and selection caveats.
 
 ### Hypothesis testing
@@ -225,7 +227,7 @@ test = IndependenceCopulaTest(U; N=19, rng=Xoshiro(42))
 
 These are resampling-based procedures. Set an RNG for reproducibility, use a
 larger `N` for scientific work, and check the assumptions—especially continuity
-and absence of ties—on the [hypothesis-testing page](@ref hypothesis_testing).
+and absence of ties—on the [hypothesis-testing page](https://lrnv.github.io/Copulas.jl/stable/manual/hypothesis_testing).
 
 
 ## Contributions are welcome
@@ -233,21 +235,21 @@ and absence of ties—on the [hypothesis-testing page](@ref hypothesis_testing).
 If you want to contribute to the package, ask a question, found a bug or simply want to chat, do not hesitate to open an issue on [the Copulas.jl repository](https://github.com/lrnv/Copulas.jl)
 
 
-## Citation 
+## Citation
 
 Do not hesitate to star this repository to show support. If you use this package in your researches, please cite it with the following bibtex code:
 
 ```bibtex
 @article{LavernyJimenez2024,
-    author = {Oskar Laverny and Santiago Jimenez}, 
+    author = {Oskar Laverny and Santiago Jimenez},
     title = {Copulas.jl: A fully Distributions.jl-compliant copula package},
     journal = {Journal of Open Source Software},
-    doi = {10.21105/joss.06189}, 
-    url = {https://doi.org/10.21105/joss.06189}, 
-    year = {2024}, 
-    publisher = {The Open Journal}, 
-    volume = {9}, 
-    number = {94}, 
+    doi = {10.21105/joss.06189},
+    url = {https://doi.org/10.21105/joss.06189},
+    year = {2024},
+    publisher = {The Open Journal},
+    volume = {9},
+    number = {94},
     pages = {6189}
 }
 ```
