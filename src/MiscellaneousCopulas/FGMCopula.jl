@@ -20,7 +20,8 @@ The parameter vector is ordered by interaction order and then by coordinate
 combination. Componentwise bounds `|θᵢ| ≤ 1` are necessary but not sufficient;
 the constructor also checks all hypercube-corner inequalities. Parameter count
 grows exponentially with `d`, while attainable dependence remains relatively
-weak. In dimension two, `θ = ±1` reaches singular Fréchet bounds.
+weak. In dimension two, the admissible endpoints `θ = ±1` remain ordinary FGM
+copulas; the family does not attain either Fréchet--Hoeffding bound.
 
 See also: [`Copula`](@ref), [`IndependentCopula`](@ref), [`τ`](@ref),
 [`Distributions.fit`](@ref).

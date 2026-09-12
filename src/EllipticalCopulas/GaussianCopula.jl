@@ -41,13 +41,12 @@ Special case:
 - If `isdiag(Σ)`, the `GaussianCopula` represents independence while retaining
   its concrete family type.
 
-The matrix constructor normalizes covariance scales to correlations in the
-supplied matrix and therefore may mutate that argument; pass `copy(Σ)` when it
-must be preserved. Non-positive-definite matrices are rejected. Gaussian
-copulas are asymptotically independent in both tails for every non-degenerate
-correlation, and multivariate CDF values are numerical estimates.
+Covariance-like inputs are normalized to correlation scale, and
+non-positive-definite matrices are rejected. Gaussian copulas are
+asymptotically independent in both tails for every non-degenerate correlation,
+and multivariate CDF values are numerical estimates.
 
-See also: [`EllipticalCopula`](@ref), [`TCopula`](@ref), [`SklarDist`](@ref),
+See also: [`TCopula`](@ref), [`SklarDist`](@ref),
 [`Nataf`](@ref), [`Distributions.fit`](@ref).
 
 References:

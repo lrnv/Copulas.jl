@@ -84,7 +84,9 @@ The parameter vector therefore has length ``2^d-d-1``. Each coefficient lies
 in ``[-1,1]`` and the joint corner constraints ensuring a non-negative density
 must also hold. Construct the family with `FGMCopula{d}(θ)` or
 `FGMCopula(d, θ)`; in dimension two, `θ` may be supplied as a scalar. The
-sampling representation follows [blier2022stochastic](@cite).
+sampling representation follows [blier2022stochastic](@cite). Even at the
+bivariate endpoints `θ = ±1`, these remain ordinary, weak-dependence FGM
+copulas rather than either Fréchet--Hoeffding bound.
 
 ### `RafteryCopula`
 

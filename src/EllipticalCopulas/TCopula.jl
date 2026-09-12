@@ -29,14 +29,14 @@ logpdf(C, u[:, 1]), cdf(C, u[:, 1])
 Ĉ = fit(TCopula{2}, u; vcov=false)
 ```
 
-Degrees of freedom must be positive and the correlation matrix positive
-definite. The matrix is normalized to correlation scale in place; pass a copy
-when the input must be preserved. Unlike the Gaussian copula, finite degrees
-of freedom produce symmetric lower- and upper-tail dependence. Large `ν`
-approaches the Gaussian copula and can be weakly identified.
+Degrees of freedom must be positive. Covariance-like matrix inputs are
+normalized to correlation scale, and non-positive-definite matrices are
+rejected. Unlike the Gaussian copula, finite degrees of freedom produce
+symmetric lower- and upper-tail dependence. Large `ν` approaches the Gaussian
+copula and can be weakly identified.
 
-See also: [`EllipticalCopula`](@ref), [`GaussianCopula`](@ref),
-[`SklarDist`](@ref), [`Distributions.fit`](@ref).
+See also: [`GaussianCopula`](@ref), [`SklarDist`](@ref),
+[`Distributions.fit`](@ref).
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
