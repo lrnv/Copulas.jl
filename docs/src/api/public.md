@@ -14,7 +14,11 @@ supplies the dimension through the type and `Family(d, args...)` supplies it at
 runtime. The former is the inference-friendly path when `d` is known to the
 compiler; this is not a blanket inference guarantee for arbitrary argument types.
 Additional storage parameters shown by Julia when printing a type are not
-constructor arguments or supported extension points unless explicitly documented.
+constructor arguments or supported extension points unless explicitly
+documented. The deliberate exception is
+`SklarDist{CopulaType,Tuple{MarginTypes...}}`, whose two family selectors are a
+supported fitting-target syntax; this does not expose any further representation
+details of `SklarDist`.
 
 The public API consists of documented symbols declared with `export` or
 `public`, together with the documented methods that Copulas.jl adds to adopted
@@ -33,7 +37,7 @@ not.
 | Dependence | `τ`, `ρ`, `β`, `γ`, `ι`, `λₗ`, `λᵤ`, `StatsBase.corkendall`, `StatsBase.corspearman` | Results have the documented scalar or pairwise-matrix shape, bounds and symmetry. Closed forms and numerical fallbacks have the same contract. Parameter inversions used by fitting are internal. |
 | Fitting and selection | `fit`, `CopulaModel`, `selectiontable` and the StatsBase model interface | Documented family/method pairs return valid fitted models. `CopulaModel` exposes the observation count, coefficients, covariance when computed, information criteria, residuals and prediction. Automatic family selection compares an explicit collection of candidates; see the [fitting interface](@ref fitting_interface). |
 | Hypothesis testing | `IndependenceCopulaTest`, `ExchangeabilityCopulaTest`, `RadialSymmetryCopulaTest`, `ExtremeValueCopulaTest`, `GOFCopulaTest`, `pvalue`, `teststatistic` | Each procedure applies its documented statistic and calibration under its stated assumptions and returns a `CopulaTest`; see [hypothesis testing](@ref hypothesis_testing). |
-| Composition | `SklarDist` | Distribution operations, marginalization, conditioning and Rosenblatt transforms are expressed on the marginal scales. |
+| Composition | `SklarDist` | Distribution operations, marginalization, conditioning and Rosenblatt transforms are expressed on the marginal scales. `SklarDist{CopulaType,Tuple{MarginTypes...}}` is additionally a supported fitting target. |
 | Generator extension | `Generator`, `ϕ`, `max_monotony`, `Distributions.params` | Subtyping `Generator` and implementing these three mathematical operations is a supported way to define a custom Archimedean generator. Optional derivative, inverse, radial, fitting, cache, and dispatch hooks remain internal. |
 | Utilities | `pseudos`, `measure`, `Nataf` | Rank pseudo-observations, copula rectangle probability, and Nataf correlation correction respectively. |
 

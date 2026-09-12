@@ -150,6 +150,13 @@ Usually, the model is identified by a copula or Sklar type, for example
 `method=:default`, each family chooses its documented default estimator;
 explicitly supported methods depend on the family.
 
+The form `SklarDist{CopulaType,Tuple{MarginTypes...}}` is intentionally public
+syntax for this purpose: it selects the copula family and the ordered marginal
+families to estimate. This is a narrow exception to the usual rule that storage
+type parameters are implementation details. It does not expose the fields,
+additional representation choices, or arbitrary concrete type parameters of a
+constructed `SklarDist`.
+
 ::: note Structural models
 
 Most calls identify a model by its type. A structure chosen at runtime, such as

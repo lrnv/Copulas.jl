@@ -396,6 +396,11 @@ coefficient and covariance summaries combine the marginal and copula blocks.
 Inference for a block may be unavailable when its estimator does not supply a
 usable covariance estimate. Use `fit(SklarDist{...}, X; ...)` when only the
 fitted distribution is required.
+
+`SklarDist{CT,TplMargins}` is public here specifically as a fitting target:
+`CT` selects the copula family and `TplMargins == Tuple{M₁,...,M_d}` selects the
+marginal families. This exception does not expose arbitrary storage type
+parameters or the concrete representation of constructed `SklarDist` values.
 """
 function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}, X; quick_fit = false,
                            copula_method = :default, sklar_method = :default, margins_kwargs = NamedTuple(),

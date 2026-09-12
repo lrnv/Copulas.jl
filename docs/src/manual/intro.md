@@ -304,6 +304,11 @@ These transformations leverage the package's conditioning framework.
 
 You can fit copulas from pseudo-observations U, and Sklar distributions from raw data X. Available methods vary by family; see the fitting manual for details.
 
+In the fitting call below,
+`SklarDist{CopulaType,Tuple{MarginTypes...}}` is supported public syntax for
+selecting the copula and ordered marginal families. It is not a promise about
+the remaining concrete representation of `SklarDist` values.
+
 ```@example api
 X = rand(D, 500)
 M = fit(CopulaModel, SklarDist{GumbelCopula, Tuple{Gamma,Beta,LogNormal}}, X; copula_method=:mle)

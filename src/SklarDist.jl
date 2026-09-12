@@ -43,8 +43,13 @@ D = SklarDist(C, (Gamma(2, 3), Pareto(), LogNormal()))
 sample = rand(D, 1000)
 ```
 
-Use `fit(CopulaModel, SklarDist{...}, data)` to estimate specified marginal and
-copula families while retaining fitting diagnostics.
+For fitting, `SklarDist{CopulaType,Tuple{MarginTypes...}}` is a deliberately
+supported public target syntax. It specifies the copula family and one marginal
+family per coordinate, for example
+`SklarDist{ClaytonCopula,Tuple{Gamma,Normal}}`. Those family parameters are
+public in this fitting context; no other field layout, storage parameter, or
+concrete representation detail of `SklarDist` is part of the public API. Use
+`fit(CopulaModel, SklarDist{...}, data)` to retain fitting diagnostics.
 
 References: 
 * [sklar1959](@cite) Sklar, M. (1959). Fonctions de répartition à n dimensions et leurs marges. In Annales de l'ISUP (Vol. 8, No. 3, pp. 229-231).
