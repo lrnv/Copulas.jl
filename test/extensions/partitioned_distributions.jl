@@ -271,6 +271,21 @@ using Test
     end
 
 
+    @testset "positive-support completion" begin
+        D = MvLogNormal(MvNormal([0.1, 0.2], [1.0 0.3; 0.3 1.0]))
+        x = [1.2, 0.8]
+
+        # The retained-coordinate placeholder must come from the positive
+        # marginal support rather than being an invalid zero.
+        @test subsetdims(D, (1,)) isa LogNormal
+        @test condition(D, 1, x[1]) isa LogNormal
+
+        transformed = rosenblatt(D, x)
+        @test all(0 .<= transformed .<= 1)
+        @test inverse_rosenblatt(D, transformed) ≈ x
+    end
+
+
     @testset "pointwise conditional logpdfs" begin
         C = GaussianCopula{3}(0.35)
         u = [0.2, 0.4, 0.7]

@@ -6,8 +6,8 @@ When both `Copulas.jl` and `PartitionedDistributions.jl` are loaded, an extensio
 
 * `PartitionedDistributions.marginal` and `PartitionedDistributions.conditional` can be used with `Copula` and `SklarDist` objects;
 * `Copulas.subsetdims`, `Copulas.condition`, `Copulas.rosenblatt`, and
-  `Copulas.inverse_rosenblatt` can be used with vector-valued distributions
-  supported by `PartitionedDistributions.jl`.
+  `Copulas.inverse_rosenblatt` can be used with compatible vector-valued
+  distributions implementing the public marginal and conditional interfaces.
 
 This lets downstream code choose either interface without having to special-case copula-based models.
 
@@ -139,7 +139,14 @@ y = [0.1, 1.8]
 
 The extension also works in the opposite direction.
 
-For vector-valued distributions supported by `PartitionedDistributions.jl`, `subsetdims` delegates to `PartitionedDistributions.marginal`, while `condition` delegates to `PartitionedDistributions.conditional`.
+For vector-valued distributions supported by `PartitionedDistributions.jl`,
+`subsetdims` delegates to `PartitionedDistributions.marginal`, while `condition`
+delegates to `PartitionedDistributions.conditional`. Because the latter requires
+a complete support point, the adapter fills retained coordinates with their
+marginal medians and verifies both the marginal placeholders and the assembled
+joint point before making the call. If a constrained joint support rejects that
+completion, `condition` reports that a complete point must instead be supplied
+directly to `PartitionedDistributions.conditional`.
 
 For example, consider a multivariate normal distribution:
 
@@ -221,4 +228,8 @@ The two interfaces describe the same marginalization and conditioning operations
 | Observe dimension 2        | `condition(D, 2, x[2])`              | `conditional(D, x, [1, 3])` |
 | Observe dimensions 2 and 3 | `condition(D, (2, 3), (x[2], x[3]))` | `conditional(D, x, 1)`      |
 
-Neither interface is required internally by user code: loading both packages activates the interoperability extension, and users can choose whichever convention best fits their application.
+Loading both packages activates the interoperability extension, and compatible
+vector-valued families can use whichever convention best fits the application.
+Marginalization only requires the public marginal interface. Conditioning and
+Rosenblatt transforms additionally require the conditional interface and a
+valid complete support point assembled as described above.

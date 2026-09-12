@@ -242,8 +242,8 @@ function condition(
             "the same length",
         ))
 
-    all(x -> x isa Number, observed) ||
-        throw(ArgumentError("conditioning values must be numeric"))
+    all(x -> x isa Number && isfinite(x), observed) ||
+        throw(ArgumentError("conditioning values must be finite numbers"))
 
     d = length(dist)
 
@@ -252,14 +252,33 @@ function condition(
         if i ∉ conditioned
     )
 
-    # PartitionedDistributions' public API takes a full point even though only
-    # the complement of `keep` is relevant to the conditional law.
-    T = promote_type(map(typeof, observed)...)
-    x = fill(zero(T), d)
+    # PartitionedDistributions' public API takes a full support point even
+    # though only the observed coordinates define the conditional law. Complete
+    # retained coordinates with deterministic points from their own marginal
+    # supports, then validate the assembled point against the joint support.
+    x = Any[]
+    for i in 1:d
+        margin = subsetdims(dist, (i,))
+        placeholder = Distributions.quantile(margin, 0.5)
+        Distributions.insupport(margin, placeholder) || throw(ArgumentError(
+            "the median of marginal $i is not in its support; call " *
+            "PartitionedDistributions.conditional directly with a complete " *
+            "support point",
+        ))
+        push!(x, placeholder)
+    end
 
     @inbounds for k in eachindex(conditioned)
         x[conditioned[k]] = observed[k]
     end
+
+    x = collect(promote(x...))
+
+    Distributions.insupport(dist, x) || throw(ArgumentError(
+        "cannot construct a full in-support point from the supplied " *
+        "conditioning values; call PartitionedDistributions.conditional " *
+        "directly with a complete support point",
+    ))
 
     return PartitionedDistributions.conditional(
         dist,
@@ -279,8 +298,8 @@ end
 
 
 """
-Extend `Copulas.rosenblatt` to vector-valued distributions supported by
-PartitionedDistributions, using successive marginals and conditionals.
+Extend `Copulas.rosenblatt` to compatible vector-valued distributions supported
+by PartitionedDistributions, using successive marginals and conditionals.
 """
 function rosenblatt(
     dist::Distributions.Distribution{
@@ -319,8 +338,8 @@ end
 
 
 """
-Extend `Copulas.inverse_rosenblatt` to vector-valued distributions supported
-by PartitionedDistributions, using successive conditional quantiles.
+Extend `Copulas.inverse_rosenblatt` to compatible vector-valued distributions
+supported by PartitionedDistributions, using successive conditional quantiles.
 """
 function inverse_rosenblatt(
     dist::Distributions.Distribution{

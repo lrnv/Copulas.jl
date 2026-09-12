@@ -196,8 +196,10 @@ The operations introduced on this page are not limited to copula-based models.
 !!! tip "Extending the interface beyond copula models"
     Loading `PartitionedDistributions.jl` activates an extension that makes
     `condition`, `subsetdims`, `rosenblatt`, and `inverse_rosenblatt` available
-    for compatible vector-valued distributions that are not copulas or
-    `SklarDist` models. See the
+    for compatible vector-valued distributions implementing its public marginal
+    and conditional interfaces. The adapter completes retained coordinates with
+    in-support marginal medians and verifies the complete point against the
+    joint support before conditioning. See the
     [complete interoperability example](@ref partitioned_distributions_example).
 
 For example, the extension supplies the sequential transforms of a multivariate
