@@ -20,7 +20,9 @@ Named families provide convenient constructors such as `GumbelCopula{d}(θ)`
 and `GumbelCopula(d, θ)`. Their storage representation and alias expansion
 are implementation details.
 
-A generic archimedean copula can be constructed as follows:
+A custom generator is part of the supported public API. Define a subtype of
+`Generator` and the three core methods `ϕ`, `max_monotony`, and
+`Distributions.params`:
 
 ```julia
 using Copulas, Distributions
@@ -30,14 +32,22 @@ Copulas.ϕ(::MyGenerator, t) = exp(-t)
 Copulas.max_monotony(::MyGenerator) = Inf
 Distributions.params(::MyGenerator) = (;)
 C = ArchimedeanCopula(3, MyGenerator())
+cdf(C, fill(0.5, 3))
 ```
+
+This minimal contract supports construction and the generic CDF. Density,
+sampling, conditioning, and transforms additionally depend on the regularity
+of the generator and on generic numerical derivative, inverse, and radial
+fallbacks. Optional specializations can improve their accuracy or speed, but
+those hooks are implementation machinery rather than part of the public
+extension contract.
 
 For a known radial distribution use [`WilliamsonGenerator`](@ref); for a known
 non-negative frailty use [`FrailtyGenerator`](@ref). Named families provide
 validated parameterizations and usually more efficient formulas.
 
-See also: [`Generator`](@ref), [`ϕ`](@ref), [`𝒲₋₁`](@ref),
-[`Distributions.fit`](@ref), [`condition`](@ref).
+See also: [`Generator`](@ref), [`ϕ`](@ref), [`max_monotony`](@ref),
+[`WilliamsonGenerator`](@ref), [`Distributions.fit`](@ref).
 
 References:
 * [williamson1956](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581

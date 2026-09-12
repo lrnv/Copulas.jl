@@ -34,6 +34,7 @@ not.
 | Fitting and selection | `fit`, `CopulaModel`, `selectiontable` and the StatsBase model interface | Documented family/method pairs return valid fitted models. `CopulaModel` exposes the observation count, coefficients, covariance when computed, information criteria, residuals and prediction. Automatic family selection compares an explicit collection of candidates; see the [fitting interface](@ref fitting_interface). |
 | Hypothesis testing | `IndependenceCopulaTest`, `ExchangeabilityCopulaTest`, `RadialSymmetryCopulaTest`, `ExtremeValueCopulaTest`, `GOFCopulaTest`, `pvalue`, `teststatistic` | Each procedure applies its documented statistic and calibration under its stated assumptions and returns a `CopulaTest`; see [hypothesis testing](@ref hypothesis_testing). |
 | Composition | `SklarDist` | Distribution operations, marginalization, conditioning and Rosenblatt transforms are expressed on the marginal scales. |
+| Generator extension | `Generator`, `ϕ`, `max_monotony`, `Distributions.params` | Subtyping `Generator` and implementing these three mathematical operations is a supported way to define a custom Archimedean generator. Optional derivative, inverse, radial, fitting, cache, and dispatch hooks remain internal. |
 | Utilities | `pseudos`, `measure`, `Nataf` | Rank pseudo-observations, copula rectangle probability, and Nataf correlation correction respectively. |
 
 For continuous distributions, `eltype` follows the Distributions.jl convention:

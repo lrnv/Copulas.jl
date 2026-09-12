@@ -42,9 +42,11 @@ From data, you can estimate a $d$-Archimedean generator nonparametrically via th
 
 :::
 
-The supported generator families are listed below. Contributor-facing extension
-points are intentionally outside the stable public API and are described in the
-[developer guide](@ref developer_fitting).
+The supported generator families are listed below. Defining a subtype of
+[`Generator`](@ref) with `ϕ`, `max_monotony`, and `Distributions.params` is also
+a supported public extension mechanism. The [developer guide](@ref
+developer_fitting) separately describes optional implementation and
+optimization hooks, which are not public API.
 
 
 For example, Here is a graph of a few Clayton Generators: 

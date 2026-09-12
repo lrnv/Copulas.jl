@@ -66,7 +66,9 @@ This page is intended for package contributors and advanced users who want to ex
     Every hook, abstract subtype and dispatch pattern shown here may change without
     deprecation unless its behavior is separately documented in the public API.
     Exported/public mathematical objects retain only their public documented
-    semantics; this guide does not enlarge that compatibility promise.
+    semantics; this guide does not enlarge that compatibility promise. The
+    three-method [`Generator`](@ref) protocol is a documented public extension
+    API; its optional optimization machinery remains internal.
 
 
 # 1. Implementing the public behaviour internally
@@ -332,8 +334,9 @@ Each sub-API is based on the general interface described above (`cdf`, `logpdf`,
 
 ## 2.1 Archimedean copulas
 
-Archimedean copulas are defined by a generator function ϕ. To implement a new Archimedean family, define a subtype of
-[`Generator`](@ref) and implement the following:
+Archimedean copulas are defined by a generator function ϕ. The basic custom
+generator mechanism is supported public API: define a subtype of
+[`Generator`](@ref) and implement its three-method mathematical contract:
 
 ```julia
 struct MyGenerator{T} <: Generator
@@ -345,22 +348,22 @@ max_monotony(G::MyGenerator) = ...
 Distributions.params(G::MyGenerator) = (θ = G.θ,)
 ```
 
-### Required methods for a generator `G`
+### Public requirements and optional implementation hooks
 
 | Method                              | Purpose                                                            | Required    |
 | ------------------------------------| ------------------------------------------------------------------ | ----------- |
-| `max_monotony(G)`                   | Maximum degree of monotonicity (controls validity in d dimensions) | ✅          |
-| `Distributions.params(G)`           | Return parameters as a `NamedTuple`                                | ✅          |
-| `ϕ(G, t)`                           | Generator function                                                 | ✅          |
-| `ϕ⁻¹(G, t)`                         | Generator function inverse                                         | ⚙️ Optional |
-| `ϕ⁽¹⁾(G, t)`                        | Generator function derivative                                      | ⚙️ Optional |
-| `ϕ⁻¹⁽¹⁾(G, t)`                      | Generator function derivative of the inverse                       | ⚙️ Optional |
-| `ϕ⁽ᵏ⁾(G, k::Int, t)`                | Generator function kth derivative                                  | ⚙️ Optional |
-| `ϕ⁽ᵏ⁾⁻¹(G, k::Int, t; start_at=t)`  | Generator function kth derivative's inverse                        | ⚙️ Optional |
-| `𝒲₋₁(G, d::Real)`                  | Inverse Williamson transform; integer specializations are preserved | ⚙️ Optional |
+| `max_monotony(G)`                   | Maximum degree of monotonicity (controls validity in d dimensions) | ✅ Public   |
+| `Distributions.params(G)`           | Return parameters as a `NamedTuple`                                | ✅ Public   |
+| `ϕ(G, t)`                           | Generator function                                                 | ✅ Public   |
+| `ϕ⁻¹(G, t)`                         | Generator function inverse                                         | ⚙️ Internal optimization |
+| `ϕ⁽¹⁾(G, t)`                        | Generator function derivative                                      | ⚙️ Internal optimization |
+| `ϕ⁻¹⁽¹⁾(G, t)`                      | Generator function derivative of the inverse                       | ⚙️ Internal optimization |
+| `ϕ⁽ᵏ⁾(G, k::Int, t)`                | Generator function kth derivative                                  | ⚙️ Internal optimization |
+| `ϕ⁽ᵏ⁾⁻¹(G, k::Int, t; start_at=t)`  | Generator function kth derivative's inverse                        | ⚙️ Internal optimization |
+| `𝒲₋₁(G, d::Real)`                  | Inverse Williamson transform; integer specializations are preserved | ⚙️ Internal optimization |
 
 
-The generator definition enables the generic Archimedean construction in valid
+The three public methods enable the generic Archimedean construction in valid
 dimensions. CDF evaluation also needs a working inverse, supplied analytically
 or numerically. Density requires appropriate derivatives and measure semantics;
 radial sampling requires an evaluable and sampleable inverse Williamson law.
@@ -372,7 +375,7 @@ Only fitting routines or dependence metrics need to be added if the defaults are
 
 ::: info Other generator interfaces
 
-1) In-package one-parameter families can use the internal `AbstractUnivariateGenerator` hierarchy.
+1) In-package one-parameter families can use the internal `AbstractUnivariateGenerator` hierarchy; downstream generators should subtype `Generator` directly.
 2) If your generator is a Frailty, then there is `FrailtyGenerator`
 3) If you know the radial part, use `𝒲 === WilliamsonGenerator` directly. 
 4) If you are lost, just open an issue ;)

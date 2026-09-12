@@ -6,14 +6,32 @@ function `ϕ : [0,∞) → [0,1]` with `ϕ(0)=1` and `ϕ(∞)=0`; constructing a
 `d`-dimensional Archimedean copula additionally requires the appropriate
 `d`-monotonicity.
 
-Public component contracts concern the documented mathematical operations and
-constructors. The subtype hierarchy, derivative machinery, inversions, radial
-representations and numerical fallbacks are internal implementation details.
-See the developer guide for the current contributor architecture.
+`Generator` is a supported public extension point. A downstream generator `G`
+must implement:
+
+- `ϕ(G, t)`, the mathematical generator;
+- `max_monotony(G)`, the largest supported Williamson order (`Inf` for a
+  completely monotone generator);
+- `Distributions.params(G)`, returning a `NamedTuple` of its public parameters.
+
+These methods are sufficient to construct `ArchimedeanCopula(d, G)` and use its
+generic CDF path: the inverse of `ϕ` is obtained numerically when no specialized
+method exists. Other operations can require more. Generic automatic
+differentiation and inverse-Williamson fallbacks provide density and sampling
+for suitably regular generators, but their numerical success is not implied by
+the three-method contract alone, especially at singularities and parameter
+boundaries.
+
+Only this mathematical interface is public. Copulas.jl's generator subtype
+hierarchy beyond documented public types, derivative and inverse hooks, radial
+caches, fitting hooks, dispatch traits, and specialized numerical machinery are
+implementation details. The developer guide describes those optional in-package
+optimizations separately.
 
 See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
 [`max_monotony`](@ref), [`WilliamsonGenerator`](@ref),
-[`FrailtyGenerator`](@ref).
+[`FrailtyGenerator`](@ref),
+[`Distributions.params`](@extref Distributions Distributions.params).
 """
 abstract type Generator end
 Base.eltype(G::Generator) = _sample_eltype(G)
