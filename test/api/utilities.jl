@@ -37,10 +37,12 @@
     @test sort(random1[1, 1:2]) == [1.0, 2.0] ./ denominator
     @test sort(random1[2, 2:3]) == [2.0, 3.0] ./ denominator
 
-    rng = Xoshiro(94)
-    control = Xoshiro(94)
-    pseudos(Xtied; ties=:average, rng)
-    @test rand(rng) == rand(control)
+    for ties in (:average, :first, :last, :min, :max)
+        rng = Xoshiro(94)
+        control = Xoshiro(94)
+        pseudos(Xtied; ties, rng)
+        @test rand(rng) == rand(control)
+    end
 
     permutation = [4, 2, 1, 3]
     for ties in (:average, :min, :max)

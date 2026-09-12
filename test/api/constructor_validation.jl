@@ -8,6 +8,12 @@
     @test_throws ArgumentError BetaCopula(tied)
     @test_throws ArgumentError CheckerboardCopula(tied; m=2, pseudo_values=false)
     @test_throws ArgumentError BernsteinCopula(tied; m=2, pseudo_values=false)
+    for ties in (:first, :last, :random)
+        ranked = pseudos(tied; ties, rng=Xoshiro(42))
+        @test BetaCopula(ranked) isa BetaCopula
+        @test CheckerboardCopula(ranked; m=2) isa CheckerboardCopula
+        @test BernsteinCopula(ranked; m=2) isa BernsteinCopula
+    end
     @test_throws DimensionMismatch GaussianCopula{3}([1.0 0.2; 0.2 1.0])
     @test_throws DimensionMismatch NestedArchimedeanCopula{3}(
         Copulas.ClaytonGenerator(1.0);
