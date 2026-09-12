@@ -323,7 +323,11 @@ plot(fitteddistribution(Ŝ))
 ## Choosing an estimating principle
 
 The names and availability of fitting methods depend on the family. Direct
-copula fitting defaults to `method=:mle`; choose another estimator explicitly.
+parametric copula fitting defaults to `method=:mle` whenever MLE is available;
+choose another estimator explicitly. Structural, empirical, or selection
+families without an MLE retain the first method advertised by their
+`_available_fitting_methods` extension hook. This preserves extension-defined
+defaults without ever selecting `:mpl` implicitly.
 
 The fitting method determines which feature of the sample identifies the
 parameters. No method dominates in every family and sample size.

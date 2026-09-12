@@ -296,10 +296,16 @@ function _supports_fitting_method(CT, d, method)
     return method in available || (method === :mpl && :mle in available)
 end
 
+function _default_fitting_method(CT, d)
+    available = _available_fitting_methods(CT, d)
+    isempty(available) && throw(ArgumentError("No fitting methods available for $CT."))
+    return :mle in available ? :mle : first(available)
+end
+
 function _find_method(CT, d, method)
     avail = _available_fitting_methods(CT, d)
     isempty(avail) && throw(ArgumentError("No fitting methods available for $CT."))
-    method === :default && return avail[1]
+    method === :default && return _default_fitting_method(CT, d)
     !_supports_fitting_method(CT, d, method) && throw(ArgumentError(
         "Method '$method' not available for $CT. Available: $(join(avail, ", "))." *
         (:mle in avail ? " Maximum pseudo-likelihood (:mpl) is also available." : ""),
@@ -319,7 +325,7 @@ end
 
 """
     fit(CopulaModel, CT::Type{<:Copula}, data;
-        method=:mle, pseudo_values=true, kwargs...)
+        method=:default, pseudo_values=true, kwargs...)
 
 Fit a copula of type `CT` by maximum likelihood or another supported estimator.
 
@@ -327,8 +333,9 @@ Fit a copula of type `CT` by maximum likelihood or another supported estimator.
 - `data::AbstractMatrix` — a `d×n` matrix with observations in columns.
 - `pseudo_values::Bool` — whether `data` is already on the copula scale. Pass
   `false` to rank-transform raw observations with [`pseudos`](@ref).
-- `method::Symbol` — fitting method, defaulting to `:mle`. `:mpl` denotes
-  maximum pseudo-likelihood.
+- `method::Symbol` — fitting method. `:default` selects `:mle` whenever the
+  family advertises it, otherwise the family's first advertised method. `:mpl`
+  denotes maximum pseudo-likelihood and is never selected implicitly.
 - `kwargs...`         — additional method-specific keyword arguments
   (e.g. `pseudo_values=true`, `grid=401` for extreme-value tails, etc.).
 
@@ -360,11 +367,11 @@ See also: [`CopulaModel`](@ref), [`selectiontable`](@ref),
 [`GOFCopulaTest`](@ref).
 """
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
-        method=:mle, pseudo_values::Union{Nothing,Bool}=nothing, quick_fit=false,
+        method=:default, pseudo_values::Union{Nothing,Bool}=nothing, quick_fit=false,
         derived_measures=true, vcov=true, vcov_method=nothing, kwargs...)
     _check_vcov_method(vcov_method)
     d, n = size(U)
-    requested_method = method === :default ? :mle : method
+    requested_method = method === :default ? _default_fitting_method(CT, d) : method
     _find_method(CT, d, requested_method)
     likelihood_method = requested_method in (:mle, :mpl)
     input_is_pseudo = something(pseudo_values, true)
