@@ -245,6 +245,32 @@ using Test
     end
 
 
+    @testset "Rosenblatt transforms of a multivariate Student distribution" begin
+        D = MvTDist(
+            5.0,
+            [0.2, -0.3, 0.7],
+            [
+                1.0 0.3  0.1
+                0.3 1.2  0.25
+                0.1 0.25 0.8
+            ],
+        )
+        x = [0.1, -0.4, 1.1]
+
+        transformed = rosenblatt(D, x)
+        @test all(0 .<= transformed .<= 1)
+        @test inverse_rosenblatt(D, transformed) ≈ x
+
+        X = [x [0.4, -0.1, 0.5]]
+        transformed_matrix = rosenblatt(D, X)
+        @test transformed_matrix[:, 1] ≈ transformed
+        @test inverse_rosenblatt(D, transformed_matrix) ≈ X
+
+        @test_throws DimensionMismatch rosenblatt(D, x[1:2])
+        @test_throws DimensionMismatch inverse_rosenblatt(D, transformed[1:2])
+    end
+
+
     @testset "pointwise conditional logpdfs" begin
         C = GaussianCopula{3}(0.35)
         u = [0.2, 0.4, 0.7]
