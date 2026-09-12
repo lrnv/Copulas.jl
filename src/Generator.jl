@@ -30,8 +30,7 @@ optimizations separately.
 
 See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
 [`max_monotony`](@ref), [`WilliamsonGenerator`](@ref),
-[`FrailtyGenerator`](@ref),
-[`Distributions.params`](@extref Distributions Distributions.params).
+[`FrailtyGenerator`](@ref), `Distributions.params`.
 """
 abstract type Generator end
 Base.eltype(G::Generator) = _sample_eltype(G)
