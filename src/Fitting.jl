@@ -26,27 +26,25 @@ This type stores the result of fitting a copula (or a Sklar distribution) to
 pseudo-observations or raw data, together with auxiliary information useful
 for statistical inference and model comparison.
 
-# Result properties
-- `result` — the fitted copula (or `SklarDist`).
-- `n` — number of observations used in the fit.
-- `ll` — log-likelihood of the fitted model.
-- `method` — fitting method used (e.g. `:mle`, `:itau`, `:deheuvels`).
-- `vcov` — estimated parameter covariance, or `nothing` when unavailable.
-- `converged` — whether the optimizer reported convergence.
-- `iterations` — number of iterations used in optimization.
-- `elapsed_sec` — time spent in fitting.
-- `method_details` — method-specific metadata; keys depend on the estimator.
+Retrieve the fitted copula or Sklar distribution with
+[`fitteddistribution`](@ref). `CopulaModel` also implements the documented
+`StatsBase.StatisticalModel` interface, including `nobs`, `coef`, `coefnames`,
+`vcov`, `stderror`, `confint`, `deviance`, `nulldeviance`,
+`nullloglikelihood`, `aic`, `bic`, `predict`, and `residuals`. Use
+[`selectiontable`](@ref) for the candidate report produced by automatic family
+selection.
 
-These properties describe the result, not its concrete storage types or type
-parameter order. Prefer the model interface below where an accessor exists.
-
-`CopulaModel` implements the standard `StatsBase.StatisticalModel` interface:
-`StatsBase.nobs`, `StatsBase.coef`, `StatsBase.coefnames`, `StatsBase.vcov`,
-`StatsBase.aic`, `StatsBase.bic`, `StatsBase.deviance`, etc.
+The displayed model may additionally report the estimator, convergence state,
+iteration count, elapsed time, and method-specific diagnostics when available.
+Those diagnostics and the concrete fields used to store them are not public
+access interfaces. In particular, `method_details` is internal estimator
+metadata and must not be consumed by user code. The complete field layout and
+type-parameter order of `CopulaModel` are implementation details.
 
 See also `Distributions.fit`.
 
-See also: [`selectiontable`](@ref), [`GOFCopulaTest`](@ref),
+See also: [`fitteddistribution`](@ref), [`selectiontable`](@ref),
+[`GOFCopulaTest`](@ref),
 [`StatsBase.predict`](@ref), [`StatsBase.residuals`](@ref).
 """
 struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
@@ -67,6 +65,21 @@ struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: Sta
         )
     end
 end
+
+"""
+    fitteddistribution(M::CopulaModel)
+
+Return the fitted copula or `SklarDist` represented by `M`.
+
+This is the supported way to retrieve the fitted distribution from a
+`CopulaModel`; the model's concrete storage fields are not public API. The
+returned distribution can be passed to the ordinary `Distributions.jl` and
+Copulas.jl operations.
+
+See also: [`CopulaModel`](@ref), [`Distributions.fit`](@ref),
+[`StatsBase.predict`](@ref), [`StatsBase.residuals`](@ref).
+"""
+fitteddistribution(M::CopulaModel) = M.result
 
 """
     _CopulaFitSpec(target, method, kwargs)
@@ -895,8 +908,8 @@ StatsBase.nobs(M::CopulaModel)     = M.n
     isfitted(M::CopulaModel) -> Bool
 
 Return `true`: a `CopulaModel` is created only after its fitting procedure has
-produced a result. Consult `M.method_details` or the displayed summary for
-method-specific convergence information when the estimator provides it.
+produced a result. The displayed summary reports method-specific convergence
+information when the estimator provides it.
 
 See also: [`CopulaModel`](@ref), [`Distributions.fit`](@ref).
 """
@@ -931,7 +944,8 @@ StatsBase.dof(M::CopulaModel) = length(StatsBase.coef(M))
 
 Return the copula contained in the fitted result, extracting it from a
 `SklarDist` when margins were fitted jointly. This helper is internal; callers
-that need the complete public fitted result should use `M.result`.
+that need the complete public fitted result should use
+[`fitteddistribution`](@ref).
 """
 _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 
@@ -1014,8 +1028,8 @@ end
 
 Return the estimated covariance matrix of `coef(M)`, or `nothing` when
 covariance estimation was disabled or unavailable. Its rows and columns follow
-`coefnames(M)`. The estimation method is recorded in `M.method_details` when
-available.
+`coefnames(M)`. The displayed model identifies the estimation method when that
+information is available.
 
 See also: [`StatsBase.stderror`](@ref), [`StatsBase.confint`](@ref),
 [`StatsBase.coef`](@ref).
@@ -1109,7 +1123,7 @@ function StatsBase.nullloglikelihood(M::CopulaModel)
     if hasproperty(M.method_details, :null_ll)
         return getfield(M.method_details, :null_ll)
     else
-        throw(ArgumentError("nullloglikelihood not available in method_details."))
+        throw(ArgumentError("nullloglikelihood is not available for this fitted model."))
     end
 end
 """
@@ -1145,7 +1159,7 @@ See also: [`rosenblatt`](@ref), [`GOFCopulaTest`](@ref),
 StatsBase.residuals(M::CopulaModel; transform=:uniform) = begin
     transform in (:uniform, :normal) ||
         throw(ArgumentError("`transform` must be :uniform or :normal. Got `$transform`."))
-    haskey(M.method_details, :U) || throw(ArgumentError("method_details must contain pseudo-observations :U"))
+    haskey(M.method_details, :U) || throw(ArgumentError("the fitting observations are unavailable for residual computation"))
     U = M.method_details[:U]
     R = rosenblatt(_copula_of(M), U)
     return transform === :normal ? Distributions.quantile.(Distributions.Normal(), R) : R

@@ -1045,7 +1045,7 @@ one of two ways:
     build the tree from `α` generically so ForwardDiff can differentiate it.
 
 `fit(C0, U)` is a quick shim returning only the fitted copula; for the custom form
-use `fit(CopulaModel, reparam, init, U).result`.
+use `fitteddistribution(fit(CopulaModel, reparam, init, U))`.
 """
 # Shared optimiser + model assembly for a parametrisation `recon: α -> copula`.
 function _fit_nested(recon, α₀::AbstractVector, U, d::Int, n::Int;

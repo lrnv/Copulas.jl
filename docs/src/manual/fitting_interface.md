@@ -175,11 +175,11 @@ contains the structure to preserve.
 `CopulaModel` implements `StatsBase.StatisticalModel`. Its accessors answer
 different questions about the fit:
 
-| Function / property                            | Description                                                                                       |
+| Function                                       | Description                                                                                       |
 |:--|:--|
-| `M.ll`                                         | Log-likelihood at the optimum.                                                                    |
+| `fitteddistribution(M)`                        | Fitted copula or Sklar distribution.                                                              |
 | `nobs(M)`                                      | Number of observations used in the fit.                                                           |
-| `deviance(M)`                                  | Deviance (= −2 · `M.ll`).                                                                         |
+| `deviance(M)`                                  | Deviance, equal to minus twice the fitted log-likelihood.                                         |
 | `nullloglikelihood(M)`                         | Log-likelihood under independence with same margins (available for Sklar fits).                   |
 | `nulldeviance(M)`                              | Deviance of the null model (−2 · `nullloglikelihood(M)`).                                         |
 | `aic(M)` / `bic(M)`                            | Information criteria from `StatsBase.jl`.                                                            |
@@ -187,7 +187,7 @@ different questions about the fit:
 | `vcov(M)`                                      | Parameter variance–covariance matrix (may be `nothing`).                                          |
 | `stderror(M)` / `confint(M; level=0.95)`       | Standard errors and Wald confidence intervals; return `nothing` when `vcov(M) === nothing`.       |
 | `residuals(M; transform=:uniform \| :normal)`  | Rosenblatt residuals on `[0,1]` or Normal scale when the fit retains the required observations.  |
-| `predict(M; what=:cdf\|:pdf\|:simulate, ...)`  | CDF/PDF at `newdata`, or simulation (`nsim`; default `nsim = M.n` if `nsim == 0`).                |
+| `predict(M; what=:cdf\|:pdf\|:simulate, ...)`  | CDF/PDF at `newdata`, or simulation (`nsim`; defaults to `nobs(M)` when non-positive).            |
 
 The table is a reference; in practice, diagnostics are best read together.
 Information criteria compare fitted models on the same observations, confidence
@@ -298,7 +298,7 @@ X = rand(S, 300)
 ```
 
 ```@example fitting_interface
-plot(Ŝ.result)
+plot(fitteddistribution(Ŝ))
 ```
 
 
