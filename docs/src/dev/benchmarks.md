@@ -40,7 +40,7 @@ The following snapshot was generated on 12 September 2026 from Copulas.jl v0.1.4
 | Processor | Intel Core i7-1165G7 @ 2.80 GHz, 4 physical cores / 8 logical processors |
 | Memory | 32 GiB LPDDR4x-4267 |
 | Operating system | Windows 10 Professional 64-bit, build 19045 |
-| Julia | 1.13.0, Copulas.jl 0.1.42 |
+| Julia | 1.13.0, Copulas.jl 0.1.43 |
 | R | 4.2.1 (UCRT), `copula` 1.1-7 |
 
 | Model | Dimension | Parameter | Operation | Workload | Julia median | R median | R / Julia |
