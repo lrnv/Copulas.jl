@@ -207,7 +207,6 @@ function _pseudos(sample::AbstractMatrix, tie_method::Val,
         x = @view sample[i, :]
         ranks = @view U[i, :]
         _pseudoranks!(ranks, x, tie_method, rng, tmp_idx)
-        ranks ./= T(n + 1)
     end
     return U
 end
@@ -225,8 +224,9 @@ end
 
 function _assign_pseudoranks!(ranks::AbstractVector{T}, ::AbstractVector,
         order::Vector{Int}, ::Val{:first}, ::Random.AbstractRNG) where {T}
+    scale = inv(T(length(order) + 1))
     @inbounds for (rank, index) in enumerate(order)
-        ranks[index] = T(rank)
+        ranks[index] = T(rank) * scale
     end
     return ranks
 end
@@ -235,21 +235,23 @@ function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
         order::Vector{Int}, tie_method::_GROUPED_PSEUDO_TIE_METHOD,
         rng::Random.AbstractRNG)
     n = length(order)
+    scale = inv(eltype(ranks)(n + 1))
     first = 1
     while first <= n
         last = first
         @inbounds while last < n && x[order[last + 1]] == x[order[first]]
             last += 1
         end
-        _assign_tie_group!(ranks, order, first, last, tie_method, rng)
+        _assign_tie_group!(ranks, order, first, last, scale, tie_method, rng)
         first = last + 1
     end
     return ranks
 end
 
 function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
-        first::Int, last::Int, ::Val{:average}, ::Random.AbstractRNG) where {T}
-    rank = (T(first) + T(last)) / T(2)
+        first::Int, last::Int, scale::T, ::Val{:average},
+        ::Random.AbstractRNG) where {T}
+    rank = ((T(first) + T(last)) / T(2)) * scale
     @inbounds for k in first:last
         ranks[order[k]] = rank
     end
@@ -257,34 +259,40 @@ function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
 end
 
 function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
-        first::Int, last::Int, ::Val{:min}, ::Random.AbstractRNG) where {T}
+        first::Int, last::Int, scale::T, ::Val{:min},
+        ::Random.AbstractRNG) where {T}
+    rank = T(first) * scale
     @inbounds for k in first:last
-        ranks[order[k]] = T(first)
+        ranks[order[k]] = rank
     end
     return nothing
 end
 
 function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
-        first::Int, last::Int, ::Val{:max}, ::Random.AbstractRNG) where {T}
+        first::Int, last::Int, scale::T, ::Val{:max},
+        ::Random.AbstractRNG) where {T}
+    rank = T(last) * scale
     @inbounds for k in first:last
-        ranks[order[k]] = T(last)
+        ranks[order[k]] = rank
     end
     return nothing
 end
 
 function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
-        first::Int, last::Int, ::Val{:last}, ::Random.AbstractRNG) where {T}
+        first::Int, last::Int, scale::T, ::Val{:last},
+        ::Random.AbstractRNG) where {T}
     @inbounds for k in first:last
-        ranks[order[k]] = T(last - (k - first))
+        ranks[order[k]] = T(last - (k - first)) * scale
     end
     return nothing
 end
 
 function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
-        first::Int, last::Int, ::Val{:random}, rng::Random.AbstractRNG) where {T}
+        first::Int, last::Int, scale::T, ::Val{:random},
+        rng::Random.AbstractRNG) where {T}
     Random.shuffle!(rng, @view order[first:last])
     @inbounds for k in first:last
-        ranks[order[k]] = T(k)
+        ranks[order[k]] = T(k) * scale
     end
     return nothing
 end
