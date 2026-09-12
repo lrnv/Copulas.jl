@@ -21,7 +21,10 @@ Notes:
 - If `m` is `nothing`, we use `m = fill(n, d)` where `n = size(X, 2)`.
 - When `pseudo_values=true` (default), `X` must already be pseudo-observations
   in [0,1]. Otherwise pass raw data and set `pseudo_values=false` to convert
-  via `pseudos(X)`.
+  via `pseudos(X)`. Raw tied margins are rejected because silently breaking
+  them can change the fitted dependence according to observation order; resolve
+  them explicitly with `pseudos(X; ties=:first)`, `:last`, or `:random` when
+  deliberate tie breaking is scientifically justified.
 - Each `m[i]` must divide `n` to produce a valid checkerboard on the sample grid;
   this is enforced by the constructor.
 
@@ -47,6 +50,7 @@ end
 Base.eltype(::CheckerboardCopula{d,T}) where {d,T} = T
 function CheckerboardCopula{d}(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool=true) where {d,T}
     size(X, 1) == d || throw(DimensionMismatch("data must have $d rows"))
+    pseudo_values || _require_tie_free_rows(X, "CheckerboardCopula")
     n = size(X, 2)
      ms = if isnothing(m)
         @info "Automatic choice: m = n in each dimension." d=d n=n

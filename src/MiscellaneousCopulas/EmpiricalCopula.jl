@@ -11,7 +11,11 @@ Its distribution function is
 C(\\mathbf{x}) = \\frac{1}{N} \\sum_{j=1}^{N} \\mathbf{1}_{\\{ \\mathbf{u}_{\\cdot,j} \\le \\mathbf{x} \\}} ,
 ```
 
-where the inequality is componentwise. If `pseudo_values=false`, the constructor first ranks the raw data into pseudo-observations; otherwise it assumes `u` already contains pseudo-observations in ``[0,1]``.
+where the inequality is componentwise. If `pseudo_values=false`, the constructor
+first ranks the raw data into pseudo-observations using the default average-rank
+tie convention; otherwise it assumes `u` already contains pseudo-observations in
+``[0,1]``. Call `pseudos(data; ties=...)` explicitly before construction to use
+another convention.
 
 Notes:
 - This is an empirical distribution on the observed pseudo-points. For finite

@@ -442,6 +442,8 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}
             U[i, j] = clamp(Distributions.cdf(m[i], X[i, j]), lower, upper)
         end
     else # :ecdf then
+        # Average ranks are the public default. Continuous-data inference still
+        # requires users to assess whether ties represent rounding or discreteness.
         U .= pseudos(X)
     end
 

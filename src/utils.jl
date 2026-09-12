@@ -161,19 +161,25 @@ end
 
 
 """
-    pseudos(sample)
+    pseudos(sample; ties=:average, rng=Random.default_rng())
 
 Compute pseudo-observations from a `d×n` sample, with variables in rows and
 observations in columns.
 
-Each row is replaced by its ordinal ranks divided by `n+1`, so every output is
-strictly inside `(0,1)`. The transformation is invariant under strictly
-increasing changes of each margin and returns a newly allocated floating-point
-matrix.
+Each row is replaced by its ranks divided by `n+1`, so every output is strictly
+inside `(0,1)`. The transformation is invariant under strictly increasing
+changes of each margin and returns a newly allocated floating-point matrix.
 
-Ties are resolved by stable ordinal ranking, so tied values receive distinct
-ranks in their order of appearance. Use a dedicated rank transformation when a
-different tie convention is required.
+The `ties` keyword controls equal observations. Supported values are `:average`
+(the default), `:first`, `:last`, `:min`, `:max`, and `:random`. Average ranks
+preserve ties and make the result invariant to observation order. `:first` is
+the ordinal convention used by Copulas.jl before version 1.0; `:last` reverses
+that order within each tied group. `:random` randomly assigns the available
+ordinal ranks within each tied group and uses `rng`; deterministic methods do
+not consume it.
+
+Choosing a rank convention does not by itself make continuous-margin fitting
+or hypothesis-testing procedures valid for genuinely discrete data.
 
 # Example
 ```julia
@@ -184,23 +190,123 @@ pseudos(X) == [0.75 0.25 0.5; 0.25 0.75 0.5]
 See also: [`EmpiricalCopula`](@ref), [`BetaCopula`](@ref),
 [`CheckerboardCopula`](@ref).
 """
-function pseudos(sample::AbstractMatrix)
-    # Fast pseudo-observations (d×n) using per-row ordinal ranks without allocations per row
+function pseudos(sample::AbstractMatrix; ties::Symbol=:average,
+        rng::Random.AbstractRNG=Random.default_rng())
+    ties in _PSEUDO_TIE_METHODS || throw(ArgumentError(
+        "unsupported tie method :$ties; expected one of $(_PSEUDO_TIE_METHODS)"))
+    return _pseudos(sample, Val(ties), rng)
+end
+
+function _pseudos(sample::AbstractMatrix, tie_method::Val,
+        rng::Random.AbstractRNG)
     d, n = size(sample)
     T = float(eltype(sample))
     U = Matrix{T}(undef, d, n)
     tmp_idx = Vector{Int}(undef, n)
     @inbounds for i in 1:d
-        # compute ordinal ranks for row i
         x = @view sample[i, :]
-        # sortperm is stable; ordinal ranks from positions in sorted order
-        sortperm!(tmp_idx, x; by=identity, alg=Base.Sort.DEFAULT_STABLE)
-        # ranks: position in sorted order; ties preserve order of appearance
-        for (rank, idx) in enumerate(tmp_idx)
-            U[i, idx] = T(rank) / T(n + 1)
-        end
+        ranks = @view U[i, :]
+        _pseudoranks!(ranks, x, tie_method, rng, tmp_idx)
     end
     return U
+end
+
+const _PSEUDO_TIE_METHODS = (:average, :first, :last, :min, :max, :random)
+const _GROUPED_PSEUDO_TIE_METHOD = Union{
+    Val{:average}, Val{:last}, Val{:min}, Val{:max}, Val{:random},
+}
+
+function _pseudoranks!(ranks::AbstractVector, x::AbstractVector, tie_method::Val,
+        rng::Random.AbstractRNG, order::Vector{Int})
+    sortperm!(order, x; by=identity, alg=Base.Sort.DEFAULT_STABLE)
+    return _assign_pseudoranks!(ranks, x, order, tie_method, rng)
+end
+
+function _assign_pseudoranks!(ranks::AbstractVector{T}, ::AbstractVector,
+        order::Vector{Int}, ::Val{:first}, ::Random.AbstractRNG) where {T}
+    scale = inv(T(length(order) + 1))
+    @inbounds for (rank, index) in enumerate(order)
+        ranks[index] = T(rank) * scale
+    end
+    return ranks
+end
+
+function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
+        order::Vector{Int}, tie_method::_GROUPED_PSEUDO_TIE_METHOD,
+        rng::Random.AbstractRNG)
+    n = length(order)
+    scale = inv(eltype(ranks)(n + 1))
+    first = 1
+    while first <= n
+        last = first
+        @inbounds while last < n && x[order[last + 1]] == x[order[first]]
+            last += 1
+        end
+        _assign_tie_group!(ranks, order, first, last, scale, tie_method, rng)
+        first = last + 1
+    end
+    return ranks
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, scale::T, ::Val{:average},
+        ::Random.AbstractRNG) where {T}
+    rank = ((T(first) + T(last)) / T(2)) * scale
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, scale::T, ::Val{:min},
+        ::Random.AbstractRNG) where {T}
+    rank = T(first) * scale
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, scale::T, ::Val{:max},
+        ::Random.AbstractRNG) where {T}
+    rank = T(last) * scale
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, scale::T, ::Val{:last},
+        ::Random.AbstractRNG) where {T}
+    @inbounds for k in first:last
+        ranks[order[k]] = T(last - (k - first)) * scale
+    end
+    return nothing
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, scale::T, ::Val{:random},
+        rng::Random.AbstractRNG) where {T}
+    Random.shuffle!(rng, @view order[first:last])
+    @inbounds for k in first:last
+        ranks[order[k]] = T(k) * scale
+    end
+    return nothing
+end
+
+
+
+function _require_tie_free_rows(sample::AbstractMatrix, operation::AbstractString)
+    for row in axes(sample, 1)
+        allunique(@view sample[row, :]) || throw(ArgumentError(
+            "$operation requires tie-free margins; ties were detected in margin $row. " *
+            "If deliberate tie breaking is justified, preprocess the data with pseudos " *
+            "using :first, :last, or :random before construction."))
+    end
+    return nothing
 end
 
 # Pairwise component metrics applied to (n,d)-shaped matrices:
@@ -458,27 +564,25 @@ Compute the empirical Kendall sample `W` with entries `W[i] = C_n(U[:,i])`,
 where `C_n` is the Deheuvels empirical copula built from the same `u`.
 
 Input and tie handling
-- `u` is expected as a `d×n` matrix (columns are observations). This routine first
-    applies per-margin ordinal ranks (same policy as `pseudos`) so that the result is
-    invariant under strictly increasing marginal transformations and robust to ties.
-    Consequently, `_kendall_sample(u) ≡ _kendall_sample(pseudos(u))` (same tie policy).
+- `u` is expected as a `d×n` matrix (columns are observations).
+- Dominance is evaluated directly on `u`, preserving equal values. The result is
+  therefore invariant under strictly increasing marginal transformations and
+  under permutations of the observations, including when ties are present.
+- For any rank transformation that preserves ties, including the default
+  `pseudos(u; ties=:average)`, applying that transformation first leaves the
+  empirical Kendall sample unchanged.
 
 Returns
 - `Vector{Float64}` of length `n` with values in `(0,1)`.
 """
 function _kendall_sample(u::AbstractMatrix)
-    d, n = size(u)
-    # Apply ordinal ranks per margin to remove ties consistently with `pseudos`
-    R = Matrix{Int}(undef, d, n)
-    @inbounds for i in 1:d
-        R[i, :] = StatsBase.ordinalrank(@view u[i, :])
-    end
+    _, n = size(u)
     W = zeros(Float64, n)
     @inbounds for i in 1:n
-        ri = @view R[:, i]
+        ui = @view u[:, i]
         count_le = 0
         for j in 1:n
-            count_le += all(@view(R[:, j]) .≤ ri)
+            count_le += all(@view(u[:, j]) .≤ ui)
         end
         W[i] = count_le / (n + 1)
     end

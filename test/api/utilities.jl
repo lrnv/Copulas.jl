@@ -8,6 +8,64 @@
     @test pseudos(U) == U
     @test eltype(pseudos(Float32.(X))) === Float32
 
+    Xtied = [1.0 1.0 2.0 4.0; 4.0 3.0 3.0 1.0]
+    denominator = 5
+    @test pseudos(Xtied; ties=:average) ==
+          [1.5 1.5 3.0 4.0; 4.0 2.5 2.5 1.0] ./ denominator
+    @test pseudos(Xtied; ties=:first) ==
+          [1.0 2.0 3.0 4.0; 4.0 2.0 3.0 1.0] ./ denominator
+    @test pseudos(Xtied; ties=:last) ==
+          [2.0 1.0 3.0 4.0; 4.0 3.0 2.0 1.0] ./ denominator
+    @test pseudos(Xtied; ties=:min) ==
+          [1.0 1.0 3.0 4.0; 4.0 2.0 2.0 1.0] ./ denominator
+    @test pseudos(Xtied; ties=:max) ==
+          [2.0 2.0 3.0 4.0; 4.0 3.0 3.0 1.0] ./ denominator
+
+    for row in axes(Xtied, 1)
+        x = @view Xtied[row, :]
+        @test pseudos(reshape(x, 1, :); ties=:average)[1, :] .* denominator ==
+              StatsBase.tiedrank(x)
+        @test pseudos(reshape(x, 1, :); ties=:first)[1, :] .* denominator ==
+              StatsBase.ordinalrank(x)
+        @test pseudos(reshape(x, 1, :); ties=:min)[1, :] .* denominator ==
+              StatsBase.competerank(x)
+    end
+
+    random1 = pseudos(Xtied; ties=:random, rng=Xoshiro(93))
+    random2 = pseudos(Xtied; ties=:random, rng=Xoshiro(93))
+    @test random1 == random2
+    @test sort(random1[1, 1:2]) == [1.0, 2.0] ./ denominator
+    @test sort(random1[2, 2:3]) == [2.0, 3.0] ./ denominator
+
+    for ties in (:average, :first, :last, :min, :max)
+        rng = Xoshiro(94)
+        control = Xoshiro(94)
+        pseudos(Xtied; ties, rng)
+        @test rand(rng) == rand(control)
+    end
+
+    permutation = [4, 2, 1, 3]
+    for ties in (:average, :min, :max)
+        ranked = pseudos(Xtied; ties)
+        permuted = pseudos(Xtied[:, permutation]; ties)
+        @test permuted[:, invperm(permutation)] == ranked
+    end
+
+    for ties in (:average, :first, :last, :min, :max, :random)
+        @test pseudos(X; ties, rng=Xoshiro(95)) == U
+    end
+    Utied = pseudos(Xtied)
+    @test pseudos(Utied) == Utied
+    @test_throws ArgumentError pseudos(Xtied; ties=:dense)
+
+    kendall_data = [1.0 1.0 2.0 3.0; 1.0 2.0 1.0 3.0]
+    kendall = Copulas._kendall_sample(kendall_data)
+    @test kendall == [1.0, 2.0, 2.0, 4.0] ./ 5
+    @test Copulas._kendall_sample(pseudos(kendall_data)) == kendall
+    permuted_kendall = Copulas._kendall_sample(kendall_data[:, permutation])
+    @test permuted_kendall[invperm(permutation)] == kendall
+
+
     target = [1.0 0.4; 0.4 1.0]
     @test Nataf((Normal(), Normal(2, 3)), target) == target
     @test Nataf([Normal(), Normal(2, 3)], target) == target
