@@ -357,6 +357,14 @@ MLE once marginal families can explicitly provide this optimization protocol;
 the continuous, discrete and mixed-margin likelihood cases must also be
 distinguished.
 
+There is a second, statistical limitation: `Distributions.fit` is a common
+entry point, not a universal promise that every marginal family uses maximum
+likelihood. Its estimator is chosen by the individual distribution
+implementation and is not exposed to Copulas.jl through a stable protocol; for
+some families it may use another fitting principle altogether. Consequently,
+independently calling `fit` on every margin neither identifies a joint MLE nor
+even guarantees that every marginal block was estimated by marginal MLE.
+
 :::
 
 ::: property Identifiability of inversion estimators

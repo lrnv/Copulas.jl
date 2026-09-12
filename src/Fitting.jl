@@ -454,6 +454,13 @@ provide that information safely. The default is therefore `sklar_method=:ifm`;
 both Sklar routes request `copula_method=:mle` by default, and that copula step
 may be replaced by another method supported by `CT`.
 
+Moreover, calling `Distributions.fit` for a margin does not establish a generic
+maximum-likelihood contract. The fitting algorithm is selected by each
+distribution family and is not exposed here as a stable estimator protocol; it
+may therefore differ between margins and need not be maximum likelihood. A
+joint Sklar MLE cannot safely treat those independent calls as MLE building
+blocks without a stronger upstream or Copulas.jl-specific interface.
+
 The result is a `CopulaModel` whose `result` is the fitted `SklarDist` and whose
 coefficient and covariance summaries combine the marginal and copula blocks.
 Inference for a block may be unavailable when its estimator does not supply a
