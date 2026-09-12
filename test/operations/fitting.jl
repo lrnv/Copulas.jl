@@ -18,6 +18,54 @@
                    sklar_method=:ecdf, copula_method=:itau, vcov=false,
                    derived_measures=false)
     @test ecdf_fit isa SklarDist
+
+    default_model = fit(CopulaModel,
+        SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
+        vcov=false, derived_measures=false)
+    @test default_model.method === :mle
+    @test default_model.method_details.sklar_method === :ifm
+
+    empirical_model = fit(CopulaModel,
+        SklarDist{EmpiricalCopula,Tuple{Normal,Exponential}}, data;
+        vcov=false, derived_measures=false)
+    @test empirical_model.method === :deheuvels
+end
+
+@testset "MLE and MPL input semantics" begin
+    X = [2.0 8.0 1.0 5.0 3.0 7.0;
+         4.0 1.0 6.0 2.0 5.0 3.0]
+    U = pseudos(X)
+
+    default_fit = fit(CopulaModel, ClaytonCopula{2}, U;
+        vcov=false, derived_measures=false)
+    mle_fit = fit(CopulaModel, ClaytonCopula{2}, U; method=:mle,
+        pseudo_values=true, vcov=false, derived_measures=false)
+    mpl_fit = fit(CopulaModel, ClaytonCopula{2}, X; method=:mpl,
+        pseudo_values=false, vcov=false, derived_measures=false)
+    normalized_mpl = fit(CopulaModel, ClaytonCopula{2}, X; method=:mle,
+        pseudo_values=false, vcov=false, derived_measures=false)
+    normalized_mle = @test_logs (:warn, r"method=:mpl requires raw observations") fit(
+        CopulaModel, ClaytonCopula{2}, U; method=:mpl, pseudo_values=true,
+        vcov=false, derived_measures=false)
+
+    @test default_fit.method === :mle
+    @test mle_fit.method === :mle
+    @test mpl_fit.method === :mpl
+    @test normalized_mpl.method === :mpl
+    @test normalized_mle.method === :mle
+    @test params(default_fit.result) == params(mle_fit.result)
+    @test params(mpl_fit.result) == params(mle_fit.result)
+    @test params(normalized_mpl.result) == params(mpl_fit.result)
+    @test params(normalized_mle.result) == params(mle_fit.result)
+    @test mpl_fit.method_details.requested_method === :mpl
+    @test normalized_mpl.method_details.requested_method === :mle
+    @test normalized_mle.method_details.requested_method === :mpl
+    @test mpl_fit.method_details.pseudo_values === false
+    @test mpl_fit.method_details.fitting_data_pseudo_values === true
+    @test normalized_mle.method_details.pseudo_values === true
+    @test mpl_fit.method_details.U == U
+    @test_throws ArgumentError Copulas._find_method(EmpiricalCopula, 2, :mpl)
+    @test_throws ArgumentError Copulas._find_method(ClaytonCopula{2}, 2, :mpl)
 end
 
 @testset "public covariance fitting option" begin
@@ -191,6 +239,11 @@ end
                 @test Copulas._find_method(family, d, :default) in methods
                 @test all(method -> Copulas._find_method(family, d, method) === method,
                           methods)
+                if :mle in methods
+                    @test Copulas._default_fitting_method(family, d) === :mle
+                else
+                    @test Copulas._default_fitting_method(family, d) === first(methods)
+                end
             end
         end
     end

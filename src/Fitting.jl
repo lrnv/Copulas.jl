@@ -126,8 +126,11 @@ function _refit(M::CopulaModel, U::AbstractMatrix)
         "composite goodness-of-fit refitting is unavailable for this model"))
 
     kwargs = _refit_kwargs(spec.kwargs)
+    # Composite GOF refits receive pseudo-observations already. MPL uses the
+    # same numerical likelihood engine as MLE, without ranking these again.
+    method = spec.method === :mpl ? :mle : spec.method
 
-    return Distributions.fit(CopulaModel, spec.target, U; method=spec.method, derived_measures=false, vcov=false, kwargs...,)
+    return Distributions.fit(CopulaModel, spec.target, U; method, derived_measures=false, vcov=false, kwargs...,)
 end
 
 # Fallbacks that throw if the interface is not implemented correctly.
@@ -271,8 +274,11 @@ and fitting method.
 
 Return the tuple of fitting methods available for a given copula family in a given dimension.
 
-This is used internally by [`Distributions.fit`](@ref) to check validity of the `method` argument
-and to select a default method when `method=:default`.
+This is used internally by [`Distributions.fit`](@ref) to check validity of the
+`method` argument. Maximum pseudo-likelihood (`:mpl`) is handled by the
+high-level public fitting entry point whenever `:mle` appears in this tuple;
+extensions should continue to advertise and implement only their actual
+`_fit(..., Val{method})` dispatches.
 
 # Example
 ```julia
@@ -286,28 +292,45 @@ See also: [`_fit`](@ref), [`_example`](@ref),
 _available_fitting_methods(::Type{<:Copula}, d) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C), d)
 
+function _default_fitting_method(CT, d)
+    available = _available_fitting_methods(CT, d)
+    isempty(available) && throw(ArgumentError("No fitting methods available for $CT."))
+    return :mle in available ? :mle : first(available)
+end
+
 function _find_method(CT, d, method)
     avail = _available_fitting_methods(CT, d)
     isempty(avail) && throw(ArgumentError("No fitting methods available for $CT."))
-    method === :default && return avail[1]
+    method === :default && return _default_fitting_method(CT, d)
     method ∉ avail && throw(ArgumentError(
         "Method '$method' not available for $CT. Available: $(join(avail, ", ")).",
     ))
     return method
 end
 
-"""
-    fit(CopulaModel, CT::Type{<:Copula}, U; method=:default, kwargs...)
+function _normalize_likelihood_fit(method::Symbol, pseudo_values::Bool)
+    if method === :mle && !pseudo_values
+        return :mpl
+    elseif method === :mpl && pseudo_values
+        @warn "method=:mpl requires raw observations; because pseudo_values=true, fitting proceeds as method=:mle"
+        return :mle
+    end
+    return method
+end
 
-Fit a copula of type `CT` to pseudo-observations `U`.
+"""
+    fit(CopulaModel, CT::Type{<:Copula}, data;
+        method=:default, pseudo_values=true, kwargs...)
+
+Fit a copula of type `CT` by maximum likelihood or another supported estimator.
 
 # Arguments
-- `U::AbstractMatrix` — a `d×n` matrix of data (each column is an observation).
-  If the input is raw data, use `SklarDist` fitting instead to estimate both
-  margins and copula simultaneously.
-- `method::Symbol`    — fitting method; defaults to the family's preferred
-  supported method. Family documentation lists the available choices, and an
-  unsupported value raises an `ArgumentError` that reports them.
+- `data::AbstractMatrix` — a `d×n` matrix with observations in columns.
+- `pseudo_values::Bool` — whether `data` is already on the copula scale. Pass
+  `false` to rank-transform raw observations with [`pseudos`](@ref).
+- `method::Symbol` — fitting method. `:default` selects `:mle` whenever the
+  family advertises it, otherwise the family's first advertised method. `:mpl`
+  denotes maximum pseudo-likelihood and is never selected implicitly.
 - `kwargs...`         — additional method-specific keyword arguments
   (e.g. `pseudo_values=true`, `grid=401` for extreme-value tails, etc.).
 
@@ -329,22 +352,45 @@ Inference controls such as `vcov` and `derived_measures` affect the returned
 model metadata, not the point estimator. Covariance availability depends on
 the family, method and numerical regularity; `vcov=false` skips that work.
 
+`method=:mle, pseudo_values=false` is normalized silently to `:mpl`, since the
+rank transformation changes the statistical estimator. Conversely,
+`method=:mpl, pseudo_values=true` is normalized to `:mle` with a warning because
+no pseudo-observations are then constructed. Both use the same numerical
+copula-likelihood optimizer; the distinction records the input's provenance.
+
 See also: [`CopulaModel`](@ref), [`selectiontable`](@ref),
 [`GOFCopulaTest`](@ref).
 """
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
-        method=:default, quick_fit=false, derived_measures=true,
-        vcov=true, vcov_method=nothing, kwargs...)
+        method=:default, pseudo_values::Union{Nothing,Bool}=nothing, quick_fit=false,
+        derived_measures=true, vcov=true, vcov_method=nothing, kwargs...)
     _check_vcov_method(vcov_method)
     d, n = size(U)
-    method = _find_method(CT, d, method)
-    fit_spec = _CopulaFitSpec(CT, method, (; kwargs...))
-    t = @elapsed (rez = _fit(CT, U, Val{method}(); kwargs...))
+    requested_method = method === :default ? _default_fitting_method(CT, d) : method
+    # MPL is a public preprocessing/metadata contract backed by the MLE
+    # engine, not an internal `_fit(..., Val{:mpl})` extension hook.
+    validation_method = requested_method === :mpl ? :mle : requested_method
+    _find_method(CT, d, validation_method)
+    likelihood_method = requested_method in (:mle, :mpl)
+    input_is_pseudo = something(pseudo_values, true)
+    method = likelihood_method ?
+        _normalize_likelihood_fit(requested_method, input_is_pseudo) :
+        requested_method
+    fit_data = method === :mpl ? pseudos(U) : U
+    engine_method = method === :mpl ? :mle : method
+    engine_kwargs = !likelihood_method && pseudo_values !== nothing ?
+        (; pseudo_values=input_is_pseudo, kwargs...) : (; kwargs...)
+    fit_kwargs = likelihood_method ?
+        (; pseudo_values=input_is_pseudo, kwargs...) : engine_kwargs
+    fit_spec = _CopulaFitSpec(CT, method, fit_kwargs)
+    t = @elapsed (rez = _fit(CT, fit_data, Val{engine_method}(); engine_kwargs...))
     C, meta = rez
     quick_fit && return (result=C,) # as soon as possible.
-    ll = Distributions.loglikelihood(C, U)
+    ll = Distributions.loglikelihood(C, fit_data)
+    meta = (; meta..., requested_method, pseudo_values=input_is_pseudo,
+        fitting_data_pseudo_values=likelihood_method ? true : input_is_pseudo)
 
-    return _finish_copula_fit(CT, C, U, ll, method, meta, t, fit_spec;
+    return _finish_copula_fit(CT, C, fit_data, ll, method, meta, t, fit_spec;
         derived_measures, vcov, vcov_method)
 end
 
@@ -391,7 +437,7 @@ end
 _available_fitting_methods(::Type{SklarDist}, d) = (:ifm, :ecdf)
 """
     fit(CopulaModel, SklarDist{CT,TplMargins}, X;
-        copula_method=:default, sklar_method=:default,
+        copula_method=:default, sklar_method=:ifm,
         margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple(), kwargs...)
 
 Fit the margins and dependence structure of a Sklar distribution to a `d × n`
@@ -403,6 +449,23 @@ uniform scale before the copula is fitted. With `:ecdf`, rank
 pseudo-observations are used instead, although the requested parametric margins
 are still fitted for the returned distribution. `margins_kwargs` are forwarded
 to every marginal fit and `copula_kwargs` to the copula fit.
+
+Both routes are sequential estimators, not joint maximum likelihood for the
+complete Sklar distribution. Generic joint MLE is deliberately unavailable:
+`Distributions.jl` margin families do not expose a common protocol mapping
+their positive, bounded, ordered or interdependent parameters to an
+unconstrained optimization vector. `params` and a constructor alone cannot
+provide that information safely. The default is therefore `sklar_method=:ifm`;
+both Sklar routes use `copula_method=:mle` by default whenever `CT` supports
+MLE, otherwise its first advertised fitting method. That copula step may be
+replaced by another method supported by `CT`.
+
+Moreover, calling `Distributions.fit` for a margin does not establish a generic
+maximum-likelihood contract. The fitting algorithm is selected by each
+distribution family and is not exposed here as a stable estimator protocol; it
+may therefore differ between margins and need not be maximum likelihood. A
+joint Sklar MLE cannot safely treat those independent calls as MLE building
+blocks without a stronger upstream or Copulas.jl-specific interface.
 
 The result is a `CopulaModel` whose `result` is the fitted `SklarDist` and whose
 coefficient and covariance summaries combine the marginal and copula blocks.
@@ -416,14 +479,15 @@ marginal families. This exception does not expose arbitrary storage type
 parameters or the concrete representation of constructed `SklarDist` values.
 """
 function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}, X; quick_fit = false,
-                           copula_method = :default, sklar_method = :default, margins_kwargs = NamedTuple(),
+                           copula_method = :default, sklar_method = :ifm, margins_kwargs = NamedTuple(),
                            copula_kwargs = NamedTuple(), derived_measures = true, vcov = true,
                            vcov_method=nothing) where {CT<:Copulas.Copula, TplMargins<:Tuple}
 
     # Get methods:
     d, n = size(X)
     sklar_method  = _find_method(SklarDist, d, sklar_method)
-    copula_method = _find_method(CT, d, copula_method)
+    copula_method = copula_method === :default ?
+        _default_fitting_method(CT, d) : _find_method(CT, d, copula_method)
 
     # Fit marginals:
     m = ntuple(i -> Distributions.fit(TplMargins.parameters[i], @view X[i, :]; margins_kwargs...), d)
@@ -1225,7 +1289,7 @@ function selectiontable(M::CopulaModel)
 end
 
 """
-    fit(CopulaModel, Copula, U; candidates, criterion=:bic, method=:default, kwargs...)
+    fit(CopulaModel, Copula, U; candidates, criterion=:bic, method=:mle, kwargs...)
 
 Fit an explicit collection of candidate families and select the smallest finite
 information criterion (`:bic`, `:aic`, `:aicc`, or `:hqc`). The winning fit is
@@ -1237,7 +1301,7 @@ Failed candidates are recorded with `on_error=:skip`, or rethrown with
 is not yet supported.
 """
 function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
-        candidates, criterion::Symbol=:bic, method::Symbol=:default,
+        candidates, criterion::Symbol=:bic, method::Symbol=:mle,
         on_error::Symbol=:skip, require_convergence::Bool=true,
         quick_fit::Bool=false, derived_measures::Bool=true, vcov::Bool=true,
         vcov_method=nothing, kwargs...)
@@ -1287,7 +1351,8 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
     quick_fit && return (result=best.result,)
 
     CT = rows[best_index].candidate
-    selected = _finish_copula_fit(CT, best.result, U, best.ll, best.method,
+    selected = _finish_copula_fit(CT, best.result, best.method_details.U,
+        best.ll, best.method,
         (; best.method_details..., converged=best.converged, iterations=best.iterations),
         best.elapsed_sec, nothing;
         derived_measures, vcov, vcov_method)

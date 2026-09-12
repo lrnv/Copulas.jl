@@ -787,10 +787,11 @@ function GOFCopulaTest(M::CopulaModel; kwargs...)
     haskey(M.method_details, :U) || throw(ArgumentError("the fitted model does not store its fitting sample"))
 
     # Most copula fits receive pseudo-observations directly. Empirical fitting
-    # routines may instead have received raw data with `pseudo_values=false`;
-    # respect that metadata rather than silently treating the stored input as
-    # already ranked.
-    stored_pseudo_values = get(M.method_details, :pseudo_values, true)
+    # New likelihood fits distinguish the caller's raw-input flag from the
+    # transformed matrix retained for inference. Older and empirical fit
+    # records continue to use `pseudo_values` directly.
+    stored_pseudo_values = get(M.method_details, :fitting_data_pseudo_values,
+        get(M.method_details, :pseudo_values, true))
 
     return _run_copula_test(GoodnessOfFitHypothesis(M), M.method_details.U; pseudo_values=stored_pseudo_values, kwargs...,)
 end
