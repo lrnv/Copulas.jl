@@ -67,8 +67,7 @@ evaluation. The ratio is R time divided by Julia time, so values above one
 favor Julia. These figures characterize this machine and software environment;
 they are not universal performance guarantees.
 
-<details>
-<summary>Reproduce the comparison locally</summary>
+::: details Reproduce the comparison locally
 
 Install R's `copula` package, set `RSCRIPT` when `Rscript` is not on `PATH`, and
 run the launcher from the repository root:
@@ -265,7 +264,7 @@ benchmark_comparison()
 ```
 <!-- benchmark-source-end -->
 
-</details>
+:::
 
 !!! note "Interpreting results"
     These are lightweight, indicative measurements from one local machine, not
