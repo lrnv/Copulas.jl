@@ -24,6 +24,11 @@
         vcov=false, derived_measures=false)
     @test default_model.method === :mle
     @test default_model.method_details.sklar_method === :ifm
+
+    empirical_model = fit(CopulaModel,
+        SklarDist{EmpiricalCopula,Tuple{Normal,Exponential}}, data;
+        vcov=false, derived_measures=false)
+    @test empirical_model.method === :deheuvels
 end
 
 @testset "MLE and MPL input semantics" begin

@@ -291,8 +291,10 @@ You can pass the `sklar_method` parameter as:
 - `:ecdf`: uses empirical pseudo-observations (ranks).
 
 The default is `sklar_method=:ifm`. In either route the copula step defaults to
-`copula_method=:mle`, but it can be replaced by any method supported by the
-chosen family, such as `:itau` or `:irho`.
+`copula_method=:mle` whenever that estimator is supported. Empirical or
+extension-defined families without MLE retain their first advertised method.
+The default can be replaced by any method supported by the chosen family, such
+as `:itau` or `:irho`.
 
 ::: remark IFM or empirical margins?
 
@@ -309,7 +311,7 @@ S = SklarDist(ClaytonCopula(2, 5), (Normal(), LogNormal(0, 0.5)))
 X = rand(S, 300)
 Ŝ = fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X;
 	sklar_method=:ifm, # or :ecdf
-	copula_method=:mle, # or another method supported by the copula family
+	copula_method=:default, # MLE when available; otherwise the family's default
 	margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple()) # options will be passed down to fitting functions. 
 Ŝ
 ```

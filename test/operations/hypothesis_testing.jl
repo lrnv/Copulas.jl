@@ -501,6 +501,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
             Mraw_refit = Copulas._refit(Mraw, Vraw)
 
             @test Mraw.method_details.pseudo_values === false
+            @test Mraw.method_details.fitting_data_pseudo_values === false
             @test Mraw_refit.method_details.pseudo_values === true
             @test Tuple(Mraw_refit.result.m) == (2, 2)
             @test teststatistic(Traw) ≈ Copulas._gof_sn_statistic(Vraw, Copulas._copula_of(Mraw))

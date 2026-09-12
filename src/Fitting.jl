@@ -388,7 +388,7 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
     quick_fit && return (result=C,) # as soon as possible.
     ll = Distributions.loglikelihood(C, fit_data)
     meta = (; meta..., requested_method, pseudo_values=input_is_pseudo,
-        fitting_data_pseudo_values=true)
+        fitting_data_pseudo_values=likelihood_method ? true : input_is_pseudo)
 
     return _finish_copula_fit(CT, C, fit_data, ll, method, meta, t, fit_spec;
         derived_measures, vcov, vcov_method)
@@ -437,7 +437,7 @@ end
 _available_fitting_methods(::Type{SklarDist}, d) = (:ifm, :ecdf)
 """
     fit(CopulaModel, SklarDist{CT,TplMargins}, X;
-        copula_method=:mle, sklar_method=:ifm,
+        copula_method=:default, sklar_method=:ifm,
         margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple(), kwargs...)
 
 Fit the margins and dependence structure of a Sklar distribution to a `d × n`
@@ -456,8 +456,9 @@ complete Sklar distribution. Generic joint MLE is deliberately unavailable:
 their positive, bounded, ordered or interdependent parameters to an
 unconstrained optimization vector. `params` and a constructor alone cannot
 provide that information safely. The default is therefore `sklar_method=:ifm`;
-both Sklar routes request `copula_method=:mle` by default, and that copula step
-may be replaced by another method supported by `CT`.
+both Sklar routes use `copula_method=:mle` by default whenever `CT` supports
+MLE, otherwise its first advertised fitting method. That copula step may be
+replaced by another method supported by `CT`.
 
 Moreover, calling `Distributions.fit` for a margin does not establish a generic
 maximum-likelihood contract. The fitting algorithm is selected by each
@@ -478,14 +479,15 @@ marginal families. This exception does not expose arbitrary storage type
 parameters or the concrete representation of constructed `SklarDist` values.
 """
 function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}, X; quick_fit = false,
-                           copula_method = :mle, sklar_method = :ifm, margins_kwargs = NamedTuple(),
+                           copula_method = :default, sklar_method = :ifm, margins_kwargs = NamedTuple(),
                            copula_kwargs = NamedTuple(), derived_measures = true, vcov = true,
                            vcov_method=nothing) where {CT<:Copulas.Copula, TplMargins<:Tuple}
 
     # Get methods:
     d, n = size(X)
     sklar_method  = _find_method(SklarDist, d, sklar_method)
-    copula_method = _find_method(CT, d, copula_method)
+    copula_method = copula_method === :default ?
+        _default_fitting_method(CT, d) : _find_method(CT, d, copula_method)
 
     # Fit marginals:
     m = ntuple(i -> Distributions.fit(TplMargins.parameters[i], @view X[i, :]; margins_kwargs...), d)

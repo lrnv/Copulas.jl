@@ -193,8 +193,8 @@ Notes
   pseudo_values=false` for maximum pseudo-likelihood from raw observations.
 - Sklar fits default to sequential `sklar_method=:ifm`; `:ecdf` is the
   rank-based alternative. Neither route is joint full maximum likelihood.
-- Their copula step defaults to `copula_method=:mle`, replaceable by another
-  family-supported method such as `:itau` or `:irho`.
+- Their copula step defaults to `copula_method=:mle` when supported, otherwise
+  to the family's advertised default; either can be replaced explicitly.
 
 Use `CopulaModel` when diagnostics and inference matter. If the family is not
 known in advance, fit an explicit, scientifically appropriate candidate set and

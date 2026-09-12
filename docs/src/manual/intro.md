@@ -327,8 +327,9 @@ Notes:
   when used with `pseudo_values=false`.
 - Sklar fits default to sequential `sklar_method=:ifm`; `:ecdf` is the
   rank-based alternative. Neither route is a joint full-likelihood fit.
-- The Sklar copula step defaults to `copula_method=:mle` and can be replaced by
-  another family-supported method such as `:itau` or `:irho`.
+- The Sklar copula step defaults to `copula_method=:mle` when supported,
+  otherwise to the family's advertised default; either can be replaced
+  explicitly.
 - `CopulaModel` implements model stats: `nobs`, `coef`, `vcov`, `stderror`, `confint`, `aic/bic`, `nullloglikelihood`, and more.
 - For a Bayesian workflow over Sklar models, see the examples section.
 
