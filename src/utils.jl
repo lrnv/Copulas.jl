@@ -190,61 +190,15 @@ pseudos(X) == [0.75 0.25 0.5; 0.25 0.75 0.5]
 See also: [`EmpiricalCopula`](@ref), [`BetaCopula`](@ref),
 [`CheckerboardCopula`](@ref).
 """
-const _PSEUDO_TIE_METHODS = (:average, :first, :last, :min, :max, :random)
-
-function _pseudoranks!(ranks::AbstractVector{T}, x::AbstractVector, ties::Symbol,
-        rng::Random.AbstractRNG, order::Vector{Int}) where {T<:AbstractFloat}
-    ties in _PSEUDO_TIE_METHODS || throw(ArgumentError(
-        "unsupported tie method :$ties; expected one of $(_PSEUDO_TIE_METHODS)"))
-    sortperm!(order, x; by=identity, alg=Base.Sort.DEFAULT_STABLE)
-
-    if ties === :first
-        @inbounds for (rank, index) in enumerate(order)
-            ranks[index] = T(rank)
-        end
-        return ranks
-    end
-
-    n = length(order)
-    first = 1
-    while first <= n
-        last = first
-        @inbounds while last < n && x[order[last + 1]] == x[order[first]]
-            last += 1
-        end
-
-        if ties === :average
-            rank = (T(first) + T(last)) / T(2)
-            @inbounds for k in first:last
-                ranks[order[k]] = rank
-            end
-        elseif ties === :min
-            @inbounds for k in first:last
-                ranks[order[k]] = T(first)
-            end
-        elseif ties === :max
-            @inbounds for k in first:last
-                ranks[order[k]] = T(last)
-            end
-        elseif ties === :last
-            @inbounds for k in first:last
-                ranks[order[k]] = T(last - (k - first))
-            end
-        else # :random
-            Random.shuffle!(rng, @view order[first:last])
-            @inbounds for k in first:last
-                ranks[order[k]] = T(k)
-            end
-        end
-        first = last + 1
-    end
-    return ranks
-end
-
 function pseudos(sample::AbstractMatrix; ties::Symbol=:average,
         rng::Random.AbstractRNG=Random.default_rng())
     ties in _PSEUDO_TIE_METHODS || throw(ArgumentError(
         "unsupported tie method :$ties; expected one of $(_PSEUDO_TIE_METHODS)"))
+    return _pseudos(sample, Val(ties), rng)
+end
+
+function _pseudos(sample::AbstractMatrix, tie_method::Val,
+        rng::Random.AbstractRNG)
     d, n = size(sample)
     T = float(eltype(sample))
     U = Matrix{T}(undef, d, n)
@@ -252,11 +206,111 @@ function pseudos(sample::AbstractMatrix; ties::Symbol=:average,
     @inbounds for i in 1:d
         x = @view sample[i, :]
         ranks = @view U[i, :]
-        _pseudoranks!(ranks, x, ties, rng, tmp_idx)
+        _pseudoranks!(ranks, x, tie_method, rng, tmp_idx)
         ranks ./= T(n + 1)
     end
     return U
 end
+
+const _PSEUDO_TIE_METHODS = (:average, :first, :last, :min, :max, :random)
+
+function _pseudoranks!(ranks::AbstractVector, x::AbstractVector, tie_method::Val,
+        rng::Random.AbstractRNG, order::Vector{Int})
+    sortperm!(order, x; by=identity, alg=Base.Sort.DEFAULT_STABLE)
+    return _assign_pseudoranks!(ranks, x, order, tie_method, rng)
+end
+
+function _assign_pseudoranks!(ranks::AbstractVector{T}, ::AbstractVector,
+        order::Vector{Int}, ::Val{:first}, ::Random.AbstractRNG) where {T}
+    @inbounds for (rank, index) in enumerate(order)
+        ranks[index] = T(rank)
+    end
+    return ranks
+end
+
+function _assign_tied_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
+        order::Vector{Int}, tie_method::Val, rng::Random.AbstractRNG)
+    n = length(order)
+    first = 1
+    while first <= n
+        last = first
+        @inbounds while last < n && x[order[last + 1]] == x[order[first]]
+            last += 1
+        end
+        _assign_tie_group!(ranks, order, first, last, tie_method, rng)
+        first = last + 1
+    end
+    return ranks
+end
+
+function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
+        order::Vector{Int}, tie_method::Val{:average}, rng::Random.AbstractRNG)
+    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
+end
+
+function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
+        order::Vector{Int}, tie_method::Val{:last}, rng::Random.AbstractRNG)
+    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
+end
+
+function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
+        order::Vector{Int}, tie_method::Val{:min}, rng::Random.AbstractRNG)
+    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
+end
+
+function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
+        order::Vector{Int}, tie_method::Val{:max}, rng::Random.AbstractRNG)
+    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
+end
+
+function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
+        order::Vector{Int}, tie_method::Val{:random}, rng::Random.AbstractRNG)
+    return _assign_tied_pseudoranks!(ranks, x, order, tie_method, rng)
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, ::Val{:average}, ::Random.AbstractRNG) where {T}
+    rank = (T(first) + T(last)) / T(2)
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, ::Val{:min}, ::Random.AbstractRNG) where {T}
+    @inbounds for k in first:last
+        ranks[order[k]] = T(first)
+    end
+    return nothing
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, ::Val{:max}, ::Random.AbstractRNG) where {T}
+    @inbounds for k in first:last
+        ranks[order[k]] = T(last)
+    end
+    return nothing
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, ::Val{:last}, ::Random.AbstractRNG) where {T}
+    @inbounds for k in first:last
+        ranks[order[k]] = T(last - (k - first))
+    end
+    return nothing
+end
+
+function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        first::Int, last::Int, ::Val{:random}, rng::Random.AbstractRNG) where {T}
+    Random.shuffle!(rng, @view order[first:last])
+    @inbounds for k in first:last
+        ranks[order[k]] = T(k)
+    end
+    return nothing
+end
+
+
 
 function _require_tie_free_rows(sample::AbstractMatrix, operation::AbstractString)
     for row in axes(sample, 1)

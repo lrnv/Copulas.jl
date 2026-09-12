@@ -21,6 +21,16 @@
     @test pseudos(Xtied; ties=:max) ==
           [2.0 2.0 3.0 4.0; 4.0 3.0 3.0 1.0] ./ denominator
 
+    for row in axes(Xtied, 1)
+        x = @view Xtied[row, :]
+        @test pseudos(reshape(x, 1, :); ties=:average)[1, :] .* denominator ==
+              StatsBase.tiedrank(x)
+        @test pseudos(reshape(x, 1, :); ties=:first)[1, :] .* denominator ==
+              StatsBase.ordinalrank(x)
+        @test pseudos(reshape(x, 1, :); ties=:min)[1, :] .* denominator ==
+              StatsBase.competerank(x)
+    end
+
     random1 = pseudos(Xtied; ties=:random, rng=Xoshiro(93))
     random2 = pseudos(Xtied; ties=:random, rng=Xoshiro(93))
     @test random1 == random2
