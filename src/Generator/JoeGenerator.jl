@@ -13,6 +13,13 @@ It has a few special cases:
 - `θ = 1` gives the independence copula.
 - `θ = Inf` gives the upper Fréchet–Hoeffding bound.
 
+Joe copulas have upper-tail dependence and no lower-tail dependence. They are
+valid in every dimension, but large parameters concentrate mass near the
+singular comonotonic limit and can make likelihood optimization stiff.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref), [`λᵤ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """

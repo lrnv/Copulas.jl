@@ -7,9 +7,20 @@
 #####   - `SubsetCopula(C::Copula{d}, dims::NTuple{p, Int}) where {d, p}`
 ###############################################################################
 """
-    SubsetCopula(C::Copula,dims)
+    SubsetCopula(C::Copula, dims)
 
-This class allows to construct a random vector corresponding to a few dimensions of the starting copula. If ``(X_1,...,X_n)`` is the random vector corresponding to the copula `C`, this returns the copula of `(` ``X_i`` `for i in dims)`. The dependence structure is preserved. There are specialized methods for some copulas. 
+Internal fallback representing the marginal copula of `C` on the coordinates
+listed by `dims`. Coordinate order is significant, indices must be distinct
+and valid, and selecting one coordinate returns a uniform distribution rather
+than a `SubsetCopula`. Sampling projects samples from `C`; CDF evaluation fixes
+discarded coordinates at one.
+
+Families may specialize this constructor to return a closed-form copula of the
+same marginal law. Such specializations must preserve the requested coordinate
+order and all distribution semantics. Public code should call `subsetdims`;
+the wrapper type and its fields are internal and unstable.
+
+See also: [`subsetdims`](@ref), [`conditional_copula`](@ref), [`_cdf`](@ref).
 """
 struct SubsetCopula{d,CT} <: Copula{d}
     C::CT
@@ -69,18 +80,27 @@ end
     subsetdims(C::Copula, dims::NTuple{p, Int})
     subsetdims(D::SklarDist, dims)
 
-Return a new copula or Sklar distribution corresponding to the subset of dimensions specified by `dims`.
+Return the marginal distribution on the coordinates selected by `dims`.
 
-# Arguments
-- `C::Copula`: The original copula object.
-- `D::SklarDist`: The original Sklar distribution.
-- `dims::NTuple{p, Int}`: Tuple of indices representing the dimensions to keep.
+Indices are one-based, distinct, and order-sensitive: `(3, 1)` both selects and
+reorders coordinates. For a copula, selecting one coordinate returns the
+uniform marginal; for a `SklarDist`, it returns the corresponding original
+marginal. Selecting several coordinates preserves their joint marginal law and
+returns a copula or Sklar distribution of that dimension. Selecting every
+coordinate in natural order may return the original object.
 
-# Returns
-- A `SubsetCopula` or a new `SklarDist` object corresponding to the selected dimensions. If `p == 1`, returns a `Uniform` distribution or the corresponding marginal.
+The result can be a family-specific closed form or an internal generic wrapper;
+callers should rely on its distribution behavior rather than its concrete type.
+Invalid, repeated, or empty index collections are rejected.
 
-# Details
-This function extracts the dependence structure among the specified dimensions from the original copula or Sklar distribution. Specialized methods exist for some copula types to ensure efficiency and correctness.
+# Example
+```julia
+C = GaussianCopula(3, [1.0 0.2 0.6; 0.2 1.0 0.4; 0.6 0.4 1.0])
+C31 = subsetdims(C, (3, 1))
+length(C31) == 2
+```
+
+See also: [`condition`](@ref), [`SklarDist`](@ref), [`measure`](@ref).
 """
 function subsetdims(C::Copula{d}, dims::NTuple{p,Int}) where {d,p}
     # Validate the public operation before dispatching to a native submodel:

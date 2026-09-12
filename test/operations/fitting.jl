@@ -11,7 +11,7 @@
     model = fit(CopulaModel,
         SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
         copula_method=:itau, vcov=false, derived_measures=false)
-    @test model.result isa SklarDist
+    @test fitteddistribution(model) isa SklarDist
     @test StatsBase.nobs(model) == size(data, 2)
 
     ecdf_fit = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;

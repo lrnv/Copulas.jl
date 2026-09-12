@@ -25,6 +25,13 @@ Notes:
 - Each `m[i]` must divide `n` to produce a valid checkerboard on the sample grid;
   this is enforced by the constructor.
 
+The result is absolutely continuous inside its boxes but its density is
+discontinuous at grid boundaries. Increasing grid resolution reduces smoothing
+and raises computational cost; sparse samples can leave many boxes empty.
+
+See also: [`EmpiricalCopula`](@ref), [`BernsteinCopula`](@ref),
+[`pseudos`](@ref).
+
 References
 * Neslehova (2007). *On rank correlation measures for non-continuous random variables*.
 * Durante, Sanchez & Sempi (2013) *Multivariate patchwork copulas: a unified approach with applications to partial comonotonicity*.

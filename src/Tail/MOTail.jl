@@ -33,6 +33,13 @@ the stable tail dependence function is
 Every margin must have positive total shock rate. Multiplying all shock
 intensities by the same positive constant leaves the copula unchanged.
 
+The common scale is therefore not identifiable and should be fixed when these
+intensities are estimated. The finite shock representation generally creates
+singular components; density-only fitting and interpretation require care.
+
+See also: [`DiscreteSpectralTail`](@ref), [`ExtremeValueCopula`](@ref),
+[`ℓ`](@ref).
+
 References:
 
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications. World Scientific.

@@ -16,6 +16,14 @@ More details about Inverse Gaussian Archimedean copula are found in :
 Special cases:
 - `θ = 0` gives the independence copula.
 
+This frailty-based generator is completely monotone and therefore valid in
+every dimension. Unlike several common one-parameter families, letting `θ`
+grow without bound does not produce the comonotonic copula; compare implied
+dependence measures rather than raw parameter magnitudes across families.
+
+See also: [`FrailtyGenerator`](@ref), [`ArchimedeanCopula`](@ref), [`τ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """

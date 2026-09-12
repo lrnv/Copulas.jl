@@ -1,7 +1,11 @@
 """
     NoTail()
 
-Corresponds to the case where the pickads function is identically One, which means no particular tail behavior.
+Internal extreme-value tail for independence. Its Pickands dependence function
+is `A(t)=1` and its stable tail dependence function is `ℓ(x)=sum(x)`, so
+`ExtremeValueCopula(d, NoTail())` reduces to the independent copula. This
+parameter-free implementation is used as a limiting representation and is not
+part of the public component API.
 """
 struct NoTail <: Tail end
 

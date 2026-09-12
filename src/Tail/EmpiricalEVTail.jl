@@ -19,6 +19,9 @@ Its Pickands function is
 
 evaluated via piecewise linear interpolation on the grid `tgrid`.
 
+See also: [`EmpiricalEVCopula`](@ref), [`ExtremeValueCopula`](@ref),
+[`A`](@ref), [`Distributions.fit`](@ref).
+
 References
 * [caperaa1997nonparametric] Capéraà, Fougères, Genest (1997) Biometrika
 * [gudendorf2011nonparametric] Gudendorf, Segers (2011) Journal of Multivariate Analysis
@@ -33,6 +36,19 @@ end
     EmpiricalEVTail(u; kwargs...)
 
 Construct the empirical Pickands tail from data (2×N).
+
+Rows of `u` are the two margins and columns are observations. With
+`pseudo_values=true`, values are interpreted as pseudo-observations; otherwise
+the margins are ranked first. `method` selects the classical Pickands, CFG, or
+OLS-intercept pilot estimator. The pilot is evaluated on `grid` points between
+`eps` and `1-eps`, then projected onto the convex Pickands class and extended
+with the required endpoint values.
+
+The returned tail evaluates `A` by piecewise-linear interpolation. Increasing
+`grid` gives a finer representation at additional fitting and storage cost;
+`eps` protects logarithmic calculations near zero and one. Shape projection
+guarantees a valid bivariate extreme-value model but can visibly modify a noisy
+pilot estimate, especially for small samples.
 """
 function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true)
 
@@ -218,6 +234,9 @@ spectral simulation. Its concrete storage type is an implementation detail.
 dimension-adaptive degree and the numerical projection details are Copulas.jl
 implementation choices; the statistical estimator and shape-constrained
 spectral projection are literature-based.
+
+See also: [`EmpiricalEVCopula`](@ref), [`DiscreteSpectralTail`](@ref),
+[`ExtremeValueCopula`](@ref), [`ℓ`](@ref), [`Distributions.fit`](@ref).
 """
 struct EmpiricalEVMultivariateTail <: DiscreteSpectralBackedTail
     d::Int

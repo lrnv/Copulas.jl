@@ -123,7 +123,7 @@ U = rand(Random.MersenneTwister(1), Ctrue, 300)
 Cstart = NestedArchimedeanCopula(ClaytonGenerator(1.0);
              children = [ClaytonCopula(2, 3.0), ClaytonCopula(2, 3.0)])
 M = fit(CopulaModel, Cstart, U)
-M.result
+fitteddistribution(M)
 ```
 
 The optimiser runs in an unconstrained space through a *parametrisation* — a map
@@ -142,7 +142,7 @@ nest = α -> NestedArchimedeanCopula(ClaytonGenerator(exp(α[1]));
     children = [ClaytonCopula(2, exp(α[1]) + softplus(α[2])),
                 ClaytonCopula(2, exp(α[1]) + softplus(α[3]))])
 Mn = fit(CopulaModel, nest, [0.0, 0.0, 0.0], U)
-Mn.result # inner θ ≥ outer θ by construction
+fitteddistribution(Mn) # inner θ ≥ outer θ by construction
 ```
 
 Or share one ``\theta`` across the root and both panels — a single free parameter:
@@ -152,11 +152,11 @@ recon = α -> (θ = exp(α[1]);
     NestedArchimedeanCopula(ClaytonGenerator(θ);
         children = [ClaytonCopula(2, θ), ClaytonCopula(2, θ)]))
 Ms = fit(CopulaModel, recon, [0.0], U)
-Ms.result # the root and both panels share one parameter by construction
+fitteddistribution(Ms) # the root and both panels share one parameter by construction
 ```
 
 `fit(C0, U)` is a shorthand returning just the fitted copula; for the custom form
-use `fit(CopulaModel, reparam, init, U).result`.
+use `fitteddistribution(fit(CopulaModel, reparam, init, U))`.
 
 ## Precision
 
@@ -239,15 +239,7 @@ empty (all observed) the recipe reduces to the ordinary joint density
 
 !!! note "Multi-coordinate conditional CDF"
     With two or more lower-tail coordinates the conditional CDF is the mixed
-    partial of the nested CDF over the *observed* coordinates. The generic path
-    takes this by nesting one `ForwardDiff.derivative` per observed coordinate —
-    cost exponential in the number of observed dims, infeasible in high
-    dimension. A `_partial_cdf` specialisation routes it instead through the same
-    polynomial Faà di Bruno tree walk as the single-coordinate case (selected on
-    the conditional copula's concrete nested inner type), for any number of
-    lower-tail coordinates.
-
-    At high differentiation order for fast-tail generators the `Float64` sum can
-    lose precision; pass `BigFloat` coordinates to recover the exact value (as for
-    the density). End-to-end `BigFloat` through `condition()` is not yet enabled —
-    upstream stores the conditioning values as `Float64`.
+    partial of the nested CDF over the *observed* coordinates. Its cost grows
+    quickly with the number of observed coordinates. At high differentiation
+    order, `Float64` calculations can also lose precision; end-to-end `BigFloat`
+    conditioning is not currently supported.

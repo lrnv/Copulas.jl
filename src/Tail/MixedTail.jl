@@ -38,6 +38,13 @@ dimension. In `d=2` it reduces exactly to the historical Mixed Pickands model.
 Special case:
 
 * `θ = 0` represents `IndependentCopula(d)`.
+
+Increasing `θ` moves from independence toward the fixed Galambos component,
+not all the way to comonotonicity. The multivariate extension is a Copulas.jl
+construction and should not be attributed directly to the bivariate paper.
+
+See also: [`GalambosTail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
+[`Distributions.fit`](@ref).
 """
 MixedTail, MixedCopula
 

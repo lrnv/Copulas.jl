@@ -16,6 +16,16 @@ Special cases:
 More details about Farlie-Gumbel-Morgenstern (FGM) copula are found in [nelsen2006](@cite).
 We use the stochastic representation from [blier2022stochastic](@cite) to obtain random samples.
 
+The parameter vector is ordered by interaction order and then by coordinate
+combination. Componentwise bounds `|θᵢ| ≤ 1` are necessary but not sufficient;
+the constructor also checks all hypercube-corner inequalities. Parameter count
+grows exponentially with `d`, while attainable dependence remains relatively
+weak. In dimension two, the admissible endpoints `θ = ±1` remain ordinary FGM
+copulas; the family does not attain either Fréchet--Hoeffding bound.
+
+See also: [`Copula`](@ref), [`IndependentCopula`](@ref), [`τ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 * [blier2022stochastic](@cite) Blier-Wong, C., Cossette, H., & Marceau, E. (2022). Stochastic representation of FGM copulas using multivariate Bernoulli random variables. Computational Statistics & Data Analysis, 173, 107506.

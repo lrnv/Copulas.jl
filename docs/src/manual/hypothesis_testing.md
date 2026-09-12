@@ -4,9 +4,13 @@ CurrentModule = Copulas
 
 # [Hypothesis testing](@id hypothesis_testing)
 
-Each public test runs one documented statistic and calibration procedure and returns a `CopulaTest`.
+Copula models make qualitative claims about dependence: coordinates may be
+independent or exchangeable, a dependence structure may be radially symmetric
+or max-stable, and a chosen parametric family may or may not describe the data.
+Hypothesis tests turn each claim into a discrepancy that can be compared with
+the fluctuations expected under a null model.
 
-The current implementation includes tests of:
+This page develops tests of:
 
 * mutual independence;
 * exchangeability;
@@ -15,17 +19,12 @@ The current implementation includes tests of:
 * goodness of fit for a specified copula;
 * goodness of fit for a fitted copula family.
 
-The procedures are based on empirical-copula processes, resampling, multiplier methods, and parametric bootstrap ideas developed throughout the copula-testing literature; see, among others,
+The common pattern is simple: define a property of the unknown copula, measure
+its violation with the empirical copula, then calibrate that discrepancy by a
+simulation, randomization, multiplier method or parametric bootstrap. The
+procedures draw on [genest2004independence](@cite), [fermanian2004empirical](@cite), [remillard2009equality](@cite), [bucher2010bootstrap](@cite), and [genest2009gof](@cite).
 
-[genest2004independence](@cite),
-[fermanian2004empirical](@cite),
-[remillard2009equality](@cite),
-[bucher2010bootstrap](@cite), and
-[genest2009gof](@cite).
-
----
-
-## Data convention
+## From observations to an empirical copula
 
 As elsewhere in `Copulas.jl`, observations are represented by a `d\times n` matrix
 
@@ -46,7 +45,7 @@ where each column
 
 is one `d`-dimensional observation.
 
-Hypothesis tests are rank based. When
+The implemented tests are rank based. When
 
 ```julia
 pseudo_values=false
@@ -68,6 +67,8 @@ This is intentional: ordinal ranking would otherwise assign distinct ranks to ti
 
 :::
 
+::: definition Empirical copula
+
 Given pseudo-observations $\boldsymbol U_1,\ldots,\boldsymbol U_n$, the empirical copula is
 
 ```math
@@ -83,11 +84,11 @@ C_n(\boldsymbol u)
 
 where the inequality is understood componentwise.
 
+:::
+
 Empirical-copula processes and their weak convergence form the theoretical basis for many of the statistics and multiplier approximations used below [fermanian2004empirical](@cite).
 
----
-
-## Common interface
+## Reading a test result
 
 All tests return a [`CopulaTest`](@ref), which implements `StatsAPI.HypothesisTest`.
 
@@ -117,7 +118,11 @@ pvalue(test)
 nobs(test)
 ```
 
-The public result interface consists of these accessors and the printed summary. Internal fields are not an extension API.
+The statistic measures disagreement with the null; the p-value calibrates how
+unusual that disagreement is under the selected resampling scheme. It is not
+the probability that the null hypothesis is true. The public result interface
+consists of these accessors and the printed summary; internal fields are not an
+extension API.
 
 Printing the object gives a summary of the hypothesis, statistic, calibration, p-value, and relevant test-specific information.
 
@@ -133,11 +138,11 @@ depending on the desired Monte Carlo precision.
 
 :::
 
----
+## Mutual independence
 
-# Mutual independence
+### Definition
 
-## Null hypothesis
+::: definition Mutual independence
 
 Let `C` denote the copula of the random vector. Mutual independence is equivalent to the product copula
 
@@ -161,7 +166,9 @@ C(\boldsymbol u)
 
 Rank-based independence tests constructed from the empirical copula process are studied in [genest2004independence](@cite).
 
-## Cramér--von Mises statistic
+:::
+
+### Measuring departure from independence
 
 The statistic currently available in `Copulas.jl` is `:cvm`. The implementation evaluates the squared discrepancy between the empirical copula and the product copula at the observed pseudo-observations:
 
@@ -176,9 +183,11 @@ C_n(\boldsymbol U_i)
 \right]^2.
 ```
 
-Large values indicate departure from mutual independence.
+Large values indicate departure from mutual independence, but their scale
+depends on the sample size and dimension; the statistic should therefore be
+read through its calibrated p-value rather than against a fixed threshold.
 
-## Calibration
+### Why simulation provides the reference distribution
 
 Under `H_0`, the coordinates are independent uniforms. The default calibration is therefore `:simulation`:
 
@@ -188,7 +197,7 @@ Under `H_0`, the coordinates are independent uniforms. The default calibration i
 4. repeat the procedure `N` times;
 5. compare the observed statistic with its simulated null distribution.
 
-## Usage
+### Example
 
 ```@example hypothesis_testing
 Uind = rand(Xoshiro(1), IndependentCopula(3), 100)
@@ -199,11 +208,11 @@ tind = IndependenceCopulaTest(Uind; N=49, rng=Xoshiro(2),)
 ```
 
 
----
+## Exchangeability
 
-# Exchangeability
+### Definition
 
-## Null hypothesis
+::: definition Exchangeability
 
 A copula `C` is exchangeable when it is invariant under permutations of its coordinates.
 
@@ -237,7 +246,9 @@ for every `\boldsymbol u\in[0,1]^d` and every coordinate permutation `\pi`.
 
 Empirical-copula tests for bivariate symmetry were developed in [genest2012symmetry](@cite) and extended to arbitrary dimension by [harder2017exchangeability](@cite).
 
-## Statistic
+:::
+
+### Measuring sensitivity to coordinate labels
 
 For a collection `\mathcal G` of non-identity permutations, the implemented statistic is
 
@@ -324,11 +335,11 @@ weight=:none
 
 sets `w_\pi(\boldsymbol u)=1`.
 
-## Permutation generators
+### Which permutations are compared?
 
 The keyword `permutations` controls the set `\mathcal G`.
 
-### `permutations=:G2`
+#### `permutations=:G2`
 
 This is the default.
 
@@ -350,7 +361,7 @@ together with the cyclic left shift
 (12\cdots d).
 ```
 
-### `permutations=:G1`
+#### `permutations=:G1`
 
 Uses the transpositions
 
@@ -360,13 +371,13 @@ Uses the transpositions
 
 An explicit permutation or collection may also be supplied. Duplicate permutations
 are removed. Collections are normalized once and stored as vectors.
-The factorial option `permutations=:all` is deliberately unsupported.
 
-The multiplier procedures retain one dense `n × n` matrix per permutation or
-power. A shared guard rejects matrix payloads above 512 MiB; total memory also
-includes auxiliary storage.
+!!! warning "Permutation sets and memory"
+    The factorial choice `permutations=:all` is deliberately unsupported. The
+    multiplier procedure retains one dense `n × n` matrix per permutation; a
+    shared guard rejects matrix payloads above 512 MiB, before auxiliary storage.
 
-## Multiplier calibration
+### Why multiplier calibration is needed
 
 The default calibration is `:multiplier`.
 
@@ -394,7 +405,7 @@ C_n(\boldsymbol u-h_n\boldsymbol e_j)
 
 Independent exponential multipliers are generated and centered before applying the empirical-process representation. This type of multiplier approximation is closely related to the methods discussed in [remillard2009equality](@cite), [bucher2010bootstrap](@cite), and [harder2017exchangeability](@cite).
 
-## Usage
+### Example
 
 ```@example hypothesis_testing
 Uex = rand(Xoshiro(4), GumbelCopula(3, 2.0), 80)
@@ -405,11 +416,11 @@ tex = ExchangeabilityCopulaTest(Uex; permutations=:G2, weight=:wm2, N=49, rng=Xo
 ```
 
 
----
+## Radial symmetry
 
-# Radial symmetry
+### Definition
 
-## Null hypothesis
+::: definition Radial symmetry
 
 A copula is radially symmetric when
 
@@ -430,7 +441,9 @@ C^{\mathrm{rad}}.
 
 Nonparametric tests of copula symmetry and randomization procedures based on the corresponding invariance group are studied in [beare2020symmetry](@cite).
 
-## Statistic
+:::
+
+### Comparing a sample with its reflection
 
 Let $C_n$ denote the empirical copula of the original pseudo-observations and let $\bar{C_n}$ denote the empirical copula constructed from
 
@@ -455,7 +468,7 @@ C_n(\boldsymbol U_i)
 
 Large values indicate radial asymmetry.
 
-## Randomization calibration
+### Why reflection gives a null experiment
 
 Under radial symmetry, an observation and its radial reflection are distributionally equivalent. For every observation $i$, independently generate
 
@@ -488,7 +501,7 @@ Thus the default reflection probability is exactly
 
 The procedure exploits the group invariance associated with radial symmetry, following the randomization-testing principle developed in [beare2020symmetry](@cite).
 
-## Usage
+### Example
 
 ```@example hypothesis_testing
 Urad = rand(Xoshiro(6), GaussianCopula([1.0 0.6; 0.6 1.0]), 80)
@@ -499,11 +512,11 @@ trad = RadialSymmetryCopulaTest(Urad; N=49, rng=Xoshiro(7),)
 ```
 
 
----
+## Extreme-value dependence
 
-# Extreme-value dependence
+### The defining property
 
-## Max-stability
+::: property Max-stability
 
 Extreme-value copulas are characterized by max-stability. For any $r>0$,
 
@@ -538,7 +551,9 @@ C\text{ belongs to the extreme-value class}.
 
 Large-sample tests based on this max-stability identity, the empirical copula, and multiplier approximations are developed by [kojadinovic2011extremevalue](@cite).
 
-## Statistic
+:::
+
+### Measuring violations of max-stability
 
 For a finite collection of powers
 
@@ -572,7 +587,7 @@ The default powers are
 
 They can be changed through the `powers` keyword.
 
-## Multiplier calibration
+### Multiplier calibration
 
 Approximate p-values are obtained from a multiplier representation of the empirical-copula process, following the max-stability testing strategy in
 [kojadinovic2011extremevalue](@cite).
@@ -585,7 +600,7 @@ h_n=n^{-1/2}.
 
 The multiplier variables are exponential and centered before the bootstrap process is evaluated.
 
-## Usage
+### Example
 
 ```@example hypothesis_testing
 Uev = rand(Xoshiro(8), GumbelCopula(2, 2.5), 80)
@@ -604,17 +619,18 @@ ExtremeValueCopulaTest(U; powers=2)
 All supplied powers must be finite and strictly larger than one.
 
 
----
-
-# Goodness of fit
+## Goodness of fit
 
 Copula goodness-of-fit procedures compare the empirical dependence structure with a proposed parametric copula model. Empirical-process and Cramér--von Mises procedures of this form are reviewed extensively in [genest2009gof](@cite).
 
-`Copulas.jl` distinguishes a **simple** null hypothesis from a **composite** null hypothesis.
+`Copulas.jl` distinguishes a **simple** null hypothesis, in which every
+parameter is fixed before seeing the data, from a **composite** null hypothesis,
+in which parameters are estimated. That distinction changes what the bootstrap
+must reproduce.
 
----
+### A fully specified copula
 
-## Simple goodness of fit
+::: definition Simple null hypothesis
 
 Suppose that a fully specified copula `C_0` is given, including all its parameters.
 
@@ -624,6 +640,8 @@ The null hypothesis is
 H_0:
 C=C_0.
 ```
+
+:::
 
 The implemented Cramér--von Mises-type statistic is
 
@@ -651,7 +669,7 @@ pvalue(tsimple)
 
 This tests the fully specified copula.
 
-### Parametric bootstrap
+#### Parametric bootstrap
 
 For every bootstrap replicate:
 
@@ -662,9 +680,9 @@ For every bootstrap replicate:
 
 No parameters are re-estimated because `C_0` is fully specified.
 
----
+### A fitted copula family
 
-## Composite goodness of fit
+::: definition Composite null hypothesis
 
 Suppose instead that
 
@@ -684,6 +702,8 @@ The null hypothesis becomes
 H_0:
 C\in\mathcal C,
 ```
+
+:::
 
 and the observed statistic is
 
@@ -737,7 +757,7 @@ Thus parameter estimation is repeated inside every bootstrap replicate rather th
 The fitting procedure itself is also reproduced. In particular, estimator-defining runtime information such as the fitting method, method-specific keywords, and copula structure is retained whenever the fitted model records a reproducible fitting specification.
 This matters for models whose fitting procedure cannot be reconstructed from the fitted copula type alone.
 
-## Usage
+### Example
 
 First fit a model:
 
@@ -768,18 +788,17 @@ In this form, `M` is interpreted as an **estimator specification**, not as a fix
 Consequently, the observed statistic and every bootstrap statistic are based on the same estimation rule. If the original fitting procedure cannot be reproduced safely, composite goodness-of-fit testing raises an `ArgumentError` rather than silently replacing it by a different estimator.
 
 
----
-
-
-## Monte Carlo convention
+## Interpreting resampling p-values
 
 Simulation, randomization and parametric bootstrap use
 `(0.5 + count(Tstar >= Tobserved)) / (N + 1)`.
 The EV multiplier test uses the same convention; the exchangeability multiplier
 test uses the uncorrected strict proportion `count(Tstar > Tobserved) / N`.
 These are resampling approximations, not exact finite-sample level guarantees.
+Increasing `N` reduces Monte Carlo noise but does not repair an inappropriate
+null hypothesis, dependent observations or violated regularity assumptions.
 
-## Applicability and reference variants
+### Scope and reference variants
 
 Observations must be independent and identically distributed. Continuous,
 tie-free margins alone do not establish the regularity assumptions required

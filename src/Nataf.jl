@@ -178,6 +178,9 @@ D = SklarDist(GaussianCopula(Nataf(m, R0)), m)
 cor(rand(D, 10^6)') # ≈ R0, while GaussianCopula(R0) directly would miss the target.
 ```
 
+See also: [`GaussianCopula`](@ref), [`SklarDist`](@ref),
+[`StatsBase.predict`](@ref).
+
 References:
 * [nataf1962](@cite) Nataf, A. (1962). Détermination des distributions de probabilités dont les marges sont données.
 * [liu1986](@cite) Liu, P.-L., & Der Kiureghian, A. (1986). Multivariate distribution models with prescribed marginals and covariances.

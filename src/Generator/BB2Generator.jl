@@ -9,6 +9,14 @@ The BB2 copula has parameters ``\\theta, \\delta \\in (0,\\infty)``. It is an Ar
 \\phi(t) = [1 + \\delta^{-1}log(1 + t)]^{-\\frac{1}{\\theta}},
 ```
 
+The two positive parameters control different aspects of the dependence shape;
+neither is a universal strength index. Very small values approach open
+parameter-space boundaries and can be numerically delicate, so fitted models
+should be compared through concordance, tail coefficients or probabilities.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref), [`τ`](@ref),
+[`λₗ`](@ref), [`λᵤ`](@ref), [`Distributions.fit`](@ref).
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.193-194
 """

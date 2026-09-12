@@ -27,20 +27,11 @@ However, we should clarify what this is doing. There are several ways of estimat
     - **IFM1:** Use empirical ranks to compute the pseudo-observations.
     - **IFM2:** Use the estimated distribution functions $\hat{F}_{i}$ for the marginals to compute the pseudo-observations as $u_{i,j} = \hat{F}_{i}(x_{i,j})$.
 
-The `fit(SklarDist{...},...)` method in `Copulas.jl` is implemented as follows: 
-
-```julia
-function Distributions.fit(::Type{SklarDist{CT,TplMargins}},x) where {CT,TplMargins}
-    # The first thing to do is to fit the marginals : 
-    @assert length(TplMargins.parameters) == size(x,1)
-    m = Tuple(Distributions.fit(TplMargins.parameters[i],x[i,:]) for i in 1:size(x,1))
-    u = pseudos(x)
-    C = Distributions.fit(CT,u)
-    return SklarDist(C,m)
-end
-```
-
-This clearly performs **IFM1** estimation. **IFM2** is not much harder to implement, and could be done for our model as follows:
+The documented `fit(SklarDist{...}, ...)` operation first fits each margin,
+forms empirical pseudo-observations, and then fits the requested copula family.
+It therefore performs **IFM1** estimation. The concrete dispatch and storage
+types used to implement these steps are internal. **IFM2** can be assembled
+from the same public operations as follows:
 ```@example ifm
 # Marginal fits are the same than IFM1, so we just used those to compute IFM2 ranks:
 u = similar(x)

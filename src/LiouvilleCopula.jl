@@ -29,6 +29,18 @@ and intermediate representations are implementation details.
 
 See also the documentation example “Liouville copulas with real Dirichlet
 parameters”.
+
+# Example
+```julia
+using Copulas
+using Copulas: ClaytonGenerator
+
+C = LiouvilleCopula(ClaytonGenerator(2.0), (0.8, 1.2, 1.5))
+U = rand(C, 100)
+```
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref), [`𝒲₋₁`](@ref),
+[`condition`](@ref), [`subsetdims`](@ref).
 """
 struct LiouvilleCopula{d,TG,Tα} <: Copula{d}
     G::TG

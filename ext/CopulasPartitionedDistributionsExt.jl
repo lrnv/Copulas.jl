@@ -4,7 +4,7 @@ using Copulas
 using Distributions
 using PartitionedDistributions
 
-import Copulas: condition, subsetdims
+import Copulas: condition, inverse_rosenblatt, rosenblatt, subsetdims
 import PartitionedDistributions: conditional, marginal
 
 
@@ -242,8 +242,8 @@ function condition(
             "the same length",
         ))
 
-    all(x -> x isa Number, observed) ||
-        throw(ArgumentError("conditioning values must be numeric"))
+    all(x -> x isa Number && isfinite(x), observed) ||
+        throw(ArgumentError("conditioning values must be finite numbers"))
 
     d = length(dist)
 
@@ -252,20 +252,131 @@ function condition(
         if i ∉ conditioned
     )
 
-    # PartitionedDistributions' public API takes a full point even though only
-    # the complement of `keep` is relevant to the conditional law.
-    T = promote_type(map(typeof, observed)...)
-    x = fill(zero(T), d)
+    # PartitionedDistributions' public API takes a full support point even
+    # though only the observed coordinates define the conditional law. Complete
+    # retained coordinates with deterministic points from their own marginal
+    # supports, then validate the assembled point against the joint support.
+    x = Any[]
+    for i in 1:d
+        margin = subsetdims(dist, (i,))
+        placeholder = Distributions.quantile(margin, 0.5)
+        Distributions.insupport(margin, placeholder) || throw(ArgumentError(
+            "the median of marginal $i is not in its support; call " *
+            "PartitionedDistributions.conditional directly with a complete " *
+            "support point",
+        ))
+        push!(x, placeholder)
+    end
 
     @inbounds for k in eachindex(conditioned)
         x[conditioned[k]] = observed[k]
     end
+
+    x = collect(promote(x...))
+
+    Distributions.insupport(dist, x) || throw(ArgumentError(
+        "cannot construct a full in-support point from the supplied " *
+        "conditioning values; call PartitionedDistributions.conditional " *
+        "directly with a complete support point",
+    ))
 
     return PartitionedDistributions.conditional(
         dist,
         x,
         _pdist_selector(keep),
     )
+end
+
+
+###############################################################################
+# Rosenblatt transforms for PartitionedDistributions-compatible distributions
+###############################################################################
+
+function _rosenblatt_output(x)
+    return similar(x, float(eltype(x)))
+end
+
+
+"""
+Extend `Copulas.rosenblatt` to compatible vector-valued distributions supported
+by PartitionedDistributions, using successive marginals and conditionals.
+"""
+function rosenblatt(
+    dist::Distributions.Distribution{
+        Distributions.ArrayLikeVariate{1}
+    },
+    x::Union{AbstractVector{<:Real},AbstractMatrix{<:Real}},
+)
+    d = length(dist)
+    size(x, 1) == d || throw(DimensionMismatch(
+        "the distribution has dimension $d, but the input has " *
+        "$(size(x, 1)) rows",
+    ))
+
+    isvector = x isa AbstractVector
+    X = isvector ? reshape(x, d, 1) : x
+    S = _rosenblatt_output(X)
+
+    first_marginal = subsetdims(dist, (1,))
+    @inbounds for j in axes(X, 2)
+        S[1, j] = cdf(first_marginal, X[1, j])
+    end
+
+    for k in 2:d
+        prefix = subsetdims(dist, ntuple(identity, k))
+        observed_dims = ntuple(identity, k - 1)
+
+        @inbounds for j in axes(X, 2)
+            observed = ntuple(i -> X[i, j], k - 1)
+            conditional_k = condition(prefix, observed_dims, observed)
+            S[k, j] = cdf(conditional_k, X[k, j])
+        end
+    end
+
+    return isvector ? vec(S) : S
+end
+
+
+"""
+Extend `Copulas.inverse_rosenblatt` to compatible vector-valued distributions
+supported by PartitionedDistributions, using successive conditional quantiles.
+"""
+function inverse_rosenblatt(
+    dist::Distributions.Distribution{
+        Distributions.ArrayLikeVariate{1}
+    },
+    s::Union{AbstractVector{<:Real},AbstractMatrix{<:Real}},
+)
+    d = length(dist)
+    size(s, 1) == d || throw(DimensionMismatch(
+        "the distribution has dimension $d, but the input has " *
+        "$(size(s, 1)) rows",
+    ))
+
+    isvector = s isa AbstractVector
+    S = isvector ? reshape(s, d, 1) : s
+    X = _rosenblatt_output(S)
+
+    first_marginal = subsetdims(dist, (1,))
+    @inbounds for j in axes(S, 2)
+        X[1, j] = quantile(first_marginal, clamp(float(S[1, j]), 0.0, 1.0))
+    end
+
+    for k in 2:d
+        prefix = subsetdims(dist, ntuple(identity, k))
+        observed_dims = ntuple(identity, k - 1)
+
+        @inbounds for j in axes(S, 2)
+            observed = ntuple(i -> X[i, j], k - 1)
+            conditional_k = condition(prefix, observed_dims, observed)
+            X[k, j] = quantile(
+                conditional_k,
+                clamp(float(S[k, j]), 0.0, 1.0),
+            )
+        end
+    end
+
+    return isvector ? vec(X) : X
 end
 
 

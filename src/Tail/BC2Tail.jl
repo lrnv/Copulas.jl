@@ -38,6 +38,13 @@ activates the specialized Pickands methods.
     vector constructor is the direct higher-dimensional two-atom spectral
     construction used by Copulas.jl; general finite spectral constructions are
     discussed in [mai2012simulating](@cite).
+
+The finite spectral measure generally creates singular components, so `pdf`
+is not an ordinary global Lebesgue density. Entries at zero or one can collapse
+spectral atoms and produce simpler dependence structures.
+
+See also: [`DiscreteSpectralTail`](@ref), [`ExtremeValueCopula`](@ref),
+[`ℓ`](@ref).
 """
 BC2Tail, BC2Copula
 

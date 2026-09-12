@@ -1,11 +1,13 @@
-# Interoperability with PartitionedDistributions.jl
+# [Interoperability with PartitionedDistributions.jl](@id partitioned_distributions_example)
 
 [PartitionedDistributions.jl](https://github.com/sethaxen/PartitionedDistributions.jl) provides a generic interface for extracting marginal and conditional distributions from multivariate distributions.
 
 When both `Copulas.jl` and `PartitionedDistributions.jl` are loaded, an extension connects their APIs in both directions:
 
 * `PartitionedDistributions.marginal` and `PartitionedDistributions.conditional` can be used with `Copula` and `SklarDist` objects;
-* `Copulas.subsetdims` and `Copulas.condition` can be used with vector-valued distributions supported by `PartitionedDistributions.jl`.
+* `Copulas.subsetdims`, `Copulas.condition`, `Copulas.rosenblatt`, and
+  `Copulas.inverse_rosenblatt` can be used with compatible vector-valued
+  distributions implementing the public marginal and conditional interfaces.
 
 This lets downstream code choose either interface without having to special-case copula-based models.
 
@@ -137,7 +139,14 @@ y = [0.1, 1.8]
 
 The extension also works in the opposite direction.
 
-For vector-valued distributions supported by `PartitionedDistributions.jl`, `subsetdims` delegates to `PartitionedDistributions.marginal`, while `condition` delegates to `PartitionedDistributions.conditional`.
+For vector-valued distributions supported by `PartitionedDistributions.jl`,
+`subsetdims` delegates to `PartitionedDistributions.marginal`, while `condition`
+delegates to `PartitionedDistributions.conditional`. Because the latter requires
+a complete support point, the adapter fills retained coordinates with their
+marginal medians and verifies both the marginal placeholders and the assembled
+joint point before making the call. If a constrained joint support rejects that
+completion, `condition` reports that a complete point must instead be supplied
+directly to `PartitionedDistributions.conditional`.
 
 For example, consider a multivariate normal distribution:
 
@@ -196,6 +205,19 @@ D1_cond_pd = conditional(D, x, 1)
 )
 ```
 
+The marginal and conditional interface also supplies the successive laws needed
+by the Rosenblatt transform and its inverse:
+
+```@example partitioned
+u = rosenblatt(D, x)
+x_reconstructed = inverse_rosenblatt(D, u)
+
+(
+    uniforms = u,
+    reconstruction_error = maximum(abs, x_reconstructed .- x),
+)
+```
+
 ## Choosing an interface
 
 The two interfaces describe the same marginalization and conditioning operations but use different conditioning conventions:
@@ -206,4 +228,8 @@ The two interfaces describe the same marginalization and conditioning operations
 | Observe dimension 2        | `condition(D, 2, x[2])`              | `conditional(D, x, [1, 3])` |
 | Observe dimensions 2 and 3 | `condition(D, (2, 3), (x[2], x[3]))` | `conditional(D, x, 1)`      |
 
-Neither interface is required internally by user code: loading both packages activates the interoperability extension, and users can choose whichever convention best fits their application.
+Loading both packages activates the interoperability extension, and compatible
+vector-valued families can use whichever convention best fits the application.
+Marginalization only requires the public marginal interface. Conditioning and
+Rosenblatt transforms additionally require the conditional interface and a
+valid complete support point assembled as described above.

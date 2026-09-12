@@ -163,18 +163,21 @@ $$\Sigma = \begin{pmatrix} \Sigma_{II} & \Sigma_{IJ} \\ \Sigma_{JI} & \Sigma_{JJ
 These formulas are what the implementation relies on (via `SklarDist` for original scale and via marginal CDF transforms for the copula scale) to compute `condition` and the associated distortions efficiently.
 
 
-```@docs; canonical=false
-EllipticalCopula
-```
-
-
 ## Available models
 
 ### `GaussianCopula`
 
-```@docs; canonical=false
-GaussianCopula
+For a positive-definite correlation matrix ``\Sigma``, the Gaussian copula is
+
+```math
+C_\Sigma(\boldsymbol u)=\Phi_\Sigma
+\big(\Phi^{-1}(u_1),\ldots,\Phi^{-1}(u_d)\big),
 ```
+
+where ``\Phi_\Sigma`` is the centered multivariate normal CDF. Construct it
+with `GaussianCopula(Σ)`, `GaussianCopula{d}(Σ)`, or
+`GaussianCopula(d, Σ)`. The equicorrelation forms `GaussianCopula{d}(ρ)` and
+`GaussianCopula(d, ρ)` require ``-1/(d-1)<\rho<1``.
 
 #### Targeting a Pearson correlation: the Nataf correction
 
@@ -202,15 +205,20 @@ cor(rand(rng, D, 10^5)') # ≈ 0.7 as requested.
 
 Since non-Gaussian marginals cannot attain every Pearson correlation (the Fréchet-Hoeffding bounds of the pair), an unattainable target throws an error reporting the attainable range. Pairs among `Normal`, `LogNormal`, and `Uniform` margins use closed-form corrections; other marginals go through a Gauss-Hermite quadrature.
 
-```@docs; canonical=false
-Nataf
-```
+See the canonical Public API entry for [`Nataf`](@ref).
 
 ### `TCopula`
 
-```@docs; canonical=false
-TCopula
+For degrees of freedom ``\nu>0`` and a positive-definite correlation matrix
+``\Sigma``, the Student copula is
+
+```math
+C_{\nu,\Sigma}(\boldsymbol u)=T_{\nu,\Sigma}
+\big(T_\nu^{-1}(u_1),\ldots,T_\nu^{-1}(u_d)\big).
 ```
+
+Construct it with `TCopula(ν, Σ)`, `TCopula{d}(ν, Σ)`, or
+`TCopula(d, ν, Σ)`.
 
 For a bivariate Student copula, `Copulas.ρ(C)` evaluates Spearman's rank
 correlation using a one-dimensional integral rather than a generic copula
@@ -229,12 +237,15 @@ using Copulas, Distributions, Random
 C = TCopula{2}(4.0, [1.0 0.55; 0.55 1.0])
 U = rand(Xoshiro(316), C, 500)
 Ĉ = fit(TCopula{2}, U; method=:itau_irho, vcov=false)
-(df=Ĉ.df, correlation=Ĉ.Σ[1, 2])
+(df=params(Ĉ).ν, correlation=params(Ĉ).Σ[1, 2])
 ```
 
 This rank-matching method is bivariate. Near zero Kendall correlation, the
 degrees of freedom are not identifiable from these two rank coefficients; use
 maximum likelihood instead.
+
+See the canonical [Public API](@ref) for complete constructor validation and
+numerical behavior.
 
 ## References
 

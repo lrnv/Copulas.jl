@@ -137,7 +137,6 @@ We can then leverage the Sklar theorem to construct multivariate random vectors 
 X₁, X₂, X₃ = Gamma(2,3), Pareto(), LogNormal(0,1) # Marginals
 D = SklarDist(C, (X₁,X₂,X₃)) # The final distribution, using the previous copula C. 
 plot(D, scale=:sklar)
-nothing # hide
 ```
 
 The obtained multivariate random vector object are genuine multivariate random vector following the `Distributions.jl` API. They can be sampled (`rand()`), and their probability density function and distribution function can be evaluated (respectively `pdf` and `cdf`), etc:
@@ -237,7 +236,7 @@ observations in columns, and provide sample versions of these quantities.
 Since these statistics are especially common in the bivariate case, the
 following functions return matrices of pairwise dependence measures:
 
-```@example api
+```julia
 StatsBase.corkendall(C)
 StatsBase.corspearman(C)
 Copulas.corblomqvist(C)
@@ -299,11 +298,16 @@ u2 = inverse_rosenblatt(D, s)
 maximum(abs, u2 .- u) # should be approx zero.
 ```
 
-These transformation leverage the conditioning mechanismes. 
+These transformations leverage the package's conditioning framework.
 
 ### Fitting (copulas and Sklar distributions)
 
 You can fit copulas from pseudo-observations U, and Sklar distributions from raw data X. Available methods vary by family; see the fitting manual for details.
+
+In the fitting call below,
+`SklarDist{CopulaType,Tuple{MarginTypes...}}` is supported public syntax for
+selecting the copula and ordered marginal families. It is not a promise about
+the remaining concrete representation of `SklarDist` values.
 
 ```@example api
 X = rand(D, 500)
@@ -324,6 +328,46 @@ Notes:
 - `CopulaModel` implements model stats: `nobs`, `coef`, `vcov`, `stderror`, `confint`, `aic/bic`, `nullloglikelihood`, and more.
 - For a Bayesian workflow over Sklar models, see the examples section.
 
+#### Diagnostics and inference
+
+When inference or diagnostics matter, keep the `CopulaModel` returned by the
+first form of `fit`. It implements the standard statistical-model interface,
+including coefficients, covariance and confidence intervals when covariance
+estimation was requested, information criteria, Rosenblatt residuals, and
+prediction or simulation:
+
+```@example api
+(
+    observations = nobs(M),
+    coefficients = coef(M),
+    aic = aic(M),
+    bic = bic(M),
+)
+```
+
+#### Automatic family selection
+
+If the copula family is unknown, `CopulaModel` can fit an explicit candidate
+set and retain the best successful fit according to AIC, BIC, AICc, or HQC:
+
+```@example api
+Msel = fit(
+    CopulaModel,
+    Copulas.Copula,
+    U;
+    candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
+    criterion=:bic,
+    vcov=false,
+)
+selectiontable(Msel)
+```
+
+Candidate selection is deliberately explicit: not every family is meaningful
+in every dimension or appropriate for every scientific question. The
+[fitting interface](@ref fitting_interface) documents candidate failures,
+covariance estimation, residuals, prediction, and the interpretation of the
+selection criteria.
+
 ::: info About fitting procedures
 
 The `Distributions.jl` documentation states:
@@ -333,6 +377,31 @@ The `Distributions.jl` documentation states:
 We embrace this philosophy: from one copula family to another, the default fitting method may differ. Treat `fit` as a quick starting point; when you need control, specify `method`/`copula_method` explicitly.
 
 :::
+
+### Hypothesis tests
+
+The package also provides `IndependenceCopulaTest`,
+`ExchangeabilityCopulaTest`, `RadialSymmetryCopulaTest`,
+`ExtremeValueCopulaTest`, and `GOFCopulaTest`: resampling-based tests for mutual
+independence, exchangeability, radial symmetry, extreme-value dependence, and
+goodness of fit, respectively. All constructors return a `CopulaTest`
+compatible with the standard `StatsAPI.HypothesisTest` interface:
+
+```@example api
+test = IndependenceCopulaTest(U; N=19, rng=Xoshiro(42))
+(
+    statistic = teststatistic(test),
+    pvalue = pvalue(test),
+    observations = nobs(test),
+)
+```
+
+Use a fixed RNG for reproducibility and substantially more resamples than this
+short documentation example for scientific analysis. Each procedure has its
+own null hypothesis and assumptions, notably concerning continuity and ties;
+see the [hypothesis-testing guide](@ref hypothesis_testing) before interpreting
+its p-value. The goodness-of-fit test can additionally replay the estimator
+stored in a fitted `CopulaModel` through a parametric bootstrap.
 
 ## Next steps
 

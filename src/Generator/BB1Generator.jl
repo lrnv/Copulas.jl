@@ -13,6 +13,13 @@ Special cases:
 - `δ = 1` gives the Clayton copula with parameter ``\\theta``.
 - `θ = Inf` gives the upper Fréchet–Hoeffding bound.
 
+BB1 combines Clayton- and Gumbel-type behavior and can represent dependence in
+both tails. The limit `θ → 0⁺` gives Gumbel with parameter `δ`; near either
+one-parameter reduction, the two fitted parameters may be weakly identifiable.
+
+See also: [`ClaytonGenerator`](@ref), [`GumbelGenerator`](@ref),
+[`ArchimedeanCopula`](@ref), [`Distributions.fit`](@ref).
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.190-192
 """

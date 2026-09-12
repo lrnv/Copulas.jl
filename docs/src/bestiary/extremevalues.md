@@ -195,7 +195,7 @@ together with `FamilyCopula(d, dep, asy)`.
 | extremal-``t`` | `tEVCopula{d}(ν, R)` | ``d=\mathrm{size}(R,1)`` | general correlation matrix |
 | Tawn | `TawnCopula{d}(α, weights)` | ``d=\mathrm{length}(weights)`` | full-set logistic component + singleton remainders |
 | Tawn | `TawnCopula{d}(dep, asy)` | ``d\ge2`` | full subset representation |
-| Asymmetric Galambos | `AsymGalambosCopula{2}(α, θ₁, θ₂)` | 2 | scalar Pickands fast path of the unified subset model |
+| Asymmetric Galambos | `AsymGalambosCopula{2}(α, θ₁, θ₂)` | 2 | bivariate form of the unified subset model |
 | Asymmetric Galambos | `AsymGalambosCopula{d}(α, weights)` | ``d=\mathrm{length}(weights)`` | full-set negative-logistic component + singleton remainders |
 | Asymmetric Galambos | `AsymGalambosCopula{d}(dep, asy)` | ``d\ge2`` | full subset representation |
 | BC2 | `BC2Copula{2}(a, b)` | 2 | classical bivariate representation |
@@ -229,8 +229,8 @@ HuslerReissCopula(Γ)
 ```
 
 accepts a general valid variogram matrix. In dimension two a matrix
-parameterization keeps its matrix representation, while dispatch selects the
-specialized bivariate kernel after recovering the scalar parameter.
+parameterization has the same mathematical meaning as the corresponding
+bivariate scalar form.
 
 The extremal-``t`` family follows the same pattern:
 
@@ -239,17 +239,8 @@ tEVCopula{d}(ν, ρ) # equicorrelation
 tEVCopula{d}(ν, R) # general correlation matrix
 ```
 
-A valid ``2\times2`` correlation matrix likewise keeps its matrix
-representation, while dispatch selects the specialized bivariate kernel from
-its off-diagonal correlation.
-
-::: info One public family, parameter-driven dispatch
-
-Scalar and matrix constructors of each family share one tail type. The
-stored parameter type selects the exchangeable or general representation,
-and dimension-specific methods retain the fast bivariate kernels.
-
-:::
+A valid ``2\times2`` correlation matrix likewise defines the bivariate model
+through its off-diagonal correlation.
 
 ### Tawn and asymmetric Galambos subset models
 
@@ -294,7 +285,7 @@ AsymGalambosCopula{d}(α, weights)
 is a Copulas.jl parameterization of that valid subset model, not a separate
 literature family.
 
-### Implementation-derived Mixed extension
+### Copulas.jl Mixed extension
 
 The historical Mixed model is bivariate [tawn1988bivariate](@cite). The
 ``d``-dimensional extension used by Copulas.jl is obtained from the identity
@@ -320,7 +311,7 @@ which is the historical Mixed Pickands model.
     Tawn [tawn1988bivariate](@cite) is the reference for the original bivariate
     Mixed model, and Galambos [galambos1975order](@cite) for the
     negative-logistic component. The dimension-free convex-combination identity
-    above is the extension used and derived in the Copulas.jl implementation;
+    above is the extension defined by Copulas.jl;
     we do not attribute that exact ``d``-dimensional parameterization to either
     paper.
 
@@ -427,10 +418,7 @@ family and dimension.
 The numerical implementation remains free to evolve without changing that
 public behavior.
 
-```@docs; canonical=false
-Tail
-ExtremeValueCopula
-```
+See the canonical Public API entries for [`Tail`](@ref), [`ExtremeValueCopula`](@ref).
 
 ## Conditionals and distortions
 
@@ -455,15 +443,15 @@ so the above derivatives can be written explicitly in terms of $A$ (and $A'$ whe
 ```@example 1
 using Copulas, Plots, Distributions
 ts = range(0.0, 1.0; length=401)
-Cs = (
-    GalambosCopula(2, 0.8),    # upper tail dep.
-    HuslerReissCopula(2, 1.0), # intermediate
-    LogCopula(2, 1.6),         # asymmetric
+tails = (
+    Copulas.GalambosTail(0.8),    # upper tail dep.
+    Copulas.HuslerReissTail(1.0), # intermediate
+    Copulas.LogTail(1.6),         # logistic
 )
 labels = ("Galambos(0.8)", "Hüsler–Reiss(1.0)", "Log(1.6)")
 plot(size=(700, 300))
-for (i, C) in enumerate(Cs)
-    plot!(ts, Copulas.A.(C.tail, ts); label=labels[i])
+for (i, tail) in enumerate(tails)
+    plot!(ts, Copulas.A.(Ref(tail), ts); label=labels[i])
 end
 plot!(ts, max.(ts, 1 .- ts); label="bounds", ls=:dash, color=:black)
 plot!(ts, ones(length(ts)); label="1", ls=:dot, color=:gray)
@@ -502,86 +490,140 @@ plot!(ts, EC[2].(ts); seriestype=:steppost, label="s₂", color=:gray)
 
 ## [Available models](@id available_extreme_models)
 
-### `MTail`
-```@docs; canonical=false
-MTail
-```
+An extreme-value copula is determined by
+``C(\boldsymbol u)=\exp[-\ell(-\log\boldsymbol u)]``. In dimension two,
+``\ell(x,y)=(x+y)A(x/(x+y))``. The table therefore defines each model through
+its STDF ``\ell`` or Pickands function ``A`` and gives both the component and
+copula constructors.
 
+| Model | Mathematical definition and parameter domain | Public constructors |
+|:--|:--|:--|
+| Logistic | ``\ell(\boldsymbol x)=(\sum_i x_i^\theta)^{1/\theta}``, ``\theta\ge1`` | `LogTail(θ)`; `LogCopula{d}(θ)`; `LogCopula(d, θ)` |
+| Galambos | ``\ell(\boldsymbol x)=\sum_i x_i-(\sum_i x_i^{-\theta})^{-1/\theta}``, ``\theta\ge0`` | `GalambosTail(θ)`; `GalambosCopula{d}(θ)`; `GalambosCopula(d, θ)` |
+| Mixed | ``A(t)=1-\theta t(1-t)``, ``0\le\theta\le1``; in higher dimensions Copulas.jl uses the convex combination with the Galambos ``\theta=1`` STDF described above | `MixedTail(θ)`; `MixedCopula{d}(θ)`; `MixedCopula(d, θ)` |
+| Cuadras--Augé | ``\ell(\boldsymbol x)=(1-\theta)\sum_i x_i+\theta\max_i x_i``, ``0\le\theta\le1`` | `CuadrasAugeTail(θ)`; `CuadrasAugeCopula{d}(θ)`; `CuadrasAugeCopula(d, θ)` |
+| Hüsler--Reiss | Brown--Resnick/Hüsler--Reiss STDF determined either by the exchangeable variogram ``\gamma_{ij}=(2/\theta)^2`` with ``\theta\ge0``, or by a finite, symmetric, conditionally negative-definite variogram matrix ``\Gamma`` with zero diagonal | `HuslerReissTail(θ)` / `HuslerReissTail(Γ)`; `HuslerReissCopula{d}(θ)` / `HuslerReissCopula(Γ)` |
+| extremal-``t`` | extremal-``t`` STDF with ``\nu>0`` and correlation ``R``; the exchangeable form uses ``\rho\in(-1/(d-1),1]`` | `tEVTail(ν, ρ)` / `tEVTail(ν, R)`; `tEVCopula{d}(ν, ρ)` / `tEVCopula{d}(ν, R)` / runtime-dimension forms |
+| Tawn asymmetric logistic | sum of logistic STDF components over nonempty coordinate subsets; non-singleton dependence parameters satisfy ``\alpha_S\ge1`` and asymmetry weights lie in ``[0,1]`` and sum to one for each margin | `TawnTail(α, weights)` / `TawnTail(d, dep, asy)`; corresponding `TawnCopula` forms |
+| Asymmetric Galambos | sum of negative-logistic components over coordinate subsets; ``\alpha_S\ge0`` with normalized asymmetry weights | `AsymGalambosTail(α, weights)` / `AsymGalambosTail(dep, asy)`; corresponding `AsymGalambosCopula` forms |
+| Asymmetric logistic (bivariate) | ``A(t)=[\theta_1^\alpha(1-t)^\alpha+\theta_2^\alpha t^\alpha]^{1/\alpha}+(\theta_1-\theta_2)t+1-\theta_1``; ``\alpha\ge1``, ``\theta_i\in[0,1]`` | `AsymLogTail(α, θ₁, θ₂)`; `AsymLogCopula{2}(α, θ₁, θ₂)`; `AsymLogCopula(2, α, θ₁, θ₂)` |
+| Asymmetric mixed (bivariate) | ``A(t)=\theta_2t^3+\theta_1t^2-(\theta_1+\theta_2)t+1``; ``\theta_1\ge0``, ``\theta_1+\theta_2\le1``, ``\theta_1+2\theta_2\le1``, ``\theta_1+3\theta_2\ge0`` | `AsymMixedTail(θ₁, θ₂)`; `AsymMixedCopula{2}(θ₁, θ₂)`; `AsymMixedCopula(2, θ₁, θ₂)` |
+| BC2 spectral | two-atom spectral model; in dimension two ``A(t)=\max(at,b(1-t))+\max((1-a)t,(1-b)(1-t))`` with ``a,b\in[0,1]`` | `BC2Tail(a, b)` / `BC2Tail(a_vector)`; corresponding `BC2Copula` forms |
+| Marshall--Olkin | common-shock model with one non-negative intensity for every nonempty subset of coordinates; the vector therefore has length ``2^d-1`` | `MOTail(λ₁, λ₂, λ₁₂)` / `MOTail(λ)`; corresponding `MOCopula` forms |
+| Empirical EV (bivariate) | shape-constrained estimate of ``A`` from pseudo-observations using the Pickands, CFG, or OLS criterion | `EmpiricalEVTail(U; method=:ols)`; `EmpiricalEVCopula{2}(U; method=:ols)` |
+| Empirical EV (multivariate) | finite spectral projection defining a valid homogeneous convex STDF | `EmpiricalEVMultivariateTail(U; method=:ols, degree=3)`; `EmpiricalEVCopula{d}(U; method=:ols, degree=3)` |
 
-### `NoTail`
-```@docs; canonical=false
-NoTail
-```
+### Symmetric parametric models
 
-### `TawnTail`
-```@docs; canonical=false
-TawnTail
-```
+**Logistic.** This is the extreme-value form of the Gumbel copula. The parameter
+increases monotonically from independence at ``\theta=1`` to comonotonicity as
+``\theta\to\infty``; in dimension two,
+``\lambda_U=2-2^{1/\theta}`` and ``\tau=1-1/\theta``. It is exchangeable, so a
+single parameter cannot represent heterogeneous pairwise extremal dependence
+in high dimension.
 
-### `AsymGalambosTail`
-```@docs; canonical=false
-AsymGalambosTail
-```
+**Galambos.** Galambos is the negative-logistic extreme-value family, despite
+describing positive upper-tail association. Zero is independence and infinity
+is the comonotonic limit; bivariately,
+``\lambda_U=2^{-1/\theta}`` for ``\theta>0``. Its parameter is not on the same
+scale as Logistic's, so raw values should not be compared across the two
+families.
 
-### `AsymLogTail`
-```@docs; canonical=false
-AsymLogTail
-```
+**Mixed.** The bivariate Pickands curve interpolates linearly between
+independence and the Galambos model with parameter one, giving
+``\lambda_U=\theta/2``. Thus ``\theta=1`` is not comonotonic. In dimensions
+greater than two, the convex-combination STDF is a Copulas.jl extension of the
+historical bivariate model; results should not be attributed automatically to a
+multivariate “Mixed” family in the cited literature.
 
-### `AsymMixedTail`
-```@docs; canonical=false
-AsymMixedTail
-```
+**Cuadras--Augé.** This family is a direct mixture, at the STDF level, of
+independence and comonotonicity. The endpoints ``\theta=0`` and ``\theta=1``
+give those two limits, and bivariately ``\lambda_U=\theta``. Every nonzero
+parameter introduces a singular component, so an ordinary Lebesgue density
+does not describe the whole law even away from the fully comonotonic endpoint.
 
-### `BC2Tail`
-```@docs; canonical=false
-BC2Tail
-```
+### Gaussian and Student extremal models
 
-### `CuadrasAugeTail`
-```@docs; canonical=false
-CuadrasAugeTail
-```
+**Hüsler--Reiss.** The scalar constructor uses an exchangeable variogram
+``\gamma=(2/\theta)^2``: ``\theta=0`` is independence and
+``\theta\to\infty`` is comonotonicity. The matrix constructor instead accepts
+the variogram directly, for which an all-zero matrix is comonotonic; confusing
+the scalar ``\theta`` with a variogram entry reverses the interpretation. The
+matrix must satisfy conditional negative definiteness, not merely symmetry and
+non-negative entries.
 
-### `GalambosTail`
-```@docs; canonical=false
-GalambosTail
-```
+**Extremal-``t``.** Both ``\nu`` and the correlation structure affect extremal
+dependence. In particular, zero correlation does not generally mean
+independence because the common Student scale still couples extremes, while
+``\rho=1`` gives comonotonicity. Equicorrelation must satisfy the
+dimension-dependent lower bound, and a general matrix must be strictly
+positive definite; estimates near either boundary can be numerically delicate.
 
-### `HuslerReissTail`
-```@docs; canonical=false
-HuslerReissTail
-```
+### Asymmetric subset models
 
-### `LogTail`
-```@docs; canonical=false
-LogTail
-```
+**Tawn.** Tawn decomposes the STDF into logistic components attached to
+coordinate subsets. The dependence parameters control each active subset,
+whereas the asymmetry weights allocate its contribution among margins; the
+per-margin normalization is essential for uniform margins. The compact
+`(α, weights)` constructor retains only a full-set component plus singleton
+remainders, while `(dep, asy)` is the full subset model—these forms should not
+be assumed to have the same number of free parameters.
 
-### `MixedTail`
-```@docs; canonical=false
-MixedTail
-```
+**Asymmetric Galambos.** This is the analogous subset construction with
+negative-logistic components. Zero dependence parameters deactivate the
+corresponding components; an infinite full-set parameter reaches
+comonotonicity only when its weights are all one and no competing subset is
+active. As with Tawn, the ordering of `dep` and `asy` follows the documented
+nonempty-subset convention, so constructing long vectors manually is prone to
+indexing mistakes.
 
-### `MOTail`
-```@docs; canonical=false
-MOTail
-```
+**Asymmetric logistic.** The bivariate parameters ``\theta_1`` and
+``\theta_2`` allocate extremal dependence asymmetrically to the two margins,
+while ``\alpha`` controls the logistic component. ``\alpha=1`` or either zero
+weight gives independence, making the remaining parameters unidentifiable on
+those boundaries. Comonotonicity is reached only jointly as
+``\alpha\to\infty`` with both weights equal to one.
 
-### `tEVTail`
-```@docs; canonical=false
-tEVTail
-```
+**Asymmetric Mixed.** Its feasible parameter set is the quadrilateral defined
+by the four inequalities in the table, not a rectangular box. Independent
+unconstrained bounds on ``\theta_1`` and ``\theta_2`` are therefore
+insufficient during optimization. The origin is independence and
+``\theta_2=0`` gives the symmetric Mixed subfamily; close to that line the
+asymmetry parameter can be weakly identified.
 
-### `EmpiricalEVTail`
-```@docs; canonical=false
-EmpiricalEVTail
-```
+### Discrete spectral and empirical models
 
-### `EmpiricalEVMultivariateTail`
-```@docs; canonical=false
-EmpiricalEVMultivariateTail
-```
+**BC2.** BC2 is most naturally understood through its two spectral atoms, not
+as two independent “strength” parameters. The parameters must produce a valid
+spectral measure with the required marginal moments, and relabeling the atoms
+can give equivalent descriptions. Discrete spectral mass may create singular
+components, so users should rely on the generalized distribution interface
+rather than assume a globally smooth density.
+
+**Marshall--Olkin.** Each parameter is the intensity of a shock hitting one
+specific nonempty subset of margins. Simultaneous shocks generate singular
+mass and are precisely the feature of the model, not a numerical artifact.
+Multiplying every intensity by the same positive constant leaves the copula
+unchanged, so only relative rates are identifiable; zero rates are allowed, but
+every margin still needs positive total shock intensity.
+
+**Bivariate empirical EV.** Pickands, CFG, and OLS are different estimators of
+the same Pickands curve and need not agree in finite samples. The fitted curve
+is projected to satisfy the shape constraints, so it is not simply the raw
+pointwise estimate. Grid resolution and endpoint trimming affect numerical
+accuracy, and `pseudo_values=false` must be used when the input has not already
+been transformed to ranks.
+
+**Multivariate empirical EV.** The higher-dimensional estimator projects onto
+a finite spectral basis; `degree` trades approximation flexibility against
+optimization cost and potential instability. The result supports `cdf` and
+sampling but can contain singular components, so no global Lebesgue `pdf` is
+promised. Reproducibility and fit quality should be assessed together with the
+projection error returned in fitting metadata, when that interface is used,
+rather than from the constructor succeeding alone.
+
+The canonical [Public API](@ref) documents complete call forms, validation,
+limiting cases, and numerical restrictions.
 
 ## References
 

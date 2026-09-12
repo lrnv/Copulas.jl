@@ -11,6 +11,18 @@
 #####  and `Distributions._rand!()` for matrix inputs.
 #####  and you may overwrite ρ, τ, β, γ, ι, λₗ, λᵤ, measure for performances.
 ###############################################################################
+"""
+    Copula{d} <: Distributions.ContinuousMultivariateDistribution
+
+Abstract type for a `d`-dimensional copula: a multivariate distribution on the
+unit hypercube with uniform univariate margins. Concrete families support the
+standard `Distributions.jl` operations documented for that family. The type
+parameter records dimension; internal storage parameters of concrete subtypes
+are not part of the public contract.
+
+See also: [`SklarDist`](@ref), [`subsetdims`](@ref), [`condition`](@ref),
+[`Distributions.fit`](@ref), [`measure`](@ref).
+"""
 abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 
 # Distributions.jl uses `eltype` as the default element type allocated by
@@ -19,15 +31,30 @@ abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 Base.eltype(::Copula) = Float64
 Distributions.partype(C::Copula) = eltype(C)
 
-# Copulas are represented as continuous multivariate distributions for the
-# Distributions.jl API, but their probability measure need not admit a density
-# with respect to Lebesgue measure. This internal trait is the single source of
-# truth for code that must distinguish absolutely-continuous copulas from
-# singular or mixed ones.
+"""
+    CopulaMeasureStyle
+
+Internal measure-capability trait distinguishing copulas with an ordinary
+Lebesgue density from copulas with singular or mixed components. Algorithms use
+this trait to avoid manufacturing density-based behavior from the historical
+`ContinuousMultivariateDistribution` supertype. It is not public API.
+
+See also: [`copula_measure_style`](@ref), [`LimitKind`](@ref), [`Copula`](@ref).
+"""
 abstract type CopulaMeasureStyle end
 struct AbsolutelyContinuousMeasure <: CopulaMeasureStyle end
 struct NonAbsolutelyContinuousMeasure <: CopulaMeasureStyle end
 
+"""
+    LimitKind
+
+Internal classification of exact parameter limits: no recognized limit,
+independence (`Π`), comonotonicity (`M`), or the bivariate lower
+Fréchet--Hoeffding bound (`W`). Constructors and algorithms use it to select
+mathematically exact boundary behavior. Enum values are not stable API.
+
+See also: [`limit_kind`](@ref), [`CopulaMeasureStyle`](@ref).
+"""
 @enum LimitKind::UInt8 begin
     NO_LIMIT
     Π_LIMIT
@@ -35,6 +62,17 @@ struct NonAbsolutelyContinuousMeasure <: CopulaMeasureStyle end
     W_LIMIT
 end
 
+"""
+    copula_measure_style(C)
+
+Return the internal `CopulaMeasureStyle` of `C`. The default assumes absolute
+continuity; singular or mixed families and exact parameter limits must
+specialize it. This trait controls density-dependent generic operations and is
+not a downstream extension contract.
+
+See also: [`CopulaMeasureStyle`](@ref), [`limit_kind`](@ref),
+[Distributions `logpdf`](@extref Distributions Probability-evaluation).
+"""
 copula_measure_style(::Type{<:Copula}) = AbsolutelyContinuousMeasure()
 copula_measure_style(C::Copula) = copula_measure_style(typeof(C))
 
@@ -63,6 +101,18 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::Copula{d}, x::A
     Distributions._rand!(rng, C, reshape(x, d, 1))
     return x
 end
+
+"""
+    Distributions._rand!(rng, C::Copula{d}, X::AbstractMatrix)
+
+Internal sampling primitive for copulas. A concrete implementation fills and
+returns the preallocated `d × n` matrix `X`, with one observation per column,
+using only `rng` for randomness and preserving the buffer element type. The
+public vector sampler delegates to this method. Concrete families must provide
+a matrix specialization; callers should use `rand` or `rand!`.
+
+See also: [`_cdf`](@ref), [`Copula`](@ref), [`inverse_rosenblatt`](@ref).
+"""
 function Distributions._rand!(::Distributions.AbstractRNG, C::Copula{d}, ::AbstractMatrix{T}) where {d,T<:Real}
     throw(ArgumentError("$(typeof(C)) must implement a matrix Distributions._rand! method"))
 end
@@ -102,6 +152,18 @@ function Distributions.logpdf(C::Copula{d}, A::AbstractMatrix) where d
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
     return [Distributions.logpdf(C, u) for u in eachcol(A)]
 end
+"""
+    _cdf(C::Copula, u)
+
+Evaluate the copula CDF at an already dimension-checked point inside the unit
+hypercube. Concrete families normally specialize this internal primitive. The
+generic fallback numerically integrates `pdf(C, ·)` over `[0,u]` and therefore
+requires an ordinary density; it is unsuitable for singular copulas and may be
+expensive in high dimension. Public callers must use `cdf`.
+
+See also: [`Distributions._rand!`](@ref), [`copula_measure_style`](@ref),
+[`Distributions.cdf`](@extref Distributions Distributions.cdf).
+"""
 function _cdf(C::CT,u) where {CT<:Copula}
     f(x) = Distributions.pdf(C,x)
     z = zeros(eltype(u),length(C))
@@ -109,6 +171,22 @@ function _cdf(C::CT,u) where {CT<:Copula}
 end
 
 # Multivariate dependence metrics
+"""
+    ρ(C::Copula)
+    ρ(U::AbstractMatrix)
+
+Return multivariate Spearman's rho for a copula or for pseudo-observations
+stored as a `d × n` matrix. Family methods may provide exact formulas; the
+generic copula method uses numerical integration.
+
+This is the normalized multivariate concordance coefficient based on
+`∫_[0,1]^d C(u) du`; it is zero under independence and one under complete
+positive dependence. The sample form ranks each row internally, so it can also
+be applied to continuous raw observations. Numerical integration becomes
+costly as dimension grows and may be less accurate near singular limits.
+
+See also: [`τ`](@ref), [`StatsBase.corspearman`](@extref), [`subsetdims`](@ref).
+"""
 function ρ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     z = zeros(d)
@@ -117,11 +195,45 @@ function ρ(C::Copula{d}) where d
     value = (2^d * (d+1) * r - d - 1)/(2^d - d - 1)
     return clamp(value, -one(value), one(value))
 end
+
+"""
+    τ(C::Copula)
+    τ(U::AbstractMatrix)
+
+Return multivariate Kendall's tau for a copula or a `d × n` matrix of
+pseudo-observations. Family methods may replace the generic expectation-based
+calculation with an exact formula.
+
+The population coefficient normalizes `E[C(U)]` for `U ∼ C`; the sample form
+counts concordant unordered pairs. It is zero under independence and one under
+complete positive dependence. The generic population method uses Monte Carlo
+expectation, so repeated calls need not be bitwise identical and exact family
+methods should be preferred when available. Ties in sample data do not receive
+a dedicated correction.
+
+See also: [`ρ`](@ref), [`StatsBase.corkendall`](@extref), [`subsetdims`](@ref).
+"""
 function τ(C::Copula{d}) where d
     F(x) = Distributions.cdf(C,x)
     r = Distributions.expectation(F, C; nsamples=10^4)
     return (2^d / (2^(d-1) - 1)) * r - 1 / (2^(d-1) - 1)
 end
+
+"""
+    β(C::Copula)
+    β(U::AbstractMatrix)
+
+Return multivariate Blomqvist's beta, a median-orthant measure of concordance,
+for a copula or pseudo-observations stored by columns.
+
+In two dimensions this is `4C(1/2,1/2)-1`; the multivariate extension combines
+the lower and upper median orthants. Independence maps to zero and complete
+positive dependence to one. The data form expects values already represented
+on the uniform scale and classifies observations relative to `1/2`; use
+`pseudos` first for raw continuous margins.
+
+See also: [`corblomqvist`](@ref), [`pseudos`](@ref), [`τ`](@ref).
+"""
 function β(C::Copula{d}) where {d}
     d == 2 && return 4*Distributions.cdf(C, [0.5, 0.5]) - 1
     u     = fill(0.5, d)
@@ -129,6 +241,23 @@ function β(C::Copula{d}) where {d}
     Cbar0 = Distributions.cdf(SurvivalCopula(C, Tuple(1:d)), u)
     return (2.0^(d-1) * C0 + Cbar0 - 1) / (2^(d-1) - 1)
 end
+
+"""
+    γ(C::Copula)
+    γ(U::AbstractMatrix)
+
+Return multivariate Gini's gamma for a copula or for pseudo-observations stored
+as a `d × n` matrix. The generic copula method estimates the defining
+expectation numerically.
+
+The normalization maps independence to zero and complete positive dependence
+to one. The sample form expects uniform-scale observations and replaces the
+population expectation by an empirical average. The generic copula method uses
+Monte Carlo expectation; its result therefore has sampling error unless a
+family supplies an exact specialization.
+
+See also: [`corgini`](@ref), [`pseudos`](@ref), [`ρ`](@ref).
+"""
 function γ(C::Copula{d}) where {d}
     _integrand(u) = (1 + minimum(u) - maximum(u) + max(abs(sum(u) - d/2) - (d - 2)/2, 0.0)) / 2
     I = Distributions.expectation(_integrand, C; nsamples=10^4)
@@ -136,13 +265,67 @@ function γ(C::Copula{d}) where {d}
     b = (2 + 4.0^(1-d)) / 3          # comonotonicity
     return (I - a) / (b - a)
 end
+
+"""
+    ι(C::Copula)
+    ι(U::AbstractMatrix; k=5, p=Inf, leafsize=32)
+
+Return copula entropy. For a copula, this is the expected negative log-density
+and therefore requires an ordinary Lebesgue density. For data, a nearest-neighbor
+entropy estimator is applied to the `d × n` pseudo-observation matrix.
+
+With the sign convention used here, independence has entropy zero and an
+absolutely continuous dependent copula has a non-positive value. The data
+estimator uses the `k`th neighbor under the Minkowski `p`-norm; `leafsize`
+controls only search performance. It requires at least `k+1` observations and
+can be sensitive to ties, boundary effects and the choice of `k`. It is not a
+definition of entropy for singular copulas.
+
+See also: [`corentropy`](@ref), [`Copula`](@ref), [`pseudos`](@ref).
+"""
 function ι(C::Copula{d}) where {d}
     return Distributions.expectation(u -> -Distributions.logpdf(C, u), C; nsamples=10^4)
 end
+
+"""
+    λₗ(C::Copula; ε=1e-10)
+    λₗ(U::AbstractMatrix; p=nothing)
+
+Return lower-tail dependence. The generic copula method extrapolates diagonal
+CDF ratios near zero; the data method estimates joint lower-tail frequency at
+threshold `p`, defaulting to `1/√n`. Family-specific exact formulas take
+precedence when available.
+
+For a `d × n` input, rows are variables, columns are observations, and values
+must already be on the uniform scale. Smaller `p` targets a more extreme region
+but uses fewer observations. Likewise, `ε` is a numerical extrapolation scale,
+not a statistical tolerance; results can be unstable when a closed form is
+unavailable.
+
+See also: [`λᵤ`](@ref), [`corlowertail`](@ref), [`pseudos`](@ref).
+"""
 function λₗ(C::Copula{d}; ε::Float64 = 1e-10) where {d}
     g(e) = Distributions.cdf(C, fill(e, d)) / e
     return clamp(2*g(ε/2) - g(ε), 0.0, 1.0)
 end
+
+"""
+    λᵤ(C::Copula; ε=1e-10)
+    λᵤ(U::AbstractMatrix; p=nothing)
+
+Return upper-tail dependence. The generic copula method applies the lower-tail
+calculation to the survival copula; the data method estimates joint upper-tail
+frequency at threshold `p`, defaulting to `1/√n`. Family-specific exact formulas
+take precedence when available.
+
+For a `d × n` input, rows are variables, columns are observations, and values
+must already be on the uniform scale. Smaller `p` targets a more extreme region
+but uses fewer observations. Likewise, `ε` is a numerical extrapolation scale,
+not a statistical tolerance; results can be unstable when a closed form is
+unavailable.
+
+See also: [`λₗ`](@ref), [`coruppertail`](@ref), [`pseudos`](@ref).
+"""
 function λᵤ(C::Copula{d}; ε::Float64 = 1e-10) where {d}
     Sc   = SurvivalCopula(C, Tuple(1:d))
     f(e) = Distributions.cdf(Sc, fill(e, d)) / e
@@ -303,7 +486,18 @@ function ι(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
     return H
 end
 
-# Measure function.
+"""
+    measure(C::Copula, lower, upper)
+
+Return the probability assigned by `C` to the axis-aligned half-open rectangle
+with opposite corners `lower` and `upper`, using CDF inclusion--exclusion.
+Bounds are clipped to the unit hypercube; a rectangle with any non-positive
+width has measure zero. Both corners must contain one value per copula
+dimension.
+
+See also: [`Distributions.cdf`](@extref Distributions Distributions.cdf),
+[`subsetdims`](@ref), [`Copula`](@ref).
+"""
 function measure(C::Copula{d}, us,vs) where {d}
 
     # Computes the value of the cdf at each corner of the hypercube [u,v]

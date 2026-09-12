@@ -14,6 +14,14 @@ the associated spectral measure is `sum(h[k] δ_{v[:,k]})`.
 
 The row-sum constraints are exactly the spectral moment constraints required
 for unit-Fréchet / uniform margins.
+
+Columns with zero total mass are discarded. Different matrices can represent
+the same spectral measure through repeated or zero atoms, so the matrix is not
+an identifiable statistical parameterization. The resulting copula can contain
+singular components and is sampled through its finite spectral representation.
+
+See also: [`Tail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
+[`A`](@ref).
 """
 struct DiscreteSpectralTail{T} <: DiscreteSpectralBackedTail
     B::Matrix{T}
@@ -93,6 +101,25 @@ function τ(C::ExtremeValueCopula{2,<:DiscreteSpectralTail})
     return total
 end
 
+"""
+    _discrete_spectral_rand!(rng, tail::DiscreteSpectralTail, X)
+
+Fill the `d × n` matrix `X` with samples from the extreme-value copula induced
+by the finite spectral measure `tail`. The routine simulates the max-linear
+spectral representation and transforms unit-Fréchet coordinates to uniforms.
+It preserves the output buffer's element type and returns `X`. This reusable
+algorithm is internal; dispatch to it belongs in family-specific `_rand!`
+methods.
+
+The rows of `tail.B` correspond to margins and its columns to finite spectral
+atoms. Constructors enforce the marginal moment constraints; callers must pass
+a buffer with the same number of rows. This routine deliberately implements
+sampling only: discrete-spectral laws may contain singular mass and therefore
+do not acquire a global Lebesgue density from this representation.
+
+See also: [`DiscreteSpectralTail`](@ref), [`ExtremeValueCopula`](@ref),
+[`Distributions._rand!`](@ref).
+"""
 function _discrete_spectral_rand!(rng::Distributions.AbstractRNG, tail::DiscreteSpectralTail, X::AbstractMatrix{T},) where {T<:Real}
     d, n = size(X)
     S = promote_type(T, eltype(tail))

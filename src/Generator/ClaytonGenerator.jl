@@ -16,6 +16,14 @@ Special cases (for the copula in dimension ``d``):
 - ``\\theta = 0`` gives the independence copula.
 - ``\\theta = \\infty`` gives the upper Fréchet–Hoeffding bound.
 
+Positive parameters produce lower-tail dependence but no upper-tail
+dependence. Negative parameters are valid only up to `d ≤ 1 - 1/θ`; equality
+introduces a singular component, so ordinary-density likelihood reasoning
+requires care at that boundary.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref), [`λₗ`](@ref),
+[`λᵤ`](@ref), [`Distributions.fit`](@ref).
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """

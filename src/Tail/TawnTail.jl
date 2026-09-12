@@ -32,6 +32,13 @@ is a Copulas.jl convenience parameterization with one full-set logistic
 component plus singleton remainders; it is a structured submodel of the same
 valid Tawn representation, not a separate literature family.
 
+The full subset representation grows exponentially with dimension, and zero
+weights can put the model on reduced or partially independent boundaries where
+some parameters are weakly identified.
+
+See also: [`AsymLogTail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 
 * [tawn1988bivariate](@cite) for the bivariate precursor.

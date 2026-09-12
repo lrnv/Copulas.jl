@@ -14,6 +14,13 @@ Special cases:
 - ``\\theta = 0`` gives the independence copula (continuous extension).
 - ``\\theta = \\infty`` gives the upper Fréchet–Hoeffding bound.
 
+Finite Frank copulas have neither lower- nor upper-tail dependence: they can
+fit central concordance while missing joint extremes. Negative parameters are
+restricted to dimension two; positive parameters are valid in every dimension.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref), [`τ`](@ref),
+[`λₗ`](@ref), [`λᵤ`](@ref), [`Distributions.fit`](@ref).
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """

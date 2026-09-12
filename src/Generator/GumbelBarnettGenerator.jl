@@ -12,6 +12,14 @@ The Gumbel-Barnett copula is an archimdean copula with generator:
 Special cases:
 - `θ = 0` gives the independence copula.
 
+Despite its name, this is not the Gumbel family: it models negative
+association. The admissible upper parameter decreases with dimension because
+the generator is not completely monotone over all `θ ∈ [0,1]`; construct the
+target copula dimension to trigger monotonicity validation.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref),
+[`max_monotony`](@ref), [`Distributions.fit`](@ref).
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.437
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

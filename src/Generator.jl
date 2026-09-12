@@ -6,10 +6,31 @@ function `ϕ : [0,∞) → [0,1]` with `ϕ(0)=1` and `ϕ(∞)=0`; constructing a
 `d`-dimensional Archimedean copula additionally requires the appropriate
 `d`-monotonicity.
 
-Public component contracts concern the documented mathematical operations and
-constructors. The subtype hierarchy, derivative machinery, inversions, radial
-representations and numerical fallbacks are internal implementation details.
-See the developer guide for the current contributor architecture.
+`Generator` is a supported public extension point. A downstream generator `G`
+must implement:
+
+- `ϕ(G, t)`, the mathematical generator;
+- `max_monotony(G)`, the largest supported Williamson order (`Inf` for a
+  completely monotone generator);
+- `Distributions.params(G)`, returning a `NamedTuple` of its public parameters.
+
+These methods are sufficient to construct `ArchimedeanCopula(d, G)` and use its
+generic CDF path: the inverse of `ϕ` is obtained numerically when no specialized
+method exists. Other operations can require more. Generic automatic
+differentiation and inverse-Williamson fallbacks provide density and sampling
+for suitably regular generators, but their numerical success is not implied by
+the three-method contract alone, especially at singularities and parameter
+boundaries.
+
+Only this mathematical interface is public. Copulas.jl's generator subtype
+hierarchy beyond documented public types, derivative and inverse hooks, radial
+caches, fitting hooks, dispatch traits, and specialized numerical machinery are
+implementation details. The developer guide describes those optional in-package
+optimizations separately.
+
+See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
+[`max_monotony`](@ref), [`WilliamsonGenerator`](@ref),
+[`FrailtyGenerator`](@ref), `Distributions.params`.
 """
 abstract type Generator end
 Base.eltype(G::Generator) = _sample_eltype(G)
@@ -20,16 +41,89 @@ function (TG::Type{<:Generator})(args...;kwargs...)
 end
 Base.broadcastable(x::Generator) = Ref(x)
 _parameter_dof(x::Generator) = _parameter_dof(Distributions.params(x))
+
+"""
+    max_monotony(G::Generator)
+
+Return the largest Williamson order for which `G` is known to be monotone.
+`Inf` denotes complete monotonicity. This public mathematical query is used to
+validate the dimensions of Archimedean and Liouville constructions.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref),
+[`LiouvilleCopula`](@ref), [`ϕ`](@ref).
+"""
 max_monotony(G::Generator) = throw("This generator does not have a defined max monotony. You need to implement `max_monotony(G)`.")
+
+"""
+    ϕ(G::Generator, t)
+    ϕ(G::Generator)
+
+Evaluate the Archimedean generator at `t ≥ 0`, or return its callable unary
+form. A valid implementation is decreasing, satisfies `ϕ(G, 0) = 1`, tends to
+zero at infinity, and has the monotonicity reported by `max_monotony(G)`.
+
+See also: [`Generator`](@ref), [`max_monotony`](@ref),
+[`ArchimedeanCopula`](@ref), [`WilliamsonGenerator`](@ref).
+"""
 ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
 ϕ(G::Generator) = Base.Fix1(ϕ,G)
+
+"""
+    ϕ⁻¹(G::Generator, u)
+
+Return the generalized inverse of `ϕ(G, ·)` at `u ∈ [0,1]`. The generic
+internal fallback uses scalar root finding; generator implementations may
+specialize it for accuracy, boundary behavior, or performance.
+
+See also: [`ϕ`](@ref), [`ϕ⁽¹⁾`](@ref), [`Generator`](@ref).
+"""
 ϕ⁻¹( G::Generator, x) = Roots.find_zero(t -> ϕ(G,t) - x, (0.0, Inf))
+
+"""
+    ϕ⁽¹⁾(G::Generator, t)
+
+Evaluate the first derivative of the generator. The generic internal fallback
+uses forward-mode automatic differentiation. Specialized methods must preserve
+the derivative of `ϕ`, including its sign and limiting behavior.
+
+See also: [`ϕ`](@ref), [`ϕ⁻¹⁽¹⁾`](@ref), [`ϕ⁽ᵏ⁾`](@ref).
+"""
 ϕ⁽¹⁾(G::Generator, t) = ForwardDiff.derivative(x -> ϕ(G,x), t)
+
+"""
+    ϕ⁻¹⁽¹⁾(G::Generator, u)
+
+Evaluate the derivative of the inverse generator through
+`1 / ϕ⁽¹⁾(G, ϕ⁻¹(G, u))`. This is an internal conditioning and sampling hook;
+specializations must agree with that identity wherever the inverse is regular.
+
+See also: [`ϕ⁻¹`](@ref), [`ϕ⁽¹⁾`](@ref), [`distortion`](@ref).
+"""
 ϕ⁻¹⁽¹⁾(G::Generator, t) = inv(ϕ⁽¹⁾(G, ϕ⁻¹(G, t)))
+
+"""
+    ϕ⁽ᵏ⁾(G::Generator, k::Int, t)
+
+Evaluate the derivative of order `k ≥ 0`. The generic internal fallback uses a
+Taylor expansion. A specialization is a numerical fast path and must return
+the same derivative, with `k = 0` corresponding to `ϕ(G, t)`.
+
+See also: [`ϕ`](@ref), [`ϕ⁽¹⁾`](@ref), [`ϕ⁽ᵏ⁾⁻¹`](@ref).
+"""
 function ϕ⁽ᵏ⁾(G::Generator, k::Int, t)
     k ≥ 0 || throw(ArgumentError("k must be non-negative"))
     return _mul_factorial(taylor(ϕ(G), t, k)[end], k)
 end
+
+"""
+    ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, y; start_at=y)
+
+Invert the `k`th generator derivative on the relevant monotone branch. The
+generic internal fallback expands a positive bracket and applies bisection.
+`start_at` identifies the lower branch boundary used by tilted generators.
+
+See also: [`ϕ⁽ᵏ⁾`](@ref), [`ϕ⁻¹`](@ref), [`Generator`](@ref).
+"""
 function ϕ⁽ᵏ⁾⁻¹(G::Generator, k::Int, t; start_at=t)
     f(x) = ϕ⁽ᵏ⁾(G, k, x) - t
     T = typeof(float(t))
@@ -61,12 +155,37 @@ end
 # ρ⁻¹(G::Generator, ρ_val) = @error ("This generator has no inverse Spearman rho implemented.")
 
 abstract type MarkerGenerator <: Generator end
+
+"""
+    IndependentGenerator()
+
+Parameter-free Archimedean generator `ϕ(t) = exp(-t)`, corresponding to the
+independence copula in every dimension. It is useful when composing generic
+generator-based models; ordinary users will usually construct
+`IndependentCopula` directly.
+
+See also: [`IndependentCopula`](@ref), [`Generator`](@ref),
+[`ArchimedeanCopula`](@ref).
+"""
 struct IndependentGenerator <: MarkerGenerator end
 struct MGenerator <: MarkerGenerator end
 struct WGenerator <: MarkerGenerator end
 
 Distributions.params(::MarkerGenerator) = (;)
 
+"""
+    limit_kind(component, ::Val{d})
+
+Classify whether a generator, tail, or composite component is exactly at a
+canonical dependence limit in dimension `d`. Internal constructors and
+algorithms use the result to preserve independence, comonotonicity, or the
+bivariate lower bound without relying on approximate parameter comparisons.
+Families return `NO_LIMIT` away from those values. This protocol is not public
+API.
+
+See also: [`LimitKind`](@ref), [`CopulaMeasureStyle`](@ref),
+[`Generator`](@ref), [`Tail`](@ref).
+"""
 @inline limit_kind(::Generator, ::Val) = NO_LIMIT
 @inline limit_kind(::MGenerator, ::Val) = M_LIMIT
 @inline limit_kind(::WGenerator, ::Val) = W_LIMIT
@@ -129,6 +248,9 @@ Lebesgue density is promised for discrete or singular laws.
 References: 
     - Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
     - McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
+
+See also: [`WilliamsonGenerator`](@ref), [`Generator`](@ref),
+[`ArchimedeanCopula`](@ref), [`LiouvilleCopula`](@ref).
 """
 struct 𝒲₋₁{TG, TO<:Integer} <: Distributions.ContinuousUnivariateDistribution
     # Woul dprobably be much more efficient if it took the generator and not the function itself. 
@@ -585,27 +707,37 @@ Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., sJ = G
 
 
 """
-    FrailtyGenerator<:AbstractFrailtyGenerator<:Generator
-
-methods: 
-    - frailty(::FrailtyGenerator) gives the frailty 
-    - ϕ and the rest of generators are automatically defined from the frailty. 
-
-Constructor
-
     FrailtyGenerator(D)
 
-A Frailty generator can be defined by a positive random variable that happens to have a `mgf()` 
-function to compute its moment generating function. The generator is simply: 
+Construct a completely monotone Archimedean generator from a non-negative
+continuous frailty distribution `D`. Its generator is the Laplace transform
 
 ```math
-\\phi(t) = mgf(frailty(G), -t)
+\\phi(t)=\\mathbb{E}[e^{-tV}]=\\operatorname{mgf}_D(-t), \\qquad V\\sim D.
 ```
 
-https://www.uni-ulm.de/fileadmin/website_uni_ulm/mawi.inst.zawa/forschung/2009-08-16_hofert.pdf
+`D` must have non-negative support and implement `Distributions.mgf`.
+Generator derivatives additionally use expectations of `V^k exp(-tV)`, and
+sampling an associated Archimedean copula uses `rand` on the frailty. The
+resulting complete monotonicity permits construction in every dimension.
+
+Multiplying `V` by a positive constant changes the generator scale but not the
+resulting Archimedean copula. Consequently the frailty distribution is not an
+identifiable copula parameterization without a scale convention. This generic
+wrapper is useful for custom frailties; named generator families generally
+offer clearer parameter validation and fitting support.
+
+# Example
+```julia
+G = FrailtyGenerator(Gamma(2.0, 1.0))
+C = ArchimedeanCopula(3, G)
+```
 
 References:
-* [hofert2009](@cite) M. Hoffert (2009). Efficiently sampling Archimedean copulas
+* [hofert2009](@cite) M. Hofert (2009). Efficiently sampling Archimedean copulas.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
+[`WilliamsonGenerator`](@ref).
 """
 FrailtyGenerator
 
@@ -633,7 +765,17 @@ end
 Distributions.params(G::FrailtyGenerator) = (F=G.F,)
 frailty(G::FrailtyGenerator) = G.F
 
-# Add univaraite generator bindins: 
+"""
+    AbstractUnivariateGenerator <: Generator
+
+Internal capability type for parametric generators whose user-facing
+parameters are represented by a single univariate generator object. It is used
+to share constructor and fitting machinery; downstream packages must not rely
+on this subtype as a stable extension interface.
+
+See also: [`Generator`](@ref), [`FrailtyGenerator`](@ref),
+[`_available_fitting_methods`](@ref).
+"""
 abstract type AbstractUnivariateGenerator <: Generator end
 abstract type AbstractUnivariateFrailtyGenerator <: AbstractFrailtyGenerator end
 const UnivariateGenerator = Union{AbstractUnivariateGenerator,AbstractUnivariateFrailtyGenerator}

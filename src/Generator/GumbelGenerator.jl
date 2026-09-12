@@ -13,6 +13,13 @@ It has a few special cases:
 - `θ = 1` gives the independence copula.
 - `θ = Inf` gives the upper Fréchet–Hoeffding bound.
 
+Increasing `θ` strengthens positive association. The family has upper-tail
+dependence and no lower-tail dependence, and its completely monotone generator
+is valid in every dimension. Very large values approach a singular limit.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref), [`λᵤ`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """

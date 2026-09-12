@@ -21,7 +21,34 @@ end
 
 # Generic fallbacks. Family implementations specialize these lowercase hooks;
 # the concrete types remain implementation details of the generic path.
+"""
+    distortion(C::Copula, js, ujs, i)
+
+Return the uniform-scale conditional marginal of coordinate `i` given
+`U[js] = ujs`. This internal extension hook defaults to `DistortionFromCop`,
+which uses mixed CDF partials. Family specializations may provide a faster or
+atom-aware distribution but must preserve the same coordinate ordering, scale,
+and conditional-law semantics. Use public `condition` in downstream code.
+
+See also: [`conditional_copula`](@ref), [`_partial_cdf`](@ref),
+[`Distortion`](@ref), [`condition`](@ref).
+"""
 distortion(C::Copula, js, uⱼₛ, i) = DistortionFromCop(C, js, uⱼₛ, i)
+
+"""
+    _partial_cdf(C, is, js, uis, ujs)
+
+Evaluate the mixed derivative of the copula CDF with respect to coordinates
+`js`, at the point assembled from free coordinates `is => uis`, conditioned
+coordinates `js => ujs`, and ones elsewhere. This internal signed sub-density
+is the common denominator and numerator primitive for generic conditioning.
+The fallback uses automatic differentiation; a specialization is required when
+the numerical CDF cannot accept dual numbers or when singular semantics demand
+an exact implementation.
+
+See also: [`_mixed_partial`](@ref), [`distortion`](@ref),
+[`conditional_copula`](@ref).
+"""
 _partial_cdf(C, is, js, uᵢₛ, uⱼₛ) = _mixed_partial(u -> Distributions.cdf(C, u),_assemble(length(C), is, js, uᵢₛ, uⱼₛ), js,)
 
 _process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs)
@@ -47,6 +74,8 @@ they model how a uniform variable is distorted by conditioning. They can be appl
 as a function to a base marginal distribution to obtain the conditional marginal on
 the original scale: if `D::Distortion` and `X::UnivariateDistribution`, then `D(X)`
 is the distribution of `X_i | U_J = u_J`.
+
+See also: [`distortion`](@ref), [`DistortedDist`](@ref), [`condition`](@ref).
 """
 abstract type Distortion<:Distributions.ContinuousUnivariateDistribution end
 
@@ -141,7 +170,13 @@ end
 """
     DistortedDist{Disto,Distrib} <: Distributions.UnivariateDistribution
 
-Push-forward of a base marginal by a `Distortion`.
+Internal representation of a conditioned marginal on its original scale.
+`D` describes the conditional law on the uniform scale and `X` is the original
+univariate marginal. Consequently its CDF is `D(cdf(X, x))`, while quantiles
+apply the two generalized inverses in reverse order. This representation is
+used when conditioning a `SklarDist`; its storage fields are not public API.
+
+See also: [`Distortion`](@ref), [`condition`](@ref), [`SklarDist`](@ref).
 """
 struct DistortedDist{Disto, Distrib}<:Distributions.ContinuousUnivariateDistribution
     D::Disto
@@ -163,7 +198,14 @@ end
 """
     ConditionalCopula{d} <: Copula{d}
 
-Copula of the conditioned random vector U_I | U_J = u_J.
+Internal fallback for the copula of the remaining coordinates
+`U_I | U_J = u_J`. It computes each conditional marginal distortion and uses
+mixed CDF partials to normalize the joint conditional law. Coordinates in `I`
+retain their natural order. Family-specific `conditional_copula` methods may
+replace this representation, so its fields are not a downstream contract.
+
+See also: [`conditional_copula`](@ref), [`distortion`](@ref),
+[`_partial_cdf`](@ref), [`condition`](@ref).
 """
 struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     C::Copula{D}
@@ -191,6 +233,19 @@ struct ConditionalCopula{d, D, p, T, TDs}<:Copula{d}
     end
 end
 Base.eltype(::ConditionalCopula{d,D,p,T}) where {d,D,p,T} = T
+
+"""
+    conditional_copula(C::Copula, js, ujs)
+
+Return the copula of the remaining coordinates conditional on `U[js] = ujs`.
+The internal fallback builds a `ConditionalCopula` from mixed CDF partials and
+the marginal `distortion`s. A family specialization may provide a simpler or
+faster representation, but must preserve the remaining coordinates' natural
+order and the same conditional law. Public code should call `condition`.
+
+See also: [`ConditionalCopula`](@ref), [`distortion`](@ref),
+[`_partial_cdf`](@ref), [`condition`](@ref).
+"""
 conditional_copula(C::Copula, js, uⱼₛ) = ConditionalCopula(C, js, uⱼₛ)
 function _cdf(CC::ConditionalCopula{d,D,p,T}, v::AbstractVector{<:Real}) where {d,D,p,T}
     uI = ntuple(k -> Distributions.quantile(CC.distortions[k], v[k]), d)
@@ -285,6 +340,24 @@ Notes
     differentiation based construction.
 - Concrete return types are implementation details. Use the standard
   `Distributions.jl` operations on the returned distribution.
+
+Conditioning is defined through regular conditional laws at the supplied
+values. At zero-density points, a generic derivative-based representation may
+be undefined or numerically unstable; family specializations can provide
+meaningful endpoint or atomic behavior. Remaining coordinates preserve their
+original relative order.
+
+# Example
+```julia
+using Copulas, Distributions
+
+C = GaussianCopula(3, 0.4)
+D = condition(C, (1,), (0.7,))
+cdf(D, [0.4, 0.8])
+```
+
+See also: [`subsetdims`](@ref), [`rosenblatt`](@ref),
+[`inverse_rosenblatt`](@ref), [`SklarDist`](@ref).
 """
 function condition(C::Copula{2}, j::Int, uⱼ::Real)
     1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
@@ -369,6 +442,9 @@ Specialized families may provide faster overrides.
 * [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
 * [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
+
+See also: [`inverse_rosenblatt`](@ref), [`condition`](@ref),
+[`StatsBase.residuals`](@ref).
 """
 rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = rosenblatt(C, reshape(u, (d, 1)))[:]
 function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
@@ -399,17 +475,28 @@ rosenblatt(D::SklarDist, u::AbstractVector{<:Real}) =
 """
     inverse_rosenblatt(C::Copula, u)
 
-Computes the inverse rosenblatt transform associated to the copula C on the vector u. Formally, assuming that U ∼ Π, the independence copula, the result should be distributed as C. Also look at `rosenblatt(C, u)` for the inverse transformation. The interface proposes faster versions for matrix inputs `u`.
+Map independent uniform inputs to the dependence structure of `C` by successive
+conditional quantiles. If `S` follows the independence copula, the result
+follows `C`. Vector inputs represent one point; matrix inputs store points in
+columns and are processed without changing their order.
 
 Generic inverse Rosenblatt using conditional distortions:
 U₁ = S₁, U_k = H_{k|1:(k-1)}^{-1}(S_k | U₁:U_{k-1}).
 Specialized families may provide faster overrides.
+
+Inputs are clamped to the unit interval. Generalized quantiles make the
+transformation suitable for sampling conditionals with atoms, but in that case
+`rosenblatt(C, inverse_rosenblatt(C, s)) == s` need not hold pointwise. An
+almost-sure round trip requires continuous conditional CDFs that are invertible
+on their supports.
 
 
 References:
 * [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
 * [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
+
+See also: [`rosenblatt`](@ref), [`condition`](@ref), [`SklarDist`](@ref).
 """
 inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
 function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}

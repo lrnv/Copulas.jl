@@ -17,6 +17,14 @@ Special cases:
 
 These values retain the concrete `PlackettCopula` family type.
 
+The model is bivariate. Finite interior parameters are absolutely continuous
+and have no asymptotic tail dependence; `θ < 1` gives negative association and
+`θ > 1` positive association. Near `θ = 1`, use the continuous independence
+branch rather than evaluating the displayed quotient directly.
+
+See also: [`Copula`](@ref), [`WCopula`](@ref), [`MCopula`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.164
 * [johnson1987multivariate](@cite) Johnson, Mark E. Multivariate statistical simulation: A guide to selecting and generating continuous multivariate distributions. Vol. 192. John Wiley & Sons, 1987. Page 193.

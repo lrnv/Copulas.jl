@@ -1,3 +1,5 @@
+include("sync_homepage.jl")
+
 using Copulas
 using Documenter
 using DocumenterCitations
@@ -10,8 +12,15 @@ bib = CitationBibliography(
     style=:numeric
 )
 
+using DocumenterInterLinks
+
+links = InterLinks(
+    "Distributions" => "https://juliastats.org/Distributions.jl/stable/objects.inv",
+    "StatsBase" =>  "https://juliastats.org/StatsBase.jl/stable/objects.inv"
+)
+
 makedocs(;
-    plugins=[bib],
+    plugins=[bib,links],
     modules=[Copulas],
     repo = Remotes.GitHub("lrnv", "Copulas.jl"),
     authors="Oskar Laverny <oskar.laverny@univ-amu.fr> and contributors",
@@ -53,12 +62,10 @@ makedocs(;
             "Bayesian inference with Turing.jl"=>"examples/turing.md",
             "Other use cases"=>"examples/other_usecases.md",
         ],
-        "API" => [
-            "Public"=>"api/public.md",
-        ],
+        "Public API" => "api/public.md",
         "Development" => [
             "Extending Copulas.jl"=>"dev/developer_guide.md",
-            "Internal implementation reference"=>"api/internal.md",
+            "Internals reference"=>"api/internal.md",
             "Performance benchmarks"=>"dev/benchmarks.md",
         ],
         "References" => "references.md",

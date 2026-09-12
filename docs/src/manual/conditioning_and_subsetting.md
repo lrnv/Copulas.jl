@@ -120,24 +120,18 @@ plot(H)
 
 ### Relation to the conditional copula
 
-The conditional copula $C_{I|J}(·|u_J)$ is the copula of the conditional distribution $H_{I|J}(·|u_J)$. A multivariate result currently follows the `SklarDist` interface, so its copula and margins can be inspected as follows. Code should nevertheless rely on the public distribution interface rather than on a particular internal wrapper type:
+The conditional copula $C_{I|J}(·|u_J)$ is the copula of the conditional distribution $H_{I|J}(·|u_J)$. For a multivariate result, the copula and margins are available through the public `params` interface:
 
 ```@example cond1
-H.C # the copula
+params(H).copula
 ```
 
 ```@example cond1
-H.m # the marginals
+params(H).margins
 ```
 
 
-### Implementation
-
-```@docs; canonical=false
-condition
-Distortion
-```
-
+See the canonical Public API entry for [`condition`](@ref).
 
 ### See also
 
@@ -153,8 +147,8 @@ Subsetting extracts the dependence structure among a subset of coordinates. Give
 There are two entry points:
 
 - `subsetdims(C::Copula, dims)` returns a `Copula{p}` (or `Uniform()` when `p == 1`).
-- `subsetdims(X::SklarDist, dims)` returns a `SklarDist` with copula `subsetdims(C, dims)`
-  and marginals `(m[i] for i in dims)`.
+- `subsetdims(X::SklarDist, dims)` returns the corresponding joint distribution
+  with the selected copula coordinates and margins, in the requested order.
 
 The concrete representation is family-dependent. Some families return a natural reduced-parameter form, while the generic path uses an internal delegating representation. Both implement the same public copula interface:
 
@@ -162,13 +156,13 @@ The concrete representation is family-dependent. Some families return a natural 
 using Copulas, Distributions
 C = GaussianCopula([1.0 0.6 0.2; 0.6 1.0 0.3; 0.2 0.3 1.0])
 S = subsetdims(C, (1,3))    # 2D copula on coordinates 1 and 3
-length(S), typeof(S)
+length(S), cdf(S, [0.5, 0.5])
 ```
 
 ```@example subset1
 X = SklarDist(C, (Normal(), Normal(1,2), LogNormal()))
 X13 = subsetdims(X, (1,3))  # keeps marginals (Normal(), LogNormal()) and reduces the copula
-length(X13.C), length(X13.m)
+length(params(X13).copula), length(params(X13).margins)
 ```
 
 The exact result type is not part of the contract. Specialized forms may provide better performance or clearer display, while every result remains usable through the same copula API.
@@ -190,14 +184,51 @@ cdf(S, [0.7, 0.9])
 base = GaussianCopula([1.0 0.7 0.2; 0.7 1.0 0.1; 0.2 0.1 1.0])
 S = SurvivalCopula(base, (2,))
 S13 = subsetdims(S, (1,3))      # flip on 2 drops; no flips remain
-typeof(S13), S13 isa SurvivalCopula
+length(S13), cdf(S13, [0.5, 0.5])
 ```
 
-### Implementation
+See the canonical Public API entry for [`subsetdims`](@ref).
 
-```@docs; canonical=false
-Copulas.subsetdims
+## Non-copula random vectors
+
+The operations introduced on this page are not limited to copula-based models.
+
+!!! tip "Extending the interface beyond copula models"
+    Loading `PartitionedDistributions.jl` activates an extension that makes
+    `condition`, `subsetdims`, `rosenblatt`, and `inverse_rosenblatt` available
+    for compatible vector-valued distributions implementing its public marginal
+    and conditional interfaces. The adapter completes retained coordinates with
+    in-support marginal medians and verifies the complete point against the
+    joint support before conditioning. See the
+    [complete interoperability example](@ref partitioned_distributions_example).
+
+For example, the extension supplies the sequential transforms of a multivariate
+normal distribution through its marginal and conditional distributions:
+
+```@example noncopula
+using Copulas, Distributions, PartitionedDistributions
+
+D = MvNormal(
+    [0.2, -0.3, 0.7],
+    [
+        1.0  0.3   0.1
+        0.3  1.2   0.25
+        0.1  0.25  0.8
+    ],
+)
+x = [0.1, -0.4, 1.1]
+
+u = rosenblatt(D, x)
+x_reconstructed = inverse_rosenblatt(D, u)
+(u=u, reconstruction_error=maximum(abs, x_reconstructed .- x))
 ```
+
+More generally, the forward transform requires `cdf` on each successive
+conditional law, while the inverse also requires `quantile`.
+
+The usual caveat still applies: the deterministic forward and inverse
+transforms are mutual inverses only when the successive conditional CDFs are
+continuous and invertible on their supports.
 
 ## Rosenblatt transformations
 
@@ -237,16 +268,14 @@ randomization within CDF jumps is implicit in `rosenblatt`.
 
 These two properties are leveraged in some cases to construct the inverse Rosenblatt transformations, which map random noise to proper samples from the copula. In some cases, this is the best sampling algorithm available. 
 
-### Implementation
+For a random vector represented by a `SklarDist` or `Copula`, the public
+`rosenblatt(X, x)` and `inverse_rosenblatt(X, x)` operations provide the
+forward and inverse transforms.
 
-As soon as the random vector ``X`` is represented by an object `X` that subtypes `SklarDist` or `Copula`, you have access to the `rosenblatt(X, x)` and `inverse_rosenblatt(X, x)` operators, which both have a straightforward interpretation from their names. 
+See the canonical Public API entries for [`rosenblatt`](@ref), [`inverse_rosenblatt`](@ref).
 
-```@docs; canonical=false
-rosenblatt
-inverse_rosenblatt
-```
-
-Once again, since the rosenblatt transform leverages the conditioning mechanisme, some fast-paths might be missing in the implementation.
+The transforms use the same conditional laws as [`condition`](@ref), so their
+availability and numerical limitations follow those of the underlying family.
 
 ### Sanity check plot
 

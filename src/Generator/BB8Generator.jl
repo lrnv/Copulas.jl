@@ -16,6 +16,13 @@ Special cases:
 - `ϑ = 1` gives the independence copula.
 - `δ = 1`, `ϑ = Inf` gives the upper Fréchet–Hoeffding bound.
 
+When `δ = 1`, BB8 is the Joe family; when `ϑ = 1`, `δ` is unidentified because
+the copula is independent for every admissible value. Computation near the open
+boundary `δ = 0` can suffer cancellation in the definition of `η`.
+
+See also: [`JoeGenerator`](@ref), [`ArchimedeanCopula`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.204-205
 """

@@ -27,6 +27,12 @@ Special cases:
 * `θ = 0` represents `IndependentCopula(d)`.
 * `θ = ∞` represents `MCopula(d)`.
 
+Increasing `θ` strengthens upper-tail association. The finite-parameter model
+is upper-tail dependent but does not imply analogous lower-tail clustering.
+
+See also: [`Tail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
+[`λᵤ`](@ref), [`Distributions.fit`](@ref).
+
 References:
 
 * [galambos1975order](@cite) Galambos, J. (1975). Order statistics of samples from multivariate distributions. Journal of the American Statistical Association, 70(351a), 674-680.

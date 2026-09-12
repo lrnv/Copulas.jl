@@ -39,7 +39,7 @@ This example also exercises the sharper preserved-radial path: `ceil(5.25) == 6`
 model_radial = 𝒲₋₁(G, α₀)
 marginal_radials = ntuple(i -> 𝒲₋₁(G, α[i]), 3)
 
-typeof(model_radial), typeof.(marginal_radials)
+rand(model_radial), rand.(marginal_radials)
 ```
 
 The resulting object implements the usual `Distributions.jl` interface:
@@ -66,14 +66,14 @@ rng = Xoshiro(42)
 R3 = 𝒲₋₁(G2, 3)       # specialized integer path
 Rreal = 𝒲₋₁(G2, sum(α2)) # order 2.85: R3 times Beta(2.85, 0.15)
 
-typeof(R3), typeof(Rreal), rand(rng, C2)
+rand(rng, R3), rand(rng, Rreal), rand(rng, C2)
 ```
 
 This is also why subsetting is exact and inexpensive at the model level. A subset keeps the same generator and selects the corresponding Dirichlet parameters; its smaller total order is obtained through the same Williamson reduction.
 
 ```@example liouville
 rng = Xoshiro(42)
-(typeof(C13), C13.α, rand(rng, C13))
+(parameters=params(C13).α, sample=rand(rng, C13))
 ```
 
 For `α = ones(d)`, every marginal survival function is the generator itself and the construction is exactly Archimedean. The object remains a `LiouvilleCopula`, while its numerical methods exploit the equivalent `ArchimedeanCopula` path:

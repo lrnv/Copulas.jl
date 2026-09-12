@@ -12,12 +12,15 @@ B_m(C)(u) = \\sum_{s_1=0}^{m_1} \\cdots \\sum_{s_d=0}^{m_d}C\\left(\\tfrac{s_1}{
 
 It is a polynomial approximation of the base copula ``C`` using the multivariate Bernstein operator.
 
-**Implementation notes:**
-- The grid of box measures (weights) is fully precomputed and stored as an ``n``-dimensional array at construction. This enables fast evaluation of the copula and its density, but can be memory-intensive for large ``d`` or ``m``.
-- The choice of `m` controls the smoothness of the approximation: larger `m` yields finer approximation but exponentially increases memory and computation cost (``\\prod_j m_j`` boxes).
-- For high dimensions or large ``m``, memory usage may become prohibitive; see documentation for scaling behavior.
+Behavior and cost:
+- The choice of `m` controls smoothness: larger values give a finer polynomial
+  approximation but require work and memory proportional to ``\\prod_j m_j``.
+  Large `d` or `m` can therefore be prohibitive.
 - If ``C`` is an `EmpiricalCopula`, the constructor produces the *empirical Bernstein copula*, a smoothed version of the empirical copula.
 - Supports `cdf`, `logpdf`, and random generation via mixtures of beta distributions.
+
+See also: [`BetaCopula`](@ref), [`EmpiricalCopula`](@ref), [`Copula`](@ref),
+[`Distributions.fit`](@ref).
 
 References:
 * [sancetta2004bernstein](@cite) Sancetta, A., & Satchell, S. (2004). The Bernstein copula and its applications to modeling and approximations of multivariate distributions. Econometric Theory, 20(3), 535-562.

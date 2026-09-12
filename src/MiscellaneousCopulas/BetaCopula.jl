@@ -13,7 +13,15 @@ where ``R_{ij}`` is the rank of observation ``i`` in margin ``j``, and ``U \\sim
 
 Notes:
 - This is always a valid copula for any finite sample size `n`.
-- Supports `cdf`, `logpdf` at observed points and random sampling.
+- Rows of `u` are variables and columns are observations. Each row is ranked
+  internally using ordinal ranks, so ties are broken by their input order.
+- The beta kernels smooth the empirical mass into an absolutely continuous
+  copula. This removes atoms but does not remove finite-sample uncertainty or
+  sensitivity to the tie convention.
+- Supports `cdf`, `logpdf`, random sampling and subsetting.
+
+See also: [`EmpiricalCopula`](@ref), [`BernsteinCopula`](@ref),
+[`pseudos`](@ref).
 
 References:
 * [segers2017](@cite) Segers, J., Sibuya, M., & Tsukahara, H. (2017). The empirical beta copula. Journal of Multivariate Analysis, 155, 35-51.

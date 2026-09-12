@@ -42,9 +42,11 @@ From data, you can estimate a $d$-Archimedean generator nonparametrically via th
 
 :::
 
-The supported generator families are listed below. Contributor-facing extension
-points are intentionally outside the stable public API and are described in the
-[developer guide](@ref developer_fitting).
+The supported generator families are listed below. Defining a subtype of
+[`Generator`](@ref) with `ϕ`, `max_monotony`, and `Distributions.params` is also
+a supported public extension mechanism. The [developer guide](@ref
+developer_fitting) separately describes optional implementation and
+optimization hooks, which are not public API.
 
 
 For example, Here is a graph of a few Clayton Generators: 
@@ -58,9 +60,7 @@ plot!(x -> ϕ(ClaytonGenerator(1),x), label="ClaytonGenerator(1)")
 plot!(x -> ϕ(ClaytonGenerator(5),x), label="ClaytonGenerator(5)")
 ```
 
-```@docs; canonical=false
-Generator
-```
+See the canonical Public API entry for [`Generator`](@ref).
 
 Note that the rate at which these functions approach zero can vary significantly
 between generators. Their inverses are used internally when evaluating the
@@ -97,9 +97,7 @@ Orders below two remain useful for Williamson reductions and Liouville marginals
 
 :::
 
-```@docs; canonical=false
-WilliamsonGenerator
-```
+See the canonical Public API entry for [`WilliamsonGenerator`](@ref).
 
 !!! note "Bijection and identities (matching d)"
     The Williamson $d$-transform and its inverse form a bijection between positive radials and $d$-monotone Archimedean generators. In particular, when the same $d$ is used on both sides:
@@ -260,10 +258,7 @@ using Copulas: 𝒲₋₁, ClaytonGenerator
 
 :::
 
-```@docs; canonical=false
-ArchimedeanCopula
-```
-
+See the canonical Public API entry for [`ArchimedeanCopula`](@ref).
 
 ## Conditionals and distortions
 
@@ -341,104 +336,170 @@ When `G = 𝒲(R, source_order)` retains its source radial, the sharper conditio
 
 Any implemented `Generator` can be used when it has sufficient monotonicity. Conversely, any supported non-negative univariate radial distribution can define the generator through `𝒲(R, order)`. This covers the full radial-simplex construction for positive real Dirichlet parameters; a singular radial may naturally produce a copula without a density.
 
-```@docs; canonical=false
-LiouvilleCopula
-```
+See the canonical Public API entry for [`LiouvilleCopula`](@ref).
 
 See the [Liouville copulas](@ref liouville_copulas) example for construction from both a radial distribution and a conventional generator, order reductions, sampling, evaluation, and subsetting.
 
 
 ## [Available models](@id available_archimedean_models)
 
-### `WilliamsonGenerator`
-```@docs; canonical=false
-WilliamsonGenerator
-```
+Every row below defines the generator in
+``C(\boldsymbol u)=\phi(\sum_i\phi^{-1}(u_i))``. The displayed parameter
+domain is the nominal generator domain; construction of a ``d``-copula also
+checks that the generator is ``d``-monotone. This additional check matters in
+particular for negative Clayton, Frank, AMH, and Gumbel--Barnett parameters.
 
-### `EmpiricalGenerator`
-```@docs; canonical=false
-EmpiricalGenerator
-```
+| Family | Generator ``\phi(t)`` and parameters | Public constructors |
+|:--|:--|:--|
+| Williamson | ``\mathbb E[(1-t/R)_+^{s-1}]`` for a non-negative radial law ``R`` and order ``s>0`` | `WilliamsonGenerator(R, s)`; `ArchimedeanCopula(d, G)` |
+| Empirical | Williamson generator obtained by the empirical Kendall/radial inversion described [above](@ref nonpar_archi_gen_example) | `EmpiricalGenerator(U)`; `ArchimedeanCopula(d, G)` |
+| Frailty | ``\mathbb E[e^{-tV}]`` for a non-negative frailty ``V`` | `FrailtyGenerator(V)`; `ArchimedeanCopula(d, G)` |
+| Clayton | ``(1+\theta t)_+^{-1/\theta}``, with the continuous limit ``e^{-t}`` at ``\theta=0``; ``\theta\ge-1`` | `ClaytonGenerator(θ)`; `ClaytonCopula{d}(θ)`; `ClaytonCopula(d, θ)` |
+| Frank | ``-\theta^{-1}\log(1-(1-e^{-\theta})e^{-t})``, with limit ``e^{-t}`` at ``\theta=0``; ``\theta\in\mathbb R`` | `FrankGenerator(θ)`; `FrankCopula{d}(θ)`; `FrankCopula(d, θ)` |
+| Gumbel | ``\exp(-t^{1/\theta})``; ``\theta\ge1`` | `GumbelGenerator(θ)`; `GumbelCopula{d}(θ)`; `GumbelCopula(d, θ)` |
+| Ali--Mikhail--Haq (AMH) | ``(1-\theta)/(e^t-\theta)``; ``-1\le\theta\le1`` | `AMHGenerator(θ)`; `AMHCopula{d}(θ)`; `AMHCopula(d, θ)` |
+| Joe | ``1-(1-e^{-t})^{1/\theta}``; ``\theta\ge1`` | `JoeGenerator(θ)`; `JoeCopula{d}(θ)`; `JoeCopula(d, θ)` |
+| Gumbel--Barnett | ``\exp((1-e^t)/\theta)`` for ``\theta>0``, with the independence limit at ``\theta=0``; ``0\le\theta\le1`` | `GumbelBarnettGenerator(θ)`; `GumbelBarnettCopula{d}(θ)`; `GumbelBarnettCopula(d, θ)` |
+| Inverse Gaussian | ``\exp((1-\sqrt{1+2\theta^2t})/\theta)`` for ``\theta>0``, with limit ``e^{-t}`` at zero; ``\theta\ge0`` | `InvGaussianGenerator(θ)`; `InvGaussianCopula{d}(θ)`; `InvGaussianCopula(d, θ)` |
+| BB1 | ``(1+t^{1/\delta})^{-1/\theta}``; ``\theta>0``, ``\delta\ge1`` | `BB1Generator(θ, δ)`; `BB1Copula{d}(θ, δ)`; `BB1Copula(d, θ, δ)` |
+| BB2 | ``(1+\log(1+t)/\delta)^{-1/\theta}``; ``\theta>0``, ``\delta>0`` | `BB2Generator(θ, δ)`; `BB2Copula{d}(θ, δ)`; `BB2Copula(d, θ, δ)` |
+| BB3 | ``\exp[-(\log(1+t)/\delta)^{1/\theta}]``; ``\theta\ge1``, ``\delta>0`` | `BB3Generator(θ, δ)`; `BB3Copula{d}(θ, δ)`; `BB3Copula(d, θ, δ)` |
+| BB6 | ``1-(1-e^{-t^{1/\delta}})^{1/\theta}``; ``\theta\ge1``, ``\delta\ge1`` | `BB6Generator(θ, δ)`; `BB6Copula{d}(θ, δ)`; `BB6Copula(d, θ, δ)` |
+| BB7 | ``1-[1-(1+t)^{-1/\delta}]^{1/\theta}``; ``\theta\ge1``, ``\delta>0`` | `BB7Generator(θ, δ)`; `BB7Copula{d}(θ, δ)`; `BB7Copula(d, θ, δ)` |
+| BB8 | ``\delta^{-1}[1-(1-\eta e^{-t})^{1/\vartheta}]``, where ``\eta=1-(1-\delta)^\vartheta``; ``\vartheta\ge1``, ``0<\delta\le1`` | `BB8Generator(ϑ, δ)`; `BB8Copula{d}(ϑ, δ)`; `BB8Copula(d, ϑ, δ)` |
+| BB9 | ``\exp[\delta^{-1}-(t+\delta^{-\theta})^{1/\theta}]``; ``\theta\ge1``, ``\delta>0`` | `BB9Generator(θ, δ)`; `BB9Copula{d}(θ, δ)`; `BB9Copula(d, θ, δ)` |
+| BB10 | ``[(1-\delta)/(e^t-\delta)]^{1/\theta}``; ``\theta>0``, ``0\le\delta\le1`` | `BB10Generator(θ, δ)`; `BB10Copula{d}(θ, δ)`; `BB10Copula(d, θ, δ)` |
 
-### `FrailtyGenerator`
-```@docs; canonical=false
-FrailtyGenerator
-```
+### Williamson, empirical, and frailty generators
 
-### `ClaytonGenerator`
-```@docs; canonical=false
-ClaytonGenerator
-```
+`WilliamsonGenerator` is the most general constructive route in this page: it
+turns a non-negative radial law into an Archimedean generator of a specified
+order. The radial scale is not identifiable—multiplying the radial variable by
+a positive constant only rescales the generator argument and leaves the copula
+unchanged—so fitted or hand-built radial laws need a normalization convention.
+The requested copula dimension must not exceed the available Williamson order.
 
-### `FrankGenerator`
-```@docs; canonical=false
-FrankGenerator
-```
+`EmpiricalGenerator` estimates that radial representation from a ``d\times n``
+sample through the empirical Kendall distribution. It is useful when no
+parametric family is credible, but the fitted radial law is discrete even when
+the data-generating radial law is continuous, and its current Kendall-sample
+calculation is quadratic in ``n``. Raw observations and pseudo-observations must
+be distinguished with the `pseudo_values` option.
 
-### `GumbelGenerator`
-```@docs; canonical=false
-GumbelGenerator
-```
+`FrailtyGenerator` uses the Laplace transform of a non-negative frailty. Such a
+generator is completely monotone, hence valid in every dimension, and gives a
+particularly direct sampling representation. This convenience is also a
+restriction: Archimedean generators that are only ``d``-monotone, including
+negative-dependence cases, need not admit a frailty representation.
 
-### `AMHGenerator`
-```@docs; canonical=false
-AMHGenerator
-```
+### One-parameter families
 
-### `JoeGenerator`
-```@docs; canonical=false
-JoeGenerator
-```
+**Clayton.** Positive ``\theta`` emphasizes lower-tail association and has no
+upper-tail dependence; ``\theta=0`` is independence and ``\theta\to\infty``
+approaches comonotonicity. Negative values represent negative association, but
+`ClaytonGenerator(θ)` being constructible does not imply validity in every
+dimension: one needs ``d\le 1-1/\theta``. At equality the copula has a singular
+component, so density-only reasoning and likelihood comparisons require care.
 
-### `GumbelBarnettGenerator`
-```@docs; canonical=false
-GumbelBarnettGenerator
-```
+**Frank.** The sign of ``\theta`` determines positive or negative association,
+with independence at zero. Positive parameters are valid in every dimension;
+negative parameters are bivariate only. In dimension two the limits
+``\theta\to\infty`` and ``\theta\to-\infty`` approach the upper and lower
+Fréchet bounds. Finite Frank copulas have no lower- or upper-tail dependence,
+so a good central fit can still miss joint extremes.
 
-### `InvGaussianGenerator`
-```@docs; canonical=false
-InvGaussianGenerator
-```
+**Gumbel.** Here ``\theta=1`` is independence and increasing ``\theta`` moves
+toward comonotonicity. The family has upper-tail but no lower-tail dependence,
+which makes it useful for common large outcomes but unsuitable when only the
+lower tail clusters. Its generator is completely monotone and therefore valid
+in every dimension.
 
-### `BB1Generator`
-```@docs; canonical=false
-BB1Generator
-```
+**Ali--Mikhail--Haq.** AMH offers a comparatively narrow range of dependence,
+including modest negative association. Zero is independence. Although the
+generator accepts every ``\theta\in[-1,1]``, negative values have a
+parameter-dependent maximum dimension; construction of the copula performs
+that additional ``d``-monotonicity check. It is therefore a poor choice when
+strong dependence or unrestricted high-dimensional negative dependence is
+needed.
 
-### `BB2Generator`
-```@docs; canonical=false
-BB2Generator
-```
+**Joe.** The Joe family starts at independence for ``\theta=1`` and tends to
+comonotonicity as ``\theta`` grows. Like Gumbel it is upper-tail dependent and
+lower-tail independent, but it has a different interior shape and should not be
+treated as a mere reparameterization. Very large parameters concentrate mass
+near the singular limit and can make likelihood optimization numerically stiff.
 
-### `BB3Generator`
-```@docs; canonical=false
-BB3Generator
-```
+**Gumbel--Barnett.** The nominal parameter interval is ``[0,1]`` and zero is
+the independence limit, but the admissible upper endpoint decreases rapidly
+with dimension because the generator is not completely monotone over its whole
+nominal range. Always construct the target dimension rather than validating
+only `GumbelBarnettGenerator(θ)`. This family covers negative association and
+is consequently unlike the similarly named Gumbel family.
 
-### `BB6Generator`
-```@docs; canonical=false
-BB6Generator
-```
+**Inverse Gaussian.** This completely monotone family is generated by an
+inverse-Gaussian frailty and is valid in arbitrary dimension. Zero is the
+independence limit, while the infinite-parameter limit remains a nontrivial
+Archimedean model rather than becoming automatically comonotonic. The parameter
+scale is therefore not interchangeable with Clayton or Gumbel strength
+parameters; compare dependence measures rather than raw parameter values.
 
-### `BB7Generator`
-```@docs; canonical=false
-BB7Generator
-```
+### Two-parameter BB families
 
-### `BB8Generator`
-```@docs; canonical=false
-BB8Generator
-```
+The BB families combine or deform classical generators. Their two parameters
+usually control different parts of the dependence shape, so identifiability can
+be weak near a one-parameter boundary. Starting an optimizer exactly on such a
+boundary can collapse one direction of the likelihood.
 
-### `BB9Generator`
-```@docs; canonical=false
-BB9Generator
-```
+**BB1.** BB1 combines Clayton- and Gumbel-type behavior and can exhibit both
+lower- and upper-tail dependence. Setting ``\delta=1`` gives Clayton, while the
+limit ``\theta\to0^+`` gives Gumbel with parameter ``\delta``. Near either
+reduction, reporting both fitted parameters without uncertainty can be
+misleading.
 
-### `BB10Generator`
-```@docs; canonical=false
-BB10Generator
-```
+**BB2.** The logarithmic deformation in BB2 gives a shape distinct from BB1
+even though both use two positive parameters. Neither parameter alone is a
+universal dependence-strength index, and comparisons should use Kendall's tau,
+tail coefficients, or fitted probabilities. Small positive ``\theta`` or
+``\delta`` can place numerical work close to the boundary of the parameter
+space.
+
+**BB3.** BB3 applies a Gumbel-type power to ``\log(1+t)``. The constraints
+``\theta\ge1`` and ``\delta>0`` are both essential; allowing unconstrained
+optimization to cross either boundary does not define the same family. Large
+parameters can create strong concentration and should be assessed with
+log-density calculations rather than raw densities.
+
+**BB6.** BB6 links Joe and Gumbel: ``\delta=1`` gives Joe with parameter
+``\theta``, whereas ``\theta=1`` gives Gumbel with parameter ``\delta``.
+Consequently, data close to either subfamily may not identify both parameters
+well. Independence occurs at their common corner ``(1,1)`` and infinite values
+approach the comonotonic limit.
+
+**BB7.** BB7 combines Joe-type upper-tail behavior with a Clayton-type radial
+deformation. At ``\theta=1`` it reduces to a Clayton generator with parameter
+``\delta``. It can represent dependence in both tails, but the two tails are
+not controlled independently over the whole parameter space; inspect the
+implied coefficients after fitting.
+
+**BB8.** In BB8, ``\vartheta=1`` is independence for every admissible
+``\delta``, while ``\delta=1`` gives the Joe family. Thus ``\delta`` is
+unidentified on the independence edge. The constraint ``0<\delta\le1`` is
+open at zero, and computations very close to zero can suffer cancellation in
+``\eta=1-(1-\delta)^\vartheta``.
+
+**BB9.** The corner ``\theta=1`` is independence, while increasing ``\delta``
+toward infinity recovers the Gumbel generator with parameter ``\theta``.
+Accordingly, a large fitted ``\delta`` effectively places the model near a
+one-parameter family and may be weakly identified. The shifted-power formula
+also benefits from log-scale evaluation for extreme parameter values.
+
+**BB10.** Setting ``\delta=0`` yields an exponential generator and therefore
+the independence copula, regardless of ``\theta``; ``\theta`` is not
+identifiable on that boundary. Because ``\delta=1`` makes the displayed ratio
+degenerate, direct numerical evaluation at that endpoint is delicate; prefer
+interior values when fitting and treat the endpoint as a limiting case.
+
+The canonical [Public API](@ref) gives validation behavior, limiting cases, and
+the complete callable signatures for these constructors.
 
 ## References
 

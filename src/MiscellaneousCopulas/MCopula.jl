@@ -2,13 +2,29 @@
     MCopula(d)
     MCopula{d}()
 
-The upper Fréchet–Hoeffding bound is the copula with the largest value among all copulas; it corresponds to comonotone random vectors. For any copula ``C`` and all ``\\mathbf{u} \\in [0,1]^d``,
+The upper Fréchet–Hoeffding bound is the pointwise largest copula and represents
+complete positive dependence. For any copula ``C`` and all
+``\\mathbf{u} \\in [0,1]^d``,
 
 ```math
 W(\\mathbf{u}) \\le C(\\mathbf{u}) \\le M(\\mathbf{u}).
 ```
 
-Both Fréchet–Hoeffding bounds are Archimedean copulas.
+`MCopula` is parameter free and valid in every dimension. A sample repeats one
+uniform variate across all coordinates, hence the distribution is concentrated
+on the main diagonal and has no ordinary Lebesgue density. `pdf` and `logpdf`
+follow Copulas.jl's generalized-density convention for singular copulas and
+must not be integrated against Lebesgue measure as if they were a density.
+
+# Example
+```julia
+using Copulas, Distributions
+
+C = MCopula(3)
+cdf(C, [0.2, 0.5, 0.8]) == 0.2
+```
+
+See also: [`Copula`](@ref), [`WCopula`](@ref), [`measure`](@ref).
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

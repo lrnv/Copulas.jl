@@ -2,13 +2,30 @@
     WCopula{2}()
     WCopula(2)
 
-The lower Fréchet–Hoeffding bound is the copula with the smallest value among all copulas. Note that ``W`` is a proper copula only when ``d = 2``; for ``d > 2`` it remains the pointwise lower bound but is not itself a copula. For any copula ``C`` and all ``\\mathbf{u} \\in [0,1]^d``,
+The lower Fréchet–Hoeffding bound is the smallest bivariate copula and
+represents complete negative dependence. For any copula ``C`` and all
+``\\mathbf{u} \\in [0,1]^2``,
 
 ```math
 W(\\mathbf{u}) \\le C(\\mathbf{u}) \\le M(\\mathbf{u}).
 ```
 
-Both Fréchet–Hoeffding bounds are Archimedean copulas.
+`WCopula` is parameter free and exists only in dimension two: the analogous
+formula is merely a pointwise lower bound, not a copula, in higher dimensions.
+A sample has the form `(U, 1-U)`, so the law is singular on the anti-diagonal
+and has no ordinary Lebesgue density. `pdf` and `logpdf` use Copulas.jl's
+generalized-density convention and must not be integrated as a Lebesgue
+density.
+
+# Example
+```julia
+using Copulas, Distributions
+
+C = WCopula()
+isapprox(cdf(C, [0.7, 0.6]), 0.3)
+```
+
+See also: [`Copula`](@ref), [`MCopula`](@ref), [`measure`](@ref).
 
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.

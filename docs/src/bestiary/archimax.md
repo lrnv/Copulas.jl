@@ -2,7 +2,7 @@
 CurrentModule = Copulas
 ```
 
-# [Archimax family](@id Archimax\_theory)
+# [Archimax family](@id Archimax_theory)
 
 *Archimax copulas* form a hybrid family that combines an Archimedean generator $\phi$ with an extreme-value tail defined by its *stable tail dependence function* $\ell$, or its associated *Pickands function* $A_{\ell}(t) = \ell(\frac{t}{\lVert t \rVert})$. They interpolate between purely Archimedean and purely EV structures and underpin families such as **BB4** and **BB5**.
 
@@ -94,9 +94,7 @@ According to [charpentier2014](@cite), it should be possible to use any d-monoto
 The sampling recipe uses the supported generator and extreme-value components;
 its internal representations are not part of the public contract.
 
-```@docs; canonical=false
-ArchimaxCopula
-```
+See the canonical Public API entry for [`ArchimaxCopula`](@ref).
 
 ## Conditionals and distortions
 
@@ -157,15 +155,37 @@ conditioning, and sampling machinery beyond dimension two is separate work.
 
 ### `BB4Copula`
 
-```@docs; canonical=false
-BB4Copula
+BB4 combines the Clayton generator with the Galambos stable tail dependence
+function. For ``0\le u,v\le1``,
+
+```math
+C_{\theta,\delta}(u,v)=\left[u^{-\theta}+v^{-\theta}-1
+-\left\{(u^{-\theta}-1)^{-\delta}
++(v^{-\theta}-1)^{-\delta}\right\}^{-1/\delta}\right]^{-1/\theta}.
 ```
+
+Its parameters satisfy ``\theta\ge0`` and ``\delta>0``. Construct it with
+`BB4Copula(θ, δ)`, `BB4Copula{2}(θ, δ)`, or `BB4Copula(2, θ, δ)`.
+As ``\delta\to0^+`` it reduces to Clayton; as ``\theta\to0^+`` it reduces to
+Galambos.
 
 ### `BB5Copula`
 
-```@docs; canonical=false
-BB5Copula
+BB5 combines the Gumbel generator with the Galambos stable tail dependence
+function. With ``x=-\log u`` and ``y=-\log v``,
+
+```math
+C_{\theta,\delta}(u,v)=\exp\!\left(-\left[x^\theta+y^\theta
+-(x^{-\theta\delta}+y^{-\theta\delta})^{-1/\delta}
+\right]^{1/\theta}\right).
 ```
+
+Its parameters satisfy ``\theta\ge1`` and ``\delta>0``. Construct it with
+`BB5Copula(θ, δ)`, `BB5Copula{2}(θ, δ)`, or `BB5Copula(2, θ, δ)`.
+The case ``\theta=1`` is Galambos, while ``\delta\to0^+`` is Gumbel.
+
+See the canonical [Public API](@ref) for complete limiting and validation
+behavior.
 
 ## References
 

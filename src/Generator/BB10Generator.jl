@@ -11,6 +11,13 @@ The BB10 copula has parameters ``\\theta \\in (0,\\infty)`` and ``\\delta \\in [
 
 The special case `δ = 0` gives the independence copula.
 
+On the independence edge, `θ` is not identifiable. The displayed expression
+also becomes a limiting formula at `δ = 1`; interior values are preferable for
+fitting when both parameters are intended to be estimated.
+
+See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref),
+[`Distributions.fit`](@ref).
+
 References:
 * [joe2014](@cite) Joe, H. (2014). Dependence modeling with copulas. CRC press, Page.206-207
 """

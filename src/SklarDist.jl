@@ -7,32 +7,49 @@
 ###############################################################################
 
 """
-    SklarDist(C,m)
+    SklarDist(C, margins)
 
-Construct a joint distribution via Sklar's theorem from marginals and a copula. See [Sklar's theorem](https://en.wikipedia.org/wiki/Copula_(probability_theory)#Sklar's_theorem):
+Construct a multivariate distribution from copula `C` and one univariate
+distribution per coordinate. The order of `margins` determines which marginal
+is attached to each copula coordinate, and its length must equal `length(C)`.
+
+The joint CDF follows Sklar's representation
+
+```math
+F(x_1,\\ldots,x_d)=C(F_1(x_1),\\ldots,F_d(x_d)).
+```
 
 !!! note "Theorem - Sklar 1959"
-    For every random vector ``\\boldsymbol X``, there exists a copula ``C`` such that 
+    Every multivariate distribution admits such a copula. It is unique on the
+    product of the marginal ranges and, in particular, unique when all margins
+    are continuous.
 
-    ``\\forall \\boldsymbol x\\in \\mathbb R^d, F(\\boldsymbol x) = C(F_{1}(x_{1}),...,F_{d}(x_{d})).``
-    The copula ``C`` is uniquely determined on ``\\mathrm{Ran}(F_{1}) \\times ... \\times \\mathrm{Ran}(F_{d})``, where ``\\mathrm{Ran}(F_i)`` denotes the range of the function ``F_i``. In particular, if all marginals are absolutely continuous, ``C`` is unique.
+`cdf`, `rand`, marginalization, conditioning, and Rosenblatt transforms are
+available through the corresponding distribution and Copulas.jl interfaces.
+The usual density factorization is available when the copula and every margin
+provide the required densities. With discrete or mixed margins the CDF remains
+meaningful, but a product of marginal densities and a copula density does not
+in general represent the probability mass; users should not assume `pdf` or
+Rosenblatt round-trip properties beyond the capabilities documented by the
+components.
 
-
-The resulting random vector follows the `Distributions.jl` API (rand/cdf/pdf/logpdf). A `fit` method is also provided. Example:
+# Example
 
 ```julia
-using Copulas, Distributions, Random
-X₁ = Gamma(2,3)
-X₂ = Pareto()
-X₃ = LogNormal(0,1)
-C = ClaytonCopula(3,0.7) # A 3-variate Clayton Copula with θ = 0.7
-D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
+using Copulas, Distributions
 
-simu = rand(D,1000) # Generate a dataset
-
-# You may estimate a copula using the `fit` function:
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,LogNormal}}, simu)
+C = ClaytonCopula(3, 0.7)
+D = SklarDist(C, (Gamma(2, 3), Pareto(), LogNormal()))
+sample = rand(D, 1000)
 ```
+
+For fitting, `SklarDist{CopulaType,Tuple{MarginTypes...}}` is a deliberately
+supported public target syntax. It specifies the copula family and one marginal
+family per coordinate, for example
+`SklarDist{ClaytonCopula,Tuple{Gamma,Normal}}`. Those family parameters are
+public in this fitting context; no other field layout, storage parameter, or
+concrete representation detail of `SklarDist` is part of the public API. Use
+`fit(CopulaModel, SklarDist{...}, data)` to retain fitting diagnostics.
 
 References: 
 * [sklar1959](@cite) Sklar, M. (1959). Fonctions de répartition à n dimensions et leurs marges. In Annales de l'ISUP (Vol. 8, No. 3, pp. 229-231).

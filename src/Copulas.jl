@@ -150,7 +150,7 @@ module Copulas
     include("show.jl")
 
     export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
-    export SklarDist, CopulaModel, selectiontable
+    export SklarDist, CopulaModel, fitteddistribution, selectiontable
     export CopulaTest
     export IndependenceCopulaTest, ExchangeabilityCopulaTest
     export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
