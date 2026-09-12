@@ -18,23 +18,11 @@ at [the Copulas.jl benchmark dashboard](https://lrnv.github.io/Copulas.jl/benchm
 The local comparison below contrasts Copulas.jl with R's
 [`copula`](https://cran.r-project.org/package=copula) package. The table uses
 three representative models from their shared API: Clayton (lower-tail
-Archimedean), Gumbel (upper-tail Archimedean), and Gaussian (elliptical). The
-configurations are:
-
-- Clayton: ``d=2`` and ``\theta=2``;
-- Gumbel: ``d=2`` and ``\theta=2``;
-- Gaussian: ``d=2`` and ``\rho=0.5``.
+Archimedean), Gumbel (upper-tail Archimedean), and Gaussian (elliptical), in several different dimensions.
 
 For each model, the table measures sampling, PDF and CDF evaluation, and fitting
 by inversion of Kendall's tau. This is a useful common subset, not an exhaustive
-survey of either package. Two additional multivariate configurations probe how
-sampling and PDF evaluation scale with dimension:
-
-- Gumbel: ``d=5`` and ``\theta=2``;
-- Gaussian: ``d=10`` and ``\rho=0.35``.
-
-CDF and fitting remain bivariate so that the workloads and fitted parameter
-structures stay reasonably comparable.
+survey of either package.
 
 The comparison measures the Julia operations directly and invokes one
 `Rscript` process for their R equivalents. Both languages are warmed up before
