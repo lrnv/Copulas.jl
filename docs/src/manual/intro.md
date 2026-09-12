@@ -323,8 +323,12 @@ Copulas.τ(Ĉ)
 ```
 
 Notes:
-- `fit` chooses a reasonable default per-family; pass `method`/`copula_method` to control it.
-- Common copula methods include `:mle`, `:itau`, `:irho`, `:ibeta`; for Sklar fitting, `:ifm` (parametric CDFs) and `:ecdf` (pseudo-observations) are available.
+- Direct copula fits default to `method=:mle`; `method=:mpl` ranks raw data
+  when used with `pseudo_values=false`.
+- Sklar fits default to sequential `sklar_method=:ifm`; `:ecdf` is the
+  rank-based alternative. Neither route is a joint full-likelihood fit.
+- The Sklar copula step defaults to `copula_method=:mle` and can be replaced by
+  another family-supported method such as `:itau` or `:irho`.
 - `CopulaModel` implements model stats: `nobs`, `coef`, `vcov`, `stderror`, `confint`, `aic/bic`, `nullloglikelihood`, and more.
 - For a Bayesian workflow over Sklar models, see the examples section.
 

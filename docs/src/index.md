@@ -189,8 +189,12 @@ Ĉ = fit(GumbelCopula, U; method=:itau)
 ```
 
 Notes
-- `fit` chooses a reasonable default per family; pass `method`/`copula_method` to control it.
-- Common methods: copulas `:mle`, `:itau`, `:irho`, `:ibeta`; Sklar `:ifm` (parametric CDFs) and `:ecdf` (pseudo-observations).
+- Direct copula fits default to `method=:mle`. Use `method=:mpl,
+  pseudo_values=false` for maximum pseudo-likelihood from raw observations.
+- Sklar fits default to sequential `sklar_method=:ifm`; `:ecdf` is the
+  rank-based alternative. Neither route is joint full maximum likelihood.
+- Their copula step defaults to `copula_method=:mle`, replaceable by another
+  family-supported method such as `:itau` or `:irho`.
 
 Use `CopulaModel` when diagnostics and inference matter. If the family is not
 known in advance, fit an explicit, scientifically appropriate candidate set and
