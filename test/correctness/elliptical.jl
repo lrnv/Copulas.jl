@@ -73,7 +73,7 @@ end
     u = [0.2, 0.4, 0.7]
     @test pdf(T∞, u) ≈ pdf(G, u) rtol=1e-13
     # Both CDF evaluations are numerical.
-    @test cdf(T∞, u) ≈ cdf(G, u) atol=5e-5
+    @test cdf(T∞, u) ≈ cdf(G, u) atol=1e-12
     U = rand(StableRNG(479), G, 20)
     RT = rosenblatt(T∞, U)
     RG = rosenblatt(G, U)
