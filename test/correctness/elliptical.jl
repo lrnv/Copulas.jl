@@ -65,3 +65,19 @@ end
     @test logpdf(C64, Float32[0.4, 0.6]) isa Float64
     @test logpdf(C64, Float32[0.4, 0.6]) ≈ logpdf(C64, [0.4, 0.6]) rtol=1e-6
 end
+
+@testset "TCopula Gaussian limit at ν = Inf" begin
+    Σ = [1.0  0.6  0.3; 0.6  1.0  0.5; 0.3  0.5  1.0]
+    T∞ = TCopula(Inf, copy(Σ))
+    G = GaussianCopula(copy(Σ))
+    u = [0.2, 0.4, 0.7]
+    @test pdf(T∞, u) ≈ pdf(G, u) rtol=1e-13
+    # Both CDF evaluations are numerical.
+    @test cdf(T∞, u) ≈ cdf(G, u) atol=5e-5
+    U = rand(StableRNG(479), G, 20)
+    RT = rosenblatt(T∞, U)
+    RG = rosenblatt(G, U)
+    @test RT ≈ RG atol=1e-13
+    @test inverse_rosenblatt(T∞, RT) ≈ U atol=1e-12
+    @test loglikelihood(T∞, U) ≈ loglikelihood(G, U) atol=1e-12
+end
