@@ -89,7 +89,7 @@ function _cdf(C::CT,u) where {CT<:GaussianCopula}
     # mutable dense vector.
     x = collect(StatsBase.quantile.(Distributions.Normal(), u))
     d = length(C)
-    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x; rng = Random.Xoshiro(0))[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
