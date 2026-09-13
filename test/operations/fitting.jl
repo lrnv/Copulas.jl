@@ -40,6 +40,67 @@ end
     @test Copulas.ρ(fitted) ≈ StatsBase.corspearman(U')[1, 2] atol=2e-3
 end
 
+@testset "Gaussian MLE maximizes the copula likelihood" begin
+    # Regression test for #477.
+    z1 = [
+        -0.789121, -0.167787,  1.487925,  0.393974,  1.120231,
+         0.777104, -0.436464,  0.741952, -0.116595, -0.122389,
+         0.297167, -1.325930,  1.392166, -0.471090,  1.200269,
+         0.336321,  1.732033, -0.459969, -0.111795,  0.537769,
+    ]
+    z2 = [
+        -2.702032,  0.644028,  2.185593,  1.223794,  1.214885,
+         0.142574,  0.963670,  1.345007,  0.234323, -0.156080,
+        -0.313183, -1.993197,  1.822312, -2.507589,  0.129987,
+         0.232541,  1.625898,  1.431677,  0.837426, -0.122637,
+    ]
+    N01 = Normal()
+    U = Matrix{Float64}(undef, 2, length(z1))
+    U[1, :] .= cdf.(N01, z1)
+    U[2, :] .= cdf.(N01, z2)
+    fitted = fit(GaussianCopula, U; method=:mle, vcov=false, derived_measures=false,)
+    @test fitted isa GaussianCopula{2}
+    @test fitted.Σ[1, 2] ≈ 0.5561662371678145 atol=1e-8
+    @test loglikelihood(fitted, U) ≈ 5.140188516707351 atol=1e-10
+end
+
+@testset "Student MLE profiles degrees of freedom" begin
+    d = 3
+    ρ = 0.55
+    Σ = [ρ^abs(i - j) for i in 1:d, j in 1:d]
+    source = TCopula(4.0, copy(Σ))
+    U = rand(StableRNG(477), source, 1_000)
+    model = fit(CopulaModel, TCopula, U; method=:mle, vcov=false, derived_measures=false,)
+    fitted = fitteddistribution(model)
+    θ = params(fitted)
+    @test model.converged
+    @test fitted isa TCopula{3}
+    @test θ.ν > 0
+    @test isfinite(θ.ν)
+    @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(θ.Σ),)
+    @test maximum(abs.(LinearAlgebra.diag(θ.Σ) .- 1),) < 1e-12
+    # The Student profile contains the Gaussian copula as ν = Inf,
+    # so its fitted likelihood must not be worse than that endpoint.
+    gaussian = fit(GaussianCopula,U; method=:mle, vcov=false, derived_measures=false,)
+    @test loglikelihood(fitted, U) >= loglikelihood(gaussian, U) - 1e-8
+    @test model.method_details.profile_upper >= 0.5
+    @test model.method_details.profile_expansions >= 0
+end
+
+@testset "Student MLE can estimate ν below two" begin
+    d = 3
+    ρ = 0.5
+    Σ = [ρ^abs(i - j) for i in 1:d, j in 1:d]
+    source = TCopula(1.0, copy(Σ))
+    U = rand(StableRNG(478), source, 1_500)
+    model = fit(CopulaModel, TCopula, U; method=:mle, vcov=false, derived_measures=false,)
+    fitted = fitteddistribution(model)
+    @test model.converged
+    @test 0 < params(fitted).ν < 2
+    @test model.method_details.profile_expansions >= 1
+    @test model.method_details.profile_upper > 0.5
+end
+
 @testset "generic empirical EV estimators by dimension" begin
     checked = Set{Tuple{Method,Symbol,Symbol}}()
     selected = Set{Tuple{Method,Symbol,Symbol}}()
@@ -383,4 +444,20 @@ end
     end
 
     @test ForwardDiff.derivative(f, 2.0) ≈ 1.0
+end
+
+@testset "Gaussian copula multivariate MLE" begin
+    d = 5
+    n = 2_000
+    ρ = 0.6
+    R = [ρ^abs(i-j) for i in 1:d, j in 1:d]
+    source = GaussianCopula(R)
+    U = rand(StableRNG(477), source, n)
+    model = fit(CopulaModel, GaussianCopula, U; method=:mle, vcov=false, derived_measures=false,)
+    fitted = fitteddistribution(model)
+    R̂ = params(fitted).Σ
+    @test model.converged
+    @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(R̂))
+    @test maximum(abs.(diag(R̂) .- 1)) < 1e-12
+    @test maximum(abs.(R̂ - R)) < 0.05
 end
