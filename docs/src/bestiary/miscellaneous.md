@@ -35,8 +35,8 @@ with `WCopula()`, `WCopula(2)`, or `WCopula{2}()`.
 
 ### `SurvivalCopula`
 
-If ``\boldsymbol U\sim C``, the survival copula is the copula of
-``\boldsymbol 1-\boldsymbol U``. It exchanges lower- and upper-tail behaviour
+If ``\boldsymbol U\sim C``, the survival copula is the distribution of
+``\boldsymbol 1-\boldsymbol U`` (it is still a copula). It exchanges lower- and upper-tail behaviour
 without adding a continuous parameter. Construct it with `SurvivalCopula(C)`.
 
 For compatibility, `SurvivalCopula(C, flips)` also constructs the copula of a
