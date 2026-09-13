@@ -216,13 +216,13 @@ const _GROUPED_PSEUDO_TIE_METHOD = Union{
     Val{:average}, Val{:last}, Val{:min}, Val{:max}, Val{:random},
 }
 
-function _pseudoranks!(ranks::AbstractVector, x::AbstractVector, tie_method::Val,
+@inline function _pseudoranks!(ranks::AbstractVector, x::AbstractVector, tie_method::Val,
         rng::Random.AbstractRNG, order::Vector{Int})
     sortperm!(order, x; by=identity, alg=Base.Sort.DEFAULT_STABLE)
     return _assign_pseudoranks!(ranks, x, order, tie_method, rng)
 end
 
-function _assign_pseudoranks!(ranks::AbstractVector{T}, ::AbstractVector,
+@inline function _assign_pseudoranks!(ranks::AbstractVector{T}, ::AbstractVector,
         order::Vector{Int}, ::Val{:first}, ::Random.AbstractRNG) where {T}
     denominator = T(length(order) + 1)
     @inbounds for (rank, index) in enumerate(order)
@@ -231,15 +231,22 @@ function _assign_pseudoranks!(ranks::AbstractVector{T}, ::AbstractVector,
     return ranks
 end
 
-function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
+@inline function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
         order::Vector{Int}, tie_method::_GROUPED_PSEUDO_TIE_METHOD,
         rng::Random.AbstractRNG)
     n = length(order)
     denominator = eltype(ranks)(n + 1)
     first = 1
     while first <= n
-        last = first
-        @inbounds while last < n && x[order[last + 1]] == x[order[first]]
+        index = @inbounds order[first]
+        if first == n || @inbounds(x[order[first + 1]] != x[index])
+            @inbounds ranks[index] = eltype(ranks)(first) / denominator
+            first += 1
+            continue
+        end
+
+        last = first + 1
+        @inbounds while last < n && x[order[last + 1]] == x[index]
             last += 1
         end
         _assign_tie_group!(ranks, order, first, last, denominator, tie_method, rng)
@@ -248,7 +255,7 @@ function _assign_pseudoranks!(ranks::AbstractVector, x::AbstractVector,
     return ranks
 end
 
-function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+@inline function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
         first::Int, last::Int, denominator::T, ::Val{:average},
         ::Random.AbstractRNG) where {T}
     rank = ((T(first) + T(last)) / T(2)) / denominator
@@ -258,7 +265,7 @@ function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
     return nothing
 end
 
-function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+@inline function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
         first::Int, last::Int, denominator::T, ::Val{:min},
         ::Random.AbstractRNG) where {T}
     rank = T(first) / denominator
@@ -268,7 +275,7 @@ function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
     return nothing
 end
 
-function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+@inline function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
         first::Int, last::Int, denominator::T, ::Val{:max},
         ::Random.AbstractRNG) where {T}
     rank = T(last) / denominator
@@ -278,7 +285,7 @@ function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
     return nothing
 end
 
-function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+@inline function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
         first::Int, last::Int, denominator::T, ::Val{:last},
         ::Random.AbstractRNG) where {T}
     @inbounds for k in first:last
@@ -287,7 +294,7 @@ function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
     return nothing
 end
 
-function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+@inline function _assign_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
         first::Int, last::Int, denominator::T, ::Val{:random},
         rng::Random.AbstractRNG) where {T}
     Random.shuffle!(rng, @view order[first:last])
