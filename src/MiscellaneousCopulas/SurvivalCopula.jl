@@ -1,4 +1,14 @@
 """
+    AbstractReflectedCopula{d,CT} <: Copula{d}
+
+Internal supertype shared by copulas obtained by reflecting coordinates of an
+underlying copula of type `CT`. Implementations provide [`basecopula`](@ref)
+and [`flipmask`](@ref); the common distribution and conditioning behaviour is
+then inherited from this interface.
+"""
+abstract type AbstractReflectedCopula{d,CT} <: Copula{d} end
+
+"""
     SurvivalCopula(C)
     SurvivalCopula(C, flips)
     SurvivalCopula{d}(C, flips)
@@ -36,16 +46,6 @@ See also: [`Copula`](@ref), [`subsetdims`](@ref), [`condition`](@ref),
 References:
 * [nelsen2006](@cite) Nelsen (2006), An introduction to copulas.
 """
-"""
-    AbstractReflectedCopula{d,CT} <: Copula{d}
-
-Internal supertype shared by copulas obtained by reflecting coordinates of an
-underlying copula of type `CT`. Implementations provide [`basecopula`](@ref)
-and [`flipmask`](@ref); the common distribution and conditioning behaviour is
-then inherited from this interface.
-"""
-abstract type AbstractReflectedCopula{d,CT} <: Copula{d} end
-
 struct SurvivalCopula{d,CT} <: AbstractReflectedCopula{d,CT}
     C::CT
     flipmask::NTuple{d,Bool}
