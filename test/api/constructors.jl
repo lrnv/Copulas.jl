@@ -73,8 +73,8 @@ end
     @test_throws MethodError Rotated180Copula(ClaytonCopula{3}(1.5))
     @test_throws MethodError Rotated270Copula(ClaytonCopula{3}(1.5))
     @test_throws DimensionMismatch Rotated90Copula(3, base2)
-    @test_throws DimensionMismatch Rotated180Copula(2, ClaytonCopula{3}(1.5))
-    @test_throws DimensionMismatch Rotated270Copula(3, ClaytonCopula{3}(1.5))
+    @test_throws MethodError Rotated180Copula(2, ClaytonCopula{3}(1.5))
+    @test_throws MethodError Rotated270Copula(3, ClaytonCopula{3}(1.5))
 
     B = [0.7 0.3; 0.2 0.8]
     spectral = Copulas.DiscreteSpectralTail(B)

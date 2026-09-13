@@ -94,14 +94,11 @@ See also: [`SurvivalCopula`](@ref), [`Copulas.flipmask`](@ref),
 """
 struct Rotated180Copula{d,CT} <: AbstractReflectedCopula{d,CT}
     C::CT
-    function Rotated180Copula{2}(C::Copula{2})
-        new{2,typeof(C)}(C)
-    end
+    Rotated180Copula{2}(C::Copula{2}) = new{2,typeof(C)}(C)
 end
 Rotated180Copula(C::Copula{2}) = Rotated180Copula{2}(C)
-function Rotated180Copula(d::Integer, C::Copula)
+function Rotated180Copula(d::Integer, C::Copula{2})
     d == 2 || throw(DimensionMismatch("Rotated180Copula is only defined in dimension 2"))
-    length(C) == 2 || throw(DimensionMismatch("the underlying copula must have dimension 2"))
     return Rotated180Copula{2}(C)
 end
 
@@ -119,14 +116,11 @@ See also: [`SurvivalCopula`](@ref), [`Copulas.flipmask`](@ref),
 """
 struct Rotated270Copula{d,CT} <: AbstractReflectedCopula{d,CT}
     C::CT
-    function Rotated270Copula{2}(C::Copula{2})
-        new{2,typeof(C)}(C)
-    end
+    Rotated270Copula{2}(C::Copula{2}) = new{2,typeof(C)}(C)
 end
 Rotated270Copula(C::Copula{2}) = Rotated270Copula{2}(C)
-function Rotated270Copula(d::Integer, C::Copula)
+function Rotated270Copula(d::Integer, C::Copula{2})
     d == 2 || throw(DimensionMismatch("Rotated270Copula is only defined in dimension 2"))
-    length(C) == 2 || throw(DimensionMismatch("the underlying copula must have dimension 2"))
     return Rotated270Copula{2}(C)
 end
 
