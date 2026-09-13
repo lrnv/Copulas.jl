@@ -89,7 +89,7 @@ function _cdf(C::CT,u) where {CT<:GaussianCopula}
     # mutable dense vector.
     x = collect(StatsBase.quantile.(Distributions.Normal(), u))
     d = length(C)
-    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x)[1]
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x; rng = Random.Xoshiro(0))[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
@@ -162,9 +162,62 @@ end
 function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
     return (; Σ = _rebound_corr_params(d, α))
 end
-function _fit(CT::Type{<:GaussianCopula}, u, ::Val{:mle})
-    dd = Distributions.fit(N(CT), StatsBase.quantile.(U(CT),u))
-    Σ = Matrix(dd.Σ)
-    return GaussianCopula(Σ), (; θ̂ = (; Σ = Σ))
+function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle})
+    d, n = size(Udata)
+    # Normal scores only need to be computed once.
+    N01 = Distributions.Normal()
+    Z = Distributions.quantile.(N01, Udata)
+    Q = Z * Z'    # Cross-product sufficient for the Gaussian copula likelihood.
+    if d == 2
+        q11 = Q[1, 1]; q22 = Q[2, 2]; q12 = Q[1, 2]
+        T = eltype(Q)
+        δ = sqrt(eps(T))
+        lower = -one(T) + δ
+        upper =  one(T) - δ
+
+        objective_2d = ρ -> begin
+            one_minus_ρ² = one(ρ) - ρ * ρ
+            return n / 2 * log(one_minus_ρ²) + (q11 + q22 - 2ρ * q12) / (2 * one_minus_ρ²)
+        end
+
+        res = Optim.optimize(objective_2d, lower, upper, Optim.Brent(),)
+        ρ̂ = Optim.minimizer(res)
+        R̂ = T[one(T) ρ̂; ρ̂ one(T)]
+        θ̂ = (; Σ = R̂)
+
+        return GaussianCopula(R̂), (;θ̂, optimizer  = Optim.summary(res), converged  = Optim.converged(res), iterations = Optim.iterations(res),)
+    end
+
+    # In dimensions d > 2, use the normal-score correlation only
+    # as an interior starting point.
+    R₀ = _score_corr_start(Z)
+    α₀ = _unbound_corr_params(d, R₀)
+
+    objective_hd = α -> begin
+        # The partial-correlation parameterization already gives
+        # the lower-triangular factor L such that R = L * L'.
+        L = _rebound_corr_factor(d, α)
+        Ltri = LinearAlgebra.LowerTriangular(L)
+        # log|R| = 2 * log|L|
+        logdetR = 2 * sum(log, LinearAlgebra.diag(L))
+        # tr(R^{-1} Q), using triangular solves:
+        # R^{-1} Q = L'^{-1} L^{-1} Q.
+        Y = Ltri \ Q
+        RinvQ = transpose(Ltri) \ Y
+        quadratic = LinearAlgebra.tr(RinvQ)
+
+        return (n * logdetR + quadratic) / 2
+    end
+    res = try
+    Optim.optimize(objective_hd, α₀, Optim.LBFGS();autodiff=ADTypes.AutoForwardDiff(),)
+    catch
+        Optim.optimize(objective_hd, α₀, Optim.NelderMead(),)
+    end
+    α̂ = Optim.minimizer(res)
+    L̂ = _rebound_corr_factor(d, α̂)
+    R̂ = L̂ * L̂'
+    R̂ = (R̂ + R̂') / 2
+    θ̂ = (; Σ = R̂)
+    return GaussianCopula(R̂), (;θ̂, optimizer  = Optim.summary(res), converged  = Optim.converged(res), iterations = Optim.iterations(res),)
 end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)
