@@ -594,15 +594,7 @@ function _randomization_sample(::RadialSymmetryHypothesis, U::AbstractMatrix, rn
 end
 
 function _average_pseudos(sample::AbstractMatrix)
-    d, n = size(sample)
-    U = Matrix{Float64}(undef, d, n)
-    denom = n + 1
-
-    @inbounds for j in 1:d
-        U[j, :] .= StatsBase.tiedrank(@view sample[j, :]) ./ denom
-    end
-
-    return U
+    return Matrix{Float64}(pseudos(sample; ties=:average))
 end
 
 _randomization_pseudos(::RadialSymmetryHypothesis, sample::AbstractMatrix,) = _average_pseudos(sample)

@@ -17,6 +17,10 @@ Behavior and cost:
   approximation but require work and memory proportional to ``\\prod_j m_j``.
   Large `d` or `m` can therefore be prohibitive.
 - If ``C`` is an `EmpiricalCopula`, the constructor produces the *empirical Bernstein copula*, a smoothed version of the empirical copula.
+- Raw data supplied with `pseudo_values=false` must have tie-free margins.
+  Resolve ties explicitly with `pseudos(data; ties=:first)`, `:last`, or
+  `:random` before construction when deliberate tie breaking is scientifically
+  justified.
 - Supports `cdf`, `logpdf`, and random generation via mixtures of beta distributions.
 
 See also: [`BetaCopula`](@ref), [`EmpiricalCopula`](@ref), [`Copula`](@ref),
@@ -68,7 +72,9 @@ BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base;
 BernsteinCopula(d::Integer, base::Copula; kwargs...) = BernsteinCopula{d}(base; kwargs...)
 function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}
     size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
-    return BernsteinCopula{d}(EmpiricalCopula{d}(data; pseudo_values=get(kwargs, :pseudo_values, true));
+    pseudo_values = get(kwargs, :pseudo_values, true)
+    pseudo_values || _require_tie_free_rows(data, "BernsteinCopula")
+    return BernsteinCopula{d}(EmpiricalCopula{d}(data; pseudo_values=pseudo_values);
                               m=get(kwargs, :m, nothing))
 end
 BernsteinCopula(data::AbstractMatrix; kwargs...) = BernsteinCopula{size(data, 1)}(data; kwargs...)

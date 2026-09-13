@@ -11,16 +11,23 @@ Through the statistical process leading to the estimation of copulas, one usuall
 
 ::: definition Pseudo-observations
 
-If $\boldsymbol x \in \mathbb{R}^{N \times d}$ is an $N$-sample of a $d$-variate real-valued random vector $\boldsymbol X$, then the pseudo-observations are the normalized ranks of the marginals of $\boldsymbol x$, defined as:
+If $\boldsymbol x \in \mathbb{R}^{N \times d}$ is an $N$-sample of a $d$-variate real-valued random vector $\boldsymbol X$, then the pseudo-observations are the normalized ranks of the marginals of $\boldsymbol x$, defined in the absence of ties as:
 
 $$\boldsymbol u \in [0,1]^{N \times d}:\; u_{i,j} = \frac{\mathrm{Rank}(x_{i,j}, \boldsymbol x_{\cdot,j})}{N+1} = \frac{1}{N+1} \sum_{k=1}^N \mathbb{1}_{x_{k,j} \le x_{i,j}},$$
 
 where $\mathrm{Rank}(y, \boldsymbol x) = \sum_{x_i \in \boldsymbol x} \mathbb{1}_{x_i \le y}$.
 
+With tied observations, the rank convention becomes part of the estimator.
+`pseudos` uses average ranks by default, matching the usual R and vinecopulib
+convention. The `ties` keyword also provides `:first`, `:last`, `:min`, `:max`,
+and `:random`; the latter accepts an explicit `rng` for reproducibility. These
+choices agree when margins are tie-free. A tie convention does not, on its own,
+make inference designed for continuous margins valid for discrete data.
+
 :::
 
 
-In `Copulas.jl`, we provide a function `pseudos` that implement this transformation directly. 
+In `Copulas.jl`, the function `pseudos` implements this transformation directly.
 
 See the canonical Public API entry for [`pseudos`](@ref).
 

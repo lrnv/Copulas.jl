@@ -1,7 +1,7 @@
 """
-    BetaCopula(u)
-    BetaCopula{d}(u)
-    BetaCopula(d, u)
+    BetaCopula(data)
+    BetaCopula{d}(data)
+    BetaCopula(d, data)
     
 The empirical beta copula in dimension ``d`` is defined as
 
@@ -13,8 +13,11 @@ where ``R_{ij}`` is the rank of observation ``i`` in margin ``j``, and ``U \\sim
 
 Notes:
 - This is always a valid copula for any finite sample size `n`.
-- Rows of `u` are variables and columns are observations. Each row is ranked
-  internally using ordinal ranks, so ties are broken by their input order.
+- Rows of `data` are variables and columns are observations. Empirical beta
+  copulas require each margin to have distinct ranks; tied margins are rejected
+  rather than broken according to observation order. If deliberate tie breaking
+  is appropriate, apply [`pseudos`](@ref) with `ties=:first`, `:last`, or
+  `:random` first. Tie-preserving methods remain tied and are still rejected.
 - The beta kernels smooth the empirical mass into an absolutely continuous
   copula. This removes atoms but does not remove finite-sample uncertainty or
   sensitivity to the tie convention.
@@ -31,6 +34,7 @@ struct BetaCopula{d,MT} <: Copula{d}
     n::Int
     function BetaCopula{d}(data::AbstractMatrix) where {d}
         size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
+        _require_tie_free_rows(data, "BetaCopula")
         n = size(data, 2)
         R = Matrix{Int}(undef, d, n)
         @inbounds for j in 1:d
