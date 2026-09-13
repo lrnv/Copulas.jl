@@ -24,6 +24,17 @@ coefficients to their theoretical values.
 
 :::
 
+::: definition Maximum likelihood and maximum pseudo-likelihood
+
+Maximum likelihood (`method=:mle`) maximizes the copula density over values
+already observed on the uniform copula scale. Maximum pseudo-likelihood
+(`method=:mpl`) first replaces raw marginal observations by their empirical
+ranks and then maximizes the same numerical objective. The point optimizer is
+the same, but the two estimators make different assumptions about how the
+uniform observations were obtained.
+
+:::
+
 ## From a point estimate to a statistical model
 
 ### A fitted copula
@@ -45,7 +56,7 @@ not enough. `CopulaModel` retains the likelihood, fitting method, convergence
 information and, when requested, an estimate of parameter uncertainty:
 
 ```@example fitting_interface
-M = fit(CopulaModel, GumbelCopula, U; method=:default)
+M = fit(CopulaModel, GumbelCopula, U; method=:mle)
 ```
 
 The fitted distribution is available through the standard model interface;
@@ -147,8 +158,8 @@ the selection step.
 Usually, the model is identified by a copula or Sklar type, for example
 `fit(GumbelCopula, U)` or
 `fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X)`. With
-`method=:default`, each family chooses its documented default estimator;
-explicitly supported methods depend on the family.
+direct copula calls default to `method=:mle`; explicitly supported alternatives
+depend on the family.
 
 The form `SklarDist{CopulaType,Tuple{MarginTypes...}}` is intentionally public
 syntax for this purpose: it selects the copula family and the ordered marginal
@@ -274,16 +285,24 @@ For raw observations, fitting a `SklarDist` separates two questions: how each
 margin should be estimated, and how the transformed observations should be used
 to estimate dependence.
 
-You can pass the `sklar_method` parameter as: 
+You can pass the `sklar_method` parameter as:
 
 - `:ifm`: fits parametric margins and maps data to pseudo-scale via their CDFs.  
 - `:ecdf`: uses empirical pseudo-observations (ranks).
+
+The default is `sklar_method=:ifm`. In either route the copula step defaults to
+`copula_method=:mle` whenever that estimator is supported. Empirical or
+extension-defined families without MLE retain their first advertised method.
+The default can be replaced by any method supported by the chosen family, such
+as `:itau` or `:irho`.
 
 ::: remark IFM or empirical margins?
 
 - Use `sklar_method = :ifm` when margins are plausibly parametric and you want a model-based projection; use `:ecdf` to avoid margin misspecification.
 - `margins_kwargs` is a single `NamedTuple` applied to every marginal fit. For heterogeneous options, fit margins manually and then fit the copula on the resulting pseudo-data.
 - The model’s `null_ll` (for LR tests) is the log-likelihood under independence with the **same margins**.
+- Neither route jointly maximizes the complete Sklar likelihood: IFM is
+  sequential, while ECDF estimates dependence from ranks.
 
 :::
 
@@ -292,7 +311,7 @@ S = SklarDist(ClaytonCopula(2, 5), (Normal(), LogNormal(0, 0.5)))
 X = rand(S, 300)
 Ŝ = fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X;
 	sklar_method=:ifm, # or :ecdf
-	copula_method=:default, # see next section. 
+	copula_method=:default, # MLE when available; otherwise the family's default
 	margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple()) # options will be passed down to fitting functions. 
 Ŝ
 ```
@@ -305,19 +324,54 @@ plot(fitteddistribution(Ŝ))
 
 ## Choosing an estimating principle
 
-The names and availability of fitting methods depend on the family. Use
-`method=:default` unless a family documents a more appropriate explicit method.
+The names and availability of fitting methods depend on the family. Direct
+parametric copula fitting defaults to `method=:mle` whenever MLE is available;
+choose another estimator explicitly. Structural, empirical, or selection
+families without an MLE retain the first method advertised by their
+`_available_fitting_methods` extension hook. This preserves extension-defined
+defaults without ever selecting `:mpl` implicitly.
 
 The fitting method determines which feature of the sample identifies the
 parameters. No method dominates in every family and sample size.
 
 - `:mle` — **Maximum likelihood** over `U`. Recommended when a stable density and a good reparameterization exist.
+- `:mpl` — **Maximum pseudo-likelihood**. With `pseudo_values=false`, raw
+  observations are converted by `pseudos` before the copula likelihood is
+  maximized. This method is available whenever `:mle` is available, but is
+  never selected by default.
 - `:itau` — **Kendall inverse**: matches theoretical `tau(C)` to empirical `tau(U)`. Ideal for single-parameter families with a monotone inverse.
 - `:irho` — **Spearman inverse**: analogous to `rho`; can use scalar or matrix objectives (e.g., multivariate Gaussians).
 - `:ibeta` — **Blomqvist inverse**: scalar; only valid for families with **≤ 1** free parameter.
 - `:itau_irho` — **joint Kendall/Spearman matching** for a bivariate
   `TCopula`: Kendall's tau determines the correlation parameter and Spearman's
   rho determines the degrees of freedom.
+
+The two likelihood names are kept consistent with the preprocessing request.
+Asking for `method=:mle, pseudo_values=false` silently records the effective
+method as `:mpl`. Asking for `method=:mpl, pseudo_values=true` records `:mle`
+and warns, because no rank transformation occurs.
+
+::: remark Why there is no full Sklar MLE yet
+
+A generic joint optimizer would need a smooth unconstrained parameterization
+for every requested marginal family. `Distributions.jl` does not expose enough
+information to derive such mappings from `params` and constructors: marginal
+parameters may be positive, bounded, ordered, matrix-valued, mutually
+constrained, or may alter the support. Guessing those constraints would make a
+nominally generic method unreliable. A future API extension can add full Sklar
+MLE once marginal families can explicitly provide this optimization protocol;
+the continuous, discrete and mixed-margin likelihood cases must also be
+distinguished.
+
+There is a second, statistical limitation: `Distributions.fit` is a common
+entry point, not a universal promise that every marginal family uses maximum
+likelihood. Its estimator is chosen by the individual distribution
+implementation and is not exposed to Copulas.jl through a stable protocol; for
+some families it may use another fitting principle altogether. Consequently,
+independently calling `fit` on every margin neither identifies a joint MLE nor
+even guarantees that every marginal block was estimated by marginal MLE.
+
+:::
 
 ::: property Identifiability of inversion estimators
 
