@@ -69,14 +69,11 @@ See also: [`SurvivalCopula`](@ref), [`Copulas.flipmask`](@ref),
 """
 struct Rotated90Copula{d,CT} <: AbstractReflectedCopula{d,CT}
     C::CT
-    function Rotated90Copula{2}(C::Copula{2})
-        new{2,typeof(C)}(C)
-    end
+    Rotated90Copula{2}(C::Copula{2}) = new{2,typeof(C)}(C)
 end
 Rotated90Copula(C::Copula{2}) = Rotated90Copula{2}(C)
-function Rotated90Copula(d::Integer, C::Copula)
+function Rotated90Copula(d::Integer, C::Copula{2})
     d == 2 || throw(DimensionMismatch("Rotated90Copula is only defined in dimension 2"))
-    length(C) == 2 || throw(DimensionMismatch("the underlying copula must have dimension 2"))
     return Rotated90Copula{2}(C)
 end
 
@@ -162,10 +159,8 @@ function _survival_flipmask(::Val{d}, flips::NTuple{d,Bool}) where {d}
 end
 function _survival_flipmask(::Val{d}, flips) where {d}
     indices = Tuple(flips)
-    all(i -> i isa Integer && 1 <= i <= d, indices) ||
-        throw(ArgumentError("flip indices must belong to 1:$d"))
-    length(unique(indices)) == length(indices) ||
-        throw(ArgumentError("flip indices must be unique"))
+    all(i -> i isa Integer && 1 <= i <= d, indices) || throw(ArgumentError("flip indices must belong to 1:$d"))
+    length(unique(indices)) == length(indices) || throw(ArgumentError("flip indices must be unique"))
     return ntuple(i -> i in indices, d)
 end
 _survival_flipindices(mask::NTuple{d,Bool}) where {d} =
@@ -249,38 +244,19 @@ function _fit(::Type{RT}, U, m; kwargs...) where {subCT,RT<:Rotated270Copula{2,s
     return Rotated270Copula(C), meta
 end
 
-_available_fitting_methods(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} =
-    _available_fitting_methods(subCT, d)
-_available_fitting_methods(::Type{<:AbstractReflectedCopula{D,subCT}}, d) where {D,subCT} =
-    _available_fitting_methods(subCT, d)
-_example(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} =
-    SurvivalCopula(_example(subCT, d), ())
-_example(::Type{<:Rotated90Copula{2,subCT}}, d) where {subCT} =
-    Rotated90Copula(_example(subCT, d))
-_example(::Type{<:Rotated180Copula{2,subCT}}, d) where {subCT} =
-    Rotated180Copula(_example(subCT, d))
-_example(::Type{<:Rotated270Copula{2,subCT}}, d) where {subCT} =
-    Rotated270Copula(_example(subCT, d))
+_available_fitting_methods(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} = _available_fitting_methods(subCT, d)
+_available_fitting_methods(::Type{<:AbstractReflectedCopula{D,subCT}}, d) where {D,subCT} = _available_fitting_methods(subCT, d)
 
+_example(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} = SurvivalCopula(_example(subCT, d), ())
+_example(::Type{<:Rotated90Copula{2,subCT}}, d) where {subCT} = Rotated90Copula(_example(subCT, d))
+_example(::Type{<:Rotated180Copula{2,subCT}}, d) where {subCT} = Rotated180Copula(_example(subCT, d))
+_example(::Type{<:Rotated270Copula{2,subCT}}, d) where {subCT} = Rotated270Copula(_example(subCT, d))
 
 # Parameter transfer for fitting: delegate to underlying copula
-function _unbound_params(::Type{<:SurvivalCopula{d,CT}}, d_, θ) where {d,CT}
-    return _unbound_params(CT, d_, θ)
-end
-
-function _rebound_params(::Type{<:SurvivalCopula{d,CT}}, d_, α) where {d,CT}
-    return _rebound_params(CT, d_, α)
-end
-
-function _unbound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, θ) where {d,CT}
-    return _unbound_params(CT, d_, θ)
-end
-
-function _rebound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, α) where {d,CT}
-    return _rebound_params(CT, d_, α)
-end
-
-
+_unbound_params(::Type{<:SurvivalCopula{d,CT}}, d_, θ) where {d,CT} = _unbound_params(CT, d_, θ)
+_rebound_params(::Type{<:SurvivalCopula{d,CT}}, d_, α) where {d,CT} = _rebound_params(CT, d_, α)
+_unbound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, θ) where {d,CT} = _unbound_params(CT, d_, θ)
+_rebound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, α) where {d,CT} = _rebound_params(CT, d_, α)
 
 # Conditioning bindings colocated
 function distortion(S::AbstractReflectedCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
@@ -304,7 +280,6 @@ function SubsetCopula(C::AbstractReflectedCopula{d}, dims::NTuple{p, Int}) where
     newflips = Tuple(k for (k, i) in enumerate(dims) if mask[i])
     return SurvivalCopula(subsetdims(basecopula(C), dims), newflips)
 end
-
 
 function τ(C::AbstractReflectedCopula{2})
     # For bivariate, flipping one margin negates tau, flipping both leaves tau unchanged
