@@ -5,8 +5,14 @@ function Base.show(io::IO, C::FGMCopula{d, Tθ, Tf}) where {d, Tθ, Tf}
     print(io, "FGMCopula{$d}(θ = $(C.θ))")
 end
 function Base.show(io::IO, C::SurvivalCopula)
-    print(io, "SurvivalCopula($(C.C), $(_survival_flipindices(C.flipmask)))")
+    print(io, "SurvivalCopula($(basecopula(C)), $(flips(C)))")
 end
+Base.show(io::IO, C::Rotated90Copula) =
+    print(io, "Rotated90Copula($(basecopula(C)))")
+Base.show(io::IO, C::Rotated180Copula) =
+    print(io, "Rotated180Copula($(basecopula(C)))")
+Base.show(io::IO, C::Rotated270Copula) =
+    print(io, "Rotated270Copula($(basecopula(C)))")
 function Base.show(io::IO, C::ArchimedeanCopula)
     print(io, "$(typeof(C))$(Distributions.params(C))")
 end
