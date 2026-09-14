@@ -776,6 +776,18 @@ function _nested_status(parent::BB10Generator, child::BB10Generator, ::Int)
     return θp == θc ? (δp <= δc ? _NESTING_VALID : _NESTING_INVALID) : _NESTING_UNSUPPORTED
 end
 
+# A positive Clayton parent cannot contain finite Frank, Gumbel, or Joe
+# children.  For Frank/Joe, ψ_child(t) ~ K*exp(-t); for Gumbel,
+# ψ_child(t) = exp(-t^(1/θ)).  Applying the positive-Clayton inverse makes
+# g = ϕ_parent⁻¹ ∘ ϕ_child eventually convex, violating even the d=2
+# nesting condition.
+function _nested_status(parent::ClaytonGenerator, child::Union{FrankGenerator,GumbelGenerator,JoeGenerator}, d::Int)
+    θp = parent.θ
+    iszero(θp) && return _NESTING_VALID
+    d >= 2 && isfinite(θp) && θp > 0 && isfinite(child.θ) || return _NESTING_UNSUPPORTED
+    return _NESTING_INVALID
+end
+
 
 
 _nested_child(ch::Tuple) = ch[1]

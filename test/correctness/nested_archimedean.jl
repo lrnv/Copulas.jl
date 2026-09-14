@@ -552,12 +552,12 @@ end
 
         # A small mixed-family fit exercises family-specific parameter
         # unbinding/rebuilding without another statistical recovery workload.
-        Cmix = NestedArchimedeanCopula(ClaytonGenerator(1.0);
-                   leaves = [3], children = [FrankCopula{2}(5.0)])
+        Cmix = NestedArchimedeanCopula(AMHGenerator(0.3);
+           leaves = [3], children = [ClaytonCopula{2}(2.0)])
         Umix = rand(Random.MersenneTwister(91), Cmix, 40)
         Mmix = Distributions.fit(Copulas.CopulaModel, Cmix, Umix)
-        @test Mmix.result.G isa ClaytonGenerator
-        @test Mmix.result.children[1][1].G isa FrankGenerator
+        @test Mmix.result.G isa AMHGenerator
+        @test Mmix.result.children[1][1].G isa ClaytonGenerator
         @test isfinite(Distributions.loglikelihood(Mmix.result, Umix))
     end
 
