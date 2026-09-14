@@ -806,7 +806,7 @@ end
 
 GOFCopulaTest(::CopulaSelection, args...; kwargs...) = throw(ArgumentError(
     "goodness-of-fit after model selection is not automatic; choose whether " *
-    "to test selectedmodel(selection) without selection correction"))
+    "to test selected_model(selection) without selection correction"))
 
 testname(::GoodnessOfFitHypothesis) = "Copula goodness-of-fit test"
 nullhypothesis(::GoodnessOfFitHypothesis{<:Copula}) = "The data follow the specified copula."

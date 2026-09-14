@@ -18,7 +18,7 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
     M = fit(CopulaModel, Copulas.Copula, U; candidates)
     table = selectiontable(M)
     @test M isa CopulaSelection
-    @test selectedmodel(M) isa CopulaModel
+    @test selected_model(M) isa CopulaModel
     @test table isa Vector
     @test getproperty.(table, :candidate) == collect(candidates)
     @test all(row -> row.status === :ok, table)

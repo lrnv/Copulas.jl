@@ -169,9 +169,9 @@ function Base.show(io::IO, M::CopulaModel)
         skm = M.recipe.kwargs.sklar_method
         _kv(io, "Copula", famC)
         _kv(io, "Margins", margins_lbl)
-        _kv(io, "Methods", "copula=" * String(_fitmethod(M)) * ", sklar=" * String(skm))
+        _kv(io, "Methods", "copula=" * String(fitting_method(M)) * ", sklar=" * String(skm))
     else
-        _kv(io, "Method", String(_fitmethod(M)))
+        _kv(io, "Method", String(fitting_method(M)))
     end
     _kv(io, "Number of observations", Printf.@sprintf("%d", StatsBase.nobs(M)))
 
@@ -209,7 +209,7 @@ function Base.show(io::IO, M::CopulaModel)
 end
 
 function Base.show(io::IO, S::CopulaSelection)
-    show(io, selectedmodel(S))
+    show(io, selected_model(S))
     _section(io, "Model selection")
     _kv(io, "Criterion", uppercase(String(S.criterion)))
     _kv(io, "Selected family", string(S.table[S.selected_index].candidate))

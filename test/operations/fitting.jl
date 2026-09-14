@@ -71,12 +71,12 @@ end
 
     default_model = fit(CopulaModel,
         SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data)
-    @test Copulas.fittingmethod(default_model) === :mle
+    @test Copulas.fitting_method(default_model) === :mle
     @test default_model.recipe.kwargs.sklar_method === :ifm
 
     empirical_model = fit(CopulaModel,
         SklarDist{EmpiricalCopula,Tuple{Normal,Exponential}}, data)
-    @test Copulas.fittingmethod(empirical_model) === :deheuvels
+    @test Copulas.fitting_method(empirical_model) === :deheuvels
 end
 
 @testset "MLE and MPL input semantics" begin
@@ -94,11 +94,11 @@ end
     normalized_mle = @test_logs (:warn, r"method=:mpl requires raw observations") fit(
         CopulaModel, ClaytonCopula{2}, U; method=:mpl, pseudo_values=true)
 
-    @test Copulas.fittingmethod(default_fit) === :mle
-    @test Copulas.fittingmethod(mle_fit) === :mle
-    @test Copulas.fittingmethod(mpl_fit) === :mpl
-    @test Copulas.fittingmethod(normalized_mpl) === :mpl
-    @test Copulas.fittingmethod(normalized_mle) === :mle
+    @test Copulas.fitting_method(default_fit) === :mle
+    @test Copulas.fitting_method(mle_fit) === :mle
+    @test Copulas.fitting_method(mpl_fit) === :mpl
+    @test Copulas.fitting_method(normalized_mpl) === :mpl
+    @test Copulas.fitting_method(normalized_mle) === :mle
     @test params(default_fit.result) == params(mle_fit.result)
     @test params(mpl_fit.result) == params(mle_fit.result)
     @test params(normalized_mpl.result) == params(mpl_fit.result)

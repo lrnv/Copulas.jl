@@ -88,13 +88,12 @@ _CopulaFitSpec(target, method::Symbol, kwargs::NamedTuple) =
     _CopulaFitSpec(target, method, kwargs, ())
 
 """
-    fittingmethod(model::CopulaModel) -> Symbol
+    fitting_method(model::CopulaModel) -> Symbol
 
 Return the effective estimator that produced `model`. The value is derived
 from the model's reproducible fitting recipe.
 """
-fittingmethod(M::CopulaModel) = M.recipe.method
-_fitmethod(M::CopulaModel) = fittingmethod(M)
+fitting_method(M::CopulaModel) = M.recipe.method
 
 # Bootstrap/refit samples are already on the copula scale. If the original
 # estimator accepted raw data through `pseudo_values=false`, replay the same
@@ -127,20 +126,15 @@ function _refit(M::CopulaModel, U::AbstractMatrix; replay_input::Bool=false)
         "composite goodness-of-fit refitting is unavailable for this model"))
 
     if spec.target isa NamedTuple && haskey(spec.target, :reparam)
-        return Distributions.fit(CopulaModel, spec.target.reparam,
-                                 spec.target.init, U;
-                                 spec.kwargs...)
+        return Distributions.fit(CopulaModel, spec.target.reparam, spec.target.init, U; spec.kwargs...)
     end
 
     if spec.target isa Type && spec.target <: SklarDist
-        return Distributions.fit(CopulaModel, spec.target, U;
-                                 spec.kwargs...)
+        return Distributions.fit(CopulaModel, spec.target, U; spec.kwargs...)
     end
 
     if replay_input && spec.target isa Type
-        return Distributions.fit(CopulaModel, spec.target, U;
-                                 method=spec.method,
-                                 spec.kwargs...)
+        return Distributions.fit(CopulaModel, spec.target, U; method=spec.method, spec.kwargs...)
     end
 
     kwargs = _refit_kwargs(spec.kwargs)
@@ -148,8 +142,7 @@ function _refit(M::CopulaModel, U::AbstractMatrix; replay_input::Bool=false)
     # same numerical likelihood engine as MLE, without ranking these again.
     method = spec.method === :mpl ? :mle : spec.method
 
-    return Distributions.fit(CopulaModel, spec.target, U;
-                             method, kwargs...)
+    return Distributions.fit(CopulaModel, spec.target, U; method, kwargs...)
 end
 
 # Fallbacks that throw if the interface is not implemented correctly.
@@ -857,7 +850,7 @@ Result of comparing an explicit collection of copula families. It keeps the
 winning [`CopulaModel`](@ref) and the candidate comparison separately, so model
 selection state does not bloat ordinary fitted models.
 
-Use [`selectedmodel`](@ref) to retrieve the winner and [`selectiontable`](@ref)
+Use [`selected_model`](@ref) to retrieve the winner and [`selectiontable`](@ref)
 to inspect all candidates. Concrete fields are implementation details.
 """
 struct CopulaSelection{M,T}
@@ -868,17 +861,17 @@ struct CopulaSelection{M,T}
 end
 
 """
-    selectedmodel(result::CopulaSelection) -> CopulaModel
+    selected_model(result::CopulaSelection) -> CopulaModel
 
 Return the winning fitted model from an automatic family-selection result.
 
 See also: [`selectiontable`](@ref), [`fitteddistribution`](@ref).
 """
-selectedmodel(S::CopulaSelection) = S.model
-fitteddistribution(S::CopulaSelection) = fitteddistribution(selectedmodel(S))
-fittingmethod(S::CopulaSelection) = fittingmethod(selectedmodel(S))
+selected_model(S::CopulaSelection) = S.model
+fitteddistribution(S::CopulaSelection) = fitteddistribution(selected_model(S))
+fitting_method(S::CopulaSelection) = fitting_method(selected_model(S))
 Distributions.loglikelihood(S::CopulaSelection) =
-    Distributions.loglikelihood(selectedmodel(S))
+    Distributions.loglikelihood(selected_model(S))
 """
     selectiontable(result::CopulaSelection)
 
@@ -888,27 +881,27 @@ its likelihood and information criteria, or the error that prevented fitting.
 Rows retain candidate order; changing the returned vector does not mutate the
 selection result.
 
-See also: [`CopulaSelection`](@ref), [`selectedmodel`](@ref),
+See also: [`CopulaSelection`](@ref), [`selected_model`](@ref),
 [`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref).
 """
 selectiontable(S::CopulaSelection) = copy(S.table)
 selectiontable(::CopulaModel) = throw(ArgumentError(
     "selectiontable is available only for a CopulaSelection result"))
 
-StatsBase.nobs(S::CopulaSelection) = StatsBase.nobs(selectedmodel(S))
-StatsBase.isfitted(S::CopulaSelection) = StatsBase.isfitted(selectedmodel(S))
-StatsBase.deviance(S::CopulaSelection) = StatsBase.deviance(selectedmodel(S))
-StatsBase.dof(S::CopulaSelection) = StatsBase.dof(selectedmodel(S))
-StatsBase.coef(S::CopulaSelection) = StatsBase.coef(selectedmodel(S))
-StatsBase.coefnames(S::CopulaSelection) = StatsBase.coefnames(selectedmodel(S))
-StatsBase.aic(S::CopulaSelection) = StatsBase.aic(selectedmodel(S))
-StatsBase.bic(S::CopulaSelection) = StatsBase.bic(selectedmodel(S))
+StatsBase.nobs(S::CopulaSelection) = StatsBase.nobs(selected_model(S))
+StatsBase.isfitted(S::CopulaSelection) = StatsBase.isfitted(selected_model(S))
+StatsBase.deviance(S::CopulaSelection) = StatsBase.deviance(selected_model(S))
+StatsBase.dof(S::CopulaSelection) = StatsBase.dof(selected_model(S))
+StatsBase.coef(S::CopulaSelection) = StatsBase.coef(selected_model(S))
+StatsBase.coefnames(S::CopulaSelection) = StatsBase.coefnames(selected_model(S))
+StatsBase.aic(S::CopulaSelection) = StatsBase.aic(selected_model(S))
+StatsBase.bic(S::CopulaSelection) = StatsBase.bic(selected_model(S))
 StatsBase.nullloglikelihood(S::CopulaSelection) =
-    StatsBase.nullloglikelihood(selectedmodel(S))
+    StatsBase.nullloglikelihood(selected_model(S))
 StatsBase.nulldeviance(S::CopulaSelection) =
-    StatsBase.nulldeviance(selectedmodel(S))
+    StatsBase.nulldeviance(selected_model(S))
 StatsBase.residuals(S::CopulaSelection; kwargs...) =
-    StatsBase.residuals(selectedmodel(S); kwargs...)
+    StatsBase.residuals(selected_model(S); kwargs...)
 
 """
     fit(CopulaModel, Copula, U; candidates, criterion=:bic, method=:mle, kwargs...)
@@ -958,7 +951,7 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
         M, criteria, nparams = evaluated
         score = getproperty(criteria, criterion)
         status = !isfinite(M.loglikelihood) || !isfinite(score) ? :nonfinite : :ok
-        push!(rows, (; candidate=CT, status, method=_fitmethod(M), nparams,
+        push!(rows, (; candidate=CT, status, method=fitting_method(M), nparams,
             loglikelihood=M.loglikelihood, criteria..., error=nothing))
         if status === :ok && score < best_score
             best, best_index, best_score = M, length(rows), score

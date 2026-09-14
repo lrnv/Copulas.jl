@@ -164,15 +164,15 @@ function _default_inference_method(M::CopulaModel)
     analytical_coordinates = spec isa _CopulaFitSpec && spec.target isa Type &&
         parameters isa NamedTuple &&
         applicable(_unbound_params, spec.target, d, parameters)
-    if _fitmethod(M) === :mle && analytical_coordinates &&
+    if fitting_method(M) === :mle && analytical_coordinates &&
             !(M.result isa Union{TCopula,tEVCopula,FGMCopula})
         return :hessian
     end
-    if _fitmethod(M) in (:itau, :irho, :ibeta, :iupper) && analytical_coordinates
+    if fitting_method(M) in (:itau, :irho, :ibeta, :iupper) && analytical_coordinates
         return :godambe
     end
     throw(ArgumentError(
-        "no default covariance estimator is defined for fits using method=$(_fitmethod(M)); " *
+        "no default covariance estimator is defined for fits using method=$(fitting_method(M)); " *
         "choose an explicit supported inference method"))
 end
 
@@ -245,10 +245,10 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
     (spec isa _CopulaFitSpec && spec.target isa Type) || throw(ArgumentError(
         "analytical `$method` inference is unavailable for runtime-structured fitting targets; " *
         "use :bootstrap or :jackknife"))
-    method === :hessian && _fitmethod(M) !== :mle && throw(ArgumentError(
+    method === :hessian && fitting_method(M) !== :mle && throw(ArgumentError(
         "Hessian inference is defined only for maximum-likelihood fits"))
     method in (:godambe, :godambe_pairwise) &&
-        !(_fitmethod(M) in (:itau, :irho, :ibeta, :iupper)) &&
+        !(fitting_method(M) in (:itau, :irho, :ibeta, :iupper)) &&
         throw(ArgumentError(
             "Godambe inference is currently defined only for supported rank-matching fits; " *
             "analytical maximum pseudo-likelihood inference is unavailable, so use " *
@@ -263,7 +263,7 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
     d = size(U, 1)
     applicable(_unbound_params, target, d, parameters) || throw(ArgumentError(
         "analytical `$method` inference is not implemented for fitting target $target"))
-    engine_method = _fitmethod(M) === :mpl ? :mle : _fitmethod(M)
+    engine_method = fitting_method(M) === :mpl ? :mle : fitting_method(M)
     V, diagnostics = _vcov(target, U, parameters, Val(method), Val(engine_method))
     return V, diagnostics
 end
@@ -304,7 +304,7 @@ end
 
 infer(::CopulaSelection; kwargs...) = throw(ArgumentError(
     "inference after model selection is not automatic; call " *
-    "infer(selectedmodel(selection); ...) only when ignoring selection uncertainty is appropriate"))
+    "infer(selected_model(selection); ...) only when ignoring selection uncertainty is appropriate"))
 
 """
     vcov(I::CopulaInference; component=:all)

@@ -217,7 +217,7 @@ Msel = fit(
     criterion=:bic,
 )
 selectiontable(Msel)
-Mbest = selectedmodel(Msel)
+Mbest = selected_model(Msel)
 ```
 
 Selection returns a `CopulaSelection`, so its candidate report is not stored in

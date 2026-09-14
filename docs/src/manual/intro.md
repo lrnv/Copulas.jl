@@ -378,7 +378,7 @@ Msel = fit(
     criterion=:bic,
 )
 selectiontable(Msel)
-Mbest = selectedmodel(Msel)
+Mbest = selected_model(Msel)
 ```
 
 Candidate selection is deliberately explicit: not every family is meaningful

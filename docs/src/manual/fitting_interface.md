@@ -110,10 +110,10 @@ Msel = fit(
 Msel
 ```
 
-Retrieve the reusable fitted model with [`selectedmodel`](@ref):
+Retrieve the reusable fitted model with [`selected_model`](@ref):
 
 ```@example fitting_interface
-Mbest = selectedmodel(Msel)
+Mbest = selected_model(Msel)
 fitteddistribution(Mbest)
 ```
 
@@ -199,7 +199,6 @@ different questions about the fit:
 | Function                                       | Description                                                                                       |
 |:--|:--|
 | `fitteddistribution(M)`                        | Fitted copula or Sklar distribution.                                                              |
-| `fittingmethod(M)`                             | Effective estimator recorded by the minimal replay recipe.                                        |
 | `nobs(M)`                                      | Number of observations used in the fit.                                                           |
 | `loglikelihood(M)`                             | Cached log-likelihood evaluated at the fitted distribution.                                       |
 | `deviance(M)`                                  | Deviance, equal to minus twice the fitted log-likelihood.                                         |
