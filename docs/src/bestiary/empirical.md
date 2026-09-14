@@ -130,7 +130,9 @@ B_{\boldsymbol m}(C)(\boldsymbol u)
  \prod_{j=1}^d \binom{m_j}{s_j} u_j^{s_j} (1-u_j)^{m_j-s_j}.
 ```
 
-It is a multivariate Bernstein polynomial approximation of $C$ on the uniform grid. Larger $m_j$ increase smoothness and accuracy at higher computational cost.
+It is a multivariate Bernstein polynomial approximation of $C$ on the uniform grid. Larger $m_j$ increase smoothness and accuracy at higher computational cost. When the base is an empirical copula built from $n$ tie-free observations, however, the result has exactly uniform margins if and only if every $m_j$ divides $n$ [segers2017](@cite). `BernsteinCopula` rejects degrees that violate this condition instead of returning a multivariate distribution mislabeled as a copula. With `m=nothing`, it selects the largest divisor of $n$ no greater than $\lfloor n^{1/d}\rfloor$.
+
+The divisibility restriction is specific to the empirical construction. Applying the Bernstein operator to a genuine copula preserves uniform margins for arbitrary positive degrees. Constructors nevertheless verify the resulting cell masses, so tied empirical ranks or numerically invalid base values cannot silently produce a non-copula.
 
 In the package, this copula is implemented as `BernsteinCopula`:
 
@@ -146,7 +148,8 @@ See the canonical Public API entry for [`BernsteinCopula`](@ref).
 
 ### Performance notes
 - Complexity grows with the grid size ∏_j (m_j+1) for cdf and ∏_j m_j for pdf. In higher dimensions, keep m small or prefer the 2D specialized paths provided.
-- Small negative finite differences from numerical noise are clipped to zero before normalization.
+- The constructor tolerates floating-point roundoff in finite differences, but
+  rejects materially negative cell masses or non-uniform margins.
 
 ## Checkerboard Copulas
 
