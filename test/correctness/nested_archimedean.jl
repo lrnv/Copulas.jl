@@ -25,7 +25,7 @@
 using Test, Copulas, Distributions, ForwardDiff, DelimitedFiles, Random
 import StatsBase
 import Copulas: Generator, ϕ, ϕ⁻¹, ϕ⁻¹⁽¹⁾, ϕ⁽ᵏ⁾
-import Copulas: ClaytonGenerator, GumbelGenerator, FrankGenerator, JoeGenerator
+import Copulas: ClaytonGenerator, GumbelGenerator, FrankGenerator, JoeGenerator, AMHGenerator
 import Copulas: NestedDistortion, subsetdims, condition, _censored_copula_logpdf
 
 # Test-only generator adaptor selecting the implicit edge-composition method by
@@ -283,7 +283,7 @@ end
         @test gist_censored(Cf, uf, δf) ≈ ref_cop atol = 1e-10
 
         # (c) Nested, multi-unobserved (2 lower-tail): root Clayton(2)-leaf over
-        #     Clayton(5) + Gumbel(3), one lower-tail leaf in each sector.
+        #     Clayton(5) + Clayton(3), one lower-tail leaf in each sector.
         #     Multi-coordinate (|unobserved| = 2): now routed
         #     through our Faà di Bruno tree walk via the `_partial_cdf` override
         #     (no ForwardDiff). The RefSpec reference is an INDEPENDENT
@@ -291,14 +291,14 @@ end
         #     kernel, so matching it to 1e-10 (the old generic path was asserted
         #     only at the loose 1e-7) is evidence the multi-coordinate CDF is exact.
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-                leaves = [1],
-                children = [ClaytonCopula{2}(5.0), GumbelCopula{2}(3.0)])
+            leaves = [1],
+            children = [ClaytonCopula{2}(5.0), ClaytonCopula{2}(3.0)])
         u = [0.40, 0.30, 0.70, 0.55, 0.80]
         δ = [false, false, true, true, false]
         spec = RefSpec(ClaytonGenerator(big(2.0)),
-                   [(big(u[1]), false)],
-                   [RefSpec(ClaytonGenerator(big(5.0)), [(big(u[2]), false), (big(u[3]), true)]),
-                    RefSpec(GumbelGenerator(big(3.0)),  [(big(u[4]), true),  (big(u[5]), false)])])
+           [(big(u[1]), false)],
+           [RefSpec(ClaytonGenerator(big(5.0)), [(big(u[2]), false), (big(u[3]), true)]),
+            RefSpec(ClaytonGenerator(big(3.0)), [(big(u[4]), true),  (big(u[5]), false)])])
         @test gist_censored(C, u, δ) ≈ Float64(ref_logpdf(spec)) atol = 1e-10
 
         # (c') Single lower-tail nested ⇒ the FAST NestedDistortion path. Observe
@@ -307,7 +307,7 @@ end
         spec1 = RefSpec(ClaytonGenerator(big(2.0)),
                     [(big(u[1]), false)],
                     [RefSpec(ClaytonGenerator(big(5.0)), [(big(u[2]), false), (big(u[3]), false)]),
-                     RefSpec(GumbelGenerator(big(3.0)),  [(big(u[4]), false), (big(u[5]), true)])])
+                     RefSpec(ClaytonGenerator(big(3.0)), [(big(u[4]), false), (big(u[5]), true)])])
         @test condition(C, (1, 2, 3, 4), [u[1], u[2], u[3], u[4]]) isa NestedDistortion
         @test gist_censored(C, u, δ1) ≈ Float64(ref_logpdf(spec1)) atol = 1e-9
 
@@ -349,7 +349,7 @@ end
         #     finite and matches the observed-marginal densities + the nested
         #     mixed partial at the PIT point (independent reference).
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-                children = [ClaytonCopula{3}(5.0), GumbelCopula{3}(3.0)])
+            children = [ClaytonCopula{3}(5.0), ClaytonCopula{3}(3.0)])
         margins = ntuple(_ -> Exponential(1.0), 6)
         Sn = SklarDist(C, margins)
         x = [0.7, 0.3, 0.9, 0.5, 0.4, 1.1]
@@ -360,10 +360,10 @@ end
         # should equal margin densities + the copula-scale gist at the PIT point).
         cop_ll = gist_censored(C, u, δ)
         spec = RefSpec(ClaytonGenerator(big(2.0)), Tuple{BigFloat,Bool}[], [
-            RefSpec(ClaytonGenerator(big(5.0)),
-                [(big(u[1]), false), (big(u[2]), true), (big(u[3]), false)]),
-            RefSpec(GumbelGenerator(big(3.0)),
-                [(big(u[4]), false), (big(u[5]), true), (big(u[6]), false)])])
+                RefSpec(ClaytonGenerator(big(5.0)),
+                    [(big(u[1]), false), (big(u[2]), true), (big(u[3]), false)]),
+                RefSpec(ClaytonGenerator(big(3.0)),
+                    [(big(u[4]), false), (big(u[5]), true), (big(u[6]), false)])])
         @test cop_ll ≈ Float64(ref_logpdf(spec)) atol = 1e-9
         # With the copula contribution independently checked above, this verifies
         # data-scale margin/Jacobian composition rather than two kernel aliases.
@@ -378,8 +378,8 @@ end
     # -----------------------------------------------------------------------
     @testset "multi-coordinate conditional CDF routes through our kernel" begin
         C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-                leaves = [1],
-                children = [ClaytonCopula{2}(5.0), GumbelCopula{2}(3.0)])
+            leaves = [1],
+            children = [ClaytonCopula{2}(5.0), ClaytonCopula{2}(3.0)])
         u = [0.40, 0.30, 0.70, 0.55, 0.80]
         δ = [false, false, true, true, false]   # lower-tail dims 3,4 (|unobserved| = 2)
 
@@ -430,17 +430,17 @@ end
     # 5. Arbitrary-depth nesting builds, is finite, and matches the reference.
     # -----------------------------------------------------------------------
     @testset "arbitrary-depth nesting" begin
-        # Inner nested copula: Joe(3) over a Joe(4) panel (dims 2:3 once placed).
-        joesub = NestedArchimedeanCopula(JoeGenerator(3.0);
-                     children = [JoeCopula{2}(4.0)])
+        # Inner nested copula: Clayton(3) over a Clayton(4) panel (dims 2:3 once placed).
+        sub = NestedArchimedeanCopula(ClaytonGenerator(3.0);
+                children = [ClaytonCopula{2}(4.0)])
         C = NestedArchimedeanCopula(ClaytonGenerator(1.5);
-                leaves = [1], children = [joesub])
+                leaves = [1], children = [sub])
         @test C isa NestedArchimedeanCopula{3}
         u = big.([0.2, 0.6, 0.7])
         spec = RefSpec(ClaytonGenerator(big(1.5)),
-                   [(u[1], false)],
-                   [RefSpec(JoeGenerator(big(3.0)), Tuple{BigFloat,Bool}[],
-                        [RefSpec(JoeGenerator(big(4.0)), [(u[2], false), (u[3], false)])])])
+                [(u[1], false)],
+                [RefSpec(ClaytonGenerator(big(3.0)), Tuple{BigFloat,Bool}[],
+                        [RefSpec(ClaytonGenerator(big(4.0)), [(u[2], false), (u[3], false)])])])
         @test logpdf(C, u) ≈ ref_logpdf(spec) atol = 1e-9
     end
 
