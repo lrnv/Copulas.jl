@@ -72,9 +72,10 @@
     end
 
     @testset "nested singleton subtree collapse" begin
-        inner = NestedArchimedeanCopula(Copulas.GumbelGenerator(2.0);
-            leaves=[1], children=[GumbelCopula{2}(4.0)])
-        deep = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.5);
+        inner = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+            leaves=[1], children=[ClaytonCopula{2}(4.0)])
+
+        deep = NestedArchimedeanCopula(ClaytonGenerator(1.5);
             leaves=[1], children=[inner])
         collapsed = subsetdims(deep, (1, 3))
         native = ClaytonCopula{2}(1.5)

@@ -357,10 +357,11 @@ genuinely nested declarations build a `NestedArchimedeanCopula`. The legacy
 positional form `NestedArchimedeanCopula(G, children)` (children in consecutive
 blocks, no root leaves) is also supported.
 
-The constructor does **not** check the nesting condition: the caller is
-responsible for supplying a parameter combination for which the nested
-construction is a valid copula (for same-family nestings this means the inner
-generator is at least as dependent as the outer one).
+The constructor validates each parent -> child edge at the actual number of
+leaves below the child.  Copulas.jl accepts only generator pairs for which an
+analytical nesting certificate is implemented.  A certified pair with invalid
+parameters raises `DomainError`; a pair for which no certificate is implemented
+raises `ArgumentError` rather than silently constructing an unvalidated copula.
 
 # Density and precision
 
@@ -480,6 +481,344 @@ _subdim(c::ArchimedeanCopula) = length(c)
 _subdim(c::NestedArchimedeanCopula{d}) where {d} = d
 _subdim(c::Tuple) = _subdim(c[1])
 
+# ---- Nesting validity --------------------------------------------------------
+# A nested edge parent -> child is certified at the *actual number of leaves*
+# below the child.  The mathematical certificate is family-specific (typically
+# a d-alternation condition for ϕ_parent⁻¹ ∘ ϕ_child), so there is deliberately no
+# numerical/generic fallback: an unimplemented pair is different from a pair
+# whose parameters are known to violate a certified condition.
+@enum _NestedValidity begin
+    _NESTING_VALID
+    _NESTING_INVALID
+    _NESTING_UNSUPPORTED
+end
+
+_nested_status(::Generator, ::Generator, ::Int) = _NESTING_UNSUPPORTED
+
+# Exact representations of independence as a parent.  A Π parent is valid
+# above any already-valid child subtree.
+_nested_status(::IndependentGenerator, ::Generator, ::Int) = _NESTING_VALID
+_nested_status(p::AMHGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
+_nested_status(p::ClaytonGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
+_nested_status(p::FrankGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
+_nested_status(p::GumbelGenerator, ::Generator, ::Int) = isone(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
+_nested_status(p::GumbelBarnettGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
+_nested_status(p::InvGaussianGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
+_nested_status(p::JoeGenerator, ::Generator, ::Int) = isone(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
+
+# Add analytical pair certificates below this line.  Each method must return
+# VALID / INVALID only for the parameter region it actually certifies; return
+# UNSUPPORTED outside that region rather than extrapolating a sufficient rule.
+#
+# Example: for finite non-negative Clayton parameters,
+#
+#   g(t) = ϕ_parent⁻¹(ϕ_child(t))
+#        = ((1 + θ_child*t)^(θ_parent/θ_child) - 1) / θ_parent,
+#
+# with the continuous extensions at θ = 0.  For any finite d >= 2, g is
+# d-alternating exactly when θ_parent <= θ_child.
+function _nested_status(parent::ClaytonGenerator, child::ClaytonGenerator, d::Int)
+    θp, θc = parent.θ, child.θ
+    iszero(θp) && return _NESTING_VALID
+    (isfinite(θp) && isfinite(θc) && θp >= 0 && θc >= 0) || return _NESTING_UNSUPPORTED
+    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
+end
+
+
+
+# Exact one-parameter subfamilies of the BB generators.  Positive rescalings
+# of the generator argument do not change the copula or the nesting property.
+_nested_status(p::BB1Generator, c::Generator, d::Int) = isone(p.δ) ? _nested_status(ClaytonGenerator(p.θ), c, d) : _NESTING_UNSUPPORTED
+_nested_status(p::BB3Generator, c::Generator, d::Int) = isone(p.θ) ? _nested_status(ClaytonGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
+_nested_status(p::BB6Generator, c::Generator, d::Int) = isone(p.δ) ? _nested_status(JoeGenerator(p.θ), c, d) : isone(p.θ) ? _nested_status(GumbelGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
+_nested_status(p::BB7Generator, c::Generator, d::Int) = isone(p.θ) ? _nested_status(ClaytonGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
+_nested_status(p::BB8Generator, c::Generator, d::Int) = isone(p.ϑ) ? _NESTING_VALID : isone(p.δ) ? _nested_status(JoeGenerator(p.ϑ), c, d) : _NESTING_UNSUPPORTED
+_nested_status(p::BB9Generator, c::Generator, d::Int) = isone(p.θ) ? _NESTING_VALID : p.θ == 2 ? _nested_status(InvGaussianGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
+_nested_status(p::BB10Generator, c::Generator, d::Int) = iszero(p.δ) ? _NESTING_VALID : isone(p.θ) ? _nested_status(AMHGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
+
+
+# ── Homogeneous one-parameter families ────────────────────────────────────────
+
+function _nested_status(parent::AMHGenerator, child::AMHGenerator, ::Int)
+    θp, θc = parent.θ, child.θ
+    iszero(θp) && return _NESTING_VALID
+    (all(isfinite, (θp, θc)) && 0 <= θp < 1 && 0 <= θc < 1) || return _NESTING_UNSUPPORTED
+    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
+end
+
+function _nested_status(parent::FrankGenerator, child::FrankGenerator, ::Int)
+    θp, θc = parent.θ, child.θ
+    iszero(θp) && return _NESTING_VALID
+    (all(isfinite, (θp, θc)) && θp >= 0 && θc >= 0) || return _NESTING_UNSUPPORTED
+    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
+end
+
+function _nested_status(parent::GumbelGenerator, child::GumbelGenerator, ::Int)
+    θp, θc = parent.θ, child.θ
+    isone(θp) && return _NESTING_VALID
+    all(isfinite, (θp, θc)) || return _NESTING_UNSUPPORTED
+    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
+end
+
+function _nested_status(parent::GumbelBarnettGenerator, child::GumbelBarnettGenerator, ::Int)
+    θp, θc = parent.θ, child.θ
+    iszero(θp) && return _NESTING_VALID
+    all(isfinite, (θp, θc)) || return _NESTING_UNSUPPORTED
+    iszero(θc) && return _NESTING_VALID
+    return θp >= θc ? _NESTING_VALID : _NESTING_INVALID
+end
+
+function _nested_status(parent::InvGaussianGenerator, child::InvGaussianGenerator, ::Int)
+    θp, θc = parent.θ, child.θ
+    iszero(θp) && return _NESTING_VALID
+    all(isfinite, (θp, θc)) || return _NESTING_UNSUPPORTED
+    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
+end
+
+function _nested_status(parent::JoeGenerator, child::JoeGenerator, ::Int)
+    θp, θc = parent.θ, child.θ
+    isone(θp) && return _NESTING_VALID
+    all(isfinite, (θp, θc)) || return _NESTING_UNSUPPORTED
+    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
+end
+
+
+# ── Classical heterogeneous certificates ─────────────────────────────────────
+#
+# These contain the classical heterogeneous SNC pairs.  In particular the
+# familiar AMH→Clayton restriction is θ_child >= 1.  BB1/BB2 below extend the
+# corresponding Nelsen-12/14/19/20 cases through their explicit generators.
+
+function _nested_status(parent::AMHGenerator, child::ClaytonGenerator, ::Int)
+    θp, θc = parent.θ, child.θ
+    iszero(θp) && return _NESTING_VALID
+    return all(isfinite, (θp, θc)) && 0 <= θp < 1 && θc >= 1 ? _NESTING_VALID : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::AMHGenerator, child::BB1Generator, ::Int)
+    θp = parent.θ
+    iszero(θp) && return _NESTING_VALID
+    return all(isfinite, (θp, child.θ, child.δ)) && 0 <= θp < 1 && child.θ >= 1 ? _NESTING_VALID : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::AMHGenerator, child::BB2Generator, ::Int)
+    θp = parent.θ
+    iszero(θp) && return _NESTING_VALID
+    return all(isfinite, (θp, child.θ, child.δ)) && 0 <= θp < 1 && child.θ >= 1 ? _NESTING_VALID : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::ClaytonGenerator, child::BB1Generator, d::Int)
+    θp = parent.θ
+    iszero(θp) && return _NESTING_VALID
+    isone(child.δ) && return _nested_status(parent, ClaytonGenerator(child.θ), d)
+    (all(isfinite, (θp, child.θ, child.δ)) && θp >= 0) || return _NESTING_UNSUPPORTED
+    return θp <= child.θ ? _NESTING_VALID : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::ClaytonGenerator, child::BB2Generator, ::Int)
+    θp = parent.θ
+    iszero(θp) && return _NESTING_VALID
+    (all(isfinite, (θp, child.θ, child.δ)) && θp >= 0) || return _NESTING_UNSUPPORTED
+    return θp <= child.θ ? _NESTING_VALID : _NESTING_UNSUPPORTED
+end
+
+
+# ── Exact BB slices reducing to a classical child ─────────────────────────────
+
+function _nested_status(parent::AMHGenerator, child::BB3Generator, d::Int)
+    iszero(parent.θ) && return _NESTING_VALID
+    return isone(child.θ) ? _nested_status(parent, ClaytonGenerator(child.δ), d) : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::ClaytonGenerator, child::BB3Generator, d::Int)
+    iszero(parent.θ) && return _NESTING_VALID
+    return isone(child.θ) ? _nested_status(parent, ClaytonGenerator(child.δ), d) : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::GumbelGenerator, child::BB6Generator, d::Int)
+    isone(parent.θ) && return _NESTING_VALID
+    return isone(child.θ) ? _nested_status(parent, GumbelGenerator(child.δ), d) : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::AMHGenerator, child::BB7Generator, d::Int)
+    iszero(parent.θ) && return _NESTING_VALID
+    return isone(child.θ) ? _nested_status(parent, ClaytonGenerator(child.δ), d) : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::ClaytonGenerator, child::BB7Generator, d::Int)
+    iszero(parent.θ) && return _NESTING_VALID
+    return isone(child.θ) ? _nested_status(parent, ClaytonGenerator(child.δ), d) : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::JoeGenerator, child::BB8Generator, d::Int)
+    isone(parent.θ) && return _NESTING_VALID
+    return isone(child.δ) ? _nested_status(parent, JoeGenerator(child.ϑ), d) : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::InvGaussianGenerator, child::BB9Generator, d::Int)
+    iszero(parent.θ) && return _NESTING_VALID
+    return child.θ == 2 ? _nested_status(parent, InvGaussianGenerator(child.δ), d) : _NESTING_UNSUPPORTED
+end
+
+function _nested_status(parent::AMHGenerator, child::BB10Generator, d::Int)
+    iszero(parent.θ) && return _NESTING_VALID
+    return isone(child.θ) ? _nested_status(parent, AMHGenerator(child.δ), d) : _NESTING_UNSUPPORTED
+end
+
+
+# ── Direct heterogeneous BB certificates ──────────────────────────────────────
+
+# Gumbel → BB3:
+# g(t) = δc^(-r) log(1+t)^r, r = θp/θc.
+function _nested_status(parent::GumbelGenerator, child::BB3Generator, ::Int)
+    θp, θc, δc = parent.θ, child.θ, child.δ
+    isone(θp) && return _NESTING_VALID
+    all(isfinite, (θp, θc, δc)) || return _NESTING_UNSUPPORTED
+    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
+end
+
+# BB3 → Gumbel:
+# g(t) = exp(δp*t^(θp/θc)) - 1, whose second derivative is eventually positive.
+function _nested_status(parent::BB3Generator, child::GumbelGenerator, ::Int)
+    return all(isfinite, (parent.θ, parent.δ, child.θ)) ? _NESTING_INVALID : _NESTING_UNSUPPORTED
+end
+
+# Joe → BB6: BB6 is an outer-power Joe generator.  θp <= θc is sufficient;
+# when δc == 1 the child is exactly Joe, so the reverse ordering is certified invalid.
+function _nested_status(parent::JoeGenerator, child::BB6Generator, d::Int)
+    θp, θc, δc = parent.θ, child.θ, child.δ
+    isone(θp) && return _NESTING_VALID
+    all(isfinite, (θp, θc, δc)) || return _NESTING_UNSUPPORTED
+    θp <= θc && return _NESTING_VALID
+    return isone(δc) ? _nested_status(parent, JoeGenerator(θc), d) : _NESTING_UNSUPPORTED
+end
+
+
+# ── Two-parameter families ────────────────────────────────────────────────────
+
+# BB1.  δp > δc gives convexity near zero; θp*δp > θc*δc gives convexity
+# asymptotically.  The two VALID branches are exact all-d certificates.
+function _nested_status(parent::BB1Generator, child::BB1Generator, d::Int)
+    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
+    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
+    (δp > δc || θp/θc > δc/δp) && return _NESTING_INVALID
+    isone(δp) && return _nested_status(ClaytonGenerator(θp), child, d)
+    return θp == θc ? _NESTING_VALID : _NESTING_UNSUPPORTED
+end
+
+# BB2.  θp > θc is asymptotically convex.  Equal θ reduces to a power map;
+# δp = δc = 1 is Nelsen family 20.
+function _nested_status(parent::BB2Generator, child::BB2Generator, ::Int)
+    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
+    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
+    θp > θc && return _NESTING_INVALID
+    θp == θc && return δp <= δc ? _NESTING_VALID : _NESTING_INVALID
+    return isone(δp) && isone(δc) ? _NESTING_VALID : _NESTING_UNSUPPORTED
+end
+
+# BB3.  For θp > θc, g(t) starts as const*t^(θp/θc) and is convex near zero.
+# Equal θ gives g(t) = (1+t)^(δp/δc) - 1.
+function _nested_status(parent::BB3Generator, child::BB3Generator, ::Int)
+    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
+    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
+    θp > θc && return _NESTING_INVALID
+    return θp == θc ? (δp <= δc ? _NESTING_VALID : _NESTING_INVALID) : _NESTING_UNSUPPORTED
+end
+
+# BB6.  Convexity is forced by δp > δc at infinity or
+# θp*δp > θc*δc near zero.  δp=1 is the ordinary Joe parent.
+function _nested_status(parent::BB6Generator, child::BB6Generator, d::Int)
+    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
+    isone(θp) && isone(δp) && return _NESTING_VALID
+    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
+    (δp > δc || θp/θc > δc/δp) && return _NESTING_INVALID
+    θp == θc && return _NESTING_VALID
+    return isone(δp) && θp <= θc ? _NESTING_VALID : _NESTING_UNSUPPORTED
+end
+
+# BB7.  θp > θc gives convexity near zero and δp > δc gives convexity at infinity.
+# Equal θ reduces to the Clayton-type power map.
+function _nested_status(parent::BB7Generator, child::BB7Generator, ::Int)
+    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
+    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
+    (θp > θc || δp > δc) && return _NESTING_INVALID
+    return θp == θc ? _NESTING_VALID : _NESTING_UNSUPPORTED
+end
+
+# BB8.  At common δ,
+# g(t) = const - log(1 - (1 - ηc*exp(-t))^(ϑp/ϑc)),
+# giving the same parameter ordering as Joe.
+function _nested_status(parent::BB8Generator, child::BB8Generator, ::Int)
+    ϑp, δp, ϑc, δc = parent.ϑ, parent.δ, child.ϑ, child.δ
+    isone(ϑp) && return _NESTING_VALID
+    all(isfinite, (ϑp, δp, ϑc, δc)) || return _NESTING_UNSUPPORTED
+    return δp == δc ? (ϑp <= ϑc ? _NESTING_VALID : _NESTING_INVALID) : _NESTING_UNSUPPORTED
+end
+
+# BB9.  Common δ is the tilted-power family and gives θp <= θc.
+# The θ=2 slice is the inverse-Gaussian family up to positive argument scaling.
+function _nested_status(parent::BB9Generator, child::BB9Generator, d::Int)
+    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
+    isone(θp) && return _NESTING_VALID
+    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
+    θp == 2 && θc == 2 && return _nested_status(InvGaussianGenerator(δp), InvGaussianGenerator(δc), d)
+    δp == δc && return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
+    return θp == θc && δp > δc ? _NESTING_INVALID : _NESTING_UNSUPPORTED
+end
+
+# BB10.  At common θ the powers cancel and
+# g(t) = log(((1-δp)e^t + δp-δc)/(1-δc)),
+# which is Bernstein exactly for δp <= δc.
+function _nested_status(parent::BB10Generator, child::BB10Generator, ::Int)
+    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
+    iszero(δp) && return _NESTING_VALID
+    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
+    return θp == θc ? (δp <= δc ? _NESTING_VALID : _NESTING_INVALID) : _NESTING_UNSUPPORTED
+end
+
+# A positive Clayton parent cannot contain finite Frank, Gumbel, or Joe
+# children.  For Frank/Joe, ψ_child(t) ~ K*exp(-t); for Gumbel,
+# ψ_child(t) = exp(-t^(1/θ)).  Applying the positive-Clayton inverse makes
+# g = ϕ_parent⁻¹ ∘ ϕ_child eventually convex, violating even the d=2
+# nesting condition.
+function _nested_status(parent::ClaytonGenerator, child::Union{FrankGenerator,GumbelGenerator,JoeGenerator}, d::Int)
+    θp = parent.θ
+    iszero(θp) && return _NESTING_VALID
+    d >= 2 && isfinite(θp) && θp > 0 && isfinite(child.θ) || return _NESTING_UNSUPPORTED
+    return _NESTING_INVALID
+end
+
+
+
+_nested_child(ch::Tuple) = ch[1]
+_nested_child(ch::NestedArchimedeanCopula) = ch
+
+function _validate_nested_edge(parent::Generator, child::Generator, d::Int)
+    status = _nested_status(parent, child, d)
+    status === _NESTING_VALID && return nothing
+
+    edge = "$(nameof(typeof(parent))) -> $(nameof(typeof(child)))"
+    if status === _NESTING_INVALID
+        throw(DomainError(
+            (parent=Distributions.params(parent), child=Distributions.params(child), leaves=d),
+            "invalid nested Archimedean edge $edge for a child subtree with $d leaves",
+        ))
+    end
+
+    throw(ArgumentError(
+        "nesting validity for $edge with a child subtree of $d leaves is not " *
+        "certified by Copulas.jl",
+    ))
+end
+
+function _validate_nested_edges(parent::Generator, children)
+    for entry in children
+        child = _nested_child(entry)
+        _validate_nested_edge(parent, child.G, length(child))
+    end
+    return nothing
+end
+
 # ---- Unified keyword constructor --------------------------------------------
 function _nested_archimedean(expected_dimension, G::Generator;
                              leaves::AbstractVector{<:Integer} = Int[],
@@ -534,6 +873,7 @@ function _nested_archimedean(expected_dimension, G::Generator;
     end
 
     kids2 = Any[_place_dims(kids[i], kiddims[i]) for i in eachindex(kids)]
+    _validate_nested_edges(G, kids2)
     return expected_dimension isa Val ?
         NestedArchimedeanCopula{only(typeof(expected_dimension).parameters),typeof(G)}(G, leafdims, kids2, alldims) :
         NestedArchimedeanCopula{d,typeof(G)}(G, leafdims, kids2, alldims)
