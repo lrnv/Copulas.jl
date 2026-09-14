@@ -77,18 +77,21 @@ end
     @test all(col -> any(source -> col == source, eachcol(points)), eachcol(sample))
 
     margins = (Uniform(), Uniform())
-    S = @test_logs (:warn, r"EmpiricalCopula has finite-sample step margins")
+    S = @test_logs (:warn, r"EmpiricalCopula has finite-sample step margins") begin
         SklarDist(C, margins)
-    @test_logs (:warn, r"EmpiricalCopula has finite-sample step margins")
+    end
+    @test_logs (:warn, r"EmpiricalCopula has finite-sample step margins") begin
         SklarDist(SurvivalCopula(C, (1,)), margins)
+    end
     transformed = [quantile(margins[row], points[row, 1]) for row in 1:2]
     @test cdf(S, transformed) == cdf(C, points[:, 1])
     @test pdf(S, transformed) == 2 / 3
     @test logpdf(S, transformed) == log(2 / 3)
     @test logpdf(S, [transformed[1], transformed[2] + 0.1]) == -Inf
 
-    discrete = @test_logs (:warn, r"EmpiricalCopula has finite-sample step margins")
+    discrete = @test_logs (:warn, r"EmpiricalCopula has finite-sample step margins") begin
         SklarDist(C, (Bernoulli(0.5), Bernoulli(0.5)))
+    end
     @test pdf(discrete, [0, 0]) == 2 / 3
     @test pdf(discrete, [1, 1]) == 1 / 3
     @test pdf(discrete, [0.5, 0.5]) == 0

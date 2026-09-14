@@ -9,7 +9,8 @@
     @test_throws ArgumentError CheckerboardCopula(tied; m=2, pseudo_values=false)
     @test_throws ArgumentError BernsteinCopula(tied; m=2, pseudo_values=false)
 
-    empirical = EmpiricalCopula(reshape(1.0:10.0, 2, 5))
+    empirical = EmpiricalCopula(
+        reshape(1.0:10.0, 2, 5); pseudo_values=false)
     @test_throws ArgumentError BernsteinCopula(empirical; m=2)
     @test BernsteinCopula(empirical; m=5) isa BernsteinCopula
     @test BernsteinCopula(empirical; m=nothing).m == (1, 1)

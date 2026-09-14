@@ -329,6 +329,11 @@ end
             route in tested_routes && continue
 
             U = rand(StableRNG(30_000 + index), C, 12)
+            if C isa Union{
+                    EmpiricalCopula,BetaCopula,BernsteinCopula,CheckerboardCopula,
+                }
+                U = pseudos(U)
+            end
             route_kwargs = C isa EmpiricalEVCopula ? (d == 2 ? (; grid=21) : (; degree=1)) :
                 C isa SurvivalCopula ? (; flips=C.flipmask) : (;)
             fitted = fit( CT, U, method; derived_measures=false, route_kwargs...)
