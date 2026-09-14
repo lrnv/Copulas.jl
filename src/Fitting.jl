@@ -457,8 +457,9 @@ end
 function _estimate_copula(CT::Type{<:Copula}, U;
         method=:default, pseudo_values::Union{Nothing,Bool}=nothing, kwargs...)
     estimate = _run_copula_estimator(CT, U; method, pseudo_values, kwargs...)
-    (; result=C, meta, method, requested_method, input_is_pseudo,
-       likelihood_method, fit_data, engine_kwargs, elapsed_sec) = estimate
+    C = estimate.result
+    (; meta, method, requested_method, input_is_pseudo, likelihood_method,
+       fit_data, engine_kwargs, elapsed_sec) = estimate
     fit_kwargs = likelihood_method ?
         (; pseudo_values=input_is_pseudo, kwargs...) : engine_kwargs
     fit_spec = _CopulaFitSpec(CT, method, fit_kwargs)
