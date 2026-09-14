@@ -762,7 +762,7 @@ This matters for models whose fitting procedure cannot be reconstructed from the
 First fit a model:
 
 ```@example hypothesis_testing
-M = fit(CopulaModel, ClaytonCopula, Ugof; method=:itau, vcov=false,)
+M = fit(CopulaModel, ClaytonCopula, Ugof; method=:itau)
 
 nothing # hide
 ```

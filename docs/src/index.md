@@ -39,7 +39,7 @@ The [Copulas.jl](https://github.com/lrnv/Copulas.jl) package provides a large co
 Since copulas are distribution functions, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This compliance allows direct interoperability with other packages based on this API, such as [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
 
 Usually, users who work with copulas turn to the `R` package [`copula`](https://cran.r-project.org/web/packages/copula/copula.pdf). While still well-maintained and regularly updated, the `R` package `copula` is a complicated code base in terms of readability, extensibility, reliability, and maintenance.
-This package aims to provide a lightweight, fast, reliable, and maintainable copula implementation in native Julia. Among other benefits, a notable feature of such a native implementation is floating point type agnosticism, i.e., compatibility with `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl), and other numeric types.
+This package aims to provide a lightweight, fast, reliable, and maintainable copula implementation in native Julia. Among other benefits, a notable feature of such a native implementation is floating point type agnosticism, i.e., compatibility with `Float32` (and GPU equivalents), `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl), and other numeric types.
 
 
 The package revolves around two main types:
@@ -196,9 +196,14 @@ Notes
 - Their copula step defaults to `copula_method=:mle` when supported, otherwise
   to the family's advertised default; either can be replaced explicitly.
 
-Use `CopulaModel` when diagnostics and inference matter. If the family is not
-known in advance, fit an explicit, scientifically appropriate candidate set and
-rank successful fits by an information criterion:
+Use `CopulaModel` when diagnostics or later inference matter. Estimation itself
+does not compute uncertainty: apply `infer(M; method=...)` to obtain a separate
+`CopulaInference`, then use `vcov`, `stderror`, and `confint` on that result.
+For Sklar fits, bootstrap inference refits both the margins and the copula and
+retains their complete covariance, including cross-component terms.
+
+If the family is not known in advance, fit an explicit, scientifically
+appropriate candidate set and rank successful fits by an information criterion:
 
 ```@example 1
 Msel = fit(
@@ -207,14 +212,13 @@ Msel = fit(
     U;
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
-    vcov=false,
 )
 selectiontable(Msel)
 ```
 
 Selection is deliberately explicit: Copulas.jl does not treat every available
 family as a sensible candidate for every dimension or scientific question. See
-the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for covariance estimation,
+the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for post-fit inference,
 confidence intervals, residuals, prediction, and selection caveats.
 
 ### Hypothesis testing

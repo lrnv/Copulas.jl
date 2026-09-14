@@ -236,7 +236,7 @@ using Copulas, Distributions, Random
 
 C = TCopula{2}(4.0, [1.0 0.55; 0.55 1.0])
 U = rand(Xoshiro(316), C, 500)
-Ĉ = fit(TCopula{2}, U; method=:itau_irho, vcov=false)
+Ĉ = fit(TCopula{2}, U; method=:itau_irho)
 (df=params(Ĉ).ν, correlation=params(Ĉ).Σ[1, 2])
 ```
 

@@ -330,16 +330,18 @@ Notes:
 - The Sklar copula step defaults to `copula_method=:mle` when supported,
   otherwise to the family's advertised default; either can be replaced
   explicitly.
-- `CopulaModel` implements model stats: `nobs`, `coef`, `vcov`, `stderror`, `confint`, `aic/bic`, `nullloglikelihood`, and more.
+- `CopulaModel` retains the estimate and fit evidence (`nobs`, `coef`,
+  `aic`/`bic`, `nullloglikelihood`, residuals, and prediction), while
+  `CopulaInference` separately retains `vcov`, `stderror`, and `confint`.
 - For a Bayesian workflow over Sklar models, see the examples section.
 
 #### Diagnostics and inference
 
 When inference or diagnostics matter, keep the `CopulaModel` returned by the
-first form of `fit`. It implements the standard statistical-model interface,
-including coefficients, covariance and confidence intervals when covariance
-estimation was requested, information criteria, Rosenblatt residuals, and
-prediction or simulation:
+first form of `fit`. It implements the standard statistical-model interface for
+point estimation, including coefficients, information criteria, Rosenblatt
+residuals, and prediction or simulation. Apply `infer` afterwards to compute
+uncertainty without changing or refitting the point estimate:
 
 ```@example api
 (
@@ -349,6 +351,15 @@ prediction or simulation:
     bic = bic(M),
 )
 ```
+
+```@example api
+I = infer(M; method=:bootstrap, nresamples=5, rng=Xoshiro(2026))
+(covariance=size(vcov(I)), standard_errors=stderror(I))
+```
+
+For this Sklar model, each bootstrap replicate refits the margins and the
+copula. Analytical methods that cannot represent the actual sequential
+estimator fail explicitly instead of falling back to another covariance rule.
 
 #### Automatic family selection
 
@@ -362,7 +373,6 @@ Msel = fit(
     U;
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
-    vcov=false,
 )
 selectiontable(Msel)
 ```
@@ -370,7 +380,7 @@ selectiontable(Msel)
 Candidate selection is deliberately explicit: not every family is meaningful
 in every dimension or appropriate for every scientific question. The
 [fitting interface](@ref fitting_interface) documents candidate failures,
-covariance estimation, residuals, prediction, and the interpretation of the
+post-fit inference, residuals, prediction, and the interpretation of the
 selection criteria.
 
 ::: info About fitting procedures
