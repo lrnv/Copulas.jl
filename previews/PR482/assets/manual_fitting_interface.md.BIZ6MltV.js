@@ -61,7 +61,7 @@ import{_ as l,o as a,c as t,j as s,a as e,am as n}from"./chunks/framework.hBgW2w
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">BIC:                   -483.475</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Converged:             true</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Iterations:            25</span></span>
-<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Elapsed:               0.116s</span></span>
+<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Elapsed:               0.269s</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">────────────────────────────────────────────────────────────────────────────────</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">[ Dependence metrics ]</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">────────────────────────────────────────────────────────────────────────────────</span></span>
@@ -114,7 +114,7 @@ import{_ as l,o as a,c as t,j as s,a as e,am as n}from"./chunks/framework.hBgW2w
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">BIC:                   718.317</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Converged:             true</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Iterations:            28</span></span>
-<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Elapsed:               0.187s</span></span>
+<span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">Elapsed:               0.255s</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">────────────────────────────────────────────────────────────────────────────────</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">[ Dependence metrics ]</span></span>
 <span class="line"><span style="--shiki-light:#24292e;--shiki-dark:#e1e4e8;">────────────────────────────────────────────────────────────────────────────────</span></span>
