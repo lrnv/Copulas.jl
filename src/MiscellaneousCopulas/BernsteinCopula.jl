@@ -20,7 +20,7 @@ Behavior and cost:
 - For an empirical sample of size ``n`` without ties, this construction is a
   genuine copula if and only if every degree ``m_j`` divides ``n``. Invalid
   degree choices are rejected. With `m=nothing`, the largest divisor of ``n``
-  not exceeding ``\lfloor n^{1/d}\rfloor`` is selected in every dimension.
+  not exceeding ``\\lfloor n^{1/d}\\rfloor`` is selected in every dimension.
 - Raw data supplied with `pseudo_values=false` must have tie-free margins.
   Resolve ties explicitly with `pseudos(data; ties=:first)`, `:last`, or
   `:random` before construction when deliberate tie breaking is scientifically
