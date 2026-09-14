@@ -3,7 +3,9 @@
 
 Result of applying one uncertainty-quantification procedure to a fitted
 [`CopulaModel`](@ref). It stores the model, the inference method, its covariance
-matrix, and method-specific diagnostics. Construct one with [`infer`](@ref).
+matrix, method-specific diagnostics, and the parameter-block decomposition
+needed by composite models such as [`SklarDist`](@ref). Construct one with
+[`infer`](@ref); its concrete fields remain implementation details.
 
 Inference objects are immutable and independent: several procedures can be
 applied to the same fitted model without mutating it.
@@ -98,6 +100,10 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
     M.result isa SklarDist && throw(ArgumentError(
         "analytical `$method` inference is not defined for Sklar estimators; " *
         "use :bootstrap or :jackknife to refit the complete margins-and-copula procedure"))
+    spec = get(M.method_details, :_fit_spec, nothing)
+    (spec isa _CopulaFitSpec && spec.target isa Type) || throw(ArgumentError(
+        "analytical `$method` inference is unavailable for runtime-structured fitting targets; " *
+        "use :bootstrap or :jackknife"))
     method === :hessian && M.method !== :mle && throw(ArgumentError(
         "Hessian inference is defined only for maximum-likelihood fits"))
     method in (:godambe, :godambe_pairwise) &&
@@ -167,13 +173,9 @@ function StatsBase.vcov(I::CopulaInference; component::Symbol=:all)
     end
     throw(ArgumentError("unknown covariance component `$component`; expected :all, :copula, or :margins"))
 end
-StatsBase.vcov(M::CopulaModel; kwargs...) = StatsBase.vcov(infer(M; kwargs...))
-
 """Return standard errors derived from a `CopulaInference` covariance matrix."""
 StatsBase.stderror(I::CopulaInference) =
     sqrt.(LinearAlgebra.diag(StatsBase.vcov(I)))
-StatsBase.stderror(M::CopulaModel; kwargs...) =
-    StatsBase.stderror(infer(M; kwargs...))
 
 """Return pointwise Wald intervals from a `CopulaInference` result."""
 function StatsBase.confint(I::CopulaInference; level::Real=0.95)
@@ -184,8 +186,6 @@ function StatsBase.confint(I::CopulaInference; level::Real=0.95)
     return parameters .- z .* standard_errors,
            parameters .+ z .* standard_errors
 end
-StatsBase.confint(M::CopulaModel; level::Real=0.95, method::Symbol=:default, kwargs...) =
-    StatsBase.confint(infer(M; method, kwargs...); level)
 
 function Base.show(io::IO, I::CopulaInference)
     println(io, "CopulaInference")

@@ -88,14 +88,11 @@ function _section(io, title::AbstractString; suffix::Union{Nothing,AbstractStrin
 end
 
 """
-Print a standardized parameter section with optional covariance matrix and vcov method note.
+Print a standardized fitted-parameter section.
 """
-function _print_param_section(io, title::AbstractString, nm::Vector{String}, θ::Vector{Float64};
-                              V::Union{Nothing,AbstractMatrix}=nothing,
-                              vcov_method::Union{Nothing,AbstractString,Symbol}=nothing)
-    suf = vcov_method === nothing ? nothing : string("(vcov=", String(vcov_method), ")")
-    _section(io, title; suffix=suf)
-    _print_param_table(io, nm, θ; V=V)
+function _print_param_section(io, title::AbstractString, nm::Vector{String}, θ::Vector{Float64})
+    _section(io, title)
+    _print_param_table(io, nm, θ)
 end
 
 """
