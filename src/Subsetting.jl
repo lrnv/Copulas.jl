@@ -41,6 +41,7 @@ end
 copula_measure_style(::Type{<:SubsetCopula{d,CT}}) where {d,CT} =
     copula_measure_style(CT)
 copula_measure_style(C::SubsetCopula) = copula_measure_style(C.C)
+_is_empirical_copula(C::SubsetCopula) = _is_empirical_copula(C.C)
 SubsetCopula(C::Copula, dims::NTuple{p,Int}) where {p} = SubsetCopula{p}(C, dims)
 function SubsetCopula(CS::SubsetCopula{d,CT}, dims2::NTuple{p, Int}) where {d,CT,p}
     return SubsetCopula{p}(CS.C, ntuple(i -> CS.dims[dims2[i]], p))

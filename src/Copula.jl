@@ -76,6 +76,8 @@ See also: [`CopulaMeasureStyle`](@ref), [`limit_kind`](@ref),
 copula_measure_style(::Type{<:Copula}) = AbsolutelyContinuousMeasure()
 copula_measure_style(C::Copula) = copula_measure_style(typeof(C))
 
+_is_empirical_copula(::Copula) = false
+
 Base.broadcastable(C::Copula) = Ref(C)
 Base.length(::Copula{d}) where d = d
 

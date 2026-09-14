@@ -8,6 +8,28 @@
     @test_throws ArgumentError BetaCopula(tied)
     @test_throws ArgumentError CheckerboardCopula(tied; m=2, pseudo_values=false)
     @test_throws ArgumentError BernsteinCopula(tied; m=2, pseudo_values=false)
+
+    empirical = EmpiricalCopula(
+        reshape(1.0:10.0, 2, 5); pseudo_values=false)
+    @test_throws ArgumentError BernsteinCopula(empirical; m=2)
+    @test BernsteinCopula(empirical; m=5) isa BernsteinCopula
+    @test BernsteinCopula(empirical; m=nothing).m == (1, 1)
+    @test_throws ArgumentError BernsteinCopula(IndependentCopula{2}(); m=0)
+    @test_throws DimensionMismatch BernsteinCopula(
+        IndependentCopula{2}(); m=(2, 2, 2))
+    @test_throws ArgumentError BernsteinCopula{2}(
+        (2, 2), [0.6 0.0; 0.0 0.4])
+
+    concentrated = BernsteinCopula{2}((2, 2), [0.5 0.0; 0.0 0.5])
+    point = [0.25, 0.25]
+    @test sum(concentrated.weights) ≈ 1
+    @test vec(sum(concentrated.weights; dims=1)) ≈ fill(0.5, 2)
+    @test vec(sum(concentrated.weights; dims=2)) ≈ fill(0.5, 2)
+    @test cdf(concentrated, [0.25, 1.0]) ≈ 0.25
+    @test cdf(concentrated, [1.0, 0.25]) ≈ 0.25
+    @test logpdf(concentrated, point) > 0
+    @test exp(logpdf(concentrated, point)) ≈ pdf(concentrated, point)
+
     for ties in (:first, :last, :random)
         ranked = pseudos(tied; ties, rng=Xoshiro(42))
         @test BetaCopula(ranked) isa BetaCopula

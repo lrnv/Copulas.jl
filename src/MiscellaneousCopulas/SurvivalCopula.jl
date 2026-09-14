@@ -175,6 +175,8 @@ copula_measure_style(::Type{<:SurvivalCopula{d,CT}}) where {d,CT} =
 copula_measure_style(::Type{<:AbstractReflectedCopula{d,CT}}) where {d,CT} =
     copula_measure_style(CT)
 copula_measure_style(C::AbstractReflectedCopula) = copula_measure_style(basecopula(C))
+_is_empirical_copula(C::AbstractReflectedCopula) =
+    _is_empirical_copula(basecopula(C))
 
 function _survival_reverse!(u, mask::Tuple)
     if ndims(u) == 1
