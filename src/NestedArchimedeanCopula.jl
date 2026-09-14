@@ -1049,7 +1049,7 @@ use `fitteddistribution(fit(CopulaModel, reparam, init, U))`.
 """
 # Shared optimiser + model assembly for a parametrisation `recon: α -> copula`.
 function _fit_nested(recon, α₀::AbstractVector, U, d::Int, n::Int;
-        quick_fit, derived_measures, fit_spec=nothing)
+        fit_spec=nothing)
     loss(α) = -Distributions.loglikelihood(recon(α), U)
     t = @elapsed res = try
         Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff = ADTypes.AutoForwardDiff())
@@ -1057,17 +1057,16 @@ function _fit_nested(recon, α₀::AbstractVector, U, d::Int, n::Int;
         Optim.optimize(loss, α₀, Optim.NelderMead())
     end
     Chat = recon(Optim.minimizer(res))
-    quick_fit && return (result = Chat,)
     ll = Distributions.loglikelihood(Chat, U)
     # NOTE: we deliberately do NOT put :θ̂ in the metadata, so the generic vcov path
     # (type-positional reconstruction we do not have) is never reached.
     md = (; d, n, method = :mle, nparams = length(α₀),
           optimizer = Optim.summary(res), converged = Optim.converged(res),
-          iterations = Optim.iterations(res), elapsed_sec = t, derived_measures,
+          iterations = Optim.iterations(res), elapsed_sec = t,
+          free_parameters = (; α = collect(Optim.minimizer(res))),
+          fixed_parameters = NamedTuple(),
           U = U, _fit_spec = fit_spec)
-    return CopulaModel(Chat, n, ll, :mle; vcov = nothing,
-        converged = Optim.converged(res), iterations = Optim.iterations(res),
-        elapsed_sec = t, method_details = md)
+    return (; result=Chat, n, ll, method=:mle, meta=md, elapsed_sec=t)
 end
 
 function _validate_nested_fit_data(U, d::Int)
@@ -1082,24 +1081,32 @@ end
 # Default: reparametrise a fixed TEMPLATE tree (its shape + families are kept fixed,
 # only the scalar θ of every node is optimised).
 function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, U;
-        method=:mle, quick_fit=false, vcov=false, derived_measures=true, kwargs...) where {d}
+        method=:mle, derived_measures=true, kwargs...) where {d}
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     _validate_nested_fit_data(U, d)
     fit_spec = _CopulaFitSpec(C0, :mle, (; kwargs...))
-    return _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U, d, size(U, 2);
-                       quick_fit, derived_measures, fit_spec)
+    estimate = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0),
+                           U, d, size(U, 2); fit_spec)
+    md = (; estimate.meta..., derived_measures)
+    return CopulaModel(estimate.result, estimate.n, estimate.ll, estimate.method;
+        converged=get(md, :converged, true), iterations=get(md, :iterations, 0),
+        elapsed_sec=estimate.elapsed_sec, method_details=md)
 end
 
 # Custom parametrisation: a map `reparam : α -> NestedArchimedeanCopula` and its
 # initial α₀ — NO template, the map fully defines the tree (so it can share
 # parameters, change the per-generator parametrisation, or encode a constraint).
 function Distributions.fit(::Type{CopulaModel}, reparam, init::AbstractVector, U;
-        method=:mle, quick_fit=false, vcov=false, derived_measures=true, kwargs...)
+        method=:mle, derived_measures=true, kwargs...)
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     α₀ = collect(float.(init))
     d  = length(reparam(α₀))::Int                 # dimension from the parametrisation itself
     _validate_nested_fit_data(U, d)
-    return _fit_nested(reparam, α₀, U, d, size(U, 2); quick_fit, derived_measures)
+    estimate = _fit_nested(reparam, α₀, U, d, size(U, 2))
+    md = (; estimate.meta..., derived_measures)
+    return CopulaModel(estimate.result, estimate.n, estimate.ll, estimate.method;
+        converged=get(md, :converged, true), iterations=get(md, :iterations, 0),
+        elapsed_sec=estimate.elapsed_sec, method_details=md)
 end
 
 # ---- coef / coefnames for a fitted nested copula ----------------------------
@@ -1136,5 +1143,12 @@ StatsBase.dof(M::CopulaModel{<:NestedArchimedeanCopula}) =
 # Quick template shim: returns only the fitted copula. (No `fit(reparam, init, U)`
 # shim — with an untyped `reparam` it would be type piracy on `Distributions.fit`;
 # use `fit(CopulaModel, reparam, init, U).result` for the custom case.)
-Distributions.fit(C0::NestedArchimedeanCopula, U; kwargs...) =
-    Distributions.fit(CopulaModel, C0, U; quick_fit = true, kwargs...).result
+function Distributions.fit(C0::NestedArchimedeanCopula{d}, U;
+                           method=:mle, kwargs...) where {d}
+    method === :mle || throw(ArgumentError(
+        "NestedArchimedeanCopula supports only method=:mle (got $method)."))
+    _validate_nested_fit_data(U, d)
+    fit_spec = _CopulaFitSpec(C0, :mle, (; kwargs...))
+    return _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0),
+                       U, d, size(U, 2); fit_spec).result
+end
