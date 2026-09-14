@@ -174,8 +174,10 @@ module Copulas
     export BernsteinCopula, BetaCopula, CheckerboardCopula, EmpiricalCopula
     export FGMCopula, IndependentCopula, MCopula, WCopula
     export PlackettCopula, RafteryCopula, SurvivalCopula
+    export Rotated90Copula, Rotated180Copula, Rotated270Copula
 
     public Copula, Generator, Tail
+    public basecopula, flipmask, flips
 
     public ϕ, 𝒲₋₁, max_monotony
     public A, ℓ

@@ -35,12 +35,15 @@ with `WCopula()`, `WCopula(2)`, or `WCopula{2}()`.
 
 ### `SurvivalCopula`
 
-If ``\boldsymbol U\sim C`` and ``J`` is a set of coordinates, the survival
-transformation is the copula of ``\boldsymbol V`` defined by
-``V_j=1-U_j`` for ``j\in J`` and ``V_j=U_j`` otherwise. It preserves the
-dimension and has no additional continuous parameter. Construct it with
-`SurvivalCopula(C, flips)`, where `flips` contains distinct indices in
-`1:length(C)`.
+If ``\boldsymbol U\sim C``, the survival copula is the distribution of
+``\boldsymbol 1-\boldsymbol U`` (it is still a copula). It exchanges lower- and upper-tail behaviour
+without adding a continuous parameter. Construct it with `SurvivalCopula(C)`.
+
+For compatibility, `SurvivalCopula(C, flips)` also constructs the copula of a
+partially reflected vector: coordinate ``j`` is replaced by ``1-U_j`` exactly
+when ``j`` belongs to `flips`. The indices must be distinct and belong to
+`1:length(C)`. In new bivariate code, prefer the named rotation constructors
+below when the transformation is one of the three standard rotations.
 
 When fitting a rotated model, pass the desired flip indices explicitly because
 they belong to the instance rather than its type:
@@ -51,6 +54,37 @@ S = SurvivalCopula(ClaytonCopula(2, 2.0), (1,))
 U = rand(S, 100)
 Ŝ = fit(typeof(S), U; flips=(1,))
 ```
+
+### Bivariate rotations
+
+For a bivariate copula ``C``, Copulas.jl follows the counter-clockwise
+rotation convention
+
+```math
+\begin{aligned}
+C^{90}(u,v)  &= v-C(1-u,v),\\
+C^{180}(u,v) &= u+v-1+C(1-u,1-v),\\
+C^{270}(u,v) &= u-C(u,1-v).
+\end{aligned}
+```
+
+Construct these models with `Rotated90Copula(C)`, `Rotated180Copula(C)`, and
+`Rotated270Copula(C)`. They reflect respectively the first coordinate, both
+coordinates, and the second coordinate. Unlike a partial
+`SurvivalCopula(C, flips)`, their reflection pattern belongs to the concrete
+type, so `fit(typeof(R), U)` preserves the requested rotation without a
+`flips` keyword.
+
+Single-coordinate rotations reverse the sign of bivariate Kendall's tau and
+exchange one upper/lower corner with an opposite corner. A 180-degree rotation
+preserves Kendall's tau and is exactly the bivariate survival copula. Rotation
+does not imply that the resulting family is symmetric, and 90- and 270-degree
+rotations generally remain different models.
+
+The qualified accessors `Copulas.basecopula(R)`, `Copulas.flipmask(R)`, and
+`Copulas.flips(R)` return respectively the original copula, the Boolean
+reflection mask, and the reflected coordinate indices. They apply both to the
+named rotations and to `SurvivalCopula` objects.
 
 ## Others
 

@@ -47,6 +47,35 @@ end
     survival = SurvivalCopula{2}(ClaytonCopula{2}(1.5), (1,))
     same_model(SurvivalCopula{2}(ClaytonCopula{2}(1.5), (1,)), survival)
 
+    base2 = ClaytonCopula{2}(1.5)
+    full_survival = SurvivalCopula(base2)
+    @test Copulas.basecopula(full_survival) === base2
+    @test Copulas.flipmask(full_survival) == (true, true)
+    @test Copulas.flips(full_survival) == (1, 2)
+
+    rotations = (
+        Rotated90Copula(base2) => (true, false),
+        Rotated180Copula(base2) => (true, true),
+        Rotated270Copula(base2) => (false, true),
+    )
+    for (rotation, mask) in rotations
+        @test rotation isa Copulas.AbstractReflectedCopula{2}
+        @test Copulas.basecopula(rotation) === base2
+        @test Copulas.flipmask(rotation) == mask
+        @test Copulas.flips(rotation) == Tuple(i for i in 1:2 if mask[i])
+        reference = SurvivalCopula(base2, mask)
+        point = [0.37, 0.68]
+        @test cdf(rotation, point) ≈ cdf(reference, point)
+        @test logpdf(rotation, point) ≈ logpdf(reference, point)
+    end
+
+    @test_throws MethodError Rotated90Copula(ClaytonCopula{3}(1.5))
+    @test_throws MethodError Rotated180Copula(ClaytonCopula{3}(1.5))
+    @test_throws MethodError Rotated270Copula(ClaytonCopula{3}(1.5))
+    @test_throws DimensionMismatch Rotated90Copula(3, base2)
+    @test_throws MethodError Rotated180Copula(2, ClaytonCopula{3}(1.5))
+    @test_throws MethodError Rotated270Copula(3, ClaytonCopula{3}(1.5))
+
     B = [0.7 0.3; 0.2 0.8]
     spectral = Copulas.DiscreteSpectralTail(B)
     same_model(ExtremeValueCopula(2, spectral), ExtremeValueCopula{2}(spectral))
