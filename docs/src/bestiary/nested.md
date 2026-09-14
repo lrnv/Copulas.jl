@@ -4,7 +4,7 @@ CurrentModule = Copulas
 
 # Nested Archimedean copulas
 
-A *nested* (hierarchical) Archimedean copula glues several Archimedean copulas
+A **nested** (hierarchical) Archimedean copula glues several Archimedean copulas
 together under an outer Archimedean generator, letting different blocks of
 variables share a stronger within-block dependence while still being coupled
 across blocks. This is the natural model for grouped or hierarchical
@@ -22,7 +22,6 @@ following the algorithm of Yang & Li
 With an outer generator ``\phi_0`` over inner copulas ``C_1, \dots, C_m`` on
 disjoint coordinate blocks ``I_1, \dots, I_m`` (and possibly some bare
 coordinates attached directly to the root), the CDF is
-
 ```math
 C(\mathbf u) = \phi_0\!\left(
   \sum_{i \in \text{root leaves}} \phi_0^{-1}(u_i)
@@ -32,6 +31,7 @@ C(\mathbf u) = \phi_0\!\left(
 
 and each child ``C_k`` is itself Archimedean or, recursively, nested
 Archimedean — so trees nest to arbitrary depth.
+
 To facilitate notation of leaves, we assume ``C_k(u_{I_k}) = u_{I_k}`` whenever ``\left|I_k\right|=1``.
 
 The density is the mixed partial of this CDF over the differentiated
@@ -41,12 +41,10 @@ truncated Taylor series over the generator tree, building only on the package's
 generator machinery.
 
 ## Building a tree
-
 ```@example nested
 using Copulas, Distributions
 using StatsBase: coef
-using Copulas: ClaytonGenerator, JoeGenerator
-
+using Copulas: AMHGenerator, ClaytonGenerator
 # Outer Clayton(2) over two inner Clayton panels on dims 1:2 and 3:4.
 C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
         children = [ClaytonCopula(2, 5.0), ClaytonCopula(2, 6.0)])
@@ -58,25 +56,25 @@ order. You can instead pin a child to explicit dimensions with a `Pair`, and you
 can attach bare coordinates to the root with `leaves`:
 
 ```@example nested
-# Root Clayton with a bare leaf on dim 1 and a Gumbel panel on dims 2:4.
+# Root Clayton with a bare leaf on dim 1 and a stronger Clayton panel on dims 2:4.
 C2 = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-         leaves = [1], children = [GumbelCopula(3, 2.0) => [2, 3, 4]])
+         leaves = [1], children = [ClaytonCopula(3, 4.0) => [2, 3, 4]])
 logpdf(C2, [0.25, 0.4, 0.55, 0.7])
 ```
 
 Mixed families and arbitrary nesting depth are supported:
 
 ```@example nested
-inner = NestedArchimedeanCopula(JoeGenerator(3.0); children = [JoeCopula(2, 4.0)])
-C3 = NestedArchimedeanCopula(ClaytonGenerator(1.5);
-         children = [GumbelCopula(2, 2.0), FrankCopula(2, 3.0), inner])
-logpdf(C3, [0.2, 0.3, 0.4, 0.5, 0.6, 0.7])
+inner = NestedArchimedeanCopula(ClaytonGenerator(2.0); children = [ClaytonCopula(2, 4.0)])
+C3 = NestedArchimedeanCopula(AMHGenerator(0.3);
+         children = [ClaytonCopula(2, 1.5), inner])
+logpdf(C3, [0.2, 0.3, 0.4, 0.5])
 ```
 
 A purely flat declaration (only `leaves`, no `children`) returns the package's
 native [`ArchimedeanCopula`](@ref) so its fast specialised density is used.
 
-Be carefull about validity of the wanted nesting tree. Let us recall from
+Be careful about validity of the wanted nesting tree. Let us recall from
 [hofert2012nesting](@cite) and [mcneil2008](@cite) the following central results.
 
 
@@ -89,23 +87,26 @@ are themselves valid Archimedean generators for their respective dimensions,
 the two-generator nested construction is valid if and only if ``h'`` is
 ``d_1``-monotone on ``(0,\infty)`` [hofert2012nesting](@cite).
 
-The often-used *sufficient nesting condition* asks instead that ``h'`` be
+The often-used **sufficient nesting condition** asks instead that ``h'`` be
 completely monotone [mcneil2008](@cite). This stronger condition is convenient
 because it is dimension-free, but it is not necessary in finite dimensions.
+
 For a full tree, the finite-dimensional condition must hold on every
 parent-child edge, using the dimension of the child subtree.
 
 :::
 
-!!! note "Validity is the caller's responsibility"
-    The constructor does not check the nesting condition, you have to check them yourself.
+!!! note "Nesting validity"
+    The constructor validates every parent-child edge for which Copulas.jl has an
+    analytical certificate. A mathematically invalid certified nesting raises a
+    `DomainError`; a family combination for which no certificate is implemented
+    raises an `ArgumentError` rather than silently constructing an unvalidated copula.
 
 !!! tip "Same-families rule of thumb"
     For same-family nestings the standard sufficient condition is that the inner generator be at
     least as dependent as the outer one (e.g. for Clayton/Gumbel/Joe, the inner
-    parameter ``\ge`` the outer parameter). Mixed-family nestings are accepted
-    but must be validated by the user.
-
+    parameter ``\ge`` the outer parameter). Some mixed-family nestings are also
+    certified analytically; unsupported combinations are rejected explicitly.
 
 ## Fitting
 
@@ -127,7 +128,7 @@ M = fit(CopulaModel, Cstart, U)
 fitted_distribution(M)
 ```
 
-The optimiser runs in an unconstrained space through a *parametrisation* — a map
+The optimiser runs in an unconstrained space through a **parametrisation** — a map
 `α -> NestedArchimedeanCopula` decoupled from the generator objects. Above we fit
 a **template** tree. For full control, pass your own map and its initial point,
 `fit(CopulaModel, reparam, init, U)` — no template needed, since `reparam` builds
@@ -230,7 +231,7 @@ logpdf(subsetdims(Cpart, O), u[collect(O)]) +
 On the data scale, add the observed marginal log densities
 ``\sum_{i\in O}\log f_i(x_i)`` to this copula-scale contribution.
 
-When a *single* coordinate is in ``C``, `condition(S, O, x_O)` returns a
+When a **single** coordinate is in ``C``, `condition(S, O, x_O)` returns a
 univariate conditional distribution and you use `logcdf(condition(...), x_C)`
 (a scalar `x_C`); when several are in ``C`` it returns a conditional joint
 distribution and you use `log(cdf(condition(...), x_C))` as above. With ``C``
@@ -240,8 +241,9 @@ empty (all observed) the recipe reduces to the ordinary joint density
 `subsetdims` support — flat [`ArchimedeanCopula`](@ref) as well as nested trees.
 
 !!! note "Multi-coordinate conditional CDF"
+
     With two or more lower-tail coordinates the conditional CDF is the mixed
-    partial of the nested CDF over the *observed* coordinates. Its cost grows
+    partial of the nested CDF over the **observed** coordinates. Its cost grows
     quickly with the number of observed coordinates. At high differentiation
     order, `Float64` calculations can also lose precision; end-to-end `BigFloat`
     conditioning is not currently supported.
