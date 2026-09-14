@@ -16,11 +16,17 @@ end
                 method=:probe, offset=0.1)
     @test fitted isa IndependentCopula{2}
     @test StatsBase.coef(model) == [Statistics.mean(U) + 0.1]
+    @test StatsBase.coefnames(model) == ["estimate"]
+    @test StatsBase.dof(model) == 1
     @test model.method_details.fixed_parameters == (; offset=0.1)
+    @test !("offset" in StatsBase.coefnames(model))
     @test model.iterations == 1
     @test_throws ArgumentError infer(model)
-    @test infer(model; method=:bootstrap, nresamples=3,
-                rng=StableRNG(48_099)) isa CopulaInference
+    inference = infer(model; method=:bootstrap, nresamples=3,
+                      rng=StableRNG(48_099))
+    @test inference isa CopulaInference
+    @test size(StatsBase.vcov(inference)) == (StatsBase.dof(model),
+                                              StatsBase.dof(model))
 end
 
 @testset "public Sklar fitting path" begin
