@@ -153,6 +153,7 @@ recon = α -> (θ = exp(α[1]);
         children = [ClaytonCopula(2, θ), ClaytonCopula(2, θ)]))
 Ms = fit(CopulaModel, recon, [0.0], U)
 fitted_distribution(Ms) # the root and both panels share one parameter by construction
+coef(Ms)                 # one fitted free coordinate
 ```
 
 `fit(C0, U)` is a shorthand returning just the fitted copula; for the custom form

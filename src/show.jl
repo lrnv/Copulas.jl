@@ -212,7 +212,7 @@ function Base.show(io::IO, S::CopulaSelection)
     show(io, selected_model(S))
     _section(io, "Model selection")
     _kv(io, "Criterion", uppercase(String(S.criterion)))
-    _kv(io, "Selected family", string(S.table[S.selected_index].candidate))
+    _kv(io, "Selected family", _fmt_copula_family(fitted_distribution(selected_model(S))))
 end
 
 """

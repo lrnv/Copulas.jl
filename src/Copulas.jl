@@ -199,8 +199,7 @@ module Copulas
 
     
     ##### Fitting framework
-    export fitted_distribution, selected_model, infer, selection_table
-    public fitting_methods, fitting_method
+    export CopulaModel, fitted_distribution, selected_model, infer, selection_table
     
 
     ##### Testing framework

@@ -1057,7 +1057,8 @@ function _fit_nested(recon, α₀::AbstractVector, U)
         Optim.optimize(loss, α₀, Optim.NelderMead())
     end
     Optim.converged(res) || throw(ErrorException("nested Archimedean maximum-likelihood optimization did not converge"))
-    return recon(Optim.minimizer(res))
+    α = collect(Optim.minimizer(res))
+    return recon(α), α
 end
 
 function _validate_nested_fit_data(U, d::Int)
@@ -1077,7 +1078,7 @@ function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, 
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     _validate_nested_fit_data(U, d)
     fit_spec = _CopulaFitSpec(C0, :mle, (; kwargs...))
-    fitted = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U)
+    fitted, _ = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U)
     return CopulaModel(fitted, U, Distributions.loglikelihood(fitted, U), fit_spec)
 end
 
@@ -1091,14 +1092,14 @@ function Distributions.fit(::Type{CopulaModel}, reparam, init::AbstractVector, U
     α₀ = collect(float.(init))
     d  = length(reparam(α₀))::Int                 # dimension from the parametrisation itself
     _validate_nested_fit_data(U, d)
-    fit_spec = _CopulaFitSpec((; reparam, init=copy(α₀)), :mle,
+    fitted, α = _fit_nested(reparam, α₀, U)
+    fit_spec = _CopulaFitSpec((; reparam, init=copy(α₀), coordinates=α), :mle,
                               (; kwargs...))
-    fitted = _fit_nested(reparam, α₀, U)
     return CopulaModel(fitted, U, Distributions.loglikelihood(fitted, U), fit_spec)
 end
 
-# Expose the fitted generators' natural parameters as model coefficients;
-# unconstrained optimizer coordinates remain transient implementation details.
+# Template fits expose the fitted generators' natural parameters. Custom
+# runtime parametrizations instead expose their irreducible fitted coordinates.
 function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
     names = String[]
     values = Float64[]
@@ -1133,5 +1134,6 @@ function Distributions.fit(C0::NestedArchimedeanCopula{d}, U;
     method === :mle || throw(ArgumentError(
         "NestedArchimedeanCopula supports only method=:mle (got $method)."))
     _validate_nested_fit_data(U, d)
-    return _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U)
+    fitted, _ = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U)
+    return fitted
 end

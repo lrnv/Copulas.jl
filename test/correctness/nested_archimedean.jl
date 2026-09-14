@@ -544,6 +544,7 @@ end
         Mn = Distributions.fit(Copulas.CopulaModel, nest, [0.0, 0.0], U)
         @test rootθ(Mn) ≤ childθ(Mn)                  # nesting enforced by the user's reparam
         @test StatsBase.dof(Mn) == 2
+        @test StatsBase.coefnames(Mn) == ["α1", "α2"]
 
         # custom reparam SHARING one θ across root and child → 1 free parameter
         recon = α -> (θ = exp(α[1]);
@@ -551,6 +552,7 @@ end
                                     children = [ClaytonCopula{2}(θ)]))
         Ms = Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U)
         @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
+        @test StatsBase.coefnames(Ms) == ["α1"]
         @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
 
         # Arbitrary-depth, non-Clayton templates preserve every family and

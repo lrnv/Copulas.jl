@@ -257,10 +257,9 @@ and the general estimation framework.
 
 ### Implementing a fitting method inside Copulas.jl
 
-Estimator execution is intentionally not a public extension API. In-package
-contributors register a route with the internal hooks below; downstream code
-must not depend on these names. The public [`fitting_methods`](@ref) function is
-an inspection interface for the methods already supplied by a family.
+Estimator registration and execution are intentionally not public extension
+APIs. In-package contributors use the internal hooks below; downstream code
+must not depend on these names or their return conventions.
 
 Maximum pseudo-likelihood belongs to the public `fit` layer. Internal
 likelihood implementations register `:mle`, while `fit` performs the rank

@@ -26,7 +26,7 @@ end
     @test_throws ArgumentError infer(model)
     inference = infer(model; method=:bootstrap, nresamples=3,
                       rng=StableRNG(48_099))
-    @test inference isa CopulaInference
+    @test inference isa Copulas.CopulaInference
     @test size(StatsBase.vcov(inference)) == (StatsBase.dof(model),
                                               StatsBase.dof(model))
 
@@ -34,7 +34,7 @@ end
     mpl = fit(CopulaModel, PublicMPLProtocolProbe, raw;
               method=:mpl, pseudo_values=false)
     @test fitted_distribution(mpl) isa IndependentCopula{2}
-    @test :mpl ∉ Copulas.fitting_methods(PublicMPLProtocolProbe, Val(2))
+    @test :mpl ∉ Copulas._available_fitting_methods(PublicMPLProtocolProbe, 2)
 end
 
 @testset "public Sklar fitting path" begin
@@ -118,10 +118,9 @@ end
     @test params(fitted) == params(fitted_distribution(model))
     inference = infer(model; method=:bootstrap, nresamples=3,
                       rng=StableRNG(113))
-    @test inference isa CopulaInference
+    @test inference isa Copulas.CopulaInference
     @test size(StatsBase.vcov(inference)) ==
           (StatsBase.dof(model), StatsBase.dof(model))
-    @test inference.diagnostics.nresamples == 3
     @test !applicable(StatsBase.vcov, model)
     @test_throws ArgumentError fit(CopulaModel, ClaytonCopula{2}, U;
         method=:itau, vcov=true)
@@ -357,7 +356,6 @@ end
         @testset "$(case.name)" begin
             family, d = typeof(copula), length(copula)
             methods = Copulas._available_fitting_methods(family, d)
-            @test Copulas.fitting_methods(family, Val(d)) == methods
             @test methods isa Tuple
             @test all(method -> method isa Symbol, methods)
             @test length(unique(methods)) == length(methods)
@@ -464,13 +462,6 @@ end
     @test_throws ArgumentError infer(M0)
     @test StatsBase.aic(M0) == StatsBase.bic(M0) == 0
 
-    # Future fixed-parameter estimators only need to identify fixed natural
-    # coordinates in the replay recipe; no duplicate value tree is required.
-    Mfixed = CopulaModel(C, U, loglikelihood(C, U),
-        Copulas._CopulaFitSpec(ClaytonCopula{2}, :fixture, (;), (:θ,)))
-    @test isempty(StatsBase.coef(Mfixed))
-    @test isempty(StatsBase.coefnames(Mfixed))
-    @test StatsBase.dof(Mfixed) == 0
 end
 
 @testset "nested Archimedean fitting validation" begin

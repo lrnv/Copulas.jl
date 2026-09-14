@@ -2,20 +2,18 @@
     CopulaInference
 
 Result of applying one uncertainty-quantification procedure to a fitted
-[`CopulaModel`](@ref). It stores the model, the inference method, its covariance
-matrix, method-specific diagnostics, and the parameter-block decomposition
-needed by composite models such as [`SklarDist`](@ref). Construct one with
-[`infer`](@ref); its concrete fields remain implementation details.
+[`CopulaModel`](@ref). It stores only the model, the inference method, and the
+resulting covariance matrix. Parameter blocks for composite models are derived
+from the fitted model when requested. Construct one with [`infer`](@ref); its
+concrete fields remain implementation details.
 
 Inference objects are immutable and independent: several procedures can be
 applied to the same fitted model without mutating it.
 """
-struct CopulaInference{M<:CopulaModel,V<:AbstractMatrix,D<:NamedTuple,B<:NamedTuple}
+struct CopulaInference{M<:CopulaModel,V<:AbstractMatrix}
     model::M
     method::Symbol
     covariance::V
-    diagnostics::D
-    blocks::B
 end
 
 ####### Analytical inference kernels.
@@ -70,8 +68,7 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
     end
     (Vα === nothing || any(!isfinite, Vα)) && throw(ArgumentError(
         "Hessian inference could not stabilize the observed information"))
-    return _vcov_finalize(CT, U, θ, d, α, Vα, Val(:hessian), methodv;
-                          observed_information_ridge=λ)
+    return _vcov_finalize(CT, U, θ, d, α, Vα)
 end
 
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
@@ -135,13 +132,11 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
     DtD = Dα' * Dα
     stabilized_inv = inv(DtD + 1e-10LinearAlgebra.I)
     Vα = stabilized_inv * (Dα' * Ω * Dα) * stabilized_inv / n
-    return _vcov_finalize(CT, U, θ, d, α, Vα, vcovv, methodv)
+    return _vcov_finalize(CT, U, θ, d, α, Vα)
 end
 
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-                        d::Int, α, Vα, ::Val{vcovm},
-                        methodv::Val{method};
-                        observed_information_ridge=nothing) where {vcovm,method}
+                        d::Int, α, Vα)
     J = ForwardDiff.jacobian(
         αv -> _flatten_params(_rebound_params(CT, d, αv))[2], α)
     Vθ = J * Vα * J'
@@ -153,7 +148,7 @@ function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
     Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
     all(isfinite, Matrix(Vθ)) || throw(ArgumentError(
         "inference produced a non-finite regularized covariance matrix"))
-    return Vθ, (; eigenvalue_floor=1e-12, observed_information_ridge)
+    return Vθ
 end
 
 function _default_inference_method(M::CopulaModel)
@@ -204,10 +199,8 @@ function _infer(M::CopulaModel, ::Val{:bootstrap};
     nresamples > 1 || throw(ArgumentError("nresamples must be greater than one"))
     _, data, _ = _inference_inputs(M)
     n = size(data, 2)
-    rng_state = copy(rng)
     sample(rng) = @view data[:, rand(rng, 1:n, n)]
-    V = _resampling_covariance(M, sample; rng, nresamples)
-    return V, (; nresamples, rng_state)
+    return _resampling_covariance(M, sample; rng, nresamples)
 end
 
 function _infer(M::CopulaModel, ::Val{:jackknife})
@@ -230,8 +223,7 @@ function _infer(M::CopulaModel, ::Val{:jackknife})
     end
     center = vec(Statistics.mean(estimates; dims=1))
     deviations = estimates .- center'
-    V = (n - 1) / n .* (deviations' * deviations)
-    return V, (; nreplicates=n)
+    return (n - 1) / n .* (deviations' * deviations)
 end
 
 function _infer(M::CopulaModel, ::Val{method}) where {method}
@@ -264,8 +256,7 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
     applicable(_unbound_params, target, d, parameters) || throw(ArgumentError(
         "analytical `$method` inference is not implemented for fitting target $target"))
     engine_method = fitting_method(M) === :mpl ? :mle : fitting_method(M)
-    V, diagnostics = _vcov(target, U, parameters, Val(method), Val(engine_method))
-    return V, diagnostics
+    return _vcov(target, U, parameters, Val(method), Val(engine_method))
 end
 
 """
@@ -280,7 +271,7 @@ acquire analytical inference merely by implementing a fitting route. Fits
 without a justified default raise an `ArgumentError`. Explicit methods are
 `:hessian`, `:godambe`,
 `:godambe_pairwise`, `:jackknife`, and `:bootstrap`. Bootstrap inference accepts
-`nresamples` and `rng` and records their provenance in the result diagnostics.
+`nresamples` and `rng`; these execution controls are not retained in the result.
 
 For a fitted `SklarDist`, the default is `:bootstrap`. Every resample repeats
 the complete estimator: all margins are fitted again, pseudo-observations are
@@ -294,12 +285,9 @@ See also: [`CopulaInference`](@ref), [`StatsBase.vcov`](@ref),
 """
 function infer(M::CopulaModel; method::Symbol=:default, kwargs...)
     selected = method === :default ? _default_inference_method(M) : method
-    V, diagnostics = _infer(M, Val(selected); kwargs...)
+    V = _infer(M, Val(selected); kwargs...)
     covariance = LinearAlgebra.Symmetric(Matrix{Float64}(V))
-    all_parameters = axes(covariance, 1)
-    blocks = _parameter_blocks(M)
-    return CopulaInference(M, selected, covariance,
-                           (; method=selected, diagnostics...), blocks)
+    return CopulaInference(M, selected, covariance)
 end
 
 infer(::CopulaSelection; kwargs...) = throw(ArgumentError(
@@ -315,11 +303,12 @@ all marginal blocks. The default `:all` preserves cross-component covariance.
 """
 function StatsBase.vcov(I::CopulaInference; component::Symbol=:all)
     component === :all && return I.covariance
-    component === :copula && return I.covariance[I.blocks.copula, I.blocks.copula]
+    blocks = _parameter_blocks(I.model)
+    component === :copula && return I.covariance[blocks.copula, blocks.copula]
     if component === :margins
-        isempty(I.blocks.margins) && throw(ArgumentError(
+        isempty(blocks.margins) && throw(ArgumentError(
             "this inference result has no marginal-parameter block"))
-        indices = reduce(vcat, collect.(I.blocks.margins))
+        indices = reduce(vcat, collect.(blocks.margins))
         return I.covariance[indices, indices]
     end
     throw(ArgumentError("unknown covariance component `$component`; expected :all, :copula, or :margins"))

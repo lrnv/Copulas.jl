@@ -77,15 +77,11 @@ the same estimator. Its fields and representation are not stable API.
 See also: [`_fit`](@ref), [`_refit`](@ref), [`CopulaModel`](@ref),
 [`GOFCopulaTest`](@ref).
 """
-struct _CopulaFitSpec{T,K<:NamedTuple,F<:Tuple}
+struct _CopulaFitSpec{T,K<:NamedTuple}
     target::T
     method::Symbol
     kwargs::K
-    fixed::F
 end
-
-_CopulaFitSpec(target, method::Symbol, kwargs::NamedTuple) =
-    _CopulaFitSpec(target, method, kwargs, ())
 
 """
     fitting_method(model::CopulaModel) -> Symbol
@@ -299,22 +295,6 @@ See also: [`_fit`](@ref), [`_example`](@ref),
 _available_fitting_methods(::Type{<:Copula}, d) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C), d)
 
-"""
-    fitting_methods(::Type{<:Copula}, ::Val{d}) -> Tuple{Vararg{Symbol}}
-
-Return the estimators supported by a copula fitting target in dimension `d`.
-Return the fitting methods registered internally for a copula family. This is
-an inspection interface; it does not make the private estimator dispatch an
-extension API. Advertise `:mle`, not `:mpl`, for likelihood fitting: maximum
-pseudo-likelihood is a high-level input-transformation contract and is
-dispatched to the same `Val{:mle}` estimator after pseudo-observations have been
-constructed.
-"""
-fitting_methods(CT::Type{<:Copula}, ::Val{d}) where {d} =
-    _available_fitting_methods(CT, d)
-fitting_methods(::Type{SklarDist}, ::Val{d}) where {d} =
-    _available_fitting_methods(SklarDist, d)
-
 function _reject_inference_fit_keywords(kwargs::NamedTuple)
     for keyword in (:vcov, :vcov_method)
         haskey(kwargs, keyword) && throw(ArgumentError(
@@ -325,13 +305,13 @@ function _reject_inference_fit_keywords(kwargs::NamedTuple)
 end
 
 function _default_fitting_method(CT, d)
-    available = fitting_methods(CT, Val(d))
+    available = _available_fitting_methods(CT, d)
     isempty(available) && throw(ArgumentError("No fitting methods available for $CT."))
     return :mle in available ? :mle : first(available)
 end
 
 function _find_method(CT, d, method)
-    avail = fitting_methods(CT, Val(d))
+    avail = _available_fitting_methods(CT, d)
     isempty(avail) && throw(ArgumentError("No fitting methods available for $CT."))
     method === :default && return _default_fitting_method(CT, d)
     method ∉ avail && throw(ArgumentError(
@@ -713,11 +693,13 @@ function _natural_parameters(D)
 end
 
 function _coefficient_data(M::CopulaModel)
-    names, values = _natural_parameters(fitted_distribution(M))
-    isempty(M.recipe.fixed) && return names, values
-    fixed = string.(M.recipe.fixed)
-    keep = map(name -> name ∉ fixed, names)
-    return names[keep], values[keep]
+    spec = M.recipe
+    if spec isa _CopulaFitSpec && spec.target isa NamedTuple &&
+            haskey(spec.target, :coordinates)
+        α = spec.target.coordinates
+        return ["α$(i)" for i in eachindex(α)], collect(float.(α))
+    end
+    return _natural_parameters(fitted_distribution(M))
 end
 
 function _parameter_blocks(M::CopulaModel)
@@ -857,7 +839,6 @@ struct CopulaSelection{M,T}
     model::M
     table::T
     criterion::Symbol
-    selected_index::Int
 end
 
 """
@@ -868,10 +849,6 @@ Return the winning fitted model from an automatic family-selection result.
 See also: [`selection_table`](@ref), [`fitted_distribution`](@ref).
 """
 selected_model(S::CopulaSelection) = S.model
-fitted_distribution(S::CopulaSelection) = fitted_distribution(selected_model(S))
-fitting_method(S::CopulaSelection) = fitting_method(selected_model(S))
-Distributions.loglikelihood(S::CopulaSelection) =
-    Distributions.loglikelihood(selected_model(S))
 """
     selection_table(result::CopulaSelection)
 
@@ -887,21 +864,6 @@ See also: [`CopulaSelection`](@ref), [`selected_model`](@ref),
 selection_table(S::CopulaSelection) = copy(S.table)
 selection_table(::CopulaModel) = throw(ArgumentError(
     "selection_table is available only for a CopulaSelection result"))
-
-StatsBase.nobs(S::CopulaSelection) = StatsBase.nobs(selected_model(S))
-StatsBase.isfitted(S::CopulaSelection) = StatsBase.isfitted(selected_model(S))
-StatsBase.deviance(S::CopulaSelection) = StatsBase.deviance(selected_model(S))
-StatsBase.dof(S::CopulaSelection) = StatsBase.dof(selected_model(S))
-StatsBase.coef(S::CopulaSelection) = StatsBase.coef(selected_model(S))
-StatsBase.coefnames(S::CopulaSelection) = StatsBase.coefnames(selected_model(S))
-StatsBase.aic(S::CopulaSelection) = StatsBase.aic(selected_model(S))
-StatsBase.bic(S::CopulaSelection) = StatsBase.bic(selected_model(S))
-StatsBase.nullloglikelihood(S::CopulaSelection) =
-    StatsBase.nullloglikelihood(selected_model(S))
-StatsBase.nulldeviance(S::CopulaSelection) =
-    StatsBase.nulldeviance(selected_model(S))
-StatsBase.residuals(S::CopulaSelection; kwargs...) =
-    StatsBase.residuals(selected_model(S); kwargs...)
 
 """
     fit(CopulaModel, Copula, U; candidates, criterion=:bic, method=:mle, kwargs...)
@@ -932,7 +894,6 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
 
     rows = NamedTuple[]
     best = nothing
-    best_index = 0
     best_score = Inf
     for CT in candidate_types
         evaluated = try
@@ -954,13 +915,13 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
         push!(rows, (; candidate=CT, status, method=fitting_method(M), nparams,
             loglikelihood=M.loglikelihood, criteria..., error=nothing))
         if status === :ok && score < best_score
-            best, best_index, best_score = M, length(rows), score
+            best, best_score = M, score
         end
     end
     best === nothing && throw(ArgumentError("No candidate copula produced an eligible finite fit."))
-    return CopulaSelection(best, rows, criterion, best_index)
+    return CopulaSelection(best, rows, criterion)
 end
 
 Distributions.fit(::Type{Copula}, U; candidates, kwargs...) =
-    fitted_distribution(Distributions.fit(CopulaModel, Copula, U;
-                                          candidates, kwargs...))
+    fitted_distribution(selected_model(Distributions.fit(
+        CopulaModel, Copula, U; candidates, kwargs...)))

@@ -17,14 +17,15 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
     candidates = (IndependentCopula, ClaytonCopula)
     M = fit(CopulaModel, Copulas.Copula, U; candidates)
     table = selection_table(M)
-    @test M isa CopulaSelection
+    @test M isa Copulas.CopulaSelection
     @test selected_model(M) isa CopulaModel
     @test table isa Vector
     @test getproperty.(table, :candidate) == collect(candidates)
     @test all(row -> row.status === :ok, table)
-    @test table[M.selected_index].bic == minimum(row.bic for row in table)
-    @test loglikelihood(M) == table[M.selected_index].loglikelihood
-    @test fitted_distribution(M) isa ClaytonCopula
+    winner = selected_model(M)
+    @test StatsBase.bic(winner) == minimum(row.bic for row in table)
+    @test any(row -> row.status === :ok && row.loglikelihood ≈ loglikelihood(winner), table)
+    @test fitted_distribution(winner) isa ClaytonCopula
     @test occursin("Model selection", sprint(show, M))
     displayed = sprint(show, M)
     reverse!(table)
@@ -38,17 +39,20 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
             method=:mle)
         selected = fit(CopulaModel, Copulas.Copula, U; candidates=(ClaytonCopula,),
             method=:mle)
-        @test StatsBase.coef(selected) ≈ StatsBase.coef(ordinary)
-        @test params(fitted_distribution(selected)) == params(fitted_distribution(ordinary))
-        @test loglikelihood(selected) ≈ loglikelihood(ordinary)
+        winner = selected_model(selected)
+        @test StatsBase.coef(winner) ≈ StatsBase.coef(ordinary)
+        @test params(fitted_distribution(winner)) == params(fitted_distribution(ordinary))
+        @test loglikelihood(winner) ≈ loglikelihood(ordinary)
         @test_throws ArgumentError infer(selected)
     end
 
     @testset "Information criterion $criterion" for criterion in (:aic, :aicc, :hqc)
         selected = fit(CopulaModel, Copulas.Copula, U; candidates, criterion)
         rows = selection_table(selected)
-        @test getproperty(rows[selected.selected_index], criterion) ==
-            minimum(getproperty(row, criterion) for row in rows)
+        winner = selected_model(selected)
+        winner_score = criterion === :aic ? StatsBase.aic(winner) :
+            criterion === :aicc ? Copulas.aicc(winner) : Copulas.hqc(winner)
+        @test winner_score == minimum(getproperty(row, criterion) for row in rows)
     end
 
     @testset "Validation and failed candidates" begin
@@ -67,7 +71,7 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
             probe = fit(CopulaModel, Copulas.Copula, U;
                 candidates=(SelectionProbe{mode}, IndependentCopula))
             @test selection_table(probe)[1].status === mode
-            @test probe.selected_index == 2
+            @test fitted_distribution(selected_model(probe)) isa IndependentCopula{2}
         end
         @test_throws ArgumentError selection_table(
             fit(CopulaModel, IndependentCopula, U))

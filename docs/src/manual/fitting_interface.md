@@ -338,10 +338,10 @@ plot(fitted_distribution(Ŝ))
 
 The names and availability of fitting methods depend on the family. Direct
 parametric copula fitting defaults to `method=:mle` whenever MLE is available;
-choose another estimator explicitly. Structural, empirical, or selection
-families without an MLE retain the first method advertised by their
-[`fitting_methods`](@ref) registry. This preserves family-defined defaults
-without ever selecting `:mpl` implicitly; estimator execution remains internal.
+choose another estimator explicitly. Structural and empirical families without an MLE
+retain the first method registered internally for that family. This preserves family-defined defaults
+without ever selecting `:mpl` implicitly; estimator registration and execution
+remain internal.
 
 The fitting method determines which feature of the sample identifies the
 parameters. No method dominates in every family and sample size.
