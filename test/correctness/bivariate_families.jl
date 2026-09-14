@@ -78,3 +78,36 @@ end
         @test pdf(C, u) ≈ expected_pdf atol=1e-4
     end
 end
+
+@testset "bivariate FGM endpoints remain absolutely continuous" begin
+    midpoint = [0.5, 0.5]
+    interior = [0.25, 0.75]
+    expected_cdf = (-1.0 => 0.1875, 0.0 => 0.25, 1.0 => 0.3125)
+
+    for (θ, expected) in expected_cdf
+        C = FGMCopula{2}(θ)
+        expected_pdf = 1 + θ * (1 - 2interior[1]) * (1 - 2interior[2])
+
+        @test cdf(C, midpoint) == expected
+        @test pdf(C, interior) == expected_pdf
+        @test logpdf(C, interior) ≈ log(expected_pdf)
+        @test Copulas.τ(C) == 2θ / 9
+        @test Copulas.ρ(C) == θ / 3
+        @test is_absolutely_continuous(C)
+
+        sample = rand(StableRNG(4_800 + round(Int, θ)), C, 64)
+        @test size(sample) == (2, 64)
+        @test all(x -> 0 <= x <= 1, sample)
+        fitted = fit(FGMCopula, sample; method=:itau)
+        @test fitted isa FGMCopula{2}
+        @test abs(only(params(fitted).θ)) <= 1
+    end
+
+    @test cdf(FGMCopula{2}(1.0), midpoint) != cdf(MCopula{2}(), midpoint)
+    @test cdf(FGMCopula{2}(-1.0), midpoint) != cdf(WCopula{2}(), midpoint)
+    @test only(Copulas.τ⁻¹(FGMCopula, [2 / 9])) == 1
+    @test only(Copulas.τ⁻¹(FGMCopula, [-2 / 9])) == -1
+    @test only(Copulas.ρ⁻¹(FGMCopula, [1 / 3])) == 1
+    @test only(Copulas.ρ⁻¹(FGMCopula, [-1 / 3])) == -1
+
+end
