@@ -284,6 +284,16 @@ function _calibrate(h::GoodnessOfFitHypothesis, U::AbstractMatrix, observed::Rea
     N = _check_resamples(N)
     _, n = size(U)
     exceedances = 0
+    if h.model isa CopulaModel && fitteddistribution(h.model) isa SklarDist
+        for _ in 1:N
+            raw_sample = rand(rng, fitteddistribution(h.model), n)
+            fitted = _refit(h.model, raw_sample; replay_input=true)
+            sample = _copula_data(fitted)
+            bootstrap_hypothesis = GoodnessOfFitHypothesis(fitted)
+            exceedances += _teststatistic(bootstrap_hypothesis, sample) >= observed
+        end
+        return _exceedance_pvalue(exceedances, N), N, (;)
+    end
     for _ in 1:N
         sample = pseudos(rand(rng, _bootstrap_copula(h), n))
         bootstrap_hypothesis = _bootstrap_hypothesis(h, sample)
@@ -752,6 +762,10 @@ resulting fitted model is used for the observed statistic, and the same fitting
 procedure is repeated in every bootstrap replicate. If the fitting procedure is
 not reproducibly specified, composite GOF throws an `ArgumentError`.
 
+For a fitted `SklarDist`, stored and explicit observations remain on their raw
+marginal scales. Each bootstrap replicate samples and refits the complete Sklar
+distribution, then reconstructs its copula observations for the statistic.
+
 The test statistic compares the empirical and fitted copula CDFs at the sample
 points. `N` controls parametric-bootstrap replication, and raw continuous
 margins are ranked unless `pseudo_values=true`. Ties are currently rejected.
@@ -770,23 +784,29 @@ function GOFCopulaTest(M::CopulaModel, U::AbstractMatrix{<:Real};
     # The observed statistic must use parameters estimated from the sample being
     # tested, just as every bootstrap replicate is refitted.
     N = _check_resamples(N)
+    if fitteddistribution(M) isa SklarDist
+        pseudo_values && throw(ArgumentError(
+            "a Sklar estimator must be refitted from observations on its marginal scales"))
+        Mrefit = _refit(M, U; replay_input=true)
+        V = _copula_data(Mrefit)
+        return _run_copula_test(GoodnessOfFitHypothesis(Mrefit), V;
+                                pseudo_values=true, N, rng)
+    end
     V, _, _ = _test_pseudos(U, pseudo_values)
     Mrefit = _refit(M, V)
     return _run_copula_test(GoodnessOfFitHypothesis(Mrefit), V; pseudo_values=true, N, rng)
 end
 
 function GOFCopulaTest(M::CopulaModel; kwargs...)
-    haskey(M.method_details, :U) || throw(ArgumentError("the fitted model does not store its fitting sample"))
-
-    # Most copula fits receive pseudo-observations directly. Empirical fitting
-    # New likelihood fits distinguish the caller's raw-input flag from the
-    # transformed matrix retained for inference. Older and empirical fit
-    # records continue to use `pseudo_values` directly.
-    stored_pseudo_values = get(M.method_details, :fitting_data_pseudo_values,
-        get(M.method_details, :pseudo_values, true))
-
-    return _run_copula_test(GoodnessOfFitHypothesis(M), M.method_details.U; pseudo_values=stored_pseudo_values, kwargs...,)
+    return _run_copula_test(
+        GoodnessOfFitHypothesis(M), _copula_data(M);
+        pseudo_values=true, kwargs...,
+    )
 end
+
+GOFCopulaTest(::CopulaSelection, args...; kwargs...) = throw(ArgumentError(
+    "goodness-of-fit after model selection is not automatic; choose whether " *
+    "to test selectedmodel(selection) without selection correction"))
 
 testname(::GoodnessOfFitHypothesis) = "Copula goodness-of-fit test"
 nullhypothesis(::GoodnessOfFitHypothesis{<:Copula}) = "The data follow the specified copula."

@@ -5,10 +5,10 @@ const SELECTION_PROBE_CALLS = Ref(0)
 function Distributions.fit(::Type{CopulaModel}, ::Type{SelectionProbe{mode}}, U; kwargs...) where {mode}
     SELECTION_PROBE_CALLS[] += 1
     mode === :interrupt && throw(InterruptException())
-    mode === :bad_score && return CopulaModel(SelectionProbe{:bad_score}(), size(U, 2), 0.0, :probe)
-    return CopulaModel(IndependentCopula{2}(), size(U, 2),
-        mode === :nonfinite ? NaN : 0.0, :probe;
-        converged=mode !== :not_converged, iterations=7, method_details=(; U))
+    mode === :failed && throw(ErrorException("candidate estimator failed"))
+    recipe = Copulas._CopulaFitSpec(SelectionProbe{mode}, :probe, (;))
+    result = mode === :bad_score ? SelectionProbe{:bad_score}() : IndependentCopula{2}()
+    return CopulaModel(result, U, mode === :nonfinite ? NaN : 0.0, recipe)
 end
 StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError("unavailable parameter count"))
 
@@ -17,13 +17,14 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
     candidates = (IndependentCopula, ClaytonCopula)
     M = fit(CopulaModel, Copulas.Copula, U; candidates)
     table = selectiontable(M)
-    @test M isa CopulaModel
+    @test M isa CopulaSelection
+    @test selectedmodel(M) isa CopulaModel
     @test table isa Vector
     @test getproperty.(table, :candidate) == collect(candidates)
     @test all(row -> row.status === :ok, table)
-    @test table[M.method_details.selected_index].bic == minimum(row.bic for row in table)
-    @test M.ll == table[M.method_details.selected_index].loglikelihood
-    @test M.result isa ClaytonCopula
+    @test table[M.selected_index].bic == minimum(row.bic for row in table)
+    @test loglikelihood(M) == table[M.selected_index].loglikelihood
+    @test fitteddistribution(M) isa ClaytonCopula
     @test occursin("Model selection", sprint(show, M))
     displayed = sprint(show, M)
     reverse!(table)
@@ -38,16 +39,15 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
         selected = fit(CopulaModel, Copulas.Copula, U; candidates=(ClaytonCopula,),
             method=:mle)
         @test StatsBase.coef(selected) ≈ StatsBase.coef(ordinary)
-        @test selected.ll ≈ ordinary.ll
-        @test selected.converged == ordinary.converged
-        @test selected.iterations == ordinary.iterations
+        @test params(fitteddistribution(selected)) == params(fitteddistribution(ordinary))
+        @test loglikelihood(selected) ≈ loglikelihood(ordinary)
         @test_throws ArgumentError infer(selected)
     end
 
     @testset "Information criterion $criterion" for criterion in (:aic, :aicc, :hqc)
         selected = fit(CopulaModel, Copulas.Copula, U; candidates, criterion)
         rows = selectiontable(selected)
-        @test getproperty(rows[selected.method_details.selected_index], criterion) ==
+        @test getproperty(rows[selected.selected_index], criterion) ==
             minimum(getproperty(row, criterion) for row in rows)
     end
 
@@ -63,17 +63,12 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
         @test SELECTION_PROBE_CALLS[] == 1
         @test_throws InterruptException fit(CopulaModel, Copulas.Copula, U;
             candidates=(SelectionProbe{:interrupt},))
-        for mode in (:nonfinite, :not_converged)
+        for mode in (:nonfinite, :failed)
             probe = fit(CopulaModel, Copulas.Copula, U;
                 candidates=(SelectionProbe{mode}, IndependentCopula))
             @test selectiontable(probe)[1].status === mode
-            @test probe.method_details.selected_index == 2
+            @test probe.selected_index == 2
         end
-        relaxed = fit(CopulaModel, Copulas.Copula, U;
-            candidates=(SelectionProbe{:not_converged},), require_convergence=false)
-        @test !relaxed.converged
-        @test relaxed.iterations == 7
-        @test only(selectiontable(relaxed)).status === :ok
         @test_throws ArgumentError selectiontable(
             fit(CopulaModel, IndependentCopula, U))
         @test_throws ArgumentError fit(CopulaModel, Copulas.Copula, U; candidates=())

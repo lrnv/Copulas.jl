@@ -219,14 +219,13 @@ Distributions.params(S::AbstractReflectedCopula) = Distributions.params(basecopu
 function _fit_reflected(::Type{subCT}, U, m, mask; kwargs...) where {subCT}
     Uflip = copy(U)
     _survival_reverse!(Uflip, mask)
-    C, meta = _fit(subCT, Uflip, m; kwargs...)
-    return C, meta
+    return _fit(subCT, Uflip, m; kwargs...)
 end
 
 function _fit_survival(::Type{<:SurvivalCopula{d,subCT}}, U, m; flips=nothing, kwargs...) where {d,subCT}
     mask = isnothing(flips) ? ntuple(_ -> true, d) : _survival_flipmask(Val(d), flips)
-    C, meta = _fit_reflected(subCT, U, m, mask; kwargs...)
-    return SurvivalCopula{d}(C, mask), meta
+    C = _fit_reflected(subCT, U, m, mask; kwargs...)
+    return SurvivalCopula{d}(C, mask)
 end
 _fit(CT::Type{<:SurvivalCopula}, U, m::Union{Val{:itau},Val{:irho},Val{:ibeta}}; kwargs...) =
     _fit_survival(CT, U, m; kwargs...)
@@ -238,16 +237,16 @@ _rotation_type_flipmask(::Type{<:Rotated180Copula}) = (true, true)
 _rotation_type_flipmask(::Type{<:Rotated270Copula}) = (false, true)
 
 function _fit_rotation(::Type{RT}, U, m; kwargs...) where {subCT,RT<:Rotated90Copula{2,subCT}}
-    C, meta = _fit_reflected(subCT, U, m, _rotation_type_flipmask(RT); kwargs...)
-    return Rotated90Copula(C), meta
+    C = _fit_reflected(subCT, U, m, _rotation_type_flipmask(RT); kwargs...)
+    return Rotated90Copula(C)
 end
 function _fit_rotation(::Type{RT}, U, m; kwargs...) where {subCT,RT<:Rotated180Copula{2,subCT}}
-    C, meta = _fit_reflected(subCT, U, m, _rotation_type_flipmask(RT); kwargs...)
-    return Rotated180Copula(C), meta
+    C = _fit_reflected(subCT, U, m, _rotation_type_flipmask(RT); kwargs...)
+    return Rotated180Copula(C)
 end
 function _fit_rotation(::Type{RT}, U, m; kwargs...) where {subCT,RT<:Rotated270Copula{2,subCT}}
-    C, meta = _fit_reflected(subCT, U, m, _rotation_type_flipmask(RT); kwargs...)
-    return Rotated270Copula(C), meta
+    C = _fit_reflected(subCT, U, m, _rotation_type_flipmask(RT); kwargs...)
+    return Rotated270Copula(C)
 end
 
 const _ReflectedRankMethod = Union{Val{:itau},Val{:irho},Val{:ibeta}}

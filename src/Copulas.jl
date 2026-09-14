@@ -151,7 +151,8 @@ module Copulas
     include("show.jl")
 
     export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
-    export SklarDist, CopulaModel, CopulaInference, fitteddistribution, infer, selectiontable
+    export SklarDist, CopulaModel, CopulaSelection, CopulaInference,
+        fitteddistribution, selectedmodel, infer, selectiontable
     export CopulaTest
     export IndependenceCopulaTest, ExchangeabilityCopulaTest
     export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
@@ -179,6 +180,7 @@ module Copulas
 
     public Copula, Generator, Tail
     public fitting_methods, fit_copula, inference_diagnostics
+    public fittingmethod
     public basecopula, flipmask, flips
 
     public ϕ, 𝒲₋₁, max_monotony

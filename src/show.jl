@@ -166,47 +166,21 @@ function Base.show(io::IO, M::CopulaModel)
         famC = _fmt_copula_family(R.C)
         mnames = map(mi -> String(nameof(typeof(mi))), R.m)
         margins_lbl = "(" * join(mnames, ", ") * ")"
-        skm = get(M.method_details, :sklar_method, nothing)
+        skm = M.recipe.kwargs.sklar_method
         _kv(io, "Copula", famC)
         _kv(io, "Margins", margins_lbl)
-        if skm === nothing
-            _kv(io, "Methods", "copula=" * String(M.method))
-        else
-            _kv(io, "Methods", "copula=" * String(M.method) * ", sklar=" * String(skm))
-        end
+        _kv(io, "Methods", "copula=" * String(_fitmethod(M)) * ", sklar=" * String(skm))
     else
-        _kv(io, "Method", String(M.method))
+        _kv(io, "Method", String(_fitmethod(M)))
     end
     _kv(io, "Number of observations", Printf.@sprintf("%d", StatsBase.nobs(M)))
 
-    if haskey(M.method_details, :selection_table)
-        md = M.method_details
-        _section(io, "Model selection")
-        _kv(io, "Criterion", uppercase(String(md.criterion)))
-        _kv(io, "Selected family", string(md.selection_table[md.selected_index].candidate))
-    end
-
     _section(io, "Fit metrics")
-    ll  = M.ll
-    ll0 = get(M.method_details, :null_ll, NaN)
-    if isfinite(ll0); _kv(io, "Null Loglikelihood", Printf.@sprintf("%12.4f", ll0)); end
+    ll = M.loglikelihood
     _kv(io, "Loglikelihood", Printf.@sprintf("%12.4f", ll))
-    kcop = StatsBase.dof(M)
-    if isfinite(ll0) && kcop > 0
-        LR = 2*(ll - ll0)
-        p  = Distributions.ccdf(Distributions.Chisq(kcop), LR)
-        _kv(io, "LR (vs indep.)", Printf.@sprintf("%.2f ~ χ²(%d)  ⇒  p = %s", LR, kcop, _pstr(p)))
-    end
     aic = StatsBase.aic(M); bic = StatsBase.bic(M)
     _kv(io, "AIC", Printf.@sprintf("%.3f", aic))
     _kv(io, "BIC", Printf.@sprintf("%.3f", bic))
-    if isfinite(M.elapsed_sec) || M.iterations != 0 || M.converged != true
-        conv = M.converged ? "true" : "false"
-        _kv(io, "Converged", conv)
-        _kv(io, "Iterations", string(M.iterations))
-        tsec = isfinite(M.elapsed_sec) ? Printf.@sprintf("%.3fs", M.elapsed_sec) : "NA"
-        _kv(io, "Elapsed", tsec)
-    end
 
     if R isa SklarDist
         # [ Dependence metrics ] section
@@ -216,11 +190,9 @@ function Base.show(io::IO, M::CopulaModel)
         # [ Copula parameters ] section
         θ = StatsBase.coef(M)
         nm = StatsBase.coefnames(M)
-        if haskey(M.method_details, :parameter_blocks)
-            copula_block = M.method_details.parameter_blocks.copula
-            θ = θ[copula_block]
-            nm = nm[copula_block]
-        end
+        copula_block = _parameter_blocks(M).copula
+        θ = θ[copula_block]
+        nm = nm[copula_block]
         _print_param_section(io, "Copula parameters", nm, θ)
 
         # [ Marginals ] section
@@ -234,6 +206,13 @@ function Base.show(io::IO, M::CopulaModel)
         _print_param_section(io, "Copula parameters", nm, θ)
 
     end
+end
+
+function Base.show(io::IO, S::CopulaSelection)
+    show(io, selectedmodel(S))
+    _section(io, "Model selection")
+    _kv(io, "Criterion", uppercase(String(S.criterion)))
+    _kv(io, "Selected family", string(S.table[S.selected_index].candidate))
 end
 
 """

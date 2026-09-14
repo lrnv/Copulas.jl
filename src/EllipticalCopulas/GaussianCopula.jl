@@ -185,7 +185,8 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle})
         R̂ = T[one(T) ρ̂; ρ̂ one(T)]
         θ̂ = (; Σ = R̂)
 
-        return GaussianCopula(R̂), (;θ̂, optimizer  = Optim.summary(res), converged  = Optim.converged(res), iterations = Optim.iterations(res),)
+        Optim.converged(res) || throw(ErrorException("bivariate Gaussian maximum-likelihood optimization did not converge"))
+        return GaussianCopula(R̂)
     end
 
     # In dimensions d > 2, use the normal-score correlation only
@@ -218,6 +219,7 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle})
     R̂ = L̂ * L̂'
     R̂ = (R̂ + R̂') / 2
     θ̂ = (; Σ = R̂)
-    return GaussianCopula(R̂), (;θ̂, optimizer  = Optim.summary(res), converged  = Optim.converged(res), iterations = Optim.iterations(res),)
+    Optim.converged(res) || throw(ErrorException("Gaussian maximum-likelihood optimization did not converge"))
+    return GaussianCopula(R̂)
 end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)

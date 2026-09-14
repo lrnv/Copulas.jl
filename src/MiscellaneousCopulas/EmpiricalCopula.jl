@@ -123,7 +123,7 @@ StatsBase.dof(::EmpiricalCopula) = 0
 _available_fitting_methods(::Type{<:EmpiricalCopula}, d) = (:deheuvels,)
 """
     _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels};
-         pseudo_values::Bool=true, kwargs...) -> (C, meta)
+         pseudo_values::Bool=true, kwargs...) -> C
 
 Constructs the empirical Deheuvels copula from `U`.
 
@@ -132,13 +132,12 @@ Constructs the empirical Deheuvels copula from `U`.
 - `kwargs...`: forwarded to the `EmpiricalCopula` constructor.
 
 # Returns
-- `(C, meta)` where `C::EmpiricalCopula` and
-`meta = (; emp_kind = :deheuvels, pseudo_values)`.
+The fitted `EmpiricalCopula`.
 
 **Note**: Method with no free parameters (`dof=0`).
 """
 function _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels};
               pseudo_values::Bool=true, kwargs...)
     C = EmpiricalCopula(U; pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:deheuvels, pseudo_values)
+    return C
 end

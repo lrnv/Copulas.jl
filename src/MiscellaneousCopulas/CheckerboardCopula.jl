@@ -155,7 +155,7 @@ StatsBase.dof(::CheckerboardCopula) = 0
 _available_fitting_methods(::Type{<:CheckerboardCopula}, d) = (:exact,)
 """
     _fit(::Type{<:CheckerboardCopula}, U, ::Val{:exact};
-         m=nothing, pseudo_values::Bool=true, kwargs...) -> (C, meta)
+         m=nothing, pseudo_values::Bool=true, kwargs...) -> C
 
 Empirical checkerboard-type plug-in fitting based on `U`.
 If `m` is `nothing`, `m = (n, …, n)` is used; otherwise, it must divide by the sample size.
@@ -167,12 +167,11 @@ If `m` is `nothing`, `m = (n, …, n)` is used; otherwise, it must divide by the
 - `kwargs...`: forwarded to the constructor.
 
 # Returns
-- `(C, meta)` where `C::CheckerboardCopula` and
-`meta = (; emp_kind = :exact, pseudo_values, m = C.m)`.
+The fitted `CheckerboardCopula`.
 
 **Note**: Method without free parameters (`dof=0`).
 """
 function _fit(::Type{<:CheckerboardCopula}, U, ::Val{:exact}; m=nothing, pseudo_values::Bool=true, kwargs...)
     C = CheckerboardCopula(U; m=m, pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:exact, pseudo_values, m=C.m)
+    return C
 end

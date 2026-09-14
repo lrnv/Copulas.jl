@@ -4,15 +4,13 @@ struct PublicFitProtocolProbe <: Copulas.Copula{2} end
 Copulas.fitting_methods(::Type{PublicFitProtocolProbe}, ::Val{2}) = (:probe,)
 function Copulas.fit_copula(::Type{PublicFitProtocolProbe}, data, ::Val{:probe}; offset=0.0)
     estimate = Statistics.mean(data) + offset
-    return IndependentCopula{2}(),
-           (; free_parameters=(; estimate), fixed_parameters=(; offset),
-              converged=true, iterations=1)
+    return ClaytonCopula{2}(estimate)
 end
 
 struct PublicMPLProtocolProbe <: Copulas.Copula{2} end
 Copulas.fitting_methods(::Type{PublicMPLProtocolProbe}, ::Val{2}) = (:mle,)
 function Copulas.fit_copula(::Type{PublicMPLProtocolProbe}, data, ::Val{:mle}; kwargs...)
-    return IndependentCopula{2}(), (; free_parameters=NamedTuple())
+    return IndependentCopula{2}()
 end
 
 @testset "public downstream fitting protocol" begin
@@ -20,14 +18,11 @@ end
     fitted = fit(PublicFitProtocolProbe, U; method=:probe, offset=0.1)
     model = fit(CopulaModel, PublicFitProtocolProbe, U;
                 method=:probe, offset=0.1)
-    @test fitted isa IndependentCopula{2}
+    @test fitted isa ClaytonCopula{2}
     @test StatsBase.coef(model) == [Statistics.mean(U) + 0.1]
-    @test StatsBase.coefnames(model) == ["estimate"]
+    @test StatsBase.coefnames(model) == ["θ"]
     @test StatsBase.dof(model) == 1
     @test !("offset" in StatsBase.coefnames(model))
-    _, metadata = Copulas.fit_copula(PublicFitProtocolProbe, U, Val(:probe); offset=0.1)
-    @test metadata.fixed_parameters == (; offset=0.1)
-    @test metadata.iterations == 1
     @test_throws ArgumentError infer(model)
     inference = infer(model; method=:bootstrap, nresamples=3,
                       rng=StableRNG(48_099))
@@ -76,12 +71,12 @@ end
 
     default_model = fit(CopulaModel,
         SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data)
-    @test default_model.method === :mle
-    @test default_model.method_details.sklar_method === :ifm
+    @test Copulas.fittingmethod(default_model) === :mle
+    @test default_model.recipe.kwargs.sklar_method === :ifm
 
     empirical_model = fit(CopulaModel,
         SklarDist{EmpiricalCopula,Tuple{Normal,Exponential}}, data)
-    @test empirical_model.method === :deheuvels
+    @test Copulas.fittingmethod(empirical_model) === :deheuvels
 end
 
 @testset "MLE and MPL input semantics" begin
@@ -99,22 +94,17 @@ end
     normalized_mle = @test_logs (:warn, r"method=:mpl requires raw observations") fit(
         CopulaModel, ClaytonCopula{2}, U; method=:mpl, pseudo_values=true)
 
-    @test default_fit.method === :mle
-    @test mle_fit.method === :mle
-    @test mpl_fit.method === :mpl
-    @test normalized_mpl.method === :mpl
-    @test normalized_mle.method === :mle
+    @test Copulas.fittingmethod(default_fit) === :mle
+    @test Copulas.fittingmethod(mle_fit) === :mle
+    @test Copulas.fittingmethod(mpl_fit) === :mpl
+    @test Copulas.fittingmethod(normalized_mpl) === :mpl
+    @test Copulas.fittingmethod(normalized_mle) === :mle
     @test params(default_fit.result) == params(mle_fit.result)
     @test params(mpl_fit.result) == params(mle_fit.result)
     @test params(normalized_mpl.result) == params(mpl_fit.result)
     @test params(normalized_mle.result) == params(mle_fit.result)
-    @test mpl_fit.method_details.requested_method === :mpl
-    @test normalized_mpl.method_details.requested_method === :mle
-    @test normalized_mle.method_details.requested_method === :mpl
-    @test mpl_fit.method_details.pseudo_values === false
-    @test mpl_fit.method_details.fitting_data_pseudo_values === true
-    @test normalized_mle.method_details.pseudo_values === true
-    @test mpl_fit.method_details.U == U
+    @test mpl_fit.data === X
+    @test Copulas._copula_data(mpl_fit) == U
     @test_throws ArgumentError Copulas._find_method(EmpiricalCopula, 2, :mpl)
     @test_throws ArgumentError Copulas._find_method(ClaytonCopula{2}, 2, :mpl)
 end
@@ -198,7 +188,6 @@ end
     model = fit(CopulaModel, TCopula, U; method=:mle,)
     fitted = fitteddistribution(model)
     θ = params(fitted)
-    @test model.converged
     @test fitted isa TCopula{3}
     @test θ.ν > 0
     @test isfinite(θ.ν)
@@ -208,8 +197,6 @@ end
     # so its fitted likelihood must not be worse than that endpoint.
     gaussian = fit(GaussianCopula,U; method=:mle,)
     @test loglikelihood(fitted, U) >= loglikelihood(gaussian, U) - 1e-8
-    @test model.method_details.profile_upper >= 0.5
-    @test model.method_details.profile_expansions >= 0
 end
 
 @testset "Student MLE can estimate ν below two" begin
@@ -220,10 +207,7 @@ end
     U = rand(StableRNG(478), source, 1_500)
     model = fit(CopulaModel, TCopula, U; method=:mle,)
     fitted = fitteddistribution(model)
-    @test model.converged
     @test 0 < params(fitted).ν < 2
-    @test model.method_details.profile_expansions >= 1
-    @test model.method_details.profile_upper > 0.5
 end
 
 @testset "generic empirical EV estimators by dimension" begin
@@ -461,8 +445,8 @@ end
 @testset "complete StatsBase model-result interface" begin
     C = ClaytonCopula{2}(1.5)
     U = [0.2 0.4 0.7 0.8; 0.3 0.6 0.5 0.9]
-    M = CopulaModel(C, 4, loglikelihood(C, U), :fixture;
-        method_details=(free_parameters=(θ=1.5,), U=U, null_ll=0.0))
+    M = CopulaModel(C, U, loglikelihood(C, U),
+        Copulas._CopulaFitSpec(ClaytonCopula{2}, :fixture, (;)))
     @test StatsBase.isfitted(M)
     @test StatsBase.nobs(M) == 4
     @test StatsBase.coef(M) == [1.5]
@@ -472,17 +456,21 @@ end
     @test size(StatsBase.residuals(M)) == size(U)
     @test size(StatsBase.residuals(M; transform=:normal)) == size(U)
     @test_throws ArgumentError StatsBase.residuals(M; transform=:invalid)
-    M0 = CopulaModel(EmpiricalCopula(U), 4, 0.0, :empirical)
+    M0 = CopulaModel(EmpiricalCopula(U), U, 0.0,
+        Copulas._CopulaFitSpec(EmpiricalCopula, :empirical, (;)))
     @test StatsBase.dof(M0) == 0
     @test isempty(StatsBase.coef(M0))
     @test isempty(StatsBase.coefnames(M0))
     @test_throws ArgumentError infer(M0)
     @test StatsBase.aic(M0) == StatsBase.bic(M0) == 0
-end
 
-@testset "unavailable model metadata" begin
-    M = CopulaModel(IndependentCopula{2}(), 10, 0.0, :dummy)
-    @test_throws ArgumentError StatsBase.residuals(M)
+    # Future fixed-parameter estimators only need to identify fixed natural
+    # coordinates in the replay recipe; no duplicate value tree is required.
+    Mfixed = CopulaModel(C, U, loglikelihood(C, U),
+        Copulas._CopulaFitSpec(ClaytonCopula{2}, :fixture, (;), (:θ,)))
+    @test isempty(StatsBase.coef(Mfixed))
+    @test isempty(StatsBase.coefnames(Mfixed))
+    @test StatsBase.dof(Mfixed) == 0
 end
 
 @testset "nested Archimedean fitting validation" begin
@@ -568,7 +556,6 @@ end
     model = fit(CopulaModel, GaussianCopula, U; method=:mle,)
     fitted = fitteddistribution(model)
     R̂ = params(fitted).Σ
-    @test model.converged
     @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(R̂))
     @test maximum(abs.(diag(R̂) .- 1)) < 1e-12
     @test maximum(abs.(R̂ - R)) < 0.05

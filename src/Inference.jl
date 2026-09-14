@@ -168,33 +168,32 @@ end
 
 function _default_inference_method(M::CopulaModel)
     M.result isa SklarDist && return :bootstrap
-    spec = get(M.method_details, :_fit_spec, nothing)
-    parameters = get(M.method_details, :free_parameters, NamedTuple())
-    d = get(M.method_details, :d, length(fitteddistribution(M)))
+    spec = M.recipe
+    parameters = Distributions.params(fitteddistribution(M))
+    d = length(fitteddistribution(M))
     analytical_coordinates = spec isa _CopulaFitSpec && spec.target isa Type &&
         parameters isa NamedTuple &&
         applicable(_unbound_params, spec.target, d, parameters)
-    if M.method === :mle && analytical_coordinates &&
+    if _fitmethod(M) === :mle && analytical_coordinates &&
             !(M.result isa Union{TCopula,tEVCopula,FGMCopula})
         return :hessian
     end
-    if M.method in (:itau, :irho, :ibeta, :iupper) && analytical_coordinates
+    if _fitmethod(M) in (:itau, :irho, :ibeta, :iupper) && analytical_coordinates
         return :godambe
     end
     throw(ArgumentError(
-        "no default covariance estimator is defined for fits using method=$(M.method); " *
+        "no default covariance estimator is defined for fits using method=$(_fitmethod(M)); " *
         "choose an explicit supported inference method"))
 end
 
 function _inference_inputs(M::CopulaModel)
-    spec = get(M.method_details, :_fit_spec, nothing)
+    spec = M.recipe
     spec isa _CopulaFitSpec || throw(ArgumentError(
         "this model does not store a reproducible fitting specification"))
-    data = get(M.method_details, :fitting_data,
-               get(M.method_details, :U, nothing))
+    data = M.data
     data isa AbstractMatrix || throw(ArgumentError(
         "the fitting observations required for inference are unavailable"))
-    parameters = get(M.method_details, :free_parameters, NamedTuple())
+    parameters = Distributions.params(_copula_of(M))
     parameters isa NamedTuple && !isempty(parameters) || throw(ArgumentError(
         "no finite-dimensional free parameter vector is available for inference"))
     return spec.target, data, parameters
@@ -252,14 +251,14 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
     M.result isa SklarDist && throw(ArgumentError(
         "analytical `$method` inference is not defined for Sklar estimators; " *
         "use :bootstrap or :jackknife to refit the complete margins-and-copula procedure"))
-    spec = get(M.method_details, :_fit_spec, nothing)
+    spec = M.recipe
     (spec isa _CopulaFitSpec && spec.target isa Type) || throw(ArgumentError(
         "analytical `$method` inference is unavailable for runtime-structured fitting targets; " *
         "use :bootstrap or :jackknife"))
-    method === :hessian && M.method !== :mle && throw(ArgumentError(
+    method === :hessian && _fitmethod(M) !== :mle && throw(ArgumentError(
         "Hessian inference is defined only for maximum-likelihood fits"))
     method in (:godambe, :godambe_pairwise) &&
-        !(M.method in (:itau, :irho, :ibeta, :iupper)) &&
+        !(_fitmethod(M) in (:itau, :irho, :ibeta, :iupper)) &&
         throw(ArgumentError(
             "Godambe inference is currently defined only for supported rank-matching fits; " *
             "analytical maximum pseudo-likelihood inference is unavailable, so use " *
@@ -269,11 +268,12 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
         "Hessian inference is unavailable because incomplete-beta derivatives are not implemented"))
     method === :hessian && C isa FGMCopula && throw(ArgumentError(
         "Hessian inference is not implemented for maximum-likelihood FGM fits"))
-    target, U, parameters = _inference_inputs(M)
+    target, _, parameters = _inference_inputs(M)
+    U = _copula_data(M)
     d = size(U, 1)
     applicable(_unbound_params, target, d, parameters) || throw(ArgumentError(
         "analytical `$method` inference is not implemented for fitting target $target"))
-    engine_method = M.method === :mpl ? :mle : M.method
+    engine_method = _fitmethod(M) === :mpl ? :mle : _fitmethod(M)
     V, diagnostics = _vcov(target, U, parameters, Val(method), Val(engine_method))
     return V, diagnostics
 end
@@ -307,11 +307,14 @@ function infer(M::CopulaModel; method::Symbol=:default, kwargs...)
     V, diagnostics = _infer(M, Val(selected); kwargs...)
     covariance = LinearAlgebra.Symmetric(Matrix{Float64}(V))
     all_parameters = axes(covariance, 1)
-    blocks = get(M.method_details, :parameter_blocks,
-                 (; copula=all_parameters, margins=()))
+    blocks = _parameter_blocks(M)
     return CopulaInference(M, selected, covariance,
                            (; method=selected, diagnostics...), blocks)
 end
+
+infer(::CopulaSelection; kwargs...) = throw(ArgumentError(
+    "inference after model selection is not automatic; call " *
+    "infer(selectedmodel(selection); ...) only when ignoring selection uncertainty is appropriate"))
 
 """
     vcov(I::CopulaInference; component=:all)

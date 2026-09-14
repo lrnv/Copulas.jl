@@ -499,7 +499,6 @@ end
         M = Distributions.fit(Copulas.CopulaModel, Cstart, U)
         Chat = M.result
         @test Chat isa NestedArchimedeanCopula
-        @test M.converged
         # Generators stayed in the Clayton family (no collapse / type change).
         @test Chat.G isa ClaytonGenerator
         @test Chat.children[1][1].G isa ClaytonGenerator
@@ -511,12 +510,12 @@ end
         # Fitted log-likelihood beats the (wrong) starting point.
         @test Distributions.loglikelihood(Chat, U) > Distributions.loglikelihood(Cstart, U)
 
-        # Model coefficients are the three free optimization coordinates;
-        # natural generator parameters remain available from the fitted tree.
+        # Model coefficients are the natural fitted generator parameters.
         @test length(StatsBase.coef(M)) == 3
         @test StatsBase.dof(M) == 3
-        @test StatsBase.coef(M) == M.method_details.free_parameters.α
-        @test StatsBase.coefnames(M) == ["α₁", "α₂", "α₃"]
+        @test StatsBase.coef(M) ≈ [Chat.G.θ, Chat.children[1][1].G.θ,
+                                   Chat.children[2][1].G.θ]
+        @test StatsBase.coefnames(M) == ["G.θ", "G[1].θ", "G[2].θ"]
 
         # A small mixed-family fit exercises family-specific parameter
         # unbinding/rebuilding without another statistical recovery workload.

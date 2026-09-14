@@ -330,8 +330,9 @@ Notes:
 - The Sklar copula step defaults to `copula_method=:mle` when supported,
   otherwise to the family's advertised default; either can be replaced
   explicitly.
-- `CopulaModel` retains the estimate and fit evidence (`nobs`, `coef`,
-  `aic`/`bic`, `nullloglikelihood`, and residuals), while
+- `CopulaModel` retains only the fitted distribution, original data, fitted
+  log-likelihood, and replay recipe. Accessors derive `nobs`, `coef`,
+  `aic`/`bic`, `nullloglikelihood`, and residuals lazily, while
   `CopulaInference` separately retains `vcov`, `stderror`, and `confint`.
 - For a Bayesian workflow over Sklar models, see the examples section.
 
@@ -364,8 +365,9 @@ estimator fail explicitly instead of falling back to another covariance rule.
 
 #### Automatic family selection
 
-If the copula family is unknown, `CopulaModel` can fit an explicit candidate
-set and retain the best successful fit according to AIC, BIC, AICc, or HQC:
+If the copula family is unknown, an explicit candidate set can be compared by
+AIC, BIC, AICc, or HQC. The returned `CopulaSelection` keeps the comparison
+separate from its winning model:
 
 ```@example api
 Msel = fit(
@@ -376,6 +378,7 @@ Msel = fit(
     criterion=:bic,
 )
 selectiontable(Msel)
+Mbest = selectedmodel(Msel)
 ```
 
 Candidate selection is deliberately explicit: not every family is meaningful

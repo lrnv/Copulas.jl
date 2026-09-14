@@ -264,7 +264,7 @@ parameter transformations merely to return its fitted copula.
 | Method                              | Purpose                                                       |
 | ----------------------------------- | ------------------------------------------------------------- |
 | `fitting_methods(CT, ::Val{d})`     | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
-| `fit_copula(CT, U, ::Val{:method})` | Executes the estimator and returns `(copula, metadata)`        |
+| `fit_copula(CT, U, ::Val{:method})` | Executes the estimator and returns the fitted copula            |
 
 Minimal skeleton for a custom fitting method:
 
@@ -273,17 +273,17 @@ Copulas.fitting_methods(::Type{MyCopula}, ::Val{d}) where {d} = (:mymethod,)
 
 function Copulas.fit_copula(::Type{MyCopula}, U, ::Val{:mymethod})
     θ̂ = .... # compute the estimate
-    fitted = MyCopula(size(U, 1), θ̂)
-    return fitted, (; free_parameters=(; θ=θ̂),
-                     converged=true, iterations=1)
+    return MyCopula(size(U, 1), θ̂)
 end
 ```
 
-The metadata must be a `NamedTuple`. `free_parameters` and
-`fixed_parameters`, when provided, are themselves named tuples; additional
-entries such as `objective`, `converged`, and `iterations` are retained as fit
-diagnostics. Covariance is intentionally absent: uncertainty is computed later
-from the resulting `CopulaModel` with [`infer`](@ref).
+The fitted distribution is the complete return value. Its natural parameters
+are obtained from `params`, while the high-level layer already knows the input,
+method, target, and keywords required for reproducible refitting. Optimizer
+summaries, transformed coordinates, objectives, and iteration counts remain
+local to the estimator and must not be returned as fitting metadata.
+Covariance is intentionally absent: uncertainty is computed later from the
+resulting `CopulaModel` with [`infer`](@ref).
 
 Likelihood extensions advertise `:mle` and implement
 `fit_copula(CT, U, ::Val{:mle})`. They must not add a separate `:mpl` method.
@@ -831,7 +831,7 @@ function Copulas.fit_copula(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:ig
     θ  = sign(γ̂) * abs(γ̂)^(1/3)
     θ  = clamp(θ, -1.0, 1.0)
     Ĉ = MardiaCopula(2, θ)
-    return Ĉ, (; free_parameters=(; θ), γ̂, method=:igamma)
+    return Ĉ
 end
 ```
 
@@ -1006,7 +1006,7 @@ After implementing and documenting `MyCopula`:
    `MyCopula(d, ...)` constructors and subjects every representative to the
    family-wide operation contracts. Constructors must infer their concrete
    family without a return union. Constructor keywords and exceptional
-   numerical tolerances remain optional metadata.
+   numerical tolerances remain explicit case annotations.
 2. Add another bestiary entry whenever another dimension, representation or
     parameter regime exercises materially different code. Every such entry receives
     the applicable public-operation contracts.

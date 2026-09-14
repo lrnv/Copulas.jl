@@ -304,12 +304,10 @@ function _t_profile_upper(loss; upper0 = 0.5, max_expand = 12,)
 end
 function _fit(::Type{<:TCopula}, U, ::Val{:mle},)
     # λ = 1 / ν.  The endpoint λ = 0 is the Gaussian limit ν = Inf.
-    G, gaussian_details = _fit(GaussianCopula, U, Val(:mle))
+    G = _fit(GaussianCopula, U, Val(:mle))
     Σ_gaussian = Distributions.params(G).Σ
     ll_gaussian = Distributions.loglikelihood(G, U)
-    profile_evaluations = Ref(0)
     profile_loss = λ -> begin
-        profile_evaluations[] += 1
         if iszero(λ) return -ll_gaussian end
         ν = inv(λ)
         try
@@ -319,7 +317,7 @@ function _fit(::Type{<:TCopula}, U, ::Val{:mle},)
             return Inf
         end
     end
-    upper, expansions = _t_profile_upper(profile_loss)
+    upper, _ = _t_profile_upper(profile_loss)
     resλ = Optim.optimize(profile_loss, zero(upper), upper, Optim.Brent(),)
     λ̂ = Optim.minimizer(resλ)
     ν̂_finite = inv(λ̂)
@@ -333,21 +331,15 @@ function _fit(::Type{<:TCopula}, U, ::Val{:mle},)
     if use_gaussian_limit
         ν̂ = Inf
         Σ̂ = copy(Σ_gaussian)
-        converged = Optim.converged(resλ) && gaussian_details.converged
-        correlation_iterations = gaussian_details.iterations
-        correlation_optimizer = gaussian_details.optimizer
     else
         ν̂ = ν̂_finite
         Σ̂ = finite.Σ
-        converged = Optim.converged(resλ) && Optim.converged(finite.result)
-        correlation_iterations = Optim.iterations(finite.result)
-        correlation_optimizer = Optim.summary(finite.result)
+        Optim.converged(finite.result) ||
+            throw(ErrorException("Student correlation optimization did not converge"))
     end
     C = TCopula(ν̂, Σ̂)
-    θ̂ = (; ν = ν̂, Σ = Σ̂)
-    return C, (;θ̂, optimizer = "Brent(profile λ=1/ν)", correlation_optimizer, converged, iterations = Optim.iterations(resλ),
-    profile_evaluations = profile_evaluations[], correlation_iterations, profile_upper = upper,
-    profile_expansions = expansions, gaussian_limit = use_gaussian_limit,)
+    Optim.converged(resλ) || throw(ErrorException("Student profile optimization did not converge"))
+    return C
 end
 function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho})
     size(U, 1) == 2 || throw(ArgumentError("Student rank matching is only defined in dimension 2"))
@@ -378,7 +370,7 @@ function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho})
     end
     ν = isinf(logν) ? Inf : exp(logν)
     C = TCopula{2}(ν, [1.0 r; r 1.0])
-    return C, (; θ̂=(; ν, Σ=C.Σ), τ̂, ρ̂)
+    return C
 end
 
 _available_fitting_methods(::Type{<:TCopula}, d) = d == 2 ? (:mle, :itau_irho) : (:mle,)

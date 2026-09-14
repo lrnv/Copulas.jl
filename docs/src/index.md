@@ -196,8 +196,11 @@ Notes
 - Their copula step defaults to `copula_method=:mle` when supported, otherwise
   to the family's advertised default; either can be replaced explicitly.
 
-Use `CopulaModel` when diagnostics or later inference matter. Estimation itself
-does not compute uncertainty: apply `infer(M; method=...)` to obtain a separate
+Use `CopulaModel` when diagnostics or later inference matter. It stores only
+the fitted distribution, original data, fitted log-likelihood, and minimal
+replay recipe; coefficients, transformed observations, parameter blocks, and
+the independence likelihood are derived when requested. Estimation itself does
+not compute uncertainty: apply `infer(M; method=...)` to obtain a separate
 `CopulaInference`, then use `vcov`, `stderror`, and `confint` on that result.
 For Sklar fits, bootstrap inference refits both the margins and the copula and
 retains their complete covariance, including cross-component terms.
@@ -214,10 +217,12 @@ Msel = fit(
     criterion=:bic,
 )
 selectiontable(Msel)
+Mbest = selectedmodel(Msel)
 ```
 
-Selection is deliberately explicit: Copulas.jl does not treat every available
-family as a sensible candidate for every dimension or scientific question. See
+Selection returns a `CopulaSelection`, so its candidate report is not stored in
+the winning `CopulaModel`. Selection is deliberately explicit: Copulas.jl does
+not treat every available family as a sensible candidate for every dimension or scientific question. See
 the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for post-fit inference,
 confidence intervals, residuals, and selection caveats.
 

@@ -176,7 +176,7 @@ StatsBase.dof(::ExtremeValueCopula{2,<:EmpiricalEVTail}) = 0
 _available_fitting_methods(::Type{<:ExtremeValueCopula{2,<:EmpiricalEVTail}}, d) = (:ols, :cfg, :pickands)
 """
     _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
-         grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...) -> (C, meta)
+         grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...) -> C
 
 Empirical bivariate extreme value copula fitting via the Pickands function
 (`:ols`, `:cfg`, `:pickands`).
@@ -189,15 +189,14 @@ Empirical bivariate extreme value copula fitting via the Pickands function
 - `kwargs...`: forwarded to `EmpiricalEVTail/EmpiricalEVCopula`.
 
 # Returns
-- `(C, meta)` where `C::EmpiricalEVCopula` and
-`meta = (; emp_kind = :ev_tail, pseudo_values, method = :ols|:cfg|:pickands, grid, eps)`.
+The fitted `EmpiricalEVCopula`.
 
 **Note**: Method with no free parameters (`dof=0`).
 """
 function _fit(::Type{<:ExtremeValueCopula{2,<:EmpiricalEVTail}}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...)
     m = typeof(method).parameters[1]  # :ols | :cfg | :pickands
     C = EmpiricalEVCopula(U; method=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:ev_tail, pseudo_values, method=m, grid, eps)
+    return C
 end
 
 # ==============================================================================
@@ -620,7 +619,7 @@ function _fit(::Type{EmpiricalEVCopula{2}}, U,
     m = typeof(method).parameters[1]
     C = EmpiricalEVCopula{2}(U; method=m, grid=grid, eps=eps,
                              pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:ev_tail, pseudo_values, method=m, grid, eps)
+    return C
 end
 
 function _fit(::Type{EmpiricalEVCopula}, U,
@@ -629,8 +628,7 @@ function _fit(::Type{EmpiricalEVCopula}, U,
     d = size(U, 1)
     m = typeof(method).parameters[1]
     C = EmpiricalEVCopula{d}(U; method=m, pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=d == 2 ? :ev_tail : :ev_multivariate_tail,
-               pseudo_values, method=m)
+    return C
 end
 
 function _fit(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, U,
@@ -638,7 +636,7 @@ function _fit(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, U,
               pseudo_values::Bool=true, kwargs...) where {d}
     m = typeof(method).parameters[1]
     C = EmpiricalEVCopula{d}(U; method=m, pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:ev_multivariate_tail, pseudo_values, method=m)
+    return C
 end
 
 function Distributions._logpdf(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}, u,) where {d}

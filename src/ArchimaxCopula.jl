@@ -180,21 +180,18 @@ end
 _available_fitting_methods(::Type{<:ArchimaxCopula}, d) = (:mle,)
 
 function _fit(::Type{<:ArchimaxCopula{d,IndependentGenerator,TT}}, U, method::Val{:mle}; kwargs...) where {d,TT<:Tail}
-    E, meta = _fit(ExtremeValueCopula{d,TT}, U, method; kwargs...)
-    C = ArchimaxCopula{d}(IndependentGenerator(), E.tail,)
-    return C, merge(meta, (; θ̂=Distributions.params(C)))
+    E = _fit(ExtremeValueCopula{d,TT}, U, method; kwargs...)
+    return ArchimaxCopula{d}(IndependentGenerator(), E.tail,)
 end
 
 function _fit(::Type{<:ArchimaxCopula{2,IndependentGenerator,TT}}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}) where {TT<:OneParameterPickandsTail}
-    E, meta = _fit(ExtremeValueCopula{2,TT}, U, method)
-    C = ArchimaxCopula{2}(IndependentGenerator(),E.tail)
-    return C, merge(meta,(; θ̂=Distributions.params(C)),)
+    E = _fit(ExtremeValueCopula{2,TT}, U, method)
+    return ArchimaxCopula{2}(IndependentGenerator(),E.tail)
 end
 
 function _fit(::Type{<:ArchimaxCopula{2,IndependentGenerator,TT}}, U, method::Val{:iupper}) where {TT<:OneParameterPickandsTail}
-    E, meta = _fit(ExtremeValueCopula{2,TT}, U, method)
-    C = ArchimaxCopula{2}(IndependentGenerator(),E.tail)
-    return C, merge(meta,(; θ̂=Distributions.params(C)),)
+    E = _fit(ExtremeValueCopula{2,TT}, U, method)
+    return ArchimaxCopula{2}(IndependentGenerator(),E.tail)
 end
 
 function _available_fitting_methods(::Type{<:ArchimaxCopula{D,IndependentGenerator,TT}}, d) where {D,TT}

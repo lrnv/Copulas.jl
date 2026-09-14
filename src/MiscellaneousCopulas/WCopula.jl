@@ -61,7 +61,7 @@ distortion(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistor
 
 # Fitting/params interface (no parameters)
 Distributions.params(::WCopula) = (;)
-_fit(::Type{<:WCopula}, U, ::Val{:mle}) = WCopula(size(U,1)), (;)
-_fit(::Type{<:WCopula}, U, ::Val{:itau}) = WCopula(size(U,1)), (;)
-_fit(::Type{<:WCopula}, U, ::Val{:irho}) = WCopula(size(U,1)), (;)
-_fit(::Type{<:WCopula}, U, ::Val{:ibeta}) = WCopula(size(U,1)), (;)
+_fit(::Type{<:WCopula}, U, ::Val{:mle}) = WCopula(size(U,1))
+_fit(::Type{<:WCopula}, U, ::Val{:itau}) = WCopula(size(U,1))
+_fit(::Type{<:WCopula}, U, ::Val{:irho}) = WCopula(size(U,1))
+_fit(::Type{<:WCopula}, U, ::Val{:ibeta}) = WCopula(size(U,1))

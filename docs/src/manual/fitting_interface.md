@@ -52,17 +52,20 @@ U = rand(Ctrue, 300)
 ### Keeping the evidence behind the fit
 
 An estimated parameter without information about how it was obtained is often
-not enough. `CopulaModel` retains the likelihood, fitting method, convergence
-information, fitted data, and a reproducible description of the estimator:
+not enough. `CopulaModel` deliberately retains only four ingredients: the
+fitted distribution, the original data supplied by the user, the fitted
+log-likelihood, and the minimal recipe needed to replay the estimator:
 
 ```@example fitting_interface
 M = fit(CopulaModel, GumbelCopula, U; method=:mle)
 ```
 
 The fitted distribution is available through the standard model interface;
-the printed report also summarizes convergence, elapsed time, the estimator
-used and the available dependence measures. Use this form whenever the fit will
-be compared, diagnosed or used for inference.
+the printed report summarizes the estimator, likelihood, information criteria,
+parameters and available dependence measures. Transformed observations, the
+independence likelihood and parameter blocks are reconstructed only when an
+accessor needs them. Optimizer traces and convergence diagnostics are not model
+state: an optimizer-backed estimator either returns an accepted fit or throws.
 
 ::: remark Two levels of interface
 
@@ -82,15 +85,16 @@ the same data and compared by an information criterion.
 ::: definition Information-criterion selection
 
 For each candidate family, fit a model and compute a penalized likelihood
-criterion. The selected candidate is the successful, converged fit with the
-smallest eligible finite criterion. AIC emphasizes estimated predictive loss;
+criterion. The selected candidate is the successful fit with the smallest
+eligible finite criterion. AIC emphasizes estimated predictive loss;
 BIC and HQC penalize model dimension more strongly as the sample grows, while
 AICc corrects AIC in small samples.
 
 :::
 
-When the copula family is unknown, `CopulaModel` can select it automatically
-from a collection of candidate families:
+When the copula family is unknown, an explicit collection of candidate families
+can be compared automatically. This returns a `CopulaSelection`, keeping the
+comparison report separate from the winning `CopulaModel`:
 
 ```@example fitting_interface
 Ctrue = ClaytonCopula(2, 4.0)
@@ -104,6 +108,13 @@ Msel = fit(
     criterion=:bic,
 )
 Msel
+```
+
+Retrieve the reusable fitted model with [`selectedmodel`](@ref):
+
+```@example fitting_interface
+Mbest = selectedmodel(Msel)
+fitteddistribution(Mbest)
 ```
 
 The available criteria are:
@@ -133,8 +144,8 @@ or propagated immediately with `on_error=:throw`.
 
 The candidate collection is intentionally explicit. Automatic selection does
 not make every implemented family plausible for every dimension, tail regime or
-scientific question. Nonfinite scores and, by default, nonconverged fits are
-excluded; `on_error=:throw` is useful when a failed candidate should invalidate
+scientific question. Nonfinite scores and failed fits are excluded;
+`on_error=:throw` is useful when a failed candidate should invalidate
 the comparison rather than merely be recorded in `selectiontable`.
 
 :::
@@ -188,9 +199,11 @@ different questions about the fit:
 | Function                                       | Description                                                                                       |
 |:--|:--|
 | `fitteddistribution(M)`                        | Fitted copula or Sklar distribution.                                                              |
+| `fittingmethod(M)`                             | Effective estimator recorded by the minimal replay recipe.                                        |
 | `nobs(M)`                                      | Number of observations used in the fit.                                                           |
+| `loglikelihood(M)`                             | Cached log-likelihood evaluated at the fitted distribution.                                       |
 | `deviance(M)`                                  | Deviance, equal to minus twice the fitted log-likelihood.                                         |
-| `nullloglikelihood(M)`                         | Log-likelihood under independence with same margins (available for Sklar fits).                   |
+| `nullloglikelihood(M)`                         | Lazily computed log-likelihood under independence, preserving fitted margins for Sklar models.    |
 | `nulldeviance(M)`                              | Deviance of the null model (−2 · `nullloglikelihood(M)`).                                         |
 | `aic(M)` / `bic(M)`                            | Information criteria from `StatsBase.jl`.                                                            |
 | `coef(M)` / `coefnames(M)`                     | Estimated parameters and their names.                                                             |
@@ -277,7 +290,7 @@ as `:itau` or `:irho`.
 
 - Use `sklar_method = :ifm` when margins are plausibly parametric and you want a model-based projection; use `:ecdf` to avoid margin misspecification.
 - `margins_kwargs` is a single `NamedTuple` applied to every marginal fit. For heterogeneous options, fit margins manually and then fit the copula on the resulting pseudo-data.
-- The model’s `null_ll` (for LR tests) is the log-likelihood under independence with the **same margins**.
+- `nullloglikelihood(M)` reconstructs independence lazily and preserves the **same fitted margins**.
 - Neither route jointly maximizes the complete Sklar likelihood: IFM is
   sequential, while ECDF estimates dependence from ranks.
 

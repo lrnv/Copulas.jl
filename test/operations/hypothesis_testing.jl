@@ -500,11 +500,28 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
             Vraw = pseudos(Xraw)
             Mraw_refit = Copulas._refit(Mraw, Vraw)
 
-            @test Mraw.method_details.pseudo_values === false
-            @test Mraw.method_details.fitting_data_pseudo_values === false
-            @test Mraw_refit.method_details.pseudo_values === true
+            @test Mraw.data === Xraw
+            @test Copulas._copula_data(Mraw) == Vraw
+            @test Mraw_refit.recipe.kwargs.pseudo_values === true
             @test Tuple(Mraw_refit.result.m) == (2, 2)
             @test teststatistic(Traw) ≈ Copulas._gof_sn_statistic(Vraw, Copulas._copula_of(Mraw))
+
+            # A Sklar composite GOF keeps raw observations in the model. Each
+            # bootstrap replicate must therefore sample and refit the complete
+            # Sklar distribution before reconstructing copula observations.
+            Ssource = SklarDist(ClaytonCopula(2, 1.5), (Normal(), Exponential()))
+            Xsklar = rand(Xoshiro(910), Ssource, 30)
+            Msklar = fit(CopulaModel,
+                SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, Xsklar;
+                copula_method=:itau)
+            Tsklar = GOFCopulaTest(Msklar; N=1, rng=Xoshiro(911))
+
+            @test Msklar.data === Xsklar
+            @test Tsklar.hypothesis.model isa CopulaModel
+            @test isfinite(teststatistic(Tsklar))
+            @test 0 <= pvalue(Tsklar) <= 1
+            @test_throws ArgumentError GOFCopulaTest(Msklar, pseudos(Xsklar);
+                pseudo_values=true, N=1)
 
             @testset "Custom parametrisation is reproducibly refitted" begin
                 # Runtime parametrisations are retained in the internal fit
@@ -515,7 +532,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
                 end
 
                 Mcustom = fit(CopulaModel, reparam, [log(1.5)], Unested)
-                @test Mcustom.method_details._fit_spec isa Copulas._CopulaFitSpec
+                @test Mcustom.recipe isa Copulas._CopulaFitSpec
                 @test Copulas._refit(Mcustom, Unested) isa CopulaModel
                 @test_nowarn GOFCopulaTest(Mcustom; N=1, rng=Xoshiro(909),)
             end
