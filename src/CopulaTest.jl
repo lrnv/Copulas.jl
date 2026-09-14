@@ -284,9 +284,9 @@ function _calibrate(h::GoodnessOfFitHypothesis, U::AbstractMatrix, observed::Rea
     N = _check_resamples(N)
     _, n = size(U)
     exceedances = 0
-    if h.model isa CopulaModel && fitteddistribution(h.model) isa SklarDist
+    if h.model isa CopulaModel && fitted_distribution(h.model) isa SklarDist
         for _ in 1:N
-            raw_sample = rand(rng, fitteddistribution(h.model), n)
+            raw_sample = rand(rng, fitted_distribution(h.model), n)
             fitted = _refit(h.model, raw_sample; replay_input=true)
             sample = _copula_data(fitted)
             bootstrap_hypothesis = GoodnessOfFitHypothesis(fitted)
@@ -771,7 +771,7 @@ points. `N` controls parametric-bootstrap replication, and raw continuous
 margins are ranked unless `pseudo_values=true`. Ties are currently rejected.
 
 See also: [`CopulaTest`](@ref), [`CopulaModel`](@ref),
-[`Distributions.fit`](@ref), [`selectiontable`](@ref).
+[`Distributions.fit`](@ref), [`selection_table`](@ref).
 """
 function GOFCopulaTest(C::Copula, U::AbstractMatrix{<:Real}; kwargs...)
     return _run_copula_test(GoodnessOfFitHypothesis(C), U; kwargs...)
@@ -784,7 +784,7 @@ function GOFCopulaTest(M::CopulaModel, U::AbstractMatrix{<:Real};
     # The observed statistic must use parameters estimated from the sample being
     # tested, just as every bootstrap replicate is refitted.
     N = _check_resamples(N)
-    if fitteddistribution(M) isa SklarDist
+    if fitted_distribution(M) isa SklarDist
         pseudo_values && throw(ArgumentError(
             "a Sklar estimator must be refitted from observations on its marginal scales"))
         Mrefit = _refit(M, U; replay_input=true)

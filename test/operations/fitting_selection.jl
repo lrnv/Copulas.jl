@@ -16,7 +16,7 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
     U = rand(StableRNG(436), ClaytonCopula{2}(6.0), 80)
     candidates = (IndependentCopula, ClaytonCopula)
     M = fit(CopulaModel, Copulas.Copula, U; candidates)
-    table = selectiontable(M)
+    table = selection_table(M)
     @test M isa CopulaSelection
     @test selected_model(M) isa CopulaModel
     @test table isa Vector
@@ -24,11 +24,11 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
     @test all(row -> row.status === :ok, table)
     @test table[M.selected_index].bic == minimum(row.bic for row in table)
     @test loglikelihood(M) == table[M.selected_index].loglikelihood
-    @test fitteddistribution(M) isa ClaytonCopula
+    @test fitted_distribution(M) isa ClaytonCopula
     @test occursin("Model selection", sprint(show, M))
     displayed = sprint(show, M)
     reverse!(table)
-    @test getproperty.(selectiontable(M), :candidate) == collect(candidates)
+    @test getproperty.(selection_table(M), :candidate) == collect(candidates)
     @test sprint(show, M) == displayed
     @test_throws ArgumentError GOFCopulaTest(M; N=1)
     @test_throws ArgumentError GOFCopulaTest(M, U; N=1)
@@ -39,14 +39,14 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
         selected = fit(CopulaModel, Copulas.Copula, U; candidates=(ClaytonCopula,),
             method=:mle)
         @test StatsBase.coef(selected) ≈ StatsBase.coef(ordinary)
-        @test params(fitteddistribution(selected)) == params(fitteddistribution(ordinary))
+        @test params(fitted_distribution(selected)) == params(fitted_distribution(ordinary))
         @test loglikelihood(selected) ≈ loglikelihood(ordinary)
         @test_throws ArgumentError infer(selected)
     end
 
     @testset "Information criterion $criterion" for criterion in (:aic, :aicc, :hqc)
         selected = fit(CopulaModel, Copulas.Copula, U; candidates, criterion)
-        rows = selectiontable(selected)
+        rows = selection_table(selected)
         @test getproperty(rows[selected.selected_index], criterion) ==
             minimum(getproperty(row, criterion) for row in rows)
     end
@@ -54,8 +54,8 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
     @testset "Validation and failed candidates" begin
         score_failure = fit(CopulaModel, Copulas.Copula, U;
             candidates=(SelectionProbe{:bad_score}, IndependentCopula))
-        @test first(selectiontable(score_failure)).status === :failed
-        @test occursin("unavailable parameter count", first(selectiontable(score_failure)).error)
+        @test first(selection_table(score_failure)).status === :failed
+        @test occursin("unavailable parameter count", first(selection_table(score_failure)).error)
         @test_throws ArgumentError fit(CopulaModel, Copulas.Copula, U;
             candidates=(SelectionProbe{:bad_score},), on_error=:throw)
         SELECTION_PROBE_CALLS[] = 0
@@ -66,10 +66,10 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
         for mode in (:nonfinite, :failed)
             probe = fit(CopulaModel, Copulas.Copula, U;
                 candidates=(SelectionProbe{mode}, IndependentCopula))
-            @test selectiontable(probe)[1].status === mode
+            @test selection_table(probe)[1].status === mode
             @test probe.selected_index == 2
         end
-        @test_throws ArgumentError selectiontable(
+        @test_throws ArgumentError selection_table(
             fit(CopulaModel, IndependentCopula, U))
         @test_throws ArgumentError fit(CopulaModel, Copulas.Copula, U; candidates=())
         @test_throws ArgumentError fit(CopulaModel, Copulas.Copula, U; candidates=(Normal,))
@@ -79,8 +79,8 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
         # Abstract families cannot be fitted without a model specification.
         invalid = (Copulas.SubsetCopula, IndependentCopula)
         skipped = fit(CopulaModel, Copulas.Copula, U; candidates=invalid)
-        @test selectiontable(skipped)[1].status === :failed
-        @test selectiontable(skipped)[2].status === :ok
+        @test selection_table(skipped)[1].status === :failed
+        @test selection_table(skipped)[2].status === :ok
         @test_throws ArgumentError fit(CopulaModel, Copulas.Copula, U;
             candidates=invalid, on_error=:throw)
         @test_throws ArgumentError fit(CopulaModel, Copulas.Copula, U; candidates=(Copulas.SubsetCopula,))

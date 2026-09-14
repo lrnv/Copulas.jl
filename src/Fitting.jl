@@ -26,11 +26,11 @@ estimator. Transformed observations and optimizer diagnostics are deliberately
 not retained.
 
 Retrieve the fitted copula or Sklar distribution with
-[`fitteddistribution`](@ref). `CopulaModel` also implements the documented
+[`fitted_distribution`](@ref). `CopulaModel` also implements the documented
 `StatsBase.StatisticalModel` interface, including `nobs`, `coef`, `coefnames`,
 `deviance`, `nulldeviance`, `nullloglikelihood`, `aic`, `bic`, and `residuals`.
 Use
-[`selectiontable`](@ref) for the candidate report produced by automatic family
+[`selection_table`](@ref) for the candidate report produced by automatic family
 selection.
 
 The complete field layout and type-parameter order of `CopulaModel` are
@@ -38,7 +38,7 @@ implementation details.
 
 See also `Distributions.fit`.
 
-See also: [`fitteddistribution`](@ref), [`infer`](@ref), [`selectiontable`](@ref),
+See also: [`fitted_distribution`](@ref), [`infer`](@ref), [`selection_table`](@ref),
 [`GOFCopulaTest`](@ref),
 [`StatsBase.residuals`](@ref).
 """
@@ -50,7 +50,7 @@ struct CopulaModel{CT,DT,RT} <: StatsBase.StatisticalModel
 end
 
 """
-    fitteddistribution(M::CopulaModel)
+    fitted_distribution(M::CopulaModel)
 
 Return the fitted copula or `SklarDist` represented by `M`.
 
@@ -62,7 +62,7 @@ Copulas.jl operations.
 See also: [`CopulaModel`](@ref), [`Distributions.fit`](@ref),
 [`StatsBase.residuals`](@ref).
 """
-fitteddistribution(M::CopulaModel) = M.result
+fitted_distribution(M::CopulaModel) = M.result
 
 """
     _CopulaFitSpec(target, method, kwargs)
@@ -391,7 +391,7 @@ rank transformation changes the statistical estimator. Conversely,
 no pseudo-observations are then constructed. Both use the same numerical
 copula-likelihood optimizer; the distinction records the input's provenance.
 
-See also: [`CopulaModel`](@ref), [`selectiontable`](@ref),
+See also: [`CopulaModel`](@ref), [`selection_table`](@ref),
 [`GOFCopulaTest`](@ref).
 """
 function _run_copula_estimator(CT::Type{<:Copula}, U;
@@ -589,7 +589,7 @@ StatsBase.dof(M::CopulaModel) = length(StatsBase.coef(M))
 Return the copula contained in the fitted result, extracting it from a
 `SklarDist` when margins were fitted jointly. This helper is internal; callers
 that need the complete public fitted result should use
-[`fitteddistribution`](@ref).
+[`fitted_distribution`](@ref).
 """
 _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 
@@ -713,7 +713,7 @@ function _natural_parameters(D)
 end
 
 function _coefficient_data(M::CopulaModel)
-    names, values = _natural_parameters(fitteddistribution(M))
+    names, values = _natural_parameters(fitted_distribution(M))
     isempty(M.recipe.fixed) && return names, values
     fixed = string.(M.recipe.fixed)
     keep = map(name -> name ∉ fixed, names)
@@ -721,7 +721,7 @@ function _coefficient_data(M::CopulaModel)
 end
 
 function _parameter_blocks(M::CopulaModel)
-    D = fitteddistribution(M)
+    D = fitted_distribution(M)
     if !(D isa SklarDist)
         all = eachindex(StatsBase.coef(M))
         return (; copula=all, margins=())
@@ -733,7 +733,7 @@ function _parameter_blocks(M::CopulaModel)
 end
 
 function _copula_data(M::CopulaModel)
-    D, data, spec = fitteddistribution(M), M.data, M.recipe
+    D, data, spec = fitted_distribution(M), M.data, M.recipe
     if D isa SklarDist
         sklar_method = spec.kwargs.sklar_method
         sklar_method === :ecdf && return pseudos(data)
@@ -761,7 +761,7 @@ log-likelihood stored in the model. Comparisons are meaningful only for models
 fitted to the same observations and likelihood contribution.
 
 See also: [`StatsBase.bic`](@ref), [`StatsBase.deviance`](@ref),
-[`selectiontable`](@ref).
+[`selection_table`](@ref).
 """
 StatsBase.aic(M::CopulaModel) = 2*StatsBase.dof(M) - 2*M.loglikelihood
 
@@ -773,7 +773,7 @@ Return the Bayesian information criterion `k log(n) - 2ℓ`, using
 fitted to the same observations and likelihood contribution.
 
 See also: [`StatsBase.aic`](@ref), [`StatsBase.deviance`](@ref),
-[`selectiontable`](@ref).
+[`selection_table`](@ref).
 """
 StatsBase.bic(M::CopulaModel) = StatsBase.dof(M)*log(StatsBase.nobs(M)) - 2*M.loglikelihood
 function aicc(M::CopulaModel)
@@ -797,7 +797,7 @@ See also: [`StatsBase.nulldeviance`](@ref), [`StatsBase.deviance`](@ref),
 [`CopulaModel`](@ref).
 """
 function StatsBase.nullloglikelihood(M::CopulaModel)
-    D = fitteddistribution(M)
+    D = fitted_distribution(M)
     null = D isa SklarDist ?
         SklarDist(IndependentCopula(length(D)), D.m) :
         IndependentCopula(length(D))
@@ -831,7 +831,7 @@ one. For singular or atomic conditional laws, Rosenblatt residuals need not be
 independent uniforms and should not be used as a continuous-model diagnostic.
 
 See also: [`rosenblatt`](@ref), [`GOFCopulaTest`](@ref),
-[`fitteddistribution`](@ref).
+[`fitted_distribution`](@ref).
 """
 StatsBase.residuals(M::CopulaModel; transform=:uniform) = begin
     transform in (:uniform, :normal) ||
@@ -850,7 +850,7 @@ Result of comparing an explicit collection of copula families. It keeps the
 winning [`CopulaModel`](@ref) and the candidate comparison separately, so model
 selection state does not bloat ordinary fitted models.
 
-Use [`selected_model`](@ref) to retrieve the winner and [`selectiontable`](@ref)
+Use [`selected_model`](@ref) to retrieve the winner and [`selection_table`](@ref)
 to inspect all candidates. Concrete fields are implementation details.
 """
 struct CopulaSelection{M,T}
@@ -865,15 +865,15 @@ end
 
 Return the winning fitted model from an automatic family-selection result.
 
-See also: [`selectiontable`](@ref), [`fitteddistribution`](@ref).
+See also: [`selection_table`](@ref), [`fitted_distribution`](@ref).
 """
 selected_model(S::CopulaSelection) = S.model
-fitteddistribution(S::CopulaSelection) = fitteddistribution(selected_model(S))
+fitted_distribution(S::CopulaSelection) = fitted_distribution(selected_model(S))
 fitting_method(S::CopulaSelection) = fitting_method(selected_model(S))
 Distributions.loglikelihood(S::CopulaSelection) =
     Distributions.loglikelihood(selected_model(S))
 """
-    selectiontable(result::CopulaSelection)
+    selection_table(result::CopulaSelection)
 
 Return a copy of the candidate comparison rows recorded by automatic family
 selection. Each row identifies a candidate, its status and effective method,
@@ -884,9 +884,9 @@ selection result.
 See also: [`CopulaSelection`](@ref), [`selected_model`](@ref),
 [`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref).
 """
-selectiontable(S::CopulaSelection) = copy(S.table)
-selectiontable(::CopulaModel) = throw(ArgumentError(
-    "selectiontable is available only for a CopulaSelection result"))
+selection_table(S::CopulaSelection) = copy(S.table)
+selection_table(::CopulaModel) = throw(ArgumentError(
+    "selection_table is available only for a CopulaSelection result"))
 
 StatsBase.nobs(S::CopulaSelection) = StatsBase.nobs(selected_model(S))
 StatsBase.isfitted(S::CopulaSelection) = StatsBase.isfitted(selected_model(S))
@@ -962,5 +962,5 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
 end
 
 Distributions.fit(::Type{Copula}, U; candidates, kwargs...) =
-    fitteddistribution(Distributions.fit(CopulaModel, Copula, U;
+    fitted_distribution(Distributions.fit(CopulaModel, Copula, U;
                                           candidates, kwargs...))

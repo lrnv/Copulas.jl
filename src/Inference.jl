@@ -159,8 +159,8 @@ end
 function _default_inference_method(M::CopulaModel)
     M.result isa SklarDist && return :bootstrap
     spec = M.recipe
-    parameters = Distributions.params(fitteddistribution(M))
-    d = length(fitteddistribution(M))
+    parameters = Distributions.params(fitted_distribution(M))
+    d = length(fitted_distribution(M))
     analytical_coordinates = spec isa _CopulaFitSpec && spec.target isa Type &&
         parameters isa NamedTuple &&
         applicable(_unbound_params, spec.target, d, parameters)
@@ -341,7 +341,7 @@ end
 function Base.show(io::IO, I::CopulaInference)
     println(io, "CopulaInference")
     println(io, "  method:     ", I.method)
-    println(io, "  model:      ", nameof(typeof(fitteddistribution(I.model))))
+    println(io, "  model:      ", nameof(typeof(fitted_distribution(I.model))))
     println(io, "  parameters: ", StatsBase.coefnames(I.model))
     print(io, "  covariance: ", size(I.covariance, 1), " x ", size(I.covariance, 2))
 end

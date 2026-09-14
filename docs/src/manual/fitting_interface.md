@@ -114,7 +114,7 @@ Retrieve the reusable fitted model with [`selected_model`](@ref):
 
 ```@example fitting_interface
 Mbest = selected_model(Msel)
-fitteddistribution(Mbest)
+fitted_distribution(Mbest)
 ```
 
 The available criteria are:
@@ -129,10 +129,10 @@ BIC is the default criterion.
 The winning fit is reused. Selection itself performs no uncertainty
 calculation.
 
-The complete comparison can be inspected with [`selectiontable`](@ref):
+The complete comparison can be inspected with [`selection_table`](@ref):
 
 ```@example fitting_interface
-selectiontable(Msel)
+selection_table(Msel)
 ```
 
 Each row stores the candidate family, fitting status and method,
@@ -146,7 +146,7 @@ The candidate collection is intentionally explicit. Automatic selection does
 not make every implemented family plausible for every dimension, tail regime or
 scientific question. Nonfinite scores and failed fits are excluded;
 `on_error=:throw` is useful when a failed candidate should invalidate
-the comparison rather than merely be recorded in `selectiontable`.
+the comparison rather than merely be recorded in `selection_table`.
 
 :::
 
@@ -198,7 +198,7 @@ different questions about the fit:
 
 | Function                                       | Description                                                                                       |
 |:--|:--|
-| `fitteddistribution(M)`                        | Fitted copula or Sklar distribution.                                                              |
+| `fitted_distribution(M)`                        | Fitted copula or Sklar distribution.                                                              |
 | `nobs(M)`                                      | Number of observations used in the fit.                                                           |
 | `loglikelihood(M)`                             | Cached log-likelihood evaluated at the fitted distribution.                                       |
 | `deviance(M)`                                  | Deviance, equal to minus twice the fitted log-likelihood.                                         |
@@ -329,7 +329,7 @@ Hessian, or parameter-transform contract from which such formulas could be
 derived safely.
 
 ```@example fitting_interface
-plot(fitteddistribution(Ŝ))
+plot(fitted_distribution(Ŝ))
 ```
 
 
@@ -413,7 +413,7 @@ See the dedicated page for theory, properties, and references: [Empirical models
 For empirical models with a density, the **StatsBase / StatsModels** interface works identically:
 you can call `coef`, `aic`, `bic`, `deviance`, and `residuals`, and obtain a
 full `CopulaModel` with the same documented model interface. Use
-`fitteddistribution(M)` for distribution operations such as CDF evaluation or
+`fitted_distribution(M)` for distribution operations such as CDF evaluation or
 simulation.
 
 The multivariate `EmpiricalEVCopula` projection may contain singular spectral

@@ -33,6 +33,6 @@
     @test_throws ArgumentError infer(mpl_model; method=:bootstrap,
                                      nresamples=1)
 
-    @test fitteddistribution(mle_model) === fitteddistribution(Ih.model)
+    @test fitted_distribution(mle_model) === fitted_distribution(Ih.model)
     @test Ih !== Ig
 end

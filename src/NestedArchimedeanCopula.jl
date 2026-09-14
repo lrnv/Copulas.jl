@@ -1046,7 +1046,7 @@ one of two ways:
     build the tree from `α` generically so ForwardDiff can differentiate it.
 
 `fit(C0, U)` is a quick shim returning only the fitted copula; for the custom form
-use `fitteddistribution(fit(CopulaModel, reparam, init, U))`.
+use `fitted_distribution(fit(CopulaModel, reparam, init, U))`.
 """
 # Shared optimiser + model assembly for a parametrisation `recon: α -> copula`.
 function _fit_nested(recon, α₀::AbstractVector, U)
@@ -1126,7 +1126,7 @@ _natural_parameters(C::NestedArchimedeanCopula) = _nested_coef(C)
 
 # Quick template shim: returns only the fitted copula. (No `fit(reparam, init, U)`
 # shim — with an untyped `reparam` it would be type piracy on `Distributions.fit`;
-# use `fitteddistribution(fit(CopulaModel, reparam, init, U))` for the custom case.)
+# use `fitted_distribution(fit(CopulaModel, reparam, init, U))` for the custom case.)
 function Distributions.fit(C0::NestedArchimedeanCopula{d}, U;
                            method=:mle, kwargs...) where {d}
     _reject_inference_fit_keywords((; kwargs...))

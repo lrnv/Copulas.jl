@@ -341,7 +341,7 @@ Notes:
 When inference or diagnostics matter, keep the `CopulaModel` returned by the
 first form of `fit`. It implements the standard statistical-model interface for
 point estimation, including coefficients, information criteria, and Rosenblatt
-residuals. Retrieve the fitted distribution with `fitteddistribution(M)` for
+residuals. Retrieve the fitted distribution with `fitted_distribution(M)` for
 CDF or density evaluation and simulation. Apply `infer` afterwards to compute
 uncertainty without changing or refitting the point estimate:
 
@@ -377,7 +377,7 @@ Msel = fit(
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
 )
-selectiontable(Msel)
+selection_table(Msel)
 Mbest = selected_model(Msel)
 ```
 

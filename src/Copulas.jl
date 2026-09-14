@@ -199,7 +199,7 @@ module Copulas
 
     
     ##### Fitting framework
-    export fitteddistribution, selected_model, infer, selectiontable
+    export fitted_distribution, selected_model, infer, selection_table
     public fitting_methods, fitting_method
     
 

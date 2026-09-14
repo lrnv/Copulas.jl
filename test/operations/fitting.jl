@@ -33,7 +33,7 @@ end
     raw = [2.0 8.0 1.0 5.0; 4.0 1.0 6.0 2.0]
     mpl = fit(CopulaModel, PublicMPLProtocolProbe, raw;
               method=:mpl, pseudo_values=false)
-    @test fitteddistribution(mpl) isa IndependentCopula{2}
+    @test fitted_distribution(mpl) isa IndependentCopula{2}
     @test :mpl ∉ Copulas.fitting_methods(PublicMPLProtocolProbe, Val(2))
 end
 
@@ -48,7 +48,7 @@ end
     model = fit(CopulaModel,
         SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
         copula_method=:itau)
-    @test fitteddistribution(model) isa SklarDist
+    @test fitted_distribution(model) isa SklarDist
     @test StatsBase.nobs(model) == size(data, 2)
     @test any(startswith("margin_"), StatsBase.coefnames(model))
     displayed = sprint(show, model)
@@ -115,7 +115,7 @@ end
     model = fit(CopulaModel, ClaytonCopula{2}, U; method=:itau)
     @test fitted isa ClaytonCopula{2}
     @test !(fitted isa CopulaModel)
-    @test params(fitted) == params(fitteddistribution(model))
+    @test params(fitted) == params(fitted_distribution(model))
     inference = infer(model; method=:bootstrap, nresamples=3,
                       rng=StableRNG(113))
     @test inference isa CopulaInference
@@ -186,7 +186,7 @@ end
     source = TCopula(4.0, copy(Σ))
     U = rand(StableRNG(477), source, 1_000)
     model = fit(CopulaModel, TCopula, U; method=:mle,)
-    fitted = fitteddistribution(model)
+    fitted = fitted_distribution(model)
     θ = params(fitted)
     @test fitted isa TCopula{3}
     @test θ.ν > 0
@@ -206,7 +206,7 @@ end
     source = TCopula(1.0, copy(Σ))
     U = rand(StableRNG(478), source, 1_500)
     model = fit(CopulaModel, TCopula, U; method=:mle,)
-    fitted = fitteddistribution(model)
+    fitted = fitted_distribution(model)
     @test 0 < params(fitted).ν < 2
 end
 
@@ -554,7 +554,7 @@ end
     source = GaussianCopula(R)
     U = rand(StableRNG(477), source, n)
     model = fit(CopulaModel, GaussianCopula, U; method=:mle,)
-    fitted = fitteddistribution(model)
+    fitted = fitted_distribution(model)
     R̂ = params(fitted).Σ
     @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(R̂))
     @test maximum(abs.(diag(R̂) .- 1)) < 1e-12

@@ -216,7 +216,7 @@ Msel = fit(
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
 )
-selectiontable(Msel)
+selection_table(Msel)
 Mbest = selected_model(Msel)
 ```
 
