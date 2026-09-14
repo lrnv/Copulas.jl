@@ -239,16 +239,13 @@ See also: [`EmpiricalEVCopula`](@ref), [`DiscreteSpectralTail`](@ref),
 [`ExtremeValueCopula`](@ref), [`ℓ`](@ref), [`Distributions.fit`](@ref).
 """
 struct EmpiricalEVMultivariateTail <: DiscreteSpectralBackedTail
-    d::Int
-    method::Symbol
-    degree::Int
     spectral::DiscreteSpectralTail{Float64}
-    projection_rmse::Float64
 end
 
 Base.eltype(::EmpiricalEVMultivariateTail) = Float64
 Distributions.params(t::EmpiricalEVMultivariateTail) = (B = t.spectral.B,)
-_is_valid_in_dim(t::EmpiricalEVMultivariateTail, d::Int) = t.d == d
+_is_valid_in_dim(t::EmpiricalEVMultivariateTail, d::Int) =
+    size(t.spectral.B, 1) == d
 A(t::EmpiricalEVMultivariateTail, w::NTuple{d,<:Real}) where {d} = ℓ(t, w)
 
 function _empirical_ev_default_degree(d::Int; max_atoms::Int=120)
@@ -512,13 +509,7 @@ function _empirical_ev_project_spectral(pilot::Vector{Float64}, V::Matrix{Float6
     B ./= reshape(rowsums, :, 1)
     spectral = DiscreteSpectralTail(B)
 
-    fitted = Vector{Float64}(undef, size(W, 2))
-    @inbounds for q in eachindex(fitted)
-        fitted[q] = ℓ(spectral, @view W[:, q])
-    end
-    rmse = sqrt(Statistics.mean(abs2, fitted .- pilot))
-
-    return spectral, rmse
+    return DiscreteSpectralTail(B)
 end
 
 function EmpiricalEVMultivariateTail(u::AbstractMatrix; method::Symbol=:ols, degree::Union{Nothing,Int}=nothing, pseudo_values::Bool=true, projection_maxiter::Int=1500,)
@@ -532,9 +523,9 @@ function EmpiricalEVMultivariateTail(u::AbstractMatrix; method::Symbol=:ols, deg
     U = _empirical_ev_uniforms(u, pseudo_values)
     V = _empirical_ev_simplex_grid(d, deg)
     pilot = _empirical_ev_pilot(U, V, method)
-    spectral, rmse = _empirical_ev_project_spectral(pilot, V; maxiter=projection_maxiter,)
+    spectral = _empirical_ev_project_spectral(pilot, V; maxiter=projection_maxiter,)
 
-    return EmpiricalEVMultivariateTail(d, method, deg, spectral, rmse)
+    return EmpiricalEVMultivariateTail(spectral)
 end
 
 """

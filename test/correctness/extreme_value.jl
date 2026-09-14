@@ -599,11 +599,6 @@ end
                 pseudo_values=true,
             )
 
-            @test tail.d == 3
-            @test tail.method == method
-            @test tail.degree == 4
-            @test isfinite(tail.projection_rmse)
-            @test tail.projection_rmse >= 0
             @test Copulas._is_valid_in_dim(tail, 3)
             @test !Copulas._is_valid_in_dim(tail, 2)
 
@@ -621,7 +616,6 @@ end
             degree=5,
             pseudo_values=true,
         )
-        @test tail.method == :ols
         @test Copulas._is_valid_in_dim(tail, 3)
         @test size(tail.spectral.B, 1) == 3
         @test all(tail.spectral.B .>= 0)
