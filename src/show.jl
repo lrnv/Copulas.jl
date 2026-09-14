@@ -5,8 +5,11 @@ function Base.show(io::IO, C::FGMCopula{d, Tθ, Tf}) where {d, Tθ, Tf}
     print(io, "FGMCopula{$d}(θ = $(C.θ))")
 end
 function Base.show(io::IO, C::SurvivalCopula)
-    print(io, "SurvivalCopula($(C.C), $(_survival_flipindices(C.flipmask)))")
+    print(io, "SurvivalCopula($(basecopula(C)), $(flips(C)))")
 end
+Base.show(io::IO, C::Rotated90Copula) = print(io, "Rotated90Copula($(basecopula(C)))")
+Base.show(io::IO, C::Rotated180Copula) = print(io, "Rotated180Copula($(basecopula(C)))")
+Base.show(io::IO, C::Rotated270Copula) = print(io, "Rotated270Copula($(basecopula(C)))")
 function Base.show(io::IO, C::ArchimedeanCopula)
     print(io, "$(typeof(C))$(Distributions.params(C))")
 end
@@ -85,35 +88,36 @@ function _section(io, title::AbstractString; suffix::Union{Nothing,AbstractStrin
 end
 
 """
-Print a standardized parameter section with optional covariance matrix and vcov method note.
+Print a standardized fitted-parameter section.
 """
-function _print_param_section(io, title::AbstractString, nm::Vector{String}, θ::Vector{Float64};
-                              V::Union{Nothing,AbstractMatrix}=nothing,
-                              vcov_method::Union{Nothing,AbstractString,Symbol}=nothing)
-    suf = vcov_method === nothing ? nothing : string("(vcov=", String(vcov_method), ")")
-    _section(io, title; suffix=suf)
-    _print_param_table(io, nm, θ; V=V)
+function _print_param_section(io, title::AbstractString, nm::Vector{String}, θ::Vector{Float64})
+    _section(io, title)
+    _print_param_table(io, nm, θ)
 end
 
 """
 Print dependence metrics if available/supported by the copula C.
 """
-function _print_dependence_metrics(io, C; derived_measures::Bool=true)
+function _has_specialized_copula_method(f, C::Copula{d}) where {d}
+    hasmethod(f, Tuple{typeof(C)}) || return false
+    return which(f, Tuple{typeof(C)}) !== which(f, Tuple{Copula{d}})
+end
+
+function _print_dependence_metrics(io, C)
     _section(io, "Dependence metrics")
-    if !derived_measures
-        println(io, "(suppressed)")
-        return
-    end
     _has(f) = isdefined(Copulas, f) && hasmethod(getfield(Copulas, f), Tuple{typeof(C)})
+    _specialized(f) = _has(f) && _has_specialized_copula_method(getfield(Copulas, f), C)
     shown_any = false
     try
-        if _has(:τ);  _kv(io, "Kendall τ",  Printf.@sprintf("%.4f", Copulas.τ(C)));  shown_any = true; end
+        # Generic τ, γ and ι use Monte Carlo. Avoid making `show` stochastic;
+        # display them only when the family provides a specialization.
+        if _specialized(:τ); _kv(io, "Kendall τ", Printf.@sprintf("%.4f", Copulas.τ(C))); shown_any = true; end
         if _has(:ρ);  _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C)));  shown_any = true; end
         if _has(:β);  _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C)));  shown_any = true; end
-        if _has(:γ);  _kv(io, "Gini γ",     Printf.@sprintf("%.4f", Copulas.γ(C)));  shown_any = true; end
+        if _specialized(:γ); _kv(io, "Gini γ", Printf.@sprintf("%.4f", Copulas.γ(C))); shown_any = true; end
         if _has(:λᵤ); _kv(io, "Upper λᵤ",   Printf.@sprintf("%.4f", Copulas.λᵤ(C))); shown_any = true; end
         if _has(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C))); shown_any = true; end
-        if _has(:ι);  _kv(io, "Entropy ι",  Printf.@sprintf("%.4f", Copulas.ι(C)));  shown_any = true; end
+        if _specialized(:ι); _kv(io, "Entropy ι", Printf.@sprintf("%.4f", Copulas.ι(C))); shown_any = true; end
     catch
         # proceed without failing show
     end
@@ -170,73 +174,53 @@ function Base.show(io::IO, M::CopulaModel)
         famC = _fmt_copula_family(R.C)
         mnames = map(mi -> String(nameof(typeof(mi))), R.m)
         margins_lbl = "(" * join(mnames, ", ") * ")"
-        skm = get(M.method_details, :sklar_method, nothing)
+        skm = M.recipe.kwargs.sklar_method
         _kv(io, "Copula", famC)
         _kv(io, "Margins", margins_lbl)
-        if skm === nothing
-            _kv(io, "Methods", "copula=" * String(M.method))
-        else
-            _kv(io, "Methods", "copula=" * String(M.method) * ", sklar=" * String(skm))
-        end
+        _kv(io, "Methods", "copula=" * String(fitting_method(M)) * ", sklar=" * String(skm))
     else
-        _kv(io, "Method", String(M.method))
+        _kv(io, "Method", String(fitting_method(M)))
     end
     _kv(io, "Number of observations", Printf.@sprintf("%d", StatsBase.nobs(M)))
 
-    if haskey(M.method_details, :selection_table)
-        md = M.method_details
-        _section(io, "Model selection")
-        _kv(io, "Criterion", uppercase(String(md.criterion)))
-        _kv(io, "Selected family", string(md.selection_table[md.selected_index].candidate))
-    end
-
     _section(io, "Fit metrics")
-    ll  = M.ll
-    ll0 = get(M.method_details, :null_ll, NaN)
-    if isfinite(ll0); _kv(io, "Null Loglikelihood", Printf.@sprintf("%12.4f", ll0)); end
+    ll = M.loglikelihood
     _kv(io, "Loglikelihood", Printf.@sprintf("%12.4f", ll))
-    kcop = StatsBase.dof(M)
-    if isfinite(ll0) && kcop > 0
-        LR = 2*(ll - ll0)
-        p  = Distributions.ccdf(Distributions.Chisq(kcop), LR)
-        _kv(io, "LR (vs indep.)", Printf.@sprintf("%.2f ~ χ²(%d)  ⇒  p = %s", LR, kcop, _pstr(p)))
-    end
     aic = StatsBase.aic(M); bic = StatsBase.bic(M)
     _kv(io, "AIC", Printf.@sprintf("%.3f", aic))
     _kv(io, "BIC", Printf.@sprintf("%.3f", bic))
-    if isfinite(M.elapsed_sec) || M.iterations != 0 || M.converged != true
-        conv = M.converged ? "true" : "false"
-        _kv(io, "Converged", conv)
-        _kv(io, "Iterations", string(M.iterations))
-        tsec = isfinite(M.elapsed_sec) ? Printf.@sprintf("%.3fs", M.elapsed_sec) : "NA"
-        _kv(io, "Elapsed", tsec)
-    end
 
     if R isa SklarDist
         # [ Dependence metrics ] section
         C  = M.result isa SklarDist ? M.result.C : M.result
-        _print_dependence_metrics(io, C; derived_measures=get(M.method_details, :derived_measures, true))
+        _print_dependence_metrics(io, C)
 
         # [ Copula parameters ] section
-        θ  = StatsBase.coef(M)
+        θ = StatsBase.coef(M)
         nm = StatsBase.coefnames(M)
-        md   = M.method_details
-        Vcop = get(md, :vcov_copula, nothing)
-        vcovm = get(md, :vcov_method, nothing)
-        _print_param_section(io, "Copula parameters", nm, θ; V=Vcop, vcov_method=vcovm)
+        copula_block = _parameter_blocks(M).copula
+        θ = θ[copula_block]
+        nm = nm[copula_block]
+        _print_param_section(io, "Copula parameters", nm, θ)
 
         # [ Marginals ] section
-        _print_marginals_section(io, R::SklarDist, get(M.method_details, :vcov_margins, nothing))
+        _print_marginals_section(io, R::SklarDist, nothing)
     else
         # Copula-only fits: dependence metrics and parameters
         C0 = M.result isa SklarDist ? M.result.C : M.result
-        _print_dependence_metrics(io, C0; derived_measures=get(M.method_details, :derived_measures, true))
+        _print_dependence_metrics(io, C0)
         θ  = StatsBase.coef(M)
         nm = StatsBase.coefnames(M)
-        vcovm = get(M.method_details, :vcov_method, nothing)
-        _print_param_section(io, "Copula parameters", nm, θ; V=StatsBase.vcov(M), vcov_method=vcovm)
+        _print_param_section(io, "Copula parameters", nm, θ)
 
     end
+end
+
+function Base.show(io::IO, S::CopulaSelection)
+    show(io, selected_model(S))
+    _section(io, "Model selection")
+    _kv(io, "Criterion", uppercase(String(S.criterion)))
+    _kv(io, "Selected family", _fmt_copula_family(fitted_distribution(selected_model(S))))
 end
 
 """

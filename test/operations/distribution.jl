@@ -61,6 +61,49 @@ end
     end
 end
 
+@testset "EmpiricalCopula finite-sample semantics" begin
+    points = [0.2 0.2 0.8; 0.3 0.3 0.7]
+    C = EmpiricalCopula(points)
+
+    @test cdf(C, [0.2, 0.3]) == 2 / 3
+    @test cdf(C, [0.2, 1.0]) == 2 / 3 # finite-sample step margin
+    @test pdf(C, points[:, 1]) == 2 / 3
+    @test logpdf(C, points[:, 1]) == log(2 / 3)
+    @test pdf(C, points[:, 3]) == 1 / 3
+    @test logpdf(C, [0.2, 0.7]) == -Inf # coordinate matches are insufficient
+    @test pdf(C, [0.4, 0.4]) == 0
+
+    sample = rand(StableRNG(303), C, 20)
+    @test all(col -> any(source -> col == source, eachcol(points)), eachcol(sample))
+
+    margins = (Uniform(), Uniform())
+    S = @test_logs (:warn, r"EmpiricalCopula has finite-sample step margins") begin
+        SklarDist(C, margins)
+    end
+    @test_logs (:warn, r"EmpiricalCopula has finite-sample step margins") begin
+        SklarDist(SurvivalCopula(C, (1,)), margins)
+    end
+    transformed = [quantile(margins[row], points[row, 1]) for row in 1:2]
+    @test cdf(S, transformed) == cdf(C, points[:, 1])
+    @test pdf(S, transformed) == 2 / 3
+    @test logpdf(S, transformed) == log(2 / 3)
+    @test logpdf(S, [transformed[1], transformed[2] + 0.1]) == -Inf
+
+    discrete = @test_logs (:warn, r"EmpiricalCopula has finite-sample step margins") begin
+        SklarDist(C, (Bernoulli(0.5), Bernoulli(0.5)))
+    end
+    @test pdf(discrete, [0, 0]) == 2 / 3
+    @test pdf(discrete, [1, 1]) == 1 / 3
+    @test pdf(discrete, [0.5, 0.5]) == 0
+
+    transformed_sample = rand(StableRNG(304), S, 20)
+    transformed_support = [
+        [quantile(margins[row], points[row, col]) for row in 1:2]
+        for col in axes(points, 2)
+    ]
+    @test all(col -> any(==(col), transformed_support), eachcol(transformed_sample))
+end
+
 @testset "generic distribution collection adapters" begin
     C = ClaytonCopula{3}(1.5)
 

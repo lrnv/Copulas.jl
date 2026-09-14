@@ -11,13 +11,17 @@ Its distribution function is
 C(\\mathbf{x}) = \\frac{1}{N} \\sum_{j=1}^{N} \\mathbf{1}_{\\{ \\mathbf{u}_{\\cdot,j} \\le \\mathbf{x} \\}} ,
 ```
 
-where the inequality is componentwise. If `pseudo_values=false`, the constructor first ranks the raw data into pseudo-observations; otherwise it assumes `u` already contains pseudo-observations in ``[0,1]``.
+where the inequality is componentwise. If `pseudo_values=false`, the constructor
+first ranks the raw data into pseudo-observations using the default average-rank
+tie convention; otherwise it assumes `u` already contains pseudo-observations in
+``[0,1]``. Call `pseudos(data; ties=...)` explicitly before construction to use
+another convention.
 
 Notes:
 - This is an empirical distribution on the observed pseudo-points. For finite
-  `N`, its margins need not be exactly continuous uniforms, so it is commonly
-  called an empirical copula without being an ordinary absolutely continuous
-  copula.
+  `N`, its step margins are not continuous uniforms, so it is commonly called
+  an empirical copula function without being a genuine copula on the full unit
+  cube. `EmpiricalCopula` remains a `Copula` subtype for compatibility.
 - Its probability measure is atomic. `logpdf` reports generalized mass values
   at stored points and `-Inf` elsewhere; it is not a Lebesgue log-density.
 - Random sampling resamples observed columns, and subsetting preserves their
@@ -34,6 +38,7 @@ struct EmpiricalCopula{d,MT} <: Copula{d}
 end
 copula_measure_style(::Type{<:EmpiricalCopula}) =
     NonAbsolutelyContinuousMeasure()
+_is_empirical_copula(::EmpiricalCopula) = true
 Base.eltype(C::EmpiricalCopula{d,MT}) where {d,MT} = Base.eltype(C.u)
 function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
     size(u, 1) == d || throw(DimensionMismatch("data must have $d rows"))
@@ -53,7 +58,50 @@ function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return sum(all(C.u .<= u,dims=1))/size(C.u,2) # might not be very efficient implementation. 
 end
 function Distributions._logpdf(C::EmpiricalCopula{d,MT}, u) where {d,MT}
-    any(C.u .== u) ? -log(size(C.u,2)) : -Inf
+    matches = 0
+    @inbounds for col in axes(C.u, 2)
+        matches += all(row -> C.u[row, col] == u[row], axes(C.u, 1))
+    end
+    return iszero(matches) ? -Inf : log(matches / size(C.u, 2))
+end
+
+# A Sklar transform of an empirical measure remains atomic. Its generalized
+# `pdf` is therefore the probability mass at a transformed support point, not
+# the continuous copula-density factorization used by ordinary Sklar models.
+function Distributions._logpdf(S::SklarDist{CT}, x) where {CT<:EmpiricalCopula}
+    d = length(S)
+    U = Vector{_sklar_work_eltype(S, x)}(undef, d)
+    all_continuous = true
+    @inbounds for row in 1:d
+        margin = S.m[row]
+        U[row] = Distributions.cdf(margin, x[row])
+        all_continuous &= Distributions.value_support(typeof(margin)) ===
+                          Distributions.Continuous
+    end
+    all_continuous && return Distributions.logpdf(S.C, U)
+
+    # For a discrete margin, quantile(margin, u) == x precisely on the CDF
+    # jump (F(x⁻), F(x)]. Continuous coordinates retain the point condition
+    # u == F(x). Computing these bounds once avoids applying every marginal
+    # quantile to every stored observation.
+    lower = copy(U)
+    is_discrete = falses(d)
+    @inbounds for row in 1:d
+        margin = S.m[row]
+        if Distributions.value_support(typeof(margin)) === Distributions.Discrete
+            is_discrete[row] = true
+            lower[row] = Distributions.cdf(margin, prevfloat(float(x[row])))
+        end
+    end
+
+    matches = 0
+    @inbounds for col in axes(S.C.u, 2)
+        matches += all(axes(S.C.u, 1)) do row
+            u = S.C.u[row, col]
+            is_discrete[row] ? lower[row] < u <= U[row] : u == U[row]
+        end
+    end
+    return iszero(matches) ? -Inf : log(matches / size(S.C.u, 2))
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula{d,MT}, A::AbstractMatrix{T}) where {d,MT,T<:Real}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
@@ -75,7 +123,7 @@ StatsBase.dof(::EmpiricalCopula) = 0
 _available_fitting_methods(::Type{<:EmpiricalCopula}, d) = (:deheuvels,)
 """
     _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels};
-         pseudo_values::Bool=true, kwargs...) -> (C, meta)
+         pseudo_values::Bool=true, kwargs...) -> C
 
 Constructs the empirical Deheuvels copula from `U`.
 
@@ -84,13 +132,12 @@ Constructs the empirical Deheuvels copula from `U`.
 - `kwargs...`: forwarded to the `EmpiricalCopula` constructor.
 
 # Returns
-- `(C, meta)` where `C::EmpiricalCopula` and
-`meta = (; emp_kind = :deheuvels, pseudo_values)`.
+The fitted `EmpiricalCopula`.
 
 **Note**: Method with no free parameters (`dof=0`).
 """
 function _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels};
               pseudo_values::Bool=true, kwargs...)
     C = EmpiricalCopula(U; pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:deheuvels, pseudo_values)
+    return C
 end

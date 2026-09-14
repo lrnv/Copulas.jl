@@ -81,7 +81,7 @@ Other Julia packages cover related use cases. [`BivariateCopulas.jl`](https://gi
 | Copula plus arbitrary margins | ✅ `SklarDist`, any supported dimension | ⚠️ Marginal-transformation utilities | ⚠️ Bivariate joint distributions |
 | Parameter fitting | ✅ Quick fits and full `CopulaModel` results | ❌ Not documented | ❌ Not documented |
 | Automatic family selection | ✅ Explicit candidate sets with AIC, BIC, AICc, or HQC | ❌ Not documented | ❌ Not documented |
-| Statistical-model diagnostics | ✅ Covariance, confidence intervals, residuals, prediction, information criteria | ❌ Not documented | ❌ Not documented |
+| Statistical-model diagnostics | ✅ Covariance, confidence intervals, residuals, information criteria | ❌ Not documented | ❌ Not documented |
 | Dependence measures | ✅ Scalar and pairwise rank and tail measures | ⚠️ Empirical Kendall-correlation examples | ❌ Not documented as a common interface |
 | Subsetting and conditioning | ✅ Copulas and `SklarDist`; univariate or multivariate results | ❌ Not documented | ⚠️ Bivariate conditional CDFs |
 | Rosenblatt and inverse Rosenblatt transforms | ✅ | ❌ Not documented | ❌ Not documented |
@@ -191,12 +191,24 @@ Ĉ = fit(GumbelCopula, U; method=:itau)
 ```
 
 Notes
-- `fit` chooses a reasonable default per family; pass `method`/`copula_method` to control it.
-- Common methods: copulas `:mle`, `:itau`, `:irho`, `:ibeta`; Sklar `:ifm` (parametric CDFs) and `:ecdf` (pseudo-observations).
+- Direct copula fits default to `method=:mle`. Use `method=:mpl,
+  pseudo_values=false` for maximum pseudo-likelihood from raw observations.
+- Sklar fits default to sequential `sklar_method=:ifm`; `:ecdf` is the
+  rank-based alternative. Neither route is joint full maximum likelihood.
+- Their copula step defaults to `copula_method=:mle` when supported, otherwise
+  to the family's advertised default; either can be replaced explicitly.
 
-Use `CopulaModel` when diagnostics and inference matter. If the family is not
-known in advance, fit an explicit, scientifically appropriate candidate set and
-rank successful fits by an information criterion:
+Use `CopulaModel` when diagnostics or later inference matter. It stores only
+the fitted distribution, original data, fitted log-likelihood, and minimal
+replay recipe; coefficients, transformed observations, parameter blocks, and
+the independence likelihood are derived when requested. Estimation itself does
+not compute uncertainty: apply `infer(M; method=...)` to obtain a separate
+`CopulaInference`, then use `vcov`, `stderror`, and `confint` on that result.
+For Sklar fits, bootstrap inference refits both the margins and the copula and
+retains their complete covariance, including cross-component terms.
+
+If the family is not known in advance, fit an explicit, scientifically
+appropriate candidate set and rank successful fits by an information criterion:
 
 <!-- DOCUMENTER-EXAMPLE: 1 -->
 ```julia
@@ -206,15 +218,16 @@ Msel = fit(
     U;
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
-    vcov=false,
 )
-selectiontable(Msel)
+selection_table(Msel)
+Mbest = selected_model(Msel)
 ```
 
-Selection is deliberately explicit: Copulas.jl does not treat every available
-family as a sensible candidate for every dimension or scientific question. See
-the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for covariance estimation,
-confidence intervals, residuals, prediction, and selection caveats.
+Selection returns a `CopulaSelection`, so its candidate report is not stored in
+the winning `CopulaModel`. Selection is deliberately explicit: Copulas.jl does
+not treat every available family as a sensible candidate for every dimension or scientific question. See
+the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for post-fit inference,
+confidence intervals, residuals, and selection caveats.
 
 ### Hypothesis testing
 

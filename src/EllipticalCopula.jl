@@ -148,22 +148,57 @@ end
     return α
 end
 
-@inline function _rebound_corr_params(d::Int, α::AbstractVector{T}) where {T}
-    L = Matrix{T}(LinearAlgebra.I, d, d)
-    @inbounds begin
-        L[1,1] = one(T)
-        k = 1
-        for i in 2:d
-            denom = one(T)
-            for j in 1:i-1
-                z = tanh(α[k]); k += 1
-                L[i,j] = z * denom
-                denom *= sqrt(max(zero(T), one(T) - z*z))
-            end
-            L[i,i] = denom
+@inline function _rebound_corr_factor(d::Int, α::AbstractVector{T}) where {T}
+    L = zeros(T, d, d)
+    L[1, 1] = one(T)
+    k = 1
+    @inbounds for i in 2:d
+        denom = one(T)
+        for j in 1:(i - 1)
+            a = α[k]
+            k += 1
+            z = tanh(a)
+            L[i, j] = z * denom
+            denom *= inv(cosh(a)) # sqrt(1 - tanh(a)^2) = sech(a)
         end
+        L[i, i] = denom
     end
+    return L
+end
+
+function _score_corr_start(Z::AbstractMatrix)
+    d = size(Z, 1)
+    T = float(eltype(Z))
+    R = Matrix{T}(Statistics.cor(Z; dims=2))
+
+    if any(x -> !isfinite(x), R)
+        return Matrix{T}(LinearAlgebra.I, d, d)
+    end
+
+    R = Matrix(LinearAlgebra.Symmetric((R + R') / 2))
+    @inbounds for j in 1:d
+        R[j, j] = one(T)
+    end
+
+    LinearAlgebra.isposdef(LinearAlgebra.Symmetric(R)) && return R
+
+    I_d = Matrix{T}(LinearAlgebra.I, d, d)
+    λ = sqrt(eps(T))
+
+    while λ < one(T)
+        Rλ = (one(T) - λ) .* R .+ λ .* I_d
+        if LinearAlgebra.isposdef(LinearAlgebra.Symmetric(Rλ))
+            return Rλ
+        end
+        λ = min(one(T), 10λ)
+    end
+
+    return I_d
+end
+
+@inline function _rebound_corr_params(d::Int, α::AbstractVector{T}) where {T}
+    L = _rebound_corr_factor(d, α)
     Σ = L * L'
-    Σ = (Σ + Σ')/2
+    Σ = (Σ + Σ') / 2
     return Σ
 end

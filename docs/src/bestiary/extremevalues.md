@@ -619,7 +619,7 @@ a finite spectral basis; `degree` trades approximation flexibility against
 optimization cost and potential instability. The result supports `cdf` and
 sampling but can contain singular components, so no global Lebesgue `pdf` is
 promised. Reproducibility and fit quality should be assessed together with the
-projection error returned in fitting metadata, when that interface is used,
+agreement between the fitted tail and the empirical target on a diagnostic grid,
 rather than from the constructor succeeding alone.
 
 The canonical [Public API](@ref) documents complete call forms, validation,

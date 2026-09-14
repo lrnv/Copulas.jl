@@ -258,10 +258,10 @@ end
 
 @testset "nested Archimedean composition identity" begin
     root = Copulas.ClaytonGenerator(1.5)
-    left = Copulas.GumbelGenerator(2.0)
-    right = Copulas.FrankGenerator(3.0)
+    left = Copulas.ClaytonGenerator(2.0)
+    right = Copulas.ClaytonGenerator(3.0)
     C = NestedArchimedeanCopula(root;
-        children=[GumbelCopula{2}(2.0), FrankCopula{2}(3.0)])
+        children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)])
     u = [0.23, 0.47, 0.71, 0.59]
 
     child_value(G, x, I) = Copulas.ϕ(G, sum(Copulas.ϕ⁻¹(G, x[i]) for i in I))

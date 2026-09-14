@@ -11,16 +11,23 @@ Through the statistical process leading to the estimation of copulas, one usuall
 
 ::: definition Pseudo-observations
 
-If $\boldsymbol x \in \mathbb{R}^{N \times d}$ is an $N$-sample of a $d$-variate real-valued random vector $\boldsymbol X$, then the pseudo-observations are the normalized ranks of the marginals of $\boldsymbol x$, defined as:
+If $\boldsymbol x \in \mathbb{R}^{N \times d}$ is an $N$-sample of a $d$-variate real-valued random vector $\boldsymbol X$, then the pseudo-observations are the normalized ranks of the marginals of $\boldsymbol x$, defined in the absence of ties as:
 
 $$\boldsymbol u \in [0,1]^{N \times d}:\; u_{i,j} = \frac{\mathrm{Rank}(x_{i,j}, \boldsymbol x_{\cdot,j})}{N+1} = \frac{1}{N+1} \sum_{k=1}^N \mathbb{1}_{x_{k,j} \le x_{i,j}},$$
 
 where $\mathrm{Rank}(y, \boldsymbol x) = \sum_{x_i \in \boldsymbol x} \mathbb{1}_{x_i \le y}$.
 
+With tied observations, the rank convention becomes part of the estimator.
+`pseudos` uses average ranks by default, matching the usual R and vinecopulib
+convention. The `ties` keyword also provides `:first`, `:last`, `:min`, `:max`,
+and `:random`; the latter accepts an explicit `rng` for reproducibility. These
+choices agree when margins are tie-free. A tie convention does not, on its own,
+make inference designed for continuous margins valid for discrete data.
+
 :::
 
 
-In `Copulas.jl`, we provide a function `pseudos` that implement this transformation directly. 
+In `Copulas.jl`, the function `pseudos` implements this transformation directly.
 
 See the canonical Public API entry for [`pseudos`](@ref).
 
@@ -48,13 +55,25 @@ $\hat{C}_N$ then converges (weakly) to $C$, the true copula of the random vector
 
 ::: info The empirical copula is not a true copula
 
-Despite its name, $\hat{C}_N$ is not a copula since it does not have uniform marginals. Be careful. 
+Despite its name, $\hat{C}_N$ is not a copula on the full unit cube since its
+finite-sample margins are step functions rather than continuous uniforms.
+`EmpiricalCopula` keeps its historical `Copula` subtype for API compatibility,
+while algorithms that require exact uniform margins recognize this exception
+explicitly.
 
 :::
 
 In the package, this copula is implemented as the `EmpiricalCopula`: 
 
 See the canonical Public API entry for [`EmpiricalCopula`](@ref).
+
+Passing it directly to [`SklarDist`](@ref) is allowed, but emits a warning: the
+resulting distribution generally does not have the requested margins. For a
+genuine copula model, smooth the empirical function with [`BetaCopula`](@ref),
+a valid [`BernsteinCopula`](@ref), or [`CheckerboardCopula`](@ref). The direct
+construction remains useful when the intended model is the atomic empirical
+distribution transformed onto new coordinate scales; in that case `pdf` and
+`logpdf` report point masses rather than Lebesgue densities.
 
 ::: info Conditionals and distortions
 
@@ -123,7 +142,9 @@ B_{\boldsymbol m}(C)(\boldsymbol u)
  \prod_{j=1}^d \binom{m_j}{s_j} u_j^{s_j} (1-u_j)^{m_j-s_j}.
 ```
 
-It is a multivariate Bernstein polynomial approximation of $C$ on the uniform grid. Larger $m_j$ increase smoothness and accuracy at higher computational cost.
+It is a multivariate Bernstein polynomial approximation of $C$ on the uniform grid. Larger $m_j$ increase smoothness and accuracy at higher computational cost. When the base is an empirical copula built from $n$ tie-free observations, however, the result has exactly uniform margins if and only if every $m_j$ divides $n$ [segers2017](@cite). `BernsteinCopula` rejects degrees that violate this condition instead of returning a multivariate distribution mislabeled as a copula. With `m=nothing`, it selects the largest divisor of $n$ no greater than $\lfloor n^{1/d}\rfloor$.
+
+The divisibility restriction is specific to the empirical construction. Applying the Bernstein operator to a genuine copula preserves uniform margins for arbitrary positive degrees. Constructors nevertheless verify the resulting cell masses, so tied empirical ranks or numerically invalid base values cannot silently produce a non-copula.
 
 In the package, this copula is implemented as `BernsteinCopula`:
 
@@ -139,7 +160,8 @@ See the canonical Public API entry for [`BernsteinCopula`](@ref).
 
 ### Performance notes
 - Complexity grows with the grid size ∏_j (m_j+1) for cdf and ∏_j m_j for pdf. In higher dimensions, keep m small or prefer the 2D specialized paths provided.
-- Small negative finite differences from numerical noise are clipped to zero before normalization.
+- The constructor tolerates floating-point roundoff in finite differences, but
+  rejects materially negative cell masses or non-uniform margins.
 
 ## Checkerboard Copulas
 

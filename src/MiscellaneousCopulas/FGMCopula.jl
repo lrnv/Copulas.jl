@@ -95,12 +95,9 @@ end
 
 
 function _cdf(fgm::FGMCopula{d}, u::Vector{T}) where {d,T}
-    d == 2 && isone(fgm.θ[1]) && return minimum(u)
-    d == 2 && fgm.θ[1] == -1 && return max(sum(u) - 1, zero(T))
     return prod(u) * (1 + _fgm_red(fgm.θ, 1 .-u))
 end
-copula_measure_style(C::FGMCopula{d}) where {d} =
-    d == 2 && abs(C.θ[1]) == 1 ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
+copula_measure_style(::FGMCopula) = AbsolutelyContinuousMeasure()
 Distributions._logpdf(fgm::FGMCopula, u) = log1p(_fgm_red(fgm.θ, 1 .-2u))
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d, Tθ, Tf}, A::AbstractMatrix{T}) where {d,Tθ, Tf, T <: Real}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
@@ -177,10 +174,7 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
             autodiff= ADTypes.AutoForwardDiff()
         )
         θ = tanh(Optim.minimizer(res)[1])
-        return CT(d, θ), (; θ̂=(θ=θ,),
-                    optimizer  = Optim.summary(res),
-                    converged  = Optim.converged(res),
-                    iterations = Optim.iterations(res))
+        return CT(d, θ)
     end
 
     # → 2. General FGM (d > 2) with log-barrier or soft barrier
@@ -220,9 +214,5 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
     # Optimise in θ-space directly (no need for unbound/rebound)
     res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
     θhat = Optim.minimizer(res)
-    return FGMCopula(d, θhat),
-        (; θ̂ = (θ = θhat,),
-           optimizer  = Optim.summary(res),
-           converged  = Optim.converged(res),
-           iterations = Optim.iterations(res))
+    return FGMCopula(d, θhat)
 end

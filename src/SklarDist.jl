@@ -33,6 +33,14 @@ in general represent the probability mass; users should not assume `pdf` or
 Rosenblatt round-trip properties beyond the capabilities documented by the
 components.
 
+Passing an [`EmpiricalCopula`](@ref) is allowed for compatibility and emits a
+warning because its finite-sample margins are not exactly uniform. The result
+therefore does not generally have the requested margins. It represents the
+atomic empirical sample transformed by the marginal quantiles, and its `pdf`
+and `logpdf` values are generalized point masses rather than Lebesgue
+densities. Prefer [`BetaCopula`](@ref), a valid [`BernsteinCopula`](@ref), or
+[`CheckerboardCopula`](@ref) when a genuine copula is required.
+
 # Example
 
 ```julia
@@ -49,7 +57,8 @@ family per coordinate, for example
 `SklarDist{ClaytonCopula,Tuple{Gamma,Normal}}`. Those family parameters are
 public in this fitting context; no other field layout, storage parameter, or
 concrete representation detail of `SklarDist` is part of the public API. Use
-`fit(CopulaModel, SklarDist{...}, data)` to retain fitting diagnostics.
+`fit(CopulaModel, SklarDist{...}, data)` to retain the fitted likelihood and
+the minimal state needed for diagnostics, inference, and reproducible refitting.
 
 References: 
 * [sklar1959](@cite) Sklar, M. (1959). Fonctions de répartition à n dimensions et leurs marges. In Annales de l'ISUP (Vol. 8, No. 3, pp. 229-231).
@@ -60,8 +69,11 @@ struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribut
     m::TplMargins
     function SklarDist(C::Copula{d}, m::NTuple{d, Any}) where d
         @assert all(mᵢ isa Distributions.UnivariateDistribution for mᵢ in m)
+        if _is_empirical_copula(C)
+            @warn "EmpiricalCopula has finite-sample step margins rather than exact uniform margins. The resulting SklarDist therefore does not generally have the requested margins. Consider smoothing with BetaCopula, a valid BernsteinCopula, CheckerboardCopula, or another genuine copula estimator."
+        end
         return new{typeof(C),typeof(m)}(C,m)
-    end    
+    end
 end
 function SklarDist(C::Copula, m)
     margins = Tuple(m)

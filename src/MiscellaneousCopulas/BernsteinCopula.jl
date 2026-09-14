@@ -17,6 +17,14 @@ Behavior and cost:
   approximation but require work and memory proportional to ``\\prod_j m_j``.
   Large `d` or `m` can therefore be prohibitive.
 - If ``C`` is an `EmpiricalCopula`, the constructor produces the *empirical Bernstein copula*, a smoothed version of the empirical copula.
+- For an empirical sample of size ``n`` without ties, this construction is a
+  genuine copula if and only if every degree ``m_j`` divides ``n``. Invalid
+  degree choices are rejected. With `m=nothing`, the largest divisor of ``n``
+  not exceeding ``\\lfloor n^{1/d}\\rfloor`` is selected in every dimension.
+- Raw data supplied with `pseudo_values=false` must have tie-free margins.
+  Resolve ties explicitly with `pseudos(data; ties=:first)`, `:last`, or
+  `:random` before construction when deliberate tie breaking is scientifically
+  justified.
 - Supports `cdf`, `logpdf`, and random generation via mixtures of beta distributions.
 
 See also: [`BetaCopula`](@ref), [`EmpiricalCopula`](@ref), [`Copula`](@ref),
@@ -30,25 +38,19 @@ struct BernsteinCopula{d} <: Copula{d}
     m::NTuple{d,Int}
     weights::Array{Float64, d}
     function BernsteinCopula{d}(base::Copula{d}; m::Union{Int,Tuple,Nothing}=10) where {d}
-        mtuple = nothing
-        if m !== nothing
-            mtuple = (m isa Int) ? ntuple(_->m, d) : m
-            @assert length(mtuple) == d "The parameter m must have length $d"
-            if base isa EmpiricalCopula
-                n = size(base.u, 2)
-                for mj in mtuple
-                    if n % mj != 0
-                        @warn "Sample size n=$n is not a multiple of m=$mj; partition may be unbalanced."
-                    end
-                end
-            end
+        if m === nothing && base isa EmpiricalCopula
+            n = size(base.u, 2)
+            target = max(1, floor(Int, n^(1 / d)))
+            m_est = findlast(k -> iszero(n % k), 1:target)
+            mtuple = ntuple(_ -> m_est, d)
         elseif base isa EmpiricalCopula
             n = size(base.u, 2)
-            m_est = max(2, floor(Int, n^(1/d)))
-            @info "Automatic choice: m=$m_est in each dimension (≈ n^(1/d))."
-            mtuple = ntuple(_->m_est, d)
+            mtuple = _bernstein_degrees(m, d)
+            all(iszero(n % mj) for mj in mtuple) || throw(ArgumentError(
+                "each Bernstein degree must divide the empirical sample size n=$n; got m=$mtuple",
+            ))
         else
-            mtuple = ntuple(_->10, d)
+            mtuple = _bernstein_degrees(something(m, 10), d)
         end
         # Compute measures values using multidimensional finite differences on the grid of cdf values. 
         weights = Array{Float64}(undef, (mi+1 for mi in mtuple)...)
@@ -59,16 +61,56 @@ struct BernsteinCopula{d} <: Copula{d}
         for axis in 1:d
             weights = Base.diff(weights, dims=axis)
         end
+        _validate_bernstein_weights(weights, mtuple)
         return new{d}(mtuple, weights)
     end
-    BernsteinCopula{d}(m::NTuple{d, Int}, weights::Array{Float64, d}) where d = new{d}(m, weights) # cheating constructor. 
+    function BernsteinCopula{d}(m::NTuple{d,Int}, weights::Array{Float64,d}) where {d}
+        size(weights) == m || throw(DimensionMismatch(
+            "weights must have size m=$m; got $(size(weights))",
+        ))
+        _validate_bernstein_weights(weights, m)
+        return new{d}(m, weights)
+    end
+end
+
+function _bernstein_degrees(m::Union{Int,Tuple}, d::Int)
+    mtuple = m isa Int ? ntuple(_ -> m, d) : m
+    length(mtuple) == d || throw(DimensionMismatch("m must have length $d"))
+    all(mj -> mj isa Int && mj > 0, mtuple) ||
+        throw(ArgumentError("Bernstein degrees must be positive integers; got m=$mtuple"))
+    return ntuple(j -> Int(mtuple[j]), d)
+end
+
+function _validate_bernstein_weights(weights::AbstractArray, m::Tuple)
+    scale = max(1.0, maximum(abs, weights))
+    atol = 100 * eps(Float64) * length(weights) * scale
+    minimum(weights) >= -atol || throw(ArgumentError(
+        "the Bernstein coefficients do not define a probability distribution",
+    ))
+    isapprox(sum(weights), 1.0; atol, rtol=0) || throw(ArgumentError(
+        "the Bernstein coefficients do not sum to one",
+    ))
+
+    d = length(m)
+    for j in 1:d
+        other_dims = Tuple(setdiff(1:d, (j,)))
+        marginal = isempty(other_dims) ? weights :
+            dropdims(sum(weights; dims=other_dims); dims=other_dims)
+        all(x -> isapprox(x, inv(m[j]); atol, rtol=0), marginal) ||
+            throw(ArgumentError(
+                "the Bernstein construction does not have a uniform margin in dimension $j",
+            ))
+    end
+    return nothing
 end
 Distributions.params(C::BernsteinCopula) = (m=C.m, weights=C.weights)
 BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base; kwargs...)
 BernsteinCopula(d::Integer, base::Copula; kwargs...) = BernsteinCopula{d}(base; kwargs...)
 function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}
     size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
-    return BernsteinCopula{d}(EmpiricalCopula{d}(data; pseudo_values=get(kwargs, :pseudo_values, true));
+    pseudo_values = get(kwargs, :pseudo_values, true)
+    pseudo_values || _require_tie_free_rows(data, "BernsteinCopula")
+    return BernsteinCopula{d}(EmpiricalCopula{d}(data; pseudo_values=pseudo_values);
                               m=get(kwargs, :m, nothing))
 end
 BernsteinCopula(data::AbstractMatrix; kwargs...) = BernsteinCopula{size(data, 1)}(data; kwargs...)
@@ -133,7 +175,7 @@ function Distributions._logpdf(B::BernsteinCopula{d}, u::AbstractVector) where {
         iszero(w) && continue
         dens += w * prod(BetaV[j][s[j]+1] for j in 1:d)
     end
-    return min(log(dens), zero(dens))
+    return dens > zero(dens) ? log(dens) : oftype(dens, -Inf)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
@@ -185,7 +227,7 @@ StatsBase.dof(::BernsteinCopula) = 0
 _available_fitting_methods(::Type{<:BernsteinCopula}, d) = (:bernstein,)
 """
     _fit(::Type{<:BernsteinCopula}, U, ::Val{:bernstein};
-         m::Union{Int,Tuple,Nothing}=nothing, pseudo_values::Bool=true, kwargs...) -> (C, meta)
+         m::Union{Int,Tuple,Nothing}=nothing, pseudo_values::Bool=true, kwargs...) -> C
 
 Empirical plug-in fitting of `BernsteinCopula` based on `U`, using the empirical copula and (optionally) a degree `m` per dimension.
 
@@ -197,8 +239,7 @@ or `nothing` for automatic selection.
 - `kwargs...`: forwarded to the `BernsteinCopula` constructor.
 
 # Returns
-- `(C, meta)` where `C::BernsteinCopula` and
-`meta = (; emp_kind = :bernstein, pseudo_values, m = C.m)`.
+The fitted `BernsteinCopula`.
 
 **Note**: Method with no free parameters (`dof=0`).
 """
@@ -206,7 +247,7 @@ function _fit(::Type{<:BernsteinCopula}, U, ::Val{:bernstein};
               m::Union{Int,Tuple,Nothing}=nothing,
               pseudo_values::Bool=true, kwargs...)
     C = BernsteinCopula(U; m=m, pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:bernstein, pseudo_values, m=C.m)
+    return C
 end
 
 function SubsetCopula(C::BernsteinCopula{d}, dims::NTuple{p, Int}) where {d,p}

@@ -323,18 +323,27 @@ Copulas.τ(Ĉ)
 ```
 
 Notes:
-- `fit` chooses a reasonable default per-family; pass `method`/`copula_method` to control it.
-- Common copula methods include `:mle`, `:itau`, `:irho`, `:ibeta`; for Sklar fitting, `:ifm` (parametric CDFs) and `:ecdf` (pseudo-observations) are available.
-- `CopulaModel` implements model stats: `nobs`, `coef`, `vcov`, `stderror`, `confint`, `aic/bic`, `nullloglikelihood`, and more.
+- Direct copula fits default to `method=:mle`; `method=:mpl` ranks raw data
+  when used with `pseudo_values=false`.
+- Sklar fits default to sequential `sklar_method=:ifm`; `:ecdf` is the
+  rank-based alternative. Neither route is a joint full-likelihood fit.
+- The Sklar copula step defaults to `copula_method=:mle` when supported,
+  otherwise to the family's advertised default; either can be replaced
+  explicitly.
+- `CopulaModel` retains only the fitted distribution, original data, fitted
+  log-likelihood, and replay recipe. Accessors derive `nobs`, `coef`,
+  `aic`/`bic`, `nullloglikelihood`, and residuals lazily, while
+  `CopulaInference` separately retains `vcov`, `stderror`, and `confint`.
 - For a Bayesian workflow over Sklar models, see the examples section.
 
 #### Diagnostics and inference
 
 When inference or diagnostics matter, keep the `CopulaModel` returned by the
-first form of `fit`. It implements the standard statistical-model interface,
-including coefficients, covariance and confidence intervals when covariance
-estimation was requested, information criteria, Rosenblatt residuals, and
-prediction or simulation:
+first form of `fit`. It implements the standard statistical-model interface for
+point estimation, including coefficients, information criteria, and Rosenblatt
+residuals. Retrieve the fitted distribution with `fitted_distribution(M)` for
+CDF or density evaluation and simulation. Apply `infer` afterwards to compute
+uncertainty without changing or refitting the point estimate:
 
 ```@example api
 (
@@ -345,10 +354,20 @@ prediction or simulation:
 )
 ```
 
+```@example api
+I = infer(M; method=:bootstrap, nresamples=5, rng=Xoshiro(2026))
+(covariance=size(vcov(I)), standard_errors=stderror(I))
+```
+
+For this Sklar model, each bootstrap replicate refits the margins and the
+copula. Analytical methods that cannot represent the actual sequential
+estimator fail explicitly instead of falling back to another covariance rule.
+
 #### Automatic family selection
 
-If the copula family is unknown, `CopulaModel` can fit an explicit candidate
-set and retain the best successful fit according to AIC, BIC, AICc, or HQC:
+If the copula family is unknown, an explicit candidate set can be compared by
+AIC, BIC, AICc, or HQC. The returned `CopulaSelection` keeps the comparison
+separate from its winning model:
 
 ```@example api
 Msel = fit(
@@ -357,15 +376,15 @@ Msel = fit(
     U;
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
-    vcov=false,
 )
-selectiontable(Msel)
+selection_table(Msel)
+Mbest = selected_model(Msel)
 ```
 
 Candidate selection is deliberately explicit: not every family is meaningful
 in every dimension or appropriate for every scientific question. The
 [fitting interface](@ref fitting_interface) documents candidate failures,
-covariance estimation, residuals, prediction, and the interpretation of the
+post-fit inference, residuals, and the interpretation of the
 selection criteria.
 
 ::: info About fitting procedures

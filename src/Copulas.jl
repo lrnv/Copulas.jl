@@ -33,6 +33,7 @@ module Copulas
     include("Subsetting.jl")
     include("Conditioning.jl")
     include("Fitting.jl")
+    include("Inference.jl")
     include("Nataf.jl")
 
     # Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
@@ -149,39 +150,20 @@ module Copulas
 
     include("show.jl")
 
+    ##### Minimal API
+    public Copula
+    export SklarDist
     export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
-    export SklarDist, CopulaModel, fitteddistribution, selectiontable
-    export CopulaTest
-    export IndependenceCopulaTest, ExchangeabilityCopulaTest
-    export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
-    export pvalue, teststatistic
 
-    export WilliamsonGenerator, 𝒲, EmpiricalGenerator
-    export ArchimedeanCopula, ExtremeValueCopula, LiouvilleCopula
-    export NestedArchimedeanCopula, ArchimaxCopula
+
+    ##### Archimedeans 
+    public Generator, ϕ, 𝒲₋₁, max_monotony
+    export ArchimedeanCopula, WilliamsonGenerator, 𝒲, EmpiricalGenerator
 
     export AMHCopula, ClaytonCopula, FrankCopula, GumbelCopula
     export GumbelBarnettCopula, InvGaussianCopula, JoeCopula
     export BB1Copula, BB2Copula, BB3Copula, BB6Copula, BB7Copula
     export BB8Copula, BB9Copula, BB10Copula
-
-    export AsymGalambosCopula, AsymLogCopula, AsymMixedCopula, BC2Copula
-    export CuadrasAugeCopula, EmpiricalEVCopula, GalambosCopula
-    export HuslerReissCopula, LogCopula, MixedCopula, MOCopula
-    export TawnCopula, tEVCopula, BB4Copula, BB5Copula
-
-    export GaussianCopula, TCopula
-    export BernsteinCopula, BetaCopula, CheckerboardCopula, EmpiricalCopula
-    export FGMCopula, IndependentCopula, MCopula, WCopula
-    export PlackettCopula, RafteryCopula, SurvivalCopula
-
-    public Copula, Generator, Tail
-
-    public ϕ, 𝒲₋₁, max_monotony
-    public A, ℓ
-
-    public τ, ρ, β, γ, ι, λₗ, λᵤ
-    public corblomqvist, corgini, corentropy, corlowertail, coruppertail, measure
 
     public IndependentGenerator, FrailtyGenerator
     public AMHGenerator, ClaytonGenerator, FrankGenerator, GumbelGenerator
@@ -189,9 +171,51 @@ module Copulas
     public BB1Generator, BB2Generator, BB3Generator, BB6Generator, BB7Generator
     public BB8Generator, BB9Generator, BB10Generator
 
+
+    ##### Extreme values
+    public Tail, A, ℓ
+    export ExtremeValueCopula
+
+    export AsymGalambosCopula, AsymLogCopula, AsymMixedCopula, BC2Copula
+    export CuadrasAugeCopula, EmpiricalEVCopula, GalambosCopula
+    export HuslerReissCopula, LogCopula, MixedCopula, MOCopula
+    export TawnCopula, tEVCopula, BB4Copula, BB5Copula
+
     public DiscreteSpectralTail
     public AsymGalambosTail, AsymLogTail, AsymMixedTail, BC2Tail, CuadrasAugeTail
     public EmpiricalEVTail, EmpiricalEVMultivariateTail, GalambosTail
     public HuslerReissTail, LogTail, MixedTail, MOTail, TawnTail, tEVTail
+
+
+    ##### Compound copulas
+    export LiouvilleCopula, NestedArchimedeanCopula, ArchimaxCopula
+
+
+    ##### Miscelaneous copulas
+    export GaussianCopula, TCopula
+    export BernsteinCopula, BetaCopula, CheckerboardCopula, EmpiricalCopula
+    export FGMCopula, IndependentCopula, MCopula, WCopula
+    export PlackettCopula, RafteryCopula
+
+    
+    ##### Fitting framework
+    export CopulaModel, fitted_distribution, selected_model, infer, selection_table
+    
+
+    ##### Testing framework
+    export CopulaTest, pvalue, teststatistic
+    export IndependenceCopulaTest, ExchangeabilityCopulaTest
+    export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
+
+
+    ##### Survival copulas
+    export SurvivalCopula
+    export Rotated90Copula, Rotated180Copula, Rotated270Copula
+    public basecopula, flipmask, flips
+
+
+    ##### Dependence metrics
+    public τ, ρ, β, γ, ι, λₗ, λᵤ
+    public corblomqvist, corgini, corentropy, corlowertail, coruppertail, measure
 
 end
