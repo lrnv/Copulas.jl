@@ -33,6 +33,14 @@ in general represent the probability mass; users should not assume `pdf` or
 Rosenblatt round-trip properties beyond the capabilities documented by the
 components.
 
+Passing an [`EmpiricalCopula`](@ref) is allowed for compatibility and emits a
+warning because its finite-sample margins are not exactly uniform. The result
+therefore does not generally have the requested margins. It represents the
+atomic empirical sample transformed by the marginal quantiles, and its `pdf`
+and `logpdf` values are generalized point masses rather than Lebesgue
+densities. Prefer [`BetaCopula`](@ref), a valid [`BernsteinCopula`](@ref), or
+[`CheckerboardCopula`](@ref) when a genuine copula is required.
+
 # Example
 
 ```julia
@@ -60,8 +68,11 @@ struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribut
     m::TplMargins
     function SklarDist(C::Copula{d}, m::NTuple{d, Any}) where d
         @assert all(mᵢ isa Distributions.UnivariateDistribution for mᵢ in m)
+        if _is_empirical_copula(C)
+            @warn "EmpiricalCopula has finite-sample step margins rather than exact uniform margins. The resulting SklarDist therefore does not generally have the requested margins. Consider smoothing with BetaCopula, a valid BernsteinCopula, CheckerboardCopula, or another genuine copula estimator."
+        end
         return new{typeof(C),typeof(m)}(C,m)
-    end    
+    end
 end
 function SklarDist(C::Copula, m)
     margins = Tuple(m)

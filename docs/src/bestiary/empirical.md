@@ -55,13 +55,25 @@ $\hat{C}_N$ then converges (weakly) to $C$, the true copula of the random vector
 
 ::: info The empirical copula is not a true copula
 
-Despite its name, $\hat{C}_N$ is not a copula since it does not have uniform marginals. Be careful. 
+Despite its name, $\hat{C}_N$ is not a copula on the full unit cube since its
+finite-sample margins are step functions rather than continuous uniforms.
+`EmpiricalCopula` keeps its historical `Copula` subtype for API compatibility,
+while algorithms that require exact uniform margins recognize this exception
+explicitly.
 
 :::
 
 In the package, this copula is implemented as the `EmpiricalCopula`: 
 
 See the canonical Public API entry for [`EmpiricalCopula`](@ref).
+
+Passing it directly to [`SklarDist`](@ref) is allowed, but emits a warning: the
+resulting distribution generally does not have the requested margins. For a
+genuine copula model, smooth the empirical function with [`BetaCopula`](@ref),
+a valid [`BernsteinCopula`](@ref), or [`CheckerboardCopula`](@ref). The direct
+construction remains useful when the intended model is the atomic empirical
+distribution transformed onto new coordinate scales; in that case `pdf` and
+`logpdf` report point masses rather than Lebesgue densities.
 
 ::: info Conditionals and distortions
 
