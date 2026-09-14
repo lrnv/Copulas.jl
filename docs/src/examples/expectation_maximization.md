@@ -50,7 +50,7 @@ data = rand(rng, initial_sklar, n)
 fitted_sklar = fit_mle(
     initial_sklar,
     data;
-    copula_kwargs=(; vcov=false, derived_measures=false),
+    copula_kwargs=(; derived_measures=false),
 )
 
 params(fitted_sklar).margins[1]

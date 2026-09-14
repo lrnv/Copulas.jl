@@ -88,14 +88,11 @@ function _section(io, title::AbstractString; suffix::Union{Nothing,AbstractStrin
 end
 
 """
-Print a standardized parameter section with optional covariance matrix and vcov method note.
+Print a standardized fitted-parameter section.
 """
-function _print_param_section(io, title::AbstractString, nm::Vector{String}, θ::Vector{Float64};
-                              V::Union{Nothing,AbstractMatrix}=nothing,
-                              vcov_method::Union{Nothing,AbstractString,Symbol}=nothing)
-    suf = vcov_method === nothing ? nothing : string("(vcov=", String(vcov_method), ")")
-    _section(io, title; suffix=suf)
-    _print_param_table(io, nm, θ; V=V)
+function _print_param_section(io, title::AbstractString, nm::Vector{String}, θ::Vector{Float64})
+    _section(io, title)
+    _print_param_table(io, nm, θ)
 end
 
 """
@@ -223,21 +220,17 @@ function Base.show(io::IO, M::CopulaModel)
         # [ Copula parameters ] section
         θ  = StatsBase.coef(M)
         nm = StatsBase.coefnames(M)
-        md   = M.method_details
-        Vcop = get(md, :vcov_copula, nothing)
-        vcovm = get(md, :vcov_method, nothing)
-        _print_param_section(io, "Copula parameters", nm, θ; V=Vcop, vcov_method=vcovm)
+        _print_param_section(io, "Copula parameters", nm, θ)
 
         # [ Marginals ] section
-        _print_marginals_section(io, R::SklarDist, get(M.method_details, :vcov_margins, nothing))
+        _print_marginals_section(io, R::SklarDist, nothing)
     else
         # Copula-only fits: dependence metrics and parameters
         C0 = M.result isa SklarDist ? M.result.C : M.result
         _print_dependence_metrics(io, C0; derived_measures=get(M.method_details, :derived_measures, true))
         θ  = StatsBase.coef(M)
         nm = StatsBase.coefnames(M)
-        vcovm = get(M.method_details, :vcov_method, nothing)
-        _print_param_section(io, "Copula parameters", nm, θ; V=StatsBase.vcov(M), vcov_method=vcovm)
+        _print_param_section(io, "Copula parameters", nm, θ)
 
     end
 end

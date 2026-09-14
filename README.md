@@ -198,9 +198,14 @@ Notes
 - Their copula step defaults to `copula_method=:mle` when supported, otherwise
   to the family's advertised default; either can be replaced explicitly.
 
-Use `CopulaModel` when diagnostics and inference matter. If the family is not
-known in advance, fit an explicit, scientifically appropriate candidate set and
-rank successful fits by an information criterion:
+Use `CopulaModel` when diagnostics or later inference matter. Estimation itself
+does not compute uncertainty: apply `infer(M; method=...)` to obtain a separate
+`CopulaInference`, then use `vcov`, `stderror`, and `confint` on that result.
+For Sklar fits, bootstrap inference refits both the margins and the copula and
+retains their complete covariance, including cross-component terms.
+
+If the family is not known in advance, fit an explicit, scientifically
+appropriate candidate set and rank successful fits by an information criterion:
 
 <!-- DOCUMENTER-EXAMPLE: 1 -->
 ```julia
@@ -210,14 +215,13 @@ Msel = fit(
     U;
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
-    vcov=false,
 )
 selectiontable(Msel)
 ```
 
 Selection is deliberately explicit: Copulas.jl does not treat every available
 family as a sensible candidate for every dimension or scientific question. See
-the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for covariance estimation,
+the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for post-fit inference,
 confidence intervals, residuals, prediction, and selection caveats.
 
 ### Hypothesis testing

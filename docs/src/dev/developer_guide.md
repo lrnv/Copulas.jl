@@ -257,26 +257,36 @@ and the general estimation framework.
 
 ### Implementing a custom fitting method
 
-These hooks are contributor-facing internals. A custom estimator does not need
-parameter reparameterizations merely to return its fitted copula.
+Downstream packages can add a fitting route through two public, deliberately
+small extension points. A custom estimator does not need Copulas.jl's internal
+parameter transformations merely to return its fitted copula.
 
 | Method                              | Purpose                                                       |
 | ----------------------------------- | ------------------------------------------------------------- |
-| `_available_fitting_methods(CT, d)` | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
-| `_fit(CT, U, ::Val{:method})`       | Core fitting routine returning `(copula, meta)`               |
+| `fitting_methods(CT, ::Val{d})`     | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
+| `fit_copula(CT, U, ::Val{:method})` | Executes the estimator and returns `(copula, metadata)`        |
 
 Minimal skeleton for a custom fitting method:
 
 ```julia
-_available_fitting_methods(::Type{MyCopula}, d) = (:mymethod,)
+Copulas.fitting_methods(::Type{MyCopula}, ::Val{d}) where {d} = (:mymethod,)
 
-function _fit(::Type{MyCopula}, U, ::Val{:mymethod})
-    θ̂ = .... # do things.
-    return MyCopula(size(U, 1), θ̂), (; θ̂,)
+function Copulas.fit_copula(::Type{MyCopula}, U, ::Val{:mymethod})
+    θ̂ = .... # compute the estimate
+    fitted = MyCopula(size(U, 1), θ̂)
+    return fitted, (; free_parameters=(; θ=θ̂),
+                     converged=true, iterations=1)
 end
 ```
 
-Alternatively, reuse a generic fitting engine rather than defining `_fit`.
+The metadata must be a `NamedTuple`. `free_parameters` and
+`fixed_parameters`, when provided, are themselves named tuples; additional
+entries such as `objective`, `converged`, and `iterations` are retained as fit
+diagnostics. Covariance is intentionally absent: uncertainty is computed later
+from the resulting `CopulaModel` with [`infer`](@ref).
+
+In-package contributors may alternatively reuse the generic fitting engine.
+The hooks below are internal and are not a downstream compatibility contract.
 
 ### Opting into generic fitting methods
 
@@ -292,7 +302,7 @@ Example minimal skeleton:
 _example(::Type{MyCopula}, d) = MyCopula(d, default_parameters...)
 _unbound_params(::Type{MyCopula}, d, params) = [log(params.θ)]
 _rebound_params(::Type{MyCopula}, d, α) = (; θ = exp(α[1]))
-_available_fitting_methods(::Type{MyCopula}, d) = (:mle, :itau, :ibeta,) # or others...
+_available_fitting_methods(::Type{MyCopula}, d) = (:mle, :itau, :ibeta,) # in-package only
 
 # No _fit definition: the generic engine consumes these hooks.
 ```
@@ -802,18 +812,18 @@ rand(D, 10)
 ### Fitting interface and integration
 
 To make the copula compatible with `Distributions.fit` and the unified `CopulaModel` interface,
-we provide a minimal `_fit` definition using a dependence-based measure — in this case, **Gini’s γ**.
+we provide a minimal `fit_copula` definition using a dependence-based measure — in this case, **Gini’s γ**.
 
 ```@example generic_copula_example
 
-Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d::Int) = (:igamma,)
+Copulas.fitting_methods(::Type{<:MardiaCopula}, ::Val{d}) where {d} = (:igamma,)
 
-function Copulas._fit(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:igamma})
+function Copulas.fit_copula(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:igamma})
     γ̂ = Copulas.corgini(U')[1, 2]
     θ  = sign(γ̂) * abs(γ̂)^(1/3)
     θ  = clamp(θ, -1.0, 1.0)
     Ĉ = MardiaCopula(2, θ)
-    return Ĉ, (; θ̂ = (; θ = θ), γ̂ = γ̂, method = :igamma)
+    return Ĉ, (; free_parameters=(; θ), γ̂, method=:igamma)
 end
 ```
 
@@ -830,7 +840,8 @@ Copulas._example(::Type{<:MardiaCopula}, d::Int) = MardiaCopula(2, 0.5)
 
 And we need to change our availiable methods: 
 ```@example generic_copula_example
-Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d::Int) = (:igamma, :itau, :irho, :ibeta)
+Copulas.fitting_methods(::Type{<:MardiaCopula}, ::Val{d}) where {d} =
+    (:igamma, :itau, :irho, :ibeta)
 ```
 
 
@@ -844,7 +855,7 @@ using StatsBase
 println(fit(MardiaCopula, U, :ibeta))
 
 # Long syntax, using our new method: 
-M = fit(CopulaModel, MardiaCopula, U; method = :igamma, vcov = false)
+M = fit(CopulaModel, MardiaCopula, U; method = :igamma)
 println(M)
 ```
 

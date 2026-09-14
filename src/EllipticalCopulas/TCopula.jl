@@ -26,7 +26,7 @@ using Copulas, Distributions
 C = TCopula(4.0, Σ)
 u = rand(C, 1000)
 logpdf(C, u[:, 1]), cdf(C, u[:, 1])
-Ĉ = fit(TCopula{2}, u; vcov=false)
+Ĉ = fit(TCopula{2}, u)
 ```
 
 Degrees of freedom must be positive. Covariance-like matrix inputs are

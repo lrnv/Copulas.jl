@@ -4,9 +4,8 @@
 #####   - `Distributions.fit(CopulaModel, MyCopulaType, data, method)`
 #####   - `Distributions.fit(MyCopulaType, data, method)`
 #####
-#####  If you want your copula to be fittable byt he default interface, you can overwrite:
-#####   - _available_fitting_methods() to tell the system which method you allow.
-#####   - _fit(MyCopula, data, Val{:mymethod}) to make the fit.
+#####  Downstream packages implement the public fitting_methods/fit_copula
+#####  protocol. The underscored fitting machinery below is package-internal.
 #####
 #####  Or, for simple models, to get access to a few default bindings, you could also override the following:
 #####   - Distributions.params() yielding a NamedTuple of parameters
@@ -23,14 +22,15 @@
 A fitted copula model.
 
 This type stores the result of fitting a copula (or a Sklar distribution) to
-pseudo-observations or raw data, together with auxiliary information useful
-for statistical inference and model comparison.
+pseudo-observations or raw data, together with the estimator specification and
+diagnostics needed for model comparison, reproducible refitting, and later
+inference through [`infer`](@ref).
 
 Retrieve the fitted copula or Sklar distribution with
 [`fitteddistribution`](@ref). `CopulaModel` also implements the documented
 `StatsBase.StatisticalModel` interface, including `nobs`, `coef`, `coefnames`,
-`vcov`, `stderror`, `confint`, `deviance`, `nulldeviance`,
-`nullloglikelihood`, `aic`, `bic`, `predict`, and `residuals`. Use
+`deviance`, `nulldeviance`, `nullloglikelihood`, `aic`, `bic`, `predict`, and
+`residuals`. Use
 [`selectiontable`](@ref) for the candidate report produced by automatic family
 selection.
 
@@ -43,25 +43,24 @@ type-parameter order of `CopulaModel` are implementation details.
 
 See also `Distributions.fit`.
 
-See also: [`fitteddistribution`](@ref), [`selectiontable`](@ref),
+See also: [`fitteddistribution`](@ref), [`infer`](@ref), [`selectiontable`](@ref),
 [`GOFCopulaTest`](@ref),
 [`StatsBase.predict`](@ref), [`StatsBase.residuals`](@ref).
 """
-struct CopulaModel{CT, TM<:Union{Nothing,AbstractMatrix}, TD<:NamedTuple} <: StatsBase.StatisticalModel
+struct CopulaModel{CT,TD<:NamedTuple} <: StatsBase.StatisticalModel
     result        :: CT
     n             :: Int
     ll            :: Float64
     method        :: Symbol
-    vcov          :: TM
     converged     :: Bool
     iterations    :: Int
     elapsed_sec   :: Float64
     method_details:: TD
     function CopulaModel(c::CT, n::Integer, ll::Real, method::Symbol;
-                         vcov=nothing, converged=true, iterations=0, elapsed_sec=NaN,
+                         converged=true, iterations=0, elapsed_sec=NaN,
                          method_details=NamedTuple()) where {CT}
-        return new{CT, typeof(vcov), typeof(method_details)}(
-            c, n, float(ll), method, vcov, converged, iterations, float(elapsed_sec), method_details
+        return new{CT,typeof(method_details)}(
+            c, n, float(ll), method, converged, iterations, float(elapsed_sec), method_details
         )
     end
 end
@@ -109,28 +108,51 @@ function _refit_kwargs(kwargs::NamedTuple)
 end
 
 """
-    _refit(M::CopulaModel, U)
+    _refit(M::CopulaModel, data; replay_input=false)
 
-Refit the same estimator specification that produced `M` to pseudo-observations
-`U`.
+Refit the same estimator specification that produced `M`. Copula models receive
+pseudo-observations; Sklar models receive observations on their original scales
+so that every marginal and the copula are re-estimated.
+
+With `replay_input=true`, resampling inference replays the estimator from the
+same input scale as the original call. The default is reserved for composite
+GOF samples that are already pseudo-observations.
 
 This is an internal inference hook. A model is refittable only when its fitting
 entry point recorded a reproducible `_CopulaFitSpec`.
 
 See also: [`_CopulaFitSpec`](@ref), [`_fit`](@ref), [`GOFCopulaTest`](@ref).
 """
-function _refit(M::CopulaModel, U::AbstractMatrix)
+function _refit(M::CopulaModel, U::AbstractMatrix; replay_input::Bool=false)
     spec = get(M.method_details, :_fit_spec, nothing)
     spec isa _CopulaFitSpec || throw(ArgumentError(
         "this fitted model does not store a reproducible fitting specification; " *
         "composite goodness-of-fit refitting is unavailable for this model"))
+
+    if spec.target isa NamedTuple && haskey(spec.target, :reparam)
+        return Distributions.fit(CopulaModel, spec.target.reparam,
+                                 spec.target.init, U;
+                                 derived_measures=false, spec.kwargs...)
+    end
+
+    if spec.target isa Type && spec.target <: SklarDist
+        return Distributions.fit(CopulaModel, spec.target, U;
+                                 derived_measures=false, spec.kwargs...)
+    end
+
+    if replay_input && spec.target isa Type
+        return Distributions.fit(CopulaModel, spec.target, U;
+                                 method=spec.method, derived_measures=false,
+                                 spec.kwargs...)
+    end
 
     kwargs = _refit_kwargs(spec.kwargs)
     # Composite GOF refits receive pseudo-observations already. MPL uses the
     # same numerical likelihood engine as MLE, without ranking these again.
     method = spec.method === :mpl ? :mle : spec.method
 
-    return Distributions.fit(CopulaModel, spec.target, U; method, derived_measures=false, vcov=false, kwargs...,)
+    return Distributions.fit(CopulaModel, spec.target, U;
+                             method, derived_measures=false, kwargs...)
 end
 
 # Fallbacks that throw if the interface is not implemented correctly.
@@ -207,6 +229,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}) where {d}
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return _fit_copula(CT, Val(d), θhat, example), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
+                objective  = Optim.minimum(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
 end
@@ -244,6 +267,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irh
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return _fit_copula(CT, Val(d), θhat, example), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
+                objective  = Optim.minimum(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
 end
@@ -255,19 +279,19 @@ end
 Fit `CT` to the `d × n` matrix `U`, whose columns are observations, and return
 only the fitted copula or Sklar distribution. This is the concise form of
 `fit(CopulaModel, CT, U; kwargs...)`: it uses the same estimator and validation
-but discards inference metadata such as covariance estimates, convergence
-details and the fitting sample.
+without first constructing a `CopulaModel`. The same normalized estimator is
+used by the model-returning form.
 
-Use the `CopulaModel` form when diagnostics, information criteria, uncertainty
-quantification, automatic selection, or composite goodness-of-fit testing are
-needed. Accepted keywords and the interpretation of `U` depend on the target
-and fitting method.
+Use the `CopulaModel` form when diagnostics, information criteria, later
+uncertainty quantification through `infer`, automatic selection, or composite
+goodness-of-fit testing are needed.
 """
 @inline Distributions.fit(T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(T, U; method=method, kwargs...)
 @inline Distributions.fit(T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(T, U; copula_method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; copula_method=method, kwargs...)
-@inline Distributions.fit(T::Type{<:Union{Copula, SklarDist}}, U; kwargs...) = Distributions.fit(CopulaModel, T, U; quick_fit=true, kwargs...).result
+@inline Distributions.fit(T::Type{<:Copula}, U; derived_measures=nothing, kwargs...) =
+    _run_copula_estimator(T, U; kwargs...).result
 
 """
     _available_fitting_methods(::Type{<:Copula}, d::Int)
@@ -292,14 +316,49 @@ See also: [`_fit`](@ref), [`_example`](@ref),
 _available_fitting_methods(::Type{<:Copula}, d) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C), d)
 
+"""
+    fitting_methods(::Type{<:Copula}, ::Val{d}) -> Tuple{Vararg{Symbol}}
+
+Return the estimators supported by a copula fitting target in dimension `d`.
+Downstream copula families may extend this method together with
+[`fit_copula`](@ref); they do not need to use Copulas.jl's parameter-transform
+or inference internals.
+"""
+fitting_methods(CT::Type{<:Copula}, ::Val{d}) where {d} =
+    _available_fitting_methods(CT, d)
+fitting_methods(::Type{SklarDist}, ::Val{d}) where {d} =
+    _available_fitting_methods(SklarDist, d)
+
+function _reject_inference_fit_keywords(kwargs::NamedTuple)
+    for keyword in (:vcov, :vcov_method)
+        haskey(kwargs, keyword) && throw(ArgumentError(
+            "`$keyword` is an inference option and is no longer accepted by fit; " *
+            "fit a CopulaModel first, then call infer(model; method=...)"))
+    end
+    return nothing
+end
+
+"""
+    fit_copula(::Type{<:Copula}, data, ::Val{method}; kwargs...)
+
+Execute one estimator declared by [`fitting_methods`](@ref). An extension must
+return `(copula, metadata)`, where `copula` is the fitted distribution and
+`metadata` is a `NamedTuple`. Supported metadata entries are `converged`,
+`iterations`, `objective`, `free_parameters`, and `fixed_parameters`; both
+parameter entries are `NamedTuple`s. Inference is deliberately outside this
+protocol: an estimator advertises no covariance merely by being fittable.
+"""
+fit_copula(CT::Type{<:Copula}, data, method::Val; kwargs...) =
+    _fit(CT, data, method; kwargs...)
+
 function _default_fitting_method(CT, d)
-    available = _available_fitting_methods(CT, d)
+    available = fitting_methods(CT, Val(d))
     isempty(available) && throw(ArgumentError("No fitting methods available for $CT."))
     return :mle in available ? :mle : first(available)
 end
 
 function _find_method(CT, d, method)
-    avail = _available_fitting_methods(CT, d)
+    avail = fitting_methods(CT, Val(d))
     isempty(avail) && throw(ArgumentError("No fitting methods available for $CT."))
     method === :default && return _default_fitting_method(CT, d)
     method ∉ avail && throw(ArgumentError(
@@ -348,9 +407,9 @@ println(M)
 C = fit(GumbelCopula, U; method=:itau)
 ```
 
-Inference controls such as `vcov` and `derived_measures` affect the returned
-model metadata, not the point estimator. Covariance availability depends on
-the family, method and numerical regularity; `vcov=false` skips that work.
+Fitting performs estimation only. Apply [`infer`](@ref) to the returned model
+afterwards when covariance estimates, standard errors, or confidence intervals
+are required.
 
 `method=:mle, pseudo_values=false` is normalized silently to `:mpl`, since the
 rank transformation changes the statistical estimator. Conversely,
@@ -361,10 +420,9 @@ copula-likelihood optimizer; the distinction records the input's provenance.
 See also: [`CopulaModel`](@ref), [`selectiontable`](@ref),
 [`GOFCopulaTest`](@ref).
 """
-function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
-        method=:default, pseudo_values::Union{Nothing,Bool}=nothing, quick_fit=false,
-        derived_measures=true, vcov=true, vcov_method=nothing, kwargs...)
-    _check_vcov_method(vcov_method)
+function _run_copula_estimator(CT::Type{<:Copula}, U;
+        method=:default, pseudo_values::Union{Nothing,Bool}=nothing, kwargs...)
+    _reject_inference_fit_keywords((; kwargs...))
     d, n = size(U)
     requested_method = method === :default ? _default_fitting_method(CT, d) : method
     # MPL is a public preprocessing/metadata contract backed by the MLE
@@ -380,54 +438,60 @@ function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
     engine_method = method === :mpl ? :mle : method
     engine_kwargs = !likelihood_method && pseudo_values !== nothing ?
         (; pseudo_values=input_is_pseudo, kwargs...) : (; kwargs...)
+    t = @elapsed (rez = fit_copula(CT, fit_data, Val{engine_method}(); engine_kwargs...))
+    rez isa Tuple && length(rez) == 2 || throw(ArgumentError(
+        "fit_copula must return `(fitted_copula, metadata)`"))
+    C, meta = rez
+    C isa Copula{d} || throw(ArgumentError(
+        "fit_copula returned $(typeof(C)); expected a Copula{$d}"))
+    meta isa NamedTuple || throw(ArgumentError(
+        "fit_copula metadata must be a NamedTuple"))
+    for field in (:free_parameters, :fixed_parameters)
+        haskey(meta, field) && !(getproperty(meta, field) isa NamedTuple) &&
+            throw(ArgumentError("fit_copula metadata `$field` must be a NamedTuple"))
+    end
+    return (; result=C, meta, method, requested_method, input_is_pseudo,
+            likelihood_method, fit_data, engine_kwargs, elapsed_sec=t)
+end
+
+function _estimate_copula(CT::Type{<:Copula}, U;
+        method=:default, pseudo_values::Union{Nothing,Bool}=nothing, kwargs...)
+    estimate = _run_copula_estimator(CT, U; method, pseudo_values, kwargs...)
+    C = estimate.result
+    (; meta, method, requested_method, input_is_pseudo, likelihood_method,
+       fit_data, engine_kwargs, elapsed_sec) = estimate
     fit_kwargs = likelihood_method ?
         (; pseudo_values=input_is_pseudo, kwargs...) : engine_kwargs
     fit_spec = _CopulaFitSpec(CT, method, fit_kwargs)
-    t = @elapsed (rez = _fit(CT, fit_data, Val{engine_method}(); engine_kwargs...))
-    C, meta = rez
-    quick_fit && return (result=C,) # as soon as possible.
     ll = Distributions.loglikelihood(C, fit_data)
     meta = (; meta..., requested_method, pseudo_values=input_is_pseudo,
-        fitting_data_pseudo_values=likelihood_method ? true : input_is_pseudo)
-
-    return _finish_copula_fit(CT, C, fit_data, ll, method, meta, t, fit_spec;
-        derived_measures, vcov, vcov_method)
+            fitting_data_pseudo_values=likelihood_method ? true : input_is_pseudo)
+    return (; result=C, n=size(U, 2), ll, method, meta, elapsed_sec, fit_spec,
+            fitting_data=fit_data, input_data=U)
 end
 
-function _check_vcov_method(method)
-    allowed = (:hessian, :godambe, :godambe_pairwise, :jackknife, :bootstrap)
-    isnothing(method) || method in allowed ||
-        throw(ArgumentError("unknown vcov method `$method`; expected one of $allowed"))
-    return nothing
+function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
+        method=:default, pseudo_values::Union{Nothing,Bool}=nothing,
+        derived_measures=true, kwargs...)
+    estimate = _estimate_copula(CT, U; method, pseudo_values, kwargs...)
+    return _finish_copula_fit(estimate; derived_measures)
 end
 
-# Assemble inference around an existing fit, without rerunning its estimator.
-function _finish_copula_fit(CT, C, U, ll, method, meta, t, fit_spec;
-        derived_measures=true, vcov=true, vcov_method=nothing)
-    d, n = size(U)
+# Assemble a reproducible model around an existing estimate.
+function _finish_copula_fit(estimate; derived_measures=true)
+    (; result, n, ll, method, meta, elapsed_sec, fit_spec, fitting_data,
+       input_data) = estimate
+    d = size(fitting_data, 1)
 
-    if vcov && C isa TCopula
-        vcov = false
-        @info "Setting vcov = false for TCopula since _beta_inc_inv derivative are not implemented"
-    end
-    if vcov && C isa tEVCopula
-        vcov = false
-        @info "Setting vcov = false for tEVCopula since _beta_inc_inv derivative are not implemented"
-    end
-    if vcov && C isa FGMCopula && method==:mle
-        vcov = false
-        @info "Setting vcov = false for FGMCopula with method=:mle since unimplemented right now"
-    end
+    free_parameters = get(meta, :free_parameters,
+                          get(meta, :θ̂, NamedTuple()))
+    fixed_parameters = get(meta, :fixed_parameters, NamedTuple())
+    md = (; d, n, method, meta..., free_parameters,
+          fixed_parameters, null_ll=0.0, elapsed_sec,
+          derived_measures, U=fitting_data, fitting_data=input_data,
+          _fit_spec=fit_spec)
 
-    if vcov && haskey(meta, :θ̂)
-        vcov, vmeta = _vcov(CT, U, meta.θ̂; method=method, override=vcov_method)
-        meta = (; meta..., vcov, vmeta...)
-    end
-
-    md = (; d, n, method, meta..., null_ll=0.0, elapsed_sec=t, derived_measures, U=U, _fit_spec=fit_spec)
-
-    return CopulaModel(C, n, ll, method;
-        vcov         = get(md, :vcov, nothing),
+    return CopulaModel(result, n, ll, method;
         converged    = get(md, :converged, true),
         iterations   = get(md, :iterations, 0),
         elapsed_sec  = get(md, :elapsed_sec, NaN),
@@ -467,22 +531,57 @@ may therefore differ between margins and need not be maximum likelihood. A
 joint Sklar MLE cannot safely treat those independent calls as MLE building
 blocks without a stronger upstream or Copulas.jl-specific interface.
 
-The result is a `CopulaModel` whose `result` is the fitted `SklarDist` and whose
-coefficient and covariance summaries combine the marginal and copula blocks.
-Inference for a block may be unavailable when its estimator does not supply a
-usable covariance estimate. Use `fit(SklarDist{...}, X; ...)` when only the
-fitted distribution is required.
+The result is a `CopulaModel` whose `result` is the fitted `SklarDist`. Calling
+[`infer`](@ref) with a resampling method repeats the complete sequential
+estimator, including every marginal fit and the copula fit. Analytical
+covariance is deliberately not inferred for the arbitrary marginal estimators
+selected by `Distributions.fit`. Use `fit(SklarDist{...}, X; ...)` when only
+the fitted distribution is required.
 
 `SklarDist{CT,TplMargins}` is public here specifically as a fitting target:
 `CT` selects the copula family and `TplMargins == Tuple{M₁,...,M_d}` selects the
 marginal families. This exception does not expose arbitrary storage type
 parameters or the concrete representation of constructed `SklarDist` values.
 """
-function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}, X; quick_fit = false,
-                           copula_method = :default, sklar_method = :ifm, margins_kwargs = NamedTuple(),
-                           copula_kwargs = NamedTuple(), derived_measures = true, vcov = true,
-                           vcov_method=nothing) where {CT<:Copulas.Copula, TplMargins<:Tuple}
+function _sklar_parameter_metadata(S::SklarDist, copula_parameters::NamedTuple)
+    names = Symbol[]
+    values = Any[]
+    coordinate = 0
 
+    copula_start = coordinate + 1
+    for (name, value) in pairs(copula_parameters)
+        push!(names, Symbol(:copula_, name))
+        push!(values, value)
+        coordinate += length(_flatten_params((; value))[2])
+    end
+    copula_stop = coordinate
+
+    margin_blocks = UnitRange{Int}[]
+    for (i, margin) in pairs(S.m)
+        margin_start = coordinate + 1
+        margin_parameters = Distributions.params(margin)
+        parameter_names = margin_parameters isa NamedTuple ?
+            keys(margin_parameters) : ntuple(j -> Symbol(:p, j), length(margin_parameters))
+        for (name, value) in zip(parameter_names, margin_parameters)
+            push!(names, Symbol("margin_$(i)_$(name)"))
+            push!(values, value)
+            coordinate += length(_flatten_params((; value))[2])
+        end
+        push!(margin_blocks, margin_start:coordinate)
+    end
+
+    parameters = NamedTuple{Tuple(names)}(Tuple(values))
+    blocks = (; copula=copula_start:copula_stop,
+              margins=Tuple(margin_blocks))
+    return parameters, blocks
+end
+
+function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
+                         copula_method=:default, sklar_method=:ifm,
+                         margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple(),
+                         model::Bool=true) where {CT<:Copulas.Copula,TplMargins<:Tuple}
+
+    started = time()
     # Get methods:
     d, n = size(X)
     sklar_method  = _find_method(SklarDist, d, sklar_method)
@@ -512,450 +611,44 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{SklarDist{CT,TplMargins}}
     end
 
     # Fit the copula
-    copM = Distributions.fit(CopulaModel, CT, U; quick_fit=quick_fit,
-                method=copula_method, derived_measures=derived_measures,
-                vcov=vcov, vcov_method=vcov_method, copula_kwargs...)
+    cop_estimate = _run_copula_estimator(CT, U; method=copula_method,
+                                         copula_kwargs...)
 
-    S = SklarDist(copM.result, m)
-    quick_fit && return (result=S,)
-
-    # Marginal vcov: compute via θ-Hessian fallback only if vcov=true
-    Vm = Vector{Union{Nothing, Matrix{Float64}}}(undef, d)
-    if vcov
-        for i in 1:d
-            p  = length(Distributions.params(m[i]))
-            Vm[i] = nothing
-            Vg = _vcov_margin_generic(m[i], @view X[i, :])
-            if Vg !== nothing && ndims(Vg) == 2 && size(Vg) == (p, p) && all(isfinite, Matrix(Vg))
-                Vm[i] = Matrix{Float64}(Vg)
-            end
-        end
-    else
-        fill!(Vm, nothing)
-    end
-
-    # Copula Vcov:
-    Vfull = StatsBase.vcov(copM)
+    S = SklarDist(cop_estimate.result, m)
+    model || return S
+    copula_parameters = get(cop_estimate.meta, :free_parameters,
+                            get(cop_estimate.meta, :θ̂, NamedTuple()))
+    free_parameters, parameter_blocks =
+        _sklar_parameter_metadata(S, copula_parameters)
 
     # total and null loglikelihood
     ll = Distributions.loglikelihood(S, X)
     null_ll = Distributions.loglikelihood(SklarDist(IndependentCopula(d), m), X)
-    return CopulaModel(
-        S, n, ll, copula_method;
-        vcov         = Vfull,
-        converged    = copM.converged,
-        iterations   = copM.iterations,
-        elapsed_sec  = copM.elapsed_sec,
-        method_details = (;
-            copM.method_details...,
-            vcov_copula   = Vfull,
-            vcov_margins  = Vm,
-            null_ll,
-            sklar_method,
-            margins       = map(typeof, m),
-            d = d, n = n,
-            elapsed_sec = copM.elapsed_sec,
-            derived_measures,
-            # no raw X_margins stored to keep model lightweight
-        )
-    )
-end
-####### vcov functions...
-
-# objetive this functions: try get the vcov from marginals...
-function _vcov_margin_generic(d::TD, x::AbstractVector) where {TD<:Distributions.UnivariateDistribution}
-    # Compute observed information directly on the parameter (θ) scale at current params.
-    p_nt = Distributions.params(d)
-    θ0 = p_nt isa NamedTuple ? Float64.(collect(values(p_nt))) : Float64.(collect(p_nt))
-
-    # Find the distribution constructor:
-    MyDist = TD.name.wrapper
-    # Observed information = - Hessian of log-likelihood at θ0
-    H = ForwardDiff.hessian(θ -> Distributions.loglikelihood(MyDist(θ...), x), θ0)
-    # Small ridge for numerical stability
-    Vθ = inv(-H + 1e-8 .* LinearAlgebra.I)
-    Vθ = (Vθ + Vθ')/2
-    return LinearAlgebra.Symmetric(Matrix{Float64}(Vθ))
+    meta = (; cop_estimate.meta..., null_ll, sklar_method,
+            margins=map(typeof, m), d, n, U,
+            free_parameters, parameter_blocks,
+            fixed_parameters=NamedTuple(),
+            fitting_data=X,
+            _fit_spec=_CopulaFitSpec(T, :sklar,
+                (; copula_method=cop_estimate.method, sklar_method,
+                   margins_kwargs, copula_kwargs)))
+    return (; result=S, n, ll, method=cop_estimate.method, meta,
+            elapsed_sec=time() - started)
 end
 
-@inline function _vcov_copula(CT, ::Val{d}, α, example) where {d}
-    return _fit_copula(CT, Val(d), _rebound_params(CT, d, α), example)
+@inline Distributions.fit(T::Type{<:SklarDist}, X; derived_measures=nothing, kwargs...) =
+    _estimate_sklar(T, X; model=false, kwargs...)
+
+function Distributions.fit(::Type{CopulaModel}, T::Type{<:SklarDist}, X;
+                           derived_measures=true, kwargs...)
+    estimate = _estimate_sklar(T, X; kwargs...)
+    md = (; estimate.meta..., elapsed_sec=estimate.elapsed_sec, derived_measures)
+    return CopulaModel(estimate.result, estimate.n, estimate.ll, estimate.method;
+        converged=get(md, :converged, true),
+        iterations=get(md, :iterations, 0),
+        elapsed_sec=estimate.elapsed_sec,
+        method_details=md)
 end
-
-function _vcov_upper_triangle(A)
-    return [
-        A[idx]
-        for idx in CartesianIndices(A)
-        if idx[1] < idx[2]
-    ]
-end
-
-_vcov_dependence_measure(::Val{:itau}) = τ
-_vcov_dependence_measure(::Val{:irho}) = ρ
-_vcov_dependence_measure(::Val{:ibeta}) = β
-_vcov_dependence_measure(::Val) = λᵤ
-
-_vcov_pairwise_measure(::Val{:itau}) = StatsBase.corkendall
-_vcov_pairwise_measure(::Val{:irho}) = StatsBase.corspearman
-_vcov_pairwise_measure(::Val{:ibeta}) = corblomqvist
-_vcov_pairwise_measure(::Val) = coruppertail
-
-
-function _vcov(
-    CT::Type{<:Copula},
-    U::AbstractMatrix,
-    θ::NamedTuple;
-    method::Symbol,
-    override::Union{Symbol,Nothing}=nothing,
-)
-    _check_vcov_method(override)
-
-    vcovm =
-        !isnothing(override) ? override :
-        method === :mle      ? :hessian :
-        method === :itau     ? :godambe :
-        method === :irho     ? :godambe :
-        method === :ibeta    ? :godambe :
-        method === :iupper   ? :godambe :
-                               :jackknife
-
-    # Compilation barrier: from this point onward the inference method and
-    # fitting method are encoded in dispatch instead of runtime Symbol branches.
-    return _vcov(
-        CT,
-        U,
-        θ,
-        Val(vcovm),
-        Val(method),
-    )
-end
-
-
-function _vcov(
-    CT::Type{<:Copula},
-    U::AbstractMatrix,
-    θ::NamedTuple,
-    vcovv::Val{:hessian},
-    methodv::Val{method},
-) where {method}
-    return _vcov_hessian(CT, U, θ, Val(size(U, 1)), vcovv, methodv)
-end
-
-function _vcov_hessian(
-    CT::Type{<:Copula},
-    U::AbstractMatrix,
-    θ::NamedTuple,
-    ::Val{d},
-    ::Val{:hessian},
-    methodv::Val{method},
-) where {d,method}
-    α = _unbound_params(CT, d, θ)
-    example = _example(CT, d)
-    vd = Val(d)
-
-    ℓ(αv) = Distributions.loglikelihood(
-        _vcov_copula(CT, vd, αv, example),
-        U,
-    )
-
-    H = ForwardDiff.hessian(ℓ, α)
-    Iα = .-H
-
-    if any(!isfinite, Iα)
-        @warn "vcov(:hessian): non-finite Fisher information; falling back" Iα
-        return _vcov(
-            CT,
-            U,
-            θ,
-            Val(:bootstrap),
-            methodv,
-        )
-    end
-
-    Iα = (Iα + Iα') / 2
-    p = size(Iα, 1)
-    I_p = Matrix{Float64}(LinearAlgebra.I, p, p)
-
-    λ = 1e-8
-    Vα = nothing
-
-    @inbounds for _ in 1:8
-        A = Iα + λ * I_p
-        ch = LinearAlgebra.cholesky(
-            LinearAlgebra.Symmetric(A);
-            check=false,
-        )
-
-        if ch.info == 0
-            Vα = ch \ I_p
-            break
-        end
-
-        λ *= 10
-    end
-
-    if Vα === nothing || any(!isfinite, Vα)
-        @warn "vcov(:hessian): failed to stabilize Fisher; falling back" λ_final=λ
-        return _vcov(
-            CT,
-            U,
-            θ,
-            Val(:bootstrap),
-            methodv,
-        )
-    end
-
-    return _vcov_finalize(
-        CT,
-        U,
-        θ,
-        d,
-        α,
-        Vα,
-        Val(:hessian),
-        methodv,
-    )
-end
-
-
-function _vcov(
-    CT::Type{<:Copula},
-    U::AbstractMatrix,
-    θ::NamedTuple,
-    ::Val{:godambe},
-    methodv::Val{method},
-) where {method}
-    return _vcov_godambe(
-        CT,
-        U,
-        θ,
-        Val(false),
-        Val(:godambe),
-        methodv,
-    )
-end
-
-
-function _vcov(
-    CT::Type{<:Copula},
-    U::AbstractMatrix,
-    θ::NamedTuple,
-    ::Val{:godambe_pairwise},
-    methodv::Val{method},
-) where {method}
-    return _vcov_godambe(
-        CT,
-        U,
-        θ,
-        Val(true),
-        Val(:godambe_pairwise),
-        methodv,
-    )
-end
-
-function _vcov_godambe(
-    CT::Type{<:Copula},
-    U::AbstractMatrix,
-    θ::NamedTuple,
-    pairwisev::Val{pairwise},
-    vcovv::Val{vcovm},
-    methodv::Val{method},
-) where {pairwise,vcovm,method}
-    return _vcov_godambe(
-        CT,
-        U,
-        θ,
-        Val(size(U, 1)),
-        pairwisev,
-        vcovv,
-        methodv,
-    )
-end
-
-function _vcov_godambe(
-    CT::Type{<:Copula},
-    U::AbstractMatrix,
-    θ::NamedTuple,
-    ::Val{d},
-    ::Val{pairwise},
-    vcovv::Val{vcovm},
-    methodv::Val{method},
-) where {d,pairwise,vcovm,method}
-    n = size(U, 2)
-    α = _unbound_params(CT, d, θ)
-
-    example = _example(CT, d)
-    vd = Val(d)
-
-    φ = _vcov_dependence_measure(methodv)
-
-    if pairwise
-        pairwise_φ = _vcov_pairwise_measure(methodv)
-        q = d * (d - 1) ÷ 2
-
-        Dα = ForwardDiff.jacobian(
-            αv -> _vcov_upper_triangle(
-                pairwise_φ(_vcov_copula(CT, vd, αv, example)),
-            ),
-            α,
-        )
-
-        Dα = reshape(Dα, q, length(α))
-
-        B = clamp(Int(floor(sqrt(n))), 10, 200)
-        M = Matrix{Float64}(undef, B, q)
-        idx = Vector{Int}(undef, n)
-        rng = Random.default_rng()
-
-        @inbounds for b in 1:B
-            for i in 1:n
-                idx[i] = rand(rng, 1:n)
-            end
-
-            Mb = @view U[:, idx]
-            M[b, :] .= _vcov_upper_triangle(
-                pairwise_φ(Mb'),
-            )
-        end
-
-    else
-        q = 1
-
-        Dα = ForwardDiff.jacobian(
-            αv -> [φ(_vcov_copula(CT, vd, αv, example))],
-            α,
-        )
-
-        Dα = reshape(Dα, q, length(α))
-
-        B = clamp(Int(floor(sqrt(n))), 10, 200)
-        M = Matrix{Float64}(undef, B, q)
-        idx = Vector{Int}(undef, n)
-        rng = Random.default_rng()
-
-        @inbounds for b in 1:B
-            for i in 1:n
-                idx[i] = rand(rng, 1:n)
-            end
-
-            Mb = @view U[:, idx]
-            M[b, 1] = φ(Mb)
-        end
-    end
-
-    Ω = n * Statistics.cov(M; corrected=true)
-
-    DtD = Dα' * Dα
-    ϵI = 1e-10LinearAlgebra.I
-
-    stabilized = DtD + ϵI
-    stabilized_inv = inv(stabilized)
-
-    Vα =
-        stabilized_inv *
-        (Dα' * Ω * Dα) *
-        stabilized_inv / n
-
-    return _vcov_finalize(
-        CT,
-        U,
-        θ,
-        d,
-        α,
-        Vα,
-        vcovv,
-        methodv,
-    )
-end
-
-function _vcov_finalize(
-    CT::Type{<:Copula},
-    U::AbstractMatrix,
-    θ::NamedTuple,
-    d::Int,
-    α,
-    Vα,
-    ::Val{vcovm},
-    methodv::Val{method},
-) where {vcovm,method}
-    J = ForwardDiff.jacobian(
-        αv -> _flatten_params(
-            _rebound_params(CT, d, αv),
-        )[2],
-        α,
-    )
-
-    Vθ = J * Vα * J'
-
-    if !all(isfinite, Vθ)
-        return _vcov(
-            CT,
-            U,
-            θ,
-            Val(:bootstrap),
-            methodv,
-        )
-    end
-
-    Vθ = (Vθ + Vθ') / 2
-
-    λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
-    λ_reg = map(x -> max(x, 1e-12), λ)
-
-    Vθ = LinearAlgebra.Symmetric(
-        Q * LinearAlgebra.Diagonal(λ_reg) * Q',
-    )
-
-    if any(!isfinite, Matrix(Vθ))
-        return _vcov(
-            CT,
-            U,
-            θ,
-            Val(:jackknife),
-            methodv,
-        )
-    end
-
-    return Vθ, (; vcov_method=vcovm)
-end
-
-
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:jackknife}, ::Val{method}) where {method}
-    d, n = size(U)
-    θminus = zeros(n, length(θ))
-    idx = Vector{Int}(undef, n-1)
-
-    for j in 1:n
-        k = 1; for t in 1:n; if t == j; continue; end; idx[k] = t; k += 1; end
-        Uminus = @view U[:, idx]
-        θminus[j, :] .= _flatten_params(_fit(CT, Uminus, Val{method}())[2].θ̂)[2]
-    end
-
-    θbar = vec(Statistics.mean(θminus, dims=1))
-    V = (n-1)/n * (LinearAlgebra.transpose(θminus .- θbar') * (θminus .- θbar')) ./ (n-1)
-    return V, (; vcov_method=:jackknife_obs)
-end
-# Fallback fast: bootstrap refit (B < n)
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:bootstrap}, ::Val{method}) where {method}
-    d, n = size(U)
-    p = length(_flatten_params(θ)[2])
-    B = clamp(Int(floor(sqrt(n))), 10, 200)
-    Θ   = Matrix{Float64}(undef, B, p)
-    idx = Vector{Int}(undef, n)
-    rng = Random.default_rng()
-    @inbounds for b in 1:B
-        for i in 1:n
-            idx[i] = rand(rng, 1:n)
-        end
-        θminus = @view U[:, idx]
-        Θ[b, :] .= _flatten_params(_fit(CT, θminus, Val{method}())[2].θ̂)[2]
-    end
-    V = Statistics.cov(Θ; corrected=true)
-    return V, (; vcov_method=:bootstrap, B=B)
-end
-
-
-
 ##### StatsBase interfaces.
 """
     nobs(M::CopulaModel) -> Int
@@ -996,9 +689,10 @@ StatsBase.deviance(M::CopulaModel) = -2 * M.ll
 """
     dof(M::CopulaModel) -> Int
 
-Return the number of estimated copula parameters represented by `coef(M)`.
-This excludes fixed structural choices and nonparametric components whose
-effective degrees of freedom are not defined by the current interface.
+Return the number of free estimated parameters represented by `coef(M)`. For a
+Sklar fit this includes both marginal and copula parameters. Fixed structural
+choices and nonparametric components whose effective degrees of freedom are not
+defined by the current interface are excluded.
 
 See also: [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref),
 [`StatsBase.aic`](@ref).
@@ -1018,15 +712,17 @@ _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 """
     coef(M::CopulaModel) -> Vector{Float64}
 
-Return the estimated copula parameters as a flat vector in the same order as
-`coefnames(M)`. Scalars are followed by vector entries and by the strict upper
-triangle of matrix parameters. Models without a finite-dimensional parameter
-record return an empty vector.
+Return the free estimated parameters as a flat vector in the same order as
+`coefnames(M)`. For a Sklar fit, copula parameters precede the parameters of
+each margin in coordinate order. Scalars are followed by vector entries and by
+the strict upper triangle of matrix parameters. Models without a
+finite-dimensional parameter record return an empty vector.
 
 See also: [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
 [`StatsBase.confint`](@ref).
 """
-StatsBase.coef(M::CopulaModel) = haskey(M.method_details, :θ̂) ? _flatten_params(M.method_details.θ̂)[2] : Float64[]
+StatsBase.coef(M::CopulaModel) = haskey(M.method_details, :free_parameters) ?
+    _flatten_params(M.method_details.free_parameters)[2] : Float64[]
 
 """
 coefnames(M::CopulaModel) -> Vector{String}
@@ -1038,7 +734,8 @@ can be identified in covariance matrices and printed summaries.
 See also: [`StatsBase.coef`](@ref), [`StatsBase.vcov`](@ref),
 [`CopulaModel`](@ref).
 """
-StatsBase.coefnames(M::CopulaModel) = haskey(M.method_details, :θ̂) ? _flatten_params(M.method_details.θ̂)[1] : String[]
+StatsBase.coefnames(M::CopulaModel) = haskey(M.method_details, :free_parameters) ?
+    _flatten_params(M.method_details.free_parameters)[1] : String[]
 
 
 # Flatten a NamedTuple of parameters into a Vector{Float64},
@@ -1087,58 +784,6 @@ function _flatten_params(params_nt::NamedTuple)
 end
 
 
-
-#(optional vcov) and vcov its very important... for inference
-"""
-    vcov(M::CopulaModel) -> Union{Nothing, Matrix{Float64}}
-
-Return the estimated covariance matrix of `coef(M)`, or `nothing` when
-covariance estimation was disabled or unavailable. Its rows and columns follow
-`coefnames(M)`. The displayed model identifies the estimation method when that
-information is available.
-
-See also: [`StatsBase.stderror`](@ref), [`StatsBase.confint`](@ref),
-[`StatsBase.coef`](@ref).
-"""
-StatsBase.vcov(M::CopulaModel) = M.vcov
-
-"""
-    stderror(M::CopulaModel)
-
-Return coefficient standard errors computed from the diagonal of `vcov(M)`.
-Return `nothing` when no covariance estimate is stored.
-
-See also: [`StatsBase.vcov`](@ref), [`StatsBase.confint`](@ref),
-[`StatsBase.coef`](@ref).
-"""
-function StatsBase.stderror(M::CopulaModel)
-    V = StatsBase.vcov(M)
-    V === nothing && return nothing
-    return sqrt.(LinearAlgebra.diag(V))
-end
-
-"""
-    confint(M::CopulaModel; level=0.95)
-
-Return lower and upper vectors for pointwise Wald confidence intervals on the
-fitted parameter scale. The intervals use a normal approximation and do not
-enforce parameter constraints. Return `nothing` when `vcov(M)` is unavailable.
-
-`level` must lie strictly between zero and one. These are marginal intervals;
-they are neither simultaneous nor transformed to a family's constrained
-parameter space.
-
-See also: [`StatsBase.vcov`](@ref), [`StatsBase.stderror`](@ref),
-[`StatsBase.coefnames`](@ref).
-"""
-function StatsBase.confint(M::CopulaModel; level::Real=0.95)
-    V = StatsBase.vcov(M)
-    V === nothing && return nothing
-    z = Distributions.quantile(Distributions.Normal(), 1 - (1 - level)/2)
-    θ = StatsBase.coef(M)
-    se = sqrt.(LinearAlgebra.diag(V))
-    return θ .- z .* se, θ .+ z .* se
-end
 
 """
     aic(M::CopulaModel) -> Float64
@@ -1295,8 +940,8 @@ end
 
 Fit an explicit collection of candidate families and select the smallest finite
 information criterion (`:bic`, `:aic`, `:aicc`, or `:hqc`). The winning fit is
-reused; only its requested inference is computed afterwards. Prefer maximum
-likelihood fitting when interpreting these as information criteria.
+reused without performing inference. Prefer maximum likelihood fitting when
+interpreting these as information criteria.
 
 Failed candidates are recorded with `on_error=:skip`, or rethrown with
 `on_error=:throw`. Interruptions always propagate. Composite GOF after selection
@@ -1305,13 +950,12 @@ is not yet supported.
 function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
         candidates, criterion::Symbol=:bic, method::Symbol=:mle,
         on_error::Symbol=:skip, require_convergence::Bool=true,
-        quick_fit::Bool=false, derived_measures::Bool=true, vcov::Bool=true,
-        vcov_method=nothing, kwargs...)
+        derived_measures::Bool=true, kwargs...)
+    _reject_inference_fit_keywords((; kwargs...))
     criterion in (:bic, :aic, :aicc, :hqc) ||
         throw(ArgumentError("Unknown selection criterion: $criterion"))
     on_error in (:skip, :throw) ||
         throw(ArgumentError("`on_error` must be :skip or :throw."))
-    _check_vcov_method(vcov_method)
     candidate_types = collect(candidates)
     isempty(candidate_types) && throw(ArgumentError("at least one candidate is required"))
     all(CT -> CT isa Type && CT <: Copula && CT !== Copula, candidate_types) ||
@@ -1326,7 +970,7 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
     for CT in candidate_types
         evaluated = try
             M = Distributions.fit(CopulaModel, CT, U; method,
-                derived_measures=false, vcov=false, kwargs...)
+                derived_measures=false, kwargs...)
             criteria = (; aic=StatsBase.aic(M), aicc=aicc(M),
                 bic=StatsBase.bic(M), hqc=hqc(M))
             (M, criteria, StatsBase.dof(M))
@@ -1350,19 +994,16 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{Copula}, U;
         end
     end
     best === nothing && throw(ArgumentError("No candidate copula produced an eligible finite fit."))
-    quick_fit && return (result=best.result,)
-
-    CT = rows[best_index].candidate
-    selected = _finish_copula_fit(CT, best.result, best.method_details.U,
-        best.ll, best.method,
-        (; best.method_details..., converged=best.converged, iterations=best.iterations),
-        best.elapsed_sec, nothing;
-        derived_measures, vcov, vcov_method)
     # No single-family fit specification can reproduce model selection. Until
     # selection-aware bootstrap exists, _refit must reject this model.
-    return CopulaModel(selected.result, selected.n, selected.ll, selected.method;
-        vcov=selected.vcov, converged=selected.converged,
-        iterations=selected.iterations, elapsed_sec=time() - started,
-        method_details=(; selected.method_details..., criterion,
+    return CopulaModel(best.result, best.n, best.ll, best.method;
+        converged=best.converged, iterations=best.iterations,
+        elapsed_sec=time() - started,
+        method_details=(; best.method_details..., derived_measures, criterion,
+            _fit_spec=nothing,
             selection_table=rows, selected_index=best_index))
 end
+
+Distributions.fit(::Type{Copula}, U; candidates, kwargs...) =
+    fitteddistribution(Distributions.fit(CopulaModel, Copula, U;
+                                          candidates, kwargs...))

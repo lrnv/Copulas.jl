@@ -53,7 +53,7 @@ U = rand(Ctrue, 300)
 
 An estimated parameter without information about how it was obtained is often
 not enough. `CopulaModel` retains the likelihood, fitting method, convergence
-information and, when requested, an estimate of parameter uncertainty:
+information, fitted data, and a reproducible description of the estimator:
 
 ```@example fitting_interface
 M = fit(CopulaModel, GumbelCopula, U; method=:mle)
@@ -102,7 +102,6 @@ Msel = fit(
     data;
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
-    vcov=false,
 )
 Msel
 ```
@@ -116,8 +115,8 @@ The available criteria are:
 
 BIC is the default criterion.
 
-The winning fit is reused: expensive inference requested by the user, such as
-covariance estimation, is computed only after comparison.
+The winning fit is reused. Selection itself performs no uncertainty
+calculation.
 
 The complete comparison can be inspected with [`selectiontable`](@ref):
 
@@ -195,15 +194,13 @@ different questions about the fit:
 | `nulldeviance(M)`                              | Deviance of the null model (−2 · `nullloglikelihood(M)`).                                         |
 | `aic(M)` / `bic(M)`                            | Information criteria from `StatsBase.jl`.                                                            |
 | `coef(M)` / `coefnames(M)`                     | Estimated parameters and their names.                                                             |
-| `vcov(M)`                                      | Parameter variance–covariance matrix (may be `nothing`).                                          |
-| `stderror(M)` / `confint(M; level=0.95)`       | Standard errors and Wald confidence intervals; return `nothing` when `vcov(M) === nothing`.       |
 | `residuals(M; transform=:uniform \| :normal)`  | Rosenblatt residuals on `[0,1]` or Normal scale when the fit retains the required observations.  |
 | `predict(M; what=:cdf\|:pdf\|:simulate, ...)`  | CDF/PDF at `newdata`, or simulation (`nsim`; defaults to `nobs(M)` when non-positive).            |
 
 The table is a reference; in practice, diagnostics are best read together.
-Information criteria compare fitted models on the same observations, confidence
-intervals describe local parameter uncertainty, and Rosenblatt residuals probe
-whether the fitted conditional structure has removed the dependence.
+Information criteria compare fitted models on the same observations, while
+Rosenblatt residuals probe whether the fitted conditional structure has removed
+the dependence. Parameter uncertainty belongs to a separate inference result.
 
 ### Examples
 
@@ -211,12 +208,6 @@ whether the fitted conditional structure has removed the dependence.
 # Information criteria
 StatsBase.aic(M)
 StatsBase.bic(M)
-```
-
-```@example fitting_interface
-# Standard errors and Wald CIs
-StatsBase.stderror(M)
-StatsBase.confint(M; level=0.95)
 ```
 
 ```@example fitting_interface
@@ -236,42 +227,47 @@ X̂  = StatsBase.predict(M; what=:simulate, nsim=200)       # simulate 200 obs
 
 
 
-## Parameter uncertainty
+## Inference after estimation
 
-When fitting with `fit(CopulaModel, ...)`, `vcov=true` estimates the covariance
-matrix of the fitted parameters. Its diagonal controls standard errors; its
-off-diagonal terms describe local dependence between parameter estimates.
-
-!!! note "Default"
-    `vcov=true` is the default. Set `vcov=false` for exploratory fits or large
-    candidate comparisons when uncertainty is not yet needed.
-
-The `vcov_method` keyword selects the estimator:
+Fitting and uncertainty quantification are separate operations. `fit` produces
+the point estimate and records how it was obtained; it never computes a
+covariance matrix. Apply [`infer`](@ref) to that fitted model when uncertainty
+is needed:
 
 | Symbol               | Description                                                                                      |
 |:--|:--|
 | `:hessian`           | Inverse observed information (−Hessian of the log-likelihood). Default for `method = :mle`.     |
 | `:godambe`           | Godambe (sandwich) estimator based on score-type functions. Used for rank-based fits.            |
 | `:godambe_pairwise`  | Pairwise Godambe using all variable pairs.                                                       |
-| `:jackknife`         | Leave-one-out jackknife approximation (robust fallback).                                        |
-| `:bootstrap`         | Bootstrap approximation (√n resamples, up to 200).                                              |
+| `:jackknife`         | Leave-one-out refitting of the complete recorded estimator.                                      |
+| `:bootstrap`         | Bootstrap refitting of the complete recorded estimator; accepts `nresamples` and `rng`.        |
 
-You can override the choice via `vcov_method`:
+The default is `:hessian` after supported maximum-likelihood fits and
+`:godambe` after the supported rank-matching estimators. A downstream fitting
+extension does not implicitly opt into analytical inference. There is no
+generic silent fallback: if a
+method is mathematically unavailable or fails numerically, `infer` throws and
+the user must choose another procedure explicitly.
+
+Maximum pseudo-likelihood currently has no implicit covariance method. A
+sandwich estimator must reflect the rank preprocessing and is tracked
+separately; use an explicit full-estimator bootstrap in the meantime when that
+procedure is appropriate for the analysis.
 
 ```@example fitting_interface
-M2 = fit(CopulaModel, GumbelCopula, U; method=:mle, vcov=true, vcov_method=:bootstrap, derived_measures=false)
-StatsBase.vcov(M2) isa AbstractMatrix
+I = infer(M)
+StatsBase.vcov(I)
+StatsBase.stderror(I)
+StatsBase.confint(I; level=0.95)
 ```
 
-Each successful method returns a symmetric positive semi-definite matrix exposed by
-`StatsBase.vcov(M)`.
-
-If the requested covariance calculation is numerically unavailable,
-`StatsBase.vcov(M)` may be `nothing`.
+The same fitted model can be passed to several inference procedures without
+optimizing it again or mutating it. Resampling methods accept explicit controls,
+for example `infer(M; method=:bootstrap, nresamples=500, rng=Xoshiro(42))`.
 
 ::: remark Derived dependence measures
 
-In the example above, `derived_measures=false` disables the automatic
+On `fit(CopulaModel, ...)`, `derived_measures=false` disables the automatic
 calculation of Kendall's τ, Spearman's ρ, Blomqvist's β, Gini's γ, tail
 coefficients and entropy. This can reduce computation and memory use, but it
 also removes a useful interpretation layer from the printed report.
@@ -316,6 +312,29 @@ X = rand(S, 300)
 Ŝ
 ```
 
+For a fitted Sklar model, `infer(Ŝ)` defaults to a full-estimator bootstrap.
+Each resample starts from `X`, refits every margin, rebuilds the transformed
+sample according to `sklar_method`, and then refits the copula. Thus the full
+covariance includes uncertainty in the margins, uncertainty in the copula, and
+their cross-covariances:
+
+`coef(Ŝ)` and `coefnames(Ŝ)` use the same order: copula parameters first, then
+the parameters of each margin in coordinate order. This ordering is what makes
+the covariance blocks interpretable.
+
+```@example fitting_interface
+Isklar = infer(Ŝ; method=:bootstrap, nresamples=10, rng=Xoshiro(43))
+Vall = StatsBase.vcov(Isklar)
+Vcopula = StatsBase.vcov(Isklar; component=:copula)
+Vmargins = StatsBase.vcov(Isklar; component=:margins)
+(size(Vall), size(Vcopula), size(Vmargins))
+```
+
+Analytical Sklar covariance methods throw explicitly. The arbitrary estimators
+behind `Distributions.fit` for marginal families do not provide a common score,
+Hessian, or parameter-transform contract from which such formulas could be
+derived safely.
+
 ```@example fitting_interface
 plot(fitteddistribution(Ŝ))
 ```
@@ -328,7 +347,7 @@ The names and availability of fitting methods depend on the family. Direct
 parametric copula fitting defaults to `method=:mle` whenever MLE is available;
 choose another estimator explicitly. Structural, empirical, or selection
 families without an MLE retain the first method advertised by their
-`_available_fitting_methods` extension hook. This preserves extension-defined
+[`fitting_methods`](@ref) extension hook. This preserves extension-defined
 defaults without ever selecting `:mpl` implicitly.
 
 The fitting method determines which feature of the sample identifies the
@@ -407,7 +426,7 @@ components and therefore has no global Lebesgue density. Its quick `fit`
 interface, CDF, and sampler remain available, but likelihood-based summaries
 are not applicable.
 
-The only difference is that empirical models are **parameter-free** (`dof(M) = 0`),  
-so `vcov(M)`, `stderror(M)`, and `confint(M)` return `nothing`,  
-and information criteria reduce to AIC = BIC = −2 · loglikelihood.  
+The only difference is that empirical models are **parameter-free** (`dof(M) = 0`),
+so finite-dimensional parameter inference is unavailable and information
+criteria reduce to AIC = BIC = −2 · loglikelihood.
 Otherwise, all features—including the computation of dependence measures and the REPL summary—behave exactly the same.

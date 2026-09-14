@@ -34,7 +34,7 @@ using Copulas, Distributions
 C = GaussianCopula(Σ)
 u = rand(C, 1000)
 logpdf(C, u[:, 1]), cdf(C, u[:, 1])
-Ĉ = fit(GaussianCopula, u; vcov=false)
+Ĉ = fit(GaussianCopula, u)
 ```
 
 Special case:
