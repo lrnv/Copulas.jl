@@ -517,7 +517,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
                 Mcustom = fit(CopulaModel, reparam, [log(1.5)], Unested; derived_measures=false,)
                 @test Mcustom.method_details._fit_spec isa Copulas._CopulaFitSpec
                 @test Copulas._refit(Mcustom, Unested) isa CopulaModel
-                @test GOFCopulaTest(Mcustom; N=1, rng=Xoshiro(909),) isa GOFCopulaTest
+                @test_nowarn GOFCopulaTest(Mcustom; N=1, rng=Xoshiro(909),)
             end
 
         end
