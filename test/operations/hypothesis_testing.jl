@@ -506,28 +506,18 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
             @test Tuple(Mraw_refit.result.m) == (2, 2)
             @test teststatistic(Traw) ≈ Copulas._gof_sn_statistic(Vraw, Copulas._copula_of(Mraw))
 
-            @testset "Unreproducible custom parametrisation is rejected" begin
-                # An arbitrary user-supplied parametrisation may capture external
-                # state and cannot be reconstructed safely from the fitted result.
-                # Composite GOF therefore rejects such models rather than silently
-                # changing the estimator used by the bootstrap.
+            @testset "Custom parametrisation is reproducibly refitted" begin
+                # Runtime parametrisations are retained in the internal fit
+                # specification, so composite GOF can replay the same estimator.
                 reparam = α -> begin
                     θ = exp(α[1])
                     NestedArchimedeanCopula(Copulas.ClaytonGenerator(θ); leaves=[1], children=[ClaytonCopula(2, θ + one(θ)) => [2, 3]],)
                 end
 
                 Mcustom = fit(CopulaModel, reparam, [log(1.5)], Unested; derived_measures=false,)
-                @test Mcustom.method_details._fit_spec === nothing
-
-                refit_err = try
-                    Copulas._refit(Mcustom, Unested)
-                catch err
-                    err
-                end
-
-                @test refit_err isa ArgumentError
-                @test occursin("reproducible fitting specification", sprint(showerror, refit_err),)
-                @test_throws ArgumentError GOFCopulaTest(Mcustom; N=1, rng=Xoshiro(909),)
+                @test Mcustom.method_details._fit_spec isa Copulas._CopulaFitSpec
+                @test Copulas._refit(Mcustom, Unested) isa CopulaModel
+                @test GOFCopulaTest(Mcustom; N=1, rng=Xoshiro(909),) isa GOFCopulaTest
             end
 
         end

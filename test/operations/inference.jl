@@ -12,7 +12,7 @@
     lower, upper = confint(Ih)
     @test all(lower .< coef(mle_model))
     @test all(coef(mle_model) .< upper)
-    @test inference_diagnostics(Ih).method === :hessian
+    @test Copulas.inference_diagnostics(Ih).method === :hessian
 
     rank_model = fit(CopulaModel, GumbelCopula{2}, U;
                      method=:itau, derived_measures=false)
@@ -30,7 +30,7 @@
     Ib = infer(mpl_model; method=:bootstrap, nresamples=3,
                rng=StableRNG(48_101))
     @test Ib.method === :bootstrap
-    @test inference_diagnostics(Ib).nresamples == 3
+    @test Copulas.inference_diagnostics(Ib).nresamples == 3
     @test_throws ArgumentError infer(mpl_model; method=:bootstrap,
                                      nresamples=1)
 

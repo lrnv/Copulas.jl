@@ -5,7 +5,7 @@ Copulas.fitting_methods(::Type{PublicFitProtocolProbe}, ::Val{2}) = (:probe,)
 function Copulas.fit_copula(::Type{PublicFitProtocolProbe}, data, ::Val{:probe}; offset=0.0)
     estimate = Statistics.mean(data) + offset
     return IndependentCopula{2}(),
-           (; free_parameters=(estimate,), fixed_parameters=(; offset),
+           (; free_parameters=(; estimate), fixed_parameters=(; offset),
               converged=true, iterations=1)
 end
 
@@ -118,7 +118,7 @@ end
     @test inference isa CopulaInference
     @test size(StatsBase.vcov(inference)) ==
           (StatsBase.dof(model), StatsBase.dof(model))
-    @test inference_diagnostics(inference).nresamples == 3
+    @test Copulas.inference_diagnostics(inference).nresamples == 3
     @test !applicable(StatsBase.vcov, model)
     @test_throws ArgumentError fit(CopulaModel, ClaytonCopula{2}, U;
         method=:itau, vcov=true, derived_measures=false)

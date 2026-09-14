@@ -291,7 +291,7 @@ goodness-of-fit testing are needed.
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:Copula}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; method=method, kwargs...)
 @inline Distributions.fit(::Type{CopulaModel}, T::Type{<:SklarDist}, U, method; kwargs...) = Distributions.fit(CopulaModel, T, U; copula_method=method, kwargs...)
 @inline Distributions.fit(T::Type{<:Copula}, U; derived_measures=nothing, kwargs...) =
-    _estimate_copula(T, U; kwargs...).result
+    _run_copula_estimator(T, U; kwargs...).result
 
 """
     _available_fitting_methods(::Type{<:Copula}, d::Int)
@@ -420,7 +420,7 @@ copula-likelihood optimizer; the distinction records the input's provenance.
 See also: [`CopulaModel`](@ref), [`selectiontable`](@ref),
 [`GOFCopulaTest`](@ref).
 """
-function _estimate_copula(CT::Type{<:Copula}, U;
+function _run_copula_estimator(CT::Type{<:Copula}, U;
         method=:default, pseudo_values::Union{Nothing,Bool}=nothing, kwargs...)
     _reject_inference_fit_keywords((; kwargs...))
     d, n = size(U)
@@ -438,9 +438,6 @@ function _estimate_copula(CT::Type{<:Copula}, U;
     engine_method = method === :mpl ? :mle : method
     engine_kwargs = !likelihood_method && pseudo_values !== nothing ?
         (; pseudo_values=input_is_pseudo, kwargs...) : (; kwargs...)
-    fit_kwargs = likelihood_method ?
-        (; pseudo_values=input_is_pseudo, kwargs...) : engine_kwargs
-    fit_spec = _CopulaFitSpec(CT, method, fit_kwargs)
     t = @elapsed (rez = fit_copula(CT, fit_data, Val{engine_method}(); engine_kwargs...))
     rez isa Tuple && length(rez) == 2 || throw(ArgumentError(
         "fit_copula must return `(fitted_copula, metadata)`"))
@@ -453,11 +450,22 @@ function _estimate_copula(CT::Type{<:Copula}, U;
         haskey(meta, field) && !(getproperty(meta, field) isa NamedTuple) &&
             throw(ArgumentError("fit_copula metadata `$field` must be a NamedTuple"))
     end
+    return (; result=C, meta, method, requested_method, input_is_pseudo,
+            likelihood_method, fit_data, engine_kwargs, elapsed_sec=t)
+end
+
+function _estimate_copula(CT::Type{<:Copula}, U;
+        method=:default, pseudo_values::Union{Nothing,Bool}=nothing, kwargs...)
+    estimate = _run_copula_estimator(CT, U; method, pseudo_values, kwargs...)
+    (; result=C, meta, method, requested_method, input_is_pseudo,
+       likelihood_method, fit_data, engine_kwargs, elapsed_sec) = estimate
+    fit_kwargs = likelihood_method ?
+        (; pseudo_values=input_is_pseudo, kwargs...) : engine_kwargs
+    fit_spec = _CopulaFitSpec(CT, method, fit_kwargs)
     ll = Distributions.loglikelihood(C, fit_data)
     meta = (; meta..., requested_method, pseudo_values=input_is_pseudo,
-        fitting_data_pseudo_values=likelihood_method ? true : input_is_pseudo)
-
-    return (; result=C, n, ll, method, meta, elapsed_sec=t, fit_spec,
+            fitting_data_pseudo_values=likelihood_method ? true : input_is_pseudo)
+    return (; result=C, n=size(U, 2), ll, method, meta, elapsed_sec, fit_spec,
             fitting_data=fit_data, input_data=U)
 end
 
@@ -534,13 +542,13 @@ the fitted distribution is required.
 marginal families. This exception does not expose arbitrary storage type
 parameters or the concrete representation of constructed `SklarDist` values.
 """
-function _sklar_parameter_metadata(S::SklarDist)
+function _sklar_parameter_metadata(S::SklarDist, copula_parameters::NamedTuple)
     names = Symbol[]
     values = Any[]
     coordinate = 0
 
     copula_start = coordinate + 1
-    for (name, value) in pairs(Distributions.params(S.C))
+    for (name, value) in pairs(copula_parameters)
         push!(names, Symbol(:copula_, name))
         push!(values, value)
         coordinate += length(_flatten_params((; value))[2])
@@ -569,7 +577,8 @@ end
 
 function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
                          copula_method=:default, sklar_method=:ifm,
-                         margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple()) where {CT<:Copulas.Copula,TplMargins<:Tuple}
+                         margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple(),
+                         model::Bool=true) where {CT<:Copulas.Copula,TplMargins<:Tuple}
 
     started = time()
     # Get methods:
@@ -601,10 +610,15 @@ function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
     end
 
     # Fit the copula
-    cop_estimate = _estimate_copula(CT, U; method=copula_method, copula_kwargs...)
+    cop_estimate = _run_copula_estimator(CT, U; method=copula_method,
+                                         copula_kwargs...)
 
     S = SklarDist(cop_estimate.result, m)
-    free_parameters, parameter_blocks = _sklar_parameter_metadata(S)
+    model || return S
+    copula_parameters = get(cop_estimate.meta, :free_parameters,
+                            get(cop_estimate.meta, :θ̂, NamedTuple()))
+    free_parameters, parameter_blocks =
+        _sklar_parameter_metadata(S, copula_parameters)
 
     # total and null loglikelihood
     ll = Distributions.loglikelihood(S, X)
@@ -622,7 +636,7 @@ function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
 end
 
 @inline Distributions.fit(T::Type{<:SklarDist}, X; derived_measures=nothing, kwargs...) =
-    _estimate_sklar(T, X; kwargs...).result
+    _estimate_sklar(T, X; model=false, kwargs...)
 
 function Distributions.fit(::Type{CopulaModel}, T::Type{<:SklarDist}, X;
                            derived_measures=true, kwargs...)
