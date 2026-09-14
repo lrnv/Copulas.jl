@@ -67,7 +67,7 @@ SubsetCopula(::IndependentCopula{d}, ::NTuple{p, Int}) where {d, p} = Independen
 
 # Fitting/params interface (no parameters)
 Distributions.params(::IndependentCopula) = (;)
-_fit(::Type{<:IndependentCopula}, U, ::Val{:mle}) = IndependentCopula(size(U,1)), (;)
-_fit(::Type{<:IndependentCopula}, U, ::Val{:itau}) = IndependentCopula(size(U,1)), (;)
-_fit(::Type{<:IndependentCopula}, U, ::Val{:irho}) = IndependentCopula(size(U,1)), (;)
-_fit(::Type{<:IndependentCopula}, U, ::Val{:ibeta}) = IndependentCopula(size(U,1)), (;)
+_fit(::Type{<:IndependentCopula}, U, ::Val{:mle}) = IndependentCopula(size(U,1))
+_fit(::Type{<:IndependentCopula}, U, ::Val{:itau}) = IndependentCopula(size(U,1))
+_fit(::Type{<:IndependentCopula}, U, ::Val{:irho}) = IndependentCopula(size(U,1))
+_fit(::Type{<:IndependentCopula}, U, ::Val{:ibeta}) = IndependentCopula(size(U,1))

@@ -330,8 +330,9 @@ Notes:
 - The Sklar copula step defaults to `copula_method=:mle` when supported,
   otherwise to the family's advertised default; either can be replaced
   explicitly.
-- `CopulaModel` retains the estimate and fit evidence (`nobs`, `coef`,
-  `aic`/`bic`, `nullloglikelihood`, residuals, and prediction), while
+- `CopulaModel` retains only the fitted distribution, original data, fitted
+  log-likelihood, and replay recipe. Accessors derive `nobs`, `coef`,
+  `aic`/`bic`, `nullloglikelihood`, and residuals lazily, while
   `CopulaInference` separately retains `vcov`, `stderror`, and `confint`.
 - For a Bayesian workflow over Sklar models, see the examples section.
 
@@ -339,8 +340,9 @@ Notes:
 
 When inference or diagnostics matter, keep the `CopulaModel` returned by the
 first form of `fit`. It implements the standard statistical-model interface for
-point estimation, including coefficients, information criteria, Rosenblatt
-residuals, and prediction or simulation. Apply `infer` afterwards to compute
+point estimation, including coefficients, information criteria, and Rosenblatt
+residuals. Retrieve the fitted distribution with `fitted_distribution(M)` for
+CDF or density evaluation and simulation. Apply `infer` afterwards to compute
 uncertainty without changing or refitting the point estimate:
 
 ```@example api
@@ -363,8 +365,9 @@ estimator fail explicitly instead of falling back to another covariance rule.
 
 #### Automatic family selection
 
-If the copula family is unknown, `CopulaModel` can fit an explicit candidate
-set and retain the best successful fit according to AIC, BIC, AICc, or HQC:
+If the copula family is unknown, an explicit candidate set can be compared by
+AIC, BIC, AICc, or HQC. The returned `CopulaSelection` keeps the comparison
+separate from its winning model:
 
 ```@example api
 Msel = fit(
@@ -374,13 +377,14 @@ Msel = fit(
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
 )
-selectiontable(Msel)
+selection_table(Msel)
+Mbest = selected_model(Msel)
 ```
 
 Candidate selection is deliberately explicit: not every family is meaningful
 in every dimension or appropriate for every scientific question. The
 [fitting interface](@ref fitting_interface) documents candidate failures,
-post-fit inference, residuals, prediction, and the interpretation of the
+post-fit inference, residuals, and the interpretation of the
 selection criteria.
 
 ::: info About fitting procedures

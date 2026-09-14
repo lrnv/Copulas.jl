@@ -86,7 +86,7 @@ Other Julia packages cover related use cases. [`BivariateCopulas.jl`](https://gi
 | Copula plus arbitrary margins | ✅ `SklarDist`, any supported dimension | ⚠️ Marginal-transformation utilities | ⚠️ Bivariate joint distributions |
 | Parameter fitting | ✅ Quick fits and full `CopulaModel` results | ❌ Not documented | ❌ Not documented |
 | Automatic family selection | ✅ Explicit candidate sets with AIC, BIC, AICc, or HQC | ❌ Not documented | ❌ Not documented |
-| Statistical-model diagnostics | ✅ Covariance, confidence intervals, residuals, prediction, information criteria | ❌ Not documented | ❌ Not documented |
+| Statistical-model diagnostics | ✅ Covariance, confidence intervals, residuals, information criteria | ❌ Not documented | ❌ Not documented |
 | Dependence measures | ✅ Scalar and pairwise rank and tail measures | ⚠️ Empirical Kendall-correlation examples | ❌ Not documented as a common interface |
 | Subsetting and conditioning | ✅ Copulas and `SklarDist`; univariate or multivariate results | ❌ Not documented | ⚠️ Bivariate conditional CDFs |
 | Rosenblatt and inverse Rosenblatt transforms | ✅ | ❌ Not documented | ❌ Not documented |
@@ -196,8 +196,11 @@ Notes
 - Their copula step defaults to `copula_method=:mle` when supported, otherwise
   to the family's advertised default; either can be replaced explicitly.
 
-Use `CopulaModel` when diagnostics or later inference matter. Estimation itself
-does not compute uncertainty: apply `infer(M; method=...)` to obtain a separate
+Use `CopulaModel` when diagnostics or later inference matter. It stores only
+the fitted distribution, original data, fitted log-likelihood, and minimal
+replay recipe; coefficients, transformed observations, parameter blocks, and
+the independence likelihood are derived when requested. Estimation itself does
+not compute uncertainty: apply `infer(M; method=...)` to obtain a separate
 `CopulaInference`, then use `vcov`, `stderror`, and `confint` on that result.
 For Sklar fits, bootstrap inference refits both the margins and the copula and
 retains their complete covariance, including cross-component terms.
@@ -213,13 +216,15 @@ Msel = fit(
     candidates=(ClaytonCopula, GumbelCopula, FrankCopula),
     criterion=:bic,
 )
-selectiontable(Msel)
+selection_table(Msel)
+Mbest = selected_model(Msel)
 ```
 
-Selection is deliberately explicit: Copulas.jl does not treat every available
-family as a sensible candidate for every dimension or scientific question. See
+Selection returns a `CopulaSelection`, so its candidate report is not stored in
+the winning `CopulaModel`. Selection is deliberately explicit: Copulas.jl does
+not treat every available family as a sensible candidate for every dimension or scientific question. See
 the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for post-fit inference,
-confidence intervals, residuals, prediction, and selection caveats.
+confidence intervals, residuals, and selection caveats.
 
 ### Hypothesis testing
 

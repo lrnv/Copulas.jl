@@ -57,7 +57,8 @@ family per coordinate, for example
 `SklarDist{ClaytonCopula,Tuple{Gamma,Normal}}`. Those family parameters are
 public in this fitting context; no other field layout, storage parameter, or
 concrete representation detail of `SklarDist` is part of the public API. Use
-`fit(CopulaModel, SklarDist{...}, data)` to retain fitting diagnostics.
+`fit(CopulaModel, SklarDist{...}, data)` to retain the fitted likelihood and
+the minimal state needed for diagnostics, inference, and reproducible refitting.
 
 References: 
 * [sklar1959](@cite) Sklar, M. (1959). Fonctions de répartition à n dimensions et leurs marges. In Annales de l'ISUP (Vol. 8, No. 3, pp. 229-231).

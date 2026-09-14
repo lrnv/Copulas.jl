@@ -305,7 +305,7 @@ _example(CT::Type{<:ExtremeValueCopula}, d) =
     ExtremeValueCopula{d}(tailof(CT)(;
         _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...,
     ))
-_fit_copula(
+_construct_fitted_copula(
     ::Type{<:ExtremeValueCopula},
     ::Val{d},
     θ,
@@ -324,10 +324,10 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     m = typeof(method).parameters[1]
     if size(U, 1) == 2
         C = EmpiricalEVCopula(U; method=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
-        return C, (; pseudo_values, method=m, grid, eps)
+        return C
     end
     C = EmpiricalEVCopula(U; method=m, pseudo_values=pseudo_values, kwargs...)
-    return C, (; pseudo_values, method=m, degree=C.tail.degree, projection_rmse=C.tail.projection_rmse)
+    return C
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
     TT = tailof(typeof(_example(CT, 2)))
@@ -337,15 +337,15 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     lo, hi = _θ_bounds(TT, 2)
     # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
     θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
-    return ExtremeValueCopula{2}(TT(θ)), (; θ̂=(θ=θ,))
+    return ExtremeValueCopula{2}(TT(θ))
 end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
     TT = tailof(typeof(_example(CT, 2)))
     θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(TT, 2)...)
-    return ExtremeValueCopula{2}(TT(θ)), (; θ̂=(θ=θ,))
+    return ExtremeValueCopula{2}(TT(θ))
 end
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, xtol::Real=1e-8)
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau)
     d = size(U,1)
     example = _example(CT, d)
     ConcreteCT = typeof(example)
@@ -354,7 +354,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     θ0_val = if start isa Real
         start
     else
-        initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? _fit(CT, U, Val{start}())[2].θ̂ : only(Distributions.params(example))
+        initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? Distributions.params(_fit(CT, U, Val{start}())) : only(Distributions.params(example))
         initial_params.θ
     end
     # Keep the starting value strictly inside every finite boundary before
@@ -377,7 +377,5 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
         Optim.optimize(f, α0, Optim.NelderMead())
     end
     θ̂ = _rebound_params(ConcreteCT, d, Optim.minimizer(res))
-    return ExtremeValueCopula{d}(TT(θ̂...)), (; θ̂=θ̂, optimizer=Optim.summary(res),
-                        xtol=xtol, converged=Optim.converged(res),
-                        iterations=Optim.iterations(res))
+    return ExtremeValueCopula{d}(TT(θ̂...))
 end

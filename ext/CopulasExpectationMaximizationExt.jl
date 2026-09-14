@@ -84,7 +84,7 @@ function _fit_mle_weighted(
         Distributions.params(C),
     )
 
-    copula(alpha) = Copulas._fit_copula(
+    copula(alpha) = Copulas._construct_fitted_copula(
         CT,
         vd,
         Copulas._rebound_params(CT, d, alpha),

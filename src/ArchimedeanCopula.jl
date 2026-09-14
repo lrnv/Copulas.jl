@@ -314,7 +314,7 @@ _example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw
 _unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
 _rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)
 
-@inline function _fit_copula(
+@inline function _construct_fitted_copula(
     CT::Type{<:ArchimedeanCopula},
     ::Val{d},
     θ,
@@ -346,7 +346,7 @@ _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲{<:Distributions.D
 
 function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:𝒲{<:Distributions.DiscreteNonParametric}} where d}}, U, ::Val{:gnz2011})
     # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted.
-    return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U)), (;)
+    return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U))
 end
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}})
@@ -361,7 +361,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
 
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ), (; θ̂=(θ=θ,))
+    return CT(d, θ)
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
     d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
@@ -372,7 +372,7 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     βmin, βmax = fβ(a0), fβ(b0)
     if βmin > βmax; βmin, βmax = βmax, βmin; end
     θ = βobs ≤ βmin ? a0 : βobs ≥ βmax ? b0 : Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
-    return CT(d,θ), (; θ̂=(θ=θ,))
+    return CT(d,θ)
 end
 
 function _fit(
@@ -390,7 +390,6 @@ function _fit(
     ::Val{d},
     ::Val{:mle};
     start::Union{Symbol,Real}=:itau,
-    xtol::Real=1e-8,
 ) where {d}
     GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
@@ -404,7 +403,7 @@ function _fit(
     elseif start ∈ (:itau, :irho)
         # Keep this call on the existing 3-argument specialized
         # Archimedean rank-fitting path.
-        θ₀[1] = _fit(CT, U, Val{start}())[2].θ̂[1]
+        θ₀[1] = only(Distributions.params(_fit(CT, U, Val{start}())))
     end
 
     if θ₀[1] <= lo || θ₀[1] >= hi
@@ -413,7 +412,7 @@ function _fit(
 
     vd = Val(d)
 
-    cop(θ) = _fit_copula(
+    cop(θ) = _construct_fitted_copula(
         CT,
         vd,
         (; θ=θ[1]),
@@ -432,19 +431,12 @@ function _fit(
 
     θ = Optim.minimizer(res)[1]
 
-    fitted = _fit_copula(
+    fitted = _construct_fitted_copula(
         CT,
         vd,
         (; θ=θ),
         example,
     )
 
-    return fitted, (
-        ;
-        θ̂=(; θ=θ),
-        optimizer=Optim.summary(res),
-        xtol=xtol,
-        converged=Optim.converged(res),
-        iterations=Optim.iterations(res),
-    )
+    return fitted
 end

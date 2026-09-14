@@ -176,7 +176,7 @@ StatsBase.dof(::ExtremeValueCopula{2,<:EmpiricalEVTail}) = 0
 _available_fitting_methods(::Type{<:ExtremeValueCopula{2,<:EmpiricalEVTail}}, d) = (:ols, :cfg, :pickands)
 """
     _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
-         grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...) -> (C, meta)
+         grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...) -> C
 
 Empirical bivariate extreme value copula fitting via the Pickands function
 (`:ols`, `:cfg`, `:pickands`).
@@ -189,15 +189,14 @@ Empirical bivariate extreme value copula fitting via the Pickands function
 - `kwargs...`: forwarded to `EmpiricalEVTail/EmpiricalEVCopula`.
 
 # Returns
-- `(C, meta)` where `C::EmpiricalEVCopula` and
-`meta = (; emp_kind = :ev_tail, pseudo_values, method = :ols|:cfg|:pickands, grid, eps)`.
+The fitted `EmpiricalEVCopula`.
 
 **Note**: Method with no free parameters (`dof=0`).
 """
 function _fit(::Type{<:ExtremeValueCopula{2,<:EmpiricalEVTail}}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}}; grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true, kwargs...)
     m = typeof(method).parameters[1]  # :ols | :cfg | :pickands
     C = EmpiricalEVCopula(U; method=m, grid=grid, eps=eps, pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:ev_tail, pseudo_values, method=m, grid, eps)
+    return C
 end
 
 # ==============================================================================
@@ -240,16 +239,13 @@ See also: [`EmpiricalEVCopula`](@ref), [`DiscreteSpectralTail`](@ref),
 [`ExtremeValueCopula`](@ref), [`ℓ`](@ref), [`Distributions.fit`](@ref).
 """
 struct EmpiricalEVMultivariateTail <: DiscreteSpectralBackedTail
-    d::Int
-    method::Symbol
-    degree::Int
     spectral::DiscreteSpectralTail{Float64}
-    projection_rmse::Float64
 end
 
 Base.eltype(::EmpiricalEVMultivariateTail) = Float64
 Distributions.params(t::EmpiricalEVMultivariateTail) = (B = t.spectral.B,)
-_is_valid_in_dim(t::EmpiricalEVMultivariateTail, d::Int) = t.d == d
+_is_valid_in_dim(t::EmpiricalEVMultivariateTail, d::Int) =
+    size(t.spectral.B, 1) == d
 A(t::EmpiricalEVMultivariateTail, w::NTuple{d,<:Real}) where {d} = ℓ(t, w)
 
 function _empirical_ev_default_degree(d::Int; max_atoms::Int=120)
@@ -513,13 +509,7 @@ function _empirical_ev_project_spectral(pilot::Vector{Float64}, V::Matrix{Float6
     B ./= reshape(rowsums, :, 1)
     spectral = DiscreteSpectralTail(B)
 
-    fitted = Vector{Float64}(undef, size(W, 2))
-    @inbounds for q in eachindex(fitted)
-        fitted[q] = ℓ(spectral, @view W[:, q])
-    end
-    rmse = sqrt(Statistics.mean(abs2, fitted .- pilot))
-
-    return spectral, rmse
+    return DiscreteSpectralTail(B)
 end
 
 function EmpiricalEVMultivariateTail(u::AbstractMatrix; method::Symbol=:ols, degree::Union{Nothing,Int}=nothing, pseudo_values::Bool=true, projection_maxiter::Int=1500,)
@@ -533,9 +523,9 @@ function EmpiricalEVMultivariateTail(u::AbstractMatrix; method::Symbol=:ols, deg
     U = _empirical_ev_uniforms(u, pseudo_values)
     V = _empirical_ev_simplex_grid(d, deg)
     pilot = _empirical_ev_pilot(U, V, method)
-    spectral, rmse = _empirical_ev_project_spectral(pilot, V; maxiter=projection_maxiter,)
+    spectral = _empirical_ev_project_spectral(pilot, V; maxiter=projection_maxiter,)
 
-    return EmpiricalEVMultivariateTail(d, method, deg, spectral, rmse)
+    return EmpiricalEVMultivariateTail(spectral)
 end
 
 """
@@ -620,7 +610,7 @@ function _fit(::Type{EmpiricalEVCopula{2}}, U,
     m = typeof(method).parameters[1]
     C = EmpiricalEVCopula{2}(U; method=m, grid=grid, eps=eps,
                              pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:ev_tail, pseudo_values, method=m, grid, eps)
+    return C
 end
 
 function _fit(::Type{EmpiricalEVCopula}, U,
@@ -629,8 +619,7 @@ function _fit(::Type{EmpiricalEVCopula}, U,
     d = size(U, 1)
     m = typeof(method).parameters[1]
     C = EmpiricalEVCopula{d}(U; method=m, pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=d == 2 ? :ev_tail : :ev_multivariate_tail,
-               pseudo_values, method=m)
+    return C
 end
 
 function _fit(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, U,
@@ -638,7 +627,7 @@ function _fit(::Type{<:ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}}, U,
               pseudo_values::Bool=true, kwargs...) where {d}
     m = typeof(method).parameters[1]
     C = EmpiricalEVCopula{d}(U; method=m, pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:ev_multivariate_tail, pseudo_values, method=m)
+    return C
 end
 
 function Distributions._logpdf(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}, u,) where {d}

@@ -177,10 +177,7 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
             autodiff= ADTypes.AutoForwardDiff()
         )
         θ = tanh(Optim.minimizer(res)[1])
-        return CT(d, θ), (; θ̂=(θ=θ,),
-                    optimizer  = Optim.summary(res),
-                    converged  = Optim.converged(res),
-                    iterations = Optim.iterations(res))
+        return CT(d, θ)
     end
 
     # → 2. General FGM (d > 2) with log-barrier or soft barrier
@@ -220,9 +217,5 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
     # Optimise in θ-space directly (no need for unbound/rebound)
     res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
     θhat = Optim.minimizer(res)
-    return FGMCopula(d, θhat),
-        (; θ̂ = (θ = θhat,),
-           optimizer  = Optim.summary(res),
-           converged  = Optim.converged(res),
-           iterations = Optim.iterations(res))
+    return FGMCopula(d, θhat)
 end

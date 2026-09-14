@@ -44,6 +44,7 @@ generator machinery.
 
 ```@example nested
 using Copulas, Distributions
+using StatsBase: coef
 using Copulas: ClaytonGenerator, JoeGenerator
 
 # Outer Clayton(2) over two inner Clayton panels on dims 1:2 and 3:4.
@@ -123,7 +124,7 @@ U = rand(Random.MersenneTwister(1), Ctrue, 300)
 Cstart = NestedArchimedeanCopula(ClaytonGenerator(1.0);
              children = [ClaytonCopula(2, 3.0), ClaytonCopula(2, 3.0)])
 M = fit(CopulaModel, Cstart, U)
-fitteddistribution(M)
+fitted_distribution(M)
 ```
 
 The optimiser runs in an unconstrained space through a *parametrisation* — a map
@@ -142,7 +143,7 @@ nest = α -> NestedArchimedeanCopula(ClaytonGenerator(exp(α[1]));
     children = [ClaytonCopula(2, exp(α[1]) + softplus(α[2])),
                 ClaytonCopula(2, exp(α[1]) + softplus(α[3]))])
 Mn = fit(CopulaModel, nest, [0.0, 0.0, 0.0], U)
-fitteddistribution(Mn) # inner θ ≥ outer θ by construction
+fitted_distribution(Mn) # inner θ ≥ outer θ by construction
 ```
 
 Or share one ``\theta`` across the root and both panels — a single free parameter:
@@ -152,11 +153,12 @@ recon = α -> (θ = exp(α[1]);
     NestedArchimedeanCopula(ClaytonGenerator(θ);
         children = [ClaytonCopula(2, θ), ClaytonCopula(2, θ)]))
 Ms = fit(CopulaModel, recon, [0.0], U)
-fitteddistribution(Ms) # the root and both panels share one parameter by construction
+fitted_distribution(Ms) # the root and both panels share one parameter by construction
+coef(Ms)                 # one fitted free coordinate
 ```
 
 `fit(C0, U)` is a shorthand returning just the fitted copula; for the custom form
-use `fitteddistribution(fit(CopulaModel, reparam, init, U))`.
+use `fitted_distribution(fit(CopulaModel, reparam, init, U))`.
 
 ## Precision
 

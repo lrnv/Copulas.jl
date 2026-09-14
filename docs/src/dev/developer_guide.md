@@ -255,38 +255,15 @@ internal and must not be used by downstream code.
 The fitting interface allows your copula to work with `fit(::Type{CopulaModel}, ...)`
 and the general estimation framework.
 
-### Implementing a custom fitting method
+### Implementing a fitting method inside Copulas.jl
 
-Downstream packages can add a fitting route through two public, deliberately
-small extension points. A custom estimator does not need Copulas.jl's internal
-parameter transformations merely to return its fitted copula.
+Estimator registration and execution are intentionally not public extension
+APIs. In-package contributors use the internal hooks below; downstream code
+must not depend on these names or their return conventions.
 
-| Method                              | Purpose                                                       |
-| ----------------------------------- | ------------------------------------------------------------- |
-| `fitting_methods(CT, ::Val{d})`     | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
-| `fit_copula(CT, U, ::Val{:method})` | Executes the estimator and returns `(copula, metadata)`        |
-
-Minimal skeleton for a custom fitting method:
-
-```julia
-Copulas.fitting_methods(::Type{MyCopula}, ::Val{d}) where {d} = (:mymethod,)
-
-function Copulas.fit_copula(::Type{MyCopula}, U, ::Val{:mymethod})
-    θ̂ = .... # compute the estimate
-    fitted = MyCopula(size(U, 1), θ̂)
-    return fitted, (; free_parameters=(; θ=θ̂),
-                     converged=true, iterations=1)
-end
-```
-
-The metadata must be a `NamedTuple`. `free_parameters` and
-`fixed_parameters`, when provided, are themselves named tuples; additional
-entries such as `objective`, `converged`, and `iterations` are retained as fit
-diagnostics. Covariance is intentionally absent: uncertainty is computed later
-from the resulting `CopulaModel` with [`infer`](@ref).
-
-In-package contributors may alternatively reuse the generic fitting engine.
-The hooks below are internal and are not a downstream compatibility contract.
+Maximum pseudo-likelihood belongs to the public `fit` layer. Internal
+likelihood implementations register `:mle`, while `fit` performs the rank
+transformation required by an explicit `method=:mpl` request.
 
 ### Opting into generic fitting methods
 
@@ -812,18 +789,18 @@ rand(D, 10)
 ### Fitting interface and integration
 
 To make the copula compatible with `Distributions.fit` and the unified `CopulaModel` interface,
-we provide a minimal `fit_copula` definition using a dependence-based measure — in this case, **Gini’s γ**.
+we provide a minimal internal `_fit` definition using a dependence-based measure — in this case, **Gini’s γ**.
 
 ```@example generic_copula_example
 
-Copulas.fitting_methods(::Type{<:MardiaCopula}, ::Val{d}) where {d} = (:igamma,)
+Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d) = (:igamma,)
 
-function Copulas.fit_copula(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:igamma})
+function Copulas._fit(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:igamma})
     γ̂ = Copulas.corgini(U')[1, 2]
     θ  = sign(γ̂) * abs(γ̂)^(1/3)
     θ  = clamp(θ, -1.0, 1.0)
     Ĉ = MardiaCopula(2, θ)
-    return Ĉ, (; free_parameters=(; θ), γ̂, method=:igamma)
+    return Ĉ
 end
 ```
 
@@ -840,7 +817,7 @@ Copulas._example(::Type{<:MardiaCopula}, d::Int) = MardiaCopula(2, 0.5)
 
 And we need to change our availiable methods: 
 ```@example generic_copula_example
-Copulas.fitting_methods(::Type{<:MardiaCopula}, ::Val{d}) where {d} =
+Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d) =
     (:igamma, :itau, :irho, :ibeta)
 ```
 
@@ -998,7 +975,7 @@ After implementing and documenting `MyCopula`:
    `MyCopula(d, ...)` constructors and subjects every representative to the
    family-wide operation contracts. Constructors must infer their concrete
    family without a return union. Constructor keywords and exceptional
-   numerical tolerances remain optional metadata.
+   numerical tolerances remain explicit case annotations.
 2. Add another bestiary entry whenever another dimension, representation or
     parameter regime exercises materially different code. Every such entry receives
     the applicable public-operation contracts.

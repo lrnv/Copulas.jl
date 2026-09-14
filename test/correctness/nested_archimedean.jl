@@ -499,7 +499,6 @@ end
         M = Distributions.fit(Copulas.CopulaModel, Cstart, U)
         Chat = M.result
         @test Chat isa NestedArchimedeanCopula
-        @test M.converged
         # Generators stayed in the Clayton family (no collapse / type change).
         @test Chat.G isa ClaytonGenerator
         @test Chat.children[1][1].G isa ClaytonGenerator
@@ -511,12 +510,12 @@ end
         # Fitted log-likelihood beats the (wrong) starting point.
         @test Distributions.loglikelihood(Chat, U) > Distributions.loglikelihood(Cstart, U)
 
-        # Model coefficients are the three free optimization coordinates;
-        # natural generator parameters remain available from the fitted tree.
+        # Model coefficients are the natural fitted generator parameters.
         @test length(StatsBase.coef(M)) == 3
         @test StatsBase.dof(M) == 3
-        @test StatsBase.coef(M) == M.method_details.free_parameters.α
-        @test StatsBase.coefnames(M) == ["α₁", "α₂", "α₃"]
+        @test StatsBase.coef(M) ≈ [Chat.G.θ, Chat.children[1][1].G.θ,
+                                   Chat.children[2][1].G.θ]
+        @test StatsBase.coefnames(M) == ["G.θ", "G[1].θ", "G[2].θ"]
 
         # A small mixed-family fit exercises family-specific parameter
         # unbinding/rebuilding without another statistical recovery workload.
@@ -545,6 +544,7 @@ end
         Mn = Distributions.fit(Copulas.CopulaModel, nest, [0.0, 0.0], U)
         @test rootθ(Mn) ≤ childθ(Mn)                  # nesting enforced by the user's reparam
         @test StatsBase.dof(Mn) == 2
+        @test StatsBase.coefnames(Mn) == ["α1", "α2"]
 
         # custom reparam SHARING one θ across root and child → 1 free parameter
         recon = α -> (θ = exp(α[1]);
@@ -552,6 +552,7 @@ end
                                     children = [ClaytonCopula{2}(θ)]))
         Ms = Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U)
         @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
+        @test StatsBase.coefnames(Ms) == ["α1"]
         @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
 
         # Arbitrary-depth, non-Clayton templates preserve every family and

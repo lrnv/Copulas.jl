@@ -227,7 +227,7 @@ StatsBase.dof(::BernsteinCopula) = 0
 _available_fitting_methods(::Type{<:BernsteinCopula}, d) = (:bernstein,)
 """
     _fit(::Type{<:BernsteinCopula}, U, ::Val{:bernstein};
-         m::Union{Int,Tuple,Nothing}=nothing, pseudo_values::Bool=true, kwargs...) -> (C, meta)
+         m::Union{Int,Tuple,Nothing}=nothing, pseudo_values::Bool=true, kwargs...) -> C
 
 Empirical plug-in fitting of `BernsteinCopula` based on `U`, using the empirical copula and (optionally) a degree `m` per dimension.
 
@@ -239,8 +239,7 @@ or `nothing` for automatic selection.
 - `kwargs...`: forwarded to the `BernsteinCopula` constructor.
 
 # Returns
-- `(C, meta)` where `C::BernsteinCopula` and
-`meta = (; emp_kind = :bernstein, pseudo_values, m = C.m)`.
+The fitted `BernsteinCopula`.
 
 **Note**: Method with no free parameters (`dof=0`).
 """
@@ -248,7 +247,7 @@ function _fit(::Type{<:BernsteinCopula}, U, ::Val{:bernstein};
               m::Union{Int,Tuple,Nothing}=nothing,
               pseudo_values::Bool=true, kwargs...)
     C = BernsteinCopula(U; m=m, pseudo_values=pseudo_values, kwargs...)
-    return C, (; emp_kind=:bernstein, pseudo_values, m=C.m)
+    return C
 end
 
 function SubsetCopula(C::BernsteinCopula{d}, dims::NTuple{p, Int}) where {d,p}
