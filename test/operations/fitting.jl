@@ -121,7 +121,7 @@ end
     @test inference isa CopulaInference
     @test size(StatsBase.vcov(inference)) ==
           (StatsBase.dof(model), StatsBase.dof(model))
-    @test Copulas.inference_diagnostics(inference).nresamples == 3
+    @test inference.diagnostics.nresamples == 3
     @test !applicable(StatsBase.vcov, model)
     @test_throws ArgumentError fit(CopulaModel, ClaytonCopula{2}, U;
         method=:itau, vcov=true)

@@ -18,16 +18,6 @@ struct CopulaInference{M<:CopulaModel,V<:AbstractMatrix,D<:NamedTuple,B<:NamedTu
     blocks::B
 end
 
-"""
-    inference_diagnostics(I::CopulaInference)
-
-Return method-specific diagnostics recorded by an inference procedure. The
-returned `NamedTuple` always contains `method`; other entries depend on the
-inference procedure. Callers should inspect `keys(inference_diagnostics(I))`
-before using optional diagnostics.
-"""
-inference_diagnostics(I::CopulaInference) = I.diagnostics
-
 ####### Analytical inference kernels.
 
 @inline function _vcov_copula(CT, ::Val{d}, α, example) where {d}
