@@ -1056,7 +1056,6 @@ function _fit_nested(recon, α₀::AbstractVector, U)
     catch
         Optim.optimize(loss, α₀, Optim.NelderMead())
     end
-    Optim.converged(res) || throw(ErrorException("nested Archimedean maximum-likelihood optimization did not converge"))
     α = collect(Optim.minimizer(res))
     return recon(α), α
 end

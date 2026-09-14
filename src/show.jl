@@ -98,18 +98,26 @@ end
 """
 Print dependence metrics if available/supported by the copula C.
 """
+function _has_specialized_copula_method(f, C::Copula{d}) where {d}
+    hasmethod(f, Tuple{typeof(C)}) || return false
+    return which(f, Tuple{typeof(C)}) !== which(f, Tuple{Copula{d}})
+end
+
 function _print_dependence_metrics(io, C)
     _section(io, "Dependence metrics")
     _has(f) = isdefined(Copulas, f) && hasmethod(getfield(Copulas, f), Tuple{typeof(C)})
+    _specialized(f) = _has(f) && _has_specialized_copula_method(getfield(Copulas, f), C)
     shown_any = false
     try
-        if _has(:τ);  _kv(io, "Kendall τ",  Printf.@sprintf("%.4f", Copulas.τ(C)));  shown_any = true; end
+        # Generic τ, γ and ι use Monte Carlo. Avoid making `show` stochastic;
+        # display them only when the family provides a specialization.
+        if _specialized(:τ); _kv(io, "Kendall τ", Printf.@sprintf("%.4f", Copulas.τ(C))); shown_any = true; end
         if _has(:ρ);  _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C)));  shown_any = true; end
         if _has(:β);  _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C)));  shown_any = true; end
-        if _has(:γ);  _kv(io, "Gini γ",     Printf.@sprintf("%.4f", Copulas.γ(C)));  shown_any = true; end
+        if _specialized(:γ); _kv(io, "Gini γ", Printf.@sprintf("%.4f", Copulas.γ(C))); shown_any = true; end
         if _has(:λᵤ); _kv(io, "Upper λᵤ",   Printf.@sprintf("%.4f", Copulas.λᵤ(C))); shown_any = true; end
         if _has(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C))); shown_any = true; end
-        if _has(:ι);  _kv(io, "Entropy ι",  Printf.@sprintf("%.4f", Copulas.ι(C)));  shown_any = true; end
+        if _specialized(:ι); _kv(io, "Entropy ι", Printf.@sprintf("%.4f", Copulas.ι(C))); shown_any = true; end
     catch
         # proceed without failing show
     end

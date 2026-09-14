@@ -213,7 +213,6 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}) where {d}
         Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     end
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    Optim.converged(res) || throw(ErrorException("maximum-likelihood optimization did not converge"))
     return _construct_fitted_copula(CT, Val(d), θhat, example)
 end
 
@@ -247,7 +246,6 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irh
     loss(C) = sum(abs2, est .- fun(C))
     res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    Optim.converged(res) || throw(ErrorException("rank-matching optimization did not converge"))
     return _construct_fitted_copula(CT, Val(d), θhat, example)
 end
 

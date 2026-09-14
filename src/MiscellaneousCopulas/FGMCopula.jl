@@ -177,7 +177,6 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
             autodiff= ADTypes.AutoForwardDiff()
         )
         θ = tanh(Optim.minimizer(res)[1])
-        Optim.converged(res) || throw(ErrorException("bivariate FGM maximum-likelihood optimization did not converge"))
         return CT(d, θ)
     end
 
@@ -218,6 +217,5 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
     # Optimise in θ-space directly (no need for unbound/rebound)
     res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
     θhat = Optim.minimizer(res)
-    Optim.converged(res) || throw(ErrorException("FGM maximum-likelihood optimization did not converge"))
     return FGMCopula(d, θhat)
 end

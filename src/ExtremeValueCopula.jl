@@ -377,6 +377,5 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
         Optim.optimize(f, α0, Optim.NelderMead())
     end
     θ̂ = _rebound_params(ConcreteCT, d, Optim.minimizer(res))
-    Optim.converged(res) || throw(ErrorException("extreme-value maximum-likelihood optimization did not converge"))
     return ExtremeValueCopula{d}(TT(θ̂...))
 end

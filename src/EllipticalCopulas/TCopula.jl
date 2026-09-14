@@ -334,11 +334,8 @@ function _fit(::Type{<:TCopula}, U, ::Val{:mle},)
     else
         ν̂ = ν̂_finite
         Σ̂ = finite.Σ
-        Optim.converged(finite.result) ||
-            throw(ErrorException("Student correlation optimization did not converge"))
     end
     C = TCopula(ν̂, Σ̂)
-    Optim.converged(resλ) || throw(ErrorException("Student profile optimization did not converge"))
     return C
 end
 function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho})

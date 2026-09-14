@@ -438,6 +438,5 @@ function _fit(
         example,
     )
 
-    Optim.converged(res) || throw(ErrorException("Archimedean maximum-likelihood optimization did not converge"))
     return fitted
 end

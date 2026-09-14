@@ -44,6 +44,7 @@ generator machinery.
 
 ```@example nested
 using Copulas, Distributions
+using StatsBase: coef
 using Copulas: ClaytonGenerator, JoeGenerator
 
 # Outer Clayton(2) over two inner Clayton panels on dims 1:2 and 3:4.
