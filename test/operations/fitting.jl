@@ -9,6 +9,12 @@ function Copulas.fit_copula(::Type{PublicFitProtocolProbe}, data, ::Val{:probe};
               converged=true, iterations=1)
 end
 
+struct PublicMPLProtocolProbe <: Copulas.Copula{2} end
+Copulas.fitting_methods(::Type{PublicMPLProtocolProbe}, ::Val{2}) = (:mle,)
+function Copulas.fit_copula(::Type{PublicMPLProtocolProbe}, data, ::Val{:mle}; kwargs...)
+    return IndependentCopula{2}(), (; free_parameters=NamedTuple())
+end
+
 @testset "public downstream fitting protocol" begin
     U = [0.2 0.4 0.6; 0.3 0.5 0.7]
     fitted = fit(PublicFitProtocolProbe, U; method=:probe, offset=0.1)
@@ -18,31 +24,43 @@ end
     @test StatsBase.coef(model) == [Statistics.mean(U) + 0.1]
     @test StatsBase.coefnames(model) == ["estimate"]
     @test StatsBase.dof(model) == 1
-    @test model.method_details.fixed_parameters == (; offset=0.1)
     @test !("offset" in StatsBase.coefnames(model))
-    @test model.iterations == 1
+    _, metadata = Copulas.fit_copula(PublicFitProtocolProbe, U, Val(:probe); offset=0.1)
+    @test metadata.fixed_parameters == (; offset=0.1)
+    @test metadata.iterations == 1
     @test_throws ArgumentError infer(model)
     inference = infer(model; method=:bootstrap, nresamples=3,
                       rng=StableRNG(48_099))
     @test inference isa CopulaInference
     @test size(StatsBase.vcov(inference)) == (StatsBase.dof(model),
                                               StatsBase.dof(model))
+
+    raw = [2.0 8.0 1.0 5.0; 4.0 1.0 6.0 2.0]
+    mpl = fit(CopulaModel, PublicMPLProtocolProbe, raw;
+              method=:mpl, pseudo_values=false)
+    @test fitteddistribution(mpl) isa IndependentCopula{2}
+    @test :mpl ∉ Copulas.fitting_methods(PublicMPLProtocolProbe, Val(2))
 end
 
 @testset "public Sklar fitting path" begin
     source = SklarDist(ClaytonCopula{2}(1.0), (Normal(), Exponential()))
     data = rand(StableRNG(111), source, 30)
     fitted = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
-                 copula_method=:itau, derived_measures=false)
+                 copula_method=:itau)
     @test fitted isa SklarDist
     @test fitted.C isa ClaytonCopula{2}
 
     model = fit(CopulaModel,
         SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
-        copula_method=:itau, derived_measures=false)
+        copula_method=:itau)
     @test fitteddistribution(model) isa SklarDist
     @test StatsBase.nobs(model) == size(data, 2)
     @test any(startswith("margin_"), StatsBase.coefnames(model))
+    displayed = sprint(show, model)
+    copula_section = split(split(displayed, "[ Copula parameters ]")[2],
+                           "[ Marginals ]")[1]
+    @test occursin("copula_", copula_section)
+    @test !occursin("margin_", copula_section)
     inference = infer(model; method=:bootstrap, nresamples=3,
                       rng=StableRNG(114))
     @test size(StatsBase.vcov(inference)) ==
@@ -53,18 +71,16 @@ end
     @test_throws ArgumentError infer(model; method=:hessian)
 
     ecdf_fit = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
-                   sklar_method=:ecdf, copula_method=:itau, derived_measures=false)
+                   sklar_method=:ecdf, copula_method=:itau)
     @test ecdf_fit isa SklarDist
 
     default_model = fit(CopulaModel,
-        SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
-        derived_measures=false)
+        SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data)
     @test default_model.method === :mle
     @test default_model.method_details.sklar_method === :ifm
 
     empirical_model = fit(CopulaModel,
-        SklarDist{EmpiricalCopula,Tuple{Normal,Exponential}}, data;
-        derived_measures=false)
+        SklarDist{EmpiricalCopula,Tuple{Normal,Exponential}}, data)
     @test empirical_model.method === :deheuvels
 end
 
@@ -73,17 +89,15 @@ end
          4.0 1.0 6.0 2.0 5.0 3.0]
     U = pseudos(X)
 
-    default_fit = fit(CopulaModel, ClaytonCopula{2}, U;
-        derived_measures=false)
+    default_fit = fit(CopulaModel, ClaytonCopula{2}, U)
     mle_fit = fit(CopulaModel, ClaytonCopula{2}, U; method=:mle,
-        pseudo_values=true, derived_measures=false)
+        pseudo_values=true)
     mpl_fit = fit(CopulaModel, ClaytonCopula{2}, X; method=:mpl,
-        pseudo_values=false, derived_measures=false)
+        pseudo_values=false)
     normalized_mpl = fit(CopulaModel, ClaytonCopula{2}, X; method=:mle,
-        pseudo_values=false, derived_measures=false)
+        pseudo_values=false)
     normalized_mle = @test_logs (:warn, r"method=:mpl requires raw observations") fit(
-        CopulaModel, ClaytonCopula{2}, U; method=:mpl, pseudo_values=true,
-        derived_measures=false)
+        CopulaModel, ClaytonCopula{2}, U; method=:mpl, pseudo_values=true)
 
     @test default_fit.method === :mle
     @test mle_fit.method === :mle
@@ -108,8 +122,7 @@ end
 @testset "estimation and inference are separate" begin
     U = rand(StableRNG(112), ClaytonCopula{2}(1.0), 8)
     fitted = fit(ClaytonCopula{2}, U; method=:itau)
-    model = fit(CopulaModel, ClaytonCopula{2}, U; method=:itau,
-                derived_measures=false)
+    model = fit(CopulaModel, ClaytonCopula{2}, U; method=:itau)
     @test fitted isa ClaytonCopula{2}
     @test !(fitted isa CopulaModel)
     @test params(fitted) == params(fitteddistribution(model))
@@ -121,9 +134,9 @@ end
     @test Copulas.inference_diagnostics(inference).nresamples == 3
     @test !applicable(StatsBase.vcov, model)
     @test_throws ArgumentError fit(CopulaModel, ClaytonCopula{2}, U;
-        method=:itau, vcov=true, derived_measures=false)
+        method=:itau, vcov=true)
     @test_throws ArgumentError fit(CopulaModel, ClaytonCopula{2}, U;
-        method=:itau, vcov_method=:bootstrap, derived_measures=false)
+        method=:itau, vcov_method=:bootstrap)
     @test_throws ArgumentError infer(model; method=:invalid)
 end
 
@@ -136,7 +149,7 @@ end
     families = (Rotated90Copula, Rotated180Copula, Rotated270Copula)
     masks = ((true, false), (true, true), (false, true))
     for (target, family, mask) in zip(targets, families, masks)
-        fitted = fit(target, U; method=:itau, derived_measures=false)
+        fitted = fit(target, U; method=:itau)
         @test fitted isa family
         @test Copulas.basecopula(fitted) isa ClaytonCopula{2}
         @test Copulas.flipmask(fitted) == mask
@@ -146,7 +159,7 @@ end
 @testset "bivariate Student rank matching" begin
     source = TCopula{2}(4.0, [1.0 0.55; 0.55 1.0])
     U = rand(StableRNG(316), source, 2_000)
-    fitted = fit(TCopula{2}, U; method=:itau_irho, derived_measures=false)
+    fitted = fit(TCopula{2}, U; method=:itau_irho)
     @test fitted isa TCopula{2}
     @test fitted.Σ[1, 2] ≈ sinpi(StatsBase.corkendall(U')[1, 2] / 2)
     @test Copulas.ρ(fitted) ≈ StatsBase.corspearman(U')[1, 2] atol=2e-3
@@ -170,7 +183,7 @@ end
     U = Matrix{Float64}(undef, 2, length(z1))
     U[1, :] .= cdf.(N01, z1)
     U[2, :] .= cdf.(N01, z2)
-    fitted = fit(GaussianCopula, U; method=:mle, derived_measures=false,)
+    fitted = fit(GaussianCopula, U; method=:mle,)
     @test fitted isa GaussianCopula{2}
     @test fitted.Σ[1, 2] ≈ 0.5561662371678145 atol=1e-8
     @test loglikelihood(fitted, U) ≈ 5.140188516707351 atol=1e-10
@@ -182,7 +195,7 @@ end
     Σ = [ρ^abs(i - j) for i in 1:d, j in 1:d]
     source = TCopula(4.0, copy(Σ))
     U = rand(StableRNG(477), source, 1_000)
-    model = fit(CopulaModel, TCopula, U; method=:mle, derived_measures=false,)
+    model = fit(CopulaModel, TCopula, U; method=:mle,)
     fitted = fitteddistribution(model)
     θ = params(fitted)
     @test model.converged
@@ -193,7 +206,7 @@ end
     @test maximum(abs.(LinearAlgebra.diag(θ.Σ) .- 1),) < 1e-12
     # The Student profile contains the Gaussian copula as ν = Inf,
     # so its fitted likelihood must not be worse than that endpoint.
-    gaussian = fit(GaussianCopula,U; method=:mle, derived_measures=false,)
+    gaussian = fit(GaussianCopula,U; method=:mle,)
     @test loglikelihood(fitted, U) >= loglikelihood(gaussian, U) - 1e-8
     @test model.method_details.profile_upper >= 0.5
     @test model.method_details.profile_expansions >= 0
@@ -205,7 +218,7 @@ end
     Σ = [ρ^abs(i - j) for i in 1:d, j in 1:d]
     source = TCopula(1.0, copy(Σ))
     U = rand(StableRNG(478), source, 1_500)
-    model = fit(CopulaModel, TCopula, U; method=:mle, derived_measures=false,)
+    model = fit(CopulaModel, TCopula, U; method=:mle,)
     fitted = fitteddistribution(model)
     @test model.converged
     @test 0 < params(fitted).ν < 2
@@ -224,7 +237,7 @@ end
                      method, dimension)
             push!(selected, route)
             fitted = fit(ExtremeValueCopula, U; method,
-                         derived_measures=false, kwargs...)
+                         kwargs...)
             @test fitted isa ExtremeValueCopula{size(U, 1)}
             push!(checked, route)
         end
@@ -335,8 +348,8 @@ end
                 U = pseudos(U)
             end
             route_kwargs = C isa EmpiricalEVCopula ? (d == 2 ? (; grid=21) : (; degree=1)) :
-                C isa SurvivalCopula ? (; flips=C.flipmask) : (;)
-            fitted = fit( CT, U, method; derived_measures=false, route_kwargs...)
+                C isa SurvivalCopula ? (; flips=C.flipmask) : ()
+            fitted = fit( CT, U, method; route_kwargs...)
             @test fitted isa Copulas.Copula{d}
 
             if method === :mle && is_absolutely_continuous(C)
@@ -382,14 +395,14 @@ end
 
 @testset "positional fitting adapters" begin
     U = rand(StableRNG(20_050), ClaytonCopula{2}(1.0), 12)
-    @test fit(ClaytonCopula{2}, U, :itau; derived_measures=false) isa ClaytonCopula{2}
-    @test fit(CopulaModel, ClaytonCopula{2}, U, :itau; derived_measures=false) isa CopulaModel
+    @test fit(ClaytonCopula{2}, U, :itau) isa ClaytonCopula{2}
+    @test fit(CopulaModel, ClaytonCopula{2}, U, :itau) isa CopulaModel
 
     D = SklarDist(ClaytonCopula{2}(1.0), (Normal(), Exponential()))
     X = rand(StableRNG(20_051), D, 12)
     family = SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}
-    @test fit(family, X, :itau; derived_measures=false) isa SklarDist
-    @test fit(CopulaModel, family, X, :itau; derived_measures=false) isa CopulaModel
+    @test fit(family, X, :itau) isa SklarDist
+    @test fit(CopulaModel, family, X, :itau) isa CopulaModel
 end
 
 @testset "empirical fitting routes equal their defining estimators" begin
@@ -408,8 +421,7 @@ end
          () -> EmpiricalEVCopula(U; method=:cfg, grid=21)),
     )
     for (family, method, kwargs, direct) in estimators
-        fitted = fit(family, U; method=method, kwargs...,
-                     derived_measures=false)
+        fitted = fit(family, U; method=method, kwargs...)
         expected = direct()
         @test typeof(fitted) == typeof(expected)
         @test params(fitted) == params(expected)
@@ -417,8 +429,7 @@ end
     end
 
     U3 = _FIXTURE_DATA3
-    fitted3 = fit(EmpiricalEVCopula, U3; method=:cfg, degree=1,
-                  derived_measures=false)
+    fitted3 = fit(EmpiricalEVCopula, U3; method=:cfg, degree=1)
     expected3 = EmpiricalEVCopula(U3; method=:cfg, degree=1)
     @test typeof(fitted3) == typeof(expected3)
     @test params(fitted3) == params(expected3)
@@ -430,13 +441,12 @@ end
     nested = NestedArchimedeanCopula{4}(Copulas.ClaytonGenerator(1.0);
         leaves=[1, 2], children=[ClaytonCopula{2}(2.0)])
     nested_data = rand(StableRNG(20_100), nested, 8)
-    @test fit(nested, nested_data; derived_measures=false) isa
+    @test fit(nested, nested_data) isa
           NestedArchimedeanCopula{4}
 
     generic_data = rand(StableRNG(20_102), ClaytonCopula{2}(1.0), 64)
-    @test fit(ArchimedeanCopula, generic_data; method=:gnz2011, derived_measures=false) isa ArchimedeanCopula{2}
-    @test fit(ExtremeValueCopula, generic_data; method=:ols,
-              derived_measures=false) isa ExtremeValueCopula{2}
+    @test fit(ArchimedeanCopula, generic_data; method=:gnz2011) isa ArchimedeanCopula{2}
+    @test fit(ExtremeValueCopula, generic_data; method=:ols) isa ExtremeValueCopula{2}
 
     non_fittable = (
         LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
@@ -444,7 +454,7 @@ end
     )
     for C in non_fittable
         U = rand(StableRNG(20_101), C, 4)
-        @test_throws Exception fit(typeof(C), U; derived_measures=false)
+        @test_throws Exception fit(typeof(C), U)
     end
 end
 
@@ -462,12 +472,6 @@ end
     @test size(StatsBase.residuals(M)) == size(U)
     @test size(StatsBase.residuals(M; transform=:normal)) == size(U)
     @test_throws ArgumentError StatsBase.residuals(M; transform=:invalid)
-    @test length(StatsBase.predict(M; newdata=U, what=:cdf)) == size(U, 2)
-    @test length(StatsBase.predict(M; newdata=U, what=:pdf)) == size(U, 2)
-    @test size(StatsBase.predict(M; what=:simulate)) == size(U)
-    @test_throws ArgumentError StatsBase.predict(M; what=:cdf)
-    @test_throws ArgumentError StatsBase.predict(M; what=:invalid)
-
     M0 = CopulaModel(EmpiricalCopula(U), 4, 0.0, :empirical)
     @test StatsBase.dof(M0) == 0
     @test isempty(StatsBase.coef(M0))
@@ -561,7 +565,7 @@ end
     R = [ρ^abs(i-j) for i in 1:d, j in 1:d]
     source = GaussianCopula(R)
     U = rand(StableRNG(477), source, n)
-    model = fit(CopulaModel, GaussianCopula, U; method=:mle, derived_measures=false,)
+    model = fit(CopulaModel, GaussianCopula, U; method=:mle,)
     fitted = fitteddistribution(model)
     R̂ = params(fitted).Σ
     @test model.converged

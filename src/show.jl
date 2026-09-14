@@ -98,12 +98,8 @@ end
 """
 Print dependence metrics if available/supported by the copula C.
 """
-function _print_dependence_metrics(io, C; derived_measures::Bool=true)
+function _print_dependence_metrics(io, C)
     _section(io, "Dependence metrics")
-    if !derived_measures
-        println(io, "(suppressed)")
-        return
-    end
     _has(f) = isdefined(Copulas, f) && hasmethod(getfield(Copulas, f), Tuple{typeof(C)})
     shown_any = false
     try
@@ -215,11 +211,16 @@ function Base.show(io::IO, M::CopulaModel)
     if R isa SklarDist
         # [ Dependence metrics ] section
         C  = M.result isa SklarDist ? M.result.C : M.result
-        _print_dependence_metrics(io, C; derived_measures=get(M.method_details, :derived_measures, true))
+        _print_dependence_metrics(io, C)
 
         # [ Copula parameters ] section
-        θ  = StatsBase.coef(M)
+        θ = StatsBase.coef(M)
         nm = StatsBase.coefnames(M)
+        if haskey(M.method_details, :parameter_blocks)
+            copula_block = M.method_details.parameter_blocks.copula
+            θ = θ[copula_block]
+            nm = nm[copula_block]
+        end
         _print_param_section(io, "Copula parameters", nm, θ)
 
         # [ Marginals ] section
@@ -227,7 +228,7 @@ function Base.show(io::IO, M::CopulaModel)
     else
         # Copula-only fits: dependence metrics and parameters
         C0 = M.result isa SklarDist ? M.result.C : M.result
-        _print_dependence_metrics(io, C0; derived_measures=get(M.method_details, :derived_measures, true))
+        _print_dependence_metrics(io, C0)
         θ  = StatsBase.coef(M)
         nm = StatsBase.coefnames(M)
         _print_param_section(io, "Copula parameters", nm, θ)

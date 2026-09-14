@@ -23,8 +23,7 @@ const EM_N = 80
         data = rand(EM_RNG, initial, EM_N)
         fitted = fit_mle(
             initial,
-            data;
-            copula_kwargs=(; derived_measures=false),
+            data,
         )
 
         @test fitted isa SklarDist
@@ -167,8 +166,7 @@ const EM_N = 80
         all_mixture_data = rand(EM_RNG, all_mixture_margins, EM_N)
         all_mixture_fit = fit_mle(
             all_mixture_margins,
-            all_mixture_data;
-            copula_kwargs=(; derived_measures=false),
+            all_mixture_data,
         )
         @test all(margin -> margin isa MixtureModel, all_mixture_fit.m)
     end

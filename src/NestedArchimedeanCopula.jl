@@ -1082,14 +1082,14 @@ end
 # Default: reparametrise a fixed TEMPLATE tree (its shape + families are kept fixed,
 # only the scalar θ of every node is optimised).
 function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, U;
-        method=:mle, derived_measures=true, kwargs...) where {d}
+        method=:mle, kwargs...) where {d}
     _reject_inference_fit_keywords((; kwargs...))
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     _validate_nested_fit_data(U, d)
     fit_spec = _CopulaFitSpec(C0, :mle, (; kwargs...))
     estimate = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0),
                            U, d, size(U, 2); fit_spec)
-    md = (; estimate.meta..., derived_measures)
+    md = estimate.meta
     return CopulaModel(estimate.result, estimate.n, estimate.ll, estimate.method;
         converged=get(md, :converged, true), iterations=get(md, :iterations, 0),
         elapsed_sec=estimate.elapsed_sec, method_details=md)
@@ -1099,7 +1099,7 @@ end
 # initial α₀ — NO template, the map fully defines the tree (so it can share
 # parameters, change the per-generator parametrisation, or encode a constraint).
 function Distributions.fit(::Type{CopulaModel}, reparam, init::AbstractVector, U;
-        method=:mle, derived_measures=true, kwargs...)
+        method=:mle, kwargs...)
     _reject_inference_fit_keywords((; kwargs...))
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     α₀ = collect(float.(init))
@@ -1108,7 +1108,7 @@ function Distributions.fit(::Type{CopulaModel}, reparam, init::AbstractVector, U
     fit_spec = _CopulaFitSpec((; reparam, init=copy(α₀)), :mle,
                               (; kwargs...))
     estimate = _fit_nested(reparam, α₀, U, d, size(U, 2); fit_spec)
-    md = (; estimate.meta..., derived_measures)
+    md = estimate.meta
     return CopulaModel(estimate.result, estimate.n, estimate.ll, estimate.method;
         converged=get(md, :converged, true), iterations=get(md, :iterations, 0),
         elapsed_sec=estimate.elapsed_sec, method_details=md)

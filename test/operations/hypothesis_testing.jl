@@ -442,7 +442,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
             Cnested = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.5); leaves=[1], children=[ClaytonCopula(2, 3.0) => [2, 3]],)
             Unested = rand(Xoshiro(901), Cnested, 30)
 
-            Mnested = fit(CopulaModel, Cnested, Unested; derived_measures=false,)
+            Mnested = fit(CopulaModel, Cnested, Unested)
 
             Mnested_refit = Copulas._refit(Mnested, Unested)
             Cnested_refit = Copulas._copula_of(Mnested_refit)
@@ -465,7 +465,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
             Csurvival = SurvivalCopula(ClaytonCopula(3, 2.5), (1, 3))
             Usurvival = rand(Xoshiro(902), Csurvival, 40)
 
-            Msurvival = fit(CopulaModel, typeof(Csurvival), Usurvival; method=:itau, flips=Csurvival.flipmask, derived_measures=false,)
+            Msurvival = fit(CopulaModel, typeof(Csurvival), Usurvival; method=:itau, flips=Csurvival.flipmask,)
 
             Msurvival_refit = Copulas._refit(Msurvival, Usurvival)
             Csurvival_refit = Copulas._copula_of(Msurvival_refit)
@@ -482,7 +482,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
 
             # Estimator-defining runtime keywords must also survive refitting.
             Uchecker = rand(Xoshiro(907), GaussianCopula(2, 0.4), 36)
-            Mchecker = fit(CopulaModel, CheckerboardCopula, Uchecker; m=3, derived_measures=false,)
+            Mchecker = fit(CopulaModel, CheckerboardCopula, Uchecker; m=3,)
             Mchecker_refit = Copulas._refit(Mchecker, Uchecker)
 
             @test Tuple(Mchecker_refit.result.m) == (3, 3)
@@ -494,7 +494,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
                 0.88 0.22 0.71 0.41 0.59 0.13
             ]
 
-            Mraw = fit(CopulaModel, CheckerboardCopula, Xraw; m=2, pseudo_values=false, derived_measures=false,)
+            Mraw = fit(CopulaModel, CheckerboardCopula, Xraw; m=2, pseudo_values=false,)
 
             Traw = GOFCopulaTest(Mraw; N=1, rng=Xoshiro(908),)
             Vraw = pseudos(Xraw)
@@ -514,7 +514,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
                     NestedArchimedeanCopula(Copulas.ClaytonGenerator(θ); leaves=[1], children=[ClaytonCopula(2, θ + one(θ)) => [2, 3]],)
                 end
 
-                Mcustom = fit(CopulaModel, reparam, [log(1.5)], Unested; derived_measures=false,)
+                Mcustom = fit(CopulaModel, reparam, [log(1.5)], Unested)
                 @test Mcustom.method_details._fit_spec isa Copulas._CopulaFitSpec
                 @test Copulas._refit(Mcustom, Unested) isa CopulaModel
                 @test_nowarn GOFCopulaTest(Mcustom; N=1, rng=Xoshiro(909),)

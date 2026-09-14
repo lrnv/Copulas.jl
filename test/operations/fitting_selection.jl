@@ -15,7 +15,7 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
 @testset "Automatic copula-family selection" begin
     U = rand(StableRNG(436), ClaytonCopula{2}(6.0), 80)
     candidates = (IndependentCopula, ClaytonCopula)
-    M = fit(CopulaModel, Copulas.Copula, U; candidates, derived_measures=false)
+    M = fit(CopulaModel, Copulas.Copula, U; candidates)
     table = selectiontable(M)
     @test M isa CopulaModel
     @test table isa Vector
@@ -34,9 +34,9 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
 
     @testset "Selected fit retains the ordinary estimator" begin
         ordinary = fit(CopulaModel, ClaytonCopula, U;
-            method=:mle, derived_measures=false)
+            method=:mle)
         selected = fit(CopulaModel, Copulas.Copula, U; candidates=(ClaytonCopula,),
-            method=:mle, derived_measures=false)
+            method=:mle)
         @test StatsBase.coef(selected) ≈ StatsBase.coef(ordinary)
         @test selected.ll ≈ ordinary.ll
         @test selected.converged == ordinary.converged
@@ -45,8 +45,7 @@ StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError(
     end
 
     @testset "Information criterion $criterion" for criterion in (:aic, :aicc, :hqc)
-        selected = fit(CopulaModel, Copulas.Copula, U; candidates, criterion,
-            derived_measures=false)
+        selected = fit(CopulaModel, Copulas.Copula, U; candidates, criterion)
         rows = selectiontable(selected)
         @test getproperty(rows[selected.method_details.selected_index], criterion) ==
             minimum(getproperty(row, criterion) for row in rows)

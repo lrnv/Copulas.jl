@@ -22,8 +22,9 @@ end
     inference_diagnostics(I::CopulaInference)
 
 Return method-specific diagnostics recorded by an inference procedure. The
-available entries depend on `I.method`; callers should inspect `keys` rather
-than assume a common set beyond the inference method itself.
+returned `NamedTuple` always contains `method`; other entries depend on the
+inference procedure. Callers should inspect `keys(inference_diagnostics(I))`
+before using optional diagnostics.
 """
 inference_diagnostics(I::CopulaInference) = I.diagnostics
 
@@ -261,7 +262,8 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
         !(M.method in (:itau, :irho, :ibeta, :iupper)) &&
         throw(ArgumentError(
             "Godambe inference is currently defined only for supported rank-matching fits; " *
-            "maximum pseudo-likelihood inference is tracked by issue #468"))
+            "analytical maximum pseudo-likelihood inference is unavailable, so use " *
+            "method=:bootstrap or method=:jackknife when appropriate"))
     C = M.result
     method === :hessian && C isa Union{TCopula,tEVCopula} && throw(ArgumentError(
         "Hessian inference is unavailable because incomplete-beta derivatives are not implemented"))
