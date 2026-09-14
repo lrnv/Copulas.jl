@@ -29,8 +29,19 @@ inference_diagnostics(I::CopulaInference) = I.diagnostics
 
 function _default_inference_method(M::CopulaModel)
     M.result isa SklarDist && return :bootstrap
-    M.method === :mle && return :hessian
-    M.method in (:itau, :irho, :ibeta, :iupper) && return :godambe
+    spec = get(M.method_details, :_fit_spec, nothing)
+    parameters = get(M.method_details, :free_parameters, NamedTuple())
+    d = get(M.method_details, :d, length(fitteddistribution(M)))
+    analytical_coordinates = spec isa _CopulaFitSpec && spec.target isa Type &&
+        parameters isa NamedTuple &&
+        applicable(_unbound_params, spec.target, d, parameters)
+    if M.method === :mle && analytical_coordinates &&
+            !(M.result isa Union{TCopula,tEVCopula,FGMCopula})
+        return :hessian
+    end
+    if M.method in (:itau, :irho, :ibeta, :iupper) && analytical_coordinates
+        return :godambe
+    end
     throw(ArgumentError(
         "no default covariance estimator is defined for fits using method=$(M.method); " *
         "choose an explicit supported inference method"))
@@ -119,6 +130,9 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
     method === :hessian && C isa FGMCopula && throw(ArgumentError(
         "Hessian inference is not implemented for maximum-likelihood FGM fits"))
     target, U, parameters = _inference_inputs(M)
+    d = size(U, 1)
+    applicable(_unbound_params, target, d, parameters) || throw(ArgumentError(
+        "analytical `$method` inference is not implemented for fitting target $target"))
     engine_method = M.method === :mpl ? :mle : M.method
     V, diagnostics = _vcov(target, U, parameters, Val(method), Val(engine_method))
     return V, diagnostics
@@ -130,9 +144,11 @@ end
 Apply an uncertainty-quantification procedure after estimation. `fit` is never
 rerun except by resampling procedures, and `M` is not mutated.
 
-The principled default is `:hessian` for maximum-likelihood fits and
-`:godambe` for supported rank-matching estimators. Fits without a justified
-default raise an `ArgumentError`. Explicit methods are `:hessian`, `:godambe`,
+The principled default is `:hessian` for supported maximum-likelihood fits and
+`:godambe` for supported rank-matching estimators. A fitting extension does not
+acquire analytical inference merely by implementing [`fit_copula`](@ref). Fits
+without a justified default raise an `ArgumentError`. Explicit methods are
+`:hessian`, `:godambe`,
 `:godambe_pairwise`, `:jackknife`, and `:bootstrap`. Bootstrap inference accepts
 `nresamples` and `rng` and records their provenance in the result diagnostics.
 

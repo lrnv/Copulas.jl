@@ -242,8 +242,10 @@ is needed:
 | `:jackknife`         | Leave-one-out refitting of the complete recorded estimator.                                      |
 | `:bootstrap`         | Bootstrap refitting of the complete recorded estimator; accepts `nresamples` and `rng`.        |
 
-The default is `:hessian` after maximum likelihood and `:godambe` after the
-supported rank-matching estimators. There is no generic silent fallback: if a
+The default is `:hessian` after supported maximum-likelihood fits and
+`:godambe` after the supported rank-matching estimators. A downstream fitting
+extension does not implicitly opt into analytical inference. There is no
+generic silent fallback: if a
 method is mathematically unavailable or fails numerically, `infer` throws and
 the user must choose another procedure explicitly.
 

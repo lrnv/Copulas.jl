@@ -18,6 +18,9 @@ end
     @test StatsBase.coef(model) == [Statistics.mean(U) + 0.1]
     @test model.method_details.fixed_parameters == (; offset=0.1)
     @test model.iterations == 1
+    @test_throws ArgumentError infer(model)
+    @test infer(model; method=:bootstrap, nresamples=3,
+                rng=StableRNG(48_099)) isa CopulaInference
 end
 
 @testset "public Sklar fitting path" begin
