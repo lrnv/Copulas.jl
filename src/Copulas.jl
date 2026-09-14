@@ -179,7 +179,7 @@ module Copulas
     export Rotated90Copula, Rotated180Copula, Rotated270Copula
 
     public Copula, Generator, Tail
-    public fitting_methods, fit_copula, inference_diagnostics
+    public fitting_methods, inference_diagnostics
     public fittingmethod
     public basecopula, flipmask, flips
 

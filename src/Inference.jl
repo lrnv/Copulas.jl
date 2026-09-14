@@ -31,7 +31,7 @@ inference_diagnostics(I::CopulaInference) = I.diagnostics
 ####### Analytical inference kernels.
 
 @inline function _vcov_copula(CT, ::Val{d}, α, example) where {d}
-    return _fit_copula(CT, Val(d), _rebound_params(CT, d, α), example)
+    return _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
 end
 
 function _vcov_upper_triangle(A)
@@ -286,7 +286,7 @@ rerun except by resampling procedures, and `M` is not mutated.
 
 The principled default is `:hessian` for supported maximum-likelihood fits and
 `:godambe` for supported rank-matching estimators. A fitting extension does not
-acquire analytical inference merely by implementing [`fit_copula`](@ref). Fits
+acquire analytical inference merely by implementing a fitting route. Fits
 without a justified default raise an `ArgumentError`. Explicit methods are
 `:hessian`, `:godambe`,
 `:godambe_pairwise`, `:jackknife`, and `:bootstrap`. Bootstrap inference accepts

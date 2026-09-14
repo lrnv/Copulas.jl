@@ -305,7 +305,7 @@ _example(CT::Type{<:ExtremeValueCopula}, d) =
     ExtremeValueCopula{d}(tailof(CT)(;
         _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...,
     ))
-_fit_copula(
+_construct_fitted_copula(
     ::Type{<:ExtremeValueCopula},
     ::Val{d},
     θ,

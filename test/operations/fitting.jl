@@ -1,19 +1,19 @@
 # Fitting-operation proof: exercises representative Sklar, empirical, covariance,
 # optimizer, and model-result fitting routes beyond the universal fit contract.
 struct PublicFitProtocolProbe <: Copulas.Copula{2} end
-Copulas.fitting_methods(::Type{PublicFitProtocolProbe}, ::Val{2}) = (:probe,)
-function Copulas.fit_copula(::Type{PublicFitProtocolProbe}, data, ::Val{:probe}; offset=0.0)
+Copulas._available_fitting_methods(::Type{PublicFitProtocolProbe}, ::Int) = (:probe,)
+function Copulas._fit(::Type{PublicFitProtocolProbe}, data, ::Val{:probe}; offset=0.0)
     estimate = Statistics.mean(data) + offset
     return ClaytonCopula{2}(estimate)
 end
 
 struct PublicMPLProtocolProbe <: Copulas.Copula{2} end
-Copulas.fitting_methods(::Type{PublicMPLProtocolProbe}, ::Val{2}) = (:mle,)
-function Copulas.fit_copula(::Type{PublicMPLProtocolProbe}, data, ::Val{:mle}; kwargs...)
+Copulas._available_fitting_methods(::Type{PublicMPLProtocolProbe}, ::Int) = (:mle,)
+function Copulas._fit(::Type{PublicMPLProtocolProbe}, data, ::Val{:mle}; kwargs...)
     return IndependentCopula{2}()
 end
 
-@testset "public downstream fitting protocol" begin
+@testset "internal fitting dispatch" begin
     U = [0.2 0.4 0.6; 0.3 0.5 0.7]
     fitted = fit(PublicFitProtocolProbe, U; method=:probe, offset=0.1)
     model = fit(CopulaModel, PublicFitProtocolProbe, U;
@@ -534,7 +534,7 @@ end
 
     f(x) = begin
         θ = (; θ=x)
-        Cx = Copulas._fit_copula(
+        Cx = Copulas._construct_fitted_copula(
             CT,
             Val(3),
             θ,

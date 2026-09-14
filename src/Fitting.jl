@@ -4,8 +4,7 @@
 #####   - `Distributions.fit(CopulaModel, MyCopulaType, data, method)`
 #####   - `Distributions.fit(MyCopulaType, data, method)`
 #####
-#####  Downstream packages implement the public fitting_methods/fit_copula
-#####  protocol. The underscored fitting machinery below is package-internal.
+#####  The fitting machinery below is package-internal.
 #####
 #####  Or, for simple models, to get access to a few default bindings, you could also override the following:
 #####   - Distributions.params() yielding a NamedTuple of parameters
@@ -210,13 +209,13 @@ types, and invert `_unbound_params` on interior parameters.
 See also: [`_unbound_params`](@ref), [`_example`](@ref), [`_fit`](@ref).
 """
 _rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
-_fit_copula(CT, ::Val{d}, θ, example) where {d} = CT(d, θ...)
+_construct_fitted_copula(CT, ::Val{d}, θ, example) where {d} = CT(d, θ...)
 function _fit(CT::Type{<:Copula}, U, method::Val{:mle})
     return _fit(CT, U, Val(size(U, 1)), method)
 end
 function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}) where {d}
     example = _example(CT, d)
-    cop(α) = _fit_copula(CT, Val(d), _rebound_params(CT, d, α), example)
+    cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
     α₀  = _unbound_params(CT, d, Distributions.params(example))
     loss(C) = -Distributions.loglikelihood(C, U)
     res = try
@@ -226,7 +225,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}) where {d}
     end
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     Optim.converged(res) || throw(ErrorException("maximum-likelihood optimization did not converge"))
-    return _fit_copula(CT, Val(d), θhat, example)
+    return _construct_fitted_copula(CT, Val(d), θhat, example)
 end
 
 """
@@ -250,7 +249,7 @@ end
 function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}) where {d}
     # generic rank-based routine (agnostic to vcov/inference)
     example = _example(CT, d)
-    cop(α) = _fit_copula(CT, Val(d), _rebound_params(CT, d, α), example)
+    cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
     α₀ = _unbound_params(CT, d, Distributions.params(example))
     @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
     fun  = method isa Val{:itau} ? StatsBase.corkendall :
@@ -260,7 +259,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irh
     res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     Optim.converged(res) || throw(ErrorException("rank-matching optimization did not converge"))
-    return _fit_copula(CT, Val(d), θhat, example)
+    return _construct_fitted_copula(CT, Val(d), θhat, example)
 end
 
 
@@ -311,10 +310,10 @@ _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C),
     fitting_methods(::Type{<:Copula}, ::Val{d}) -> Tuple{Vararg{Symbol}}
 
 Return the estimators supported by a copula fitting target in dimension `d`.
-Downstream copula families may extend this method together with
-[`fit_copula`](@ref); they do not need to use Copulas.jl's parameter-transform
-or inference internals. Advertise `:mle`, not `:mpl`, for likelihood fitting:
-maximum pseudo-likelihood is a high-level input-transformation contract and is
+Return the fitting methods registered internally for a copula family. This is
+an inspection interface; it does not make the private estimator dispatch an
+extension API. Advertise `:mle`, not `:mpl`, for likelihood fitting: maximum
+pseudo-likelihood is a high-level input-transformation contract and is
 dispatched to the same `Val{:mle}` estimator after pseudo-observations have been
 constructed.
 """
@@ -331,22 +330,6 @@ function _reject_inference_fit_keywords(kwargs::NamedTuple)
     end
     return nothing
 end
-
-"""
-    fit_copula(::Type{<:Copula}, data, ::Val{method}; kwargs...)
-
-Execute one estimator declared by [`fitting_methods`](@ref) and return the
-fitted copula. Optimizer diagnostics and transformed parameter coordinates are
-local implementation details and must not be returned as metadata. Inference
-is deliberately outside this protocol: an estimator advertises no covariance
-merely by being fittable.
-
-Extensions that support likelihood fitting implement `Val{:mle}` only. Public
-`method=:mpl` requests are normalized by `fit` before this function is called,
-so extensions must neither advertise nor implement a separate `:mpl` route.
-"""
-fit_copula(CT::Type{<:Copula}, data, method::Val; kwargs...) =
-    _fit(CT, data, method; kwargs...)
 
 function _default_fitting_method(CT, d)
     available = fitting_methods(CT, Val(d))
@@ -436,9 +419,9 @@ function _run_copula_estimator(CT::Type{<:Copula}, U;
     engine_method = method === :mpl ? :mle : method
     engine_kwargs = !likelihood_method && pseudo_values !== nothing ?
         (; pseudo_values=input_is_pseudo, kwargs...) : (; kwargs...)
-    C = fit_copula(CT, fit_data, Val{engine_method}(); engine_kwargs...)
+    C = _fit(CT, fit_data, Val{engine_method}(); engine_kwargs...)
     C isa Copula{d} || throw(ArgumentError(
-        "fit_copula returned $(typeof(C)); expected a Copula{$d}"))
+        "the fitting implementation returned $(typeof(C)); expected a Copula{$d}"))
     return (; result=C, method, requested_method, input_is_pseudo,
             likelihood_method, fit_data, engine_kwargs)
 end

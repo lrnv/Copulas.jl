@@ -314,7 +314,7 @@ _example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw
 _unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
 _rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)
 
-@inline function _fit_copula(
+@inline function _construct_fitted_copula(
     CT::Type{<:ArchimedeanCopula},
     ::Val{d},
     θ,
@@ -412,7 +412,7 @@ function _fit(
 
     vd = Val(d)
 
-    cop(θ) = _fit_copula(
+    cop(θ) = _construct_fitted_copula(
         CT,
         vd,
         (; θ=θ[1]),
@@ -431,7 +431,7 @@ function _fit(
 
     θ = Optim.minimizer(res)[1]
 
-    fitted = _fit_copula(
+    fitted = _construct_fitted_copula(
         CT,
         vd,
         (; θ=θ),

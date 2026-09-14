@@ -255,46 +255,16 @@ internal and must not be used by downstream code.
 The fitting interface allows your copula to work with `fit(::Type{CopulaModel}, ...)`
 and the general estimation framework.
 
-### Implementing a custom fitting method
+### Implementing a fitting method inside Copulas.jl
 
-Downstream packages can add a fitting route through two public, deliberately
-small extension points. A custom estimator does not need Copulas.jl's internal
-parameter transformations merely to return its fitted copula.
+Estimator execution is intentionally not a public extension API. In-package
+contributors register a route with the internal hooks below; downstream code
+must not depend on these names. The public [`fitting_methods`](@ref) function is
+an inspection interface for the methods already supplied by a family.
 
-| Method                              | Purpose                                                       |
-| ----------------------------------- | ------------------------------------------------------------- |
-| `fitting_methods(CT, ::Val{d})`     | Declares supported methods (`:mle`, `:itau`, `:ibeta`, etc.)  |
-| `fit_copula(CT, U, ::Val{:method})` | Executes the estimator and returns the fitted copula            |
-
-Minimal skeleton for a custom fitting method:
-
-```julia
-Copulas.fitting_methods(::Type{MyCopula}, ::Val{d}) where {d} = (:mymethod,)
-
-function Copulas.fit_copula(::Type{MyCopula}, U, ::Val{:mymethod})
-    θ̂ = .... # compute the estimate
-    return MyCopula(size(U, 1), θ̂)
-end
-```
-
-The fitted distribution is the complete return value. Its natural parameters
-are obtained from `params`, while the high-level layer already knows the input,
-method, target, and keywords required for reproducible refitting. Optimizer
-summaries, transformed coordinates, objectives, and iteration counts remain
-local to the estimator and must not be returned as fitting metadata.
-Covariance is intentionally absent: uncertainty is computed later from the
-resulting `CopulaModel` with [`infer`](@ref).
-
-Likelihood extensions advertise `:mle` and implement
-`fit_copula(CT, U, ::Val{:mle})`. They must not add a separate `:mpl` method.
-Maximum pseudo-likelihood belongs to the public `fit` layer: raw observations
-are converted to pseudo-observations there, and the resulting matrix is passed
-to the extension's `Val{:mle}` estimator. Consequently, an extension that
-supports MLE automatically supports a public `method=:mpl` request while
-maintaining a single numerical fitting implementation.
-
-In-package contributors may alternatively reuse the generic fitting engine.
-The hooks below are internal and are not a downstream compatibility contract.
+Maximum pseudo-likelihood belongs to the public `fit` layer. Internal
+likelihood implementations register `:mle`, while `fit` performs the rank
+transformation required by an explicit `method=:mpl` request.
 
 ### Opting into generic fitting methods
 
@@ -820,13 +790,13 @@ rand(D, 10)
 ### Fitting interface and integration
 
 To make the copula compatible with `Distributions.fit` and the unified `CopulaModel` interface,
-we provide a minimal `fit_copula` definition using a dependence-based measure — in this case, **Gini’s γ**.
+we provide a minimal internal `_fit` definition using a dependence-based measure — in this case, **Gini’s γ**.
 
 ```@example generic_copula_example
 
-Copulas.fitting_methods(::Type{<:MardiaCopula}, ::Val{d}) where {d} = (:igamma,)
+Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d) = (:igamma,)
 
-function Copulas.fit_copula(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:igamma})
+function Copulas._fit(::Type{<:MardiaCopula}, U::AbstractMatrix, ::Val{:igamma})
     γ̂ = Copulas.corgini(U')[1, 2]
     θ  = sign(γ̂) * abs(γ̂)^(1/3)
     θ  = clamp(θ, -1.0, 1.0)
@@ -848,7 +818,7 @@ Copulas._example(::Type{<:MardiaCopula}, d::Int) = MardiaCopula(2, 0.5)
 
 And we need to change our availiable methods: 
 ```@example generic_copula_example
-Copulas.fitting_methods(::Type{<:MardiaCopula}, ::Val{d}) where {d} =
+Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d) =
     (:igamma, :itau, :irho, :ibeta)
 ```
 
