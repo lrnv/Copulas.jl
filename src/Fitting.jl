@@ -4,9 +4,8 @@
 #####   - `Distributions.fit(CopulaModel, MyCopulaType, data, method)`
 #####   - `Distributions.fit(MyCopulaType, data, method)`
 #####
-#####  If you want your copula to be fittable byt he default interface, you can overwrite:
-#####   - _available_fitting_methods() to tell the system which method you allow.
-#####   - _fit(MyCopula, data, Val{:mymethod}) to make the fit.
+#####  Downstream packages implement the public fitting_methods/fit_copula
+#####  protocol. The underscored fitting machinery below is package-internal.
 #####
 #####  Or, for simple models, to get access to a few default bindings, you could also override the following:
 #####   - Distributions.params() yielding a NamedTuple of parameters
@@ -124,6 +123,11 @@ function _refit(M::CopulaModel, U::AbstractMatrix)
     spec isa _CopulaFitSpec || throw(ArgumentError(
         "this fitted model does not store a reproducible fitting specification; " *
         "composite goodness-of-fit refitting is unavailable for this model"))
+
+    if spec.target isa Type && spec.target <: SklarDist
+        return Distributions.fit(CopulaModel, spec.target, U;
+                                 derived_measures=false, spec.kwargs...)
+    end
 
     kwargs = _refit_kwargs(spec.kwargs)
     # Composite GOF refits receive pseudo-observations already. MPL uses the
@@ -293,14 +297,38 @@ See also: [`_fit`](@ref), [`_example`](@ref),
 _available_fitting_methods(::Type{<:Copula}, d) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C), d)
 
+"""
+    fitting_methods(::Type{<:Copula}, ::Val{d}) -> Tuple{Vararg{Symbol}}
+
+Return the estimators supported by a copula fitting target in dimension `d`.
+Downstream copula families may extend this method together with
+[`fit_copula`](@ref); they do not need to use Copulas.jl's parameter-transform
+or inference internals.
+"""
+fitting_methods(CT::Type{<:Copula}, ::Val{d}) where {d} =
+    _available_fitting_methods(CT, d)
+
+"""
+    fit_copula(::Type{<:Copula}, data, ::Val{method}; kwargs...)
+
+Execute one estimator declared by [`fitting_methods`](@ref). An extension must
+return `(copula, metadata)`, where `copula` is the fitted distribution and
+`metadata` is a `NamedTuple`. Supported metadata entries are `converged`,
+`iterations`, `objective`, `free_parameters`, and `fixed_parameters`; both
+parameter entries are `NamedTuple`s. Inference is deliberately outside this
+protocol: an estimator advertises no covariance merely by being fittable.
+"""
+fit_copula(CT::Type{<:Copula}, data, method::Val; kwargs...) =
+    _fit(CT, data, method; kwargs...)
+
 function _default_fitting_method(CT, d)
-    available = _available_fitting_methods(CT, d)
+    available = fitting_methods(CT, Val(d))
     isempty(available) && throw(ArgumentError("No fitting methods available for $CT."))
     return :mle in available ? :mle : first(available)
 end
 
 function _find_method(CT, d, method)
-    avail = _available_fitting_methods(CT, d)
+    avail = fitting_methods(CT, Val(d))
     isempty(avail) && throw(ArgumentError("No fitting methods available for $CT."))
     method === :default && return _default_fitting_method(CT, d)
     method ∉ avail && throw(ArgumentError(
@@ -364,6 +392,11 @@ See also: [`CopulaModel`](@ref), [`selectiontable`](@ref),
 """
 function _estimate_copula(CT::Type{<:Copula}, U;
         method=:default, pseudo_values::Union{Nothing,Bool}=nothing, kwargs...)
+    for keyword in (:vcov, :vcov_method)
+        haskey(kwargs, keyword) && throw(ArgumentError(
+            "`$keyword` is an inference option and is no longer accepted by fit; " *
+            "fit a CopulaModel first, then call infer(model; method=...)"))
+    end
     d, n = size(U)
     requested_method = method === :default ? _default_fitting_method(CT, d) : method
     # MPL is a public preprocessing/metadata contract backed by the MLE
@@ -382,7 +415,7 @@ function _estimate_copula(CT::Type{<:Copula}, U;
     fit_kwargs = likelihood_method ?
         (; pseudo_values=input_is_pseudo, kwargs...) : engine_kwargs
     fit_spec = _CopulaFitSpec(CT, method, fit_kwargs)
-    t = @elapsed (rez = _fit(CT, fit_data, Val{engine_method}(); engine_kwargs...))
+    t = @elapsed (rez = fit_copula(CT, fit_data, Val{engine_method}(); engine_kwargs...))
     C, meta = rez
     ll = Distributions.loglikelihood(C, fit_data)
     meta = (; meta..., requested_method, pseudo_values=input_is_pseudo,
@@ -411,9 +444,11 @@ function _finish_copula_fit(estimate; derived_measures=true)
     (; result, n, ll, method, meta, elapsed_sec, fit_spec, fitting_data) = estimate
     d = size(fitting_data, 1)
 
-    free_parameters = get(meta, :θ̂, NamedTuple())
+    free_parameters = get(meta, :free_parameters,
+                          get(meta, :θ̂, NamedTuple()))
+    fixed_parameters = get(meta, :fixed_parameters, NamedTuple())
     md = (; d, n, method, meta..., free_parameters,
-          fixed_parameters=NamedTuple(), null_ll=0.0, elapsed_sec,
+          fixed_parameters, null_ll=0.0, elapsed_sec,
           derived_measures, U=fitting_data, _fit_spec=fit_spec)
 
     return CopulaModel(result, n, ll, method;
@@ -456,17 +491,52 @@ may therefore differ between margins and need not be maximum likelihood. A
 joint Sklar MLE cannot safely treat those independent calls as MLE building
 blocks without a stronger upstream or Copulas.jl-specific interface.
 
-The result is a `CopulaModel` whose `result` is the fitted `SklarDist`.
-Copulas.jl deliberately does not infer generic covariance semantics for the
-arbitrary marginal estimators selected by `Distributions.fit`. Use
-`fit(SklarDist{...}, X; ...)` when only the fitted distribution is required.
+The result is a `CopulaModel` whose `result` is the fitted `SklarDist`. Calling
+[`infer`](@ref) with a resampling method repeats the complete sequential
+estimator, including every marginal fit and the copula fit. Analytical
+covariance is deliberately not inferred for the arbitrary marginal estimators
+selected by `Distributions.fit`. Use `fit(SklarDist{...}, X; ...)` when only
+the fitted distribution is required.
 
 `SklarDist{CT,TplMargins}` is public here specifically as a fitting target:
 `CT` selects the copula family and `TplMargins == Tuple{M₁,...,M_d}` selects the
 marginal families. This exception does not expose arbitrary storage type
 parameters or the concrete representation of constructed `SklarDist` values.
 """
-function _estimate_sklar(::Type{SklarDist{CT,TplMargins}}, X;
+function _sklar_parameter_metadata(S::SklarDist)
+    names = Symbol[]
+    values = Any[]
+    coordinate = 0
+
+    copula_start = coordinate + 1
+    for (name, value) in pairs(Distributions.params(S.C))
+        push!(names, Symbol(:copula_, name))
+        push!(values, value)
+        coordinate += length(_flatten_params((; value))[2])
+    end
+    copula_stop = coordinate
+
+    margin_blocks = UnitRange{Int}[]
+    for (i, margin) in pairs(S.m)
+        margin_start = coordinate + 1
+        margin_parameters = Distributions.params(margin)
+        parameter_names = margin_parameters isa NamedTuple ?
+            keys(margin_parameters) : ntuple(j -> Symbol(:p, j), length(margin_parameters))
+        for (name, value) in zip(parameter_names, margin_parameters)
+            push!(names, Symbol(:margin_, i, :_, name))
+            push!(values, value)
+            coordinate += length(_flatten_params((; value))[2])
+        end
+        push!(margin_blocks, margin_start:coordinate)
+    end
+
+    parameters = NamedTuple{Tuple(names)}(Tuple(values))
+    blocks = (; copula=copula_start:copula_stop,
+              margins=Tuple(margin_blocks))
+    return parameters, blocks
+end
+
+function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
                          copula_method=:default, sklar_method=:ifm,
                          margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple()) where {CT<:Copulas.Copula,TplMargins<:Tuple}
 
@@ -502,15 +572,19 @@ function _estimate_sklar(::Type{SklarDist{CT,TplMargins}}, X;
     cop_estimate = _estimate_copula(CT, U; method=copula_method, copula_kwargs...)
 
     S = SklarDist(cop_estimate.result, m)
+    free_parameters, parameter_blocks = _sklar_parameter_metadata(S)
 
     # total and null loglikelihood
     ll = Distributions.loglikelihood(S, X)
     null_ll = Distributions.loglikelihood(SklarDist(IndependentCopula(d), m), X)
     meta = (; cop_estimate.meta..., null_ll, sklar_method,
             margins=map(typeof, m), d, n, U,
-            free_parameters=get(cop_estimate.meta, :θ̂, NamedTuple()),
+            free_parameters, parameter_blocks,
             fixed_parameters=NamedTuple(),
-            _fit_spec=cop_estimate.fit_spec)
+            fitting_data=X,
+            _fit_spec=_CopulaFitSpec(T, :sklar,
+                (; copula_method=cop_estimate.method, sklar_method,
+                   margins_kwargs, copula_kwargs)))
     return (; result=S, n, ll, method=cop_estimate.method, meta,
             elapsed_sec=cop_estimate.elapsed_sec)
 end

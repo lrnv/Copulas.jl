@@ -33,6 +33,7 @@ module Copulas
     include("Subsetting.jl")
     include("Conditioning.jl")
     include("Fitting.jl")
+    include("Inference.jl")
     include("Nataf.jl")
 
     # Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
@@ -150,7 +151,7 @@ module Copulas
     include("show.jl")
 
     export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
-    export SklarDist, CopulaModel, fitteddistribution, selectiontable
+    export SklarDist, CopulaModel, CopulaInference, fitteddistribution, infer, selectiontable
     export CopulaTest
     export IndependenceCopulaTest, ExchangeabilityCopulaTest
     export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
@@ -177,6 +178,7 @@ module Copulas
     export Rotated90Copula, Rotated180Copula, Rotated270Copula
 
     public Copula, Generator, Tail
+    public fitting_methods, fit_copula, inference_diagnostics
     public basecopula, flipmask, flips
 
     public ϕ, 𝒲₋₁, max_monotony
