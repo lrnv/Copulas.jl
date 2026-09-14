@@ -25,6 +25,7 @@
     mpl_model = fit(CopulaModel, ClaytonCopula{2}, X;
                     method=:mpl, pseudo_values=false,
                     derived_measures=false)
+    @test Copulas._refit(mpl_model, X; replay_input=true).method === :mpl
     @test_throws ArgumentError infer(mpl_model)
     Ib = infer(mpl_model; method=:bootstrap, nresamples=3,
                rng=StableRNG(48_101))

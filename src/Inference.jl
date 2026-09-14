@@ -55,7 +55,7 @@ function _resampling_covariance(M::CopulaModel, indices; rng, nresamples)
     estimates = Matrix{Float64}(undef, nresamples, p)
     for b in 1:nresamples
         sample = indices(rng)
-        estimates[b, :] .= StatsBase.coef(_refit(M, sample))
+        estimates[b, :] .= StatsBase.coef(_refit(M, sample; replay_input=true))
     end
     return Statistics.cov(estimates; corrected=true)
 end
@@ -85,7 +85,9 @@ function _infer(M::CopulaModel, ::Val{:jackknife})
             keep[k] = j
             k += 1
         end
-        estimates[omitted, :] .= StatsBase.coef(_refit(M, @view data[:, keep]))
+        subset = @view data[:, keep]
+        estimates[omitted, :] .= StatsBase.coef(
+            _refit(M, subset; replay_input=true))
     end
     center = vec(Statistics.mean(estimates; dims=1))
     deviations = estimates .- center'

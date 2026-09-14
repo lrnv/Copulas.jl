@@ -108,18 +108,22 @@ function _refit_kwargs(kwargs::NamedTuple)
 end
 
 """
-    _refit(M::CopulaModel, data)
+    _refit(M::CopulaModel, data; replay_input=false)
 
 Refit the same estimator specification that produced `M`. Copula models receive
 pseudo-observations; Sklar models receive observations on their original scales
 so that every marginal and the copula are re-estimated.
+
+With `replay_input=true`, resampling inference replays the estimator from the
+same input scale as the original call. The default is reserved for composite
+GOF samples that are already pseudo-observations.
 
 This is an internal inference hook. A model is refittable only when its fitting
 entry point recorded a reproducible `_CopulaFitSpec`.
 
 See also: [`_CopulaFitSpec`](@ref), [`_fit`](@ref), [`GOFCopulaTest`](@ref).
 """
-function _refit(M::CopulaModel, U::AbstractMatrix)
+function _refit(M::CopulaModel, U::AbstractMatrix; replay_input::Bool=false)
     spec = get(M.method_details, :_fit_spec, nothing)
     spec isa _CopulaFitSpec || throw(ArgumentError(
         "this fitted model does not store a reproducible fitting specification; " *
@@ -134,6 +138,12 @@ function _refit(M::CopulaModel, U::AbstractMatrix)
     if spec.target isa Type && spec.target <: SklarDist
         return Distributions.fit(CopulaModel, spec.target, U;
                                  derived_measures=false, spec.kwargs...)
+    end
+
+    if replay_input && spec.target isa Type
+        return Distributions.fit(CopulaModel, spec.target, U;
+                                 method=spec.method, derived_measures=false,
+                                 spec.kwargs...)
     end
 
     kwargs = _refit_kwargs(spec.kwargs)
@@ -316,6 +326,8 @@ or inference internals.
 """
 fitting_methods(CT::Type{<:Copula}, ::Val{d}) where {d} =
     _available_fitting_methods(CT, d)
+fitting_methods(::Type{SklarDist}, ::Val{d}) where {d} =
+    _available_fitting_methods(SklarDist, d)
 
 function _reject_inference_fit_keywords(kwargs::NamedTuple)
     for keyword in (:vcov, :vcov_method)
@@ -446,7 +458,7 @@ function _estimate_copula(CT::Type{<:Copula}, U;
         fitting_data_pseudo_values=likelihood_method ? true : input_is_pseudo)
 
     return (; result=C, n, ll, method, meta, elapsed_sec=t, fit_spec,
-            fitting_data=fit_data)
+            fitting_data=fit_data, input_data=U)
 end
 
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
@@ -458,7 +470,8 @@ end
 
 # Assemble a reproducible model around an existing estimate.
 function _finish_copula_fit(estimate; derived_measures=true)
-    (; result, n, ll, method, meta, elapsed_sec, fit_spec, fitting_data) = estimate
+    (; result, n, ll, method, meta, elapsed_sec, fit_spec, fitting_data,
+       input_data) = estimate
     d = size(fitting_data, 1)
 
     free_parameters = get(meta, :free_parameters,
@@ -466,7 +479,8 @@ function _finish_copula_fit(estimate; derived_measures=true)
     fixed_parameters = get(meta, :fixed_parameters, NamedTuple())
     md = (; d, n, method, meta..., free_parameters,
           fixed_parameters, null_ll=0.0, elapsed_sec,
-          derived_measures, U=fitting_data, _fit_spec=fit_spec)
+          derived_measures, U=fitting_data, fitting_data=input_data,
+          _fit_spec=fit_spec)
 
     return CopulaModel(result, n, ll, method;
         converged    = get(md, :converged, true),
