@@ -42,6 +42,8 @@ Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ⁽ᵏ⁾(G::ImplicitTestGenerator, k::Int, t) = ϕ⁽ᵏ⁾(G.inner, k, t)
 Copulas.composition_taylor(o::ImplicitTestGenerator, i::ImplicitTestGenerator, t₀, d::Int) =
     Copulas.composition_taylor_implicit(o.inner, i.inner, t₀, d)
+Copulas._nested_status(o::ImplicitTestGenerator, i::ImplicitTestGenerator, d::Int) =
+    Copulas._nested_status(o.inner, i.inner, d)
 
 # ---------------------------------------------------------------------------
 # Independent reference: nested-Archimedean CDF assembled straight from the
@@ -165,6 +167,37 @@ function implicit_acopula_maxerr(datadir, name, GT, sectors, θroot, θsector; n
 end
 
 @testset "NestedArchimedeanCopula" begin
+    @testset "nesting validity certificates" begin
+        # Certified Clayton/Clayton edge: the child has two actual leaves.
+        C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+                children = [ClaytonCopula{2}(5.0)])
+        @test C isa NestedArchimedeanCopula{2}
+
+        # Same certified family pair, but parameters violate θ_parent <= θ_child.
+        err = try
+            NestedArchimedeanCopula(ClaytonGenerator(5.0);
+                children = [ClaytonCopula{2}(2.0)])
+            nothing
+        catch e
+            e
+        end
+        @test err isa DomainError
+        @test occursin("invalid nested Archimedean edge", sprint(showerror, err))
+        @test occursin("2 leaves", sprint(showerror, err))
+
+        # No analytical certificate for this wrapped edge: distinguish UNKNOWN
+        # from a mathematically certified-but-invalid parameter combination.
+        wrapped = ArchimedeanCopula(2, ImplicitTestGenerator(ClaytonGenerator(5.0)))
+        err = try
+            NestedArchimedeanCopula(ClaytonGenerator(2.0); children = [wrapped])
+            nothing
+        catch e
+            e
+        end
+        @test err isa ArgumentError
+        @test occursin("not certified by Copulas.jl", sprint(showerror, err))
+    end
+
     # -----------------------------------------------------------------------
     # 3. Uncensored density vs external acopula reference log-likelihoods.
     #    Files in test/data/nested/ : 2-level nesting, equal-size sectors with
