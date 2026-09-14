@@ -5,7 +5,8 @@ Copulas.fitting_methods(::Type{PublicFitProtocolProbe}, ::Val{2}) = (:probe,)
 function Copulas.fit_copula(::Type{PublicFitProtocolProbe}, data, ::Val{:probe}; offset=0.0)
     estimate = Statistics.mean(data) + offset
     return IndependentCopula{2}(),
-           (; free_parameters=(estimate,), converged=true, iterations=1)
+           (; free_parameters=(estimate,), fixed_parameters=(; offset),
+              converged=true, iterations=1)
 end
 
 @testset "public downstream fitting protocol" begin
@@ -15,12 +16,13 @@ end
                 method=:probe, offset=0.1)
     @test fitted isa IndependentCopula{2}
     @test StatsBase.coef(model) == [Statistics.mean(U) + 0.1]
+    @test model.method_details.fixed_parameters == (; offset=0.1)
     @test model.iterations == 1
 end
 
 @testset "public Sklar fitting path" begin
     source = SklarDist(ClaytonCopula{2}(1.0), (Normal(), Exponential()))
-    data = rand(StableRNG(111), source, 8)
+    data = rand(StableRNG(111), source, 30)
     fitted = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, data;
                  copula_method=:itau, derived_measures=false)
     @test fitted isa SklarDist

@@ -219,6 +219,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}) where {d}
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return _fit_copula(CT, Val(d), θhat, example), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
+                objective  = Optim.minimum(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
 end
@@ -256,6 +257,7 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irh
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return _fit_copula(CT, Val(d), θhat, example), (; θ̂=θhat,
                 optimizer  = Optim.summary(res),
+                objective  = Optim.minimum(res),
                 converged  = Optim.converged(res),
                 iterations = Optim.iterations(res))
 end
@@ -555,6 +557,7 @@ function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
                          copula_method=:default, sklar_method=:ifm,
                          margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple()) where {CT<:Copulas.Copula,TplMargins<:Tuple}
 
+    started = time()
     # Get methods:
     d, n = size(X)
     sklar_method  = _find_method(SklarDist, d, sklar_method)
@@ -601,7 +604,7 @@ function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
                 (; copula_method=cop_estimate.method, sklar_method,
                    margins_kwargs, copula_kwargs)))
     return (; result=S, n, ll, method=cop_estimate.method, meta,
-            elapsed_sec=cop_estimate.elapsed_sec)
+            elapsed_sec=time() - started)
 end
 
 @inline Distributions.fit(T::Type{<:SklarDist}, X; derived_measures=nothing, kwargs...) =

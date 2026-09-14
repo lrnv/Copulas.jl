@@ -1062,6 +1062,7 @@ function _fit_nested(recon, α₀::AbstractVector, U, d::Int, n::Int;
     # natural generator parameters remain available from the fitted copula.
     md = (; d, n, method = :mle, nparams = length(α₀),
           optimizer = Optim.summary(res), converged = Optim.converged(res),
+          objective = Optim.minimum(res),
           iterations = Optim.iterations(res), elapsed_sec = t,
           free_parameters = (; α = collect(Optim.minimizer(res))),
           fixed_parameters = NamedTuple(),
