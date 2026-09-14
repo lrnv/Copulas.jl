@@ -33,14 +33,16 @@ end
 @testset "bivariate rotation fitting preserves the requested type" begin
     U = [0.12 0.24 0.41 0.63 0.78 0.91;
          0.73 0.88 0.42 0.59 0.11 0.26]
-    families = (Rotated90Copula{2,ClaytonCopula{2}},
-                Rotated180Copula{2,ClaytonCopula{2}},
-                Rotated270Copula{2,ClaytonCopula{2}})
+    targets = (Rotated90Copula{2,ClaytonCopula{2}},
+               Rotated180Copula{2,ClaytonCopula{2}},
+               Rotated270Copula{2,ClaytonCopula{2}})
+    families = (Rotated90Copula, Rotated180Copula, Rotated270Copula)
     masks = ((true, false), (true, true), (false, true))
-    for (family, mask) in zip(families, masks)
-        fitted = fit(family, U; method=:itau, vcov=false,
+    for (target, family, mask) in zip(targets, families, masks)
+        fitted = fit(target, U; method=:itau, vcov=false,
                      derived_measures=false)
         @test fitted isa family
+        @test Copulas.basecopula(fitted) isa ClaytonCopula{2}
         @test Copulas.flipmask(fitted) == mask
     end
 end
