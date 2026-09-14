@@ -285,6 +285,14 @@ entries such as `objective`, `converged`, and `iterations` are retained as fit
 diagnostics. Covariance is intentionally absent: uncertainty is computed later
 from the resulting `CopulaModel` with [`infer`](@ref).
 
+Likelihood extensions advertise `:mle` and implement
+`fit_copula(CT, U, ::Val{:mle})`. They must not add a separate `:mpl` method.
+Maximum pseudo-likelihood belongs to the public `fit` layer: raw observations
+are converted to pseudo-observations there, and the resulting matrix is passed
+to the extension's `Val{:mle}` estimator. Consequently, an extension that
+supports MLE automatically supports a public `method=:mpl` request while
+maintaining a single numerical fitting implementation.
+
 In-package contributors may alternatively reuse the generic fitting engine.
 The hooks below are internal and are not a downstream compatibility contract.
 

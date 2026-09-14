@@ -331,7 +331,7 @@ Notes:
   otherwise to the family's advertised default; either can be replaced
   explicitly.
 - `CopulaModel` retains the estimate and fit evidence (`nobs`, `coef`,
-  `aic`/`bic`, `nullloglikelihood`, residuals, and prediction), while
+  `aic`/`bic`, `nullloglikelihood`, and residuals), while
   `CopulaInference` separately retains `vcov`, `stderror`, and `confint`.
 - For a Bayesian workflow over Sklar models, see the examples section.
 
@@ -339,8 +339,9 @@ Notes:
 
 When inference or diagnostics matter, keep the `CopulaModel` returned by the
 first form of `fit`. It implements the standard statistical-model interface for
-point estimation, including coefficients, information criteria, Rosenblatt
-residuals, and prediction or simulation. Apply `infer` afterwards to compute
+point estimation, including coefficients, information criteria, and Rosenblatt
+residuals. Retrieve the fitted distribution with `fitteddistribution(M)` for
+CDF or density evaluation and simulation. Apply `infer` afterwards to compute
 uncertainty without changing or refitting the point estimate:
 
 ```@example api
@@ -380,7 +381,7 @@ selectiontable(Msel)
 Candidate selection is deliberately explicit: not every family is meaningful
 in every dimension or appropriate for every scientific question. The
 [fitting interface](@ref fitting_interface) documents candidate failures,
-post-fit inference, residuals, prediction, and the interpretation of the
+post-fit inference, residuals, and the interpretation of the
 selection criteria.
 
 ::: info About fitting procedures

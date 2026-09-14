@@ -195,7 +195,6 @@ different questions about the fit:
 | `aic(M)` / `bic(M)`                            | Information criteria from `StatsBase.jl`.                                                            |
 | `coef(M)` / `coefnames(M)`                     | Estimated parameters and their names.                                                             |
 | `residuals(M; transform=:uniform \| :normal)`  | Rosenblatt residuals on `[0,1]` or Normal scale when the fit retains the required observations.  |
-| `predict(M; what=:cdf\|:pdf\|:simulate, ...)`  | CDF/PDF at `newdata`, or simulation (`nsim`; defaults to `nobs(M)` when non-positive).            |
 
 The table is a reference; in practice, diagnostics are best read together.
 Information criteria compare fitted models on the same observations, while
@@ -216,15 +215,6 @@ R  = StatsBase.residuals(M; transform=:uniform)
 RN = StatsBase.residuals(M; transform=:normal)
 (size(R), size(RN))
 ```
-
-```@example fitting_interface
-# Predictions and simulation
-P  = StatsBase.predict(M; what=:cdf, newdata=rand(2, 5))   # CDF at 5 points
-F  = StatsBase.predict(M; what=:pdf, newdata=rand(2, 5))   # PDF at 5 points
-X̂  = StatsBase.predict(M; what=:simulate, nsim=200)       # simulate 200 obs
-(size(P), size(F), size(X̂))
-```
-
 
 
 ## Inference after estimation
@@ -264,15 +254,6 @@ StatsBase.confint(I; level=0.95)
 The same fitted model can be passed to several inference procedures without
 optimizing it again or mutating it. Resampling methods accept explicit controls,
 for example `infer(M; method=:bootstrap, nresamples=500, rng=Xoshiro(42))`.
-
-::: remark Derived dependence measures
-
-On `fit(CopulaModel, ...)`, `derived_measures=false` disables the automatic
-calculation of Kendall's τ, Spearman's ρ, Blomqvist's β, Gini's γ, tail
-coefficients and entropy. This can reduce computation and memory use, but it
-also removes a useful interpretation layer from the printed report.
-
-:::
 
 
 ## Estimating margins and dependence together
@@ -418,8 +399,10 @@ In addition to parametric families (MLE / rank-based), `Copulas.jl` exposes seve
 See the dedicated page for theory, properties, and references: [Empirical models](@ref empirical_copulas).
 
 For empirical models with a density, the **StatsBase / StatsModels** interface works identically:
-you can call `coef`, `aic`, `bic`, `deviance`, `predict`, `residuals`, etc.,  
-and obtain a full `CopulaModel` with the same documented model interface.
+you can call `coef`, `aic`, `bic`, `deviance`, and `residuals`, and obtain a
+full `CopulaModel` with the same documented model interface. Use
+`fitteddistribution(M)` for distribution operations such as CDF evaluation or
+simulation.
 
 The multivariate `EmpiricalEVCopula` projection may contain singular spectral
 components and therefore has no global Lebesgue density. Its quick `fit`
