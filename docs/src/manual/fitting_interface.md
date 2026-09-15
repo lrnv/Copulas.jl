@@ -354,8 +354,8 @@ parameters. No method dominates in every family and sample size.
   observations are converted by `pseudos` before the copula likelihood is
   maximized. This method is available whenever `:mle` is available, but is
   never selected by default.
-- `:itau` — **Kendall inverse**: matches theoretical `tau(C)` to empirical `tau(U)`. Ideal for single-parameter families with a monotone inverse.
-- `:irho` — **Spearman inverse**: analogous to `rho`; can use scalar or matrix objectives (e.g., multivariate Gaussians).
+- `:itau` — **Kendall inverse**: matches theoretical `tau(C)` to empirical `tau(U)`. Ideal for single-parameter families with a monotone inverse. For the elliptical families it is closed form in every dimension: each entry of the correlation matrix is `sinpi(τ̂/2)` of the corresponding pairwise sample coefficient, repaired to the nearest positive-definite correlation matrix when the pairwise entries are not jointly consistent. For `TCopula` the degrees of freedom are then the maximizer of the likelihood with that correlation held fixed.
+- `:irho` — **Spearman inverse**: analogous to `rho`; can use scalar or matrix objectives. For `GaussianCopula` it is the closed form `2 sinpi(ρ̂_S/6)` entrywise.
 - `:ibeta` — **Blomqvist inverse**: scalar; only valid for families with **≤ 1** free parameter.
 - `:itau_irho` — **joint Kendall/Spearman matching** for a bivariate
   `TCopula`: Kendall's tau determines the correlation parameter and Spearman's

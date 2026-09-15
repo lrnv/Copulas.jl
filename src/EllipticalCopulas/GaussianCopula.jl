@@ -220,4 +220,19 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle})
     θ̂ = (; Σ = R̂)
     return GaussianCopula(R̂)
 end
+# Rank inversions are closed form for the Gaussian copula: Kendall's tau is
+# 2 asin(rho) / pi and Spearman's rho is 6 asin(rho / 2) / pi for every pair,
+# so each entry of the correlation matrix inverts the corresponding pairwise
+# sample coefficient exactly. In dimension d > 2 the pairwise matrix need not
+# be positive definite, so it goes through the same repair that starts the
+# likelihood optimizer. In dimension 2 the repair only acts on a perfectly
+# concordant or discordant sample, whose closed-form matrix is singular.
+function _fit(::Type{<:GaussianCopula}, U, ::Val{:itau})
+    τ̂ = StatsBase.corkendall(U')
+    return GaussianCopula(_nearest_correlation(sinpi.(τ̂ ./ 2)))
+end
+function _fit(::Type{<:GaussianCopula}, U, ::Val{:irho})
+    ρ̂ = StatsBase.corspearman(U')
+    return GaussianCopula(_nearest_correlation(2 .* sinpi.(ρ̂ ./ 6)))
+end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)

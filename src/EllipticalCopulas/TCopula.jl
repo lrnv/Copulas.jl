@@ -370,4 +370,34 @@ function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho})
     return C
 end
 
-_available_fitting_methods(::Type{<:TCopula}, d) = d == 2 ? (:mle, :itau_irho) : (:mle,)
+# Kendall inversion for the Student copula. Kendall's tau of an elliptical
+# copula depends on the correlation alone, so the correlation matrix is the
+# same closed-form pairwise inversion as for the Gaussian copula, in every
+# dimension. The degrees of freedom are then the maximizer of the likelihood
+# with that correlation held fixed: the same profile over λ = 1 / ν that
+# `:mle` runs, without the inner correlation optimization at every ν, and
+# with the same Gaussian endpoint λ = 0.
+function _fit(::Type{<:TCopula}, U, ::Val{:itau})
+    R = _nearest_correlation(sinpi.(StatsBase.corkendall(U') ./ 2))
+    L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R)).L
+    ll_gaussian = Distributions.loglikelihood(GaussianCopula(R), U)
+    profile_loss = λ -> begin
+        if iszero(λ) return -ll_gaussian end
+        ν = inv(λ)
+        Z = Distributions.quantile.(Distributions.TDist(ν), U)
+        ll = _t_copula_loglik_factor(ν, L, Z)
+        return isfinite(ll) ? -ll : Inf
+    end
+    upper, _ = _t_profile_upper(profile_loss)
+    resλ = Optim.optimize(profile_loss, zero(upper), upper, Optim.Brent(),)
+    λ̂ = Optim.minimizer(resλ)
+    ll_finite = -profile_loss(λ̂)
+    # Same rule as `:mle`: the Gaussian endpoint wins unless the finite
+    # profile maximum is distinguishable from it.
+    Tll = typeof(float(ll_gaussian))
+    ll_tol = 100 * eps(Tll) * max(one(Tll), abs(ll_gaussian))
+    ν̂ = ll_gaussian >= ll_finite - ll_tol ? Inf : inv(λ̂)
+    return TCopula(ν̂, R)
+end
+
+_available_fitting_methods(::Type{<:TCopula}, d) = d == 2 ? (:mle, :itau, :itau_irho) : (:mle, :itau)

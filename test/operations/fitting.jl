@@ -154,6 +154,72 @@ end
     @test Copulas.ρ(fitted) ≈ StatsBase.corspearman(U')[1, 2] atol=2e-3
 end
 
+@testset "Gaussian rank inversions are closed form" begin
+    source = GaussianCopula(2, 0.6)
+    U = rand(StableRNG(317), source, 2_000)
+    τ̂ = StatsBase.corkendall(U')[1, 2]
+    ρ̂ = StatsBase.corspearman(U')[1, 2]
+    itau = fit(GaussianCopula, U; method=:itau)
+    irho = fit(GaussianCopula, U; method=:irho)
+    @test itau isa GaussianCopula{2}
+    @test irho isa GaussianCopula{2}
+    @test itau.Σ[1, 2] == sinpi(τ̂ / 2)
+    @test irho.Σ[1, 2] == 2 * sinpi(ρ̂ / 6)
+    @test Copulas.τ(itau) ≈ τ̂ atol=1e-14
+    @test Copulas.ρ(irho) ≈ ρ̂ atol=1e-14
+
+    # Above dimension 2 the inversion is pairwise and the matrix must stay
+    # a valid correlation matrix.
+    R = [1.0 0.5 0.3 0.1; 0.5 1.0 0.4 0.2; 0.3 0.4 1.0 0.6; 0.1 0.2 0.6 1.0]
+    U4 = rand(StableRNG(318), GaussianCopula(R), 5_000)
+    for method in (:itau, :irho)
+        fitted = fit(GaussianCopula, U4; method)
+        @test fitted isa GaussianCopula{4}
+        @test maximum(abs.(fitted.Σ .- R)) < 0.03
+        @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(fitted.Σ))
+    end
+    τ̂4 = StatsBase.corkendall(U4')
+    @test fit(GaussianCopula, U4; method=:itau).Σ == sinpi.(τ̂4 ./ 2)
+
+    # Pairwise Kendall coefficients need not be jointly consistent: the
+    # inversion of (0.9, 0.9, -0.9) is not positive definite and is repaired.
+    repaired = Copulas._nearest_correlation([1.0 0.9 0.9; 0.9 1.0 -0.9; 0.9 -0.9 1.0])
+    @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(repaired))
+    @test maximum(abs.(LinearAlgebra.diag(repaired) .- 1)) == 0
+    @test repaired[1, 2] == repaired[1, 3] == -repaired[2, 3]
+    @test 0 < repaired[1, 2] < 0.9
+    R0 = [1.0 0.5 0.3; 0.5 1.0 0.4; 0.3 0.4 1.0]
+    @test Copulas._nearest_correlation(R0) == R0
+end
+
+@testset "Student Kendall inversion profiles degrees of freedom" begin
+    source = TCopula{2}(4.0, [1.0 0.6; 0.6 1.0])
+    U = rand(StableRNG(319), source, 5_000)
+    fitted = fit(TCopula, U; method=:itau)
+    @test fitted isa TCopula{2}
+    @test fitted.Σ[1, 2] == sinpi(StatsBase.corkendall(U')[1, 2] / 2)
+    @test 3 <= fitted.df <= 6
+    # With the correlation held at the Kendall inversion the profile is a
+    # restriction of the MLE profile, so its likelihood cannot exceed the MLE.
+    mle = fit(TCopula, U; method=:mle)
+    @test loglikelihood(fitted, U) <= loglikelihood(mle, U) + 1e-8
+    @test loglikelihood(fitted, U) >= loglikelihood(GaussianCopula(fitted.Σ), U) - 1e-8
+    @test isapprox(fitted.df, mle.df; rtol=0.1)
+
+    d = 3
+    R = [0.55^abs(i - j) for i in 1:d, j in 1:d]
+    U3 = rand(StableRNG(320), TCopula(4.0, copy(R)), 2_000)
+    model = fit(CopulaModel, TCopula, U3; method=:itau)
+    fitted3 = fitted_distribution(model)
+    @test fitted3 isa TCopula{3}
+    @test Copulas.fitting_method(model) === :itau
+    @test fitted3.Σ == sinpi.(StatsBase.corkendall(U3') ./ 2)
+    @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(fitted3.Σ))
+    @test 3 <= fitted3.df <= 6
+    @test :itau in Copulas._available_fitting_methods(TCopula, 3)
+    @test :itau_irho ∉ Copulas._available_fitting_methods(TCopula, 3)
+end
+
 @testset "Gaussian MLE maximizes the copula likelihood" begin
     # Regression test for #477.
     z1 = [
