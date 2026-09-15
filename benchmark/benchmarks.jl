@@ -203,9 +203,16 @@ SUITE["fitting"]["gaussian_mle"] = bench_fitting(
     gaussian_fit_data; 
     method=:mle
 )
+SUITE["fitting"]["gaussian_itau"] = bench_fitting(
+    GaussianCopula,
+    gaussian_fit_data;
+    method=:itau
+)
 student_fit_data = rand(Xoshiro(SEED + 14), student, 2_000)
 SUITE["fitting"]["student_rank_matching"] =
     bench_fitting(TCopula{2}, student_fit_data; method=:itau_irho,)
+SUITE["fitting"]["student_itau"] =
+    bench_fitting(TCopula{2}, student_fit_data; method=:itau,)
 SUITE["fitting"]["sklar_ifm"] = bench_fitting(
     SklarDist{ClaytonCopula,Tuple{Normal,LogNormal,Gamma}},
     sklar_fit_data;
