@@ -71,56 +71,50 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
     return _vcov_finalize(CT, U, θ, d, α, Vα)
 end
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-               ::Val{:godambe}, methodv::Val{method}) where {method}
-    return _vcov_godambe(CT, U, θ, Val(false), Val(:godambe), methodv)
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing) where {method}
+    return _vcov_godambe(CT, U, θ, Val(false), Val(:godambe), methodv; rng, nresamples)
 end
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-               ::Val{:godambe_pairwise}, methodv::Val{method}) where {method}
-    return _vcov_godambe(CT, U, θ, Val(true), Val(:godambe_pairwise), methodv)
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe_pairwise}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing) where {method}
+    return _vcov_godambe(CT, U, θ, Val(true), Val(:godambe_pairwise), methodv; rng, nresamples)
 end
 
-function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-                       pairwisev::Val{pairwise}, vcovv::Val{vcovm},
-                       methodv::Val{method}) where {pairwise,vcovm,method}
-    return _vcov_godambe(CT, U, θ, Val(size(U, 1)), pairwisev, vcovv, methodv)
+function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, pairwisev::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};
+                       rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing) where {pairwise,vcovm,method}
+    return _vcov_godambe(CT, U, θ, Val(size(U, 1)), pairwisev, vcovv, methodv; rng, nresamples)
 end
 
-function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-                       ::Val{d}, ::Val{pairwise}, vcovv::Val{vcovm},
-                       methodv::Val{method}) where {d,pairwise,vcovm,method}
+function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{d}, ::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};rng=Random.default_rng(),
+                       nresamples::Union{Nothing,Integer}=nothing) where {d,pairwise,vcovm,method}
     n = size(U, 2)
     α = _unbound_params(CT, d, θ)
     example = _example(CT, d)
     vd = Val(d)
-    φ = _vcov_dependence_measure(methodv)
+    p = length(α)
+    B = isnothing(nresamples) ? clamp(Int(floor(sqrt(n))), 10, 200) : Int(nresamples)
+    B > 1 || throw(ArgumentError("nresamples must be greater than one"))
+
     if pairwise
         pairwise_φ = _vcov_pairwise_measure(methodv)
         q = d * (d - 1) ÷ 2
-        Dα = ForwardDiff.jacobian(
-            αv -> _vcov_upper_triangle(pairwise_φ(_vcov_copula(CT, vd, αv, example))),
-            α)
-        Dα = reshape(Dα, q, length(α))
-        B = clamp(Int(floor(sqrt(n))), 10, 200)
+        Dα = ForwardDiff.jacobian(αv -> _vcov_upper_triangle(pairwise_φ(_vcov_copula(CT, vd, αv, example))),α)
+        Dα = reshape(Dα, q, p)
         M = Matrix{Float64}(undef, B, q)
         idx = Vector{Int}(undef, n)
-        rng = Random.default_rng()
         @inbounds for b in 1:B
             for i in 1:n
                 idx[i] = rand(rng, 1:n)
             end
-            M[b, :] .= _vcov_upper_triangle(pairwise_φ((@view U[:, idx])'))
+            M[b, :] .= _vcov_upper_triangle(
+                pairwise_φ((@view U[:, idx])'))
         end
     else
+        φ = _vcov_dependence_measure(methodv)
         q = 1
-        Dα = ForwardDiff.jacobian(
-            αv -> [φ(_vcov_copula(CT, vd, αv, example))], α)
-        Dα = reshape(Dα, q, length(α))
-        B = clamp(Int(floor(sqrt(n))), 10, 200)
+        Dα = ForwardDiff.jacobian(αv -> [φ(_vcov_copula(CT, vd, αv, example))], α)
+        Dα = reshape(Dα, q, p)
         M = Matrix{Float64}(undef, B, q)
         idx = Vector{Int}(undef, n)
-        rng = Random.default_rng()
         @inbounds for b in 1:B
             for i in 1:n
                 idx[i] = rand(rng, 1:n)
@@ -128,10 +122,17 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
             M[b, 1] = φ(@view U[:, idx])
         end
     end
+
+    q >= p || throw(ArgumentError("$vcovm inference is underidentified: " * "$q estimating moment(s) for $p parameter(s)"))
+    rankD = LinearAlgebra.rank(Dα)
+    rankD == p || throw(ArgumentError("$vcovm inference is not locally identified: " * "the sensitivity matrix has rank $rankD for $p parameter(s)"))
     Ω = n * Statistics.cov(M; corrected=true)
-    DtD = Dα' * Dα
-    stabilized_inv = inv(DtD + 1e-10LinearAlgebra.I)
-    Vα = stabilized_inv * (Dα' * Ω * Dα) * stabilized_inv / n
+    # For a full-column-rank sensitivity matrix, the least-squares left
+    # inverse is (D'D)^(-1)D'.  Use the rectangular solve directly rather
+    # than regularizing D'D, which would hide an underidentified system.
+    Iq = Matrix{eltype(Dα)}(LinearAlgebra.I, q, q)
+    A = Dα \ Iq
+    Vα = A * Ω * A' / n
     return _vcov_finalize(CT, U, θ, d, α, Vα)
 end
 
@@ -159,16 +160,18 @@ function _default_inference_method(M::CopulaModel)
     analytical_coordinates = spec isa _CopulaFitSpec && spec.target isa Type &&
         parameters isa NamedTuple &&
         applicable(_unbound_params, spec.target, d, parameters)
-    if fitting_method(M) === :mle && analytical_coordinates &&
+    fit_method = fitting_method(M)
+    if fit_method === :mle && analytical_coordinates &&
             !(M.result isa Union{TCopula,tEVCopula,FGMCopula})
         return :hessian
     end
-    if fitting_method(M) in (:itau, :irho, :ibeta, :iupper) && analytical_coordinates
+    if analytical_coordinates && fit_method in (:itau, :irho, :ibeta)
+        return d == 2 ? :godambe : :godambe_pairwise
+    end
+    if analytical_coordinates && fit_method === :iupper && d == 2
         return :godambe
     end
-    throw(ArgumentError(
-        "no default covariance estimator is defined for fits using method=$(fitting_method(M)); " *
-        "choose an explicit supported inference method"))
+    throw(ArgumentError("no default covariance estimator is defined for fits using method=$fit_method; " * "choose an explicit supported inference method"))
 end
 
 function _inference_inputs(M::CopulaModel)
@@ -226,7 +229,7 @@ function _infer(M::CopulaModel, ::Val{:jackknife})
     return (n - 1) / n .* (deviations' * deviations)
 end
 
-function _infer(M::CopulaModel, ::Val{method}) where {method}
+function _infer(M::CopulaModel, ::Val{method}; rng=nothing, nresamples::Union{Nothing,Integer}=nothing) where {method}
     method in (:hessian, :godambe, :godambe_pairwise) || throw(ArgumentError(
         "unknown inference method `$method`; expected :hessian, :godambe, " *
         ":godambe_pairwise, :jackknife, or :bootstrap"))
@@ -253,10 +256,22 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
     target, _, parameters = _inference_inputs(M)
     U = _copula_data(M)
     d = size(U, 1)
+    method === :godambe && d != 2 && throw(ArgumentError(
+        "scalar Godambe inference is defined only for bivariate rank-matching fits; " *
+        "use method=:godambe_pairwise when the fitted estimator uses pairwise moments, " *
+        "or use :bootstrap or :jackknife"))
     applicable(_unbound_params, target, d, parameters) || throw(ArgumentError(
         "analytical `$method` inference is not implemented for fitting target $target"))
     engine_method = fitting_method(M) === :mpl ? :mle : fitting_method(M)
-    return _vcov(target, U, parameters, Val(method), Val(engine_method))
+
+    if method === :hessian
+        (isnothing(rng) && isnothing(nresamples)) || throw(ArgumentError(
+            "`rng` and `nresamples` apply to Godambe/bootstrap inference, not :hessian"))
+        return _vcov(target, U, parameters, Val(method), Val(engine_method))
+    end
+
+    godambe_rng = isnothing(rng) ? Random.default_rng() : rng
+    return _vcov(target, U, parameters, Val(method), Val(engine_method); rng=godambe_rng, nresamples)
 end
 
 """
@@ -265,13 +280,15 @@ end
 Apply an uncertainty-quantification procedure after estimation. `fit` is never
 rerun except by resampling procedures, and `M` is not mutated.
 
-The principled default is `:hessian` for supported maximum-likelihood fits and
-`:godambe` for supported rank-matching estimators. A fitting extension does not
-acquire analytical inference merely by implementing a fitting route. Fits
-without a justified default raise an `ArgumentError`. Explicit methods are
-`:hessian`, `:godambe`,
-`:godambe_pairwise`, `:jackknife`, and `:bootstrap`. Bootstrap inference accepts
-`nresamples` and `rng`; these execution controls are not retained in the result.
+The principled default is `:hessian` for supported maximum-likelihood fits,
+`:godambe` for supported bivariate rank-matching estimators, and
+`:godambe_pairwise` for supported multivariate estimators based on pairwise rank
+moments. A fitting extension does not acquire analytical inference merely by
+implementing a fitting route. Fits without a justified default raise an
+`ArgumentError`. Explicit methods are `:hessian`, `:godambe`,
+`:godambe_pairwise`, `:jackknife`, and `:bootstrap`. Godambe and bootstrap
+inference accept `nresamples` and `rng`; these execution controls are not
+retained in the result.
 
 For a fitted `SklarDist`, the default is `:bootstrap`. Every resample repeats
 the complete estimator: all margins are fitted again, pseudo-observations are
