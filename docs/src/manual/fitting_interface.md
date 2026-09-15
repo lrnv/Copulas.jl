@@ -239,17 +239,18 @@ is needed:
 | Symbol               | Description                                                                                      |
 |:--|:--|
 | `:hessian`           | Inverse observed information (−Hessian of the log-likelihood). Default for `method = :mle`.     |
-| `:godambe`           | Godambe (sandwich) estimator based on score-type functions. Used for rank-based fits.            |
-| `:godambe_pairwise`  | Pairwise Godambe using all variable pairs.                                                       |
+| `:godambe`           | Scalar-moment Godambe for supported bivariate rank-matching fits; accepts `nresamples` and `rng`.  |
+| `:godambe_pairwise`  | Pairwise-moment Godambe for supported multivariate rank fits; accepts `nresamples` and `rng`.     |
 | `:jackknife`         | Leave-one-out refitting of the complete recorded estimator.                                      |
-| `:bootstrap`         | Bootstrap refitting of the complete recorded estimator; accepts `nresamples` and `rng`.        |
+| `:bootstrap`         | Bootstrap refitting of the complete recorded estimator; accepts `nresamples` and `rng`.          |
 
-The default is `:hessian` after supported maximum-likelihood fits and
-`:godambe` after the supported rank-matching estimators. A downstream fitting
-extension does not implicitly opt into analytical inference. There is no
-generic silent fallback: if a
-method is mathematically unavailable or fails numerically, `infer` throws and
-the user must choose another procedure explicitly.
+The default is `:hessian` after supported maximum-likelihood fits,
+`:godambe` after supported bivariate rank-matching fits, and
+`:godambe_pairwise` when a supported multivariate rank estimator is defined by
+pairwise moments. A downstream fitting extension does not implicitly opt into
+analytical inference. There is no generic silent fallback: if a method is
+mathematically unavailable or its sensitivity matrix is rank deficient,
+`infer` throws and the user must choose another procedure explicitly.
 
 Maximum pseudo-likelihood currently has no implicit covariance method. A
 sandwich estimator must reflect the rank preprocessing and is tracked
@@ -264,8 +265,10 @@ StatsBase.confint(I; level=0.95)
 ```
 
 The same fitted model can be passed to several inference procedures without
-optimizing it again or mutating it. Resampling methods accept explicit controls,
-for example `infer(M; method=:bootstrap, nresamples=500, rng=Xoshiro(42))`.
+optimizing it again or mutating it. Bootstrap and Godambe procedures that use
+resampling accept explicit controls, for example
+`infer(M; method=:bootstrap, nresamples=500, rng=Xoshiro(42))` or
+`infer(M; method=:godambe, nresamples=500, rng=Xoshiro(42))`.
 
 
 ## Estimating margins and dependence together
