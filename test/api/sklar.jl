@@ -31,10 +31,10 @@
     @test logcdf(D, X) ≈ log.(cdf(D, X)) atol=5e-4
     @test pdf(D, X) == [pdf(D, column) for column in eachcol(X)]
     @test logpdf(D, X) ≈ log.(pdf(D, X))
-    @test_throws ArgumentError cdf(D, zeros(3))
-    @test_throws ArgumentError cdf(D, zeros(3, 1))
+    @test_throws DimensionMismatch cdf(D, zeros(3))
+    @test_throws DimensionMismatch cdf(D, zeros(3, 1))
     @test_throws DimensionMismatch logpdf(D, zeros(3))
-    @test_throws ArgumentError logpdf(D, zeros(3, 1))
+    @test_throws DimensionMismatch logpdf(D, zeros(3, 1))
     @test loglikelihood(D, X) isa Real
 
     S = subsetdims(D, (2, 1))
