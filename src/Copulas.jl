@@ -115,6 +115,7 @@ module Copulas
 
     # Nested (hierarchical) Archimedean copulas
     include("NestedArchimedeanCopula.jl")
+    include("NestedArchimedeanFittingValidation.jl")
 
     #Extreme value copulas
     include("Tail.jl")
