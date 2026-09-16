@@ -337,15 +337,21 @@ end
 
 # Multivariate dependence metrics applied to a matrix.
 function β(U::AbstractMatrix)
-    # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
     d, n = size(U)
+    d >= 2 || throw(DimensionMismatch(
+        "scalar multivariate dependence summaries require at least two rows; got d=$d",
+    ))
+    # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
     count = sum(j -> all(U[:, j] .<= 0.5) || all(U[:, j] .> 0.5), 1:n)
     h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
     return h_d * (count/n - 2.0^(1-d))
 end
 function τ(U::AbstractMatrix)
-    # Sample version of multivariate Kendall's tau for pseudo-data
     d, n = size(U)
+    d >= 2 || throw(DimensionMismatch(
+        "scalar multivariate dependence summaries require at least two rows; got d=$d",
+    ))
+    # Sample version of multivariate Kendall's tau for pseudo-data
     comp = 0
     @inbounds for j in 2:n, i in 1:j-1
         uᵢ = @view U[:, i]; uⱼ = @view U[:, j]
@@ -355,8 +361,11 @@ function τ(U::AbstractMatrix)
     return (2.0^d * pc - 2.0) / (2.0^d - 2.0)
 end
 function ρ(U::AbstractMatrix)
-    # Sample version of multivariate Spearman's rho for pseudo-observations
     d, n = size(U)
+    d >= 2 || throw(DimensionMismatch(
+        "scalar multivariate dependence summaries require at least two rows; got d=$d",
+    ))
+    # Sample version of multivariate Spearman's rho for pseudo-observations
     R = hcat((StatsBase.tiedrank(U[k, :]) for k in 1:d)...)   # n×d
     μ = Statistics.mean(prod(R, dims=2)) / (n + 1)^d          # ≈ E[∏ U_i]
     h = (d + 1) / (2.0^d - (d + 1))
@@ -364,6 +373,9 @@ function ρ(U::AbstractMatrix)
 end
 function γ(U::AbstractMatrix)
     d, n = size(U)
+    d >= 2 || throw(DimensionMismatch(
+        "scalar multivariate dependence summaries require at least two rows; got d=$d",
+    ))
     I = zero(eltype(U))
     for j in 1:n
         u = U[:,j]
