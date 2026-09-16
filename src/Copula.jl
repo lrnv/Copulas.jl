@@ -90,7 +90,7 @@ function _rand_M!(rng::Distributions.AbstractRNG, A::AbstractMatrix{T}) where {T
 end
 
 function _rand_W!(rng::Distributions.AbstractRNG, A::AbstractMatrix{T}) where {T<:Real}
-    size(A, 1) == 2 || throw(ArgumentError("W limit only exists in dimension 2"))
+    size(A, 1) == 2 || throw(DimensionMismatch("W limit requires an output matrix with 2 rows"))
     Random.rand!(rng, view(A, 1, :))
     @inbounds for col in axes(A, 2)
         A[2, col] = one(T) - A[1, col]
@@ -99,7 +99,9 @@ function _rand_W!(rng::Distributions.AbstractRNG, A::AbstractMatrix{T}) where {T
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::Copula{d}, x::AbstractVector{T}) where {d,T<:Real}
-    length(x) == d || throw(ArgumentError("Dimension mismatch between copula and output vector"))
+    length(x) == d || throw(DimensionMismatch(
+        "output vector has length $(length(x)); expected copula dimension $d",
+    ))
     Distributions._rand!(rng, C, reshape(x, d, 1))
     return x
 end
@@ -119,7 +121,9 @@ function Distributions._rand!(::Distributions.AbstractRNG, C::Copula{d}, ::Abstr
     throw(ArgumentError("$(typeof(C)) must implement a matrix Distributions._rand! method"))
 end
 function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
-    length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
+    length(u) == d || throw(DimensionMismatch(
+        "input vector has length $(length(u)); expected copula dimension $d",
+    ))
     if any(x -> x <= zero(x), u)
         return zero(u[1])
     elseif all(x -> x >= one(x), u)
@@ -129,7 +133,9 @@ function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
     return _cdf(C, bounded)
 end
 function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
-    size(A,1) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
+    size(A,1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(A, 1)) rows; expected copula dimension $d",
+    ))
     return [Distributions.cdf(C,u) for u in eachcol(A)]
 end
 Distributions.logcdf(C::Copula, A::AbstractMatrix) = log.(Distributions.cdf(C, A))
@@ -152,7 +158,9 @@ function _resolve_boundary_logpdf(value, u)
     return value
 end
 function Distributions.logpdf(C::Copula{d}, A::AbstractMatrix) where d
-    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    size(A, 1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(A, 1)) rows; expected copula dimension $d",
+    ))
     return [Distributions.logpdf(C, u) for u in eachcol(A)]
 end
 """

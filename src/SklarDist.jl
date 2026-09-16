@@ -111,7 +111,9 @@ Distributions.params(S::SklarDist) = (copula=S.C, margins=S.m)
 end
 function Distributions.cdf(S::SklarDist{CT,TplMargins}, x) where {CT,TplMargins}
     d = length(S)
-    length(x) == d || throw(ArgumentError("Dimension mismatch between distribution and input vector"))
+    length(x) == d || throw(DimensionMismatch(
+        "input vector has length $(length(x)); expected distribution dimension $d",
+    ))
     T = _sklar_work_eltype(S, x)
     u = Vector{T}(undef, d)
     @inbounds for i in 1:d
@@ -121,20 +123,32 @@ function Distributions.cdf(S::SklarDist{CT,TplMargins}, x) where {CT,TplMargins}
 end
 Distributions.logcdf(S::SklarDist{CT,TplMargins},x) where {CT,TplMargins} = log(Distributions.cdf(S, x))
 function Distributions.cdf(S::SklarDist, X::AbstractMatrix)
-    size(X, 1) == length(S) || throw(ArgumentError("Dimension mismatch between distribution and input matrix"))
+    d = length(S)
+    size(X, 1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(X, 1)) rows; expected distribution dimension $d",
+    ))
     return [Distributions.cdf(S, x) for x in eachcol(X)]
 end
 Distributions.logcdf(S::SklarDist, X::AbstractMatrix) = log.(Distributions.cdf(S, X))
 function Distributions.pdf(S::SklarDist, X::AbstractMatrix)
-    size(X, 1) == length(S) || throw(ArgumentError("Dimension mismatch between distribution and input matrix"))
+    d = length(S)
+    size(X, 1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(X, 1)) rows; expected distribution dimension $d",
+    ))
     return [Distributions.pdf(S, x) for x in eachcol(X)]
 end
 function Distributions.logpdf(S::SklarDist, X::AbstractMatrix)
-    size(X, 1) == length(S) || throw(ArgumentError("Dimension mismatch between distribution and input matrix"))
+    d = length(S)
+    size(X, 1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(X, 1)) rows; expected distribution dimension $d",
+    ))
     return [Distributions.logpdf(S, x) for x in eachcol(X)]
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,TplMargins}, A::AbstractMatrix{T}) where {CT,TplMargins,T}
-    size(A, 1) == length(S) || throw(ArgumentError("Dimension mismatch between distribution and output matrix"))
+    d = length(S)
+    size(A, 1) == d || throw(DimensionMismatch(
+        "output matrix has $(size(A, 1)) rows; expected distribution dimension $d",
+    ))
     Random.rand!(rng, S.C, A)
     lo, hi = nextfloat(T(0)), prevfloat(T(1))
     @inbounds for col in axes(A, 2), row in axes(A, 1)
@@ -143,12 +157,17 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist{CT,Tp
     return A
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, S::SklarDist, x::AbstractVector{T}) where {T<:Real}
+    length(x) == length(S) || throw(DimensionMismatch(
+        "output vector has length $(length(x)); expected distribution dimension $(length(S))",
+    ))
     Distributions._rand!(rng, S, reshape(x, length(S), 1))
     return x
 end
 function Distributions._logpdf(S::SklarDist{CT,TplMargins}, u) where {CT,TplMargins}
     d = length(S)
-    length(u) == d || throw(ArgumentError("Dimension mismatch between distribution and input vector"))
+    length(u) == d || throw(DimensionMismatch(
+        "input vector has length $(length(u)); expected distribution dimension $d",
+    ))
     _has_atoms(S.m) && return _sklar_logpdf_atoms(S, u)
     T = _sklar_work_eltype(S, u)
     # sum marginal logpdfs without generator comprehensions

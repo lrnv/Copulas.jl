@@ -71,6 +71,9 @@ end
 # the continuous copula-density factorization used by ordinary Sklar models.
 function Distributions._logpdf(S::SklarDist{CT}, x) where {CT<:EmpiricalCopula}
     d = length(S)
+    length(x) == d || throw(DimensionMismatch(
+        "input vector has length $(length(x)); expected distribution dimension $d",
+    ))
     U = Vector{_sklar_work_eltype(S, x)}(undef, d)
     all_continuous = true
     @inbounds for row in 1:d
@@ -105,7 +108,9 @@ function Distributions._logpdf(S::SklarDist{CT}, x) where {CT<:EmpiricalCopula}
     return iszero(matches) ? -Inf : log(matches / size(S.C.u, 2))
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula{d,MT}, A::AbstractMatrix{T}) where {d,MT,T<:Real}
-    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    size(A, 1) == d || throw(DimensionMismatch(
+        "output matrix has $(size(A, 1)) rows; expected copula dimension $d",
+    ))
     indices = rand(rng, axes(C.u, 2), size(A, 2))
     @inbounds for (j, col) in enumerate(axes(A, 2)), row in axes(A, 1)
         A[row, col] = C.u[row, indices[j]]
