@@ -1,6 +1,5 @@
 include("sync_homepage.jl")
 
-using Bibliography
 using Copulas
 using Documenter
 using DocumenterCitations
@@ -8,15 +7,9 @@ using DocumenterVitepress
 
 DocMeta.setdocmeta!(Copulas, :DocTestSetup, :(using Copulas); recursive=true)
 
-bibfiles = [
-    joinpath(@__DIR__, "src", "assets", "references.bib"),
-    joinpath(@__DIR__, "src", "assets", "information_criteria.bib"),
-]
-entries = merge(Bibliography.import_bibtex.(bibfiles)...)
 bib = CitationBibliography(
-    join(basename.(bibfiles), ", ");
-    style=:numeric,
-    _entries=entries,
+    joinpath(@__DIR__,"src","assets","references.bib"),
+    style=:numeric
 )
 
 using DocumenterInterLinks
