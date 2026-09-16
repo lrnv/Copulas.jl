@@ -38,7 +38,9 @@ Distributions._logpdf(::MCopula{d}, u) where {d} = all(u == u[1]) ? zero(eltype(
 _cdf(::MCopula{d}, u) where {d} = Base.minimum(u)
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::MCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
-    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    size(A, 1) == d || throw(DimensionMismatch(
+        "output matrix has $(size(A, 1)) rows; expected copula dimension $d",
+    ))
     Random.rand!(rng, view(A, 1, :))
     @inbounds for row in 2:d
         A[row, :] .= view(A, 1, :)
