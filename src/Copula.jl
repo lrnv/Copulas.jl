@@ -250,7 +250,8 @@ function β(C::Copula{d}) where {d}
     u     = fill(0.5, d)
     C0    = Distributions.cdf(C, u)
     Cbar0 = Distributions.cdf(SurvivalCopula(C, Tuple(1:d)), u)
-    return (2.0^(d-1) * C0 + Cbar0 - 1) / (2^(d-1) - 1)
+    h = 2.0^(d - 1)
+    return (h * (C0 + Cbar0) - 1) / (h - 1)
 end
 
 """

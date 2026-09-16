@@ -9,7 +9,7 @@
         C3 = FGMCopula{3}([0.0, 0.0, 0.0, 0.4])
         u = fill(0.5, 3)
         survival = SurvivalCopula(C3, (1, 2, 3))
-        expected = (4cdf(C3, u) + cdf(survival, u) - 1) / 3
+        expected = (4 * (cdf(C3, u) + cdf(survival, u)) - 1) / 3
         @test Copulas.β(C3) ≈ expected
     end
 
