@@ -27,7 +27,6 @@ module Copulas
 
     # Main code
     include("utils.jl")
-    include("TypedTaylorFallback.jl")
     include("UnivariateDistribution/quantile.jl")
     include("Copula.jl")
     include("SklarDist.jl")
