@@ -75,7 +75,8 @@ struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribut
     C::CT
     m::TplMargins
     function SklarDist(C::Copula{d}, m::NTuple{d, Any}) where d
-        @assert all(mᵢ isa Distributions.UnivariateDistribution for mᵢ in m)
+        all(mᵢ isa Distributions.UnivariateDistribution for mᵢ in m) ||
+            throw(ArgumentError("every SklarDist margin must be a univariate distribution"))
         if _is_empirical_copula(C)
             @warn "EmpiricalCopula has finite-sample step margins rather than exact uniform margins. The resulting SklarDist therefore does not generally have the requested margins. Consider smoothing with BetaCopula, a valid BernsteinCopula, CheckerboardCopula, or another genuine copula estimator."
         end
