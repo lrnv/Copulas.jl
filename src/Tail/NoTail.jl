@@ -1,3 +1,5 @@
+include("../PublicExceptionContract.jl")
+
 """
     NoTail()
 
