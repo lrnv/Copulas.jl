@@ -67,11 +67,30 @@ discrete-aware; downstream code should rely on those documented behaviours
 rather than infer absolute continuity or atomicity from the historical
 `ContinuousMultivariateDistribution` supertype alone.
 
+### Numeric representation
+
 For continuous distributions, `eltype` follows the Distributions.jl convention:
 it is the default numeric type allocated by `rand`. Parameterized copulas
-propagate the numeric representation of their parameters, composite copulas
-promote their components, and parameter-free copulas default to `Float64`.
-`rand!` may instead target any compatible real-valued buffer type.
+preserve or promote the numeric representation of their mathematical
+parameters, composite copulas promote their components, and parameter-free
+copulas default to `Float64`. Integer-like inputs may be converted to a suitable
+floating representation when the mathematical object requires it. `rand!` may
+instead target any compatible real-valued buffer type.
+
+Numerical algorithms are allowed to use a wider local working type when that
+does not reduce the information carried by the model, for example using a
+`Float64` backend while evaluating a `Float32` parameterization. Backend
+limitations must not silently redefine the stored/public model representation.
+In particular, silently narrowing an existing floating representation (for
+example `BigFloat` to `Float64`) is a bug, not an accepted compatibility mode.
+If an operation cannot support the precision of its model or input, it must use
+a generic implementation or fail explicitly rather than silently discard
+precision.
+
+This contract describes the 1.0 public policy, not a claim that every numerical
+backend already supports every `Real` type. Concrete violations should be
+reported as focused bugs so the implementation can be improved without
+weakening the model-level numeric contract.
 
 Public component constructors guarantee their documented mathematical semantics
 and supported constructor forms. Public status does not expose undocumented fields,
