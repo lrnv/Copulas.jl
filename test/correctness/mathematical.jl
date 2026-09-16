@@ -191,9 +191,19 @@ end
         point = [mask[i] ? midpoint[i] : 1.0 for i in 1:d3]
         survival0 += (-1)^count(identity, mask) * _oracle_cdf(C3, point)
     end
-    beta3 = (2.0^(d3 - 1) * c0 + survival0 - 1) /
-            (2^(d3 - 1) - 1)
+    h3 = 2.0^(d3 - 1)
+    beta3 = (h3 * (c0 + survival0) - 1) / (h3 - 1)
     @test Copulas.β(C3) ≈ beta3 atol=1e-12
+    @test Copulas.β(IndependentCopula{3}()) == 0
+    @test Copulas.β(MCopula{3}()) == 1
+    @test Copulas.β(SurvivalCopula(C3, Tuple(1:d3))) ≈ beta3 atol=1e-12
+
+    asym = FGMCopula{3}([0.1, -0.2, 0.3, 0.4])
+    asym_c0 = cdf(asym, midpoint)
+    asym_cbar0 = cdf(SurvivalCopula(asym, Tuple(1:d3)), midpoint)
+    @test asym_c0 != asym_cbar0
+    @test Copulas.β(asym) ≈
+          (h3 * (asym_c0 + asym_cbar0) - 1) / (h3 - 1) atol=1e-12
 
     a3 = 1 / (d3 + 1) + inv(factorial(d3 + 1))
     b3 = (2 + 4.0^(1 - d3)) / 3
@@ -217,7 +227,6 @@ end
     D = SklarDist(C, margins)
     x = [0.1, 1.4]
     u = [cdf(margins[i], x[i]) for i in eachindex(x)]
-
     @test cdf(D, x) ≈ _oracle_cdf(C, u)
     @test pdf(D, x) ≈
           _oracle_pdf(C, u) * prod(pdf(margins[i], x[i]) for i in eachindex(x))
