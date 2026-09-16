@@ -284,7 +284,7 @@ where ``λ^d`` is Lebesgue (uniform) measure on the unit hypercube. Hence
 independence has entropy zero, absolutely continuous dependent copulas have a
 non-positive value, and any copula with a singular component has entropy
 `-Inf`. For an absolutely continuous copula with density ``c``, the definition
-reduces to ``E_C[-\\log c(U)]``; generalized `logpdf` values of singular laws
+reduces to ``ι(C) = E_C[-\\log c(U)]``; generalized `logpdf` values of singular laws
 are deliberately not substituted into that density formula.
 
 For data, a nearest-neighbor differential-entropy estimator is applied to the
