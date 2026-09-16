@@ -315,3 +315,12 @@ using Test
     end
 
 end
+
+@testset "PartitionedDistributions conditional inherits discrete-observation semantics" begin
+    X = SklarDist(ClaytonCopula(2, 2.0), (Normal(), Poisson(3.0)))
+    observed = PartitionedDistributions.conditional(X, [0.0, 2], 1)
+    expected = condition(X, 2, 2)
+    for t in -2:0.5:2
+        @test cdf(observed, t) ≈ cdf(expected, t)
+    end
+end

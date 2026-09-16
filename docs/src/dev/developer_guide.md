@@ -245,6 +245,15 @@ copula's concrete nested representation. The generic fallback instead nests one
 expensive as that count grows. These dispatch and representation details are
 internal and must not be used by downstream code.
 
+Interval conditioning, `condition(C, js, lo, hi)`, and the likelihood of a
+`SklarDist` with discrete margins go through the internal `_box_partial_cdf`,
+an inclusion–exclusion sum of `_partial_cdf` over the corners of the box with
+the box coordinates placed among the free ones. A family that specializes
+`_partial_cdf` therefore speeds up both without further work; the family
+`distortion` and `conditional_copula` hooks are used only when every
+conditioned coordinate is a point, since the interval conditional of a family
+with a closed-form point conditional generally has no closed form of its own.
+
 !!! tip "Look at existing distortions"
     Take a look in the `src/UnivariateDistributions/Distortions` folder for examples, there are plenty. 
 

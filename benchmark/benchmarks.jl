@@ -49,6 +49,36 @@ function bench_conditional_quantile(C, j, base, probabilities)
     return @benchmarkable quantile($D, $probabilities) evals=1
 end
 
+# Rectangle probabilities: `measure` over many boxes, and the interval
+# conditioning primitive on the same boxes (with no point coordinate it must
+# dispatch to `measure`, so the two entries should stay level; the mixed
+# entry differentiates the box volume in one coordinate and has no `measure`
+# counterpart).
+function bench_measure(C, boxes)
+    return @benchmarkable(
+        [Copulas.measure($C, lo, hi) for (lo, hi) in $boxes],
+        evals=1,
+    )
+end
+
+function bench_box_volume(C, boxes)
+    bs = ntuple(identity, length(C))
+    return @benchmarkable(
+        [Copulas._box_partial_cdf($C, (), (), $bs, (), (), lo, hi) for (lo, hi) in $boxes],
+        evals=1,
+    )
+end
+
+function bench_box_partial(C, boxes)
+    d = length(C)
+    bs = ntuple(k -> k + 1, d - 1)
+    return @benchmarkable(
+        [Copulas._box_partial_cdf($C, (), (1,), $bs, (), (0.4,), Base.tail(lo), Base.tail(hi))
+         for (lo, hi) in $boxes],
+        evals=1,
+    )
+end
+
 function bench_pseudos(data)
     return @benchmarkable pseudos($data) evals=1
 end
@@ -63,6 +93,7 @@ SUITE["density"] = BenchmarkGroup()
 SUITE["cdf"] = BenchmarkGroup()
 SUITE["data"] = BenchmarkGroup()
 SUITE["conditioning"] = BenchmarkGroup()
+SUITE["measure"] = BenchmarkGroup()
 SUITE["fitting"] = BenchmarkGroup()
 SUITE["inference"] = BenchmarkGroup()
 
@@ -140,6 +171,26 @@ SUITE["conditioning"]["cdf_student_d2"] =
     bench_conditional_cdf(student, 2, 0.4, conditional_probabilities)
 SUITE["conditioning"]["quantile_student_d2"] =
     bench_conditional_quantile(student, 2, 0.4, conditional_probabilities)
+
+function random_boxes(rng, d, n)
+    return [
+        (ntuple(_ -> rand(rng) / 2, d), ntuple(_ -> 0.5 + rand(rng) / 2, d))
+        for _ in 1:n
+    ]
+end
+clayton3 = ClaytonCopula{3}(2.0)
+gumbel3 = GumbelCopula{3}(1.6)
+boxes2 = random_boxes(Xoshiro(SEED + 14), 2, 1_000)
+boxes3 = random_boxes(Xoshiro(SEED + 15), 3, 1_000)
+boxes5 = random_boxes(Xoshiro(SEED + 16), 5, 200)
+SUITE["measure"]["clayton_d2"] = bench_measure(ClaytonCopula{2}(2.0), boxes2)
+SUITE["measure"]["clayton_d3"] = bench_measure(clayton3, boxes3)
+SUITE["measure"]["gumbel_d3"] = bench_measure(gumbel3, boxes3)
+SUITE["measure"]["clayton_d5"] = bench_measure(clayton, boxes5)
+SUITE["measure"]["box_volume_clayton_d3"] = bench_box_volume(clayton3, boxes3)
+SUITE["measure"]["box_volume_clayton_d5"] = bench_box_volume(clayton, boxes5)
+SUITE["measure"]["box_partial_clayton_d3"] = bench_box_partial(clayton3, boxes3)
+SUITE["measure"]["box_partial_gumbel_d3"] = bench_box_partial(gumbel3, boxes3)
 
 # Dimension-specialized fitting benchmarks (#443).
 # Keep derived measures disabled below so these workloads isolate the
