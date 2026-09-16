@@ -16,7 +16,7 @@ end
 @testset "generic generator Taylor padding preserves numeric type" begin
     for T in (Float32, BigFloat)
         # Exercise the shortened-coefficient padding branch directly.
-        shortened(t) = Copulas.TaylorSeries.Taylor1(t.coeffs[1:2])
+        shortened = t -> Copulas.TaylorSeries.Taylor1(t.coeffs[1:2])
         padded = Copulas.taylor(shortened, T(0.25), 4)
         @test length(padded) == 5
         @test eltype(padded) === T
