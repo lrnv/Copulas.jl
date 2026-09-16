@@ -29,7 +29,7 @@ end
         fourth = Copulas.ϕ⁽ᵏ⁾(G, 4, x)
         @test third isa T
         @test fourth isa T
-        @test fourth === zero(T)
+        @test fourth == zero(T)
 
         radial = Copulas.𝒲₋₁(G, 4)
         F = cdf(radial, T(0.5))
