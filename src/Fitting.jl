@@ -141,7 +141,6 @@ function _refit(M::CopulaModel, U::AbstractMatrix; replay_input::Bool=false)
     return Distributions.fit(CopulaModel, spec.target, U; method, kwargs...)
 end
 
-# Fallbacks that throw if the interface is not implemented correctly.
 """
     Distributions.params(C::Copula)
     Distributions.params(S::SklarDist)
@@ -154,12 +153,13 @@ different reconstruction form explicitly.
 
 Parameter names and values are public; concrete field names, storage-only type
 parameters and caches are not. A new in-package family must specialize this
-method before it can use generic fitting and display machinery.
+method before it can use generic fitting and display machinery. Missing
+specializations therefore use Julia's normal `MethodError` rather than a
+package-defined fallback exception.
 
 See also: [`Copula`](@ref), [`SklarDist`](@ref), [`Distributions.fit`](@ref),
 [`CopulaModel`](@ref).
 """
-Distributions.params(C::Copula) = throw("You need to specify the Distributions.params() function as returning a named tuple with parameters.")
 
 """
     _example(CT, d)
@@ -168,12 +168,13 @@ Construct an interior representative of copula family `CT` in dimension `d`.
 This internal fitting hook supplies parameter names, shapes, numeric types and
 an initial point to generic optimization and covariance machinery. The example
 must avoid limiting values and must be reconstructible by the family's fitting
-protocol; it is not a user-facing default model.
+protocol; it is not a user-facing default model. Families using generic fitting
+must implement it; otherwise Julia raises the natural `MethodError`.
 
 See also: [`_unbound_params`](@ref), [`_rebound_params`](@ref),
 [`_available_fitting_methods`](@ref), [`_fit`](@ref).
 """
-_example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::Type{T}, d)` function for your copula type, returning an example of the copula type in dimension d.")
+function _example end
 
 """
     _unbound_params(CT, d, θ)
@@ -181,11 +182,12 @@ _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::T
 Map the parameter `NamedTuple` `θ` of family `CT` to an unconstrained real
 vector used by generic optimization and differentiation. This internal fitting
 hook must be inverse-compatible with `_rebound_params`, preserve parameter
-order, and map interior valid parameters to finite coordinates.
+order, and map interior valid parameters to finite coordinates. Families using
+generic fitting must implement it; otherwise Julia raises `MethodError`.
 
 See also: [`_rebound_params`](@ref), [`_example`](@ref), [`_fit`](@ref).
 """
-_unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
+function _unbound_params end
 
 """
     _rebound_params(CT, d, α)
@@ -193,11 +195,12 @@ _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbou
 Map an unconstrained optimization vector `α` back to the valid parameter
 `NamedTuple` expected by family `CT`. This internal fitting hook must enforce
 the mathematical parameter domain, accept automatic-differentiation number
-types, and invert `_unbound_params` on interior parameters.
+types, and invert `_unbound_params` on interior parameters. Families using
+generic fitting must implement it; otherwise Julia raises `MethodError`.
 
 See also: [`_unbound_params`](@ref), [`_example`](@ref), [`_fit`](@ref).
 """
-_rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
+function _rebound_params end
 _construct_fitted_copula(CT, ::Val{d}, θ, example) where {d} = CT(d, θ...)
 function _fit(CT::Type{<:Copula}, U, method::Val{:mle})
     return _fit(CT, U, Val(size(U, 1)), method)
@@ -239,7 +242,9 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irh
     example = _example(CT, d)
     cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
     α₀ = _unbound_params(CT, d, Distributions.params(example))
-    @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
+    length(α₀) <= d*(d-1)÷2 || throw(ArgumentError(
+        "cannot use $method in dimension $d with $(length(α₀)) free parameters; " *
+        "only $(d*(d-1)÷2) pairwise rank constraints are available"))
     fun  = method isa Val{:itau} ? StatsBase.corkendall :
            method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
     est  = fun(U')

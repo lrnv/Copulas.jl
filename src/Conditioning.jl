@@ -97,16 +97,23 @@ function _box_partial_cdf(C::Copula{D}, is, ps::Tuple{}, bs::NTuple{q,Int}, uᵢ
     return measure(C, lower, upper)
 end
 
-_process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs)
-_process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,))
-function _process_tuples(::Val{D}, js, ujs) where D
-    p, p2 = length(js), length(ujs)
-    @assert 0 < p < D "js=$(js) must be a non-empty proper subset of 1:D of length at most D-1 (D = $D)"
-    @assert p == p2 "uⱼₛ length must match js length"
-    jst = Tuple(collect(Int, js))
-    @assert all(in(1:D), jst)
-    ujst = Tuple(collect(float.(ujs)))
-    return (jst, ujst)
+function _process_tuples(::Val{D}, js, ujs) where {D}
+    jst = js isa Integer ? (Int(js),) : Tuple(collect(Int, js))
+    ujst = ujs isa Real ? (float(ujs),) : Tuple(collect(float.(ujs)))
+    p = length(jst)
+    0 < p < D || throw(ArgumentError(
+        "js=$(js) must be a non-empty proper subset of 1:$D"))
+    length(ujst) == p || throw(DimensionMismatch(
+        "conditioned values must match js length (got $(length(ujst)) values for $p indices)"))
+    all(in(1:D), jst) && allunique(jst) || throw(ArgumentError(
+        "js=$(js) must be distinct indices in 1:$D"))
+    return jst, ujst
+end
+
+function _validate_uniform_conditioning_values(ujs)
+    all(u -> zero(u) <= u <= one(u), ujs) || throw(DomainError(
+        ujs, "conditioning values must lie in [0,1]"))
+    return ujs
 end
 
 # Normalise the arguments of the interval form of `condition`: index tuple,
@@ -120,9 +127,9 @@ function _process_intervals(::Val{D}, js, lo, hi) where {D}
     all(in(1:D), jst) && allunique(jst) ||
         throw(ArgumentError("js=$(js) must be distinct indices in 1:$D"))
     length(lot) == p && length(hit) == p ||
-        throw(ArgumentError("lo and hi must have one bound per conditioned coordinate"))
+        throw(DimensionMismatch("lo and hi must have one bound per conditioned coordinate"))
     all(k -> zero(lot[k]) <= lot[k] <= hit[k] <= one(hit[k]), 1:p) ||
-        throw(ArgumentError("interval bounds must satisfy 0 ≤ lo ≤ hi ≤ 1"))
+        throw(DomainError((lot, hit), "interval bounds must satisfy 0 ≤ lo ≤ hi ≤ 1"))
     return jst, lot, hit
 end
 
@@ -224,6 +231,7 @@ struct DistortionFromCop{TC,p,q,T}<:Distortion
     den::T
     function DistortionFromCop(C::Copula{D}, js, uⱼₛ, i) where {D}
         jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
+        _validate_uniform_conditioning_values(uⱼₛt)
         p = length(jst)
         den = p==1 ? Distributions.pdf(subsetdims(C, jst), uⱼₛt[1]) :
                      Distributions.pdf(subsetdims(C, jst), collect(uⱼₛt))
@@ -330,6 +338,7 @@ struct ConditionalCopula{d, D, p, q, T, TDs}<:Copula{d}
     distortions::TDs
     function ConditionalCopula(C::Copula{D}, js, uⱼₛ) where {D}
         jst, uⱼₛt = _process_tuples(Val{D}(), js, uⱼₛ)
+        _validate_uniform_conditioning_values(uⱼₛt)
         ist = Tuple(i for i in 1:D if i ∉ jst)
         p = length(jst)
         d = D - p
@@ -423,7 +432,7 @@ end
 
 # Sampling: sequential inverse-CDF using conditional distortions
 function Distributions._rand!(rng::Distributions.AbstractRNG, CC::ConditionalCopula{d, D, p, q, TC}, A::AbstractMatrix{T}) where {T<:Real, d, D, p, q, TC}
-    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    size(A, 1) == d || throw(DimensionMismatch("output matrix must have $d rows"))
     # We want a sample from the COPULA of the conditional model. Let U be a
     # draw from the conditional joint H_{I|J}(· | u_J). The corresponding
     # copula coordinates are V_k = F_{i_k|J}(U_k | u_J) = cdf(distortions[k], U_k).
@@ -531,12 +540,17 @@ See also: [`subsetdims`](@ref), [`rosenblatt`](@ref),
 [`inverse_rosenblatt`](@ref), [`SklarDist`](@ref).
 """
 function condition(C::Copula{2}, j::Int, uⱼ::Real)
-    1 ≤ j ≤ 2 || throw(ArgumentError("Conditioning index must be either 1 or 2."))
-    zero(uⱼ) ≤ uⱼ ≤ one(uⱼ) || throw(ArgumentError("Conditioning values must lie in [0, 1]."))
+    1 ≤ j ≤ 2 || throw(ArgumentError("conditioning index must be either 1 or 2"))
+    zero(uⱼ) ≤ uⱼ ≤ one(uⱼ) || throw(DomainError(
+        uⱼ, "conditioning value must lie in [0,1]"))
     return distortion(C, (j,), (float(uⱼ),), 3 - j)
 end
 
-condition(C::Copula{D}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
+function condition(C::Copula{D}, j, uⱼ) where {D}
+    js, ujs = _process_tuples(Val{D}(), j, uⱼ)
+    _validate_uniform_conditioning_values(ujs)
+    return condition(C, js, ujs)
+end
 # Accept any real `uⱼₛ` (not only `Float64`): `_process_tuples` calls `float.`,
 # which keeps `BigFloat`/`Float32` as-is, so a `Float64`-only signature here let
 # such inputs fall back to the untyped entry point above and recurse forever
@@ -551,9 +565,11 @@ function _conditional_components(C::Copula, js, uⱼₛ, is)
 end
 
 function condition(C::Copula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p, <:Real}) where {D, p}
-    is = Tuple(setdiff(1:D, js))
-    p==D-1 && return distortion(C, js, uⱼₛ, is[1])
-    CC, distortions = _conditional_components(C, js, uⱼₛ, is)
+    jst, ujt = _process_tuples(Val{D}(), js, uⱼₛ)
+    _validate_uniform_conditioning_values(ujt)
+    is = Tuple(setdiff(1:D, jst))
+    p==D-1 && return distortion(C, jst, ujt, is[1])
+    CC, distortions = _conditional_components(C, jst, ujt, is)
     return SklarDist(CC, distortions)
 end
 
@@ -602,13 +618,17 @@ end
 _is_point_margin(m::Distributions.UnivariateDistribution) =
     Distributions.value_support(typeof(m)) === Distributions.Continuous
 
-condition(C::SklarDist{<:Copula{D}}, j, xⱼ) where D = condition(C, _process_tuples(Val{D}(), j, xⱼ)...)
+function condition(X::SklarDist{<:Copula{D}}, j, xⱼ) where {D}
+    js, xs = _process_tuples(Val{D}(), j, xⱼ)
+    return condition(X, js, xs)
+end
 function condition(X::SklarDist{<:Copula{D}, Tpl}, js::NTuple{p, Int}, xⱼₛ::NTuple{p, <:Real}) where {D, Tpl, p}
-    bounds = ntuple(k -> _latent_interval(X.m[js[k]], xⱼₛ[k]), p)
+    jst, xjt = _process_tuples(Val{D}(), js, xⱼₛ)
+    bounds = ntuple(k -> _latent_interval(X.m[jst[k]], xjt[k]), p)
     lo = promote(map(first, bounds)...)
     hi = promote(map(last, bounds)...)
-    pt = ntuple(k -> _is_point_margin(X.m[js[k]]), p)
-    return _condition_box(X, js, lo, hi, pt)
+    pt = ntuple(k -> _is_point_margin(X.m[jst[k]]), p)
+    return _condition_box(X, jst, lo, hi, pt)
 end
 function condition(X::SklarDist{<:Copula{D}}, js, xlo, xhi) where {D}
     jst = js isa Integer ? (Int(js),) : Tuple(collect(Int, js))
@@ -619,9 +639,9 @@ function condition(X::SklarDist{<:Copula{D}}, js, xlo, xhi) where {D}
     all(in(1:D), jst) && allunique(jst) ||
         throw(ArgumentError("js=$(js) must be distinct indices in 1:$D"))
     length(xlot) == p && length(xhit) == p ||
-        throw(ArgumentError("xlo and xhi must have one bound per conditioned coordinate"))
+        throw(DimensionMismatch("xlo and xhi must have one bound per conditioned coordinate"))
     all(k -> xlot[k] <= xhit[k], 1:p) ||
-        throw(ArgumentError("interval bounds must satisfy xlo ≤ xhi"))
+        throw(DomainError((xlot, xhit), "interval bounds must satisfy xlo ≤ xhi"))
     lo = promote(ntuple(k -> first(_latent_interval(X.m[jst[k]], xlot[k])), p)...)
     hi = promote(ntuple(k -> Distributions.cdf(X.m[jst[k]], xhit[k]), p)...)
     pt = ntuple(k -> _is_point_margin(X.m[jst[k]]) && xlot[k] == xhit[k], p)
@@ -696,7 +716,7 @@ See also: [`inverse_rosenblatt`](@ref), [`condition`](@ref),
 """
 rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = rosenblatt(C, reshape(u, (d, 1)))[:]
 function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
-    size(u, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    size(u, 1) == d || throw(DimensionMismatch("input matrix must have $d rows"))
     v = similar(u)
     @inbounds for j in axes(u, 2)
         # First coordinate is unchanged
@@ -712,6 +732,8 @@ function rosenblatt(C::Copula{d}, u::AbstractMatrix{<:Real}) where {d}
 end
 function rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
     _has_atoms(D.m) && return rosenblatt(Random.default_rng(), D, u)
+    size(u, 1) == length(D) || throw(DimensionMismatch(
+        "input matrix must have $(length(D)) rows"))
     v = similar(u)
     for (i,Mᵢ) in enumerate(D.m)
         v[i,:] .= Distributions.cdf.(Mᵢ, u[i,:])
@@ -728,7 +750,7 @@ rosenblatt(D::SklarDist, u::AbstractVector{<:Real}) =
 # coordinates, whereas `U_i` on that interval is not. The rng is drawn for
 # atoms only; a continuous coordinate is `H(F(x))` as before.
 function rosenblatt(rng::Random.AbstractRNG, X::SklarDist{<:Copula{d}}, x::AbstractMatrix{<:Real}) where {d}
-    size(x, 1) == d || throw(ArgumentError("Dimension mismatch between distribution and input matrix"))
+    size(x, 1) == d || throw(DimensionMismatch("input matrix must have $d rows"))
     _has_atoms(X.m) || return rosenblatt(X, x)
     T = _sklar_work_eltype(X, x)
     S = similar(x, T)
@@ -791,7 +813,7 @@ See also: [`rosenblatt`](@ref), [`condition`](@ref), [`SklarDist`](@ref).
 """
 inverse_rosenblatt(C::Copula{d}, u::AbstractVector{<:Real}) where {d} = inverse_rosenblatt(C, reshape(u, (d, 1)))[:]
 function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}
-    size(s, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    size(s, 1) == d || throw(DimensionMismatch("input matrix must have $d rows"))
     v = similar(s)
     @inbounds for j in axes(s, 2)
         v[1, j] = clamp(float(s[1, j]), 0.0, 1.0)
@@ -805,6 +827,8 @@ function inverse_rosenblatt(C::Copula{d}, s::AbstractMatrix{<:Real}) where {d}
     return v
 end
 function inverse_rosenblatt(D::SklarDist, u::AbstractMatrix{<:Real})
+    size(u, 1) == length(D) || throw(DimensionMismatch(
+        "input matrix must have $(length(D)) rows"))
     _has_atoms(D.m) && return _inverse_rosenblatt_atoms(D, u)
     v = inverse_rosenblatt(D.C,u)
     for (i,Mᵢ) in enumerate(D.m)
@@ -818,7 +842,7 @@ end
 # its latent interval. No randomness is needed: the atom that contains `s_i`
 # is selected by the margin's quantile.
 function _inverse_rosenblatt_atoms(X::SklarDist{<:Copula{d}}, s::AbstractMatrix{<:Real}) where {d}
-    size(s, 1) == d || throw(ArgumentError("Dimension mismatch between distribution and input matrix"))
+    size(s, 1) == d || throw(DimensionMismatch("input matrix must have $d rows"))
     T = _sklar_work_eltype(X, s)
     x = similar(s, T)
     for col in axes(s, 2)

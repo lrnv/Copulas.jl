@@ -53,11 +53,14 @@ pilot estimate, especially for small samples.
 """
 function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, eps::Real=1e-3, pseudo_values::Bool=true)
 
-    @assert grid ≥ 2
-    @assert size(u, 1) == 2 "EmpiricalEVTail expects a (2, n) matrix"
+    grid >= 2 || throw(ArgumentError("grid must contain at least two points"))
+    size(u, 1) == 2 || throw(DimensionMismatch(
+        "EmpiricalEVTail expects a (2, n) matrix (got $(size(u, 1)) rows)"))
+    0 < eps < 0.5 || throw(DomainError(eps, "eps must lie in (0, 0.5)"))
     tgrid = collect(range(eps, 1 - eps; length=grid))
     if pseudo_values
-        @assert all(0 .<= u .<= 1) "When pseudo_values=true, u must be in [0,1]"
+        all(0 .<= u .<= 1) || throw(DomainError(
+            u, "when pseudo_values=true, observations must lie in [0,1]"))
     end
     U = pseudo_values ? u : pseudos(u)
     lu = @views -log.(U[1, :])

@@ -52,13 +52,17 @@ function CheckerboardCopula{d}(X::AbstractMatrix{T}; m=nothing, pseudo_values::B
     size(X, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     pseudo_values || _require_tie_free_rows(X, "CheckerboardCopula")
     n = size(X, 2)
-     ms = if isnothing(m)
+    ms = if isnothing(m)
         @info "Automatic choice: m = n in each dimension." d=d n=n
         fill(n, d)
     else
-        m isa Integer ? fill(Int(m), d) : m
+        m isa Integer ? fill(Int(m), d) : collect(m)
     end
-    @assert length(ms) == d && all(n .% ms .== 0) "You provided m=$m to the Checkerboard constructor, while you need to provide an integer dividing n=$n or a vector of d=$d integers, all dividing n=$n."
+    length(ms) == d || throw(DimensionMismatch(
+        "checkerboard resolution must have one entry per dimension (expected $d, got $(length(ms)))"))
+    all(mi -> mi isa Integer && mi > 0 && n % mi == 0, ms) || throw(ArgumentError(
+        "checkerboard resolutions must be positive integers dividing the sample size n=$n (got m=$m)"))
+    ms = Int.(ms)
     # Map samples to integer box indices in each dimension (clamp right edge into m_i-1)
     data = min.(ms .- 1, floor.(Int, (pseudo_values ? X : pseudos(X)) .* ms))
     # Build a dictionary of box proportions using tuple keys

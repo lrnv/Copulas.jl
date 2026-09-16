@@ -506,8 +506,8 @@ end
     end
     @test_throws ArgumentError condition(C, 0, 0.4)
     @test_throws ArgumentError condition(C, 3, 0.4)
-    @test_throws ArgumentError condition(C, 1, -0.1)
-    @test_throws ArgumentError condition(C, 1, 1.1)
+    @test_throws DomainError condition(C, 1, -0.1)
+    @test_throws DomainError condition(C, 1, 1.1)
 end
 
 function test_distortion_contract(D)
@@ -873,14 +873,14 @@ end
 
 @testset "interval conditioning validates its box" begin
     C = ClaytonCopula(3, 2.0)
-    @test_throws ArgumentError condition(C, (3,), (0.2,), (0.1,))
-    @test_throws ArgumentError condition(C, (3,), (-0.1,), (0.1,))
-    @test_throws ArgumentError condition(C, (3,), (0.5,), (1.5,))
+    @test_throws DomainError condition(C, (3,), (0.2,), (0.1,))
+    @test_throws DomainError condition(C, (3,), (-0.1,), (0.1,))
+    @test_throws DomainError condition(C, (3,), (0.5,), (1.5,))
     @test_throws ArgumentError condition(C, (3, 3), (0.1, 0.2), (0.3, 0.4))
-    @test_throws ArgumentError condition(C, (2, 3), (0.1,), (0.3, 0.4))
+    @test_throws DimensionMismatch condition(C, (2, 3), (0.1,), (0.3, 0.4))
     # A box of zero copula probability: the comonotone copula puts no mass off the diagonal.
     @test_throws ArgumentError condition(MCopula(3), (2, 3), (0.0, 0.5), (0.2, 0.7))
-    @test_throws ArgumentError condition(SklarDist(C, (Normal(), Normal(), Normal())), 3, 1.0, 0.0)
+    @test_throws DomainError condition(SklarDist(C, (Normal(), Normal(), Normal())), 3, 1.0, 0.0)
     # Vector and scalar forms normalise like the point form.
     @test cdf(condition(C, [2, 3], [0.0, 0.0], [1.0, 0.1]), 0.4) ≈
           cdf(condition(C, (2, 3), (0.0, 0.0), (1.0, 0.1)), 0.4)

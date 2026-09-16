@@ -42,8 +42,14 @@ struct ArchimaxCopula{d, TG, TT} <: Copula{d}
     gen::TG
     tail::TT
     function ArchimaxCopula{d}(gen::Generator, tail::Tail) where {d}
-        @assert max_monotony(gen) >= d
-        @assert _is_valid_in_dim(tail, d)
+        max_monotony(gen) >= d || throw(DomainError(
+            d,
+            "generator $(typeof(gen)) has maximal monotonicity $(max_monotony(gen)) and is invalid in dimension $d",
+        ))
+        _is_valid_in_dim(tail, d) || throw(DomainError(
+            d,
+            "tail $(typeof(tail)) is not valid in dimension $d",
+        ))
         return new{d, typeof(gen), typeof(tail)}(gen, tail)
     end
 end

@@ -81,11 +81,11 @@ _example(::Type{<:FGMCopula}, d) = FGMCopula(d, fill(0.5 / (2^d - d - 1), 2^d - 
 _available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho, :ibeta) : (:mle,)
 function _rebound_params(::Type{<:FGMCopula}, d, α)
     d==2 && return  (; θ = tanh.(α))
-    throw("Cannot do that when d > 2")
+    throw(ArgumentError("FGM rank-parameter transforms are available only in dimension 2"))
 end
 function _unbound_params(::Type{<:FGMCopula}, d, θ)
     d == 2 && return atanh.(collect(θ.θ))
-    throw("Cannot do that when d > 2")
+    throw(ArgumentError("FGM rank-parameter transforms are available only in dimension 2"))
 end
 
 
@@ -100,7 +100,7 @@ end
 copula_measure_style(::FGMCopula) = AbsolutelyContinuousMeasure()
 Distributions._logpdf(fgm::FGMCopula, u) = log1p(_fgm_red(fgm.θ, 1 .-2u))
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d, Tθ, Tf}, A::AbstractMatrix{T}) where {d,Tθ, Tf, T <: Real}
-    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    size(A, 1) == d || throw(DimensionMismatch("output matrix must have $d rows"))
     Random.rand!(rng, A)
     V₁ = rand(rng, T, size(A))
     states = rand(rng, fgm.fᵢ, size(A, 2))

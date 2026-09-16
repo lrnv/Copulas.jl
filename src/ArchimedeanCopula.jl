@@ -51,12 +51,15 @@ See also: [`Generator`](@ref), [`ϕ`](@ref), [`max_monotony`](@ref),
 
 References:
 * [williamson1956](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
-* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
+* [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
 """
 struct ArchimedeanCopula{d,TG} <: Copula{d}
     G::TG
     function ArchimedeanCopula{d}(G::Generator) where {d}
-        @assert d <= max_monotony(G) "The generator $G you provided is not $d-monotonous since it has max monotonicity $(max_monotony(G)), and thus this copula does not exists."
+        d <= max_monotony(G) || throw(DomainError(
+            d,
+            "generator $G has maximal monotonicity $(max_monotony(G)) and cannot define a $d-dimensional Archimedean copula",
+        ))
         return new{d,typeof(G)}(G)
     end
 end
@@ -239,7 +242,8 @@ function ρ⁻¹(::Type{T},ρ_val) where {T<:ArchimedeanCopula}
     return ρ⁻¹(generatorof(T),ρ_val)
 end
 function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
-    @assert d == size(u, 1)
+    size(u, 1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(u,1)) rows, expected copula dimension $d"))
     U = zero(u)
     for i in axes(u,2)
         U[1, i] = u[1, i]
@@ -264,7 +268,8 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
 end
 
 function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
-    @assert d == size(u, 1)
+    size(u, 1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(u,1)) rows, expected copula dimension $d"))
     U = zero(u)
     for i in axes(u, 2)
         U[1,i] = u[1,i]
@@ -306,10 +311,12 @@ SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = Arch
 ####### Fitting interfaces.
 ##############################################################################################################################
 
-_example(::Type{ArchimedeanCopula}, d) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
+_example(::Type{ArchimedeanCopula}, d) = throw(ArgumentError(
+    "cannot fit an Archimedean copula without specifying its generator (unless method=:gnz2011)"))
 _example(CT::Type{<:ArchimedeanCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(generatorof(CT))))...)
 _example(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = ArchimedeanCopula(d,𝒲(Distributions.MixtureModel([Distributions.Dirac(1), Distributions.Dirac(2)]),d))
-_example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw("No default example for frailty geenrators are implemented")
+_example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw(ArgumentError(
+    "no default fitting example is implemented for FrailtyGenerator copulas"))
 
 _unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
 _rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)

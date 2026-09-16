@@ -29,11 +29,13 @@ struct SubsetCopula{d,CT} <: Copula{d}
 
         # p == d is allowed: a `dims` that is a (non-identity) permutation reorders the
         # coordinates. The identity `dims == 1:d` is already returned above.
-        @assert 1 <= p <= d "You cannot construct a subsetcopula with dimension p < 1 or p > d (d = $d, p = $p provided)"
+        1 <= p <= d || throw(ArgumentError(
+            "subset dimension must lie between 1 and $d (got $p)"))
         dims == Tuple(1:d) && return C
-        @assert all(i -> 1 <= i <= d, dims)
-        @assert p <= d
-        @assert length(unique(dims))==length(dims)
+        all(i -> 1 <= i <= d, dims) || throw(ArgumentError(
+            "subset dimensions must be indices in 1:$d (got $dims)"))
+        allunique(dims) || throw(ArgumentError(
+            "subset dimensions must be distinct (got $dims)"))
         p==1 && return Distributions.Uniform()
         return new{p, typeof(C)}(C,Tuple(Int.(dims)))
     end
@@ -106,16 +108,20 @@ See also: [`condition`](@ref), [`SklarDist`](@ref), [`measure`](@ref).
 function subsetdims(C::Copula{d}, dims::NTuple{p,Int}) where {d,p}
     # Validate the public operation before dispatching to a native submodel:
     # specialized `SubsetCopula(C, dims)` methods may assume valid indices.
-    @assert 1 <= p <= d "You cannot construct a subsetcopula with dimension p < 1 or p > d (d = $d, p = $p provided)"
-    @assert all(i -> 1 <= i <= d, dims)
-    @assert length(unique(dims)) == p
+    1 <= p <= d || throw(ArgumentError(
+        "subset dimension must lie between 1 and $d (got $p)"))
+    all(i -> 1 <= i <= d, dims) || throw(ArgumentError(
+        "subset dimensions must be indices in 1:$d (got $dims)"))
+    allunique(dims) || throw(ArgumentError(
+        "subset dimensions must be distinct (got $dims)"))
     dims == Tuple(1:d) && return C
     p == 1 && return Distributions.Uniform()
     return SubsetCopula(C, dims)
 end
 function subsetdims(D::SklarDist, dims::NTuple{p, Int}) where p
-    p==1 && return D.m[dims[1]] # if dims[1] is not a valid index, this will throw.
-    return SklarDist(subsetdims(D.C,dims), Tuple(D.m[i] for i in dims))
+    subcopula = subsetdims(D.C, dims)
+    p == 1 && return D.m[dims[1]]
+    return SklarDist(subcopula, Tuple(D.m[i] for i in dims))
 end
 subsetdims(C::Union{Copula, SklarDist}, dims) = subsetdims(C, Tuple(collect(Int, dims)))
 

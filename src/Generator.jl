@@ -58,10 +58,13 @@ Return the largest Williamson order for which `G` is known to be monotone.
 `Inf` denotes complete monotonicity. This public mathematical query is used to
 validate the dimensions of Archimedean and Liouville constructions.
 
+A downstream `Generator` subtype must implement this method. If it does not,
+Julia's normal method dispatch raises `MethodError`.
+
 See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref),
 [`LiouvilleCopula`](@ref), [`ϕ`](@ref).
 """
-max_monotony(G::Generator) = throw("This generator does not have a defined max monotony. You need to implement `max_monotony(G)`.")
+function max_monotony end
 
 """
     ϕ(G::Generator, t)
@@ -71,10 +74,13 @@ Evaluate the Archimedean generator at `t ≥ 0`, or return its callable unary
 form. A valid implementation is decreasing, satisfies `ϕ(G, 0) = 1`, tends to
 zero at infinity, and has the monotonicity reported by `max_monotony(G)`.
 
+A downstream `Generator` subtype must implement the two-argument method. If it
+does not, Julia's normal method dispatch raises `MethodError`.
+
 See also: [`Generator`](@ref), [`max_monotony`](@ref),
 [`ArchimedeanCopula`](@ref), [`WilliamsonGenerator`](@ref).
 """
-ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
+function ϕ end
 ϕ(G::Generator) = Base.Fix1(ϕ,G)
 
 """
@@ -266,8 +272,11 @@ struct 𝒲₋₁{TG, TO<:Integer} <: Distributions.ContinuousUnivariateDistribu
     G::TG
     order::TO
     function 𝒲₋₁(G::Generator, d::Integer)
-        @assert max_monotony(G) ≥ d
         d ≥ 1 || throw(ArgumentError("the Williamson inverse order must be at least 1"))
+        d <= max_monotony(G) || throw(DomainError(
+            d,
+            "Williamson inverse order exceeds the generator's maximal monotonicity $(max_monotony(G))",
+        ))
         return new{typeof(G), typeof(d)}(G, d)
     end
 end
@@ -767,7 +776,10 @@ end
 struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator
     F::TF
     function FrailtyGenerator(F::Distributions.ContinuousUnivariateDistribution)
-        @assert Base.minimum(F) >= 0
+        Base.minimum(F) >= 0 || throw(DomainError(
+            F,
+            "frailty distribution must have non-negative support",
+        ))
         return new{typeof(F)}(F)
     end
 end
