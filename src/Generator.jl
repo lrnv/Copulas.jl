@@ -31,10 +31,22 @@ See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
 """
 abstract type Generator end
 Base.eltype(G::Generator) = _sample_eltype(G)
-function (TG::Type{<:Generator})(args...;kwargs...)
+function (TG::Type{<:Generator})(args...; kwargs...)
     S = hasproperty(TG, :body) ? TG.body : TG
-    T = S.name.wrapper 
-    return T(args..., values(kwargs)...)
+    T = S.name.wrapper
+    isempty(kwargs) && return T(args...)
+
+    fields = fieldnames(Base.unwrap_unionall(T))
+    nargs = length(args)
+    nargs <= length(fields) || throw(MethodError(TG, args))
+    remaining = fields[(nargs + 1):end]
+    kwkeys = keys(kwargs)
+    valid_kwargs = length(kwargs) == length(remaining) &&
+                   all(name -> name in kwkeys, remaining)
+    valid_kwargs || throw(ArgumentError(
+        "keyword arguments for $T must name the remaining parameters $(remaining)",
+    ))
+    return T(args..., (kwargs[name] for name in remaining)...)
 end
 Base.broadcastable(x::Generator) = Ref(x)
 _parameter_dof(x::Generator) = _parameter_dof(Distributions.params(x))
