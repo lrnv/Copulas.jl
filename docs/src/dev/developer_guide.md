@@ -313,7 +313,11 @@ weights reproduce the unweighted fit bit for bit. A family's engine therefore
 never meets a zero weight, and need not guard a `0 * Inf` on the boundary of
 the hypercube. A family that ignores the keyword drops the user's weights silently, and a
 family that omits it is fitted by the generic transformed-space driver whenever
-any keyword is passed.
+any keyword is passed. A rank-inversion method `_fit(::Type{MyCopula}, U,
+::Val{:itau}; weights=nothing)` reads its sample measure through
+`_rank_measure(Val(:itau), U, weights)`, which is `StatsBase.corkendall(U')`
+for `nothing` and the weighted tau-b otherwise, and likewise for `:irho` and
+`:ibeta`; the multivariate `β(U)` has `_weighted_β(U, weights)`.
 
 ## 1.6 Hypothesis tests
 

@@ -329,11 +329,12 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     C = EmpiricalEVCopula(U; method=m, pseudo_values=pseudo_values, kwargs...)
     return C
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}}; weights=nothing)
     TT = tailof(typeof(_example(CT, 2)))
-    θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) :
-        m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) :
-                           β⁻¹(CT,  corblomqvist(U')[1,2])
+    est = _rank_measure(m, U, weights)[1,2]
+    θ = m isa Val{:itau} ? τ⁻¹(CT, est) :
+        m isa Val{:irho} ? ρ⁻¹(CT, est) :
+                           β⁻¹(CT, est)
     lo, hi = _θ_bounds(TT, 2)
     # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
     θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)

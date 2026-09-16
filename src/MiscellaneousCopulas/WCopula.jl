@@ -66,6 +66,6 @@ distortion(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistor
 Distributions.params(::WCopula) = (;)
 # A parameter-free family has nothing to weight, so the weights are accepted and unused.
 _fit(::Type{<:WCopula}, U, ::Val{:mle}; weights=nothing) = WCopula(size(U,1))
-_fit(::Type{<:WCopula}, U, ::Val{:itau}) = WCopula(size(U,1))
-_fit(::Type{<:WCopula}, U, ::Val{:irho}) = WCopula(size(U,1))
-_fit(::Type{<:WCopula}, U, ::Val{:ibeta}) = WCopula(size(U,1))
+_fit(::Type{<:WCopula}, U, ::Val{:itau}; weights=nothing) = WCopula(size(U,1))
+_fit(::Type{<:WCopula}, U, ::Val{:irho}; weights=nothing) = WCopula(size(U,1))
+_fit(::Type{<:WCopula}, U, ::Val{:ibeta}; weights=nothing) = WCopula(size(U,1))

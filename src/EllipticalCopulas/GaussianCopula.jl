@@ -213,12 +213,12 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
     R̂ = (R̂ + R̂') / 2
     return GaussianCopula(R̂)
 end
-function _fit(::Type{<:GaussianCopula}, U, ::Val{:itau})
-    τ̂ = StatsBase.corkendall(U')
+function _fit(::Type{<:GaussianCopula}, U, m::Val{:itau}; weights=nothing)
+    τ̂ = _rank_measure(m, U, weights)
     return GaussianCopula(_nearest_correlation(sinpi.(τ̂ ./ 2)))
 end
-function _fit(::Type{<:GaussianCopula}, U, ::Val{:irho})
-    ρ̂ = StatsBase.corspearman(U')
+function _fit(::Type{<:GaussianCopula}, U, m::Val{:irho}; weights=nothing)
+    ρ̂ = _rank_measure(m, U, weights)
     return GaussianCopula(_nearest_correlation(2 .* sinpi.(ρ̂ ./ 6)))
 end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)

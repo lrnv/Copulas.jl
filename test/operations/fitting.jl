@@ -769,7 +769,144 @@ end
         custom = fit(CopulaModel, reparam, zeros(3), Un)
         @test coef(fit(CopulaModel, reparam, zeros(3), Un; weights=ones(n))) == coef(custom)
         @test_throws ArgumentError fit(CopulaModel, C0, Un; weights=-ones(n))
-        @test_throws ArgumentError infer(weighted; method=:bootstrap, nresamples=2)
+        # A resample of the weighted nested fit is refitted unweighted.
+        @test infer(weighted; method=:bootstrap, nresamples=2, rng=StableRNG(528)).method === :bootstrap
+    end
+
+    @testset "weighted rank measures" begin
+        # Each weighted measure is the measure of the sample in which
+        # observation j is repeated w[j] times. Kendall's tau-b reproduces the
+        # integer arithmetic of StatsBase.corkendall, so unit weights are bit
+        # identical; Blomqvist's beta counts the same way; Spearman's rho is
+        # the weighted Pearson correlation of the weighted average ranks, a
+        # different reduction from StatsBase's, within an ulp of it.
+        U = rand(StableRNG(529), GaussianCopula([1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]), n)
+        Ut = round.(U; digits=1)
+        counts = zeros(Int, n)
+        for slot in rand(StableRNG(530), 1:n, n)
+            counts[slot] += 1
+        end
+        kept = findall(>(0), counts)
+        replicate(X) = hcat((repeat(X[:, j], 1, counts[j]) for j in kept)...)
+        measures = ((Copulas._weighted_corkendall, corkendall),
+                    (Copulas._weighted_corspearman, corspearman),
+                    (Copulas._weighted_corblomqvist, Copulas.corblomqvist))
+        for (weighted, reference) in measures, X in (U, Ut)
+            # The kernels take the weights `_fit_weights` has normalized, so
+            # unit weights reach them as exactly one.
+            if weighted === Copulas._weighted_corspearman
+                @test weighted(X, ones(n)) ≈ reference(X') atol=1e-15
+            else
+                @test weighted(X, ones(n)) == reference(X')
+            end
+            @test weighted(X, fill(3.0, n)) ≈ reference(X') atol=1e-15
+            @test weighted(X, Float64.(counts)) ≈ reference(replicate(X)') atol=1e-15
+            @test weighted(X, 0.5 .* counts) ≈ weighted(X, Float64.(counts)) atol=1e-15
+            @test weighted(X, Float64.(counts))[1, 2] == weighted(X, Float64.(counts))[2, 1]
+            @test all(isone, LinearAlgebra.diag(weighted(X, ones(n))))
+        end
+        @test Copulas._weighted_β(U, ones(n)) == Copulas.β(U)
+        @test Copulas._weighted_β(U, Float64.(counts)) ≈ Copulas.β(replicate(U)) atol=1e-15
+        # A zero weight removes its observation, and a NaN column poisons its pair.
+        w0 = ones(n); w0[1] = 0
+        for (weighted, reference) in measures
+            @test weighted(U, w0)[1, 2] ≈ reference(U[:, 2:end]')[1, 2] atol=1e-15
+        end
+        Un = copy(U); Un[1, 3] = NaN
+        for (weighted, _) in measures
+            @test isnan(weighted(Un, ones(n))[1, 2]) && !isnan(weighted(Un, ones(n))[2, 3])
+        end
+    end
+
+    @testset "rank inversions take weights: $(nameof(CT)) d=$(length(C)) $method" for (CT, C, methods) in [
+            (ClaytonCopula, ClaytonCopula{2}(2.0), (:itau, :irho, :ibeta)),
+            (GumbelCopula, GumbelCopula{3}(1.6), (:itau, :irho, :ibeta)),
+            (GaussianCopula, GaussianCopula([1.0 0.5; 0.5 1.0]), (:itau, :irho, :ibeta)),
+            (GaussianCopula, GaussianCopula([1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]), (:itau, :irho, :ibeta)),
+            (TCopula, TCopula(4.0, [1.0 0.5; 0.5 1.0]), (:itau, :itau_irho)),
+            (TCopula, TCopula(5.0, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]), (:itau,)),
+            (FGMCopula, FGMCopula(2, 0.4), (:itau, :irho, :ibeta)),
+            (GalambosCopula{2}, GalambosCopula(2, 1.5), (:itau, :irho, :ibeta)),
+            (ArchimaxCopula{2,Copulas.IndependentGenerator,Copulas.GalambosTail},
+             ArchimaxCopula{2}(Copulas.IndependentGenerator(), Copulas.GalambosTail(1.5)), (:itau, :irho, :ibeta)),
+            (SurvivalCopula{2,ClaytonCopula{2}}, SurvivalCopula(ClaytonCopula{2}(2.0)), (:itau, :irho, :ibeta)),
+            (IndependentCopula, IndependentCopula(2), (:itau, :irho, :ibeta)),
+            ], method in methods
+        # The weighted inversion of unit weights is the unweighted one, and
+        # integer weights summing to n invert the measure of the replicated
+        # sample: exactly for a closed-form or root-finding inversion, to
+        # Brent's tolerance for the Student profile over the degrees of freedom.
+        U = rand(StableRNG(531), C, n)
+        unweighted = fit(CopulaModel, CT, U; method)
+        for weights in (ones(n), fill(3, n), fill(2.5, n))
+            weighted = fit(CopulaModel, CT, U; method, weights)
+            @test coef(weighted) == coef(unweighted)
+            @test loglikelihood(weighted) == loglikelihood(unweighted)
+            @test Copulas.fitting_method(weighted) === method
+        end
+        counts = zeros(Int, n)
+        for slot in rand(StableRNG(532), 1:n, n)
+            counts[slot] += 1
+        end
+        kept = findall(>(0), counts)
+        Urep = hcat((repeat(U[:, j], 1, counts[j]) for j in kept)...)
+        replicated = fit(CopulaModel, CT, Urep; method)
+        weighted = fit(CopulaModel, CT, U; method, weights=counts)
+        tol = C isa TCopula && method === :itau ? 1e-6 : 1e-12
+        @test coef(weighted) ≈ coef(replicated) rtol=tol
+        @test loglikelihood(weighted) ≈ loglikelihood(replicated) rtol=1e-8
+        @test Copulas._model_weights(weighted) !== nothing
+    end
+
+    @testset "the Sklar route takes weights" begin
+        # Every step reads the same weights: the margins through
+        # Distributions.fit(D, x, w), the :ecdf ranks through the weighted
+        # pseudos, the copula through fit(CT, U; weights), the log-likelihood
+        # through the weighted sum. Distributions.jl reduces its weighted
+        # sufficient statistics in another order than its unweighted ones, so
+        # unit weights reproduce the margins up to rounding, not bit for bit.
+        S0 = SklarDist(ClaytonCopula{2}(2.0), (Normal(1.0, 2.0), Exponential(3.0)))
+        X = rand(StableRNG(533), S0, n)
+        T = SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}
+        counts = zeros(Int, n)
+        for slot in rand(StableRNG(534), 1:n, n)
+            counts[slot] += 1
+        end
+        kept = findall(>(0), counts)
+        Xrep = hcat((repeat(X[:, j], 1, counts[j]) for j in kept)...)
+        for sklar_method in (:ifm, :ecdf)
+            unweighted = fit(CopulaModel, T, X; sklar_method)
+            for weights in (ones(n), fill(3, n))
+                weighted = fit(CopulaModel, T, X; sklar_method, weights)
+                @test coef(weighted) ≈ coef(unweighted) rtol=1e-10
+                @test loglikelihood(weighted) ≈ loglikelihood(unweighted) rtol=1e-10
+                @test nobs(weighted) == n
+            end
+            replicated = fit(CopulaModel, T, Xrep; sklar_method)
+            weighted = fit(CopulaModel, T, X; sklar_method, weights=counts)
+            @test coef(weighted) ≈ coef(replicated) rtol=1e-6
+            @test loglikelihood(weighted) ≈ loglikelihood(replicated) rtol=1e-8
+            @test bic(weighted) ≈ bic(replicated) rtol=1e-8
+            @test nobs(weighted) == nobs(replicated) == n
+            @test Copulas._model_weights(weighted) == Copulas._fit_weights(counts, n)
+            @test size(Copulas._copula_data(weighted)) == size(X)
+            sklar_method === :ecdf &&
+                @test Copulas._copula_data(weighted) == pseudos(X; weights=counts)
+            @test params(fit(T, X; sklar_method, weights=counts).C) == params(fitted_distribution(weighted).C)
+            # The copula step may be a rank inversion.
+            rank = fit(T, X; sklar_method, copula_method=:itau, weights=counts)
+            @test params(rank.C) == params(fit(ClaytonCopula, pseudos(X; weights=counts); method=:itau, weights=counts))
+            @test occursin("Observation weights", sprint(show, weighted))
+        end
+        # Refusals: a margin family without a weighted fit, by name; weights
+        # through copula_kwargs.
+        Y = copy(X); Y[2, :] .= rand(StableRNG(535), n)
+        @test_throws ArgumentError fit(SklarDist{ClaytonCopula,Tuple{Normal,Beta}}, Y; weights=ones(n))
+        @test_throws ArgumentError fit(SklarDist{ClaytonCopula,Tuple{Normal,Cauchy}}, X; weights=ones(n))
+        err = try fit(SklarDist{ClaytonCopula,Tuple{Normal,Cauchy}}, X; weights=ones(n)) catch e; e end
+        @test occursin("Cauchy", sprint(showerror, err))
+        @test_throws ArgumentError fit(T, X; copula_kwargs=(; weights=ones(n)))
+        @test_throws ArgumentError fit(T, X; weights=-ones(n))
     end
 
     @testset "the template fit stays in the certified nesting region" begin
@@ -800,22 +937,12 @@ end
         @test_throws ArgumentError fit(ClaytonCopula, U; weights=[NaN; ones(n - 1)])
         @test_throws ArgumentError fit(ClaytonCopula, U; weights=[Inf; ones(n - 1)])
         @test_throws ArgumentError fit(ClaytonCopula, U; weights=ones(n, 1))
-        for method in (:itau, :irho, :ibeta)
-            @test_throws ArgumentError fit(ClaytonCopula, U; method, weights=ones(n))
-        end
         @test_throws ArgumentError fit(GalambosCopula, U; method=:iupper, weights=ones(n))
         @test_throws ArgumentError fit(BetaCopula, U; weights=ones(n))
         @test_throws ArgumentError fit(EmpiricalCopula, U; weights=ones(n))
 
-        X = randn(StableRNG(526), 2, n)
-        @test_throws ArgumentError fit(SklarDist{ClaytonCopula,Tuple{Normal,Normal}}, X;
-                                       copula_kwargs=(; weights=ones(n)))
-
         weighted = fit(CopulaModel, ClaytonCopula, U; weights=rand(StableRNG(527), n))
-        @test_throws ArgumentError infer(weighted)
-        @test_throws ArgumentError infer(weighted; method=:hessian)
-        @test_throws ArgumentError infer(weighted; method=:bootstrap, nresamples=2)
-        @test_throws ArgumentError Copulas._refit(weighted, U)
+        @test_throws ArgumentError infer(weighted; method=:jackknife)
         @test_throws ArgumentError GOFCopulaTest(weighted; N=2)
         @test_throws ArgumentError GOFCopulaTest(weighted, U; N=2)
     end
