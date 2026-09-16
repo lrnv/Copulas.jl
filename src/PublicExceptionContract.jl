@@ -100,3 +100,18 @@ function Distributions._logpdf(S::SklarDist, u::AbstractVector{T}) where {T<:Rea
     end
     return s + Distributions.logpdf(S.C, U)
 end
+
+# EmpiricalCopula-backed Sklar models have an atomic likelihood specialization
+# whose first argument is more specific than the generic method above while its
+# second argument is less specific. Define the intersection explicitly so the
+# 1.0 dimension check does not introduce a dispatch ambiguity.
+function Distributions._logpdf(
+    S::SklarDist{CT},
+    u::AbstractVector{T},
+) where {CT<:EmpiricalCopula,T<:Real}
+    d = length(S)
+    length(u) == d || throw(DimensionMismatch(
+        "input vector has length $(length(u)); expected distribution dimension $d",
+    ))
+    return invoke(Distributions._logpdf, Tuple{SklarDist{CT},Any}, S, u)
+end
