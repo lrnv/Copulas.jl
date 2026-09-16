@@ -16,7 +16,7 @@
     @testset "Frank parameter domain by dimension" begin
         @test params(FrankCopula{2}(-2.0)).θ == -2.0
         @test params(FrankCopula{3}(2.0)).θ == 2.0
-        @test_throws AssertionError FrankCopula{3}(-2.0)
+        @test_throws DomainError FrankCopula{3}(-2.0)
     end
 
     @testset "Clayton negative bivariate domain" begin
@@ -38,9 +38,9 @@
     @testset "Gumbel--Barnett dimension-dependent validity" begin
         @test GumbelBarnettCopula{2}(0.5) isa GumbelBarnettCopula{2}
         @test GumbelBarnettCopula{3}(0.3) isa GumbelBarnettCopula{3}
-        @test_throws AssertionError GumbelBarnettCopula{3}(0.5)
+        @test_throws DomainError GumbelBarnettCopula{3}(0.5)
         @test GumbelBarnettCopula{4}(0.2) isa GumbelBarnettCopula{4}
-        @test_throws AssertionError GumbelBarnettCopula{4}(0.3)
+        @test_throws DomainError GumbelBarnettCopula{4}(0.3)
     end
 
     @testset "Galambos dependence-inverse boundaries" begin
