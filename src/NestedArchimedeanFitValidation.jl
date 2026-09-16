@@ -43,11 +43,10 @@ function _fit_nested(recon::Base.Fix1, α₀::AbstractVector, U)
         return -Distributions.loglikelihood(candidate, U)
     end
 
-    res = try
-        Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff = ADTypes.AutoForwardDiff())
-    catch
-        Optim.optimize(loss, α₀, Optim.NelderMead())
-    end
+    # Do not catch reconstruction errors here. Expected nesting failures are
+    # represented by `nothing` above; any other failure is a genuine bug or
+    # numerical error and must propagate instead of being masked by a fallback.
+    res = Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff = ADTypes.AutoForwardDiff())
     α = collect(Optim.minimizer(res))
 
     # Reconstruct once more through the ordinary template map and run the same
