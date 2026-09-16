@@ -47,7 +47,8 @@ function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
     if !pseudo_values
         u = pseudos(u)
     else
-        @assert all(0 .<= u .<= 1)
+        all(0 .<= u .<= 1) || throw(DomainError(
+            u, "pseudo-observations must lie in [0,1]"))
     end
     return EmpiricalCopula{d,typeof(u)}(u)
 end
