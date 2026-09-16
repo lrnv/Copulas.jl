@@ -6,7 +6,7 @@ extreme-value copula. A valid STDF `ℓ : [0,∞)^d → [0,∞)` is convex,
 one-homogeneous, and satisfies
 
 ```math
-\max_i x_i \leq \ell(x) \leq \sum_i x_i.
+\\max_i x_i \\leq \\ell(x) \\leq \\sum_i x_i.
 ```
 
 Equivalently, on the unit simplex it defines a Pickands dependence function
