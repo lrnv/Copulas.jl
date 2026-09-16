@@ -136,9 +136,9 @@ end
     @test cdf(C, fill(1.1, d)) == 1
 
     # Generic collection dimension validation.
-    @test_throws ArgumentError cdf(C, zeros(d + 1))
-    @test_throws ArgumentError cdf(C, zeros(d + 1, 1))
-    @test_throws ArgumentError logpdf(C, zeros(d + 1, 1))
+    @test_throws DimensionMismatch cdf(C, zeros(d + 1))
+    @test_throws DimensionMismatch cdf(C, zeros(d + 1, 1))
+    @test_throws DimensionMismatch logpdf(C, zeros(d + 1, 1))
 end
 
 @testset "boundary log-density convention" begin

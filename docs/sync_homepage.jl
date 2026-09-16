@@ -9,7 +9,7 @@ layout: home
 hero:
   name: Copulas.jl
   text:
-  tagline: A Distributions.jl-compliant copula package.
+  tagline: Copula models integrated with Distributions.jl.
   image:
     src: logo.svg
     alt: Copulas.jl

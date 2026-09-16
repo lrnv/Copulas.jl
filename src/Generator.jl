@@ -293,7 +293,9 @@ end
 𝒲₋₁(::IndependentGenerator, d::Real) = Distributions.Gamma(d, 1)
 
 function Distributions.cdf(dist::𝒲₋₁, x::Real)
+    isnan(x) && return float(x)
     x ≤ 0 && return zero(x)
+    isinf(x) && return one(float(x))
     rez, scaled_power = zero(x), one(x)
     @inbounds for k in 1:dist.order
         cₖ = if k == 1
@@ -307,8 +309,9 @@ function Distributions.cdf(dist::𝒲₋₁, x::Real)
         scaled_power *= -x / k
     end
     F = 1 - rez
-    # Guard against tiny numerical excursions
-    return isnan(F) ? one(x) : clamp(F, zero(x), one(x))
+    isnan(F) && return F
+    # Clamp only finite roundoff excursions; NaN above remains diagnostic.
+    return clamp(F, zero(F), one(F))
 end
 function Distributions.pdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
@@ -341,17 +344,17 @@ include("UnivariateDistribution/Radials/WilliamsonBetaProduct.jl")
 
 The `𝒲` type (also available as `WilliamsonGenerator`) constructs a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation is implemented fully generically in the package.
 
-For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a positive real order ``d``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
+For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a positive real order `d`, the Williamson-d-transform of `X` is the real function supported on `[0,∞[` given by:
 
 ```math
 \\phi(t) = 𝒲_{d}(X)(t) = \\int_{t}^{\\infty} \\left(1 - \\frac{t}{x}\\right)^{d-1} dF(x) = \\mathbb E\\left( (1 - \\frac{t}{X})^{d-1}_+\\right) \\mathbb 1_{t > 0} + \\left(1 - F(0)\\right)\\mathbb 1_{t <0}
 ```
 
-For integer ``d ≥ 2`` and a strictly positive radial variable, this function has
+For integer `d ≥ 2` and a strictly positive radial variable, this function has
 the following properties:
-- We have that ``\\phi(0) = 1`` and ``\\phi(Inf) = 0``
-- ``\\phi`` is ``d-2`` times derivable, and the signs of its derivatives alternates : ``\\forall k \\in 0,...,d-2, (-1)^k \\phi^{(k)} \\ge 0``.
-- ``(-1)^{d-2}\\phi^{(d-2)}`` is non-increasing and convex.
+- We have that `ϕ(0) = 1` and `ϕ(Inf) = 0`
+- `ϕ` is `d-2` times derivable, and the signs of its derivatives alternates : `∀ k ∈ 0,...,d-2, (-1)^k ϕ^(k) ≥ 0`.
+- `(-1)^(d-2)ϕ^(d-2)` is non-increasing and convex.
 
 These properties characterize a *d-monotone Archimedean generator*. Real orders
 are also supported, but the integer derivative characterization above should
@@ -376,7 +379,7 @@ Special case (finite-support discrete X)
 
 References: 
 * [williamson1956](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
-* [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
+* [mcneil2009](@cite) McNeil, Alexander J., & Nešlehová, Johanna. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
 """
 struct 𝒲{TX, TO<:Real} <: Generator
     X::TX

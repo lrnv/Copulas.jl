@@ -46,6 +46,17 @@ struct MissingSamplerContractCopula <: Copulas.Copula{2} end
     ) isa Copulas.NonAbsolutelyContinuousMeasure
 end
 
+@testset "copula entropy follows the measure class" begin
+    # Under the public KL definition, any singular component forces -Inf.
+    @test Copulas.ι(IndependentCopula{2}()) == 0
+    @test Copulas.ι(WCopula()) == -Inf
+    @test Copulas.ι(RafteryCopula{3}(0.5)) == -Inf
+    @test Copulas.ι(EmpiricalCopula([0.2 0.8; 0.3 0.7])) == -Inf
+
+    continuous = ClaytonCopula{2}(1.5)
+    @test isfinite(Copulas.ι(continuous))
+end
+
 @testset "public copula registry is exhaustive" begin
     public_families = Set(getfield(Copulas, symbol) for symbol in public_symbols()
         if getfield(Copulas, symbol) isa Type &&
