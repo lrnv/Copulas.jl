@@ -1,6 +1,6 @@
 <!-- README-ONLY:START -->
 <h1 align=center><img src="https://cdn.rawgit.com/lrnv/Copulas.jl/main/docs/src/assets/logo.svg" width="30px" height="30px"/> Copulas.jl</h1>
-<p align=center><i>A fully `Distributions.jl`-compliant copula package</i></p>
+<p align=center><i>A copula package integrated with `Distributions.jl`</i></p>
 
 <p align=center>
     <a href="https://lrnv.github.io/Copulas.jl/stable"><img src="https://img.shields.io/badge/docs-stable-blue.svg" alt="Stable" /></a>
@@ -30,10 +30,10 @@ The [Copulas.jl](https://github.com/lrnv/Copulas.jl) package provides a large co
 - marginalization, conditioning, and Rosenblatt transforms
 - resampling-based hypothesis tests for dependence assumptions and goodness of fit
 
-Since copulas are distribution functions, we integrate with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This compliance allows direct interoperability with other packages based on this API, such as [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
+Since copulas are distribution functions, we integrate with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This integration supports interoperability with other packages based on that API, such as [`Turing.jl`](https://github.com/TuringLang/Turing.jl). The precise 1.0 guarantees, including the treatment of singular and mixed measures, are defined on the [Public API](https://lrnv.github.io/Copulas.jl/stable/api/public) page.
 
 Usually, users who work with copulas turn to the `R` package [`copula`](https://cran.r-project.org/web/packages/copula/copula.pdf). While still well-maintained and regularly updated, the `R` package `copula` is a complicated code base in terms of readability, extensibility, reliability, and maintenance.
-This package aims to provide a lightweight, fast, reliable, and maintainable copula implementation in native Julia. Among other benefits, a notable feature of such a native implementation is floating point type agnosticism, i.e., compatibility with `Float32` (and GPU equivalents), `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl), and other numeric types.
+This package aims to provide a lightweight, fast, reliable, and maintainable copula implementation in native Julia. Core numerical paths are written generically where practical and model representations preserve their documented numeric types. Individual algorithms and external numerical backends may have narrower support; unsupported precision should fail explicitly rather than be silently narrowed. GPU and arbitrary-precision support are therefore operation- and backend-dependent rather than package-wide guarantees. See the [Public API](https://lrnv.github.io/Copulas.jl/stable/api/public) page for the normative numeric contract.
 
 
 The package revolves around two main types:
