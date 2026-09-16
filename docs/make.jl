@@ -1,5 +1,6 @@
 include("sync_homepage.jl")
 
+using Bibliography
 using Copulas
 using Documenter
 using DocumenterCitations
@@ -7,9 +8,15 @@ using DocumenterVitepress
 
 DocMeta.setdocmeta!(Copulas, :DocTestSetup, :(using Copulas); recursive=true)
 
+bibfiles = [
+    joinpath(@__DIR__, "src", "assets", "references.bib"),
+    joinpath(@__DIR__, "src", "assets", "information_criteria.bib"),
+]
+entries = merge(Bibliography.import_bibtex.(bibfiles)...)
 bib = CitationBibliography(
-    joinpath(@__DIR__,"src","assets","references.bib"),
-    style=:numeric
+    join(basename.(bibfiles), ", ");
+    style=:numeric,
+    _entries=entries,
 )
 
 using DocumenterInterLinks
@@ -36,6 +43,7 @@ makedocs(;
             "Conditioning and subsetting"=>"manual/conditioning_and_subsetting.md",
             "Dependence metrics"=>"manual/dependence_measures.md",
             "Fitting"=>"manual/fitting_interface.md",
+            "Information criteria"=>"manual/information_criteria.md",
             "Hypothesis testing" => "manual/hypothesis_testing.md",
             "Visualizations"=>"manual/visualizations.md",
         ],
