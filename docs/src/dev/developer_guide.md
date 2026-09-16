@@ -393,6 +393,8 @@ capabilities.
 
 ### `Tail`: the mathematical STDF interface
 
+This section documents Copulas.jl's internal architecture for in-package contributors. Tail is public for mathematical evaluation, but downstream Tail subtype implementation is not currently a SemVer-stable extension interface.
+
 A multivariate EV tail should subtype `Tail` and implement its STDF:
 
 ```julia

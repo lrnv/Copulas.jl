@@ -63,3 +63,10 @@ end
     @test cdf(condition(C, [1], [u[1]]), u[2:3]) ≈
           cdf(condition(C, (1,), (u[1],)), u[2:3])
 end
+
+
+@testset "copula pdf does bypass u notin hypercube" begin
+    @test logpdf(FGMCopula{2}(0.5), [-0.1, 0.5]) == -Inf
+    @test logpdf(FGMCopula{2}(0.5), [1.1, 0.5]) == -Inf
+    @test pdf(FGMCopula{2}(0.5), [1.1, 0.5]) == 0
+end

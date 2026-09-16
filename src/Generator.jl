@@ -16,11 +16,8 @@ must implement:
 
 These methods are sufficient to construct `ArchimedeanCopula(d, G)` and use its
 generic CDF path: the inverse of `ϕ` is obtained numerically when no specialized
-method exists. Other operations can require more. Generic automatic
-differentiation and inverse-Williamson fallbacks provide density and sampling
-for suitably regular generators, but their numerical success is not implied by
-the three-method contract alone, especially at singularities and parameter
-boundaries.
+method exists. Generic automatic
+differentiation and inverse-Williamson fallbacks provide density and sampling.
 
 Only this mathematical interface is public. Copulas.jl's generator subtype
 hierarchy beyond documented public types, derivative and inverse hooks, radial

@@ -140,6 +140,7 @@ Distributions.logcdf(C::Copula, v::AbstractVector) = log(Distributions.cdf(C,v))
     @boundscheck length(u) == d || throw(DimensionMismatch(
         "input dimension does not match copula dimension",
     ))
+    all(x -> 0 <= x <= 1, u) || return eltype(u)(-Inf)
     value = Distributions._logpdf(C, u)
     isnan(value) || return value
     return _resolve_boundary_logpdf(value, u)

@@ -35,7 +35,7 @@ struct IndependentCopula{d} <: Copula{d}
 end
 IndependentCopula(d) = IndependentCopula{d}()
 _cdf(::IndependentCopula{d}, u) where d = prod(u)
-Distributions._logpdf(::IndependentCopula{d}, u) where {d} = all(0 .<= u .<= 1) ? zero(eltype(u)) : eltype(u)(-Inf)
+Distributions._logpdf(::IndependentCopula{d}, u) where {d} = zero(eltype(u))
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::IndependentCopula{d}, A::AbstractMatrix{T}) where {T<:Real, d}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
