@@ -41,6 +41,25 @@ function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
     return _vcov_hessian(CT, U, θ, Val(size(U, 1)), vcovv, methodv)
 end
 
+function _invert_observed_information(Iα::AbstractMatrix)
+    any(!isfinite, Iα) && throw(ArgumentError(
+        "Hessian inference produced non-finite observed information"))
+    Iα = LinearAlgebra.Symmetric((Iα + Iα') / 2)
+    p = size(Iα, 1)
+    I_p = Matrix{eltype(Iα)}(LinearAlgebra.I, p, p)
+    ch = try
+        LinearAlgebra.cholesky(Iα; check=true)
+    catch err
+        err isa LinearAlgebra.PosDefException || rethrow()
+        throw(ArgumentError(
+            "Hessian inference requires positive-definite observed information"))
+    end
+    Vα = ch \ I_p
+    all(isfinite, Vα) || throw(ArgumentError(
+        "Hessian inference produced a non-finite covariance matrix"))
+    return Vα
+end
+
 function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
                        ::Val{d}, ::Val{:hessian},
                        methodv::Val{method}) where {d,method}
@@ -50,24 +69,7 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
     ℓ(αv) = Distributions.loglikelihood(_vcov_copula(CT, vd, αv, example), U)
     H = ForwardDiff.hessian(ℓ, α)
     Iα = .-H
-    any(!isfinite, Iα) && throw(ArgumentError(
-        "Hessian inference produced non-finite observed information"))
-    Iα = (Iα + Iα') / 2
-    p = size(Iα, 1)
-    I_p = Matrix{Float64}(LinearAlgebra.I, p, p)
-    λ = 1e-8
-    Vα = nothing
-    @inbounds for _ in 1:8
-        ch = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Iα + λ * I_p);
-                                    check=false)
-        if ch.info == 0
-            Vα = ch \ I_p
-            break
-        end
-        λ *= 10
-    end
-    (Vα === nothing || any(!isfinite, Vα)) && throw(ArgumentError(
-        "Hessian inference could not stabilize the observed information"))
+    Vα = _invert_observed_information(Iα)
     return _vcov_finalize(CT, U, θ, d, α, Vα)
 end
 
@@ -136,20 +138,21 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::
     return _vcov_finalize(CT, U, θ, d, α, Vα)
 end
 
+function _validate_inference_covariance(Vθ::AbstractMatrix)
+    all(isfinite, Vθ) || throw(ArgumentError(
+        "inference produced a non-finite covariance matrix"))
+    Vθ = LinearAlgebra.Symmetric((Vθ + Vθ') / 2)
+    LinearAlgebra.isposdef(Vθ) || throw(ArgumentError(
+        "inference produced a covariance matrix that is not positive definite"))
+    return Vθ
+end
+
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
                         d::Int, α, Vα)
     J = ForwardDiff.jacobian(
         αv -> _flatten_params(_rebound_params(CT, d, αv))[2], α)
     Vθ = J * Vα * J'
-    all(isfinite, Vθ) || throw(ArgumentError(
-        "inference produced a non-finite covariance matrix"))
-    Vθ = (Vθ + Vθ') / 2
-    λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
-    λ_reg = map(x -> max(x, 1e-12), λ)
-    Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
-    all(isfinite, Matrix(Vθ)) || throw(ArgumentError(
-        "inference produced a non-finite regularized covariance matrix"))
-    return Vθ
+    return _validate_inference_covariance(Vθ)
 end
 
 function _default_inference_method(M::CopulaModel)
@@ -289,6 +292,11 @@ implementing a fitting route. Fits without a justified default raise an
 `:godambe_pairwise`, `:jackknife`, and `:bootstrap`. Godambe and bootstrap
 inference accept `nresamples` and `rng`; these execution controls are not
 retained in the result.
+
+Analytical inference does not silently regularize failed covariance estimates.
+A singular or non-positive-definite observed-information or covariance matrix
+raises an `ArgumentError`; use a resampling method when the analytical
+approximation is not numerically identified.
 
 For a fitted `SklarDist`, the default is `:bootstrap`. Every resample repeats
 the complete estimator: all margins are fitted again, pseudo-observations are
