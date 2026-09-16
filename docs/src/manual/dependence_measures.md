@@ -55,11 +55,13 @@ $$a(d) = \frac{1}{d+1} + \frac{1}{(d+1)!} \quad \text{(independence)}, \qquad b(
 
 ::: definition Definition (Copula entropy ι)
 
-For a copula $C$ with density $c$, the copula entropy is
+For a copula $C$ with density $c$, the copula entropy is the negative Kullback-leibler distance between the measure induced by the copula and the lebedge measure on the unit hypercube (that is, the measure induced by the independence copula $\Pi$. 
 
-$$\iota(C) = - \int_{[0,1]^d} c(u) \log c(u)\,du.$$
+$$\iota(C) = - KL(C, \Pi) = - \int_{[0,1]^d} c(u) \log c(u)\,du.$$
 
 It satisfies $I(X_1,\dots,X_d) = -\iota(C)$ (see [ma2011mutual](@cite)).
+
+It is the usual negative density entropy for absolutely continuous copulas and `-Inf` whenever the copula law has a singular component.
 
 :::
 
