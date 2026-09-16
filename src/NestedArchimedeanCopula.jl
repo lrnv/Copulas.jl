@@ -1365,8 +1365,8 @@ _example(::Type{NestedArchimedeanCopula}, d) =
 
 # ---- The MLE on a TEMPLATE INSTANCE (fixed structure) -----------------------
 
-function _fit_nested(recon, α₀::AbstractVector, U)
-    loss(α) = -Distributions.loglikelihood(recon(α), U)
+function _fit_nested(recon, α₀::AbstractVector, U; weights=nothing)
+    loss(α) = -_weighted_loglikelihood(recon(α), U, weights)
     res = Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     α = collect(Optim.minimizer(res))
     return recon(α), α
@@ -1405,31 +1405,41 @@ one of two ways:
 
 `fit(C0, U)` is a quick shim returning only the fitted copula; for the custom form
 use `fitted_distribution(fit(CopulaModel, reparam, init, U))`.
+
+Both forms take `weights`, one non-negative weight per observation, with the
+semantics documented for `fit(CopulaModel, CT, U)`: a weighted pseudo-likelihood
+whose weights are normalized to sum to the number of observations.
 """
 function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, U;
-        method=:mle, kwargs...) where {d}
+        method=:mle, weights=nothing, kwargs...) where {d}
     _reject_inference_fit_keywords((; kwargs...))
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     _validate_nested_fit_data(U, d)
-    fit_spec = _CopulaFitSpec(C0, :mle, (; kwargs...))
-    fitted, _ = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U)
-    return CopulaModel(fitted, U, Distributions.loglikelihood(fitted, U), fit_spec)
+    weights = _fit_weights(weights, size(U, 2))
+    fit_spec = _CopulaFitSpec(C0, :mle, _nested_fit_kwargs(weights, kwargs))
+    fitted, _ = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U; weights)
+    return CopulaModel(fitted, U, _weighted_loglikelihood(fitted, U, weights), fit_spec)
 end
+
+# The recipe carries the normalized weights, so a refit knows to refuse them.
+_nested_fit_kwargs(::Nothing, kwargs) = (; kwargs...)
+_nested_fit_kwargs(weights::AbstractVector, kwargs) = (; kwargs..., weights)
 
 # Custom parametrisation: a map `reparam : α -> NestedArchimedeanCopula` and its
 # initial α₀ — NO template, the map fully defines the tree (so it can share
 # parameters, change the per-generator parametrisation, or encode a constraint).
 function Distributions.fit(::Type{CopulaModel}, reparam, init::AbstractVector, U;
-        method=:mle, kwargs...)
+        method=:mle, weights=nothing, kwargs...)
     _reject_inference_fit_keywords((; kwargs...))
     method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
     α₀ = collect(float.(init))
     d  = length(reparam(α₀))::Int                 # dimension from the parametrisation itself
     _validate_nested_fit_data(U, d)
-    fitted, α = _fit_nested(reparam, α₀, U)
+    weights = _fit_weights(weights, size(U, 2))
+    fitted, α = _fit_nested(reparam, α₀, U; weights)
     fit_spec = _CopulaFitSpec((; reparam, init=copy(α₀), coordinates=α), :mle,
-                              (; kwargs...))
-    return CopulaModel(fitted, U, Distributions.loglikelihood(fitted, U), fit_spec)
+                              _nested_fit_kwargs(weights, kwargs))
+    return CopulaModel(fitted, U, _weighted_loglikelihood(fitted, U, weights), fit_spec)
 end
 
 # Template fits expose the fitted generators' natural parameters. Custom
@@ -1463,11 +1473,12 @@ _natural_parameters(C::NestedArchimedeanCopula) = _nested_coef(C)
 # shim — with an untyped `reparam` it would be type piracy on `Distributions.fit`;
 # use `fitted_distribution(fit(CopulaModel, reparam, init, U))` for the custom case.)
 function Distributions.fit(C0::NestedArchimedeanCopula{d}, U;
-                           method=:mle, kwargs...) where {d}
+                           method=:mle, weights=nothing, kwargs...) where {d}
     _reject_inference_fit_keywords((; kwargs...))
     method === :mle || throw(ArgumentError(
         "NestedArchimedeanCopula supports only method=:mle (got $method)."))
     _validate_nested_fit_data(U, d)
-    fitted, _ = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U)
+    weights = _fit_weights(weights, size(U, 2))
+    fitted, _ = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U; weights)
     return fitted
 end

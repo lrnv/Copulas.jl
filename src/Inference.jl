@@ -309,6 +309,10 @@ See also: [`CopulaInference`](@ref), [`StatsBase.vcov`](@ref),
 [`StatsBase.stderror`](@ref), [`StatsBase.confint`](@ref).
 """
 function infer(M::CopulaModel; method::Symbol=:default, kwargs...)
+    _model_weights(M) === nothing || throw(ArgumentError(
+        "inference is not defined for a model fitted with `weights`: the covariance " *
+        "of a weighted pseudo-likelihood estimator depends on what the weights " *
+        "represent, and no such estimator is implemented"))
     selected = method === :default ? _default_inference_method(M) : method
     V = _infer(M, Val(selected); kwargs...)
     covariance = LinearAlgebra.Symmetric(Matrix{Float64}(V))

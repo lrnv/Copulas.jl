@@ -483,6 +483,35 @@ enforces this restriction explicitly.
 For **extreme-value** copulas, `:mle` / `:iupper` use the documented Pickands
 representation when supported by the family.
 
+### Weighted observations
+
+Both likelihood estimators accept one weight per observation:
+
+```julia
+w = exp.(-0.01 .* (n:-1:1))            # exponential decay, any positive scale
+M = fit(CopulaModel, ClaytonCopula, U; method=:mle, weights=w)
+C = fit(GaussianCopula, X; pseudo_values=false, weights=w)
+```
+
+The fit maximizes the weighted pseudo-likelihood `∑ᵢ wᵢ log c(uᵢ)`. The
+weights are normalized once so that they sum to the number of observations
+`n`, which fixes their scale without changing the maximizer: a weight reads as
+"how many observations this column counts for", uniform weights reproduce the
+unweighted fit exactly, a zero weight removes its observation, and integer
+weights summing to `n` give the fit of the sample in which each observation is
+repeated that many times. The stored log-likelihood, and with it `aic`, `bic`
+and `deviance`, are the weighted ones; `nobs` stays `n`. With
+`pseudo_values=false` the rank transformation is the weighted one of
+`pseudos(X; weights)`, which ranks each margin by weighted mass under the same
+tie conventions.
+
+Weights are an estimation choice, not an inference one. A rank-inversion
+method refuses them, the Sklar route refuses them because its margins are
+fitted unweighted, and `infer` and the composite goodness-of-fit tests refuse
+a weighted model: the covariance of a weighted pseudo-likelihood estimator
+depends on whether the weights are frequencies, importance ratios or a decay
+schedule, and no such estimator is implemented.
+
 ## When a parametric family is too restrictive
 
 In addition to parametric families (MLE / rank-based), `Copulas.jl` exposes several **nonparametric** or **empirical** constructions that can be fit through the same high-level API:

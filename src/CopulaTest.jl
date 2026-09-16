@@ -777,12 +777,22 @@ function GOFCopulaTest(C::Copula, U::AbstractMatrix{<:Real}; kwargs...)
     return _run_copula_test(GoodnessOfFitHypothesis(C), U; kwargs...)
 end
 
+# A composite test refits the estimator on every resample, and a resample has
+# no weights, so a weighted model is refused before the first replicate.
+function _reject_weighted_composite_test(M::CopulaModel)
+    _model_weights(M) === nothing || throw(ArgumentError(
+        "a composite goodness-of-fit test refits the estimator on resamples that " *
+        "carry no weights, so it is unavailable for a model fitted with `weights`"))
+    return nothing
+end
+
 function GOFCopulaTest(M::CopulaModel, U::AbstractMatrix{<:Real};
         N::Integer=1000, pseudo_values::Bool=false,
         rng::Distributions.AbstractRNG=Random.default_rng())
     # For a composite null, M describes the estimator specification.
     # The observed statistic must use parameters estimated from the sample being
     # tested, just as every bootstrap replicate is refitted.
+    _reject_weighted_composite_test(M)
     N = _check_resamples(N)
     if fitted_distribution(M) isa SklarDist
         pseudo_values && throw(ArgumentError(
@@ -798,6 +808,7 @@ function GOFCopulaTest(M::CopulaModel, U::AbstractMatrix{<:Real};
 end
 
 function GOFCopulaTest(M::CopulaModel; kwargs...)
+    _reject_weighted_composite_test(M)
     return _run_copula_test(
         GoodnessOfFitHypothesis(M), _copula_data(M);
         pseudo_values=true, kwargs...,

@@ -162,14 +162,14 @@ distortion(C::FGMCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int
 
 
 
-function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
+function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle}; weights=nothing)
     d = size(U,1)
 
     # → 1. Easy case: d == 2, parameter mapping is bijective.
     if d == 2
         # generic rank-based routine (agnostic to vcov/inference)
         res = Optim.optimize(
-            α -> -Distributions.loglikelihood(FGMCopula(2, tanh(α[1])), U),
+            α -> -_weighted_loglikelihood(FGMCopula(2, tanh(α[1])), U, weights),
             [0.1],
             Optim.LBFGS();
             autodiff= ADTypes.AutoForwardDiff()
@@ -205,7 +205,7 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
     function loss(θ)
         try
             C = cop(θ)
-            return -Distributions.loglikelihood(C, U) + barrier_penalty(θ)
+            return -_weighted_loglikelihood(C, U, weights) + barrier_penalty(θ)
         catch
             # If FGMCopula constructor fails (invalid params), return large penalty
             return 1e10

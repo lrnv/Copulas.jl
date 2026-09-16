@@ -397,6 +397,7 @@ function _fit(
     ::Val{d},
     ::Val{:mle};
     start::Union{Symbol,Real}=:itau,
+    weights=nothing,
 ) where {d}
     GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
@@ -426,7 +427,7 @@ function _fit(
         example,
     )
 
-    f(θ) = -Distributions.loglikelihood(cop(θ), U)
+    f(θ) = -_weighted_loglikelihood(cop(θ), U, weights)
 
     res = Optim.optimize(
         f,

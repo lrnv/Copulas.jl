@@ -58,6 +58,53 @@
     @test pseudos(Utied) == Utied
     @test_throws ArgumentError pseudos(Xtied; ties=:dense)
 
+    @testset "weighted pseudo-observations" begin
+        n = size(Xtied, 2)
+        # Unit weights reproduce every convention exactly, whatever their scale
+        # up to rounding, and a range or an integer vector is accepted.
+        for ties in (:average, :first, :last, :min, :max)
+            @test pseudos(Xtied; ties, weights=ones(n)) == pseudos(Xtied; ties)
+            @test pseudos(Xtied; ties, weights=fill(3, n)) == pseudos(Xtied; ties)
+            @test pseudos(Xtied; ties, weights=fill(0.3, n)) ≈ pseudos(Xtied; ties)
+        end
+        @test pseudos(Xtied; ties=:random, rng=Xoshiro(93), weights=ones(n)) ==
+              pseudos(Xtied; ties=:random, rng=Xoshiro(93))
+        @test eltype(pseudos(Float32.(X); weights=ones(n))) === Float32
+
+        # Integer weights that sum to n are counts: each observation takes the
+        # mean rank of its copies in the replicated sample, under every
+        # convention, and a zero-weight observation sits at the weighted
+        # empirical distribution function of its value.
+        Xw = [30.0 10.0 20.0 40.0 20.0; 4.0 6.0 5.0 7.0 6.0]
+        weights = [2, 0, 1, 1, 1]
+        kept = findall(>(0), weights)
+        Xrep = hcat((repeat(Xw[:, j], 1, weights[j]) for j in kept)...)
+        first_copy = cumsum([0; weights[kept][1:end-1]]) .+ 1
+        for ties in (:average, :first, :last, :min, :max)
+            P = pseudos(Xw; ties, weights)
+            Q = pseudos(Xrep; ties)
+            @test all(x -> 0 < x < 1, P)
+            for (k, j) in enumerate(kept)
+                copies = first_copy[k]:(first_copy[k] + weights[j] - 1)
+                @test P[:, j] ≈ vec(Statistics.mean(Q[:, copies]; dims=2))
+            end
+        end
+        @test pseudos(Xw; weights) ≈ pseudos(Xw; weights=2 .* weights)
+        # Column 2 has weight zero: alone at the bottom of margin 1, tied with
+        # column 5 in margin 2, where the tie block still carries mass.
+        @test pseudos(Xw; weights)[:, 2] == [0.5, 4.0] ./ 6
+        @test pseudos(Xw; ties=:min, weights)[:, 2] == [0.5, 4.0] ./ 6
+        @test pseudos(Xw; ties=:max, weights)[:, 2] == [0.5, 4.0] ./ 6
+        @test pseudos(Xw; ties=:first, weights)[:, 2] == [0.5, 3.5] ./ 6
+        @test pseudos(Xw; ties=:last, weights)[:, 2] == [0.5, 4.5] ./ 6
+
+        @test_throws DimensionMismatch pseudos(Xtied; weights=ones(n - 1))
+        @test_throws ArgumentError pseudos(Xtied; weights=-ones(n))
+        @test_throws ArgumentError pseudos(Xtied; weights=zeros(n))
+        @test_throws ArgumentError pseudos(Xtied; weights=[1.0, NaN, 1.0, 1.0])
+        @test_throws ArgumentError pseudos(Xtied; weights=ones(2, 2))
+    end
+
     kendall_data = [1.0 1.0 2.0 3.0; 1.0 2.0 1.0 3.0]
     kendall = Copulas._kendall_sample(kendall_data)
     @test kendall == [1.0, 2.0, 2.0, 4.0] ./ 5

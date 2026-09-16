@@ -65,7 +65,8 @@ distortion(::MCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i::Int) 
 
 # Fitting/params interface (no parameters)
 Distributions.params(::MCopula) = (;)
-_fit(::Type{<:MCopula}, U, ::Val{:mle}) = MCopula(size(U,1))
+# A parameter-free family has nothing to weight, so the weights are accepted and unused.
+_fit(::Type{<:MCopula}, U, ::Val{:mle}; weights=nothing) = MCopula(size(U,1))
 _fit(::Type{<:MCopula}, U, ::Val{:itau}) = MCopula(size(U,1))
 _fit(::Type{<:MCopula}, U, ::Val{:irho}) = MCopula(size(U,1))
 _fit(::Type{<:MCopula}, U, ::Val{:ibeta}) = MCopula(size(U,1))

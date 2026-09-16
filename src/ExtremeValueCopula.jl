@@ -345,7 +345,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     return ExtremeValueCopula{2}(TT(θ))
 end
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau)
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, weights=nothing)
     d = size(U,1)
     example = _example(CT, d)
     ConcreteCT = typeof(example)
@@ -370,7 +370,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     α0 = _unbound_params(ConcreteCT, d, θ0)
     all(isfinite, α0) || throw(ArgumentError("MLE start must map to finite unbounded parameters"))
     cop(α) = ExtremeValueCopula{d}(TT(_rebound_params(ConcreteCT, d, α)...))
-    f(α) = -Distributions.loglikelihood(cop(α), U)
+    f(α) = -_weighted_loglikelihood(cop(α), U, weights)
     res = Optim.optimize(f, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     θ̂ = _rebound_params(ConcreteCT, d, Optim.minimizer(res))
     return ExtremeValueCopula{d}(TT(θ̂...))
