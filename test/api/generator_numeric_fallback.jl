@@ -5,10 +5,23 @@ struct _CubicGenerator{T} <: Copulas.Generator
 end
 Distributions.params(G::_CubicGenerator) = (; r=G.r)
 Copulas.max_monotony(::_CubicGenerator) = 4
-Copulas.ϕ(G::_CubicGenerator, t) = (one(t) - t / G.r)^3
+function Copulas.ϕ(G::_CubicGenerator, t)
+    q = one(t) - t / G.r
+    # Spell the polynomial multiplication explicitly. TaylorSeries currently
+    # widens `Taylor1{Float32} ^ n` through `float(n)`; that independent upstream
+    # promotion is not the padding bug covered by #526.
+    return q * q * q
+end
 
 @testset "generic generator Taylor padding preserves numeric type" begin
     for T in (Float32, BigFloat)
+        # Exercise the shortened-coefficient padding branch directly.
+        shortened(t) = Copulas.TaylorSeries.Taylor1(t.coeffs[1:2])
+        padded = Copulas.taylor(shortened, T(0.25), 4)
+        @test length(padded) == 5
+        @test eltype(padded) === T
+        @test padded[3:5] == zeros(T, 3)
+
         G = _CubicGenerator(T(1))
         x = T(0.25)
 
@@ -16,7 +29,7 @@ Copulas.ϕ(G::_CubicGenerator, t) = (one(t) - t / G.r)^3
         fourth = Copulas.ϕ⁽ᵏ⁾(G, 4, x)
         @test third isa T
         @test fourth isa T
-        @test fourth == zero(T)
+        @test fourth === zero(T)
 
         radial = Copulas.𝒲₋₁(G, 4)
         F = cdf(radial, T(0.5))
