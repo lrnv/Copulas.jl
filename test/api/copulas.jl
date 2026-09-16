@@ -47,6 +47,7 @@ struct MissingSamplerContractCopula <: Copulas.Copula{2} end
 end
 
 @testset "copula entropy follows the measure class" begin
+    # Under the public KL definition, any singular component forces -Inf.
     @test Copulas.ι(IndependentCopula{2}()) == 0
     @test Copulas.ι(WCopula()) == -Inf
     @test Copulas.ι(RafteryCopula{3}(0.5)) == -Inf
