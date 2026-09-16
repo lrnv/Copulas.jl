@@ -273,22 +273,34 @@ end
     ι(C::Copula)
     ι(U::AbstractMatrix; k=5, p=Inf, leafsize=32)
 
-Return copula entropy. For a copula, this is the expected negative log-density
-and therefore requires an ordinary Lebesgue density. For data, a nearest-neighbor
-entropy estimator is applied to the `d × n` pseudo-observation matrix.
+Return copula entropy. For a copula with probability law ``P_C``, Copulas.jl
+defines
 
-With the sign convention used here, independence has entropy zero and an
-absolutely continuous dependent copula has a non-positive value. The data
-estimator uses the `k`th neighbor under the Minkowski `p`-norm; `leafsize`
-controls only search performance. It requires at least `k+1` observations and
-can be sensitive to ties, boundary effects and the choice of `k`. It is not a
-definition of entropy for singular copulas.
+```math
+ι(C) = -D_{KL}(P_C \\Vert λ^d),
+```
+
+where ``λ^d`` is Lebesgue (uniform) measure on the unit hypercube. Hence
+independence has entropy zero, absolutely continuous dependent copulas have a
+non-positive value, and any copula with a singular component has entropy
+`-Inf`. For an absolutely continuous copula with density ``c``, the definition
+reduces to ``E_C[-\\log c(U)]``; generalized `logpdf` values of singular laws
+are deliberately not substituted into that density formula.
+
+For data, a nearest-neighbor differential-entropy estimator is applied to the
+`d × n` pseudo-observation matrix. It assumes a continuous pseudo-sample, uses
+the `k`th neighbor under the Minkowski `p`-norm, and can be sensitive to ties,
+boundary effects and the choice of `k`. The Shannon entropy of an atomic
+empirical law is a different quantity from `ι` under the Lebesgue reference.
 
 See also: [`corentropy`](@ref), [`Copula`](@ref), [`pseudos`](@ref).
 """
-function ι(C::Copula{d}) where {d}
+ι(C::Copula) = _copula_entropy(copula_measure_style(C), C)
+
+function _copula_entropy(::AbsolutelyContinuousMeasure, C::Copula)
     return Distributions.expectation(u -> -Distributions.logpdf(C, u), C; nsamples=10^4)
 end
+_copula_entropy(::NonAbsolutelyContinuousMeasure, ::Copula) = -Inf
 
 """
     λₗ(C::Copula; ε=1e-10)
@@ -317,9 +329,9 @@ end
     λᵤ(U::AbstractMatrix; p=nothing)
 
 Return upper-tail dependence. The generic copula method applies the lower-tail
-calculation to the survival copula; the data method estimates joint upper-tail
-frequency at threshold `p`, defaulting to `1/√n`. Family-specific exact formulas
-take precedence when available.
+calculation to the survival copula; the data method estimates joint upper-tail frequency at
+threshold `p`, defaulting to `1/√n`. Family-specific exact formulas take
+precedence when available.
 
 For a `d × n` input, rows are variables, columns are observations, and values
 must already be on the uniform scale. Smaller `p` targets a more extreme region
@@ -418,7 +430,7 @@ function ι(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
             hi[r] = v > hi[r] ? v : hi[r]
         end
         if length(idxs) ≤ leafsize
-            push!(nodes, Any[copy(idxs), 0, 0.0, 0, 0, lo, hi])  # hoja
+            push!(nodes, Any[copy(idxs), 0, 0.0, 0, 0, lo, hi])
             return length(nodes)
         end
         spans = hi .- lo
@@ -478,7 +490,6 @@ function ι(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
     end
     ρ .= max.(ρ, eps(Float64))
 
-    #KL: H = -ψ(k)+ψ(n)+log c_{d,p} + (d/n)∑log ρ  ; for L∞, we absorb log c_{d,∞}=d log 2
     H = -SpecialFunctions.digamma(k) + SpecialFunctions.digamma(n)
     if isinf(p)
         H += (d / n) * sum(log.(2 .* ρ))
@@ -502,14 +513,6 @@ See also: [`Distributions.cdf`](@extref Distributions Distributions.cdf),
 [`subsetdims`](@ref), [`Copula`](@ref).
 """
 function measure(C::Copula{d}, us,vs) where {d}
-
-    # Computes the value of the cdf at each corner of the hypercube [u,v]
-    # To obtain the C-volume of the box.
-    # This assumes u[i] < v[i] for all i
-    # Based on Computing the {{Volume}} of {\emph{n}} -{{Dimensional Copulas}}, Cherubini & Romagnoli 2009
-
-    # We use a gray code according to the proposal at https://discourse.julialang.org/t/looping-through-binary-numbers/90597/6
-
     T = promote_type(eltype(us), eltype(vs))
     u = ntuple(j -> clamp(T(us[j]), 0, 1), d)
     v = ntuple(j -> clamp(T(vs[j]), 0, 1), d)
@@ -517,13 +520,10 @@ function measure(C::Copula{d}, us,vs) where {d}
     all(iszero.(u)) && all(isone.(v)) && return T(1)
 
     eval_pt = collect(u)
-    # Inclusion–exclusion: the sign for the corner at u is (-1)^d
-    # (for d even it's +1, for d odd it's -1). The Gray-code loop below
-    # then applies alternating signs matching (-1)^(d - |ε|) as bits flip.
     sign = isodd(d) ? -one(T) : one(T)
     r = sign * Distributions.cdf(C, eval_pt)
-    graycode = 0    # use a gray code to flip one element at a time
-    which = fill(false, d) # false/true to use u/v for each component (so false here)
+    graycode = 0
+    which = fill(false, d)
     for s = 1:(1<<d)-1
         graycode′ = s ⊻ (s >> 1)
         graycomp = trailing_zeros(graycode ⊻ graycode′) + 1
