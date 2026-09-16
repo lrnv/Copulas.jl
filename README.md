@@ -30,7 +30,7 @@ The [Copulas.jl](https://github.com/lrnv/Copulas.jl) package provides a large co
 - marginalization, conditioning, and Rosenblatt transforms
 - resampling-based hypothesis tests for dependence assumptions and goodness of fit
 
-Since copulas are distribution functions, we fully comply with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This compliance allows direct interoperability with other packages based on this API, such as [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
+Since copulas are distribution functions, we integrate with the [`Distributions.jl`](https://github.com/JuliaStats/Distributions.jl) API. This compliance allows direct interoperability with other packages based on this API, such as [`Turing.jl`](https://github.com/TuringLang/Turing.jl).
 
 Usually, users who work with copulas turn to the `R` package [`copula`](https://cran.r-project.org/web/packages/copula/copula.pdf). While still well-maintained and regularly updated, the `R` package `copula` is a complicated code base in terms of readability, extensibility, reliability, and maintenance.
 This package aims to provide a lightweight, fast, reliable, and maintainable copula implementation in native Julia. Among other benefits, a notable feature of such a native implementation is floating point type agnosticism, i.e., compatibility with `Float32` (and GPU equivalents), `BigFloat`, [`DoubleFloats`](https://github.com/JuliaMath/DoubleFloats.jl), [`MultiFloats`](https://github.com/dzhang314/MultiFloats.jl), and other numeric types.
@@ -61,7 +61,7 @@ C = ClaytonCopula(3,5.2) # A 3-variate Clayton copula with θ = 5.2
 D = SklarDist(C,(X₁,X₂,X₃)) # The final distribution
 
 simu = rand(D,1000) # Generate a dataset
-D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Normal,Normal}}, simu) # estimate a model
+D̂ = fit(SklarDist{ClaytonCopula,Tuple{Gamma,Beta,Normal}}, simu) # estimate a model
 plot(D̂) # plot the result
 ```
 

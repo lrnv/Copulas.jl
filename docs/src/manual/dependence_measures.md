@@ -85,7 +85,7 @@ and `corentropy(data)` follow the `StatsBase` `n×d` convention.
     
     They do not depend on the marginals. This is why we say that they measure the 'strength' of the dependency.
 
-::: todo Work in progress
+::: info Slow paths
 
 The package implements generic version of the dependence metrics, but some families have faster versions (closed form formulas or better integration paths). 
 However, all the potential fast-paths are not implemented yet. If you feel a specific method for a certain copula is missing, do not hesitate to open an issue !

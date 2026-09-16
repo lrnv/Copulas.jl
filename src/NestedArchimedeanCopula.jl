@@ -1364,31 +1364,7 @@ _example(::Type{NestedArchimedeanCopula}, d) =
 # build the tree from α generically, so ForwardDiff differentiates straight through.
 
 # ---- The MLE on a TEMPLATE INSTANCE (fixed structure) -----------------------
-"""
-    fit(CopulaModel, C0::NestedArchimedeanCopula, U)        # template tree
-    fit(CopulaModel, reparam, init, U)                      # custom parametrisation
 
-Maximum-likelihood estimation of the generator parameters of a nested Archimedean
-copula. `U` is a `d×n` matrix of pseudo-observations (columns = observations). The
-optimiser runs in an unconstrained space through a *parametrisation* — a map
-`α -> NestedArchimedeanCopula` decoupled from the generator objects — supplied in
-one of two ways:
-
-  * **template** `C0`: a template instance whose tree shape (leaf layout, children
-    blocks) and per-node generator families are kept fixed; only the scalar θ of
-    each node is re-optimised, each inside its own family domain. The cross-node
-    nesting condition is NOT enforced — the constructor leaves it to the caller.
-  * **custom** `reparam`, `init`: your own map `reparam(α) -> copula` and its
-    initial `α₀` (no template needed — the map fully defines the tree). Use it to
-    share parameters across nodes, change the per-generator parametrisation (e.g.
-    fit on a Kendall-τ scale), or enforce a constraint such as nesting (parametrise
-    each child's θ as a non-negative increment over its parent's). `reparam` must
-    build the tree from `α` generically so ForwardDiff can differentiate it.
-
-`fit(C0, U)` is a quick shim returning only the fitted copula; for the custom form
-use `fitted_distribution(fit(CopulaModel, reparam, init, U))`.
-"""
-# Shared optimiser + model assembly for a parametrisation `recon: α -> copula`.
 function _fit_nested(recon, α₀::AbstractVector, U)
     loss(α) = -Distributions.loglikelihood(recon(α), U)
     res = try
@@ -1411,6 +1387,29 @@ end
 
 # Default: reparametrise a fixed TEMPLATE tree (its shape + families are kept fixed,
 # only the scalar θ of every node is optimised).
+"""
+    fit(CopulaModel, C0::NestedArchimedeanCopula, U)        # template tree
+    fit(CopulaModel, reparam, init, U)                      # custom parametrisation
+
+Maximum-likelihood estimation of the generator parameters of a nested Archimedean
+copula. `U` is a `d×n` matrix of pseudo-observations (columns = observations). The
+optimiser runs in an unconstrained space through a *parametrisation* — a map
+`α -> NestedArchimedeanCopula` decoupled from the generator objects — supplied in
+one of two ways:
+
+  * **template** `C0`: a template instance whose tree shape (leaf layout, children
+    blocks) and per-node generator families are kept fixed; only the scalar θ of
+    each node is re-optimised, each inside its own family domain.
+  * **custom** `reparam`, `init`: your own map `reparam(α) -> copula` and its
+    initial `α₀` (no template needed — the map fully defines the tree). Use it to
+    share parameters across nodes, change the per-generator parametrisation (e.g.
+    fit on a Kendall-τ scale), or enforce a constraint such as nesting (parametrise
+    each child's θ as a non-negative increment over its parent's). `reparam` must
+    build the tree from `α` generically so ForwardDiff can differentiate it.
+
+`fit(C0, U)` is a quick shim returning only the fitted copula; for the custom form
+use `fitted_distribution(fit(CopulaModel, reparam, init, U))`.
+"""
 function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, U;
         method=:mle, kwargs...) where {d}
     _reject_inference_fit_keywords((; kwargs...))
