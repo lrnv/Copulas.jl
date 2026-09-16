@@ -134,6 +134,7 @@ module Copulas
     include("Tail/BC2Tail.jl")
     include("Tail/CuadrasAugeTail.jl")
     include("Tail/GalambosTail.jl")
+    include("Tail/HuslerReissTail.jl")
     include("Tail/LogTail.jl")
     include("Tail/MixedTail.jl")
     include("Tail/MOTail.jl")
