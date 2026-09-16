@@ -181,6 +181,7 @@ testfiles = (
     "api/public_compositions.jl",
     "api/copulas.jl",
     "api/generators.jl",
+    "api/generator_numeric_fallback.jl",
     "api/tails.jl",
     "api/univariate_distributions.jl",
     "api/sklar.jl",
