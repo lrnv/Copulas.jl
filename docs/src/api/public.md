@@ -47,6 +47,26 @@ stronger dimension restrictions.
 | Generator extension | `Generator`, `ϕ`, `max_monotony`, `Distributions.params` | Subtyping `Generator` and implementing these three mathematical operations is a supported way to define a custom Archimedean generator. Optional derivative, inverse, radial, fitting, cache, and dispatch hooks remain internal. |
 | Utilities | `pseudos`, `measure`, `Nataf` | Rank pseudo-observations, copula rectangle probability, and Nataf correlation correction respectively. |
 
+### Distribution support and measure class
+
+Copulas.jl follows the `Distributions.jl` `ValueSupport` terminology. In that
+interface, `Continuous` means that the support is uncountable; it does **not**
+mean that the law is absolutely continuous with respect to Lebesgue measure.
+Consequently, a singular copula such as the comonotone or countermonotone bound
+can legitimately be a `ContinuousMultivariateDistribution` even though it has
+no ordinary Lebesgue density. Copulas.jl tracks absolute continuity separately
+through its internal measure-style machinery and uses that distinction whenever
+an operation requires an ordinary density.
+
+For the same API-simplicity reason, `SklarDist` keeps one multivariate
+`Distributions.jl` support supertype even though its marginals may be discrete,
+continuous, or mixed. In particular, a `SklarDist` with only discrete margins
+is not reflected as a `DiscreteMultivariateDistribution` at the Julia supertype
+level. Its likelihood, conditioning, sampling, and transform semantics remain
+discrete-aware; downstream code should rely on those documented behaviours
+rather than infer absolute continuity or atomicity from the historical
+`ContinuousMultivariateDistribution` supertype alone.
+
 For continuous distributions, `eltype` follows the Distributions.jl convention:
 it is the default numeric type allocated by `rand`. Parameterized copulas
 propagate the numeric representation of their parameters, composite copulas
