@@ -210,6 +210,7 @@ testfiles = (
     "operations/conditioning.jl",
     "operations/rosenblatt.jl",
     "operations/dependence.jl",
+    "operations/dependence_dimension_validation.jl",
     "operations/fitting.jl",
     "operations/sklar_fitting_validation.jl",
     "operations/nested_fitting_validation.jl",
