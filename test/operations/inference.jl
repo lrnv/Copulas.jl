@@ -14,6 +14,21 @@
     @test all(coef(mle_model) .< upper)
     @test Ih.method === :hessian
 
+    # Analytical inference is deliberately strict: singular/indefinite
+    # matrices fail instead of being silently ridge/eigenvalue regularized.
+    @test Copulas._invert_observed_information([2.0 0.0; 0.0 4.0]) ≈
+          [0.5 0.0; 0.0 0.25]
+    @test_throws ArgumentError Copulas._invert_observed_information(
+        [1.0 0.0; 0.0 0.0])
+    @test_throws ArgumentError Copulas._invert_observed_information(
+        [1.0 2.0; 2.0 1.0])
+    good_cov = [1.0 0.1; 0.1 2.0]
+    @test Matrix(Copulas._validate_inference_covariance(good_cov)) ≈ good_cov
+    @test_throws ArgumentError Copulas._validate_inference_covariance(
+        [1.0 0.0; 0.0 0.0])
+    @test_throws ArgumentError Copulas._validate_inference_covariance(
+        [1.0 2.0; 2.0 1.0])
+
     rank_model = fit(CopulaModel, GumbelCopula{2}, U;
                      method=:itau)
     Ig = infer(rank_model; rng=StableRNG(48_101), nresamples=20)
