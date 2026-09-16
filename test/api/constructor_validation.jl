@@ -115,6 +115,16 @@ end
     @test GalambosCopula{2}(2) isa GalambosCopula{2}
     @test tEVCopula{2}(4, 0.5) isa tEVCopula{2}
     @test GalambosCopula(2; θ=1.0) isa GalambosCopula{2}
+
+    bb1_kw = Copulas.BB1Generator(; δ=2.0, θ=1.0)
+    @test params(bb1_kw) == (θ=1.0, δ=2.0)
+    @test params(Copulas.BB1Generator(1.0; δ=2.0)) == (θ=1.0, δ=2.0)
+    asym_log_kw = Copulas.AsymLogTail(; θ₂=0.6, α=1.5, θ₁=0.4)
+    @test params(asym_log_kw) == (α=1.5, θ₁=0.4, θ₂=0.6)
+    @test_throws ArgumentError Copulas.ClaytonGenerator(; banana=2.0)
+    @test_throws ArgumentError Copulas.GalambosTail(; banana=1.0)
+    @test_throws ArgumentError GalambosCopula(2; banana=1.0)
+
     @test params(LogCopula{2}(2)).θ == 2.0
     @test params(MixedCopula{2}(1)).θ == 1.0
     @test params(HuslerReissCopula{2}(1)).θ == 1.0
