@@ -168,7 +168,6 @@ const TAIL_CASES = unique(tail_case_key,
     ],
 )
 
-
 # Run cheap foundational checks first, then mathematical and operation proofs.
 # Routing must remain after every test that records proven dispatch routes.
 # Exact `.jl` paths are used throughout;
@@ -177,6 +176,7 @@ testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
     "api/constructor_validation.jl",
+    "api/public_exception_taxonomy_1_0.jl",
     "correctness/reduction_graph.jl",
     "api/public_compositions.jl",
     "api/copulas.jl",
