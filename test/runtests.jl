@@ -184,6 +184,7 @@ testfiles = (
     "api/tails.jl",
     "api/univariate_distributions.jl",
     "api/sklar.jl",
+    "api/sklar_discrete_mixed.jl",
     "api/utilities.jl",
     "correctness/numerical.jl",
     "correctness/williamson.jl",
