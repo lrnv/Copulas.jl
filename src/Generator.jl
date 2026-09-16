@@ -31,10 +31,22 @@ See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
 """
 abstract type Generator end
 Base.eltype(G::Generator) = _sample_eltype(G)
-function (TG::Type{<:Generator})(args...;kwargs...)
+function (TG::Type{<:Generator})(args...; kwargs...)
     S = hasproperty(TG, :body) ? TG.body : TG
-    T = S.name.wrapper 
-    return T(args..., values(kwargs)...)
+    T = S.name.wrapper
+    isempty(kwargs) && return T(args...)
+
+    fields = fieldnames(Base.unwrap_unionall(T))
+    nargs = length(args)
+    nargs <= length(fields) || throw(MethodError(TG, args))
+    remaining = fields[(nargs + 1):end]
+    kwkeys = keys(kwargs)
+    valid_kwargs = length(kwargs) == length(remaining) &&
+                   all(name -> name in kwkeys, remaining)
+    valid_kwargs || throw(ArgumentError(
+        "keyword arguments for $T must name the remaining parameters $(remaining)",
+    ))
+    return T(args..., (kwargs[name] for name in remaining)...)
 end
 Base.broadcastable(x::Generator) = Ref(x)
 _parameter_dof(x::Generator) = _parameter_dof(Distributions.params(x))
@@ -220,19 +232,19 @@ faster radial distribution. For non-integer `d`, it first inverts at
 `n = ceil(Int, d)` and returns the law of `Rₙ * B`, where
 `B ~ Beta(d, n-d)` is independent of `Rₙ = 𝒲₋₁(G, n)`. Consequently,
 `ceil(d) <= max_monotony(G)` is required. Integer-valued orders retain the
-specialized integer dispatch path. If `G = 𝒲(X, source_order)` retains its
+specialized integer dispatch path. If `G = 𝒲(R, source_order)` retains its
 source radial, every `d <= source_order` is instead reduced directly from `X`;
 the ceiling condition is then unnecessary.
 
-For integer ``d ≥ 2``, a ``d``-monotone Archimedean generator ``\\phi`` has these properties:
-- ``\\phi(0) = 1`` and ``\\phi(Inf) = 0``
-- ``\\phi`` is ``d-2`` times derivable, and the signs of its derivatives alternates : ``\\forall k \\in 0,...,d-2, (-1)^k \\phi^{(k)} \\ge 0``.
-- ``(-1)^{d-2}\\phi^{(d-2)}`` is non-increasing and convex.
+For integer ``d ≥ 2``, a ``d``-monotone Archimedean generator ``\phi`` has these properties:
+- ``\phi(0) = 1`` and ``\phi(Inf) = 0``
+- ``\phi`` is ``d-2`` times derivable, and the signs of its derivatives alternates : ``\forall k \in 0,...,d-2, (-1)^k \phi^{(k)} \ge 0``.
+- ``(-1)^{d-2}\phi^{(d-2)}`` is non-increasing and convex.
 
-For such a function ``\\phi``, the inverse Williamson-d-transform of ``\\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``X``, defined by : 
+For such a function ``\phi``, the inverse Williamson-d-transform of ``\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``X``, defined by : 
 
 ```math
-F(x) = 𝒲_{d}^{-1}(\\phi)(x) = 1 - \\frac{(-x)^{d-1} \\phi_+^{(d-1)}(x)}{(d-1)!} - \\sum_{k=0}^{d-2} \\frac{(-x)^k \\phi^{(k)}(x)}{k!}
+F(x) = 𝒲_{d}^{-1}(\phi)(x) = 1 - \frac{(-x)^{d-1} \phi_+^{(d-1)}(x)}{(d-1)!} - \sum_{k=0}^{d-2} \frac{(-x)^k \phi^{(k)}(x)}{k!}
 ```
 
 The result is the corresponding non-negative univariate distribution, not a
@@ -320,17 +332,17 @@ include("UnivariateDistribution/Radials/WilliamsonBetaProduct.jl")
 
 The `𝒲` type (also available as `WilliamsonGenerator`) constructs a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation is implemented fully generically in the package.
 
-For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a positive real order ``d``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
+For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a positive real order ``d``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\infty[`` given by:
 
 ```math
-\\phi(t) = 𝒲_{d}(X)(t) = \\int_{t}^{\\infty} \\left(1 - \\frac{t}{x}\\right)^{d-1} dF(x) = \\mathbb E\\left( (1 - \\frac{t}{X})^{d-1}_+\\right) \\mathbb 1_{t > 0} + \\left(1 - F(0)\\right)\\mathbb 1_{t <0}
+\phi(t) = 𝒲_{d}(X)(t) = \int_{t}^{\infty} \left(1 - \frac{t}{x}\right)^{d-1} dF(x) = \mathbb E\left( (1 - \frac{t}{X})^{d-1}_+\right) \mathbb 1_{t > 0} + \left(1 - F(0)\right)\mathbb 1_{t <0}
 ```
 
 For integer ``d ≥ 2`` and a strictly positive radial variable, this function has
 the following properties:
-- We have that ``\\phi(0) = 1`` and ``\\phi(Inf) = 0``
-- ``\\phi`` is ``d-2`` times derivable, and the signs of its derivatives alternates : ``\\forall k \\in 0,...,d-2, (-1)^k \\phi^{(k)} \\ge 0``.
-- ``(-1)^{d-2}\\phi^{(d-2)}`` is non-increasing and convex.
+- We have that ``\phi(0) = 1`` and ``\phi(Inf) = 0``
+- ``\phi`` is ``d-2`` times derivable, and the signs of its derivatives alternates : ``\forall k \in 0,...,d-2, (-1)^k \phi^{(k)} \ge 0``.
+- ``(-1)^{d-2}\phi^{(d-2)}`` is non-increasing and convex.
 
 These properties characterize a *d-monotone Archimedean generator*. Real orders
 are also supported, but the integer derivative characterization above should
@@ -710,7 +722,7 @@ Construct a completely monotone Archimedean generator from a non-negative
 continuous frailty distribution `D`. Its generator is the Laplace transform
 
 ```math
-\\phi(t)=\\mathbb{E}[e^{-tV}]=\\operatorname{mgf}_D(-t), \\qquad V\\sim D.
+\phi(t)=\mathbb{E}[e^{-tV}]=\operatorname{mgf}_D(-t), \qquad V\sim D.
 ```
 
 `D` must have non-negative support and implement `Distributions.mgf`.
