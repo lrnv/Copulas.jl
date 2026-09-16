@@ -41,10 +41,12 @@ Special case:
 - If `isdiag(Σ)`, the `GaussianCopula` represents independence while retaining
   its concrete family type.
 
-Covariance-like inputs are normalized to correlation scale, and
-non-positive-definite matrices are rejected. Gaussian copulas are
-asymptotically independent in both tails for every non-degenerate correlation,
-and multivariate CDF values are numerical estimates.
+Covariance-like inputs are copied and normalized to correlation scale, and
+non-positive-definite matrices are rejected. The copula owns its normalized
+matrix; mutating the constructor input or a matrix returned by `params` does not
+change the model. Gaussian copulas are asymptotically independent in both tails
+for every non-degenerate correlation, and multivariate CDF values are numerical
+estimates.
 
 See also: [`TCopula`](@ref), [`SklarDist`](@ref),
 [`Nataf`](@ref), [`Distributions.fit`](@ref).
@@ -56,9 +58,10 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function GaussianCopula{d}(Σ::AbstractMatrix) where {d}
         size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
-        make_cor!(Σ)
-        N(GaussianCopula)(Σ)
-        return new{d,typeof(Σ)}(Σ)
+        matrix = Matrix(float.(Σ))
+        make_cor!(matrix)
+        N(GaussianCopula)(matrix)
+        return new{d,typeof(matrix)}(matrix)
     end
 end
 GaussianCopula(Σ::AbstractMatrix) = GaussianCopula{size(Σ, 1)}(Σ)
@@ -102,18 +105,15 @@ function inverse_rosenblatt(C::GaussianCopula, s::AbstractMatrix{<:Real})
     return Distributions.cdf.(Distributions.Normal(), LinearAlgebra.cholesky(C.Σ).L * Distributions.quantile.(Distributions.Normal(), s))
 end
 
-# Kendall tau of bivariate gaussian:
-# Theorem 3.1 in Fang, Fang, & Kotz, The Meta-elliptical Distributions with Given Marginals Journal of Multivariate Analysis, Elsevier, 2002, 82, 1–16
 τ(C::GaussianCopula{2,MT}) where MT = 2*asin(C.Σ[1,2])/π
 ρ(C::GaussianCopula{2,MT}) where MT = 6*asin(C.Σ[1,2]/2)/π
 
-# Conditioning and subsetting fast paths colocated with the type
 function distortion(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
     ist = Tuple(setdiff(1:D, js))
     @assert i in ist
     J = collect(js)
     zⱼ = Distributions.quantile.(Distributions.Normal(), collect(uⱼₛ))
-    if length(J) == 1 # if we condition on only one variable
+    if length(J) == 1
         μz = C.Σ[i, J[1]] * zⱼ[1]
         σz = sqrt(1 - C.Σ[i, J[1]]^2)
     else
@@ -148,13 +148,10 @@ function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
     return GaussianCopula{length(is)}(Σcond), distortions
 end
 
-# Subsetting colocated
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula{p}(C.Σ[collect(dims),collect(dims)])
 
-
-# Fitting collocated
 StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
-Distributions.params(C::GaussianCopula) = (; Σ = C.Σ)
+Distributions.params(C::GaussianCopula) = (; Σ = copy(C.Σ))
 _example(::Type{<:GaussianCopula}, d::Int) = GaussianCopula(d, 0.2)
 function _unbound_params(::Type{<:GaussianCopula}, d::Int, θ::NamedTuple)
     return _unbound_corr_params(d, θ.Σ)
@@ -164,52 +161,37 @@ function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}
 end
 function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle})
     d, n = size(Udata)
-    # Normal scores only need to be computed once.
     N01 = Distributions.Normal()
     Z = Distributions.quantile.(N01, Udata)
-    Q = Z * Z'    # Cross-product sufficient for the Gaussian copula likelihood.
+    Q = Z * Z'
     if d == 2
         q11 = Q[1, 1]; q22 = Q[2, 2]; q12 = Q[1, 2]
         T = eltype(Q)
         δ = sqrt(eps(T))
         lower = -one(T) + δ
         upper =  one(T) - δ
-
         objective_2d = ρ -> begin
             one_minus_ρ² = one(ρ) - ρ * ρ
             return n / 2 * log(one_minus_ρ²) + (q11 + q22 - 2ρ * q12) / (2 * one_minus_ρ²)
         end
-
         res = Optim.optimize(objective_2d, lower, upper, Optim.Brent(),)
         ρ̂ = Optim.minimizer(res)
         R̂ = T[one(T) ρ̂; ρ̂ one(T)]
-        θ̂ = (; Σ = R̂)
-
         return GaussianCopula(R̂)
     end
-
-    # In dimensions d > 2, use the normal-score correlation only
-    # as an interior starting point.
     R₀ = _score_corr_start(Z)
     α₀ = _unbound_corr_params(d, R₀)
-
     objective_hd = α -> begin
-        # The partial-correlation parameterization already gives
-        # the lower-triangular factor L such that R = L * L'.
         L = _rebound_corr_factor(d, α)
         Ltri = LinearAlgebra.LowerTriangular(L)
-        # log|R| = 2 * log|L|
         logdetR = 2 * sum(log, LinearAlgebra.diag(L))
-        # tr(R^{-1} Q), using triangular solves:
-        # R^{-1} Q = L'^{-1} L^{-1} Q.
         Y = Ltri \ Q
         RinvQ = transpose(Ltri) \ Y
         quadratic = LinearAlgebra.tr(RinvQ)
-
         return (n * logdetR + quadratic) / 2
     end
     res = try
-    Optim.optimize(objective_hd, α₀, Optim.LBFGS();autodiff=ADTypes.AutoForwardDiff(),)
+        Optim.optimize(objective_hd, α₀, Optim.LBFGS();autodiff=ADTypes.AutoForwardDiff(),)
     catch
         Optim.optimize(objective_hd, α₀, Optim.NelderMead(),)
     end
@@ -217,16 +199,8 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle})
     L̂ = _rebound_corr_factor(d, α̂)
     R̂ = L̂ * L̂'
     R̂ = (R̂ + R̂') / 2
-    θ̂ = (; Σ = R̂)
     return GaussianCopula(R̂)
 end
-# Rank inversions are closed form for the Gaussian copula: Kendall's tau is
-# 2 asin(rho) / pi and Spearman's rho is 6 asin(rho / 2) / pi for every pair,
-# so each entry of the correlation matrix inverts the corresponding pairwise
-# sample coefficient exactly. In dimension d > 2 the pairwise matrix need not
-# be positive definite, so it goes through the same repair that starts the
-# likelihood optimizer. In dimension 2 the repair only acts on a perfectly
-# concordant or discordant sample, whose closed-form matrix is singular.
 function _fit(::Type{<:GaussianCopula}, U, ::Val{:itau})
     τ̂ = StatsBase.corkendall(U')
     return GaussianCopula(_nearest_correlation(sinpi.(τ̂ ./ 2)))
