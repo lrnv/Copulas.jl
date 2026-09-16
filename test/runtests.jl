@@ -211,6 +211,7 @@ testfiles = (
     "operations/rosenblatt.jl",
     "operations/dependence.jl",
     "operations/fitting.jl",
+    "operations/sklar_fitting_validation.jl",
     "operations/nested_fitting_validation.jl",
     "operations/inference.jl",
     "operations/fitting_selection.jl",
