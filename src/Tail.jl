@@ -6,7 +6,7 @@ extreme-value copula. A valid STDF `ℓ : [0,∞)^d → [0,∞)` is convex,
 one-homogeneous, and satisfies
 
 ```math
-\\max_i x_i \\leq \\ell(x) \\leq \\sum_i x_i.
+\max_i x_i \leq \ell(x) \leq \sum_i x_i.
 ```
 
 Equivalently, on the unit simplex it defines a Pickands dependence function
@@ -23,11 +23,23 @@ Base.eltype(tail::Tail) = _sample_eltype(tail)
 function (TT::Type{<:Tail})(args...; kwargs...)
     S = hasproperty(TT, :body) ? TT.body : TT
     T = S.name.wrapper
-    # Keyword-only calls are deliberately converted to the canonical
-    # positional constructor below.  Refuse only a genuinely argument-free
-    # recursive call.
+    # Refuse only a genuinely argument-free recursive call. Keyword calls are
+    # converted to the canonical positional constructor, but their names must
+    # match the remaining stored parameters and are reordered accordingly.
     T === TT && isempty(args) && isempty(kwargs) && throw(MethodError(TT, args))
-    return T(args..., values(kwargs)...)
+    isempty(kwargs) && return T(args...)
+
+    fields = fieldnames(Base.unwrap_unionall(T))
+    nargs = length(args)
+    nargs <= length(fields) || throw(MethodError(TT, args))
+    remaining = fields[(nargs + 1):end]
+    kwkeys = keys(kwargs)
+    valid_kwargs = length(kwargs) == length(remaining) &&
+                   all(name -> name in kwkeys, remaining)
+    valid_kwargs || throw(ArgumentError(
+        "keyword arguments for $T must name the remaining parameters $(remaining)",
+    ))
+    return T(args..., (kwargs[name] for name in remaining)...)
 end
 _parameter_dof(x::Tail) = _parameter_dof(Distributions.params(x))
 Base.broadcastable(tail::Tail) = Ref(tail)
