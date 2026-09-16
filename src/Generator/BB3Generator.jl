@@ -40,7 +40,8 @@ _unbound_params(::Type{<:BB3Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
 _rebound_params(::Type{<:BB3Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
 
 ϕ(  G::BB3Generator, s) = exp(-exp(log(log1p(s)/G.δ)/G.θ))
-ϕ⁻¹(G::BB3Generator, t) = expm1(G.δ * exp(G.θ * log(-log(t))))
+# `(-log t)^θ` rather than `exp(θ log(-log t))`: the latter is a NaN dual at t = 1.
+ϕ⁻¹(G::BB3Generator, t) = expm1(G.δ * (-log(t))^G.θ)
 
 function ϕ⁽¹⁾(G::BB3Generator, s)
     a  = inv(G.δ);  pw = inv(G.θ)
