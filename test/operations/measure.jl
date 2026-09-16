@@ -94,3 +94,13 @@ end
         @test tested_routes == selected_routes
     end
 end
+
+@testset "measure derives its type from the bounds" begin
+    C = ClaytonCopula(3, 2.0)
+    @test Copulas.measure(C, (0.1, 0.2, 0.0), (0.6, 0.9, 0.5)) isa Float64
+    @test Copulas.measure(ClaytonCopula(3, 2.0f0), (0.1f0, 0.2f0, 0.0f0), (0.6f0, 0.9f0, 0.5f0)) isa Float32
+    @test Copulas.measure(C, big.((0.1, 0.2, 0.0)), big.((0.6, 0.9, 0.5))) isa BigFloat
+    @test Copulas.measure(ClaytonCopula(2, 2.0f0), (0.1f0, 0.2f0), (0.6f0, 0.9f0)) isa Float32
+    # Mixed-type corners promote instead of erroring on the assignment into the corner vector.
+    @test Copulas.measure(C, (0.0, 0.0, 0.0), (1, 1, 0.5)) ≈ 0.5
+end

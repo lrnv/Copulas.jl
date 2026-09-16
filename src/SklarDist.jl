@@ -28,10 +28,11 @@ F(x_1,\\ldots,x_d)=C(F_1(x_1),\\ldots,F_d(x_d)).
 available through the corresponding distribution and Copulas.jl interfaces.
 The usual density factorization is available when the copula and every margin
 provide the required densities. With discrete or mixed margins, `pdf` and
-`logpdf` evaluate the probability mass of Sklar's representation: a mixed
-derivative of the copula CDF in the continuous coordinates and a finite
-difference over the latent interval `(F_j(x_j⁻), F_j(x_j)]` in each discrete
-one, multiplied by the continuous marginal densities only. That difference
+`logpdf` evaluate the probability mass of Sklar's representation
+[genest2007](@cite): a mixed derivative of the copula CDF in the continuous
+coordinates and a finite difference over the latent interval
+`(F_j(x_j⁻), F_j(x_j)]` in each discrete one, multiplied by the continuous
+marginal densities only. That difference
 costs `2^k` copula CDF evaluations for `k` discrete margins, which is the
 mathematics rather than the implementation; a high-dimensional discrete model
 calls for a simulated likelihood. Conditioning and the Rosenblatt transforms
@@ -68,6 +69,7 @@ the minimal state needed for diagnostics, inference, and reproducible refitting.
 References: 
 * [sklar1959](@cite) Sklar, M. (1959). Fonctions de répartition à n dimensions et leurs marges. In Annales de l'ISUP (Vol. 8, No. 3, pp. 229-231).
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
+* [genest2007](@cite) Genest, C., & Nešlehová, J. (2007). A primer on copulas for count data. ASTIN Bulletin, 37(2), 475-515.
 """
 struct SklarDist{CT,TplMargins} <: Distributions.ContinuousMultivariateDistribution
     C::CT

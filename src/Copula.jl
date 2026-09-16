@@ -509,9 +509,9 @@ function measure(C::Copula{d}, us,vs) where {d}
 
     # We use a gray code according to the proposal at https://discourse.julialang.org/t/looping-through-binary-numbers/90597/6
 
-    T = promote_type(eltype(us), eltype(vs), Float64)
-    u = ntuple(j -> clamp(us[j], 0, 1), d)
-    v = ntuple(j -> clamp(vs[j], 0, 1), d)
+    T = promote_type(eltype(us), eltype(vs))
+    u = ntuple(j -> clamp(T(us[j]), 0, 1), d)
+    v = ntuple(j -> clamp(T(vs[j]), 0, 1), d)
     any(v .≤ u) && return T(0)
     all(iszero.(u)) && all(isone.(v)) && return T(1)
 
@@ -534,7 +534,7 @@ function measure(C::Copula{d}, us,vs) where {d}
     return max(r,0)
 end
 function measure(C::Copula{2}, us, vs)
-    T = promote_type(eltype(us), eltype(vs), Float64)
+    T = promote_type(eltype(us), eltype(vs))
     u1 = clamp(T(us[1]), 0, 1)
     u2 = clamp(T(us[2]), 0, 1)
     v1 = clamp(T(vs[1]), 0, 1)

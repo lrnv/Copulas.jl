@@ -110,6 +110,17 @@ The exact discrete likelihood costs $2^k$ copula CDF evaluations for $k$
 discrete margins, which is the mathematics rather than the implementation; a
 high-dimensional discrete model calls for a simulated likelihood.
 
+The Rosenblatt transform of a discrete coordinate is not unique, since the
+observation is an interval of latent uniforms. `rosenblatt(rng, X, x)` draws
+the distributional transform of [ruschendorf2009](@cite) within that interval,
+the randomisation of [brockwell2007](@cite), and conditions every later
+coordinate on the interval as the discrete pair-copula constructions of
+[panagiotelis2012](@cite) do, so the output is independent uniform when the
+model is correct; `inverse_rosenblatt(X, s)` needs no randomness. This is the
+convention of vinecopulib's `rosenblatt(…, randomize_discrete = TRUE)`. The
+probability mass of a `SklarDist` with atoms is the one [genest2007](@cite)
+write down.
+
 A copula of the conditional vector is denoted $C_{I|J}(·|u_J)$; it need not be
 unique when conditional margins have atoms. The public entry point is `condition`:
 

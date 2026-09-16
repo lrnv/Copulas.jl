@@ -78,6 +78,24 @@ function _box_partial_cdf(C, is, ps, bs::NTuple{q,Int}, uᵢₛ, uₚₛ, lo, hi
     end
     return r
 end
+# With no point coordinate the sum is a C-volume, and `measure` computes it
+# over the same corners with fewer allocations (the box on `bs`, the free
+# coordinates as `[0, u]`, and `[0, 1]` elsewhere).
+function _box_partial_cdf(C::Copula{D}, is, ps::Tuple{}, bs::NTuple{q,Int}, uᵢₛ, uₚₛ, lo, hi) where {D,q}
+    q == 0 && return _partial_cdf(C, is, ps, uᵢₛ, uₚₛ)
+    T = promote_type(eltype(uᵢₛ), eltype(lo), eltype(hi))
+    lower = ntuple(D) do j
+        k = findfirst(==(j), bs)
+        k === nothing ? zero(T) : T(lo[k])
+    end
+    upper = ntuple(D) do j
+        k = findfirst(==(j), bs)
+        k === nothing || return T(hi[k])
+        k = findfirst(==(j), is)
+        k === nothing ? one(T) : T(uᵢₛ[k])
+    end
+    return measure(C, lower, upper)
+end
 
 _process_tuples(::Val{D}, js::NTuple{p, Int64}, ujs::NTuple{p, Float64}) where {D,p} = (js, ujs)
 _process_tuples(::Val{D}, j::Int64, uj::Real) where {D} = ((j,), (uj,))
@@ -484,10 +502,12 @@ of the same CDF partials over its corners; a box of zero probability throws an
 `ArgumentError`. Remaining coordinates preserve their original relative order.
 
 Observing a discrete margin `X_j = x_j` of a `SklarDist` is the latent event
-`U_j ∈ (F_j(x_j⁻), F_j(x_j)]`, not the point `U_j = F_j(x_j)`, so
-`condition(X, js, x_js)` conditions an atom on its interval and a continuous
-margin on its point; the box form `condition(X, js, xlo_js, xhi_js)` maps
-`[xlo, xhi]` to `(F_j(xlo⁻), F_j(xhi)]` in the same way.
+`U_j ∈ (F_j(x_j⁻), F_j(x_j)]`, not the point `U_j = F_j(x_j)`
+[genest2007](@cite), so `condition(X, js, x_js)` conditions an atom on its
+interval and a continuous margin on its point, as the discrete pair-copula
+constructions of [panagiotelis2012](@cite) and [schallhorn2017](@cite) do; the
+box form `condition(X, js, xlo_js, xhi_js)` maps `[xlo, xhi]` to
+`(F_j(xlo⁻), F_j(xhi)]` in the same way.
 
 # Example
 ```julia
@@ -501,6 +521,11 @@ cdf(D, [0.4, 0.8])
 B = condition(C, (2, 3), (0.7, 0.0), (0.7, 0.1))
 cdf(B, 0.4)
 ```
+
+References:
+* [genest2007](@cite) Genest, C., & Nešlehová, J. (2007). A primer on copulas for count data. ASTIN Bulletin, 37(2), 475-515.
+* [panagiotelis2012](@cite) Panagiotelis, A., Czado, C., & Joe, H. (2012). Pair copula constructions for multivariate discrete data. Journal of the American Statistical Association, 107(499), 1063-1072.
+* [schallhorn2017](@cite) Schallhorn, N., Kraus, D., Nagler, T., & Czado, C. (2017). D-vine quantile regression with discrete variables. arXiv:1705.08310.
 
 See also: [`subsetdims`](@ref), [`rosenblatt`](@ref),
 [`inverse_rosenblatt`](@ref), [`SklarDist`](@ref).
@@ -648,17 +673,23 @@ Specialized families may provide faster overrides.
 For a `SklarDist` with continuous margins, `x` is mapped through the marginal
 CDFs and the copula transform applies. A discrete margin is an atom: its
 observation `x_k` is the latent interval `(F_k(x_k⁻), F_k(x_k)]`, so coordinate
-`k` takes the distributional transform of its conditional law,
-`S_k = H(F_k(x_k⁻)) + V (H(F_k(x_k)) − H(F_k(x_k⁻)))` with `V ∼ U(0,1)` drawn from
-`rng`, and every later coordinate conditions on that interval rather than on
-the randomised value. The result is then a vector of independent uniforms for
-`X ∼ SklarDist`, and `inverse_rosenblatt` inverts it in law. The rng is drawn
-only for atoms; without one, the default rng is used.
+`k` takes the distributional transform [ruschendorf2009](@cite) of its
+conditional law, `S_k = H(F_k(x_k⁻)) + V (H(F_k(x_k)) − H(F_k(x_k⁻)))` with
+`V ∼ U(0,1)` drawn from `rng`, the randomisation of [brockwell2007](@cite),
+and every later coordinate conditions on that interval rather than on the
+randomised value, as in the discrete pair-copula constructions of
+[panagiotelis2012](@cite). The result is then a vector of independent uniforms
+for `X ∼ SklarDist`, and `inverse_rosenblatt` inverts it in law. The rng is
+drawn only for atoms; without one, the default rng is used. This is the
+convention of vinecopulib's `Vinecop::rosenblatt` with `randomize_discrete`.
 
 
 * [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
 * [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
+* [brockwell2007](@cite) Brockwell, A. E. (2007). Universal residuals: A multivariate transformation. Statistics & Probability Letters, 77(14), 1473-1478.
+* [ruschendorf2009](@cite) Rüschendorf, L. (2009). On the distributional transform, Sklar's theorem, and the empirical copula process. Journal of Statistical Planning and Inference, 139(11), 3921-3927.
+* [panagiotelis2012](@cite) Panagiotelis, A., Czado, C., & Joe, H. (2012). Pair copula constructions for multivariate discrete data. Journal of the American Statistical Association, 107(499), 1063-1072.
 
 See also: [`inverse_rosenblatt`](@ref), [`condition`](@ref),
 [`StatsBase.residuals`](@ref).
@@ -745,14 +776,16 @@ on their supports.
 
 For a `SklarDist` with discrete margins, step `k` is the generalised inverse
 `x_k = Q_k(H⁻¹(s_k))` of the conditional CDF given the predecessors, an atom
-among them conditioning on its latent interval, so independent uniforms map
-to the joint law and `inverse_rosenblatt(X, rosenblatt(rng, X, x)) == x`.
+among them conditioning on its latent interval [panagiotelis2012](@cite), so
+independent uniforms map to the joint law and
+`inverse_rosenblatt(X, rosenblatt(rng, X, x)) == x`.
 
 
 References:
 * [rosenblatt1952](@cite) Rosenblatt, M. (1952). Remarks on a multivariate transformation. Annals of Mathematical Statistics, 23(3), 470-472.
 * [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press. (Section 2.10)
 * [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
+* [panagiotelis2012](@cite) Panagiotelis, A., Czado, C., & Joe, H. (2012). Pair copula constructions for multivariate discrete data. Journal of the American Statistical Association, 107(499), 1063-1072.
 
 See also: [`rosenblatt`](@ref), [`condition`](@ref), [`SklarDist`](@ref).
 """
