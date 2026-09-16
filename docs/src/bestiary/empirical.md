@@ -55,7 +55,7 @@ $\hat{C}_N$ then converges (weakly) to $C$, the true copula of the random vector
 
 ::: info The empirical copula is not a true copula
 
-Despite its name, $\hat{C}_N$ is not a copula on the full unit cube since its
+Despite its name, $\hat{C}_N$ is not a genuine copula on the full unit cube since its
 finite-sample margins are step functions rather than continuous uniforms.
 `EmpiricalCopula` keeps its historical `Copula` subtype for API compatibility,
 while algorithms that require exact uniform margins recognize this exception
