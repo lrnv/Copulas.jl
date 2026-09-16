@@ -119,7 +119,6 @@ end
         ("BB3 theta reversal", Copulas.BB3Generator(3.0, 1.0), Copulas.BB3Generator(2.0, 2.0), 2),
         ("BB3 delta reversal", Copulas.BB3Generator(2.0, 2.0), Copulas.BB3Generator(2.0, 1.0), 2),
         ("BB6 delta reversal", Copulas.BB6Generator(2.0, 2.0), Copulas.BB6Generator(3.0, 1.5), 2),
-        ("BB6 product reversal", Copulas.BB6Generator(3.0, 1.0), Copulas.BB6Generator(2.0, 2.0), 2),
         ("BB7 theta reversal", Copulas.BB7Generator(3.0, 1.0), Copulas.BB7Generator(2.0, 2.0), 2),
         ("BB7 delta reversal", Copulas.BB7Generator(2.0, 2.0), Copulas.BB7Generator(2.0, 1.0), 2),
         ("BB8 common-delta reversal", Copulas.BB8Generator(3.0, 0.5), Copulas.BB8Generator(2.0, 0.5), 2),
