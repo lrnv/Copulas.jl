@@ -1,6 +1,9 @@
 # Public-API proof: validation, boundary specialization, keyword forms, and
 # accepted numeric parameter types beyond the universal constructor inventory.
 
+struct _IncompleteGenerator498 <: Copulas.Generator end
+struct _IncompleteCopula498{d} <: Copulas.Copula{d} end
+
 @testset "constructor validation regressions" begin
     data = [0.1 0.4 0.8 0.6; 0.3 0.9 0.2 0.7]
     tied = [0.1 0.1 0.8 0.9; 0.2 0.4 0.6 0.7]
@@ -168,4 +171,27 @@ end
         3, [0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0])
     @test_throws ArgumentError Copulas.BC2Tail([0.2])
     @test_throws ArgumentError Copulas.BC2Tail([0.2, 1.1])
+end
+
+@testset "stable public validation semantics" begin
+    G = _IncompleteGenerator498()
+    @test_throws MethodError Copulas.max_monotony(G)
+    @test_throws MethodError Copulas.ϕ(G, 0.5)
+
+    C = _IncompleteCopula498{2}()
+    @test_throws MethodError params(C)
+    @test_throws MethodError Copulas._example(_IncompleteCopula498, 2)
+
+    U = [0.2 0.4 0.8; 0.3 0.6 0.7]
+    @test_throws ArgumentError Copulas.EmpiricalEVTail(U; grid=1)
+    @test_throws DimensionMismatch Copulas.EmpiricalEVTail(vcat(U, U[1:1, :]))
+    badU = copy(U); badU[1, 1] = 1.2
+    @test_throws DomainError Copulas.EmpiricalEVTail(badU)
+    @test_throws DomainError EmpiricalCopula(badU)
+
+    @test_throws ArgumentError CheckerboardCopula(U; m=4)
+    @test_throws DimensionMismatch CheckerboardCopula(U; m=(1, 1, 1))
+    @test_throws DomainError ArchimedeanCopula(3, Copulas.ClaytonGenerator(-0.75))
+    @test_throws DomainError Copulas.FrailtyGenerator(Normal())
+    @test_throws DomainError Copulas.𝒲₋₁(Copulas.ClaytonGenerator(-0.75), 3)
 end
