@@ -32,18 +32,20 @@ References:
 """
 struct WCopula{d} <: Copula{d}
     function WCopula{d}() where {d}
-        d == 2 || error("WCopula only available in dimension 2")
+        d == 2 || throw(ArgumentError("WCopula is only available in dimension 2"))
         return new{2}()
     end
 end
 copula_measure_style(::Type{<:WCopula}) = NonAbsolutelyContinuousMeasure()
 WCopula() = WCopula{2}()
 WCopula(d) = WCopula{d}()
-Distributions._logpdf(::WCopula,           u) = sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
+Distributions._logpdf(::WCopula, u) = sum(u) == 1 ? zero(eltype(u)) : eltype(u)(-Inf)
 _cdf(::WCopula, u) = max(sum(u)-1,0)
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::WCopula, A::AbstractMatrix{T}) where {T<:Real}
-    size(A, 1) == 2 || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    size(A, 1) == 2 || throw(DimensionMismatch(
+        "output matrix has $(size(A, 1)) rows; expected copula dimension 2",
+    ))
     Random.rand!(rng, view(A, 1, :))
     @inbounds for col in axes(A, 2)
         A[2, col] = one(T) - A[1, col]
@@ -56,7 +58,8 @@ StatsBase.corkendall(::WCopula) = [1 -1; -1 1]
 StatsBase.corspearman(::WCopula) = [1 -1; -1 1]
 
 # Subsetting colocated
-SubsetCopula(C::WCopula, ::NTuple{p, Int}) where {p} = (p==2 ? C : error("WCopula only defined for p=2"))
+SubsetCopula(C::WCopula, ::NTuple{p,Int}) where {p} =
+    p == 2 ? C : throw(ArgumentError("WCopula is only defined in dimension 2"))
 distortion(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
 # Fitting/params interface (no parameters)
