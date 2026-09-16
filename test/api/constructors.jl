@@ -90,6 +90,26 @@ end
     same_model(tEVCopula{3}(4.0, Σ3),ExtremeValueCopula{3}(Copulas.tEVTail(4.0, Σ3)))
 end
 
+@testset "elliptical constructors own matrix parameters" begin
+    for build in (Σ -> GaussianCopula(Σ), Σ -> TCopula(4.0, Σ))
+        covariance = [4 2; 2 9]
+        original = copy(covariance)
+        C = build(covariance)
+        @test covariance == original
+        @test params(C).Σ ≈ [1.0 1/3; 1/3 1.0]
+
+        covariance[1, 2] = covariance[2, 1] = 0
+        @test params(C).Σ ≈ [1.0 1/3; 1/3 1.0]
+
+        first_params = params(C)
+        second_params = params(C)
+        @test first_params.Σ == second_params.Σ
+        @test first_params.Σ !== second_params.Σ
+        first_params.Σ[1, 2] = first_params.Σ[2, 1] = 0
+        @test params(C).Σ ≈ [1.0 1/3; 1/3 1.0]
+    end
+end
+
 @testset "public constructors" begin
     constructed = map(test_constructor_case, ALL_COPULA_CASES)
     declared_symbols = Set(symbol for symbol in public_symbols()
