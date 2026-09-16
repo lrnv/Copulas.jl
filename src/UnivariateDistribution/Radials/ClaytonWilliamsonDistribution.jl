@@ -2,11 +2,18 @@ struct ClaytonWilliamsonDistribution{T<:Real} <: Distributions.ContinuousUnivari
     θ::T # theta is negative here. 
     d::Int # d is a positive integer.
     function ClaytonWilliamsonDistribution(θ, d)
+        d >= 1 || throw(ArgumentError("the Williamson inverse order must be at least 1"))
+        θ < 0 || throw(DomainError(
+            θ,
+            "ClaytonWilliamsonDistribution requires a negative Clayton parameter",
+        ))
+        d <= 1 - 1 / θ || throw(DomainError(
+            d,
+            "Williamson inverse order exceeds the Clayton generator's maximal monotonicity $(1 - 1 / θ)",
+        ))
         if d > 1 && θ == -1/(d-1)
             return Distributions.Dirac(1)
         end
-        @assert θ < 0
-        @assert d >= 1
         new{typeof(θ)}(θ, d)
     end
     ClaytonWilliamsonDistribution{T}(θ, d) where T = ClaytonWilliamsonDistribution(T(θ), d)
