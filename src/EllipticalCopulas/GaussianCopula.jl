@@ -190,11 +190,12 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle})
         quadratic = LinearAlgebra.tr(RinvQ)
         return (n * logdetR + quadratic) / 2
     end
-    res = try
-        Optim.optimize(objective_hd, α₀, Optim.LBFGS();autodiff=ADTypes.AutoForwardDiff(),)
-    catch
-        Optim.optimize(objective_hd, α₀, Optim.NelderMead(),)
-    end
+    res = Optim.optimize(
+        objective_hd,
+        α₀,
+        Optim.LBFGS();
+        autodiff=ADTypes.AutoForwardDiff(),
+    )
     α̂ = Optim.minimizer(res)
     L̂ = _rebound_corr_factor(d, α̂)
     R̂ = L̂ * L̂'
