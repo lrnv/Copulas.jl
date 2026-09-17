@@ -145,8 +145,9 @@ function _archimedean_logpdf(C::ClaytonCopula{d}, u) where {d}
     S2 = zero(eltype(u))
     @inbounds for t in u
         zero(t) < t < one(t) || return oftype(T, -Inf)
-        S1 += expm1(-θ * log(t))
-        S2 += log(t)
+        lt = log(t)
+        S1 += expm1(-θ * lt)
+        S2 += lt
     end
 
     if θ < 0 && S1 < -1
