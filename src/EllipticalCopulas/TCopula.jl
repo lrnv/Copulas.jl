@@ -256,10 +256,13 @@ function _fit_t_corr_given_nu(U, ν,)
     α₀ = _unbound_corr_params(d, R₀)
     objective = α -> begin
         L = _rebound_corr_factor(d, α)
+        diagL = LinearAlgebra.diag(L)
+        all(x -> isfinite(x) && abs(x) > zero(x), diagL) ||
+            return convert(eltype(α), Inf)
         Ltri = LinearAlgebra.LowerTriangular(L)
         Y = Ltri \ Z
         q = vec(sum(abs2, Y; dims=1))
-        logdetR = 2 * sum(log, LinearAlgebra.diag(L))
+        logdetR = 2 * sum(log, diagL)
         return (n/2) * logdetR + (ν + d) / 2 * sum(log1p.(q ./ ν))
     end
     res = Optim.optimize(
