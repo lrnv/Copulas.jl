@@ -600,7 +600,9 @@ normalized to sum to `n` as in the copula-only `fit`, and every step reads the
 same vector: margin `i` is fitted by `Distributions.fit(Mᵢ, xᵢ, w)`, which is
 the weighted maximum-likelihood fit `fit_mle(Mᵢ, xᵢ, w)` that Distributions.jl
 defines for the families with weighted sufficient statistics, and a margin
-family without one is refused by name; `:ecdf` ranks by weighted mass as
+family without one is refused by name, and a zero-weight observation is
+dropped before the margin sees it, as [`_weighted_sample`](@ref) drops it
+before the copula engine; `:ecdf` ranks by weighted mass as
 [`pseudos`](@ref) does; the copula is fitted with the same `weights`; the
 stored log-likelihood is the weighted one. Unit weights reproduce the
 unweighted margins up to rounding, since Distributions.jl reduces its weighted
@@ -627,8 +629,11 @@ function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
     copula_method = copula_method === :default ?
         _default_fitting_method(CT, d) : _find_method(CT, d, copula_method)
 
-    # Fit marginals:
-    m = ntuple(i -> _fit_margin(TplMargins.parameters[i], (@view X[i, :]), w; margins_kwargs...), d)
+    # Fit marginals. A zero-weight observation is dropped before a margin
+    # sees it, as it is before the copula engine: it may lie outside the
+    # margin's support, where its weighted sufficient statistic is `0 * -Inf`.
+    Xm, wm = _weighted_sample(X, w)
+    m = ntuple(i -> _fit_margin(TplMargins.parameters[i], (@view Xm[i, :]), wm; margins_kwargs...), d)
 
     # Make pseudo-observations
     uniform_type = foldl(

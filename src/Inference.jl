@@ -62,10 +62,13 @@ end
 
 # The observed information of a weighted fit is the Hessian of the weighted
 # log-likelihood: with a weight read as "how many observations this column
-# counts for", it is the observed information of the replicated sample.
+# counts for", it is the observed information of the replicated sample. A
+# zero-weight column is dropped once here, before the closure is
+# differentiated, as it is before every fitting engine.
 function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
                        ::Val{d}, ::Val{:hessian},
                        methodv::Val{method}; weights=nothing) where {d,method}
+    U, weights = _weighted_sample(U, weights)
     α = _unbound_params(CT, d, θ)
     example = _example(CT, d)
     vd = Val(d)

@@ -519,14 +519,17 @@ The Sklar route reads the same weights at every step. Margin `i` is fitted by
 `Distributions.fit(Mᵢ, xᵢ, w)`, the weighted maximum-likelihood fit that
 Distributions.jl defines for the families with weighted sufficient statistics
 (`Normal`, `Exponential`, `Gamma`, `Poisson`, … ); a margin family without one
-is refused by name. `:ecdf` ranks by weighted mass, the copula is fitted with
+is refused by name, and a zero-weight observation is dropped before the margin
+sees it, so it may lie outside the margin's support. `:ecdf` ranks by weighted
+mass, the copula is fitted with
 the same weights, and the stored log-likelihood is the weighted one. Unit
 weights reproduce the unweighted margins up to rounding, because
 Distributions.jl reduces its weighted sufficient statistics in another order.
 
 Inference reads the weights with the same meaning. `infer(M; method=:hessian)`
 inverts the observed information of the weighted log-likelihood, which is that
-of the replicated sample; `:godambe`, `:godambe_pairwise` and `:bootstrap`
+of the replicated sample, with the zero-weight columns dropped as they are
+before the fit; `:godambe`, `:godambe_pairwise` and `:bootstrap`
 draw each resample of size `n` with observation `j` taken with probability
 `w[j] / n`, then compute the moment or refit the estimator on the resample
 unweighted, which is the nonparametric bootstrap of the replicated sample.

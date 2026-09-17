@@ -724,6 +724,17 @@ end
                 @test Copulas._model_weights(kept) == weights .* (n / (n - 1))
             end
         end
+        # The rank inversions are given the same filtered pair: the weighted
+        # measure of the n - 1 kept columns at weight n / (n - 1) each is the
+        # unweighted measure of those columns, up to the scale's rounding.
+        V = rand(StableRNG(529), GaussianCopula([1.0 0.5; 0.5 1.0]), n)
+        for boundary in (0.0, 1.0), method in (:itau, :irho, :ibeta)
+            V[:, 1] .= boundary
+            removed = fit(CopulaModel, GaussianCopula, V[:, 2:end]; method)
+            kept = fit(CopulaModel, GaussianCopula, V; method, weights)
+            @test coef(kept) ≈ coef(removed) rtol=1e-12
+            @test loglikelihood(kept) ≈ loglikelihood(removed) * n / (n - 1) rtol=1e-6
+        end
         @test Copulas._weighted_sample(U, weights) == (U[:, 2:end], ones(n - 1))
         let w = ones(n)
             @test Copulas._weighted_sample(U, w) === (U, w)
@@ -767,10 +778,13 @@ end
             children=[ClaytonCopula{2}(exp(α[1]) + exp(α[2])),
                       ClaytonCopula{2}(exp(α[1]) + exp(α[3]))])
         custom = fit(CopulaModel, reparam, zeros(3), Un)
-        @test coef(fit(CopulaModel, reparam, zeros(3), Un; weights=ones(n))) == coef(custom)
+        custom_weighted = fit(CopulaModel, reparam, zeros(3), Un; weights=ones(n))
+        @test coef(custom_weighted) == coef(custom)
         @test_throws ArgumentError fit(CopulaModel, C0, Un; weights=-ones(n))
-        # A resample of the weighted nested fit is refitted unweighted.
-        @test infer(weighted; method=:bootstrap, nresamples=2, rng=StableRNG(528)).method === :bootstrap
+        # A resample of the weighted nested fit is refitted unweighted; the
+        # reparameterized model keeps every child θ above its parent's by
+        # construction.
+        @test infer(custom_weighted; method=:bootstrap, nresamples=2, rng=StableRNG(528)).method === :bootstrap
     end
 
     @testset "weighted rank measures" begin
@@ -897,6 +911,29 @@ end
             rank = fit(T, X; sklar_method, copula_method=:itau, weights=counts)
             @test params(rank.C) == params(fit(ClaytonCopula, pseudos(X; weights=counts); method=:itau, weights=counts))
             @test occursin("Observation weights", sprint(show, weighted))
+        end
+        # A zero-weight observation is dropped before the margin sees it. It
+        # may sit on the boundary of the margin's support, where a weighted
+        # sufficient statistic is `0 * -Inf`: the Gamma statistic carries
+        # `log(x)`, and `Distributions.fit(Gamma, x, w)` with `x[1] = 0`,
+        # `w[1] = 0` raises a `DomainError` on the `NaN` shape.
+        SG = SklarDist{ClaytonCopula,Tuple{Normal,Gamma}}
+        Z = rand(StableRNG(536), SklarDist(ClaytonCopula{2}(2.0), (Normal(), Gamma(2.0, 3.0))), n)
+        Z[2, 1] = 0.0
+        zero_weight = ones(n)
+        zero_weight[1] = 0
+        @test_throws DomainError Distributions.fit(Gamma, Z[2, :], zero_weight)
+        for sklar_method in (:ifm, :ecdf)
+            removed = fit(CopulaModel, SG, Z[:, 2:end]; sklar_method)
+            kept = fit(CopulaModel, SG, Z; sklar_method, weights=zero_weight)
+            # The :ecdf ranks of the kept columns divide by n + 1 with n
+            # counting the removed column, so they differ from the ranks of
+            # the n - 1 columns alone by a factor n² / (n² - 1).
+            tol = sklar_method === :ifm ? 1e-6 : 1e-3
+            @test coef(kept) ≈ coef(removed) rtol=tol
+            @test loglikelihood(kept) ≈ loglikelihood(removed) * n / (n - 1) rtol=tol
+            @test nobs(kept) == n
+            @test size(Copulas._copula_data(kept)) == size(Z)
         end
         # Refusals: a margin family without a weighted fit, by name; weights
         # through copula_kwargs.

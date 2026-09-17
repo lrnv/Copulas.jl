@@ -127,4 +127,33 @@ end
         @test size(vcov(Is)) == (dof(sklar), dof(sklar))
         @test_throws ArgumentError infer(sklar; method=:jackknife)
     end
+
+    @testset "a zero-weight column on the boundary" begin
+        # The removed observation may sit on the boundary of the hypercube,
+        # where the elliptical scores are infinite. The observed information
+        # is formed on the kept columns, and a resample never draws the
+        # removed one, so every inference method is the one of the fit
+        # without that column, at the kept columns' weight n / (n - 1).
+        weights = ones(n)
+        weights[1] = 0
+        V = rand(StableRNG(48_211), GaussianCopula([1.0 0.5; 0.5 1.0]), n)
+        for boundary in (0.0, 1.0)
+            V[:, 1] .= boundary
+            removed = infer(fit(CopulaModel, GaussianCopula, V[:, 2:end]))
+            kept = infer(fit(CopulaModel, GaussianCopula, V; weights))
+            @test kept.method === :hessian
+            # Each observed information is evaluated at its own maximizer,
+            # and the two maximizers agree to Brent's tolerance.
+            @test vcov(kept) ≈ vcov(removed) * (n - 1) / n rtol=1e-6
+            for method in (:itau, :irho, :ibeta)
+                rank = fit(CopulaModel, GaussianCopula, V; method, weights)
+                Ig = infer(rank; rng=StableRNG(48_212), nresamples=20)
+                @test Ig.method === :godambe
+                @test all(isfinite, vcov(Ig))
+            end
+            Ib = infer(fit(CopulaModel, GaussianCopula, V; weights);
+                       method=:bootstrap, nresamples=5, rng=StableRNG(48_213))
+            @test all(isfinite, vcov(Ib))
+        end
+    end
 end
