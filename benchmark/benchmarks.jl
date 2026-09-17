@@ -178,17 +178,23 @@ function random_boxes(rng, d, n)
         for _ in 1:n
     ]
 end
-clayton3 = ClaytonCopula{3}(2.0)
+# A non-integer Clayton θ: Julia's `^` takes a power-by-squaring fast path when
+# the exponent is an integer, so `t^(-2.0)` costs a few ns and a fitted θ, which
+# is never an integer, costs a full `pow`. The measure workloads are generator
+# evaluations, so θ = 2.0 timed the fast path rather than the generator.
+clayton2_measure = ClaytonCopula{2}(2.5)
+clayton3 = ClaytonCopula{3}(2.5)
+clayton5_measure = ClaytonCopula{5}(2.5)
 gumbel3 = GumbelCopula{3}(1.6)
 boxes2 = random_boxes(Xoshiro(SEED + 14), 2, 1_000)
 boxes3 = random_boxes(Xoshiro(SEED + 15), 3, 1_000)
 boxes5 = random_boxes(Xoshiro(SEED + 16), 5, 200)
-SUITE["measure"]["clayton_d2"] = bench_measure(ClaytonCopula{2}(2.0), boxes2)
+SUITE["measure"]["clayton_d2"] = bench_measure(clayton2_measure, boxes2)
 SUITE["measure"]["clayton_d3"] = bench_measure(clayton3, boxes3)
 SUITE["measure"]["gumbel_d3"] = bench_measure(gumbel3, boxes3)
-SUITE["measure"]["clayton_d5"] = bench_measure(clayton, boxes5)
+SUITE["measure"]["clayton_d5"] = bench_measure(clayton5_measure, boxes5)
 SUITE["measure"]["box_volume_clayton_d3"] = bench_box_volume(clayton3, boxes3)
-SUITE["measure"]["box_volume_clayton_d5"] = bench_box_volume(clayton, boxes5)
+SUITE["measure"]["box_volume_clayton_d5"] = bench_box_volume(clayton5_measure, boxes5)
 SUITE["measure"]["box_partial_clayton_d3"] = bench_box_partial(clayton3, boxes3)
 SUITE["measure"]["box_partial_gumbel_d3"] = bench_box_partial(gumbel3, boxes3)
 
