@@ -68,7 +68,6 @@ function fit_mle(
     )
 end
 
-
 function _fit_mle_weighted(
     C::Copulas.Copula,
     U::AbstractMatrix,
@@ -108,20 +107,12 @@ function _fit_mle_weighted(
         return loss
     end
 
-    result = try
-        Optim.optimize(
-            objective,
-            alpha0,
-            Optim.LBFGS();
-            autodiff=ADTypes.AutoForwardDiff(),
-        )
-    catch
-        Optim.optimize(
-            objective,
-            alpha0,
-            Optim.NelderMead(),
-        )
-    end
+    result = Optim.optimize(
+        objective,
+        alpha0,
+        Optim.LBFGS();
+        autodiff=ADTypes.AutoForwardDiff(),
+    )
 
     return copula(Optim.minimizer(result))
 end

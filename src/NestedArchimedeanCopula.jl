@@ -1367,11 +1367,7 @@ _example(::Type{NestedArchimedeanCopula}, d) =
 
 function _fit_nested(recon, α₀::AbstractVector, U)
     loss(α) = -Distributions.loglikelihood(recon(α), U)
-    res = try
-        Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff = ADTypes.AutoForwardDiff())
-    catch
-        Optim.optimize(loss, α₀, Optim.NelderMead())
-    end
+    res = Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     α = collect(Optim.minimizer(res))
     return recon(α), α
 end
