@@ -1365,9 +1365,27 @@ _example(::Type{NestedArchimedeanCopula}, d) =
 
 # ---- The MLE on a TEMPLATE INSTANCE (fixed structure) -----------------------
 
+# Every constructible tree is a certified nesting, and `_nested_rebound` skips
+# the certificate, so the fit keeps the optimizer in the certified region: a
+# tree that fails a certificate is infeasible, and its loss is `Inf`, as a
+# singular correlation factor is to the Student objective. Outside that region
+# the composed generators are not defined and their evaluation raises.
+function _nested_certified(C::NestedArchimedeanCopula)
+    for entry in C.children
+        child = _nested_child(entry)
+        _nested_status(C.G, child.G, length(child)) === _NESTING_VALID || return false
+        child isa NestedArchimedeanCopula && !_nested_certified(child) && return false
+    end
+    return true
+end
+
 function _fit_nested(recon, α₀::AbstractVector, U; weights=nothing)
     U, weights = _weighted_sample(U, weights)
-    loss(α) = -_weighted_loglikelihood(recon(α), U, weights)
+    loss(α) = begin
+        C = recon(α)
+        _nested_certified(C) || return convert(eltype(α), Inf)
+        return -_weighted_loglikelihood(C, U, weights)
+    end
     res = Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     α = collect(Optim.minimizer(res))
     return recon(α), α

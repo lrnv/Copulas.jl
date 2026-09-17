@@ -772,6 +772,26 @@ end
         @test_throws ArgumentError infer(weighted; method=:bootstrap, nresamples=2)
     end
 
+    @testset "the template fit stays in the certified nesting region" begin
+        # `_nested_rebound` skips the certificate, so the loss is `Inf` on a
+        # tree that fails one: a child Clayton θ below its parent's, or below
+        # zero, where the composed generator is not defined. Without the
+        # barrier the bootstrap refits below raise a `DomainError` from
+        # `composition_taylor` on three of these four seeds.
+        C0 = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
+                                     children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)])
+        recon = Base.Fix1(Copulas._nested_rebound, C0)
+        @test Copulas._nested_certified(recon(Copulas._nested_unbound(C0)))
+        @test !Copulas._nested_certified(recon([log(2.0), log(1.5), log(4.0)]))
+        @test !Copulas._nested_certified(recon([log(2.0), log(0.5), log(4.0)]))
+        Un = rand(StableRNG(524), C0, n)
+        M = fit(CopulaModel, C0, Un)
+        for seed in (528, 529, 530, 531)
+            I = infer(M; method=:bootstrap, nresamples=2, rng=StableRNG(seed))
+            @test all(isfinite, vcov(I))
+        end
+    end
+
     @testset "refusals" begin
         U = rand(StableRNG(525), ClaytonCopula{2}(2.0), n)
         @test_throws DimensionMismatch fit(ClaytonCopula, U; weights=ones(n - 1))
