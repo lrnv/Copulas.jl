@@ -165,14 +165,16 @@ function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}
     return (; Σ = _rebound_corr_params(d, α))
 end
 function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
-    d, n = size(Udata)
+    d = size(Udata, 1)
     N01 = Distributions.Normal()
     Z = Distributions.quantile.(N01, Udata)
     # Cross-product sufficient for the Gaussian copula likelihood. A weighted
     # sample scales each score column by the root of its weight, so that the
     # product stays a symmetric rank-k update, and its size is the weight total.
+    # `n` is assigned once: the objectives below capture it, and a captured
+    # variable that is reassigned is boxed, which makes it `Any` inside them.
     Q = weights === nothing ? Z * Z' : (Zw = Z .* sqrt.(weights)'; Zw * Zw')
-    n = weights === nothing ? n : sum(weights)
+    n = weights === nothing ? size(Udata, 2) : sum(weights)
     if d == 2
         q11 = Q[1, 1]; q22 = Q[2, 2]; q12 = Q[1, 2]
         T = eltype(Q)
