@@ -262,11 +262,12 @@ function _fit_t_corr_given_nu(U, ν,)
         logdetR = 2 * sum(log, LinearAlgebra.diag(L))
         return (n/2) * logdetR + (ν + d) / 2 * sum(log1p.(q ./ ν))
     end
-    res = try
-        Optim.optimize(objective, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff(),)
-    catch
-        Optim.optimize(objective, α₀, Optim.NelderMead(),)
-    end
+    res = Optim.optimize(
+        objective,
+        α₀,
+        Optim.LBFGS();
+        autodiff=ADTypes.AutoForwardDiff(),
+    )
     α̂ = Optim.minimizer(res)
     L̂ = _rebound_corr_factor(d, α̂)
     R̂ = L̂ * L̂'
@@ -293,14 +294,10 @@ function _fit(::Type{<:TCopula}, U, ::Val{:mle},)
     Σ_gaussian = Distributions.params(G).Σ
     ll_gaussian = Distributions.loglikelihood(G, U)
     profile_loss = λ -> begin
-        if iszero(λ) return -ll_gaussian end
+        iszero(λ) && return -ll_gaussian
         ν = inv(λ)
-        try
-            fitν = _fit_t_corr_given_nu(U, ν)
-            return -fitν.loglikelihood
-        catch
-            return Inf
-        end
+        fitν = _fit_t_corr_given_nu(U, ν)
+        return -fitν.loglikelihood
     end
     upper, _ = _t_profile_upper(profile_loss)
     resλ = Optim.optimize(profile_loss, zero(upper), upper, Optim.Brent(),)
