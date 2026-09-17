@@ -30,9 +30,10 @@ References:
 * [segers2017](@cite) Segers, J., Sibuya, M., & Tsukahara, H. (2017). The empirical beta copula. Journal of Multivariate Analysis, 155, 35-51.
 """
 struct BetaCopula{d,MT} <: Copula{d}
-    ranks::MT   # d×n (each row is in 1..n)
+    ranks::MT
     n::Int
     function BetaCopula{d}(data::AbstractMatrix) where {d}
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
         _require_tie_free_rows(data, "BetaCopula")
         n = size(data, 2)

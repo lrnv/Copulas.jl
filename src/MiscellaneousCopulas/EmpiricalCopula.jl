@@ -41,6 +41,7 @@ copula_measure_style(::Type{<:EmpiricalCopula}) =
 _is_empirical_copula(::EmpiricalCopula) = true
 Base.eltype(C::EmpiricalCopula{d,MT}) where {d,MT} = Base.eltype(C.u)
 function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
+    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
     size(u, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     T = float(eltype(u))
     u = T.(u)
@@ -56,7 +57,7 @@ EmpiricalCopula(u; kwargs...) = EmpiricalCopula{size(u, 1)}(u; kwargs...)
 EmpiricalCopula(d::Integer, u; kwargs...) = EmpiricalCopula{d}(u; kwargs...)
 Distributions.params(C::EmpiricalCopula) = (u=C.u,)
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
-   return sum(all(C.u .<= u,dims=1))/size(C.u,2) # might not be very efficient implementation. 
+   return sum(all(C.u .<= u,dims=1))/size(C.u,2)
 end
 function Distributions._logpdf(C::EmpiricalCopula{d,MT}, u) where {d,MT}
     matches = 0
@@ -66,9 +67,6 @@ function Distributions._logpdf(C::EmpiricalCopula{d,MT}, u) where {d,MT}
     return iszero(matches) ? -Inf : log(matches / size(C.u, 2))
 end
 
-# A Sklar transform of an empirical measure remains atomic. Its generalized
-# `pdf` is therefore the probability mass at a transformed support point, not
-# the continuous copula-density factorization used by ordinary Sklar models.
 function Distributions._logpdf(S::SklarDist{CT}, x) where {CT<:EmpiricalCopula}
     d = length(S)
     length(x) == d || throw(DimensionMismatch(
@@ -83,11 +81,6 @@ function Distributions._logpdf(S::SklarDist{CT}, x) where {CT<:EmpiricalCopula}
                           Distributions.Continuous
     end
     all_continuous && return Distributions.logpdf(S.C, U)
-
-    # For a discrete margin, quantile(margin, u) == x precisely on the CDF
-    # jump (F(x⁻), F(x)]. Continuous coordinates retain the point condition
-    # u == F(x). Computing these bounds once avoids applying every marginal
-    # quantile to every stored observation.
     lower = copy(U)
     is_discrete = falses(d)
     @inbounds for row in 1:d
@@ -97,7 +90,6 @@ function Distributions._logpdf(S::SklarDist{CT}, x) where {CT<:EmpiricalCopula}
             lower[row] = Distributions.cdf(margin, prevfloat(float(x[row])))
         end
     end
-
     matches = 0
     @inbounds for col in axes(S.C.u, 2)
         matches += all(axes(S.C.u, 1)) do row
@@ -118,13 +110,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::EmpiricalCopula
     return A
 end
 StatsBase.corkendall(C::EmpiricalCopula) = StatsBase.corkendall(C.u')
-
-# Subsetting colocated
 function SubsetCopula(C::EmpiricalCopula{d,MT}, dims::NTuple{p, Int}) where {d,MT,p}
     return EmpiricalCopula(C.u[collect(dims), :]; pseudo_values=true)
 end
-
-# Fitting colocated. 
 StatsBase.dof(::EmpiricalCopula) = 0
 _available_fitting_methods(::Type{<:EmpiricalCopula}, d) = (:deheuvels,)
 """
