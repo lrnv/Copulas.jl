@@ -63,9 +63,7 @@ function CheckerboardCopula{d}(X::AbstractMatrix{T}; m=nothing, pseudo_values::B
     all(mi -> mi isa Integer && mi > 0 && n % mi == 0, ms) || throw(ArgumentError(
         "checkerboard resolutions must be positive integers dividing the sample size n=$n (got m=$m)"))
     ms = Int.(ms)
-    # Map samples to integer box indices in each dimension (clamp right edge into m_i-1)
     data = min.(ms .- 1, floor.(Int, (pseudo_values ? X : pseudos(X)) .* ms))
-    # Build a dictionary of box proportions using tuple keys
     keys_iter = (Tuple(@view data[:, j]) for j in 1:n)
     boxes = StatsBase.proportionmap(collect(keys_iter))
     return CheckerboardCopula{d, eltype(values(boxes))}(ms, boxes)
@@ -83,7 +81,6 @@ function Distributions._logpdf(C::CheckerboardCopula{d}, u) where {d}
 end
 function _cdf(C::CheckerboardCopula{d}, u) where {d}
     um = u .* C.m
-    # Histogram/overlap CDF: sum over boxes of w_k × ∏_i clamp(m_i u_i − k_i, 0, 1)
     return sum(w * prod(clamp.(um .- box, 0, 1)) for (box, w) in C.boxes)
 end
 
@@ -99,62 +96,45 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CheckerboardCop
     return A
 end
 
-@inline function distortion(C::CheckerboardCopula{D,T}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D, p, T}
-
-    # Locate the bin index for uⱼₛ : 
+@inline function distortion(C::CheckerboardCopula{D,W}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {D,p,W}
     kⱼₛ = Tuple(min(C.m[j]-1, floor(Int, C.m[j] * uⱼ)) for (j,uⱼ) in zip(js, uⱼₛ))
-
-    # Aggregate weights over i-bins where J-index matches
     mᵢ = C.m[i]
-    α = zeros(Float64, mᵢ)
+    α = zeros(W, mᵢ)
     for (box, w) in C.boxes
         if all(box[j] == k for (j,k) in zip(js, kⱼₛ))
             α[box[i]+1] += w
         end
     end
     s = sum(α)
-    if s <= 0
-        # Degenerate slice (no box observed at this J index): fall back to uniform
-        fill!(α, 1.0/mᵢ)
+    if s <= zero(s)
+        fill!(α, one(W) / mᵢ)
     else
         α ./= s
     end
     return HistogramBinDistortion(mᵢ, α)
 end
 
-@inline function conditional_copula(C::CheckerboardCopula{D,T}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D,T,p}
-    # Project boxes onto remaining axes with J-bin fixed by uⱼₛ
+@inline function conditional_copula(C::CheckerboardCopula{D,W}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}) where {D,W,p}
     J = collect(js)
     I = collect(setdiff(1:D, J))
-    # Compute J-bin indices for the conditioning point
     kJ = ntuple(t -> min(C.m[J[t]]-1, floor(Int, C.m[J[t]] * uⱼₛ[t])), p)
-    # Aggregate weights for projected I-box keys
-    proj = Dict{NTuple{length(I),Int}, Float64}()
+    proj = Dict{NTuple{length(I),Int},W}()
     for (box, w) in C.boxes
-        match = true
-        @inbounds for t in 1:p
-            if box[J[t]] != kJ[t]
-                match = false; break
-            end
-        end
-        match || continue
+        all(t -> box[J[t]] == kJ[t], 1:p) || continue
         keyI = ntuple(r -> box[I[r]], length(I))
-        proj[keyI] = get(proj, keyI, 0.0) + w
+        proj[keyI] = get(proj, keyI, zero(W)) + w
     end
-    # Normalize
     s = sum(values(proj))
-    if s > 0
-        for k in keys(proj); proj[k] /= s; end
+    if s > zero(s)
+        for k in keys(proj)
+            proj[k] /= s
+        end
     else
-        # No matching boxes: return independent uniform on remaining dims
-        proj = Dict(ntuple(r -> 0, length(I)) => 1.0)
+        proj = Dict(ntuple(_ -> 0, length(I)) => one(W))
     end
-    mI = C.m[I]
-    return CheckerboardCopula{length(I), Float64}(mI, proj)
+    return CheckerboardCopula{length(I),W}(C.m[I], proj)
 end
 
-# Fit API: mirror constructor for the moment until we get a better API ?
-# Fitting plug-in (empírico) para CheckerboardCopula — mismo patrón que BetaCopula
 StatsBase.dof(::CheckerboardCopula) = 0
 _available_fitting_methods(::Type{<:CheckerboardCopula}, d) = (:exact,)
 """

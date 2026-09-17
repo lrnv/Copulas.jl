@@ -108,31 +108,35 @@ end
 τ(C::GaussianCopula{2,MT}) where MT = 2*asin(C.Σ[1,2])/π
 ρ(C::GaussianCopula{2,MT}) where MT = 6*asin(C.Σ[1,2]/2)/π
 
-function distortion(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
+function distortion(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {D,MT,p}
     ist = Tuple(setdiff(1:D, js))
     @assert i in ist
     J = collect(js)
     zⱼ = Distributions.quantile.(Distributions.Normal(), collect(uⱼₛ))
     if length(J) == 1
         μz = C.Σ[i, J[1]] * zⱼ[1]
-        σz = sqrt(1 - C.Σ[i, J[1]]^2)
+        σz = sqrt(one(μz) - C.Σ[i, J[1]]^2)
     else
-        Reg = C.Σ[i:i, J] * inv(C.Σ[J, J])
-        μz = (Reg * zⱼ)[1]
-        σz = sqrt(1 - (Reg * C.Σ[J, i:i])[1])
+        F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(C.Σ[J, J]))
+        β = F \ C.Σ[J, i]
+        μz = LinearAlgebra.dot(β, zⱼ)
+        σ² = one(μz) - LinearAlgebra.dot(C.Σ[i, J], β)
+        σz = sqrt(max(zero(σ²), σ²))
     end
     return GaussianDistortion(float(μz), float(σz))
 end
-function conditional_copula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D,MT,p}
+function conditional_copula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, ::NTuple{p,<:Real}) where {D,MT,p}
     @assert 0 < p < D-1
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))
-    Σcond = C.Σ[I, I] - C.Σ[I, J] * inv(C.Σ[J, J]) * C.Σ[J, I]
+    F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(C.Σ[J, J]))
+    ΣIJ = C.Σ[I, J]
+    Σcond = C.Σ[I, I] - ΣIJ * (F \ C.Σ[J, I])
     return GaussianCopula{D - p}(Σcond)
 end
 
 function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
-                                 uⱼₛ::NTuple{p,Float64}, is) where {D,MT,p}
+                                 uⱼₛ::NTuple{p,<:Real}, is) where {D,MT,p}
     J = collect(Int, js)
     I = collect(Int, is)
     Σ = C.Σ

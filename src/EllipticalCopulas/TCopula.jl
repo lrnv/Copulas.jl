@@ -165,19 +165,19 @@ function ρ(C::TCopula{2})
     return 6value / π
 end
 
-function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p,D}
+function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p,D}
     isinf(C.df) && return distortion(_gaussian_limit(C), js, uⱼₛ, i,)
     ν = C.df
     Σ = C.Σ; jst = js; ist = Tuple(setdiff(1:D, jst)); @assert i in ist
     Jv = collect(jst); zJ = Distributions.quantile.(Distributions.TDist(ν), collect(uⱼₛ))
     ΣJJ = Σ[Jv, Jv]; RiJ = Σ[i, Jv]; RJi = Σ[Jv, i]
     if length(Jv) == 1
-        r = RiJ[1]; μz = r * zJ[1]; σ0² = 1 - r^2; δ = zJ[1]^2
+        r = RiJ[1]; μz = r * zJ[1]; σ0² = one(r) - r^2; δ = zJ[1]^2
     else
         F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(ΣJJ))
         solved_zJ = F \ zJ
         μz = LinearAlgebra.dot(RiJ, solved_zJ)
-        σ0² = 1 - LinearAlgebra.dot(RiJ, F \ RJi)
+        σ0² = one(μz) - LinearAlgebra.dot(RiJ, F \ RJi)
         δ = LinearAlgebra.dot(zJ, solved_zJ)
     end
     νp = ν + length(Jv); σz = sqrt(max(σ0², zero(σ0²))) * sqrt((ν + δ) / νp)
@@ -198,7 +198,7 @@ function conditional_copula(C::TCopula{D}, js, uⱼₛ) where {D}
 end
 
 function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
-                                 uⱼₛ::NTuple{p,Float64}, is) where {D,p}
+                                 uⱼₛ::NTuple{p,<:Real}, is) where {D,p}
     if isinf(C.df)
         Gcond, distortions = _conditional_components(_gaussian_limit(C), js, uⱼₛ, is,)
         return TCopula(Inf, copy(Gcond.Σ),), distortions
