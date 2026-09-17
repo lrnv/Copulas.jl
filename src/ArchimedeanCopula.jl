@@ -200,7 +200,7 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
         r = rand(rng, R)
         sx = sum(sample)
         for row in axes(A, 1)
-            A[row, col] = ϕ(C.G, r * A[row, col] / sx)
+            A[row, col] = ϕ(C.G, r * A[row,col] / sx)
         end
     end
     return A
@@ -217,7 +217,6 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
     end
     return A
 end
-
 generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
@@ -290,20 +289,20 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     return U
 end
 
-function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,T}, i::Int) where {p,T<:Real}
+function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p}
+
     kind = limit_kind(C.G, Val(2))
     kind === Π_LIMIT && return NoDistortion()
     kind === M_LIMIT && return MDistortion(float(uⱼₛ[1]), Int8(js[1]))
     kind === W_LIMIT && return WDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
     @assert length(js) == length(uⱼₛ)
+    T = eltype(uⱼₛ)
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
-    den = ϕ⁽ᵏ⁾(C.G, p, sJ)
-    return ArchimedeanDistortion(C.G, p, float(sJ), float(den))
+    return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
-function conditional_copula(C::ArchimedeanCopula{D,TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,T}) where {D,TG,p,T<:Real}
-    sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
-    return ArchimedeanCopula{D - p}(TiltedGenerator(C.G, p, sJ))
+function conditional_copula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}) where {D, TG, p}
+    return ArchimedeanCopula{D - p}(TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
 SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula{p}(C.G)
 
@@ -350,7 +349,9 @@ _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} wher
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = Tuple{}() # No fitting method.
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲{<:Distributions.DiscreteNonParametric}} where d}, d) = (:gnz2011,)
 
+
 function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:𝒲{<:Distributions.DiscreteNonParametric}} where d}}, U, ::Val{:gnz2011})
+    # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted.
     return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U))
 end
 
@@ -406,6 +407,8 @@ function _fit(
     if start isa Real
         θ₀[1] = start
     elseif start ∈ (:itau, :irho)
+        # Keep this call on the existing 3-argument specialized
+        # Archimedean rank-fitting path.
         θ₀[1] = only(Distributions.params(_fit(CT, U, Val{start}())))
     end
 
