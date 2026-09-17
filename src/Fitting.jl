@@ -210,11 +210,12 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}) where {d}
     cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
     α₀  = _unbound_params(CT, d, Distributions.params(example))
     loss(C) = -Distributions.loglikelihood(C, U)
-    res = try
-        Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
-    catch err
-        Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
-    end
+    res = Optim.optimize(
+        loss ∘ cop,
+        α₀,
+        Optim.LBFGS();
+        autodiff=ADTypes.AutoForwardDiff(),
+    )
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return _construct_fitted_copula(CT, Val(d), θhat, example)
 end
