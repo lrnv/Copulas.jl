@@ -705,6 +705,30 @@ end
               Copulas._weighted_loglikelihood(C, U[:, 2:end], ones(n - 1))
         @test Copulas._weighted_loglikelihood(C, U[:, 2:end], ones(n - 1)) ==
               loglikelihood(C, U[:, 2:end])
+        # The removed observation may sit on the boundary of the hypercube,
+        # where the elliptical scores are infinite: it is dropped before the
+        # engine forms its weighted cross-product, so no `0 * Inf` reaches it.
+        for (CT, C) in ((GaussianCopula, GaussianCopula([1.0 0.5; 0.5 1.0])),
+                        (TCopula, TCopula(4.0, [1.0 0.5; 0.5 1.0])),
+                        (ClaytonCopula, ClaytonCopula{2}(2.0)))
+            V = rand(StableRNG(528), C, n)
+            for boundary in (0.0, 1.0)
+                V[:, 1] .= boundary
+                removed = fit(CopulaModel, CT, V[:, 2:end])
+                kept = fit(CopulaModel, CT, V; weights)
+                @test coef(kept) ≈ coef(removed) rtol=1e-6
+                # The kept weights are normalized to sum to n over n - 1 columns.
+                @test loglikelihood(kept) ≈ loglikelihood(removed) * n / (n - 1) rtol=1e-6
+                @test nobs(kept) == n
+                # The model records every column and its normalized weight.
+                @test Copulas._model_weights(kept) == weights .* (n / (n - 1))
+            end
+        end
+        @test Copulas._weighted_sample(U, weights) == (U[:, 2:end], ones(n - 1))
+        let w = ones(n)
+            @test Copulas._weighted_sample(U, w) === (U, w)
+        end
+        @test Copulas._weighted_sample(U, nothing) === (U, nothing)
     end
 
     @testset "weighted maximum pseudo-likelihood ranks by weight" begin

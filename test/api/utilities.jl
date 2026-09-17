@@ -69,7 +69,14 @@
         end
         @test pseudos(Xtied; ties=:random, rng=Xoshiro(93), weights=ones(n)) ==
               pseudos(Xtied; ties=:random, rng=Xoshiro(93))
-        @test eltype(pseudos(Float32.(X); weights=ones(n))) === Float32
+        # The ranks are computed in the type the sample and the weights
+        # promote to, so wide weights are not silently narrowed.
+        @test eltype(pseudos(Float32.(X); weights=ones(Float32, n))) === Float32
+        @test eltype(pseudos(Float32.(X); weights=ones(n))) === Float64
+        wide = pseudos(X; weights=big.(ones(n)))
+        @test eltype(wide) === BigFloat
+        @test Float64.(wide) == pseudos(X)
+        @test eltype(pseudos(X; weights=1:n)) === Float64
 
         # Integer weights that sum to n are counts: each observation takes the
         # mean rank of its copies in the replicated sample, under every

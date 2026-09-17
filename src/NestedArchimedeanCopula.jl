@@ -1366,6 +1366,7 @@ _example(::Type{NestedArchimedeanCopula}, d) =
 # ---- The MLE on a TEMPLATE INSTANCE (fixed structure) -----------------------
 
 function _fit_nested(recon, α₀::AbstractVector, U; weights=nothing)
+    U, weights = _weighted_sample(U, weights)
     loss(α) = -_weighted_loglikelihood(recon(α), U, weights)
     res = Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     α = collect(Optim.minimizer(res))

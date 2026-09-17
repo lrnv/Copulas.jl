@@ -217,10 +217,11 @@ and selects the unweighted code path.
 A weight is then read as "how many observations this column counts for": the
 fitted parameters are invariant to the scale of the weights, uniform weights
 reproduce the unweighted fit exactly, and `nobs` keeps the sample size that
-the information criteria use.
+the information criteria use. A zero weight counts its column zero times;
+[`_weighted_sample`](@ref) drops such a column before any likelihood sees it.
 
-See also: [`_weighted_loglikelihood`](@ref), [`pseudos`](@ref),
-[`Distributions.fit`](@ref).
+See also: [`_weighted_sample`](@ref), [`_weighted_loglikelihood`](@ref),
+[`pseudos`](@ref), [`Distributions.fit`](@ref).
 """
 _fit_weights(::Nothing, ::Int) = nothing
 function _fit_weights(weights::AbstractVector{<:Real}, n::Int)
@@ -237,22 +238,38 @@ _fit_weights(weights, ::Int) = throw(ArgumentError(
     "weights must be nothing or a vector of non-negative reals; got $(typeof(weights))"))
 
 """
+    _weighted_sample(X, weights) -> (X, weights)
+
+The columns of `X` that carry weight, with their weights. A zero weight removes
+its observation, so the pair is what a likelihood engine is given: a removed
+observation may sit on the boundary of the unit hypercube, where its score is
+infinite and `0 * Inf` would poison a weighted cross-product. Without a zero
+weight, and with `weights === nothing`, the inputs are returned untouched.
+
+See also: [`_fit_weights`](@ref), [`_weighted_loglikelihood`](@ref).
+"""
+_weighted_sample(X::AbstractMatrix, ::Nothing) = (X, nothing)
+function _weighted_sample(X::AbstractMatrix, weights::AbstractVector)
+    any(iszero, weights) || return (X, weights)
+    kept = findall(!iszero, weights)
+    return (X[:, kept], weights[kept])
+end
+
+"""
     _weighted_loglikelihood(D, X, weights)
 
 Log-likelihood of `D` on the columns of `X`, each column multiplied by its
 weight. With `weights === nothing` this is `Distributions.loglikelihood(D, X)`.
 The weighted sum runs over the same column views in the same order as the
-unweighted reduction, so unit weights reproduce it bit for bit.
+unweighted reduction, so unit weights reproduce it bit for bit. A zero-weight
+column is dropped by [`_weighted_sample`](@ref) rather than summed.
 
 See also: [`_fit_weights`](@ref), [`StatsBase.nobs`](@ref).
 """
 _weighted_loglikelihood(D, X, ::Nothing) = Distributions.loglikelihood(D, X)
 function _weighted_loglikelihood(D, X::AbstractMatrix, weights::AbstractVector)
-    return sum(axes(X, 2)) do j
-        term = weights[j] * Distributions.logpdf(D, view(X, :, j))
-        # A zero weight removes its observation even where the density vanishes.
-        return ifelse(iszero(weights[j]), zero(term), term)
-    end
+    X, weights = _weighted_sample(X, weights)
+    return sum(j -> weights[j] * Distributions.logpdf(D, view(X, :, j)), axes(X, 2))
 end
 
 # Weights recorded by the estimator that produced a model, or `nothing`.
@@ -447,7 +464,9 @@ of column `j` is multiplied by `w[j]`. The weights are normalized once so that
 they sum to the number of observations `n`, so a weight reads as "how many
 observations this column counts for", the fitted parameters are invariant to
 the scale of `w`, and uniform weights reproduce the unweighted fit exactly. A
-zero weight removes its observation from the likelihood. The stored
+zero weight removes its observation: its column is dropped before the
+likelihood is evaluated, so it may lie on the boundary of the unit hypercube
+where the density is not defined. The stored
 `loglikelihood`, and hence `aic`, `bic` and `deviance`, are the weighted ones;
 `nobs` stays `n`. With `pseudo_values=false` the rank transformation is the
 weighted one of [`pseudos`](@ref).
@@ -486,8 +505,10 @@ function _run_copula_estimator(CT::Type{<:Copula}, U;
     engine_method = method === :mpl ? :mle : method
     engine_kwargs = !likelihood_method && pseudo_values !== nothing ?
         (; pseudo_values=input_is_pseudo, kwargs...) : (; kwargs...)
-    weights === nothing || (engine_kwargs = (; weights, engine_kwargs...))
-    C = _fit(CT, fit_data, Val{engine_method}(); engine_kwargs...)
+    # The engine sees the weighted columns only; the model keeps every column.
+    engine_data, engine_weights = _weighted_sample(fit_data, weights)
+    weights === nothing || (engine_kwargs = (; weights=engine_weights, engine_kwargs...))
+    C = _fit(CT, engine_data, Val{engine_method}(); engine_kwargs...)
     C isa Copula{d} || throw(ArgumentError(
         "the fitting implementation returned $(typeof(C)); expected a Copula{$d}"))
     return (; result=C, method, requested_method, input_is_pseudo,

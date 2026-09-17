@@ -191,7 +191,9 @@ or hypothesis-testing procedures valid for genuinely discrete data.
 `weights` gives one non-negative, finite weight per observation, not all zero,
 and ranks each margin by weighted mass. The weights are normalized to sum to
 the number of observations `n` first, so the result is invariant to their
-scale and unit weights reproduce the unweighted ranks exactly. Observation `i`
+scale and unit weights reproduce the unweighted ranks exactly. The ranks are
+computed and returned in the floating-point type that the sample and the
+weights promote to. Observation `i`
 then receives the mean rank of its copies in the sample where every observation
 `j` is repeated `weights[j]` times, under the same tie convention, divided by
 `n + 1`. A zero-weight observation contributes no mass and is placed at the
@@ -224,7 +226,7 @@ _pseudos(sample::AbstractMatrix, tie_method::Val, rng::Random.AbstractRNG, ::Not
 function _pseudos(sample::AbstractMatrix, tie_method::Val, rng::Random.AbstractRNG,
         weights::AbstractVector)
     d, n = size(sample)
-    T = float(eltype(sample))
+    T = float(promote_type(eltype(sample), eltype(weights)))
     U = Matrix{T}(undef, d, n)
     tmp_idx = Vector{Int}(undef, n)
     @inbounds for i in 1:d
