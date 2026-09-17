@@ -335,14 +335,18 @@ end
 
     df = condition(C, (1, 3, 4), Tuple(xf[[1, 3, 4]]))
     db = condition(C, (1, 3, 4), Tuple(xb[[1, 3, 4]]))
+    @test db isa Copulas.ArchimedeanDistortion
+    @test db.sJ isa BigFloat
     @test db.den isa BigFloat
-    @test eltype(db.uⱼₛ) === BigFloat
     cdf_db = cdf(db, xb[2])
     @test cdf_db isa BigFloat
     @test Float64(cdf_db) ≈ cdf(df, xf[2]) atol=1e-9
 
     mb = condition(C, (1, 3), Tuple(xb[[1, 3]]))
-    @test mb.C.den isa BigFloat
+    @test mb isa SklarDist
+    @test mb.C isa ArchimedeanCopula{2}
+    @test mb.C.G isa Copulas.TiltedGenerator
+    @test mb.C.G.sJ isa BigFloat
     @test cdf(mb, xb[[2, 4]]) isa BigFloat
 
     C3 = ClaytonCopula{3}(2.0)
