@@ -281,9 +281,9 @@ _unbound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, θ) where {d,CT} = 
 _rebound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, α) where {d,CT} = _rebound_params(CT, d_, α)
 
 # Conditioning bindings colocated
-function distortion(S::AbstractReflectedCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
+function distortion(S::AbstractReflectedCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {D,p}
     mask = flipmask(S)
-    uⱼₛ′ = ntuple(k -> (mask[js[k]] ? 1 - uⱼₛ[k] : uⱼₛ[k]), p)
+    uⱼₛ′ = ntuple(k -> mask[js[k]] ? one(uⱼₛ[k]) - uⱼₛ[k] : uⱼₛ[k], p)
     base = distortion(basecopula(S), js, uⱼₛ′, i)
     return FlipDistortion(base, mask[i])
 end

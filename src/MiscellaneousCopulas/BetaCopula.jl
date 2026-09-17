@@ -107,12 +107,13 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::BetaCopula{d}, 
     end
     return A
 end
-@inline function distortion(C::BetaCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
+@inline function distortion(C::BetaCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {D,MT,p}
     @assert 1 <= i <= D
     n = C.n
-    w = zeros(Float64, n)
+    WT = typeof(Distributions.pdf(Distributions.Beta(1, n), uⱼₛ[1]))
+    w = zeros(WT, n)
     @inbounds for idx in 1:n
-        prodw = 1.0
+        prodw = one(WT)
         @inbounds for (t, j) in pairs(js)
             r = C.ranks[j, idx]
             prodw *= Distributions.pdf(Distributions.Beta(r, n + 1 - r), uⱼₛ[t])
@@ -120,9 +121,7 @@ end
         w[idx] = prodw
     end
     s = sum(w)
-    if s <= 0
-        return NoDistortion()
-    end
+    s <= zero(s) && return NoDistortion()
     w ./= s
     comps = Vector{Distributions.Beta}(undef, n)
     @inbounds for idx in 1:n
@@ -131,6 +130,7 @@ end
     end
     return Distributions.MixtureModel(comps, w)
 end
+
 StatsBase.dof(::BetaCopula) = 0
 _available_fitting_methods(::Type{<:BetaCopula}, d) = (:beta,)
 """

@@ -201,7 +201,7 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
         r = rand(rng, R)
         sx = sum(sample)
         for row in axes(A, 1)
-            A[row, col] = ϕ(C.G, r * A[row, col] / sx)
+            A[row, col] = ϕ(C.G, r * A[row,col] / sx)
         end
     end
     return A
@@ -218,7 +218,6 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
     end
     return A
 end
-
 generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
@@ -291,7 +290,7 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     return U
 end
 
-function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p}
 
     kind = limit_kind(C.G, Val(2))
     kind === Π_LIMIT && return NoDistortion()
@@ -303,7 +302,7 @@ function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,F
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
     return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
-function conditional_copula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, TG, p}
+function conditional_copula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}) where {D, TG, p}
     return ArchimedeanCopula{D - p}(TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
 SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula{p}(C.G)
