@@ -30,9 +30,10 @@ References:
 * [segers2017](@cite) Segers, J., Sibuya, M., & Tsukahara, H. (2017). The empirical beta copula. Journal of Multivariate Analysis, 155, 35-51.
 """
 struct BetaCopula{d,MT} <: Copula{d}
-    ranks::MT   # d×n (each row is in 1..n)
+    ranks::MT
     n::Int
     function BetaCopula{d}(data::AbstractMatrix) where {d}
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
         _require_tie_free_rows(data, "BetaCopula")
         n = size(data, 2)
@@ -65,7 +66,6 @@ function _bernvec_n(u::T, n::Int) where {T<:Real}
 end
 function _cdf(C::BetaCopula{d}, u) where {d}
     n = C.n
-    # tablas por dimensión en el punto u
     CDFtab = ntuple(j -> Base.reverse(cumsum(Base.reverse(_bernvec_n(u[j], n))))[2:end], d)
     total = zero(eltype(first(CDFtab)))
     @inbounds for i in 1:n
@@ -108,8 +108,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::BetaCopula{d}, 
     return A
 end
 @inline function distortion(C::BetaCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
-    # Build conditional mixture weights over observations given U_js = u_js.
-    # w_i ∝ ∏_{t=1..p} BetaPDF(u_jt; r_{j_t,i}, n+1−r_{j_t,i})
     @assert 1 <= i <= D
     n = C.n
     w = zeros(Float64, n)
@@ -133,9 +131,7 @@ end
     end
     return Distributions.MixtureModel(comps, w)
 end
-
-# Fitting collocated
-StatsBase.dof(::BetaCopula)         = 0
+StatsBase.dof(::BetaCopula) = 0
 _available_fitting_methods(::Type{<:BetaCopula}, d) = (:beta,)
 """
     _fit(::Type{<:BetaCopula}, U, ::Val{:beta}; kwargs...) -> C

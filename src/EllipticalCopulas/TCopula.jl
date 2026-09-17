@@ -52,6 +52,7 @@ struct TCopula{d,Tν,MT} <: EllipticalCopula{d,MT}
     df::Tν
     Σ::MT
     function TCopula{d}(df::Real, Σ::AbstractMatrix) where {d}
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
         matrix = Matrix(float.(Σ))
         make_cor!(matrix)

@@ -56,6 +56,7 @@ References:
 struct ArchimedeanCopula{d,TG} <: Copula{d}
     G::TG
     function ArchimedeanCopula{d}(G::Generator) where {d}
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         d <= max_monotony(G) || throw(DomainError(
             d,
             "generator $G has maximal monotonicity $(max_monotony(G)) and cannot define a $d-dimensional Archimedean copula",

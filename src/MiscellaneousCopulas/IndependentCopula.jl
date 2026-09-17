@@ -10,11 +10,12 @@ C(\\mathbf{x}) = \\prod_{i=1}^{d} x_i.
 
 It is Archimedean with generator ``\\psi(s) = e^{-s}``.
 
-The model is parameter free and available in every dimension `d ≥ 1`. Its
-density is one throughout the unit hypercube, sampling produces independent
-uniform coordinates, and both Rosenblatt transforms are the identity. It is
-also the zero-dependence limit of many parametric families; constructing the
-named family at such a limit need not return this concrete type.
+The model is parameter free and available in every public copula dimension
+`d ≥ 2`. Its density is one throughout the unit hypercube, sampling produces
+independent uniform coordinates, and both Rosenblatt transforms are the
+identity. It is also the zero-dependence limit of many parametric families;
+constructing the named family at such a limit need not return this concrete
+type.
 
 # Example
 ```julia
@@ -31,7 +32,10 @@ References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct IndependentCopula{d} <: Copula{d}
-    IndependentCopula{d}() where {d} = new{d}()
+    function IndependentCopula{d}() where {d}
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+        return new{d}()
+    end
 end
 IndependentCopula(d) = IndependentCopula{d}()
 _cdf(::IndependentCopula{d}, u) where d = prod(u)
@@ -63,7 +67,8 @@ function condition(::IndependentCopula{D}, js::NTuple{p, Int}, uⱼₛ::NTuple{p
 end
 
 # Subsetting colocated
-SubsetCopula(::IndependentCopula{d}, ::NTuple{p, Int}) where {d, p} = IndependentCopula{p}()
+SubsetCopula(::IndependentCopula{d}, ::NTuple{p, Int}) where {d, p} =
+    p == 1 ? Distributions.Uniform() : IndependentCopula{p}()
 
 # Fitting/params interface (no parameters)
 Distributions.params(::IndependentCopula) = (;)
