@@ -49,6 +49,7 @@ struct CheckerboardCopula{d, T} <: Copula{d}
 end
 Base.eltype(::CheckerboardCopula{d,T}) where {d,T} = T
 function CheckerboardCopula{d}(X::AbstractMatrix{T}; m=nothing, pseudo_values::Bool=true) where {d,T}
+    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
     size(X, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     pseudo_values || _require_tie_free_rows(X, "CheckerboardCopula")
     n = size(X, 2)

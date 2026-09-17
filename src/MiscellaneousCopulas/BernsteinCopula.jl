@@ -107,6 +107,7 @@ Distributions.params(C::BernsteinCopula) = (m=C.m, weights=C.weights)
 BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base; kwargs...)
 BernsteinCopula(d::Integer, base::Copula; kwargs...) = BernsteinCopula{d}(base; kwargs...)
 function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}
+    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
     size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     pseudo_values = get(kwargs, :pseudo_values, true)
     pseudo_values || _require_tie_free_rows(data, "BernsteinCopula")
