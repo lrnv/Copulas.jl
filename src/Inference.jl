@@ -32,6 +32,13 @@ _vcov_pairwise_measure(::Val{:irho}) = StatsBase.corspearman
 _vcov_pairwise_measure(::Val{:ibeta}) = corblomqvist
 _vcov_pairwise_measure(::Val) = coruppertail
 
+# `Distributions.params` always exposes a public tuple, while an atomic
+# Paramorph space such as `Correlation(:Σ, d)` or `ProbVec(:a, n)` consumes
+# its single logical parameter directly. Product spaces consume the tuple.
+_paramorph_natural_value(pspace::Tuple, parameters::Tuple) = parameters
+_paramorph_natural_value(pspace, parameters::Tuple) =
+    length(parameters) == 1 ? only(parameters) : parameters
+
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                vcovv::Val{:hessian}, methodv::Val{method}; weights=nothing) where {method}
     return _vcov_hessian(CT, U, θ, Val(size(U, 1)), vcovv, methodv; weights)
@@ -66,7 +73,7 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                        methodv::Val{method}; weights=nothing) where {d,method}
     U, weights = _weighted_sample(U, weights)
     pspace = Paramorph.param_space(CT, d)
-    α = Paramorph.unconstrain(pspace, θ)
+    α = Paramorph.unconstrain(pspace, _paramorph_natural_value(pspace, θ))
     all(isfinite, α) || throw(ArgumentError(
         "Hessian inference requires fitted parameters in the finite interior of their parameter space"))
     cop(αv) = _parameter_space_copula(CT, d, pspace, αv)
@@ -107,7 +114,7 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, ::Val{d
                        nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {d,pairwise,vcovm,method}
     n = size(U, 2)
     pspace = Paramorph.param_space(CT, d)
-    α = Paramorph.unconstrain(pspace, θ)
+    α = Paramorph.unconstrain(pspace, _paramorph_natural_value(pspace, θ))
     all(isfinite, α) || throw(ArgumentError(
         "$vcovm inference requires fitted parameters in the finite interior of their parameter space"))
     p = length(α)
@@ -177,7 +184,8 @@ function _analytical_parameter_coordinates(target, d, parameters)
     applicable(Paramorph.param_space, target, d) || return nothing
     try
         pspace = Paramorph.param_space(target, d)
-        α = Paramorph.unconstrain(pspace, parameters)
+        α = Paramorph.unconstrain(
+            pspace, _paramorph_natural_value(pspace, parameters))
         return all(isfinite, α) ? (pspace, α) : nothing
     catch err
         err isa InterruptException && rethrow()
