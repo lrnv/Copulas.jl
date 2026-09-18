@@ -346,7 +346,23 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     pspace = Paramorph.param_space(CT, d)
     βobs = clamp(_weighted_β(U, weights), nextfloat(-1.0), prevfloat(1.0))
     obj(α) = β(CT(d, Paramorph.constrain(pspace, [α]))) - βobs
-    α = Roots.find_zero(obj, (-Inf, Inf), Roots.Brent(); xatol=1e-8, rtol=0)
+
+    lo, hi = -1.0, 1.0
+    flo, fhi = obj(lo), obj(hi)
+    for _ in 1:9
+        (iszero(flo) || iszero(fhi) || signbit(flo) != signbit(fhi)) && break
+        lo *= 2
+        hi *= 2
+        flo, fhi = obj(lo), obj(hi)
+    end
+    iszero(flo) && return CT(d, Paramorph.constrain(pspace, [lo]))
+    iszero(fhi) && return CT(d, Paramorph.constrain(pspace, [hi]))
+    signbit(flo) != signbit(fhi) || throw(DomainError(
+        βobs,
+        "could not bracket a Blomqvist-beta inverse in the finite unconstrained parameter chart",
+    ))
+
+    α = Roots.find_zero(obj, (lo, hi), Roots.Brent(); xatol=1e-8, rtol=0)
     return CT(d, Paramorph.constrain(pspace, [α]))
 end
 
@@ -384,9 +400,8 @@ function _fit(
 
     res = Optim.optimize(
         f,
-        Optim.TwiceDifferentiableConstraints(),
         α₀,
-        Optim.IPNewton();
+        Optim.LBFGS();
         autodiff=ADTypes.AutoForwardDiff(),
     )
 
