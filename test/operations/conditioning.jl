@@ -145,7 +145,7 @@ end
                 expected_cdf = cdf(Normal(), z)
                 expected_pdf = pdf(Normal(), z) / (sqrt(1 - ρ^2) * pdf(Normal(), zᵢ))
             elseif C isa TCopula
-                ν = C.df
+                ν = C.ν
                 ρ = C.Σ[1, 2]
                 zⱼ = quantile(TDist(ν), conditioned)
                 zᵢ = quantile(TDist(ν), target)
@@ -205,7 +205,7 @@ end
 function _elliptical_conditional_cdf(C::TCopula, js, values,
                                      target_index, target)
     J = collect(js)
-    ν = C.df
+    ν = C.ν
     zJ = quantile.(TDist(ν), collect(values))
     solved = C.Σ[J, J] \ zJ
     β = C.Σ[J, J] \ C.Σ[J, target_index]
@@ -494,7 +494,6 @@ end
     @test value_big isa BigFloat
     @test isfinite(value_big)
 end
-
 
 
 # Conditioning-operation proof: exercises the common univariate API once
