@@ -1,13 +1,14 @@
 """
     AsymGalambosTail(α, θ₁, θ₂)
     AsymGalambosTail(α, weights)
-    AsymGalambosTail(dep, asy)
+    AsymGalambosTail(dep, weights₁, ..., weights_d)
+    AsymGalambosTail(d, dep, asy)
 
     AsymGalambosCopula{2}(α, θ₁, θ₂)
     AsymGalambosCopula(2, α, θ₁, θ₂)
     AsymGalambosCopula{d}(α, weights)
     AsymGalambosCopula(d, α, weights)
-    AsymGalambosCopula{d}(dep, asy)
+    AsymGalambosCopula{d}(dep, weights₁, ..., weights_d)
     AsymGalambosCopula(d, dep, asy)
 
 Asymmetric Galambos (negative-logistic) extreme-value family.
@@ -26,17 +27,13 @@ Joe [Joe1990](@cite). For nonempty subsets `C`,
 with nonnegative asymmetry weights satisfying the marginal normalization
 constraints.
 
-`AsymGalambosCopula(d, dep, asy)` exposes the full subset representation.
-`AsymGalambosCopula{d}(α, weights)` is a convenience parameterization with
-one full-set negative-logistic component and singleton remainders. In `d=2`,
-it is equivalent to the historical `(α, θ₁, θ₂)` parameterization and
-retains the specialized scalar Pickands formulas.
-
-!!! note "Literature model versus package parameterization"
-    [Joe1990](@cite) supports the multivariate min-stable/negative-logistic
-    construction. The one-full-set-plus-singletons `weights` constructor is a
-    convenience parameterization introduced at the implementation level in
-    Copulas.jl.
+The canonical parameterization stores one dependence parameter for every
+non-singleton subset and, for every margin `i`, the vector
+`(β_{i,C})_{C∋i}` as a probability simplex. `AsymGalambosTail(d, dep, asy)`
+retains the historical subset-oriented input and converts it to this canonical
+form. `AsymGalambosTail(α, weights)` contains only the full-set
+negative-logistic component plus singleton remainders. In `d=2`, this is the
+whole family and is equivalent to the historical `(α, θ₁, θ₂)` form.
 
 The full subset form can be high-dimensional in both parameter count and
 evaluation cost. Zero weights remove subset contributions and can place the
@@ -54,45 +51,49 @@ AsymGalambosTail, AsymGalambosCopula
 
 struct AsymGalambosTail{T} <: BivariatePickandsTail
     d::Int
-    α::Vector{T}
-    β::Matrix{T}
-    function AsymGalambosTail(d::Int, dep::AbstractVector, asy::AbstractVector)
-        α, β = _normalize_asymmetric_subset_components(
-            d, dep, asy;
+    dep::Vector{T}
+    weights::Vector{Vector{T}}
+    function AsymGalambosTail(dep::AbstractVector, weights::Vararg{AbstractVector,N}) where {N}
+        d = N
+        normalized_dep, normalized_weights = _normalize_asymmetric_margin_components(
+            d, dep, weights;
             singleton_parameter=0.0,
             valid_parameter=parameter -> parameter >= zero(parameter),
             family="Galambos",
         )
-
-        component_is_active(j) = !iszero(α[j]) && count(!iszero, @view β[:, j]) > 1
-        non_singletons = (d + 1):length(α)
-        return new{eltype(α)}(d, α, β)
+        return new{eltype(normalized_dep)}(d, normalized_dep, normalized_weights)
     end
 end
 
-@inline _asymgal_component_is_active(tail::AsymGalambosTail, j) =
-    !iszero(tail.α[j]) && count(!iszero, @view tail.β[:, j]) > 1
+@inline _asymgal_components(tail::AsymGalambosTail) = _asymmetric_subset_components(
+    tail.d, tail.dep, tail.weights; singleton_parameter=0.0,
+)
 
-function _asymgal_is_fullset_galambos(tail::AsymGalambosTail)
-    fullset = lastindex(tail.α)
+@inline _asymgal_component_is_active(α, β, j) =
+    !iszero(α[j]) && count(!iszero, @view β[:, j]) > 1
+
+function _asymgal_is_fullset_galambos(tail::AsymGalambosTail, α, β)
+    fullset = lastindex(α)
     preceding = (tail.d + 1):(fullset - 1)
-    any(j -> _asymgal_component_is_active(tail, j), preceding) && return false
-    return all(isone, @view tail.β[:, fullset])
+    any(j -> _asymgal_component_is_active(α, β, j), preceding) && return false
+    return all(isone, @view β[:, fullset])
 end
 
 @inline function limit_kind(tail::AsymGalambosTail, ::Val{d}) where {d}
     d == tail.d || return NO_LIMIT
-    non_singletons = (tail.d + 1):lastindex(tail.α)
-    any(j -> _asymgal_component_is_active(tail, j), non_singletons) || return Π_LIMIT
+    α, β = _asymgal_components(tail)
+    non_singletons = (tail.d + 1):lastindex(α)
+    any(j -> _asymgal_component_is_active(α, β, j), non_singletons) || return Π_LIMIT
 
-    fullset = lastindex(tail.α)
-    return _asymgal_is_fullset_galambos(tail) && isinf(tail.α[fullset]) ?
+    fullset = lastindex(α)
+    return _asymgal_is_fullset_galambos(tail, α, β) && isinf(α[fullset]) ?
            M_LIMIT : NO_LIMIT
 end
 
 function tail_measure_style(tail::AsymGalambosTail)
-    for j in (tail.d + 1):lastindex(tail.α)
-        _asymgal_component_is_active(tail, j) && isinf(tail.α[j]) &&
+    α, β = _asymgal_components(tail)
+    for j in (tail.d + 1):lastindex(α)
+        _asymgal_component_is_active(α, β, j) && isinf(α[j]) &&
             return NonAbsolutelyContinuousMeasure()
     end
     return AbsolutelyContinuousMeasure()
@@ -100,39 +101,48 @@ end
 
 const AsymGalambosCopula{d,T} = ExtremeValueCopula{d,AsymGalambosTail{T}}
 
+# Historical subset-oriented constructor.
+function AsymGalambosTail(d::Int, dep::AbstractVector, asy::AbstractVector)
+    weights = _subset_asymmetry_to_margin_weights(d, asy)
+    return AsymGalambosTail(dep, weights...)
+end
+
 # Convenience submodel: one full-set Galambos component plus singleton
 # remainders.
-function AsymGalambosTail(α::TA, weights::AbstractVector{TW}) where {TA<:Real,TW<:Real}
-    T = promote_type(Float64, TA, TW)
-    tail = AsymGalambosTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=0.0)...)
-    return tail::AsymGalambosTail{T}
-end
+AsymGalambosTail(α::Real, weights::AbstractVector) =
+    AsymGalambosTail(_expand_fullset_asymmetric_component(
+        α, weights; singleton_parameter=0.0,
+    )...)
 
 function AsymGalambosTail(α::TA, θ₁::T1, θ₂::T2) where {TA<:Real,T1<:Real,T2<:Real}
     T = promote_type(Float64, TA, T1, T2)
-    weights = T[θ₁, θ₂]
-    return AsymGalambosTail(T(α), weights)::AsymGalambosTail{T}
+    return AsymGalambosTail(T(α), T[θ₁, θ₂])::AsymGalambosTail{T}
 end
-AsymGalambosTail(α::Real, weights::AbstractVector) =
-    AsymGalambosTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=0.0)...)
+
 AsymGalambosTail(dep::AbstractVector, asy::AbstractVector) =
     AsymGalambosTail(trailing_zeros(length(asy) + 1), dep, asy)
+
+function Distributions.params(tail::AsymGalambosTail)
+    return (copy(tail.dep), (copy(weight) for weight in tail.weights)...)
+end
 
 _is_valid_in_dim(tail::AsymGalambosTail, d::Int) = d == tail.d
 
 @inline function _asymgal_bivariate_parameters(tail::AsymGalambosTail)
-    return tail.α[end], tail.β[1, end], tail.β[2, end]
+    tail.d == 2 || throw(DimensionMismatch("bivariate parameters require d = 2"))
+    return tail.dep[1], tail.weights[1][end], tail.weights[2][end]
 end
 
-
-_available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D}, d) =
-    d == 2 ? (:mle,) : ()
-
-Paramorph.param_space(::Type{<:AsymGalambosTail}, d) = (
-    Paramorph.NonNeg(:α),
-    Paramorph.Prob(:θ₁),
-    Paramorph.Prob(:θ₂),
-)
+function Paramorph.param_space(::Type{<:AsymGalambosTail}, d::Integer)
+    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
+    q = _asymmetric_dependence_count(d)
+    nweights = _asymmetric_margin_weight_count(d)
+    dep_space = Paramorph.NonNegVec(:dep, q)
+    weight_spaces = ntuple(d) do i
+        Paramorph.Simplex(Symbol("weights$(i)"), nweights; anchor=1)
+    end
+    return (dep_space, weight_spaces...)
+end
 
 function A(tail::AsymGalambosTail, t::Real)
     tt = _safett(t)
@@ -190,22 +200,23 @@ end
 
 function ℓ(tail::AsymGalambosTail, x)
     subsets = _nonempty_subsets(tail.d)
-    T = promote_type(eltype(x), eltype(tail.α), eltype(tail.β))
+    α, β = _asymgal_components(tail)
+    T = promote_type(eltype(x), eltype(α), eltype(β))
     out = zero(T)
 
     @inbounds for j in eachindex(subsets)
         subset = subsets[j]
-        active = [i for i in subset if tail.β[i, j] > 0]
+        active = [i for i in subset if β[i, j] > 0]
         isempty(active) && continue
 
-        α = tail.α[j]
-        if iszero(α) || length(active) == 1
+        parameter = α[j]
+        if iszero(parameter) || length(active) == 1
             for i in active
-                out += tail.β[i, j] * x[i]
+                out += β[i, j] * x[i]
             end
         else
-            y = [tail.β[i, j] * x[i] for i in active]
-            out += ℓ(GalambosTail(α), y)
+            y = [β[i, j] * x[i] for i in active]
+            out += ℓ(GalambosTail(parameter), y)
         end
     end
     return out
@@ -216,23 +227,24 @@ function _ellpartial_signlog(tail::AsymGalambosTail, x, I::Tuple{Vararg{Int}})
     k = length(I)
     expected_sign = isodd(k) ? 1 : -1
     subsets = _nonempty_subsets(tail.d)
-    return _sum_component_partials(size(tail.β, 2), expected_sign) do j
-        active = [i for i in subsets[j] if tail.β[i, j] > 0]
+    α, β = _asymgal_components(tail)
+    return _sum_component_partials(size(β, 2), expected_sign) do j
+        active = [i for i in subsets[j] if β[i, j] > 0]
         all(i -> i in active, I) || return 0, -Inf
 
-        α = tail.α[j]
-        if iszero(α) || length(active) == 1
-            k == 1 && return 1, log(float(tail.β[only(I), j]))
+        parameter = α[j]
+        if iszero(parameter) || length(active) == 1
+            k == 1 && return 1, log(float(β[only(I), j]))
             return 0, -Inf
         end
 
-        y = [tail.β[i, j] * x[i] for i in active]
+        y = [β[i, j] * x[i] for i in active]
         positions = Dict(i => q for (q, i) in enumerate(active))
         localI = ntuple(q -> positions[I[q]], k)
-        sign, logabs = _ellpartial_signlog(GalambosTail(α), y, localI)
+        sign, logabs = _ellpartial_signlog(GalambosTail(parameter), y, localI)
         iszero(sign) && return 0, -Inf
 
-        logchain = sum(log(float(tail.β[i, j])) for i in I)
+        logchain = sum(log(float(β[i, j])) for i in I)
         return sign, logabs + logchain
     end
 end
@@ -242,14 +254,15 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
 
     kind === Π_LIMIT && return Random.rand!(rng, X)
     kind === M_LIMIT && return _rand_M!(rng, X)
-    
+
+    α, β = _asymgal_components(C.tail)
     return _rand_subset_components!(
         rng,
         X,
-        C.tail.α,
-        C.tail.β,
+        α,
+        β,
         iszero,
-        (dimension, α) -> ExtremeValueCopula(dimension, GalambosTail(α));
+        (dimension, parameter) -> ExtremeValueCopula(dimension, GalambosTail(parameter));
         family="asymmetric Galambos",
     )
 end
