@@ -149,16 +149,11 @@ end
     Distributions.params(S::SklarDist)
 
 Return the mathematical parameters of a copula or Sklar distribution as a
-`NamedTuple`, in canonical constructor order. For an ordinary parametric
-copula, splatting `values(params(C))` into its documented typed constructor
-reconstructs the same model. Structural and empirical models document any
-different reconstruction form explicitly.
-
-Parameter names and values are public; concrete field names, storage-only type
-parameters and caches are not. A new in-package family must specialize this
-method before it can use generic fitting and display machinery. Missing
-specializations therefore use Julia's normal `MethodError` rather than a
-package-defined fallback exception.
+`Tuple`, in canonical constructor order, following the `Distributions.jl`
+convention. Parameter names and constraints are supplied independently by
+`Paramorph.param_space`; `params` contains values only. For an ordinary
+parametric copula, splatting `params(C)` into its documented typed constructor
+reconstructs the same model.
 
 See also: [`Copula`](@ref), [`SklarDist`](@ref), [`Distributions.fit`](@ref),
 [`CopulaModel`](@ref).
@@ -245,14 +240,8 @@ _parameter_arguments(η) = (η,)
 _parameter_space_copula(CT, d, p, α) =
     CT(d, _parameter_arguments(Paramorph.constrain(p, α))...)
 
-function _parameter_space_value(p, θ::NamedTuple)
-    nms = Paramorph.names(p)
-    vals = ntuple(i -> getproperty(θ, nms[i]), length(nms))
-    isempty(vals) && return ()
-    return length(vals) == 1 ? vals[1] : vals
-end
-_parameter_space_coordinates(p, θ::NamedTuple) =
-    Paramorph.unconstrain(p, _parameter_space_value(p, θ))
+_parameter_space_coordinates(p::Tuple, θ::Tuple) = Paramorph.unconstrain(p, θ)
+_parameter_space_coordinates(p, θ::Tuple) = Paramorph.unconstrain(p, only(θ))
 
 function _fit(CT::Type{<:Copula}, U, method::Val{:mle}; kwargs...)
     return _fit(CT, U, Val(size(U, 1)), method; kwargs...)
@@ -751,47 +740,17 @@ StatsBase.coefnames(M::CopulaModel) = _coefficient_data(M)[1]
 
 # Flatten natural parameters after a perturbation of optimizer coordinates;
 # those coordinates themselves are never exposed as model coefficients.
-function _flatten_params(params_nt::NamedTuple)
+function _flatten_params(p, params::Tuple)
     nm = String[]
     θ = Any[]
-    sidx = ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]
-    for (k, v) in pairs(params_nt)
-        if v isa Number
-            push!(nm, String(k))
-            push!(θ, v)
-        elseif v isa AbstractMatrix
-            if maximum(size(v)) > 9
-                @inbounds for j in 2:size(v,2), i in 1:j-1
-                    push!(nm, "$(k)_$(i)_$(j)")
-                    push!(θ, v[i,j])
-                end
-            else
-                @inbounds for j in 2:size(v,2), i in 1:j-1
-                    push!(nm, "$(k)$(sidx[i])$(sidx[j])")
-                    push!(θ, v[i,j])
-                end
-            end
-        elseif v isa AbstractVector
-            if length(v) > 9
-                for i in eachindex(v)
-                    push!(nm, "$(k)_$(i)")
-                    push!(θ, v[i])
-                end
-            else
-                for i in eachindex(v)
-                    push!(nm, "$(k)$(sidx[i])")
-                    push!(θ, v[i])
-                end
-            end
-        else
-            try
-                push!(nm, String(k))
-                push!(θ, v)
-            catch
-            end
-        end
+    nms = Paramorph.names(p)
+    length(nms) == length(params) || throw(DimensionMismatch(
+        "parameter-space names and distribution parameters have different lengths"))
+    for (name, value) in zip(nms, params)
+        _append_parameter!(nm, θ, value, String(name))
     end
-    return nm, [x for x in promote(θ...)]
+    values = isempty(θ) ? Float64[] : collect(promote(float.(θ)...))
+    return nm, values
 end
 
 function _append_parameter!(nm, θ, value, name::String)
@@ -829,11 +788,24 @@ function _natural_parameters(D)
     nm = String[]
     θ = Any[]
     if D isa SklarDist
-        !(hasmethod(StatsBase.dof, Tuple{typeof(D.C)}) && iszero(StatsBase.dof(D.C))) &&
-            _append_parameter!(nm, θ, Distributions.params(D.C), "copula")
-        for (i, margin) in pairs(D.m)
-            _append_parameter!(nm, θ, Distributions.params(margin), "margin_$(i)")
+        if !(hasmethod(StatsBase.dof, Tuple{typeof(D.C)}) && iszero(StatsBase.dof(D.C)))
+            cp = Paramorph.param_space(D.C)
+            cn, cv = _flatten_params(cp, Distributions.params(D.C))
+            append!(nm, ("copula_" * name for name in cn))
+            append!(θ, cv)
         end
+        for (i, margin) in pairs(D.m)
+            if applicable(Paramorph.param_space, margin)
+                mp = Paramorph.param_space(margin)
+                mn, mv = _flatten_params(mp, Distributions.params(margin))
+                append!(nm, ("margin_$(i)_" * name for name in mn))
+                append!(θ, mv)
+            else
+                _append_parameter!(nm, θ, Distributions.params(margin), "margin_$(i)")
+            end
+        end
+    elseif D isa Copula && applicable(Paramorph.param_space, D)
+        return _flatten_params(Paramorph.param_space(D), Distributions.params(D))
     elseif !(hasmethod(StatsBase.dof, Tuple{typeof(D)}) && iszero(StatsBase.dof(D)))
         _append_parameter!(nm, θ, Distributions.params(D), "")
     end

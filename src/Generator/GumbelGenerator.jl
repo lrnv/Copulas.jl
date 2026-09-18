@@ -40,7 +40,6 @@ const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
 frailty(G::GumbelGenerator) =
     isone(G.θ) ? Distributions.Dirac(1.0) :
     AlphaStable(α = 1/G.θ, β = 1, scale = cos(π/(2G.θ))^G.θ, location = 0)
-Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
 Paramorph.param_space(::Type{<:GumbelGenerator}, d) =
     Paramorph.LowerClosed(:θ, 1.0)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:GumbelGenerator} where {d}}, d) = (:mle, :itau, :ibeta, :irho)

@@ -1,7 +1,7 @@
 """
-    TCopula(df, Σ)
-    TCopula(d, df, Σ)
-    TCopula{d}(df, Σ)
+    TCopula(ν, Σ)
+    TCopula(d, ν, Σ)
+    TCopula{d}(ν, Σ)
 
 The Student t copula is the copula of a multivariate Student t distribution. It is defined by
 
@@ -49,31 +49,31 @@ References:
   normal probabilities. Journal of Computational and Graphical Statistics, 1992.
 """
 struct TCopula{d,Tν,MT} <: EllipticalCopula{d,MT}
-    df::Tν
+    ν::Tν
     Σ::MT
-    function TCopula{d}(df::Real, Σ::AbstractMatrix) where {d}
+    function TCopula{d}(ν::Real, Σ::AbstractMatrix) where {d}
         d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
         matrix = Matrix(float.(Σ))
         make_cor!(matrix)
-        Distributions.MvTDist(df, matrix)
-        return new{d,typeof(df),typeof(matrix)}(df, matrix)
+        Distributions.MvTDist(ν, matrix)
+        return new{d,typeof(ν),typeof(matrix)}(ν, matrix)
     end
 end
-Base.eltype(C::TCopula) = promote_type(typeof(float(C.df)), eltype(C.Σ))
+Base.eltype(C::TCopula) = promote_type(typeof(float(C.ν)), eltype(C.Σ))
 TCopula(ν::Real, Σ::AbstractMatrix) = TCopula{size(Σ, 1)}(ν, Σ)
 TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula{d}(ν, Σ)
 (::Type{TCopula{D,Tν,MT}})(d::Int, ν::Real, Σ::AbstractMatrix) where {D,Tν,MT} = TCopula{d}(ν, Σ)
 
-U(C::TCopula) = isinf(C.df) ? Distributions.Normal() : Distributions.TDist(C.df)
-N(C::TCopula) = isinf(C.df) ? Distributions.MvNormal : (Σ -> Distributions.MvTDist(C.df, Σ))
+U(C::TCopula) = isinf(C.ν) ? Distributions.Normal() : Distributions.TDist(C.ν)
+N(C::TCopula) = isinf(C.ν) ? Distributions.MvNormal : (Σ -> Distributions.MvTDist(C.ν, Σ))
 @inline _gaussian_limit(C::TCopula) = GaussianCopula(copy(C.Σ))
 function _cdf(C::TCopula{d}, u) where d
-    isinf(C.df) && return _cdf(_gaussian_limit(C), u)
+    isinf(C.ν) && return _cdf(_gaussian_limit(C), u)
     T = promote_type(eltype(C), eltype(u))
     T <: Union{Float32,Float64} || return invoke(_cdf, Tuple{Copula,Any}, C, u)
-    upper = Distributions.quantile.(Distributions.TDist(C.df), u)
-    return T(_mvtcdf(C.df, zeros(eltype(upper), d), C.Σ, upper))
+    upper = Distributions.quantile.(Distributions.TDist(C.ν), u)
+    return T(_mvtcdf(C.ν, zeros(eltype(upper), d), C.Σ, upper))
 end
 
 function _student_rosenblatt_cache(C::TCopula{d}) where d
@@ -89,9 +89,9 @@ function _student_rosenblatt_cache(C::TCopula{d}) where d
 end
 
 function rosenblatt(C::TCopula{d}, u::AbstractMatrix{<:Real}) where {d}
-    isinf(C.df) && return rosenblatt(_gaussian_limit(C), u)
+    isinf(C.ν) && return rosenblatt(_gaussian_limit(C), u)
     size(u, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
-    ν = C.df
+    ν = C.ν
     Tu = Distributions.TDist(ν)
     z = Distributions.quantile.(Tu, u)
     v = similar(z)
@@ -113,9 +113,9 @@ function rosenblatt(C::TCopula{d}, u::AbstractMatrix{<:Real}) where {d}
 end
 
 function inverse_rosenblatt(C::TCopula{d}, s::AbstractMatrix{<:Real}) where {d}
-    isinf(C.df) && return inverse_rosenblatt(_gaussian_limit(C), s)
+    isinf(C.ν) && return inverse_rosenblatt(_gaussian_limit(C), s)
     size(s, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
-    ν = C.df
+    ν = C.ν
     Tu = Distributions.TDist(ν)
     z = similar(s, float(promote_type(eltype(s), eltype(C.Σ))))
     v = similar(z)
@@ -141,7 +141,7 @@ end
 τ(C::TCopula{2}) = 2*asin(C.Σ[1,2])/π
 
 function ρ(C::TCopula{2})
-    ν = float(C.df)
+    ν = float(C.ν)
     r = float(C.Σ[1, 2])
     iszero(r) && return zero(promote_type(typeof(ν), typeof(r)))
     isinf(ν) && return 6asin(r / 2) / π
@@ -166,8 +166,8 @@ function ρ(C::TCopula{2})
 end
 
 function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p,D}
-    isinf(C.df) && return distortion(_gaussian_limit(C), js, uⱼₛ, i)
-    ν = C.df
+    isinf(C.ν) && return distortion(_gaussian_limit(C), js, uⱼₛ, i)
+    ν = C.ν
     Σ = C.Σ; jst = js; ist = Tuple(setdiff(1:D, jst)); @assert i in ist
     Jv = collect(jst); zJ = Distributions.quantile.(Distributions.TDist(ν), collect(uⱼₛ))
     ΣJJ = Σ[Jv, Jv]; RiJ = Σ[i, Jv]; RJi = Σ[Jv, i]
@@ -184,7 +184,7 @@ function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real},
     return StudentDistortion(float(μz), float(σz), ν, νp)
 end
 function conditional_copula(C::TCopula{D}, js, uⱼₛ) where {D}
-    df = C.df
+    ν = C.ν
     p = length(js); J = collect(Int, js); I = collect(setdiff(1:D, J)); Σ = C.Σ
     if p == 1
         Σcond = Σ[I, I] - Σ[I, J] * (Σ[J, J] \ Σ[J, I])
@@ -194,16 +194,16 @@ function conditional_copula(C::TCopula{D}, js, uⱼₛ) where {D}
     end
     σ = sqrt.(LinearAlgebra.diag(Σcond))
     R_cond = Matrix(Σcond ./ (σ * σ'))
-    return TCopula{D - p}(df + p, R_cond)
+    return TCopula{D - p}(ν + p, R_cond)
 end
 
 function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
                                  uⱼₛ::NTuple{p,<:Real}, is) where {D,p}
-    if isinf(C.df)
+    if isinf(C.ν)
         Gcond, distortions = _conditional_components(_gaussian_limit(C), js, uⱼₛ, is)
         return TCopula(Inf, copy(Gcond.Σ)), distortions
     end
-    ν = C.df
+    ν = C.ν
     J = collect(Int, js)
     I = collect(Int, is)
     Σ = C.Σ
@@ -224,10 +224,9 @@ function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
     Rcond = Matrix(Σcond ./ (σ * σ'))
     return TCopula{length(is)}(νp, Rcond), distortions
 end
-SubsetCopula(C::TCopula, dims::NTuple{p, Int}) where {p} = TCopula{p}(C.df, C.Σ[collect(dims),collect(dims)])
+SubsetCopula(C::TCopula, dims::NTuple{p, Int}) where {p} = TCopula{p}(C.ν, C.Σ[collect(dims),collect(dims)])
 
 StatsBase.dof(C::Copulas.TCopula) = (p = length(C); p*(p-1) ÷ 2 + 1)
-Distributions.params(C::TCopula) = (; ν = C.df, Σ = copy(C.Σ))
 Paramorph.param_space(::Type{<:TCopula}, d) = (Paramorph.Pos(:ν), Paramorph.Correlation(:Σ, d))
 # Per-observation sums of the Student objective. The weighted form multiplies
 # the term of each column by its weight before the same reduction, so unit

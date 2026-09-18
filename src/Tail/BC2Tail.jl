@@ -68,11 +68,6 @@ function _bc2_bivariate_weights(tail::BC2Tail)
     return tail.a[1], tail.a[2]
 end
 
-function Distributions.params(tail::BC2Tail)
-    length(tail.a) == 2 || return (a=tail.a,)
-    a, b = _bc2_bivariate_weights(tail)
-    return (; a, b)
-end
 
 Paramorph.param_space(::Type{<:BC2Tail}, d) =
     (Paramorph.Prob(:a), Paramorph.Prob(:b))

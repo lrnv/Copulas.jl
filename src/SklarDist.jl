@@ -101,7 +101,7 @@ function Distributions.partype(S::SklarDist)
         mapreduce(Distributions.partype, promote_type, S.m; init=Union{}),
     )
 end
-Distributions.params(S::SklarDist) = (copula=S.C, margins=S.m)
+Distributions.params(S::SklarDist) = (S.C, S.m)
 @inline function _sklar_work_eltype(S::SklarDist, x)
     T = promote_type(eltype(S.C), eltype(x))
     for margin in S.m
@@ -214,7 +214,7 @@ function StatsBase.dof(S::SklarDist)
 end
 
 _parameter_dof(x::Number) = 1
-_parameter_dof(x::NamedTuple) = sum(_parameter_dof, values(x); init=0)
+_parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)
 _parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)
 _parameter_dof(x::AbstractArray{<:Number}) = length(x)
 _parameter_dof(x::Copula) = _parameter_dof(Distributions.params(x))

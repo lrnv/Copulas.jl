@@ -33,7 +33,6 @@ struct AMHGenerator{T} <: AbstractUnivariateGenerator
     end
 end
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
-Distributions.params(G::AMHGenerator) = (θ = G.θ,)
 function Paramorph.param_space(::Type{<:AMHGenerator}, d::Integer)
     lower = clamp(_find_critical_value_amh(d), -1, 1)
     return Paramorph.Bounded(:θ, lower, 1.0)

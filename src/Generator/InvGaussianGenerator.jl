@@ -38,7 +38,6 @@ struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
     end
 end
 const InvGaussianCopula{d, T} = ArchimedeanCopula{d, InvGaussianGenerator{T}}
-Distributions.params(G::InvGaussianGenerator) = (θ = G.θ,)
 Paramorph.param_space(::Type{<:InvGaussianGenerator}, d) =
     Paramorph.NonNeg(:θ)
 

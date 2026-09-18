@@ -50,7 +50,6 @@ end
 _spectral_tail(tail::DiscreteSpectralTail) = tail
 
 Base.eltype(::DiscreteSpectralTail{T}) where {T} = T
-Distributions.params(tail::DiscreteSpectralTail) = (B = tail.B,)
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:DiscreteSpectralTail} where D}, d) = ()
 _is_valid_in_dim(tail::DiscreteSpectralTail, d::Int) = size(tail.B, 1) == d
 

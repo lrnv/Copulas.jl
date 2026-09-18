@@ -21,8 +21,7 @@ and `GumbelCopula(d, θ)`. Their storage representation and alias expansion
 are implementation details.
 
 A custom generator is part of the supported public API. Define a subtype of
-`Generator` and the three core methods `ϕ`, `max_monotony`, and
-`Distributions.params`:
+`Generator` and the two core methods `ϕ` and `max_monotony`:
 
 ```julia
 using Copulas, Distributions
@@ -30,7 +29,6 @@ using Copulas, Distributions
 struct MyGenerator <: Copulas.Generator end
 Copulas.ϕ(::MyGenerator, t) = exp(-t)
 Copulas.max_monotony(::MyGenerator) = Inf
-Distributions.params(::MyGenerator) = (;)
 C = ArchimedeanCopula(3, MyGenerator())
 cdf(C, fill(0.5, 3))
 ```
@@ -145,7 +143,10 @@ function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, arg
     return _typed_archimedean(CT, first, args...; kwargs...)
 end
 
-Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G)
+function Distributions.params(C::ArchimedeanCopula)
+    p = Paramorph.param_space(C)
+    return map(Base.Fix1(getproperty, C.G), Paramorph.names(p))
+end
 
 @inline function _cdf(C::ArchimedeanCopula{d}, u) where {d}
     kind = limit_kind(C.G, Val(d))

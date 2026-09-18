@@ -40,7 +40,6 @@ const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
     return NO_LIMIT
 end
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
-Distributions.params(G::FrankGenerator) = (θ = G.θ,)
 Paramorph.param_space(::Type{<:FrankGenerator}, d::Integer) =
     d == 2 ? Paramorph.Id(:θ) : Paramorph.NonNeg(:θ)
 

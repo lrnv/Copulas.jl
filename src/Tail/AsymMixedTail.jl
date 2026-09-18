@@ -53,7 +53,9 @@ end
     iszero(tail.θ₁) && iszero(tail.θ₂) ? Π_LIMIT : NO_LIMIT
 
 const AsymMixedCopula{d,T} = ExtremeValueCopula{d, AsymMixedTail{T}}
-Distributions.params(tail::AsymMixedTail) = (θ₁ = tail.θ₁, θ₂ = tail.θ₂)
+
+Distributions.params(C::ExtremeValueCopula{D,<:AsymMixedTail}) where {D} =
+    (C.tail.θ₁, C.tail.θ₂)
 
 function _fit(
     CT::Type{<:ExtremeValueCopula{D,<:AsymMixedTail} where D},

@@ -121,7 +121,10 @@ function _ev_cdf(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, u)
 end
 
 _ev_cdf(C::ExtremeValueCopula, u) = exp(-ℓ(C.tail, .- log.(u)))
-Distributions.params(C::ExtremeValueCopula) = Distributions.params(C.tail)
+function Distributions.params(C::ExtremeValueCopula)
+    p = Paramorph.param_space(C)
+    return map(Base.Fix1(getproperty, C.tail), Paramorph.names(p))
+end
 
 # Density selection follows Julia dispatch directly. BivariatePickandsTail
 # families retain the native scalar Pickands derivative kernel in d=2.

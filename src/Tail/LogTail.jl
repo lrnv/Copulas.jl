@@ -49,7 +49,6 @@ end
 
 const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
 _is_valid_in_dim(::LogTail, d::Int) = d >= 2
-Distributions.params(tail::LogTail) = (θ = tail.θ,)
 Paramorph.param_space(::Type{<:LogTail}, d) = Paramorph.LowerClosed(:θ, 1.0)
 
 function ℓ(tail::LogTail, x)

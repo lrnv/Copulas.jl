@@ -124,16 +124,6 @@ _is_valid_in_dim(tail::AsymGalambosTail, d::Int) = d == tail.d
     return tail.α[end], tail.β[1, end], tail.β[2, end]
 end
 
-function Distributions.params(tail::AsymGalambosTail)
-    if tail.d == 2
-        α, θ₁, θ₂ = _asymgal_bivariate_parameters(tail)
-        return (; α, θ₁, θ₂)
-    end
-    subsets = _nonempty_subsets(tail.d)
-    dep = tail.α[(tail.d + 1):end]
-    asy = [collect(@view tail.β[subset, j]) for (j, subset) in enumerate(subsets)]
-    return (; dep, asy)
-end
 
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D}, d) =
     d == 2 ? (:mle,) : ()

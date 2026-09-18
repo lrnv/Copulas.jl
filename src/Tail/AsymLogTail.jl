@@ -52,7 +52,6 @@ tail_measure_style(tail::AsymLogTail) =
     AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 
 const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
-Distributions.params(tail::AsymLogTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
 Paramorph.param_space(::Type{<:AsymLogTail}, d) = (
     Paramorph.LowerClosed(:α, 1.0),
     Paramorph.Prob(:θ₁),

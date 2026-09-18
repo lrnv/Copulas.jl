@@ -45,7 +45,6 @@ PlackettCopula(d::Integer, θ::Real) = PlackettCopula{d}(θ)
 (::Type{<:PlackettCopula{D,P}})(d::Int, θ) where {D,P} = PlackettCopula{d}(θ)
 
 Base.eltype(::PlackettCopula{2,P}) where {P} = P
-Distributions.params(C::PlackettCopula) = (θ = C.θ,)
 Paramorph.param_space(::Type{<:PlackettCopula}, d) = Paramorph.NonNeg(:θ)
 
 function _cdf(S::PlackettCopula, uv)

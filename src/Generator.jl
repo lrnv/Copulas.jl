@@ -12,7 +12,6 @@ must implement:
 - `ϕ(G, t)`, the mathematical generator;
 - `max_monotony(G)`, the largest supported Williamson order (`Inf` for a
   completely monotone generator);
-- `Distributions.params(G)`, returning a `NamedTuple` of its public parameters.
 
 These methods are sufficient to construct `ArchimedeanCopula(d, G)` and use its
 generic CDF path: the inverse of `ϕ` is obtained numerically when no specialized
@@ -27,7 +26,7 @@ optimizations separately.
 
 See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
 [`max_monotony`](@ref), [`WilliamsonGenerator`](@ref),
-[`FrailtyGenerator`](@ref), `Distributions.params`.
+[`FrailtyGenerator`](@ref), `Paramorph.param_space`.
 """
 abstract type Generator end
 Base.eltype(G::Generator) = _sample_eltype(G)
@@ -49,7 +48,6 @@ function (TG::Type{<:Generator})(args...; kwargs...)
     return T(args..., (kwargs[name] for name in remaining)...)
 end
 Base.broadcastable(x::Generator) = Ref(x)
-_parameter_dof(x::Generator) = _parameter_dof(Distributions.params(x))
 
 """
     max_monotony(G::Generator)

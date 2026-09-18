@@ -96,17 +96,17 @@ end
         original = copy(covariance)
         C = build(covariance)
         @test covariance == original
-        @test params(C).Σ ≈ [1.0 1/3; 1/3 1.0]
+        @test only(params(C)) ≈ [1.0 1/3; 1/3 1.0]
 
         covariance[1, 2] = covariance[2, 1] = 0
-        @test params(C).Σ ≈ [1.0 1/3; 1/3 1.0]
+        @test only(params(C)) ≈ [1.0 1/3; 1/3 1.0]
 
         first_params = params(C)
         second_params = params(C)
         @test first_params.Σ == second_params.Σ
         @test first_params.Σ !== second_params.Σ
         first_params.Σ[1, 2] = first_params.Σ[2, 1] = 0
-        @test params(C).Σ ≈ [1.0 1/3; 1/3 1.0]
+        @test only(params(C)) ≈ [1.0 1/3; 1/3 1.0]
     end
 end
 

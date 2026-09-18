@@ -62,8 +62,9 @@ SubsetCopula(C::WCopula, ::NTuple{p,Int}) where {p} =
     p == 2 ? C : throw(ArgumentError("WCopula is only defined in dimension 2"))
 distortion(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
+Paramorph.param_space(::Type{<:WCopula}, d) = ()
+
 # Fitting/params interface (no parameters)
-Distributions.params(::WCopula) = (;)
 # A parameter-free family has nothing to weight, so the weights are accepted and unused.
 _fit(::Type{<:WCopula}, U, ::Val{:mle}; weights=nothing) = WCopula(size(U,1))
 _fit(::Type{<:WCopula}, U, ::Val{:itau}; weights=nothing) = WCopula(size(U,1))

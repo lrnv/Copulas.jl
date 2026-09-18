@@ -62,7 +62,6 @@ end
     iszero(tail.θ) ? Π_LIMIT : NO_LIMIT
 
 const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
-Distributions.params(tail::MixedTail) = (θ = tail.θ,)
 _is_valid_in_dim(::MixedTail, d::Int) = d >= 2
 Paramorph.param_space(::Type{<:MixedTail}, d) = Paramorph.Prob(:θ)
 

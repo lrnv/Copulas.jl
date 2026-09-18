@@ -38,7 +38,6 @@ const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
     isone(G.θ) ? Π_LIMIT :
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
-Distributions.params(G::JoeGenerator) = (θ = G.θ,)
 Paramorph.param_space(::Type{<:JoeGenerator}, d) =
     Paramorph.LowerClosed(:θ, 1.0)
 archimedean_measure_style(G::JoeGenerator, ::Val{d}) where {d} =

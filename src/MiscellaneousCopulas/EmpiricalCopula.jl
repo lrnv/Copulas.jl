@@ -55,7 +55,7 @@ function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
 end
 EmpiricalCopula(u; kwargs...) = EmpiricalCopula{size(u, 1)}(u; kwargs...)
 EmpiricalCopula(d::Integer, u; kwargs...) = EmpiricalCopula{d}(u; kwargs...)
-Distributions.params(C::EmpiricalCopula) = (u=C.u,)
+Distributions.params(C::EmpiricalCopula) = (C.u,)
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return sum(all(C.u .<= u,dims=1))/size(C.u,2)
 end

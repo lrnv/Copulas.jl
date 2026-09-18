@@ -58,7 +58,6 @@ function (TT::Type{<:Tail})(args...; kwargs...)
     ))
     return T(args..., (kwargs[name] for name in remaining)...)
 end
-_parameter_dof(x::Tail) = _parameter_dof(Distributions.params(x))
 Base.broadcastable(tail::Tail) = Ref(tail)
 
 """

@@ -40,7 +40,6 @@ copula_measure_style(::Type{<:RafteryCopula}) =
 RafteryCopula(d, θ) = RafteryCopula{d}(θ)
 (::Type{<:RafteryCopula{D,P}})(d::Int, θ) where {D,P} = RafteryCopula{d}(θ)
 Base.eltype(R::RafteryCopula) = eltype(R.θ)
-Distributions.params(R::RafteryCopula) = (θ = R.θ,)
 Paramorph.param_space(::Type{<:RafteryCopula}, d) = Paramorph.Prob(:θ)
 
 function _cdf(R::RafteryCopula{d,P}, u) where {d,P}

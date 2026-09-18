@@ -13,7 +13,7 @@
     x = [0.1, 1.2]
     @test length(D) == 2
     @test_throws DimensionMismatch SklarDist(C, (Normal(),))
-    @test params(D) isa NamedTuple
+    @test params(D) isa Tuple
     @test StatsBase.dof(D) == 4
     @test Copulas._parameter_dof(1.0) == 1
     @test Copulas._parameter_dof((1.0, [2.0, 3.0], :fixed)) == 3

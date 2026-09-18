@@ -42,7 +42,6 @@ const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
     isone(G.θ) && isone(G.δ) ? Π_LIMIT :
     (isinf(G.θ) || isinf(G.δ)) ? M_LIMIT :
     NO_LIMIT
-Distributions.params(G::BB6Generator) = (θ = G.θ, δ = G.δ)
 Paramorph.param_space(::Type{<:BB6Generator}, d) = (
     Paramorph.LowerClosed(:θ, 1.0),
     Paramorph.LowerClosed(:δ, 1.0),

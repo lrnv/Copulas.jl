@@ -33,7 +33,6 @@ struct BB2Generator{T} <: AbstractFrailtyGenerator
     end
 end
 const BB2Copula{d, T} = ArchimedeanCopula{d, BB2Generator{T}}
-Distributions.params(G::BB2Generator) = (θ = G.θ, δ = G.δ)
 Paramorph.param_space(::Type{<:BB2Generator}, d) =
     (Paramorph.Pos(:θ), Paramorph.Pos(:δ))
 

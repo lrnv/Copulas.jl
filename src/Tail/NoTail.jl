@@ -11,7 +11,6 @@ struct NoTail <: Tail end
 
 @inline limit_kind(::NoTail, ::Val) = Π_LIMIT
 
-Distributions.params(::NoTail) = (;)
 Paramorph.param_space(::Type{NoTail}, d) = ()
 
 A(::NoTail, t::NTuple{d, <:Real}) where d = one(eltype(t))

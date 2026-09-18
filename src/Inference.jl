@@ -32,7 +32,7 @@ _vcov_pairwise_measure(::Val{:irho}) = StatsBase.corspearman
 _vcov_pairwise_measure(::Val{:ibeta}) = corblomqvist
 _vcov_pairwise_measure(::Val) = coruppertail
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                vcovv::Val{:hessian}, methodv::Val{method}; weights=nothing) where {method}
     return _vcov_hessian(CT, U, θ, Val(size(U, 1)), vcovv, methodv; weights)
 end
@@ -61,7 +61,7 @@ end
 # counts for", it is the observed information of the replicated sample. A
 # zero-weight column is dropped once here, before the closure is
 # differentiated, as it is before every fitting engine.
-function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
+function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                        ::Val{d}, ::Val{:hessian},
                        methodv::Val{method}; weights=nothing) where {d,method}
     U, weights = _weighted_sample(U, weights)
@@ -77,15 +77,15 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
     return _vcov_finalize(CT, U, θ, d, pspace, α, Vα)
 end
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, ::Val{:godambe}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
     return _vcov_godambe(CT, U, θ, Val(false), Val(:godambe), methodv; rng, nresamples, weights)
 end
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe_pairwise}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, ::Val{:godambe_pairwise}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
     return _vcov_godambe(CT, U, θ, Val(true), Val(:godambe_pairwise), methodv; rng, nresamples, weights)
 end
 
-function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, pairwisev::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};
+function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, pairwisev::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};
                        rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {pairwise,vcovm,method}
     return _vcov_godambe(CT, U, θ, Val(size(U, 1)), pairwisev, vcovv, methodv; rng, nresamples, weights)
 end
@@ -103,7 +103,7 @@ end
 _resample_indices!(idx::Vector{Int}, rng::Random.AbstractRNG, n::Int, w::AbstractVector) =
     StatsBase.sample!(rng, 1:n, StatsBase.fweights(w), idx)
 
-function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{d}, ::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};rng=Random.default_rng(),
+function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, ::Val{d}, ::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};rng=Random.default_rng(),
                        nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {d,pairwise,vcovm,method}
     n = size(U, 2)
     pspace = Paramorph.param_space(CT, d)
@@ -162,10 +162,10 @@ function _validate_inference_covariance(Vθ::AbstractMatrix)
     return Vθ
 end
 
-function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
+function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                         d::Int, pspace, α, Vα)
     J = ForwardDiff.jacobian(
-        αv -> _flatten_params(Distributions.params(
+        αv -> _flatten_params(pspace, Distributions.params(
             _parameter_space_copula(CT, d, pspace, αv)))[2],
         α,
     )
@@ -191,7 +191,7 @@ function _default_inference_method(M::CopulaModel)
     parameters = Distributions.params(fitted_distribution(M))
     d = length(fitted_distribution(M))
     analytical_coordinates = spec isa _CopulaFitSpec && spec.target isa Type &&
-        parameters isa NamedTuple &&
+        parameters isa Tuple &&
         _analytical_parameter_coordinates(spec.target, d, parameters) !== nothing
     fit_method = fitting_method(M)
     if fit_method === :mle && analytical_coordinates &&
@@ -215,7 +215,7 @@ function _inference_inputs(M::CopulaModel)
     data isa AbstractMatrix || throw(ArgumentError(
         "the fitting observations required for inference are unavailable"))
     parameters = Distributions.params(_copula_of(M))
-    parameters isa NamedTuple && !isempty(parameters) || throw(ArgumentError(
+    parameters isa Tuple && !isempty(parameters) || throw(ArgumentError(
         "no finite-dimensional free parameter vector is available for inference"))
     return spec.target, data, parameters
 end

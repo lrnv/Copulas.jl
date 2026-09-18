@@ -37,7 +37,6 @@ const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
 
 @inline limit_kind(G::BB10Generator, ::Val) = iszero(G.δ) ? Π_LIMIT : NO_LIMIT
 
-Distributions.params(G::BB10Generator) = (θ = G.θ, δ = G.δ)
 Paramorph.param_space(::Type{<:BB10Generator}, d) =
     (Paramorph.Pos(:θ), Paramorph.Prob(:δ))
 

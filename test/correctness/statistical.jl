@@ -25,7 +25,7 @@ end
         U = rand(StableRNG(103), C, 400)
         x, y = -log.(U[1, :]), -log.(U[2, :])
         if C isa BC2Copula
-            a, b = params(C).a, params(C).b
+            a, b = params(C)
             atom = isapprox.(a .* x, b .* y; atol=1e-10, rtol=1e-7) .|
                    isapprox.((1 - a) .* x, (1 - b) .* y; atol=1e-10, rtol=1e-7)
             expected = 1 - abs(a - b)

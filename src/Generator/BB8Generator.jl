@@ -44,7 +44,6 @@ const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
     isone(G.ϑ) ? Π_LIMIT :
     isone(G.δ) && isinf(G.ϑ) ? M_LIMIT :
     NO_LIMIT
-Distributions.params(G::BB8Generator) = (ϑ = G.ϑ, δ = G.δ)
 Paramorph.param_space(::Type{<:BB8Generator}, d) = (
     Paramorph.LowerClosed(:ϑ, 1.0),
     Paramorph.ProbOpenLeft(:δ),

@@ -71,7 +71,7 @@ function _fgm_red(θ, v)
 end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
 
-Distributions.params(C::FGMCopula) = (θ = collect(C.θ),)
+Distributions.params(C::FGMCopula) = (collect(C.θ),)
 _available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho, :ibeta) : (:mle,)
 
 function _cdf(fgm::FGMCopula{d}, u::Vector{T}) where {d,T}

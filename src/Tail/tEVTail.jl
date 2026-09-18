@@ -94,13 +94,15 @@ end
 @inline limit_kind(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Val) =
     all(isone, tail.parameter) ? M_LIMIT : NO_LIMIT
 const tEVCopula{d,T,P} = ExtremeValueCopula{d,tEVTail{T,P}}
-Distributions.params(tail::tEVTail{<:Any,<:Real}) = (ν = tail.ν, ρ = tail.parameter)
-Distributions.params(tail::tEVTail{<:Any,<:AbstractMatrix}) = (ν = tail.ν, R = tail.parameter)
 _is_valid_in_dim(tail::tEVTail{<:Any,<:Real}, d::Int) =
     d >= 2 && tail.parameter > -inv(d - 1)
 _is_valid_in_dim(tail::tEVTail{<:Any,<:AbstractMatrix}, d::Int) =
     d == size(tail.parameter, 1)
 
+Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{<:Any,<:Real}}) where {D} =
+    (C.tail.ν, C.tail.parameter)
+Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{<:Any,<:AbstractMatrix}}) where {D} =
+    (C.tail.ν, copy(C.tail.parameter))
 function Paramorph.param_space(::Type{<:tEVTail{<:Any,<:Real}}, d)
     lower = -inv(d - 1)
     return (
@@ -108,6 +110,8 @@ function Paramorph.param_space(::Type{<:tEVTail{<:Any,<:Real}}, d)
         Paramorph.BoundedOpen(:ρ, lower, 1.0),
     )
 end
+Paramorph.param_space(::Type{<:tEVTail{<:Any,<:AbstractMatrix}}, d) =
+    (Paramorph.Pos(:ν), Paramorph.Correlation(:R, d))
 _available_fitting_methods(
     ::Type{<:ExtremeValueCopula{D,<:tEVTail{<:Any,<:AbstractMatrix}} where D},
     d,

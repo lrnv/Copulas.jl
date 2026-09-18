@@ -35,7 +35,6 @@ struct BB3Generator{T} <: AbstractFrailtyGenerator
 end
 
 const BB3Copula{d, T} = ArchimedeanCopula{d, BB3Generator{T}}
-Distributions.params(G::BB3Generator) = (θ = G.θ, δ = G.δ)
 Paramorph.param_space(::Type{<:BB3Generator}, d) =
     (Paramorph.LowerClosed(:θ, 1.0), Paramorph.Pos(:δ))
 

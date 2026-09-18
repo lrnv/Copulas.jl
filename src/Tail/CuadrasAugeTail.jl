@@ -56,7 +56,6 @@ end
 const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
 tail_measure_style(tail::CuadrasAugeTail) =
     iszero(tail.θ) ? AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
-Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
 _is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2
 Paramorph.param_space(::Type{<:CuadrasAugeTail}, d) = Paramorph.Prob(:θ)
 

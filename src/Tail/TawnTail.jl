@@ -121,7 +121,6 @@ TawnTail(α::Real, weights::AbstractVector) =
 TawnTail(dep::AbstractVector, asy::AbstractVector) =
     TawnTail(trailing_zeros(length(asy) + 1), dep, asy)
 
-Distributions.params(tail::TawnTail) = (α = tail.α, β = tail.β)
 _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d
 
 # The full subset parameterization does not yet expose an unconstrained fitting

@@ -45,7 +45,6 @@ const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
     return NO_LIMIT
 end
 
-Distributions.params(G::ClaytonGenerator) = (θ = G.θ,)
 Paramorph.param_space(::Type{<:ClaytonGenerator}, d::Integer) =
     Paramorph.LowerClosed(:θ, -inv(d - 1))
 

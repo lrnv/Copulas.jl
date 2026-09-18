@@ -35,7 +35,6 @@ struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
     end
 end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
-Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
 function Paramorph.param_space(::Type{<:GumbelBarnettGenerator}, d::Integer)
     upper = clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0)
     return Paramorph.Bounded(:θ, 0.0, upper)

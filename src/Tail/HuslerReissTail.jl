@@ -101,8 +101,10 @@ const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
 _is_valid_in_dim(::HuslerReissTail{<:Real}, d::Int) = d >= 2
 _is_valid_in_dim(tail::HuslerReissTail{<:AbstractMatrix}, d::Int) =
     d == size(tail.parameter, 1)
-Distributions.params(tail::HuslerReissTail{<:Real}) = (θ = tail.parameter,)
-Distributions.params(tail::HuslerReissTail{<:AbstractMatrix}) = (Γ = tail.parameter,)
+Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{<:Real}}) where {D} =
+    (C.tail.parameter,)
+Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{<:AbstractMatrix}}) where {D} =
+    (copy(C.tail.parameter),)
 Paramorph.param_space(::Type{<:HuslerReissTail{<:Real}}, d) =
     Paramorph.NonNeg(:θ)
 

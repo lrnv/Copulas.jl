@@ -438,7 +438,7 @@ end
 
 Base.length(::NestedArchimedeanCopula{d}) where {d} = d
 Distributions.params(C::NestedArchimedeanCopula) =
-    (G=C.G, leaves=C.leafdims, children=C.children)
+    (C.G, C.leafdims, C.children)
 
 function copula_measure_style(C::NestedArchimedeanCopula)
     local_dimension = length(C.leafdims) + length(C.children)
@@ -1284,8 +1284,12 @@ _local_arity(C::NestedArchimedeanCopula) = max(length(C.leafdims) + length(C.chi
 
 # ---- FLATTEN: tree generators -> unconstrained coordinates -----------------
 _generator_space(G::Generator, dloc) = Paramorph.param_space(_gentype(G), dloc)
-_generator_coordinates(G::Generator, dloc) =
-    _parameter_space_coordinates(_generator_space(G, dloc), Distributions.params(G))
+function _generator_coordinates(G::Generator, dloc)
+    p = _generator_space(G, dloc)
+    values = map(Base.Fix1(getproperty, G), Paramorph.names(p))
+    return p isa Tuple ? Paramorph.unconstrain(p, values) :
+           Paramorph.unconstrain(p, only(values))
+end
 _generator_from_coordinates(G::Generator, dloc, α) =
     _gentype(G)(_parameter_arguments(Paramorph.constrain(_generator_space(G, dloc), α))...)
 

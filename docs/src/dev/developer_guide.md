@@ -122,12 +122,10 @@ struct MyCopula{d, P} <: Copula{d} # Note that the size of the copula must be pa
     MyCopula{d}(θ) where {d} = new{d, typeof(θ)}(θ)
 end
 MyCopula(d, θ) = MyCopula{d}(θ) # Runtime-dimension convenience constructor
-function Distributions.params(C::MyCopula) 
-    # It will be assumed that `MyCopula{d}(params(C)...)` reproduces `C`.
-    # Keep `MyCopula(d, ...)` as a thin forwarder to this canonical constructor.
-    # The return value should be a NamedTuple. 
-    return (θ = C.θ,) # Return a named tuple containing the parameters.
-end
+Paramorph.param_space(::Type{<:MyCopula}, d) = Paramorph.Prob(:θ)
+# The generic `Distributions.params(::Copula)` returns `(C.θ,)`. Names and
+# constraints live in the Paramorph space, while `params` follows the
+# Distributions.jl tuple convention.
 function Copulas._cdf(C::MyCopula, u)
      # You can safely assume u to be an abstract vector of the right length and inside the hypercube.
      # Return the cdf value on u
@@ -154,7 +152,7 @@ special boundary handling only when they provide a meaningful preferred value.
 Every public copula family provides both `MyCopula{d}(parameters...)`, the
 canonical type-stable path, and the thin runtime-dimension convenience form
 `MyCopula(d, parameters...)`. When `params(C)` describes an ordinary parametric
-instance, `typeof(C)(values(params(C))...)` reconstructs it. Structural models
+instance, `typeof(C)(params(C)...)` reconstructs it. Structural models
 may expose additional explicitly documented constructors, but must still provide
 the two dimension spellings above.
 

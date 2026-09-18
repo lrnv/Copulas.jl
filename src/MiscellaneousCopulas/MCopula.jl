@@ -63,8 +63,9 @@ SubsetCopula(::MCopula{d}, ::NTuple{p, Int}) where {d,p} =
     p == 1 ? Distributions.Uniform() : MCopula{p}()
 distortion(::MCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i::Int) = MDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
+Paramorph.param_space(::Type{<:MCopula}, d) = ()
+
 # Fitting/params interface (no parameters)
-Distributions.params(::MCopula) = (;)
 # A parameter-free family has nothing to weight, so the weights are accepted and unused.
 _fit(::Type{<:MCopula}, U, ::Val{:mle}; weights=nothing) = MCopula(size(U,1))
 _fit(::Type{<:MCopula}, U, ::Val{:itau}; weights=nothing) = MCopula(size(U,1))

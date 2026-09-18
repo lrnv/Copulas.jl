@@ -106,11 +106,13 @@ function (CT::Type{<:ArchimaxCopula{d}})(θ...) where {d}
     return _archimax_from_values(CT, d, θ)
 end
 
-Distributions.params(C::ArchimaxCopula) = begin
-    gp = Distributions.params(C.gen)
-    tp = Distributions.params(C.tail)
-    (; (Symbol(:gen_, k) => v for (k, v) in pairs(gp))...,
-       (Symbol(:tail_, k) => v for (k, v) in pairs(tp))...)
+function Distributions.params(C::ArchimaxCopula)
+    d = length(C)
+    gp = Paramorph.param_space(typeof(C.gen), d)
+    tp = Paramorph.param_space(typeof(C.tail), d)
+    gvals = map(Base.Fix1(getproperty, C.gen), Paramorph.names(gp))
+    tvals = map(Base.Fix1(getproperty, C.tail), Paramorph.names(tp))
+    return (gvals..., tvals...)
 end
 
 _available_fitting_methods(::Type{<:ArchimaxCopula}, d) = (:mle,)

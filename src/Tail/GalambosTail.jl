@@ -53,7 +53,6 @@ end
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
-Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
 Paramorph.param_space(::Type{<:GalambosTail}, d) = Paramorph.NonNeg(:θ)
 
 function ℓ(tail::GalambosTail, x)

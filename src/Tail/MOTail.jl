@@ -91,15 +91,15 @@ function _mo_bivariate_rates(tail::MOTail)
     return tail.λ[2], tail.λ[1], tail.λ[3]
 end
 
-function Distributions.params(tail::MOTail)
-    tail.d == 2 || return (λ=tail.λ,)
-    λ₁, λ₂, λ₁₂ = _mo_bivariate_rates(tail)
-    return (λ₁=λ₁, λ₂=λ₂, λ₃=λ₁₂)
+
+function Distributions.params(C::ExtremeValueCopula{d,<:MOTail}) where {d}
+    d == 2 && return _mo_bivariate_rates(C.tail)
+    return (copy(C.tail.λ),)
 end
 
 function Paramorph.param_space(::Type{<:MOTail}, d)
     d == 2 || throw(ArgumentError("generic Marshall-Olkin parameter coordinates are available only in dimension two"))
-    return (Paramorph.Pos(:λ₁), Paramorph.Pos(:λ₂), Paramorph.Pos(:λ₃))
+    return (Paramorph.Pos(:λ₁), Paramorph.Pos(:λ₂), Paramorph.Pos(:λ₁₂))
 end
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:MOTail} where D}, d) =
     d == 2 ? (:mle,) : ()
