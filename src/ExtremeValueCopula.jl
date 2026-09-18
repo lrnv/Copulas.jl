@@ -128,7 +128,8 @@ function Distributions.params(C::ExtremeValueCopula)
     end
     C.tail isa DiscreteSpectralCapableTail &&
         return (copy(_spectral_tail(C.tail).B),)
-    return map(fieldvalues(C.tail)) do value
+    return map(fieldnames(typeof(C.tail))) do name
+        value = getfield(C.tail, name)
         value isa AbstractArray ? copy(value) : value
     end
 end
