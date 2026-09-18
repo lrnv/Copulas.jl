@@ -51,9 +51,17 @@ function _normalize_asymmetric_margin_components(
         target = Vector{T}(undef, nweights)
         for k in eachindex(source)
             weight = T(source[k])
-            zero(T) <= weight <= one(T) || throw(ArgumentError(
-                "all asymmetry weights must lie in [0,1]",
-            ))
+            if weight < zero(T)
+                weight >= -tolerance || throw(ArgumentError(
+                    "all asymmetry weights must lie in [0,1]",
+                ))
+                weight = zero(T)
+            elseif weight > one(T)
+                weight <= one(T) + tolerance || throw(ArgumentError(
+                    "all asymmetry weights must lie in [0,1]",
+                ))
+                weight = one(T)
+            end
             target[k] = weight
         end
         total = sum(target)
