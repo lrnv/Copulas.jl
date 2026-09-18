@@ -22,8 +22,8 @@ end
         @test cdf(ExtremeValueCopula{2}(historical), [0.34, 0.76]) ≈
               cdf(ExtremeValueCopula{2}(structured), [0.34, 0.76]) atol=tol rtol=tol
     end
-    @test params(cases[1][1]) == (λ₁=0.30, λ₂=0.50, λ₃=0.70)
-    @test params(cases[2][1]) == (a=0.30, b=0.70)
+    @test params(ExtremeValueCopula{2}(cases[1][1])) == (0.30, 0.50, 0.70)
+    @test params(ExtremeValueCopula{2}(cases[2][1])) == ([0.30, 0.70],)
 end
 
 @testset "equivalent extremal-t parameterizations" begin

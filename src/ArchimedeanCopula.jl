@@ -344,7 +344,7 @@ end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta}; weights=nothing)
     d = size(U,1)
     pspace = Paramorph.param_space(CT, d)
-    βobs = clamp(_weighted_β(U, weights), nextfloat(-1), prevfloat(1))
+    βobs = clamp(_weighted_β(U, weights), nextfloat(-1.0), prevfloat(1.0))
     obj(α) = β(CT(d, Paramorph.constrain(pspace, [α]))) - βobs
     α = Roots.find_zero(obj, (-Inf, Inf), Roots.Brent(); xatol=1e-8, rtol=0)
     return CT(d, Paramorph.constrain(pspace, [α]))

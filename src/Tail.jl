@@ -19,6 +19,9 @@ See also: [`ExtremeValueCopula`](@ref), [`A`](@ref), [`ℓ`](@ref),
 [`DiscreteSpectralTail`](@ref).
 """
 abstract type Tail end
+# Optional structural fields (for example scalar-vs-matrix parameterizations)
+# do not contribute to the numeric parameter type.
+_parameter_eltype(::Nothing) = Union{}
 _parameter_eltype(tail::Tail) = _parameter_eltype(ntuple(i -> getfield(tail, i), fieldcount(typeof(tail))))
 Base.eltype(tail::Tail) = _sample_eltype(tail)
 

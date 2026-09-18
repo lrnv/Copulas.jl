@@ -25,15 +25,15 @@ end
         U = rand(StableRNG(103), C, 400)
         x, y = -log.(U[1, :]), -log.(U[2, :])
         if C isa BC2Copula
-            a, b = params(C)
+            a, b = only(params(C))
             atom = isapprox.(a .* x, b .* y; atol=1e-10, rtol=1e-7) .|
                    isapprox.((1 - a) .* x, (1 - b) .* y; atol=1e-10, rtol=1e-7)
             expected = 1 - abs(a - b)
         else
-            p = params(C)
-            atom = isapprox.((p.λ₁ + p.λ₃) .* x, (p.λ₂ + p.λ₃) .* y;
+            λ₁, λ₂, λ₃ = params(C)
+            atom = isapprox.((λ₁ + λ₃) .* x, (λ₂ + λ₃) .* y;
                             atol=1e-10, rtol=1e-7)
-            expected = p.λ₃ / (p.λ₁ + p.λ₂ + p.λ₃)
+            expected = λ₃ / (λ₁ + λ₂ + λ₃)
         end
         observed = mean(atom)
         se = sqrt(expected * (1 - expected) / size(U, 2))

@@ -11,9 +11,19 @@ const _DEPENDENCE_INVERSES = last.(_INVERSE_PAIRS)
 const _CHECKED_INVERSE_METHODS =
     Dict(inverse => Set{Method}() for inverse in _DEPENDENCE_INVERSES)
 
-function has_scalar_parameter(object)
+function has_scalar_parameter(object::Copulas.Copula)
     Base.@nospecialize object
-    return length(params(object)) == 1
+    p = params(object)
+    return length(p) == 1 && only(p) isa Real
+end
+
+function has_scalar_parameter(object::Union{Copulas.Generator,Copulas.Tail})
+    Base.@nospecialize object
+    PS = Copulas.Paramorph
+    T = typeof(object)
+    applicable(PS.param_space, T, 2) || return false
+    p = PS.param_space(T, 2)
+    return PS.dimension(p) == 1 && length(PS.names(p)) == 1
 end
 
 function supports_inverse(object, inverse)

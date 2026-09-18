@@ -14,8 +14,8 @@
     end
 
     @testset "Frank parameter domain by dimension" begin
-        @test params(FrankCopula{2}(-2.0)).θ == -2.0
-        @test params(FrankCopula{3}(2.0)).θ == 2.0
+        @test params(FrankCopula{2}(-2.0)) == (-2.0,)
+        @test params(FrankCopula{3}(2.0)) == (2.0,)
         @test_throws DomainError FrankCopula{3}(-2.0)
     end
 
@@ -72,10 +72,10 @@
     end
 
     @testset "nested singleton subtree collapse" begin
-        inner = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+        inner = NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
             leaves=[1], children=[ClaytonCopula{2}(4.0)])
 
-        deep = NestedArchimedeanCopula(ClaytonGenerator(1.5);
+        deep = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.5);
             leaves=[1], children=[inner])
         collapsed = subsetdims(deep, (1, 3))
         native = ClaytonCopula{2}(1.5)
