@@ -23,39 +23,17 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
-          p = Path('scripts/finish_distribution_params.py')
-          text = p.read_text()
+          p = Path('src/Tail/HuslerReissTail.jl')
+          p.write_text(p.read_text().replace(
+              'θ = tail.parameter',
+              'θ = something(tail.θ)',
+          ))
 
-          hr_guard = """if 'tail.parameter' in text or 'C.tail.parameter' in text:
-              raise RuntimeError('HuslerReissTail still uses ambiguous parameter field')
-          """
-          hr_fix = """text = text.replace('θ = tail.parameter', 'θ = something(tail.θ)')
-          text = text.replace(
-              'all(iszero, tail.parameter) ? maximum(x) : _hr_stdf(tail.parameter, x)',
-              'all(iszero, something(tail.Γ)) ? maximum(x) : _hr_stdf(something(tail.Γ), x)',
-          )
-          """ + hr_guard
-          if hr_fix not in text:
-              text = text.replace(hr_guard, hr_fix, 1)
-
-          tev_guard = """if 'tail.parameter' in text or 'C.tail.parameter' in text:
-              raise RuntimeError('tEVTail still uses ambiguous parameter field')
-          """
-          tev_fix = """text = text.replace(
+          p = Path('src/Tail/tEVTail.jl')
+          p.write_text(p.read_text().replace(
               'all(isone, tail.parameter) ? maximum(x) : _tev_stdf(tail.ν, tail.parameter, x)',
               'all(isone, something(tail.R)) ? maximum(x) : _tev_stdf(tail.ν, something(tail.R), x)',
-          )
-          """ + tev_guard
-          if tev_fix not in text:
-              text = text.replace(tev_guard, tev_fix, 1)
-
-          old = """if proc.stdout.strip():
-              raise RuntimeError('Generator/Tail params definitions remain:\\n' + proc.stdout)
-          """
-          text = text.replace(old, """if proc.stdout.strip():
-              print(proc.stdout)
-          """, 1)
-          p.write_text(text)
+          ))
           PY
 
           python scripts/finish_distribution_params.py
