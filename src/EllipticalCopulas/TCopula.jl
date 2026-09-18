@@ -143,7 +143,7 @@ end
 function ρ(C::TCopula{2})
     ν = float(C.ν)
     r = float(C.Σ[1, 2])
-    iszero(r) && return zero(promote_type(typeof(ν), typeof(r)))
+    iszero(r) && return zero(promote_type(typeof(ν)), typeof(r))
     isinf(ν) && return 6asin(r / 2) / π
     if ν > 10
         return 12 * HCubature.hcubature(
@@ -253,12 +253,15 @@ function _fit_t_corr_given_nu(U, ν; weights=nothing)
     d = size(U, 1)
     n = _t_sample_size(U, weights)
     # For fixed ν, Student scores are constant throughout
-    # the correlation optimization.
+    # the correlation optimization. Paramorph owns the correlation chart;
+    # this profile keeps only the Student-specific likelihood objective.
     Z = Distributions.quantile.(Distributions.TDist(ν), U)
+    pΣ = Paramorph.Correlation(:Σ, d)
     R₀ = _score_corr_start(Z)
-    α₀ = _unbound_corr_params(d, R₀)
+    α₀ = Paramorph.unconstrain(pΣ, (R₀,))
     objective = α -> begin
-        L = _rebound_corr_factor(d, α)
+        R = Paramorph.constrain(pΣ, α)
+        L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R); check=false).L
         diagL = LinearAlgebra.diag(L)
         all(x -> isfinite(x) && abs(x) > zero(x), diagL) ||
             return convert(eltype(α), Inf)
@@ -274,10 +277,8 @@ function _fit_t_corr_given_nu(U, ν; weights=nothing)
         Optim.LBFGS();
         autodiff=ADTypes.AutoForwardDiff(),
     )
-    α̂ = Optim.minimizer(res)
-    L̂ = _rebound_corr_factor(d, α̂)
-    R̂ = L̂ * L̂'
-    R̂ = (R̂ + R̂') / 2
+    R̂ = Paramorph.constrain(pΣ, Optim.minimizer(res))
+    L̂ = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R̂)).L
     ll = _t_copula_loglik_factor(ν, L̂, Z; weights)
     return (ν=ν, Σ=R̂, loglikelihood=ll, result=res,)
 end
