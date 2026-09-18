@@ -19,6 +19,26 @@ jobs:
           fetch-depth: 0
       - name: Apply params refactor
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/refactor_distribution_params.py')
+          s = p.read_text()
+          old = '''for folder in ('src/Generator', 'src/Tail'):
+              for path in Path(folder).glob('*.jl'):
+                  if 'Distributions.params(' in read(path):
+                      raise RuntimeError(f'non-Distribution params method remains in {path}')
+          '''
+          new = '''for folder in ('src/Generator', 'src/Tail'):
+              for path in Path(folder).glob('*.jl'):
+                  source = read(path)
+                  bad = re.search(r'Distributions\\.params\\([^\\n]*(?:Generator|Tail)[^\\n]*\\)', source)
+                  if bad:
+                      raise RuntimeError(f'non-Distribution params method remains in {path}: {bad.group(0)}')
+          '''
+          if old not in s:
+              raise RuntimeError('audit patch anchor not found')
+          p.write_text(s.replace(old, new, 1))
+          PY
           python scripts/refactor_distribution_params.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
