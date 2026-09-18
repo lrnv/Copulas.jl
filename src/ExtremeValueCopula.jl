@@ -2,17 +2,17 @@
     ExtremeValueCopula(d, tail::Tail)
     ExtremeValueCopula{d}(tail::Tail)
 
-Extreme-value copulas model tail dependence via a stable tail dependence function (STDF) ``\ell`` or, equivalently,
+Extreme-value copulas model tail dependence via a stable tail dependence function (STDF) ``\\ell`` or, equivalently,
 via a Pickands dependence function ``A``. In any dimension ``d``, the copula cdf is
 
 ```math
-\displaystyle C(u) = \exp\!\left(-\, \ell(-\log u_1,\ldots,-\log u_d) \right).
+\\displaystyle C(u) = \\exp\\!\\left(-\\, \\ell(-\\log u_1,\\ldots,-\\log u_d) \\right).
 ```
 
-For ``d=2``, write ``x=-\log u``, ``y=-\log v``, ``s=x+y``, and ``t = x/s``. The relation between ``\ell`` and ``A`` is
+For ``d=2``, write ``x=-\\log u``, ``y=-\\log v``, ``s=x+y``, and ``t = x/s``. The relation between ``\\ell`` and ``A`` is
 
 ```math
-\ell(x,y) = s\, A(t), \qquad A:[0,1]\to[1/2,1], \quad A(0)=A(1)=1, \ A \text{ convex}.
+\\ell(x,y) = s\\, A(t), \\qquad A:[0,1]\\to[1/2,1], \\quad A(0)=A(1)=1, \\ A \\text{ convex}.
 ```
 
 Usage

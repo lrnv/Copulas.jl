@@ -17,11 +17,11 @@ The family uses the subset-based negative-logistic/min-stable construction of
 Joe [Joe1990](@cite). For nonempty subsets `C`,
 
 ```math
-\ell(x)
+\\ell(x)
 =
-\sum_C
-\ell_{\mathrm{Galambos},\alpha_C}
-\bigl((\beta_{i,C}x_i)_{i\in C}\bigr),
+\\sum_C
+\\ell_{\\mathrm{Galambos},\\alpha_C}
+\\bigl((\\beta_{i,C}x_i)_{i\\in C}\\bigr),
 ```
 
 with nonnegative asymmetry weights satisfying the marginal normalization

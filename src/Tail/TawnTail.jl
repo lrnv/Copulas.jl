@@ -12,18 +12,18 @@ subset representation follows Tawn's multivariate extreme-value construction
 [tawn1990multivariate](@cite):
 
 ```math
-\ell(x)
+\\ell(x)
 =
-\sum_{\varnothing\ne C\subseteq\{1,\ldots,d\}}
-\left[
-\sum_{i\in C}(\beta_{i,C}x_i)^{\alpha_C}
-\right]^{1/\alpha_C},
+\\sum_{\\varnothing\\ne C\\subseteq\\{1,\\ldots,d\\}}
+\\left[
+\\sum_{i\\in C}(\\beta_{i,C}x_i)^{\\alpha_C}
+\\right]^{1/\\alpha_C},
 ```
 
 with `α_C ≥ 1`, `β_{i,C} ≥ 0`, `β_{i,C}=0` for `i ∉ C`, and
 
 ```math
-\sum_{C\ni i}\beta_{i,C}=1
+\\sum_{C\\ni i}\\beta_{i,C}=1
 ```
 
 for every margin.
