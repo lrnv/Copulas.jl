@@ -16,10 +16,28 @@ jobs:
       - uses: actions/checkout@v7
         with:
           ref: parameter-spaces-fitting
-          fetch-depth: 0
+          fetch-depth: 1
 
       - name: Finish Paramorph migration
         run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('scripts/finalize_paramorph_cleanup.py')
+          text = p.read_text()
+          old = '''replace(
+              "src/Fitting.jl",
+              "Simple parametric families opt into the generic routines by defining `Paramorph.param_space`\\n#####  and `Paramorph.param_space`.",
+              "Simple parametric families opt into the generic routines by defining `Paramorph.param_space`\\n#####  and a canonical `CT(d, parameters...)` constructor.",
+          )'''
+          new = '''replace(
+              "src/Fitting.jl",
+              "and `Paramorph.param_space`.",
+              "and a canonical `CT(d, parameters...)` constructor.",
+          )'''
+          if old not in text:
+              raise RuntimeError('cleanup-script Fitting anchor not found')
+          p.write_text(text.replace(old, new, 1))
+          PY
           python scripts/finalize_paramorph_cleanup.py
           git diff --check
           git status --short
