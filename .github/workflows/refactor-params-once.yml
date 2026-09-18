@@ -26,42 +26,35 @@ jobs:
           p = Path('scripts/finish_distribution_params.py')
           text = p.read_text()
 
-          # The migration script was written before two later uses of the old
-          # polymorphic `parameter` field were noticed. Patch the runner copy so
-          # the one-off migration remains based on the current branch state.
-          hr_anchor = """text = text.replace('_hr_variogram(tail::HuslerReissTail{<:AbstractMatrix}, ::Int) = tail.parameter',
-                              '_hr_variogram(tail::HuslerReissTail{<:AbstractMatrix}, ::Int) = something(tail.Γ)')
+          hr_guard = """if 'tail.parameter' in text or 'C.tail.parameter' in text:
+              raise RuntimeError('HuslerReissTail still uses ambiguous parameter field')
           """
-          hr_extra = hr_anchor + """text = text.replace('θ = tail.parameter', 'θ = something(tail.θ)')
+          hr_fix = """text = text.replace('θ = tail.parameter', 'θ = something(tail.θ)')
           text = text.replace(
               'all(iszero, tail.parameter) ? maximum(x) : _hr_stdf(tail.parameter, x)',
               'all(iszero, something(tail.Γ)) ? maximum(x) : _hr_stdf(something(tail.Γ), x)',
           )
-          """
-          if hr_extra not in text:
-              text = text.replace(hr_anchor, hr_extra, 1)
+          """ + hr_guard
+          if hr_fix not in text:
+              text = text.replace(hr_guard, hr_fix, 1)
 
-          tev_anchor = """text = text.replace('_tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = tail.parameter',
-                              '_tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = something(tail.R)')
+          tev_guard = """if 'tail.parameter' in text or 'C.tail.parameter' in text:
+              raise RuntimeError('tEVTail still uses ambiguous parameter field')
           """
-          tev_extra = tev_anchor + """text = text.replace(
+          tev_fix = """text = text.replace(
               'all(isone, tail.parameter) ? maximum(x) : _tev_stdf(tail.ν, tail.parameter, x)',
               'all(isone, something(tail.R)) ? maximum(x) : _tev_stdf(tail.ν, something(tail.R), x)',
           )
-          """
-          if tev_extra not in text:
-              text = text.replace(tev_anchor, tev_extra, 1)
+          """ + tev_guard
+          if tev_fix not in text:
+              text = text.replace(tev_guard, tev_fix, 1)
 
-          # The old grep also matched legal methods whose argument is a Copula
-          # parameterized by a Generator/Tail. Keep this migration audit
-          # informational; the committed tree is audited separately below.
           old = """if proc.stdout.strip():
               raise RuntimeError('Generator/Tail params definitions remain:\\n' + proc.stdout)
           """
-          new = """if proc.stdout.strip():
+          text = text.replace(old, """if proc.stdout.strip():
               print(proc.stdout)
-          """
-          text = text.replace(old, new, 1)
+          """, 1)
           p.write_text(text)
           PY
 
@@ -76,18 +69,16 @@ jobs:
               '_parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)\n'
               '_parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)\n'
           )
-          text = text.replace(
+          p.write_text(text.replace(
               duplicate,
               '_parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)\n',
-          )
-          p.write_text(text)
+          ))
 
           p = Path('test/runtests.jl')
-          text = p.read_text().replace(
+          p.write_text(p.read_text().replace(
               'return (typeof(tail), d, typeof(params(tail)))',
               'return (typeof(tail), d)',
-          )
-          p.write_text(text)
+          ))
           PY
 
           git diff --check
