@@ -17,11 +17,11 @@ The family uses the subset-based negative-logistic/min-stable construction of
 Joe [Joe1990](@cite). For nonempty subsets `C`,
 
 ```math
-\\ell(x)
+\ell(x)
 =
-\\sum_C
-\\ell_{\\mathrm{Galambos},\\alpha_C}
-\\bigl((\\beta_{i,C}x_i)_{i\\in C}\\bigr),
+\sum_C
+\ell_{\mathrm{Galambos},\alpha_C}
+\bigl((\beta_{i,C}x_i)_{i\in C}\bigr),
 ```
 
 with nonnegative asymmetry weights satisfying the marginal normalization
@@ -118,10 +118,13 @@ end
 
 # Convenience submodel: one full-set Galambos component plus singleton
 # remainders.
-AsymGalambosTail(α::Real, weights::AbstractVector) =
-    AsymGalambosTail(_expand_fullset_asymmetric_component(
+function AsymGalambosTail(α::TA, weights::AbstractVector{TW}) where {TA<:Real,TW<:Real}
+    T = promote_type(Float64, TA, TW)
+    tail = AsymGalambosTail(_expand_fullset_asymmetric_component(
         α, weights; singleton_parameter=0.0,
     )...)
+    return tail::AsymGalambosTail{T}
+end
 
 function AsymGalambosTail(α::TA, θ₁::T1, θ₂::T2) where {TA<:Real,T1<:Real,T2<:Real}
     T = promote_type(Float64, TA, T1, T2)

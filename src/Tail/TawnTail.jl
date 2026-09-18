@@ -12,18 +12,18 @@ subset representation follows Tawn's multivariate extreme-value construction
 [tawn1990multivariate](@cite):
 
 ```math
-\\ell(x)
+\ell(x)
 =
-\\sum_{\\varnothing\\ne C\\subseteq\\{1,\\ldots,d\\}}
-\\left[
-\\sum_{i\\in C}(\\beta_{i,C}x_i)^{\\alpha_C}
-\\right]^{1/\\alpha_C},
+\sum_{\varnothing\ne C\subseteq\{1,\ldots,d\}}
+\left[
+\sum_{i\in C}(\beta_{i,C}x_i)^{\alpha_C}
+\right]^{1/\alpha_C},
 ```
 
 with `α_C ≥ 1`, `β_{i,C} ≥ 0`, `β_{i,C}=0` for `i ∉ C`, and
 
 ```math
-\\sum_{C\\ni i}\\beta_{i,C}=1
+\sum_{C\ni i}\beta_{i,C}=1
 ```
 
 for every margin.
@@ -130,10 +130,13 @@ function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
 end
 
 # Convenience submodel: one full-set logistic component plus singleton remainders.
-TawnTail(α::Real, weights::AbstractVector) =
-    TawnTail(_expand_fullset_asymmetric_component(
+function TawnTail(α::TA, weights::AbstractVector{TW}) where {TA<:Real,TW<:Real}
+    T = promote_type(Float64, TA, TW)
+    tail = TawnTail(_expand_fullset_asymmetric_component(
         α, weights; singleton_parameter=1.0,
     )...)
+    return tail::TawnTail{T}
+end
 
 TawnTail(dep::AbstractVector, asy::AbstractVector) =
     TawnTail(trailing_zeros(length(asy) + 1), dep, asy)
