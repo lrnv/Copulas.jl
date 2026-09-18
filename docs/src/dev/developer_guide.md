@@ -744,6 +744,7 @@ It serves as a minimal example of how to implement a copula *from scratch* witho
 
 ```@example generic_copula_example
 using Copulas, Distributions, Random
+import Paramorph
 
 struct MardiaCopula{P} <: Copulas.Copula{2}
     θ::P
@@ -810,13 +811,13 @@ C = MardiaCopula(2, 0.8)
 U = rand(C, 2000)
 ```
 
-The copula now works seamlessly with all standard methods:
+The copula now supports the operations implemented above directly. Because this
+example is singular and deliberately has no Lebesgue density, generic
+density-based conditioning is not part of this minimal contract:
 
 ```@example generic_copula_example
 cdf(C, [0.3, 0.7])
-pdf(C, [0.3, 0.7])
-D = condition(C, 1, 0.3)
-rand(D, 10)
+rand(C, 10)
 ```
 
 ### Fitting interface and integration
