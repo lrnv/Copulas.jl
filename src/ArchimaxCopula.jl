@@ -190,8 +190,8 @@ function _fit(::Type{<:ArchimaxCopula{d,IndependentGenerator,TT}}, U, method::Va
     return ArchimaxCopula{d}(IndependentGenerator(), E.tail,)
 end
 
-function _fit(::Type{<:ArchimaxCopula{2,IndependentGenerator,TT}}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}) where {TT<:OneParameterPickandsTail}
-    E = _fit(ExtremeValueCopula{2,TT}, U, method)
+function _fit(::Type{<:ArchimaxCopula{2,IndependentGenerator,TT}}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; kwargs...) where {TT<:OneParameterPickandsTail}
+    E = _fit(ExtremeValueCopula{2,TT}, U, method; kwargs...)
     return ArchimaxCopula{2}(IndependentGenerator(),E.tail)
 end
 

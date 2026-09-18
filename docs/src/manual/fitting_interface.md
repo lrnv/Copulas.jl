@@ -485,12 +485,15 @@ representation when supported by the family.
 
 ### Weighted observations
 
-Both likelihood estimators accept one weight per observation:
+Both likelihood estimators, the rank inversions and the Sklar route accept one
+weight per observation:
 
 ```julia
 w = exp.(-0.01 .* (n:-1:1))            # exponential decay, any positive scale
 M = fit(CopulaModel, ClaytonCopula, U; method=:mle, weights=w)
 C = fit(GaussianCopula, X; pseudo_values=false, weights=w)
+R = fit(GumbelCopula, U; method=:itau, weights=w)
+S = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, X; weights=w)
 ```
 
 The fit maximizes the weighted pseudo-likelihood `∑ᵢ wᵢ log c(uᵢ)`. The
@@ -505,12 +508,40 @@ and `deviance`, are the weighted ones; `nobs` stays `n`. With
 `pseudos(X; weights)`, which ranks each margin by weighted mass under the same
 tie conventions.
 
-Weights are an estimation choice, not an inference one. A rank-inversion
-method refuses them, the Sklar route refuses them because its margins are
-fitted unweighted, and `infer` and the composite goodness-of-fit tests refuse
-a weighted model: the covariance of a weighted pseudo-likelihood estimator
-depends on whether the weights are frequencies, importance ratios or a decay
-schedule, and no such estimator is implemented.
+The rank inversions `:itau`, `:irho`, `:ibeta` and `:itau_irho` invert the
+weighted sample measure: Kendall's tau-b, Spearman's rho and Blomqvist's beta
+of the sample in which observation `j` is repeated `w[j]` times, written so
+that they extend to real weights. Kendall's tau-b is one ``O(n \log n)``
+sweep with weight sums in place of counts. The tail estimator `:iupper` and
+the nonparametric estimators refuse weights.
+
+The Sklar route reads the same weights at every step. Margin `i` is fitted by
+`Distributions.fit(Mᵢ, xᵢ, w)`, the weighted maximum-likelihood fit that
+Distributions.jl defines for the families with weighted sufficient statistics
+(`Normal`, `Exponential`, `Gamma`, `Poisson`, … ); a margin family without one
+is refused by name, and a zero-weight observation is dropped before the margin
+sees it, so it may lie outside the margin's support. `:ecdf` ranks by weighted
+mass, the copula is fitted with
+the same weights, and the stored log-likelihood is the weighted one. Unit
+weights reproduce the unweighted margins up to rounding, because
+Distributions.jl reduces its weighted sufficient statistics in another order.
+
+Inference reads the weights with the same meaning. `infer(M; method=:hessian)`
+inverts the observed information of the weighted log-likelihood, which is that
+of the replicated sample, with the zero-weight columns dropped as they are
+before the fit; `:godambe`, `:godambe_pairwise` and `:bootstrap`
+draw each resample of size `n` with observation `j` taken with probability
+`w[j] / n`, then compute the moment or refit the estimator on the resample
+unweighted, which is the nonparametric bootstrap of the replicated sample.
+`:jackknife` refuses a weighted model: the delete-one jackknife of the
+replicated sample needs every weight to be at least one, which after
+normalization to `n` holds for unit weights only. The composite
+goodness-of-fit tests still refuse a weighted model.
+
+Nothing here decides what the weights *are*. Reading a weight as a count is
+one reading, under which every procedure above is the unweighted one on the
+replicated sample; importance weights, whose sandwich covariance scales the
+scores by ``w_i^2``, are not implemented.
 
 ## When a parametric family is too restrictive
 

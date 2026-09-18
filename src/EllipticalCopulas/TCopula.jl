@@ -335,10 +335,10 @@ function _fit(::Type{<:TCopula}, U, ::Val{:mle}; weights=nothing)
     end
     return TCopula(ν̂, Σ̂)
 end
-function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho})
+function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho}; weights=nothing)
     size(U, 1) == 2 || throw(ArgumentError("Student rank matching is only defined in dimension 2"))
-    τ̂ = StatsBase.corkendall(U')[1, 2]
-    ρ̂ = StatsBase.corspearman(U')[1, 2]
+    τ̂ = _rank_measure(Val(:itau), U, weights)[1, 2]
+    ρ̂ = _rank_measure(Val(:irho), U, weights)[1, 2]
     r = clamp(sinpi(τ̂ / 2), -1 + eps(Float64), 1 - eps(Float64))
     iszero(r) && throw(ArgumentError(
         "Student degrees of freedom are not identifiable from rank correlations when Kendall's tau is zero",
@@ -364,15 +364,15 @@ function _fit(::Type{<:TCopula}, U, ::Val{:itau_irho})
     return TCopula{2}(ν, [1.0 r; r 1.0])
 end
 
-function _fit(::Type{<:TCopula}, U, ::Val{:itau})
-    R = _nearest_correlation(sinpi.(StatsBase.corkendall(U') ./ 2))
+function _fit(::Type{<:TCopula}, U, m::Val{:itau}; weights=nothing)
+    R = _nearest_correlation(sinpi.(_rank_measure(m, U, weights) ./ 2))
     L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R)).L
-    ll_gaussian = Distributions.loglikelihood(GaussianCopula(R), U)
+    ll_gaussian = _weighted_loglikelihood(GaussianCopula(R), U, weights)
     profile_loss = λ -> begin
         if iszero(λ) return -ll_gaussian end
         ν = inv(λ)
         Z = Distributions.quantile.(Distributions.TDist(ν), U)
-        ll = _t_copula_loglik_factor(ν, L, Z)
+        ll = _t_copula_loglik_factor(ν, L, Z; weights)
         return isfinite(ll) ? -ll : Inf
     end
     upper, _ = _t_profile_upper(profile_loss)

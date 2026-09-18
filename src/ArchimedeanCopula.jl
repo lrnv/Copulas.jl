@@ -356,23 +356,22 @@ function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:𝒲{
     return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U))
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}})
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}}; weights=nothing)
     d = size(U,1)
     GT = generatorof(CT)
 
-    f = m isa Val{:itau} ?  StatsBase.corkendall :  StatsBase.corspearman
     invf =  m isa Val{:itau} ?  τ⁻¹ : ρ⁻¹
 
-    m = f(U')
+    m = _rank_measure(m, U, weights)
     upper_triangle_flat = [m[idx] for idx in CartesianIndices(m) if idx[1] < idx[2]]
     θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
 
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta}; weights=nothing)
     d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
-    βobs = clamp(β(U), -1+1e-10, 1-1e-10)
+    βobs = clamp(_weighted_β(U, weights), -1+1e-10, 1-1e-10)
     lo,hi = _θ_bounds(GT,d)
     fβ(θ) = β(CT(d,θ))
     a0 = isfinite(lo) ? lo+δ : -5.0 ; b0 = isfinite(hi) ? hi-δ :  5.0

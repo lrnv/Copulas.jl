@@ -367,6 +367,15 @@ function β(U::AbstractMatrix)
     h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
     return h_d * (count/n - 2.0^(1-d))
 end
+# The same statistic on the sample where observation j is repeated w[j]
+# times: the count becomes the weighted mass of the concordant orthants.
+_weighted_β(U::AbstractMatrix, ::Nothing) = β(U)
+function _weighted_β(U::AbstractMatrix, w::AbstractVector)
+    d, n = size(U)
+    count = sum(j -> w[j] * (all(U[:, j] .<= 0.5) || all(U[:, j] .> 0.5)), 1:n)
+    h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
+    return h_d * (count/sum(w) - 2.0^(1-d))
+end
 function τ(U::AbstractMatrix)
     d, n = size(U)
     d >= 2 || throw(DimensionMismatch(

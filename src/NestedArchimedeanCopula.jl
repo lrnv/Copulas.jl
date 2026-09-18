@@ -1440,7 +1440,7 @@ function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, 
     return CopulaModel(fitted, U, _weighted_loglikelihood(fitted, U, weights), fit_spec)
 end
 
-# The recipe carries the normalized weights, so a refit knows to refuse them.
+# The recipe carries the normalized weights, so a resample is refitted without them.
 _nested_fit_kwargs(::Nothing, kwargs) = (; kwargs...)
 _nested_fit_kwargs(weights::AbstractVector, kwargs) = (; kwargs..., weights)
 
