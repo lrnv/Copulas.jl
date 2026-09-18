@@ -114,6 +114,15 @@ full-set logistic component plus singleton remainders.
 """
 const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
 
+# Canonical runtime-dimension constructor used by generic Paramorph fitting of
+# an explicitly dimensioned family type.
+function TawnTail(d::Int, dep::AbstractVector, weights::Vararg{AbstractVector,N}) where {N}
+    d == N || throw(DimensionMismatch(
+        "expected one weight simplex for each of $d margins; got $N",
+    ))
+    return TawnTail(dep, weights...)
+end
+
 # Historical subset-oriented constructor.
 function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
     weights = _subset_asymmetry_to_margin_weights(d, asy)
@@ -132,6 +141,8 @@ TawnTail(dep::AbstractVector, asy::AbstractVector) =
 function Distributions.params(tail::TawnTail)
     return (copy(tail.dep), (copy(weight) for weight in tail.weights)...)
 end
+Distributions.params(C::ExtremeValueCopula{d,<:TawnTail}) where {d} =
+    Distributions.params(C.tail)
 
 _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d
 
