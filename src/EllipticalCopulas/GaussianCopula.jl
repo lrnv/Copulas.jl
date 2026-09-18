@@ -183,10 +183,11 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
         R̂ = T[one(T) ρ̂; ρ̂ one(T)]
         return GaussianCopula(R̂)
     end
+    pΣ = Paramorph.Correlation(:Σ, d)
     R₀ = _score_corr_start(Z)
-    α₀ = _unbound_corr_params(d, R₀)
+    α₀ = Paramorph.unconstrain(pΣ, (R₀,))
     objective_hd = α -> begin
-        L = _rebound_corr_factor(d, α)
+        L = Paramorph.correlation_factor(pΣ, α)
         Ltri = LinearAlgebra.LowerTriangular(L)
         logdetR = 2 * sum(log, LinearAlgebra.diag(L))
         Y = Ltri \ Q
@@ -201,7 +202,7 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
         autodiff=ADTypes.AutoForwardDiff(),
     )
     α̂ = Optim.minimizer(res)
-    L̂ = _rebound_corr_factor(d, α̂)
+    L̂ = Paramorph.correlation_factor(pΣ, α̂)
     R̂ = L̂ * L̂'
     R̂ = (R̂ + R̂') / 2
     return GaussianCopula(R̂)
