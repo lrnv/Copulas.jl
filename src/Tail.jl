@@ -6,7 +6,7 @@ extreme-value copula. A valid STDF `ℓ : [0,∞)^d → [0,∞)` is convex,
 one-homogeneous, and satisfies
 
 ```math
-\\max_i x_i \\leq \\ell(x) \\leq \\sum_i x_i.
+\max_i x_i \leq \ell(x) \leq \sum_i x_i.
 ```
 
 Equivalently, on the unit simplex it defines a Pickands dependence function
@@ -19,7 +19,7 @@ See also: [`ExtremeValueCopula`](@ref), [`A`](@ref), [`ℓ`](@ref),
 [`DiscreteSpectralTail`](@ref).
 """
 abstract type Tail end
-_parameter_eltype(tail::Tail) = _parameter_eltype(Base.fieldvalues(tail))
+_parameter_eltype(tail::Tail) = _parameter_eltype(ntuple(i -> getfield(tail, i), fieldcount(typeof(tail))))
 Base.eltype(tail::Tail) = _sample_eltype(tail)
 
 # Most simple tails store their public constructor parameters directly as
