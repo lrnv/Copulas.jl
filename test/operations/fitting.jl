@@ -892,7 +892,13 @@ end
             unweighted = fit(CopulaModel, T, X; sklar_method)
             for weights in (ones(n), fill(3, n))
                 weighted = fit(CopulaModel, T, X; sklar_method, weights)
-                @test coef(weighted) ≈ coef(unweighted) rtol=1e-10
+                # Under :ifm the margins' rounding is the copula step's input,
+                # so its parameter lands within optimizer tolerance.
+                @test coef(weighted) ≈ coef(unweighted) rtol=1e-6
+                Sw, Su = fitted_distribution(weighted), fitted_distribution(unweighted)
+                for i in 1:2
+                    @test collect(params(Sw.m[i])) ≈ collect(params(Su.m[i])) rtol=1e-10
+                end
                 @test loglikelihood(weighted) ≈ loglikelihood(unweighted) rtol=1e-10
                 @test nobs(weighted) == n
             end
