@@ -260,10 +260,9 @@ function _fit_t_corr_given_nu(U, ν; weights=nothing)
     R₀ = _score_corr_start(Z)
     α₀ = Paramorph.unconstrain(pΣ, (R₀,))
     objective = α -> begin
-        R = Paramorph.constrain(pΣ, α)
-        L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R); check=false).L
+        L = Paramorph.correlation_factor(pΣ, α)
         diagL = LinearAlgebra.diag(L)
-        all(x -> isfinite(x) && abs(x) > zero(x), diagL) ||
+        all(x -> isfinite(x) && x > zero(x), diagL) ||
             return convert(eltype(α), Inf)
         Ltri = LinearAlgebra.LowerTriangular(L)
         Y = Ltri \ Z
@@ -277,8 +276,10 @@ function _fit_t_corr_given_nu(U, ν; weights=nothing)
         Optim.LBFGS();
         autodiff=ADTypes.AutoForwardDiff(),
     )
-    R̂ = Paramorph.constrain(pΣ, Optim.minimizer(res))
-    L̂ = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R̂)).L
+    α̂ = Optim.minimizer(res)
+    L̂ = Paramorph.correlation_factor(pΣ, α̂)
+    R̂ = L̂ * L̂'
+    R̂ = (R̂ + R̂') / 2
     ll = _t_copula_loglik_factor(ν, L̂, Z; weights)
     return (ν=ν, Σ=R̂, loglikelihood=ll, result=res,)
 end
