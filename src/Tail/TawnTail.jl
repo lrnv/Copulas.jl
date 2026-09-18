@@ -244,14 +244,12 @@ function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    kind = limit_kind(C.tail, Val(d))
-    kind === Π_LIMIT && return Random.rand!(rng, X)
-    kind === M_LIMIT && return _rand_M!(rng, X)
-
-    α, β = _tawn_components(C.tail)
-    return _rand_subset_components!(
-        rng, X, α, β, isone,
-        (dimension, parameter) -> ExtremeValueCopula(dimension, LogTail(parameter));
-        family="Tawn",
-    )
+    return _rand_with_ev_limits!(rng, C, X) do
+        α, β = _tawn_components(C.tail)
+        return _rand_subset_components!(
+            rng, X, α, β, isone,
+            (dimension, parameter) -> ExtremeValueCopula(dimension, LogTail(parameter));
+            family="Tawn",
+        )
+    end
 end
