@@ -155,15 +155,15 @@ function _expand_fullset_asymmetric_component(
 end
 
 function _sum_component_partials(component, count::Int, expected_sign::Int)
-    logs = Float64[]
+    logsum = nothing
     @inbounds for j in 1:count
         sign, logabs = component(j)
         iszero(sign) && continue
         sign == expected_sign || throw(ArgumentError("unexpected component partial sign"))
-        push!(logs, logabs)
+        logsum = isnothing(logsum) ? logabs : LogExpFunctions.logaddexp(logsum, logabs)
     end
-    isempty(logs) && return 0, -Inf
-    return expected_sign, LogExpFunctions.logsumexp(logs)
+    isnothing(logsum) && return 0, -Inf
+    return expected_sign, logsum
 end
 
 function _rand_subset_components!(
