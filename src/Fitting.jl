@@ -245,7 +245,7 @@ function _fit(CT::Type{<:Copula}, U, method::Val{:mle}; kwargs...)
 end
 function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}; weights=nothing) where {d}
     p = Paramorph.param_space(CT, d)
-    α₀ = zeros(Paramorph.dimension(p))
+    α₀ = ones(Paramorph.dimension(p))
     cop(α) = _parameter_space_copula(CT, d, p, α)
     loss(C) = -_weighted_loglikelihood(C, U, weights)
     res = Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS();
