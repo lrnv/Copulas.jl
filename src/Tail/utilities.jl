@@ -5,84 +5,156 @@
 _component_eltype(::Type{<:AbstractVector{T}}) where {T} = T
 _component_eltype(::Type) = Any
 
-function _normalize_asymmetric_subset_components(
+@inline _asymmetric_dependence_count(d::Int) = 2^d - d - 1
+@inline _asymmetric_margin_weight_count(d::Int) = 2^(d - 1)
+
+function _normalize_asymmetric_margin_components(
     d::Int,
     dep::AbstractVector,
-    asy::AbstractVector;
+    weights;
     singleton_parameter,
     valid_parameter,
     family::AbstractString,
 )
     d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    subsets = _nonempty_subsets(d)
-    m = length(subsets)
-    length(dep) == m - d || throw(DimensionMismatch(
-        "dep must contain one parameter for each non-singleton subset: expected $(m-d)",
+    q = _asymmetric_dependence_count(d)
+    nweights = _asymmetric_margin_weight_count(d)
+    length(dep) == q || throw(DimensionMismatch(
+        "dep must contain one parameter for each non-singleton subset: expected $q",
     ))
-    length(asy) == m || throw(DimensionMismatch(
-        "asy must contain one weight vector for each nonempty subset: expected $m",
+    length(weights) == d || throw(DimensionMismatch(
+        "weights must contain one simplex for each margin: expected $d",
     ))
-    all(weights -> weights isa AbstractVector, asy) || throw(ArgumentError(
-        "each asymmetry component must be an AbstractVector",
+    all(weight -> weight isa AbstractVector, weights) || throw(ArgumentError(
+        "each margin weight block must be an AbstractVector",
+    ))
+    all(weight -> length(weight) == nweights, weights) || throw(DimensionMismatch(
+        "each margin weight block must contain $nweights entries",
     ))
 
     T = float(promote_type(
         typeof(singleton_parameter),
         eltype(dep),
-        _component_eltype(eltype(asy)),
+        (eltype(weight) for weight in weights)...,
     ))
 
-    parameters = fill(T(singleton_parameter), m)
-    @inbounds for j in (d + 1):m
-        parameter = T(dep[j - d])
+    normalized_dep = Vector{T}(undef, q)
+    @inbounds for j in eachindex(dep)
+        parameter = T(dep[j])
         valid_parameter(parameter) || throw(ArgumentError(
             "invalid non-singleton $family parameter: $parameter",
         ))
-        parameters[j] = parameter
+        normalized_dep[j] = parameter
     end
 
-    β = zeros(T, d, m)
-    @inbounds for (j, subset) in enumerate(subsets)
-        weights = asy[j]
-        length(weights) == length(subset) || throw(DimensionMismatch(
-            "asy[$j] must have length $(length(subset)) for subset $(Tuple(subset))",
-        ))
-        for (position, i) in enumerate(subset)
-            weight = T(weights[position])
+    normalized_weights = Vector{Vector{T}}(undef, d)
+    tolerance = 64 * eps(T)
+    @inbounds for i in 1:d
+        source = weights[i]
+        target = Vector{T}(undef, nweights)
+        for k in eachindex(source)
+            weight = T(source[k])
             zero(T) <= weight <= one(T) || throw(ArgumentError(
                 "all asymmetry weights must lie in [0,1]",
             ))
-            β[i, j] = weight
+            target[k] = weight
+        end
+        total = sum(target)
+        abs(total - one(T)) <= tolerance * max(one(T), abs(total)) ||
+            throw(ArgumentError(
+                "asymmetry weights for margin $i must sum to one; got $total",
+            ))
+        normalized_weights[i] = target
+    end
+    return normalized_dep, normalized_weights
+end
+
+# Convert the historical subset-oriented representation into the canonical
+# margin-oriented representation. For each margin i, the resulting vector lists
+# β_{i,C} in the same global subset order, restricted to subsets C containing i.
+function _subset_asymmetry_to_margin_weights(d::Int, asy::AbstractVector)
+    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
+    subsets = _nonempty_subsets(d)
+    length(asy) == length(subsets) || throw(DimensionMismatch(
+        "asy must contain one weight vector for each nonempty subset: expected $(length(subsets))",
+    ))
+    all(weight -> weight isa AbstractVector, asy) || throw(ArgumentError(
+        "each asymmetry component must be an AbstractVector",
+    ))
+
+    T = float(promote_type((eltype(weight) for weight in asy)...))
+    nweights = _asymmetric_margin_weight_count(d)
+    weights = [Vector{T}() for _ in 1:d]
+    foreach(weight -> sizehint!(weight, nweights), weights)
+
+    @inbounds for (j, subset) in enumerate(subsets)
+        source = asy[j]
+        length(source) == length(subset) || throw(DimensionMismatch(
+            "asy[$j] must have length $(length(subset)) for subset $(Tuple(subset))",
+        ))
+        for (position, i) in enumerate(subset)
+            push!(weights[i], T(source[position]))
         end
     end
+    return weights
+end
 
-    tolerance = 64 * eps(T)
-    @inbounds for i in 1:d
-        rowsum = sum(@view β[i, :])
-        abs(rowsum - one(T)) <= tolerance * max(one(T), abs(rowsum)) ||
-            throw(ArgumentError(
-                "asymmetry weights for margin $i must sum to one; got $rowsum",
-            ))
+# Materialize the subset-oriented arrays consumed by the numerical kernels from
+# the canonical algebraic parameters. The singleton dependence parameter is
+# structural and is therefore not stored in `dep`.
+function _asymmetric_subset_components(
+    d::Int,
+    dep::AbstractVector,
+    weights;
+    singleton_parameter,
+)
+    subsets = _nonempty_subsets(d)
+    m = length(subsets)
+    T = float(promote_type(
+        typeof(singleton_parameter),
+        eltype(dep),
+        (eltype(weight) for weight in weights)...,
+    ))
+
+    parameters = fill(T(singleton_parameter), m)
+    @inbounds for j in eachindex(dep)
+        parameters[d + j] = T(dep[j])
+    end
+
+    β = zeros(T, d, m)
+    positions = zeros(Int, d)
+    @inbounds for (j, subset) in enumerate(subsets)
+        for i in subset
+            positions[i] += 1
+            β[i, j] = T(weights[i][positions[i]])
+        end
     end
     return parameters, β
 end
 
 # Expand the convenience representation containing only the full-set component
-# and its weights into the general all-subsets constructor representation.
-function _expand_fullset_asymmetric_component(parameter::Real, weights::AbstractVector; singleton_parameter)
+# and singleton remainders into the canonical margin-oriented representation.
+# The first entry of every margin simplex corresponds to its singleton and the
+# final entry to the full set.
+function _expand_fullset_asymmetric_component(
+    parameter::Real,
+    weights::AbstractVector;
+    singleton_parameter,
+)
     d = length(weights)
-    subsets = d == 0 ? Vector{Vector{Int}}() : _nonempty_subsets(d)
     T = float(promote_type(typeof(parameter), typeof(singleton_parameter), eltype(weights)))
-    w = T.(weights)
+    q = _asymmetric_dependence_count(d)
+    nweights = _asymmetric_margin_weight_count(d)
 
-    dep = fill(T(singleton_parameter), length(subsets) - d)
+    dep = fill(T(singleton_parameter), q)
     isempty(dep) || (dep[end] = T(parameter))
-    asy = [zeros(T, length(subset)) for subset in subsets]
+    margin_weights = [zeros(T, nweights) for _ in 1:d]
     @inbounds for i in 1:d
-        asy[i][1] = one(T) - w[i]
+        w = T(weights[i])
+        margin_weights[i][1] = one(T) - w
+        margin_weights[i][end] = w
     end
-    isempty(asy) || (asy[end] .= w)
-    return d, dep, asy
+    return (dep, margin_weights...)
 end
 
 function _sum_component_partials(component, count::Int, expected_sign::Int)
