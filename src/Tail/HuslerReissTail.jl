@@ -293,53 +293,52 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:HuslerReissTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    kind = limit_kind(C.tail, Val(d))
-    kind === Π_LIMIT && return Random.rand!(rng, X)
-    kind === M_LIMIT && return _rand_M!(rng, X)
-    Γ = _hr_variogram(C.tail, d)
+    return _rand_with_ev_limits!(rng, C, X) do
+        Γ = _hr_variogram(C.tail, d)
 
-    roots = Vector{Vector{Int}}(undef, d)
-    means = Vector{Vector{Float64}}(undef, d)
-    factors = Vector{Matrix{Float64}}(undef, d)
-    for m in 1:d
-        J, Σ = _hr_anchor_covariance(Γ, m)
-        roots[m] = J
-        means[m] = [-0.5 * Float64(Γ[j, m]) for j in J]
-        factors[m] = Matrix(LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ)).L)
-    end
+        roots = Vector{Vector{Int}}(undef, d)
+        means = Vector{Vector{Float64}}(undef, d)
+        factors = Vector{Matrix{Float64}}(undef, d)
+        for m in 1:d
+            J, Σ = _hr_anchor_covariance(Γ, m)
+            roots[m] = J
+            means[m] = [-0.5 * Float64(Γ[j, m]) for j in J]
+            factors[m] = Matrix(LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ)).L)
+        end
 
-    logw = Vector{Float64}(undef, d)
-    logz = Vector{Float64}(undef, d)
-    ε = Vector{Float64}(undef, d - 1)
-    work = Vector{Float64}(undef, d - 1)
-    for col in axes(X, 2)
-        fill!(logz, -Inf)
-        arrival = Random.randexp(rng) / d
-        logradius = -log(arrival)
-        while logradius > minimum(logz)
-            m = rand(rng, 1:d)
-            J = roots[m]
-            μ = means[m]
-            L = factors[m]
-            Random.randn!(rng, ε)
-            LinearAlgebra.mul!(work, L, ε)
-            logw[m] = 0.0
-            @inbounds for a in eachindex(J)
-                logw[J[a]] = μ[a] + work[a]
-            end
-            lognorm = LogExpFunctions.logsumexp(logw)
-            @inbounds for i in 1:d
-                candidate = logradius + logw[i] - lognorm
-                logz[i] = max(logz[i], candidate)
-            end
-            arrival += Random.randexp(rng) / d
+        logw = Vector{Float64}(undef, d)
+        logz = Vector{Float64}(undef, d)
+        ε = Vector{Float64}(undef, d - 1)
+        work = Vector{Float64}(undef, d - 1)
+        for col in axes(X, 2)
+            fill!(logz, -Inf)
+            arrival = Random.randexp(rng) / d
             logradius = -log(arrival)
+            while logradius > minimum(logz)
+                m = rand(rng, 1:d)
+                J = roots[m]
+                μ = means[m]
+                L = factors[m]
+                Random.randn!(rng, ε)
+                LinearAlgebra.mul!(work, L, ε)
+                logw[m] = 0.0
+                @inbounds for a in eachindex(J)
+                    logw[J[a]] = μ[a] + work[a]
+                end
+                lognorm = LogExpFunctions.logsumexp(logw)
+                @inbounds for i in 1:d
+                    candidate = logradius + logw[i] - lognorm
+                    logz[i] = max(logz[i], candidate)
+                end
+                arrival += Random.randexp(rng) / d
+                logradius = -log(arrival)
+            end
+            @inbounds for i in 1:d
+                X[i, col] = exp(-exp(-logz[i]))
+            end
         end
-        @inbounds for i in 1:d
-            X[i, col] = exp(-exp(-logz[i]))
-        end
+        return X
     end
-    return X
 end
 
 ℓ(tail::HuslerReissTail{<:AbstractMatrix}, x) =
