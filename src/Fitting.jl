@@ -868,7 +868,8 @@ StatsBase.aic(M::CopulaModel) = 2*StatsBase.dof(M) - 2*M.loglikelihood
 """
     bic(M::CopulaModel) -> Float64
 
-Return the Bayesian information criterion `k log(n) - 2ℓ`, using `k = dof(M)` and `n = nobs(M)`. Comparisons are meaningful only for models
+Return the Bayesian information criterion `k log(n) - 2ℓ`, using
+`k = dof(M)` and `n = nobs(M)`. Comparisons are meaningful only for models
 fitted to the same observations and likelihood contribution.
 
 See also: [`StatsBase.aic`](@ref), [`StatsBase.deviance`](@ref),
@@ -952,7 +953,7 @@ selection state does not bloat ordinary fitted models.
 Use [`selected_model`](@ref) to retrieve the winner and [`selection_table`](@ref)
 to inspect all candidates. Concrete fields are implementation details.
 """
-struct CopulaSelection{M,T} <: StatsBase.StatisticalModel
+struct CopulaSelection{M,T}
     model::M
     table::T
     criterion::Symbol
@@ -969,7 +970,8 @@ selected_model(S::CopulaSelection) = S.model
 """
     selection_table(result::CopulaSelection)
 
-Return a copy of the candidate comparison rows recorded by automatic family selection. Each row identifies a candidate, its status and effective method,
+Return a copy of the candidate comparison rows recorded by automatic family
+selection. Each row identifies a candidate, its status and effective method,
 its likelihood and information criteria, or the error that prevented fitting.
 Rows retain candidate order; changing the returned vector does not mutate the
 selection result.
