@@ -100,7 +100,7 @@ end
         @test all(x -> 0 <= x <= 1, sample)
         fitted = fit(FGMCopula, sample; method=:itau)
         @test fitted isa FGMCopula{2}
-        @test abs(only(params(fitted).θ)) <= 1
+        @test abs(only(params(fitted))) <= 1
     end
 
     @test cdf(FGMCopula{2}(1.0), midpoint) != cdf(MCopula{2}(), midpoint)

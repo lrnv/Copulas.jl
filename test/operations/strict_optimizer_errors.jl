@@ -6,9 +6,8 @@ _BrokenADCopula(d::Int, θ::Float64) = _BrokenADCopula{d,Float64}(θ)
 Base.eltype(C::_BrokenADCopula) = typeof(C.θ)
 Distributions.params(C::_BrokenADCopula) = (C.θ,)
 Distributions._logpdf(C::_BrokenADCopula, u::AbstractVector{<:Real}) = zero(eltype(u))
-Copulas._example(::Type{_BrokenADCopula}, d) = _BrokenADCopula(d, 0.5)
-Copulas._unbound_params(::Type{_BrokenADCopula}, d, θ) = [log(θ.θ / (1 - θ.θ))]
-Copulas._rebound_params(::Type{_BrokenADCopula}, d, α) = (; θ=inv(one(first(α)) + exp(-first(α))))
+Copulas.Paramorph.param_space(::Type{<:_BrokenADCopula}, d) =
+    Copulas.Paramorph.ProbOpen(:θ)
 Copulas._available_fitting_methods(::Type{_BrokenADCopula}, d) = (:mle,)
 
 struct _FloatOnlyNestedRecon end

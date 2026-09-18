@@ -370,21 +370,22 @@ function _fit(
     GT = generatorof(CT)
 
     pspace = Paramorph.param_space(CT, d)
-    θ₀ = zeros(Paramorph.dimension(pspace))
-
-    if start isa Real
-        θ₀[1] = start
+    α₀ = if start isa Real
+        Paramorph.unconstrain(pspace, start)
     elseif start ∈ (:itau, :irho)
-        θ₀[1] = only(Distributions.params(_fit(CT, U, Val{start}(); weights)))
+        θ₀ = only(Distributions.params(_fit(CT, U, Val{start}(); weights)))
+        Paramorph.unconstrain(pspace, θ₀)
+    else
+        zeros(Paramorph.dimension(pspace))
     end
 
-    cop(θ) = CT(d, Paramorph.constrain(pspace, θ))
-    f(θ) = -_weighted_loglikelihood(cop(θ), U, weights)
+    cop(α) = CT(d, Paramorph.constrain(pspace, α))
+    f(α) = -_weighted_loglikelihood(cop(α), U, weights)
 
     res = Optim.optimize(
         f,
         Optim.TwiceDifferentiableConstraints(),
-        θ₀,
+        α₀,
         Optim.IPNewton();
         autodiff=ADTypes.AutoForwardDiff(),
     )

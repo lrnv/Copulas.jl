@@ -6,7 +6,7 @@
 #####
 #####  The fitting machinery below is package-internal. Simple parametric
 #####  families opt into the generic routines by defining `Paramorph.param_space`
-#####  and `Paramorph.param_space`.
+#####  and a canonical `CT(d, parameters...)` constructor.
 ###############################################################################
 
 """

@@ -221,7 +221,7 @@ coordinates. On the copula scale this computes
 coordinates:
 
 ```@example nested
-margins = params(S).margins
+margins = last(params(S))
 u = [cdf(margins[i], x[i]) for i in 1:6]
 Cs = SurvivalCopula(Cpart, C)
 logpdf(subsetdims(Cpart, O), u[collect(O)]) +

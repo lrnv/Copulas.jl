@@ -5,7 +5,7 @@
     @test ArchimedeanCopula{3}(Copulas.IndependentGenerator()) isa IndependentCopula{3}
 
     frailty_generator = Copulas.FrailtyGenerator(Exponential())
-    @test params(frailty_generator) == (F=Exponential(),)
+    @test !applicable(params, frailty_generator)
     for t in (0.0, 0.5, 1.0)
         @test Copulas.ϕ(frailty_generator, t) == mgf(Exponential(), -t)
     end
@@ -14,7 +14,9 @@
     @test empirical isa Copulas.Generator
     @test 0 <= Copulas.ϕ(empirical, 0.5) <= 1
     ranked_empirical = EmpiricalGenerator(_FIXTURE_DATA; pseudo_values=false)
-    @test params(ranked_empirical) == params(EmpiricalGenerator(pseudos(_FIXTURE_DATA)))
+    expected_empirical = EmpiricalGenerator(pseudos(_FIXTURE_DATA))
+    @test all(t -> Copulas.ϕ(ranked_empirical, t) ≈ Copulas.ϕ(expected_empirical, t),
+              (0.2, 0.5, 0.8))
 end
 
 @testset "Williamson inverse public distribution" begin
@@ -42,7 +44,7 @@ end
     B = [0.7 0.3; 0.2 0.8]
     tail = Copulas.DiscreteSpectralTail(B)
     C = ExtremeValueCopula{2}(tail)
-    @test params(tail) == (B=Float64.(B),)
+    @test !applicable(params, tail)
     @test Copulas.ℓ(tail, [1.0, 0.0]) ≈ 1
     @test length(C) == 2
     @test size(rand(StableRNG(82), C, 3)) == (2, 3)

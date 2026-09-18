@@ -253,7 +253,7 @@ using Copulas, Distributions, Random
 C = TCopula{2}(4.0, [1.0 0.55; 0.55 1.0])
 U = rand(Xoshiro(316), C, 500)
 Ĉ = fit(TCopula{2}, U; method=:itau_irho)
-(df=params(Ĉ).ν, correlation=params(Ĉ).Σ[1, 2])
+(df=first(params(Ĉ)), correlation=last(params(Ĉ))[1, 2])
 ```
 
 This rank-matching method is bivariate. Near zero Kendall correlation, the
@@ -268,7 +268,7 @@ profile that `:mle` runs without re-estimating the correlation at every ``\nu``.
 
 ```@example elliptical
 Ĉ = fit(TCopula, U; method=:itau)
-(df=params(Ĉ).ν, correlation=params(Ĉ).Σ[1, 2])
+(df=first(params(Ĉ)), correlation=last(params(Ĉ))[1, 2])
 ```
 
 See the canonical [Public API](@ref) for complete constructor validation and
