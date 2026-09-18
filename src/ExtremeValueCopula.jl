@@ -2,17 +2,17 @@
     ExtremeValueCopula(d, tail::Tail)
     ExtremeValueCopula{d}(tail::Tail)
 
-Extreme-value copulas model tail dependence via a stable tail dependence function (STDF) ``\\ell`` or, equivalently,
+Extreme-value copulas model tail dependence via a stable tail dependence function (STDF) ``\ell`` or, equivalently,
 via a Pickands dependence function ``A``. In any dimension ``d``, the copula cdf is
 
 ```math
-\\displaystyle C(u) = \\exp\\!\\left(-\\, \\ell(-\\log u_1,\\ldots,-\\log u_d) \\right).
+\displaystyle C(u) = \exp\!\left(-\, \ell(-\log u_1,\ldots,-\log u_d) \right).
 ```
 
-For ``d=2``, write ``x=-\\log u``, ``y=-\\log v``, ``s=x+y``, and ``t = x/s``. The relation between ``\\ell`` and ``A`` is
+For ``d=2``, write ``x=-\log u``, ``y=-\log v``, ``s=x+y``, and ``t = x/s``. The relation between ``\ell`` and ``A`` is
 
 ```math
-\\ell(x,y) = s\\, A(t), \\qquad A:[0,1]\\to[1/2,1], \\quad A(0)=A(1)=1, \\ A \\text{ convex}.
+\ell(x,y) = s\, A(t), \qquad A:[0,1]\to[1/2,1], \quad A(0)=A(1)=1, \ \ A \text{ convex}.
 ```
 
 Usage
@@ -50,6 +50,7 @@ struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
     function ExtremeValueCopula{d}(tail::Tail) where {d}
         d >= 2 || throw(ArgumentError("an extreme-value copula requires d ≥ 2"))
         _is_valid_in_dim(tail, d) || throw(ArgumentError(
+            d,
             "$(typeof(tail)) is not valid in dimension $d",
         ))
         return new{d,typeof(tail)}(tail)
@@ -358,24 +359,4 @@ end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
     return _rebuild_extreme_value(CT, 2, λᵤ⁻¹(CT, λᵤ(U)))
-end
-
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, weights=nothing)
-    d = size(U, 1)
-    pspace = Paramorph.param_space(CT, d)
-    α₀ = if start isa Real
-        Paramorph.unconstrain(pspace, start)
-    elseif d == 2 && start ∈ (:itau, :irho, :ibeta)
-        θ₀ = only(Distributions.params(_fit(CT, U, Val{start}(); weights)))
-        Paramorph.unconstrain(pspace, θ₀)
-    elseif d == 2 && start === :iupper
-        θ₀ = only(Distributions.params(_fit(CT, U, Val(:iupper))))
-        Paramorph.unconstrain(pspace, θ₀)
-    else
-        zeros(Paramorph.dimension(pspace))
-    end
-    cop(α) = _rebuild_extreme_value(CT, d, Paramorph.constrain(pspace, α))
-    f(α) = -_weighted_loglikelihood(cop(α), U, weights)
-    res = Optim.optimize(f, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
-    return cop(Optim.minimizer(res))
 end
