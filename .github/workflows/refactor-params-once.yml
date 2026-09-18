@@ -24,21 +24,50 @@ jobs:
           from pathlib import Path
           p = Path('scripts/finalize_paramorph_cleanup.py')
           text = p.read_text()
-          old = '''replace(
+
+          old_anchor = '''replace(
               "src/Fitting.jl",
               "Simple parametric families opt into the generic routines by defining `Paramorph.param_space`\\n#####  and `Paramorph.param_space`.",
               "Simple parametric families opt into the generic routines by defining `Paramorph.param_space`\\n#####  and a canonical `CT(d, parameters...)` constructor.",
           )'''
-          new = '''replace(
+          new_anchor = '''replace(
               "src/Fitting.jl",
               "and `Paramorph.param_space`.",
               "and a canonical `CT(d, parameters...)` constructor.",
           )'''
-          if old not in text:
+          if old_anchor not in text:
               raise RuntimeError('cleanup-script Fitting anchor not found')
-          p.write_text(text.replace(old, new, 1))
+          text = text.replace(old_anchor, new_anchor, 1)
+
+          old_writer = '''def write(path, text):
+              Path(path).write_text(text)'''
+          new_writer = '''def write(path, text):
+              p = Path(path)
+              raw = p.read_bytes()
+              crlf = b"\\r\\n" in raw
+              if crlf:
+                  text = text.replace("\\n", "\\r\\n")
+              p.write_bytes(text.encode("utf-8"))'''
+          if old_writer not in text:
+              raise RuntimeError('cleanup-script writer not found')
+          text = text.replace(old_writer, new_writer, 1)
+          text = text.replace('p.write_text(', 'write(p, ')
+          p.write_text(text)
           PY
+
           python scripts/finalize_paramorph_cleanup.py
+
+          # The old guide had one blank line carrying a space next to the block
+          # replaced above. Remove only that newly exposed whitespace.
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('docs/src/dev/developer_guide.md')
+          raw = p.read_bytes()
+          raw = raw.replace(b'custom estimator:\r\n \r\n', b'custom estimator:\r\n\r\n')
+          raw = raw.replace(b'custom estimator:\n \n', b'custom estimator:\n\n')
+          p.write_bytes(raw)
+          PY
+
           git diff --check
           git status --short
           git config user.name 'github-actions[bot]'
