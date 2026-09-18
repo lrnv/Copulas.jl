@@ -311,6 +311,24 @@ tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 Paramorph.param_space(CT::Type{<:ExtremeValueCopula}, d::Integer) =
     Paramorph.param_space(tailof(CT), d)
 
+# Fitting must be able to reconstruct both a dimension-generic family and a
+# concrete `FamilyCopula{d}` without freezing the tail's numeric type. Build
+# through the unparameterized tail wrapper so ForwardDiff values may flow into
+# the fitted object even when the starting fixture stores Float64 parameters.
+@inline function _rebuild_extreme_value(
+    CT::Type{<:ExtremeValueCopula}, d::Integer, args...,
+)
+    TT = Base.typename(Base.unwrap_unionall(tailof(CT))).wrapper
+    return _wrap_extreme_value(Val(d), TT(args...))
+end
+
+function _parameter_space_copula(
+    CT::Type{<:ExtremeValueCopula}, d, p, α,
+)
+    η = _parameter_arguments(Paramorph.constrain(p, α))
+    return _rebuild_extreme_value(CT, d, η...)
+end
+
 ##############################################################################################################################
 ####### Fitting functions for parameterized tails (Extreme Value Copulas).
 ##############################################################################################################################
@@ -335,11 +353,11 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     est = _rank_measure(m, U, weights)[1, 2]
     θ = m isa Val{:itau} ? τ⁻¹(CT, est) :
         m isa Val{:irho} ? ρ⁻¹(CT, est) : β⁻¹(CT, est)
-    return CT(2, θ)
+    return _rebuild_extreme_value(CT, 2, θ)
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
-    return CT(2, λᵤ⁻¹(CT, λᵤ(U)))
+    return _rebuild_extreme_value(CT, 2, λᵤ⁻¹(CT, λᵤ(U)))
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, weights=nothing)
@@ -356,7 +374,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     else
         zeros(Paramorph.dimension(pspace))
     end
-    cop(α) = CT(d, Paramorph.constrain(pspace, α))
+    cop(α) = _rebuild_extreme_value(CT, d, Paramorph.constrain(pspace, α))
     f(α) = -_weighted_loglikelihood(cop(α), U, weights)
     res = Optim.optimize(f, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     return cop(Optim.minimizer(res))
