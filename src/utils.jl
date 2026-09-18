@@ -515,7 +515,7 @@ _rank_measure(::Val{:itau}, U::AbstractMatrix, w::AbstractVector) = _weighted_co
 _rank_measure(::Val{:irho}, U::AbstractMatrix, w::AbstractVector) = _weighted_corspearman(U, w)
 _rank_measure(::Val{:ibeta}, U::AbstractMatrix, w::AbstractVector) = _weighted_corblomqvist(U, w)
 
-# Prefix sums over the weights' element type, for the Kendall sweep.
+# Prefix sums over the measure's element type, for the Kendall sweep.
 struct _Fenwick{T}
     bit::Vector{T}
 end
@@ -552,7 +552,8 @@ end
 # tie groups g of total weight T_g. The pairs formed by the copies of one
 # observation are left out, as they are from the total number of pairs, so
 # for integer weights this is the tie count of the replicated sample.
-function _weighted_tie_pairs(x::AbstractVector, w::AbstractVector{T}) where {T}
+function _weighted_tie_pairs(x::AbstractVector, w::AbstractVector)
+    T = promote_type(eltype(x), eltype(w))
     order = sortperm(x)
     n = length(order)
     ties = zero(T)
@@ -586,7 +587,8 @@ end
 # ranks of y, every x-tie block being queried before it is inserted. The
 # integer arithmetic of `StatsBase.corkendall` is reproduced exactly for unit
 # weights, so the two agree bit for bit.
-function _weighted_kendall(x::AbstractVector, y::AbstractVector, w::AbstractVector{T}) where {T}
+function _weighted_kendall(x::AbstractVector, y::AbstractVector, w::AbstractVector)
+    T = promote_type(eltype(x), eltype(y), eltype(w))
     n = length(x)
     (any(isnan, x) || any(isnan, y)) && return T(NaN)
     n <= 1 && return T(NaN)
@@ -620,7 +622,7 @@ end
 
 function _weighted_corkendall(U::AbstractMatrix, w::AbstractVector)
     d = size(U, 1)
-    C = Matrix{float(promote_type(eltype(U), eltype(w)))}(LinearAlgebra.I, d, d)
+    C = Matrix{promote_type(eltype(U), eltype(w))}(LinearAlgebra.I, d, d)
     for j in 1:d, i in 1:(j - 1)
         C[i, j] = C[j, i] = _weighted_kendall(view(U, i, :), view(U, j, :), w)
     end
@@ -631,7 +633,8 @@ end
 # takes the rank B + (T + 1) / 2, the mean rank of the block in the sample
 # where each observation is repeated w[i] times, which is `tiedrank` for unit
 # weights.
-function _weighted_average_ranks(x::AbstractVector, w::AbstractVector{T}) where {T}
+function _weighted_average_ranks(x::AbstractVector, w::AbstractVector)
+    T = promote_type(eltype(x), eltype(w))
     order = sortperm(x)
     n = length(order)
     ranks = Vector{T}(undef, n)
@@ -673,9 +676,9 @@ end
 # unit weights reproduce it within an ulp rather than bit for bit.
 function _weighted_corspearman(U::AbstractMatrix, w::AbstractVector)
     d = size(U, 1)
-    C = Matrix{float(promote_type(eltype(U), eltype(w)))}(LinearAlgebra.I, d, d)
+    C = Matrix{promote_type(eltype(U), eltype(w))}(LinearAlgebra.I, d, d)
     anynan = [any(isnan, view(U, i, :)) for i in 1:d]
-    ranks = [anynan[i] ? eltype(w)[] : _weighted_average_ranks(view(U, i, :), w) for i in 1:d]
+    ranks = [anynan[i] ? eltype(C)[] : _weighted_average_ranks(view(U, i, :), w) for i in 1:d]
     for j in 1:d, i in 1:(j - 1)
         C[i, j] = C[j, i] = (anynan[i] || anynan[j]) ? NaN :
             _weighted_pearson(ranks[i], ranks[j], w)
@@ -688,11 +691,11 @@ end
 # counted, as `corblomqvist` counts concordant observations.
 function _weighted_corblomqvist(U::AbstractMatrix, w::AbstractVector)
     d = size(U, 1)
-    C = Matrix{float(promote_type(eltype(U), eltype(w)))}(LinearAlgebra.I, d, d)
+    C = Matrix{promote_type(eltype(U), eltype(w))}(LinearAlgebra.I, d, d)
     W = sum(w)
     h = (W + 1) / 2
     anynan = [any(isnan, view(U, i, :)) for i in 1:d]
-    ranks = [anynan[i] ? eltype(w)[] : _weighted_average_ranks(view(U, i, :), w) for i in 1:d]
+    ranks = [anynan[i] ? eltype(C)[] : _weighted_average_ranks(view(U, i, :), w) for i in 1:d]
     for j in 1:d, i in 1:(j - 1)
         if anynan[i] || anynan[j]
             C[i, j] = C[j, i] = NaN

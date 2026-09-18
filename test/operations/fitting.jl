@@ -830,6 +830,14 @@ end
         for (weighted, _) in measures
             @test isnan(weighted(Un, ones(n))[1, 2]) && !isnan(weighted(Un, ones(n))[2, 3])
         end
+        # The measure's element type is promoted from the sample and the
+        # weights, never forced.
+        for (weighted, _) in measures
+            @test eltype(weighted(Float32.(U), ones(Float32, n))) === Float32
+            @test eltype(weighted(Float32.(U), ones(n))) === Float64
+            @test eltype(weighted(BigFloat.(U), ones(n))) === BigFloat
+            @test Float64.(weighted(BigFloat.(U), ones(n))) ≈ weighted(U, ones(n)) atol=1e-15
+        end
     end
 
     @testset "rank inversions take weights: $(nameof(CT)) d=$(length(C)) $method" for (CT, C, methods) in [
