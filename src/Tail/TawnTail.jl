@@ -137,8 +137,8 @@ _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d
 
 function Paramorph.param_space(::Type{<:TawnTail}, d::Integer)
     d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    q = _asymmetric_dependence_count(d)
-    nweights = _asymmetric_margin_weight_count(d)
+    q = 2^d - d - 1
+    nweights = 2^(d - 1)
     dep_space = Paramorph.LowerClosedVec(:dep, 1.0, q)
     weight_spaces = ntuple(d) do i
         Paramorph.Simplex(Symbol("weights$(i)"), nweights; anchor=1)

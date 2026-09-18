@@ -5,9 +5,6 @@
 _component_eltype(::Type{<:AbstractVector{T}}) where {T} = T
 _component_eltype(::Type) = Any
 
-@inline _asymmetric_dependence_count(d::Int) = 2^d - d - 1
-@inline _asymmetric_margin_weight_count(d::Int) = 2^(d - 1)
-
 function _normalize_asymmetric_margin_components(
     d::Int,
     dep::AbstractVector,
@@ -17,8 +14,8 @@ function _normalize_asymmetric_margin_components(
     family::AbstractString,
 )
     d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    q = _asymmetric_dependence_count(d)
-    nweights = _asymmetric_margin_weight_count(d)
+    q = 2^d - d - 1
+    nweights = 2^(d - 1)
     length(dep) == q || throw(DimensionMismatch(
         "dep must contain one parameter for each non-singleton subset: expected $q",
     ))
@@ -83,7 +80,7 @@ function _subset_asymmetry_to_margin_weights(d::Int, asy::AbstractVector)
     ))
 
     T = float(promote_type((eltype(weight) for weight in asy)...))
-    nweights = _asymmetric_margin_weight_count(d)
+    nweights = 2^(d - 1)
     weights = [Vector{T}() for _ in 1:d]
     foreach(weight -> sizehint!(weight, nweights), weights)
 
@@ -143,8 +140,8 @@ function _expand_fullset_asymmetric_component(
 )
     d = length(weights)
     T = float(promote_type(typeof(parameter), typeof(singleton_parameter), eltype(weights)))
-    q = _asymmetric_dependence_count(d)
-    nweights = _asymmetric_margin_weight_count(d)
+    q = 2^d-d-1
+    nweights = 2^(d - 1)
 
     dep = fill(T(singleton_parameter), q)
     isempty(dep) || (dep[end] = T(parameter))
