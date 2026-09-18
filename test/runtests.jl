@@ -216,9 +216,9 @@ testfiles = (
     "operations/fitting.jl",
     "operations/sklar_fitting_validation.jl",
     "operations/nested_fitting_validation.jl",
-    # "operations/inference.jl",
+    "operations/inference.jl",
     "operations/fitting_selection.jl",
-    # "operations/hypothesis_testing.jl",
+    "operations/hypothesis_testing.jl",
     "operations/nataf.jl",
     # "extensions/expectation_maximization.jl",
     # "extensions/partitioned_distributions.jl"
