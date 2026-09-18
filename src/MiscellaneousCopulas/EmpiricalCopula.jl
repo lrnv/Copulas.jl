@@ -4,11 +4,11 @@
     EmpiricalCopula(d, u; pseudo_values=true)
 
 The empirical copula in dimension ``d`` is defined from a matrix of pseudo-observations
-``\\mathbf u = (u_{i,j})_{1\\le i \\le d,\\ 1\\le j \\le N}`` with entries in ``[0,1]``.
+``\mathbf u = (u_{i,j})_{1\le i \le d,\ 1\le j \le N}`` with entries in ``[0,1]``.
 Its distribution function is
 
 ```math
-C(\\mathbf{x}) = \\frac{1}{N} \\sum_{j=1}^{N} \\mathbf{1}_{\\{ \\mathbf{u}_{\\cdot,j} \\le \\mathbf{x} \\}} ,
+C(\mathbf{x}) = \frac{1}{N} \sum_{j=1}^{N} \mathbf{1}_{\{ \mathbf{u}_{\cdot,j} \le \mathbf{x} \}} ,
 ```
 
 where the inequality is componentwise. If `pseudo_values=false`, the constructor
@@ -56,6 +56,7 @@ end
 EmpiricalCopula(u; kwargs...) = EmpiricalCopula{size(u, 1)}(u; kwargs...)
 EmpiricalCopula(d::Integer, u; kwargs...) = EmpiricalCopula{d}(u; kwargs...)
 Distributions.params(C::EmpiricalCopula) = (C.u,)
+_natural_parameters(::EmpiricalCopula) = (String[], Float64[])
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return sum(all(C.u .<= u,dims=1))/size(C.u,2)
 end
