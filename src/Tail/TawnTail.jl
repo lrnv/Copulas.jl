@@ -138,11 +138,8 @@ TawnTail(α::Real, weights::AbstractVector) =
 TawnTail(dep::AbstractVector, asy::AbstractVector) =
     TawnTail(trailing_zeros(length(asy) + 1), dep, asy)
 
-function Distributions.params(tail::TawnTail)
-    return (copy(tail.dep), (copy(weight) for weight in tail.weights)...)
-end
 Distributions.params(C::ExtremeValueCopula{d,<:TawnTail}) where {d} =
-    Distributions.params(C.tail)
+    (copy(C.tail.dep), (copy(weight) for weight in C.tail.weights)...)
 
 _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d
 
