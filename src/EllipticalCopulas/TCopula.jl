@@ -239,19 +239,32 @@ function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where
     Σ = _rebound_corr_params(d, @view α[2:end])
     return (; ν = ν, Σ = Σ)
 end
-function _t_copula_loglik_factor(ν, L, Z,)
-    d, n = size(Z)
+# Per-observation sums of the Student objective. The weighted form multiplies
+# the term of each column by its weight before the same reduction, so unit
+# weights reproduce the unweighted sum bit for bit.
+_t_weighted_sum(v::AbstractVector, ::Nothing) = sum(v)
+_t_weighted_sum(v::AbstractVector, w::AbstractVector) = sum(w .* v)
+_t_weighted_sum(A::AbstractMatrix, ::Nothing) = sum(A)
+_t_weighted_sum(A::AbstractMatrix, w::AbstractVector) = sum(w' .* A)
+_t_sample_size(Z, ::Nothing) = size(Z, 2)
+_t_sample_size(Z, w::AbstractVector) = sum(w)
+function _t_copula_loglik_factor(ν, L, Z; weights=nothing)
+    d = size(Z, 1)
+    n = _t_sample_size(Z, weights)
     Ltri = LinearAlgebra.LowerTriangular(L)
     Y = Ltri \ Z
     q = vec(sum(abs2, Y; dims=1))
     logdetR = 2 * sum(log, LinearAlgebra.diag(L))
     logconstant = SpecialFunctions.loggamma((ν + d) / 2) + (d - 1) * SpecialFunctions.loggamma(ν / 2) - d * SpecialFunctions.loggamma((ν + 1) / 2)
-    joint = n * logconstant - (n / 2) * logdetR - (ν + d) / 2 * sum(log1p.(q ./ ν))
-    marginals = (ν + 1) / 2 * sum(log1p.(abs2.(Z) ./ ν))
+    joint = n * logconstant - (n / 2) * logdetR - (ν + d) / 2 * _t_weighted_sum(log1p.(q ./ ν), weights)
+    marginals = (ν + 1) / 2 * _t_weighted_sum(log1p.(abs2.(Z) ./ ν), weights)
     return joint + marginals
 end
-function _fit_t_corr_given_nu(U, ν,)
-    d, n = size(U)
+function _fit_t_corr_given_nu(U, ν; weights=nothing)
+    d = size(U, 1)
+    n = _t_sample_size(U, weights)
+    # For fixed ν, Student scores are constant throughout
+    # the correlation optimization.
     Z = Distributions.quantile.(Distributions.TDist(ν), U)
     R₀ = _score_corr_start(Z)
     α₀ = _unbound_corr_params(d, R₀)
@@ -264,7 +277,7 @@ function _fit_t_corr_given_nu(U, ν,)
         Y = Ltri \ Z
         q = vec(sum(abs2, Y; dims=1))
         logdetR = 2 * sum(log, diagL)
-        return (n/2) * logdetR + (ν + d) / 2 * sum(log1p.(q ./ ν))
+        return (n/2) * logdetR + (ν + d) / 2 * _t_weighted_sum(log1p.(q ./ ν), weights)
     end
     res = Optim.optimize(
         objective,
@@ -276,7 +289,7 @@ function _fit_t_corr_given_nu(U, ν,)
     L̂ = _rebound_corr_factor(d, α̂)
     R̂ = L̂ * L̂'
     R̂ = (R̂ + R̂') / 2
-    ll = _t_copula_loglik_factor(ν, L̂, Z,)
+    ll = _t_copula_loglik_factor(ν, L̂, Z; weights)
     return (ν=ν, Σ=R̂, loglikelihood=ll, result=res,)
 end
 function _t_profile_upper(loss; upper0 = 0.5, max_expand = 12,)
@@ -293,21 +306,22 @@ function _t_profile_upper(loss; upper0 = 0.5, max_expand = 12,)
     end
     return upper, expansions
 end
-function _fit(::Type{<:TCopula}, U, ::Val{:mle},)
-    G = _fit(GaussianCopula, U, Val(:mle))
+function _fit(::Type{<:TCopula}, U, ::Val{:mle}; weights=nothing)
+    # λ = 1 / ν.  The endpoint λ = 0 is the Gaussian limit ν = Inf.
+    G = _fit(GaussianCopula, U, Val(:mle); weights)
     Σ_gaussian = Distributions.params(G).Σ
-    ll_gaussian = Distributions.loglikelihood(G, U)
+    ll_gaussian = _weighted_loglikelihood(G, U, weights)
     profile_loss = λ -> begin
         iszero(λ) && return -ll_gaussian
         ν = inv(λ)
-        fitν = _fit_t_corr_given_nu(U, ν)
+        fitν = _fit_t_corr_given_nu(U, ν; weights)
         return -fitν.loglikelihood
     end
     upper, _ = _t_profile_upper(profile_loss)
     resλ = Optim.optimize(profile_loss, zero(upper), upper, Optim.Brent(),)
     λ̂ = Optim.minimizer(resλ)
     ν̂_finite = inv(λ̂)
-    finite = _fit_t_corr_given_nu(U, ν̂_finite,)
+    finite = _fit_t_corr_given_nu(U, ν̂_finite; weights)
     ll_finite = finite.loglikelihood
     Tll = typeof(float(ll_gaussian))
     ll_tol = 100 * eps(Tll) * max(one(Tll), abs(ll_gaussian))

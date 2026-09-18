@@ -302,6 +302,19 @@ additional regularity and a supported covariance procedure; returning a fitted
 copula does not guarantee their availability. Data have shape `d × n`, so the
 dimension is `size(U, 1)`, not the number of observations.
 
+A family that writes its own `_fit(::Type{MyCopula}, U, ::Val{:mle}; ...)`
+takes a `weights=nothing` keyword and evaluates its objective through
+`_weighted_loglikelihood(C, U, weights)` instead of
+`Distributions.loglikelihood(C, U)`. The public `fit` validates the weights,
+normalizes them to sum to `n`, drops the columns whose weight is zero, and
+forwards the rest; `nothing` selects the unweighted path, and the weighted sum
+runs over the same column views as the unweighted reduction so that unit
+weights reproduce the unweighted fit bit for bit. A family's engine therefore
+never meets a zero weight, and need not guard a `0 * Inf` on the boundary of
+the hypercube. A family that ignores the keyword drops the user's weights silently, and a
+family that omits it is fitted by the generic transformed-space driver whenever
+any keyword is passed.
+
 ## 1.6 Hypothesis tests
 
 The public procedures and their assumptions are documented in

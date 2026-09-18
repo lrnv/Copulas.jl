@@ -168,7 +168,7 @@ end
 
 
 """
-    pseudos(sample; ties=:average, rng=Random.default_rng())
+    pseudos(sample; ties=:average, rng=Random.default_rng(), weights=nothing)
 
 Compute pseudo-observations from a `d×n` sample, with variables in rows and
 observations in columns.
@@ -188,20 +188,54 @@ not consume it.
 Choosing a rank convention does not by itself make continuous-margin fitting
 or hypothesis-testing procedures valid for genuinely discrete data.
 
+`weights` gives one non-negative, finite weight per observation, not all zero,
+and ranks each margin by weighted mass. The weights are normalized to sum to
+the number of observations `n` first, so the result is invariant to their
+scale and unit weights reproduce the unweighted ranks exactly. The ranks are
+computed and returned in the floating-point type that the sample and the
+weights promote to. Observation `i`
+then receives the mean rank of its copies in the sample where every observation
+`j` is repeated `weights[j]` times, under the same tie convention, divided by
+`n + 1`. A zero-weight observation contributes no mass and is placed at the
+weighted empirical distribution function of its value.
+
 # Example
 ```julia
 X = [30 10 20; 4 6 5]
 pseudos(X) == [0.75 0.25 0.5; 0.25 0.75 0.5]
+
+# Integer weights that sum to `n` are counts: the ranks are those of the
+# sample where each observation is repeated that many times.
+X = [30 10 20 40; 4 6 5 7]
+kept = [1, 3, 4]
+pseudos(X; weights=[2, 0, 1, 1])[:, kept] == pseudos([30 30 20 40; 4 4 5 7])[:, kept]
 ```
 
 See also: [`EmpiricalCopula`](@ref), [`BetaCopula`](@ref),
 [`CheckerboardCopula`](@ref).
 """
 function pseudos(sample::AbstractMatrix; ties::Symbol=:average,
-        rng::Random.AbstractRNG=Random.default_rng())
+        rng::Random.AbstractRNG=Random.default_rng(), weights=nothing)
     ties in _PSEUDO_TIE_METHODS || throw(ArgumentError(
         "unsupported tie method :$ties; expected one of $(_PSEUDO_TIE_METHODS)"))
-    return _pseudos(sample, Val(ties), rng)
+    return _pseudos(sample, Val(ties), rng, _fit_weights(weights, size(sample, 2)))
+end
+
+_pseudos(sample::AbstractMatrix, tie_method::Val, rng::Random.AbstractRNG, ::Nothing) =
+    _pseudos(sample, tie_method, rng)
+function _pseudos(sample::AbstractMatrix, tie_method::Val, rng::Random.AbstractRNG,
+        weights::AbstractVector)
+    d, n = size(sample)
+    T = float(promote_type(eltype(sample), eltype(weights)))
+    U = Matrix{T}(undef, d, n)
+    tmp_idx = Vector{Int}(undef, n)
+    @inbounds for i in 1:d
+        x = @view sample[i, :]
+        ranks = @view U[i, :]
+        sortperm!(tmp_idx, x; by=identity, alg=Base.Sort.DEFAULT_STABLE)
+        _assign_weighted_pseudoranks!(ranks, x, tmp_idx, weights, tie_method, rng)
+    end
+    return U
 end
 
 function _pseudos(sample::AbstractMatrix, tie_method::Val,
@@ -309,6 +343,100 @@ end
         ranks[order[k]] = T(k) / denominator
     end
     return nothing
+end
+
+# Weighted ranks. Observation `k` takes the mean rank of its copies in the
+# sample where every observation `j` is repeated `w[j]` times, under the same
+# tie convention: `before + (w[k] + 1) / 2`, where `before` is the weight of
+# the copies that the convention places below it. The denominator is the total
+# weight plus one. Unit weights reproduce the unweighted ranks exactly. A
+# zero-weight tie group has no copies, so `:min` and `:max` place it at the
+# weighted empirical distribution function of its value, which keeps every
+# rank strictly inside (0, 1).
+function _assign_weighted_pseudoranks!(ranks::AbstractVector{T}, x::AbstractVector,
+        order::Vector{Int}, w::AbstractVector, tie_method::Val,
+        rng::Random.AbstractRNG) where {T}
+    n = length(order)
+    denominator = T(sum(w)) + one(T)
+    before = zero(T)
+    first = 1
+    @inbounds while first <= n
+        index = order[first]
+        last = first
+        while last < n && x[order[last + 1]] == x[index]
+            last += 1
+        end
+        block = zero(T)
+        for k in first:last
+            block += T(w[order[k]])
+        end
+        _assign_weighted_tie_group!(ranks, order, w, first, last, before, block,
+                                    denominator, tie_method, rng)
+        before += block
+        first = last + 1
+    end
+    return ranks
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        ::AbstractVector, first::Int, last::Int, before::T, block::T, denominator::T,
+        ::Val{:average}, ::Random.AbstractRNG) where {T}
+    rank = (before + (block + one(T)) / T(2)) / denominator
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        ::AbstractVector, first::Int, last::Int, before::T, block::T, denominator::T,
+        ::Val{:min}, ::Random.AbstractRNG) where {T}
+    rank = (before + (iszero(block) ? one(T) / T(2) : one(T))) / denominator
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        ::AbstractVector, first::Int, last::Int, before::T, block::T, denominator::T,
+        ::Val{:max}, ::Random.AbstractRNG) where {T}
+    rank = (before + (iszero(block) ? one(T) / T(2) : block)) / denominator
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+# Ordinal conventions: the copies of one observation are consecutive, in the
+# convention's order within the tie group.
+@inline function _assign_weighted_ordinal!(ranks::AbstractVector{T}, order::Vector{Int},
+        w::AbstractVector, positions, before::T, denominator::T) where {T}
+    @inbounds for k in positions
+        wk = T(w[order[k]])
+        ranks[order[k]] = (before + (wk + one(T)) / T(2)) / denominator
+        before += wk
+    end
+    return nothing
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        w::AbstractVector, first::Int, last::Int, before::T, ::T, denominator::T,
+        ::Val{:first}, ::Random.AbstractRNG) where {T}
+    return _assign_weighted_ordinal!(ranks, order, w, first:last, before, denominator)
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        w::AbstractVector, first::Int, last::Int, before::T, ::T, denominator::T,
+        ::Val{:last}, ::Random.AbstractRNG) where {T}
+    return _assign_weighted_ordinal!(ranks, order, w, last:-1:first, before, denominator)
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        w::AbstractVector, first::Int, last::Int, before::T, ::T, denominator::T,
+        ::Val{:random}, rng::Random.AbstractRNG) where {T}
+    Random.shuffle!(rng, @view order[first:last])
+    return _assign_weighted_ordinal!(ranks, order, w, first:last, before, denominator)
 end
 
 

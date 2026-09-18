@@ -182,6 +182,8 @@ function Base.show(io::IO, M::CopulaModel)
         _kv(io, "Method", String(fitting_method(M)))
     end
     _kv(io, "Number of observations", Printf.@sprintf("%d", StatsBase.nobs(M)))
+    _model_weights(M) === nothing ||
+        _kv(io, "Observation weights", "yes, normalized to sum to the number of observations")
 
     _section(io, "Fit metrics")
     ll = M.loglikelihood

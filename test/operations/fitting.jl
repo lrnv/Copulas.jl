@@ -617,3 +617,206 @@ end
     @test maximum(abs.(diag(R̂) .- 1)) < 1e-12
     @test maximum(abs.(R̂ - R)) < 0.05
 end
+
+@testset "observation weights" begin
+    # Fitting with `weights` maximizes a weighted pseudo-likelihood whose
+    # weights are normalized to sum to n. Unit weights, at any scale, must
+    # reproduce the unweighted estimator bit for bit in every family that
+    # implements `:mle`, including the families with a hand-written objective.
+    n = 200
+    families = [
+        (ClaytonCopula, ClaytonCopula{2}(2.0)),
+        (GumbelCopula, GumbelCopula{3}(1.6)),
+        (FrankCopula, FrankCopula{2}(3.0)),
+        (AMHCopula, AMHCopula{2}(0.5)),
+        (BB1Copula, BB1Copula{2}(1.2, 1.5)),
+        (GaussianCopula, GaussianCopula([1.0 0.5; 0.5 1.0])),
+        (GaussianCopula, GaussianCopula([1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])),
+        (TCopula, TCopula(4.0, [1.0 0.5; 0.5 1.0])),
+        (TCopula, TCopula(5.0, [1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0])),
+        (FGMCopula, FGMCopula(2, 0.4)),
+        (FGMCopula, FGMCopula(3, [0.2, 0.1, 0.1, 0.05])),
+        (GalambosCopula, GalambosCopula(2, 1.5)),
+        (SurvivalCopula{2,ClaytonCopula{2}}, SurvivalCopula(ClaytonCopula{2}(2.0))),
+        (Rotated90Copula{2,ClaytonCopula{2}}, Rotated90Copula(ClaytonCopula{2}(2.0))),
+        (IndependentCopula, IndependentCopula(2)),
+    ]
+    @testset "unit weights are the unweighted fit: $(CT)" for (CT, C) in families
+        U = rand(StableRNG(516), C, n)
+        unweighted = fit(CopulaModel, CT, U; method=:mle)
+        for weights in (ones(n), fill(3, n), fill(2.5, n))
+            weighted = fit(CopulaModel, CT, U; method=:mle, weights)
+            @test coef(weighted) == coef(unweighted)
+            @test loglikelihood(weighted) == loglikelihood(unweighted)
+            @test nobs(weighted) == n
+            @test aic(weighted) == aic(unweighted)
+            @test bic(weighted) == bic(unweighted)
+        end
+        @test Copulas._model_weights(unweighted) === nothing
+    end
+    let U = rand(StableRNG(516), ClaytonCopula{2}(2.0), n)
+        @test occursin("Observation weights", sprint(show, fit(CopulaModel, ClaytonCopula, U; weights=ones(n))))
+        @test !occursin("Observation weights", sprint(show, fit(CopulaModel, ClaytonCopula, U)))
+    end
+
+    @testset "integer weights are replication counts" begin
+        # Weights that are counts summing to n are left untouched by the
+        # normalization, so the weighted fit is the fit of the sample in which
+        # column j is repeated weights[j] times. The two objectives agree up
+        # to summation order, so the optimizers stop within their tolerance
+        # of each other (Brent's default relative tolerance is sqrt(eps)).
+        counts = zeros(Int, n)
+        for slot in rand(StableRNG(517), 1:n, n)
+            counts[slot] += 1
+        end
+        @test sum(counts) == n && any(iszero, counts)
+        kept = findall(>(0), counts)
+        for (CT, C) in ((ClaytonCopula, ClaytonCopula{2}(2.0)),
+                        (GaussianCopula, GaussianCopula([1.0 0.5; 0.5 1.0])),
+                        (TCopula, TCopula(4.0, [1.0 0.5; 0.5 1.0])),
+                        (FGMCopula, FGMCopula(2, 0.4)),
+                        (GalambosCopula, GalambosCopula(2, 1.5)))
+            U = rand(StableRNG(518), C, n)
+            Urep = hcat((repeat(U[:, j], 1, counts[j]) for j in kept)...)
+            replicated = fit(CopulaModel, CT, Urep; method=:mle)
+            weighted = fit(CopulaModel, CT, U; method=:mle, weights=counts)
+            @test coef(weighted) ≈ coef(replicated) rtol=1e-6
+            @test loglikelihood(weighted) ≈ loglikelihood(replicated) rtol=1e-8
+            @test nobs(weighted) == nobs(replicated) == n
+            @test bic(weighted) ≈ bic(replicated) rtol=1e-8
+            # The estimator is invariant to the scale of the weights.
+            rescaled = fit(CopulaModel, CT, U; method=:mle, weights=0.25 .* counts)
+            @test coef(rescaled) ≈ coef(weighted) rtol=1e-8
+            @test loglikelihood(rescaled) ≈ loglikelihood(weighted) rtol=1e-8
+        end
+    end
+
+    @testset "a zero weight removes its observation" begin
+        U = rand(StableRNG(519), ClaytonCopula{2}(2.0), n)
+        weights = ones(n)
+        weights[1] = 0
+        # Even where the removed observation has a vanishing density.
+        U[:, 1] .= 1e-300
+        removed = fit(ClaytonCopula, U[:, 2:end])
+        @test params(fit(ClaytonCopula, U; weights)).θ ≈ params(removed).θ rtol=1e-6
+        @test isfinite(loglikelihood(fit(CopulaModel, ClaytonCopula, U; weights)))
+        C = ClaytonCopula{2}(2.0)
+        @test Copulas._weighted_loglikelihood(C, U, weights) ==
+              Copulas._weighted_loglikelihood(C, U[:, 2:end], ones(n - 1))
+        @test Copulas._weighted_loglikelihood(C, U[:, 2:end], ones(n - 1)) ==
+              loglikelihood(C, U[:, 2:end])
+        # The removed observation may sit on the boundary of the hypercube,
+        # where the elliptical scores are infinite: it is dropped before the
+        # engine forms its weighted cross-product, so no `0 * Inf` reaches it.
+        for (CT, C) in ((GaussianCopula, GaussianCopula([1.0 0.5; 0.5 1.0])),
+                        (TCopula, TCopula(4.0, [1.0 0.5; 0.5 1.0])),
+                        (ClaytonCopula, ClaytonCopula{2}(2.0)))
+            V = rand(StableRNG(528), C, n)
+            for boundary in (0.0, 1.0)
+                V[:, 1] .= boundary
+                removed = fit(CopulaModel, CT, V[:, 2:end])
+                kept = fit(CopulaModel, CT, V; weights)
+                @test coef(kept) ≈ coef(removed) rtol=1e-6
+                # The kept weights are normalized to sum to n over n - 1 columns.
+                @test loglikelihood(kept) ≈ loglikelihood(removed) * n / (n - 1) rtol=1e-6
+                @test nobs(kept) == n
+                # The model records every column and its normalized weight.
+                @test Copulas._model_weights(kept) == weights .* (n / (n - 1))
+            end
+        end
+        @test Copulas._weighted_sample(U, weights) == (U[:, 2:end], ones(n - 1))
+        let w = ones(n)
+            @test Copulas._weighted_sample(U, w) === (U, w)
+        end
+        @test Copulas._weighted_sample(U, nothing) === (U, nothing)
+    end
+
+    @testset "weighted maximum pseudo-likelihood ranks by weight" begin
+        X = randn(StableRNG(520), 2, n)
+        weights = rand(StableRNG(521), n)
+        model = fit(CopulaModel, ClaytonCopula, X; pseudo_values=false, weights)
+        @test Copulas.fitting_method(model) === :mpl
+        direct = fit(CopulaModel, ClaytonCopula, pseudos(X; weights); weights)
+        @test coef(model) == coef(direct)
+        @test loglikelihood(model) == loglikelihood(direct)
+        @test Copulas._copula_data(model) == pseudos(X; weights)
+        @test nullloglikelihood(model) == 0
+        @test residuals(model) == residuals(direct)
+        unweighted = fit(CopulaModel, ClaytonCopula, X; pseudo_values=false)
+        @test coef(fit(CopulaModel, ClaytonCopula, X; pseudo_values=false, weights=ones(n))) ==
+              coef(unweighted)
+    end
+
+    @testset "selection and nested Archimedean fits take weights" begin
+        U = rand(StableRNG(522), ClaytonCopula{2}(2.0), n)
+        weights = rand(StableRNG(523), n)
+        selection = fit(CopulaModel, Copulas.Copula, U;
+                        candidates=[ClaytonCopula, GumbelCopula], weights)
+        @test Copulas._model_weights(selected_model(selection)) !== nothing
+        @test all(row.status === :ok for row in selection_table(selection))
+
+        C0 = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
+                                     children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)])
+        Un = rand(StableRNG(524), C0, n)
+        unweighted = fit(CopulaModel, C0, Un)
+        weighted = fit(CopulaModel, C0, Un; weights=fill(2, n))
+        @test coef(weighted) == coef(unweighted)
+        @test loglikelihood(weighted) == loglikelihood(unweighted)
+        @test params(fit(C0, Un; weights=ones(n))) == params(fit(C0, Un))
+        reparam(α) = NestedArchimedeanCopula(Copulas.ClaytonGenerator(exp(α[1]));
+            children=[ClaytonCopula{2}(exp(α[1]) + exp(α[2])),
+                      ClaytonCopula{2}(exp(α[1]) + exp(α[3]))])
+        custom = fit(CopulaModel, reparam, zeros(3), Un)
+        @test coef(fit(CopulaModel, reparam, zeros(3), Un; weights=ones(n))) == coef(custom)
+        @test_throws ArgumentError fit(CopulaModel, C0, Un; weights=-ones(n))
+        @test_throws ArgumentError infer(weighted; method=:bootstrap, nresamples=2)
+    end
+
+    @testset "the template fit stays in the certified nesting region" begin
+        # `_nested_rebound` skips the certificate, so the loss is `Inf` on a
+        # tree that fails one: a child Clayton θ below its parent's, or below
+        # zero, where the composed generator is not defined. Without the
+        # barrier the bootstrap refits below raise a `DomainError` from
+        # `composition_taylor` on three of these four seeds.
+        C0 = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
+                                     children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)])
+        recon = Base.Fix1(Copulas._nested_rebound, C0)
+        @test Copulas._nested_certified(recon(Copulas._nested_unbound(C0)))
+        @test !Copulas._nested_certified(recon([log(2.0), log(1.5), log(4.0)]))
+        @test !Copulas._nested_certified(recon([log(2.0), log(0.5), log(4.0)]))
+        Un = rand(StableRNG(524), C0, n)
+        M = fit(CopulaModel, C0, Un)
+        for seed in (528, 529, 530, 531)
+            I = infer(M; method=:bootstrap, nresamples=2, rng=StableRNG(seed))
+            @test all(isfinite, vcov(I))
+        end
+    end
+
+    @testset "refusals" begin
+        U = rand(StableRNG(525), ClaytonCopula{2}(2.0), n)
+        @test_throws DimensionMismatch fit(ClaytonCopula, U; weights=ones(n - 1))
+        @test_throws ArgumentError fit(ClaytonCopula, U; weights=-ones(n))
+        @test_throws ArgumentError fit(ClaytonCopula, U; weights=zeros(n))
+        @test_throws ArgumentError fit(ClaytonCopula, U; weights=[NaN; ones(n - 1)])
+        @test_throws ArgumentError fit(ClaytonCopula, U; weights=[Inf; ones(n - 1)])
+        @test_throws ArgumentError fit(ClaytonCopula, U; weights=ones(n, 1))
+        for method in (:itau, :irho, :ibeta)
+            @test_throws ArgumentError fit(ClaytonCopula, U; method, weights=ones(n))
+        end
+        @test_throws ArgumentError fit(GalambosCopula, U; method=:iupper, weights=ones(n))
+        @test_throws ArgumentError fit(BetaCopula, U; weights=ones(n))
+        @test_throws ArgumentError fit(EmpiricalCopula, U; weights=ones(n))
+
+        X = randn(StableRNG(526), 2, n)
+        @test_throws ArgumentError fit(SklarDist{ClaytonCopula,Tuple{Normal,Normal}}, X;
+                                       copula_kwargs=(; weights=ones(n)))
+
+        weighted = fit(CopulaModel, ClaytonCopula, U; weights=rand(StableRNG(527), n))
+        @test_throws ArgumentError infer(weighted)
+        @test_throws ArgumentError infer(weighted; method=:hessian)
+        @test_throws ArgumentError infer(weighted; method=:bootstrap, nresamples=2)
+        @test_throws ArgumentError Copulas._refit(weighted, U)
+        @test_throws ArgumentError GOFCopulaTest(weighted; N=2)
+        @test_throws ArgumentError GOFCopulaTest(weighted, U; N=2)
+    end
+end
