@@ -24,10 +24,16 @@ jobs:
           from pathlib import Path
 
           p = Path('src/Tail/HuslerReissTail.jl')
-          p.write_text(p.read_text().replace(
+          text = p.read_text()
+          text = text.replace(
               'θ = tail.parameter',
               'θ = something(tail.θ)',
-          ))
+          )
+          text = text.replace(
+              'all(iszero, tail.parameter) ? maximum(x) : _hr_stdf(tail.parameter, x)',
+              'all(iszero, something(tail.Γ)) ? maximum(x) : _hr_stdf(something(tail.Γ), x)',
+          )
+          p.write_text(text)
 
           p = Path('src/Tail/tEVTail.jl')
           p.write_text(p.read_text().replace(
