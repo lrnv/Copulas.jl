@@ -27,7 +27,7 @@ References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.6. 
 """
 struct RafteryCopula{d, P} <: Copula{d}
-    θ::P  # Copula parameter
+    θ::P
     function RafteryCopula{d}(θ) where {d}
         d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         (0 <= θ <= 1) || throw(ArgumentError("Theta must be in [0,1]"))
@@ -41,9 +41,8 @@ RafteryCopula(d, θ) = RafteryCopula{d}(θ)
 (::Type{<:RafteryCopula{D,P}})(d::Int, θ) where {D,P} = RafteryCopula{d}(θ)
 Base.eltype(R::RafteryCopula) = eltype(R.θ)
 Distributions.params(R::RafteryCopula) = (θ = R.θ,)
-_example(::Type{<:RafteryCopula}, d) = RafteryCopula(d, 0.5)
-_unbound_params(::Type{<:RafteryCopula}, d, θ) = [LogExpFunctions.logit(θ.θ)]
-_rebound_params(::Type{<:RafteryCopula}, d, α) = (; θ = LogExpFunctions.logistic(α[1]))
+Paramorph.param_space(::Type{<:RafteryCopula}, d) = Paramorph.Prob(:θ)
+
 function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
     iszero(R.θ) && return prod(u)
     isone(R.θ) && return minimum(u)

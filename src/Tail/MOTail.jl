@@ -97,8 +97,10 @@ function Distributions.params(tail::MOTail)
     return (λ₁=λ₁, λ₂=λ₂, λ₃=λ₁₂)
 end
 
-_unbound_params(::Type{<:MOTail}, d, θ) = [log(θ.λ₁), log(θ.λ₂), log(θ.λ₃)]
-_rebound_params(::Type{<:MOTail}, d, α) = (; λ₁ = exp(α[1]), λ₂ = exp(α[2]), λ₃ = exp(α[3]))
+function Paramorph.param_space(::Type{<:MOTail}, d)
+    d == 2 || throw(ArgumentError("generic Marshall-Olkin parameter coordinates are available only in dimension two"))
+    return (Paramorph.Pos(:λ₁), Paramorph.Pos(:λ₂), Paramorph.Pos(:λ₃))
+end
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:MOTail} where D}, d) =
     d == 2 ? (:mle,) : ()
 
@@ -109,7 +111,6 @@ function A(tail::MOTail{T}, t::Real) where T
     om = 1 - tt
     d1 = λ₁ + λ₁₂
     d2 = λ₂ + λ₁₂
-    # Use inv where possible; if a denominator is zero (degenerate), treat the corresponding ratio as zero
     r1 = d1 > 0 ? om * (λ₁ / d1) : zz
     r2 = d2 > 0 ? tt * (λ₂ / d2) : zz
     m1 = d1 > 0 ? (om / d1) : zz
@@ -120,8 +121,8 @@ end
 function _mo_exponents(tail::MOTail, ::Type{R}) where R
     λ₁, λ₂, λ₁₂ = R.(_mo_bivariate_rates(tail))
     d1, d2 = λ₁ + λ₁₂, λ₂ + λ₁₂
-    a = iszero(d2) ? zero(R) : λ₂ / d2  # exponent of u
-    b = iszero(d1) ? zero(R) : λ₁ / d1  # exponent of v
+    a = iszero(d2) ? zero(R) : λ₂ / d2
+    b = iszero(d1) ? zero(R) : λ₁ / d1
     return a, b
 end
 function _pickands_left_slope(tail::MOTail, x::Real)
@@ -149,8 +150,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     (rate_u > 0 && rate_v > 0) || throw(ArgumentError("Each Marshall-Olkin margin must have a positive total rate"))
     waiting_time(rate) = iszero(rate) ? T(Inf) : Random.randexp(rng, T) / rate
 
-    # The first Pickands coordinate used by A is -log(u), so its private
-    # shock has rate λ₂; the second coordinate analogously uses rate λ₁.
     @inbounds for col in axes(A, 2)
         private_u = waiting_time(λ₂T)
         private_v = waiting_time(λ₁T)
@@ -175,11 +174,9 @@ function Distributions.logcdf(D::BivEVDistortion{MOTail{T}, S}, z::Real) where {
     s1, s2 = a*lu + lv, lu + b*lv
 
     if D.j == 2
-        # Equality is the post-jump side as the free variable u increases.
         logC, factor = _ev_le(s1, s2) ? (s1, one(R)) : (s2, b)
         return iszero(factor) ? R(-Inf) : logC - lv + log(factor)
     else
-        # Equality is the post-jump side as the free variable v increases.
         logC, factor = _ev_lt(s1, s2) ? (s1, a) : (s2, one(R))
         return iszero(factor) ? R(-Inf) : logC - lu + log(factor)
     end
@@ -195,7 +192,6 @@ function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) wher
     t ≤ zero(R) && return _biv_ev_endpoint_quantile(D, p, true, R)
     t ≥ one(R) && return _biv_ev_endpoint_quantile(D, p, false, R)
 
-    # Degenerate parameter cases are safest through the generalized inverse.
     if !(zero(R) < a < one(R) && zero(R) < b < one(R))
         return _quantile_from_cdf(D, p)
     end

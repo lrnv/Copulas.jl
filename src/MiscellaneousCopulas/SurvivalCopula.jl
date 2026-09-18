@@ -213,7 +213,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::AbstractReflect
     return _survival_reverse!(A, flipmask(C))
 end
 
-# Fitting: delegate to the base copula after flipping the requested indices in U
+# Fitting is structural: transform the observations, fit the base family, then
+# reconstruct the reflected wrapper. Parameter geometry belongs to the base
+# family and is not duplicated on the wrapper type.
 Distributions.params(S::AbstractReflectedCopula) = Distributions.params(basecopula(S))
 
 function _fit_reflected(::Type{subCT}, U, m, mask; kwargs...) where {subCT}
@@ -269,17 +271,6 @@ _fit(CT::Type{<:Rotated270Copula}, U, m::Val{:mle}; kwargs...) =
 _available_fitting_methods(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} = _available_fitting_methods(subCT, d)
 _available_fitting_methods(::Type{<:AbstractReflectedCopula{D,subCT}}, d) where {D,subCT} = _available_fitting_methods(subCT, d)
 
-_example(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} = SurvivalCopula(_example(subCT, d), ())
-_example(::Type{<:Rotated90Copula{2,subCT}}, d) where {subCT} = Rotated90Copula(_example(subCT, d))
-_example(::Type{<:Rotated180Copula{2,subCT}}, d) where {subCT} = Rotated180Copula(_example(subCT, d))
-_example(::Type{<:Rotated270Copula{2,subCT}}, d) where {subCT} = Rotated270Copula(_example(subCT, d))
-
-# Parameter transfer for fitting: delegate to underlying copula
-_unbound_params(::Type{<:SurvivalCopula{d,CT}}, d_, θ) where {d,CT} = _unbound_params(CT, d_, θ)
-_rebound_params(::Type{<:SurvivalCopula{d,CT}}, d_, α) where {d,CT} = _rebound_params(CT, d_, α)
-_unbound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, θ) where {d,CT} = _unbound_params(CT, d_, θ)
-_rebound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, α) where {d,CT} = _rebound_params(CT, d_, α)
-
 # Conditioning bindings colocated
 function distortion(S::AbstractReflectedCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {D,p}
     mask = flipmask(S)
@@ -296,7 +287,6 @@ function conditional_copula(S::AbstractReflectedCopula{D}, js, uⱼₛ) where {D
     return SurvivalCopula(CC_base, flip_positions)
 end
 
-# Subsetting colocated: subset and remap flipped indices to the new positions
 function SubsetCopula(C::AbstractReflectedCopula{d}, dims::NTuple{p, Int}) where {d,p}
     mask = flipmask(C)
     newflips = Tuple(k for (k, i) in enumerate(dims) if mask[i])
@@ -304,7 +294,6 @@ function SubsetCopula(C::AbstractReflectedCopula{d}, dims::NTuple{p, Int}) where
 end
 
 function τ(C::AbstractReflectedCopula{2})
-    # For bivariate, flipping one margin negates tau, flipping both leaves tau unchanged
     if count(identity, flipmask(C)) % 2 == 1
         return -τ(basecopula(C))
     else

@@ -39,8 +39,8 @@ const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
 @inline limit_kind(G::BB7Generator, ::Val) =
     isone(G.θ) && isinf(G.δ) ? M_LIMIT : NO_LIMIT
 Distributions.params(G::BB7Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB7Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
-_rebound_params(::Type{<:BB7Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
+Paramorph.param_space(::Type{<:BB7Generator}, d) =
+    (Paramorph.LowerClosed(:θ, 1.0), Paramorph.Pos(:δ))
 
 ϕ(  G::BB7Generator, s) = begin
     a = exp( -inv(G.δ)*log1p(s) )  

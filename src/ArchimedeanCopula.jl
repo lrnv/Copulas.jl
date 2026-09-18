@@ -145,7 +145,7 @@ function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, arg
     return _typed_archimedean(CT, first, args...; kwargs...)
 end
 
-Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters.
+Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G)
 
 @inline function _cdf(C::ArchimedeanCopula{d}, u) where {d}
     kind = limit_kind(C.G, Val(d))
@@ -219,6 +219,9 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
     return A
 end
 generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
+
+Paramorph.param_space(CT::Type{<:ArchimedeanCopula}, d::Integer) =
+    Paramorph.param_space(generatorof(CT), d)
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
@@ -311,74 +314,34 @@ SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = Arch
 ####### Fitting interfaces.
 ##############################################################################################################################
 
-_example(::Type{ArchimedeanCopula}, d) = throw(ArgumentError(
-    "cannot fit an Archimedean copula without specifying its generator (unless method=:gnz2011)"))
-_example(CT::Type{<:ArchimedeanCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(generatorof(CT))))...)
-_example(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = ArchimedeanCopula(d,𝒲(Distributions.MixtureModel([Distributions.Dirac(1), Distributions.Dirac(2)]),d))
-_example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw(ArgumentError(
-    "no default fitting example is implemented for FrailtyGenerator copulas"))
-
-_unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
-_rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)
-
-@inline function _construct_fitted_copula(
-    CT::Type{<:ArchimedeanCopula},
-    ::Val{d},
-    θ,
-    example,
-) where {d}
-    # CT may already carry a concrete numeric generator type, e.g.
-    # ArchimedeanCopula{3,ClaytonGenerator{Float64}}.
-    #
-    # Drop that numeric type parameter so reconstruction remains compatible
-    # with ForwardDiff.Dual values inside fitting objectives.
-    GT = Base.typename(Base.unwrap_unionall(generatorof(CT))).wrapper
-    G = GT(θ...)
-
-    # Preserve the same boundary reductions as the regular constructors.
-    G isa IndependentGenerator && return IndependentCopula{d}()
-    G isa MGenerator && return MCopula{d}()
-    G isa WGenerator && return WCopula{d}()
-
-    return _wrap_archimedean(Val(d), G)
-end
-
 _available_fitting_methods(::Type{ArchimedeanCopula}, d) = (:gnz2011,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}, d) = (:mle,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}, d) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where d}, d) = Tuple{}()
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = Tuple{}() # No fitting method.
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = Tuple{}()
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲{<:Distributions.DiscreteNonParametric}} where d}, d) = (:gnz2011,)
 
-
 function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:𝒲{<:Distributions.DiscreteNonParametric}} where d}}, U, ::Val{:gnz2011})
-    # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted.
     return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U))
 end
 
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}}; weights=nothing)
     d = size(U,1)
     GT = generatorof(CT)
-
-    invf =  m isa Val{:itau} ?  τ⁻¹ : ρ⁻¹
-
-    m = _rank_measure(m, U, weights)
-    upper_triangle_flat = [m[idx] for idx in CartesianIndices(m) if idx[1] < idx[2]]
+    invf = m isa Val{:itau} ? τ⁻¹ : ρ⁻¹
+    measure = _rank_measure(m, U, weights)
+    upper_triangle_flat = [measure[idx] for idx in CartesianIndices(measure) if idx[1] < idx[2]]
     θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
-
-    θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
+    θ = Statistics.mean(θs)
     return CT(d, θ)
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta}; weights=nothing)
-    d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
-    βobs = clamp(_weighted_β(U, weights), -1+1e-10, 1-1e-10)
-    lo,hi = _θ_bounds(GT,d)
-    fβ(θ) = β(CT(d,θ))
-    a0 = isfinite(lo) ? lo+δ : -5.0 ; b0 = isfinite(hi) ? hi-δ :  5.0
-    βmin, βmax = fβ(a0), fβ(b0)
-    if βmin > βmax; βmin, βmax = βmax, βmin; end
-    θ = βobs ≤ βmin ? a0 : βobs ≥ βmax ? b0 : Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
-    return CT(d,θ)
+    d = size(U,1)
+    pspace = Paramorph.param_space(CT, d)
+    βobs = clamp(_weighted_β(U, weights), nextfloat(-1), prevfloat(1))
+    obj(α) = β(CT(d, Paramorph.constrain(pspace, [α]))) - βobs
+    α = Roots.find_zero(obj, (-Inf, Inf), Roots.Brent(); xatol=1e-8, rtol=0)
+    return CT(d, Paramorph.constrain(pspace, [α]))
 end
 
 function _fit(
@@ -399,51 +362,26 @@ function _fit(
     weights=nothing,
 ) where {d}
     GT = generatorof(CT)
-    lo, hi = _θ_bounds(GT, d)
 
-    example = _example(CT, d)
-
-    θ₀ = [StatsBase.middle(lo, hi)]
+    pspace = Paramorph.param_space(CT, d)
+    θ₀ = zeros(Paramorph.dimension(pspace))
 
     if start isa Real
         θ₀[1] = start
     elseif start ∈ (:itau, :irho)
-        # Keep this call on the existing 3-argument specialized
-        # Archimedean rank-fitting path.
-        θ₀[1] = only(Distributions.params(_fit(CT, U, Val{start}())))
+        θ₀[1] = only(Distributions.params(_fit(CT, U, Val{start}(); weights)))
     end
 
-    if θ₀[1] <= lo || θ₀[1] >= hi
-        θ₀[1] = Distributions.params(example)[1]
-    end
-
-    vd = Val(d)
-
-    cop(θ) = _construct_fitted_copula(
-        CT,
-        vd,
-        (; θ=θ[1]),
-        example,
-    )
-
+    cop(θ) = CT(d, Paramorph.constrain(pspace, θ))
     f(θ) = -_weighted_loglikelihood(cop(θ), U, weights)
 
     res = Optim.optimize(
         f,
-        Optim.TwiceDifferentiableConstraints([lo], [hi]),
+        Optim.TwiceDifferentiableConstraints(),
         θ₀,
         Optim.IPNewton();
         autodiff=ADTypes.AutoForwardDiff(),
     )
 
-    θ = Optim.minimizer(res)[1]
-
-    fitted = _construct_fitted_copula(
-        CT,
-        vd,
-        (; θ=θ),
-        example,
-    )
-
-    return fitted
+    return cop(Optim.minimizer(res))
 end

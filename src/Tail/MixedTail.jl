@@ -64,12 +64,7 @@ end
 const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
 Distributions.params(tail::MixedTail) = (θ = tail.θ,)
 _is_valid_in_dim(::MixedTail, d::Int) = d >= 2
-_unbound_params(::Type{<:MixedTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
-_rebound_params(::Type{<:MixedTail}, d, α) = begin
-    θ = LogExpFunctions.logistic(α[1])
-    return (; θ)
-end
-_θ_bounds(::Type{<:MixedTail}, d) = (0.0, 1.0)
+Paramorph.param_space(::Type{<:MixedTail}, d) = Paramorph.Prob(:θ)
 
 A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1
 
@@ -110,11 +105,7 @@ function _ellpartial_signlog(tail::MixedTail, x, I::Tuple{Vararg{Int}},)
     return signg, log(θ) + logg
 end
 
-
-
-
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MixedTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-
     limit_kind(C.tail, Val(d)) === Π_LIMIT && return Random.rand!(rng, X)
     n = size(X, 2)
 
@@ -157,13 +148,11 @@ end
 function dA(tail::MixedTail, t::Real)
     tt = _safett(t)
     θ = tail.θ
-
     return θ * (2tt - 1)
 end
 
 function d²A(tail::MixedTail, t::Real)
     θ = tail.θ
-
     return 2θ
 end
 
@@ -172,22 +161,15 @@ _tau_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 :
 _rho_Mixed(θ; kw...) = θ ≤ 0 ? 0.0 : θ ≥ 1 ? 1.0 : 12 * QuadGK.quadgk(t -> inv((θ*t^2 - θ*t + 1 + 1)^2), 0, 1; kw...)[1] - 3
 
 function τ(C::ExtremeValueCopula{2,<:MixedTail})
-    limit_kind(C.tail, Val(2)) === Π_LIMIT &&
-        return 0.0
-
+    limit_kind(C.tail, Val(2)) === Π_LIMIT && return 0.0
     θ = C.tail.θ
-    return 8 / sqrt(θ * (4 - θ)) *
-           atan(sqrt(θ / (4 - θ))) - 2
+    return 8 / sqrt(θ * (4 - θ)) * atan(sqrt(θ / (4 - θ))) - 2
 end
 function ρ(C::ExtremeValueCopula{2,<:MixedTail})
-    limit_kind(C.tail, Val(2)) === Π_LIMIT &&
-        return 0.0
-
+    limit_kind(C.tail, Val(2)) === Π_LIMIT && return 0.0
     θ = C.tail.θ
-    return -3 +
-           12 / (8 - θ) +
-           96 * atan(sqrt(θ / (8 - θ))) /
-           (sqrt(θ) * (8 - θ)^(3 / 2))
+    return -3 + 12 / (8 - θ) +
+           96 * atan(sqrt(θ / (8 - θ))) / (sqrt(θ) * (8 - θ)^(3 / 2))
 end
 β(C::ExtremeValueCopula{2,<:MixedTail}) = 2.0^(C.tail.θ / 2) - 1
 λᵤ(C::ExtremeValueCopula{2,<:MixedTail}) = C.tail.θ / 2

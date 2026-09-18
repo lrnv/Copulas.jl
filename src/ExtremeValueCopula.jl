@@ -297,26 +297,15 @@ end
 
 tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 
-##############################################################################################################################
-####### Fitting functions for univariate tails only (Extreme Value Copulas).
-##############################################################################################################################
+Paramorph.param_space(CT::Type{<:ExtremeValueCopula}, d::Integer) =
+    Paramorph.param_space(tailof(CT), d)
 
-_example(CT::Type{<:ExtremeValueCopula}, d) =
-    ExtremeValueCopula{d}(tailof(CT)(;
-        _rebound_params(CT, d, fill(0.01, fieldcount(tailof(CT))))...,
-    ))
-_construct_fitted_copula(
-    ::Type{<:ExtremeValueCopula},
-    ::Val{d},
-    θ,
-    example,
-) where {d} =
-    ExtremeValueCopula{d}(tailof(typeof(example))(θ...))
-_unbound_params(CT::Type{<:ExtremeValueCopula}, d, θ) = _unbound_params(tailof(CT), d, θ)
-_rebound_params(CT::Type{<:ExtremeValueCopula}, d, α) = _rebound_params(tailof(CT), d, α)
+##############################################################################################################################
+####### Fitting functions for parameterized tails (Extreme Value Copulas).
+##############################################################################################################################
 
 _available_fitting_methods(::Type{ExtremeValueCopula}, d) = (:ols, :cfg, :pickands)
-_available_fitting_methods(CT::Type{<:ExtremeValueCopula}, d) = (:mle,)
+_available_fitting_methods(::Type{<:ExtremeValueCopula}, d) = (:mle,)
 _available_fitting_methods(CT::Type{<:ExtremeValueCopula{2,GT} where {GT<:OneParameterPickandsTail}}, d) =  (:mle, :itau, :irho, :ibeta, :iupper)
 
 # Fitting empírico (OLS, CFG, Pickands):
@@ -329,50 +318,35 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     C = EmpiricalEVCopula(U; method=m, pseudo_values=pseudo_values, kwargs...)
     return C
 end
+
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}}; weights=nothing)
-    TT = tailof(typeof(_example(CT, 2)))
-    est = _rank_measure(m, U, weights)[1,2]
+    size(U, 1) == 2 || throw(DimensionMismatch("bivariate rank inversion requires two-dimensional data"))
+    est = _rank_measure(m, U, weights)[1, 2]
     θ = m isa Val{:itau} ? τ⁻¹(CT, est) :
-        m isa Val{:irho} ? ρ⁻¹(CT, est) :
-                           β⁻¹(CT, est)
-    lo, hi = _θ_bounds(TT, 2)
-    # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
-    θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
-    return ExtremeValueCopula{2}(TT(θ))
+        m isa Val{:irho} ? ρ⁻¹(CT, est) : β⁻¹(CT, est)
+    return CT(2, θ)
 end
+
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
-    TT = tailof(typeof(_example(CT, 2)))
-    θ = clamp(λᵤ⁻¹(CT, λᵤ(U)), _θ_bounds(TT, 2)...)
-    return ExtremeValueCopula{2}(TT(θ))
+    return CT(2, λᵤ⁻¹(CT, λᵤ(U)))
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, weights=nothing)
-    d = size(U,1)
-    example = _example(CT, d)
-    ConcreteCT = typeof(example)
-    TT = tailof(ConcreteCT)
-    lo, hi = _θ_bounds(TT, d)
-    θ0_val = if start isa Real
-        start
+    d = size(U, 1)
+    pspace = Paramorph.param_space(CT, d)
+    α₀ = if start isa Real
+        Paramorph.unconstrain(pspace, start)
+    elseif start ∈ (:itau, :irho, :ibeta)
+        θ₀ = only(values(Distributions.params(_fit(CT, U, Val{start}(); weights))))
+        Paramorph.unconstrain(pspace, θ₀)
+    elseif start === :iupper
+        θ₀ = only(values(Distributions.params(_fit(CT, U, Val(:iupper)))))
+        Paramorph.unconstrain(pspace, θ₀)
     else
-        initial_params = start ∈ (:itau, :irho, :ibeta, :iupper) ? Distributions.params(_fit(CT, U, Val{start}())) : only(Distributions.params(example))
-        initial_params.θ
+        zeros(Paramorph.dimension(pspace))
     end
-    # Keep the starting value strictly inside every finite boundary before
-    # mapping it to the tail's unconstrained parameterization. In particular,
-    # log and logit maps send otherwise valid boundary values to ±Inf.
-    Tθ = promote_type(typeof(float(θ0_val)), typeof(float(lo)), typeof(float(hi)))
-    loT, hiT = Tθ(lo), Tθ(hi)
-    inward(x) = sqrt(eps(Tθ)) * max(one(Tθ), abs(x))
-    lo_start = isfinite(loT) ? loT + inward(loT) : -Tθ(1e16)
-    hi_start = isfinite(hiT) ? hiT - inward(hiT) : Tθ(1e16)
-    θ0_clamped = clamp(Tθ(θ0_val), lo_start, hi_start)
-    θ0 = (; θ=θ0_clamped)
-    α0 = _unbound_params(ConcreteCT, d, θ0)
-    all(isfinite, α0) || throw(ArgumentError("MLE start must map to finite unbounded parameters"))
-    cop(α) = ExtremeValueCopula{d}(TT(_rebound_params(ConcreteCT, d, α)...))
+    cop(α) = CT(d, Paramorph.constrain(pspace, α))
     f(α) = -_weighted_loglikelihood(cop(α), U, weights)
-    res = Optim.optimize(f, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
-    θ̂ = _rebound_params(ConcreteCT, d, Optim.minimizer(res))
-    return ExtremeValueCopula{d}(TT(θ̂...))
+    res = Optim.optimize(f, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
+    return cop(Optim.minimizer(res))
 end

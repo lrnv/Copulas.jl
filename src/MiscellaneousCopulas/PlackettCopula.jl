@@ -30,8 +30,8 @@ References:
 * [johnson1987multivariate](@cite) Johnson, Mark E. Multivariate statistical simulation: A guide to selecting and generating continuous multivariate distributions. Vol. 192. John Wiley & Sons, 1987. Page 193.
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.38.
 """
-struct PlackettCopula{d,P} <: Copula{d} # only d = 2 is valid
-    θ::P  # Copula parameter
+struct PlackettCopula{d,P} <: Copula{d}
+    θ::P
 
     function PlackettCopula{d}(θ) where {d}
         d == 2 || throw(DimensionMismatch("PlackettCopula is only defined in dimension 2"))
@@ -46,11 +46,8 @@ PlackettCopula(d::Integer, θ::Real) = PlackettCopula{d}(θ)
 
 Base.eltype(::PlackettCopula{2,P}) where {P} = P
 Distributions.params(C::PlackettCopula) = (θ = C.θ,)
-_example(::Type{<:PlackettCopula}, d::Integer) = PlackettCopula(0.5)
-_unbound_params(::Type{<:PlackettCopula}, d::Integer, θ) = [log(θ.θ)]         # θ > 0
-_rebound_params(::Type{<:PlackettCopula}, d::Integer, α) = (; θ = exp(α[1]))
+Paramorph.param_space(::Type{<:PlackettCopula}, d) = Paramorph.NonNeg(:θ)
 
-# CDF calculation for bivariate Plackett Copula
 function _cdf(S::PlackettCopula, uv)
     u, v = uv
     iszero(S.θ) && return max(u + v - 1, zero(u + v))
@@ -65,13 +62,12 @@ end
 copula_measure_style(C::PlackettCopula) =
     (iszero(C.θ) || isinf(C.θ)) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
-# PDF calculation for bivariate Plackett Copula
 function Distributions._logpdf(S::PlackettCopula, uv)
     u, v = uv
     η = S.θ - 1
     term1 = S.θ * (1 + η * (u + v - 2 * u * v))
     term2 = (1+η*(u+v))^2-4*(S.θ)*η*u*v
-    return log(term1) - 3 * log(term2)/2 # since we are supposed to return the logpdf. 
+    return log(term1) - 3 * log(term2)/2
 end
 import Random
 
@@ -93,7 +89,6 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::Abstract
     return A
 end
 
-# Calculate Spearman's rho based on the PlackettCopula parameters
 function ρ(c::PlackettCopula)
     iszero(c.θ) && return -one(c.θ)
     isone(c.θ) && return zero(c.θ)
@@ -105,10 +100,8 @@ function β(c::PlackettCopula)
     isone(c.θ) && return zero(c.θ)
     isinf(c.θ) && return one(c.θ)
     return (sqrt(c.θ)-1)/(sqrt(c.θ)+1)
-    # and inverse beta: θ = ((1+β)/(1-β))^2
 end
 
-# Conditioning colocated
 function distortion(C::PlackettCopula, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int)
     j = Int8(js[1])
     uⱼ = float(uⱼₛ[1])

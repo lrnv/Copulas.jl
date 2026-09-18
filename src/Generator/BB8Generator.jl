@@ -45,8 +45,10 @@ const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
     isone(G.δ) && isinf(G.ϑ) ? M_LIMIT :
     NO_LIMIT
 Distributions.params(G::BB8Generator) = (ϑ = G.ϑ, δ = G.δ)
-_unbound_params(::Type{<:BB8Generator}, d, θ) = [log(θ.ϑ - 1), LogExpFunctions.logit(θ.δ)]
-_rebound_params(::Type{<:BB8Generator}, d, α) = (; ϑ = 1 + exp(α[1]), δ = LogExpFunctions.logistic(α[2]))
+Paramorph.param_space(::Type{<:BB8Generator}, d) = (
+    Paramorph.LowerClosed(:ϑ, 1.0),
+    Paramorph.ProbOpenLeft(:δ),
+)
 
 @inline _η(G::BB8Generator) = -expm1(G.ϑ * log1p(-G.δ))
 

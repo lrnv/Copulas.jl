@@ -46,9 +46,8 @@ const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 end
 
 Distributions.params(G::ClaytonGenerator) = (θ = G.θ,)
-_unbound_params(::Type{<:ClaytonGenerator}, d, θ) = [log(θ.θ + 1/(d-1))] # θ > -1/(d-1) ⇒ θ+1/(d-1)>0
-_rebound_params(::Type{<:ClaytonGenerator}, d, α) = (; θ = exp(α[1]) - 1/(d-1))
-_θ_bounds(::Type{<:ClaytonGenerator}, d) = (-1/(d-1), Inf)
+Paramorph.param_space(::Type{<:ClaytonGenerator}, d::Integer) =
+    Paramorph.LowerClosed(:θ, -inv(d - 1))
 
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : (1 - 1/G.θ)
 archimedean_measure_style(G::ClaytonGenerator, ::Val{d}) where {d} =

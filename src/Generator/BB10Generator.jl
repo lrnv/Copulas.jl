@@ -38,8 +38,8 @@ const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
 @inline limit_kind(G::BB10Generator, ::Val) = iszero(G.δ) ? Π_LIMIT : NO_LIMIT
 
 Distributions.params(G::BB10Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB10Generator}, d, θ) = [log(θ.θ), LogExpFunctions.logit(θ.δ)]
-_rebound_params(::Type{<:BB10Generator}, d, α) = (; θ = exp(α[1]), δ = LogExpFunctions.logistic(α[2]))
+Paramorph.param_space(::Type{<:BB10Generator}, d) =
+    (Paramorph.Pos(:θ), Paramorph.Prob(:δ))
 
 ϕ(G::BB10Generator, s) = begin
     θ, δ = G.θ, G.δ

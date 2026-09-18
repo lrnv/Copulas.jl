@@ -1252,10 +1252,8 @@ end
 #
 # The optimiser runs in UNCONSTRAINED reparameterised α-space, exactly like the
 # generic `_fit(::Type{<:Copula}, U, ::Val{:mle})` driver in Fitting.jl: each
-# generator's params are mapped to ℝ^p by the per-family `_unbound_params` and
-# back by `_rebound_params`. This (a) keeps every individual generator inside its
-# own valid family domain at all times, (b) sidesteps the missing `_θ_bounds` for
-# the BB families, and (c) needs no box-constraint machinery.
+# generator's params are mapped to ℝ^p by the per-family `Paramorph.param_space`, `unconstrain` and `constrain`. This (a) keeps every individual generator inside its
+# own valid family domain at all times, and (b) needs no box-constraint machinery.
 #
 # NESTING VALIDITY: the DEFAULT parametrisation does not enforce the cross-node
 # "inner at least as dependent as outer" condition (the constructor leaves it to
@@ -1278,13 +1276,19 @@ _gentype(G::Generator) = typeof(G).name.wrapper
 
 # Local arity = number of ϕ⁻¹ terms this generator sums = #direct leaves +
 # #direct children (for a node) or block size (for a flat child). This is the `d`
-# whose per-family validity bound the generator's _unbound/_rebound depend on
+# whose per-family validity bound the generator's Paramorph space depends on
 # (Clayton's −1/(d−1); AMH/GumbelBarnett critical values; Frank's d==2 vs d≥3).
 # Passing the GLOBAL tree d would over-restrict inner generators. Clamped to ≥2
 # so Clayton's 1/(d−1) is finite for a single-child node.
 _local_arity(C::NestedArchimedeanCopula) = max(length(C.leafdims) + length(C.children), 2)
 
-# ---- FLATTEN: tree generators -> unconstrained ℝ^p vector -------------------
+# ---- FLATTEN: tree generators -> unconstrained coordinates -----------------
+_generator_space(G::Generator, dloc) = Paramorph.param_space(_gentype(G), dloc)
+_generator_coordinates(G::Generator, dloc) =
+    _parameter_space_coordinates(_generator_space(G, dloc), Distributions.params(G))
+_generator_from_coordinates(G::Generator, dloc, α) =
+    _gentype(G)(_parameter_arguments(Paramorph.constrain(_generator_space(G, dloc), α))...)
+
 function _nested_unbound(C::NestedArchimedeanCopula)
     α = Float64[]
     _push_node!(α, C)
@@ -1292,32 +1296,27 @@ function _nested_unbound(C::NestedArchimedeanCopula)
 end
 function _push_node!(α, C::NestedArchimedeanCopula)
     dloc = _local_arity(C)
-    append!(α, _unbound_params(_gentype(C.G), dloc, Distributions.params(C.G)))
+    append!(α, _generator_coordinates(C.G, dloc))
     for ch in C.children
-        if ch isa Tuple                       # (flat ArchimedeanCopula, dims)
+        if ch isa Tuple
             cc, ds = ch
-            append!(α, _unbound_params(_gentype(cc.G), max(length(ds), 2),
-                                       Distributions.params(cc.G)))
-        else                                  # nested child
+            append!(α, _generator_coordinates(cc.G, max(length(ds), 2)))
+        else
             _push_node!(α, ch)
         end
     end
     return α
 end
 
-# Block length of a generator's α-slice (single-sourced through _unbound_params).
-_blocklen(G::Generator, dloc) =
-    length(_unbound_params(_gentype(G), dloc, Distributions.params(G)))
+_blocklen(G::Generator, dloc) = Paramorph.dimension(_generator_space(G, dloc))
 
-# ---- REBUILD: same tree skeleton + new α -> NestedArchimedeanCopula ----------
-# Consume α left-to-right in the IDENTICAL pre-order; rebuild every generator with
-# its new θ while preserving leafdims / children dims / tree shape exactly.
+# ---- REBUILD: same tree skeleton + new coordinates -> tree -----------------
 _nested_rebound(C::NestedArchimedeanCopula, α::AbstractVector) =
     _rebuild_node(C, α, Ref(1))
 function _rebuild_node(C::NestedArchimedeanCopula, α, i::Ref{Int})
     dloc = _local_arity(C)
     k = _blocklen(C.G, dloc)
-    newG = _gentype(C.G)(values(_rebound_params(_gentype(C.G), dloc, α[i[]:i[]+k-1]))...)
+    newG = _generator_from_coordinates(C.G, dloc, α[i[]:i[]+k-1])
     i[] += k
     newkids = Any[]
     for ch in C.children
@@ -1325,7 +1324,7 @@ function _rebuild_node(C::NestedArchimedeanCopula, α, i::Ref{Int})
             cc, ds = ch
             dl = max(length(ds), 2)
             kk = _blocklen(cc.G, dl)
-            ng = _gentype(cc.G)(values(_rebound_params(_gentype(cc.G), dl, α[i[]:i[]+kk-1]))...)
+            ng = _generator_from_coordinates(cc.G, dl, α[i[]:i[]+kk-1])
             i[] += kk
             push!(newkids, (ArchimedeanCopula(length(ds), ng), ds))
         else
@@ -1333,24 +1332,13 @@ function _rebuild_node(C::NestedArchimedeanCopula, α, i::Ref{Int})
         end
     end
     return NestedArchimedeanCopula{length(C.dims), typeof(newG)}(
-               newG, copy(C.leafdims), newkids, copy(C.dims))
+        newG, copy(C.leafdims), newkids, copy(C.dims))
 end
 
-# ---- Fitting-interface opt-outs ---------------------------------------------
-# Advertise NO type-based fitting methods. The generic GenericTests "Fitting
-# interface" testset and the package's type-positional fit machinery
-# (`CT(d, θ...)`, `_example(CT, d)`) cannot reconstruct a tree copula, so we keep
-# them OFF for the nested type — `can_be_fitted` becomes false and that whole
-# block is skipped. The real, supported fit() is the instance API below. This
-# also stops the false advertising of :itau/:irho/:ibeta (meaningless for a tree).
+# ---- Fitting-interface opt-out ----------------------------------------------
+# A bare nested type cannot reconstruct a tree; fitting is supported through
+# the template-instance API below, so no type-based fitting method is advertised.
 _available_fitting_methods(::Type{<:NestedArchimedeanCopula}, d) = Tuple{}()
-
-# Bare-type _example throws: there is no canonical tree without a template
-# (mirrors ArchimedeanCopula's bare _example).
-_example(::Type{NestedArchimedeanCopula}, d) =
-    throw(ArgumentError("Cannot fit a NestedArchimedeanCopula from the bare type: " *
-        "the tree shape and generator families are not inferable from data. " *
-        "Pass a template instance, e.g. `fit(CopulaModel, C0, U)` or `fit(C0, U)`."))
 
 # ---- Parametrization layer (decoupled α -> tree map) ------------------------
 # fit() optimises an unconstrained vector α through a reconstruction map. The

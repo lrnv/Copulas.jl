@@ -35,8 +35,8 @@ end
 
 const BB9Copula{d, T} = ArchimedeanCopula{d, BB9Generator{T}}
 Distributions.params(G::BB9Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB9Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
-_rebound_params(::Type{<:BB9Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
+Paramorph.param_space(::Type{<:BB9Generator}, d) =
+    (Paramorph.LowerClosed(:θ, 1.0), Paramorph.Pos(:δ))
 
 ϕ(  G::BB9Generator, s) = begin
     a  = inv(G.θ)

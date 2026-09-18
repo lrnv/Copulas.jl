@@ -34,8 +34,8 @@ struct BB2Generator{T} <: AbstractFrailtyGenerator
 end
 const BB2Copula{d, T} = ArchimedeanCopula{d, BB2Generator{T}}
 Distributions.params(G::BB2Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB2Generator}, d, θ) = [log(θ.θ), log(θ.δ)]
-_rebound_params(::Type{<:BB2Generator}, d, α) = (; θ = exp(α[1]), δ = exp(α[2]))
+Paramorph.param_space(::Type{<:BB2Generator}, d) =
+    (Paramorph.Pos(:θ), Paramorph.Pos(:δ))
 
 ϕ(  G::BB2Generator, s) = exp(-log1p(log1p(s)/G.δ)/G.θ)
 ϕ⁻¹(G::BB2Generator, t) = expm1(G.δ*expm1(-G.θ*log(t)))

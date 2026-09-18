@@ -67,10 +67,8 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
 end
 GaussianCopula(Σ::AbstractMatrix) = GaussianCopula{size(Σ, 1)}(Σ)
 
-# Equicorrelation convenience constructor
 function GaussianCopula{d}(ρ::Real) where {d}
     d < 2 && throw(ArgumentError("Use a bivariate or higher dimension (d ≥ 2) or pass a 1×1 matrix."))
-    # Positive definiteness condition for equicorrelation matrix
     lower = -1/(d-1)
     ρ ≤ lower && throw(ArgumentError("Equicorrelation value ρ=$(ρ) not in (-1/(d-1), 1). For d=$d the lower open bound is $(lower)."))
     ρ ≥ 1 && throw(ArgumentError("Equicorrelation value ρ must be < 1."))
@@ -85,15 +83,12 @@ GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula{d}(Σ)
 (::Type{GaussianCopula{D,MT}})(d::Int, Σ::AbstractMatrix) where {D,MT} = GaussianCopula{d}(Σ)
 (::Type{GaussianCopula{D,MT}})(d::Int, ρ::Real) where {D,MT} = GaussianCopula{d}(ρ)
 
-U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
-N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
+U(::Type{T}) where T<:GaussianCopula = Distributions.Normal()
+N(::Type{T}) where T<:GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
-    # MvNormalCDF mutates its upper-bound work vector. HCubature supplies
-    # immutable StaticArrays to integrands, so always hand the backend a
-    # mutable dense vector.
     x = collect(StatsBase.quantile.(Distributions.Normal(), u))
     d = length(C)
-    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x; rng = Random.Xoshiro(0))[1]
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x; rng=Random.Xoshiro(0))[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})
@@ -155,15 +150,9 @@ end
 
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula{p}(C.Σ[collect(dims),collect(dims)])
 
-StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
+StatsBase.dof(C::Copulas.GaussianCopula) = (p = length(C); p*(p-1) ÷ 2)
 Distributions.params(C::GaussianCopula) = (; Σ = copy(C.Σ))
-_example(::Type{<:GaussianCopula}, d::Int) = GaussianCopula(d, 0.2)
-function _unbound_params(::Type{<:GaussianCopula}, d::Int, θ::NamedTuple)
-    return _unbound_corr_params(d, θ.Σ)
-end
-function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
-    return (; Σ = _rebound_corr_params(d, α))
-end
+Paramorph.param_space(::Type{<:GaussianCopula}, d) = Paramorph.Correlation(:Σ, d)
 function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
     d = size(Udata, 1)
     N01 = Distributions.Normal()

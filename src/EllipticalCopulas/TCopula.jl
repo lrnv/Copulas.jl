@@ -71,8 +71,7 @@ N(C::TCopula) = isinf(C.df) ? Distributions.MvNormal : (Σ -> Distributions.MvTD
 function _cdf(C::TCopula{d}, u) where d
     isinf(C.df) && return _cdf(_gaussian_limit(C), u)
     T = promote_type(eltype(C), eltype(u))
-    T <: Union{Float32,Float64} ||
-        return invoke(_cdf, Tuple{Copula,Any}, C, u)
+    T <: Union{Float32,Float64} || return invoke(_cdf, Tuple{Copula,Any}, C, u)
     upper = Distributions.quantile.(Distributions.TDist(C.df), u)
     return T(_mvtcdf(C.df, zeros(eltype(upper), d), C.Σ, upper))
 end
@@ -85,7 +84,7 @@ function _student_rosenblatt_cache(C::TCopula{d}) where d
         F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ[J, J]))
         β = F \ Σ[J, k]
         σ0² = max(Σ[k, k] - LinearAlgebra.dot(Σ[k, J], β), zero(eltype(Σ)))
-        return (; F, β, σ0 = sqrt(σ0²))
+        return (; F, β, σ0=sqrt(σ0²))
     end
 end
 
@@ -167,7 +166,7 @@ function ρ(C::TCopula{2})
 end
 
 function distortion(C::TCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p,D}
-    isinf(C.df) && return distortion(_gaussian_limit(C), js, uⱼₛ, i,)
+    isinf(C.df) && return distortion(_gaussian_limit(C), js, uⱼₛ, i)
     ν = C.df
     Σ = C.Σ; jst = js; ist = Tuple(setdiff(1:D, jst)); @assert i in ist
     Jv = collect(jst); zJ = Distributions.quantile.(Distributions.TDist(ν), collect(uⱼₛ))
@@ -201,8 +200,8 @@ end
 function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
                                  uⱼₛ::NTuple{p,<:Real}, is) where {D,p}
     if isinf(C.df)
-        Gcond, distortions = _conditional_components(_gaussian_limit(C), js, uⱼₛ, is,)
-        return TCopula(Inf, copy(Gcond.Σ),), distortions
+        Gcond, distortions = _conditional_components(_gaussian_limit(C), js, uⱼₛ, is)
+        return TCopula(Inf, copy(Gcond.Σ)), distortions
     end
     ν = C.df
     J = collect(Int, js)
@@ -227,18 +226,9 @@ function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
 end
 SubsetCopula(C::TCopula, dims::NTuple{p, Int}) where {p} = TCopula{p}(C.df, C.Σ[collect(dims),collect(dims)])
 
-StatsBase.dof(C::Copulas.TCopula)           = (p = length(C); p*(p-1) ÷ 2 + 1)
+StatsBase.dof(C::Copulas.TCopula) = (p = length(C); p*(p-1) ÷ 2 + 1)
 Distributions.params(C::TCopula) = (; ν = C.df, Σ = copy(C.Σ))
-_example(::Type{<:TCopula}, d::Int) = TCopula(5.0, Matrix(LinearAlgebra.I, d, d) .+ 0.2 .* (ones(d, d) .- Matrix(LinearAlgebra.I, d, d)))
-function _unbound_params(::Type{<:TCopula}, d::Int, θ::NamedTuple)
-    α = _unbound_corr_params(d, θ.Σ)
-    return vcat(log(θ.ν), α)
-end
-function _rebound_params(::Type{<:TCopula}, d::Int, α::AbstractVector{T}) where {T}
-    ν = exp(α[1])
-    Σ = _rebound_corr_params(d, @view α[2:end])
-    return (; ν = ν, Σ = Σ)
-end
+Paramorph.param_space(::Type{<:TCopula}, d) = (Paramorph.Pos(:ν), Paramorph.Correlation(:Σ, d))
 # Per-observation sums of the Student objective. The weighted form multiplies
 # the term of each column by its weight before the same reduction, so unit
 # weights reproduce the unweighted sum bit for bit.

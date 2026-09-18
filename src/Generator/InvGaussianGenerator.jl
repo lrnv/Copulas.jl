@@ -37,12 +37,10 @@ struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
         return new{typeof(θf)}(θf)
     end
 end
-const InvGaussianCopula{d, T}   = ArchimedeanCopula{d, InvGaussianGenerator{T}}
+const InvGaussianCopula{d, T} = ArchimedeanCopula{d, InvGaussianGenerator{T}}
 Distributions.params(G::InvGaussianGenerator) = (θ = G.θ,)
-_unbound_params(::Type{<:InvGaussianGenerator}, d, θ) = [log(θ.θ)]
-_rebound_params(::Type{<:InvGaussianGenerator}, d, α) = (; θ = exp(α[1]))
-_θ_bounds(::Type{<:InvGaussianGenerator}, d) = (0.0, Inf)
-
+Paramorph.param_space(::Type{<:InvGaussianGenerator}, d) =
+    Paramorph.NonNeg(:θ)
 
 ϕ(  G::InvGaussianGenerator, t) = iszero(G.θ) ? exp(-t) : isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
 ϕ⁻¹(G::InvGaussianGenerator, t) = iszero(G.θ) ? -log(t) : isinf(G.θ) ? log(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))

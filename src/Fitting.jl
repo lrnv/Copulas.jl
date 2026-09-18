@@ -4,15 +4,9 @@
 #####   - `Distributions.fit(CopulaModel, MyCopulaType, data, method)`
 #####   - `Distributions.fit(MyCopulaType, data, method)`
 #####
-#####  The fitting machinery below is package-internal.
-#####
-#####  Or, for simple models, to get access to a few default bindings, you could also override the following:
-#####   - Distributions.params() yielding a NamedTuple of parameters
-#####   - _unbound_params() mappin your parameters to unbounded space
-#####   - _rebound_params() doing the reverse
-#####   - _example() giving example copula of your type.
-#####   - _example() giving example copula of your type.
-#####
+#####  The fitting machinery below is package-internal. Simple parametric
+#####  families opt into the generic routines by defining `Distributions.params`
+#####  and `Paramorph.param_space`.
 ###############################################################################
 
 """
@@ -170,47 +164,6 @@ See also: [`Copula`](@ref), [`SklarDist`](@ref), [`Distributions.fit`](@ref),
 [`CopulaModel`](@ref).
 """
 
-"""
-    _example(CT, d)
-
-Construct an interior representative of copula family `CT` in dimension `d`.
-This internal fitting hook supplies parameter names, shapes, numeric types and
-an initial point to generic optimization and covariance machinery. The example
-must avoid limiting values and must be reconstructible by the family's fitting
-protocol; it is not a user-facing default model. Families using generic fitting
-must implement it; otherwise Julia raises the natural `MethodError`.
-
-See also: [`_unbound_params`](@ref), [`_rebound_params`](@ref),
-[`_available_fitting_methods`](@ref), [`_fit`](@ref).
-"""
-function _example end
-
-"""
-    _unbound_params(CT, d, θ)
-
-Map the parameter `NamedTuple` `θ` of family `CT` to an unconstrained real
-vector used by generic optimization and differentiation. This internal fitting
-hook must be inverse-compatible with `_rebound_params`, preserve parameter
-order, and map interior valid parameters to finite coordinates. Families using
-generic fitting must implement it; otherwise Julia raises `MethodError`.
-
-See also: [`_rebound_params`](@ref), [`_example`](@ref), [`_fit`](@ref).
-"""
-function _unbound_params end
-
-"""
-    _rebound_params(CT, d, α)
-
-Map an unconstrained optimization vector `α` back to the valid parameter
-`NamedTuple` expected by family `CT`. This internal fitting hook must enforce
-the mathematical parameter domain, accept automatic-differentiation number
-types, and invert `_unbound_params` on interior parameters. Families using
-generic fitting must implement it; otherwise Julia raises `MethodError`.
-
-See also: [`_unbound_params`](@ref), [`_example`](@ref), [`_fit`](@ref).
-"""
-function _rebound_params end
-_construct_fitted_copula(CT, ::Val{d}, θ, example) where {d} = CT(d, θ...)
 
 """
     _fit_weights(weights, n) -> Union{Nothing, Vector}
@@ -287,22 +240,31 @@ _model_weights(M::CopulaModel) =
 _normalized_pseudos(X::AbstractMatrix, weights) =
     _pseudos(X, Val(:average), Random.default_rng(), weights)
 
+_parameter_arguments(η::Tuple) = η
+_parameter_arguments(η) = (η,)
+_parameter_space_copula(CT, d, p, α) =
+    CT(d, _parameter_arguments(Paramorph.constrain(p, α))...)
+
+function _parameter_space_value(p, θ::NamedTuple)
+    nms = Paramorph.names(p)
+    vals = ntuple(i -> getproperty(θ, nms[i]), length(nms))
+    isempty(vals) && return ()
+    return length(vals) == 1 ? vals[1] : vals
+end
+_parameter_space_coordinates(p, θ::NamedTuple) =
+    Paramorph.unconstrain(p, _parameter_space_value(p, θ))
+
 function _fit(CT::Type{<:Copula}, U, method::Val{:mle}; kwargs...)
     return _fit(CT, U, Val(size(U, 1)), method; kwargs...)
 end
 function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}; weights=nothing) where {d}
-    example = _example(CT, d)
-    cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
-    α₀  = _unbound_params(CT, d, Distributions.params(example))
+    p = Paramorph.param_space(CT, d)
+    α₀ = zeros(Paramorph.dimension(p))
+    cop(α) = _parameter_space_copula(CT, d, p, α)
     loss(C) = -_weighted_loglikelihood(C, U, weights)
-    res = Optim.optimize(
-        loss ∘ cop,
-        α₀,
-        Optim.LBFGS();
-        autodiff=ADTypes.AutoForwardDiff(),
-    )
-    θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return _construct_fitted_copula(CT, Val(d), θhat, example)
+    res = Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS();
+                         autodiff=ADTypes.AutoForwardDiff())
+    return cop(Optim.minimizer(res))
 end
 
 """
@@ -314,30 +276,29 @@ Each copula family implements `_fit` methods specialized on `Val{method}` and
 returns the fitted copula. Temporary optimizer results and diagnostics stay
 inside the estimator implementation.
 
-This is not intended for direct use by end–users.
-Use [`Distributions.fit(CopulaModel, ...)`] instead.
+Simple parametric families can use the generic implementations by defining
+`Paramorph.param_space(CT, d)` and a canonical `CT(d, parameters...)`
+constructor. This is not intended for direct use by end-users; use
+[`Distributions.fit(CopulaModel, ...)`] instead.
 
-See also: [`_available_fitting_methods`](@ref), [`_example`](@ref),
-[`_unbound_params`](@ref), [`_rebound_params`](@ref).
+See also: [`_available_fitting_methods`](@ref), [`Distributions.fit`](@ref).
 """
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing)
     return _fit(CT, U, Val(size(U, 1)), method; weights)
 end
 function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
-    # generic rank-based routine (agnostic to vcov/inference)
-    example = _example(CT, d)
-    cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
-    α₀ = _unbound_params(CT, d, Distributions.params(example))
+    p = Paramorph.param_space(CT, d)
+    α₀ = zeros(Paramorph.dimension(p))
     length(α₀) <= d*(d-1)÷2 || throw(ArgumentError(
         "cannot use $method in dimension $d with $(length(α₀)) free parameters; " *
         "only $(d*(d-1)÷2) pairwise rank constraints are available"))
-    fun  = method isa Val{:itau} ? StatsBase.corkendall :
-           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
-    est  = _rank_measure(method, U, weights)
+    cop(α) = _parameter_space_copula(CT, d, p, α)
+    fun = method isa Val{:itau} ? StatsBase.corkendall :
+          method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
+    est = _rank_measure(method, U, weights)
     loss(C) = sum(abs2, est .- fun(C))
-    res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
-    θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return _construct_fitted_copula(CT, Val(d), θhat, example)
+    res = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
+    return cop(Optim.minimizer(res))
 end
 
 
@@ -378,8 +339,7 @@ _available_fitting_methods(GumbelCopula, 3)
 # → (:mle, :itau, :irho, :ibeta)
 ```
 
-See also: [`_fit`](@ref), [`_example`](@ref),
-[`Distributions.fit`](@ref).
+See also: [`_fit`](@ref), [`Distributions.fit`](@ref).
 """
 _available_fitting_methods(::Type{<:Copula}, d) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C), d)

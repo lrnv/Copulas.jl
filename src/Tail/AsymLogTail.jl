@@ -53,10 +53,11 @@ tail_measure_style(tail::AsymLogTail) =
 
 const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
 Distributions.params(tail::AsymLogTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
-_unbound_params(::Type{<:AsymLogTail}, d, θ) = [log(θ.α - 1), LogExpFunctions.logit(θ.θ₁), LogExpFunctions.logit(θ.θ₂)]
-_rebound_params(::Type{<:AsymLogTail}, d, α) = begin
-    (; α = exp(α[1]) + 1, θ₁ = LogExpFunctions.logistic(α[2]), θ₂ = LogExpFunctions.logistic(α[3]))
-end
+Paramorph.param_space(::Type{<:AsymLogTail}, d) = (
+    Paramorph.LowerClosed(:α, 1.0),
+    Paramorph.Prob(:θ₁),
+    Paramorph.Prob(:θ₂),
+)
 
 function A(tail::AsymLogTail, t::Real)
     tt = _safett(t)

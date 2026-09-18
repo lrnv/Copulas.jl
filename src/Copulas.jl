@@ -20,6 +20,7 @@ module Copulas
     import PolyLog
     import LambertW
     import Optim
+    import Paramorph
     import Printf
     import TaylorSeries
     import ADTypes

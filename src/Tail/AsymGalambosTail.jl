@@ -138,13 +138,11 @@ end
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:AsymGalambosTail} where D}, d) =
     d == 2 ? (:mle,) : ()
 
-function _unbound_params(::Type{<:AsymGalambosTail}, _, θ)
-    return [log(θ.α), LogExpFunctions.logit(θ.θ₁), LogExpFunctions.logit(θ.θ₂)]
-end
-
-function _rebound_params(::Type{<:AsymGalambosTail}, _, α)
-    return (; α=exp(α[1]), θ₁=LogExpFunctions.logistic(α[2]), θ₂=LogExpFunctions.logistic(α[3]))
-end
+Paramorph.param_space(::Type{<:AsymGalambosTail}, d) = (
+    Paramorph.NonNeg(:α),
+    Paramorph.Prob(:θ₁),
+    Paramorph.Prob(:θ₂),
+)
 
 function A(tail::AsymGalambosTail, t::Real)
     tt = _safett(t)

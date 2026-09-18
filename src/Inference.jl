@@ -18,10 +18,6 @@ end
 
 ####### Analytical inference kernels.
 
-@inline function _vcov_copula(CT, ::Val{d}, α, example) where {d}
-    return _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
-end
-
 function _vcov_upper_triangle(A)
     return [A[idx] for idx in CartesianIndices(A) if idx[1] < idx[2]]
 end
@@ -69,14 +65,16 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
                        ::Val{d}, ::Val{:hessian},
                        methodv::Val{method}; weights=nothing) where {d,method}
     U, weights = _weighted_sample(U, weights)
-    α = _unbound_params(CT, d, θ)
-    example = _example(CT, d)
-    vd = Val(d)
-    ℓ(αv) = _weighted_loglikelihood(_vcov_copula(CT, vd, αv, example), U, weights)
+    pspace = Paramorph.param_space(CT, d)
+    α = _parameter_space_coordinates(pspace, θ)
+    all(isfinite, α) || throw(ArgumentError(
+        "Hessian inference requires fitted parameters in the finite interior of their parameter space"))
+    cop(αv) = _parameter_space_copula(CT, d, pspace, αv)
+    ℓ(αv) = _weighted_loglikelihood(cop(αv), U, weights)
     H = ForwardDiff.hessian(ℓ, α)
     Iα = .-H
     Vα = _invert_observed_information(Iα)
-    return _vcov_finalize(CT, U, θ, d, α, Vα)
+    return _vcov_finalize(CT, U, θ, d, pspace, α, Vα)
 end
 
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
@@ -108,17 +106,19 @@ _resample_indices!(idx::Vector{Int}, rng::Random.AbstractRNG, n::Int, w::Abstrac
 function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{d}, ::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};rng=Random.default_rng(),
                        nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {d,pairwise,vcovm,method}
     n = size(U, 2)
-    α = _unbound_params(CT, d, θ)
-    example = _example(CT, d)
-    vd = Val(d)
+    pspace = Paramorph.param_space(CT, d)
+    α = _parameter_space_coordinates(pspace, θ)
+    all(isfinite, α) || throw(ArgumentError(
+        "$vcovm inference requires fitted parameters in the finite interior of their parameter space"))
     p = length(α)
+    cop(αv) = _parameter_space_copula(CT, d, pspace, αv)
     B = isnothing(nresamples) ? clamp(Int(floor(sqrt(n))), 10, 200) : Int(nresamples)
     B > 1 || throw(ArgumentError("nresamples must be greater than one"))
 
     if pairwise
         pairwise_φ = _vcov_pairwise_measure(methodv)
         q = d * (d - 1) ÷ 2
-        Dα = ForwardDiff.jacobian(αv -> _vcov_upper_triangle(pairwise_φ(_vcov_copula(CT, vd, αv, example))),α)
+        Dα = ForwardDiff.jacobian(αv -> _vcov_upper_triangle(pairwise_φ(cop(αv))),α)
         Dα = reshape(Dα, q, p)
         M = Matrix{Float64}(undef, B, q)
         idx = Vector{Int}(undef, n)
@@ -130,7 +130,7 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::
     else
         φ = _vcov_dependence_measure(methodv)
         q = 1
-        Dα = ForwardDiff.jacobian(αv -> [φ(_vcov_copula(CT, vd, αv, example))], α)
+        Dα = ForwardDiff.jacobian(αv -> [φ(cop(αv))], α)
         Dα = reshape(Dα, q, p)
         M = Matrix{Float64}(undef, B, q)
         idx = Vector{Int}(undef, n)
@@ -150,7 +150,7 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::
     Iq = Matrix{eltype(Dα)}(LinearAlgebra.I, q, q)
     A = Dα \ Iq
     Vα = A * Ω * A' / n
-    return _vcov_finalize(CT, U, θ, d, α, Vα)
+    return _vcov_finalize(CT, U, θ, d, pspace, α, Vα)
 end
 
 function _validate_inference_covariance(Vθ::AbstractMatrix)
@@ -163,11 +163,26 @@ function _validate_inference_covariance(Vθ::AbstractMatrix)
 end
 
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-                        d::Int, α, Vα)
+                        d::Int, pspace, α, Vα)
     J = ForwardDiff.jacobian(
-        αv -> _flatten_params(_rebound_params(CT, d, αv))[2], α)
+        αv -> _flatten_params(Distributions.params(
+            _parameter_space_copula(CT, d, pspace, αv)))[2],
+        α,
+    )
     Vθ = J * Vα * J'
     return _validate_inference_covariance(Vθ)
+end
+
+function _analytical_parameter_coordinates(target, d, parameters)
+    applicable(Paramorph.param_space, target, d) || return nothing
+    try
+        pspace = Paramorph.param_space(target, d)
+        α = _parameter_space_coordinates(pspace, parameters)
+        return all(isfinite, α) ? (pspace, α) : nothing
+    catch err
+        err isa InterruptException && rethrow()
+        return nothing
+    end
 end
 
 function _default_inference_method(M::CopulaModel)
@@ -177,7 +192,7 @@ function _default_inference_method(M::CopulaModel)
     d = length(fitted_distribution(M))
     analytical_coordinates = spec isa _CopulaFitSpec && spec.target isa Type &&
         parameters isa NamedTuple &&
-        applicable(_unbound_params, spec.target, d, parameters)
+        _analytical_parameter_coordinates(spec.target, d, parameters) !== nothing
     fit_method = fitting_method(M)
     if fit_method === :mle && analytical_coordinates &&
             !(M.result isa Union{TCopula,tEVCopula,FGMCopula})
@@ -288,8 +303,9 @@ function _infer(M::CopulaModel, ::Val{method}; rng=nothing, nresamples::Union{No
         "scalar Godambe inference is defined only for bivariate rank-matching fits; " *
         "use method=:godambe_pairwise when the fitted estimator uses pairwise moments, " *
         "or use :bootstrap or :jackknife"))
-    applicable(_unbound_params, target, d, parameters) || throw(ArgumentError(
-        "analytical `$method` inference is not implemented for fitting target $target"))
+    _analytical_parameter_coordinates(target, d, parameters) !== nothing ||
+        throw(ArgumentError(
+            "analytical `$method` inference is not implemented for fitting target $target"))
     engine_method = fitting_method(M) === :mpl ? :mle : fitting_method(M)
     weights = _model_weights(M)
 

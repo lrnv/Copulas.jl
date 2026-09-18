@@ -34,14 +34,13 @@ struct JoeGenerator{T} <: AbstractUnivariateFrailtyGenerator
     end
 end
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
-@inline limit_kind(G::JoeGenerator, ::Val) = 
-    isone(G.θ) ? Π_LIMIT : 
+@inline limit_kind(G::JoeGenerator, ::Val) =
+    isone(G.θ) ? Π_LIMIT :
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
 Distributions.params(G::JoeGenerator) = (θ = G.θ,)
-_unbound_params(::Type{<:JoeGenerator}, d, θ) = [log(θ.θ - 1)]
-_rebound_params(::Type{<:JoeGenerator}, d, α) = (; θ = 1 + exp(α[1]))
-_θ_bounds(::Type{<:JoeGenerator}, d) = (1, Inf)
+Paramorph.param_space(::Type{<:JoeGenerator}, d) =
+    Paramorph.LowerClosed(:θ, 1.0)
 archimedean_measure_style(G::JoeGenerator, ::Val{d}) where {d} =
     isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
@@ -51,7 +50,7 @@ archimedean_measure_style(G::JoeGenerator, ::Val{d}) where {d} =
 function ϕ⁽ᵏ⁾(G::JoeGenerator, d::Int, t)
     iszero(d) && return ϕ(G, t)
     # TODO: test if this ϕ⁽ᵏ⁾ is really more 'efficient' than the default one,
-    # as we already saw that for the Gumbel is wasn't the case. 
+    # as we already saw that for the Gumbel is wasn't the case.
     α = 1 / G.θ
     x = exp(-t)
     y = -expm1(-t)
@@ -81,4 +80,3 @@ function ρ⁻¹(::Type{<:JoeGenerator}, ρ)
     ρ ≥ 1 && return u
     return Roots.find_zero(θ -> _rho_joe(θ) - ρ, (1, Inf))
 end
-

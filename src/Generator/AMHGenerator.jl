@@ -34,17 +34,10 @@ struct AMHGenerator{T} <: AbstractUnivariateGenerator
 end
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
 Distributions.params(G::AMHGenerator) = (θ = G.θ,)
-function _unbound_params(CT::Type{<:AMHGenerator}, d, θ)
-    l =  _find_critical_value_amh(d, step=1e-7)
-    [atanh(2 * (θ.θ - l) / (1-l) - 1)]
-    # [log(θ.θ - l) - log(1-l)]
+function Paramorph.param_space(::Type{<:AMHGenerator}, d::Integer)
+    lower = clamp(_find_critical_value_amh(d), -1, 1)
+    return Paramorph.Bounded(:θ, lower, 1.0)
 end
-function _rebound_params(CT::Type{<:AMHGenerator}, d, α)
-    l =  _find_critical_value_amh(d, step=1e-7)
-    # (; θ = (exp(α[1]) + l) / (exp(α[1]) + 1))
-    (; θ = l + (1 - l)*(1+tanh(α[1]))/2)
-end
-_θ_bounds(::Type{<:AMHGenerator}, d) = (clamp(_find_critical_value_amh(d), -1, 1), 1)
 function _find_critical_value_amh(k; step=1e-7)
     # Return the threshold θ_k such that “θ < θ_k ⇒ max_monotony returns k-1”.
     # This unifies analytic and numeric thresholds and falls back to a
