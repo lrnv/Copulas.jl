@@ -78,7 +78,9 @@ function _fit_mle_weighted(
     CT = typeof(C)
 
     pspace = Paramorph.param_space(CT, d)
-    alpha0 = Copulas.Paramorph.unconstrain(pspace, Distributions.params(C))
+    parameters = Distributions.params(C)
+    alpha0 = Copulas.Paramorph.unconstrain(
+        pspace, Copulas._paramorph_natural_value(pspace, parameters))
     copula(alpha) = Copulas._parameter_space_copula(CT, d, pspace, alpha)
 
     function objective(alpha)
