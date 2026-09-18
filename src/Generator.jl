@@ -185,6 +185,10 @@ struct IndependentGenerator <: MarkerGenerator end
 struct MGenerator <: MarkerGenerator end
 struct WGenerator <: MarkerGenerator end
 
+Paramorph.param_space(::Type{IndependentGenerator}, d) = ()
+Paramorph.param_space(::Type{MGenerator}, d) = ()
+Paramorph.param_space(::Type{WGenerator}, d) = ()
+
 
 """
     limit_kind(component, ::Val{d})
