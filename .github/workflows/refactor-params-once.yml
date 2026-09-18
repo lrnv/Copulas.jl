@@ -25,10 +25,7 @@ jobs:
 
           p = Path('src/Tail/HuslerReissTail.jl')
           text = p.read_text()
-          text = text.replace(
-              'θ = tail.parameter',
-              'θ = something(tail.θ)',
-          )
+          text = text.replace('θ = tail.parameter', 'θ = something(tail.θ)')
           text = text.replace(
               'all(iszero, tail.parameter) ? maximum(x) : _hr_stdf(tail.parameter, x)',
               'all(iszero, something(tail.Γ)) ? maximum(x) : _hr_stdf(something(tail.Γ), x)',
@@ -41,23 +38,13 @@ jobs:
               'all(isone, something(tail.R)) ? maximum(x) : _tev_stdf(tail.ν, something(tail.R), x)',
           ))
 
-          # The migration audit below matches legal distribution-level methods
-          # such as params(::ExtremeValueCopula{...,<:SomeTail}). It is too
-          # coarse to distinguish the dispatch target, so make that check
-          # informational for this one-shot migration.
           p = Path('scripts/finish_distribution_params.py')
           text = p.read_text()
-          old = """if proc.stdout.strip():
-    raise RuntimeError('Generator/Tail params definitions remain:\\n' + proc.stdout)
-
-# Named property access"""
-          new = """if proc.stdout.strip():
-    print(proc.stdout)
-
-# Named property access"""
-          if old not in text:
-              raise RuntimeError('migration audit anchor missing')
-          p.write_text(text.replace(old, new, 1))
+          text = text.replace(
+              "    raise RuntimeError('Generator/Tail params definitions remain:\\n' + proc.stdout)",
+              '    print(proc.stdout)',
+          )
+          p.write_text(text)
           PY
 
           python scripts/finish_distribution_params.py
