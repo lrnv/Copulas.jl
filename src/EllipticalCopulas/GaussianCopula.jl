@@ -67,8 +67,10 @@ struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
 end
 GaussianCopula(Σ::AbstractMatrix) = GaussianCopula{size(Σ, 1)}(Σ)
 
+# Equicorrelation convenience constructor
 function GaussianCopula{d}(ρ::Real) where {d}
     d < 2 && throw(ArgumentError("Use a bivariate or higher dimension (d ≥ 2) or pass a 1×1 matrix."))
+    # Positive definiteness condition for equicorrelation matrix
     lower = -1/(d-1)
     ρ ≤ lower && throw(ArgumentError("Equicorrelation value ρ=$(ρ) not in (-1/(d-1), 1). For d=$d the lower open bound is $(lower)."))
     ρ ≥ 1 && throw(ArgumentError("Equicorrelation value ρ must be < 1."))
@@ -86,9 +88,12 @@ GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula{d}(Σ)
 U(::Type{T}) where T<:GaussianCopula = Distributions.Normal()
 N(::Type{T}) where T<:GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
+    # MvNormalCDF mutates its upper-bound work vector. HCubature supplies
+    # immutable StaticArrays to integrands, so always hand the backend a
+    # mutable dense vector.
     x = collect(StatsBase.quantile.(Distributions.Normal(), u))
     d = length(C)
-    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x; rng=Random.Xoshiro(0))[1]
+    return MvNormalCDF.mvnormcdf(C.Σ, fill(-Inf, d), x; rng = Random.Xoshiro(0))[1]
 end
 
 function rosenblatt(C::GaussianCopula, u::AbstractMatrix{<:Real})

@@ -70,6 +70,7 @@ function copula_measure_style(C::ArchimaxCopula{d}) where {d}
     return tail_measure_style(C.tail)
 end
 ArchimaxCopula(d, gen::Generator, tail::Tail) = ArchimaxCopula{d}(gen, tail)
+ArchimaxCopula(d::Int, gen::Generator, tail::Tail) = ArchimaxCopula{d}(gen, tail)
 
 genandtailof(S::Type{<:ArchimaxCopula}) = (fieldtype(S, :gen), fieldtype(S, :tail))
 

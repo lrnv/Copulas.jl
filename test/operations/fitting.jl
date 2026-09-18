@@ -334,7 +334,7 @@ function test_mle_parameter_plumbing(C, pspace)
     CT = typeof(C)
     d = length(C)
     bounded = params(C)
-    unconstrained = Copulas._parameter_space_coordinates(pspace, bounded)
+    unconstrained = Copulas.Paramorph.unconstrain(pspace, bounded)
     restored = Copulas._parameter_space_copula(CT, d, pspace, unconstrained)
     restored_params = params(restored)
 
@@ -567,7 +567,7 @@ end
     C = ClaytonCopula{3}(2.0)
     CT = typeof(C)
     pspace = Copulas.Paramorph.param_space(CT, 3)
-    α₀ = only(Copulas._parameter_space_coordinates(pspace, params(C)))
+    α₀ = only(Copulas.Paramorph.unconstrain(pspace, params(C)))
 
     f(α) = only(params(Copulas._parameter_space_copula(CT, 3, pspace, [α])))
 

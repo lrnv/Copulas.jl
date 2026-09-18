@@ -19,7 +19,7 @@ See also: [`ExtremeValueCopula`](@ref), [`A`](@ref), [`ℓ`](@ref),
 [`DiscreteSpectralTail`](@ref).
 """
 abstract type Tail end
-_parameter_eltype(tail::Tail) = _parameter_eltype(fieldvalues(tail))
+_parameter_eltype(tail::Tail) = _parameter_eltype(Base.fieldvalues(tail))
 Base.eltype(tail::Tail) = _sample_eltype(tail)
 
 # Most simple tails store their public constructor parameters directly as

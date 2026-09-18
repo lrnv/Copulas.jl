@@ -66,7 +66,7 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                        methodv::Val{method}; weights=nothing) where {d,method}
     U, weights = _weighted_sample(U, weights)
     pspace = Paramorph.param_space(CT, d)
-    α = _parameter_space_coordinates(pspace, θ)
+    α = Paramorph.unconstrain(pspace, θ)
     all(isfinite, α) || throw(ArgumentError(
         "Hessian inference requires fitted parameters in the finite interior of their parameter space"))
     cop(αv) = _parameter_space_copula(CT, d, pspace, αv)
@@ -107,7 +107,7 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, ::Val{d
                        nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {d,pairwise,vcovm,method}
     n = size(U, 2)
     pspace = Paramorph.param_space(CT, d)
-    α = _parameter_space_coordinates(pspace, θ)
+    α = Paramorph.unconstrain(pspace, θ)
     all(isfinite, α) || throw(ArgumentError(
         "$vcovm inference requires fitted parameters in the finite interior of their parameter space"))
     p = length(α)
@@ -177,7 +177,7 @@ function _analytical_parameter_coordinates(target, d, parameters)
     applicable(Paramorph.param_space, target, d) || return nothing
     try
         pspace = Paramorph.param_space(target, d)
-        α = _parameter_space_coordinates(pspace, parameters)
+        α = Paramorph.unconstrain(pspace, parameters)
         return all(isfinite, α) ? (pspace, α) : nothing
     catch err
         err isa InterruptException && rethrow()

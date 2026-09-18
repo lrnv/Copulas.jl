@@ -240,9 +240,6 @@ _parameter_arguments(η) = (η,)
 _parameter_space_copula(CT, d, p, α) =
     CT(d, _parameter_arguments(Paramorph.constrain(p, α))...)
 
-_parameter_space_coordinates(p::Tuple, θ::Tuple) = Paramorph.unconstrain(p, θ)
-_parameter_space_coordinates(p, θ::Tuple) = Paramorph.unconstrain(p, only(θ))
-
 function _fit(CT::Type{<:Copula}, U, method::Val{:mle}; kwargs...)
     return _fit(CT, U, Val(size(U, 1)), method; kwargs...)
 end

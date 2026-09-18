@@ -29,7 +29,7 @@ See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
 [`FrailtyGenerator`](@ref), `Paramorph.param_space`.
 """
 abstract type Generator end
-_parameter_eltype(G::Generator) = _parameter_eltype(fieldvalues(G))
+_parameter_eltype(G::Generator) = _parameter_eltype(Base.fieldvalues(G))
 Base.eltype(G::Generator) = _sample_eltype(G)
 function (TG::Type{<:Generator})(args...; kwargs...)
     S = hasproperty(TG, :body) ? TG.body : TG

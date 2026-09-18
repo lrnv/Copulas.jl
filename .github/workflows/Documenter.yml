@@ -47,7 +47,7 @@ jobs:
       - name: Instantiate documentation environment
         run: >-
           julia --project=docs -O1 -e 'using Pkg;
-          Pkg.add(PackageSpec(url="https://github.com/lrnv/Paramorph.jl", rev="e8b865794e38aa617bf268792ca1e99fe90ce397"));
+          Pkg.add(PackageSpec(url="https://github.com/lrnv/Paramorph.jl", rev="main"));
           Pkg.develop(PackageSpec(path=pwd()));
           Pkg.instantiate()'
       - name: Build and deploy docs
