@@ -261,21 +261,18 @@ function _ellpartial_signlog(tail::AsymGalambosTail, x, I::Tuple{Vararg{Int}})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:AsymGalambosTail}, X::AbstractMatrix{T}) where {d,T<:Real}
-    kind = limit_kind(C.tail, Val(d))
-
-    kind === Π_LIMIT && return Random.rand!(rng, X)
-    kind === M_LIMIT && return _rand_M!(rng, X)
-
-    α, β = _asymgal_components(C.tail)
-    return _rand_subset_components!(
-        rng,
-        X,
-        α,
-        β,
-        iszero,
-        (dimension, parameter) -> ExtremeValueCopula(dimension, GalambosTail(parameter));
-        family="asymmetric Galambos",
-    )
+    return _rand_with_ev_limits!(rng, C, X) do
+        α, β = _asymgal_components(C.tail)
+        _rand_subset_components!(
+            rng,
+            X,
+            α,
+            β,
+            iszero,
+            (dimension, parameter) -> ExtremeValueCopula(dimension, GalambosTail(parameter));
+            family="asymmetric Galambos",
+        )
+    end
 end
 
 # Retain the generic Pickands sampler in dimension two.
