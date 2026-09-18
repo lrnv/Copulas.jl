@@ -227,56 +227,57 @@ function _ellpartial_signlog(tail::tEVTail, x, I::Tuple{Vararg{Int}})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T}) where {d,T<:Real}
-    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
-    ν = C.tail.ν
-    R = _tev_correlation(C.tail, d)
-    cache = ntuple(d) do m
-        J = [i for i in 1:d if i != m]
-        r = Vector{Float64}(R[J, m])
-        Σ = Matrix{Float64}(R[J, J]) - r * transpose(r)
-        F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ))
-        (; J, r, F)
-    end
-    logq = Vector{Float64}(undef, d)
-    logz = Vector{Float64}(undef, d)
+    return _rand_with_ev_limits!(rng, C, X) do
+        ν = C.tail.ν
+        R = _tev_correlation(C.tail, d)
+        cache = ntuple(d) do m
+            J = [i for i in 1:d if i != m]
+            r = Vector{Float64}(R[J, m])
+            Σ = Matrix{Float64}(R[J, J]) - r * transpose(r)
+            F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ))
+            (; J, r, F)
+        end
+        logq = Vector{Float64}(undef, d)
+        logz = Vector{Float64}(undef, d)
 
-    @inbounds for col in axes(X, 2)
-        fill!(logz, -Inf)
-        s = 0.0
-        while true
-            s += Random.randexp(rng) / d
-            logradius = -log(s)
-            if all(isfinite, logz) && logradius <= minimum(logz)
-                break
-            end
-            m = Random.rand(rng, 1:d)
-            entry = cache[m]
-            wm = sqrt(Random.rand(rng, Distributions.Chisq(Float64(ν) + 1.0)))
-            fill!(logq, -Inf)
-            logq[m] = Float64(ν) * log(wm)
-            q = length(entry.J)
-            if q > 0
-                ξ = Random.randn(rng, q)
-                wJ = entry.r .* wm .+ entry.F.L * ξ
-                for a in 1:q
-                    wi = wJ[a]
-                    wi > 0 && (logq[entry.J[a]] = Float64(ν) * log(wi))
+        @inbounds for col in axes(X, 2)
+            fill!(logz, -Inf)
+            s = 0.0
+            while true
+                s += Random.randexp(rng) / d
+                logradius = -log(s)
+                if all(isfinite, logz) && logradius <= minimum(logz)
+                    break
+                end
+                m = Random.rand(rng, 1:d)
+                entry = cache[m]
+                wm = sqrt(Random.rand(rng, Distributions.Chisq(Float64(ν) + 1.0)))
+                fill!(logq, -Inf)
+                logq[m] = Float64(ν) * log(wm)
+                q = length(entry.J)
+                if q > 0
+                    ξ = Random.randn(rng, q)
+                    wJ = entry.r .* wm .+ entry.F.L * ξ
+                    for a in 1:q
+                        wi = wJ[a]
+                        wi > 0 && (logq[entry.J[a]] = Float64(ν) * log(wi))
+                    end
+                end
+                logsum = LogExpFunctions.logsumexp(logq)
+                for i in eachindex(logq)
+                    logq[i] -= logsum
+                end
+                for i in 1:d
+                    candidate = logradius + logq[i]
+                    candidate > logz[i] && (logz[i] = candidate)
                 end
             end
-            logsum = LogExpFunctions.logsumexp(logq)
-            for i in eachindex(logq)
-                logq[i] -= logsum
-            end
             for i in 1:d
-                candidate = logradius + logq[i]
-                candidate > logz[i] && (logz[i] = candidate)
+                X[i, col] = T(exp(-exp(-logz[i])))
             end
         end
-        for i in 1:d
-            X[i, col] = T(exp(-exp(-logz[i])))
-        end
+        return X
     end
-    return X
 end
 
 ℓ(tail::tEVTail{<:Any,<:AbstractMatrix}, x) =
