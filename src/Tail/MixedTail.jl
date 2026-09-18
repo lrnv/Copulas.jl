@@ -105,43 +105,44 @@ function _ellpartial_signlog(tail::MixedTail, x, I::Tuple{Vararg{Int}},)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MixedTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    limit_kind(C.tail, Val(d)) === Π_LIMIT && return Random.rand!(rng, X)
-    n = size(X, 2)
+    return _rand_with_ev_limits!(rng, C, X) do
+        n = size(X, 2)
 
-    S = promote_type(T, typeof(C.tail.θ))
-    θ = S(C.tail.θ)
-    Z = zeros(S, d, n)
+        S = promote_type(T, typeof(C.tail.θ))
+        θ = S(C.tail.θ)
+        Z = zeros(S, d, n)
 
-    # Independent max-stable component with exponent
-    # (1-θ) Σᵢ xᵢ.
-    if θ < 1
-        w = 1 - θ
-        @inbounds for i in 1:d, col in 1:n
-            Z[i, col] = w / Random.randexp(rng, S)
-        end
-    end
-
-    # Galambos(1) max-stable component with exponent
-    # θ ℓ_Galambos,1.
-    if θ > 0
-        Cgal = ExtremeValueCopula(d, GalambosTail(one(S)))
-        U = Random.rand(rng, Cgal, n)
-
-        @inbounds for i in 1:d, col in 1:n
-            candidate = θ / (-log(U[i, col]))
-            if candidate > Z[i, col]
-                Z[i, col] = candidate
+        # Independent max-stable component with exponent
+        # (1-θ) Σᵢ xᵢ.
+        if θ < 1
+            w = 1 - θ
+            @inbounds for i in 1:d, col in 1:n
+                Z[i, col] = w / Random.randexp(rng, S)
             end
         end
-    end
 
-    @inbounds for i in 1:d, col in 1:n
-        zi = Z[i, col]
-        zi > 0 || throw(ArgumentError("invalid zero Fréchet value in MixedTail sampler",))
-        X[i, col] = T(exp(-inv(zi)))
-    end
+        # Galambos(1) max-stable component with exponent
+        # θ ℓ_Galambos,1.
+        if θ > 0
+            Cgal = ExtremeValueCopula(d, GalambosTail(one(S)))
+            U = Random.rand(rng, Cgal, n)
 
-    return X
+            @inbounds for i in 1:d, col in 1:n
+                candidate = θ / (-log(U[i, col]))
+                if candidate > Z[i, col]
+                    Z[i, col] = candidate
+                end
+            end
+        end
+
+        @inbounds for i in 1:d, col in 1:n
+            zi = Z[i, col]
+            zi > 0 || throw(ArgumentError("invalid zero Fréchet value in MixedTail sampler",))
+            X[i, col] = T(exp(-inv(zi)))
+        end
+
+        return X
+    end
 end
 
 function dA(tail::MixedTail, t::Real)
