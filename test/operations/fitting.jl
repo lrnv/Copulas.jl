@@ -294,11 +294,11 @@ end
     @test checked == selected
 end
 
-@testset "extreme-value MLE accepts boundary starts" begin
+@testset "generic MLE starts at the parameter-space origin" begin
     U = [0.10 0.25 0.40 0.55 0.70 0.85;
          0.15 0.20 0.45 0.60 0.75 0.90]
-    for CT in (CuadrasAugeCopula, LogCopula)
-        fitted = fit(CT, U, :mle; start=1.0)
+    for CT in (ClaytonCopula, CuadrasAugeCopula, LogCopula)
+        fitted = fit(CT, U; method=:mle)
         @test fitted isa Copulas.Copula
         @test all(isfinite, params(fitted))
     end
@@ -334,8 +334,7 @@ function test_mle_parameter_plumbing(C, pspace)
     CT = typeof(C)
     d = length(C)
     bounded = params(C)
-    natural = length(Copulas.Paramorph.names(pspace)) == 1 ? only(bounded) : bounded
-    unconstrained = Copulas.Paramorph.unconstrain(pspace, natural)
+    unconstrained = Copulas.Paramorph.unconstrain(pspace, bounded)
     restored = Copulas._parameter_space_copula(CT, d, pspace, unconstrained)
     restored_params = params(restored)
 
