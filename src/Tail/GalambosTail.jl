@@ -132,47 +132,45 @@ function _ellpartial_signlog(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    kind = limit_kind(C.tail, Val(d))
-    kind === Π_LIMIT && return Random.rand!(rng, X)
-    kind === M_LIMIT && return _rand_M!(rng, X)
+    return _rand_with_ev_limits!(rng, C, X) do
+        S = promote_type(T, typeof(C.tail.θ))
+        θ = S(C.tail.θ)
+        invθ = inv(θ)
+        shape = one(S) + invθ
+        weibull = Distributions.Weibull(θ, one(S))
+        gamma = Distributions.Gamma(shape, one(S))
+        q = Vector{S}(undef, d)
+        z = Vector{S}(undef, d)
+        invd = inv(S(d))
 
-    S = promote_type(T, typeof(C.tail.θ))
-    θ = S(C.tail.θ)
-    invθ = inv(θ)
-    shape = one(S) + invθ
-    weibull = Distributions.Weibull(θ, one(S))
-    gamma = Distributions.Gamma(shape, one(S))
-    q = Vector{S}(undef, d)
-    z = Vector{S}(undef, d)
-    invd = inv(S(d))
-
-    for col in axes(X, 2)
-        fill!(z, zero(S))
-        arrival = Random.randexp(rng, S) * invd
-        radius = inv(arrival)
-
-        while radius > minimum(z)
-            j = rand(rng, 1:d)
-            @inbounds for i in 1:d
-                q[i] = rand(rng, weibull)
-            end
-            q[j] = rand(rng, gamma)^invθ
-
-            qsum = sum(q)
-            @inbounds for i in 1:d
-                qi = q[i] / qsum
-                z[i] = max(z[i], radius * qi)
-            end
-
-            arrival += Random.randexp(rng, S) * invd
+        for col in axes(X, 2)
+            fill!(z, zero(S))
+            arrival = Random.randexp(rng, S) * invd
             radius = inv(arrival)
-        end
 
-        @inbounds for i in 1:d
-            X[i, col] = exp(-inv(z[i]))
+            while radius > minimum(z)
+                j = rand(rng, 1:d)
+                @inbounds for i in 1:d
+                    q[i] = rand(rng, weibull)
+                end
+                q[j] = rand(rng, gamma)^invθ
+
+                qsum = sum(q)
+                @inbounds for i in 1:d
+                    qi = q[i] / qsum
+                    z[i] = max(z[i], radius * qi)
+                end
+
+                arrival += Random.randexp(rng, S) * invd
+                radius = inv(arrival)
+            end
+
+            @inbounds for i in 1:d
+                X[i, col] = exp(-inv(z[i]))
+            end
         end
+        return X
     end
-    return X
 end
 
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
