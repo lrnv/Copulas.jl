@@ -203,7 +203,8 @@ function _tawn_component_partial_signlog(α::Real, βcol, C, x, I::Tuple{Vararg{
 
     all(i -> x[i] > 0, I) || return 0, -Inf
 
-    logterms = Float64[]
+    T = promote_type(typeof(float(α)), eltype(βcol), eltype(x))
+    logterms = T[]
     @inbounds for i in C
         yi = float(βcol[i]) * float(x[i])
         yi > 0 && push!(logterms, float(α) * log(yi))
@@ -211,17 +212,17 @@ function _tawn_component_partial_signlog(α::Real, βcol, C, x, I::Tuple{Vararg{
     isempty(logterms) && return 0, -Inf
     logS = LogExpFunctions.logsumexp(logterms)
 
-    logcoef = 0.0
+    logcoef = zero(T)
     @inbounds for j in 1:(k - 1)
-        c = 1.0 - j * float(α)
+        c = one(T) - j * float(α)
         iszero(c) && return 0, -Inf
         logcoef += log(abs(c))
     end
 
-    logprod = 0.0
+    logprod = zero(T)
     @inbounds for i in I
         logprod += float(α) * log(float(βcol[i]))
-        logprod += (float(α) - 1.0) * log(float(x[i]))
+        logprod += (float(α) - one(T)) * log(float(x[i]))
     end
 
     logabs = logcoef + (inv(float(α)) - k) * logS + logprod
