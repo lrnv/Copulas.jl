@@ -21,6 +21,7 @@ jobs:
       - name: Finish Paramorph migration
         run: |
           python scripts/run_final_paramorph_cleanup.py
+          git config core.whitespace cr-at-eol
           git diff --check -- src test docs
           git status --short
           git config user.name 'github-actions[bot]'
