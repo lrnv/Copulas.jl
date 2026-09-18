@@ -1,3 +1,4 @@
+# Final migration trigger.
 name: Refactor distribution params once
 
 on:
