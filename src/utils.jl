@@ -958,8 +958,6 @@ function _parameter_eltype(x::AbstractArray)
     return T
 end
 _parameter_eltype(x::Distributions.Distribution) = float(Distributions.partype(x))
-_parameter_eltype(x::Generator) = _parameter_eltype(fieldvalues(x))
-_parameter_eltype(x::Tail) = _parameter_eltype(fieldvalues(x))
 _parameter_eltype(x::NamedTuple) = _parameter_eltype(values(x))
 _parameter_eltype(x::Tuple) = _parameter_eltype(x...)
 _parameter_eltype() = Union{}
