@@ -1,0 +1,31 @@
+name: Patch #548 review follow-ups
+
+on:
+  push:
+    branches:
+      - fix/548-review-followups
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: fix/548-review-followups
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.x'
+      - name: Apply targeted fixes
+        run: python scripts/patch_548_review.py
+      - name: Commit fixes
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add -A
+          git diff --cached --check
+          git commit -m "Address review follow-ups for weighted fitting"
+          git push origin HEAD:fix/548-review-followups
