@@ -157,3 +157,17 @@ end
         end
     end
 end
+
+
+@testset "constant weights are inference-equivalent to unweighted" begin
+    n = 20
+    U = rand(StableRNG(48_300), ClaytonCopula{2}(2.0), n)
+    unweighted = fit(CopulaModel, ClaytonCopula, U)
+    weighted = fit(CopulaModel, ClaytonCopula, U; weights=fill(3.0, n))
+
+    @test Copulas._model_weights(weighted) === nothing
+    J0 = infer(unweighted; method=:jackknife)
+    Jw = infer(weighted; method=:jackknife)
+    @test Jw.method === :jackknife
+    @test vcov(Jw) == vcov(J0)
+end

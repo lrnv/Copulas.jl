@@ -533,7 +533,7 @@ before the fit; `:godambe`, `:godambe_pairwise` and `:bootstrap`
 draw each resample of size `n` with observation `j` taken with probability
 `w[j] / n`, then compute the moment or refit the estimator on the resample
 unweighted, which is the nonparametric bootstrap of the replicated sample.
-`:jackknife` refuses a weighted model: the delete-one jackknife of the
+`:jackknife` refuses a non-constant weighted model: the delete-one jackknife of the
 replicated sample needs every weight to be at least one, which after
 normalization to `n` holds for unit weights only. The composite
 goodness-of-fit tests still refuse a weighted model.

@@ -277,9 +277,17 @@ function _weighted_loglikelihood(D, X::AbstractMatrix, weights::AbstractVector)
     return sum(j -> weights[j] * Distributions.logpdf(D, view(X, :, j)), axes(X, 2))
 end
 
-# Weights recorded by the estimator that produced a model, or `nothing`.
-_model_weights(M::CopulaModel) =
-    M.recipe isa _CopulaFitSpec ? get(M.recipe.kwargs, :weights, nothing) : nothing
+# Non-trivial weights recorded by the estimator that produced a model, or
+# `nothing`. A positive constant vector is statistically identical to the
+# unweighted sample after normalization, so downstream behavior (including
+# inference and GOF availability) must not depend on whether the user supplied
+# `weights=ones(n)` or any other constant positive scale.
+function _model_weights(M::CopulaModel)
+    M.recipe isa _CopulaFitSpec || return nothing
+    weights = get(M.recipe.kwargs, :weights, nothing)
+    weights === nothing && return nothing
+    return all(==(first(weights)), weights) ? nothing : weights
+end
 
 # Average-rank pseudo-observations for weights that `_fit_weights` has already
 # normalized, so that the fit and the model's `_copula_data` rank by exactly
@@ -687,10 +695,9 @@ function _fit_margin(D, x, w::AbstractVector; kwargs...)
             "copula with `fit(CT, U; weights)`"))
     end
 end
-function _is_missing_weighted_fit(err::MethodError)
-    f = err.f === Core.kwcall ? err.args[2] : err.f
-    return f in (Distributions.fit, Distributions.fit_mle, Distributions.suffstats)
-end
+# Only Distributions.jl's explicit `suffstats` fallback means that the
+# weighted capability is absent. A `MethodError` can originate inside an
+# existing weighted fitting implementation and must propagate unchanged.
 _is_missing_weighted_fit(err::ErrorException) =
     startswith(err.msg, "suffstats is not implemented")
 _is_missing_weighted_fit(::Exception) = false

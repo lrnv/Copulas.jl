@@ -25,3 +25,20 @@
         CopulaModel, malformed, data; copula_method=:itau,
     )
 end
+
+
+struct _BrokenWeightedMargin <: ContinuousUnivariateDistribution end
+_broken_weighted_fit_inner(::Int) = nothing
+Distributions.fit(::Type{_BrokenWeightedMargin}, x, w) =
+    _broken_weighted_fit_inner(:boom)
+
+@testset "weighted margin errors distinguish capability from implementation failures" begin
+    err = try
+        Copulas._fit_margin(_BrokenWeightedMargin, [1.0, 2.0], ones(2))
+    catch e
+        e
+    end
+    @test err isa MethodError
+    @test err.f === _broken_weighted_fit_inner
+    @test_throws ArgumentError Copulas._fit_margin(Cauchy, [0.1, 0.2], ones(2))
+end
