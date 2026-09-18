@@ -44,10 +44,10 @@ end
 function (TT::Type{<:Tail})(args...; kwargs...)
     S = hasproperty(TT, :body) ? TT.body : TT
     T = S.name.wrapper
-    # Refuse only a genuinely argument-free recursive call. Keyword calls are
-    # converted to the canonical positional constructor, but their names must
-    # match the remaining public parameters and are reordered accordingly.
-    T === TT && isempty(args) && isempty(kwargs) && throw(MethodError(TT, args))
+    # Exact public positional constructors dispatch before this fallback. If
+    # an unparameterized wrapper reaches it without keywords, forwarding the
+    # same positional call to `T` would recurse forever.
+    T === TT && isempty(kwargs) && throw(MethodError(TT, args))
     isempty(kwargs) && return T(args...)
 
     parameters = _tail_constructor_parameter_names(T, keys(kwargs))
@@ -165,9 +165,7 @@ A(tail::BivariatePickandsTail, t::NTuple{2, <:Real}) = A(tail, t[1])
 """
     dA(tail::BivariatePickandsTail, t)
 
-Evaluate the first derivative of the scalar Pickands function. The internal
-fallback uses forward-mode automatic differentiation; specialized formulas
-must retain the same one-sided behavior used by endpoint conditionals.
+Evaluate the first derivative of the scalar Pickands function `A(tail, t)`.
 
 See also: [`A`](@ref), [`d²A`](@ref), [`BivariatePickandsTail`](@ref).
 """
@@ -204,7 +202,7 @@ function _biv_der_ℓ(tail::BivariatePickandsTail, uv)
     return val, du, dv, dudv
 end
 function _ghoudi_mixture_probability(tail::BivariatePickandsTail, z::Real)
-    # p(z) = z(1-z) A''(z) / [ A(z) g_Z(z) ] 
+    # p(z) = z(1-z) A''(z) / [ A(z) g_Z(z) ]
     num = z * (1 - z) * d²A(tail, z) 
     dem = A(tail, z) * Distributions.pdf(ExtremeDist(tail), z)
     p = num / dem 
