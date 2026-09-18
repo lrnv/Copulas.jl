@@ -17,20 +17,11 @@ jobs:
         with:
           ref: parameter-spaces-fitting
           fetch-depth: 0
-      - name: Apply params refactor
+      - name: Finish params refactor
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('scripts/refactor_distribution_params.py')
-          s = p.read_text()
-          start = s.index('# Audit obvious violations.')
-          end = s.index('# Keep the refactor itself clean.', start)
-          s = s[:start] + '# Non-Distribution params definitions were removed above.\n\n' + s[end:]
-          p.write_text(s)
-          PY
-          python scripts/refactor_distribution_params.py
+          python scripts/finish_distribution_params.py
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git add src ext test docs
-          git commit -m 'Align params with Distributions and Paramorph'
+          git commit -m 'Finish Distributions params cleanup'
           git push origin HEAD:parameter-spaces-fitting
