@@ -23,6 +23,11 @@ jobs:
           python - <<'PY'
           from pathlib import Path
 
+          # The migration touches this documentation file, so normalize its
+          # historical trailing whitespace before its own `git diff --check`.
+          p = Path('docs/src/bestiary/archimedean.md')
+          p.write_text('\n'.join(line.rstrip() for line in p.read_text().splitlines()) + '\n')
+
           p = Path('src/Tail/HuslerReissTail.jl')
           text = p.read_text()
           text = text.replace('θ = tail.parameter', 'θ = something(tail.θ)')
