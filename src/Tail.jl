@@ -165,7 +165,9 @@ A(tail::BivariatePickandsTail, t::NTuple{2, <:Real}) = A(tail, t[1])
 """
     dA(tail::BivariatePickandsTail, t)
 
-Evaluate the first derivative of the scalar Pickands function `A(tail, t)`.
+Evaluate the first derivative of the scalar Pickands function. The internal
+fallback uses forward-mode automatic differentiation; specialized formulas
+must retain the same one-sided behavior used by endpoint conditionals.
 
 See also: [`A`](@ref), [`d²A`](@ref), [`BivariatePickandsTail`](@ref).
 """
@@ -202,7 +204,7 @@ function _biv_der_ℓ(tail::BivariatePickandsTail, uv)
     return val, du, dv, dudv
 end
 function _ghoudi_mixture_probability(tail::BivariatePickandsTail, z::Real)
-    # p(z) = z(1-z) A''(z) / [ A(z) g_Z(z) ]
+    # p(z) = z(1-z) A''(z) / [ A(z) g_Z(z) ] 
     num = z * (1 - z) * d²A(tail, z) 
     dem = A(tail, z) * Distributions.pdf(ExtremeDist(tail), z)
     p = num / dem 
