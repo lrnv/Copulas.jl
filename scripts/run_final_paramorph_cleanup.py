@@ -129,6 +129,16 @@ needed. If the corresponding rank-inversion identities are implemented, the
 family can register those methods alongside its custom estimator:
 """,
     )
+
+    # The matched legacy sentence had a trailing space after its colon. The
+    # block replacement deliberately stops at the colon, so consume the one
+    # now-orphaned space-only line without touching neighboring Markdown.
+    p = Path(guide)
+    raw = p.read_bytes()
+    raw = raw.replace(b"custom estimator:\r\n \r\n", b"custom estimator:\r\n\r\n", 1)
+    raw = raw.replace(b"custom estimator:\n \n", b"custom estimator:\n\n", 1)
+    p.write_bytes(raw)
+
     if b"availiable methods" in Path(guide).read_bytes():
         replaceb(guide, "availiable methods", "available methods")
 
