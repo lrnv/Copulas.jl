@@ -34,7 +34,6 @@ struct ImplicitTestGenerator{G<:Generator} <: Generator
     inner::G
 end
 
-Distributions.params(G::ImplicitTestGenerator) = Distributions.params(G.inner)
 Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ(G::ImplicitTestGenerator, t) = ϕ(G.inner, t)
 ϕ⁻¹(G::ImplicitTestGenerator, t) = ϕ⁻¹(G.inner, t)

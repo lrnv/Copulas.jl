@@ -340,10 +340,10 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     α₀ = if start isa Real
         Paramorph.unconstrain(pspace, start)
     elseif start ∈ (:itau, :irho, :ibeta)
-        θ₀ = only(values(Distributions.params(_fit(CT, U, Val{start}(); weights))))
+        θ₀ = only(Distributions.params(_fit(CT, U, Val{start}(); weights)))
         Paramorph.unconstrain(pspace, θ₀)
     elseif start === :iupper
-        θ₀ = only(values(Distributions.params(_fit(CT, U, Val(:iupper)))))
+        θ₀ = only(Distributions.params(_fit(CT, U, Val(:iupper))))
         Paramorph.unconstrain(pspace, θ₀)
     else
         zeros(Paramorph.dimension(pspace))

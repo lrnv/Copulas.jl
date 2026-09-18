@@ -71,7 +71,7 @@ function CheckerboardCopula{d}(X::AbstractMatrix{T}; m=nothing, pseudo_values::B
 end
 CheckerboardCopula(X::AbstractMatrix; kwargs...) = CheckerboardCopula{size(X, 1)}(X; kwargs...)
 CheckerboardCopula(d::Integer, X::AbstractMatrix; kwargs...) = CheckerboardCopula{d}(X; kwargs...)
-Distributions.params(C::CheckerboardCopula) = (m=C.m, boxes=C.boxes)
+Distributions.params(C::CheckerboardCopula) = (C.m, C.boxes)
 function Distributions._logpdf(C::CheckerboardCopula{d}, u) where {d}
     b = Tuple(min.(C.m .- 1, floor.(Int, u .* C.m)))
     if haskey(C.boxes, b)

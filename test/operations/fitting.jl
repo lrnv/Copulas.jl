@@ -597,7 +597,7 @@ end
             θ,
             example,
         )
-        return Distributions.params(Cx).θ
+        return only(Distributions.params(Cx))
     end
 
     @test ForwardDiff.derivative(f, 2.0) ≈ 1.0

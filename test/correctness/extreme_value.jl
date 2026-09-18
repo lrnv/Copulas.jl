@@ -328,8 +328,8 @@ end
 
         @test Copulas._is_valid_in_dim(tail, 3)
         @test !Copulas._is_valid_in_dim(tail, 4)
-        @test Distributions.params(tail).ν == ν
-        @test Distributions.params(tail).R ≈ R
+        @test tail.ν == ν
+        @test something(tail.R) ≈ R
 
         u = [0.34, 0.58, 0.79]
         @test 0.0 < cdf(C, u) < 1.0

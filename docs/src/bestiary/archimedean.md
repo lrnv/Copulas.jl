@@ -4,7 +4,7 @@ CurrentModule = Copulas
 
 # [Archimedean family](@id archimedean_copulas_header)
 
-Archimedean copulas are an important parametric class of copulas. To define Archimedean copulas, we must consider their *generators*, which are unrelated to spherical generators and must be $d$-monotone functions. 
+Archimedean copulas are an important parametric class of copulas. To define Archimedean copulas, we must consider their *generators*, which are unrelated to spherical generators and must be $d$-monotone functions.
 
 ## Generators and d-monotony
 
@@ -32,9 +32,9 @@ A function that is $d$-monotone for all $d$ is called **completely monotone**.
 In this package, there is an abstract class [`Generator`](@ref) that contains those generators.
 
 !!! tip "Available Archimedean generators"
-    The package covers every archimedean generators that exists through a generic implementation of the Williamson d-transform, see the next section. 
+    The package covers every archimedean generators that exists through a generic implementation of the Williamson d-transform, see the next section.
 
-    On the other hand, many parametric Archimedean generators are specifically implemented, see [this list of implemented archimedean generator](@ref available_archimedean_models) to get an overview of which ones are availiable. 
+    On the other hand, many parametric Archimedean generators are specifically implemented, see [this list of implemented archimedean generator](@ref available_archimedean_models) to get an overview of which ones are availiable.
 
 ::: info Empirical generator estimator
 
@@ -43,13 +43,13 @@ From data, you can estimate a $d$-Archimedean generator nonparametrically via th
 :::
 
 The supported generator families are listed below. Defining a subtype of
-[`Generator`](@ref) with `ϕ`, `max_monotony`, and `Distributions.params` is also
+[`Generator`](@ref) with `ϕ`, `max_monotony`,  is also
 a supported public extension mechanism. The [developer guide](@ref
 developer_fitting) separately describes optional implementation and
 optimization hooks, which are not public API.
 
 
-For example, Here is a graph of a few Clayton Generators: 
+For example, Here is a graph of a few Clayton Generators:
 ```@example
 using Copulas: ϕ,ClaytonGenerator,IndependentGenerator
 using Plots
@@ -81,7 +81,7 @@ $= \mathbb{E}\left( (1 - \frac{t}{X})^{d-1}_+ \right) \mathbb{1}_{t > 0} + (1 - 
 
 :::
 
-In this package, we implemented it through the [`WilliamsonGenerator`](@ref) class. It can be used as follows: 
+In this package, we implemented it through the [`WilliamsonGenerator`](@ref) class. It can be used as follows:
 
 `WilliamsonGenerator(X::UnivariateRandomVariable, d)`.
 
@@ -137,7 +137,7 @@ The Williamson d-transform is a bijective transformation[^1] from the set of pos
 
 [^1]:
 
-    This bijection is to be taken carefuly: the bijection is between random variables *with unit scales* and generators *with common value at 1*, sicne on both rescaling does not change the underlying copula. 
+    This bijection is to be taken carefuly: the bijection is between random variables *with unit scales* and generators *with common value at 1*, sicne on both rescaling does not change the underlying copula.
 
 This transformation is implemented through `𝒲₋₁(G::Generator, d)`. For integer `d`, it computes the classical inverse Williamson transform from the derivatives of the d-monotone generator `G`, unless a more specific radial representation is available. See [williamson1956, mcneil2009](@cite).
 
@@ -151,13 +151,13 @@ B \sim \operatorname{Beta}(s,n-s),
 
 with independent factors. Then `𝒲_s(R_s) = G`. Consequently, `𝒲₋₁(G, s)` works for every finite `s > 0` satisfying `ceil(s) <= max_monotony(G)`. When `s` is integer-valued, the beta product is skipped and the usual integer method is used directly.
 
-To put it in a nutshell, for ``\phi`` a ``d``-monotone archimedean generator, the inverse Williamson-d-transform of ``\\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``R``, defined by : 
+To put it in a nutshell, for ``\phi`` a ``d``-monotone archimedean generator, the inverse Williamson-d-transform of ``\\phi`` is the cumulative distribution function ``F`` of a non-negative random variable ``R``, defined by :
 
 ```math
 F(x) = 𝒲_{d}^{-1}(\phi)(x) = 1 - \frac{(-x)^{d-1} \phi_+^{(d-1)}(x)}{(d-1)!} - \sum_{k=0}^{d-2} \frac{(-x)^k \phi^{(k)}(x)}{k!}
 ```
 
-It returns this cumulative distribution function in the form of the corresponding random variable `<:Distributions.ContinuousUnivariateDistribution` from `Distributions.jl`. You may then compute : 
+It returns this cumulative distribution function in the form of the corresponding random variable `<:Distributions.ContinuousUnivariateDistribution` from `Distributions.jl`. You may then compute :
 * The cdf via `Distributions.cdf`
 * The pdf via `Distributions.pdf` and the logpdf via `Distributions.logpdf`
 * Samples from the distribution via `rand(X,n)`.
@@ -174,7 +174,7 @@ plot(x -> ϕ(G,x), xlims=(0,5), label="G")
 plot!(x -> exp(-x), label="Independence")
 ```
 
-The `𝒲` alias stands for `WiliamsonGenerator`. To stress the generality of the approach, remark that any positive distribution is allowed, including discrete ones: 
+The `𝒲` alias stands for `WiliamsonGenerator`. To stress the generality of the approach, remark that any positive distribution is allowed, including discrete ones:
 
 ```@example
 using Distributions
@@ -186,48 +186,48 @@ plot(x -> ϕ(G1,x), xlims=(0,10), label="G1")
 plot!(x -> ϕ(G2,x), label="G2")
 ```
 
-As obvious from the definition of the Williamson transform, using a discrete distribution produces piecewise-linear generators, where the number of pieces is dependent on the order of the transformation. 
+As obvious from the definition of the Williamson transform, using a discrete distribution produces piecewise-linear generators, where the number of pieces is dependent on the order of the transformation.
 
 ## Archimedean Copulas
 
-Let's first define formally archimedean copulas: 
+Let's first define formally archimedean copulas:
 
 ::: definition Archimedean copula
 
-If $\phi$ is a $d$-monotonous Archimedean generator, then the function 
+If $\phi$ is a $d$-monotonous Archimedean generator, then the function
 
-$$C(\boldsymbol u) = \phi\left(\sum\limits_{i=1}^d \phi^{-1}(u_i)\right)$$ is a copula. 
+$$C(\boldsymbol u) = \phi\left(\sum\limits_{i=1}^d \phi^{-1}(u_i)\right)$$ is a copula.
 
 :::
 
-There are a few archimedean generators that are worth noting since they correspond to known archimedean copulas families: 
+There are a few archimedean generators that are worth noting since they correspond to known archimedean copulas families:
 * [`IndependentCopula`](@ref): $\phi(t) =e^{-t} \text{ generates } \Pi$.
 * [`ClaytonGenerator`](@ref): $\phi_{\theta}(t) = \left(1+t\theta\right)^{-\theta^{-1}}$ generates the $\mathrm{Clayton}(\theta)$ copula.
 * [`GumbelGenerator`](@ref): $\phi_{\theta}(t) = \exp\{-t^{\theta^{-1}}\}$ generates the $\mathrm{Gumbel}(\theta)$ copula.
 * [`FrankGenerator`](@ref): $\phi_{\theta}(t) = -\theta^{-1}\ln\left(1+e^{-t-\theta}-e^{-t}\right)$ generates the $\mathrm{Franck}(\theta)$ copula.
 
-There are a lot of others implemented in the package, see our [large list of implemented archimedean generator](@ref available_archimedean_models). 
+There are a lot of others implemented in the package, see our [large list of implemented archimedean generator](@ref available_archimedean_models).
 
-Archimedean copulas have a nice decomposition, called the Radial-simplex decomposition, developed in [mcneil2008,mcneil2009](@cite): 
+Archimedean copulas have a nice decomposition, called the Radial-simplex decomposition, developed in [mcneil2008,mcneil2009](@cite):
 
 ::: property Radial-simplex decomposition
 
-A $d$-variate random vector $\boldsymbol U$ following an Archimedean copula with generator $\phi$ can be decomposed into 
+A $d$-variate random vector $\boldsymbol U$ following an Archimedean copula with generator $\phi$ can be decomposed into
 
 $\boldsymbol U = \phi.(\boldsymbol S R),$
-where $\boldsymbol S$ is uniform on the $d$-variate simplex and $R$ is a non-negative random variable, independent form $\boldsymbol S$, defined as the inverse Williamson $d$-transform of $\phi$.  
+where $\boldsymbol S$ is uniform on the $d$-variate simplex and $R$ is a non-negative random variable, independent form $\boldsymbol S$, defined as the inverse Williamson $d$-transform of $\phi$.
 
 :::
 
 
-This is why `𝒲₋₁(G::Generator,d)` is such an important function in the API: it allows to generator the radial part and sample the Archimedean copula. You may call this function directly to see what distribution will be used: 
+This is why `𝒲₋₁(G::Generator,d)` is such an important function in the API: it allows to generator the radial part and sample the Archimedean copula. You may call this function directly to see what distribution will be used:
 
 ```@example
 using Copulas: 𝒲₋₁, FrankGenerator
 𝒲₋₁(FrankGenerator(7), 3)
 ```
 
-For the Frank Copula, as for many classic copulas, the distribution used is known. We pull some of them from `Distributions.jl` but implement a few more, as this Logarithmic one. Another useful example are negatively-dependent Clayton copulas: 
+For the Frank Copula, as for many classic copulas, the distribution used is known. We pull some of them from `Distributions.jl` but implement a few more, as this Logarithmic one. Another useful example are negatively-dependent Clayton copulas:
 
 ```@example
 using Copulas: 𝒲₋₁, ClaytonGenerator
@@ -248,7 +248,7 @@ $$\boldsymbol U = \phi(\boldsymbol Y / W),$$  where $\boldsymbol Y$ is a vector 
 
 It is well-known that completely monotone generators are Laplace transforms of non-negative random variables. This gives rise to another decomposition in [hofert2013](@cite):
 
-The link between the distribution of $R$ and the distribution of $W$ can be made explicit. We provide the `WilliamsonFromFrailty()` constructor to build the distribution of $R$ from the distribution of $W$ and return the corresponding `WilliamsonGenerator` from the frailty distribution itself. The corresponding φ is simply the Laplace transform of $W$. This is another way to construct new Archimedean copulas !  
+The link between the distribution of $R$ and the distribution of $W$ can be made explicit. We provide the `WilliamsonFromFrailty()` constructor to build the distribution of $R$ from the distribution of $W$ and return the corresponding `WilliamsonGenerator` from the frailty distribution itself. The corresponding φ is simply the Laplace transform of $W$. This is another way to construct new Archimedean copulas !
 
 We use this fraily approach for several generators, since sometimes it is faster, including e.g. the Clayton one with positive dependence:
 ```@example
@@ -314,7 +314,7 @@ plot!(ts, EC.(ts); seriestype=:steppost, alpha=0.5, color=:black, label="empiric
 
 Archimedean copulas have been widely used in the literature due to their nice decomposition properties and easy parametrization. The interested reader can refer to the extensive literature [hofert2010,hofert2013a,mcneil2010,cossette2017,cossette2018,genest2011a,dibernardino2013a,dibernardino2016,cooray2018,spreeuw2014](@cite) on Archimedean copulas, their nesting extensions and most importantly their estimation.
 
-One major drawback of the Archimedean family is that these copulas have exchangeable marginals (i.e., $C(\boldsymbol u) = C(p(\boldsymbol u))$ for any permutation $p(\boldsymbol u)$ of $u_1, ..., u_d$): the dependence structure is symmetric, which might not be desirable. However, from the Radial-simplex expression, we can extrapolate and take for $\boldsymbol S$ a non-uniform distribution on the simplex. 
+One major drawback of the Archimedean family is that these copulas have exchangeable marginals (i.e., $C(\boldsymbol u) = C(p(\boldsymbol u))$ for any permutation $p(\boldsymbol u)$ of $u_1, ..., u_d$): the dependence structure is symmetric, which might not be desirable. However, from the Radial-simplex expression, we can extrapolate and take for $\boldsymbol S$ a non-uniform distribution on the simplex.
 
 Liouville copulas share many properties with Archimedean copulas, but are not exchangeable when their Dirichlet parameters differ. This is an easy way to produce non-exchangeable dependence structures. See [mcneil2010,cote2019](@cite).
 

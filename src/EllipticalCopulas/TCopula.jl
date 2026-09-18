@@ -298,7 +298,7 @@ end
 function _fit(::Type{<:TCopula}, U, ::Val{:mle}; weights=nothing)
     # λ = 1 / ν.  The endpoint λ = 0 is the Gaussian limit ν = Inf.
     G = _fit(GaussianCopula, U, Val(:mle); weights)
-    Σ_gaussian = Distributions.params(G).Σ
+    Σ_gaussian = only(Distributions.params(G))
     ll_gaussian = _weighted_loglikelihood(G, U, weights)
     profile_loss = λ -> begin
         iszero(λ) && return -ll_gaussian

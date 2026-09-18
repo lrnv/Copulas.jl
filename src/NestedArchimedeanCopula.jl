@@ -455,8 +455,7 @@ end
 # Element type of a single generator's parameters (promote across its params).
 # `init = Bool` is the identity for `promote_type`, so a 0-param generator
 # yields `Bool` and never widens the data type.
-_gen_param_eltype(G::Generator) =
-    mapreduce(typeof, promote_type, values(Distributions.params(G)); init = Bool)
+_gen_param_eltype(G::Generator) = _parameter_eltype(G)
 
 # Promote the parameter element type over the WHOLE tree (root + every child /
 # nested node). Used to widen the Faà di Bruno working type `T` so that
@@ -800,7 +799,7 @@ function _validate_nested_edge(parent::Generator, child::Generator, d::Int)
     edge = "$(nameof(typeof(parent))) -> $(nameof(typeof(child)))"
     if status === _NESTING_INVALID
         throw(DomainError(
-            (parent=Distributions.params(parent), child=Distributions.params(child), leaves=d),
+            (parent=parent, child=child, leaves=d),
             "invalid nested Archimedean edge $edge for a child subtree with $d leaves",
         ))
     end
@@ -1269,9 +1268,8 @@ end
 # =============================================================================
 
 # Bare UnionAll generator type from an instance, e.g. ClaytonGenerator{Float64}
-# -> ClaytonGenerator. Reconstruct via `_gentype(G)(values(nt)...)`: the Generator
-# type-call (Generator.jl) splats positional args in field order, which equals the
-# order of `Distributions.params`.
+# -> ClaytonGenerator. Reconstruct through the generator type-call using values ordered by its
+# `Paramorph.param_space`.
 _gentype(G::Generator) = typeof(G).name.wrapper
 
 # Local arity = number of ϕ⁻¹ terms this generator sums = #direct leaves +
@@ -1455,20 +1453,28 @@ end
 
 # Template fits expose the fitted generators' natural parameters. Custom
 # runtime parametrizations instead expose their irreducible fitted coordinates.
-function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
+function _nested_generator_coef(G::Generator, dloc::Int, tag::String)
+    p = _generator_space(G, dloc)
     names = String[]
     values = Float64[]
-    for (name, value) in pairs(Distributions.params(C.G))
+    for name in Paramorph.names(p)
+        value = getproperty(G, name)
+        value isa Number || continue
         push!(names, "$(tag).$(name)")
         push!(values, float(value))
     end
+    return names, values
+end
+
+function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
+    names, values = _nested_generator_coef(C.G, _local_arity(C), tag)
     for (i, child) in enumerate(C.children)
         if child isa Tuple
-            copula, _ = child
-            for (name, value) in pairs(Distributions.params(copula.G))
-                push!(names, "$(tag)[$(i)].$(name)")
-                push!(values, float(value))
-            end
+            copula, ds = child
+            child_names, child_values = _nested_generator_coef(
+                copula.G, max(length(ds), 2), "$(tag)[$(i)]")
+            append!(names, child_names)
+            append!(values, child_values)
         else
             child_names, child_values = _nested_coef(child, "$(tag)[$(i)]")
             append!(names, child_names)

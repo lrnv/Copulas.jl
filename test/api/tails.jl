@@ -4,7 +4,6 @@
 struct LogisticOracleTail{T} <: Copulas.BivariatePickandsTail
     θ::T
 end
-Distributions.params(tail::LogisticOracleTail) = (; θ=tail.θ)
 Copulas.ℓ(tail::LogisticOracleTail, x) =
     sum(xᵢ -> xᵢ^tail.θ, x)^(inv(tail.θ))
 Copulas.A(tail::LogisticOracleTail, t::Real) =

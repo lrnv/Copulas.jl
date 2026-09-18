@@ -54,7 +54,8 @@ References:
 HuslerReissTail, HuslerReissCopula
 
 struct HuslerReissTail{P} <: OneParameterPickandsTail
-    parameter::P
+    θ::Union{Nothing,P}
+    Γ::Union{Nothing,P}
     function HuslerReissTail(Γ::AbstractMatrix)
         d1, d2 = size(Γ)
         d1 == d2 || throw(DimensionMismatch("Γ must be square"))
@@ -82,43 +83,41 @@ struct HuslerReissTail{P} <: OneParameterPickandsTail
                 throw(ArgumentError("Γ must be strictly conditionally negative definite"))
             end
         end
-        return new{Matrix{Float64}}(G)
+        return new{Matrix{Float64}}(nothing, G)
     end
     function HuslerReissTail(θ::Real)
         θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
         θf = float(θ)
-        return new{typeof(θf)}(θf)
+        return new{typeof(θf)}(θf, nothing)
     end
 end
-@inline _hr_is_independent(tail::HuslerReissTail{<:Real}) = iszero(tail.parameter)
+@inline _hr_is_independent(tail::HuslerReissTail{<:Real}) = iszero(something(tail.θ))
 @inline limit_kind(tail::HuslerReissTail{<:Real}, ::Val) =
-    iszero(tail.parameter) ? Π_LIMIT :
-    isinf(tail.parameter) ? M_LIMIT :
+    iszero(something(tail.θ)) ? Π_LIMIT :
+    isinf(something(tail.θ)) ? M_LIMIT :
     NO_LIMIT
 @inline limit_kind(tail::HuslerReissTail{<:AbstractMatrix}, ::Val) =
-    all(iszero, tail.parameter) ? M_LIMIT : NO_LIMIT
+    all(iszero, something(tail.Γ)) ? M_LIMIT : NO_LIMIT
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
 _is_valid_in_dim(::HuslerReissTail{<:Real}, d::Int) = d >= 2
 _is_valid_in_dim(tail::HuslerReissTail{<:AbstractMatrix}, d::Int) =
-    d == size(tail.parameter, 1)
-Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{<:Real}}) where {D} =
-    (C.tail.parameter,)
+    d == size(something(tail.Γ), 1)
 Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{<:AbstractMatrix}}) where {D} =
-    (copy(C.tail.parameter),)
+    (copy(something(C.tail.Γ)),)
 Paramorph.param_space(::Type{<:HuslerReissTail{<:Real}}, d) =
     Paramorph.NonNeg(:θ)
 
-_hr_theta(tail::HuslerReissTail{<:Real}) = tail.parameter
-_hr_theta(tail::HuslerReissTail{<:AbstractMatrix}) = 2 / sqrt(tail.parameter[1, 2])
+_hr_theta(tail::HuslerReissTail{<:Real}) = something(tail.θ)
+_hr_theta(tail::HuslerReissTail{<:AbstractMatrix}) = 2 / sqrt(something(tail.Γ)[1, 2])
 function _hr_variogram(tail::HuslerReissTail{<:Real}, d::Int)
-    γ = abs2(2 / tail.parameter)
+    γ = abs2(2 / something(tail.θ))
     Γ = fill(float(γ), d, d)
     @inbounds for i in 1:d
         Γ[i, i] = zero(eltype(Γ))
     end
     return Γ
 end
-_hr_variogram(tail::HuslerReissTail{<:AbstractMatrix}, ::Int) = tail.parameter
+_hr_variogram(tail::HuslerReissTail{<:AbstractMatrix}, ::Int) = something(tail.Γ)
 
 HuslerReissCopula(Γ::AbstractMatrix) =
     ExtremeValueCopula{size(Γ, 1)}(HuslerReissTail(Γ))
@@ -185,7 +184,7 @@ function _hr_stdf(Γ::AbstractMatrix, x)
 end
 
 function ℓ(tail::HuslerReissTail{<:Real}, x)
-    θ = tail.parameter
+    θ = something(tail.θ)
     d = length(x)
     if d == 2
         x1, x2 = x
@@ -344,7 +343,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
 end
 
 ℓ(tail::HuslerReissTail{<:AbstractMatrix}, x) =
-    all(iszero, tail.parameter) ? maximum(x) : _hr_stdf(tail.parameter, x)
+    all(iszero, something(tail.Γ)) ? maximum(x) : _hr_stdf(something(tail.Γ), x)
 
 function dA(tail::HuslerReissTail, t::Real)
     θ = _hr_theta(tail)

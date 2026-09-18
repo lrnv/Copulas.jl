@@ -356,7 +356,6 @@ end
 const MyArchimedeanCopula{d,T} = ArchimedeanCopula{d, MyGenerator{T}}
 ϕ(G::MyGenerator, t) = ...
 max_monotony(G::MyGenerator) = ...
-Distributions.params(G::MyGenerator) = (θ = G.θ,)
 ```
 
 ### Public requirements and optional implementation hooks
@@ -364,7 +363,7 @@ Distributions.params(G::MyGenerator) = (θ = G.θ,)
 | Method                              | Purpose                                                            | Required    |
 | ------------------------------------| ------------------------------------------------------------------ | ----------- |
 | `max_monotony(G)`                   | Maximum degree of monotonicity (controls validity in d dimensions) | ✅ Public   |
-| `Distributions.params(G)`           | Return parameters as a `NamedTuple`                                | ✅ Public   |
+| `Paramorph.param_space(typeof(G), d)` | Describe fitted parameter names and geometry when fitting is desired | ✅ Public   |
 | `ϕ(G, t)`                           | Generator function                                                 | ✅ Public   |
 | `ϕ⁻¹(G, t)`                         | Generator function inverse                                         | ⚙️ Internal optimization |
 | `ϕ⁽¹⁾(G, t)`                        | Generator function derivative                                      | ⚙️ Internal optimization |
@@ -418,7 +417,6 @@ struct MyTail{T} <: Copulas.Tail
 end
 
 Copulas.ℓ(tail::MyTail, x) = ...
-Distributions.params(tail::MyTail) = (; θ = tail.θ)
 ```
 
 `Tail` is valid by default for every `d >= 2`. Override
@@ -677,7 +675,7 @@ Elliptical copulas are characterized by a correlation matrix `Σ` and, optionall
 | ------------------------- | ------------------------------------------------------ | -------------- |
 | `U(C)`                   | Return the standardized univariate distribution instance | ✅            |
 | `N(C)`                   | Return a callable constructing the multivariate distribution from `Σ` | ✅ |
-| `Distributions.params(C)` | Return parameters as a `NamedTuple`                    | ✅              |
+| `Distributions.params(C)` | Return constructor parameters as a `Tuple`              | ✅              |
 
 Minimal outline:
 
@@ -696,7 +694,7 @@ MyEllipticalCopula(d, Σ) = MyEllipticalCopula{d}(Σ)
 # Required bindings
 Copulas.U(C::MyEllipticalCopula) = Normal()
 Copulas.N(C::MyEllipticalCopula) = Σ -> MvNormal(Σ)
-Distributions.params(C::MyEllipticalCopula) = (Σ = C.Σ,)
+Paramorph.param_space(::Type{<:MyEllipticalCopula}, d) = Paramorph.Correlation(:Σ, d)
 ```
 
 The example uses Gaussian distributions. For runtime shape parameters, the
@@ -748,7 +746,7 @@ struct MardiaCopula{P} <: Copulas.Copula{2}
 end
 MardiaCopula(d, θ) = d == 2 ? MardiaCopula(θ) :
     throw(DimensionMismatch("MardiaCopula is bivariate"))
-Distributions.params(C::MardiaCopula) = (; θ = C.θ,)
+Paramorph.param_space(::Type{<:MardiaCopula}, d) = Paramorph.Id(:θ)
 function Copulas._cdf(C::MardiaCopula, u)
     # The joint CDF follows Mardia’s formulation:
     θ = C.θ
@@ -890,7 +888,6 @@ struct ExampleClaytonGenerator{T} <: Copulas.Generator
 end
 
 Copulas.max_monotony(::ExampleClaytonGenerator) = Inf
-Distributions.params(G::ExampleClaytonGenerator) = (; θ=G.θ)
 Copulas.ϕ(G::ExampleClaytonGenerator, t) = exp(-log1p(G.θ * t) / G.θ)
 
 G = ExampleClaytonGenerator(2.0)
@@ -935,7 +932,6 @@ function Copulas.A(tail::ExampleLogTail, t::Real)
     return exp(LogExpFunctions.logaddexp(tail.θ * log(t),
         tail.θ * log1p(-t)) / tail.θ)
 end
-Distributions.params(tail::ExampleLogTail) = (; θ=tail.θ)
 
 C = ExtremeValueCopula{2}(ExampleLogTail(2.5))
 reference = LogCopula{2}(2.5)

@@ -17,8 +17,6 @@
     @test StatsBase.dof(D) == 4
     @test Copulas._parameter_dof(1.0) == 1
     @test Copulas._parameter_dof((1.0, [2.0, 3.0], :fixed)) == 3
-    @test Copulas._parameter_dof(Copulas.ClaytonGenerator(1.0)) == 1
-    @test Copulas._parameter_dof(Copulas.GalambosTail(1.0)) == 1
     @test Copulas._parameter_dof(C) == 1
     @test 0 <= cdf(D, x) <= 1
     @test logcdf(D, x) ≈ log(cdf(D, x))

@@ -147,6 +147,11 @@ function Distributions.params(C::ArchimedeanCopula)
     p = Paramorph.param_space(C)
     return map(Base.Fix1(getproperty, C.G), Paramorph.names(p))
 end
+Distributions.params(::ArchimedeanCopula{d,<:MarkerGenerator}) where {d} = ()
+Distributions.params(C::ArchimedeanCopula{d,<:𝒲}) where {d} = (C.G.X, C.G.order)
+Distributions.params(C::ArchimedeanCopula{d,<:TiltedGenerator}) where {d} =
+    (C.G.G, C.G.p, C.G.sJ)
+Distributions.params(C::ArchimedeanCopula{d,<:FrailtyGenerator}) where {d} = (C.G.F,)
 
 @inline function _cdf(C::ArchimedeanCopula{d}, u) where {d}
     kind = limit_kind(C.G, Val(d))

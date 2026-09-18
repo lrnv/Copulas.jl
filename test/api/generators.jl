@@ -6,12 +6,10 @@ struct PowerExponentialOracleGenerator{T} <: Copulas.Generator
 end
 Copulas.ϕ(G::PowerExponentialOracleGenerator, t) = exp(-t^(inv(G.θ)))
 Copulas.max_monotony(::PowerExponentialOracleGenerator) = Inf
-Distributions.params(G::PowerExponentialOracleGenerator) = (; θ=G.θ)
 
 struct MinimalPublicGenerator <: Copulas.Generator end
 Copulas.ϕ(::MinimalPublicGenerator, t) = exp(-t)
 Copulas.max_monotony(::MinimalPublicGenerator) = Inf
-Distributions.params(::MinimalPublicGenerator) = (;)
 
 @testset "public Generator extension contract" begin
     G = MinimalPublicGenerator()

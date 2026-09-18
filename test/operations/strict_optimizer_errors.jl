@@ -4,7 +4,7 @@ end
 
 _BrokenADCopula(d::Int, θ::Float64) = _BrokenADCopula{d,Float64}(θ)
 Base.eltype(C::_BrokenADCopula) = typeof(C.θ)
-Distributions.params(C::_BrokenADCopula) = (; θ=C.θ)
+Distributions.params(C::_BrokenADCopula) = (C.θ,)
 Distributions._logpdf(C::_BrokenADCopula, u::AbstractVector{<:Real}) = zero(eltype(u))
 Copulas._example(::Type{_BrokenADCopula}, d) = _BrokenADCopula(d, 0.5)
 Copulas._unbound_params(::Type{_BrokenADCopula}, d, θ) = [log(θ.θ / (1 - θ.θ))]

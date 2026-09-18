@@ -184,7 +184,6 @@ struct IndependentGenerator <: MarkerGenerator end
 struct MGenerator <: MarkerGenerator end
 struct WGenerator <: MarkerGenerator end
 
-Distributions.params(::MarkerGenerator) = (;)
 
 """
     limit_kind(component, ::Val{d})
@@ -412,7 +411,6 @@ struct 𝒲{TX, TO<:Real} <: Generator
 end
 const WilliamsonGenerator = 𝒲
 @doc (@doc 𝒲) WilliamsonGenerator
-Distributions.params(G::𝒲) = (X=G.X, order=G.order)
 max_monotony(G::𝒲) = G.order
 
 _williamson_primal(t) = t
@@ -721,7 +719,6 @@ max_monotony(G::TiltedGenerator{TG, T}) where {TG, T} = max(0, max_monotony(G.G)
 ϕ⁽ᵏ⁾(G::TiltedGenerator{TG, T}, k::Int, t) where {TG, T} = ϕ⁽ᵏ⁾(G.G, k + G.p, G.sJ + t) / G.den
 ϕ⁽ᵏ⁾⁻¹(G::TiltedGenerator{TG, T}, k::Int, y; start_at = G.sJ) where {TG, T} = ϕ⁽ᵏ⁾⁻¹(G.G, k + G.p, y * G.den; start_at = start_at+G.sJ) - G.sJ
 ϕ⁽¹⁾(G::TiltedGenerator{TG, T}, t) where {TG, T} = ϕ⁽ᵏ⁾(G, 1, t)
-Distributions.params(G::TiltedGenerator) = (Distributions.params(G.G)..., sJ = G.sJ)
 
 
 
@@ -784,7 +781,6 @@ struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator
         return new{typeof(F)}(F)
     end
 end
-Distributions.params(G::FrailtyGenerator) = (F=G.F,)
 frailty(G::FrailtyGenerator) = G.F
 
 """

@@ -56,12 +56,13 @@ tEVTail, tEVCopula
 
 struct tEVTail{T,P} <: BivariatePickandsTail
     ν::T
-    parameter::P
+    ρ::Union{Nothing,P}
+    R::Union{Nothing,P}
     function tEVTail(ν::Real, ρ::Real)
         (ν > 0) || throw(ArgumentError("ν must be > 0"))
         (-1 < ρ ≤ 1) || throw(ArgumentError("ρ must be in (-1,1]"))
         νT, ρT = promote(float(ν), float(ρ))
-        return new{typeof(νT),typeof(ρT)}(νT, ρT)
+        return new{typeof(νT),typeof(ρT)}(νT, ρT, nothing)
     end
     function tEVTail(ν::Real, R::AbstractMatrix)
         ν > 0 || throw(ArgumentError("ν must be > 0"))
@@ -86,23 +87,19 @@ struct tEVTail{T,P} <: BivariatePickandsTail
             end
         end
         νf = float(ν)
-        return new{typeof(νf),typeof(RF)}(νf, RF)
+        return new{typeof(νf),typeof(RF)}(νf, nothing, RF)
     end
 end
 @inline limit_kind(tail::tEVTail{<:Any,<:Real}, ::Val) =
-    isone(tail.parameter) ? M_LIMIT : NO_LIMIT
+    isone(something(tail.ρ)) ? M_LIMIT : NO_LIMIT
 @inline limit_kind(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Val) =
-    all(isone, tail.parameter) ? M_LIMIT : NO_LIMIT
+    all(isone, something(tail.R)) ? M_LIMIT : NO_LIMIT
 const tEVCopula{d,T,P} = ExtremeValueCopula{d,tEVTail{T,P}}
 _is_valid_in_dim(tail::tEVTail{<:Any,<:Real}, d::Int) =
-    d >= 2 && tail.parameter > -inv(d - 1)
+    d >= 2 && something(tail.ρ) > -inv(d - 1)
 _is_valid_in_dim(tail::tEVTail{<:Any,<:AbstractMatrix}, d::Int) =
-    d == size(tail.parameter, 1)
+    d == size(something(tail.R), 1)
 
-Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{<:Any,<:Real}}) where {D} =
-    (C.tail.ν, C.tail.parameter)
-Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{<:Any,<:AbstractMatrix}}) where {D} =
-    (C.tail.ν, copy(C.tail.parameter))
 function Paramorph.param_space(::Type{<:tEVTail{<:Any,<:Real}}, d)
     lower = -inv(d - 1)
     return (
@@ -117,11 +114,11 @@ _available_fitting_methods(
     d,
 ) = ()
 
-_tev_rho(tail::tEVTail{<:Any,<:Real}) = tail.parameter
-_tev_rho(tail::tEVTail{<:Any,<:AbstractMatrix}) = tail.parameter[1, 2]
+_tev_rho(tail::tEVTail{<:Any,<:Real}) = something(tail.ρ)
+_tev_rho(tail::tEVTail{<:Any,<:AbstractMatrix}) = something(tail.R)[1, 2]
 function _tev_correlation(tail::tEVTail{<:Any,<:Real}, d::Int)
     d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    ρ = tail.parameter
+    ρ = something(tail.ρ)
     lower = -inv(d - 1)
     ρ > lower || throw(ArgumentError("equicorrelation ρ must satisfy ρ > -1/(d-1) in dimension d=$d"))
     ρ < 1 || throw(ArgumentError("the non-degenerate equicorrelation representation requires ρ < 1"))
@@ -132,7 +129,7 @@ function _tev_correlation(tail::tEVTail{<:Any,<:Real}, d::Int)
     end
     return R
 end
-_tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = tail.parameter
+_tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = something(tail.R)
 
 function _tev_stdf(ν::Real, R::AbstractMatrix, x)
     d = length(x)
@@ -161,7 +158,7 @@ function _tev_stdf(ν::Real, R::AbstractMatrix, x)
 end
 
 function ℓ(tail::tEVTail{<:Any,<:Real}, x)
-    isone(tail.parameter) && return maximum(x)
+    isone(something(tail.ρ)) && return maximum(x)
     d = length(x)
     if d == 2
         x1, x2 = x
@@ -283,7 +280,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
 end
 
 ℓ(tail::tEVTail{<:Any,<:AbstractMatrix}, x) =
-    all(isone, tail.parameter) ? maximum(x) : _tev_stdf(tail.ν, tail.parameter, x)
+    all(isone, something(tail.R)) ? maximum(x) : _tev_stdf(tail.ν, something(tail.R), x)
 
 function A(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν
