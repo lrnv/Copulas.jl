@@ -198,13 +198,13 @@ end
     fitted = fit(TCopula, U; method=:itau)
     @test fitted isa TCopula{2}
     @test fitted.Σ[1, 2] == sinpi(StatsBase.corkendall(U')[1, 2] / 2)
-    @test 3 <= fitted.df <= 6
+    @test 3 <= first(params(fitted)) <= 6
     # With the correlation held at the Kendall inversion the profile is a
     # restriction of the MLE profile, so its likelihood cannot exceed the MLE.
     mle = fit(TCopula, U; method=:mle)
     @test loglikelihood(fitted, U) <= loglikelihood(mle, U) + 1e-8
     @test loglikelihood(fitted, U) >= loglikelihood(GaussianCopula(fitted.Σ), U) - 1e-8
-    @test isapprox(fitted.df, mle.df; rtol=0.1)
+    @test isapprox(first(params(fitted)), first(params(mle)); rtol=0.1)
 
     d = 3
     R = [0.55^abs(i - j) for i in 1:d, j in 1:d]
@@ -215,7 +215,7 @@ end
     @test Copulas.fitting_method(model) === :itau
     @test fitted3.Σ == sinpi.(StatsBase.corkendall(U3') ./ 2)
     @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(fitted3.Σ))
-    @test 3 <= fitted3.df <= 6
+    @test 3 <= first(params(fitted3)) <= 6
     @test :itau in Copulas._available_fitting_methods(TCopula, 3)
     @test :itau_irho ∉ Copulas._available_fitting_methods(TCopula, 3)
 end
@@ -334,7 +334,8 @@ function test_mle_parameter_plumbing(C, pspace)
     CT = typeof(C)
     d = length(C)
     bounded = params(C)
-    unconstrained = Copulas.Paramorph.unconstrain(pspace, bounded)
+    natural = length(Copulas.Paramorph.names(pspace)) == 1 ? only(bounded) : bounded
+    unconstrained = Copulas.Paramorph.unconstrain(pspace, natural)
     restored = Copulas._parameter_space_copula(CT, d, pspace, unconstrained)
     restored_params = params(restored)
 
