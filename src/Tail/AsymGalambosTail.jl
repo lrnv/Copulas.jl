@@ -101,6 +101,15 @@ end
 
 const AsymGalambosCopula{d,T} = ExtremeValueCopula{d,AsymGalambosTail{T}}
 
+# Canonical runtime-dimension constructor used by generic Paramorph fitting of
+# an explicitly dimensioned family type.
+function AsymGalambosTail(d::Int, dep::AbstractVector, weights::Vararg{AbstractVector,N}) where {N}
+    d == N || throw(DimensionMismatch(
+        "expected one weight simplex for each of $d margins; got $N",
+    ))
+    return AsymGalambosTail(dep, weights...)
+end
+
 # Historical subset-oriented constructor.
 function AsymGalambosTail(d::Int, dep::AbstractVector, asy::AbstractVector)
     weights = _subset_asymmetry_to_margin_weights(d, asy)
@@ -125,6 +134,8 @@ AsymGalambosTail(dep::AbstractVector, asy::AbstractVector) =
 function Distributions.params(tail::AsymGalambosTail)
     return (copy(tail.dep), (copy(weight) for weight in tail.weights)...)
 end
+Distributions.params(C::ExtremeValueCopula{d,<:AsymGalambosTail}) where {d} =
+    Distributions.params(C.tail)
 
 _is_valid_in_dim(tail::AsymGalambosTail, d::Int) = d == tail.d
 
