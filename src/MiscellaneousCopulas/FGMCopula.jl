@@ -2,13 +2,13 @@
     FGMCopula{d}(θ)
     FGMCopula(d, θ)
 
-The multivariate Farlie–Gumbel–Morgenstern (FGM) copula of dimension d has ``2^d-d-1`` parameters ``\\theta`` and
+The multivariate Farlie–Gumbel–Morgenstern (FGM) copula of dimension d has ``2^d-d-1`` parameters ``\theta`` and
 
 ```math
-C(\\boldsymbol{u})=\\prod_{i=1}^{d}u_i \\left[1+ \\sum_{k=2}^{d}\\sum_{1 \\leq j_1 < \\cdots < j_k \\leq d} \\theta_{j_1 \\cdots j_k} \\bar{u}_{j_1}\\cdots \\bar{u}_{j_k} \\right],
+C(\boldsymbol{u})=\prod_{i=1}^{d}u_i \left[1+ \sum_{k=2}^{d}\sum_{1 \leq j_1 < \cdots < j_k \leq d} \theta_{j_1 \cdots j_k} \bar{u}_{j_1}\cdots \bar{u}_{j_k} \right],
 ```
 
-where ``\\bar{u} = 1 - u``.
+where ``\bar{u} = 1 - u``.
 
 Special cases:
 - When d=2 and θ = 0, it is the IndependentCopula.
@@ -72,6 +72,13 @@ end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
 
 Distributions.params(C::FGMCopula) = (collect(C.θ),)
+function _natural_parameters(C::FGMCopula)
+    nm = String[]
+    θ = Any[]
+    _append_parameter!(nm, θ, C.θ, "θ")
+    values = isempty(θ) ? Float64[] : collect(promote(float.(θ)...))
+    return nm, values
+end
 _available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho, :ibeta) : (:mle,)
 
 function _cdf(fgm::FGMCopula{d}, u::Vector{T}) where {d,T}
@@ -137,11 +144,15 @@ end
 
 distortion(C::FGMCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivFGMDistortion(float(C.θ[1]), Int8(js[1]), float(uⱼₛ[1]))
 
-function _fit(CT::Type{<:FGMCopula}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}})
+function _fit(
+    CT::Type{<:FGMCopula}, U,
+    method::Union{Val{:itau},Val{:irho},Val{:ibeta}};
+    weights=nothing,
+)
     size(U, 1) == 2 || throw(ArgumentError("rank fitting for FGM is available only in dimension two"))
     fun = method isa Val{:itau} ? StatsBase.corkendall :
           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
-    est = fun(U')[1, 2]
+    est = _rank_measure(method, U, weights)[1, 2]
     loss(α) = abs2(est - fun(FGMCopula(2, tanh(α[1])))[1, 2])
     res = Optim.optimize(loss, [0.0], Optim.NelderMead())
     return CT(2, tanh(Optim.minimizer(res)[1]))
