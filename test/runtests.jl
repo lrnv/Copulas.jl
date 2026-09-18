@@ -175,7 +175,7 @@ const TAIL_CASES = unique(tail_case_key,
 testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
-    # "api/constructor_validation.jl",
+    "api/constructor_validation.jl",
     # "api/public_exception_taxonomy.jl",
     # "correctness/reduction_graph.jl",
     # "api/public_compositions.jl",
