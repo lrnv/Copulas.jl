@@ -111,7 +111,7 @@ function _typed_archimedean(CT::Type{<:ArchimedeanCopula{d}}, args...; kwargs...
     return _wrap_archimedean(Val(d), G)
 end
 function _dynamic_archimedean(CT::Type{<:ArchimedeanCopula}, d::Int, args...; kwargs...)
-    G = generatorof(CT)(args...; kwargs...)
+    G = Base.typename(Base.unwrap_unionall(generatorof(CT))).wrapper(args...; kwargs...)
 
     G isa IndependentGenerator && return IndependentCopula{d}()
     G isa MGenerator && return MCopula{d}()
@@ -122,25 +122,11 @@ end
 function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
     return _typed_archimedean(CT, args...; kwargs...)
 end
-function (CT::Type{<:ArchimedeanCopula{D,TG}})(d::Int, args...; kwargs...) where {D,TG}
-    # Dropping TG's parameters is intentional for the current parametric
-    # generators: they only encode the numeric parameter type, which fitting
-    # may need to replace (e.g. with a Dual). Revisit this if a generator with
-    # structural type parameters is routed through this constructor.
-    GT = Base.typename(TG).wrapper
-    return ArchimedeanCopula{d}(GT(args...; kwargs...))
-end
 function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...)
     d = Base.unwrap_unionall(CT).parameters[1]
-    # An integer can be either the runtime dimension in CT(d, parameters...)
-    # or the first parameter in CT{d}(parameters...). For the families
-    # currently provided, constructor arity matches the generator field count.
-    # This heuristic must be revisited if optional/non-field parameters appear.
-    nparams = fieldcount(Base.unwrap_unionall(generatorof(CT)))
-    if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
-        return _dynamic_archimedean(CT, first, args...; kwargs...)
-    end
-    return _typed_archimedean(CT, first, args...; kwargs...)
+    return d isa TypeVar ?
+        _dynamic_archimedean(CT, first, args...; kwargs...) :
+        _typed_archimedean(CT, first, args...; kwargs...)
 end
 
 function Distributions.params(C::ArchimedeanCopula)
@@ -228,6 +214,13 @@ generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
 
 Paramorph.param_space(CT::Type{<:ArchimedeanCopula}, d::Integer) =
     Paramorph.param_space(generatorof(CT), d)
+
+function _parameter_space_copula(
+    CT::Type{<:ArchimedeanCopula}, d, p, α,
+)
+    η = _parameter_arguments(Paramorph.constrain(p, α))
+    return _dynamic_archimedean(CT, d, η...)
+end
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
@@ -339,13 +332,14 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
     upper_triangle_flat = [measure[idx] for idx in CartesianIndices(measure) if idx[1] < idx[2]]
     θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
     θ = Statistics.mean(θs)
-    return CT(d, θ)
+    return _dynamic_archimedean(CT, d, θ)
 end
 function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta}; weights=nothing)
     d = size(U,1)
     pspace = Paramorph.param_space(CT, d)
     βobs = clamp(_weighted_β(U, weights), nextfloat(-1.0), prevfloat(1.0))
-    obj(α) = β(CT(d, Paramorph.constrain(pspace, [α]))) - βobs
+    cop(α) = _parameter_space_copula(CT, d, pspace, [α])
+    obj(α) = β(cop(α)) - βobs
 
     lo, hi = -1.0, 1.0
     flo, fhi = obj(lo), obj(hi)
@@ -355,13 +349,13 @@ function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenera
         hi *= 2
         flo, fhi = obj(lo), obj(hi)
     end
-    iszero(flo) && return CT(d, Paramorph.constrain(pspace, [lo]))
-    iszero(fhi) && return CT(d, Paramorph.constrain(pspace, [hi]))
+    iszero(flo) && return cop(lo)
+    iszero(fhi) && return cop(hi)
     signbit(flo) != signbit(fhi) || throw(DomainError(
         βobs,
         "could not bracket a Blomqvist-beta inverse in the finite unconstrained parameter chart",
     ))
 
     α = Roots.find_zero(obj, (lo, hi), Roots.Brent(); xatol=1e-8, rtol=0)
-    return CT(d, Paramorph.constrain(pspace, [α]))
+    return cop(α)
 end
