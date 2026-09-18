@@ -143,7 +143,7 @@ end
 function ρ(C::TCopula{2})
     ν = float(C.ν)
     r = float(C.Σ[1, 2])
-    iszero(r) && return zero(promote_type(typeof(ν)), typeof(r))
+    iszero(r) && return zero(promote_type(typeof(ν), typeof(r)))
     isinf(ν) && return 6asin(r / 2) / π
     if ν > 10
         return 12 * HCubature.hcubature(
