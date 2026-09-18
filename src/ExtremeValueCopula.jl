@@ -42,7 +42,7 @@ See also: [`Tail`](@ref), [`A`](@ref), [`ℓ`](@ref),
 References:
 
 * [gudendorf2010extreme](@cite) G., & Segers, J. (2010). Extreme-value copulas. In Copula Theory and Its Applications (pp. 127-145). Springer.
-* [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC Press.
+* [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC press.
 * [mai2014financial](@cite) Mai, J. F., & Scherer, M. (2014). Financial engineering with copulas explained (p. 168). London: Palgrave Macmillan.
 """
 struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
@@ -267,28 +267,38 @@ function τ⁻¹(::Type{T},τ_val) where {T<:ExtremeValueCopula{2}}
     return τ⁻¹(tailof(T),τ_val)
 end
 
+# Exact family samplers remain specialized, but all of them route canonical
+# independence/comonotonic limits through this single helper.
+@inline function _rand_with_ev_limits!(kernel, rng, C::ExtremeValueCopula{d}, X) where {d}
+    size(X, 1) == d || throw(DimensionMismatch(
+        "output matrix has $(size(X, 1)) rows, expected copula dimension $d",
+    ))
+    kind = limit_kind(C.tail, Val(d))
+    kind === Π_LIMIT && return Random.rand!(rng, X)
+    kind === M_LIMIT && return _rand_M!(rng, X)
+    return kernel()
+end
 
-# Sampling is selected directly by tail capability. Families with a preferable
-# exact sampler may specialize `_rand!` for their concrete copula type.
+# Generic bivariate Pickands sampler. Families with a preferable exact sampler
+# specialize `_rand!`, but use the same limit router above.
 function Distributions._rand!(
     rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     X::AbstractMatrix{T},
 ) where {T<:Real}
-    kind = limit_kind(C.tail, Val(2))
-    kind === Π_LIMIT && return Random.rand!(rng, X)
-    kind === M_LIMIT && return _rand_M!(rng, X)
-    E = ExtremeDist(C.tail)
-    S = promote_type(T, eltype(C))
-    for i in axes(X, 2)
-        z = rand(rng, E)
-        w = rand(rng, S) < _ghoudi_mixture_probability(C.tail, z) ?
-            rand(rng, S) : rand(rng, S) * rand(rng, S)
-        a = A(C.tail, z)
-        X[1, i] = exp(log(w) * z / a)
-        X[2, i] = exp(log(w) * (1 - z) / a)
+    return _rand_with_ev_limits!(rng, C, X) do
+        E = ExtremeDist(C.tail)
+        S = promote_type(T, eltype(C))
+        for i in axes(X, 2)
+            z = rand(rng, E)
+            w = rand(rng, S) < _ghoudi_mixture_probability(C.tail, z) ?
+                rand(rng, S) : rand(rng, S) * rand(rng, S)
+            a = A(C.tail, z)
+            X[1, i] = exp(log(w) * z / a)
+            X[2, i] = exp(log(w) * (1 - z) / a)
+        end
+        return X
     end
-    return X
 end
 
 function distortion(
