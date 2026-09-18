@@ -359,23 +359,3 @@ end
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
     return _rebuild_extreme_value(CT, 2, λᵤ⁻¹(CT, λᵤ(U)))
 end
-
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, weights=nothing)
-    d = size(U, 1)
-    pspace = Paramorph.param_space(CT, d)
-    α₀ = if start isa Real
-        Paramorph.unconstrain(pspace, start)
-    elseif d == 2 && start ∈ (:itau, :irho, :ibeta)
-        θ₀ = only(Distributions.params(_fit(CT, U, Val{start}(); weights)))
-        Paramorph.unconstrain(pspace, θ₀)
-    elseif d == 2 && start === :iupper
-        θ₀ = only(Distributions.params(_fit(CT, U, Val(:iupper))))
-        Paramorph.unconstrain(pspace, θ₀)
-    else
-        zeros(Paramorph.dimension(pspace))
-    end
-    cop(α) = _rebuild_extreme_value(CT, d, Paramorph.constrain(pspace, α))
-    f(α) = -_weighted_loglikelihood(cop(α), U, weights)
-    res = Optim.optimize(f, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
-    return cop(Optim.minimizer(res))
-end
