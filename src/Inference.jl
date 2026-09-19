@@ -197,7 +197,7 @@ function _default_inference_method(M::CopulaModel)
         _analytical_parameter_coordinates(spec.target, d, parameters) !== nothing
     fit_method = fitting_method(M)
     if fit_method === :mle && analytical_coordinates &&
-            !(M.result isa Union{TCopula,tEVCopula,FGMCopula})
+            !(M.result isa Union{TCopula,tEVCopula})
         return :hessian
     end
     if analytical_coordinates && fit_method in (:itau, :irho, :ibeta)
@@ -296,8 +296,6 @@ function _infer(M::CopulaModel, ::Val{method}; rng=nothing, nresamples::Union{No
     C = M.result
     method === :hessian && C isa Union{TCopula,tEVCopula} && throw(ArgumentError(
         "Hessian inference is unavailable because incomplete-beta derivatives are not implemented"))
-    method === :hessian && C isa FGMCopula && throw(ArgumentError(
-        "Hessian inference is not implemented for maximum-likelihood FGM fits"))
     target, _, parameters = _inference_inputs(M)
     U = _copula_data(M)
     d = size(U, 1)

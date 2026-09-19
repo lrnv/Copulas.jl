@@ -314,7 +314,7 @@ function fitting_execution_route_key(C, U, method)
     d = length(C)
     fit_method = which(Copulas._fit, Tuple{Type{CT},typeof(U),Val{method}})
 
-    parameter_dof = method === :mle ? Copulas._parameter_dof(params(C)) : nothing
+    parameter_dof = method === :mle ? Copulas._distribution_dof(C) : nothing
 
     dimension = d == 2 ? :bivariate : :multivariate
 
