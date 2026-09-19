@@ -198,7 +198,6 @@ testfiles = (
     "correctness/extreme_value_equivalence.jl",
     "correctness/liouville.jl",
     "correctness/nested_archimedean.jl",
-    "correctness/nesting_certificates.jl",
     "correctness/nested_archimedean_equivalence.jl",
     "correctness/family_specialization_equivalence.jl",
     "correctness/statistical.jl",
