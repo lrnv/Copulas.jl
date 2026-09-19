@@ -16,6 +16,16 @@ struct _FloatOnlyNestedRecon end
 @testset "optimizer fallback does not mask implementation errors" begin
     U = [0.15 0.35 0.65 0.85; 0.25 0.55 0.45 0.75]
 
+    # The generic Paramorph MLE starts at the unconstrained chart origin. For
+    # bivariate Clayton that maps exactly to θ = 0 (independence), so both the
+    # optimizer gradient and Hessian inference must be defined there.
+    p = Copulas.Paramorph.param_space(ClaytonCopula, 2)
+    objective(α) = -Distributions.loglikelihood(
+        Copulas._parameter_space_copula(ClaytonCopula, 2, p, α), U)
+    @test isfinite(objective([0.0]))
+    @test all(isfinite, ForwardDiff.gradient(objective, [0.0]))
+    @test all(isfinite, ForwardDiff.hessian(objective, [0.0]))
+
     # This model reconstructs correctly for ordinary Float64 optimizer points
     # but deliberately has no constructor accepting ForwardDiff.Dual. Before
     # #518 the generic fitter swallowed that MethodError and silently retried
