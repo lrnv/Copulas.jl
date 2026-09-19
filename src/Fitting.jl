@@ -278,11 +278,11 @@ function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau},Val{:irho},Val{:ib
 end
 function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
     p = Paramorph.param_space(CT, d)
-    intrisic_dim = Paramorph.dimension(p)
-    intrisic_dim <= d*(d-1)÷2 || throw(ArgumentError(
-        "cannot use $method in dimension $d with $(length(α₀)) free parameters; " *
+    intrinsic_dim = Paramorph.dimension(p)
+    intrinsic_dim <= d*(d-1)÷2 || throw(ArgumentError(
+        "cannot use $method in dimension $d with $intrinsic_dim free parameters; " *
         "only $(d*(d-1)÷2) pairwise rank constraints are available"))
-    α₀ = zeros(intrisic_dim)
+    α₀ = zeros(intrinsic_dim)
     cop(α) = _parameter_space_copula(CT, d, p, α)
     fun = method isa Val{:itau} ? StatsBase.corkendall :
           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist

@@ -9,6 +9,20 @@
     α0 = P.unconstrain(p, Copulas._nested_parameter_values(C0))
     @test all(isfinite, α0)
 
+    # Construction is permissive about parent-child nesting theory, but every
+    # node must still use a generator that is valid at that node's local arity.
+    @test_throws DomainError NestedArchimedeanCopula(
+        Copulas.WGenerator();
+        leaves=[1],
+        children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)],
+    )
+    invalid_child = Copulas.NestedArchimedeanCopula{3,typeof(Copulas.WGenerator())}(
+        Copulas.WGenerator(), [1, 2, 3], Any[], [1, 2, 3])
+    @test_throws DomainError NestedArchimedeanCopula(
+        Copulas.ClaytonGenerator(1.0);
+        children=[invalid_child],
+    )
+
     # Arbitrary unconstrained coordinates always reconstruct inside the supported
     # ordering, so no objective-time certificate/Inf barrier is required.
     for α in (zeros(2), [-4.0, -4.0], [3.0, -2.0], [-2.0, 3.0])

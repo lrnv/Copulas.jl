@@ -92,6 +92,21 @@
     Nroundtrip = Copulas._nested_rebound(N, Copulas._nested_unbound(N))
     @test Copulas._nested_coef(Nroundtrip)[2] ≈ Copulas._nested_coef(N)[2]
 
+    # A custom runtime reparametrization can have fewer irreducible fitting
+    # coordinates than natural generator parameters. The fit recipe controls dof,
+    # but optimizer coordinates must never leak into coef/coefnames.
+    runtime_recipe = Copulas._CopulaFitSpec(
+        (; reparam=identity, init=[0.0], coordinates=[0.25]),
+        :mle,
+        (;),
+    )
+    Mruntime = CopulaModel(N, zeros(length(N), 1), 0.0, runtime_recipe)
+    nested_names, nested_values = Copulas._nested_coef(N)
+    @test StatsBase.coefnames(Mruntime) == nested_names
+    @test StatsBase.coef(Mruntime) == nested_values
+    @test StatsBase.dof(Mruntime) == 1
+    @test length(StatsBase.coef(Mruntime)) == 3
+
     # A natural matrix is exposed in full. Symmetry and the fixed unit diagonal
     # therefore create redundant coefficients, while dof remains the Paramorph
     # dimension of the correlation manifold.

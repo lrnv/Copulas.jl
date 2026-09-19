@@ -10,6 +10,12 @@ Copulas.Paramorph.param_space(::Type{<:_BrokenADCopula}, d) =
     Copulas.Paramorph.ProbOpen(:θ)
 Copulas._available_fitting_methods(::Type{_BrokenADCopula}, d) = (:mle,)
 
+struct _OverparameterizedRankCopula{d} <: Copulas.Copula{d} end
+Copulas.Paramorph.param_space(::Type{<:_OverparameterizedRankCopula}, d) = (
+    Copulas.Paramorph.Id(:θ₁),
+    Copulas.Paramorph.Id(:θ₂),
+)
+
 struct _FloatOnlyNestedRecon end
 (::_FloatOnlyNestedRecon)(α::AbstractVector{Float64}) = ClaytonCopula(2, exp(first(α)))
 
@@ -25,6 +31,18 @@ struct _FloatOnlyNestedRecon end
     @test isfinite(objective([0.0]))
     @test all(isfinite, ForwardDiff.gradient(objective, [0.0]))
     @test all(isfinite, ForwardDiff.hessian(objective, [0.0]))
+
+    # An over-parameterized generic rank fit must report the intended
+    # identifiability error rather than touching the not-yet-created α₀ vector.
+    rank_error = try
+        Copulas._fit(_OverparameterizedRankCopula, U, Val(2), Val(:itau))
+        nothing
+    catch err
+        err
+    end
+    @test rank_error isa ArgumentError
+    @test occursin("2 free parameters", sprint(showerror, rank_error))
+    @test occursin("1 pairwise rank constraints", sprint(showerror, rank_error))
 
     # This model reconstructs correctly for ordinary Float64 optimizer points
     # but deliberately has no constructor accepting ForwardDiff.Dual. Before

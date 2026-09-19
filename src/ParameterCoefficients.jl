@@ -137,24 +137,16 @@ function _distribution_coefficients(S::SklarDist; prefix::String="")
 end
 
 # Nested Archimedean topology is structural rather than a flat distribution
-# parameter. Preserve its existing fitted-generator coefficient representation.
+# parameter. Preserve its fitted-generator natural coefficient representation.
 _distribution_coefficients(C::NestedArchimedeanCopula; prefix::String="") =
     _nested_coef(C)
 
 _distribution_coefficient_values(D) = last(_distribution_coefficients(D))
 
-function _structured_coefficient_data(M::CopulaModel)
-    spec = M.recipe
-    if spec isa _CopulaFitSpec && spec.target isa NamedTuple &&
-            haskey(spec.target, :coordinates)
-        α = spec.target.coordinates
-        return ["α$(i)" for i in eachindex(α)], collect(float.(α))
-    end
-    return _distribution_coefficients(fitted_distribution(M))
-end
-
-_coefficient_data(M::CopulaModel{<:Copula}) = _structured_coefficient_data(M)
-_coefficient_data(M::CopulaModel{<:SklarDist}) = _structured_coefficient_data(M)
+_coefficient_data(M::CopulaModel{<:Copula}) =
+    _distribution_coefficients(fitted_distribution(M))
+_coefficient_data(M::CopulaModel{<:SklarDist}) =
+    _distribution_coefficients(fitted_distribution(M))
 
 _parameter_blocks(M::CopulaModel{<:Copula}) =
     (; copula=eachindex(StatsBase.coef(M)), margins=())

@@ -103,7 +103,7 @@ function composition_taylor_direct(outer::Generator, inner::Generator, t₀::T, 
 end
 
 """
-    composition_taylor_implicit(outer, inner, t₀, d)
+    composition_taylor_implicit(outer::Generator, inner::Generator, t₀, d)
 
 Edge composition by implicit differentiation (paper App. A.4; see
 [`composition_taylor`](@ref)): `h` satisfies `ϕ_outer(h(t)) = ϕ_inner(t)`, solved
@@ -357,7 +357,8 @@ genuinely nested declarations build a `NestedArchimedeanCopula`. The legacy
 positional form `NestedArchimedeanCopula(G, children)` (children in consecutive
 blocks, no root leaves) is also supported.
 
-The constructor validates only the tree structure and dimension placement. It
+The constructor validates the tree structure, dimension placement, and each
+node generator's dimensional validity at that node's local arity. It
 intentionally does **not** validate the mathematical nesting relation between
 parent and child generators. Expert users may therefore construct trees outside
 the built-in fitting geometry. Template fitting performs its own upfront
@@ -480,13 +481,35 @@ _subdim(c::ArchimedeanCopula) = length(c)
 _subdim(c::NestedArchimedeanCopula{d}) where {d} = d
 _subdim(c::Tuple) = _subdim(c[1])
 
+function _validate_nested_generator_monotonicity(G::Generator, dloc::Int)
+    dloc <= max_monotony(G) || throw(DomainError(
+        dloc,
+        "generator $G has maximal monotonicity $(max_monotony(G)) and cannot define a $dloc-dimensional Archimedean node",
+    ))
+    return nothing
+end
+
+function _validate_nested_generator_monotonicity(C::NestedArchimedeanCopula)
+    dloc = max(length(C.leafdims) + length(C.children), 2)
+    _validate_nested_generator_monotonicity(C.G, dloc)
+    for child in C.children
+        if child isa Tuple
+            copula, ds = child
+            _validate_nested_generator_monotonicity(copula.G, max(length(ds), 2))
+        else
+            _validate_nested_generator_monotonicity(child)
+        end
+    end
+    return nothing
+end
+
 # ---- Nesting geometry for template fitting ---------------------------------
 #
-# Public construction is deliberately permissive: these rules are NOT constructor
-# validation. They describe only the parameter geometries currently available to
-# template fitting. The supported non-trivial rules are restricted to the standard
-# one-parameter generators; extending this table to multi-parameter/BB families is
-# intentionally left open for contributions.
+# Public construction is deliberately permissive about cross-node nesting theory:
+# these rules are NOT constructor validation. They describe only the parameter
+# geometries currently available to template fitting. The supported non-trivial
+# rules are restricted to the standard one-parameter generators; extending this
+# table to multi-parameter/BB families is intentionally left open for contributions.
 
 _nested_fit_rule(::Generator, ::Generator) = nothing
 _nested_fit_rule(::IndependentGenerator, ::Generator) = :free
@@ -567,9 +590,11 @@ function _nested_archimedean(expected_dimension, G::Generator;
     end
 
     kids2 = Any[_place_dims(kids[i], kiddims[i]) for i in eachindex(kids)]
-    return expected_dimension isa Val ?
+    C = expected_dimension isa Val ?
         NestedArchimedeanCopula{only(typeof(expected_dimension).parameters),typeof(G)}(G, leafdims, kids2, alldims) :
         NestedArchimedeanCopula{d,typeof(G)}(G, leafdims, kids2, alldims)
+    _validate_nested_generator_monotonicity(C)
+    return C
 end
 
 NestedArchimedeanCopula(G::Generator; kwargs...) = _nested_archimedean(nothing, G; kwargs...)
@@ -951,8 +976,9 @@ end
 # NESTING VALIDITY: the DEFAULT template parametrisation uses a
 # `Paramorph.DependentProduct`. Supported parent-child inequalities are therefore
 # enforced by the coordinate map itself, while the public constructor remains
-# intentionally permissive. Custom `reparam`/`init` maps remain user-defined and
-# are responsible for the validity of the trees they produce.
+# intentionally permissive about cross-node nesting theory. Custom `reparam`/`init`
+# maps remain user-defined and are responsible for the validity of the trees they
+# produce beyond each node's constructor-level dimensional validity.
 #
 # The tree is walked in a fixed PRE-ORDER (root generator, then each child block
 # in `children` declaration order; a flat child `(ArchimedeanCopula, dims)` inline,
@@ -1271,8 +1297,8 @@ function Distributions.fit(::Type{CopulaModel}, reparam, init::AbstractVector, U
     return CopulaModel(fitted, U, _weighted_loglikelihood(fitted, U, weights), fit_spec)
 end
 
-# Template fits expose the fitted generators' natural parameters. Custom
-# runtime parametrizations instead expose their irreducible fitted coordinates.
+# Both template and custom runtime fits expose the fitted generators' natural
+# parameters. Runtime optimizer coordinates remain fitting metadata only.
 function _nested_generator_coef(G::Generator, dloc::Int, tag::String)
     p = _generator_space(G, dloc)
     names = String[]
