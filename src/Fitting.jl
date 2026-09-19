@@ -688,15 +688,15 @@ StatsBase.deviance(M::CopulaModel) = -2 * M.loglikelihood
 """
     dof(M::CopulaModel) -> Int
 
-Return the number of free estimated parameters represented by `coef(M)`. For a
-Sklar fit this includes both marginal and copula parameters. Fixed structural
-choices and nonparametric components whose effective degrees of freedom are not
-defined by the current interface are excluded.
+Return the statistical number of free estimated parameters. This is determined
+from the fitted model's `Paramorph` parameter space and is intentionally
+independent of `length(coef(M))`: natural coefficients may contain redundant or
+fixed entries, such as both halves and the unit diagonal of a correlation matrix.
 
 See also: [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref),
 [`StatsBase.aic`](@ref).
 """
-StatsBase.dof(M::CopulaModel) = length(StatsBase.coef(M))
+StatsBase.dof(M::CopulaModel) = _model_dof(M)
 
 """
     _copula_of(M::CopulaModel)
@@ -711,11 +711,11 @@ _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 """
     coef(M::CopulaModel) -> Vector{Float64}
 
-Return the free estimated parameters as a flat vector in the same order as
-`coefnames(M)`. For a Sklar fit, copula parameters precede the parameters of
-each margin in coordinate order. Scalars are followed by vector entries and by
-the strict upper triangle of matrix parameters. Models without a
-finite-dimensional parameter record return an empty vector.
+Return the fitted model's natural parameters as a flat vector in the same order
+as `coefnames(M)`. Structured values are flattened mechanically: matrices expose
+all entries, including symmetry or fixed diagonals, and simplex vectors expose
+all probabilities. Consequently `length(coef(M))` need not equal `dof(M)`.
+Parameter-free and nonparametric components return no coefficients.
 
 See also: [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
 [`StatsBase.confint`](@ref).

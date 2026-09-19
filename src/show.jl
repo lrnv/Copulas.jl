@@ -88,14 +88,6 @@ function _section(io, title::AbstractString; suffix::Union{Nothing,AbstractStrin
 end
 
 """
-Print a standardized fitted-parameter section.
-"""
-function _print_param_section(io, title::AbstractString, nm::Vector{String}, θ::Vector{Float64})
-    _section(io, title)
-    _print_param_table(io, nm, θ)
-end
-
-"""
 Print dependence metrics if available/supported by the copula C.
 """
 function _has_specialized_copula_method(f, C::Copula{d}) where {d}
@@ -109,8 +101,6 @@ function _print_dependence_metrics(io, C)
     _specialized(f) = _has(f) && _has_specialized_copula_method(getfield(Copulas, f), C)
     shown_any = false
     try
-        # Generic τ, γ and ι use Monte Carlo. Avoid making `show` stochastic;
-        # display them only when the family provides a specialization.
         if _specialized(:τ); _kv(io, "Kendall τ", Printf.@sprintf("%.4f", Copulas.τ(C))); shown_any = true; end
         if _has(:ρ);  _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C)));  shown_any = true; end
         if _has(:β);  _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C)));  shown_any = true; end
@@ -119,103 +109,82 @@ function _print_dependence_metrics(io, C)
         if _has(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C))); shown_any = true; end
         if _specialized(:ι); _kv(io, "Entropy ι", Printf.@sprintf("%.4f", Copulas.ι(C))); shown_any = true; end
     catch
-        # proceed without failing show
+        # Display must not fail because an optional dependence metric does.
     end
-    if !shown_any
-        println(io, "(none available)")
-    end
+    shown_any || println(io, "(none available)")
 end
-function _print_param_table(io, nm::Vector{String}, θ::Vector{Float64}; V::Union{Nothing, AbstractMatrix}=nothing)
-    if V === nothing || isempty(θ)
-        Printf.@printf(io, "%-10s %10s\n", "Parameter", "Estimate")
-        @inbounds for (j, name) in pairs(nm)
-            Printf.@printf(io, "%-10s %10.4f\n", String(name), θ[j])
-        end
-        return
-    end
-    se = sqrt.(LinearAlgebra.diag(V))
-    z  = θ ./ se
-    p  = 2 .* Distributions.ccdf.(Distributions.Normal(), abs.(z))
-    lo, hi = (θ .- 1.959963984540054 .* se, θ .+ 1.959963984540054 .* se)
-    Printf.@printf(io, "%-10s %10s %9s %9s %8s %10s %10s\n",
-                   "Parameter","Estimate","Std.Err","z-value","p-val","95% Lo","95% Hi")
-    @inbounds for j in eachindex(θ)
-        Printf.@printf(io, "%-10s %10.4f %9.4f %9.3f %8s %10.4f %10.4f\n",
-                        String(nm[j]), θ[j], se[j], z[j], _pstr(p[j]), lo[j], hi[j])
+
+function _print_natural_parameter(io, name::AbstractString, value)
+    if value isa Number
+        _kv(io, name, value)
+    elseif value isa AbstractArray
+        println(io, name, ":")
+        show(IOContext(io, :compact => true, :limit => true), MIME"text/plain"(), value)
+        println(io)
+    else
+        _kv(io, name, sprint(show, value))
     end
 end
 
-function _margin_param_names(mi)
-    T = typeof(mi)
-    return if     T <: Distributions.Gamma;       ("α","θ")
-           elseif T <: Distributions.Beta;        ("α","β")
-           elseif T <: Distributions.LogNormal;   ("μ","σ")
-           elseif T <: Distributions.Normal;      ("μ","σ")
-           elseif T <: Distributions.Exponential; ("θ",)
-           elseif T <: Distributions.Weibull;     ("k","λ")
-           elseif T <: Distributions.Pareto;      ("α","θ")
-           else
-               k = length(Distributions.params(mi)); ntuple(j->"θ$(j)", k)
-           end
+function _print_distribution_parameters(io, title::AbstractString, D)
+    _section(io, title)
+    raw = Distributions.params(D)
+    if raw isa NamedTuple
+        isempty(raw) && return println(io, "(none)")
+        for (name, value) in pairs(raw)
+            _print_natural_parameter(io, string(name), value)
+        end
+    elseif raw isa Tuple
+        isempty(raw) && return println(io, "(none)")
+        for (name, value) in zip(_tuple_parameter_names(D, raw), raw)
+            _print_natural_parameter(io, name, value)
+        end
+    else
+        _print_natural_parameter(io, "value", raw)
+    end
+    return nothing
+end
+
+function _print_margins(io, S::SklarDist)
+    _section(io, "Marginals")
+    for (i, margin) in pairs(S.m)
+        print(io, "#", i, " ", nameof(typeof(margin)), "  ")
+        show(io, Distributions.params(margin))
+        println(io)
+    end
 end
 
 function Base.show(io::IO, M::CopulaModel)
-    R = M.result
-    # Split: [ CopulaModel: ... ] vs [ Fit metrics ]
+    R = fitted_distribution(M)
     if R isa SklarDist
         famC = _fmt_copula_family(R.C)
         mnames = map(mi -> String(nameof(typeof(mi))), R.m)
         margins_lbl = "(" * join(mnames, ", ") * ")"
-        _section(io, "CopulaModel: SklarDist"; suffix="(Copula=" * famC * ", Margins=" * margins_lbl * ")")
-    else
-        _section(io, "CopulaModel: " * _fmt_copula_family(R))
-    end
-    if R isa SklarDist
-        famC = _fmt_copula_family(R.C)
-        mnames = map(mi -> String(nameof(typeof(mi))), R.m)
-        margins_lbl = "(" * join(mnames, ", ") * ")"
-        skm = M.recipe.kwargs.sklar_method
+        _section(io, "CopulaModel: SklarDist";
+                 suffix="(Copula=" * famC * ", Margins=" * margins_lbl * ")")
         _kv(io, "Copula", famC)
         _kv(io, "Margins", margins_lbl)
-        _kv(io, "Methods", "copula=" * String(fitting_method(M)) * ", sklar=" * String(skm))
+        _kv(io, "Methods", "copula=" * String(fitting_method(M)) *
+            ", sklar=" * String(M.recipe.kwargs.sklar_method))
     else
+        _section(io, "CopulaModel: " * _fmt_copula_family(R))
         _kv(io, "Method", String(fitting_method(M)))
     end
     _kv(io, "Number of observations", Printf.@sprintf("%d", StatsBase.nobs(M)))
+    _kv(io, "Degrees of freedom", StatsBase.dof(M))
     _model_weights(M) === nothing ||
         _kv(io, "Observation weights", "yes, normalized to sum to the number of observations")
 
     _section(io, "Fit metrics")
-    ll = M.loglikelihood
-    _kv(io, "Loglikelihood", Printf.@sprintf("%12.4f", ll))
-    aic = StatsBase.aic(M); bic = StatsBase.bic(M)
-    _kv(io, "AIC", Printf.@sprintf("%.3f", aic))
-    _kv(io, "BIC", Printf.@sprintf("%.3f", bic))
+    _kv(io, "Loglikelihood", Printf.@sprintf("%12.4f", M.loglikelihood))
+    _kv(io, "AIC", Printf.@sprintf("%.3f", StatsBase.aic(M)))
+    _kv(io, "BIC", Printf.@sprintf("%.3f", StatsBase.bic(M)))
 
-    if R isa SklarDist
-        # [ Dependence metrics ] section
-        C  = M.result isa SklarDist ? M.result.C : M.result
-        _print_dependence_metrics(io, C)
-
-        # [ Copula parameters ] section
-        θ = StatsBase.coef(M)
-        nm = StatsBase.coefnames(M)
-        copula_block = _parameter_blocks(M).copula
-        θ = θ[copula_block]
-        nm = nm[copula_block]
-        _print_param_section(io, "Copula parameters", nm, θ)
-
-        # [ Marginals ] section
-        _print_marginals_section(io, R::SklarDist, nothing)
-    else
-        # Copula-only fits: dependence metrics and parameters
-        C0 = M.result isa SklarDist ? M.result.C : M.result
-        _print_dependence_metrics(io, C0)
-        θ  = StatsBase.coef(M)
-        nm = StatsBase.coefnames(M)
-        _print_param_section(io, "Copula parameters", nm, θ)
-
-    end
+    C = _copula_of(M)
+    _print_dependence_metrics(io, C)
+    _print_distribution_parameters(io, "Copula parameters", C)
+    R isa SklarDist && _print_margins(io, R)
+    return nothing
 end
 
 function Base.show(io::IO, S::CopulaSelection)
@@ -223,56 +192,6 @@ function Base.show(io::IO, S::CopulaSelection)
     _section(io, "Model selection")
     _kv(io, "Criterion", uppercase(String(S.criterion)))
     _kv(io, "Selected family", _fmt_copula_family(fitted_distribution(selected_model(S))))
-end
-
-"""
-Print the Marginals section for a SklarDist using precomputed Vm if available.
-"""
-function _print_marginals_section(io, S::SklarDist, Vm)
-    _section(io, "Marginals")
-    Printf.@printf(io, "%-6s %-10s %-6s %10s %9s %s\n",
-                   "Margin","Dist","Param","Estimate","Std.Err","95% CI")
-
-    crit = 1.959963984540054
-
-    _valid_cov(V, p) = V !== nothing &&
-                       ndims(V) == 2 &&
-                       size(V) == (p, p) &&
-                       all(isfinite, Matrix(V)) &&
-                       all(LinearAlgebra.diag(Matrix(V)) .>= 0.0)
-
-    for (i, mi) in enumerate(S.m)
-        pname = String(nameof(typeof(mi)))
-        θi_nt = Distributions.params(mi)
-        names = _margin_param_names(mi)
-        vals = Float64.(collect(θi_nt))
-        p = length(vals)
-
-        # Use only the precomputed covariance from fitting, if available and valid
-        Vi = nothing
-        if Vm isa Vector && 1 <= i <= length(Vm)
-            Vh = Vm[i]
-            if _valid_cov(Vh, p)
-                Vi = Vh
-            end
-        end
-
-        dV = (Vi !== nothing) ? LinearAlgebra.diag(Matrix(Vi)) : fill(NaN, p)
-        se = sqrt.(max.(dV, 0.0))
-        @inbounds for j in 1:p
-            lab = (j == 1) ? "#$(i)" : ""
-            distcol = (j == 1) ? pname : ""
-            est_str = Printf.@sprintf("%.4f", vals[j])
-            se_str  = isfinite(se[j]) ? Printf.@sprintf("%.4f", se[j]) : "—"
-            if isfinite(se[j])
-                ci_str = Printf.@sprintf("[%.4f, %.4f]", vals[j] - crit*se[j], vals[j] + crit*se[j])
-            else
-                ci_str = "—"
-            end
-            Printf.@printf(io, "%-6s %-10s %-6s %10s %9s %s\n",
-                           lab, distcol, names[j], est_str, se_str, ci_str)
-        end
-    end
 end
 
 ###############################################################################

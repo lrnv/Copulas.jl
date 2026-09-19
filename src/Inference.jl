@@ -157,19 +157,18 @@ function _validate_inference_covariance(Vθ::AbstractMatrix)
     all(isfinite, Vθ) || throw(ArgumentError(
         "inference produced a non-finite covariance matrix"))
     Vθ = LinearAlgebra.Symmetric((Vθ + Vθ') / 2)
-    LinearAlgebra.isposdef(Vθ) || throw(ArgumentError(
-        "inference produced a covariance matrix that is not positive definite"))
+    scale = max(one(eltype(Vθ)), LinearAlgebra.opnorm(Matrix(Vθ), Inf))
+    tol = sqrt(eps(float(one(eltype(Vθ))))) * scale
+    LinearAlgebra.eigmin(Vθ) >= -tol || throw(ArgumentError(
+        "inference produced a covariance matrix that is not positive semidefinite"))
     return Vθ
 end
 
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                         d::Int, pspace, α, Vα)
     J = ForwardDiff.jacobian(
-        αv -> begin
-            C = _parameter_space_copula(CT, d, pspace, αv)
-            logical = _coefficient_parameter_values(C, pspace)
-            _space_coefficients(pspace, logical)[2]
-        end,
+        αv -> _distribution_coefficient_values(
+            _parameter_space_copula(CT, d, pspace, αv)),
         α,
     )
     Vθ = J * Vα * J'
@@ -224,7 +223,7 @@ function _inference_inputs(M::CopulaModel)
 end
 
 function _resampling_covariance(M::CopulaModel, indices; rng, nresamples)
-    p = StatsBase.dof(M)
+    p = length(StatsBase.coef(M))
     estimates = Matrix{Float64}(undef, nresamples, p)
     for b in 1:nresamples
         sample = indices(rng)
@@ -256,7 +255,7 @@ function _infer(M::CopulaModel, ::Val{:jackknife})
     _, data, _ = _inference_inputs(M)
     n = size(data, 2)
     n > 1 || throw(ArgumentError("jackknife inference requires at least two observations"))
-    p = StatsBase.dof(M)
+    p = length(StatsBase.coef(M))
     estimates = Matrix{Float64}(undef, n, p)
     keep = Vector{Int}(undef, n - 1)
     for omitted in 1:n
@@ -339,9 +338,10 @@ inference accept `nresamples` and `rng`; these execution controls are not
 retained in the result.
 
 Analytical inference does not silently regularize failed covariance estimates.
-A singular or non-positive-definite observed-information or covariance matrix
-raises an `ArgumentError`; use a resampling method when the analytical
-approximation is not numerically identified.
+A singular observed-information matrix still raises an `ArgumentError`. The
+reported natural-parameter covariance may legitimately be singular because
+`coef(M)` can contain constrained or redundant entries (for example both halves
+of a symmetric matrix); such positive-semidefinite covariance is preserved.
 
 For a fitted `SklarDist`, the default is `:bootstrap`. Every resample repeats
 the complete estimator: all margins are fitted again, pseudo-observations are
@@ -414,6 +414,6 @@ function Base.show(io::IO, I::CopulaInference)
     println(io, "CopulaInference")
     println(io, "  method:     ", I.method)
     println(io, "  model:      ", nameof(typeof(fitted_distribution(I.model))))
-    println(io, "  parameters: ", StatsBase.coefnames(I.model))
-    print(io, "  covariance: ", size(I.covariance, 1), " x ", size(I.covariance, 2))
+    println(io, "  coefficients: ", length(StatsBase.coef(I.model)), " natural scalar values")
+    print(io, "  covariance:   ", size(I.covariance, 1), " x ", size(I.covariance, 2))
 end
