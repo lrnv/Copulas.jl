@@ -1,0 +1,33 @@
+name: Temporary nested dependent geometry
+
+on:
+  push:
+    branches: [parameter-spaces-fitting]
+    paths: [.github/workflows/tmp-nested-dependent-geometry.yml]
+
+permissions:
+  contents: write
+
+jobs:
+  refactor:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - run: python .github/copulas_nested_geometry_patch.py
+      - name: Refresh Paramorph main
+        run: julia --project --startup-file=no -e 'using Pkg; Pkg.update("Paramorph"); Pkg.instantiate()'
+      - run: git diff --check
+      - name: Run Copulas tests
+        run: julia --project --startup-file=no -e 'using Pkg; Pkg.test()'
+      - name: Commit refactor
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add src test docs Manifest.toml
+          git diff --cached --check
+          git commit -m "Encode nested fitting validity in Paramorph geometry"
+          git push
