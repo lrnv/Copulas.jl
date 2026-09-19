@@ -149,6 +149,7 @@ function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, 
     return EmpiricalEVTail(tgrid, Â, slope)
 end
 Base.eltype(::EmpiricalEVTail) = Float64
+Paramorph.param_space(::Type{<:EmpiricalEVTail}, ::Integer) = ()
 
 function A(tail::EmpiricalEVTail, t::Real)
     T = typeof(t)
@@ -244,6 +245,7 @@ struct EmpiricalEVMultivariateTail <: DiscreteSpectralBackedTail
 end
 
 Base.eltype(::EmpiricalEVMultivariateTail) = Float64
+Paramorph.param_space(::Type{<:EmpiricalEVMultivariateTail}, ::Integer) = ()
 _is_valid_in_dim(t::EmpiricalEVMultivariateTail, d::Int) =
     size(t.spectral.B, 1) == d
 A(t::EmpiricalEVMultivariateTail, w::NTuple{d,<:Real}) where {d} = ℓ(t, w)

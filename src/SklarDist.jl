@@ -102,6 +102,13 @@ function Distributions.partype(S::SklarDist)
     )
 end
 Distributions.params(S::SklarDist) = (S.C, S.m)
+function Paramorph.param_space(S::SklarDist)
+    copula_space = Paramorph.Prefixed(:copula, Paramorph.param_space(S.C))
+    margin_spaces = ntuple(length(S.m)) do i
+        Paramorph.Prefixed(Symbol("margin_", i), Paramorph.param_space(S.m[i]))
+    end
+    return (copula_space, margin_spaces...)
+end
 @inline function _sklar_work_eltype(S::SklarDist, x)
     T = promote_type(eltype(S.C), eltype(x))
     for margin in S.m

@@ -6,26 +6,6 @@
 # coefficients deliberately expose the fitted distribution's natural `params`
 # representation instead, flattened mechanically without trying to remove
 # constraints or redundancies such as matrix symmetry or simplex sums.
-function Paramorph.param_space(S::SklarDist)
-    copula_space = Paramorph.Prefixed(:copula, Paramorph.param_space(S.C))
-    margin_spaces = ntuple(length(S.m)) do i
-        Paramorph.Prefixed(Symbol("margin_", i), Paramorph.param_space(S.m[i]))
-    end
-    return (copula_space, margin_spaces...)
-end
-
-# Empirical plug-in objects carry fitted state rather than finite-dimensional
-# estimated parameters. Their statistical parameter space is therefore empty.
-Paramorph.param_space(::Type{<:EmpiricalCopula}, ::Integer) = ()
-Paramorph.param_space(::Type{<:BetaCopula}, ::Integer) = ()
-Paramorph.param_space(::Type{<:BernsteinCopula}, ::Integer) = ()
-Paramorph.param_space(::Type{<:CheckerboardCopula}, ::Integer) = ()
-Paramorph.param_space(::Type{<:EmpiricalEVTail}, ::Integer) = ()
-Paramorph.param_space(::Type{<:EmpiricalEVMultivariateTail}, ::Integer) = ()
-
-Paramorph.param_space(S::AbstractReflectedCopula) =
-    Paramorph.param_space(basecopula(S))
-
 @inline function _parameter_prefix(prefix::String, part)
     text = string(part)
     isempty(prefix) && return text
@@ -195,7 +175,6 @@ function _parameter_blocks(M::CopulaModel{<:SklarDist})
 end
 
 function _distribution_dof(D)
-    D isa NestedArchimedeanCopula && return length(last(_nested_coef(D)))
     p = try
         Paramorph.param_space(D)
     catch

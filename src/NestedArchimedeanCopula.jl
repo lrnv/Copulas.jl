@@ -1268,73 +1268,109 @@ end
 # =============================================================================
 
 # Bare UnionAll generator type from an instance, e.g. ClaytonGenerator{Float64}
-# -> ClaytonGenerator. Reconstruct through the generator type-call using values ordered by its
-# `Paramorph.param_space`.
+# -> ClaytonGenerator.
 _gentype(G::Generator) = typeof(G).name.wrapper
 
-# Local arity = number of ϕ⁻¹ terms this generator sums = #direct leaves +
-# #direct children (for a node) or block size (for a flat child). This is the `d`
-# whose per-family validity bound the generator's Paramorph space depends on
-# (Clayton's −1/(d−1); AMH/GumbelBarnett critical values; Frank's d==2 vs d≥3).
-# Passing the GLOBAL tree d would over-restrict inner generators. Clamped to ≥2
-# so Clayton's 1/(d−1) is finite for a single-child node.
-_local_arity(C::NestedArchimedeanCopula) = max(length(C.leafdims) + length(C.children), 2)
+# Local arity controls the family-specific generator domain. It is the number
+# of direct inverse-generator terms at a node (or the block size for a flat child).
+_local_arity(C::NestedArchimedeanCopula) =
+    max(length(C.leafdims) + length(C.children), 2)
 
-# ---- FLATTEN: tree generators -> unconstrained coordinates -----------------
-_generator_space(G::Generator, dloc) = Paramorph.param_space(_gentype(G), dloc)
-function _generator_coordinates(G::Generator, dloc)
+_generator_space(G::Generator, dloc) =
+    Paramorph.param_space(_gentype(G), dloc)
+
+function _generator_parameter_values(G::Generator, dloc)
     p = _generator_space(G, dloc)
-    values = map(Base.Fix1(getproperty, G), Paramorph.names(p))
-    return p isa Tuple ? Paramorph.unconstrain(p, values) :
-           Paramorph.unconstrain(p, only(values))
+    return map(Paramorph.names(p)) do name
+        value = getproperty(G, name)
+        value isa AbstractArray ? copy(value) : value
+    end
 end
-_generator_from_coordinates(G::Generator, dloc, α) =
-    _gentype(G)(_parameter_arguments(Paramorph.constrain(_generator_space(G, dloc), α))...)
 
-function _nested_unbound(C::NestedArchimedeanCopula)
-    α = Float64[]
-    _push_node!(α, C)
-    return α
+function _push_nested_spaces!(spaces, C::NestedArchimedeanCopula, tag::String)
+    push!(spaces, Paramorph.Prefixed(Symbol(tag),
+        _generator_space(C.G, _local_arity(C))))
+    for (i, ch) in enumerate(C.children)
+        childtag = "$(tag)[$i]"
+        if ch isa Tuple
+            cc, ds = ch
+            push!(spaces, Paramorph.Prefixed(Symbol(childtag),
+                _generator_space(cc.G, max(length(ds), 2))))
+        else
+            _push_nested_spaces!(spaces, ch, childtag)
+        end
+    end
+    return spaces
 end
-function _push_node!(α, C::NestedArchimedeanCopula)
-    dloc = _local_arity(C)
-    append!(α, _generator_coordinates(C.G, dloc))
+
+function Paramorph.param_space(C::NestedArchimedeanCopula)
+    spaces = Paramorph.AbstractParameterSpace[]
+    _push_nested_spaces!(spaces, C, "G")
+    return Tuple(spaces)
+end
+
+function _push_nested_parameter_values!(values, C::NestedArchimedeanCopula)
+    append!(values, _generator_parameter_values(C.G, _local_arity(C)))
     for ch in C.children
         if ch isa Tuple
             cc, ds = ch
-            append!(α, _generator_coordinates(cc.G, max(length(ds), 2)))
+            append!(values, _generator_parameter_values(cc.G, max(length(ds), 2)))
         else
-            _push_node!(α, ch)
+            _push_nested_parameter_values!(values, ch)
         end
     end
-    return α
+    return values
 end
 
-_blocklen(G::Generator, dloc) = Paramorph.dimension(_generator_space(G, dloc))
+function _nested_parameter_values(C::NestedArchimedeanCopula)
+    values = Any[]
+    _push_nested_parameter_values!(values, C)
+    return Tuple(values)
+end
 
-# ---- REBUILD: same tree skeleton + new coordinates -> tree -----------------
-_nested_rebound(C::NestedArchimedeanCopula, α::AbstractVector) =
-    _rebuild_node(C, α, Ref(1))
-function _rebuild_node(C::NestedArchimedeanCopula, α, i::Ref{Int})
-    dloc = _local_arity(C)
-    k = _blocklen(C.G, dloc)
-    newG = _generator_from_coordinates(C.G, dloc, α[i[]:i[]+k-1])
-    i[] += k
+function _generator_from_values(G::Generator, dloc, values, i::Ref{Int})
+    p = _generator_space(G, dloc)
+    n = length(Paramorph.names(p))
+    args = ntuple(k -> values[i[] + k - 1], n)
+    i[] += n
+    return _gentype(G)(args...)
+end
+
+function _rebuild_node_from_values(C::NestedArchimedeanCopula, values, i::Ref{Int})
+    newG = _generator_from_values(C.G, _local_arity(C), values, i)
     newkids = Any[]
     for ch in C.children
         if ch isa Tuple
             cc, ds = ch
-            dl = max(length(ds), 2)
-            kk = _blocklen(cc.G, dl)
-            ng = _generator_from_coordinates(cc.G, dl, α[i[]:i[]+kk-1])
-            i[] += kk
+            ng = _generator_from_values(cc.G, max(length(ds), 2), values, i)
             push!(newkids, (ArchimedeanCopula(length(ds), ng), ds))
         else
-            push!(newkids, _rebuild_node(ch, α, i))
+            push!(newkids, _rebuild_node_from_values(ch, values, i))
         end
     end
-    return NestedArchimedeanCopula{length(C.dims), typeof(newG)}(
+    return NestedArchimedeanCopula{length(C.dims),typeof(newG)}(
         newG, copy(C.leafdims), newkids, copy(C.dims))
+end
+
+function _nested_from_coordinates(C::NestedArchimedeanCopula, p, α::AbstractVector)
+    values = Paramorph.constrain(p, α)
+    i = Ref(1)
+    rebuilt = _rebuild_node_from_values(C, values, i)
+    i[] == length(values) + 1 || error("nested parameter-space traversal mismatch")
+    return rebuilt
+end
+
+# Compatibility helpers for the existing template-fitting and validation hooks.
+# They no longer implement a coordinate system themselves: both delegate the
+# complete coordinate map to the tree's Paramorph product space.
+function _nested_unbound(C::NestedArchimedeanCopula)
+    p = Paramorph.param_space(C)
+    return Paramorph.unconstrain(p, _nested_parameter_values(C))
+end
+
+function _nested_rebound(C::NestedArchimedeanCopula, α::AbstractVector)
+    p = Paramorph.param_space(C)
+    return _nested_from_coordinates(C, p, α)
 end
 
 # ---- Fitting-interface opt-out ----------------------------------------------

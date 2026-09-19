@@ -153,6 +153,8 @@ See also: [`flipmask`](@ref), [`basecopula`](@ref).
 flips(C::AbstractReflectedCopula) = _survival_flipindices(flipmask(C))
 
 Base.eltype(C::AbstractReflectedCopula) = eltype(basecopula(C))
+Paramorph.param_space(C::AbstractReflectedCopula) =
+    Paramorph.param_space(basecopula(C))
 
 function _survival_flipmask(::Val{d}, flips::NTuple{d,Bool}) where {d}
     return flips
