@@ -1,0 +1,77 @@
+name: Temporary Paramorph fitting cleanup
+
+on:
+  push:
+    branches: [parameter-spaces-fitting]
+    paths: [.github/workflows/tmp-paramorph-fit-cleanup.yml]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - name: Patch FGM and stale tests
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/MiscellaneousCopulas/FGMCopula.jl')
+          s = p.read_text()
+          marker = 'Distributions.params(C::FGMCopula) = (collect(C.θ),)\n_available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho, :ibeta) : (:mle,)\n'
+          replacement = marker + '''\n# The bivariate FGM domain is an ordinary bounded scalar chart. Higher-dimensional\n# FGM parameters satisfy coupled hypercube-corner inequalities and deliberately\n# keep their specialized constrained optimizer below.\nfunction Paramorph.param_space(::Type{<:FGMCopula}, d::Integer)\n    d == 2 || throw(ArgumentError(\n        "multivariate FGM has coupled parameter constraints not represented by a Paramorph product space"))\n    return Paramorph.Bounded(:θ, -1.0, 1.0)\nend\n'''
+          assert marker in s
+          s = s.replace(marker, replacement, 1)
+
+          old_rank = '''function _fit(\n    CT::Type{<:FGMCopula}, U,\n    method::Union{Val{:itau},Val{:irho},Val{:ibeta}};\n    weights=nothing,\n)\n    size(U, 1) == 2 || throw(ArgumentError("rank fitting for FGM is available only in dimension two"))\n    fun = method isa Val{:itau} ? StatsBase.corkendall :\n          method isa Val{:irho} ? StatsBase.corspearman : corblomqvist\n    est = _rank_measure(method, U, weights)[1, 2]\n    loss(α) = abs2(est - fun(FGMCopula(2, tanh(α[1])))[1, 2])\n    res = Optim.optimize(loss, [0.0], Optim.NelderMead())\n    return CT(2, tanh(Optim.minimizer(res)[1]))\nend\n'''
+          new_rank = '''function _fit(\n    CT::Type{<:FGMCopula}, U,\n    method::Union{Val{:itau},Val{:irho},Val{:ibeta}};\n    weights=nothing,\n)\n    size(U, 1) == 2 || throw(ArgumentError("rank fitting for FGM is available only in dimension two"))\n    return _fit(CT, U, Val(2), method; weights)\nend\n'''
+          assert old_rank in s
+          s = s.replace(old_rank, new_rank, 1)
+
+          old_mle = '''    if d == 2\n        res = Optim.optimize(\n            α -> -_weighted_loglikelihood(FGMCopula(2, tanh(α[1])), U, weights),\n            [0.1],\n            Optim.LBFGS();\n            autodiff=ADTypes.AutoForwardDiff(),\n        )\n        θ = tanh(Optim.minimizer(res)[1])\n        return CT(d, θ)\n    end\n'''
+          new_mle = '''    if d == 2\n        return _fit(CT, U, Val(2), Val(:mle); weights)\n    end\n'''
+          assert old_mle in s
+          s = s.replace(old_mle, new_mle, 1)
+          p.write_text(s)
+
+          p = Path('test/operations/fitting.jl')
+          s = p.read_text()
+          old = '@test occursin("copula_", copula_section)'
+          new = '@test occursin("θ:", copula_section)'
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+
+          p = Path('test/operations/fitting_selection.jl')
+          s = p.read_text()
+          old = 'StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError("unavailable parameter count"))'
+          new = 'StatsBase.dof(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError("unavailable parameter count"))'
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git diff --check
+      - name: Verify bivariate FGM generic Paramorph path
+        run: |
+          julia --project --startup-file=no -e '
+            using Pkg; Pkg.instantiate()
+            using Copulas, Distributions, Random
+            P = Copulas.Paramorph
+            p = P.param_space(FGMCopula, 2)
+            @assert P.dimension(p) == 1
+            @assert P.names(p) == (:θ,)
+            @assert P.constrain(p, [0.0]) == 0.0
+            U = rand(MersenneTwister(554), FGMCopula(2, 0.4), 80)
+            @assert fit(FGMCopula, U; method=:mle) isa FGMCopula{2}
+            @assert fit(FGMCopula, U; method=:itau) isa FGMCopula{2}
+          '
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-paramorph-fit-cleanup.yml
+          git add src/MiscellaneousCopulas/FGMCopula.jl test/operations/fitting.jl test/operations/fitting_selection.jl
+          git diff --check
+          git commit -m "Route bivariate FGM fitting through Paramorph"
+          git push
