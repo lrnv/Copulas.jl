@@ -41,8 +41,41 @@ end
     α, θ1, θ2 = 2.1, 0.67, 0.38
     historical = ExtremeValueCopula{2}(Copulas.AsymLogTail(α, θ1, θ2))
     tawn = ExtremeValueCopula{2}(Copulas.TawnTail(α, [θ2, θ1]))
+    structured = ExtremeValueCopula{2}(Copulas.TawnTail(
+        2, [α], [[1 - θ2], [1 - θ1], [θ2, θ1]]))
     test_ev_equivalence(tawn, historical, [0.34, 0.76];
                         atol=3e-12, rtol=3e-12)
+
+    for candidate in (tawn, structured), j in 1:2, ucond in (0.17, 0.7, 0.93)
+        left, right = condition(candidate, j, ucond), condition(historical, j, ucond)
+        for z in (0.12, 0.4, 0.86)
+            @test cdf(left, z) ≈ cdf(right, z) atol=3e-12 rtol=3e-12
+        end
+        for z in (0.12, 0.4, 0.86)
+            @test logpdf(left, z) ≈ logpdf(right, z) atol=3e-11 rtol=3e-11
+            @test pdf(left, z) ≈ pdf(right, z) atol=3e-11 rtol=3e-11
+        end
+        for p in (0.1, 0.5, 0.9)
+            @test quantile(left, p) ≈ quantile(right, p) atol=3e-12 rtol=3e-12
+        end
+    end
+
+    for j in 1:2, ucond in (0.0, 1.0)
+        left, right = condition(tawn, j, ucond), condition(historical, j, ucond)
+        for z in (0.12, 0.4, 0.86)
+            @test cdf(left, z) ≈ cdf(right, z) atol=3e-12 rtol=3e-12
+        end
+        for p in (0.1, 0.5, 0.9)
+            @test quantile(left, p) ≈ quantile(right, p) atol=3e-12 rtol=3e-12
+        end
+    end
+
+    reported = ExtremeValueCopula{2}(Copulas.TawnTail(2.1, [0.38, 0.67]))
+    reported_conditional = condition(reported, 2, 0.7)
+    @test isfinite(cdf(reported_conditional, 0.4))
+    @test 0 <= cdf(reported_conditional, 0.4) <= 1
+    @test cdf(reported_conditional, 0.4) ≈
+          cdf(condition(historical, 2, 0.7), 0.4) atol=3e-12 rtol=3e-12
 
     for d in (3, 4)
         symmetric = ExtremeValueCopula{d}(Copulas.TawnTail(1.7, ones(d)))
@@ -50,6 +83,11 @@ end
         test_ev_equivalence(symmetric, logistic,
             collect(range(0.29, 0.82; length=d)); atol=5e-12, rtol=5e-12)
     end
+end
+
+@testset "Bivariate Pickands conditioning dispatch" begin
+    C = GalambosCopula{2}(1.2)
+    @test Copulas.distortion(C, (2,), (0.7,), 1) isa Copulas.BivEVDistortion
 end
 
 @testset "asymmetric Galambos reductions" begin
