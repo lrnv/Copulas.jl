@@ -56,6 +56,17 @@
     @test isempty(StatsBase.coef(ME))
     @test StatsBase.dof(ME) == 0
 
+    # Bivariate FGM is an ordinary bounded one-dimensional chart. Multivariate
+    # FGM keeps its specialized optimizer because its feasible set is coupled.
+    pfgm = P.param_space(FGMCopula, 2)
+    @test P.names(pfgm) == (:θ,)
+    @test P.dimension(pfgm) == 1
+    @test P.constrain(pfgm, [0.0]) == 0.0
+    Mfgm = CopulaModel(FGMCopula(2, 0.4), zeros(2, 1), 0.0, nothing)
+    @test StatsBase.coefnames(Mfgm) == ["θ₁"]
+    @test StatsBase.coef(Mfgm) == [0.4]
+    @test StatsBase.dof(Mfgm) == 1
+
     # A natural matrix is exposed in full. Symmetry and the fixed unit diagonal
     # therefore create redundant coefficients, while dof remains the Paramorph
     # dimension of the correlation manifold.
