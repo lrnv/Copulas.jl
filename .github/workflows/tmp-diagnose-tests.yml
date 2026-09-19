@@ -1,4 +1,4 @@
-name: Temporary coefficient hang diagnostics
+name: Temporary model display fix
 
 on:
   push:
@@ -8,56 +8,57 @@ on:
       - .github/workflows/tmp-diagnose-tests.yml
 
 jobs:
-  isolate:
+  fix:
     runs-on: ubuntu-latest
-    timeout-minutes: 5
-    strategy:
-      fail-fast: false
-      matrix:
-        case:
-          - sklar
-          - structural
-          - reflected
-          - empirical
-          - gaussian
-          - gaussian_show
-          - simplex
-          - tawn
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - name: Run coefficient case
-        env:
-          CASE: ${{ matrix.case }}
+      - name: Patch show to avoid generic numerical dependence metrics
         run: |
-          case "$CASE" in
-            sklar)
-              CODE='D=SklarDist(ClaytonCopula(2,1.25),(Normal(2.0,3.0),Exponential(4.0))); M=CopulaModel(D,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M); @show Copulas._parameter_blocks(M)'
-              ;;
-            structural)
-              CODE='D=SklarDist(ClaytonCopula(2,0.5),(Binomial(5,0.4),Normal())); M=CopulaModel(D,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
-              ;;
-            reflected)
-              CODE='R=Rotated90Copula(ClaytonCopula(2,0.75)); M=CopulaModel(R,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
-              ;;
-            empirical)
-              CODE='E=EmpiricalCopula([0.2 0.8;0.3 0.7]); M=CopulaModel(E,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
-              ;;
-            gaussian)
-              CODE='G=GaussianCopula([1.0 0.4 0.2;0.4 1.0 0.3;0.2 0.3 1.0]); M=CopulaModel(G,zeros(3,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
-              ;;
-            gaussian_show)
-              CODE='G=GaussianCopula([1.0 0.4 0.2;0.4 1.0 0.3;0.2 0.3 1.0]); M=CopulaModel(G,zeros(3,1),0.0,Copulas._CopulaFitSpec(GaussianCopula,:mle,(;))); println(sprint(show,M))'
-              ;;
-            simplex)
-              CODE='D=SklarDist(ClaytonCopula(2,0.5),(Categorical([0.1,0.2,0.7]),Normal())); M=CopulaModel(D,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
-              ;;
-            tawn)
-              CODE='T=TawnCopula(2,[2.0],[0.2,0.8],[0.3,0.7]); M=CopulaModel(T,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
-              ;;
-          esac
-          timeout 60s julia --project --startup-file=no -e "using Copulas, StatsBase, Distributions; $CODE"
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('src/show.jl')
+          s = p.read_text()
+          old = '''    shown_any = false
+    try
+        if _specialized(:τ); _kv(io, "Kendall τ", Printf.@sprintf("%.4f", Copulas.τ(C))); shown_any = true; end
+        if _has(:ρ);  _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C)));  shown_any = true; end
+        if _has(:β);  _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C)));  shown_any = true; end
+        if _specialized(:γ); _kv(io, "Gini γ", Printf.@sprintf("%.4f", Copulas.γ(C))); shown_any = true; end
+        if _has(:λᵤ); _kv(io, "Upper λᵤ",   Printf.@sprintf("%.4f", Copulas.λᵤ(C))); shown_any = true; end
+        if _has(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C))); shown_any = true; end
+        if _specialized(:ι); _kv(io, "Entropy ι", Printf.@sprintf("%.4f", Copulas.ι(C))); shown_any = true; end
+'''
+          new = '''    shown_any = false
+    try
+        # `show` must stay cheap and deterministic. Generic dependence measures
+        # may use Monte Carlo or high-dimensional numerical integration, so only
+        # family-specific implementations are evaluated here.
+        if _specialized(:τ); _kv(io, "Kendall τ", Printf.@sprintf("%.4f", Copulas.τ(C))); shown_any = true; end
+        if _specialized(:ρ); _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C))); shown_any = true; end
+        if _specialized(:β); _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C))); shown_any = true; end
+        if _specialized(:γ); _kv(io, "Gini γ", Printf.@sprintf("%.4f", Copulas.γ(C))); shown_any = true; end
+        if _specialized(:λᵤ); _kv(io, "Upper λᵤ",   Printf.@sprintf("%.4f", Copulas.λᵤ(C))); shown_any = true; end
+        if _specialized(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C))); shown_any = true; end
+        if _specialized(:ι); _kv(io, "Entropy ι", Printf.@sprintf("%.4f", Copulas.ι(C))); shown_any = true; end
+'''
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+          PY
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: Verify Gaussian model display terminates
+        run: |
+          timeout 60s julia --project --startup-file=no -e 'using Copulas, StatsBase, Distributions; G=GaussianCopula([1.0 0.4 0.2;0.4 1.0 0.3;0.2 0.3 1.0]); M=CopulaModel(G,zeros(3,1),0.0,Copulas._CopulaFitSpec(GaussianCopula,:mle,(;))); report=sprint(show,M); @assert occursin("Σ:",report); @assert occursin("Degrees of freedom",report); println(report)'
+      - name: Commit source fix and remove diagnostics
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-diagnose-tests.yml
+          git add src/show.jl
+          git diff --check
+          git commit -m "Keep model display free of numerical integration"
+          git push
