@@ -21,8 +21,6 @@ jobs:
       - name: Refresh Paramorph main
         run: julia --project --startup-file=no -e 'using Pkg; Pkg.add(Pkg.PackageSpec(name="Paramorph", url="https://github.com/lrnv/Paramorph.jl", rev="main")); Pkg.instantiate()'
       - run: git diff --check
-      - name: Run Copulas tests
-        run: julia --project --startup-file=no -e 'using Pkg; Pkg.test()'
       - name: Commit refactor
         run: |
           git config user.name "github-actions[bot]"
@@ -31,3 +29,5 @@ jobs:
           git diff --cached --check
           git commit -m "Encode nested fitting validity in Paramorph geometry"
           git push
+      - name: Run Copulas tests
+        run: julia --project --startup-file=no -e 'using Pkg; Pkg.test()'
