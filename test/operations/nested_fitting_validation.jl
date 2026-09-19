@@ -19,13 +19,29 @@
         @test child >= parent
     end
 
-    # An invalid template remains constructible but is rejected before fitting.
+    # Construction is intentionally permissive. The same-family ordering below
+    # is outside the fitting chart, but constructing the explicit tree is valid
+    # API and only the Paramorph inverse rejects it.
     bad = NestedArchimedeanCopula(
         Copulas.ClaytonGenerator(5.0);
         children=[ClaytonCopula{2}(2.0)],
     )
+    @test bad isa NestedArchimedeanCopula
+    @test_throws DomainError P.unconstrain(
+        P.param_space(bad), Copulas._nested_parameter_values(bad))
+
     U = rand(StableRNG(49_000), C0, 20)
     @test_throws DomainError fit(CopulaModel, bad, U)
+
+    # Missing fitting geometry is likewise a fit concern, not a constructor
+    # concern. Explicit expert/manual trees remain constructible.
+    unsupported = NestedArchimedeanCopula(
+        Copulas.ClaytonGenerator(1.0);
+        children=[GumbelCopula{2}(2.0)],
+    )
+    @test unsupported isa NestedArchimedeanCopula
+    @test_throws ArgumentError P.param_space(unsupported)
+    @test_throws ArgumentError fit(CopulaModel, unsupported, U)
 
     fitted = fit(C0, U)
     @test fitted.G.θ <= Copulas._nested_child(only(fitted.children)).G.θ
