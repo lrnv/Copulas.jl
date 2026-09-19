@@ -2,8 +2,10 @@
 ##### Natural model coefficients
 ###############################################################################
 
-# Paramorph remains the source of statistical dimension and optimization
-# geometry. Composite Sklar models simply compose the component spaces.
+# Paramorph owns statistical dimension and optimization geometry. StatsBase
+# coefficients deliberately expose the fitted distribution's natural `params`
+# representation instead, flattened mechanically without trying to remove
+# constraints or redundancies such as matrix symmetry or simplex sums.
 function Paramorph.param_space(S::SklarDist)
     copula_space = Paramorph.Prefixed(:copula, Paramorph.param_space(S.C))
     margin_spaces = ntuple(length(S.m)) do i
@@ -67,8 +69,8 @@ function _append_natural_coefficient!(names, values, value, name::String)
         push!(values, value)
     elseif value isa AbstractArray
         for I in CartesianIndices(value)
-            child_name = _indexed_parameter_name(name, I, size(value))
-            _append_natural_coefficient!(names, values, value[I], child_name)
+            _append_natural_coefficient!(
+                names, values, value[I], _indexed_parameter_name(name, I, size(value)))
         end
     elseif value isa NamedTuple
         for (key, child) in pairs(value)
@@ -108,29 +110,8 @@ function _append_distribution_parameters!(names, values, D, prefix::String)
     return nothing
 end
 
-function _append_natural_value!(values, value)
-    if value isa Number
-        push!(values, value)
-    elseif value isa AbstractArray
-        for item in value
-            _append_natural_value!(values, item)
-        end
-    elseif value isa NamedTuple || value isa Tuple
-        for item in values(value)
-            _append_natural_value!(values, item)
-        end
-    elseif applicable(Distributions.params, value)
-        _append_natural_value!(values, Distributions.params(value))
-    else
-        throw(ArgumentError(
-            "cannot flatten natural parameter value of type $(typeof(value))"))
-    end
-    return nothing
-end
-
-function _promoted_parameter_values(values)
-    return isempty(values) ? Float64[] : collect(promote(float.(values)...))
-end
+_promoted_parameter_values(values) =
+    isempty(values) ? Float64[] : collect(promote(float.(values)...))
 
 function _distribution_coefficients(D; prefix::String="")
     names = String[]
@@ -151,18 +132,12 @@ function _distribution_coefficients(S::SklarDist; prefix::String="")
     return names, _promoted_parameter_values(values)
 end
 
-# Nested Archimedean trees do not currently expose their full tree as
-# `Distributions.params`; their existing natural generator coefficients remain
-# the model representation until that distribution-level API exists.
+# Nested Archimedean topology is structural rather than a flat distribution
+# parameter. Preserve its existing fitted-generator coefficient representation.
 _distribution_coefficients(C::NestedArchimedeanCopula; prefix::String="") =
     _nested_coef(C)
 
-function _distribution_coefficient_values(D)
-    values = Any[]
-    _append_natural_value!(values, Distributions.params(D))
-    return _promoted_parameter_values(values)
-end
-_distribution_coefficient_values(C::NestedArchimedeanCopula) = last(_nested_coef(C))
+_distribution_coefficient_values(D) = last(_distribution_coefficients(D))
 
 function _structured_coefficient_data(M::CopulaModel)
     spec = M.recipe
@@ -196,9 +171,7 @@ function _parameter_blocks(M::CopulaModel{<:SklarDist})
 end
 
 function _distribution_dof(D)
-    if D isa NestedArchimedeanCopula
-        return length(last(_nested_coef(D)))
-    end
+    D isa NestedArchimedeanCopula && return length(last(_nested_coef(D)))
     p = try
         Paramorph.param_space(D)
     catch
