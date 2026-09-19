@@ -73,7 +73,11 @@
     @test StatsBase.coef(MG) == vec(G.Σ)
     @test length(StatsBase.coef(MG)) == 9
     @test StatsBase.dof(MG) == P.dimension(P.param_space(G)) == 3
-    report = sprint(show, MG)
+    MGshow = CopulaModel(
+        G, zeros(3, 1), 0.0,
+        Copulas._CopulaFitSpec(GaussianCopula, :mle, (;)),
+    )
+    report = sprint(show, MGshow)
     @test occursin("Degrees of freedom", report)
     @test occursin("Σ:", report)
     @test !occursin("Σ₁₂", report)
