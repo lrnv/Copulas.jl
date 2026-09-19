@@ -1,0 +1,44 @@
+name: Temporary test hang diagnostics
+
+on:
+  push:
+    branches:
+      - parameter-spaces-fitting
+    paths:
+      - .github/workflows/tmp-diagnose-tests.yml
+
+jobs:
+  isolate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        file:
+          - operations/fitting.jl
+          - operations/parameter_coefficients.jl
+          - operations/inference.jl
+          - operations/fitting_selection.jl
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - uses: julia-actions/cache@v3
+      - name: Restrict suite to one file
+        env:
+          TEST_FILE: ${{ matrix.file }}
+        run: |
+          python - <<'PY'
+          import os, re
+          from pathlib import Path
+          p = Path('test/runtests.jl')
+          s = p.read_text()
+          replacement = 'testfiles = (\n    "' + os.environ['TEST_FILE'] + '",\n)'
+          s, n = re.subn(r'testfiles = \(\n.*?\n\)', replacement, s, count=1, flags=re.S)
+          assert n == 1
+          p.write_text(s)
+          PY
+      - uses: julia-actions/julia-buildpkg@v1
+      - name: Run isolated test file
+        run: julia --project --startup-file=no -e 'using Pkg; Pkg.test(; coverage=false)'
