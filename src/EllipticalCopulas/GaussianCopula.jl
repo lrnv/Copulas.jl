@@ -85,8 +85,8 @@ GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula{d}(Σ)
 (::Type{GaussianCopula{D,MT}})(d::Int, Σ::AbstractMatrix) where {D,MT} = GaussianCopula{d}(Σ)
 (::Type{GaussianCopula{D,MT}})(d::Int, ρ::Real) where {D,MT} = GaussianCopula{d}(ρ)
 
-U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
-N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
+U(::Type{T}) where T<:GaussianCopula = Distributions.Normal()
+N(::Type{T}) where T<:GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
     # MvNormalCDF mutates its upper-bound work vector. HCubature supplies
     # immutable StaticArrays to integrands, so always hand the backend a
@@ -155,15 +155,7 @@ end
 
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula{p}(C.Σ[collect(dims),collect(dims)])
 
-StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
-Distributions.params(C::GaussianCopula) = (; Σ = copy(C.Σ))
-_example(::Type{<:GaussianCopula}, d::Int) = GaussianCopula(d, 0.2)
-function _unbound_params(::Type{<:GaussianCopula}, d::Int, θ::NamedTuple)
-    return _unbound_corr_params(d, θ.Σ)
-end
-function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
-    return (; Σ = _rebound_corr_params(d, α))
-end
+Paramorph.param_space(::Type{<:GaussianCopula}, d) = Paramorph.Correlation(:Σ, d)
 function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
     d = size(Udata, 1)
     N01 = Distributions.Normal()
@@ -190,10 +182,11 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
         R̂ = T[one(T) ρ̂; ρ̂ one(T)]
         return GaussianCopula(R̂)
     end
+    pΣ = Paramorph.Correlation(:Σ, d)
     R₀ = _score_corr_start(Z)
-    α₀ = _unbound_corr_params(d, R₀)
+    α₀ = Paramorph.unconstrain(pΣ, (R₀,))
     objective_hd = α -> begin
-        L = _rebound_corr_factor(d, α)
+        L = Paramorph.correlation_factor(pΣ, α)
         Ltri = LinearAlgebra.LowerTriangular(L)
         logdetR = 2 * sum(log, LinearAlgebra.diag(L))
         Y = Ltri \ Q
@@ -208,7 +201,7 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
         autodiff=ADTypes.AutoForwardDiff(),
     )
     α̂ = Optim.minimizer(res)
-    L̂ = _rebound_corr_factor(d, α̂)
+    L̂ = Paramorph.correlation_factor(pΣ, α̂)
     R̂ = L̂ * L̂'
     R̂ = (R̂ + R̂') / 2
     return GaussianCopula(R̂)

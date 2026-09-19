@@ -158,7 +158,7 @@ const GENERATOR_CASES = unique(generator_case_key,
 function tail_case_key(entry)
     Base.@nospecialize entry
     tail, d = entry
-    return (typeof(tail), d, typeof(params(tail)))
+    return (typeof(tail), d)
 end
 const TAIL_CASES = unique(tail_case_key,
     [
@@ -214,6 +214,7 @@ testfiles = (
     "operations/dependence.jl",
     "operations/dependence_dimension_validation.jl",
     "operations/fitting.jl",
+    "operations/parameter_coefficients.jl",
     "operations/sklar_fitting_validation.jl",
     "operations/nested_fitting_validation.jl",
     "operations/inference.jl",

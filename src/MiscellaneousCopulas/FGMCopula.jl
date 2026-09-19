@@ -35,18 +35,15 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     fᵢ::Tf
     function FGMCopula{d}(vθ::Vector) where {d}
         d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-        # Check first restrictions on parameters
         any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
 
-        # Last check:
         for epsilon in Base.product(fill([-1, 1], d)...)
             if 1 + _fgm_red(vθ, epsilon) < 0
                 throw(ArgumentError("Invalid parameters θ = $vθ. The parameters do not meet the condition to be an FGM copula"))
             end
         end
 
-        # Now construct the stochastic representation:
         wᵢ = [_fgm_red(vθ, 1 .- 2*Base.reverse(digits(i, base=2, pad=d))) for i in 0:(2^d-1)]
         support = 0:(2^d-1)
         probabilities = (1 .+ wᵢ) / 2^d
@@ -63,8 +60,6 @@ FGMCopula{d}(θ::AbstractVector) where {d} = FGMCopula{d}(collect(float.(θ)))
 FGMCopula(d, θ) = FGMCopula{d}(θ)
 (::Type{<:FGMCopula{D,Tθ,Tf}})(d::Int, θ) where {D,Tθ,Tf} = FGMCopula{d}(θ)
 function _fgm_red(θ, v)
-    # This function implements the reduction over combinations of the fgm copula.
-    # It is non-alocative thus performant :)
     rez, d, i = zero(promote_type(eltype(θ), eltype(v))), length(v), 1
     for k in 2:d
         for indices in Combinatorics.combinations(1:d, k)
@@ -76,24 +71,18 @@ function _fgm_red(θ, v)
 end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
 
-# Fitting/params interface
-Distributions.params(C::FGMCopula) = (θ = collect(C.θ),)
-_example(::Type{<:FGMCopula}, d) = FGMCopula(d, fill(0.5 / (2^d - d - 1), 2^d - d - 1))
+Distributions.params(C::FGMCopula{2}) = (only(C.θ),)
+Distributions.params(C::FGMCopula) = (collect(C.θ),)
 _available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho, :ibeta) : (:mle,)
-function _rebound_params(::Type{<:FGMCopula}, d, α)
-    d==2 && return  (; θ = tanh.(α))
-    throw(ArgumentError("FGM rank-parameter transforms are available only in dimension 2"))
+
+# The bivariate FGM domain is an ordinary bounded scalar chart. Higher-dimensional
+# FGM parameters satisfy coupled hypercube-corner inequalities and deliberately
+# keep their specialized constrained optimizer below.
+function Paramorph.param_space(::Type{<:FGMCopula}, d::Integer)
+    d == 2 || throw(ArgumentError(
+        "multivariate FGM has coupled parameter constraints not represented by a Paramorph product space"))
+    return Paramorph.Bounded(:θ, -1.0, 1.0)
 end
-function _unbound_params(::Type{<:FGMCopula}, d, θ)
-    d == 2 && return atanh.(collect(θ.θ))
-    throw(ArgumentError("FGM rank-parameter transforms are available only in dimension 2"))
-end
-
-
-
-
-
-
 
 function _cdf(fgm::FGMCopula{d}, u::Vector{T}) where {d,T}
     return prod(u) * (1 + _fgm_red(fgm.θ, 1 .-u))
@@ -126,7 +115,6 @@ function ρ⁻¹(::Type{<:FGMCopula}, ρ)
     return max.(min.(3 * ρ, 1), -1)
 end
 
-# Subsetting colocated
 function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int}) where {d,Tθ,Tf,p}
     if p==2
         i = 1
@@ -136,10 +124,9 @@ function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int}) where {d,Tθ
         end
         @error("Somethings wrong...")
     end
-    # Build mapping to gather θ' in the canonical order for dimension p
     combos_by_k = [collect(Combinatorics.combinations(1:d, k)) for k in 2:d]
     offs = Vector{Int}(undef, d)
-    offs[1] = 0  # unused for k=1
+    offs[1] = 0
     acc = 0
     for k in 2:d
         offs[k] = acc
@@ -160,60 +147,50 @@ end
 
 distortion(C::FGMCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int) = BivFGMDistortion(float(C.θ[1]), Int8(js[1]), float(uⱼₛ[1]))
 
-
+function _fit(
+    CT::Type{<:FGMCopula}, U,
+    method::Union{Val{:itau},Val{:irho},Val{:ibeta}};
+    weights=nothing,
+)
+    size(U, 1) == 2 || throw(ArgumentError("rank fitting for FGM is available only in dimension two"))
+    return _fit(CT, U, Val(2), method; weights)
+end
 
 function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle}; weights=nothing)
     d = size(U,1)
 
-    # → 1. Easy case: d == 2, parameter mapping is bijective.
     if d == 2
-        # generic rank-based routine (agnostic to vcov/inference)
-        res = Optim.optimize(
-            α -> -_weighted_loglikelihood(FGMCopula(2, tanh(α[1])), U, weights),
-            [0.1],
-            Optim.LBFGS();
-            autodiff= ADTypes.AutoForwardDiff()
-        )
-        θ = tanh(Optim.minimizer(res)[1])
-        return CT(d, θ)
+        return _fit(CT, U, Val(2), Val(:mle); weights)
     end
 
-    # → 2. General FGM (d > 2) with log-barrier or soft barrier
-    # Construct helper functions
     cop(θ) = FGMCopula(d, θ)
-    θ₀ = Distributions.params(_example(CT, d))[:θ]  # starting point in θ-space
+    nparams = 2^d - d - 1
+    θ₀ = fill(0.5 / nparams, nparams)
 
-    # Log-barrier penalty: ensures all inequalities 1 + _fgm_red(θ, ε) > 0
     function barrier_penalty(θ; μ=1e-3, soft=false)
         total = 0.0
         for ε in Base.product(fill([-1,1], d)...)
             v = 1 + _fgm_red(θ, ε)
             if soft
-                # Softplus barrier: smooth penalty, finite outside feasible region
-                total += LogExpFunctions.log1pexp(-10v) / 10  # mild smoothness
+                total += LogExpFunctions.log1pexp(-10v) / 10
             else
-                if v <= 0
-                    return Inf  # hard barrier: outside feasible set
-                end
+                v <= 0 && return Inf
                 total -= μ * log(v)
             end
         end
         return μ * total
     end
 
-    # Negative log-likelihood + barrier
     function loss(θ)
         try
             C = cop(θ)
             return -_weighted_loglikelihood(C, U, weights) + barrier_penalty(θ)
         catch
-            # If FGMCopula constructor fails (invalid params), return large penalty
             return 1e10
         end
     end
 
-    # Optimise in θ-space directly (no need for unbound/rebound)
-    res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
+    res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     θhat = Optim.minimizer(res)
     return FGMCopula(d, θhat)
 end

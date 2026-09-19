@@ -38,7 +38,7 @@ const EM_N = 80
         weights = collect(range(0.2, 1.0; length=EM_N))
         fitted_copula = fit_mle(copula, uniforms, weights)
         @test fitted_copula isa ClaytonCopula
-        @test isfinite(Distributions.params(fitted_copula).θ)
+        @test isfinite(only(Distributions.params(fitted_copula)))
 
         bb1 = BB1Copula{2}(1.2, 1.5)
         bb1_uniforms = rand(EM_RNG, bb1, EM_N)
@@ -53,10 +53,10 @@ const EM_N = 80
 
         bb1_params = Distributions.params(fitted_bb1)
 
-        @test isfinite(bb1_params.θ)
-        @test isfinite(bb1_params.δ)
-        @test bb1_params.θ > 0
-        @test bb1_params.δ >= 1
+        @test isfinite(bb1_params[1])
+        @test isfinite(bb1_params[2])
+        @test bb1_params[1] > 0
+        @test bb1_params[2] >= 1
 
         @test fit_mle(IndependentCopula{2}(), uniforms, weights) isa IndependentCopula
 

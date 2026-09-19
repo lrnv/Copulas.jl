@@ -36,7 +36,7 @@ from the same public operations as follows:
 # Marginal fits are the same than IFM1, so we just used those to compute IFM2 ranks:
 u = similar(x)
 for i in 1:length(C)
-    u[i,:] .= cdf.(Ref(params(quick_fit).margins[i]), x[i,:])
+    u[i,:] .= cdf.(Ref(last(params(quick_fit))[i]), x[i,:])
 end
 
 # estimate a Gaussian copula: 
@@ -45,7 +45,7 @@ ifm2_cop = fit(GaussianCopula,u)
 
 Let us compare the two obtained correlation matrices: 
 ```@example ifm
-params(ifm2_cop).Σ .- params(params(quick_fit).copula).Σ
+only(params(ifm2_cop)) .- only(params(first(params(quick_fit))))
 ```
 
 We see that the estimated parameter is not exactly the same, which is normal. Even in this contrived example, the difference between the two is not striking. Whether one method is better than the other is unclear, but the JMLE method is clearly superior by definition. However, due to its complexity, most software do not perform such estimation.
@@ -63,7 +63,7 @@ plot(P1, P2; layout=(1,2), size=(850,350))
 τ1 = StatsBase.corkendall(U1')
 U2 = similar(x)
 for i in 1:length(C)
-    U2[i,:] .= cdf.(Ref(params(quick_fit).margins[i]), x[i,:])
+    U2[i,:] .= cdf.(Ref(last(params(quick_fit))[i]), x[i,:])
 end
 τ2 = StatsBase.corkendall(U2')
 plot(heatmap(τ1; title="Kendall τ (IFM1)", aspect_ratio=1, c=:blues, clim=(-1,1)),

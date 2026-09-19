@@ -53,10 +53,7 @@ end
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
-Distributions.params(tail::GalambosTail) = (θ = tail.θ,)
-_unbound_params(::Type{<:GalambosTail}, d, θ) = [log(θ.θ)]           # θ > 0
-_rebound_params(::Type{<:GalambosTail}, d, α) = (; θ = exp(α[1]))
-_θ_bounds(::Type{<:GalambosTail}, d) = (0.0, Inf)
+Paramorph.param_space(::Type{<:GalambosTail}, d) = Paramorph.NonNeg(:θ)
 
 function ℓ(tail::GalambosTail, x)
     any(isinf, x) && return maximum(x)
@@ -120,8 +117,6 @@ function _ellpartial_signlog(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
     all(xi -> xi isa AbstractFloat, x) || return sgn, logabs
     tail.θ isa AbstractFloat || return sgn, logabs
 
-    # Inclusion-exclusion can lose hundreds of digits for strong dependence.
-    # Retry only unresolved partials at increasing precision.
     T = typeof(float(x[first(I)] + tail.θ))
     bits = max(256,
                x[first(I)] isa BigFloat ? precision(x[first(I)]) : 0,
@@ -136,54 +131,46 @@ function _ellpartial_signlog(tail::GalambosTail, x, I::Tuple{Vararg{Int}})
     throw(ArgumentError("Galambos mixed partial could not be resolved numerically"))
 end
 
-
-# Galambos uses its exact spectral sampler in every dimension, including d=2
-# where it is substantially faster than the generic Ghoudi/Pickands sampler.
-# The common scale of the Weibull/Gamma construction cancels after
-# normalization to the simplex.
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:GalambosTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    return _rand_with_ev_limits!(rng, C, X) do
+        S = promote_type(T, typeof(C.tail.θ))
+        θ = S(C.tail.θ)
+        invθ = inv(θ)
+        shape = one(S) + invθ
+        weibull = Distributions.Weibull(θ, one(S))
+        gamma = Distributions.Gamma(shape, one(S))
+        q = Vector{S}(undef, d)
+        z = Vector{S}(undef, d)
+        invd = inv(S(d))
 
-    kind = limit_kind(C.tail, Val(d))
-    kind === Π_LIMIT && return Random.rand!(rng, X)
-    kind === M_LIMIT && return _rand_M!(rng, X)
-
-    S = promote_type(T, typeof(C.tail.θ))
-    θ = S(C.tail.θ)
-    invθ = inv(θ)
-    shape = one(S) + invθ
-    weibull = Distributions.Weibull(θ, one(S))
-    gamma = Distributions.Gamma(shape, one(S))
-    q = Vector{S}(undef, d)
-    z = Vector{S}(undef, d)
-    invd = inv(S(d))
-
-    for col in axes(X, 2)
-        fill!(z, zero(S))
-        arrival = Random.randexp(rng, S) * invd
-        radius = inv(arrival)
-
-        while radius > minimum(z)
-            j = rand(rng, 1:d)
-            @inbounds for i in 1:d
-                q[i] = rand(rng, weibull)
-            end
-            q[j] = rand(rng, gamma)^invθ
-
-            qsum = sum(q)
-            @inbounds for i in 1:d
-                qi = q[i] / qsum
-                z[i] = max(z[i], radius * qi)
-            end
-
-            arrival += Random.randexp(rng, S) * invd
+        for col in axes(X, 2)
+            fill!(z, zero(S))
+            arrival = Random.randexp(rng, S) * invd
             radius = inv(arrival)
-        end
 
-        @inbounds for i in 1:d
-            X[i, col] = exp(-inv(z[i]))
+            while radius > minimum(z)
+                j = rand(rng, 1:d)
+                @inbounds for i in 1:d
+                    q[i] = rand(rng, weibull)
+                end
+                q[j] = rand(rng, gamma)^invθ
+
+                qsum = sum(q)
+                @inbounds for i in 1:d
+                    qi = q[i] / qsum
+                    z[i] = max(z[i], radius * qi)
+                end
+
+                arrival += Random.randexp(rng, S) * invd
+                radius = inv(arrival)
+            end
+
+            @inbounds for i in 1:d
+                X[i, col] = exp(-inv(z[i]))
+            end
         end
+        return X
     end
-    return X
 end
 
 needs_binary_search(tail::GalambosTail) = (tail.θ > 19.5)
@@ -214,7 +201,6 @@ function d²A(tail::GalambosTail, t::Real)
     E1 = exp(L1 - M)
     E2 = exp(L2 - M)
     S  = E1 + E2
-    # B = (a^-θ + b^-θ)^(-1/θ) with numerically stable rescaling
     B  = exp(-(M/θ)) * S^(-1/θ)
 
     inva = inv(a); invb = inv(b)
@@ -240,7 +226,6 @@ function dA(tail::GalambosTail, t::Real)
     B  = exp(-(M/θ)) * S^(-1/θ)
     inva = inv(a); invb = inv(b)
     D    = E2*invb - E1*inva
-    # A'(t) = B * (D/S)
     return B * (D / S)
 end
 
@@ -254,7 +239,7 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
 
 τ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
 τ⁻¹(::Type{<:GalambosTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
-ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ >= 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
 β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta) =
     beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
 λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) =

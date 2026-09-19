@@ -1,10 +1,9 @@
 # Component proof: exhaustively covers public EV-tail families and
-# verifies stable-tail, Pickands, derivative, and reconstruction identities.
+# verifies stable-tail, Pickands, and derivative identities.
 
 struct LogisticOracleTail{T} <: Copulas.BivariatePickandsTail
     θ::T
 end
-Distributions.params(tail::LogisticOracleTail) = (; θ=tail.θ)
 Copulas.ℓ(tail::LogisticOracleTail, x) =
     sum(xᵢ -> xᵢ^tail.θ, x)^(inv(tail.θ))
 Copulas.A(tail::LogisticOracleTail, t::Real) =
@@ -83,7 +82,7 @@ end
         @testset "$(nameof(typeof(tail))) d=$d" begin
             @test tail isa Copulas.Tail
             x = collect(range(0.4, 1.0; length=d))
-            @test params(tail) isa NamedTuple
+            @test !applicable(params, tail)
             value = Copulas.ℓ(tail, x)
             @test maximum(x) <= value <= sum(x)
             @test Copulas.ℓ(tail, 2 .* x) ≈ 2value

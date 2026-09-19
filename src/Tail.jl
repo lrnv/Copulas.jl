@@ -19,31 +19,24 @@ See also: [`ExtremeValueCopula`](@ref), [`A`](@ref), [`ℓ`](@ref),
 [`DiscreteSpectralTail`](@ref).
 """
 abstract type Tail end
+# Optional structural fields (for example scalar-vs-matrix parameterizations)
+# do not contribute to the numeric parameter type.
+_parameter_eltype(::Nothing) = Union{}
+_parameter_eltype(tail::Tail) = _parameter_eltype(ntuple(i -> getfield(tail, i), fieldcount(typeof(tail))))
 Base.eltype(tail::Tail) = _sample_eltype(tail)
 
 # Most simple tails store their public constructor parameters directly as
-# fields. A handful of structured tails use a different internal storage
-# layout; their bivariate fitting/public parameterizations are named explicitly
-# here so keyword names are checked against the mathematical API rather than
-# implementation fields.
-function _tail_constructor_parameter_names(T, kwkeys)
-    wrapper = Base.typename(Base.unwrap_unionall(T)).wrapper
-    name = nameof(wrapper)
-    name === :AsymGalambosTail && return (:α, :θ₁, :θ₂)
-    name === :BC2Tail && return (:a, :b)
-    name === :MOTail && return (:λ₁, :λ₂, :λ₃)
-    name === :HuslerReissTail && return (:Γ in kwkeys ? (:Γ,) : (:θ,))
-    name === :tEVTail && return (:R in kwkeys ? (:ν, :R) : (:ν, :ρ))
-    return fieldnames(Base.unwrap_unionall(T))
-end
+# fields. Structured families may specialize this hook next to their constructor
+# metadata when the public parameterization differs from the storage layout.
+_tail_constructor_parameter_names(T, kwkeys) = fieldnames(Base.unwrap_unionall(T))
 
 function (TT::Type{<:Tail})(args...; kwargs...)
     S = hasproperty(TT, :body) ? TT.body : TT
     T = S.name.wrapper
-    # Refuse only a genuinely argument-free recursive call. Keyword calls are
-    # converted to the canonical positional constructor, but their names must
-    # match the remaining public parameters and are reordered accordingly.
-    T === TT && isempty(args) && isempty(kwargs) && throw(MethodError(TT, args))
+    # Exact public positional constructors dispatch before this fallback. If
+    # an unparameterized wrapper reaches it without keywords, forwarding the
+    # same positional call to `T` would recurse forever.
+    T === TT && isempty(kwargs) && throw(MethodError(TT, args))
     isempty(kwargs) && return T(args...)
 
     parameters = _tail_constructor_parameter_names(T, keys(kwargs))
@@ -58,7 +51,6 @@ function (TT::Type{<:Tail})(args...; kwargs...)
     ))
     return T(args..., (kwargs[name] for name in remaining)...)
 end
-_parameter_dof(x::Tail) = _parameter_dof(Distributions.params(x))
 Base.broadcastable(tail::Tail) = Ref(tail)
 
 """
@@ -201,11 +193,11 @@ function _biv_der_ℓ(tail::BivariatePickandsTail, uv)
     return val, du, dv, dudv
 end
 function _ghoudi_mixture_probability(tail::BivariatePickandsTail, z::Real)
-    # p(z) = z(1-z) A''(z) / [ A(z) g_Z(z) ] 
-    num = z * (1 - z) * d²A(tail, z) 
+    # p(z) = z(1-z) A''(z) / [ A(z) g_Z(z) ]
+    num = z * (1 - z) * d²A(tail, z)
     dem = A(tail, z) * Distributions.pdf(ExtremeDist(tail), z)
-    p = num / dem 
-    return clamp(p, 0, 1) 
+    p = num / dem
+    return clamp(p, 0, 1)
 end
 
 # Finite discrete-spectral capabilities.

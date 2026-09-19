@@ -55,7 +55,8 @@ function EmpiricalCopula{d}(u; pseudo_values=true) where {d}
 end
 EmpiricalCopula(u; kwargs...) = EmpiricalCopula{size(u, 1)}(u; kwargs...)
 EmpiricalCopula(d::Integer, u; kwargs...) = EmpiricalCopula{d}(u; kwargs...)
-Distributions.params(C::EmpiricalCopula) = (u=C.u,)
+Distributions.params(C::EmpiricalCopula) = (C.u,)
+Paramorph.param_space(::Type{<:EmpiricalCopula}, ::Integer) = ()
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return sum(all(C.u .<= u,dims=1))/size(C.u,2)
 end
@@ -113,7 +114,6 @@ StatsBase.corkendall(C::EmpiricalCopula) = StatsBase.corkendall(C.u')
 function SubsetCopula(C::EmpiricalCopula{d,MT}, dims::NTuple{p, Int}) where {d,MT,p}
     return EmpiricalCopula(C.u[collect(dims), :]; pseudo_values=true)
 end
-StatsBase.dof(::EmpiricalCopula) = 0
 _available_fitting_methods(::Type{<:EmpiricalCopula}, d) = (:deheuvels,)
 """
     _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels};

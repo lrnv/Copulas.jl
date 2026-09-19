@@ -56,21 +56,14 @@ end
 const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
 tail_measure_style(tail::CuadrasAugeTail) =
     iszero(tail.θ) ? AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
-Distributions.params(tail::CuadrasAugeTail) = (θ = tail.θ,)
 _is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2
-_unbound_params(::Type{<:CuadrasAugeTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
-_rebound_params(::Type{<:CuadrasAugeTail}, d, α) = begin
-    p = LogExpFunctions.logistic(α[1])
-    (; θ = p)
-end
-_θ_bounds(::Type{<:CuadrasAugeTail}, d) = (0.0, 1.0)
+Paramorph.param_space(::Type{<:CuadrasAugeTail}, d) = Paramorph.Prob(:θ)
 
 function A(tail::CuadrasAugeTail, t::Real)
     tt = _safett(t)
     θ = tail.θ
     return max(tt, 1-tt) + (1-θ) * min(tt, 1-tt)
 end
-
 
 # Dimension-free Cuadras-Auge STDF:
 #
@@ -84,20 +77,15 @@ function ℓ(tail::CuadrasAugeTail, x)
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:CuadrasAugeTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-
-    kind = limit_kind(C.tail, Val(d))
-    kind === Π_LIMIT && return Random.rand!(rng, X)
-    kind === M_LIMIT && return _rand_M!(rng, X)
-
-    θ = C.tail.θ
-    B = zeros(typeof(θ), d, d + 1)
-
-    @inbounds for i in 1:d
-        B[i, i] = one(θ) - θ
-        B[i, end] = θ
+    return _rand_with_ev_limits!(rng, C, X) do
+        θ = C.tail.θ
+        B = zeros(typeof(θ), d, d + 1)
+        @inbounds for i in 1:d
+            B[i, i] = one(θ) - θ
+            B[i, end] = θ
+        end
+        return _discrete_spectral_rand!(rng, DiscreteSpectralTail(B), X)
     end
-
-    return _discrete_spectral_rand!(rng, DiscreteSpectralTail(B), X)
 end
 _pickands_left_slope(tail::CuadrasAugeTail, prototype::Real) = -convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
 _pickands_right_slope(tail::CuadrasAugeTail, prototype::Real) = convert(promote_type(typeof(prototype), typeof(tail.θ)), tail.θ)
@@ -107,23 +95,20 @@ function Distributions._rand!(rng::Distributions.AbstractRNG,
     C::ExtremeValueCopula{2, CuadrasAugeTail{T}},
     A::AbstractMatrix{S}) where {T,S<:Real}
 
-    kind = limit_kind(C.tail, Val(2))
-    kind === Π_LIMIT && return Random.rand!(rng, A)
-    kind === M_LIMIT && return _rand_M!(rng, A)
-
-    R = promote_type(T, S)
-    θ = R(C.tail.θ)
-    E = rand(rng, Distributions.Exponential(θ / (one(R) - θ)), 2, size(A, 2))
-    E₁₂ = rand(rng, Distributions.Exponential(one(R)), size(A, 2))
-    @inbounds for (j, col) in enumerate(axes(A, 2))
-        A[1, col] = exp(-(1/θ) * min(E[1, j], E₁₂[j]))
-        A[2, col] = exp(-(1/θ) * min(E[2, j], E₁₂[j]))
+    return _rand_with_ev_limits!(rng, C, A) do
+        R = promote_type(T, S)
+        θ = R(C.tail.θ)
+        E = rand(rng, Distributions.Exponential(θ / (one(R) - θ)), 2, size(A, 2))
+        E₁₂ = rand(rng, Distributions.Exponential(one(R)), size(A, 2))
+        @inbounds for (j, col) in enumerate(axes(A, 2))
+            A[1, col] = exp(-(1/θ) * min(E[1, j], E₁₂[j]))
+            A[2, col] = exp(-(1/θ) * min(E[2, j], E₁₂[j]))
+        end
+        return A
     end
-    return A
 end
 function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real) where {T,S}
     θ = D.tail.θ
-    # bounds and degeneracies
     z ≤ 0    && return S(-Inf)
     z ≥ 1    && return S(0)
     D.uⱼ ≤ 0 && return _biv_ev_endpoint_logcdf(D, z, true, S)
@@ -131,7 +116,6 @@ function Distributions.logcdf(D::BivEVDistortion{CuadrasAugeTail{T}, S}, z::Real
 
     z ≥ D.uⱼ && return (1-θ) * log(z)
     return log1p(-θ) + log(z) + θ * D.negloguⱼ
-
 end
 function Distributions.quantile(D::BivEVDistortion{CuadrasAugeTail{T}, S}, α::Real) where {T, S}
     θ = D.tail.θ

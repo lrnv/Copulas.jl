@@ -328,8 +328,8 @@ end
 
         @test Copulas._is_valid_in_dim(tail, 3)
         @test !Copulas._is_valid_in_dim(tail, 4)
-        @test Distributions.params(tail).ν == ν
-        @test Distributions.params(tail).R ≈ R
+        @test tail.ν == ν
+        @test something(tail.R) ≈ R
 
         u = [0.34, 0.58, 0.79]
         @test 0.0 < cdf(C, u) < 1.0
@@ -410,9 +410,7 @@ end
         C = Copulas.ExtremeValueCopula(3, tail)
         x = (0.37, 0.79, 1.28)
 
-        reconstructed = Copulas.AsymGalambosTail(values(params(tail))...)
-        @test reconstructed.α == tail.α
-        @test reconstructed.β == tail.β
+        @test !applicable(params, tail)
 
         @test Copulas.ℓ(tail, x) ≈ 1.8097921615972135 atol=3e-13 rtol=3e-12
 
@@ -649,17 +647,14 @@ end
     end
 end
 
-@testset "NoTail parameter roundtrip" begin
+@testset "NoTail parameter space" begin
     C = ExtremeValueCopula{2}(Copulas.NoTail())
-    CT = typeof(C)
+    pspace = Copulas.Paramorph.param_space(Copulas.NoTail, 2)
 
-    bounded = params(C)
-    unbounded = Copulas._unbound_params(CT, 2, bounded)
-    restored = Copulas._rebound_params(CT, 2, unbounded)
-
-    @test isempty(unbounded)
-    @test restored == (;)
-    @test restored == bounded
+    @test Copulas.Paramorph.names(pspace) == ()
+    @test Copulas.Paramorph.dimension(pspace) == 0
+    @test Copulas.Paramorph.constrain(pspace, Float64[]) == ()
+    @test params(C) == ()
 end
 
 

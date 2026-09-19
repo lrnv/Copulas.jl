@@ -1,7 +1,8 @@
 """
     TawnTail(d, dep, asy)
+    TawnTail(dep, weights₁, ..., weights_d)
     TawnTail(α, weights)
-    TawnCopula{d}(dep, asy)
+    TawnCopula{d}(dep, weights₁, ..., weights_d)
     TawnCopula{d}(α, weights)
     TawnCopula(d, dep, asy)
     TawnCopula(d, α, weights)
@@ -27,10 +28,12 @@ with `α_C ≥ 1`, `β_{i,C} ≥ 0`, `β_{i,C}=0` for `i ∉ C`, and
 
 for every margin.
 
-`TawnTail(d, dep, asy)` exposes the full subset model. `TawnTail(α, weights)`
-is a Copulas.jl convenience parameterization with one full-set logistic
-component plus singleton remainders; it is a structured submodel of the same
-valid Tawn representation, not a separate literature family.
+The canonical parameterization stores one dependence parameter for every
+non-singleton subset and, for every margin `i`, the vector
+`(β_{i,C})_{C∋i}` as a probability simplex. `TawnTail(d, dep, asy)` retains
+the historical subset-oriented input and converts it to this canonical form.
+`TawnTail(α, weights)` is the convenience model containing only the full-set
+logistic component plus singleton remainders.
 
 The full subset representation grows exponentially with dimension, and zero
 weights can put the model on reduced or partially independent boundaries where
@@ -46,29 +49,37 @@ References:
 """
 struct TawnTail{T} <: Tail
     d::Int
-    α::Vector{T}
-    β::Matrix{T}
-    function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
-        α, β = _normalize_asymmetric_subset_components(
-            d, dep, asy;
+    dep::Vector{T}
+    weights::Vector{Vector{T}}
+    function TawnTail(dep::AbstractVector, weights::Vararg{AbstractVector,N}) where {N}
+        d = N
+        normalized_dep, normalized_weights = _normalize_asymmetric_margin_components(
+            d, dep, weights;
             singleton_parameter=1.0,
             valid_parameter=parameter -> parameter >= one(parameter),
             family="Tawn",
         )
-
-        component_is_active(j) = !isone(α[j]) && count(!iszero, @view β[:, j]) > 1
-        non_singletons = (d + 1):length(α)
-        return new{eltype(α)}(d, α, β)
+        return new{eltype(normalized_dep)}(d, normalized_dep, normalized_weights)
     end
 end
 
+@inline _tawn_components(tail::TawnTail) = _asymmetric_subset_components(
+    tail.d, tail.dep, tail.weights; singleton_parameter=1.0,
+)
+
 @inline function _tawn_bivariate_asym_log(tail::TawnTail)
     tail.d == 2 || throw(ArgumentError("the AsymLog reduction requires a bivariate TawnTail"))
-    k = lastindex(tail.α)
-    return AsymLogTail(tail.α[k], tail.β[2, k], tail.β[1, k])
+    α, β = _tawn_components(tail)
+    k = lastindex(α)
+    return AsymLogTail(α[k], β[2, k], β[1, k])
 end
 
-function distortion(C::ExtremeValueCopula{2,<:TawnTail}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int,)
+function distortion(
+    C::ExtremeValueCopula{2,<:TawnTail},
+    js::NTuple{1,Int},
+    uⱼₛ::NTuple{1,Float64},
+    ::Int,
+)
     kind = limit_kind(C.tail, Val(2))
     kind === Π_LIMIT && return NoDistortion()
 
@@ -78,28 +89,30 @@ function distortion(C::ExtremeValueCopula{2,<:TawnTail}, js::NTuple{1,Int}, uⱼ
     return BivEVDistortion(_tawn_bivariate_asym_log(C.tail), j, uⱼ)
 end
 
-@inline _tawn_component_is_active(tail::TawnTail, j) =
-    !isone(tail.α[j]) && count(!iszero, @view tail.β[:, j]) > 1
+@inline _tawn_component_is_active(α, β, j) =
+    !isone(α[j]) && count(!iszero, @view β[:, j]) > 1
 
-function _tawn_is_fullset_logistic(tail::TawnTail)
-    fullset = lastindex(tail.α)
+function _tawn_is_fullset_logistic(tail::TawnTail, α, β)
+    fullset = lastindex(α)
     preceding = (tail.d + 1):(fullset - 1)
-    any(j -> _tawn_component_is_active(tail, j), preceding) && return false
-    return all(isone, @view tail.β[:, fullset])
+    any(j -> _tawn_component_is_active(α, β, j), preceding) && return false
+    return all(isone, @view β[:, fullset])
 end
 
 @inline function limit_kind(tail::TawnTail, ::Val{d}) where {d}
     d == tail.d || return NO_LIMIT
-    non_singletons = (tail.d + 1):lastindex(tail.α)
-    any(j -> _tawn_component_is_active(tail, j), non_singletons) || return Π_LIMIT
+    α, β = _tawn_components(tail)
+    non_singletons = (tail.d + 1):lastindex(α)
+    any(j -> _tawn_component_is_active(α, β, j), non_singletons) || return Π_LIMIT
 
-    fullset = lastindex(tail.α)
-    return _tawn_is_fullset_logistic(tail) && isinf(tail.α[fullset]) ? M_LIMIT : NO_LIMIT
+    fullset = lastindex(α)
+    return _tawn_is_fullset_logistic(tail, α, β) && isinf(α[fullset]) ? M_LIMIT : NO_LIMIT
 end
 
 function tail_measure_style(tail::TawnTail)
-    for j in (tail.d + 1):lastindex(tail.α)
-        _tawn_component_is_active(tail, j) && isinf(tail.α[j]) &&
+    α, β = _tawn_components(tail)
+    for j in (tail.d + 1):lastindex(α)
+        _tawn_component_is_active(α, β, j) && isinf(α[j]) &&
             return NonAbsolutelyContinuousMeasure()
     end
     return AbsolutelyContinuousMeasure()
@@ -108,41 +121,63 @@ end
 """
     TawnCopula{d}(α, weights)
     TawnCopula(d, α, weights)
+    TawnCopula{d}(dep, weights₁, ..., weights_d)
+    TawnCopula(d, dep, weights₁, ..., weights_d)
     TawnCopula{d}(dep, asy)
     TawnCopula(d, dep, asy)
 
 Construct a Tawn asymmetric-logistic extreme-value copula.
 
-`TawnCopula{d}(α, weights)` is a convenience submodel with one full-set
-logistic component plus singleton remainders.
-
-`TawnCopula(d, dep, asy)` exposes the full subset model. It requires one
-dependence parameter for each non-singleton subset,
-`length(dep) = 2^d-d-1`, and one asymmetry-weight vector for each nonempty
-subset, `length(asy) = 2^d-1`. The weights involving each margin must sum to
-one.
+The canonical full model uses one `dep` vector of length `2^d-d-1` and one
+probability-simplex vector of length `2^(d-1)` for every margin. The historical
+`(dep, asy)` form remains accepted, with one local weight vector for every
+nonempty subset. `TawnCopula{d}(α, weights)` is the convenience model with one
+full-set logistic component plus singleton remainders.
 """
 const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
+
+# Canonical runtime-dimension constructor used by generic Paramorph fitting of
+# an explicitly dimensioned family type.
+function TawnTail(d::Int, dep::AbstractVector, weights::Vararg{AbstractVector,N}) where {N}
+    d == N || throw(DimensionMismatch(
+        "expected one weight simplex for each of $d margins; got $N",
+    ))
+    return TawnTail(dep, weights...)
+end
+
+# Historical subset-oriented constructor.
+function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
+    weights = _subset_asymmetry_to_margin_weights(d, asy)
+    return TawnTail(dep, weights...)
+end
 
 # Convenience submodel: one full-set logistic component plus singleton remainders.
 function TawnTail(α::TA, weights::AbstractVector{TW}) where {TA<:Real,TW<:Real}
     T = promote_type(Float64, TA, TW)
-    tail = TawnTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=1.0)...)
+    tail = TawnTail(_expand_fullset_asymmetric_component(
+        α, weights; singleton_parameter=1.0,
+    )...)
     return tail::TawnTail{T}
 end
-
-TawnTail(α::Real, weights::AbstractVector) =
-    TawnTail(_expand_fullset_asymmetric_component(α, weights; singleton_parameter=1.0)...)
 
 TawnTail(dep::AbstractVector, asy::AbstractVector) =
     TawnTail(trailing_zeros(length(asy) + 1), dep, asy)
 
-Distributions.params(tail::TawnTail) = (α = tail.α, β = tail.β)
+Distributions.params(C::ExtremeValueCopula{d,<:TawnTail}) where {d} =
+    (copy(C.tail.dep), (copy(weight) for weight in C.tail.weights)...)
+
 _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d
 
-# The full subset parameterization does not yet expose an unconstrained fitting
-# map. Do not advertise the generic MLE fallback until that map is implemented.
-_available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:TawnTail}}, d) where {D} = ()
+function Paramorph.param_space(::Type{<:TawnTail}, d::Integer)
+    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
+    q = 2^d - d - 1
+    nweights = 2^(d - 1)
+    dep_space = Paramorph.LowerClosedVec(:dep, 1.0, q)
+    weight_spaces = ntuple(d) do i
+        Paramorph.Simplex(Symbol("weights$(i)"), nweights; anchor=1)
+    end
+    return (dep_space, weight_spaces...)
+end
 
 function _tawn_component_stdf(α, βcol, C, x)
     T = promote_type(typeof(α), eltype(x), eltype(βcol))
@@ -163,13 +198,14 @@ end
 
 function ℓ(tail::TawnTail, x)
     subsets = _nonempty_subsets(tail.d)
-    T = promote_type(eltype(x), eltype(tail.α), eltype(tail.β))
+    α, β = _tawn_components(tail)
+    T = promote_type(eltype(x), eltype(α), eltype(β))
     out = zero(T)
 
     @inbounds for j in eachindex(subsets)
         out += _tawn_component_stdf(
-            tail.α[j],
-            @view(tail.β[:, j]),
+            α[j],
+            @view(β[:, j]),
             subsets[j],
             x,
         )
@@ -189,7 +225,8 @@ function _tawn_component_partial_signlog(α::Real, βcol, C, x, I::Tuple{Vararg{
 
     all(i -> x[i] > 0, I) || return 0, -Inf
 
-    logterms = Float64[]
+    T = promote_type(typeof(float(α)), eltype(βcol), eltype(x))
+    logterms = T[]
     @inbounds for i in C
         yi = float(βcol[i]) * float(x[i])
         yi > 0 && push!(logterms, float(α) * log(yi))
@@ -197,17 +234,17 @@ function _tawn_component_partial_signlog(α::Real, βcol, C, x, I::Tuple{Vararg{
     isempty(logterms) && return 0, -Inf
     logS = LogExpFunctions.logsumexp(logterms)
 
-    logcoef = 0.0
+    logcoef = zero(T)
     @inbounds for j in 1:(k - 1)
-        c = 1.0 - j * float(α)
+        c = one(T) - j * float(α)
         iszero(c) && return 0, -Inf
         logcoef += log(abs(c))
     end
 
-    logprod = 0.0
+    logprod = zero(T)
     @inbounds for i in I
         logprod += float(α) * log(float(βcol[i]))
-        logprod += (float(α) - 1.0) * log(float(x[i]))
+        logprod += (float(α) - one(T)) * log(float(x[i]))
     end
 
     logabs = logcoef + (inv(float(α)) - k) * logS + logprod
@@ -219,23 +256,22 @@ function _ellpartial_signlog(tail::TawnTail, x, I::Tuple{Vararg{Int}},)
     isempty(I) && return 1, log(float(ℓ(tail, x)))
 
     subsets = _nonempty_subsets(tail.d)
+    α, β = _tawn_components(tail)
     expected_sign = isodd(length(I)) ? 1 : -1
     return _sum_component_partials(length(subsets), expected_sign) do j
         _tawn_component_partial_signlog(
-            tail.α[j], @view(tail.β[:, j]), subsets[j], x, I,
+            α[j], @view(β[:, j]), subsets[j], x, I,
         )
     end
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:TawnTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    kind = limit_kind(C.tail, Val(d))
-    kind === Π_LIMIT && return Random.rand!(rng, X)
-    kind === M_LIMIT && return _rand_M!(rng, X)
-    
-    tail = C.tail
-    return _rand_subset_components!(
-        rng, X, tail.α, tail.β, isone,
-        (dimension, α) -> ExtremeValueCopula(dimension, LogTail(α));
-        family="Tawn",
-    )
+    return _rand_with_ev_limits!(rng, C, X) do
+        α, β = _tawn_components(C.tail)
+        return _rand_subset_components!(
+            rng, X, α, β, isone,
+            (dimension, parameter) -> ExtremeValueCopula(dimension, LogTail(parameter));
+            family="Tawn",
+        )
+    end
 end

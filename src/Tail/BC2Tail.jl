@@ -68,16 +68,8 @@ function _bc2_bivariate_weights(tail::BC2Tail)
     return tail.a[1], tail.a[2]
 end
 
-function Distributions.params(tail::BC2Tail)
-    length(tail.a) == 2 || return (a=tail.a,)
-    a, b = _bc2_bivariate_weights(tail)
-    return (; a, b)
-end
 
-_unbound_params(::Type{<:BC2Tail}, d, θ) = [LogExpFunctions.logit(θ.a), LogExpFunctions.logit(θ.b)]
-_rebound_params(::Type{<:BC2Tail}, d, α) = begin
-    (; a = LogExpFunctions.logistic(α[1]), b = LogExpFunctions.logistic(α[2]))
-end
+Paramorph.param_space(::Type{<:BC2Tail}, d) = Paramorph.ProbVec(:a, 2)
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:BC2Tail} where D}, d) =
     d == 2 ? (:mle,) : ()
 

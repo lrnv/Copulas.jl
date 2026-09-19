@@ -35,9 +35,8 @@ struct BB3Generator{T} <: AbstractFrailtyGenerator
 end
 
 const BB3Copula{d, T} = ArchimedeanCopula{d, BB3Generator{T}}
-Distributions.params(G::BB3Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB3Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
-_rebound_params(::Type{<:BB3Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
+Paramorph.param_space(::Type{<:BB3Generator}, d) =
+    (Paramorph.LowerClosed(:θ, 1.0), Paramorph.Pos(:δ))
 
 ϕ(  G::BB3Generator, s) = exp(-exp(log(log1p(s)/G.δ)/G.θ))
 # `(-log t)^θ` rather than `exp(θ log(-log t))`: the latter is a NaN dual at t = 1.

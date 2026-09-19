@@ -46,7 +46,8 @@ struct BetaCopula{d,MT} <: Copula{d}
 end
 BetaCopula(data::AbstractMatrix) = BetaCopula{size(data, 1)}(data)
 BetaCopula(d::Integer, data::AbstractMatrix) = BetaCopula{d}(data)
-Distributions.params(C::BetaCopula) = (ranks=C.ranks,)
+Distributions.params(C::BetaCopula) = (C.ranks,)
+Paramorph.param_space(::Type{<:BetaCopula}, ::Integer) = ()
 function _bernvec_n(u::T, n::Int) where {T<:Real}
     v = zeros(T, n+1)
     if iszero(u)
@@ -131,7 +132,6 @@ end
     return Distributions.MixtureModel(comps, w)
 end
 
-StatsBase.dof(::BetaCopula) = 0
 _available_fitting_methods(::Type{<:BetaCopula}, d) = (:beta,)
 """
     _fit(::Type{<:BetaCopula}, U, ::Val{:beta}; kwargs...) -> C

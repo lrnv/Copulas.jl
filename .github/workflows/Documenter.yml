@@ -45,7 +45,11 @@ jobs:
         id: julia-cache
         uses: julia-actions/cache@v3
       - name: Instantiate documentation environment
-        run: julia --project=docs -O1 -e 'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+        run: >-
+          julia --project=docs -O1 -e 'using Pkg;
+          Pkg.add(PackageSpec(url="https://github.com/lrnv/Paramorph.jl", rev="main"));
+          Pkg.develop(PackageSpec(path=pwd()));
+          Pkg.instantiate()'
       - name: Build and deploy docs
         run: julia -O1 --project=docs docs/make.jl
         env:

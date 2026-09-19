@@ -1,24 +1,22 @@
 # Component proof: exhaustively covers public generator families and
-# verifies their transform, inverse, derivative, and reconstruction identities.
+# verifies their transform, inverse, and derivative identities.
 
 struct PowerExponentialOracleGenerator{T} <: Copulas.Generator
     θ::T
 end
 Copulas.ϕ(G::PowerExponentialOracleGenerator, t) = exp(-t^(inv(G.θ)))
 Copulas.max_monotony(::PowerExponentialOracleGenerator) = Inf
-Distributions.params(G::PowerExponentialOracleGenerator) = (; θ=G.θ)
 
 struct MinimalPublicGenerator <: Copulas.Generator end
 Copulas.ϕ(::MinimalPublicGenerator, t) = exp(-t)
 Copulas.max_monotony(::MinimalPublicGenerator) = Inf
-Distributions.params(::MinimalPublicGenerator) = (;)
 
 @testset "public Generator extension contract" begin
     G = MinimalPublicGenerator()
     C = ArchimedeanCopula(3, G)
     u = [0.2, 0.5, 0.8]
 
-    @test params(G) == (;)
+    @test !applicable(params, G)
     @test length(C) == 3
     @test cdf(C, u) ≈ prod(u)
 end
@@ -66,9 +64,7 @@ end
         @testset "$(nameof(typeof(G)))" begin
             @test G isa Copulas.Generator
             @test Copulas.max_monotony(G) >= 2
-            @test params(G) isa NamedTuple
-            rebuilt = typeof(G)(values(params(G))...)
-            @test params(rebuilt) == params(G)
+            @test !applicable(params, G)
             @test Copulas.ϕ(G, 0.0) ≈ 1
             @test 0 <= Copulas.ϕ(G, 0.7) <= 1
             p = Copulas.ϕ(G, 0.7)

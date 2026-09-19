@@ -3,7 +3,6 @@
 struct _CubicGenerator{T} <: Copulas.Generator
     r::T
 end
-Distributions.params(G::_CubicGenerator) = (; r=G.r)
 Copulas.max_monotony(::_CubicGenerator) = 4
 function Copulas.ϕ(G::_CubicGenerator, t)
     q = one(t) - t / G.r

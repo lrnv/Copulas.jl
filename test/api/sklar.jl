@@ -13,13 +13,10 @@
     x = [0.1, 1.2]
     @test length(D) == 2
     @test_throws DimensionMismatch SklarDist(C, (Normal(),))
-    @test params(D) isa NamedTuple
+    @test params(D) isa Tuple
     @test StatsBase.dof(D) == 4
-    @test Copulas._parameter_dof(1.0) == 1
-    @test Copulas._parameter_dof((1.0, [2.0, 3.0], :fixed)) == 3
-    @test Copulas._parameter_dof(Copulas.ClaytonGenerator(1.0)) == 1
-    @test Copulas._parameter_dof(Copulas.GalambosTail(1.0)) == 1
-    @test Copulas._parameter_dof(C) == 1
+    @test StatsBase.dof(D) ==
+          Copulas.Paramorph.dimension(Copulas.Paramorph.param_space(D))
     @test 0 <= cdf(D, x) <= 1
     @test logcdf(D, x) ≈ log(cdf(D, x))
     @test pdf(D, x) >= 0
@@ -59,6 +56,8 @@
     @test StatsBase.dof(clayton_joint) == 4
 
     D3 = SklarDist(GaussianCopula{3}(0.3), (Normal(), Exponential(), Gamma(2, 1)))
+    @test StatsBase.dof(D3) ==
+          Copulas.Paramorph.dimension(Copulas.Paramorph.param_space(D3))
     x3 = [0.1, 1.2, 0.8]
     joint = condition(D3, 1, x3[1])
     @test length(joint) == 2

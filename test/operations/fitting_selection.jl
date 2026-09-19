@@ -10,7 +10,7 @@ function Distributions.fit(::Type{CopulaModel}, ::Type{SelectionProbe{mode}}, U;
     result = mode === :bad_score ? SelectionProbe{:bad_score}() : IndependentCopula{2}()
     return CopulaModel(result, U, mode === :nonfinite ? NaN : 0.0, recipe)
 end
-StatsBase.coef(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError("unavailable parameter count"))
+StatsBase.dof(::CopulaModel{SelectionProbe{:bad_score}}) = throw(ArgumentError("unavailable parameter count"))
 
 @testset "Automatic copula-family selection" begin
     U = rand(StableRNG(436), ClaytonCopula{2}(6.0), 80)

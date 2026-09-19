@@ -20,6 +20,7 @@ module Copulas
     import PolyLog
     import LambertW
     import Optim
+    import Paramorph
     import Printf
     import TaylorSeries
     import ADTypes
@@ -116,7 +117,6 @@ module Copulas
 
     # Nested (hierarchical) Archimedean copulas
     include("NestedArchimedeanCopula.jl")
-    include("NestedArchimedeanFitValidation.jl")
 
     #Extreme value copulas
     include("Tail.jl")
@@ -140,6 +140,7 @@ module Copulas
     include("Tail/MOTail.jl")
     include("Tail/tEVTail.jl")
     include("Tail/EmpiricalEVTail.jl")
+    include("Tail/constructor_parameters.jl")
 
     include("MiscellaneousCopulas/BernsteinCopula.jl")
     include("MiscellaneousCopulas/BetaCopula.jl")
@@ -147,6 +148,9 @@ module Copulas
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
+    # Natural coefficient metadata is assembled only after every component
+    # family has declared its Paramorph parameter space.
+    include("ParameterCoefficients.jl")
 
     include("CopulaTest.jl")
 

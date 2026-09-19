@@ -56,12 +56,13 @@ tEVTail, tEVCopula
 
 struct tEVTail{T,P} <: BivariatePickandsTail
     ν::T
-    parameter::P
+    ρ::Union{Nothing,P}
+    R::Union{Nothing,P}
     function tEVTail(ν::Real, ρ::Real)
-        (ν > 0)     || throw(ArgumentError("ν must be > 0"))
-        (-1 < ρ ≤ 1)|| throw(ArgumentError("ρ must be in (-1,1]"))
+        (ν > 0) || throw(ArgumentError("ν must be > 0"))
+        (-1 < ρ ≤ 1) || throw(ArgumentError("ρ must be in (-1,1]"))
         νT, ρT = promote(float(ν), float(ρ))
-        return new{typeof(νT),typeof(ρT)}(νT, ρT)
+        return new{typeof(νT),typeof(ρT)}(νT, ρT, nothing)
     end
     function tEVTail(ν::Real, R::AbstractMatrix)
         ν > 0 || throw(ArgumentError("ν must be > 0"))
@@ -85,48 +86,42 @@ struct tEVTail{T,P} <: BivariatePickandsTail
                 throw(ArgumentError("R must be strictly positive definite"))
             end
         end
-
         νf = float(ν)
-        return new{typeof(νf),typeof(RF)}(νf, RF)
+        return new{typeof(νf),typeof(RF)}(νf, nothing, RF)
     end
 end
 @inline limit_kind(tail::tEVTail{<:Any,<:Real}, ::Val) =
-    isone(tail.parameter) ? M_LIMIT : NO_LIMIT
+    isone(something(tail.ρ)) ? M_LIMIT : NO_LIMIT
 @inline limit_kind(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Val) =
-    all(isone, tail.parameter) ? M_LIMIT : NO_LIMIT
+    all(isone, something(tail.R)) ? M_LIMIT : NO_LIMIT
 const tEVCopula{d,T,P} = ExtremeValueCopula{d,tEVTail{T,P}}
-Distributions.params(tail::tEVTail{<:Any,<:Real}) = (ν = tail.ν, ρ = tail.parameter)
-Distributions.params(tail::tEVTail{<:Any,<:AbstractMatrix}) = (ν = tail.ν, R = tail.parameter)
 _is_valid_in_dim(tail::tEVTail{<:Any,<:Real}, d::Int) =
-    d >= 2 && tail.parameter > -inv(d - 1)
+    d >= 2 && something(tail.ρ) > -inv(d - 1)
 _is_valid_in_dim(tail::tEVTail{<:Any,<:AbstractMatrix}, d::Int) =
-    d == size(tail.parameter, 1)
-function _unbound_params(::Type{<:tEVTail}, d, θ)
+    d == size(something(tail.R), 1)
+
+function Paramorph.param_space(::Type{<:tEVTail{<:Any,<:Real}}, d)
     lower = -inv(d - 1)
-    scaled = 2 * (θ.ρ - lower) / (1 - lower) - 1
-    return [log(θ.ν), atanh(clamp(scaled, -0.999999, 0.999999))]
+    return (
+        Paramorph.Pos(:ν),
+        Paramorph.BoundedOpen(:ρ, lower, 1.0),
+    )
 end
-function _rebound_params(::Type{<:tEVTail}, d, α)
-    lower = -inv(d - 1)
-    ρ = lower + (1 - lower) * (1 + tanh(α[2])) / 2
-    ρ = clamp(ρ, nextfloat(float(lower)), prevfloat(one(ρ)))
-    return (; ν=exp(α[1]), ρ)
-end
-_example(::Type{<:ExtremeValueCopula{D,<:tEVTail} where D}, d) =
-    tEVCopula{d}(2.0, 0.5)
+Paramorph.param_space(::Type{<:tEVTail{<:Any,<:AbstractMatrix}}, d) =
+    (Paramorph.Pos(:ν), Paramorph.Correlation(:R, d))
 _available_fitting_methods(
     ::Type{<:ExtremeValueCopula{D,<:tEVTail{<:Any,<:AbstractMatrix}} where D},
     d,
 ) = ()
 
-_tev_rho(tail::tEVTail{<:Any,<:Real}) = tail.parameter
-_tev_rho(tail::tEVTail{<:Any,<:AbstractMatrix}) = tail.parameter[1, 2]
+_tev_rho(tail::tEVTail{<:Any,<:Real}) = something(tail.ρ)
+_tev_rho(tail::tEVTail{<:Any,<:AbstractMatrix}) = something(tail.R)[1, 2]
 function _tev_correlation(tail::tEVTail{<:Any,<:Real}, d::Int)
     d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    ρ = tail.parameter
+    ρ = something(tail.ρ)
     lower = -inv(d - 1)
-    ρ > lower || throw(ArgumentError("equicorrelation ρ must satisfy ρ > -1/(d-1) in dimension d=$d",))
-    ρ < 1 || throw(ArgumentError("the non-degenerate equicorrelation representation requires ρ < 1",))
+    ρ > lower || throw(ArgumentError("equicorrelation ρ must satisfy ρ > -1/(d-1) in dimension d=$d"))
+    ρ < 1 || throw(ArgumentError("the non-degenerate equicorrelation representation requires ρ < 1"))
 
     R = fill(Float64(ρ), d, d)
     @inbounds for i in 1:d
@@ -134,11 +129,10 @@ function _tev_correlation(tail::tEVTail{<:Any,<:Real}, d::Int)
     end
     return R
 end
-_tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = tail.parameter
+_tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = something(tail.R)
 
 function _tev_stdf(ν::Real, R::AbstractMatrix, x)
     d = length(x)
-
     active = findall(xi -> xi > 0, x)
     isempty(active) && return 0.0
     length(active) == 1 && return Float64(x[only(active)])
@@ -146,7 +140,6 @@ function _tev_stdf(ν::Real, R::AbstractMatrix, x)
     xf = Float64.(x[active])
     Rf = Matrix{Float64}(R[active, active])
     m = length(xf)
-
     scale = maximum(xf)
     y = xf ./ scale
     νf = Float64(ν)
@@ -155,36 +148,24 @@ function _tev_stdf(ν::Real, R::AbstractMatrix, x)
     for j in 1:m
         J = [k for k in 1:m if k != j]
         r = Rf[J, j]
-        Σcond = (
-            Rf[J, J] - r * transpose(r)
-        ) / (νf + 1.0)
+        Σcond = (Rf[J, J] - r * transpose(r)) / (νf + 1.0)
         Σcond = Matrix(LinearAlgebra.Symmetric(Σcond))
-
-        upper = [
-            (y[j] / y[k])^(1 / νf)
-            for k in J
-        ]
-
+        upper = [(y[j] / y[k])^(1 / νf) for k in J]
         p = _mvtcdf(νf + 1.0, r, Σcond, upper)
         total += y[j] * p
     end
-
     return scale * total
 end
 
 function ℓ(tail::tEVTail{<:Any,<:Real}, x)
-    isone(tail.parameter) && return maximum(x)
+    isone(something(tail.ρ)) && return maximum(x)
     d = length(x)
-
-    # Preserve the historical closed bivariate route. It is analytic,
-    # numerically stable, and compatible with ForwardDiff.
     if d == 2
         x1, x2 = x
         s = x1 + x2
         iszero(s) && return zero(s)
         return s * A(tail, x1 / s)
     end
-
     R = _tev_correlation(tail, d)
     return _tev_stdf(tail.ν, R, x)
 end
@@ -194,19 +175,16 @@ function _ellpartial_signlog(tail::tEVTail, x, I::Tuple{Vararg{Int}})
     R = _tev_correlation(tail, d)
     ν = tail.ν
     isempty(I) && return 1, log(_tev_stdf(ν, R, x))
-
     all(xi -> xi >= 0, x) || return 0, -Inf
     all(i -> x[i] > 0, I) || return 0, -Inf
 
     z = [iszero(xi) ? Inf : inv(Float64(xi)) for xi in x]
     b = length(I)
     b > 0 || throw(ArgumentError("the differentiation block must be nonempty"))
-
     νf = Float64(ν)
     Bv = collect(I)
     C = [i for i in eachindex(z) if i ∉ I]
     zB = Float64.(z[Bv])
-
     all(zi -> zi > 0, zB) || return 0, -Inf
 
     RB = Matrix{Float64}(R[Bv, Bv])
@@ -214,7 +192,6 @@ function _ellpartial_signlog(tail::tEVTail, x, I::Tuple{Vararg{Int}})
     rB = zB .^ (1 / νf)
     solved = FB \ rB
     q = LinearAlgebra.dot(rB, solved)
-
     logdetRB = 2 * sum(log, LinearAlgebra.diag(FB.L))
     logλB =
         (1 - b) * log(νf) +
@@ -231,101 +208,80 @@ function _ellpartial_signlog(tail::tEVTail, x, I::Tuple{Vararg{Int}})
         RCB = Matrix{Float64}(R[C, Bv])
         RBC = Matrix{Float64}(R[Bv, C])
         RCC = Matrix{Float64}(R[C, C])
-
         μ = RCB * solved
         base = RCC - RCB * (FB \ RBC)
         Σcond = (q / (νf + b)) .* base
         Σcond = Matrix(LinearAlgebra.Symmetric(Σcond))
-
         upper = Vector{Float64}(undef, length(C))
         @inbounds for (a, i) in enumerate(C)
             zi = z[i]
             upper[a] = isinf(zi) ? Inf : Float64(zi)^(1 / νf)
         end
-
         p = _mvtcdf(νf + b, μ, Σcond, upper)
         iszero(p) ? -Inf : logλB + log(p)
     end
-
     isfinite(logq) || return 0, -Inf
-
     logjac = 2 * sum(log(Float64(x[i])) for i in I)
     logabs = logq - logjac
     return isodd(length(I)) ? 1 : -1, logabs
 end
 
+function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T}) where {d,T<:Real}
+    return _rand_with_ev_limits!(rng, C, X) do
+        ν = C.tail.ν
+        R = _tev_correlation(C.tail, d)
+        cache = ntuple(d) do m
+            J = [i for i in 1:d if i != m]
+            r = Vector{Float64}(R[J, m])
+            Σ = Matrix{Float64}(R[J, J]) - r * transpose(r)
+            F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ))
+            (; J, r, F)
+        end
+        logq = Vector{Float64}(undef, d)
+        logz = Vector{Float64}(undef, d)
 
-function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:tEVTail}, X::AbstractMatrix{T},) where {d,T<:Real}
-    limit_kind(C.tail, Val(d)) === M_LIMIT && return _rand_M!(rng, X)
-    ν = C.tail.ν
-    R = _tev_correlation(C.tail, d)
-    cache = ntuple(d) do m
-        J = [i for i in 1:d if i != m]
-        r = Vector{Float64}(R[J, m])
-        Σ = Matrix{Float64}(R[J, J]) - r * transpose(r)
-        F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ))
-        (; J, r, F)
-    end
-    logq = Vector{Float64}(undef, d)
-    logz = Vector{Float64}(undef, d)
-
-    @inbounds for col in axes(X, 2)
-        fill!(logz, -Inf)
-        s = 0.0
-
-        while true
-            s += Random.randexp(rng) / d
-            logradius = -log(s)
-
-            # All future radii are smaller. Since normalized spectral weights
-            # satisfy Q_i ≤ 1, no future point can improve any coordinate once
-            # the next radius lies below the current componentwise minimum.
-            if all(isfinite, logz) && logradius <= minimum(logz)
-                break
-            end
-
-            m = Random.rand(rng, 1:d)
-            entry = cache[m]
-
-            # Size-biasing the Gaussian spectral vector by (W_m^+)^ν gives
-            # W_m² ~ χ²_{ν+1}, with the positive square root.
-            wm = sqrt(Random.rand(rng, Distributions.Chisq(Float64(ν) + 1.0)))
-            fill!(logq, -Inf)
-            logq[m] = Float64(ν) * log(wm)
-
-            q = length(entry.J)
-            if q > 0
-                ξ = Random.randn(rng, q)
-                wJ = entry.r .* wm .+ entry.F.L * ξ
-                for a in 1:q
-                    wi = wJ[a]
-                    wi > 0 && (logq[entry.J[a]] = Float64(ν) * log(wi))
+        @inbounds for col in axes(X, 2)
+            fill!(logz, -Inf)
+            s = 0.0
+            while true
+                s += Random.randexp(rng) / d
+                logradius = -log(s)
+                if all(isfinite, logz) && logradius <= minimum(logz)
+                    break
+                end
+                m = Random.rand(rng, 1:d)
+                entry = cache[m]
+                wm = sqrt(Random.rand(rng, Distributions.Chisq(Float64(ν) + 1.0)))
+                fill!(logq, -Inf)
+                logq[m] = Float64(ν) * log(wm)
+                q = length(entry.J)
+                if q > 0
+                    ξ = Random.randn(rng, q)
+                    wJ = entry.r .* wm .+ entry.F.L * ξ
+                    for a in 1:q
+                        wi = wJ[a]
+                        wi > 0 && (logq[entry.J[a]] = Float64(ν) * log(wi))
+                    end
+                end
+                logsum = LogExpFunctions.logsumexp(logq)
+                for i in eachindex(logq)
+                    logq[i] -= logsum
+                end
+                for i in 1:d
+                    candidate = logradius + logq[i]
+                    candidate > logz[i] && (logz[i] = candidate)
                 end
             end
-
-            logsum = LogExpFunctions.logsumexp(logq)
-            for i in eachindex(logq)
-                logq[i] -= logsum
-            end
-
             for i in 1:d
-                candidate = logradius + logq[i]
-                if candidate > logz[i]
-                    logz[i] = candidate
-                end
+                X[i, col] = T(exp(-exp(-logz[i])))
             end
         end
-
-        for i in 1:d
-            X[i, col] = T(exp(-exp(-logz[i])))
-        end
+        return X
     end
-
-    return X
 end
 
 ℓ(tail::tEVTail{<:Any,<:AbstractMatrix}, x) =
-    all(isone, tail.parameter) ? maximum(x) : _tev_stdf(tail.ν, tail.parameter, x)
+    all(isone, something(tail.R)) ? maximum(x) : _tev_stdf(tail.ν, something(tail.R), x)
 
 function A(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν
@@ -333,55 +289,43 @@ function A(tail::tEVTail, t::Real)
     isone(ρ) && return max(tt, one(tt) - tt)
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
-
     om = 1 - tt
-    # log-ratios for stability
-    log_t  = log(tt)
-    log_om = log1p(-tt) # = log(1 - t)
-    log_r  = log_t - log_om           # log(t/(1-t))
-    log_s  = log_om - log_t           # log((1-t)/t)
-
+    log_t = log(tt)
+    log_om = log1p(-tt)
+    log_r = log_t - log_om
+    log_s = log_om - log_t
     rα = exp(α * log_r)
     sα = exp(α * log_s)
-
     Z1 = C * (rα - ρ)
     Z2 = C * (sα - ρ)
-
     D = Distributions.TDist(ν + 1)
     F1 = Distributions.cdf(D, Z1)
     F2 = Distributions.cdf(D, Z2)
-
     return tt * F1 + om * F2
 end
 function dA(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
-
     tt = _safett(t)
     om = 1 - tt
-    log_t  = log(tt)
+    log_t = log(tt)
     log_om = log1p(-tt)
-    log_r  = log_t - log_om
-    log_s  = log_om - log_t
-
-    rα    = exp(α * log_r)
-    rαm1  = exp((α - 1) * log_r)
-    sα    = exp(α * log_s)
-    sαm1  = exp((α - 1) * log_s)
-
-    Z1  = C * (rα - ρ)
+    log_r = log_t - log_om
+    log_s = log_om - log_t
+    rα = exp(α * log_r)
+    rαm1 = exp((α - 1) * log_r)
+    sα = exp(α * log_s)
+    sαm1 = exp((α - 1) * log_s)
+    Z1 = C * (rα - ρ)
     DZ1 = C * α * rαm1 * inv(om)^2
-
-    Z2  = C * (sα - ρ)
+    Z2 = C * (sα - ρ)
     DZ2 = C * α * sαm1 * (-inv(tt)^2)
-
     D = Distributions.TDist(ν + 1)
     f1 = Distributions.pdf(D, Z1)
     F1 = Distributions.cdf(D, Z1)
     f2 = Distributions.pdf(D, Z2)
     F2 = Distributions.cdf(D, Z2)
-
     DB1 = tt * f1 * DZ1 + F1
     DB2 = om * f2 * DZ2 - F2
     return DB1 + DB2
@@ -390,46 +334,37 @@ function d²A(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
-
     tt = _safett(t)
     om = 1 - tt
-    log_t  = log(tt)
+    log_t = log(tt)
     log_om = log1p(-tt)
-    log_r  = log_t - log_om
-    log_s  = log_om - log_t
-
-    rα    = exp(α * log_r)
-    rαm1  = exp((α - 1) * log_r)
-    rαm2  = exp((α - 2) * log_r)
-    sα    = exp(α * log_s)
-    sαm1  = exp((α - 1) * log_s)
-    sαm2  = exp((α - 2) * log_s)
-
-    inv_om  = inv(om)
+    log_r = log_t - log_om
+    log_s = log_om - log_t
+    rα = exp(α * log_r)
+    rαm1 = exp((α - 1) * log_r)
+    rαm2 = exp((α - 2) * log_r)
+    sα = exp(α * log_s)
+    sαm1 = exp((α - 1) * log_s)
+    sαm2 = exp((α - 2) * log_s)
+    inv_om = inv(om)
     inv_om2 = inv_om^2
     inv_om3 = inv_om2 * inv_om
     inv_om4 = inv_om2^2
-    inv_t   = inv(tt)
-    inv_t2  = inv_t^2
-    inv_t3  = inv_t2 * inv_t
-    inv_t4  = inv_t2^2
-
-    Z1  = C * (rα - ρ)
+    inv_t = inv(tt)
+    inv_t2 = inv_t^2
+    inv_t3 = inv_t2 * inv_t
+    inv_t4 = inv_t2^2
+    Z1 = C * (rα - ρ)
     DZ1 = C * α * rαm1 * inv_om2
-    # d²Z1/dt² using product rule on r^(α-1) * (1-t)^(-2)
-    DDZ1 = C * α * ( 2 * rαm1 * inv_om3 + (α - 1) * rαm2 * inv_om4 )
-
-    Z2  = C * (sα - ρ)
+    DDZ1 = C * α * (2 * rαm1 * inv_om3 + (α - 1) * rαm2 * inv_om4)
+    Z2 = C * (sα - ρ)
     DZ2 = C * α * sαm1 * (-inv_t2)
-    # d²Z2/dt² with s = (1-t)/t, s'=-1/t², s''=2/t³
-    DDZ2 = C * α * ( (α - 1) * sαm2 * inv_t4 + 2 * sαm1 * inv_t3 )
-
+    DDZ2 = C * α * ((α - 1) * sαm2 * inv_t4 + 2 * sαm1 * inv_t3)
     D = Distributions.TDist(ν + 1)
     f1 = Distributions.pdf(D, Z1)
     g1 = Distributions.gradlogpdf(D, Z1)
     f2 = Distributions.pdf(D, Z2)
     g2 = Distributions.gradlogpdf(D, Z2)
-
     DDB1 = 2 * f1 * DZ1 + tt * (g1 * f1 * DZ1^2 + f1 * DDZ1)
     DDB2 = om * (g2 * f2 * DZ2^2 + f2 * DDZ2) - 2 * f2 * DZ2
     return DDB1 + DDB2
@@ -438,58 +373,44 @@ function _A_dA_d²A(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
-
     tt = _safett(t)
     om = 1 - tt
-    log_t  = log(tt)
+    log_t = log(tt)
     log_om = log1p(-tt)
-    log_r  = log_t - log_om
-    log_s  = log_om - log_t
-
-    rα    = exp(α * log_r)
-    rαm1  = exp((α - 1) * log_r)
-    rαm2  = exp((α - 2) * log_r)
-    sα    = exp(α * log_s)
-    sαm1  = exp((α - 1) * log_s)
-    sαm2  = exp((α - 2) * log_s)
-
-    inv_om  = inv(om)
+    log_r = log_t - log_om
+    log_s = log_om - log_t
+    rα = exp(α * log_r)
+    rαm1 = exp((α - 1) * log_r)
+    rαm2 = exp((α - 2) * log_r)
+    sα = exp(α * log_s)
+    sαm1 = exp((α - 1) * log_s)
+    sαm2 = exp((α - 2) * log_s)
+    inv_om = inv(om)
     inv_om2 = inv_om^2
     inv_om3 = inv_om2 * inv_om
     inv_om4 = inv_om2^2
-    inv_t   = inv(tt)
-    inv_t2  = inv_t^2
-    inv_t3  = inv_t2 * inv_t
-    inv_t4  = inv_t2^2
-
-    Z1  = C * (rα - ρ)
+    inv_t = inv(tt)
+    inv_t2 = inv_t^2
+    inv_t3 = inv_t2 * inv_t
+    inv_t4 = inv_t2^2
+    Z1 = C * (rα - ρ)
     DZ1 = C * α * rαm1 * inv_om2
-    DDZ1 = C * α * ( 2 * rαm1 * inv_om3 + (α - 1) * rαm2 * inv_om4 )
-
-    Z2  = C * (sα - ρ)
+    DDZ1 = C * α * (2 * rαm1 * inv_om3 + (α - 1) * rαm2 * inv_om4)
+    Z2 = C * (sα - ρ)
     DZ2 = C * α * sαm1 * (-inv_t2)
-    DDZ2 = C * α * ( (α - 1) * sαm2 * inv_t4 + 2 * sαm1 * inv_t3 )
-
+    DDZ2 = C * α * ((α - 1) * sαm2 * inv_t4 + 2 * sαm1 * inv_t3)
     D = Distributions.TDist(ν + 1)
-    
     f1 = Distributions.pdf(D, Z1)
     F1 = Distributions.cdf(D, Z1)
     g1 = Distributions.gradlogpdf(D, Z1)
-    
     f2 = Distributions.pdf(D, Z2)
     F2 = Distributions.cdf(D, Z2)
     g2 = Distributions.gradlogpdf(D, Z2)
-    
-    B1  = tt * F1
+    B1 = tt * F1
     DB1 = tt * f1 * DZ1 + F1
     DDB1 = 2 * f1 * DZ1 + tt * (g1 * f1 * DZ1^2 + f1 * DDZ1)
-    
-    B2  = om * F2
+    B2 = om * F2
     DB2 = om * f2 * DZ2 - F2
     DDB2 = om * (g2 * f2 * DZ2^2 + f2 * DDZ2) - 2 * f2 * DZ2
-
-    A  = B1 + B2
-    DA = DB1 + DB2
-    DDA = DDB1 + DDB2
-    return A, DA, DDA
+    return B1 + B2, DB1 + DB2, DDB1 + DDB2
 end

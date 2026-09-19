@@ -4,11 +4,10 @@ end
 
 _BrokenADCopula(d::Int, θ::Float64) = _BrokenADCopula{d,Float64}(θ)
 Base.eltype(C::_BrokenADCopula) = typeof(C.θ)
-Distributions.params(C::_BrokenADCopula) = (; θ=C.θ)
+Distributions.params(C::_BrokenADCopula) = (C.θ,)
 Distributions._logpdf(C::_BrokenADCopula, u::AbstractVector{<:Real}) = zero(eltype(u))
-Copulas._example(::Type{_BrokenADCopula}, d) = _BrokenADCopula(d, 0.5)
-Copulas._unbound_params(::Type{_BrokenADCopula}, d, θ) = [log(θ.θ / (1 - θ.θ))]
-Copulas._rebound_params(::Type{_BrokenADCopula}, d, α) = (; θ=inv(one(first(α)) + exp(-first(α))))
+Copulas.Paramorph.param_space(::Type{<:_BrokenADCopula}, d) =
+    Copulas.Paramorph.ProbOpen(:θ)
 Copulas._available_fitting_methods(::Type{_BrokenADCopula}, d) = (:mle,)
 
 struct _FloatOnlyNestedRecon end
@@ -16,6 +15,16 @@ struct _FloatOnlyNestedRecon end
 
 @testset "optimizer fallback does not mask implementation errors" begin
     U = [0.15 0.35 0.65 0.85; 0.25 0.55 0.45 0.75]
+
+    # The generic Paramorph MLE starts at the unconstrained chart origin. For
+    # bivariate Clayton that maps exactly to θ = 0 (independence), so both the
+    # optimizer gradient and Hessian inference must be defined there.
+    p = Copulas.Paramorph.param_space(ClaytonCopula, 2)
+    objective(α) = -Distributions.loglikelihood(
+        Copulas._parameter_space_copula(ClaytonCopula, 2, p, α), U)
+    @test isfinite(objective([0.0]))
+    @test all(isfinite, ForwardDiff.gradient(objective, [0.0]))
+    @test all(isfinite, ForwardDiff.hessian(objective, [0.0]))
 
     # This model reconstructs correctly for ordinary Float64 optimizer points
     # but deliberately has no constructor accepting ForwardDiff.Dual. Before

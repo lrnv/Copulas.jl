@@ -103,7 +103,8 @@ function _validate_bernstein_weights(weights::AbstractArray, m::Tuple)
     end
     return nothing
 end
-Distributions.params(C::BernsteinCopula) = (m=C.m, weights=C.weights)
+Distributions.params(C::BernsteinCopula) = (C.m, C.weights)
+Paramorph.param_space(::Type{<:BernsteinCopula}, ::Integer) = ()
 BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base; kwargs...)
 BernsteinCopula(d::Integer, base::Copula; kwargs...) = BernsteinCopula{d}(base; kwargs...)
 function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}
@@ -222,7 +223,6 @@ function distortion(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,
 end
 
 # Fitting colocated. 
-StatsBase.dof(::BernsteinCopula) = 0
 _available_fitting_methods(::Type{<:BernsteinCopula}, d) = (:bernstein,)
 """
     _fit(::Type{<:BernsteinCopula}, U, ::Val{:bernstein};

@@ -35,17 +35,10 @@ struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
     end
 end
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
-Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
-function _unbound_params(::Type{<:GumbelBarnettGenerator}, d, θ)
-    u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
-    return [atanh(2θ.θ/u - 1)]
+function Paramorph.param_space(::Type{<:GumbelBarnettGenerator}, d::Integer)
+    upper = clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0)
+    return Paramorph.Bounded(:θ, 0.0, upper)
 end
-function _rebound_params(::Type{<:GumbelBarnettGenerator}, d, α)
-    u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
-    return (; θ = u*(tanh(α[1])+1)/2)
-end
-_θ_bounds(::Type{<:GumbelBarnettGenerator}, d) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
-
 
 function _find_critical_value_gumbelbarnett(d::Integer)
     d == 2 && return 1.0
@@ -114,9 +107,7 @@ function ϕ⁽ᵏ⁾⁻¹(G::GumbelBarnettGenerator, k::Int, t; start_at=t)
     return log(-θ * w)
 end
 
-
 # See this htread ;: https://discourse.julialang.org/t/solving-for-transcendental-equation/131229/16
-
 
 function _gumbelbarnett_tau(θ)
     iszero(θ) && return θ
@@ -146,7 +137,7 @@ function _rho_gumbelbarnett(θ)
 end
 ρ(G::GumbelBarnettGenerator) = _rho_gumbelbarnett(G.θ)
 function ρ⁻¹(::Type{<:GumbelBarnettGenerator}, ρ)
-    ρmin = _rho_gumbelbarnett(1 - _GB_EPSB)          # ≈ -0.266… 
+    ρmin = _rho_gumbelbarnett(1 - _GB_EPSB)          # ≈ -0.266…
     ρ ≤ ρmin && return one(ρ)
     ρ ≥ 0 && return zero(ρ)
     return Roots.find_zero(t -> _rho_gumbelbarnett(t) - ρ, (0, 1))

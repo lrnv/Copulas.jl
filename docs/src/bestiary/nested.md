@@ -97,18 +97,75 @@ parent-child edge, using the dimension of the child subtree.
 :::
 
 !!! note "Nesting validity"
-    The constructor validates every parent-child edge for which Copulas.jl has an
-    analytical certificate. A mathematically invalid certified nesting raises a
-    `DomainError`; a family combination for which no certificate is implemented
-    raises an `ArgumentError` rather than silently constructing an unvalidated copula.
+    The constructor checks only the tree structure and the placement of dimensions.
+    It deliberately does **not** reject a tree because a parent-child nesting is
+    mathematically invalid or unsupported. This keeps explicit construction
+    permissive for expert use. Template fitting is stricter: it first constructs a
+    nesting-aware Paramorph parameter space and therefore rejects unsupported or
+    out-of-region templates before optimisation.
 
-!!! tip "Same-families rule of thumb"
-    For same-family nestings the standard sufficient condition is that the inner generator be at
-    least as dependent as the outer one (e.g. for Clayton/Gumbel/Joe, the inner
-    parameter ``\ge`` the outer parameter). Some mixed-family nestings are also
-    certified analytically; unsupported combinations are rejected explicitly.
+### Nesting validity and fitting geometry
 
-## Fitting
+For template fitting, each supported edge is encoded directly in a
+`Paramorph.DependentProduct`. The child's intrinsic generator domain is intersected
+with the parent-child nesting constraint, so every finite optimiser coordinate maps
+to a nesting that satisfies the implemented rule.
+
+The currently implemented one-parameter rules are:
+
+| Parent generator | Child generator | Fitting-valid region |
+| --- | --- | --- |
+| `IndependentGenerator` | any generator with an available local parameter space | no additional constraint |
+| AMH | AMH | ``\theta_c \ge \theta_p`` |
+| Clayton | Clayton | ``\theta_c \ge \theta_p`` |
+| Frank | Frank | ``\theta_c \ge \theta_p`` |
+| Gumbel | Gumbel | ``\theta_c \ge \theta_p`` |
+| Gumbel-Barnett | Gumbel-Barnett | ``\theta_c \le \theta_p`` |
+| inverse-Gaussian | inverse-Gaussian | ``\theta_c \ge \theta_p`` |
+| Joe | Joe | ``\theta_c \ge \theta_p`` |
+| AMH | Clayton | ``\theta_c \ge 1`` |
+
+Here ``\theta_p`` and ``\theta_c`` denote the parent and child parameters. The
+usual parametric representations of independence such as AMH(0), Clayton(0),
+Frank(0), Gumbel(1), Gumbel-Barnett(0), inverse-Gaussian(0), and Joe(1) are also
+mathematically valid above arbitrary valid children. They are not exposed as
+cross-family fitting rules because fixing the parent exactly at independence is a
+lower-dimensional boundary of the corresponding parametric family; use
+`IndependentGenerator` when that is the intended parent model.
+
+Some invalid regions are already known analytically. In particular:
+
+- for the homogeneous AMH, Clayton, Frank, Gumbel, inverse-Gaussian and Joe
+  families, ``\theta_c < \theta_p`` violates the implemented nesting condition;
+- for homogeneous Gumbel-Barnett, ``\theta_c > \theta_p`` violates it;
+- a strictly positive Clayton parent cannot contain a finite Frank, Gumbel, or Joe
+  child (for child dimension at least two); these are certified invalid, not merely
+  unsupported.
+
+These negative results are intentionally different from a missing rule: absence
+from the table above does **not** imply invalidity.
+
+::: todo "Help complete the nesting-rule table"
+
+    The validity classification is not yet exhaustive, especially for heterogeneous
+    generator pairs and for the multi-parameter BB families. We already know some
+    additional valid and invalid BB slices analytically, but they are not yet
+    represented by the fitting geometry. Contributions are welcome to:
+
+    - prove additional parent-child validity or impossibility results;
+    - translate newly proved one-parameter rules into `GreaterThan`, `LowerThan`,
+      or fixed-bound Paramorph geometries;
+    - design suitable dependent parameter geometries for multi-parameter families;
+    - add regression tests documenting the exact parameter region covered by each
+      new rule.
+
+    Please keep unsupported cases distinct from certified-invalid cases in the
+    mathematical discussion, even though template fitting rejects both until a
+    fitting geometry is implemented.
+
+:::
+
+# Fitting
 
 `fit` performs maximum-likelihood estimation of the generator parameters on a
 **fixed tree**: the leaf layout and the generator family at each node come from a
@@ -221,7 +278,7 @@ coordinates. On the copula scale this computes
 coordinates:
 
 ```@example nested
-margins = params(S).margins
+margins = last(params(S))
 u = [cdf(margins[i], x[i]) for i in 1:6]
 Cs = SurvivalCopula(Cpart, C)
 logpdf(subsetdims(Cpart, O), u[collect(O)]) +

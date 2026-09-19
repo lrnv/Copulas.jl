@@ -101,7 +101,14 @@ function Distributions.partype(S::SklarDist)
         mapreduce(Distributions.partype, promote_type, S.m; init=Union{}),
     )
 end
-Distributions.params(S::SklarDist) = (copula=S.C, margins=S.m)
+Distributions.params(S::SklarDist) = (S.C, S.m)
+function Paramorph.param_space(S::SklarDist)
+    copula_space = Paramorph.Prefixed(:copula, Paramorph.param_space(S.C))
+    margin_spaces = ntuple(length(S.m)) do i
+        Paramorph.Prefixed(Symbol("margin_", i), Paramorph.param_space(S.m[i]))
+    end
+    return (copula_space, margin_spaces...)
+end
 @inline function _sklar_work_eltype(S::SklarDist, x)
     T = promote_type(eltype(S.C), eltype(x))
     for margin in S.m
@@ -206,16 +213,3 @@ function _sklar_logpdf_atoms(S::SklarDist, x)
     (mass <= 0 || !isfinite(mass)) && return T(-Inf)
     return s + log(mass)
 end
-function StatsBase.dof(S::SklarDist)
-    a = hasmethod(StatsBase.dof, Tuple{typeof(S.C)}) ?
-        StatsBase.dof(S.C) : _parameter_dof(Distributions.params(S.C))
-    b = sum(hasmethod(StatsBase.dof, Tuple{typeof(d)}) ? StatsBase.dof(d) : length(Distributions.params(d)) for d in S.m)
-    return a+b
-end
-
-_parameter_dof(x::Number) = 1
-_parameter_dof(x::NamedTuple) = sum(_parameter_dof, values(x); init=0)
-_parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)
-_parameter_dof(x::AbstractArray{<:Number}) = length(x)
-_parameter_dof(x::Copula) = _parameter_dof(Distributions.params(x))
-_parameter_dof(::Any) = 0

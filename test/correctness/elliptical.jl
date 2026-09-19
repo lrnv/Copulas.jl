@@ -6,8 +6,8 @@
     C20 = TCopula{2}(20, copy(Σ))
 
     @test typeof(C2) === typeof(C20)
-    @test params(C2).ν == 2
-    @test params(C20).ν == 20
+    @test first(params(C2)) == 2
+    @test first(params(C20)) == 20
     @test Copulas.U(C2) == TDist(2)
     @test Copulas.U(C20) == TDist(20)
 end

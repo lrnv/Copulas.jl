@@ -149,7 +149,7 @@ function EmpiricalEVTail(u::AbstractMatrix; method::Symbol=:ols, grid::Int=401, 
     return EmpiricalEVTail(tgrid, Â, slope)
 end
 Base.eltype(::EmpiricalEVTail) = Float64
-Distributions.params(t::EmpiricalEVTail) = (tgrid = t.tgrid, Ahat = t.Ahat, slope = t.slope) #for API fit we need modify this
+Paramorph.param_space(::Type{<:EmpiricalEVTail}, ::Integer) = ()
 
 function A(tail::EmpiricalEVTail, t::Real)
     T = typeof(t)
@@ -175,7 +175,6 @@ function dA(tail::EmpiricalEVTail, t::Real)
 end
 
 # Fitting plug-in (empírico) para EmpiricalEVCopula
-StatsBase.dof(::ExtremeValueCopula{2,<:EmpiricalEVTail}) = 0
 _available_fitting_methods(::Type{<:ExtremeValueCopula{2,<:EmpiricalEVTail}}, d) = (:ols, :cfg, :pickands)
 """
     _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
@@ -246,7 +245,7 @@ struct EmpiricalEVMultivariateTail <: DiscreteSpectralBackedTail
 end
 
 Base.eltype(::EmpiricalEVMultivariateTail) = Float64
-Distributions.params(t::EmpiricalEVMultivariateTail) = (B = t.spectral.B,)
+Paramorph.param_space(::Type{<:EmpiricalEVMultivariateTail}, ::Integer) = ()
 _is_valid_in_dim(t::EmpiricalEVMultivariateTail, d::Int) =
     size(t.spectral.B, 1) == d
 A(t::EmpiricalEVMultivariateTail, w::NTuple{d,<:Real}) where {d} = ℓ(t, w)
@@ -601,7 +600,6 @@ function (CT::Type{<:EmpiricalEVCopula{D} where D})(
     return _empirical_ev_copula(d, u; kwargs...)
 end
 
-StatsBase.dof(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}) where {d} = 0
 _available_fitting_methods(::Type{<:EmpiricalEVCopula}, d) = (:ols, :cfg, :pickands)
 
 # Public aliases such as `EmpiricalEVCopula{2}` are UnionAll types rather than
