@@ -113,7 +113,6 @@ StatsBase.corkendall(C::EmpiricalCopula) = StatsBase.corkendall(C.u')
 function SubsetCopula(C::EmpiricalCopula{d,MT}, dims::NTuple{p, Int}) where {d,MT,p}
     return EmpiricalCopula(C.u[collect(dims), :]; pseudo_values=true)
 end
-StatsBase.dof(::EmpiricalCopula) = 0
 _available_fitting_methods(::Type{<:EmpiricalCopula}, d) = (:deheuvels,)
 """
     _fit(::Type{<:EmpiricalCopula}, U, ::Val{:deheuvels};

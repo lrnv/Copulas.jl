@@ -136,7 +136,6 @@ end
     return CheckerboardCopula{length(I),W}(C.m[I], proj)
 end
 
-StatsBase.dof(::CheckerboardCopula) = 0
 _available_fitting_methods(::Type{<:CheckerboardCopula}, d) = (:exact,)
 """
     _fit(::Type{<:CheckerboardCopula}, U, ::Val{:exact};

@@ -206,15 +206,3 @@ function _sklar_logpdf_atoms(S::SklarDist, x)
     (mass <= 0 || !isfinite(mass)) && return T(-Inf)
     return s + log(mass)
 end
-function StatsBase.dof(S::SklarDist)
-    a = hasmethod(StatsBase.dof, Tuple{typeof(S.C)}) ?
-        StatsBase.dof(S.C) : _parameter_dof(Distributions.params(S.C))
-    b = sum(hasmethod(StatsBase.dof, Tuple{typeof(d)}) ? StatsBase.dof(d) : length(Distributions.params(d)) for d in S.m)
-    return a+b
-end
-
-_parameter_dof(x::Number) = 1
-_parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)
-_parameter_dof(x::AbstractArray{<:Number}) = length(x)
-_parameter_dof(x::Copula) = _parameter_dof(Distributions.params(x))
-_parameter_dof(::Any) = 0

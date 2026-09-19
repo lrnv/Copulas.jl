@@ -14,7 +14,15 @@ function Paramorph.param_space(S::SklarDist)
     return (copula_space, margin_spaces...)
 end
 
-Paramorph.param_space(::EmpiricalCopula) = ()
+# Empirical plug-in objects carry fitted state rather than finite-dimensional
+# estimated parameters. Their statistical parameter space is therefore empty.
+Paramorph.param_space(::Type{<:EmpiricalCopula}, ::Integer) = ()
+Paramorph.param_space(::Type{<:BetaCopula}, ::Integer) = ()
+Paramorph.param_space(::Type{<:BernsteinCopula}, ::Integer) = ()
+Paramorph.param_space(::Type{<:CheckerboardCopula}, ::Integer) = ()
+Paramorph.param_space(::Type{<:EmpiricalEVTail}, ::Integer) = ()
+Paramorph.param_space(::Type{<:EmpiricalEVMultivariateTail}, ::Integer) = ()
+
 Paramorph.param_space(S::AbstractReflectedCopula) =
     Paramorph.param_space(basecopula(S))
 
@@ -196,6 +204,15 @@ function _distribution_dof(D)
     return p === nothing ? length(_distribution_coefficient_values(D)) :
                            Paramorph.dimension(p)
 end
+
+_distribution_dof(S::SklarDist) =
+    _distribution_dof(S.C) + sum(_distribution_dof, S.m; init=0)
+
+# Paramorph is the single source of statistical dimension for ordinary
+# parametric copulas and margins. The natural coefficient vector may be longer
+# because it deliberately retains constraints and redundant entries.
+StatsBase.dof(C::Copula) = _distribution_dof(C)
+StatsBase.dof(S::SklarDist) = _distribution_dof(S)
 
 function _model_dof(M::CopulaModel)
     spec = M.recipe

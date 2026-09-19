@@ -222,7 +222,6 @@ function distortion(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,
 end
 
 # Fitting colocated. 
-StatsBase.dof(::BernsteinCopula) = 0
 _available_fitting_methods(::Type{<:BernsteinCopula}, d) = (:bernstein,)
 """
     _fit(::Type{<:BernsteinCopula}, U, ::Val{:bernstein};

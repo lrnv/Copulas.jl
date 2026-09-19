@@ -131,7 +131,6 @@ end
     return Distributions.MixtureModel(comps, w)
 end
 
-StatsBase.dof(::BetaCopula) = 0
 _available_fitting_methods(::Type{<:BetaCopula}, d) = (:beta,)
 """
     _fit(::Type{<:BetaCopula}, U, ::Val{:beta}; kwargs...) -> C

@@ -155,7 +155,6 @@ end
 
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula{p}(C.Σ[collect(dims),collect(dims)])
 
-StatsBase.dof(C::Copulas.GaussianCopula) = (p = length(C); p*(p-1) ÷ 2)
 Paramorph.param_space(::Type{<:GaussianCopula}, d) = Paramorph.Correlation(:Σ, d)
 function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
     d = size(Udata, 1)

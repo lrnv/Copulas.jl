@@ -174,7 +174,6 @@ function dA(tail::EmpiricalEVTail, t::Real)
 end
 
 # Fitting plug-in (empírico) para EmpiricalEVCopula
-StatsBase.dof(::ExtremeValueCopula{2,<:EmpiricalEVTail}) = 0
 _available_fitting_methods(::Type{<:ExtremeValueCopula{2,<:EmpiricalEVTail}}, d) = (:ols, :cfg, :pickands)
 """
     _fit(::Type{<:EmpiricalEVCopula}, U, method::Union{Val{:ols}, Val{:cfg}, Val{:pickands}};
@@ -599,7 +598,6 @@ function (CT::Type{<:EmpiricalEVCopula{D} where D})(
     return _empirical_ev_copula(d, u; kwargs...)
 end
 
-StatsBase.dof(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}) where {d} = 0
 _available_fitting_methods(::Type{<:EmpiricalEVCopula}, d) = (:ols, :cfg, :pickands)
 
 # Public aliases such as `EmpiricalEVCopula{2}` are UnionAll types rather than

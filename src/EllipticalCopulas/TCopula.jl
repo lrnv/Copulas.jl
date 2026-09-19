@@ -226,7 +226,6 @@ function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
 end
 SubsetCopula(C::TCopula, dims::NTuple{p, Int}) where {p} = TCopula{p}(C.ν, C.Σ[collect(dims),collect(dims)])
 
-StatsBase.dof(C::Copulas.TCopula) = (p = length(C); p*(p-1) ÷ 2 + 1)
 Paramorph.param_space(::Type{<:TCopula}, d) = (Paramorph.Pos(:ν), Paramorph.Correlation(:Σ, d))
 # Per-observation sums of the Student objective. The weighted form multiplies
 # the term of each column by its weight before the same reduction, so unit
