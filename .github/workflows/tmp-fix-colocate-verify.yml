@@ -1,0 +1,32 @@
+name: Temporary fix nested roundtrip verification
+
+on:
+  push:
+    branches: [parameter-spaces-fitting]
+    paths: [.github/workflows/tmp-fix-colocate-verify.yml]
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Relax floating roundtrip assertion
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('.github/workflows/tmp-colocate-paramorph-spaces.yml')
+          s = p.read_text()
+          old = '@assert Copulas._nested_coef(C1)[2] == Copulas._nested_coef(C0)[2]'
+          new = '@assert isapprox(Copulas._nested_coef(C1)[2], Copulas._nested_coef(C0)[2]; rtol=1e-12, atol=1e-12)'
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git diff --check
+      - name: Commit workflow fix
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-fix-colocate-verify.yml
+          git add .github/workflows/tmp-colocate-paramorph-spaces.yml
+          git commit -m "Relax nested Paramorph roundtrip check"
+          git push
