@@ -2,6 +2,27 @@
 ##### Natural model coefficients
 ###############################################################################
 
+# `Paramorph.param_space` is fitting/statistical geometry, not a prerequisite
+# for the public distribution interface. Named Archimedean families use it to
+# identify their canonical mathematical parameters, while a downstream
+# generator that implements only the documented `Generator` contract falls
+# back to its stored constructor fields. This keeps `params` usable without
+# silently turning Paramorph into an additional generator extension hook.
+function Distributions.params(C::ArchimedeanCopula{d,G}) where {d,G<:Generator}
+    if applicable(Paramorph.param_space, G, d)
+        p = Paramorph.param_space(G, d)
+        return map(Paramorph.names(p)) do name
+            value = getproperty(C.G, name)
+            return value isa AbstractArray ? copy(value) : value
+        end
+    end
+
+    return ntuple(fieldcount(G)) do i
+        value = getfield(C.G, i)
+        return value isa AbstractArray ? copy(value) : value
+    end
+end
+
 # Paramorph owns statistical dimension and optimization geometry. StatsBase
 # coefficients deliberately expose the fitted distribution's natural `params`
 # representation instead, flattened mechanically without trying to remove
