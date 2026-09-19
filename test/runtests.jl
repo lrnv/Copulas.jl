@@ -214,6 +214,7 @@ testfiles = (
     "operations/dependence.jl",
     "operations/dependence_dimension_validation.jl",
     "operations/fitting.jl",
+    "operations/parameter_coefficients.jl",
     "operations/sklar_fitting_validation.jl",
     "operations/nested_fitting_validation.jl",
     "operations/inference.jl",

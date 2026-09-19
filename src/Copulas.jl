@@ -149,6 +149,9 @@ module Copulas
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
+    # Natural coefficient metadata is assembled only after every component
+    # family has declared its Paramorph parameter space.
+    include("ParameterCoefficients.jl")
 
     include("CopulaTest.jl")
 
