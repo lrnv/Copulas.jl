@@ -276,9 +276,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
                 s += Random.randexp(rng) / d
                 logradius = -log(s)
 
-            # All future radii are smaller. Since normalized spectral weights
-            # satisfy Q_i ≤ 1, no future point can improve any coordinate once
-            # the next radius lies below the current componentwise minimum.
+                # All future radii are smaller. Since normalized spectral weights
+                # satisfy Q_i ≤ 1, no future point can improve any coordinate once
+                # the next radius lies below the current componentwise minimum.
                 if all(isfinite, logz) && logradius <= minimum(logz)
                     break
                 end
@@ -286,8 +286,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
                 m = Random.rand(rng, 1:d)
                 entry = cache[m]
 
-            # Size-biasing the Gaussian spectral vector by (W_m^+)^ν gives
-            # W_m² ~ χ²_{ν+1}, with the positive square root.
+                # Size-biasing the Gaussian spectral vector by (W_m^+)^ν gives
+                # W_m² ~ χ²_{ν+1}, with the positive square root.
                 wm = sqrt(Random.rand(rng, Distributions.Chisq(Float64(ν) + 1.0)))
                 fill!(logq, -Inf)
                 logq[m] = Float64(ν) * log(wm)
@@ -309,11 +309,11 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
 
                 for i in 1:d
                     candidate = logradius + logq[i]
-                if candidate > logz[i]
-                    logz[i] = candidate
+                    if candidate > logz[i]
+                        logz[i] = candidate
+                    end
                 end
             end
-
 
             for i in 1:d
                 X[i, col] = T(exp(-exp(-logz[i])))
@@ -357,7 +357,6 @@ function dA(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν
     C = sqrt((1 + ν) / (1 - ρ^2))
     α = 1 / ν
-
     tt = _safett(t)
     om = 1 - tt
     log_t  = log(tt)
