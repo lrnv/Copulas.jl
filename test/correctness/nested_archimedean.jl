@@ -41,8 +41,6 @@ Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ⁽ᵏ⁾(G::ImplicitTestGenerator, k::Int, t) = ϕ⁽ᵏ⁾(G.inner, k, t)
 Copulas.composition_taylor(o::ImplicitTestGenerator, i::ImplicitTestGenerator, t₀, d::Int) =
     Copulas.composition_taylor_implicit(o.inner, i.inner, t₀, d)
-Copulas._nested_status(o::ImplicitTestGenerator, i::ImplicitTestGenerator, d::Int) =
-    Copulas._nested_status(o.inner, i.inner, d)
 
 # ---------------------------------------------------------------------------
 # Independent reference: nested-Archimedean CDF assembled straight from the
@@ -166,35 +164,39 @@ function implicit_acopula_maxerr(datadir, name, GT, sectors, θroot, θsector; n
 end
 
 @testset "NestedArchimedeanCopula" begin
-    @testset "nesting validity certificates" begin
-        # Certified Clayton/Clayton edge: the child has two actual leaves.
-        C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-                children = [ClaytonCopula{2}(5.0)])
-        @test C isa NestedArchimedeanCopula{2}
+    @testset "permissive construction and fitting geometry" begin
+        P = Copulas.Paramorph
 
-        # Same certified family pair, but parameters violate θ_parent <= θ_child.
-        err = try
-            NestedArchimedeanCopula(ClaytonGenerator(5.0);
+        # Construction validates structure only: even a mathematically invalid
+        # Clayton ordering can be represented deliberately.
+        bad = NestedArchimedeanCopula(ClaytonGenerator(5.0);
                 children = [ClaytonCopula{2}(2.0)])
-            nothing
-        catch e
-            e
-        end
-        @test err isa DomainError
-        @test occursin("invalid nested Archimedean edge", sprint(showerror, err))
-        @test occursin("2 leaves", sprint(showerror, err))
+        @test bad isa NestedArchimedeanCopula{2}
 
-        # No analytical certificate for this wrapped edge: distinguish UNKNOWN
-        # from a mathematically certified-but-invalid parameter combination.
-        wrapped = ArchimedeanCopula(2, ImplicitTestGenerator(ClaytonGenerator(5.0)))
+        # The template fitting chart carries the ordering. The invalid template
+        # therefore fails when mapped into that chart, before optimisation.
+        pbad = P.param_space(bad)
+        @test_throws DomainError P.unconstrain(pbad, Copulas._nested_parameter_values(bad))
+
+        good = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+                children = [ClaytonCopula{2}(5.0)])
+        pgood = P.param_space(good)
+        α = P.unconstrain(pgood, Copulas._nested_parameter_values(good))
+        rebuilt = Copulas._nested_from_coordinates(good, pgood, α)
+        @test rebuilt.G.θ <= Copulas._nested_child(only(rebuilt.children)).G.θ
+
+        # Unsupported multi-parameter nesting is still constructible, but the
+        # fitting geometry is deliberately absent and invites contributions.
+        bb = NestedArchimedeanCopula(Copulas.BB1Generator(1.0, 1.0);
+                children = [ClaytonCopula{2}(2.0)])
         err = try
-            NestedArchimedeanCopula(ClaytonGenerator(2.0); children = [wrapped])
+            P.param_space(bb)
             nothing
         catch e
             e
         end
         @test err isa ArgumentError
-        @test occursin("not certified by Copulas.jl", sprint(showerror, err))
+        @test occursin("open for contributions", sprint(showerror, err))
     end
 
     # -----------------------------------------------------------------------

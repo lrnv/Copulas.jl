@@ -108,7 +108,15 @@ parent-child edge, using the dimension of the child subtree.
     parameter ``\ge`` the outer parameter). Some mixed-family nestings are also
     certified analytically; unsupported combinations are rejected explicitly.
 
-## Fitting
+### Nesting validity and fitting geometry
+
+Construction is intentionally permissive with respect to mathematical nesting.
+Template fitting, however, builds a nesting-aware `Paramorph.DependentProduct`
+and rejects unsupported or out-of-region templates before optimisation. Built-in
+fitting geometry currently covers standard one-parameter generator rules; BB and
+other multi-parameter rules are open for contributions.
+
+# Fitting
 
 `fit` performs maximum-likelihood estimation of the generator parameters on a
 **fixed tree**: the leaf layout and the generator family at each node come from a
