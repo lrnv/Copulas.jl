@@ -1,0 +1,184 @@
+name: Temporary Paramorph dof cleanup
+
+on:
+  push:
+    branches: [parameter-spaces-fitting]
+    paths: [.github/workflows/tmp-paramorph-dof-cleanup.yml]
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - name: Consolidate statistical dimension in Paramorph
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          p = Path('src/ParameterCoefficients.jl')
+          s = p.read_text()
+          old = '''Paramorph.param_space(::EmpiricalCopula) = ()
+Paramorph.param_space(S::AbstractReflectedCopula) =
+    Paramorph.param_space(basecopula(S))
+'''
+          new = '''# Empirical plug-in objects carry fitted state rather than finite-dimensional
+# estimated parameters. Their statistical parameter space is therefore empty.
+Paramorph.param_space(::Type{<:EmpiricalCopula}, ::Integer) = ()
+Paramorph.param_space(::Type{<:BetaCopula}, ::Integer) = ()
+Paramorph.param_space(::Type{<:BernsteinCopula}, ::Integer) = ()
+Paramorph.param_space(::Type{<:CheckerboardCopula}, ::Integer) = ()
+Paramorph.param_space(::Type{<:EmpiricalEVTail}, ::Integer) = ()
+Paramorph.param_space(::Type{<:EmpiricalEVMultivariateTail}, ::Integer) = ()
+
+Paramorph.param_space(S::AbstractReflectedCopula) =
+    Paramorph.param_space(basecopula(S))
+'''
+          assert old in s
+          s = s.replace(old, new, 1)
+
+          old = '''function _distribution_dof(D)
+    D isa NestedArchimedeanCopula && return length(last(_nested_coef(D)))
+    p = try
+        Paramorph.param_space(D)
+    catch
+        nothing
+    end
+    return p === nothing ? length(_distribution_coefficient_values(D)) :
+                           Paramorph.dimension(p)
+end
+
+function _model_dof(M::CopulaModel)
+'''
+          new = '''function _distribution_dof(D)
+    D isa NestedArchimedeanCopula && return length(last(_nested_coef(D)))
+    p = try
+        Paramorph.param_space(D)
+    catch
+        nothing
+    end
+    return p === nothing ? length(_distribution_coefficient_values(D)) :
+                           Paramorph.dimension(p)
+end
+
+_distribution_dof(S::SklarDist) =
+    _distribution_dof(S.C) + sum(_distribution_dof, S.m; init=0)
+
+# Paramorph is the single source of statistical dimension for ordinary
+# parametric copulas and margins. The natural coefficient vector may be longer
+# because it deliberately retains constraints and redundant entries.
+StatsBase.dof(C::Copula) = _distribution_dof(C)
+StatsBase.dof(S::SklarDist) = _distribution_dof(S)
+
+function _model_dof(M::CopulaModel)
+'''
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+
+          p = Path('src/SklarDist.jl')
+          s = p.read_text()
+          old = '''function StatsBase.dof(S::SklarDist)
+    a = hasmethod(StatsBase.dof, Tuple{typeof(S.C)}) ?
+        StatsBase.dof(S.C) : _parameter_dof(Distributions.params(S.C))
+    b = sum(hasmethod(StatsBase.dof, Tuple{typeof(d)}) ? StatsBase.dof(d) : length(Distributions.params(d)) for d in S.m)
+    return a+b
+end
+
+_parameter_dof(x::Number) = 1
+_parameter_dof(x::Tuple) = sum(_parameter_dof, x; init=0)
+_parameter_dof(x::AbstractArray{<:Number}) = length(x)
+_parameter_dof(x::Copula) = _parameter_dof(Distributions.params(x))
+_parameter_dof(::Any) = 0
+'''
+          assert old in s
+          p.write_text(s.replace(old, '', 1))
+
+          replacements = {
+              'src/EllipticalCopulas/GaussianCopula.jl': [
+                  ('StatsBase.dof(C::Copulas.GaussianCopula) = (p = length(C); p*(p-1) ÷ 2)\n', ''),
+              ],
+              'src/EllipticalCopulas/TCopula.jl': [
+                  ('StatsBase.dof(C::Copulas.TCopula) = (p = length(C); p*(p-1) ÷ 2 + 1)\n', ''),
+              ],
+              'src/MiscellaneousCopulas/BetaCopula.jl': [
+                  ('StatsBase.dof(::BetaCopula) = 0\n', ''),
+              ],
+              'src/MiscellaneousCopulas/BernsteinCopula.jl': [
+                  ('StatsBase.dof(::BernsteinCopula) = 0\n', ''),
+              ],
+              'src/MiscellaneousCopulas/CheckerboardCopula.jl': [
+                  ('StatsBase.dof(::CheckerboardCopula) = 0\n', ''),
+              ],
+              'src/MiscellaneousCopulas/EmpiricalCopula.jl': [
+                  ('StatsBase.dof(::EmpiricalCopula) = 0\n', ''),
+              ],
+              'src/Tail/EmpiricalEVTail.jl': [
+                  ('StatsBase.dof(::ExtremeValueCopula{2,<:EmpiricalEVTail}) = 0\n', ''),
+                  ('StatsBase.dof(::ExtremeValueCopula{d,<:EmpiricalEVMultivariateTail}) where {d} = 0\n', ''),
+              ],
+          }
+          for filename, reps in replacements.items():
+              p = Path(filename)
+              s = p.read_text()
+              for old, new in reps:
+                  assert old in s, (filename, old)
+                  s = s.replace(old, new, 1)
+              p.write_text(s)
+
+          p = Path('test/api/sklar.jl')
+          s = p.read_text()
+          old = '''    @test StatsBase.dof(D) == 4
+    @test Copulas._parameter_dof(1.0) == 1
+    @test Copulas._parameter_dof((1.0, [2.0, 3.0], :fixed)) == 3
+    @test Copulas._parameter_dof(C) == 1
+'''
+          new = '''    @test StatsBase.dof(D) == 4
+    @test StatsBase.dof(D) ==
+          Copulas.Paramorph.dimension(Copulas.Paramorph.param_space(D))
+'''
+          assert old in s
+          s = s.replace(old, new, 1)
+          old = '''    D3 = SklarDist(GaussianCopula{3}(0.3), (Normal(), Exponential(), Gamma(2, 1)))
+    x3 = [0.1, 1.2, 0.8]
+'''
+          new = '''    D3 = SklarDist(GaussianCopula{3}(0.3), (Normal(), Exponential(), Gamma(2, 1)))
+    @test StatsBase.dof(D3) ==
+          Copulas.Paramorph.dimension(Copulas.Paramorph.param_space(D3))
+    x3 = [0.1, 1.2, 0.8]
+'''
+          assert old in s
+          p.write_text(s.replace(old, new, 1))
+          PY
+          git diff --check
+      - name: Verify dimension and empirical-state contracts
+        run: |
+          julia --project --startup-file=no -e '
+            using Pkg; Pkg.instantiate()
+            using Copulas, Distributions, StatsBase
+            P = Copulas.Paramorph
+            G = GaussianCopula([1.0 0.3 0.2; 0.3 1.0 0.4; 0.2 0.4 1.0])
+            T = TCopula(4.0, G.Σ)
+            @assert dof(G) == P.dimension(P.param_space(G)) == 3
+            @assert dof(T) == P.dimension(P.param_space(T)) == 4
+            S = SklarDist(G, (Normal(), Exponential(), Gamma(2, 1)))
+            @assert dof(S) == P.dimension(P.param_space(S))
+            X = [0.2 0.8 0.4 0.6; 0.3 0.7 0.9 0.1]
+            for C in (EmpiricalCopula(X), BetaCopula(X), CheckerboardCopula(X; m=2))
+                @assert dof(C) == 0
+                M = CopulaModel(C, X, 0.0, nothing)
+                @assert dof(M) == 0
+                @assert isempty(coef(M))
+            end
+          '
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-paramorph-dof-cleanup.yml
+          git add src test/api/sklar.jl
+          git diff --check
+          git commit -m "Make Paramorph the source of statistical dimension"
+          git push
