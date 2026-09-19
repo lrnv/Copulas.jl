@@ -2,63 +2,31 @@ name: Temporary model display fix
 
 on:
   push:
-    branches:
-      - parameter-spaces-fitting
-    paths:
-      - .github/workflows/tmp-diagnose-tests.yml
+    branches: [parameter-spaces-fitting]
 
 jobs:
   fix:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
-      - uses: julia-actions/cache@v3
-      - name: Patch show to avoid generic numerical dependence metrics
+      - name: Patch display
         run: |
-          python - <<'PY'
-          from pathlib import Path
-          p = Path('src/show.jl')
-          s = p.read_text()
-          old = '''    shown_any = false
-    try
-        if _specialized(:τ); _kv(io, "Kendall τ", Printf.@sprintf("%.4f", Copulas.τ(C))); shown_any = true; end
-        if _has(:ρ);  _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C)));  shown_any = true; end
-        if _has(:β);  _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C)));  shown_any = true; end
-        if _specialized(:γ); _kv(io, "Gini γ", Printf.@sprintf("%.4f", Copulas.γ(C))); shown_any = true; end
-        if _has(:λᵤ); _kv(io, "Upper λᵤ",   Printf.@sprintf("%.4f", Copulas.λᵤ(C))); shown_any = true; end
-        if _has(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C))); shown_any = true; end
-        if _specialized(:ι); _kv(io, "Entropy ι", Printf.@sprintf("%.4f", Copulas.ι(C))); shown_any = true; end
-'''
-          new = '''    shown_any = false
-    try
-        # `show` must stay cheap and deterministic. Generic dependence measures
-        # may use Monte Carlo or high-dimensional numerical integration, so only
-        # family-specific implementations are evaluated here.
-        if _specialized(:τ); _kv(io, "Kendall τ", Printf.@sprintf("%.4f", Copulas.τ(C))); shown_any = true; end
-        if _specialized(:ρ); _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C))); shown_any = true; end
-        if _specialized(:β); _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C))); shown_any = true; end
-        if _specialized(:γ); _kv(io, "Gini γ", Printf.@sprintf("%.4f", Copulas.γ(C))); shown_any = true; end
-        if _specialized(:λᵤ); _kv(io, "Upper λᵤ",   Printf.@sprintf("%.4f", Copulas.λᵤ(C))); shown_any = true; end
-        if _specialized(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C))); shown_any = true; end
-        if _specialized(:ι); _kv(io, "Entropy ι", Printf.@sprintf("%.4f", Copulas.ι(C))); shown_any = true; end
-'''
-          assert old in s
-          p.write_text(s.replace(old, new, 1))
-          PY
-      - uses: julia-actions/julia-buildpkg@v1
-      - name: Verify Gaussian model display terminates
+          sed -i 's/if _has(:ρ);/if _specialized(:ρ);/' src/show.jl
+          sed -i 's/if _has(:β);/if _specialized(:β);/' src/show.jl
+          sed -i 's/if _has(:λᵤ);/if _specialized(:λᵤ);/' src/show.jl
+          sed -i 's/if _has(:λₗ);/if _specialized(:λₗ);/' src/show.jl
+          git diff --check
+      - name: Verify display
         run: |
-          timeout 60s julia --project --startup-file=no -e 'using Copulas, StatsBase, Distributions; G=GaussianCopula([1.0 0.4 0.2;0.4 1.0 0.3;0.2 0.3 1.0]); M=CopulaModel(G,zeros(3,1),0.0,Copulas._CopulaFitSpec(GaussianCopula,:mle,(;))); report=sprint(show,M); @assert occursin("Σ:",report); @assert occursin("Degrees of freedom",report); println(report)'
-      - name: Commit source fix and remove diagnostics
+          timeout 60s julia --project --startup-file=no -e 'using Pkg; Pkg.instantiate(); using Copulas, StatsBase, Distributions; G=GaussianCopula([1.0 0.4 0.2;0.4 1.0 0.3;0.2 0.3 1.0]); M=CopulaModel(G,zeros(3,1),0.0,Copulas._CopulaFitSpec(GaussianCopula,:mle,(;))); report=sprint(show,M); @assert occursin("Σ:",report); println(report)'
+      - name: Commit fix
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git rm .github/workflows/tmp-diagnose-tests.yml
           git add src/show.jl
-          git diff --check
           git commit -m "Keep model display free of numerical integration"
           git push
