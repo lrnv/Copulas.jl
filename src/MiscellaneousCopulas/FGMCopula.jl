@@ -72,13 +72,6 @@ end
 Base.eltype(C::FGMCopula) = eltype(C.θ)
 
 Distributions.params(C::FGMCopula) = (collect(C.θ),)
-function _natural_parameters(C::FGMCopula)
-    nm = String[]
-    θ = Any[]
-    _append_parameter!(nm, θ, C.θ, "θ")
-    values = isempty(θ) ? Float64[] : collect(promote(float.(θ)...))
-    return nm, values
-end
 _available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho, :ibeta) : (:mle,)
 
 function _cdf(fgm::FGMCopula{d}, u::Vector{T}) where {d,T}

@@ -165,8 +165,11 @@ end
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                         d::Int, pspace, α, Vα)
     J = ForwardDiff.jacobian(
-        αv -> _flatten_params(pspace, Distributions.params(
-            _parameter_space_copula(CT, d, pspace, αv)))[2],
+        αv -> begin
+            C = _parameter_space_copula(CT, d, pspace, αv)
+            logical = _coefficient_parameter_values(C, pspace)
+            _space_coefficients(pspace, logical)[2]
+        end,
         α,
     )
     Vθ = J * Vα * J'

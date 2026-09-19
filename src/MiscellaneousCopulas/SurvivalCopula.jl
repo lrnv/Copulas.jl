@@ -217,7 +217,6 @@ end
 # reconstruct the reflected wrapper. Parameter geometry belongs to the base
 # family and is not duplicated on the wrapper type.
 Distributions.params(S::AbstractReflectedCopula) = Distributions.params(basecopula(S))
-_natural_parameters(S::AbstractReflectedCopula) = _natural_parameters(basecopula(S))
 
 function _fit_reflected(::Type{subCT}, U, m, mask; kwargs...) where {subCT}
     Uflip = copy(U)

@@ -1484,7 +1484,6 @@ function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
     return names, values
 end
 
-_natural_parameters(C::NestedArchimedeanCopula) = _nested_coef(C)
 
 # Quick template shim: returns only the fitted copula. (No `fit(reparam, init, U)`
 # shim — with an untyped `reparam` it would be type piracy on `Distributions.fit`;
