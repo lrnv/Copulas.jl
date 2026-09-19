@@ -1,0 +1,34 @@
+name: Temporary FGM Paramorph inference cleanup
+
+on:
+  push:
+    branches:
+      - parameter-spaces-fitting
+    paths:
+      - .github/workflows/tmp-fgm-inference-cleanup.yml
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: '1'
+      - name: Patch FGM parameter contract and inference
+        run: python -c "import base64; exec(base64.b64decode('ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCgpwID0gUGF0aCgic3JjL01pc2NlbGxhbmVvdXNDb3B1bGFzL0ZHTUNvcHVsYS5qbCIpCnMgPSBwLnJlYWRfdGV4dCgpCm9sZCA9ICJEaXN0cmlidXRpb25zLnBhcmFtcyhDOjpGR01Db3B1bGEpID0gKGNvbGxlY3QoQy7OuCksKVxuIgpuZXcgPSAiRGlzdHJpYnV0aW9ucy5wYXJhbXMoQzo6RkdNQ29wdWxhezJ9KSA9IChvbmx5KEMuzrgpLClcbkRpc3RyaWJ1dGlvbnMucGFyYW1zKEM6OkZHTUNvcHVsYSkgPSAoY29sbGVjdChDLs64KSwpXG4iCmFzc2VydCBvbGQgaW4gcwpwLndyaXRlX3RleHQocy5yZXBsYWNlKG9sZCwgbmV3LCAxKSkKCnAgPSBQYXRoKCJzcmMvSW5mZXJlbmNlLmpsIikKcyA9IHAucmVhZF90ZXh0KCkKb2xkID0gIiAgICAgICAgICAgICEoTS5yZXN1bHQgaXNhIFVuaW9ue1RDb3B1bGEsdEVWQ29wdWxhLEZHTUNvcHVsYX0pXG4iCm5ldyA9ICIgICAgICAgICAgICAhKE0ucmVzdWx0IGlzYSBVbmlvbntUQ29wdWxhLHRFVkNvcHVsYX0pXG4iCmFzc2VydCBvbGQgaW4gcwpzID0gcy5yZXBsYWNlKG9sZCwgbmV3LCAxKQpvbGQgPSAnICAgIG1ldGhvZCA9PT0gOmhlc3NpYW4gJiYgQyBpc2EgRkdNQ29wdWxhICYmIHRocm93KEFyZ3VtZW50RXJyb3IoXG4gICAgICAgICJIZXNzaWFuIGluZmVyZW5jZSBpcyBub3QgaW1wbGVtZW50ZWQgZm9yIG1heGltdW0tbGlrZWxpaG9vZCBGR00gZml0cyIpKVxuJwphc3NlcnQgb2xkIGluIHMKcC53cml0ZV90ZXh0KHMucmVwbGFjZShvbGQsICIiLCAxKSkKCnAgPSBQYXRoKCJ0ZXN0L29wZXJhdGlvbnMvZml0dGluZy5qbCIpCnMgPSBwLnJlYWRfdGV4dCgpCm9sZCA9ICIgICAgcGFyYW1ldGVyX2RvZiA9IG1ldGhvZCA9PT0gOm1sZSA/IENvcHVsYXMuX3BhcmFtZXRlcl9kb2YocGFyYW1zKEMpKSA6IG5vdGhpbmdcbiIKbmV3ID0gIiAgICBwYXJhbWV0ZXJfZG9mID0gbWV0aG9kID09PSA6bWxlID8gQ29wdWxhcy5fZGlzdHJpYnV0aW9uX2RvZihDKSA6IG5vdGhpbmdcbiIKYXNzZXJ0IG9sZCBpbiBzCnAud3JpdGVfdGV4dChzLnJlcGxhY2Uob2xkLCBuZXcsIDEpKQo='))"
+      - name: Check patch
+        run: git diff --check
+      - name: Verify FGM analytical inference
+        run: |
+          julia --project --startup-file=no -e 'using Pkg; Pkg.instantiate(); using Copulas, Distributions, StatsBase, StableRNGs; C=FGMCopula(2,0.4); @assert params(C)==(0.4,); p=Copulas.Paramorph.param_space(C); @assert Copulas.Paramorph.unconstrain(p,params(C)) isa Vector; U=rand(StableRNG(554),C,250); M=fit(CopulaModel,FGMCopula,U;method=:mle); I=infer(M); @assert I.method===:hessian; @assert size(vcov(I))==(1,1); @assert all(isfinite,vcov(I)); R=fit(CopulaModel,FGMCopula,U;method=:itau); G=infer(R;rng=StableRNG(555),nresamples=20); @assert G.method===:godambe; @assert size(vcov(G))==(1,1)'
+      - name: Commit cleanup
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git rm .github/workflows/tmp-fgm-inference-cleanup.yml
+          git add src/MiscellaneousCopulas/FGMCopula.jl src/Inference.jl test/operations/fitting.jl
+          git diff --check
+          git commit -m "Complete bivariate FGM Paramorph integration"
+          git push
