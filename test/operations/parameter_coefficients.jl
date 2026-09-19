@@ -76,6 +76,22 @@
     @test StatsBase.coef(Mfgm) == [0.4]
     @test StatsBase.dof(Mfgm) == 1
 
+    # A fixed nested Archimedean tree is a Cartesian product of the local
+    # generator spaces. Paramorph owns its flat chart and statistical dimension;
+    # Copulas only owns the tree traversal and cross-node nesting certificates.
+    N = NestedArchimedeanCopula(
+        Copulas.ClaytonGenerator(1.0);
+        children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)],
+    )
+    pN = P.param_space(N)
+    @test P.dimension(pN) == 3
+    @test StatsBase.dof(N) == 3
+    MN = CopulaModel(N, zeros(length(N), 1), 0.0, nothing)
+    @test StatsBase.dof(MN) == 3
+    @test length(StatsBase.coef(MN)) == 3
+    Nroundtrip = Copulas._nested_rebound(N, Copulas._nested_unbound(N))
+    @test Copulas._nested_coef(Nroundtrip)[2] ≈ Copulas._nested_coef(N)[2]
+
     # A natural matrix is exposed in full. Symmetry and the fixed unit diagonal
     # therefore create redundant coefficients, while dof remains the Paramorph
     # dimension of the correlation manifold.
