@@ -77,7 +77,7 @@
     parch = P.param_space(Carch)
     @test P.names(parch) == (:θ,)
     @test Distributions.params(Carch) == (1.25,)
-    zarch = P.unconstrain(parch, Distributions.params(Carch))
+    zarch = P.unconstrain(parch, only(Distributions.params(Carch)))
     @test P.constrain(parch, zarch) ≈ only(Distributions.params(Carch))
 
     # Liouville follows the same logical representation: generator parameters
