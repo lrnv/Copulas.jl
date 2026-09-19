@@ -6,6 +6,7 @@
     @test !isdefined(Copulas, :_flatten_params)
     @test !isdefined(Copulas, :_space_coefficients)
     @test !isdefined(Copulas, :_coefficient_parameter_values)
+    @test !isdefined(Copulas, :_parameter_dof)
 
     # Sklar keeps Paramorph only for geometry/dimension. StatsBase coefficients
     # are the natural component parameters, with copula then margins.
@@ -48,13 +49,21 @@
     @test StatsBase.coefnames(MR) == ["θ"]
     @test StatsBase.coef(MR) == [0.75]
 
-    # Purely nonparametric state is not a StatsBase coefficient vector.
-    E = EmpiricalCopula([0.2 0.8; 0.3 0.7])
-    @test P.names(P.param_space(E)) == ()
-    ME = CopulaModel(E, zeros(2, 1), 0.0, nothing)
-    @test isempty(StatsBase.coefnames(ME))
-    @test isempty(StatsBase.coef(ME))
-    @test StatsBase.dof(ME) == 0
+    # Empirical plug-in state is explicitly zero-dimensional in Paramorph and is
+    # therefore neither a StatsBase coefficient vector nor a statistical dof.
+    Xemp = [0.2 0.8; 0.3 0.7]
+    E = EmpiricalCopula(Xemp)
+    for C in (E, BetaCopula(Xemp), CheckerboardCopula(Xemp; m=2))
+        @test P.dimension(P.param_space(C)) == 0
+        @test StatsBase.dof(C) == 0
+        MC = CopulaModel(C, zeros(2, 1), 0.0, nothing)
+        @test isempty(StatsBase.coefnames(MC))
+        @test isempty(StatsBase.coef(MC))
+        @test StatsBase.dof(MC) == 0
+    end
+    @test P.param_space(BernsteinCopula, 2) == ()
+    @test P.param_space(Copulas.EmpiricalEVTail, 2) == ()
+    @test P.param_space(Copulas.EmpiricalEVMultivariateTail, 3) == ()
 
     # Bivariate FGM is an ordinary bounded one-dimensional chart. Multivariate
     # FGM keeps its specialized optimizer because its feasible set is coupled.
