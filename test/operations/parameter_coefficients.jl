@@ -98,7 +98,7 @@
     @test P.dimension(pfgm) == 1
     @test P.constrain(pfgm, [0.0]) == 0.0
     Mfgm = CopulaModel(FGMCopula(2, 0.4), zeros(2, 1), 0.0, nothing)
-    @test StatsBase.coefnames(Mfgm) == ["θ₁"]
+    @test StatsBase.coefnames(Mfgm) == ["θ"]
     @test StatsBase.coef(Mfgm) == [0.4]
     @test StatsBase.dof(Mfgm) == 1
 
