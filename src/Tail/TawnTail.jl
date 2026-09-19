@@ -62,6 +62,22 @@ struct TawnTail{T} <: Tail
     end
 end
 
+@inline function _tawn_bivariate_asym_log(tail::TawnTail)
+    tail.d == 2 || throw(ArgumentError("the AsymLog reduction requires a bivariate TawnTail"))
+    k = lastindex(tail.α)
+    return AsymLogTail(tail.α[k], tail.β[2, k], tail.β[1, k])
+end
+
+function distortion(C::ExtremeValueCopula{2,<:TawnTail}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int,)
+    kind = limit_kind(C.tail, Val(2))
+    kind === Π_LIMIT && return NoDistortion()
+
+    j = Int8(js[1])
+    uⱼ = float(uⱼₛ[1])
+    kind === M_LIMIT && return MDistortion(uⱼ, j)
+    return BivEVDistortion(_tawn_bivariate_asym_log(C.tail), j, uⱼ)
+end
+
 @inline _tawn_component_is_active(tail::TawnTail, j) =
     !isone(tail.α[j]) && count(!iszero, @view tail.β[:, j]) > 1
 
