@@ -22,7 +22,7 @@ jobs:
         run: git diff --check
       - name: Verify FGM analytical inference
         run: |
-          julia --project --startup-file=no -e 'using Pkg; Pkg.instantiate(); using Copulas, Distributions, StatsBase, StableRNGs; C=FGMCopula(2,0.4); @assert params(C)==(0.4,); p=Copulas.Paramorph.param_space(C); @assert Copulas.Paramorph.unconstrain(p,params(C)) isa Vector; U=rand(StableRNG(554),C,250); M=fit(CopulaModel,FGMCopula,U;method=:mle); I=infer(M); @assert I.method===:hessian; @assert size(vcov(I))==(1,1); @assert all(isfinite,vcov(I)); R=fit(CopulaModel,FGMCopula,U;method=:itau); G=infer(R;rng=StableRNG(555),nresamples=20); @assert G.method===:godambe; @assert size(vcov(G))==(1,1)'
+          julia --project --startup-file=no -e 'using Pkg; Pkg.instantiate(); using Copulas, Distributions, StatsBase, Random; C=FGMCopula(2,0.4); @assert params(C)==(0.4,); p=Copulas.Paramorph.param_space(C); @assert Copulas.Paramorph.unconstrain(p,params(C)) isa Vector; U=rand(MersenneTwister(554),C,250); M=fit(CopulaModel,FGMCopula,U;method=:mle); I=infer(M); @assert I.method===:hessian; @assert size(vcov(I))==(1,1); @assert all(isfinite,vcov(I)); R=fit(CopulaModel,FGMCopula,U;method=:itau); G=infer(R;rng=MersenneTwister(555),nresamples=20); @assert G.method===:godambe; @assert size(vcov(G))==(1,1)'
       - name: Commit cleanup
         run: |
           git config user.name "github-actions[bot]"
