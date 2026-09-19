@@ -302,11 +302,11 @@ function Distributions._rand!(
 end
 
 function distortion(
-    C::ExtremeValueCopula{2,TT},
+    C::ExtremeValueCopula{2,<:BivariatePickandsTail},
     js::NTuple{1,Int},
     uⱼₛ::NTuple{1,Float64},
     ::Int,
-) where {TT}
+)
     kind = limit_kind(C.tail, Val(2))
     kind === Π_LIMIT && return NoDistortion()
 
