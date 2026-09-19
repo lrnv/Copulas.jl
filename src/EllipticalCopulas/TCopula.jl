@@ -84,7 +84,7 @@ function _student_rosenblatt_cache(C::TCopula{d}) where d
         F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ[J, J]))
         β = F \ Σ[J, k]
         σ0² = max(Σ[k, k] - LinearAlgebra.dot(Σ[k, J], β), zero(eltype(Σ)))
-        return (; F, β, σ0=sqrt(σ0²))
+        return (; F, β, σ0 = sqrt(σ0²))
     end
 end
 

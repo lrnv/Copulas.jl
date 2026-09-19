@@ -27,7 +27,7 @@ References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.6. 
 """
 struct RafteryCopula{d, P} <: Copula{d}
-    θ::P
+    θ::P  # Copula parameter
     function RafteryCopula{d}(θ) where {d}
         d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         (0 <= θ <= 1) || throw(ArgumentError("Theta must be in [0,1]"))

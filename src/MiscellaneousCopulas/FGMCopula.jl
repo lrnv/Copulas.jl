@@ -35,15 +35,18 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     fᵢ::Tf
     function FGMCopula{d}(vθ::Vector) where {d}
         d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+        # Check first restrictions on parameters
         any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
 
+        # Last check:
         for epsilon in Base.product(fill([-1, 1], d)...)
             if 1 + _fgm_red(vθ, epsilon) < 0
                 throw(ArgumentError("Invalid parameters θ = $vθ. The parameters do not meet the condition to be an FGM copula"))
             end
         end
 
+        # Now construct the stochastic representation:
         wᵢ = [_fgm_red(vθ, 1 .- 2*Base.reverse(digits(i, base=2, pad=d))) for i in 0:(2^d-1)]
         support = 0:(2^d-1)
         probabilities = (1 .+ wᵢ) / 2^d
@@ -60,6 +63,8 @@ FGMCopula{d}(θ::AbstractVector) where {d} = FGMCopula{d}(collect(float.(θ)))
 FGMCopula(d, θ) = FGMCopula{d}(θ)
 (::Type{<:FGMCopula{D,Tθ,Tf}})(d::Int, θ) where {D,Tθ,Tf} = FGMCopula{d}(θ)
 function _fgm_red(θ, v)
+    # This function implements the reduction over combinations of the fgm copula.
+    # It is non-alocative thus performant :)
     rez, d, i = zero(promote_type(eltype(θ), eltype(v))), length(v), 1
     for k in 2:d
         for indices in Combinatorics.combinations(1:d, k)
@@ -115,6 +120,7 @@ function ρ⁻¹(::Type{<:FGMCopula}, ρ)
     return max.(min.(3 * ρ, 1), -1)
 end
 
+# Subsetting colocated
 function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int}) where {d,Tθ,Tf,p}
     if p==2
         i = 1
@@ -124,6 +130,7 @@ function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int}) where {d,Tθ
         end
         @error("Somethings wrong...")
     end
+    # Build mapping to gather θ' in the canonical order for dimension p
     combos_by_k = [collect(Combinatorics.combinations(1:d, k)) for k in 2:d]
     offs = Vector{Int}(undef, d)
     offs[1] = 0

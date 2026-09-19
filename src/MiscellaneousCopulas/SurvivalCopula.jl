@@ -289,6 +289,7 @@ function conditional_copula(S::AbstractReflectedCopula{D}, js, uⱼₛ) where {D
     return SurvivalCopula(CC_base, flip_positions)
 end
 
+# Subsetting colocated: subset and remap flipped indices to the new positions
 function SubsetCopula(C::AbstractReflectedCopula{d}, dims::NTuple{p, Int}) where {d,p}
     mask = flipmask(C)
     newflips = Tuple(k for (k, i) in enumerate(dims) if mask[i])
@@ -296,6 +297,7 @@ function SubsetCopula(C::AbstractReflectedCopula{d}, dims::NTuple{p, Int}) where
 end
 
 function τ(C::AbstractReflectedCopula{2})
+    # For bivariate, flipping one margin negates tau, flipping both leaves tau unchanged
     if count(identity, flipmask(C)) % 2 == 1
         return -τ(basecopula(C))
     else

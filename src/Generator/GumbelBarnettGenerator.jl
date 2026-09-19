@@ -107,7 +107,9 @@ function ϕ⁽ᵏ⁾⁻¹(G::GumbelBarnettGenerator, k::Int, t; start_at=t)
     return log(-θ * w)
 end
 
+
 # See this htread ;: https://discourse.julialang.org/t/solving-for-transcendental-equation/131229/16
+
 
 function _gumbelbarnett_tau(θ)
     iszero(θ) && return θ

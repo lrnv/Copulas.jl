@@ -64,13 +64,16 @@ function dA(tail::LogTail, t::Real)
     θ = tail.θ
     isone(θ) && return zero(t * θ)
 
+    # B = t^θ + (1-t)^θ
     logB = LogExpFunctions.logaddexp(θ*log(t), θ*log1p(-t))
-    Bpow = exp((1 - θ) / θ * logB)
+    Bpow = exp((1 - θ) / θ * logB)  # B^((1-θ)/θ)
 
+    # D = t^(θ-1) - (1-t)^(θ-1)
     logt = (θ - 1) * log(t)
     log1mt = (θ - 1) * log1p(-t)
+    # carrefull for cancellations
     if logt > log1mt
-        D = exp(logt) - exp(log1mt)
+        D = exp(logt) - exp(log1mt)  # no cancellation here. 
     else
         D = exp(log1mt) * (expm1(logt - log1mt))
     end
@@ -85,11 +88,14 @@ function d²A(tail::LogTail, t::Real)
     θ = tail.θ
     isone(θ) && return zero(tt * θ)
     logB = LogExpFunctions.logaddexp(θ * log(tt), θ * log1p(-tt))
+    # (θ-1) * [t(1-t)]^(θ-2) * (t^θ + (1-t)^θ)^(1/θ-2)
     logA2 = log(θ - 1) + (θ - 2) * (log(tt) + log1p(-tt)) +
             (inv(θ) - 2) * logB
     return exp(logA2)
 end
 
+# Closed forms for the logistic model avoid cancellation in the generic
+# Ghoudi auxiliary distribution when θ is large.
 function Distributions.cdf(d::ExtremeDist{<:LogTail}, z::Real)
     z <= zero(z) && return zero(float(z))
     z >= one(z) && return one(float(z))
@@ -117,6 +123,16 @@ end
 
 _ghoudi_mixture_probability(tail::LogTail, ::Real) = (tail.θ - one(tail.θ)) / tail.θ
 
+# Stable closed-form bivariate density for the logistic model.
+#
+# For ℓ(x,y) = (x^θ + y^θ)^(1/θ),
+#
+#   ℓ₁ℓ₂ - ℓ₁₂
+#   = x^(θ-1) y^(θ-1) ℓ^(1-2θ) (ℓ + θ - 1).
+#
+# Evaluating the logarithm of this expression directly avoids the cancellation
+# that can affect the generic Pickands derivative kernel under strong
+# dependence, while avoiding the overhead of delegating to GumbelCopula.
 function _ev_logpdf(C::ExtremeValueCopula{2,<:LogTail}, u)
     u1, u2 = u
     (zero(u1) < u1 <= one(u1) && zero(u2) < u2 <= one(u2)) ||
@@ -150,6 +166,7 @@ function _ellpartial_signlog(tail::LogTail, x, I::Tuple{Vararg{Int}})
     return isodd(k - 1) ? -1 : 1, logabs
 end
 
+
 function Distributions.logpdf(D::BivEVDistortion{<:LogTail}, z::Real)
     T = float(promote_type(typeof(z), typeof(D.uⱼ), typeof(D.tail.θ)))
     z <= zero(z) && return T(-Inf)
@@ -173,6 +190,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     return invoke(Distributions._rand!, signature, rng, C, X)
 end
 
+# LogCopula is the bivariate Gumbel copula, so its conditional quantile can use
+# the same closed-form inverse of the first generator derivative.
 function Distributions.quantile(D::BivEVDistortion{<:LogTail}, α::Real)
     T = float(promote_type(typeof(α), typeof(D.tail.θ), typeof(D.uⱼ)))
     D.uⱼ ≤ 0 && return _biv_ev_endpoint_quantile(D, α, true, T)
@@ -189,6 +208,7 @@ _rho_Log(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadgk(t -
 ρ(C::ExtremeValueCopula{2,<:LogTail}) = _rho_Log(C.tail.θ)
 β(C::ExtremeValueCopula{2,<:LogTail}) = 4 * 2^(-2^(1 / C.tail.θ)) - 1
 λᵤ(C::ExtremeValueCopula{2,<:LogTail}) = 2 - 2^(1 / C.tail.θ)
+
 
 τ⁻¹(::Type{<:ExtremeValueCopula{D,<:LogTail} where D}, tau) = 1 / (1 - tau)
 τ⁻¹(::Type{<:LogTail}, tau) = 1 / (1 - tau)

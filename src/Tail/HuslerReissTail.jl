@@ -149,13 +149,19 @@ end
 function _hr_stdf(Γ::AbstractMatrix, x)
     d = length(x)
     any(isinf, x) && return Inf
+
+    # Remove zero coordinates before numerical Gaussian integration so that
+    # marginal consistency is exact rather than delegated to QMC at +Inf.
     active = findall(!iszero, x)
     isempty(active) && return 0.0
     length(active) == 1 && return Float64(x[only(active)])
     length(active) < d && return _hr_stdf(Γ[active, active], x[active])
 
+    # Normalize once. This makes the numerical evaluation inherit the exact
+    # one-homogeneity of the STDF as closely as floating-point arithmetic allows.
     scale = maximum(x)
     y = Float64.(x) ./ Float64(scale)
+
     out = 0.0
     for i in 1:d
         yi = y[i]
@@ -163,12 +169,14 @@ function _hr_stdf(Γ::AbstractMatrix, x)
         q = length(J)
         upper = Vector{Float64}(undef, q)
         R = Matrix{Float64}(undef, q, q)
+
         @inbounds for a in 1:q
             j = J[a]
             γij = Float64(Γ[i, j])
             σij = sqrt(γij)
             upper[a] = 0.5 * σij + log(yi / y[j]) / σij
             R[a, a] = 1.0
+
             for b in 1:a-1
                 k = J[b]
                 γik = Float64(Γ[i, k])
@@ -177,9 +185,15 @@ function _hr_stdf(Γ::AbstractMatrix, x)
                 R[a, b] = R[b, a] = ρ
             end
         end
+
         probability = q == 1 ?
             Distributions.cdf(Distributions.Normal(), upper[1]) :
-            MvNormalCDF.mvnormcdf(R, fill(-Inf, q), upper; rng=Random.Xoshiro(0))[1]
+            MvNormalCDF.mvnormcdf(
+                R,
+                fill(-Inf, q),
+                upper;
+                rng=Random.Xoshiro(0),
+            )[1]
         out += yi * probability
     end
     return Float64(scale) * out
@@ -188,17 +202,25 @@ end
 function ℓ(tail::HuslerReissTail{<:Real}, x)
     θ = something(tail.θ)
     d = length(x)
+
+    # Keep the historical bivariate route AD-friendly. The general
+    # multivariate implementation below uses MvNormalCDF/Float64 and is not
+    # intended to be differentiated by ForwardDiff.
     if d == 2
         x1, x2 = x
+
         (isinf(x1) || isinf(x2)) && return max(x1, x2)
+
         s = x1 + x2
         iszero(s) && return zero(s)
+
         return s * A(tail, x1 / s)
     end
 
     γ = abs2(2 / θ)
     isinf(γ) && return sum(x)
     iszero(γ) && return maximum(x)
+
     Γ = fill(float(γ), d, d)
     @inbounds for i in 1:d
         Γ[i, i] = zero(eltype(Γ))
@@ -238,19 +260,22 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
         length(active) == 1 && return length(I) == 1 ? (1, 0.0) : (0, -Inf)
         positions = Dict(i => k for (k, i) in pairs(active))
         reduced_I = Tuple(positions[i] for i in I)
-        reduced_tail = tail isa HuslerReissTail{<:Real} ? tail : HuslerReissTail(Γ[active, active])
+        reduced_tail = tail isa HuslerReissTail{<:Real} ? tail :
+                       HuslerReissTail(Γ[active, active])
         return _ellpartial_signlog(reduced_tail, x[active], reduced_I)
     end
 
     d = length(x)
     k = first(I)
-    Aidx = Base.tail(I)
-    Cidx = Tuple(i for i in 1:d if i ∉ I)
+    A = Base.tail(I)
+    C = Tuple(i for i in 1:d if i ∉ I)
+
     J, Σ = _hr_anchor_covariance(Γ, k)
     pos = Dict(j => a for (a, j) in enumerate(J))
     t = [log(Float64(x[k] / x[j])) + 0.5 * Float64(Γ[k, j]) for j in J]
-    apos = [pos[i] for i in Aidx]
-    cpos = [pos[i] for i in Cidx]
+
+    apos = [pos[i] for i in A]
+    cpos = [pos[i] for i in C]
 
     logϕ = 0.0
     tA = Float64[]
@@ -260,8 +285,14 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
         ΣAA = Σ[apos, apos]
         q = length(tA)
         logϕ = q == 1 ?
-            Distributions.logpdf(Distributions.Normal(0.0, sqrt(ΣAA[1, 1])), tA[1]) :
-            Distributions.logpdf(Distributions.MvNormal(zeros(q), LinearAlgebra.Symmetric(ΣAA)), tA)
+            Distributions.logpdf(
+                Distributions.Normal(0.0, sqrt(ΣAA[1, 1])),
+                tA[1],
+            ) :
+            Distributions.logpdf(
+                Distributions.MvNormal(zeros(q), LinearAlgebra.Symmetric(ΣAA)),
+                tA,
+            )
     end
 
     logΦ = 0.0
@@ -280,16 +311,23 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
         end
         q = length(tC)
         if q == 1
-            logΦ = Distributions.logcdf(Distributions.Normal(μC[1], sqrt(Σcond[1, 1])), tC[1])
+            logΦ = Distributions.logcdf(
+                Distributions.Normal(μC[1], sqrt(Σcond[1, 1])),
+                tC[1],
+            )
         else
             p = MvNormalCDF.mvnormcdf(
-                μC, Matrix(Σcond), fill(-Inf, q), tC; rng=Random.Xoshiro(0),
+                μC,
+                Matrix(Σcond),
+                fill(-Inf, q),
+                tC;
+                rng=Random.Xoshiro(0),
             )[1]
             logΦ = iszero(p) ? -Inf : log(p)
         end
     end
 
-    logjac = isempty(Aidx) ? 0.0 : sum(log(Float64(x[i])) for i in Aidx)
+    logjac = isempty(A) ? 0.0 : sum(log(Float64(x[i])) for i in A)
     logabs = logϕ + logΦ - logjac
     return isodd(length(I)) ? 1 : -1, logabs
 end
@@ -301,44 +339,56 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
         roots = Vector{Vector{Int}}(undef, d)
         means = Vector{Vector{Float64}}(undef, d)
         factors = Vector{Matrix{Float64}}(undef, d)
+
         for m in 1:d
             J, Σ = _hr_anchor_covariance(Γ, m)
             roots[m] = J
             means[m] = [-0.5 * Float64(Γ[j, m]) for j in J]
-            factors[m] = Matrix(LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ)).L)
+        factors[m] = Matrix(
+            LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ)).L,
+        )
         end
 
         logw = Vector{Float64}(undef, d)
         logz = Vector{Float64}(undef, d)
         ε = Vector{Float64}(undef, d - 1)
         work = Vector{Float64}(undef, d - 1)
+
         for col in axes(X, 2)
             fill!(logz, -Inf)
+
             arrival = Random.randexp(rng) / d
             logradius = -log(arrival)
+
             while logradius > minimum(logz)
                 m = rand(rng, 1:d)
                 J = roots[m]
                 μ = means[m]
                 L = factors[m]
+
                 Random.randn!(rng, ε)
                 LinearAlgebra.mul!(work, L, ε)
+
                 logw[m] = 0.0
                 @inbounds for a in eachindex(J)
                     logw[J[a]] = μ[a] + work[a]
                 end
+
                 lognorm = LogExpFunctions.logsumexp(logw)
                 @inbounds for i in 1:d
                     candidate = logradius + logw[i] - lognorm
                     logz[i] = max(logz[i], candidate)
                 end
+
                 arrival += Random.randexp(rng) / d
                 logradius = -log(arrival)
             end
+
             @inbounds for i in 1:d
                 X[i, col] = exp(-exp(-logz[i]))
             end
         end
+
         return X
     end
 end
@@ -352,29 +402,31 @@ function dA(tail::HuslerReissTail, t::Real)
     N = Distributions.Normal()
     Φ = Distributions.cdf
     ϕ = Distributions.pdf
+
     arg1 = inv(θ) + 0.5*θ*log(t/(1-t))
     arg2 = inv(θ) + 0.5*θ*log((1-t)/t)
+
     dA_term1 = Φ(N, arg1) + t * ϕ(N, arg1) * (0.5*θ * (1/t + 1/(1-t)))
     dA_term2 = -Φ(N, arg2) + (1-t) * ϕ(N, arg2) * (0.5*θ * (-1/t - 1/(1-t)))
+
     return dA_term1 + dA_term2
 end
 function d²A(tail::HuslerReissTail, t::Real)
     θ = _hr_theta(tail)
     iszero(θ) && return zero(t * θ)
-    N = Distributions.Normal()
-    ϕ = Distributions.pdf
+    N  = Distributions.Normal()
+    ϕ  = Distributions.pdf
     invθ = inv(θ)
-    L = log(t/(1 - t))
-    a1 = invθ + 0.5*θ*L
-    a2 = invθ - 0.5*θ*L
-    s = 1/t + 1/(1 - t)
-    s2 = -1/t^2 + 1/(1 - t)^2
+    L   = log(t/(1 - t))
+    a1  = invθ + 0.5*θ*L
+    a2  = invθ - 0.5*θ*L
+    s   = 1/t + 1/(1 - t)
+    s2  = -1/t^2 + 1/(1 - t)^2
     a1p = 0.5*θ*s
-    a1pp = 0.5*θ*s2
-    ϕ1 = ϕ(N, a1)
-    ϕ2 = ϕ(N, a2)
-    return 2*(ϕ1 + ϕ2)*a1p + t*ϕ1*(a1pp - a1*a1p^2) +
-           (1 - t)*ϕ2*(-a1pp - a2*a1p^2)
+    a1pp= 0.5*θ*s2
+    ϕ1  = ϕ(N, a1)
+    ϕ2  = ϕ(N, a2)
+    return 2*(ϕ1 + ϕ2)*a1p + t*ϕ1*(a1pp - a1*a1p^2) + (1 - t)*ϕ2*(-a1pp - a2*a1p^2)
 end
 
 _tau_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : QuadGK.quadgk(t -> d²A(HuslerReissTail(θ),t)*t*(1-t)/max(A(HuslerReissTail(θ),t),_δ(t)), 0, 1; kw...)[1]
@@ -385,9 +437,9 @@ _rho_HuslerReiss(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.qu
 λᵤ(C::ExtremeValueCopula{2,<:HuslerReissTail}) = 2 * (1 - Distributions.cdf(Distributions.Normal(), 1 / _hr_theta(C.tail)))
 β(C::ExtremeValueCopula{2,<:HuslerReissTail}) = 4^(1 - Distributions.cdf(Distributions.Normal(), 1 / _hr_theta(C.tail))) - 1
 
-τ⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ >= 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
-τ⁻¹(::Type{<:HuslerReissTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ >= 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
-ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ >= 1 ? θmax : _invmono(θ -> _rho_HuslerReiss(θ) - ρ; kw...)
+τ⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
+τ⁻¹(::Type{<:HuslerReissTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? θmax : _invmono(θ -> _tau_HuslerReiss(θ) - τ; kw...)
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ ≥ 1 ? θmax : _invmono(θ -> _rho_HuslerReiss(θ) - ρ; kw...)
 λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, λ) = 1 / Distributions.quantile(Distributions.Normal(), 1 - λ/2)
 function β⁻¹(::Type{<:ExtremeValueCopula{D,<:HuslerReissTail} where D}, beta)
     p = 1 - log(beta + 1) / log(4)

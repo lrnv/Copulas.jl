@@ -248,8 +248,12 @@ function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}; weights=nothing) whe
     α₀ = zeros(Paramorph.dimension(p))
     cop(α) = _parameter_space_copula(CT, d, p, α)
     loss(C) = -_weighted_loglikelihood(C, U, weights)
-    res = Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS();
-                         autodiff=ADTypes.AutoForwardDiff())
+    res = Optim.optimize(
+        loss ∘ cop,
+        α₀,
+        Optim.LBFGS();
+        autodiff=ADTypes.AutoForwardDiff()
+    )
     return cop(Optim.minimizer(res))
 end
 
@@ -274,10 +278,11 @@ function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau},Val{:irho},Val{:ib
 end
 function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
     p = Paramorph.param_space(CT, d)
-    α₀ = zeros(Paramorph.dimension(p))
-    length(α₀) <= d*(d-1)÷2 || throw(ArgumentError(
+    intrisic_dim = Paramorph.dimension(p)
+    intrisic_dim <= d*(d-1)÷2 || throw(ArgumentError(
         "cannot use $method in dimension $d with $(length(α₀)) free parameters; " *
         "only $(d*(d-1)÷2) pairwise rank constraints are available"))
+    α₀ = zeros(intrisic_dim)
     cop(α) = _parameter_space_copula(CT, d, p, α)
     fun = method isa Val{:itau} ? StatsBase.corkendall :
           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
