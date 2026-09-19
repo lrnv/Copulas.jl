@@ -8,7 +8,7 @@
 function Paramorph.param_space(S::SklarDist)
     copula_space = Paramorph.Prefixed(:copula, Paramorph.param_space(S.C))
     margin_spaces = ntuple(length(S.m)) do i
-        Paramorph.Prefixed(Symbol("margin_", i), Paramorph.param_space(S.m[i]))
+        Paramorph.Prefixed(Symbol("margin_", string(i)), Paramorph.param_space(S.m[i]))
     end
     return (copula_space, margin_spaces...)
 end
@@ -77,7 +77,7 @@ _coefficient_parameter_values(S::AbstractReflectedCopula, p) =
     _coefficient_parameter_values(basecopula(S), p)
 
 @inline function _parameter_prefix(prefix::String, part)
-    text = String(part)
+    text = string(part)
     isempty(prefix) && return text
     isempty(text) && return prefix
     return string(prefix, "_", text)
