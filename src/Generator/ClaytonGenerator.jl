@@ -131,12 +131,46 @@ function _archimedean_cdf(C::ClaytonCopula{d}, u) where {d}
     return @invoke _archimedean_cdf(C::ArchimedeanCopula, u)
 end
 
+@inline _clayton_primal(x) = x
+@inline _clayton_primal(x::ForwardDiff.Dual) = _clayton_primal(ForwardDiff.value(x))
+
+function _clayton_independence_logpdf(θ, u, ::Val{d}) where {d}
+    T = θ + zero(eltype(u))
+    L1 = zero(T)
+    L2 = zero(T)
+    L3 = zero(T)
+    @inbounds for t in u
+        zero(t) < t < one(t) || return oftype(T, -Inf)
+        lt = log(t)
+        L1 += lt
+        L2 += lt * lt
+        L3 += lt * lt * lt
+    end
+
+    # If q(θ) = Σ(expm1(-θ log uᵢ)), write
+    # log1p(q(θ)) = b₁θ + b₂θ² + b₃θ³ + O(θ⁴). The singular factor
+    # -(1/θ + d) has a removable singularity, and these coefficients give the
+    # log-density through second order. Keeping θ in the polynomial preserves
+    # first and second derivatives for ForwardDiff at the independence point.
+    b2 = (L2 - L1 * L1) / 2
+    b3 = -L1 * L1 * L1 / 3 + L1 * L2 / 2 - L3 / 6
+    k1 = oftype(T, d * (d - 1)) / 2
+    k2 = -oftype(T, d * (d - 1) * (2d - 1)) / 12
+    c1 = k1 + (d - 1) * L1 - b2
+    c2 = k2 - b3 - d * b2
+    return θ * (c1 + θ * c2)
+end
+
 function _archimedean_logpdf(C::ClaytonCopula{d}, u) where {d}
     θ = C.G.θ
     T = θ + zero(eltype(u))
 
-    # Continuous independence extension.
-    iszero(θ) && return zero(T)
+    # The primal independence value has a removable singularity in the closed
+    # form below. Use its second-order expansion for Dual values whose primal is
+    # exactly zero so gradient/Hessian based fitting can start at independence.
+    # A plain scalar θ == 0 is routed through Π_LIMIT before reaching this method.
+    iszero(_clayton_primal(θ)) && return _clayton_independence_logpdf(θ, u, Val(d))
+
     # S1 is Σ (tᵢ^(-θ) - 1), accumulated through `expm1` so that it does not
     # cancel below eps; the density's last factor is (S1 + 1)^(-1/θ - d).
     S1 = zero(T)
