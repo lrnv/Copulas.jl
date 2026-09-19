@@ -154,6 +154,7 @@ function Paramorph.param_space(::Type{<:AsymGalambosTail}, d::Integer)
     end
     return (dep_space, weight_spaces...)
 end
+_tail_constructor_parameter_names(::Type{<:AsymGalambosTail}, _) = (:α, :θ₁, :θ₂)
 
 function A(tail::AsymGalambosTail, t::Real)
     tt = _safett(t)

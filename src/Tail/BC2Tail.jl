@@ -70,6 +70,7 @@ end
 
 
 Paramorph.param_space(::Type{<:BC2Tail}, d) = Paramorph.ProbVec(:a, 2)
+_tail_constructor_parameter_names(::Type{<:BC2Tail}, _) = (:a, :b)
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:BC2Tail} where D}, d) =
     d == 2 ? (:mle,) : ()
 

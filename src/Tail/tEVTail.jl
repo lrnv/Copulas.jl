@@ -109,6 +109,9 @@ function Paramorph.param_space(::Type{<:tEVTail{<:Any,<:Real}}, d)
 end
 Paramorph.param_space(::Type{<:tEVTail{<:Any,<:AbstractMatrix}}, d) =
     (Paramorph.Pos(:ν), Paramorph.Correlation(:R, d))
+    
+_tail_constructor_parameter_names(::Type{<:tEVTail}, kwkeys) = :R in kwkeys ? (:ν, :R) : (:ν, :ρ)
+
 _available_fitting_methods(
     ::Type{<:ExtremeValueCopula{D,<:tEVTail{<:Any,<:AbstractMatrix}} where D},
     d,

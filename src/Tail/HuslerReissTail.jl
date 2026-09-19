@@ -132,6 +132,8 @@ _available_fitting_methods(
     ::Type{<:ExtremeValueCopula{D,<:HuslerReissTail{<:AbstractMatrix}} where D},
     d,
 ) = ()
+_tail_constructor_parameter_names(::Type{<:HuslerReissTail}, kwkeys) =
+    :Γ in kwkeys ? (:Γ,) : (:θ,)
 
 function A(tail::HuslerReissTail, t::Real)
     tt = _safett(t)

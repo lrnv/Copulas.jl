@@ -356,7 +356,7 @@ Each sub-API is based on the general interface described above (`cdf`, `logpdf`,
 
 Archimedean copulas are defined by a generator function ϕ. The basic custom
 generator mechanism is supported public API: define a subtype of
-[`Generator`](@ref) and implement its two-method mathematical contract:
+[`Generator`](@ref) and implement its mathematical contract:
 
 ```julia
 struct MyGenerator{T} <: Generator

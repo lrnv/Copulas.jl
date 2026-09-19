@@ -215,9 +215,7 @@ generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
 Paramorph.param_space(CT::Type{<:ArchimedeanCopula}, d::Integer) =
     Paramorph.param_space(generatorof(CT), d)
 
-function _parameter_space_copula(
-    CT::Type{<:ArchimedeanCopula}, d, p, α,
-)
+function _parameter_space_copula(CT::Type{<:ArchimedeanCopula}, d, p, α)
     η = _parameter_arguments(Paramorph.constrain(p, α))
     return _dynamic_archimedean(CT, d, η...)
 end
@@ -317,10 +315,12 @@ _available_fitting_methods(::Type{ArchimedeanCopula}, d) = (:gnz2011,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}, d) = (:mle,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}, d) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where d}, d) = Tuple{}()
-_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = Tuple{}()
+_available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = Tuple{}() # No fitting method.
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:𝒲{<:Distributions.DiscreteNonParametric}} where d}, d) = (:gnz2011,)
 
+
 function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:𝒲{<:Distributions.DiscreteNonParametric}} where d}}, U, ::Val{:gnz2011})
+    # When fitting only an archimedean copula with no specified general, you get and empiricalgenerator fitted.
     return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U))
 end
 

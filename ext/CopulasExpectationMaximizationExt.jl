@@ -76,7 +76,6 @@ function _fit_mle_weighted(
     ::Val{d},
 ) where {d}
     CT = typeof(C)
-
     pspace = Paramorph.param_space(CT, d)
     alpha0 = Paramorph.unconstrain(pspace, Distributions.params(C))
     copula(alpha) = Copulas._parameter_space_copula(CT, d, pspace, alpha)
@@ -88,6 +87,7 @@ function _fit_mle_weighted(
         @inbounds for j in axes(U, 2)
             weight = weights[j]
             iszero(weight) && continue
+
             loss -= weight * Distributions.logpdf(
                 fitted,
                 view(U, :, j),

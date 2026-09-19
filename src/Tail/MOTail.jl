@@ -101,6 +101,8 @@ function Paramorph.param_space(::Type{<:MOTail}, d)
     d == 2 || throw(ArgumentError("generic Marshall-Olkin parameter coordinates are available only in dimension two"))
     return (Paramorph.Pos(:λ₁), Paramorph.Pos(:λ₂), Paramorph.Pos(:λ₁₂))
 end
+_tail_constructor_parameter_names(::Type{<:MOTail}, _) = (:λ₁, :λ₂, :λ₃)
+
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:MOTail} where D}, d) =
     d == 2 ? (:mle,) : ()
 
