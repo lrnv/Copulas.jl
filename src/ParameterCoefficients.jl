@@ -178,9 +178,11 @@ function _append_space_coefficients!(names, values,
     return nothing
 end
 
-# A simplex has one redundant natural entry. Paramorph's anchor identifies the
-# entry omitted from the Euclidean chart, so omit the same entry from StatsBase
-# coefficients and retain a full-rank natural coefficient vector.
+# A simplex has one redundant natural entry. StatsBase coefficients use a fixed
+# natural convention (omit the first entry), independent of Paramorph's chart
+# anchor. The anchor is an optimization detail and may legitimately differ
+# between instances; exposing it here would make coefficient identities change
+# across bootstrap refits.
 function _append_space_coefficients!(names, values,
         p::Paramorph.Simplex, logical::Tuple, prefix::String)
     length(logical) == 1 || throw(DimensionMismatch(
@@ -191,7 +193,7 @@ function _append_space_coefficients!(names, values,
     n == p.n || throw(DimensionMismatch(
         "simplex parameter has length $n; expected $(p.n)"))
     for i in eachindex(x)
-        i == p.anchor && continue
+        i == firstindex(x) && continue
         push!(names, _indexed_parameter_name(name, Int(i), n))
         push!(values, x[i])
     end
@@ -265,6 +267,9 @@ end
 _coefficient_data(M::CopulaModel{<:Copula}) = _structured_coefficient_data(M)
 _coefficient_data(M::CopulaModel{<:SklarDist}) = _structured_coefficient_data(M)
 
+_parameter_blocks(M::CopulaModel{<:Copula}) =
+    (; copula=eachindex(StatsBase.coef(M)), margins=())
+
 function _parameter_blocks(M::CopulaModel{<:SklarDist})
     D = fitted_distribution(M)
     p = Paramorph.param_space(D)
@@ -288,4 +293,33 @@ function _parameter_blocks(M::CopulaModel{<:SklarDist})
         "Sklar component spaces do not cover all model coefficients"))
 
     return (; copula=first(blocks), margins=Tuple(blocks[2:end]))
+end
+
+# Analytical inference is performed in the Euclidean Paramorph chart, then
+# pushed forward to the same natural scalar coefficients exposed by StatsBase.
+# Specializing on Paramorph spaces keeps the old shape-driven flattening path out
+# of every current copula inference route and, in particular, keeps simplex
+# covariance dimensions equal to the model's free-parameter count.
+function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
+        d::Int, pspace::Paramorph.AbstractParameterSpace, α, Vα)
+    J = ForwardDiff.jacobian(
+        αv -> _space_coefficients(
+            pspace,
+            Distributions.params(_parameter_space_copula(CT, d, pspace, αv)),
+        )[2],
+        α,
+    )
+    return _validate_inference_covariance(J * Vα * J')
+end
+
+function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
+        d::Int, pspace::Tuple, α, Vα)
+    J = ForwardDiff.jacobian(
+        αv -> _space_coefficients(
+            pspace,
+            Distributions.params(_parameter_space_copula(CT, d, pspace, αv)),
+        )[2],
+        α,
+    )
+    return _validate_inference_covariance(J * Vα * J')
 end
