@@ -1,4 +1,4 @@
-name: Temporary test hang diagnostics
+name: Temporary coefficient hang diagnostics
 
 on:
   push:
@@ -10,35 +10,54 @@ on:
 jobs:
   isolate:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
-        file:
-          - operations/fitting.jl
-          - operations/parameter_coefficients.jl
-          - operations/inference.jl
-          - operations/fitting_selection.jl
+        case:
+          - sklar
+          - structural
+          - reflected
+          - empirical
+          - gaussian
+          - gaussian_show
+          - simplex
+          - tawn
     steps:
       - uses: actions/checkout@v7
       - uses: julia-actions/setup-julia@v3
         with:
           version: '1'
       - uses: julia-actions/cache@v3
-      - name: Restrict suite to one file
-        env:
-          TEST_FILE: ${{ matrix.file }}
-        run: |
-          python - <<'PY'
-          import os, re
-          from pathlib import Path
-          p = Path('test/runtests.jl')
-          s = p.read_text()
-          replacement = 'testfiles = (\n    "' + os.environ['TEST_FILE'] + '",\n)'
-          s, n = re.subn(r'testfiles = \(\n.*?\n\)', replacement, s, count=1, flags=re.S)
-          assert n == 1
-          p.write_text(s)
-          PY
       - uses: julia-actions/julia-buildpkg@v1
-      - name: Run isolated test file
-        run: julia --project --startup-file=no -e 'using Pkg; Pkg.test(; coverage=false)'
+      - name: Run coefficient case
+        env:
+          CASE: ${{ matrix.case }}
+        run: |
+          case "$CASE" in
+            sklar)
+              CODE='D=SklarDist(ClaytonCopula(2,1.25),(Normal(2.0,3.0),Exponential(4.0))); M=CopulaModel(D,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M); @show Copulas._parameter_blocks(M)'
+              ;;
+            structural)
+              CODE='D=SklarDist(ClaytonCopula(2,0.5),(Binomial(5,0.4),Normal())); M=CopulaModel(D,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
+              ;;
+            reflected)
+              CODE='R=Rotated90Copula(ClaytonCopula(2,0.75)); M=CopulaModel(R,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
+              ;;
+            empirical)
+              CODE='E=EmpiricalCopula([0.2 0.8;0.3 0.7]); M=CopulaModel(E,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
+              ;;
+            gaussian)
+              CODE='G=GaussianCopula([1.0 0.4 0.2;0.4 1.0 0.3;0.2 0.3 1.0]); M=CopulaModel(G,zeros(3,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
+              ;;
+            gaussian_show)
+              CODE='G=GaussianCopula([1.0 0.4 0.2;0.4 1.0 0.3;0.2 0.3 1.0]); M=CopulaModel(G,zeros(3,1),0.0,Copulas._CopulaFitSpec(GaussianCopula,:mle,(;))); println(sprint(show,M))'
+              ;;
+            simplex)
+              CODE='D=SklarDist(ClaytonCopula(2,0.5),(Categorical([0.1,0.2,0.7]),Normal())); M=CopulaModel(D,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
+              ;;
+            tawn)
+              CODE='T=TawnCopula(2,[2.0],[0.2,0.8],[0.3,0.7]); M=CopulaModel(T,zeros(2,1),0.0,nothing); @show coefnames(M); @show coef(M); @show dof(M)'
+              ;;
+          esac
+          timeout 60s julia --project --startup-file=no -e "using Copulas, StatsBase, Distributions; $CODE"
