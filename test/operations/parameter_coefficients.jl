@@ -50,20 +50,46 @@
     @test StatsBase.coef(MR) == [0.75]
 
     # Empirical plug-in state is explicitly zero-dimensional in Paramorph and is
-    # therefore neither a StatsBase coefficient vector nor a statistical dof.
+    # therefore neither a natural parameter tuple, a StatsBase coefficient
+    # vector, nor a statistical dof.
     Xemp = [0.2 0.8; 0.3 0.7]
     E = EmpiricalCopula(Xemp)
-    for C in (E, BetaCopula(Xemp), CheckerboardCopula(Xemp; m=2))
-        @test P.dimension(P.param_space(C)) == 0
+    for C in (
+        E,
+        BetaCopula(Xemp),
+        BernsteinCopula(Xemp; m=2),
+        CheckerboardCopula(Xemp; m=2),
+    )
+        @test P.param_space(C) == ()
+        @test Distributions.params(C) == ()
         @test StatsBase.dof(C) == 0
         MC = CopulaModel(C, zeros(2, 1), 0.0, nothing)
         @test isempty(StatsBase.coefnames(MC))
         @test isempty(StatsBase.coef(MC))
         @test StatsBase.dof(MC) == 0
     end
-    @test P.param_space(BernsteinCopula, 2) == ()
     @test P.param_space(Copulas.EmpiricalEVTail, 2) == ()
     @test P.param_space(Copulas.EmpiricalEVMultivariateTail, 3) == ()
+
+    # Ordinary parametric generators expose natural values through their
+    # Paramorph logical names rather than through incidental storage order.
+    Carch = ClaytonCopula(2, 1.25)
+    parch = P.param_space(Carch)
+    @test P.names(parch) == (:θ,)
+    @test Distributions.params(Carch) == (1.25,)
+    @test P.constrain(parch, P.unconstrain(parch, Distributions.params(Carch))) ==
+          Distributions.params(Carch)
+
+    # Liouville follows the same logical representation: generator parameters
+    # first, then the positive α vector. Fitting remains deliberately disabled.
+    L = LiouvilleCopula(Copulas.ClaytonGenerator(1.25), (0.8, 1.2))
+    pL = P.param_space(L)
+    @test P.names(pL) == (:θ, :α)
+    @test Distributions.params(L) == (1.25, [0.8, 1.2])
+    naturalL = P.constrain(pL, P.unconstrain(pL, Distributions.params(L)))
+    @test naturalL[1] ≈ 1.25
+    @test naturalL[2] ≈ [0.8, 1.2]
+    @test Copulas._available_fitting_methods(typeof(L), 2) == ()
 
     # Bivariate FGM is an ordinary bounded one-dimensional chart. Multivariate
     # FGM keeps its specialized optimizer because its feasible set is coupled.
@@ -158,4 +184,13 @@
     ]
     @test StatsBase.coef(MT) == [2.0, 0.2, 0.8, 0.3, 0.7]
     @test StatsBase.dof(MT) == P.dimension(P.param_space(T)) == 3
+
+    # Archimax composes the component natural representations instead of
+    # indexing storage by Paramorph names. This must work for Tawn, whose
+    # logical weights1/weights2 parameters are stored in one weights field.
+    AX = ArchimaxCopula(2, Copulas.ClaytonGenerator(1.25), T.tail)
+    @test P.names(P.param_space(AX)) ==
+          (:gen_θ, :tail_dep, :tail_weights1, :tail_weights2)
+    @test Distributions.params(AX) ==
+          (1.25, [2.0], [0.2, 0.8], [0.3, 0.7])
 end
