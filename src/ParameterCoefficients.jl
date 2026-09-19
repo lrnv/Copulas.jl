@@ -113,7 +113,19 @@ end
 _promoted_parameter_values(values) =
     isempty(values) ? Float64[] : collect(promote(float.(values)...))
 
+# A component with a known zero-dimensional Paramorph space has no statistical
+# coefficients. This keeps empirical or purely structural state out of `coef`.
+function _has_natural_coefficients(D)
+    p = try
+        Paramorph.param_space(D)
+    catch
+        nothing
+    end
+    return p === nothing || !iszero(Paramorph.dimension(p))
+end
+
 function _distribution_coefficients(D; prefix::String="")
+    _has_natural_coefficients(D) || return String[], Float64[]
     names = String[]
     values = Any[]
     _append_distribution_parameters!(names, values, D, prefix)
@@ -122,14 +134,18 @@ end
 
 function _distribution_coefficients(S::SklarDist; prefix::String="")
     names = String[]
-    values = Any[]
-    _append_distribution_parameters!(
-        names, values, S.C, _parameter_prefix(prefix, :copula))
+    values = Float64[]
+    component_names, component_values =
+        _distribution_coefficients(S.C; prefix=_parameter_prefix(prefix, :copula))
+    append!(names, component_names)
+    append!(values, component_values)
     for (i, margin) in pairs(S.m)
-        _append_distribution_parameters!(
-            names, values, margin, _parameter_prefix(prefix, Symbol("margin_", i)))
+        component_names, component_values = _distribution_coefficients(
+            margin; prefix=_parameter_prefix(prefix, Symbol("margin_", i)))
+        append!(names, component_names)
+        append!(values, component_values)
     end
-    return names, _promoted_parameter_values(values)
+    return names, values
 end
 
 # Nested Archimedean topology is structural rather than a flat distribution
