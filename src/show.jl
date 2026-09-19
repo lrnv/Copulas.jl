@@ -102,11 +102,11 @@ function _print_dependence_metrics(io, C)
     shown_any = false
     try
         if _specialized(:τ); _kv(io, "Kendall τ", Printf.@sprintf("%.4f", Copulas.τ(C))); shown_any = true; end
-        if _has(:ρ);  _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C)));  shown_any = true; end
-        if _has(:β);  _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C)));  shown_any = true; end
+        if _specialized(:ρ);  _kv(io, "Spearman ρ", Printf.@sprintf("%.4f", Copulas.ρ(C)));  shown_any = true; end
+        if _specialized(:β);  _kv(io, "Blomqvist β",Printf.@sprintf("%.4f", Copulas.β(C)));  shown_any = true; end
         if _specialized(:γ); _kv(io, "Gini γ", Printf.@sprintf("%.4f", Copulas.γ(C))); shown_any = true; end
-        if _has(:λᵤ); _kv(io, "Upper λᵤ",   Printf.@sprintf("%.4f", Copulas.λᵤ(C))); shown_any = true; end
-        if _has(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C))); shown_any = true; end
+        if _specialized(:λᵤ); _kv(io, "Upper λᵤ",   Printf.@sprintf("%.4f", Copulas.λᵤ(C))); shown_any = true; end
+        if _specialized(:λₗ); _kv(io, "Lower λₗ",   Printf.@sprintf("%.4f", Copulas.λₗ(C))); shown_any = true; end
         if _specialized(:ι); _kv(io, "Entropy ι", Printf.@sprintf("%.4f", Copulas.ι(C))); shown_any = true; end
     catch
         # Display must not fail because an optional dependence metric does.
