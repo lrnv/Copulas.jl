@@ -1,6 +1,10 @@
 @testset "Paramorph coefficient structure" begin
     P = Copulas.Paramorph
 
+    @test !isdefined(Copulas, :_natural_parameters)
+    @test !isdefined(Copulas, :_append_parameter!)
+    @test !isdefined(Copulas, :_flatten_params)
+
     # Sklar is a Cartesian product of prefixed component spaces. Names and
     # coefficient blocks follow that structure rather than reparsing strings.
     D = SklarDist(
