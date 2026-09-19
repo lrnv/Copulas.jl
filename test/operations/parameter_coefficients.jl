@@ -81,6 +81,7 @@
     @test occursin("Degrees of freedom", report)
     @test occursin("Σ:", report)
     @test !occursin("Σ₁₂", report)
+    @test !occursin("Spearman ρ", report)
 
     # Simplex vectors likewise expose every natural probability even though one
     # entry is redundant in the optimization geometry.
