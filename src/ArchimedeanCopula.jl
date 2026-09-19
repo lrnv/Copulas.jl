@@ -122,7 +122,7 @@ end
 function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
     return _typed_archimedean(CT, args...; kwargs...)
 end
-function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...) where {D}
+function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...)
     d = Base.unwrap_unionall(CT).parameters[1]
     return d isa TypeVar ?
         _dynamic_archimedean(CT, first, args...; kwargs...) :
