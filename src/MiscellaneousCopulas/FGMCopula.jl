@@ -74,6 +74,15 @@ Base.eltype(C::FGMCopula) = eltype(C.θ)
 Distributions.params(C::FGMCopula) = (collect(C.θ),)
 _available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho, :ibeta) : (:mle,)
 
+# The bivariate FGM domain is an ordinary bounded scalar chart. Higher-dimensional
+# FGM parameters satisfy coupled hypercube-corner inequalities and deliberately
+# keep their specialized constrained optimizer below.
+function Paramorph.param_space(::Type{<:FGMCopula}, d::Integer)
+    d == 2 || throw(ArgumentError(
+        "multivariate FGM has coupled parameter constraints not represented by a Paramorph product space"))
+    return Paramorph.Bounded(:θ, -1.0, 1.0)
+end
+
 function _cdf(fgm::FGMCopula{d}, u::Vector{T}) where {d,T}
     return prod(u) * (1 + _fgm_red(fgm.θ, 1 .-u))
 end
@@ -143,26 +152,14 @@ function _fit(
     weights=nothing,
 )
     size(U, 1) == 2 || throw(ArgumentError("rank fitting for FGM is available only in dimension two"))
-    fun = method isa Val{:itau} ? StatsBase.corkendall :
-          method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
-    est = _rank_measure(method, U, weights)[1, 2]
-    loss(α) = abs2(est - fun(FGMCopula(2, tanh(α[1])))[1, 2])
-    res = Optim.optimize(loss, [0.0], Optim.NelderMead())
-    return CT(2, tanh(Optim.minimizer(res)[1]))
+    return _fit(CT, U, Val(2), method; weights)
 end
 
 function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle}; weights=nothing)
     d = size(U,1)
 
     if d == 2
-        res = Optim.optimize(
-            α -> -_weighted_loglikelihood(FGMCopula(2, tanh(α[1])), U, weights),
-            [0.1],
-            Optim.LBFGS();
-            autodiff=ADTypes.AutoForwardDiff(),
-        )
-        θ = tanh(Optim.minimizer(res)[1])
-        return CT(d, θ)
+        return _fit(CT, U, Val(2), Val(:mle); weights)
     end
 
     cop(θ) = FGMCopula(d, θ)

@@ -54,7 +54,7 @@ end
     displayed = sprint(show, model)
     copula_section = split(split(displayed, "[ Copula parameters ]")[2],
                            "[ Marginals ]")[1]
-    @test occursin("copula_", copula_section)
+    @test occursin("θ:", copula_section)
     @test !occursin("margin_", copula_section)
     inference = infer(model; method=:bootstrap, nresamples=3,
                       rng=StableRNG(114))
