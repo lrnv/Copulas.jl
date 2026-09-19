@@ -48,8 +48,9 @@
 
     # Matrix and simplex coefficientization is driven by the space. A
     # correlation matrix contributes only off-diagonal entries, while a
-    # simplex omits its Paramorph anchor so the coefficient count equals the
-    # number of free coordinates.
+    # simplex uses a fixed natural convention (omit its first entry) so the
+    # coefficient count equals the number of free coordinates without leaking
+    # Paramorph's optimization-chart anchor into the public coefficient names.
     G = GaussianCopula([
         1.0 0.4 0.2
         0.4 1.0 0.3
@@ -59,6 +60,14 @@
     @test StatsBase.coefnames(MG) == ["Σ₁₂", "Σ₁₃", "Σ₂₃"]
     @test StatsBase.coef(MG) == [0.4, 0.2, 0.3]
     @test StatsBase.dof(MG) == P.dimension(P.param_space(G)) == 3
+
+    p1 = P.Simplex(:p, [0.8, 0.1, 0.1])
+    p2 = P.Simplex(:p, [0.1, 0.8, 0.1])
+    @test p1.anchor != p2.anchor
+    @test Copulas._space_coefficients(p1, ([0.8, 0.1, 0.1],)) ==
+          (["p₂", "p₃"], [0.1, 0.1])
+    @test Copulas._space_coefficients(p2, ([0.1, 0.8, 0.1],)) ==
+          (["p₂", "p₃"], [0.8, 0.1])
 
     T = TawnCopula(
         2,
