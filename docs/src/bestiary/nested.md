@@ -74,103 +74,37 @@ logpdf(C3, [0.2, 0.3, 0.4, 0.5])
 A purely flat declaration (only `leaves`, no `children`) returns the package's
 native [`ArchimedeanCopula`](@ref) so its fast specialised density is used.
 
-Be careful about validity of the wanted nesting tree. Let us recall from
-[hofert2012nesting](@cite) and [mcneil2008](@cite) the following central results.
+## Construction and fitting validity
 
+The public constructor validates the **tree structure**: dimensions must be
+consistent, child blocks and root leaves must be placed without overlap, and
+each node generator must support the dimension in which it is used. It does
+not attempt to certify the mathematical parent-child nesting relation. Explicit
+construction therefore remains permissive, as it was before the fitting
+parameter-space machinery was introduced.
 
-::: theorem Two-generator nesting condition
+Template fitting is deliberately stricter. For
+`fit(template::NestedArchimedeanCopula, data)`, Copulas.jl asks
+`Paramorph.param_space(template)` for the supported dependent parameter
+geometry. The optimiser works only in unconstrained coordinates and
+`Paramorph.constrain` reconstructs candidate trees inside that geometry. An
+initial template outside the supported region, or a tree for which no fitting
+geometry is implemented, is rejected before optimisation.
 
-Consider one parent generator ``\phi_0`` and one child generator ``\phi_1``,
-with a child block of dimension ``d_1 \ge 2``. Write
-``h = \phi_0^{-1} \circ \phi_1``. Assuming the parent and child generators
-are themselves valid Archimedean generators for their respective dimensions,
-the two-generator nested construction is valid if and only if ``h'`` is
-``d_1``-alternating on ``(0,\infty)`` [hofert2012nesting](@cite), [rezapour2015nested](@cite).
-
-The often-used **sufficient nesting condition** asks instead that ``h'`` be
-completely monotone [mcneil2008](@cite). This stronger condition is convenient
-because it is dimension-free, but it is not necessary in finite dimensions.
-
-For a full tree, the finite-dimensional condition must hold on every
-parent-child edge, using the dimension of the child subtree.
-
-:::
-
-!!! note "Nesting validity"
-    The constructor checks only the tree structure and the placement of dimensions.
-    It deliberately does **not** reject a tree because a parent-child nesting is
-    mathematically invalid or unsupported. This keeps explicit construction
-    permissive for expert use. Template fitting is stricter: it first constructs a
-    nesting-aware Paramorph parameter space and therefore rejects unsupported or
-    out-of-region templates before optimisation.
-
-### Nesting validity and fitting geometry
-
-For template fitting, each supported edge is encoded directly in a
-`Paramorph.DependentProduct`. The child's intrinsic generator domain is intersected
-with the parent-child nesting constraint, so every finite optimiser coordinate maps
-to a nesting that satisfies the implemented rule.
-
-The currently implemented one-parameter rules are:
-
-| Parent generator | Child generator | Fitting-valid region |
-| --- | --- | --- |
-| `IndependentGenerator` | any generator with an available local parameter space | no additional constraint |
-| AMH | AMH | ``\theta_c \ge \theta_p`` |
-| Clayton | Clayton | ``\theta_c \ge \theta_p`` |
-| Frank | Frank | ``\theta_c \ge \theta_p`` |
-| Gumbel | Gumbel | ``\theta_c \ge \theta_p`` |
-| Gumbel-Barnett | Gumbel-Barnett | ``\theta_c \le \theta_p`` |
-| inverse-Gaussian | inverse-Gaussian | ``\theta_c \ge \theta_p`` |
-| Joe | Joe | ``\theta_c \ge \theta_p`` |
-| AMH | Clayton | ``\theta_c \ge 1`` |
-
-Here ``\theta_p`` and ``\theta_c`` denote the parent and child parameters. The
-usual parametric representations of independence such as AMH(0), Clayton(0),
-Frank(0), Gumbel(1), Gumbel-Barnett(0), inverse-Gaussian(0), and Joe(1) are also
-mathematically valid above arbitrary valid children. They are not exposed as
-cross-family fitting rules because fixing the parent exactly at independence is a
-lower-dimensional boundary of the corresponding parametric family; use
-`IndependentGenerator` when that is the intended parent model.
-
-Some invalid regions are already known analytically. In particular:
-
-- for the homogeneous AMH, Clayton, Frank, Gumbel, inverse-Gaussian and Joe
-  families, ``\theta_c < \theta_p`` violates the implemented nesting condition;
-- for homogeneous Gumbel-Barnett, ``\theta_c > \theta_p`` violates it;
-- a strictly positive Clayton parent cannot contain a finite Frank, Gumbel, or Joe
-  child (for child dimension at least two); these are certified invalid, not merely
-  unsupported.
-
-These negative results are intentionally different from a missing rule: absence
-from the table above does **not** imply invalidity.
-
-::: todo "Help complete the nesting-rule table"
-
-    The validity classification is not yet exhaustive, especially for heterogeneous
-    generator pairs and for the multi-parameter BB families. We already know some
-    additional valid and invalid BB slices analytically, but they are not yet
-    represented by the fitting geometry. Contributions are welcome to:
-
-    - prove additional parent-child validity or impossibility results;
-    - translate newly proved one-parameter rules into `GreaterThan`, `LowerThan`,
-      or fixed-bound Paramorph geometries;
-    - design suitable dependent parameter geometries for multi-parameter families;
-    - add regression tests documenting the exact parameter region covered by each
-      new rule.
-
-    Please keep unsupported cases distinct from certified-invalid cases in the
-    mathematical discussion, even though template fitting rejects both until a
-    fitting geometry is implemented.
-
-:::
+This separation is intentional: **construction describes a model; Paramorph
+describes the subset that the generic fitter knows how to optimise safely**.
+Consequently, a tree being unsupported by template fitting does not imply that
+the constructor should reject it. Additional fitting support belongs in the
+Paramorph geometry and its regression tests rather than in constructor-level
+nesting rules.
 
 # Fitting
 
 `fit` performs maximum-likelihood estimation of the generator parameters on a
 **fixed tree**: the leaf layout and the generator family at each node come from a
-template instance, and only the scalar ``\theta`` of each node is optimised. Pass
-the template and a `d×n` matrix of pseudo-observations (columns are observations).
+template instance, while the supported free parameters are determined by that
+template's Paramorph space. Pass the template and a `d×n` matrix of
+pseudo-observations (columns are observations).
 
 ```@example nested
 using Random
@@ -190,10 +124,10 @@ The optimiser runs in an unconstrained space through a **parametrisation** — a
 a **template** tree. For full control, pass your own map and its initial point,
 `fit(CopulaModel, reparam, init, U)` — no template needed, since `reparam` builds
 the whole tree. This lets you share parameters across nodes, fit on a different
-scale, or encode a constraint.
+scale, or encode an application-specific constraint.
 
-For instance, enforce the nesting condition by building each child's ``\theta`` as
-a non-negative increment over its parent's, so every step is a valid nesting:
+For instance, a custom map can make each child's ``\theta`` a non-negative
+increment over its parent's:
 
 ```@example nested
 softplus(x) = log1p(exp(-abs(x))) + max(x, zero(x))
@@ -201,7 +135,7 @@ nest = α -> NestedArchimedeanCopula(ClaytonGenerator(exp(α[1]));
     children = [ClaytonCopula(2, exp(α[1]) + softplus(α[2])),
                 ClaytonCopula(2, exp(α[1]) + softplus(α[3]))])
 Mn = fit(CopulaModel, nest, [0.0, 0.0, 0.0], U)
-fitted_distribution(Mn) # inner θ ≥ outer θ by construction
+fitted_distribution(Mn)
 ```
 
 Or share one ``\theta`` across the root and both panels — a single free parameter:
