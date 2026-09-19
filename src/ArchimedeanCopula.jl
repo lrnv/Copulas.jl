@@ -122,16 +122,21 @@ end
 function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
     return _typed_archimedean(CT, args...; kwargs...)
 end
-function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...)
+function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...) where {D}
     d = Base.unwrap_unionall(CT).parameters[1]
     return d isa TypeVar ?
         _dynamic_archimedean(CT, first, args...; kwargs...) :
         _typed_archimedean(CT, first, args...; kwargs...)
 end
 
-function Distributions.params(C::ArchimedeanCopula)
-    p = Paramorph.param_space(C)
-    return map(Base.Fix1(getproperty, C.G), Paramorph.names(p))
+# Natural model parameters are independent of fitting geometry. Named fitted
+# families happen to store their constructor parameters directly in the
+# generator, while structural generators below keep explicit representations.
+function Distributions.params(C::ArchimedeanCopula{d,G}) where {d,G<:Generator}
+    return ntuple(fieldcount(G)) do i
+        value = getfield(C.G, i)
+        return value isa AbstractArray ? copy(value) : value
+    end
 end
 Distributions.params(::ArchimedeanCopula{d,<:MarkerGenerator}) where {d} = ()
 Distributions.params(C::ArchimedeanCopula{d,<:𝒲}) where {d} = (C.G.X, C.G.order)
