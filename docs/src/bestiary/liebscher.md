@@ -146,7 +146,7 @@ Marginalization preserves the Liebscher structure. Selecting a set of coordinate
 ```@example liebscher
 C31 = subsetdims(C3, (3, 1))
 
-params(C31).weights
+last(params(C31))
 ```
 
 The order of the requested coordinates is preserved:
