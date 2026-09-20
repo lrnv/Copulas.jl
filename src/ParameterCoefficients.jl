@@ -141,6 +141,35 @@ end
 _distribution_coefficients(C::NestedArchimedeanCopula; prefix::String="") =
     _nested_coef(C)
 
+# Liebscher topology is also structural. Expose natural parameters only for
+# component charts that participate in template fitting and for the active
+# simplex weights. The displayed coefficient vector may therefore be longer
+# than the intrinsic Paramorph dimension because each simplex keeps all of its
+# natural weights while contributing one fewer fitting degree of freedom.
+function _distribution_coefficients(C::LiebscherCopula{d}; prefix::String="") where {d}
+    names = String[]
+    values = Any[]
+
+    for (k, component) in pairs(C.copulas)
+        _liebscher_component_space(component) === nothing && continue
+        component_names, component_values = _distribution_coefficients(
+            component; prefix=_parameter_prefix(prefix, Symbol("C", k)))
+        append!(names, component_names)
+        append!(values, component_values)
+    end
+
+    for j in 1:d
+        active, p = _liebscher_weight_geometry(C.weights, j)
+        p === nothing && continue
+        for k in active
+            push!(names, _parameter_prefix(prefix, "a$(k)_$(j)"))
+            push!(values, C.weights[k, j])
+        end
+    end
+
+    return names, _promoted_parameter_values(values)
+end
+
 _distribution_coefficient_values(D) = last(_distribution_coefficients(D))
 
 _coefficient_data(M::CopulaModel{<:Copula}) =

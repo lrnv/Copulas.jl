@@ -86,6 +86,7 @@ module Copulas
     include("MiscellaneousCopulas/IndependentCopula.jl")
     include("MiscellaneousCopulas/MCopula.jl")
     include("MiscellaneousCopulas/WCopula.jl")
+    include("MiscellaneousCopulas/LiebscherCopula.jl")
 
     # Elliptical copulas
     include("EllipticalCopula.jl")
@@ -204,6 +205,7 @@ module Copulas
     export GaussianCopula, TCopula
     export BernsteinCopula, BetaCopula, CheckerboardCopula, EmpiricalCopula
     export FGMCopula, IndependentCopula, MCopula, WCopula
+    export LiebscherCopula, KhoudrajiCopula
     export PlackettCopula, RafteryCopula
 
     
