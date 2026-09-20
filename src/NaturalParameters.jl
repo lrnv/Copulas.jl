@@ -53,6 +53,16 @@ function Distributions.params(
     return (gvals..., tvals...)
 end
 
+# Liebscher is structurally composite: its natural public representation is the
+# constructor-order pair `(copulas, weights)`. The runtime Paramorph chart used
+# by template fitting is deliberately separate and may omit fixed components or
+# structural zero weights.
+function Distributions.params(
+    C::LiebscherCopula{d,CT,WT},
+) where {d,CT,WT}
+    return (C.copulas, copy(C.weights))
+end
+
 # Empirical plug-in state is fitted state, not a statistical parameter. These
 # objects have the zero-dimensional Paramorph space `()` and expose the same
 # zero-dimensional natural parameter representation.
