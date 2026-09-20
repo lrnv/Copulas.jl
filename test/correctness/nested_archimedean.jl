@@ -177,7 +177,6 @@ end
         # therefore fails when mapped into that chart, before optimisation.
         pbad = P.param_space(bad)
         @test_throws DomainError P.unconstrain(pbad, Copulas._nested_parameter_values(bad))
-
         good = NestedArchimedeanCopula(ClaytonGenerator(2.0);
                 children = [ClaytonCopula{2}(5.0)])
         pgood = P.param_space(good)
@@ -578,7 +577,8 @@ end
         Mn = Distributions.fit(Copulas.CopulaModel, nest, [0.0, 0.0], U)
         @test rootθ(Mn) ≤ childθ(Mn)                  # nesting enforced by the user's reparam
         @test StatsBase.dof(Mn) == 2
-        @test StatsBase.coefnames(Mn) == ["α1", "α2"]
+        @test StatsBase.coefnames(Mn) == ["G.θ", "G[1].θ"]
+        @test StatsBase.coef(Mn) ≈ [rootθ(Mn), childθ(Mn)]
 
         # custom reparam SHARING one θ across root and child → 1 free parameter
         recon = α -> (θ = exp(α[1]);
@@ -586,7 +586,8 @@ end
                                     children = [ClaytonCopula{2}(θ)]))
         Ms = Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U)
         @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
-        @test StatsBase.coefnames(Ms) == ["α1"]
+        @test StatsBase.coefnames(Ms) == ["G.θ", "G[1].θ"]
+        @test StatsBase.coef(Ms) ≈ [rootθ(Ms), childθ(Ms)]
         @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
 
         # Arbitrary-depth, non-Clayton templates preserve every family and
