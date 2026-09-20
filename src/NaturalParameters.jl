@@ -54,12 +54,14 @@ function Distributions.params(
 end
 
 # Liebscher is structurally composite: its natural public representation is the
-# constructor-order pair `(copulas, weights)`. The runtime Paramorph chart used
-# by template fitting is deliberately separate and may omit fixed components or
-# structural zero weights.
+# constructor-order pair `(copulas, weights)`. Public constructors always store
+# an AbstractMatrix weight container, making this strictly more specific than
+# the representation inherited from the pre-Paramorph Liebscher implementation.
+# The runtime Paramorph chart used by template fitting is deliberately separate
+# and may omit fixed components or structural zero weights.
 function Distributions.params(
     C::LiebscherCopula{d,CT,WT},
-) where {d,CT,WT}
+) where {d,CT,WT<:AbstractMatrix}
     return (C.copulas, copy(C.weights))
 end
 
