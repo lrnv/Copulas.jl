@@ -7,11 +7,12 @@
     @test C isa LiebscherCopula{2}
     @test length(C) == 2
     @test eltype(C) == Float64
-    @test params(C).copulas == (C1, C2)
-    @test params(C).weights == W
-    @test params(C).weights !== C.weights
+    copulas, weights = params(C)
+    @test copulas == (C1, C2)
+    @test weights == W
+    @test weights !== C.weights
 
-    reconstructed = typeof(C)(values(params(C))...)
+    reconstructed = typeof(C)(params(C)...)
 
     @test typeof(reconstructed) === typeof(C)
     @test params(reconstructed) == params(C)
@@ -218,8 +219,8 @@ end
 
     @test K isa LiebscherCopula{2}
     @test typeof(K) === typeof(L)
-    @test params(K).copulas == params(L).copulas
-    @test params(K).weights ≈ params(L).weights
+    @test first(params(K)) == first(params(L))
+    @test last(params(K)) ≈ last(params(L))
     @test K.weights ≈ W
 
     for u in ([0.31, 0.47], [0.52, 0.73], [0.81, 0.64])
