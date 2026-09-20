@@ -359,6 +359,7 @@ end
 
         :mle in methods || continue
         _has_fitting_parameters(C) || continue
+        C isa FGMCopula && d > 2 && continue  # specialized coupled-polytope MLE
         pspace = try
             Copulas.Paramorph.param_space(CT, d)
         catch err
@@ -935,17 +936,18 @@ end
     end
 
     @testset "the template fit stays in the certified nesting region" begin
-        # `_nested_rebound` skips the certificate, so the loss is `Inf` on a
-        # tree that fails one: a child Clayton θ below its parent's, or below
-        # zero, where the composed generator is not defined. Without the
-        # barrier the bootstrap refits below raise a `DomainError` from
-        # `composition_taylor` on three of these four seeds.
+        # The template's DependentProduct chart carries the supported nesting
+        # inequalities itself: every finite optimizer coordinate maps to a tree
+        # whose Clayton children remain above the parent.
         C0 = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
                                      children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)])
         recon = Base.Fix1(Copulas._nested_rebound, C0)
-        @test Copulas._nested_certified(recon(Copulas._nested_unbound(C0)))
-        @test !Copulas._nested_certified(recon([log(2.0), log(1.5), log(4.0)]))
-        @test !Copulas._nested_certified(recon([log(2.0), log(0.5), log(4.0)]))
+        for α in (Copulas._nested_unbound(C0),
+                  [log(2.0), log(1.5), log(4.0)],
+                  [log(2.0), log(0.5), log(4.0)])
+            Cα = recon(α)
+            @test all(ch -> Cα.G.θ <= Copulas._nested_child(ch).G.θ, Cα.children)
+        end
         Un = rand(StableRNG(524), C0, n)
         M = fit(CopulaModel, C0, Un)
         for seed in (528, 529, 530, 531)
