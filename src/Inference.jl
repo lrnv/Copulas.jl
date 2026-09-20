@@ -157,11 +157,34 @@ function _validate_inference_covariance(Vθ::AbstractMatrix)
     all(isfinite, Vθ) || throw(ArgumentError(
         "inference produced a non-finite covariance matrix"))
     Vθ = LinearAlgebra.Symmetric((Vθ + Vθ') / 2)
+    if size(Vθ) == (1, 1)
+        value = Vθ[1, 1]
+        scale = max(one(value), abs(value))
+        tol = sqrt(eps(float(one(value)))) * scale
+        value >= -tol || throw(ArgumentError(
+            "inference produced a covariance matrix that is not positive semidefinite"))
+        return Vθ
+    end
     scale = max(one(eltype(Vθ)), LinearAlgebra.opnorm(Matrix(Vθ), Inf))
     tol = sqrt(eps(float(one(eltype(Vθ))))) * scale
     LinearAlgebra.eigmin(Vθ) >= -tol || throw(ArgumentError(
         "inference produced a covariance matrix that is not positive semidefinite"))
     return Vθ
+end
+
+# A single scalar natural parameter does not need a full distribution
+# reconstruction merely to differentiate the optimizer-to-coefficient map.
+# This path is generic over parameter spaces; structured natural parameters
+# continue through the reconstruction-based fallback below.
+function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple{<:Number},
+                        d::Int, pspace, α, Vα)
+    j = ForwardDiff.gradient(
+        αv -> only(_parameter_arguments(Paramorph.constrain(pspace, αv))),
+        α,
+    )
+    J = reshape(j, 1, length(j))
+    Vθ = J * Vα * J'
+    return _validate_inference_covariance(Vθ)
 end
 
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
