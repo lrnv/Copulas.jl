@@ -163,14 +163,16 @@ function _fit(
     return _fit(CT, U, Val(2), method; weights)
 end
 
-function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle}; weights=nothing)
-    d = size(U,1)
+function _fit(CT::Type{<:FGMCopula}, U, method::Val{:mle}; weights=nothing)
+    d = size(U, 1)
+    d == 2 && return _fit(CT, U, Val(2), method; weights)
+    return _fit_fgm_multivariate(CT, U, Val(d); weights)
+end
 
-    if d == 2
-        return _fit(CT, U, Val(2), Val(:mle); weights)
-    end
-
-    cop(θ) = FGMCopula(d, θ)
+function _fit_fgm_multivariate(
+    ::Type{<:FGMCopula}, U, ::Val{d}; weights=nothing,
+) where {d}
+    cop(θ) = FGMCopula{d}(θ)
     nparams = 2^d - d - 1
     θ₀ = fill(0.5 / nparams, nparams)
 
@@ -199,5 +201,5 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle}; weights=nothing)
 
     res = Optim.optimize(loss, θ₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     θhat = Optim.minimizer(res)
-    return FGMCopula(d, θhat)
+    return FGMCopula{d}(θhat)
 end

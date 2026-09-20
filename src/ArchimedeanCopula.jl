@@ -110,15 +110,19 @@ function _typed_archimedean(CT::Type{<:ArchimedeanCopula{d}}, args...; kwargs...
     G isa WGenerator && return WCopula{d}()
     return _wrap_archimedean(Val(d), G)
 end
-function _dynamic_archimedean(CT::Type{<:ArchimedeanCopula}, d::Int, args...; kwargs...)
+function _dynamic_archimedean(
+    CT::Type{<:ArchimedeanCopula}, vd::Val{d}, args...; kwargs...
+) where {d}
     G = Base.typename(Base.unwrap_unionall(generatorof(CT))).wrapper(args...; kwargs...)
 
     G isa IndependentGenerator && return IndependentCopula{d}()
     G isa MGenerator && return MCopula{d}()
     G isa WGenerator && return WCopula{d}()
 
-    return invoke(ArchimedeanCopula{d}, Tuple{Generator}, G)
+    return _wrap_archimedean(vd, G)
 end
+_dynamic_archimedean(CT::Type{<:ArchimedeanCopula}, d::Int, args...; kwargs...) =
+    _dynamic_archimedean(CT, Val(d), args...; kwargs...)
 function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
     return _typed_archimedean(CT, args...; kwargs...)
 end
@@ -220,9 +224,11 @@ generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
 Paramorph.param_space(CT::Type{<:ArchimedeanCopula}, d::Integer) =
     Paramorph.param_space(generatorof(CT), d)
 
-function _parameter_space_copula(CT::Type{<:ArchimedeanCopula}, d, p, α)
+function _parameter_space_copula(
+    CT::Type{<:ArchimedeanCopula}, vd::Val{d}, p, α,
+) where {d}
     η = _parameter_arguments(Paramorph.constrain(p, α))
-    return _dynamic_archimedean(CT, d, η...)
+    return _dynamic_archimedean(CT, vd, η...)
 end
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
@@ -329,21 +335,25 @@ function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:𝒲{
     return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U))
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}}; weights=nothing)
-    d = size(U,1)
+function _fit(
+    CT::Type{<:ArchimedeanCopula{D, GT} where {D, GT<:UnivariateGenerator}},
+    U, vd::Val{d}, m::Union{Val{:itau},Val{:irho}}; weights=nothing,
+) where {d}
     GT = generatorof(CT)
     invf = m isa Val{:itau} ? τ⁻¹ : ρ⁻¹
     measure = _rank_measure(m, U, weights)
     upper_triangle_flat = [measure[idx] for idx in CartesianIndices(measure) if idx[1] < idx[2]]
     θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
     θ = Statistics.mean(θs)
-    return _dynamic_archimedean(CT, d, θ)
+    return _dynamic_archimedean(CT, vd, θ)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta}; weights=nothing)
-    d = size(U,1)
+function _fit(
+    CT::Type{<:ArchimedeanCopula{D, GT} where {D, GT<:UnivariateGenerator}},
+    U, vd::Val{d}, ::Val{:ibeta}; weights=nothing,
+) where {d}
     pspace = Paramorph.param_space(CT, d)
     βobs = clamp(_weighted_β(U, weights), nextfloat(-1.0), prevfloat(1.0))
-    cop(α) = _parameter_space_copula(CT, d, pspace, [α])
+    cop(α) = _parameter_space_copula(CT, vd, pspace, [α])
     obj(α) = β(cop(α)) - βobs
 
     lo, hi = -1.0, 1.0

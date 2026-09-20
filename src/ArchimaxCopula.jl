@@ -82,36 +82,40 @@ function Paramorph.param_space(CT::Type{<:ArchimaxCopula}, d)
     )
 end
 
-function _archimax_from_values(CT::Type{<:ArchimaxCopula}, d::Int, vals)
+function _archimax_from_values(
+    CT::Type{<:ArchimaxCopula}, vd::Val{d}, vals,
+) where {d}
     TG, TT = genandtailof(CT)
     ng = length(Paramorph.names(Paramorph.param_space(TG, d)))
     return ArchimaxCopula{d}(TG(vals[1:ng]...), TT(vals[(ng + 1):end]...))
 end
+_archimax_from_values(CT::Type{<:ArchimaxCopula}, d::Int, vals) =
+    _archimax_from_values(CT, Val(d), vals)
 
 function _parameter_space_copula(
-    CT::Type{<:ArchimaxCopula}, d, p, α,
-)
+    CT::Type{<:ArchimaxCopula}, vd::Val{d}, p, α,
+) where {d}
     vals = _parameter_arguments(Paramorph.constrain(p, α))
-    return _archimax_from_values(CT, d, vals)
+    return _archimax_from_values(CT, vd, vals)
 end
 
 function ArchimaxCopula(d::Int, TG::Type{<:Generator}, TT::Type{<:Tail}, θ::NamedTuple)
     CT = ArchimaxCopula{d,TG,TT}
     names = Paramorph.names(Paramorph.param_space(CT, d))
     vals = ntuple(i -> getproperty(θ, names[i]), length(names))
-    return _archimax_from_values(CT, d, vals)
+    return _archimax_from_values(CT, Val(d), vals)
 end
 
 function (CT::Type{<:ArchimaxCopula})(d::Int, θ::NamedTuple)
     names = Paramorph.names(Paramorph.param_space(CT, d))
     vals = ntuple(i -> getproperty(θ, names[i]), length(names))
-    return _archimax_from_values(CT, d, vals)
+    return _archimax_from_values(CT, Val(d), vals)
 end
 function (CT::Type{<:ArchimaxCopula})(d::Int, θ...)
-    return _archimax_from_values(CT, d, θ)
+    return _archimax_from_values(CT, Val(d), θ)
 end
 function (CT::Type{<:ArchimaxCopula{d}})(θ...) where {d}
-    return _archimax_from_values(CT, d, θ)
+    return _archimax_from_values(CT, Val(d), θ)
 end
 
 function Distributions.params(C::ArchimaxCopula)
@@ -125,13 +129,16 @@ end
 
 _available_fitting_methods(::Type{<:ArchimaxCopula}, d) = (:mle,)
 
-function _fit(::Type{<:ArchimaxCopula{d,IndependentGenerator,TT}}, U, method::Val{:mle}; kwargs...) where {d,TT<:Tail}
-    E = _fit(ExtremeValueCopula{d,TT}, U, method; kwargs...)
+function _fit(
+    ::Type{<:ArchimaxCopula{d,IndependentGenerator,TT}}, U,
+    vd::Val{d}, method::Val{:mle}; kwargs...,
+) where {d,TT<:Tail}
+    E = _fit(ExtremeValueCopula{d,TT}, U, vd, method; kwargs...)
     return ArchimaxCopula{d}(IndependentGenerator(), E.tail,)
 end
 
 function _fit(::Type{<:ArchimaxCopula{2,IndependentGenerator,TT}}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; kwargs...) where {TT<:OneParameterPickandsTail}
-    E = _fit(ExtremeValueCopula{2,TT}, U, method; kwargs...)
+    E = _fit(ExtremeValueCopula{2,TT}, U, Val(2), method; kwargs...)
     return ArchimaxCopula{2}(IndependentGenerator(),E.tail)
 end
 

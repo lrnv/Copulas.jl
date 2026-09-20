@@ -326,17 +326,20 @@ Paramorph.param_space(CT::Type{<:ExtremeValueCopula}, d::Integer) =
 # through the unparameterized tail wrapper so ForwardDiff values may flow into
 # the fitted object even when the starting fixture stores Float64 parameters.
 @inline function _rebuild_extreme_value(
-    CT::Type{<:ExtremeValueCopula}, d::Integer, args...,
-)
+    CT::Type{<:ExtremeValueCopula}, vd::Val{d}, args...,
+) where {d}
     TT = Base.typename(Base.unwrap_unionall(tailof(CT))).wrapper
-    return _wrap_extreme_value(Val(d), TT(args...))
+    return _wrap_extreme_value(vd, TT(args...))
 end
+@inline _rebuild_extreme_value(
+    CT::Type{<:ExtremeValueCopula}, d::Integer, args...,
+) = _rebuild_extreme_value(CT, Val(d), args...)
 
 function _parameter_space_copula(
-    CT::Type{<:ExtremeValueCopula}, d, p, α,
-)
+    CT::Type{<:ExtremeValueCopula}, vd::Val{d}, p, α,
+) where {d}
     η = _parameter_arguments(Paramorph.constrain(p, α))
-    return _rebuild_extreme_value(CT, d, η...)
+    return _rebuild_extreme_value(CT, vd, η...)
 end
 
 ##############################################################################################################################
@@ -358,14 +361,17 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     return C
 end
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}}; weights=nothing)
-    size(U, 1) == 2 || throw(DimensionMismatch("bivariate rank inversion requires two-dimensional data"))
+function _fit(
+    CT::Type{<:ExtremeValueCopula{D, GT} where {D, GT<:OneParameterPickandsTail}},
+    U, ::Val{d}, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}}; weights=nothing,
+) where {d}
+    d == 2 || throw(DimensionMismatch("bivariate rank inversion requires two-dimensional data"))
     est = _rank_measure(m, U, weights)[1, 2]
     θ = m isa Val{:itau} ? τ⁻¹(CT, est) :
         m isa Val{:irho} ? ρ⁻¹(CT, est) : β⁻¹(CT, est)
-    return _rebuild_extreme_value(CT, 2, θ)
+    return _rebuild_extreme_value(CT, Val(d), θ)
 end
 
 function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
-    return _rebuild_extreme_value(CT, 2, λᵤ⁻¹(CT, λᵤ(U)))
+    return _rebuild_extreme_value(CT, Val(2), λᵤ⁻¹(CT, λᵤ(U)))
 end

@@ -237,16 +237,18 @@ _normalized_pseudos(X::AbstractMatrix, weights) =
 
 _parameter_arguments(η::Tuple) = η
 _parameter_arguments(η) = (η,)
-_parameter_space_copula(CT, d, p, α) =
+_parameter_space_copula(CT, ::Val{d}, p, α) where {d} =
     CT(d, _parameter_arguments(Paramorph.constrain(p, α))...)
+_parameter_space_copula(CT, d::Integer, p, α) =
+    _parameter_space_copula(CT, Val(d), p, α)
 
 function _fit(CT::Type{<:Copula}, U, method::Val{:mle}; kwargs...)
     return _fit(CT, U, Val(size(U, 1)), method; kwargs...)
 end
-function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}; weights=nothing) where {d}
+function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) where {d}
     p = Paramorph.param_space(CT, d)
     α₀ = zeros(Paramorph.dimension(p))
-    cop(α) = _parameter_space_copula(CT, d, p, α)
+    cop(α) = _parameter_space_copula(CT, vd, p, α)
     loss(C) = -_weighted_loglikelihood(C, U, weights)
     res = Optim.optimize(
         loss ∘ cop,
@@ -276,14 +278,14 @@ See also: [`_available_fitting_methods`](@ref), [`Distributions.fit`](@ref).
 function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing)
     return _fit(CT, U, Val(size(U, 1)), method; weights)
 end
-function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
+function _fit(CT::Type{<:Copula}, U, vd::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
     p = Paramorph.param_space(CT, d)
     intrinsic_dim = Paramorph.dimension(p)
     intrinsic_dim <= d*(d-1)÷2 || throw(ArgumentError(
         "cannot use $method in dimension $d with $intrinsic_dim free parameters; " *
         "only $(d*(d-1)÷2) pairwise rank constraints are available"))
     α₀ = zeros(intrinsic_dim)
-    cop(α) = _parameter_space_copula(CT, d, p, α)
+    cop(α) = _parameter_space_copula(CT, vd, p, α)
     fun = method isa Val{:itau} ? StatsBase.corkendall :
           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
     est = _rank_measure(method, U, weights)
