@@ -37,102 +37,129 @@ _vcov_pairwise_measure(::Val{:ibeta}) = corblomqvist
 _vcov_pairwise_measure(::Val) = coruppertail
 
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-               vcovv::Val{:hessian}, methodv::Val{method}) where {method}
-    return _vcov_hessian(CT, U, θ, Val(size(U, 1)), vcovv, methodv)
+               vcovv::Val{:hessian}, methodv::Val{method}; weights=nothing) where {method}
+    return _vcov_hessian(CT, U, θ, Val(size(U, 1)), vcovv, methodv; weights)
 end
 
+function _invert_observed_information(Iα::AbstractMatrix)
+    any(!isfinite, Iα) && throw(ArgumentError(
+        "Hessian inference produced non-finite observed information"))
+    Iα = LinearAlgebra.Symmetric((Iα + Iα') / 2)
+    p = size(Iα, 1)
+    I_p = Matrix{eltype(Iα)}(LinearAlgebra.I, p, p)
+    ch = try
+        LinearAlgebra.cholesky(Iα; check=true)
+    catch err
+        err isa LinearAlgebra.PosDefException || rethrow()
+        throw(ArgumentError(
+            "Hessian inference requires positive-definite observed information"))
+    end
+    Vα = ch \ I_p
+    all(isfinite, Vα) || throw(ArgumentError(
+        "Hessian inference produced a non-finite covariance matrix"))
+    return Vα
+end
+
+# The observed information of a weighted fit is the Hessian of the weighted
+# log-likelihood: with a weight read as "how many observations this column
+# counts for", it is the observed information of the replicated sample. A
+# zero-weight column is dropped once here, before the closure is
+# differentiated, as it is before every fitting engine.
 function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
                        ::Val{d}, ::Val{:hessian},
-                       methodv::Val{method}) where {d,method}
+                       methodv::Val{method}; weights=nothing) where {d,method}
+    U, weights = _weighted_sample(U, weights)
     α = _unbound_params(CT, d, θ)
     example = _example(CT, d)
     vd = Val(d)
-    ℓ(αv) = Distributions.loglikelihood(_vcov_copula(CT, vd, αv, example), U)
+    ℓ(αv) = _weighted_loglikelihood(_vcov_copula(CT, vd, αv, example), U, weights)
     H = ForwardDiff.hessian(ℓ, α)
     Iα = .-H
-    any(!isfinite, Iα) && throw(ArgumentError(
-        "Hessian inference produced non-finite observed information"))
-    Iα = (Iα + Iα') / 2
-    p = size(Iα, 1)
-    I_p = Matrix{Float64}(LinearAlgebra.I, p, p)
-    λ = 1e-8
-    Vα = nothing
-    @inbounds for _ in 1:8
-        ch = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Iα + λ * I_p);
-                                    check=false)
-        if ch.info == 0
-            Vα = ch \ I_p
-            break
-        end
-        λ *= 10
-    end
-    (Vα === nothing || any(!isfinite, Vα)) && throw(ArgumentError(
-        "Hessian inference could not stabilize the observed information"))
+    Vα = _invert_observed_information(Iα)
     return _vcov_finalize(CT, U, θ, d, α, Vα)
 end
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-               ::Val{:godambe}, methodv::Val{method}) where {method}
-    return _vcov_godambe(CT, U, θ, Val(false), Val(:godambe), methodv)
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
+    return _vcov_godambe(CT, U, θ, Val(false), Val(:godambe), methodv; rng, nresamples, weights)
 end
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-               ::Val{:godambe_pairwise}, methodv::Val{method}) where {method}
-    return _vcov_godambe(CT, U, θ, Val(true), Val(:godambe_pairwise), methodv)
+function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{:godambe_pairwise}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
+    return _vcov_godambe(CT, U, θ, Val(true), Val(:godambe_pairwise), methodv; rng, nresamples, weights)
 end
 
-function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-                       pairwisev::Val{pairwise}, vcovv::Val{vcovm},
-                       methodv::Val{method}) where {pairwise,vcovm,method}
-    return _vcov_godambe(CT, U, θ, Val(size(U, 1)), pairwisev, vcovv, methodv)
+function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, pairwisev::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};
+                       rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {pairwise,vcovm,method}
+    return _vcov_godambe(CT, U, θ, Val(size(U, 1)), pairwisev, vcovv, methodv; rng, nresamples, weights)
 end
 
-function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
-                       ::Val{d}, ::Val{pairwise}, vcovv::Val{vcovm},
-                       methodv::Val{method}) where {d,pairwise,vcovm,method}
+# One nonparametric bootstrap resample of the observations, as indices. A
+# resample of a weighted fit is a resample of the sample in which observation
+# j is repeated w[j] times: it draws observation j with probability w[j] / n,
+# and it is then an unweighted sample of size n.
+function _resample_indices!(idx::Vector{Int}, rng::Random.AbstractRNG, n::Int, ::Nothing)
+    @inbounds for i in 1:n
+        idx[i] = rand(rng, 1:n)
+    end
+    return idx
+end
+_resample_indices!(idx::Vector{Int}, rng::Random.AbstractRNG, n::Int, w::AbstractVector) =
+    StatsBase.sample!(rng, 1:n, StatsBase.fweights(w), idx)
+
+function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple, ::Val{d}, ::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};rng=Random.default_rng(),
+                       nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {d,pairwise,vcovm,method}
     n = size(U, 2)
     α = _unbound_params(CT, d, θ)
     example = _example(CT, d)
     vd = Val(d)
-    φ = _vcov_dependence_measure(methodv)
+    p = length(α)
+    B = isnothing(nresamples) ? clamp(Int(floor(sqrt(n))), 10, 200) : Int(nresamples)
+    B > 1 || throw(ArgumentError("nresamples must be greater than one"))
+
     if pairwise
         pairwise_φ = _vcov_pairwise_measure(methodv)
         q = d * (d - 1) ÷ 2
-        Dα = ForwardDiff.jacobian(
-            αv -> _vcov_upper_triangle(pairwise_φ(_vcov_copula(CT, vd, αv, example))),
-            α)
-        Dα = reshape(Dα, q, length(α))
-        B = clamp(Int(floor(sqrt(n))), 10, 200)
+        Dα = ForwardDiff.jacobian(αv -> _vcov_upper_triangle(pairwise_φ(_vcov_copula(CT, vd, αv, example))),α)
+        Dα = reshape(Dα, q, p)
         M = Matrix{Float64}(undef, B, q)
         idx = Vector{Int}(undef, n)
-        rng = Random.default_rng()
         @inbounds for b in 1:B
-            for i in 1:n
-                idx[i] = rand(rng, 1:n)
-            end
-            M[b, :] .= _vcov_upper_triangle(pairwise_φ((@view U[:, idx])'))
+            _resample_indices!(idx, rng, n, weights)
+            M[b, :] .= _vcov_upper_triangle(
+                pairwise_φ((@view U[:, idx])'))
         end
     else
+        φ = _vcov_dependence_measure(methodv)
         q = 1
-        Dα = ForwardDiff.jacobian(
-            αv -> [φ(_vcov_copula(CT, vd, αv, example))], α)
-        Dα = reshape(Dα, q, length(α))
-        B = clamp(Int(floor(sqrt(n))), 10, 200)
+        Dα = ForwardDiff.jacobian(αv -> [φ(_vcov_copula(CT, vd, αv, example))], α)
+        Dα = reshape(Dα, q, p)
         M = Matrix{Float64}(undef, B, q)
         idx = Vector{Int}(undef, n)
-        rng = Random.default_rng()
         @inbounds for b in 1:B
-            for i in 1:n
-                idx[i] = rand(rng, 1:n)
-            end
+            _resample_indices!(idx, rng, n, weights)
             M[b, 1] = φ(@view U[:, idx])
         end
     end
+
+    q >= p || throw(ArgumentError("$vcovm inference is underidentified: " * "$q estimating moment(s) for $p parameter(s)"))
+    rankD = LinearAlgebra.rank(Dα)
+    rankD == p || throw(ArgumentError("$vcovm inference is not locally identified: " * "the sensitivity matrix has rank $rankD for $p parameter(s)"))
     Ω = n * Statistics.cov(M; corrected=true)
-    DtD = Dα' * Dα
-    stabilized_inv = inv(DtD + 1e-10LinearAlgebra.I)
-    Vα = stabilized_inv * (Dα' * Ω * Dα) * stabilized_inv / n
+    # For a full-column-rank sensitivity matrix, the least-squares left
+    # inverse is (D'D)^(-1)D'.  Use the rectangular solve directly rather
+    # than regularizing D'D, which would hide an underidentified system.
+    Iq = Matrix{eltype(Dα)}(LinearAlgebra.I, q, q)
+    A = Dα \ Iq
+    Vα = A * Ω * A' / n
     return _vcov_finalize(CT, U, θ, d, α, Vα)
+end
+
+function _validate_inference_covariance(Vθ::AbstractMatrix)
+    all(isfinite, Vθ) || throw(ArgumentError(
+        "inference produced a non-finite covariance matrix"))
+    Vθ = LinearAlgebra.Symmetric((Vθ + Vθ') / 2)
+    LinearAlgebra.isposdef(Vθ) || throw(ArgumentError(
+        "inference produced a covariance matrix that is not positive definite"))
+    return Vθ
 end
 
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
@@ -140,15 +167,7 @@ function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::NamedTuple,
     J = ForwardDiff.jacobian(
         αv -> _flatten_params(_rebound_params(CT, d, αv))[2], α)
     Vθ = J * Vα * J'
-    all(isfinite, Vθ) || throw(ArgumentError(
-        "inference produced a non-finite covariance matrix"))
-    Vθ = (Vθ + Vθ') / 2
-    λ, Q = LinearAlgebra.eigen(Matrix(Vθ))
-    λ_reg = map(x -> max(x, 1e-12), λ)
-    Vθ = LinearAlgebra.Symmetric(Q * LinearAlgebra.Diagonal(λ_reg) * Q')
-    all(isfinite, Matrix(Vθ)) || throw(ArgumentError(
-        "inference produced a non-finite regularized covariance matrix"))
-    return Vθ
+    return _validate_inference_covariance(Vθ)
 end
 
 function _default_inference_method(M::CopulaModel)
@@ -159,16 +178,18 @@ function _default_inference_method(M::CopulaModel)
     analytical_coordinates = spec isa _CopulaFitSpec && spec.target isa Type &&
         parameters isa NamedTuple &&
         applicable(_unbound_params, spec.target, d, parameters)
-    if fitting_method(M) === :mle && analytical_coordinates &&
+    fit_method = fitting_method(M)
+    if fit_method === :mle && analytical_coordinates &&
             !(M.result isa Union{TCopula,tEVCopula,FGMCopula})
         return :hessian
     end
-    if fitting_method(M) in (:itau, :irho, :ibeta, :iupper) && analytical_coordinates
+    if analytical_coordinates && fit_method in (:itau, :irho, :ibeta)
+        return d == 2 ? :godambe : :godambe_pairwise
+    end
+    if analytical_coordinates && fit_method === :iupper && d == 2
         return :godambe
     end
-    throw(ArgumentError(
-        "no default covariance estimator is defined for fits using method=$(fitting_method(M)); " *
-        "choose an explicit supported inference method"))
+    throw(ArgumentError("no default covariance estimator is defined for fits using method=$fit_method; " * "choose an explicit supported inference method"))
 end
 
 function _inference_inputs(M::CopulaModel)
@@ -199,11 +220,21 @@ function _infer(M::CopulaModel, ::Val{:bootstrap};
     nresamples > 1 || throw(ArgumentError("nresamples must be greater than one"))
     _, data, _ = _inference_inputs(M)
     n = size(data, 2)
-    sample(rng) = @view data[:, rand(rng, 1:n, n)]
+    weights = _model_weights(M)
+    idx = Vector{Int}(undef, n)
+    # Each resample of a weighted fit is refitted unweighted, see `_refit`.
+    sample(rng) = weights === nothing ? (@view data[:, rand(rng, 1:n, n)]) :
+        (@view data[:, _resample_indices!(idx, rng, n, weights)])
     return _resampling_covariance(M, sample; rng, nresamples)
 end
 
 function _infer(M::CopulaModel, ::Val{:jackknife})
+    _model_weights(M) === nothing || throw(ArgumentError(
+        "jackknife inference is not defined for a model fitted with `weights`: " *
+        "the delete-one jackknife of the sample in which observation j is " *
+        "repeated weights[j] times needs every weight to be at least one, which " *
+        "after normalization to n holds for unit weights only; use " *
+        "method=:bootstrap, which resamples that sample"))
     _, data, _ = _inference_inputs(M)
     n = size(data, 2)
     n > 1 || throw(ArgumentError("jackknife inference requires at least two observations"))
@@ -226,7 +257,7 @@ function _infer(M::CopulaModel, ::Val{:jackknife})
     return (n - 1) / n .* (deviations' * deviations)
 end
 
-function _infer(M::CopulaModel, ::Val{method}) where {method}
+function _infer(M::CopulaModel, ::Val{method}; rng=nothing, nresamples::Union{Nothing,Integer}=nothing) where {method}
     method in (:hessian, :godambe, :godambe_pairwise) || throw(ArgumentError(
         "unknown inference method `$method`; expected :hessian, :godambe, " *
         ":godambe_pairwise, :jackknife, or :bootstrap"))
@@ -253,10 +284,23 @@ function _infer(M::CopulaModel, ::Val{method}) where {method}
     target, _, parameters = _inference_inputs(M)
     U = _copula_data(M)
     d = size(U, 1)
+    method === :godambe && d != 2 && throw(ArgumentError(
+        "scalar Godambe inference is defined only for bivariate rank-matching fits; " *
+        "use method=:godambe_pairwise when the fitted estimator uses pairwise moments, " *
+        "or use :bootstrap or :jackknife"))
     applicable(_unbound_params, target, d, parameters) || throw(ArgumentError(
         "analytical `$method` inference is not implemented for fitting target $target"))
     engine_method = fitting_method(M) === :mpl ? :mle : fitting_method(M)
-    return _vcov(target, U, parameters, Val(method), Val(engine_method))
+    weights = _model_weights(M)
+
+    if method === :hessian
+        (isnothing(rng) && isnothing(nresamples)) || throw(ArgumentError(
+            "`rng` and `nresamples` apply to Godambe/bootstrap inference, not :hessian"))
+        return _vcov(target, U, parameters, Val(method), Val(engine_method); weights)
+    end
+
+    godambe_rng = isnothing(rng) ? Random.default_rng() : rng
+    return _vcov(target, U, parameters, Val(method), Val(engine_method); rng=godambe_rng, nresamples, weights)
 end
 
 """
@@ -265,13 +309,20 @@ end
 Apply an uncertainty-quantification procedure after estimation. `fit` is never
 rerun except by resampling procedures, and `M` is not mutated.
 
-The principled default is `:hessian` for supported maximum-likelihood fits and
-`:godambe` for supported rank-matching estimators. A fitting extension does not
-acquire analytical inference merely by implementing a fitting route. Fits
-without a justified default raise an `ArgumentError`. Explicit methods are
-`:hessian`, `:godambe`,
-`:godambe_pairwise`, `:jackknife`, and `:bootstrap`. Bootstrap inference accepts
-`nresamples` and `rng`; these execution controls are not retained in the result.
+The principled default is `:hessian` for supported maximum-likelihood fits,
+`:godambe` for supported bivariate rank-matching estimators, and
+`:godambe_pairwise` for supported multivariate estimators based on pairwise rank
+moments. A fitting extension does not acquire analytical inference merely by
+implementing a fitting route. Fits without a justified default raise an
+`ArgumentError`. Explicit methods are `:hessian`, `:godambe`,
+`:godambe_pairwise`, `:jackknife`, and `:bootstrap`. Godambe and bootstrap
+inference accept `nresamples` and `rng`; these execution controls are not
+retained in the result.
+
+Analytical inference does not silently regularize failed covariance estimates.
+A singular or non-positive-definite observed-information or covariance matrix
+raises an `ArgumentError`; use a resampling method when the analytical
+approximation is not numerically identified.
 
 For a fitted `SklarDist`, the default is `:bootstrap`. Every resample repeats
 the complete estimator: all margins are fitted again, pseudo-observations are
@@ -279,6 +330,19 @@ recomputed, and the copula is refitted. The resulting covariance therefore
 contains marginal, copula, and cross-component uncertainty. Analytical methods
 remain unavailable because the estimators selected by `Distributions.fit` for
 arbitrary marginal families do not share a common derivative contract.
+
+A model fitted with `weights` is treated as a fit of the sample in which
+observation `j` is repeated `weights[j]` times, which is what the weights mean
+to `fit`. `:hessian` inverts the observed information of the weighted
+log-likelihood; `:godambe`, `:godambe_pairwise` and `:bootstrap` draw each
+resample of size `n` with observation `j` taken with probability
+`weights[j] / n`, and compute the moment or refit the estimator on that
+resample unweighted. Unit weights reproduce the unweighted `:hessian` bit for
+bit; the resampling methods draw through a weighted sampler, so they reproduce
+the unweighted covariance in distribution, not for a given `rng`. `:jackknife`
+refuses a weighted model, because the delete-one jackknife of the replicated
+sample needs every weight to be at least one, which after normalization to `n`
+holds for unit weights only.
 
 See also: [`CopulaInference`](@ref), [`StatsBase.vcov`](@ref),
 [`StatsBase.stderror`](@ref), [`StatsBase.confint`](@ref).

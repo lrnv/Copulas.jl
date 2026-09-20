@@ -16,11 +16,8 @@ must implement:
 
 These methods are sufficient to construct `ArchimedeanCopula(d, G)` and use its
 generic CDF path: the inverse of `ϕ` is obtained numerically when no specialized
-method exists. Other operations can require more. Generic automatic
-differentiation and inverse-Williamson fallbacks provide density and sampling
-for suitably regular generators, but their numerical success is not implied by
-the three-method contract alone, especially at singularities and parameter
-boundaries.
+method exists. Generic automatic
+differentiation and inverse-Williamson fallbacks provide density and sampling.
 
 Only this mathematical interface is public. Copulas.jl's generator subtype
 hierarchy beyond documented public types, derivative and inverse hooks, radial
@@ -34,10 +31,22 @@ See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
 """
 abstract type Generator end
 Base.eltype(G::Generator) = _sample_eltype(G)
-function (TG::Type{<:Generator})(args...;kwargs...)
+function (TG::Type{<:Generator})(args...; kwargs...)
     S = hasproperty(TG, :body) ? TG.body : TG
-    T = S.name.wrapper 
-    return T(args..., values(kwargs)...)
+    T = S.name.wrapper
+    isempty(kwargs) && return T(args...)
+
+    fields = fieldnames(Base.unwrap_unionall(T))
+    nargs = length(args)
+    nargs <= length(fields) || throw(MethodError(TG, args))
+    remaining = fields[(nargs + 1):end]
+    kwkeys = keys(kwargs)
+    valid_kwargs = length(kwargs) == length(remaining) &&
+                   all(name -> name in kwkeys, remaining)
+    valid_kwargs || throw(ArgumentError(
+        "keyword arguments for $T must name the remaining parameters $(remaining)",
+    ))
+    return T(args..., (kwargs[name] for name in remaining)...)
 end
 Base.broadcastable(x::Generator) = Ref(x)
 _parameter_dof(x::Generator) = _parameter_dof(Distributions.params(x))
@@ -49,10 +58,13 @@ Return the largest Williamson order for which `G` is known to be monotone.
 `Inf` denotes complete monotonicity. This public mathematical query is used to
 validate the dimensions of Archimedean and Liouville constructions.
 
+A downstream `Generator` subtype must implement this method. If it does not,
+Julia's normal method dispatch raises `MethodError`.
+
 See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref),
 [`LiouvilleCopula`](@ref), [`ϕ`](@ref).
 """
-max_monotony(G::Generator) = throw("This generator does not have a defined max monotony. You need to implement `max_monotony(G)`.")
+function max_monotony end
 
 """
     ϕ(G::Generator, t)
@@ -62,10 +74,13 @@ Evaluate the Archimedean generator at `t ≥ 0`, or return its callable unary
 form. A valid implementation is decreasing, satisfies `ϕ(G, 0) = 1`, tends to
 zero at infinity, and has the monotonicity reported by `max_monotony(G)`.
 
+A downstream `Generator` subtype must implement the two-argument method. If it
+does not, Julia's normal method dispatch raises `MethodError`.
+
 See also: [`Generator`](@ref), [`max_monotony`](@ref),
 [`ArchimedeanCopula`](@ref), [`WilliamsonGenerator`](@ref).
 """
-ϕ(   G::Generator, t) = throw("This generator has not been defined correctly, the function `ϕ(G,t)` is not defined.")
+function ϕ end
 ϕ(G::Generator) = Base.Fix1(ϕ,G)
 
 """
@@ -257,8 +272,11 @@ struct 𝒲₋₁{TG, TO<:Integer} <: Distributions.ContinuousUnivariateDistribu
     G::TG
     order::TO
     function 𝒲₋₁(G::Generator, d::Integer)
-        @assert max_monotony(G) ≥ d
         d ≥ 1 || throw(ArgumentError("the Williamson inverse order must be at least 1"))
+        d <= max_monotony(G) || throw(DomainError(
+            d,
+            "Williamson inverse order exceeds the generator's maximal monotonicity $(max_monotony(G))",
+        ))
         return new{typeof(G), typeof(d)}(G, d)
     end
 end
@@ -275,7 +293,9 @@ end
 𝒲₋₁(::IndependentGenerator, d::Real) = Distributions.Gamma(d, 1)
 
 function Distributions.cdf(dist::𝒲₋₁, x::Real)
+    isnan(x) && return float(x)
     x ≤ 0 && return zero(x)
+    isinf(x) && return one(float(x))
     rez, scaled_power = zero(x), one(x)
     @inbounds for k in 1:dist.order
         cₖ = if k == 1
@@ -289,8 +309,9 @@ function Distributions.cdf(dist::𝒲₋₁, x::Real)
         scaled_power *= -x / k
     end
     F = 1 - rez
-    # Guard against tiny numerical excursions
-    return isnan(F) ? one(x) : clamp(F, zero(x), one(x))
+    isnan(F) && return F
+    # Clamp only finite roundoff excursions; NaN above remains diagnostic.
+    return clamp(F, zero(F), one(F))
 end
 function Distributions.pdf(dist::𝒲₋₁, x::Real)
     x ≤ 0 && return zero(x)
@@ -323,17 +344,17 @@ include("UnivariateDistribution/Radials/WilliamsonBetaProduct.jl")
 
 The `𝒲` type (also available as `WilliamsonGenerator`) constructs a d-monotonous archimedean generator from a positive random variable `X::Distributions.UnivariateDistribution`. The transformation is implemented fully generically in the package.
 
-For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a positive real order ``d``, the Williamson-d-transform of ``X`` is the real function supported on ``[0,\\infty[`` given by:
+For a univariate non-negative random variable ``X``, with cumulative distribution function ``F`` and a positive real order `d`, the Williamson-d-transform of `X` is the real function supported on `[0,∞[` given by:
 
 ```math
 \\phi(t) = 𝒲_{d}(X)(t) = \\int_{t}^{\\infty} \\left(1 - \\frac{t}{x}\\right)^{d-1} dF(x) = \\mathbb E\\left( (1 - \\frac{t}{X})^{d-1}_+\\right) \\mathbb 1_{t > 0} + \\left(1 - F(0)\\right)\\mathbb 1_{t <0}
 ```
 
-For integer ``d ≥ 2`` and a strictly positive radial variable, this function has
+For integer `d ≥ 2` and a strictly positive radial variable, this function has
 the following properties:
-- We have that ``\\phi(0) = 1`` and ``\\phi(Inf) = 0``
-- ``\\phi`` is ``d-2`` times derivable, and the signs of its derivatives alternates : ``\\forall k \\in 0,...,d-2, (-1)^k \\phi^{(k)} \\ge 0``.
-- ``(-1)^{d-2}\\phi^{(d-2)}`` is non-increasing and convex.
+- We have that `ϕ(0) = 1` and `ϕ(Inf) = 0`
+- `ϕ` is `d-2` times derivable, and the signs of its derivatives alternates : `∀ k ∈ 0,...,d-2, (-1)^k ϕ^(k) ≥ 0`.
+- `(-1)^(d-2)ϕ^(d-2)` is non-increasing and convex.
 
 These properties characterize a *d-monotone Archimedean generator*. Real orders
 are also supported, but the integer derivative characterization above should
@@ -358,7 +379,7 @@ Special case (finite-support discrete X)
 
 References: 
 * [williamson1956](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
-* [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
+* [mcneil2009](@cite) McNeil, Alexander J., & Nešlehová, Johanna. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
 """
 struct 𝒲{TX, TO<:Real} <: Generator
     X::TX
@@ -758,7 +779,10 @@ end
 struct FrailtyGenerator{TF}<:AbstractFrailtyGenerator
     F::TF
     function FrailtyGenerator(F::Distributions.ContinuousUnivariateDistribution)
-        @assert Base.minimum(F) >= 0
+        Base.minimum(F) >= 0 || throw(DomainError(
+            F,
+            "frailty distribution must have non-negative support",
+        ))
         return new{typeof(F)}(F)
     end
 end

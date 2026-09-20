@@ -245,6 +245,15 @@ copula's concrete nested representation. The generic fallback instead nests one
 expensive as that count grows. These dispatch and representation details are
 internal and must not be used by downstream code.
 
+Interval conditioning, `condition(C, js, lo, hi)`, and the likelihood of a
+`SklarDist` with discrete margins go through the internal `_box_partial_cdf`,
+an inclusion–exclusion sum of `_partial_cdf` over the corners of the box with
+the box coordinates placed among the free ones. A family that specializes
+`_partial_cdf` therefore speeds up both without further work; the family
+`distortion` and `conditional_copula` hooks are used only when every
+conditioned coordinate is a point, since the interval conditional of a family
+with a closed-form point conditional generally has no closed form of its own.
+
 !!! tip "Look at existing distortions"
     Take a look in the `src/UnivariateDistributions/Distortions` folder for examples, there are plenty. 
 
@@ -292,6 +301,23 @@ identifiable parameterization. Covariance and confidence intervals require
 additional regularity and a supported covariance procedure; returning a fitted
 copula does not guarantee their availability. Data have shape `d × n`, so the
 dimension is `size(U, 1)`, not the number of observations.
+
+A family that writes its own `_fit(::Type{MyCopula}, U, ::Val{:mle}; ...)`
+takes a `weights=nothing` keyword and evaluates its objective through
+`_weighted_loglikelihood(C, U, weights)` instead of
+`Distributions.loglikelihood(C, U)`. The public `fit` validates the weights,
+normalizes them to sum to `n`, drops the columns whose weight is zero, and
+forwards the rest; `nothing` selects the unweighted path, and the weighted sum
+runs over the same column views as the unweighted reduction so that unit
+weights reproduce the unweighted fit bit for bit. A family's engine therefore
+never meets a zero weight, and need not guard a `0 * Inf` on the boundary of
+the hypercube. A family that ignores the keyword drops the user's weights silently, and a
+family that omits it is fitted by the generic transformed-space driver whenever
+any keyword is passed. A rank-inversion method `_fit(::Type{MyCopula}, U,
+::Val{:itau}; weights=nothing)` reads its sample measure through
+`_rank_measure(Val(:itau), U, weights)`, which is `StatsBase.corkendall(U')`
+for `nothing` and the weighted tau-b otherwise, and likewise for `:irho` and
+`:ibeta`; the multivariate `β(U)` has `_weighted_β(U, weights)`.
 
 ## 1.6 Hypothesis tests
 
@@ -383,6 +409,8 @@ The EV API deliberately separates the mathematical family from computational
 capabilities.
 
 ### `Tail`: the mathematical STDF interface
+
+This section documents Copulas.jl's internal architecture for in-package contributors. Tail is public for mathematical evaluation, but downstream Tail subtype implementation is not currently a SemVer-stable extension interface.
 
 A multivariate EV tail should subtype `Tail` and implement its STDF:
 

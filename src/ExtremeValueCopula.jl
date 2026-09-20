@@ -280,12 +280,7 @@ function Distributions._rand!(
     return X
 end
 
-function distortion(
-    C::ExtremeValueCopula{2,TT},
-    js::NTuple{1,Int},
-    uⱼₛ::NTuple{1,Float64},
-    ::Int,
-) where {TT}
+function distortion(C::ExtremeValueCopula{2,<:BivariatePickandsTail}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64},::Int,)
     kind = limit_kind(C.tail, Val(2))
     kind === Π_LIMIT && return NoDistortion()
 
@@ -329,11 +324,12 @@ function _fit(::Type{ExtremeValueCopula}, U, method::Union{Val{:ols}, Val{:cfg},
     C = EmpiricalEVCopula(U; method=m, pseudo_values=pseudo_values, kwargs...)
     return C
 end
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}})
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, m::Union{Val{:itau}, Val{:irho}, Val{:ibeta}}; weights=nothing)
     TT = tailof(typeof(_example(CT, 2)))
-    θ = m isa Val{:itau} ? τ⁻¹(CT,  StatsBase.corkendall(U')[1,2]) :
-        m isa Val{:irho} ? ρ⁻¹(CT,  StatsBase.corspearman(U')[1,2]) :
-                           β⁻¹(CT,  corblomqvist(U')[1,2])
+    est = _rank_measure(m, U, weights)[1,2]
+    θ = m isa Val{:itau} ? τ⁻¹(CT, est) :
+        m isa Val{:irho} ? ρ⁻¹(CT, est) :
+                           β⁻¹(CT, est)
     lo, hi = _θ_bounds(TT, 2)
     # unbounded limits are bound to 1e16 (inf) and zero is bound to (1e-16) for stability
     θ = clamp(θ, iszero(lo) ? 1e-16 : lo, isinf(hi) ? 1e16 : hi)
@@ -345,7 +341,7 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     return ExtremeValueCopula{2}(TT(θ))
 end
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau)
+function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:mle}; start::Union{Symbol,Real}=:itau, weights=nothing)
     d = size(U,1)
     example = _example(CT, d)
     ConcreteCT = typeof(example)
@@ -370,12 +366,8 @@ function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPic
     α0 = _unbound_params(ConcreteCT, d, θ0)
     all(isfinite, α0) || throw(ArgumentError("MLE start must map to finite unbounded parameters"))
     cop(α) = ExtremeValueCopula{d}(TT(_rebound_params(ConcreteCT, d, α)...))
-    f(α) = -Distributions.loglikelihood(cop(α), U)
-    res = try
-        Optim.optimize(f, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
-    catch
-        Optim.optimize(f, α0, Optim.NelderMead())
-    end
+    f(α) = -_weighted_loglikelihood(cop(α), U, weights)
+    res = Optim.optimize(f, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     θ̂ = _rebound_params(ConcreteCT, d, Optim.minimizer(res))
     return ExtremeValueCopula{d}(TT(θ̂...))
 end

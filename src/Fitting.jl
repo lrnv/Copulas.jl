@@ -99,6 +99,10 @@ function _refit_kwargs(kwargs::NamedTuple)
     return merge(kwargs, (; pseudo_values=true))
 end
 
+# A resample of a weighted fit is a sample of the observations in which
+# observation j is repeated weights[j] times, so it is refitted unweighted.
+_unweighted_kwargs(kwargs::NamedTuple) = Base.structdiff(kwargs, NamedTuple{(:weights,)})
+
 """
     _refit(M::CopulaModel, data; replay_input=false)
 
@@ -110,6 +114,10 @@ With `replay_input=true`, resampling inference replays the estimator from the
 same input scale as the original call. The default is reserved for composite
 GOF samples that are already pseudo-observations.
 
+A resample of a weighted fit is refitted without the weights: it is a sample
+of the observations in which observation `j` is repeated `weights[j]` times,
+and the resampling procedures draw it as such.
+
 This is an internal inference hook. A model is refittable only when its fitting
 entry point recorded a reproducible `_CopulaFitSpec`.
 
@@ -120,20 +128,21 @@ function _refit(M::CopulaModel, U::AbstractMatrix; replay_input::Bool=false)
     spec isa _CopulaFitSpec || throw(ArgumentError(
         "this fitted model does not store a reproducible fitting specification; " *
         "composite goodness-of-fit refitting is unavailable for this model"))
+    spec_kwargs = _unweighted_kwargs(spec.kwargs)
 
     if spec.target isa NamedTuple && haskey(spec.target, :reparam)
-        return Distributions.fit(CopulaModel, spec.target.reparam, spec.target.init, U; spec.kwargs...)
+        return Distributions.fit(CopulaModel, spec.target.reparam, spec.target.init, U; spec_kwargs...)
     end
 
     if spec.target isa Type && spec.target <: SklarDist
-        return Distributions.fit(CopulaModel, spec.target, U; spec.kwargs...)
+        return Distributions.fit(CopulaModel, spec.target, U; spec_kwargs...)
     end
 
     if replay_input && spec.target isa Type
-        return Distributions.fit(CopulaModel, spec.target, U; method=spec.method, spec.kwargs...)
+        return Distributions.fit(CopulaModel, spec.target, U; method=spec.method, spec_kwargs...)
     end
 
-    kwargs = _refit_kwargs(spec.kwargs)
+    kwargs = _refit_kwargs(spec_kwargs)
     # Composite GOF refits receive pseudo-observations already. MPL uses the
     # same numerical likelihood engine as MLE, without ranking these again.
     method = spec.method === :mpl ? :mle : spec.method
@@ -141,7 +150,6 @@ function _refit(M::CopulaModel, U::AbstractMatrix; replay_input::Bool=false)
     return Distributions.fit(CopulaModel, spec.target, U; method, kwargs...)
 end
 
-# Fallbacks that throw if the interface is not implemented correctly.
 """
     Distributions.params(C::Copula)
     Distributions.params(S::SklarDist)
@@ -154,12 +162,13 @@ different reconstruction form explicitly.
 
 Parameter names and values are public; concrete field names, storage-only type
 parameters and caches are not. A new in-package family must specialize this
-method before it can use generic fitting and display machinery.
+method before it can use generic fitting and display machinery. Missing
+specializations therefore use Julia's normal `MethodError` rather than a
+package-defined fallback exception.
 
 See also: [`Copula`](@ref), [`SklarDist`](@ref), [`Distributions.fit`](@ref),
 [`CopulaModel`](@ref).
 """
-Distributions.params(C::Copula) = throw("You need to specify the Distributions.params() function as returning a named tuple with parameters.")
 
 """
     _example(CT, d)
@@ -168,12 +177,13 @@ Construct an interior representative of copula family `CT` in dimension `d`.
 This internal fitting hook supplies parameter names, shapes, numeric types and
 an initial point to generic optimization and covariance machinery. The example
 must avoid limiting values and must be reconstructible by the family's fitting
-protocol; it is not a user-facing default model.
+protocol; it is not a user-facing default model. Families using generic fitting
+must implement it; otherwise Julia raises the natural `MethodError`.
 
 See also: [`_unbound_params`](@ref), [`_rebound_params`](@ref),
 [`_available_fitting_methods`](@ref), [`_fit`](@ref).
 """
-_example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::Type{T}, d)` function for your copula type, returning an example of the copula type in dimension d.")
+function _example end
 
 """
     _unbound_params(CT, d, θ)
@@ -181,11 +191,12 @@ _example(CT::Type{<:Copula}, d) = throw("You need to specify the `_example(CT::T
 Map the parameter `NamedTuple` `θ` of family `CT` to an unconstrained real
 vector used by generic optimization and differentiation. This internal fitting
 hook must be inverse-compatible with `_rebound_params`, preserve parameter
-order, and map interior valid parameters to finite coordinates.
+order, and map interior valid parameters to finite coordinates. Families using
+generic fitting must implement it; otherwise Julia raises `MethodError`.
 
 See also: [`_rebound_params`](@ref), [`_example`](@ref), [`_fit`](@ref).
 """
-_unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbound_param method, that takes the namedtuple returned by `Distributions.params(CT(d, θ))` and trasform it into a raw vector living in R^p.")
+function _unbound_params end
 
 """
     _rebound_params(CT, d, α)
@@ -193,25 +204,103 @@ _unbound_params(CT::Type{Copula}, d, θ) = throw("You need to specify the _unbou
 Map an unconstrained optimization vector `α` back to the valid parameter
 `NamedTuple` expected by family `CT`. This internal fitting hook must enforce
 the mathematical parameter domain, accept automatic-differentiation number
-types, and invert `_unbound_params` on interior parameters.
+types, and invert `_unbound_params` on interior parameters. Families using
+generic fitting must implement it; otherwise Julia raises `MethodError`.
 
 See also: [`_unbound_params`](@ref), [`_example`](@ref), [`_fit`](@ref).
 """
-_rebound_params(CT::Type{Copula}, d, α) = throw("You need to specify the _rebound_param method, that takes the output of _unbound_params and reconstruct the namedtuple that `Distributions.params(C)` would have returned.")
+function _rebound_params end
 _construct_fitted_copula(CT, ::Val{d}, θ, example) where {d} = CT(d, θ...)
-function _fit(CT::Type{<:Copula}, U, method::Val{:mle})
-    return _fit(CT, U, Val(size(U, 1)), method)
+
+"""
+    _fit_weights(weights, n) -> Union{Nothing, Vector}
+
+Validate the observation weights passed to `fit` and normalize them so that
+they sum to `n`, the number of observations. `nothing` is returned untouched
+and selects the unweighted code path.
+
+A weight is then read as "how many observations this column counts for": the
+fitted parameters are invariant to the scale of the weights, uniform weights
+reproduce the unweighted fit exactly, and `nobs` keeps the sample size that
+the information criteria use. A zero weight counts its column zero times;
+[`_weighted_sample`](@ref) drops such a column before any likelihood sees it.
+
+See also: [`_weighted_sample`](@ref), [`_weighted_loglikelihood`](@ref),
+[`pseudos`](@ref), [`Distributions.fit`](@ref).
+"""
+_fit_weights(::Nothing, ::Int) = nothing
+function _fit_weights(weights::AbstractVector{<:Real}, n::Int)
+    length(weights) == n || throw(DimensionMismatch(
+        "weights must have one entry per observation; got $(length(weights)) " *
+        "weights for $n observations"))
+    all(isfinite, weights) || throw(ArgumentError("weights must be finite"))
+    all(w -> w >= 0, weights) || throw(ArgumentError("weights must be non-negative"))
+    total = sum(weights)
+    total > 0 || throw(ArgumentError("weights must not all be zero"))
+    return weights .* (n / total)
 end
-function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}) where {d}
+_fit_weights(weights, ::Int) = throw(ArgumentError(
+    "weights must be nothing or a vector of non-negative reals; got $(typeof(weights))"))
+
+"""
+    _weighted_sample(X, weights) -> (X, weights)
+
+The columns of `X` that carry weight, with their weights. A zero weight removes
+its observation, so the pair is what a likelihood engine is given: a removed
+observation may sit on the boundary of the unit hypercube, where its score is
+infinite and `0 * Inf` would poison a weighted cross-product. Without a zero
+weight, and with `weights === nothing`, the inputs are returned untouched.
+
+See also: [`_fit_weights`](@ref), [`_weighted_loglikelihood`](@ref).
+"""
+_weighted_sample(X::AbstractMatrix, ::Nothing) = (X, nothing)
+function _weighted_sample(X::AbstractMatrix, weights::AbstractVector)
+    any(iszero, weights) || return (X, weights)
+    kept = findall(!iszero, weights)
+    return (X[:, kept], weights[kept])
+end
+
+"""
+    _weighted_loglikelihood(D, X, weights)
+
+Log-likelihood of `D` on the columns of `X`, each column multiplied by its
+weight. With `weights === nothing` this is `Distributions.loglikelihood(D, X)`.
+The weighted sum runs over the same column views in the same order as the
+unweighted reduction, so unit weights reproduce it bit for bit. A zero-weight
+column is dropped by [`_weighted_sample`](@ref) rather than summed.
+
+See also: [`_fit_weights`](@ref), [`StatsBase.nobs`](@ref).
+"""
+_weighted_loglikelihood(D, X, ::Nothing) = Distributions.loglikelihood(D, X)
+function _weighted_loglikelihood(D, X::AbstractMatrix, weights::AbstractVector)
+    X, weights = _weighted_sample(X, weights)
+    return sum(j -> weights[j] * Distributions.logpdf(D, view(X, :, j)), axes(X, 2))
+end
+
+# Weights recorded by the estimator that produced a model, or `nothing`.
+_model_weights(M::CopulaModel) =
+    M.recipe isa _CopulaFitSpec ? get(M.recipe.kwargs, :weights, nothing) : nothing
+
+# Average-rank pseudo-observations for weights that `_fit_weights` has already
+# normalized, so that the fit and the model's `_copula_data` rank by exactly
+# the same weights instead of normalizing them a second time.
+_normalized_pseudos(X::AbstractMatrix, weights) =
+    _pseudos(X, Val(:average), Random.default_rng(), weights)
+
+function _fit(CT::Type{<:Copula}, U, method::Val{:mle}; kwargs...)
+    return _fit(CT, U, Val(size(U, 1)), method; kwargs...)
+end
+function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}; weights=nothing) where {d}
     example = _example(CT, d)
     cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
     α₀  = _unbound_params(CT, d, Distributions.params(example))
-    loss(C) = -Distributions.loglikelihood(C, U)
-    res = try
-        Optim.optimize(loss ∘ cop, α₀, Optim.LBFGS(); autodiff= ADTypes.AutoForwardDiff())
-    catch err
-        Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
-    end
+    loss(C) = -_weighted_loglikelihood(C, U, weights)
+    res = Optim.optimize(
+        loss ∘ cop,
+        α₀,
+        Optim.LBFGS();
+        autodiff=ADTypes.AutoForwardDiff(),
+    )
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
     return _construct_fitted_copula(CT, Val(d), θhat, example)
 end
@@ -231,18 +320,20 @@ Use [`Distributions.fit(CopulaModel, ...)`] instead.
 See also: [`_available_fitting_methods`](@ref), [`_example`](@ref),
 [`_unbound_params`](@ref), [`_rebound_params`](@ref).
 """
-function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}})
-    return _fit(CT, U, Val(size(U, 1)), method)
+function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing)
+    return _fit(CT, U, Val(size(U, 1)), method; weights)
 end
-function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}) where {d}
+function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
     # generic rank-based routine (agnostic to vcov/inference)
     example = _example(CT, d)
     cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
     α₀ = _unbound_params(CT, d, Distributions.params(example))
-    @assert length(α₀) <= d*(d-1)÷2 "Cannot use $method since there are too much parameters."
+    length(α₀) <= d*(d-1)÷2 || throw(ArgumentError(
+        "cannot use $method in dimension $d with $(length(α₀)) free parameters; " *
+        "only $(d*(d-1)÷2) pairwise rank constraints are available"))
     fun  = method isa Val{:itau} ? StatsBase.corkendall :
            method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
-    est  = fun(U')
+    est  = _rank_measure(method, U, weights)
     loss(C) = sum(abs2, est .- fun(C))
     res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
     θhat = _rebound_params(CT, d, Optim.minimizer(res))
@@ -341,6 +432,8 @@ Fit a copula of type `CT` by maximum likelihood or another supported estimator.
 - `method::Symbol` — fitting method. `:default` selects `:mle` whenever the
   family advertises it, otherwise the family's first advertised method. `:mpl`
   denotes maximum pseudo-likelihood and is never selected implicitly.
+- `weights` — optional vector of one non-negative, finite weight per
+  observation, not all zero. See *Weighted observations* below.
 - `kwargs...`         — additional method-specific keyword arguments
   (e.g. `pseudo_values=true`, `grid=401` for extreme-value tails, etc.).
 
@@ -369,11 +462,40 @@ rank transformation changes the statistical estimator. Conversely,
 no pseudo-observations are then constructed. Both use the same numerical
 copula-likelihood optimizer; the distinction records the input's provenance.
 
+# Weighted observations
+
+`weights=w` fits a weighted pseudo-likelihood: the log-likelihood contribution
+of column `j` is multiplied by `w[j]`. The weights are normalized once so that
+they sum to the number of observations `n`, so a weight reads as "how many
+observations this column counts for", the fitted parameters are invariant to
+the scale of `w`, and uniform weights reproduce the unweighted fit exactly. A
+zero weight removes its observation: its column is dropped before the
+likelihood is evaluated, so it may lie on the boundary of the unit hypercube
+where the density is not defined. The stored
+`loglikelihood`, and hence `aic`, `bic` and `deviance`, are the weighted ones;
+`nobs` stays `n`. With `pseudo_values=false` the rank transformation is the
+weighted one of [`pseudos`](@ref).
+
+Weights are accepted by the likelihood estimators `:mle` and `:mpl` and by the
+rank inversions `:itau`, `:irho`, `:ibeta` and `:itau_irho`, which invert the
+weighted sample measure: Kendall's tau-b, Spearman's rho and Blomqvist's beta
+of the sample in which observation `j` is repeated `weights[j]` times. Every
+family shipped with one of these methods takes them; a family whose own method
+has no keyword arguments is fitted by the generic driver instead, as it is for
+any keyword. The tail estimator `:iupper` and the nonparametric estimators
+refuse them. The Sklar route `fit(SklarDist{...}, X; weights)` takes them too.
+[`infer`](@ref) reads the same weights; composite goodness-of-fit tests refuse
+a weighted model.
+
 See also: [`CopulaModel`](@ref), [`selection_table`](@ref),
 [`GOFCopulaTest`](@ref).
 """
+# The rank inversions whose sample measure has a weighted form.
+const _WEIGHTED_RANK_METHODS = (:itau, :irho, :ibeta, :itau_irho)
+
 function _run_copula_estimator(CT::Type{<:Copula}, U;
-        method=:default, pseudo_values::Union{Nothing,Bool}=nothing, kwargs...)
+        method=:default, pseudo_values::Union{Nothing,Bool}=nothing,
+        weights=nothing, kwargs...)
     _reject_inference_fit_keywords((; kwargs...))
     d = size(U, 1)
     requested_method = method === :default ? _default_fitting_method(CT, d) : method
@@ -386,32 +508,46 @@ function _run_copula_estimator(CT::Type{<:Copula}, U;
     method = likelihood_method ?
         _normalize_likelihood_fit(requested_method, input_is_pseudo) :
         requested_method
-    fit_data = method === :mpl ? pseudos(U) : U
+    weights = _fit_weights(weights, size(U, 2))
+    weights === nothing || likelihood_method ||
+        requested_method in _WEIGHTED_RANK_METHODS || throw(ArgumentError(
+        "`weights` are supported by the likelihood estimators :mle and :mpl and by " *
+        "the rank inversions $(_WEIGHTED_RANK_METHODS) only; method=$requested_method " *
+        "takes none"))
+    fit_data = method === :mpl ? _normalized_pseudos(U, weights) : U
     engine_method = method === :mpl ? :mle : method
     engine_kwargs = !likelihood_method && pseudo_values !== nothing ?
         (; pseudo_values=input_is_pseudo, kwargs...) : (; kwargs...)
-    C = _fit(CT, fit_data, Val{engine_method}(); engine_kwargs...)
+    # The engine sees the weighted columns only; the model keeps every column.
+    engine_data, engine_weights = _weighted_sample(fit_data, weights)
+    weights === nothing || (engine_kwargs = (; weights=engine_weights, engine_kwargs...))
+    C = _fit(CT, engine_data, Val{engine_method}(); engine_kwargs...)
     C isa Copula{d} || throw(ArgumentError(
         "the fitting implementation returned $(typeof(C)); expected a Copula{$d}"))
     return (; result=C, method, requested_method, input_is_pseudo,
-            likelihood_method, fit_data, engine_kwargs)
+            likelihood_method, fit_data, engine_kwargs, weights)
 end
 
 function _estimate_copula(CT::Type{<:Copula}, U;
-        method=:default, pseudo_values::Union{Nothing,Bool}=nothing, kwargs...)
-    estimate = _run_copula_estimator(CT, U; method, pseudo_values, kwargs...)
+        method=:default, pseudo_values::Union{Nothing,Bool}=nothing,
+        weights=nothing, kwargs...)
+    estimate = _run_copula_estimator(CT, U; method, pseudo_values, weights, kwargs...)
     C = estimate.result
     (; method, input_is_pseudo, likelihood_method, fit_data, engine_kwargs) = estimate
     fit_kwargs = likelihood_method ?
         (; pseudo_values=input_is_pseudo, kwargs...) : engine_kwargs
+    # The normalized weights are part of the estimator, so the recipe carries them.
+    estimate.weights === nothing ||
+        (fit_kwargs = (; fit_kwargs..., weights=estimate.weights))
     fit_spec = _CopulaFitSpec(CT, method, fit_kwargs)
-    ll = Distributions.loglikelihood(C, fit_data)
+    ll = _weighted_loglikelihood(C, fit_data, estimate.weights)
     return CopulaModel(C, U, ll, fit_spec)
 end
 
 function Distributions.fit(::Type{CopulaModel}, CT::Type{<:Copula}, U;
-        method=:default, pseudo_values::Union{Nothing,Bool}=nothing, kwargs...)
-    return _estimate_copula(CT, U; method, pseudo_values, kwargs...)
+        method=:default, pseudo_values::Union{Nothing,Bool}=nothing,
+        weights=nothing, kwargs...)
+    return _estimate_copula(CT, U; method, pseudo_values, weights, kwargs...)
 end
 
 _available_fitting_methods(::Type{SklarDist}, d) = (:ifm, :ecdf)
@@ -458,20 +594,46 @@ the fitted distribution is required.
 `CT` selects the copula family and `TplMargins == Tuple{M₁,...,M_d}` selects the
 marginal families. This exception does not expose arbitrary storage type
 parameters or the concrete representation of constructed `SklarDist` values.
+
+`weights` gives one non-negative, finite weight per observation, not all zero,
+normalized to sum to `n` as in the copula-only `fit`, and every step reads the
+same vector: margin `i` is fitted by `Distributions.fit(Mᵢ, xᵢ, w)`, which is
+the weighted maximum-likelihood fit `fit_mle(Mᵢ, xᵢ, w)` that Distributions.jl
+defines for the families with weighted sufficient statistics, and a margin
+family without one is refused by name, and a zero-weight observation is
+dropped before the margin sees it, as [`_weighted_sample`](@ref) drops it
+before the copula engine; `:ecdf` ranks by weighted mass as
+[`pseudos`](@ref) does; the copula is fitted with the same `weights`; the
+stored log-likelihood is the weighted one. Unit weights reproduce the
+unweighted margins up to rounding, since Distributions.jl reduces its weighted
+sufficient statistics in another order, and integer weights summing to `n`
+reproduce the fit of the sample in which each observation is repeated that
+many times. `weights` is a keyword of `fit` itself, not of `copula_kwargs`.
 """
 function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
                          copula_method=:default, sklar_method=:ifm,
                          margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple(),
+                         weights=nothing,
                          model::Bool=true) where {CT<:Copulas.Copula,TplMargins<:Tuple}
 
     # Get methods:
     d = size(X, 1)
+    haskey(copula_kwargs, :weights) && throw(ArgumentError(
+        "pass `weights` to `fit` itself rather than through `copula_kwargs`: the " *
+        "Sklar route fits its margins, ranks its observations and fits its copula " *
+        "by the same weights"))
+    # The copula estimator normalizes the same raw weights itself, so that the
+    # margins, the ranks, the copula and the recipe all carry one vector.
+    w = _fit_weights(weights, size(X, 2))
     sklar_method  = _find_method(SklarDist, d, sklar_method)
     copula_method = copula_method === :default ?
         _default_fitting_method(CT, d) : _find_method(CT, d, copula_method)
 
-    # Fit marginals:
-    m = ntuple(i -> Distributions.fit(TplMargins.parameters[i], @view X[i, :]; margins_kwargs...), d)
+    # Fit marginals. A zero-weight observation is dropped before a margin
+    # sees it, as it is before the copula engine: it may lie outside the
+    # margin's support, where its weighted sufficient statistic is `0 * -Inf`.
+    Xm, wm = _weighted_sample(X, w)
+    m = ntuple(i -> _fit_margin(TplMargins.parameters[i], (@view Xm[i, :]), wm; margins_kwargs...), d)
 
     # Make pseudo-observations
     uniform_type = foldl(
@@ -489,21 +651,49 @@ function _estimate_sklar(T::Type{SklarDist{CT,TplMargins}}, X;
     else # :ecdf then
         # Average ranks are the public default. Continuous-data inference still
         # requires users to assess whether ties represent rounding or discreteness.
-        U .= pseudos(X)
+        U .= _normalized_pseudos(X, w)
     end
 
     # Fit the copula
-    cop_estimate = _run_copula_estimator(CT, U; method=copula_method,
+    cop_estimate = _run_copula_estimator(CT, U; method=copula_method, weights,
                                          copula_kwargs...)
 
     S = SklarDist(cop_estimate.result, m)
     model || return S
-    ll = Distributions.loglikelihood(S, X)
-    recipe = _CopulaFitSpec(T, cop_estimate.method,
-        (; copula_method=cop_estimate.method, sklar_method,
-           margins_kwargs, copula_kwargs))
+    ll = _weighted_loglikelihood(S, X, w)
+    fit_kwargs = (; copula_method=cop_estimate.method, sklar_method,
+                    margins_kwargs, copula_kwargs)
+    w === nothing || (fit_kwargs = (; fit_kwargs..., weights=w))
+    recipe = _CopulaFitSpec(T, cop_estimate.method, fit_kwargs)
     return CopulaModel(S, X, ll, recipe)
 end
+
+# One margin of the Sklar route. With weights it is the weighted
+# maximum-likelihood fit that Distributions.jl defines through
+# `suffstats(D, x, w)` or a `fit_mle(D, x, w)` method; a family with neither
+# is refused by name rather than by the error Distributions.jl raises inside
+# `fit`, a `MethodError` or the "not implemented" fallback of `suffstats`.
+_fit_margin(D, x, ::Nothing; kwargs...) = Distributions.fit(D, x; kwargs...)
+function _fit_margin(D, x, w::AbstractVector; kwargs...)
+    try
+        return Distributions.fit(D, x, w; kwargs...)
+    catch err
+        _is_missing_weighted_fit(err) || rethrow()
+        throw(ArgumentError(
+            "Distributions.jl defines no weighted fit for the margin family $D " *
+            "(neither `suffstats($D, x, w)` nor `fit_mle($D, x, w)` has a method), " *
+            "so the Sklar route cannot take `weights` with this margin; fit the " *
+            "margins yourself, then rank with `pseudos(X; weights)` and fit the " *
+            "copula with `fit(CT, U; weights)`"))
+    end
+end
+function _is_missing_weighted_fit(err::MethodError)
+    f = err.f === Core.kwcall ? err.args[2] : err.f
+    return f in (Distributions.fit, Distributions.fit_mle, Distributions.suffstats)
+end
+_is_missing_weighted_fit(err::ErrorException) =
+    startswith(err.msg, "suffstats is not implemented")
+_is_missing_weighted_fit(::Exception) = false
 
 @inline Distributions.fit(T::Type{<:SklarDist}, X; kwargs...) =
     _estimate_sklar(T, X; model=false, kwargs...)
@@ -518,7 +708,8 @@ end
 Number of observations used in the model fit.
 
 Observations are columns of the matrix supplied to `fit`. This value is the
-sample size used by likelihood summaries and information criteria.
+sample size used by likelihood summaries and information criteria. A weighted
+fit normalizes its weights to sum to this number, so it reports the same value.
 
 See also: [`CopulaModel`](@ref), [`StatsBase.dof`](@ref),
 [`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref).
@@ -716,7 +907,7 @@ function _copula_data(M::CopulaModel)
     D, data, spec = fitted_distribution(M), M.data, M.recipe
     if D isa SklarDist
         sklar_method = spec.kwargs.sklar_method
-        sklar_method === :ecdf && return pseudos(data)
+        sklar_method === :ecdf && return _normalized_pseudos(data, _model_weights(M))
         T = promote_type(float(eltype(data)), mapreduce(eltype, promote_type, D.m))
         U = Matrix{T}(undef, size(data))
         lower, upper = nextfloat(zero(T)), prevfloat(one(T))
@@ -726,7 +917,7 @@ function _copula_data(M::CopulaModel)
         return U
     end
     if spec.method === :mpl || get(spec.kwargs, :pseudo_values, true) === false
-        return pseudos(data)
+        return _normalized_pseudos(data, _model_weights(M))
     end
     return data
 end
@@ -782,7 +973,7 @@ function StatsBase.nullloglikelihood(M::CopulaModel)
         SklarDist(IndependentCopula(length(D)), D.m) :
         IndependentCopula(length(D))
     data = D isa SklarDist ? M.data : _copula_data(M)
-    return Distributions.loglikelihood(null, data)
+    return _weighted_loglikelihood(null, data, _model_weights(M))
 end
 """
     nulldeviance(M::CopulaModel)

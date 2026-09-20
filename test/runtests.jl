@@ -168,7 +168,6 @@ const TAIL_CASES = unique(tail_case_key,
     ],
 )
 
-
 # Run cheap foundational checks first, then mathematical and operation proofs.
 # Routing must remain after every test that records proven dispatch routes.
 # Exact `.jl` paths are used throughout;
@@ -177,13 +176,16 @@ testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
     "api/constructor_validation.jl",
+    "api/public_exception_taxonomy.jl",
     "correctness/reduction_graph.jl",
     "api/public_compositions.jl",
     "api/copulas.jl",
     "api/generators.jl",
+    "api/generator_numeric_fallback.jl",
     "api/tails.jl",
     "api/univariate_distributions.jl",
     "api/sklar.jl",
+    "api/sklar_discrete_mixed.jl",
     "api/utilities.jl",
     "correctness/numerical.jl",
     "correctness/williamson.jl",
@@ -197,6 +199,7 @@ testfiles = (
     "correctness/liouville.jl",
     "correctness/liebscher.jl",
     "correctness/nested_archimedean.jl",
+    "correctness/nesting_certificates.jl",
     "correctness/nested_archimedean_equivalence.jl",
     "correctness/family_specialization_equivalence.jl",
     "correctness/statistical.jl",
@@ -207,9 +210,13 @@ testfiles = (
     "operations/sampling.jl",
     "operations/subsetting.jl",
     "operations/conditioning.jl",
+    "operations/conditioning_numeric_types.jl",
     "operations/rosenblatt.jl",
     "operations/dependence.jl",
+    "operations/dependence_dimension_validation.jl",
     "operations/fitting.jl",
+    "operations/sklar_fitting_validation.jl",
+    "operations/nested_fitting_validation.jl",
     "operations/inference.jl",
     "operations/fitting_selection.jl",
     "operations/hypothesis_testing.jl",

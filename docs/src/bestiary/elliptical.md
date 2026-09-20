@@ -179,6 +179,22 @@ with `GaussianCopula(Σ)`, `GaussianCopula{d}(Σ)`, or
 `GaussianCopula(d, Σ)`. The equicorrelation forms `GaussianCopula{d}(ρ)` and
 `GaussianCopula(d, ρ)` require ``-1/(d-1)<\rho<1``.
 
+Kendall's tau and Spearman's rho of a Gaussian pair are ``\tau = \tfrac{2}{\pi}\arcsin\rho``
+and ``\rho_S = \tfrac{6}{\pi}\arcsin\tfrac{\rho}{2}``, so `fit(GaussianCopula, U; method=:itau)`
+and `method=:irho` invert the sample coefficients in closed form, entry by
+entry, in every dimension. A pairwise matrix of inverted coefficients need not
+be positive definite above dimension 2; it is then shrunk toward the identity
+by the smallest amount that makes it one.
+
+```@example elliptical
+using Copulas, Random, StatsBase
+
+C = GaussianCopula([1.0 0.6 0.3; 0.6 1.0 0.4; 0.3 0.4 1.0])
+U = rand(Xoshiro(317), C, 2_000)
+Ĉ = fit(GaussianCopula, U; method=:itau)
+(Ĉ.Σ[1, 2], sinpi(corkendall(U')[1, 2] / 2))
+```
+
 #### Targeting a Pearson correlation: the Nataf correction
 
 The parameter matrix of a `GaussianCopula` is the correlation matrix of the underlying Gaussian random vector. When the copula is coupled to non-Gaussian marginals through [`SklarDist`](@ref), that parameter is **not** the Pearson correlation of the resulting random vector, because Pearson correlation depends on the marginals (only rank-based measures such as Kendall's τ or Spearman's ρ are marginal-free, see [the dependence measures page](@ref dep_metrics)):
@@ -243,6 +259,17 @@ U = rand(Xoshiro(316), C, 500)
 This rank-matching method is bivariate. Near zero Kendall correlation, the
 degrees of freedom are not identifiable from these two rank coefficients; use
 maximum likelihood instead.
+
+`method=:itau` is available in every dimension. Kendall's tau of an elliptical
+copula depends on the correlation alone, so the correlation matrix is the same
+closed-form inversion as for the Gaussian copula; the degrees of freedom are
+then the maximizer of the likelihood with that correlation held fixed, the
+profile that `:mle` runs without re-estimating the correlation at every ``\nu``.
+
+```@example elliptical
+Ĉ = fit(TCopula, U; method=:itau)
+(df=params(Ĉ).ν, correlation=params(Ĉ).Σ[1, 2])
+```
 
 See the canonical [Public API](@ref) for complete constructor validation and
 numerical behavior.

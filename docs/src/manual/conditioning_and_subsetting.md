@@ -48,9 +48,78 @@ $u_J = (F_j(x_j))_{j\in J}$ and expressed on the remaining marginal scales:
 F_{X_i\mid X_J}(x\mid \mathbf x_J) = H_{i\mid J}\big(F_i(x)\mid \mathbf u_J\big).
 ```
 
-For discrete conditioning margins, observing $x_j$ corresponds to an interval
-of latent uniforms, not merely the endpoint $F_j(x_j)$; the formula above does
-not establish correct conditioning for that case.
+### Conditioning on an interval
+
+A conditioning event is not always a point. A stress such as "$U_3$ in its
+bottom decile", $U_3 \in [0, 0.1]$, or a joint box on two or three coordinates,
+asks for the law of the other coordinates given an event of positive
+probability. Partition the conditioned coordinates into point coordinates $P$
+with values $\mathbf u_P$ and interval coordinates $B$ with box
+$\prod_{j \in B} [a_j, b_j]$, with $I$ free. The conditional CDF of
+$\mathbf U_I$ is the inclusion–exclusion sum over the $2^{|B|}$ corners of the
+box of the same partial derivatives,
+
+```math
+H_{I \mid P, B}(\mathbf u_I)
+= \frac{\sum_{c \in \mathrm{corners}(B)} \mathrm{sgn}(c)\, \partial_{\mathbf u_P} C(\mathbf u_I, \mathbf u_P, c)}
+       {\sum_{c \in \mathrm{corners}(B)} \mathrm{sgn}(c)\, \partial_{\mathbf u_P} C(\mathbf 1_I, \mathbf u_P, c)},
+\qquad
+\mathrm{sgn}(c) = (-1)^{\#\{j : c_j = a_j\}}.
+```
+
+With $P = \emptyset$ both sides are C-volumes, the objects `measure` computes;
+with $B = \emptyset$ it is the point formula above. The denominator is a
+probability rather than a density, so the interval form is defined wherever
+the box has positive probability and needs no choice of version. The
+conditional density on $\mathbf u_I$ is the $|I|$-th mixed partial of the same
+sum, so `logpdf`, `quantile` and sequential sampling all reduce to one
+primitive. Substituting the midpoint of an interval into the point conditional
+is not a substitute: on `ClaytonCopula(3, 2.0)` with $U_3 \in [0, 0.1]$, the
+CDF of $U_1 \mid U_3 = 0.05$ and the CDF of $U_1 \mid U_3 \in [0, 0.1]$ differ
+by more than $0.05$.
+
+The entry point is the four-argument form of `condition`:
+
+- `condition(C::Copula, js, lo_js, hi_js)` conditions on
+  $U_{j_k} \in [\mathrm{lo}_k, \mathrm{hi}_k]$ for each $k$. A coordinate with
+  `lo == hi` is conditioned on that point, so `condition(C, js, u, u)` is
+  `condition(C, js, u)` and one call may mix fixed values with intervals.
+  Bounds must satisfy $0 \le \mathrm{lo} \le \mathrm{hi} \le 1$ and a box of
+  zero probability throws an `ArgumentError`.
+- `condition(X::SklarDist, js, xlo_js, xhi_js)` takes the intervals on the
+  original scale and maps them through the margins.
+
+The return shape follows the point form: a univariate distribution when one
+coordinate is free, otherwise a multivariate distribution of the conditional
+copula and the conditional margins.
+
+### Discrete margins
+
+Observing a discrete margin $X_j = x_j$ of a `SklarDist` is the latent event
+$U_j \in (F_j(x_j^-), F_j(x_j)]$, an interval, not the point $F_j(x_j)$.
+`condition(X, js, x_js)` therefore conditions each discrete coordinate on its
+interval and each continuous one on its point, in the one call; a discrete
+observation of zero probability throws. The same latent interval gives the
+probability mass of a `SklarDist` with atoms, so `pdf` and `logpdf` are the
+mixed derivative in the continuous coordinates and the finite difference over
+the discrete ones, times the continuous marginal densities only. Conditioning
+a model whose *free* margin is discrete yields a distribution whose `pdf` is
+the conditional probability mass of the atom.
+
+The exact discrete likelihood costs $2^k$ copula CDF evaluations for $k$
+discrete margins, which is the mathematics rather than the implementation; a
+high-dimensional discrete model calls for a simulated likelihood.
+
+The Rosenblatt transform of a discrete coordinate is not unique, since the
+observation is an interval of latent uniforms. `rosenblatt(rng, X, x)` draws
+the distributional transform of [ruschendorf2009](@cite) within that interval,
+the randomisation of [brockwell2007](@cite), and conditions every later
+coordinate on the interval as the discrete pair-copula constructions of
+[panagiotelis2012](@cite) do, so the output is independent uniform when the
+model is correct; `inverse_rosenblatt(X, s)` needs no randomness. This is the
+convention of vinecopulib's `rosenblatt(…, randomize_discrete = TRUE)`. The
+probability mass of a `SklarDist` with atoms is the one [genest2007](@cite)
+write down.
 
 A copula of the conditional vector is denoted $C_{I|J}(·|u_J)$; it need not be
 unique when conditional margins have atoms. The public entry point is `condition`:
@@ -116,6 +185,29 @@ H = condition(ClaytonCopula(4, 4.2), (2, 3), (0.25, 0.8))
 
 ```@example cond1
 plot(H)
+```
+
+Conditioning on an interval uses the four-argument form. Here is the
+conditional CDF of $U_1$ given $U_3$ in its bottom decile, next to the point
+conditional at the midpoint of that decile:
+
+```@example cond1
+C = ClaytonCopula(3, 2.0)
+D_box = condition(C, (2, 3), (0.0, 0.0), (1.0, 0.1))   # U₁ | U₃ ∈ [0, 0.1]
+D_mid = condition(C, (2, 3), (1.0, 0.05))              # U₁ | U₂ = 1, U₃ = 0.05
+plot(ts, cdf.(Ref(D_box), ts); label="U₃ ∈ [0, 0.1]", xlabel="u", ylabel="H(u)")
+plot!(ts, cdf.(Ref(D_mid), ts); label="U₃ = 0.05")
+```
+
+A mixed event fixes one coordinate and boxes another, and a `SklarDist` with a
+discrete margin conditions that margin on the latent interval of the
+observation:
+
+```@example cond1
+condition(C, (2, 3), (0.7, 0.0), (0.7, 0.1))            # U₁ | U₂ = 0.7, U₃ ∈ [0, 0.1]
+X = SklarDist(ClaytonCopula(2, 2.0), (Normal(), Poisson(3.0)))
+X1_given_X2 = condition(X, 2, 2)                        # X₁ | X₂ = 2, i.e. U₂ ∈ (F(1), F(2)]
+cdf(X1_given_X2, 0.0), pdf(X, [0.0, 2])
 ```
 
 ### Relation to the conditional copula

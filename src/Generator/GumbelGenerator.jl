@@ -50,7 +50,9 @@ archimedean_measure_style(G::GumbelGenerator, ::Val{d}) where {d} =
     isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
 ϕ(  G::GumbelGenerator, t) = exp(-exp(log(t)/G.θ))
-ϕ⁻¹(G::GumbelGenerator, t) = exp(log(-log(t))*G.θ)
+# `(-log t)^θ` rather than `exp(θ log(-log t))`: the latter is a NaN dual at
+# t = 1, where the generic AD conditioning path places every free coordinate.
+ϕ⁻¹(G::GumbelGenerator, t) = (-log(t))^G.θ
 function ϕ⁽¹⁾(G::GumbelGenerator, t)
     # first derivative of ϕ
     a = 1/G.θ
@@ -94,7 +96,12 @@ end
 
 function _archimedean_cdf(C::ArchimedeanCopula{d,G}, u) where {d,G<:GumbelGenerator}
     θ = C.G.θ
-    lx = log.(.-log.(u))
+    # A coordinate at 1 contributes nothing to the sum, and skipping it keeps
+    # the log-space formula free of the NaN dual that `log(-log(1))` produces
+    # when a generic AD partial places a free coordinate there.
+    x = .-log.(u)
+    lx = [log(xᵢ) for xᵢ in x if xᵢ > 0]
+    isempty(lx) && return one(eltype(x))
     return 1 - LogExpFunctions.cexpexp(LogExpFunctions.logsumexp(θ .* lx) ./ θ)
 end
 function _archimedean_logpdf(C::ArchimedeanCopula{2,GumbelGenerator{TF}}, u) where {TF}

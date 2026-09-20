@@ -107,6 +107,7 @@ Distributions.params(C::BernsteinCopula) = (m=C.m, weights=C.weights)
 BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base; kwargs...)
 BernsteinCopula(d::Integer, base::Copula; kwargs...) = BernsteinCopula{d}(base; kwargs...)
 function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}
+    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
     size(data, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     pseudo_values = get(kwargs, :pseudo_values, true)
     pseudo_values || _require_tie_free_rows(data, "BernsteinCopula")
@@ -193,30 +194,28 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula
     return A
 end
 
-
-function distortion(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,p}
+function distortion(B::BernsteinCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {D,p}
     # Build mixture weights over s_i given fixed u_J for J = js.
     Iset = Tuple(setdiff(1:D, js))
     @assert i in Iset "i must refer to a non-conditioned coordinate"
     m = B.m
     mi = m[i]
-    α = zeros(Float64, mi)
-    # Iterate over s on the grid
+    WT = promote_type(eltype(B.weights), typeof(uⱼₛ[1]))
+    α = zeros(WT, mi)
+    # Iterate over s on the grid.
     for s in Iterators.product((0:(mj-1) for mj in m)...)
-        wJ = 1.0
+        wJ = one(WT)
         @inbounds for (t, j) in pairs(js)
             wJ *= Distributions.pdf(Distributions.Beta(s[j] + 1, m[j] - s[j]), uⱼₛ[t])
-            wJ == 0.0 && break
+            iszero(wJ) && break
         end
-        wJ == 0.0 && continue
+        iszero(wJ) && continue
         Δ = B.weights[(s[j]+1 for j in 1:D)...]
-        (Δ <= 0) && continue
+        Δ <= 0 && continue
         α[s[i] + 1] += Δ * wJ
     end
     sα = sum(α)
-    if sα <= 0
-        return NoDistortion()
-    end
+    sα <= zero(sα) && return NoDistortion()
     α ./= sα
     comps = [Distributions.Beta(k, mi - (k - 1)) for k in 1:mi]
     return BernsteinDistortion(Distributions.MixtureModel(comps, α))

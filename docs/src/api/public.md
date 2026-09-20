@@ -26,26 +26,71 @@ interfaces such as Distributions.jl and StatsBase.jl. These behaviours follow
 semantic versioning; implementation hooks described in the developer guide do
 not.
 
+A public copula object has dimension `d ≥ 2`. The unique mathematical
+one-dimensional copula `C(u)=u` is represented by the ordinary univariate
+`Uniform()` distribution when marginalization or conditioning leaves one
+coordinate; Copulas.jl does not expose a `Copula{1}` model. Families may impose
+stronger dimension restrictions.
+
 | Area | Public operations | Guaranteed behaviour |
 |:--|:--|:--|
-| Construction | `Family{d}(parameters...)`, `Family(d, parameters...)` | Both forms select dimension `d`, validate their inputs and construct equivalent models of that family. Parameter values may represent simpler limiting copulas without changing the concrete family returned. A family may document an additional dimension-inferred form. |
-| Distribution | `length`, `eltype`, `params`, `cdf`, `logcdf`, `rand` | Every copula is a multivariate distribution with uniform margins and support in the unit hypercube. Vector and matrix sampling preserve dimension and numeric type. |
+| Construction | `Family{d}(parameters...)`, `Family(d, parameters...)` | Both forms select dimension `d ≥ 2`, validate their inputs and construct equivalent models of that family. Parameter values may represent simpler limiting copulas without changing the concrete family returned. A family may document an additional dimension-inferred form or a stronger dimension restriction. |
+| Distribution | `length`, `eltype`, `params`, `cdf`, `logcdf`, `rand` | Every copula is a multivariate distribution with uniform margins (except the [`EmpiricalCopula`](@ref)) and support in the unit hypercube. Vector and matrix sampling preserve dimension and numeric type. |
 | Density | `pdf`, `logpdf`, `loglikelihood` | Available for absolutely continuous components. Singular and mixed copulas follow their documented generalized-density semantics and need not possess a Lebesgue density. A family-defined boundary value is preserved; if its formula is indeterminate (`NaN`) on the boundary of the unit hypercube, the public interface uses the valid density representative `pdf = 0` (`logpdf = -Inf`). |
 | Marginalization | `subsetdims` | Preserves the requested coordinates and their order. One coordinate yields its univariate marginal. |
-| Conditioning | `condition` | Produces the conditional univariate distortion or lower-dimensional distribution, with generalized quantiles where atoms occur. |
-| Transforms | `rosenblatt`, `inverse_rosenblatt` | Vector and matrix forms are supported. Round trips hold almost surely when successive conditional CDFs are continuous and invertible on their supports; atomic conditionals need not give a bijection or a uniform forward transform. |
-| Dependence | `τ`, `ρ`, `β`, `γ`, `ι`, `λₗ`, `λᵤ`, `StatsBase.corkendall`, `StatsBase.corspearman` | Results have the documented scalar or pairwise-matrix shape, bounds and symmetry. Closed forms and numerical fallbacks have the same contract. Parameter inversions used by fitting are internal. |
+| Conditioning | `condition` | Produces the conditional univariate distortion or lower-dimensional distribution, given points or intervals of the conditioned coordinates, with generalized quantiles where atoms occur. A discrete observation of a `SklarDist` conditions on its latent interval. |
+| Transforms | `rosenblatt`, `inverse_rosenblatt` | Vector and matrix forms are supported. Round trips hold almost surely when successive conditional CDFs are continuous and invertible on their supports; atomic conditionals of a copula need not give a bijection or a uniform forward transform. A `SklarDist` with discrete margins takes the distributional transform of each atom, so `rosenblatt(rng, X, x)` is random on atoms and `inverse_rosenblatt(X, s)` inverts it in law. |
+| Dependence | `τ`, `ρ`, `β`, `γ`, `ι`, `λₗ`, `λᵤ`, `StatsBase.corkendall`, `StatsBase.corspearman` | Copula-level scalar summaries operate on public copulas, hence `d ≥ 2`. Data-level scalar `τ`, `ρ`, `β`, and `γ` likewise require at least two rows; their multivariate normalizations are degenerate at `d=1`. Results otherwise have the documented scalar or pairwise-matrix shape, bounds and symmetry. Closed forms and numerical fallbacks have the same contract. Parameter inversions used by fitting are internal. |
 | Fitting, inference, and selection | `fit`, `CopulaModel`, `fitted_distribution`, `infer`, `selected_model`, and `selection_table` | Documented family/method pairs return valid point estimates. `CopulaModel` retains only the fitted result, original data, fitted likelihood, and replay recipe. Inference owns covariance state, while automatic selection keeps candidate comparisons separate from the winning model. Estimator registries, execution hooks, result storage, and parameter reconstruction remain internal; see the [fitting interface](@ref fitting_interface). |
 | Hypothesis testing | `IndependenceCopulaTest`, `ExchangeabilityCopulaTest`, `RadialSymmetryCopulaTest`, `ExtremeValueCopulaTest`, `GOFCopulaTest`, `pvalue`, `teststatistic` | Each procedure applies its documented statistic and calibration under its stated assumptions and returns a `CopulaTest`; see [hypothesis testing](@ref hypothesis_testing). |
 | Composition | `SklarDist` | Distribution operations, marginalization, conditioning and Rosenblatt transforms are expressed on the marginal scales. `SklarDist{CopulaType,Tuple{MarginTypes...}}` is additionally a supported fitting target. |
 | Generator extension | `Generator`, `ϕ`, `max_monotony`, `Distributions.params` | Subtyping `Generator` and implementing these three mathematical operations is a supported way to define a custom Archimedean generator. Optional derivative, inverse, radial, fitting, cache, and dispatch hooks remain internal. |
 | Utilities | `pseudos`, `measure`, `Nataf` | Rank pseudo-observations, copula rectangle probability, and Nataf correlation correction respectively. |
 
+### Distribution support and measure class
+
+Copulas.jl follows the `Distributions.jl` `ValueSupport` terminology. In that
+interface, `Continuous` means that the support is uncountable; it does **not**
+mean that the law is absolutely continuous with respect to Lebesgue measure.
+Consequently, a singular copula such as the comonotone or countermonotone bound
+can legitimately be a `ContinuousMultivariateDistribution` even though it has
+no ordinary Lebesgue density. Copulas.jl tracks absolute continuity separately
+through its internal measure-style machinery and uses that distinction whenever
+an operation requires an ordinary density.
+
+For the same API-simplicity reason, `SklarDist` keeps one multivariate
+`Distributions.jl` support supertype even though its marginals may be discrete,
+continuous, or mixed. In particular, a `SklarDist` with only discrete margins
+is not reflected as a `DiscreteMultivariateDistribution` at the Julia supertype
+level. Its likelihood, conditioning, sampling, and transform semantics remain
+discrete-aware; downstream code should rely on those documented behaviours
+rather than infer absolute continuity or atomicity from the historical
+`ContinuousMultivariateDistribution` supertype alone.
+
+### Numeric representation
+
 For continuous distributions, `eltype` follows the Distributions.jl convention:
 it is the default numeric type allocated by `rand`. Parameterized copulas
-propagate the numeric representation of their parameters, composite copulas
-promote their components, and parameter-free copulas default to `Float64`.
-`rand!` may instead target any compatible real-valued buffer type.
+preserve or promote the numeric representation of their mathematical
+parameters, composite copulas promote their components, and parameter-free
+copulas default to `Float64`. Integer-like inputs may be converted to a suitable
+floating representation when the mathematical object requires it. `rand!` may
+instead target any compatible real-valued buffer type.
+
+Numerical algorithms are allowed to use a wider local working type when that
+does not reduce the information carried by the model, for example using a
+`Float64` backend while evaluating a `Float32` parameterization. Backend
+limitations must not silently redefine the stored/public model representation.
+In particular, silently narrowing an existing floating representation (for
+example `BigFloat` to `Float64`) is a bug, not an accepted compatibility mode.
+If an operation cannot support the precision of its model or input, it must use
+a generic implementation or fail explicitly rather than silently discard
+precision.
+
+This contract describes the 1.0 public policy, not a claim that every numerical
+backend already supports every `Real` type. Concrete violations should be
+reported as focused bugs so the implementation can be improved without
+weakening the model-level numeric contract.
 
 Public component constructors guarantee their documented mathematical semantics
 and supported constructor forms. Public status does not expose undocumented fields,

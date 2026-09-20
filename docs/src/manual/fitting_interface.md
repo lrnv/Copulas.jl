@@ -76,6 +76,89 @@ estimator unless different keywords are supplied.
 
 :::
 
+
+## Information criteria
+
+`CopulaModel` deliberately exposes AIC, BIC, AICc, and HQC for every fitted
+model, not only for ordinary maximum-likelihood estimates. This is a 1.0 API
+choice: the functions are always operationally defined from the fitted model's
+stored log-likelihood, number of fitted parameters, and number of observations.
+
+For a fitted model `M`, with ``\ell`` the stored log-likelihood, ``k`` the value
+of `dof(M)`, and ``n`` the value of `nobs(M)`, Copulas.jl uses
+
+```math
+\mathrm{AIC} = -2\ell + 2k,
+```
+
+```math
+\mathrm{BIC} = -2\ell + k\log n,
+```
+
+with the package's existing AICc and HQC corrections applied analogously.
+Automatic candidate selection uses exactly the same scores and remains
+available for every supported fitting method.
+
+### Statistical interpretation
+
+!!! warning "Outside ordinary MLE these are operational comparison scores"
+    When `M` comes from ordinary maximum likelihood for the likelihood being
+    scored, the usual classical interpretation of AIC/BIC/AICc/HQC applies.
+    For other estimators, Copulas.jl still evaluates the same algebraic score at
+    the fitted parameters, but that number does **not** automatically inherit
+    the classical MLE asymptotic justification.
+
+This distinction applies in particular to:
+
+- maximum pseudo-likelihood (`method=:mpl`), where empirical ranks are formed
+  before maximizing the copula density;
+- inversion estimators such as `:itau`, `:irho`, and `:ibeta`, which do not
+  maximize the likelihood at all;
+- sequential `SklarDist` IFM fitting, which is not joint maximum likelihood for
+  all copula and marginal parameters;
+- `SklarDist` ECDF/rank fitting and related semiparametric procedures.
+
+The fitted log-likelihood remains useful in all of these cases, and the common
+penalized score is useful for a stable comparison interface. Comparisons should
+still be made between models evaluated on the same observations and the same
+likelihood contribution.
+
+For composite/pseudo-likelihood inference, estimator-specific information
+criteria use a bias correction involving sensitivity and variability (Godambe
+or sandwich) quantities rather than blindly substituting the ordinary AIC
+penalty; see Varin and Vidoni [varin2005composite](@cite). For two-stage copula
+estimation, Ko and Hjort develop a Copula Information Criterion (CIC) that
+accounts for the IFM/two-stage structure [ko2019copula](@cite).
+
+These adapted criteria are **not** implemented as part of the 1.0 contract.
+Future implementations should use names that make their statistical meaning
+explicit—for example a composite-likelihood information criterion using the
+appropriate Godambe correction, and CIC (or a closely related criterion) for
+IFM. They must not silently change the established operational meaning of
+`aic`, `bic`, `aicc`, or `hqc` on `CopulaModel`.
+
+### Examples
+
+```@example information_criteria
+using Copulas, Distributions, StatsBase
+
+U = [
+    0.12 0.31 0.54 0.73 0.89 0.42
+    0.81 0.22 0.63 0.47 0.15 0.68
+]
+
+Mmle = fit(CopulaModel, ClaytonCopula, U; method=:mle)
+Mτ   = fit(CopulaModel, ClaytonCopula, U; method=:itau)
+
+(aic(Mmle), bic(Mmle), aic(Mτ), bic(Mτ))
+```
+
+The second pair remains valid API output. It should be read as the documented
+penalized fitted-log-likelihood score at the Kendall-inversion estimate, not as
+a claim that the classical MLE derivation of AIC/BIC applies unchanged to that
+estimator.
+
+
 ## Comparing candidate families
 
 Choosing a family is part of modelling, not a consequence of optimization.
@@ -239,17 +322,18 @@ is needed:
 | Symbol               | Description                                                                                      |
 |:--|:--|
 | `:hessian`           | Inverse observed information (−Hessian of the log-likelihood). Default for `method = :mle`.     |
-| `:godambe`           | Godambe (sandwich) estimator based on score-type functions. Used for rank-based fits.            |
-| `:godambe_pairwise`  | Pairwise Godambe using all variable pairs.                                                       |
+| `:godambe`           | Scalar-moment Godambe for supported bivariate rank-matching fits; accepts `nresamples` and `rng`.  |
+| `:godambe_pairwise`  | Pairwise-moment Godambe for supported multivariate rank fits; accepts `nresamples` and `rng`.     |
 | `:jackknife`         | Leave-one-out refitting of the complete recorded estimator.                                      |
-| `:bootstrap`         | Bootstrap refitting of the complete recorded estimator; accepts `nresamples` and `rng`.        |
+| `:bootstrap`         | Bootstrap refitting of the complete recorded estimator; accepts `nresamples` and `rng`.          |
 
-The default is `:hessian` after supported maximum-likelihood fits and
-`:godambe` after the supported rank-matching estimators. A downstream fitting
-extension does not implicitly opt into analytical inference. There is no
-generic silent fallback: if a
-method is mathematically unavailable or fails numerically, `infer` throws and
-the user must choose another procedure explicitly.
+The default is `:hessian` after supported maximum-likelihood fits,
+`:godambe` after supported bivariate rank-matching fits, and
+`:godambe_pairwise` when a supported multivariate rank estimator is defined by
+pairwise moments. A downstream fitting extension does not implicitly opt into
+analytical inference. There is no generic silent fallback: if a method is
+mathematically unavailable or its sensitivity matrix is rank deficient,
+`infer` throws and the user must choose another procedure explicitly.
 
 Maximum pseudo-likelihood currently has no implicit covariance method. A
 sandwich estimator must reflect the rank preprocessing and is tracked
@@ -264,8 +348,10 @@ StatsBase.confint(I; level=0.95)
 ```
 
 The same fitted model can be passed to several inference procedures without
-optimizing it again or mutating it. Resampling methods accept explicit controls,
-for example `infer(M; method=:bootstrap, nresamples=500, rng=Xoshiro(42))`.
+optimizing it again or mutating it. Bootstrap and Godambe procedures that use
+resampling accept explicit controls, for example
+`infer(M; method=:bootstrap, nresamples=500, rng=Xoshiro(42))` or
+`infer(M; method=:godambe, nresamples=500, rng=Xoshiro(42))`.
 
 
 ## Estimating margins and dependence together
@@ -351,8 +437,8 @@ parameters. No method dominates in every family and sample size.
   observations are converted by `pseudos` before the copula likelihood is
   maximized. This method is available whenever `:mle` is available, but is
   never selected by default.
-- `:itau` — **Kendall inverse**: matches theoretical `tau(C)` to empirical `tau(U)`. Ideal for single-parameter families with a monotone inverse.
-- `:irho` — **Spearman inverse**: analogous to `rho`; can use scalar or matrix objectives (e.g., multivariate Gaussians).
+- `:itau` — **Kendall inverse**: matches theoretical `tau(C)` to empirical `tau(U)`. Ideal for single-parameter families with a monotone inverse. For the elliptical families it is closed form in every dimension: each entry of the correlation matrix is `sinpi(τ̂/2)` of the corresponding pairwise sample coefficient, repaired to the nearest positive-definite correlation matrix when the pairwise entries are not jointly consistent. For `TCopula` the degrees of freedom are then the maximizer of the likelihood with that correlation held fixed.
+- `:irho` — **Spearman inverse**: analogous to `rho`; can use scalar or matrix objectives. For `GaussianCopula` it is the closed form `2 sinpi(ρ̂_S/6)` entrywise.
 - `:ibeta` — **Blomqvist inverse**: scalar; only valid for families with **≤ 1** free parameter.
 - `:itau_irho` — **joint Kendall/Spearman matching** for a bivariate
   `TCopula`: Kendall's tau determines the correlation parameter and Spearman's
@@ -396,6 +482,66 @@ enforces this restriction explicitly.
 
 For **extreme-value** copulas, `:mle` / `:iupper` use the documented Pickands
 representation when supported by the family.
+
+### Weighted observations
+
+Both likelihood estimators, the rank inversions and the Sklar route accept one
+weight per observation:
+
+```julia
+w = exp.(-0.01 .* (n:-1:1))            # exponential decay, any positive scale
+M = fit(CopulaModel, ClaytonCopula, U; method=:mle, weights=w)
+C = fit(GaussianCopula, X; pseudo_values=false, weights=w)
+R = fit(GumbelCopula, U; method=:itau, weights=w)
+S = fit(SklarDist{ClaytonCopula,Tuple{Normal,Exponential}}, X; weights=w)
+```
+
+The fit maximizes the weighted pseudo-likelihood `∑ᵢ wᵢ log c(uᵢ)`. The
+weights are normalized once so that they sum to the number of observations
+`n`, which fixes their scale without changing the maximizer: a weight reads as
+"how many observations this column counts for", uniform weights reproduce the
+unweighted fit exactly, a zero weight removes its observation, and integer
+weights summing to `n` give the fit of the sample in which each observation is
+repeated that many times. The stored log-likelihood, and with it `aic`, `bic`
+and `deviance`, are the weighted ones; `nobs` stays `n`. With
+`pseudo_values=false` the rank transformation is the weighted one of
+`pseudos(X; weights)`, which ranks each margin by weighted mass under the same
+tie conventions.
+
+The rank inversions `:itau`, `:irho`, `:ibeta` and `:itau_irho` invert the
+weighted sample measure: Kendall's tau-b, Spearman's rho and Blomqvist's beta
+of the sample in which observation `j` is repeated `w[j]` times, written so
+that they extend to real weights. Kendall's tau-b is one ``O(n \log n)``
+sweep with weight sums in place of counts. The tail estimator `:iupper` and
+the nonparametric estimators refuse weights.
+
+The Sklar route reads the same weights at every step. Margin `i` is fitted by
+`Distributions.fit(Mᵢ, xᵢ, w)`, the weighted maximum-likelihood fit that
+Distributions.jl defines for the families with weighted sufficient statistics
+(`Normal`, `Exponential`, `Gamma`, `Poisson`, … ); a margin family without one
+is refused by name, and a zero-weight observation is dropped before the margin
+sees it, so it may lie outside the margin's support. `:ecdf` ranks by weighted
+mass, the copula is fitted with
+the same weights, and the stored log-likelihood is the weighted one. Unit
+weights reproduce the unweighted margins up to rounding, because
+Distributions.jl reduces its weighted sufficient statistics in another order.
+
+Inference reads the weights with the same meaning. `infer(M; method=:hessian)`
+inverts the observed information of the weighted log-likelihood, which is that
+of the replicated sample, with the zero-weight columns dropped as they are
+before the fit; `:godambe`, `:godambe_pairwise` and `:bootstrap`
+draw each resample of size `n` with observation `j` taken with probability
+`w[j] / n`, then compute the moment or refit the estimator on the resample
+unweighted, which is the nonparametric bootstrap of the replicated sample.
+`:jackknife` refuses a weighted model: the delete-one jackknife of the
+replicated sample needs every weight to be at least one, which after
+normalization to `n` holds for unit weights only. The composite
+goodness-of-fit tests still refuse a weighted model.
+
+Nothing here decides what the weights *are*. Reading a weight as a count is
+one reading, under which every procedure above is the unweighted one on the
+replicated sample; importance weights, whose sandwich covariance scales the
+scores by ``w_i^2``, are not implemented.
 
 ## When a parametric family is too restrictive
 

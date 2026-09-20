@@ -51,12 +51,16 @@ See also: [`Generator`](@ref), [`ϕ`](@ref), [`max_monotony`](@ref),
 
 References:
 * [williamson1956](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
-* [mcneil2009](@cite) McNeil, A. J., & Nešlehová, J. (2009). Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions.
+* [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
 """
 struct ArchimedeanCopula{d,TG} <: Copula{d}
     G::TG
     function ArchimedeanCopula{d}(G::Generator) where {d}
-        @assert d <= max_monotony(G) "The generator $G you provided is not $d-monotonous since it has max monotonicity $(max_monotony(G)), and thus this copula does not exists."
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+        d <= max_monotony(G) || throw(DomainError(
+            d,
+            "generator $G has maximal monotonicity $(max_monotony(G)) and cannot define a $d-dimensional Archimedean copula",
+        ))
         return new{d,typeof(G)}(G)
     end
 end
@@ -197,7 +201,7 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
         r = rand(rng, R)
         sx = sum(sample)
         for row in axes(A, 1)
-            A[row, col] = ϕ(C.G, r * A[row, col] / sx)
+            A[row, col] = ϕ(C.G, r * A[row,col] / sx)
         end
     end
     return A
@@ -214,7 +218,6 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
     end
     return A
 end
-
 generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
@@ -239,7 +242,8 @@ function ρ⁻¹(::Type{T},ρ_val) where {T<:ArchimedeanCopula}
     return ρ⁻¹(generatorof(T),ρ_val)
 end
 function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
-    @assert d == size(u, 1)
+    size(u, 1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(u,1)) rows, expected copula dimension $d"))
     U = zero(u)
     for i in axes(u,2)
         U[1, i] = u[1, i]
@@ -264,7 +268,8 @@ function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where
 end
 
 function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
-    @assert d == size(u, 1)
+    size(u, 1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(u,1)) rows, expected copula dimension $d"))
     U = zero(u)
     for i in axes(u, 2)
         U[1,i] = u[1,i]
@@ -285,7 +290,7 @@ function inverse_rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real
     return U
 end
 
-function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {p}
+function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {p}
 
     kind = limit_kind(C.G, Val(2))
     kind === Π_LIMIT && return NoDistortion()
@@ -297,7 +302,7 @@ function distortion(C::ArchimedeanCopula, js::NTuple{p,Int}, uⱼₛ::NTuple{p,F
     sJ = sum(ϕ⁻¹.(C.G, uⱼₛ))
     return ArchimedeanDistortion(C.G, p, float(sJ), float(T(ϕ⁽ᵏ⁾(C.G, p, sJ))))
 end
-function conditional_copula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D, TG, p}
+function conditional_copula(C::ArchimedeanCopula{D, TG}, ::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}) where {D, TG, p}
     return ArchimedeanCopula{D - p}(TiltedGenerator(C.G, p, sum(ϕ⁻¹.(C.G, uⱼₛ))))
 end
 SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = ArchimedeanCopula{p}(C.G)
@@ -306,10 +311,12 @@ SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = Arch
 ####### Fitting interfaces.
 ##############################################################################################################################
 
-_example(::Type{ArchimedeanCopula}, d) = throw("Cannot fit an Archimedean copula without specifying its generator (unless you set method=:gnz2011)")
+_example(::Type{ArchimedeanCopula}, d) = throw(ArgumentError(
+    "cannot fit an Archimedean copula without specifying its generator (unless method=:gnz2011)"))
 _example(CT::Type{<:ArchimedeanCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(generatorof(CT))))...)
 _example(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = ArchimedeanCopula(d,𝒲(Distributions.MixtureModel([Distributions.Dirac(1), Distributions.Dirac(2)]),d))
-_example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw("No default example for frailty geenrators are implemented")
+_example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw(ArgumentError(
+    "no default fitting example is implemented for FrailtyGenerator copulas"))
 
 _unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
 _rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)
@@ -349,23 +356,22 @@ function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:𝒲{
     return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U))
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}})
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}}; weights=nothing)
     d = size(U,1)
     GT = generatorof(CT)
 
-    f = m isa Val{:itau} ?  StatsBase.corkendall :  StatsBase.corspearman
     invf =  m isa Val{:itau} ?  τ⁻¹ : ρ⁻¹
 
-    m = f(U')
+    m = _rank_measure(m, U, weights)
     upper_triangle_flat = [m[idx] for idx in CartesianIndices(m) if idx[1] < idx[2]]
     θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
 
     θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
     return CT(d, θ)
 end
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta})
+function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta}; weights=nothing)
     d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
-    βobs = clamp(β(U), -1+1e-10, 1-1e-10)
+    βobs = clamp(_weighted_β(U, weights), -1+1e-10, 1-1e-10)
     lo,hi = _θ_bounds(GT,d)
     fβ(θ) = β(CT(d,θ))
     a0 = isfinite(lo) ? lo+δ : -5.0 ; b0 = isfinite(hi) ? hi-δ :  5.0
@@ -390,6 +396,7 @@ function _fit(
     ::Val{d},
     ::Val{:mle};
     start::Union{Symbol,Real}=:itau,
+    weights=nothing,
 ) where {d}
     GT = generatorof(CT)
     lo, hi = _θ_bounds(GT, d)
@@ -419,7 +426,7 @@ function _fit(
         example,
     )
 
-    f(θ) = -Distributions.loglikelihood(cop(θ), U)
+    f(θ) = -_weighted_loglikelihood(cop(θ), U, weights)
 
     res = Optim.optimize(
         f,

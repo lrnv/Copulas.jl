@@ -55,11 +55,13 @@ $$a(d) = \frac{1}{d+1} + \frac{1}{(d+1)!} \quad \text{(independence)}, \qquad b(
 
 ::: definition Definition (Copula entropy ι)
 
-For a copula $C$ with density $c$, the copula entropy is
+For a copula $C$ with density $c$, the copula entropy is the negative Kullback-leibler distance between the measure induced by the copula and the lebedge measure on the unit hypercube (that is, the measure induced by the independence copula $\Pi$. 
 
-$$\iota(C) = - \int_{[0,1]^d} c(u) \log c(u)\,du.$$
+$$\iota(C) = - KL(C, \Pi) = - \int_{[0,1]^d} c(u) \log c(u)\,du.$$
 
 It satisfies $I(X_1,\dots,X_d) = -\iota(C)$ (see [ma2011mutual](@cite)).
+
+It is the usual negative density entropy for absolutely continuous copulas and `-Inf` whenever the copula law has a singular component.
 
 :::
 
@@ -85,7 +87,7 @@ and `corentropy(data)` follow the `StatsBase` `n×d` convention.
     
     They do not depend on the marginals. This is why we say that they measure the 'strength' of the dependency.
 
-::: todo Work in progress
+::: info Slow paths
 
 The package implements generic version of the dependence metrics, but some families have faster versions (closed form formulas or better integration paths). 
 However, all the potential fast-paths are not implemented yet. If you feel a specific method for a certain copula is missing, do not hesitate to open an issue !

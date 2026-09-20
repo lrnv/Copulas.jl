@@ -34,6 +34,7 @@ struct FGMCopula{d, Tθ, Tf} <: Copula{d}
     θ::Tθ
     fᵢ::Tf
     function FGMCopula{d}(vθ::Vector) where {d}
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         # Check first restrictions on parameters
         any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
         length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
@@ -81,11 +82,11 @@ _example(::Type{<:FGMCopula}, d) = FGMCopula(d, fill(0.5 / (2^d - d - 1), 2^d - 
 _available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho, :ibeta) : (:mle,)
 function _rebound_params(::Type{<:FGMCopula}, d, α)
     d==2 && return  (; θ = tanh.(α))
-    throw("Cannot do that when d > 2")
+    throw(ArgumentError("FGM rank-parameter transforms are available only in dimension 2"))
 end
 function _unbound_params(::Type{<:FGMCopula}, d, θ)
     d == 2 && return atanh.(collect(θ.θ))
-    throw("Cannot do that when d > 2")
+    throw(ArgumentError("FGM rank-parameter transforms are available only in dimension 2"))
 end
 
 
@@ -100,7 +101,7 @@ end
 copula_measure_style(::FGMCopula) = AbsolutelyContinuousMeasure()
 Distributions._logpdf(fgm::FGMCopula, u) = log1p(_fgm_red(fgm.θ, 1 .-2u))
 function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d, Tθ, Tf}, A::AbstractMatrix{T}) where {d,Tθ, Tf, T <: Real}
-    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    size(A, 1) == d || throw(DimensionMismatch("output matrix must have $d rows"))
     Random.rand!(rng, A)
     V₁ = rand(rng, T, size(A))
     states = rand(rng, fgm.fᵢ, size(A, 2))
@@ -161,14 +162,14 @@ distortion(C::FGMCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, ::Int
 
 
 
-function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
+function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle}; weights=nothing)
     d = size(U,1)
 
     # → 1. Easy case: d == 2, parameter mapping is bijective.
     if d == 2
         # generic rank-based routine (agnostic to vcov/inference)
         res = Optim.optimize(
-            α -> -Distributions.loglikelihood(FGMCopula(2, tanh(α[1])), U),
+            α -> -_weighted_loglikelihood(FGMCopula(2, tanh(α[1])), U, weights),
             [0.1],
             Optim.LBFGS();
             autodiff= ADTypes.AutoForwardDiff()
@@ -204,7 +205,7 @@ function _fit(CT::Type{<:FGMCopula}, U, ::Val{:mle})
     function loss(θ)
         try
             C = cop(θ)
-            return -Distributions.loglikelihood(C, U) + barrier_penalty(θ)
+            return -_weighted_loglikelihood(C, U, weights) + barrier_penalty(θ)
         catch
             # If FGMCopula constructor fails (invalid params), return large penalty
             return 1e10

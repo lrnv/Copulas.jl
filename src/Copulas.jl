@@ -33,6 +33,7 @@ module Copulas
     include("Subsetting.jl")
     include("Conditioning.jl")
     include("Fitting.jl")
+    include("SklarFitValidation.jl")
     include("Inference.jl")
     include("Nataf.jl")
 
@@ -116,6 +117,7 @@ module Copulas
 
     # Nested (hierarchical) Archimedean copulas
     include("NestedArchimedeanCopula.jl")
+    include("NestedArchimedeanFitValidation.jl")
 
     #Extreme value copulas
     include("Tail.jl")

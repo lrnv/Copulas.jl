@@ -335,14 +335,18 @@ end
 
     df = condition(C, (1, 3, 4), Tuple(xf[[1, 3, 4]]))
     db = condition(C, (1, 3, 4), Tuple(xb[[1, 3, 4]]))
+    @test db isa Copulas.ArchimedeanDistortion
+    @test db.sJ isa BigFloat
     @test db.den isa BigFloat
-    @test eltype(db.uⱼₛ) === BigFloat
     cdf_db = cdf(db, xb[2])
     @test cdf_db isa BigFloat
     @test Float64(cdf_db) ≈ cdf(df, xf[2]) atol=1e-9
 
     mb = condition(C, (1, 3), Tuple(xb[[1, 3]]))
-    @test mb.C.den isa BigFloat
+    @test mb isa SklarDist
+    @test mb.C isa ArchimedeanCopula{2}
+    @test mb.C.G isa Copulas.TiltedGenerator
+    @test mb.C.G.sJ isa BigFloat
     @test cdf(mb, xb[[2, 4]]) isa BigFloat
 
     C3 = ClaytonCopula{3}(2.0)
@@ -506,8 +510,8 @@ end
     end
     @test_throws ArgumentError condition(C, 0, 0.4)
     @test_throws ArgumentError condition(C, 3, 0.4)
-    @test_throws ArgumentError condition(C, 1, -0.1)
-    @test_throws ArgumentError condition(C, 1, 1.1)
+    @test_throws DomainError condition(C, 1, -0.1)
+    @test_throws DomainError condition(C, 1, 1.1)
 end
 
 function test_distortion_contract(D)
@@ -770,4 +774,191 @@ end
     # M: U₂ = U₁.
     @test quantile(D_M, 0.2) ≈ 0.4
     @test quantile(D_M, 0.8) ≈ 0.4
+end
+
+# Interval conditioning: U_I | U_js ∈ ∏ [lo, hi], a coordinate with lo == hi
+# being a point. The oracle is rejection sampling on the unconditioned copula.
+function _rejection_cdf(U, keep, thresholds)
+    kept = view(U, :, keep)
+    return mean(all(kept[i, col] <= thresholds[i] for i in eachindex(thresholds))
+                for col in axes(kept, 2))
+end
+
+@testset "interval conditioning reduces to point conditioning" begin
+    for C in (GaussianCopula([1.0 0.6 0.3; 0.6 1.0 0.5; 0.3 0.5 1.0]),
+              ClaytonCopula(3, 2.0), GumbelCopula(3, 1.7))
+        point = condition(C, (2, 3), (0.3, 0.7))
+        box = condition(C, (2, 3), (0.3, 0.7), (0.3, 0.7))
+        for u in 0.05:0.15:0.95
+            @test cdf(box, u) ≈ cdf(point, u) atol=1e-12
+            @test logpdf(box, u) ≈ logpdf(point, u) atol=1e-12
+            @test quantile(box, u) ≈ quantile(point, u) atol=1e-12
+        end
+        joint_point = condition(C, (3,), (0.7,))
+        joint_box = condition(C, (3,), (0.7,), (0.7,))
+        @test cdf(joint_box, [0.4, 0.6]) ≈ cdf(joint_point, [0.4, 0.6]) atol=1e-12
+    end
+end
+
+@testset "interval conditioning matches rejection sampling" begin
+    C = ClaytonCopula(3, 2.0)
+    U = rand(StableRNG(505), C, 1_000_000)
+    keep = U[3, :] .<= 0.1
+
+    # U₁, U₂ | U₃ ∈ [0, 0.1]: a SklarDist of the conditional copula and distortions.
+    joint = condition(C, (3,), (0.0,), (0.1,))
+    @test joint isa SklarDist
+    @test length(joint) == 2
+    for a in 0.1:0.2:0.9, b in 0.1:0.2:0.9
+        @test cdf(joint, [a, b]) ≈ _rejection_cdf(U, keep, (a, b)) atol=5e-3
+    end
+
+    # U₁ | U₃ ∈ [0, 0.1], with U₂ free through its full box.
+    margin = condition(C, (2, 3), (0.0, 0.0), (1.0, 0.1))
+    @test margin isa Distributions.UnivariateDistribution
+    for t in 0.05:0.1:0.95
+        @test cdf(margin, t) ≈ mean(view(U, 1, keep) .<= t) atol=5e-3
+    end
+    # The midpoint of the interval is not a substitute.
+    midpoint = condition(C, (2, 3), (1.0, 0.05))
+    @test maximum(abs(cdf(midpoint, t) - cdf(margin, t)) for t in 0.05:0.05:0.95) > 0.05
+
+    # Mixed: U₁ | U₂ = 0.7, U₃ ∈ [0, 0.1], against the point conditional rejected on U₃.
+    mixed = condition(C, (2, 3), (0.7, 0.0), (0.7, 0.1))
+    V = rand(StableRNG(506), condition(C, (2,), (0.7,)), 1_000_000)
+    keep_mixed = V[2, :] .<= 0.1
+    for t in 0.1:0.2:0.9
+        @test cdf(mixed, t) ≈ mean(view(V, 1, keep_mixed) .<= t) atol=2e-2
+    end
+    @test quadgk(t -> pdf(mixed, t), 0, 1)[1] ≈ 1 atol=1e-6
+    @test cdf(mixed, quantile(mixed, 0.37)) ≈ 0.37 atol=1e-8
+
+    # Gaussian: the denominator is the probability of the box.
+    G = GaussianCopula([1.0 0.6 0.3; 0.6 1.0 0.5; 0.3 0.5 1.0])
+    UG = rand(StableRNG(507), G, 1_000_000)
+    keep_g = (UG[2, :] .<= 0.2) .& (UG[3, :] .<= 0.2)
+    DG = condition(G, (2, 3), (0.0, 0.0), (0.2, 0.2))
+    @test DG.den ≈ Copulas.measure(G, [0.0, 0.0, 0.0], [1.0, 0.2, 0.2]) atol=1e-12
+    @test DG.den ≈ mean(keep_g) atol=5e-3
+    for t in 0.1:0.2:0.9
+        @test cdf(DG, t) ≈ mean(view(UG, 1, keep_g) .<= t) atol=5e-3
+    end
+end
+
+@testset "interval conditioning on the full box is the margin" begin
+    C = ClaytonCopula(3, 2.0)
+    full = condition(C, (2, 3), (0.0, 0.0), (1.0, 1.0))
+    for t in 0.05:0.1:0.95
+        @test cdf(full, t) ≈ t atol=1e-12
+    end
+    C4 = GumbelCopula(4, 1.8)
+    full4 = condition(C4, (2, 3), (0.0, 0.0), (1.0, 1.0))
+    S = subsetdims(C4, (1, 4))
+    for u in ([0.3, 0.6], [0.5, 0.5], [0.8, 0.2])
+        @test cdf(full4, u) ≈ cdf(S, u) atol=1e-10
+    end
+end
+
+@testset "interval conditioning samples the conditional law" begin
+    C = ClaytonCopula(4, 1.5)
+    box = condition(C, (3, 4), (0.0, 0.2), (0.3, 0.9))
+    sample = rand(StableRNG(508), box, 50_000)
+    U = rand(StableRNG(509), C, 1_000_000)
+    keep = (U[3, :] .<= 0.3) .& (0.2 .<= U[4, :] .<= 0.9)
+    @test size(sample) == (2, 50_000)
+    @test all(x -> 0 <= x <= 1, sample)
+    @test StatsBase.corkendall(sample')[1, 2] ≈
+          StatsBase.corkendall(U[1:2, keep]')[1, 2] atol=1e-2
+    @test cdf(box, [0.3, 0.6]) ≈ _rejection_cdf(U, keep, (0.3, 0.6)) atol=5e-3
+    @test isfinite(logpdf(box, [0.3, 0.6]))
+    # The joint density integrates to one over the unit square.
+    @test hcubature(v -> pdf(box, v), [0.0, 0.0], [1.0, 1.0]; rtol=1e-4)[1] ≈ 1 atol=1e-3
+end
+
+@testset "interval conditioning validates its box" begin
+    C = ClaytonCopula(3, 2.0)
+    @test_throws DomainError condition(C, (3,), (0.2,), (0.1,))
+    @test_throws DomainError condition(C, (3,), (-0.1,), (0.1,))
+    @test_throws DomainError condition(C, (3,), (0.5,), (1.5,))
+    @test_throws ArgumentError condition(C, (3, 3), (0.1, 0.2), (0.3, 0.4))
+    @test_throws DimensionMismatch condition(C, (2, 3), (0.1,), (0.3, 0.4))
+    # A box of zero copula probability: the comonotone copula puts no mass off the diagonal.
+    @test_throws ArgumentError condition(MCopula(3), (2, 3), (0.0, 0.5), (0.2, 0.7))
+    @test_throws DomainError condition(SklarDist(C, (Normal(), Normal(), Normal())), 3, 1.0, 0.0)
+    # Vector and scalar forms normalise like the point form.
+    @test cdf(condition(C, [2, 3], [0.0, 0.0], [1.0, 0.1]), 0.4) ≈
+          cdf(condition(C, (2, 3), (0.0, 0.0), (1.0, 0.1)), 0.4)
+    @test cdf(condition(C, 3, 0.0, 0.1), [0.4, 0.6]) ≈
+          cdf(condition(C, (3,), (0.0,), (0.1,)), [0.4, 0.6])
+end
+
+@testset "interval conditioning preserves non-Float64 paths" begin
+    C = ClaytonCopula(3, 2.0)
+    Df = condition(C, (2, 3), (0.0, 0.0), (1.0, 0.1))
+    Db = condition(C, (2, 3), (big"0.0", big"0.0"), (big"1.0", big"0.1"))
+    @test Db.den isa BigFloat
+    @test eltype(Db.lo) === BigFloat
+    @test cdf(Db, big"0.4") isa BigFloat
+    @test Float64(cdf(Db, big"0.4")) ≈ cdf(Df, 0.4) atol=1e-12
+    @test logpdf(Db, big"0.4") isa BigFloat
+    # Integer bounds are promoted with the copula's type, not cast.
+    @test cdf(condition(C, (2, 3), (0, 0), (1, 0.1)), 0.4) ≈ cdf(Df, 0.4)
+end
+
+@testset "conditioning on a discrete observation uses its latent interval" begin
+    X = SklarDist(ClaytonCopula(2, 2.0), (Normal(), Poisson(3.0)))
+    sample = rand(StableRNG(510), X, 1_000_000)
+    keep = sample[2, :] .== 2
+    D = condition(X, 2, 2)
+    for t in -2:0.5:2
+        @test cdf(D, t) ≈ mean(view(sample, 1, keep) .<= t) atol=5e-3
+    end
+    @test quadgk(t -> pdf(D, t), -8, 8)[1] ≈ 1 atol=1e-6
+    # The endpoint F(2) is the wrong latent value.
+    endpoint = Copulas.distortion(X.C, (2,), (cdf(Poisson(3.0), 2),), 1)(Normal())
+    @test maximum(abs(cdf(endpoint, t) - cdf(D, t)) for t in -2:0.25:2) > 0.05
+    # An observation of zero probability is a zero-probability event.
+    @test_throws ArgumentError condition(X, 2, -1)
+    # Original-scale intervals on a discrete margin include both endpoints.
+    Y = SklarDist(ClaytonCopula(2, 2.0), (Poisson(3.0), Normal()))
+    sample_y = rand(StableRNG(511), Y, 1_000_000)
+    keep_y = 1 .<= sample_y[1, :] .<= 3
+    DY = condition(Y, 1, 1, 3)
+    for t in -2:0.5:2
+        @test cdf(DY, t) ≈ mean(view(sample_y, 2, keep_y) .<= t) atol=5e-3
+    end
+    # A discrete free margin: the conditional pmf sums to one and cumulates to its cdf.
+    DP = condition(Y, 2, 0.4)
+    masses = [pdf(DP, k) for k in 0:40]
+    @test sum(masses) ≈ 1 atol=1e-10
+    @test cdf(DP, 3) ≈ sum(masses[1:4]) atol=1e-10
+    @test pdf(DP, 2.5) == 0
+    @test quantile(DP, cdf(DP, 3) - 1e-9) == 3
+    # A continuous SklarDist follows the point path unchanged.
+    Z = SklarDist(ClaytonCopula(2, 2.0), (Normal(), Normal()))
+    @test condition(Z, 2, 0.4) isa Copulas.DistortedDist
+    @test cdf(condition(Z, 2, 0.4, 0.4), 0.3) == cdf(condition(Z, 2, 0.4), 0.3)
+    # A mixed observed set is one call: X₁ | X₂ = 2, X₃ = 0.3 under a 3-D model.
+    W = SklarDist(ClaytonCopula(3, 2.0), (Normal(), Poisson(3.0), Normal()))
+    DW = condition(W, (2, 3), (2, 0.3))
+    Vw = rand(StableRNG(512), condition(W, 3, 0.3), 1_000_000)
+    keep_w = Vw[2, :] .== 2
+    for t in -1:0.5:1
+        @test cdf(DW, t) ≈ mean(view(Vw, 1, keep_w) .<= t) atol=1e-2
+    end
+end
+
+@testset "generic Gumbel partials are finite at a free coordinate of 1" begin
+    # `log(-log(1))` is a NaN dual, and the generic AD path places every free
+    # coordinate at 1, so the generic distortion of a 3-D Gumbel was NaN.
+    C = GumbelCopula(3, 1.6)
+    @test Copulas._partial_cdf(C, (2, 3), (1,), (0.4, 1.0), (0.7,)) ≈
+          Copulas._partial_cdf(C, (2, 3), (1,), (0.4, prevfloat(1.0)), (0.7,)) atol=1e-8
+    generic = Copulas.DistortionFromCop(C, (1,), (0.7,), 2)
+    @test cdf(generic, 0.4) ≈ cdf(Copulas.distortion(C, (1,), (0.7,), 2), 0.4) atol=1e-10
+    @test isfinite(ForwardDiff.derivative(t -> cdf(C, [0.7, 0.4, t]), 1.0))
+    @test cdf(C, [1.0, 1.0, 1.0]) == 1
+    B = BB3Copula(3, 1.5, 0.7)
+    @test isfinite(Copulas._partial_cdf(B, (2, 3), (1,), (0.4, 1.0), (0.7,)))
+    @test isfinite(cdf(condition(C, (2, 3), (0.0, 0.0), (1.0, 0.1)), 0.4))
 end

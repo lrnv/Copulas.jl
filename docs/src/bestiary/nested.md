@@ -85,7 +85,7 @@ with a child block of dimension ``d_1 \ge 2``. Write
 ``h = \phi_0^{-1} \circ \phi_1``. Assuming the parent and child generators
 are themselves valid Archimedean generators for their respective dimensions,
 the two-generator nested construction is valid if and only if ``h'`` is
-``d_1``-monotone on ``(0,\infty)`` [hofert2012nesting](@cite).
+``d_1``-alternating on ``(0,\infty)`` [hofert2012nesting](@cite), [rezapour2015nested](@cite).
 
 The often-used **sufficient nesting condition** asks instead that ``h'`` be
 completely monotone [mcneil2008](@cite). This stronger condition is convenient

@@ -21,6 +21,12 @@ Base.minimum(::_NaNCDFFixture) = 0.0
 Base.maximum(::_NaNCDFFixture) = 1.0
 Distributions.cdf(::_NaNCDFFixture, x::Real) = NaN
 
+struct _NaNWilliamsonGenerator <: Copulas.Generator end
+Copulas.max_monotony(::_NaNWilliamsonGenerator) = 2
+Distributions.params(::_NaNWilliamsonGenerator) = (;)
+Copulas.ϕ(::_NaNWilliamsonGenerator, x) = exp(-x)
+Copulas.ϕ⁽¹⁾(::_NaNWilliamsonGenerator, x) = oftype(float(x), NaN)
+
 struct _LogCDFQuantileFixture <: Copulas.Distortion end
 function Distributions.logcdf(::_LogCDFQuantileFixture, x::Real)
     x <= 0 && return -Inf
@@ -55,6 +61,17 @@ end
 
     @test Copulas.quantile_strategy(Copulas.NoDistortion) isa Copulas.LogCDFQuantile
     @test Copulas.quantile_strategy(Uniform) isa Copulas.CDFQuantile
+end
+
+@testset "inverse-Williamson CDF propagates NaN" begin
+    D = Copulas.𝒲₋₁(_NaNWilliamsonGenerator(), 2)
+    @test isnan(cdf(D, 0.5))
+    @test isnan(cdf(D, NaN))
+    @test cdf(D, Inf) == 1.0
+    @test_throws ArgumentError quantile(D, 0.5)
+
+    valid = Copulas.𝒲₋₁(Copulas.ClaytonGenerator(1.0), 2)
+    @test cdf(valid, Inf) == 1.0
 end
 
 @testset "stable factorial recurrences" begin

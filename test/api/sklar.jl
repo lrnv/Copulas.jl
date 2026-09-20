@@ -31,10 +31,10 @@
     @test logcdf(D, X) ≈ log.(cdf(D, X)) atol=5e-4
     @test pdf(D, X) == [pdf(D, column) for column in eachcol(X)]
     @test logpdf(D, X) ≈ log.(pdf(D, X))
-    @test_throws ArgumentError cdf(D, zeros(3))
-    @test_throws ArgumentError cdf(D, zeros(3, 1))
+    @test_throws DimensionMismatch cdf(D, zeros(3))
+    @test_throws DimensionMismatch cdf(D, zeros(3, 1))
     @test_throws DimensionMismatch logpdf(D, zeros(3))
-    @test_throws ArgumentError logpdf(D, zeros(3, 1))
+    @test_throws DimensionMismatch logpdf(D, zeros(3, 1))
     @test loglikelihood(D, X) isa Real
 
     S = subsetdims(D, (2, 1))
@@ -134,4 +134,42 @@ end
     xbig = BigFloat[0, 0]
     @test cdf(Sbig, xbig) isa BigFloat
     @test logpdf(Sbig, xbig) isa BigFloat
+end
+
+@testset "Sklar likelihood with atoms is a probability mass" begin
+    # Bernoulli × Bernoulli under FGM: P(0, 0) = C(1/2, 1/2), not 1/4 · c(1/2, 1/2).
+    S = SklarDist(FGMCopula{2}(1.0), (Bernoulli(0.5), Bernoulli(0.5)))
+    cells = [pdf(S, [i, j]) for i in 0:1, j in 0:1]
+    @test cells[1, 1] ≈ cdf(FGMCopula{2}(1.0), [0.5, 0.5]) atol=1e-12
+    @test cells[1, 1] ≈ 0.3125 atol=1e-12
+    @test sum(cells) ≈ 1 atol=1e-12
+    @test cells[1, 2] ≈ 0.5 - cells[1, 1] atol=1e-12
+    @test logpdf(S, [0, 0]) ≈ log(cells[1, 1])
+    @test pdf(S, [0.5, 0.5]) == 0
+
+    # Normal × Poisson under Clayton: integrating out the continuous coordinate
+    # recovers the Poisson pmf, and the conditional mean matches a sample.
+    X = SklarDist(ClaytonCopula(2, 2.0), (Normal(), Poisson(3.0)))
+    for k in 0:8
+        @test quadgk(x -> pdf(X, [x, k]), -8, 8)[1] ≈ pdf(Poisson(3.0), k) atol=1e-12
+    end
+    @test pdf(X, [0.3, 2.5]) == 0
+    sample = rand(StableRNG(491), X, 1_000_000)
+    keep = sample[2, :] .== 2
+    numerator = quadgk(x -> x * pdf(X, [x, 2]), -8, 8)[1]
+    @test numerator / pdf(Poisson(3.0), 2) ≈ mean(view(sample, 1, keep)) atol=1e-2
+
+    # Continuous margins recover the density factorization exactly.
+    Y = SklarDist(ClaytonCopula(2, 2.0), (Normal(), Normal()))
+    x = [0.3, -0.2]
+    @test logpdf(Y, x) == logpdf(Normal(), 0.3) + logpdf(Normal(), -0.2) +
+                          logpdf(ClaytonCopula(2, 2.0), cdf.(Normal(), x))
+    # ... and the atom route reduces to the same number when every margin is continuous.
+    @test Copulas._sklar_logpdf_atoms(Y, x) ≈ logpdf(Y, x) atol=1e-12
+
+    # Three discrete margins: the masses over a truncated support sum to one.
+    T3 = SklarDist(GaussianCopula([1.0 0.4 0.2; 0.4 1.0 0.3; 0.2 0.3 1.0]),
+                   (Bernoulli(0.3), Poisson(1.0), Bernoulli(0.6)))
+    total = sum(pdf(T3, [i, k, j]) for i in 0:1, k in 0:30, j in 0:1)
+    @test total ≈ 1 atol=1e-8
 end

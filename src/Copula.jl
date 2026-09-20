@@ -90,7 +90,7 @@ function _rand_M!(rng::Distributions.AbstractRNG, A::AbstractMatrix{T}) where {T
 end
 
 function _rand_W!(rng::Distributions.AbstractRNG, A::AbstractMatrix{T}) where {T<:Real}
-    size(A, 1) == 2 || throw(ArgumentError("W limit only exists in dimension 2"))
+    size(A, 1) == 2 || throw(DimensionMismatch("W limit requires an output matrix with 2 rows"))
     Random.rand!(rng, view(A, 1, :))
     @inbounds for col in axes(A, 2)
         A[2, col] = one(T) - A[1, col]
@@ -99,7 +99,9 @@ function _rand_W!(rng::Distributions.AbstractRNG, A::AbstractMatrix{T}) where {T
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::Copula{d}, x::AbstractVector{T}) where {d,T<:Real}
-    length(x) == d || throw(ArgumentError("Dimension mismatch between copula and output vector"))
+    length(x) == d || throw(DimensionMismatch(
+        "output vector has length $(length(x)); expected copula dimension $d",
+    ))
     Distributions._rand!(rng, C, reshape(x, d, 1))
     return x
 end
@@ -119,7 +121,9 @@ function Distributions._rand!(::Distributions.AbstractRNG, C::Copula{d}, ::Abstr
     throw(ArgumentError("$(typeof(C)) must implement a matrix Distributions._rand! method"))
 end
 function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
-    length(u) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
+    length(u) == d || throw(DimensionMismatch(
+        "input vector has length $(length(u)); expected copula dimension $d",
+    ))
     if any(x -> x <= zero(x), u)
         return zero(u[1])
     elseif all(x -> x >= one(x), u)
@@ -129,7 +133,9 @@ function Distributions.cdf(C::Copula{d},u::VT) where {d,VT<:AbstractVector}
     return _cdf(C, bounded)
 end
 function Distributions.cdf(C::Copula{d},A::AbstractMatrix) where d
-    size(A,1) != d && throw(ArgumentError("Dimension mismatch between copula and input vector"))
+    size(A,1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(A, 1)) rows; expected copula dimension $d",
+    ))
     return [Distributions.cdf(C,u) for u in eachcol(A)]
 end
 Distributions.logcdf(C::Copula, A::AbstractMatrix) = log.(Distributions.cdf(C, A))
@@ -140,6 +146,7 @@ Distributions.logcdf(C::Copula, v::AbstractVector) = log(Distributions.cdf(C,v))
     @boundscheck length(u) == d || throw(DimensionMismatch(
         "input dimension does not match copula dimension",
     ))
+    all(x -> 0 <= x <= 1, u) || return eltype(u)(-Inf)
     value = Distributions._logpdf(C, u)
     isnan(value) || return value
     return _resolve_boundary_logpdf(value, u)
@@ -151,7 +158,9 @@ function _resolve_boundary_logpdf(value, u)
     return value
 end
 function Distributions.logpdf(C::Copula{d}, A::AbstractMatrix) where d
-    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and input matrix"))
+    size(A, 1) == d || throw(DimensionMismatch(
+        "input matrix has $(size(A, 1)) rows; expected copula dimension $d",
+    ))
     return [Distributions.logpdf(C, u) for u in eachcol(A)]
 end
 """
@@ -241,7 +250,8 @@ function β(C::Copula{d}) where {d}
     u     = fill(0.5, d)
     C0    = Distributions.cdf(C, u)
     Cbar0 = Distributions.cdf(SurvivalCopula(C, Tuple(1:d)), u)
-    return (2.0^(d-1) * C0 + Cbar0 - 1) / (2^(d-1) - 1)
+    h = 2.0^(d - 1)
+    return (h * (C0 + Cbar0) - 1) / (h - 1)
 end
 
 """
@@ -272,22 +282,34 @@ end
     ι(C::Copula)
     ι(U::AbstractMatrix; k=5, p=Inf, leafsize=32)
 
-Return copula entropy. For a copula, this is the expected negative log-density
-and therefore requires an ordinary Lebesgue density. For data, a nearest-neighbor
-entropy estimator is applied to the `d × n` pseudo-observation matrix.
+Return copula entropy. For a copula with probability law ``P_C``, Copulas.jl
+defines
 
-With the sign convention used here, independence has entropy zero and an
-absolutely continuous dependent copula has a non-positive value. The data
-estimator uses the `k`th neighbor under the Minkowski `p`-norm; `leafsize`
-controls only search performance. It requires at least `k+1` observations and
-can be sensitive to ties, boundary effects and the choice of `k`. It is not a
-definition of entropy for singular copulas.
+```math
+ι(C) = -D_{KL}(P_C \\Vert λ^d),
+```
+
+where ``λ^d`` is Lebesgue (uniform) measure on the unit hypercube. Hence
+independence has entropy zero, absolutely continuous dependent copulas have a
+non-positive value, and any copula with a singular component has entropy
+`-Inf`. For an absolutely continuous copula with density ``c``, the definition
+reduces to ``ι(C) = E_C[-\\log c(U)]``; generalized `logpdf` values of singular laws
+are deliberately not substituted into that density formula.
+
+For data, a nearest-neighbor differential-entropy estimator is applied to the
+`d × n` pseudo-observation matrix. It assumes a continuous pseudo-sample, uses
+the `k`th neighbor under the Minkowski `p`-norm, and can be sensitive to ties,
+boundary effects and the choice of `k`. The Shannon entropy of an atomic
+empirical law is a different quantity from `ι` under the Lebesgue reference.
 
 See also: [`corentropy`](@ref), [`Copula`](@ref), [`pseudos`](@ref).
 """
-function ι(C::Copula{d}) where {d}
+ι(C::Copula) = _copula_entropy(copula_measure_style(C), C)
+
+function _copula_entropy(::AbsolutelyContinuousMeasure, C::Copula)
     return Distributions.expectation(u -> -Distributions.logpdf(C, u), C; nsamples=10^4)
 end
+_copula_entropy(::NonAbsolutelyContinuousMeasure, ::Copula) = -Inf
 
 """
     λₗ(C::Copula; ε=1e-10)
@@ -316,9 +338,9 @@ end
     λᵤ(U::AbstractMatrix; p=nothing)
 
 Return upper-tail dependence. The generic copula method applies the lower-tail
-calculation to the survival copula; the data method estimates joint upper-tail
-frequency at threshold `p`, defaulting to `1/√n`. Family-specific exact formulas
-take precedence when available.
+calculation to the survival copula; the data method estimates joint upper-tail frequency at
+threshold `p`, defaulting to `1/√n`. Family-specific exact formulas take
+precedence when available.
 
 For a `d × n` input, rows are variables, columns are observations, and values
 must already be on the uniform scale. Smaller `p` targets a more extreme region
@@ -336,15 +358,30 @@ end
 
 # Multivariate dependence metrics applied to a matrix.
 function β(U::AbstractMatrix)
-    # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
     d, n = size(U)
+    d >= 2 || throw(DimensionMismatch(
+        "scalar multivariate dependence summaries require at least two rows; got d=$d",
+    ))
+    # Assumes psuedo-data given. β multivariate (Hofert–Mächler–McNeil, ec. (7))
     count = sum(j -> all(U[:, j] .<= 0.5) || all(U[:, j] .> 0.5), 1:n)
     h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
     return h_d * (count/n - 2.0^(1-d))
 end
-function τ(U::AbstractMatrix)
-    # Sample version of multivariate Kendall's tau for pseudo-data
+# The same statistic on the sample where observation j is repeated w[j]
+# times: the count becomes the weighted mass of the concordant orthants.
+_weighted_β(U::AbstractMatrix, ::Nothing) = β(U)
+function _weighted_β(U::AbstractMatrix, w::AbstractVector)
     d, n = size(U)
+    count = sum(j -> w[j] * (all(U[:, j] .<= 0.5) || all(U[:, j] .> 0.5)), 1:n)
+    h_d = 2.0^(d-1) / (2.0^(d-1) - 1.0)
+    return h_d * (count/sum(w) - 2.0^(1-d))
+end
+function τ(U::AbstractMatrix)
+    d, n = size(U)
+    d >= 2 || throw(DimensionMismatch(
+        "scalar multivariate dependence summaries require at least two rows; got d=$d",
+    ))
+    # Sample version of multivariate Kendall's tau for pseudo-data
     comp = 0
     @inbounds for j in 2:n, i in 1:j-1
         uᵢ = @view U[:, i]; uⱼ = @view U[:, j]
@@ -354,8 +391,11 @@ function τ(U::AbstractMatrix)
     return (2.0^d * pc - 2.0) / (2.0^d - 2.0)
 end
 function ρ(U::AbstractMatrix)
-    # Sample version of multivariate Spearman's rho for pseudo-observations
     d, n = size(U)
+    d >= 2 || throw(DimensionMismatch(
+        "scalar multivariate dependence summaries require at least two rows; got d=$d",
+    ))
+    # Sample version of multivariate Spearman's rho for pseudo-observations
     R = hcat((StatsBase.tiedrank(U[k, :]) for k in 1:d)...)   # n×d
     μ = Statistics.mean(prod(R, dims=2)) / (n + 1)^d          # ≈ E[∏ U_i]
     h = (d + 1) / (2.0^d - (d + 1))
@@ -363,6 +403,9 @@ function ρ(U::AbstractMatrix)
 end
 function γ(U::AbstractMatrix)
     d, n = size(U)
+    d >= 2 || throw(DimensionMismatch(
+        "scalar multivariate dependence summaries require at least two rows; got d=$d",
+    ))
     I = zero(eltype(U))
     for j in 1:n
         u = U[:,j]
@@ -417,7 +460,7 @@ function ι(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
             hi[r] = v > hi[r] ? v : hi[r]
         end
         if length(idxs) ≤ leafsize
-            push!(nodes, Any[copy(idxs), 0, 0.0, 0, 0, lo, hi])  # hoja
+            push!(nodes, Any[copy(idxs), 0, 0.0, 0, 0, lo, hi])
             return length(nodes)
         end
         spans = hi .- lo
@@ -477,7 +520,6 @@ function ι(U::AbstractMatrix; k::Int=5, p::Real=Inf, leafsize::Int=32)
     end
     ρ .= max.(ρ, eps(Float64))
 
-    #KL: H = -ψ(k)+ψ(n)+log c_{d,p} + (d/n)∑log ρ  ; for L∞, we absorb log c_{d,∞}=d log 2
     H = -SpecialFunctions.digamma(k) + SpecialFunctions.digamma(n)
     if isinf(p)
         H += (d / n) * sum(log.(2 .* ρ))
@@ -501,28 +543,17 @@ See also: [`Distributions.cdf`](@extref Distributions Distributions.cdf),
 [`subsetdims`](@ref), [`Copula`](@ref).
 """
 function measure(C::Copula{d}, us,vs) where {d}
-
-    # Computes the value of the cdf at each corner of the hypercube [u,v]
-    # To obtain the C-volume of the box.
-    # This assumes u[i] < v[i] for all i
-    # Based on Computing the {{Volume}} of {\emph{n}} -{{Dimensional Copulas}}, Cherubini & Romagnoli 2009
-
-    # We use a gray code according to the proposal at https://discourse.julialang.org/t/looping-through-binary-numbers/90597/6
-
-    T = promote_type(eltype(us), eltype(vs), Float64)
-    u = ntuple(j -> clamp(us[j], 0, 1), d)
-    v = ntuple(j -> clamp(vs[j], 0, 1), d)
+    T = promote_type(eltype(us), eltype(vs))
+    u = ntuple(j -> clamp(T(us[j]), 0, 1), d)
+    v = ntuple(j -> clamp(T(vs[j]), 0, 1), d)
     any(v .≤ u) && return T(0)
     all(iszero.(u)) && all(isone.(v)) && return T(1)
 
     eval_pt = collect(u)
-    # Inclusion–exclusion: the sign for the corner at u is (-1)^d
-    # (for d even it's +1, for d odd it's -1). The Gray-code loop below
-    # then applies alternating signs matching (-1)^(d - |ε|) as bits flip.
     sign = isodd(d) ? -one(T) : one(T)
     r = sign * Distributions.cdf(C, eval_pt)
-    graycode = 0    # use a gray code to flip one element at a time
-    which = fill(false, d) # false/true to use u/v for each component (so false here)
+    graycode = 0
+    which = fill(false, d)
     for s = 1:(1<<d)-1
         graycode′ = s ⊻ (s >> 1)
         graycomp = trailing_zeros(graycode ⊻ graycode′) + 1
@@ -534,7 +565,7 @@ function measure(C::Copula{d}, us,vs) where {d}
     return max(r,0)
 end
 function measure(C::Copula{2}, us, vs)
-    T = promote_type(eltype(us), eltype(vs), Float64)
+    T = promote_type(eltype(us), eltype(vs))
     u1 = clamp(T(us[1]), 0, 1)
     u2 = clamp(T(us[2]), 0, 1)
     v1 = clamp(T(vs[1]), 0, 1)

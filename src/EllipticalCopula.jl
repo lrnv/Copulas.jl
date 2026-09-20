@@ -166,10 +166,17 @@ end
     return L
 end
 
-function _score_corr_start(Z::AbstractMatrix)
-    d = size(Z, 1)
-    T = float(eltype(Z))
-    R = Matrix{T}(Statistics.cor(Z; dims=2))
+# Turn a matrix of pairwise correlation-like values into a valid correlation
+# matrix: symmetrize, set the diagonal to one, and when the result is not
+# positive definite shrink it toward the identity by the smallest amount that
+# lifts its smallest eigenvalue to a positive floor. Used both to start the
+# elliptical likelihood optimizers and to repair the pairwise rank-inversion
+# estimates in dimension d > 2, where a matrix of pairwise closed-form
+# inversions need not be positive definite.
+function _nearest_correlation(R0::AbstractMatrix)
+    d = size(R0, 1)
+    T = float(eltype(R0))
+    R = Matrix{T}(R0)
 
     if any(x -> !isfinite(x), R)
         return Matrix{T}(LinearAlgebra.I, d, d)
@@ -180,20 +187,22 @@ function _score_corr_start(Z::AbstractMatrix)
         R[j, j] = one(T)
     end
 
-    LinearAlgebra.isposdef(LinearAlgebra.Symmetric(R)) && return R
+    δ = sqrt(eps(T))
+    λmin = LinearAlgebra.eigmin(LinearAlgebra.Symmetric(R))
+    λmin > δ && return R
 
-    I_d = Matrix{T}(LinearAlgebra.I, d, d)
-    λ = sqrt(eps(T))
-
-    while λ < one(T)
-        Rλ = (one(T) - λ) .* R .+ λ .* I_d
-        if LinearAlgebra.isposdef(LinearAlgebra.Symmetric(Rλ))
-            return Rλ
-        end
-        λ = min(one(T), 10λ)
+    # The eigenvalues of (1 - λ) R + λ I are (1 - λ) λᵢ + λ, so this λ is
+    # the smallest shrinkage that puts the smallest one at δ.
+    λ = (δ - λmin) / (one(T) - λmin)
+    R = (one(T) - λ) .* R .+ λ .* Matrix{T}(LinearAlgebra.I, d, d)
+    @inbounds for j in 1:d
+        R[j, j] = one(T)
     end
+    return R
+end
 
-    return I_d
+function _score_corr_start(Z::AbstractMatrix)
+    return _nearest_correlation(Statistics.cor(Z; dims=2))
 end
 
 @inline function _rebound_corr_params(d::Int, α::AbstractVector{T}) where {T}

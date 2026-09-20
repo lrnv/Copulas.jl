@@ -94,3 +94,41 @@ end
         @test tested_routes == selected_routes
     end
 end
+
+@testset "measure derives its type from the bounds" begin
+    C = ClaytonCopula(3, 2.0)
+    @test Copulas.measure(C, (0.1, 0.2, 0.0), (0.6, 0.9, 0.5)) isa Float64
+    @test Copulas.measure(ClaytonCopula(3, 2.0f0), (0.1f0, 0.2f0, 0.0f0), (0.6f0, 0.9f0, 0.5f0)) isa Float32
+    @test Copulas.measure(C, big.((0.1, 0.2, 0.0)), big.((0.6, 0.9, 0.5))) isa BigFloat
+    @test Copulas.measure(ClaytonCopula(2, 2.0f0), (0.1f0, 0.2f0), (0.6f0, 0.9f0)) isa Float32
+    # Mixed-type corners promote instead of erroring on the assignment into the corner vector.
+    @test Copulas.measure(C, (0.0, 0.0, 0.0), (1, 1, 0.5)) ≈ 0.5
+end
+
+# Performance guard. Wall-clock numbers live in `benchmark/benchmarks.jl`
+# (`SUITE["measure"]`, tracked by CI); here the deterministic side is pinned —
+# `measure` allocates no more than it does today, and the interval conditioning
+# primitive with no point coordinate adds nothing on top of `measure`, since it
+# dispatches to it — with a loose minimum-time ratio as a smoke test.
+@testset "measure allocations and the box primitive" begin
+    box(C, lo, hi) = Copulas._box_partial_cdf(C, (), (), ntuple(identity, length(C)),
+                                              (), (), lo, hi)
+    cases = (
+        (ClaytonCopula(2, 2.0), (0.1, 0.2), (0.6, 0.9), 700),
+        (ClaytonCopula(3, 2.0), (0.1, 0.2, 0.0), (0.6, 0.9, 0.5), 600),
+        (GumbelCopula(3, 1.6), (0.1, 0.2, 0.0), (0.6, 0.9, 0.5), @static VERSION < v"1.12" ? 1_440 : 1_400),
+        (ClaytonCopula(5, 2.0), (0.1, 0.2, 0.0, 0.3, 0.1), (0.6, 0.9, 0.5, 0.8, 0.7), 1_900),
+    )
+    for (C, lo, hi, bytes) in cases
+        Copulas.measure(C, lo, hi)
+        box(C, lo, hi)
+        allocated_measure = @allocated Copulas.measure(C, lo, hi)
+        allocated_box = @allocated box(C, lo, hi)
+        @test allocated_measure <= bytes
+        @test allocated_box == allocated_measure
+        @test box(C, lo, hi) == Copulas.measure(C, lo, hi)
+        t_measure = minimum(@elapsed(Copulas.measure(C, lo, hi)) for _ in 1:500)
+        t_box = minimum(@elapsed(box(C, lo, hi)) for _ in 1:500)
+        @test t_box <= 3 * t_measure + 1e-6
+    end
+end

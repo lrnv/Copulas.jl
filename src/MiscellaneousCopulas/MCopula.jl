@@ -10,11 +10,12 @@ complete positive dependence. For any copula ``C`` and all
 W(\\mathbf{u}) \\le C(\\mathbf{u}) \\le M(\\mathbf{u}).
 ```
 
-`MCopula` is parameter free and valid in every dimension. A sample repeats one
-uniform variate across all coordinates, hence the distribution is concentrated
-on the main diagonal and has no ordinary Lebesgue density. `pdf` and `logpdf`
-follow Copulas.jl's generalized-density convention for singular copulas and
-must not be integrated against Lebesgue measure as if they were a density.
+`MCopula` is parameter free and valid in every public copula dimension `d ≥ 2`.
+A sample repeats one uniform variate across all coordinates, hence the
+distribution is concentrated on the main diagonal and has no ordinary Lebesgue
+density. `pdf` and `logpdf` follow Copulas.jl's generalized-density convention
+for singular copulas and must not be integrated against Lebesgue measure as if
+they were a density.
 
 # Example
 ```julia
@@ -30,7 +31,10 @@ References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
 struct MCopula{d} <: Copula{d}
-    MCopula{d}() where {d} = new{d}()
+    function MCopula{d}() where {d}
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+        return new{d}()
+    end
 end
 copula_measure_style(::Type{<:MCopula}) = NonAbsolutelyContinuousMeasure()
 MCopula(d) = MCopula{d}()
@@ -38,7 +42,9 @@ Distributions._logpdf(::MCopula{d}, u) where {d} = all(u == u[1]) ? zero(eltype(
 _cdf(::MCopula{d}, u) where {d} = Base.minimum(u)
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, ::MCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
-    size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
+    size(A, 1) == d || throw(DimensionMismatch(
+        "output matrix has $(size(A, 1)) rows; expected copula dimension $d",
+    ))
     Random.rand!(rng, view(A, 1, :))
     @inbounds for row in 2:d
         A[row, :] .= view(A, 1, :)
@@ -53,12 +59,14 @@ StatsBase.corkendall(::MCopula{d}) where d = ones(d,d)
 StatsBase.corspearman(::MCopula{d}) where d = ones(d,d)
 
 # Subsetting colocated
-SubsetCopula(::MCopula{d}, ::NTuple{p, Int}) where {d,p} = MCopula{p}()
+SubsetCopula(::MCopula{d}, ::NTuple{p, Int}) where {d,p} =
+    p == 1 ? Distributions.Uniform() : MCopula{p}()
 distortion(::MCopula{2}, js::NTuple{1,Int}, uⱼₛ::NTuple{1,Float64}, i::Int) = MDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
 # Fitting/params interface (no parameters)
 Distributions.params(::MCopula) = (;)
-_fit(::Type{<:MCopula}, U, ::Val{:mle}) = MCopula(size(U,1))
-_fit(::Type{<:MCopula}, U, ::Val{:itau}) = MCopula(size(U,1))
-_fit(::Type{<:MCopula}, U, ::Val{:irho}) = MCopula(size(U,1))
-_fit(::Type{<:MCopula}, U, ::Val{:ibeta}) = MCopula(size(U,1))
+# A parameter-free family has nothing to weight, so the weights are accepted and unused.
+_fit(::Type{<:MCopula}, U, ::Val{:mle}; weights=nothing) = MCopula(size(U,1))
+_fit(::Type{<:MCopula}, U, ::Val{:itau}; weights=nothing) = MCopula(size(U,1))
+_fit(::Type{<:MCopula}, U, ::Val{:irho}; weights=nothing) = MCopula(size(U,1))
+_fit(::Type{<:MCopula}, U, ::Val{:ibeta}; weights=nothing) = MCopula(size(U,1))

@@ -83,13 +83,6 @@ has the Archimax copula $C_{\phi,A}$.
 * Simulate a frailty $M \ge 0$ whose Laplace transform is $\mathbb{E}[e^{-sM}] = \phi(s)$.
 * Set $U_j := \phi\!\big(-\log(V_j)/M\big)$, $j=1,2$. Return $(U_1,U_2)$.
 
-:::
-
-::: todo Allow any generator
-
-According to [charpentier2014](@cite), it should be possible to use any d-monotonous generator. If you want to implement the corresponding sampler, please reach out.
-
-:::
 
 The sampling recipe uses the supported generator and extreme-value components;
 its internal representations are not part of the public contract.

@@ -41,10 +41,12 @@ Special case:
 - If `isdiag(Σ)`, the `GaussianCopula` represents independence while retaining
   its concrete family type.
 
-Covariance-like inputs are normalized to correlation scale, and
-non-positive-definite matrices are rejected. Gaussian copulas are
-asymptotically independent in both tails for every non-degenerate correlation,
-and multivariate CDF values are numerical estimates.
+Covariance-like inputs are copied and normalized to correlation scale, and
+non-positive-definite matrices are rejected. The copula owns its normalized
+matrix; mutating the constructor input or a matrix returned by `params` does not
+change the model. Gaussian copulas are asymptotically independent in both tails
+for every non-degenerate correlation, and multivariate CDF values are numerical
+estimates.
 
 See also: [`TCopula`](@ref), [`SklarDist`](@ref),
 [`Nataf`](@ref), [`Distributions.fit`](@ref).
@@ -55,10 +57,12 @@ References:
 struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
     Σ::MT
     function GaussianCopula{d}(Σ::AbstractMatrix) where {d}
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
-        make_cor!(Σ)
-        N(GaussianCopula)(Σ)
-        return new{d,typeof(Σ)}(Σ)
+        matrix = Matrix(float.(Σ))
+        make_cor!(matrix)
+        N(GaussianCopula)(matrix)
+        return new{d,typeof(matrix)}(matrix)
     end
 end
 GaussianCopula(Σ::AbstractMatrix) = GaussianCopula{size(Σ, 1)}(Σ)
@@ -102,37 +106,38 @@ function inverse_rosenblatt(C::GaussianCopula, s::AbstractMatrix{<:Real})
     return Distributions.cdf.(Distributions.Normal(), LinearAlgebra.cholesky(C.Σ).L * Distributions.quantile.(Distributions.Normal(), s))
 end
 
-# Kendall tau of bivariate gaussian:
-# Theorem 3.1 in Fang, Fang, & Kotz, The Meta-elliptical Distributions with Given Marginals Journal of Multivariate Analysis, Elsevier, 2002, 82, 1–16
 τ(C::GaussianCopula{2,MT}) where MT = 2*asin(C.Σ[1,2])/π
 ρ(C::GaussianCopula{2,MT}) where MT = 6*asin(C.Σ[1,2]/2)/π
 
-# Conditioning and subsetting fast paths colocated with the type
-function distortion(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}, i::Int) where {D,MT,p}
+function distortion(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {D,MT,p}
     ist = Tuple(setdiff(1:D, js))
     @assert i in ist
     J = collect(js)
     zⱼ = Distributions.quantile.(Distributions.Normal(), collect(uⱼₛ))
-    if length(J) == 1 # if we condition on only one variable
+    if length(J) == 1
         μz = C.Σ[i, J[1]] * zⱼ[1]
-        σz = sqrt(1 - C.Σ[i, J[1]]^2)
+        σz = sqrt(one(μz) - C.Σ[i, J[1]]^2)
     else
-        Reg = C.Σ[i:i, J] * inv(C.Σ[J, J])
-        μz = (Reg * zⱼ)[1]
-        σz = sqrt(1 - (Reg * C.Σ[J, i:i])[1])
+        F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(C.Σ[J, J]))
+        β = F \ C.Σ[J, i]
+        μz = LinearAlgebra.dot(β, zⱼ)
+        σ² = one(μz) - LinearAlgebra.dot(C.Σ[i, J], β)
+        σz = sqrt(max(zero(σ²), σ²))
     end
     return GaussianDistortion(float(μz), float(σz))
 end
-function conditional_copula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,Float64}) where {D,MT,p}
+function conditional_copula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, ::NTuple{p,<:Real}) where {D,MT,p}
     @assert 0 < p < D-1
     J = collect(Int, js)
     I = collect(setdiff(1:D, J))
-    Σcond = C.Σ[I, I] - C.Σ[I, J] * inv(C.Σ[J, J]) * C.Σ[J, I]
+    F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(C.Σ[J, J]))
+    ΣIJ = C.Σ[I, J]
+    Σcond = C.Σ[I, I] - ΣIJ * (F \ C.Σ[J, I])
     return GaussianCopula{D - p}(Σcond)
 end
 
 function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
-                                 uⱼₛ::NTuple{p,Float64}, is) where {D,MT,p}
+                                 uⱼₛ::NTuple{p,<:Real}, is) where {D,MT,p}
     J = collect(Int, js)
     I = collect(Int, is)
     Σ = C.Σ
@@ -148,13 +153,10 @@ function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
     return GaussianCopula{length(is)}(Σcond), distortions
 end
 
-# Subsetting colocated
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula{p}(C.Σ[collect(dims),collect(dims)])
 
-
-# Fitting collocated
 StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
-Distributions.params(C::GaussianCopula) = (; Σ = C.Σ)
+Distributions.params(C::GaussianCopula) = (; Σ = copy(C.Σ))
 _example(::Type{<:GaussianCopula}, d::Int) = GaussianCopula(d, 0.2)
 function _unbound_params(::Type{<:GaussianCopula}, d::Int, θ::NamedTuple)
     return _unbound_corr_params(d, θ.Σ)
@@ -162,62 +164,61 @@ end
 function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
     return (; Σ = _rebound_corr_params(d, α))
 end
-function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle})
-    d, n = size(Udata)
-    # Normal scores only need to be computed once.
+function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
+    d = size(Udata, 1)
     N01 = Distributions.Normal()
     Z = Distributions.quantile.(N01, Udata)
-    Q = Z * Z'    # Cross-product sufficient for the Gaussian copula likelihood.
+    # Cross-product sufficient for the Gaussian copula likelihood. A weighted
+    # sample scales each score column by the root of its weight, so that the
+    # product stays a symmetric rank-k update, and its size is the weight total.
+    # `n` is assigned once: the objectives below capture it, and a captured
+    # variable that is reassigned is boxed, which makes it `Any` inside them.
+    Q = weights === nothing ? Z * Z' : (Zw = Z .* sqrt.(weights)'; Zw * Zw')
+    n = weights === nothing ? size(Udata, 2) : sum(weights)
     if d == 2
         q11 = Q[1, 1]; q22 = Q[2, 2]; q12 = Q[1, 2]
         T = eltype(Q)
         δ = sqrt(eps(T))
         lower = -one(T) + δ
         upper =  one(T) - δ
-
         objective_2d = ρ -> begin
             one_minus_ρ² = one(ρ) - ρ * ρ
             return n / 2 * log(one_minus_ρ²) + (q11 + q22 - 2ρ * q12) / (2 * one_minus_ρ²)
         end
-
         res = Optim.optimize(objective_2d, lower, upper, Optim.Brent(),)
         ρ̂ = Optim.minimizer(res)
         R̂ = T[one(T) ρ̂; ρ̂ one(T)]
-        θ̂ = (; Σ = R̂)
-
         return GaussianCopula(R̂)
     end
-
-    # In dimensions d > 2, use the normal-score correlation only
-    # as an interior starting point.
     R₀ = _score_corr_start(Z)
     α₀ = _unbound_corr_params(d, R₀)
-
     objective_hd = α -> begin
-        # The partial-correlation parameterization already gives
-        # the lower-triangular factor L such that R = L * L'.
         L = _rebound_corr_factor(d, α)
         Ltri = LinearAlgebra.LowerTriangular(L)
-        # log|R| = 2 * log|L|
         logdetR = 2 * sum(log, LinearAlgebra.diag(L))
-        # tr(R^{-1} Q), using triangular solves:
-        # R^{-1} Q = L'^{-1} L^{-1} Q.
         Y = Ltri \ Q
         RinvQ = transpose(Ltri) \ Y
         quadratic = LinearAlgebra.tr(RinvQ)
-
         return (n * logdetR + quadratic) / 2
     end
-    res = try
-    Optim.optimize(objective_hd, α₀, Optim.LBFGS();autodiff=ADTypes.AutoForwardDiff(),)
-    catch
-        Optim.optimize(objective_hd, α₀, Optim.NelderMead(),)
-    end
+    res = Optim.optimize(
+        objective_hd,
+        α₀,
+        Optim.LBFGS();
+        autodiff=ADTypes.AutoForwardDiff(),
+    )
     α̂ = Optim.minimizer(res)
     L̂ = _rebound_corr_factor(d, α̂)
     R̂ = L̂ * L̂'
     R̂ = (R̂ + R̂') / 2
-    θ̂ = (; Σ = R̂)
     return GaussianCopula(R̂)
+end
+function _fit(::Type{<:GaussianCopula}, U, m::Val{:itau}; weights=nothing)
+    τ̂ = _rank_measure(m, U, weights)
+    return GaussianCopula(_nearest_correlation(sinpi.(τ̂ ./ 2)))
+end
+function _fit(::Type{<:GaussianCopula}, U, m::Val{:irho}; weights=nothing)
+    ρ̂ = _rank_measure(m, U, weights)
+    return GaussianCopula(_nearest_correlation(2 .* sinpi.(ρ̂ ./ 6)))
 end
 _available_fitting_methods(::Type{<:GaussianCopula}, d) = (:mle, :itau, :irho, :ibeta)

@@ -53,12 +53,17 @@ _θ_bounds(::Type{<:ClaytonGenerator}, d) = (-1/(d-1), Inf)
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : (1 - 1/G.θ)
 archimedean_measure_style(G::ClaytonGenerator, ::Val{d}) where {d} =
     (G.θ == -1 / (d - 1) || !isfinite(G.θ)) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
-ϕ(  G::ClaytonGenerator, t) = iszero(G.θ) ? exp(-t) : max(1+G.θ*t,zero(t))^(-1/G.θ)
-ϕ⁻¹(G::ClaytonGenerator, t) = iszero(G.θ) ? -log(t) : (t^(-G.θ)-1)/G.θ
-ϕ⁽¹⁾(G::ClaytonGenerator, t) = iszero(G.θ) ? -exp(-t) : (1+G.θ*t) ≤ 0 ? 0 : - (1+G.θ*t)^(-1/G.θ -1)
+# The generator and its derivatives in `log1p`/`expm1` form. The power forms
+# `(1 + θt)^(-1/θ)` and `(t^(-θ) - 1)/θ` cancel to `1` and `0` once `θ` drops
+# below `eps`, which puts every Clayton CDF value at `1`; the logarithmic forms
+# are exact there and reach the `θ = 0` branch continuously. A non-finite `θ`
+# keeps the power form, whose limits are the ones it always had.
+ϕ(  G::ClaytonGenerator, t) = iszero(G.θ) ? exp(-t) : !isfinite(G.θ) ? max(1+G.θ*t,zero(t))^(-1/G.θ) : (1+G.θ*t) ≤ 0 ? zero(1+G.θ*t) : exp(-log1p(G.θ*t)/G.θ)
+ϕ⁻¹(G::ClaytonGenerator, t) = iszero(G.θ) ? -log(t) : !isfinite(G.θ) ? (t^(-G.θ)-1)/G.θ : expm1(-G.θ*log(t))/G.θ
+ϕ⁽¹⁾(G::ClaytonGenerator, t) = iszero(G.θ) ? -exp(-t) : (1+G.θ*t) ≤ 0 ? zero(1+G.θ*t) : !isfinite(G.θ) ? - (1+G.θ*t)^(-1/G.θ -1) : -exp(-(1+G.θ)*log1p(G.θ*t)/G.θ)
 ϕ⁻¹⁽¹⁾(G::ClaytonGenerator, t) = iszero(G.θ) ? -inv(t) : -t^(-G.θ-1)
-ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Int, t) = (1+G.θ*t) ≤ 0 ? 0 : iszero(G.θ) ? (-1)^k * exp(-t) : (1 + G.θ * t)^(-1/G.θ - k) * prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1)
-ϕ⁽ᵏ⁾⁻¹(G::ClaytonGenerator, k::Int, t; start_at=t) = iszero(G.θ) ? -log(abs(t)) : ((t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))^(1/(-1/G.θ - k)) -1)/G.θ
+ϕ⁽ᵏ⁾(G::ClaytonGenerator, k::Int, t) = (1+G.θ*t) ≤ 0 ? zero(1+G.θ*t) : iszero(G.θ) ? (-1)^k * exp(-t) : !isfinite(G.θ) ? (1 + G.θ * t)^(-1/G.θ - k) * prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1) : exp(-(1+k*G.θ)*log1p(G.θ*t)/G.θ) * prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1)
+ϕ⁽ᵏ⁾⁻¹(G::ClaytonGenerator, k::Int, t; start_at=t) = iszero(G.θ) ? -log(abs(t)) : !isfinite(G.θ) ? ((t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))^(1/(-1/G.θ - k)) -1)/G.θ : expm1(-G.θ*log(t / prod(-1-ℓ*G.θ for ℓ in 0:k-1; init=1))/(1+k*G.θ))/G.θ
 
 # Closed-form edge-composition override for a Clayton-over-Clayton nesting. Overrides the
 # default `composition_taylor` hook (nested/NestedArchimedeanDensity.jl) by dispatch, and
@@ -134,25 +139,28 @@ function _archimedean_logpdf(C::ClaytonCopula{d}, u) where {d}
 
     # Continuous independence extension.
     iszero(θ) && return zero(T)
+    # S1 is Σ (tᵢ^(-θ) - 1), accumulated through `expm1` so that it does not
+    # cancel below eps; the density's last factor is (S1 + 1)^(-1/θ - d).
     S1 = zero(T)
     S2 = zero(eltype(u))
     @inbounds for t in u
         zero(t) < t < one(t) || return oftype(T, -Inf)
-        S1 += t^(-θ)
-        S2 += log(t)
+        lt = log(t)
+        S1 += expm1(-θ * lt)
+        S2 += lt
     end
 
-    if θ < 0 && S1 < d - 1
+    if θ < 0 && S1 < -1
         return oftype(T, -Inf)
     end
 
-    S1 == d - 1 && return oftype(T, -Inf)
+    S1 == -1 && return oftype(T, -Inf)
     logcoef = zero(T)
     @inbounds for k in 1:(d - 1)
         logcoef += log1p(k * θ)
     end
 
-    return logcoef - (θ + 1) * S2 + (-inv(θ) - d) * log(S1 - d + 1)
+    return logcoef - (θ + 1) * S2 + (-inv(θ) - d) * log1p(S1)
 end
 
 ρ(G::ClaytonGenerator) =

@@ -29,6 +29,7 @@ References:
 struct RafteryCopula{d, P} <: Copula{d}
     θ::P  # Copula parameter
     function RafteryCopula{d}(θ) where {d}
+        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
         (0 <= θ <= 1) || throw(ArgumentError("Theta must be in [0,1]"))
         θf = float(θ)
         return new{d,typeof(θf)}(θf)
@@ -46,7 +47,6 @@ _rebound_params(::Type{<:RafteryCopula}, d, α) = (; θ = LogExpFunctions.logist
 function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
     iszero(R.θ) && return prod(u)
     isone(R.θ) && return minimum(u)
-    # Order the vector u
     u_ordered = sort(u)
     term1 = u_ordered[1]
     term2 = (1 - R.θ) * (1 - d) / (1 - R.θ - d) * prod(u).^(1/(1 - R.θ))
@@ -61,7 +61,6 @@ end
 function Distributions._logpdf(R::RafteryCopula{d,P}, u) where {d,P}
     u==zeros(d) && return eltype(u)(Inf)
     u==ones(d) && return (1-d) * log(1-R.θ)
-    # Order the vector u
     u_ordered = sort(u)
     l_den = (d-1) * log(1-R.θ) + log(d + R.θ -1)
     l_num = log(d - 1 + R.θ * u_ordered[d]^((1 - R.θ - d) / (1 - R.θ)))
@@ -96,7 +95,6 @@ function τ(R::RafteryCopula{d, P}) where {d, P}
     pow2 = exp2(T(1 - d))
     normalization = inv(one(T) - pow2)
     common = θ * (one(T) - θ) * (T(2) - θ)
-
     ratio = one(T)
     term3 = zero(T)
     for k in d:-1:2
@@ -104,7 +102,6 @@ function τ(R::RafteryCopula{d, P}) where {d, P}
         term3 += common * exp2(T(1 - k)) * normalization * ratio /
                  ((one(T) - θ - k) * (T(2) - θ - k))
     end
-
     term1 = normalization * ratio
     term2 = (one(T) - θ)^2 * (T(d)^2 - one(T)) * pow2 * normalization /
             ((T(d - 1) + θ) * (T(d + 1) - θ))

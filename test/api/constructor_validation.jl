@@ -1,6 +1,9 @@
 # Public-API proof: validation, boundary specialization, keyword forms, and
 # accepted numeric parameter types beyond the universal constructor inventory.
 
+struct _IncompleteGenerator498 <: Copulas.Generator end
+struct _IncompleteCopula498{d} <: Copulas.Copula{d} end
+
 @testset "constructor validation regressions" begin
     data = [0.1 0.4 0.8 0.6; 0.3 0.9 0.2 0.7]
     tied = [0.1 0.1 0.8 0.9; 0.2 0.4 0.6 0.7]
@@ -115,6 +118,16 @@ end
     @test GalambosCopula{2}(2) isa GalambosCopula{2}
     @test tEVCopula{2}(4, 0.5) isa tEVCopula{2}
     @test GalambosCopula(2; θ=1.0) isa GalambosCopula{2}
+
+    bb1_kw = Copulas.BB1Generator(; δ=2.0, θ=1.0)
+    @test params(bb1_kw) == (θ=1.0, δ=2.0)
+    @test params(Copulas.BB1Generator(1.0; δ=2.0)) == (θ=1.0, δ=2.0)
+    asym_log_kw = Copulas.AsymLogTail(; θ₂=0.6, α=1.5, θ₁=0.4)
+    @test params(asym_log_kw) == (α=1.5, θ₁=0.4, θ₂=0.6)
+    @test_throws ArgumentError Copulas.ClaytonGenerator(; banana=2.0)
+    @test_throws ArgumentError Copulas.GalambosTail(; banana=1.0)
+    @test_throws ArgumentError GalambosCopula(2; banana=1.0)
+
     @test params(LogCopula{2}(2)).θ == 2.0
     @test params(MixedCopula{2}(1)).θ == 1.0
     @test params(HuslerReissCopula{2}(1)).θ == 1.0
@@ -168,6 +181,29 @@ end
         3, [0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0])
     @test_throws ArgumentError Copulas.BC2Tail([0.2])
     @test_throws ArgumentError Copulas.BC2Tail([0.2, 1.1])
+end
+
+@testset "stable public validation semantics" begin
+    G = _IncompleteGenerator498()
+    @test_throws MethodError Copulas.max_monotony(G)
+    @test_throws MethodError Copulas.ϕ(G, 0.5)
+
+    C = _IncompleteCopula498{2}()
+    @test_throws MethodError params(C)
+    @test_throws MethodError Copulas._example(_IncompleteCopula498, 2)
+
+    U = [0.2 0.4 0.8; 0.3 0.6 0.7]
+    @test_throws ArgumentError Copulas.EmpiricalEVTail(U; grid=1)
+    @test_throws DimensionMismatch Copulas.EmpiricalEVTail(vcat(U, U[1:1, :]))
+    badU = copy(U); badU[1, 1] = 1.2
+    @test_throws DomainError Copulas.EmpiricalEVTail(badU)
+    @test_throws DomainError EmpiricalCopula(badU)
+
+    @test_throws ArgumentError CheckerboardCopula(U; m=4)
+    @test_throws DimensionMismatch CheckerboardCopula(U; m=(1, 1, 1))
+    @test_throws DomainError ArchimedeanCopula(3, Copulas.ClaytonGenerator(-0.75))
+    @test_throws DomainError Copulas.FrailtyGenerator(Normal())
+    @test_throws DomainError Copulas.𝒲₋₁(Copulas.ClaytonGenerator(-0.75), 3)
 end
 
 @testset "Liebscher and Khoudraji constructor validation" begin

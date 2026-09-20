@@ -120,3 +120,52 @@ end
     @test tested_forward == selected_forward
     @test tested_inverse == selected_inverse
 end
+
+@testset "Rosenblatt transforms with atoms" begin
+    X = SklarDist(ClaytonCopula(2, 2.0), (Poisson(3.0), Normal()))
+    sample = rand(StableRNG(452), X, 500_000)
+
+    # Forward: the atom takes the distributional transform of its conditional
+    # law and its successor conditions on the atom's interval, so the result is
+    # a pair of independent uniforms.
+    R = rosenblatt(StableRNG(453), X, sample)
+    @test size(R) == size(sample)
+    @test all(x -> 0 <= x <= 1, R)
+    grid = 0.1:0.2:0.9
+    @test maximum(abs(mean((R[1, :] .<= a) .& (R[2, :] .<= b)) - a * b)
+                  for a in grid, b in grid) < 5e-3
+    # Conditioning the successor on the randomised latent value instead is wrong.
+    latent = copy(R)
+    for col in axes(sample, 2)
+        latent[2, col] = cdf(Copulas.distortion(X.C, (1,), (R[1, col],), 2),
+                             cdf(Normal(), sample[2, col]))
+    end
+    @test maximum(abs(mean((latent[1, :] .<= a) .& (latent[2, :] .<= b)) - a * b)
+                  for a in grid, b in grid) > 1e-2
+    # The rng-less form draws from the default rng; a vector is one observation.
+    @test size(rosenblatt(X, sample[:, 1:5])) == (2, 5)
+    @test length(rosenblatt(StableRNG(454), X, sample[:, 1])) == 2
+
+    # Inverse: independent uniforms map to the joint law without randomness.
+    S = rand(StableRNG(455), 2, 500_000)
+    Z = inverse_rosenblatt(X, S)
+    @test all(isinteger, Z[1, :])
+    for k in 0:6, t in -1:0.5:1
+        @test mean((Z[1, :] .== k) .& (Z[2, :] .<= t)) ≈
+              mean((sample[1, :] .== k) .& (sample[2, :] .<= t)) atol=5e-3
+    end
+    @test inverse_rosenblatt(X, S[:, 1]) == Z[:, 1]
+
+    # Round trip on a mixed fixture, both orders of the atom.
+    x = sample[:, 1:200]
+    @test inverse_rosenblatt(X, rosenblatt(StableRNG(456), X, x)) ≈ x atol=1e-8
+    Y = SklarDist(GumbelCopula(3, 1.6), (Normal(), Poisson(2.0), Bernoulli(0.4)))
+    y = rand(StableRNG(457), Y, 200)
+    @test inverse_rosenblatt(Y, rosenblatt(StableRNG(458), Y, y)) ≈ y atol=1e-8
+
+    # Continuous margins keep the deterministic copula route.
+    W = SklarDist(ClaytonCopula(2, 2.0), (Normal(), Normal()))
+    w = [0.3, 0.2]
+    @test rosenblatt(W, w) == rosenblatt(W.C, cdf.(Normal(), w))
+    @test rosenblatt(StableRNG(459), W, w) == rosenblatt(W, w)
+end

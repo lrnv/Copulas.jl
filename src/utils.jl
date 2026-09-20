@@ -119,16 +119,23 @@ Compute the Taylor series expansion of the function `f` around the point `x₀` 
 A tuple with value ``(f(x₀), f'(x₀),...,f^{(d)}(x₀))``.
 """
 function taylor(f::F, x₀, d::Int) where {F}
-    rez = f(x₀ + TaylorSeries.Taylor1(eltype(x₀), d)).coeffs
+    x = if x₀ isa Real
+        seed = fill(zero(x₀), d + 1)
+        seed[1] = x₀
+        d > 0 && (seed[2] = one(x₀))
+        TaylorSeries.Taylor1(seed)
+    else
+        x₀ + TaylorSeries.Taylor1(eltype(x₀), d)
+    end
+    rez = f(x).coeffs
     p = length(rez)
-    # The length of rez is no longer always equal to d+1 since updates in TaylorSeries.jl, so we enforce it:
-    p == d+1 && return rez
-    if p < d+1
-        v = zeros(d+1)
+    p == d + 1 && return rez
+    if p < d + 1
+        v = fill(zero(eltype(rez)), d + 1)
         v[1:p] .= rez
         return v
     end
-    return rez[1:d+1]
+    return rez[1:(d + 1)]
 end
 
 # Stable evaluations of W(exp(logx)) and W₋₁(-exp(logx)). They avoid forming
@@ -161,7 +168,7 @@ end
 
 
 """
-    pseudos(sample; ties=:average, rng=Random.default_rng())
+    pseudos(sample; ties=:average, rng=Random.default_rng(), weights=nothing)
 
 Compute pseudo-observations from a `d×n` sample, with variables in rows and
 observations in columns.
@@ -181,20 +188,54 @@ not consume it.
 Choosing a rank convention does not by itself make continuous-margin fitting
 or hypothesis-testing procedures valid for genuinely discrete data.
 
+`weights` gives one non-negative, finite weight per observation, not all zero,
+and ranks each margin by weighted mass. The weights are normalized to sum to
+the number of observations `n` first, so the result is invariant to their
+scale and unit weights reproduce the unweighted ranks exactly. The ranks are
+computed and returned in the floating-point type that the sample and the
+weights promote to. Observation `i`
+then receives the mean rank of its copies in the sample where every observation
+`j` is repeated `weights[j]` times, under the same tie convention, divided by
+`n + 1`. A zero-weight observation contributes no mass and is placed at the
+weighted empirical distribution function of its value.
+
 # Example
 ```julia
 X = [30 10 20; 4 6 5]
 pseudos(X) == [0.75 0.25 0.5; 0.25 0.75 0.5]
+
+# Integer weights that sum to `n` are counts: the ranks are those of the
+# sample where each observation is repeated that many times.
+X = [30 10 20 40; 4 6 5 7]
+kept = [1, 3, 4]
+pseudos(X; weights=[2, 0, 1, 1])[:, kept] == pseudos([30 30 20 40; 4 4 5 7])[:, kept]
 ```
 
 See also: [`EmpiricalCopula`](@ref), [`BetaCopula`](@ref),
 [`CheckerboardCopula`](@ref).
 """
 function pseudos(sample::AbstractMatrix; ties::Symbol=:average,
-        rng::Random.AbstractRNG=Random.default_rng())
+        rng::Random.AbstractRNG=Random.default_rng(), weights=nothing)
     ties in _PSEUDO_TIE_METHODS || throw(ArgumentError(
         "unsupported tie method :$ties; expected one of $(_PSEUDO_TIE_METHODS)"))
-    return _pseudos(sample, Val(ties), rng)
+    return _pseudos(sample, Val(ties), rng, _fit_weights(weights, size(sample, 2)))
+end
+
+_pseudos(sample::AbstractMatrix, tie_method::Val, rng::Random.AbstractRNG, ::Nothing) =
+    _pseudos(sample, tie_method, rng)
+function _pseudos(sample::AbstractMatrix, tie_method::Val, rng::Random.AbstractRNG,
+        weights::AbstractVector)
+    d, n = size(sample)
+    T = float(promote_type(eltype(sample), eltype(weights)))
+    U = Matrix{T}(undef, d, n)
+    tmp_idx = Vector{Int}(undef, n)
+    @inbounds for i in 1:d
+        x = @view sample[i, :]
+        ranks = @view U[i, :]
+        sortperm!(tmp_idx, x; by=identity, alg=Base.Sort.DEFAULT_STABLE)
+        _assign_weighted_pseudoranks!(ranks, x, tmp_idx, weights, tie_method, rng)
+    end
+    return U
 end
 
 function _pseudos(sample::AbstractMatrix, tie_method::Val,
@@ -304,6 +345,100 @@ end
     return nothing
 end
 
+# Weighted ranks. Observation `k` takes the mean rank of its copies in the
+# sample where every observation `j` is repeated `w[j]` times, under the same
+# tie convention: `before + (w[k] + 1) / 2`, where `before` is the weight of
+# the copies that the convention places below it. The denominator is the total
+# weight plus one. Unit weights reproduce the unweighted ranks exactly. A
+# zero-weight tie group has no copies, so `:min` and `:max` place it at the
+# weighted empirical distribution function of its value, which keeps every
+# rank strictly inside (0, 1).
+function _assign_weighted_pseudoranks!(ranks::AbstractVector{T}, x::AbstractVector,
+        order::Vector{Int}, w::AbstractVector, tie_method::Val,
+        rng::Random.AbstractRNG) where {T}
+    n = length(order)
+    denominator = T(sum(w)) + one(T)
+    before = zero(T)
+    first = 1
+    @inbounds while first <= n
+        index = order[first]
+        last = first
+        while last < n && x[order[last + 1]] == x[index]
+            last += 1
+        end
+        block = zero(T)
+        for k in first:last
+            block += T(w[order[k]])
+        end
+        _assign_weighted_tie_group!(ranks, order, w, first, last, before, block,
+                                    denominator, tie_method, rng)
+        before += block
+        first = last + 1
+    end
+    return ranks
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        ::AbstractVector, first::Int, last::Int, before::T, block::T, denominator::T,
+        ::Val{:average}, ::Random.AbstractRNG) where {T}
+    rank = (before + (block + one(T)) / T(2)) / denominator
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        ::AbstractVector, first::Int, last::Int, before::T, block::T, denominator::T,
+        ::Val{:min}, ::Random.AbstractRNG) where {T}
+    rank = (before + (iszero(block) ? one(T) / T(2) : one(T))) / denominator
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        ::AbstractVector, first::Int, last::Int, before::T, block::T, denominator::T,
+        ::Val{:max}, ::Random.AbstractRNG) where {T}
+    rank = (before + (iszero(block) ? one(T) / T(2) : block)) / denominator
+    @inbounds for k in first:last
+        ranks[order[k]] = rank
+    end
+    return nothing
+end
+
+# Ordinal conventions: the copies of one observation are consecutive, in the
+# convention's order within the tie group.
+@inline function _assign_weighted_ordinal!(ranks::AbstractVector{T}, order::Vector{Int},
+        w::AbstractVector, positions, before::T, denominator::T) where {T}
+    @inbounds for k in positions
+        wk = T(w[order[k]])
+        ranks[order[k]] = (before + (wk + one(T)) / T(2)) / denominator
+        before += wk
+    end
+    return nothing
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        w::AbstractVector, first::Int, last::Int, before::T, ::T, denominator::T,
+        ::Val{:first}, ::Random.AbstractRNG) where {T}
+    return _assign_weighted_ordinal!(ranks, order, w, first:last, before, denominator)
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        w::AbstractVector, first::Int, last::Int, before::T, ::T, denominator::T,
+        ::Val{:last}, ::Random.AbstractRNG) where {T}
+    return _assign_weighted_ordinal!(ranks, order, w, last:-1:first, before, denominator)
+end
+
+@inline function _assign_weighted_tie_group!(ranks::AbstractVector{T}, order::Vector{Int},
+        w::AbstractVector, first::Int, last::Int, before::T, ::T, denominator::T,
+        ::Val{:random}, rng::Random.AbstractRNG) where {T}
+    Random.shuffle!(rng, @view order[first:last])
+    return _assign_weighted_ordinal!(ranks, order, w, first:last, before, denominator)
+end
+
 
 
 function _require_tie_free_rows(sample::AbstractMatrix, operation::AbstractString)
@@ -360,6 +495,217 @@ function corblomqvist(X::AbstractMatrix{<:Real})
                 C[i,j] = C[j,i] = 2c/m - 1
             end
         end
+    end
+    return C
+end
+
+##### Weighted pairwise rank measures.
+#
+# A fit weight is "how many observations this column counts for" (see
+# `_fit_weights`), so each weighted measure below is the measure of the sample
+# in which observation j is repeated w[j] times, written so that it extends to
+# real weights and is invariant to their scale. They take the package's `d × n`
+# orientation and return the `d × d` matrix that `corkendall(U')`,
+# `corspearman(U')` and `corblomqvist(U')` return. `_rank_measure` selects the
+# unweighted `StatsBase` function or the weighted one from the weights.
+_rank_measure(::Val{:itau}, U::AbstractMatrix, ::Nothing) = StatsBase.corkendall(U')
+_rank_measure(::Val{:irho}, U::AbstractMatrix, ::Nothing) = StatsBase.corspearman(U')
+_rank_measure(::Val{:ibeta}, U::AbstractMatrix, ::Nothing) = corblomqvist(U')
+_rank_measure(::Val{:itau}, U::AbstractMatrix, w::AbstractVector) = _weighted_corkendall(U, w)
+_rank_measure(::Val{:irho}, U::AbstractMatrix, w::AbstractVector) = _weighted_corspearman(U, w)
+_rank_measure(::Val{:ibeta}, U::AbstractMatrix, w::AbstractVector) = _weighted_corblomqvist(U, w)
+
+# Prefix sums over the measure's element type, for the Kendall sweep.
+struct _Fenwick{T}
+    bit::Vector{T}
+end
+@inline function _fenwick_add!(F::_Fenwick, i::Int, δ)
+    n = length(F.bit)
+    @inbounds while i <= n
+        F.bit[i] += δ
+        i += i & -i
+    end
+    return nothing
+end
+@inline function _fenwick_sum(F::_Fenwick{T}, i::Int) where {T}
+    s = zero(T)
+    @inbounds while i > 0
+        s += F.bit[i]
+        i -= i & -i
+    end
+    return s
+end
+
+# Dense ranks of `x` under `==`, and their number.
+function _dense_ranks(x::AbstractVector)
+    order = sortperm(x)
+    ranks = Vector{Int}(undef, length(x))
+    k = 0
+    @inbounds for (position, index) in enumerate(order)
+        (position == 1 || x[index] != x[order[position - 1]]) && (k += 1)
+        ranks[index] = k
+    end
+    return ranks, k
+end
+
+# Weighted number of pairs tied in `x`: Σ_g (T_g² − Σ_{i∈g} w_i²) / 2 over the
+# tie groups g of total weight T_g. The pairs formed by the copies of one
+# observation are left out, as they are from the total number of pairs, so
+# for integer weights this is the tie count of the replicated sample.
+function _weighted_tie_pairs(x::AbstractVector, w::AbstractVector)
+    T = promote_type(eltype(x), eltype(w))
+    order = sortperm(x)
+    n = length(order)
+    ties = zero(T)
+    first = 1
+    @inbounds while first <= n
+        last = first
+        while last < n && x[order[last + 1]] == x[order[first]]
+            last += 1
+        end
+        if last > first
+            total = zero(T)
+            squares = zero(T)
+            for k in first:last
+                wk = w[order[k]]
+                total += wk
+                squares += abs2(wk)
+            end
+            ties += (abs2(total) - squares) / 2
+        end
+        first = last + 1
+    end
+    return ties
+end
+
+# Weighted Kendall's tau-b of one pair,
+#
+#     τ = Σ_{i<j} w_i w_j sgn(x_i − x_j) sgn(y_i − y_j) / √((W₀ − W₁)(W₀ − W₂)),
+#
+# with W₀ = Σ_{i<j} w_i w_j and W₁, W₂ the weighted tie pairs of x and y. The
+# concordance sum is one O(n log n) sweep over x with a Fenwick tree over the
+# ranks of y, every x-tie block being queried before it is inserted. The
+# integer arithmetic of `StatsBase.corkendall` is reproduced exactly for unit
+# weights, so the two agree bit for bit.
+function _weighted_kendall(x::AbstractVector, y::AbstractVector, w::AbstractVector)
+    T = promote_type(eltype(x), eltype(y), eltype(w))
+    n = length(x)
+    (any(isnan, x) || any(isnan, y)) && return T(NaN)
+    n <= 1 && return T(NaN)
+    order = sortperm(x)
+    yranks, m = _dense_ranks(y)
+    F = _Fenwick(zeros(T, m))
+    seen = zero(T)
+    S = zero(T)
+    first = 1
+    @inbounds while first <= n
+        last = first
+        while last < n && x[order[last + 1]] == x[order[first]]
+            last += 1
+        end
+        for k in first:last
+            r = yranks[order[k]]
+            less = _fenwick_sum(F, r - 1)
+            greater = seen - _fenwick_sum(F, r)
+            S += w[order[k]] * (less - greater)
+        end
+        for k in first:last
+            wk = w[order[k]]
+            _fenwick_add!(F, yranks[order[k]], wk)
+            seen += wk
+        end
+        first = last + 1
+    end
+    W₀ = (abs2(sum(w)) - sum(abs2, w)) / 2
+    return S / sqrt((W₀ - _weighted_tie_pairs(x, w)) * (W₀ - _weighted_tie_pairs(y, w)))
+end
+
+function _weighted_corkendall(U::AbstractMatrix, w::AbstractVector)
+    d = size(U, 1)
+    C = Matrix{promote_type(eltype(U), eltype(w))}(LinearAlgebra.I, d, d)
+    for j in 1:d, i in 1:(j - 1)
+        C[i, j] = C[j, i] = _weighted_kendall(view(U, i, :), view(U, j, :), w)
+    end
+    return C
+end
+
+# Weighted average ranks: a tie block of total weight T preceded by weight B
+# takes the rank B + (T + 1) / 2, the mean rank of the block in the sample
+# where each observation is repeated w[i] times, which is `tiedrank` for unit
+# weights.
+function _weighted_average_ranks(x::AbstractVector, w::AbstractVector)
+    T = promote_type(eltype(x), eltype(w))
+    order = sortperm(x)
+    n = length(order)
+    ranks = Vector{T}(undef, n)
+    before = zero(T)
+    first = 1
+    @inbounds while first <= n
+        last = first
+        while last < n && x[order[last + 1]] == x[order[first]]
+            last += 1
+        end
+        block = zero(T)
+        for k in first:last
+            block += w[order[k]]
+        end
+        rank = before + (block + one(T)) / 2
+        for k in first:last
+            ranks[order[k]] = rank
+        end
+        before += block
+        first = last + 1
+    end
+    return ranks
+end
+
+# Weighted Pearson correlation of two vectors.
+function _weighted_pearson(x::AbstractVector, y::AbstractVector, w::AbstractVector)
+    W = sum(w)
+    x̄ = sum(i -> w[i] * x[i], eachindex(w)) / W
+    ȳ = sum(i -> w[i] * y[i], eachindex(w)) / W
+    sxy = sum(i -> w[i] * (x[i] - x̄) * (y[i] - ȳ), eachindex(w))
+    sxx = sum(i -> w[i] * abs2(x[i] - x̄), eachindex(w))
+    syy = sum(i -> w[i] * abs2(y[i] - ȳ), eachindex(w))
+    return sxy / sqrt(sxx * syy)
+end
+
+# Weighted Spearman's rho: the weighted Pearson correlation of the weighted
+# average ranks, which for integer weights is the Spearman correlation of the
+# replicated sample. It is another reduction than `StatsBase.corspearman`, so
+# unit weights reproduce it within an ulp rather than bit for bit.
+function _weighted_corspearman(U::AbstractMatrix, w::AbstractVector)
+    d = size(U, 1)
+    C = Matrix{promote_type(eltype(U), eltype(w))}(LinearAlgebra.I, d, d)
+    anynan = [any(isnan, view(U, i, :)) for i in 1:d]
+    ranks = [anynan[i] ? eltype(C)[] : _weighted_average_ranks(view(U, i, :), w) for i in 1:d]
+    for j in 1:d, i in 1:(j - 1)
+        C[i, j] = C[j, i] = (anynan[i] || anynan[j]) ? NaN :
+            _weighted_pearson(ranks[i], ranks[j], w)
+    end
+    return C
+end
+
+# Weighted Blomqvist's beta: the weighted average ranks are split at the
+# median rank (W + 1) / 2 of the replicated sample and the concordant mass is
+# counted, as `corblomqvist` counts concordant observations.
+function _weighted_corblomqvist(U::AbstractMatrix, w::AbstractVector)
+    d = size(U, 1)
+    C = Matrix{promote_type(eltype(U), eltype(w))}(LinearAlgebra.I, d, d)
+    W = sum(w)
+    h = (W + 1) / 2
+    anynan = [any(isnan, view(U, i, :)) for i in 1:d]
+    ranks = [anynan[i] ? eltype(C)[] : _weighted_average_ranks(view(U, i, :), w) for i in 1:d]
+    for j in 1:d, i in 1:(j - 1)
+        if anynan[i] || anynan[j]
+            C[i, j] = C[j, i] = NaN
+            continue
+        end
+        c = zero(W)
+        @inbounds for k in eachindex(w)
+            c += w[k] * ((ranks[i][k] <= h) == (ranks[j][k] <= h))
+        end
+        C[i, j] = C[j, i] = 2c / W - 1
     end
     return C
 end
