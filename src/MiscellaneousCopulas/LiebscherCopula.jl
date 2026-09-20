@@ -296,7 +296,7 @@ See also: [`LiebscherCopula`](@ref), [`IndependentCopula`](@ref).
 
 References:
 
-* [khoudraji1995](@cite) Khoudraji, A. (1995). Contributions à l'étude des copules et à la modélisation des valeurs extrêmes bivariées. PhD thesis, Université Laval, Québec, Canada.
+* [khoudraji1996](@cite) Khoudraji, A. (1996). Contributions à l'étude des copules et à la modélisation des valeurs extrêmes bivariées. PhD thesis, Université Laval, Québec, Canada.
 * [liebscher2008](@cite) Liebscher, E. (2008). Construction of asymmetric multivariate copulas. Journal of Multivariate Analysis, 99(10), 2234-2250.
 """
 function KhoudrajiCopula(d::Integer, C::Copula, shapes::Union{Tuple,AbstractVector})
