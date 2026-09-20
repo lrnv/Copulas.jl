@@ -67,7 +67,7 @@ Paramorph.param_space(::Type{<:MCopula}, d) = ()
 
 # Fitting/params interface (no parameters)
 # A parameter-free family has nothing to weight, so the weights are accepted and unused.
-_fit(::Type{<:MCopula}, U, ::Val{:mle}; weights=nothing) = MCopula(size(U,1))
-_fit(::Type{<:MCopula}, U, ::Val{:itau}; weights=nothing) = MCopula(size(U,1))
-_fit(::Type{<:MCopula}, U, ::Val{:irho}; weights=nothing) = MCopula(size(U,1))
-_fit(::Type{<:MCopula}, U, ::Val{:ibeta}; weights=nothing) = MCopula(size(U,1))
+_fit(
+    ::Type{<:MCopula}, U, ::Val{d},
+    ::Union{Val{:mle},Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing,
+) where {d} = MCopula{d}()

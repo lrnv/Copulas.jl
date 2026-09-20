@@ -66,7 +66,7 @@ distortion(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistor
 Paramorph.param_space(::Type{<:WCopula}, d) = ()
 
 # A parameter-free family has nothing to weight, so the weights are accepted and unused.
-_fit(::Type{<:WCopula}, U, ::Val{:mle}; weights=nothing) = WCopula(size(U,1))
-_fit(::Type{<:WCopula}, U, ::Val{:itau}; weights=nothing) = WCopula(size(U,1))
-_fit(::Type{<:WCopula}, U, ::Val{:irho}; weights=nothing) = WCopula(size(U,1))
-_fit(::Type{<:WCopula}, U, ::Val{:ibeta}; weights=nothing) = WCopula(size(U,1))
+_fit(
+    ::Type{<:WCopula}, U, ::Val{d},
+    ::Union{Val{:mle},Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing,
+) where {d} = WCopula{d}()
