@@ -54,6 +54,8 @@ const BASE_COPULA_CASES = Any[
     copula_case(LiouvilleCopula, 2, Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
     copula_case(NestedArchimedeanCopula, 4, Copulas.ClaytonGenerator(1.0); constructor_kwargs=(; leaves=[1, 2], children=[ClaytonCopula{2}(2.0)])),
     copula_case(ArchimaxCopula, 2, Copulas.ClaytonGenerator(1.5), Copulas.GalambosTail(1.0)),
+    copula_case(LiebscherCopula, 2, (ClaytonCopula{2}(2.0), GumbelCopula{2}(1.5),), [0.3  0.8; 0.7  0.2],),
+    copula_case(LiebscherCopula, 3, (ClaytonCopula{3}(1.5), GumbelCopula{3}(1.4),), [0.2  0.5  0.7; 0.8  0.5  0.3],),
     copula_case(SurvivalCopula, 3, ClaytonCopula{3}(1.5), (1, 3)),
     copula_case(Rotated90Copula, 2, ClaytonCopula{2}(1.5)),
     copula_case(Rotated180Copula, 2, ClaytonCopula{2}(1.5)),

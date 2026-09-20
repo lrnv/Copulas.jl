@@ -80,6 +80,7 @@ module Copulas
     include("MiscellaneousCopulas/SurvivalCopula.jl")
     include("MiscellaneousCopulas/PlackettCopula.jl")
     include("MiscellaneousCopulas/EmpiricalCopula.jl")
+    include("MiscellaneousCopulas/LiebscherCopula.jl")
     include("MiscellaneousCopulas/FGMCopula.jl")
     include("MiscellaneousCopulas/RafteryCopula.jl")
     include("MiscellaneousCopulas/IndependentCopula.jl")
@@ -191,6 +192,7 @@ module Copulas
 
     ##### Compound copulas
     export LiouvilleCopula, NestedArchimedeanCopula, ArchimaxCopula
+    export LiebscherCopula, KhoudrajiCopula
 
 
     ##### Miscelaneous copulas
