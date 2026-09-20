@@ -195,6 +195,7 @@ testfiles = (
     "correctness/extreme_value_quantiles.jl",
     "correctness/extreme_value_equivalence.jl",
     "correctness/liouville.jl",
+    "correctness/liebscher.jl",
     "correctness/nested_archimedean.jl",
     "correctness/nested_archimedean_equivalence.jl",
     "correctness/family_specialization_equivalence.jl",
