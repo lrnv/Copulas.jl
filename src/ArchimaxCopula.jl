@@ -129,22 +129,12 @@ end
 
 _available_fitting_methods(::Type{<:ArchimaxCopula}, d) = (:mle,)
 
-function _fit(
+function _fit_dispatch(
     ::Type{<:ArchimaxCopula{d,IndependentGenerator,TT}}, U,
-    vd::Val{d}, method::Val{:mle}; kwargs...,
+    vd::Val{d}, method::Val; kwargs...,
 ) where {d,TT<:Tail}
     E = _fit(ExtremeValueCopula{d,TT}, U, vd, method; kwargs...)
-    return ArchimaxCopula{d}(IndependentGenerator(), E.tail,)
-end
-
-function _fit(::Type{<:ArchimaxCopula{2,IndependentGenerator,TT}}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; kwargs...) where {TT<:OneParameterPickandsTail}
-    E = _fit(ExtremeValueCopula{2,TT}, U, Val(2), method; kwargs...)
-    return ArchimaxCopula{2}(IndependentGenerator(),E.tail)
-end
-
-function _fit(::Type{<:ArchimaxCopula{2,IndependentGenerator,TT}}, U, method::Val{:iupper}) where {TT<:OneParameterPickandsTail}
-    E = _fit(ExtremeValueCopula{2,TT}, U, method)
-    return ArchimaxCopula{2}(IndependentGenerator(),E.tail)
+    return ArchimaxCopula{d}(IndependentGenerator(), E.tail)
 end
 
 function _available_fitting_methods(::Type{<:ArchimaxCopula{D,IndependentGenerator,TT}}, d) where {D,TT}

@@ -372,6 +372,10 @@ function _fit(
     return _rebuild_extreme_value(CT, Val(d), θ)
 end
 
-function _fit(CT::Type{<:ExtremeValueCopula{d, GT} where {d, GT<:OneParameterPickandsTail}}, U, ::Val{:iupper})
-    return _rebuild_extreme_value(CT, Val(2), λᵤ⁻¹(CT, λᵤ(U)))
+function _fit(
+    CT::Type{<:ExtremeValueCopula{D, GT} where {D, GT<:OneParameterPickandsTail}},
+    U, ::Val{d}, ::Val{:iupper},
+) where {d}
+    d == 2 || throw(DimensionMismatch("upper-tail inversion requires two-dimensional data"))
+    return _rebuild_extreme_value(CT, Val(d), λᵤ⁻¹(CT, λᵤ(U)))
 end

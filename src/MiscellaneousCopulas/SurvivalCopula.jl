@@ -226,15 +226,14 @@ function _fit_reflected(::Type{subCT}, U, m, mask; kwargs...) where {subCT}
     return _fit(subCT, Uflip, m; kwargs...)
 end
 
-function _fit_survival(::Type{<:SurvivalCopula{d,subCT}}, U, m; flips=nothing, kwargs...) where {d,subCT}
+function _fit_dispatch(
+    CT::Type{<:SurvivalCopula{d,subCT}}, U, ::Val{d}, m::Val;
+    flips=nothing, kwargs...,
+) where {d,subCT}
     mask = isnothing(flips) ? ntuple(_ -> true, d) : _survival_flipmask(Val(d), flips)
     C = _fit_reflected(subCT, U, m, mask; kwargs...)
     return SurvivalCopula{d}(C, mask)
 end
-_fit(CT::Type{<:SurvivalCopula}, U, m::Union{Val{:itau},Val{:irho},Val{:ibeta}}; kwargs...) =
-    _fit_survival(CT, U, m; kwargs...)
-_fit(CT::Type{<:SurvivalCopula}, U, m::Val{:mle}; kwargs...) =
-    _fit_survival(CT, U, m; kwargs...)
 
 _rotation_type_flipmask(::Type{<:Rotated90Copula}) = (true, false)
 _rotation_type_flipmask(::Type{<:Rotated180Copula}) = (true, true)
@@ -253,21 +252,11 @@ function _fit_rotation(::Type{RT}, U, m; kwargs...) where {subCT,RT<:Rotated270C
     return Rotated270Copula(C)
 end
 
-const _ReflectedRankMethod = Union{Val{:itau},Val{:irho},Val{:ibeta}}
-
-_fit(CT::Type{<:Rotated90Copula}, U, m::_ReflectedRankMethod; kwargs...) =
+_fit_dispatch(CT::Type{<:Rotated90Copula}, U, ::Val{2}, m::Val; kwargs...) =
     _fit_rotation(CT, U, m; kwargs...)
-_fit(CT::Type{<:Rotated90Copula}, U, m::Val{:mle}; kwargs...) =
+_fit_dispatch(CT::Type{<:Rotated180Copula}, U, ::Val{2}, m::Val; kwargs...) =
     _fit_rotation(CT, U, m; kwargs...)
-
-_fit(CT::Type{<:Rotated180Copula}, U, m::_ReflectedRankMethod; kwargs...) =
-    _fit_rotation(CT, U, m; kwargs...)
-_fit(CT::Type{<:Rotated180Copula}, U, m::Val{:mle}; kwargs...) =
-    _fit_rotation(CT, U, m; kwargs...)
-
-_fit(CT::Type{<:Rotated270Copula}, U, m::_ReflectedRankMethod; kwargs...) =
-    _fit_rotation(CT, U, m; kwargs...)
-_fit(CT::Type{<:Rotated270Copula}, U, m::Val{:mle}; kwargs...) =
+_fit_dispatch(CT::Type{<:Rotated270Copula}, U, ::Val{2}, m::Val; kwargs...) =
     _fit_rotation(CT, U, m; kwargs...)
 
 _available_fitting_methods(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} = _available_fitting_methods(subCT, d)
