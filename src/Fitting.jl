@@ -242,9 +242,31 @@ _parameter_space_copula(CT, ::Val{d}, p, α) where {d} =
 _parameter_space_copula(CT, d::Integer, p, α) =
     _parameter_space_copula(CT, Val(d), p, α)
 
-function _fit(CT::Type{<:Copula}, U, method::Val{:mle}; kwargs...)
-    return _fit(CT, U, Val(size(U, 1)), method; kwargs...)
+"""
+    _fit(::Type{<:Copula}, U, ::Val{method}; kwargs...)
+
+Internal entry point for fitting routines.
+
+The three-argument entry point preserves the copula dimension as `Val{d}` and
+routes once through `_fit_dispatch`. Ordinary estimator implementations remain
+`_fit(CT, U, Val(d), Val(method))`; a family that takes over fitting regardless
+of the estimator can instead specialize `_fit_dispatch` without competing with
+method-specialized generic `_fit` methods.
+
+Simple parametric families can use the generic implementations by defining
+`Paramorph.param_space(CT, d)` and a canonical `CT(d, parameters...)`
+constructor. This is not intended for direct use by end-users; use
+[`Distributions.fit(CopulaModel, ...)`] instead.
+
+See also: [`_available_fitting_methods`](@ref), [`Distributions.fit`](@ref).
+"""
+function _fit(CT::Type{<:Copula}, U, method::Val; kwargs...)
+    return _fit_dispatch(CT, U, Val(size(U, 1)), method; kwargs...)
 end
+
+_fit_dispatch(CT::Type{<:Copula}, U, vd::Val, method::Val; kwargs...) =
+    _fit(CT, U, vd, method; kwargs...)
+
 function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) where {d}
     p = Paramorph.param_space(CT, d)
     α₀ = zeros(Paramorph.dimension(p))
@@ -259,25 +281,6 @@ function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) w
     return cop(Optim.minimizer(res))
 end
 
-"""
-    _fit(::Type{<:Copula}, U, ::Val{method}; kwargs...)
-
-Internal entry point for fitting routines.
-
-Each copula family implements `_fit` methods specialized on `Val{method}` and
-returns the fitted copula. Temporary optimizer results and diagnostics stay
-inside the estimator implementation.
-
-Simple parametric families can use the generic implementations by defining
-`Paramorph.param_space(CT, d)` and a canonical `CT(d, parameters...)`
-constructor. This is not intended for direct use by end-users; use
-[`Distributions.fit(CopulaModel, ...)`] instead.
-
-See also: [`_available_fitting_methods`](@ref), [`Distributions.fit`](@ref).
-"""
-function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing)
-    return _fit(CT, U, Val(size(U, 1)), method; weights)
-end
 function _fit(CT::Type{<:Copula}, U, vd::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
     p = Paramorph.param_space(CT, d)
     intrinsic_dim = Paramorph.dimension(p)
