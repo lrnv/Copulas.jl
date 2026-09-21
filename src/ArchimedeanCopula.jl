@@ -220,6 +220,8 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
     return A
 end
 generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
+_generator_family(T::Type{<:Generator}) =
+    Base.typename(Base.unwrap_unionall(T)).wrapper
 
 Paramorph.parameter_fields(::Type{<:ArchimedeanCopula}) = (:G,)
 Paramorph.is_paramorph_type(::Type{<:ArchimedeanCopula}) = true
@@ -259,7 +261,7 @@ function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     end
 end
 function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
-    return τ⁻¹(generatorof(T),τ_val)
+    return τ⁻¹(_generator_family(generatorof(T)),τ_val)
 end
 function ρ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.ρ, C.G)
@@ -269,7 +271,7 @@ function ρ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     end
 end
 function ρ⁻¹(::Type{T},ρ_val) where {T<:ArchimedeanCopula}
-    return ρ⁻¹(generatorof(T),ρ_val)
+    return ρ⁻¹(_generator_family(generatorof(T)),ρ_val)
 end
 function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     size(u, 1) == d || throw(DimensionMismatch(
@@ -358,7 +360,7 @@ function _fit(
     CT::Type{<:ArchimedeanCopula{D, GT} where {D, GT<:UnivariateGenerator}},
     U, vd::Val{d}, m::Union{Val{:itau},Val{:irho}}; weights=nothing,
 ) where {d}
-    GT = generatorof(CT)
+    GT = _generator_family(generatorof(CT))
     invf = m isa Val{:itau} ? τ⁻¹ : ρ⁻¹
     measure = _rank_measure(m, U, weights)
     upper_triangle_flat = [measure[idx] for idx in CartesianIndices(measure) if idx[1] < idx[2]]

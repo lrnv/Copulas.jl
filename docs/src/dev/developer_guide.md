@@ -117,8 +117,9 @@ Inside this repository, it is currently supplied by the following internal
 methods; these hooks may change independently of that behavior:
 
 ```julia
+const bounded_interval = Paramorph.bounded_interval
 Paramorph.@paramorph T struct MyCopula{d,T<:Real} <: Copula{d}
-    θ::Paramorph.bounded_interval(zero(T), one(T))
+    θ::bounded_interval(zero(T), one(T))
 end
 MyCopula(d, θ) = MyCopula{d}(θ) # Runtime-dimension convenience constructor
 # The generated constructor and transformation schema share this constraint.
@@ -284,8 +285,9 @@ storage types, checked constructor, logical parameters, and optimizer geometry.
 Example minimal skeleton:
 
 ```julia
+const asℝ₊ = Paramorph.TransformVariables.asℝ₊
 Paramorph.@paramorph T struct MyCopula{d,T<:Real} <: Copula{d}
-    θ::Paramorph.TransformVariables.asℝ₊
+    θ::asℝ₊
 end
 _available_fitting_methods(::Type{<:MyCopula}, d) = (:mle,) # in-package only
 
@@ -685,8 +687,9 @@ Elliptical copulas are characterized by a correlation matrix `Σ` and, optionall
 Minimal outline:
 
 ```julia
+const correlation_matrix = Paramorph.correlation_matrix
 Paramorph.@paramorph T struct MyEllipticalCopula{d,T<:Real} <: Copulas.EllipticalCopula{d,Matrix{T}}
-    Σ::Paramorph.correlation_matrix(d)
+    Σ::correlation_matrix(d)
 end
 MyEllipticalCopula(d, Σ) = MyEllipticalCopula{d}(Σ)
 
@@ -734,9 +737,10 @@ It serves as a minimal example of how to implement a copula *from scratch* witho
 ```@example generic_copula_example
 using Copulas, Distributions, Random
 import Paramorph
+const bounded_interval = Paramorph.bounded_interval
 
 Paramorph.@paramorph T struct MardiaCopula{T<:Real} <: Copulas.Copula{2}
-    θ::Paramorph.bounded_interval(-one(T), one(T))
+    θ::bounded_interval(-one(T), one(T))
 end
 MardiaCopula(d, θ) = d == 2 ? MardiaCopula(θ) :
     throw(DimensionMismatch("MardiaCopula is bivariate"))
