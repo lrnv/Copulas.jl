@@ -74,11 +74,27 @@ function _from_parameter_coordinates(C::ArchimedeanCopula{d}, α) where {d}
     return ArchimedeanCopula{d}(G)
 end
 
-function _parameter_prototype(CT::Type{<:ExtremeValueCopula}, ::Val{d}) where {d}
-    TT = _concrete_paramorph_type(tailof(CT))
-    auxiliary = (; d=d)
-    tail = _component_prototype(TT, (; dimension=d); auxiliary)
-    return ExtremeValueCopula{d}(tail)
+function _tail_prototype(TT::Type, ::Val{d}) where {d}
+    concrete = _concrete_paramorph_type(TT)
+    return _component_prototype(
+        concrete, (; dimension=d); auxiliary=(; d=d),
+    )
+end
+
+function _tail_prototype(::Type{<:HuslerReissTail}, ::Val{d}) where {d}
+    geometry = _component_prototype(_HuslerReissScalarGeometry{Float64})
+    return HuslerReissTail(geometry.θ)
+end
+
+function _tail_prototype(::Type{<:tEVTail}, ::Val{d}) where {d}
+    geometry = _component_prototype(
+        _tEVScalarGeometry{Float64}, (; dimension=d),
+    )
+    return tEVTail(geometry.ν, geometry.ρ)
+end
+
+function _parameter_prototype(CT::Type{<:ExtremeValueCopula}, vd::Val{d}) where {d}
+    return ExtremeValueCopula{d}(_tail_prototype(tailof(CT), vd))
 end
 function _parameter_dimension(C::ExtremeValueCopula{d}) where {d}
     return _parameter_dimension(C.tail, Val(d))
@@ -102,7 +118,7 @@ _from_parameter_coordinates(tail::Tail, α, ::Val{d}) where {d} =
 function _parameter_prototype(CT::Type{<:ArchimaxCopula}, vd::Val{d}) where {d}
     GT, TT = genandtailof(CT)
     G = _component_prototype(GT, (; dimension=d))
-    tail = _component_prototype(_concrete_paramorph_type(TT), (; dimension=d); auxiliary=(; d=d))
+    tail = _tail_prototype(TT, vd)
     return ArchimaxCopula{d}(G, tail)
 end
 function _parameter_dimension(C::ArchimaxCopula{d}) where {d}
@@ -165,60 +181,37 @@ function _from_parameter_coordinates(C::LiouvilleCopula{d}, α) where {d}
     return LiouvilleCopula{d}(G, Tuple(values.α))
 end
 
-# Two legacy leaf representations cannot yet be written as a single @paramorph
-# struct because their active parameter fields depend on representation. Keep
-# them isolated in the bridge while deciding whether the DSL needs a variant
-# mechanism.
-function _hr_schema(tail::HuslerReissTail{<:Real}, d)
-    return Paramorph.TransformVariables.as((θ=Paramorph.nonnegative(),))
+# Representation variants use private @paramorph geometry objects. The domain
+# tails keep their constructor/storage invariants while every optimizer
+# constraint remains declarative.
+_hr_geometry(tail::HuslerReissTail{<:Real}) =
+    _HuslerReissScalarGeometry(something(tail.θ))
+function _hr_geometry(tail::HuslerReissTail{<:AbstractMatrix})
+    Γ = something(tail.Γ)
+    return _HuslerReissMatrixGeometry(size(Γ, 1), Matrix(Γ))
 end
-function _hr_schema(tail::HuslerReissTail{<:AbstractMatrix}, d)
-    return Paramorph.TransformVariables.as((
-        Γ=Paramorph.variogram_matrix(size(something(tail.Γ), 1)),
-    ))
-end
-_parameter_dimension(tail::HuslerReissTail, ::Val{d}) where {d} =
-    Paramorph.TransformVariables.dimension(_hr_schema(tail, d))
-_parameter_coordinates(tail::HuslerReissTail{<:Real}, ::Val{d}) where {d} =
-    Paramorph.TransformVariables.inverse(_hr_schema(tail, d), (; θ=something(tail.θ)))
-_parameter_coordinates(tail::HuslerReissTail{<:AbstractMatrix}, ::Val{d}) where {d} =
-    Paramorph.TransformVariables.inverse(_hr_schema(tail, d), (; Γ=something(tail.Γ)))
-function _from_parameter_coordinates(tail::HuslerReissTail{<:Real}, α, ::Val{d}) where {d}
-    values = Paramorph.TransformVariables.transform(_hr_schema(tail, d), α)
-    return HuslerReissTail(values.θ)
-end
-function _from_parameter_coordinates(tail::HuslerReissTail{<:AbstractMatrix}, α, ::Val{d}) where {d}
-    values = Paramorph.TransformVariables.transform(_hr_schema(tail, d), α)
-    return HuslerReissTail(values.Γ)
-end
+_hr_tail(g::_HuslerReissScalarGeometry) = HuslerReissTail(g.θ)
+_hr_tail(g::_HuslerReissMatrixGeometry) = HuslerReissTail(g.Γ)
 
-function _tev_schema(tail::tEVTail{<:Any,<:Real}, d)
-    return Paramorph.TransformVariables.as((
-        ν=Paramorph.TransformVariables.asℝ₊,
-        ρ=Paramorph.bounded_interval(-inv(d - 1), 1; left_closed=false),
-    ))
+_parameter_dimension(tail::HuslerReissTail, ::Val) =
+    Paramorph.intrinsic_dimension(_hr_geometry(tail))
+_parameter_coordinates(tail::HuslerReissTail, ::Val) =
+    Paramorph.unconstrain(_hr_geometry(tail))
+_from_parameter_coordinates(tail::HuslerReissTail, α, ::Val) =
+    _hr_tail(Paramorph.constraint(_hr_geometry(tail), α))
+
+_tev_geometry(tail::tEVTail{<:Any,<:Real}, d) =
+    _tEVScalarGeometry(tail.ν, something(tail.ρ))
+function _tev_geometry(tail::tEVTail{<:Any,<:AbstractMatrix}, d)
+    R = something(tail.R)
+    return _tEVMatrixGeometry(size(R, 1), tail.ν, Matrix(R))
 end
-function _tev_schema(tail::tEVTail{<:Any,<:AbstractMatrix}, d)
-    return Paramorph.TransformVariables.as((
-        ν=Paramorph.TransformVariables.asℝ₊,
-        R=Paramorph.correlation_matrix(size(something(tail.R), 1)),
-    ))
-end
+_tev_tail(g::_tEVScalarGeometry) = tEVTail(g.ν, g.ρ)
+_tev_tail(g::_tEVMatrixGeometry) = tEVTail(g.ν, g.R)
+
 _parameter_dimension(tail::tEVTail, ::Val{d}) where {d} =
-    Paramorph.TransformVariables.dimension(_tev_schema(tail, d))
-_parameter_coordinates(tail::tEVTail{<:Any,<:Real}, ::Val{d}) where {d} =
-    Paramorph.TransformVariables.inverse(
-        _tev_schema(tail, d), (; ν=tail.ν, ρ=something(tail.ρ)),
-    )
-_parameter_coordinates(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Val{d}) where {d} =
-    Paramorph.TransformVariables.inverse(
-        _tev_schema(tail, d), (; ν=tail.ν, R=something(tail.R)),
-    )
-function _from_parameter_coordinates(tail::tEVTail{<:Any,<:Real}, α, ::Val{d}) where {d}
-    values = Paramorph.TransformVariables.transform(_tev_schema(tail, d), α)
-    return tEVTail(values.ν, values.ρ)
-end
-function _from_parameter_coordinates(tail::tEVTail{<:Any,<:AbstractMatrix}, α, ::Val{d}) where {d}
-    values = Paramorph.TransformVariables.transform(_tev_schema(tail, d), α)
-    return tEVTail(values.ν, values.R)
-end
+    Paramorph.intrinsic_dimension(_tev_geometry(tail, d); context=(; dimension=d))
+_parameter_coordinates(tail::tEVTail, ::Val{d}) where {d} =
+    Paramorph.unconstrain(_tev_geometry(tail, d); context=(; dimension=d))
+_from_parameter_coordinates(tail::tEVTail, α, ::Val{d}) where {d} =
+    _tev_tail(Paramorph.constraint(_tev_geometry(tail, d), α; context=(; dimension=d)))

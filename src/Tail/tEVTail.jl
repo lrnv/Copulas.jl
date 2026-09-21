@@ -91,6 +91,20 @@ struct tEVTail{T,P} <: BivariatePickandsTail
         return new{typeof(νf),typeof(RF)}(νf, nothing, RF)
     end
 end
+
+Paramorph.@paramorph T struct _tEVScalarGeometry{T<:Real}
+    ν::T ~ Paramorph.TransformVariables.asℝ₊
+    ρ::T ~ Paramorph.bounded_interval(
+        -inv(get(context, :dimension, 2) - 1), one(T); left_closed=false,
+    )
+end
+
+Paramorph.@paramorph T struct _tEVMatrixGeometry{T<:Real}
+    d::Int
+    ν::T ~ Paramorph.TransformVariables.asℝ₊
+    R::Matrix{T} ~ Paramorph.correlation_matrix(d)
+end
+
 @inline limit_kind(tail::tEVTail{<:Any,<:Real}, ::Val) =
     isone(something(tail.ρ)) ? M_LIMIT : NO_LIMIT
 @inline limit_kind(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Val) =
@@ -105,7 +119,11 @@ _is_valid_in_dim(tail::tEVTail{<:Any,<:Real}, d::Int) =
 _is_valid_in_dim(tail::tEVTail{<:Any,<:AbstractMatrix}, d::Int) =
     d == size(something(tail.R), 1)
 
-    
+Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{<:Any,<:Real}}) where {D} =
+    (C.tail.ν, something(C.tail.ρ))
+Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{<:Any,<:AbstractMatrix}}) where {D} =
+    (C.tail.ν, copy(something(C.tail.R)))
+
 _tail_constructor_parameter_names(::Type{<:tEVTail}, kwkeys) = :R in kwkeys ? (:ν, :R) : (:ν, :ρ)
 
 _available_fitting_methods(

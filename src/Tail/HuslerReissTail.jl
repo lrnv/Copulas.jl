@@ -91,6 +91,16 @@ struct HuslerReissTail{P} <: OneParameterPickandsTail
         return new{typeof(θf)}(θf, nothing)
     end
 end
+
+Paramorph.@paramorph T struct _HuslerReissScalarGeometry{T<:Real}
+    θ::T ~ Paramorph.nonnegative()
+end
+
+Paramorph.@paramorph T struct _HuslerReissMatrixGeometry{T<:Real}
+    d::Int
+    Γ::Matrix{T} ~ Paramorph.variogram_matrix(d)
+end
+
 @inline _hr_is_independent(tail::HuslerReissTail{<:Real}) = iszero(something(tail.θ))
 @inline limit_kind(tail::HuslerReissTail{<:Real}, ::Val) =
     iszero(something(tail.θ)) ? Π_LIMIT :
@@ -106,6 +116,8 @@ end
 _is_valid_in_dim(::HuslerReissTail{<:Real}, d::Int) = d >= 2
 _is_valid_in_dim(tail::HuslerReissTail{<:AbstractMatrix}, d::Int) =
     d == size(something(tail.Γ), 1)
+Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{<:Real}}) where {D} =
+    (something(C.tail.θ),)
 Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{<:AbstractMatrix}}) where {D} =
     (copy(something(C.tail.Γ)),)
 

@@ -103,8 +103,11 @@ end
 
 _ev_cdf(C::ExtremeValueCopula, u) = exp(-ℓ(C.tail, .- log.(u)))
 function Distributions.params(C::ExtremeValueCopula)
-    if Paramorph.is_paramorph_type(typeof(C.tail))
-        return Tuple(values(Paramorph.parameter_values(C.tail)))
+    declared = _declared_parameter_values(C.tail)
+    if declared !== nothing
+        return Tuple(map(values(declared)) do value
+            value isa AbstractArray ? copy(value) : value
+        end)
     end
     C.tail isa DiscreteSpectralCapableTail &&
         return (copy(_spectral_tail(C.tail).B),)
