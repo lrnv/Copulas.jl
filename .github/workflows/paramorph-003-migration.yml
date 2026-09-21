@@ -1,4 +1,4 @@
-name: Paramorph 0.0.3 smoke test
+name: Paramorph 0.0.3 integration
 
 on:
   push:
@@ -9,7 +9,7 @@ permissions:
   contents: read
 
 jobs:
-  smoke:
+  integration:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -17,15 +17,20 @@ jobs:
         with:
           version: '1.11'
       - uses: julia-actions/cache@v3
-      - name: Remaining direct Paramorph coupling
+      - name: Reject legacy Paramorph protocol extensions
         run: |
-          echo '--- Paramorph method extensions ---'
-          grep -R -nE '^(function )?Paramorph\.(schema_|transformation_schema|parameter_values|reconstruct_struct|parameter_fields|is_paramorph_type)' src || true
-          echo '--- outside the centralized bridge ---'
-          grep -R -n 'Paramorph\.' src/Fitting.jl src/Inference.jl src/NaturalParameters.jl src/ParameterCoefficients.jl || true
-      - name: Instantiate and load Copulas
+          if grep -R -nE '^(function )?Paramorph\.(schema_|transformation_schema|parameter_values|reconstruct_struct|parameter_fields_override|schema_override)' src; then
+            echo 'Legacy Paramorph protocol extensions remain' >&2
+            exit 1
+          fi
+          if grep -n 'Paramorph\.' src/Fitting.jl src/Inference.jl src/NaturalParameters.jl src/ParameterCoefficients.jl; then
+            echo 'Runtime Paramorph leaked outside the centralized bridge' >&2
+            exit 1
+          fi
+      - name: Strict precompile and tests
         shell: julia --project=. --color=yes {0}
         run: |
           using Pkg
           Pkg.instantiate()
-          using Copulas
+          Pkg.precompile(; strict=true)
+          Pkg.test()
