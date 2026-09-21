@@ -18,11 +18,12 @@ jobs:
           ref: paramorph-0.0.3-migration
       - name: Apply variant cleanup
         run: python dev/finalize_paramorph_variants.py
-      - name: Commit variant cleanup
+      - name: Commit source cleanup
         run: |
+          git checkout -- .github/workflows/paramorph-003-migration.yml
           git config user.name github-actions[bot]
           git config user.email 41898282+github-actions[bot]@users.noreply.github.com
-          git add src .github/workflows/paramorph-003-migration.yml
+          git add src
           if git diff --cached --quiet; then
             echo "No changes"
           else
