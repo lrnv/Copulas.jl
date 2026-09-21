@@ -176,9 +176,11 @@ end
     @test _CHECKED_INVERSE_METHODS == reachable
 end
 
-@testset "internal Fréchet generator reductions" begin
+@testset "internal Fréchet generators preserve the requested type" begin
     @test Copulas.τ(Copulas.MGenerator()) == 1
     @test Copulas.τ(Copulas.WGenerator()) == -1
-    @test ArchimedeanCopula{3}(Copulas.MGenerator()) isa MCopula{3}
-    @test ArchimedeanCopula{2}(Copulas.WGenerator()) isa WCopula{2}
+    @test ArchimedeanCopula{3}(Copulas.MGenerator()) isa
+          ArchimedeanCopula{3,<:Copulas.MGenerator}
+    @test ArchimedeanCopula{2}(Copulas.WGenerator()) isa
+          ArchimedeanCopula{2,<:Copulas.WGenerator}
 end

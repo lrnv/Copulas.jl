@@ -97,28 +97,18 @@ end
 
 # Constructors:
 ArchimedeanCopula(d::Int, G::Generator) = ArchimedeanCopula{d}(G)
-ArchimedeanCopula{d}(::IndependentGenerator) where {d} = IndependentCopula{d}()
-ArchimedeanCopula{d}(::MGenerator) where {d} = MCopula{d}()
-ArchimedeanCopula{d}(::WGenerator) where {d} = WCopula{d}()
 function _wrap_archimedean(::Val{d}, G::TG) where {d,TG<:Generator}
     return invoke(ArchimedeanCopula{d}, Tuple{Generator}, G)::ArchimedeanCopula{d,TG}
 end
+
 function _typed_archimedean(CT::Type{<:ArchimedeanCopula{d}}, args...; kwargs...) where {d}
     G = generatorof(CT)(args...; kwargs...)
-    G isa IndependentGenerator && return IndependentCopula{d}()
-    G isa MGenerator && return MCopula{d}()
-    G isa WGenerator && return WCopula{d}()
     return _wrap_archimedean(Val(d), G)
 end
 function _dynamic_archimedean(
     CT::Type{<:ArchimedeanCopula}, vd::Val{d}, args...; kwargs...
 ) where {d}
     G = Base.typename(Base.unwrap_unionall(generatorof(CT))).wrapper(args...; kwargs...)
-
-    G isa IndependentGenerator && return IndependentCopula{d}()
-    G isa MGenerator && return MCopula{d}()
-    G isa WGenerator && return WCopula{d}()
-
     return _wrap_archimedean(vd, G)
 end
 _dynamic_archimedean(CT::Type{<:ArchimedeanCopula}, d::Int, args...; kwargs...) =

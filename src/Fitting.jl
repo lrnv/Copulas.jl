@@ -299,8 +299,11 @@ _fit_dispatch(CT::Type{<:Copula}, U, vd::Val, method::Val; kwargs...) =
 
 function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) where {d}
     prototype = _fit_prototype(CT, vd)
-    α₀ = zeros(Paramorph.intrinsic_dimension(prototype))
-    cop(α) = Paramorph.constraint(prototype, α)
+    schema = Paramorph.transformation_schema(prototype)
+    α₀ = zeros(Paramorph.TransformVariables.dimension(schema))
+    cop(α) = Paramorph.reconstruct_struct(
+        prototype, Paramorph.TransformVariables.transform(schema, α),
+    )
     loss(C) = -_weighted_loglikelihood(C, U, weights)
     res = Optim.optimize(
         loss ∘ cop,
@@ -313,12 +316,15 @@ end
 
 function _fit(CT::Type{<:Copula}, U, vd::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
     prototype = _fit_prototype(CT, vd)
-    intrinsic_dim = Paramorph.intrinsic_dimension(prototype)
+    schema = Paramorph.transformation_schema(prototype)
+    intrinsic_dim = Paramorph.TransformVariables.dimension(schema)
     intrinsic_dim <= d*(d-1)÷2 || throw(ArgumentError(
         "cannot use $method in dimension $d with $intrinsic_dim free parameters; " *
         "only $(d*(d-1)÷2) pairwise rank constraints are available"))
     α₀ = zeros(intrinsic_dim)
-    cop(α) = Paramorph.constraint(prototype, α)
+    cop(α) = Paramorph.reconstruct_struct(
+        prototype, Paramorph.TransformVariables.transform(schema, α),
+    )
     fun = method isa Val{:itau} ? StatsBase.corkendall :
           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
     est = _rank_measure(method, U, weights)

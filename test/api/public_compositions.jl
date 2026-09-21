@@ -2,7 +2,8 @@
 # composition or specialization into generators, tails, and complete copulas.
 @testset "remaining public generator constructors" begin
     @test Copulas.τ(Copulas.IndependentGenerator()) == 0
-    @test ArchimedeanCopula{3}(Copulas.IndependentGenerator()) isa IndependentCopula{3}
+    @test ArchimedeanCopula{3}(Copulas.IndependentGenerator()) isa
+          ArchimedeanCopula{3,<:Copulas.IndependentGenerator}
 
     frailty_generator = Copulas.FrailtyGenerator(Exponential())
     @test !applicable(params, frailty_generator)
