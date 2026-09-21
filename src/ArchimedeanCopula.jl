@@ -206,34 +206,6 @@ generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
 _generator_family(T::Type{<:Generator}) =
     Base.typename(Base.unwrap_unionall(T)).wrapper
 
-Paramorph.parameter_fields(::Type{<:ArchimedeanCopula}) = (:G,)
-Paramorph.is_paramorph_type(::Type{<:ArchimedeanCopula}) = true
-Paramorph.schema_context(
-    ::Type{<:ArchimedeanCopula{d,<:Generator}}, ::Val{:G},
-) where {d} = (; dimension=d)
-Paramorph.schema_context(C::ArchimedeanCopula, field::Val{:G}) =
-    Paramorph.schema_context(typeof(C), field)
-function Paramorph.transformation_schema(
-    ::Type{C}, ::NamedTuple=NamedTuple(),
-) where {d,G,C<:ArchimedeanCopula{d,G}}
-    context = Paramorph.schema_context(C, Val(:G))
-    return Paramorph.TransformVariables.as((G=Paramorph.recursive_schema(G, context),))
-end
-function Paramorph.transformation_schema(
-    C::ArchimedeanCopula, ::NamedTuple=NamedTuple(),
-)
-    context = Paramorph.schema_context(C, Val(:G))
-    return Paramorph.TransformVariables.as((
-        G=Paramorph.recursive_schema(C.G, context),
-    ))
-end
-Paramorph.parameter_values(C::ArchimedeanCopula) =
-    (; G=Paramorph.parameter_values(C.G))
-function Paramorph.reconstruct_struct(
-    C::ArchimedeanCopula{d}, values::NamedTuple,
-) where {d}
-    return ArchimedeanCopula{d}(Paramorph.reconstruct_struct(C.G, values.G))
-end
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)

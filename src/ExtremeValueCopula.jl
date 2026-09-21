@@ -298,36 +298,6 @@ end
 
 tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 
-Paramorph.parameter_fields(::Type{<:ExtremeValueCopula}) = (:tail,)
-Paramorph.is_paramorph_type(::Type{<:ExtremeValueCopula}) = true
-Paramorph.schema_context(
-    ::Type{<:ExtremeValueCopula{d}}, ::Val{:tail},
-) where {d} = (; dimension=d)
-Paramorph.schema_context(C::ExtremeValueCopula, field::Val{:tail}) =
-    Paramorph.schema_context(typeof(C), field)
-function Paramorph.transformation_schema(
-    ::Type{C}, ::NamedTuple=NamedTuple(),
-) where {d,T,C<:ExtremeValueCopula{d,T}}
-    context = Paramorph.schema_context(C, Val(:tail))
-    return Paramorph.TransformVariables.as((
-        tail=Paramorph.recursive_schema(T, context),
-    ))
-end
-function Paramorph.transformation_schema(
-    C::ExtremeValueCopula, ::NamedTuple=NamedTuple(),
-)
-    context = Paramorph.schema_context(C, Val(:tail))
-    return Paramorph.TransformVariables.as((
-        tail=Paramorph.recursive_schema(C.tail, context),
-    ))
-end
-Paramorph.parameter_values(C::ExtremeValueCopula) =
-    (; tail=Paramorph.parameter_values(C.tail))
-function Paramorph.reconstruct_struct(
-    C::ExtremeValueCopula{d}, values::NamedTuple,
-) where {d}
-    return ExtremeValueCopula{d}(Paramorph.reconstruct_struct(C.tail, values.tail))
-end
 
 # Fitting must be able to reconstruct both a dimension-generic family and a
 # concrete `FamilyCopula{d}` without freezing the tail's numeric type. Build

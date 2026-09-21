@@ -237,40 +237,7 @@ _normalized_pseudos(X::AbstractMatrix, weights) =
 _parameter_arguments(η::Tuple) = η
 _parameter_arguments(η) = (η,)
 
-function _concrete_paramorph_type(T::Type, ::Type{N}=Float64) where {N<:Real}
-    concrete = Paramorph.rebind_numeric_type(T, N)
-    if concrete isa UnionAll
-        candidate = try
-            Core.apply_type(concrete, N)
-        catch err
-            err isa TypeError || rethrow()
-            concrete
-        end
-        Paramorph.is_paramorph_type(candidate) && return candidate
-    end
-    return concrete
-end
-
-function _component_prototype(T::Type, context::NamedTuple)
-    concrete = _concrete_paramorph_type(T)
-    schema = Paramorph.transformation_schema(concrete, context)
-    values = Paramorph.TransformVariables.transform(
-        schema, zeros(Paramorph.TransformVariables.dimension(schema)),
-    )
-    return Paramorph.reconstruct_struct(concrete, values)
-end
-
-function _fit_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
-    unwrapped = Base.unwrap_unionall(CT)
-    encoded_dimension = unwrapped.parameters[1]
-    dimensioned = encoded_dimension isa TypeVar ?
-                  Core.apply_type(Base.typename(unwrapped).wrapper, d) : CT
-    concrete = _concrete_paramorph_type(dimensioned)
-    Paramorph.is_paramorph_type(concrete) || throw(ArgumentError(
-        "$CT does not define a Paramorph schema for generic fitting",
-    ))
-    return _component_prototype(concrete, (; dimension=d))
-end
+_fit_prototype(CT::Type{<:Copula}, vd::Val) = _parameter_prototype(CT, vd)
 
 """
     _fit(::Type{<:Copula}, U, ::Val{method}; kwargs...)
@@ -299,11 +266,8 @@ _fit_dispatch(CT::Type{<:Copula}, U, vd::Val, method::Val; kwargs...) =
 
 function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) where {d}
     prototype = _fit_prototype(CT, vd)
-    schema = Paramorph.transformation_schema(prototype)
-    α₀ = zeros(Paramorph.TransformVariables.dimension(schema))
-    cop(α) = Paramorph.reconstruct_struct(
-        prototype, Paramorph.TransformVariables.transform(schema, α),
-    )
+    α₀ = zeros(_parameter_dimension(prototype))
+    cop(α) = _from_parameter_coordinates(prototype, α)
     loss(C) = -_weighted_loglikelihood(C, U, weights)
     res = Optim.optimize(
         loss ∘ cop,
@@ -316,15 +280,12 @@ end
 
 function _fit(CT::Type{<:Copula}, U, vd::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
     prototype = _fit_prototype(CT, vd)
-    schema = Paramorph.transformation_schema(prototype)
-    intrinsic_dim = Paramorph.TransformVariables.dimension(schema)
+    intrinsic_dim = _parameter_dimension(prototype)
     intrinsic_dim <= d*(d-1)÷2 || throw(ArgumentError(
         "cannot use $method in dimension $d with $intrinsic_dim free parameters; " *
         "only $(d*(d-1)÷2) pairwise rank constraints are available"))
     α₀ = zeros(intrinsic_dim)
-    cop(α) = Paramorph.reconstruct_struct(
-        prototype, Paramorph.TransformVariables.transform(schema, α),
-    )
+    cop(α) = _from_parameter_coordinates(prototype, α)
     fun = method isa Val{:itau} ? StatsBase.corkendall :
           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
     est = _rank_measure(method, U, weights)

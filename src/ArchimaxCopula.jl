@@ -74,26 +74,6 @@ ArchimaxCopula(d::Int, gen::Generator, tail::Tail) = ArchimaxCopula{d}(gen, tail
 
 genandtailof(S::Type{<:ArchimaxCopula}) = (fieldtype(S, :gen), fieldtype(S, :tail))
 
-Paramorph.is_paramorph_type(::Type{<:ArchimaxCopula}) = true
-Paramorph.parameter_fields(::Type{<:ArchimaxCopula}) = (:gen, :tail)
-function Paramorph.transformation_schema(C::ArchimaxCopula{d}, ::NamedTuple=NamedTuple()) where {d}
-    gcontext = (; dimension=d)
-    tcontext = (; dimension=d)
-    return Paramorph.TransformVariables.as((
-        gen=Paramorph.recursive_schema(C.gen, gcontext),
-        tail=Paramorph.recursive_schema(C.tail, tcontext),
-    ))
-end
-Paramorph.parameter_values(C::ArchimaxCopula) = (
-    gen=Paramorph.parameter_values(C.gen),
-    tail=Paramorph.parameter_values(C.tail),
-)
-function Paramorph.reconstruct_struct(C::ArchimaxCopula{d}, values::NamedTuple) where {d}
-    return ArchimaxCopula{d}(
-        Paramorph.reconstruct_struct(C.gen, values.gen),
-        Paramorph.reconstruct_struct(C.tail, values.tail),
-    )
-end
 
 function Distributions.params(C::ArchimaxCopula)
     gvals = Tuple(values(Paramorph.parameter_values(C.gen)))

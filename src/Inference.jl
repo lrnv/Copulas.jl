@@ -66,10 +66,10 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                        methodv::Val{method}; weights=nothing) where {d,method}
     U, weights = _weighted_sample(U, weights)
     fitted = CT(d, θ...)
-    α = Paramorph.unconstrain(fitted)
+    α = _parameter_coordinates(fitted)
     all(isfinite, α) || throw(ArgumentError(
         "Hessian inference requires fitted parameters in the finite interior of their parameter space"))
-    cop(αv) = Paramorph.constraint(fitted, αv)
+    cop(αv) = _from_parameter_coordinates(fitted, αv)
     ℓ(αv) = _weighted_loglikelihood(cop(αv), U, weights)
     H = ForwardDiff.hessian(ℓ, α)
     Iα = .-H
@@ -107,11 +107,11 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, vd::Val
                        nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {d,pairwise,vcovm,method}
     n = size(U, 2)
     fitted = CT(d, θ...)
-    α = Paramorph.unconstrain(fitted)
+    α = _parameter_coordinates(fitted)
     all(isfinite, α) || throw(ArgumentError(
         "$vcovm inference requires fitted parameters in the finite interior of their parameter space"))
     p = length(α)
-    cop(αv) = Paramorph.constraint(fitted, αv)
+    cop(αv) = _from_parameter_coordinates(fitted, αv)
     B = isnothing(nresamples) ? clamp(Int(floor(sqrt(n))), 10, 200) : Int(nresamples)
     B > 1 || throw(ArgumentError("nresamples must be greater than one"))
 
@@ -179,7 +179,7 @@ end
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple{<:Number},
                         ::Val{d}, fitted, α, Vα) where {d}
     j = ForwardDiff.gradient(
-        αv -> only(Distributions.params(Paramorph.constraint(fitted, αv))),
+        αv -> only(Distributions.params(_from_parameter_coordinates(fitted, αv))),
         α,
     )
     J = reshape(j, 1, length(j))
@@ -191,7 +191,7 @@ function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                         vd::Val{d}, fitted, α, Vα) where {d}
     J = ForwardDiff.jacobian(
         αv -> _distribution_coefficient_values(
-            Paramorph.constraint(fitted, αv)),
+            _from_parameter_coordinates(fitted, αv)),
         α,
     )
     Vθ = J * Vα * J'
@@ -201,7 +201,7 @@ end
 function _analytical_parameter_coordinates(target, d, parameters)
     try
         fitted = target(d, parameters...)
-        α = Paramorph.unconstrain(fitted)
+        α = _parameter_coordinates(fitted)
         return all(isfinite, α) ? (fitted, α) : nothing
     catch err
         err isa InterruptException && rethrow()
