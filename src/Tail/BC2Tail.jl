@@ -62,7 +62,7 @@ function BC2Tail(a::AbstractVector)
     length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates"))
     T = float(eltype(a))
     aa = T.(a)
-    return BC2Tail(length(aa), aa)
+    return BC2Tail{T}(length(aa), aa)
 end
 
 _spectral_tail(tail::BC2Tail{T}) where {T} =
