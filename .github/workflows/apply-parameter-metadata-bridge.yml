@@ -1,0 +1,31 @@
+name: Apply parameter metadata bridge cleanup
+
+on:
+  push:
+    branches:
+      - paramorph-0.0.3-migration
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: paramorph-0.0.3-migration
+      - name: Apply metadata cleanup
+        run: python dev/cleanup_parameter_metadata_bridge.py
+      - name: Commit metadata cleanup
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src/ParamorphFitting.jl src/NaturalParameters.jl src/ParameterCoefficients.jl
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Route parameter metadata through geometry bridge"
+            git push origin HEAD:paramorph-0.0.3-migration
+          fi
