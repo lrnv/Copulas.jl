@@ -46,40 +46,34 @@ References:
 """
 MOTail, MOCopula
 
-Paramorph.@paramorph T struct MOTail{T<:Real} <: DiscreteSpectralPickandsTail
-    d::Int
-    λ::Vector{T}
+function _mo_geometry(d::Integer, ::Type{T}) where {T<:Real}
+    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two"))
+    base = Paramorph.TransformVariables.as(
+        Vector, Paramorph.nonnegative(), 2^d - 1,
+    )
+    forward = identity
+    function backward(λ)
+        subsets = _nonempty_subsets(d)
+        length(λ) == length(subsets) || throw(DimensionMismatch(
+            "expected $(length(subsets)) shock intensities for dimension $d",
+        ))
+        totals = zeros(eltype(λ), d)
+        @inbounds for (k, S) in enumerate(subsets), i in S
+            totals[i] += λ[k]
+        end
+        all(>(zero(eltype(totals))), totals) || throw(DomainError(
+            λ, "every Marshall-Olkin margin must have positive total shock rate",
+        ))
+        return λ
+    end
+    return Paramorph.joint_transform(base, forward, backward)
 end
 
-Paramorph.parameter_fields_override(::Type{<:MOTail}) = (:λ,)
-function _mo_schema(d::Integer)
-    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two"))
-    return Paramorph.TransformVariables.as((
-        λ=Paramorph.TransformVariables.as(Vector, Paramorph.nonnegative(), 2^d - 1),
-    ))
+Paramorph.@paramorph T struct MOTail{T<:Real} <: DiscreteSpectralPickandsTail
+    d::Int
+    λ::Vector{T} ~ _mo_geometry(d, T)
 end
-Paramorph.schema_override(::Type{<:MOTail}, ::NamedTuple) = throw(ArgumentError(
-    "MOTail requires a prototype because its parameter geometry depends on dimension",
-))
-Paramorph.schema_override(
-    ::Type{<:MOTail}, ::NamedTuple, values::NamedTuple,
-) = begin
-    d = values.d
-    schema = _mo_schema(d)
-    subsets = _nonempty_subsets(d)
-    length(values.λ) == length(subsets) || throw(DimensionMismatch(
-        "expected $(length(subsets)) shock intensities for dimension $d",
-    ))
-    totals = zeros(eltype(values.λ), d)
-    @inbounds for (k, S) in enumerate(subsets), i in S
-        totals[i] += values.λ[k]
-    end
-    all(>(zero(eltype(totals))), totals) || throw(ArgumentError(
-        "every Marshall-Olkin margin must have positive total shock rate",
-    ))
-    return schema
-end
-Paramorph.schema_override(tail::MOTail, ::NamedTuple) = _mo_schema(tail.d)
+
 
 MOTail(d::Int, λ::Vector{<:Integer}) = MOTail(d, float.(λ))
 

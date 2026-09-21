@@ -23,8 +23,8 @@ References:
 BB2Generator, BB2Copula
 
 Paramorph.@paramorph T struct BB2Generator{T<:Real} <: AbstractFrailtyGenerator
-    θ::asℝ₊
-    δ::asℝ₊
+    θ::T ~ asℝ₊
+    δ::T ~ asℝ₊
 end
 function BB2Generator(θ::Real, δ::Real)
     T = promote_type(typeof(float(θ)), typeof(float(δ)))

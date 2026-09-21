@@ -30,7 +30,7 @@ References:
 ClaytonGenerator, ClaytonCopula
 
 Paramorph.@paramorph T struct ClaytonGenerator{T<:Real} <: AbstractUnivariateGenerator
-    θ::closed_lower(get(context, :lower, -one(T)))
+    θ::T ~ closed_lower(haskey(context, :dimension) ? -inv(T(context.dimension - 1)) : -one(T))
 end
 ClaytonGenerator(θ::Integer) = ClaytonGenerator(float(θ))
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}

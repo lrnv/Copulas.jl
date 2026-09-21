@@ -26,8 +26,8 @@ References:
 BB1Generator, BB1Copula
 
 Paramorph.@paramorph T struct BB1Generator{T<:Real} <: AbstractFrailtyGenerator
-    θ::asℝ₊
-    δ::closed_lower(one(T))
+    θ::T ~ asℝ₊
+    δ::T ~ closed_lower(one(T))
 end
 function BB1Generator(θ::Real, δ::Real)
     T = promote_type(typeof(float(θ)), typeof(float(δ)))

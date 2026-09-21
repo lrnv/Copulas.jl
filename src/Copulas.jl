@@ -26,9 +26,8 @@ module Copulas
     import ADTypes
     import StatsAPI: HypothesisTest, pvalue
 
-    # Paramorph 0.0.2 recognizes transformation identifiers syntactically in
-    # `@paramorph` fields. Keep private local aliases so the package itself can
-    # remain imported rather than brought wholesale into this namespace.
+    # Local aliases keep geometry declarations compact without importing the
+    # whole Paramorph namespace into Copulas.jl.
     const as = Paramorph.TransformVariables.as
     const asℝ = Paramorph.TransformVariables.asℝ
     const asℝ₊ = Paramorph.TransformVariables.asℝ₊

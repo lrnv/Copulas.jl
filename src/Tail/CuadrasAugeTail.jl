@@ -41,7 +41,7 @@ References:
 CuadrasAugeTail, CuadrasAugeCopula
 
 Paramorph.@paramorph T struct CuadrasAugeTail{T<:Real} <: OneParameterPickandsTail
-    θ::bounded_interval(zero(T), one(T))
+    θ::T ~ bounded_interval(zero(T), one(T))
 end
 CuadrasAugeTail(θ::Integer) = CuadrasAugeTail(float(θ))
 @inline limit_kind(tail::CuadrasAugeTail, ::Val) =

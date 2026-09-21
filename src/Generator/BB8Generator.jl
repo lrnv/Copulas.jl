@@ -29,8 +29,8 @@ References:
 BB8Generator, BB8Copula
 
 Paramorph.@paramorph T struct BB8Generator{T<:Real} <: AbstractFrailtyGenerator
-    ϑ::closed_lower(one(T))
-    δ::bounded_interval(zero(T), one(T); left_closed=false)
+    ϑ::T ~ closed_lower(one(T))
+    δ::T ~ bounded_interval(zero(T), one(T); left_closed=false)
 end
 function BB8Generator(ϑ::Real, δ::Real)
     T = promote_type(typeof(float(ϑ)), typeof(float(δ)))

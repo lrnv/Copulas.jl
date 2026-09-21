@@ -35,7 +35,7 @@ References:
 LogTail, LogCopula
 
 Paramorph.@paramorph T struct LogTail{T<:Real} <: OneParameterPickandsTail
-    θ::closed_lower(one(T))
+    θ::T ~ closed_lower(one(T))
 end
 LogTail(θ::Integer) = LogTail(float(θ))
 @inline limit_kind(tail::LogTail, ::Val) =

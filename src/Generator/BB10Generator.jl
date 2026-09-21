@@ -24,8 +24,8 @@ References:
 BB10Generator, BB10Copula
 
 Paramorph.@paramorph T struct BB10Generator{T<:Real} <: AbstractFrailtyGenerator
-    θ::asℝ₊
-    δ::bounded_interval(zero(T), one(T))
+    θ::T ~ asℝ₊
+    δ::T ~ bounded_interval(zero(T), one(T))
 end
 function BB10Generator(θ::Real, δ::Real)
     T = promote_type(typeof(float(θ)), typeof(float(δ)))

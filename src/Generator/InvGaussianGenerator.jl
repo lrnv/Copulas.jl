@@ -30,7 +30,7 @@ References:
 InvGaussianGenerator, InvGaussianCopula
 
 Paramorph.@paramorph T struct InvGaussianGenerator{T<:Real} <: AbstractUnivariateFrailtyGenerator
-    θ::nonnegative()
+    θ::T ~ nonnegative()
 end
 InvGaussianGenerator(θ::Integer) = InvGaussianGenerator(float(θ))
 const InvGaussianCopula{d, T} = ArchimedeanCopula{d, InvGaussianGenerator{T}}

@@ -30,9 +30,9 @@ References:
 AsymLogTail, AsymLogCopula
 
 Paramorph.@paramorph T struct AsymLogTail{T<:Real} <: BivariatePickandsTail
-    α::closed_lower(one(T))
-    θ₁::bounded_interval(zero(T), one(T))
-    θ₂::bounded_interval(zero(T), one(T))
+    α::T ~ closed_lower(one(T))
+    θ₁::T ~ bounded_interval(zero(T), one(T))
+    θ₂::T ~ bounded_interval(zero(T), one(T))
 end
 function AsymLogTail(α::Real, θ₁::Real, θ₂::Real)
     T = promote_type(typeof(float(α)), typeof(float(θ₁)), typeof(float(θ₂)))

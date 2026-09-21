@@ -26,7 +26,7 @@ References:
 GumbelGenerator, GumbelCopula
 
 Paramorph.@paramorph T struct GumbelGenerator{T<:Real} <: AbstractUnivariateFrailtyGenerator
-    θ::closed_lower(one(T))
+    θ::T ~ closed_lower(one(T))
 end
 GumbelGenerator(θ::Integer) = GumbelGenerator(float(θ))
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}

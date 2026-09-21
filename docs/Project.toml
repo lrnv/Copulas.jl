@@ -23,4 +23,7 @@ Documenter = "1"
 DocumenterCitations = "1"
 DocumenterInterLinks = "1"
 DocumenterVitepress = "0.3"
-Paramorph = "0.0.2"
+Paramorph = "0.0.3"
+
+[sources]
+Paramorph = {url = "https://github.com/lrnv/Paramorph.jl", rev = "paramorph-0.0.3-dsl"}

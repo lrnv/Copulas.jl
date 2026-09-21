@@ -40,7 +40,7 @@ References:
 GalambosTail, GalambosCopula
 
 Paramorph.@paramorph T struct GalambosTail{T<:Real} <: OneParameterPickandsTail
-    θ::nonnegative()
+    θ::T ~ nonnegative()
 end
 GalambosTail(θ::Integer) = GalambosTail(float(θ))
 @inline limit_kind(tail::GalambosTail, ::Val) =

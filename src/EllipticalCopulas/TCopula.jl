@@ -50,18 +50,8 @@ References:
 """
 TCopula
 Paramorph.@paramorph T struct TCopula{d,T<:Real} <: EllipticalCopula{d,Matrix{T}}
-    ν::asℝ₊
-    Σ::correlation_matrix(d)
-end
-function Paramorph.schema_override(::Type{<:TCopula{d}}, ::NamedTuple) where {d}
-    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-    return nothing
-end
-function Paramorph.schema_override(
-    T::Type{<:TCopula{d}}, context::NamedTuple, values::NamedTuple,
-) where {d}
-    size(values.Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
-    return Paramorph.schema_override(T, context)
+    ν::T ~ asℝ₊
+    Σ::Matrix{T} ~ correlation_matrix(d >= 2 ? d : throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d")))
 end
 function _promoted_t_copula(::Val{d}, ν::Real, Σ::AbstractMatrix) where {d}
     size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))

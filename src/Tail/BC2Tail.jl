@@ -50,31 +50,11 @@ BC2Tail, BC2Copula
 
 Paramorph.@paramorph T struct BC2Tail{T<:Real} <: DiscreteSpectralPickandsTail
     d::Int
-    a::Vector{T}
+    a::Vector{T} ~ Paramorph.TransformVariables.as(
+        Vector, Paramorph.bounded_interval(zero(T), one(T)), d,
+    )
 end
 
-Paramorph.parameter_fields_override(::Type{<:BC2Tail}) = (:a,)
-function _bc2_schema(d::Integer, ::Type{T}) where {T<:Real}
-    d >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates"))
-    return Paramorph.TransformVariables.as((
-        a=Paramorph.TransformVariables.as(
-            Vector, Paramorph.bounded_interval(zero(T), one(T)), d,
-        ),
-    ))
-end
-Paramorph.schema_override(::Type{<:BC2Tail}, ::NamedTuple) = throw(ArgumentError(
-    "BC2Tail requires a prototype because its parameter geometry depends on dimension",
-))
-function Paramorph.schema_override(
-    ::Type{<:BC2Tail{T}}, ::NamedTuple, values::NamedTuple,
-) where {T}
-    length(values.a) == values.d || throw(DimensionMismatch(
-        "BC2Tail dimension $(values.d) does not match $(length(values.a)) coordinates",
-    ))
-    return _bc2_schema(values.d, T)
-end
-Paramorph.schema_override(tail::BC2Tail{T}, ::NamedTuple) where {T} =
-    _bc2_schema(tail.d, T)
 
 BC2Tail(a::Vector{<:Integer}) = BC2Tail(float.(a))
 

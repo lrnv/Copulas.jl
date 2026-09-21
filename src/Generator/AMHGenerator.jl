@@ -25,8 +25,9 @@ References:
 AMHGenerator, AMHCopula
 
 Paramorph.@paramorph T struct AMHGenerator{T<:Real} <: AbstractUnivariateGenerator
-    θ::bounded_interval(
-        get(context, :lower, -one(T)), one(T),
+    θ::T ~ bounded_interval(
+        haskey(context, :dimension) ? T(clamp(_find_critical_value_amh(context.dimension), -1, 1)) : -one(T),
+        one(T),
     )
 end
 AMHGenerator(θ::Integer) = AMHGenerator(float(θ))

@@ -51,8 +51,12 @@ AsymGalambosTail, AsymGalambosCopula
 
 Paramorph.@paramorph T struct AsymGalambosTail{T<:Real} <: BivariatePickandsTail
     d::Int
-    dep::Vector{T}
-    weights::Vector{Vector{T}}
+    dep::Vector{T} ~ Paramorph.TransformVariables.as(
+        Vector, Paramorph.nonnegative(), 2^d - d - 1,
+    )
+    weights::Vector{Vector{T}} ~ Paramorph.repeat_transform(
+        Paramorph.TransformVariables.UnitSimplex(2^(d - 1)), d,
+    )
 end
 
 function AsymGalambosTail(dep::AbstractVector, weights::Vararg{AbstractVector,N}) where {N}
@@ -66,26 +70,6 @@ function AsymGalambosTail(dep::AbstractVector, weights::Vararg{AbstractVector,N}
     return AsymGalambosTail{T}(N, normalized_dep, normalized_weights)
 end
 
-Paramorph.parameter_fields_override(::Type{<:AsymGalambosTail}) = (:dep, :weights)
-function _asymgalambos_schema(d::Integer)
-    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    return Paramorph.TransformVariables.as((
-        dep=Paramorph.TransformVariables.as(
-            Vector, Paramorph.nonnegative(), 2^d - d - 1,
-        ),
-        weights=Paramorph.repeat_transform(
-            Paramorph.TransformVariables.UnitSimplex(2^(d - 1)), d,
-        ),
-    ))
-end
-Paramorph.schema_override(::Type{<:AsymGalambosTail}, ::NamedTuple) = throw(ArgumentError(
-    "AsymGalambosTail requires a prototype because its parameter geometry depends on dimension",
-))
-Paramorph.schema_override(
-    ::Type{<:AsymGalambosTail}, ::NamedTuple, values::NamedTuple,
-) = _asymgalambos_schema(values.d)
-Paramorph.schema_override(tail::AsymGalambosTail, ::NamedTuple) =
-    _asymgalambos_schema(tail.d)
 
 @inline _asymgal_components(tail::AsymGalambosTail) = _asymmetric_subset_components(
     tail.d, tail.dep, tail.weights; singleton_parameter=0.0,

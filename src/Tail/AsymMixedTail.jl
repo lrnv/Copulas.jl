@@ -38,15 +38,13 @@ AsymMixedTail, AsymMixedCopula
 Paramorph.@paramorph T struct AsymMixedTail{T<:Real} <: BivariatePickandsTail
     θ₁::T
     θ₂::T
+    @geometry ((θ₁, θ₂) ~ Paramorph.asymmetric_mixed())
 end
 function AsymMixedTail(θ₁::Real, θ₂::Real)
     T = promote_type(typeof(float(θ₁)), typeof(float(θ₂)))
     return AsymMixedTail{T}(T(θ₁), T(θ₂))
 end
 
-Paramorph.parameter_fields_override(::Type{<:AsymMixedTail}) = (:θ₁, :θ₂)
-Paramorph.schema_override(::Type{<:AsymMixedTail}, ::NamedTuple) =
-    Paramorph.asymmetric_mixed()
 
 @inline limit_kind(tail::AsymMixedTail, ::Val{2}) =
     iszero(tail.θ₁) && iszero(tail.θ₂) ? Π_LIMIT : NO_LIMIT

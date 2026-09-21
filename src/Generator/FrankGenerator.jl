@@ -27,7 +27,7 @@ References:
 FrankGenerator, FrankCopula
 
 Paramorph.@paramorph T struct FrankGenerator{T<:Real} <: AbstractUnivariateGenerator
-    θ::asℝ
+    θ::T ~ (get(context, :dimension, 2) == 2 ? asℝ : nonnegative())
 end
 FrankGenerator(θ::Integer) = FrankGenerator(float(θ))
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
@@ -41,12 +41,6 @@ end
     return NO_LIMIT
 end
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
-function Paramorph.schema_override(
-    ::Type{<:FrankGenerator}, context::NamedTuple,
-)
-    get(context, :dimension, 2) == 2 && return nothing
-    return Paramorph.TransformVariables.as((θ=Paramorph.nonnegative(),))
-end
 
 archimedean_measure_style(G::FrankGenerator, ::Val{d}) where {d} =
     isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()

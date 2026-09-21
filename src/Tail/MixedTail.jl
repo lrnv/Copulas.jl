@@ -49,7 +49,7 @@ See also: [`GalambosTail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
 MixedTail, MixedCopula
 
 Paramorph.@paramorph T struct MixedTail{T<:Real} <: OneParameterPickandsTail
-    θ::bounded_interval(zero(T), one(T))
+    θ::T ~ bounded_interval(zero(T), one(T))
 end
 MixedTail(θ::Integer) = MixedTail(float(θ))
 

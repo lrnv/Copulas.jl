@@ -28,13 +28,9 @@ References:
 """
 RafteryCopula
 Paramorph.@paramorph P struct RafteryCopula{d,P<:Real} <: Copula{d}
-    θ::bounded_interval(zero(P), one(P))
+    θ::P ~ (d >= 2 ? bounded_interval(zero(P), one(P)) : throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d")))
 end
 RafteryCopula{d}(θ::Integer) where {d} = RafteryCopula{d}(float(θ))
-function Paramorph.schema_override(::Type{<:RafteryCopula{d}}, ::NamedTuple) where {d}
-    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-    return nothing
-end
 copula_measure_style(::Type{<:RafteryCopula}) =
     NonAbsolutelyContinuousMeasure()
 RafteryCopula(d, θ) = RafteryCopula{d}(θ)

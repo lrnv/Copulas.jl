@@ -56,17 +56,7 @@ References:
 """
 GaussianCopula
 Paramorph.@paramorph T struct GaussianCopula{d,T<:Real} <: EllipticalCopula{d,Matrix{T}}
-    Σ::correlation_matrix(d)
-end
-function Paramorph.schema_override(::Type{<:GaussianCopula{d}}, ::NamedTuple) where {d}
-    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-    return nothing
-end
-function Paramorph.schema_override(
-    T::Type{<:GaussianCopula{d}}, context::NamedTuple, values::NamedTuple,
-) where {d}
-    size(values.Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
-    return Paramorph.schema_override(T, context)
+    Σ::Matrix{T} ~ correlation_matrix(d >= 2 ? d : throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d")))
 end
 function _promoted_gaussian_copula(::Val{d}, Σ::AbstractMatrix) where {d}
     size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))

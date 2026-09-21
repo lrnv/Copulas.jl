@@ -26,7 +26,7 @@ References:
 JoeGenerator, JoeCopula
 
 Paramorph.@paramorph T struct JoeGenerator{T<:Real} <: AbstractUnivariateFrailtyGenerator
-    θ::closed_lower(one(T))
+    θ::T ~ closed_lower(one(T))
 end
 JoeGenerator(θ::Integer) = JoeGenerator(float(θ))
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}

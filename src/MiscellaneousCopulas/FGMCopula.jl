@@ -31,32 +31,27 @@ References:
 * [blier2022stochastic](@cite) Blier-Wong, C., Cossette, H., & Marceau, E. (2022). Stochastic representation of FGM copulas using multivariate Bernoulli random variables. Computational Statistics & Data Analysis, 173, 107506.
 """
 FGMCopula
-Paramorph.@paramorph T struct FGMCopula{d,T<:Real} <: Copula{d}
-    θ::Vector{T}
-end
-
-Paramorph.parameter_fields_override(::Type{<:FGMCopula}) = (:θ,)
-function _fgm_schema(d::Integer)
+function _fgm_geometry(d::Integer, ::Type{T}) where {T<:Real}
     d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
     if d == 2
-        interval = Paramorph.bounded_interval(-1.0, 1.0)
-        return Paramorph.TransformVariables.as((
-            θ=Paramorph.TransformVariables.as(Vector, interval, 1),
-        ))
+        interval = Paramorph.bounded_interval(-one(T), one(T))
+        return Paramorph.TransformVariables.as(Vector, interval, 1)
     end
     subsets = [Tuple(S) for k in 2:d for S in Combinatorics.combinations(1:d, k)]
-    corners = collect(Iterators.product(ntuple(_ -> (-1.0, 1.0), d)...))
+    corners = collect(Iterators.product(ntuple(_ -> (-one(T), one(T)), d)...))
     corner_rows = reduce(vcat, [
         reshape([-prod(corner[i] for i in subset) for subset in subsets], 1, :)
         for corner in corners
     ])
     q = length(subsets)
-    identity = Matrix{Float64}(LinearAlgebra.I, q, q)
+    identity = Matrix{T}(LinearAlgebra.I, q, q)
     A = [corner_rows; identity; -identity]
-    return Paramorph.TransformVariables.as((θ=Paramorph.polytope(A, ones(size(A, 1))),))
+    return Paramorph.polytope(A, ones(T, size(A, 1)))
 end
-Paramorph.schema_override(::Type{<:FGMCopula{d}}, ::NamedTuple) where {d} =
-    _fgm_schema(d)
+
+Paramorph.@paramorph T struct FGMCopula{d,T<:Real} <: Copula{d}
+    θ::Vector{T} ~ _fgm_geometry(d, T)
+end
 FGMCopula{d}(θ::Real) where {d} = FGMCopula{d}([float(θ)])
 FGMCopula{d}(θ::Tuple) where {d} = FGMCopula{d}(collect(float.(θ)))
 FGMCopula{d}(θ::AbstractVector) where {d} = FGMCopula{d}(collect(float.(θ)))

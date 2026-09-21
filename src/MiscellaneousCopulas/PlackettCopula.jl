@@ -32,13 +32,9 @@ References:
 """
 PlackettCopula
 Paramorph.@paramorph P struct PlackettCopula{d,P<:Real} <: Copula{d}
-    θ::nonnegative()
+    θ::P ~ (d == 2 ? nonnegative() : throw(DimensionMismatch("PlackettCopula is only defined in dimension 2")))
 end
 PlackettCopula{d}(θ::Integer) where {d} = PlackettCopula{d}(float(θ))
-function Paramorph.schema_override(::Type{<:PlackettCopula{d}}, ::NamedTuple) where {d}
-    d == 2 || throw(DimensionMismatch("PlackettCopula is only defined in dimension 2"))
-    return nothing
-end
 PlackettCopula(θ) = PlackettCopula{2}(θ)
 PlackettCopula(d::Integer, θ::Real) = PlackettCopula{d}(θ)
 (::Type{<:PlackettCopula{D,P}})(d::Int, θ) where {D,P} = PlackettCopula{d}(θ)
