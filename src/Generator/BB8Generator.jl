@@ -28,15 +28,13 @@ References:
 """
 BB8Generator, BB8Copula
 
-struct BB8Generator{T} <: AbstractFrailtyGenerator
-    ϑ::T
-    δ::T
-    function BB8Generator(ϑ, δ)
-        (ϑ ≥ 1) || throw(ArgumentError("ϑ must be ≥ 1"))
-        (0 < δ ≤ 1) || throw(ArgumentError("δ must be in (0,1]"))
-        ϑf, δf = promote(float(ϑ), float(δ))
-        return new{typeof(ϑf)}(ϑf, δf)
-    end
+Paramorph.@paramorph T struct BB8Generator{T<:Real} <: AbstractFrailtyGenerator
+    ϑ::closed_lower(one(T))
+    δ::bounded_interval(zero(T), one(T); left_closed=false)
+end
+function BB8Generator(ϑ::Real, δ::Real)
+    T = promote_type(typeof(float(ϑ)), typeof(float(δ)))
+    return BB8Generator{T}(T(ϑ), T(δ))
 end
 
 const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
@@ -44,10 +42,6 @@ const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
     isone(G.ϑ) ? Π_LIMIT :
     isone(G.δ) && isinf(G.ϑ) ? M_LIMIT :
     NO_LIMIT
-Paramorph.param_space(::Type{<:BB8Generator}, d) = (
-    Paramorph.LowerClosed(:ϑ, 1.0),
-    Paramorph.ProbOpenLeft(:δ),
-)
 
 @inline _η(G::BB8Generator) = -expm1(G.ϑ * log1p(-G.δ))
 

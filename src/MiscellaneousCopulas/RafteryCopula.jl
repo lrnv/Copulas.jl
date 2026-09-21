@@ -26,21 +26,20 @@ References:
 * [Raftery2023](@cite) Saali, T., M. Mesfioui, and A. Shabri, 2023: Multivariate Extension of Raftery Copula. Mathematics, 11, 414, https://doi.org/10.3390/math11020414. 
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.6. 
 """
-struct RafteryCopula{d, P} <: Copula{d}
-    θ::P  # Copula parameter
-    function RafteryCopula{d}(θ) where {d}
-        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-        (0 <= θ <= 1) || throw(ArgumentError("Theta must be in [0,1]"))
-        θf = float(θ)
-        return new{d,typeof(θf)}(θf)
-    end
+RafteryCopula
+Paramorph.@paramorph P struct RafteryCopula{d,P<:Real} <: Copula{d}
+    θ::bounded_interval(zero(P), one(P))
+end
+RafteryCopula{d}(θ::Integer) where {d} = RafteryCopula{d}(float(θ))
+function Paramorph.schema_override(::Type{<:RafteryCopula{d}}, ::NamedTuple) where {d}
+    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+    return nothing
 end
 copula_measure_style(::Type{<:RafteryCopula}) =
     NonAbsolutelyContinuousMeasure()
 RafteryCopula(d, θ) = RafteryCopula{d}(θ)
 (::Type{<:RafteryCopula{D,P}})(d::Int, θ) where {D,P} = RafteryCopula{d}(θ)
 Base.eltype(R::RafteryCopula) = eltype(R.θ)
-Paramorph.param_space(::Type{<:RafteryCopula}, d) = Paramorph.Prob(:θ)
 
 function _cdf(R::RafteryCopula{d,P}, u) where {d,P}
     iszero(R.θ) && return prod(u)

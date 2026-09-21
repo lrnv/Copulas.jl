@@ -29,17 +29,11 @@ References:
 """
 InvGaussianGenerator, InvGaussianCopula
 
-struct InvGaussianGenerator{T} <: AbstractUnivariateFrailtyGenerator
-    θ::T
-    function InvGaussianGenerator(θ)
-        θ < 0 && throw(ArgumentError("Theta must be non-negative."))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct InvGaussianGenerator{T<:Real} <: AbstractUnivariateFrailtyGenerator
+    θ::nonnegative()
 end
+InvGaussianGenerator(θ::Integer) = InvGaussianGenerator(float(θ))
 const InvGaussianCopula{d, T} = ArchimedeanCopula{d, InvGaussianGenerator{T}}
-Paramorph.param_space(::Type{<:InvGaussianGenerator}, d) =
-    Paramorph.NonNeg(:θ)
 
 ϕ(  G::InvGaussianGenerator, t) = iszero(G.θ) ? exp(-t) : isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
 ϕ⁻¹(G::InvGaussianGenerator, t) = iszero(G.θ) ? -log(t) : isinf(G.θ) ? log(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))

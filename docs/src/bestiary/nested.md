@@ -81,13 +81,13 @@ consistent, child blocks and root leaves must be placed without overlap, and
 each node generator must support the dimension in which it is used. It does
 not attempt to certify the mathematical parent-child nesting relation. Explicit
 construction therefore remains permissive, as it was before the fitting
-parameter-space machinery was introduced.
+conditional parameter-chart machinery was introduced.
 
 Template fitting is deliberately stricter. For
 `fit(template::NestedArchimedeanCopula, data)`, Copulas.jl asks
-`Paramorph.param_space(template)` for the supported dependent parameter
-geometry. The optimiser works only in unconstrained coordinates and
-`Paramorph.constrain` reconstructs candidate trees inside that geometry. An
+the template's conditional Paramorph chart for the supported dependent
+geometry. The optimiser works only in unconstrained coordinates and reconstructs
+candidate trees inside that geometry. An
 initial template outside the supported region, or a tree for which no fitting
 geometry is implemented, is rejected before optimisation.
 
@@ -101,16 +101,16 @@ nesting rules.
 
 ### Nesting validity and fitting geometry
 
-For template fitting, each supported edge is encoded directly in a
-`Paramorph.DependentProduct`. The child's intrinsic generator domain is intersected
-with the parent-child nesting constraint, so every finite optimiser coordinate maps
-to a nesting that satisfies the implemented rule.
+For template fitting, each supported edge receives a conditional scalar transform.
+The child's intrinsic generator domain is intersected with the parent-child nesting
+constraint, so every finite optimiser coordinate maps to a nesting that satisfies
+the implemented rule.
 
 The currently implemented one-parameter rules are:
 
 | Parent generator | Child generator | Fitting-valid region |
 | --- | --- | --- |
-| `IndependentGenerator` | any generator with an available local parameter space | no additional constraint |
+| `IndependentGenerator` | any generator with an available local Paramorph schema | no additional constraint |
 | AMH | AMH | ``\theta_c \ge \theta_p`` |
 | Clayton | Clayton | ``\theta_c \ge \theta_p`` |
 | Frank | Frank | ``\theta_c \ge \theta_p`` |
@@ -165,7 +165,7 @@ from the table above does **not** imply invalidity.
 `fit` performs maximum-likelihood estimation of the generator parameters on a
 **fixed tree**: the leaf layout and the generator family at each node come from a
 template instance, while the supported free parameters are determined by that
-template's Paramorph space. Pass the template and a `d×n` matrix of
+template's Paramorph chart. Pass the template and a `d×n` matrix of
 pseudo-observations (columns are observations).
 
 ```@example nested

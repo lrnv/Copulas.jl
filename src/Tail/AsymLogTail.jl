@@ -29,17 +29,14 @@ References:
 """
 AsymLogTail, AsymLogCopula
 
-struct AsymLogTail{T} <: BivariatePickandsTail
-    α::T
-    θ₁::T
-    θ₂::T
-    function AsymLogTail(α, θ₁, θ₂)
-        T = float(promote_type(typeof(α), typeof(θ₁), typeof(θ₂)))
-        θ₁, θ₂, αT = T(θ₁), T(θ₂), T(α)
-        (αT ≥ 1) || throw(ArgumentError("α must be ≥ 1"))
-        (0 ≤ θ₁ ≤ 1 && 0 ≤ θ₂ ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
-        return new{T}(αT, θ₁, θ₂)
-    end
+Paramorph.@paramorph T struct AsymLogTail{T<:Real} <: BivariatePickandsTail
+    α::closed_lower(one(T))
+    θ₁::bounded_interval(zero(T), one(T))
+    θ₂::bounded_interval(zero(T), one(T))
+end
+function AsymLogTail(α::Real, θ₁::Real, θ₂::Real)
+    T = promote_type(typeof(float(α)), typeof(float(θ₁)), typeof(float(θ₂)))
+    return AsymLogTail{T}(T(α), T(θ₁), T(θ₂))
 end
 @inline _asym_log_independent(tail::AsymLogTail) =
     isone(tail.α) || iszero(tail.θ₁) || iszero(tail.θ₂)
@@ -52,11 +49,6 @@ tail_measure_style(tail::AsymLogTail) =
     AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 
 const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
-Paramorph.param_space(::Type{<:AsymLogTail}, d) = (
-    Paramorph.LowerClosed(:α, 1.0),
-    Paramorph.Prob(:θ₁),
-    Paramorph.Prob(:θ₂),
-)
 
 function A(tail::AsymLogTail, t::Real)
     tt = _safett(t)

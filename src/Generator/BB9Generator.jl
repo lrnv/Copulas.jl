@@ -22,20 +22,16 @@ References:
 """
 BB9Generator, BB9Copula
 
-struct BB9Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB9Generator(θ, δ)
-        (θ ≥ 1) || throw(ArgumentError("θ must be ≥ 1"))
-        (δ > 0) || throw(ArgumentError("δ must be > 0"))
-        θ, δ, _ = promote(θ, δ, 1.0)
-        new{typeof(θ)}(θ, δ)
-    end
+Paramorph.@paramorph T struct BB9Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::closed_lower(one(T))
+    δ::asℝ₊
+end
+function BB9Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB9Generator{T}(T(θ), T(δ))
 end
 
 const BB9Copula{d, T} = ArchimedeanCopula{d, BB9Generator{T}}
-Paramorph.param_space(::Type{<:BB9Generator}, d) =
-    (Paramorph.LowerClosed(:θ, 1.0), Paramorph.Pos(:δ))
 
 ϕ(  G::BB9Generator, s) = begin
     a  = inv(G.θ)

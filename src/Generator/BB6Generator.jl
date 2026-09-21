@@ -26,15 +26,13 @@ References:
 """
 BB6Generator, BB6Copula
 
-struct BB6Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB6Generator(θ, δ)
-        (θ ≥ 1) || throw(ArgumentError("θ must be ≥ 1"))
-        (δ ≥ 1) || throw(ArgumentError("δ must be ≥ 1"))
-        θf, δf = promote(float(θ), float(δ))
-        return new{typeof(θf)}(θf, δf)
-    end
+Paramorph.@paramorph T struct BB6Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::closed_lower(one(T))
+    δ::closed_lower(one(T))
+end
+function BB6Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB6Generator{T}(T(θ), T(δ))
 end
 
 const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
@@ -42,10 +40,6 @@ const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
     isone(G.θ) && isone(G.δ) ? Π_LIMIT :
     (isinf(G.θ) || isinf(G.δ)) ? M_LIMIT :
     NO_LIMIT
-Paramorph.param_space(::Type{<:BB6Generator}, d) = (
-    Paramorph.LowerClosed(:θ, 1.0),
-    Paramorph.LowerClosed(:δ, 1.0),
-)
 
 ϕ(  G::BB6Generator, s) = 1 - (1 - exp(-s^(inv(G.δ))))^(inv(G.θ))
 ϕ⁻¹(G::BB6Generator, t) = (-log1p(- (1 - t)^(G.θ)))^(G.δ)

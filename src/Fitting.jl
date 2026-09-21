@@ -5,8 +5,7 @@
 #####   - `Distributions.fit(MyCopulaType, data, method)`
 #####
 #####  The fitting machinery below is package-internal. Simple parametric
-#####  families opt into the generic routines by defining `Paramorph.param_space`
-#####  and a canonical `CT(d, parameters...)` constructor.
+#####  families opt into the generic routines through their Paramorph schema.
 ###############################################################################
 
 """
@@ -151,7 +150,7 @@ end
 Return the mathematical parameters of a copula or Sklar distribution as a
 `Tuple`, in canonical constructor order, following the `Distributions.jl`
 convention. Parameter names and constraints are supplied independently by
-`Paramorph.param_space`; `params` contains values only. For an ordinary
+the structure's Paramorph schema; `params` contains values only. For an ordinary
 parametric copula, splatting `params(C)` into its documented typed constructor
 reconstructs the same model.
 
@@ -237,10 +236,41 @@ _normalized_pseudos(X::AbstractMatrix, weights) =
 
 _parameter_arguments(η::Tuple) = η
 _parameter_arguments(η) = (η,)
-_parameter_space_copula(CT, ::Val{d}, p, α) where {d} =
-    CT(d, _parameter_arguments(Paramorph.constrain(p, α))...)
-_parameter_space_copula(CT, d::Integer, p, α) =
-    _parameter_space_copula(CT, Val(d), p, α)
+
+function _concrete_paramorph_type(T::Type, ::Type{N}=Float64) where {N<:Real}
+    concrete = Paramorph.rebind_numeric_type(T, N)
+    if concrete isa UnionAll
+        candidate = try
+            Core.apply_type(concrete, N)
+        catch err
+            err isa TypeError || rethrow()
+            concrete
+        end
+        Paramorph.is_paramorph_type(candidate) && return candidate
+    end
+    return concrete
+end
+
+function _component_prototype(T::Type, context::NamedTuple)
+    concrete = _concrete_paramorph_type(T)
+    schema = Paramorph.transformation_schema(concrete, context)
+    values = Paramorph.TransformVariables.transform(
+        schema, zeros(Paramorph.TransformVariables.dimension(schema)),
+    )
+    return Paramorph.reconstruct_struct(concrete, values)
+end
+
+function _fit_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
+    unwrapped = Base.unwrap_unionall(CT)
+    encoded_dimension = unwrapped.parameters[1]
+    dimensioned = encoded_dimension isa TypeVar ?
+                  Core.apply_type(Base.typename(unwrapped).wrapper, d) : CT
+    concrete = _concrete_paramorph_type(dimensioned)
+    Paramorph.is_paramorph_type(concrete) || throw(ArgumentError(
+        "$CT does not define a Paramorph schema for generic fitting",
+    ))
+    return _component_prototype(concrete, (; dimension=d))
+end
 
 """
     _fit(::Type{<:Copula}, U, ::Val{method}; kwargs...)
@@ -254,8 +284,8 @@ of the estimator can instead specialize `_fit_dispatch` without competing with
 method-specialized generic `_fit` methods.
 
 Simple parametric families can use the generic implementations by defining
-`Paramorph.param_space(CT, d)` and a canonical `CT(d, parameters...)`
-constructor. This is not intended for direct use by end-users; use
+an `@paramorph` structure or a constrained prototype. This is not intended for
+direct use by end-users; use
 [`Distributions.fit(CopulaModel, ...)`] instead.
 
 See also: [`_available_fitting_methods`](@ref), [`Distributions.fit`](@ref).
@@ -268,9 +298,9 @@ _fit_dispatch(CT::Type{<:Copula}, U, vd::Val, method::Val; kwargs...) =
     _fit(CT, U, vd, method; kwargs...)
 
 function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) where {d}
-    p = Paramorph.param_space(CT, d)
-    α₀ = zeros(Paramorph.dimension(p))
-    cop(α) = _parameter_space_copula(CT, vd, p, α)
+    prototype = _fit_prototype(CT, vd)
+    α₀ = zeros(Paramorph.intrinsic_dimension(prototype))
+    cop(α) = Paramorph.constraint(prototype, α)
     loss(C) = -_weighted_loglikelihood(C, U, weights)
     res = Optim.optimize(
         loss ∘ cop,
@@ -282,13 +312,13 @@ function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) w
 end
 
 function _fit(CT::Type{<:Copula}, U, vd::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
-    p = Paramorph.param_space(CT, d)
-    intrinsic_dim = Paramorph.dimension(p)
+    prototype = _fit_prototype(CT, vd)
+    intrinsic_dim = Paramorph.intrinsic_dimension(prototype)
     intrinsic_dim <= d*(d-1)÷2 || throw(ArgumentError(
         "cannot use $method in dimension $d with $intrinsic_dim free parameters; " *
         "only $(d*(d-1)÷2) pairwise rank constraints are available"))
     α₀ = zeros(intrinsic_dim)
-    cop(α) = _parameter_space_copula(CT, vd, p, α)
+    cop(α) = Paramorph.constraint(prototype, α)
     fun = method isa Val{:itau} ? StatsBase.corkendall :
           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
     est = _rank_measure(method, U, weights)
@@ -699,7 +729,7 @@ StatsBase.deviance(M::CopulaModel) = -2 * M.loglikelihood
     dof(M::CopulaModel) -> Int
 
 Return the statistical number of free estimated parameters. This is determined
-from the fitted model's `Paramorph` parameter space and is intentionally
+from the fitted model's `Paramorph` schema and is intentionally
 independent of `length(coef(M))`: natural coefficients may contain redundant or
 fixed entries, such as both halves and the unit diagonal of a correlation matrix.
 

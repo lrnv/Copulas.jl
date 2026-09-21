@@ -8,9 +8,9 @@
 @inline _copy_parameter_value(value) =
     value isa AbstractArray ? copy(value) : value
 
-function _named_parameter_values(component, p)
-    return map(Paramorph.names(p)) do name
-        _copy_parameter_value(getproperty(component, name))
+function _named_parameter_values(component)
+    return map(values(Paramorph.parameter_values(component))) do value
+        _copy_parameter_value(value)
     end
 end
 
@@ -21,23 +21,23 @@ end
 function Distributions.params(
     C::ArchimedeanCopula{d,G},
 ) where {d,G<:AbstractUnivariateGenerator}
-    return _named_parameter_values(C.G, Paramorph.param_space(G, d))
+    return _named_parameter_values(C.G)
 end
 
 function Distributions.params(
     C::ArchimedeanCopula{d,G},
 ) where {d,G<:AbstractUnivariateFrailtyGenerator}
-    return _named_parameter_values(C.G, Paramorph.param_space(G, d))
+    return _named_parameter_values(C.G)
 end
 
 # Liouville exposes the generator's natural parameters followed by the positive
-# Dirichlet vector described by its Paramorph space. A downstream generator that
+# Dirichlet vector described by its Paramorph schema. A downstream generator that
 # does not implement Paramorph keeps the pre-existing structural representation.
 function Distributions.params(
     C::LiouvilleCopula{d,TG,Tα},
 ) where {d,TG<:Generator,Tα<:Real}
-    applicable(Paramorph.param_space, TG, 2) || return (C.G, C.α)
-    gvals = _named_parameter_values(C.G, Paramorph.param_space(TG, 2))
+    Paramorph.is_paramorph_type(TG) || return (C.G, C.α)
+    gvals = _named_parameter_values(C.G)
     return (gvals..., collect(C.α))
 end
 
@@ -66,7 +66,7 @@ function Distributions.params(
 end
 
 # Empirical plug-in state is fitted state, not a statistical parameter. These
-# objects have the zero-dimensional Paramorph space `()` and expose the same
+# objects have a zero-dimensional Paramorph schema and expose the same
 # zero-dimensional natural parameter representation.
 Distributions.params(::EmpiricalCopula{d,MT}) where {d,MT<:AbstractMatrix} = ()
 Distributions.params(::BetaCopula{d,MT}) where {d,MT<:AbstractMatrix} = ()

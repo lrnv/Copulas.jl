@@ -46,39 +46,75 @@ References:
 """
 MOTail, MOCopula
 
-struct MOTail{T} <: DiscreteSpectralPickandsTail
+Paramorph.@paramorph T struct MOTail{T<:Real} <: DiscreteSpectralPickandsTail
     d::Int
     λ::Vector{T}
-    spectral::DiscreteSpectralTail{T}
-    function MOTail(d::Int, λ::AbstractVector)
-        d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two",))
-
-        subsets = _nonempty_subsets(d)
-        length(λ) == length(subsets) || throw(DimensionMismatch(
-            "expected $(length(subsets)) shock intensities for dimension $d",
-        ))
-
-        vals = collect(λ)
-        T = float(eltype(vals))
-        rates = T.(λ)
-        all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite",))
-        all(v -> v >= zero(T), rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be nonnegative",))
-
-        r = zeros(T, d)
-        @inbounds for (k, S) in enumerate(subsets), i in S
-            r[i] += rates[k]
-        end
-        all(v -> v > zero(T), r) || throw(ArgumentError(
-            "every Marshall-Olkin margin must have positive total shock rate",
-        ))
-
-        B = zeros(T, d, length(subsets))
-        @inbounds for (k, S) in enumerate(subsets), i in S
-            B[i, k] = rates[k] / r[i]
-        end
-        return new{T}(d, rates, DiscreteSpectralTail(B))
-    end
 end
+
+Paramorph.parameter_fields_override(::Type{<:MOTail}) = (:λ,)
+function _mo_schema(d::Integer)
+    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two"))
+    return Paramorph.TransformVariables.as((
+        λ=Paramorph.TransformVariables.as(Vector, Paramorph.nonnegative(), 2^d - 1),
+    ))
+end
+Paramorph.schema_override(::Type{<:MOTail}, ::NamedTuple) = throw(ArgumentError(
+    "MOTail requires a prototype because its parameter geometry depends on dimension",
+))
+Paramorph.schema_override(
+    ::Type{<:MOTail}, ::NamedTuple, values::NamedTuple,
+) = begin
+    d = values.d
+    schema = _mo_schema(d)
+    subsets = _nonempty_subsets(d)
+    length(values.λ) == length(subsets) || throw(DimensionMismatch(
+        "expected $(length(subsets)) shock intensities for dimension $d",
+    ))
+    totals = zeros(eltype(values.λ), d)
+    @inbounds for (k, S) in enumerate(subsets), i in S
+        totals[i] += values.λ[k]
+    end
+    all(>(zero(eltype(totals))), totals) || throw(ArgumentError(
+        "every Marshall-Olkin margin must have positive total shock rate",
+    ))
+    return schema
+end
+Paramorph.schema_override(tail::MOTail, ::NamedTuple) = _mo_schema(tail.d)
+
+MOTail(d::Int, λ::Vector{<:Integer}) = MOTail(d, float.(λ))
+
+function MOTail(d::Int, λ::AbstractVector)
+    subsets = _nonempty_subsets(d)
+    length(λ) == length(subsets) || throw(DimensionMismatch(
+        "expected $(length(subsets)) shock intensities for dimension $d",
+    ))
+    T = float(eltype(λ))
+    rates = T.(λ)
+    all(isfinite, rates) || throw(ArgumentError("all Marshall-Olkin shock intensities must be finite"))
+    r = zeros(T, d)
+    @inbounds for (k, S) in enumerate(subsets), i in S
+        r[i] += rates[k]
+    end
+    all(>(zero(T)), r) || throw(ArgumentError(
+        "every Marshall-Olkin margin must have positive total shock rate",
+    ))
+    return MOTail(d, rates)
+end
+
+function _spectral_tail(tail::MOTail{T}) where {T}
+    subsets = _nonempty_subsets(tail.d)
+    totals = zeros(T, tail.d)
+    @inbounds for (k, S) in enumerate(subsets), i in S
+        totals[i] += tail.λ[k]
+    end
+    B = zeros(T, tail.d, length(subsets))
+    @inbounds for (k, S) in enumerate(subsets), i in S
+        B[i, k] = tail.λ[k] / totals[i]
+    end
+    return DiscreteSpectralTail(B)
+end
+Base.getproperty(tail::MOTail, name::Symbol) =
+    name === :spectral ? _spectral_tail(tail) : getfield(tail, name)
 
 const MOCopula{d,T} = ExtremeValueCopula{d, MOTail{T}}
 
@@ -97,10 +133,6 @@ function Distributions.params(C::ExtremeValueCopula{d,<:MOTail}) where {d}
     return (copy(C.tail.λ),)
 end
 
-function Paramorph.param_space(::Type{<:MOTail}, d)
-    d == 2 || throw(ArgumentError("generic Marshall-Olkin parameter coordinates are available only in dimension two"))
-    return (Paramorph.Pos(:λ₁), Paramorph.Pos(:λ₂), Paramorph.Pos(:λ₁₂))
-end
 _tail_constructor_parameter_names(::Type{<:MOTail}, _) = (:λ₁, :λ₂, :λ₃)
 
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:MOTail} where D}, d) =

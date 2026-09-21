@@ -25,14 +25,10 @@ References:
 """
 GumbelGenerator, GumbelCopula
 
-struct GumbelGenerator{T} <: AbstractUnivariateFrailtyGenerator
-    θ::T
-    function GumbelGenerator(θ)
-        θ < 1 && throw(ArgumentError("Theta must be greater than or equal to 1"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct GumbelGenerator{T<:Real} <: AbstractUnivariateFrailtyGenerator
+    θ::closed_lower(one(T))
 end
+GumbelGenerator(θ::Integer) = GumbelGenerator(float(θ))
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
 @inline limit_kind(G::GumbelGenerator, ::Val) =
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
@@ -40,8 +36,6 @@ const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
 frailty(G::GumbelGenerator) =
     isone(G.θ) ? Distributions.Dirac(1.0) :
     AlphaStable(α = 1/G.θ, β = 1, scale = cos(π/(2G.θ))^G.θ, location = 0)
-Paramorph.param_space(::Type{<:GumbelGenerator}, d) =
-    Paramorph.LowerClosed(:θ, 1.0)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:GumbelGenerator} where {d}}, d) = (:mle, :itau, :ibeta, :irho)
 
 archimedean_measure_style(G::GumbelGenerator, ::Val{d}) where {d} =

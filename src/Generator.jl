@@ -26,7 +26,7 @@ optimizations separately.
 
 See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
 [`max_monotony`](@ref), [`WilliamsonGenerator`](@ref),
-[`FrailtyGenerator`](@ref), `Paramorph.param_space`.
+[`FrailtyGenerator`](@ref), `Paramorph.transformation_schema`.
 """
 abstract type Generator end
 _parameter_eltype(G::Generator) = _parameter_eltype(ntuple(i -> getfield(G, i), fieldcount(typeof(G))))
@@ -185,9 +185,6 @@ struct IndependentGenerator <: MarkerGenerator end
 struct MGenerator <: MarkerGenerator end
 struct WGenerator <: MarkerGenerator end
 
-Paramorph.param_space(::Type{IndependentGenerator}, d) = ()
-Paramorph.param_space(::Type{MGenerator}, d) = ()
-Paramorph.param_space(::Type{WGenerator}, d) = ()
 
 
 """

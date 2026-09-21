@@ -102,13 +102,23 @@ function Distributions.partype(S::SklarDist)
     )
 end
 Distributions.params(S::SklarDist) = (S.C, S.m)
-function Paramorph.param_space(S::SklarDist)
-    copula_space = Paramorph.Prefixed(:copula, Paramorph.param_space(S.C))
-    margin_spaces = ntuple(length(S.m)) do i
-        Paramorph.Prefixed(Symbol("margin_", i), Paramorph.param_space(S.m[i]))
-    end
-    return (copula_space, margin_spaces...)
-end
+Paramorph.parameter_fields(::Type{<:SklarDist}) = (:C, :m)
+Paramorph.is_paramorph_type(::Type{<:SklarDist}) = true
+Paramorph.transformation_schema(S::SklarDist) =
+    Paramorph.TransformVariables.as((
+        C=Paramorph.recursive_schema(S.C),
+        m=Paramorph.recursive_schema(S.m),
+    ))
+Paramorph.transformation_schema(S::SklarDist, ::NamedTuple) =
+    Paramorph.transformation_schema(S)
+Paramorph.parameter_values(S::SklarDist) = (
+    C=Paramorph.parameter_values(S.C),
+    m=map(Paramorph.parameter_values, S.m),
+)
+Paramorph.reconstruct_struct(S::SklarDist, values::NamedTuple) = SklarDist(
+    Paramorph.reconstruct_struct(S.C, values.C),
+    map(Paramorph.reconstruct_struct, S.m, values.m),
+)
 @inline function _sklar_work_eltype(S::SklarDist, x)
     T = promote_type(eltype(S.C), eltype(x))
     for margin in S.m

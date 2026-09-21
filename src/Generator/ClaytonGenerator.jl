@@ -29,14 +29,10 @@ References:
 """
 ClaytonGenerator, ClaytonCopula
 
-struct ClaytonGenerator{T} <: AbstractUnivariateGenerator
-    θ::T
-    function ClaytonGenerator(θ)
-        θ >= -1 || throw(ArgumentError("Theta must be greater than or equal to -1"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct ClaytonGenerator{T<:Real} <: AbstractUnivariateGenerator
+    θ::closed_lower(get(context, :lower, -one(T)))
 end
+ClaytonGenerator(θ::Integer) = ClaytonGenerator(float(θ))
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
 @inline function limit_kind(G::ClaytonGenerator, ::Val{d}) where {d}
     iszero(G.θ) && return Π_LIMIT
@@ -44,9 +40,6 @@ const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
     d == 2 && G.θ == -1 && return W_LIMIT
     return NO_LIMIT
 end
-
-Paramorph.param_space(::Type{<:ClaytonGenerator}, d::Integer) =
-    Paramorph.LowerClosed(:θ, -inv(d - 1))
 
 max_monotony(G::ClaytonGenerator) = G.θ >= 0 ? Inf : (1 - 1/G.θ)
 archimedean_measure_style(G::ClaytonGenerator, ::Val{d}) where {d} =

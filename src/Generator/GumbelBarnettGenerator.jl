@@ -26,19 +26,13 @@ References:
 """
 GumbelBarnettGenerator, GumbelBarnettCopula
 
-struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
-    θ::T
-    function GumbelBarnettGenerator(θ)
-        (0 <= θ <= 1) || throw(ArgumentError("Theta must be in [0,1]"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct GumbelBarnettGenerator{T<:Real} <: AbstractUnivariateGenerator
+    θ::bounded_interval(
+        zero(T), get(context, :upper, one(T)),
+    )
 end
+GumbelBarnettGenerator(θ::Integer) = GumbelBarnettGenerator(float(θ))
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
-function Paramorph.param_space(::Type{<:GumbelBarnettGenerator}, d::Integer)
-    upper = clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0)
-    return Paramorph.Bounded(:θ, 0.0, upper)
-end
 
 function _find_critical_value_gumbelbarnett(d::Integer)
     d == 2 && return 1.0

@@ -39,13 +39,10 @@ References:
 """
 GalambosTail, GalambosCopula
 
-struct GalambosTail{T} <: OneParameterPickandsTail
-    θ::T
-    function GalambosTail(θ)
-        θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
-        new{typeof(float(θ))}(float(θ))
-    end
+Paramorph.@paramorph T struct GalambosTail{T<:Real} <: OneParameterPickandsTail
+    θ::nonnegative()
 end
+GalambosTail(θ::Integer) = GalambosTail(float(θ))
 @inline limit_kind(tail::GalambosTail, ::Val) =
     iszero(tail.θ) ? Π_LIMIT :
     isinf(tail.θ) ? M_LIMIT :
@@ -53,7 +50,6 @@ end
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
-Paramorph.param_space(::Type{<:GalambosTail}, d) = Paramorph.NonNeg(:θ)
 
 function ℓ(tail::GalambosTail, x)
     any(isinf, x) && return maximum(x)

@@ -47,7 +47,6 @@ end
 BetaCopula(data::AbstractMatrix) = BetaCopula{size(data, 1)}(data)
 BetaCopula(d::Integer, data::AbstractMatrix) = BetaCopula{d}(data)
 Distributions.params(C::BetaCopula) = (C.ranks,)
-Paramorph.param_space(::Type{<:BetaCopula}, ::Integer) = ()
 function _bernvec_n(u::T, n::Int) where {T<:Real}
     v = zeros(T, n+1)
     if iszero(u)

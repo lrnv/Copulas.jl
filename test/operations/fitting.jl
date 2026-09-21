@@ -328,17 +328,16 @@ end
 
 _has_fitting_parameters(C) =
     !(C isa Union{IndependentCopula,MCopula,WCopula}) && !isempty(params(C))
-function test_mle_parameter_plumbing(C, pspace)
-    Base.@nospecialize C pspace
+function test_mle_parameter_plumbing(C)
+    Base.@nospecialize C
 
     CT = typeof(C)
     d = length(C)
     bounded = params(C)
-    unconstrained = Copulas.Paramorph.unconstrain(pspace, bounded)
-    restored = Copulas._parameter_space_copula(CT, d, pspace, unconstrained)
+    unconstrained = Copulas.Paramorph.unconstrain(C)
+    restored = Copulas.Paramorph.constraint(C, unconstrained)
     restored_params = params(restored)
 
-    @test length(Copulas.Paramorph.names(pspace)) == length(bounded)
     @test length(restored_params) == length(bounded)
     @test all(zip(restored_params, bounded)) do pair
         a, b = pair
@@ -360,16 +359,10 @@ end
         :mle in methods || continue
         _has_fitting_parameters(C) || continue
         C isa FGMCopula && d > 2 && continue  # specialized coupled-polytope MLE
-        pspace = try
-            Copulas.Paramorph.param_space(CT, d)
-        catch err
-            err isa MethodError || rethrow()
-            nothing
-        end
-        pspace === nothing && continue
+        Copulas.Paramorph.is_paramorph_type(CT) || continue
 
         @testset "$(case.name)" begin
-            test_mle_parameter_plumbing(C, pspace)
+            test_mle_parameter_plumbing(C)
         end
     end
 end
@@ -567,10 +560,9 @@ end
 @testset "dimension-specialized fitting reconstruction" begin
     C = ClaytonCopula{3}(2.0)
     CT = typeof(C)
-    pspace = Copulas.Paramorph.param_space(CT, 3)
-    α₀ = only(Copulas.Paramorph.unconstrain(pspace, params(C)))
+    α₀ = only(Copulas.Paramorph.unconstrain(C))
 
-    f(α) = only(params(Copulas._parameter_space_copula(CT, 3, pspace, [α])))
+    f(α) = only(params(Copulas.Paramorph.constraint(C, [α])))
 
     @test f(α₀) ≈ 2.0
     derivative = ForwardDiff.derivative(f, α₀)
@@ -936,7 +928,7 @@ end
     end
 
     @testset "the template fit stays in the certified nesting region" begin
-        # The template's DependentProduct chart carries the supported nesting
+        # The template's conditional chart carries the supported nesting
         # inequalities itself: every finite optimizer coordinate maps to a tree
         # whose Clayton children remain above the parent.
         C0 = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);

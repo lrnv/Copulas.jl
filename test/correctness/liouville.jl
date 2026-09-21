@@ -29,15 +29,13 @@
             Copulas.ClaytonGenerator(-0.25),
             ntuple(_ -> 0.3, 6),
         )
-        p = P.param_space(C)
+        @test P.parameter_fields(typeof(C)) == (:G, :α)
+        @test P.intrinsic_dimension(C) == 7
 
-        @test P.names(p) == (:θ, :α)
-        @test P.dimension(p) == 7
-
-        z = P.unconstrain(p, (-0.25, collect(C.α)))
-        natural = P.constrain(p, z)
-        @test natural[1] ≈ -0.25
-        @test natural[2] ≈ collect(C.α)
+        z = P.unconstrain(C)
+        natural = P.constraint(C, z)
+        @test natural.G.θ ≈ -0.25
+        @test collect(natural.α) ≈ collect(C.α)
 
         # Parameter metadata is introduced in this PR; fitting stays separate.
         @test Copulas._available_fitting_methods(typeof(C), 6) == ()

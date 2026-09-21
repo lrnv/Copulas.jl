@@ -24,22 +24,18 @@ References:
 """
 BB7Generator, BB7Copula
 
-struct BB7Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB7Generator(θ, δ)
-        (θ ≥ 1) || throw(ArgumentError("θ must be ≥ 1"))
-        (δ > 0) || throw(ArgumentError("δ must be > 0"))
-        θf, δf = promote(float(θ), float(δ))
-        return new{typeof(θf)}(θf, δf)
-    end
+Paramorph.@paramorph T struct BB7Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::closed_lower(one(T))
+    δ::asℝ₊
+end
+function BB7Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB7Generator{T}(T(θ), T(δ))
 end
 
 const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
 @inline limit_kind(G::BB7Generator, ::Val) =
     isone(G.θ) && isinf(G.δ) ? M_LIMIT : NO_LIMIT
-Paramorph.param_space(::Type{<:BB7Generator}, d) =
-    (Paramorph.LowerClosed(:θ, 1.0), Paramorph.Pos(:δ))
 
 ϕ(  G::BB7Generator, s) = begin
     a = exp( -inv(G.δ)*log1p(s) )  

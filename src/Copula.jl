@@ -31,11 +31,10 @@ abstract type Copula{d} <: Distributions.ContinuousMultivariateDistribution end
 Base.eltype(::Copula) = Float64
 Distributions.partype(C::Copula) = eltype(C)
 
-Paramorph.param_space(C::Copula) = Paramorph.param_space(typeof(C), length(C))
-
 function Distributions.params(C::Copula)
-    p = Paramorph.param_space(C)
-    return map(Paramorph.names(p)) do name
+    Paramorph.is_paramorph_type(typeof(C)) ||
+        throw(MethodError(Distributions.params, (C,)))
+    return map(Paramorph.parameter_fields(typeof(C))) do name
         value = getproperty(C, name)
         return value isa AbstractArray ? copy(value) : value
     end

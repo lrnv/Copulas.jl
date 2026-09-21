@@ -117,15 +117,11 @@ Inside this repository, it is currently supplied by the following internal
 methods; these hooks may change independently of that behavior:
 
 ```julia
-struct MyCopula{d, P} <: Copula{d} # Note that the size of the copula must be part of the type. 
-    θ::P  # Copula parameter
-    MyCopula{d}(θ) where {d} = new{d, typeof(θ)}(θ)
+Paramorph.@paramorph T struct MyCopula{d,T<:Real} <: Copula{d}
+    θ::Paramorph.bounded_interval(zero(T), one(T))
 end
 MyCopula(d, θ) = MyCopula{d}(θ) # Runtime-dimension convenience constructor
-Paramorph.param_space(::Type{<:MyCopula}, d) = Paramorph.Prob(:θ)
-# The generic `Distributions.params(::Copula)` returns `(C.θ,)`. Names and
-# constraints live in the Paramorph space, while `params` follows the
-# Distributions.jl tuple convention.
+# The generated constructor and transformation schema share this constraint.
 function Copulas._cdf(C::MyCopula, u)
      # You can safely assume u to be an abstract vector of the right length and inside the hypercube.
      # Return the cdf value on u
@@ -274,30 +270,30 @@ transformation required by an explicit `method=:mpl` request.
 
 ### Opting into generic fitting methods
 
-Simple parametric families opt into the generic transformed-space MLE by
-defining their parameter geometry with `Paramorph.param_space` and supporting
-the canonical `CT(d, parameters...)` constructor. `Distributions.params(C)`
-remains the positional constructor tuple; logical names and constraints belong
-to the Paramorph space.
+Simple parametric families opt into the generic transformed-space MLE by using
+`Paramorph.@paramorph`. The constrained structure is the single source for its
+storage types, checked constructor, logical parameters, and optimizer geometry.
+`Distributions.params(C)` remains the positional constructor tuple.
 
 | Definition | Purpose |
 | ---------- | ------- |
-| `Paramorph.param_space(CT, d)` | Describe logical parameter names, constraints, and optimizer dimension |
+| `Paramorph.@paramorph` annotations | Describe logical parameter names, constraints, and optimizer dimension |
 | `CT(d, parameters...)` | Reconstruct a copula from constrained logical parameters |
 | `_available_fitting_methods(CT, d)` | Register the in-package estimators exposed for that family |
 
 Example minimal skeleton:
 
 ```julia
-Paramorph.param_space(::Type{<:MyCopula}, d) = Paramorph.Pos(:θ)
+Paramorph.@paramorph T struct MyCopula{d,T<:Real} <: Copula{d}
+    θ::Paramorph.TransformVariables.asℝ₊
+end
 _available_fitting_methods(::Type{<:MyCopula}, d) = (:mle,) # in-package only
 
-# No custom MLE is required: the generic route maps an unconstrained optimizer
-# vector through `Paramorph.constrain` and calls `MyCopula(d, θ)`.
+# No custom MLE is required: the generic route constrains a prototype directly.
 ```
 
 A custom `_fit(::Type{MyCopula}, U, ::Val{:mle}; ...)` remains appropriate when
-the feasible set is not represented by the available parameter spaces or when
+the feasible set is not represented by the available transformations or when
 the family has a materially better dedicated objective.
 
 Each fitting method is dispatched on `Val{:method}` for performance and clarity.
@@ -372,7 +368,7 @@ max_monotony(G::MyGenerator) = ...
 | Method                              | Purpose                                                            | Required    |
 | ------------------------------------| ------------------------------------------------------------------ | ----------- |
 | `max_monotony(G)`                   | Maximum degree of monotonicity (controls validity in d dimensions) | ✅ Public   |
-| `Paramorph.param_space(typeof(G), d)` | Describe fitted parameter names and geometry when fitting is desired | ✅ Public   |
+| `Paramorph.transformation_schema(G)` | Generated parameter geometry when fitting is desired | ✅ Public   |
 | `ϕ(G, t)`                           | Generator function                                                 | ✅ Public   |
 | `ϕ⁻¹(G, t)`                         | Generator function inverse                                         | ⚙️ Internal optimization |
 | `ϕ⁽¹⁾(G, t)`                        | Generator function derivative                                      | ⚙️ Internal optimization |
@@ -689,21 +685,14 @@ Elliptical copulas are characterized by a correlation matrix `Σ` and, optionall
 Minimal outline:
 
 ```julia
-struct MyEllipticalCopula{d,MT} <: Copulas.EllipticalCopula{d,MT}
-    Σ::MT
-    function MyEllipticalCopula{d}(Σ) where {d}
-        size(Σ) == (d, d) || throw(DimensionMismatch("expected a $d×$d matrix"))
-        matrix = Matrix{Float64}(Σ)
-        Copulas.make_cor!(matrix)  # normalize a copy; validate the family as needed
-        return new{d,typeof(matrix)}(matrix)
-    end
+Paramorph.@paramorph T struct MyEllipticalCopula{d,T<:Real} <: Copulas.EllipticalCopula{d,Matrix{T}}
+    Σ::Paramorph.correlation_matrix(d)
 end
 MyEllipticalCopula(d, Σ) = MyEllipticalCopula{d}(Σ)
 
 # Required bindings
 Copulas.U(C::MyEllipticalCopula) = Normal()
 Copulas.N(C::MyEllipticalCopula) = Σ -> MvNormal(Σ)
-Paramorph.param_space(::Type{<:MyEllipticalCopula}, d) = Paramorph.Correlation(:Σ, d)
 ```
 
 The example uses Gaussian distributions. For runtime shape parameters, the
@@ -746,17 +735,11 @@ It serves as a minimal example of how to implement a copula *from scratch* witho
 using Copulas, Distributions, Random
 import Paramorph
 
-struct MardiaCopula{P} <: Copulas.Copula{2}
-    θ::P
-    function MardiaCopula(θ)
-        -1 <= θ <= 1 || throw(ArgumentError("θ must be in [-1,1]"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct MardiaCopula{T<:Real} <: Copulas.Copula{2}
+    θ::Paramorph.bounded_interval(-one(T), one(T))
 end
 MardiaCopula(d, θ) = d == 2 ? MardiaCopula(θ) :
     throw(DimensionMismatch("MardiaCopula is bivariate"))
-Paramorph.param_space(::Type{<:MardiaCopula}, d) = Paramorph.Bounded(:θ, -1.0, 1.0)
 function Copulas._cdf(C::MardiaCopula, u)
     # The joint CDF follows Mardia’s formulation:
     θ = C.θ
@@ -841,8 +824,8 @@ end
 This approach bypasses the need for a log-likelihood function (since the copula lacks a Lebesgue density)
 while maintaining compatibility with all higher-level fitting utilities.
 
-The `Paramorph.Bounded(:θ, -1.0, 1.0)` declaration above already
-describes the optimizer relaxation; no legacy parameter-transform hooks are
+The `bounded_interval` annotation above already describes the optimizer
+relaxation; no separate parameter-space or legacy transform hooks are
 needed. If the corresponding rank-inversion identities are implemented, the
 family can register those methods alongside its custom estimator:
 

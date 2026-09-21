@@ -4,9 +4,7 @@
         Copulas.ClaytonGenerator(2.0);
         children=[ClaytonCopula{2}(5.0)],
     )
-    p = P.param_space(C0)
-    @test p isa P.DependentProduct
-    α0 = P.unconstrain(p, Copulas._nested_parameter_values(C0))
+    α0 = Copulas._nested_unbound(C0)
     @test all(isfinite, α0)
 
     # Construction is permissive about parent-child nesting theory, but every
@@ -26,7 +24,7 @@
     # Arbitrary unconstrained coordinates always reconstruct inside the supported
     # ordering, so no objective-time certificate/Inf barrier is required.
     for α in (zeros(2), [-4.0, -4.0], [3.0, -2.0], [-2.0, 3.0])
-        candidate = Copulas._nested_from_coordinates(C0, p, α)
+        candidate = Copulas._nested_rebound(C0, α)
         parent = candidate.G.θ
         child = Copulas._nested_child(only(candidate.children)).G.θ
         @test parent >= 0
@@ -41,8 +39,7 @@
         children=[ClaytonCopula{2}(2.0)],
     )
     @test bad isa NestedArchimedeanCopula
-    @test_throws DomainError P.unconstrain(
-        P.param_space(bad), Copulas._nested_parameter_values(bad))
+    @test_throws DomainError Copulas._nested_unbound(bad)
 
     U = rand(StableRNG(49_000), C0, 20)
     @test_throws DomainError fit(CopulaModel, bad, U)
@@ -54,7 +51,7 @@
         children=[GumbelCopula{2}(2.0)],
     )
     @test unsupported isa NestedArchimedeanCopula
-    @test_throws ArgumentError P.param_space(unsupported)
+    @test_throws ArgumentError Copulas._nested_unbound(unsupported)
     @test_throws ArgumentError fit(CopulaModel, unsupported, U)
 
     fitted = fit(C0, U)

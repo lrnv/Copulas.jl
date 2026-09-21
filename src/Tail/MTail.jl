@@ -8,7 +8,6 @@ This parameter-free limiting representation is not part of the public
 component API.
 """
 struct MTail <: Tail end
-Paramorph.param_space(::Type{MTail}, d) = ()
 A(::MTail, t::NTuple{d, <:Real}) where d = maximum(t)
 A(::MTail, t::Real) = max(t, one(t) - t)
 ℓ(::MTail, x) = maximum(x)

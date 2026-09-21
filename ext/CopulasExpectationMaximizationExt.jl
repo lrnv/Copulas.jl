@@ -5,7 +5,7 @@ using Copulas
 using Distributions
 using ExpectationMaximization
 using Optim
-using Paramorph
+import Paramorph
 
 import Distributions: fit_mle
 
@@ -75,10 +75,8 @@ function _fit_mle_weighted(
     weights::AbstractVector,
     ::Val{d},
 ) where {d}
-    CT = typeof(C)
-    pspace = Paramorph.param_space(CT, d)
-    alpha0 = Paramorph.unconstrain(pspace, Distributions.params(C))
-    copula(alpha) = Copulas._parameter_space_copula(CT, d, pspace, alpha)
+    alpha0 = Paramorph.unconstrain(C)
+    copula(alpha) = Paramorph.constraint(C, alpha)
 
     function objective(alpha)
         fitted = copula(alpha)

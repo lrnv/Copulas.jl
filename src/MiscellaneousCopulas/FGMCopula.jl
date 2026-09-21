@@ -30,38 +30,32 @@ References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 * [blier2022stochastic](@cite) Blier-Wong, C., Cossette, H., & Marceau, E. (2022). Stochastic representation of FGM copulas using multivariate Bernoulli random variables. Computational Statistics & Data Analysis, 173, 107506.
 """
-struct FGMCopula{d, Tθ, Tf} <: Copula{d}
-    θ::Tθ
-    fᵢ::Tf
-    function FGMCopula{d}(vθ::Vector) where {d}
-        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-        # Check first restrictions on parameters
-        any(abs.(vθ) .> 1) && throw(ArgumentError("Each component of the parameter vector must satisfy that |θᵢ| ≤ 1"))
-        length(vθ) != 2^d - d - 1 && throw(ArgumentError("Number of parameters (θ) must match the dimension ($d): 2ᵈ-d-1"))
-
-        # Last check:
-        for epsilon in Base.product(fill([-1, 1], d)...)
-            if 1 + _fgm_red(vθ, epsilon) < 0
-                throw(ArgumentError("Invalid parameters θ = $vθ. The parameters do not meet the condition to be an FGM copula"))
-            end
-        end
-
-        # Now construct the stochastic representation:
-        wᵢ = [_fgm_red(vθ, 1 .- 2*Base.reverse(digits(i, base=2, pad=d))) for i in 0:(2^d-1)]
-        support = 0:(2^d-1)
-        probabilities = (1 .+ wᵢ) / 2^d
-        Tf = Distributions.DiscreteNonParametric{
-            eltype(support), eltype(probabilities), typeof(support), typeof(probabilities),
-        }
-        fᵢ = Distributions.DiscreteNonParametric(support, probabilities)::Tf
-        return new{d, typeof(vθ), typeof(fᵢ)}(vθ, fᵢ)
-    end
+FGMCopula
+Paramorph.@paramorph T struct FGMCopula{d,T<:Real} <: Copula{d}
+    θ::Vector{T}
 end
+
+Paramorph.parameter_fields_override(::Type{<:FGMCopula}) = (:θ,)
+function _fgm_schema(d::Integer)
+    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+    subsets = [Tuple(S) for k in 2:d for S in Combinatorics.combinations(1:d, k)]
+    corners = collect(Iterators.product(ntuple(_ -> (-1.0, 1.0), d)...))
+    corner_rows = reduce(vcat, [
+        reshape([-prod(corner[i] for i in subset) for subset in subsets], 1, :)
+        for corner in corners
+    ])
+    q = length(subsets)
+    identity = Matrix{Float64}(LinearAlgebra.I, q, q)
+    A = [corner_rows; identity; -identity]
+    return Paramorph.TransformVariables.as((θ=Paramorph.polytope(A, ones(size(A, 1))),))
+end
+Paramorph.schema_override(::Type{<:FGMCopula{d}}, ::NamedTuple) where {d} =
+    _fgm_schema(d)
 FGMCopula{d}(θ::Real) where {d} = FGMCopula{d}([float(θ)])
 FGMCopula{d}(θ::Tuple) where {d} = FGMCopula{d}(collect(float.(θ)))
 FGMCopula{d}(θ::AbstractVector) where {d} = FGMCopula{d}(collect(float.(θ)))
 FGMCopula(d, θ) = FGMCopula{d}(θ)
-(::Type{<:FGMCopula{D,Tθ,Tf}})(d::Int, θ) where {D,Tθ,Tf} = FGMCopula{d}(θ)
+(::Type{<:FGMCopula{D,T}})(d::Int, θ) where {D,T} = FGMCopula{d}(θ)
 function _fgm_red(θ, v)
     # This function implements the reduction over combinations of the fgm copula.
     # It is non-alocative thus performant :)
@@ -83,36 +77,34 @@ _available_fitting_methods(::Type{<:FGMCopula}, d) = d==2 ? (:mle, :itau, :irho,
 # The bivariate FGM domain is an ordinary bounded scalar chart. Higher-dimensional
 # FGM parameters satisfy coupled hypercube-corner inequalities and deliberately
 # keep their specialized constrained optimizer below.
-function Paramorph.param_space(::Type{<:FGMCopula}, d::Integer)
-    d == 2 || throw(ArgumentError(
-        "multivariate FGM has coupled parameter constraints not represented by a Paramorph product space"))
-    return Paramorph.Bounded(:θ, -1.0, 1.0)
-end
-
 function _cdf(fgm::FGMCopula{d}, u::Vector{T}) where {d,T}
     return prod(u) * (1 + _fgm_red(fgm.θ, 1 .-u))
 end
 copula_measure_style(::FGMCopula) = AbsolutelyContinuousMeasure()
 Distributions._logpdf(fgm::FGMCopula, u) = log1p(_fgm_red(fgm.θ, 1 .-2u))
-function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d, Tθ, Tf}, A::AbstractMatrix{T}) where {d,Tθ, Tf, T <: Real}
+function _fgm_latent_distribution(fgm::FGMCopula{d}) where {d}
+    w = [_fgm_red(fgm.θ, 1 .- 2 * reverse(digits(i, base=2, pad=d))) for i in 0:(2^d - 1)]
+    return Distributions.DiscreteNonParametric(0:(2^d - 1), (1 .+ w) / 2^d)
+end
+function Distributions._rand!(rng::Distributions.AbstractRNG, fgm::FGMCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
     size(A, 1) == d || throw(DimensionMismatch("output matrix must have $d rows"))
     Random.rand!(rng, A)
     V₁ = rand(rng, T, size(A))
-    states = rand(rng, fgm.fᵢ, size(A, 2))
+    states = rand(rng, _fgm_latent_distribution(fgm), size(A, 2))
     @inbounds for (j, col) in enumerate(axes(A, 2)), (i, row) in enumerate(axes(A, 1))
         bit = (states[j] >> (d - i)) & 1
         A[row, col] = one(T) - sqrt(A[row, col]) * (iszero(bit) ? one(T) : V₁[i, j])
     end
     return A
 end
-τ(fgm::FGMCopula{2, Tθ, Tf}) where {Tθ,Tf} = (2*fgm.θ[1])/9
+τ(fgm::FGMCopula{2}) = (2*fgm.θ[1])/9
 function τ⁻¹(::Type{<:FGMCopula}, τ)
     if !all(-2/9 <= τi <= 2/9 for τi in τ)
         throw(ArgumentError("For the FGM copula, tau must be in [-2/9, 2/9]."))
     end
     return max.(min.(9 * τ / 2, 1), -1)
 end
-ρ(fgm::FGMCopula{2, Tθ, Tf}) where {Tθ,Tf} = fgm.θ[1]/3
+ρ(fgm::FGMCopula{2}) = fgm.θ[1]/3
 function ρ⁻¹(::Type{<:FGMCopula}, ρ)
     if !all(-1/3 <= ρi <= 1/3 for ρi in ρ)
         throw(ArgumentError("For the FGM copula, rho must be in [-1/3, 1/3]."))
@@ -121,7 +113,7 @@ function ρ⁻¹(::Type{<:FGMCopula}, ρ)
 end
 
 # Subsetting colocated
-function SubsetCopula(C::FGMCopula{d,Tθ,Tf}, dims::NTuple{p, Int}) where {d,Tθ,Tf,p}
+function SubsetCopula(C::FGMCopula{d}, dims::NTuple{p, Int}) where {d,p}
     if p==2
         i = 1
         for indices in Combinatorics.combinations(1:d, 2)

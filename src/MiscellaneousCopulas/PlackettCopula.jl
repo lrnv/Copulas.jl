@@ -30,22 +30,20 @@ References:
 * [johnson1987multivariate](@cite) Johnson, Mark E. Multivariate statistical simulation: A guide to selecting and generating continuous multivariate distributions. Vol. 192. John Wiley & Sons, 1987. Page 193.
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006. Exercise 3.38.
 """
-struct PlackettCopula{d,P} <: Copula{d}
-    θ::P
-
-    function PlackettCopula{d}(θ) where {d}
-        d == 2 || throw(DimensionMismatch("PlackettCopula is only defined in dimension 2"))
-        θ < 0 && throw(ArgumentError("Theta must be non-negative"))
-        θf = float(θ)
-        return new{2,typeof(θf)}(θf)
-    end
+PlackettCopula
+Paramorph.@paramorph P struct PlackettCopula{d,P<:Real} <: Copula{d}
+    θ::nonnegative()
+end
+PlackettCopula{d}(θ::Integer) where {d} = PlackettCopula{d}(float(θ))
+function Paramorph.schema_override(::Type{<:PlackettCopula{d}}, ::NamedTuple) where {d}
+    d == 2 || throw(DimensionMismatch("PlackettCopula is only defined in dimension 2"))
+    return nothing
 end
 PlackettCopula(θ) = PlackettCopula{2}(θ)
 PlackettCopula(d::Integer, θ::Real) = PlackettCopula{d}(θ)
 (::Type{<:PlackettCopula{D,P}})(d::Int, θ) where {D,P} = PlackettCopula{d}(θ)
 
 Base.eltype(::PlackettCopula{2,P}) where {P} = P
-Paramorph.param_space(::Type{<:PlackettCopula}, d) = Paramorph.NonNeg(:θ)
 
 # CDF calculation for bivariate Plackett Copula
 function _cdf(S::PlackettCopula, uv)

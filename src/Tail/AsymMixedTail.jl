@@ -35,19 +35,18 @@ References:
 """
 AsymMixedTail, AsymMixedCopula
 
-struct AsymMixedTail{T} <: BivariatePickandsTail
+Paramorph.@paramorph T struct AsymMixedTail{T<:Real} <: BivariatePickandsTail
     θ₁::T
     θ₂::T
-    function AsymMixedTail(θ₁, θ₂)
-        θ₁, θ₂ = promote(θ₁, θ₂)
-        T = typeof(θ₁)
-        (θ₁ ≥ 0)             || throw(ArgumentError("θ₁ must be ≥ 0"))
-        (θ₁ + θ₂ ≤ 1)        || throw(ArgumentError("θ₁+θ₂ ≤ 1"))
-        (θ₁ + 2θ₂ ≤ 1)       || throw(ArgumentError("θ₁+2θ₂ ≤ 1"))
-        (θ₁ + 3θ₂ ≥ 0)       || throw(ArgumentError("θ₁+3θ₂ ≥ 0"))
-        return new{T}(θ₁, θ₂)
-    end
 end
+function AsymMixedTail(θ₁::Real, θ₂::Real)
+    T = promote_type(typeof(float(θ₁)), typeof(float(θ₂)))
+    return AsymMixedTail{T}(T(θ₁), T(θ₂))
+end
+
+Paramorph.parameter_fields_override(::Type{<:AsymMixedTail}) = (:θ₁, :θ₂)
+Paramorph.schema_override(::Type{<:AsymMixedTail}, ::NamedTuple) =
+    Paramorph.asymmetric_mixed()
 
 @inline limit_kind(tail::AsymMixedTail, ::Val{2}) =
     iszero(tail.θ₁) && iszero(tail.θ₂) ? Π_LIMIT : NO_LIMIT
@@ -65,16 +64,7 @@ function _fit(
     d = size(U, 1)
     d == 2 || throw(DimensionMismatch("AsymMixedCopula is only defined in dimension two"))
 
-    # Interior chart of the admissible quadrilateral. This belongs to this
-    # specialized optimization algorithm; it is deliberately not a public or
-    # package-wide parameter-space abstraction.
-    function cop(α)
-        u = inv(1 + exp(-α[1]))
-        v = inv(1 + exp(-α[2]))
-        θ₁ = u * (3 - v) / 2
-        θ₂ = (v - u) / 2
-        return ExtremeValueCopula{2}(AsymMixedTail(θ₁, θ₂))
-    end
+    cop(α) = ExtremeValueCopula{2}(Paramorph.constraint(AsymMixedTail{eltype(α)}, α))
 
     # Start away from the symmetric θ₂=0 line.
     α₀ = [0.0, 0.5]

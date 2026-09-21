@@ -74,56 +74,30 @@ ArchimaxCopula(d::Int, gen::Generator, tail::Tail) = ArchimaxCopula{d}(gen, tail
 
 genandtailof(S::Type{<:ArchimaxCopula}) = (fieldtype(S, :gen), fieldtype(S, :tail))
 
-function Paramorph.param_space(CT::Type{<:ArchimaxCopula}, d)
-    TG, TT = genandtailof(CT)
-    return (
-        Paramorph.Prefixed(:gen, Paramorph.param_space(TG, d)),
-        Paramorph.Prefixed(:tail, Paramorph.param_space(TT, d)),
+Paramorph.is_paramorph_type(::Type{<:ArchimaxCopula}) = true
+Paramorph.parameter_fields(::Type{<:ArchimaxCopula}) = (:gen, :tail)
+function Paramorph.transformation_schema(C::ArchimaxCopula{d}, ::NamedTuple=NamedTuple()) where {d}
+    gcontext = (; dimension=d)
+    tcontext = (; dimension=d)
+    return Paramorph.TransformVariables.as((
+        gen=Paramorph.recursive_schema(C.gen, gcontext),
+        tail=Paramorph.recursive_schema(C.tail, tcontext),
+    ))
+end
+Paramorph.parameter_values(C::ArchimaxCopula) = (
+    gen=Paramorph.parameter_values(C.gen),
+    tail=Paramorph.parameter_values(C.tail),
+)
+function Paramorph.reconstruct_struct(C::ArchimaxCopula{d}, values::NamedTuple) where {d}
+    return ArchimaxCopula{d}(
+        Paramorph.reconstruct_struct(C.gen, values.gen),
+        Paramorph.reconstruct_struct(C.tail, values.tail),
     )
 end
 
-function _archimax_from_values(
-    CT::Type{<:ArchimaxCopula}, vd::Val{d}, vals,
-) where {d}
-    TG, TT = genandtailof(CT)
-    ng = length(Paramorph.names(Paramorph.param_space(TG, d)))
-    return ArchimaxCopula{d}(TG(vals[1:ng]...), TT(vals[(ng + 1):end]...))
-end
-_archimax_from_values(CT::Type{<:ArchimaxCopula}, d::Int, vals) =
-    _archimax_from_values(CT, Val(d), vals)
-
-function _parameter_space_copula(
-    CT::Type{<:ArchimaxCopula}, vd::Val{d}, p, α,
-) where {d}
-    vals = _parameter_arguments(Paramorph.constrain(p, α))
-    return _archimax_from_values(CT, vd, vals)
-end
-
-function ArchimaxCopula(d::Int, TG::Type{<:Generator}, TT::Type{<:Tail}, θ::NamedTuple)
-    CT = ArchimaxCopula{d,TG,TT}
-    names = Paramorph.names(Paramorph.param_space(CT, d))
-    vals = ntuple(i -> getproperty(θ, names[i]), length(names))
-    return _archimax_from_values(CT, Val(d), vals)
-end
-
-function (CT::Type{<:ArchimaxCopula})(d::Int, θ::NamedTuple)
-    names = Paramorph.names(Paramorph.param_space(CT, d))
-    vals = ntuple(i -> getproperty(θ, names[i]), length(names))
-    return _archimax_from_values(CT, Val(d), vals)
-end
-function (CT::Type{<:ArchimaxCopula})(d::Int, θ...)
-    return _archimax_from_values(CT, Val(d), θ)
-end
-function (CT::Type{<:ArchimaxCopula{d}})(θ...) where {d}
-    return _archimax_from_values(CT, Val(d), θ)
-end
-
 function Distributions.params(C::ArchimaxCopula)
-    d = length(C)
-    gp = Paramorph.param_space(typeof(C.gen), d)
-    tp = Paramorph.param_space(typeof(C.tail), d)
-    gvals = map(Base.Fix1(getproperty, C.gen), Paramorph.names(gp))
-    tvals = map(Base.Fix1(getproperty, C.tail), Paramorph.names(tp))
+    gvals = Tuple(values(Paramorph.parameter_values(C.gen)))
+    tvals = Tuple(values(Paramorph.parameter_values(C.tail)))
     return (gvals..., tvals...)
 end
 

@@ -22,19 +22,15 @@ References:
 """
 BB2Generator, BB2Copula
 
-struct BB2Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB2Generator(θ, δ)
-        (θ > 0) || throw(ArgumentError("θ must be > 0"))
-        (δ > 0) || throw(ArgumentError("δ must be > 0"))
-        θ, δ, _ = promote(θ, δ, 1.0)
-        new{typeof(θ)}(θ, δ)
-    end
+Paramorph.@paramorph T struct BB2Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::asℝ₊
+    δ::asℝ₊
+end
+function BB2Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB2Generator{T}(T(θ), T(δ))
 end
 const BB2Copula{d, T} = ArchimedeanCopula{d, BB2Generator{T}}
-Paramorph.param_space(::Type{<:BB2Generator}, d) =
-    (Paramorph.Pos(:θ), Paramorph.Pos(:δ))
 
 ϕ(  G::BB2Generator, s) = exp(-log1p(log1p(s)/G.δ)/G.θ)
 ϕ⁻¹(G::BB2Generator, t) = expm1(G.δ*expm1(-G.θ*log(t)))

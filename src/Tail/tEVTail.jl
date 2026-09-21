@@ -101,15 +101,39 @@ _is_valid_in_dim(tail::tEVTail{<:Any,<:Real}, d::Int) =
 _is_valid_in_dim(tail::tEVTail{<:Any,<:AbstractMatrix}, d::Int) =
     d == size(something(tail.R), 1)
 
-function Paramorph.param_space(::Type{<:tEVTail{<:Any,<:Real}}, d)
-    lower = -inv(d - 1)
-    return (
-        Paramorph.Pos(:ν),
-        Paramorph.BoundedOpen(:ρ, lower, 1.0),
-    )
+Paramorph.is_paramorph_type(::Type{<:tEVTail}) = true
+Paramorph.parameter_fields(::Type{<:tEVTail{<:Any,<:Real}}) = (:ν, :ρ)
+Paramorph.parameter_fields(::Type{<:tEVTail{<:Any,<:AbstractMatrix}}) = (:ν, :R)
+function Paramorph.transformation_schema(
+    ::Type{<:tEVTail{<:Any,<:Real}}, context::NamedTuple,
+)
+    d = get(context, :dimension, 2)
+    return Paramorph.TransformVariables.as((
+        ν=Paramorph.TransformVariables.asℝ₊,
+        ρ=Paramorph.bounded_interval(-inv(d - 1), 1; left_closed=false),
+    ))
 end
-Paramorph.param_space(::Type{<:tEVTail{<:Any,<:AbstractMatrix}}, d) =
-    (Paramorph.Pos(:ν), Paramorph.Correlation(:R, d))
+function Paramorph.transformation_schema(
+    tail::tEVTail{<:Any,<:Real}, context::NamedTuple=NamedTuple(),
+)
+    return Paramorph.transformation_schema(typeof(tail), context)
+end
+function Paramorph.transformation_schema(
+    tail::tEVTail{<:Any,<:AbstractMatrix}, ::NamedTuple=NamedTuple(),
+)
+    return Paramorph.TransformVariables.as((
+        ν=Paramorph.TransformVariables.asℝ₊,
+        R=Paramorph.correlation_matrix(size(something(tail.R), 1)),
+    ))
+end
+Paramorph.parameter_values(tail::tEVTail{<:Any,<:Real}) =
+    (; ν=tail.ν, ρ=something(tail.ρ))
+Paramorph.parameter_values(tail::tEVTail{<:Any,<:AbstractMatrix}) =
+    (; ν=tail.ν, R=something(tail.R))
+Paramorph.reconstruct_struct(::tEVTail{<:Any,<:Real}, values::NamedTuple) =
+    tEVTail(values.ν, values.ρ)
+Paramorph.reconstruct_struct(::tEVTail{<:Any,<:AbstractMatrix}, values::NamedTuple) =
+    tEVTail(values.ν, values.R)
     
 _tail_constructor_parameter_names(::Type{<:tEVTail}, kwkeys) = :R in kwkeys ? (:ν, :R) : (:ν, :ρ)
 

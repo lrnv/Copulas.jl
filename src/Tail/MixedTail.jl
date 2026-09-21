@@ -48,22 +48,16 @@ See also: [`GalambosTail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
 """
 MixedTail, MixedCopula
 
-struct MixedTail{T} <: OneParameterPickandsTail
-    θ::T
-    function MixedTail(θ)
-        θf = float(θ)
-        (0 ≤ θf ≤ 1 + eps(θf)) || throw(ArgumentError("θ must be in [0,1], provided θ=$θ"))
-        θf = clamp(θf, zero(θf), one(θf))
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct MixedTail{T<:Real} <: OneParameterPickandsTail
+    θ::bounded_interval(zero(T), one(T))
 end
+MixedTail(θ::Integer) = MixedTail(float(θ))
 
 @inline limit_kind(tail::MixedTail, ::Val) =
     iszero(tail.θ) ? Π_LIMIT : NO_LIMIT
 
 const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
 _is_valid_in_dim(::MixedTail, d::Int) = d >= 2
-Paramorph.param_space(::Type{<:MixedTail}, d) = Paramorph.Prob(:θ)
 
 A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1
 

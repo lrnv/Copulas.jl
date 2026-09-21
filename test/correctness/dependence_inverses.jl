@@ -21,9 +21,8 @@ function has_scalar_parameter(object::Union{Copulas.Generator,Copulas.Tail})
     Base.@nospecialize object
     PS = Copulas.Paramorph
     T = typeof(object)
-    applicable(PS.param_space, T, 2) || return false
-    p = PS.param_space(T, 2)
-    return PS.dimension(p) == 1 && length(PS.names(p)) == 1
+    PS.is_paramorph_type(T) || return false
+    return PS.intrinsic_dimension(object) == 1 && length(PS.parameter_fields(T)) == 1
 end
 
 function supports_inverse(object, inverse)

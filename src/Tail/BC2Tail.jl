@@ -48,17 +48,47 @@ See also: [`DiscreteSpectralTail`](@ref), [`ExtremeValueCopula`](@ref),
 """
 BC2Tail, BC2Copula
 
-struct BC2Tail{T} <: DiscreteSpectralPickandsTail
+Paramorph.@paramorph T struct BC2Tail{T<:Real} <: DiscreteSpectralPickandsTail
+    d::Int
     a::Vector{T}
-    spectral::DiscreteSpectralTail{T}
-    function BC2Tail(a::AbstractVector)
-        length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates",))
-        vals = collect(a)
-        T = float(eltype(vals))
-        aa = T.(a)
-        return new{T}(aa, DiscreteSpectralTail(hcat(aa, one(T) .- aa)))
-    end
 end
+
+Paramorph.parameter_fields_override(::Type{<:BC2Tail}) = (:a,)
+function _bc2_schema(d::Integer, ::Type{T}) where {T<:Real}
+    d >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates"))
+    return Paramorph.TransformVariables.as((
+        a=Paramorph.TransformVariables.as(
+            Vector, Paramorph.bounded_interval(zero(T), one(T)), d,
+        ),
+    ))
+end
+Paramorph.schema_override(::Type{<:BC2Tail}, ::NamedTuple) = throw(ArgumentError(
+    "BC2Tail requires a prototype because its parameter geometry depends on dimension",
+))
+function Paramorph.schema_override(
+    ::Type{<:BC2Tail{T}}, ::NamedTuple, values::NamedTuple,
+) where {T}
+    length(values.a) == values.d || throw(DimensionMismatch(
+        "BC2Tail dimension $(values.d) does not match $(length(values.a)) coordinates",
+    ))
+    return _bc2_schema(values.d, T)
+end
+Paramorph.schema_override(tail::BC2Tail{T}, ::NamedTuple) where {T} =
+    _bc2_schema(tail.d, T)
+
+BC2Tail(a::Vector{<:Integer}) = BC2Tail(float.(a))
+
+function BC2Tail(a::AbstractVector)
+    length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates"))
+    T = float(eltype(a))
+    aa = T.(a)
+    return BC2Tail(length(aa), aa)
+end
+
+_spectral_tail(tail::BC2Tail{T}) where {T} =
+    DiscreteSpectralTail(hcat(tail.a, one(T) .- tail.a))
+Base.getproperty(tail::BC2Tail, name::Symbol) =
+    name === :spectral ? _spectral_tail(tail) : getfield(tail, name)
 
 const BC2Copula{d,T} = ExtremeValueCopula{d, BC2Tail{T}}
 
@@ -69,7 +99,6 @@ function _bc2_bivariate_weights(tail::BC2Tail)
 end
 
 
-Paramorph.param_space(::Type{<:BC2Tail}, d) = Paramorph.ProbVec(:a, 2)
 _tail_constructor_parameter_names(::Type{<:BC2Tail}, _) = (:a, :b)
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:BC2Tail} where D}, d) =
     d == 2 ? (:mle,) : ()

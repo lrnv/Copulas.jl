@@ -6,15 +6,30 @@ _BrokenADCopula(d::Int, θ::Float64) = _BrokenADCopula{d,Float64}(θ)
 Base.eltype(C::_BrokenADCopula) = typeof(C.θ)
 Distributions.params(C::_BrokenADCopula) = (C.θ,)
 Distributions._logpdf(C::_BrokenADCopula, u::AbstractVector{<:Real}) = zero(eltype(u))
-Copulas.Paramorph.param_space(::Type{<:_BrokenADCopula}, d) =
-    Copulas.Paramorph.ProbOpen(:θ)
+Copulas.Paramorph.is_paramorph_type(::Type{<:_BrokenADCopula}) = true
+Copulas.Paramorph.parameter_fields(::Type{<:_BrokenADCopula}) = (:θ,)
+Copulas.Paramorph.transformation_schema(::_BrokenADCopula, ::NamedTuple=NamedTuple()) =
+    Copulas.Paramorph.TransformVariables.as((θ=Copulas.Paramorph.bounded_interval(
+        0.0, 1.0; left_closed=false, right_closed=false,
+    ),))
+Copulas.Paramorph.parameter_values(C::_BrokenADCopula) = (; θ=C.θ)
+Copulas.Paramorph.reconstruct_struct(C::_BrokenADCopula{d}, values::NamedTuple) where {d} =
+    _BrokenADCopula(d, values.θ)
+Copulas._fit_prototype(::Type{_BrokenADCopula}, ::Val{d}) where {d} =
+    _BrokenADCopula(d, 0.5)
 Copulas._available_fitting_methods(::Type{_BrokenADCopula}, d) = (:mle,)
 
 struct _OverparameterizedRankCopula{d} <: Copulas.Copula{d} end
-Copulas.Paramorph.param_space(::Type{<:_OverparameterizedRankCopula}, d) = (
-    Copulas.Paramorph.Id(:θ₁),
-    Copulas.Paramorph.Id(:θ₂),
-)
+Copulas.Paramorph.is_paramorph_type(::Type{<:_OverparameterizedRankCopula}) = true
+Copulas.Paramorph.transformation_schema(
+    ::_OverparameterizedRankCopula, ::NamedTuple=NamedTuple(),
+) = Copulas.Paramorph.TransformVariables.as((
+    θ₁=Copulas.Paramorph.TransformVariables.asℝ,
+    θ₂=Copulas.Paramorph.TransformVariables.asℝ,
+))
+Copulas._fit_prototype(
+    ::Type{_OverparameterizedRankCopula}, ::Val{d},
+) where {d} = _OverparameterizedRankCopula{d}()
 
 struct _FloatOnlyNestedRecon end
 (::_FloatOnlyNestedRecon)(α::AbstractVector{Float64}) = ClaytonCopula(2, exp(first(α)))
@@ -25,9 +40,9 @@ struct _FloatOnlyNestedRecon end
     # The generic Paramorph MLE starts at the unconstrained chart origin. For
     # bivariate Clayton that maps exactly to θ = 0 (independence), so both the
     # optimizer gradient and Hessian inference must be defined there.
-    p = Copulas.Paramorph.param_space(ClaytonCopula, 2)
+    prototype = ClaytonCopula(2, 0.0)
     objective(α) = -Distributions.loglikelihood(
-        Copulas._parameter_space_copula(ClaytonCopula, 2, p, α), U)
+        Copulas.Paramorph.constraint(prototype, α), U)
     @test isfinite(objective([0.0]))
     @test all(isfinite, ForwardDiff.gradient(objective, [0.0]))
     @test all(isfinite, ForwardDiff.hessian(objective, [0.0]))

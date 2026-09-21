@@ -47,21 +47,44 @@ References:
 * [tawn1988bivariate](@cite) for the bivariate precursor.
 * [tawn1990multivariate](@cite) for the multivariate model.
 """
-struct TawnTail{T} <: Tail
+TawnTail
+Paramorph.@paramorph T struct TawnTail{T<:Real} <: Tail
     d::Int
     dep::Vector{T}
     weights::Vector{Vector{T}}
-    function TawnTail(dep::AbstractVector, weights::Vararg{AbstractVector,N}) where {N}
-        d = N
-        normalized_dep, normalized_weights = _normalize_asymmetric_margin_components(
-            d, dep, weights;
-            singleton_parameter=1.0,
-            valid_parameter=parameter -> parameter >= one(parameter),
-            family="Tawn",
-        )
-        return new{eltype(normalized_dep)}(d, normalized_dep, normalized_weights)
-    end
 end
+
+function TawnTail(dep::AbstractVector, weights::Vararg{AbstractVector,N}) where {N}
+    normalized_dep, normalized_weights = _normalize_asymmetric_margin_components(
+        N, dep, weights;
+        singleton_parameter=1.0,
+        valid_parameter=parameter -> parameter >= one(parameter),
+        family="Tawn",
+    )
+    T = eltype(normalized_dep)
+    return TawnTail{T}(N, normalized_dep, normalized_weights)
+end
+
+Paramorph.parameter_fields_override(::Type{<:TawnTail}) = (:dep, :weights)
+function _tawn_schema(d::Integer, ::Type{T}) where {T<:Real}
+    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
+    return Paramorph.TransformVariables.as((
+        dep=Paramorph.TransformVariables.as(
+            Vector, Paramorph.closed_lower(one(T)), 2^d - d - 1,
+        ),
+        weights=Paramorph.repeat_transform(
+            Paramorph.TransformVariables.UnitSimplex(2^(d - 1)), d,
+        ),
+    ))
+end
+Paramorph.schema_override(::Type{<:TawnTail}, ::NamedTuple) = throw(ArgumentError(
+    "TawnTail requires a prototype because its parameter geometry depends on dimension",
+))
+Paramorph.schema_override(
+    ::Type{<:TawnTail{T}}, ::NamedTuple, values::NamedTuple,
+) where {T} = _tawn_schema(values.d, T)
+Paramorph.schema_override(tail::TawnTail{T}, ::NamedTuple) where {T} =
+    _tawn_schema(tail.d, T)
 
 @inline _tawn_components(tail::TawnTail) = _asymmetric_subset_components(
     tail.d, tail.dep, tail.weights; singleton_parameter=1.0,
@@ -150,6 +173,8 @@ function TawnTail(d::Int, dep::AbstractVector, asy::AbstractVector)
     weights = _subset_asymmetry_to_margin_weights(d, asy)
     return TawnTail(dep, weights...)
 end
+TawnTail(d::Int, dep::Vector{T}, asy::Vector{Vector{T}}) where {T<:Real} =
+    invoke(TawnTail, Tuple{Int,AbstractVector,AbstractVector}, d, dep, asy)
 
 # Convenience submodel: one full-set logistic component plus singleton remainders.
 function TawnTail(α::TA, weights::AbstractVector{TW}) where {TA<:Real,TW<:Real}
@@ -167,17 +192,6 @@ Distributions.params(C::ExtremeValueCopula{d,<:TawnTail}) where {d} =
     (copy(C.tail.dep), (copy(weight) for weight in C.tail.weights)...)
 
 _is_valid_in_dim(tail::TawnTail, d::Int) = d == tail.d
-
-function Paramorph.param_space(::Type{<:TawnTail}, d::Integer)
-    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    q = 2^d - d - 1
-    nweights = 2^(d - 1)
-    dep_space = Paramorph.LowerClosedVec(:dep, 1.0, q)
-    weight_spaces = ntuple(d) do i
-        Paramorph.Simplex(Symbol("weights$(i)"), nweights; anchor=1)
-    end
-    return (dep_space, weight_spaces...)
-end
 
 function _tawn_component_stdf(α, βcol, C, x)
     T = promote_type(typeof(α), eltype(x), eltype(βcol))

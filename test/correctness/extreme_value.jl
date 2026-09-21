@@ -649,11 +649,7 @@ end
 
 @testset "NoTail parameter space" begin
     C = ExtremeValueCopula{2}(Copulas.NoTail())
-    pspace = Copulas.Paramorph.param_space(Copulas.NoTail, 2)
-
-    @test Copulas.Paramorph.names(pspace) == ()
-    @test Copulas.Paramorph.dimension(pspace) == 0
-    @test Copulas.Paramorph.constrain(pspace, Float64[]) == ()
+    @test Copulas.Paramorph.parameter_fields(Copulas.NoTail) == ()
     @test params(C) == ()
 end
 

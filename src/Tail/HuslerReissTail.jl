@@ -104,8 +104,25 @@ _is_valid_in_dim(tail::HuslerReissTail{<:AbstractMatrix}, d::Int) =
     d == size(something(tail.Γ), 1)
 Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{<:AbstractMatrix}}) where {D} =
     (copy(something(C.tail.Γ)),)
-Paramorph.param_space(::Type{<:HuslerReissTail{<:Real}}, d) =
-    Paramorph.NonNeg(:θ)
+Paramorph.is_paramorph_type(::Type{<:HuslerReissTail}) = true
+Paramorph.parameter_fields(::Type{<:HuslerReissTail{<:Real}}) = (:θ,)
+Paramorph.parameter_fields(::Type{<:HuslerReissTail{<:AbstractMatrix}}) = (:Γ,)
+Paramorph.transformation_schema(
+    ::Type{<:HuslerReissTail{<:Real}}, ::NamedTuple=NamedTuple(),
+) = Paramorph.TransformVariables.as((θ=Paramorph.nonnegative(),))
+function Paramorph.transformation_schema(
+    tail::HuslerReissTail{<:AbstractMatrix}, ::NamedTuple=NamedTuple(),
+)
+    return Paramorph.TransformVariables.as((
+        Γ=Paramorph.variogram_matrix(size(something(tail.Γ), 1)),
+    ))
+end
+Paramorph.parameter_values(tail::HuslerReissTail{<:Real}) = (; θ=something(tail.θ))
+Paramorph.parameter_values(tail::HuslerReissTail{<:AbstractMatrix}) = (; Γ=something(tail.Γ))
+Paramorph.reconstruct_struct(::HuslerReissTail{<:Real}, values::NamedTuple) =
+    HuslerReissTail(values.θ)
+Paramorph.reconstruct_struct(::HuslerReissTail{<:AbstractMatrix}, values::NamedTuple) =
+    HuslerReissTail(values.Γ)
 
 _hr_theta(tail::HuslerReissTail{<:Real}) = something(tail.θ)
 _hr_theta(tail::HuslerReissTail{<:AbstractMatrix}) = 2 / sqrt(something(tail.Γ)[1, 2])

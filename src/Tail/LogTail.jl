@@ -34,14 +34,10 @@ References:
 """
 LogTail, LogCopula
 
-struct LogTail{T} <: OneParameterPickandsTail
-    θ::T
-    function LogTail(θ)
-        !(1 <= θ) && throw(ArgumentError(" The param θ must be in [1, ∞)"))
-        θ, _ = promote(θ, 1.0)
-        return new{typeof(θ)}(θ)
-    end
+Paramorph.@paramorph T struct LogTail{T<:Real} <: OneParameterPickandsTail
+    θ::closed_lower(one(T))
 end
+LogTail(θ::Integer) = LogTail(float(θ))
 @inline limit_kind(tail::LogTail, ::Val) =
     isone(tail.θ) ? Π_LIMIT :
     isinf(tail.θ) ? M_LIMIT :
@@ -49,7 +45,6 @@ end
 
 const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
 _is_valid_in_dim(::LogTail, d::Int) = d >= 2
-Paramorph.param_space(::Type{<:LogTail}, d) = Paramorph.LowerClosed(:θ, 1.0)
 
 function ℓ(tail::LogTail, x)
     isone(tail.θ) && return sum(x)

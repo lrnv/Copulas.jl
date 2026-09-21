@@ -26,6 +26,17 @@ module Copulas
     import ADTypes
     import StatsAPI: HypothesisTest, pvalue
 
+    # Paramorph 0.0.2 recognizes transformation identifiers syntactically in
+    # `@paramorph` fields. Keep private local aliases so the package itself can
+    # remain imported rather than brought wholesale into this namespace.
+    const as = Paramorph.TransformVariables.as
+    const asℝ = Paramorph.TransformVariables.asℝ
+    const asℝ₊ = Paramorph.TransformVariables.asℝ₊
+    const nonnegative = Paramorph.nonnegative
+    const closed_lower = Paramorph.closed_lower
+    const bounded_interval = Paramorph.bounded_interval
+    const correlation_matrix = Paramorph.correlation_matrix
+
     # Main code
     include("utils.jl")
     include("UnivariateDistribution/quantile.jl")
@@ -148,12 +159,15 @@ module Copulas
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
+    # Family-specific Paramorph prototypes require all component types above.
+    include("ParamorphFitting.jl")
+
     # Natural model-parameter representations are resolved only after every
-    # component family has declared its Paramorph parameter space.
+    # component family has declared its Paramorph schema.
     include("NaturalParameters.jl")
 
     # Natural coefficient metadata is assembled only after every component
-    # family has declared its Paramorph parameter space.
+    # family has declared its Paramorph schema.
     include("ParameterCoefficients.jl")
 
     include("CopulaTest.jl")

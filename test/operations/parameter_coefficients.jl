@@ -14,8 +14,7 @@
         ClaytonCopula(2, 1.25),
         (Normal(2.0, 3.0), Exponential(4.0)),
     )
-    p = P.param_space(D)
-    @test P.names(p) == (:copula_θ, :margin_1_μ, :margin_1_σ, :margin_2_θ)
+    @test P.intrinsic_dimension(D) == 4
 
     M = CopulaModel(D, zeros(2, 1), 0.0, nothing)
     @test StatsBase.coefnames(M) == [
@@ -44,7 +43,7 @@
 
     # Reflections add no natural parameters of their own.
     R = Rotated90Copula(ClaytonCopula(2, 0.75))
-    @test P.names(P.param_space(R)) == (:θ,)
+    @test P.intrinsic_dimension(R) == 1
     MR = CopulaModel(R, zeros(2, 1), 0.0, nothing)
     @test StatsBase.coefnames(MR) == ["θ"]
     @test StatsBase.coef(MR) == [0.75]
@@ -60,7 +59,6 @@
         BernsteinCopula(Xemp; m=2),
         CheckerboardCopula(Xemp; m=2),
     )
-        @test P.param_space(C) == ()
         @test Distributions.params(C) == ()
         @test StatsBase.dof(C) == 0
         MC = CopulaModel(C, zeros(2, 1), 0.0, nothing)
@@ -68,35 +66,32 @@
         @test isempty(StatsBase.coef(MC))
         @test StatsBase.dof(MC) == 0
     end
-    @test P.param_space(Copulas.EmpiricalEVTail, 2) == ()
-    @test P.param_space(Copulas.EmpiricalEVMultivariateTail, 3) == ()
+    @test P.parameter_fields(Copulas.EmpiricalEVTail) == ()
+    @test P.parameter_fields(Copulas.EmpiricalEVMultivariateTail) == ()
 
     # Ordinary parametric generators expose natural values through their
     # Paramorph logical names rather than through incidental storage order.
     Carch = ClaytonCopula(2, 1.25)
-    parch = P.param_space(Carch)
-    @test P.names(parch) == (:θ,)
+    @test P.parameter_fields(typeof(Carch.G)) == (:θ,)
     @test Distributions.params(Carch) == (1.25,)
-    zarch = P.unconstrain(parch, only(Distributions.params(Carch)))
-    @test P.constrain(parch, zarch) ≈ only(Distributions.params(Carch))
+    zarch = P.unconstrain(Carch)
+    @test only(Distributions.params(P.constraint(Carch, zarch))) ≈ 1.25
 
     # Liouville follows the same logical representation: generator parameters
     # first, then the positive α vector. Fitting remains deliberately disabled.
     L = LiouvilleCopula(Copulas.ClaytonGenerator(1.25), (0.8, 1.2))
-    pL = P.param_space(L)
-    @test P.names(pL) == (:θ, :α)
+    @test P.parameter_fields(typeof(L)) == (:G, :α)
     @test Distributions.params(L) == (1.25, [0.8, 1.2])
-    naturalL = P.constrain(pL, P.unconstrain(pL, Distributions.params(L)))
-    @test naturalL[1] ≈ 1.25
-    @test naturalL[2] ≈ [0.8, 1.2]
+    naturalL = P.constraint(L, P.unconstrain(L))
+    @test naturalL.G.θ ≈ 1.25
+    @test collect(naturalL.α) ≈ [0.8, 1.2]
     @test Copulas._available_fitting_methods(typeof(L), 2) == ()
 
     # Bivariate FGM is an ordinary bounded one-dimensional chart. Multivariate
     # FGM keeps its specialized optimizer because its feasible set is coupled.
-    pfgm = P.param_space(FGMCopula, 2)
-    @test P.names(pfgm) == (:θ,)
-    @test P.dimension(pfgm) == 1
-    @test P.constrain(pfgm, [0.0]) == 0.0
+    @test P.parameter_fields(FGMCopula{2,Float64}) == (:θ,)
+    @test P.intrinsic_dimension(FGMCopula{2,Float64}) == 1
+    @test P.constraint(FGMCopula{2,Float64}, [0.0]).θ == [0.0]
     Mfgm = CopulaModel(FGMCopula(2, 0.4), zeros(2, 1), 0.0, nothing)
     @test StatsBase.coefnames(Mfgm) == ["θ"]
     @test StatsBase.coef(Mfgm) == [0.4]
@@ -109,8 +104,7 @@
         Copulas.ClaytonGenerator(1.0);
         children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)],
     )
-    pN = P.param_space(N)
-    @test P.dimension(pN) == 3
+    @test length(Copulas._nested_unbound(N)) == 3
     @test StatsBase.dof(N) == 3
     MN = CopulaModel(N, zeros(length(N), 1), 0.0, nothing)
     @test StatsBase.dof(MN) == 3
@@ -149,7 +143,7 @@
     ]
     @test StatsBase.coef(MG) == vec(G.Σ)
     @test length(StatsBase.coef(MG)) == 9
-    @test StatsBase.dof(MG) == P.dimension(P.param_space(G)) == 3
+    @test StatsBase.dof(MG) == P.intrinsic_dimension(G) == 3
     MGshow = CopulaModel(
         G, zeros(3, 1), 0.0,
         Copulas._CopulaFitSpec(GaussianCopula, :mle, (;)),
@@ -183,14 +177,13 @@
         "dep₁", "weights1₁", "weights1₂", "weights2₁", "weights2₂",
     ]
     @test StatsBase.coef(MT) == [2.0, 0.2, 0.8, 0.3, 0.7]
-    @test StatsBase.dof(MT) == P.dimension(P.param_space(T)) == 3
+    @test StatsBase.dof(MT) == P.intrinsic_dimension(T) == 3
 
     # Archimax composes the component natural representations instead of
     # indexing storage by Paramorph names. This must work for Tawn, whose
     # logical weights1/weights2 parameters are stored in one weights field.
     AX = ArchimaxCopula(2, Copulas.ClaytonGenerator(1.25), T.tail)
-    @test P.names(P.param_space(AX)) ==
-          (:gen_θ, :tail_dep, :tail_weights1, :tail_weights2)
+    @test P.intrinsic_dimension(AX) == 4
     @test Distributions.params(AX) ==
           (1.25, [2.0], [0.2, 0.8], [0.3, 0.7])
 end

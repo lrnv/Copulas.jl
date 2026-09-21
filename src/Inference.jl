@@ -65,16 +65,16 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
                        vd::Val{d}, ::Val{:hessian},
                        methodv::Val{method}; weights=nothing) where {d,method}
     U, weights = _weighted_sample(U, weights)
-    pspace = Paramorph.param_space(CT, d)
-    α = Paramorph.unconstrain(pspace, θ)
+    fitted = CT(d, θ...)
+    α = Paramorph.unconstrain(fitted)
     all(isfinite, α) || throw(ArgumentError(
         "Hessian inference requires fitted parameters in the finite interior of their parameter space"))
-    cop(αv) = _parameter_space_copula(CT, vd, pspace, αv)
+    cop(αv) = Paramorph.constraint(fitted, αv)
     ℓ(αv) = _weighted_loglikelihood(cop(αv), U, weights)
     H = ForwardDiff.hessian(ℓ, α)
     Iα = .-H
     Vα = _invert_observed_information(Iα)
-    return _vcov_finalize(CT, U, θ, vd, pspace, α, Vα)
+    return _vcov_finalize(CT, U, θ, vd, fitted, α, Vα)
 end
 
 function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, ::Val{:godambe}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
@@ -106,12 +106,12 @@ _resample_indices!(idx::Vector{Int}, rng::Random.AbstractRNG, n::Int, w::Abstrac
 function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, vd::Val{d}, ::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};rng=Random.default_rng(),
                        nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {d,pairwise,vcovm,method}
     n = size(U, 2)
-    pspace = Paramorph.param_space(CT, d)
-    α = Paramorph.unconstrain(pspace, θ)
+    fitted = CT(d, θ...)
+    α = Paramorph.unconstrain(fitted)
     all(isfinite, α) || throw(ArgumentError(
         "$vcovm inference requires fitted parameters in the finite interior of their parameter space"))
     p = length(α)
-    cop(αv) = _parameter_space_copula(CT, vd, pspace, αv)
+    cop(αv) = Paramorph.constraint(fitted, αv)
     B = isnothing(nresamples) ? clamp(Int(floor(sqrt(n))), 10, 200) : Int(nresamples)
     B > 1 || throw(ArgumentError("nresamples must be greater than one"))
 
@@ -150,7 +150,7 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, vd::Val
     Iq = Matrix{eltype(Dα)}(LinearAlgebra.I, q, q)
     A = Dα \ Iq
     Vα = A * Ω * A' / n
-    return _vcov_finalize(CT, U, θ, vd, pspace, α, Vα)
+    return _vcov_finalize(CT, U, θ, vd, fitted, α, Vα)
 end
 
 function _validate_inference_covariance(Vθ::AbstractMatrix)
@@ -177,9 +177,9 @@ end
 # This path is generic over parameter spaces; structured natural parameters
 # continue through the reconstruction-based fallback below.
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple{<:Number},
-                        ::Val{d}, pspace, α, Vα) where {d}
+                        ::Val{d}, fitted, α, Vα) where {d}
     j = ForwardDiff.gradient(
-        αv -> only(_parameter_arguments(Paramorph.constrain(pspace, αv))),
+        αv -> only(Distributions.params(Paramorph.constraint(fitted, αv))),
         α,
     )
     J = reshape(j, 1, length(j))
@@ -188,10 +188,10 @@ function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple{<:Numbe
 end
 
 function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
-                        vd::Val{d}, pspace, α, Vα) where {d}
+                        vd::Val{d}, fitted, α, Vα) where {d}
     J = ForwardDiff.jacobian(
         αv -> _distribution_coefficient_values(
-            _parameter_space_copula(CT, vd, pspace, αv)),
+            Paramorph.constraint(fitted, αv)),
         α,
     )
     Vθ = J * Vα * J'
@@ -199,11 +199,10 @@ function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
 end
 
 function _analytical_parameter_coordinates(target, d, parameters)
-    applicable(Paramorph.param_space, target, d) || return nothing
     try
-        pspace = Paramorph.param_space(target, d)
-        α = Paramorph.unconstrain(pspace, parameters)
-        return all(isfinite, α) ? (pspace, α) : nothing
+        fitted = target(d, parameters...)
+        α = Paramorph.unconstrain(fitted)
+        return all(isfinite, α) ? (fitted, α) : nothing
     catch err
         err isa InterruptException && rethrow()
         return nothing

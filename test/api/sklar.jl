@@ -16,7 +16,7 @@
     @test params(D) isa Tuple
     @test StatsBase.dof(D) == 4
     @test StatsBase.dof(D) ==
-          Copulas.Paramorph.dimension(Copulas.Paramorph.param_space(D))
+          Copulas.Paramorph.intrinsic_dimension(D)
     @test 0 <= cdf(D, x) <= 1
     @test logcdf(D, x) ≈ log(cdf(D, x))
     @test pdf(D, x) >= 0
@@ -57,7 +57,7 @@
 
     D3 = SklarDist(GaussianCopula{3}(0.3), (Normal(), Exponential(), Gamma(2, 1)))
     @test StatsBase.dof(D3) ==
-          Copulas.Paramorph.dimension(Copulas.Paramorph.param_space(D3))
+          Copulas.Paramorph.intrinsic_dimension(D3)
     x3 = [0.1, 1.2, 0.8]
     joint = condition(D3, 1, x3[1])
     @test length(joint) == 2

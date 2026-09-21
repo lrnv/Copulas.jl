@@ -40,14 +40,10 @@ References:
 """
 CuadrasAugeTail, CuadrasAugeCopula
 
-struct CuadrasAugeTail{T} <: OneParameterPickandsTail
-    θ::T
-    function CuadrasAugeTail(θ)
-        (0 ≤ θ ≤ 1) || throw(ArgumentError("θ must be in [0,1]"))
-        θf = float(θ)
-        new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct CuadrasAugeTail{T<:Real} <: OneParameterPickandsTail
+    θ::bounded_interval(zero(T), one(T))
 end
+CuadrasAugeTail(θ::Integer) = CuadrasAugeTail(float(θ))
 @inline limit_kind(tail::CuadrasAugeTail, ::Val) =
     iszero(tail.θ) ? Π_LIMIT :
     isone(tail.θ) ? M_LIMIT :
@@ -57,7 +53,6 @@ const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
 tail_measure_style(tail::CuadrasAugeTail) =
     iszero(tail.θ) ? AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 _is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2
-Paramorph.param_space(::Type{<:CuadrasAugeTail}, d) = Paramorph.Prob(:θ)
 
 function A(tail::CuadrasAugeTail, t::Real)
     tt = _safett(t)

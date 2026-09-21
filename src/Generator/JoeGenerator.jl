@@ -25,21 +25,15 @@ References:
 """
 JoeGenerator, JoeCopula
 
-struct JoeGenerator{T} <: AbstractUnivariateFrailtyGenerator
-    θ::T
-    function JoeGenerator(θ)
-        θ < 1 && throw(ArgumentError("Theta must be greater than or equal to 1"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct JoeGenerator{T<:Real} <: AbstractUnivariateFrailtyGenerator
+    θ::closed_lower(one(T))
 end
+JoeGenerator(θ::Integer) = JoeGenerator(float(θ))
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
 @inline limit_kind(G::JoeGenerator, ::Val) =
     isone(G.θ) ? Π_LIMIT :
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
-Paramorph.param_space(::Type{<:JoeGenerator}, d) =
-    Paramorph.LowerClosed(:θ, 1.0)
 archimedean_measure_style(G::JoeGenerator, ::Val{d}) where {d} =
     isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 

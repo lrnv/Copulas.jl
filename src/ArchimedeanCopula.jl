@@ -221,14 +221,33 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
 end
 generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
 
-Paramorph.param_space(CT::Type{<:ArchimedeanCopula}, d::Integer) =
-    Paramorph.param_space(generatorof(CT), d)
-
-function _parameter_space_copula(
-    CT::Type{<:ArchimedeanCopula}, vd::Val{d}, p, α,
+Paramorph.parameter_fields(::Type{<:ArchimedeanCopula}) = (:G,)
+Paramorph.is_paramorph_type(::Type{<:ArchimedeanCopula}) = true
+Paramorph.schema_context(
+    ::Type{<:ArchimedeanCopula{d,<:Generator}}, ::Val{:G},
+) where {d} = (; dimension=d)
+Paramorph.schema_context(C::ArchimedeanCopula, field::Val{:G}) =
+    Paramorph.schema_context(typeof(C), field)
+function Paramorph.transformation_schema(
+    ::Type{C}, ::NamedTuple=NamedTuple(),
+) where {d,G,C<:ArchimedeanCopula{d,G}}
+    context = Paramorph.schema_context(C, Val(:G))
+    return Paramorph.TransformVariables.as((G=Paramorph.recursive_schema(G, context),))
+end
+function Paramorph.transformation_schema(
+    C::ArchimedeanCopula, ::NamedTuple=NamedTuple(),
+)
+    context = Paramorph.schema_context(C, Val(:G))
+    return Paramorph.TransformVariables.as((
+        G=Paramorph.recursive_schema(C.G, context),
+    ))
+end
+Paramorph.parameter_values(C::ArchimedeanCopula) =
+    (; G=Paramorph.parameter_values(C.G))
+function Paramorph.reconstruct_struct(
+    C::ArchimedeanCopula{d}, values::NamedTuple,
 ) where {d}
-    η = _parameter_arguments(Paramorph.constrain(p, α))
-    return _dynamic_archimedean(CT, vd, η...)
+    return ArchimedeanCopula{d}(Paramorph.reconstruct_struct(C.G, values.G))
 end
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
@@ -351,9 +370,9 @@ function _fit(
     CT::Type{<:ArchimedeanCopula{D, GT} where {D, GT<:UnivariateGenerator}},
     U, vd::Val{d}, ::Val{:ibeta}; weights=nothing,
 ) where {d}
-    pspace = Paramorph.param_space(CT, d)
     βobs = clamp(_weighted_β(U, weights), nextfloat(-1.0), prevfloat(1.0))
-    cop(α) = _parameter_space_copula(CT, vd, pspace, [α])
+    prototype = _dynamic_archimedean(CT, vd, one(Float64))
+    cop(α) = Paramorph.constraint(prototype, [α])
     obj(α) = β(cop(α)) - βobs
 
     lo, hi = -1.0, 1.0

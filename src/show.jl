@@ -1,7 +1,7 @@
 function Base.show(io::IO, C::EmpiricalCopula)
     print(io, "EmpiricalCopula{d}$(size(C.u))")
 end
-function Base.show(io::IO, C::FGMCopula{d, Tθ, Tf}) where {d, Tθ, Tf}
+function Base.show(io::IO, C::FGMCopula{d,T}) where {d,T}
     print(io, "FGMCopula{$d}(θ = $(C.θ))")
 end
 function Base.show(io::IO, C::SurvivalCopula)

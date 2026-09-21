@@ -153,8 +153,21 @@ See also: [`flipmask`](@ref), [`basecopula`](@ref).
 flips(C::AbstractReflectedCopula) = _survival_flipindices(flipmask(C))
 
 Base.eltype(C::AbstractReflectedCopula) = eltype(basecopula(C))
-Paramorph.param_space(C::AbstractReflectedCopula) =
-    Paramorph.param_space(basecopula(C))
+Paramorph.is_paramorph_type(::Type{<:AbstractReflectedCopula}) = true
+Paramorph.transformation_schema(C::AbstractReflectedCopula) =
+    Paramorph.transformation_schema(basecopula(C))
+Paramorph.transformation_schema(C::AbstractReflectedCopula, ::NamedTuple) =
+    Paramorph.transformation_schema(C)
+Paramorph.parameter_values(C::AbstractReflectedCopula) =
+    Paramorph.parameter_values(basecopula(C))
+Paramorph.reconstruct_struct(C::SurvivalCopula{d}, values::NamedTuple) where {d} =
+    SurvivalCopula{d}(Paramorph.reconstruct_struct(basecopula(C), values), flipmask(C))
+Paramorph.reconstruct_struct(C::Rotated90Copula, values::NamedTuple) =
+    Rotated90Copula(Paramorph.reconstruct_struct(basecopula(C), values))
+Paramorph.reconstruct_struct(C::Rotated180Copula, values::NamedTuple) =
+    Rotated180Copula(Paramorph.reconstruct_struct(basecopula(C), values))
+Paramorph.reconstruct_struct(C::Rotated270Copula, values::NamedTuple) =
+    Rotated270Copula(Paramorph.reconstruct_struct(basecopula(C), values))
 
 function _survival_flipmask(::Val{d}, flips::NTuple{d,Bool}) where {d}
     return flips

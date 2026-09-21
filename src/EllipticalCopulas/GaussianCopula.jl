@@ -54,16 +54,25 @@ See also: [`TCopula`](@ref), [`SklarDist`](@ref),
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
-    Σ::MT
-    function GaussianCopula{d}(Σ::AbstractMatrix) where {d}
-        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-        size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
-        matrix = Matrix(float.(Σ))
-        make_cor!(matrix)
-        N(GaussianCopula)(matrix)
-        return new{d,typeof(matrix)}(matrix)
-    end
+GaussianCopula
+Paramorph.@paramorph T struct GaussianCopula{d,T<:Real} <: EllipticalCopula{d,Matrix{T}}
+    Σ::correlation_matrix(d)
+end
+function Paramorph.schema_override(::Type{<:GaussianCopula{d}}, ::NamedTuple) where {d}
+    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+    return nothing
+end
+function Paramorph.schema_override(
+    T::Type{<:GaussianCopula{d}}, context::NamedTuple, values::NamedTuple,
+) where {d}
+    size(values.Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
+    return Paramorph.schema_override(T, context)
+end
+function GaussianCopula{d}(Σ::AbstractMatrix) where {d}
+    size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
+    matrix = Matrix(float.(Σ))
+    make_cor!(matrix)
+    return GaussianCopula{d}(matrix)
 end
 GaussianCopula(Σ::AbstractMatrix) = GaussianCopula{size(Σ, 1)}(Σ)
 
@@ -155,7 +164,6 @@ end
 
 SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula{p}(C.Σ[collect(dims),collect(dims)])
 
-Paramorph.param_space(::Type{<:GaussianCopula}, d) = Paramorph.Correlation(:Σ, d)
 function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
     d = size(Udata, 1)
     N01 = Distributions.Normal()
@@ -182,11 +190,12 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
         R̂ = T[one(T) ρ̂; ρ̂ one(T)]
         return GaussianCopula(R̂)
     end
-    pΣ = Paramorph.Correlation(:Σ, d)
+    pΣ = Paramorph.correlation_matrix(d)
     R₀ = _score_corr_start(Z)
-    α₀ = Paramorph.unconstrain(pΣ, (R₀,))
+    α₀ = Paramorph.TransformVariables.inverse(pΣ, R₀)
     objective_hd = α -> begin
-        L = Paramorph.correlation_factor(pΣ, α)
+        R = Paramorph.TransformVariables.transform(pΣ, α)
+        L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R)).L
         Ltri = LinearAlgebra.LowerTriangular(L)
         logdetR = 2 * sum(log, LinearAlgebra.diag(L))
         Y = Ltri \ Q
@@ -201,8 +210,7 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
         autodiff=ADTypes.AutoForwardDiff(),
     )
     α̂ = Optim.minimizer(res)
-    L̂ = Paramorph.correlation_factor(pΣ, α̂)
-    R̂ = L̂ * L̂'
+    R̂ = Paramorph.TransformVariables.transform(pΣ, α̂)
     R̂ = (R̂ + R̂') / 2
     return GaussianCopula(R̂)
 end

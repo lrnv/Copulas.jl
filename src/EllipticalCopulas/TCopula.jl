@@ -48,22 +48,33 @@ References:
 * [genz1992normal](@cite) Genz, Alan. Numerical computation of multivariate
   normal probabilities. Journal of Computational and Graphical Statistics, 1992.
 """
-struct TCopula{d,Tν,MT} <: EllipticalCopula{d,MT}
-    ν::Tν
-    Σ::MT
-    function TCopula{d}(ν::Real, Σ::AbstractMatrix) where {d}
-        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-        size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
-        matrix = Matrix(float.(Σ))
-        make_cor!(matrix)
-        Distributions.MvTDist(ν, matrix)
-        return new{d,typeof(ν),typeof(matrix)}(ν, matrix)
-    end
+TCopula
+Paramorph.@paramorph T struct TCopula{d,T<:Real} <: EllipticalCopula{d,Matrix{T}}
+    ν::asℝ₊
+    Σ::correlation_matrix(d)
+end
+function Paramorph.schema_override(::Type{<:TCopula{d}}, ::NamedTuple) where {d}
+    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+    return nothing
+end
+function Paramorph.schema_override(
+    T::Type{<:TCopula{d}}, context::NamedTuple, values::NamedTuple,
+) where {d}
+    size(values.Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
+    return Paramorph.schema_override(T, context)
+end
+function TCopula{d}(ν::Real, Σ::AbstractMatrix) where {d}
+    size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
+    νf = float(ν)
+    matrix = Matrix(float.(Σ))
+    make_cor!(matrix)
+    T = promote_type(typeof(νf), eltype(matrix))
+    return TCopula{d,T}(T(νf), Matrix{T}(matrix))
 end
 Base.eltype(C::TCopula) = promote_type(typeof(float(C.ν)), eltype(C.Σ))
 TCopula(ν::Real, Σ::AbstractMatrix) = TCopula{size(Σ, 1)}(ν, Σ)
 TCopula(d::Int, ν::Real, Σ::AbstractMatrix) = TCopula{d}(ν, Σ)
-(::Type{TCopula{D,Tν,MT}})(d::Int, ν::Real, Σ::AbstractMatrix) where {D,Tν,MT} = TCopula{d}(ν, Σ)
+(::Type{TCopula{D,T}})(d::Int, ν::Real, Σ::AbstractMatrix) where {D,T} = TCopula{d}(ν, Σ)
 
 U(C::TCopula) = isinf(C.ν) ? Distributions.Normal() : Distributions.TDist(C.ν)
 N(C::TCopula) = isinf(C.ν) ? Distributions.MvNormal : (Σ -> Distributions.MvTDist(C.ν, Σ))
@@ -226,7 +237,6 @@ function _conditional_components(C::TCopula{D}, js::NTuple{p,Int},
 end
 SubsetCopula(C::TCopula, dims::NTuple{p, Int}) where {p} = TCopula{p}(C.ν, C.Σ[collect(dims),collect(dims)])
 
-Paramorph.param_space(::Type{<:TCopula}, d) = (Paramorph.Pos(:ν), Paramorph.Correlation(:Σ, d))
 # Per-observation sums of the Student objective. The weighted form multiplies
 # the term of each column by its weight before the same reduction, so unit
 # weights reproduce the unweighted sum bit for bit.
@@ -255,11 +265,12 @@ function _fit_t_corr_given_nu(U, ν; weights=nothing)
     # the correlation optimization. Paramorph owns the correlation chart;
     # this profile keeps only the Student-specific likelihood objective.
     Z = Distributions.quantile.(Distributions.TDist(ν), U)
-    pΣ = Paramorph.Correlation(:Σ, d)
+    pΣ = Paramorph.correlation_matrix(d)
     R₀ = _score_corr_start(Z)
-    α₀ = Paramorph.unconstrain(pΣ, (R₀,))
+    α₀ = Paramorph.TransformVariables.inverse(pΣ, R₀)
     objective = α -> begin
-        L = Paramorph.correlation_factor(pΣ, α)
+        R = Paramorph.TransformVariables.transform(pΣ, α)
+        L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R)).L
         diagL = LinearAlgebra.diag(L)
         all(x -> isfinite(x) && x > zero(x), diagL) ||
             return convert(eltype(α), Inf)
@@ -276,8 +287,7 @@ function _fit_t_corr_given_nu(U, ν; weights=nothing)
         autodiff=ADTypes.AutoForwardDiff(),
     )
     α̂ = Optim.minimizer(res)
-    L̂ = Paramorph.correlation_factor(pΣ, α̂)
-    R̂ = L̂ * L̂'
+    R̂ = Paramorph.TransformVariables.transform(pΣ, α̂)
     R̂ = (R̂ + R̂') / 2
     ll = _t_copula_loglik_factor(ν, L̂, Z; weights)
     return (ν=ν, Σ=R̂, loglikelihood=ll, result=res,)

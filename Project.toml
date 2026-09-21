@@ -35,9 +35,6 @@ Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80"
 RecipesBase = "3cdcf5f2-1ef4-517c-9805-6587b60abb01"
 PartitionedDistributions = "569bd051-8d7b-4221-bcb8-d78512b5866a"
 
-[sources]
-Paramorph = {rev = "main", url = "https://github.com/lrnv/Paramorph.jl"}
-
 [extensions]
 CopulasExpectationMaximizationExt = "ExpectationMaximization"
 CopulasPlotsExt = ["Plots", "RecipesBase"]
@@ -61,7 +58,7 @@ LinearAlgebra = "1"
 LogExpFunctions = "0.3, 1"
 MvNormalCDF = "0.2, 0.3"
 Optim = "2"
-Paramorph = "0.0.1"
+Paramorph = "0.0.2"
 Plots = "1"
 PolyLog = "2.6.0"
 Printf = "1"

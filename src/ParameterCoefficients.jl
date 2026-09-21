@@ -39,16 +39,35 @@ function _tuple_parameter_names(D, raw::Tuple)
         matches && return string.(props)
     end
 
-    if applicable(Paramorph.param_space, D)
-        names = try
-            Paramorph.names(Paramorph.param_space(D))
-        catch
-            ()
-        end
+    values = try
+        Paramorph.parameter_values(D)
+    catch
+        nothing
+    end
+    values isa NamedTuple && length(values) == length(raw) &&
+        return string.(keys(values))
+
+    if Paramorph.is_paramorph_type(typeof(D))
+        names = Paramorph.parameter_fields(typeof(D))
         length(names) == length(raw) && return string.(names)
     end
 
     return ["θ$(i)" for i in eachindex(raw)]
+end
+
+# These wrappers deliberately hide their storage fields from the natural
+# statistical representation. Delegate labels to the component that owns the
+# displayed parameters instead of exposing implementation names such as `G`
+# or synthesizing positional labels.
+_tuple_parameter_names(C::ArchimedeanCopula, raw::Tuple) =
+    _tuple_parameter_names(C.G, raw)
+_tuple_parameter_names(C::AbstractReflectedCopula, raw::Tuple) =
+    _tuple_parameter_names(basecopula(C), raw)
+function _tuple_parameter_names(
+    C::ExtremeValueCopula{d,<:Union{TawnTail,AsymGalambosTail}}, raw::Tuple,
+) where {d}
+    length(raw) == d + 1 || return ["θ$(i)" for i in eachindex(raw)]
+    return ["dep"; ["weights$(i)" for i in 1:d]]
 end
 
 function _append_natural_coefficient!(names, values, value, name::String)
@@ -101,15 +120,11 @@ end
 _promoted_parameter_values(values) =
     isempty(values) ? Float64[] : collect(promote(float.(values)...))
 
-# A component with a known zero-dimensional Paramorph space has no statistical
+# A component with a known zero-dimensional Paramorph schema has no statistical
 # coefficients. This keeps empirical or purely structural state out of `coef`.
 function _has_natural_coefficients(D)
-    p = try
-        Paramorph.param_space(D)
-    catch
-        nothing
-    end
-    return p === nothing || !iszero(Paramorph.dimension(p))
+    return !Paramorph.is_paramorph_type(typeof(D)) ||
+           !iszero(Paramorph.intrinsic_dimension(D))
 end
 
 function _distribution_coefficients(D; prefix::String="")
@@ -196,13 +211,21 @@ function _parameter_blocks(M::CopulaModel{<:SklarDist})
 end
 
 function _distribution_dof(D)
-    p = try
-        Paramorph.param_space(D)
-    catch
-        nothing
-    end
-    return p === nothing ? length(_distribution_coefficient_values(D)) :
-                           Paramorph.dimension(p)
+    return _has_specific_paramorph_schema(D) ?
+           Paramorph.intrinsic_dimension(D) :
+           length(_distribution_coefficient_values(D))
+end
+
+
+# Paramorph's Distributions extension supplies prototype-dependent schemas for
+# distributions with structural constructor arguments (for example Binomial's
+# fixed `n`) without claiming ownership of those external types through
+# `is_paramorph_type`. Detect such a specialization separately from
+# Paramorph's universal scalar fallback.
+function _has_specific_paramorph_schema(D)
+    Paramorph.is_paramorph_type(typeof(D)) && return true
+    method = which(Paramorph.transformation_schema, (typeof(D), NamedTuple))
+    return method.module !== Paramorph
 end
 
 _distribution_dof(S::SklarDist) =

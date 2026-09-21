@@ -122,9 +122,8 @@ end
 
 _ev_cdf(C::ExtremeValueCopula, u) = exp(-ℓ(C.tail, .- log.(u)))
 function Distributions.params(C::ExtremeValueCopula)
-    if applicable(Paramorph.param_space, typeof(C.tail), length(C))
-        p = Paramorph.param_space(C)
-        return map(Base.Fix1(getproperty, C.tail), Paramorph.names(p))
+    if Paramorph.is_paramorph_type(typeof(C.tail))
+        return Tuple(values(Paramorph.parameter_values(C.tail)))
     end
     C.tail isa DiscreteSpectralCapableTail &&
         return (copy(_spectral_tail(C.tail).B),)
@@ -318,8 +317,36 @@ end
 
 tailof(S::Type{<:ExtremeValueCopula}) = fieldtype(S, :tail)
 
-Paramorph.param_space(CT::Type{<:ExtremeValueCopula}, d::Integer) =
-    Paramorph.param_space(tailof(CT), d)
+Paramorph.parameter_fields(::Type{<:ExtremeValueCopula}) = (:tail,)
+Paramorph.is_paramorph_type(::Type{<:ExtremeValueCopula}) = true
+Paramorph.schema_context(
+    ::Type{<:ExtremeValueCopula{d}}, ::Val{:tail},
+) where {d} = (; dimension=d)
+Paramorph.schema_context(C::ExtremeValueCopula, field::Val{:tail}) =
+    Paramorph.schema_context(typeof(C), field)
+function Paramorph.transformation_schema(
+    ::Type{C}, ::NamedTuple=NamedTuple(),
+) where {d,T,C<:ExtremeValueCopula{d,T}}
+    context = Paramorph.schema_context(C, Val(:tail))
+    return Paramorph.TransformVariables.as((
+        tail=Paramorph.recursive_schema(T, context),
+    ))
+end
+function Paramorph.transformation_schema(
+    C::ExtremeValueCopula, ::NamedTuple=NamedTuple(),
+)
+    context = Paramorph.schema_context(C, Val(:tail))
+    return Paramorph.TransformVariables.as((
+        tail=Paramorph.recursive_schema(C.tail, context),
+    ))
+end
+Paramorph.parameter_values(C::ExtremeValueCopula) =
+    (; tail=Paramorph.parameter_values(C.tail))
+function Paramorph.reconstruct_struct(
+    C::ExtremeValueCopula{d}, values::NamedTuple,
+) where {d}
+    return ExtremeValueCopula{d}(Paramorph.reconstruct_struct(C.tail, values.tail))
+end
 
 # Fitting must be able to reconstruct both a dimension-generic family and a
 # concrete `FamilyCopula{d}` without freezing the tail's numeric type. Build
@@ -334,13 +361,6 @@ end
 @inline _rebuild_extreme_value(
     CT::Type{<:ExtremeValueCopula}, d::Integer, args...,
 ) = _rebuild_extreme_value(CT, Val(d), args...)
-
-function _parameter_space_copula(
-    CT::Type{<:ExtremeValueCopula}, vd::Val{d}, p, α,
-) where {d}
-    η = _parameter_arguments(Paramorph.constrain(p, α))
-    return _rebuild_extreme_value(CT, vd, η...)
-end
 
 ##############################################################################################################################
 ####### Fitting functions for parameterized tails (Extreme Value Copulas).

@@ -86,14 +86,13 @@
     @testset "extremal-t fitting bounds by dimension" begin
         PS = Copulas.Paramorph
         for (d, lower) in ((2, -1.0), (3, -0.5))
-            CT = typeof(tEVCopula{d}(4.0, 0.2))
-            p = PS.param_space(CT, d)
-            unconstrained = PS.unconstrain(p, (4.0, 0.2))
-            ν, ρ = PS.constrain(p, unconstrained)
-            @test ν ≈ 4.0
-            @test ρ ≈ 0.2
-            _, ρlo = PS.constrain(p, [0.0, -100.0])
-            _, ρhi = PS.constrain(p, [0.0, 100.0])
+            prototype = tEVCopula{d}(4.0, 0.2)
+            unconstrained = PS.unconstrain(prototype)
+            restored = PS.constraint(prototype, unconstrained)
+            @test restored.tail.ν ≈ 4.0
+            @test restored.tail.ρ ≈ 0.2
+            ρlo = something(PS.constraint(prototype, [0.0, -100.0]).tail.ρ)
+            ρhi = something(PS.constraint(prototype, [0.0, 100.0]).tail.ρ)
             @test lower < ρlo < 1
             @test lower < ρhi < 1
         end

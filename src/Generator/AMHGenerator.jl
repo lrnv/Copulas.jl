@@ -24,19 +24,13 @@ References:
 """
 AMHGenerator, AMHCopula
 
-struct AMHGenerator{T} <: AbstractUnivariateGenerator
-    θ::T
-    function AMHGenerator(θ)
-        ((θ < -1) || (θ > 1)) && throw(ArgumentError("Theta must be in [-1,1], you provided $θ."))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct AMHGenerator{T<:Real} <: AbstractUnivariateGenerator
+    θ::bounded_interval(
+        get(context, :lower, -one(T)), one(T),
+    )
 end
+AMHGenerator(θ::Integer) = AMHGenerator(float(θ))
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
-function Paramorph.param_space(::Type{<:AMHGenerator}, d::Integer)
-    lower = clamp(_find_critical_value_amh(d), -1, 1)
-    return Paramorph.Bounded(:θ, lower, 1.0)
-end
 function _find_critical_value_amh(k; step=1e-7)
     # Return the threshold θ_k such that “θ < θ_k ⇒ max_monotony returns k-1”.
     # This unifies analytic and numeric thresholds and falls back to a

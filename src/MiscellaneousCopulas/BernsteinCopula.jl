@@ -104,7 +104,6 @@ function _validate_bernstein_weights(weights::AbstractArray, m::Tuple)
     return nothing
 end
 Distributions.params(::BernsteinCopula) = ()
-Paramorph.param_space(::Type{<:BernsteinCopula}, ::Integer) = ()
 BernsteinCopula(base::Copula{d}; kwargs...) where {d} = BernsteinCopula{d}(base; kwargs...)
 BernsteinCopula(d::Integer, base::Copula; kwargs...) = BernsteinCopula{d}(base; kwargs...)
 function BernsteinCopula{d}(data::AbstractMatrix; kwargs...) where {d}

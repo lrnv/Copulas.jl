@@ -23,22 +23,18 @@ References:
 """
 BB10Generator, BB10Copula
 
-struct BB10Generator{T} <: AbstractFrailtyGenerator
-    θ::T          # θ > 0
-    δ::T          # 0 ≤ δ ≤ 1
-    function BB10Generator(θ, δ)
-        (θ > 0) || throw(ArgumentError("θ must be > 0"))
-        (0 ≤ δ ≤ 1) || throw(ArgumentError("δ must be in [0,1]"))
-        θf, δf = promote(float(θ), float(δ))
-        return new{typeof(θf)}(θf, δf)
-    end
+Paramorph.@paramorph T struct BB10Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::asℝ₊
+    δ::bounded_interval(zero(T), one(T))
+end
+function BB10Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB10Generator{T}(T(θ), T(δ))
 end
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
 
 @inline limit_kind(G::BB10Generator, ::Val) = iszero(G.δ) ? Π_LIMIT : NO_LIMIT
 
-Paramorph.param_space(::Type{<:BB10Generator}, d) =
-    (Paramorph.Pos(:θ), Paramorph.Prob(:δ))
 
 ϕ(G::BB10Generator, s) = begin
     θ, δ = G.θ, G.δ

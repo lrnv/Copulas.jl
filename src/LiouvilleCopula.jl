@@ -60,14 +60,23 @@ Base.eltype(C::LiouvilleCopula) = promote_type(eltype(C.G), eltype(C.α))
 LiouvilleCopula(G::Generator, α) = LiouvilleCopula{length(α)}(G, α)
 LiouvilleCopula(d::Integer, G::Generator, α) = LiouvilleCopula{d}(G, α)
 
-# The generator domain relevant to a Liouville model is governed by sum(α), not
-# by the ambient copula dimension. Until the coupled fitting geometry is
-# implemented, expose the broad bivariate generator chart together with the
-# natural positive Dirichlet vector. Fitting remains explicitly unavailable.
-function Paramorph.param_space(::Type{<:LiouvilleCopula{D,TG}}, d::Integer) where {D,TG<:Generator}
-    gp = Paramorph.param_space(TG, 2)
-    gspaces = gp isa Tuple ? gp : (gp,)
-    return (gspaces..., Paramorph.PosVec(:α, d))
+Paramorph.is_paramorph_type(::Type{<:LiouvilleCopula}) = true
+Paramorph.parameter_fields(::Type{<:LiouvilleCopula}) = (:G, :α)
+function Paramorph.transformation_schema(C::LiouvilleCopula{d}, ::NamedTuple=NamedTuple()) where {d}
+    return Paramorph.TransformVariables.as((
+        G=Paramorph.recursive_schema(C.G, (; dimension=2)),
+        α=Paramorph.TransformVariables.as(
+            Vector, Paramorph.TransformVariables.asℝ₊, d,
+        ),
+    ))
+end
+Paramorph.parameter_values(C::LiouvilleCopula) = (
+    G=Paramorph.parameter_values(C.G), α=collect(C.α),
+)
+function Paramorph.reconstruct_struct(C::LiouvilleCopula{d}, values::NamedTuple) where {d}
+    return LiouvilleCopula{d}(
+        Paramorph.reconstruct_struct(C.G, values.G), Tuple(values.α),
+    )
 end
 
 Distributions.params(C::LiouvilleCopula) = (C.G, C.α)

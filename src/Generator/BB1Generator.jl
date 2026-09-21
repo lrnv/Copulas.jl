@@ -25,21 +25,17 @@ References:
 """
 BB1Generator, BB1Copula
 
-struct BB1Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB1Generator(θ, δ)
-        (θ > 0) || throw(ArgumentError("θ must be > 0"))
-        (δ ≥ 1) || throw(ArgumentError("δ must be ≥ 1"))
-        θf, δf = promote(float(θ), float(δ))
-        return new{typeof(θf)}(θf, δf)
-    end
+Paramorph.@paramorph T struct BB1Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::asℝ₊
+    δ::closed_lower(one(T))
+end
+function BB1Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB1Generator{T}(T(θ), T(δ))
 end
 const BB1Copula{d, T} = ArchimedeanCopula{d, BB1Generator{T}}
 @inline limit_kind(G::BB1Generator, ::Val) =
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
-Paramorph.param_space(::Type{<:BB1Generator}, d) =
-    (Paramorph.Pos(:θ), Paramorph.LowerClosed(:δ, 1.0))
 
 ϕ(G::BB1Generator, s) = exp(-(1/G.θ) * log1p(exp((log(s)/G.δ))))
 ϕ⁻¹(G::BB1Generator, t) = exp(G.δ * log(expm1(-G.θ * log(t))))  # avoid a^b

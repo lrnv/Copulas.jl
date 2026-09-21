@@ -303,41 +303,21 @@ _available_fitting_methods(::Type{<:LiebscherCopula}, d) = ()
 
 function _liebscher_component_space(C::Copula{d}) where {d}
     :mle in _available_fitting_methods(typeof(C), d) || return nothing
-    applicable(Paramorph.param_space, typeof(C), d) || return nothing
-
-    p = try
-        Paramorph.param_space(typeof(C), d)
+    Paramorph.is_paramorph_type(typeof(C)) || return nothing
+    dimension = try
+        Paramorph.intrinsic_dimension(C)
     catch err
         (err isa MethodError || err isa ArgumentError || err isa DomainError) || rethrow()
         return nothing
     end
-
-    return iszero(Paramorph.dimension(p)) ? nothing : p
+    return iszero(dimension) ? nothing : C
 end
 
 function _liebscher_weight_geometry(W::AbstractMatrix, j::Int)
     active = findall(!iszero, @view W[:, j])
     length(active) <= 1 && return active, nothing
-    p = Paramorph.Simplex(Symbol("a", j), collect(@view W[active, j]))
+    p = Paramorph.TransformVariables.UnitSimplex(length(active))
     return active, p
-end
-
-function Paramorph.param_space(C::LiebscherCopula{d}) where {d}
-    spaces = ()
-
-    for (k, component) in pairs(C.copulas)
-        p = _liebscher_component_space(component)
-        p === nothing && continue
-        spaces = (spaces..., Paramorph.Prefixed(Symbol("C", k), p))
-    end
-
-    for j in 1:d
-        _, p = _liebscher_weight_geometry(C.weights, j)
-        p === nothing && continue
-        spaces = (spaces..., p)
-    end
-
-    return spaces
 end
 
 _liebscher_natural_tuple(η::NamedTuple) = Tuple(values(η))
@@ -350,17 +330,26 @@ function _liebscher_initial_coordinates(C::LiebscherCopula{d}) where {d}
     for component in C.copulas
         p = _liebscher_component_space(component)
         p === nothing && continue
-        η = _liebscher_natural_tuple(Distributions.params(component))
-        append!(α, Paramorph.unconstrain(p, η))
+        append!(α, Paramorph.unconstrain(component))
     end
 
     for j in 1:d
         active, p = _liebscher_weight_geometry(C.weights, j)
         p === nothing && continue
-        append!(α, Paramorph.unconstrain(p, collect(@view C.weights[active, j])))
+        append!(α, Paramorph.TransformVariables.inverse(
+            p, collect(@view C.weights[active, j]),
+        ))
     end
 
-    expected = Paramorph.dimension(Paramorph.param_space(C))
+    component_dimension = sum(C.copulas; init=0) do component
+        p = _liebscher_component_space(component)
+        p === nothing ? 0 : Paramorph.intrinsic_dimension(component)
+    end
+    weight_dimension = sum(1:d; init=0) do j
+        _, p = _liebscher_weight_geometry(C.weights, j)
+        p === nothing ? 0 : Paramorph.TransformVariables.dimension(p)
+    end
+    expected = component_dimension + weight_dimension
     length(α) == expected || throw(DimensionMismatch(
         "Liebscher fitting coordinates have length $(length(α)); expected $expected"))
     all(isfinite, α) || throw(ArgumentError(
@@ -372,10 +361,10 @@ function _liebscher_component_from_coordinates(C::Copula{d}, α, i::Ref{Int}) wh
     p = _liebscher_component_space(C)
     p === nothing && return C
 
-    n = Paramorph.dimension(p)
+    n = Paramorph.intrinsic_dimension(C)
     β = @view α[i[]:(i[] + n - 1)]
     i[] += n
-    return _parameter_space_copula(typeof(C), Val(d), p, β)
+    return Paramorph.constraint(C, collect(β))
 end
 
 function _liebscher_weights_from_coordinates(W0::AbstractMatrix{<:Real}, α, i::Ref{Int})
@@ -390,8 +379,8 @@ function _liebscher_weights_from_coordinates(W0::AbstractMatrix{<:Real}, α, i::
             continue
         end
 
-        n = Paramorph.dimension(p)
-        η = Paramorph.constrain(p, @view α[i[]:(i[] + n - 1)])
+        n = Paramorph.TransformVariables.dimension(p)
+        η = Paramorph.TransformVariables.transform(p, @view α[i[]:(i[] + n - 1)])
         i[] += n
 
         for (r, k) in pairs(active)

@@ -362,7 +362,7 @@ node generator's dimensional validity at that node's local arity. It
 intentionally does **not** validate the mathematical nesting relation between
 parent and child generators. Expert users may therefore construct trees outside
 the built-in fitting geometry. Template fitting performs its own upfront
-validation by constructing a nesting-aware Paramorph parameter space.
+validation by constructing a nesting-aware Paramorph chart.
 
 # Density and precision
 
@@ -970,11 +970,11 @@ end
 #
 # The optimiser runs in UNCONSTRAINED reparameterised α-space, exactly like the
 # generic `_fit(::Type{<:Copula}, U, ::Val{:mle})` driver in Fitting.jl: each
-# generator's params are mapped to ℝ^p by the per-family `Paramorph.param_space`, `unconstrain` and `constrain`. This (a) keeps every individual generator inside its
+# generator's parameters are mapped to ℝ^p by their Paramorph schemas. This (a) keeps every individual generator inside its
 # own valid family domain at all times, and (b) needs no box-constraint machinery.
 #
 # NESTING VALIDITY: the DEFAULT template parametrisation uses a
-# `Paramorph.DependentProduct`. Supported parent-child inequalities are therefore
+# a sequential conditional chart. Supported parent-child inequalities are therefore
 # enforced by the coordinate map itself, while the public constructor remains
 # intentionally permissive about cross-node nesting theory. Custom `reparam`/`init`
 # maps remain user-defined and are responsible for the validity of the trees they
@@ -996,13 +996,8 @@ _gentype(G::Generator) = typeof(G).name.wrapper
 _local_arity(C::NestedArchimedeanCopula) =
     max(length(C.leafdims) + length(C.children), 2)
 
-_generator_space(G::Generator, dloc) =
-    Paramorph.param_space(_gentype(G), dloc)
-
 function _generator_parameter_values(G::Generator, dloc)
-    p = _generator_space(G, dloc)
-    return map(Paramorph.names(p)) do name
-        value = getproperty(G, name)
+    return map(values(Paramorph.parameter_values(G))) do value
         value isa AbstractArray ? copy(value) : value
     end
 end
@@ -1026,21 +1021,21 @@ end
 _nested_scalar_bounds(::InvGaussianGenerator, ::Int, ::Bool) = (0.0, nothing)
 _nested_scalar_bounds(::JoeGenerator, ::Int, ::Bool) = (1.0, nothing)
 
-function _nested_interval_space(name::Symbol, lower, upper)
+function _nested_interval_transform(lower, upper)
     if lower === nothing && upper === nothing
-        return Paramorph.Id(name)
+        return Paramorph.TransformVariables.asℝ
     elseif upper === nothing
-        return Paramorph.LowerClosed(name, lower)
+        return Paramorph.closed_lower(lower)
     elseif lower === nothing
         throw(ArgumentError("upper-only nested parameter domains are not implemented"))
     end
     lower < upper || throw(ArgumentError(
-        "nested fitting parameter $name has an empty or degenerate intrinsic interval [$lower, $upper]",
+        "nested fitting parameter has an empty or degenerate intrinsic interval [$lower, $upper]",
     ))
-    return Paramorph.Bounded(name, lower, upper)
+    return Paramorph.bounded_interval(lower, upper)
 end
 
-function _nested_standard_space(G::Generator, dloc::Int, name::Symbol; parent_role::Bool)
+function _nested_standard_transform(G::Generator, dloc::Int; parent_role::Bool)
     bounds = try
         _nested_scalar_bounds(G, dloc, parent_role)
     catch err
@@ -1050,88 +1045,13 @@ function _nested_standard_space(G::Generator, dloc::Int, name::Symbol; parent_ro
             "one-parameter generators; $(nameof(typeof(G))) is open for contributions",
         ))
     end
-    return _nested_interval_space(name, bounds...)
+    return _nested_interval_transform(bounds...)
 end
 
 function _nested_single_parameter_name(G::Generator, dloc::Int, tag::String)
-    nms = Paramorph.names(_generator_space(G, dloc))
+    nms = Paramorph.parameter_fields(typeof(G))
     length(nms) == 1 || return nothing
     return Symbol(tag, "_", only(nms))
-end
-
-function _nested_child_space(parent::Generator, child::Generator, dloc::Int,
-                             name, tag::String, parent_name; parent_role::Bool)
-    rule = _nested_fit_rule(parent, child)
-    rule === nothing && _unsupported_nested_fit_rule(parent, child)
-
-    if rule === :free
-        # An actual IndependentGenerator has no parameter of its own and imposes
-        # no cross-edge restriction. A flat child can therefore use any intrinsic
-        # Paramorph space; a child that is itself a parent must have one of the
-        # supported one-parameter nesting geometries for its outgoing edges.
-        if parent_role
-            name === nothing && _unsupported_nested_fit_rule(parent, child)
-            return _nested_standard_space(child, dloc, name; parent_role=true)
-        end
-        return Paramorph.Prefixed(Symbol(tag), _generator_space(child, dloc))
-    end
-
-    name === nothing && _unsupported_nested_fit_rule(parent, child)
-    parent_name === nothing && error("dependent nesting rule requires a parent parameter")
-    lower, upper = _nested_scalar_bounds(child, dloc, parent_role)
-
-    if rule === :greater
-        return Paramorph.GreaterThan(name, parent_name; lower, upper)
-    elseif rule === :lower
-        return Paramorph.LowerThan(name, parent_name; lower, upper)
-    elseif rule === :amh_clayton
-        # For a non-independent AMH parent the classical sufficient nesting rule
-        # is simply θ_child >= 1; because θ_parent < 1 this already implies the
-        # cross-edge ordering, so no dynamic reference is needed here.
-        lower = lower === nothing ? 1.0 : max(lower, 1.0)
-        return _nested_interval_space(name, lower, upper)
-    end
-    error("unknown nested fitting rule $rule")
-end
-
-function _push_nested_fit_spaces!(spaces, C::NestedArchimedeanCopula, tag::String;
-                                  parent=nothing, parent_name=nothing)
-    dloc = _local_arity(C)
-    current_name = _nested_single_parameter_name(C.G, dloc, tag)
-
-    if parent === nothing
-        if !(C.G isa IndependentGenerator)
-            current_name === nothing && throw(ArgumentError(
-                "template fitting a nested parent requires a supported one-parameter generator; " *
-                "$(nameof(typeof(C.G))) is open for contributions",
-            ))
-            push!(spaces, _nested_standard_space(C.G, dloc, current_name; parent_role=true))
-        end
-    else
-        push!(spaces, _nested_child_space(
-            parent, C.G, dloc, current_name, tag, parent_name; parent_role=true))
-    end
-
-    for (i, ch) in enumerate(C.children)
-        childtag = "$(tag)[$i]"
-        if ch isa Tuple
-            cc, ds = ch
-            cd = max(length(ds), 2)
-            cname = _nested_single_parameter_name(cc.G, cd, childtag)
-            push!(spaces, _nested_child_space(
-                C.G, cc.G, cd, cname, childtag, current_name; parent_role=false))
-        else
-            _push_nested_fit_spaces!(spaces, ch, childtag;
-                                     parent=C.G, parent_name=current_name)
-        end
-    end
-    return spaces
-end
-
-function Paramorph.param_space(C::NestedArchimedeanCopula)
-    spaces = Paramorph.AbstractParameterSpace[]
-    _push_nested_fit_spaces!(spaces, C, "G")
-    return Paramorph.DependentProduct(Tuple(spaces))
 end
 
 function _push_nested_parameter_values!(values, C::NestedArchimedeanCopula)
@@ -1153,49 +1073,78 @@ function _nested_parameter_values(C::NestedArchimedeanCopula)
     return Tuple(values)
 end
 
-function _generator_from_values(G::Generator, dloc, values, i::Ref{Int})
-    p = _generator_space(G, dloc)
-    n = length(Paramorph.names(p))
-    args = ntuple(k -> values[i[] + k - 1], n)
-    i[] += n
-    return _gentype(G)(args...)
+function _nested_edge_transform(parent, child, dloc::Int; parent_role::Bool)
+    lower, upper = _nested_scalar_bounds(child, dloc, parent_role)
+    parent === nothing && return _nested_interval_transform(lower, upper)
+    rule = _nested_fit_rule(parent, child)
+    rule === nothing && _unsupported_nested_fit_rule(parent, child)
+    parent_value = only(_generator_parameter_values(parent, 2))
+    if rule === :greater
+        lower = lower === nothing ? parent_value : max(lower, parent_value)
+    elseif rule === :lower
+        upper = upper === nothing ? parent_value : min(upper, parent_value)
+    elseif rule === :amh_clayton
+        lower = lower === nothing ? one(parent_value) : max(lower, one(parent_value))
+    elseif rule !== :free
+        error("unknown nested fitting rule $rule")
+    end
+    return _nested_interval_transform(lower, upper)
 end
 
-function _rebuild_node_from_values(C::NestedArchimedeanCopula, values, i::Ref{Int})
-    newG = _generator_from_values(C.G, _local_arity(C), values, i)
-    newkids = Any[]
-    for ch in C.children
-        if ch isa Tuple
-            cc, ds = ch
-            ng = _generator_from_values(cc.G, max(length(ds), 2), values, i)
-            push!(newkids, (ArchimedeanCopula(length(ds), ng), ds))
+function _nested_unbound_node!(coordinates, C::NestedArchimedeanCopula; parent=nothing)
+    if !(C.G isa IndependentGenerator)
+        transform = _nested_edge_transform(parent, C.G, _local_arity(C); parent_role=true)
+        push!(coordinates, Paramorph.TransformVariables.inverse(
+            transform, only(_generator_parameter_values(C.G, _local_arity(C))),
+        ))
+    end
+    for child in C.children
+        if child isa Tuple
+            copula, dims = child
+            transform = _nested_edge_transform(C.G, copula.G, max(length(dims), 2); parent_role=false)
+            push!(coordinates, Paramorph.TransformVariables.inverse(
+                transform, only(_generator_parameter_values(copula.G, max(length(dims), 2))),
+            ))
         else
-            push!(newkids, _rebuild_node_from_values(ch, values, i))
+            _nested_unbound_node!(coordinates, child; parent=C.G)
+        end
+    end
+    return coordinates
+end
+
+_nested_unbound(C::NestedArchimedeanCopula) = _nested_unbound_node!(Float64[], C)
+
+function _nested_rebound_node(C::NestedArchimedeanCopula, α, index::Ref{Int}; parent=nothing)
+    newG = if C.G isa IndependentGenerator
+        C.G
+    else
+        transform = _nested_edge_transform(parent, C.G, _local_arity(C); parent_role=true)
+        value = Paramorph.TransformVariables.transform(transform, α[index[]])
+        index[] += 1
+        _gentype(C.G)(value)
+    end
+    newchildren = Any[]
+    for child in C.children
+        if child isa Tuple
+            copula, dims = child
+            transform = _nested_edge_transform(newG, copula.G, max(length(dims), 2); parent_role=false)
+            value = Paramorph.TransformVariables.transform(transform, α[index[]])
+            index[] += 1
+            push!(newchildren, (ArchimedeanCopula(length(dims), _gentype(copula.G)(value)), dims))
+        else
+            push!(newchildren, _nested_rebound_node(child, α, index; parent=newG))
         end
     end
     return NestedArchimedeanCopula{length(C.dims),typeof(newG)}(
-        newG, copy(C.leafdims), newkids, copy(C.dims))
-end
-
-function _nested_from_coordinates(C::NestedArchimedeanCopula, p, α::AbstractVector)
-    values = Paramorph.constrain(p, α)
-    i = Ref(1)
-    rebuilt = _rebuild_node_from_values(C, values, i)
-    i[] == length(values) + 1 || error("nested parameter-space traversal mismatch")
-    return rebuilt
-end
-
-# Compatibility helpers for the existing template-fitting and validation hooks.
-# They no longer implement a coordinate system themselves: both delegate the
-# complete coordinate map to the tree's Paramorph product space.
-function _nested_unbound(C::NestedArchimedeanCopula)
-    p = Paramorph.param_space(C)
-    return Paramorph.unconstrain(p, _nested_parameter_values(C))
+        newG, copy(C.leafdims), newchildren, copy(C.dims),
+    )
 end
 
 function _nested_rebound(C::NestedArchimedeanCopula, α::AbstractVector)
-    p = Paramorph.param_space(C)
-    return _nested_from_coordinates(C, p, α)
+    index = Ref(1)
+    rebuilt = _nested_rebound_node(C, α, index)
+    index[] == length(α) + 1 || throw(DimensionMismatch("nested coordinate traversal mismatch"))
+    return rebuilt
 end
 
 # ---- Fitting-interface opt-out ----------------------------------------------
@@ -1300,10 +1249,9 @@ end
 # Both template and custom runtime fits expose the fitted generators' natural
 # parameters. Runtime optimizer coordinates remain fitting metadata only.
 function _nested_generator_coef(G::Generator, dloc::Int, tag::String)
-    p = _generator_space(G, dloc)
     names = String[]
     values = Float64[]
-    for name in Paramorph.names(p)
+    for name in Paramorph.parameter_fields(typeof(G))
         value = getproperty(G, name)
         value isa Number || continue
         push!(names, "$(tag).$(name)")

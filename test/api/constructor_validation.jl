@@ -45,8 +45,8 @@ struct _IncompleteCopula498{d} <: Copulas.Copula{d} end
         leaves=[1, 2], children=[ClaytonCopula{2}(2.0)])
     @test_throws ArgumentError AsymLogCopula(3, 1.5, 0.4, 0.6)
     @test_throws ArgumentError ExtremeValueCopula(1, Copulas.GalambosTail(0.7))
-    @test_throws ArgumentError RafteryCopula{3}(-1.5)
-    @test_throws ArgumentError RafteryCopula{2}(2.6)
+    @test_throws DomainError RafteryCopula{3}(-1.5)
+    @test_throws DomainError RafteryCopula{2}(2.6)
 end
 
 @testset "nested Archimedean constructor regressions" begin
@@ -130,7 +130,7 @@ end
     @test_throws ArgumentError GalambosCopula(2; banana=1.0)
 
     # `params` follows Distributions.jl's value-only tuple convention; names
-    # and constraints belong to `Paramorph.param_space`.
+    # and constraints belong to the structure's Paramorph schema.
     @test params(LogCopula{2}(2)) == (2.0,)
     @test params(MixedCopula{2}(1)) == (1.0,)
     @test params(HuslerReissCopula{2}(1)) == (1.0,)
@@ -183,7 +183,7 @@ end
     @test_throws ArgumentError Copulas.MOTail(
         3, [0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0])
     @test_throws ArgumentError Copulas.BC2Tail([0.2])
-    @test_throws ArgumentError Copulas.BC2Tail([0.2, 1.1])
+    @test_throws DomainError Copulas.BC2Tail([0.2, 1.1])
 end
 
 @testset "stable public validation semantics" begin
