@@ -33,8 +33,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.11'
-          - '1'
+          - '1.13'
         os:
           - ubuntu-latest
         arch:
@@ -49,13 +48,11 @@ jobs:
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
         with:
-          force_latest_compatible_version: ${{ matrix.version == '1.11' && 'false' || 'auto' }}
-          coverage: ${{ matrix.version == '1.11' }}
+          force_latest_compatible_version: auto
+          coverage: true
           optimize: 1
       - uses: julia-actions/julia-processcoverage@v1
-        if: matrix.version == '1.11'
       - uses: codecov/codecov-action@v7
-        if: matrix.version == '1.11'
         with:
           files: lcov.info
           name: julia-${{ matrix.version }}
