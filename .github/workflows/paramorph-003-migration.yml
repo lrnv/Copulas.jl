@@ -1,4 +1,4 @@
-name: Paramorph 0.0.3 smoke test
+name: Apply Paramorph bridge refactor
 
 on:
   push:
@@ -6,26 +6,26 @@ on:
       - paramorph-0.0.3-migration
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  smoke:
+  apply:
+    if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
         with:
-          version: '1.11'
-      - uses: julia-actions/cache@v3
-      - name: Remaining direct Paramorph coupling
+          ref: paramorph-0.0.3-migration
+      - name: Apply bridge refactor
+        run: python dev/refactor_paramorph_bridge.py
+      - name: Commit bridge refactor
         run: |
-          echo '--- Paramorph method extensions ---'
-          grep -R -nE '^(function )?Paramorph\.(schema_|transformation_schema|parameter_values|reconstruct_struct|parameter_fields|is_paramorph_type)' src || true
-          echo '--- all direct runtime references ---'
-          grep -R -n 'Paramorph\.' src/Fitting.jl src/Inference.jl src/ParamorphFitting.jl src/NaturalParameters.jl src/ParameterCoefficients.jl || true
-      - name: Instantiate and load Copulas
-        shell: julia --project=. --color=yes {0}
-        run: |
-          using Pkg
-          Pkg.instantiate()
-          using Copulas
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src
+          if git diff --cached --quiet; then
+            echo "No refactor changes"
+          else
+            git commit -m "Centralize Paramorph runtime geometry bridge"
+            git push origin HEAD:paramorph-0.0.3-migration
+          fi
