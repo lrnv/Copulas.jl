@@ -22,6 +22,21 @@ _parameter_dimension(object) = Paramorph.intrinsic_dimension(object)
 _parameter_coordinates(object) = Paramorph.unconstrain(object)
 _from_parameter_coordinates(object, α) = Paramorph.constraint(object, α)
 
+_declares_parameter_geometry(::Type{T}) where {T} = Paramorph.is_paramorph_type(T)
+_declared_parameter_values(object) =
+    _declares_parameter_geometry(typeof(object)) ? Paramorph.parameter_values(object) : nothing
+_declared_parameter_names(::Type{T}) where {T} =
+    _declares_parameter_geometry(T) ? Paramorph.parameter_fields(T) : nothing
+
+function _parameter_dimension_or_nothing(object)
+    try
+        return _parameter_dimension(object)
+    catch err
+        (err isa ArgumentError || err isa MethodError) || rethrow()
+        return nothing
+    end
+end
+
 function _component_prototype(
     T::Type, context::NamedTuple=NamedTuple(); auxiliary::NamedTuple=NamedTuple(),
 )

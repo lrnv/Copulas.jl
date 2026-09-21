@@ -2,8 +2,8 @@
 ##### Natural model coefficients
 ###############################################################################
 
-# Paramorph owns statistical dimension and optimization geometry. StatsBase
-# coefficients deliberately expose the fitted distribution's natural `params`
+# Parameter geometry owns statistical dimension and optimizer coordinates.
+# StatsBase coefficients deliberately expose the fitted distribution's natural `params`
 # representation instead, flattened mechanically without trying to remove
 # constraints or redundancies such as matrix symmetry or simplex sums.
 @inline function _parameter_prefix(prefix::String, part)
@@ -39,18 +39,12 @@ function _tuple_parameter_names(D, raw::Tuple)
         matches && return string.(props)
     end
 
-    values = try
-        Paramorph.parameter_values(D)
-    catch
-        nothing
-    end
+    values = _declared_parameter_values(D)
     values isa NamedTuple && length(values) == length(raw) &&
         return string.(keys(values))
 
-    if Paramorph.is_paramorph_type(typeof(D))
-        names = Paramorph.parameter_fields(typeof(D))
-        length(names) == length(raw) && return string.(names)
-    end
+    names = _declared_parameter_names(typeof(D))
+    names !== nothing && length(names) == length(raw) && return string.(names)
 
     return ["θ$(i)" for i in eachindex(raw)]
 end
@@ -120,11 +114,11 @@ end
 _promoted_parameter_values(values) =
     isempty(values) ? Float64[] : collect(promote(float.(values)...))
 
-# A component with a known zero-dimensional Paramorph schema has no statistical
+# A component with a known known zero-dimensional parameter geometry has no statistical
 # coefficients. This keeps empirical or purely structural state out of `coef`.
 function _has_natural_coefficients(D)
-    return !Paramorph.is_paramorph_type(typeof(D)) ||
-           !iszero(Paramorph.intrinsic_dimension(D))
+    dimension = _parameter_dimension_or_nothing(D)
+    return dimension === nothing || !iszero(dimension)
 end
 
 function _distribution_coefficients(D; prefix::String="")
@@ -159,7 +153,7 @@ _distribution_coefficients(C::NestedArchimedeanCopula; prefix::String="") =
 # Liebscher topology is also structural. Expose natural parameters only for
 # component charts that participate in template fitting and for the active
 # simplex weights. The displayed coefficient vector may therefore be longer
-# than the intrinsic Paramorph dimension because each simplex keeps all of its
+# than the intrinsic optimizer dimension because each simplex keeps all of its
 # natural weights while contributing one fewer fitting degree of freedom.
 function _distribution_coefficients(C::LiebscherCopula{d}; prefix::String="") where {d}
     names = String[]
@@ -211,27 +205,15 @@ function _parameter_blocks(M::CopulaModel{<:SklarDist})
 end
 
 function _distribution_dof(D)
-    return _has_specific_paramorph_schema(D) ?
-           Paramorph.intrinsic_dimension(D) :
-           length(_distribution_coefficient_values(D))
-end
-
-
-# Paramorph's Distributions extension supplies prototype-dependent schemas for
-# distributions with structural constructor arguments (for example Binomial's
-# fixed `n`) without claiming ownership of those external types through
-# `is_paramorph_type`. Detect such a specialization separately from
-# Paramorph's universal scalar fallback.
-function _has_specific_paramorph_schema(D)
-    Paramorph.is_paramorph_type(typeof(D)) && return true
-    method = which(Paramorph.transformation_schema, (typeof(D), NamedTuple))
-    return method.module !== Paramorph
+    dimension = _parameter_dimension_or_nothing(D)
+    return dimension === nothing ?
+           length(_distribution_coefficient_values(D)) : dimension
 end
 
 _distribution_dof(S::SklarDist) =
     _distribution_dof(S.C) + sum(_distribution_dof, S.m; init=0)
 
-# Paramorph is the single source of statistical dimension for ordinary
+# Declared parameter geometry is the source of statistical dimension for ordinary
 # parametric copulas and margins. The natural coefficient vector may be longer
 # because it deliberately retains constraints and redundant entries.
 StatsBase.dof(C::Copula) = _distribution_dof(C)

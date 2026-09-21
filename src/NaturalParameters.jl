@@ -2,19 +2,23 @@
 ##### Natural model parameter representations
 ###############################################################################
 
-# Paramorph names are the canonical logical names for ordinary parametric
+# Declared geometry supplies canonical logical names for ordinary parametric
 # components. Keep array-valued natural parameters independent of internal
 # storage so `params` behaves like the generic Copula implementation.
 @inline _copy_parameter_value(value) =
     value isa AbstractArray ? copy(value) : value
 
 function _named_parameter_values(component)
-    return map(values(Paramorph.parameter_values(component))) do value
+    declared = _declared_parameter_values(component)
+    declared === nothing && throw(ArgumentError(
+        "$(typeof(component)) does not declare parameter geometry",
+    ))
+    return map(values(declared)) do value
         _copy_parameter_value(value)
     end
 end
 
-# In-package univariate generator families use Paramorph as their canonical
+# In-package univariate generator families use their declared geometry as the canonical
 # natural parameter description. Structural generators and downstream custom
 # generators retain the explicit/fallback representations declared in
 # ArchimedeanCopula.jl.
@@ -31,19 +35,19 @@ function Distributions.params(
 end
 
 # Liouville exposes the generator's natural parameters followed by the positive
-# Dirichlet vector described by its Paramorph schema. A downstream generator that
+# Dirichlet vector described by its parameter geometry. A downstream generator that
 # does not implement Paramorph keeps the pre-existing structural representation.
 function Distributions.params(
     C::LiouvilleCopula{d,TG,Tα},
 ) where {d,TG<:Generator,Tα<:Real}
-    Paramorph.is_paramorph_type(TG) || return (C.G, C.α)
+    _declares_parameter_geometry(TG) || return (C.G, C.α)
     gvals = _named_parameter_values(C.G)
     return (gvals..., collect(C.α))
 end
 
 # Archimax natural parameters are the concatenation of the two component model
 # representations. Going through those public component `params` methods is
-# important for tails such as Tawn/AsymGalambos whose logical Paramorph names do
+# important for tails such as Tawn/AsymGalambos whose logical geometry names do
 # not correspond one-for-one to stored fields.
 function Distributions.params(
     C::ArchimaxCopula{d,TG,TT},
@@ -66,7 +70,7 @@ function Distributions.params(
 end
 
 # Empirical plug-in state is fitted state, not a statistical parameter. These
-# objects have a zero-dimensional Paramorph schema and expose the same
+# objects have a zero-dimensional fitted geometry and expose the same
 # zero-dimensional natural parameter representation.
 Distributions.params(::EmpiricalCopula{d,MT}) where {d,MT<:AbstractMatrix} = ()
 Distributions.params(::BetaCopula{d,MT}) where {d,MT<:AbstractMatrix} = ()
