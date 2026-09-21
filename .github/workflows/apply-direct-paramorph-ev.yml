@@ -1,0 +1,41 @@
+name: Apply direct Paramorph EV representations
+
+on:
+  push:
+    branches:
+      - paramorph-0.0.3-migration
+
+permissions:
+  contents: write
+
+jobs:
+  apply:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: paramorph-0.0.3-migration
+      - name: Fix migration script typo and apply
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          p = Path('dev/direct_paramorph_ev_variants.py')
+          text = p.read_text()
+          old = '''        R = T = typeof(ρf)\n        M = fill(T(ρf), 2, 2)\n        M[1, 1] = M[2, 2] = one(T)\n'''
+          new = '''        Tρ = typeof(ρf)\n        M = fill(Tρ(ρf), 2, 2)\n        M[1, 1] = M[2, 2] = one(Tρ)\n'''
+          assert old in text
+          p.write_text(text.replace(old, new, 1))
+          PY
+          python dev/direct_paramorph_ev_variants.py
+      - name: Commit source refactor
+        run: |
+          git config user.name github-actions[bot]
+          git config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git add src
+          if git diff --cached --quiet; then
+            echo "No changes"
+          else
+            git commit -m "Declare Hüsler-Reiss and extremal-t geometry directly"
+            git push origin HEAD:paramorph-0.0.3-migration
+          fi
