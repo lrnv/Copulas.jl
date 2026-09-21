@@ -53,101 +53,130 @@ References:
 """
 HuslerReissTail, HuslerReissCopula
 
-struct HuslerReissTail{P} <: OneParameterPickandsTail
-    θ::Union{Nothing,P}
-    Γ::Union{Nothing,P}
-    function HuslerReissTail(Γ::AbstractMatrix)
-        d1, d2 = size(Γ)
-        d1 == d2 || throw(DimensionMismatch("Γ must be square"))
-        d1 >= 2 || throw(ArgumentError("Γ must have dimension at least 2"))
-        G = Matrix{Float64}(Γ)
-        all(isfinite, G) || throw(ArgumentError("Γ must contain only finite entries"))
-        scale = max(1.0, maximum(abs, G))
-        tol = sqrt(eps(Float64)) * scale
-        isapprox(G, transpose(G); atol=tol, rtol=tol) || throw(ArgumentError("Γ must be symmetric"))
-        maximum(abs, LinearAlgebra.diag(G)) <= tol || throw(ArgumentError("Γ must have zero diagonal"))
-        G = 0.5 .* (G .+ transpose(G))
-        @inbounds for i in 1:d1
-            G[i, i] = 0.0
-        end
-        if !all(iszero, G)
-            @inbounds for i in 1:d1, j in i+1:d1
-                G[i, j] > 0.0 || throw(ArgumentError("Γ must have strictly positive off-diagonal entries"))
-            end
-            k = d1
-            J = 1:(d1 - 1)
-            Σ = [0.5 * (G[i, k] + G[j, k] - G[i, j]) for i in J, j in J]
-            try
-                LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ); check=true)
-            catch
-                throw(ArgumentError("Γ must be strictly conditionally negative definite"))
-            end
-        end
-        return new{Matrix{Float64}}(nothing, G)
-    end
-    function HuslerReissTail(θ::Real)
-        θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf, nothing)
-    end
+_hr_parameter_geometry(::Val{:exchangeable}, ::Int, ::Type{T}) where {T<:Real} =
+    Paramorph.nonnegative()
+_hr_parameter_geometry(::Val{:general}, d::Int, ::Type{T}) where {T<:Real} =
+    Paramorph.variogram_matrix(d)
+
+Paramorph.@paramorph T struct HuslerReissTail{d,R,T<:Real} <: OneParameterPickandsTail
+    parameter::Union{T,Matrix{T}} ~ _hr_parameter_geometry(Val(R), d, T)
 end
 
-Paramorph.@paramorph T struct _HuslerReissScalarGeometry{T<:Real}
-    θ::T ~ Paramorph.nonnegative()
-end
-
-Paramorph.@paramorph T struct _HuslerReissMatrixGeometry{T<:Real}
-    d::Int
-    Γ::Matrix{T} ~ Paramorph.variogram_matrix(d)
-end
-
-@inline _hr_is_independent(tail::HuslerReissTail{<:Real}) = iszero(something(tail.θ))
-@inline limit_kind(tail::HuslerReissTail{<:Real}, ::Val) =
-    iszero(something(tail.θ)) ? Π_LIMIT :
-    isinf(something(tail.θ)) ? M_LIMIT :
-    NO_LIMIT
-@inline limit_kind(tail::HuslerReissTail{<:AbstractMatrix}, ::Val) =
-    all(iszero, something(tail.Γ)) ? M_LIMIT : NO_LIMIT
-const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
-function (::Type{HuslerReissCopula{d}})(args...; kwargs...) where {d}
-    return _wrap_extreme_value(Val(d), HuslerReissTail(args...; kwargs...))
-end
-(::Type{HuslerReissCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), HuslerReissTail(args...; kwargs...))
-_is_valid_in_dim(::HuslerReissTail{<:Real}, d::Int) = d >= 2
-_is_valid_in_dim(tail::HuslerReissTail{<:AbstractMatrix}, d::Int) =
-    d == size(something(tail.Γ), 1)
-Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{<:Real}}) where {D} =
-    (something(C.tail.θ),)
-Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{<:AbstractMatrix}}) where {D} =
-    (copy(something(C.tail.Γ)),)
-
-_hr_theta(tail::HuslerReissTail{<:Real}) = something(tail.θ)
-_hr_theta(tail::HuslerReissTail{<:AbstractMatrix}) = 2 / sqrt(something(tail.Γ)[1, 2])
-function _hr_variogram(tail::HuslerReissTail{<:Real}, d::Int)
-    γ = abs2(2 / something(tail.θ))
+function _hr_exchangeable_variogram(d::Int, θ::Real)
+    d >= 2 || throw(ArgumentError("Hüsler-Reiss dimension must be at least two"))
+    γ = abs2(2 / θ)
     Γ = fill(float(γ), d, d)
     @inbounds for i in 1:d
         Γ[i, i] = zero(eltype(Γ))
     end
     return Γ
 end
-_hr_variogram(tail::HuslerReissTail{<:AbstractMatrix}, ::Int) = something(tail.Γ)
 
-HuslerReissCopula(Γ::AbstractMatrix) =
-    ExtremeValueCopula{size(Γ, 1)}(HuslerReissTail(Γ))
+function _hr_general_tail(::Val{d}, Γ::AbstractMatrix) where {d}
+    size(Γ) == (d, d) || throw(DimensionMismatch(
+        "variogram dimension $(size(Γ)) does not match d=$d",
+    ))
+    T = float(eltype(Γ))
+    G = Matrix{T}(Γ)
+    all(isfinite, G) || throw(ArgumentError("Γ must contain only finite entries"))
 
-function (::Type{HuslerReissCopula{d}})(Γ::AbstractMatrix) where {d}
-    size(Γ) == (d, d) || throw(DimensionMismatch("variogram dimension $(size(Γ)) does not match d=$d"))
-    tail = HuslerReissTail(Γ)
-    return _wrap_extreme_value(Val(d), tail)
+    # The zero variogram is the complete-dependence boundary.  Keep exact
+    # boundary points in the exchangeable chart; the general matrix chart is
+    # deliberately the strict variogram interior.
+    all(iszero, G) && return HuslerReissTail{d,:exchangeable,T}(T(Inf))
+
+    try
+        return HuslerReissTail{d,:general,T}(G)
+    catch err
+        (err isa DomainError || err isa LinearAlgebra.PosDefException) || rethrow()
+        throw(ArgumentError("Γ must be a strict Hüsler-Reiss variogram"))
+    end
 end
 
+function (::Type{HuslerReissTail{d}})(θ::Real) where {d}
+    d >= 2 || throw(ArgumentError("Hüsler-Reiss dimension must be at least two"))
+    θ < 0 && throw(ArgumentError("θ must be ≥ 0"))
+    θf = float(θ)
+
+    # In d=2 the scalar and general representations are the same one-dimensional
+    # model. Canonicalize interior scalar input to the general matrix geometry;
+    # retain the scalar chart only for exact limit points, where the strict
+    # variogram chart has no finite matrix representative.
+    if d == 2 && isfinite(θf) && !iszero(θf)
+        return _hr_general_tail(Val(d), _hr_exchangeable_variogram(d, θf))
+    end
+    return HuslerReissTail{d,:exchangeable,typeof(θf)}(θf)
+end
+HuslerReissTail(θ::Real) = HuslerReissTail{2}(θ)
+
+(::Type{HuslerReissTail{d}})(Γ::AbstractMatrix) where {d} =
+    _hr_general_tail(Val(d), Γ)
+HuslerReissTail(Γ::AbstractMatrix) =
+    HuslerReissTail{size(Γ, 1)}(Γ)
+
+@inline _hr_representation(::HuslerReissTail{d,R}) where {d,R} = R
+@inline _hr_is_independent(tail::HuslerReissTail) =
+    _hr_representation(tail) === :exchangeable && iszero(tail.parameter)
+@inline function limit_kind(tail::HuslerReissTail, ::Val)
+    _hr_representation(tail) === :general && return NO_LIMIT
+    iszero(tail.parameter) && return Π_LIMIT
+    isinf(tail.parameter) && return M_LIMIT
+    return NO_LIMIT
+end
+
+const HuslerReissCopula{d,R,T} = ExtremeValueCopula{d,HuslerReissTail{d,R,T}}
+
+function (::Type{HuslerReissCopula{d}})(θ::Real) where {d}
+    return _wrap_extreme_value(Val(d), HuslerReissTail{d}(θ))
+end
+(::Type{HuslerReissCopula})(d::Int, θ::Real) =
+    _wrap_extreme_value(Val(d), HuslerReissTail{d}(θ))
+
+function (::Type{HuslerReissCopula{d}})(Γ::AbstractMatrix) where {d}
+    return _wrap_extreme_value(Val(d), HuslerReissTail{d}(Γ))
+end
+HuslerReissCopula(Γ::AbstractMatrix) =
+    _wrap_extreme_value(Val(size(Γ, 1)), HuslerReissTail(Γ))
+function (::Type{HuslerReissCopula})(d::Int, Γ::AbstractMatrix)
+    # Infer the tail's own dimension first so the runtime-dimension form keeps
+    # ExtremeValueCopula's ArgumentError contract on a mismatch.
+    return _wrap_extreme_value(Val(d), HuslerReissTail(Γ))
+end
+
+_is_valid_in_dim(::HuslerReissTail{D}, d::Int) where {D} = D == d
+
+_hr_theta(tail::HuslerReissTail{D,:exchangeable}) where {D} = tail.parameter
+_hr_theta(tail::HuslerReissTail{D,:general}) where {D} =
+    2 / sqrt(tail.parameter[1, 2])
+function _hr_variogram(tail::HuslerReissTail{D,:exchangeable}, d::Int) where {D}
+    D == d || throw(DimensionMismatch("tail dimension $D does not match d=$d"))
+    return _hr_exchangeable_variogram(d, tail.parameter)
+end
+_hr_variogram(tail::HuslerReissTail{D,:general}, d::Int) where {D} = begin
+    D == d || throw(DimensionMismatch("tail dimension $D does not match d=$d"))
+    tail.parameter
+end
+
+# Keep the public natural parameter convention stable: bivariate Hüsler-Reiss
+# is exposed by its scalar θ even though the interior is stored in the general
+# 2×2 variogram representation.
+Distributions.params(C::ExtremeValueCopula{2,<:HuslerReissTail}) =
+    (_hr_theta(C.tail),)
+Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{D,:exchangeable}}) where {D} =
+    (C.tail.parameter,)
+Distributions.params(C::ExtremeValueCopula{D,<:HuslerReissTail{D,:general}}) where {D} =
+    (copy(C.tail.parameter),)
+
+_tail_constructor_parameter_names(::Type{<:HuslerReissTail{2}}, _) = (:θ,)
+_tail_constructor_parameter_names(::Type{<:HuslerReissTail{D,:exchangeable}}, _) where {D} = (:θ,)
+_tail_constructor_parameter_names(::Type{<:HuslerReissTail{D,:general}}, _) where {D} = (:Γ,)
+
+# General d>2 variograms remain construction/evaluation objects rather than a
+# default fitted family. In d=2 the general chart is one-dimensional and is the
+# canonical representation of the ordinary Hüsler-Reiss family.
 _available_fitting_methods(
-    ::Type{<:ExtremeValueCopula{D,<:HuslerReissTail{<:AbstractMatrix}} where D},
-    d,
-) = ()
-_tail_constructor_parameter_names(::Type{<:HuslerReissTail}, kwkeys) =
-    :Γ in kwkeys ? (:Γ,) : (:θ,)
+    ::Type{<:ExtremeValueCopula{D,<:HuslerReissTail{D,:general}} where D}, d,
+) = d == 2 ? (:mle, :itau, :irho, :ibeta, :iupper) : ()
 
 function A(tail::HuslerReissTail, t::Real)
     tt = _safett(t)
@@ -213,8 +242,8 @@ function _hr_stdf(Γ::AbstractMatrix, x)
     return Float64(scale) * out
 end
 
-function ℓ(tail::HuslerReissTail{<:Real}, x)
-    θ = something(tail.θ)
+function ℓ(tail::HuslerReissTail{D,:exchangeable}, x) where {D}
+    θ = tail.parameter
     d = length(x)
 
     # Keep the historical bivariate route AD-friendly. The general
@@ -258,7 +287,7 @@ function _hr_anchor_covariance(Γ::AbstractMatrix, k::Int)
 end
 
 function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
-    if tail isa HuslerReissTail{<:Real} && _hr_is_independent(tail)
+    if _hr_is_independent(tail)
         isempty(I) && return 1, log(float(sum(x)))
         length(I) == 1 && return 1, zero(float(first(x)))
         return 0, oftype(float(first(x)), -Inf)
@@ -274,7 +303,8 @@ function _ellpartial_signlog(tail::HuslerReissTail, x, I::Tuple{Vararg{Int}})
         length(active) == 1 && return length(I) == 1 ? (1, 0.0) : (0, -Inf)
         positions = Dict(i => k for (k, i) in pairs(active))
         reduced_I = Tuple(positions[i] for i in I)
-        reduced_tail = tail isa HuslerReissTail{<:Real} ? tail :
+        reduced_tail = _hr_representation(tail) === :exchangeable ?
+                       HuslerReissTail{length(active)}(_hr_theta(tail)) :
                        HuslerReissTail(Γ[active, active])
         return _ellpartial_signlog(reduced_tail, x[active], reduced_I)
     end
@@ -407,8 +437,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     end
 end
 
-ℓ(tail::HuslerReissTail{<:AbstractMatrix}, x) =
-    all(iszero, something(tail.Γ)) ? maximum(x) : _hr_stdf(something(tail.Γ), x)
+ℓ(tail::HuslerReissTail{D,:general}, x) where {D} =
+    _hr_stdf(tail.parameter, x)
 
 function dA(tail::HuslerReissTail, t::Real)
     θ = _hr_theta(tail)

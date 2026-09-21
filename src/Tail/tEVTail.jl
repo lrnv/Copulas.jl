@@ -54,99 +54,119 @@ References:
 """
 tEVTail, tEVCopula
 
-struct tEVTail{T,P} <: BivariatePickandsTail
-    ν::T
-    ρ::Union{Nothing,P}
-    R::Union{Nothing,P}
-    function tEVTail(ν::Real, ρ::Real)
-        (ν > 0) || throw(ArgumentError("ν must be > 0"))
-        (-1 < ρ ≤ 1) || throw(ArgumentError("ρ must be in (-1,1]"))
-        νT, ρT = promote(float(ν), float(ρ))
-        return new{typeof(νT),typeof(ρT)}(νT, ρT, nothing)
-    end
-    function tEVTail(ν::Real, R::AbstractMatrix)
-        ν > 0 || throw(ArgumentError("ν must be > 0"))
-        d1, d2 = size(R)
-        d1 == d2 || throw(DimensionMismatch("R must be square"))
-        d1 >= 2 || throw(ArgumentError("R must have dimension at least 2"))
-        RF = Matrix{Float64}(R)
-        all(isfinite, RF) || throw(ArgumentError("R must contain only finite entries"))
-        scale = max(1.0, maximum(abs, RF))
-        tol = sqrt(eps(Float64)) * scale
-        maximum(abs, RF - transpose(RF)) <= tol || throw(ArgumentError("R must be symmetric"))
-        @inbounds for i in 1:d1
-            abs(RF[i, i] - 1.0) <= tol || throw(ArgumentError("R must have unit diagonal"))
-            RF[i, i] = 1.0
-        end
-        RF = Matrix(LinearAlgebra.Symmetric((RF + transpose(RF)) / 2))
-        if !all(isone, RF)
-            try
-                LinearAlgebra.cholesky(LinearAlgebra.Symmetric(RF); check=true)
-            catch
-                throw(ArgumentError("R must be strictly positive definite"))
-            end
-        end
+_tev_parameter_geometry(::Val{:exchangeable}, d::Int, ::Type{T}) where {T<:Real} =
+    Paramorph.bounded_interval(-inv(T(d - 1)), one(T); left_closed=false)
+_tev_parameter_geometry(::Val{:general}, d::Int, ::Type{T}) where {T<:Real} =
+    Paramorph.correlation_matrix(d)
 
-        νf = float(ν)
-        return new{typeof(νf),typeof(RF)}(νf, nothing, RF)
+Paramorph.@paramorph T struct tEVTail{d,R,T<:Real} <: BivariatePickandsTail
+    ν::T ~ Paramorph.open_lower(zero(T))
+    parameter::Union{T,Matrix{T}} ~ _tev_parameter_geometry(Val(R), d, T)
+end
+
+function _tev_general_tail(::Val{d}, ν::Real, R::AbstractMatrix) where {d}
+    size(R) == (d, d) || throw(ArgumentError(
+        "correlation matrix dimension $(size(R)) does not match d=$d",
+    ))
+    νf = float(ν)
+    νf > 0 || throw(ArgumentError("ν must be > 0"))
+    T = promote_type(typeof(νf), float(eltype(R)))
+    RF = Matrix{T}(R)
+    all(isfinite, RF) || throw(ArgumentError("R must contain only finite entries"))
+
+    # The all-ones matrix is the complete-dependence boundary and is represented
+    # exactly by the exchangeable scalar chart. The general correlation chart is
+    # the strict positive-definite interior.
+    if all(isone, RF)
+        return tEVTail{d,:exchangeable,T}(T(νf), one(T))
+    end
+
+    try
+        return tEVTail{d,:general,T}(T(νf), RF)
+    catch err
+        (err isa DomainError || err isa LinearAlgebra.PosDefException) || rethrow()
+        throw(ArgumentError("R must be a strict correlation matrix"))
     end
 end
 
-Paramorph.@paramorph T struct _tEVScalarGeometry{T<:Real}
-    ν::T ~ Paramorph.TransformVariables.asℝ₊
-    ρ::T ~ Paramorph.bounded_interval(
-        -inv(get(context, :dimension, 2) - 1), one(T); left_closed=false,
-    )
-end
-
-Paramorph.@paramorph T struct _tEVMatrixGeometry{T<:Real}
-    d::Int
-    ν::T ~ Paramorph.TransformVariables.asℝ₊
-    R::Matrix{T} ~ Paramorph.correlation_matrix(d)
-end
-
-@inline limit_kind(tail::tEVTail{<:Any,<:Real}, ::Val) =
-    isone(something(tail.ρ)) ? M_LIMIT : NO_LIMIT
-@inline limit_kind(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Val) =
-    all(isone, something(tail.R)) ? M_LIMIT : NO_LIMIT
-const tEVCopula{d,T,P} = ExtremeValueCopula{d,tEVTail{T,P}}
-function (::Type{tEVCopula{d}})(args...; kwargs...) where {d}
-    return _wrap_extreme_value(Val(d), tEVTail(args...; kwargs...))
-end
-(::Type{tEVCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), tEVTail(args...; kwargs...))
-_is_valid_in_dim(tail::tEVTail{<:Any,<:Real}, d::Int) =
-    d >= 2 && something(tail.ρ) > -inv(d - 1)
-_is_valid_in_dim(tail::tEVTail{<:Any,<:AbstractMatrix}, d::Int) =
-    d == size(something(tail.R), 1)
-
-Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{<:Any,<:Real}}) where {D} =
-    (C.tail.ν, something(C.tail.ρ))
-Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{<:Any,<:AbstractMatrix}}) where {D} =
-    (C.tail.ν, copy(something(C.tail.R)))
-
-_tail_constructor_parameter_names(::Type{<:tEVTail}, kwkeys) = :R in kwkeys ? (:ν, :R) : (:ν, :ρ)
-
-_available_fitting_methods(
-    ::Type{<:ExtremeValueCopula{D,<:tEVTail{<:Any,<:AbstractMatrix}} where D},
-    d,
-) = ()
-
-_tev_rho(tail::tEVTail{<:Any,<:Real}) = something(tail.ρ)
-_tev_rho(tail::tEVTail{<:Any,<:AbstractMatrix}) = something(tail.R)[1, 2]
-function _tev_correlation(tail::tEVTail{<:Any,<:Real}, d::Int)
-    d >= 2 || throw(ArgumentError("dimension must be at least 2"))
-    ρ = something(tail.ρ)
+function (::Type{tEVTail{d}})(ν::Real, ρ::Real) where {d}
+    d >= 2 || throw(ArgumentError("extremal-t dimension must be at least two"))
+    νf, ρf = promote(float(ν), float(ρ))
+    νf > 0 || throw(ArgumentError("ν must be > 0"))
     lower = -inv(d - 1)
-    ρ > lower || throw(ArgumentError("equicorrelation ρ must satisfy ρ > -1/(d-1) in dimension d=$d"))
-    ρ < 1 || throw(ArgumentError("the non-degenerate equicorrelation representation requires ρ < 1"))
+    ρf > lower || throw(ArgumentError("equicorrelation ρ must satisfy ρ > -1/(d-1) in dimension d=$d"))
+    ρf <= 1 || throw(ArgumentError("ρ must be ≤ 1"))
 
-    R = fill(Float64(ρ), d, d)
+    # In d=2 every correlation matrix is exchangeable, so interior scalar input
+    # is canonicalized to the general matrix representation. Keep ρ=1 in the
+    # scalar chart because the general chart is intentionally strict SPD.
+    if d == 2 && ρf < 1
+        Tρ = typeof(ρf)
+        M = fill(Tρ(ρf), 2, 2)
+        M[1, 1] = M[2, 2] = one(Tρ)
+        return _tev_general_tail(Val(2), νf, M)
+    end
+    T = typeof(νf + ρf)
+    return tEVTail{d,:exchangeable,T}(T(νf), T(ρf))
+end
+tEVTail(ν::Real, ρ::Real) = tEVTail{2}(ν, ρ)
+
+(::Type{tEVTail{d}})(ν::Real, R::AbstractMatrix) where {d} =
+    _tev_general_tail(Val(d), ν, R)
+tEVTail(ν::Real, R::AbstractMatrix) =
+    tEVTail{size(R, 1)}(ν, R)
+
+@inline _tev_representation(::tEVTail{d,R}) where {d,R} = R
+@inline function limit_kind(tail::tEVTail, ::Val)
+    _tev_representation(tail) === :exchangeable && isone(tail.parameter) ? M_LIMIT : NO_LIMIT
+end
+
+const tEVCopula{d,R,T} = ExtremeValueCopula{d,tEVTail{d,R,T}}
+function (::Type{tEVCopula{d}})(ν::Real, ρ::Real) where {d}
+    return _wrap_extreme_value(Val(d), tEVTail{d}(ν, ρ))
+end
+(::Type{tEVCopula})(d::Int, ν::Real, ρ::Real) =
+    _wrap_extreme_value(Val(d), tEVTail{d}(ν, ρ))
+function (::Type{tEVCopula{d}})(ν::Real, R::AbstractMatrix) where {d}
+    return _wrap_extreme_value(Val(d), tEVTail{d}(ν, R))
+end
+function (::Type{tEVCopula})(d::Int, ν::Real, R::AbstractMatrix)
+    return _wrap_extreme_value(Val(d), tEVTail(ν, R))
+end
+
+_is_valid_in_dim(::tEVTail{D}, d::Int) where {D} = D == d
+
+_tev_rho(tail::tEVTail{D,:exchangeable}) where {D} = tail.parameter
+_tev_rho(tail::tEVTail{D,:general}) where {D} = tail.parameter[1, 2]
+function _tev_correlation(tail::tEVTail{D,:exchangeable}, d::Int) where {D}
+    D == d || throw(DimensionMismatch("tail dimension $D does not match d=$d"))
+    ρ = tail.parameter
+    R = fill(float(ρ), d, d)
     @inbounds for i in 1:d
-        R[i, i] = 1.0
+        R[i, i] = one(eltype(R))
     end
     return R
 end
-_tev_correlation(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Int) = something(tail.R)
+_tev_correlation(tail::tEVTail{D,:general}, d::Int) where {D} = begin
+    D == d || throw(DimensionMismatch("tail dimension $D does not match d=$d"))
+    tail.parameter
+end
+
+# Preserve the public natural representation while canonicalizing d=2 storage.
+Distributions.params(C::ExtremeValueCopula{2,<:tEVTail}) =
+    (C.tail.ν, _tev_rho(C.tail))
+Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{D,:exchangeable}}) where {D} =
+    (C.tail.ν, C.tail.parameter)
+Distributions.params(C::ExtremeValueCopula{D,<:tEVTail{D,:general}}) where {D} =
+    (C.tail.ν, copy(C.tail.parameter))
+
+_tail_constructor_parameter_names(::Type{<:tEVTail{2}}, _) = (:ν, :ρ)
+_tail_constructor_parameter_names(::Type{<:tEVTail{D,:exchangeable}}, _) where {D} = (:ν, :ρ)
+_tail_constructor_parameter_names(::Type{<:tEVTail{D,:general}}, _) where {D} = (:ν, :R)
+
+_available_fitting_methods(
+    ::Type{<:ExtremeValueCopula{D,<:tEVTail{D,:general}} where D}, d,
+) = d == 2 ? (:mle,) : ()
 
 function _tev_stdf(ν::Real, R::AbstractMatrix, x)
     d = length(x)
@@ -184,8 +204,8 @@ function _tev_stdf(ν::Real, R::AbstractMatrix, x)
     return scale * total
 end
 
-function ℓ(tail::tEVTail{<:Any,<:Real}, x)
-    isone(something(tail.ρ)) && return maximum(x)
+function ℓ(tail::tEVTail{D,:exchangeable}, x) where {D}
+    isone(tail.parameter) && return maximum(x)
     d = length(x)
 
     # Preserve the historical closed bivariate route. It is analytic,
@@ -337,8 +357,8 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCop
     end
 end
 
-ℓ(tail::tEVTail{<:Any,<:AbstractMatrix}, x) =
-    all(isone, something(tail.R)) ? maximum(x) : _tev_stdf(tail.ν, something(tail.R), x)
+ℓ(tail::tEVTail{D,:general}, x) where {D} =
+    _tev_stdf(tail.ν, tail.parameter, x)
 
 function A(tail::tEVTail, t::Real)
     ρ, ν = _tev_rho(tail), tail.ν

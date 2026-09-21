@@ -81,16 +81,24 @@ function _tail_prototype(TT::Type, ::Val{d}) where {d}
     )
 end
 
-function _tail_prototype(::Type{<:HuslerReissTail}, ::Val{d}) where {d}
-    geometry = _component_prototype(_HuslerReissScalarGeometry{Float64})
-    return HuslerReissTail(geometry.θ)
+function _tail_prototype(TT::Type{<:HuslerReissTail}, ::Val{d}) where {d}
+    U = Base.unwrap_unionall(TT)
+    encoded_d, encoded_rep = U.parameters[1], U.parameters[2]
+    rep = encoded_rep isa TypeVar ? (d == 2 ? :general : :exchangeable) : encoded_rep
+    encoded_d isa TypeVar || encoded_d == d || throw(DimensionMismatch(
+        "Hüsler-Reiss tail dimension $encoded_d does not match d=$d",
+    ))
+    return _component_prototype(HuslerReissTail{d,rep,Float64}, (; dimension=d))
 end
 
-function _tail_prototype(::Type{<:tEVTail}, ::Val{d}) where {d}
-    geometry = _component_prototype(
-        _tEVScalarGeometry{Float64}, (; dimension=d),
-    )
-    return tEVTail(geometry.ν, geometry.ρ)
+function _tail_prototype(TT::Type{<:tEVTail}, ::Val{d}) where {d}
+    U = Base.unwrap_unionall(TT)
+    encoded_d, encoded_rep = U.parameters[1], U.parameters[2]
+    rep = encoded_rep isa TypeVar ? (d == 2 ? :general : :exchangeable) : encoded_rep
+    encoded_d isa TypeVar || encoded_d == d || throw(DimensionMismatch(
+        "extremal-t tail dimension $encoded_d does not match d=$d",
+    ))
+    return _component_prototype(tEVTail{d,rep,Float64}, (; dimension=d))
 end
 
 function _parameter_prototype(CT::Type{<:ExtremeValueCopula}, vd::Val{d}) where {d}
@@ -180,38 +188,3 @@ function _from_parameter_coordinates(C::LiouvilleCopula{d}, α) where {d}
     )
     return LiouvilleCopula{d}(G, Tuple(values.α))
 end
-
-# Representation variants use private @paramorph geometry objects. The domain
-# tails keep their constructor/storage invariants while every optimizer
-# constraint remains declarative.
-_hr_geometry(tail::HuslerReissTail{<:Real}) =
-    _HuslerReissScalarGeometry(something(tail.θ))
-function _hr_geometry(tail::HuslerReissTail{<:AbstractMatrix})
-    Γ = something(tail.Γ)
-    return _HuslerReissMatrixGeometry(size(Γ, 1), Matrix(Γ))
-end
-_hr_tail(g::_HuslerReissScalarGeometry) = HuslerReissTail(g.θ)
-_hr_tail(g::_HuslerReissMatrixGeometry) = HuslerReissTail(g.Γ)
-
-_parameter_dimension(tail::HuslerReissTail, ::Val) =
-    Paramorph.intrinsic_dimension(_hr_geometry(tail))
-_parameter_coordinates(tail::HuslerReissTail, ::Val) =
-    Paramorph.unconstrain(_hr_geometry(tail))
-_from_parameter_coordinates(tail::HuslerReissTail, α, ::Val) =
-    _hr_tail(Paramorph.constraint(_hr_geometry(tail), α))
-
-_tev_geometry(tail::tEVTail{<:Any,<:Real}, d) =
-    _tEVScalarGeometry(tail.ν, something(tail.ρ))
-function _tev_geometry(tail::tEVTail{<:Any,<:AbstractMatrix}, d)
-    R = something(tail.R)
-    return _tEVMatrixGeometry(size(R, 1), tail.ν, Matrix(R))
-end
-_tev_tail(g::_tEVScalarGeometry) = tEVTail(g.ν, g.ρ)
-_tev_tail(g::_tEVMatrixGeometry) = tEVTail(g.ν, g.R)
-
-_parameter_dimension(tail::tEVTail, ::Val{d}) where {d} =
-    Paramorph.intrinsic_dimension(_tev_geometry(tail, d); context=(; dimension=d))
-_parameter_coordinates(tail::tEVTail, ::Val{d}) where {d} =
-    Paramorph.unconstrain(_tev_geometry(tail, d); context=(; dimension=d))
-_from_parameter_coordinates(tail::tEVTail, α, ::Val{d}) where {d} =
-    _tev_tail(Paramorph.constraint(_tev_geometry(tail, d), α; context=(; dimension=d)))
