@@ -31,6 +31,10 @@ Paramorph.@paramorph T struct FrankGenerator{T<:Real} <: AbstractUnivariateGener
 end
 FrankGenerator(θ::Integer) = FrankGenerator(float(θ))
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
+function (::Type{FrankCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), FrankGenerator(args...; kwargs...))
+end
+(::Type{FrankCopula})(d::Int, args...; kwargs...) = FrankCopula{d}(args...; kwargs...)
 @inline function limit_kind(G::FrankGenerator, ::Val{d}) where {d}
     G.θ == Inf && return M_LIMIT
     d == 2 && G.θ == -Inf && return W_LIMIT

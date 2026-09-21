@@ -34,6 +34,10 @@ function BB1Generator(θ::Real, δ::Real)
     return BB1Generator{T}(T(θ), T(δ))
 end
 const BB1Copula{d, T} = ArchimedeanCopula{d, BB1Generator{T}}
+function (::Type{BB1Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB1Generator(args...; kwargs...))
+end
+(::Type{BB1Copula})(d::Int, args...; kwargs...) = BB1Copula{d}(args...; kwargs...)
 @inline limit_kind(G::BB1Generator, ::Val) =
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
 

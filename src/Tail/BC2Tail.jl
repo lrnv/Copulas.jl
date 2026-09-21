@@ -91,6 +91,10 @@ Base.getproperty(tail::BC2Tail, name::Symbol) =
     name === :spectral ? _spectral_tail(tail) : getfield(tail, name)
 
 const BC2Copula{d,T} = ExtremeValueCopula{d, BC2Tail{T}}
+function (::Type{BC2Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), BC2Tail(args...; kwargs...))
+end
+(::Type{BC2Copula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), BC2Tail(args...; kwargs...))
 
 BC2Tail(a, b) = BC2Tail([a, b])
 

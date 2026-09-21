@@ -158,6 +158,10 @@ nonempty subset. `TawnCopula{d}(α, weights)` is the convenience model with one
 full-set logistic component plus singleton remainders.
 """
 const TawnCopula{d,T} = ExtremeValueCopula{d,TawnTail{T}}
+function (::Type{TawnCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), TawnTail(args...; kwargs...))
+end
+(::Type{TawnCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), TawnTail(args...; kwargs...))
 
 # Canonical runtime-dimension constructor used by generic Paramorph fitting of
 # an explicitly dimensioned family type.

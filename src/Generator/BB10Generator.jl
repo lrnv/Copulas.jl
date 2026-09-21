@@ -32,6 +32,10 @@ function BB10Generator(θ::Real, δ::Real)
     return BB10Generator{T}(T(θ), T(δ))
 end
 const BB10Copula{d, T} = ArchimedeanCopula{d, BB10Generator{T}}
+function (::Type{BB10Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB10Generator(args...; kwargs...))
+end
+(::Type{BB10Copula})(d::Int, args...; kwargs...) = BB10Copula{d}(args...; kwargs...)
 
 @inline limit_kind(G::BB10Generator, ::Val) = iszero(G.δ) ? Π_LIMIT : NO_LIMIT
 

@@ -33,6 +33,10 @@ Paramorph.@paramorph T struct GumbelBarnettGenerator{T<:Real} <: AbstractUnivari
 end
 GumbelBarnettGenerator(θ::Integer) = GumbelBarnettGenerator(float(θ))
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
+function (::Type{GumbelBarnettCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), GumbelBarnettGenerator(args...; kwargs...))
+end
+(::Type{GumbelBarnettCopula})(d::Int, args...; kwargs...) = GumbelBarnettCopula{d}(args...; kwargs...)
 
 function _find_critical_value_gumbelbarnett(d::Integer)
     d == 2 && return 1.0

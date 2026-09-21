@@ -36,6 +36,10 @@ function BB6Generator(θ::Real, δ::Real)
 end
 
 const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
+function (::Type{BB6Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB6Generator(args...; kwargs...))
+end
+(::Type{BB6Copula})(d::Int, args...; kwargs...) = BB6Copula{d}(args...; kwargs...)
 @inline limit_kind(G::BB6Generator, ::Val) =
     isone(G.θ) && isone(G.δ) ? Π_LIMIT :
     (isinf(G.θ) || isinf(G.δ)) ? M_LIMIT :

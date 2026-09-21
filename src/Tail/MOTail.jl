@@ -117,6 +117,10 @@ Base.getproperty(tail::MOTail, name::Symbol) =
     name === :spectral ? _spectral_tail(tail) : getfield(tail, name)
 
 const MOCopula{d,T} = ExtremeValueCopula{d, MOTail{T}}
+function (::Type{MOCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), MOTail(args...; kwargs...))
+end
+(::Type{MOCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), MOTail(args...; kwargs...))
 
 # The historical bivariate API names the private shocks in the opposite order
 # from the subset ordering ([1], [2], [1,2]) used by the general model.

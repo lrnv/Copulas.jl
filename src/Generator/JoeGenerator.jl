@@ -30,6 +30,10 @@ Paramorph.@paramorph T struct JoeGenerator{T<:Real} <: AbstractUnivariateFrailty
 end
 JoeGenerator(θ::Integer) = JoeGenerator(float(θ))
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
+function (::Type{JoeCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), JoeGenerator(args...; kwargs...))
+end
+(::Type{JoeCopula})(d::Int, args...; kwargs...) = JoeCopula{d}(args...; kwargs...)
 @inline limit_kind(G::JoeGenerator, ::Val) =
     isone(G.θ) ? Π_LIMIT :
     isinf(G.θ) ? M_LIMIT : NO_LIMIT

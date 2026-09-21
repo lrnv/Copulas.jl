@@ -49,6 +49,10 @@ GalambosTail(θ::Integer) = GalambosTail(float(θ))
     NO_LIMIT
 
 const GalambosCopula{d,T} = ExtremeValueCopula{d, GalambosTail{T}}
+function (::Type{GalambosCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), GalambosTail(args...; kwargs...))
+end
+(::Type{GalambosCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), GalambosTail(args...; kwargs...))
 _is_valid_in_dim(::GalambosTail, d::Int) = d >= 2
 
 function ℓ(tail::GalambosTail, x)

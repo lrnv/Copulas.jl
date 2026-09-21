@@ -34,6 +34,10 @@ Paramorph.@paramorph T struct ClaytonGenerator{T<:Real} <: AbstractUnivariateGen
 end
 ClaytonGenerator(θ::Integer) = ClaytonGenerator(float(θ))
 const ClaytonCopula{d, T} = ArchimedeanCopula{d, ClaytonGenerator{T}}
+function (::Type{ClaytonCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), ClaytonGenerator(args...; kwargs...))
+end
+(::Type{ClaytonCopula})(d::Int, args...; kwargs...) = ClaytonCopula{d}(args...; kwargs...)
 @inline function limit_kind(G::ClaytonGenerator, ::Val{d}) where {d}
     iszero(G.θ) && return Π_LIMIT
     isinf(G.θ) && return M_LIMIT

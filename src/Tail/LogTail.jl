@@ -44,6 +44,10 @@ LogTail(θ::Integer) = LogTail(float(θ))
     NO_LIMIT
 
 const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
+function (::Type{LogCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), LogTail(args...; kwargs...))
+end
+(::Type{LogCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), LogTail(args...; kwargs...))
 _is_valid_in_dim(::LogTail, d::Int) = d >= 2
 
 function ℓ(tail::LogTail, x)

@@ -34,6 +34,10 @@ Paramorph.@paramorph T struct InvGaussianGenerator{T<:Real} <: AbstractUnivariat
 end
 InvGaussianGenerator(θ::Integer) = InvGaussianGenerator(float(θ))
 const InvGaussianCopula{d, T} = ArchimedeanCopula{d, InvGaussianGenerator{T}}
+function (::Type{InvGaussianCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), InvGaussianGenerator(args...; kwargs...))
+end
+(::Type{InvGaussianCopula})(d::Int, args...; kwargs...) = InvGaussianCopula{d}(args...; kwargs...)
 
 ϕ(  G::InvGaussianGenerator, t) = iszero(G.θ) ? exp(-t) : isinf(G.θ) ? exp(-sqrt(2*t)) : exp((1-sqrt(1+2*((G.θ)^(2))*t))/G.θ)
 ϕ⁻¹(G::InvGaussianGenerator, t) = iszero(G.θ) ? -log(t) : isinf(G.θ) ? log(t)^2/2 : ((1-G.θ*log(t))^(2)-1)/(2*(G.θ)^(2))

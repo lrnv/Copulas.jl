@@ -122,6 +122,10 @@ function tail_measure_style(tail::AsymGalambosTail)
 end
 
 const AsymGalambosCopula{d,T} = ExtremeValueCopula{d,AsymGalambosTail{T}}
+function (::Type{AsymGalambosCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), AsymGalambosTail(args...; kwargs...))
+end
+(::Type{AsymGalambosCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), AsymGalambosTail(args...; kwargs...))
 
 # Canonical runtime-dimension constructor used by generic Paramorph fitting of
 # an explicitly dimensioned family type.

@@ -81,25 +81,6 @@ function (CT::Type{<:ExtremeValueCopula{d}})(args...; kwargs...) where {d}
     return _wrap_extreme_value(Val(d), tail)
 end
 
-# Resolve the only generic intersection left by integer-valued parameters:
-# for FamilyCopula{d}(first::Int, ...), `first` is a parameter; for the
-# unparameterized FamilyCopula(first::Int, ...), it is the runtime dimension.
-function (CT::Type{<:ExtremeValueCopula{D}})(first::Int, args...; kwargs...) where {D}
-    d = _ev_encoded_dimension(CT)
-    if d isa TypeVar
-        tail = tailof(CT)(args...; kwargs...)
-        return _wrap_extreme_value(Val(first), tail)
-    end
-    tail = tailof(CT)(first, args...; kwargs...)
-    return _wrap_extreme_value(Val(d), tail)
-end
-
-# Runtime-dimension form for an unparameterized named family alias.
-function (CT::Type{<:ExtremeValueCopula})(d::Int, args...; kwargs...)
-    tail = tailof(CT)(args...; kwargs...)
-    return _wrap_extreme_value(Val(d), tail)
-end
-
 @inline function _cdf(C::ExtremeValueCopula{d}, u) where {d}
     kind = limit_kind(C.tail, Val(d))
     kind === Π_LIMIT && return prod(u)

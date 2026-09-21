@@ -31,6 +31,10 @@ Paramorph.@paramorph T struct AMHGenerator{T<:Real} <: AbstractUnivariateGenerat
 end
 AMHGenerator(θ::Integer) = AMHGenerator(float(θ))
 const AMHCopula{d, T} = ArchimedeanCopula{d, AMHGenerator{T}}
+function (::Type{AMHCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), AMHGenerator(args...; kwargs...))
+end
+(::Type{AMHCopula})(d::Int, args...; kwargs...) = AMHCopula{d}(args...; kwargs...)
 function _find_critical_value_amh(k; step=1e-7)
     # Return the threshold θ_k such that “θ < θ_k ⇒ max_monotony returns k-1”.
     # This unifies analytic and numeric thresholds and falls back to a

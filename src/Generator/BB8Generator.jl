@@ -38,6 +38,10 @@ function BB8Generator(ϑ::Real, δ::Real)
 end
 
 const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
+function (::Type{BB8Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB8Generator(args...; kwargs...))
+end
+(::Type{BB8Copula})(d::Int, args...; kwargs...) = BB8Copula{d}(args...; kwargs...)
 @inline limit_kind(G::BB8Generator, ::Val) =
     isone(G.ϑ) ? Π_LIMIT :
     isone(G.δ) && isinf(G.ϑ) ? M_LIMIT :

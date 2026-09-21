@@ -34,6 +34,10 @@ function BB7Generator(θ::Real, δ::Real)
 end
 
 const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
+function (::Type{BB7Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB7Generator(args...; kwargs...))
+end
+(::Type{BB7Copula})(d::Int, args...; kwargs...) = BB7Copula{d}(args...; kwargs...)
 @inline limit_kind(G::BB7Generator, ::Val) =
     isone(G.θ) && isinf(G.δ) ? M_LIMIT : NO_LIMIT
 

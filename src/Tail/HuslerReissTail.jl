@@ -99,6 +99,10 @@ end
 @inline limit_kind(tail::HuslerReissTail{<:AbstractMatrix}, ::Val) =
     all(iszero, something(tail.Γ)) ? M_LIMIT : NO_LIMIT
 const HuslerReissCopula{d,T} = ExtremeValueCopula{d, HuslerReissTail{T}}
+function (::Type{HuslerReissCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), HuslerReissTail(args...; kwargs...))
+end
+(::Type{HuslerReissCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), HuslerReissTail(args...; kwargs...))
 _is_valid_in_dim(::HuslerReissTail{<:Real}, d::Int) = d >= 2
 _is_valid_in_dim(tail::HuslerReissTail{<:AbstractMatrix}, d::Int) =
     d == size(something(tail.Γ), 1)

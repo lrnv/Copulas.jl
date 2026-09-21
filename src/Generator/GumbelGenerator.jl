@@ -30,6 +30,10 @@ Paramorph.@paramorph T struct GumbelGenerator{T<:Real} <: AbstractUnivariateFrai
 end
 GumbelGenerator(θ::Integer) = GumbelGenerator(float(θ))
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
+function (::Type{GumbelCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), GumbelGenerator(args...; kwargs...))
+end
+(::Type{GumbelCopula})(d::Int, args...; kwargs...) = GumbelCopula{d}(args...; kwargs...)
 @inline limit_kind(G::GumbelGenerator, ::Val) =
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
 

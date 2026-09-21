@@ -57,6 +57,10 @@ MixedTail(θ::Integer) = MixedTail(float(θ))
     iszero(tail.θ) ? Π_LIMIT : NO_LIMIT
 
 const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
+function (::Type{MixedCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), MixedTail(args...; kwargs...))
+end
+(::Type{MixedCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), MixedTail(args...; kwargs...))
 _is_valid_in_dim(::MixedTail, d::Int) = d >= 2
 
 A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1

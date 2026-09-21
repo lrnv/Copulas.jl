@@ -116,13 +116,6 @@ _dynamic_archimedean(CT::Type{<:ArchimedeanCopula}, d::Int, args...; kwargs...) 
 function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
     return _typed_archimedean(CT, args...; kwargs...)
 end
-function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...)
-    d = Base.unwrap_unionall(CT).parameters[1]
-    return d isa TypeVar ?
-        _dynamic_archimedean(CT, first, args...; kwargs...) :
-        _typed_archimedean(CT, first, args...; kwargs...)
-end
-
 # Natural model parameters are independent of fitting geometry. Named fitted
 # families happen to store their constructor parameters directly in the
 # generator, while structural generators below keep explicit representations.

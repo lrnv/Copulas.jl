@@ -96,6 +96,10 @@ end
 @inline limit_kind(tail::tEVTail{<:Any,<:AbstractMatrix}, ::Val) =
     all(isone, something(tail.R)) ? M_LIMIT : NO_LIMIT
 const tEVCopula{d,T,P} = ExtremeValueCopula{d,tEVTail{T,P}}
+function (::Type{tEVCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), tEVTail(args...; kwargs...))
+end
+(::Type{tEVCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), tEVTail(args...; kwargs...))
 _is_valid_in_dim(tail::tEVTail{<:Any,<:Real}, d::Int) =
     d >= 2 && something(tail.ρ) > -inv(d - 1)
 _is_valid_in_dim(tail::tEVTail{<:Any,<:AbstractMatrix}, d::Int) =

@@ -52,6 +52,10 @@ Paramorph.schema_override(::Type{<:AsymMixedTail}, ::NamedTuple) =
     iszero(tail.θ₁) && iszero(tail.θ₂) ? Π_LIMIT : NO_LIMIT
 
 const AsymMixedCopula{d,T} = ExtremeValueCopula{d, AsymMixedTail{T}}
+function (::Type{AsymMixedCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), AsymMixedTail(args...; kwargs...))
+end
+(::Type{AsymMixedCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), AsymMixedTail(args...; kwargs...))
 
 Distributions.params(C::ExtremeValueCopula{D,<:AsymMixedTail}) where {D} =
     (C.tail.θ₁, C.tail.θ₂)

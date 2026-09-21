@@ -50,6 +50,10 @@ CuadrasAugeTail(θ::Integer) = CuadrasAugeTail(float(θ))
     NO_LIMIT
 
 const CuadrasAugeCopula{d,T} = ExtremeValueCopula{d, CuadrasAugeTail{T}}
+function (::Type{CuadrasAugeCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), CuadrasAugeTail(args...; kwargs...))
+end
+(::Type{CuadrasAugeCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), CuadrasAugeTail(args...; kwargs...))
 tail_measure_style(tail::CuadrasAugeTail) =
     iszero(tail.θ) ? AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 _is_valid_in_dim(::CuadrasAugeTail, d::Int) = d >= 2

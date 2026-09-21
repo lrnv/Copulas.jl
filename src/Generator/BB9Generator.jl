@@ -32,6 +32,10 @@ function BB9Generator(θ::Real, δ::Real)
 end
 
 const BB9Copula{d, T} = ArchimedeanCopula{d, BB9Generator{T}}
+function (::Type{BB9Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB9Generator(args...; kwargs...))
+end
+(::Type{BB9Copula})(d::Int, args...; kwargs...) = BB9Copula{d}(args...; kwargs...)
 
 ϕ(  G::BB9Generator, s) = begin
     a  = inv(G.θ)

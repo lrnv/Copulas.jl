@@ -38,6 +38,12 @@ end
 Paramorph.parameter_fields_override(::Type{<:FGMCopula}) = (:θ,)
 function _fgm_schema(d::Integer)
     d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+    if d == 2
+        interval = Paramorph.bounded_interval(-1.0, 1.0)
+        return Paramorph.TransformVariables.as((
+            θ=Paramorph.TransformVariables.as(Vector, interval, 1),
+        ))
+    end
     subsets = [Tuple(S) for k in 2:d for S in Combinatorics.combinations(1:d, k)]
     corners = collect(Iterators.product(ntuple(_ -> (-1.0, 1.0), d)...))
     corner_rows = reduce(vcat, [

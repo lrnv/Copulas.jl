@@ -33,6 +33,10 @@ function BB3Generator(θ::Real, δ::Real)
 end
 
 const BB3Copula{d, T} = ArchimedeanCopula{d, BB3Generator{T}}
+function (::Type{BB3Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB3Generator(args...; kwargs...))
+end
+(::Type{BB3Copula})(d::Int, args...; kwargs...) = BB3Copula{d}(args...; kwargs...)
 
 ϕ(  G::BB3Generator, s) = exp(-exp(log(log1p(s)/G.δ)/G.θ))
 # `(-log t)^θ` rather than `exp(θ log(-log t))`: the latter is a NaN dual at t = 1.

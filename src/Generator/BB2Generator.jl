@@ -31,6 +31,10 @@ function BB2Generator(θ::Real, δ::Real)
     return BB2Generator{T}(T(θ), T(δ))
 end
 const BB2Copula{d, T} = ArchimedeanCopula{d, BB2Generator{T}}
+function (::Type{BB2Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB2Generator(args...; kwargs...))
+end
+(::Type{BB2Copula})(d::Int, args...; kwargs...) = BB2Copula{d}(args...; kwargs...)
 
 ϕ(  G::BB2Generator, s) = exp(-log1p(log1p(s)/G.δ)/G.θ)
 ϕ⁻¹(G::BB2Generator, t) = expm1(G.δ*expm1(-G.θ*log(t)))

@@ -49,6 +49,10 @@ tail_measure_style(tail::AsymLogTail) =
     AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 
 const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
+function (::Type{AsymLogCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), AsymLogTail(args...; kwargs...))
+end
+(::Type{AsymLogCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), AsymLogTail(args...; kwargs...))
 
 function A(tail::AsymLogTail, t::Real)
     tt = _safett(t)
