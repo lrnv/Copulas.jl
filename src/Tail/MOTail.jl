@@ -92,7 +92,7 @@ function MOTail(d::Int, λ::AbstractVector)
     all(>(zero(T)), r) || throw(ArgumentError(
         "every Marshall-Olkin margin must have positive total shock rate",
     ))
-    return MOTail(d, rates)
+    return MOTail{T}(d, rates)
 end
 
 function _spectral_tail(tail::MOTail{T}) where {T}
