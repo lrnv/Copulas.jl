@@ -24,90 +24,11 @@ References:
 """
 tEVTail, tEVCopula
 
-# Copulas' public constructors historically report invalid model parameters as
-# ArgumentError. Keep that API policy in the model geometry rather than changing
-# Paramorph's generic DomainError semantics.
-struct _tEVDegreesOfFreedom <: Paramorph.TransformVariables.ScalarTransform end
-Paramorph.TransformVariables.transform(::_tEVDegreesOfFreedom, x::Number) = exp(x)
-Paramorph.TransformVariables.transform_and_logjac(::_tEVDegreesOfFreedom, x::Number) =
-    (exp(x), x)
-function Paramorph.TransformVariables.inverse(::_tEVDegreesOfFreedom, ν::Number)
-    ν > zero(ν) || throw(ArgumentError("ν must be > 0"))
-    return log(ν)
-end
-Paramorph.TransformVariables.inverse_eltype(::_tEVDegreesOfFreedom, ::Type{T}) where {T<:Number} =
-    float(T)
-
-struct _tEVCorrelationGeometry{G} <: Paramorph.TransformVariables.VectorTransform
-    d::Int
-    interior::G
-end
-_tEVCorrelationGeometry(d::Integer) =
-    _tEVCorrelationGeometry(Int(d), Paramorph.correlation_matrix(d))
-Paramorph.TransformVariables.dimension(t::_tEVCorrelationGeometry) =
-    Paramorph.TransformVariables.dimension(t.interior)
-
 _tev_is_complete_correlation(R::AbstractMatrix) = all(isone, R)
-function _tev_complete_correlation(::Type{T}, d::Int) where {T}
-    return ones(T, d, d)
-end
-
-function Paramorph.TransformVariables.transform_with(
-    flag::Paramorph.TransformVariables.NoLogJac,
-    t::_tEVCorrelationGeometry,
-    x::AbstractVector,
-    index,
-)
-    n = Paramorph.TransformVariables.dimension(t)
-    coordinates = @view x[index:(index + n - 1)]
-    if all(isinf, coordinates) && all(>(zero(eltype(coordinates))), coordinates)
-        return _tev_complete_correlation(eltype(coordinates), t.d), flag, index + n
-    end
-    return Paramorph.TransformVariables.transform_with(flag, t.interior, x, index)
-end
-function Paramorph.TransformVariables.transform_with(
-    flag::Paramorph.TransformVariables.LogJac,
-    t::_tEVCorrelationGeometry,
-    x::AbstractVector,
-    index,
-)
-    n = Paramorph.TransformVariables.dimension(t)
-    coordinates = @view x[index:(index + n - 1)]
-    if all(isinf, coordinates) && all(>(zero(eltype(coordinates))), coordinates)
-        return _tev_complete_correlation(eltype(coordinates), t.d), -Inf, index + n
-    end
-    return Paramorph.TransformVariables.transform_with(flag, t.interior, x, index)
-end
-Paramorph.TransformVariables.inverse_eltype(
-    ::_tEVCorrelationGeometry,
-    ::Type{M},
-) where {T,M<:AbstractMatrix{T}} = float(T)
-function Paramorph.TransformVariables.inverse_at!(
-    x::AbstractVector,
-    index,
-    t::_tEVCorrelationGeometry,
-    R::AbstractMatrix,
-)
-    size(R) == (t.d, t.d) || throw(DimensionMismatch(
-        "expected a $(t.d) × $(t.d) matrix",
-    ))
-    all(isfinite, R) || throw(ArgumentError("R must contain only finite entries"))
-    n = Paramorph.TransformVariables.dimension(t)
-    if _tev_is_complete_correlation(R)
-        fill!(@view(x[index:(index + n - 1)]), Inf)
-        return index + n
-    end
-    try
-        return Paramorph.TransformVariables.inverse_at!(x, index, t.interior, R)
-    catch err
-        (err isa DomainError || err isa LinearAlgebra.PosDefException) || rethrow()
-        throw(ArgumentError("R must be a strict correlation matrix"))
-    end
-end
 
 Paramorph.@paramorph T struct tEVTail{d,T<:Real} <: BivariatePickandsTail
-    ν::T ~ _tEVDegreesOfFreedom()
-    R::Matrix{T} ~ _tEVCorrelationGeometry(d)
+    ν::T ~ Paramorph.open_lower(zero(T))
+    R::Matrix{T} ~ Paramorph.closed_correlation_matrix(d)
 end
 
 function _tev_tail_from_matrix(::Val{d}, ν::Real, R::AbstractMatrix) where {d}
@@ -119,12 +40,7 @@ function _tev_tail_from_matrix(::Val{d}, ν::Real, R::AbstractMatrix) where {d}
     T = promote_type(typeof(νf), float(eltype(R)))
     RF = Matrix{T}(R)
     all(isfinite, RF) || throw(ArgumentError("R must contain only finite entries"))
-    try
-        return tEVTail{d,T}(T(νf), RF)
-    catch err
-        err isa ArgumentError || rethrow()
-        rethrow()
-    end
+    return tEVTail{d,T}(T(νf), RF)
 end
 
 function _tev_exchangeable_correlation(d::Int, ρ::Real)
