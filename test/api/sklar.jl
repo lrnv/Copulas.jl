@@ -54,7 +54,7 @@
     @test StatsBase.dof(clayton_joint) == 4
 
     D3 = SklarDist(GaussianCopula{3}(0.3), (Normal(), Exponential(), Gamma(2, 1)))
-    @test StatsBase.dof(D3) == 9
+    @test StatsBase.dof(D3) == 8
     x3 = [0.1, 1.2, 0.8]
     joint = condition(D3, 1, x3[1])
     @test length(joint) == 2
