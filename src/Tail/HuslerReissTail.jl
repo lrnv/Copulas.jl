@@ -10,11 +10,8 @@
 Hüsler-Reiss extreme-value copula.
 
 The internal representation is always a variogram matrix `Γ`. Scalar constructors
-are convenience adapters to the exchangeable variogram with off-diagonal entry
-
-```math
-\gamma=\left(\frac{2}{\theta}\right)^2.
-```
+are convenience adapters to the exchangeable variogram whose off-diagonal entry
+is `γ = (2 / θ)^2`.
 
 For `d = 2`, this is exactly the usual one-parameter representation. A `2×2`
 variogram is converted back with `θ = 2 / sqrt(Γ[1,2])`.
@@ -41,9 +38,7 @@ _HuslerReissVariogramGeometry(d::Integer) =
 Paramorph.TransformVariables.dimension(t::_HuslerReissVariogramGeometry) =
     Paramorph.TransformVariables.dimension(t.interior)
 
-function _hr_zero_variogram(::Type{T}, d::Int) where {T}
-    return zeros(T, d, d)
-end
+_hr_zero_variogram(::Type{T}, d::Int) where {T} = zeros(T, d, d)
 function _hr_independence_variogram(::Type{T}, d::Int) where {T}
     Γ = fill(T(Inf), d, d)
     @inbounds for i in 1:d
@@ -83,7 +78,7 @@ function Paramorph.TransformVariables.transform_with(
     return Paramorph.TransformVariables.transform_with(flag, t.interior, x, index)
 end
 function Paramorph.TransformVariables.transform_with(
-    ::Paramorph.TransformVariables.LogJac,
+    flag::Paramorph.TransformVariables.LogJac,
     t::_HuslerReissVariogramGeometry,
     x::AbstractVector,
     index,
@@ -97,9 +92,7 @@ function Paramorph.TransformVariables.transform_with(
             return _hr_zero_variogram(eltype(coordinates), t.d), -Inf, index + n
         end
     end
-    return Paramorph.TransformVariables.transform_with(
-        Paramorph.TransformVariables.LogJac(), t.interior, x, index,
-    )
+    return Paramorph.TransformVariables.transform_with(flag, t.interior, x, index)
 end
 Paramorph.TransformVariables.inverse_eltype(
     ::_HuslerReissVariogramGeometry,
