@@ -247,7 +247,13 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
     τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
 ρ⁻¹(::Type{T}, ρ; kw...) where {T<:GalambosCopula} =
     ρ ≤ 0 ? 0.0 : ρ >= 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
+ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, ρ; kw...) =
+    ρ ≤ 0 ? 0.0 : ρ >= 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
 β⁻¹(::Type{T}, beta) where {T<:GalambosCopula} =
     beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
+β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta) =
+    beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
 λᵤ⁻¹(::Type{T}, λ) where {T<:GalambosCopula} =
+    λ <= 0 ? 0.0 : λ >= 1 ? Inf : -inv(log2(λ))
+λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) =
     λ <= 0 ? 0.0 : λ >= 1 ? Inf : -inv(log2(λ))

@@ -134,8 +134,12 @@ end
 
 @testset "partially specified Galambos inverse alias" begin
     C = GalambosCopula{2}(1.5)
-    for (measure, inverse) in _INVERSE_PAIRS
-        @test inverse(GalambosCopula{2}, measure(C)) ≈ 1.5
+    families = (
+        GalambosCopula{2},
+        ExtremeValueCopula{2,<:Copulas.GalambosTail},
+    )
+    for family in families, (measure, inverse) in _INVERSE_PAIRS
+        @test inverse(family, measure(C)) ≈ 1.5
     end
 end
 
