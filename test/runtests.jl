@@ -169,9 +169,8 @@ const TAIL_CASES = unique(tail_case_key,
 )
 
 # Paramorph 0.0.3 migration checkpoint.
-# Everything up to subsetting is quick enough to run as one diagnostic batch.
-# Conditioning remains the next isolation boundary because it is where runtime
-# cost and the risk of numerical hangs increase materially.
+# Run the complete suite now that the core geometry migration is stable enough
+# to expose the remaining integration failures in one diagnostic batch.
 testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
@@ -209,22 +208,22 @@ testfiles = (
     "operations/measure.jl",
     "operations/sampling.jl",
     "operations/subsetting.jl",
-    # "operations/conditioning.jl",
-    # "operations/conditioning_numeric_types.jl",
-    # "operations/rosenblatt.jl",
-    # "operations/dependence.jl",
-    # "operations/dependence_dimension_validation.jl",
-    # "operations/fitting.jl",
-    # "operations/liebscher_fitting.jl",
-    # "operations/parameter_coefficients.jl",
-    # "operations/sklar_fitting_validation.jl",
-    # "operations/nested_fitting_validation.jl",
-    # "operations/inference.jl",
-    # "operations/fitting_selection.jl",
-    # "operations/hypothesis_testing.jl",
-    # "operations/nataf.jl",
-    # "extensions/expectation_maximization.jl",
-    # "extensions/partitioned_distributions.jl"
+    "operations/conditioning.jl",
+    "operations/conditioning_numeric_types.jl",
+    "operations/rosenblatt.jl",
+    "operations/dependence.jl",
+    "operations/dependence_dimension_validation.jl",
+    "operations/fitting.jl",
+    "operations/liebscher_fitting.jl",
+    "operations/parameter_coefficients.jl",
+    "operations/sklar_fitting_validation.jl",
+    "operations/nested_fitting_validation.jl",
+    "operations/inference.jl",
+    "operations/fitting_selection.jl",
+    "operations/hypothesis_testing.jl",
+    "operations/nataf.jl",
+    "extensions/expectation_maximization.jl",
+    "extensions/partitioned_distributions.jl"
 )
 
 @testset verbose=true "Copulas.jl" begin

@@ -239,7 +239,7 @@ end
 @testset "Multivariate Hüsler-Reiss EV" begin
     @testset "Exchangeable scalar parameterization" begin
         for (d, θ) in ((3, 0.7), (3, 3.0), (4, 1.5))
-            tail = Copulas.HuslerReissTail(θ)
+            tail = Copulas.HuslerReissTail{d}(θ)
             C = Copulas.ExtremeValueCopula(d, tail)
             @test isfinite(logpdf(C, collect(range(0.29, 0.83; length=d))))
         end
@@ -302,7 +302,7 @@ end
         )
 
         for (d, ν, ρ, seed) in cases
-            tail = Copulas.tEVTail(ν, ρ)
+            tail = Copulas.tEVTail{d}(ν, ρ)
             @test Copulas._is_valid_in_dim(tail, d)
 
             C = Copulas.ExtremeValueCopula(d, tail)
@@ -313,8 +313,8 @@ end
 
         end
 
-        @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.7), 3)
-        @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.4), 4)
+        @test_throws ArgumentError Copulas.tEVTail{3}(1.7, -0.7)
+        @test_throws ArgumentError Copulas.tEVTail{4}(1.7, -0.4)
     end
 
     @testset "general correlation parameterization" begin
