@@ -59,6 +59,17 @@ struct _FloatOnlyNestedRecon end
     @test occursin("2 free parameters", sprint(showerror, rank_error))
     @test occursin("1 pairwise rank constraints", sprint(showerror, rank_error))
 
+    # Pairwise rank inversions can land outside a family's admissible domain in
+    # the global fitted dimension. The fast Archimedean rank path must use the
+    # Paramorph geometry for that dimension instead of a second bounds table.
+    @test Copulas._scalar_parameter_endpoints(Copulas.ClaytonGenerator, 3) == (-0.5, Inf)
+    @test Copulas._project_scalar_parameter(Copulas.ClaytonGenerator, 3, -0.75) == -0.5
+    @test Copulas._project_scalar_parameter(Copulas.FrankGenerator, 3, -2.0) == 0.0
+    amh_lo, amh_hi = Copulas._scalar_parameter_endpoints(Copulas.AMHGenerator, 3)
+    @test amh_lo <= amh_hi == 1.0
+    gb_lo, gb_hi = Copulas._scalar_parameter_endpoints(Copulas.GumbelBarnettGenerator, 3)
+    @test gb_lo == 0.0 <= gb_hi <= 1.0
+
     # This model reconstructs correctly for ordinary Float64 optimizer points
     # but deliberately has no constructor accepting ForwardDiff.Dual. Before
     # #518 the generic fitter swallowed that MethodError and silently retried

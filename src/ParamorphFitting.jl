@@ -205,6 +205,52 @@ function _analytical_parameter_coordinates(target::Type{<:Copula}, d, parameters
     end
 end
 
+# Rank inversions are pairwise, but some one-parameter Archimedean families have
+# a narrower admissible domain when the fitted copula dimension is larger than
+# two. Derive the target interval from the Paramorph chart itself instead of
+# maintaining a second family-specific bounds table.
+const _DimensionDependentRankGenerator = Union{
+    AMHGenerator,
+    ClaytonGenerator,
+    FrankGenerator,
+    GumbelBarnettGenerator,
+}
+
+function _scalar_parameter_endpoints(GT::Type{<:Generator}, d::Int)
+    concrete = _concrete_paramorph_type(GT)
+    context = (; dimension=d)
+    Paramorph.intrinsic_dimension(concrete; context) == 1 || throw(ArgumentError(
+        "$GT does not have a scalar parameter geometry in dimension $d",
+    ))
+    endpoint(z) = only(values(Paramorph.parameter_values(
+        Paramorph.constraint(concrete, [z]; context),
+    )))
+    return endpoint(-Inf), endpoint(Inf)
+end
+
+function _project_scalar_parameter(GT::Type{<:Generator}, d::Int, θ)
+    lower, upper = _scalar_parameter_endpoints(GT, d)
+    return clamp(θ, lower, upper)
+end
+
+function _fit(
+    CT::Type{<:ArchimedeanCopula{D,GT} where {D,GT<:_DimensionDependentRankGenerator}},
+    U,
+    vd::Val{d},
+    m::Union{Val{:itau},Val{:irho}};
+    weights=nothing,
+) where {d}
+    GT = _generator_family(generatorof(CT))
+    invf = m isa Val{:itau} ? τ⁻¹ : ρ⁻¹
+    measure = _rank_measure(m, U, weights)
+    upper_triangle_flat = [
+        measure[idx] for idx in CartesianIndices(measure) if idx[1] < idx[2]
+    ]
+    θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
+    θ = _project_scalar_parameter(GT, d, Statistics.mean(θs))
+    return _dynamic_archimedean(CT, vd, θ)
+end
+
 # Unsupported nested generator families should fail with the documented public
 # error instead of leaking a MethodError from the family-specific bounds table.
 function _nested_scalar_bounds(G::Generator, ::Int, ::Bool)
