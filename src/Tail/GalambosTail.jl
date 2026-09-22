@@ -237,25 +237,19 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
 β(C::ExtremeValueCopula{2,<:GalambosTail}) = 2.0^( 2.0^(-1.0/C.tail.θ) ) - 1.0
 λᵤ(C::ExtremeValueCopula{2,<:GalambosTail}) = 2.0^(-1.0/C.tail.θ)
 
-τ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
-τ⁻¹(::Type{<:GalambosTail}, τ; kw...) = τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
+# This d=2 family specialization must outrank the generic
+# `τ⁻¹(::Type{T}) where T<:ExtremeValueCopula{2}` fallback, which otherwise
+# delegates through `tailof(T)` and loses the concrete numeric tail parameter.
+τ⁻¹(::Type{T}, τ; kw...) where {T<:ExtremeValueCopula{2,<:GalambosTail}} =
+    τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
+τ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, τ; kw...) =
+    τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
+τ⁻¹(::Type{<:GalambosTail}, τ; kw...) =
+    τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
 ρ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, ρ; kw...) = ρ ≤ 0 ? 0.0 : ρ >= 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
 β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta) =
     beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
 λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) =
-    λ <= 0 ? 0.0 : λ >= 1 ? Inf : -inv(log2(λ))
-
-# Partially specified aliases such as `GalambosCopula{2}` are UnionAll types,
-# not subtypes captured by the concrete-family signatures above. Preserve the
-# inverse API used by the generic rank-fitting route without falling back
-# through `tailof(::Type)` to the likewise partially specified `GalambosTail`.
-τ⁻¹(::Type{GalambosCopula{d}}, τ; kw...) where {d} =
-    τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
-ρ⁻¹(::Type{GalambosCopula{d}}, ρ; kw...) where {d} =
-    ρ ≤ 0 ? 0.0 : ρ >= 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
-β⁻¹(::Type{GalambosCopula{d}}, beta) where {d} =
-    beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
-λᵤ⁻¹(::Type{GalambosCopula{d}}, λ) where {d} =
     λ <= 0 ? 0.0 : λ >= 1 ? Inf : -inv(log2(λ))
 
 # Preserve the public family-level inverse API on the non-dimensioned alias.
