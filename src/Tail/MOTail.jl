@@ -74,7 +74,6 @@ Paramorph.@paramorph T struct MOTail{T<:Real} <: DiscreteSpectralPickandsTail
     λ::Vector{T} ~ _mo_geometry(d, T)
 end
 
-
 MOTail(d::Int, λ::Vector{<:Integer}) = MOTail(d, float.(λ))
 
 function MOTail(d::Int, λ::AbstractVector)
@@ -119,12 +118,20 @@ end
 # The historical bivariate API names the private shocks in the opposite order
 # from the subset ordering ([1], [2], [1,2]) used by the general model.
 MOTail(λ₁, λ₂, λ₁₂) = MOTail(2, [λ₂, λ₁, λ₁₂])
-MOTail(λ::AbstractVector) = MOTail(trailing_zeros(length(λ) + 1), λ)
+function _mo_inferred_dimension(nrates::Integer)
+    n = nrates + 1
+    ispow2(n) || throw(ArgumentError(
+        "Marshall-Olkin shock vector length must be 2^d - 1",
+    ))
+    d = trailing_zeros(n)
+    d >= 2 || throw(ArgumentError("Marshall-Olkin dimension must be at least two"))
+    return d
+end
+MOTail(λ::AbstractVector) = MOTail(_mo_inferred_dimension(length(λ)), λ)
 
 function _mo_bivariate_rates(tail::MOTail)
     return tail.λ[2], tail.λ[1], tail.λ[3]
 end
-
 
 function Distributions.params(C::ExtremeValueCopula{d,<:MOTail}) where {d}
     d == 2 && return _mo_bivariate_rates(C.tail)
@@ -254,6 +261,6 @@ function Distributions.quantile(D::BivEVDistortion{MOTail{T}, S}, α::Real) wher
 end
 
 MOCopula(λ::AbstractVector) =
-    ExtremeValueCopula{trailing_zeros(length(λ) + 1)}(MOTail(λ))
+    ExtremeValueCopula{_mo_inferred_dimension(length(λ))}(MOTail(λ))
 
 _is_valid_in_dim(tail::MOTail, d::Int) = tail.d == d
