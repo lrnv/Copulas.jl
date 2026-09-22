@@ -49,6 +49,11 @@ function _tuple_parameter_names(D, raw::Tuple)
     return ["θ$(i)" for i in eachindex(raw)]
 end
 
+# Paramorph 0.0.2 named the simplex-valued Categorical parameter `p`. Keep that
+# natural label after the Distributions extension moved out of Paramorph 0.0.3.
+_tuple_parameter_names(::Distributions.Categorical, raw::Tuple) =
+    length(raw) == 1 ? ["p"] : ["θ$(i)" for i in eachindex(raw)]
+
 # These wrappers deliberately hide their storage fields from the natural
 # statistical representation. Delegate labels to the component that owns the
 # displayed parameters instead of exposing implementation names such as `G`
@@ -114,7 +119,7 @@ end
 _promoted_parameter_values(values) =
     isempty(values) ? Float64[] : collect(promote(float.(values)...))
 
-# A component with a known known zero-dimensional parameter geometry has no statistical
+# A component with a known zero-dimensional parameter geometry has no statistical
 # coefficients. This keeps empirical or purely structural state out of `coef`.
 function _has_natural_coefficients(D)
     dimension = _parameter_dimension_or_nothing(D)
@@ -210,15 +215,15 @@ function _distribution_dof(D)
            length(_distribution_coefficient_values(D)) : dimension
 end
 
-# Distributions.jl/StatsBase already know which natural parameters of a
-# univariate margin are structural. Respect that contract when Paramorph does
-# not declare a geometry (for example Binomial `n` or a simplex probability).
-function _distribution_dof(D::Distributions.UnivariateDistribution)
-    dimension = _parameter_dimension_or_nothing(D)
-    dimension === nothing || return dimension
-    return hasmethod(StatsBase.dof, Tuple{typeof(D)}) ?
-           StatsBase.dof(D) : length(_distribution_coefficient_values(D))
-end
+# Paramorph 0.0.2 supplied a Distributions extension whose prototype-dependent
+# charts distinguished free statistical parameters from structural constructor
+# arguments. Paramorph 0.0.3 deliberately removed that extension. Keep only the
+# dimension semantics needed by Copulas' model interface here; margin fitting
+# itself remains owned by Distributions.jl.
+_distribution_dof(::Distributions.Binomial) = 1
+_distribution_dof(::Distributions.BetaBinomial) = 2
+_distribution_dof(D::Distributions.Categorical) =
+    max(length(Distributions.probs(D)) - 1, 0)
 
 # Liebscher exposes all active simplex weights as natural coefficients, while
 # each simplex contributes one fewer optimizer coordinate.
