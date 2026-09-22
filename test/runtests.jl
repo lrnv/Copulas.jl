@@ -171,6 +171,9 @@ const TAIL_CASES = unique(tail_case_key,
 # Paramorph 0.0.3 migration checkpoint.
 # Run the complete suite now that the core geometry migration is stable enough
 # to expose the remaining integration failures in one diagnostic batch.
+# `operations/conditioning.jl` is temporarily last because it currently has a
+# long-running path; keeping it last lets CI expose all other migration failures
+# before we isolate that path separately.
 testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
@@ -208,7 +211,6 @@ testfiles = (
     "operations/measure.jl",
     "operations/sampling.jl",
     "operations/subsetting.jl",
-    "operations/conditioning.jl",
     "operations/conditioning_numeric_types.jl",
     "operations/rosenblatt.jl",
     "operations/dependence.jl",
@@ -223,7 +225,8 @@ testfiles = (
     "operations/hypothesis_testing.jl",
     "operations/nataf.jl",
     "extensions/expectation_maximization.jl",
-    "extensions/partitioned_distributions.jl"
+    "extensions/partitioned_distributions.jl",
+    "operations/conditioning.jl"
 )
 
 @testset verbose=true "Copulas.jl" begin
