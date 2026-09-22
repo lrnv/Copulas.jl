@@ -252,6 +252,19 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
 λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) =
     λ <= 0 ? 0.0 : λ >= 1 ? Inf : -inv(log2(λ))
 
+# Partially specified aliases such as `GalambosCopula{2}` are UnionAll types,
+# not subtypes captured by the concrete-family signatures above. Preserve the
+# inverse API used by the generic rank-fitting route without falling back
+# through `tailof(::Type)` to the likewise partially specified `GalambosTail`.
+τ⁻¹(::Type{GalambosCopula{d}}, τ; kw...) where {d} =
+    τ ≤ 0 ? 0.0 : τ ≥ 1 ? Inf : _invmono(θ -> _tau_galambos(θ) - τ; kw...)
+ρ⁻¹(::Type{GalambosCopula{d}}, ρ; kw...) where {d} =
+    ρ ≤ 0 ? 0.0 : ρ >= 1 ? Inf : _invmono(θ -> _rho_galambos(θ) - ρ; kw...)
+β⁻¹(::Type{GalambosCopula{d}}, beta) where {d} =
+    beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
+λᵤ⁻¹(::Type{GalambosCopula{d}}, λ) where {d} =
+    λ <= 0 ? 0.0 : λ >= 1 ? Inf : -inv(log2(λ))
+
 # Preserve the public family-level inverse API on the non-dimensioned alias.
 β⁻¹(::Type{GalambosCopula}, beta) =
     beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
