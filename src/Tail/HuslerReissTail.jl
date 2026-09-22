@@ -29,23 +29,6 @@ References:
 """
 HuslerReissTail, HuslerReissCopula
 
-struct _HuslerReissVariogramGeometry{G} <: Paramorph.TransformVariables.VectorTransform
-    d::Int
-    interior::G
-end
-_HuslerReissVariogramGeometry(d::Integer) =
-    _HuslerReissVariogramGeometry(Int(d), Paramorph.variogram_matrix(d))
-Paramorph.TransformVariables.dimension(t::_HuslerReissVariogramGeometry) =
-    Paramorph.TransformVariables.dimension(t.interior)
-
-_hr_zero_variogram(::Type{T}, d::Int) where {T} = zeros(T, d, d)
-function _hr_independence_variogram(::Type{T}, d::Int) where {T}
-    Γ = fill(T(Inf), d, d)
-    @inbounds for i in 1:d
-        Γ[i, i] = zero(T)
-    end
-    return Γ
-end
 _hr_is_zero_variogram(Γ::AbstractMatrix) = all(iszero, Γ)
 function _hr_is_independence_variogram(Γ::AbstractMatrix)
     d1, d2 = size(Γ)
@@ -60,74 +43,8 @@ function _hr_is_independence_variogram(Γ::AbstractMatrix)
     return true
 end
 
-function Paramorph.TransformVariables.transform_with(
-    flag::Paramorph.TransformVariables.NoLogJac,
-    t::_HuslerReissVariogramGeometry,
-    x::AbstractVector,
-    index,
-)
-    n = Paramorph.TransformVariables.dimension(t)
-    coordinates = @view x[index:(index + n - 1)]
-    if all(isinf, coordinates)
-        if all(>(zero(eltype(coordinates))), coordinates)
-            return _hr_independence_variogram(eltype(coordinates), t.d), flag, index + n
-        elseif all(<(zero(eltype(coordinates))), coordinates)
-            return _hr_zero_variogram(eltype(coordinates), t.d), flag, index + n
-        end
-    end
-    return Paramorph.TransformVariables.transform_with(flag, t.interior, x, index)
-end
-function Paramorph.TransformVariables.transform_with(
-    flag::Paramorph.TransformVariables.LogJac,
-    t::_HuslerReissVariogramGeometry,
-    x::AbstractVector,
-    index,
-)
-    n = Paramorph.TransformVariables.dimension(t)
-    coordinates = @view x[index:(index + n - 1)]
-    if all(isinf, coordinates)
-        if all(>(zero(eltype(coordinates))), coordinates)
-            return _hr_independence_variogram(eltype(coordinates), t.d), -Inf, index + n
-        elseif all(<(zero(eltype(coordinates))), coordinates)
-            return _hr_zero_variogram(eltype(coordinates), t.d), -Inf, index + n
-        end
-    end
-    return Paramorph.TransformVariables.transform_with(flag, t.interior, x, index)
-end
-Paramorph.TransformVariables.inverse_eltype(
-    ::_HuslerReissVariogramGeometry,
-    ::Type{M},
-) where {T,M<:AbstractMatrix{T}} = float(T)
-function Paramorph.TransformVariables.inverse_at!(
-    x::AbstractVector,
-    index,
-    t::_HuslerReissVariogramGeometry,
-    Γ::AbstractMatrix,
-)
-    size(Γ) == (t.d, t.d) || throw(DimensionMismatch(
-        "expected a $(t.d) × $(t.d) matrix",
-    ))
-    n = Paramorph.TransformVariables.dimension(t)
-    if _hr_is_zero_variogram(Γ)
-        fill!(@view(x[index:(index + n - 1)]), -Inf)
-        return index + n
-    elseif _hr_is_independence_variogram(Γ)
-        fill!(@view(x[index:(index + n - 1)]), Inf)
-        return index + n
-    end
-    all(isfinite, Γ) || throw(ArgumentError(
-        "Γ must contain only finite entries except for the independence limit",
-    ))
-    try
-        return Paramorph.TransformVariables.inverse_at!(x, index, t.interior, Γ)
-    catch err
-        (err isa DomainError || err isa LinearAlgebra.PosDefException) || rethrow()
-        throw(ArgumentError("Γ must be a strict Hüsler-Reiss variogram"))
-    end
-end
-
 Paramorph.@paramorph T struct HuslerReissTail{d,T<:Real} <: BivariatePickandsTail
-    Γ::Matrix{T} ~ _HuslerReissVariogramGeometry(d)
+    Γ::Matrix{T} ~ Paramorph.compact_variogram_matrix(d)
 end
 
 function _hr_exchangeable_variogram(d::Int, θ::Real)
