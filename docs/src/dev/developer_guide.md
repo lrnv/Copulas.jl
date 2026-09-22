@@ -739,11 +739,11 @@ using Copulas, Distributions, Random
 import Paramorph
 const bounded_interval = Paramorph.bounded_interval
 
-Paramorph.@paramorph T struct MardiaCopula{T<:Real} <: Copulas.Copula{2}
-    θ::T ~ bounded_interval(-one(T), one(T))
+Paramorph.@paramorph T struct MardiaCopula{d,T<:Real} <: Copulas.Copula{d}
+    θ::T ~ (d == 2 ? bounded_interval(-one(T), one(T)) :
+        throw(DimensionMismatch("MardiaCopula is bivariate")))
 end
-MardiaCopula(d, θ) = d == 2 ? MardiaCopula(θ) :
-    throw(DimensionMismatch("MardiaCopula is bivariate"))
+MardiaCopula(d, θ) = MardiaCopula{d}(θ)
 function Copulas._cdf(C::MardiaCopula, u)
     # The joint CDF follows Mardia’s formulation:
     θ = C.θ
@@ -756,7 +756,7 @@ end
 ```
 
 Boundary parameters must not make a constructor return another copula type.
-Keeping `MardiaCopula(0)`, `MardiaCopula(1)`, and `MardiaCopula(-1)` in the
+Keeping `MardiaCopula{2}(0)`, `MardiaCopula{2}(1)`, and `MardiaCopula{2}(-1)` in the
 `MardiaCopula` family makes inference independent of runtime values. Handle
 equivalent independence or Fréchet-bound cases inside numerical methods when a
 generic formula is undefined or a dedicated path is materially better.
