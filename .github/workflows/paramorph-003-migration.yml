@@ -27,11 +27,19 @@ jobs:
             echo 'Runtime Paramorph leaked outside the centralized bridge' >&2
             exit 1
           fi
-      - name: Strict precompile and tests
-        timeout-minutes: 5
+      - name: Strict precompile
         shell: julia --project=. --color=yes {0}
         run: |
           using Pkg
           Pkg.instantiate()
           Pkg.precompile(; strict=true)
-          Pkg.test()
+      - name: Conditioning probe
+        shell: bash
+        env:
+          COPULAS_CONDITIONING_PROBE: '1'
+        run: |
+          # Pkg.test needs roughly 40-45 s to build/load the test environment on
+          # a warm runner. The remaining window deliberately gives the actual
+          # conditioning route only a few tens of seconds before interruption.
+          timeout --signal=INT --kill-after=5s 75s \
+            julia --project=. --color=yes -e 'using Pkg; Pkg.test()'
