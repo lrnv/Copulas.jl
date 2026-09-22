@@ -503,6 +503,9 @@ end
 @testset "bivariate scalar conditioning contract" begin
     C = GaussianCopula{2}(0.4)
     @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
+    # Keep `big(0.8)`, not `big"0.8"`: the exact decimal BigFloat triggers a
+    # non-terminating `erfcinv` in SpecialFunctions.jl; see
+    # https://github.com/JuliaMath/SpecialFunctions.jl/issues/557.
     for j in 1:2, uⱼ in (0.2f0, big(0.8))
         @test typeof(condition(C, j, uⱼ)) ==
               typeof(condition(C, (j,), (float(uⱼ),)))

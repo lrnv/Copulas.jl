@@ -1,9 +1,13 @@
 @testset "conditioning fast paths are numeric-generic" begin
     for T in (Float32, BigFloat)
-        v = T(0.41)
+        # Keep the BigFloat Gaussian inputs on the binary Float64-derived 0.8:
+        # exact decimal BigFloat inputs can make SpecialFunctions.erfcinv fail
+        # to terminate; see https://github.com/JuliaMath/SpecialFunctions.jl/issues/557.
+        v = T === BigFloat ? big(0.8) : T(0.41)
+        w = T === BigFloat ? big(0.8) : T(0.53)
 
         gaussian = GaussianCopula{3}(T[1 0.3 0.2; 0.3 1 0.25; 0.2 0.25 1])
-        GD = condition(gaussian, (1, 2), (v, T(0.53)))
+        GD = condition(gaussian, (1, 2), (v, w))
         @test GD isa Copulas.GaussianDistortion
         GC = condition(gaussian, (1,), (v,))
         @test GC isa SklarDist
