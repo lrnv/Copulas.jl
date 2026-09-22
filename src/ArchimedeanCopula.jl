@@ -329,7 +329,7 @@ function _fit(
 ) where {d}
     βobs = clamp(_weighted_β(U, weights), nextfloat(-1.0), prevfloat(1.0))
     prototype = _dynamic_archimedean(CT, vd, one(Float64))
-    cop(α) = Paramorph.constraint(prototype, [α])
+    cop(α) = _from_parameter_coordinates(prototype, [α])
     obj(α) = β(cop(α)) - βobs
 
     lo, hi = -1.0, 1.0
