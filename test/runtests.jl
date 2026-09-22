@@ -176,7 +176,7 @@ testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
     "api/constructor_validation.jl",
-    # "api/liebscher_constructor_validation.jl",
+    "api/liebscher_constructor_validation.jl",
     # "api/public_exception_taxonomy.jl",
     # "correctness/reduction_graph.jl",
     # "api/public_compositions.jl",
