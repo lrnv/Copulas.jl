@@ -27,39 +27,10 @@ jobs:
             echo 'Runtime Paramorph leaked outside the centralized bridge' >&2
             exit 1
           fi
-      - name: Strict precompile
+      - name: Strict precompile and tests
         shell: julia --project=. --color=yes {0}
         run: |
           using Pkg
           Pkg.instantiate()
           Pkg.precompile(; strict=true)
-      - name: Bivariate scalar conditioning probe
-        shell: bash
-        run: |
-          timeout --signal=INT --kill-after=10s 90s julia --project=. --color=yes -e '
-            using Copulas, Test
-            println("construct")
-            @time C = GaussianCopula{2}(0.4)
-            println("inferred scalar")
-            @time @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
-            println("float32 scalar")
-            @time a = condition(C, 1, 0.2f0)
-            println(typeof(a))
-            println("float32 tuple")
-            @time b = condition(C, (1,), (float(0.2f0),))
-            println(typeof(b))
-            println("big scalar")
-            @time c = condition(C, 1, big"0.8")
-            println(typeof(c))
-            println("big tuple")
-            @time d = condition(C, (1,), (float(big"0.8"),))
-            println(typeof(d))
-            for (label, args) in (("bad index 0", (0, 0.4)), ("bad index 3", (3, 0.4)), ("bad low", (1, -0.1)), ("bad high", (1, 1.1)))
-                println(label)
-                @time try
-                    condition(C, args...)
-                catch err
-                    println(typeof(err))
-                end
-            end
-          '
+          Pkg.test()
