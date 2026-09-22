@@ -28,6 +28,7 @@ jobs:
             exit 1
           fi
       - name: Strict precompile and tests
+        timeout-minutes: 5
         shell: julia --project=. --color=yes {0}
         run: |
           using Pkg
