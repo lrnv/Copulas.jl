@@ -168,70 +168,10 @@ const TAIL_CASES = unique(tail_case_key,
     ],
 )
 
-# Conditioning and Rosenblatt both instantiate highly parametric conditional
-# distributions. Exercising every concrete bestiary type recompiles the same
-# implementation routes dozens of times, while the family mathematics is
-# already covered by the distribution/correctness suites. Select one fixture
-# per actual conditioning kernel before including these operation proofs.
-function _conditioning_compile_route_key(fixture)
-    Base.@nospecialize fixture
-    C = fixture.copula
-    d = length(C)
-    js = Tuple(1:(d - 1))
-    values = ntuple(_ -> 0.4, d - 1)
-    is = (d,)
-    uis = (0.5,)
+# Run cheap foundational checks first, then mathematical and operation proofs.
+# Routing must remain after every test that records proven dispatch routes.
+# Exact `.jl` paths are used throughout;
 
-    distortion_method = _which(Copulas.distortion, C, js, values, d)
-    partial_method = _which(Copulas._partial_cdf, C, is, js, uis, values)
-    joint_method = d > 2 ? dispatch_path(:conditional_joint, C) : nothing
-    dimension_class = d == 2 ? :bivariate : d == 3 ? :trivariate : :higher
-
-    # EV tails share the outer ExtremeValueCopula conditioning route but have
-    # distinct STDF-partial kernels. Keep one representative of every tail type;
-    # in particular this retains Hüsler-Reiss and extremal-t coverage.
-    tail_type = C isa ExtremeValueCopula ? Base.typename(typeof(C.tail)).wrapper : nothing
-    return (distortion_method, partial_method, joint_method, dimension_class, tail_type)
-end
-
-function _rosenblatt_compile_route_key(fixture)
-    Base.@nospecialize fixture
-    C = fixture.copula
-    is_absolutely_continuous(C) || return (:non_ac,)
-    d = length(C)
-    U = fill(0.5, d, 1)
-    forward = _which(Copulas.rosenblatt, C, U)
-    inverse = _which(Copulas.inverse_rosenblatt, C, U)
-    return (forward, inverse, _conditioning_compile_route_key(fixture))
-end
-
-function _operation_fixture_subset(f)
-    if f == "operations/conditioning.jl"
-        return unique(_conditioning_compile_route_key, COPULA_FIXTURES)
-    elseif f == "operations/rosenblatt.jl"
-        return unique(_rosenblatt_compile_route_key, COPULA_FIXTURES)
-    end
-    return nothing
-end
-
-function _include_testfile(f)
-    subset = _operation_fixture_subset(f)
-    subset === nothing && return Base.include(@__MODULE__, joinpath(@__DIR__, f))
-
-    original = copy(COPULA_FIXTURES)
-    empty!(COPULA_FIXTURES)
-    append!(COPULA_FIXTURES, subset)
-    @info "Deduplicated operation fixtures" file=f selected=length(subset) total=length(original)
-    try
-        return Base.include(@__MODULE__, joinpath(@__DIR__, f))
-    finally
-        empty!(COPULA_FIXTURES)
-        append!(COPULA_FIXTURES, original)
-    end
-end
-
-# Paramorph 0.0.3 migration checkpoint: run the complete suite and let each
-# operation proof deduplicate only the concrete compilation routes it exercises.
 testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
@@ -292,7 +232,7 @@ testfiles = (
     for (i, f) in enumerate(testfiles)
         @info "Running tests [$i/$nfiles]" file=f
         @testset "$f" begin
-            _include_testfile(f)
+            include(f)
         end
     end
 end
