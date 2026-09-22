@@ -87,12 +87,12 @@ function _fit_dispatch(
     ::Type{<:ArchimaxCopula{d,IndependentGenerator,TT}}, U,
     vd::Val{d}, method::Val; kwargs...,
 ) where {d,TT<:Tail}
-    E = _fit(ExtremeValueCopula{d,TT}, U, vd, method; kwargs...)
+    E = _fit(ExtremeValueCopula{d,<:TT}, U, vd, method; kwargs...)
     return ArchimaxCopula{d}(IndependentGenerator(), E.tail)
 end
 
 function _available_fitting_methods(::Type{<:ArchimaxCopula{D,IndependentGenerator,TT}}, d) where {D,TT}
-    return _available_fitting_methods(ExtremeValueCopula{D,TT}, d)
+    return _available_fitting_methods(ExtremeValueCopula{D,<:TT}, d)
 end
 
 # Fast conditional distortion binding (bivariate)
