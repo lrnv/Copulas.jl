@@ -186,3 +186,12 @@ function _from_parameter_coordinates(C::LiouvilleCopula{d}, α) where {d}
     )
     return LiouvilleCopula{d}(G, Tuple(values.α))
 end
+
+# Unsupported nested generator families should fail with the documented public
+# error instead of leaking a MethodError from the family-specific bounds table.
+function _nested_scalar_bounds(G::Generator, ::Int, ::Bool)
+    throw(ArgumentError(
+        "template fitting currently provides nesting geometries only for standard " *
+        "one-parameter generators; $(nameof(typeof(G))) is open for contributions",
+    ))
+end
