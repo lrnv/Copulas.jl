@@ -30,7 +30,7 @@ end
     for (d, ν, ρ) in ((3, 1.3, 0.25), (4, 2.2, 0.4))
         R = fill(ρ, d, d)
         R[diagind(R)] .= 1
-        scalar = ExtremeValueCopula{d}(Copulas.tEVTail(ν, ρ))
+        scalar = ExtremeValueCopula{d}(Copulas.tEVTail{d}(ν, ρ))
         matrix = ExtremeValueCopula{d}(Copulas.tEVTail(ν, R))
         test_ev_equivalence(scalar, matrix,
             collect(range(0.29, 0.83; length=d)); atol=3e-7, rtol=3e-7)
