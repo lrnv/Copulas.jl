@@ -168,12 +168,45 @@ const TAIL_CASES = unique(tail_case_key,
     ],
 )
 
+# Temporary runtime probe for the conditioning regression exposed by the
+# Paramorph 0.0.3 migration. It executes before the full suite so CI identifies
+# the exact fixture and operation instead of spending the whole run first.
+function _probe_conditioning_routes()
+    for fixture in COPULA_FIXTURES
+        C = fixture.copula
+        d = length(C)
+        name = fixture.case.name
+
+        if d > 2 && is_absolutely_continuous(C)
+            @info "conditioning probe" case=name dimension=d phase=:joint_construct
+            joint = condition(C, 1, 0.4)
+            @info "conditioning probe" case=name dimension=d phase=:joint_cdf
+            cdf(joint, fill(0.5, d - 1))
+            @info "conditioning probe" case=name dimension=d phase=:joint_done
+        end
+
+        (d == 2 || is_absolutely_continuous(C)) || continue
+        js = Tuple(1:(d - 1))
+        values = ntuple(_ -> 0.4, d - 1)
+
+        @info "conditioning probe" case=name dimension=d phase=:distortion_construct
+        D = condition(C, js, values)
+        @info "conditioning probe" case=name dimension=d phase=:distortion_cdf
+        cdf(D, 0.5)
+        @info "conditioning probe" case=name dimension=d phase=:distortion_quantile
+        quantile(D, 0.5)
+        @info "conditioning probe" case=name dimension=d phase=:distortion_rand
+        rand(StableRNG(73), D, 1)
+        @info "conditioning probe" case=name dimension=d phase=:done
+    end
+end
+_probe_conditioning_routes()
+
 # Paramorph 0.0.3 migration checkpoint.
 # Run the complete suite now that the core geometry migration is stable enough
 # to expose the remaining integration failures in one diagnostic batch.
-# `operations/conditioning.jl` is temporarily last because it currently has a
-# long-running path; keeping it last lets CI expose all other migration failures
-# before we isolate that path separately.
+# `operations/conditioning.jl` is temporarily last while the probe above
+# isolates its long-running route.
 testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
