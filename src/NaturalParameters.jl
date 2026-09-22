@@ -18,20 +18,13 @@ function _named_parameter_values(component)
     end
 end
 
-# In-package univariate generator families use their declared geometry as the canonical
-# natural parameter description. Structural generators and downstream custom
-# generators retain the explicit/fallback representations declared in
-# ArchimedeanCopula.jl.
-function Distributions.params(
-    C::ArchimedeanCopula{d,G},
-) where {d,G<:AbstractUnivariateGenerator}
-    return _named_parameter_values(C.G)
-end
-
-function Distributions.params(
-    C::ArchimedeanCopula{d,G},
-) where {d,G<:AbstractUnivariateFrailtyGenerator}
-    return _named_parameter_values(C.G)
+# ArchimedeanCopula.jl already handles all in-package Paramorph generators and
+# keeps arbitrary downstream generators opaque. When such an opaque generator
+# is the natural constructor argument, the fully typed copula constructor must
+# accept that exact generator instance rather than trying to reconstruct it from
+# itself. This preserves the ordinary `typeof(C)(params(C)...)` round trip.
+function (::Type{ArchimedeanCopula{d,TG}})(G::TG) where {d,TG<:Generator}
+    return _wrap_archimedean(Val(d), G)
 end
 
 # Liouville exposes the generator's natural parameters followed by the positive

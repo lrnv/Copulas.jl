@@ -11,6 +11,13 @@ struct MinimalPublicGenerator <: Copulas.Generator end
 Copulas.ϕ(::MinimalPublicGenerator, t) = exp(-t)
 Copulas.max_monotony(::MinimalPublicGenerator) = Inf
 
+struct CachedPublicGenerator <: Copulas.Generator
+    θ::Float64
+    cache::Vector{Float64}
+end
+Copulas.ϕ(G::CachedPublicGenerator, t) = exp(-G.θ * t)
+Copulas.max_monotony(::CachedPublicGenerator) = Inf
+
 @testset "public Generator extension contract" begin
     G = MinimalPublicGenerator()
     C = ArchimedeanCopula(3, G)
@@ -19,6 +26,19 @@ Copulas.max_monotony(::MinimalPublicGenerator) = Inf
     @test !applicable(params, G)
     @test length(C) == 3
     @test cdf(C, u) ≈ prod(u)
+
+    # A downstream generator is an opaque constructor argument. Incidental
+    # storage such as a cache must not become public copula parameters merely
+    # because it is a struct field.
+    cached = CachedPublicGenerator(1.0, [10.0, 20.0])
+    Ccached = ArchimedeanCopula(3, cached)
+    @test params(Ccached) == (cached,)
+    @test only(params(Ccached)) === cached
+
+    # In-package Paramorph generators still expose their logical natural
+    # parameters, including multi-parameter families.
+    @test params(ClaytonCopula(2, 1.25)) == (1.25,)
+    @test params(BB1Copula(2, 1.5, 2.0)) == (1.5, 2.0)
 end
 
 @testset "specialized Gumbel generator agrees with its generic oracle" begin

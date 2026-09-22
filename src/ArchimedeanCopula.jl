@@ -116,14 +116,17 @@ _dynamic_archimedean(CT::Type{<:ArchimedeanCopula}, d::Int, args...; kwargs...) 
 function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
     return _typed_archimedean(CT, args...; kwargs...)
 end
-# Natural model parameters are independent of fitting geometry. Named fitted
-# families happen to store their constructor parameters directly in the
-# generator, while structural generators below keep explicit representations.
+
+# Natural model parameters are independent of fitting geometry. In-package
+# Paramorph generators expose their declared logical parameters; an arbitrary
+# downstream generator remains an opaque constructor argument, so caches or
+# other storage fields never become public parameters by accident.
 function Distributions.params(C::ArchimedeanCopula{d,G}) where {d,G<:Generator}
-    return ntuple(fieldcount(G)) do i
-        value = getfield(C.G, i)
-        return value isa AbstractArray ? copy(value) : value
-    end
+    Paramorph.is_paramorph_type(G) || return (C.G,)
+    declared = Paramorph.parameter_values(C.G)
+    return Tuple(map(values(declared)) do value
+        value isa AbstractArray ? copy(value) : value
+    end)
 end
 Distributions.params(::ArchimedeanCopula{d,<:MarkerGenerator}) where {d} = ()
 Distributions.params(C::ArchimedeanCopula{d,<:𝒲}) where {d} = (C.G.X, C.G.order)

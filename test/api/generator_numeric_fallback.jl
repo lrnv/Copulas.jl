@@ -45,7 +45,7 @@ end
 
 @testset "custom generator params do not require fitting geometry" begin
     C = ArchimedeanCopula(3, _CubicGenerator(2.0))
-    @test params(C) == (2.0,)
+    @test params(C) == (C.G,)
 
     rebuilt = typeof(C)(params(C)...)
     @test rebuilt isa typeof(C)
