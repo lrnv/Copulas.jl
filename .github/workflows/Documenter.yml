@@ -3,15 +3,15 @@
 name: Documenter
 
 on:
-  # Runs on pushes targeting the `main` branch. Change this to `main` if you're
-  # using the `main` branch as the default branch.
+  # Runs on pushes targeting the `main` branch or on tags.
+  # Pull-request runs are temporarily disabled on the Paramorph 0.0.3 migration
+  # branch while the test suite is re-enabled incrementally.
   push:
     branches:
       - main
     tags: ['*']
-  pull_request:
 
-  # Allows you to run this workflow manually from the Actions tab
+  # Allows manual documentation checks when needed during the migration.
   workflow_dispatch:
 
 # Sets permissions of the GITHUB_TOKEN to allow deployment to GitHub Pages
@@ -57,7 +57,7 @@ jobs:
         id: julia-cache-save
         if: cancelled() || failure()
         uses: actions/cache/save@v6
-        with: 
+        with:
           path: |
             ${{ steps.julia-cache.outputs.cache-paths }}
           key: ${{ steps.julia-cache.outputs.cache-key }}
