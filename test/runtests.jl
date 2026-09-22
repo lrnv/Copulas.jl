@@ -168,45 +168,70 @@ const TAIL_CASES = unique(tail_case_key,
     ],
 )
 
-# Temporary runtime probe for the conditioning regression exposed by the
-# Paramorph 0.0.3 migration. It executes before the full suite so CI identifies
-# the exact fixture and operation instead of spending the whole run first.
-function _probe_conditioning_routes()
-    for fixture in COPULA_FIXTURES
-        C = fixture.copula
-        d = length(C)
-        name = fixture.case.name
+# Conditioning and Rosenblatt both instantiate highly parametric conditional
+# distributions. Exercising every concrete bestiary type recompiles the same
+# implementation routes dozens of times, while the family mathematics is
+# already covered by the distribution/correctness suites. Select one fixture
+# per actual conditioning kernel before including these operation proofs.
+function _conditioning_compile_route_key(fixture)
+    Base.@nospecialize fixture
+    C = fixture.copula
+    d = length(C)
+    js = Tuple(1:(d - 1))
+    values = ntuple(_ -> 0.4, d - 1)
+    is = (d,)
+    uis = (0.5,)
 
-        if d > 2 && is_absolutely_continuous(C)
-            @info "conditioning probe" case=name dimension=d phase=:joint_construct
-            joint = condition(C, 1, 0.4)
-            @info "conditioning probe" case=name dimension=d phase=:joint_cdf
-            cdf(joint, fill(0.5, d - 1))
-            @info "conditioning probe" case=name dimension=d phase=:joint_done
-        end
+    distortion_method = _which(Copulas.distortion, C, js, values, d)
+    partial_method = _which(Copulas._partial_cdf, C, is, js, uis, values)
+    joint_method = d > 2 ? dispatch_path(:conditional_joint, C) : nothing
+    dimension_class = d == 2 ? :bivariate : d == 3 ? :trivariate : :higher
 
-        (d == 2 || is_absolutely_continuous(C)) || continue
-        js = Tuple(1:(d - 1))
-        values = ntuple(_ -> 0.4, d - 1)
+    # EV tails share the outer ExtremeValueCopula conditioning route but have
+    # distinct STDF-partial kernels. Keep one representative of every tail type;
+    # in particular this retains Hüsler-Reiss and extremal-t coverage.
+    tail_type = C isa ExtremeValueCopula ? Base.typename(typeof(C.tail)).wrapper : nothing
+    return (distortion_method, partial_method, joint_method, dimension_class, tail_type)
+end
 
-        @info "conditioning probe" case=name dimension=d phase=:distortion_construct
-        D = condition(C, js, values)
-        @info "conditioning probe" case=name dimension=d phase=:distortion_cdf
-        cdf(D, 0.5)
-        @info "conditioning probe" case=name dimension=d phase=:distortion_quantile
-        quantile(D, 0.5)
-        @info "conditioning probe" case=name dimension=d phase=:distortion_rand
-        rand(StableRNG(73), D, 1)
-        @info "conditioning probe" case=name dimension=d phase=:done
+function _rosenblatt_compile_route_key(fixture)
+    Base.@nospecialize fixture
+    C = fixture.copula
+    is_absolutely_continuous(C) || return (:non_ac,)
+    d = length(C)
+    U = fill(0.5, d, 1)
+    forward = _which(Copulas.rosenblatt, C, U)
+    inverse = _which(Copulas.inverse_rosenblatt, C, U)
+    return (forward, inverse, _conditioning_compile_route_key(fixture))
+end
+
+function _operation_fixture_subset(f)
+    if f == "operations/conditioning.jl"
+        return unique(_conditioning_compile_route_key, COPULA_FIXTURES)
+    elseif f == "operations/rosenblatt.jl"
+        return unique(_rosenblatt_compile_route_key, COPULA_FIXTURES)
+    end
+    return nothing
+end
+
+function _include_testfile(f)
+    subset = _operation_fixture_subset(f)
+    subset === nothing && return Base.include(@__MODULE__, joinpath(@__DIR__, f))
+
+    original = copy(COPULA_FIXTURES)
+    empty!(COPULA_FIXTURES)
+    append!(COPULA_FIXTURES, subset)
+    @info "Deduplicated operation fixtures" file=f selected=length(subset) total=length(original)
+    try
+        return Base.include(@__MODULE__, joinpath(@__DIR__, f))
+    finally
+        empty!(COPULA_FIXTURES)
+        append!(COPULA_FIXTURES, original)
     end
 end
-_probe_conditioning_routes()
 
-# Paramorph 0.0.3 migration checkpoint.
-# Run the complete suite now that the core geometry migration is stable enough
-# to expose the remaining integration failures in one diagnostic batch.
-# `operations/conditioning.jl` is temporarily last while the probe above
-# isolates its long-running route.
+# Paramorph 0.0.3 migration checkpoint: run the complete suite and let each
+# operation proof deduplicate only the concrete compilation routes it exercises.
 testfiles = (
     "Aqua.jl",
     "api/constructors.jl",
@@ -244,6 +269,7 @@ testfiles = (
     "operations/measure.jl",
     "operations/sampling.jl",
     "operations/subsetting.jl",
+    "operations/conditioning.jl",
     "operations/conditioning_numeric_types.jl",
     "operations/rosenblatt.jl",
     "operations/dependence.jl",
@@ -258,8 +284,7 @@ testfiles = (
     "operations/hypothesis_testing.jl",
     "operations/nataf.jl",
     "extensions/expectation_maximization.jl",
-    "extensions/partitioned_distributions.jl",
-    "operations/conditioning.jl"
+    "extensions/partitioned_distributions.jl"
 )
 
 @testset verbose=true "Copulas.jl" begin
@@ -267,7 +292,7 @@ testfiles = (
     for (i, f) in enumerate(testfiles)
         @info "Running tests [$i/$nfiles]" file=f
         @testset "$f" begin
-            include(f)
+            _include_testfile(f)
         end
     end
 end
