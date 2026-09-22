@@ -186,7 +186,6 @@ struct MGenerator <: MarkerGenerator end
 struct WGenerator <: MarkerGenerator end
 
 
-
 """
     limit_kind(component, ::Val{d})
 
