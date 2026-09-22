@@ -15,7 +15,7 @@
     @test Ih.method === :hessian
 
     # Analytical inference is deliberately strict: singular/indefinite
-    # matrices fail instead of being silently ridge/eigenvalue regularized.
+    # observed-information matrices fail instead of being silently regularized.
     @test Copulas._invert_observed_information([2.0 0.0; 0.0 4.0]) ≈
           [0.5 0.0; 0.0 0.25]
     @test_throws ArgumentError Copulas._invert_observed_information(
@@ -39,10 +39,11 @@
 
     U3 = rand(StableRNG(48_102), GaussianCopula{3}(0.35), 120)
     rank_model_3d = fit(CopulaModel, GaussianCopula, U3; method=:itau)
+    @test length(coef(rank_model_3d)) == dof(rank_model_3d) == 3
     Ig3 = infer(rank_model_3d; rng=StableRNG(48_103), nresamples=20)
     Ig3_repeat = infer(rank_model_3d; rng=StableRNG(48_103), nresamples=20)
     @test Ig3.method === :godambe_pairwise
-    @test size(vcov(Ig3)) == (length(coef(rank_model_3d)), length(coef(rank_model_3d))) == (9, 9)
+    @test size(vcov(Ig3)) == (length(coef(rank_model_3d)), length(coef(rank_model_3d))) == (3, 3)
     @test all(isfinite, vcov(Ig3))
     @test vcov(Ig3) == vcov(Ig3_repeat)
     @test_throws ArgumentError infer(rank_model_3d; method=:godambe, rng=StableRNG(48_104), nresamples=20)
@@ -107,7 +108,7 @@ end
         I3 = infer(fit(CopulaModel, GaussianCopula, U3; method=:itau, weights=counts);
                    rng=StableRNG(48_207), nresamples=20)
         @test I3.method === :godambe_pairwise
-        @test size(vcov(I3)) == (length(coef(I3.model)), length(coef(I3.model))) == (9, 9) && all(isfinite, vcov(I3))
+        @test size(vcov(I3)) == (length(coef(I3.model)), length(coef(I3.model))) == (3, 3) && all(isfinite, vcov(I3))
     end
 
     @testset "bootstrap refits each resample unweighted" begin

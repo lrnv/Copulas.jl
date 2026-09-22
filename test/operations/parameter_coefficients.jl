@@ -1,4 +1,4 @@
-@testset "natural StatsBase coefficients" begin
+@testset "identifiable natural StatsBase coefficients" begin
     P = Copulas.Paramorph
 
     @test !isdefined(Copulas, :_natural_parameters)
@@ -8,9 +8,9 @@
     @test !isdefined(Copulas, :_coefficient_parameter_values)
     @test !isdefined(Copulas, :_parameter_dof)
 
-    # Sklar composes structural component geometry in Copulas rather than
-    # declaring itself as a Paramorph type. StatsBase coefficients are the
-    # natural component parameters, with copula then margins.
+    # Sklar composes natural identifiable component coefficients, with copula
+    # then margins. The coefficients remain on the model scale rather than on
+    # the optimizer's unconstrained scale.
     D = SklarDist(
         ClaytonCopula(2, 1.25),
         (Normal(2.0, 3.0), Exponential(4.0)),
@@ -22,25 +22,22 @@
         "copula_θ", "margin_1_μ", "margin_1_σ", "margin_2_θ",
     ]
     @test StatsBase.coef(M) == [1.25, 2.0, 3.0, 4.0]
-    @test StatsBase.dof(M) == 4
+    @test StatsBase.dof(M) == length(StatsBase.coef(M)) == 4
     blocks = Copulas._parameter_blocks(M)
     @test blocks.copula == 1:1
     @test blocks.margins == (2:3, 4:4)
 
-    # Structural values may be present in the natural representation even when
-    # Paramorph does not optimize them. Binomial n is displayed but does not
-    # consume a degree of freedom.
+    # Structural constructor arguments are not statistical coefficients.
     Dstruct = SklarDist(
         ClaytonCopula(2, 0.5),
         (Binomial(5, 0.4), Normal()),
     )
     Mstruct = CopulaModel(Dstruct, zeros(2, 1), 0.0, nothing)
     @test StatsBase.coefnames(Mstruct) == [
-        "copula_θ", "margin_1_n", "margin_1_p", "margin_2_μ", "margin_2_σ",
+        "copula_θ", "margin_1_p", "margin_2_μ", "margin_2_σ",
     ]
-    @test StatsBase.coef(Mstruct) == [0.5, 5.0, 0.4, 0.0, 1.0]
-    @test length(StatsBase.coef(Mstruct)) == 5
-    @test StatsBase.dof(Mstruct) == 4
+    @test StatsBase.coef(Mstruct) == [0.5, 0.4, 0.0, 1.0]
+    @test length(StatsBase.coef(Mstruct)) == StatsBase.dof(Mstruct) == 4
 
     # Reflections add no natural parameters or optimizer dimensions of their own.
     R = Rotated90Copula(ClaytonCopula(2, 0.75))
@@ -72,7 +69,6 @@
 
     # Ordinary parametric generators expose natural values through their
     # Paramorph logical names rather than through incidental storage order.
-    # The Archimedean copula wrapper itself uses Copulas' centralized bridge.
     Carch = ClaytonCopula(2, 1.25)
     @test P.parameter_fields(typeof(Carch.G)) == (:θ,)
     @test Distributions.params(Carch) == (1.25,)
@@ -100,9 +96,7 @@
     @test StatsBase.coef(Mfgm) == [0.4]
     @test StatsBase.dof(Mfgm) == 1
 
-    # A fixed nested Archimedean tree is a Cartesian product of the local
-    # generator spaces. Paramorph owns its flat chart and statistical dimension;
-    # Copulas only owns the tree traversal and cross-node nesting certificates.
+    # A fixed nested Archimedean tree exposes the local generator parameters.
     N = NestedArchimedeanCopula(
         Copulas.ClaytonGenerator(1.0);
         children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)],
@@ -110,8 +104,7 @@
     @test length(Copulas._nested_unbound(N)) == 3
     @test StatsBase.dof(N) == 3
     MN = CopulaModel(N, zeros(length(N), 1), 0.0, nothing)
-    @test StatsBase.dof(MN) == 3
-    @test length(StatsBase.coef(MN)) == 3
+    @test StatsBase.dof(MN) == length(StatsBase.coef(MN)) == 3
     Nroundtrip = Copulas._nested_rebound(N, Copulas._nested_unbound(N))
     @test Copulas._nested_coef(Nroundtrip)[2] ≈ Copulas._nested_coef(N)[2]
 
@@ -130,23 +123,17 @@
     @test StatsBase.dof(Mruntime) == 1
     @test length(StatsBase.coef(Mruntime)) == 3
 
-    # A natural matrix is exposed in full. Symmetry and the fixed unit diagonal
-    # therefore create redundant coefficients, while dof remains the Paramorph
-    # dimension of the correlation manifold.
+    # Correlation matrices expose one natural off-diagonal triangle rather than
+    # both symmetric halves and the fixed unit diagonal.
     G = GaussianCopula([
         1.0 0.4 0.2
         0.4 1.0 0.3
         0.2 0.3 1.0
     ])
     MG = CopulaModel(G, zeros(3, 1), 0.0, nothing)
-    @test StatsBase.coefnames(MG) == [
-        "Σ₁₁", "Σ₂₁", "Σ₃₁",
-        "Σ₁₂", "Σ₂₂", "Σ₃₂",
-        "Σ₁₃", "Σ₂₃", "Σ₃₃",
-    ]
-    @test StatsBase.coef(MG) == vec(G.Σ)
-    @test length(StatsBase.coef(MG)) == 9
-    @test StatsBase.dof(MG) == P.intrinsic_dimension(G) == 3
+    @test StatsBase.coefnames(MG) == ["Σ₁₂", "Σ₁₃", "Σ₂₃"]
+    @test StatsBase.coef(MG) == [0.4, 0.2, 0.3]
+    @test length(StatsBase.coef(MG)) == StatsBase.dof(MG) == P.intrinsic_dimension(G) == 3
     MGshow = CopulaModel(
         G, zeros(3, 1), 0.0,
         Copulas._CopulaFitSpec(GaussianCopula, :mle, (;)),
@@ -157,17 +144,17 @@
     @test !occursin("Σ₁₂", report)
     @test !occursin("Spearman ρ", report)
 
-    # Simplex vectors likewise expose every natural probability even though one
-    # entry is redundant in the optimization geometry.
+    # A simplex exposes k-1 natural probabilities. The omitted final probability
+    # is determined by the unit-sum constraint.
     Dsimplex = SklarDist(
         ClaytonCopula(2, 0.5),
         (Categorical([0.1, 0.2, 0.7]), Normal()),
     )
     Msimplex = CopulaModel(Dsimplex, zeros(2, 1), 0.0, nothing)
-    @test StatsBase.coefnames(Msimplex)[1:4] ==
-          ["copula_θ", "margin_1_p₁", "margin_1_p₂", "margin_1_p₃"]
-    @test StatsBase.coef(Msimplex)[1:4] == [0.5, 0.1, 0.2, 0.7]
-    @test length(StatsBase.coef(Msimplex)) == StatsBase.dof(Msimplex) + 1
+    @test StatsBase.coefnames(Msimplex)[1:3] ==
+          ["copula_θ", "margin_1_p₁", "margin_1_p₂"]
+    @test StatsBase.coef(Msimplex)[1:3] == [0.5, 0.1, 0.2]
+    @test length(StatsBase.coef(Msimplex)) == StatsBase.dof(Msimplex)
 
     T = TawnCopula(
         2,
@@ -176,17 +163,17 @@
         [0.3, 0.7],
     )
     MT = CopulaModel(T, zeros(2, 1), 0.0, nothing)
-    @test StatsBase.coefnames(MT) == [
-        "dep₁", "weights1₁", "weights1₂", "weights2₁", "weights2₂",
-    ]
-    @test StatsBase.coef(MT) == [2.0, 0.2, 0.8, 0.3, 0.7]
-    @test StatsBase.dof(MT) == Copulas._parameter_dimension(T) == 3
+    @test StatsBase.coefnames(MT) == ["dep₁", "weights1₁", "weights2₁"]
+    @test StatsBase.coef(MT) == [2.0, 0.2, 0.3]
+    @test length(StatsBase.coef(MT)) == StatsBase.dof(MT) ==
+          Copulas._parameter_dimension(T) == 3
 
     # Archimax composes the component natural representations instead of
-    # indexing storage by Paramorph names. This must work for Tawn, whose
-    # logical weights1/weights2 parameters are stored in one weights field.
+    # indexing storage by Paramorph names.
     AX = ArchimaxCopula(2, Copulas.ClaytonGenerator(1.25), T.tail)
     @test Copulas._parameter_dimension(AX) == 4
     @test Distributions.params(AX) ==
           (1.25, [2.0], [0.2, 0.8], [0.3, 0.7])
+    MAX = CopulaModel(AX, zeros(2, 1), 0.0, nothing)
+    @test length(StatsBase.coef(MAX)) == StatsBase.dof(MAX) == 4
 end

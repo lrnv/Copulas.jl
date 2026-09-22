@@ -23,9 +23,8 @@
 
     M = fit(CopulaModel, C0, U)
     @test fitted_distribution(M) isa LiebscherCopula{2}
-    @test coefnames(M) == ["C1_θ", "C2_θ", "a1_1", "a2_1", "a1_2", "a2_2"]
-    @test length(coef(M)) == 6
-    @test dof(M) == 4
+    @test coefnames(M) == ["C1_θ", "C2_θ", "a1_1", "a1_2"]
+    @test length(coef(M)) == dof(M) == 4
     @test length(Copulas._liebscher_unbound(fitted_distribution(M))) == 4
 
     @test Copulas._available_fitting_methods(typeof(C0), 2) == ()
