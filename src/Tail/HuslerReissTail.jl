@@ -115,7 +115,15 @@ function Paramorph.TransformVariables.inverse_at!(
         fill!(@view(x[index:(index + n - 1)]), Inf)
         return index + n
     end
-    return Paramorph.TransformVariables.inverse_at!(x, index, t.interior, Γ)
+    all(isfinite, Γ) || throw(ArgumentError(
+        "Γ must contain only finite entries except for the independence limit",
+    ))
+    try
+        return Paramorph.TransformVariables.inverse_at!(x, index, t.interior, Γ)
+    catch err
+        (err isa DomainError || err isa LinearAlgebra.PosDefException) || rethrow()
+        throw(ArgumentError("Γ must be a strict Hüsler-Reiss variogram"))
+    end
 end
 
 Paramorph.@paramorph T struct HuslerReissTail{d,T<:Real} <: BivariatePickandsTail
@@ -143,12 +151,7 @@ function _hr_tail_from_matrix(::Val{d}, Γ::AbstractMatrix) where {d}
     if !_hr_is_independence_variogram(G)
         all(isfinite, G) || throw(ArgumentError("Γ must contain only finite entries"))
     end
-    try
-        return HuslerReissTail{d,T}(G)
-    catch err
-        (err isa DomainError || err isa LinearAlgebra.PosDefException) || rethrow()
-        throw(ArgumentError("Γ must be a strict Hüsler-Reiss variogram or a supported limit"))
-    end
+    return HuslerReissTail{d,T}(G)
 end
 
 function (::Type{HuslerReissTail{d}})(θ::Real) where {d}
