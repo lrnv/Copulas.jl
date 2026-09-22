@@ -24,6 +24,20 @@ References:
 """
 tEVTail, tEVCopula
 
+# Copulas' public constructors historically report invalid model parameters as
+# ArgumentError. Keep that API policy in the model geometry rather than changing
+# Paramorph's generic DomainError semantics.
+struct _tEVDegreesOfFreedom <: Paramorph.TransformVariables.ScalarTransform end
+Paramorph.TransformVariables.transform(::_tEVDegreesOfFreedom, x::Number) = exp(x)
+Paramorph.TransformVariables.transform_and_logjac(::_tEVDegreesOfFreedom, x::Number) =
+    (exp(x), x)
+function Paramorph.TransformVariables.inverse(::_tEVDegreesOfFreedom, ν::Number)
+    ν > zero(ν) || throw(ArgumentError("ν must be > 0"))
+    return log(ν)
+end
+Paramorph.TransformVariables.inverse_eltype(::_tEVDegreesOfFreedom, ::Type{T}) where {T<:Number} =
+    float(T)
+
 struct _tEVCorrelationGeometry{G} <: Paramorph.TransformVariables.VectorTransform
     d::Int
     interior::G
@@ -52,7 +66,7 @@ function Paramorph.TransformVariables.transform_with(
     return Paramorph.TransformVariables.transform_with(flag, t.interior, x, index)
 end
 function Paramorph.TransformVariables.transform_with(
-    ::Paramorph.TransformVariables.LogJac,
+    flag::Paramorph.TransformVariables.LogJac,
     t::_tEVCorrelationGeometry,
     x::AbstractVector,
     index,
@@ -62,9 +76,7 @@ function Paramorph.TransformVariables.transform_with(
     if all(isinf, coordinates) && all(>(zero(eltype(coordinates))), coordinates)
         return _tev_complete_correlation(eltype(coordinates), t.d), -Inf, index + n
     end
-    return Paramorph.TransformVariables.transform_with(
-        Paramorph.TransformVariables.LogJac(), t.interior, x, index,
-    )
+    return Paramorph.TransformVariables.transform_with(flag, t.interior, x, index)
 end
 Paramorph.TransformVariables.inverse_eltype(
     ::_tEVCorrelationGeometry,
@@ -79,16 +91,22 @@ function Paramorph.TransformVariables.inverse_at!(
     size(R) == (t.d, t.d) || throw(DimensionMismatch(
         "expected a $(t.d) × $(t.d) matrix",
     ))
+    all(isfinite, R) || throw(ArgumentError("R must contain only finite entries"))
     n = Paramorph.TransformVariables.dimension(t)
     if _tev_is_complete_correlation(R)
         fill!(@view(x[index:(index + n - 1)]), Inf)
         return index + n
     end
-    return Paramorph.TransformVariables.inverse_at!(x, index, t.interior, R)
+    try
+        return Paramorph.TransformVariables.inverse_at!(x, index, t.interior, R)
+    catch err
+        (err isa DomainError || err isa LinearAlgebra.PosDefException) || rethrow()
+        throw(ArgumentError("R must be a strict correlation matrix"))
+    end
 end
 
 Paramorph.@paramorph T struct tEVTail{d,T<:Real} <: BivariatePickandsTail
-    ν::T ~ Paramorph.open_lower(zero(T))
+    ν::T ~ _tEVDegreesOfFreedom()
     R::Matrix{T} ~ _tEVCorrelationGeometry(d)
 end
 
@@ -104,8 +122,8 @@ function _tev_tail_from_matrix(::Val{d}, ν::Real, R::AbstractMatrix) where {d}
     try
         return tEVTail{d,T}(T(νf), RF)
     catch err
-        (err isa DomainError || err isa LinearAlgebra.PosDefException) || rethrow()
-        throw(ArgumentError("R must be a strict correlation matrix or the complete-dependence limit"))
+        err isa ArgumentError || rethrow()
+        rethrow()
     end
 end
 
