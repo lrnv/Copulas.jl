@@ -1,7 +1,7 @@
 # Internal bridge between Copulas' notion of parameter geometry and Paramorph.
 #
 # Model files declare constraints with `@paramorph`; fitting and inference use
-# only the `_parameter_*` functions below.  Paramorph-specific runtime calls are
+# only the `_parameter_*` functions below. Paramorph-specific runtime calls are
 # intentionally centralized here.
 
 function _concrete_paramorph_type(T::Type, ::Type{N}=Float64) where {N<:Real}
@@ -25,16 +25,28 @@ _from_parameter_coordinates(object, α) = Paramorph.constraint(object, α)
 _declares_parameter_geometry(::Type{T}) where {T} = Paramorph.is_paramorph_type(T)
 _declared_parameter_values(object) =
     _declares_parameter_geometry(typeof(object)) ? Paramorph.parameter_values(object) : nothing
-_declared_parameter_names(::Type{T}) where {T} =
-    _declares_parameter_geometry(T) ? Paramorph.parameter_fields(T) : nothing
 
-function _parameter_dimension_or_nothing(object)
-    try
-        return _parameter_dimension(object)
-    catch err
-        (err isa ArgumentError || err isa MethodError) || rethrow()
-        return nothing
-    end
+# Capability detection is explicit. Once an object declares a geometry, errors
+# while constructing or evaluating that geometry are implementation errors and
+# must propagate instead of being reclassified as "no geometry".
+_parameter_dimension_or_nothing(object) =
+    _declares_parameter_geometry(typeof(object)) ? _parameter_dimension(object) : nothing
+
+function _parameter_dimension_or_nothing(C::ArchimedeanCopula)
+    return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
+end
+function _parameter_dimension_or_nothing(C::ExtremeValueCopula)
+    return _declares_parameter_geometry(typeof(C.tail)) ? _parameter_dimension(C) : nothing
+end
+function _parameter_dimension_or_nothing(C::ArchimaxCopula)
+    (_declares_parameter_geometry(typeof(C.gen)) &&
+     _declares_parameter_geometry(typeof(C.tail))) || return nothing
+    return _parameter_dimension(C)
+end
+_parameter_dimension_or_nothing(C::AbstractReflectedCopula) =
+    _parameter_dimension_or_nothing(basecopula(C))
+function _parameter_dimension_or_nothing(C::LiouvilleCopula)
+    return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
 end
 
 function _component_prototype(
@@ -189,20 +201,24 @@ end
 
 # Inference reconstructs a fitted family from its natural parameters. A target
 # may already encode the copula dimension (`GumbelCopula{2}`), in which case
-# passing `d` again selects the wrong constructor. Keep that distinction in the
-# same bridge that owns dimension-aware prototype reconstruction.
+# passing `d` again selects the wrong constructor. Unsupported targets return
+# `nothing`; errors from a declared geometry or from invalid parameters propagate.
 function _analytical_parameter_coordinates(target::Type{<:Copula}, d, parameters)
-    try
-        unwrapped = Base.unwrap_unionall(target)
-        encoded_dimension = unwrapped.parameters[1]
-        fitted = encoded_dimension isa TypeVar ?
-                 target(d, parameters...) : target(parameters...)
+    args = _parameter_arguments(parameters)
+    unwrapped = Base.unwrap_unionall(target)
+    type_parameters = unwrapped.parameters
+    if isempty(type_parameters)
+        _declares_parameter_geometry(target) || return nothing
+        fitted = target(args...)
         α = _parameter_coordinates(fitted)
         return all(isfinite, α) ? (fitted, α) : nothing
-    catch err
-        err isa InterruptException && rethrow()
-        return nothing
     end
+    encoded_dimension = first(type_parameters)
+    fitted = encoded_dimension isa TypeVar ?
+             target(d, args...) : target(args...)
+    _parameter_dimension_or_nothing(fitted) === nothing && return nothing
+    α = _parameter_coordinates(fitted)
+    return all(isfinite, α) ? (fitted, α) : nothing
 end
 
 # Rank inversions are pairwise, but some one-parameter Archimedean families have

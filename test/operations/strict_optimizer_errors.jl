@@ -19,6 +19,12 @@ Copulas._fit_prototype(::Type{_BrokenADCopula}, ::Val{d}) where {d} =
     _BrokenADCopula(d, 0.5)
 Copulas._available_fitting_methods(::Type{_BrokenADCopula}, d) = (:mle,)
 
+struct _BrokenGeometryCopula{d} <: Copulas.Copula{d} end
+Copulas.Paramorph.is_paramorph_type(::Type{<:_BrokenGeometryCopula}) = true
+Copulas.Paramorph.transformation_schema(
+    ::_BrokenGeometryCopula, ::NamedTuple=NamedTuple(),
+) = throw(ArgumentError("deliberately broken parameter geometry"))
+
 struct _OverparameterizedRankCopula{d} <: Copulas.Copula{d} end
 Copulas.Paramorph.is_paramorph_type(::Type{<:_OverparameterizedRankCopula}) = true
 Copulas.Paramorph.transformation_schema(
@@ -46,6 +52,15 @@ struct _FloatOnlyNestedRecon end
     @test isfinite(objective([0.0]))
     @test all(isfinite, ForwardDiff.gradient(objective, [0.0]))
     @test all(isfinite, ForwardDiff.hessian(objective, [0.0]))
+
+    # Capability probes distinguish absence from a broken declared geometry.
+    # Invalid natural parameters likewise remain constructor errors instead of
+    # being silently reclassified as unavailable analytical inference.
+    @test Copulas._parameter_dimension_or_nothing(Normal()) === nothing
+    @test_throws ArgumentError Copulas._parameter_dimension_or_nothing(
+        _BrokenGeometryCopula{2}())
+    @test_throws DomainError Copulas._analytical_parameter_coordinates(
+        ClaytonCopula, 3, (-0.75,))
 
     # An over-parameterized generic rank fit must report the intended
     # identifiability error rather than touching the not-yet-created α₀ vector.
