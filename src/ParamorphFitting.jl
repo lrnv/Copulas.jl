@@ -213,3 +213,12 @@ function _nested_scalar_bounds(G::Generator, ::Int, ::Bool)
         "one-parameter generators; $(nameof(typeof(G))) is open for contributions",
     ))
 end
+
+# Independence has no scalar parent parameter. Its fitting rule is genuinely
+# free, so delegate directly to the child's local geometry instead of trying to
+# extract a nonexistent parent value in `_nested_edge_transform`.
+function _nested_edge_transform(
+    ::IndependentGenerator, child::Generator, dloc::Int; parent_role::Bool,
+)
+    return _nested_standard_transform(child, dloc; parent_role)
+end

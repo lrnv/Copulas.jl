@@ -7,6 +7,21 @@
     α0 = Copulas._nested_unbound(C0)
     @test all(isfinite, α0)
 
+    # An explicit independence parent carries no scalar parameter of its own.
+    # Its supported :free edge must therefore delegate directly to the child's
+    # local geometry rather than attempting to read a parent parameter.
+    I0 = NestedArchimedeanCopula(
+        Copulas.IndependentGenerator();
+        leaves=[1],
+        children=[ClaytonCopula{2}(2.0)],
+    )
+    αI = Copulas._nested_unbound(I0)
+    @test length(αI) == 1
+    @test all(isfinite, αI)
+    Iroundtrip = Copulas._nested_rebound(I0, αI)
+    @test Iroundtrip.G isa Copulas.IndependentGenerator
+    @test Copulas._nested_child(only(Iroundtrip.children)).G.θ ≈ 2.0
+
     # Construction is permissive about parent-child nesting theory, but every
     # node must still use a generator that is valid at that node's local arity.
     @test_throws DomainError NestedArchimedeanCopula(
