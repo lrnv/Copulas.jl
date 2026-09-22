@@ -20,8 +20,6 @@
     end
 
     @testset "parameter-space metadata" begin
-        P = Copulas.Paramorph
-
         # The generator chart must not be restricted by the ambient Liouville
         # dimension: validity depends on sum(α), not on d. This six-dimensional
         # model is valid with a negative Clayton parameter because sum(α) < 2.
@@ -29,11 +27,10 @@
             Copulas.ClaytonGenerator(-0.25),
             ntuple(_ -> 0.3, 6),
         )
-        @test P.parameter_fields(typeof(C)) == (:G, :α)
-        @test P.intrinsic_dimension(C) == 7
+        @test Copulas._parameter_dimension(C) == 7
 
-        z = P.unconstrain(C)
-        natural = P.constraint(C, z)
+        z = Copulas._parameter_coordinates(C)
+        natural = Copulas._from_parameter_coordinates(C, z)
         @test natural.G.θ ≈ -0.25
         @test collect(natural.α) ≈ collect(C.α)
 
