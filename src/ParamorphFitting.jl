@@ -83,22 +83,20 @@ end
 
 function _tail_prototype(TT::Type{<:HuslerReissTail}, ::Val{d}) where {d}
     U = Base.unwrap_unionall(TT)
-    encoded_d, encoded_rep = U.parameters[1], U.parameters[2]
-    rep = encoded_rep isa TypeVar ? (d == 2 ? :general : :exchangeable) : encoded_rep
+    encoded_d = U.parameters[1]
     encoded_d isa TypeVar || encoded_d == d || throw(DimensionMismatch(
         "Hüsler-Reiss tail dimension $encoded_d does not match d=$d",
     ))
-    return _component_prototype(HuslerReissTail{d,rep,Float64}, (; dimension=d))
+    return _component_prototype(HuslerReissTail{d,Float64}, (; dimension=d))
 end
 
 function _tail_prototype(TT::Type{<:tEVTail}, ::Val{d}) where {d}
     U = Base.unwrap_unionall(TT)
-    encoded_d, encoded_rep = U.parameters[1], U.parameters[2]
-    rep = encoded_rep isa TypeVar ? (d == 2 ? :general : :exchangeable) : encoded_rep
+    encoded_d = U.parameters[1]
     encoded_d isa TypeVar || encoded_d == d || throw(DimensionMismatch(
         "extremal-t tail dimension $encoded_d does not match d=$d",
     ))
-    return _component_prototype(tEVTail{d,rep,Float64}, (; dimension=d))
+    return _component_prototype(tEVTail{d,Float64}, (; dimension=d))
 end
 
 function _parameter_prototype(CT::Type{<:ExtremeValueCopula}, vd::Val{d}) where {d}
