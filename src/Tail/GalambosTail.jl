@@ -7,17 +7,17 @@ Galambos (negative-logistic) extreme-value copula in dimension `d ≥ 2`, with
 `θ ∈ [0, ∞]`. Its stable tail dependence function is
 
 ```math
-\ell(x)
+\\ell(x)
 =
-\sum_{\varnothing \ne I \subseteq \{1,\ldots,d\}}
+\\sum_{\\varnothing \\ne I \\subseteq \\{1,\\ldots,d\\}}
 (-1)^{|I|+1}
-\left(\sum_{i\in I}x_i^{-\theta}\right)^{-1/\theta}.
+\\left(\\sum_{i\\in I}x_i^{-\\theta}\\right)^{-1/\\theta}.
 ```
 
 For `d = 2`, the equivalent Pickands dependence function is
 
 ```math
-A(t)=1-\left(t^{-\theta}+(1-t)^{-\theta}\right)^{-1/\theta},
+A(t)=1-\\left(t^{-\\theta}+(1-t)^{-\\theta}\\right)^{-1/\\theta},
 ```
 
 and the implementation uses the native bivariate derivatives when beneficial.
