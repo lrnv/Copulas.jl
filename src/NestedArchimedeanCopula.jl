@@ -996,7 +996,7 @@ _gentype(G::Generator) = typeof(G).name.wrapper
 _local_arity(C::NestedArchimedeanCopula) =
     max(length(C.leafdims) + length(C.children), 2)
 
-function _generator_parameter_values(G::Generator, dloc)
+function _generator_parameter_values(G::Generator)
     return map(values(Paramorph.parameter_values(G))) do value
         value isa AbstractArray ? copy(value) : value
     end
@@ -1035,50 +1035,12 @@ function _nested_interval_transform(lower, upper)
     return Paramorph.bounded_interval(lower, upper)
 end
 
-function _nested_standard_transform(G::Generator, dloc::Int; parent_role::Bool)
-    bounds = try
-        _nested_scalar_bounds(G, dloc, parent_role)
-    catch err
-        err isa MethodError || rethrow()
-        throw(ArgumentError(
-            "template fitting currently provides nesting geometries only for standard " *
-            "one-parameter generators; $(nameof(typeof(G))) is open for contributions",
-        ))
-    end
-    return _nested_interval_transform(bounds...)
-end
-
-function _nested_single_parameter_name(G::Generator, dloc::Int, tag::String)
-    nms = Paramorph.parameter_fields(typeof(G))
-    length(nms) == 1 || return nothing
-    return Symbol(tag, "_", only(nms))
-end
-
-function _push_nested_parameter_values!(values, C::NestedArchimedeanCopula)
-    append!(values, _generator_parameter_values(C.G, _local_arity(C)))
-    for ch in C.children
-        if ch isa Tuple
-            cc, ds = ch
-            append!(values, _generator_parameter_values(cc.G, max(length(ds), 2)))
-        else
-            _push_nested_parameter_values!(values, ch)
-        end
-    end
-    return values
-end
-
-function _nested_parameter_values(C::NestedArchimedeanCopula)
-    values = Any[]
-    _push_nested_parameter_values!(values, C)
-    return Tuple(values)
-end
-
 function _nested_edge_transform(parent, child, dloc::Int; parent_role::Bool)
     lower, upper = _nested_scalar_bounds(child, dloc, parent_role)
     parent === nothing && return _nested_interval_transform(lower, upper)
     rule = _nested_fit_rule(parent, child)
     rule === nothing && _unsupported_nested_fit_rule(parent, child)
-    parent_value = only(_generator_parameter_values(parent, 2))
+    parent_value = only(_generator_parameter_values(parent))
     if rule === :greater
         lower = lower === nothing ? parent_value : max(lower, parent_value)
     elseif rule === :lower
@@ -1095,7 +1057,7 @@ function _nested_unbound_node!(coordinates, C::NestedArchimedeanCopula; parent=n
     if !(C.G isa IndependentGenerator)
         transform = _nested_edge_transform(parent, C.G, _local_arity(C); parent_role=true)
         push!(coordinates, Paramorph.TransformVariables.inverse(
-            transform, only(_generator_parameter_values(C.G, _local_arity(C))),
+            transform, only(_generator_parameter_values(C.G)),
         ))
     end
     for child in C.children
@@ -1103,7 +1065,7 @@ function _nested_unbound_node!(coordinates, C::NestedArchimedeanCopula; parent=n
             copula, dims = child
             transform = _nested_edge_transform(C.G, copula.G, max(length(dims), 2); parent_role=false)
             push!(coordinates, Paramorph.TransformVariables.inverse(
-                transform, only(_generator_parameter_values(copula.G, max(length(dims), 2))),
+                transform, only(_generator_parameter_values(copula.G)),
             ))
         else
             _nested_unbound_node!(coordinates, child; parent=C.G)
@@ -1248,7 +1210,7 @@ end
 
 # Both template and custom runtime fits expose the fitted generators' natural
 # parameters. Runtime optimizer coordinates remain fitting metadata only.
-function _nested_generator_coef(G::Generator, dloc::Int, tag::String)
+function _nested_generator_coef(G::Generator, tag::String)
     names = String[]
     values = Float64[]
     for name in Paramorph.parameter_fields(typeof(G))
@@ -1261,12 +1223,12 @@ function _nested_generator_coef(G::Generator, dloc::Int, tag::String)
 end
 
 function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
-    names, values = _nested_generator_coef(C.G, _local_arity(C), tag)
+    names, values = _nested_generator_coef(C.G, tag)
     for (i, child) in enumerate(C.children)
         if child isa Tuple
-            copula, ds = child
+            copula, _ = child
             child_names, child_values = _nested_generator_coef(
-                copula.G, max(length(ds), 2), "$(tag)[$(i)]")
+                copula.G, "$(tag)[$(i)]")
             append!(names, child_names)
             append!(values, child_values)
         else

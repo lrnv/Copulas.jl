@@ -282,5 +282,5 @@ end
 function _nested_edge_transform(
     ::IndependentGenerator, child::Generator, dloc::Int; parent_role::Bool,
 )
-    return _nested_standard_transform(child, dloc; parent_role)
+    return _nested_interval_transform(_nested_scalar_bounds(child, dloc, parent_role)...)
 end
