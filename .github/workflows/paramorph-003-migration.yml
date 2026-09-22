@@ -27,38 +27,10 @@ jobs:
             echo 'Runtime Paramorph leaked outside the centralized bridge' >&2
             exit 1
           fi
-      - name: Strict precompile
+      - name: Strict precompile and tests
         shell: julia --project=. --color=yes {0}
         run: |
           using Pkg
           Pkg.instantiate()
           Pkg.precompile(; strict=true)
-      - name: Conditioning fixture diagnostic
-        shell: bash
-        run: |
-          python3 - <<'PY'
-          from pathlib import Path
-
-          path = Path("test/runtests.jl")
-          text = path.read_text()
-          text = text.replace("\n_probe_conditioning_routes()\n", "\n")
-          start = text.index("testfiles = (")
-          marker = '\n\n@testset verbose=true "Copulas.jl" begin'
-          end = text.index(marker, start)
-          text = (
-              text[:start]
-              + 'testfiles = ("api/copulas.jl", "operations/conditioning.jl")'
-              + text[end:]
-          )
-          path.write_text(text)
-
-          path = Path("test/operations/conditioning.jl")
-          text = path.read_text()
-          needle = '''    @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES\n        test_conditioning_contract(\n            fixture.copula,\n            copula_contract_point(fixture.copula),\n        )\n    end\n'''
-          replacement = '''    @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES\n        @info "conditioning contract fixture start" case=fixture.case.name type=typeof(fixture.copula) dimension=length(fixture.copula)\n        test_conditioning_contract(\n            fixture.copula,\n            copula_contract_point(fixture.copula),\n        )\n        @info "conditioning contract fixture done" case=fixture.case.name\n    end\n'''
-          needle in text or raise SystemExit("conditioning contract block not found")
-          path.write_text(text.replace(needle, replacement, 1))
-          PY
-
-          timeout --signal=INT --kill-after=10s 120s \
-            julia --project=. --color=yes -e 'using Pkg; Pkg.test()'
+          Pkg.test()
