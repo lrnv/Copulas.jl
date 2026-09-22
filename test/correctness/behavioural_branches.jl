@@ -83,18 +83,20 @@
         @test cdf(collapsed, [0.4, 0.7]) == cdf(native, [0.4, 0.7])
     end
 
-    @testset "extremal-t fitting bounds by dimension" begin
-        PS = Copulas.Paramorph
-        for (d, lower) in ((2, -1.0), (3, -0.5))
+    @testset "extremal-t fitting geometry by dimension" begin
+        for d in (2, 3)
             prototype = tEVCopula{d}(4.0, 0.2)
-            unconstrained = PS.unconstrain(prototype)
-            restored = PS.constraint(prototype, unconstrained)
-            @test restored.tail.ν ≈ 4.0
-            @test restored.tail.ρ ≈ 0.2
-            ρlo = something(PS.constraint(prototype, [0.0, -100.0]).tail.ρ)
-            ρhi = something(PS.constraint(prototype, [0.0, 100.0]).tail.ρ)
-            @test lower < ρlo < 1
-            @test lower < ρhi < 1
+            unconstrained = Copulas._parameter_coordinates(prototype)
+            @test length(unconstrained) == 1 + d * (d - 1) ÷ 2
+
+            restored = Copulas._from_parameter_coordinates(prototype, unconstrained)
+            ν, parameter = params(restored)
+            @test ν ≈ 4.0
+            if d == 2
+                @test parameter ≈ 0.2
+            else
+                @test parameter ≈ [1.0 0.2 0.2; 0.2 1.0 0.2; 0.2 0.2 1.0]
+            end
         end
     end
 
