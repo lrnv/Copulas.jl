@@ -33,31 +33,28 @@ jobs:
           using Pkg
           Pkg.instantiate()
           Pkg.precompile(; strict=true)
-      - name: Huesler-Reiss conditioning probe
+      - name: Conditioning-only diagnostic
         shell: bash
         run: |
-          timeout --signal=INT --kill-after=5s 30s julia --project=. --color=yes -e '
-            using Copulas, Distributions
-            C = HuslerReissCopula{3}(1.0)
-            println("constructed C")
-            @time H = condition(C, 1, 0.4)
-            println("conditioned: ", typeof(H))
-            println("margin 1 cdf")
-            @time v1 = cdf(H.m[1], 0.5)
-            println("margin 1 cdf done: ", v1)
-            println("margin 2 cdf")
-            @time v2 = cdf(H.m[2], 0.5)
-            println("margin 2 cdf done: ", v2)
-            println("margin 1 quantile")
-            @time q1 = quantile(H.m[1], v1)
-            println("margin 1 quantile done: ", q1)
-            println("margin 2 quantile")
-            @time q2 = quantile(H.m[2], v2)
-            println("margin 2 quantile done: ", q2)
-            println("conditional copula cdf")
-            @time cv = cdf(H.C, [v1, v2])
-            println("conditional copula cdf done: ", cv)
-            println("full conditional cdf")
-            @time hv = cdf(H, [0.5, 0.5])
-            println("full conditional cdf done: ", hv)
-          '
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("test/runtests.jl")
+          text = path.read_text()
+          text = text.replace("\n_probe_conditioning_routes()\n", "\n")
+          start = text.index("testfiles = (")
+          marker = '\n\n@testset verbose=true "Copulas.jl" begin'
+          end = text.index(marker, start)
+          text = (
+              text[:start]
+              + 'testfiles = ("api/copulas.jl", "operations/conditioning.jl")'
+              + text[end:]
+          )
+          path.write_text(text)
+          PY
+
+          # A healthy conditioning suite takes only a few tens of seconds.
+          # Interrupt a real regression after enough headroom for Pkg.test's
+          # temporary test environment so Julia prints the active stack.
+          timeout --signal=INT --kill-after=10s 120s \
+            julia --project=. --color=yes -e 'using Pkg; Pkg.test()'
