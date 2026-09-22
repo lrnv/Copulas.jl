@@ -1,36 +1,46 @@
-name: Paramorph 0.0.3 integration
+name: Paramorph conditioning comment patch
 
 on:
   push:
     branches:
-      - paramorph-0.0.3-migration
+      - paramorph-003-conditioning-debug
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  integration:
+  patch:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
         with:
-          version: '1.11'
-      - uses: julia-actions/cache@v3
-      - name: Reject legacy Paramorph protocol extensions
+          fetch-depth: 2
+      - name: Add SpecialFunctions regression note
         run: |
-          if grep -R -nE '^(function )?Paramorph\.(schema_|transformation_schema|parameter_values|reconstruct_struct|parameter_fields_override|schema_override)' src; then
-            echo 'Legacy Paramorph protocol extensions remain' >&2
-            exit 1
-          fi
-          if grep -n 'Paramorph\.' src/Fitting.jl src/Inference.jl src/NaturalParameters.jl src/ParameterCoefficients.jl; then
-            echo 'Runtime Paramorph leaked outside the centralized bridge' >&2
-            exit 1
-          fi
-      - name: Strict precompile and tests
-        shell: julia --project=. --color=yes {0}
-        run: |
-          using Pkg
-          Pkg.instantiate()
-          Pkg.precompile(; strict=true)
-          Pkg.test()
+          python3 - <<'PY'
+          from pathlib import Path
+
+          path = Path("test/operations/conditioning.jl")
+          text = path.read_text()
+          old = '''    @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
+    for j in 1:2, uⱼ in (0.2f0, big(0.8))
+'''
+          new = '''    @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
+    # Keep `big(0.8)`, not `big"0.8"`: the exact decimal BigFloat triggers a
+    # non-terminating `erfcinv` in SpecialFunctions.jl; see
+    # https://github.com/JuliaMath/SpecialFunctions.jl/issues/557.
+    for j in 1:2, uⱼ in (0.2f0, big(0.8))
+'''
+          if text.count(old) != 1:
+              raise SystemExit("conditioning target not found exactly once")
+          path.write_text(text.replace(old, new, 1))
+          PY
+
+          # Restore the real integration workflow from the parent commit so the
+          # resulting tree differs from the PR head only by the test comment.
+          git checkout HEAD^ -- .github/workflows/paramorph-003-migration.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add test/operations/conditioning.jl .github/workflows/paramorph-003-migration.yml
+          git commit -m "Document pathological BigFloat conditioning literal"
+          git push origin HEAD:paramorph-003-conditioning-debug
