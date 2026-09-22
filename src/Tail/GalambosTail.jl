@@ -7,17 +7,17 @@ Galambos (negative-logistic) extreme-value copula in dimension `d ≥ 2`, with
 `θ ∈ [0, ∞]`. Its stable tail dependence function is
 
 ```math
-\\ell(x)
+\ell(x)
 =
-\\sum_{\\varnothing \\ne I \\subseteq \\{1,\\ldots,d\\}}
+\sum_{\varnothing \ne I \subseteq \{1,\ldots,d\}}
 (-1)^{|I|+1}
-\\left(\\sum_{i\\in I}x_i^{-\\theta}\\right)^{-1/\\theta}.
+\left(\sum_{i\in I}x_i^{-\theta}\right)^{-1/\theta}.
 ```
 
 For `d = 2`, the equivalent Pickands dependence function is
 
 ```math
-A(t)=1-\\left(t^{-\\theta}+(1-t)^{-\\theta}\\right)^{-1/\\theta},
+A(t)=1-\left(t^{-\theta}+(1-t)^{-\theta}\right)^{-1/\theta},
 ```
 
 and the implementation uses the native bivariate derivatives when beneficial.
@@ -243,4 +243,10 @@ _rho_galambos(θ; kw...) = θ == 0 ? 0.0 : !isfinite(θ) ? 1.0 : 12*QuadGK.quadg
 β⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, beta) =
     beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
 λᵤ⁻¹(::Type{<:ExtremeValueCopula{D,<:GalambosTail} where D}, λ) =
+    λ <= 0 ? 0.0 : λ >= 1 ? Inf : -inv(log2(λ))
+
+# Preserve the public family-level inverse API on the non-dimensioned alias.
+β⁻¹(::Type{GalambosCopula}, beta) =
+    beta <= 0 ? 0.0 : beta >= 1 ? Inf : -inv(log2(log2(beta + 1)))
+λᵤ⁻¹(::Type{GalambosCopula}, λ) =
     λ <= 0 ? 0.0 : λ >= 1 ? Inf : -inv(log2(λ))
