@@ -165,7 +165,7 @@ end
     end
 
     @test_throws DimensionMismatch Copulas.tEVTail(1.5, zeros(3, 4))
-    @test_throws ArgumentError Copulas.tEVTail(
+    @test_throws DomainError Copulas.tEVTail(
         0.0, Matrix{Float64}(I, 3, 3))
     @test_throws DomainError Copulas.tEVTail(1.5,
         [1.0 0.3 0.0; 0.1 1.0 0.2; 0.0 0.2 1.0])
