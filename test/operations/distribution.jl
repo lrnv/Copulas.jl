@@ -12,7 +12,7 @@ function test_distribution_contract(C, u, numerical_atol, margin_atol)
 
     @test d >= 2
     @test eltype(C) <: Real
-    @test params(C) isa NamedTuple
+    @test params(C) isa Tuple
     @test 0 <= c <= 1
     @test max(sum(u) - d + 1, 0) - 1e-8 <= c <= minimum(u) + 1e-8
     @test cdf(C, lower) <= c <= cdf(C, upper)

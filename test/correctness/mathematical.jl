@@ -43,11 +43,11 @@ end
 struct DensityOnlyPolynomialOracleCopula{d,T} <: Copulas.Copula{d}
     θ::T
 end
-Distributions.params(C::DensityOnlyPolynomialOracleCopula) = (; θ=C.θ)
+Distributions.params(C::DensityOnlyPolynomialOracleCopula) = (C.θ,)
 Distributions._logpdf(C::DensityOnlyPolynomialOracleCopula, u) =
     log1p(C.θ * prod(1 .- 2 .* u))
 PolynomialOracleCopula(θ) = PolynomialOracleCopula{2,typeof(θ)}(θ)
-Distributions.params(C::PolynomialOracleCopula) = (; θ=C.θ)
+Distributions.params(C::PolynomialOracleCopula) = (C.θ,)
 function Copulas._cdf(C::PolynomialOracleCopula, u)
     return prod(u) * (1 + C.θ * prod(1 .- u))
 end
@@ -86,7 +86,6 @@ end
 struct QuadraticPickandsOracleTail{T} <: Copulas.BivariatePickandsTail
     κ::T
 end
-Distributions.params(tail::QuadraticPickandsOracleTail) = (; κ=tail.κ)
 Copulas.A(tail::QuadraticPickandsOracleTail, t::Real) =
     1 - tail.κ * t * (1 - t)
 

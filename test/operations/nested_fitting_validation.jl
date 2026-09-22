@@ -1,28 +1,59 @@
-@testset "nested template fitting enforces nesting certificates" begin
+@testset "nested template fitting uses dependent Paramorph geometry" begin
+    P = Copulas.Paramorph
     C0 = NestedArchimedeanCopula(
         Copulas.ClaytonGenerator(2.0);
         children=[ClaytonCopula{2}(5.0)],
     )
-    recon = Base.Fix1(Copulas._nested_rebound, C0)
     α0 = Copulas._nested_unbound(C0)
+    @test all(isfinite, α0)
 
-    @test Copulas._nested_fit_candidate(recon, α0) !== nothing
+    # Construction is permissive about parent-child nesting theory, but every
+    # node must still use a generator that is valid at that node's local arity.
+    @test_throws DomainError NestedArchimedeanCopula(
+        Copulas.WGenerator();
+        leaves=[1],
+        children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)],
+    )
+    invalid_child = Copulas.NestedArchimedeanCopula{3,typeof(Copulas.WGenerator())}(
+        Copulas.WGenerator(), [1, 2, 3], Any[], [1, 2, 3])
+    @test_throws DomainError NestedArchimedeanCopula(
+        Copulas.ClaytonGenerator(1.0);
+        children=[invalid_child],
+    )
 
-    # For a two-leaf Clayton block, α = log(θ + 1). Move the root above the
-    # child so θ_parent > θ_child, which is a certified invalid nesting edge.
-    invalid = copy(α0)
-    invalid[1] = log(7.0) # θ_parent = 6
-    invalid[2] = log(3.0) # θ_child  = 2
+    # Arbitrary unconstrained coordinates always reconstruct inside the supported
+    # ordering, so no objective-time certificate/Inf barrier is required.
+    for α in (zeros(2), [-4.0, -4.0], [3.0, -2.0], [-2.0, 3.0])
+        candidate = Copulas._nested_rebound(C0, α)
+        parent = candidate.G.θ
+        child = Copulas._nested_child(only(candidate.children)).G.θ
+        @test parent >= 0
+        @test child >= parent
+    end
 
-    raw = Copulas._nested_rebound(C0, invalid)
-    @test !Copulas._nested_tree_certified(raw)
-    @test Copulas._nested_fit_candidate(recon, invalid) === nothing
-    @test_throws DomainError Copulas._validate_nested_tree(raw)
+    # Construction is intentionally permissive. The same-family ordering below
+    # is outside the fitting chart, but constructing the explicit tree is valid
+    # API and only the Paramorph inverse rejects it.
+    bad = NestedArchimedeanCopula(
+        Copulas.ClaytonGenerator(5.0);
+        children=[ClaytonCopula{2}(2.0)],
+    )
+    @test bad isa NestedArchimedeanCopula
+    @test_throws DomainError Copulas._nested_unbound(bad)
 
-    # A completed fit must also satisfy the certificates after the minimizer is
-    # reconstructed through the ordinary template map.
-    U = rand(StableRNG(49_000), C0, 30)
+    U = rand(StableRNG(49_000), C0, 20)
+    @test_throws DomainError fit(CopulaModel, bad, U)
+
+    # Missing fitting geometry is likewise a fit concern, not a constructor
+    # concern. Explicit expert/manual trees remain constructible.
+    unsupported = NestedArchimedeanCopula(
+        Copulas.ClaytonGenerator(1.0);
+        children=[GumbelCopula{2}(2.0)],
+    )
+    @test unsupported isa NestedArchimedeanCopula
+    @test_throws ArgumentError Copulas._nested_unbound(unsupported)
+    @test_throws ArgumentError fit(CopulaModel, unsupported, U)
+
     fitted = fit(C0, U)
-    @test Copulas._nested_tree_certified(fitted)
-    @test Copulas._validate_nested_tree(fitted) === fitted
+    @test fitted.G.θ <= Copulas._nested_child(only(fitted.children)).G.θ
 end

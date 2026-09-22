@@ -68,8 +68,11 @@ end
 end
 
 @testset "multivariate FGM reference CDF/PDF values" begin
+    # Keep the numerical reference fixtures in the strict interior of the
+    # Paramorph polytope chart. The former first vector lay exactly on a facet,
+    # which is a distinct closed-boundary representation problem.
     cases = (
-        ([0.1, 0.2, 0.5, 0.4], [0.1, 0.2, 0.3], 0.0100776123, 1.308876232),
+        ([0.1, 0.2, 0.49, 0.4], [0.1, 0.2, 0.3], 0.010044, 1.3064),
         ([0.3, 0.3, 0.3, 0.3], [0.5, 0.4, 0.3], 0.0830421321, 1.024),
     )
     for (parameters, u, expected_cdf, expected_pdf) in cases
@@ -100,7 +103,7 @@ end
         @test all(x -> 0 <= x <= 1, sample)
         fitted = fit(FGMCopula, sample; method=:itau)
         @test fitted isa FGMCopula{2}
-        @test abs(only(params(fitted).θ)) <= 1
+        @test all(x -> abs(x) <= 1, only(params(fitted)))
     end
 
     @test cdf(FGMCopula{2}(1.0), midpoint) != cdf(MCopula{2}(), midpoint)

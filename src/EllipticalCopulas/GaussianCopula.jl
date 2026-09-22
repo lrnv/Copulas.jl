@@ -54,18 +54,21 @@ See also: [`TCopula`](@ref), [`SklarDist`](@ref),
 References:
 * [nelsen2006](@cite) Nelsen, Roger B. An introduction to copulas. Springer, 2006.
 """
-struct GaussianCopula{d,MT} <: EllipticalCopula{d,MT}
-    Σ::MT
-    function GaussianCopula{d}(Σ::AbstractMatrix) where {d}
-        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-        size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
-        matrix = Matrix(float.(Σ))
-        make_cor!(matrix)
-        N(GaussianCopula)(matrix)
-        return new{d,typeof(matrix)}(matrix)
-    end
+GaussianCopula
+Paramorph.@paramorph T struct GaussianCopula{d,T<:Real} <: EllipticalCopula{d,Matrix{T}}
+    Σ::Matrix{T} ~ correlation_matrix(d >= 2 ? d : throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d")))
 end
-GaussianCopula(Σ::AbstractMatrix) = GaussianCopula{size(Σ, 1)}(Σ)
+function _promoted_gaussian_copula(::Val{d}, Σ::AbstractMatrix) where {d}
+    size(Σ) == (d, d) || throw(DimensionMismatch("Σ must be a $d×$d matrix"))
+    matrix = Matrix(float.(Σ))
+    make_cor!(matrix)
+    T = eltype(matrix)
+    return GaussianCopula{d,T}(Matrix{T}(matrix))
+end
+GaussianCopula{d}(Σ::AbstractMatrix) where {d} =
+    _promoted_gaussian_copula(Val(d), Σ)
+GaussianCopula(Σ::AbstractMatrix) =
+    _promoted_gaussian_copula(Val(size(Σ, 1)), Σ)
 
 # Equicorrelation convenience constructor
 function GaussianCopula{d}(ρ::Real) where {d}
@@ -81,12 +84,12 @@ function GaussianCopula{d}(ρ::Real) where {d}
     return GaussianCopula{d}(Σ)
 end
 GaussianCopula(d::Int, ρ::Real) = GaussianCopula{d}(ρ)
-GaussianCopula(d::Int, Σ::AbstractMatrix) = GaussianCopula{d}(Σ)
+GaussianCopula(d::Int, Σ::AbstractMatrix) = _promoted_gaussian_copula(Val(d), Σ)
 (::Type{GaussianCopula{D,MT}})(d::Int, Σ::AbstractMatrix) where {D,MT} = GaussianCopula{d}(Σ)
 (::Type{GaussianCopula{D,MT}})(d::Int, ρ::Real) where {D,MT} = GaussianCopula{d}(ρ)
 
-U(::Type{T}) where T<: GaussianCopula = Distributions.Normal()
-N(::Type{T}) where T<: GaussianCopula = Distributions.MvNormal
+U(::Type{T}) where T<:GaussianCopula = Distributions.Normal()
+N(::Type{T}) where T<:GaussianCopula = Distributions.MvNormal
 function _cdf(C::CT,u) where {CT<:GaussianCopula}
     # MvNormalCDF mutates its upper-bound work vector. HCubature supplies
     # immutable StaticArrays to integrands, so always hand the backend a
@@ -133,7 +136,7 @@ function conditional_copula(C::GaussianCopula{D,MT}, js::NTuple{p,Int}, ::NTuple
     F = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(C.Σ[J, J]))
     ΣIJ = C.Σ[I, J]
     Σcond = C.Σ[I, I] - ΣIJ * (F \ C.Σ[J, I])
-    return GaussianCopula{D - p}(Σcond)
+    return _promoted_gaussian_copula(Val(D - p), Σcond)
 end
 
 function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
@@ -150,20 +153,12 @@ function _conditional_components(C::GaussianCopula{D,MT}, js::NTuple{p,Int},
         σ² = max(Σcond[k, k], zero(eltype(Σcond)))
         GaussianDistortion(float(μ[k]), float(sqrt(σ²)))
     end, length(is))
-    return GaussianCopula{length(is)}(Σcond), distortions
+    return _promoted_gaussian_copula(Val(length(is)), Σcond), distortions
 end
 
-SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p = GaussianCopula{p}(C.Σ[collect(dims),collect(dims)])
+SubsetCopula(C::GaussianCopula, dims::NTuple{p, Int}) where p =
+    _promoted_gaussian_copula(Val(p), C.Σ[collect(dims), collect(dims)])
 
-StatsBase.dof(C::Copulas.GaussianCopula)    = (p = length(C); p*(p-1) ÷ 2)
-Distributions.params(C::GaussianCopula) = (; Σ = copy(C.Σ))
-_example(::Type{<:GaussianCopula}, d::Int) = GaussianCopula(d, 0.2)
-function _unbound_params(::Type{<:GaussianCopula}, d::Int, θ::NamedTuple)
-    return _unbound_corr_params(d, θ.Σ)
-end
-function _rebound_params(::Type{<:GaussianCopula}, d::Int, α::AbstractVector{T}) where {T}
-    return (; Σ = _rebound_corr_params(d, α))
-end
 function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
     d = size(Udata, 1)
     N01 = Distributions.Normal()
@@ -190,12 +185,17 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
         R̂ = T[one(T) ρ̂; ρ̂ one(T)]
         return GaussianCopula(R̂)
     end
+    pΣ = Paramorph.correlation_matrix(d)
     R₀ = _score_corr_start(Z)
-    α₀ = _unbound_corr_params(d, R₀)
+    α₀ = Paramorph.TransformVariables.inverse(pΣ, R₀)
     objective_hd = α -> begin
-        L = _rebound_corr_factor(d, α)
+        R = Paramorph.TransformVariables.transform(pΣ, α)
+        L = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(R); check=false).L
+        diagL = LinearAlgebra.diag(L)
+        all(x -> isfinite(x) && x > zero(x), diagL) ||
+            return convert(eltype(α), Inf)
         Ltri = LinearAlgebra.LowerTriangular(L)
-        logdetR = 2 * sum(log, LinearAlgebra.diag(L))
+        logdetR = 2 * sum(log, diagL)
         Y = Ltri \ Q
         RinvQ = transpose(Ltri) \ Y
         quadratic = LinearAlgebra.tr(RinvQ)
@@ -208,8 +208,7 @@ function _fit(CT::Type{<:GaussianCopula}, Udata, ::Val{:mle}; weights=nothing)
         autodiff=ADTypes.AutoForwardDiff(),
     )
     α̂ = Optim.minimizer(res)
-    L̂ = _rebound_corr_factor(d, α̂)
-    R̂ = L̂ * L̂'
+    R̂ = Paramorph.TransformVariables.transform(pΣ, α̂)
     R̂ = (R̂ + R̂') / 2
     return GaussianCopula(R̂)
 end

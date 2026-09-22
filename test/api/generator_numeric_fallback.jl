@@ -3,7 +3,6 @@
 struct _CubicGenerator{T} <: Copulas.Generator
     r::T
 end
-Distributions.params(G::_CubicGenerator) = (; r=G.r)
 Copulas.max_monotony(::_CubicGenerator) = 4
 function Copulas.ϕ(G::_CubicGenerator, t)
     q = one(t) - t / G.r
@@ -42,4 +41,13 @@ end
 
     G64 = _CubicGenerator(1.0)
     @test Copulas.ϕ⁽ᵏ⁾(G64, 4, 0.25) === 0.0
+end
+
+@testset "custom generator params do not require fitting geometry" begin
+    C = ArchimedeanCopula(3, _CubicGenerator(2.0))
+    @test params(C) == (2.0,)
+
+    rebuilt = typeof(C)(params(C)...)
+    @test rebuilt isa typeof(C)
+    @test rebuilt.G.r == C.G.r
 end

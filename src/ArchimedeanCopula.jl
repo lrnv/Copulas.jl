@@ -21,8 +21,7 @@ and `GumbelCopula(d, θ)`. Their storage representation and alias expansion
 are implementation details.
 
 A custom generator is part of the supported public API. Define a subtype of
-`Generator` and the three core methods `ϕ`, `max_monotony`, and
-`Distributions.params`:
+`Generator` and the two core methods `ϕ` and `max_monotony`:
 
 ```julia
 using Copulas, Distributions
@@ -30,7 +29,6 @@ using Copulas, Distributions
 struct MyGenerator <: Copulas.Generator end
 Copulas.ϕ(::MyGenerator, t) = exp(-t)
 Copulas.max_monotony(::MyGenerator) = Inf
-Distributions.params(::MyGenerator) = (;)
 C = ArchimedeanCopula(3, MyGenerator())
 cdf(C, fill(0.5, 3))
 ```
@@ -99,53 +97,39 @@ end
 
 # Constructors:
 ArchimedeanCopula(d::Int, G::Generator) = ArchimedeanCopula{d}(G)
-ArchimedeanCopula{d}(::IndependentGenerator) where {d} = IndependentCopula{d}()
-ArchimedeanCopula{d}(::MGenerator) where {d} = MCopula{d}()
-ArchimedeanCopula{d}(::WGenerator) where {d} = WCopula{d}()
 function _wrap_archimedean(::Val{d}, G::TG) where {d,TG<:Generator}
     return invoke(ArchimedeanCopula{d}, Tuple{Generator}, G)::ArchimedeanCopula{d,TG}
 end
+
 function _typed_archimedean(CT::Type{<:ArchimedeanCopula{d}}, args...; kwargs...) where {d}
     G = generatorof(CT)(args...; kwargs...)
-    G isa IndependentGenerator && return IndependentCopula{d}()
-    G isa MGenerator && return MCopula{d}()
-    G isa WGenerator && return WCopula{d}()
     return _wrap_archimedean(Val(d), G)
 end
-function _dynamic_archimedean(CT::Type{<:ArchimedeanCopula}, d::Int, args...; kwargs...)
-    G = generatorof(CT)(args...; kwargs...)
-
-    G isa IndependentGenerator && return IndependentCopula{d}()
-    G isa MGenerator && return MCopula{d}()
-    G isa WGenerator && return WCopula{d}()
-
-    return invoke(ArchimedeanCopula{d}, Tuple{Generator}, G)
+function _dynamic_archimedean(
+    CT::Type{<:ArchimedeanCopula}, vd::Val{d}, args...; kwargs...
+) where {d}
+    G = Base.typename(Base.unwrap_unionall(generatorof(CT))).wrapper(args...; kwargs...)
+    return _wrap_archimedean(vd, G)
 end
+_dynamic_archimedean(CT::Type{<:ArchimedeanCopula}, d::Int, args...; kwargs...) =
+    _dynamic_archimedean(CT, Val(d), args...; kwargs...)
 function (CT::Type{<:ArchimedeanCopula{d}})(args...; kwargs...) where {d}
     return _typed_archimedean(CT, args...; kwargs...)
 end
-function (CT::Type{<:ArchimedeanCopula{D,TG}})(d::Int, args...; kwargs...) where {D,TG}
-    # Dropping TG's parameters is intentional for the current parametric
-    # generators: they only encode the numeric parameter type, which fitting
-    # may need to replace (e.g. with a Dual). Revisit this if a generator with
-    # structural type parameters is routed through this constructor.
-    GT = Base.typename(TG).wrapper
-    return ArchimedeanCopula{d}(GT(args...; kwargs...))
-end
-function (CT::Type{<:ArchimedeanCopula{D, <:Generator} where D})(first::Int, args...; kwargs...)
-    d = Base.unwrap_unionall(CT).parameters[1]
-    # An integer can be either the runtime dimension in CT(d, parameters...)
-    # or the first parameter in CT{d}(parameters...). For the families
-    # currently provided, constructor arity matches the generator field count.
-    # This heuristic must be revisited if optional/non-field parameters appear.
-    nparams = fieldcount(Base.unwrap_unionall(generatorof(CT)))
-    if d isa TypeVar || 1 + length(args) + length(kwargs) > nparams
-        return _dynamic_archimedean(CT, first, args...; kwargs...)
+# Natural model parameters are independent of fitting geometry. Named fitted
+# families happen to store their constructor parameters directly in the
+# generator, while structural generators below keep explicit representations.
+function Distributions.params(C::ArchimedeanCopula{d,G}) where {d,G<:Generator}
+    return ntuple(fieldcount(G)) do i
+        value = getfield(C.G, i)
+        return value isa AbstractArray ? copy(value) : value
     end
-    return _typed_archimedean(CT, first, args...; kwargs...)
 end
-
-Distributions.params(C::ArchimedeanCopula) = Distributions.params(C.G) # by default the parameter is the generator's parameters.
+Distributions.params(::ArchimedeanCopula{d,<:MarkerGenerator}) where {d} = ()
+Distributions.params(C::ArchimedeanCopula{d,<:𝒲}) where {d} = (C.G.X, C.G.order)
+Distributions.params(C::ArchimedeanCopula{d,<:TiltedGenerator}) where {d} =
+    (C.G.G, C.G.p, C.G.sJ)
+Distributions.params(C::ArchimedeanCopula{d,<:FrailtyGenerator}) where {d} = (C.G.F,)
 
 @inline function _cdf(C::ArchimedeanCopula{d}, u) where {d}
     kind = limit_kind(C.G, Val(d))
@@ -219,6 +203,9 @@ function _rand_archimedean!(rng::Distributions.AbstractRNG, C::ArchimedeanCopula
     return A
 end
 generatorof(b::Type{<:ArchimedeanCopula}) = fieldtype(b, :G)
+_generator_family(T::Type{<:Generator}) =
+    Base.typename(Base.unwrap_unionall(T)).wrapper
+
 
 function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.τ, C.G)
@@ -229,7 +216,7 @@ function τ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     end
 end
 function τ⁻¹(::Type{T},τ_val) where {T<:ArchimedeanCopula}
-    return τ⁻¹(generatorof(T),τ_val)
+    return τ⁻¹(_generator_family(generatorof(T)),τ_val)
 end
 function ρ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     if applicable(Copulas.ρ, C.G)
@@ -239,7 +226,7 @@ function ρ(C::ArchimedeanCopula{d,TG}) where {d,TG}
     end
 end
 function ρ⁻¹(::Type{T},ρ_val) where {T<:ArchimedeanCopula}
-    return ρ⁻¹(generatorof(T),ρ_val)
+    return ρ⁻¹(_generator_family(generatorof(T)),ρ_val)
 end
 function rosenblatt(C::ArchimedeanCopula{d,TG}, u::AbstractMatrix{<:Real}) where {d,TG}
     size(u, 1) == d || throw(DimensionMismatch(
@@ -311,38 +298,6 @@ SubsetCopula(C::ArchimedeanCopula{d,TG}, ::NTuple{p, Int}) where {d,TG,p} = Arch
 ####### Fitting interfaces.
 ##############################################################################################################################
 
-_example(::Type{ArchimedeanCopula}, d) = throw(ArgumentError(
-    "cannot fit an Archimedean copula without specifying its generator (unless method=:gnz2011)"))
-_example(CT::Type{<:ArchimedeanCopula}, d) = CT(d; _rebound_params(CT, d, fill(0.01, fieldcount(generatorof(CT))))...)
-_example(::Type{<:ArchimedeanCopula{d,<:𝒲} where d}, d) = ArchimedeanCopula(d,𝒲(Distributions.MixtureModel([Distributions.Dirac(1), Distributions.Dirac(2)]),d))
-_example(::Type{<:ArchimedeanCopula{d,<:FrailtyGenerator} where {d}}, d) = throw(ArgumentError(
-    "no default fitting example is implemented for FrailtyGenerator copulas"))
-
-_unbound_params(CT::Type{<:ArchimedeanCopula}, d, θ) = _unbound_params(generatorof(CT), d, θ)
-_rebound_params(CT::Type{<:ArchimedeanCopula}, d, α) = _rebound_params(generatorof(CT), d, α)
-
-@inline function _construct_fitted_copula(
-    CT::Type{<:ArchimedeanCopula},
-    ::Val{d},
-    θ,
-    example,
-) where {d}
-    # CT may already carry a concrete numeric generator type, e.g.
-    # ArchimedeanCopula{3,ClaytonGenerator{Float64}}.
-    #
-    # Drop that numeric type parameter so reconstruction remains compatible
-    # with ForwardDiff.Dual values inside fitting objectives.
-    GT = Base.typename(Base.unwrap_unionall(generatorof(CT))).wrapper
-    G = GT(θ...)
-
-    # Preserve the same boundary reductions as the regular constructors.
-    G isa IndependentGenerator && return IndependentCopula{d}()
-    G isa MGenerator && return MCopula{d}()
-    G isa WGenerator && return WCopula{d}()
-
-    return _wrap_archimedean(Val(d), G)
-end
-
 _available_fitting_methods(::Type{ArchimedeanCopula}, d) = (:gnz2011,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:Generator}}, d) = (:mle,)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}}, d) = (:mle, :itau, :irho, :ibeta)
@@ -356,94 +311,42 @@ function _fit(::Union{Type{ArchimedeanCopula},Type{<:ArchimedeanCopula{d,<:𝒲{
     return ArchimedeanCopula(size(U, 1), EmpiricalGenerator(U))
 end
 
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, m::Union{Val{:itau},Val{:irho}}; weights=nothing)
-    d = size(U,1)
-    GT = generatorof(CT)
-
-    invf =  m isa Val{:itau} ?  τ⁻¹ : ρ⁻¹
-
-    m = _rank_measure(m, U, weights)
-    upper_triangle_flat = [m[idx] for idx in CartesianIndices(m) if idx[1] < idx[2]]
-    θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
-
-    θ = clamp(Statistics.mean(θs), _θ_bounds(GT, d)...)
-    return CT(d, θ)
-end
-function _fit(CT::Type{<:ArchimedeanCopula{d, GT} where {d, GT<:UnivariateGenerator}}, U, ::Val{:ibeta}; weights=nothing)
-    d    = size(U,1); δ = 1e-8; GT = generatorof(CT)
-    βobs = clamp(_weighted_β(U, weights), -1+1e-10, 1-1e-10)
-    lo,hi = _θ_bounds(GT,d)
-    fβ(θ) = β(CT(d,θ))
-    a0 = isfinite(lo) ? lo+δ : -5.0 ; b0 = isfinite(hi) ? hi-δ :  5.0
-    βmin, βmax = fβ(a0), fβ(b0)
-    if βmin > βmax; βmin, βmax = βmax, βmin; end
-    θ = βobs ≤ βmin ? a0 : βobs ≥ βmax ? b0 : Roots.find_zero(θ -> fβ(θ)-βobs, (a0,b0), Roots.Brent(); xatol=1e-8, rtol=0)
-    return CT(d,θ)
-end
-
 function _fit(
-    CT::Type{<:ArchimedeanCopula{d,GT} where {d,GT<:UnivariateGenerator}},
-    U,
-    method::Val{:mle};
-    kwargs...,
-)
-    return _fit(CT, U, Val(size(U, 1)), method; kwargs...)
-end
-
-function _fit(
-    CT::Type{<:ArchimedeanCopula{D,GT} where {D,GT<:UnivariateGenerator}},
-    U,
-    ::Val{d},
-    ::Val{:mle};
-    start::Union{Symbol,Real}=:itau,
-    weights=nothing,
+    CT::Type{<:ArchimedeanCopula{D, GT} where {D, GT<:UnivariateGenerator}},
+    U, vd::Val{d}, m::Union{Val{:itau},Val{:irho}}; weights=nothing,
 ) where {d}
-    GT = generatorof(CT)
-    lo, hi = _θ_bounds(GT, d)
+    GT = _generator_family(generatorof(CT))
+    invf = m isa Val{:itau} ? τ⁻¹ : ρ⁻¹
+    measure = _rank_measure(m, U, weights)
+    upper_triangle_flat = [measure[idx] for idx in CartesianIndices(measure) if idx[1] < idx[2]]
+    θs = map(v -> invf(GT, clamp(v, -1, 1)), upper_triangle_flat)
+    θ = Statistics.mean(θs)
+    return _dynamic_archimedean(CT, vd, θ)
+end
+function _fit(
+    CT::Type{<:ArchimedeanCopula{D, GT} where {D, GT<:UnivariateGenerator}},
+    U, vd::Val{d}, ::Val{:ibeta}; weights=nothing,
+) where {d}
+    βobs = clamp(_weighted_β(U, weights), nextfloat(-1.0), prevfloat(1.0))
+    prototype = _dynamic_archimedean(CT, vd, one(Float64))
+    cop(α) = _from_parameter_coordinates(prototype, [α])
+    obj(α) = β(cop(α)) - βobs
 
-    example = _example(CT, d)
-
-    θ₀ = [StatsBase.middle(lo, hi)]
-
-    if start isa Real
-        θ₀[1] = start
-    elseif start ∈ (:itau, :irho)
-        # Keep this call on the existing 3-argument specialized
-        # Archimedean rank-fitting path.
-        θ₀[1] = only(Distributions.params(_fit(CT, U, Val{start}())))
+    lo, hi = -1.0, 1.0
+    flo, fhi = obj(lo), obj(hi)
+    for _ in 1:9
+        (iszero(flo) || iszero(fhi) || signbit(flo) != signbit(fhi)) && break
+        lo *= 2
+        hi *= 2
+        flo, fhi = obj(lo), obj(hi)
     end
+    iszero(flo) && return cop(lo)
+    iszero(fhi) && return cop(hi)
+    signbit(flo) != signbit(fhi) || throw(DomainError(
+        βobs,
+        "could not bracket a Blomqvist-beta inverse in the finite unconstrained parameter chart",
+    ))
 
-    if θ₀[1] <= lo || θ₀[1] >= hi
-        θ₀[1] = Distributions.params(example)[1]
-    end
-
-    vd = Val(d)
-
-    cop(θ) = _construct_fitted_copula(
-        CT,
-        vd,
-        (; θ=θ[1]),
-        example,
-    )
-
-    f(θ) = -_weighted_loglikelihood(cop(θ), U, weights)
-
-    res = Optim.optimize(
-        f,
-        Optim.TwiceDifferentiableConstraints([lo], [hi]),
-        θ₀,
-        Optim.IPNewton();
-        autodiff=ADTypes.AutoForwardDiff(),
-    )
-
-    θ = Optim.minimizer(res)[1]
-
-    fitted = _construct_fitted_copula(
-        CT,
-        vd,
-        (; θ=θ),
-        example,
-    )
-
-    return fitted
+    α = Roots.find_zero(obj, (lo, hi), Roots.Brent(); xatol=1e-8, rtol=0)
+    return cop(α)
 end

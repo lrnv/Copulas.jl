@@ -25,23 +25,19 @@ References:
 """
 JoeGenerator, JoeCopula
 
-struct JoeGenerator{T} <: AbstractUnivariateFrailtyGenerator
-    θ::T
-    function JoeGenerator(θ)
-        θ < 1 && throw(ArgumentError("Theta must be greater than or equal to 1"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct JoeGenerator{T<:Real} <: AbstractUnivariateFrailtyGenerator
+    θ::T ~ closed_lower(one(T))
 end
+JoeGenerator(θ::Integer) = JoeGenerator(float(θ))
 const JoeCopula{d, T} = ArchimedeanCopula{d, JoeGenerator{T}}
+function (::Type{JoeCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), JoeGenerator(args...; kwargs...))
+end
+(::Type{JoeCopula})(d::Int, args...; kwargs...) = JoeCopula{d}(args...; kwargs...)
 @inline limit_kind(G::JoeGenerator, ::Val) = 
     isone(G.θ) ? Π_LIMIT : 
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
 frailty(G::JoeGenerator) = Sibuya(1/G.θ)
-Distributions.params(G::JoeGenerator) = (θ = G.θ,)
-_unbound_params(::Type{<:JoeGenerator}, d, θ) = [log(θ.θ - 1)]
-_rebound_params(::Type{<:JoeGenerator}, d, α) = (; θ = 1 + exp(α[1]))
-_θ_bounds(::Type{<:JoeGenerator}, d) = (1, Inf)
 archimedean_measure_style(G::JoeGenerator, ::Val{d}) where {d} =
     isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
@@ -81,4 +77,3 @@ function ρ⁻¹(::Type{<:JoeGenerator}, ρ)
     ρ ≥ 1 && return u
     return Roots.find_zero(θ -> _rho_joe(θ) - ρ, (1, Inf))
 end
-

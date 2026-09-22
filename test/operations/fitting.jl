@@ -54,7 +54,7 @@ end
     displayed = sprint(show, model)
     copula_section = split(split(displayed, "[ Copula parameters ]")[2],
                            "[ Marginals ]")[1]
-    @test occursin("copula_", copula_section)
+    @test occursin("θ:", copula_section)
     @test !occursin("margin_", copula_section)
     inference = infer(model; method=:bootstrap, nresamples=3,
                       rng=StableRNG(114))
@@ -198,13 +198,13 @@ end
     fitted = fit(TCopula, U; method=:itau)
     @test fitted isa TCopula{2}
     @test fitted.Σ[1, 2] == sinpi(StatsBase.corkendall(U')[1, 2] / 2)
-    @test 3 <= fitted.df <= 6
+    @test 3 <= first(params(fitted)) <= 6
     # With the correlation held at the Kendall inversion the profile is a
     # restriction of the MLE profile, so its likelihood cannot exceed the MLE.
     mle = fit(TCopula, U; method=:mle)
     @test loglikelihood(fitted, U) <= loglikelihood(mle, U) + 1e-8
     @test loglikelihood(fitted, U) >= loglikelihood(GaussianCopula(fitted.Σ), U) - 1e-8
-    @test isapprox(fitted.df, mle.df; rtol=0.1)
+    @test isapprox(first(params(fitted)), first(params(mle)); rtol=0.1)
 
     d = 3
     R = [0.55^abs(i - j) for i in 1:d, j in 1:d]
@@ -215,7 +215,7 @@ end
     @test Copulas.fitting_method(model) === :itau
     @test fitted3.Σ == sinpi.(StatsBase.corkendall(U3') ./ 2)
     @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(fitted3.Σ))
-    @test 3 <= fitted3.df <= 6
+    @test 3 <= first(params(fitted3)) <= 6
     @test :itau in Copulas._available_fitting_methods(TCopula, 3)
     @test :itau_irho ∉ Copulas._available_fitting_methods(TCopula, 3)
 end
@@ -252,12 +252,12 @@ end
     U = rand(StableRNG(477), source, 1_000)
     model = fit(CopulaModel, TCopula, U; method=:mle,)
     fitted = fitted_distribution(model)
-    θ = params(fitted)
+    ν̂, Σ̂ = params(fitted)
     @test fitted isa TCopula{3}
-    @test θ.ν > 0
-    @test isfinite(θ.ν)
-    @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(θ.Σ),)
-    @test maximum(abs.(LinearAlgebra.diag(θ.Σ) .- 1),) < 1e-12
+    @test ν̂ > 0
+    @test isfinite(ν̂)
+    @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(Σ̂),)
+    @test maximum(abs.(LinearAlgebra.diag(Σ̂) .- 1),) < 1e-12
     # The Student profile contains the Gaussian copula as ν = Inf,
     # so its fitted likelihood must not be worse than that endpoint.
     gaussian = fit(GaussianCopula,U; method=:mle,)
@@ -272,7 +272,7 @@ end
     U = rand(StableRNG(478), source, 1_500)
     model = fit(CopulaModel, TCopula, U; method=:mle,)
     fitted = fitted_distribution(model)
-    @test 0 < params(fitted).ν < 2
+    @test 0 < first(params(fitted)) < 2
 end
 
 @testset "generic empirical EV estimators by dimension" begin
@@ -294,19 +294,19 @@ end
     @test checked == selected
 end
 
-@testset "extreme-value MLE accepts boundary starts" begin
+@testset "generic MLE starts at the parameter-space origin" begin
     U = [0.10 0.25 0.40 0.55 0.70 0.85;
          0.15 0.20 0.45 0.60 0.75 0.90]
-    for CT in (CuadrasAugeCopula, LogCopula)
-        fitted = fit(CT, U, :mle; start=1.0)
+    for CT in (ClaytonCopula, CuadrasAugeCopula, LogCopula)
+        fitted = fit(CT, U; method=:mle)
         @test fitted isa Copulas.Copula
         @test all(isfinite, params(fitted))
     end
 end
 
 # A fitting route is the complete internal composition, not merely `_fit`.
-# Generic fitting additionally depends on the example, parameter transform,
-# and reconstruction methods selected for the concrete family.
+# Generic fitting additionally depends on the parameter space and canonical
+# reconstruction selected for the concrete family.
 function fitting_execution_route_key(C, U, method)
     Base.@nospecialize C U method
 
@@ -314,7 +314,7 @@ function fitting_execution_route_key(C, U, method)
     d = length(C)
     fit_method = which(Copulas._fit, Tuple{Type{CT},typeof(U),Val{method}})
 
-    parameter_dof = method === :mle ? Copulas._parameter_dof(params(C)) : nothing
+    parameter_dof = method === :mle ? Copulas._distribution_dof(C) : nothing
 
     dimension = d == 2 ? :bivariate : :multivariate
 
@@ -328,25 +328,20 @@ end
 
 _has_fitting_parameters(C) =
     !(C isa Union{IndependentCopula,MCopula,WCopula}) && !isempty(params(C))
-_check_parameter_roundtrip(C) =
-    !(C isa EmpiricalEVCopula) && !(C isa FGMCopula && length(C) != 2)
-
 function test_mle_parameter_plumbing(C)
     Base.@nospecialize C
 
     CT = typeof(C)
     d = length(C)
     bounded = params(C)
-    unbounded = Copulas._unbound_params(CT, d, bounded)
-    restored = Copulas._rebound_params(CT, d, unbounded)
+    unconstrained = Copulas.Paramorph.unconstrain(C)
+    restored = Copulas.Paramorph.constraint(C, unconstrained)
+    restored_params = params(restored)
 
-    @test keys(restored) == keys(bounded)
-
-    @test all(key -> getfield(bounded, key) ≈ getfield(restored, key), keys(bounded))
-
-    if applicable(Copulas._example, CT, d)
-        example = Copulas._example(CT, d)
-        @test example isa Copulas.Copula{d}
+    @test length(restored_params) == length(bounded)
+    @test all(zip(restored_params, bounded)) do pair
+        a, b = pair
+        applicable(isapprox, a, b) ? isapprox(a, b) : a == b
     end
 
     return nothing
@@ -363,7 +358,8 @@ end
 
         :mle in methods || continue
         _has_fitting_parameters(C) || continue
-        _check_parameter_roundtrip(C) || continue
+        C isa FGMCopula && d > 2 && continue  # specialized coupled-polytope MLE
+        Copulas.Paramorph.is_paramorph_type(CT) || continue
 
         @testset "$(case.name)" begin
             test_mle_parameter_plumbing(C)
@@ -534,7 +530,6 @@ end
     C = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
         children=[ClaytonCopula{2}(3.0), ClaytonCopula{2}(3.0)])
     U = rand(StableRNG(20_110), C, 4)
-    @test_throws Exception Copulas._example(NestedArchimedeanCopula, 4)
     @test_throws ArgumentError fit(CopulaModel, C, U; method=:itau)
     @test_throws ArgumentError fit(CopulaModel, C, U[1:3, :])
     @test_throws ArgumentError fit(CopulaModel, C, zeros(4, 0))
@@ -549,58 +544,30 @@ end
 end
 
 
-# Fitting-operation proof for parameterizations. Public
-# route availability and result interfaces are covered by this operation and
-# the final routing inventory;
-# this file checks that unconstrained coordinates map bijectively to the
-# intended constrained parameter space.
-@testset "asymmetric Mixed feasible fitting parameterization" begin
-    for (i, z) in pairs(([-3.0, 3.0], [3.0, -3.0], [0.0, 0.5]))
-        p = Copulas._rebound_params(Copulas.AsymMixedTail, 2, z)
-        i == 1 && @test p.θ₂ > 0
-        i == 2 && @test p.θ₂ < 0
-        @test p.θ₁ >= 0
-        @test p.θ₁ + p.θ₂ <= 1
-        @test p.θ₁ + 2p.θ₂ <= 1
-        @test p.θ₁ + 3p.θ₂ >= 0
-        @test Copulas._unbound_params(Copulas.AsymMixedTail, 2, p) ≈ z
-        @test Copulas.AsymMixedTail(p.θ₁, p.θ₂) isa Copulas.AsymMixedTail
-    end
-
-    # The reverse direction starts from independently chosen feasible model
-    # parameters, so this is not merely a circular composition of one map.
-    for p in ((; θ₁=0.25, θ₂=0.10), (; θ₁=1.20, θ₂=-0.30))
-        restored = Copulas._rebound_params(Copulas.AsymMixedTail, 2,
-            Copulas._unbound_params(Copulas.AsymMixedTail, 2, p))
-        @test restored.θ₁ ≈ p.θ₁ atol=3e-11 rtol=3e-11
-        @test restored.θ₂ ≈ p.θ₂ atol=3e-11 rtol=3e-11
-    end
-
-    example = Copulas._example(Copulas.AsymMixedCopula, 2)
-    p = params(example)
-    @test example isa Copulas.AsymMixedCopula
-    @test keys(p) == (:θ₁, :θ₂)
-    @test !iszero(p.θ₂)
+# The asymmetric Mixed family uses a specialized interior chart because its
+# feasible region is not a Cartesian product supported by the generic spaces.
+@testset "asymmetric Mixed specialized MLE stays feasible" begin
+    U = [0.10 0.25 0.40 0.55 0.70 0.85;
+         0.15 0.20 0.45 0.60 0.75 0.90]
+    fitted = fit(Copulas.AsymMixedCopula, U; method=:mle)
+    θ₁, θ₂ = params(fitted)
+    @test θ₁ >= 0
+    @test θ₁ + θ₂ <= 1
+    @test θ₁ + 2θ₂ <= 1
+    @test θ₁ + 3θ₂ >= 0
 end
-
 
 @testset "dimension-specialized fitting reconstruction" begin
     C = ClaytonCopula{3}(2.0)
     CT = typeof(C)
-    example = C
+    α₀ = only(Copulas._parameter_coordinates(C))
 
-    f(x) = begin
-        θ = (; θ=x)
-        Cx = Copulas._construct_fitted_copula(
-            CT,
-            Val(3),
-            θ,
-            example,
-        )
-        return Distributions.params(Cx).θ
-    end
+    f(α) = only(params(Copulas._from_parameter_coordinates(C, [α])))
 
-    @test ForwardDiff.derivative(f, 2.0) ≈ 1.0
+    @test f(α₀) ≈ 2.0
+    derivative = ForwardDiff.derivative(f, α₀)
+    @test isfinite(derivative)
+    @test derivative > 0
 end
 
 @testset "Gaussian copula multivariate MLE" begin
@@ -612,7 +579,7 @@ end
     U = rand(StableRNG(477), source, n)
     model = fit(CopulaModel, GaussianCopula, U; method=:mle,)
     fitted = fitted_distribution(model)
-    R̂ = params(fitted).Σ
+    R̂ = only(params(fitted))
     @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(R̂))
     @test maximum(abs.(diag(R̂) .- 1)) < 1e-12
     @test maximum(abs.(R̂ - R)) < 0.05
@@ -698,7 +665,7 @@ end
         # Even where the removed observation has a vanishing density.
         U[:, 1] .= 1e-300
         removed = fit(ClaytonCopula, U[:, 2:end])
-        @test params(fit(ClaytonCopula, U; weights)).θ ≈ params(removed).θ rtol=1e-6
+        @test only(params(fit(ClaytonCopula, U; weights))) ≈ only(params(removed)) rtol=1e-6
         @test isfinite(loglikelihood(fit(CopulaModel, ClaytonCopula, U; weights)))
         C = ClaytonCopula{2}(2.0)
         @test Copulas._weighted_loglikelihood(C, U, weights) ==
@@ -961,17 +928,18 @@ end
     end
 
     @testset "the template fit stays in the certified nesting region" begin
-        # `_nested_rebound` skips the certificate, so the loss is `Inf` on a
-        # tree that fails one: a child Clayton θ below its parent's, or below
-        # zero, where the composed generator is not defined. Without the
-        # barrier the bootstrap refits below raise a `DomainError` from
-        # `composition_taylor` on three of these four seeds.
+        # The template's conditional chart carries the supported nesting
+        # inequalities itself: every finite optimizer coordinate maps to a tree
+        # whose Clayton children remain above the parent.
         C0 = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.0);
                                      children=[ClaytonCopula{2}(2.0), ClaytonCopula{2}(3.0)])
         recon = Base.Fix1(Copulas._nested_rebound, C0)
-        @test Copulas._nested_certified(recon(Copulas._nested_unbound(C0)))
-        @test !Copulas._nested_certified(recon([log(2.0), log(1.5), log(4.0)]))
-        @test !Copulas._nested_certified(recon([log(2.0), log(0.5), log(4.0)]))
+        for α in (Copulas._nested_unbound(C0),
+                  [log(2.0), log(1.5), log(4.0)],
+                  [log(2.0), log(0.5), log(4.0)])
+            Cα = recon(α)
+            @test all(ch -> Cα.G.θ <= Copulas._nested_child(ch).G.θ, Cα.children)
+        end
         Un = rand(StableRNG(524), C0, n)
         M = fit(CopulaModel, C0, Un)
         for seed in (528, 529, 530, 531)
@@ -997,53 +965,4 @@ end
         @test_throws ArgumentError GOFCopulaTest(weighted; N=2)
         @test_throws ArgumentError GOFCopulaTest(weighted, U; N=2)
     end
-end
-
-@testset "Liebscher template MLE" begin
-    Ctrue = LiebscherCopula(2, (ClaytonCopula(2, 1.5), GumbelCopula(2, 1.8)),[0.3 0.7; 0.7 0.3],)
-    C0 = LiebscherCopula(2, (ClaytonCopula(2, 0.8), GumbelCopula(2, 1.2)), [0.5 0.5; 0.5 0.5],)
-
-    U = rand(StableRNG(20_120), Ctrue, 300)
-
-    fitted = fit(C0, U)
-
-    @test fitted isa LiebscherCopula{2}
-    @test typeof(fitted.copulas) == typeof(C0.copulas)
-    @test loglikelihood(fitted, U) >= loglikelihood(C0, U)
-
-    @test all(fitted.weights .> 0)
-    @test all(vec(sum(fitted.weights; dims=1)) .≈ 1)
-
-    M = fit(CopulaModel, C0, U)
-
-    @test fitted_distribution(M) isa LiebscherCopula{2}
-    @test coefnames(M) == ["C1_θ", "C2_θ", "a2_1", "a2_2"]
-    @test dof(M) == 4
-
-    @test Copulas._available_fitting_methods(typeof(C0), 2) == ()
-    @test_throws ArgumentError fit(typeof(C0), U)
-    @test_throws ArgumentError fit(C0, U; method=:itau)
-end
-
-@testset "Liebscher template MLE preserves structural zero weights" begin
-    Ctrue = LiebscherCopula(
-        2,
-        (ClaytonCopula(2, 1.5), GumbelCopula(2, 1.8)),
-        [0.0 0.7; 1.0 0.3],
-    )
-
-    C0 = LiebscherCopula(
-        2,
-        (ClaytonCopula(2, 0.8), GumbelCopula(2, 1.2)),
-        [0.0 0.5; 1.0 0.5],
-    )
-
-    U = rand(StableRNG(20_121), Ctrue, 200)
-    fitted = fit(C0, U)
-
-    @test fitted.weights[1, 1] == 0
-    @test fitted.weights[2, 1] == 1
-    @test fitted.weights[1, 2] > 0
-    @test fitted.weights[2, 2] > 0
-    @test sum(fitted.weights[:, 2]) ≈ 1
 end

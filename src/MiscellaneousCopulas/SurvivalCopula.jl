@@ -213,7 +213,9 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::AbstractReflect
     return _survival_reverse!(A, flipmask(C))
 end
 
-# Fitting: delegate to the base copula after flipping the requested indices in U
+# Fitting is structural: transform the observations, fit the base family, then
+# reconstruct the reflected wrapper. Parameter geometry belongs to the base
+# family and is not duplicated on the wrapper type.
 Distributions.params(S::AbstractReflectedCopula) = Distributions.params(basecopula(S))
 
 function _fit_reflected(::Type{subCT}, U, m, mask; kwargs...) where {subCT}
@@ -222,15 +224,14 @@ function _fit_reflected(::Type{subCT}, U, m, mask; kwargs...) where {subCT}
     return _fit(subCT, Uflip, m; kwargs...)
 end
 
-function _fit_survival(::Type{<:SurvivalCopula{d,subCT}}, U, m; flips=nothing, kwargs...) where {d,subCT}
+function _fit_dispatch(
+    CT::Type{<:SurvivalCopula{d,subCT}}, U, ::Val{d}, m::Val;
+    flips=nothing, kwargs...,
+) where {d,subCT}
     mask = isnothing(flips) ? ntuple(_ -> true, d) : _survival_flipmask(Val(d), flips)
     C = _fit_reflected(subCT, U, m, mask; kwargs...)
     return SurvivalCopula{d}(C, mask)
 end
-_fit(CT::Type{<:SurvivalCopula}, U, m::Union{Val{:itau},Val{:irho},Val{:ibeta}}; kwargs...) =
-    _fit_survival(CT, U, m; kwargs...)
-_fit(CT::Type{<:SurvivalCopula}, U, m::Val{:mle}; kwargs...) =
-    _fit_survival(CT, U, m; kwargs...)
 
 _rotation_type_flipmask(::Type{<:Rotated90Copula}) = (true, false)
 _rotation_type_flipmask(::Type{<:Rotated180Copula}) = (true, true)
@@ -249,36 +250,15 @@ function _fit_rotation(::Type{RT}, U, m; kwargs...) where {subCT,RT<:Rotated270C
     return Rotated270Copula(C)
 end
 
-const _ReflectedRankMethod = Union{Val{:itau},Val{:irho},Val{:ibeta}}
-
-_fit(CT::Type{<:Rotated90Copula}, U, m::_ReflectedRankMethod; kwargs...) =
+_fit_dispatch(CT::Type{<:Rotated90Copula}, U, ::Val{2}, m::Val; kwargs...) =
     _fit_rotation(CT, U, m; kwargs...)
-_fit(CT::Type{<:Rotated90Copula}, U, m::Val{:mle}; kwargs...) =
+_fit_dispatch(CT::Type{<:Rotated180Copula}, U, ::Val{2}, m::Val; kwargs...) =
     _fit_rotation(CT, U, m; kwargs...)
-
-_fit(CT::Type{<:Rotated180Copula}, U, m::_ReflectedRankMethod; kwargs...) =
-    _fit_rotation(CT, U, m; kwargs...)
-_fit(CT::Type{<:Rotated180Copula}, U, m::Val{:mle}; kwargs...) =
-    _fit_rotation(CT, U, m; kwargs...)
-
-_fit(CT::Type{<:Rotated270Copula}, U, m::_ReflectedRankMethod; kwargs...) =
-    _fit_rotation(CT, U, m; kwargs...)
-_fit(CT::Type{<:Rotated270Copula}, U, m::Val{:mle}; kwargs...) =
+_fit_dispatch(CT::Type{<:Rotated270Copula}, U, ::Val{2}, m::Val; kwargs...) =
     _fit_rotation(CT, U, m; kwargs...)
 
 _available_fitting_methods(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} = _available_fitting_methods(subCT, d)
 _available_fitting_methods(::Type{<:AbstractReflectedCopula{D,subCT}}, d) where {D,subCT} = _available_fitting_methods(subCT, d)
-
-_example(::Type{<:SurvivalCopula{D,subCT}}, d) where {D,subCT} = SurvivalCopula(_example(subCT, d), ())
-_example(::Type{<:Rotated90Copula{2,subCT}}, d) where {subCT} = Rotated90Copula(_example(subCT, d))
-_example(::Type{<:Rotated180Copula{2,subCT}}, d) where {subCT} = Rotated180Copula(_example(subCT, d))
-_example(::Type{<:Rotated270Copula{2,subCT}}, d) where {subCT} = Rotated270Copula(_example(subCT, d))
-
-# Parameter transfer for fitting: delegate to underlying copula
-_unbound_params(::Type{<:SurvivalCopula{d,CT}}, d_, θ) where {d,CT} = _unbound_params(CT, d_, θ)
-_rebound_params(::Type{<:SurvivalCopula{d,CT}}, d_, α) where {d,CT} = _rebound_params(CT, d_, α)
-_unbound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, θ) where {d,CT} = _unbound_params(CT, d_, θ)
-_rebound_params(::Type{<:AbstractReflectedCopula{d,CT}}, d_, α) where {d,CT} = _rebound_params(CT, d_, α)
 
 # Conditioning bindings colocated
 function distortion(S::AbstractReflectedCopula{D}, js::NTuple{p,Int}, uⱼₛ::NTuple{p,<:Real}, i::Int) where {D,p}

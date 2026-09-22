@@ -215,11 +215,11 @@ cdf(X1_given_X2, 0.0), pdf(X, [0.0, 2])
 The conditional copula $C_{I|J}(·|u_J)$ is the copula of the conditional distribution $H_{I|J}(·|u_J)$. For a multivariate result, the copula and margins are available through the public `params` interface:
 
 ```@example cond1
-params(H).copula
+first(params(H))
 ```
 
 ```@example cond1
-params(H).margins
+last(params(H))
 ```
 
 
@@ -254,7 +254,7 @@ length(S), cdf(S, [0.5, 0.5])
 ```@example subset1
 X = SklarDist(C, (Normal(), Normal(1,2), LogNormal()))
 X13 = subsetdims(X, (1,3))  # keeps marginals (Normal(), LogNormal()) and reduces the copula
-length(params(X13).copula), length(params(X13).margins)
+length(first(params(X13))), length(last(params(X13)))
 ```
 
 The exact result type is not part of the contract. Specialized forms may provide better performance or clearer display, while every result remains usable through the same copula API.

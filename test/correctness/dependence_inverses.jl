@@ -11,9 +11,18 @@ const _DEPENDENCE_INVERSES = last.(_INVERSE_PAIRS)
 const _CHECKED_INVERSE_METHODS =
     Dict(inverse => Set{Method}() for inverse in _DEPENDENCE_INVERSES)
 
-function has_scalar_parameter(object)
+function has_scalar_parameter(object::Copulas.Copula)
     Base.@nospecialize object
-    return length(params(object)) == 1
+    p = params(object)
+    return length(p) == 1 && only(p) isa Real
+end
+
+function has_scalar_parameter(object::Union{Copulas.Generator,Copulas.Tail})
+    Base.@nospecialize object
+    PS = Copulas.Paramorph
+    T = typeof(object)
+    PS.is_paramorph_type(T) || return false
+    return PS.intrinsic_dimension(object) == 1 && length(PS.parameter_fields(T)) == 1
 end
 
 function supports_inverse(object, inverse)
@@ -167,9 +176,11 @@ end
     @test _CHECKED_INVERSE_METHODS == reachable
 end
 
-@testset "internal Fréchet generator reductions" begin
+@testset "internal Fréchet generators preserve the requested type" begin
     @test Copulas.τ(Copulas.MGenerator()) == 1
     @test Copulas.τ(Copulas.WGenerator()) == -1
-    @test ArchimedeanCopula{3}(Copulas.MGenerator()) isa MCopula{3}
-    @test ArchimedeanCopula{2}(Copulas.WGenerator()) isa WCopula{2}
+    @test ArchimedeanCopula{3}(Copulas.MGenerator()) isa
+          ArchimedeanCopula{3,<:Copulas.MGenerator}
+    @test ArchimedeanCopula{2}(Copulas.WGenerator()) isa
+          ArchimedeanCopula{2,<:Copulas.WGenerator}
 end

@@ -20,10 +20,21 @@ module Copulas
     import PolyLog
     import LambertW
     import Optim
+    import Paramorph
     import Printf
     import TaylorSeries
     import ADTypes
     import StatsAPI: HypothesisTest, pvalue
+
+    # Local aliases keep geometry declarations compact without importing the
+    # whole Paramorph namespace into Copulas.jl.
+    const as = Paramorph.TransformVariables.as
+    const asℝ = Paramorph.TransformVariables.asℝ
+    const asℝ₊ = Paramorph.TransformVariables.asℝ₊
+    const nonnegative = Paramorph.nonnegative
+    const closed_lower = Paramorph.closed_lower
+    const bounded_interval = Paramorph.bounded_interval
+    const correlation_matrix = Paramorph.correlation_matrix
 
     # Main code
     include("utils.jl")
@@ -80,12 +91,12 @@ module Copulas
     include("MiscellaneousCopulas/SurvivalCopula.jl")
     include("MiscellaneousCopulas/PlackettCopula.jl")
     include("MiscellaneousCopulas/EmpiricalCopula.jl")
-    include("MiscellaneousCopulas/LiebscherCopula.jl")
     include("MiscellaneousCopulas/FGMCopula.jl")
     include("MiscellaneousCopulas/RafteryCopula.jl")
     include("MiscellaneousCopulas/IndependentCopula.jl")
     include("MiscellaneousCopulas/MCopula.jl")
     include("MiscellaneousCopulas/WCopula.jl")
+    include("MiscellaneousCopulas/LiebscherCopula.jl")
 
     # Elliptical copulas
     include("EllipticalCopula.jl")
@@ -117,7 +128,6 @@ module Copulas
 
     # Nested (hierarchical) Archimedean copulas
     include("NestedArchimedeanCopula.jl")
-    include("NestedArchimedeanFitValidation.jl")
 
     #Extreme value copulas
     include("Tail.jl")
@@ -148,6 +158,16 @@ module Copulas
     # Archimax copulas (includes the BB4 and BB5 models)
     include("ArchimaxCopula.jl")
 
+    # Family-specific Paramorph prototypes require all component types above.
+    include("ParamorphFitting.jl")
+
+    # Natural model-parameter representations are resolved only after every
+    # component family has declared its Paramorph schema.
+    include("NaturalParameters.jl")
+
+    # Natural coefficient metadata is assembled only after every component
+    # family has declared its Paramorph schema.
+    include("ParameterCoefficients.jl")
 
     include("CopulaTest.jl")
 
@@ -192,13 +212,13 @@ module Copulas
 
     ##### Compound copulas
     export LiouvilleCopula, NestedArchimedeanCopula, ArchimaxCopula
-    export LiebscherCopula, KhoudrajiCopula
 
 
     ##### Miscelaneous copulas
     export GaussianCopula, TCopula
     export BernsteinCopula, BetaCopula, CheckerboardCopula, EmpiricalCopula
     export FGMCopula, IndependentCopula, MCopula, WCopula
+    export LiebscherCopula, KhoudrajiCopula
     export PlackettCopula, RafteryCopula
 
     

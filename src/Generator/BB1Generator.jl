@@ -25,22 +25,21 @@ References:
 """
 BB1Generator, BB1Copula
 
-struct BB1Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB1Generator(θ, δ)
-        (θ > 0) || throw(ArgumentError("θ must be > 0"))
-        (δ ≥ 1) || throw(ArgumentError("δ must be ≥ 1"))
-        θf, δf = promote(float(θ), float(δ))
-        return new{typeof(θf)}(θf, δf)
-    end
+Paramorph.@paramorph T struct BB1Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::T ~ asℝ₊
+    δ::T ~ closed_lower(one(T))
+end
+function BB1Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB1Generator{T}(T(θ), T(δ))
 end
 const BB1Copula{d, T} = ArchimedeanCopula{d, BB1Generator{T}}
+function (::Type{BB1Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB1Generator(args...; kwargs...))
+end
+(::Type{BB1Copula})(d::Int, args...; kwargs...) = BB1Copula{d}(args...; kwargs...)
 @inline limit_kind(G::BB1Generator, ::Val) =
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
-Distributions.params(G::BB1Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB1Generator}, d, θ) = [log(θ.θ), log(θ.δ - 1)]
-_rebound_params(::Type{<:BB1Generator}, d, α) = (; θ = exp(α[1]), δ = 1 + exp(α[2]))
 
 ϕ(G::BB1Generator, s) = exp(-(1/G.θ) * log1p(exp((log(s)/G.δ))))
 ϕ⁻¹(G::BB1Generator, t) = exp(G.δ * log(expm1(-G.θ * log(t))))  # avoid a^b
@@ -58,7 +57,7 @@ function ϕ⁽ᵏ⁾(G::BB1Generator, k::Int, s::Real; tol::Float64=1e-9, maxite
 
     # a, b = inv(G.δ), inv(G.θ)
     # k == 0 && return ϕ(G, s)
-    # ls = log(s); r = exp(a * ls); sk = exp(-k * ls)
+    # ls = log(s); r = exp(a*ls); sk = exp(-k * ls)
     # acc, rpow, coef = 0.0, 1.0, 1.0
     # @inbounds for m in 0:maxiter
     #     am = a * m

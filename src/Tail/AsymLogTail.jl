@@ -29,17 +29,14 @@ References:
 """
 AsymLogTail, AsymLogCopula
 
-struct AsymLogTail{T} <: BivariatePickandsTail
-    α::T
-    θ₁::T
-    θ₂::T
-    function AsymLogTail(α, θ₁, θ₂)
-        T = float(promote_type(typeof(α), typeof(θ₁), typeof(θ₂)))
-        θ₁, θ₂, αT = T(θ₁), T(θ₂), T(α)
-        (αT ≥ 1) || throw(ArgumentError("α must be ≥ 1"))
-        (0 ≤ θ₁ ≤ 1 && 0 ≤ θ₂ ≤ 1) || throw(ArgumentError("each θ[i] must be in [0,1]"))
-        return new{T}(αT, θ₁, θ₂)
-    end
+Paramorph.@paramorph T struct AsymLogTail{T<:Real} <: BivariatePickandsTail
+    α::T ~ closed_lower(one(T))
+    θ₁::T ~ bounded_interval(zero(T), one(T))
+    θ₂::T ~ bounded_interval(zero(T), one(T))
+end
+function AsymLogTail(α::Real, θ₁::Real, θ₂::Real)
+    T = promote_type(typeof(float(α)), typeof(float(θ₁)), typeof(float(θ₂)))
+    return AsymLogTail{T}(T(α), T(θ₁), T(θ₂))
 end
 @inline _asym_log_independent(tail::AsymLogTail) =
     isone(tail.α) || iszero(tail.θ₁) || iszero(tail.θ₂)
@@ -52,11 +49,10 @@ tail_measure_style(tail::AsymLogTail) =
     AbsolutelyContinuousMeasure() : NonAbsolutelyContinuousMeasure()
 
 const AsymLogCopula{d,T} = ExtremeValueCopula{d, AsymLogTail{T}}
-Distributions.params(tail::AsymLogTail) = (α = tail.α, θ₁ = tail.θ₁, θ₂ = tail.θ₂)
-_unbound_params(::Type{<:AsymLogTail}, d, θ) = [log(θ.α - 1), LogExpFunctions.logit(θ.θ₁), LogExpFunctions.logit(θ.θ₂)]
-_rebound_params(::Type{<:AsymLogTail}, d, α) = begin
-    (; α = exp(α[1]) + 1, θ₁ = LogExpFunctions.logistic(α[2]), θ₂ = LogExpFunctions.logistic(α[3]))
+function (::Type{AsymLogCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), AsymLogTail(args...; kwargs...))
 end
+(::Type{AsymLogCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), AsymLogTail(args...; kwargs...))
 
 function A(tail::AsymLogTail, t::Real)
     tt = _safett(t)

@@ -123,49 +123,6 @@ function _mvtcdf(df::Real, μ, Σ::AbstractMatrix, upper; rtol::Real=2e-6)
     return clamp(value, 0.0, 1.0)
 end
 
-# ——————————————————————————————————————————————————————————
-# Shared correlation-parameterization helpers (LKJ/partial corr)
-# Map between correlation matrices and unconstrained vectors α ∈ ℝ^{d(d-1)/2}
-
-# Gaussian / t (pareado por pares)
-
-@inline function _unbound_corr_params(d::Int, Σ::AbstractMatrix)
-    Lc = LinearAlgebra.cholesky(LinearAlgebra.Symmetric(Σ), check=true).L
-    T = eltype(Σ)
-    α = Vector{T}(undef, d*(d-1)÷2)
-    k = 1
-    @inbounds for i in 2:d
-        denom = one(T)
-        for j in 1:i-1
-            z = Lc[i,j] / denom
-            ϵ = sqrt(eps(T))
-            z = clamp(z, -one(T) + ϵ, one(T) - ϵ)
-            α[k] = atanh(z)
-            k += 1
-            denom *= sqrt(max(zero(T), one(T) - z*z))
-        end
-    end
-    return α
-end
-
-@inline function _rebound_corr_factor(d::Int, α::AbstractVector{T}) where {T}
-    L = zeros(T, d, d)
-    L[1, 1] = one(T)
-    k = 1
-    @inbounds for i in 2:d
-        denom = one(T)
-        for j in 1:(i - 1)
-            a = α[k]
-            k += 1
-            z = tanh(a)
-            L[i, j] = z * denom
-            denom *= inv(cosh(a)) # sqrt(1 - tanh(a)^2) = sech(a)
-        end
-        L[i, i] = denom
-    end
-    return L
-end
-
 # Turn a matrix of pairwise correlation-like values into a valid correlation
 # matrix: symmetrize, set the diagonal to one, and when the result is not
 # positive definite shrink it toward the identity by the smallest amount that
@@ -203,11 +160,4 @@ end
 
 function _score_corr_start(Z::AbstractMatrix)
     return _nearest_correlation(Statistics.cor(Z; dims=2))
-end
-
-@inline function _rebound_corr_params(d::Int, α::AbstractVector{T}) where {T}
-    L = _rebound_corr_factor(d, α)
-    Σ = L * L'
-    Σ = (Σ + Σ') / 2
-    return Σ
 end

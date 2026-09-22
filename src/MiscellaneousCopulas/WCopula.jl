@@ -63,9 +63,10 @@ SubsetCopula(C::WCopula, ::NTuple{p,Int}) where {p} =
 distortion(::WCopula, js::Tuple{Int}, uⱼₛ::Tuple{Float64}, i::Int) = WDistortion(float(uⱼₛ[1]), Int8(js[1]))
 
 # Fitting/params interface (no parameters)
-Distributions.params(::WCopula) = (;)
+
+Distributions.params(::WCopula) = ()
+
 # A parameter-free family has nothing to weight, so the weights are accepted and unused.
-_fit(::Type{<:WCopula}, U, ::Val{:mle}; weights=nothing) = WCopula(size(U,1))
-_fit(::Type{<:WCopula}, U, ::Val{:itau}; weights=nothing) = WCopula(size(U,1))
-_fit(::Type{<:WCopula}, U, ::Val{:irho}; weights=nothing) = WCopula(size(U,1))
-_fit(::Type{<:WCopula}, U, ::Val{:ibeta}; weights=nothing) = WCopula(size(U,1))
+_fit_dispatch(
+    ::Type{<:WCopula}, U, ::Val{d}, ::Val; weights=nothing,
+) where {d} = WCopula{d}()

@@ -23,21 +23,20 @@ References:
 """
 BB3Generator, BB3Copula
 
-struct BB3Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB3Generator(θ, δ)
-        (θ ≥ 1) || throw(ArgumentError("θ must be ≥ 1"))
-        (δ > 0) || throw(ArgumentError("δ must be > 0"))
-        θ, δ, _ = promote(θ, δ, 1.0)
-        new{typeof(θ)}(θ, δ)
-    end
+Paramorph.@paramorph T struct BB3Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::T ~ closed_lower(one(T))
+    δ::T ~ asℝ₊
+end
+function BB3Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB3Generator{T}(T(θ), T(δ))
 end
 
 const BB3Copula{d, T} = ArchimedeanCopula{d, BB3Generator{T}}
-Distributions.params(G::BB3Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB3Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
-_rebound_params(::Type{<:BB3Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
+function (::Type{BB3Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB3Generator(args...; kwargs...))
+end
+(::Type{BB3Copula})(d::Int, args...; kwargs...) = BB3Copula{d}(args...; kwargs...)
 
 ϕ(  G::BB3Generator, s) = exp(-exp(log(log1p(s)/G.δ)/G.θ))
 # `(-log t)^θ` rather than `exp(θ log(-log t))`: the latter is a NaN dual at t = 1.

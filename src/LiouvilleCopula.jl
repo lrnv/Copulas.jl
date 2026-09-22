@@ -60,7 +60,8 @@ Base.eltype(C::LiouvilleCopula) = promote_type(eltype(C.G), eltype(C.α))
 LiouvilleCopula(G::Generator, α) = LiouvilleCopula{length(α)}(G, α)
 LiouvilleCopula(d::Integer, G::Generator, α) = LiouvilleCopula{d}(G, α)
 
-Distributions.params(C::LiouvilleCopula) = (; G = C.G, α = C.α)
+
+Distributions.params(C::LiouvilleCopula) = (C.G, C.α)
 
 _liouville_order(C::LiouvilleCopula) = sum(C.α)
 _liouville_radial(C::LiouvilleCopula) = 𝒲₋₁(C.G, _liouville_order(C))

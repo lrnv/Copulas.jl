@@ -26,24 +26,21 @@ References:
 """
 FrankGenerator, FrankCopula
 
-struct FrankGenerator{T} <: AbstractUnivariateGenerator
-    θ::T
-    function FrankGenerator(θ)
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct FrankGenerator{T<:Real} <: AbstractUnivariateGenerator
+    θ::T ~ (get(context, :dimension, 2) == 2 ? asℝ : nonnegative())
 end
+FrankGenerator(θ::Integer) = FrankGenerator(float(θ))
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}
+function (::Type{FrankCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), FrankGenerator(args...; kwargs...))
+end
+(::Type{FrankCopula})(d::Int, args...; kwargs...) = FrankCopula{d}(args...; kwargs...)
 @inline function limit_kind(G::FrankGenerator, ::Val{d}) where {d}
     G.θ == Inf && return M_LIMIT
     d == 2 && G.θ == -Inf && return W_LIMIT
     return NO_LIMIT
 end
 max_monotony(G::FrankGenerator) = G.θ < 0 ? 2 : Inf
-Distributions.params(G::FrankGenerator) = (θ = G.θ,)
-_unbound_params(::Type{<:FrankGenerator}, d, θ) = d == 2 ? [θ.θ] : [log(θ.θ)]
-_rebound_params(::Type{<:FrankGenerator}, d, α) = d==2 ? (; θ = α[1]) : (; θ = exp(α[1]))
-_θ_bounds(::Type{<:FrankGenerator}, d) = d==2 ? (-Inf, Inf) : (0, Inf)
 
 archimedean_measure_style(G::FrankGenerator, ::Val{d}) where {d} =
     isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()

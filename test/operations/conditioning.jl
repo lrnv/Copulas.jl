@@ -145,7 +145,7 @@ end
                 expected_cdf = cdf(Normal(), z)
                 expected_pdf = pdf(Normal(), z) / (sqrt(1 - ρ^2) * pdf(Normal(), zᵢ))
             elseif C isa TCopula
-                ν = C.df
+                ν = C.ν
                 ρ = C.Σ[1, 2]
                 zⱼ = quantile(TDist(ν), conditioned)
                 zᵢ = quantile(TDist(ν), target)
@@ -205,7 +205,7 @@ end
 function _elliptical_conditional_cdf(C::TCopula, js, values,
                                      target_index, target)
     J = collect(js)
-    ν = C.df
+    ν = C.ν
     zJ = quantile.(TDist(ν), collect(values))
     solved = C.Σ[J, J] \ zJ
     β = C.Σ[J, J] \ C.Σ[J, target_index]
@@ -496,7 +496,6 @@ end
 end
 
 
-
 # Conditioning-operation proof: exercises the common univariate API once
 # for every result reached through the public `condition` entry point. Most
 # results are `Distortion`s, but families may legitimately return another
@@ -504,7 +503,7 @@ end
 @testset "bivariate scalar conditioning contract" begin
     C = GaussianCopula{2}(0.4)
     @test @inferred(condition(C, 1, 0.4)) isa Copulas.GaussianDistortion
-    for j in 1:2, uⱼ in (0.2f0, big"0.8")
+    for j in 1:2, uⱼ in (0.2f0, big(0.8))
         @test typeof(condition(C, j, uⱼ)) ==
               typeof(condition(C, (j,), (float(uⱼ),)))
     end

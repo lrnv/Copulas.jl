@@ -22,15 +22,15 @@ end
         @test cdf(ExtremeValueCopula{2}(historical), [0.34, 0.76]) ≈
               cdf(ExtremeValueCopula{2}(structured), [0.34, 0.76]) atol=tol rtol=tol
     end
-    @test params(cases[1][1]) == (λ₁=0.30, λ₂=0.50, λ₃=0.70)
-    @test params(cases[2][1]) == (a=0.30, b=0.70)
+    @test params(ExtremeValueCopula{2}(cases[1][1])) == (0.30, 0.50, 0.70)
+    @test params(ExtremeValueCopula{2}(cases[2][1])) == ([0.30, 0.70],)
 end
 
 @testset "equivalent extremal-t parameterizations" begin
     for (d, ν, ρ) in ((3, 1.3, 0.25), (4, 2.2, 0.4))
         R = fill(ρ, d, d)
         R[diagind(R)] .= 1
-        scalar = ExtremeValueCopula{d}(Copulas.tEVTail(ν, ρ))
+        scalar = ExtremeValueCopula{d}(Copulas.tEVTail{d}(ν, ρ))
         matrix = ExtremeValueCopula{d}(Copulas.tEVTail(ν, R))
         test_ev_equivalence(scalar, matrix,
             collect(range(0.29, 0.83; length=d)); atol=3e-7, rtol=3e-7)
@@ -41,7 +41,8 @@ end
     α, θ1, θ2 = 2.1, 0.67, 0.38
     historical = ExtremeValueCopula{2}(Copulas.AsymLogTail(α, θ1, θ2))
     tawn = ExtremeValueCopula{2}(Copulas.TawnTail(α, [θ2, θ1]))
-    structured = ExtremeValueCopula{2}(Copulas.TawnTail(2, [α], [[1 - θ2], [1 - θ1], [θ2, θ1]]))
+    structured = ExtremeValueCopula{2}(Copulas.TawnTail(
+        2, [α], [[1 - θ2], [1 - θ1], [θ2, θ1]]))
     test_ev_equivalence(tawn, historical, [0.34, 0.76];
                         atol=3e-12, rtol=3e-12)
 
@@ -73,7 +74,8 @@ end
     reported_conditional = condition(reported, 2, 0.7)
     @test isfinite(cdf(reported_conditional, 0.4))
     @test 0 <= cdf(reported_conditional, 0.4) <= 1
-    @test cdf(reported_conditional, 0.4) ≈ cdf(condition(historical, 2, 0.7), 0.4) atol=3e-12 rtol=3e-12
+    @test cdf(reported_conditional, 0.4) ≈
+          cdf(condition(historical, 2, 0.7), 0.4) atol=3e-12 rtol=3e-12
 
     for d in (3, 4)
         symmetric = ExtremeValueCopula{d}(Copulas.TawnTail(1.7, ones(d)))

@@ -26,26 +26,18 @@ References:
 """
 GumbelBarnettGenerator, GumbelBarnettCopula
 
-struct GumbelBarnettGenerator{T} <: AbstractUnivariateGenerator
-    θ::T
-    function GumbelBarnettGenerator(θ)
-        (0 <= θ <= 1) || throw(ArgumentError("Theta must be in [0,1]"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct GumbelBarnettGenerator{T<:Real} <: AbstractUnivariateGenerator
+    θ::T ~ bounded_interval(
+        zero(T),
+        haskey(context, :dimension) ? T(clamp(_find_critical_value_gumbelbarnett(context.dimension), 0, 1)) : one(T),
+    )
 end
+GumbelBarnettGenerator(θ::Integer) = GumbelBarnettGenerator(float(θ))
 const GumbelBarnettCopula{d, T} = ArchimedeanCopula{d, GumbelBarnettGenerator{T}}
-Distributions.params(G::GumbelBarnettGenerator) = (θ = G.θ,)
-function _unbound_params(::Type{<:GumbelBarnettGenerator}, d, θ)
-    u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
-    return [atanh(2θ.θ/u - 1)]
+function (::Type{GumbelBarnettCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), GumbelBarnettGenerator(args...; kwargs...))
 end
-function _rebound_params(::Type{<:GumbelBarnettGenerator}, d, α)
-    u = clamp(_find_critical_value_gumbelbarnett(d), 0, 1)
-    return (; θ = u*(tanh(α[1])+1)/2)
-end
-_θ_bounds(::Type{<:GumbelBarnettGenerator}, d) = (0.0, clamp(_find_critical_value_gumbelbarnett(d), 0.0, 1.0))
-
+(::Type{GumbelBarnettCopula})(d::Int, args...; kwargs...) = GumbelBarnettCopula{d}(args...; kwargs...)
 
 function _find_critical_value_gumbelbarnett(d::Integer)
     d == 2 && return 1.0

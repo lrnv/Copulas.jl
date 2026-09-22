@@ -48,19 +48,33 @@ See also: [`DiscreteSpectralTail`](@ref), [`ExtremeValueCopula`](@ref),
 """
 BC2Tail, BC2Copula
 
-struct BC2Tail{T} <: DiscreteSpectralPickandsTail
-    a::Vector{T}
-    spectral::DiscreteSpectralTail{T}
-    function BC2Tail(a::AbstractVector)
-        length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates",))
-        vals = collect(a)
-        T = float(eltype(vals))
-        aa = T.(a)
-        return new{T}(aa, DiscreteSpectralTail(hcat(aa, one(T) .- aa)))
-    end
+Paramorph.@paramorph T struct BC2Tail{T<:Real} <: DiscreteSpectralPickandsTail
+    d::Int
+    a::Vector{T} ~ Paramorph.TransformVariables.as(
+        Vector, Paramorph.bounded_interval(zero(T), one(T)), d,
+    )
 end
 
+
+BC2Tail(a::Vector{<:Integer}) = BC2Tail(float.(a))
+
+function BC2Tail(a::AbstractVector)
+    length(a) >= 2 || throw(ArgumentError("BC2Tail requires at least two coordinates"))
+    T = float(eltype(a))
+    aa = T.(a)
+    return BC2Tail{T}(length(aa), aa)
+end
+
+_spectral_tail(tail::BC2Tail{T}) where {T} =
+    DiscreteSpectralTail(hcat(tail.a, one(T) .- tail.a))
+Base.getproperty(tail::BC2Tail, name::Symbol) =
+    name === :spectral ? _spectral_tail(tail) : getfield(tail, name)
+
 const BC2Copula{d,T} = ExtremeValueCopula{d, BC2Tail{T}}
+function (::Type{BC2Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), BC2Tail(args...; kwargs...))
+end
+(::Type{BC2Copula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), BC2Tail(args...; kwargs...))
 
 BC2Tail(a, b) = BC2Tail([a, b])
 
@@ -68,16 +82,8 @@ function _bc2_bivariate_weights(tail::BC2Tail)
     return tail.a[1], tail.a[2]
 end
 
-function Distributions.params(tail::BC2Tail)
-    length(tail.a) == 2 || return (a=tail.a,)
-    a, b = _bc2_bivariate_weights(tail)
-    return (; a, b)
-end
 
-_unbound_params(::Type{<:BC2Tail}, d, θ) = [LogExpFunctions.logit(θ.a), LogExpFunctions.logit(θ.b)]
-_rebound_params(::Type{<:BC2Tail}, d, α) = begin
-    (; a = LogExpFunctions.logistic(α[1]), b = LogExpFunctions.logistic(α[2]))
-end
+_tail_constructor_parameter_names(::Type{<:BC2Tail}, _) = (:a, :b)
 _available_fitting_methods(::Type{<:ExtremeValueCopula{D,<:BC2Tail} where D}, d) =
     d == 2 ? (:mle,) : ()
 

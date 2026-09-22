@@ -34,7 +34,6 @@ struct ImplicitTestGenerator{G<:Generator} <: Generator
     inner::G
 end
 
-Distributions.params(G::ImplicitTestGenerator) = Distributions.params(G.inner)
 Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ(G::ImplicitTestGenerator, t) = ϕ(G.inner, t)
 ϕ⁻¹(G::ImplicitTestGenerator, t) = ϕ⁻¹(G.inner, t)
@@ -42,8 +41,6 @@ Copulas.max_monotony(G::ImplicitTestGenerator) = Copulas.max_monotony(G.inner)
 ϕ⁽ᵏ⁾(G::ImplicitTestGenerator, k::Int, t) = ϕ⁽ᵏ⁾(G.inner, k, t)
 Copulas.composition_taylor(o::ImplicitTestGenerator, i::ImplicitTestGenerator, t₀, d::Int) =
     Copulas.composition_taylor_implicit(o.inner, i.inner, t₀, d)
-Copulas._nested_status(o::ImplicitTestGenerator, i::ImplicitTestGenerator, d::Int) =
-    Copulas._nested_status(o.inner, i.inner, d)
 
 # ---------------------------------------------------------------------------
 # Independent reference: nested-Archimedean CDF assembled straight from the
@@ -167,35 +164,36 @@ function implicit_acopula_maxerr(datadir, name, GT, sectors, θroot, θsector; n
 end
 
 @testset "NestedArchimedeanCopula" begin
-    @testset "nesting validity certificates" begin
-        # Certified Clayton/Clayton edge: the child has two actual leaves.
-        C = NestedArchimedeanCopula(ClaytonGenerator(2.0);
-                children = [ClaytonCopula{2}(5.0)])
-        @test C isa NestedArchimedeanCopula{2}
+    @testset "permissive construction and fitting geometry" begin
+        P = Copulas.Paramorph
 
-        # Same certified family pair, but parameters violate θ_parent <= θ_child.
-        err = try
-            NestedArchimedeanCopula(ClaytonGenerator(5.0);
+        # Construction validates structure only: even a mathematically invalid
+        # Clayton ordering can be represented deliberately.
+        bad = NestedArchimedeanCopula(ClaytonGenerator(5.0);
                 children = [ClaytonCopula{2}(2.0)])
-            nothing
-        catch e
-            e
-        end
-        @test err isa DomainError
-        @test occursin("invalid nested Archimedean edge", sprint(showerror, err))
-        @test occursin("2 leaves", sprint(showerror, err))
+        @test bad isa NestedArchimedeanCopula{2}
 
-        # No analytical certificate for this wrapped edge: distinguish UNKNOWN
-        # from a mathematically certified-but-invalid parameter combination.
-        wrapped = ArchimedeanCopula(2, ImplicitTestGenerator(ClaytonGenerator(5.0)))
+        # The template fitting chart carries the ordering. The invalid template
+        # therefore fails when mapped into that chart, before optimisation.
+        @test_throws DomainError Copulas._nested_unbound(bad)
+        good = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+                children = [ClaytonCopula{2}(5.0)])
+        α = Copulas._nested_unbound(good)
+        rebuilt = Copulas._nested_rebound(good, α)
+        @test rebuilt.G.θ <= Copulas._nested_child(only(rebuilt.children)).G.θ
+
+        # Unsupported multi-parameter nesting is still constructible, but the
+        # fitting geometry is deliberately absent and invites contributions.
+        bb = NestedArchimedeanCopula(Copulas.BB1Generator(1.0, 1.0);
+                children = [ClaytonCopula{2}(2.0)])
         err = try
-            NestedArchimedeanCopula(ClaytonGenerator(2.0); children = [wrapped])
+            Copulas._nested_unbound(bb)
             nothing
         catch e
             e
         end
         @test err isa ArgumentError
-        @test occursin("not certified by Copulas.jl", sprint(showerror, err))
+        @test occursin("open for contributions", sprint(showerror, err))
     end
 
     # -----------------------------------------------------------------------
@@ -577,7 +575,8 @@ end
         Mn = Distributions.fit(Copulas.CopulaModel, nest, [0.0, 0.0], U)
         @test rootθ(Mn) ≤ childθ(Mn)                  # nesting enforced by the user's reparam
         @test StatsBase.dof(Mn) == 2
-        @test StatsBase.coefnames(Mn) == ["α1", "α2"]
+        @test StatsBase.coefnames(Mn) == ["G.θ", "G[1].θ"]
+        @test StatsBase.coef(Mn) ≈ [rootθ(Mn), childθ(Mn)]
 
         # custom reparam SHARING one θ across root and child → 1 free parameter
         recon = α -> (θ = exp(α[1]);
@@ -585,7 +584,8 @@ end
                                     children = [ClaytonCopula{2}(θ)]))
         Ms = Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U)
         @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
-        @test StatsBase.coefnames(Ms) == ["α1"]
+        @test StatsBase.coefnames(Ms) == ["G.θ", "G[1].θ"]
+        @test StatsBase.coef(Ms) ≈ [rootθ(Ms), childθ(Ms)]
         @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
 
         # Arbitrary-depth, non-Clayton templates preserve every family and

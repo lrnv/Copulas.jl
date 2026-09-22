@@ -48,28 +48,20 @@ See also: [`GalambosTail`](@ref), [`ExtremeValueCopula`](@ref), [`ℓ`](@ref),
 """
 MixedTail, MixedCopula
 
-struct MixedTail{T} <: OneParameterPickandsTail
-    θ::T
-    function MixedTail(θ)
-        θf = float(θ)
-        (0 ≤ θf ≤ 1 + eps(θf)) || throw(ArgumentError("θ must be in [0,1], provided θ=$θ"))
-        θf = clamp(θf, zero(θf), one(θf))
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct MixedTail{T<:Real} <: OneParameterPickandsTail
+    θ::T ~ bounded_interval(zero(T), one(T))
 end
+MixedTail(θ::Integer) = MixedTail(float(θ))
 
 @inline limit_kind(tail::MixedTail, ::Val) =
     iszero(tail.θ) ? Π_LIMIT : NO_LIMIT
 
 const MixedCopula{d,T} = ExtremeValueCopula{d, MixedTail{T}}
-Distributions.params(tail::MixedTail) = (θ = tail.θ,)
-_is_valid_in_dim(::MixedTail, d::Int) = d >= 2
-_unbound_params(::Type{<:MixedTail}, d, θ) = [LogExpFunctions.logit(θ.θ)]
-_rebound_params(::Type{<:MixedTail}, d, α) = begin
-    θ = LogExpFunctions.logistic(α[1])
-    return (; θ)
+function (::Type{MixedCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), MixedTail(args...; kwargs...))
 end
-_θ_bounds(::Type{<:MixedTail}, d) = (0.0, 1.0)
+(::Type{MixedCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), MixedTail(args...; kwargs...))
+_is_valid_in_dim(::MixedTail, d::Int) = d >= 2
 
 A(tail::MixedTail, t::Real) = tail.θ * t^2 - tail.θ * t + 1
 
@@ -114,44 +106,44 @@ end
 
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::ExtremeValueCopula{d,<:MixedTail}, X::AbstractMatrix{T},) where {d,T<:Real}
+    return _rand_with_ev_limits!(rng, C, X) do
+        n = size(X, 2)
 
-    limit_kind(C.tail, Val(d)) === Π_LIMIT && return Random.rand!(rng, X)
-    n = size(X, 2)
+        S = promote_type(T, typeof(C.tail.θ))
+        θ = S(C.tail.θ)
+        Z = zeros(S, d, n)
 
-    S = promote_type(T, typeof(C.tail.θ))
-    θ = S(C.tail.θ)
-    Z = zeros(S, d, n)
-
-    # Independent max-stable component with exponent
-    # (1-θ) Σᵢ xᵢ.
-    if θ < 1
-        w = 1 - θ
-        @inbounds for i in 1:d, col in 1:n
-            Z[i, col] = w / Random.randexp(rng, S)
-        end
-    end
-
-    # Galambos(1) max-stable component with exponent
-    # θ ℓ_Galambos,1.
-    if θ > 0
-        Cgal = ExtremeValueCopula(d, GalambosTail(one(S)))
-        U = Random.rand(rng, Cgal, n)
-
-        @inbounds for i in 1:d, col in 1:n
-            candidate = θ / (-log(U[i, col]))
-            if candidate > Z[i, col]
-                Z[i, col] = candidate
+        # Independent max-stable component with exponent
+        # (1-θ) Σᵢ xᵢ.
+        if θ < 1
+            w = 1 - θ
+            @inbounds for i in 1:d, col in 1:n
+                Z[i, col] = w / Random.randexp(rng, S)
             end
         end
-    end
 
-    @inbounds for i in 1:d, col in 1:n
-        zi = Z[i, col]
-        zi > 0 || throw(ArgumentError("invalid zero Fréchet value in MixedTail sampler",))
-        X[i, col] = T(exp(-inv(zi)))
-    end
+        # Galambos(1) max-stable component with exponent
+        # θ ℓ_Galambos,1.
+        if θ > 0
+            Cgal = ExtremeValueCopula(d, GalambosTail(one(S)))
+            U = Random.rand(rng, Cgal, n)
 
-    return X
+            @inbounds for i in 1:d, col in 1:n
+                candidate = θ / (-log(U[i, col]))
+                if candidate > Z[i, col]
+                    Z[i, col] = candidate
+                end
+            end
+        end
+
+        @inbounds for i in 1:d, col in 1:n
+            zi = Z[i, col]
+            zi > 0 || throw(ArgumentError("invalid zero Fréchet value in MixedTail sampler",))
+            X[i, col] = T(exp(-inv(zi)))
+        end
+
+        return X
+    end
 end
 
 function dA(tail::MixedTail, t::Real)
