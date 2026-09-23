@@ -1,11 +1,12 @@
 ###############################################################################
-##### Identifiable natural model coefficients
+##### Natural model coefficient reporting
 ###############################################################################
 
 # `params` is the complete natural constructor representation. StatsBase
-# coefficients are narrower: they expose the free statistical parameters on a
-# natural scale, without fixed or algebraically redundant entries. Optimizer
-# coordinates remain internal.
+# coefficients flatten the natural statistical values used for reporting;
+# unlike optimizer coordinates, they need not form an irreducible chart.
+# Consequently `length(coef(model))` may exceed `dof(model)` when a natural
+# representation contains constrained or redundant values such as a simplex.
 
 @inline function _parameter_prefix(prefix::String, part)
     text = string(part)
@@ -23,6 +24,11 @@ end
 end
 
 function _tuple_parameter_names(D, raw::Tuple)
+    declared = _declared_parameter_values(D)
+    if declared !== nothing && length(declared) == length(raw)
+        return string.(keys(declared))
+    end
+
     props = try
         propertynames(D)
     catch
@@ -44,8 +50,6 @@ end
 
 _tuple_parameter_names(::Distributions.Categorical, raw::Tuple) =
     length(raw) == 1 ? ["p"] : ["θ$(i)" for i in eachindex(raw)]
-_tuple_parameter_names(::FGMCopula{2}, raw::Tuple) =
-    length(raw) == 1 ? ["θ"] : ["θ$(i)" for i in eachindex(raw)]
 _tuple_parameter_names(C::ArchimedeanCopula, raw::Tuple) =
     _tuple_parameter_names(C.G, raw)
 _tuple_parameter_names(C::ExtremeValueCopula, raw::Tuple) =
@@ -116,81 +120,19 @@ function _distribution_coefficients(D; prefix::String="")
     return names, _promoted_parameter_values(values)
 end
 
-# Symmetric matrix parameters have a natural identifiable representation in one
-# strict triangle. Positive-definiteness is a constraint on those entries, not a
-# reason to expose Cholesky or other optimizer coordinates.
-function _symmetric_offdiagonal_coefficients(
-    matrix::AbstractMatrix, name::String; prefix::String="",
-)
-    size(matrix, 1) == size(matrix, 2) || throw(DimensionMismatch(
-        "$name must be a square matrix"))
-    names = String[]
-    values = Any[]
-    full_name = _parameter_prefix(prefix, name)
-    for j in 2:size(matrix, 2), i in 1:(j - 1)
-        I = CartesianIndex(i, j)
-        push!(names, _indexed_parameter_name(full_name, I, size(matrix)))
-        push!(values, matrix[I])
-    end
-    return names, _promoted_parameter_values(values)
-end
-
+# Keep the conventional concise representation for Gaussian correlations. This
+# is a direct natural parameterization, not a generic requirement imposed on all
+# structured constrained parameters.
 function _distribution_coefficients(C::GaussianCopula; prefix::String="")
-    return _symmetric_offdiagonal_coefficients(C.Σ, "Σ"; prefix)
-end
-
-function _distribution_coefficients(C::TCopula; prefix::String="")
-    names = [_parameter_prefix(prefix, "ν")]
-    values = Any[C.ν]
-    matrix_names, matrix_values =
-        _symmetric_offdiagonal_coefficients(C.Σ, "Σ"; prefix)
-    append!(names, matrix_names)
-    append!(values, matrix_values)
-    return names, _promoted_parameter_values(values)
-end
-
-function _distribution_coefficients(
-    C::ExtremeValueCopula{d,<:HuslerReissTail}; prefix::String="",
-) where {d}
-    return _symmetric_offdiagonal_coefficients(C.tail.Γ, "Γ"; prefix)
-end
-
-function _distribution_coefficients(
-    C::ExtremeValueCopula{d,<:tEVTail}; prefix::String="",
-) where {d}
-    names = [_parameter_prefix(prefix, "ν")]
-    values = Any[C.tail.ν]
-    matrix_names, matrix_values =
-        _symmetric_offdiagonal_coefficients(C.tail.R, "R"; prefix)
-    append!(names, matrix_names)
-    append!(values, matrix_values)
-    return names, _promoted_parameter_values(values)
-end
-
-function _asymmetric_simplex_coefficients(tail, prefix::String)
     names = String[]
     values = Any[]
-    dep_name = _parameter_prefix(prefix, :dep)
-    for i in eachindex(tail.dep)
-        push!(names, _indexed_parameter_name(dep_name, CartesianIndex(i), size(tail.dep)))
-        push!(values, tail.dep[i])
-    end
-    for (j, weights) in pairs(tail.weights)
-        weight_name = _parameter_prefix(prefix, "weights$(j)")
-        for i in 1:max(length(weights) - 1, 0)
-            push!(names, _indexed_parameter_name(
-                weight_name, CartesianIndex(i), size(weights)))
-            push!(values, weights[i])
-        end
+    full_name = _parameter_prefix(prefix, "Σ")
+    for j in 2:size(C.Σ, 2), i in 1:(j - 1)
+        I = CartesianIndex(i, j)
+        push!(names, _indexed_parameter_name(full_name, I, size(C.Σ)))
+        push!(values, C.Σ[I])
     end
     return names, _promoted_parameter_values(values)
-end
-
-function _distribution_coefficients(
-    C::ExtremeValueCopula{d,<:Union{TawnTail,AsymGalambosTail}};
-    prefix::String="",
-) where {d}
-    return _asymmetric_simplex_coefficients(C.tail, prefix)
 end
 
 _distribution_coefficients(C::AbstractReflectedCopula; prefix::String="") =
@@ -240,48 +182,12 @@ function _distribution_coefficients(D::Distributions.BetaBinomial; prefix::Strin
         _parameter_prefix(prefix, :β),
     ], [float(D.α), float(D.β)]
 end
-function _distribution_coefficients(D::Distributions.Categorical; prefix::String="")
-    p = Distributions.probs(D)
-    n = max(length(p) - 1, 0)
-    p_name = _parameter_prefix(prefix, :p)
-    names = [
-        _indexed_parameter_name(p_name, CartesianIndex(i), size(p)) for i in 1:n
-    ]
-    return names, float.(collect(p[1:n]))
-end
 
 # Nested topology is structural. Template fits expose local generator parameters;
 # custom runtime maps may intentionally have a smaller fitting dimension, which
 # is recorded in their fit recipe.
 _distribution_coefficients(C::NestedArchimedeanCopula; prefix::String="") =
     _nested_coef(C)
-
-# Liebscher weight columns are simplexes. Display one fewer active natural weight
-# per column; the omitted weight is determined by the unit-sum constraint.
-function _distribution_coefficients(C::LiebscherCopula{d}; prefix::String="") where {d}
-    names = String[]
-    values = Any[]
-
-    for (k, component) in pairs(C.copulas)
-        _liebscher_component_space(component) === nothing && continue
-        component_names, component_values = _distribution_coefficients(
-            component; prefix=_parameter_prefix(prefix, Symbol("C", k)))
-        append!(names, component_names)
-        append!(values, component_values)
-    end
-
-    for j in 1:d
-        active, p = _liebscher_weight_geometry(C.weights, j)
-        p === nothing && continue
-        n = Paramorph.TransformVariables.dimension(p)
-        for k in active[1:n]
-            push!(names, _parameter_prefix(prefix, "a$(k)_$(j)"))
-            push!(values, C.weights[k, j])
-        end
-    end
-
-    return names, _promoted_parameter_values(values)
-end
 
 _distribution_coefficient_values(D) = last(_distribution_coefficients(D))
 

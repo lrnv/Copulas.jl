@@ -1,4 +1,4 @@
-@testset "identifiable natural StatsBase coefficients" begin
+@testset "natural StatsBase coefficient reporting" begin
     P = Copulas.Paramorph
 
     @test !isdefined(Copulas, :_natural_parameters)
@@ -8,9 +8,9 @@
     @test !isdefined(Copulas, :_coefficient_parameter_values)
     @test !isdefined(Copulas, :_parameter_dof)
 
-    # Sklar composes natural identifiable component coefficients, with copula
-    # then margins. The coefficients remain on the model scale rather than on
-    # the optimizer's unconstrained scale.
+    # Sklar composes natural component coefficients, with copula then margins.
+    # The coefficients remain on the model scale rather than on the optimizer's
+    # unconstrained scale.
     D = SklarDist(
         ClaytonCopula(2, 1.25),
         (Normal(2.0, 3.0), Exponential(4.0)),
@@ -123,8 +123,9 @@
     @test StatsBase.dof(Mruntime) == 1
     @test length(StatsBase.coef(Mruntime)) == 3
 
-    # Correlation matrices expose one natural off-diagonal triangle rather than
-    # both symmetric halves and the fixed unit diagonal.
+    # Gaussian correlation matrices keep their concise strict-triangle reporting
+    # convention. Other structured parameters are free to report redundant
+    # natural values without changing their intrinsic statistical dof.
     G = GaussianCopula([
         1.0 0.4 0.2
         0.4 1.0 0.3
@@ -144,17 +145,18 @@
     @test !occursin("Σ₁₂", report)
     @test !occursin("Spearman ρ", report)
 
-    # A simplex exposes k-1 natural probabilities. The omitted final probability
-    # is determined by the unit-sum constraint.
+    # Natural simplex probabilities are reported in full. Statistical dof still
+    # comes from the irreducible simplex geometry.
     Dsimplex = SklarDist(
         ClaytonCopula(2, 0.5),
         (Categorical([0.1, 0.2, 0.7]), Normal()),
     )
     Msimplex = CopulaModel(Dsimplex, zeros(2, 1), 0.0, nothing)
-    @test StatsBase.coefnames(Msimplex)[1:3] ==
-          ["copula_θ", "margin_1_p₁", "margin_1_p₂"]
-    @test StatsBase.coef(Msimplex)[1:3] == [0.5, 0.1, 0.2]
-    @test length(StatsBase.coef(Msimplex)) == StatsBase.dof(Msimplex)
+    @test StatsBase.coefnames(Msimplex)[1:4] ==
+          ["copula_θ", "margin_1_p₁", "margin_1_p₂", "margin_1_p₃"]
+    @test StatsBase.coef(Msimplex)[1:4] == [0.5, 0.1, 0.2, 0.7]
+    @test length(StatsBase.coef(Msimplex)) == 6
+    @test StatsBase.dof(Msimplex) == 5
 
     T = TawnCopula(
         2,
@@ -163,17 +165,20 @@
         [0.3, 0.7],
     )
     MT = CopulaModel(T, zeros(2, 1), 0.0, nothing)
-    @test StatsBase.coefnames(MT) == ["dep₁", "weights1₁", "weights2₁"]
-    @test StatsBase.coef(MT) == [2.0, 0.2, 0.3]
-    @test length(StatsBase.coef(MT)) == StatsBase.dof(MT) ==
-          Copulas._parameter_dimension(T) == 3
+    @test StatsBase.coefnames(MT) == [
+        "dep", "weights₁₁", "weights₁₂", "weights₂₁", "weights₂₂",
+    ]
+    @test StatsBase.coef(MT) == [2.0, 0.2, 0.8, 0.3, 0.7]
+    @test length(StatsBase.coef(MT)) == 5
+    @test StatsBase.dof(MT) == Copulas._parameter_dimension(T) == 3
 
-    # Archimax composes the component natural representations instead of
-    # indexing storage by Paramorph names.
+    # Archimax composes the component natural representations. Reporting may be
+    # redundant even though dof remains the intrinsic Paramorph dimension.
     AX = ArchimaxCopula(2, Copulas.ClaytonGenerator(1.25), T.tail)
     @test Copulas._parameter_dimension(AX) == 4
     @test Distributions.params(AX) ==
           (1.25, [2.0], [0.2, 0.8], [0.3, 0.7])
     MAX = CopulaModel(AX, zeros(2, 1), 0.0, nothing)
-    @test length(StatsBase.coef(MAX)) == StatsBase.dof(MAX) == 4
+    @test length(StatsBase.coef(MAX)) == 6
+    @test StatsBase.dof(MAX) == 4
 end
