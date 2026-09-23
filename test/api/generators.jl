@@ -1,26 +1,44 @@
 # Component proof: exhaustively covers public generator families and
-# verifies their transform, inverse, derivative, and reconstruction identities.
+# verifies their transform, inverse, and derivative identities.
 
 struct PowerExponentialOracleGenerator{T} <: Copulas.Generator
     θ::T
 end
 Copulas.ϕ(G::PowerExponentialOracleGenerator, t) = exp(-t^(inv(G.θ)))
 Copulas.max_monotony(::PowerExponentialOracleGenerator) = Inf
-Distributions.params(G::PowerExponentialOracleGenerator) = (; θ=G.θ)
 
 struct MinimalPublicGenerator <: Copulas.Generator end
 Copulas.ϕ(::MinimalPublicGenerator, t) = exp(-t)
 Copulas.max_monotony(::MinimalPublicGenerator) = Inf
-Distributions.params(::MinimalPublicGenerator) = (;)
+
+struct CachedPublicGenerator <: Copulas.Generator
+    θ::Float64
+    cache::Vector{Float64}
+end
+Copulas.ϕ(G::CachedPublicGenerator, t) = exp(-G.θ * t)
+Copulas.max_monotony(::CachedPublicGenerator) = Inf
 
 @testset "public Generator extension contract" begin
     G = MinimalPublicGenerator()
     C = ArchimedeanCopula(3, G)
     u = [0.2, 0.5, 0.8]
 
-    @test params(G) == (;)
+    @test !applicable(params, G)
     @test length(C) == 3
     @test cdf(C, u) ≈ prod(u)
+
+    # A downstream generator is an opaque constructor argument. Incidental
+    # storage such as a cache must not become public copula parameters merely
+    # because it is a struct field.
+    cached = CachedPublicGenerator(1.0, [10.0, 20.0])
+    Ccached = ArchimedeanCopula(3, cached)
+    @test params(Ccached) == (cached,)
+    @test only(params(Ccached)) === cached
+
+    # In-package Paramorph generators still expose their logical natural
+    # parameters, including multi-parameter families.
+    @test params(ClaytonCopula(2, 1.25)) == (1.25,)
+    @test params(BB1Copula(2, 1.5, 2.0)) == (1.5, 2.0)
 end
 
 @testset "specialized Gumbel generator agrees with its generic oracle" begin
@@ -66,9 +84,7 @@ end
         @testset "$(nameof(typeof(G)))" begin
             @test G isa Copulas.Generator
             @test Copulas.max_monotony(G) >= 2
-            @test params(G) isa NamedTuple
-            rebuilt = typeof(G)(values(params(G))...)
-            @test params(rebuilt) == params(G)
+            @test !applicable(params, G)
             @test Copulas.ϕ(G, 0.0) ≈ 1
             @test 0 <= Copulas.ϕ(G, 0.7) <= 1
             p = Copulas.ϕ(G, 0.7)

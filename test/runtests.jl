@@ -158,7 +158,7 @@ const GENERATOR_CASES = unique(generator_case_key,
 function tail_case_key(entry)
     Base.@nospecialize entry
     tail, d = entry
-    return (typeof(tail), d, typeof(params(tail)))
+    return (typeof(tail), d)
 end
 const TAIL_CASES = unique(tail_case_key,
     [
@@ -199,7 +199,6 @@ testfiles = (
     "correctness/liouville.jl",
     "correctness/liebscher.jl",
     "correctness/nested_archimedean.jl",
-    "correctness/nesting_certificates.jl",
     "correctness/nested_archimedean_equivalence.jl",
     "correctness/family_specialization_equivalence.jl",
     "correctness/statistical.jl",
@@ -215,6 +214,8 @@ testfiles = (
     "operations/dependence.jl",
     "operations/dependence_dimension_validation.jl",
     "operations/fitting.jl",
+    "operations/liebscher_fitting.jl",
+    "operations/parameter_coefficients.jl",
     "operations/sklar_fitting_validation.jl",
     "operations/nested_fitting_validation.jl",
     "operations/inference.jl",

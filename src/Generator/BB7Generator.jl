@@ -24,23 +24,22 @@ References:
 """
 BB7Generator, BB7Copula
 
-struct BB7Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB7Generator(θ, δ)
-        (θ ≥ 1) || throw(ArgumentError("θ must be ≥ 1"))
-        (δ > 0) || throw(ArgumentError("δ must be > 0"))
-        θf, δf = promote(float(θ), float(δ))
-        return new{typeof(θf)}(θf, δf)
-    end
+Paramorph.@paramorph T struct BB7Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::T ~ closed_lower(one(T))
+    δ::T ~ asℝ₊
+end
+function BB7Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB7Generator{T}(T(θ), T(δ))
 end
 
 const BB7Copula{d, T} = ArchimedeanCopula{d, BB7Generator{T}}
+function (::Type{BB7Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB7Generator(args...; kwargs...))
+end
+(::Type{BB7Copula})(d::Int, args...; kwargs...) = BB7Copula{d}(args...; kwargs...)
 @inline limit_kind(G::BB7Generator, ::Val) =
     isone(G.θ) && isinf(G.δ) ? M_LIMIT : NO_LIMIT
-Distributions.params(G::BB7Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB7Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ)]
-_rebound_params(::Type{<:BB7Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = exp(α[2]))
 
 ϕ(  G::BB7Generator, s) = begin
     a = exp( -inv(G.δ)*log1p(s) )  

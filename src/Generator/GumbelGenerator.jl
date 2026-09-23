@@ -25,25 +25,29 @@ References:
 """
 GumbelGenerator, GumbelCopula
 
-struct GumbelGenerator{T} <: AbstractUnivariateFrailtyGenerator
-    θ::T
-    function GumbelGenerator(θ)
-        θ < 1 && throw(ArgumentError("Theta must be greater than or equal to 1"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct GumbelGenerator{T<:Real} <: AbstractUnivariateFrailtyGenerator
+    θ::T ~ closed_lower(one(T))
 end
+GumbelGenerator(θ::Integer) = GumbelGenerator(float(θ))
 const GumbelCopula{d, T} = ArchimedeanCopula{d, GumbelGenerator{T}}
+function (::Type{GumbelCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), GumbelGenerator(args...; kwargs...))
+end
+# Analytical inference reconstructs family targets with the generic `(d, params...)`
+# convention. When `d` is already encoded in `GumbelCopula{d}`, consume and
+# validate the redundant dimension instead of forwarding it to `GumbelGenerator`.
+function (::Type{GumbelCopula{d}})(dimension::Int, θ::Real; kwargs...) where {d}
+    dimension == d || throw(DimensionMismatch(
+        "Gumbel copula dimension $dimension does not match encoded dimension $d"))
+    return GumbelCopula{d}(θ; kwargs...)
+end
+(::Type{GumbelCopula})(d::Int, args...; kwargs...) = GumbelCopula{d}(args...; kwargs...)
 @inline limit_kind(G::GumbelGenerator, ::Val) =
     isinf(G.θ) ? M_LIMIT : NO_LIMIT
 
 frailty(G::GumbelGenerator) =
     isone(G.θ) ? Distributions.Dirac(1.0) :
     AlphaStable(α = 1/G.θ, β = 1, scale = cos(π/(2G.θ))^G.θ, location = 0)
-Distributions.params(G::GumbelGenerator) = (θ = G.θ,)
-_unbound_params(::Type{<:GumbelGenerator}, d, θ) = [log(θ.θ - 1)]                # θ ≥ 1
-_rebound_params(::Type{<:GumbelGenerator}, d, α) = (; θ = 1 + exp(α[1]))
-_θ_bounds(::Type{<:GumbelGenerator}, d) = (1, Inf)
 _available_fitting_methods(::Type{<:ArchimedeanCopula{d,<:GumbelGenerator} where {d}}, d) = (:mle, :itau, :ibeta, :irho)
 
 archimedean_measure_style(G::GumbelGenerator, ::Val{d}) where {d} =

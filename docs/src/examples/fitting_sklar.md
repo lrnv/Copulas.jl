@@ -49,7 +49,7 @@ scatter(data[1,:], data[2,:]; ms=2, alpha=0.6, title="First two marginals (origi
 
 ```@example 5
 U = Copulas.pseudos(data)              # pseudo-observations (uniforms)
-Usim = rand(params(fitted_model).copula, size(data,2)) # simulate from fitted copula
+Usim = rand(first(params(fitted_model)), size(data,2)) # simulate from fitted copula
 P1 = scatter(U[1,:], U[2,:]; ms=2, alpha=0.6, xlim=(0,1), ylim=(0,1), title="Empirical uniforms", legend=false)
 P2 = scatter(Usim[1,:], Usim[2,:]; ms=2, alpha=0.6, xlim=(0,1), ylim=(0,1), title="Fitted copula uniforms", legend=false)
 plot(P1, P2; layout=(1,2), size=(850,350))

@@ -22,20 +22,19 @@ References:
 """
 BB2Generator, BB2Copula
 
-struct BB2Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB2Generator(θ, δ)
-        (θ > 0) || throw(ArgumentError("θ must be > 0"))
-        (δ > 0) || throw(ArgumentError("δ must be > 0"))
-        θ, δ, _ = promote(θ, δ, 1.0)
-        new{typeof(θ)}(θ, δ)
-    end
+Paramorph.@paramorph T struct BB2Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::T ~ asℝ₊
+    δ::T ~ asℝ₊
+end
+function BB2Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB2Generator{T}(T(θ), T(δ))
 end
 const BB2Copula{d, T} = ArchimedeanCopula{d, BB2Generator{T}}
-Distributions.params(G::BB2Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB2Generator}, d, θ) = [log(θ.θ), log(θ.δ)]
-_rebound_params(::Type{<:BB2Generator}, d, α) = (; θ = exp(α[1]), δ = exp(α[2]))
+function (::Type{BB2Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB2Generator(args...; kwargs...))
+end
+(::Type{BB2Copula})(d::Int, args...; kwargs...) = BB2Copula{d}(args...; kwargs...)
 
 ϕ(  G::BB2Generator, s) = exp(-log1p(log1p(s)/G.δ)/G.θ)
 ϕ⁻¹(G::BB2Generator, t) = expm1(G.δ*expm1(-G.θ*log(t)))

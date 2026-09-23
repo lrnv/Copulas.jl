@@ -74,21 +74,8 @@ function _fit_mle_weighted(
     weights::AbstractVector,
     ::Val{d},
 ) where {d}
-    CT = typeof(C)
-    vd = Val(d)
-
-    alpha0 = Copulas._unbound_params(
-        CT,
-        d,
-        Distributions.params(C),
-    )
-
-    copula(alpha) = Copulas._construct_fitted_copula(
-        CT,
-        vd,
-        Copulas._rebound_params(CT, d, alpha),
-        C,
-    )
+    alpha0 = Copulas._parameter_coordinates(C)
+    copula(alpha) = Copulas._from_parameter_coordinates(C, alpha)
 
     function objective(alpha)
         fitted = copula(alpha)

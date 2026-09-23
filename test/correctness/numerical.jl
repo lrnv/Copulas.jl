@@ -23,7 +23,6 @@ Distributions.cdf(::_NaNCDFFixture, x::Real) = NaN
 
 struct _NaNWilliamsonGenerator <: Copulas.Generator end
 Copulas.max_monotony(::_NaNWilliamsonGenerator) = 2
-Distributions.params(::_NaNWilliamsonGenerator) = (;)
 Copulas.ϕ(::_NaNWilliamsonGenerator, x) = exp(-x)
 Copulas.ϕ⁽¹⁾(::_NaNWilliamsonGenerator, x) = oftype(float(x), NaN)
 

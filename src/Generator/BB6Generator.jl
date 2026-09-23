@@ -26,25 +26,24 @@ References:
 """
 BB6Generator, BB6Copula
 
-struct BB6Generator{T} <: AbstractFrailtyGenerator
-    θ::T
-    δ::T
-    function BB6Generator(θ, δ)
-        (θ ≥ 1) || throw(ArgumentError("θ must be ≥ 1"))
-        (δ ≥ 1) || throw(ArgumentError("δ must be ≥ 1"))
-        θf, δf = promote(float(θ), float(δ))
-        return new{typeof(θf)}(θf, δf)
-    end
+Paramorph.@paramorph T struct BB6Generator{T<:Real} <: AbstractFrailtyGenerator
+    θ::T ~ closed_lower(one(T))
+    δ::T ~ closed_lower(one(T))
+end
+function BB6Generator(θ::Real, δ::Real)
+    T = promote_type(typeof(float(θ)), typeof(float(δ)))
+    return BB6Generator{T}(T(θ), T(δ))
 end
 
 const BB6Copula{d, T} = ArchimedeanCopula{d, BB6Generator{T}}
+function (::Type{BB6Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB6Generator(args...; kwargs...))
+end
+(::Type{BB6Copula})(d::Int, args...; kwargs...) = BB6Copula{d}(args...; kwargs...)
 @inline limit_kind(G::BB6Generator, ::Val) =
     isone(G.θ) && isone(G.δ) ? Π_LIMIT :
     (isinf(G.θ) || isinf(G.δ)) ? M_LIMIT :
     NO_LIMIT
-Distributions.params(G::BB6Generator) = (θ = G.θ, δ = G.δ)
-_unbound_params(::Type{<:BB6Generator}, d, θ) = [log(θ.θ - 1), log(θ.δ - 1)]
-_rebound_params(::Type{<:BB6Generator}, d, α) = (; θ = 1 + exp(α[1]), δ = 1 + exp(α[2]))
 
 ϕ(  G::BB6Generator, s) = 1 - (1 - exp(-s^(inv(G.δ))))^(inv(G.θ))
 ϕ⁻¹(G::BB6Generator, t) = (-log1p(- (1 - t)^(G.θ)))^(G.δ)

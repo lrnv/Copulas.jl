@@ -1,5 +1,5 @@
 # Correctness obligation: Liouville and real-order Williamson identities,
-# conditional paths, caches, and performance-sensitive regressions.
+# conditional paths, caches, parameter metadata, and performance-sensitive regressions.
 @testset "Liouville copulas" begin
     @testset "real Williamson orders" begin
         G = Copulas.𝒲(Dirac(1.0), 5.5)
@@ -17,6 +17,25 @@
 
         clayton_radial = Copulas.𝒲₋₁(Copulas.ClaytonGenerator(1.0), 0.75)
         @test clayton_radial isa Distributions.LocationScale
+    end
+
+    @testset "parameter-space metadata" begin
+        # The generator chart must not be restricted by the ambient Liouville
+        # dimension: validity depends on sum(α), not on d. This six-dimensional
+        # model is valid with a negative Clayton parameter because sum(α) < 2.
+        C = LiouvilleCopula{6}(
+            Copulas.ClaytonGenerator(-0.25),
+            ntuple(_ -> 0.3, 6),
+        )
+        @test Copulas._parameter_dimension(C) == 7
+
+        z = Copulas._parameter_coordinates(C)
+        natural = Copulas._from_parameter_coordinates(C, z)
+        @test natural.G.θ ≈ -0.25
+        @test collect(natural.α) ≈ collect(C.α)
+
+        # Parameter metadata is introduced in this PR; fitting stays separate.
+        @test Copulas._available_fitting_methods(typeof(C), 6) == ()
     end
 
     @testset "finite-support beta-product quantiles" begin

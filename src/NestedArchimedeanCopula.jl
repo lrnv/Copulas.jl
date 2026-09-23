@@ -103,7 +103,7 @@ function composition_taylor_direct(outer::Generator, inner::Generator, t₀::T, 
 end
 
 """
-    composition_taylor_implicit(outer, inner, t₀, d)
+    composition_taylor_implicit(outer::Generator, inner::Generator, t₀, d)
 
 Edge composition by implicit differentiation (paper App. A.4; see
 [`composition_taylor`](@ref)): `h` satisfies `ϕ_outer(h(t)) = ϕ_inner(t)`, solved
@@ -357,11 +357,12 @@ genuinely nested declarations build a `NestedArchimedeanCopula`. The legacy
 positional form `NestedArchimedeanCopula(G, children)` (children in consecutive
 blocks, no root leaves) is also supported.
 
-The constructor validates each parent -> child edge at the actual number of
-leaves below the child.  Copulas.jl accepts only generator pairs for which an
-analytical nesting certificate is implemented.  A certified pair with invalid
-parameters raises `DomainError`; a pair for which no certificate is implemented
-raises `ArgumentError` rather than silently constructing an unvalidated copula.
+The constructor validates the tree structure, dimension placement, and each
+node generator's dimensional validity at that node's local arity. It
+intentionally does **not** validate the mathematical nesting relation between
+parent and child generators. Expert users may therefore construct trees outside
+the built-in fitting geometry. Template fitting performs its own upfront
+validation by constructing a nesting-aware Paramorph chart.
 
 # Density and precision
 
@@ -438,7 +439,7 @@ end
 
 Base.length(::NestedArchimedeanCopula{d}) where {d} = d
 Distributions.params(C::NestedArchimedeanCopula) =
-    (G=C.G, leaves=C.leafdims, children=C.children)
+    (C.G, C.leafdims, C.children)
 
 function copula_measure_style(C::NestedArchimedeanCopula)
     local_dimension = length(C.leafdims) + length(C.children)
@@ -455,8 +456,7 @@ end
 # Element type of a single generator's parameters (promote across its params).
 # `init = Bool` is the identity for `promote_type`, so a 0-param generator
 # yields `Bool` and never widens the data type.
-_gen_param_eltype(G::Generator) =
-    mapreduce(typeof, promote_type, values(Distributions.params(G)); init = Bool)
+_gen_param_eltype(G::Generator) = _parameter_eltype(G)
 
 # Promote the parameter element type over the WHOLE tree (root + every child /
 # nested node). Used to widen the Faà di Bruno working type `T` so that
@@ -481,342 +481,59 @@ _subdim(c::ArchimedeanCopula) = length(c)
 _subdim(c::NestedArchimedeanCopula{d}) where {d} = d
 _subdim(c::Tuple) = _subdim(c[1])
 
-# ---- Nesting validity --------------------------------------------------------
-# A nested edge parent -> child is certified at the *actual number of leaves*
-# below the child.  The mathematical certificate is family-specific (typically
-# a d-alternation condition for ϕ_parent⁻¹ ∘ ϕ_child), so there is deliberately no
-# numerical/generic fallback: an unimplemented pair is different from a pair
-# whose parameters are known to violate a certified condition.
-@enum _NestedValidity begin
-    _NESTING_VALID
-    _NESTING_INVALID
-    _NESTING_UNSUPPORTED
+function _validate_nested_generator_monotonicity(G::Generator, dloc::Int)
+    dloc <= max_monotony(G) || throw(DomainError(
+        dloc,
+        "generator $G has maximal monotonicity $(max_monotony(G)) and cannot define a $dloc-dimensional Archimedean node",
+    ))
+    return nothing
 end
 
-_nested_status(::Generator, ::Generator, ::Int) = _NESTING_UNSUPPORTED
+function _validate_nested_generator_monotonicity(C::NestedArchimedeanCopula)
+    dloc = max(length(C.leafdims) + length(C.children), 2)
+    _validate_nested_generator_monotonicity(C.G, dloc)
+    for child in C.children
+        if child isa Tuple
+            copula, ds = child
+            _validate_nested_generator_monotonicity(copula.G, max(length(ds), 2))
+        else
+            _validate_nested_generator_monotonicity(child)
+        end
+    end
+    return nothing
+end
 
-# Exact representations of independence as a parent.  A Π parent is valid
-# above any already-valid child subtree.
-_nested_status(::IndependentGenerator, ::Generator, ::Int) = _NESTING_VALID
-_nested_status(p::AMHGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
-_nested_status(p::ClaytonGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
-_nested_status(p::FrankGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
-_nested_status(p::GumbelGenerator, ::Generator, ::Int) = isone(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
-_nested_status(p::GumbelBarnettGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
-_nested_status(p::InvGaussianGenerator, ::Generator, ::Int) = iszero(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
-_nested_status(p::JoeGenerator, ::Generator, ::Int) = isone(p.θ) ? _NESTING_VALID : _NESTING_UNSUPPORTED
-
-# Add analytical pair certificates below this line.  Each method must return
-# VALID / INVALID only for the parameter region it actually certifies; return
-# UNSUPPORTED outside that region rather than extrapolating a sufficient rule.
+# ---- Nesting geometry for template fitting ---------------------------------
 #
-# Example: for finite non-negative Clayton parameters,
-#
-#   g(t) = ϕ_parent⁻¹(ϕ_child(t))
-#        = ((1 + θ_child*t)^(θ_parent/θ_child) - 1) / θ_parent,
-#
-# with the continuous extensions at θ = 0.  For any finite d >= 2, g is
-# d-alternating exactly when θ_parent <= θ_child.
-function _nested_status(parent::ClaytonGenerator, child::ClaytonGenerator, d::Int)
-    θp, θc = parent.θ, child.θ
-    iszero(θp) && return _NESTING_VALID
-    (isfinite(θp) && isfinite(θc) && θp >= 0 && θc >= 0) || return _NESTING_UNSUPPORTED
-    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
-end
+# Public construction is deliberately permissive about cross-node nesting theory:
+# these rules are NOT constructor validation. They describe only the parameter
+# geometries currently available to template fitting. The supported non-trivial
+# rules are restricted to the standard one-parameter generators; extending this
+# table to multi-parameter/BB families is intentionally left open for contributions.
 
-
-
-# Exact one-parameter subfamilies of the BB generators.  Positive rescalings
-# of the generator argument do not change the copula or the nesting property.
-_nested_status(p::BB1Generator, c::Generator, d::Int) = isone(p.δ) ? _nested_status(ClaytonGenerator(p.θ), c, d) : _NESTING_UNSUPPORTED
-_nested_status(p::BB3Generator, c::Generator, d::Int) = isone(p.θ) ? _nested_status(ClaytonGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
-_nested_status(p::BB6Generator, c::Generator, d::Int) = isone(p.δ) ? _nested_status(JoeGenerator(p.θ), c, d) : isone(p.θ) ? _nested_status(GumbelGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
-_nested_status(p::BB7Generator, c::Generator, d::Int) = isone(p.θ) ? _nested_status(ClaytonGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
-_nested_status(p::BB8Generator, c::Generator, d::Int) = isone(p.ϑ) ? _NESTING_VALID : isone(p.δ) ? _nested_status(JoeGenerator(p.ϑ), c, d) : _NESTING_UNSUPPORTED
-_nested_status(p::BB9Generator, c::Generator, d::Int) = isone(p.θ) ? _NESTING_VALID : p.θ == 2 ? _nested_status(InvGaussianGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
-_nested_status(p::BB10Generator, c::Generator, d::Int) = iszero(p.δ) ? _NESTING_VALID : isone(p.θ) ? _nested_status(AMHGenerator(p.δ), c, d) : _NESTING_UNSUPPORTED
-
-
-# ── Homogeneous one-parameter families ────────────────────────────────────────
-
-function _nested_status(parent::AMHGenerator, child::AMHGenerator, ::Int)
-    θp, θc = parent.θ, child.θ
-    iszero(θp) && return _NESTING_VALID
-    (all(isfinite, (θp, θc)) && 0 <= θp < 1 && 0 <= θc < 1) || return _NESTING_UNSUPPORTED
-    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
-end
-
-function _nested_status(parent::FrankGenerator, child::FrankGenerator, ::Int)
-    θp, θc = parent.θ, child.θ
-    iszero(θp) && return _NESTING_VALID
-    (all(isfinite, (θp, θc)) && θp >= 0 && θc >= 0) || return _NESTING_UNSUPPORTED
-    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
-end
-
-function _nested_status(parent::GumbelGenerator, child::GumbelGenerator, ::Int)
-    θp, θc = parent.θ, child.θ
-    isone(θp) && return _NESTING_VALID
-    all(isfinite, (θp, θc)) || return _NESTING_UNSUPPORTED
-    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
-end
-
-function _nested_status(parent::GumbelBarnettGenerator, child::GumbelBarnettGenerator, ::Int)
-    θp, θc = parent.θ, child.θ
-    iszero(θp) && return _NESTING_VALID
-    all(isfinite, (θp, θc)) || return _NESTING_UNSUPPORTED
-    iszero(θc) && return _NESTING_VALID
-    return θp >= θc ? _NESTING_VALID : _NESTING_INVALID
-end
-
-function _nested_status(parent::InvGaussianGenerator, child::InvGaussianGenerator, ::Int)
-    θp, θc = parent.θ, child.θ
-    iszero(θp) && return _NESTING_VALID
-    all(isfinite, (θp, θc)) || return _NESTING_UNSUPPORTED
-    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
-end
-
-function _nested_status(parent::JoeGenerator, child::JoeGenerator, ::Int)
-    θp, θc = parent.θ, child.θ
-    isone(θp) && return _NESTING_VALID
-    all(isfinite, (θp, θc)) || return _NESTING_UNSUPPORTED
-    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
-end
-
-
-# ── Classical heterogeneous certificates ─────────────────────────────────────
-#
-# These contain the classical heterogeneous SNC pairs.  In particular the
-# familiar AMH→Clayton restriction is θ_child >= 1.  BB1/BB2 below extend the
-# corresponding Nelsen-12/14/19/20 cases through their explicit generators.
-
-function _nested_status(parent::AMHGenerator, child::ClaytonGenerator, ::Int)
-    θp, θc = parent.θ, child.θ
-    iszero(θp) && return _NESTING_VALID
-    return all(isfinite, (θp, θc)) && 0 <= θp < 1 && θc >= 1 ? _NESTING_VALID : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::AMHGenerator, child::BB1Generator, ::Int)
-    θp = parent.θ
-    iszero(θp) && return _NESTING_VALID
-    return all(isfinite, (θp, child.θ, child.δ)) && 0 <= θp < 1 && child.θ >= 1 ? _NESTING_VALID : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::AMHGenerator, child::BB2Generator, ::Int)
-    θp = parent.θ
-    iszero(θp) && return _NESTING_VALID
-    return all(isfinite, (θp, child.θ, child.δ)) && 0 <= θp < 1 && child.θ >= 1 ? _NESTING_VALID : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::ClaytonGenerator, child::BB1Generator, d::Int)
-    θp = parent.θ
-    iszero(θp) && return _NESTING_VALID
-    isone(child.δ) && return _nested_status(parent, ClaytonGenerator(child.θ), d)
-    (all(isfinite, (θp, child.θ, child.δ)) && θp >= 0) || return _NESTING_UNSUPPORTED
-    return θp <= child.θ ? _NESTING_VALID : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::ClaytonGenerator, child::BB2Generator, ::Int)
-    θp = parent.θ
-    iszero(θp) && return _NESTING_VALID
-    (all(isfinite, (θp, child.θ, child.δ)) && θp >= 0) || return _NESTING_UNSUPPORTED
-    return θp <= child.θ ? _NESTING_VALID : _NESTING_UNSUPPORTED
-end
-
-
-# ── Exact BB slices reducing to a classical child ─────────────────────────────
-
-function _nested_status(parent::AMHGenerator, child::BB3Generator, d::Int)
-    iszero(parent.θ) && return _NESTING_VALID
-    return isone(child.θ) ? _nested_status(parent, ClaytonGenerator(child.δ), d) : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::ClaytonGenerator, child::BB3Generator, d::Int)
-    iszero(parent.θ) && return _NESTING_VALID
-    return isone(child.θ) ? _nested_status(parent, ClaytonGenerator(child.δ), d) : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::GumbelGenerator, child::BB6Generator, d::Int)
-    isone(parent.θ) && return _NESTING_VALID
-    return isone(child.θ) ? _nested_status(parent, GumbelGenerator(child.δ), d) : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::AMHGenerator, child::BB7Generator, d::Int)
-    iszero(parent.θ) && return _NESTING_VALID
-    return isone(child.θ) ? _nested_status(parent, ClaytonGenerator(child.δ), d) : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::ClaytonGenerator, child::BB7Generator, d::Int)
-    iszero(parent.θ) && return _NESTING_VALID
-    return isone(child.θ) ? _nested_status(parent, ClaytonGenerator(child.δ), d) : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::JoeGenerator, child::BB8Generator, d::Int)
-    isone(parent.θ) && return _NESTING_VALID
-    return isone(child.δ) ? _nested_status(parent, JoeGenerator(child.ϑ), d) : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::InvGaussianGenerator, child::BB9Generator, d::Int)
-    iszero(parent.θ) && return _NESTING_VALID
-    return child.θ == 2 ? _nested_status(parent, InvGaussianGenerator(child.δ), d) : _NESTING_UNSUPPORTED
-end
-
-function _nested_status(parent::AMHGenerator, child::BB10Generator, d::Int)
-    iszero(parent.θ) && return _NESTING_VALID
-    return isone(child.θ) ? _nested_status(parent, AMHGenerator(child.δ), d) : _NESTING_UNSUPPORTED
-end
-
-
-# ── Direct heterogeneous BB certificates ──────────────────────────────────────
-
-# Gumbel → BB3:
-# g(t) = δc^(-r) log(1+t)^r, r = θp/θc.
-function _nested_status(parent::GumbelGenerator, child::BB3Generator, ::Int)
-    θp, θc, δc = parent.θ, child.θ, child.δ
-    isone(θp) && return _NESTING_VALID
-    all(isfinite, (θp, θc, δc)) || return _NESTING_UNSUPPORTED
-    return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
-end
-
-# BB3 → Gumbel:
-# g(t) = exp(δp*t^(θp/θc)) - 1, whose second derivative is eventually positive.
-function _nested_status(parent::BB3Generator, child::GumbelGenerator, ::Int)
-    return all(isfinite, (parent.θ, parent.δ, child.θ)) ? _NESTING_INVALID : _NESTING_UNSUPPORTED
-end
-
-# Joe → BB6: BB6 is an outer-power Joe generator.  θp <= θc is sufficient;
-# when δc == 1 the child is exactly Joe, so the reverse ordering is certified invalid.
-function _nested_status(parent::JoeGenerator, child::BB6Generator, d::Int)
-    θp, θc, δc = parent.θ, child.θ, child.δ
-    isone(θp) && return _NESTING_VALID
-    all(isfinite, (θp, θc, δc)) || return _NESTING_UNSUPPORTED
-    θp <= θc && return _NESTING_VALID
-    return isone(δc) ? _nested_status(parent, JoeGenerator(θc), d) : _NESTING_UNSUPPORTED
-end
-
-
-# ── Two-parameter families ────────────────────────────────────────────────────
-
-# BB1.  δp > δc gives convexity near zero; θp*δp > θc*δc gives convexity
-# asymptotically.  The two VALID branches are exact all-d certificates.
-function _nested_status(parent::BB1Generator, child::BB1Generator, d::Int)
-    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
-    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
-    (δp > δc || θp/θc > δc/δp) && return _NESTING_INVALID
-    isone(δp) && return _nested_status(ClaytonGenerator(θp), child, d)
-    return θp == θc ? _NESTING_VALID : _NESTING_UNSUPPORTED
-end
-
-# BB2.  θp > θc is asymptotically convex.  Equal θ reduces to a power map;
-# δp = δc = 1 is Nelsen family 20.
-function _nested_status(parent::BB2Generator, child::BB2Generator, ::Int)
-    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
-    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
-    θp > θc && return _NESTING_INVALID
-    θp == θc && return δp <= δc ? _NESTING_VALID : _NESTING_INVALID
-    return isone(δp) && isone(δc) ? _NESTING_VALID : _NESTING_UNSUPPORTED
-end
-
-# BB3.  For θp > θc, g(t) starts as const*t^(θp/θc) and is convex near zero.
-# Equal θ gives g(t) = (1+t)^(δp/δc) - 1.
-function _nested_status(parent::BB3Generator, child::BB3Generator, ::Int)
-    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
-    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
-    θp > θc && return _NESTING_INVALID
-    return θp == θc ? (δp <= δc ? _NESTING_VALID : _NESTING_INVALID) : _NESTING_UNSUPPORTED
-end
-
-# BB6.  Convexity is forced by δp > δc at infinity or
-# θp*δp > θc*δc near zero.  δp=1 is the ordinary Joe parent.
-function _nested_status(parent::BB6Generator, child::BB6Generator, d::Int)
-    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
-    isone(θp) && isone(δp) && return _NESTING_VALID
-    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
-    (δp > δc || θp/θc > δc/δp) && return _NESTING_INVALID
-    θp == θc && return _NESTING_VALID
-    return isone(δp) && θp <= θc ? _NESTING_VALID : _NESTING_UNSUPPORTED
-end
-
-# BB7.  θp > θc gives convexity near zero and δp > δc gives convexity at infinity.
-# Equal θ reduces to the Clayton-type power map.
-function _nested_status(parent::BB7Generator, child::BB7Generator, ::Int)
-    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
-    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
-    (θp > θc || δp > δc) && return _NESTING_INVALID
-    return θp == θc ? _NESTING_VALID : _NESTING_UNSUPPORTED
-end
-
-# BB8.  At common δ,
-# g(t) = const - log(1 - (1 - ηc*exp(-t))^(ϑp/ϑc)),
-# giving the same parameter ordering as Joe.
-function _nested_status(parent::BB8Generator, child::BB8Generator, ::Int)
-    ϑp, δp, ϑc, δc = parent.ϑ, parent.δ, child.ϑ, child.δ
-    isone(ϑp) && return _NESTING_VALID
-    all(isfinite, (ϑp, δp, ϑc, δc)) || return _NESTING_UNSUPPORTED
-    return δp == δc ? (ϑp <= ϑc ? _NESTING_VALID : _NESTING_INVALID) : _NESTING_UNSUPPORTED
-end
-
-# BB9.  Common δ is the tilted-power family and gives θp <= θc.
-# The θ=2 slice is the inverse-Gaussian family up to positive argument scaling.
-function _nested_status(parent::BB9Generator, child::BB9Generator, d::Int)
-    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
-    isone(θp) && return _NESTING_VALID
-    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
-    θp == 2 && θc == 2 && return _nested_status(InvGaussianGenerator(δp), InvGaussianGenerator(δc), d)
-    δp == δc && return θp <= θc ? _NESTING_VALID : _NESTING_INVALID
-    return θp == θc && δp > δc ? _NESTING_INVALID : _NESTING_UNSUPPORTED
-end
-
-# BB10.  At common θ the powers cancel and
-# g(t) = log(((1-δp)e^t + δp-δc)/(1-δc)),
-# which is Bernstein exactly for δp <= δc.
-function _nested_status(parent::BB10Generator, child::BB10Generator, ::Int)
-    θp, δp, θc, δc = parent.θ, parent.δ, child.θ, child.δ
-    iszero(δp) && return _NESTING_VALID
-    all(isfinite, (θp, δp, θc, δc)) || return _NESTING_UNSUPPORTED
-    return θp == θc ? (δp <= δc ? _NESTING_VALID : _NESTING_INVALID) : _NESTING_UNSUPPORTED
-end
-
-# A positive Clayton parent cannot contain finite Frank, Gumbel, or Joe
-# children.  For Frank/Joe, ψ_child(t) ~ K*exp(-t); for Gumbel,
-# ψ_child(t) = exp(-t^(1/θ)).  Applying the positive-Clayton inverse makes
-# g = ϕ_parent⁻¹ ∘ ϕ_child eventually convex, violating even the d=2
-# nesting condition.
-function _nested_status(parent::ClaytonGenerator, child::Union{FrankGenerator,GumbelGenerator,JoeGenerator}, d::Int)
-    θp = parent.θ
-    iszero(θp) && return _NESTING_VALID
-    d >= 2 && isfinite(θp) && θp > 0 && isfinite(child.θ) || return _NESTING_UNSUPPORTED
-    return _NESTING_INVALID
-end
-
-
+_nested_fit_rule(::Generator, ::Generator) = nothing
+_nested_fit_rule(::IndependentGenerator, ::Generator) = :free
+_nested_fit_rule(::AMHGenerator, ::AMHGenerator) = :greater
+_nested_fit_rule(::ClaytonGenerator, ::ClaytonGenerator) = :greater
+_nested_fit_rule(::FrankGenerator, ::FrankGenerator) = :greater
+_nested_fit_rule(::GumbelGenerator, ::GumbelGenerator) = :greater
+_nested_fit_rule(::GumbelBarnettGenerator, ::GumbelBarnettGenerator) = :lower
+_nested_fit_rule(::InvGaussianGenerator, ::InvGaussianGenerator) = :greater
+_nested_fit_rule(::JoeGenerator, ::JoeGenerator) = :greater
+_nested_fit_rule(::AMHGenerator, ::ClaytonGenerator) = :amh_clayton
 
 _nested_child(ch::Tuple) = ch[1]
 _nested_child(ch::NestedArchimedeanCopula) = ch
 
-function _validate_nested_edge(parent::Generator, child::Generator, d::Int)
-    status = _nested_status(parent, child, d)
-    status === _NESTING_VALID && return nothing
-
+function _unsupported_nested_fit_rule(parent::Generator, child::Generator)
     edge = "$(nameof(typeof(parent))) -> $(nameof(typeof(child)))"
-    if status === _NESTING_INVALID
-        throw(DomainError(
-            (parent=Distributions.params(parent), child=Distributions.params(child), leaves=d),
-            "invalid nested Archimedean edge $edge for a child subtree with $d leaves",
-        ))
-    end
-
     throw(ArgumentError(
-        "nesting validity for $edge with a child subtree of $d leaves is not " *
-        "certified by Copulas.jl",
+        "template fitting has no Paramorph nesting geometry for $edge. " *
+        "Built-in nesting geometries currently cover the standard one-parameter " *
+        "generators (plus an independence parent and AMH -> Clayton); " *
+        "multi-parameter/BB nesting rules are open for contributions. " *
+        "NestedArchimedeanCopula construction itself remains permissive.",
     ))
-end
-
-function _validate_nested_edges(parent::Generator, children)
-    for entry in children
-        child = _nested_child(entry)
-        _validate_nested_edge(parent, child.G, length(child))
-    end
-    return nothing
 end
 
 # ---- Unified keyword constructor --------------------------------------------
@@ -873,10 +590,11 @@ function _nested_archimedean(expected_dimension, G::Generator;
     end
 
     kids2 = Any[_place_dims(kids[i], kiddims[i]) for i in eachindex(kids)]
-    _validate_nested_edges(G, kids2)
-    return expected_dimension isa Val ?
+    C = expected_dimension isa Val ?
         NestedArchimedeanCopula{only(typeof(expected_dimension).parameters),typeof(G)}(G, leafdims, kids2, alldims) :
         NestedArchimedeanCopula{d,typeof(G)}(G, leafdims, kids2, alldims)
+    _validate_nested_generator_monotonicity(C)
+    return C
 end
 
 NestedArchimedeanCopula(G::Generator; kwargs...) = _nested_archimedean(nothing, G; kwargs...)
@@ -1252,16 +970,15 @@ end
 #
 # The optimiser runs in UNCONSTRAINED reparameterised α-space, exactly like the
 # generic `_fit(::Type{<:Copula}, U, ::Val{:mle})` driver in Fitting.jl: each
-# generator's params are mapped to ℝ^p by the per-family `_unbound_params` and
-# back by `_rebound_params`. This (a) keeps every individual generator inside its
-# own valid family domain at all times, (b) sidesteps the missing `_θ_bounds` for
-# the BB families, and (c) needs no box-constraint machinery.
+# generator's parameters are mapped to ℝ^p by their Paramorph schemas. This (a) keeps every individual generator inside its
+# own valid family domain at all times, and (b) needs no box-constraint machinery.
 #
-# NESTING VALIDITY: the DEFAULT parametrisation does not enforce the cross-node
-# "inner at least as dependent as outer" condition (the constructor leaves it to
-# the caller) — an unconstrained α only keeps each generator valid in its own
-# family, so a fitted optimum CAN have inner θ < outer θ. To constrain it, pass a
-# custom `reparam`/`init` that encodes the constraint (see fit()).
+# NESTING VALIDITY: the DEFAULT template parametrisation uses a
+# a sequential conditional chart. Supported parent-child inequalities are therefore
+# enforced by the coordinate map itself, while the public constructor remains
+# intentionally permissive about cross-node nesting theory. Custom `reparam`/`init`
+# maps remain user-defined and are responsible for the validity of the trees they
+# produce beyond each node's constructor-level dimensional validity.
 #
 # The tree is walked in a fixed PRE-ORDER (root generator, then each child block
 # in `children` declaration order; a flat child `(ArchimedeanCopula, dims)` inline,
@@ -1271,86 +988,131 @@ end
 # =============================================================================
 
 # Bare UnionAll generator type from an instance, e.g. ClaytonGenerator{Float64}
-# -> ClaytonGenerator. Reconstruct via `_gentype(G)(values(nt)...)`: the Generator
-# type-call (Generator.jl) splats positional args in field order, which equals the
-# order of `Distributions.params`.
+# -> ClaytonGenerator.
 _gentype(G::Generator) = typeof(G).name.wrapper
 
-# Local arity = number of ϕ⁻¹ terms this generator sums = #direct leaves +
-# #direct children (for a node) or block size (for a flat child). This is the `d`
-# whose per-family validity bound the generator's _unbound/_rebound depend on
-# (Clayton's −1/(d−1); AMH/GumbelBarnett critical values; Frank's d==2 vs d≥3).
-# Passing the GLOBAL tree d would over-restrict inner generators. Clamped to ≥2
-# so Clayton's 1/(d−1) is finite for a single-child node.
-_local_arity(C::NestedArchimedeanCopula) = max(length(C.leafdims) + length(C.children), 2)
+# Local arity controls the family-specific generator domain. It is the number
+# of direct inverse-generator terms at a node (or the block size for a flat child).
+_local_arity(C::NestedArchimedeanCopula) =
+    max(length(C.leafdims) + length(C.children), 2)
 
-# ---- FLATTEN: tree generators -> unconstrained ℝ^p vector -------------------
-function _nested_unbound(C::NestedArchimedeanCopula)
-    α = Float64[]
-    _push_node!(α, C)
-    return α
-end
-function _push_node!(α, C::NestedArchimedeanCopula)
-    dloc = _local_arity(C)
-    append!(α, _unbound_params(_gentype(C.G), dloc, Distributions.params(C.G)))
-    for ch in C.children
-        if ch isa Tuple                       # (flat ArchimedeanCopula, dims)
-            cc, ds = ch
-            append!(α, _unbound_params(_gentype(cc.G), max(length(ds), 2),
-                                       Distributions.params(cc.G)))
-        else                                  # nested child
-            _push_node!(α, ch)
-        end
+function _generator_parameter_values(G::Generator)
+    return map(values(Paramorph.parameter_values(G))) do value
+        value isa AbstractArray ? copy(value) : value
     end
-    return α
 end
 
-# Block length of a generator's α-slice (single-sourced through _unbound_params).
-_blocklen(G::Generator, dloc) =
-    length(_unbound_params(_gentype(G), dloc, Distributions.params(G)))
+# Intrinsic scalar bounds used when a one-parameter generator participates in a
+# nesting geometry. `parent_role=true` narrows families whose finite-dimensional
+# standalone domain contains negative dependence but whose supported nesting rule
+# is currently known only on the non-negative branch.
+function _nested_scalar_bounds(G::AMHGenerator, dloc::Int, parent_role::Bool)
+    lower = parent_role ? 0.0 : clamp(_find_critical_value_amh(dloc), -1, 1)
+    return lower, 1.0
+end
+_nested_scalar_bounds(::ClaytonGenerator, dloc::Int, parent_role::Bool) =
+    (parent_role ? 0.0 : -inv(dloc - 1), nothing)
+_nested_scalar_bounds(::FrankGenerator, dloc::Int, parent_role::Bool) =
+    ((parent_role || dloc > 2) ? 0.0 : nothing, nothing)
+_nested_scalar_bounds(::GumbelGenerator, ::Int, ::Bool) = (1.0, nothing)
+function _nested_scalar_bounds(::GumbelBarnettGenerator, dloc::Int, ::Bool)
+    return 0.0, clamp(_find_critical_value_gumbelbarnett(dloc), 0, 1)
+end
+_nested_scalar_bounds(::InvGaussianGenerator, ::Int, ::Bool) = (0.0, nothing)
+_nested_scalar_bounds(::JoeGenerator, ::Int, ::Bool) = (1.0, nothing)
 
-# ---- REBUILD: same tree skeleton + new α -> NestedArchimedeanCopula ----------
-# Consume α left-to-right in the IDENTICAL pre-order; rebuild every generator with
-# its new θ while preserving leafdims / children dims / tree shape exactly.
-_nested_rebound(C::NestedArchimedeanCopula, α::AbstractVector) =
-    _rebuild_node(C, α, Ref(1))
-function _rebuild_node(C::NestedArchimedeanCopula, α, i::Ref{Int})
-    dloc = _local_arity(C)
-    k = _blocklen(C.G, dloc)
-    newG = _gentype(C.G)(values(_rebound_params(_gentype(C.G), dloc, α[i[]:i[]+k-1]))...)
-    i[] += k
-    newkids = Any[]
-    for ch in C.children
-        if ch isa Tuple
-            cc, ds = ch
-            dl = max(length(ds), 2)
-            kk = _blocklen(cc.G, dl)
-            ng = _gentype(cc.G)(values(_rebound_params(_gentype(cc.G), dl, α[i[]:i[]+kk-1]))...)
-            i[] += kk
-            push!(newkids, (ArchimedeanCopula(length(ds), ng), ds))
+function _nested_interval_transform(lower, upper)
+    if lower === nothing && upper === nothing
+        return Paramorph.TransformVariables.asℝ
+    elseif upper === nothing
+        return Paramorph.closed_lower(lower)
+    elseif lower === nothing
+        throw(ArgumentError("upper-only nested parameter domains are not implemented"))
+    end
+    lower < upper || throw(ArgumentError(
+        "nested fitting parameter has an empty or degenerate intrinsic interval [$lower, $upper]",
+    ))
+    return Paramorph.bounded_interval(lower, upper)
+end
+
+function _nested_edge_transform(parent, child, dloc::Int; parent_role::Bool)
+    lower, upper = _nested_scalar_bounds(child, dloc, parent_role)
+    parent === nothing && return _nested_interval_transform(lower, upper)
+    rule = _nested_fit_rule(parent, child)
+    rule === nothing && _unsupported_nested_fit_rule(parent, child)
+    parent_value = only(_generator_parameter_values(parent))
+    if rule === :greater
+        lower = lower === nothing ? parent_value : max(lower, parent_value)
+    elseif rule === :lower
+        upper = upper === nothing ? parent_value : min(upper, parent_value)
+    elseif rule === :amh_clayton
+        lower = lower === nothing ? one(parent_value) : max(lower, one(parent_value))
+    elseif rule !== :free
+        error("unknown nested fitting rule $rule")
+    end
+    return _nested_interval_transform(lower, upper)
+end
+
+function _nested_unbound_node!(coordinates, C::NestedArchimedeanCopula; parent=nothing)
+    if !(C.G isa IndependentGenerator)
+        transform = _nested_edge_transform(parent, C.G, _local_arity(C); parent_role=true)
+        push!(coordinates, Paramorph.TransformVariables.inverse(
+            transform, only(_generator_parameter_values(C.G)),
+        ))
+    end
+    for child in C.children
+        if child isa Tuple
+            copula, dims = child
+            transform = _nested_edge_transform(C.G, copula.G, max(length(dims), 2); parent_role=false)
+            push!(coordinates, Paramorph.TransformVariables.inverse(
+                transform, only(_generator_parameter_values(copula.G)),
+            ))
         else
-            push!(newkids, _rebuild_node(ch, α, i))
+            _nested_unbound_node!(coordinates, child; parent=C.G)
         end
     end
-    return NestedArchimedeanCopula{length(C.dims), typeof(newG)}(
-               newG, copy(C.leafdims), newkids, copy(C.dims))
+    return coordinates
 end
 
-# ---- Fitting-interface opt-outs ---------------------------------------------
-# Advertise NO type-based fitting methods. The generic GenericTests "Fitting
-# interface" testset and the package's type-positional fit machinery
-# (`CT(d, θ...)`, `_example(CT, d)`) cannot reconstruct a tree copula, so we keep
-# them OFF for the nested type — `can_be_fitted` becomes false and that whole
-# block is skipped. The real, supported fit() is the instance API below. This
-# also stops the false advertising of :itau/:irho/:ibeta (meaningless for a tree).
-_available_fitting_methods(::Type{<:NestedArchimedeanCopula}, d) = Tuple{}()
+_nested_unbound(C::NestedArchimedeanCopula) = _nested_unbound_node!(Float64[], C)
 
-# Bare-type _example throws: there is no canonical tree without a template
-# (mirrors ArchimedeanCopula's bare _example).
-_example(::Type{NestedArchimedeanCopula}, d) =
-    throw(ArgumentError("Cannot fit a NestedArchimedeanCopula from the bare type: " *
-        "the tree shape and generator families are not inferable from data. " *
-        "Pass a template instance, e.g. `fit(CopulaModel, C0, U)` or `fit(C0, U)`."))
+function _nested_rebound_node(C::NestedArchimedeanCopula, α, index::Ref{Int}; parent=nothing)
+    newG = if C.G isa IndependentGenerator
+        C.G
+    else
+        transform = _nested_edge_transform(parent, C.G, _local_arity(C); parent_role=true)
+        value = Paramorph.TransformVariables.transform(transform, α[index[]])
+        index[] += 1
+        _gentype(C.G)(value)
+    end
+    newchildren = Any[]
+    for child in C.children
+        if child isa Tuple
+            copula, dims = child
+            transform = _nested_edge_transform(newG, copula.G, max(length(dims), 2); parent_role=false)
+            value = Paramorph.TransformVariables.transform(transform, α[index[]])
+            index[] += 1
+            push!(newchildren, (ArchimedeanCopula(length(dims), _gentype(copula.G)(value)), dims))
+        else
+            push!(newchildren, _nested_rebound_node(child, α, index; parent=newG))
+        end
+    end
+    return NestedArchimedeanCopula{length(C.dims),typeof(newG)}(
+        newG, copy(C.leafdims), newchildren, copy(C.dims),
+    )
+end
+
+function _nested_rebound(C::NestedArchimedeanCopula, α::AbstractVector)
+    index = Ref(1)
+    rebuilt = _nested_rebound_node(C, α, index)
+    index[] == length(α) + 1 || throw(DimensionMismatch("nested coordinate traversal mismatch"))
+    return rebuilt
+end
+
+# ---- Fitting-interface opt-out ----------------------------------------------
+# A bare nested type cannot reconstruct a tree; fitting is supported through
+# the template-instance API below, so no type-based fitting method is advertised.
+_available_fitting_methods(::Type{<:NestedArchimedeanCopula}, d) = Tuple{}()
 
 # ---- Parametrization layer (decoupled α -> tree map) ------------------------
 # fit() optimises an unconstrained vector α through a reconstruction map. The
@@ -1365,27 +1127,11 @@ _example(::Type{NestedArchimedeanCopula}, d) =
 
 # ---- The MLE on a TEMPLATE INSTANCE (fixed structure) -----------------------
 
-# Every constructible tree is a certified nesting, and `_nested_rebound` skips
-# the certificate, so the fit keeps the optimizer in the certified region: a
-# tree that fails a certificate is infeasible, and its loss is `Inf`, as a
-# singular correlation factor is to the Student objective. Outside that region
-# the composed generators are not defined and their evaluation raises.
-function _nested_certified(C::NestedArchimedeanCopula)
-    for entry in C.children
-        child = _nested_child(entry)
-        _nested_status(C.G, child.G, length(child)) === _NESTING_VALID || return false
-        child isa NestedArchimedeanCopula && !_nested_certified(child) && return false
-    end
-    return true
-end
-
+# The template fitting chart is nesting-valid by construction; custom runtime
+# parametrisations are an expert escape hatch and remain caller-responsible.
 function _fit_nested(recon, α₀::AbstractVector, U; weights=nothing)
     U, weights = _weighted_sample(U, weights)
-    loss(α) = begin
-        C = recon(α)
-        _nested_certified(C) || return convert(eltype(α), Inf)
-        return -_weighted_loglikelihood(C, U, weights)
-    end
+    loss(α) = -_weighted_loglikelihood(recon(α), U, weights)
     res = Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
     α = collect(Optim.minimizer(res))
     return recon(α), α
@@ -1413,8 +1159,9 @@ optimiser runs in an unconstrained space through a *parametrisation* — a map
 one of two ways:
 
   * **template** `C0`: a template instance whose tree shape (leaf layout, children
-    blocks) and per-node generator families are kept fixed; only the scalar θ of
-    each node is re-optimised, each inside its own family domain.
+    blocks) and per-node generator families are kept fixed. For the supported
+    standard one-parameter nesting rules, Paramorph jointly constrains parent and
+    child parameters so every finite optimiser coordinate maps to a valid nesting.
   * **custom** `reparam`, `init`: your own map `reparam(α) -> copula` and its
     initial `α₀` (no template needed — the map fully defines the tree). Use it to
     share parameters across nodes, change the per-generator parametrisation (e.g.
@@ -1461,22 +1208,29 @@ function Distributions.fit(::Type{CopulaModel}, reparam, init::AbstractVector, U
     return CopulaModel(fitted, U, _weighted_loglikelihood(fitted, U, weights), fit_spec)
 end
 
-# Template fits expose the fitted generators' natural parameters. Custom
-# runtime parametrizations instead expose their irreducible fitted coordinates.
-function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
+# Both template and custom runtime fits expose the fitted generators' natural
+# parameters. Runtime optimizer coordinates remain fitting metadata only.
+function _nested_generator_coef(G::Generator, tag::String)
     names = String[]
     values = Float64[]
-    for (name, value) in pairs(Distributions.params(C.G))
+    for name in Paramorph.parameter_fields(typeof(G))
+        value = getproperty(G, name)
+        value isa Number || continue
         push!(names, "$(tag).$(name)")
         push!(values, float(value))
     end
+    return names, values
+end
+
+function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
+    names, values = _nested_generator_coef(C.G, tag)
     for (i, child) in enumerate(C.children)
         if child isa Tuple
             copula, _ = child
-            for (name, value) in pairs(Distributions.params(copula.G))
-                push!(names, "$(tag)[$(i)].$(name)")
-                push!(values, float(value))
-            end
+            child_names, child_values = _nested_generator_coef(
+                copula.G, "$(tag)[$(i)]")
+            append!(names, child_names)
+            append!(values, child_values)
         else
             child_names, child_values = _nested_coef(child, "$(tag)[$(i)]")
             append!(names, child_names)
@@ -1486,7 +1240,6 @@ function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
     return names, values
 end
 
-_natural_parameters(C::NestedArchimedeanCopula) = _nested_coef(C)
 
 # Quick template shim: returns only the fitted copula. (No `fit(reparam, init, U)`
 # shim — with an untyped `reparam` it would be type piracy on `Distributions.fit`;

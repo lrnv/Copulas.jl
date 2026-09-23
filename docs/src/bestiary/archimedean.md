@@ -43,7 +43,7 @@ From data, you can estimate a $d$-Archimedean generator nonparametrically via th
 :::
 
 The supported generator families are listed below. Defining a subtype of
-[`Generator`](@ref) with `ϕ`, `max_monotony`, and `Distributions.params` is also
+[`Generator`](@ref) with `ϕ`, `max_monotony`,  is also
 a supported public extension mechanism. The [developer guide](@ref
 developer_fitting) separately describes optional implementation and
 optimization hooks, which are not public API.

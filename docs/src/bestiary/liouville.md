@@ -73,7 +73,7 @@ This is also why subsetting is exact and inexpensive at the model level. A subse
 
 ```@example liouville
 rng = Xoshiro(42)
-(parameters=params(C13).α, sample=rand(rng, C13))
+(parameters=last(params(C13)), sample=rand(rng, C13))
 ```
 
 For `α = ones(d)`, every marginal survival function is the generator itself and the construction is exactly Archimedean. The object remains a `LiouvilleCopula`, while its numerical methods exploit the equivalent `ArchimedeanCopula` path:

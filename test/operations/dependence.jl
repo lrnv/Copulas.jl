@@ -201,7 +201,7 @@ end
                     # expensive numerical CDFs inside a cubature.
                     reference = C isa GaussianCopula ?
                         GaussianCopula{2}(0.5) :
-                        TCopula{2}(C.df, [1.0 0.5; 0.5 1.0])
+                        TCopula{2}(C.ν, [1.0 0.5; 0.5 1.0])
                     @test Copulas.τ(reference) ≈ 1 / 3 atol=2e-15
                 elseif measure === Copulas.ρ && C isa Union{GaussianCopula,TCopula}
                     if C isa GaussianCopula

@@ -14,8 +14,8 @@
     end
 
     @testset "Frank parameter domain by dimension" begin
-        @test params(FrankCopula{2}(-2.0)).θ == -2.0
-        @test params(FrankCopula{3}(2.0)).θ == 2.0
+        @test params(FrankCopula{2}(-2.0)) == (-2.0,)
+        @test params(FrankCopula{3}(2.0)) == (2.0,)
         @test_throws DomainError FrankCopula{3}(-2.0)
     end
 
@@ -72,10 +72,10 @@
     end
 
     @testset "nested singleton subtree collapse" begin
-        inner = NestedArchimedeanCopula(ClaytonGenerator(2.0);
+        inner = NestedArchimedeanCopula(Copulas.ClaytonGenerator(2.0);
             leaves=[1], children=[ClaytonCopula{2}(4.0)])
 
-        deep = NestedArchimedeanCopula(ClaytonGenerator(1.5);
+        deep = NestedArchimedeanCopula(Copulas.ClaytonGenerator(1.5);
             leaves=[1], children=[inner])
         collapsed = subsetdims(deep, (1, 3))
         native = ClaytonCopula{2}(1.5)
@@ -83,16 +83,20 @@
         @test cdf(collapsed, [0.4, 0.7]) == cdf(native, [0.4, 0.7])
     end
 
-    @testset "extremal-t fitting bounds by dimension" begin
-        for (d, lower) in ((2, -1.0), (3, -0.5))
-            CT = typeof(tEVCopula{d}(4.0, 0.2))
-            bounded = (; ν=4.0, ρ=0.2)
-            unbound = Copulas._unbound_params(CT, d, bounded)
-            restored = Copulas._rebound_params(CT, d, unbound)
-            @test restored.ν ≈ bounded.ν
-            @test restored.ρ ≈ bounded.ρ
-            @test lower < Copulas._rebound_params(CT, d, [0.0, -100.0]).ρ < 1
-            @test lower < Copulas._rebound_params(CT, d, [0.0, 100.0]).ρ < 1
+    @testset "extremal-t fitting geometry by dimension" begin
+        for d in (2, 3)
+            prototype = tEVCopula{d}(4.0, 0.2)
+            unconstrained = Copulas._parameter_coordinates(prototype)
+            @test length(unconstrained) == 1 + d * (d - 1) ÷ 2
+
+            restored = Copulas._from_parameter_coordinates(prototype, unconstrained)
+            ν, parameter = params(restored)
+            @test ν ≈ 4.0
+            if d == 2
+                @test parameter ≈ 0.2
+            else
+                @test parameter ≈ [1.0 0.2 0.2; 0.2 1.0 0.2; 0.2 0.2 1.0]
+            end
         end
     end
 

@@ -34,26 +34,21 @@ References:
 """
 LogTail, LogCopula
 
-struct LogTail{T} <: OneParameterPickandsTail
-    θ::T
-    function LogTail(θ)
-        !(1 <= θ) && throw(ArgumentError(" The param θ must be in [1, ∞)"))
-        θ, _ = promote(θ, 1.0)
-        return new{typeof(θ)}(θ)
-    end
+Paramorph.@paramorph T struct LogTail{T<:Real} <: OneParameterPickandsTail
+    θ::T ~ closed_lower(one(T))
 end
+LogTail(θ::Integer) = LogTail(float(θ))
 @inline limit_kind(tail::LogTail, ::Val) =
     isone(tail.θ) ? Π_LIMIT :
     isinf(tail.θ) ? M_LIMIT :
     NO_LIMIT
 
 const LogCopula{d,T} = ExtremeValueCopula{d, LogTail{T}}
+function (::Type{LogCopula{d}})(args...; kwargs...) where {d}
+    return _wrap_extreme_value(Val(d), LogTail(args...; kwargs...))
+end
+(::Type{LogCopula})(d::Int, args...; kwargs...) = _wrap_extreme_value(Val(d), LogTail(args...; kwargs...))
 _is_valid_in_dim(::LogTail, d::Int) = d >= 2
-Distributions.params(tail::LogTail) = (θ = tail.θ,)
-_unbound_params(::Type{<:LogTail}, d, θ) = [log(θ.θ - 1)]       # θ ≥ 1
-_rebound_params(::Type{<:LogTail}, d, α) = (; θ = exp(α[1]) + 1)
-_θ_bounds(::Type{<:LogTail}, d) = (1, Inf)
-
 
 function ℓ(tail::LogTail, x)
     isone(tail.θ) && return sum(x)

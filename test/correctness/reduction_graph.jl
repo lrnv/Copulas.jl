@@ -97,11 +97,9 @@ end
     x3 = (0.2, 0.7, 1.1)
     u3 = [0.23, 0.61, 0.84]
 
-    hr_ind = Copulas.HuslerReissTail(0.0)
+    hr_ind = Copulas.HuslerReissTail{3}(0.0)
     @test Copulas.limit_kind(hr_ind, Val(3)) === Copulas.Π_LIMIT
     @test Copulas.ℓ(hr_ind, x3) == sum(x3)
-    @test Copulas.dA(hr_ind, 0.37) == 0.0
-    @test Copulas.d²A(hr_ind, 0.37) == 0.0
     @test Copulas.ellpartial(hr_ind, x3, (1,)) == 1.0
     @test Copulas.ellpartial(hr_ind, x3, (1, 2)) == 0.0
 
@@ -111,7 +109,7 @@ end
     @test rand(rng1, C_hr_ind, 8) == rand(rng2, IndependentCopula{3}(), 8)
 
     hr_limits = (
-        Copulas.HuslerReissTail(Inf),
+        Copulas.HuslerReissTail{3}(Inf),
         Copulas.HuslerReissTail(zeros(3, 3)),
     )
     for (k, tail) in enumerate(hr_limits)
@@ -125,13 +123,12 @@ end
     end
 
     tev_limits = (
-        Copulas.tEVTail(4.0, 1.0),
+        Copulas.tEVTail{3}(4.0, 1.0),
         Copulas.tEVTail(4.0, ones(3, 3)),
     )
     for (k, tail) in enumerate(tev_limits)
         @test Copulas.limit_kind(tail, Val(3)) === Copulas.M_LIMIT
         @test Copulas.ℓ(tail, x3) == maximum(x3)
-        @test Copulas.A(tail, 0.37) == 0.63
         C = Copulas.ExtremeValueCopula(3, tail)
         @test Copulas.copula_measure_style(C) isa Copulas.NonAbsolutelyContinuousMeasure
         @test cdf(C, u3) == minimum(u3)

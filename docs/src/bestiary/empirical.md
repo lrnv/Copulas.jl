@@ -92,7 +92,7 @@ using Copulas, Distributions, Plots
 X = SklarDist(ClaytonCopula(2, 1.2), (Normal(), Beta(1, 4)))
 x = rand(X, 1000)
 Ĉ = EmpiricalCopula(x, pseudo_values=false)
-plot(plot(params(X).copula), plot(Ĉ); layout=(1,2))
+plot(plot(first(params(X))), plot(Ĉ); layout=(1,2))
 ```
 
 ## Beta copula

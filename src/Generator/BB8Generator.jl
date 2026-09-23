@@ -28,25 +28,24 @@ References:
 """
 BB8Generator, BB8Copula
 
-struct BB8Generator{T} <: AbstractFrailtyGenerator
-    ϑ::T
-    δ::T
-    function BB8Generator(ϑ, δ)
-        (ϑ ≥ 1) || throw(ArgumentError("ϑ must be ≥ 1"))
-        (0 < δ ≤ 1) || throw(ArgumentError("δ must be in (0,1]"))
-        ϑf, δf = promote(float(ϑ), float(δ))
-        return new{typeof(ϑf)}(ϑf, δf)
-    end
+Paramorph.@paramorph T struct BB8Generator{T<:Real} <: AbstractFrailtyGenerator
+    ϑ::T ~ closed_lower(one(T))
+    δ::T ~ bounded_interval(zero(T), one(T); left_closed=false)
+end
+function BB8Generator(ϑ::Real, δ::Real)
+    T = promote_type(typeof(float(ϑ)), typeof(float(δ)))
+    return BB8Generator{T}(T(ϑ), T(δ))
 end
 
 const BB8Copula{d, T} = ArchimedeanCopula{d, BB8Generator{T}}
+function (::Type{BB8Copula{d}})(args...; kwargs...) where {d}
+    return _wrap_archimedean(Val(d), BB8Generator(args...; kwargs...))
+end
+(::Type{BB8Copula})(d::Int, args...; kwargs...) = BB8Copula{d}(args...; kwargs...)
 @inline limit_kind(G::BB8Generator, ::Val) =
     isone(G.ϑ) ? Π_LIMIT :
     isone(G.δ) && isinf(G.ϑ) ? M_LIMIT :
     NO_LIMIT
-Distributions.params(G::BB8Generator) = (ϑ = G.ϑ, δ = G.δ)
-_unbound_params(::Type{<:BB8Generator}, d, θ) = [log(θ.ϑ - 1), LogExpFunctions.logit(θ.δ)]
-_rebound_params(::Type{<:BB8Generator}, d, α) = (; ϑ = 1 + exp(α[1]), δ = LogExpFunctions.logistic(α[2]))
 
 @inline _η(G::BB8Generator) = -expm1(G.ϑ * log1p(-G.δ))
 

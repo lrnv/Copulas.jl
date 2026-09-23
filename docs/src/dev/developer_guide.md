@@ -67,7 +67,7 @@ This page is intended for package contributors and advanced users who want to ex
     deprecation unless its behavior is separately documented in the public API.
     Exported/public mathematical objects retain only their public documented
     semantics; this guide does not enlarge that compatibility promise. The
-    three-method [`Generator`](@ref) protocol is a documented public extension
+    two-method [`Generator`](@ref) protocol is a documented public extension
     API; its optional optimization machinery remains internal.
 
 
@@ -117,17 +117,12 @@ Inside this repository, it is currently supplied by the following internal
 methods; these hooks may change independently of that behavior:
 
 ```julia
-struct MyCopula{d, P} <: Copula{d} # Note that the size of the copula must be part of the type. 
-    θ::P  # Copula parameter
-    MyCopula{d}(θ) where {d} = new{d, typeof(θ)}(θ)
+const bounded_interval = Paramorph.bounded_interval
+Paramorph.@paramorph T struct MyCopula{d,T<:Real} <: Copula{d}
+    θ::T ~ bounded_interval(zero(T), one(T))
 end
 MyCopula(d, θ) = MyCopula{d}(θ) # Runtime-dimension convenience constructor
-function Distributions.params(C::MyCopula) 
-    # It will be assumed that `MyCopula{d}(params(C)...)` reproduces `C`.
-    # Keep `MyCopula(d, ...)` as a thin forwarder to this canonical constructor.
-    # The return value should be a NamedTuple. 
-    return (θ = C.θ,) # Return a named tuple containing the parameters.
-end
+# The generated constructor and transformation schema share this constraint.
 function Copulas._cdf(C::MyCopula, u)
      # You can safely assume u to be an abstract vector of the right length and inside the hypercube.
      # Return the cdf value on u
@@ -154,7 +149,7 @@ special boundary handling only when they provide a meaningful preferred value.
 Every public copula family provides both `MyCopula{d}(parameters...)`, the
 canonical type-stable path, and the thin runtime-dimension convenience form
 `MyCopula(d, parameters...)`. When `params(C)` describes an ordinary parametric
-instance, `typeof(C)(values(params(C))...)` reconstructs it. Structural models
+instance, `typeof(C)(params(C)...)` reconstructs it. Structural models
 may expose additional explicitly documented constructors, but must still provide
 the two dimension spellings above.
 
@@ -276,22 +271,32 @@ transformation required by an explicit `method=:mpl` request.
 
 ### Opting into generic fitting methods
 
-| Method                              | Purpose                                                       |
-| ----------------------------------- | ------------------------------------------------------------- |
-| `_example(CT, d)`                   | Returns a representative instance used for defaults           |
-| `_unbound_params(CT, d, params)`    | Maps parameter tuple → unconstrained vector                   |
-| `_rebound_params(CT, d, α)`         | Inverse map for optimizer results                             |
+Simple parametric families opt into the generic transformed-space MLE by using
+`Paramorph.@paramorph`. The constrained structure is the single source for its
+storage types, checked constructor, logical parameters, and optimizer geometry.
+`Distributions.params(C)` remains the positional constructor tuple.
+
+| Definition | Purpose |
+| ---------- | ------- |
+| `Paramorph.@paramorph` annotations | Describe logical parameter names, constraints, and optimizer dimension |
+| `CT(d, parameters...)` | Reconstruct a copula from constrained logical parameters |
+| `_available_fitting_methods(CT, d)` | Register the in-package estimators exposed for that family |
 
 Example minimal skeleton:
 
 ```julia
-_example(::Type{MyCopula}, d) = MyCopula(d, default_parameters...)
-_unbound_params(::Type{MyCopula}, d, params) = [log(params.θ)]
-_rebound_params(::Type{MyCopula}, d, α) = (; θ = exp(α[1]))
-_available_fitting_methods(::Type{MyCopula}, d) = (:mle, :itau, :ibeta,) # in-package only
+const asℝ₊ = Paramorph.TransformVariables.asℝ₊
+Paramorph.@paramorph T struct MyCopula{d,T<:Real} <: Copula{d}
+    θ::T ~ asℝ₊
+end
+_available_fitting_methods(::Type{<:MyCopula}, d) = (:mle,) # in-package only
 
-# No _fit definition: the generic engine consumes these hooks.
+# No custom MLE is required: the generic route constrains a prototype directly.
 ```
+
+A custom `_fit(::Type{MyCopula}, U, ::Val{:mle}; ...)` remains appropriate when
+the feasible set is not represented by the available transformations or when
+the family has a materially better dedicated objective.
 
 Each fitting method is dispatched on `Val{:method}` for performance and clarity.
 
@@ -349,7 +354,7 @@ Each sub-API is based on the general interface described above (`cdf`, `logpdf`,
 
 Archimedean copulas are defined by a generator function ϕ. The basic custom
 generator mechanism is supported public API: define a subtype of
-[`Generator`](@ref) and implement its three-method mathematical contract:
+[`Generator`](@ref) and implement its mathematical contract:
 
 ```julia
 struct MyGenerator{T} <: Generator
@@ -358,7 +363,6 @@ end
 const MyArchimedeanCopula{d,T} = ArchimedeanCopula{d, MyGenerator{T}}
 ϕ(G::MyGenerator, t) = ...
 max_monotony(G::MyGenerator) = ...
-Distributions.params(G::MyGenerator) = (θ = G.θ,)
 ```
 
 ### Public requirements and optional implementation hooks
@@ -366,7 +370,7 @@ Distributions.params(G::MyGenerator) = (θ = G.θ,)
 | Method                              | Purpose                                                            | Required    |
 | ------------------------------------| ------------------------------------------------------------------ | ----------- |
 | `max_monotony(G)`                   | Maximum degree of monotonicity (controls validity in d dimensions) | ✅ Public   |
-| `Distributions.params(G)`           | Return parameters as a `NamedTuple`                                | ✅ Public   |
+| `Paramorph.transformation_schema(G)` | Generated parameter geometry when fitting is desired | ✅ Public   |
 | `ϕ(G, t)`                           | Generator function                                                 | ✅ Public   |
 | `ϕ⁻¹(G, t)`                         | Generator function inverse                                         | ⚙️ Internal optimization |
 | `ϕ⁽¹⁾(G, t)`                        | Generator function derivative                                      | ⚙️ Internal optimization |
@@ -420,7 +424,6 @@ struct MyTail{T} <: Copulas.Tail
 end
 
 Copulas.ℓ(tail::MyTail, x) = ...
-Distributions.params(tail::MyTail) = (; θ = tail.θ)
 ```
 
 `Tail` is valid by default for every `d >= 2`. Override
@@ -679,26 +682,20 @@ Elliptical copulas are characterized by a correlation matrix `Σ` and, optionall
 | ------------------------- | ------------------------------------------------------ | -------------- |
 | `U(C)`                   | Return the standardized univariate distribution instance | ✅            |
 | `N(C)`                   | Return a callable constructing the multivariate distribution from `Σ` | ✅ |
-| `Distributions.params(C)` | Return parameters as a `NamedTuple`                    | ✅              |
+| `Distributions.params(C)` | Return constructor parameters as a `Tuple`              | ✅              |
 
 Minimal outline:
 
 ```julia
-struct MyEllipticalCopula{d,MT} <: Copulas.EllipticalCopula{d,MT}
-    Σ::MT
-    function MyEllipticalCopula{d}(Σ) where {d}
-        size(Σ) == (d, d) || throw(DimensionMismatch("expected a $d×$d matrix"))
-        matrix = Matrix{Float64}(Σ)
-        Copulas.make_cor!(matrix)  # normalize a copy; validate the family as needed
-        return new{d,typeof(matrix)}(matrix)
-    end
+const correlation_matrix = Paramorph.correlation_matrix
+Paramorph.@paramorph T struct MyEllipticalCopula{d,T<:Real} <: Copulas.EllipticalCopula{d,Matrix{T}}
+    Σ::Matrix{T} ~ correlation_matrix(d)
 end
 MyEllipticalCopula(d, Σ) = MyEllipticalCopula{d}(Σ)
 
 # Required bindings
 Copulas.U(C::MyEllipticalCopula) = Normal()
 Copulas.N(C::MyEllipticalCopula) = Σ -> MvNormal(Σ)
-Distributions.params(C::MyEllipticalCopula) = (Σ = C.Σ,)
 ```
 
 The example uses Gaussian distributions. For runtime shape parameters, the
@@ -739,18 +736,14 @@ It serves as a minimal example of how to implement a copula *from scratch* witho
 
 ```@example generic_copula_example
 using Copulas, Distributions, Random
+import Paramorph
+const bounded_interval = Paramorph.bounded_interval
 
-struct MardiaCopula{P} <: Copulas.Copula{2}
-    θ::P
-    function MardiaCopula(θ)
-        -1 <= θ <= 1 || throw(ArgumentError("θ must be in [-1,1]"))
-        θf = float(θ)
-        return new{typeof(θf)}(θf)
-    end
+Paramorph.@paramorph T struct MardiaCopula{d,T<:Real} <: Copulas.Copula{d}
+    θ::T ~ (d == 2 ? bounded_interval(-one(T), one(T)) :
+        throw(DimensionMismatch("MardiaCopula is bivariate")))
 end
-MardiaCopula(d, θ) = d == 2 ? MardiaCopula(θ) :
-    throw(DimensionMismatch("MardiaCopula is bivariate"))
-Distributions.params(C::MardiaCopula) = (; θ = C.θ,)
+MardiaCopula(d, θ) = MardiaCopula{d}(θ)
 function Copulas._cdf(C::MardiaCopula, u)
     # The joint CDF follows Mardia’s formulation:
     θ = C.θ
@@ -763,7 +756,7 @@ end
 ```
 
 Boundary parameters must not make a constructor return another copula type.
-Keeping `MardiaCopula(0)`, `MardiaCopula(1)`, and `MardiaCopula(-1)` in the
+Keeping `MardiaCopula{2}(0)`, `MardiaCopula{2}(1)`, and `MardiaCopula{2}(-1)` in the
 `MardiaCopula` family makes inference independent of runtime values. Handle
 equivalent independence or Fréchet-bound cases inside numerical methods when a
 generic formula is undefined or a dedicated path is materially better.
@@ -805,13 +798,13 @@ C = MardiaCopula(2, 0.8)
 U = rand(C, 2000)
 ```
 
-The copula now works seamlessly with all standard methods:
+The copula now supports the operations implemented above directly. Because this
+example is singular and deliberately has no Lebesgue density, generic
+density-based conditioning is not part of this minimal contract:
 
 ```@example generic_copula_example
 cdf(C, [0.3, 0.7])
-pdf(C, [0.3, 0.7])
-D = condition(C, 1, 0.3)
-rand(D, 10)
+rand(C, 10)
 ```
 
 ### Fitting interface and integration
@@ -835,15 +828,11 @@ end
 This approach bypasses the need for a log-likelihood function (since the copula lacks a Lebesgue density)
 while maintaining compatibility with all higher-level fitting utilities.
 
-Remark that we could also opt-in the default moment matching methods, but for that we need to specify parameter relaxations through the following: 
+The `bounded_interval` annotation above already describes the optimizer
+relaxation; no separate parameter-space or legacy transform hooks are
+needed. If the corresponding rank-inversion identities are implemented, the
+family can register those methods alongside its custom estimator:
 
-```@example generic_copula_example
-Copulas._unbound_params(::Type{MardiaCopula}, d, params) = [atanh(clamp(params.θ, -1 + eps(), 1 - eps()))]
-Copulas._rebound_params(::Type{MardiaCopula}, d, α) = (; θ = tanh(α[1]) )
-Copulas._example(::Type{<:MardiaCopula}, d::Int) = MardiaCopula(2, 0.5)
-```
-
-And we need to change our availiable methods: 
 ```@example generic_copula_example
 Copulas._available_fitting_methods(::Type{<:MardiaCopula}, d) =
     (:igamma, :itau, :irho, :ibeta)
@@ -892,7 +881,6 @@ struct ExampleClaytonGenerator{T} <: Copulas.Generator
 end
 
 Copulas.max_monotony(::ExampleClaytonGenerator) = Inf
-Distributions.params(G::ExampleClaytonGenerator) = (; θ=G.θ)
 Copulas.ϕ(G::ExampleClaytonGenerator, t) = exp(-log1p(G.θ * t) / G.θ)
 
 G = ExampleClaytonGenerator(2.0)
@@ -937,7 +925,6 @@ function Copulas.A(tail::ExampleLogTail, t::Real)
     return exp(LogExpFunctions.logaddexp(tail.θ * log(t),
         tail.θ * log1p(-t)) / tail.θ)
 end
-Distributions.params(tail::ExampleLogTail) = (; θ=tail.θ)
 
 C = ExtremeValueCopula{2}(ExampleLogTail(2.5))
 reference = LogCopula{2}(2.5)

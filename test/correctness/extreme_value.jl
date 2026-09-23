@@ -239,7 +239,7 @@ end
 @testset "Multivariate Hüsler-Reiss EV" begin
     @testset "Exchangeable scalar parameterization" begin
         for (d, θ) in ((3, 0.7), (3, 3.0), (4, 1.5))
-            tail = Copulas.HuslerReissTail(θ)
+            tail = Copulas.HuslerReissTail{d}(θ)
             C = Copulas.ExtremeValueCopula(d, tail)
             @test isfinite(logpdf(C, collect(range(0.29, 0.83; length=d))))
         end
@@ -302,7 +302,7 @@ end
         )
 
         for (d, ν, ρ, seed) in cases
-            tail = Copulas.tEVTail(ν, ρ)
+            tail = Copulas.tEVTail{d}(ν, ρ)
             @test Copulas._is_valid_in_dim(tail, d)
 
             C = Copulas.ExtremeValueCopula(d, tail)
@@ -313,8 +313,8 @@ end
 
         end
 
-        @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.7), 3)
-        @test !Copulas._is_valid_in_dim(Copulas.tEVTail(1.7, -0.4), 4)
+        @test_throws ArgumentError Copulas.tEVTail{3}(1.7, -0.7)
+        @test_throws ArgumentError Copulas.tEVTail{4}(1.7, -0.4)
     end
 
     @testset "general correlation parameterization" begin
@@ -328,8 +328,8 @@ end
 
         @test Copulas._is_valid_in_dim(tail, 3)
         @test !Copulas._is_valid_in_dim(tail, 4)
-        @test Distributions.params(tail).ν == ν
-        @test Distributions.params(tail).R ≈ R
+        @test tail.ν == ν
+        @test something(tail.R) ≈ R
 
         u = [0.34, 0.58, 0.79]
         @test 0.0 < cdf(C, u) < 1.0
@@ -410,9 +410,7 @@ end
         C = Copulas.ExtremeValueCopula(3, tail)
         x = (0.37, 0.79, 1.28)
 
-        reconstructed = Copulas.AsymGalambosTail(values(params(tail))...)
-        @test reconstructed.α == tail.α
-        @test reconstructed.β == tail.β
+        @test !applicable(params, tail)
 
         @test Copulas.ℓ(tail, x) ≈ 1.8097921615972135 atol=3e-13 rtol=3e-12
 
@@ -649,17 +647,10 @@ end
     end
 end
 
-@testset "NoTail parameter roundtrip" begin
+@testset "NoTail parameter space" begin
     C = ExtremeValueCopula{2}(Copulas.NoTail())
-    CT = typeof(C)
-
-    bounded = params(C)
-    unbounded = Copulas._unbound_params(CT, 2, bounded)
-    restored = Copulas._rebound_params(CT, 2, unbounded)
-
-    @test isempty(unbounded)
-    @test restored == (;)
-    @test restored == bounded
+    @test Copulas.Paramorph.parameter_fields(Copulas.NoTail) == ()
+    @test params(C) == ()
 end
 
 

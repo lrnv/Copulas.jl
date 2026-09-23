@@ -70,10 +70,10 @@ end
 SubsetCopula(::IndependentCopula{d}, ::NTuple{p, Int}) where {d, p} =
     p == 1 ? Distributions.Uniform() : IndependentCopula{p}()
 
+
 # Fitting/params interface (no parameters)
-Distributions.params(::IndependentCopula) = (;)
+Distributions.params(::IndependentCopula) = ()
 # A parameter-free family has nothing to weight, so the weights are accepted and unused.
-_fit(::Type{<:IndependentCopula}, U, ::Val{:mle}; weights=nothing) = IndependentCopula(size(U,1))
-_fit(::Type{<:IndependentCopula}, U, ::Val{:itau}; weights=nothing) = IndependentCopula(size(U,1))
-_fit(::Type{<:IndependentCopula}, U, ::Val{:irho}; weights=nothing) = IndependentCopula(size(U,1))
-_fit(::Type{<:IndependentCopula}, U, ::Val{:ibeta}; weights=nothing) = IndependentCopula(size(U,1))
+_fit_dispatch(
+    ::Type{<:IndependentCopula}, U, ::Val{d}, ::Val; weights=nothing,
+) where {d} = IndependentCopula{d}()

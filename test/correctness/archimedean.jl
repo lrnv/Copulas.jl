@@ -96,7 +96,7 @@ end
     # change next to θ = 0 used to swallow the true root and return θ = 0.
     U = rand(StableRNG(3), ClaytonCopula{2}(2.0), 200)
     @test Copulas.β(U) ≈ 0.41
-    @test params(fit(ClaytonCopula, U; method=:ibeta)).θ ≈ 1.366 atol=1e-3
+    @test only(params(fit(ClaytonCopula, U; method=:ibeta))) ≈ 1.366 atol=1e-3
 end
 
 @testset "Clayton conditional numerical anchors" begin

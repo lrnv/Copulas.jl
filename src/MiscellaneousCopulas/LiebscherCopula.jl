@@ -59,9 +59,11 @@ struct LiebscherCopula{d,CT,WT} <: Copula{d}
     end
 end
 
-LiebscherCopula(d::Integer, copulas::Tuple, weights::AbstractMatrix{<:Real}) = LiebscherCopula{d}(copulas, weights)
+LiebscherCopula(d::Integer, copulas::Tuple, weights::AbstractMatrix{<:Real}) =
+    LiebscherCopula{d}(copulas, weights)
 
-(::Type{LiebscherCopula{d,CT,WT}})(copulas::Tuple, weights::AbstractMatrix{<:Real}) where {d,CT,WT} = LiebscherCopula{d}(copulas, weights)
+(::Type{LiebscherCopula{d,CT,WT}})(copulas::Tuple, weights::AbstractMatrix{<:Real}) where {d,CT,WT} =
+    LiebscherCopula{d}(copulas, weights)
 
 Distributions.params(C::LiebscherCopula) = (; copulas=C.copulas, weights=copy(C.weights))
 
@@ -130,11 +132,9 @@ function _liebscher_component_partial(C::Copula{d}, weights, u, observed, differ
         end
     else
         Csub = subsetdims(C, active_observed)
-
         remaining_local = Tuple(k for k in 1:q if k ∉ differentiated_local)
         zremaining = ntuple(k -> z[remaining_local[k]], length(remaining_local))
         zdifferentiated = ntuple(k -> z[differentiated_local[k]], p)
-
         _partial_cdf(
             Csub,
             remaining_local,
@@ -173,19 +173,15 @@ function _partial_cdf(C::LiebscherCopula{d}, is, js, uᵢₛ, uⱼₛ) where {d}
         end
 
         next = zeros(T, nstates)
-
         for mask in 0:(nstates - 1)
             submask = mask
-
             while true
                 complement = mask ⊻ submask
                 next[mask + 1] += current[complement + 1] * factor[submask + 1]
-
                 submask == 0 && break
                 submask = (submask - 1) & mask
             end
         end
-
         current = next
     end
 
@@ -194,12 +190,9 @@ end
 
 function Distributions._logpdf(C::LiebscherCopula{d}, u::AbstractVector{<:Real}) where {d}
     copula_measure_style(C) isa AbsolutelyContinuousMeasure || throw(ArgumentError("a global Lebesgue density is not defined for this LiebscherCopula"))
-
     value = _partial_cdf(C, (), ntuple(identity, d), (), Tuple(u))
-
     iszero(value) && return oftype(value, -Inf)
     value < zero(value) && return oftype(value, NaN)
-
     return log(value)
 end
 
@@ -210,15 +203,12 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::LiebscherCopula
     @inbounds for k in eachindex(C.copulas)
         active = any(j -> !iszero(C.weights[k, j]), 1:d)
         active || continue
-
         Distributions._rand!(rng, C.copulas[k], V)
 
         for j in 1:d
             a = C.weights[k, j]
             iszero(a) && continue
-
             inva = inv(a)
-
             for n in axes(U, 2)
                 U[j, n] = max(U[j, n], V[j, n]^inva)
             end
@@ -232,42 +222,33 @@ function copula_measure_style(C::LiebscherCopula{d}) where {d}
     @inbounds for k in eachindex(C.copulas)
         active_dims = Tuple(j for j in 1:d if !iszero(C.weights[k, j]))
         length(active_dims) <= 1 && continue
-
         component = subsetdims(C.copulas[k], active_dims)
         style = copula_measure_style(component)
-
         style isa NonAbsolutelyContinuousMeasure && return style
     end
-
     return AbsolutelyContinuousMeasure()
 end
 
 function SubsetCopula(C::LiebscherCopula{d}, dims::NTuple{p,Int}) where {d,p}
     dims == Tuple(1:d) && return C
     p == 1 && return Distributions.Uniform()
-
     copulas = ntuple(k -> subsetdims(C.copulas[k], dims), length(C.copulas))
     weights = C.weights[:, collect(dims)]
-
     return LiebscherCopula{p}(copulas, weights)
 end
 
 function _khoudraji_weights(::Val{d}, shapes) where {d}
     length(shapes) == d || throw(DimensionMismatch("Khoudraji shapes must have length $d; got $(length(shapes))"))
-
     α = collect(float.(shapes))
-
     all(isfinite, α) || throw(ArgumentError("Khoudraji shapes must be finite"))
     all(a -> zero(a) <= a <= one(a), α) || throw(DomainError(shapes, "Khoudraji shapes must lie in [0, 1]"))
 
     T = eltype(α)
     W = Matrix{T}(undef, 2, d)
-
     @inbounds for j in 1:d
         W[1, j] = one(T) - α[j]
         W[2, j] = α[j]
     end
-
     return W
 end
 
@@ -301,14 +282,12 @@ References:
 """
 function KhoudrajiCopula(d::Integer, C::Copula, shapes::Union{Tuple,AbstractVector})
     C isa Copula{d} || throw(DimensionMismatch("the Khoudraji component copula must have dimension $d"))
-
     weights = _khoudraji_weights(Val(d), shapes)
     return LiebscherCopula(d, (IndependentCopula{d}(), C), weights)
 end
 
 function KhoudrajiCopula(d::Integer, copulas::Tuple{<:Copula,<:Copula}, shapes::Union{Tuple,AbstractVector})
     all(C -> C isa Copula{d}, copulas) || throw(DimensionMismatch("all Khoudraji component copulas must have dimension $d"))
-
     weights = _khoudraji_weights(Val(d), shapes)
     return LiebscherCopula(d, copulas, weights)
 end
@@ -317,105 +296,113 @@ end
 # Fitting template                      #
 #########################################
 
+# Bare Liebscher family fitting is intentionally unavailable. Template fitting
+# below optimizes only the component charts and weight simplices carried by the
+# concrete starting model.
 _available_fitting_methods(::Type{<:LiebscherCopula}, d) = ()
 
-function _liebscher_component_is_fittable(C::Copula{d}) where {d}
-    θ = Distributions.params(C)
-    return !isempty(θ) && (:mle in _available_fitting_methods(typeof(C), d))
+function _liebscher_component_space(C::Copula{d}) where {d}
+    :mle in _available_fitting_methods(typeof(C), d) || return nothing
+    dimension = _parameter_dimension_or_nothing(C)
+    dimension === nothing && return nothing
+    return iszero(dimension) ? nothing : C
 end
 
-function _liebscher_component_unbound(C::Copula{d}) where {d}
-    _liebscher_component_is_fittable(C) || return Float64[]
-    return _unbound_params(typeof(C), d, Distributions.params(C))
+function _liebscher_weight_geometry(W::AbstractMatrix, j::Int)
+    active = findall(!iszero, @view W[:, j])
+    length(active) <= 1 && return active, nothing
+    p = Paramorph.TransformVariables.UnitSimplex(length(active))
+    return active, p
 end
 
-function _liebscher_weights_unbound(W::AbstractMatrix{<:Real})
-    T = float(eltype(W))
-    α = T[]
-    K, d = size(W)
+_liebscher_natural_tuple(η::NamedTuple) = Tuple(values(η))
+_liebscher_natural_tuple(η) = η
 
-    @inbounds for j in 1:d
-        active = [k for k in 1:K if !iszero(W[k, j])]
-        length(active) <= 1 && continue
-        reference = active[1]
-
-        for k in active[2:end]
-            push!(α, log(W[k, j] / W[reference, j]))
-        end
-    end
-
-    return α
-end
-
-function _liebscher_unbound(C::LiebscherCopula)
+function _liebscher_initial_coordinates(C::LiebscherCopula{d}) where {d}
     T = eltype(C)
     α = T[]
 
     for component in C.copulas
-        append!(α, _liebscher_component_unbound(component))
+        p = _liebscher_component_space(component)
+        p === nothing && continue
+        append!(α, _parameter_coordinates(component))
     end
 
-    append!(α, _liebscher_weights_unbound(C.weights))
+    for j in 1:d
+        active, p = _liebscher_weight_geometry(C.weights, j)
+        p === nothing && continue
+        append!(α, Paramorph.TransformVariables.inverse(
+            p, collect(@view C.weights[active, j]),
+        ))
+    end
+
+    component_dimension = sum(C.copulas; init=0) do component
+        p = _liebscher_component_space(component)
+        p === nothing ? 0 : _parameter_dimension(component)
+    end
+    weight_dimension = sum(1:d; init=0) do j
+        _, p = _liebscher_weight_geometry(C.weights, j)
+        p === nothing ? 0 : Paramorph.TransformVariables.dimension(p)
+    end
+    expected = component_dimension + weight_dimension
+    length(α) == expected || throw(DimensionMismatch(
+        "Liebscher fitting coordinates have length $(length(α)); expected $expected"))
+    all(isfinite, α) || throw(ArgumentError(
+        "Liebscher template fitting requires an interior finite Paramorph representation"))
     return α
 end
 
-function _liebscher_rebound_component(C::Copula{d}, α, i::Ref{Int}) where {d}
-    _liebscher_component_is_fittable(C) || return C
+function _liebscher_component_from_coordinates(C::Copula{d}, α, i::Ref{Int}) where {d}
+    p = _liebscher_component_space(C)
+    p === nothing && return C
 
-    n = length(_liebscher_component_unbound(C))
-    iszero(n) && return C
-
+    n = _parameter_dimension(C)
     β = @view α[i[]:(i[] + n - 1)]
-    θ = _rebound_params(typeof(C), d, β)
-    fitted = _construct_fitted_copula(typeof(C), Val(d), θ, C)
-
     i[] += n
-    return fitted
+    return _from_parameter_coordinates(C, collect(β))
 end
 
-function _liebscher_weights_rebound(W0::AbstractMatrix{<:Real}, α, i::Ref{Int})
+function _liebscher_weights_from_coordinates(W0::AbstractMatrix{<:Real}, α, i::Ref{Int})
     K, d = size(W0)
     T = promote_type(eltype(W0), eltype(α))
     W = zeros(T, K, d)
 
     @inbounds for j in 1:d
-        active = [k for k in 1:K if !iszero(W0[k, j])]
-        m = length(active)
-
-        if m == 1
+        active, p = _liebscher_weight_geometry(W0, j)
+        if p === nothing
             W[only(active), j] = one(T)
             continue
         end
 
-        η = Vector{T}(undef, m)
-        η[1] = zero(T)
+        n = Paramorph.TransformVariables.dimension(p)
+        η = Paramorph.TransformVariables.transform(p, @view α[i[]:(i[] + n - 1)])
+        i[] += n
 
-        for r in 2:m
-            η[r] = α[i[]]
-            i[] += 1
-        end
-
-        shift = maximum(η)
-        e = exp.(η .- shift)
-        den = sum(e)
-
-        for r in 1:m
-            W[active[r], j] = e[r] / den
+        for (r, k) in pairs(active)
+            W[k, j] = η[r]
         end
     end
 
     return W
 end
 
-function _liebscher_rebound(C0::LiebscherCopula{d}, α) where {d}
+function _liebscher_from_coordinates(C0::LiebscherCopula{d}, α) where {d}
     i = Ref(1)
-    copulas = ntuple(k -> _liebscher_rebound_component(C0.copulas[k], α, i), length(C0.copulas))
-    weights = _liebscher_weights_rebound(C0.weights, α, i)
+    copulas = ntuple(
+        k -> _liebscher_component_from_coordinates(C0.copulas[k], α, i),
+        length(C0.copulas),
+    )
+    weights = _liebscher_weights_from_coordinates(C0.weights, α, i)
 
     i[] == length(α) + 1 || throw(ArgumentError("invalid Liebscher fitting parameter vector"))
-
-    return LiebscherCopula(d, copulas, weights)
+    return LiebscherCopula{d}(copulas, weights)
 end
+
+# Local compatibility aliases for the tests and internal callers introduced with
+# the original template fitter. The generic legacy fitting protocol is not
+# restored; both names now route exclusively through Paramorph.
+_liebscher_unbound(C::LiebscherCopula) = _liebscher_initial_coordinates(C)
+_liebscher_rebound(C::LiebscherCopula, α) = _liebscher_from_coordinates(C, α)
 
 function _validate_liebscher_fit_data(U, d::Int)
     ndims(U) == 2 || throw(ArgumentError("U must be a d×n matrix of pseudo-observations"))
@@ -427,72 +414,41 @@ function _validate_liebscher_fit_data(U, d::Int)
 end
 
 function _fit_liebscher(C0::LiebscherCopula, U)
-    copula_measure_style(C0) isa AbsolutelyContinuousMeasure || throw(ArgumentError("LiebscherCopula template fitting requires an absolutely continuous starting model"))
+    copula_measure_style(C0) isa AbsolutelyContinuousMeasure || throw(ArgumentError(
+        "LiebscherCopula template fitting requires an absolutely continuous starting model"))
 
-    α0 = _liebscher_unbound(C0)
+    α0 = _liebscher_initial_coordinates(C0)
     isempty(α0) && return C0
 
-    reconstruct(α) = _liebscher_rebound(C0, α)
+    reconstruct(α) = _liebscher_from_coordinates(C0, α)
 
     loss(α) = begin
         C = reconstruct(α)
         copula_measure_style(C) isa AbsolutelyContinuousMeasure || return oftype(first(α), Inf)
-
         ℓ = Distributions.loglikelihood(C, U)
         isfinite(ℓ) || return oftype(first(α), Inf)
-
         return -ℓ
     end
 
     result = Optim.optimize(loss, α0, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
-
     return reconstruct(Optim.minimizer(result))
 end
 
 function Distributions.fit(::Type{CopulaModel}, C0::LiebscherCopula{d}, U; method=:mle, kwargs...) where {d}
     _reject_inference_fit_keywords((; kwargs...))
-    isempty(kwargs) || throw(ArgumentError("unsupported LiebscherCopula fitting keyword(s): $(join(keys(kwargs), ", "))"))
-    method === :mle || throw(ArgumentError("LiebscherCopula template fitting supports only method=:mle (got $method)"))
+    isempty(kwargs) || throw(ArgumentError(
+        "unsupported LiebscherCopula fitting keyword(s): $(join(keys(kwargs), ", "))"))
+    method === :mle || throw(ArgumentError(
+        "LiebscherCopula template fitting supports only method=:mle (got $method)"))
 
     _validate_liebscher_fit_data(U, d)
 
     fitted = _fit_liebscher(C0, U)
     fit_spec = _CopulaFitSpec(C0, :mle, (;))
     ll = Distributions.loglikelihood(fitted, U)
-
     return CopulaModel(fitted, U, ll, fit_spec)
 end
 
 function Distributions.fit(C0::LiebscherCopula{d}, U; method=:mle, kwargs...) where {d}
     return fitted_distribution(Distributions.fit(CopulaModel, C0, U; method, kwargs...))
-end
-
-function _natural_parameters(C::LiebscherCopula{d}) where {d}
-    names = String[]
-    values = Any[]
-
-    for (k, component) in pairs(C.copulas)
-        _liebscher_component_is_fittable(component) || continue
-        component_names, component_values = _natural_parameters(component)
-
-        for i in eachindex(component_values)
-            push!(names, "C$(k)_$(component_names[i])")
-            push!(values, component_values[i])
-        end
-    end
-
-    K = length(C.copulas)
-
-    @inbounds for j in 1:d
-        active = [k for k in 1:K if !iszero(C.weights[k, j])]
-        length(active) <= 1 && continue
-
-        for k in active[2:end]
-            push!(names, "a$(k)_$(j)")
-            push!(values, C.weights[k, j])
-        end
-    end
-
-    θ = isempty(values) ? Float64[] : collect(promote(float.(values)...))
-    return names, θ
 end

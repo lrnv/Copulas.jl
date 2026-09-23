@@ -4,15 +4,8 @@
 #####   - `Distributions.fit(CopulaModel, MyCopulaType, data, method)`
 #####   - `Distributions.fit(MyCopulaType, data, method)`
 #####
-#####  The fitting machinery below is package-internal.
-#####
-#####  Or, for simple models, to get access to a few default bindings, you could also override the following:
-#####   - Distributions.params() yielding a NamedTuple of parameters
-#####   - _unbound_params() mappin your parameters to unbounded space
-#####   - _rebound_params() doing the reverse
-#####   - _example() giving example copula of your type.
-#####   - _example() giving example copula of your type.
-#####
+#####  The fitting machinery below is package-internal. Simple parametric
+#####  families opt into the generic routines through their Paramorph schema.
 ###############################################################################
 
 """
@@ -155,62 +148,16 @@ end
     Distributions.params(S::SklarDist)
 
 Return the mathematical parameters of a copula or Sklar distribution as a
-`NamedTuple`, in canonical constructor order. For an ordinary parametric
-copula, splatting `values(params(C))` into its documented typed constructor
-reconstructs the same model. Structural and empirical models document any
-different reconstruction form explicitly.
-
-Parameter names and values are public; concrete field names, storage-only type
-parameters and caches are not. A new in-package family must specialize this
-method before it can use generic fitting and display machinery. Missing
-specializations therefore use Julia's normal `MethodError` rather than a
-package-defined fallback exception.
+`Tuple`, in canonical constructor order, following the `Distributions.jl`
+convention. Parameter names and constraints are supplied independently by
+the structure's Paramorph schema; `params` contains values only. For an ordinary
+parametric copula, splatting `params(C)` into its documented typed constructor
+reconstructs the same model.
 
 See also: [`Copula`](@ref), [`SklarDist`](@ref), [`Distributions.fit`](@ref),
 [`CopulaModel`](@ref).
 """
 
-"""
-    _example(CT, d)
-
-Construct an interior representative of copula family `CT` in dimension `d`.
-This internal fitting hook supplies parameter names, shapes, numeric types and
-an initial point to generic optimization and covariance machinery. The example
-must avoid limiting values and must be reconstructible by the family's fitting
-protocol; it is not a user-facing default model. Families using generic fitting
-must implement it; otherwise Julia raises the natural `MethodError`.
-
-See also: [`_unbound_params`](@ref), [`_rebound_params`](@ref),
-[`_available_fitting_methods`](@ref), [`_fit`](@ref).
-"""
-function _example end
-
-"""
-    _unbound_params(CT, d, θ)
-
-Map the parameter `NamedTuple` `θ` of family `CT` to an unconstrained real
-vector used by generic optimization and differentiation. This internal fitting
-hook must be inverse-compatible with `_rebound_params`, preserve parameter
-order, and map interior valid parameters to finite coordinates. Families using
-generic fitting must implement it; otherwise Julia raises `MethodError`.
-
-See also: [`_rebound_params`](@ref), [`_example`](@ref), [`_fit`](@ref).
-"""
-function _unbound_params end
-
-"""
-    _rebound_params(CT, d, α)
-
-Map an unconstrained optimization vector `α` back to the valid parameter
-`NamedTuple` expected by family `CT`. This internal fitting hook must enforce
-the mathematical parameter domain, accept automatic-differentiation number
-types, and invert `_unbound_params` on interior parameters. Families using
-generic fitting must implement it; otherwise Julia raises `MethodError`.
-
-See also: [`_unbound_params`](@ref), [`_example`](@ref), [`_fit`](@ref).
-"""
-function _rebound_params end
-_construct_fitted_copula(CT, ::Val{d}, θ, example) where {d} = CT(d, θ...)
 
 """
     _fit_weights(weights, n) -> Union{Nothing, Vector}
@@ -287,57 +234,64 @@ _model_weights(M::CopulaModel) =
 _normalized_pseudos(X::AbstractMatrix, weights) =
     _pseudos(X, Val(:average), Random.default_rng(), weights)
 
-function _fit(CT::Type{<:Copula}, U, method::Val{:mle}; kwargs...)
-    return _fit(CT, U, Val(size(U, 1)), method; kwargs...)
-end
-function _fit(CT::Type{<:Copula}, U, ::Val{d}, ::Val{:mle}; weights=nothing) where {d}
-    example = _example(CT, d)
-    cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
-    α₀  = _unbound_params(CT, d, Distributions.params(example))
-    loss(C) = -_weighted_loglikelihood(C, U, weights)
-    res = Optim.optimize(
-        loss ∘ cop,
-        α₀,
-        Optim.LBFGS();
-        autodiff=ADTypes.AutoForwardDiff(),
-    )
-    θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return _construct_fitted_copula(CT, Val(d), θhat, example)
-end
+_parameter_arguments(η::Tuple) = η
+_parameter_arguments(η) = (η,)
+
+_fit_prototype(CT::Type{<:Copula}, vd::Val) = _parameter_prototype(CT, vd)
 
 """
     _fit(::Type{<:Copula}, U, ::Val{method}; kwargs...)
 
 Internal entry point for fitting routines.
 
-Each copula family implements `_fit` methods specialized on `Val{method}` and
-returns the fitted copula. Temporary optimizer results and diagnostics stay
-inside the estimator implementation.
+The three-argument entry point preserves the copula dimension as `Val{d}` and
+routes once through `_fit_dispatch`. Ordinary estimator implementations remain
+`_fit(CT, U, Val(d), Val(method))`; a family that takes over fitting regardless
+of the estimator can instead specialize `_fit_dispatch` without competing with
+method-specialized generic `_fit` methods.
 
-This is not intended for direct use by end–users.
-Use [`Distributions.fit(CopulaModel, ...)`] instead.
+Simple parametric families can use the generic implementations by defining
+an `@paramorph` structure or a constrained prototype. This is not intended for
+direct use by end-users; use
+[`Distributions.fit(CopulaModel, ...)`] instead.
 
-See also: [`_available_fitting_methods`](@ref), [`_example`](@ref),
-[`_unbound_params`](@ref), [`_rebound_params`](@ref).
+See also: [`_available_fitting_methods`](@ref), [`Distributions.fit`](@ref).
 """
-function _fit(CT::Type{<:Copula}, U, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing)
-    return _fit(CT, U, Val(size(U, 1)), method; weights)
+function _fit(CT::Type{<:Copula}, U, method::Val; kwargs...)
+    return _fit_dispatch(CT, U, Val(size(U, 1)), method; kwargs...)
 end
-function _fit(CT::Type{<:Copula}, U, ::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
-    # generic rank-based routine (agnostic to vcov/inference)
-    example = _example(CT, d)
-    cop(α) = _construct_fitted_copula(CT, Val(d), _rebound_params(CT, d, α), example)
-    α₀ = _unbound_params(CT, d, Distributions.params(example))
-    length(α₀) <= d*(d-1)÷2 || throw(ArgumentError(
-        "cannot use $method in dimension $d with $(length(α₀)) free parameters; " *
+
+_fit_dispatch(CT::Type{<:Copula}, U, vd::Val, method::Val; kwargs...) =
+    _fit(CT, U, vd, method; kwargs...)
+
+function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) where {d}
+    prototype = _fit_prototype(CT, vd)
+    α₀ = zeros(_parameter_dimension(prototype))
+    cop(α) = _from_parameter_coordinates(prototype, α)
+    loss(C) = -_weighted_loglikelihood(C, U, weights)
+    res = Optim.optimize(
+        loss ∘ cop,
+        α₀,
+        Optim.LBFGS();
+        autodiff=ADTypes.AutoForwardDiff()
+    )
+    return cop(Optim.minimizer(res))
+end
+
+function _fit(CT::Type{<:Copula}, U, vd::Val{d}, method::Union{Val{:itau},Val{:irho},Val{:ibeta}}; weights=nothing) where {d}
+    prototype = _fit_prototype(CT, vd)
+    intrinsic_dim = _parameter_dimension(prototype)
+    intrinsic_dim <= d*(d-1)÷2 || throw(ArgumentError(
+        "cannot use $method in dimension $d with $intrinsic_dim free parameters; " *
         "only $(d*(d-1)÷2) pairwise rank constraints are available"))
-    fun  = method isa Val{:itau} ? StatsBase.corkendall :
-           method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
-    est  = _rank_measure(method, U, weights)
+    α₀ = zeros(intrinsic_dim)
+    cop(α) = _from_parameter_coordinates(prototype, α)
+    fun = method isa Val{:itau} ? StatsBase.corkendall :
+          method isa Val{:irho} ? StatsBase.corspearman : corblomqvist
+    est = _rank_measure(method, U, weights)
     loss(C) = sum(abs2, est .- fun(C))
-    res  = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
-    θhat = _rebound_params(CT, d, Optim.minimizer(res))
-    return _construct_fitted_copula(CT, Val(d), θhat, example)
+    res = Optim.optimize(loss ∘ cop, α₀, Optim.NelderMead())
+    return cop(Optim.minimizer(res))
 end
 
 
@@ -378,8 +332,7 @@ _available_fitting_methods(GumbelCopula, 3)
 # → (:mle, :itau, :irho, :ibeta)
 ```
 
-See also: [`_fit`](@ref), [`_example`](@ref),
-[`Distributions.fit`](@ref).
+See also: [`_fit`](@ref), [`Distributions.fit`](@ref).
 """
 _available_fitting_methods(::Type{<:Copula}, d) = (:mle, :itau, :irho, :ibeta)
 _available_fitting_methods(C::Copula, d) = _available_fitting_methods(typeof(C), d)
@@ -742,15 +695,15 @@ StatsBase.deviance(M::CopulaModel) = -2 * M.loglikelihood
 """
     dof(M::CopulaModel) -> Int
 
-Return the number of free estimated parameters represented by `coef(M)`. For a
-Sklar fit this includes both marginal and copula parameters. Fixed structural
-choices and nonparametric components whose effective degrees of freedom are not
-defined by the current interface are excluded.
+Return the statistical number of free estimated parameters. This is determined
+from the fitted model's `Paramorph` schema and is intentionally
+independent of `length(coef(M))`: natural coefficients may contain redundant or
+fixed entries, such as both halves and the unit diagonal of a correlation matrix.
 
 See also: [`StatsBase.coef`](@ref), [`StatsBase.coefnames`](@ref),
 [`StatsBase.aic`](@ref).
 """
-StatsBase.dof(M::CopulaModel) = length(StatsBase.coef(M))
+StatsBase.dof(M::CopulaModel) = _model_dof(M)
 
 """
     _copula_of(M::CopulaModel)
@@ -765,11 +718,11 @@ _copula_of(M::CopulaModel)   = M.result isa SklarDist ? M.result.C : M.result
 """
     coef(M::CopulaModel) -> Vector{Float64}
 
-Return the free estimated parameters as a flat vector in the same order as
-`coefnames(M)`. For a Sklar fit, copula parameters precede the parameters of
-each margin in coordinate order. Scalars are followed by vector entries and by
-the strict upper triangle of matrix parameters. Models without a
-finite-dimensional parameter record return an empty vector.
+Return the fitted model's natural parameters as a flat vector in the same order
+as `coefnames(M)`. Structured values are flattened mechanically: matrices expose
+all entries, including symmetry or fixed diagonals, and simplex vectors expose
+all probabilities. Consequently `length(coef(M))` need not equal `dof(M)`.
+Parameter-free and nonparametric components return no coefficients.
 
 See also: [`StatsBase.coefnames`](@ref), [`StatsBase.vcov`](@ref),
 [`StatsBase.confint`](@ref).
@@ -789,118 +742,9 @@ See also: [`StatsBase.coef`](@ref), [`StatsBase.vcov`](@ref),
 StatsBase.coefnames(M::CopulaModel) = _coefficient_data(M)[1]
 
 
-# Flatten natural parameters after a perturbation of optimizer coordinates;
-# those coordinates themselves are never exposed as model coefficients.
-function _flatten_params(params_nt::NamedTuple)
-    nm = String[]
-    θ = Any[]
-    sidx = ["₁", "₂", "₃", "₄", "₅", "₆", "₇", "₈", "₉"]
-    for (k, v) in pairs(params_nt)
-        if v isa Number
-            push!(nm, String(k))
-            push!(θ, v)
-        elseif v isa AbstractMatrix
-            if maximum(size(v)) > 9
-                @inbounds for j in 2:size(v,2), i in 1:j-1
-                    push!(nm, "$(k)_$(i)_$(j)")
-                    push!(θ, v[i,j])
-                end
-            else
-                @inbounds for j in 2:size(v,2), i in 1:j-1
-                    push!(nm, "$(k)$(sidx[i])$(sidx[j])")
-                    push!(θ, v[i,j])
-                end
-            end
-        elseif v isa AbstractVector
-            if length(v) > 9
-                for i in eachindex(v)
-                    push!(nm, "$(k)_$(i)")
-                    push!(θ, v[i])
-                end
-            else
-                for i in eachindex(v)
-                    push!(nm, "$(k)$(sidx[i])")
-                    push!(θ, v[i])
-                end
-            end
-        else
-            try
-                push!(nm, String(k))
-                push!(θ, v)
-            catch
-            end
-        end
-    end
-    return nm, [x for x in promote(θ...)]
-end
-
-function _append_parameter!(nm, θ, value, name::String)
-    if value isa Number
-        push!(nm, name)
-        push!(θ, value)
-    elseif value isa AbstractMatrix
-        @inbounds for j in 2:size(value, 2), i in 1:j-1
-            push!(nm, maximum(size(value)) > 9 ? "$(name)_$(i)_$(j)" :
-                  "$(name)$(Char(0x2080 + i))$(Char(0x2080 + j))")
-            push!(θ, value[i, j])
-        end
-    elseif value isa AbstractVector
-        for i in eachindex(value)
-            push!(nm, length(value) > 9 ? "$(name)_$(i)" :
-                  "$(name)$(Char(0x2080 + i))")
-            push!(θ, value[i])
-        end
-    elseif value isa NamedTuple
-        for (key, child) in pairs(value)
-            child_name = isempty(name) ? String(key) : "$(name)_$(key)"
-            _append_parameter!(nm, θ, child, child_name)
-        end
-    elseif value isa Tuple
-        for (i, child) in pairs(value)
-            _append_parameter!(nm, θ, child, "$(name)_$(i)")
-        end
-    elseif applicable(Distributions.params, value)
-        _append_parameter!(nm, θ, Distributions.params(value), name)
-    end
-    return nothing
-end
-
-function _natural_parameters(D)
-    nm = String[]
-    θ = Any[]
-    if D isa SklarDist
-        !(hasmethod(StatsBase.dof, Tuple{typeof(D.C)}) && iszero(StatsBase.dof(D.C))) &&
-            _append_parameter!(nm, θ, Distributions.params(D.C), "copula")
-        for (i, margin) in pairs(D.m)
-            _append_parameter!(nm, θ, Distributions.params(margin), "margin_$(i)")
-        end
-    elseif !(hasmethod(StatsBase.dof, Tuple{typeof(D)}) && iszero(StatsBase.dof(D)))
-        _append_parameter!(nm, θ, Distributions.params(D), "")
-    end
-    values = isempty(θ) ? Float64[] : collect(promote(float.(θ)...))
-    return nm, values
-end
-
-function _coefficient_data(M::CopulaModel)
-    spec = M.recipe
-    if spec isa _CopulaFitSpec && spec.target isa NamedTuple &&
-            haskey(spec.target, :coordinates)
-        α = spec.target.coordinates
-        return ["α$(i)" for i in eachindex(α)], collect(float.(α))
-    end
-    return _natural_parameters(fitted_distribution(M))
-end
-
 function _parameter_blocks(M::CopulaModel)
-    D = fitted_distribution(M)
-    if !(D isa SklarDist)
-        all = eachindex(StatsBase.coef(M))
-        return (; copula=all, margins=())
-    end
-    names = StatsBase.coefnames(M)
-    copula = findall(name -> startswith(name, "copula_"), names)
-    margins = ntuple(i -> findall(name -> startswith(name, "margin_$(i)_"), names), length(D.m))
-    return (; copula, margins)
+    all = eachindex(StatsBase.coef(M))
+    return (; copula=all, margins=())
 end
 
 function _copula_data(M::CopulaModel)

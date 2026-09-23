@@ -11,11 +11,6 @@ struct NoTail <: Tail end
 
 @inline limit_kind(::NoTail, ::Val) = Π_LIMIT
 
-Distributions.params(::NoTail) = (;)
-
-_unbound_params(::Type{NoTail}, d, ::NamedTuple) = Float64[]
-_rebound_params(::Type{NoTail}, d, ::AbstractVector) = (;)
-
 A(::NoTail, t::NTuple{d, <:Real}) where d = one(eltype(t))
 A(::NoTail, t::Real) = 1.0
 ℓ(::NoTail, x) = sum(x)

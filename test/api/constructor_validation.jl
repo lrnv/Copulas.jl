@@ -45,8 +45,8 @@ struct _IncompleteCopula498{d} <: Copulas.Copula{d} end
         leaves=[1, 2], children=[ClaytonCopula{2}(2.0)])
     @test_throws ArgumentError AsymLogCopula(3, 1.5, 0.4, 0.6)
     @test_throws ArgumentError ExtremeValueCopula(1, Copulas.GalambosTail(0.7))
-    @test_throws ArgumentError RafteryCopula{3}(-1.5)
-    @test_throws ArgumentError RafteryCopula{2}(2.6)
+    @test_throws DomainError RafteryCopula{3}(-1.5)
+    @test_throws DomainError RafteryCopula{2}(2.6)
 end
 
 @testset "nested Archimedean constructor regressions" begin
@@ -120,21 +120,24 @@ end
     @test GalambosCopula(2; θ=1.0) isa GalambosCopula{2}
 
     bb1_kw = Copulas.BB1Generator(; δ=2.0, θ=1.0)
-    @test params(bb1_kw) == (θ=1.0, δ=2.0)
-    @test params(Copulas.BB1Generator(1.0; δ=2.0)) == (θ=1.0, δ=2.0)
+    @test (bb1_kw.θ, bb1_kw.δ) == (1.0, 2.0)
+    bb1_mixed_kw = Copulas.BB1Generator(1.0; δ=2.0)
+    @test (bb1_mixed_kw.θ, bb1_mixed_kw.δ) == (1.0, 2.0)
     asym_log_kw = Copulas.AsymLogTail(; θ₂=0.6, α=1.5, θ₁=0.4)
-    @test params(asym_log_kw) == (α=1.5, θ₁=0.4, θ₂=0.6)
+    @test (asym_log_kw.α, asym_log_kw.θ₁, asym_log_kw.θ₂) == (1.5, 0.4, 0.6)
     @test_throws ArgumentError Copulas.ClaytonGenerator(; banana=2.0)
     @test_throws ArgumentError Copulas.GalambosTail(; banana=1.0)
     @test_throws ArgumentError GalambosCopula(2; banana=1.0)
 
-    @test params(LogCopula{2}(2)).θ == 2.0
-    @test params(MixedCopula{2}(1)).θ == 1.0
-    @test params(HuslerReissCopula{2}(1)).θ == 1.0
-    @test params(tEVCopula{2}(4, 0.2)).ν == 4
+    # `params` follows Distributions.jl's value-only tuple convention; names
+    # and constraints belong to the structure's Paramorph schema.
+    @test params(LogCopula{2}(2)) == (2.0,)
+    @test params(MixedCopula{2}(1)) == (1.0,)
+    @test params(HuslerReissCopula{2}(1)) == (1.0,)
+    @test params(tEVCopula{2}(4, 0.2)) == (4.0, 0.2)
     Cint = LogCopula{2}(2)
-    @test params(typeof(Cint)(2)).θ == 2.0
-    @test params(LogCopula(2, 2)).θ == 2.0
+    @test params(typeof(Cint)(2)) == (2.0,)
+    @test params(LogCopula(2, 2)) == (2.0,)
     @test_throws MethodError GalambosCopula(2.3)
     @test_throws MethodError MixedCopula(0.5)
 end
@@ -162,15 +165,15 @@ end
     end
 
     @test_throws DimensionMismatch Copulas.tEVTail(1.5, zeros(3, 4))
-    @test_throws ArgumentError Copulas.tEVTail(
+    @test_throws DomainError Copulas.tEVTail(
         0.0, Matrix{Float64}(I, 3, 3))
-    @test_throws ArgumentError Copulas.tEVTail(1.5,
+    @test_throws DomainError Copulas.tEVTail(1.5,
         [1.0 0.3 0.0; 0.1 1.0 0.2; 0.0 0.2 1.0])
-    @test_throws ArgumentError Copulas.tEVTail(1.5,
+    @test_throws DomainError Copulas.tEVTail(1.5,
         [1.0 0.95 0.95; 0.95 1.0 -0.95; 0.95 -0.95 1.0])
 
     @test_throws DimensionMismatch Copulas.HuslerReissTail(zeros(3, 4))
-    @test_throws ArgumentError Copulas.HuslerReissTail(
+    @test_throws DomainError Copulas.HuslerReissTail(
         [0.0 1.0 10.0; 1.0 0.0 1.0; 10.0 1.0 0.0])
     @test_throws ArgumentError Copulas.DiscreteSpectralTail(
         [0.4 0.4; 0.5 0.5])
@@ -180,7 +183,7 @@ end
     @test_throws ArgumentError Copulas.MOTail(
         3, [0.0, 0.0, 0.0, 0.0, 0.0, 0.4, 0.0])
     @test_throws ArgumentError Copulas.BC2Tail([0.2])
-    @test_throws ArgumentError Copulas.BC2Tail([0.2, 1.1])
+    @test_throws DomainError Copulas.BC2Tail([0.2, 1.1])
 end
 
 @testset "stable public validation semantics" begin
@@ -190,7 +193,6 @@ end
 
     C = _IncompleteCopula498{2}()
     @test_throws MethodError params(C)
-    @test_throws MethodError Copulas._example(_IncompleteCopula498, 2)
 
     U = [0.2 0.4 0.8; 0.3 0.6 0.7]
     @test_throws ArgumentError Copulas.EmpiricalEVTail(U; grid=1)

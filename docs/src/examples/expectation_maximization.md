@@ -52,7 +52,7 @@ fitted_sklar = fit_mle(
     data,
 )
 
-params(fitted_sklar).margins[1]
+last(params(fitted_sklar))[1]
 ```
 
 The result remains a single `SklarDist`: the marginal mixture is fitted as a
