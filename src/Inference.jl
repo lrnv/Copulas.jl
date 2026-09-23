@@ -32,9 +32,9 @@ _vcov_pairwise_measure(::Val{:irho}) = StatsBase.corspearman
 _vcov_pairwise_measure(::Val{:ibeta}) = corblomqvist
 _vcov_pairwise_measure(::Val) = coruppertail
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
+function _vcov(fitted::Copula, U::AbstractMatrix,
                vcovv::Val{:hessian}, methodv::Val{method}; weights=nothing) where {method}
-    return _vcov_hessian(CT, U, θ, Val(size(U, 1)), vcovv, methodv; weights)
+    return _vcov_hessian(fitted, U, vcovv, methodv; weights)
 end
 
 function _invert_observed_information(Iα::AbstractMatrix)
@@ -61,11 +61,9 @@ end
 # counts for", it is the observed information of the replicated sample. A
 # zero-weight column is dropped once here, before the closure is
 # differentiated, as it is before every fitting engine.
-function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
-                       vd::Val{d}, ::Val{:hessian},
-                       methodv::Val{method}; weights=nothing) where {d,method}
+function _vcov_hessian(fitted::Copula, U::AbstractMatrix,
+                       ::Val{:hessian}, methodv::Val{method}; weights=nothing) where {method}
     U, weights = _weighted_sample(U, weights)
-    fitted = CT(d, θ...)
     α = _parameter_coordinates(fitted)
     all(isfinite, α) || throw(ArgumentError(
         "Hessian inference requires fitted parameters in the finite interior of their parameter space"))
@@ -74,20 +72,15 @@ function _vcov_hessian(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
     H = ForwardDiff.hessian(ℓ, α)
     Iα = .-H
     Vα = _invert_observed_information(Iα)
-    return _vcov_finalize(CT, U, θ, vd, fitted, α, Vα)
+    return _vcov_finalize(fitted, α, Vα)
 end
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, ::Val{:godambe}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
-    return _vcov_godambe(CT, U, θ, Val(false), Val(:godambe), methodv; rng, nresamples, weights)
+function _vcov(fitted::Copula, U::AbstractMatrix, ::Val{:godambe}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
+    return _vcov_godambe(fitted, U, Val(false), Val(:godambe), methodv; rng, nresamples, weights)
 end
 
-function _vcov(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, ::Val{:godambe_pairwise}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
-    return _vcov_godambe(CT, U, θ, Val(true), Val(:godambe_pairwise), methodv; rng, nresamples, weights)
-end
-
-function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, pairwisev::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};
-                       rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {pairwise,vcovm,method}
-    return _vcov_godambe(CT, U, θ, Val(size(U, 1)), pairwisev, vcovv, methodv; rng, nresamples, weights)
+function _vcov(fitted::Copula, U::AbstractMatrix, ::Val{:godambe_pairwise}, methodv::Val{method}; rng=Random.default_rng(), nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {method}
+    return _vcov_godambe(fitted, U, Val(true), Val(:godambe_pairwise), methodv; rng, nresamples, weights)
 end
 
 # One nonparametric bootstrap resample of the observations, as indices. A
@@ -103,10 +96,9 @@ end
 _resample_indices!(idx::Vector{Int}, rng::Random.AbstractRNG, n::Int, w::AbstractVector) =
     StatsBase.sample!(rng, 1:n, StatsBase.fweights(w), idx)
 
-function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, vd::Val{d}, ::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};rng=Random.default_rng(),
+function _vcov_godambe(fitted::Copula{d}, U::AbstractMatrix, ::Val{pairwise}, vcovv::Val{vcovm}, methodv::Val{method};rng=Random.default_rng(),
                        nresamples::Union{Nothing,Integer}=nothing, weights=nothing) where {d,pairwise,vcovm,method}
     n = size(U, 2)
-    fitted = CT(d, θ...)
     α = _parameter_coordinates(fitted)
     all(isfinite, α) || throw(ArgumentError(
         "$vcovm inference requires fitted parameters in the finite interior of their parameter space"))
@@ -150,7 +142,7 @@ function _vcov_godambe(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple, vd::Val
     Iq = Matrix{eltype(Dα)}(LinearAlgebra.I, q, q)
     A = Dα \ Iq
     Vα = A * Ω * A' / n
-    return _vcov_finalize(CT, U, θ, vd, fitted, α, Vα)
+    return _vcov_finalize(fitted, α, Vα)
 end
 
 function _validate_inference_covariance(Vθ::AbstractMatrix)
@@ -172,23 +164,7 @@ function _validate_inference_covariance(Vθ::AbstractMatrix)
     return Vθ
 end
 
-# A single scalar natural parameter does not need a full distribution
-# reconstruction merely to differentiate the optimizer-to-coefficient map.
-# This path is generic over parameter spaces; structured natural parameters
-# continue through the reconstruction-based fallback below.
-function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple{<:Number},
-                        ::Val{d}, fitted, α, Vα) where {d}
-    j = ForwardDiff.gradient(
-        αv -> only(Distributions.params(_from_parameter_coordinates(fitted, αv))),
-        α,
-    )
-    J = reshape(j, 1, length(j))
-    Vθ = J * Vα * J'
-    return _validate_inference_covariance(Vθ)
-end
-
-function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
-                        vd::Val{d}, fitted, α, Vα) where {d}
+function _vcov_finalize(fitted::Copula, α, Vα)
     J = ForwardDiff.jacobian(
         αv -> _distribution_coefficient_values(
             _from_parameter_coordinates(fitted, αv)),
@@ -198,50 +174,36 @@ function _vcov_finalize(CT::Type{<:Copula}, U::AbstractMatrix, θ::Tuple,
     return _validate_inference_covariance(Vθ)
 end
 
-function _analytical_parameter_coordinates(target, d, parameters)
-    try
-        fitted = target(d, parameters...)
-        α = _parameter_coordinates(fitted)
-        return all(isfinite, α) ? (fitted, α) : nothing
-    catch err
-        err isa InterruptException && rethrow()
-        return nothing
-    end
-end
-
 function _default_inference_method(M::CopulaModel)
     M.result isa SklarDist && return :bootstrap
     spec = M.recipe
-    parameters = Distributions.params(fitted_distribution(M))
-    d = length(fitted_distribution(M))
+    C = _copula_of(M)
     analytical_coordinates = spec isa _CopulaFitSpec && spec.target isa Type &&
-        parameters isa Tuple &&
-        _analytical_parameter_coordinates(spec.target, d, parameters) !== nothing
+        _parameter_dimension_or_nothing(C) !== nothing &&
+        all(isfinite, _parameter_coordinates(C))
     fit_method = fitting_method(M)
     if fit_method === :mle && analytical_coordinates &&
             !(M.result isa Union{TCopula,tEVCopula})
         return :hessian
     end
     if analytical_coordinates && fit_method in (:itau, :irho, :ibeta)
-        return d == 2 ? :godambe : :godambe_pairwise
+        return length(C) == 2 ? :godambe : :godambe_pairwise
     end
-    if analytical_coordinates && fit_method === :iupper && d == 2
+    if analytical_coordinates && fit_method === :iupper && length(C) == 2
         return :godambe
     end
     throw(ArgumentError("no default covariance estimator is defined for fits using method=$fit_method; " * "choose an explicit supported inference method"))
 end
 
-function _inference_inputs(M::CopulaModel)
-    spec = M.recipe
-    spec isa _CopulaFitSpec || throw(ArgumentError(
+function _inference_data(M::CopulaModel)
+    M.recipe isa _CopulaFitSpec || throw(ArgumentError(
         "this model does not store a reproducible fitting specification"))
     data = M.data
     data isa AbstractMatrix || throw(ArgumentError(
         "the fitting observations required for inference are unavailable"))
-    parameters = Distributions.params(_copula_of(M))
-    parameters isa Tuple && !isempty(parameters) || throw(ArgumentError(
+    isempty(StatsBase.coef(M)) && throw(ArgumentError(
         "no finite-dimensional free parameter vector is available for inference"))
-    return spec.target, data, parameters
+    return data
 end
 
 function _resampling_covariance(M::CopulaModel, indices; rng, nresamples)
@@ -257,7 +219,7 @@ end
 function _infer(M::CopulaModel, ::Val{:bootstrap};
                 rng=Random.default_rng(), nresamples::Integer=200)
     nresamples > 1 || throw(ArgumentError("nresamples must be greater than one"))
-    _, data, _ = _inference_inputs(M)
+    data = _inference_data(M)
     n = size(data, 2)
     weights = _model_weights(M)
     idx = Vector{Int}(undef, n)
@@ -274,7 +236,7 @@ function _infer(M::CopulaModel, ::Val{:jackknife})
         "repeated weights[j] times needs every weight to be at least one, which " *
         "after normalization to n holds for unit weights only; use " *
         "method=:bootstrap, which resamples that sample"))
-    _, data, _ = _inference_inputs(M)
+    data = _inference_data(M)
     n = size(data, 2)
     n > 1 || throw(ArgumentError("jackknife inference requires at least two observations"))
     p = length(StatsBase.coef(M))
@@ -315,30 +277,28 @@ function _infer(M::CopulaModel, ::Val{method}; rng=nothing, nresamples::Union{No
             "Godambe inference is currently defined only for supported rank-matching fits; " *
             "analytical maximum pseudo-likelihood inference is unavailable, so use " *
             "method=:bootstrap or method=:jackknife when appropriate"))
-    C = M.result
+    C = _copula_of(M)
     method === :hessian && C isa Union{TCopula,tEVCopula} && throw(ArgumentError(
         "Hessian inference is unavailable because incomplete-beta derivatives are not implemented"))
-    target, _, parameters = _inference_inputs(M)
+    _parameter_dimension_or_nothing(C) === nothing && throw(ArgumentError(
+        "analytical `$method` inference is not implemented for fitting target $(spec.target)"))
     U = _copula_data(M)
     d = size(U, 1)
     method === :godambe && d != 2 && throw(ArgumentError(
         "scalar Godambe inference is defined only for bivariate rank-matching fits; " *
         "use method=:godambe_pairwise when the fitted estimator uses pairwise moments, " *
         "or use :bootstrap or :jackknife"))
-    _analytical_parameter_coordinates(target, d, parameters) !== nothing ||
-        throw(ArgumentError(
-            "analytical `$method` inference is not implemented for fitting target $target"))
     engine_method = fitting_method(M) === :mpl ? :mle : fitting_method(M)
     weights = _model_weights(M)
 
     if method === :hessian
         (isnothing(rng) && isnothing(nresamples)) || throw(ArgumentError(
             "`rng` and `nresamples` apply to Godambe/bootstrap inference, not :hessian"))
-        return _vcov(target, U, parameters, Val(method), Val(engine_method); weights)
+        return _vcov(C, U, Val(method), Val(engine_method); weights)
     end
 
     godambe_rng = isnothing(rng) ? Random.default_rng() : rng
-    return _vcov(target, U, parameters, Val(method), Val(engine_method); rng=godambe_rng, nresamples, weights)
+    return _vcov(C, U, Val(method), Val(engine_method); rng=godambe_rng, nresamples, weights)
 end
 
 """
