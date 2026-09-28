@@ -242,7 +242,7 @@ function _archimax_cdf(C::BB4Copula{2,T}, u) where T
     u1, u2 = u
 
     uθ = exp(-θ*log(u1))
-    vθ = exp(-θ*log(v1))
+    vθ = exp(-θ*log(u2))
     a  = expm1(-θ*log(u1))              # = u1^{-θ} - 1  ≥ 0
     b  = expm1(-θ*log(u2))              # = u2^{-θ} - 1  ≥ 0
     x  = a^(-δ)
