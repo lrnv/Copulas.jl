@@ -522,21 +522,6 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
             @test 0 <= pvalue(Tsklar) <= 1
             @test_throws ArgumentError GOFCopulaTest(Msklar, pseudos(Xsklar);
                 pseudo_values=true, N=1)
-
-            @testset "Custom parametrisation is reproducibly refitted" begin
-                # Runtime parametrisations are retained in the internal fit
-                # specification, so composite GOF can replay the same estimator.
-                reparam = α -> begin
-                    θ = exp(α[1])
-                    NestedArchimedeanCopula(Copulas.ClaytonGenerator(θ); leaves=[1], children=[ClaytonCopula(2, θ + one(θ)) => [2, 3]],)
-                end
-
-                Mcustom = fit(CopulaModel, reparam, [log(1.5)], Unested)
-                @test Mcustom.recipe isa Copulas._CopulaFitSpec
-                @test Copulas._refit(Mcustom, Unested) isa CopulaModel
-                @test_nowarn GOFCopulaTest(Mcustom; N=1, rng=Xoshiro(909),)
-            end
-
         end
 
         io = IOBuffer()

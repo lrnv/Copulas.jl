@@ -108,21 +108,6 @@
     Nroundtrip = Copulas._nested_rebound(N, Copulas._nested_unbound(N))
     @test Copulas._nested_coef(Nroundtrip)[2] ≈ Copulas._nested_coef(N)[2]
 
-    # A custom runtime reparametrization can have fewer irreducible fitting
-    # coordinates than natural generator parameters. The fit recipe controls dof,
-    # but optimizer coordinates must never leak into coef/coefnames.
-    runtime_recipe = Copulas._CopulaFitSpec(
-        (; reparam=identity, init=[0.0], coordinates=[0.25]),
-        :mle,
-        (;),
-    )
-    Mruntime = CopulaModel(N, zeros(length(N), 1), 0.0, runtime_recipe)
-    nested_names, nested_values = Copulas._nested_coef(N)
-    @test StatsBase.coefnames(Mruntime) == nested_names
-    @test StatsBase.coef(Mruntime) == nested_values
-    @test StatsBase.dof(Mruntime) == 1
-    @test length(StatsBase.coef(Mruntime)) == 3
-
     # Gaussian correlation matrices keep their concise strict-triangle reporting
     # convention. Other structured parameters are free to report redundant
     # natural values without changing their intrinsic statistical dof.

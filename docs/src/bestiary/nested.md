@@ -181,38 +181,11 @@ M = fit(CopulaModel, Cstart, U)
 fitted_distribution(M)
 ```
 
-The optimiser runs in an unconstrained space through a **parametrisation** — a map
-`α -> NestedArchimedeanCopula` decoupled from the generator objects. Above we fit
-a **template** tree. For full control, pass your own map and its initial point,
-`fit(CopulaModel, reparam, init, U)` — no template needed, since `reparam` builds
-the whole tree. This lets you share parameters across nodes, fit on a different
-scale, or encode an application-specific constraint.
+The optimiser uses the template's nesting-aware parameterisation. Every finite
+optimizer coordinate reconstructs a tree inside the supported fitting geometry;
+the public constructor itself remains more permissive than the fitter.
 
-For instance, a custom map can make each child's ``\theta`` a non-negative
-increment over its parent's:
-
-```@example nested
-softplus(x) = log1p(exp(-abs(x))) + max(x, zero(x))
-nest = α -> NestedArchimedeanCopula(ClaytonGenerator(exp(α[1]));
-    children = [ClaytonCopula(2, exp(α[1]) + softplus(α[2])),
-                ClaytonCopula(2, exp(α[1]) + softplus(α[3]))])
-Mn = fit(CopulaModel, nest, [0.0, 0.0, 0.0], U)
-fitted_distribution(Mn)
-```
-
-Or share one ``\theta`` across the root and both panels — a single free parameter:
-
-```@example nested
-recon = α -> (θ = exp(α[1]);
-    NestedArchimedeanCopula(ClaytonGenerator(θ);
-        children = [ClaytonCopula(2, θ), ClaytonCopula(2, θ)]))
-Ms = fit(CopulaModel, recon, [0.0], U)
-fitted_distribution(Ms) # the root and both panels share one parameter by construction
-coef(Ms)                 # one fitted free coordinate
-```
-
-`fit(C0, U)` is a shorthand returning just the fitted copula; for the custom form
-use `fitted_distribution(fit(CopulaModel, reparam, init, U))`.
+`fit(Cstart, U)` is the shorthand returning only the fitted copula.
 
 ## Precision
 

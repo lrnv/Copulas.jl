@@ -747,7 +747,6 @@ Base.show(io::IO, C::NestedArchimedeanCopula{d}) where {d} =
 #       = Σ_{i∈O} log f_i(x_i)  +  log [ ∂^{|O|} C / ∏_{i∈O} ∂u_i ] / c_O(u_O)
 #       + log c_O(u_O)
 #       = Σ_{i∈O} log f_i(x_i)  +  log ∂^{|O|} C / ∏_{i∈O} ∂u_i,
-#
 # i.e. the observed-marginal densities times the copula's mixed partial over the
 # observed coordinates — the correct per-variable censored likelihood. The
 # denominator c_O cancels, so the recipe reproduces the raw mixed partial.
@@ -960,31 +959,10 @@ end
 # =============================================================================
 # Maximum-likelihood fitting for NestedArchimedeanCopula with a FIXED tree.
 #
-# The tree SHAPE (leaf layout, children blocks) and the generator FAMILY at every
-# node are part of the model and are NOT inferable from data; only the scalar
-# parameters θ of each generator (root and inner) are optimised. fit() therefore
-# dispatches on a TEMPLATE INSTANCE `C0::NestedArchimedeanCopula` that carries the
-# full tree — neither `fit(NestedArchimedeanCopula, U)` (a bare type) nor
-# `fit(typeof(C0), U)` can rebuild the tree, since the type parameters
-# `{d, root-TG}` encode only the dimension and the root generator family.
-#
-# The optimiser runs in UNCONSTRAINED reparameterised α-space, exactly like the
-# generic `_fit(::Type{<:Copula}, U, ::Val{:mle})` driver in Fitting.jl: each
-# generator's parameters are mapped to ℝ^p by their Paramorph schemas. This (a) keeps every individual generator inside its
-# own valid family domain at all times, and (b) needs no box-constraint machinery.
-#
-# NESTING VALIDITY: the DEFAULT template parametrisation uses a
-# a sequential conditional chart. Supported parent-child inequalities are therefore
-# enforced by the coordinate map itself, while the public constructor remains
-# intentionally permissive about cross-node nesting theory. Custom `reparam`/`init`
-# maps remain user-defined and are responsible for the validity of the trees they
-# produce beyond each node's constructor-level dimensional validity.
-#
-# The tree is walked in a fixed PRE-ORDER (root generator, then each child block
-# in `children` declaration order; a flat child `(ArchimedeanCopula, dims)` inline,
-# a nested child by recursion). `_nested_unbound` and `_nested_rebound` MUST use
-# the SAME order and the SAME local-arity helper, or a Frank node (which switches
-# parameterisation at local-arity 2 vs ≥3) would corrupt its α-slice.
+# The tree shape, leaf layout, and generator family at every node come from a
+# template instance. Only the supported generator parameters are optimized.
+# The nesting-aware chart below maps unconstrained coordinates to valid template
+# trees while leaving explicit construction intentionally permissive.
 # =============================================================================
 
 # Bare UnionAll generator type from an instance, e.g. ClaytonGenerator{Float64}
@@ -1109,32 +1087,17 @@ function _nested_rebound(C::NestedArchimedeanCopula, α::AbstractVector)
     return rebuilt
 end
 
-# ---- Fitting-interface opt-out ----------------------------------------------
-# A bare nested type cannot reconstruct a tree; fitting is supported through
-# the template-instance API below, so no type-based fitting method is advertised.
+# A bare nested type cannot reconstruct a tree; fitting is supported only from a
+# template instance, so no type-based fitting method is advertised.
 _available_fitting_methods(::Type{<:NestedArchimedeanCopula}, d) = Tuple{}()
 
-# ---- Parametrization layer (decoupled α -> tree map) ------------------------
-# fit() optimises an unconstrained vector α through a reconstruction map. The
-# public coefficients remain the fitted generators' natural parameters.
-# `recon : α -> NestedArchimedeanCopula`. The DEFAULT (`_nested_rebound`)
-# reparametrises each generator independently inside its own family domain. A
-# CUSTOM `recon` (keywords `reparam`/`init`) decouples α from the generator
-# objects entirely, so the caller can share parameters across nodes, change the
-# per-generator parametrisation, or encode a constraint such as nesting (e.g. a
-# child θ = parent θ + softplus(δ) increment; see the docs). `recon` only has to
-# build the tree from α generically, so ForwardDiff differentiates straight through.
-
-# ---- The MLE on a TEMPLATE INSTANCE (fixed structure) -----------------------
-
-# The template fitting chart is nesting-valid by construction; custom runtime
-# parametrisations are an expert escape hatch and remain caller-responsible.
-function _fit_nested(recon, α₀::AbstractVector, U; weights=nothing)
+function _fit_nested(C0::NestedArchimedeanCopula, U; weights=nothing)
     U, weights = _weighted_sample(U, weights)
-    loss(α) = -_weighted_loglikelihood(recon(α), U, weights)
+    α₀ = _nested_unbound(C0)
+    reconstruct = Base.Fix1(_nested_rebound, C0)
+    loss(α) = -_weighted_loglikelihood(reconstruct(α), U, weights)
     res = Optim.optimize(loss, α₀, Optim.LBFGS(); autodiff=ADTypes.AutoForwardDiff())
-    α = collect(Optim.minimizer(res))
-    return recon(α), α
+    return reconstruct(Optim.minimizer(res))
 end
 
 function _validate_nested_fit_data(U, d::Int)
@@ -1146,35 +1109,20 @@ function _validate_nested_fit_data(U, d::Int)
     return nothing
 end
 
-# Default: reparametrise a fixed TEMPLATE tree (its shape + families are kept fixed,
-# only the scalar θ of every node is optimised).
 """
-    fit(CopulaModel, C0::NestedArchimedeanCopula, U)        # template tree
-    fit(CopulaModel, reparam, init, U)                      # custom parametrisation
+    fit(CopulaModel, C0::NestedArchimedeanCopula, U)
+    fit(C0::NestedArchimedeanCopula, U)
 
-Maximum-likelihood estimation of the generator parameters of a nested Archimedean
-copula. `U` is a `d×n` matrix of pseudo-observations (columns = observations). The
-optimiser runs in an unconstrained space through a *parametrisation* — a map
-`α -> NestedArchimedeanCopula` decoupled from the generator objects — supplied in
-one of two ways:
+Maximum-likelihood estimation of the generator parameters of a nested
+Archimedean copula with a fixed template tree. `U` is a `d×n` matrix of
+pseudo-observations. The template supplies the tree shape, leaf layout, and
+per-node generator families; only the supported generator parameters are fitted.
+For the standard one-parameter nesting rules, the internal chart keeps every
+optimizer iterate inside the supported nesting geometry.
 
-  * **template** `C0`: a template instance whose tree shape (leaf layout, children
-    blocks) and per-node generator families are kept fixed. For the supported
-    standard one-parameter nesting rules, Paramorph jointly constrains parent and
-    child parameters so every finite optimiser coordinate maps to a valid nesting.
-  * **custom** `reparam`, `init`: your own map `reparam(α) -> copula` and its
-    initial `α₀` (no template needed — the map fully defines the tree). Use it to
-    share parameters across nodes, change the per-generator parametrisation (e.g.
-    fit on a Kendall-τ scale), or enforce a constraint such as nesting (parametrise
-    each child's θ as a non-negative increment over its parent's). `reparam` must
-    build the tree from `α` generically so ForwardDiff can differentiate it.
-
-`fit(C0, U)` is a quick shim returning only the fitted copula; for the custom form
-use `fitted_distribution(fit(CopulaModel, reparam, init, U))`.
-
-Both forms take `weights`, one non-negative weight per observation, with the
-semantics documented for `fit(CopulaModel, CT, U)`: a weighted pseudo-likelihood
-whose weights are normalized to sum to the number of observations.
+Both forms accept `weights` with the same semantics as other likelihood fits.
+The `CopulaModel` form records a replayable template recipe; `fit(C0, U)` returns
+only the fitted copula.
 """
 function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, U;
         method=:mle, weights=nothing, kwargs...) where {d}
@@ -1183,7 +1131,7 @@ function Distributions.fit(::Type{CopulaModel}, C0::NestedArchimedeanCopula{d}, 
     _validate_nested_fit_data(U, d)
     weights = _fit_weights(weights, size(U, 2))
     fit_spec = _CopulaFitSpec(C0, :mle, _nested_fit_kwargs(weights, kwargs))
-    fitted, _ = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U; weights)
+    fitted = _fit_nested(C0, U; weights)
     return CopulaModel(fitted, U, _weighted_loglikelihood(fitted, U, weights), fit_spec)
 end
 
@@ -1191,25 +1139,6 @@ end
 _nested_fit_kwargs(::Nothing, kwargs) = (; kwargs...)
 _nested_fit_kwargs(weights::AbstractVector, kwargs) = (; kwargs..., weights)
 
-# Custom parametrisation: a map `reparam : α -> NestedArchimedeanCopula` and its
-# initial α₀ — NO template, the map fully defines the tree (so it can share
-# parameters, change the per-generator parametrisation, or encode a constraint).
-function Distributions.fit(::Type{CopulaModel}, reparam, init::AbstractVector, U;
-        method=:mle, weights=nothing, kwargs...)
-    _reject_inference_fit_keywords((; kwargs...))
-    method === :mle || throw(ArgumentError("NestedArchimedeanCopula supports only method=:mle (got $method)."))
-    α₀ = collect(float.(init))
-    d  = length(reparam(α₀))::Int                 # dimension from the parametrisation itself
-    _validate_nested_fit_data(U, d)
-    weights = _fit_weights(weights, size(U, 2))
-    fitted, α = _fit_nested(reparam, α₀, U; weights)
-    fit_spec = _CopulaFitSpec((; reparam, init=copy(α₀), coordinates=α), :mle,
-                              _nested_fit_kwargs(weights, kwargs))
-    return CopulaModel(fitted, U, _weighted_loglikelihood(fitted, U, weights), fit_spec)
-end
-
-# Both template and custom runtime fits expose the fitted generators' natural
-# parameters. Runtime optimizer coordinates remain fitting metadata only.
 function _nested_generator_coef(G::Generator, tag::String)
     names = String[]
     values = Float64[]
@@ -1240,10 +1169,6 @@ function _nested_coef(C::NestedArchimedeanCopula, tag::String = "G")
     return names, values
 end
 
-
-# Quick template shim: returns only the fitted copula. (No `fit(reparam, init, U)`
-# shim — with an untyped `reparam` it would be type piracy on `Distributions.fit`;
-# use `fitted_distribution(fit(CopulaModel, reparam, init, U))` for the custom case.)
 function Distributions.fit(C0::NestedArchimedeanCopula{d}, U;
                            method=:mle, weights=nothing, kwargs...) where {d}
     _reject_inference_fit_keywords((; kwargs...))
@@ -1251,6 +1176,5 @@ function Distributions.fit(C0::NestedArchimedeanCopula{d}, U;
         "NestedArchimedeanCopula supports only method=:mle (got $method)."))
     _validate_nested_fit_data(U, d)
     weights = _fit_weights(weights, size(U, 2))
-    fitted, _ = _fit_nested(Base.Fix1(_nested_rebound, C0), _nested_unbound(C0), U; weights)
-    return fitted
+    return _fit_nested(C0, U; weights)
 end
