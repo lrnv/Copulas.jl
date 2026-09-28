@@ -1,3 +1,8 @@
+Paramorph.@paramorph struct ArchimaxCopula{d,TG,TT} <: Copula{d}
+    gen::TG ~ Paramorph.nested(dimension=d)
+    tail::TT ~ Paramorph.nested(dimension=d)
+end
+
 """
     ArchimaxCopula(d, gen::Generator, tail::Tail)
     ArchimaxCopula{d}(gen::Generator, tail::Tail)
@@ -38,10 +43,6 @@ References:
 * [charpentier2014](@cite) Charpentier, Fougères & Genest (2014), Multivariate Archimax Copulas.
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications.
 """
-Paramorph.@paramorph struct ArchimaxCopula{d,TG,TT} <: Copula{d}
-    gen::TG ~ Paramorph.nested(dimension=d)
-    tail::TT ~ Paramorph.nested(dimension=d)
-end
 function ArchimaxCopula{d}(gen::Generator, tail::Tail) where {d}
     max_monotony(gen) >= d || throw(DomainError(
         d,
