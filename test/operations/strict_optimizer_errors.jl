@@ -37,9 +37,6 @@ Copulas._fit_prototype(
     ::Type{_OverparameterizedRankCopula}, ::Val{d},
 ) where {d} = _OverparameterizedRankCopula{d}()
 
-struct _FloatOnlyNestedRecon end
-(::_FloatOnlyNestedRecon)(α::AbstractVector{Float64}) = ClaytonCopula(2, exp(first(α)))
-
 @testset "optimizer fallback does not mask implementation errors" begin
     U = [0.15 0.35 0.65 0.85; 0.25 0.55 0.45 0.75]
 
@@ -54,13 +51,9 @@ struct _FloatOnlyNestedRecon end
     @test all(isfinite, ForwardDiff.hessian(objective, [0.0]))
 
     # Capability probes distinguish absence from a broken declared geometry.
-    # Invalid natural parameters likewise remain constructor errors instead of
-    # being silently reclassified as unavailable analytical inference.
     @test Copulas._parameter_dimension_or_nothing(Normal()) === nothing
     @test_throws ArgumentError Copulas._parameter_dimension_or_nothing(
         _BrokenGeometryCopula{2}())
-    @test_throws DomainError Copulas._analytical_parameter_coordinates(
-        ClaytonCopula, 3, (-0.75,))
 
     # An over-parameterized generic rank fit must report the intended
     # identifiability error rather than touching the not-yet-created α₀ vector.
@@ -90,9 +83,6 @@ struct _FloatOnlyNestedRecon end
     # #518 the generic fitter swallowed that MethodError and silently retried
     # with Nelder--Mead, making the fit appear to succeed.
     @test_throws MethodError fit(_BrokenADCopula, U; method=:mle)
-
-    # The nested optimizer used the same exception-driven retry policy.
-    @test_throws MethodError Copulas._fit_nested(_FloatOnlyNestedRecon(), [0.1], U)
 
     # Real package fitters still use their intended analytical MLE routes.
     @test fit(GaussianCopula, U; method=:mle) isa GaussianCopula

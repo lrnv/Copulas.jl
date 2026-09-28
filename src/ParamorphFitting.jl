@@ -199,28 +199,6 @@ function _from_parameter_coordinates(C::LiouvilleCopula{d}, α) where {d}
     return LiouvilleCopula{d}(G, Tuple(values.α))
 end
 
-# Inference reconstructs a fitted family from its natural parameters. A target
-# may already encode the copula dimension (`GumbelCopula{2}`), in which case
-# passing `d` again selects the wrong constructor. Unsupported targets return
-# `nothing`; errors from a declared geometry or from invalid parameters propagate.
-function _analytical_parameter_coordinates(target::Type{<:Copula}, d, parameters)
-    args = _parameter_arguments(parameters)
-    unwrapped = Base.unwrap_unionall(target)
-    type_parameters = unwrapped.parameters
-    if isempty(type_parameters)
-        _declares_parameter_geometry(target) || return nothing
-        fitted = target(args...)
-        α = _parameter_coordinates(fitted)
-        return all(isfinite, α) ? (fitted, α) : nothing
-    end
-    encoded_dimension = first(type_parameters)
-    fitted = encoded_dimension isa TypeVar ?
-             target(d, args...) : target(args...)
-    _parameter_dimension_or_nothing(fitted) === nothing && return nothing
-    α = _parameter_coordinates(fitted)
-    return all(isfinite, α) ? (fitted, α) : nothing
-end
-
 # Rank inversions are pairwise, but some one-parameter Archimedean families have
 # a narrower admissible domain when the fitted copula dimension is larger than
 # two. Derive the target interval from the Paramorph chart itself instead of
