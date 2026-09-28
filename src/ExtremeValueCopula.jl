@@ -1,3 +1,7 @@
+Paramorph.@paramorph struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
+    tail::TT ~ Paramorph.nested(dimension=d)
+end
+
 """
     ExtremeValueCopula(d, tail::Tail)
     ExtremeValueCopula{d}(tail::Tail)
@@ -45,9 +49,6 @@ References:
 * [joe2014](@cite) Joe, H. (2014). Dependence Modeling with Copulas. CRC press.
 * [mai2014financial](@cite) Mai, J. F., & Scherer, M. (2014). Financial engineering with copulas explained (p. 168). London: Palgrave Macmillan.
 """
-Paramorph.@paramorph struct ExtremeValueCopula{d,TT<:Tail} <: Copula{d}
-    tail::TT ~ Paramorph.nested(dimension=d)
-end
 function ExtremeValueCopula{d}(tail::Tail) where {d}
     d >= 2 || throw(ArgumentError("an extreme-value copula requires d ≥ 2"))
     _is_valid_in_dim(tail, d) || throw(ArgumentError(
