@@ -1,3 +1,7 @@
+Paramorph.@paramorph struct ArchimedeanCopula{d,TG} <: Copula{d}
+    G::TG ~ Paramorph.nested(dimension=d)
+end
+
 """
     ArchimedeanCopula(d::Int, G::Generator)
     ArchimedeanCopula{d}(G::Generator)
@@ -51,9 +55,6 @@ References:
 * [williamson1956](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
 * [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
 """
-Paramorph.@paramorph struct ArchimedeanCopula{d,TG} <: Copula{d}
-    G::TG ~ Paramorph.nested(dimension=d)
-end
 function ArchimedeanCopula{d}(G::Generator) where {d}
     d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
     d <= max_monotony(G) || throw(DomainError(
