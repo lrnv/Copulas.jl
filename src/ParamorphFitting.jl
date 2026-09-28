@@ -1,28 +1,13 @@
 # Internal bridge between Copulas' notion of parameter geometry and Paramorph.
 #
-# Model files declare constraints with `@paramorph`; fitting and inference use
-# only the `_parameter_*` functions below. Paramorph-specific runtime calls are
-# intentionally centralized here.
-
-function _concrete_paramorph_type(T::Type, ::Type{N}=Float64) where {N<:Real}
-    concrete = Paramorph.rebind_numeric_type(T, N)
-    if concrete isa UnionAll
-        candidate = try
-            Core.apply_type(concrete, N)
-        catch err
-            err isa TypeError || rethrow()
-            concrete
-        end
-        Paramorph.is_paramorph_type(candidate) && return candidate
-    end
-    return concrete
-end
+# Fitting and inference use only the `_parameter_*` functions below.  The bridge
+# deliberately depends only on Paramorph's public package-integration API.
 
 _parameter_dimension(object) = Paramorph.intrinsic_dimension(object)
 _parameter_coordinates(object) = Paramorph.unconstrain(object)
 _from_parameter_coordinates(object, α) = Paramorph.constraint(object, α)
 
-_declares_parameter_geometry(::Type{T}) where {T} = Paramorph.is_paramorph_type(T)
+_declares_parameter_geometry(::Type{T}) where {T} = Paramorph.has_parameter_geometry(T)
 _declared_parameter_values(object) =
     _declares_parameter_geometry(typeof(object)) ? Paramorph.parameter_values(object) : nothing
 
@@ -52,12 +37,7 @@ end
 function _component_prototype(
     T::Type, context::NamedTuple=NamedTuple(); auxiliary::NamedTuple=NamedTuple(),
 )
-    concrete = _concrete_paramorph_type(T)
-    Paramorph.is_paramorph_type(concrete) || throw(ArgumentError(
-        "$T does not declare parameter geometry with @paramorph",
-    ))
-    n = Paramorph.intrinsic_dimension(concrete; context, auxiliary)
-    return Paramorph.constraint(concrete, zeros(n); context, auxiliary)
+    return Paramorph.parameter_prototype(T; context, auxiliary)
 end
 
 function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
@@ -65,12 +45,12 @@ function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     encoded_dimension = unwrapped.parameters[1]
     dimensioned = encoded_dimension isa TypeVar ?
                   Core.apply_type(Base.typename(unwrapped).wrapper, d) : CT
-    concrete = _concrete_paramorph_type(dimensioned)
-    return _component_prototype(concrete, (; dimension=d))
+    return Paramorph.parameter_prototype(dimensioned; context=(; dimension=d))
 end
 
-# Structural wrappers are deliberately not Paramorph types. Their components
-# own the geometry; this bridge supplies only composition/reconstruction.
+# Structural wrappers still compose their component geometries here.  Paramorph
+# 0.1 can express these declarations directly; the dedicated methods below are
+# removed as each wrapper is migrated to `@paramorph`.
 function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
     G = _component_prototype(generatorof(CT), (; dimension=d))
     return ArchimedeanCopula{d}(G)
@@ -87,9 +67,8 @@ function _from_parameter_coordinates(C::ArchimedeanCopula{d}, α) where {d}
 end
 
 function _tail_prototype(TT::Type, ::Val{d}) where {d}
-    concrete = _concrete_paramorph_type(TT)
     return _component_prototype(
-        concrete, (; dimension=d); auxiliary=(; d=d),
+        TT, (; dimension=d); auxiliary=(; d=d),
     )
 end
 
@@ -169,34 +148,22 @@ _from_parameter_coordinates(C::Rotated180Copula, α) =
 _from_parameter_coordinates(C::Rotated270Copula, α) =
     Rotated270Copula(_from_parameter_coordinates(basecopula(C), α))
 
-# Liouville has a structural product chart: generator parameters followed by
-# positive Dirichlet parameters. The chart composition belongs here, not in the
-# model definition.
-function _liouville_schema(C::LiouvilleCopula{d}) where {d}
-    return Paramorph.TransformVariables.as((
-        G=Paramorph.recursive_schema(C.G, (; dimension=2)),
-        α=Paramorph.TransformVariables.as(
-            Vector, Paramorph.TransformVariables.asℝ₊, d,
-        ),
-    ))
-end
-function _parameter_dimension(C::LiouvilleCopula)
-    return Paramorph.TransformVariables.dimension(_liouville_schema(C))
+# Liouville has a genuinely coupled domain constraint between the generator and
+# the Dirichlet weights, so it remains a Copulas-specific chart.  Keep its
+# implementation on Paramorph's public object operations rather than composing
+# internal TransformVariables schemas here.
+function _parameter_dimension(C::LiouvilleCopula{d}) where {d}
+    return Paramorph.intrinsic_dimension(C.G; context=(; dimension=2)) + d
 end
 function _parameter_coordinates(C::LiouvilleCopula)
-    values = (; G=Paramorph.parameter_values(C.G), α=collect(C.α))
-    return Paramorph.TransformVariables.inverse(_liouville_schema(C), values)
+    generator = Paramorph.unconstrain(C.G; context=(; dimension=2))
+    return vcat(generator, log.(collect(C.α)))
 end
 function _from_parameter_coordinates(C::LiouvilleCopula{d}, α) where {d}
-    values = Paramorph.TransformVariables.transform(_liouville_schema(C), α)
-    G = Paramorph.constraint(
-        C.G,
-        Paramorph.TransformVariables.inverse(
-            Paramorph.recursive_schema(C.G, (; dimension=2)), values.G,
-        );
-        context=(; dimension=2),
-    )
-    return LiouvilleCopula{d}(G, Tuple(values.α))
+    ng = Paramorph.intrinsic_dimension(C.G; context=(; dimension=2))
+    G = Paramorph.constraint(C.G, view(α, 1:ng); context=(; dimension=2))
+    weights = ntuple(i -> exp(α[ng + i]), d)
+    return LiouvilleCopula{d}(G, weights)
 end
 
 # Rank inversions are pairwise, but some one-parameter Archimedean families have
@@ -211,13 +178,13 @@ const _DimensionDependentRankGenerator = Union{
 }
 
 function _scalar_parameter_endpoints(GT::Type{<:Generator}, d::Int)
-    concrete = _concrete_paramorph_type(GT)
     context = (; dimension=d)
-    Paramorph.intrinsic_dimension(concrete; context) == 1 || throw(ArgumentError(
+    prototype = Paramorph.parameter_prototype(GT; context)
+    Paramorph.intrinsic_dimension(prototype; context) == 1 || throw(ArgumentError(
         "$GT does not have a scalar parameter geometry in dimension $d",
     ))
     endpoint(z) = only(values(Paramorph.parameter_values(
-        Paramorph.constraint(concrete, [z]; context),
+        Paramorph.constraint(prototype, [z]; context),
     )))
     return endpoint(-Inf), endpoint(Inf)
 end
