@@ -18,15 +18,6 @@ function _named_parameter_values(component)
     end
 end
 
-# ArchimedeanCopula.jl already handles all in-package Paramorph generators and
-# keeps arbitrary downstream generators opaque. When such an opaque generator
-# is the natural constructor argument, the fully typed copula constructor must
-# accept that exact generator instance rather than trying to reconstruct it from
-# itself. This preserves the ordinary `typeof(C)(params(C)...)` round trip.
-function (::Type{ArchimedeanCopula{d,TG}})(G::TG) where {d,TG<:Generator}
-    return _wrap_archimedean(Val(d), G)
-end
-
 # Liouville exposes the generator's natural parameters followed by the positive
 # Dirichlet vector described by its parameter geometry. A downstream generator that
 # does not implement Paramorph keeps the pre-existing structural representation.
