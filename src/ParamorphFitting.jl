@@ -1,7 +1,4 @@
-# Internal bridge between Copulas' notion of parameter geometry and Paramorph.
-#
-# Fitting and inference use only the `_parameter_*` functions below.  The bridge
-# deliberately depends only on Paramorph's public package-integration API.
+# Small adapter between Copulas fitting/inference and Paramorph's public API.
 
 _parameter_dimension(object) = Paramorph.intrinsic_dimension(object)
 _parameter_coordinates(object) = Paramorph.unconstrain(object)
@@ -16,28 +13,10 @@ _declared_parameter_values(object) =
 # must propagate instead of being reclassified as "no geometry".
 _parameter_dimension_or_nothing(object) =
     _declares_parameter_geometry(typeof(object)) ? _parameter_dimension(object) : nothing
-
-function _parameter_dimension_or_nothing(C::ArchimedeanCopula)
-    return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
-end
-function _parameter_dimension_or_nothing(C::ExtremeValueCopula)
-    return _declares_parameter_geometry(typeof(C.tail)) ? _parameter_dimension(C) : nothing
-end
-function _parameter_dimension_or_nothing(C::ArchimaxCopula)
-    (_declares_parameter_geometry(typeof(C.gen)) &&
-     _declares_parameter_geometry(typeof(C.tail))) || return nothing
-    return _parameter_dimension(C)
-end
 _parameter_dimension_or_nothing(C::AbstractReflectedCopula) =
     _parameter_dimension_or_nothing(basecopula(C))
 function _parameter_dimension_or_nothing(C::LiouvilleCopula)
     return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
-end
-
-function _component_prototype(
-    T::Type, context::NamedTuple=NamedTuple(); auxiliary::NamedTuple=NamedTuple(),
-)
-    return Paramorph.parameter_prototype(T; context, auxiliary)
 end
 
 function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
@@ -48,27 +27,12 @@ function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     return Paramorph.parameter_prototype(dimensioned; context=(; dimension=d))
 end
 
-# Structural wrappers still compose their component geometries here.  Paramorph
-# 0.1 can express these declarations directly; the dedicated methods below are
-# removed as each wrapper is migrated to `@paramorph`.
-function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
-    G = _component_prototype(generatorof(CT), (; dimension=d))
-    return ArchimedeanCopula{d}(G)
-end
-function _parameter_dimension(C::ArchimedeanCopula{d}) where {d}
-    return Paramorph.intrinsic_dimension(C.G; context=(; dimension=d))
-end
-function _parameter_coordinates(C::ArchimedeanCopula{d}) where {d}
-    return Paramorph.unconstrain(C.G; context=(; dimension=d))
-end
-function _from_parameter_coordinates(C::ArchimedeanCopula{d}, α) where {d}
-    G = Paramorph.constraint(C.G, α; context=(; dimension=d))
-    return ArchimedeanCopula{d}(G)
-end
-
+# Some tail families store their dimension as an auxiliary runtime field.  The
+# outer copula knows that value structurally, so provide it through the public
+# prototype API when reconstructing a family from its type.
 function _tail_prototype(TT::Type, ::Val{d}) where {d}
-    return _component_prototype(
-        TT, (; dimension=d); auxiliary=(; d=d),
+    return Paramorph.parameter_prototype(
+        TT; context=(; dimension=d), auxiliary=(; d=d),
     )
 end
 
@@ -78,7 +42,9 @@ function _tail_prototype(TT::Type{<:HuslerReissTail}, ::Val{d}) where {d}
     encoded_d isa TypeVar || encoded_d == d || throw(DimensionMismatch(
         "Hüsler-Reiss tail dimension $encoded_d does not match d=$d",
     ))
-    return _component_prototype(HuslerReissTail{d,Float64}, (; dimension=d))
+    return Paramorph.parameter_prototype(
+        HuslerReissTail{d,Float64}; context=(; dimension=d),
+    )
 end
 
 function _tail_prototype(TT::Type{<:tEVTail}, ::Val{d}) where {d}
@@ -87,56 +53,24 @@ function _tail_prototype(TT::Type{<:tEVTail}, ::Val{d}) where {d}
     encoded_d isa TypeVar || encoded_d == d || throw(DimensionMismatch(
         "extremal-t tail dimension $encoded_d does not match d=$d",
     ))
-    return _component_prototype(tEVTail{d,Float64}, (; dimension=d))
+    return Paramorph.parameter_prototype(
+        tEVTail{d,Float64}; context=(; dimension=d),
+    )
 end
 
 function _parameter_prototype(CT::Type{<:ExtremeValueCopula}, vd::Val{d}) where {d}
     return ExtremeValueCopula{d}(_tail_prototype(tailof(CT), vd))
 end
-function _parameter_dimension(C::ExtremeValueCopula{d}) where {d}
-    return _parameter_dimension(C.tail, Val(d))
-end
-function _parameter_coordinates(C::ExtremeValueCopula{d}) where {d}
-    return _parameter_coordinates(C.tail, Val(d))
-end
-function _from_parameter_coordinates(C::ExtremeValueCopula{d}, α) where {d}
-    return ExtremeValueCopula{d}(_from_parameter_coordinates(C.tail, α, Val(d)))
-end
-
-# Ordinary @paramorph tails need only a dimension context. Runtime auxiliary
-# fields (for example a stored dimension) are already available from the object.
-_parameter_dimension(tail::Tail, ::Val{d}) where {d} =
-    Paramorph.intrinsic_dimension(tail; context=(; dimension=d))
-_parameter_coordinates(tail::Tail, ::Val{d}) where {d} =
-    Paramorph.unconstrain(tail; context=(; dimension=d))
-_from_parameter_coordinates(tail::Tail, α, ::Val{d}) where {d} =
-    Paramorph.constraint(tail, α; context=(; dimension=d))
 
 function _parameter_prototype(CT::Type{<:ArchimaxCopula}, vd::Val{d}) where {d}
     GT, TT = genandtailof(CT)
-    G = _component_prototype(GT, (; dimension=d))
+    G = Paramorph.parameter_prototype(GT; context=(; dimension=d))
     tail = _tail_prototype(TT, vd)
     return ArchimaxCopula{d}(G, tail)
 end
-function _parameter_dimension(C::ArchimaxCopula{d}) where {d}
-    return Paramorph.intrinsic_dimension(C.gen; context=(; dimension=d)) +
-           _parameter_dimension(C.tail, Val(d))
-end
-function _parameter_coordinates(C::ArchimaxCopula{d}) where {d}
-    return vcat(
-        Paramorph.unconstrain(C.gen; context=(; dimension=d)),
-        _parameter_coordinates(C.tail, Val(d)),
-    )
-end
-function _from_parameter_coordinates(C::ArchimaxCopula{d}, α) where {d}
-    ng = Paramorph.intrinsic_dimension(C.gen; context=(; dimension=d))
-    G = Paramorph.constraint(C.gen, view(α, 1:ng); context=(; dimension=d))
-    tail = _from_parameter_coordinates(C.tail, view(α, (ng + 1):length(α)), Val(d))
-    return ArchimaxCopula{d}(G, tail)
-end
 
-# Reflection wrappers preserve their reflection metadata while delegating the
-# actual chart to the underlying copula.
+# Reflection wrappers have instance metadata (the flip mask), so fitting keeps
+# their chart structural and delegates to the already-fitted base copula.
 _parameter_dimension(C::AbstractReflectedCopula) = _parameter_dimension(basecopula(C))
 _parameter_coordinates(C::AbstractReflectedCopula) = _parameter_coordinates(basecopula(C))
 _from_parameter_coordinates(C::SurvivalCopula{d}, α) where {d} =
@@ -150,8 +84,7 @@ _from_parameter_coordinates(C::Rotated270Copula, α) =
 
 # Liouville has a genuinely coupled domain constraint between the generator and
 # the Dirichlet weights, so it remains a Copulas-specific chart.  Keep its
-# implementation on Paramorph's public object operations rather than composing
-# internal TransformVariables schemas here.
+# implementation on Paramorph's public object operations.
 function _parameter_dimension(C::LiouvilleCopula{d}) where {d}
     return Paramorph.intrinsic_dimension(C.G; context=(; dimension=2)) + d
 end
