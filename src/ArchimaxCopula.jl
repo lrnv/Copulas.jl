@@ -38,20 +38,20 @@ References:
 * [charpentier2014](@cite) Charpentier, Fougères & Genest (2014), Multivariate Archimax Copulas.
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications.
 """
-struct ArchimaxCopula{d, TG, TT} <: Copula{d}
-    gen::TG
-    tail::TT
-    function ArchimaxCopula{d}(gen::Generator, tail::Tail) where {d}
-        max_monotony(gen) >= d || throw(DomainError(
-            d,
-            "generator $(typeof(gen)) has maximal monotonicity $(max_monotony(gen)) and is invalid in dimension $d",
-        ))
-        _is_valid_in_dim(tail, d) || throw(DomainError(
-            d,
-            "tail $(typeof(tail)) is not valid in dimension $d",
-        ))
-        return new{d, typeof(gen), typeof(tail)}(gen, tail)
-    end
+Paramorph.@paramorph struct ArchimaxCopula{d,TG,TT} <: Copula{d}
+    gen::TG ~ Paramorph.nested(dimension=d)
+    tail::TT ~ Paramorph.nested(dimension=d)
+end
+function ArchimaxCopula{d}(gen::Generator, tail::Tail) where {d}
+    max_monotony(gen) >= d || throw(DomainError(
+        d,
+        "generator $(typeof(gen)) has maximal monotonicity $(max_monotony(gen)) and is invalid in dimension $d",
+    ))
+    _is_valid_in_dim(tail, d) || throw(DomainError(
+        d,
+        "tail $(typeof(tail)) is not valid in dimension $d",
+    ))
+    return ArchimaxCopula{d,typeof(gen),typeof(tail)}(gen, tail)
 end
 Base.eltype(C::ArchimaxCopula) = promote_type(eltype(C.gen), eltype(C.tail))
 @inline function _archimax_limit_kind(C::ArchimaxCopula{d}) where {d}
@@ -242,7 +242,7 @@ function _archimax_cdf(C::BB4Copula{2,T}, u) where T
     u1, u2 = u
 
     uθ = exp(-θ*log(u1))
-    vθ = exp(-θ*log(u2))
+    vθ = exp(-θ*log(v1))
     a  = expm1(-θ*log(u1))              # = u1^{-θ} - 1  ≥ 0
     b  = expm1(-θ*log(u2))              # = u2^{-θ} - 1  ≥ 0
     x  = a^(-δ)
