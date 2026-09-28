@@ -408,8 +408,8 @@ end
         @test all(vals[k + 1] >= vals[k] - 1e-12 for k in 1:length(vals) - 1)
 
         # (iii) BigFloat routability and deep-tail robustness. Correctness at a
-        # moderate point is checked against the standard API; the deeper point
-        # checks the high-precision escape hatch without requiring Float64 to fail.
+        #      moderate point is checked against the standard API; the deeper point
+        #      checks the high-precision escape hatch without requiring Float64 to fail.
         Cj = NestedArchimedeanCopula(JoeGenerator(1.2);
                 children = [JoeCopula{4}(15.0), JoeCopula{4}(15.0)])
         δj = [false, false, false, false, false, false, false, true]  # observe 7 (order 7)
@@ -559,35 +559,7 @@ end
         @test isfinite(Distributions.loglikelihood(Mmix.result, Umix))
     end
 
-    @testset "fit: parametrisation layer (nesting + custom reparam)" begin
-        C = NestedArchimedeanCopula(ClaytonGenerator(1.5); leaves = [1],
-                                    children = [ClaytonCopula{2}(4.0)])
-        U = rand(Random.MersenneTwister(7), C, 40)
-        rootθ(M)  = M.result.G.θ
-        childθ(M) = M.result.children[1][1].G.θ
-
-        # custom reparam encoding NESTING (no template): child θ = root θ + softplus(δ)
-        # ≥ root θ, so every optimiser step is a valid nesting.
-        sp(x) = log1p(exp(-abs(x))) + max(x, zero(x))
-        nest = α -> (θr = exp(α[1]); θc = θr + sp(α[2]);
-            NestedArchimedeanCopula(ClaytonGenerator(θr); leaves = [1],
-                                    children = [ClaytonCopula{2}(θc)]))
-        Mn = Distributions.fit(Copulas.CopulaModel, nest, [0.0, 0.0], U)
-        @test rootθ(Mn) ≤ childθ(Mn)                  # nesting enforced by the user's reparam
-        @test StatsBase.dof(Mn) == 2
-        @test StatsBase.coefnames(Mn) == ["G.θ", "G[1].θ"]
-        @test StatsBase.coef(Mn) ≈ [rootθ(Mn), childθ(Mn)]
-
-        # custom reparam SHARING one θ across root and child → 1 free parameter
-        recon = α -> (θ = exp(α[1]);
-            NestedArchimedeanCopula(ClaytonGenerator(θ); leaves = [1],
-                                    children = [ClaytonCopula{2}(θ)]))
-        Ms = Distributions.fit(Copulas.CopulaModel, recon, [log(2.0)], U)
-        @test StatsBase.dof(Ms) == 1                  # shared ⇒ fewer dof than #generators
-        @test StatsBase.coefnames(Ms) == ["G.θ", "G[1].θ"]
-        @test StatsBase.coef(Ms) ≈ [rootθ(Ms), childθ(Ms)]
-        @test rootθ(Ms) ≈ childθ(Ms)                  # the shared parameter
-
+    @testset "nested parameter round-trip" begin
         # Arbitrary-depth, non-Clayton templates preserve every family and
         # parameter through the same flatten/rebuild machinery used by fit().
         sub = NestedArchimedeanCopula(GumbelGenerator(2.0);
@@ -597,7 +569,6 @@ end
         rebuilt = Copulas._nested_rebound(deep, Copulas._nested_unbound(deep))
         @test Copulas._nested_coef(rebuilt)[2] ≈ [1.5, 2.0, 3.0]
         @test rebuilt.children[1].children[1][1].G isa GumbelGenerator
-
     end
 end
 

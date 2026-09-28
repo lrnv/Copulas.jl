@@ -535,12 +535,6 @@ end
     @test_throws ArgumentError fit(CopulaModel, C, zeros(4, 0))
     @test_throws ArgumentError fit(CopulaModel, C, hcat(zeros(4), ones(4)))
     @test_throws ArgumentError fit(CopulaModel, C, fill(NaN, 4, 2))
-
-    rebuild = α -> (θ=exp(α[1]); NestedArchimedeanCopula(
-        Copulas.ClaytonGenerator(θ); leaves=[1],
-        children=[ClaytonCopula{2}(θ)]))
-    @test_throws ArgumentError fit(CopulaModel, rebuild, [log(2.0)], U[1:2, :])
-    @test_throws ArgumentError fit(CopulaModel, rebuild, [log(2.0)], zeros(3, 0))
 end
 
 
@@ -741,17 +735,7 @@ end
         @test coef(weighted) == coef(unweighted)
         @test loglikelihood(weighted) == loglikelihood(unweighted)
         @test params(fit(C0, Un; weights=ones(n))) == params(fit(C0, Un))
-        reparam(α) = NestedArchimedeanCopula(Copulas.ClaytonGenerator(exp(α[1]));
-            children=[ClaytonCopula{2}(exp(α[1]) + exp(α[2])),
-                      ClaytonCopula{2}(exp(α[1]) + exp(α[3]))])
-        custom = fit(CopulaModel, reparam, zeros(3), Un)
-        custom_weighted = fit(CopulaModel, reparam, zeros(3), Un; weights=ones(n))
-        @test coef(custom_weighted) == coef(custom)
         @test_throws ArgumentError fit(CopulaModel, C0, Un; weights=-ones(n))
-        # A resample of the weighted nested fit is refitted unweighted; the
-        # reparameterized model keeps every child θ above its parent's by
-        # construction.
-        @test infer(custom_weighted; method=:bootstrap, nresamples=2, rng=StableRNG(528)).method === :bootstrap
     end
 
     @testset "weighted rank measures" begin

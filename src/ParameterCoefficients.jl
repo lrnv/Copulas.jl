@@ -201,9 +201,7 @@ function _distribution_coefficients(D::Distributions.BetaBinomial; prefix::Strin
     ], [float(D.α), float(D.β)]
 end
 
-# Nested topology is structural. Template fits expose local generator parameters;
-# custom runtime maps may intentionally have a smaller fitting dimension, which
-# is recorded in their fit recipe.
+# Nested topology is structural. Template fits expose local generator parameters.
 _distribution_coefficients(C::NestedArchimedeanCopula; prefix::String="") =
     _nested_coef(C)
 
@@ -249,11 +247,4 @@ _distribution_dof(S::SklarDist) =
 StatsBase.dof(C::Copula) = _distribution_dof(C)
 StatsBase.dof(S::SklarDist) = _distribution_dof(S)
 
-function _model_dof(M::CopulaModel)
-    spec = M.recipe
-    if spec isa _CopulaFitSpec && spec.target isa NamedTuple &&
-            haskey(spec.target, :coordinates)
-        return length(spec.target.coordinates)
-    end
-    return _distribution_dof(fitted_distribution(M))
-end
+_model_dof(M::CopulaModel) = _distribution_dof(fitted_distribution(M))

@@ -123,10 +123,6 @@ function _refit(M::CopulaModel, U::AbstractMatrix; replay_input::Bool=false)
         "composite goodness-of-fit refitting is unavailable for this model"))
     spec_kwargs = _unweighted_kwargs(spec.kwargs)
 
-    if spec.target isa NamedTuple && haskey(spec.target, :reparam)
-        return Distributions.fit(CopulaModel, spec.target.reparam, spec.target.init, U; spec_kwargs...)
-    end
-
     if spec.target isa Type && spec.target <: SklarDist
         return Distributions.fit(CopulaModel, spec.target, U; spec_kwargs...)
     end
