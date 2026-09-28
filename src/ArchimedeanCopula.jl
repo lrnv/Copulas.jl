@@ -51,16 +51,16 @@ References:
 * [williamson1956](@cite) Williamson, R. E. (1956). Multiply monotone functions and their Laplace transforms. Duke Math. J. 23 189–207. MR0077581
 * [mcneil2009](@cite) McNeil, Alexander J., and Johanna Nešlehová. "Multivariate Archimedean copulas, d-monotone functions and ℓ 1-norm symmetric distributions." (2009): 3059-3097.
 """
-struct ArchimedeanCopula{d,TG} <: Copula{d}
-    G::TG
-    function ArchimedeanCopula{d}(G::Generator) where {d}
-        d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
-        d <= max_monotony(G) || throw(DomainError(
-            d,
-            "generator $G has maximal monotonicity $(max_monotony(G)) and cannot define a $d-dimensional Archimedean copula",
-        ))
-        return new{d,typeof(G)}(G)
-    end
+Paramorph.@paramorph struct ArchimedeanCopula{d,TG} <: Copula{d}
+    G::TG ~ Paramorph.nested(dimension=d)
+end
+function ArchimedeanCopula{d}(G::Generator) where {d}
+    d >= 2 || throw(ArgumentError("a public copula requires dimension d ≥ 2; got d=$d"))
+    d <= max_monotony(G) || throw(DomainError(
+        d,
+        "generator $G has maximal monotonicity $(max_monotony(G)) and cannot define a $d-dimensional Archimedean copula",
+    ))
+    return ArchimedeanCopula{d,typeof(G)}(G)
 end
 Base.eltype(C::ArchimedeanCopula) = eltype(C.G)
 
@@ -122,7 +122,7 @@ end
 # downstream generator remains an opaque constructor argument, so caches or
 # other storage fields never become public parameters by accident.
 function Distributions.params(C::ArchimedeanCopula{d,G}) where {d,G<:Generator}
-    Paramorph.is_paramorph_type(G) || return (C.G,)
+    Paramorph.has_parameter_geometry(G) || return (C.G,)
     declared = Paramorph.parameter_values(C.G)
     return Tuple(map(values(declared)) do value
         value isa AbstractArray ? copy(value) : value
