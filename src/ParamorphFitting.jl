@@ -27,6 +27,15 @@ function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     return Paramorph.parameter_prototype(dimensioned; context=(; dimension=d))
 end
 
+# Family aliases such as `ClaytonCopula` encode their generator restriction in
+# the second type parameter. Dimensioning the outer wrapper generically would
+# erase that restriction, so construct the nested child prototype explicitly
+# through Paramorph's public API and let the wrapper geometry handle objects.
+function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
+    G = Paramorph.parameter_prototype(generatorof(CT); context=(; dimension=d))
+    return ArchimedeanCopula{d}(G)
+end
+
 # Some tail families store their dimension as an auxiliary runtime field.  The
 # outer copula knows that value structurally, so provide it through the public
 # prototype API when reconstructing a family from its type.
