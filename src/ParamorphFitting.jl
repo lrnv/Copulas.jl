@@ -29,29 +29,11 @@ function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     )
 end
 
-# Paramorph 0.1.1's public numeric rebinding leaves a bare one-parameter
-# UnionAll family such as `ClaytonGenerator{T} where T` unchanged. Concretize
-# that family at the integration boundary before asking for its neutral
-# prototype; concrete generator types continue through unchanged.
-function _concrete_generator_family(GT::Type, ::Type{N}) where {N<:Real}
-    GT isa UnionAll || return GT
-    U = Base.unwrap_unionall(GT)
-    return Core.apply_type(Base.typename(U).wrapper, N)
-end
-
 function _generator_parameter_prototype(GT::Type{<:Generator}, d::Int)
-    target = _concrete_generator_family(GT, Float64)
     return Paramorph.parameter_prototype(
-        target; numeric_type=Float64, context=(; dimension=d),
+        GT; numeric_type=Float64, context=(; dimension=d),
     )
 end
-
-# Paramorph 0.1.1's prototype fast path only checks auxiliary fields on the
-# outer wrapper. Extreme-value and Archimax wrappers can contain tails whose
-# geometry depends on stored auxiliary values (for example `d`), so their
-# object reconstruction must retain the prototype-driven schema path.
-Paramorph.supports_type_geometry(::Type{<:ExtremeValueCopula}) = false
-Paramorph.supports_type_geometry(::Type{<:ArchimaxCopula}) = false
 
 # Family aliases such as `ClaytonCopula` encode their generator restriction in
 # the second type parameter. Dimensioning the outer wrapper generically would
@@ -63,7 +45,7 @@ function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
     return ArchimedeanCopula{d}(G)
 end
 
-# Some tail families store their dimension as an auxiliary runtime field.  The
+# Some tail families store their dimension as an auxiliary runtime field. The
 # outer copula knows that value structurally, so provide it through the public
 # prototype API when reconstructing a family from its type.
 function _tail_prototype(TT::Type, ::Val{d}) where {d}
@@ -122,7 +104,7 @@ _from_parameter_coordinates(C::Rotated270Copula, α) =
     Rotated270Copula(_from_parameter_coordinates(basecopula(C), α))
 
 # Liouville has a genuinely coupled domain constraint between the generator and
-# the Dirichlet weights, so it remains a Copulas-specific chart.  Keep its
+# the Dirichlet weights, so it remains a Copulas-specific chart. Keep its
 # implementation on Paramorph's public object operations.
 function _parameter_dimension(C::LiouvilleCopula{d}) where {d}
     return Paramorph.intrinsic_dimension(C.G; context=(; dimension=2)) + d
