@@ -19,22 +19,20 @@ function _parameter_dimension_or_nothing(C::LiouvilleCopula)
     return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
 end
 
+# Paramorph's public prototype API operates on a concrete declared model type.
+# Family aliases here often leave only their numeric type open, so choose
+# Float64 for that type-level prototype chart while preserving any already-bound
+# structural parameters such as a copula dimension.
+_concrete_single_numeric_family(T::Type) =
+    T isa UnionAll ? Core.apply_type(T, Float64) : T
+
 function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     unwrapped = Base.unwrap_unionall(CT)
     encoded_dimension = unwrapped.parameters[1]
     dimensioned = encoded_dimension isa TypeVar ?
                   Core.apply_type(Base.typename(unwrapped).wrapper, d) : CT
-    return Paramorph.parameter_prototype(dimensioned; context=(; dimension=d))
-end
-
-# Paramorph's public prototype API operates on a concrete declared model type.
-# Most family aliases here intentionally leave their sole numeric type open, so
-# choose Float64 only for that type-level prototype chart. Structured families
-# with additional type parameters use their dedicated prototype methods below.
-function _concrete_single_numeric_family(T::Type)
-    T isa UnionAll || return T
-    family = Base.typename(Base.unwrap_unionall(T)).wrapper
-    return Core.apply_type(family, Float64)
+    concrete = _concrete_single_numeric_family(dimensioned)
+    return Paramorph.parameter_prototype(concrete; context=(; dimension=d))
 end
 
 function _generator_parameter_prototype(GT::Type{<:Generator}, d::Int)
