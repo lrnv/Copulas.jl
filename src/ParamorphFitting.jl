@@ -27,12 +27,21 @@ function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     return Paramorph.parameter_prototype(dimensioned; context=(; dimension=d))
 end
 
+# Paramorph's public prototype API operates on a concrete declared model type.
+# Copula family aliases intentionally expose generators as open `Generator{T}`
+# families, so choose Float64 only for that type-level prototype chart. Concrete
+# generator types supplied by callers keep their existing numeric type.
+function _generator_parameter_prototype(GT::Type{<:Generator}, d::Int)
+    concrete = GT isa UnionAll ? Core.apply_type(_generator_family(GT), Float64) : GT
+    return Paramorph.parameter_prototype(concrete; context=(; dimension=d))
+end
+
 # Family aliases such as `ClaytonCopula` encode their generator restriction in
 # the second type parameter. Dimensioning the outer wrapper generically would
 # erase that restriction, so construct the nested child prototype explicitly
 # through Paramorph's public API and let the wrapper geometry handle objects.
 function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
-    G = Paramorph.parameter_prototype(generatorof(CT); context=(; dimension=d))
+    G = _generator_parameter_prototype(generatorof(CT), d)
     return ArchimedeanCopula{d}(G)
 end
 
@@ -73,7 +82,7 @@ end
 
 function _parameter_prototype(CT::Type{<:ArchimaxCopula}, vd::Val{d}) where {d}
     GT, TT = genandtailof(CT)
-    G = Paramorph.parameter_prototype(GT; context=(; dimension=d))
+    G = _generator_parameter_prototype(GT, d)
     tail = _tail_prototype(TT, vd)
     return ArchimaxCopula{d}(G, tail)
 end
@@ -121,7 +130,7 @@ const _DimensionDependentRankGenerator = Union{
 
 function _scalar_parameter_endpoints(GT::Type{<:Generator}, d::Int)
     context = (; dimension=d)
-    prototype = Paramorph.parameter_prototype(GT; context)
+    prototype = _generator_parameter_prototype(GT, d)
     Paramorph.intrinsic_dimension(prototype; context) == 1 || throw(ArgumentError(
         "$GT does not have a scalar parameter geometry in dimension $d",
     ))
