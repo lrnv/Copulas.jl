@@ -49,6 +49,19 @@ function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
     return ArchimedeanCopula{d}(G)
 end
 
+# Fitting and inference call these chart operations in hot loops. The wrapper's
+# declared nested geometry remains the public model geometry, while this adapter
+# delegates directly to the child through Paramorph's public object API to avoid
+# repeatedly materializing the generic nested wrapper schema.
+_parameter_dimension(C::ArchimedeanCopula{d}) where {d} =
+    Paramorph.intrinsic_dimension(C.G; context=(; dimension=d))
+_parameter_coordinates(C::ArchimedeanCopula{d}) where {d} =
+    Paramorph.unconstrain(C.G; context=(; dimension=d))
+function _from_parameter_coordinates(C::ArchimedeanCopula{d}, α) where {d}
+    G = Paramorph.constraint(C.G, α; context=(; dimension=d))
+    return ArchimedeanCopula{d}(G)
+end
+
 # Some tail families store their dimension as an auxiliary runtime field.  The
 # outer copula knows that value structurally, so provide it through the public
 # prototype API when reconstructing a family from its type.
