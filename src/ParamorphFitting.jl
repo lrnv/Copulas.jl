@@ -28,11 +28,17 @@ function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
 end
 
 # Paramorph's public prototype API operates on a concrete declared model type.
-# Copula family aliases intentionally expose generators as open `Generator{T}`
-# families, so choose Float64 only for that type-level prototype chart. Concrete
-# generator types supplied by callers keep their existing numeric type.
+# Most family aliases here intentionally leave their sole numeric type open, so
+# choose Float64 only for that type-level prototype chart. Structured families
+# with additional type parameters use their dedicated prototype methods below.
+function _concrete_single_numeric_family(T::Type)
+    T isa UnionAll || return T
+    family = Base.typename(Base.unwrap_unionall(T)).wrapper
+    return Core.apply_type(family, Float64)
+end
+
 function _generator_parameter_prototype(GT::Type{<:Generator}, d::Int)
-    concrete = GT isa UnionAll ? Core.apply_type(_generator_family(GT), Float64) : GT
+    concrete = _concrete_single_numeric_family(GT)
     return Paramorph.parameter_prototype(concrete; context=(; dimension=d))
 end
 
@@ -49,8 +55,9 @@ end
 # outer copula knows that value structurally, so provide it through the public
 # prototype API when reconstructing a family from its type.
 function _tail_prototype(TT::Type, ::Val{d}) where {d}
+    concrete = _concrete_single_numeric_family(TT)
     return Paramorph.parameter_prototype(
-        TT; context=(; dimension=d), auxiliary=(; d=d),
+        concrete; context=(; dimension=d), auxiliary=(; d=d),
     )
 end
 
