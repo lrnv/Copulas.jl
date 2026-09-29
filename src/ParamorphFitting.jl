@@ -19,46 +19,29 @@ function _parameter_dimension_or_nothing(C::LiouvilleCopula)
     return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
 end
 
-# Paramorph's public prototype API operates on a concrete declared model type.
-# Family aliases here often leave only their numeric type open, so choose
-# Float64 for that type-level prototype chart while preserving any already-bound
-# structural parameters such as a copula dimension.
-_concrete_single_numeric_family(T::Type) =
-    T isa UnionAll ? Core.apply_type(T, Float64) : T
-
 function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     unwrapped = Base.unwrap_unionall(CT)
     encoded_dimension = unwrapped.parameters[1]
     dimensioned = encoded_dimension isa TypeVar ?
                   Core.apply_type(Base.typename(unwrapped).wrapper, d) : CT
-    concrete = _concrete_single_numeric_family(dimensioned)
-    return Paramorph.parameter_prototype(concrete; context=(; dimension=d))
+    return Paramorph.parameter_prototype(
+        dimensioned; numeric_type=Float64, context=(; dimension=d),
+    )
 end
 
 function _generator_parameter_prototype(GT::Type{<:Generator}, d::Int)
-    concrete = _concrete_single_numeric_family(GT)
-    return Paramorph.parameter_prototype(concrete; context=(; dimension=d))
+    return Paramorph.parameter_prototype(
+        GT; numeric_type=Float64, context=(; dimension=d),
+    )
 end
 
 # Family aliases such as `ClaytonCopula` encode their generator restriction in
 # the second type parameter. Dimensioning the outer wrapper generically would
 # erase that restriction, so construct the nested child prototype explicitly
-# through Paramorph's public API and let the wrapper geometry handle objects.
+# through Paramorph's public API. Object-level fitting then uses the wrapper's
+# declared nested geometry directly.
 function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
     G = _generator_parameter_prototype(generatorof(CT), d)
-    return ArchimedeanCopula{d}(G)
-end
-
-# Fitting and inference call these chart operations in hot loops. The wrapper's
-# declared nested geometry remains the public model geometry, while this adapter
-# delegates directly to the child through Paramorph's public object API to avoid
-# repeatedly materializing the generic nested wrapper schema.
-_parameter_dimension(C::ArchimedeanCopula{d}) where {d} =
-    Paramorph.intrinsic_dimension(C.G; context=(; dimension=d))
-_parameter_coordinates(C::ArchimedeanCopula{d}) where {d} =
-    Paramorph.unconstrain(C.G; context=(; dimension=d))
-function _from_parameter_coordinates(C::ArchimedeanCopula{d}, α) where {d}
-    G = Paramorph.constraint(C.G, α; context=(; dimension=d))
     return ArchimedeanCopula{d}(G)
 end
 
@@ -66,9 +49,11 @@ end
 # outer copula knows that value structurally, so provide it through the public
 # prototype API when reconstructing a family from its type.
 function _tail_prototype(TT::Type, ::Val{d}) where {d}
-    concrete = _concrete_single_numeric_family(TT)
     return Paramorph.parameter_prototype(
-        concrete; context=(; dimension=d), auxiliary=(; d=d),
+        TT;
+        numeric_type=Float64,
+        context=(; dimension=d),
+        auxiliary=(; d=d),
     )
 end
 
