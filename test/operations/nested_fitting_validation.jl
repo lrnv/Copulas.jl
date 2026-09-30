@@ -6,6 +6,9 @@
     )
     α0 = Copulas._nested_unbound(C0)
     @test all(isfinite, α0)
+    C32 = Copulas._nested_rebound(C0, Float32.(α0))
+    @test C32.G.θ isa Float32
+    @test Copulas._nested_child(only(C32.children)).G.θ isa Float32
 
     # An explicit independence parent carries no scalar parameter of its own.
     # Its supported :free edge must therefore delegate directly to the child's

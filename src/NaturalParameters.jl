@@ -45,8 +45,9 @@ end
 # constructor-order pair `(copulas, weights)`. Public constructors always store
 # an AbstractMatrix weight container, making this strictly more specific than
 # the representation inherited from the pre-Paramorph Liebscher implementation.
-# The runtime Paramorph chart used by template fitting is deliberately separate
-# and may omit fixed components or structural zero weights.
+# The runtime Paramorph composition used by template fitting is deliberately
+# separate and treats fixed components and structural zero weights as
+# zero-dimensional prototype state.
 function Distributions.params(
     C::LiebscherCopula{d,CT,WT},
 ) where {d,CT,WT<:AbstractMatrix}

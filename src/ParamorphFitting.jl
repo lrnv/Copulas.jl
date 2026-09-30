@@ -1,14 +1,5 @@
 # Small adapter between Copulas fitting/inference and Paramorph's public API.
 
-# Paramorph 0.1.2's public `parameter_prototype` accepts concrete parameter
-# types, but Julia family aliases commonly leave their final numeric parameter
-# free (for example `ClaytonGenerator{T} where T`).  Dimension-dependent
-# parameters are fixed by the callers below, so any remaining UnionAll variable
-# is the numeric storage type selected for fitting.
-_fitting_parameter_type(T::UnionAll, ::Type{N}=Float64) where {N<:Real} =
-    Core.apply_type(T, N)
-_fitting_parameter_type(T::Type, ::Type{<:Real}=Float64) = T
-
 _parameter_dimension(object) = Paramorph.intrinsic_dimension(object)
 _parameter_coordinates(object) = Paramorph.unconstrain(object)
 _from_parameter_coordinates(object, α) = Paramorph.constraint(object, α)
@@ -22,23 +13,19 @@ _declared_parameter_values(object) =
 # must propagate instead of being reclassified as "no geometry".
 _parameter_dimension_or_nothing(object) =
     _declares_parameter_geometry(typeof(object)) ? _parameter_dimension(object) : nothing
-function _parameter_dimension_or_nothing(C::LiouvilleCopula)
-    return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
-end
-
 function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     unwrapped = Base.unwrap_unionall(CT)
     encoded_dimension = unwrapped.parameters[1]
     dimensioned = encoded_dimension isa TypeVar ?
                   Core.apply_type(Base.typename(unwrapped).wrapper, d) : CT
     return Paramorph.parameter_prototype(
-        _fitting_parameter_type(dimensioned); context=(; dimension=d),
+        dimensioned; numeric_type=Float64, context=(; dimension=d),
     )
 end
 
 function _generator_parameter_prototype(GT::Type{<:Generator}, d::Int)
     return Paramorph.parameter_prototype(
-        _fitting_parameter_type(GT); context=(; dimension=d),
+        GT; numeric_type=Float64, context=(; dimension=d),
     )
 end
 
@@ -57,7 +44,8 @@ end
 # prototype API when reconstructing a family from its type.
 function _tail_prototype(TT::Type, ::Val{d}) where {d}
     return Paramorph.parameter_prototype(
-        _fitting_parameter_type(TT);
+        TT;
+        numeric_type=Float64,
         context=(; dimension=d),
         auxiliary=(; d=d),
     )
@@ -94,23 +82,6 @@ function _parameter_prototype(CT::Type{<:ArchimaxCopula}, vd::Val{d}) where {d}
     G = _generator_parameter_prototype(GT, d)
     tail = _tail_prototype(TT, vd)
     return ArchimaxCopula{d}(G, tail)
-end
-
-# Liouville has a genuinely coupled domain constraint between the generator and
-# the Dirichlet weights, so it remains a Copulas-specific chart. Keep its
-# implementation on Paramorph's public object operations.
-function _parameter_dimension(C::LiouvilleCopula{d}) where {d}
-    return Paramorph.intrinsic_dimension(C.G; context=(; dimension=2)) + d
-end
-function _parameter_coordinates(C::LiouvilleCopula)
-    generator = Paramorph.unconstrain(C.G; context=(; dimension=2))
-    return vcat(generator, log.(collect(C.α)))
-end
-function _from_parameter_coordinates(C::LiouvilleCopula{d}, α) where {d}
-    ng = Paramorph.intrinsic_dimension(C.G; context=(; dimension=2))
-    G = Paramorph.constraint(C.G, view(α, 1:ng); context=(; dimension=2))
-    weights = ntuple(i -> exp(α[ng + i]), d)
-    return LiouvilleCopula{d}(G, weights)
 end
 
 # Rank inversions are pairwise, but some one-parameter Archimedean families have
@@ -172,7 +143,10 @@ end
 # free, so delegate directly to the child's local geometry instead of trying to
 # extract a nonexistent parent value in `_nested_edge_transform`.
 function _nested_edge_transform(
-    ::IndependentGenerator, child::Generator, dloc::Int; parent_role::Bool,
+    ::IndependentGenerator, child::Generator, dloc::Int;
+    parent_role::Bool, numeric_type::Type{<:Real}=Float64,
 )
-    return _nested_interval_transform(_nested_scalar_bounds(child, dloc, parent_role)...)
+    return _nested_interval_transform(
+        _nested_scalar_bounds(child, dloc, parent_role)..., numeric_type,
+    )
 end

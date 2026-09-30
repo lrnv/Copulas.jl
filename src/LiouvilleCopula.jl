@@ -42,21 +42,35 @@ U = rand(C, 100)
 See also: [`Generator`](@ref), [`ArchimedeanCopula`](@ref), [`𝒲₋₁`](@ref),
 [`condition`](@ref), [`subsetdims`](@ref).
 """
-struct LiouvilleCopula{d,TG,Tα} <: Copula{d}
-    G::TG
-    α::NTuple{d,Tα}
-    function LiouvilleCopula{d}(G::Generator, α) where {d}
-        d >= 2 || throw(ArgumentError("a Liouville copula must have dimension at least 2"))
-        length(α) == d || throw(ArgumentError("expected $d Dirichlet parameters, got $(length(α))"))
-        αtuple = promote(map(float, α)...)
-        all(a -> isfinite(a) && a > 0, αtuple) || throw(ArgumentError("Dirichlet parameters must be finite and positive"))
-        α₀ = sum(αtuple)
-        _supports_liouville_order(G, α₀) || throw(ArgumentError("the generator $G cannot provide the required Williamson order sum(α) = $α₀"))
-        return new{d,typeof(G),eltype(αtuple)}(G, αtuple)
+LiouvilleCopula
+Paramorph.@paramorph Tα struct LiouvilleCopula{d,TG,Tα<:Real} <: Copula{d}
+    G::TG ~ Paramorph.nested(dimension=2)
+    α::NTuple{d,Tα} ~ Paramorph.TransformVariables.as(
+        ntuple(_ -> Paramorph.TransformVariables.asℝ₊, d),
+    )
+    @validate begin
+        d >= 2 || throw(ArgumentError(
+            "a Liouville copula must have dimension at least 2",
+        ))
+        all(isfinite, α) || throw(ArgumentError(
+            "Dirichlet parameters must be finite and positive",
+        ))
+        α₀ = sum(α)
+        _supports_liouville_order(G, α₀) || throw(ArgumentError(
+            "the generator $G cannot provide the required Williamson order sum(α) = $α₀",
+        ))
+        nothing
     end
 end
 Base.eltype(C::LiouvilleCopula) = promote_type(eltype(C.G), eltype(C.α))
 
+function LiouvilleCopula{d}(G::Generator, α) where {d}
+    length(α) == d || throw(ArgumentError(
+        "expected $d Dirichlet parameters, got $(length(α))",
+    ))
+    αtuple = promote(map(float, α)...)
+    return LiouvilleCopula{d,typeof(G)}(G, αtuple)
+end
 LiouvilleCopula(G::Generator, α) = LiouvilleCopula{length(α)}(G, α)
 LiouvilleCopula(d::Integer, G::Generator, α) = LiouvilleCopula{d}(G, α)
 

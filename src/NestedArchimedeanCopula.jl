@@ -1013,9 +1013,17 @@ function _nested_interval_transform(lower, upper)
     return Paramorph.bounded_interval(lower, upper)
 end
 
-function _nested_edge_transform(parent, child, dloc::Int; parent_role::Bool)
+function _nested_interval_transform(lower, upper, ::Type{T}) where {T<:Real}
+    converted_lower = lower === nothing ? nothing : convert(T, lower)
+    converted_upper = upper === nothing ? nothing : convert(T, upper)
+    return _nested_interval_transform(converted_lower, converted_upper)
+end
+
+function _nested_edge_transform(
+    parent, child, dloc::Int; parent_role::Bool, numeric_type::Type{<:Real}=Float64,
+)
     lower, upper = _nested_scalar_bounds(child, dloc, parent_role)
-    parent === nothing && return _nested_interval_transform(lower, upper)
+    parent === nothing && return _nested_interval_transform(lower, upper, numeric_type)
     rule = _nested_fit_rule(parent, child)
     rule === nothing && _unsupported_nested_fit_rule(parent, child)
     parent_value = only(_generator_parameter_values(parent))
@@ -1028,63 +1036,102 @@ function _nested_edge_transform(parent, child, dloc::Int; parent_role::Bool)
     elseif rule !== :free
         error("unknown nested fitting rule $rule")
     end
-    return _nested_interval_transform(lower, upper)
+    return _nested_interval_transform(lower, upper, numeric_type)
 end
 
-function _nested_unbound_node!(coordinates, C::NestedArchimedeanCopula; parent=nothing)
-    if !(C.G isa IndependentGenerator)
-        transform = _nested_edge_transform(parent, C.G, _local_arity(C); parent_role=true)
-        push!(coordinates, Paramorph.TransformVariables.inverse(
-            transform, only(_generator_parameter_values(C.G)),
-        ))
-    end
-    for child in C.children
-        if child isa Tuple
-            copula, dims = child
-            transform = _nested_edge_transform(C.G, copula.G, max(length(dims), 2); parent_role=false)
-            push!(coordinates, Paramorph.TransformVariables.inverse(
-                transform, only(_generator_parameter_values(copula.G)),
-            ))
-        else
-            _nested_unbound_node!(coordinates, child; parent=C.G)
-        end
-    end
-    return coordinates
+struct _NestedFitTree{TG,TP,TL,TC,TD}
+    G::TG
+    parent_prototype::TP
+    leafdims::TL
+    children::TC
+    dims::TD
+    flat::Bool
 end
 
-_nested_unbound(C::NestedArchimedeanCopula) = _nested_unbound_node!(Float64[], C)
-
-function _nested_rebound_node(C::NestedArchimedeanCopula, α, index::Ref{Int}; parent=nothing)
-    newG = if C.G isa IndependentGenerator
-        C.G
-    else
-        transform = _nested_edge_transform(parent, C.G, _local_arity(C); parent_role=true)
-        value = Paramorph.TransformVariables.transform(transform, α[index[]])
-        index[] += 1
-        _gentype(C.G)(value)
-    end
-    newchildren = Any[]
-    for child in C.children
+function _nested_fit_tree(C::NestedArchimedeanCopula, parent_prototype=nothing)
+    children = map(C.children) do child
         if child isa Tuple
             copula, dims = child
-            transform = _nested_edge_transform(newG, copula.G, max(length(dims), 2); parent_role=false)
-            value = Paramorph.TransformVariables.transform(transform, α[index[]])
-            index[] += 1
-            push!(newchildren, (ArchimedeanCopula(length(dims), _gentype(copula.G)(value)), dims))
+            _NestedFitTree(copula.G, C.G, (), (), dims, true)
         else
-            push!(newchildren, _nested_rebound_node(child, α, index; parent=newG))
+            _nested_fit_tree(child, C.G)
         end
     end
-    return NestedArchimedeanCopula{length(C.dims),typeof(newG)}(
-        newG, copy(C.leafdims), newchildren, copy(C.dims),
+    return _NestedFitTree(
+        C.G, parent_prototype, C.leafdims, children, C.dims, false,
     )
 end
 
+_nested_fit_children(node::_NestedFitTree) = node.children
+_nested_fit_value(node::_NestedFitTree) = node.G isa IndependentGenerator ?
+                                         nothing :
+                                         only(_generator_parameter_values(node.G))
+
+function _nested_fit_parent(node::_NestedFitTree, parent_value)
+    parent = node.parent_prototype
+    parent === nothing && return nothing
+    parent isa IndependentGenerator && return parent
+    return _gentype(parent)(parent_value)
+end
+
+function _nested_node_transform(
+    node::_NestedFitTree, parent_value, ::Int, ::Type{T},
+) where {T}
+    node.G isa IndependentGenerator && return nothing
+    T <: Real || throw(ArgumentError(
+        "a parameterized nested generator must expose a real scalar value",
+    ))
+    dloc = node.flat ? max(length(node.dims), 2) :
+           max(length(node.leafdims) + length(node.children), 2)
+    return _nested_edge_transform(
+        _nested_fit_parent(node, parent_value), node.G, dloc;
+        parent_role=!node.flat,
+        numeric_type=T,
+    )
+end
+
+function _nested_fit_rebuild(prototype::_NestedFitTree, value, children)
+    G = prototype.G isa IndependentGenerator ? prototype.G : _gentype(prototype.G)(value)
+    return _NestedFitTree(
+        G,
+        prototype.parent_prototype,
+        prototype.leafdims,
+        children,
+        prototype.dims,
+        prototype.flat,
+    )
+end
+
+function _nested_tree_transform(C::NestedArchimedeanCopula)
+    tree = _nested_fit_tree(C)
+    return Paramorph.recursive_tree(
+        tree;
+        node_transform=_nested_node_transform,
+        node_value=_nested_fit_value,
+        children=_nested_fit_children,
+        rebuild=_nested_fit_rebuild,
+    )
+end
+
+function _nested_fit_copula(node::_NestedFitTree)
+    if node.flat
+        copula = ArchimedeanCopula(length(node.dims), node.G)
+        return (copula, node.dims)
+    end
+    children = map(_nested_fit_copula, node.children)
+    return NestedArchimedeanCopula{length(node.dims),typeof(node.G)}(
+        node.G, copy(node.leafdims), collect(children), copy(node.dims),
+    )
+end
+
+function _nested_unbound(C::NestedArchimedeanCopula)
+    tree = _nested_fit_tree(C)
+    return Paramorph.TransformVariables.inverse(_nested_tree_transform(C), tree)
+end
+
 function _nested_rebound(C::NestedArchimedeanCopula, α::AbstractVector)
-    index = Ref(1)
-    rebuilt = _nested_rebound_node(C, α, index)
-    index[] == length(α) + 1 || throw(DimensionMismatch("nested coordinate traversal mismatch"))
-    return rebuilt
+    tree = Paramorph.TransformVariables.transform(_nested_tree_transform(C), α)
+    return _nested_fit_copula(tree)
 end
 
 # A bare nested type cannot reconstruct a tree; fitting is supported only from a
