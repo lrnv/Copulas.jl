@@ -29,7 +29,9 @@ GumbelBarnettGenerator, GumbelBarnettCopula
 Paramorph.@paramorph T struct GumbelBarnettGenerator{T<:Real} <: AbstractUnivariateGenerator
     θ::T ~ bounded_interval(
         zero(T),
-        haskey(context, :dimension) ? T(clamp(_find_critical_value_gumbelbarnett(context.dimension), 0, 1)) : one(T),
+        haskey(context, :dimension) ? T(clamp(
+            _find_critical_value_gumbelbarnett(ceil(Int, context.dimension)), 0, 1,
+        )) : one(T),
     )
 end
 GumbelBarnettGenerator(θ::Integer) = GumbelBarnettGenerator(float(θ))
