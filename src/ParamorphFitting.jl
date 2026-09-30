@@ -1,5 +1,14 @@
 # Small adapter between Copulas fitting/inference and Paramorph's public API.
 
+# Paramorph 0.1.2's public `parameter_prototype` accepts concrete parameter
+# types, but Julia family aliases commonly leave their final numeric parameter
+# free (for example `ClaytonGenerator{T} where T`).  Dimension-dependent
+# parameters are fixed by the callers below, so any remaining UnionAll variable
+# is the numeric storage type selected for fitting.
+_fitting_parameter_type(T::UnionAll, ::Type{N}=Float64) where {N<:Real} =
+    Core.apply_type(T, N)
+_fitting_parameter_type(T::Type, ::Type{<:Real}=Float64) = T
+
 _parameter_dimension(object) = Paramorph.intrinsic_dimension(object)
 _parameter_coordinates(object) = Paramorph.unconstrain(object)
 _from_parameter_coordinates(object, α) = Paramorph.constraint(object, α)
@@ -25,13 +34,13 @@ function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     dimensioned = encoded_dimension isa TypeVar ?
                   Core.apply_type(Base.typename(unwrapped).wrapper, d) : CT
     return Paramorph.parameter_prototype(
-        dimensioned; numeric_type=Float64, context=(; dimension=d),
+        _fitting_parameter_type(dimensioned); context=(; dimension=d),
     )
 end
 
 function _generator_parameter_prototype(GT::Type{<:Generator}, d::Int)
     return Paramorph.parameter_prototype(
-        GT; numeric_type=Float64, context=(; dimension=d),
+        _fitting_parameter_type(GT); context=(; dimension=d),
     )
 end
 
@@ -50,8 +59,7 @@ end
 # prototype API when reconstructing a family from its type.
 function _tail_prototype(TT::Type, ::Val{d}) where {d}
     return Paramorph.parameter_prototype(
-        TT;
-        numeric_type=Float64,
+        _fitting_parameter_type(TT);
         context=(; dimension=d),
         auxiliary=(; d=d),
     )
