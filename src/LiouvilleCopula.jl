@@ -44,26 +44,24 @@ Paramorph.@paramorph Tα struct LiouvilleCopula{d,TG,Tα<:Real} <: Copula{d}
         ntuple(_ -> Paramorph.TransformVariables.asℝ₊, d),
     )
     G::TG ~ Paramorph.nested(dimension=sum(α))
-    @validate begin
-        d >= 2 || throw(ArgumentError(
-            "a Liouville copula must have dimension at least 2",
-        ))
-        all(isfinite, α) || throw(ArgumentError(
-            "Dirichlet parameters must be finite and positive",
-        ))
-        sum(α) <= max_monotony(G) || throw(ArgumentError(
-            "the generator $G cannot provide the required Williamson order sum(α) = $(sum(α))",
-        ))
-        nothing
-    end
 end
 Base.eltype(C::LiouvilleCopula) = promote_type(eltype(C.G), eltype(C.α))
 
 function LiouvilleCopula{d}(G::Generator, α) where {d}
+    d >= 2 || throw(ArgumentError(
+        "a Liouville copula must have dimension at least 2",
+    ))
     length(α) == d || throw(ArgumentError(
         "expected $d Dirichlet parameters, got $(length(α))",
     ))
     αtuple = promote(map(float, α)...)
+    all(a -> isfinite(a) && a > 0, αtuple) || throw(ArgumentError(
+        "Dirichlet parameters must be finite and positive",
+    ))
+    α₀ = sum(αtuple)
+    α₀ <= max_monotony(G) || throw(ArgumentError(
+        "the generator $G cannot provide the required Williamson order sum(α) = $α₀",
+    ))
     return LiouvilleCopula{d,typeof(G)}(αtuple, G)
 end
 LiouvilleCopula(G::Generator, α) = LiouvilleCopula{length(α)}(G, α)
