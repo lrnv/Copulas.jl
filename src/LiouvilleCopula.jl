@@ -93,7 +93,7 @@ function Distributions._rand!(
     @inbounds for col in axes(A, 2)
         Random.rand!(rng, simplex, direction)
         r = rand(rng, radial)
-        for row in 1:d
+        for row in axes(A, 1)
             A[row, col] = Distributions.ccdf(margins[row], r * direction[row])
         end
     end
