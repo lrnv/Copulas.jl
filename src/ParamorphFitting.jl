@@ -152,6 +152,19 @@ function _nested_scalar_bounds(G::Generator, ::Int, ::Bool)
     ))
 end
 
+# `recursive_tree` asks for the prototype node value before it asks for the node
+# transform. Keep the same public diagnostic for non-scalar generator families
+# instead of letting `only(...)` leak a tuple-length ArgumentError first.
+function _nested_fit_value(node::_NestedFitTree{TG}) where {TG<:Generator}
+    node.G isa IndependentGenerator && return nothing
+    values = _generator_parameter_values(node.G)
+    length(values) == 1 || throw(ArgumentError(
+        "template fitting currently provides nesting geometries only for standard " *
+        "one-parameter generators; $(nameof(typeof(node.G))) is open for contributions",
+    ))
+    return only(values)
+end
+
 # Independence has no scalar parent parameter. Its fitting rule is genuinely
 # free, so delegate directly to the child's local geometry instead of trying to
 # extract a nonexistent parent value in `_nested_edge_transform`.
