@@ -51,18 +51,15 @@ function LiouvilleCopula{d}(G::Generator, α) where {d}
     d >= 2 || throw(ArgumentError(
         "a Liouville copula must have dimension at least 2",
     ))
-    length(α) == d || throw(ArgumentError(
-        "expected $d Dirichlet parameters, got $(length(α))",
-    ))
     αtuple = promote(map(float, α)...)
-    all(a -> isfinite(a) && a > 0, αtuple) || throw(ArgumentError(
-        "Dirichlet parameters must be finite and positive",
-    ))
-    α₀ = sum(αtuple)
-    α₀ <= max_monotony(G) || throw(ArgumentError(
-        "the generator $G cannot provide the required Williamson order sum(α) = $α₀",
-    ))
-    return LiouvilleCopula{d,typeof(G)}(αtuple, G)
+    C = LiouvilleCopula{d,typeof(G)}(αtuple, G)
+    if !Paramorph.has_parameter_geometry(G)
+        α₀ = sum(C.α)
+        α₀ <= max_monotony(G) || throw(ArgumentError(
+            "the generator $G cannot provide the required Williamson order sum(α) = $α₀",
+        ))
+    end
+    return C
 end
 LiouvilleCopula(G::Generator, α) = LiouvilleCopula{length(α)}(G, α)
 LiouvilleCopula(d::Integer, G::Generator, α) = LiouvilleCopula{d}(G, α)
@@ -96,7 +93,7 @@ function Distributions._rand!(
     @inbounds for col in axes(A, 2)
         Random.rand!(rng, simplex, direction)
         r = rand(rng, radial)
-        for row in axes(A, 1)
+        for row in 1:d
             A[row, col] = Distributions.ccdf(margins[row], r * direction[row])
         end
     end
@@ -260,4 +257,4 @@ end
 SubsetCopula(C::LiouvilleCopula, dims::NTuple{p,Int}) where {p} =
     LiouvilleCopula{p}(C.G, ntuple(i -> C.α[dims[i]], p))
 
-_available_fitting_methods(::Type{<:LiouvilleCopula}, d) = Tuple{}()
+_available_fitting_methods(::Type{<:LiouvilleCopula}, d) = (:mle,)
