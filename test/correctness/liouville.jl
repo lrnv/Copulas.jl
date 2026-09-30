@@ -48,8 +48,7 @@
         @test moved.G.θ isa Float32
         @test sum(moved.α) <= Copulas.max_monotony(moved.G)
 
-        # Parameter metadata is introduced in this PR; fitting stays separate.
-        @test Copulas._available_fitting_methods(typeof(C), 6) == ()
+        @test Copulas._available_fitting_methods(typeof(C), 6) == (:mle,)
     end
 
     @testset "finite-support beta-product quantiles" begin
