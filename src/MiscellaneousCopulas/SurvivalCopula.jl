@@ -46,13 +46,14 @@ See also: [`Copula`](@ref), [`subsetdims`](@ref), [`condition`](@ref),
 References:
 * [nelsen2006](@cite) Nelsen (2006), An introduction to copulas.
 """
-struct SurvivalCopula{d,CT} <: AbstractReflectedCopula{d,CT}
-    C::CT
+Paramorph.@paramorph struct SurvivalCopula{d,CT<:Copula{d}} <:
+                            AbstractReflectedCopula{d,CT}
+    C::CT ~ Paramorph.nested(dimension=d)
     flipmask::NTuple{d,Bool}
-    function SurvivalCopula{d}(C::Copula{d}, flips) where {d}
-        mask = _survival_flipmask(Val(d), flips)
-        return new{d,typeof(C)}(C, mask)
-    end
+end
+function SurvivalCopula{d}(C::Copula{d}, flips) where {d}
+    mask = _survival_flipmask(Val(d), flips)
+    return SurvivalCopula{d,typeof(C)}(C, mask)
 end
 
 """
@@ -67,10 +68,15 @@ type and is therefore preserved by fitting.
 See also: [`SurvivalCopula`](@ref), [`Copulas.flipmask`](@ref),
 [`Copulas.flips`](@ref).
 """
-struct Rotated90Copula{d,CT} <: AbstractReflectedCopula{d,CT}
-    C::CT
-    Rotated90Copula{2}(C::Copula{2}) = new{2,typeof(C)}(C)
+Paramorph.@paramorph struct Rotated90Copula{d,CT<:Copula{d}} <:
+                            AbstractReflectedCopula{d,CT}
+    C::CT ~ Paramorph.nested(
+        dimension=d == 2 ? d : throw(DimensionMismatch(
+            "Rotated90Copula is only defined in dimension 2",
+        )),
+    )
 end
+Rotated90Copula{2}(C::Copula{2}) = Rotated90Copula{2,typeof(C)}(C)
 Rotated90Copula(C::Copula{2}) = Rotated90Copula{2}(C)
 function Rotated90Copula(d::Integer, C::Copula{2})
     d == 2 || throw(DimensionMismatch("Rotated90Copula is only defined in dimension 2"))
@@ -89,10 +95,15 @@ reflection pattern is encoded by the concrete type and is preserved by fitting.
 See also: [`SurvivalCopula`](@ref), [`Copulas.flipmask`](@ref),
 [`Copulas.flips`](@ref).
 """
-struct Rotated180Copula{d,CT} <: AbstractReflectedCopula{d,CT}
-    C::CT
-    Rotated180Copula{2}(C::Copula{2}) = new{2,typeof(C)}(C)
+Paramorph.@paramorph struct Rotated180Copula{d,CT<:Copula{d}} <:
+                            AbstractReflectedCopula{d,CT}
+    C::CT ~ Paramorph.nested(
+        dimension=d == 2 ? d : throw(DimensionMismatch(
+            "Rotated180Copula is only defined in dimension 2",
+        )),
+    )
 end
+Rotated180Copula{2}(C::Copula{2}) = Rotated180Copula{2,typeof(C)}(C)
 Rotated180Copula(C::Copula{2}) = Rotated180Copula{2}(C)
 function Rotated180Copula(d::Integer, C::Copula{2})
     d == 2 || throw(DimensionMismatch("Rotated180Copula is only defined in dimension 2"))
@@ -111,10 +122,15 @@ type and is therefore preserved by fitting.
 See also: [`SurvivalCopula`](@ref), [`Copulas.flipmask`](@ref),
 [`Copulas.flips`](@ref).
 """
-struct Rotated270Copula{d,CT} <: AbstractReflectedCopula{d,CT}
-    C::CT
-    Rotated270Copula{2}(C::Copula{2}) = new{2,typeof(C)}(C)
+Paramorph.@paramorph struct Rotated270Copula{d,CT<:Copula{d}} <:
+                            AbstractReflectedCopula{d,CT}
+    C::CT ~ Paramorph.nested(
+        dimension=d == 2 ? d : throw(DimensionMismatch(
+            "Rotated270Copula is only defined in dimension 2",
+        )),
+    )
 end
+Rotated270Copula{2}(C::Copula{2}) = Rotated270Copula{2,typeof(C)}(C)
 Rotated270Copula(C::Copula{2}) = Rotated270Copula{2}(C)
 function Rotated270Copula(d::Integer, C::Copula{2})
     d == 2 || throw(DimensionMismatch("Rotated270Copula is only defined in dimension 2"))

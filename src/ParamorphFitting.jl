@@ -22,8 +22,6 @@ _declared_parameter_values(object) =
 # must propagate instead of being reclassified as "no geometry".
 _parameter_dimension_or_nothing(object) =
     _declares_parameter_geometry(typeof(object)) ? _parameter_dimension(object) : nothing
-_parameter_dimension_or_nothing(C::AbstractReflectedCopula) =
-    _parameter_dimension_or_nothing(basecopula(C))
 function _parameter_dimension_or_nothing(C::LiouvilleCopula)
     return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
 end
@@ -97,19 +95,6 @@ function _parameter_prototype(CT::Type{<:ArchimaxCopula}, vd::Val{d}) where {d}
     tail = _tail_prototype(TT, vd)
     return ArchimaxCopula{d}(G, tail)
 end
-
-# Reflection wrappers have instance metadata (the flip mask), so fitting keeps
-# their chart structural and delegates to the already-fitted base copula.
-_parameter_dimension(C::AbstractReflectedCopula) = _parameter_dimension(basecopula(C))
-_parameter_coordinates(C::AbstractReflectedCopula) = _parameter_coordinates(basecopula(C))
-_from_parameter_coordinates(C::SurvivalCopula{d}, α) where {d} =
-    SurvivalCopula{d}(_from_parameter_coordinates(basecopula(C), α), flipmask(C))
-_from_parameter_coordinates(C::Rotated90Copula, α) =
-    Rotated90Copula(_from_parameter_coordinates(basecopula(C), α))
-_from_parameter_coordinates(C::Rotated180Copula, α) =
-    Rotated180Copula(_from_parameter_coordinates(basecopula(C), α))
-_from_parameter_coordinates(C::Rotated270Copula, α) =
-    Rotated270Copula(_from_parameter_coordinates(basecopula(C), α))
 
 # Liouville has a genuinely coupled domain constraint between the generator and
 # the Dirichlet weights, so it remains a Copulas-specific chart. Keep its
