@@ -46,6 +46,7 @@ See also: [`Copula`](@ref), [`subsetdims`](@ref), [`condition`](@ref),
 References:
 * [nelsen2006](@cite) Nelsen (2006), An introduction to copulas.
 """
+SurvivalCopula
 Paramorph.@paramorph struct SurvivalCopula{d,CT<:Copula{d}} <:
                             AbstractReflectedCopula{d,CT}
     C::CT ~ Paramorph.nested(dimension=d)
@@ -68,6 +69,7 @@ type and is therefore preserved by fitting.
 See also: [`SurvivalCopula`](@ref), [`Copulas.flipmask`](@ref),
 [`Copulas.flips`](@ref).
 """
+Rotated90Copula
 Paramorph.@paramorph struct Rotated90Copula{d,CT<:Copula{d}} <:
                             AbstractReflectedCopula{d,CT}
     C::CT ~ Paramorph.nested(
@@ -95,6 +97,7 @@ reflection pattern is encoded by the concrete type and is preserved by fitting.
 See also: [`SurvivalCopula`](@ref), [`Copulas.flipmask`](@ref),
 [`Copulas.flips`](@ref).
 """
+Rotated180Copula
 Paramorph.@paramorph struct Rotated180Copula{d,CT<:Copula{d}} <:
                             AbstractReflectedCopula{d,CT}
     C::CT ~ Paramorph.nested(
@@ -122,6 +125,7 @@ type and is therefore preserved by fitting.
 See also: [`SurvivalCopula`](@ref), [`Copulas.flipmask`](@ref),
 [`Copulas.flips`](@ref).
 """
+Rotated270Copula
 Paramorph.@paramorph struct Rotated270Copula{d,CT<:Copula{d}} <:
                             AbstractReflectedCopula{d,CT}
     C::CT ~ Paramorph.nested(
