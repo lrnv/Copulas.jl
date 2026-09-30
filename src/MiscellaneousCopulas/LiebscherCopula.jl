@@ -297,20 +297,10 @@ end
 #########################################
 
 # Bare Liebscher family fitting is intentionally unavailable. Template fitting
-# below optimizes only the component charts and weight simplices carried by the
-# concrete starting model.
+# optimizes every component that exposes Paramorph geometry together with the
+# weight simplices carried by the concrete starting model. Components without
+# geometry are preserved as fixed prototype state by `recursive()`.
 _available_fitting_methods(::Type{<:LiebscherCopula}, d) = ()
-
-function _liebscher_component_space(C::Copula{d}) where {d}
-    :mle in _available_fitting_methods(typeof(C), d) || return nothing
-    dimension = _parameter_dimension_or_nothing(C)
-    dimension === nothing && return nothing
-    return iszero(dimension) ? nothing : C
-end
-
-struct _FixedLiebscherComponent{C}
-    value::C
-end
 
 Paramorph.@paramorph T struct _LiebscherWeightColumn{T<:Real}
     weights::Vector{T} ~ Paramorph.simplex_face(map(!iszero, weights))
@@ -322,17 +312,11 @@ Paramorph.@paramorph T struct _LiebscherFitGeometry{T<:Real}
     dimension::Int
 end
 
-_liebscher_fit_component(C) =
-    _liebscher_component_space(C) === nothing ? _FixedLiebscherComponent(C) : C
-_liebscher_component(C::_FixedLiebscherComponent) = C.value
-_liebscher_component(C) = C
-
 function _liebscher_fit_geometry(C::LiebscherCopula{d}) where {d}
-    copulas = map(_liebscher_fit_component, C.copulas)
     columns = ntuple(d) do j
         _LiebscherWeightColumn(collect(@view C.weights[:, j]))
     end
-    return _LiebscherFitGeometry{eltype(C)}(copulas, columns, d)
+    return _LiebscherFitGeometry{eltype(C)}(C.copulas, columns, d)
 end
 
 function _liebscher_initial_coordinates(C::LiebscherCopula)
@@ -344,9 +328,8 @@ end
 
 function _liebscher_from_coordinates(C0::LiebscherCopula{d}, α) where {d}
     geometry = Paramorph.constraint(_liebscher_fit_geometry(C0), α)
-    copulas = map(_liebscher_component, geometry.copulas)
     weights = reduce(hcat, map(column -> column.weights, geometry.columns))
-    return LiebscherCopula{d}(copulas, weights)
+    return LiebscherCopula{d}(geometry.copulas, weights)
 end
 
 # Local compatibility aliases for the tests and internal callers introduced with
