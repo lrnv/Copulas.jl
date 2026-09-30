@@ -39,6 +39,19 @@ function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
     return ArchimedeanCopula{d}(G)
 end
 
+# Liouville's generator geometry is conditional on the newly reconstructed α,
+# so there is intentionally no type-only Paramorph prototype. The generic MLE
+# still needs a neutral object prototype; zero unconstrained α coordinates map
+# to ones, and the nested generator is initialized in the corresponding order d.
+function _parameter_prototype(CT::Type{<:LiouvilleCopula}, ::Val{d}) where {d}
+    GT = fieldtype(CT, :G)
+    GT isa TypeVar && throw(ArgumentError(
+        "fitting LiouvilleCopula from a type requires a concrete generator family",
+    ))
+    G = _generator_parameter_prototype(GT, d)
+    return LiouvilleCopula{d}(G, ntuple(_ -> 1.0, d))
+end
+
 # Some tail families store their dimension as an auxiliary runtime field. The
 # outer copula knows that value structurally, so provide it through the public
 # prototype API when reconstructing a family from its type.
