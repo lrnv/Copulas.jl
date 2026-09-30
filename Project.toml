@@ -78,7 +78,7 @@ Test = "1"
 julia = "1.11"
 
 [extras]
-Aqua = "4c88cf16-eb10-579b-a4ab-409b98df4dab"
+Aqua = "4c88cf16-eb10-579e-8560-4a9242c79595"
 DelimitedFiles = "8bb1440f-4735-579b-a4ab-409b98df4dab"
 ExpectationMaximization = "e1fe09cc-5134-44c2-a941-50f4cd97986a"
 HypothesisTests = "09f84164-cd44-5f33-b23f-e6b0d136a0d5"
