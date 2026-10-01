@@ -359,7 +359,7 @@ end
         :mle in methods || continue
         _has_fitting_parameters(C) || continue
         C isa FGMCopula && d > 2 && continue  # specialized coupled-polytope MLE
-        Copulas.Paramorph.is_paramorph_type(CT) || continue
+        Copulas.Paramorph.has_parameter_geometry(CT) || continue
 
         @testset "$(case.name)" begin
             test_mle_parameter_plumbing(C)
@@ -492,8 +492,15 @@ end
     @test fit(ArchimedeanCopula, generic_data; method=:gnz2011) isa ArchimedeanCopula{2}
     @test fit(ExtremeValueCopula, generic_data; method=:ols) isa ExtremeValueCopula{2}
 
+    liouville = LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0))
+    liouville_coordinates = Copulas.Paramorph.unconstrain(liouville)
+    @test length(liouville_coordinates) == 3
+    @test all(isapprox.(
+        Copulas.Paramorph.constraint(liouville, liouville_coordinates).α,
+        liouville.α,
+    ))
+
     non_fittable = (
-        LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0)),
         ExtremeValueCopula{2}(Copulas.DiscreteSpectralTail([0.7 0.3; 0.2 0.8])),
     )
     for C in non_fittable

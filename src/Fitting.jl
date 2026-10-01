@@ -235,6 +235,15 @@ _parameter_arguments(η) = (η,)
 
 _fit_prototype(CT::Type{<:Copula}, vd::Val) = _parameter_prototype(CT, vd)
 
+function _optimize_mle(objective, initial, ::Copula)
+    return Optim.optimize(
+        objective,
+        initial,
+        Optim.LBFGS();
+        autodiff=ADTypes.AutoForwardDiff(),
+    )
+end
+
 """
     _fit(::Type{<:Copula}, U, ::Val{method}; kwargs...)
 
@@ -265,12 +274,7 @@ function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) w
     α₀ = zeros(_parameter_dimension(prototype))
     cop(α) = _from_parameter_coordinates(prototype, α)
     loss(C) = -_weighted_loglikelihood(C, U, weights)
-    res = Optim.optimize(
-        loss ∘ cop,
-        α₀,
-        Optim.LBFGS();
-        autodiff=ADTypes.AutoForwardDiff()
-    )
+    res = _optimize_mle(loss ∘ cop, α₀, prototype)
     return cop(Optim.minimizer(res))
 end
 

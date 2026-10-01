@@ -297,112 +297,40 @@ end
 #########################################
 
 # Bare Liebscher family fitting is intentionally unavailable. Template fitting
-# below optimizes only the component charts and weight simplices carried by the
-# concrete starting model.
+# optimizes every component that exposes Paramorph geometry together with the
+# weight simplices carried by the concrete starting model. Components without
+# geometry are preserved as fixed prototype state by `recursive()`.
 _available_fitting_methods(::Type{<:LiebscherCopula}, d) = ()
 
-function _liebscher_component_space(C::Copula{d}) where {d}
-    :mle in _available_fitting_methods(typeof(C), d) || return nothing
-    dimension = _parameter_dimension_or_nothing(C)
-    dimension === nothing && return nothing
-    return iszero(dimension) ? nothing : C
+Paramorph.@paramorph T struct _LiebscherWeightColumn{T<:Real}
+    weights::Vector{T} ~ Paramorph.simplex_face(map(!iszero, weights))
 end
 
-function _liebscher_weight_geometry(W::AbstractMatrix, j::Int)
-    active = findall(!iszero, @view W[:, j])
-    length(active) <= 1 && return active, nothing
-    p = Paramorph.TransformVariables.UnitSimplex(length(active))
-    return active, p
+Paramorph.@paramorph T struct _LiebscherFitGeometry{T<:Real}
+    copulas::Tuple ~ Paramorph.recursive()
+    columns::Tuple ~ Paramorph.recursive()
+    dimension::Int
 end
 
-_liebscher_natural_tuple(η::NamedTuple) = Tuple(values(η))
-_liebscher_natural_tuple(η) = η
-
-function _liebscher_initial_coordinates(C::LiebscherCopula{d}) where {d}
-    T = eltype(C)
-    α = T[]
-
-    for component in C.copulas
-        p = _liebscher_component_space(component)
-        p === nothing && continue
-        append!(α, _parameter_coordinates(component))
+function _liebscher_fit_geometry(C::LiebscherCopula{d}) where {d}
+    columns = ntuple(d) do j
+        _LiebscherWeightColumn(collect(@view C.weights[:, j]))
     end
+    return _LiebscherFitGeometry{eltype(C)}(C.copulas, columns, d)
+end
 
-    for j in 1:d
-        active, p = _liebscher_weight_geometry(C.weights, j)
-        p === nothing && continue
-        append!(α, Paramorph.TransformVariables.inverse(
-            p, collect(@view C.weights[active, j]),
-        ))
-    end
-
-    component_dimension = sum(C.copulas; init=0) do component
-        p = _liebscher_component_space(component)
-        p === nothing ? 0 : _parameter_dimension(component)
-    end
-    weight_dimension = sum(1:d; init=0) do j
-        _, p = _liebscher_weight_geometry(C.weights, j)
-        p === nothing ? 0 : Paramorph.TransformVariables.dimension(p)
-    end
-    expected = component_dimension + weight_dimension
-    length(α) == expected || throw(DimensionMismatch(
-        "Liebscher fitting coordinates have length $(length(α)); expected $expected"))
+function _liebscher_initial_coordinates(C::LiebscherCopula)
+    α = Paramorph.unconstrain(_liebscher_fit_geometry(C))
     all(isfinite, α) || throw(ArgumentError(
         "Liebscher template fitting requires an interior finite Paramorph representation"))
     return α
 end
 
-function _liebscher_component_from_coordinates(C::Copula{d}, α, i::Ref{Int}) where {d}
-    p = _liebscher_component_space(C)
-    p === nothing && return C
-
-    n = _parameter_dimension(C)
-    β = @view α[i[]:(i[] + n - 1)]
-    i[] += n
-    return _from_parameter_coordinates(C, collect(β))
-end
-
-function _liebscher_weights_from_coordinates(W0::AbstractMatrix{<:Real}, α, i::Ref{Int})
-    K, d = size(W0)
-    T = promote_type(eltype(W0), eltype(α))
-    W = zeros(T, K, d)
-
-    @inbounds for j in 1:d
-        active, p = _liebscher_weight_geometry(W0, j)
-        if p === nothing
-            W[only(active), j] = one(T)
-            continue
-        end
-
-        n = Paramorph.TransformVariables.dimension(p)
-        η = Paramorph.TransformVariables.transform(p, @view α[i[]:(i[] + n - 1)])
-        i[] += n
-
-        for (r, k) in pairs(active)
-            W[k, j] = η[r]
-        end
-    end
-
-    return W
-end
-
 function _liebscher_from_coordinates(C0::LiebscherCopula{d}, α) where {d}
-    i = Ref(1)
-    copulas = ntuple(
-        k -> _liebscher_component_from_coordinates(C0.copulas[k], α, i),
-        length(C0.copulas),
-    )
-    weights = _liebscher_weights_from_coordinates(C0.weights, α, i)
-
-    i[] == length(α) + 1 || throw(ArgumentError("invalid Liebscher fitting parameter vector"))
-    return LiebscherCopula{d}(copulas, weights)
+    geometry = Paramorph.constraint(_liebscher_fit_geometry(C0), α)
+    weights = reduce(hcat, map(column -> column.weights, geometry.columns))
+    return LiebscherCopula{d}(geometry.copulas, weights)
 end
-
-# Local compatibility aliases for the tests and internal callers introduced with
-# the original template fitter. The generic legacy fitting protocol is not
-# restored; both names now route exclusively through Paramorph.
-_liebscher_unbound(C::LiebscherCopula) = _liebscher_initial_coordinates(C)
-_liebscher_rebound(C::LiebscherCopula, α) = _liebscher_from_coordinates(C, α)
 
 function _validate_liebscher_fit_data(U, d::Int)
     ndims(U) == 2 || throw(ArgumentError("U must be a d×n matrix of pseudo-observations"))

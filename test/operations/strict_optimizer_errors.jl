@@ -6,36 +6,29 @@ _BrokenADCopula(d::Int, θ::Float64) = _BrokenADCopula{d,Float64}(θ)
 Base.eltype(C::_BrokenADCopula) = typeof(C.θ)
 Distributions.params(C::_BrokenADCopula) = (C.θ,)
 Distributions._logpdf(C::_BrokenADCopula, u::AbstractVector{<:Real}) = zero(eltype(u))
-Copulas.Paramorph.is_paramorph_type(::Type{<:_BrokenADCopula}) = true
-Copulas.Paramorph.parameter_fields(::Type{<:_BrokenADCopula}) = (:θ,)
-Copulas.Paramorph.transformation_schema(::_BrokenADCopula, ::NamedTuple=NamedTuple()) =
-    Copulas.Paramorph.TransformVariables.as((θ=Copulas.Paramorph.bounded_interval(
-        0.0, 1.0; left_closed=false, right_closed=false,
-    ),))
-Copulas.Paramorph.parameter_values(C::_BrokenADCopula) = (; θ=C.θ)
-Copulas.Paramorph.reconstruct_struct(C::_BrokenADCopula{d}, values::NamedTuple) where {d} =
-    _BrokenADCopula(d, values.θ)
 Copulas._fit_prototype(::Type{_BrokenADCopula}, ::Val{d}) where {d} =
     _BrokenADCopula(d, 0.5)
+Copulas._parameter_dimension(::_BrokenADCopula) = 1
+Copulas._from_parameter_coordinates(
+    C::_BrokenADCopula{d}, α::AbstractVector{Float64},
+) where {d} = _BrokenADCopula(d, only(α))
+function Copulas._from_parameter_coordinates(
+    C::_BrokenADCopula{d}, α::AbstractVector{<:ForwardDiff.Dual},
+) where {d}
+    throw(MethodError(_BrokenADCopula, (d, only(α))))
+end
 Copulas._available_fitting_methods(::Type{_BrokenADCopula}, d) = (:mle,)
 
 struct _BrokenGeometryCopula{d} <: Copulas.Copula{d} end
-Copulas.Paramorph.is_paramorph_type(::Type{<:_BrokenGeometryCopula}) = true
-Copulas.Paramorph.transformation_schema(
-    ::_BrokenGeometryCopula, ::NamedTuple=NamedTuple(),
-) = throw(ArgumentError("deliberately broken parameter geometry"))
+Copulas._declares_parameter_geometry(::Type{<:_BrokenGeometryCopula}) = true
+Copulas._parameter_dimension(::_BrokenGeometryCopula) =
+    throw(ArgumentError("deliberately broken parameter geometry"))
 
 struct _OverparameterizedRankCopula{d} <: Copulas.Copula{d} end
-Copulas.Paramorph.is_paramorph_type(::Type{<:_OverparameterizedRankCopula}) = true
-Copulas.Paramorph.transformation_schema(
-    ::_OverparameterizedRankCopula, ::NamedTuple=NamedTuple(),
-) = Copulas.Paramorph.TransformVariables.as((
-    θ₁=Copulas.Paramorph.TransformVariables.asℝ,
-    θ₂=Copulas.Paramorph.TransformVariables.asℝ,
-))
 Copulas._fit_prototype(
     ::Type{_OverparameterizedRankCopula}, ::Val{d},
 ) where {d} = _OverparameterizedRankCopula{d}()
+Copulas._parameter_dimension(::_OverparameterizedRankCopula) = 2
 
 @testset "optimizer fallback does not mask implementation errors" begin
     U = [0.15 0.35 0.65 0.85; 0.25 0.55 0.45 0.75]

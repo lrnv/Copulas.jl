@@ -27,7 +27,7 @@ References:
 FrankGenerator, FrankCopula
 
 Paramorph.@paramorph T struct FrankGenerator{T<:Real} <: AbstractUnivariateGenerator
-    θ::T ~ (get(context, :dimension, 2) == 2 ? asℝ : nonnegative())
+    θ::T ~ (get(context, :dimension, 2) <= 2 ? asℝ : nonnegative())
 end
 FrankGenerator(θ::Integer) = FrankGenerator(float(θ))
 const FrankCopula{d, T} = ArchimedeanCopula{d, FrankGenerator{T}}

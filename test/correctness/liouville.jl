@@ -34,8 +34,21 @@
         @test natural.G.θ ≈ -0.25
         @test collect(natural.α) ≈ collect(C.α)
 
-        # Parameter metadata is introduced in this PR; fitting stays separate.
-        @test Copulas._available_fitting_methods(typeof(C), 6) == ()
+        # The generator chart uses the newly reconstructed Dirichlet order,
+        # not the order stored in the prototype.
+        conditional = LiouvilleCopula{2}(
+            Copulas.ClaytonGenerator(-0.5), (1.0, 1.0),
+        )
+        conditional_z = Copulas._parameter_coordinates(conditional)
+        moved = Copulas._from_parameter_coordinates(
+            conditional,
+            Float32[log(2), log(2), conditional_z[3]],
+        )
+        @test collect(moved.α) ≈ Float32[2, 2]
+        @test moved.G.θ isa Float32
+        @test sum(moved.α) <= Copulas.max_monotony(moved.G)
+
+        @test Copulas._available_fitting_methods(typeof(C), 6) == (:mle,)
     end
 
     @testset "finite-support beta-product quantiles" begin

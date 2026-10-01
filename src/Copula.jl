@@ -32,10 +32,9 @@ Base.eltype(::Copula) = Float64
 Distributions.partype(C::Copula) = eltype(C)
 
 function Distributions.params(C::Copula)
-    Paramorph.is_paramorph_type(typeof(C)) ||
+    Paramorph.has_parameter_geometry(C) ||
         throw(MethodError(Distributions.params, (C,)))
-    return map(Paramorph.parameter_fields(typeof(C))) do name
-        value = getproperty(C, name)
+    return map(values(Paramorph.parameter_values(C))) do value
         return value isa AbstractArray ? copy(value) : value
     end
 end

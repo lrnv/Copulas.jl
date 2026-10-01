@@ -1,3 +1,8 @@
+Paramorph.@paramorph struct ArchimaxCopula{d,TG,TT} <: Copula{d}
+    gen::TG ~ Paramorph.nested(dimension=d)
+    tail::TT ~ Paramorph.nested(dimension=d)
+end
+
 """
     ArchimaxCopula(d, gen::Generator, tail::Tail)
     ArchimaxCopula{d}(gen::Generator, tail::Tail)
@@ -38,20 +43,16 @@ References:
 * [charpentier2014](@cite) Charpentier, Fougères & Genest (2014), Multivariate Archimax Copulas.
 * [mai2012simulating](@cite) Mai, J. F., & Scherer, M. (2012). Simulating copulas: stochastic models, sampling algorithms, and applications.
 """
-struct ArchimaxCopula{d, TG, TT} <: Copula{d}
-    gen::TG
-    tail::TT
-    function ArchimaxCopula{d}(gen::Generator, tail::Tail) where {d}
-        max_monotony(gen) >= d || throw(DomainError(
-            d,
-            "generator $(typeof(gen)) has maximal monotonicity $(max_monotony(gen)) and is invalid in dimension $d",
-        ))
-        _is_valid_in_dim(tail, d) || throw(DomainError(
-            d,
-            "tail $(typeof(tail)) is not valid in dimension $d",
-        ))
-        return new{d, typeof(gen), typeof(tail)}(gen, tail)
-    end
+function ArchimaxCopula{d}(gen::Generator, tail::Tail) where {d}
+    max_monotony(gen) >= d || throw(DomainError(
+        d,
+        "generator $(typeof(gen)) has maximal monotonicity $(max_monotony(gen)) and is invalid in dimension $d",
+    ))
+    _is_valid_in_dim(tail, d) || throw(DomainError(
+        d,
+        "tail $(typeof(tail)) is not valid in dimension $d",
+    ))
+    return ArchimaxCopula{d,typeof(gen),typeof(tail)}(gen, tail)
 end
 Base.eltype(C::ArchimaxCopula) = promote_type(eltype(C.gen), eltype(C.tail))
 @inline function _archimax_limit_kind(C::ArchimaxCopula{d}) where {d}

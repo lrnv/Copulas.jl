@@ -76,15 +76,15 @@
     @test only(Distributions.params(Copulas._from_parameter_coordinates(Carch, zarch))) ≈ 1.25
 
     # Liouville follows the same logical representation: generator parameters
-    # first, then the positive α vector. Its product chart belongs to the
-    # centralized Copulas bridge; fitting remains deliberately disabled.
+    # first, then the positive α vector. Its conditional Paramorph geometry now
+    # supports the generic MLE for a concrete generator family.
     L = LiouvilleCopula(Copulas.ClaytonGenerator(1.25), (0.8, 1.2))
     @test Copulas._parameter_dimension(L) == 3
     @test Distributions.params(L) == (1.25, [0.8, 1.2])
     naturalL = Copulas._from_parameter_coordinates(L, Copulas._parameter_coordinates(L))
     @test naturalL.G.θ ≈ 1.25
     @test collect(naturalL.α) ≈ [0.8, 1.2]
-    @test Copulas._available_fitting_methods(typeof(L), 2) == ()
+    @test Copulas._available_fitting_methods(typeof(L), 2) == (:mle,)
 
     # Bivariate FGM is an ordinary bounded one-dimensional chart. Multivariate
     # FGM keeps its specialized optimizer because its feasible set is coupled.

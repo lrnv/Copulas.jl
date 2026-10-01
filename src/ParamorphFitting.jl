@@ -1,28 +1,10 @@
-# Internal bridge between Copulas' notion of parameter geometry and Paramorph.
-#
-# Model files declare constraints with `@paramorph`; fitting and inference use
-# only the `_parameter_*` functions below. Paramorph-specific runtime calls are
-# intentionally centralized here.
-
-function _concrete_paramorph_type(T::Type, ::Type{N}=Float64) where {N<:Real}
-    concrete = Paramorph.rebind_numeric_type(T, N)
-    if concrete isa UnionAll
-        candidate = try
-            Core.apply_type(concrete, N)
-        catch err
-            err isa TypeError || rethrow()
-            concrete
-        end
-        Paramorph.is_paramorph_type(candidate) && return candidate
-    end
-    return concrete
-end
+# Small adapter between Copulas fitting/inference and Paramorph's public API.
 
 _parameter_dimension(object) = Paramorph.intrinsic_dimension(object)
 _parameter_coordinates(object) = Paramorph.unconstrain(object)
 _from_parameter_coordinates(object, α) = Paramorph.constraint(object, α)
 
-_declares_parameter_geometry(::Type{T}) where {T} = Paramorph.is_paramorph_type(T)
+_declares_parameter_geometry(::Type{T}) where {T} = Paramorph.has_parameter_geometry(T)
 _declared_parameter_values(object) =
     _declares_parameter_geometry(typeof(object)) ? Paramorph.parameter_values(object) : nothing
 
@@ -31,65 +13,69 @@ _declared_parameter_values(object) =
 # must propagate instead of being reclassified as "no geometry".
 _parameter_dimension_or_nothing(object) =
     _declares_parameter_geometry(typeof(object)) ? _parameter_dimension(object) : nothing
-
-function _parameter_dimension_or_nothing(C::ArchimedeanCopula)
-    return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
-end
-function _parameter_dimension_or_nothing(C::ExtremeValueCopula)
-    return _declares_parameter_geometry(typeof(C.tail)) ? _parameter_dimension(C) : nothing
-end
-function _parameter_dimension_or_nothing(C::ArchimaxCopula)
-    (_declares_parameter_geometry(typeof(C.gen)) &&
-     _declares_parameter_geometry(typeof(C.tail))) || return nothing
-    return _parameter_dimension(C)
-end
-_parameter_dimension_or_nothing(C::AbstractReflectedCopula) =
-    _parameter_dimension_or_nothing(basecopula(C))
-function _parameter_dimension_or_nothing(C::LiouvilleCopula)
-    return _declares_parameter_geometry(typeof(C.G)) ? _parameter_dimension(C) : nothing
-end
-
-function _component_prototype(
-    T::Type, context::NamedTuple=NamedTuple(); auxiliary::NamedTuple=NamedTuple(),
-)
-    concrete = _concrete_paramorph_type(T)
-    Paramorph.is_paramorph_type(concrete) || throw(ArgumentError(
-        "$T does not declare parameter geometry with @paramorph",
-    ))
-    n = Paramorph.intrinsic_dimension(concrete; context, auxiliary)
-    return Paramorph.constraint(concrete, zeros(n); context, auxiliary)
-end
-
 function _parameter_prototype(CT::Type{<:Copula}, ::Val{d}) where {d}
     unwrapped = Base.unwrap_unionall(CT)
     encoded_dimension = unwrapped.parameters[1]
     dimensioned = encoded_dimension isa TypeVar ?
                   Core.apply_type(Base.typename(unwrapped).wrapper, d) : CT
-    concrete = _concrete_paramorph_type(dimensioned)
-    return _component_prototype(concrete, (; dimension=d))
+    return Paramorph.parameter_prototype(
+        dimensioned; numeric_type=Float64, context=(; dimension=d),
+    )
 end
 
-# Structural wrappers are deliberately not Paramorph types. Their components
-# own the geometry; this bridge supplies only composition/reconstruction.
+function _generator_parameter_prototype(GT::Type{<:Generator}, d::Int)
+    return Paramorph.parameter_prototype(
+        GT; numeric_type=Float64, context=(; dimension=d),
+    )
+end
+
+# Family aliases such as `ClaytonCopula` encode their generator restriction in
+# the second type parameter. Dimensioning the outer wrapper generically would
+# erase that restriction, so construct the nested child prototype explicitly
+# through Paramorph's public API. Object-level fitting then uses the wrapper's
+# declared nested geometry directly.
 function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
-    G = _component_prototype(generatorof(CT), (; dimension=d))
-    return ArchimedeanCopula{d}(G)
-end
-function _parameter_dimension(C::ArchimedeanCopula{d}) where {d}
-    return Paramorph.intrinsic_dimension(C.G; context=(; dimension=d))
-end
-function _parameter_coordinates(C::ArchimedeanCopula{d}) where {d}
-    return Paramorph.unconstrain(C.G; context=(; dimension=d))
-end
-function _from_parameter_coordinates(C::ArchimedeanCopula{d}, α) where {d}
-    G = Paramorph.constraint(C.G, α; context=(; dimension=d))
+    G = _generator_parameter_prototype(generatorof(CT), d)
     return ArchimedeanCopula{d}(G)
 end
 
+# Fitting and inference evaluate these operations in hot loops. Delegate the
+# wrapper chart directly to its nested generator through Paramorph's public API
+# instead of repeatedly materializing the generic one-field nested schema.
+_parameter_dimension(C::ArchimedeanCopula{d}) where {d} =
+    Paramorph.intrinsic_dimension(C.G; context=(; dimension=d))
+_parameter_coordinates(C::ArchimedeanCopula{d}) where {d} =
+    Paramorph.unconstrain(C.G; context=(; dimension=d))
+function _from_parameter_coordinates(C::ArchimedeanCopula{d}, α) where {d}
+    # Reconstruct the declared outer geometry directly.  Besides remaining on
+    # Paramorph's public API, this uses its trusted reconstruction path after
+    # the transform has established validity, instead of feeding the already
+    # constrained generator through both validating constructors again.
+    return Paramorph.constraint(typeof(C), α; context=(; dimension=d))
+end
+
+# Liouville's generator geometry is conditional on the newly reconstructed α,
+# so there is intentionally no type-only Paramorph prototype. The generic MLE
+# still needs a neutral object prototype; zero unconstrained α coordinates map
+# to ones, and the nested generator is initialized in the corresponding order d.
+function _parameter_prototype(CT::Type{<:LiouvilleCopula}, ::Val{d}) where {d}
+    GT = fieldtype(CT, :G)
+    GT isa TypeVar && throw(ArgumentError(
+        "fitting LiouvilleCopula from a type requires a concrete generator family",
+    ))
+    G = _generator_parameter_prototype(GT, d)
+    return LiouvilleCopula{d}(G, ntuple(_ -> 1.0, d))
+end
+
+# Some tail families store their dimension as an auxiliary runtime field. The
+# outer copula knows that value structurally, so provide it through the public
+# prototype API when reconstructing a family from its type.
 function _tail_prototype(TT::Type, ::Val{d}) where {d}
-    concrete = _concrete_paramorph_type(TT)
-    return _component_prototype(
-        concrete, (; dimension=d); auxiliary=(; d=d),
+    return Paramorph.parameter_prototype(
+        TT;
+        numeric_type=Float64,
+        context=(; dimension=d),
+        auxiliary=(; d=d),
     )
 end
 
@@ -99,7 +85,9 @@ function _tail_prototype(TT::Type{<:HuslerReissTail}, ::Val{d}) where {d}
     encoded_d isa TypeVar || encoded_d == d || throw(DimensionMismatch(
         "Hüsler-Reiss tail dimension $encoded_d does not match d=$d",
     ))
-    return _component_prototype(HuslerReissTail{d,Float64}, (; dimension=d))
+    return Paramorph.parameter_prototype(
+        HuslerReissTail{d,Float64}; context=(; dimension=d),
+    )
 end
 
 function _tail_prototype(TT::Type{<:tEVTail}, ::Val{d}) where {d}
@@ -108,95 +96,20 @@ function _tail_prototype(TT::Type{<:tEVTail}, ::Val{d}) where {d}
     encoded_d isa TypeVar || encoded_d == d || throw(DimensionMismatch(
         "extremal-t tail dimension $encoded_d does not match d=$d",
     ))
-    return _component_prototype(tEVTail{d,Float64}, (; dimension=d))
+    return Paramorph.parameter_prototype(
+        tEVTail{d,Float64}; context=(; dimension=d),
+    )
 end
 
 function _parameter_prototype(CT::Type{<:ExtremeValueCopula}, vd::Val{d}) where {d}
     return ExtremeValueCopula{d}(_tail_prototype(tailof(CT), vd))
 end
-function _parameter_dimension(C::ExtremeValueCopula{d}) where {d}
-    return _parameter_dimension(C.tail, Val(d))
-end
-function _parameter_coordinates(C::ExtremeValueCopula{d}) where {d}
-    return _parameter_coordinates(C.tail, Val(d))
-end
-function _from_parameter_coordinates(C::ExtremeValueCopula{d}, α) where {d}
-    return ExtremeValueCopula{d}(_from_parameter_coordinates(C.tail, α, Val(d)))
-end
-
-# Ordinary @paramorph tails need only a dimension context. Runtime auxiliary
-# fields (for example a stored dimension) are already available from the object.
-_parameter_dimension(tail::Tail, ::Val{d}) where {d} =
-    Paramorph.intrinsic_dimension(tail; context=(; dimension=d))
-_parameter_coordinates(tail::Tail, ::Val{d}) where {d} =
-    Paramorph.unconstrain(tail; context=(; dimension=d))
-_from_parameter_coordinates(tail::Tail, α, ::Val{d}) where {d} =
-    Paramorph.constraint(tail, α; context=(; dimension=d))
 
 function _parameter_prototype(CT::Type{<:ArchimaxCopula}, vd::Val{d}) where {d}
     GT, TT = genandtailof(CT)
-    G = _component_prototype(GT, (; dimension=d))
+    G = _generator_parameter_prototype(GT, d)
     tail = _tail_prototype(TT, vd)
     return ArchimaxCopula{d}(G, tail)
-end
-function _parameter_dimension(C::ArchimaxCopula{d}) where {d}
-    return Paramorph.intrinsic_dimension(C.gen; context=(; dimension=d)) +
-           _parameter_dimension(C.tail, Val(d))
-end
-function _parameter_coordinates(C::ArchimaxCopula{d}) where {d}
-    return vcat(
-        Paramorph.unconstrain(C.gen; context=(; dimension=d)),
-        _parameter_coordinates(C.tail, Val(d)),
-    )
-end
-function _from_parameter_coordinates(C::ArchimaxCopula{d}, α) where {d}
-    ng = Paramorph.intrinsic_dimension(C.gen; context=(; dimension=d))
-    G = Paramorph.constraint(C.gen, view(α, 1:ng); context=(; dimension=d))
-    tail = _from_parameter_coordinates(C.tail, view(α, (ng + 1):length(α)), Val(d))
-    return ArchimaxCopula{d}(G, tail)
-end
-
-# Reflection wrappers preserve their reflection metadata while delegating the
-# actual chart to the underlying copula.
-_parameter_dimension(C::AbstractReflectedCopula) = _parameter_dimension(basecopula(C))
-_parameter_coordinates(C::AbstractReflectedCopula) = _parameter_coordinates(basecopula(C))
-_from_parameter_coordinates(C::SurvivalCopula{d}, α) where {d} =
-    SurvivalCopula{d}(_from_parameter_coordinates(basecopula(C), α), flipmask(C))
-_from_parameter_coordinates(C::Rotated90Copula, α) =
-    Rotated90Copula(_from_parameter_coordinates(basecopula(C), α))
-_from_parameter_coordinates(C::Rotated180Copula, α) =
-    Rotated180Copula(_from_parameter_coordinates(basecopula(C), α))
-_from_parameter_coordinates(C::Rotated270Copula, α) =
-    Rotated270Copula(_from_parameter_coordinates(basecopula(C), α))
-
-# Liouville has a structural product chart: generator parameters followed by
-# positive Dirichlet parameters. The chart composition belongs here, not in the
-# model definition.
-function _liouville_schema(C::LiouvilleCopula{d}) where {d}
-    return Paramorph.TransformVariables.as((
-        G=Paramorph.recursive_schema(C.G, (; dimension=2)),
-        α=Paramorph.TransformVariables.as(
-            Vector, Paramorph.TransformVariables.asℝ₊, d,
-        ),
-    ))
-end
-function _parameter_dimension(C::LiouvilleCopula)
-    return Paramorph.TransformVariables.dimension(_liouville_schema(C))
-end
-function _parameter_coordinates(C::LiouvilleCopula)
-    values = (; G=Paramorph.parameter_values(C.G), α=collect(C.α))
-    return Paramorph.TransformVariables.inverse(_liouville_schema(C), values)
-end
-function _from_parameter_coordinates(C::LiouvilleCopula{d}, α) where {d}
-    values = Paramorph.TransformVariables.transform(_liouville_schema(C), α)
-    G = Paramorph.constraint(
-        C.G,
-        Paramorph.TransformVariables.inverse(
-            Paramorph.recursive_schema(C.G, (; dimension=2)), values.G,
-        );
-        context=(; dimension=2),
-    )
-    return LiouvilleCopula{d}(G, Tuple(values.α))
 end
 
 # Rank inversions are pairwise, but some one-parameter Archimedean families have
@@ -211,13 +124,13 @@ const _DimensionDependentRankGenerator = Union{
 }
 
 function _scalar_parameter_endpoints(GT::Type{<:Generator}, d::Int)
-    concrete = _concrete_paramorph_type(GT)
     context = (; dimension=d)
-    Paramorph.intrinsic_dimension(concrete; context) == 1 || throw(ArgumentError(
+    prototype = _generator_parameter_prototype(GT, d)
+    Paramorph.intrinsic_dimension(prototype; context) == 1 || throw(ArgumentError(
         "$GT does not have a scalar parameter geometry in dimension $d",
     ))
     endpoint(z) = only(values(Paramorph.parameter_values(
-        Paramorph.constraint(concrete, [z]; context),
+        Paramorph.constraint(prototype, [z]; context),
     )))
     return endpoint(-Inf), endpoint(Inf)
 end
@@ -254,11 +167,27 @@ function _nested_scalar_bounds(G::Generator, ::Int, ::Bool)
     ))
 end
 
+# `recursive_tree` asks for the prototype node value before it asks for the node
+# transform. Keep the same public diagnostic for non-scalar generator families
+# instead of letting `only(...)` leak a tuple-length ArgumentError first.
+function _nested_fit_value(node::_NestedFitTree{TG}) where {TG<:Generator}
+    node.G isa IndependentGenerator && return nothing
+    values = _generator_parameter_values(node.G)
+    length(values) == 1 || throw(ArgumentError(
+        "template fitting currently provides nesting geometries only for standard " *
+        "one-parameter generators; $(nameof(typeof(node.G))) is open for contributions",
+    ))
+    return only(values)
+end
+
 # Independence has no scalar parent parameter. Its fitting rule is genuinely
 # free, so delegate directly to the child's local geometry instead of trying to
 # extract a nonexistent parent value in `_nested_edge_transform`.
 function _nested_edge_transform(
-    ::IndependentGenerator, child::Generator, dloc::Int; parent_role::Bool,
+    ::IndependentGenerator, child::Generator, dloc::Int;
+    parent_role::Bool, numeric_type::Type{<:Real}=Float64,
 )
-    return _nested_interval_transform(_nested_scalar_bounds(child, dloc, parent_role)...)
+    return _nested_interval_transform(
+        _nested_scalar_bounds(child, dloc, parent_role)..., numeric_type,
+    )
 end
