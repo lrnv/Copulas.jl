@@ -47,7 +47,9 @@ end
 BetaCopula(data::AbstractMatrix) = BetaCopula{size(data, 1)}(data)
 BetaCopula(d::Integer, data::AbstractMatrix) = BetaCopula{d}(data)
 Distributions.params(C::BetaCopula) = (C.ranks,)
-function _bernvec_n(u::T, n::Int) where {T<:Real}
+function _bernvec_n(u::Real, n::Int)
+    T = typeof(float(u))
+    u = T(u)
     v = zeros(T, n+1)
     if iszero(u)
         v[1] = 1
@@ -56,12 +58,17 @@ function _bernvec_n(u::T, n::Int) where {T<:Real}
         v[end]=1
         return v
     end
-    p = (1 - u)^n
-    v[1] = p
-    @inbounds for k in 0:n-1
-        p *= ((n - k) / (k + 1)) * (u / (1 - u))
-        v[k+2] = p
+    # Start at the binomial mode: starting at (1-u)^n can underflow before
+    # the recurrence reaches any of the substantial probability mass.
+    mode = min(floor(Int, (n + 1) * u), n)
+    v[mode + 1] = one(T)
+    @inbounds for k in mode:-1:1
+        v[k] = v[k + 1] * (T(k) / T(n - k + 1)) * ((1 - u) / u)
     end
+    @inbounds for k in mode:n-1
+        v[k + 2] = v[k + 1] * (T(n - k) / T(k + 1)) * (u / (1 - u))
+    end
+    v ./= sum(v)
     return v
 end
 function _cdf(C::BetaCopula{d}, u) where {d}
@@ -82,21 +89,19 @@ function _cdf(C::BetaCopula{d}, u) where {d}
 end
 function Distributions._logpdf(C::BetaCopula{d}, u::AbstractVector) where {d}
     n = C.n
-    PDFtab = ntuple(j -> n .* _bernvec_n(u[j], n-1), d)
-    dens = zero(eltype(first(PDFtab)))
+    # Keep both kernels and mixture accumulation in log space. Even stable
+    # individual kernels can underflow when multiplied across coordinates.
+    T = typeof(float(u[1]))
+    logdens = T(-Inf)
     @inbounds for i in 1:n
-        prod_term = one(dens)
+        logterm = zero(T)
         @inbounds for j in 1:d
-            prod_term *= PDFtab[j][C.ranks[j,i]]
-            if prod_term == 0
-                break
-            end
+            r = C.ranks[j, i]
+            logterm += Distributions.logpdf(Distributions.Beta(r, n + 1 - r), u[j])
         end
-        dens += prod_term
+        logdens = LogExpFunctions.logaddexp(logdens, logterm)
     end
-    dens /= n
-    dens = max(dens, zero(dens))
-    return log(dens + eps(eltype(dens)))
+    return logdens - log(n)
 end
 function Distributions._rand!(rng::Distributions.AbstractRNG, C::BetaCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
     size(A, 1) == d || throw(ArgumentError("Dimension mismatch between copula and output matrix"))
