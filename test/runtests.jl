@@ -188,6 +188,7 @@ testfiles = (
     "api/sklar_discrete_mixed.jl",
     "api/utilities.jl",
     "correctness/numerical.jl",
+    "correctness/empirical_smoothing_numerics.jl",
     "correctness/williamson.jl",
     "correctness/mathematical.jl",
     "correctness/archimedean.jl",

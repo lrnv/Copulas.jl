@@ -117,39 +117,9 @@ end
 BernsteinCopula(data::AbstractMatrix; kwargs...) = BernsteinCopula{size(data, 1)}(data; kwargs...)
 BernsteinCopula(d::Integer, data::AbstractMatrix; kwargs...) = BernsteinCopula{d}(data; kwargs...)
 
-@inline function _bernvec_all(u::T, m::Int) where {T<:Real}
-    v = zeros(T, m+1)
-    if iszero(u)
-        v[1] = 1; return v
-    elseif isone(u)
-        v[end] = 1; return v
-    end
-    inv1mu = 1 - u
-    r = u / inv1mu
-    p = inv1mu^m
-    v[1] = p
-    @inbounds for s in 1:m
-        p *= ((m - s + 1) / s) * r
-        v[s+1] = p
-    end
-    return v
-end
+@inline _bernvec_all(u::Real, m::Int) = _bernvec_n(u, m)
 @inline function _betavec_pdf_all(u::T, m::Int) where {T<:Real}
-    v = zeros(T, m)
-    if iszero(u)
-        v[1] = m; return v
-    elseif isone(u)
-        v[m] = m; return v
-    end
-    inv1mu = 1 - u
-    r = u / inv1mu
-    q = inv1mu^(m-1)
-    v[1] = q
-    @inbounds for s in 1:m-1   # s = k+1, k=0..m-2
-        q *= ((m - s) / s) * r
-        v[s+1] = q
-    end
-    return v .* m
+    return m .* _bernvec_n(u, m - 1)
 end
 function _cdf(B::BernsteinCopula{d}, u::AbstractVector) where {d}
     m = B.m
@@ -168,15 +138,21 @@ end
 
 function Distributions._logpdf(B::BernsteinCopula{d}, u::AbstractVector) where {d}
     m = B.m
-    BetaV = ntuple(j -> _betavec_pdf_all(u[j], m[j]), d)
-    dens = zero(eltype(first(BetaV)))
+    LogBetaV = ntuple(j -> [
+        Distributions.logpdf(Distributions.Beta(r, m[j] + 1 - r), u[j])
+        for r in 1:m[j]
+    ], d)
+    logdens = oftype(first(first(LogBetaV)), -Inf)
     weights = B.weights
     @inbounds for s in Iterators.product((0:(mi-1) for mi in m)...)
         w = weights[(s[j]+1 for j in 1:d)...]
-        iszero(w) && continue
-        dens += w * prod(BetaV[j][s[j]+1] for j in 1:d)
+        # Construction tolerates tiny negative finite-difference roundoff;
+        # as in sampling, these are not positive mixture components.
+        w <= zero(w) && continue
+        logterm = log(w) + sum(LogBetaV[j][s[j] + 1] for j in 1:d)
+        logdens = LogExpFunctions.logaddexp(logdens, logterm)
     end
-    return dens > zero(dens) ? log(dens) : oftype(dens, -Inf)
+    return logdens
 end
 
 function Distributions._rand!(rng::Distributions.AbstractRNG, B::BernsteinCopula{d}, A::AbstractMatrix{T}) where {d,T<:Real}
