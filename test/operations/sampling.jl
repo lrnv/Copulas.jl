@@ -11,17 +11,12 @@ end
 
 @testset "public sampling contract" begin
     @testset "$(fixture.case.name)" for (seed, fixture) in enumerate(COPULA_FIXTURES)
-        case, C = fixture.case, fixture.copula
+        C = fixture.copula
         d = length(C)
-
         buffer = zeros(eltype(C), d, 2)
-        @test rand!(StableRNG(20_000 + seed), C, buffer) === buffer
-        @test all(x -> 0 <= x <= 1, buffer)
-
-        x = rand(StableRNG(30_000 + seed), C)
-        @test length(x) == d
-        @test eltype(x) == eltype(C)
-        @test all(y -> 0 <= y <= 1, x)
+        @test applicable(rand!, StableRNG(20_000 + seed), C, buffer)
+        @test applicable(rand, StableRNG(30_000 + seed), C)
+        @test applicable(rand, StableRNG(30_000 + seed), C, 2)
     end
 
     @test_throws ArgumentError rand!(
@@ -40,6 +35,13 @@ end
         d = length(C)
         route_rng = StableRNG(400 + index)
         n = 160
+        buffer = zeros(eltype(C), d, 2)
+        @test rand!(route_rng, C, buffer) === buffer
+        @test all(x -> 0 <= x <= 1, buffer)
+        x = rand(route_rng, C)
+        @test length(x) == d
+        @test eltype(x) == eltype(C)
+        @test all(y -> 0 <= y <= 1, x)
         U = rand(route_rng, C, n)
         point = fill(0.72, d)
         theoretical = cdf(C, point)

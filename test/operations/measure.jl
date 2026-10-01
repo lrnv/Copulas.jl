@@ -19,8 +19,7 @@ end
             case, C = fixture.case, fixture.copula
             d = length(C)
             @testset "$(case.name)" begin
-                @test Copulas.measure(C, zeros(d), ones(d)) ≈ 1 atol=1e-3
-                @test Copulas.measure(C, fill(0.6, d), fill(0.2, d)) == 0
+                @test applicable(Copulas.measure, C, zeros(d), ones(d))
             end
         end
 
@@ -80,6 +79,8 @@ end
             d = length(C)
             lower = collect(range(0.13, 0.19; length=d))
             upper = collect(range(0.71, 0.79; length=d))
+            @test Copulas.measure(C, zeros(d), ones(d)) ≈ 1 atol=1e-3
+            @test Copulas.measure(C, fill(0.6, d), fill(0.2, d)) == 0
             expected = 0.0
             for mask in Iterators.product(ntuple(_ -> (false, true), d)...)
                 point = [mask[i] ? lower[i] : upper[i] for i in 1:d]
