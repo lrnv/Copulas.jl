@@ -341,7 +341,9 @@ The checkerboard copula assigns empirical probability ``w_k`` to each regular
 grid cell and is uniform within that cell. Thus its density there is
 ``w_k\prod_jm_j`` and its CDF is the multilinear cell-overlap interpolation.
 Use `CheckerboardCopula(U; m=nothing, pseudo_values=true)` or the corresponding
-`{d}` / `(d, ...)` forms. Every ``m_j`` must divide the sample size.
+`{d}` / `(d, ...)` forms. Every ``m_j`` must divide the sample size, and the
+completed grid must have uniform marginal bin masses. Incompatible data are
+rejected; use `pseudos(X)` or `pseudo_values=false` for tie-free raw data.
 
 ### `BetaCopula`
 

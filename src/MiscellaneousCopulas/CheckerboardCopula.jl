@@ -26,7 +26,10 @@ Notes:
   them explicitly with `pseudos(X; ties=:first)`, `:last`, or `:random` when
   deliberate tie breaking is scientifically justified.
 - Each `m[i]` must divide `n` to produce a valid checkerboard on the sample grid;
-  this is enforced by the constructor.
+  this is enforced by the constructor. The constructed box weights must also
+  give mass `1/m[i]` to every bin of margin `i`. Inputs that violate this
+  uniform-margin condition are rejected; use `pseudos(X)` or, for tie-free
+  raw data, `pseudo_values=false` to obtain rank-based pseudo-observations.
 
 The result is absolutely continuous inside its boxes but its density is
 discontinuous at grid boundaries. Increasing grid resolution reduces smoothing
@@ -53,6 +56,7 @@ function CheckerboardCopula{d}(X::AbstractMatrix{T}; m=nothing, pseudo_values::B
     size(X, 1) == d || throw(DimensionMismatch("data must have $d rows"))
     pseudo_values || _require_tie_free_rows(X, "CheckerboardCopula")
     n = size(X, 2)
+    n > 0 || throw(ArgumentError("CheckerboardCopula requires at least one observation"))
     ms = if isnothing(m)
         @info "Automatic choice: m = n in each dimension." d=d n=n
         fill(n, d)
@@ -64,9 +68,25 @@ function CheckerboardCopula{d}(X::AbstractMatrix{T}; m=nothing, pseudo_values::B
     all(mi -> mi isa Integer && mi > 0 && n % mi == 0, ms) || throw(ArgumentError(
         "checkerboard resolutions must be positive integers dividing the sample size n=$n (got m=$m)"))
     ms = Int.(ms)
-    data = min.(ms .- 1, floor.(Int, (pseudo_values ? X : pseudos(X)) .* ms))
+    U = pseudo_values ? X : pseudos(X)
+    all(x -> 0 <= x <= 1, U) || throw(DomainError(
+        U, "pseudo-observations must lie in [0,1]; use pseudos(X) or pseudo_values=false for raw data"))
+    data = min.(ms .- 1, floor.(Int, U .* ms))
     keys_iter = (Tuple(@view data[:, j]) for j in 1:n)
     boxes = StatsBase.proportionmap(collect(keys_iter))
+    # Divisibility alone does not guarantee uniform margins for arbitrary
+    # pseudo-observations. Check the marginal sums of the completed boxes.
+    rtol = 100eps(Float64) * max(1, length(boxes))
+    for row in 1:d
+        marginal = zeros(Float64, ms[row])
+        for (box, weight) in boxes
+            marginal[box[row] + 1] += weight
+        end
+        all(weight -> isapprox(weight, inv(ms[row]); rtol, atol=0), marginal) ||
+            throw(ArgumentError(
+                "CheckerboardCopula requires uniform bin masses in margin $row; " *
+                "use pseudos(X), or set pseudo_values=false for tie-free raw data"))
+    end
     return CheckerboardCopula{d, eltype(values(boxes))}(ms, boxes)
 end
 CheckerboardCopula(X::AbstractMatrix; kwargs...) = CheckerboardCopula{size(X, 1)}(X; kwargs...)
