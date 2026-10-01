@@ -370,7 +370,7 @@ max_monotony(G::MyGenerator) = ...
 | Method                              | Purpose                                                            | Required    |
 | ------------------------------------| ------------------------------------------------------------------ | ----------- |
 | `max_monotony(G)`                   | Maximum degree of monotonicity (controls validity in d dimensions) | ✅ Public   |
-| `Paramorph.transformation_schema(G)` | Generated parameter geometry when fitting is desired | ✅ Public   |
+| `Paramorph.@paramorph`              | Declare the generator parameter geometry when fitting is desired   | ✅ Public   |
 | `ϕ(G, t)`                           | Generator function                                                 | ✅ Public   |
 | `ϕ⁻¹(G, t)`                         | Generator function inverse                                         | ⚙️ Internal optimization |
 | `ϕ⁽¹⁾(G, t)`                        | Generator function derivative                                      | ⚙️ Internal optimization |
