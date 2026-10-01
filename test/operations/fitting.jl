@@ -588,9 +588,10 @@ end
 
 @testset "observation weights" begin
     # Fitting with `weights` maximizes a weighted pseudo-likelihood whose
-    # weights are normalized to sum to n. Unit weights, at any scale, must
-    # reproduce the unweighted estimator bit for bit in every family that
-    # implements `:mle`, including the families with a hand-written objective.
+    # weights are normalized to sum to n. Every advertised family remains in
+    # the inventory, while the numerical identity is executed once per full
+    # fitting route. Hand-written objectives select distinct `_fit` methods
+    # and therefore retain their own representative.
     n = 200
     families = [
         (ClaytonCopula, ClaytonCopula{2}(2.0)),
@@ -609,19 +610,36 @@ end
         (Rotated90Copula{2,ClaytonCopula{2}}, Rotated90Copula(ClaytonCopula{2}(2.0))),
         (IndependentCopula, IndependentCopula(2)),
     ]
+    @test Copulas._fit_weights(ones(n), n) == ones(n)
+    @test Copulas._fit_weights(fill(3, n), n) == ones(n)
+    @test Copulas._fit_weights(fill(2.5, n), n) == ones(n)
+
+    selected_weighted_routes = Set{Any}()
+    for (CT, C) in families
+        @test :mle in Copulas._available_fitting_methods(CT, length(C))
+        route_data = fill(0.5, length(C), 2)
+        push!(selected_weighted_routes,
+              fitting_execution_route_key(C, route_data, :mle))
+    end
+
+    tested_weighted_routes = Set{Any}()
     @testset "unit weights are the unweighted fit: $(CT)" for (CT, C) in families
+        route_data = fill(0.5, length(C), 2)
+        route = fitting_execution_route_key(C, route_data, :mle)
+        route in tested_weighted_routes && continue
+
         U = rand(StableRNG(516), C, n)
         unweighted = fit(CopulaModel, CT, U; method=:mle)
-        for weights in (ones(n), fill(3, n), fill(2.5, n))
-            weighted = fit(CopulaModel, CT, U; method=:mle, weights)
-            @test coef(weighted) == coef(unweighted)
-            @test loglikelihood(weighted) == loglikelihood(unweighted)
-            @test nobs(weighted) == n
-            @test aic(weighted) == aic(unweighted)
-            @test bic(weighted) == bic(unweighted)
-        end
+        weighted = fit(CopulaModel, CT, U; method=:mle, weights=ones(n))
+        @test coef(weighted) == coef(unweighted)
+        @test loglikelihood(weighted) == loglikelihood(unweighted)
+        @test nobs(weighted) == n
+        @test aic(weighted) == aic(unweighted)
+        @test bic(weighted) == bic(unweighted)
         @test Copulas._model_weights(unweighted) === nothing
+        push!(tested_weighted_routes, route)
     end
+    @test tested_weighted_routes == selected_weighted_routes
     let U = rand(StableRNG(516), ClaytonCopula{2}(2.0), n)
         @test occursin("Observation weights", sprint(show, fit(CopulaModel, ClaytonCopula, U; weights=ones(n))))
         @test !occursin("Observation weights", sprint(show, fit(CopulaModel, ClaytonCopula, U)))
@@ -818,12 +836,10 @@ end
         # Brent's tolerance for the Student profile over the degrees of freedom.
         U = rand(StableRNG(531), C, n)
         unweighted = fit(CopulaModel, CT, U; method)
-        for weights in (ones(n), fill(3, n), fill(2.5, n))
-            weighted = fit(CopulaModel, CT, U; method, weights)
-            @test coef(weighted) == coef(unweighted)
-            @test loglikelihood(weighted) == loglikelihood(unweighted)
-            @test Copulas.fitting_method(weighted) === method
-        end
+        weighted = fit(CopulaModel, CT, U; method, weights=ones(n))
+        @test coef(weighted) == coef(unweighted)
+        @test loglikelihood(weighted) == loglikelihood(unweighted)
+        @test Copulas.fitting_method(weighted) === method
         counts = zeros(Int, n)
         for slot in rand(StableRNG(532), 1:n, n)
             counts[slot] += 1
@@ -856,18 +872,16 @@ end
         Xrep = hcat((repeat(X[:, j], 1, counts[j]) for j in kept)...)
         for sklar_method in (:ifm, :ecdf)
             unweighted = fit(CopulaModel, T, X; sklar_method)
-            for weights in (ones(n), fill(3, n))
-                weighted = fit(CopulaModel, T, X; sklar_method, weights)
-                # Under :ifm the margins' rounding is the copula step's input,
-                # so its parameter lands within optimizer tolerance.
-                @test coef(weighted) ≈ coef(unweighted) rtol=1e-6
-                Sw, Su = fitted_distribution(weighted), fitted_distribution(unweighted)
-                for i in 1:2
-                    @test collect(params(Sw.m[i])) ≈ collect(params(Su.m[i])) rtol=1e-10
-                end
-                @test loglikelihood(weighted) ≈ loglikelihood(unweighted) rtol=1e-10
-                @test nobs(weighted) == n
+            weighted = fit(CopulaModel, T, X; sklar_method, weights=ones(n))
+            # Under :ifm the margins' rounding is the copula step's input,
+            # so its parameter lands within optimizer tolerance.
+            @test coef(weighted) ≈ coef(unweighted) rtol=1e-6
+            Sw, Su = fitted_distribution(weighted), fitted_distribution(unweighted)
+            for i in 1:2
+                @test collect(params(Sw.m[i])) ≈ collect(params(Su.m[i])) rtol=1e-10
             end
+            @test loglikelihood(weighted) ≈ loglikelihood(unweighted) rtol=1e-10
+            @test nobs(weighted) == n
             replicated = fit(CopulaModel, T, Xrep; sklar_method)
             weighted = fit(CopulaModel, T, X; sklar_method, weights=counts)
             @test coef(weighted) ≈ coef(replicated) rtol=1e-6
