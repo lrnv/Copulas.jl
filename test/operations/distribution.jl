@@ -48,7 +48,9 @@ function test_density_contract(::Copulas.AbsolutelyContinuousMeasure, C, u)
     @test pdf(C, fill(1e-5, length(C))) >= 0
     @test pdf(C, fill(0.5, length(C))) >= 0
     @test pdf(C, fill(1 - 1e-5, length(C))) >= 0
-    @test iszero(p) ? lp == -Inf : lp ≈ log(p)
+    # A density near one has log-density near zero, where relative error
+    # alone cannot accommodate floating-point roundoff.
+    @test iszero(p) ? lp == -Inf : isapprox(lp, log(p); atol=16eps(Float64))
     @test_throws DimensionMismatch logpdf(C, zeros(length(C) + 1))
 end
 
@@ -244,7 +246,7 @@ end
                 cdf(C, u .+ (-h, h)) + cdf(C, u .- (h, h))
             ) / (4h^2)
             @test isapprox(pdf(C, u), expected; atol=8e-4, rtol=8e-4)
-            @test logpdf(C, u) ≈ log(pdf(C, u))
+            @test logpdf(C, u) ≈ log(pdf(C, u)) atol=16eps(Float64)
         end
     end
     @test !isempty(routes)
