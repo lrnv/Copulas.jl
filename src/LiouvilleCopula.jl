@@ -47,6 +47,11 @@ Paramorph.@paramorph Tα struct LiouvilleCopula{d,TG,Tα<:Real} <: Copula{d}
 end
 Base.eltype(C::LiouvilleCopula) = promote_type(eltype(C.G), eltype(C.α))
 
+# Liouville likelihoods evaluate inverse beta functions whose implementation
+# does not accept ForwardDiff dual numbers. Keep the generic Paramorph chart,
+# but differentiate that objective numerically.
+_mle_autodiff(::LiouvilleCopula) = ADTypes.AutoFiniteDiff(; fdtype=Val(:central))
+
 function LiouvilleCopula{d}(G::Generator, α) where {d}
     d >= 2 || throw(ArgumentError(
         "a Liouville copula must have dimension at least 2",
