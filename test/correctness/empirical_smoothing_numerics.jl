@@ -43,6 +43,11 @@
         @test logpdf(bernstein, point) ≈ 0 atol=1e-10
     end
     concentrated = BernsteinCopula{2}((2, 2), [0.5 0.0; 0.0 0.5])
+    independent = BernsteinCopula(IndependentCopula(2); m=2)
+    for point in ([0.31, 0.69], [0.53, 0.67])
+        @test pdf(independent, point) ≈ 1 rtol=16eps(Float64)
+        @test logpdf(independent, point) ≈ 0 atol=16eps(Float64)
+    end
     @test logpdf(concentrated, [0.0, 1.0]) == -Inf
     @test logpdf(concentrated, [0.25, 0.75]) ≈ log(0.75)
 
