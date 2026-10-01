@@ -79,10 +79,11 @@ estimator unless different keywords are supplied.
 
 ## Information criteria
 
-`CopulaModel` deliberately exposes AIC, BIC, AICc, and HQC for every fitted
-model, not only for ordinary maximum-likelihood estimates. This is a 1.0 API
-choice: the functions are always operationally defined from the fitted model's
-stored log-likelihood, number of fitted parameters, and number of observations.
+`CopulaModel` implements the standard `StatsBase.aic` and `StatsBase.bic`
+operations. Automatic candidate selection additionally accepts `criterion=:aicc`
+and `criterion=:hqc` and reports all four scores in [`selection_table`](@ref).
+The AICc and HQC calculations support selection; package-private helper
+functions used to compute them are not part of the public API.
 
 For a fitted model `M`, with ``\ell`` the stored log-likelihood, ``k`` the value
 of `dof(M)`, and ``n`` the value of `nobs(M)`, Copulas.jl uses
@@ -135,7 +136,7 @@ Future implementations should use names that make their statistical meaning
 explicit—for example a composite-likelihood information criterion using the
 appropriate Godambe correction, and CIC (or a closely related criterion) for
 IFM. They must not silently change the established operational meaning of
-`aic`, `bic`, `aicc`, or `hqc` on `CopulaModel`.
+the documented `aic` and `bic` operations or selection criteria.
 
 ### Examples
 
@@ -176,7 +177,7 @@ AICc corrects AIC in small samples.
 :::
 
 When the copula family is unknown, an explicit collection of candidate families
-can be compared automatically. This returns a `CopulaSelection`, keeping the
+can be compared automatically. This returns an opaque selection result, keeping the
 comparison report separate from the winning `CopulaModel`:
 
 ```@example fitting_interface

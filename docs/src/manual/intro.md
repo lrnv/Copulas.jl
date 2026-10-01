@@ -196,7 +196,7 @@ The public API of `Copulas.jl` is quite small and easy to expose on a simple exa
 The most important objects of the package are of course copulas as sklar distributions. Both of these objects follow the `Distributions.jl`'s API, and so you can construct, sample, and evaluate copulas as standard `Distributions.jl` objects:
 
 ```@example api
-using Copulas, Distributions, Random, StatsBase
+using Copulas, Distributions, Random, StatsAPI, StatsBase
 C = ClaytonCopula(3, 2.0)
 u = rand(C, 5)
 Distributions.loglikelihood(C, u)
@@ -333,7 +333,7 @@ Notes:
 - `CopulaModel` retains only the fitted distribution, original data, fitted
   log-likelihood, and replay recipe. Accessors derive `nobs`, `coef`,
   `aic`/`bic`, `nullloglikelihood`, and residuals lazily, while
-  `CopulaInference` separately retains `vcov`, `stderror`, and `confint`.
+  the result of `infer` separately provides `vcov`, `stderror`, and `confint`.
 - For a Bayesian workflow over Sklar models, see the examples section.
 
 #### Diagnostics and inference
@@ -366,7 +366,7 @@ estimator fail explicitly instead of falling back to another covariance rule.
 #### Automatic family selection
 
 If the copula family is unknown, an explicit candidate set can be compared by
-AIC, BIC, AICc, or HQC. The returned `CopulaSelection` keeps the comparison
+AIC, BIC, AICc, or HQC. The opaque selection result keeps the comparison
 separate from its winning model:
 
 ```@example api
@@ -409,8 +409,8 @@ compatible with the standard `StatsAPI.HypothesisTest` interface:
 ```@example api
 test = IndependenceCopulaTest(U; N=19, rng=Xoshiro(42))
 (
-    statistic = teststatistic(test),
-    pvalue = pvalue(test),
+    statistic = Copulas.teststatistic(test),
+    pvalue = StatsAPI.pvalue(test),
     observations = nobs(test),
 )
 ```

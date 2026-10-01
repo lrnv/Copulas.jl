@@ -37,17 +37,17 @@ end
 Result of a copula hypothesis test.
 
 Obtain this result from the public hypothesis-test functions, not by constructing
-its internal representation. Use `pvalue`, `teststatistic`, `StatsBase.nobs`
-and the displayed summary to inspect the result. Type parameters and internal
+its internal representation. Use `StatsAPI.pvalue`, `Copulas.teststatistic`,
+`StatsBase.nobs` and the displayed summary to inspect the result. Type parameters and internal
 calibration metadata are not part of the public constructor interface.
 
 # Example
 ```julia
-using Copulas, Random
+using Copulas, Random, StatsAPI
 
 U = rand(Xoshiro(1), IndependentCopula(2), 100)
 test = IndependenceCopulaTest(U; N=199, rng=Xoshiro(2))
-(teststatistic(test), pvalue(test))
+(Copulas.teststatistic(test), StatsAPI.pvalue(test))
 ```
 
 See also: [`IndependenceCopulaTest`](@ref),
@@ -67,18 +67,18 @@ struct CopulaTest{H<:CopulaHypothesis,S<:Real,P<:Real,D<:NamedTuple} <: Hypothes
 end
 
 """
-    teststatistic(test::CopulaTest)
+    Copulas.teststatistic(test::CopulaTest)
 
 Return the observed value of the test statistic.
 
 Larger values indicate a greater discrepancy from the null hypothesis. The
-scale and precise interpretation depend on the test; use `pvalue(test)` for the
+scale and precise interpretation depend on the test; use `StatsAPI.pvalue(test)` for the
 calibrated result rather than comparing statistics produced by different tests.
 """
 teststatistic(test::CopulaTest) = test.statistic_value
 
 """
-    pvalue(test::CopulaTest)
+    StatsAPI.pvalue(test::CopulaTest)
 
 Return the p-value of `test`.
 

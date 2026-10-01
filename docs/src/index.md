@@ -110,7 +110,7 @@ Here is a practical tour of the main public workflows. For precise behavioral gu
 You can construct a copula object with their respective constructors. They behave like multivariate distributions from `Distributions.jl` and respect their API:
 
 ```@example 1
-using Copulas, Distributions, Random, StatsBase
+using Copulas, Distributions, Random, StatsAPI, StatsBase
 # A 3-variate Clayton copula
 C = ClaytonCopula(3, 2.0)
 U = rand(C, 5)
@@ -201,7 +201,7 @@ the fitted distribution, original data, fitted log-likelihood, and minimal
 replay recipe; coefficients, transformed observations, parameter blocks, and
 the independence likelihood are derived when requested. Estimation itself does
 not compute uncertainty: apply `infer(M; method=...)` to obtain a separate
-`CopulaInference`, then use `vcov`, `stderror`, and `confint` on that result.
+inference result, then use `vcov`, `stderror`, and `confint` on that result.
 For Sklar fits, bootstrap inference refits both the margins and the copula and
 retains their complete covariance, including cross-component terms.
 
@@ -220,7 +220,7 @@ selection_table(Msel)
 Mbest = selected_model(Msel)
 ```
 
-Selection returns a `CopulaSelection`, so its candidate report is not stored in
+Selection returns an opaque result, so its candidate report is not stored in
 the winning `CopulaModel`. Selection is deliberately explicit: Copulas.jl does
 not treat every available family as a sensible candidate for every dimension or scientific question. See
 the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for post-fit inference,
@@ -229,13 +229,13 @@ confidence intervals, residuals, and selection caveats.
 ### Hypothesis testing
 
 The test constructors share the `StatsAPI.HypothesisTest` interface and return a
-`CopulaTest` queried with `teststatistic`, `pvalue`, and `nobs`. Available
+`CopulaTest` queried with `Copulas.teststatistic`, `StatsAPI.pvalue`, and `nobs`. Available
 procedures assess mutual independence, exchangeability, radial symmetry, the
 extreme-value property, and goodness of fit to a specified fitted family.
 
 ```@example 1
 test = IndependenceCopulaTest(U; N=19, rng=Xoshiro(42))
-(statistic=teststatistic(test), pvalue=pvalue(test), observations=nobs(test))
+(statistic=Copulas.teststatistic(test), pvalue=StatsAPI.pvalue(test), observations=nobs(test))
 ```
 
 These are resampling-based procedures. Set an RNG for reproducibility, use a

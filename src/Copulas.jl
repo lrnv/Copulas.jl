@@ -227,7 +227,8 @@ module Copulas
     
 
     ##### Testing framework
-    export CopulaTest, pvalue, teststatistic
+    export CopulaTest
+    public pvalue, teststatistic
     export IndependenceCopulaTest, ExchangeabilityCopulaTest
     export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
 
