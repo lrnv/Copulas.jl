@@ -3,8 +3,8 @@
 @testset "hypothesis-test accessor visibility" begin
     @test Base.ispublic(Copulas, :pvalue)
     @test Base.ispublic(Copulas, :teststatistic)
-    @test !Base.isexported(Copulas, :pvalue)
-    @test !Base.isexported(Copulas, :teststatistic)
+    @test Base.isexported(Copulas, :pvalue)
+    @test Base.isexported(Copulas, :teststatistic)
     @test Copulas.pvalue === StatsAPI.pvalue
 end
 

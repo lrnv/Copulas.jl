@@ -196,7 +196,7 @@ The public API of `Copulas.jl` is quite small and easy to expose on a simple exa
 The most important objects of the package are of course copulas as sklar distributions. Both of these objects follow the `Distributions.jl`'s API, and so you can construct, sample, and evaluate copulas as standard `Distributions.jl` objects:
 
 ```@example api
-using Copulas, Distributions, Random, StatsAPI, StatsBase
+using Copulas, Distributions, Random, StatsBase
 C = ClaytonCopula(3, 2.0)
 u = rand(C, 5)
 Distributions.loglikelihood(C, u)
@@ -409,8 +409,8 @@ compatible with the standard `StatsAPI.HypothesisTest` interface:
 ```@example api
 test = IndependenceCopulaTest(U; N=19, rng=Xoshiro(42))
 (
-    statistic = Copulas.teststatistic(test),
-    pvalue = StatsAPI.pvalue(test),
+    statistic = teststatistic(test),
+    pvalue = pvalue(test),
     observations = nobs(test),
 )
 ```

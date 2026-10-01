@@ -95,7 +95,7 @@ All tests return a [`CopulaTest`](@ref), which implements `StatsAPI.HypothesisTe
 For example,
 
 ```@example hypothesis_testing
-using Copulas, Distributions, Random, StatsAPI, StatsBase
+using Copulas, Distributions, Random, StatsBase
 
 U = rand(Xoshiro(123), ClaytonCopula(2, 3.0), 80)
 
@@ -107,11 +107,11 @@ nothing # hide
 The common result interface is
 
 ```@example hypothesis_testing
-Copulas.teststatistic(test)
+teststatistic(test)
 ```
 
 ```@example hypothesis_testing
-StatsAPI.pvalue(test)
+pvalue(test)
 ```
 
 ```@example hypothesis_testing
@@ -204,7 +204,7 @@ Uind = rand(Xoshiro(1), IndependentCopula(3), 100)
 
 tind = IndependenceCopulaTest(Uind; N=49, rng=Xoshiro(2),)
 
-(Copulas.teststatistic(tind), StatsAPI.pvalue(tind))
+(teststatistic(tind), pvalue(tind))
 ```
 
 
@@ -412,7 +412,7 @@ Uex = rand(Xoshiro(4), GumbelCopula(3, 2.0), 80)
 
 tex = ExchangeabilityCopulaTest(Uex; permutations=:G2, weight=:wm2, N=49, rng=Xoshiro(5),)
 
-(Copulas.teststatistic(tex), StatsAPI.pvalue(tex))
+(teststatistic(tex), pvalue(tex))
 ```
 
 
@@ -508,7 +508,7 @@ Urad = rand(Xoshiro(6), GaussianCopula([1.0 0.6; 0.6 1.0]), 80)
 
 trad = RadialSymmetryCopulaTest(Urad; N=49, rng=Xoshiro(7),)
 
-(Copulas.teststatistic(trad), StatsAPI.pvalue(trad))
+(teststatistic(trad), pvalue(trad))
 ```
 
 
@@ -607,7 +607,7 @@ Uev = rand(Xoshiro(8), GumbelCopula(2, 2.5), 80)
 
 tev = ExtremeValueCopulaTest(Uev; powers=3:5, N=49, rng=Xoshiro(9),)
 
-(Copulas.teststatistic(tev), StatsAPI.pvalue(tev))
+(teststatistic(tev), pvalue(tev))
 ```
 
 A single power is also allowed:
@@ -664,7 +664,7 @@ Ugof = rand(Xoshiro(10), C0, 80)
 
 tsimple = GOFCopulaTest(C0, Ugof; N=49, rng=Xoshiro(11),)
 
-StatsAPI.pvalue(tsimple)
+pvalue(tsimple)
 ```
 
 This tests the fully specified copula.
@@ -772,7 +772,7 @@ Then run the test directly from the fitted model:
 ```@example hypothesis_testing
 tcomposite = GOFCopulaTest(M; N=49, rng=Xoshiro(12),)
 
-StatsAPI.pvalue(tcomposite)
+pvalue(tcomposite)
 ```
 
 `GOFCopulaTest(M)` tests the data used to fit `M`. The stored fitting input is preprocessed consistently with the original fit before the observed statistic is computed. The fitted model `M` supplies both the estimated null model and the estimator specification that is replayed in every bootstrap replicate.
