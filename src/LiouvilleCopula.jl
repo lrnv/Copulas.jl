@@ -48,9 +48,13 @@ end
 Base.eltype(C::LiouvilleCopula) = promote_type(eltype(C.G), eltype(C.α))
 
 # Liouville likelihoods evaluate inverse beta functions whose implementation
-# does not accept ForwardDiff dual numbers. Keep the generic Paramorph chart,
-# but differentiate that objective numerically.
-_mle_autodiff(::LiouvilleCopula) = ADTypes.AutoFiniteDiff(; fdtype=Val(:central))
+# does not accept ForwardDiff dual numbers. A derivative-free method also avoids
+# the prohibitive number of inverse-beta evaluations caused by finite-difference
+# gradients. The limits prevent a difficult likelihood from monopolizing a fit.
+function _optimize_mle(objective, initial, ::LiouvilleCopula)
+    options = Optim.Options(; iterations=200, time_limit=30.0)
+    return Optim.optimize(objective, initial, Optim.NelderMead(), options)
+end
 
 function LiouvilleCopula{d}(G::Generator, α) where {d}
     d >= 2 || throw(ArgumentError(
