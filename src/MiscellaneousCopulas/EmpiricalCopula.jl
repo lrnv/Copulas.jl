@@ -24,6 +24,9 @@ Notes:
   cube. `EmpiricalCopula` remains a `Copula` subtype for compatibility.
 - Its probability measure is atomic. `logpdf` reports generalized mass values
   at stored points and `-Inf` elsewhere; it is not a Lebesgue log-density.
+- Its CDF counts all observed points componentwise below or equal to the
+  query, including atoms on faces with a zero coordinate. Copula-specific
+  zero-face shortcuts do not apply to this empirical law.
 - Random sampling resamples observed columns, and subsetting preserves their
   empirical dependence.
 
@@ -56,6 +59,14 @@ end
 EmpiricalCopula(u; kwargs...) = EmpiricalCopula{size(u, 1)}(u; kwargs...)
 EmpiricalCopula(d::Integer, u; kwargs...) = EmpiricalCopula{d}(u; kwargs...)
 Distributions.params(C::EmpiricalCopula) = (C.u,)
+function Distributions.cdf(C::EmpiricalCopula{d}, u::AbstractVector) where {d}
+    length(u) == d || throw(DimensionMismatch(
+        "input vector has length $(length(u)); expected copula dimension $d",
+    ))
+    # This is an atomic empirical law, not a genuine copula: stored points
+    # can have zero coordinates, and their mass belongs in the CDF there.
+    return _cdf(C, u)
+end
 function _cdf(C::EmpiricalCopula{d,MT},u) where {d,MT}
    return sum(all(C.u .<= u,dims=1))/size(C.u,2)
 end

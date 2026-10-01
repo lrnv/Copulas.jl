@@ -61,6 +61,10 @@ finite-sample margins are step functions rather than continuous uniforms.
 while algorithms that require exact uniform margins recognize this exception
 explicitly.
 
+Its CDF includes observed atoms on the boundary, including points with zero
+coordinates. It counts componentwise inequalities with equality, rather than
+applying the zero-face shortcut used for genuine copulas.
+
 :::
 
 In the package, this copula is implemented as the `EmpiricalCopula`: 
