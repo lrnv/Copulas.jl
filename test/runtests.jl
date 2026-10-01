@@ -177,6 +177,7 @@ testfiles = (
     "api/constructors.jl",
     "api/constructor_validation.jl",
     "api/checkerboard_margins.jl",
+    "api/empirical_boundary_cdf.jl",
     "api/public_exception_taxonomy.jl",
     "correctness/reduction_graph.jl",
     "api/public_compositions.jl",
