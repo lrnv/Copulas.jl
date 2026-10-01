@@ -180,6 +180,7 @@ testfiles = (
     "correctness/reduction_graph.jl",
     "api/public_compositions.jl",
     "api/copulas.jl",
+    "api/logpdf_numeric_inputs.jl",
     "api/generators.jl",
     "api/generator_numeric_fallback.jl",
     "api/tails.jl",
