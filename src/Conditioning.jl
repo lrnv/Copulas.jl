@@ -554,9 +554,8 @@ end
 # Accept any real `uⱼₛ` (not only `Float64`): `_process_tuples` calls `float.`,
 # which keeps `BigFloat`/`Float32` as-is, so a `Float64`-only signature here let
 # such inputs fall back to the untyped entry point above and recurse forever
-# (StackOverflow). The downstream `DistortionFromCop`/`ConditionalCopula` still
-# store `Float64`, so non-`Float64` values are converted there — the conditioning
-# result is computed in `Float64` regardless of input precision.
+# (StackOverflow). The downstream `DistortionFromCop`/`ConditionalCopula`
+# preserve the promoted numeric type of the conditioning values and density.
 function _conditional_components(C::Copula, js, uⱼₛ, is)
     CC = conditional_copula(C, js, uⱼₛ)
     distortions = CC isa ConditionalCopula ? CC.distortions :

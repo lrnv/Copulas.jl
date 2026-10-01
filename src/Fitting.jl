@@ -875,7 +875,7 @@ struct CopulaSelection{M,T}
 end
 
 """
-    selected_model(result::CopulaSelection) -> CopulaModel
+    selected_model(selection) -> CopulaModel
 
 Return the winning fitted model from an automatic family-selection result.
 
@@ -883,7 +883,7 @@ See also: [`selection_table`](@ref), [`fitted_distribution`](@ref).
 """
 selected_model(S::CopulaSelection) = S.model
 """
-    selection_table(result::CopulaSelection)
+    selection_table(selection)
 
 Return a copy of the candidate comparison rows recorded by automatic family
 selection. Each row identifies a candidate, its status and effective method,
@@ -891,7 +891,7 @@ its likelihood and information criteria, or the error that prevented fitting.
 Rows retain candidate order; changing the returned vector does not mutate the
 selection result.
 
-See also: [`CopulaSelection`](@ref), [`selected_model`](@ref),
+See also: [`selected_model`](@ref),
 [`StatsBase.aic`](@ref), [`StatsBase.bic`](@ref).
 """
 selection_table(S::CopulaSelection) = copy(S.table)
@@ -901,8 +901,8 @@ selection_table(::CopulaModel) = throw(ArgumentError(
 """
     fit(CopulaModel, Copula, U; candidates, criterion=:bic, method=:mle, kwargs...)
 
-Fit an explicit collection of candidate families and return a
-[`CopulaSelection`](@ref) selecting the smallest finite information criterion
+Fit an explicit collection of candidate families and return an opaque selection
+result selecting the smallest finite information criterion
 (`:bic`, `:aic`, `:aicc`, or `:hqc`). The winning fit is reused without
 performing inference. Prefer maximum likelihood fitting when interpreting
 these as information criteria.

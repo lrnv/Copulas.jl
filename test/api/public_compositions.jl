@@ -1,5 +1,13 @@
 # Public-API proof: checks public constructors whose behavior is chiefly
 # composition or specialization into generators, tails, and complete copulas.
+@testset "hypothesis-test accessor visibility" begin
+    @test Base.ispublic(Copulas, :pvalue)
+    @test Base.ispublic(Copulas, :teststatistic)
+    @test Base.isexported(Copulas, :pvalue)
+    @test Base.isexported(Copulas, :teststatistic)
+    @test Copulas.pvalue === StatsAPI.pvalue
+end
+
 @testset "remaining public generator constructors" begin
     @test Copulas.τ(Copulas.IndependentGenerator()) == 0
     @test ArchimedeanCopula{3}(Copulas.IndependentGenerator()) isa

@@ -5,7 +5,7 @@
 using Aqua, Copulas, DelimitedFiles, Distributions, ForwardDiff, HCubature,
     HypothesisTests, InteractiveUtils, LinearAlgebra, LogExpFunctions,
     MvNormalCDF, QuadGK, Random, Roots, SpecialFunctions, StableRNGs,
-    Statistics, StatsBase, Test
+    Statistics, StatsAPI, StatsBase, Test
 
 const rng = StableRNG(123)
 

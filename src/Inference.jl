@@ -302,7 +302,7 @@ function _infer(M::CopulaModel, ::Val{method}; rng=nothing, nresamples::Union{No
 end
 
 """
-    infer(M::CopulaModel; method=:default, kwargs...) -> CopulaInference
+    infer(M::CopulaModel; method=:default, kwargs...)
 
 Apply an uncertainty-quantification procedure after estimation. `fit` is never
 rerun except by resampling procedures, and `M` is not mutated.
@@ -343,7 +343,7 @@ refuses a weighted model, because the delete-one jackknife of the replicated
 sample needs every weight to be at least one, which after normalization to `n`
 holds for unit weights only.
 
-See also: [`CopulaInference`](@ref), [`StatsBase.vcov`](@ref),
+See also: [`StatsBase.vcov`](@ref),
 [`StatsBase.stderror`](@ref), [`StatsBase.confint`](@ref).
 """
 function infer(M::CopulaModel; method::Symbol=:default, kwargs...)
@@ -358,7 +358,7 @@ infer(::CopulaSelection; kwargs...) = throw(ArgumentError(
     "infer(selected_model(selection); ...) only when ignoring selection uncertainty is appropriate"))
 
 """
-    vcov(I::CopulaInference; component=:all)
+    vcov(inference; component=:all)
 
 Return the covariance matrix computed by `infer`. For a fitted `SklarDist`,
 `component=:copula` selects the copula block and `component=:margins` selects
@@ -376,11 +376,11 @@ function StatsBase.vcov(I::CopulaInference; component::Symbol=:all)
     end
     throw(ArgumentError("unknown covariance component `$component`; expected :all, :copula, or :margins"))
 end
-"""Return standard errors derived from a `CopulaInference` covariance matrix."""
+"""Return standard errors derived from the result of [`infer`](@ref)."""
 StatsBase.stderror(I::CopulaInference) =
     sqrt.(LinearAlgebra.diag(StatsBase.vcov(I)))
 
-"""Return pointwise Wald intervals from a `CopulaInference` result."""
+"""Return pointwise Wald intervals from the result of [`infer`](@ref)."""
 function StatsBase.confint(I::CopulaInference; level::Real=0.95)
     0 < level < 1 || throw(ArgumentError("level must lie strictly between zero and one"))
     z = Distributions.quantile(Distributions.Normal(), 1 - (1 - level) / 2)

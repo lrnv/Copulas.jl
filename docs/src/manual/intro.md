@@ -333,7 +333,7 @@ Notes:
 - `CopulaModel` retains only the fitted distribution, original data, fitted
   log-likelihood, and replay recipe. Accessors derive `nobs`, `coef`,
   `aic`/`bic`, `nullloglikelihood`, and residuals lazily, while
-  `CopulaInference` separately retains `vcov`, `stderror`, and `confint`.
+  the result of `infer` separately provides `vcov`, `stderror`, and `confint`.
 - For a Bayesian workflow over Sklar models, see the examples section.
 
 #### Diagnostics and inference
@@ -366,7 +366,7 @@ estimator fail explicitly instead of falling back to another covariance rule.
 #### Automatic family selection
 
 If the copula family is unknown, an explicit candidate set can be compared by
-AIC, BIC, AICc, or HQC. The returned `CopulaSelection` keeps the comparison
+AIC, BIC, AICc, or HQC. The opaque selection result keeps the comparison
 separate from its winning model:
 
 ```@example api

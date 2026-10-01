@@ -203,7 +203,7 @@ the fitted distribution, original data, fitted log-likelihood, and minimal
 replay recipe; coefficients, transformed observations, parameter blocks, and
 the independence likelihood are derived when requested. Estimation itself does
 not compute uncertainty: apply `infer(M; method=...)` to obtain a separate
-`CopulaInference`, then use `vcov`, `stderror`, and `confint` on that result.
+inference result, then use `vcov`, `stderror`, and `confint` on that result.
 For Sklar fits, bootstrap inference refits both the margins and the copula and
 retains their complete covariance, including cross-component terms.
 
@@ -223,7 +223,7 @@ selection_table(Msel)
 Mbest = selected_model(Msel)
 ```
 
-Selection returns a `CopulaSelection`, so its candidate report is not stored in
+Selection returns an opaque result, so its candidate report is not stored in
 the winning `CopulaModel`. Selection is deliberately explicit: Copulas.jl does
 not treat every available family as a sensible candidate for every dimension or scientific question. See
 the [fitting interface](https://lrnv.github.io/Copulas.jl/stable/manual/fitting_interface) for post-fit inference,

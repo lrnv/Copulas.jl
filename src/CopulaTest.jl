@@ -37,8 +37,8 @@ end
 Result of a copula hypothesis test.
 
 Obtain this result from the public hypothesis-test functions, not by constructing
-its internal representation. Use `pvalue`, `teststatistic`, `StatsBase.nobs`
-and the displayed summary to inspect the result. Type parameters and internal
+its internal representation. Use `pvalue`, `teststatistic`,
+`StatsBase.nobs` and the displayed summary to inspect the result. Type parameters and internal
 calibration metadata are not part of the public constructor interface.
 
 # Example
