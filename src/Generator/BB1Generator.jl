@@ -87,6 +87,29 @@ function _archimedean_cdf(C::ArchimedeanCopula{2,G}, u) where {G<:BB1Generator}
     return exp( - (1/θ) * log1p(sa) )
 end
 
+# Avoid relying on compiler escape analysis for `eachcol` views in the generic
+# matrix CDF. Some architectures otherwise heap-allocate one view per point.
+@inline function _bb1_cdf_at(C::ArchimedeanCopula{2,<:BB1Generator}, A, col)
+    u1, u2 = A[1, col], A[2, col]
+    (u1 <= zero(u1) || u2 <= zero(u2)) && return zero(u1)
+    (u1 >= one(u1) && u2 >= one(u2)) && return one(u1)
+    return _cdf(C, (min(u1, one(u1)), min(u2, one(u2))))
+end
+
+function Distributions.cdf(
+    C::ArchimedeanCopula{2,<:BB1Generator}, A::AbstractMatrix,
+)
+    size(A, 1) == 2 || throw(DimensionMismatch(
+        "input matrix has $(size(A, 1)) rows; expected copula dimension 2",
+    ))
+    T = promote_type(eltype(A), typeof(C.G.θ), typeof(C.G.δ))
+    values = Vector{T}(undef, size(A, 2))
+    @inbounds for (index, col) in enumerate(axes(A, 2))
+        values[index] = _bb1_cdf_at(C, A, col)
+    end
+    return values
+end
+
 archimedean_measure_style(G::BB1Generator, ::Val{d}) where {d} =
     isinf(G.θ) ? NonAbsolutelyContinuousMeasure() : AbsolutelyContinuousMeasure()
 
