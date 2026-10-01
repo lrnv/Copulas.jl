@@ -481,7 +481,7 @@ const COPULA_TEST_TINY_RESAMPLES = min(COPULA_TEST_RESAMPLES, 9)
             @test 0 <= pvalue(Tsurvival) <= 1
 
             # Estimator-defining runtime keywords must also survive refitting.
-            Uchecker = rand(Xoshiro(907), GaussianCopula(2, 0.4), 36)
+            Uchecker = pseudos(rand(Xoshiro(907), GaussianCopula(2, 0.4), 36))
             Mchecker = fit(CopulaModel, CheckerboardCopula, Uchecker; m=3,)
             Mchecker_refit = Copulas._refit(Mchecker, Uchecker)
 
