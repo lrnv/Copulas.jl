@@ -149,11 +149,17 @@ end
 
 # Canonical runtime-dimension constructor used by generic Paramorph fitting of
 # an explicitly dimensioned family type.
-function TawnTail(d::Int, dep::AbstractVector, weights::Vararg{AbstractVector,N}) where {N}
-    d == N || throw(DimensionMismatch(
-        "expected one weight simplex for each of $d margins; got $N",
+function TawnTail(
+    d::Int,
+    dep::AbstractVector,
+    weight1::AbstractVector,
+    weight2::AbstractVector,
+    weights::Vararg{AbstractVector,N},
+) where {N}
+    d == N + 2 || throw(DimensionMismatch(
+        "expected one weight simplex for each of $d margins; got $(N + 2)",
     ))
-    return TawnTail(dep, weights...)
+    return TawnTail(dep, weight1, weight2, weights...)
 end
 
 # Historical subset-oriented constructor.

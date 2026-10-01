@@ -323,7 +323,7 @@ function Distributions.pdf(dist::𝒲₋₁, x::Real)
     density = (isodd(dist.order) ? -scale : scale) * ϕ⁽ᵏ⁾(dist.G, dist.order, x)
     return max(zero(density), density)
 end
-Distributions.logpdf(dist::𝒲₋₁, x) = log(Distributions.pdf(dist, x))
+Distributions.logpdf(dist::𝒲₋₁, x::Real) = log(Distributions.pdf(dist, x))
 Distributions.rand(rng::Distributions.AbstractRNG, dist::𝒲₋₁) =
     Distributions.quantile(dist, rand(rng))
 Base.minimum(::𝒲₋₁) = 0.0
@@ -516,7 +516,7 @@ end
 
 
 # Optimized methods for discrete nonparametric Williamson generators (covers EmpiricalGenerator)
-function ϕ(G::𝒲{<:Distributions.DiscreteNonParametric}, t)
+function ϕ(G::𝒲{<:Distributions.DiscreteNonParametric}, t::Real)
     d = G.order
     r = Distributions.support(G.X)
     w = Distributions.probs(G.X)

@@ -24,7 +24,7 @@ function Distributions.logpdf(d::ExtremeDist, z::Real)
     return log(f)
 end
 
-function Distributions.quantile(d::ExtremeDist, p)
+function Distributions.quantile(d::ExtremeDist, p::Real)
     return _quantile_from_cdf(d, p)
 end
 
