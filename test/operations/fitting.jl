@@ -359,7 +359,7 @@ end
         :mle in methods || continue
         _has_fitting_parameters(C) || continue
         C isa FGMCopula && d > 2 && continue  # specialized coupled-polytope MLE
-        Copulas.Paramorph.is_paramorph_type(CT) || continue
+        Copulas.Paramorph.has_parameter_geometry(CT) || continue
 
         @testset "$(case.name)" begin
             test_mle_parameter_plumbing(C)
@@ -501,7 +501,6 @@ end
     ))
 
     non_fittable = (
-        liouville,
         ExtremeValueCopula{2}(Copulas.DiscreteSpectralTail([0.7 0.3; 0.2 0.8])),
     )
     for C in non_fittable

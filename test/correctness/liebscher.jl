@@ -295,10 +295,10 @@ end
         [0.5 0.5 0.5; 0.5 0.5 0.5],
     )
 
-    α0 = Copulas._liebscher_unbound(C0)
+    α0 = Copulas._liebscher_initial_coordinates(C0)
     u = [0.3, 0.5, 0.8]
 
-    f(α) = logpdf(Copulas._liebscher_rebound(C0, α), u)
+    f(α) = logpdf(Copulas._liebscher_from_coordinates(C0, α), u)
 
     g = ForwardDiff.gradient(f, α0)
 

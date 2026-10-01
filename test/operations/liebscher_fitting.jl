@@ -10,7 +10,7 @@
         [0.5 0.5; 0.5 0.5],
     )
 
-    @test length(Copulas._liebscher_unbound(C0)) == 4
+    @test length(Copulas._liebscher_initial_coordinates(C0)) == 4
 
     U = rand(StableRNG(20_120), Ctrue, 300)
     fitted = fit(C0, U)
@@ -29,7 +29,7 @@
     ]
     @test length(coef(M)) == 6
     @test dof(M) == 4
-    @test length(Copulas._liebscher_unbound(fitted_distribution(M))) == 4
+    @test length(Copulas._liebscher_initial_coordinates(fitted_distribution(M))) == 4
 
     @test Copulas._available_fitting_methods(typeof(C0), 2) == ()
     @test_throws ArgumentError fit(typeof(C0), U)
@@ -48,7 +48,7 @@ end
         [0.0 0.5; 1.0 0.5],
     )
 
-    @test length(Copulas._liebscher_unbound(C0)) == 3
+    @test length(Copulas._liebscher_initial_coordinates(C0)) == 3
 
     U = rand(StableRNG(20_121), Ctrue, 200)
     fitted = fit(C0, U)
@@ -58,5 +58,5 @@ end
     @test fitted.weights[1, 2] > 0
     @test fitted.weights[2, 2] > 0
     @test sum(fitted.weights[:, 2]) ≈ 1
-    @test length(Copulas._liebscher_unbound(fitted)) == 3
+    @test length(Copulas._liebscher_initial_coordinates(fitted)) == 3
 end

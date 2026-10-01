@@ -26,7 +26,7 @@ optimizations separately.
 
 See also: [`ArchimedeanCopula`](@ref), [`ϕ`](@ref),
 [`max_monotony`](@ref), [`WilliamsonGenerator`](@ref),
-[`FrailtyGenerator`](@ref), `Paramorph.transformation_schema`.
+[`FrailtyGenerator`](@ref), `Paramorph.@paramorph`.
 """
 abstract type Generator end
 _parameter_eltype(G::Generator) = _parameter_eltype(ntuple(i -> getfield(G, i), fieldcount(typeof(G))))

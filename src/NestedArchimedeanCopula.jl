@@ -1189,8 +1189,7 @@ _nested_fit_kwargs(weights::AbstractVector, kwargs) = (; kwargs..., weights)
 function _nested_generator_coef(G::Generator, tag::String)
     names = String[]
     values = Float64[]
-    for name in Paramorph.parameter_fields(typeof(G))
-        value = getproperty(G, name)
+    for (name, value) in pairs(Paramorph.parameter_values(G))
         value isa Number || continue
         push!(names, "$(tag).$(name)")
         push!(values, float(value))

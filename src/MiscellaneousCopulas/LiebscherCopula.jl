@@ -332,12 +332,6 @@ function _liebscher_from_coordinates(C0::LiebscherCopula{d}, α) where {d}
     return LiebscherCopula{d}(geometry.copulas, weights)
 end
 
-# Local compatibility aliases for the tests and internal callers introduced with
-# the original template fitter. The generic legacy fitting protocol is not
-# restored; both names now route exclusively through Paramorph.
-_liebscher_unbound(C::LiebscherCopula) = _liebscher_initial_coordinates(C)
-_liebscher_rebound(C::LiebscherCopula, α) = _liebscher_from_coordinates(C, α)
-
 function _validate_liebscher_fit_data(U, d::Int)
     ndims(U) == 2 || throw(ArgumentError("U must be a d×n matrix of pseudo-observations"))
     size(U, 1) == d || throw(DimensionMismatch("data dimension $(size(U, 1)) does not match copula dimension $d"))

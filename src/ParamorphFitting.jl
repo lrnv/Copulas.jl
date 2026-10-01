@@ -39,6 +39,18 @@ function _parameter_prototype(CT::Type{<:ArchimedeanCopula}, ::Val{d}) where {d}
     return ArchimedeanCopula{d}(G)
 end
 
+# Fitting and inference evaluate these operations in hot loops. Delegate the
+# wrapper chart directly to its nested generator through Paramorph's public API
+# instead of repeatedly materializing the generic one-field nested schema.
+_parameter_dimension(C::ArchimedeanCopula{d}) where {d} =
+    Paramorph.intrinsic_dimension(C.G; context=(; dimension=d))
+_parameter_coordinates(C::ArchimedeanCopula{d}) where {d} =
+    Paramorph.unconstrain(C.G; context=(; dimension=d))
+function _from_parameter_coordinates(C::ArchimedeanCopula{d}, α) where {d}
+    G = Paramorph.constraint(C.G, α; context=(; dimension=d))
+    return ArchimedeanCopula{d}(G)
+end
+
 # Liouville's generator geometry is conditional on the newly reconstructed α,
 # so there is intentionally no type-only Paramorph prototype. The generic MLE
 # still needs a neutral object prototype; zero unconstrained α coordinates map
