@@ -377,7 +377,7 @@ max_monotony(G::MyGenerator) = ...
 | `ϕ⁻¹⁽¹⁾(G, t)`                      | Generator function derivative of the inverse                       | ⚙️ Internal optimization |
 | `ϕ⁽ᵏ⁾(G, k::Int, t)`                | Generator function kth derivative                                  | ⚙️ Internal optimization |
 | `ϕ⁽ᵏ⁾⁻¹(G, k::Int, t; start_at=t)`  | Generator function kth derivative's inverse                        | ⚙️ Internal optimization |
-| `𝒲₋₁(G, d::Real)`                  | Inverse Williamson transform; integer specializations are preserved | ⚙️ Internal optimization |
+| `𝒲₋₁(G, d::Real)`                  | Public inverse Williamson transform returning the radial law; specializing it is optional | ✅ Public operation, not part of the minimal extension protocol |
 
 
 The three public methods enable the generic Archimedean construction in valid

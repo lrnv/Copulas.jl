@@ -49,6 +49,16 @@ end
     end
 end
 
+@testset "BB1 matrix CDF follows scalar semantics" begin
+    C = BB1Copula{2}(1.2, 1.5)
+    points = [-0.1 0.2 1.2 1.2 NaN; 0.4 0.7 0.8 1.3 0.5]
+    @test cdf(C, points) ≈ [cdf(C, points[:, col]) for col in axes(points, 2)] nans=true
+    @test cdf(BB1Copula{2}(Inf, 1.5), points[:, 2:4]) ≈
+          [cdf(BB1Copula{2}(Inf, 1.5), points[:, col]) for col in 2:4]
+    @test eltype(cdf(BB1Copula{2}(1.2f0, 1.5f0), Float32.(points[:, 1:4]))) === Float32
+    @test_throws DimensionMismatch cdf(C, ones(3, 2))
+end
+
 
 @testset "Clayton generator is continuous through θ = eps" begin
     # The power forms of the generator cancel below eps: (0.5^-θ - 1)/θ is 0,

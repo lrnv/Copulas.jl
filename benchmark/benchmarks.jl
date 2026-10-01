@@ -88,6 +88,11 @@ function bench_fitting(model, data; kwargs...)
     return @benchmarkable $workload() evals=1
 end
 
+function bench_model_selection(models, data; kwargs...)
+    workload = () -> fit(CopulaModel, Copulas.Copula, data; candidates=models, kwargs...)
+    return @benchmarkable $workload() evals=1
+end
+
 SUITE["sampling"] = BenchmarkGroup()
 SUITE["density"] = BenchmarkGroup()
 SUITE["cdf"] = BenchmarkGroup()
@@ -96,6 +101,7 @@ SUITE["conditioning"] = BenchmarkGroup()
 SUITE["measure"] = BenchmarkGroup()
 SUITE["fitting"] = BenchmarkGroup()
 SUITE["inference"] = BenchmarkGroup()
+SUITE["selection"] = BenchmarkGroup()
 
 # Representative models: each one exercises a distinct implementation path.
 clayton = ClaytonCopula{5}(2.0)
@@ -116,6 +122,11 @@ archimax = ArchimaxCopula{2}(Copulas.ClaytonGenerator(2.0), Copulas.GalambosTail
 student = TCopula{2}(4, [1.0 0.5; 0.5 1.0])
 bb1 = BB1Copula{2}(1.2, 1.5)
 galambos = GalambosCopula{2}(1.5)
+reflected = SurvivalCopula(ClaytonCopula{2}(2.0), (1,))
+liouville = LiouvilleCopula{3}(
+    Copulas.ClaytonGenerator(1.0),
+    (0.75, 1.0, 1.25),
+)
 
 SUITE["sampling"]["clayton_d5"] = bench_sampling(clayton, 10_000)
 SUITE["sampling"]["gaussian_d10"] = bench_sampling(gaussian, 10_000)
@@ -123,6 +134,7 @@ SUITE["sampling"]["nested_d6"] = bench_sampling(nested, 100)
 SUITE["sampling"]["archimax_d2"] = bench_sampling(archimax, 2_000)
 SUITE["sampling"]["student_d2"] = bench_sampling(student, 10_000)
 SUITE["sampling"]["galambos_d2"] = bench_sampling(galambos, 10_000)
+SUITE["sampling"]["liouville_d3"] = bench_sampling(liouville, 1_000)
 
 gumbel_points = rand(Xoshiro(SEED + 1), 5, 10_000)
 gaussian_points = rand(Xoshiro(SEED + 2), 10, 10_000)
@@ -134,10 +146,15 @@ SUITE["density"]["gaussian_d10"] = bench_logpdf(gaussian, gaussian_points)
 SUITE["density"]["nested_d6"] = bench_logpdf(nested, nested_points)
 SUITE["density"]["bb1_d2"] = bench_logpdf(bb1, pair_points)
 SUITE["density"]["galambos_d2"] = bench_logpdf(galambos, pair_points)
+SUITE["density"]["archimax_d2"] = bench_logpdf(archimax, pair_points)
+SUITE["density"]["reflected_clayton_d2"] = bench_logpdf(reflected, pair_points)
 
 SUITE["cdf"]["bb1_d2"] = bench_cdf(bb1, pair_points)
 SUITE["cdf"]["galambos_d2"] = bench_cdf(galambos, pair_points)
 SUITE["cdf"]["student_d2"] = bench_cdf(student, pair_points[:, 1:10])
+SUITE["cdf"]["gumbel_d5"] = bench_cdf(gumbel, gumbel_points)
+SUITE["cdf"]["nested_d6"] = bench_cdf(nested, nested_points)
+SUITE["cdf"]["reflected_clayton_d2"] = bench_cdf(reflected, pair_points)
 
 raw_data = randn(Xoshiro(SEED + 4), 5, 10_000)
 checkerboard_data = randn(Xoshiro(SEED + 5), 3, 2_000)
@@ -152,6 +169,7 @@ SUITE["data"]["pseudos_5x10000"] = bench_pseudos(raw_data)
 SUITE["data"]["checkerboard_cdf"] = bench_cdf(checkerboard, checkerboard_points)
 SUITE["data"]["empirical_cdf"] = bench_cdf(empirical, empirical_points)
 SUITE["data"]["beta_logpdf"] = bench_logpdf(beta, empirical_points)
+SUITE["sampling"]["checkerboard_d3"] = bench_sampling(checkerboard, 2_000)
 
 rosenblatt_copula = GaussianCopula{5}(0.35)
 rosenblatt_points = rand(Xoshiro(SEED + 7), 5, 2_000)
@@ -275,6 +293,21 @@ SUITE["fitting"]["sklar_ifm"] = bench_fitting(
     sklar_fit_data;
     sklar_method=:ifm,
     copula_method=:mle,
+)
+
+SUITE["density"]["sklar_d3"] = bench_logpdf(
+    SklarDist(
+        ClaytonCopula{3}(2.0),
+        (Normal(), LogNormal(0.0, 0.5), Gamma(2.0, 1.0)),
+    ),
+    sklar_fit_data,
+)
+
+selection_data = @view clayton_fit_d2[:, 1:250]
+SUITE["selection"]["archimedean_d2"] = bench_model_selection(
+    (ClaytonCopula, GumbelCopula),
+    selection_data;
+    method=:itau,
 )
 
 

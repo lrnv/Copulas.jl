@@ -13,6 +13,14 @@ suite on pull requests, compares changes with their merge base, and records
 default-branch results. Its dashboard is published alongside this documentation
 at [the Copulas.jl benchmark dashboard](https://lrnv.github.io/Copulas.jl/benchmarks/).
 
+The suite is organized by implementation route rather than by family. It uses
+representative Archimedean, elliptical, extreme-value, nested, Archimax,
+Liouville, reflected, empirical, and Sklar models across sampling, CDF and
+density evaluation, conditioning, rectangle probabilities, fitting, inference,
+and model selection. This keeps the suite small enough for pull requests while
+tracking both execution time and allocations in the main numerical and
+composition paths.
+
 ## Comparison with R
 
 The local comparison below contrasts Copulas.jl with R's
