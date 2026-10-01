@@ -144,6 +144,28 @@
     end
 
     observations = transpose(sample)
+    entropy = Copulas.corentropy(observations)
+    @test entropy == transpose(entropy)
+    @test diag(entropy) == zeros(2)
+    @test entropy[1, 2] ≈ Copulas.ι(sample)
+    @test !iszero(entropy[1, 2])
+
+    entropy_data = Matrix(transpose(rand(StableRNG(93), ClaytonCopula{3}(1.5), 30)))
+    entropy3 = Copulas.corentropy(entropy_data)
+    @test entropy3 == transpose(entropy3)
+    for j in 2:3, i in 1:j-1
+        @test entropy3[i, j] ≈ Copulas.ι(transpose(entropy_data[:, [i, j]]))
+    end
+    for column in 1:3
+        with_nan = copy(entropy_data)
+        with_nan[1, column] = NaN
+        result = Copulas.corentropy(with_nan)
+        @test isequal(result, transpose(result))
+        @test diag(result) == zeros(3)
+        for other in setdiff(1:3, [column])
+            @test isnan(result[column, other])
+        end
+    end
     @test size(Copulas.corlowertail(
         observations, :SchmidSchmidt, 0.25)) == (2, 2)
     @test size(Copulas.coruppertail(

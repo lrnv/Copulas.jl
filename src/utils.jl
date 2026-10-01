@@ -781,7 +781,6 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
     end
     Ucol = [Cnan[j] ? Float64[] : collect(@view X[:, j]) for j in 1:n]
     H  = zeros(Float64, n, n)
-    H  = zeros(Float64, n, n)
     Ub = Array{Float64}(undef, 2, m)
     @inbounds for j in 2:n
         if Cnan[j]
@@ -799,10 +798,9 @@ function corentropy(X::AbstractMatrix{<:Real}; k::Int=5, p::Real=Inf, leafsize::
             end
             ui = Ucol[i]
             Ub[1, :] .= ui; Ub[2, :] .= uj
-            H[i, j] = ι(Ub; k=k, p=p, leafsize=leafsize)
+            H[i, j] = H[j, i] = ι(Ub; k=k, p=p, leafsize=leafsize)
         end
     end
-    return H
     return H
 end
 function _cortail(X::AbstractMatrix{<:Real}; t = :lower, method = :SchmidtStadtmueller, p = nothing)
