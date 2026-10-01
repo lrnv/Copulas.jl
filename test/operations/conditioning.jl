@@ -2,7 +2,7 @@
 # public contracts, independent identities, specialization equivalence,
 # family regressions, and route coverage are colocated here.
 
-function test_conditioning_contract(C, u)
+function test_conditioning_inventory(C, u)
     Base.@nospecialize C u
 
     d = length(C)
@@ -11,43 +11,51 @@ function test_conditioning_contract(C, u)
         scalar = condition(C, 1, u[1])
         tupled = condition(C, (1,), (u[1],))
         @test scalar isa Distributions.UnivariateDistribution
-        @test cdf(scalar, u[2]) ≈ cdf(tupled, u[2])
+        @test tupled isa Distributions.UnivariateDistribution
     end
     if d > 2
         joint = condition(C, 1, u[1])
         @test length(joint) == d - 1
-        @test 0 <= cdf(joint, u[2:end]) <= 1
+        @test applicable(cdf, joint, u[2:end])
     end
     if d > 3
         js = Tuple(1:(d - 2))
         joint = condition(C, js, Tuple(u[1:(d - 2)]))
         @test length(joint) == 2
-        @test 0 <= cdf(joint, u[(d - 1):d]) <= 1
+        @test applicable(cdf, joint, u[(d - 1):d])
     end
 
     js = Tuple(1:(d - 1))
     values = Tuple(u[1:(d - 1)])
     D = condition(C, js, values)
-    vals = cdf.(Ref(D), (0.25, 0.5, 0.75))
-    q = quantile(D, 0.5)
 
     @test D isa Distributions.UnivariateDistribution
+    @test applicable(cdf, D, 0.5)
+    @test applicable(logcdf, D, 0.5)
+    @test applicable(quantile, D, 0.5)
+    @test applicable(rand, StableRNG(73), D, 3)
+    is_absolutely_continuous(C) && @test applicable(logpdf, D, 0.5)
+end
+
+function test_conditional_distribution_contract(D)
+    Base.@nospecialize D
+
+    vals = cdf.(Ref(D), (0.25, 0.5, 0.75))
+    q = quantile(D, 0.5)
     @test minimum(D) == 0
     @test maximum(D) == 1
     @test issorted(vals)
     @test logcdf(D, 0.5) ≈ log(cdf(D, 0.5))
-
-    if is_absolutely_continuous(C)
+    if conditional_measure_style(D) isa Copulas.AbsolutelyContinuousMeasure
         densities = pdf.(Ref(D), (0.25, 0.5, 0.75))
         @test all(x -> x >= 0, densities)
         density = pdf(D, 0.5)
         @test iszero(density) ? logpdf(D, 0.5) == -Inf :
               logpdf(D, 0.5) ≈ log(density)
     end
-
     @test all(x -> 0 <= x <= 1, rand(StableRNG(73), D, 3))
     @test 0 <= q <= 1
-    is_absolutely_continuous(C) &&
+    conditional_measure_style(D) isa Copulas.AbsolutelyContinuousMeasure &&
         @test cdf(D, q) >= 0.5 - sqrt(eps(Float64))
 end
 
@@ -60,14 +68,25 @@ function conditional_distribution(fixture)
     return condition(C, js, values)
 end
 
+conditional_measure_style(D::Copulas.Distortion) =
+    Copulas.distortion_measure_style(D)
+conditional_measure_style(::Distributions.UnivariateDistribution) =
+    Copulas.AbsolutelyContinuousMeasure()
+
 function conditional_route_key(D)
     Base.@nospecialize D
     DT = typeof(D)
+    rng_type = typeof(StableRNG(73))
     return (
+        typeof(conditional_measure_style(D)),
+        which(minimum, Tuple{DT}),
+        which(maximum, Tuple{DT}),
         which(Distributions.cdf, Tuple{DT,Float64}),
         which(Distributions.logcdf, Tuple{DT,Float64}),
+        which(Distributions.pdf, Tuple{DT,Float64}),
         which(Distributions.logpdf, Tuple{DT,Float64}),
         which(Distributions.quantile, Tuple{DT,Float64}),
+        which(rand, Tuple{rng_type,DT,Int}),
     )
 end
 
@@ -83,17 +102,18 @@ const CONDITIONAL_DISTRIBUTION_CASES = unique(
     CONDITIONAL_DISTRIBUTION_CANDIDATES,
 )
 
-conditional_measure_style(D::Copulas.Distortion) =
-    Copulas.distortion_measure_style(D)
-conditional_measure_style(::Distributions.UnivariateDistribution) =
-    Copulas.AbsolutelyContinuousMeasure()
-
 @testset "public conditioning contract" begin
     @testset "$(fixture.case.name)" for fixture in COPULA_FIXTURES
-        test_conditioning_contract(
+        test_conditioning_inventory(
             fixture.copula,
             copula_contract_point(fixture.copula),
         )
+    end
+end
+
+@testset "one numerical contract per conditional-distribution route" begin
+    @testset "$name" for (name, D) in CONDITIONAL_DISTRIBUTION_CASES
+        test_conditional_distribution_contract(D)
     end
 end
 

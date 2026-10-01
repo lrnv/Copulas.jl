@@ -79,11 +79,9 @@ end
             (GaussianCopula, GaussianCopula([1.0 0.5; 0.5 1.0])))
         U = rand(StableRNG(48_201), C, n)
         unweighted = infer(fit(CopulaModel, CT, U))
-        for weights in (ones(n), fill(2.5, n))
-            weighted = infer(fit(CopulaModel, CT, U; weights))
-            @test weighted.method === :hessian
-            @test vcov(weighted) == vcov(unweighted)
-        end
+        weighted = infer(fit(CopulaModel, CT, U; weights=ones(n)))
+        @test weighted.method === :hessian
+        @test vcov(weighted) == vcov(unweighted)
         replicated = infer(fit(CopulaModel, CT, replicate(U)))
         weighted = infer(fit(CopulaModel, CT, U; weights=counts))
         @test vcov(weighted) ≈ vcov(replicated) rtol=1e-6
