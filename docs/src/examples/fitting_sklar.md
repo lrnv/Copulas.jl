@@ -18,7 +18,7 @@ data = rand(D,1000)
 
 The fit function uses a type as its first argument that describes the structure of the model : 
 ```@example 5
-MyCop = SurvivalCopula{4,ClaytonCopula}
+MyCop = SurvivalCopula{4,ClaytonCopula{4}}
 MyMargs = Tuple{LogNormal,Pareto,Gamma,Normal}
 MyD = SklarDist{MyCop, MyMargs}
 fitted_model = fit(MyD, data; copula_method=:itau)

@@ -495,8 +495,10 @@ end
     liouville = LiouvilleCopula{2}(Copulas.ClaytonGenerator(1.0), (1.0, 2.0))
     liouville_coordinates = Copulas.Paramorph.unconstrain(liouville)
     @test length(liouville_coordinates) == 3
-    @test Copulas.Paramorph.constraint(liouville, liouville_coordinates).α ≈
-          liouville.α
+    @test all(isapprox.(
+        Copulas.Paramorph.constraint(liouville, liouville_coordinates).α,
+        liouville.α,
+    ))
 
     non_fittable = (
         liouville,

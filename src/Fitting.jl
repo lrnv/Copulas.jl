@@ -235,6 +235,12 @@ _parameter_arguments(η) = (η,)
 
 _fit_prototype(CT::Type{<:Copula}, vd::Val) = _parameter_prototype(CT, vd)
 
+# Liouville likelihoods evaluate inverse beta functions whose implementation
+# does not accept ForwardDiff dual numbers. Keep the generic Paramorph chart,
+# but differentiate that objective numerically.
+_mle_autodiff(::Copula) = ADTypes.AutoForwardDiff()
+_mle_autodiff(::LiouvilleCopula) = ADTypes.AutoFiniteDiff(; fdtype=Val(:central))
+
 """
     _fit(::Type{<:Copula}, U, ::Val{method}; kwargs...)
 
@@ -269,7 +275,7 @@ function _fit(CT::Type{<:Copula}, U, vd::Val{d}, ::Val{:mle}; weights=nothing) w
         loss ∘ cop,
         α₀,
         Optim.LBFGS();
-        autodiff=ADTypes.AutoForwardDiff()
+        autodiff=_mle_autodiff(prototype)
     )
     return cop(Optim.minimizer(res))
 end
