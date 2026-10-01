@@ -47,8 +47,11 @@ _parameter_dimension(C::ArchimedeanCopula{d}) where {d} =
 _parameter_coordinates(C::ArchimedeanCopula{d}) where {d} =
     Paramorph.unconstrain(C.G; context=(; dimension=d))
 function _from_parameter_coordinates(C::ArchimedeanCopula{d}, α) where {d}
-    G = Paramorph.constraint(C.G, α; context=(; dimension=d))
-    return ArchimedeanCopula{d}(G)
+    # Reconstruct the declared outer geometry directly.  Besides remaining on
+    # Paramorph's public API, this uses its trusted reconstruction path after
+    # the transform has established validity, instead of feeding the already
+    # constrained generator through both validating constructors again.
+    return Paramorph.constraint(typeof(C), α; context=(; dimension=d))
 end
 
 # Liouville's generator geometry is conditional on the newly reconstructed α,
