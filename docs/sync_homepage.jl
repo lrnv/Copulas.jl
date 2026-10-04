@@ -26,8 +26,6 @@ hero:
 ---
 ````
 
-<!-- This file is generated from README.md by docs/sync_homepage.jl. -->
-
 """
 
 function homepage_from_readme(readme::AbstractString)

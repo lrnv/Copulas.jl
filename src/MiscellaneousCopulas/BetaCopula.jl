@@ -89,8 +89,26 @@ function _cdf(C::BetaCopula{d}, u) where {d}
 end
 function Distributions._logpdf(C::BetaCopula{d}, u::AbstractVector) where {d}
     n = C.n
-    # Keep both kernels and mixture accumulation in log space. Even stable
-    # individual kernels can underflow when multiplied across coordinates.
+
+    # Use the tabulated beta kernels on the common path. Starting the
+    # underlying binomial recurrence at its mode keeps these tables stable,
+    # while avoiding a Beta construction and logpdf call for every rank.
+    PDFtab = ntuple(j -> n .* _bernvec_n(u[j], n - 1), d)
+    dens = zero(eltype(first(PDFtab)))
+    @inbounds for i in 1:n
+        prod_term = one(dens)
+        @inbounds for j in 1:d
+            prod_term *= PDFtab[j][C.ranks[j, i]]
+            iszero(prod_term) && break
+        end
+        dens += prod_term
+    end
+    dens /= n
+    dens > zero(dens) && return log(dens)
+
+    # If the full mixture underflows, recompute in log space. This preserves
+    # finite log densities far below floatmin without imposing that cost on
+    # ordinary evaluations.
     T = typeof(float(u[1]))
     logdens = T(-Inf)
     @inbounds for i in 1:n
