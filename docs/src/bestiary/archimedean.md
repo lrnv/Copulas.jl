@@ -43,7 +43,7 @@ From data, you can estimate a $d$-Archimedean generator nonparametrically via th
 :::
 
 The supported generator families are listed below. Defining a subtype of
-[`Generator`](@ref) with `ϕ`, `max_monotony`,  is also
+[`Generator`](@ref) with `ϕ`, `max_monotony`, is also
 a supported public extension mechanism. The [developer guide](@ref
 developer_fitting) separately describes optional implementation and
 optimization hooks, which are not public API.
@@ -369,6 +369,41 @@ particular for negative Clayton, Frank, AMH, and Gumbel--Barnett parameters.
 | BB8 | ``\delta^{-1}[1-(1-\eta e^{-t})^{1/\vartheta}]``, where ``\eta=1-(1-\delta)^\vartheta``; ``\vartheta\ge1``, ``0<\delta\le1`` | `BB8Generator(ϑ, δ)`; `BB8Copula{d}(ϑ, δ)`; `BB8Copula(d, ϑ, δ)` |
 | BB9 | ``\exp[\delta^{-1}-(t+\delta^{-\theta})^{1/\theta}]``; ``\theta\ge1``, ``\delta>0`` | `BB9Generator(θ, δ)`; `BB9Copula{d}(θ, δ)`; `BB9Copula(d, θ, δ)` |
 | BB10 | ``[(1-\delta)/(e^t-\delta)]^{1/\theta}``; ``\theta>0``, ``0\le\delta\le1`` | `BB10Generator(θ, δ)`; `BB10Copula{d}(θ, δ)`; `BB10Copula(d, θ, δ)` |
+| FRA1 | ``G_\eta(W_\theta(t))``; ``\eta,\theta\in[-1,1)`` | `FRA1Generator(η, θ)`; `FRA1Copula{d}(η, θ)`; `FRA1Copula(d, η, θ)` |
+
+The FRA1 construction of [hua2026fra1](@cite) is completely monotone and
+therefore valid in every finite dimension. Define
+
+```math
+A(s)=\operatorname{arcosh}(1+s),\qquad
+F_p(s)=\frac{\cosh(pA(s))-1}{p^2},\qquad
+F_0(s)=\frac{A(s)^2}{2},
+```
+
+where ``F_0`` is the limit at ``p=0``. Then
+
+```math
+G_\eta(s)=
+\begin{cases}
+\exp[-F_{-\eta}(s)], & -1\le\eta\le0,\\
+\left(1+F_\eta(s)/b_\eta\right)^{-b_\eta}, & 0<\eta<1,
+\end{cases}
+\qquad b_\eta=(1-\eta)\eta^{-2},
+```
+
+and
+
+```math
+W_\theta(t)=
+\begin{cases}
+J_{-\theta}(t), & -1\le\theta\le0,\\
+J_0(K_{1-\theta}(t)), & 0<\theta<1,
+\end{cases}
+```
+
+with ``J_p(t)=\{F_p^{-1}(F_p(1/t)+1)-F_p^{-1}(1)\}^{-1}`` for ``t>0``
+and ``K_a(t)=(1+t^a)^{1/a}-1``. The case ``(\eta,\theta)=(-1,-1)`` is
+independence.
 
 ### Williamson, empirical, and frailty generators
 

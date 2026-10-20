@@ -54,6 +54,34 @@ end
         @test Copulas.ϕ⁻¹⁽¹⁾(specialized, p) ≈ Copulas.ϕ⁻¹⁽¹⁾(generic, p)
     end
 end
+
+@testset "FRA1 generator follows the paper construction" begin
+    for η in (-1.0, 0.0, 0.4), θ in (-1.0, 0.0, 0.4)
+        G = Copulas.FRA1Generator(η, θ)
+        @test Copulas.max_monotony(G) == Inf
+        @test Copulas.ϕ(G, 0.0) == 1
+        @test Copulas.ϕ(G, Inf) == 0
+        for t in (0.2, 0.7, 1.4)
+            value = Copulas.ϕ(G, t)
+            @test 0 < value < 1
+            @test Copulas.ϕ⁻¹(G, value) ≈ t rtol=2e-7 atol=2e-7
+            @test Copulas.ϕ⁽¹⁾(G, t) ≈
+                  ForwardDiff.derivative(x -> Copulas.ϕ(G, x), t) rtol=2e-7
+            @test Copulas.ϕ⁽ᵏ⁾(G, 2, t) ≈
+                  ForwardDiff.derivative(x -> Copulas.ϕ⁽¹⁾(G, x), t) rtol=2e-6
+        end
+    end
+
+    independent = Copulas.FRA1Generator(-1.0, -1.0)
+    @test Copulas.ϕ(independent, 0.7) ≈ exp(-0.7)
+    @test Copulas.ϕ⁻¹(independent, 0.5) ≈ -log(0.5)
+    Cindependent = FRA1Copula{2}(-1.0, -1.0)
+    @test cdf(Cindependent, [0.3, 0.7]) ≈ 0.21
+    @test logpdf(Cindependent, [0.3, 0.7]) == 0
+    @test_throws DomainError Copulas.FRA1Generator(1.0, 0.0)
+    @test_throws DomainError Copulas.FRA1Generator(0.0, 1.0)
+end
+
 @testset "public generator registry is exhaustive" begin
     public_families = Set(getfield(Copulas, symbol) for symbol in public_symbols()
         if getfield(Copulas, symbol) isa Type &&

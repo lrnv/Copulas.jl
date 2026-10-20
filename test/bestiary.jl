@@ -14,6 +14,8 @@ const BASE_COPULA_CASES = Any[
     copula_case(BB8Copula, 2, 1.2, 0.4),
     copula_case(BB9Copula, 2, 1.5, 2.4),
     copula_case(BB10Copula, 2, 1.5, 0.7),
+    copula_case(FRA1Copula, 2, 0.25, 0.35; conditional_at=(1, 0.4)),
+    copula_case(FRA1Copula, 3, 0.25, 0.35),
     copula_case(ClaytonCopula, 3, 1.5),
     copula_case(FrankCopula, 3, 2.0),
     copula_case(GumbelCopula, 3, 1.5),

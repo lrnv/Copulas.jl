@@ -120,6 +120,7 @@ module Copulas
     include("Generator/BB8Generator.jl")
     include("Generator/BB9Generator.jl")
     include("Generator/BB10Generator.jl")
+    include("Generator/FRA1Generator.jl")
     include("Generator/ClaytonGenerator.jl")
     include("Generator/FrankGenerator.jl")
     include("Generator/GumbelBarnettGenerator.jl")
@@ -187,13 +188,14 @@ module Copulas
     export AMHCopula, ClaytonCopula, FrankCopula, GumbelCopula
     export GumbelBarnettCopula, InvGaussianCopula, JoeCopula
     export BB1Copula, BB2Copula, BB3Copula, BB6Copula, BB7Copula
-    export BB8Copula, BB9Copula, BB10Copula
+    export BB8Copula, BB9Copula, BB10Copula, FRA1Copula
 
     public IndependentGenerator, FrailtyGenerator
     public AMHGenerator, ClaytonGenerator, FrankGenerator, GumbelGenerator
     public GumbelBarnettGenerator, InvGaussianGenerator, JoeGenerator
     public BB1Generator, BB2Generator, BB3Generator, BB6Generator, BB7Generator
     public BB8Generator, BB9Generator, BB10Generator
+    public FRA1Generator
 
 
     ##### Extreme values
