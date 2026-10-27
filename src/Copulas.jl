@@ -1,246 +1,246 @@
 module Copulas
 
-import Base
-import Random
-import Rmath
-import SpecialFunctions
-import Roots
-import Distributions
-import Statistics
-import StatsBase
-import StatsFuns
-import ForwardDiff
-import HCubature
-import HypergeometricFunctions
-import MvNormalCDF
-import Combinatorics
-import LogExpFunctions
-import QuadGK
-import LinearAlgebra
-import PolyLog
-import LambertW
-import Optim
-import Paramorph
-import Printf
-import TaylorSeries
-import ADTypes
-import StatsAPI: HypothesisTest, pvalue
+    import Base
+    import Random
+    import Rmath
+    import SpecialFunctions
+    import Roots
+    import Distributions
+    import Statistics
+    import StatsBase
+    import StatsFuns
+    import ForwardDiff
+    import HCubature
+    import HypergeometricFunctions
+    import MvNormalCDF
+    import Combinatorics
+    import LogExpFunctions
+    import QuadGK
+    import LinearAlgebra
+    import PolyLog
+    import LambertW
+    import Optim
+    import Paramorph
+    import Printf
+    import TaylorSeries
+    import ADTypes
+    import StatsAPI: HypothesisTest, pvalue
 
-# Local aliases keep geometry declarations compact without importing the
-# whole Paramorph namespace into Copulas.jl.
-const as = Paramorph.TransformVariables.as
-const asℝ = Paramorph.TransformVariables.asℝ
-const asℝ₊ = Paramorph.TransformVariables.asℝ₊
-const nonnegative = Paramorph.nonnegative
-const closed_lower = Paramorph.closed_lower
-const bounded_interval = Paramorph.bounded_interval
-const correlation_matrix = Paramorph.correlation_matrix
+    # Local aliases keep geometry declarations compact without importing the
+    # whole Paramorph namespace into Copulas.jl.
+    const as = Paramorph.TransformVariables.as
+    const asℝ = Paramorph.TransformVariables.asℝ
+    const asℝ₊ = Paramorph.TransformVariables.asℝ₊
+    const nonnegative = Paramorph.nonnegative
+    const closed_lower = Paramorph.closed_lower
+    const bounded_interval = Paramorph.bounded_interval
+    const correlation_matrix = Paramorph.correlation_matrix
 
-# Main code
-include("utils.jl")
-include("nearestcor.jl")
-include("UnivariateDistribution/quantile.jl")
-include("Copula.jl")
-include("SklarDist.jl")
-include("Subsetting.jl")
-include("Conditioning.jl")
-include("Fitting.jl")
-include("SklarFitValidation.jl")
-include("Inference.jl")
-include("Nataf.jl")
+    # Main code
+    include("utils.jl")
+    include("nearestcor.jl")
+    include("UnivariateDistribution/quantile.jl")
+    include("Copula.jl")
+    include("SklarDist.jl")
+    include("Subsetting.jl")
+    include("Conditioning.jl")
+    include("Fitting.jl")
+    include("SklarFitValidation.jl")
+    include("Inference.jl")
+    include("Nataf.jl")
 
-# Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
-include("UnivariateDistribution/Frailties/Sibuya.jl")
-include("UnivariateDistribution/Frailties/Logarithmic.jl")
-include("UnivariateDistribution/Frailties/AlphaStable.jl")
-include("UnivariateDistribution/Frailties/GammaStoppedGamma.jl")
-include("UnivariateDistribution/Frailties/GammaStoppedPositiveStable.jl")
-include("UnivariateDistribution/Frailties/PosStableStoppedGamma.jl")
-include("UnivariateDistribution/Frailties/SibuyaStoppedGamma.jl")
-include("UnivariateDistribution/Frailties/SibuyaStoppedPosStable.jl")
-include("UnivariateDistribution/Frailties/GeneralizedSibuya.jl")
-include("UnivariateDistribution/Frailties/ShiftedNegBin.jl")
-include("UnivariateDistribution/Frailties/PowerTiltedFrailty.jl")
+    # Frailties (Univ r.v. on R_+ which Laplace transform are used as arch. generators)
+    include("UnivariateDistribution/Frailties/Sibuya.jl")
+    include("UnivariateDistribution/Frailties/Logarithmic.jl")
+    include("UnivariateDistribution/Frailties/AlphaStable.jl")
+    include("UnivariateDistribution/Frailties/GammaStoppedGamma.jl")
+    include("UnivariateDistribution/Frailties/GammaStoppedPositiveStable.jl")
+    include("UnivariateDistribution/Frailties/PosStableStoppedGamma.jl")
+    include("UnivariateDistribution/Frailties/SibuyaStoppedGamma.jl")
+    include("UnivariateDistribution/Frailties/SibuyaStoppedPosStable.jl")
+    include("UnivariateDistribution/Frailties/GeneralizedSibuya.jl")
+    include("UnivariateDistribution/Frailties/ShiftedNegBin.jl")
+    include("UnivariateDistribution/Frailties/PowerTiltedFrailty.jl")
 
-# Radials (Univ r.v. on R_+ which Williamson d-transform are used as arch. generators)
-include("UnivariateDistribution/Radials/PStable.jl")
-include("UnivariateDistribution/Radials/TiltedPositiveStable.jl")
-include("UnivariateDistribution/Radials/ClaytonWilliamsonDistribution.jl")
-include("UnivariateDistribution/Radials/WilliamsonFromFrailty.jl")
+    # Radials (Univ r.v. on R_+ which Williamson d-transform are used as arch. generators)
+    include("UnivariateDistribution/Radials/PStable.jl")
+    include("UnivariateDistribution/Radials/TiltedPositiveStable.jl")
+    include("UnivariateDistribution/Radials/ClaytonWilliamsonDistribution.jl")
+    include("UnivariateDistribution/Radials/WilliamsonFromFrailty.jl")
 
-# Distortions (Univ r.v. on [0,1] which are conditional distributions from copulas)
-include("UnivariateDistribution/Distortions/NoDistortion.jl")
-include("UnivariateDistribution/Distortions/GaussianDistortion.jl")
-include("UnivariateDistribution/Distortions/StudentDistortion.jl")
-include("UnivariateDistribution/Distortions/HistogramDistortion.jl")
-include("UnivariateDistribution/Distortions/BivEVDistortion.jl")
-include("UnivariateDistribution/Distortions/PlackettDistortion.jl")
-include("UnivariateDistribution/Distortions/BivFGMDistortion.jl")
-include("UnivariateDistribution/Distortions/BivArchimaxDistortion.jl")
-include("UnivariateDistribution/Distortions/MDistortion.jl")
-include("UnivariateDistribution/Distortions/WDistortion.jl")
-include("UnivariateDistribution/Distortions/FlipDistortion.jl")
-include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
-include("UnivariateDistribution/Distortions/LiouvilleDistortion.jl")
-include("UnivariateDistribution/Distortions/BernsteinDistortion.jl")
-include("UnivariateDistribution/Distortions/NestedDistortion.jl")
+    # Distortions (Univ r.v. on [0,1] which are conditional distributions from copulas)
+    include("UnivariateDistribution/Distortions/NoDistortion.jl")
+    include("UnivariateDistribution/Distortions/GaussianDistortion.jl")
+    include("UnivariateDistribution/Distortions/StudentDistortion.jl")
+    include("UnivariateDistribution/Distortions/HistogramDistortion.jl")
+    include("UnivariateDistribution/Distortions/BivEVDistortion.jl")
+    include("UnivariateDistribution/Distortions/PlackettDistortion.jl")
+    include("UnivariateDistribution/Distortions/BivFGMDistortion.jl")
+    include("UnivariateDistribution/Distortions/BivArchimaxDistortion.jl")
+    include("UnivariateDistribution/Distortions/MDistortion.jl")
+    include("UnivariateDistribution/Distortions/WDistortion.jl")
+    include("UnivariateDistribution/Distortions/FlipDistortion.jl")
+    include("UnivariateDistribution/Distortions/ArchimedeanDistortion.jl")
+    include("UnivariateDistribution/Distortions/LiouvilleDistortion.jl")
+    include("UnivariateDistribution/Distortions/BernsteinDistortion.jl")
+    include("UnivariateDistribution/Distortions/NestedDistortion.jl")
 
-# Others, usefull too
-include("UnivariateDistribution/ExtremeDist.jl")
+    # Others, usefull too
+    include("UnivariateDistribution/ExtremeDist.jl")
 
-# Miscelaneous copulas
-include("MiscellaneousCopulas/SurvivalCopula.jl")
-include("MiscellaneousCopulas/PlackettCopula.jl")
-include("MiscellaneousCopulas/EmpiricalCopula.jl")
-include("MiscellaneousCopulas/FGMCopula.jl")
-include("MiscellaneousCopulas/RafteryCopula.jl")
-include("MiscellaneousCopulas/IndependentCopula.jl")
-include("MiscellaneousCopulas/MCopula.jl")
-include("MiscellaneousCopulas/WCopula.jl")
-include("MiscellaneousCopulas/LiebscherCopula.jl")
+    # Miscelaneous copulas
+    include("MiscellaneousCopulas/SurvivalCopula.jl")
+    include("MiscellaneousCopulas/PlackettCopula.jl")
+    include("MiscellaneousCopulas/EmpiricalCopula.jl")
+    include("MiscellaneousCopulas/FGMCopula.jl")
+    include("MiscellaneousCopulas/RafteryCopula.jl")
+    include("MiscellaneousCopulas/IndependentCopula.jl")
+    include("MiscellaneousCopulas/MCopula.jl")
+    include("MiscellaneousCopulas/WCopula.jl")
+    include("MiscellaneousCopulas/LiebscherCopula.jl")
 
-# Elliptical copulas
-include("EllipticalCopula.jl")
-include("EllipticalCopulas/GaussianCopula.jl")
-include("EllipticalCopulas/TCopula.jl")
+    # Elliptical copulas
+    include("EllipticalCopula.jl")
+    include("EllipticalCopulas/GaussianCopula.jl")
+    include("EllipticalCopulas/TCopula.jl")
 
-# Archimedean copulas
-include("Generator.jl")
-include("UnivariateDistribution/Radials/LiouvilleConditionalRadial.jl")
-include("ArchimedeanCopula.jl")
-include("LiouvilleCopula.jl")
+    # Archimedean copulas
+    include("Generator.jl")
+    include("UnivariateDistribution/Radials/LiouvilleConditionalRadial.jl")
+    include("ArchimedeanCopula.jl")
+    include("LiouvilleCopula.jl")
 
-# Generators
-include("Generator/AMHGenerator.jl")
-include("Generator/BB1Generator.jl")
-include("Generator/BB2Generator.jl")
-include("Generator/BB3Generator.jl")
-include("Generator/BB6Generator.jl")
-include("Generator/BB7Generator.jl")
-include("Generator/BB8Generator.jl")
-include("Generator/BB9Generator.jl")
-include("Generator/BB10Generator.jl")
-include("Generator/ClaytonGenerator.jl")
-include("Generator/FrankGenerator.jl")
-include("Generator/GumbelBarnettGenerator.jl")
-include("Generator/GumbelGenerator.jl")
-include("Generator/InvGaussianGenerator.jl")
-include("Generator/JoeGenerator.jl")
+    # Generators
+    include("Generator/AMHGenerator.jl")
+    include("Generator/BB1Generator.jl")
+    include("Generator/BB2Generator.jl")
+    include("Generator/BB3Generator.jl")
+    include("Generator/BB6Generator.jl")
+    include("Generator/BB7Generator.jl")
+    include("Generator/BB8Generator.jl")
+    include("Generator/BB9Generator.jl")
+    include("Generator/BB10Generator.jl")
+    include("Generator/ClaytonGenerator.jl")
+    include("Generator/FrankGenerator.jl")
+    include("Generator/GumbelBarnettGenerator.jl")
+    include("Generator/GumbelGenerator.jl")
+    include("Generator/InvGaussianGenerator.jl")
+    include("Generator/JoeGenerator.jl")
 
-# Nested (hierarchical) Archimedean copulas
-include("NestedArchimedeanCopula.jl")
+    # Nested (hierarchical) Archimedean copulas
+    include("NestedArchimedeanCopula.jl")
 
-#Extreme value copulas
-include("Tail.jl")
-include("Tail/utilities.jl")
-include("ExtremeValueCopula.jl")
+    #Extreme value copulas
+    include("Tail.jl")
+    include("Tail/utilities.jl")
+    include("ExtremeValueCopula.jl")
 
-# Stable tail dependence functions
-include("Tail/NoTail.jl")
-include("Tail/MTail.jl")
-include("Tail/AsymGalambosTail.jl")
-include("Tail/AsymLogTail.jl")
-include("Tail/TawnTail.jl")
-include("Tail/AsymMixedTail.jl")
-include("Tail/DiscreteSpectralTail.jl")
-include("Tail/BC2Tail.jl")
-include("Tail/CuadrasAugeTail.jl")
-include("Tail/GalambosTail.jl")
-include("Tail/HuslerReissTail.jl")
-include("Tail/LogTail.jl")
-include("Tail/MixedTail.jl")
-include("Tail/MOTail.jl")
-include("Tail/tEVTail.jl")
-include("Tail/EmpiricalEVTail.jl")
+    # Stable tail dependence functions
+    include("Tail/NoTail.jl")
+    include("Tail/MTail.jl")
+    include("Tail/AsymGalambosTail.jl")
+    include("Tail/AsymLogTail.jl")
+    include("Tail/TawnTail.jl")
+    include("Tail/AsymMixedTail.jl")
+    include("Tail/DiscreteSpectralTail.jl")
+    include("Tail/BC2Tail.jl")
+    include("Tail/CuadrasAugeTail.jl")
+    include("Tail/GalambosTail.jl")
+    include("Tail/HuslerReissTail.jl")
+    include("Tail/LogTail.jl")
+    include("Tail/MixedTail.jl")
+    include("Tail/MOTail.jl")
+    include("Tail/tEVTail.jl")
+    include("Tail/EmpiricalEVTail.jl")
 
-include("MiscellaneousCopulas/BernsteinCopula.jl")
-include("MiscellaneousCopulas/BetaCopula.jl")
-include("MiscellaneousCopulas/CheckerboardCopula.jl")
-# Archimax copulas (includes the BB4 and BB5 models)
-include("ArchimaxCopula.jl")
+    include("MiscellaneousCopulas/BernsteinCopula.jl")
+    include("MiscellaneousCopulas/BetaCopula.jl")
+    include("MiscellaneousCopulas/CheckerboardCopula.jl")
+    # Archimax copulas (includes the BB4 and BB5 models)
+    include("ArchimaxCopula.jl")
 
-# Family-specific Paramorph prototypes require all component types above.
-include("ParamorphFitting.jl")
+    # Family-specific Paramorph prototypes require all component types above.
+    include("ParamorphFitting.jl")
 
-# Natural model-parameter representations are resolved only after every
-# component family has declared its Paramorph schema.
-include("NaturalParameters.jl")
+    # Natural model-parameter representations are resolved only after every
+    # component family has declared its Paramorph schema.
+    include("NaturalParameters.jl")
 
-# Natural coefficient metadata is assembled only after every component
-# family has declared its Paramorph schema.
-include("ParameterCoefficients.jl")
+    # Natural coefficient metadata is assembled only after every component
+    # family has declared its Paramorph schema.
+    include("ParameterCoefficients.jl")
 
-include("CopulaTest.jl")
+    include("CopulaTest.jl")
 
-include("show.jl")
+    include("show.jl")
 
-##### Minimal API
-public Copula
-export SklarDist
-export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
-
-
-##### Archimedeans
-public Generator, ϕ, 𝒲₋₁, max_monotony
-export ArchimedeanCopula, WilliamsonGenerator, 𝒲, EmpiricalGenerator
-
-export AMHCopula, ClaytonCopula, FrankCopula, GumbelCopula
-export GumbelBarnettCopula, InvGaussianCopula, JoeCopula
-export BB1Copula, BB2Copula, BB3Copula, BB6Copula, BB7Copula
-export BB8Copula, BB9Copula, BB10Copula
-
-public IndependentGenerator, FrailtyGenerator
-public AMHGenerator, ClaytonGenerator, FrankGenerator, GumbelGenerator
-public GumbelBarnettGenerator, InvGaussianGenerator, JoeGenerator
-public BB1Generator, BB2Generator, BB3Generator, BB6Generator, BB7Generator
-public BB8Generator, BB9Generator, BB10Generator
+    ##### Minimal API
+    public Copula
+    export SklarDist
+    export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
 
 
-##### Extreme values
-public Tail, A, ℓ
-export ExtremeValueCopula
+    ##### Archimedeans
+    public Generator, ϕ, 𝒲₋₁, max_monotony
+    export ArchimedeanCopula, WilliamsonGenerator, 𝒲, EmpiricalGenerator
 
-export AsymGalambosCopula, AsymLogCopula, AsymMixedCopula, BC2Copula
-export CuadrasAugeCopula, EmpiricalEVCopula, GalambosCopula
-export HuslerReissCopula, LogCopula, MixedCopula, MOCopula
-export TawnCopula, tEVCopula, BB4Copula, BB5Copula
+    export AMHCopula, ClaytonCopula, FrankCopula, GumbelCopula
+    export GumbelBarnettCopula, InvGaussianCopula, JoeCopula
+    export BB1Copula, BB2Copula, BB3Copula, BB6Copula, BB7Copula
+    export BB8Copula, BB9Copula, BB10Copula
 
-public DiscreteSpectralTail
-public AsymGalambosTail, AsymLogTail, AsymMixedTail, BC2Tail, CuadrasAugeTail
-public EmpiricalEVTail, EmpiricalEVMultivariateTail, GalambosTail
-public HuslerReissTail, LogTail, MixedTail, MOTail, TawnTail, tEVTail
-
-
-##### Compound copulas
-export LiouvilleCopula, NestedArchimedeanCopula, ArchimaxCopula
+    public IndependentGenerator, FrailtyGenerator
+    public AMHGenerator, ClaytonGenerator, FrankGenerator, GumbelGenerator
+    public GumbelBarnettGenerator, InvGaussianGenerator, JoeGenerator
+    public BB1Generator, BB2Generator, BB3Generator, BB6Generator, BB7Generator
+    public BB8Generator, BB9Generator, BB10Generator
 
 
-##### Miscelaneous copulas
-export GaussianCopula, TCopula
-export BernsteinCopula, BetaCopula, CheckerboardCopula, EmpiricalCopula
-export FGMCopula, IndependentCopula, MCopula, WCopula
-export LiebscherCopula, KhoudrajiCopula
-export PlackettCopula, RafteryCopula
+    ##### Extreme values
+    public Tail, A, ℓ
+    export ExtremeValueCopula
+
+    export AsymGalambosCopula, AsymLogCopula, AsymMixedCopula, BC2Copula
+    export CuadrasAugeCopula, EmpiricalEVCopula, GalambosCopula
+    export HuslerReissCopula, LogCopula, MixedCopula, MOCopula
+    export TawnCopula, tEVCopula, BB4Copula, BB5Copula
+
+    public DiscreteSpectralTail
+    public AsymGalambosTail, AsymLogTail, AsymMixedTail, BC2Tail, CuadrasAugeTail
+    public EmpiricalEVTail, EmpiricalEVMultivariateTail, GalambosTail
+    public HuslerReissTail, LogTail, MixedTail, MOTail, TawnTail, tEVTail
 
 
-##### Fitting framework
-export CopulaModel, fitted_distribution, selected_model, infer, selection_table
+    ##### Compound copulas
+    export LiouvilleCopula, NestedArchimedeanCopula, ArchimaxCopula
 
 
-##### Testing framework
-export CopulaTest, pvalue, teststatistic
-export IndependenceCopulaTest, ExchangeabilityCopulaTest
-export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
+    ##### Miscelaneous copulas
+    export GaussianCopula, TCopula
+    export BernsteinCopula, BetaCopula, CheckerboardCopula, EmpiricalCopula
+    export FGMCopula, IndependentCopula, MCopula, WCopula
+    export LiebscherCopula, KhoudrajiCopula
+    export PlackettCopula, RafteryCopula
 
 
-##### Survival copulas
-export SurvivalCopula
-export Rotated90Copula, Rotated180Copula, Rotated270Copula
-public basecopula, flipmask, flips
+    ##### Fitting framework
+    export CopulaModel, fitted_distribution, selected_model, infer, selection_table
 
 
-##### Dependence metrics
-public τ, ρ, β, γ, ι, λₗ, λᵤ
-public corblomqvist, corgini, corentropy, corlowertail, coruppertail, measure
+    ##### Testing framework
+    export CopulaTest, pvalue, teststatistic
+    export IndependenceCopulaTest, ExchangeabilityCopulaTest
+    export RadialSymmetryCopulaTest, ExtremeValueCopulaTest, GOFCopulaTest
+
+
+    ##### Survival copulas
+    export SurvivalCopula
+    export Rotated90Copula, Rotated180Copula, Rotated270Copula
+    public basecopula, flipmask, flips
+
+
+    ##### Dependence metrics
+    public τ, ρ, β, γ, ι, λₗ, λᵤ
+    public corblomqvist, corgini, corentropy, corlowertail, coruppertail, measure
 
 end
