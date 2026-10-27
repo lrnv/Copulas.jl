@@ -50,7 +50,7 @@ function Distributions._rand!(rng::Distributions.AbstractRNG, C::CT, A::Abstract
 end
 function Distributions._logpdf(C::CT, u) where {CT <: EllipticalCopula}
     d = length(C)
-    (u==zeros(d) || u==ones(d)) && return Inf 
+    (u==zeros(d) || u==ones(d)) && return Inf
     TΣ = eltype(C.Σ)
     Tu = eltype(u)
     T = promote_type(TΣ, Tu)
@@ -83,7 +83,7 @@ when mutation would be surprising.
 See also: [`EllipticalCopula`](@ref), [`GaussianCopula`](@ref), [`TCopula`](@ref).
 """
 function make_cor!(Σ)
-    # Verify that Σ is a correlation matrix, otherwise make it so : 
+    # Verify that Σ is a correlation matrix, otherwise make it so :
     d = size(Σ,1)
     σ = [1/sqrt(Σ[i,i]) for i in 1:d]
     for i in 1:d
@@ -121,41 +121,6 @@ function _mvtcdf(df::Real, μ, Σ::AbstractMatrix, upper; rtol::Real=2e-6)
     end
     value = QuadGK.quadgk(integrand, 0.0, 1.0; rtol)[1]
     return clamp(value, 0.0, 1.0)
-end
-
-# Turn a matrix of pairwise correlation-like values into a valid correlation
-# matrix: symmetrize, set the diagonal to one, and when the result is not
-# positive definite shrink it toward the identity by the smallest amount that
-# lifts its smallest eigenvalue to a positive floor. Used both to start the
-# elliptical likelihood optimizers and to repair the pairwise rank-inversion
-# estimates in dimension d > 2, where a matrix of pairwise closed-form
-# inversions need not be positive definite.
-function _nearest_correlation(R0::AbstractMatrix)
-    d = size(R0, 1)
-    T = float(eltype(R0))
-    R = Matrix{T}(R0)
-
-    if any(x -> !isfinite(x), R)
-        return Matrix{T}(LinearAlgebra.I, d, d)
-    end
-
-    R = Matrix(LinearAlgebra.Symmetric((R + R') / 2))
-    @inbounds for j in 1:d
-        R[j, j] = one(T)
-    end
-
-    δ = sqrt(eps(T))
-    λmin = LinearAlgebra.eigmin(LinearAlgebra.Symmetric(R))
-    λmin > δ && return R
-
-    # The eigenvalues of (1 - λ) R + λ I are (1 - λ) λᵢ + λ, so this λ is
-    # the smallest shrinkage that puts the smallest one at δ.
-    λ = (δ - λmin) / (one(T) - λmin)
-    R = (one(T) - λ) .* R .+ λ .* Matrix{T}(LinearAlgebra.I, d, d)
-    @inbounds for j in 1:d
-        R[j, j] = one(T)
-    end
-    return R
 end
 
 function _score_corr_start(Z::AbstractMatrix)
