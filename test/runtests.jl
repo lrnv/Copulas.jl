@@ -208,6 +208,7 @@ testfiles = (
     "correctness/statistical.jl",
     "correctness/dependence_inverses.jl",
     "correctness/behavioural_branches.jl",
+    "correctness/nearestcor.jl",
     "operations/distribution.jl",
     "operations/measure.jl",
     "operations/sampling.jl",

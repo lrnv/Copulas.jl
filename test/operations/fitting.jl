@@ -186,7 +186,7 @@ end
     repaired = Copulas._nearest_correlation([1.0 0.9 0.9; 0.9 1.0 -0.9; 0.9 -0.9 1.0])
     @test LinearAlgebra.isposdef(LinearAlgebra.Symmetric(repaired))
     @test maximum(abs.(LinearAlgebra.diag(repaired) .- 1)) == 0
-    @test repaired[1, 2] == repaired[1, 3] == -repaired[2, 3]
+    @test repaired[1, 2] ≈ repaired[1, 3] ≈ -repaired[2, 3]
     @test 0 < repaired[1, 2] < 0.9
     R0 = [1.0 0.5 0.3; 0.5 1.0 0.4; 0.3 0.4 1.0]
     @test Copulas._nearest_correlation(R0) == R0

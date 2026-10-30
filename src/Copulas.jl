@@ -38,6 +38,7 @@ module Copulas
 
     # Main code
     include("utils.jl")
+    include("nearestcor.jl")
     include("UnivariateDistribution/quantile.jl")
     include("Copula.jl")
     include("SklarDist.jl")
@@ -179,7 +180,7 @@ module Copulas
     export pseudos, condition, subsetdims, rosenblatt, inverse_rosenblatt, Nataf
 
 
-    ##### Archimedeans 
+    ##### Archimedeans
     public Generator, ϕ, 𝒲₋₁, max_monotony
     export ArchimedeanCopula, WilliamsonGenerator, 𝒲, EmpiricalGenerator
 
@@ -221,10 +222,10 @@ module Copulas
     export LiebscherCopula, KhoudrajiCopula
     export PlackettCopula, RafteryCopula
 
-    
+
     ##### Fitting framework
     export CopulaModel, fitted_distribution, selected_model, infer, selection_table
-    
+
 
     ##### Testing framework
     export CopulaTest, pvalue, teststatistic
