@@ -52,7 +52,7 @@ jobs:
         if: steps.scope.outputs.code-changed == 'true'
         with:
           version: "1"
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
         if: steps.scope.outputs.code-changed == 'true'
 
       - name: Install Tachometer
@@ -104,7 +104,7 @@ jobs:
       - uses: julia-actions/setup-julia@v3
         with:
           version: "1"
-      - uses: julia-actions/cache@v2
+      - uses: julia-actions/cache@v3
 
       - name: Install Tachometer
         run: |
