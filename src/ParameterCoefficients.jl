@@ -247,4 +247,10 @@ _distribution_dof(S::SklarDist) =
 StatsBase.dof(C::Copula) = _distribution_dof(C)
 StatsBase.dof(S::SklarDist) = _distribution_dof(S)
 
-_model_dof(M::CopulaModel) = _distribution_dof(fitted_distribution(M))
+function _model_dof(M::CopulaModel)
+    spec = M.recipe
+    if spec isa _CopulaFitSpec && spec.target isa SklarDist && spec.method === :jmle
+        return length(_sklar_joint_coordinates(_sklar_joint_chart(spec.target)))
+    end
+    return _distribution_dof(fitted_distribution(M))
+end

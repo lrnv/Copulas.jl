@@ -365,20 +365,29 @@ You can pass the `sklar_method` parameter as:
 
 - `:ifm`: fits parametric margins and maps data to pseudo-scale via their CDFs.  
 - `:ecdf`: uses empirical pseudo-observations (ranks).
+- `:jmle`: jointly maximizes the complete Sklar log-likelihood, starting from
+  an IFM fit.
 
-The default is `sklar_method=:ifm`. In either route the copula step defaults to
+The default is `sklar_method=:ifm`. For all three methods, the copula step
+defaults to
 `copula_method=:mle` whenever that estimator is supported. Empirical or
 extension-defined families without MLE retain their first advertised method.
 The default can be replaced by any method supported by the chosen family, such
 as `:itau` or `:irho`.
+
+JMLE can also start from a constructed `SklarDist` instance:
+`fit(CopulaModel, S0, X; sklar_method=:jmle)`. In that form `S0` supplies the
+initial copula and margins directly; in the type-based form, IFM supplies the
+initial estimate. The joint fit supports declared `Paramorph` geometries and
+the scalar constructor fallback.
 
 ::: remark IFM or empirical margins?
 
 - Use `sklar_method = :ifm` when margins are plausibly parametric and you want a model-based projection; use `:ecdf` to avoid margin misspecification.
 - `margins_kwargs` is a single `NamedTuple` applied to every marginal fit. For heterogeneous options, fit margins manually and then fit the copula on the resulting pseudo-data.
 - `nullloglikelihood(M)` reconstructs independence lazily and preserves the **same fitted margins**.
-- Neither route jointly maximizes the complete Sklar likelihood: IFM is
-  sequential, while ECDF estimates dependence from ranks.
+- IFM and ECDF are sequential or rank-based estimators; only JMLE jointly
+  maximizes the complete Sklar likelihood.
 
 :::
 
@@ -386,7 +395,7 @@ as `:itau` or `:irho`.
 S = SklarDist(ClaytonCopula(2, 5), (Normal(), LogNormal(0, 0.5)))
 X = rand(S, 300)
 Ŝ = fit(CopulaModel, SklarDist{ClaytonCopula,Tuple{Normal,LogNormal}}, X;
-	sklar_method=:ifm, # or :ecdf
+	sklar_method=:ifm, # or :ecdf or :jmle
 	copula_method=:default, # MLE when available; otherwise the family's default
 	margins_kwargs=NamedTuple(), copula_kwargs=NamedTuple()) # options will be passed down to fitting functions. 
 Ŝ
@@ -410,10 +419,14 @@ Vmargins = StatsBase.vcov(Isklar; component=:margins)
 (size(Vall), size(Vcopula), size(Vmargins))
 ```
 
-Analytical Sklar covariance methods throw explicitly. The arbitrary estimators
+Analytical Sklar covariance methods throw explicitly; in particular, Hessian
+inference is not implemented for fitted Sklar models. The arbitrary estimators
 behind `Distributions.fit` for marginal families do not provide a common score,
 Hessian, or parameter-transform contract from which such formulas could be
 derived safely.
+
+Bootstrap inference remains available and refits the recorded Sklar estimator,
+including JMLE, in every resample.
 
 ```@example fitting_interface
 plot(fitted_distribution(Ŝ))
@@ -450,25 +463,16 @@ Asking for `method=:mle, pseudo_values=false` silently records the effective
 method as `:mpl`. Asking for `method=:mpl, pseudo_values=true` records `:mle`
 and warns, because no rank transformation occurs.
 
-::: remark Why there is no full Sklar MLE yet
+::: remark Limitations of joint Sklar MLE
 
-A generic joint optimizer would need a smooth unconstrained parameterization
-for every requested marginal family. `Distributions.jl` does not expose enough
-information to derive such mappings from `params` and constructors: marginal
-parameters may be positive, bounded, ordered, matrix-valued, mutually
-constrained, or may alter the support. Guessing those constraints would make a
-nominally generic method unreliable. A future API extension can add full Sklar
-MLE once marginal families can explicitly provide this optimization protocol;
-the continuous, discrete and mixed-margin likelihood cases must also be
-distinguished.
+JMLE requires a valid parameter geometry for every free marginal parameter.
+Scalar constructor parameters may use the internal fallback; structured or
+ambiguous parameters require an explicit geometry. A global maximum is not
+guaranteed.
 
-There is a second, statistical limitation: `Distributions.fit` is a common
-entry point, not a universal promise that every marginal family uses maximum
-likelihood. Its estimator is chosen by the individual distribution
-implementation and is not exposed to Copulas.jl through a stable protocol; for
-some families it may use another fitting principle altogether. Consequently,
-independently calling `fit` on every margin neither identifies a joint MLE nor
-even guarantees that every marginal block was estimated by marginal MLE.
+For IFM, `Distributions.fit` is a common entry point rather than a universal
+promise of marginal maximum likelihood: each distribution chooses its own
+estimator. Consequently, IFM does not in general identify a joint MLE.
 
 :::
 

@@ -231,6 +231,15 @@ sklar_fit_data =    rand(Xoshiro(SEED + 10), SklarDist(
     ClaytonCopula{3}(2.0),
     (Normal(), LogNormal(0.0, 0.5), Gamma(2.0, 1.0)),
 ), 1_000)
+sklar_jmle_ad = SklarDist(ClaytonCopula{2}(0.8), (Normal(0.0, 1.5), Exponential(1.0)))
+sklar_jmle_fd = SklarDist(ClaytonCopula{2}(0.8), (Normal(0.0, 1.5), Gamma(1.5, 1.0)))
+sklar_jmle_oracle = SklarDist(ClaytonCopula{2}(0.8), (Cauchy(0.0, 2.0), Laplace(0.0, 2.0)))
+sklar_jmle_ad_data = rand(Xoshiro(SEED + 21),
+                           SklarDist(ClaytonCopula{2}(1.2), (Normal(0.5, 1.0), Exponential(0.7))), 128)
+sklar_jmle_fd_data = rand(Xoshiro(SEED + 22),
+                           SklarDist(ClaytonCopula{2}(1.2), (Normal(0.5, 1.0), Gamma(2.5, 0.7))), 64)
+sklar_jmle_oracle_data = rand(Xoshiro(SEED + 23),
+                              SklarDist(ClaytonCopula{2}(1.2), (Cauchy(0.5, 0.9), Laplace(-0.4, 1.2))), 32)
 
 
 SUITE["fitting"]["clayton_mle_d2"] = bench_fitting(
@@ -293,6 +302,21 @@ SUITE["fitting"]["sklar_ifm"] = bench_fitting(
     sklar_fit_data;
     sklar_method=:ifm,
     copula_method=:mle,
+)
+SUITE["fitting"]["sklar_jmle_ad"] = bench_fitting(
+    sklar_jmle_ad,
+    sklar_jmle_ad_data;
+    sklar_method=:jmle,
+)
+SUITE["fitting"]["sklar_jmle_fd"] = bench_fitting(
+    sklar_jmle_fd,
+    sklar_jmle_fd_data;
+    sklar_method=:jmle,
+)
+SUITE["fitting"]["sklar_jmle_oracle"] = bench_fitting(
+    sklar_jmle_oracle,
+    sklar_jmle_oracle_data;
+    sklar_method=:jmle,
 )
 
 SUITE["density"]["sklar_d3"] = bench_logpdf(
